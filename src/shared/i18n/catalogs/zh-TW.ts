@@ -1621,6 +1621,49 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.delete.cat.confirm': '刪除',
   'shared.delete.cat.fallback': '這隻貓',
   'shared.transcript.deletedCat': '已刪除的貓',
+  'telegram.command.start.description': '開始對話',
+  'telegram.command.help.description': '顯示可用指令',
+  'telegram.command.commands.description': '列出所有指令',
+  'telegram.command.status.description': '顯示連線狀態',
+  'telegram.command.open.description': '開啟新的聊天室',
+  'telegram.command.mode.description': '查看或切換陪伴與代理模式',
+  'telegram.command.help.text': [
+    '可用指令：',
+    '/start - 顯示已綁定的貓咪以及這個 bot 的使用方式',
+    '/help - 顯示這則說明',
+    '/commands - 列出所有指令',
+    '/status - 顯示 bot、綁定與模式狀態',
+    '/open - 開啟或繼續已綁定貓咪的對話',
+    '/mode - 顯示目前模式',
+    '/mode companion - 切換到陪伴行為',
+    '/mode agent - 切換到代理行為',
+  ].join('\n'),
+  'telegram.command.mode.companion': '陪伴',
+  'telegram.command.mode.agent': '代理',
+  'telegram.command.start.greetingBound':
+    '你好！我是 {catName}（透過 {botName}）。目前模式：{mode}。直接傳一般訊息即可聊天，或使用 /mode 切換行為。',
+  'telegram.command.start.greetingUnbound':
+    '你好！我是 {botName}。有什麼我可以幫忙的嗎？',
+  'telegram.command.status.botLine': 'Bot：{botName}',
+  'telegram.command.status.linkedCatLine': '已綁定貓咪：{catName}',
+  'telegram.command.status.modeLine': '模式：{mode}',
+  'telegram.command.status.inboundLine': '輸入通道：{inboundMode}',
+  'telegram.command.status.chatLine': '聊天：{chatId}',
+  'telegram.command.status.connectedLine': '狀態：已連線',
+  'telegram.command.open.reply':
+    '請在 Cats 中開啟與 {name} 的私人對話，或直接在這裡傳一般訊息繼續聊天。',
+  'telegram.command.mode.notConfigurable':
+    '這個 bot 目前沒有綁定可設定的貓咪。',
+  'telegram.command.mode.current':
+    '目前模式：{mode}\n使用 /mode companion 或 /mode agent 來切換。',
+  'telegram.command.mode.unknown':
+    '未知模式：{mode}\n請使用 /mode companion 或 /mode agent。',
+  'telegram.command.mode.switchUnavailable':
+    '這個 bot 綁定目前無法切換模式。',
+  'telegram.command.mode.switched':
+    '已將 {name} 切換為{mode}模式。\n之後此聊天中的一般訊息會使用該模式。',
+  'telegram.command.unknownCommand':
+    '未知指令：/{command}\n輸入 /help 查看可用指令。',
   'shared.operator.noTimestamp': '沒有時間',
   'shared.operator.runStatus.running': '進行中',
   'shared.operator.runStatus.blocked': '受阻',

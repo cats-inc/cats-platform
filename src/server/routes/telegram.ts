@@ -14,6 +14,7 @@ import type { TelegramRelayContext, TelegramWebhookUpdate } from '../../platform
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay/index.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../shared/platformSurfaces.js';
+import { normalizeMessageLocale } from '../../shared/i18n/index.js';
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import { normalizeEffectiveBotBinding } from '../../products/chat/state/botBindings.js';
@@ -340,6 +341,7 @@ export async function handleTelegramWebhook(
           catId: cat?.id ?? null,
           currentMode: cat ? resolveTelegramInteractionMode(cat.skillProfile) : null,
           inboundMode: binding?.inboundMode ?? null,
+          locale: normalizeMessageLocale(update.message?.from?.language_code),
           setMode: cat?.id
             ? async (mode) => setTelegramInteractionMode(
               dependencies.chatStore,

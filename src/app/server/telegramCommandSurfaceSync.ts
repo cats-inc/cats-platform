@@ -1,6 +1,6 @@
 import type { TelegramDeliveryClient } from '../../platform/transports/telegram/delivery.js';
 import { createTelegramBotApiDeliveryClient } from '../../platform/transports/telegram/delivery.js';
-import { createTelegramBotCommandCatalog } from '../../platform/transports/telegram/commands/index.js';
+import { createTelegramBotCommandCatalogVariants } from '../../platform/transports/telegram/commands/index.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import { readTelegramActiveBindings } from '../../server/routes/telegram.js';
 
@@ -81,13 +81,16 @@ export function createTelegramCommandSurfaceSync(
       ]);
       const activeBotTokenSet = new Set(botTokens);
 
-      const commands = createTelegramBotCommandCatalog();
+      const commandCatalogs = createTelegramBotCommandCatalogVariants();
       for (const botToken of botTokens) {
         const client = resolveClient(botToken);
-        await client.setMyCommands({
-          commands,
-          scope: DEFAULT_COMMAND_SCOPE,
-        });
+        for (const catalog of commandCatalogs) {
+          await client.setMyCommands({
+            commands: catalog.commands,
+            scope: DEFAULT_COMMAND_SCOPE,
+            languageCode: catalog.languageCode,
+          });
+        }
         await client.setChatMenuButton({
           menuButton: DEFAULT_MENU_BUTTON,
         });
@@ -98,9 +101,12 @@ export function createTelegramCommandSurfaceSync(
           continue;
         }
         const client = resolveClient(botToken);
-        await client.deleteMyCommands({
-          scope: DEFAULT_COMMAND_SCOPE,
-        });
+        for (const catalog of commandCatalogs) {
+          await client.deleteMyCommands({
+            scope: DEFAULT_COMMAND_SCOPE,
+            languageCode: catalog.languageCode,
+          });
+        }
       }
     },
   };

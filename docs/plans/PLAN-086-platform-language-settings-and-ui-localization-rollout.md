@@ -354,6 +354,7 @@ known-gaps list.
 | 2026-05-04 | Localized mobile product sidebar fixed chrome: Chat/Code/Work primary actions, MY-lens and Recents section labels, empty states, and cat status labels now flow through mobile English / Traditional Chinese copy. |
 | 2026-05-04 | Extracted deterministic Guide Cat assist baseline greetings and starter prompts into shared i18n catalogs, and localized deterministic Lobby/Chat/Code assist greetings at render time while preserving runtime-authored assist copy. |
 | 2026-05-04 | Localized deterministic operator activity feed labels such as Checkpoint, Outcome, Replay, Recovery, Action, Artifact, and Update at presentation time while preserving runtime/external activity labels as content. |
+| 2026-05-04 | Localized Telegram command descriptions and deterministic slash-command replies, including zh command catalog registration via Telegram `language_code=zh` while preserving English fallback commands. |
 
 ---
 

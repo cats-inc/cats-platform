@@ -1,3 +1,11 @@
+import {
+  createTranslator,
+  messageKeys,
+  normalizeMessageLocale,
+  type MessageKey,
+  type MessageLocale,
+} from '../../../shared/i18n/index.js';
+
 export interface TelegramCommandContext {
   args: string;
   chatId: string;
@@ -7,6 +15,7 @@ export interface TelegramCommandContext {
   catId: string | null;
   currentMode: TelegramInteractionMode | null;
   inboundMode: 'polling' | 'webhook' | null;
+  locale?: MessageLocale;
   setMode?: (mode: TelegramInteractionMode) => Promise<TelegramInteractionMode>;
 }
 
@@ -20,6 +29,7 @@ export type TelegramInteractionMode = 'companion' | 'agent';
 export interface TelegramCommand {
   name: string;
   description: string;
+  descriptionKey?: MessageKey;
   execute(context: TelegramCommandContext): TelegramCommandResult | Promise<TelegramCommandResult>;
 }
 
@@ -61,8 +71,11 @@ export class TelegramCommandRouter {
 
     const command = this.commands.get(parsed.name);
     if (!command) {
+      const t = createTranslator(normalizeMessageLocale(context.locale));
       return {
-        replyText: `Unknown command: /${parsed.name}\nType /help to see available commands.`,
+        replyText: t(messageKeys.telegramCommandUnknownCommand, {
+          command: parsed.name,
+        }),
         handled: true,
       };
     }
@@ -70,10 +83,11 @@ export class TelegramCommandRouter {
     return command.execute({ ...context, args: parsed.args });
   }
 
-  getCommandList(): Array<{ command: string; description: string }> {
+  getCommandList(locale: MessageLocale = 'en'): Array<{ command: string; description: string }> {
+    const t = createTranslator(locale);
     return Array.from(this.commands.values()).map((cmd) => ({
       command: cmd.name,
-      description: cmd.description,
+      description: cmd.descriptionKey ? t(cmd.descriptionKey) : cmd.description,
     }));
   }
 }

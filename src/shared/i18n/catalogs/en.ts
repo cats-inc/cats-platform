@@ -1667,6 +1667,49 @@ export const enCatalog: MessageCatalog = {
   'shared.delete.cat.confirm': 'Delete',
   'shared.delete.cat.fallback': 'this cat',
   'shared.transcript.deletedCat': 'Deleted Cat',
+  'telegram.command.start.description': 'Start a conversation',
+  'telegram.command.help.description': 'Show available commands',
+  'telegram.command.commands.description': 'List all commands',
+  'telegram.command.status.description': 'Show connection status',
+  'telegram.command.open.description': 'Open a new chat room',
+  'telegram.command.mode.description': 'Show or switch companion and agent mode',
+  'telegram.command.help.text': [
+    'Available commands:',
+    '/start - Show the bound Cat and how this bot works',
+    '/help - Show this help message',
+    '/commands - List all commands',
+    '/status - Show bot, binding, and mode status',
+    '/open - Open or continue the bound Cat lane',
+    '/mode - Show the current mode',
+    '/mode companion - Switch to companion behavior',
+    '/mode agent - Switch to agent behavior',
+  ].join('\n'),
+  'telegram.command.mode.companion': 'Companion',
+  'telegram.command.mode.agent': 'Agent',
+  'telegram.command.start.greetingBound':
+    "Hello! I'm {catName} (via {botName}). Current mode: {mode}. Send a normal message to chat, or /mode to switch behavior.",
+  'telegram.command.start.greetingUnbound':
+    "Hello! I'm {botName}. How can I help you?",
+  'telegram.command.status.botLine': 'Bot: {botName}',
+  'telegram.command.status.linkedCatLine': 'Linked Cat: {catName}',
+  'telegram.command.status.modeLine': 'Mode: {mode}',
+  'telegram.command.status.inboundLine': 'Inbound: {inboundMode}',
+  'telegram.command.status.chatLine': 'Chat: {chatId}',
+  'telegram.command.status.connectedLine': 'Status: Connected',
+  'telegram.command.open.reply':
+    'Open the private lane with {name} in Cats, or just send a normal message here to continue chatting.',
+  'telegram.command.mode.notConfigurable':
+    'This bot is not currently bound to a configurable Cat.',
+  'telegram.command.mode.current':
+    'Current mode: {mode}\nUse /mode companion or /mode agent to switch.',
+  'telegram.command.mode.unknown':
+    'Unknown mode: {mode}\nUse /mode companion or /mode agent.',
+  'telegram.command.mode.switchUnavailable':
+    'Mode switching is unavailable for this bot binding right now.',
+  'telegram.command.mode.switched':
+    'Switched {name} to {mode} mode.\nFuture normal messages in this chat will use that mode.',
+  'telegram.command.unknownCommand':
+    'Unknown command: /{command}\nType /help to see available commands.',
   'shared.operator.noTimestamp': 'No timestamp',
   'shared.operator.runStatus.running': 'Running',
   'shared.operator.runStatus.blocked': 'Blocked',

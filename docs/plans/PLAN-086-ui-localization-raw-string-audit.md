@@ -32,6 +32,10 @@ The final 2026-05-04 cleanup localized:
 - deterministic operator activity feed labels such as Checkpoint, Outcome,
   Replay, Recovery, Action, Artifact, and Update at presentation time, with
   external/runtime activity labels preserved as content
+- Telegram command descriptions and deterministic slash-command replies,
+  including a Traditional Chinese command catalog registered with Telegram
+  `language_code=zh` and per-message reply localization from sender language
+  codes
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.
