@@ -1,5 +1,8 @@
 import {
   formatOperatorTimestamp,
+  operatorBudgetAlertLevelLabel,
+  operatorDeliveryGateLabel,
+  operatorDeliveryModeLabel,
   operatorSeverityClassName,
   runStatusLabel,
   runStatusSeverity,
@@ -169,21 +172,29 @@ export function ProgressSummaryPanel({
                 {effectivePolicy.deliveryMode ? (
                   <span>
                     {t(messageKeys.sharedOperatorDeliveryLabel, {
-                      deliveryMode: effectivePolicy.deliveryMode,
+                      deliveryMode: operatorDeliveryModeLabel(
+                        effectivePolicy.deliveryMode,
+                        t,
+                      ),
                     })}
                   </span>
                 ) : null}
                 {effectivePolicy.deliveryGates.length > 0 ? (
                   <span>
                     {t(messageKeys.sharedOperatorGatesLabel, {
-                      gates: effectivePolicy.deliveryGates.join(', '),
+                      gates: effectivePolicy.deliveryGates
+                        .map((gate) => operatorDeliveryGateLabel(gate, t))
+                        .join(', '),
                     })}
                   </span>
                 ) : null}
                 {effectivePolicy.budgetAlertLevel ? (
                   <span>
                     {t(messageKeys.sharedOperatorBudgetLabel, {
-                      budgetLevel: effectivePolicy.budgetAlertLevel,
+                      budgetLevel: operatorBudgetAlertLevelLabel(
+                        effectivePolicy.budgetAlertLevel,
+                        t,
+                      ),
                     })}
                   </span>
                 ) : null}

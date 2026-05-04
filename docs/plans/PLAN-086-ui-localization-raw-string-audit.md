@@ -95,6 +95,9 @@ The final 2026-05-04 cleanup localized:
 - Shared operator Run Inspector localizes workflow branch status metadata such
   as `pending`, `running`, `blocked`, and `waiting_for_converge`, and run tabs
   now use the active UI locale for run status labels
+- Shared operator progress summaries localize effective delivery mode, delivery
+  gate, and budget alert metadata such as `commit_only`,
+  `owner_approval_required`, and `blocked`
 - Runtime Settings lifecycle feedback localizes desktop setup helper summary
   templates such as retry, restart, manual follow-through, missing requirement,
   and helper-finished status messages

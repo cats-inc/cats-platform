@@ -4,7 +4,13 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
-import { branchStatusLabel, runStatusLabel } from '../src/design/operatorFormatting.ts';
+import {
+  branchStatusLabel,
+  operatorBudgetAlertLevelLabel,
+  operatorDeliveryGateLabel,
+  operatorDeliveryModeLabel,
+  runStatusLabel,
+} from '../src/design/operatorFormatting.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 
 const RUNS = [
@@ -29,6 +35,64 @@ test('operator branch status labels localize workflow target statuses', () => {
   assert.equal(branchStatusLabel('blocked', zh), '受阻');
   assert.equal(branchStatusLabel('cancelled', zh), '已取消');
   assert.equal(branchStatusLabel('waiting_for_converge', zh), '等待匯合');
+});
+
+test('operator policy metadata labels localize known policy tokens', () => {
+  const zh = createTranslator('zh-TW');
+
+  assert.equal(operatorDeliveryModeLabel('commit_only', zh), '僅提交');
+  assert.equal(
+    operatorDeliveryGateLabel('owner_approval_required', zh),
+    '需要擁有者核准',
+  );
+  assert.equal(
+    operatorDeliveryGateLabel('publish_artifact_required', zh),
+    '需要發布成果物',
+  );
+  assert.equal(operatorBudgetAlertLevelLabel('blocked', zh), '受阻');
+});
+
+test('progress summary renders localized policy metadata tokens', async () => {
+  (globalThis as typeof globalThis & { React: typeof React }).React = React;
+  const { ProgressSummaryPanel } = await import(
+    '../src/design/components/operator/ProgressSummaryPanel.tsx'
+  );
+
+  const markup = renderToStaticMarkup(
+    <I18nProvider locale="zh-TW" languagePreference="zh-TW">
+      <ProgressSummaryPanel
+        inspector={{
+          run: RUNS[0],
+          metrics: {
+            dispatchCount: 1,
+            continuationCount: 0,
+            targetCount: 1,
+          },
+          workflowStageId: null,
+          workflowShape: null,
+          reviewRequired: false,
+        }}
+        effectivePolicy={{
+          deliveryMode: 'commit_only',
+          deliveryGates: ['owner_approval_required', 'publish_artifact_required'],
+          budgetAlertLevel: 'blocked',
+        }}
+        incidentActions={[]}
+        pendingApprovalCount={0}
+        guardReason={null}
+        cooldownLabel={null}
+        onInspectRun={() => {}}
+        onOperatorAction={() => {}}
+      />
+    </I18nProvider>,
+  );
+
+  assert.match(markup, /交付：僅提交/u);
+  assert.match(markup, /門檻：需要擁有者核准, 需要發布成果物/u);
+  assert.match(markup, /預算：受阻/u);
+  assert.doesNotMatch(markup, /commit_only/u);
+  assert.doesNotMatch(markup, /owner_approval_required/u);
+  assert.doesNotMatch(markup, /publish_artifact_required/u);
 });
 
 test('run inspector renders localized tab and branch status metadata', async () => {

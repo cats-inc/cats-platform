@@ -48,6 +48,17 @@ const fallbackOperatorTranslate: OperatorTranslate = (key) => {
     [messageKeys.sharedOperatorActivityLabelArtifact]: 'Artifact',
     [messageKeys.sharedOperatorActivityLabelUpdate]: 'Update',
     [messageKeys.sharedOperatorActivityLabelTrace]: 'Trace',
+    [messageKeys.sharedOperatorDeliveryModeArtifactOnly]: 'Artifact only',
+    [messageKeys.sharedOperatorDeliveryModeCommitOnly]: 'Commit only',
+    [messageKeys.sharedOperatorDeliveryModeDeployPreview]: 'Deploy preview',
+    [messageKeys.sharedOperatorDeliveryModePrWithChecks]: 'Pull request with checks',
+    [messageKeys.sharedOperatorDeliveryModePushBranch]: 'Push branch',
+    [messageKeys.sharedOperatorGateManualReviewRequired]: 'Manual review required',
+    [messageKeys.sharedOperatorGateOwnerApprovalRequired]: 'Owner approval required',
+    [messageKeys.sharedOperatorGatePublishArtifactRequired]: 'Publish artifact required',
+    [messageKeys.sharedOperatorBudgetLevelNormal]: 'Normal',
+    [messageKeys.sharedOperatorBudgetLevelWarning]: 'Warning',
+    [messageKeys.sharedOperatorBudgetLevelBlocked]: 'Blocked',
   };
 
   return fallback[key] ?? String(key);
@@ -249,4 +260,70 @@ export function operatorActivityLabel(
 ): string {
   const key = OPERATOR_ACTIVITY_LABEL_KEYS[label];
   return key ? t(key) : label;
+}
+
+const OPERATOR_DELIVERY_MODE_KEYS: Record<string, MessageKey> = {
+  artifact_only: messageKeys.sharedOperatorDeliveryModeArtifactOnly,
+  commit_only: messageKeys.sharedOperatorDeliveryModeCommitOnly,
+  deploy_preview: messageKeys.sharedOperatorDeliveryModeDeployPreview,
+  pr_with_checks: messageKeys.sharedOperatorDeliveryModePrWithChecks,
+  push_branch: messageKeys.sharedOperatorDeliveryModePushBranch,
+};
+
+const OPERATOR_DELIVERY_GATE_KEYS: Record<string, MessageKey> = {
+  manual_review_required: messageKeys.sharedOperatorGateManualReviewRequired,
+  owner_approval_required: messageKeys.sharedOperatorGateOwnerApprovalRequired,
+  publish_artifact_required: messageKeys.sharedOperatorGatePublishArtifactRequired,
+};
+
+const OPERATOR_BUDGET_LEVEL_KEYS: Record<string, MessageKey> = {
+  blocked: messageKeys.sharedOperatorBudgetLevelBlocked,
+  normal: messageKeys.sharedOperatorBudgetLevelNormal,
+  warning: messageKeys.sharedOperatorBudgetLevelWarning,
+};
+
+function normalizeOperatorToken(value: string): string {
+  return value.trim().toLowerCase().replace(/-/gu, '_');
+}
+
+function formatUnknownOperatorToken(value: string): string {
+  return value
+    .trim()
+    .replace(/[_-]+/gu, ' ')
+    .replace(/\s+/gu, ' ')
+    .replace(/\b\w/gu, (letter) => letter.toUpperCase());
+}
+
+function formatOperatorToken(
+  value: string,
+  keys: Record<string, MessageKey>,
+  t: OperatorTranslate,
+): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+  const key = keys[normalizeOperatorToken(trimmed)];
+  return key ? t(key) : formatUnknownOperatorToken(trimmed);
+}
+
+export function operatorDeliveryModeLabel(
+  mode: string,
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
+  return formatOperatorToken(mode, OPERATOR_DELIVERY_MODE_KEYS, t);
+}
+
+export function operatorDeliveryGateLabel(
+  gate: string,
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
+  return formatOperatorToken(gate, OPERATOR_DELIVERY_GATE_KEYS, t);
+}
+
+export function operatorBudgetAlertLevelLabel(
+  level: string,
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
+  return formatOperatorToken(level, OPERATOR_BUDGET_LEVEL_KEYS, t);
 }

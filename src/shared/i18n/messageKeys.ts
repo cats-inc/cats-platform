@@ -1999,6 +1999,25 @@ export const messageKeys = {
   sharedOperatorDeliveryLabel: 'shared.operator.meta.delivery',
   sharedOperatorGatesLabel: 'shared.operator.meta.gates',
   sharedOperatorBudgetLabel: 'shared.operator.meta.budget',
+  sharedOperatorDeliveryModeArtifactOnly:
+    'shared.operator.deliveryMode.artifactOnly',
+  sharedOperatorDeliveryModeCommitOnly:
+    'shared.operator.deliveryMode.commitOnly',
+  sharedOperatorDeliveryModeDeployPreview:
+    'shared.operator.deliveryMode.deployPreview',
+  sharedOperatorDeliveryModePrWithChecks:
+    'shared.operator.deliveryMode.prWithChecks',
+  sharedOperatorDeliveryModePushBranch:
+    'shared.operator.deliveryMode.pushBranch',
+  sharedOperatorGateManualReviewRequired:
+    'shared.operator.deliveryGate.manualReviewRequired',
+  sharedOperatorGateOwnerApprovalRequired:
+    'shared.operator.deliveryGate.ownerApprovalRequired',
+  sharedOperatorGatePublishArtifactRequired:
+    'shared.operator.deliveryGate.publishArtifactRequired',
+  sharedOperatorBudgetLevelNormal: 'shared.operator.budgetLevel.normal',
+  sharedOperatorBudgetLevelWarning: 'shared.operator.budgetLevel.warning',
+  sharedOperatorBudgetLevelBlocked: 'shared.operator.budgetLevel.blocked',
   sharedOperatorInspectRunButton: 'shared.operator.inspectRunButton',
   sharedOperatorNoTraceRecords: 'shared.operator.noTraceRecords',
   sharedOperatorActionRequestRetry: 'shared.operator.action.requestRetry',
