@@ -249,9 +249,15 @@ export function ConversationSidebar<
   const resolvedMyCatsSectionLabel = myCatsSectionLabel
     ?? t(messageKeys.conversationSidebarDirectMessagesLabel);
   const resolvedMyCatsSectionCats = myCatsSectionCats ?? visibleCats;
+  // Section is opt-in: a caller has to either flip
+  // `forceShowMyCatsSection` (Chat does this — its Direct Messages
+  // section is always visible) or pass a `myCatsEmptyStatePlaceholder`
+  // (the Lobby drill-down sidebar doesn't go through this path; it
+  // mounts ConversationSidebarMyCatsSection directly). Do NOT
+  // auto-render just because `payload.chat.cats` happens to have rows
+  // — that would leak Chat's DM section into Code / Work sidebars.
   const showMyCatsSection =
     forceShowMyCatsSection
-    || resolvedMyCatsSectionCats.length > 0
     || myCatsEmptyStatePlaceholder != null;
 
   return (
