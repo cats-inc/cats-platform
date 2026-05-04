@@ -183,10 +183,20 @@
 
 .lobbyProducts {
   display: grid;
-  gap: var(--space-4);
+  /* Same eyebrow→content gap as the entity columns above (CATS /
+   * CLOWDERS / CATTERIES use `.lobbyEntityColumnHeader { margin: 0 0
+   * 10px }`). The grid still spans the full lobby width; only the
+   * vertical breath between the section label and its grid is
+   * tightened. */
+  gap: 10px;
 }
 
 .lobbyProductsEyebrow {
+  /* Reset the browser-default `<p>` margin-block (1em ≈ 16px) so the
+   * eyebrow→grid distance is governed solely by the parent's `gap`,
+   * matching `.lobbyEntityColumnHeader` above (which uses
+   * `margin: 0 0 10px` on a flex column with no gap). */
+  margin: 0;
   font-size: var(--text-xs);
   font-weight: 700;
   color: var(--muted);
@@ -282,14 +292,6 @@
   border-style: dashed;
 }
 
-.lobbyAppsEmpty {
-  grid-column: 1 / -1;
-  margin: 0;
-  padding: var(--space-3) 0;
-  color: var(--muted);
-  font-size: var(--text-sm);
-}
-
 /* ── Entity columns (Cats / Clowders / Catteries) ────────────────
  * Three column headers (`<button class="eyebrow lobbyEntityColumnHeader">`)
  * sit above three entity cards on a shared 3-column grid so the
@@ -316,41 +318,42 @@
 .lobbyEntityColumnHeader {
   /* Mirrors `.lobbyProductsEyebrow` exactly so CATS / CLOWDERS /
    * CATTERIES read at the same weight + tint as PRODUCTS / APPS
-   * below. The button reset (transparent bg, no border, inherited
-   * font for the click affordance) sits on top of those shared
-   * typographic rules. */
-  display: inline-block;
-  align-self: flex-start;
+   * below. Pure title — the entity cards themselves are now
+   * fully clickable via `.lobbyEntityCardLink`, so the header
+   * doesn't double as a shortcut. */
   margin: 0 0 10px;
-  padding: 0;
-  border: 0;
-  background: transparent;
   color: var(--muted);
   font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  text-align: left;
-  cursor: pointer;
-  transition: color 0.12s ease;
-}
-
-.lobbyEntityColumnHeader:hover {
-  color: var(--text);
 }
 
 .platformLobbyCard--entity {
-  /* Override the generic `.platformLobbyCard` hover lift — entity
-   * cards house their own clickable rows and shouldn't react to a
-   * stray hover. */
-  cursor: default;
+  /* Entity cards keep the generic `.platformLobbyCard:hover` lift +
+   * shadow (matches PRODUCTS / APPS cards above) — the whole card
+   * is a click target via the absolute-positioned
+   * `.lobbyEntityCardLink` button below. Tighter padding because the
+   * card now hosts a row list rather than a single hero block.
+   * `flex: 1` makes the card stretch to fill its column so the three
+   * entity cards share a single height — driven by the tallest
+   * (e.g. cats with a TOTAL footer + avatar stack) — even when their
+   * inner content (placeholder vs. populated rows + footer) differs.
+   * Same alignment guarantee PRODUCTS / APPS already enjoy via the
+   * `auto-fill` grid's default `align-items: stretch`. */
+  flex: 1;
   padding: var(--space-5) var(--space-3) var(--space-3);
   gap: var(--space-1);
 }
 
-.platformLobbyCard--entity:hover {
-  box-shadow: none;
-  transform: none;
+.lobbyEntityCardLink {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: inherit;
 }
 
 .lobbyEntityCardItems {
@@ -360,6 +363,9 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  /* Sits above the card link so row buttons keep their own click. */
+  position: relative;
+  z-index: 2;
 }
 
 .lobbyEntityRow {
@@ -471,9 +477,39 @@
   color: #3856a0;
 }
 
-.lobbyEntityCardTotal {
-  margin: var(--space-2) 0 0;
+/* Card footer wraps the optional overflow avatar stack + the
+ * "{N} TOTAL" label. The whole footer is decorative: it falls
+ * through to the card-link button so clicking on it opens the entity
+ * list page, and the avatars themselves carry no hover/click. */
+.lobbyEntityCardFooter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
   padding: 0 var(--space-2);
+  pointer-events: none;
+}
+
+.lobbyEntityAvatarStack {
+  display: flex;
+  align-items: center;
+}
+
+.lobbyEntityAvatarStacked {
+  width: 22px;
+  height: 22px;
+  font-size: 0.55rem;
+  /* Each subsequent disc tucks left so the group reads as one unit;
+   * the panel-coloured ring keeps the overlap legible. */
+  margin-left: -8px;
+  border: 2px solid var(--panel);
+}
+
+.lobbyEntityAvatarStacked:first-child {
+  margin-left: 0;
+}
+
+.lobbyEntityCardTotal {
   font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -481,6 +517,12 @@
   /* Warm red, distinct from the muted accent stripe so the count
    * reads as a deliberate footer, not a third "tint" on the card. */
   color: #B0413E;
+}
+
+/* The accent stripe is decorative; clicks should fall through to the
+ * card link rather than be absorbed by the stripe's hit area. */
+.platformLobbyCard--entity .platformLobbyCardAccent {
+  pointer-events: none;
 }
 
 /* ── Responsive ── */

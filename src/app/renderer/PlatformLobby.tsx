@@ -29,6 +29,7 @@ import {
 } from './productShell/ConversationSidebarMyCats.js';
 
 const LOBBY_CARD_ROW_COUNT = 3;
+const LOBBY_CARD_OVERFLOW_AVATAR_CAP = 5;
 
 interface LobbyEntityRowSummary {
   id: string;
@@ -41,6 +42,13 @@ interface LobbyEntityCard {
   key: 'cats' | 'clowders' | 'catteries';
   headerLabelKey: MessageKey;
   rows: readonly LobbyEntityRowSummary[];
+  /**
+   * Avatars belonging to entities that fall past the first three
+   * inline rows. Capped at LOBBY_CARD_OVERFLOW_AVATAR_CAP so the
+   * footer height stays predictable; renders as a non-interactive
+   * decorative stack next to the "{N} TOTAL" label.
+   */
+  overflowAvatarRows: readonly LobbyEntityRowSummary[];
   totalCount: number;
   routePath: '/cats' | '/clowders' | '/catteries';
   detailPathPrefix: '/cats/' | '/clowders/' | '/catteries/';
@@ -135,6 +143,9 @@ export function PlatformLobby({
       key: 'cats',
       headerLabelKey: messageKeys.lobbyEntityColumnHeaderCats,
       rows: cats.slice(0, LOBBY_CARD_ROW_COUNT).map(summarizeCat),
+      overflowAvatarRows: cats
+        .slice(LOBBY_CARD_ROW_COUNT, LOBBY_CARD_ROW_COUNT + LOBBY_CARD_OVERFLOW_AVATAR_CAP)
+        .map(summarizeCat),
       totalCount: cats.length,
       routePath: '/cats',
       detailPathPrefix: '/cats/',
@@ -145,6 +156,9 @@ export function PlatformLobby({
       key: 'clowders',
       headerLabelKey: messageKeys.lobbyEntityColumnHeaderClowders,
       rows: clowders.slice(0, LOBBY_CARD_ROW_COUNT).map(summarizeClowder),
+      overflowAvatarRows: clowders
+        .slice(LOBBY_CARD_ROW_COUNT, LOBBY_CARD_ROW_COUNT + LOBBY_CARD_OVERFLOW_AVATAR_CAP)
+        .map(summarizeClowder),
       totalCount: clowders.length,
       routePath: '/clowders',
       detailPathPrefix: '/clowders/',
@@ -155,6 +169,9 @@ export function PlatformLobby({
       key: 'catteries',
       headerLabelKey: messageKeys.lobbyEntityColumnHeaderCatteries,
       rows: catteries.slice(0, LOBBY_CARD_ROW_COUNT).map(summarizeCattery),
+      overflowAvatarRows: catteries
+        .slice(LOBBY_CARD_ROW_COUNT, LOBBY_CARD_ROW_COUNT + LOBBY_CARD_OVERFLOW_AVATAR_CAP)
+        .map(summarizeCattery),
       totalCount: catteries.length,
       routePath: '/catteries',
       detailPathPrefix: '/catteries/',
@@ -242,16 +259,26 @@ export function PlatformLobby({
               key={card.key}
               className={`lobbyEntityColumn lobbyEntityColumn--${card.key}`}
             >
-              <button
-                type="button"
-                className="lobbyEntityColumnHeader"
-                onClick={() => navigate(card.routePath)}
-              >
-                {t(card.headerLabelKey)}
-              </button>
+              <p className="lobbyEntityColumnHeader">{t(card.headerLabelKey)}</p>
               <div
                 className={`contentCard platformLobbyCard platformLobbyCard--entity platformLobbyCard--entity-${card.key}`}
               >
+                {/* Background button covers the whole card so any
+                 * "non-row" pixel — accent stripe, gaps between rows,
+                 * total footer — opens the entity list page. Items
+                 * sit at higher z-index so their own onClick wins
+                 * normally. The accent + total footer set
+                 * pointer-events: none in CSS so clicks fall through
+                 * to this background button. Card link does not nest
+                 * inside another button (keeps HTML valid). */}
+                <button
+                  type="button"
+                  className="lobbyEntityCardLink"
+                  aria-label={t(messageKeys.lobbyEntityCardOpenListAriaLabel, {
+                    label: t(card.headerLabelKey),
+                  })}
+                  onClick={() => navigate(card.routePath)}
+                />
                 <div className="platformLobbyCardAccent" />
                 <ul className="lobbyEntityCardItems">
                   {Array.from({ length: LOBBY_CARD_ROW_COUNT }, (_, index) => {
@@ -305,9 +332,39 @@ export function PlatformLobby({
                     );
                   })}
                 </ul>
-                <p className="lobbyEntityCardTotal">
-                  {t(messageKeys.lobbyEntityCardTotal, { count: card.totalCount })}
-                </p>
+                {card.totalCount > 0 ? (
+                  <div className="lobbyEntityCardFooter">
+                    {card.overflowAvatarRows.length > 0 ? (
+                      <div
+                        className="lobbyEntityAvatarStack"
+                        aria-hidden="true"
+                      >
+                        {card.overflowAvatarRows.map((row) => (
+                          <span
+                            key={row.id}
+                            className="lobbyEntityAvatar lobbyEntityAvatarStacked"
+                            style={
+                              row.avatarUrl
+                                ? {
+                                    backgroundImage: `url(${row.avatarUrl})`,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                  }
+                                : row.avatarColor
+                                  ? { background: row.avatarColor }
+                                  : undefined
+                            }
+                          >
+                            {row.avatarUrl ? null : nameInitials(row.name)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    <span className="lobbyEntityCardTotal">
+                      {t(messageKeys.lobbyEntityCardTotal, { count: card.totalCount })}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             </div>
           ))}
@@ -350,28 +407,28 @@ export function PlatformLobby({
           </div>
         </div>
 
-        <div className="lobbyProducts">
-          <p className="lobbyProductsEyebrow">{t('lobbyAppsSectionTitle')}</p>
-          <div className="platformLobbyGrid">
-            {appEntries.length > 0 ? appEntries.map((entry) => (
-              <button
-                key={`${entry.appId}:${entry.entryId}`}
-                type="button"
-                className="contentCard platformLobbyCard platformLobbyCard--app"
-                onClick={() => navigate(entry.routePath)}
-                aria-label={t('lobbyOpenEntry', { entryTitle: entry.title })}
-              >
-                <div className="platformLobbyCardAccent" />
-                <span className="platformLobbyCardName">{entry.title}</span>
-                {entry.subtitle ? (
-                  <span className="platformLobbyCardSub">{entry.subtitle}</span>
-                ) : null}
-              </button>
-            )) : (
-              <p className="lobbyAppsEmpty">{t('lobbyAppsEmptyState')}</p>
-            )}
+        {appEntries.length > 0 ? (
+          <div className="lobbyProducts">
+            <p className="lobbyProductsEyebrow">{t('lobbyAppsSectionTitle')}</p>
+            <div className="platformLobbyGrid">
+              {appEntries.map((entry) => (
+                <button
+                  key={`${entry.appId}:${entry.entryId}`}
+                  type="button"
+                  className="contentCard platformLobbyCard platformLobbyCard--app"
+                  onClick={() => navigate(entry.routePath)}
+                  aria-label={t('lobbyOpenEntry', { entryTitle: entry.title })}
+                >
+                  <div className="platformLobbyCardAccent" />
+                  <span className="platformLobbyCardName">{entry.title}</span>
+                  {entry.subtitle ? (
+                    <span className="platformLobbyCardSub">{entry.subtitle}</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </div>
   );

@@ -120,12 +120,13 @@ test('Lobby /lobby renders WITHOUT the appshell sidebar (PLAN-091 phase 7 correc
   assert.doesNotMatch(markup, /<aside[^>]*class="sidebar/u);
   assert.doesNotMatch(markup, /class="screen claudeShell/u);
   // Three column headers replace the previous single "My identities"
-  // eyebrow. Each header is a button (clicking it navigates to the
-  // entity's list page) and reuses the `eyebrow` typography (uppercase
-  // is supplied by CSS, not by the i18n string).
-  assert.match(markup, /<button[^>]*class="lobbyEntityColumnHeader"[^>]*>Cats</u);
-  assert.match(markup, /<button[^>]*class="lobbyEntityColumnHeader"[^>]*>Clowders</u);
-  assert.match(markup, /<button[^>]*class="lobbyEntityColumnHeader"[^>]*>Catteries</u);
+  // eyebrow. Each header is a plain title (the whole entity card is
+  // already clickable via `.lobbyEntityCardLink`, so the header
+  // doesn't need to double as a button). Uppercase is supplied by
+  // CSS, not by the i18n string.
+  assert.match(markup, /<p[^>]*class="lobbyEntityColumnHeader"[^>]*>Cats</u);
+  assert.match(markup, /<p[^>]*class="lobbyEntityColumnHeader"[^>]*>Clowders</u);
+  assert.match(markup, /<p[^>]*class="lobbyEntityColumnHeader"[^>]*>Catteries</u);
 });
 
 test('Lobby entity cards keep their per-entity classes with a shared neutral accent', () => {
@@ -140,22 +141,36 @@ test('Lobby entity cards keep their per-entity classes with a shared neutral acc
   assert.match(markup, /platformLobbyCard--entity-catteries/u);
 });
 
-test('Lobby entity cards show three fixed rows + a count footer (placeholder when empty)', () => {
+test('Each entity card carries a full-card background link that opens its list page', () => {
+  const markup = renderApp('/lobby', createEnvelope());
+
+  // The card link is a real `<button class="lobbyEntityCardLink">`
+  // covering the card via absolute-inset CSS. Items / accent / total
+  // sit at higher z-index (or pointer-events: none) so the link
+  // catches non-row clicks. Three cards = three links, each with the
+  // localised "Open … list" aria-label.
+  const linkMatches = markup.match(/class="lobbyEntityCardLink"/gu) ?? [];
+  assert.equal(linkMatches.length, 3);
+  assert.match(markup, /aria-label="Open Cats list"/u);
+  assert.match(markup, /aria-label="Open Clowders list"/u);
+  assert.match(markup, /aria-label="Open Catteries list"/u);
+});
+
+test('Lobby entity cards show three fixed rows + placeholder when empty (no footer at zero)', () => {
   // Empty envelope (no cats / clowders / catteries) — the first row
   // of each card should render the "+ New X" placeholder via the
-  // shared PlaceholderGlyph, and a count footer should appear with
-  // "0 total".
+  // shared PlaceholderGlyph. The "{N} TOTAL" footer should NOT
+  // render at all when count is 0; it would just say "0 total" which
+  // is redundant with the placeholder.
   const markup = renderApp('/lobby', createEnvelope());
 
   assert.match(markup, /class="lobbyEntityItem lobbyEntityItemPlaceholder"/u);
   assert.match(markup, />New cat</u);
   assert.match(markup, />New clowder</u);
   assert.match(markup, />New cattery</u);
-  // Three "0 total" footers — one per card. CSS uppercases the text;
-  // the i18n string itself is lowercase "total".
-  const totalMatches = markup.match(/class="lobbyEntityCardTotal"/gu) ?? [];
-  assert.equal(totalMatches.length, 3);
-  assert.match(markup, />0 total</u);
+  assert.doesNotMatch(markup, /class="lobbyEntityCardFooter"/u);
+  assert.doesNotMatch(markup, /class="lobbyEntityCardTotal"/u);
+  assert.doesNotMatch(markup, />0 total</u);
 });
 
 test('Lobby cats card renders the boss cat with avatar + ellipsis-friendly name when populated', () => {
@@ -190,8 +205,44 @@ test('Lobby cats card renders the boss cat with avatar + ellipsis-friendly name 
   assert.match(markup, /class="lobbyEntityItem"/u);
   assert.match(markup, /class="lobbyEntityAvatar"/u);
   assert.match(markup, /class="lobbyEntityName">Concierge</u);
-  // Cats card now shows "1 total"; clowders / catteries still 0.
+  // Cats card now shows "1 total"; clowders / catteries still hide
+  // the footer entirely (count = 0).
   assert.match(markup, />1 total</u);
+  // No avatar stack when total ≤ 3.
+  assert.doesNotMatch(markup, /class="lobbyEntityAvatarStack"/u);
+});
+
+test('Lobby cats card adds an avatar stack to the footer when there are more than 3 cats', () => {
+  // Five cats — three fill the inline rows, the remaining two flow
+  // into the footer's decorative avatar stack. The stack carries
+  // aria-hidden="true" and `lobbyEntityAvatarStacked` discs (no
+  // hover / click handlers — the footer is purely decorative).
+  const markup = renderApp(
+    '/lobby',
+    createEnvelope({
+      lobby: {
+        animationMode: 'reduced',
+        cats: [1, 2, 3, 4, 5].map((i) => ({
+          id: `cat-${i}`,
+          name: `Cat ${i}`,
+          avatarColor: '#8B7E74',
+          avatarUrl: null,
+          isBoss: i === 1,
+          defaultExecutionTarget: { provider: 'anthropic', instance: null, model: 'claude-opus-4-7' },
+          defaultModelSelection: null,
+          executionLabel: 'Claude Opus 4.7',
+        })),
+        clowders: [],
+        catteries: [],
+      },
+    }),
+  );
+
+  assert.match(markup, />5 total</u);
+  assert.match(markup, /class="lobbyEntityAvatarStack"[^>]*aria-hidden="true"/u);
+  // Two overflow avatars (cats 4 + 5) — count via class occurrences.
+  const stacked = markup.match(/class="lobbyEntityAvatar lobbyEntityAvatarStacked"/gu) ?? [];
+  assert.equal(stacked.length, 2);
 });
 
 test('Drilled-down /cats route mounts the chat-style appshell (claudeShell + sidebar + canvas)', () => {
