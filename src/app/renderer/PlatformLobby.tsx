@@ -17,6 +17,7 @@ import {
   buildPlatformLobbyEntries,
   pickLobbyGreeting,
 } from './lobbyModel.js';
+import { resolveGuideCatAssistGreeting } from '../../shared/guideCatAssistPresentation.js';
 
 function buildDirectLanePath(catId: string): string {
   return `/chat/my-cats/${encodeURIComponent(catId)}`;
@@ -83,7 +84,8 @@ export function PlatformLobby({
   const appEntries = buildPlatformLobbyAppEntries({
     installedApps: envelope.installedApps ?? [],
   });
-  const greeting = envelope.lobby.guideCatAssist?.bundle.content.greeting?.trim() || fallbackGreeting;
+  const greeting = resolveGuideCatAssistGreeting(envelope.lobby.guideCatAssist, t)
+    ?? fallbackGreeting;
   const runtimeStatus = resolveRuntimePresentationStatus(envelope.runtime);
   const dotClass = resolveRuntimeLobbyDotClassName(runtimeStatus);
   const runtimeTooltip = resolveRuntimeTooltip(runtimeStatus, t);

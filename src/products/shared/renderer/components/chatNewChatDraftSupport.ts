@@ -26,6 +26,7 @@ import {
   type MessageInterpolationValues,
   type MessageKey,
 } from '../../../../shared/i18n/index.js';
+import { resolveGuideCatAssistGreeting } from '../../../../shared/guideCatAssistPresentation.js';
 import {
   buildAudienceParticipantFromCat,
   buildAudienceParticipantFromTemporaryParticipant,
@@ -59,6 +60,7 @@ export interface DraftComposerStackParticipant {
 function resolvePayloadDraftAssist(input: {
   payload: AppShellPayload;
   mode: NonNullable<ReturnType<typeof resolveDraftStarterSuggestionContext>['mode']>;
+  t: ChatNewChatDraftTranslator;
 }) {
   const assist = input.payload.chat.newChatAssist?.[input.mode] ?? null;
   if (!assist) {
@@ -72,7 +74,7 @@ function resolvePayloadDraftAssist(input: {
     input.mode !== 'direct' && assist.bundle.provenance.originMode === 'runtime';
 
   return {
-    greeting: assist.bundle.content.greeting,
+    greeting: resolveGuideCatAssistGreeting(assist, input.t),
     starterSuggestions: isRuntimeOriginForVisibleMode
       ? assist.bundle.content.entryChips.map((chip) => ({
           id: chip.id,
@@ -141,6 +143,7 @@ export function resolveChatNewChatDraftViewState(input: {
   const payloadDraftAssist = resolvePayloadDraftAssist({
     payload: input.payload,
     mode: draftSuggestionContext.mode,
+    t: input.t,
   });
   const visibleDraftCatIds = draftParticipants.participantCatIds;
   // Direct lane is private chat: no chips from any source. Other modes only surface

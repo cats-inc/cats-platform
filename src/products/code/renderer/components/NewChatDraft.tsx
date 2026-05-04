@@ -32,6 +32,7 @@ import {
   type MessageInterpolationValues,
   type MessageKey,
 } from '../../../../shared/i18n/index.js';
+import { resolveGuideCatAssistGreeting } from '../../../../shared/guideCatAssistPresentation.js';
 import {
   completeRuntimeSessionPolicy,
   resolveCreateRuntimeSessionPolicy,
@@ -338,8 +339,12 @@ function buildCodeSurfaceTag(props: NewChatDraftProps) {
 function resolveCodeDraftGreeting(
   props: NewChatDraftProps,
   draftCopy: WorkspaceNewChatDraftCopy,
+  t: CodeDraftTranslate,
 ): string | undefined {
-  const assistGreeting = props.payload.guideCatAssist?.codeNewDraft?.bundle.content.greeting?.trim();
+  const assistGreeting = resolveGuideCatAssistGreeting(
+    props.payload.guideCatAssist?.codeNewDraft,
+    t,
+  );
   if (assistGreeting) return assistGreeting;
   if (props.greeting && props.greeting.trim().length > 0) return props.greeting;
   return draftCopy.greeting;
@@ -348,6 +353,7 @@ function resolveCodeDraftGreeting(
 function buildWorkspaceDraftProps(input: {
   props: NewChatDraftProps;
   draftCopy: WorkspaceNewChatDraftCopy;
+  t: CodeDraftTranslate;
   visibleHelperChips: Array<{
     id: string;
     label?: string | null;
@@ -355,7 +361,7 @@ function buildWorkspaceDraftProps(input: {
   }>;
   onSelectHelperChip: (chip: { id: string; prompt: string }) => void;
 }): WorkspaceDraftProps {
-  const { props, draftCopy, visibleHelperChips, onSelectHelperChip } = input;
+  const { props, draftCopy, t, visibleHelperChips, onSelectHelperChip } = input;
   const {
     greetingPool,
     draftTemporaryParticipants,
@@ -408,7 +414,7 @@ function buildWorkspaceDraftProps(input: {
 
   return {
     ...workspaceProps,
-    greeting: resolveCodeDraftGreeting(props, draftCopy) ?? undefined,
+    greeting: resolveCodeDraftGreeting(props, draftCopy, t) ?? undefined,
     postComposerAccessory: visibleHelperChips.length > 0 ? (
       <div className="draftPromptSuggestions">
         <div className="chipRow">
@@ -448,6 +454,7 @@ function CodeDirectLaneDraft(props: NewChatDraftProps) {
   const workspaceProps = buildWorkspaceDraftProps({
     props,
     draftCopy,
+    t,
     visibleHelperChips: helperChips,
     onSelectHelperChip: (chip) => buildCodeChipOnClick(chip, props)(),
   });
@@ -489,7 +496,7 @@ function CodeChatDraft(props: NewChatDraftProps) {
     showStructuredDraftControls: true,
     hasVisibleParallelDraftTargets: (props.parallelTargets?.length ?? 0) > 1,
   });
-  const codeGreeting = resolveCodeDraftGreeting(props, draftCopy);
+  const codeGreeting = resolveCodeDraftGreeting(props, draftCopy, t);
 
   return (
     <ChatNewChatDraft

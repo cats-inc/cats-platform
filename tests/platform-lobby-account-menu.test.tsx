@@ -151,6 +151,66 @@ test('PlatformLobby localizes runtime status chrome', () => {
   );
 });
 
+test('PlatformLobby localizes deterministic Guide Cat assist greetings', () => {
+  const markup = renderToStaticMarkup(
+    <I18nProvider locale="zh-TW" languagePreference="zh-TW">
+      <StaticRouter location="/lobby">
+        <GuideCatPlacementProvider
+          guideCat={null}
+          placement="floating"
+          floatingAnchor={null}
+          sidecarMode="auto"
+          onPersistSeen={() => {}}
+          onCommit={() => {}}
+        >
+          <PlatformLobby envelope={createEnvelope({
+            lobby: {
+              animationMode: 'reduced',
+              cats: [],
+              guideCatAssist: {
+                scopeKey: 'lobby:default:default',
+                renderSource: 'deterministic',
+                cacheHit: false,
+                missing: false,
+                stale: false,
+                refreshEligible: false,
+                surfaceDisabled: false,
+                lastFailure: null,
+                bundle: {
+                  bundleId: 'lobby:default:default',
+                  scope: {
+                    surfaceId: 'lobby',
+                    surfaceMode: 'default',
+                    audienceState: 'default',
+                  },
+                  content: {
+                    greeting: 'Choose a surface and get moving.',
+                    entryChips: [],
+                  },
+                  provenance: {
+                    originMode: 'deterministic',
+                    refreshContextHash: 'gca:v1:test',
+                    missionId: null,
+                    runId: null,
+                  },
+                  freshness: {
+                    generatedAt: '2026-04-17T12:00:00.000Z',
+                    expiresAt: null,
+                    lastRefreshStatus: 'never',
+                  },
+                },
+              },
+            },
+          })} />
+        </GuideCatPlacementProvider>
+      </StaticRouter>
+    </I18nProvider>,
+  );
+
+  assert.match(markup, /選擇一個產品開始。/u);
+  assert.doesNotMatch(markup, /Choose a surface and get moving\./u);
+});
+
 test('PlatformLobby reuses remembered runtime-backed labels for lobby cat tooltips', () => {
   clearRememberedExecutionLabels();
   rememberExecutionLabel({

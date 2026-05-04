@@ -27,6 +27,8 @@ The final 2026-05-04 cleanup localized:
 - shared runtime connection chip labels
 - mobile product sidebar primary actions, section labels, empty states, and cat
   status labels
+- deterministic Guide Cat assist baseline greetings and starter prompts, with
+  runtime-authored assist copy preserved as content
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

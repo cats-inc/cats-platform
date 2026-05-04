@@ -1272,6 +1272,36 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.greeting.standby': 'Purring in standby.',
   'chat.newChatDraft.greeting.taskReady': 'Claws sharpened. What\'s the task?',
   'chat.newChatDraft.greeting.onDuty': 'This cat doesn\'t sleep on the job.',
+  'chat.newChatDraft.assist.direct.updatePrompt':
+    'Ask {cat} for a focused update or recommendation on this task.',
+  'chat.newChatDraft.assist.direct.nextStepPrompt':
+    'Give {cat} a concrete task and ask for the next step.',
+  'chat.newChatDraft.assist.direct.iteratePrompt':
+    'Use this lane to iterate quickly with {cat} on one problem.',
+  'chat.newChatDraft.assist.participant.firstPassPrompt':
+    'Ask {cat} to take the first pass, then tighten the plan together.',
+  'chat.newChatDraft.assist.participant.reviewPrompt':
+    'Have {cat} review an idea and suggest the next concrete moves.',
+  'chat.newChatDraft.assist.participant.briefPrompt':
+    'Let {cat} turn a rough brief into a clear action plan.',
+  'chat.newChatDraft.assist.group.rolesPrompt':
+    'Brief the group, split roles, and ask for a coordinated plan.',
+  'chat.newChatDraft.assist.group.comparePrompt':
+    'Have the group compare options and surface the tradeoffs.',
+  'chat.newChatDraft.assist.group.nextStepsPrompt':
+    'Ask the group to propose next steps and who should own each one.',
+  'chat.newChatDraft.assist.parallel.comparePrompt':
+    'Compare how different models would approach the same task.',
+  'chat.newChatDraft.assist.parallel.optionsPrompt':
+    'Ask for multiple approaches, then decide which direction to keep.',
+  'chat.newChatDraft.assist.parallel.tradeoffsPrompt':
+    'Run one prompt across models and compare quality, speed, and tradeoffs.',
+  'chat.newChatDraft.assist.solo.planPrompt':
+    'Plan today\'s priorities and turn them into next actions.',
+  'chat.newChatDraft.assist.solo.draftPrompt':
+    'Draft a message, post, or document from a rough idea.',
+  'chat.newChatDraft.assist.solo.decidePrompt':
+    'Review a problem and propose two or three ways to tackle it.',
   'chat.sidePanel.temporaryParticipantLabel': 'Temporary',
   'chat.sidePanel.roleLabel': 'Role',
   'chat.sidePanel.aiServiceLabel': 'AI Service',
@@ -2039,6 +2069,10 @@ export const enCatalog: MessageCatalog = {
 
   'code.activeComposer.detachedBranch': 'Detached branch',
   'code.newDraft.greeting': 'Ready to code.',
+  'code.newDraft.greeting.openRepo': 'Open the repo and start small.',
+  'code.newDraft.greeting.buildFixRefactor': 'Build, fix, or refactor something real.',
+  'code.newDraft.greeting.shipImprovement': 'Ship one clear improvement.',
+  'code.newDraft.greeting.smallestChange': 'Start with the smallest useful change.',
   'code.newDraft.composer.placeholder':
     'What should this code session build, fix, or investigate?',
   'code.newDraft.setupTitle': 'New Code Setup',

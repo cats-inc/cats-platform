@@ -1278,6 +1278,36 @@ export const messageKeys = {
   chatNewChatDraftGreetingStandby: 'chat.newChatDraft.greeting.standby',
   chatNewChatDraftGreetingTaskReady: 'chat.newChatDraft.greeting.taskReady',
   chatNewChatDraftGreetingOnDuty: 'chat.newChatDraft.greeting.onDuty',
+  chatNewChatDraftAssistDirectUpdatePrompt:
+    'chat.newChatDraft.assist.direct.updatePrompt',
+  chatNewChatDraftAssistDirectNextStepPrompt:
+    'chat.newChatDraft.assist.direct.nextStepPrompt',
+  chatNewChatDraftAssistDirectIteratePrompt:
+    'chat.newChatDraft.assist.direct.iteratePrompt',
+  chatNewChatDraftAssistParticipantFirstPassPrompt:
+    'chat.newChatDraft.assist.participant.firstPassPrompt',
+  chatNewChatDraftAssistParticipantReviewPrompt:
+    'chat.newChatDraft.assist.participant.reviewPrompt',
+  chatNewChatDraftAssistParticipantBriefPrompt:
+    'chat.newChatDraft.assist.participant.briefPrompt',
+  chatNewChatDraftAssistGroupRolesPrompt:
+    'chat.newChatDraft.assist.group.rolesPrompt',
+  chatNewChatDraftAssistGroupComparePrompt:
+    'chat.newChatDraft.assist.group.comparePrompt',
+  chatNewChatDraftAssistGroupNextStepsPrompt:
+    'chat.newChatDraft.assist.group.nextStepsPrompt',
+  chatNewChatDraftAssistParallelComparePrompt:
+    'chat.newChatDraft.assist.parallel.comparePrompt',
+  chatNewChatDraftAssistParallelOptionsPrompt:
+    'chat.newChatDraft.assist.parallel.optionsPrompt',
+  chatNewChatDraftAssistParallelTradeoffsPrompt:
+    'chat.newChatDraft.assist.parallel.tradeoffsPrompt',
+  chatNewChatDraftAssistSoloPlanPrompt:
+    'chat.newChatDraft.assist.solo.planPrompt',
+  chatNewChatDraftAssistSoloDraftPrompt:
+    'chat.newChatDraft.assist.solo.draftPrompt',
+  chatNewChatDraftAssistSoloDecidePrompt:
+    'chat.newChatDraft.assist.solo.decidePrompt',
   chatNewChatDraftComposerPlaceholder: 'chat.newChatDraft.composerPlaceholder',
   chatNewChatDraftFolderActionLabel: 'chat.newChatDraft.folderActionLabel',
   chatNewChatDraftChooseCodespaceActionLabel:
@@ -2090,6 +2120,10 @@ export const messageKeys = {
   conversationSidebarArchiveButton: 'conversationSidebar.archiveButton',
   codeActiveComposerDetachedBranch: 'code.activeComposer.detachedBranch',
   codeNewDraftGreeting: 'code.newDraft.greeting',
+  codeNewDraftGreetingOpenRepo: 'code.newDraft.greeting.openRepo',
+  codeNewDraftGreetingBuildFixRefactor: 'code.newDraft.greeting.buildFixRefactor',
+  codeNewDraftGreetingShipImprovement: 'code.newDraft.greeting.shipImprovement',
+  codeNewDraftGreetingSmallestChange: 'code.newDraft.greeting.smallestChange',
   codeNewDraftComposerPlaceholder: 'code.newDraft.composer.placeholder',
   codeNewDraftSetupTitle: 'code.newDraft.setupTitle',
   codeNewDraftParticipantsTitle: 'code.newDraft.participants.title',

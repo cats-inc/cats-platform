@@ -1,6 +1,17 @@
 import { createHash } from 'node:crypto';
 
 import {
+  CHAT_NEW_GUIDE_CAT_ASSIST_GREETING_KEYS,
+  CODE_NEW_GUIDE_CAT_ASSIST_GREETING_KEYS,
+  LOBBY_GUIDE_CAT_ASSIST_GREETING_KEYS,
+  translateGuideCatAssistLines,
+  type GuideCatAssistTranslator,
+} from './guideCatAssistPresentation.js';
+import {
+  createTranslator,
+  messageKeys,
+} from './i18n/index.js';
+import {
   GUIDE_CAT_ASSIST_REFRESH_CONTEXT_HASH_PREFIX,
   GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE,
   GUIDE_CAT_ASSIST_V1_SCOPE_KEYS,
@@ -12,34 +23,22 @@ import {
 } from './guideCatAssist.js';
 
 const EPOCH_ISO = new Date(0).toISOString();
+const defaultGuideCatAssistTranslator = createTranslator('en');
 
-export const LOBBY_GREETING_LINES = [
-  'Choose a surface and get moving.',
-  'Home base is ready.',
-  'Chat, Work, or Code. Your call.',
-  'Everything is staged. Pick a lane.',
-  'Open the surface that fits the task.',
-  'Cats Inc is awake.',
-  'Continue where the work makes sense.',
-];
+export const LOBBY_GREETING_LINES = translateGuideCatAssistLines(
+  LOBBY_GUIDE_CAT_ASSIST_GREETING_KEYS,
+  defaultGuideCatAssistTranslator,
+);
 
-export const DRAFT_GREETING_LINES = [
-  'Meow. Ready when you are.',
-  'Your cat hasn\'t napped yet.',
-  'Cats on the keyboard.',
-  'Tail up, let\'s go.',
-  'Purring in standby.',
-  'Claws sharpened. What\'s the task?',
-  'This cat doesn\'t sleep on the job.',
-];
+export const DRAFT_GREETING_LINES = translateGuideCatAssistLines(
+  CHAT_NEW_GUIDE_CAT_ASSIST_GREETING_KEYS,
+  defaultGuideCatAssistTranslator,
+);
 
-export const CODE_DRAFT_GREETING_LINES = [
-  'Ready to code.',
-  'Open the repo and start small.',
-  'Build, fix, or refactor something real.',
-  'Ship one clear improvement.',
-  'Start with the smallest useful change.',
-];
+export const CODE_DRAFT_GREETING_LINES = translateGuideCatAssistLines(
+  CODE_NEW_GUIDE_CAT_ASSIST_GREETING_KEYS,
+  defaultGuideCatAssistTranslator,
+);
 
 function withCatName(
   template: string,
@@ -107,14 +106,19 @@ function createDeterministicBaselineBundle(
 
 export function resolveLobbyGuideCatAssistBaseline(options: {
   seed?: string | null;
+  t?: GuideCatAssistTranslator;
 } = {}): GuideCatAssistBundle {
+  const t = options.t ?? defaultGuideCatAssistTranslator;
   const scope: GuideCatAssistScope = {
     surfaceId: 'lobby',
     surfaceMode: 'default',
     audienceState: 'default',
   };
   return createDeterministicBaselineBundle(scope, {
-    greeting: selectDeterministicLine(LOBBY_GREETING_LINES, {
+    greeting: selectDeterministicLine(translateGuideCatAssistLines(
+      LOBBY_GUIDE_CAT_ASSIST_GREETING_KEYS,
+      t,
+    ), {
       scopeKey: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
       seed: options.seed,
     }),
@@ -125,32 +129,35 @@ export function resolveLobbyGuideCatAssistBaseline(options: {
 export function resolveDraftStarterSuggestionsBaseline(input: {
   mode: GuideCatAssistNewChatMode;
   defaultRecipientName?: string | null;
+  t?: GuideCatAssistTranslator;
 }): GuideCatAssistContent['entryChips'] {
+  const t = input.t ?? defaultGuideCatAssistTranslator;
+  const fallbackCatName = t(messageKeys.sharedSettingsCatsFallbackCatName);
   switch (input.mode) {
     case 'direct':
       return [
         {
           id: 'direct-update',
           prompt: withCatName(
-            'Ask {cat} for a focused update or recommendation on this task.',
+            t(messageKeys.chatNewChatDraftAssistDirectUpdatePrompt),
             input.defaultRecipientName,
-            'this Cat',
+            fallbackCatName,
           ),
         },
         {
           id: 'direct-next-step',
           prompt: withCatName(
-            'Give {cat} a concrete task and ask for the next step.',
+            t(messageKeys.chatNewChatDraftAssistDirectNextStepPrompt),
             input.defaultRecipientName,
-            'this Cat',
+            fallbackCatName,
           ),
         },
         {
           id: 'direct-iterate',
           prompt: withCatName(
-            'Use this lane to iterate quickly with {cat} on one problem.',
+            t(messageKeys.chatNewChatDraftAssistDirectIteratePrompt),
             input.defaultRecipientName,
-            'this Cat',
+            fallbackCatName,
           ),
         },
       ];
@@ -159,25 +166,25 @@ export function resolveDraftStarterSuggestionsBaseline(input: {
         {
           id: 'participant-first-pass',
           prompt: withCatName(
-            'Ask {cat} to take the first pass, then tighten the plan together.',
+            t(messageKeys.chatNewChatDraftAssistParticipantFirstPassPrompt),
             input.defaultRecipientName,
-            'this Cat',
+            fallbackCatName,
           ),
         },
         {
           id: 'participant-review',
           prompt: withCatName(
-            'Have {cat} review an idea and suggest the next concrete moves.',
+            t(messageKeys.chatNewChatDraftAssistParticipantReviewPrompt),
             input.defaultRecipientName,
-            'this Cat',
+            fallbackCatName,
           ),
         },
         {
           id: 'participant-brief',
           prompt: withCatName(
-            'Let {cat} turn a rough brief into a clear action plan.',
+            t(messageKeys.chatNewChatDraftAssistParticipantBriefPrompt),
             input.defaultRecipientName,
-            'this Cat',
+            fallbackCatName,
           ),
         },
       ];
@@ -185,30 +192,30 @@ export function resolveDraftStarterSuggestionsBaseline(input: {
       return [
         {
           id: 'group-roles',
-          prompt: 'Brief the group, split roles, and ask for a coordinated plan.',
+          prompt: t(messageKeys.chatNewChatDraftAssistGroupRolesPrompt),
         },
         {
           id: 'group-compare',
-          prompt: 'Have the group compare options and surface the tradeoffs.',
+          prompt: t(messageKeys.chatNewChatDraftAssistGroupComparePrompt),
         },
         {
           id: 'group-next-steps',
-          prompt: 'Ask the group to propose next steps and who should own each one.',
+          prompt: t(messageKeys.chatNewChatDraftAssistGroupNextStepsPrompt),
         },
       ];
     case 'parallel':
       return [
         {
           id: 'parallel-compare',
-          prompt: 'Compare how different models would approach the same task.',
+          prompt: t(messageKeys.chatNewChatDraftAssistParallelComparePrompt),
         },
         {
           id: 'parallel-options',
-          prompt: 'Ask for multiple approaches, then decide which direction to keep.',
+          prompt: t(messageKeys.chatNewChatDraftAssistParallelOptionsPrompt),
         },
         {
           id: 'parallel-tradeoffs',
-          prompt: 'Run one prompt across models and compare quality, speed, and tradeoffs.',
+          prompt: t(messageKeys.chatNewChatDraftAssistParallelTradeoffsPrompt),
         },
       ];
     case 'solo':
@@ -216,15 +223,15 @@ export function resolveDraftStarterSuggestionsBaseline(input: {
       return [
         {
           id: 'solo-plan',
-          prompt: 'Plan today\'s priorities and turn them into next actions.',
+          prompt: t(messageKeys.chatNewChatDraftAssistSoloPlanPrompt),
         },
         {
           id: 'solo-draft',
-          prompt: 'Draft a message, post, or document from a rough idea.',
+          prompt: t(messageKeys.chatNewChatDraftAssistSoloDraftPrompt),
         },
         {
           id: 'solo-decide',
-          prompt: 'Review a problem and propose two or three ways to tackle it.',
+          prompt: t(messageKeys.chatNewChatDraftAssistSoloDecidePrompt),
         },
       ];
   }
@@ -234,7 +241,9 @@ export function resolveNewChatGuideCatAssistBaseline(input: {
   mode: GuideCatAssistNewChatMode;
   defaultRecipientName?: string | null;
   seed?: string | null;
+  t?: GuideCatAssistTranslator;
 }): GuideCatAssistBundle {
+  const t = input.t ?? defaultGuideCatAssistTranslator;
   const scope: GuideCatAssistScope = {
     surfaceId: 'chat:new',
     surfaceMode: input.mode,
@@ -242,58 +251,67 @@ export function resolveNewChatGuideCatAssistBaseline(input: {
   };
   const scopeKey = GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE[input.mode];
   return createDeterministicBaselineBundle(scope, {
-    greeting: selectDeterministicLine(DRAFT_GREETING_LINES, {
+    greeting: selectDeterministicLine(translateGuideCatAssistLines(
+      CHAT_NEW_GUIDE_CAT_ASSIST_GREETING_KEYS,
+      t,
+    ), {
       scopeKey,
       seed: input.seed,
     }),
     entryChips: resolveDraftStarterSuggestionsBaseline({
       mode: input.mode,
       defaultRecipientName: input.defaultRecipientName,
+      t,
     }),
   });
 }
 
 export function resolveNewCodeGuideCatAssistBaseline(options: {
   seed?: string | null;
+  t?: GuideCatAssistTranslator;
 } = {}): GuideCatAssistBundle {
+  const t = options.t ?? defaultGuideCatAssistTranslator;
   const scope: GuideCatAssistScope = {
     surfaceId: 'code:new',
     surfaceMode: 'default',
     audienceState: 'default',
   };
   return createDeterministicBaselineBundle(scope, {
-    greeting: selectDeterministicLine(CODE_DRAFT_GREETING_LINES, {
+    greeting: selectDeterministicLine(translateGuideCatAssistLines(
+      CODE_NEW_GUIDE_CAT_ASSIST_GREETING_KEYS,
+      t,
+    ), {
       scopeKey: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.codeNewDefault,
       seed: options.seed,
     }),
     entryChips: [
       {
         id: 'code-pomodoro',
-        label: 'Build a pomodoro app',
-        prompt: 'Write a small pomodoro timer app.',
+        label: t(messageKeys.codeNewDraftStarterPomodoroLabel),
+        prompt: t(messageKeys.codeNewDraftStarterPomodoroPrompt),
       },
       {
         id: 'code-fix-bug',
-        label: 'Fix a bug',
-        prompt: 'Find and fix a bug in this codebase.',
+        label: t(messageKeys.codeNewDraftStarterFixBugLabel),
+        prompt: t(messageKeys.codeNewDraftStarterFixBugPrompt),
       },
       {
         id: 'code-refactor',
-        label: 'Refactor code',
-        prompt: 'Refactor this code without changing behavior.',
+        label: t(messageKeys.codeNewDraftStarterRefactorLabel),
+        prompt: t(messageKeys.codeNewDraftStarterRefactorPrompt),
       },
       {
         id: 'code-write-tests',
-        label: 'Write tests',
-        prompt: 'Add tests for the code we last touched.',
+        label: t(messageKeys.codeNewDraftStarterWriteTestsLabel),
+        prompt: t(messageKeys.codeNewDraftStarterWriteTestsPrompt),
       },
       // Cross-surface chip: the Code renderer (`products/code/renderer/
       // components/NewChatDraft.tsx`) routes IDs prefixed with
       // `cross:work:` to `onDraftSurfaceChange('work')` + prefetch.
       {
         id: 'cross:work:start-project',
-        label: 'Start a project',
-        prompt: 'Start a small project to track milestones.',
+        label: t(messageKeys.codeNewDraftStarterStartProjectLabel),
+        prompt: t(messageKeys.codeNewDraftStarterStartProjectPrompt),
       },
     ],
   });
