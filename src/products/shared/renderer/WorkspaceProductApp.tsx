@@ -17,6 +17,7 @@ import {
 
 import {
   ConfirmDialog,
+  type ConfirmDialogOptions,
   useConfirmDialog,
 } from "../../../design/components/ConfirmDialog";
 import {
@@ -185,6 +186,10 @@ export interface WorkspaceProductAppRoutesProps {
   onCatAvatarSave?: (catId: string, dataUrl: string) => void;
 }
 
+export type WorkspaceProductConfirmDialog = (
+  options: ConfirmDialogOptions,
+) => Promise<boolean>;
+
 export interface WorkspaceProductSidebarProps {
   payload: AppShellPayload;
   sidebarOpen: boolean;
@@ -208,6 +213,11 @@ export interface WorkspaceProductSidebarProps {
   onUngroupParallelChatGroup: (groupId: string) => void;
   onDeleteParallelChatGroup: (groupId: string) => void;
   onArchiveCat: (catId: string) => void;
+  /** Chat-only "Clear" action — deletes the cat's direct-lane channel
+   * and navigates back to the cat's DM URL so the route falls into
+   * NewChatDraft. Provided for all surfaces but only wired up by the
+   * chat sidebar today. */
+  onClearDirectLane: (catId: string, channelId: string) => void;
   onCreateNewCat: () => void;
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
@@ -217,6 +227,11 @@ export interface WorkspaceProductSidebarProps {
   activeMyCatId: string | null;
   onDirectChatCat: (catId: string) => void;
   navigate: NavigateFunction;
+  /** Promise-returning modal confirm bound to the app-level
+   * `<ConfirmDialog>` instance. Sidebars can use this for destructive
+   * actions (e.g. chat's "Clear" popover that wipes a direct lane)
+   * instead of falling back to `window.confirm`. */
+  confirmDialog: WorkspaceProductConfirmDialog;
 }
 
 export type WorkspaceProductShellSurface = PlatformSurfaceId;
@@ -1205,6 +1220,7 @@ export function createWorkspaceProductApp({
       onSelect,
       onRenameChannel,
       onDeleteChannel,
+      onClearDirectLane,
       onRenameParallelChatGroup,
       onUngroupParallelChatGroup,
       onDeleteParallelChatGroup,
@@ -1703,6 +1719,7 @@ export function createWorkspaceProductApp({
                 onUngroupParallelChatGroup,
                 onDeleteParallelChatGroup,
                 onArchiveCat,
+                onClearDirectLane,
                 onCreateNewCat,
                 onAccountMenuToggle: () => setAccountMenuOpen(!accountMenuOpen),
                 onOverflowMenuToggle: setOverflowMenuOpenId,
@@ -1712,6 +1729,7 @@ export function createWorkspaceProductApp({
                 activeMyCatId,
                 onDirectChatCat,
                 navigate,
+                confirmDialog: appConfirm,
               })}
               settingsMode={settingsMode}
               busy={busy}

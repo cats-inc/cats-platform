@@ -2584,6 +2584,8 @@ export const messageKeys = {
   conversationSidebarTelegramBoundTooltip: 'conversationSidebar.telegramBoundTooltip',
   conversationSidebarArchiveButton: 'conversationSidebar.archiveButton',
   conversationSidebarDirectMessageButton: 'conversationSidebar.directMessageButton',
+  conversationSidebarClearButton: 'conversationSidebar.clearButton',
+  conversationSidebarClearConfirmMessage: 'conversationSidebar.clearConfirmMessage',
   codeActiveComposerDetachedBranch: 'code.activeComposer.detachedBranch',
   codeNewDraftGreeting: 'code.newDraft.greeting',
   codeNewDraftGreetingOpenRepo: 'code.newDraft.greeting.openRepo',

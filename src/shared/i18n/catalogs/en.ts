@@ -2464,6 +2464,8 @@ export const enCatalog: MessageCatalog = {
   'conversationSidebar.telegramBoundTooltip': 'Telegram bot bound',
   'conversationSidebar.archiveButton': 'Archive',
   'conversationSidebar.directMessageButton': 'Direct message',
+  'conversationSidebar.clearButton': 'Clear',
+  'conversationSidebar.clearConfirmMessage': 'Clear conversation history with {catName}? This cannot be undone.',
   'design.sidePanel.closeLabel': 'Close',
   'design.accountIdentityMenu.label': 'Account menu',
   'design.accountIdentityMenu.menuLabel': 'Account menu',

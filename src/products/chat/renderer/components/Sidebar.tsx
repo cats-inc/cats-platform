@@ -5,6 +5,7 @@ import {
   type ConversationSidebarAction,
   type ConversationSidebarRecentEntry,
 } from '../../../../app/renderer/productShell/ConversationSidebar.js';
+import type { WorkspaceProductConfirmDialog } from '../../../shared/renderer/WorkspaceProductApp.js';
 import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import type { AppShellPayload, ChatChannelSummary } from '../../api/contracts.js';
@@ -57,6 +58,8 @@ export interface SidebarProps {
   onSwitchProduct: (surface: PlatformSurfaceId) => void;
   activeMyCatId: string | null;
   onDirectChatCat: (catId: string) => void;
+  onClearDirectLane: (catId: string, channelId: string) => void;
+  confirmDialog: WorkspaceProductConfirmDialog;
 }
 
 function createPrimaryActions(
@@ -148,6 +151,32 @@ function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry
 export function Sidebar(props: SidebarProps) {
   const { t } = useI18n();
 
+  /* Chat reframes the row's terminal popover action as "Clear" —
+   * wipes the cat's direct-lane channel so the next visit starts a
+   * fresh NewChatDraft. The cat itself is NOT archived (the canonical
+   * archive flow lives in /settings/cats, where it belongs at the
+   * platform level). Implementation: locate the existing direct-lane
+   * channel for the cat and call the channel-delete handler the
+   * sidebar already has wired in. Uses the app-level
+   * `<ConfirmDialog>` (passed in via `props.confirmDialog`) for the
+   * destructive-action gate so the modal matches the rest of chat's
+   * confirms. */
+  const onClearDirectLane = async (catId: string): Promise<void> => {
+    const channel = findDirectLaneForCat(props.payload.chat.channels, catId);
+    if (!channel) return;
+    const cat = props.payload.chat.cats.find((entry) => entry.id === catId);
+    const catName = cat?.name ?? '';
+    const confirmed = await props.confirmDialog({
+      title: t(messageKeys.conversationSidebarClearButton),
+      message: t(messageKeys.conversationSidebarClearConfirmMessage, {
+        catName,
+      }),
+      confirmLabel: t(messageKeys.conversationSidebarClearButton),
+    });
+    if (!confirmed) return;
+    props.onClearDirectLane(catId, channel.id);
+  };
+
   return ConversationSidebar({
     payload: props.payload,
     sidebarOpen: props.sidebarOpen,
@@ -165,6 +194,7 @@ export function Sidebar(props: SidebarProps) {
       label: t(messageKeys.chatSidebarMyCatsEmptyStateLabel),
       onClick: props.onCreateNewCat,
     },
+    myCatsTerminalActionLabelKey: messageKeys.conversationSidebarClearButton,
     helpers: {
       catInitials,
       presentChannelTitle: (title) => presentChannelTitle(title, t),
@@ -182,7 +212,9 @@ export function Sidebar(props: SidebarProps) {
     onSelect: props.onSelect,
     onDeleteChannel: props.onDeleteChannel,
     onRenameChannel: props.onRenameChannel,
-    onArchiveCat: props.onArchiveCat,
+    onArchiveCat: (catId) => {
+      void onClearDirectLane(catId);
+    },
     onAccountMenuToggle: props.onAccountMenuToggle,
     onOverflowMenuToggle: props.onOverflowMenuToggle,
     onNavigateSettings: props.onNavigateSettings,

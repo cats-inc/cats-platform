@@ -5,7 +5,7 @@ import type {
   ConversationSidebarChannel,
   ConversationSidebarHelpers,
 } from './ConversationSidebar.js';
-import { messageKeys } from '../../../shared/i18n/messageKeys.js';
+import { messageKeys, type MessageKey } from '../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../i18n/index.js';
 import { SidebarFloatingMenuPortal } from './SidebarFloatingMenuPortal.js';
 import { useFloatingSidebarMenu } from './useFloatingSidebarMenu.js';
@@ -23,6 +23,7 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
   onArchive,
   onOverflowToggle,
   onDirectMessage,
+  terminalActionLabelKey,
 }: {
   cat: TCat;
   isBoss: boolean;
@@ -44,6 +45,12 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
    * already the direct lane, so a popover duplicate would be noise.
    */
   onDirectMessage?: () => void;
+  /** Override the popover's terminal-action label. Default is the
+   * "Archive" copy used by lobby drill-down; the chat sidebar swaps in
+   * "Clear" because there the action wipes the cat's direct-lane
+   * channel rather than archiving the cat. The handler stays
+   * `onArchive` — caller decides what archive vs. clear means. */
+  terminalActionLabelKey?: MessageKey;
 }) {
   const { t } = useI18n();
   const overflowButtonRef = useRef<HTMLButtonElement>(null);
@@ -126,7 +133,7 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
             </>
           ) : null}
           <button type="button" disabled={false} onClick={onArchive}>
-            {t(messageKeys.conversationSidebarArchiveButton)}
+            {t(terminalActionLabelKey ?? messageKeys.conversationSidebarArchiveButton)}
           </button>
         </SidebarFloatingMenuPortal>
       ) : null}
@@ -264,6 +271,7 @@ export function ConversationSidebarMyCatsSection<
   onArchiveCat,
   emptyStatePlaceholder,
   onDirectMessageCat,
+  terminalActionLabelKey,
 }: {
   label?: string;
   cats: readonly TCat[];
@@ -281,6 +289,8 @@ export function ConversationSidebarMyCatsSection<
    * before a divider above Archive (lobby drill-down sidebar uses
    * this to jump into Cats Chat's direct lane for the cat). */
   onDirectMessageCat?: (catId: string) => void;
+  /** Forwarded to `MyCatRowItem`; default is the Archive copy. */
+  terminalActionLabelKey?: MessageKey;
 }) {
   const { t } = useI18n();
   const activeCats = helpers.sortCatsForDisplay(
@@ -340,6 +350,7 @@ export function ConversationSidebarMyCatsSection<
                     }
                   : undefined
               }
+              terminalActionLabelKey={terminalActionLabelKey}
             />
           );
         })}

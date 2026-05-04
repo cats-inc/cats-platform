@@ -171,6 +171,12 @@ export interface ConversationSidebarProps<
   forceShowMyCatsSection?: boolean;
   myCatsSectionCats?: readonly TCat[];
   myCatsEmptyStatePlaceholder?: ConversationSidebarMyCatsPlaceholder;
+  /** Override the MY CATS row popover's terminal-action label
+   * (default is "Archive"). Chat sets `clearButton` because its
+   * popover wipes the cat's direct-lane channel rather than archiving
+   * the cat. The handler stays `onArchiveCat` — caller owns the
+   * meaning. */
+  myCatsTerminalActionLabelKey?: import('../../../shared/i18n/messageKeys.js').MessageKey;
   helpers: ConversationSidebarHelpers<TCat, TChannel, TDot>;
   onToggleSidebar: () => void;
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
@@ -211,6 +217,7 @@ export function ConversationSidebar<
   forceShowMyCatsSection = false,
   myCatsSectionCats,
   myCatsEmptyStatePlaceholder,
+  myCatsTerminalActionLabelKey,
   helpers,
   onToggleSidebar,
   onCollapsedSidebarClick,
@@ -341,6 +348,7 @@ export function ConversationSidebar<
               onDirectChatCat={onDirectChatCat}
               onArchiveCat={onArchiveCat}
               emptyStatePlaceholder={myCatsEmptyStatePlaceholder}
+              terminalActionLabelKey={myCatsTerminalActionLabelKey}
             />
           ) : null}
 

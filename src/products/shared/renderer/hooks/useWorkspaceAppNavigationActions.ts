@@ -27,7 +27,10 @@ import {
 import {
   stageCrossSurfaceConversationNavigationHandoff,
 } from '../crossSurfaceConversationNavigation.js';
-import { resolveMyCatNavigationTargetForPrefix } from '../../../../app/renderer/productShell/myCatNavigation.js';
+import {
+  buildMyCatPathForPrefix,
+  resolveMyCatNavigationTargetForPrefix,
+} from '../../../../app/renderer/productShell/myCatNavigation.js';
 import type { RoomRoutingMode } from '../../../../shared/roomRouting.js';
 import {
   deleteChatChannel as deleteWorkspaceChatChannel,
@@ -344,6 +347,47 @@ export function useWorkspaceAppNavigationActions<
     }
   }, [navigationApi, setBusy, setFeedback, setState, t]);
 
+  /* Variant of onDeleteChannel for chat's "Clear" action on a cat's
+   * direct-lane row. Same channel-delete API call + state refresh,
+   * but the post-delete navigation lands on the cat's DM URL instead
+   * of `resolveWorkspaceVisibleChatPath` (which would fall back to
+   * `/chat/new` when the just-deleted channel was the active one).
+   * The DM route itself renders NewChatDraft when no direct-lane
+   * channel exists, so the user stays "on" the cat. */
+  const onClearDirectLane = useCallback(async (
+    catId: string,
+    channelId: string,
+  ): Promise<void> => {
+    setBusy(createChannelBusyState('delete', channelId));
+    try {
+      const result = await navigationApi.deleteChatChannel(channelId);
+      const payload = isDeleteChatChannelResult(result) ? result.payload : result;
+      startTransition(() => {
+        setState({ status: 'ready', payload });
+        setAddCatOpen(false);
+        setFeedback('');
+      });
+      navigate(buildMyCatPathForPrefix(chatPrefix, catId));
+    } catch (error) {
+      setFeedback(formatWorkspaceNavigationMutationError(
+        error,
+        t(messageKeys.sharedWorkspaceNavigationDeleteChatError),
+        t,
+      ));
+    } finally {
+      setBusy(clearBusyState());
+    }
+  }, [
+    chatPrefix,
+    navigate,
+    navigationApi,
+    setAddCatOpen,
+    setBusy,
+    setFeedback,
+    setState,
+    t,
+  ]);
+
   const onDeleteChannel = useCallback(async (channelId: string): Promise<void> => {
     setBusy(createChannelBusyState('delete', channelId));
     try {
@@ -618,6 +662,7 @@ export function useWorkspaceAppNavigationActions<
     onSelect,
     onRenameChannel,
     onDeleteChannel,
+    onClearDirectLane,
     onRenameParallelChatGroup,
     onUngroupParallelChatGroup,
     onDeleteParallelChatGroup,
