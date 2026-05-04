@@ -689,7 +689,7 @@ test('Code sidebar localizes pinned codespace status tooltip labels', () => {
   assert.equal(workspacesGroup?.pinnedItems?.[0]?.statusDot?.title, '作用中');
 });
 
-test('Code sidebar shows the My Clowders empty placeholder', () => {
+test('Code sidebar no longer renders a placeholder Clowders section (PLAN-091 phase 2)', () => {
   const tree = createCodeSidebarElement({
     payload: createPayload() as unknown as CodeAppShellPayload,
     sidebarOpen: true,
@@ -720,13 +720,10 @@ test('Code sidebar shows the My Clowders empty placeholder', () => {
   });
 
   const myPridesSection = findElementByComponent(tree, ConversationSidebarMyCatsSection);
-  assert.notEqual(myPridesSection, null);
-  assert.equal(myPridesSection?.props.label, 'My Clowders');
-  assert.deepEqual(myPridesSection?.props.cats, []);
-  assert.equal(myPridesSection?.props.emptyStatePlaceholder?.label, 'New clowder');
+  assert.equal(myPridesSection, null);
 });
 
-test('Work sidebar shows the My Catteries empty placeholder', () => {
+test('Work sidebar no longer renders a placeholder Catteries section (PLAN-091 phase 2)', () => {
   const tree = createWorkSidebarElement({
     payload: createPayload(),
     sidebarOpen: true,
@@ -758,10 +755,7 @@ test('Work sidebar shows the My Catteries empty placeholder', () => {
   });
 
   const myCatteriesSection = findElementByComponent(tree, ConversationSidebarMyCatsSection);
-  assert.notEqual(myCatteriesSection, null);
-  assert.equal(myCatteriesSection?.props.label, 'My Catteries');
-  assert.deepEqual(myCatteriesSection?.props.cats, []);
-  assert.equal(myCatteriesSection?.props.emptyStatePlaceholder?.label, 'New cattery');
+  assert.equal(myCatteriesSection, null);
 });
 
 test('Code sidebar clears chat recents and shows No codes yet', () => {

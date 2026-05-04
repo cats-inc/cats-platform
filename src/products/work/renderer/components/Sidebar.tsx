@@ -565,13 +565,6 @@ export function createWorkSidebarConversationProps(
     extraActionGroups: createExtraActionGroups(props, pinnedProjects, t),
     recentEntries: buildRecentEntries(props),
     recentEmptyStateLabel: t('workSidebarNoWorkYetLabel'),
-    myCatsSectionLabel: t('workSidebarMyCatteriesLabel'),
-    myCatsSectionCats: [],
-    forceShowMyCatsSection: true,
-    myCatsEmptyStatePlaceholder: {
-      label: t('workSidebarNewCatteryLabel'),
-      onClick: () => undefined,
-    },
     helpers: {
       catInitials,
       presentChannelTitle: (title) => presentChannelTitle(title, t),

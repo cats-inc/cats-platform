@@ -25,7 +25,7 @@ test('mobile product sidebar copy localizes fixed sidebar chrome', () => {
     chat.primaryActions.map((action) => action.label),
     ['+ 新聊天', '+ 群組聊天', '+ 平行聊天'],
   );
-  assert.equal(chat.myLensLabel, '我的貓咪');
+  assert.equal(chat.myLensLabel, '直接訊息');
   assert.equal(chat.recentsLabel, '近期項目');
 });
 

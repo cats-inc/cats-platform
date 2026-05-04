@@ -376,13 +376,6 @@ export function createCodeSidebarConversationProps(
     extraActionGroups: createExtraActionGroups(props, workspacesSnapshot, t),
     recentEntries: buildRecentEntries(props),
     recentEmptyStateLabel: t(messageKeys.codeSidebarNoCodesYetLabel),
-    myCatsSectionLabel: t(messageKeys.codeSidebarMyClowdersLabel),
-    myCatsSectionCats: [],
-    forceShowMyCatsSection: true,
-    myCatsEmptyStatePlaceholder: {
-      label: t(messageKeys.codeSidebarNewClowderLabel),
-      onClick: () => undefined,
-    },
     helpers: {
       catInitials,
       presentChannelTitle: (title) => presentChannelTitle(title, t),

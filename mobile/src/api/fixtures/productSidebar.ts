@@ -19,11 +19,14 @@ const SIDEBAR_ACTION_IDS: Record<
  * three primary action chips, the product MY-lens row, the product
  * Recents row.
  *
- * MY-lens labels follow the cats-themed naming the platform already
- * uses elsewhere:
- *   • Chat → MY CATS (individual cats)
- *   • Code → MY CLOWDERS (a clowder is a group of cats)
- *   • Work → MY CATTERIES (a cattery is a place that houses cats)
+ * Chat's MY-lens row is now `DIRECT MESSAGES` to match the web
+ * Chat sidebar relabel (PLAN-091 phase 2; SPEC-102 FR-15). Code's and
+ * Work's MY-lens rows still surface their product's cat lens label —
+ * the empty `My Clowders` / `My Catteries` placeholders that used to
+ * sit in the web Code/Work sidebars were removed in the same phase.
+ * Phase 5 reshapes the mobile Lobby tab (where the
+ * cats / clowders / catteries entity sections live) and may revisit
+ * the Code/Work MY-lens labels once that lands.
  *
  * Chat's three primary actions mirror the canonical web entry kinds
  * (+New chat / +Group chat / +Parallel chat). Code's match FR-038

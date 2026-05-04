@@ -373,7 +373,7 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
           group: '+ Group chat',
           parallel: '+ Parallel chat',
         },
-        myLensLabel: 'MY CATS',
+        myLensLabel: 'DIRECT MESSAGES',
         recentsLabel: 'RECENTS',
       },
       code: {
@@ -414,7 +414,7 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
           group: '+ 群組聊天',
           parallel: '+ 平行聊天',
         },
-        myLensLabel: '我的貓咪',
+        myLensLabel: '直接訊息',
         recentsLabel: '近期項目',
       },
       code: {
