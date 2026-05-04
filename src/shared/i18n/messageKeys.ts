@@ -3178,7 +3178,6 @@ export const messageKeys = {
   catsListTitle: 'catsList.title',
   catsListEyebrow: 'catsList.eyebrow',
   catsListEmptyState: 'catsList.emptyState',
-  catsListBackToLobby: 'catsList.backToLobby',
   // Lobby drill-down sidebar reuses the ConversationSidebarMyCatsSection
   // primitive (per the user's IA correction in PLAN-091 phase 7). The
   // section needs only a header label and a "+ New X" placeholder
@@ -3199,6 +3198,7 @@ export const messageKeys = {
   lobbyEntityCardCatteriesSubtitle: 'lobby.entityCard.catteriesSubtitle',
   lobbyEntityCardCount: 'lobby.entityCard.count',
   entitiesShellAriaLabel: 'entitiesShell.ariaLabel',
+  entitiesShellSurfaceLabel: 'entitiesShell.surfaceLabel',
   clowderHomeAriaLabel: 'clowderHome.ariaLabel',
   clowderHomeChipPartOf: 'clowderHome.chip.partOf',
   clowderHomeChipCrossUnit: 'clowderHome.chip.crossUnit',

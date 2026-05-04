@@ -34,36 +34,14 @@
   margin-inline: auto;
 }
 
-/* ── EntitiesShell ───────────────────────────────────────────────
- * Workspace shell for /cats, /clowders, /catteries and their /:id
- * routes. Mirrors the chat / code / work appshell exactly: the
- * sidebar (top: surface switcher → "Open Lobby"; middle: three
- * lens sections; bottom: GuideCatDock + identity pill) sits on the
- * left, the matched route renders inside the content column on
- * the right. There is no separate top bar — the surface switcher
- * provides the navigation back to /lobby. Per PLAN-091 phase 7,
- * /lobby itself does NOT use this shell.
- * ────────────────────────────────────────────────────────────── */
-
-.entitiesShellScreen {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  height: 100%;
-  width: 100%;
-}
-
-.entitiesShellContent {
-  min-width: 0;
-  overflow: auto;
-  padding: var(--space-6) var(--space-5);
-}
-
-@media (max-width: 640px) {
-  .entitiesShellScreen {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
+/* The Lobby drill-down workspace shell (EntitiesShell) reuses the
+ * `screen claudeShell` grid + `.sidebar` + `<main class="canvas">`
+ * triplet that chat / code / work already define in
+ * `src/products/shared/renderer/styles/chat-shell-base.css`. No
+ * lobby-specific shell styles are needed — they would just duplicate
+ * what already exists. EntitiesShell.tsx imports that bundle so the
+ * rules apply on /cats, /clowders, /catteries before any product is
+ * mounted. */
 
 /* ── Top bar: avatar + name + runtime dot ── */
 

@@ -10,6 +10,8 @@ interface ConversationSidebarNavigationProps {
   primaryActions: readonly ConversationSidebarAction[];
   onToggleSidebar: () => void;
   onSwitchProduct: (surface: PlatformSurfaceId) => void;
+  /** Forwarded to PlatformSurfaceSwitcher — see that prop for details. */
+  surfaceLabelOverride?: string;
 }
 
 export function ConversationSidebarNavigation({
@@ -18,6 +20,7 @@ export function ConversationSidebarNavigation({
   primaryActions,
   onToggleSidebar,
   onSwitchProduct,
+  surfaceLabelOverride,
 }: ConversationSidebarNavigationProps) {
   const { t } = useI18n();
   return (
@@ -27,6 +30,7 @@ export function ConversationSidebarNavigation({
           <PlatformSurfaceSwitcher
             activeSurface={activeSurface}
             onSelectSurface={onSwitchProduct}
+            activeLabelOverride={surfaceLabelOverride}
           />
         </div>
         <button

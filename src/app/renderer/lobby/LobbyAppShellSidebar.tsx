@@ -154,6 +154,7 @@ export function LobbyAppShellSidebar({
           primaryActions={[]}
           onToggleSidebar={() => setSidebarOpen((current) => !current)}
           onSwitchProduct={onSwitchProduct}
+          surfaceLabelOverride={t(messageKeys.entitiesShellSurfaceLabel)}
         />
 
         <div className="sidebarScrollable">

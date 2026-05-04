@@ -2498,7 +2498,6 @@ export const enCatalog: MessageCatalog = {
   'catsList.eyebrow': 'Cats',
   'catsList.emptyState':
     'No cats yet. Open the Lobby to add one — once any cat is registered it will appear here.',
-  'catsList.backToLobby': 'Back to Lobby',
   'lobbySidebar.section.cats': 'My Cats',
   'lobbySidebar.section.clowders': 'My Clowders',
   'lobbySidebar.section.catteries': 'My Catteries',
@@ -2514,6 +2513,7 @@ export const enCatalog: MessageCatalog = {
   'lobby.entityCard.catteriesSubtitle': "Org charts you're part of.",
   'lobby.entityCard.count': '{count} total',
   'entitiesShell.ariaLabel': 'Entities workspace',
+  'entitiesShell.surfaceLabel': 'Cats Lobby',
   'clowderHome.ariaLabel': 'Clowder home',
   'clowderHome.chip.partOf': 'Part of {catteryName}',
   'clowderHome.chip.crossUnit': 'Cross-unit task force',

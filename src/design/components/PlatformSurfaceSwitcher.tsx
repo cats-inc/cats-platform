@@ -21,6 +21,14 @@ import {
 interface PlatformSurfaceSwitcherProps {
   activeSurface: PlatformSurfaceId;
   onSelectSurface: (surface: PlatformSurfaceId) => void;
+  /**
+   * When set, the trigger button shows this label verbatim and the
+   * menu items render without an `isCurrent` highlight. Used by the
+   * Lobby drill-down sidebar so the trigger reads "Cats Lobby" while
+   * the user is on /cats, /clowders, /catteries — none of those is a
+   * `PlatformSurfaceId`, so we cannot piggy-back on `activeSurface`.
+   */
+  activeLabelOverride?: string;
 }
 
 /**
@@ -49,6 +57,7 @@ const useIsomorphicLayoutEffect = typeof window === 'undefined'
 export function PlatformSurfaceSwitcher({
   activeSurface,
   onSelectSurface,
+  activeLabelOverride,
 }: PlatformSurfaceSwitcherProps) {
   const navigate = useNavigate();
   const { t } = useI18n();
@@ -57,11 +66,13 @@ export function PlatformSurfaceSwitcher({
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuStyle, setMenuStyle] = useState<CSSProperties>();
   const descriptors = useMemo(() => listPlatformSurfaceDescriptors(), []);
-  const activeProductName = resolvePlatformProductDisplayNameById(
+  const resolvedActiveSurfaceName = resolvePlatformProductDisplayNameById(
     activeSurface,
     platformSurfaceProductName(activeSurface),
     t,
   );
+  const activeProductName = activeLabelOverride ?? resolvedActiveSurfaceName;
+  const isOverrideActive = activeLabelOverride !== undefined;
 
   useEffect(() => {
     if (!open) {
@@ -136,7 +147,7 @@ export function PlatformSurfaceSwitcher({
       <p className="platformSurfaceMenuHeading">{t(messageKeys.appBrandName)}</p>
       <div className="platformSurfaceMenuList">
         {descriptors.map((descriptor) => {
-          const current = descriptor.id === activeSurface;
+          const current = !isOverrideActive && descriptor.id === activeSurface;
           const swatchClassName = `platformSurfaceSwatch platformSurfaceSwatch${descriptor.id[0].toUpperCase()}${descriptor.id.slice(1)}`;
           const productName = resolvePlatformProductDisplayNameById(
             descriptor.id,

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 import { messageKeys } from '../../../shared/i18n/index.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
@@ -21,25 +21,20 @@ function CatRowAvatar({ cat }: { cat: PlatformLobbyCatSummary }) {
   );
 }
 
+/**
+ * Mounted inside EntitiesShell on `/cats`. The shell already provides
+ * the back-to-Lobby affordance via the surface switcher in its
+ * sidebar, so this page only renders the list itself.
+ */
 export function CatsListPage({ envelope }: { envelope: PlatformHostEnvelope }) {
   const { t } = useI18n();
-  const navigate = useNavigate();
   const cats = envelope.lobby.cats;
 
   return (
-    <div className="screen catsListScreen">
+    <div className="catsListScreen">
       <header className="catsListHeader">
-        <div>
-          <p className="eyebrow">{t(messageKeys.catsListEyebrow)}</p>
-          <h1 className="catsListTitle">{t(messageKeys.catsListTitle)}</h1>
-        </div>
-        <button
-          type="button"
-          className="secondaryButton"
-          onClick={() => navigate('/lobby')}
-        >
-          {t(messageKeys.catsListBackToLobby)}
-        </button>
+        <p className="eyebrow">{t(messageKeys.catsListEyebrow)}</p>
+        <h1 className="catsListTitle">{t(messageKeys.catsListTitle)}</h1>
       </header>
       {cats.length === 0 ? (
         <p className="catsListEmpty">{t(messageKeys.catsListEmptyState)}</p>
