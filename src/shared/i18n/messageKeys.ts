@@ -1393,6 +1393,8 @@ export const messageKeys = {
   chatComposerErrorSendFailed: 'chat.composer.error.sendFailed',
   chatComposerErrorRetryFailed: 'chat.composer.error.retryFailed',
   chatComposerErrorStopFailed: 'chat.composer.error.stopFailed',
+  chatComposerErrorActiveChatNotInParallelGroup:
+    'chat.composer.error.activeChatNotInParallelGroup',
   chatGovernanceErrorUpdateApproval: 'chat.governance.error.updateApproval',
   chatGovernanceErrorSubmitChoiceResponse:
     'chat.governance.error.submitChoiceResponse',

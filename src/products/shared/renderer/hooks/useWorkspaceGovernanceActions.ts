@@ -24,6 +24,7 @@ import {
 } from '../../../../shared/workspaceBusy.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
+import { formatWorkspaceChatActionError } from './workspaceChatActionErrorLabels.js';
 
 export interface WorkspaceGovernancePayloadLike {
   ownerDisplayName: string;
@@ -105,7 +106,11 @@ export function useWorkspaceGovernanceActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatGovernanceErrorUpdateApproval));
+      setFeedback(formatWorkspaceChatActionError(
+        error,
+        t(messageKeys.chatGovernanceErrorUpdateApproval),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
@@ -135,7 +140,11 @@ export function useWorkspaceGovernanceActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatGovernanceErrorSubmitChoiceResponse));
+      setFeedback(formatWorkspaceChatActionError(
+        error,
+        t(messageKeys.chatGovernanceErrorSubmitChoiceResponse),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
@@ -168,7 +177,11 @@ export function useWorkspaceGovernanceActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatGovernanceErrorRecordOperatorAction));
+      setFeedback(formatWorkspaceChatActionError(
+        error,
+        t(messageKeys.chatGovernanceErrorRecordOperatorAction),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }

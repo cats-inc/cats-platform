@@ -18,6 +18,7 @@ import type {
 } from './useComposerRequestLifecycle.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
+import { formatWorkspaceChatActionError } from './workspaceChatActionErrorLabels.js';
 
 type LoadStateLike<TPayload> =
   | { status: 'loading' }
@@ -69,7 +70,11 @@ export function useComposerRequestControls<TPayload>({
         : await cancelChannel(activeRequest.channelId);
       setState({ status: 'ready', payload: cancellation.appShell });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatComposerErrorStopFailed));
+      setFeedback(formatWorkspaceChatActionError(
+        error,
+        t(messageKeys.chatComposerErrorStopFailed),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }

@@ -149,6 +149,9 @@ The final 2026-05-04 cleanup localized:
 - Product settings preference controls map deterministic conversation behavior
   and advanced draft control API fallback failures to localized feedback while
   preserving unknown diagnostics
+- Operator loop, governance, and message stop controls map deterministic core,
+  channel messaging, and channel/parallel cancellation failures to localized
+  feedback while preserving unknown diagnostics
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

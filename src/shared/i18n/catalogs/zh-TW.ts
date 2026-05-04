@@ -1332,6 +1332,8 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.composer.error.sendFailed': '送出訊息失敗。',
   'chat.composer.error.retryFailed': '重試回應失敗。',
   'chat.composer.error.stopFailed': '停止回應失敗。',
+  'chat.composer.error.activeChatNotInParallelGroup':
+    '目前聊天不屬於這個平行聊天群組。',
   'chat.governance.error.updateApproval': '更新核准狀態失敗。',
   'chat.governance.error.submitChoiceResponse': '送出選項回覆失敗。',
   'chat.governance.error.recordOperatorAction': '記錄操作員動作失敗。',

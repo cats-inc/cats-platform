@@ -1366,6 +1366,8 @@ export const enCatalog: MessageCatalog = {
   'chat.composer.error.sendFailed': 'Failed to send message.',
   'chat.composer.error.retryFailed': 'Failed to retry response.',
   'chat.composer.error.stopFailed': 'Failed to stop response.',
+  'chat.composer.error.activeChatNotInParallelGroup':
+    'The active chat is not part of this parallel chat group.',
   'chat.governance.error.updateApproval': 'Failed to update approval.',
   'chat.governance.error.submitChoiceResponse': 'Failed to submit choice response.',
   'chat.governance.error.recordOperatorAction': 'Failed to record operator action.',

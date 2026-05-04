@@ -11,6 +11,7 @@ import { fetchOperatorLoopSnapshot } from '../api/index.js';
 import type { ChatOperatorSnapshot } from '../../operator-loop/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
+import { formatWorkspaceChatActionError } from './workspaceChatActionErrorLabels.js';
 
 type OperatorLoadState =
   | { status: 'idle'; snapshot: ChatOperatorSnapshot | null; message: string }
@@ -80,7 +81,11 @@ export function useOperatorLoop(
           return {
             status: 'error',
             snapshot: current.snapshot,
-            message: error instanceof Error ? error.message : t(messageKeys.sharedOperatorLoopLoadError),
+            message: formatWorkspaceChatActionError(
+              error,
+              t(messageKeys.sharedOperatorLoopLoadError),
+              t,
+            ),
           };
         });
       });
