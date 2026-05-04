@@ -39,6 +39,7 @@ import {
 } from './routeMap';
 import { GuideCatSidecar } from '../../design/components/GuideCatSidecar';
 import { AppHostRoute } from './AppHostRoute.js';
+import { CatHome } from './entities/CatHome.js';
 import { EntityComingSoon } from './entities/EntityComingSoon.js';
 import { PlatformLobby } from './PlatformLobby';
 import {
@@ -632,8 +633,8 @@ export default function PlatformApp() {
         ) : null}
         <Routes>
           <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
-          <Route path="/cats/:catId" element={<EntityComingSoon kind="cat" />} />
-          <Route path="/cats/:catId/:lens" element={<EntityComingSoon kind="cat" />} />
+          <Route path="/cats/:catId" element={<CatHome envelope={readyEnvelope} />} />
+          <Route path="/cats/:catId/:lens" element={<CatHome envelope={readyEnvelope} />} />
           <Route path="/clowders/:clowderId" element={<EntityComingSoon kind="clowder" />} />
           <Route path="/clowders/:clowderId/:tab" element={<EntityComingSoon kind="clowder" />} />
           <Route path="/catteries/:catteryId" element={<EntityComingSoon kind="cattery" />} />

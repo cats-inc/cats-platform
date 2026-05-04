@@ -12,8 +12,6 @@ function renderEntityRoute(pathname: string): string {
     <I18nProvider locale="en">
       <StaticRouter location={pathname}>
         <Routes>
-          <Route path="/cats/:catId" element={<EntityComingSoon kind="cat" />} />
-          <Route path="/cats/:catId/:lens" element={<EntityComingSoon kind="cat" />} />
           <Route
             path="/clowders/:clowderId"
             element={<EntityComingSoon kind="clowder" />}
@@ -36,28 +34,13 @@ function renderEntityRoute(pathname: string): string {
   );
 }
 
-test('canonical /cats/:catId route renders the Cat coming-soon stub', () => {
-  const markup = renderEntityRoute('/cats/abc123');
-
-  assert.match(markup, />Cat home</u);
-  assert.match(markup, />Coming soon</u);
-  assert.match(markup, />abc123</u);
-  assert.match(markup, />Back to Lobby</u);
-});
-
-test('/cats/:catId/:lens deep-link still renders the Cat stub with the id', () => {
-  const markup = renderEntityRoute('/cats/abc123/chat');
-
-  assert.match(markup, />Cat home</u);
-  assert.match(markup, />abc123</u);
-});
-
 test('canonical /clowders/:clowderId route renders the Clowder stub', () => {
   const markup = renderEntityRoute('/clowders/clw-1');
 
   assert.match(markup, />Clowder home</u);
   assert.match(markup, />Coming soon</u);
   assert.match(markup, />clw-1</u);
+  assert.match(markup, />Back to Lobby</u);
 });
 
 test('/clowders/:clowderId/:tab deep-link still renders the Clowder stub', () => {

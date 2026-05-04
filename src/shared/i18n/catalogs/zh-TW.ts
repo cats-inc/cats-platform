@@ -2428,6 +2428,23 @@ export const zhTWCatalog: MessageCatalog = {
   'entity.comingSoon.body': '此頁面正在建置中。路由已連通，但實際內容尚未實作。',
   'entity.comingSoon.idLabel': '識別碼',
   'entity.comingSoon.backToLobby': '返回大廳',
+  'entity.detail.breadcrumb.lobby': '大廳',
+  'catHome.ariaLabel': '貓的主頁',
+  'catHome.openInChatAction': '在聊天中開啟',
+  'catHome.bossBadge': 'Boss Cat',
+  'catHome.lens.tab.overview': '總覽',
+  'catHome.lens.tab.chat': '聊天',
+  'catHome.lens.tab.work': '工作',
+  'catHome.lens.tab.code': '程式碼',
+  'catHome.overview.summaryHeading': '跨產品總覽',
+  'catHome.overview.executorLabel': '預設執行對象',
+  'catHome.overview.executorMissing': '尚未設定預設執行對象',
+  'catHome.overview.idLabel': '識別碼',
+  'catHome.lens.stubBody':
+    '{lens} 鏡頭尚未實作。等 SPEC-064 鏡頭投影完成後，這裡會顯示這隻貓在 {lens} 面向的狀態。',
+  'catHome.notFound.title': '找不到這隻貓',
+  'catHome.notFound.body':
+    '此工作區中沒有 id 為「{catId}」的貓。可能已被移除，或連結已失效。',
 
   'code.activeComposer.detachedBranch': '分離分支',
   'code.newDraft.greeting': '準備開始寫程式。',

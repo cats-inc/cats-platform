@@ -3158,6 +3158,21 @@ export const messageKeys = {
   entityComingSoonBody: 'entity.comingSoon.body',
   entityComingSoonIdLabel: 'entity.comingSoon.idLabel',
   entityComingSoonBackToLobby: 'entity.comingSoon.backToLobby',
+  entityDetailBreadcrumbLobby: 'entity.detail.breadcrumb.lobby',
+  catHomeAriaLabel: 'catHome.ariaLabel',
+  catHomeOpenInChatAction: 'catHome.openInChatAction',
+  catHomeBossBadge: 'catHome.bossBadge',
+  catHomeLensTabOverview: 'catHome.lens.tab.overview',
+  catHomeLensTabChat: 'catHome.lens.tab.chat',
+  catHomeLensTabWork: 'catHome.lens.tab.work',
+  catHomeLensTabCode: 'catHome.lens.tab.code',
+  catHomeOverviewSummaryHeading: 'catHome.overview.summaryHeading',
+  catHomeOverviewExecutorLabel: 'catHome.overview.executorLabel',
+  catHomeOverviewExecutorMissing: 'catHome.overview.executorMissing',
+  catHomeOverviewIdLabel: 'catHome.overview.idLabel',
+  catHomeLensStubBody: 'catHome.lens.stubBody',
+  catHomeNotFoundTitle: 'catHome.notFound.title',
+  catHomeNotFoundBody: 'catHome.notFound.body',
 } as const;
 
 export type MessageCatalogId = (typeof messageKeys)[keyof typeof messageKeys];

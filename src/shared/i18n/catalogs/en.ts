@@ -2479,6 +2479,23 @@ export const enCatalog: MessageCatalog = {
     'This page is being built. The route is wired up, but the entity view is not implemented yet.',
   'entity.comingSoon.idLabel': 'ID',
   'entity.comingSoon.backToLobby': 'Back to Lobby',
+  'entity.detail.breadcrumb.lobby': 'Lobby',
+  'catHome.ariaLabel': 'Cat home',
+  'catHome.openInChatAction': 'Open in Chat',
+  'catHome.bossBadge': 'Boss Cat',
+  'catHome.lens.tab.overview': 'Overview',
+  'catHome.lens.tab.chat': 'Chat',
+  'catHome.lens.tab.work': 'Work',
+  'catHome.lens.tab.code': 'Code',
+  'catHome.overview.summaryHeading': 'Cross-product summary',
+  'catHome.overview.executorLabel': 'Default executor',
+  'catHome.overview.executorMissing': 'No default executor configured',
+  'catHome.overview.idLabel': 'ID',
+  'catHome.lens.stubBody':
+    'The {lens} lens is not implemented yet. Once SPEC-064 lens projections land, this view will surface {lens}-specific state for this Cat.',
+  'catHome.notFound.title': 'Cat not found',
+  'catHome.notFound.body':
+    'No Cat with id "{catId}" exists in this workspace. It may have been removed, or the link is stale.',
 
   'code.activeComposer.detachedBranch': 'Detached branch',
   'code.newDraft.greeting': 'Ready to code.',
