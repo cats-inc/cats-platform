@@ -53,6 +53,10 @@ export function CompanionSettingsSection({
     tts: t(messageKeys.chatCompanionSettingsOutputModeTts),
     mixed: t(messageKeys.chatCompanionSettingsOutputModeMixed),
   };
+  const telegramInboundModeLabelMap: Record<string, string> = {
+    polling: t(messageKeys.sharedSettingsCatsBindingPollingMode),
+    webhook: t(messageKeys.sharedSettingsCatsBindingWebhookMode),
+  };
   const telegramInboundModeFallback = t(messageKeys.chatCompanionSettingsTelegramBindingDefaultMode);
 
   const binding = payload.chat.botBindings?.find(
@@ -173,7 +177,9 @@ export function CompanionSettingsSection({
             </p>
             <p>
               <strong>{t(messageKeys.chatCompanionSettingsTelegramBindingModeLabel)} </strong>
-              {binding.inboundMode ?? telegramInboundModeFallback}
+              {binding.inboundMode
+                ? telegramInboundModeLabelMap[binding.inboundMode] ?? binding.inboundMode
+                : telegramInboundModeFallback}
             </p>
             <p className="companionMuted">
               {t(messageKeys.chatCompanionSettingsTelegramBindingManageHint)}
