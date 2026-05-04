@@ -43,6 +43,9 @@ The final 2026-05-04 cleanup localized:
   readiness snapshots and shown in bootstrap diagnostics/recovery presentation
 - live finalization progress now uses the semantic `progressKind=finalizing`
   signal before falling back to legacy English progress text matching
+- Chat parallel relay command copy, persisted transcript notes, and relay prompt
+  templates now resolve through the shared English / Traditional Chinese i18n
+  catalogs, with English retained as the fallback when no locale is supplied
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.
@@ -62,7 +65,6 @@ shared i18n catalogs or update this allowlist with a SPEC-097 reason.
 | API/query internal fallbacks | `src/app/server/**`, `src/products/*/api/**`, `sendRestError(...)`, query-client fallback errors | Keep raw by default. Map only deterministic owner-facing codes in the renderer or bootstrap page when intentionally shown as product chrome. |
 | Desktop host source payloads localized at presentation | English readiness/action/setup strings in `desktop/host/readiness.ts`, `desktop/host/packaging.ts`, `desktop/host/setupAssets.ts` | Allowed at source because `desktop/host/bootstrapPage.ts`, `desktop/host/trayMenu.ts`, and Runtime Settings helpers localize the owner-facing presentation. |
 | Debug-only/developer diagnostics | `src/design/components/settings/SettingsDangerZone.tsx` child-type warning, console diagnostics, thrown assertion messages | Keep raw. These are developer diagnostics, not user-facing product chrome. |
-| Chat relay prompts and persisted system-note templates | `src/products/chat/shared/parallelChats.ts` relay prompt bodies and outgoing/incoming note templates | Keep raw for now. The renderer relay menu labels are localized; prompt text and persisted transcript notes need a separate locale-aware server/transcript template policy before translation. |
 | API projection compatibility strings | Code/Work dashboard `title` and `emptyState` fields returned by API projections but not used by current renderer chrome | Keep raw until a product client intentionally renders those API fields. Current renderers provide localized section chrome themselves. |
 | External or third-party copy | provider diagnostics, runtime summaries, update manifests, external service messages | Keep raw unless Cats wraps the value in a deterministic UI message. |
 

@@ -46,6 +46,7 @@ import type {
   PlatformSurfaceId,
 } from '../../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import type { MessageLocale } from '../../../shared/i18n/index.js';
 import type { FolderBrowsePreferences } from '../folderBrowsePreferences.js';
 import type { AdvancedDraftControlsPreferences } from '../advancedDraftControls.js';
 import type { ConversationBehaviorPreferences } from '../conversationBehavior.js';
@@ -681,6 +682,7 @@ export interface RelayParallelChatMessageInput {
   command: ParallelChatRelayCommandKind;
   targetPolicy?: ParallelChatRelayTargetPolicy;
   targetChannelId?: string;
+  locale?: MessageLocale;
 }
 
 export interface CancelParallelChatGroupInput {

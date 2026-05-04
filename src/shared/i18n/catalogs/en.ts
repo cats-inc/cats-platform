@@ -1155,6 +1155,64 @@ export const enCatalog: MessageCatalog = {
   'chat.composer.error.noChatForSending': 'No chat is available for sending messages.',
   'chat.composer.error.relayFailedForChannel': 'Relay failed for {channelId}.',
   'chat.composer.error.relayCompareFailed': 'Failed to relay compare message.',
+  'chat.parallelRelay.command.check.label': 'Check this',
+  'chat.parallelRelay.command.check.shortLabel': 'Check',
+  'chat.parallelRelay.command.check.description':
+    'Stress-test another reply for gaps, risks, and wrong assumptions.',
+  'chat.parallelRelay.command.adopt.label': 'Adopt this',
+  'chat.parallelRelay.command.adopt.shortLabel': 'Adopt',
+  'chat.parallelRelay.command.adopt.description':
+    'Use another reply as the new working direction and improve it.',
+  'chat.parallelRelay.command.debate.label': 'Debate this',
+  'chat.parallelRelay.command.debate.shortLabel': 'Debate',
+  'chat.parallelRelay.command.debate.description':
+    'Take the strongest reasonable counter-position to another reply.',
+  'chat.parallelRelay.command.improve.label': 'Improve this',
+  'chat.parallelRelay.command.improve.shortLabel': 'Improve',
+  'chat.parallelRelay.command.improve.description':
+    'Refine, expand, or strengthen another reply.',
+  'chat.parallelRelay.command.counter.label': 'Counter this',
+  'chat.parallelRelay.command.counter.shortLabel': 'Counter',
+  'chat.parallelRelay.command.counter.description':
+    'Provide a strong counter-argument or alternative approach.',
+  'chat.parallelRelay.command.synthesize.label': 'Synthesize this',
+  'chat.parallelRelay.command.synthesize.shortLabel': 'Synthesize',
+  'chat.parallelRelay.command.synthesize.description':
+    'Combine this with your own analysis - where do they align or diverge?',
+  'chat.parallelRelay.target.noChats': 'no chats',
+  'chat.parallelRelay.target.pair': '{first} and {second}',
+  'chat.parallelRelay.target.many': '{allButLast}, and {last}',
+  'chat.parallelRelay.note.outgoing':
+    'Shared reply #{replyId} via {commandLabel} to {targets}.',
+  'chat.parallelRelay.note.incoming':
+    'Received {commandLabel} from {sourceMemberLabel} for reply #{replyId}.',
+  'chat.parallelRelay.prompt.header': '[Parallel relay - {commandLabel}]',
+  'chat.parallelRelay.prompt.sourceHeader': '[Reply to review]',
+  'chat.parallelRelay.prompt.sourceLabel': 'Source: {sourceMemberLabel}',
+  'chat.parallelRelay.prompt.check.instructionOne':
+    'Review the quoted reply for correctness, risks, blind spots, and unsupported assumptions.',
+  'chat.parallelRelay.prompt.check.instructionTwo':
+    'State what is solid, what is weak, and what you would change.',
+  'chat.parallelRelay.prompt.adopt.instructionOne':
+    'Treat the quoted reply as the new draft to continue from.',
+  'chat.parallelRelay.prompt.adopt.instructionTwo':
+    'Keep what is strong, fix what is weak, and answer in your own words.',
+  'chat.parallelRelay.prompt.debate.instructionOne':
+    'Take the strongest reasonable counter-position to the quoted reply.',
+  'chat.parallelRelay.prompt.debate.instructionTwo':
+    'Challenge assumptions, point out weak spots, and state where you disagree.',
+  'chat.parallelRelay.prompt.improve.instructionOne':
+    'Refine, expand, or strengthen the quoted reply.',
+  'chat.parallelRelay.prompt.improve.instructionTwo':
+    'Fix weaknesses, add missing depth, and produce a better version.',
+  'chat.parallelRelay.prompt.counter.instructionOne':
+    'Provide a strong counter-argument or alternative approach to the quoted reply.',
+  'chat.parallelRelay.prompt.counter.instructionTwo':
+    'Argue from the opposite perspective with concrete reasoning.',
+  'chat.parallelRelay.prompt.synthesize.instructionOne':
+    'Based on our conversation so far, synthesize the quoted reply with your own analysis.',
+  'chat.parallelRelay.prompt.synthesize.instructionTwo':
+    'Identify where you align, where you diverge, and what a combined view would look like.',
   'chat.composer.error.sendFailed': 'Failed to send message.',
   'chat.composer.error.retryFailed': 'Failed to retry response.',
   'chat.composer.error.stopFailed': 'Failed to stop response.',

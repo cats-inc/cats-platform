@@ -1121,6 +1121,64 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.composer.error.noChatForSending': '目前沒有可送出訊息的聊天室。',
   'chat.composer.error.relayFailedForChannel': '轉送到 {channelId} 失敗。',
   'chat.composer.error.relayCompareFailed': '轉送比較訊息失敗。',
+  'chat.parallelRelay.command.check.label': '檢查這則',
+  'chat.parallelRelay.command.check.shortLabel': '檢查',
+  'chat.parallelRelay.command.check.description':
+    '針對另一則回覆壓力測試缺口、風險與錯誤假設。',
+  'chat.parallelRelay.command.adopt.label': '採用這則',
+  'chat.parallelRelay.command.adopt.shortLabel': '採用',
+  'chat.parallelRelay.command.adopt.description':
+    '以另一則回覆作為新的工作方向並加以改善。',
+  'chat.parallelRelay.command.debate.label': '辯論這則',
+  'chat.parallelRelay.command.debate.shortLabel': '辯論',
+  'chat.parallelRelay.command.debate.description':
+    '針對另一則回覆採取最強的合理反方立場。',
+  'chat.parallelRelay.command.improve.label': '改善這則',
+  'chat.parallelRelay.command.improve.shortLabel': '改善',
+  'chat.parallelRelay.command.improve.description':
+    '潤飾、擴充或強化另一則回覆。',
+  'chat.parallelRelay.command.counter.label': '反駁這則',
+  'chat.parallelRelay.command.counter.shortLabel': '反駁',
+  'chat.parallelRelay.command.counter.description':
+    '提出有力反駁或替代作法。',
+  'chat.parallelRelay.command.synthesize.label': '綜合這則',
+  'chat.parallelRelay.command.synthesize.shortLabel': '綜合',
+  'chat.parallelRelay.command.synthesize.description':
+    '結合這則與自己的分析，看出一致與分歧之處。',
+  'chat.parallelRelay.target.noChats': '沒有聊天室',
+  'chat.parallelRelay.target.pair': '{first} 和 {second}',
+  'chat.parallelRelay.target.many': '{allButLast} 和 {last}',
+  'chat.parallelRelay.note.outgoing':
+    '已透過「{commandLabel}」將回覆 #{replyId} 分享給 {targets}。',
+  'chat.parallelRelay.note.incoming':
+    '已收到 {sourceMemberLabel} 針對回覆 #{replyId} 傳來的「{commandLabel}」。',
+  'chat.parallelRelay.prompt.header': '[平行轉送 - {commandLabel}]',
+  'chat.parallelRelay.prompt.sourceHeader': '[要審閱的回覆]',
+  'chat.parallelRelay.prompt.sourceLabel': '來源：{sourceMemberLabel}',
+  'chat.parallelRelay.prompt.check.instructionOne':
+    '審閱引用回覆的正確性、風險、盲點與未被支持的假設。',
+  'chat.parallelRelay.prompt.check.instructionTwo':
+    '說明哪些部分可靠、哪些薄弱，以及你會如何修改。',
+  'chat.parallelRelay.prompt.adopt.instructionOne':
+    '將引用的回覆視為新的草稿，從它繼續推進。',
+  'chat.parallelRelay.prompt.adopt.instructionTwo':
+    '保留強項、修補弱點，並用你自己的說法回答。',
+  'chat.parallelRelay.prompt.debate.instructionOne':
+    '針對引用的回覆採取最強的合理反方立場。',
+  'chat.parallelRelay.prompt.debate.instructionTwo':
+    '挑戰假設、指出弱點，並說明你不同意的地方。',
+  'chat.parallelRelay.prompt.improve.instructionOne':
+    '潤飾、擴充或強化引用的回覆。',
+  'chat.parallelRelay.prompt.improve.instructionTwo':
+    '修補弱點、補足深度，產出更好的版本。',
+  'chat.parallelRelay.prompt.counter.instructionOne':
+    '針對引用的回覆提出有力反駁或替代作法。',
+  'chat.parallelRelay.prompt.counter.instructionTwo':
+    '從相反觀點出發，用具體推理提出論證。',
+  'chat.parallelRelay.prompt.synthesize.instructionOne':
+    '根據目前對話，將引用的回覆與你自己的分析綜合起來。',
+  'chat.parallelRelay.prompt.synthesize.instructionTwo':
+    '指出一致之處、分歧之處，以及整合後的觀點。',
   'chat.composer.error.sendFailed': '送出訊息失敗。',
   'chat.composer.error.retryFailed': '重試回應失敗。',
   'chat.composer.error.stopFailed': '停止回應失敗。',

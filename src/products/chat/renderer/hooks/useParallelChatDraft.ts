@@ -145,7 +145,7 @@ export function useParallelChatDraft(options: {
     setFeedback,
     seedCompareTarget = true,
   } = options;
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [draftParallelChatTargets, setDraftParallelChatTargets] = useState(
     () => createDraftParallelTargets(
       createInitialCompareTargetsWithOptions({
@@ -300,6 +300,7 @@ export function useParallelChatDraft(options: {
         sourceMessageId: messageId,
         command,
         targetPolicy: 'all_others',
+        locale,
       });
       startTransition(() => setState({ status: 'ready', payload: dispatch.appShell }));
 
@@ -324,6 +325,7 @@ export function useParallelChatDraft(options: {
     setBusy,
     setFeedback,
     setState,
+    locale,
     t,
   ]);
 

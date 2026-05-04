@@ -4,6 +4,7 @@ import {
   sendJson,
   sendMethodNotAllowed,
 } from '../../../../shared/http.js';
+import { normalizeMessageLocale } from '../../../../shared/i18n/index.js';
 import {
   buildParallelChatMemberLabel,
   buildParallelChatRelayIncomingNote,
@@ -213,6 +214,7 @@ async function handleRelayParallelChatGroupMessage(
   try {
     const body = await readJsonBody<RelayParallelChatMessageInput>(context.request);
     const normalizedCommand = normalizeParallelChatRelayCommand(body.command);
+    const relayLocale = normalizeMessageLocale(body.locale);
     if (!normalizedCommand) {
       sendRestError(
         context,
@@ -296,7 +298,10 @@ async function handleRelayParallelChatGroupMessage(
             ?? state.globalOrchestrator.executionModelSelection
             ?? null,
         });
-        const commandDefinition = findParallelChatRelayCommand(normalizedCommand);
+        const commandDefinition = findParallelChatRelayCommand(
+          normalizedCommand,
+          relayLocale,
+        );
         const targetMemberLabels = normalizedTargetChannelIds.map((channelId) => {
           const targetChannel = requireChannel(state, channelId);
           return buildParallelChatMemberLabel({
@@ -319,6 +324,7 @@ async function handleRelayParallelChatGroupMessage(
           command: normalizedCommand,
           sourceMemberLabel,
           sourceBody: sourceMessage.body,
+          locale: relayLocale,
         });
 
         const now = nowFrom(context.dependencies);
@@ -332,6 +338,7 @@ async function handleRelayParallelChatGroupMessage(
               command: normalizedCommand,
               sourceMessageId: body.sourceMessageId,
               targetMemberLabels,
+              locale: relayLocale,
             }),
           },
           now,
@@ -359,6 +366,7 @@ async function handleRelayParallelChatGroupMessage(
                 command: normalizedCommand,
                 sourceMessageId: body.sourceMessageId,
                 sourceMemberLabel,
+                locale: relayLocale,
               }),
             },
             now,

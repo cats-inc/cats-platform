@@ -38,7 +38,7 @@ export function useWorkspaceCompareRelay<TPayload extends { chat: unknown }>(inp
     setFeedback,
     setState,
   } = input;
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
 
   return useCallback(async (
     messageId: string,
@@ -57,6 +57,7 @@ export function useWorkspaceCompareRelay<TPayload extends { chat: unknown }>(inp
         sourceMessageId: messageId,
         command,
         targetPolicy: 'all_others',
+        locale,
       });
       startTransition(() => setState({ status: 'ready', payload: dispatch.appShell }));
 
@@ -82,6 +83,7 @@ export function useWorkspaceCompareRelay<TPayload extends { chat: unknown }>(inp
     setBusy,
     setFeedback,
     setState,
+    locale,
     t,
   ]);
 }

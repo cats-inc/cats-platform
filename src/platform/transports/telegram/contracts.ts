@@ -58,6 +58,7 @@ export interface TelegramMessagePayload {
     first_name?: string;
     last_name?: string;
     username?: string;
+    language_code?: string;
   };
   reply_to_message?: {
     message_id?: number;

@@ -1142,6 +1142,72 @@ export const messageKeys = {
   chatComposerErrorRelayFailedForChannel:
     'chat.composer.error.relayFailedForChannel',
   chatComposerErrorRelayCompareFailed: 'chat.composer.error.relayCompareFailed',
+  chatParallelRelayCommandCheckLabel: 'chat.parallelRelay.command.check.label',
+  chatParallelRelayCommandCheckShortLabel:
+    'chat.parallelRelay.command.check.shortLabel',
+  chatParallelRelayCommandCheckDescription:
+    'chat.parallelRelay.command.check.description',
+  chatParallelRelayCommandAdoptLabel: 'chat.parallelRelay.command.adopt.label',
+  chatParallelRelayCommandAdoptShortLabel:
+    'chat.parallelRelay.command.adopt.shortLabel',
+  chatParallelRelayCommandAdoptDescription:
+    'chat.parallelRelay.command.adopt.description',
+  chatParallelRelayCommandDebateLabel: 'chat.parallelRelay.command.debate.label',
+  chatParallelRelayCommandDebateShortLabel:
+    'chat.parallelRelay.command.debate.shortLabel',
+  chatParallelRelayCommandDebateDescription:
+    'chat.parallelRelay.command.debate.description',
+  chatParallelRelayCommandImproveLabel:
+    'chat.parallelRelay.command.improve.label',
+  chatParallelRelayCommandImproveShortLabel:
+    'chat.parallelRelay.command.improve.shortLabel',
+  chatParallelRelayCommandImproveDescription:
+    'chat.parallelRelay.command.improve.description',
+  chatParallelRelayCommandCounterLabel:
+    'chat.parallelRelay.command.counter.label',
+  chatParallelRelayCommandCounterShortLabel:
+    'chat.parallelRelay.command.counter.shortLabel',
+  chatParallelRelayCommandCounterDescription:
+    'chat.parallelRelay.command.counter.description',
+  chatParallelRelayCommandSynthesizeLabel:
+    'chat.parallelRelay.command.synthesize.label',
+  chatParallelRelayCommandSynthesizeShortLabel:
+    'chat.parallelRelay.command.synthesize.shortLabel',
+  chatParallelRelayCommandSynthesizeDescription:
+    'chat.parallelRelay.command.synthesize.description',
+  chatParallelRelayTargetNoChats: 'chat.parallelRelay.target.noChats',
+  chatParallelRelayTargetPair: 'chat.parallelRelay.target.pair',
+  chatParallelRelayTargetMany: 'chat.parallelRelay.target.many',
+  chatParallelRelayOutgoingNote: 'chat.parallelRelay.note.outgoing',
+  chatParallelRelayIncomingNote: 'chat.parallelRelay.note.incoming',
+  chatParallelRelayPromptHeader: 'chat.parallelRelay.prompt.header',
+  chatParallelRelayPromptSourceHeader:
+    'chat.parallelRelay.prompt.sourceHeader',
+  chatParallelRelayPromptSourceLabel: 'chat.parallelRelay.prompt.sourceLabel',
+  chatParallelRelayPromptCheckInstructionOne:
+    'chat.parallelRelay.prompt.check.instructionOne',
+  chatParallelRelayPromptCheckInstructionTwo:
+    'chat.parallelRelay.prompt.check.instructionTwo',
+  chatParallelRelayPromptAdoptInstructionOne:
+    'chat.parallelRelay.prompt.adopt.instructionOne',
+  chatParallelRelayPromptAdoptInstructionTwo:
+    'chat.parallelRelay.prompt.adopt.instructionTwo',
+  chatParallelRelayPromptDebateInstructionOne:
+    'chat.parallelRelay.prompt.debate.instructionOne',
+  chatParallelRelayPromptDebateInstructionTwo:
+    'chat.parallelRelay.prompt.debate.instructionTwo',
+  chatParallelRelayPromptImproveInstructionOne:
+    'chat.parallelRelay.prompt.improve.instructionOne',
+  chatParallelRelayPromptImproveInstructionTwo:
+    'chat.parallelRelay.prompt.improve.instructionTwo',
+  chatParallelRelayPromptCounterInstructionOne:
+    'chat.parallelRelay.prompt.counter.instructionOne',
+  chatParallelRelayPromptCounterInstructionTwo:
+    'chat.parallelRelay.prompt.counter.instructionTwo',
+  chatParallelRelayPromptSynthesizeInstructionOne:
+    'chat.parallelRelay.prompt.synthesize.instructionOne',
+  chatParallelRelayPromptSynthesizeInstructionTwo:
+    'chat.parallelRelay.prompt.synthesize.instructionTwo',
   chatComposerErrorSendFailed: 'chat.composer.error.sendFailed',
   chatComposerErrorRetryFailed: 'chat.composer.error.retryFailed',
   chatComposerErrorStopFailed: 'chat.composer.error.stopFailed',

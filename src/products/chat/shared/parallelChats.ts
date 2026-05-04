@@ -4,6 +4,13 @@ import type {
 } from '../api/contracts.js';
 import { resolveExecutionTargetLabel } from '../../../shared/executionLabel.js';
 import { parseMentionsWithPositions } from '../../../core/mentionParsing.js';
+import {
+  createTranslator,
+  messageKeys,
+  normalizeMessageLocale,
+  type MessageKey,
+  type MessageLocale,
+} from '../../../shared/i18n/index.js';
 
 export interface ParallelChatRelayCommandDefinition {
   id: ParallelChatRelayCommandKind;
@@ -12,44 +19,91 @@ export interface ParallelChatRelayCommandDefinition {
   description: string;
 }
 
-export const PARALLEL_CHAT_RELAY_COMMANDS: ParallelChatRelayCommandDefinition[] = [
-  {
-    id: 'check_this',
-    label: 'Check this',
-    shortLabel: 'Check',
-    description: 'Stress-test another reply for gaps, risks, and wrong assumptions.',
-  },
-  {
-    id: 'adopt_this',
-    label: 'Adopt this',
-    shortLabel: 'Adopt',
-    description: 'Use another reply as the new working direction and improve it.',
-  },
-  {
-    id: 'debate_this',
-    label: 'Debate this',
-    shortLabel: 'Debate',
-    description: 'Take the strongest reasonable counter-position to another reply.',
-  },
-  {
-    id: 'improve_this',
-    label: 'Improve this',
-    shortLabel: 'Improve',
-    description: 'Refine, expand, or strengthen another reply.',
-  },
-  {
-    id: 'counter_this',
-    label: 'Counter this',
-    shortLabel: 'Counter',
-    description: 'Provide a strong counter-argument or alternative approach.',
-  },
-  {
-    id: 'synthesize_this',
-    label: 'Synthesize this',
-    shortLabel: 'Synthesize',
-    description: 'Combine this with your own analysis — where do they align or diverge?',
-  },
+interface ParallelChatRelayCommandCopyKeys {
+  labelKey: MessageKey;
+  shortLabelKey: MessageKey;
+  descriptionKey: MessageKey;
+  promptInstructionOneKey: MessageKey;
+  promptInstructionTwoKey: MessageKey;
+}
+
+const PARALLEL_CHAT_RELAY_COMMAND_IDS: ParallelChatRelayCommandKind[] = [
+  'check_this',
+  'adopt_this',
+  'debate_this',
+  'improve_this',
+  'counter_this',
+  'synthesize_this',
 ];
+
+const PARALLEL_CHAT_RELAY_COMMAND_COPY: Record<
+  ParallelChatRelayCommandKind,
+  ParallelChatRelayCommandCopyKeys
+> = {
+  check_this: {
+    labelKey: messageKeys.chatParallelRelayCommandCheckLabel,
+    shortLabelKey: messageKeys.chatParallelRelayCommandCheckShortLabel,
+    descriptionKey: messageKeys.chatParallelRelayCommandCheckDescription,
+    promptInstructionOneKey: messageKeys.chatParallelRelayPromptCheckInstructionOne,
+    promptInstructionTwoKey: messageKeys.chatParallelRelayPromptCheckInstructionTwo,
+  },
+  adopt_this: {
+    labelKey: messageKeys.chatParallelRelayCommandAdoptLabel,
+    shortLabelKey: messageKeys.chatParallelRelayCommandAdoptShortLabel,
+    descriptionKey: messageKeys.chatParallelRelayCommandAdoptDescription,
+    promptInstructionOneKey: messageKeys.chatParallelRelayPromptAdoptInstructionOne,
+    promptInstructionTwoKey: messageKeys.chatParallelRelayPromptAdoptInstructionTwo,
+  },
+  debate_this: {
+    labelKey: messageKeys.chatParallelRelayCommandDebateLabel,
+    shortLabelKey: messageKeys.chatParallelRelayCommandDebateShortLabel,
+    descriptionKey: messageKeys.chatParallelRelayCommandDebateDescription,
+    promptInstructionOneKey: messageKeys.chatParallelRelayPromptDebateInstructionOne,
+    promptInstructionTwoKey: messageKeys.chatParallelRelayPromptDebateInstructionTwo,
+  },
+  improve_this: {
+    labelKey: messageKeys.chatParallelRelayCommandImproveLabel,
+    shortLabelKey: messageKeys.chatParallelRelayCommandImproveShortLabel,
+    descriptionKey: messageKeys.chatParallelRelayCommandImproveDescription,
+    promptInstructionOneKey: messageKeys.chatParallelRelayPromptImproveInstructionOne,
+    promptInstructionTwoKey: messageKeys.chatParallelRelayPromptImproveInstructionTwo,
+  },
+  counter_this: {
+    labelKey: messageKeys.chatParallelRelayCommandCounterLabel,
+    shortLabelKey: messageKeys.chatParallelRelayCommandCounterShortLabel,
+    descriptionKey: messageKeys.chatParallelRelayCommandCounterDescription,
+    promptInstructionOneKey: messageKeys.chatParallelRelayPromptCounterInstructionOne,
+    promptInstructionTwoKey: messageKeys.chatParallelRelayPromptCounterInstructionTwo,
+  },
+  synthesize_this: {
+    labelKey: messageKeys.chatParallelRelayCommandSynthesizeLabel,
+    shortLabelKey: messageKeys.chatParallelRelayCommandSynthesizeShortLabel,
+    descriptionKey: messageKeys.chatParallelRelayCommandSynthesizeDescription,
+    promptInstructionOneKey: messageKeys.chatParallelRelayPromptSynthesizeInstructionOne,
+    promptInstructionTwoKey: messageKeys.chatParallelRelayPromptSynthesizeInstructionTwo,
+  },
+};
+
+function resolveRelayLocale(locale: string | null | undefined): MessageLocale {
+  return normalizeMessageLocale(locale);
+}
+
+function buildRelayCommandDefinition(
+  id: ParallelChatRelayCommandKind,
+  locale: string | null | undefined,
+): ParallelChatRelayCommandDefinition {
+  const t = createTranslator(resolveRelayLocale(locale));
+  const copy = PARALLEL_CHAT_RELAY_COMMAND_COPY[id];
+  return {
+    id,
+    label: t(copy.labelKey),
+    shortLabel: t(copy.shortLabelKey),
+    description: t(copy.descriptionKey),
+  };
+}
+
+export const PARALLEL_CHAT_RELAY_COMMANDS: ParallelChatRelayCommandDefinition[] =
+  PARALLEL_CHAT_RELAY_COMMAND_IDS.map((id) => buildRelayCommandDefinition(id, 'en'));
 
 export function buildParallelChatMemberLabel(target: ParallelChatTarget): string {
   return resolveExecutionTargetLabel({
@@ -66,9 +120,12 @@ export function createParallelChatTitle(existingCount: number): string {
 
 export function findParallelChatRelayCommand(
   command: ParallelChatRelayCommandKind,
+  locale?: string | null,
 ): ParallelChatRelayCommandDefinition {
-  return PARALLEL_CHAT_RELAY_COMMANDS.find((entry) => entry.id === command)
-    ?? PARALLEL_CHAT_RELAY_COMMANDS[0]!;
+  const normalizedCommand = PARALLEL_CHAT_RELAY_COMMAND_IDS.includes(command)
+    ? command
+    : PARALLEL_CHAT_RELAY_COMMAND_IDS[0]!;
+  return buildRelayCommandDefinition(normalizedCommand, locale);
 }
 
 export function normalizeParallelChatRelayCommand(
@@ -77,7 +134,7 @@ export function normalizeParallelChatRelayCommand(
   if (!command) {
     return null;
   }
-  return PARALLEL_CHAT_RELAY_COMMANDS.some((entry) => entry.id === command)
+  return PARALLEL_CHAT_RELAY_COMMAND_IDS.some((entry) => entry === command)
     ? command as ParallelChatRelayCommandKind
     : null;
 }
@@ -87,40 +144,54 @@ function formatRelayMessageId(sourceMessageId: string): string {
   return normalized.length > 8 ? normalized.slice(0, 8) : normalized;
 }
 
-function formatRelayTargetLabels(labels: string[]): string {
+function formatRelayTargetLabels(labels: string[], locale?: string | null): string {
+  const resolvedLocale = resolveRelayLocale(locale);
+  const t = createTranslator(resolvedLocale);
   if (labels.length === 0) {
-    return 'no chats';
+    return t(messageKeys.chatParallelRelayTargetNoChats);
   }
   if (labels.length === 1) {
     return labels[0]!;
   }
   if (labels.length === 2) {
-    return `${labels[0]} and ${labels[1]}`;
+    return t(messageKeys.chatParallelRelayTargetPair, {
+      first: labels[0]!,
+      second: labels[1]!,
+    });
   }
 
-  return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
+  return t(messageKeys.chatParallelRelayTargetMany, {
+    allButLast: labels.slice(0, -1).join(resolvedLocale === 'zh-TW' ? '、' : ', '),
+    last: labels[labels.length - 1]!,
+  });
 }
 
 export function buildParallelChatRelayOutgoingNote(input: {
   command: ParallelChatRelayCommandKind;
   sourceMessageId: string;
   targetMemberLabels: string[];
+  locale?: string | null;
 }): string {
-  const commandLabel = findParallelChatRelayCommand(input.command).label;
-  return `Shared reply #${formatRelayMessageId(input.sourceMessageId)} via ${commandLabel} to ${
-    formatRelayTargetLabels(input.targetMemberLabels)
-  }.`;
+  const t = createTranslator(resolveRelayLocale(input.locale));
+  return t(messageKeys.chatParallelRelayOutgoingNote, {
+    replyId: formatRelayMessageId(input.sourceMessageId),
+    commandLabel: findParallelChatRelayCommand(input.command, input.locale).label,
+    targets: formatRelayTargetLabels(input.targetMemberLabels, input.locale),
+  });
 }
 
 export function buildParallelChatRelayIncomingNote(input: {
   command: ParallelChatRelayCommandKind;
   sourceMessageId: string;
   sourceMemberLabel: string;
+  locale?: string | null;
 }): string {
-  const commandLabel = findParallelChatRelayCommand(input.command).label;
-  return `Received ${commandLabel} from ${input.sourceMemberLabel} for reply #${
-    formatRelayMessageId(input.sourceMessageId)
-  }.`;
+  const t = createTranslator(resolveRelayLocale(input.locale));
+  return t(messageKeys.chatParallelRelayIncomingNote, {
+    replyId: formatRelayMessageId(input.sourceMessageId),
+    commandLabel: findParallelChatRelayCommand(input.command, input.locale).label,
+    sourceMemberLabel: input.sourceMemberLabel,
+  });
 }
 
 function escapeRelayQuotedMentions(body: string): string {
@@ -144,65 +215,32 @@ export function buildParallelChatRelayPrompt(input: {
   command: ParallelChatRelayCommandKind;
   sourceMemberLabel: string;
   sourceBody: string;
+  locale?: string | null;
 }): string {
+  const t = createTranslator(resolveRelayLocale(input.locale));
+  const commandDefinition = findParallelChatRelayCommand(input.command, input.locale);
+  const commandCopy = PARALLEL_CHAT_RELAY_COMMAND_COPY[input.command];
   const sanitizedSourceBody = escapeRelayQuotedMentions(input.sourceBody);
   const sourceBlock = [
-    '[Reply to review]',
-    `Source: ${input.sourceMemberLabel}`,
+    t(messageKeys.chatParallelRelayPromptSourceHeader),
+    t(messageKeys.chatParallelRelayPromptSourceLabel, {
+      sourceMemberLabel: input.sourceMemberLabel,
+    }),
     '---',
     sanitizedSourceBody.trim(),
     '---',
   ].join('\n');
 
-  switch (input.command) {
-    case 'adopt_this':
-      return [
-        '[Parallel relay · Adopt this]',
-        'Treat the quoted reply as the new draft to continue from.',
-        'Keep what is strong, fix what is weak, and answer in your own words.',
-        '',
-        sourceBlock,
-      ].join('\n');
-    case 'debate_this':
-      return [
-        '[Parallel relay · Debate this]',
-        'Take the strongest reasonable counter-position to the quoted reply.',
-        'Challenge assumptions, point out weak spots, and state where you disagree.',
-        '',
-        sourceBlock,
-      ].join('\n');
-    case 'improve_this':
-      return [
-        '[Parallel relay · Improve this]',
-        'Refine, expand, or strengthen the quoted reply.',
-        'Fix weaknesses, add missing depth, and produce a better version.',
-        '',
-        sourceBlock,
-      ].join('\n');
-    case 'counter_this':
-      return [
-        '[Parallel relay · Counter this]',
-        'Provide a strong counter-argument or alternative approach to the quoted reply.',
-        'Argue from the opposite perspective with concrete reasoning.',
-        '',
-        sourceBlock,
-      ].join('\n');
-    case 'synthesize_this':
-      return [
-        '[Parallel relay · Synthesize this]',
-        'Based on our conversation so far, synthesize the quoted reply with your own analysis.',
-        'Identify where you align, where you diverge, and what a combined view would look like.',
-        '',
-        sourceBlock,
-      ].join('\n');
-    case 'check_this':
-      return [
-        '[Parallel relay · Check this]',
-        'Review the quoted reply for correctness, risks, blind spots, and unsupported assumptions.',
-        'State what is solid, what is weak, and what you would change.',
-        '',
-        sourceBlock,
-      ].join('\n');
+  if (commandCopy) {
+    return [
+      t(messageKeys.chatParallelRelayPromptHeader, {
+        commandLabel: commandDefinition.label,
+      }),
+      t(commandCopy.promptInstructionOneKey),
+      t(commandCopy.promptInstructionTwoKey),
+      '',
+      sourceBlock,
+    ].join('\n');
   }
 
   throw new Error(`Unsupported concurrent relay command: ${input.command}`);
