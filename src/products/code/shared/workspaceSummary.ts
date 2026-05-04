@@ -105,27 +105,3 @@ export function writeCodeWorkspaceSummary(
   });
   return next;
 }
-
-export function labelCodeWorkspaceKind(workspaceKind: CodeWorkspaceKind): string {
-  switch (workspaceKind) {
-    case 'conversation_repo':
-      return 'Current chat repo';
-    case 'managed_room':
-      return 'Managed room workspace';
-    default:
-      return 'Owner-selected folder';
-  }
-}
-
-export function labelCodeWorkspaceOwnershipState(
-  ownershipState: CodeWorkspaceOwnershipState,
-): string {
-  switch (ownershipState) {
-    case 'conversation_bound':
-      return 'Conversation-owned';
-    case 'room_owned':
-      return 'Room-owned';
-    default:
-      return 'Owner-selected';
-  }
-}
