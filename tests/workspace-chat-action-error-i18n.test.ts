@@ -121,6 +121,14 @@ test('workspace chat action formatter hides local API fallback strings', () => {
   );
   assert.equal(
     formatWorkspaceChatActionError(
+      new Error('cats channel continuity reset returned 500'),
+      '開始新的聊天連續性分支失敗。',
+      t,
+    ),
+    '開始新的聊天連續性分支失敗。',
+  );
+  assert.equal(
+    formatWorkspaceChatActionError(
       new Error('parallel chat relay returned 500'),
       '轉送比較失敗。',
       t,

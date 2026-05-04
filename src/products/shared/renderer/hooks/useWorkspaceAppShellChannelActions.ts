@@ -13,6 +13,7 @@ import {
 } from '../../../../shared/workspaceBusy.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
+import { formatWorkspaceChatActionError } from './workspaceChatActionErrorLabels.js';
 
 export interface WorkspaceDirectLaneModelValueLike {
   provider: string;
@@ -73,11 +74,11 @@ export function useWorkspaceResetChannelContinuity<TPayload>({
         const payload = await resetChannelContinuity(channelId);
         startTransition(() => publishReadyPayload(payload));
       } catch (error) {
-        setFeedback(
-          error instanceof Error
-            ? error.message
-            : t(messageKeys.sharedChannelContinuityStartFreshError),
-        );
+        setFeedback(formatWorkspaceChatActionError(
+          error,
+          t(messageKeys.sharedChannelContinuityStartFreshError),
+          t,
+        ));
       } finally {
         setBusy(clearBusyState());
       }

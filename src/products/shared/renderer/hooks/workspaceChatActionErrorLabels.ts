@@ -18,6 +18,7 @@ const LOCAL_FALLBACK_PATTERNS = [
   /^cats channel messaging returned \d+$/u,
   /^cats channel cancel returned \d+$/u,
   /^cats channel participant update returned \d+$/u,
+  /^cats channel continuity reset returned \d+$/u,
   /^channel message retry returned \d+$/u,
   /^parallel chat relay returned \d+$/u,
   /^parallel chat cancel returned \d+$/u,

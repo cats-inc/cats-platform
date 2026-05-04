@@ -169,6 +169,8 @@ The final 2026-05-04 cleanup localized:
 - Shared workspace execution-target save feedback maps deterministic new-chat
   default and channel pending-target API fallback failures to localized feedback
   while preserving unknown provider/runtime diagnostics
+- Workspace channel continuity reset feedback maps deterministic channel reset
+  fallback failures to localized feedback while preserving unknown diagnostics
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.
