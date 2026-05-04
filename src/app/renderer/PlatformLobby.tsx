@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { GuideCatDockSlot } from '../../design/components/GuideCatDockSlot.js';
-import { buildCatExecutionLabel, buildCatTooltip } from '../../shared/executionLabel.js';
 import { nameInitials } from '../../shared/nameInitials.js';
-import type { PlatformHostEnvelope, PlatformLobbyCatSummary } from '../../shared/platform-contract.js';
+import type { PlatformHostEnvelope } from '../../shared/platform-contract.js';
 import {
   resolveRuntimeLobbyDotClassName,
   resolveRuntimePresentationStatus,
@@ -17,57 +16,8 @@ import {
   buildPlatformLobbyEntries,
   pickLobbyGreeting,
 } from './lobbyModel.js';
+import { LobbySidebar } from './lobby/LobbySidebar.js';
 import { resolveGuideCatAssistGreeting } from '../../shared/guideCatAssistPresentation.js';
-
-function buildDirectMessagePath(catId: string): string {
-  return `/chat/dm/${encodeURIComponent(catId)}`;
-}
-
-function buildLobbyCatTooltip(cat: PlatformLobbyCatSummary): string {
-  if (!cat.defaultExecutionTarget) {
-    return buildCatTooltip(cat.name, cat.executionLabel);
-  }
-
-  return buildCatTooltip(cat.name, buildCatExecutionLabel({
-    defaultExecutionTarget: cat.defaultExecutionTarget,
-    defaultModelSelection: cat.defaultModelSelection ?? null,
-    executionLabel: cat.executionLabel,
-  }));
-}
-
-function LobbyCatRoster({
-  cats,
-  onSelect,
-}: {
-  cats: readonly PlatformLobbyCatSummary[];
-  onSelect: (catId: string) => void;
-}) {
-  if (cats.length === 0) return null;
-
-  return (
-    <div className="lobbyCatRoster">
-      {cats.map((cat) => {
-        const style = cat.avatarUrl
-          ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
-          : cat.avatarColor ? { background: cat.avatarColor } : undefined;
-
-        return (
-          <button
-            key={cat.id}
-            type="button"
-            className={cat.isBoss ? 'lobbyCatAvatar lobbyCatAvatarBoss' : 'lobbyCatAvatar'}
-            style={style}
-            data-tooltip={buildLobbyCatTooltip(cat)}
-            aria-label={cat.name}
-            onClick={() => onSelect(cat.id)}
-          >
-            {cat.avatarUrl ? null : nameInitials(cat.name)}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export function PlatformLobby({
   envelope,
@@ -100,16 +50,12 @@ export function PlatformLobby({
   };
 
   return (
-    <div className="screen screenCentered lobbyScreen">
+    <div className="screen lobbyScreen">
       <LobbyBouncingCats animationMode={envelope.lobby.animationMode} cats={envelope.lobby.cats} />
       <div className="platformLobby">
         <div className="lobbyTopBar">
           <span className="lobbyBrand">{t('appBrandName')}</span>
           <div className="lobbyTopBarEnd">
-            <LobbyCatRoster
-              cats={envelope.lobby.cats}
-              onSelect={(catId) => navigate(buildDirectMessagePath(catId))}
-            />
             <GuideCatDockSlot slotKind="lobby" />
             <div className="lobbyIdentity" role="group" aria-label={t('lobbyAccountSettingsAriaLabel')}>
               <button
@@ -172,67 +118,73 @@ export function PlatformLobby({
           </div>
         </div>
 
-        <div className="lobbyHero">
-          <h1 className="lobbyGreeting">{greeting}</h1>
-        </div>
+        <div className="lobbyMain">
+          <LobbySidebar cats={envelope.lobby.cats} />
 
-        <div className="lobbyProducts">
-          <p className="lobbyProductsEyebrow">{t('lobbyProductsSectionTitle')}</p>
-          <div className="platformLobbyGrid">
-            {entries.map((entry) => {
-              const productClassName = 'contentCard platformLobbyCard'
-                + ` platformLobbyCard--${entry.surface ?? 'module'}`
-                + (entry.lastUsed ? ' platformLobbyCard--recent' : '')
-                + (entry.available ? ' platformLobbyCard--mock' : '');
-              const content = (
-                <>
-                  <div className="platformLobbyCardAccent" />
-                  <span className="platformLobbyCardName">{entry.productName}</span>
-                  <span className="platformLobbyCardSub">{entry.subtitle}</span>
-                  {entry.lastUsed ? (
-                    <span className="platformLobbyCardHint">{t('lobbyContinueText')}</span>
-                  ) : null}
-                </>
-              );
+          <div className="lobbyCanvas">
+            <div className="lobbyHero">
+              <h1 className="lobbyGreeting">{greeting}</h1>
+            </div>
 
-              return entry.available ? (
-                <div key={entry.productId} className={productClassName}>
-                  {content}
-                </div>
-              ) : (
-                <button
-                  key={entry.productId}
-                  type="button"
-                  className={productClassName}
-                  onClick={() => navigate(entry.routePrefix)}
-                >
-                  {content}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+            <div className="lobbyProducts">
+              <p className="lobbyProductsEyebrow">{t('lobbyProductsSectionTitle')}</p>
+              <div className="platformLobbyGrid">
+                {entries.map((entry) => {
+                  const productClassName = 'contentCard platformLobbyCard'
+                    + ` platformLobbyCard--${entry.surface ?? 'module'}`
+                    + (entry.lastUsed ? ' platformLobbyCard--recent' : '')
+                    + (entry.available ? ' platformLobbyCard--mock' : '');
+                  const content = (
+                    <>
+                      <div className="platformLobbyCardAccent" />
+                      <span className="platformLobbyCardName">{entry.productName}</span>
+                      <span className="platformLobbyCardSub">{entry.subtitle}</span>
+                      {entry.lastUsed ? (
+                        <span className="platformLobbyCardHint">{t('lobbyContinueText')}</span>
+                      ) : null}
+                    </>
+                  );
 
-        <div className="lobbyProducts">
-          <p className="lobbyProductsEyebrow">{t('lobbyAppsSectionTitle')}</p>
-          <div className="platformLobbyGrid">
-            {appEntries.length > 0 ? appEntries.map((entry) => (
-              <button
-                key={`${entry.appId}:${entry.entryId}`}
-                type="button"
-                className="contentCard platformLobbyCard platformLobbyCard--app"
-                onClick={() => navigate(entry.routePath)}
-                aria-label={t('lobbyOpenEntry', { entryTitle: entry.title })}
-              >
-                <div className="platformLobbyCardAccent" />
-                <span className="platformLobbyCardName">{entry.title}</span>
-                {entry.subtitle ? (
-                  <span className="platformLobbyCardSub">{entry.subtitle}</span>
-                ) : null}
-              </button>
-            )) : (
-              <p className="lobbyAppsEmpty">{t('lobbyAppsEmptyState')}</p>
-            )}
+                  return entry.available ? (
+                    <div key={entry.productId} className={productClassName}>
+                      {content}
+                    </div>
+                  ) : (
+                    <button
+                      key={entry.productId}
+                      type="button"
+                      className={productClassName}
+                      onClick={() => navigate(entry.routePrefix)}
+                    >
+                      {content}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="lobbyProducts">
+              <p className="lobbyProductsEyebrow">{t('lobbyAppsSectionTitle')}</p>
+              <div className="platformLobbyGrid">
+                {appEntries.length > 0 ? appEntries.map((entry) => (
+                  <button
+                    key={`${entry.appId}:${entry.entryId}`}
+                    type="button"
+                    className="contentCard platformLobbyCard platformLobbyCard--app"
+                    onClick={() => navigate(entry.routePath)}
+                    aria-label={t('lobbyOpenEntry', { entryTitle: entry.title })}
+                  >
+                    <div className="platformLobbyCardAccent" />
+                    <span className="platformLobbyCardName">{entry.title}</span>
+                    {entry.subtitle ? (
+                      <span className="platformLobbyCardSub">{entry.subtitle}</span>
+                    ) : null}
+                  </button>
+                )) : (
+                  <p className="lobbyAppsEmpty">{t('lobbyAppsEmptyState')}</p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

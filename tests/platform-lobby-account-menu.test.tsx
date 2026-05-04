@@ -8,10 +8,6 @@ import { GuideCatPlacementProvider } from '../src/app/renderer/GuideCatPlacement
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import { PlatformLobby } from '../src/app/renderer/PlatformLobby.tsx';
 import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
-import {
-  clearRememberedExecutionLabels,
-  rememberExecutionLabel,
-} from '../src/shared/executionLabel.ts';
 
 function createEnvelope(
   overrides: Partial<PlatformHostEnvelope> = {},
@@ -120,11 +116,19 @@ test('PlatformLobby renders the split-click account chrome in the top bar', () =
   assert.match(markup, /<button[^>]+class="lobbyIdentityRuntime"[^>]+aria-label="Runtime status: [^"]+"/u);
   assert.match(markup, />Ken</u);
 
-  // Popup-menu artefacts must be gone — no more aria-haspopup / aria-
-  // expanded, no Settings menu item text.
-  assert.doesNotMatch(markup, /aria-haspopup/u);
-  assert.doesNotMatch(markup, /aria-expanded/u);
-  assert.doesNotMatch(markup, />Settings</u);
+  // Popup-menu artefacts must be gone from the identity pill — no more
+  // aria-haspopup / aria-expanded inside lobbyIdentity, no Settings menu
+  // item text. (The PLAN-091 phase 4 LobbySidebar adds its own
+  // aria-expanded toggles for collapse/expand state — those are
+  // unrelated to the identity-pill chrome and live in a separate region
+  // of the page.)
+  const identityRegion = markup.match(
+    /<div class="lobbyIdentity" role="group"[\s\S]*?<\/div>/u,
+  )?.[0] ?? '';
+  assert.notEqual(identityRegion, '');
+  assert.doesNotMatch(identityRegion, /aria-haspopup/u);
+  assert.doesNotMatch(identityRegion, /aria-expanded/u);
+  assert.doesNotMatch(identityRegion, />Settings</u);
 });
 
 test('PlatformLobby localizes runtime status chrome', () => {
@@ -211,63 +215,12 @@ test('PlatformLobby localizes deterministic Guide Cat assist greetings', () => {
   assert.doesNotMatch(markup, /Choose a surface and get moving\./u);
 });
 
-test('PlatformLobby reuses remembered runtime-backed labels for lobby cat tooltips', () => {
-  clearRememberedExecutionLabels();
-  rememberExecutionLabel({
-    provider: 'claude',
-    instance: 'cli/native',
-    model: 'opus',
-    modelSelection: {
-      controls: {
-        'claude.reasoning_effort': 'xhigh',
-      },
-    },
-    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
-  });
-
-  const markup = renderToStaticMarkup(
-    <StaticRouter location="/lobby">
-      <GuideCatPlacementProvider
-        guideCat={null}
-        placement="floating"
-        floatingAnchor={null}
-        sidecarMode="auto"
-        onPersistSeen={() => {}}
-        onCommit={() => {}}
-      >
-        <PlatformLobby envelope={createEnvelope({
-          lobby: {
-            animationMode: 'reduced',
-            cats: [
-              {
-                id: 'cat-guide',
-                name: 'Guide',
-                avatarColor: '#7A5B3A',
-                avatarUrl: null,
-                isBoss: false,
-                defaultExecutionTarget: {
-                  provider: 'claude',
-                  instance: 'cli/native',
-                  model: 'opus',
-                },
-                defaultModelSelection: {
-                  entryMode: 'explicit',
-                  controls: {
-                    'claude.reasoning_effort': 'xhigh',
-                  },
-                },
-                executionLabel: null,
-              },
-            ],
-          },
-        })} />
-      </GuideCatPlacementProvider>
-    </StaticRouter>,
-  );
-
-  assert.match(markup, /data-tooltip="Guide · Claude-CLI · Opus 4\.7 with 1M context · xHigh"/u);
-  clearRememberedExecutionLabels();
-});
+// PlatformLobby's runtime-backed cat tooltip (the LobbyCatRoster
+// `data-tooltip` attribute) was retired in PLAN-091 phase 4 — the
+// stacked avatars in the top bar are gone and the LobbySidebar surfaces
+// cats as plain rows with names. Per AGENTS.md §Pre-Release
+// Compatibility Policy, the dead test for the dead feature is removed
+// cleanly. If a sidebar row tooltip lands later it gets its own test.
 
 test('PlatformLobby prefers guide cat assist greeting from the platform envelope when present', () => {
   const markup = renderToStaticMarkup(

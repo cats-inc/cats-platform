@@ -3177,6 +3177,19 @@ export const messageKeys = {
   catsListEyebrow: 'catsList.eyebrow',
   catsListEmptyState: 'catsList.emptyState',
   catsListBackToLobby: 'catsList.backToLobby',
+  lobbySidebarAriaLabel: 'lobbySidebar.ariaLabel',
+  lobbySidebarSectionCats: 'lobbySidebar.section.cats',
+  lobbySidebarSectionClowders: 'lobbySidebar.section.clowders',
+  lobbySidebarSectionCatteries: 'lobbySidebar.section.catteries',
+  lobbySidebarNewCat: 'lobbySidebar.newCat',
+  lobbySidebarNewClowder: 'lobbySidebar.newClowder',
+  lobbySidebarNewCattery: 'lobbySidebar.newCattery',
+  lobbySidebarEmptyCats: 'lobbySidebar.empty.cats',
+  lobbySidebarEmptyClowders: 'lobbySidebar.empty.clowders',
+  lobbySidebarEmptyCatteries: 'lobbySidebar.empty.catteries',
+  lobbySidebarToggleExpand: 'lobbySidebar.toggle.expand',
+  lobbySidebarToggleCollapse: 'lobbySidebar.toggle.collapse',
+  lobbySidebarRowAriaCat: 'lobbySidebar.row.aria.cat',
 } as const;
 
 export type MessageCatalogId = (typeof messageKeys)[keyof typeof messageKeys];
