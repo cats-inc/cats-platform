@@ -3151,12 +3151,10 @@ export const messageKeys = {
   designAccountIdentityMenuEnvironmentLabel:
     'design.accountIdentityMenu.environmentLabel',
   designNotificationDismissLabel: 'design.notification.dismissLabel',
-  entityComingSoonEyebrow: 'entity.comingSoon.eyebrow',
-  entityComingSoonTitleCat: 'entity.comingSoon.title.cat',
-  entityComingSoonTitleClowder: 'entity.comingSoon.title.clowder',
-  entityComingSoonTitleCattery: 'entity.comingSoon.title.cattery',
-  entityComingSoonBody: 'entity.comingSoon.body',
-  entityComingSoonIdLabel: 'entity.comingSoon.idLabel',
+  // The Phase-1 EntityComingSoon stub was retired in PLAN-091 phase 6
+  // once CatHome / ClowderHome / CatteryHome shipped. The
+  // `entityComingSoonBackToLobby` label is still used by the
+  // not-found pane in each of those entity homes.
   entityComingSoonBackToLobby: 'entity.comingSoon.backToLobby',
   entityDetailBreadcrumbLobby: 'entity.detail.breadcrumb.lobby',
   catHomeAriaLabel: 'catHome.ariaLabel',
@@ -3190,6 +3188,26 @@ export const messageKeys = {
   lobbySidebarToggleExpand: 'lobbySidebar.toggle.expand',
   lobbySidebarToggleCollapse: 'lobbySidebar.toggle.collapse',
   lobbySidebarRowAriaCat: 'lobbySidebar.row.aria.cat',
+  clowderHomeAriaLabel: 'clowderHome.ariaLabel',
+  clowderHomeChipPartOf: 'clowderHome.chip.partOf',
+  clowderHomeChipCrossUnit: 'clowderHome.chip.crossUnit',
+  clowderHomeTabCats: 'clowderHome.tab.cats',
+  clowderHomeTabSettings: 'clowderHome.tab.settings',
+  clowderHomeEmptyCats: 'clowderHome.empty.cats',
+  clowderHomeSettingsBody: 'clowderHome.settings.body',
+  clowderHomeNotFoundTitle: 'clowderHome.notFound.title',
+  clowderHomeNotFoundBody: 'clowderHome.notFound.body',
+  catteryHomeAriaLabel: 'catteryHome.ariaLabel',
+  catteryHomeTabMembers: 'catteryHome.tab.members',
+  catteryHomeTabClowders: 'catteryHome.tab.clowders',
+  catteryHomeTabCats: 'catteryHome.tab.cats',
+  catteryHomeTabSettings: 'catteryHome.tab.settings',
+  catteryHomeEmptyMembers: 'catteryHome.empty.members',
+  catteryHomeEmptyClowders: 'catteryHome.empty.clowders',
+  catteryHomeEmptyCats: 'catteryHome.empty.cats',
+  catteryHomeSettingsBody: 'catteryHome.settings.body',
+  catteryHomeNotFoundTitle: 'catteryHome.notFound.title',
+  catteryHomeNotFoundBody: 'catteryHome.notFound.body',
 } as const;
 
 export type MessageCatalogId = (typeof messageKeys)[keyof typeof messageKeys];

@@ -2471,13 +2471,6 @@ export const enCatalog: MessageCatalog = {
   'design.accountIdentityMenu.environmentLabel': 'Environment',
   'design.notification.dismissLabel': 'Dismiss',
 
-  'entity.comingSoon.eyebrow': 'Coming soon',
-  'entity.comingSoon.title.cat': 'Cat home',
-  'entity.comingSoon.title.clowder': 'Clowder home',
-  'entity.comingSoon.title.cattery': 'Cattery home',
-  'entity.comingSoon.body':
-    'This page is being built. The route is wired up, but the entity view is not implemented yet.',
-  'entity.comingSoon.idLabel': 'ID',
   'entity.comingSoon.backToLobby': 'Back to Lobby',
   'entity.detail.breadcrumb.lobby': 'Lobby',
   'catHome.ariaLabel': 'Cat home',
@@ -2514,6 +2507,34 @@ export const enCatalog: MessageCatalog = {
   'lobbySidebar.toggle.expand': 'Expand {section}',
   'lobbySidebar.toggle.collapse': 'Collapse {section}',
   'lobbySidebar.row.aria.cat': 'Open Cat: {catName}',
+  'clowderHome.ariaLabel': 'Clowder home',
+  'clowderHome.chip.partOf': 'Part of {catteryName}',
+  'clowderHome.chip.crossUnit': 'Cross-unit task force',
+  'clowderHome.tab.cats': 'Cats',
+  'clowderHome.tab.settings': 'Settings',
+  'clowderHome.empty.cats':
+    'No cats in this Clowder yet. Add the first one once Phase 6 membership management lands.',
+  'clowderHome.settings.body':
+    'Clowder settings (rename, archive, transfer) ship with PLAN-091 phase 6 membership management.',
+  'clowderHome.notFound.title': 'Clowder not found',
+  'clowderHome.notFound.body':
+    'No Clowder with id "{clowderId}" exists in this workspace. It may have been removed, or the link is stale.',
+  'catteryHome.ariaLabel': 'Cattery home',
+  'catteryHome.tab.members': 'Members',
+  'catteryHome.tab.clowders': 'Clowders',
+  'catteryHome.tab.cats': 'Cats',
+  'catteryHome.tab.settings': 'Settings',
+  'catteryHome.empty.members':
+    'No members yet. Add the first one once Phase 6 membership management lands.',
+  'catteryHome.empty.clowders':
+    'No clowders in this Cattery yet. Formal Clowders appear here once Phase 6 lands.',
+  'catteryHome.empty.cats':
+    'No cats reachable through this Cattery yet. The aggregate (direct members + via formal Clowders) populates once Phase 6 ships membership data.',
+  'catteryHome.settings.body':
+    'Cattery settings (profile, transfer ownership, archive) ship with PLAN-091 phase 6 membership management.',
+  'catteryHome.notFound.title': 'Cattery not found',
+  'catteryHome.notFound.body':
+    'No Cattery with id "{catteryId}" exists in this workspace. It may have been removed, or the link is stale.',
 
   'code.activeComposer.detachedBranch': 'Detached branch',
   'code.newDraft.greeting': 'Ready to code.',

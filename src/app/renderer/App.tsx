@@ -41,7 +41,8 @@ import { GuideCatSidecar } from '../../design/components/GuideCatSidecar';
 import { AppHostRoute } from './AppHostRoute.js';
 import { CatHome } from './entities/CatHome.js';
 import { CatsListPage } from './entities/CatsListPage.js';
-import { EntityComingSoon } from './entities/EntityComingSoon.js';
+import { CatteryHome } from './entities/CatteryHome.js';
+import { ClowderHome } from './entities/ClowderHome.js';
 import { PlatformLobby } from './PlatformLobby';
 import {
   GuideCatPlacementProvider,
@@ -637,10 +638,10 @@ export default function PlatformApp() {
           <Route path="/cats" element={<CatsListPage envelope={readyEnvelope} />} />
           <Route path="/cats/:catId" element={<CatHome envelope={readyEnvelope} />} />
           <Route path="/cats/:catId/:lens" element={<CatHome envelope={readyEnvelope} />} />
-          <Route path="/clowders/:clowderId" element={<EntityComingSoon kind="clowder" />} />
-          <Route path="/clowders/:clowderId/:tab" element={<EntityComingSoon kind="clowder" />} />
-          <Route path="/catteries/:catteryId" element={<EntityComingSoon kind="cattery" />} />
-          <Route path="/catteries/:catteryId/:tab" element={<EntityComingSoon kind="cattery" />} />
+          <Route path="/clowders/:clowderId" element={<ClowderHome envelope={readyEnvelope} />} />
+          <Route path="/clowders/:clowderId/:tab" element={<ClowderHome envelope={readyEnvelope} />} />
+          <Route path="/catteries/:catteryId" element={<CatteryHome envelope={readyEnvelope} />} />
+          <Route path="/catteries/:catteryId/:tab" element={<CatteryHome envelope={readyEnvelope} />} />
           <Route path="/apps/:appId/*" element={<AppHostRoute envelope={readyEnvelope} />} />
           <Route path="/products" element={<Navigate to="/lobby" replace />} />
           <Route path="/settings/*" element={settingsSurfaceElement} />
