@@ -60,6 +60,7 @@ import { fetchPlatformEnvelope } from './setup/api';
 import { prefetchProviderCatalogsForRegistryFromClientCache } from './providerCatalogClient.js';
 import { fetchProviderRegistryFromClientCache } from './providerRegistryClient.js';
 import { recordSettingsRouteTransition } from './settings/settingsExitMemory.js';
+import { recordEntitiesRouteTransition } from './entities-shell/entitiesExitMemory.js';
 import { isGuideCatEnabledStatus } from '../../shared/guideCatIdentity.js';
 import { isSettingsPath } from '../../shared/settingsRoute.js';
 import {
@@ -319,6 +320,7 @@ export default function PlatformApp() {
   useEffect(() => {
     const historyState = window.history.state as { idx?: number } | null;
     recordSettingsRouteTransition(location.pathname, historyState?.idx);
+    recordEntitiesRouteTransition(location.pathname, historyState?.idx);
   }, [location.pathname]);
 
   useEffect(() => {

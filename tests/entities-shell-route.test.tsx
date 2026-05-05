@@ -342,7 +342,9 @@ test('Bare /entities renders the Cats Directory index inside EntitiesShell', () 
 
   assert.match(markup, /<div[^>]*class="screen claudeShell"/u);
   assert.match(markup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="entities"/u);
-  assert.match(markup, /class="brandLabel">Cats Directory</u);
+  // Sidebar brand label is just "Directory" (no "Cats" prefix); the
+  // canvas H1 below is the place that carries the full surface name.
+  assert.match(markup, /class="brandLabel entitiesBrandLabel"[^>]*>Directory</u);
   assert.match(markup, /<h1[^>]*class="entityCanvasTitle"[^>]*>Cats Directory</u);
   assert.match(markup, /<div[^>]*class="entityIndexCards"/u);
   assert.match(markup, /aria-label="Open Cats"/u);
@@ -372,30 +374,25 @@ test('Drilled-down /entities/cats route mounts the chat-style appshell (claudeSh
   assert.match(markup, />My Catteries</u);
 });
 
-test('EntitiesAppShellSidebar surface switcher trigger reads "Cats Directory" via the label override', () => {
+test('EntitiesAppShellSidebar header shows the back button + "Directory" label and never renders a surface switcher', () => {
   const markup = renderApp('/entities/cats', createEnvelope());
 
-  // The PlatformSurfaceSwitcher trigger button writes the active
-  // product label inside its inner `<span class="brandLabel">`. With
-  // `activeLabelOverride` set by EntitiesAppShellSidebar, that label
-  // should read "Cats Directory" rather than the user's last-product
-  // surface name.
-  assert.match(markup, /class="brandLabel">Cats Directory</u);
-});
-
-test('EntitiesAppShellSidebar renders the "Back to Lobby" primary action with hover (no active highlight)', () => {
-  const markup = renderApp('/entities/cats', createEnvelope());
-
-  // Mirrors chat's "+ New chat" slot. The primary action should
-  // render as a `<button class="navItem">` (no `navItemActive`,
-  // since /lobby is never the surface this sidebar runs on) carrying
-  // the "Back to Lobby" label. The button is the user's path back to
-  // the unframed /lobby canvas.
+  // The Entities sidebar deliberately does NOT host a
+  // `PlatformSurfaceSwitcher` — the only top-of-sidebar control is
+  // the circular back button + the plain "Directory" label. Earlier
+  // revisions used the surface switcher with a "Cats Directory"
+  // override; this assertion locks in the new chrome and prevents
+  // accidental regression back to the popover trigger.
+  assert.match(markup, /class="entitiesExitButton"/u);
   assert.match(
     markup,
-    /<button[^>]*class="navItem"[^>]*>(?:(?!class="navItemActive").)*Back to Lobby/su,
+    /class="brandLabel entitiesBrandLabel"[^>]*>Directory</u,
   );
-  assert.doesNotMatch(markup, /class="navItemActive"[^>]*>(?:[^<]*)Back to Lobby/su);
+  assert.doesNotMatch(markup, /class="platformSurfaceTrigger"/u);
+  // The standalone "Back to Lobby" navItem the previous primary-action
+  // slot used to host is gone; the back button replaces it with smarter
+  // history-delta exit behaviour.
+  assert.doesNotMatch(markup, />Back to Lobby</u);
 });
 
 test('Drilled-down /entities/cats/:catId route also mounts the EntitiesShell', () => {

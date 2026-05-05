@@ -1,4 +1,4 @@
-import { useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useLocation, useMatch, useNavigate } from 'react-router-dom';
 
 import type {
@@ -24,15 +24,14 @@ import {
   type ConversationSidebarMyCatsPlaceholder,
 } from '../productShell/ConversationSidebarMyCats.js';
 import { ConversationSidebarFooter } from '../productShell/ConversationSidebarFooter.js';
-import { ConversationSidebarNavigation } from '../productShell/ConversationSidebarNavigation.js';
 import { useSidebarOverflowMenuDismiss } from '../productShell/useSidebarOverflowMenuDismiss.js';
 import type {
-  ConversationSidebarAction,
   ConversationSidebarCat,
   ConversationSidebarChannel,
   ConversationSidebarHelpers,
   ConversationSidebarPayload,
 } from '../productShell/ConversationSidebar.js';
+import { getEntitiesExitDelta } from './entitiesExitMemory.js';
 
 /**
  * Sidebar for the Entities workspace shell (entity routes
@@ -196,47 +195,32 @@ export function EntitiesAppShellSidebar({
   const runtimeFooterStatus = resolveRuntimePresentationStatus(payload.runtime);
   const runtimeFooterLabel = resolveRuntimeTooltip(runtimeFooterStatus, t);
 
-  // Surface switcher needs a "current" surface highlight. We are not
-  // on a product surface here, so fall back to the user's last
-  // product. The primary action below is what brings the user back to
-  // /lobby.
+  // The Entities sidebar deliberately does NOT host a
+  // `PlatformSurfaceSwitcher`; the only top-of-sidebar control is the
+  // back button below. The user lands on `/entities/*` as a transition
+  // off some other surface, so cross-surface jumping isn't part of the
+  // primary intent here. `fallbackSurface` survives only as the
+  // `platformShellSurface` nav state hint for settings deep-links so
+  // the settings shell knows which product chrome to wrap itself in.
   const fallbackSurface: PlatformSurfaceId = envelope.lastProductSurface ?? 'chat';
-
   const settingsNavState = {
     platformShellSurface: fallbackSurface,
   };
 
-  const onSwitchProduct = (surface: PlatformSurfaceId): void => {
-    navigate(platformSurfaceRoutePrefix(surface));
-  };
-
-  // Mirrors chat's "+ New chat" slot: primary action with hover but
-  // no active highlight. The Cats / Clowders / Catteries nav items
-  // live inside the scrollable area below, paired with their own rows
-  // like Cats Work's "Projects" nav item + pinned project rows.
-  const primaryActions: readonly ConversationSidebarAction[] = [
-    {
-      key: 'entities-back-to-lobby',
-      label: t(messageKeys.entitiesSidebarBackToLobby),
-      onClick: () => navigate('/lobby'),
-      icon: (
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M2 7l6-5 6 5" />
-          <path d="M3.5 7v6h9V7" />
-          <path d="M6.5 13v-3h3v3" />
-        </svg>
-      ),
-    },
-  ];
+  // Back button mirrors Settings's × close button: jump straight to the
+  // surface the user came from via history-delta, skipping any
+  // in-Entities navigations they did along the way. When entry memory
+  // is absent (cold mount, bookmark, hard reload) we fall back to
+  // `/lobby` with replace so forward never bounces them back inside.
+  const onLeaveEntities = useCallback(() => {
+    const historyState = window.history.state as { idx?: number } | null;
+    const delta = getEntitiesExitDelta(historyState?.idx);
+    if (delta !== null) {
+      navigate(delta);
+    } else {
+      navigate('/lobby', { replace: true });
+    }
+  }, [navigate]);
 
   const catsNavIcon = (
     <svg
@@ -324,14 +308,57 @@ export function EntitiesAppShellSidebar({
       onClick={onCollapsedSidebarClick}
     >
       <div className="sidebarInner">
-        <ConversationSidebarNavigation
-          activeSurface={fallbackSurface}
-          sidebarOpen={sidebarOpen}
-          primaryActions={primaryActions}
-          onToggleSidebar={onToggleSidebar}
-          onSwitchProduct={onSwitchProduct}
-          surfaceLabelOverride={t(messageKeys.entitiesShellSurfaceLabel)}
-        />
+        <div className="brandRow">
+          <div className="brandCopy entitiesBrandCopy">
+            <button
+              type="button"
+              className="entitiesExitButton"
+              aria-label={t(messageKeys.entitiesShellExitButtonAriaLabel)}
+              onClick={onLeaveEntities}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M10 3L5 8l5 5" />
+              </svg>
+            </button>
+            <span className="brandLabel entitiesBrandLabel">
+              {t(messageKeys.entitiesShellBrandLabel)}
+            </span>
+          </div>
+          <button
+            className="chromeButton"
+            type="button"
+            aria-label={
+              sidebarOpen
+                ? t(messageKeys.conversationSidebarCloseSidebarLabel)
+                : t(messageKeys.conversationSidebarOpenSidebarLabel)
+            }
+            onClick={onToggleSidebar}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="1" y="2" width="14" height="12" rx="2" />
+              <path d="M6 2v12" />
+            </svg>
+          </button>
+        </div>
 
         <div className="sidebarScrollable">
           {/* Each lens kind groups a `.navItem` button (Cats /
