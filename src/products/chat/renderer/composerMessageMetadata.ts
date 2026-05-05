@@ -1,6 +1,7 @@
 import type {
   ChannelMessageMetadata,
   ChatMessage,
+  ProductIntentCommandSource,
 } from '../api/contracts.js';
 import { activeAssignedParticipants } from '../shared/channelParticipants.js';
 import type { SelectedChannelView } from '../shared/channelEntry.js';
@@ -8,6 +9,7 @@ import {
   isDefaultChatChannel,
   supportsParticipantAudienceSelection,
 } from '../shared/channelTopology.js';
+import { parseProductIntentCommand } from '../shared/productIntentCommands.js';
 
 export interface ActiveChannelAudienceState {
   audienceKeys: string[];
@@ -72,6 +74,29 @@ function uniqueNonEmptyStrings(values: readonly string[]): string[] {
     normalized.push(trimmed);
   }
   return normalized;
+}
+
+export function resolveProductIntentCommandMessageMetadata(
+  rawText: string,
+  source: ProductIntentCommandSource,
+): Pick<ChannelMessageMetadata, 'productIntentCommand'> | null {
+  const parsed = parseProductIntentCommand(rawText);
+  if (!parsed || parsed.kind !== 'product_intent_command') {
+    return null;
+  }
+
+  return {
+    productIntentCommand: {
+      version: 1,
+      source,
+      command: parsed.command,
+      posture: parsed.posture,
+      targetProduct: parsed.targetProduct,
+      argumentText: parsed.argumentText,
+      rawCommandToken: parsed.rawCommandToken,
+      botSuffix: parsed.botSuffix,
+    },
+  };
 }
 
 function resolveActiveParticipantIds(

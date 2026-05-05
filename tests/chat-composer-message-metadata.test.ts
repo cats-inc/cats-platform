@@ -5,6 +5,7 @@ import {
   buildActiveAudienceParticipantKey,
   resolveActiveChannelAudienceState,
   resolveActiveChannelMessageMetadata,
+  resolveProductIntentCommandMessageMetadata,
 } from '../src/products/chat/renderer/composerMessageMetadata.ts';
 
 test('resolveActiveChannelMessageMetadata reuses the latest active group audience metadata', () => {
@@ -215,4 +216,25 @@ test('resolveActiveChannelAudienceState restores the active-room chip order from
     ],
     workflowShape: 'concurrent',
   });
+});
+
+test('resolveProductIntentCommandMessageMetadata tags web product intent commands', () => {
+  const metadata = resolveProductIntentCommandMessageMetadata('/work clarify MVP scope', 'web');
+
+  assert.deepEqual(metadata, {
+    productIntentCommand: {
+      version: 1,
+      source: 'web',
+      command: 'work',
+      posture: 'work',
+      targetProduct: 'work',
+      argumentText: 'clarify MVP scope',
+      rawCommandToken: 'work',
+      botSuffix: null,
+    },
+  });
+});
+
+test('resolveProductIntentCommandMessageMetadata ignores non-product slash commands', () => {
+  assert.equal(resolveProductIntentCommandMessageMetadata('/help', 'web'), null);
 });

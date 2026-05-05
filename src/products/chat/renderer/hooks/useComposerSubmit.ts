@@ -61,6 +61,7 @@ import {
 } from '../chatUtils';
 import {
   resolveActiveChannelMessageMetadata,
+  resolveProductIntentCommandMessageMetadata,
 } from '../composerMessageMetadata.js';
 import {
   resolveDraftRouteContext,
@@ -611,13 +612,21 @@ export function useComposerSubmit(options: {
         messageBody,
         { signal: ackController.signal },
       );
-      const messageMetadata =
-        companionReferenceSnapshots.length > 0
+      const productIntentCommandMetadata = resolveProductIntentCommandMessageMetadata(
+        messageBody,
+        'web',
+      );
+      const messageMetadata = {
+        ...(baseMessageMetadata ?? {}),
+        ...(productIntentCommandMetadata ?? {}),
+        ...(companionReferenceSnapshots.length > 0
           ? {
-              ...(baseMessageMetadata ?? {}),
               companionReferenceSnapshots,
             }
-          : baseMessageMetadata;
+          : {}),
+      };
+      const normalizedMessageMetadata =
+        Object.keys(messageMetadata).length > 0 ? messageMetadata : null;
 
       if (defaultDispatchTarget) {
         payload = applyPendingExecutionTargetPreview(payload, channelId, defaultDispatchTarget);
@@ -635,9 +644,9 @@ export function useComposerSubmit(options: {
         body: messageBody,
         senderName: payload.ownerDisplayName,
         ...(defaultDispatchTarget ?? {}),
-        ...(messageMetadata
+        ...(normalizedMessageMetadata
           ? {
-              messageMetadata,
+              messageMetadata: normalizedMessageMetadata,
             }
           : {}),
       }, ackController.signal);

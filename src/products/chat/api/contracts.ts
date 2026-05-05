@@ -51,6 +51,11 @@ import type { FolderBrowsePreferences } from '../../shared/folderBrowsePreferenc
 import type { AdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
 import type { ConversationBehaviorPreferences } from '../../shared/conversationBehavior.js';
 import type {
+  ProductIntentCommandName,
+  ProductIntentPosture,
+  ProductIntentTargetProduct,
+} from '../shared/productIntentCommands.js';
+import type {
   RuntimePermissionMode,
   RuntimeSessionPolicy,
   RuntimeSessionCreateContractInput,
@@ -652,6 +657,20 @@ export interface UpdateGlobalOrchestratorInput {
 export interface ChannelMessageMetadata extends Record<string, unknown> {
   recipientParticipantIds?: string[];
   workflowShape?: RoomWorkflowShape | 'parallel' | null;
+  productIntentCommand?: ProductIntentCommandMetadata;
+}
+
+export type ProductIntentCommandSource = 'web' | 'telegram';
+
+export interface ProductIntentCommandMetadata {
+  version: 1;
+  source: ProductIntentCommandSource;
+  command: ProductIntentCommandName;
+  posture: ProductIntentPosture;
+  targetProduct: ProductIntentTargetProduct;
+  argumentText: string;
+  rawCommandToken: string;
+  botSuffix: string | null;
 }
 
 export interface SendChannelMessageInput {
