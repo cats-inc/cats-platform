@@ -319,11 +319,17 @@ interface DirectSlashModeIntakeMetadata {
     catId: string;
     capabilityProfileKind: 'strong_agent' | 'weak_worker' | 'unknown';
   };
-  promptSchema: {
+  command: {
+    name: 'work' | 'code';
+    argumentText: string;
+    posture: 'work' | 'code';
+  };
+  draft: {
     goal: string;
     successCriteria: string[];
     outOfScope: string[];
     openQuestions: string[];
+    proposedNextAction: 'clarify' | 'create_task' | 'create_run';
   };
 }
 ```

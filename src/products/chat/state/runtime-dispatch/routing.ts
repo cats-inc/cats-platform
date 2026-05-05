@@ -10,11 +10,13 @@ import type {
   ProductIntentCommandMetadata,
   ProductIntentCommandSource,
 } from '../../api/contracts.js';
+import { createCatActorId } from '../../../../core/actors.js';
 import type { CatsCoreState } from '../../../../core/types.js';
 import {
   upsertCoreLane,
   upsertCoreSegment,
   upsertCoreTurn,
+  upsertCoreWorkItem,
 } from '../../../../core/model/index.js';
 import type { ProviderAgentDecision } from '../../../../platform/orchestration/index.js';
 import {
@@ -369,10 +371,120 @@ function buildProductPostureChangeMetadata(input: {
   };
 }
 
+function resolveProductIntentCoreIds(userMessageId: string): {
+  turnId: string;
+  laneId: string;
+  segmentId: string;
+  workItemId: string;
+} {
+  return {
+    turnId: `turn-product-intent-${userMessageId}`,
+    laneId: `lane-product-intent-${userMessageId}`,
+    segmentId: `segment-product-intent-${userMessageId}`,
+    workItemId: `work-item-direct-intake-${userMessageId}`,
+  };
+}
+
+function shouldCreateProductIntentWorkItemAnchor(input: {
+  productIntentCommand: ProductIntentCommandMetadata;
+  postureChange: DirectSlashModePostureChangeMetadata | null;
+}): boolean {
+  return (
+    input.productIntentCommand.command === 'work'
+    || input.productIntentCommand.command === 'code'
+  ) && input.postureChange?.changed === true
+    && input.postureChange.capabilityProfileKind === 'strong_agent';
+}
+
+function shouldRequireHumanWorkItemGate(input: {
+  productIntentCommand: ProductIntentCommandMetadata;
+  postureChange: DirectSlashModePostureChangeMetadata | null;
+}): boolean {
+  return (
+    input.productIntentCommand.command === 'work'
+    || input.productIntentCommand.command === 'code'
+  ) && (
+    input.postureChange?.capabilityProfileKind === 'weak_worker'
+    || input.postureChange?.capabilityProfileKind === 'unknown'
+  );
+}
+
+function normalizeWorkItemTitle(value: string, fallback: string): string {
+  const normalized = value.replace(/\s+/gu, ' ').trim();
+  if (!normalized) {
+    return fallback;
+  }
+  return normalized.length <= 72 ? normalized : `${normalized.slice(0, 69)}...`;
+}
+
+interface DirectSlashModeActiveAnchorMetadata {
+  workItemId: string;
+  targetProduct: 'work' | 'code';
+  establishedBySegmentId: string;
+  establishedAt: string;
+}
+
+interface DirectSlashModeHumanGateMetadata {
+  kind: 'human_gate_required';
+  reason: 'direct_audience_not_strong';
+  targetProduct: 'work' | 'code';
+  capabilityProfileKind: 'weak_worker' | 'unknown';
+}
+
+function buildDirectSlashModeActiveAnchor(input: {
+  workItemId: string;
+  targetProduct: 'work' | 'code';
+  segmentId: string;
+  establishedAt: string;
+}): DirectSlashModeActiveAnchorMetadata {
+  return {
+    workItemId: input.workItemId,
+    targetProduct: input.targetProduct,
+    establishedBySegmentId: input.segmentId,
+    establishedAt: input.establishedAt,
+  };
+}
+
+function buildDirectSlashModeHumanGate(input: {
+  productIntentCommand: ProductIntentCommandMetadata;
+  postureChange: DirectSlashModePostureChangeMetadata | null;
+}): DirectSlashModeHumanGateMetadata | null {
+  if (!shouldRequireHumanWorkItemGate(input)) {
+    return null;
+  }
+
+  const capabilityProfileKind = input.postureChange?.capabilityProfileKind;
+  if (capabilityProfileKind !== 'weak_worker' && capabilityProfileKind !== 'unknown') {
+    return null;
+  }
+
+  return {
+    kind: 'human_gate_required',
+    reason: 'direct_audience_not_strong',
+    targetProduct: input.productIntentCommand.targetProduct === 'code' ? 'code' : 'work',
+    capabilityProfileKind,
+  };
+}
+
+function buildDirectSlashModeStateMetadata(input: {
+  activeAnchor: DirectSlashModeActiveAnchorMetadata | null;
+  humanGate: DirectSlashModeHumanGateMetadata | null;
+}): Record<string, unknown> | null {
+  if (!input.activeAnchor && !input.humanGate) {
+    return null;
+  }
+
+  return {
+    ...(input.activeAnchor ? { activeAnchor: input.activeAnchor } : {}),
+    ...(input.humanGate ? { humanGate: input.humanGate } : {}),
+  };
+}
+
 function describeProductIntentCommandAck(
   productIntentCommand: ProductIntentCommandMetadata,
   accepted: boolean,
   rejectionReason: ProductIntentAudienceResolution['rejectionReason'] = null,
+  capabilityProfileKind: DirectSlashModePostureChangeMetadata['capabilityProfileKind'] = null,
 ): string {
   if (!accepted) {
     return rejectionReason === 'missing_direct_audience_cat'
@@ -384,8 +496,20 @@ function describeProductIntentCommandAck(
     case 'chat':
       return 'Chat mode is active.';
     case 'work':
+      if (capabilityProfileKind === 'weak_worker' || capabilityProfileKind === 'unknown') {
+        return 'Work mode is active. This Cat needs human confirmation before creating a Work Item.';
+      }
+      if (capabilityProfileKind === 'strong_agent') {
+        return 'Work mode is active. Draft Work Item anchor created for clarification.';
+      }
       return 'Work mode is active. I will clarify the work before creating an item.';
     case 'code':
+      if (capabilityProfileKind === 'weak_worker' || capabilityProfileKind === 'unknown') {
+        return 'Code mode is active. This Cat needs human confirmation before creating a Work Item.';
+      }
+      if (capabilityProfileKind === 'strong_agent') {
+        return 'Code mode is active. Draft Work Item anchor created with Code target.';
+      }
       return 'Code mode is active. I will clarify the coding work before creating an item.';
   }
 }
@@ -398,6 +522,9 @@ async function persistProductIntentCommandCoreSegment(input: {
   ackMessage: ChatMessage;
   productIntentCommand: ProductIntentCommandMetadata;
   postureChange: DirectSlashModePostureChangeMetadata | null;
+  coreIds: ReturnType<typeof resolveProductIntentCoreIds>;
+  activeAnchor: DirectSlashModeActiveAnchorMetadata | null;
+  humanGate: DirectSlashModeHumanGateMetadata | null;
   accepted: boolean;
   now: Date;
 }): Promise<void> {
@@ -409,12 +536,14 @@ async function persistProductIntentCommandCoreSegment(input: {
     input.state,
     input.channelId,
   );
-  const turnId = `turn-product-intent-${input.userMessage.id}`;
-  const laneId = `lane-product-intent-${input.userMessage.id}`;
-  const segmentId = `segment-product-intent-${input.userMessage.id}`;
+  const { turnId, laneId, segmentId, workItemId } = input.coreIds;
   const event = input.accepted
     ? 'product_intent_posture_changed'
     : 'product_intent_unsupported_context';
+  const directSlashMode = buildDirectSlashModeStateMetadata({
+    activeAnchor: input.activeAnchor,
+    humanGate: input.humanGate,
+  });
   const metadata = {
     event,
     version: 1,
@@ -432,6 +561,7 @@ async function persistProductIntentCommandCoreSegment(input: {
     activeProductPosture: input.productIntentCommand.posture,
     targetProduct: input.productIntentCommand.targetProduct,
     source: input.productIntentCommand.source,
+    ...(directSlashMode ? { directSlashMode } : {}),
   };
 
   await input.chatStore.updateCore((core) => {
@@ -485,6 +615,65 @@ async function persistProductIntentCommandCoreSegment(input: {
       },
       input.now,
     ).core;
+    if (input.activeAnchor && input.postureChange?.audienceCatId) {
+      const targetProduct = input.productIntentCommand.targetProduct === 'code' ? 'code' : 'work';
+      const goal = input.productIntentCommand.argumentText
+        || `Clarify this ${targetProduct} request from the direct conversation.`;
+      nextCore = upsertCoreWorkItem(
+        nextCore,
+        {
+          id: workItemId,
+          title: normalizeWorkItemTitle(
+            input.productIntentCommand.argumentText,
+            targetProduct === 'code'
+              ? 'Direct code intake'
+              : 'Direct work intake',
+          ),
+          status: 'draft',
+          conversationId,
+          assignedActorIds: [createCatActorId(input.postureChange.audienceCatId)],
+          summary: `Draft ${targetProduct} intake created from direct chat for clarification.`,
+          createdAt: input.ackMessage.createdAt,
+          metadata: {
+            directSlashModeIntake: {
+              version: 1,
+              targetProduct,
+              source: {
+                channelId: input.channelId,
+                conversationId,
+                commandTurnId: turnId,
+                commandLaneId: laneId,
+                commandSegmentId: segmentId,
+                transport: input.productIntentCommand.source,
+              },
+              audience: {
+                catId: input.postureChange.audienceCatId,
+                capabilityProfileKind: input.postureChange.capabilityProfileKind,
+              },
+              command: {
+                name: input.productIntentCommand.command,
+                argumentText: input.productIntentCommand.argumentText,
+                posture: input.productIntentCommand.posture,
+              },
+              draft: {
+                goal,
+                successCriteria: ['Clarify measurable success criteria with the owner.'],
+                outOfScope: ['Unconfirmed until the owner and Cat finish clarification.'],
+                openQuestions: ['What outcome should this work produce?'],
+                proposedNextAction: 'clarify',
+              },
+            },
+            directSlashMode: {
+              activeAnchor: input.activeAnchor,
+            },
+            planning: {
+              productHint: targetProduct,
+            },
+          },
+        },
+        input.now,
+      ).core;
+    }
     return nextCore;
   });
 }
@@ -689,6 +878,26 @@ export async function beginChannelMessageDispatch(
           capabilityProfileKind,
         })
       : null;
+    const coreIds = resolveProductIntentCoreIds(userAppend.message.id);
+    const activeAnchor = shouldCreateProductIntentWorkItemAnchor({
+      productIntentCommand,
+      postureChange,
+    })
+      ? buildDirectSlashModeActiveAnchor({
+          workItemId: coreIds.workItemId,
+          targetProduct: productIntentCommand.targetProduct === 'code' ? 'code' : 'work',
+          segmentId: coreIds.segmentId,
+          establishedAt: now.toISOString(),
+        })
+      : null;
+    const humanGate = buildDirectSlashModeHumanGate({
+      productIntentCommand,
+      postureChange,
+    });
+    const directSlashMode = buildDirectSlashModeStateMetadata({
+      activeAnchor,
+      humanGate,
+    });
     const ackAppend = appendMessage(
       nextState,
       channelId,
@@ -699,6 +908,7 @@ export async function beginChannelMessageDispatch(
           productIntentCommand,
           audience.accepted,
           audience.rejectionReason,
+          capabilityProfileKind,
         ),
       },
       now,
@@ -716,6 +926,7 @@ export async function beginChannelMessageDispatch(
           sourceMessageId: userAppend.message.id,
           activeProductPosture: productIntentCommand.posture,
           targetProduct: productIntentCommand.targetProduct,
+          ...(directSlashMode ? { directSlashMode } : {}),
           accepted: audience.accepted,
           audienceCatId: audience.audienceCatId,
           ...(audience.rejectionReason
@@ -744,6 +955,9 @@ export async function beginChannelMessageDispatch(
       ackMessage: ackAppend.message,
       productIntentCommand,
       postureChange,
+      coreIds,
+      activeAnchor,
+      humanGate,
       accepted: audience.accepted,
       now,
     });

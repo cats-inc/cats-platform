@@ -58,7 +58,7 @@ The direct lane remains the conversational follow-up surface.
       `metadata.directSlashModePostureChange` system-segment schema from
       SPEC-104. Per-lane posture may be cached for routing, but message-stream
       events are the audit source of truth.
-- [ ] Task 1.4: Wire the Work Item source-ref schema through existing Core
+- [x] Task 1.4: Wire the Work Item source-ref schema through existing Core
       contracts: `CoreWorkItemRecord.conversationId` (already on Core types)
       carries the source direct conversation id; `metadata.directSlashModeIntake`
       (additive `CoreRecordMetadata` key) carries command segment/turn/lane,
@@ -111,7 +111,7 @@ capability lookup, not a new classifier.
 
 ### Phase 3: Strong Cat clarification and Work Item anchor
 
-- [ ] Task 3.1: Define the minimal Work Item anchor draft payload: title,
+- [x] Task 3.1: Define the minimal Work Item anchor draft payload: title,
       summary, `goal`, non-empty `successCriteria[]`, non-empty
       `outOfScope[]`, non-empty `openQuestions[]`, proposed next action, source
       conversation, audience Cat, command segment, and target product hint.
@@ -140,10 +140,10 @@ capability lookup, not a new classifier.
       SPEC-082 supervision approval gates. The successful `createWorkItem`
       result must be surfaced to the user (system or assistant message
       naming the Work Item id and summary) within the same turn it ran.
-- [ ] Task 3.3: Create the Work Item through existing Core/Work creation paths,
+- [x] Task 3.3: Create the Work Item through existing Core/Work creation paths,
       writing `conversationId`, `metadata.directSlashModeIntake`, and lane
       active-anchor state.
-- [ ] Task 3.4: Wire strong `/code` posture to the same Work Item anchor path
+- [x] Task 3.4: Wire strong `/code` posture to the same Work Item anchor path
       with `targetProduct: 'code'`; Code-bound task/run execution begins only
       after the Work Item exists and only in a subsequent user turn (Task
       3.2e).
@@ -164,7 +164,7 @@ tested independently.
 
 ### Phase 4: Weak / unknown human gate
 
-- [ ] Task 4.1: Define the weak/unknown response contract:
+- [x] Task 4.1: Define the weak/unknown response contract:
       `human_gate_required`, reason, optional draft summary, and suggested
       next actions.
 - [ ] Task 4.2: Add the chosen human-gate UX: Web shows an inline direct-lane
@@ -327,6 +327,7 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Work Item anchor slice: strong direct `/work` and `/code` posture changes now create a draft Core Work Item anchor with `conversationId`, `metadata.directSlashModeIntake`, `metadata.directSlashMode.activeAnchor`, and `metadata.planning.productHint`; repeated posture commands do not duplicate anchors. Weak/unknown direct Cats now record `directSlashMode.humanGate.kind = human_gate_required` and create no durable Work Item. |
 | 2026-05-06 | Direct audience capability slice: product-intent posture changes now require exactly one direct audience Cat, resolve that Cat's execution target through the existing provider capability profile resolver, consume the PLAN-080 bootstrap config, and record `strong_agent` / `weak_worker` / `unknown` in `directSlashModePostureChange.capabilityProfileKind`. Tests cover no-audience, multi-audience, weak, strong, and unknown outcomes without provider-name inference. |
 | 2026-05-06 | Posture event slice: Web and Telegram product-intent commands now enter the same Chat dispatch boundary; recognized `/chat` / `/work` / `/code` messages write the user command, a visible system acknowledgement, and a Core system segment carrying `directSlashModePostureChange`. Non-direct usage produces a visible rejection without dispatching to runtime, and repeated posture commands are recorded as unchanged (`changed: false`). |
 | 2026-05-06 | Web composer slice: outgoing Web messages are tagged with `messageMetadata.productIntentCommand` when the shared parser recognizes `/chat`, `/work`, or `/code`; non-product slash commands still pass through as ordinary message content. |
