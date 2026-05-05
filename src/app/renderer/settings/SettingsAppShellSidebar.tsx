@@ -5,6 +5,7 @@ import { GuideCatDockSlot } from '../../../design/components/GuideCatDockSlot.js
 import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import type { PlatformHostEnvelope } from '../../../shared/platform-contract.js';
+import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import {
   resolveRuntimePresentationStatus,
   resolveRuntimeTooltip,
@@ -62,11 +63,13 @@ function buildSidebarPayload(envelope: PlatformHostEnvelope): {
 
 export function SettingsAppShellSidebar({
   envelope,
+  settingsPayload,
   sidebarOpen,
   onToggleSidebar,
   onCollapsedSidebarClick,
 }: {
   envelope: PlatformHostEnvelope;
+  settingsPayload: AppShellPayload | null;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
@@ -75,7 +78,8 @@ export function SettingsAppShellSidebar({
   const navigate = useNavigate();
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const showDesktop = isDesktopEnvironment();
-  const productEntries = buildPlatformSettingsProductEntries(envelope.products, t);
+  const liveEnvelope = settingsPayload ?? envelope;
+  const productEntries = buildPlatformSettingsProductEntries(liveEnvelope.products, t);
   const currentPath = useLocation().pathname;
 
   // Mirror Settings's existing exit-memory semantics: jump straight
@@ -103,7 +107,7 @@ export function SettingsAppShellSidebar({
   const isCatsRoute = currentPath === '/settings/cats' || currentPath === '/settings/cats/new';
   const isAssistantsRoute = isSection('/settings/assistants');
 
-  const { payload } = buildSidebarPayload(envelope);
+  const { payload } = buildSidebarPayload(liveEnvelope);
   const runtimeFooterStatus = resolveRuntimePresentationStatus(payload.runtime);
   const runtimeFooterLabel = resolveRuntimeTooltip(runtimeFooterStatus, t);
 

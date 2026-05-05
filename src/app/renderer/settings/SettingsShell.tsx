@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
@@ -18,11 +19,53 @@ import '../../../products/shared/renderer/styles/chat-thread-base.css';
 import '../../../products/shared/renderer/styles/extras.css';
 
 import type { PlatformHostEnvelope } from '../../../shared/platform-contract.js';
+import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
+import { fetchAppShell } from '../../../products/shared/renderer/api/index.js';
 import {
   readSidebarOpenPreference,
   writeSidebarOpenPreference,
 } from '../../../shared/sidebarPreference.js';
 import { SettingsAppShellSidebar } from './SettingsAppShellSidebar.js';
+
+const SETTINGS_PAYLOAD_REFRESH_INTERVAL_MS = 5_000;
+
+export type SettingsLoadState =
+  | { status: 'loading' }
+  | { status: 'error'; message: string | null }
+  | { status: 'ready'; payload: AppShellPayload };
+
+export interface SettingsCanvasOutletContext {
+  loadState: SettingsLoadState;
+  onPayloadUpdate: (payload: AppShellPayload) => void;
+  onRetryLoad: () => void;
+}
+
+export function shouldApplySettingsBackgroundRefresh(
+  currentPayload: AppShellPayload,
+  nextPayload: AppShellPayload,
+): boolean {
+  const currentGeneratedAt = Date.parse(currentPayload.metadata.generatedAt);
+  const nextGeneratedAt = Date.parse(nextPayload.metadata.generatedAt);
+
+  if (Number.isNaN(currentGeneratedAt) || Number.isNaN(nextGeneratedAt)) {
+    return true;
+  }
+
+  return nextGeneratedAt >= currentGeneratedAt;
+}
+
+export function mergeSettingsBackgroundRefreshPayload(
+  currentPayload: AppShellPayload,
+  nextPayload: AppShellPayload,
+): AppShellPayload {
+  return {
+    ...currentPayload,
+    runtime: nextPayload.runtime,
+    runtimeSetup: nextPayload.runtimeSetup,
+    metadata: nextPayload.metadata,
+    bootstrapAttemptId: nextPayload.bootstrapAttemptId,
+  };
+}
 
 /**
  * Workspace shell for `/settings/*`. Mirrors `EntitiesShell` so
@@ -46,6 +89,10 @@ export function SettingsShell({
 }: {
   envelope: PlatformHostEnvelope;
 }) {
+  const [loadState, setLoadState] = useState<SettingsLoadState>({ status: 'loading' });
+  const [attempt, setAttempt] = useState(0);
+  const setLoadStateRef = useRef(setLoadState);
+  setLoadStateRef.current = setLoadState;
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() =>
     readSidebarOpenPreference(
       typeof window === 'undefined' ? null : window.localStorage,
@@ -61,6 +108,100 @@ export function SettingsShell({
 
   const onToggleSidebar = useCallback(() => {
     setSidebarOpen((current) => !current);
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoadState((current) =>
+      current.status === 'ready' ? current : { status: 'loading' },
+    );
+    void fetchAppShell(controller.signal)
+      .then((next) => {
+        if (controller.signal.aborted) return;
+        setLoadState({ status: 'ready', payload: next });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        const message = error instanceof Error ? error.message : null;
+        setLoadState({ status: 'error', message });
+      });
+    return () => {
+      controller.abort();
+    };
+  }, [attempt]);
+
+  const isReady = loadState.status === 'ready';
+  useEffect(() => {
+    if (!isReady) return undefined;
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return undefined;
+    }
+
+    let refreshController: AbortController | null = null;
+
+    const refreshInBackground = (): void => {
+      if (document.visibilityState === 'hidden' || refreshController) {
+        return;
+      }
+
+      const controller = new AbortController();
+      refreshController = controller;
+
+      void fetchAppShell(controller.signal)
+        .then((next) => {
+          if (controller.signal.aborted) return;
+          setLoadStateRef.current((current) => {
+            if (
+              current.status !== 'ready'
+              || !shouldApplySettingsBackgroundRefresh(current.payload, next)
+            ) {
+              return current;
+            }
+            return {
+              status: 'ready',
+              payload: mergeSettingsBackgroundRefreshPayload(current.payload, next),
+            };
+          });
+        })
+        .catch(() => {
+          // Keep the last-good settings payload visible on transient refresh failure.
+        })
+        .finally(() => {
+          if (refreshController === controller) {
+            refreshController = null;
+          }
+        });
+    };
+
+    const intervalId = window.setInterval(
+      refreshInBackground,
+      SETTINGS_PAYLOAD_REFRESH_INTERVAL_MS,
+    );
+    const handleFocus = () => refreshInBackground();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshInBackground();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      if (refreshController) {
+        refreshController.abort();
+      }
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isReady]);
+
+  const onPayloadUpdate = useCallback((next: AppShellPayload) => {
+    setLoadState({ status: 'ready', payload: next });
+  }, []);
+
+  const onRetryLoad = useCallback(() => {
+    setAttempt((value) => value + 1);
   }, []);
 
   const onCollapsedSidebarClick = useCallback(
@@ -79,6 +220,7 @@ export function SettingsShell({
     },
     [sidebarOpen],
   );
+  const settingsPayload = loadState.status === 'ready' ? loadState.payload : null;
 
   return (
     <div
@@ -90,12 +232,19 @@ export function SettingsShell({
     >
       <SettingsAppShellSidebar
         envelope={envelope}
+        settingsPayload={settingsPayload}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={onToggleSidebar}
         onCollapsedSidebarClick={onCollapsedSidebarClick}
       />
       <main className="canvas">
-        <Outlet />
+        <Outlet
+          context={{
+            loadState,
+            onPayloadUpdate,
+            onRetryLoad,
+          } satisfies SettingsCanvasOutletContext}
+        />
       </main>
     </div>
   );
