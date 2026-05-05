@@ -33,7 +33,8 @@
   This is a chat-style appshell — `screen claudeShell` outer grid,
   `LobbyAppShellSidebar` on the left, `<main class="canvas">` on the
   right. The shell wraps:
-  `/cats`, `/cats/:catId`, `/clowders/:clowderId(/:tab)?`,
+  `/cats`, `/cats/:catId`, `/clowders`,
+  `/clowders/:clowderId(/:tab)?`, `/catteries`,
   `/catteries/:catteryId(/:tab)?`.
 - **`LobbyAppShellSidebar` reuses the chat / code / work
   `ConversationSidebar*` primitives**:
@@ -160,11 +161,11 @@
   instead). The component still exists in
   `src/app/renderer/entities/CatHome.tsx` for potential future
   use; if you delete it, also remove its imports from `App.tsx`.
-- **`/clowders` and `/catteries` are still PLAN-091 phase-6
-  list-page stubs**, not final canvas peers of `/cats`. They mount
-  inside `EntitiesShell` for URL parity and stable navigation, but
-  canvas/side-panel parity with Cats is deferred to a later PLAN-091
-  phase or a follow-up plan.
+- **`/clowders` and `/catteries` mount canvas entry pages** inside
+  `EntitiesShell`, matching `/cats` as platform-level management
+  entrypoints. The current canvases use a registry + detail-panel
+  shape over the phase-6 summary payload; full mutation flows still
+  wait for the Clowder / Cattery storage records.
 
 ### Path migrations + contracts
 
@@ -183,7 +184,7 @@
   field (post-phase-7 contract bump for sort tiebreaks).
 - `PlatformLobbyClowderSummary` and `PlatformLobbyCatterySummary`
   also carry required `createdAt: string` fields while their full
-  records are still deferred, so Lobby cards and list-page stubs can
+  records are still deferred, so Lobby cards and canvas entry pages can
   apply a stable `createdAt` ascending sort.
 
 ### Settings sidebar
@@ -398,7 +399,7 @@ canvas shape rendered at each entity route.
     (no alias).
 28. The existing `/settings/cats/my-cats` route (currently redirects to
     `/settings/cats`) shall be retargeted to `/cats` (the canonical cats
-    list page).
+    canvas page).
 
 #### Lobby Sidebar Default State
 
@@ -432,10 +433,13 @@ canvas shape rendered at each entity route.
 ```
 /lobby                          ← LobbyHome (sidebar rail + hero + products + apps)
 
+/cats                           ← Cats canvas
 /cats/:catId                    ← StandaloneEntityPage (CatHome) — canonical
 /cats/:catId/:lens              ← lens deep-link (overview|chat|work|code)
+/clowders                       ← Clowders canvas
 /clowders/:clowderId            ← StandaloneEntityPage (ClowderHome) — canonical
 /clowders/:clowderId/:tab       ← tab deep-link (cats|settings)
+/catteries                      ← Catteries canvas
 /catteries/:catteryId           ← StandaloneEntityPage (CatteryHome) — canonical
 /catteries/:catteryId/:tab      ← tab deep-link (members|clowders|cats|settings)
 
@@ -607,13 +611,13 @@ click → /chat/my-cats/:id        click → /chat/dm/:id
 /lobby                            ← LobbyHome (sidebar + hero + products + apps)
                                     no /lobby/{type}/:id family
 
-/cats                             ← Cats list (standalone)
+/cats                             ← Cats canvas
 /cats/:catId                      ← Cat home (Overview default)
 /cats/:catId/:lens                ← lens (overview|chat|work|code)
-/clowders                         ← Clowders list
+/clowders                         ← Clowders canvas
 /clowders/:clowderId              ← Clowder home (Cats default)
 /clowders/:clowderId/:tab         ← cats|settings
-/catteries                        ← Catteries list
+/catteries                        ← Catteries canvas
 /catteries/:catteryId             ← Cattery home (Members default)
 /catteries/:catteryId/:tab        ← members|clowders|cats|settings
 

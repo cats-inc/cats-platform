@@ -325,7 +325,7 @@ export function PlatformLobby({
               >
                 {/* Background button covers the whole card so any
                  * "non-row" pixel — accent stripe, gaps between rows,
-                 * total footer — opens the entity list page. Items
+                 * total footer — opens the entity canvas. Items
                  * sit at higher z-index so their own onClick wins
                  * normally. The accent + total footer set
                  * pointer-events: none in CSS so clicks fall through
@@ -334,7 +334,7 @@ export function PlatformLobby({
                 <button
                   type="button"
                   className="lobbyEntityCardLink"
-                  aria-label={t(messageKeys.lobbyEntityCardOpenListAriaLabel, {
+                  aria-label={t(messageKeys.lobbyEntityCardOpenCanvasAriaLabel, {
                     label: t(card.headerLabelKey),
                   })}
                   onClick={() => navigate(card.routePath)}

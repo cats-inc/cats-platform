@@ -10,9 +10,9 @@ import { CatsListPage } from '../src/app/renderer/entities/CatsListPage.tsx';
 import { CatteryHome } from '../src/app/renderer/entities/CatteryHome.tsx';
 import { ClowderHome } from '../src/app/renderer/entities/ClowderHome.tsx';
 import {
-  CatteriesListPage,
-  ClowdersListPage,
-} from '../src/app/renderer/entities/EntityListPages.tsx';
+  CatteriesCanvasPage,
+  ClowdersCanvasPage,
+} from '../src/app/renderer/entities/EntityCanvasPages.tsx';
 import { I18nProvider } from '../src/app/renderer/i18n/I18nProvider.tsx';
 import { EntitiesShell } from '../src/app/renderer/lobby/EntitiesShell.tsx';
 import { PlatformLobby } from '../src/app/renderer/PlatformLobby.tsx';
@@ -101,7 +101,7 @@ function renderApp(pathname: string, envelope: PlatformHostEnvelope): string {
               <Route path="/cats/:catId" element={<CatHome envelope={envelope} />} />
               <Route
                 path="/clowders"
-                element={<ClowdersListPage envelope={envelope} />}
+                element={<ClowdersCanvasPage envelope={envelope} />}
               />
               <Route
                 path="/clowders/:clowderId"
@@ -109,7 +109,7 @@ function renderApp(pathname: string, envelope: PlatformHostEnvelope): string {
               />
               <Route
                 path="/catteries"
-                element={<CatteriesListPage envelope={envelope} />}
+                element={<CatteriesCanvasPage envelope={envelope} />}
               />
               <Route
                 path="/catteries/:catteryId"
@@ -153,19 +153,19 @@ test('Lobby entity cards keep their per-entity classes with a shared neutral acc
   assert.match(markup, /platformLobbyCard--entity-catteries/u);
 });
 
-test('Each entity card carries a full-card background link that opens its list page', () => {
+test('Each entity card carries a full-card background link that opens its canvas', () => {
   const markup = renderApp('/lobby', createEnvelope());
 
   // The card link is a real `<button class="lobbyEntityCardLink">`
   // covering the card via absolute-inset CSS. Items / accent / total
   // sit at higher z-index (or pointer-events: none) so the link
   // catches non-row clicks. Three cards = three links, each with the
-  // localised "Open … list" aria-label.
+  // localised "Open …" aria-label.
   const linkMatches = markup.match(/class="lobbyEntityCardLink"/gu) ?? [];
   assert.equal(linkMatches.length, 3);
-  assert.match(markup, /aria-label="Open Cats list"/u);
-  assert.match(markup, /aria-label="Open Clowders list"/u);
-  assert.match(markup, /aria-label="Open Catteries list"/u);
+  assert.match(markup, /aria-label="Open Cats"/u);
+  assert.match(markup, /aria-label="Open Clowders"/u);
+  assert.match(markup, /aria-label="Open Catteries"/u);
 });
 
 test('Lobby entity cards show three fixed rows + placeholder when empty (no footer at zero)', () => {
@@ -471,7 +471,7 @@ test('Drilled-down /clowders/:id and /catteries/:id routes both mount the Entiti
   assert.match(catteryMarkup, />Acme Co\.</u);
 });
 
-test('Drilled-down /clowders and /catteries list routes both mount the EntitiesShell', () => {
+test('Drilled-down /clowders and /catteries canvas routes both mount the EntitiesShell', () => {
   const envelope = createEnvelope({
     lobby: {
       animationMode: 'reduced',
@@ -521,19 +521,25 @@ test('Drilled-down /clowders and /catteries list routes both mount the EntitiesS
 
   const clowdersMarkup = renderApp('/clowders', envelope);
   assert.match(clowdersMarkup, /<div[^>]*class="screen claudeShell"/u);
+  assert.match(clowdersMarkup, /class="entityCanvas entityCanvas--clowders"/u);
   assert.match(clowdersMarkup, /href="\/clowders\/clw-dev"/u);
-  assert.match(clowdersMarkup, /href="\/clowders\/clw-new"/u);
+  assert.match(clowdersMarkup, />New Team</u);
+  assert.match(clowdersMarkup, />Parent Cattery</u);
+  assert.match(clowdersMarkup, /href="\/catteries\/acme"/u);
   assert.match(clowdersMarkup, />My Clowders</u);
-  const devClowderIndex = clowdersMarkup.indexOf('href="/clowders/clw-dev"');
-  const newClowderIndex = clowdersMarkup.indexOf('href="/clowders/clw-new"');
+  const devClowderIndex = clowdersMarkup.indexOf('class="entityCanvasRowName">Dev Team');
+  const newClowderIndex = clowdersMarkup.indexOf('class="entityCanvasRowName">New Team');
   assert.ok(devClowderIndex < newClowderIndex);
 
   const catteriesMarkup = renderApp('/catteries', envelope);
   assert.match(catteriesMarkup, /<div[^>]*class="screen claudeShell"/u);
+  assert.match(catteriesMarkup, /class="entityCanvas entityCanvas--catteries"/u);
   assert.match(catteriesMarkup, /href="\/catteries\/acme"/u);
-  assert.match(catteriesMarkup, /href="\/catteries\/beta"/u);
+  assert.match(catteriesMarkup, />Beta Co\.</u);
+  assert.match(catteriesMarkup, />Formal Clowder</u);
+  assert.match(catteriesMarkup, /href="\/clowders\/clw-dev"/u);
   assert.match(catteriesMarkup, />My Catteries</u);
-  const acmeCatteryIndex = catteriesMarkup.indexOf('href="/catteries/acme"');
-  const betaCatteryIndex = catteriesMarkup.indexOf('href="/catteries/beta"');
+  const acmeCatteryIndex = catteriesMarkup.indexOf('class="entityCanvasRowName">Acme Co.');
+  const betaCatteryIndex = catteriesMarkup.indexOf('class="entityCanvasRowName">Beta Co.');
   assert.ok(acmeCatteryIndex < betaCatteryIndex);
 });
