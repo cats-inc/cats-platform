@@ -301,6 +301,10 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.route.notFound.description':
     '目前 Cats 版本沒有註冊這個設定頁。',
   'settings.route.notFound.openGeneral': '開啟一般設定',
+  'settings.canvas.loadingLabel': '載入設定中…',
+  'settings.canvas.loadErrorTitle': '無法載入設定',
+  'settings.canvas.loadErrorBody':
+    '平台服務沒有回應。請確認 runtime 已啟動再重試。',
   'settings.apps.sectionTitle': '應用程式',
   'settings.apps.sectionDescription': '已安裝的 Cats 應用程式、連接器套件與系統模組。',
   'settings.apps.installedPackagesLabel': '已安裝套件',

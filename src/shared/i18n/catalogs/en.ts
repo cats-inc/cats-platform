@@ -310,6 +310,10 @@ export const enCatalog: MessageCatalog = {
   'settings.route.notFound.description':
     'This settings page is not registered in the current Cats build.',
   'settings.route.notFound.openGeneral': 'Open General settings',
+  'settings.canvas.loadingLabel': 'Loading settings…',
+  'settings.canvas.loadErrorTitle': 'Couldn’t load settings',
+  'settings.canvas.loadErrorBody':
+    'The platform service didn’t respond. Check that the runtime is up and try again.',
   'settings.apps.sectionTitle': 'Apps',
   'settings.apps.sectionDescription':
     'Installed Cats apps, connector packages, and system modules.',
