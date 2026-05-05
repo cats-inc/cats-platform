@@ -27,8 +27,8 @@ Existing docs already establish the lower layers:
   provider name, model label, or delivery richness.
 
 The missing decision is how a direct chat command such as `/work` or `/code`
-maps into the supervision and Work/Code materialization layers without
-inventing new Chat modes or a second strong/weak classifier.
+maps into Work Item intake and supervised Work/Code execution without inventing
+new Chat modes or a second strong/weak classifier.
 
 ## Decision
 
@@ -39,11 +39,16 @@ Cat** as the request owner and follow-up agent.
 different Cats:
 
 - **Concierge phase**: the Cat understands the request, asks clarifying
-  questions, and prepares a durable Work Item or Code-bound work anchor when
-  enough information exists.
+  questions, and receives a posture/capability-gated Work Item creation tool
+  with a strict intake schema.
 - **Follow-up / execution phase**: the same Cat continues from that durable
-  anchor, starts supervised task/run execution when allowed, and reports
-  progress back to the same direct lane.
+  anchor, receives task/run follow-up tools when policy allows them, and
+  reports progress back to the same direct lane.
+
+The identity is the same, but the supervised tool surface is phase-sensitive.
+The MVP must not rely on a generic unchanged prompt and hope the model infers
+when to create durable work. Concierge prompt/tool/schema and follow-up
+task/run tools are separate policy grants over the same Cat.
 
 The platform shall not hand the direct MVP off to another Cat unless the owner
 explicitly changes the addressed Cat or a future group/orchestration feature
@@ -53,17 +58,26 @@ introduces that behavior in a separate ADR/SPEC.
 
 The first direct-message intent commands are:
 
-- `/chat` — ordinary direct conversation; no durable Work/Code anchor is
+- `/chat` — ordinary direct conversation; no durable Work Item anchor is
   created by default.
 - `/work` — direct work-intake posture; clarified requests may create a Work
   Item and later task/run execution.
-- `/code` — direct coding posture; clarified requests create Code-bound task/run
-  intent and may create a Work Item when operator-visible planning/follow-up is
-  needed.
+- `/code` — direct coding posture; clarified requests use the same Work Item
+  anchor flow with a Code target before task/run execution begins.
 
 These commands do not create new persistent channel kinds. The domain topology
 remains `direct_message`. The command affects the current product posture and
 materialization path for subsequent turns.
+
+The posture change is recorded as a message-stream system segment/event. A lane
+may keep a current-state cache for routing convenience, but that cache is not
+the audit source of truth. Later Work Item anchors must be replayable back to
+the exact command segment that switched posture.
+
+For the MVP, `/code` is not a separate direct-to-run bypass. `/code` uses the
+same Work Item anchor flow as `/work`, with `targetProduct: 'code'` and a
+Code-bound next action. Code execution starts only after the Work Item anchor
+exists and the supervised Code/Work boundary allows the follow-up task/run.
 
 ### Capability gate uses existing supervision
 
@@ -80,7 +94,7 @@ kinds are still:
 Behavior:
 
 - `strong_agent`: the Cat may autonomously ask clarifying questions and create
-  the durable Work/Code anchor once the request is sufficiently clear, subject
+  the durable Work Item anchor once the request is sufficiently clear, subject
   to normal supervision policy, approval gates, budget, and tool boundaries.
 - `weak_worker` or `unknown`: the Cat may help discuss and clarify, but it shall
   not autonomously create durable Work Items, Tasks, Runs, or Code execution.

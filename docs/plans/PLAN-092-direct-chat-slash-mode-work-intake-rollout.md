@@ -30,31 +30,51 @@
 This rollout should be small and contract-first. It should not redesign Chat,
 Work, Code, or Telegram UI. The implementation target is a bridge:
 
-1. parse direct-message product-intent slash commands;
+1. parse direct-message product-intent slash commands through one shared pure
+   parser;
 2. resolve the direct audience Cat and its execution target;
 3. reuse the provider capability profile resolver;
-4. gate durable Work/Code creation by `strong_agent` vs weak/unknown;
-5. create/link Work/Code anchors through existing product APIs and supervised
+4. gate durable Work Item creation and follow-up execution by `strong_agent`
+   vs weak/unknown;
+5. record posture changes as message-stream system segments;
+6. create/link Work Item anchors through existing product APIs and supervised
    run boundaries.
 
 The direct lane remains the conversational follow-up surface.
 
 ## Implementation Phases
 
-### Phase 1: Contract and command parser
+### Phase 1: Parser, posture events, and source refs
 
-- [ ] Task 1.1: Add a small product-intent command parser for `/chat`,
-      `/work`, and `/code`, separate from Telegram transport-control commands.
+- [ ] Task 1.1: Add a pure Chat-owned product-intent command parser for
+      `/chat`, `/work`, and `/code`. The helper must be shared by Telegram and
+      Web ingress, strip Telegram bot suffixes such as `/work@botname`, trim
+      whitespace, return structured `argumentText`, and avoid transport-local
+      parsing branches.
 - [ ] Task 1.2: Add tests proving `/start`, `/help`, `/commands`, `/status`,
       and `/mode` remain transport-control commands while `/chat`, `/work`, and
       `/code` are product-intent commands.
-- [ ] Task 1.3: Represent product posture as direct-lane metadata or another
-      current-state seam that does not change the channel kind.
-- [ ] Task 1.4: Add tests proving direct lanes remain `direct_message` after
-      posture changes.
+- [ ] Task 1.3: Define and implement the
+      `metadata.directSlashModePostureChange` system-segment schema from
+      SPEC-104. Per-lane posture may be cached for routing, but message-stream
+      events are the audit source of truth.
+- [ ] Task 1.4: Define and implement the Work Item source-ref schema:
+      `CoreWorkItemRecord.conversationId` carries the source direct
+      conversation id; `metadata.directSlashModeIntake` carries command
+      segment/turn/lane, source channel, transport, target product, audience Cat
+      id, capability profile kind, and schema version.
+- [ ] Task 1.5: Define the lane current-state cache for active anchors:
+      `metadata.directSlashMode.activeAnchor = { workItemId, targetProduct,
+      establishedBySegmentId, establishedAt }`, with tests proving the pointer
+      references the Work Item and posture event.
+- [ ] Task 1.6: Register `/chat`, `/work`, and `/code` through the same
+      Telegram command-menu sync path that already owns SPEC-038 commands.
+- [ ] Task 1.7: Add tests proving direct lanes remain `direct_message` after
+      posture changes, repeated posture commands are idempotent, and non-direct
+      channel usage returns a visible rejection without changing posture.
 
-**Deliverables**: command recognition and posture state exist without durable
-work creation.
+**Deliverables**: command recognition, posture audit events, source-ref schema,
+and active-anchor current state exist before durable work creation.
 
 ### Phase 2: Direct audience capability bridge
 
@@ -72,32 +92,46 @@ work creation.
 **Deliverables**: direct-message work-intake permission is a deterministic
 capability lookup, not a new classifier.
 
-### Phase 3: Strong Cat clarification and Work/Code draft anchor
+### Phase 3: Strong Cat clarification and Work Item anchor
 
-- [ ] Task 3.1: Define the minimal Work/Code anchor draft payload: title,
-      summary, source conversation, audience Cat, unknowns/assumptions, proposed
-      next action, and target product hint.
-- [ ] Task 3.2: Wire strong `/work` posture so the Cat can ask clarification
-      questions before durable creation.
-- [ ] Task 3.3: Create the Work Item through existing Core/Work creation paths
-      once the strong Cat has sufficient information.
-- [ ] Task 3.4: Wire strong `/code` posture to create a Code-bound task/run
-      intent, linking a Work Item when operator-visible planning/follow-up is
-      needed.
+- [ ] Task 3.1: Define the minimal Work Item anchor draft payload: title,
+      summary, `goal`, non-empty `successCriteria[]`, non-empty
+      `outOfScope[]`, non-empty `openQuestions[]`, proposed next action, source
+      conversation, audience Cat, command segment, and target product hint.
+- [ ] Task 3.2a: Gate `createWorkItem` tool exposure by direct posture and
+      capability profile. Strong `/work` and `/code` may receive the tool;
+      weak/unknown and `/chat` must not.
+- [ ] Task 3.2b: Add the Concierge prompt protocol so the strong Cat knows when
+      to ask clarification questions and when to call `createWorkItem`.
+- [ ] Task 3.2c: Enforce the `createWorkItem` schema so `goal`,
+      `successCriteria[]`, `outOfScope[]`, and `openQuestions[]` are non-empty
+      before durable creation.
+- [ ] Task 3.2d: Add the clarification escape hatch: after three assistant
+      clarification turns, the Cat must either create the Work Item if schema
+      is satisfied or ask the human to confirm creation with stated
+      assumptions.
+- [ ] Task 3.3: Create the Work Item through existing Core/Work creation paths,
+      writing `conversationId`, `metadata.directSlashModeIntake`, and lane
+      active-anchor state.
+- [ ] Task 3.4: Wire strong `/code` posture to the same Work Item anchor path
+      with `targetProduct: 'code'`; Code-bound task/run execution begins only
+      after the Work Item exists.
 - [ ] Task 3.5: Add tests proving the same direct audience Cat remains attached
       to the follow-up path after anchor creation.
+- [ ] Task 3.6: Add separate tests for tool exposure, Concierge prompt content,
+      schema validation, and clarification-budget behavior.
 
-**Deliverables**: strong direct Cats can create durable anchors through existing
-product boundaries.
+**Deliverables**: strong direct Cats can create Work Item anchors through
+existing product boundaries, with prompt/tool/schema all tested independently.
 
 ### Phase 4: Weak / unknown human gate
 
 - [ ] Task 4.1: Define the weak/unknown response contract:
       `human_gate_required`, reason, optional draft summary, and suggested
       next actions.
-- [ ] Task 4.2: Add a minimal Web direct-lane action for human-confirmed Work
-      Item creation, or explicitly route to the existing manual Work Item create
-      surface if that is the smaller implementation.
+- [ ] Task 4.2: Add the chosen human-gate UX: Web shows an inline direct-lane
+      confirm action for creating the drafted Work Item; Telegram returns a
+      short explanation plus a deep link to the Web confirmation/create surface.
 - [ ] Task 4.3: Add Telegram-safe copy for weak/unknown direct Cats that asks
       the human to confirm/create or switch Cats without exposing internal
       provider jargon.
@@ -108,16 +142,18 @@ product boundaries.
 
 ### Phase 5: Follow-up and supervised execution bridge
 
-- [ ] Task 5.1: Link created Work/Code anchors back to the source direct
-      conversation and audience Cat.
+- [ ] Task 5.1: Link created Work Item anchors back to the source direct
+      conversation and audience Cat through `conversationId` and
+      `metadata.directSlashModeIntake`.
 - [ ] Task 5.2: Ensure follow-up messages in the direct lane can reference the
-      created Work Item / Code task and current run state.
+      active Work Item / Code task and current run state through lane
+      active-anchor resolution.
 - [ ] Task 5.3: Start supervised task/run execution only through existing
       Work/Code run APIs and supervision boundaries.
 - [ ] Task 5.4: Add tests proving direct slash-mode flows do not call runtime
       create/send directly from product code.
 - [ ] Task 5.5: Add read-model/projection tests proving Work/Code surfaces show
-      anchors created from direct chat.
+      Work Items created from direct chat.
 
 **Deliverables**: durable work created from direct chat is visible in both the
 originating lane and the owning product surface.
@@ -141,8 +177,9 @@ demo Work Items unless the user explicitly approves a write.
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/products/chat/**` | Modify | Parse direct product-intent slash commands, keep direct routing ownership. |
-| `src/platform/transports/telegram/**` | Modify | Route product-intent commands separately from transport-control commands. |
+| `src/products/chat/shared/**` | Create/Modify | Shared pure product-intent slash parser for Web and Telegram ingress. |
+| `src/products/chat/**` | Modify | Write posture system segments, keep direct routing ownership, track active anchor current state. |
+| `src/platform/transports/telegram/**` | Modify | Route product-intent commands separately from transport-control commands and sync command menu entries. |
 | `src/platform/supervision/**` | Reuse/Modify | Resolve capability profile through existing provider capability bootstrap config. |
 | `src/products/work/api/**` | Modify | Create/link Work Item anchors through existing Work/Core boundaries. |
 | `src/products/code/api/**` | Modify | Create/link Code-bound task/run intent through existing Code boundaries. |
@@ -158,24 +195,35 @@ demo Work Items unless the user explicitly approves a write.
   create new persistent channel kinds.
 - Keep `Concierge` / `Conductor` as phases of the same direct audience Cat for
   this MVP.
+- Record posture as message-stream system segments. Lane metadata may cache the
+  current posture/active anchor, but it is not the audit source of truth.
+- `/code` always creates a Work Item anchor first in the MVP, with
+  `targetProduct: 'code'`, before Code task/run execution starts.
 - Weak/unknown direct Cats require human confirmation; no automatic hand-off to
   another Cat in this plan.
-- Work/Code durable record creation happens through product-owned APIs above
+- Work Item durable record creation happens through product-owned APIs above
   Core, not through runtime sessions.
 
 ## Testing Strategy
 
 - **Unit tests**:
   - slash parser recognizes product-intent commands
+  - parser strips Telegram bot suffixes and is shared by Telegram/Web
   - transport-control command set remains separate
+  - posture system-segment metadata is written and replayable
+  - repeated posture commands are idempotent
+  - non-direct channel commands produce visible rejection
   - direct audience resolver handles exactly-one / none / many cases
   - capability bridge returns `strong_agent`, `weak_worker`, or `unknown`
   - weak/unknown create attempts return human-gated results
 - **Integration tests**:
   - strong `/work` creates a Work Item with source conversation and Cat context
-  - strong `/code` creates Code-bound task/run intent and optional Work anchor
+  - strong `/code` creates a Work Item with `targetProduct: 'code'`, then
+    starts Code-bound follow-up through supervised boundaries
   - weak/unknown `/work` cannot create durable records without human gate
-  - Work/Code projections include anchors created from direct chat
+  - Work/Code projections include Work Items created from direct chat
+  - active-anchor follow-up attaches later direct messages to the created Work
+    Item
 - **Boundary tests**:
   - no provider-name/model-name strong/weak inference
   - no product direct runtime create/send calls
@@ -190,16 +238,19 @@ demo Work Items unless the user explicitly approves a write.
 |------|--------|------------|
 | Product-intent slash commands collide with Telegram control commands | High | Keep parser layers separate and test the SPEC-038 command set. |
 | Implementation reintroduces mode taxonomy | High | Tests and docs must assert channel kind remains `direct_message`. |
+| Per-lane posture cache becomes the audit source of truth | High | Phase 1 requires message-stream posture events before durable creation. |
 | Strong/weak logic drifts into provider-name checks | High | Capability bridge tests use PLAN-080 config fixtures and absent-config cases. |
 | Weak Cat creates durable work by accident | High | Centralize durable-action permission result and test weak/unknown paths. |
+| Tool exposure lands without prompt/schema support | High | Phase 3 splits tool gating, Concierge prompt, and schema validation into separate tasks/tests. |
 | Direct lane silently hands off to another Cat | Medium | Store/source context checks require the same direct audience Cat unless the owner explicitly switches. |
-| Work/Code anchors become invisible outside Chat | Medium | Projection tests cover Work/Code surfaces and source direct-lane references. |
+| Work Items become invisible outside Chat | Medium | Projection tests cover Work/Code surfaces and source direct-lane references. |
 | Verification pollutes user state | Medium | Prefer isolated stores/tests; manual durable writes require explicit user approval per AGENTS.md. |
 
 ## Progress Log
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Follow-up review close-out: locked posture to message-stream system segments, chose `/code` as Work Item anchor with Code target, defined source-ref metadata and active-anchor cache, split prompt/tool/schema tasks, and added parser/menu/idempotency/non-direct requirements. |
 | 2026-05-06 | Plan created with ADR-101 and SPEC-104 to capture direct-message slash-mode work intake MVP. |
 
 ---

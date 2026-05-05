@@ -20,10 +20,11 @@ The first slash-mode work intake MVP starts from a `direct_message` with one
 audience Cat. The owner can type `/chat`, `/work`, or `/code` from Telegram or
 Web Chat to set the current product posture. If the addressed Cat resolves to a
 `strong_agent` capability profile, that same Cat may ask clarifying questions,
-create a durable Work/Code anchor, and later follow up through supervised
-task/run execution. If the addressed Cat is `weak_worker` or `unknown`, the
-system must not autonomously create durable work records; it asks the human to
-confirm or create them.
+create a durable Work Item anchor, and later follow up through supervised
+task/run execution. `/code` uses the same Work Item anchor with a Code target
+hint; it does not bypass Work Item creation in the MVP. If the addressed Cat is
+`weak_worker` or `unknown`, the system must not autonomously create durable work
+records; it asks the human to confirm or create them.
 
 This spec intentionally avoids adding new Chat channel kinds, entry-preset
 labels, runtime labels, or a second model-strength classifier.
@@ -37,10 +38,10 @@ labels, runtime labels, or a second model-strength classifier.
 - use the existing provider capability profile and supervision policy to decide
   whether the direct Cat may create durable work
 - let a strong direct Cat proactively ask clarification questions and create a
-  Work Item or Code-bound task/run anchor when ready
+  Work Item anchor when ready
 - require a human gate for weak or unknown direct Cats before durable work
   objects are created
-- keep the same direct lane as the follow-up surface after Work/Code anchors
+- keep the same direct lane as the follow-up surface after Work Item anchors
   are created
 
 ## Non-Goals
@@ -71,101 +72,133 @@ labels, runtime labels, or a second model-strength classifier.
 
 #### Command recognition and posture
 
-1. The product shall recognize `/chat`, `/work`, and `/code` as direct-message
-   product-intent commands for both Telegram-origin and Web-origin messages.
-2. Product-intent commands shall be evaluated before normal assistant dispatch
+1. The product shall recognize `/chat`, `/work`, and `/code` through one shared
+   pure parser used by both Telegram-origin and Web-origin messages.
+2. The parser shall live in Chat-owned shared product code, return a structured
+   command result, strip Telegram bot suffixes such as `/work@botname`, trim
+   surrounding whitespace, and keep any post-command argument text as structured
+   `argumentText` rather than letting transports parse it differently.
+3. Product-intent commands shall be evaluated before normal assistant dispatch
    for that inbound turn.
-3. `/chat` shall clear or set the lane posture to ordinary direct chat.
-4. `/work` shall set the lane posture to direct work intake.
-5. `/code` shall set the lane posture to direct code intake.
-6. These commands shall not create a new persistent channel kind. The channel
+4. `/chat` shall set the lane posture to ordinary direct chat.
+5. `/work` shall set the lane posture to direct work intake.
+6. `/code` shall set the lane posture to direct code intake with
+   `targetProduct: 'code'`.
+7. These commands shall not create a new persistent channel kind. The channel
    remains `direct_message`.
-7. Transport-control commands such as `/start`, `/help`, `/commands`, and
+8. Transport-control commands such as `/start`, `/help`, `/commands`, and
    `/status` remain separate from product-intent commands.
-8. The existing `/mode` Telegram command from SPEC-038 shall not be overloaded
+9. The existing `/mode` Telegram command from SPEC-038 shall not be overloaded
    for product switching in this MVP.
+10. Telegram command-menu sync shall register `/chat`, `/work`, and `/code`
+    alongside the SPEC-038 command set so Telegram autocomplete exposes the
+    product-intent commands.
+11. Repeating the current posture command is idempotent. The product shall
+    acknowledge it with a system segment but shall not reset active anchors or
+    create duplicate posture-change state.
+12. A product-intent command in a non-direct channel shall produce a visible
+    "direct messages only" system response and shall not change posture.
 
 #### Direct audience resolution
 
-9. The MVP shall apply only when the current channel is `direct_message`.
-10. The direct lane shall resolve exactly one audience Cat before work-intake
+13. The MVP shall apply only when the current channel is `direct_message`.
+14. The direct lane shall resolve exactly one audience Cat before work-intake
     behavior is allowed.
-11. If no direct audience Cat can be resolved, the system shall reject the
+15. If no direct audience Cat can be resolved, the system shall reject the
     intake action and ask the human to choose a Cat.
-12. If more than one audience is present, the flow is out of MVP scope and shall
+16. If more than one audience is present, the flow is out of MVP scope and shall
     not silently pick a Cat.
 
 #### Capability gating
 
-13. The direct audience Cat shall resolve to an execution target using the
+17. The direct audience Cat shall resolve to an execution target using the
     existing Cat identity / execution-target boundary.
-14. The execution target shall resolve through the existing provider capability
+18. The execution target shall resolve through the existing provider capability
     profile mechanism.
-15. The product shall not infer `strong_agent` or `weak_worker` from provider
+19. The product shall not infer `strong_agent` or `weak_worker` from provider
     names, model labels, runtime availability, or provider delivery events.
-16. `strong_agent` is required before autonomous durable Work/Code anchor
+20. `strong_agent` is required before autonomous durable Work Item anchor
     creation.
-17. `weak_worker` and `unknown` shall be treated as not strong for autonomous
+21. `weak_worker` and `unknown` shall be treated as not strong for autonomous
     durable work creation.
 
 #### Strong direct Cat behavior
 
-18. In `/work` posture, a `strong_agent` direct Cat may ask clarification
+22. In `/work` posture, a `strong_agent` direct Cat may ask clarification
     questions before creating a Work Item.
-19. The clarification loop shall be Cat-initiated when required; the user shall
+23. In `/code` posture, a `strong_agent` direct Cat follows the same Work Item
+    anchor path as `/work`, but the anchor carries `targetProduct: 'code'` and
+    the first next action is Code-bound.
+24. The clarification loop shall be Cat-initiated when required; the user shall
     not need to fill a separate intake form for the MVP.
-20. The Cat shall create a durable Work Item only when it has enough information
-    to produce at least a title, summary, current unknowns, and proposed next
-    action.
-21. After Work Item creation, the same direct Cat remains the follow-up agent
+25. The Cat shall create a durable Work Item only through a posture/capability-
+    gated `createWorkItem` tool with a schema that requires non-empty `goal`,
+    `successCriteria[]`, `outOfScope[]`, and `openQuestions[]`.
+26. The Concierge system prompt shall explicitly tell the Cat when to ask
+    clarifying questions and when to call the gated creation tool. Tool exposure
+    alone is not sufficient.
+27. The default clarification budget is three assistant clarification turns
+    after entering `/work` or `/code`. When the budget is exhausted, the Cat
+    shall either create the Work Item if the schema is satisfied or ask the
+    human to confirm creation with stated assumptions; it shall not ask
+    unbounded new questions.
+28. After Work Item creation, the same direct Cat remains the follow-up agent
     for that item in the direct lane.
-22. The Cat may start or request supervised task/run execution only through
+29. The Cat may start or request supervised task/run execution only through
     existing Work/Code supervision boundaries, approval gates, and budgets.
-23. In `/code` posture, a `strong_agent` direct Cat may create a Code-bound
-    task/run intent. If the request needs operator-visible tracking or
-    requirement clarification, it may create or link a Work Item as the planning
-    anchor before starting Code execution.
-24. In `/chat` posture, the Cat shall answer as ordinary direct chat unless the
+30. In `/chat` posture, the Cat shall answer as ordinary direct chat unless the
     user explicitly changes posture again.
 
 #### Weak / unknown direct Cat behavior
 
-25. In `/work` or `/code` posture, a `weak_worker` or `unknown` direct Cat
+31. In `/work` or `/code` posture, a `weak_worker` or `unknown` direct Cat
     shall not autonomously create Work Items, Tasks, Runs, or Code execution.
-26. The system shall present a human-gated create/confirm path when available.
-27. If a human-gated create UI is unavailable, the system shall explain that a
+32. Web shall present an inline human-confirm action in the direct lane for
+    creating the drafted Work Item. Telegram shall return a concise response
+    with a deep link to the Web confirmation/create surface until Telegram has
+    its own rich confirmation UI.
+33. If a human-gated create UI is unavailable, the system shall explain that a
     human must create the durable work object or switch to a stronger Cat.
-28. Weak/unknown Cats may continue clarifying the request conversationally, but
+34. Weak/unknown Cats may continue clarifying the request conversationally, but
     their output remains advisory until a human confirms durable work creation.
-29. Weak/unknown behavior shall not auto-escalate to another Cat in the MVP.
+35. Weak/unknown behavior shall not auto-escalate to another Cat in the MVP.
 
 #### Durable records and follow-up
 
-30. Work Item creation shall use the current Core / Work product record
+36. Work Item creation shall use the current Core / Work product record
     contracts; this spec does not add a new canonical record family.
-31. The created Work Item shall preserve the source direct conversation and
-    direct audience Cat as traceable context.
-32. A created task/run shall link back to the Work Item or Code-bound planning
-    anchor when such an anchor exists.
-33. Follow-up status and clarification shall be visible in the originating
+37. The created Work Item shall set `conversationId` to the source direct
+    conversation id.
+38. The created Work Item shall store `metadata.directSlashModeIntake` with
+    source command segment id, command turn id, command lane id, source channel
+    id, source transport, product posture, target product, direct audience Cat
+    id, resolved capability profile kind, and schema version.
+39. Created Tasks shall use existing task planning metadata with
+    `planning.productHint` set to `work` or `code`, and shall store a compact
+    `metadata.directSlashModeIntakeRef` pointing back to the Work Item and
+    source command segment.
+40. A direct lane may keep `metadata.directSlashMode.activeAnchor` as current
+    state for routing and follow-up. That lane field is a cache, not the audit
+    source of truth; it must point back to the Work Item and posture event.
+41. Follow-up status and clarification shall be visible in the originating
     direct lane and in the relevant Work/Code product surfaces.
-34. Product posture changes shall be auditable enough to explain why a later
-    Work/Code anchor was created from a direct conversation.
+42. Product posture changes shall be auditable enough to explain why a later
+    Work Item anchor was created from a direct conversation.
 
 #### Boundary and naming
 
-35. This flow shall not reintroduce retired prototype route/control labels.
-36. The canonical domain split remains `direct_message` vs `chat_channel`.
-37. Entry UI labels such as default/group/parallel shall not be used to decide
+43. This flow shall not reintroduce retired prototype route/control labels.
+44. The canonical domain split remains `direct_message` vs `chat_channel`.
+45. Entry UI labels such as default/group/parallel shall not be used to decide
     model strength or durable work permissions.
-38. Strong/weak resolution shall be deterministic policy lookup, not an LLM
+46. Strong/weak resolution shall be deterministic policy lookup, not an LLM
     self-assessment.
 
 ### Non-Functional Requirements
 
 - **Safety**: weak/unknown Cats fail closed for durable work creation.
-- **Auditability**: durable Work/Code anchors created from direct chat carry
-  enough source context for later review.
+- **Auditability**: durable Work Item anchors created from direct chat carry
+  `metadata.directSlashModeIntake` source context for later review.
 - **Transport parity**: Telegram and Web direct lanes share the same product
   intent semantics after transport command parsing.
 - **Layering**: Chat owns direct-lane routing; supervision owns capability and
@@ -180,33 +213,112 @@ Telegram/Web inbound direct message
   -> product-intent slash parser
       /chat -> direct chat posture
       /work -> direct work-intake posture
-      /code -> direct code-intake posture
+      /code -> direct code-intake posture with targetProduct='code'
+  -> write system segment with metadata.directSlashModePostureChange
   -> resolve direct audience Cat
   -> resolve Cat execution target
   -> resolve provider capability profile
       strong_agent:
         same Cat asks clarifying questions
-        same Cat creates Work/Code anchor when ready
+        same Cat creates Work Item anchor when ready
         same Cat follows up through supervised task/run boundary
       weak_worker / unknown:
         no autonomous durable work creation
         ask human to confirm/create or switch Cat
 ```
 
-### Minimal Work Item Draft
+### Posture Event Model
+
+Product posture is event-sourced in the message stream. Every recognized
+product-intent command writes a system segment with:
+
+```ts
+interface DirectSlashModePostureChangeMetadata {
+  version: 1;
+  command: 'chat' | 'work' | 'code';
+  previousPosture: 'chat' | 'work' | 'code' | null;
+  posture: 'chat' | 'work' | 'code';
+  targetProduct: 'chat' | 'work' | 'code';
+  changed: boolean;
+  sourceTransport: 'web' | 'telegram';
+  sourceChannelId: string;
+  audienceCatId: string | null;
+  capabilityProfileKind: 'strong_agent' | 'weak_worker' | 'unknown' | null;
+}
+```
+
+The system segment content should be a short acknowledgement in both Web and
+Telegram, including idempotent repeats (`changed: false`). Non-direct channels
+receive a visible rejection system segment and do not write posture-change
+state.
+
+### Work Item Intake Metadata
+
+The Work Item is the durable anchor for both `/work` and `/code`.
 
 Before a strong Cat creates a Work Item from direct chat, it should be able to
 produce:
 
 - title
 - summary
-- source conversation reference
-- direct audience Cat reference
-- current unknowns or assumptions
+- goal
+- non-empty success criteria
+- non-empty out-of-scope list
+- non-empty open questions list
 - proposed next action
 - target product hint (`work` or `code`)
 
-The exact storage fields should reuse existing Core/Work metadata conventions.
+Storage contract:
+
+```ts
+interface DirectSlashModeIntakeMetadata {
+  version: 1;
+  targetProduct: 'work' | 'code';
+  source: {
+    channelId: string;
+    conversationId: string;
+    commandTurnId: string;
+    commandLaneId: string;
+    commandSegmentId: string;
+    transport: 'web' | 'telegram';
+  };
+  audience: {
+    catId: string;
+    capabilityProfileKind: 'strong_agent' | 'weak_worker' | 'unknown';
+  };
+  promptSchema: {
+    goal: string;
+    successCriteria: string[];
+    outOfScope: string[];
+    openQuestions: string[];
+  };
+}
+```
+
+`CoreWorkItemRecord.conversationId` is the source direct conversation id.
+The full source details live in `workItem.metadata.directSlashModeIntake`.
+Tasks created from the anchor use existing `metadata.planning.productHint` and
+carry `metadata.directSlashModeIntakeRef = { workItemId, commandSegmentId }`.
+
+### Active Anchor Resolution
+
+After a Work Item is created, the originating direct lane keeps an active-anchor
+current-state pointer:
+
+```ts
+interface DirectSlashModeActiveAnchor {
+  workItemId: string;
+  targetProduct: 'work' | 'code';
+  establishedBySegmentId: string;
+  establishedAt: string;
+}
+```
+
+Follow-up messages attach to this active anchor until the user switches posture
+back to `/chat`, selects another active anchor through future UI, or the Work
+Item reaches a terminal status. This pointer is a convenience cache; audit and
+projection tests must still rely on the Work Item source metadata and posture
+event.
 
 ### Product-Intent Command Result
 
@@ -242,30 +354,39 @@ these semantics.
 
 - `/chat`, `/work`, and `/code` are recognized as product-intent commands in a
   direct lane without changing the persisted channel kind.
+- The shared parser handles `/work@botname`, whitespace, and transport parity
+  for Telegram and Web.
 - Telegram transport commands still behave according to SPEC-038 and are not
   confused with product-intent commands.
+- `/chat`, `/work`, and `/code` are registered through Telegram command-menu
+  sync.
+- Product-intent commands write auditable system segments with posture-change
+  metadata.
+- Repeating the active posture command is idempotent and does not reset the
+  active anchor.
+- Product-intent commands in non-direct channels produce a visible rejection and
+  do not change posture.
 - Direct work-intake rejects channels without exactly one audience Cat.
 - Capability gating uses the existing provider capability profile resolver.
 - Tests prove unconfigured/unknown providers do not get autonomous durable work
   creation.
 - Tests prove configured `strong_agent` direct Cats may enter the clarification
-  and Work/Code anchor creation path.
+  and Work Item anchor creation path.
 - Tests prove `weak_worker` direct Cats require a human gate.
-- Created Work/Code anchors preserve source conversation and audience Cat
-  context.
+- Created Work Items preserve source conversation and audience Cat context in
+  the `conversationId` field plus `metadata.directSlashModeIntake`.
+- `/code` creates a Work Item anchor with `targetProduct: 'code'` before Code
+  task/run execution begins.
+- Strong `/work` / `/code` paths test tool exposure, Concierge prompt protocol,
+  and schema validation independently.
 - No retired route/control labels are introduced in storage, API contracts,
   docs, or tests.
 
 ## Open Questions
 
-- [ ] Should `/work` immediately acknowledge posture change in the transcript,
-      or should the next Cat clarification message be the only visible signal?
-- [ ] What is the smallest human-gated create UI for weak/unknown Cats: toast,
-      modal, inline action, or route to Work Item creation?
-- [ ] Should `/code` always create a Work Item first, or only when
-      requirement clarification/follow-up tracking is needed?
-- [ ] Which exact Core/Work metadata fields should carry the source direct
-      conversation and audience Cat references?
+- [ ] Should future UI allow multiple active Work anchors per direct lane with
+      explicit selection, or is one active anchor enough until group
+      orchestration lands?
 
 ## References
 
