@@ -293,7 +293,7 @@ test('Work app view state keeps the direct-lane boot surface only until the lane
   const routeDirectLaneSummary = payload.chat.channels[0] ?? null;
 
   const bootingViewState = deriveWorkAppViewState({
-    pathname: '/work/my-cats/companion-cat',
+    pathname: '/work/dm/companion-cat',
     payload,
     draftDefaultRecipientCatId: 'companion-cat',
     selectedChannel: null,
@@ -305,7 +305,7 @@ test('Work app view state keeps the direct-lane boot surface only until the lane
     draftCatIds: [],
   });
   const hydratedViewState = deriveWorkAppViewState({
-    pathname: '/work/my-cats/companion-cat',
+    pathname: '/work/dm/companion-cat',
     payload,
     draftDefaultRecipientCatId: 'companion-cat',
     selectedChannel: null,

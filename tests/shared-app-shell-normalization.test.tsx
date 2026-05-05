@@ -161,7 +161,7 @@ test('resolveVisibleChatChannel picks the direct-lane channel when the chats rou
   assert.equal(resolveVisibleChatChannelId(null, directLaneChannel), 'channel-direct');
 });
 
-test('WorkspaceProductApp gates solo and participant-room chatSurfaceProps off visibleChannel so direct-lane routes (/chat/dm/:catId, /work/my-cats/:catId, /code/my-cats/:catId) keep direct-lane controls', () => {
+test('WorkspaceProductApp gates solo and participant-room chatSurfaceProps off visibleChannel so direct-lane routes (/chat/dm/:catId, /work/dm/:catId, /code/dm/:catId) keep direct-lane controls', () => {
   const source = readFileSync(
     resolveProjectPath(import.meta.url, 'src/products/shared/renderer/WorkspaceProductApp.tsx'),
     'utf8',

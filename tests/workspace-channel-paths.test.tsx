@@ -37,8 +37,8 @@ test('workspace channel paths keep product prefixes while sharing visible-chat s
   assert.equal(buildCodeNewGroupChatPath(), '/code/new?preset=group');
   assert.equal(buildWorkNewParallelChatPath(), '/work/new?preset=parallel');
   assert.equal(buildCodeNewParallelChatPath(), '/code/new?preset=parallel');
-  assert.equal(buildWorkMyCatPath('companion-cat'), '/work/my-cats/companion-cat');
-  assert.equal(buildCodeMyCatPath('companion-cat'), '/code/my-cats/companion-cat');
+  assert.equal(buildWorkMyCatPath('companion-cat'), '/work/dm/companion-cat');
+  assert.equal(buildCodeMyCatPath('companion-cat'), '/code/dm/companion-cat');
   assert.equal(buildWorkChannelPath('boss-1'), '/work/chats/boss-1');
   assert.equal(buildCodeChannelPath('boss-1'), '/code/chats/boss-1');
   assert.equal(readWorkNewChatPreset('?preset=group'), 'group');
