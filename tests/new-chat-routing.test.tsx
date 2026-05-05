@@ -376,8 +376,8 @@ test('assistant preset capability review defaults to conservative without bootst
   assert.equal(review.capabilityLabel, 'Conservative agent');
   assert.match(review.executionLabel, /Codex/u);
   assert.match(review.executionLabel, /gpt-5\.4/u);
-  assert.equal(review.policySummary, 'single_step; low approval');
-  assert.equal(review.toolGrantSummary, 'read_only tools');
+  assert.equal(review.policySummary, 'single step; low approval');
+  assert.equal(review.toolGrantSummary, 'read-only tools');
   assert.equal(review.requiresActivationReview, false);
   assert.deepEqual(review.reviewReasons, []);
 });
@@ -395,8 +395,8 @@ test('assistant preset capability review uses PLAN-080 fixture treatment for str
   assert.equal(review.capabilityLabel, 'Strong agent');
   assert.match(review.executionLabel, /Codex/u);
   assert.match(review.executionLabel, /gpt-5\.4/u);
-  assert.equal(review.policySummary, 'milestone_plan; low approval');
-  assert.equal(review.toolGrantSummary, 'read_only tools');
+  assert.equal(review.policySummary, 'milestone plan; low approval');
+  assert.equal(review.toolGrantSummary, 'read-only tools');
   assert.equal(review.requiresActivationReview, false);
   assert.deepEqual(review.reviewReasons, []);
 });
