@@ -38,6 +38,24 @@ function buildHelpText(t = createTranslator('en')): string {
   return t(messageKeys.telegramCommandHelpText);
 }
 
+const productIntentCommandCatalog: Array<{
+  command: 'chat' | 'work' | 'code';
+  descriptionKey: MessageKey;
+}> = [
+  {
+    command: 'chat',
+    descriptionKey: messageKeys.telegramCommandChatDescription,
+  },
+  {
+    command: 'work',
+    descriptionKey: messageKeys.telegramCommandWorkDescription,
+  },
+  {
+    command: 'code',
+    descriptionKey: messageKeys.telegramCommandCodeDescription,
+  },
+];
+
 const startCommand: TelegramCommand = {
   name: 'start',
   description: commandDescription(messageKeys.telegramCommandStartDescription),
@@ -168,10 +186,16 @@ export function createTelegramBotCommandCatalog(
   locale: MessageLocale = 'en',
 ): TelegramBotApiCommand[] {
   const t = createTranslator(locale);
-  return createDefaultCommands().map((command) => ({
-    command: command.name,
-    description: command.descriptionKey ? t(command.descriptionKey) : command.description,
-  }));
+  return [
+    ...createDefaultCommands().map((command) => ({
+      command: command.name,
+      description: command.descriptionKey ? t(command.descriptionKey) : command.description,
+    })),
+    ...productIntentCommandCatalog.map((command) => ({
+      command: command.command,
+      description: t(command.descriptionKey),
+    })),
+  ];
 }
 
 export function createTelegramBotCommandCatalogVariants(): Array<{

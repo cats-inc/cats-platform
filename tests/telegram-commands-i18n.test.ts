@@ -10,6 +10,9 @@ import {
   createTelegramBotCommandCatalog,
   createTelegramBotCommandCatalogVariants,
 } from '../src/platform/transports/telegram/commands/index.ts';
+import {
+  PRODUCT_INTENT_COMMAND_NAMES,
+} from '../src/products/chat/shared/productIntentCommands.ts';
 
 function createContext(
   overrides: Partial<Omit<TelegramCommandContext, 'args'>> = {},
@@ -43,6 +46,30 @@ test('Telegram command catalog exposes English fallback and zh command descripti
     zh.find((command) => command.command === 'mode')?.description,
     '查看或切換陪伴與代理模式',
   );
+  assert.equal(
+    english.find((command) => command.command === 'work')?.description,
+    'Clarify and create a Work Item',
+  );
+  assert.equal(
+    zh.find((command) => command.command === 'code')?.description,
+    '釐清 Code 工作',
+  );
+  assert.deepEqual(
+    PRODUCT_INTENT_COMMAND_NAMES.map((command) => command),
+    ['chat', 'work', 'code'],
+  );
+  assert.deepEqual(
+    PRODUCT_INTENT_COMMAND_NAMES.filter((command) =>
+      english.some((catalogCommand) => catalogCommand.command === command)),
+    ['chat', 'work', 'code'],
+  );
+  const productIntentCommandNameSet = new Set<string>(PRODUCT_INTENT_COMMAND_NAMES);
+  assert.deepEqual(
+    createDefaultCommands()
+      .map((command) => command.name)
+      .filter((command) => productIntentCommandNameSet.has(command)),
+    [],
+  );
 
   assert.deepEqual(
     createTelegramBotCommandCatalogVariants().map((catalog) => catalog.languageCode),
@@ -57,6 +84,8 @@ test('Telegram slash command replies localize from the sender language code', as
   const help = await router.dispatch('/help', createContext());
   assert.match(help?.replyText ?? '', /可用指令：/u);
   assert.match(help?.replyText ?? '', /\/mode companion - 切換到陪伴行為/u);
+  assert.match(help?.replyText ?? '', /\/work - 釐清並建立 Work Item/u);
+  assert.match(help?.replyText ?? '', /\/code - 釐清 Code 工作/u);
 
   const start = await router.dispatch('/start', createContext());
   assert.match(start?.replyText ?? '', /你好！我是 Milo/u);

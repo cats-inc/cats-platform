@@ -143,13 +143,23 @@ This spec defines the first command surface for Telegram-bound Cats.
 26. If command-menu sync fails, slash-command handling shall still work when the
     user types commands manually.
 
+#### Product-intent command discoverability
+
+27. `/chat`, `/work`, and `/code` are product-intent commands owned by SPEC-104,
+    not Telegram transport-control commands.
+28. The Telegram command menu and `/help` / `/commands` output shall list
+    `/chat`, `/work`, and `/code` so users can discover them in Telegram.
+29. Listing those commands shall not register them as transport-control command
+    handlers; product-intent routing still happens before ordinary chat dispatch
+    in the Chat product seam.
+
 #### Per-binding behavior
 
-27. Each Telegram bot binding shall expose the same baseline command surface in
+30. Each Telegram bot binding shall expose the same baseline command surface in
     the first slice.
-28. Command responses may include the bound Cat's display name and private-lane
+31. Command responses may include the bound Cat's display name and private-lane
     context so users understand which Cat/bot they are talking to.
-29. This slice shall not require different command sets per Cat, though that
+32. This slice shall not require different command sets per Cat, though that
     may be added later.
 
 ### Non-Functional Requirements
