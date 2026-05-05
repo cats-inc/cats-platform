@@ -9,23 +9,24 @@ import {
 } from '../src/products/shared/renderer/myCatNavigation.ts';
 import { resolveMyCatNavigationTarget as resolveCodeMyCatNavigationTarget } from '../src/products/code/renderer/myCatNavigation.ts';
 import { resolveMyCatNavigationTarget as resolveWorkMyCatNavigationTarget } from '../src/products/work/renderer/myCatNavigation.ts';
+import { messageKeys } from '../src/shared/i18n/messageKeys.ts';
 
 test('buildMyCatPathForPrefix trims and encodes cat ids without leaking the chat prefix', () => {
   assert.equal(
     buildMyCatPathForPrefix('/work', '  companion/cat  '),
-    '/work/my-cats/companion%2Fcat',
+    '/work/dm/companion%2Fcat',
   );
-  assert.equal(buildMyCatPathForPrefix('/code', '   '), '/code/my-cats');
+  assert.equal(buildMyCatPathForPrefix('/code', '   '), '/code/dm');
 });
 
 test('workspace My Cats navigation targets stay product-local for work and code', () => {
   assert.deepEqual(resolveWorkMyCatNavigationTarget([], 'companion-cat'), {
     kind: 'direct_lane',
-    path: '/work/my-cats/companion-cat',
+    path: '/work/dm/companion-cat',
   });
   assert.deepEqual(resolveCodeMyCatNavigationTarget([], 'companion-cat'), {
     kind: 'direct_lane',
-    path: '/code/my-cats/companion-cat',
+    path: '/code/dm/companion-cat',
   });
 });
 
@@ -44,9 +45,9 @@ test('My Cats status dots map runtime lease states onto stable class and label c
   assert.equal(statusDotClassName('error'), 'myCatDot myCatDotError');
   assert.equal(statusDotClassName('no_dot'), '');
 
-  assert.equal(statusDotLabel('awake'), 'Awake');
-  assert.equal(statusDotLabel('waking_up'), 'Waking up');
-  assert.equal(statusDotLabel('sleeping'), 'Sleeping');
-  assert.equal(statusDotLabel('error'), 'Error');
-  assert.equal(statusDotLabel('no_dot'), '');
+  assert.equal(statusDotLabel('awake'), messageKeys.chatLifecycleAwakeLabel);
+  assert.equal(statusDotLabel('waking_up'), messageKeys.chatLifecycleWakingUpLabel);
+  assert.equal(statusDotLabel('sleeping'), messageKeys.chatLifecycleSleepingLabel);
+  assert.equal(statusDotLabel('error'), messageKeys.chatCatStatusErrorLabel);
+  assert.equal(statusDotLabel('no_dot'), null);
 });
