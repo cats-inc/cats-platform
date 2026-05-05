@@ -59,6 +59,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [ADR-101](./decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md) — direct-message `/work`/`/code` MVP uses the same direct audience Cat, existing provider capability profiles, and a human gate for weak/unknown Cats
+- [SPEC-104](./specs/SPEC-104-direct-chat-slash-mode-work-intake.md) — Direct Chat Slash-Mode Work Intake contract for `/chat`, `/work`, `/code`, strong same-Cat clarification, and weak/unknown human gating
+- [PLAN-092](./plans/PLAN-092-direct-chat-slash-mode-work-intake-rollout.md) — rollout plan for command parsing, direct audience capability bridge, durable Work/Code anchor creation, weak/unknown human gate, and projections
 - [ADR-100](./decisions/100-cats-as-canonical-identity-with-clowder-and-cattery-as-associations.md) — cats are canonical identity, Clowder/Cattery are membership associations with formal/temp/external status as a first-class field
 - [ADR-099](./decisions/099-promote-cats-clowders-catteries-to-platform-entities.md) — promote Cats/Clowders/Catteries to first-class platform entities with canonical top-level URLs (`/cats/:id`, `/clowders/:id`, `/catteries/:id`); clean-cut path migration per AGENTS.md
 - [SPEC-103](./specs/SPEC-103-clowder-and-cattery-data-model.md) — Clowder/Cattery data model, entity-specific membership filters and transitions, aggregate Cats tab semantics
@@ -238,4 +241,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-05-05*
+*Last updated: 2026-05-06*
