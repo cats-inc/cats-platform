@@ -514,6 +514,129 @@ test('beginChannelMessageDispatch marks repeated product posture commands as unc
   );
 });
 
+test('beginChannelMessageDispatch clears active slash-mode anchors on chat posture', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const first = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const coreAfterWork = await store.readCore();
+  const firstWorkItem = coreAfterWork.workItems.find((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+
+  const second = await beginChannelMessageDispatch(
+    first.state,
+    channelId,
+    {
+      body: '/chat',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const ackMessage = requireChannel(second.state, channelId).messages.at(-1);
+  const directSlashMode = ackMessage?.metadata.directSlashMode as
+    | {
+        activeAnchor?: unknown;
+        clearReason?: unknown;
+        clearedActiveAnchor?: { workItemId?: unknown };
+      }
+    | undefined;
+  const core = await store.readCore();
+
+  assert.equal(directSlashMode?.activeAnchor, null);
+  assert.equal(directSlashMode?.clearReason, 'chat_posture');
+  assert.equal(directSlashMode?.clearedActiveAnchor?.workItemId, firstWorkItem?.id);
+  assert.equal(
+    core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
+    1,
+  );
+});
+
+test('beginChannelMessageDispatch starts fresh slash-mode intake after terminal Work Item', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const first = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const coreAfterWork = await store.readCore();
+  const firstWorkItem = coreAfterWork.workItems.find((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  if (!firstWorkItem) {
+    throw new Error('Expected first direct slash-mode Work Item.');
+  }
+  await store.updateCore((core) => ({
+    ...core,
+    workItems: core.workItems.map((candidate) =>
+      candidate.id === firstWorkItem.id
+        ? { ...candidate, status: 'completed' as const }
+        : candidate),
+  }));
+
+  const second = await beginChannelMessageDispatch(
+    first.state,
+    channelId,
+    {
+      body: '/work clarify follow-up',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const ackMessage = requireChannel(second.state, channelId).messages.at(-1);
+  const postureChange = ackMessage?.metadata.directSlashModePostureChange as
+    | { changed?: unknown }
+    | undefined;
+  const directSlashMode = ackMessage?.metadata.directSlashMode as
+    | {
+        activeAnchor?: { workItemId?: unknown };
+        clearReason?: unknown;
+        clearedActiveAnchor?: { workItemId?: unknown };
+      }
+    | undefined;
+  const core = await store.readCore();
+  const directWorkItems = core.workItems.filter((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+
+  assert.equal(postureChange?.changed, false);
+  assert.equal(directSlashMode?.clearReason, 'work_item_terminal');
+  assert.equal(directSlashMode?.clearedActiveAnchor?.workItemId, firstWorkItem.id);
+  assert.notEqual(directSlashMode?.activeAnchor?.workItemId, firstWorkItem.id);
+  assert.equal(directWorkItems.length, 2);
+});
+
 test('Telegram product intent slash commands bridge into chat instead of transport command handling', () => {
   assert.equal(shouldBridgeTelegramProductIntentCommand('/work@CatsBot clarify scope'), true);
   assert.equal(shouldBridgeTelegramProductIntentCommand('/help'), false);

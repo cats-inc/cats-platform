@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type {
   ChannelDispatchResult,
   SendChannelMessageInput,
+  ChatChannelState,
   ChatMessage,
   ChatState,
   MessageOrigin,
@@ -388,12 +389,16 @@ function resolveProductIntentCoreIds(userMessageId: string): {
 function shouldCreateProductIntentWorkItemAnchor(input: {
   productIntentCommand: ProductIntentCommandMetadata;
   postureChange: DirectSlashModePostureChangeMetadata | null;
+  activeAnchorClear: DirectSlashModeClearMetadata | null;
 }): boolean {
   return (
     input.productIntentCommand.command === 'work'
     || input.productIntentCommand.command === 'code'
-  ) && input.postureChange?.changed === true
-    && input.postureChange.capabilityProfileKind === 'strong_agent';
+  ) && (
+    input.postureChange?.changed === true
+    || input.activeAnchorClear?.clearReason === 'work_item_terminal'
+  )
+    && input.postureChange?.capabilityProfileKind === 'strong_agent';
 }
 
 function shouldRequireHumanWorkItemGate(input: {
@@ -429,6 +434,11 @@ interface DirectSlashModeHumanGateMetadata {
   reason: 'direct_audience_not_strong';
   targetProduct: 'work' | 'code';
   capabilityProfileKind: 'weak_worker' | 'unknown';
+}
+
+interface DirectSlashModeClearMetadata {
+  clearedActiveAnchor: DirectSlashModeActiveAnchorMetadata;
+  clearReason: 'chat_posture' | 'work_item_terminal';
 }
 
 function buildDirectSlashModeActiveAnchor(input: {
@@ -467,16 +477,108 @@ function buildDirectSlashModeHumanGate(input: {
 }
 
 function buildDirectSlashModeStateMetadata(input: {
-  activeAnchor: DirectSlashModeActiveAnchorMetadata | null;
+  activeAnchor?: DirectSlashModeActiveAnchorMetadata | null;
+  clear?: DirectSlashModeClearMetadata | null;
   humanGate: DirectSlashModeHumanGateMetadata | null;
 }): Record<string, unknown> | null {
-  if (!input.activeAnchor && !input.humanGate) {
+  if (input.activeAnchor === undefined && !input.clear && !input.humanGate) {
     return null;
   }
 
   return {
-    ...(input.activeAnchor ? { activeAnchor: input.activeAnchor } : {}),
+    ...(input.activeAnchor !== undefined ? { activeAnchor: input.activeAnchor } : {}),
+    ...(input.clear
+      ? {
+          clearedActiveAnchor: input.clear.clearedActiveAnchor,
+          clearReason: input.clear.clearReason,
+        }
+      : {}),
     ...(input.humanGate ? { humanGate: input.humanGate } : {}),
+  };
+}
+
+function readDirectSlashModeActiveAnchor(
+  value: unknown,
+): DirectSlashModeActiveAnchorMetadata | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.workItemId === 'string'
+    && (candidate.targetProduct === 'work' || candidate.targetProduct === 'code')
+    && typeof candidate.establishedBySegmentId === 'string'
+    && typeof candidate.establishedAt === 'string'
+    ? {
+        workItemId: candidate.workItemId,
+        targetProduct: candidate.targetProduct,
+        establishedBySegmentId: candidate.establishedBySegmentId,
+        establishedAt: candidate.establishedAt,
+      }
+    : null;
+}
+
+function readMessageDirectSlashModeMetadata(
+  message: ChatMessage,
+): Record<string, unknown> | null {
+  const candidate = message.metadata.directSlashMode;
+  return candidate && typeof candidate === 'object'
+    ? candidate as Record<string, unknown>
+    : null;
+}
+
+function resolveLatestDirectSlashModeActiveAnchor(
+  channel: ChatChannelState,
+): DirectSlashModeActiveAnchorMetadata | null {
+  for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
+    const directSlashMode = readMessageDirectSlashModeMetadata(channel.messages[index]!);
+    if (!directSlashMode || !Object.hasOwn(directSlashMode, 'activeAnchor')) {
+      continue;
+    }
+    return readDirectSlashModeActiveAnchor(directSlashMode.activeAnchor);
+  }
+
+  return null;
+}
+
+function isTerminalDirectSlashModeWorkItemStatus(status: unknown): boolean {
+  return status === 'completed' || status === 'cancelled' || status === 'archived';
+}
+
+function resolveDirectSlashModeActiveAnchorState(input: {
+  channel: ChatChannelState;
+  core: CatsCoreState | null;
+}): {
+  activeAnchor: DirectSlashModeActiveAnchorMetadata | null;
+  clear: DirectSlashModeClearMetadata | null;
+} {
+  const activeAnchor = resolveLatestDirectSlashModeActiveAnchor(input.channel);
+  if (!activeAnchor) {
+    return { activeAnchor: null, clear: null };
+  }
+
+  const workItem = input.core?.workItems.find((candidate) =>
+    candidate.id === activeAnchor.workItemId) ?? null;
+  if (workItem && isTerminalDirectSlashModeWorkItemStatus(workItem.status)) {
+    return {
+      activeAnchor: null,
+      clear: {
+        clearedActiveAnchor: activeAnchor,
+        clearReason: 'work_item_terminal',
+      },
+    };
+  }
+
+  return { activeAnchor, clear: null };
+}
+
+function buildDirectSlashModeIntakeRef(
+  activeAnchor: DirectSlashModeActiveAnchorMetadata,
+): Record<string, unknown> {
+  return {
+    workItemId: activeAnchor.workItemId,
+    commandSegmentId: activeAnchor.establishedBySegmentId,
+    targetProduct: activeAnchor.targetProduct,
   };
 }
 
@@ -524,6 +626,7 @@ async function persistProductIntentCommandCoreSegment(input: {
   postureChange: DirectSlashModePostureChangeMetadata | null;
   coreIds: ReturnType<typeof resolveProductIntentCoreIds>;
   activeAnchor: DirectSlashModeActiveAnchorMetadata | null;
+  activeAnchorClear: DirectSlashModeClearMetadata | null;
   humanGate: DirectSlashModeHumanGateMetadata | null;
   accepted: boolean;
   now: Date;
@@ -541,7 +644,8 @@ async function persistProductIntentCommandCoreSegment(input: {
     ? 'product_intent_posture_changed'
     : 'product_intent_unsupported_context';
   const directSlashMode = buildDirectSlashModeStateMetadata({
-    activeAnchor: input.activeAnchor,
+    activeAnchor: input.activeAnchor ?? (input.activeAnchorClear ? null : undefined),
+    clear: input.activeAnchorClear,
     humanGate: input.humanGate,
   });
   const metadata = {
@@ -878,10 +982,25 @@ export async function beginChannelMessageDispatch(
           capabilityProfileKind,
         })
       : null;
+    const coreBeforeProductIntent = options.chatStore
+      ? await options.chatStore.readCore()
+      : null;
+    const activeAnchorState = resolveDirectSlashModeActiveAnchorState({
+      channel: channelBeforeMessage,
+      core: coreBeforeProductIntent,
+    });
+    const activeAnchorClear = productIntentCommand.command === 'chat'
+      && activeAnchorState.activeAnchor
+      ? {
+          clearedActiveAnchor: activeAnchorState.activeAnchor,
+          clearReason: 'chat_posture' as const,
+        }
+      : activeAnchorState.clear;
     const coreIds = resolveProductIntentCoreIds(userAppend.message.id);
     const activeAnchor = shouldCreateProductIntentWorkItemAnchor({
       productIntentCommand,
       postureChange,
+      activeAnchorClear,
     })
       ? buildDirectSlashModeActiveAnchor({
           workItemId: coreIds.workItemId,
@@ -895,7 +1014,8 @@ export async function beginChannelMessageDispatch(
       postureChange,
     });
     const directSlashMode = buildDirectSlashModeStateMetadata({
-      activeAnchor,
+      activeAnchor: activeAnchor ?? (activeAnchorClear ? null : undefined),
+      clear: activeAnchorClear,
       humanGate,
     });
     const ackAppend = appendMessage(
@@ -957,6 +1077,7 @@ export async function beginChannelMessageDispatch(
       postureChange,
       coreIds,
       activeAnchor,
+      activeAnchorClear,
       humanGate,
       accepted: audience.accepted,
       now,
@@ -1025,6 +1146,19 @@ export async function beginChannelMessageDispatch(
     },
     now,
   );
+  const coreBeforeUserMessage = options.chatStore
+    ? await options.chatStore.readCore()
+    : null;
+  const followUpActiveAnchorState = resolveDirectSlashModeActiveAnchorState({
+    channel: channelBeforeMessage,
+    core: coreBeforeUserMessage,
+  });
+  const followUpDirectSlashMode = buildDirectSlashModeStateMetadata({
+    activeAnchor: followUpActiveAnchorState.activeAnchor
+      ?? (followUpActiveAnchorState.clear ? null : undefined),
+    clear: followUpActiveAnchorState.clear,
+    humanGate: null,
+  });
   nextState = appendMessage(
     nextState,
     channelId,
@@ -1042,6 +1176,14 @@ export async function beginChannelMessageDispatch(
           deterministicRoutingPlan,
           transportBindingId: options.transportBindingId,
         }),
+        ...(followUpDirectSlashMode ? { directSlashMode: followUpDirectSlashMode } : {}),
+        ...(followUpActiveAnchorState.activeAnchor
+          ? {
+              directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(
+                followUpActiveAnchorState.activeAnchor,
+              ),
+            }
+          : {}),
       },
       choiceResponse: payload.choiceResponse,
       origin: resolveUserMessageOrigin(options.transport),

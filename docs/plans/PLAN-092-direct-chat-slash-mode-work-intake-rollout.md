@@ -66,7 +66,7 @@ The direct lane remains the conversational follow-up surface.
       profile kind, and schema version. Confirm during this task that no new
       Core record fields are introduced — only existing fields are populated
       and additive metadata keys are added.
-- [ ] Task 1.5: Define the lane current-state cache for active anchors:
+- [x] Task 1.5: Define the lane current-state cache for active anchors:
       `metadata.directSlashMode.activeAnchor = { workItemId, targetProduct,
       establishedBySegmentId, establishedAt }`. Implement the active-anchor
       lifecycle: clear the cache on `/chat` posture change, clear when the
@@ -327,6 +327,7 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Active-anchor lifecycle slice: `/chat` posture changes now write `directSlashMode.activeAnchor = null` with `clearReason: chat_posture`; terminal Work Items (`completed`, `cancelled`, `archived`) clear the cached anchor, and a later `/work` or `/code` starts a fresh intake even when posture itself is unchanged. Tests cover chat-clear, terminal-clear, and no duplicate anchor on idempotent repeats. |
 | 2026-05-06 | Work Item anchor slice: strong direct `/work` and `/code` posture changes now create a draft Core Work Item anchor with `conversationId`, `metadata.directSlashModeIntake`, `metadata.directSlashMode.activeAnchor`, and `metadata.planning.productHint`; repeated posture commands do not duplicate anchors. Weak/unknown direct Cats now record `directSlashMode.humanGate.kind = human_gate_required` and create no durable Work Item. |
 | 2026-05-06 | Direct audience capability slice: product-intent posture changes now require exactly one direct audience Cat, resolve that Cat's execution target through the existing provider capability profile resolver, consume the PLAN-080 bootstrap config, and record `strong_agent` / `weak_worker` / `unknown` in `directSlashModePostureChange.capabilityProfileKind`. Tests cover no-audience, multi-audience, weak, strong, and unknown outcomes without provider-name inference. |
 | 2026-05-06 | Posture event slice: Web and Telegram product-intent commands now enter the same Chat dispatch boundary; recognized `/chat` / `/work` / `/code` messages write the user command, a visible system acknowledgement, and a Core system segment carrying `directSlashModePostureChange`. Non-direct usage produces a visible rejection without dispatching to runtime, and repeated posture commands are recorded as unchanged (`changed: false`). |
