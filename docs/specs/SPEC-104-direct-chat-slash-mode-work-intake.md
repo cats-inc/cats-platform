@@ -185,14 +185,46 @@ labels, runtime labels, or a second model-strength classifier.
 42. Product posture changes shall be auditable enough to explain why a later
     Work Item anchor was created from a direct conversation.
 
+#### Tool-chain separation
+
+43. After a `createWorkItem` tool call succeeds in an assistant turn, that same
+    turn shall not expose `createTask` or `createRun`. Conductor tools become
+    available starting from the next user turn. The constraint applies even
+    when the same direct Cat is wearing both Concierge and Conductor hats.
+44. SPEC-082 supervision approval gates apply on top of the turn-separation
+    rule above. Approval gates are not a substitute for the turn separation.
+45. The `createWorkItem` invocation result shall be surfaced to the user in the
+    same turn it succeeds (e.g. a system or assistant message that names the
+    Work Item id and summary), so the user sees the anchor before any
+    Conductor tool is offered.
+
+#### Active anchor lifecycle
+
+46. After a `/chat` posture change, the lane's
+    `metadata.directSlashMode.activeAnchor` cache shall be cleared. The Work
+    Item itself shall not be modified by the posture change.
+47. When the active Work Item reaches a terminal `CoreWorkItemStatus`
+    (`completed`, `cancelled`, or `archived`), the lane's active-anchor cache
+    shall be cleared.
+48. A subsequent `/work` or `/code` posture change in a lane that previously
+    had its active-anchor cache cleared shall start a fresh intake; it shall
+    not auto-resume any earlier Work Item. Future explicit-resume UI is
+    covered by the multi-anchor open question and is out of MVP scope.
+
 #### Boundary and naming
 
-43. This flow shall not reintroduce retired prototype route/control labels.
-44. The canonical domain split remains `direct_message` vs `chat_channel`.
-45. Entry UI labels such as default/group/parallel shall not be used to decide
+49. This flow shall not reintroduce retired prototype route/control labels.
+50. The canonical domain split remains `direct_message` vs `chat_channel`.
+51. Entry UI labels such as default/group/parallel shall not be used to decide
     model strength or durable work permissions.
-46. Strong/weak resolution shall be deterministic policy lookup, not an LLM
+52. Strong/weak resolution shall be deterministic policy lookup, not an LLM
     self-assessment.
+53. The MVP shall not introduce new fields on Core record types.
+    `CoreWorkItemRecord.conversationId` already exists and is the source-id
+    field; everything else lives in additive `CoreRecordMetadata` keys
+    (`metadata.directSlashModeIntake`, `metadata.directSlashModeIntakeRef`,
+    `metadata.directSlashMode.activeAnchor`, `metadata.directSlashModePostureChange`,
+    `metadata.planning.productHint`).
 
 ### Non-Functional Requirements
 
@@ -316,9 +348,65 @@ interface DirectSlashModeActiveAnchor {
 
 Follow-up messages attach to this active anchor until the user switches posture
 back to `/chat`, selects another active anchor through future UI, or the Work
-Item reaches a terminal status. This pointer is a convenience cache; audit and
-projection tests must still rely on the Work Item source metadata and posture
-event.
+Item reaches a terminal `CoreWorkItemStatus` (`completed`, `cancelled`, or
+`archived`). This pointer is a convenience cache; audit and projection tests
+must still rely on the Work Item source metadata and posture event.
+
+The cache is cleared eagerly when posture flips to `/chat` (FR-46) and when the
+linked Work Item reaches a terminal status (FR-47). A subsequent `/work` or
+`/code` in the same lane starts a fresh intake (FR-48); the prior Work Item
+remains addressable from the Work product surface but is not implicitly
+re-attached to the lane.
+
+### Concierge Prompt Framework
+
+The Concierge system prompt is what turns the gated `createWorkItem` tool
+exposure into observable intake behavior. Tool gating without an explicit
+prompt protocol leaves the Cat unsure when to ask vs when to call, and tends
+to either over-ask (repeats clarifying questions past the budget) or under-ask
+(creates a Work Item from one user message). The MVP prompt protocol is:
+
+- **One focal question per assistant turn.** The Cat shall not stack multiple
+  questions in one message. Stacked questions overwhelm the user, dilute
+  answers, and burn the clarification budget faster than they should.
+- **Default question priority order**: `goal` → `successCriteria` →
+  `outOfScope` → `openQuestions`. The Cat may consolidate when the user
+  volunteers information unsolicited, and may revisit earlier topics if a
+  later answer reveals a contradiction.
+- **Recap before creation.** The Cat shall surface a brief recap of current
+  understanding (what is clarified, what remains) at least once before
+  invoking `createWorkItem`, so the user has a chance to correct the
+  understanding before durable work is written.
+- **Explicit invocation.** The Cat shall call `createWorkItem` only when the
+  schema (`goal`, `successCriteria[]`, `outOfScope[]`, `openQuestions[]`) is
+  satisfied or when the FR-27 clarification budget is exhausted; in the latter
+  case the prompt directs the Cat to first ask the user to confirm creation
+  with stated assumptions rather than invoking the tool unilaterally.
+
+This prompt content lives in product-owned prompt source (Phase 3 Task 3.2b)
+and is testable independently of tool exposure and schema validation.
+
+### Web Composer Ingress
+
+Web ingress passes user-typed messages through the Chat composer
+(`src/products/chat/renderer/components/Composer.tsx` or its current
+equivalent). When the message text starts with `/`, the composer shall invoke
+the shared parser (FR-1, FR-2) before sending. Recognized product-intent
+commands trigger the same dispatch path as Telegram-origin commands;
+non-recognized `/`-prefixed text is passed through as ordinary message
+content.
+
+Telegram ingress is unchanged from SPEC-038 — `src/platform/transports/
+telegram/...` continues to own bot-side parsing, command-menu sync, and
+transport-control commands. The shared parser is the single point that both
+transports agree on for product-intent semantics. Drift between the two
+transports is prevented by the boundary tests in PLAN-092 Phase 2.
+
+SPEC-038 ownership extends to the `/help` and `/commands` outputs. Those
+outputs shall list `/chat`, `/work`, and `/code` alongside the existing
+transport-control commands so users discover the product-intent surface
+through the same `/help` they already use. The list update is tracked as a
+PLAN-092 Phase 1 task with a docs-only follow-up to SPEC-038.
 
 ### Product-Intent Command Result
 
@@ -378,7 +466,25 @@ these semantics.
 - `/code` creates a Work Item anchor with `targetProduct: 'code'` before Code
   task/run execution begins.
 - Strong `/work` / `/code` paths test tool exposure, Concierge prompt protocol,
-  and schema validation independently.
+  schema validation, and clarification-budget behavior independently.
+- A successful `createWorkItem` in a turn does not expose `createTask` or
+  `createRun` in the same turn; both become available in the following user
+  turn under SPEC-082 supervision approval gates.
+- The `createWorkItem` invocation result is surfaced to the user in the same
+  turn it succeeds, before any Conductor tool can run.
+- A `/chat` posture change clears the lane's active-anchor cache; a
+  subsequent `/work` or `/code` starts a fresh intake.
+- A Work Item reaching `completed`, `cancelled`, or `archived` clears the
+  lane's active-anchor cache.
+- The Concierge prompt enforces one focal question per assistant turn and
+  surfaces a recap of current understanding before invoking `createWorkItem`.
+- Web composer routes `/`-prefixed messages through the shared parser before
+  send; non-recognized `/`-prefixed text passes through as ordinary content.
+- SPEC-038 `/help` and `/commands` outputs list `/chat`, `/work`, and `/code`
+  alongside transport-control commands.
+- No new fields are added to Core record types (`CoreWorkItemRecord`,
+  `CoreTaskRecord`, etc.); all new state lives in additive
+  `CoreRecordMetadata` keys plus the existing `conversationId` field.
 - No retired route/control labels are introduced in storage, API contracts,
   docs, or tests.
 

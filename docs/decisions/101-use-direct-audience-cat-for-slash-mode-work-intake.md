@@ -50,6 +50,16 @@ The MVP must not rely on a generic unchanged prompt and hope the model infers
 when to create durable work. Concierge prompt/tool/schema and follow-up
 task/run tools are separate policy grants over the same Cat.
 
+Tool grants are also turn-bounded. After Concierge phase calls `createWorkItem`
+successfully in an assistant turn, the Conductor tools (`createTask`,
+`createRun`) shall not be exposed in the same turn. The Cat completes that
+turn by surfacing the new Work Item to the user, and Conductor tools become
+available starting from the next user turn. SPEC-082 approval gates still
+apply on top of this turn separation. The constraint prevents the Cat from
+chaining anchor creation directly into supervised execution within a single
+dispatch, which would surprise the user and bypass the natural acknowledgement
+step.
+
 The platform shall not hand the direct MVP off to another Cat unless the owner
 explicitly changes the addressed Cat or a future group/orchestration feature
 introduces that behavior in a separate ADR/SPEC.
@@ -73,6 +83,16 @@ The posture change is recorded as a message-stream system segment/event. A lane
 may keep a current-state cache for routing convenience, but that cache is not
 the audit source of truth. Later Work Item anchors must be replayable back to
 the exact command segment that switched posture.
+
+A `/chat` posture change clears the lane's active-anchor cache. The Work Item
+itself stays in the Work product surface and remains addressable from there.
+A subsequent `/work` or `/code` posture change in the same lane does not
+auto-resume the prior anchor; it starts a fresh intake. Resuming an existing
+Work Item from a direct lane is out of scope for this MVP and would require
+an explicit selection UI covered by SPEC-104's open question on multi-anchor
+selection. The active-anchor cache is also cleared when the linked Work Item
+reaches a terminal `CoreWorkItemStatus` (`completed`, `cancelled`, or
+`archived`).
 
 For the MVP, `/code` is not a separate direct-to-run bypass. `/code` uses the
 same Work Item anchor flow as `/work`, with `targetProduct: 'code'` and a
