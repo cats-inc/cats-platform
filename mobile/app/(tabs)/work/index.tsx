@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -30,6 +31,17 @@ export default function WorkSidebarScreen() {
 
   const handlePrimaryAction = useCallback(
     async (actionId: string) => {
+      // The mobile create contract only supports default | group | direct
+      // today; there is no parallel create path. Surface a desktop-only
+      // alert instead of silently falling back to a default channel.
+      if (actionId === 'parallel') {
+        Alert.alert(
+          copy.parallelWorkDesktopOnlyTitle,
+          copy.parallelWorkDesktopOnlyBody,
+          [{ text: copy.desktopOnlyOkAction, style: 'cancel' }],
+        );
+        return;
+      }
       try {
         const channelId = await createChannel.create({
           title: getMobileChannelTitle(copy, 'work', actionId),

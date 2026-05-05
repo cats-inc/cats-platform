@@ -385,9 +385,13 @@ below product orchestration policy:
 - **Purpose**: Expose product behavior through dedicated Chat, Work, and
   external transport experiences
 - **Technology**: Shared React/Vite desktop renderer inside Electron; React
-  Native / Expo mobile client per ADR-092 with five bottom tabs (`Lobby`,
+  Native / Expo mobile client per ADR-092 with five bottom tabs (`Cats`,
   `Chat`, `Code`, `Work`, `Settings`) and one shared `ChatView`; transport
-  relays for Telegram and LINE
+  relays for Telegram and LINE. The `Cats` tab is the platform-level
+  directory landing (My Cats / My Clowders / My Catteries with entity
+  drill-down); the Chat / Code / Work product sidebars are trimmed to
+  primary actions plus `RECENTS`, with cat / clowder / cattery rosters
+  consolidated under the `Cats` tab
 - **Responsibilities**: Render chat and work views, surface approvals,
   ownership, activity, and allow external transport messages to reach the
   orchestrator safely. For Chat, high-frequency actions such as adding a cat

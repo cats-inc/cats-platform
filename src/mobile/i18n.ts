@@ -97,6 +97,8 @@ export interface MobileTabsCopy {
   dismissAction: string;
   parallelChatDesktopOnlyBody: string;
   parallelChatDesktopOnlyTitle: string;
+  parallelWorkDesktopOnlyBody: string;
+  parallelWorkDesktopOnlyTitle: string;
   tabTitle: Record<MobileTabId, string>;
 }
 
@@ -108,7 +110,6 @@ export interface MobileProductSidebarProductCopy {
 
 export interface MobileProductSidebarCopy {
   emptyRecentsLabel: string;
-  statusLabel: Record<'ready' | 'warm' | 'sleeping', string>;
   products: Record<MobileProductMode, MobileProductSidebarProductCopy>;
 }
 
@@ -317,6 +318,9 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
     parallelChatDesktopOnlyBody:
       'Parallel chat creation is not yet wired on mobile. Use the desktop app to start one; it will appear in RECENTS here once created.',
     parallelChatDesktopOnlyTitle: 'Parallel chat — desktop only',
+    parallelWorkDesktopOnlyBody:
+      'Parallel work creation is not yet wired on mobile. Use the desktop app to start one; it will appear in RECENTS here once created.',
+    parallelWorkDesktopOnlyTitle: 'Parallel work — desktop only',
     tabTitle: {
       cats: 'Cats',
       chat: 'Chat',
@@ -352,6 +356,9 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
     parallelChatDesktopOnlyBody:
       '行動版尚未支援建立平行聊天。請在桌面版開始，建立後會出現在這裡的近期項目。',
     parallelChatDesktopOnlyTitle: '平行聊天僅限桌面版',
+    parallelWorkDesktopOnlyBody:
+      '行動版尚未支援建立平行工作。請在桌面版開始，建立後會出現在這裡的近期項目。',
+    parallelWorkDesktopOnlyTitle: '平行工作僅限桌面版',
     tabTitle: {
       cats: 'Cats',
       chat: '聊天',
@@ -365,11 +372,6 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
 const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy> = {
   en: {
     emptyRecentsLabel: 'No recent conversations yet.',
-    statusLabel: {
-      ready: 'Ready',
-      warm: 'Warm',
-      sleeping: 'Sleeping',
-    },
     products: {
       chat: {
         productLabel: 'CHAT',
@@ -402,11 +404,6 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
   },
   'zh-TW': {
     emptyRecentsLabel: '尚未有近期對話。',
-    statusLabel: {
-      ready: '可用',
-      warm: '暖機中',
-      sleeping: '休眠中',
-    },
     products: {
       chat: {
         productLabel: '聊天',

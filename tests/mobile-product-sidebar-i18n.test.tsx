@@ -12,11 +12,6 @@ test('mobile product sidebar copy localizes fixed sidebar chrome', () => {
   const zh = getMobileProductSidebarCopy('zh-TW');
 
   assert.equal(zh.emptyRecentsLabel, '尚未有近期對話。');
-  assert.deepEqual(zh.statusLabel, {
-    ready: '可用',
-    warm: '暖機中',
-    sleeping: '休眠中',
-  });
 
   const chat = getChatSidebarConfig('zh-TW');
   assert.equal(chat.productLabel, '聊天');

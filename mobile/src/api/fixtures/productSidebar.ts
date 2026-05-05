@@ -42,7 +42,6 @@ function createSidebarConfig(
     })) as TrimmedSidebarConfig['primaryActions'],
     recentsLabel: productCopy.recentsLabel,
     emptyRecentsLabel: copy.emptyRecentsLabel,
-    catStatusLabels: copy.statusLabel,
   };
 }
 

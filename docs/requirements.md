@@ -193,15 +193,17 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
 ### FR-025: Mobile Is a First-Class Product Client
 
 - **Description**: The mobile shell shall be a first-class React Native /
-  Expo client hosting `Lobby`, `Chat`, `Code`, `Work`, and `Settings` as
-  bottom tabs. The `Chat` tab carries the full web Chat sidebar; the
-  `Code` and `Work` tabs carry trimmed product sidebars limited to
-  `+New X`, the product's two presets, `MY YYY`, and `RECENTS`. All three
-  product sidebars route into one shared mobile `ChatView` keyed on
-  `productMode`. User and assistant bubble visual fidelity with the web
-  renderer is required at canonical viewports. Code's `Codespaces` /
-  `Artifacts` and Work's Projects / Work Items / Tasks / Runs / Missions
-  management surfaces are out of mobile scope.
+  Expo client hosting `Cats`, `Chat`, `Code`, `Work`, and `Settings` as
+  bottom tabs. The `Cats` tab is the platform's directory landing
+  (My Cats / My Clowders / My Catteries with entity drill-down) and is
+  the only mobile surface that lists cats / clowders / catteries; the
+  `Chat`, `Code`, and `Work` tabs each carry a trimmed product sidebar
+  limited to `+New X`, the product's two presets, and `RECENTS`. All
+  three product sidebars route into one shared mobile `ChatView` keyed
+  on `productMode`. User and assistant bubble visual fidelity with the
+  web renderer is required at canonical viewports. Code's `Codespaces`
+  / `Artifacts` and Work's Projects / Work Items / Tasks / Runs /
+  Missions management surfaces are out of mobile scope.
 - **Priority**: Medium
 - **Status**: Planned
 - **Reference**: [ADR-092](./decisions/092-reposition-cats-mobile-as-first-class-product-client.md),

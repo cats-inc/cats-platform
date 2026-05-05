@@ -252,8 +252,33 @@ canvas shape rendered at each entity route.
   [SPEC-103](./SPEC-103-clowder-and-cattery-data-model.md), which is
   Phase 6's prerequisite
 - Cross-product Code/Work lens implementation (covered by SPEC-064)
-- Reshaping mobile bottom-tabs
 - Membership management business logic (invites, roles, billing)
+
+## Mobile Bottom-Tab Reshape (2026-05-05 follow-up)
+
+The original Phase-5 framing scoped mobile bottom-tabs as a non-goal.
+That call was reversed once the desktop side promoted Settings to its
+own surface and replaced the Cats Directory product switcher with a
+dedicated back button: web and mobile now share one Cats Directory
+mental model, so leaving mobile bottom-tabs labelled `Lobby` would
+have re-introduced exactly the IA mismatch this SPEC was opened to
+close. The follow-up:
+
+- Mobile bottom-tab order is `Cats`, `Chat`, `Code`, `Work`, `Settings`
+  (web Lobby content — greeting, entity index cards — is explicitly
+  NOT mirrored on the mobile `Cats` tab).
+- The mobile `Cats` tab IS the directory landing — three sections
+  (My Cats / My Clowders / My Catteries) on top of the existing
+  connect-to-desktop / unconfigured affordances, mirroring the web
+  Cats Directory sidebar.
+- The mobile Chat / Code / Work product sidebars drop their MY-lens
+  rows (DIRECT MESSAGES / MY CLOWDERS / MY CATTERIES) and the cat
+  presence chip; cat / clowder / cattery rosters now live exclusively
+  under the `Cats` tab.
+- Web Chat sidebar's `MY CATS → Direct Messages` rename remains in
+  scope for FR-15 (the desktop Chat sidebar still surfaces the
+  per-conversation direct-message lens; only the platform-level cat
+  roster moved out).
 
 ## User Stories
 

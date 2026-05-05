@@ -1,7 +1,3 @@
-import type {
-  MobileSidebarCatStatus as SidebarCatStatus,
-} from '../../../../src/mobile/index.js';
-
 /**
  * Sidebar types. Data shapes are aliased from the cats-platform mobile-
  * safe boundary so any drift between the wire DTO and the mobile UX
@@ -16,15 +12,14 @@ import type {
  * `ChatSidebar` component used during Phase 3 has been removed.
  *
  * 2026-05-05: the trimmed sidebar dropped the MY-lens section
- * entirely (DIRECT MESSAGES / MY CLOWDERS / MY CATTERIES). Cat,
- * Clowder, and Cattery rosters now live under the Cats tab instead.
+ * entirely (DIRECT MESSAGES / MY CLOWDERS / MY CATTERIES) along with
+ * the cat presence chip. Cat, Clowder, and Cattery rosters now live
+ * under the Cats tab instead.
  */
 
 export type {
   MobileSidebarRecent as SidebarRecentEntry,
 } from '../../../../src/mobile/index.js';
-
-export type { SidebarCatStatus };
 
 /**
  * Trimmed product sidebar (Chat / Code / Work) per SPEC-095. Each
@@ -55,8 +50,6 @@ export interface TrimmedSidebarConfig {
   recentsLabel: string;
   /** Empty row copy for the product-scoped recents section. */
   emptyRecentsLabel: string;
-  /** Visible status labels for cat presence chips. */
-  catStatusLabels: Record<SidebarCatStatus, string>;
 }
 
 export interface TrimmedSidebarCallbacks {
