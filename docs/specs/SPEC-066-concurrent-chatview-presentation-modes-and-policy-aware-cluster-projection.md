@@ -71,7 +71,7 @@ identity.
    data model.
 3. Presentation mode shall apply only when the current selected channel has a
    visible concurrent response cluster in `ChatView`.
-4. Non-concurrent surfaces, including solo, direct, and sequential chats, shall
+4. Non-concurrent surfaces, including default, direct, and sequential chats, shall
    continue to render with the current transcript presentation unless a later
    spec explicitly changes them.
 5. `inline_stack` shall preserve the current "grow in place inside the

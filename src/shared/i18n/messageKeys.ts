@@ -1443,8 +1443,8 @@ export const messageKeys = {
     'chat.catAssignment.error.channelNotFound',
   chatCatAssignmentErrorAssignmentNotFound:
     'chat.catAssignment.error.assignmentNotFound',
-  chatCatAssignmentErrorDirectLeadOnly:
-    'chat.catAssignment.error.directLeadOnly',
+  chatCatAssignmentErrorDirectRecipientOnly:
+    'chat.catAssignment.error.directRecipientOnly',
   chatCatAssignmentErrorParticipantLimitReached:
     'chat.catAssignment.error.participantLimitReached',
   chatCompanionTabStatus: 'chat.companion.tab.status',

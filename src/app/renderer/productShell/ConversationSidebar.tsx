@@ -41,7 +41,7 @@ export interface ConversationSidebarChannel {
   originSurface?: PlatformSurfaceId | null;
   defaultRecipientCatId?: string | null;
   defaultRecipientLeaseStatus?: ParticipantSessionStatus | null;
-  channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
+  channelKind?: 'chat_channel' | 'direct_message' | null;
   roomMode?: RoomRoutingMode | null;
 }
 

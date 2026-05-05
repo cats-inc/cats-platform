@@ -29,7 +29,7 @@ function readStringArray(value: unknown): string[] {
 
 function normalizeChannelKind(
   channel: Record<string, unknown>,
-  roomMode: 'boss_chat' | 'direct_cat_chat',
+  roomMode: 'chat_channel' | 'direct_message',
 ): void {
   const participantAssignments = Array.isArray(channel.participantAssignments)
     ? channel.participantAssignments
@@ -61,9 +61,9 @@ function normalizeChannelKind(
 
   channel.channelKind = resolveChannelKind({
     channelKind:
-      channel.channelKind === 'boss_thread'
-      || channel.channelKind === 'direct_lane'
-      || channel.channelKind === 'multi_cat_room'
+      channel.channelKind === 'chat_channel'
+      || channel.channelKind === 'direct_message'
+      || channel.channelKind === 'chat_channel'
         ? channel.channelKind
         : null,
     roomMode,
@@ -177,9 +177,9 @@ function normalizeSelectedChannel(
   }
 
   const roomRouting = asRecord(selectedChannel.roomRouting);
-  const roomMode = readString(roomRouting?.mode, 'boss_chat') === 'direct_cat_chat'
-    ? 'direct_cat_chat'
-    : 'boss_chat';
+  const roomMode = readString(roomRouting?.mode, 'chat_channel') === 'direct_message'
+    ? 'direct_message'
+    : 'chat_channel';
   normalizeChannelKind(selectedChannel, roomMode);
 
   const catAssignments = Array.isArray(selectedChannel.catAssignments)
@@ -278,9 +278,9 @@ function normalizeChannelSummaries(chatState: Record<string, unknown>): void {
     const channel = asRecord(channelValue) ?? {};
     normalizeChannelKind(
       channel,
-      readString(channel.roomMode, 'boss_chat') === 'direct_cat_chat'
-        ? 'direct_cat_chat'
-        : 'boss_chat',
+      readString(channel.roomMode, 'chat_channel') === 'direct_message'
+        ? 'direct_message'
+        : 'chat_channel',
     );
     const participantCount = typeof channel.participantCount === 'number'
       ? channel.participantCount

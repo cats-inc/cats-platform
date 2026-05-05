@@ -123,7 +123,7 @@ test('GET /api/app-shell repairs direct-lane session_started metadata with canon
       {
         title: 'Repair direct-lane session metadata',
         topic: 'Restore missing direct-lane session_started metadata in app-shell payloads.',
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         defaultRecipientId: catId,
         repoPath: 'C:/repo/cats-platform',
         skipBossCatGreeting: true,
@@ -225,7 +225,7 @@ test('GET /api/app-shell rebuilds a drifted direct-lane reply from canonical sta
       {
         title: 'Repair drifted direct-lane canonical reply',
         topic: 'Restore a drifted direct-lane reply from canonical core during app-shell read repair.',
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         defaultRecipientId: catId,
         repoPath: 'C:/repo/cats-platform',
         skipBossCatGreeting: true,
@@ -359,7 +359,7 @@ test('GET /api/app-shell rebuilds a drifted direct-lane reply from canonical sta
           participantId,
           participantName: 'Companion',
         },
-        defaultTargetReason: 'direct_chat_recipient',
+        defaultTargetReason: 'direct_message_recipient',
         fallbackTarget: null,
         blockedReason: null,
         note: null,

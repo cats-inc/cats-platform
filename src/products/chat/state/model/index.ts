@@ -22,7 +22,7 @@ import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js'
 import { defaultCatProducts, hasPlatformSurface } from '../../../../shared/platformSurfaces.js';
 import {
   inferChannelKind,
-  isProviderSoloThreadChannel,
+  isProviderDefaultChatChannel,
   normalizeChannelAssignmentsForRoomMode,
   resolveChannelKind,
   resolveDirectLaneRecipientId,
@@ -113,7 +113,7 @@ export {
   updateCatSkillProfile,
 } from './cats.js';
 export {
-  resetSoloChannelContinuity,
+  resetDefaultChatContinuity,
   setChannelCatExecutionTarget,
   setChannelParticipantExecutionTarget,
   setChannelPendingExecutionTarget,
@@ -273,12 +273,12 @@ function describeCreatedRoom(
     .map((assignment) => assignment.name.trim())
     .filter((name): name is string => Boolean(name));
 
-  if (roomRouting.mode === 'direct_cat_chat') {
+  if (roomRouting.mode === 'direct_message') {
     return `direct chat with ${activeParticipantNames[0] ?? 'the selected participant'}`;
   }
 
-  if (isProviderSoloThreadChannel(channel) && channel.pendingProvider) {
-    return `solo chat with ${buildParallelChatMemberLabel({
+  if (isProviderDefaultChatChannel(channel) && channel.pendingProvider) {
+    return `default chat with ${buildParallelChatMemberLabel({
       provider: channel.pendingProvider,
       instance: channel.pendingInstance,
       model: channel.pendingModel,
@@ -303,7 +303,7 @@ function resolveRequestedRoomMode(
   if (input.roomMode) {
     return input.roomMode;
   }
-  return input.entryKind === 'direct' ? 'direct_cat_chat' : 'boss_chat';
+  return input.entryKind === 'direct' ? 'direct_message' : 'chat_channel';
 }
 
 function resolveRequestedParticipantCount(input: CreateChatChannelInput): number {
@@ -384,9 +384,9 @@ export function createChannel(
     runtimeSessionPolicy = parsed.policy;
   }
 
-  // Auto-generate title for direct cat chats when title is empty
+  // Auto-generate title for direct messages when title is empty.
   let title = input.title.trim();
-  if (!title && requestedRoomMode === 'direct_cat_chat') {
+  if (!title && requestedRoomMode === 'direct_message') {
     const singleCatName = createdCats.length === 1
       ? createdCats[0]?.name
       : participantCatIds.length === 1
@@ -400,9 +400,9 @@ export function createChannel(
   const requestedLeadParticipantId = normalizeDefaultRecipientId(input.defaultRecipientId);
   const defaultLeadParticipantId = requestedLeadParticipantId
     ?? (
-      requestedRoomMode === 'direct_cat_chat' && createdCats.length === 1
+      requestedRoomMode === 'direct_message' && createdCats.length === 1
         ? createdCats[0]?.id ?? null
-      : requestedRoomMode === 'direct_cat_chat' && createdCats.length === 0 && participantCatIds.length === 1
+      : requestedRoomMode === 'direct_message' && createdCats.length === 0 && participantCatIds.length === 1
           ? participantCatIds[0] ?? null
           : participantCatIds.length > 0
           ? participantCatIds[0] ?? null
@@ -551,13 +551,13 @@ export function assignCatToChannel(
     roomMode: roomRouting.mode,
     participants: channel.catAssignments,
   });
-  if (channel.channelKind === 'direct_lane') {
-    const directLeadCatId = resolveDirectLaneRecipientId(
+  if (channel.channelKind === 'direct_message') {
+    const directRecipientCatId = resolveDirectLaneRecipientId(
       channel.catAssignments,
       roomRouting.defaultRecipientId,
     );
-    if (directLeadCatId && directLeadCatId !== input.catId) {
-      throw new Error('Direct lanes can only contain their lead cat');
+    if (directRecipientCatId && directRecipientCatId !== input.catId) {
+      throw new Error('Direct messages can only contain their direct recipient Cat');
     }
   }
   const cat = requireCat(nextState, input.catId);

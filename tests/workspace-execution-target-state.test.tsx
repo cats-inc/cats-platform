@@ -8,7 +8,7 @@ import {
   reconcileRuntimeBackedExecutionTargetValue,
   sameExecutionTargetValue,
   toExecutionTargetValue,
-  toSoloChannelExecutionTargetValue,
+  toDefaultChatExecutionTargetValue,
 } from '../src/products/shared/renderer/hooks/useWorkspaceExecutionTargetState.ts';
 import { formatWorkspaceExecutionTargetMutationError } from '../src/products/shared/renderer/hooks/workspaceExecutionTargetErrorLabels.ts';
 import { resolveDispatchExecutionTargetValue } from '../src/products/chat/renderer/hooks/useComposerSubmit.ts';
@@ -168,13 +168,13 @@ test('execution target equality compares normalized nullable fields and model se
   );
 });
 
-test('solo channel execution target falls back to the global orchestrator when pending values are absent', () => {
+test('default channel execution target falls back to the global orchestrator when pending values are absent', () => {
   assert.equal(
-    toSoloChannelExecutionTargetValue(null, null),
+    toDefaultChatExecutionTargetValue(null, null),
     null,
   );
   assert.equal(
-    toSoloChannelExecutionTargetValue(
+    toDefaultChatExecutionTargetValue(
       {
         newChatDefaults: null,
         globalOrchestrator: {
@@ -199,7 +199,7 @@ test('solo channel execution target falls back to the global orchestrator when p
   );
 
   assert.deepEqual(
-    toSoloChannelExecutionTargetValue(
+    toDefaultChatExecutionTargetValue(
       {
         newChatDefaults: null,
         globalOrchestrator: {
@@ -215,7 +215,7 @@ test('solo channel execution target falls back to the global orchestrator when p
         },
       },
       {
-        id: 'channel-solo',
+        id: 'channel-default',
         pendingProvider: null,
         pendingModel: null,
         pendingInstance: null,
@@ -235,7 +235,7 @@ test('solo channel execution target falls back to the global orchestrator when p
   );
 
   assert.deepEqual(
-    toSoloChannelExecutionTargetValue(
+    toDefaultChatExecutionTargetValue(
       {
         newChatDefaults: null,
         globalOrchestrator: {
@@ -248,7 +248,7 @@ test('solo channel execution target falls back to the global orchestrator when p
         },
       },
       {
-        id: 'channel-solo',
+        id: 'channel-default',
         pendingProvider: 'codex',
         pendingModel: 'gpt-5.4',
         pendingInstance: 'default',

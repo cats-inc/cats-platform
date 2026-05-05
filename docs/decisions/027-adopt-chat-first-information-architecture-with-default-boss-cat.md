@@ -10,7 +10,7 @@ Accepted
 > Revision note (2026-03-23): [SPEC-030](../specs/SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md)
 > refines ordinary `Recents` thread composer behavior. This ADR still governs
 > chat-first IA, direct lanes, and the global `Boss Cat` role, but normal
-> `Recents` threads may now begin in solo composer mode before a visible lead
+> `Recents` threads may now begin in default composer mode before a visible lead
 > Cat is chosen.
 
 ## Date
@@ -67,7 +67,7 @@ default `Boss Cat`.
 4. Any Cat may later be assigned as the global `Boss Cat`.
    - the global `Boss Cat` remains the default public transport identity and
      default Cat-level orchestrator identity
-   - ordinary `Recents` threads may still begin in solo composer mode rather
+   - ordinary `Recents` threads may still begin in default composer mode rather
      than auto-starting as visible Boss-led chats
    - existing chats do not need to be retroactively rewritten when the global
      `Boss Cat` changes
@@ -77,7 +77,7 @@ default `Boss Cat`.
    - `Add cat to chat` and `Chat with this cat` are distinct actions
 
 6. Multi-Cat chats are allowed, but each chat still has one lead Cat.
-   - a chat may begin with no visible lead Cat in solo composer mode
+   - a chat may begin with no visible lead Cat in default composer mode
    - once a Cat is added, that chat still has one lead Cat
    - group chats should default to one primary reply voice rather than all Cats
      replying every turn

@@ -185,7 +185,7 @@ function createChannel(overrides: Partial<ChatChannelView> = {}): ChatChannelVie
     id: 'channel-1',
     title: 'Runtime Review',
     topic: 'Temporary participants',
-    channelKind: 'multi_cat_room',
+    channelKind: 'chat_channel',
     status: 'active',
     unreadCount: 0,
     repoPath: null,
@@ -246,7 +246,7 @@ function createChannel(overrides: Partial<ChatChannelView> = {}): ChatChannelVie
     assignedCats: [],
     messages: [],
     roomRouting: {
-      mode: 'boss_chat',
+      mode: 'chat_channel',
       defaultRecipientId: 'participant-inline',
       lastOutcome: null,
       lastCheckpoint: null,
@@ -721,13 +721,13 @@ test('ChatView gives temporary participants a live progress avatar and top-bar p
   assert.match(markup, /catAvatarPulsing/u);
 });
 
-test('ChatView promotes solo orchestrator progress once the session_started system message is visible', () => {
+test('ChatView promotes default orchestrator progress once the session_started system message is visible', () => {
   const baseChannel = createChannel();
   const markup = renderToStaticMarkup(
     <ChatView
       {...createProps({
         selectedChannel: createChannel({
-          title: 'Solo runtime chat',
+          title: 'Default runtime chat',
           pendingProvider: 'claude',
           pendingModel: 'opus',
           messages: [
@@ -1098,7 +1098,7 @@ test('ChatView shows retry only on the latest failed acknowledged user turn', ()
             ...baseChannel.roomRouting!,
             lastOutcome: {
               turnId: 'turn-1',
-              mode: 'boss_chat',
+              mode: 'chat_channel',
               sourceMessageId: 'message-user',
               sourceSenderKind: 'user',
               sourceSenderName: 'Kenny',

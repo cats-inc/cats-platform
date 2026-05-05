@@ -251,7 +251,7 @@ C ─── D
 Freelance aggregator pipeline 和 mesh 不是兩個獨立的東西，而是**同一條 pipeline
 的兩種運行模式**：
 
-**Solo Mode（Part 1）**
+**Default Mode（Part 1）**
 - 一個人的 cats-runtime → 自己接案、自己做、自己交付
 - 適合個人 freelancer
 
@@ -261,7 +261,7 @@ Freelance aggregator pipeline 和 mesh 不是兩個獨立的東西，而是**同
 - aggregator 找到大案子 → 評估需要多少人力 → 從 mesh 中招募節點
   → 分配 sub-tasks → 各節點實作 → cross-node peer review → 匯總交付
 
-Owner 可以從 Solo Mode 開始，驗證 pipeline 跑通後，再開放 Mesh Mode。
+Owner 可以從 Default Mode 開始，驗證 pipeline 跑通後，再開放 Mesh Mode。
 
 ---
 
@@ -304,7 +304,7 @@ Owner 可以從 Solo Mode 開始，驗證 pipeline 跑通後，再開放 Mesh Mo
 - pipeline 中每個階段的轉換都需要 structured choices 呈現給人類決策
 - 即使未來 pipeline 成熟到品質可信賴，解除 approval gate 也必須是
   owner **逐項、明確 opt-in** 的行為，不設全域開關
-- 此原則適用於 Solo Mode 和 Mesh Mode
+- 此原則適用於 Default Mode 和 Mesh Mode
 
 ---
 
@@ -322,7 +322,7 @@ Owner 可以從 Solo Mode 開始，驗證 pipeline 跑通後，再開放 Mesh Mo
 - Provider TOS — 已由天條約束，節點 owner 必須明確同意每個 task
 
 **緩解策略**
-- Phase 1 先做 Solo Mode，驗證 pipeline 後再開放 Mesh
+- Phase 1 先做 Default Mode，驗證 pipeline 後再開放 Mesh
 - Mesh 初期限制為 trusted network（朋友 / 同事），不公開
 - Cross-node peer review 作為品質 gate
 - 敏感 task 只派給高信譽節點
@@ -336,7 +336,7 @@ Owner 可以從 Solo Mode 開始，驗證 pipeline 跑通後，再開放 Mesh Mo
 - freelance-job-aggregator 已提供 scraping / matching / ROI / proposal 的基礎設施
 - cats-runtime 的架構（multi-backend / standalone / metering / skill injection）
   天生適合 mesh 模式
-- Solo Mode 先行驗證，Mesh Mode 後續擴展
+- Default Mode 先行驗證，Mesh Mode 後續擴展
 - 這個定位在現有市場中沒有直接競品
 
 ---

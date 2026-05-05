@@ -288,7 +288,7 @@ The first slice should freeze one cache-key shape:
   - later `chat:composer`
 - `surfaceMode`
   - `default` is the only `chat:new` mode today. Composer state
-    (solo / group / parallel) is **not** a `surfaceMode` axis — see the
+    (default / group / parallel) is **not** a `surfaceMode` axis — see the
     "Why composer mode is not a scope" note below.
   - reserved for future surface-level splits where the cached bundle
     really would diverge per mode (e.g., a different surface entirely)
@@ -322,17 +322,13 @@ drafts via `isDirectLaneContext`, not via a `chat:dm` scope lookup.
 
 #### Why composer mode is not a scope
 
-Earlier revisions split `chat:new` into per-composer-state scope keys
-(`chat:new:solo:default`, `chat:new:direct:default`, `chat:new:group:default`,
-`chat:new:parallel:default`) and exposed them as a `GuideCatAssistNewChatByMode`
-record on the chat payload. That conflated **stable surface identity** with
-**transient composer state**: the user lands on `/chat/new` regardless and
-shapes the chat through the composer, so the cache key flipped on every
-audience toggle and no cache slot ever stayed warm long enough to pay for
+Earlier revisions split `chat:new` into per-composer-state scope keys and
+exposed that split on the chat payload. That conflated **stable surface
+identity** with **transient composer state**: the user lands on `/chat/new`
+regardless and shapes the chat through the composer, so the cache key flipped on
+every audience toggle and no cache slot ever stayed warm long enough to pay for
 itself. The split was reverted; do not reintroduce it without a concrete
-runtime-backed reason that meaningfully diverges per mode (and even then
-prefer encoding mode in `audienceState` or `variantKey` rather than
-`surfaceMode`).
+runtime-backed reason that meaningfully diverges per context.
 
 `+New chat` starter chips carry an additional renderer visibility rule that the
 cache does not itself enforce: the composer only shows chips from a bundle whose

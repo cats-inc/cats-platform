@@ -73,7 +73,7 @@ function normalizeDesktopPayload(nextPayload: AppShellPayload & Record<string, u
 
 function normalizeChannelKind(
   channel: Record<string, unknown>,
-  roomMode: 'boss_chat' | 'direct_cat_chat',
+  roomMode: 'chat_channel' | 'direct_message',
 ): void {
   const catAssignments = Array.isArray(channel.catAssignments)
     ? channel.catAssignments
@@ -95,9 +95,9 @@ function normalizeChannelKind(
 
   channel.channelKind = resolveChannelKind({
     channelKind:
-      channel.channelKind === 'boss_thread'
-      || channel.channelKind === 'direct_lane'
-      || channel.channelKind === 'multi_cat_room'
+      channel.channelKind === 'chat_channel'
+      || channel.channelKind === 'direct_message'
+      || channel.channelKind === 'chat_channel'
         ? channel.channelKind
         : null,
     roomMode,
@@ -185,9 +185,9 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
     const roomRouting = asRecord(selectedChannel.roomRouting);
     normalizeChannelKind(
       selectedChannel,
-      readString(roomRouting?.mode, 'boss_chat') === 'direct_cat_chat'
-        ? 'direct_cat_chat'
-        : 'boss_chat',
+      readString(roomRouting?.mode, 'chat_channel') === 'direct_message'
+        ? 'direct_message'
+        : 'chat_channel',
     );
     if (!Array.isArray(selectedChannel.catAssignments)) {
       selectedChannel.catAssignments = [];
@@ -320,9 +320,9 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
       const channel = asRecord(channelValue) ?? {};
       normalizeChannelKind(
         channel,
-        readString(channel.roomMode, 'boss_chat') === 'direct_cat_chat'
-          ? 'direct_cat_chat'
-          : 'boss_chat',
+        readString(channel.roomMode, 'chat_channel') === 'direct_message'
+          ? 'direct_message'
+          : 'chat_channel',
       );
       if (channel.catCount === undefined) {
         channel.catCount = 0;

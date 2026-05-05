@@ -13,7 +13,7 @@ import {
   createParallelChatGroup as createModelParallelChatGroup,
   removeCatFromChannel,
   requireChannel,
-  resetSoloChannelContinuity,
+  resetDefaultChatContinuity,
   setChannelCatExecutionTarget,
   setChannelCatLease,
   setChannelOrchestratorLease,
@@ -1374,14 +1374,14 @@ test('routeChannelMessage forwards planning metadata into chat session creation 
   });
 });
 
-test('provider solo thread restarts orchestrator sessions when the pending model changes and records provenance', async () => {
+test('provider default chat restarts orchestrator sessions when the pending model changes and records provenance', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
   state = createChannel(
     state,
     {
-      title: 'Solo Thread',
+      title: 'Default Thread',
       topic: 'Switch between providers per turn.',
       skipBossCatGreeting: true,
       pendingProvider: 'claude',
@@ -1428,7 +1428,7 @@ test('provider solo thread restarts orchestrator sessions when the pending model
     new Date('2026-03-23T00:09:00.000Z'),
   );
   const channel = buildChannelView(switchedDispatch.state, channelId);
-  const soloReplies = channel.messages.filter(
+  const defaultChatReplies = channel.messages.filter(
     (message) => message.metadata?.targetKind === 'orchestrator' && message.senderName === 'Orchestrator',
   );
 
@@ -1455,12 +1455,12 @@ test('provider solo thread restarts orchestrator sessions when the pending model
   assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
   assert.equal(channel.pendingProvider, 'gemini');
   assert.equal(channel.pendingModel, 'gemini-default');
-  assert.equal(soloReplies[0]?.senderKind, 'agent');
-  assert.equal(soloReplies[0]?.executionProvider, 'claude');
-  assert.equal(soloReplies[0]?.executionModel, 'claude-default');
-  assert.equal(soloReplies.at(-1)?.senderKind, 'agent');
-  assert.equal(soloReplies.at(-1)?.executionProvider, 'gemini');
-  assert.equal(soloReplies.at(-1)?.executionModel, 'gemini-default');
+  assert.equal(defaultChatReplies[0]?.senderKind, 'agent');
+  assert.equal(defaultChatReplies[0]?.executionProvider, 'claude');
+  assert.equal(defaultChatReplies[0]?.executionModel, 'claude-default');
+  assert.equal(defaultChatReplies.at(-1)?.senderKind, 'agent');
+  assert.equal(defaultChatReplies.at(-1)?.executionProvider, 'gemini');
+  assert.equal(defaultChatReplies.at(-1)?.executionModel, 'gemini-default');
   assert.equal(runtimeClient.sentMessages[0]?.content, 'First turn');
   assert.equal(runtimeClient.sentMessages[0]?.input?.instructions, undefined);
   assert.equal(
@@ -1494,14 +1494,14 @@ test('provider solo thread restarts orchestrator sessions when the pending model
   );
 });
 
-test('provider solo thread full-transplants earlier user-only context on replacement sessions', async () => {
+test('provider default chat full-transplants earlier user-only context on replacement sessions', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
   state = createChannel(
     state,
     {
-      title: 'Solo Thread',
+      title: 'Default Thread',
       topic: 'Replacement sessions should not fall back to excerpt-only user context.',
       skipBossCatGreeting: true,
       pendingProvider: 'claude',
@@ -1578,15 +1578,15 @@ test('provider solo thread full-transplants earlier user-only context on replace
   );
 });
 
-test('solo replacement-session transplants preserve prior assistant tool labels', async () => {
+test('default-chat replacement-session transplants preserve prior assistant tool labels', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
   state = createChannel(
     state,
     {
-      title: 'Solo Thread',
-      topic: 'Carry tool context across a retargeted solo restart.',
+      title: 'Default Thread',
+      topic: 'Carry tool context across a retargeted default restart.',
       skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
@@ -1650,14 +1650,14 @@ test('solo replacement-session transplants preserve prior assistant tool labels'
   );
 });
 
-test('solo replacement-session transplants fold segmented assistant turns into one continuity line', async () => {
+test('default-chat replacement-session transplants fold segmented assistant turns into one continuity line', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
   state = createChannel(
     state,
     {
-      title: 'Solo Thread',
+      title: 'Default Thread',
       topic: 'Carry segmented assistant turns cleanly across a retarget.',
       skipBossCatGreeting: true,
       pendingProvider: 'claude',
@@ -1730,14 +1730,14 @@ test('solo replacement-session transplants fold segmented assistant turns into o
   assert.equal(instructions.match(/\[agent:Orchestrator\]/gu)?.length ?? 0, 1);
 });
 
-test('explicit solo start-fresh resets continuity before the next replacement session', async () => {
+test('explicit default-chat start-fresh resets continuity before the next replacement session', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
   state = createChannel(
     state,
     {
-      title: 'Solo Thread',
+      title: 'Default Thread',
       topic: 'Explicit start-fresh must cut continuity instead of silently retransplanting.',
       skipBossCatGreeting: true,
       pendingProvider: 'claude',
@@ -1761,7 +1761,7 @@ test('explicit solo start-fresh resets continuity before the next replacement se
     runtimeClient,
     now,
   );
-  const resetState = resetSoloChannelContinuity(
+  const resetState = resetDefaultChatContinuity(
     firstDispatch.state,
     channelId,
     new Date('2026-03-23T00:00:30.000Z'),
@@ -1802,14 +1802,14 @@ test('explicit solo start-fresh resets continuity before the next replacement se
   assert.equal(channel.continuityResetAt, '2026-03-23T00:00:30.000Z');
 });
 
-test('solo retarget after start-fresh only transplants the new continuity branch', async () => {
+test('default-chat retarget after start-fresh only transplants the new continuity branch', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
   state = createChannel(
     state,
     {
-      title: 'Solo Thread',
+      title: 'Default Thread',
       topic: 'Retarget after a fresh start must ignore the older branch.',
       skipBossCatGreeting: true,
       pendingProvider: 'claude',
@@ -1833,7 +1833,7 @@ test('solo retarget after start-fresh only transplants the new continuity branch
     runtimeClient,
     now,
   );
-  const resetState = resetSoloChannelContinuity(
+  const resetState = resetDefaultChatContinuity(
     firstDispatch.state,
     channelId,
     new Date('2026-03-23T00:00:30.000Z'),
@@ -1868,14 +1868,14 @@ test('solo retarget after start-fresh only transplants the new continuity branch
   assert.doesNotMatch(transplantInstructions, /\[agent:Orchestrator\] response from session-1/u);
 });
 
-test('provider solo thread restarts orchestrator sessions when the pending instance changes', async () => {
+test('provider default chat restarts orchestrator sessions when the pending instance changes', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
   state = createChannel(
     state,
     {
-      title: 'Solo Thread',
+      title: 'Default Thread',
       topic: 'Switch runtime instances per turn.',
       skipBossCatGreeting: true,
       pendingProvider: 'claude',
@@ -1944,14 +1944,14 @@ test('provider solo thread restarts orchestrator sessions when the pending insta
   );
 });
 
-test('provider solo thread restarts orchestrator sessions when the pending model selection changes', async () => {
+test('provider default chat restarts orchestrator sessions when the pending model selection changes', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
   state = createChannel(
     state,
     {
-      title: 'Solo Thread',
+      title: 'Default Thread',
       topic: 'Switch reasoning effort without reusing the stale runtime session.',
       skipBossCatGreeting: true,
       pendingProvider: 'codex',
@@ -2166,7 +2166,7 @@ test('participant sessions restart when a participant model selection changes', 
   });
 });
 
-test('multi-cat rooms full-transplant continuity when an existing participant restarts on model selection drift', async () => {
+test('participant chat rooms full-transplant continuity when an existing participant restarts on model selection drift', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -2201,7 +2201,7 @@ test('multi-cat rooms full-transplant continuity when an existing participant re
     state,
     {
       title: 'Review room',
-      topic: 'Existing multi-cat participants should keep continuity when their session restarts.',
+      topic: 'Existing participant-chat members should keep continuity when their session restarts.',
       participantCatIds: [reviewerId, observerId],
       defaultRecipientId: reviewerId,
       skipBossCatGreeting: true,
@@ -2271,7 +2271,7 @@ test('multi-cat rooms full-transplant continuity when an existing participant re
   );
 });
 
-test('multi-cat rooms full-transplant continuity after stale-session recovery recreates an existing participant session', async () => {
+test('participant chat rooms full-transplant continuity after stale-session recovery recreates an existing participant session', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -2366,7 +2366,7 @@ test('multi-cat rooms full-transplant continuity after stale-session recovery re
   );
 });
 
-test('direct cat chat full-transplants continuity when a restarted lead-cat session changes model selection', async () => {
+test('direct message full-transplants continuity when a restarted direct-recipient session changes model selection', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -2392,7 +2392,7 @@ test('direct cat chat full-transplants continuity when a restarted lead-cat sess
     {
       title: 'Companion lane',
       topic: 'Direct-lane restarts should preserve full continuity.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -2474,7 +2474,7 @@ test('direct cat chat full-transplants continuity when a restarted lead-cat sess
   );
 });
 
-test('direct cat chat restarts the lead-cat session when the provider target changes explicitly', async () => {
+test('direct message restarts the direct-recipient session when the provider target changes explicitly', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -2493,8 +2493,8 @@ test('direct cat chat restarts the lead-cat session when the provider target cha
     state,
     {
       title: 'Companion lane',
-      topic: 'Explicit provider retargets should restart the lead-cat session.',
-      roomMode: 'direct_cat_chat',
+      topic: 'Explicit provider retargets should restart the direct-recipient session.',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -2557,7 +2557,7 @@ test('direct cat chat restarts the lead-cat session when the provider target cha
   );
 });
 
-test('direct cat chat restarts the lead-cat session when the instance target changes explicitly', async () => {
+test('direct message restarts the direct-recipient session when the instance target changes explicitly', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -2576,8 +2576,8 @@ test('direct cat chat restarts the lead-cat session when the instance target cha
     state,
     {
       title: 'Companion lane',
-      topic: 'Explicit instance retargets should restart the lead-cat session.',
-      roomMode: 'direct_cat_chat',
+      topic: 'Explicit instance retargets should restart the direct-recipient session.',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -2631,14 +2631,14 @@ test('direct cat chat restarts the lead-cat session when the instance target cha
   );
 });
 
-test('provider solo thread sends raw user text without default instructions on a stable session', async () => {
+test('provider default chat sends raw user text without default instructions on a stable session', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
   state = createChannel(
     state,
     {
-      title: 'Solo Thread',
+      title: 'Default Thread',
       topic: 'Keep the runtime message raw.',
       skipBossCatGreeting: true,
       pendingProvider: 'claude',
@@ -2708,7 +2708,7 @@ test('provider solo thread sends raw user text without default instructions on a
   assertProviderAgentDispatchMetadata(channel, 'Hi');
 });
 
-test('provider solo thread honors pending runtime memory flush hooks before restarting the session', async () => {
+test('provider default chat honors pending runtime memory flush hooks before restarting the session', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-23T00:00:00.000Z');
@@ -2716,8 +2716,8 @@ test('provider solo thread honors pending runtime memory flush hooks before rest
   state = createChannel(
     state,
     {
-      title: 'Solo thread',
-      topic: 'Restart the solo session after switching models.',
+      title: 'Default thread',
+      topic: 'Restart the default session after switching models.',
       skipBossCatGreeting: true,
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
@@ -2839,14 +2839,14 @@ test('provider solo thread honors pending runtime memory flush hooks before rest
   );
 });
 
-test('provider solo thread retransplants continuity after stale-session recovery creates a new runtime session', async () => {
+test('provider default chat retransplants continuity after stale-session recovery creates a new runtime session', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
   state = createChannel(
     state,
     {
-      title: 'Solo Thread',
+      title: 'Default Thread',
       topic: 'Recover stale sessions without losing continuity.',
       skipBossCatGreeting: true,
       pendingProvider: 'claude',
@@ -2904,7 +2904,7 @@ test('provider solo thread retransplants continuity after stale-session recovery
     },
   );
   const channel = buildChannelView(recoveredDispatch.state, channelId);
-  const soloReplies = channel.messages.filter(
+  const defaultChatReplies = channel.messages.filter(
     (message) => message.metadata?.targetKind === 'orchestrator' && message.senderName === 'Orchestrator',
   );
 
@@ -2943,11 +2943,11 @@ test('provider solo thread retransplants continuity after stale-session recovery
     runtimeClient.sentMessages[2]?.input?.instructions ?? '',
     /\[agent:Orchestrator\] response from session-1/u,
   );
-  assert.equal(soloReplies.at(-1)?.executionProvider, 'claude');
-  assert.equal(soloReplies.at(-1)?.executionModel, 'claude-default');
+  assert.equal(defaultChatReplies.at(-1)?.executionProvider, 'claude');
+  assert.equal(defaultChatReplies.at(-1)?.executionModel, 'claude-default');
 });
 
-test('parallel member channels inherit solo continuity transplant rules on retarget', async () => {
+test('parallel member channels inherit default continuity transplant rules on retarget', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -3016,7 +3016,7 @@ test('parallel member channels inherit solo continuity transplant rules on retar
 });
 
 test(
-  'participant room no-mention turns route to orchestrator despite default recipient',
+  'participant chat no-mention turns route to orchestrator despite default recipient',
   async () => {
     const { state, channelId, agent1Id } = await createChannelState();
     const runtimeClient = createRuntimeStub(async () =>
@@ -3038,7 +3038,7 @@ test(
     assert.equal(channel.roomRouting?.defaultRecipientId, agent1Id);
     assert.equal(
       channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
-      'boss_chat_default',
+      'chat_channel_default',
     );
     assert.equal(
       channel.roomRouting?.lastOutcome?.resolution.defaultTarget?.participantKind,
@@ -3074,7 +3074,7 @@ test(
 );
 
 test(
-  'direct cat chat no-mention turns route to default recipient instead of orchestrator',
+  'direct message no-mention turns route to default recipient instead of orchestrator',
   async () => {
     let state = await new MemoryChatStore().read();
     const now = new Date('2026-03-21T00:00:00.000Z');
@@ -3106,7 +3106,7 @@ test(
       {
         title: 'Companion lane',
         topic: 'No-mention turns should stay on the direct lane.',
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         participantCatIds: [companionId],
         defaultRecipientId: companionId,
         skipBossCatGreeting: true,
@@ -3134,7 +3134,7 @@ test(
     assert.equal(channel.roomRouting?.defaultRecipientId, companionId);
     assert.equal(
       channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
-      'direct_chat_recipient',
+      'direct_message_recipient',
     );
     assert.equal(
       channel.roomRouting?.lastOutcome?.resolution.defaultTarget?.participantKind,
@@ -3161,7 +3161,7 @@ test(
   },
 );
 
-test('participant room routing continues across agent mentions and auto-wakes targeted participants', async () => {
+test('participant chat routing continues across agent mentions and auto-wakes targeted participants', async () => {
   const { state, channelId } = await createChannelState();
   const runtimeClient = createRuntimeStub(async ({ content }) => {
     if (content.includes('You are Agent-1')) {
@@ -3203,7 +3203,7 @@ test('participant room routing continues across agent mentions and auto-wakes ta
   );
   assert.equal(
     channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
-    'boss_chat_default',
+    'chat_channel_default',
   );
   assert.ok(
     channel.roomRouting?.lastOutcome?.checkpoints.some(
@@ -3453,7 +3453,7 @@ test('explicit @mentions stay authoritative over structured workflow recommendat
   assert.equal(agent2Target?.branchStrategy, 'transplant_context');
 });
 
-test('direct cat chat routes unmentioned turns to the lead cat without waking Boss Cat first', async () => {
+test('direct message routes unmentioned turns to the direct recipient without waking Boss Cat first', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-21T00:00:00.000Z');
@@ -3485,7 +3485,7 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
     {
       title: 'Companion lane',
       topic: 'Talk directly to Companion.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -3570,7 +3570,7 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
   assert.equal(channel.orchestratorLease.sessionId, null);
   assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-1');
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'default_target');
-  assert.equal(channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason, 'direct_chat_recipient');
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason, 'direct_message_recipient');
   assert.equal(channel.roomRouting?.wakeHistory[0]?.reason, 'room_default');
   assert.equal(channel.roomRouting?.wakeHistory[0]?.participant.participantId, companionId);
   assert.equal(channel.messages.at(-1)?.senderName, 'Companion');
@@ -3578,7 +3578,7 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
   assertProviderAgentDispatchMetadata(channel, 'Handle this directly.');
 });
 
-test('direct cat chat records targetStateId on real session_started messages', async () => {
+test('direct message records targetStateId on real session_started messages', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-21T00:00:00.000Z');
@@ -3599,7 +3599,7 @@ test('direct cat chat records targetStateId on real session_started messages', a
     {
       title: 'Companion lane',
       topic: 'Track targetStateId on real session_started messages.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -3640,7 +3640,7 @@ test('direct cat chat records targetStateId on real session_started messages', a
   assert.equal(dispatched.results[0]?.laneId, laneId);
 });
 
-test('direct cat chat updates the reused lease laneId when the same runtime session serves a new turn', async () => {
+test('direct message updates the reused lease laneId when the same runtime session serves a new turn', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const startedAt = new Date('2026-03-21T00:00:00.000Z');
@@ -3661,7 +3661,7 @@ test('direct cat chat updates the reused lease laneId when the same runtime sess
     {
       title: 'Companion lane',
       topic: 'Reuse the same runtime session across turns but keep the lease lane current.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -3739,7 +3739,7 @@ test('ensureTargetSession reuses a lane-attached lease even when the routing tar
     {
       title: 'Companion lane',
       topic: 'Reuse the lane attachment even if the routing target session id drifted out.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -3813,7 +3813,7 @@ test('ensureTargetSession only resolves channel task execution context once acro
     {
       title: 'Companion retry lane',
       topic: 'Retry stale sessions without rereading core task execution context.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -3874,7 +3874,7 @@ test('ensureTargetSession only resolves channel task execution context once acro
   assert.notEqual(ensured.target.sessionId, 'session-stale');
 });
 
-test('direct cat chat records targetStateId on session_start_failed messages', async () => {
+test('direct message records targetStateId on session_start_failed messages', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-21T00:00:00.000Z');
@@ -3895,7 +3895,7 @@ test('direct cat chat records targetStateId on session_start_failed messages', a
     {
       title: 'Companion lane',
       topic: 'Track targetStateId on session_start_failed messages.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -3962,7 +3962,7 @@ test('ensureTargetSession preserves sanitized participant execution targets when
     {
       title: 'Companion lane',
       topic: 'Preserve sanitized execution targets when workspace sync fails.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -4027,7 +4027,7 @@ test('ensureTargetSession preserves sanitized participant execution targets when
   );
 });
 
-test('direct cat chat treats lead-cat mentions as plain text and stays on the lane', async () => {
+test('direct message treats direct-recipient mentions as plain text and stays on the lane', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-21T00:00:00.000Z');
@@ -4058,8 +4058,8 @@ test('direct cat chat treats lead-cat mentions as plain text and stays on the la
     state,
     {
       title: 'Companion lane',
-      topic: 'Treat lead-cat mentions as plain text inside the lane.',
-      roomMode: 'direct_cat_chat',
+      topic: 'Treat direct-recipient mentions as plain text inside the lane.',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -4095,7 +4095,7 @@ test('direct cat chat treats lead-cat mentions as plain text and stays on the la
   assert.equal(channel.messages.at(-1)?.senderName, 'Companion');
 });
 
-test('direct cat chat blocks explicit Boss Cat mentions instead of routing out of lane', async () => {
+test('direct message blocks explicit Boss Cat mentions instead of routing out of lane', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-21T00:00:00.000Z');
@@ -4127,7 +4127,7 @@ test('direct cat chat blocks explicit Boss Cat mentions instead of routing out o
     {
       title: 'Companion lane',
       topic: 'Stay on the direct lane even when Boss Cat is mentioned.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -4159,7 +4159,7 @@ test('direct cat chat blocks explicit Boss Cat mentions instead of routing out o
   assert.match(channel.messages.at(-1)?.body ?? '', /No valid room targets matched the explicit mentions/i);
 });
 
-test('direct cat chat ignores workflow recommendations that target Boss Cat', async () => {
+test('direct message ignores workflow recommendations that target Boss Cat', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-21T00:00:00.000Z');
@@ -4191,7 +4191,7 @@ test('direct cat chat ignores workflow recommendations that target Boss Cat', as
     {
       title: 'Companion lane',
       topic: 'Structured handoffs must not escape the direct lane.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -4241,7 +4241,7 @@ test('direct cat chat ignores workflow recommendations that target Boss Cat', as
   assert.match(channel.messages.at(-1)?.body ?? '', /I think Boss Cat should take a look\./u);
 });
 
-test('direct cat chat recreates a stale lead-cat session once when runtime reports session not found', async () => {
+test('direct message recreates a stale direct-recipient session once when runtime reports session not found', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-24T00:00:00.000Z');
@@ -4262,7 +4262,7 @@ test('direct cat chat recreates a stale lead-cat session once when runtime repor
     {
       title: 'Companion lane',
       topic: 'Recover stale direct session leases.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -4325,7 +4325,7 @@ test('direct cat chat recreates a stale lead-cat session once when runtime repor
   assert.match(channel.messages.at(-1)?.body ?? '', /recovered the direct lane/i);
 });
 
-test('direct cat chat recreates a closed lead-cat session once when runtime demands resume first', async () => {
+test('direct message recreates a closed direct-recipient session once when runtime demands resume first', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-24T00:00:00.000Z');
@@ -4346,7 +4346,7 @@ test('direct cat chat recreates a closed lead-cat session once when runtime dema
     {
       title: 'Companion lane',
       topic: 'Recover closed direct session leases.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -4430,7 +4430,7 @@ test('session-full errors stop immediately and clear the direct lane lease inste
     {
       title: 'Companion lane',
       topic: 'Stop when the runtime session is full.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -4493,7 +4493,7 @@ test('session-full errors stop immediately and clear the direct lane lease inste
   );
 });
 
-test('direct cat chat blocks unmentioned turns when the lead cat is no longer assigned instead of falling back to Boss Cat', async () => {
+test('direct message blocks unmentioned turns when the direct recipient is no longer assigned instead of falling back to Boss Cat', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-21T00:00:00.000Z');
@@ -4525,7 +4525,7 @@ test('direct cat chat blocks unmentioned turns when the lead cat is no longer as
     {
       title: 'Companion lane',
       topic: 'Talk directly to Companion.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
@@ -4553,10 +4553,10 @@ test('direct cat chat blocks unmentioned turns when the lead cat is no longer as
   assert.equal(runtimeClient.sentMessages.length, 0);
   assert.equal(channel.orchestratorLease.sessionId, null);
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.selectionKind, 'blocked');
-  assert.equal(channel.roomRouting?.lastOutcome?.resolution.blockedReason, 'missing_direct_chat_recipient');
+  assert.equal(channel.roomRouting?.lastOutcome?.resolution.blockedReason, 'missing_direct_message_recipient');
   assert.equal(channel.roomRouting?.lastOutcome?.resolution.defaultTarget?.participantId, companionId);
   assert.equal(channel.roomRouting?.wakeHistory.length, 0);
-  assert.match(channel.messages.at(-1)?.body ?? '', /no longer has an active lead Cat/i);
+  assert.match(channel.messages.at(-1)?.body ?? '', /no longer has an active recipient Cat/i);
 });
 
 test('already-awake route targets record skipped wake requests without a completion timestamp', async () => {
@@ -4580,7 +4580,7 @@ test('already-awake route targets record skipped wake requests without a complet
     {
       title: 'Companion lane',
       topic: 'Keep skipped wake requests machine-readable.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,

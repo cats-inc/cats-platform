@@ -129,7 +129,7 @@ function buildOrchestratorParticipantPlan<TState extends OrchestratorStateView>(
     mcpProfile: state.globalOrchestrator.mcpProfile,
     runtimeSkills: resolveSkillProfileManifest({
       profileId: state.globalOrchestrator.skillProfile,
-      roomMode: channelContext.channel.roomRouting?.mode ?? 'boss_chat',
+      roomMode: channelContext.channel.roomRouting?.mode ?? 'chat_channel',
       transport: channelContext.transport,
       labels: ['participant:orchestrator'],
       metadata: {
@@ -140,7 +140,7 @@ function buildOrchestratorParticipantPlan<TState extends OrchestratorStateView>(
       profileId: state.globalOrchestrator.mcpProfile,
       participantKind: 'orchestrator',
       channelId: channelContext.channel.id,
-      roomMode: channelContext.channel.roomRouting?.mode ?? 'boss_chat',
+      roomMode: channelContext.channel.roomRouting?.mode ?? 'chat_channel',
       transport: channelContext.transport,
     }) ?? null,
   };
@@ -163,7 +163,7 @@ function buildCatParticipantPlan(
     runtimeSkills: resolveSkillProfileManifest({
       profileId: cat.skillProfile,
       catId: cat.catId,
-      roomMode: channelContext.channel.roomRouting?.mode ?? 'boss_chat',
+      roomMode: channelContext.channel.roomRouting?.mode ?? 'chat_channel',
       transport: channelContext.transport,
       labels: ['participant:cat'],
       metadata: {
@@ -176,7 +176,7 @@ function buildCatParticipantPlan(
       participantKind: 'cat',
       channelId: channelContext.channel.id,
       catId: cat.catId,
-      roomMode: channelContext.channel.roomRouting?.mode ?? 'boss_chat',
+      roomMode: channelContext.channel.roomRouting?.mode ?? 'chat_channel',
       transport: channelContext.transport,
     }) ?? null,
   };

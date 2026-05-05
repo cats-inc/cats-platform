@@ -212,7 +212,7 @@ test('persistCatAssignmentUpdate keeps direct-lane transport binding on session_
     title: 'Route support direct lane failure',
     topic: 'keep direct-lane transport binding on session_start_failed metadata',
     originSurface: 'chat',
-    roomMode: 'direct_cat_chat',
+    roomMode: 'direct_message',
     repoPath: 'C:/repo/cats-platform',
     defaultRecipientId: catId,
     skipBossCatGreeting: true,
@@ -302,7 +302,7 @@ test('persistCatAssignmentUpdate keeps direct-lane transport binding on session_
     title: 'Route support direct lane close failure',
     topic: 'keep direct-lane transport binding on session_close_failed metadata',
     originSurface: 'chat',
-    roomMode: 'direct_cat_chat',
+    roomMode: 'direct_message',
     defaultRecipientId: catId,
     skipBossCatGreeting: true,
   }, now);
@@ -405,7 +405,7 @@ test('persistCatAssignmentRemoval keeps direct-lane transport binding on session
     title: 'Route support direct lane removal close failure',
     topic: 'keep direct-lane transport binding on removal session_close_failed metadata',
     originSurface: 'chat',
-    roomMode: 'direct_cat_chat',
+    roomMode: 'direct_message',
     defaultRecipientId: catId,
     skipBossCatGreeting: true,
   }, now);

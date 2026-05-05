@@ -105,7 +105,7 @@ function toRoomRouting(rawValue: unknown): TelegramWebhookReceipt['roomRouting']
   const note = readString(record.note);
 
   if (
-    transportConversationMode !== 'direct_cat_chat'
+    transportConversationMode !== 'direct_message'
     || !roomRoutingStatus
     || !(typeof linkedRoomId === 'string' || linkedRoomId === null)
     || !note
@@ -266,7 +266,7 @@ function toBinding(rawBinding: unknown): TelegramConversationBinding | null {
   if (
     !telegramChatId
     || !conversationId
-    || transportConversationMode !== 'direct_cat_chat'
+    || transportConversationMode !== 'direct_message'
     || !roomRoutingStatus
     || !(typeof linkedRoomId === 'string' || linkedRoomId === null || linkedRoomId === undefined)
     || !createdAt

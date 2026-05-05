@@ -7,7 +7,7 @@ import type {
 } from '../../../../shared/roomRouting.js';
 import {
   isDirectLaneChannel,
-  isSoloThreadChannel,
+  isDefaultChatChannel,
 } from '../../shared/channelTopology.js';
 import {
   buildChannelView,
@@ -257,8 +257,8 @@ export function extractWorkflowRecommendationFromBody(
   };
 }
 
-function isSoloChatChannel(channel: ReturnType<typeof buildChannelView>): boolean {
-  return isSoloThreadChannel(channel);
+function isDefaultChatRuntimeChannel(channel: ReturnType<typeof buildChannelView>): boolean {
+  return isDefaultChatChannel(channel);
 }
 
 function buildOrchestratorTarget(state: ChatState, channelId: string): RoutingTarget {
@@ -266,7 +266,7 @@ function buildOrchestratorTarget(state: ChatState, channelId: string): RoutingTa
   return {
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
-    participantName: isSoloChatChannel(channel) ? ORCHESTRATOR_NAME : resolveOrchestratorDisplayName(state),
+    participantName: isDefaultChatRuntimeChannel(channel) ? ORCHESTRATOR_NAME : resolveOrchestratorDisplayName(state),
     laneId: null,
     sessionId: null,
   };

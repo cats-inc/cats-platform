@@ -695,7 +695,7 @@ test('buildChatOperatorView filters invalid embedded governance summary enum val
               channelId: 'room-invalid-governance',
               conversationId: 'conversation-channel-room-invalid-governance',
               taskId: 'task-channel-room-invalid-governance',
-              roomMode: 'boss_chat',
+              roomMode: 'chat_channel',
               transport: null,
               workflowStageId: null,
               workflowShape: null,

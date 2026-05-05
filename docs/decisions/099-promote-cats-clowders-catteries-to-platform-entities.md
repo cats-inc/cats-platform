@@ -63,7 +63,7 @@ Rules:
    whose rows link to canonical entity URLs. The Lobby route does not own
    them.
 5. Chat product sidebar's `MY CATS` section is **renamed to `Direct
-   Messages`** (UI label only; internal `direct_lane` term unchanged).
+   Messages`** (UI label only; internal `direct_message` term unchanged).
 6. Code product sidebar's `My Clowders` placeholder row and Work product
    sidebar's `My Catteries` placeholder row are **removed**. Future product-
    local subset views (e.g. "Clowders working in this codebase") follow
@@ -93,7 +93,7 @@ Rules:
   §Pre-Release Compatibility Policy forbids transition aliases for
   unreleased contracts, so a missed caller surfaces as a hard 404, not as
   a silent legacy path.
-- `direct_lane` (internal) vs `Direct Messages` (UI label) introduces a
+- `direct_message` (internal) vs `Direct Messages` (UI label) introduces a
   vocabulary gap that must be documented.
 - `/settings/cats` semantics narrow to "global preferences" — existing UI
   needs a clear partition. `SettingsAssistants` lifts out from

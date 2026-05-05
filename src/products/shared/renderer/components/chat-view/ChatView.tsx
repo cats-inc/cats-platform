@@ -47,7 +47,7 @@ import { type ExecutionTargetValue } from '../ExecutionTarget.js';
 import type { MessageChoicesSubmitInput } from '../MessageChoices.js';
 import {
   isDirectConversationMode,
-  isSoloThreadConversationMode,
+  isDefaultChatConversationMode,
   resolveConversationMode,
 } from '../../../../../app/renderer/productShell/conversationMode.js';
 import { useTranscriptAutoScroll } from '../../hooks/useTranscriptAutoScroll.js';
@@ -166,7 +166,7 @@ export interface ChatViewRenderContext {
   operatorView: ChatOperatorView | null;
   inspectedRun: ChatRunInspectorView | null;
   isDirectLane: boolean;
-  isSoloComposer: boolean;
+  isDefaultChatComposer: boolean;
   sidePanelOpen: boolean;
   openSidePanelTo: (section: string) => void;
 }
@@ -183,7 +183,7 @@ export interface ChatViewComposerTargetSlotContext {
   assignedCatRecords: ChatCat[];
   leadCatRecord: ChatCat | null;
   isDirectLane: boolean;
-  isSoloComposer: boolean;
+  isDefaultChatComposer: boolean;
   activeWorkflowShape: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys: string[] | null;
@@ -381,7 +381,7 @@ export function ChatView({
     comparePrevChannelId,
     compareNextChannelId,
   } = compareState;
-  const isSoloComposer = isSoloThreadConversationMode(conversationMode);
+  const isDefaultChatComposer = isDefaultChatConversationMode(conversationMode);
   const isDirectLane = isDirectConversationMode(conversationMode);
   const {
     activeRoomParticipants,
@@ -405,13 +405,13 @@ export function ChatView({
     activeAssignedCats,
     showBossCatAvatar,
     isDirectLane,
-    isSoloComposer,
+    isDefaultChatComposer,
   });
   const layoutMode: ChatLayoutMode = isDirectLane
-    ? 'direct_lane'
-    : activeRoomParticipants.length > 1
-      ? 'multi_cat'
-      : 'solo';
+    ? 'direct_message'
+    : activeRoomParticipants.length > 0
+      ? 'participant_chat'
+      : 'default_chat';
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelSection, setSidePanelSection] = useState<string | null>('cats');
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
@@ -491,7 +491,7 @@ export function ChatView({
     isDirectLane,
     defaultRecipientCat,
     showBossCatAvatar,
-    isSoloComposer,
+    isDefaultChatComposer,
     activeRoomParticipants,
   });
   const composerStackParticipants = useMemo(
@@ -754,7 +754,7 @@ export function ChatView({
     return buildChatComposerRecipients({
       isDirectLane,
       directLaneCat,
-      isSoloComposer,
+      isDefaultChatComposer,
       selectedExecutionTarget,
       defaultRecipientParticipant,
       bossCatId: payload.chat.bossCatId,
@@ -765,7 +765,7 @@ export function ChatView({
     defaultRecipientParticipant,
     directLaneCat,
     isDirectLane,
-    isSoloComposer,
+    isDefaultChatComposer,
     payload.chat.bossCatId,
     resolveParticipantCatRecord,
     resolveParticipantDisplayName,
@@ -917,7 +917,7 @@ export function ChatView({
     operatorView,
     inspectedRun,
     isDirectLane,
-    isSoloComposer,
+    isDefaultChatComposer,
     sidePanelOpen,
     openSidePanelTo,
   };
@@ -933,7 +933,7 @@ export function ChatView({
     assignedCatRecords,
     leadCatRecord: defaultRecipientCatRecord,
     isDirectLane,
-    isSoloComposer,
+    isDefaultChatComposer,
     activeWorkflowShape,
     onToggleActiveWorkflowShape,
     activeAudienceKeys,
@@ -949,7 +949,7 @@ export function ChatView({
       composerStackParticipants={composerStackParticipants}
       directLaneCat={directLaneCat}
       isDirectLane={isDirectLane}
-      isSoloComposer={isSoloComposer}
+      isDefaultChatComposer={isDefaultChatComposer}
       activeWorkflowShape={activeWorkflowShape}
       onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
       activeAudienceKeys={activeAudienceKeys}
@@ -971,7 +971,7 @@ export function ChatView({
     directLaneCat,
     directLaneExecutionTarget,
     isDirectLane,
-    isSoloComposer,
+    isDefaultChatComposer,
     selectedExecutionTarget,
     inspectedRun,
     showAddCatButton,
@@ -1167,7 +1167,7 @@ export function ChatView({
         defaultRecipientParticipantId={defaultRecipientParticipant?.participantId ?? null}
         composerStackParticipants={composerStackParticipants}
         isDirectLane={isDirectLane}
-        isSoloComposer={isSoloComposer}
+        isDefaultChatComposer={isDefaultChatComposer}
         activeWorkflowShape={activeWorkflowShape}
         onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
         activeAudienceKeys={activeAudienceKeys}

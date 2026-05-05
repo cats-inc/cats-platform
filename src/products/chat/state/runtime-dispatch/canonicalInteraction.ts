@@ -58,7 +58,7 @@ export function recordDispatchExecutionInteraction(
       })
       : null;
     nextChannel.roomRouting = {
-      mode: nextChannel.channelKind === 'direct_lane' ? 'direct_cat_chat' : 'boss_chat',
+      mode: nextChannel.channelKind === 'direct_message' ? 'direct_message' : 'chat_channel',
       defaultRecipientId,
       maxContinuations: 8,
       maxDispatchesPerTurn: 8,

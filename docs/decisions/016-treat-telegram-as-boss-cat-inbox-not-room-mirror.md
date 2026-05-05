@@ -1,7 +1,7 @@
 # ADR-016: Treat Telegram as a Boss Cat Inbox, Not a Room Mirror
 
 > Model Telegram as an external entrypoint into a Cat's private lane
-> (`direct_cat_chat`) instead of trying to mirror all room traffic into one
+> (`direct_message`) instead of trying to mirror all room traffic into one
 > transport transcript.
 
 ## Status
@@ -14,7 +14,7 @@ Accepted (Revised 2026-03-23)
 >
 > **Revision note (2026-03-23)**: `transport_inbox` is no longer a separate
 > `RoomRoutingMode`. Telegram binding is a property of a Cat's private lane
-> (`direct_cat_chat`). Inbound Telegram messages route into that lane, not
+> (`direct_message`). Inbound Telegram messages route into that lane, not
 > into a separate inbox channel. The core principle — Telegram is not a room
 > mirror — remains unchanged.
 
@@ -51,7 +51,7 @@ thread.
 mirror.
 
 1. One Telegram bot thread delivers messages into the bound Cat's private lane
-   (`direct_cat_chat`).
+   (`direct_message`).
    - Telegram binding is a property of the Cat, not a separate channel type
    - there is no separate `transport_inbox` routing mode
    - the private lane is the single source of truth for that Cat's direct

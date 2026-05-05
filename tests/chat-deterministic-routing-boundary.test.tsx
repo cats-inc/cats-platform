@@ -16,7 +16,7 @@ function createGroupState() {
       title: 'Routing room',
       topic: 'Routing',
       originSurface: 'chat',
-      roomMode: 'boss_chat',
+      roomMode: 'chat_channel',
       temporaryParticipants: [
         {
           participantId: 'participant-reviewer',

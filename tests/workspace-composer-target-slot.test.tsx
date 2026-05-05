@@ -49,7 +49,7 @@ test('workspace composer renders a cat-backed audience chip for direct lanes', (
       assignedCatRecords={[]}
       leadCatRecord={null}
       isDirectLane
-      isSoloComposer={false}
+      isDefaultChatComposer={false}
       onOpenSection={() => {}}
     />,
   );
@@ -60,7 +60,7 @@ test('workspace composer renders a cat-backed audience chip for direct lanes', (
   assert.match(markup, /data-tooltip="Mochi · Claude-CLI/u);
 });
 
-test('workspace composer renders a model-backed audience chip for solo mode', () => {
+test('workspace composer renders a model-backed audience chip for default mode', () => {
   const markup = renderToStaticMarkup(
     <WorkspaceComposerTargetSlot
       payload={createPayload()}
@@ -76,7 +76,7 @@ test('workspace composer renders a model-backed audience chip for solo mode', ()
       assignedCatRecords={[]}
       leadCatRecord={null}
       isDirectLane={false}
-      isSoloComposer
+      isDefaultChatComposer
       onOpenSection={() => {}}
     />,
   );
@@ -87,7 +87,7 @@ test('workspace composer renders a model-backed audience chip for solo mode', ()
   assert.doesNotMatch(markup, /class="audienceChipWorkflow"/u);
 });
 
-test('workspace composer prefers runtime-backed execution labels for solo audience chips', () => {
+test('workspace composer prefers runtime-backed execution labels for default audience chips', () => {
   const markup = renderToStaticMarkup(
     <WorkspaceComposerTargetSlot
       payload={createPayload()}
@@ -110,7 +110,7 @@ test('workspace composer prefers runtime-backed execution labels for solo audien
       assignedCatRecords={[]}
       leadCatRecord={null}
       isDirectLane={false}
-      isSoloComposer
+      isDefaultChatComposer
       onOpenSection={() => {}}
     />,
   );
@@ -140,7 +140,7 @@ test('workspace composer renders a multi-cat audience chip for group rooms', () 
       assignedCatRecords={[leadCat, secondCat]}
       leadCatRecord={leadCat}
       isDirectLane={false}
-      isSoloComposer={false}
+      isDefaultChatComposer={false}
       onOpenSection={() => {}}
     />,
   );

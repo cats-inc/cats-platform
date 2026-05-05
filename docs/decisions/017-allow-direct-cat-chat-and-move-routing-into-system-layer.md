@@ -40,7 +40,7 @@ routing will be owned by a shared system-layer routing model.
 1. `Boss Cat` remains the default product entry identity.
    - `+ New Chat` still defaults to a `Boss Chat`
    - Telegram messages enter through the bound Cat's private lane
-     (`direct_cat_chat`), which is the Boss Cat's lane by default
+     (`direct_message`), which is the Boss Cat's lane by default
 
 2. The operator may also open a `Direct Cat Chat` with a specific Cat.
    - this is a first-class chat mode, not a hidden workaround

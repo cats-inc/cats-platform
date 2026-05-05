@@ -43,7 +43,7 @@ function buildDeterministicPlanTargetingParticipant(channelId, participant) {
           participantId: participant.participantId,
           participantName: participant.name,
         },
-        defaultTargetReason: 'boss_chat_default',
+        defaultTargetReason: 'chat_channel_default',
         fallbackTarget: null,
         blockedReason: null,
         note: null,
@@ -75,7 +75,7 @@ test('Chat dispatch consumes Chat-owned deterministic plan targets instead of re
     title: 'Plan-routed chat',
     topic: 'Default routing would choose the orchestrator without the injected plan.',
     originSurface: 'chat',
-    roomMode: 'boss_chat',
+    roomMode: 'chat_channel',
     skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;

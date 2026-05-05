@@ -92,7 +92,7 @@ import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiAct
 import { useWorkspaceAppNavigationActions } from "./hooks/useWorkspaceAppNavigationActions.js";
 import { useWorkspaceAppShellRouting } from "./hooks/useWorkspaceAppShellRouting.js";
 import {
-  isSoloThreadChannel,
+  isDefaultChatChannel,
   supportsParticipantAudienceSelection,
 } from "../../chat/shared/channelTopology.js";
 import { useWorkspaceChatEvents } from "./hooks/useWorkspaceChatEvents.js";
@@ -497,7 +497,7 @@ export function createWorkspaceProductApp({
     const onCompanionWake = useCallback((catId: string): void => {
       const channel = state.status === 'ready'
         ? state.payload.chat.channels.find((candidate) =>
-            candidate.channelKind === 'direct_lane'
+            candidate.channelKind === 'direct_message'
             && candidate.defaultRecipientCatId === catId)
         : null;
       if (!channel) {
@@ -508,7 +508,7 @@ export function createWorkspaceProductApp({
     const onCompanionSleep = useCallback((catId: string): void => {
       const channel = state.status === 'ready'
         ? state.payload.chat.channels.find((candidate) =>
-            candidate.channelKind === 'direct_lane'
+            candidate.channelKind === 'direct_message'
             && candidate.defaultRecipientCatId === catId)
         : null;
       if (!channel) {
@@ -682,8 +682,8 @@ export function createWorkspaceProductApp({
     const {
       draftExecutionTarget,
       setDraftExecutionTarget,
-      soloChannelExecutionTarget,
-      setSoloChannelExecutionTarget,
+      defaultChannelExecutionTarget,
+      setDefaultChannelExecutionTarget,
     } = useWorkspaceExecutionTargetState({
       state,
       readyChat,
@@ -693,7 +693,7 @@ export function createWorkspaceProductApp({
       updateNewChatDefaultsPreference,
       updateChannelPendingExecutionTarget,
     });
-    const draftEntryKind: "solo" | "group" | "direct" = showingMyCatDirectLane
+    const draftEntryKind: "default" | "group" | "direct" = showingMyCatDirectLane
       ? "direct"
       : supportsStructuredDraftModes
         && (
@@ -703,7 +703,7 @@ export function createWorkspaceProductApp({
           || draftTemporaryParticipants.length > 0
         )
         ? "group"
-        : "solo";
+        : "default";
     const {
       draftParallelChatTargets,
       resetDraftParallelChatTargets,
@@ -1380,7 +1380,7 @@ export function createWorkspaceProductApp({
       setDraftWorkflowShape,
       setDraftAudienceKeys,
       draftExecutionTarget,
-      soloChannelExecutionTarget,
+      defaultChannelExecutionTarget,
       showingParallelChatDraft: supportsStructuredDraftModes && showingParallelChatDraft,
       draftParallelChatTargets,
       draftWorkflowShape,
@@ -1595,8 +1595,8 @@ export function createWorkspaceProductApp({
       const seedWorkflowShape = draftParallelTargetWorkflowShapes[0] ?? draftWorkflowShape;
 
       // +compare only appends a parallel target — it never creates a
-      // temp or seeds a branch audience. Each shadow row starts solo
-      // (target-derived chip) and must earn its members via the
+      // temp or seeds a branch audience. Each shadow row starts with the
+      // target-derived chip and must earn its members via the
       // branch's own +collaborate, which is the only entrypoint that
       // consumes a pool slot (maxChatParticipants). Seeding the lead
       // audience on first transition stays free because it only
@@ -1775,7 +1775,7 @@ export function createWorkspaceProductApp({
                     onApprovalDecision,
                     onChoiceSubmit,
                     onStartFresh:
-                      visibleChatChannelId && visibleChannel && isSoloThreadChannel(visibleChannel)
+                      visibleChatChannelId && visibleChannel && isDefaultChatChannel(visibleChannel)
                         ? () => onStartFreshChannel(visibleChatChannelId)
                         : undefined,
                     onRelayMessage: onRelayCompareMessage,
@@ -1786,12 +1786,12 @@ export function createWorkspaceProductApp({
                     onOperatorAction,
                     autoResize,
                     selectedExecutionTarget:
-                      visibleChannel && isSoloThreadChannel(visibleChannel)
-                        ? soloChannelExecutionTarget
+                      visibleChannel && isDefaultChatChannel(visibleChannel)
+                        ? defaultChannelExecutionTarget
                         : undefined,
                     onExecutionTargetChange:
-                      visibleChannel && isSoloThreadChannel(visibleChannel)
-                        ? setSoloChannelExecutionTarget
+                      visibleChannel && isDefaultChatChannel(visibleChannel)
+                        ? setDefaultChannelExecutionTarget
                         : undefined,
                     onDirectLaneExecutionTargetChange: onDirectLaneModelSave,
                     activeWorkflowShape,

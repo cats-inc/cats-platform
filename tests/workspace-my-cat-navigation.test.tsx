@@ -21,11 +21,11 @@ test('buildMyCatPathForPrefix trims and encodes cat ids without leaking the chat
 
 test('workspace My Cats navigation targets stay product-local for work and code', () => {
   assert.deepEqual(resolveWorkMyCatNavigationTarget([], 'companion-cat'), {
-    kind: 'direct_lane',
+    kind: 'direct_message',
     path: '/work/dm/companion-cat',
   });
   assert.deepEqual(resolveCodeMyCatNavigationTarget([], 'companion-cat'), {
-    kind: 'direct_lane',
+    kind: 'direct_message',
     path: '/code/dm/companion-cat',
   });
 });

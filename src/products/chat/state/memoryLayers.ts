@@ -75,7 +75,7 @@ function deriveChannelWorkingMemory(channel: ChatChannelView, nowIso: string): M
     ) || null,
     facts: uniqueStrings([
       channel.repoPath ? `Repo: ${channel.repoPath}` : null,
-      `Room mode: ${channel.roomRouting?.mode ?? 'boss_chat'}`,
+      `Room mode: ${channel.roomRouting?.mode ?? 'chat_channel'}`,
       channel.skillProfile ? `Skill profile: ${channel.skillProfile}` : null,
       activeCatNames.length > 0 ? `Active Cats: ${activeCatNames.join(', ')}` : null,
     ]).slice(0, 6),

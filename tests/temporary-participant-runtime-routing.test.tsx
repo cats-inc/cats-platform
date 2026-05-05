@@ -86,7 +86,7 @@ test('temporary participants remain explicit targets while room default goes to 
   const defaultTarget = resolveRoomDefaultRoutingTarget(state, channelId);
   assert.equal(defaultTarget.target?.participantKind, 'orchestrator');
   assert.equal(defaultTarget.target?.participantId, 'orchestrator');
-  assert.equal(defaultTarget.defaultTargetReason, 'boss_chat_default');
+  assert.equal(defaultTarget.defaultTargetReason, 'chat_channel_default');
 
   const mentionRoute = resolveMentionRoute(
     state,
@@ -102,7 +102,7 @@ test('temporary participants remain explicit targets while room default goes to 
   assert.equal(mentionRoute.targets[0]?.participantName, 'RuntimeVerifier');
 });
 
-test('temporary participants build prompts, choice routing, and suppress solo rewrite fallback', () => {
+test('temporary participants build prompts, choice routing, and suppress default rewrite fallback', () => {
   const { state, channelId, userMessageId } = createTemporaryParticipantState();
   const channel = buildChannelView(state, channelId);
   const sourceMessage = channel.messages.find((message) => message.id === userMessageId);

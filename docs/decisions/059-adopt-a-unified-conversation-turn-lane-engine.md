@@ -23,7 +23,7 @@ Proposed
 These regressions are not isolated UI bugs.
 
 They come from a deeper architectural problem: the product still behaves as if
-`solo`, `direct lane`, `group sequential`, `group concurrent`, and `parallel`
+`default`, `direct lane`, `group sequential`, `group concurrent`, and `parallel`
 were separate chat modes with partially shared internals.
 
 Today, several layers still normalize state differently:

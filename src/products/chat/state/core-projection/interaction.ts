@@ -357,20 +357,20 @@ function resolveSourceMessageTransportBindingId(
   sourceMessageId: string | null,
 ): string | null {
   if (!sourceMessageId) {
-    return channel.channelKind === 'direct_lane'
+    return channel.channelKind === 'direct_message'
       ? buildDirectLaneTransportBindingId(channel.id)
       : null;
   }
 
   const sourceMessage = channel.messages.find((message) => message.id === sourceMessageId) ?? null;
   if (!sourceMessage) {
-    return channel.channelKind === 'direct_lane'
+    return channel.channelKind === 'direct_message'
       ? buildDirectLaneTransportBindingId(channel.id)
       : null;
   }
 
   return readMessageMetadataString(sourceMessage, 'transportBindingId')
-    ?? (channel.channelKind === 'direct_lane'
+    ?? (channel.channelKind === 'direct_message'
       ? buildDirectLaneTransportBindingId(channel.id)
       : null);
 }
@@ -683,7 +683,7 @@ function resolveSessionTransportBindingId(
     return explicitTransportBindingId;
   }
 
-  return channel.channelKind === 'direct_lane'
+  return channel.channelKind === 'direct_message'
     && channel.roomRouting?.defaultRecipientId === participant.participantId
     ? buildDirectLaneTransportBindingId(channelId)
     : null;

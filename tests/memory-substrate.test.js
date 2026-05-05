@@ -203,7 +203,7 @@ test('memory substrate flushes companion and owner data into canonical records a
         updatedAt: now.toISOString(),
       },
       roomRouting: {
-        mode: 'direct_cat_chat',
+        mode: 'direct_message',
         defaultRecipientId: 'cat-memory',
         explicitParticipantIds: [],
         mentionParticipantIds: [],
@@ -454,7 +454,7 @@ test('retrieval policy keeps owner-private cat memory out of shared-room context
     includeOwnerProfile: true,
     channelTitle: 'Ops Room',
     channelTopic: 'Coordinate the next response.',
-    roomMode: 'boss_chat',
+    roomMode: 'chat_channel',
     transport: 'web',
     canonicalRecords: [
       buildCanonicalRecord({
@@ -564,7 +564,7 @@ test('generic retrieval context includes scoped project and relationship memory'
   const context = await memoryService.buildRetrievalContext({
     projectIds: [fixtures.project.id],
     relationshipIds: [relationshipId],
-    roomMode: 'boss_chat',
+    roomMode: 'chat_channel',
     transport: 'web',
     includeOwnerProfile: true,
     now,
@@ -684,7 +684,7 @@ test('retrieval keeps unrelated owner records out of top hits while preserving o
     includeOwnerProfile: true,
     channelTitle: 'Bird routine',
     channelTopic: 'How should Companion talk about birds today?',
-    roomMode: 'direct_cat_chat',
+    roomMode: 'direct_message',
     transport: 'web',
     canonicalRecords: [
       buildCanonicalRecord({

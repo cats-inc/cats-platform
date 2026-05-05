@@ -400,7 +400,7 @@ export async function persistCreatedChannel(
   }
 
   const now = nowFrom(context.dependencies);
-  const requestedRoomMode = input.roomMode ?? (input.entryKind === 'direct' ? 'direct_cat_chat' : 'boss_chat');
+  const requestedRoomMode = input.roomMode ?? (input.entryKind === 'direct' ? 'direct_message' : 'chat_channel');
   const requestedParticipantCount =
     (input.cats?.length ?? 0)
     + (input.participantCatIds?.length ?? 0)
@@ -414,8 +414,8 @@ export async function persistCreatedChannel(
 
   if (
     !input.skipBossCatGreeting
-    && input.entryKind !== 'solo'
-    && requestedRoomMode !== 'direct_cat_chat'
+    && input.entryKind !== 'default'
+    && requestedRoomMode !== 'direct_message'
     && requestedParticipantCount > 0
   ) {
     nextState = seedBossCatGreeting(nextState, nextState.selectedChannelId, now);

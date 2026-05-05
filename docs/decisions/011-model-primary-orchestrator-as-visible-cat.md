@@ -63,7 +63,7 @@ Terminology rule:
    identity, but not every normal `Recents` thread must begin as a visible
    Boss-led conversation.
    - transport-led and explicit Boss-led chats still use that identity
-   - ordinary `Recents` threads may begin in solo composer mode before a visible
+   - ordinary `Recents` threads may begin in default composer mode before a visible
      lead Cat is chosen
    - users do not choose among multiple public orchestrators in the initial UX
 

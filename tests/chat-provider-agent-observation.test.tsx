@@ -171,7 +171,7 @@ test('Chat provider-agent observation carries routing metadata without raw messa
       title: 'Agent room',
       topic: 'Implementation',
       originSurface: 'chat',
-      roomMode: 'boss_chat',
+      roomMode: 'chat_channel',
     },
     new Date('2026-04-28T00:00:00.000Z'),
   );
@@ -244,7 +244,7 @@ test('Chat dispatch preparation builds a provider-agent observation for the user
       title: 'Dispatch room',
       topic: 'Implementation',
       originSurface: 'chat',
-      roomMode: 'boss_chat',
+      roomMode: 'chat_channel',
     },
     new Date('2026-04-28T00:00:00.000Z'),
   );
@@ -286,7 +286,7 @@ test('Chat direct-cat turns keep deterministic target selection before provider-
       topic: 'Direct review',
       originSurface: 'chat',
       entryKind: 'direct',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       cats: [
         {
           name: 'DirectReviewer',
@@ -318,19 +318,19 @@ test('Chat direct-cat turns keep deterministic target selection before provider-
   assert.equal(summaryValue(prepared, 'routing_target_count'), 1);
   assert.equal(summaryValue(prepared, 'routing_selection_kind'), 'default_target');
   assert.equal(
-    prepared.providerAgentObservation?.contextRefs.includes(`chat-room-mode:direct_cat_chat`),
+    prepared.providerAgentObservation?.contextRefs.includes(`chat-room-mode:direct_message`),
     true,
   );
 });
 
-test('Chat solo turns bind provider-agent observation to the selected execution target', () => {
+test('Chat default turns bind provider-agent observation to the selected execution target', () => {
   const state = createChannel(
     createDefaultChatState(),
     {
-      title: 'Solo model room',
-      topic: 'Solo',
+      title: 'Default model room',
+      topic: 'Default',
       originSurface: 'chat',
-      entryKind: 'solo',
+      entryKind: 'default',
       pendingProvider: 'claude',
       pendingInstance: 'native',
       pendingModel: 'sonnet',
@@ -341,13 +341,13 @@ test('Chat solo turns bind provider-agent observation to the selected execution 
   const { prepared } = appendAndPrepare({
     state,
     channelId: state.selectedChannelId,
-    body: 'Use the selected solo model.',
+    body: 'Use the selected default model.',
   });
 
   assert.equal(prepared.initialResolution.targets[0]?.participantKind, 'orchestrator');
   assert.equal(actorProvider(prepared), 'claude');
   assert.equal(
-    prepared.providerAgentObservation?.contextRefs.includes('chat-channel-intent:provider_solo_thread'),
+    prepared.providerAgentObservation?.contextRefs.includes('chat-channel-intent:provider_default_chat'),
     true,
   );
 });
@@ -356,10 +356,10 @@ test('Chat provider-agent observation applies explicit capability bootstrap conf
   const state = createChannel(
     createDefaultChatState(),
     {
-      title: 'Configured solo model room',
-      topic: 'Solo',
+      title: 'Configured default model room',
+      topic: 'Default',
       originSurface: 'chat',
-      entryKind: 'solo',
+      entryKind: 'default',
       pendingProvider: 'claude',
       pendingInstance: 'native',
       pendingModel: 'sonnet',
@@ -370,7 +370,7 @@ test('Chat provider-agent observation applies explicit capability bootstrap conf
   const { prepared } = appendAndPrepare({
     state,
     channelId: state.selectedChannelId,
-    body: 'Use the configured solo model.',
+    body: 'Use the configured default model.',
     providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
   });
 
@@ -386,10 +386,10 @@ test('Chat provider-agent observation emits bootstrap matched-rule diagnostics',
   const state = createChannel(
     createDefaultChatState(),
     {
-      title: 'Diagnostic solo model room',
-      topic: 'Solo',
+      title: 'Diagnostic default model room',
+      topic: 'Default',
       originSurface: 'chat',
-      entryKind: 'solo',
+      entryKind: 'default',
       pendingProvider: 'claude',
       pendingInstance: 'native',
       pendingModel: 'sonnet',
@@ -457,7 +457,7 @@ test('Chat group explicit mentions become bounded provider-agent routing summari
   assert.equal(summaryValue(prepared, 'routing_selection_kind'), 'explicit_mentions');
 });
 
-test('Chat parallel member turns keep solo execution targets inside the provider-agent seam', () => {
+test('Chat parallel member turns keep default execution targets inside the provider-agent seam', () => {
   const state = createParallelChatGroup(
     createDefaultChatState(),
     {
@@ -493,7 +493,7 @@ test('Chat parallel member turns keep solo execution targets inside the provider
   assert.equal(prepared.initialResolution.targets[0]?.participantKind, 'orchestrator');
   assert.equal(summaryValue(prepared, 'routing_target_count'), 1);
   assert.equal(
-    prepared.providerAgentObservation?.contextRefs.includes('chat-channel-intent:provider_solo_thread'),
+    prepared.providerAgentObservation?.contextRefs.includes('chat-channel-intent:provider_default_chat'),
     true,
   );
 });
@@ -507,7 +507,7 @@ test('Chat dispatch can hand bounded observations to a provider-agent decision r
       title: 'Provider decision room',
       topic: 'Decision seam',
       originSurface: 'chat',
-      entryKind: 'solo',
+      entryKind: 'default',
       pendingProvider: 'claude',
       pendingInstance: 'native',
       pendingModel: 'claude-sonnet',
@@ -563,10 +563,10 @@ test('Chat dispatch clears stale explicit model selections with the pending mode
   let state = createChannel(
     createDefaultChatState(),
     {
-      title: 'Solo dispatch target clear',
+      title: 'Default dispatch target clear',
       topic: 'Dispatch should clear the old explicit model selection.',
       originSurface: 'code',
-      entryKind: 'solo',
+      entryKind: 'default',
       pendingProvider: 'openai',
       pendingModel: 'gpt-5.4',
       pendingModelSelection: { entryId: 'gpt-5.4', entryMode: 'explicit' },

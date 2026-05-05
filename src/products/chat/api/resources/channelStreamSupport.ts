@@ -367,15 +367,15 @@ function resolveChannelStreamTargetWithReason(
   const defaultRecipientId = channel.roomRouting?.defaultRecipientId ?? null;
   if (isDirectLaneChannel(channel)) {
     if (!defaultRecipientId) {
-      return { target: null, reason: 'direct_lane_without_default_recipient' };
+      return { target: null, reason: 'direct_message_without_default_recipient' };
     }
     const leadTarget = buildParticipantStreamTarget(channel, defaultRecipientId);
     if (leadTarget.sessionId) {
-      return { target: leadTarget, reason: 'direct_lane_default_recipient' };
+      return { target: leadTarget, reason: 'direct_message_default_recipient' };
     }
     return {
       target: leadTarget,
-      reason: 'direct_lane_default_recipient_waiting_for_session',
+      reason: 'direct_message_default_recipient_waiting_for_session',
     };
   }
 

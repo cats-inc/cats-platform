@@ -137,8 +137,8 @@ export type ChatChannelStatus =
   | 'archived';
 
 export type ChannelFormationMode = 'manual' | 'orchestrator_suggested';
-export type ChatChannelKind = 'boss_thread' | 'direct_lane' | 'multi_cat_room';
-export type NewChatEntryKind = 'solo' | 'group' | 'direct';
+export type ChatChannelKind = 'chat_channel' | 'direct_message';
+export type NewChatEntryKind = 'default' | 'group' | 'direct';
 export type ParallelChatMode = 'parallel';
 export type ParallelChatStatus = 'active' | 'archived';
 export type ParallelChatRelayCommandKind =

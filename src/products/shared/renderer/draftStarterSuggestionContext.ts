@@ -10,7 +10,7 @@ export type NewChatPreset = 'default' | 'group' | 'parallel';
  * here — use `isDirectLaneContext` to suppress chip rendering instead.
  */
 export type DraftStarterSuggestionMode =
-  | 'solo'
+  | 'default'
   | 'group'
   | 'parallel';
 
@@ -38,7 +38,7 @@ export function resolveDraftStarterSuggestionContext(input: {
     ? 'parallel'
     : isGroupDraft
       ? 'group'
-      : 'solo';
+      : 'default';
 
   return {
     mode,

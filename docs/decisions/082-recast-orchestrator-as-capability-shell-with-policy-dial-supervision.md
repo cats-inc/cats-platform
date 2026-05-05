@@ -39,7 +39,7 @@ The observation factors into four concrete problems:
    none of it calls an LLM. But `state.globalOrchestrator` also
    carries an `executionTarget = { provider, instance, model }`
    used when `participantKind === 'orchestrator'` resolves as the
-   talking participant (typically solo composer / +New Chat). The
+   talking participant (typically default composer / +New Chat). The
    first hat is a rule-based router; the second hat is an LLM-backed
    participant. They share a state slot and a name, which is why
    every "what is the orchestrator?" conversation gets tangled.
@@ -369,7 +369,7 @@ Following and extending ADR-004:
 
 These axes are orthogonal. A single Cat can swap providers without
 becoming a different Cat. A single provider / model can run under
-different `SupervisionPolicy` values across actions. Solo and
+different `SupervisionPolicy` values across actions. Default and
 temporary participants share a runtime `ParticipantLike` /
 `AddressableTarget` shape with durable Cats but do not enter the
 durable Cat registry, because they have no persistent identity
@@ -434,9 +434,9 @@ capability ceiling.
 - Evidence capture arrives as an explicit platform responsibility
   rather than a product-level afterthought, improving human
   auditability of agent output.
-- Solo / Temp / My / Boss / Guide Cat unification at the runtime
+- Default / Temp / My / Boss / Guide Cat unification at the runtime
   participant layer (while preserving registry separation) removes
-  the `if isSolo / else isTemp / else isCat` branches that today
+  the `if isDefaultChat / else isTemp / else isCat` branches that today
   inflate composer, participant resolver, and audience code paths.
 
 ### Negative

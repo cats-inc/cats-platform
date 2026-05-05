@@ -209,9 +209,9 @@ test('clicking a Direct Messages entry with an existing hidden direct lane stays
     createChannel({
       id: 'direct-thread-1',
       title: 'Companion',
-      channelKind: 'direct_lane',
+      channelKind: 'direct_message',
       defaultRecipientCatId: 'companion-cat',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ]);
   assert.equal(
@@ -225,24 +225,24 @@ test('Direct Messages lookup still finds direct lanes by channelKind when roomMo
     createChannel({
       id: 'direct-thread-1',
       title: 'Companion',
-      channelKind: 'direct_lane',
+      channelKind: 'direct_message',
       defaultRecipientCatId: 'companion-cat',
-      roomMode: 'boss_chat',
+      roomMode: 'chat_channel',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ];
 
   assert.equal(findDirectLaneForCat(channels, 'companion-cat')?.id, 'direct-thread-1');
 });
 
-test('direct_cat_chat channels are excluded from the Recents list', () => {
+test('direct_message channels are excluded from the Recents list', () => {
   const payload = createPayload([
     createChannel({ id: 'boss-thread', title: 'Daily standup' }),
     createChannel({
       id: 'direct-thread',
       title: 'Companion',
-      channelKind: 'direct_lane',
+      channelKind: 'direct_message',
       defaultRecipientCatId: 'companion-cat',
-      roomMode: 'boss_chat',
+      roomMode: 'chat_channel',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ]);
 
@@ -250,11 +250,11 @@ test('direct_cat_chat channels are excluded from the Recents list', () => {
 
   assert.ok(
     rendered.some((ch) => ch.id === 'boss-thread'),
-    'boss_chat channel should appear in Recents',
+    'chat_channel channel should appear in Recents',
   );
   assert.ok(
     !rendered.some((ch) => ch.id === 'direct-thread'),
-    'direct_cat_chat channel should not appear in Recents',
+    'direct_message channel should not appear in Recents',
   );
 });
 
@@ -269,7 +269,7 @@ test('Cat with no existing direct lane shows no dot', () => {
 
 test('Cat with direct lane + ready shows awake (green)', () => {
   const lane = createChannel({
-    id: 'dl-1', title: 'C', channelKind: 'direct_lane', defaultRecipientCatId: 'companion-cat', roomMode: 'boss_chat',
+    id: 'dl-1', title: 'C', channelKind: 'direct_message', defaultRecipientCatId: 'companion-cat', roomMode: 'chat_channel',
     defaultRecipientLeaseStatus: 'ready',
   } as Partial<ChatChannelSummary> & { id: string; title: string });
   assert.equal(resolveMyCatStatusDot(lane.defaultRecipientLeaseStatus), 'awake');
@@ -277,7 +277,7 @@ test('Cat with direct lane + ready shows awake (green)', () => {
 
 test('Cat with direct lane + initializing shows waking_up (yellow)', () => {
   const lane = createChannel({
-    id: 'dl-2', title: 'C', defaultRecipientCatId: 'companion-cat', roomMode: 'direct_cat_chat',
+    id: 'dl-2', title: 'C', defaultRecipientCatId: 'companion-cat', roomMode: 'direct_message',
     defaultRecipientLeaseStatus: 'initializing',
   } as Partial<ChatChannelSummary> & { id: string; title: string });
   assert.equal(resolveMyCatStatusDot(lane.defaultRecipientLeaseStatus), 'waking_up');
@@ -285,7 +285,7 @@ test('Cat with direct lane + initializing shows waking_up (yellow)', () => {
 
 test('Cat with direct lane + not_started shows sleeping (gray)', () => {
   const lane = createChannel({
-    id: 'dl-3', title: 'C', defaultRecipientCatId: 'companion-cat', roomMode: 'direct_cat_chat',
+    id: 'dl-3', title: 'C', defaultRecipientCatId: 'companion-cat', roomMode: 'direct_message',
     defaultRecipientLeaseStatus: 'not_started',
   } as Partial<ChatChannelSummary> & { id: string; title: string });
   assert.equal(resolveMyCatStatusDot(lane.defaultRecipientLeaseStatus), 'sleeping');
@@ -308,7 +308,7 @@ test('Cat active in non-direct room only does not affect Direct Messages dot', (
     createChannel({ id: 'boss-room', title: 'Work', defaultRecipientCatId: 'companion-cat' }),
   ];
   const lane = findDirectLaneForCat(channels, 'companion-cat');
-  assert.equal(lane, null, 'boss_chat room should not be found as direct lane');
+  assert.equal(lane, null, 'chat_channel room should not be found as direct lane');
   assert.equal(resolveMyCatStatusDot(lane?.defaultRecipientLeaseStatus), 'no_dot');
 });
 
@@ -318,7 +318,7 @@ test('clicking Direct Messages row still preserves existing navigation behavior 
       id: 'direct-thread-1',
       title: 'Companion',
       defaultRecipientCatId: 'companion-cat',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       defaultRecipientLeaseStatus: 'ready',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ]);
@@ -367,7 +367,7 @@ test('Direct Messages status dots and footer runtime dot coexist', () => {
   const payload = createPayload(
     [createChannel({
       id: 'dl-1', title: 'Companion', defaultRecipientCatId: 'companion-cat',
-      roomMode: 'direct_cat_chat', defaultRecipientLeaseStatus: 'ready',
+      roomMode: 'direct_message', defaultRecipientLeaseStatus: 'ready',
     } as Partial<ChatChannelSummary> & { id: string; title: string })],
     createRuntime(true, 'ok'),
   );

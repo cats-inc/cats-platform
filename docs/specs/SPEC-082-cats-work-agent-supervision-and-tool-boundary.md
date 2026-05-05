@@ -42,7 +42,7 @@ This spec defines the first Work-facing contract for that model:
   but cannot spawn unmanaged execution by themselves
 - strong-agent and weak-worker execution paths that can coexist inside one
   Work run
-- a shared `AddressableTarget` envelope so durable Cats, solo execution
+- a shared `AddressableTarget` envelope so durable Cats, default execution
   targets, temporary participants, and worker tools can be addressed
   uniformly without pretending they are all the same registry object
 
@@ -65,7 +65,7 @@ to refactor Chat delivery or every product surface at once.
 - define how new or unknown provider/model profiles bootstrap before real
   evals or session history exist
 - preserve Cat identity semantics while allowing common runtime addressing
-  for solo, temporary, durable, and worker targets
+  for default, temporary, durable, and worker targets
 
 ## Non-Goals
 
@@ -84,7 +84,7 @@ to refactor Chat delivery or every product surface at once.
   the first supervised Work run
 - no provider/model benchmarking suite; this spec defines the profile inputs
   and bootstrap contract that the future eval system must populate
-- no conversion of solo execution targets, temporary participants, or worker
+- no conversion of default execution targets, temporary participants, or worker
   invocations into durable Cat registry records
 
 ## User Stories
@@ -139,7 +139,7 @@ not enforcement.
 message, assignment, or tool invocation." It is not the same thing as a Cat
 registry record.
 
-Durable Cats, Boss Cat, and Guide Cat are durable agent identities. Solo
+Durable Cats, Boss Cat, and Guide Cat are durable agent identities. Default
 execution targets and temporary participants are not durable Cats. Weak worker
 invocations are tools unless explicitly promoted by a later feature.
 
@@ -649,7 +649,7 @@ any dial.
     saved Cats map to `durable_agent` targets when they are addressed as
     identities. They may switch provider/model without becoming different
     agents.
-52. **FR-52 (Solo semantics).** A solo execution target maps to
+52. **FR-52 (Default semantics).** A default execution target maps to
     `execution_target`. Changing its provider/model changes execution, not a
     durable identity record.
 53. **FR-53 (Temporary participant semantics).** A temporary participant maps
@@ -881,7 +881,7 @@ the parent action's fallback policy.
 - Policy snapshots include `policyBundleVersion`, optional `dialVersions`, and
   optional `experimentId`; `dialVersions` is present when any dial has
   independently versioned or participated in an experiment.
-- `AddressableTarget` can represent durable Cats, solo execution targets,
+- `AddressableTarget` can represent durable Cats, default execution targets,
   temporary participants, and worker tools without converting all of them into
   Cat registry records; human operators are addressed through approval,
   assignment, or notification references instead.

@@ -134,7 +134,7 @@ function buildPlaceholderBinding(input: {
     conversationId: input.conversationId,
     bindingId: input.deliveryBinding?.id ?? null,
     botName: input.deliveryBinding?.botName ?? null,
-    transportConversationMode: 'direct_cat_chat',
+    transportConversationMode: 'direct_message',
     roomRoutingStatus: 'placeholder',
     linkedRoomId: null,
     telegramChatType: 'private',

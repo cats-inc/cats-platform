@@ -5,7 +5,7 @@ export type TelegramPublicIdentityMode = 'multi_cat_bindings_single_boss';
 export type TelegramInboundMode = BotBindingInboundMode;
 export type TelegramPollingHealth = 'healthy' | 'degraded' | 'failed' | 'stopped';
 
-export type TelegramTransportConversationMode = 'direct_cat_chat';
+export type TelegramTransportConversationMode = 'direct_message';
 
 export interface TelegramPollingStatus {
   bindingId: string;
@@ -215,7 +215,7 @@ export interface TelegramRelayStatus {
     botName: string;
     catActorId: string | null;
     inboundMode: TelegramInboundMode;
-    roomMode: 'boss_chat' | 'direct_cat_chat';
+    roomMode: 'chat_channel' | 'direct_message';
     status: 'active' | 'disabled';
   }>;
   publicIdentityMode: TelegramPublicIdentityMode;
@@ -351,7 +351,7 @@ export interface TelegramRelayDiagnostics {
     botName: string;
     catActorId: string | null;
     inboundMode: TelegramInboundMode;
-    roomMode: 'boss_chat' | 'direct_cat_chat';
+    roomMode: 'chat_channel' | 'direct_message';
     status: 'active' | 'disabled';
   }>;
   relayMode: TelegramRelayMode;

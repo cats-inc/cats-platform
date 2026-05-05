@@ -447,11 +447,11 @@ transport state stays in `src/platform/transports/telegram/*`.
   - artifact, activity, and archive metadata
 
 The chat product now also treats channel topology as a first-class concept:
-`channelKind` (`boss_thread`, `direct_lane`, `multi_cat_room`) captures room
+`channelKind` (`chat_channel`, `direct_message`) captures room
 identity separately from `roomRouting.mode`, which remains the routing-policy
-compatibility seam. Runtime wake/stream flows and renderer direct-lane chrome
-therefore resolve from topology first rather than assuming every room has Boss
-Cat/orchestrator infrastructure.
+read model. Runtime wake/stream flows and renderer direct-message chrome
+therefore resolve from topology first rather than inferring topology from the
+routing policy.
 
 ### Guide Cat and Participant Generalization
 
@@ -474,7 +474,7 @@ The long-term domain shape is:
 - reusable `entity` records with identity, prompt, memory, and execution
   defaults
 - channel-scoped `participant` records with role, status, and lease state
-- conversation topology such as direct, solo-thread, Cat-led thread, and group
+- channel topology such as `direct_message` and `chat_channel`
 - per-turn execution strategy such as default routing, explicit mention,
   compare, or future fan-out
 
@@ -716,12 +716,12 @@ For Chat, event-driven app-shell refresh and direct-lane companion UI are now
 treated as separate renderer responsibilities:
 
 - chat-wide `/api/events/chat` refresh owns transcript/app-shell catch-up for
-  solo, direct, and group rooms
+  default, direct, and group rooms
 - background runtime dispatch persistence must also publish `/api/events/chat`
   room updates for intermediate `session_started` / `assistant_turn_segment` states,
   not only the initial user-send acknowledgement
 - direct-lane companion mode only owns `My Cats` companion UI state plus
-  wake/sleep actions for `direct_lane` channels
+  wake/sleep actions for `direct_message` channels
 
 Group chat and sequential-room rendering must not depend on the companion hook.
 

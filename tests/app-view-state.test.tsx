@@ -78,7 +78,7 @@ function createChannel(overrides: Record<string, unknown> = {}) {
     id: 'channel-1',
     title: 'Group chat',
     topic: 'Testing',
-    channelKind: 'multi_cat_room',
+    channelKind: 'chat_channel',
     status: 'active',
     unreadCount: 0,
     repoPath: null,
@@ -113,7 +113,7 @@ function createChannel(overrides: Record<string, unknown> = {}) {
     assignedParticipants: [],
     messages: [],
     roomRouting: {
-      mode: 'boss_chat',
+      mode: 'chat_channel',
       defaultRecipientId: null,
       lastOutcome: null,
       lastCheckpoint: null,
@@ -135,7 +135,7 @@ function createChannel(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test('deriveAppViewState does not auto-insert Boss Cat for multi-participant rooms', () => {
+test('deriveAppViewState does not auto-insert Boss Cat for participant chats', () => {
   const payload = createPayload();
   const selectedChannel = createChannel({
     assignedParticipants: [
@@ -279,10 +279,10 @@ test('deriveAppViewState does not auto-insert Boss Cat for multi-participant roo
   assert.equal(viewState.showBossCatAvatar, false);
 });
 
-test('deriveAppViewState still shows Boss Cat avatar for participant threads without Boss assigned', () => {
+test('deriveAppViewState still shows Boss Cat avatar for participant chats without Boss assigned', () => {
   const payload = createPayload();
   const selectedChannel = createChannel({
-    channelKind: 'boss_thread',
+    channelKind: 'chat_channel',
     assignedParticipants: [
       {
         participantId: 'participant-reviewer',

@@ -71,7 +71,7 @@ export interface WorkspaceNavigationChannelRef {
   id: string;
   title?: string | null;
   originSurface?: PlatformSurfaceId | null;
-  channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
+  channelKind?: 'chat_channel' | 'direct_message' | null;
   defaultRecipientCatId?: string | null;
   roomMode?: RoomRoutingMode | null;
 }

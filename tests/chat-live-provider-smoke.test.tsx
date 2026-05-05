@@ -93,7 +93,7 @@ test(
           title: `Live ${provider} Chat smoke`,
           topic: 'Live provider smoke for Chat provider-agent supervision.',
           originSurface: 'chat',
-          entryKind: 'solo',
+          entryKind: 'default',
           pendingProvider: provider,
           pendingInstance: target.instance,
           pendingModel: target.model,

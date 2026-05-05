@@ -33,7 +33,7 @@ conversations, the renderer, runtime, and artifact model will drift again.
 
 If `Cats Code` invents separate workflow engines for:
 
-- solo coding
+- default coding
 - shared-team coding
 - peer review / branch compare
 

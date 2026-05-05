@@ -11,7 +11,7 @@ function createChannel(
     id: 'channel-1',
     title: 'Chat',
     topic: 'Testing conversation modes.',
-    channelKind: 'boss_thread',
+    channelKind: 'chat_channel',
     status: 'active',
     unreadCount: 0,
     repoPath: null,
@@ -44,7 +44,7 @@ function createChannel(
     assignedCats: [],
     messages: [],
     roomRouting: {
-      mode: 'boss_chat',
+      mode: 'chat_channel',
       defaultRecipientId: null,
       lastOutcome: null,
       lastCheckpoint: null,
@@ -69,10 +69,10 @@ function createChannel(
 
 test('resolveConversationMode keeps direct lanes topology-first even when room mode is legacy-mismatched', () => {
   const channel = createChannel({
-    channelKind: 'direct_lane',
+    channelKind: 'direct_message',
     roomRouting: {
       ...createChannel().roomRouting!,
-      mode: 'boss_chat',
+      mode: 'chat_channel',
       defaultRecipientId: 'cat-1',
     },
     assignedCats: [{
@@ -112,12 +112,12 @@ test('resolveConversationMode keeps direct lanes topology-first even when room m
     }],
   });
 
-  assert.equal(resolveConversationMode(channel), 'direct_lane');
-});
+  assert.equal(resolveConversationMode(channel), 'direct_message');
+  });
 
-test('resolveConversationMode distinguishes solo, participant, and multi-participant thread semantics', () => {
-  const soloThread = createChannel();
-  const participantThread = createChannel({
+test('resolveConversationMode distinguishes default and participant chat semantics', () => {
+  const defaultChat = createChannel();
+  const singleParticipantChat = createChannel({
     assignedCats: [{
       catId: 'cat-1',
       name: 'Companion',
@@ -154,27 +154,27 @@ test('resolveConversationMode distinguishes solo, participant, and multi-partici
       },
     }],
   });
-  const multiCatRoom = createChannel({
-    channelKind: 'multi_cat_room',
+  const participantChat = createChannel({
+    channelKind: 'chat_channel',
     assignedCats: [
       {
-        ...participantThread.assignedCats[0],
+        ...singleParticipantChat.assignedCats[0],
         catId: 'cat-1',
       },
       {
-        ...participantThread.assignedCats[0],
+        ...singleParticipantChat.assignedCats[0],
         catId: 'cat-2',
         name: 'Reviewer',
       },
     ],
   });
 
-  assert.equal(resolveConversationMode(soloThread), 'solo_thread');
-  assert.equal(resolveConversationMode(participantThread), 'participant_thread');
-  assert.equal(resolveConversationMode(multiCatRoom), 'multi_cat_room');
+  assert.equal(resolveConversationMode(defaultChat), 'default_chat');
+  assert.equal(resolveConversationMode(singleParticipantChat), 'participant_chat');
+  assert.equal(resolveConversationMode(participantChat), 'participant_chat');
 });
 
-test('resolveConversationMode treats temporary participants as multi-participant rooms', () => {
+test('resolveConversationMode treats temporary participants as participant chats', () => {
   const adhocRoom = createChannel({
     assignedParticipants: [
       {
@@ -258,5 +258,5 @@ test('resolveConversationMode treats temporary participants as multi-participant
     ],
   });
 
-  assert.equal(resolveConversationMode(adhocRoom), 'multi_cat_room');
+  assert.equal(resolveConversationMode(adhocRoom), 'participant_chat');
 });

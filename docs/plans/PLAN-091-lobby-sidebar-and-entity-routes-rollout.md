@@ -75,7 +75,7 @@ Out of scope (covered elsewhere or deferred):
 - [ ] Update `myCatNavigation.ts` `buildMyCatPathForPrefix` to emit
       `/chat/dm/:catId`; rename `buildDirectLanePath` →
       `buildDirectMessagePath` to match the UI label (resolved decision;
-      internal `direct_lane` term in channel topology stays)
+      internal `direct_message` term in channel topology stays)
 - [ ] Update `buildDirectLanePath` in `PlatformLobby.tsx` (or remove its
       use from Lobby — `LobbyCatRoster` is going away in Phase 4)
 - [ ] Audit and update every caller emitting `/chat/my-cats/...`:
@@ -316,7 +316,7 @@ suite unless explicitly asked.
   section. No server-side sync. (Cross-device drift accepted.)
 - **Helper rename** → `buildDirectLanePath` becomes
   `buildDirectMessagePath` (file: `myCatNavigation.ts`). Aligns with
-  the UI label `Direct Messages`. Internal `direct_lane` term in
+  the UI label `Direct Messages`. Internal `direct_message` term in
   channel topology stays unchanged — the rename is a renderer-level
   facade only.
 - **Phase 6 prerequisite docs** → ADR-100 + SPEC-103 (both written;

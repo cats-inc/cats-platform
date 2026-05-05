@@ -154,7 +154,7 @@ function createChannelView(overrides: Partial<ChatChannelView> = {}): ChatChanne
     id: '3f2ad424-7a53-4e1f-9d74-9a6d6328a301',
     title: 'Real room',
     topic: 'Created by server',
-    channelKind: 'boss_thread',
+    channelKind: 'chat_channel',
     status: 'planned',
     unreadCount: 0,
     repoPath: null,
@@ -210,12 +210,12 @@ test('buildNewChatChannelInput keeps default-recipient new chats as visible thre
   assert.equal(input.skipBossCatGreeting, true);
 });
 
-test('buildNewChatChannelInput keeps solo new chats in solo mode with pending target', () => {
+test('buildNewChatChannelInput keeps default new chats in default mode with pending target', () => {
   const input = buildNewChatChannelInput({
     body: 'Ship the landing page',
     existingCount: 2,
     originSurface: 'code',
-    entryKind: 'solo',
+    entryKind: 'default',
     draftSessionPolicy: {
       workspaceKind: 'worktree',
       workspaceAccess: 'read_only',
@@ -229,7 +229,7 @@ test('buildNewChatChannelInput keeps solo new chats in solo mode with pending ta
     },
   });
 
-  assert.equal(input.entryKind, 'solo');
+  assert.equal(input.entryKind, 'default');
   assert.equal(input.originSurface, 'code');
   assert.equal(input.roomMode, undefined);
   assert.equal(input.runtimeWorkspaceKind, 'worktree');
@@ -245,7 +245,7 @@ test('buildNewChatChannelInput defaults repo-backed drafts to source workspace a
     body: 'Inspect the current repo checkout',
     existingCount: 0,
     originSurface: 'code',
-    entryKind: 'solo',
+    entryKind: 'default',
     repoPath: 'C:/repo/cats-platform',
   });
 
@@ -259,7 +259,7 @@ test('buildNewChatChannelInput lets explicit workspace overrides win over repo d
     body: 'Stay isolated even with a repo selected',
     existingCount: 0,
     originSurface: 'code',
-    entryKind: 'solo',
+    entryKind: 'default',
     repoPath: 'C:/repo/cats-platform',
     draftSessionPolicy: {
       workspaceKind: 'sandbox',
@@ -278,7 +278,7 @@ test('buildNewChatChannelInput forces read-only sessions onto the default permis
     body: 'Stay isolated even with a repo selected',
     existingCount: 0,
     originSurface: 'code',
-    entryKind: 'solo',
+    entryKind: 'default',
     repoPath: 'C:/repo/cats-platform',
     draftSessionPolicy: {
       workspaceKind: 'sandbox',
@@ -303,7 +303,7 @@ test('buildNewChatChannelInput marks direct drafts explicitly and preserves dire
   });
 
   assert.equal(input.entryKind, 'direct');
-  assert.equal(input.roomMode, 'direct_cat_chat');
+  assert.equal(input.roomMode, 'direct_message');
   assert.equal(input.defaultRecipientId, 'cat-lead');
   assert.deepEqual(input.participantCatIds, ['cat-lead']);
 });
@@ -842,14 +842,14 @@ test('resolveMissingDraftDefaultRecipientPath falls back to visible chats only f
   const visibleThread = {
     id: 'visible-thread',
     originSurface: 'chat',
-    roomMode: 'boss_chat',
-    channelKind: 'boss_thread',
+    roomMode: 'chat_channel',
+    channelKind: 'chat_channel',
   } as const;
   const hiddenDirectLane = {
     id: 'hidden-direct',
     originSurface: 'chat',
-    roomMode: 'direct_cat_chat',
-    channelKind: 'direct_lane',
+    roomMode: 'direct_message',
+    channelKind: 'direct_message',
   } as const;
 
   assert.equal(
@@ -898,7 +898,7 @@ test('isOptimisticDraftChannelId only matches optimistic draft routes', () => {
   assert.equal(isOptimisticDraftChannelId(null), false);
 });
 
-test('applyPendingExecutionTargetPreview updates the local solo target before dispatch returns', () => {
+test('applyPendingExecutionTargetPreview updates the local default target before dispatch returns', () => {
   const channel = createChannelView();
   const payload = insertCreatedChannelIntoPayload(createPayload(), channel);
 
@@ -929,6 +929,6 @@ test('insertCreatedChannelIntoPayload promotes a real created channel without a 
   assert.equal(next.chat.selectedChannelId, channel.id);
   assert.equal(next.chat.selectedChannel?.id, channel.id);
   assert.equal(next.chat.channels[0]?.id, channel.id);
-  assert.equal(next.chat.channels[0]?.roomMode, 'boss_chat');
-  assert.equal(next.chat.selectedChannel?.roomRouting.mode, 'boss_chat');
+  assert.equal(next.chat.channels[0]?.roomMode, 'chat_channel');
+  assert.equal(next.chat.selectedChannel?.roomRouting.mode, 'chat_channel');
 });

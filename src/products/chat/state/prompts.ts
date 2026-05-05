@@ -34,14 +34,14 @@ interface ContinuityInstructionPackage {
   mode: ContinuityInstructionMode;
 }
 
-type SoloContinuityInstructionMode =
+type DefaultChatContinuityInstructionMode =
   | 'fresh_start'
   | 'full_transplant'
   | 'semantic_transplant';
 
-interface SoloContinuityInstructionPackage {
+interface DefaultChatContinuityInstructionPackage {
   instructions: string | null;
-  mode: SoloContinuityInstructionMode;
+  mode: DefaultChatContinuityInstructionMode;
 }
 
 interface NormalizedContinuityMessage {
@@ -540,9 +540,9 @@ export function buildBoundedRecentContextInstructions(
   ]);
 }
 
-export function buildSoloChatContinuityTransplantPackage(
+export function buildDefaultChatContinuityTransplantPackage(
   priorMessages: ChatMessage[],
-): SoloContinuityInstructionPackage {
+): DefaultChatContinuityInstructionPackage {
   const earlierMessages = conversationalMessages(priorMessages);
   if (earlierMessages.length === 0) {
     return {

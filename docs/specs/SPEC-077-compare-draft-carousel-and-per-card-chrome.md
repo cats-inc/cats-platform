@@ -277,7 +277,7 @@ inherits the shape automatically.
   `ChatNewChatDraft` clamps `activeBranchIndex` if it referred to the
   removed index.
 - Lead (index 0) is not removable through the carousel. Dismantling
-  a parallel draft back to solo happens by removing branches until
+  a parallel draft back to default happens by removing branches until
   `length < 2`, at which point the carousel unmounts and the single-
   card layout takes over.
 

@@ -24,8 +24,8 @@ import {
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import {
   isDirectLaneChannel,
-  isProviderSoloThreadChannel,
-  isSoloThreadChannel,
+  isProviderDefaultChatChannel,
+  isDefaultChatChannel,
 } from '../shared/channelTopology.js';
 import { resolveGlobalOrchestratorVisibleParticipant } from './orchestratorHats.js';
 import {
@@ -46,7 +46,7 @@ import {
 import type { RoutingTarget } from './mentionRouter.js';
 import {
   buildOrchestratorPrompt,
-  buildSoloChatContinuityTransplantPackage,
+  buildDefaultChatContinuityTransplantPackage,
   buildTargetedChatHandoffPackage,
   buildCatPrompt,
   MAX_BOUNDED_RECENT_CONTEXT_MESSAGES,
@@ -59,7 +59,7 @@ export type RuntimeTransportContext = 'telegram' | 'web';
 
 const MAX_RECENT_CONTEXT_MESSAGES = MAX_BOUNDED_RECENT_CONTEXT_MESSAGES;
 
-export function isSoloChatChannel(
+export function isDefaultChatRuntimeChannel(
   channel: Pick<
     ChatChannelState | ChatChannelView,
     'channelKind' | 'roomRouting' | 'participantAssignments' | 'catAssignments'
@@ -68,7 +68,7 @@ export function isSoloChatChannel(
     'channelKind' | 'roomRouting' | 'assignedParticipants' | 'assignedCats'
   >,
 ): boolean {
-  return isSoloThreadChannel(channel);
+  return isDefaultChatChannel(channel);
 }
 
 export function buildOrchestratorTarget(
@@ -78,7 +78,7 @@ export function buildOrchestratorTarget(
   return {
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
-    participantName: isSoloChatChannel(channel) ? 'Orchestrator' : resolveOrchestratorDisplayName(state),
+    participantName: isDefaultChatRuntimeChannel(channel) ? 'Orchestrator' : resolveOrchestratorDisplayName(state),
     laneId: null,
     sessionId: null,
   };
@@ -93,7 +93,7 @@ export function resolveOrchestratorExecutionTarget(
   instance: string | null;
   modelSelection?: ProviderModelSelection | null;
 } {
-  if (isProviderSoloThreadChannel(channel) && channel.pendingProvider) {
+  if (isProviderDefaultChatChannel(channel) && channel.pendingProvider) {
     return {
       provider: channel.pendingProvider,
       instance: channel.pendingInstance ?? null,
@@ -274,11 +274,11 @@ function buildSessionContextForTarget(
       : null);
   return {
     source: 'interactive',
-    reason: `cats:${channel.channelKind ?? channel.roomRouting?.mode ?? 'boss_chat'}`,
+    reason: `cats:${channel.channelKind ?? channel.roomRouting?.mode ?? 'chat_channel'}`,
     labels: [
       `channel:${channel.id}`,
-      `channel-kind:${channel.channelKind ?? 'boss_thread'}`,
-      `room-mode:${channel.roomRouting?.mode ?? 'boss_chat'}`,
+      `channel-kind:${channel.channelKind ?? 'chat_channel'}`,
+      `room-mode:${channel.roomRouting?.mode ?? 'chat_channel'}`,
       `transport:${resolvedTransport}`,
       `target:${target.participantKind}:${target.participantId}`,
       ...(target.laneId ? [`lane:${target.laneId}`] : []),
@@ -288,8 +288,8 @@ function buildSessionContextForTarget(
       containerId,
       conversationId,
       channelTitle: channel.title,
-      channelKind: channel.channelKind ?? 'boss_thread',
-      roomMode: channel.roomRouting?.mode ?? 'boss_chat',
+      channelKind: channel.channelKind ?? 'chat_channel',
+      roomMode: channel.roomRouting?.mode ?? 'chat_channel',
       defaultRecipientId: channel.roomRouting?.defaultRecipientId ?? null,
       transport: resolvedTransport,
       transportBindingId,
@@ -310,7 +310,7 @@ function resolveSessionSkillManifestForTarget(
   if (target.participantKind === 'orchestrator') {
     return resolveSkillProfileManifest({
       profileId: state.globalOrchestrator.skillProfile,
-      roomMode: channel.roomRouting?.mode ?? 'boss_chat',
+      roomMode: channel.roomRouting?.mode ?? 'chat_channel',
       transport: resolvedTransport,
       labels: ['participant:orchestrator'],
       metadata: {
@@ -324,7 +324,7 @@ function resolveSessionSkillManifestForTarget(
   return resolveSkillProfileManifest({
     profileId: participant?.skillProfile ?? null,
     catId: catId ?? target.participantId,
-    roomMode: channel.roomRouting?.mode ?? 'boss_chat',
+    roomMode: channel.roomRouting?.mode ?? 'chat_channel',
     transport: resolvedTransport,
     labels: [participant?.sourceKind === 'cat' ? 'participant:cat' : 'participant:temporary'],
     metadata: {
@@ -547,7 +547,7 @@ export function messagesBeforeSource(
   return messages.slice(0, sourceIndex);
 }
 
-export function applySoloChatContinuityBoundary(
+export function applyDefaultChatContinuityBoundary(
   channel: Pick<ChatChannelView, 'continuityResetAt'>,
   messages: ReadonlyArray<ChatMessage>,
 ): ChatMessage[] {
@@ -631,18 +631,18 @@ export function hasVisibleResponseFromLogicalTarget(
 function resolveSameChatContinuityPackage(
   messages: ReadonlyArray<ChatMessage>,
   request: DispatchRequest,
-): ReturnType<typeof buildSoloChatContinuityTransplantPackage> | null {
+): ReturnType<typeof buildDefaultChatContinuityTransplantPackage> | null {
   const priorMessages = messagesBeforeSource(messages, request.sourceMessage);
   if (hasVisibleResponseFromCurrentTargetIdentity(messages, request.target, request.sourceMessage)) {
     return null;
   }
-  return buildSoloChatContinuityTransplantPackage(priorMessages);
+  return buildDefaultChatContinuityTransplantPackage(priorMessages);
 }
 
 function resolveSameChatContinuityMode(
   messages: ReadonlyArray<ChatMessage>,
   request: DispatchRequest,
-  continuityPackage: ReturnType<typeof buildSoloChatContinuityTransplantPackage> | null,
+  continuityPackage: ReturnType<typeof buildDefaultChatContinuityTransplantPackage> | null,
 ): 'fresh_start' | 'native_resume' | 'full_transplant' | 'semantic_transplant' {
   if (continuityPackage?.instructions) {
     return continuityPackage.mode;
@@ -662,7 +662,7 @@ function describeRoutingReason(
   switch (trigger) {
     case 'room_default':
       if (isDirectLaneChannel(channel)) {
-        return 'System routing selected you because you are the lead cat for this room.';
+        return 'System routing selected you because you are the direct recipient for this room.';
       }
       return 'System routing selected you as the default room target for this turn.';
     case 'explicit_mention':
@@ -705,8 +705,8 @@ export function buildPromptForTarget(
     transcriptMessages: channel.messages,
   });
   const continuityMessages =
-    request.target.participantKind === 'orchestrator' && isSoloChatChannel(channel)
-      ? applySoloChatContinuityBoundary(channel, promptMessages)
+    request.target.participantKind === 'orchestrator' && isDefaultChatRuntimeChannel(channel)
+      ? applyDefaultChatContinuityBoundary(channel, promptMessages)
       : promptMessages;
   const recentMessages = sliceRecentContextForTarget(
     continuityMessages,
@@ -728,7 +728,7 @@ export function buildPromptForTarget(
     && (supportsSameChatParticipantContinuity(channel) || hasLogicalPriorResponse);
 
   if (request.target.participantKind === 'orchestrator') {
-    if (isSoloChatChannel(channel)) {
+    if (isDefaultChatRuntimeChannel(channel)) {
       const continuityPackage = resolveSameChatContinuityPackage(continuityMessages, request);
       return {
         message: request.sourceMessage.body,

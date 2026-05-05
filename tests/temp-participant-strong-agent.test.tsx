@@ -64,7 +64,7 @@ test('preset-created temporary participant can be a strong provider-agent withou
       topic: 'Demo strong temporary agent',
       originSurface: 'chat',
       entryKind: 'group',
-      roomMode: 'boss_chat',
+      roomMode: 'chat_channel',
       temporaryParticipants: [
         {
           participantId: 'participant-strong-reviewer',

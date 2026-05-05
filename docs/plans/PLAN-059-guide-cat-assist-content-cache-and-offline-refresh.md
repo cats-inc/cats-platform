@@ -36,7 +36,7 @@ The first adopted surfaces are:
 
 - Lobby greeting
 - `+New chat` greeting
-- `+New chat` starter chips for `solo`, `participant`, `direct`, `group`, and
+- `+New chat` starter chips for `default`, `participant`, `direct`, `group`, and
   `parallel`
 
 ## V1 Scope Freeze
@@ -77,9 +77,9 @@ part of this plan's implementation scope.
   runtime.
 - Lobby can render last-good cached assist content when cache exists and runtime
   is offline.
-- `+New chat` can render greeting plus starter chips for `solo`, `participant`,
-  `direct`, `group`, and `parallel` using the same baseline-or-cache
-  resolution.
+- `+New chat` can render one greeting bundle through the same baseline-or-cache
+  resolution; composer preset state stays renderer-local and does not select a
+  different Guide Cat bundle.
 - Adopted surfaces do not read local files from the renderer directly; the
   product resolves assist state through existing product/server boundaries.
 - V1 lazy hydration never blocks initial render for Lobby or `+New chat`.
@@ -104,9 +104,9 @@ part of this plan's implementation scope.
       - `chat:new:default:default`
       - `code:new:default:default`
 
-      `chat:new` is a **single scope**. Composer state (solo / group /
+      `chat:new` is a **single scope**. Composer state (default / group /
       parallel) is renderer state, not a cache axis — re-introducing
-      per-composer-state keys (e.g., `chat:new:solo:default`) was tried
+      per-composer-state keys (e.g., `chat:new:default:default`) was tried
       in an earlier draft and reverted because the scope flipped on
       every audience toggle and never paid for the cache it cost. Direct
       lane (`/chat/dm`) is **not** a guide-cat-assist surface (the
@@ -156,7 +156,7 @@ baseline or cache through one shared read path
 - [ ] Task 3.2: Replace `+New chat` greeting ownership with the same shared
       resolution path.
 - [ ] Task 3.3: Replace direct starter-suggestion ownership for
-      `solo` / `participant` / `direct` / `group` / `parallel` with shared
+      `default` / `participant` / `direct` / `group` / `parallel` with shared
       bundle-backed starter chips.
 - [ ] Task 3.4: Preserve today's user-visible fallback text and mode semantics
       when no cache exists.

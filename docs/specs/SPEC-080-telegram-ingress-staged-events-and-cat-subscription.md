@@ -122,17 +122,17 @@ progressive draft-to-active transition:
    - a stable subscription version number
 6. **FR-6 (Cat patch vocabulary — first slice).** The first
    patch kinds shipped are:
-   - `direct_lane.room_created` — carries the new `channelId`,
+   - `direct_message.room_created` — carries the new `channelId`,
      the binding id, and the platform kind; emitted when a
      bridge's `bridgeTelegramWebhookToRoom` produces a new room
      for a binding that previously had none
-   - `direct_lane.binding_changed` — emitted when a binding's
+   - `direct_message.binding_changed` — emitted when a binding's
      platform kind, status, or metadata changes
    Additional cat patches (name, avatar, memory summary) can
    land under the same contract later.
 7. **FR-7 (Draft-page transition contract).** When a draft page
    mounted on `/chat/my-cats/:catId` receives a
-   `direct_lane.room_created` patch for the direct lane it is
+   `direct_message.room_created` patch for the direct lane it is
    rendering, it:
    - opens a `kind='channel'` subscription for the new
      `channelId`
@@ -182,7 +182,7 @@ AFTER (this spec):
     ├─ append user message
     ├─ publishUserIngress(channelId, catId, bindingId)   ← NEW, synchronous
     │     emits transport_ingress(channelId, catId) + recents_changed
-    ├─ publishCatPatch(catId, direct_lane.room_created)  ← NEW, if room just created
+    ├─ publishCatPatch(catId, direct_message.room_created)  ← NEW, if room just created
     ├─ run runtime turn (awaited only for delivery ordering;
     │   segments stream via existing liveIndicator projector)
     ├─ append assistant message
@@ -213,13 +213,13 @@ AFTER (this spec):
   };
 }
 
-// Patch: direct_lane.room_created
+// Patch: direct_message.room_created
 {
   kind: 'cat',
   id: '<catId>',
   version: CAT_ENTITY_SUBSCRIPTION_VERSION,
   patch: {
-    op: 'direct_lane.room_created',
+    op: 'direct_message.room_created',
     bindingId: string;
     channelId: string;
     platform: 'telegram' | ...;
@@ -284,7 +284,7 @@ through the cat subscription's patches.
 - [ ] Should the user-ingress event be a distinct `ChatEvent.kind`
       (e.g. `user_message_added`) for clarity, or keep reusing
       `transport_ingress` with a `detail.phase` discriminator?
-- [ ] When the cat subscription delivers `direct_lane.room_created`
+- [ ] When the cat subscription delivers `direct_message.room_created`
       while the draft page is in the middle of its own composer
       draft, should the transition preserve the local draft text?
 - [ ] Parallel chat groups: if one Telegram message fans out to

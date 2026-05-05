@@ -39,7 +39,7 @@ export interface ChatViewSidePanelProps {
   directLaneCat: ChatCat | null;
   directLaneExecutionTarget: ExecutionTargetValue | null;
   isDirectLane: boolean;
-  isSoloComposer: boolean;
+  isDefaultChatComposer: boolean;
   selectedExecutionTarget?: ExecutionTargetValue;
   inspectedRun: ChatRunInspectorView | null;
   showAddCatButton: boolean;
@@ -74,7 +74,7 @@ export function ChatViewSidePanel({
   directLaneCat,
   directLaneExecutionTarget,
   isDirectLane,
-  isSoloComposer,
+  isDefaultChatComposer,
   selectedExecutionTarget,
   inspectedRun,
   showAddCatButton,
@@ -178,7 +178,7 @@ export function ChatViewSidePanel({
           </>
         );
       }
-      if (isSoloComposer && selectedExecutionTarget && onExecutionTargetChange) {
+      if (isDefaultChatComposer && selectedExecutionTarget && onExecutionTargetChange) {
         return (
           <ProviderModelFields
             provider={selectedExecutionTarget.provider}
@@ -191,7 +191,7 @@ export function ChatViewSidePanel({
           />
         );
       }
-      if (!isSoloComposer && defaultRecipientCat) {
+      if (!isDefaultChatComposer && defaultRecipientCat) {
         const catRecord = payload.chat.cats.find((cat) => cat.id === defaultRecipientCat.catId);
         const executionSummary = buildExecutionTargetSummary({
           provider: defaultRecipientCat.execution.target.provider,

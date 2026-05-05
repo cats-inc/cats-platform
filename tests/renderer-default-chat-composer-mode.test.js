@@ -5,7 +5,7 @@ import test from 'node:test';
 
 import { readProductChatViewSource } from './helpers/readProductChatViewSource.js';
 
-test('persisted chat view wires the solo audience chip and suppresses visible boss chrome', async () => {
+test('persisted chat view wires the default audience chip and suppresses visible boss chrome', async () => {
   const appSource = await readFile(
     path.join(process.cwd(), 'src/products/chat/renderer/App.tsx'),
     'utf8',
@@ -18,18 +18,18 @@ test('persisted chat view wires the solo audience chip and suppresses visible bo
 
   assert.match(
     viewStateSource,
-    /isSoloThreadConversationMode|resolveConversationMode/u,
-    'appViewState should derive solo-thread semantics from the shared conversation-mode helper',
+    /isDefaultChatConversationMode|resolveConversationMode/u,
+    'appViewState should derive default-chat semantics from the shared conversation-mode helper',
   );
   assert.match(
     appSource,
-    /isSoloThreadChannel\(selectedChannel\)/,
-    'App should pass solo execution-target state into the persisted chat view',
+    /isDefaultChatChannel\(selectedChannel\)/,
+    'App should pass default execution-target state into the persisted chat view',
   );
   assert.match(
     chatViewSource,
     /WorkspaceComposerTargetSlot/,
-    'ChatView should render the shared audience-chip slot for solo persisted chats',
+    'ChatView should render the shared audience-chip slot for default persisted chats',
   );
   assert.match(
     chatViewSource,

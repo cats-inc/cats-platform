@@ -717,12 +717,12 @@ function resolveDefaultTargetReason(
   }
 
   if (participant.participantKind === 'orchestrator') {
-    return 'boss_chat_default';
+    return 'chat_channel_default';
   }
 
-  return channel.roomRouting?.mode === 'direct_cat_chat'
-    ? 'direct_chat_recipient'
-    : 'boss_chat_default';
+  return channel.roomRouting?.mode === 'direct_message'
+    ? 'direct_message_recipient'
+    : 'chat_channel_default';
 }
 
 function createFallbackOutcome(
@@ -732,7 +732,7 @@ function createFallbackOutcome(
 ): RoomRoutingOutcome {
   return {
     turnId: turn.id,
-    mode: channel.roomRouting?.mode ?? 'boss_chat',
+    mode: channel.roomRouting?.mode ?? 'chat_channel',
     sourceMessageId: turn.sourceMessageId,
     sourceSenderKind: turn.sourceSenderKind,
     sourceSenderName: turn.sourceSenderName,
@@ -918,7 +918,7 @@ function ensureResolvedTarget(
 
   if (!outcome.resolution.defaultTarget) {
     outcome.resolution.defaultTarget = structuredClone(participant);
-    outcome.resolution.defaultTargetReason = outcome.resolution.defaultTargetReason ?? 'boss_chat_default';
+    outcome.resolution.defaultTargetReason = outcome.resolution.defaultTargetReason ?? 'chat_channel_default';
   }
   if (outcome.resolution.selectionKind === 'blocked') {
     outcome.resolution.selectionKind = 'default_target';
@@ -1452,7 +1452,7 @@ function resolveMissingSessionTransportBindingId(
     return canonicalSession.transportBindingId;
   }
 
-  return channel.channelKind === 'direct_lane'
+  return channel.channelKind === 'direct_message'
     ? buildDirectLaneTransportBindingId(channel.id)
     : null;
 }

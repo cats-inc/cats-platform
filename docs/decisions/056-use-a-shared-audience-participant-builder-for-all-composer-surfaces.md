@@ -20,7 +20,7 @@ objects from different source types:
 1. `chatNewChatDraftSupport.ts` — ChatCat + DraftTemporaryParticipant
 2. `ChatNewChatDraft.tsx` — ChatCat, DraftTemporaryParticipant,
    ExecutionTargetValue (five inline constructions for parallel, group,
-   direct-lane, temp-participant, and solo modes)
+   direct-lane, temp-participant, and default modes)
 3. `ChatComposerTargetSlot.tsx` — RecipientChipTarget,
    ComposerStackParticipant, ChatCat, ExecutionTargetValue
 4. `WorkspaceComposerTargetSlot.tsx` — ChatCat, ExecutionTargetValue

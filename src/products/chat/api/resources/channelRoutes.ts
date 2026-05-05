@@ -8,7 +8,7 @@ import {
 import {
   buildChannelView,
   requireChannel,
-  resetSoloChannelContinuity,
+  resetDefaultChatContinuity,
   resolveChannelCanonicalIdentity,
   setChannelPendingExecutionTarget,
   toChannelSummary,
@@ -16,7 +16,7 @@ import {
 import { repairChannelReadState } from '../channelRepair.js';
 import { createMergedDispatchChatStore } from '../../state/runtime-dispatch/merge.js';
 import { notifyStreamTargetChanged } from './streamTargetSignal.js';
-import { isSoloThreadChannel } from '../../shared/channelTopology.js';
+import { isDefaultChatChannel } from '../../shared/channelTopology.js';
 import { resolveRoomRoutingState } from '../../state/room-routing/index.js';
 import type {
   CreateChatChannelInput,
@@ -424,10 +424,10 @@ async function handleRestPatchChannel(
 
       if (body.resetContinuity === true) {
         const currentChannel = requireChannel(persisted, channelId);
-        if (!isSoloThreadChannel(currentChannel)) {
+        if (!isDefaultChatChannel(currentChannel)) {
           sendJson(context.response, 400, {
             error: 'continuity_reset_unsupported',
-            message: 'Start fresh is currently only supported for solo chats.',
+            message: 'Start fresh is currently only supported for default chats.',
           });
           return;
         }
@@ -449,7 +449,7 @@ async function handleRestPatchChannel(
             logContinuityResetCleanupError(channelId, error);
           }
         }
-        const nextState = resetSoloChannelContinuity(
+        const nextState = resetDefaultChatContinuity(
           persisted,
           channelId,
           nowFrom(context.dependencies),

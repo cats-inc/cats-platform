@@ -45,7 +45,7 @@ As of 2026-04-27:
   Runtime-call cutover is not the same as decision-core cutover.
 - `state.globalOrchestrator.executionTarget` still conflates two concepts:
   deterministic Chat router authority and the LLM-backed visible orchestrator
-  participant used by solo / +New Chat execution.
+  participant used by default / +New Chat execution.
 
 ## Objective
 
@@ -110,7 +110,7 @@ This plan covers:
 
 - no redesign of Chat, Work, or Code renderer flows
 - no new top-level Cat registry shape
-- no conversion of temporary participants, solo execution targets, or worker
+- no conversion of temporary participants, default execution targets, or worker
   invocations into durable Cats. This non-goal does not prevent temporary
   participants from using strong execution targets, capability profiles, or
   agentic supervision while they remain channel-scoped.
@@ -140,7 +140,7 @@ This plan covers:
   bootstrap evidence and operator override evidence; session-history summaries
   default to a conservative empty fixture until the follow-up producer plan
   ships.
-- Chat direct, solo, group, and parallel send flows route semantic next-step
+- Chat direct, default, group, and parallel send flows route semantic next-step
   choice through the new provider-agent decision seam where the task is
   agentic.
 - Temporary participants created by Chat, Work, or Code presets can be strong
@@ -205,7 +205,7 @@ This plan covers:
 | Do not broaden provider tool access until FR-19 override-floor tests stay green. | `supervision-policy-engine.test.tsx` and `supervision-tool-boundary.test.tsx` cover denial and evaluated/observed positive paths. |
 | Do not start live provider-agent autonomy before capability profile bootstrap lands. | Capability tests cover config-gated YAML source evidence, eval/history source fixtures without ingestion, conservative unknown defaults for unlisted targets, operator override ceilings, and FR-19 override floor. PLAN-080 replaces the current hard-coded bootstrap. |
 | Do not wire live provider-agent autonomy before fake driving-agent recovery tests are green. | `supervision-fake-driving-agent.test.tsx` and `work-supervised-run.test.tsx` pass. |
-| Do not change Chat visible UI while cutting the decision core. | Targeted Chat smoke/probe tests prove direct, solo, group, and parallel runtime handoff. |
+| Do not change Chat visible UI while cutting the decision core. | Targeted Chat smoke/probe tests prove direct, default, group, and parallel runtime handoff. |
 | Do not add direct runtime create/send calls in product code. | `supervision-runtime-boundary.test.tsx` and `rg runtimeClient.createSession/sendMessage` show only `runtimeBoundary.ts` calls runtime directly. |
 | Do not retire old semantic planner paths before Chat deterministic routing is carved out. | `supervision-static-boundary.test.tsx` proves retired platform planner/dispatcher modules are absent and un-importable from product trees; Chat router tests prove deterministic behavior remains. |
 | Do not add weak-model tools that bypass the provider-agent seam. | `weak-worker-no-ad-hoc-routing.test.ts` enforces the Anti-Bypass Invariant. |
@@ -267,7 +267,7 @@ The current `state.globalOrchestrator.executionTarget` slot conflates:
 
 - rule-based Chat router authority
 - the LLM-backed visible orchestrator participant execution target used by
-  solo / +New Chat execution
+  default / +New Chat execution
 
 PLAN-075 must split this before Chat cutover completes. The target shape is:
 
@@ -278,7 +278,7 @@ PLAN-075 must split this before Chat cutover completes. The target shape is:
 - projections that clearly tell renderers whether they are displaying routing
   authority, a visible participant, or a runtime-backed worker
 
-This prevents solo / +New Chat from treating a provider/model change as a
+This prevents default / +New Chat from treating a provider/model change as a
 router identity change, and prevents deterministic routing from inheriting
 LLM-backed participant semantics.
 
@@ -332,7 +332,7 @@ categories:
 | Path | Current Use | Replacement Direction |
 |------|-------------|-----------------------|
 | `src/products/chat/api/resources/channelRoutes.ts` | No longer builds `OrchestratorTurnPlan`; send/retry acknowledgements derive from begun Chat dispatch state plus provider-agent observation/decision metadata. | Keep UI acknowledgement shape stable while continuing to remove old semantic-planner entrypoints. |
-| `src/products/chat/api/resources/parallelChatGroupDispatch.ts` | No longer builds one plan per parallel member; member summaries derive from Chat dispatch prepared-turn state and provider-agent observations. | Each member remains a solo execution target inside the provider-agent seam. |
+| `src/products/chat/api/resources/parallelChatGroupDispatch.ts` | No longer builds one plan per parallel member; member summaries derive from Chat dispatch prepared-turn state and provider-agent observations. | Each member remains a default execution target inside the provider-agent seam. |
 | `src/products/chat/state/telegramBridgeAdapter.ts` | No longer builds a plan before Telegram-origin Chat dispatch. | Telegram-origin messages enter the same Chat dispatch routing path as web sends. |
 | `src/products/chat/api/orchestratorRoutes.ts` | Exposes legacy direct plan/dispatch surfaces for operator/debug flows. | Delegates to Chat-owned plan/dispatch shells and the provider-agent seam; retire the debug surface separately if no operator workflow still needs it. |
 | `src/products/chat/state/runtime-dispatch/turn.ts` | Consumes a Chat-owned `DeterministicChatRoutingPlan` only to override initial deterministic target resolution. | Keep this input free of semantic-planning authority and platform old-plan types. |
@@ -432,7 +432,7 @@ Code 4 pass and 1 live Code provider smoke pass with
       explicit mentions, direct lanes, room-default dispatch, audience limits,
       lane/container addressing, and origin-surface recents remain Chat-owned
       deterministic behavior.
-- [x] Task 3.3: Preserve direct-cat, solo, group, and parallel semantics:
+- [x] Task 3.3: Preserve direct-cat, default, group, and parallel semantics:
       participants, lanes, audience, runtime session metadata, typing handoff,
       and recents origin must not regress. Wire SPEC-050 channel participants
       and preset/ad hoc temporary participants into the provider-agent decision
@@ -456,7 +456,7 @@ Code 4 pass and 1 live Code provider smoke pass with
       `provider-agent-policy-gate.test.tsx` rejects recovery choices outside
       `allowedFallbacks` and proves the gate preserves or omits
       `correctedInput` exactly as authored by the provider agent.
-- [x] Task 3.5: Add targeted Chat probes for direct, solo, group, and parallel
+- [x] Task 3.5: Add targeted Chat probes for direct, default, group, and parallel
       sends that assert session start, assistant progress, response, and no
       direct runtime calls.
 - [x] Task 3.6: Rename or move retained deterministic Chat router code under
@@ -683,7 +683,7 @@ execution. The difference is control density, not a boolean switch.
   provider/model/control targets, and FR-19 override-floor enforcement.
 - Integration tests for Work and Code supervised run lifecycle with runtime
   stubs.
-- Targeted Chat runtime probes for direct, solo, group, and parallel handoff.
+- Targeted Chat runtime probes for direct, default, group, and parallel handoff.
 - `temp-participant-strong-agent.test.tsx` covers SPEC-050 preset-created
   temporary participants as strong provider-agent participants under
   supervision, including execution-target capability profile resolution and no
@@ -707,7 +707,7 @@ execution. The difference is control density, not a boolean switch.
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| Chat visible behavior regresses during decision-core cutover | High | Keep UI flow untouched; add direct/solo/group/parallel probes before removing old semantic-planning paths. |
+| Chat visible behavior regresses during decision-core cutover | High | Keep UI flow untouched; add direct/default/group/parallel probes before removing old semantic-planning paths. |
 | Provider autonomy bypasses platform invariants | High | All provider outputs become proposed intents; platform validates and executes through supervised boundaries. |
 | Chat deterministic routing is accidentally treated as obsolete old core | High | Move/rename it into Chat ownership and test `@mention`, room default, direct lane, audience, and recents routing as product contracts. |
 | Old planner/dispatcher semantic behavior lingers indefinitely | High | Add non-Chat import tests and make old semantic-planning path removal a phase gate while preserving Chat deterministic routing. |
@@ -744,7 +744,7 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 9: wired Chat dispatch preparation to build a provider-agent bounded observation for each user turn while leaving deterministic routing, UI, transcript body, and runtime dispatch behavior unchanged. |
 | 2026-04-28 | Implementation slice 10: added Chat deterministic-routing boundary tests for explicit mentions, current-turn audience caps, and no provider-agent runtime adapter calls inside routing modules. |
 | 2026-04-28 | Implementation slice 11: added `temp-participant-strong-agent.test.tsx` proving preset/ad hoc temporary participants can resolve strong-provider capability profiles and provider-agent observations without durable Cat promotion. |
-| 2026-04-28 | Implementation slice 12: expanded `chat-provider-agent-observation.test.tsx` with direct-cat, solo, group explicit-mention, and parallel-member probes so Chat routing semantics enter the provider-agent seam as bounded metadata without changing UI or transcript behavior. |
+| 2026-04-28 | Implementation slice 12: expanded `chat-provider-agent-observation.test.tsx` with direct-cat, default, group explicit-mention, and parallel-member probes so Chat routing semantics enter the provider-agent seam as bounded metadata without changing UI or transcript behavior. |
 | 2026-04-28 | Implementation slice 13: reconciled Phase 1 Task 1.3 with the already-landed FR-19 operator-override floor implementation and corrected the policy test filenames referenced by the phase gate. |
 | 2026-04-28 | Implementation slice 14: completed Phase 0 planner/dispatcher import inventory, classifying each old-plan use by current purpose and replacement direction before router rescope work continues. |
 | 2026-04-28 | Implementation slice 15: introduced a Chat-owned deterministic routing plan adapter and switched `runtime-dispatch/turn.ts` off the platform `OrchestratorTurnPlan` type, with a boundary test pinning the new dependency direction. |
@@ -757,7 +757,7 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 22: marked Phase 3 Task 3.1 complete after Chat dispatch gained the provider-agent decision requester seam while preserving UI and transcript contracts. |
 | 2026-04-28 | Implementation slice 23: removed the obsolete Chat plan-state adapter after product routes stopped using it, while preserving the still-current dispatch target cleanup coverage in the provider-agent observation tests. |
 | 2026-04-28 | Implementation slice 24: removed the old platform plan type from Chat runtime dispatch options; dispatch now accepts only Chat-owned deterministic routing plans, with legacy conversion now isolated to `deterministicRouterAdapter`. |
-| 2026-04-28 | Implementation slice 25: upgraded direct, solo, group, and parallel Chat runtime probes to assert provider-agent dispatch metadata; fixed execution leases to preserve resolved `modelSelection` so stable solo sessions do not restart when the runtime omits that echo field. |
+| 2026-04-28 | Implementation slice 25: upgraded direct, default, group, and parallel Chat runtime probes to assert provider-agent dispatch metadata; fixed execution leases to preserve resolved `modelSelection` so stable default sessions do not restart when the runtime omits that echo field. |
 | 2026-04-28 | Implementation slice 26: exposed the provider-agent decision requester through Chat API/server dependencies and passed it into channel send/retry dispatch, keeping the default path unchanged while allowing the live-provider requester to plug in at the product route seam. |
 | 2026-04-28 | Implementation slice 27: added a Chat provider-agent decision requester factory that calls the shared runtime adapter for execution-target observations and ignores non-execution targets, leaving default route behavior opt-in until live-provider enablement. |
 | 2026-04-28 | Implementation slice 28: added `CATS_CHAT_PROVIDER_AGENT_DECISION_ENABLED` as an explicit opt-in for wiring the Chat provider-agent requester by default, with config coverage and no behavior change when unset. |

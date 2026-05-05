@@ -7,7 +7,7 @@ test('starter suggestion context surfaces isDirectLaneContext separately from co
   // Direct lane (`/chat/dm/:catId` with no add-cat affordance) is its
   // own surface — not a sub-mode of +New chat. The `mode` value is
   // composer state for the +New chat surface only; on direct lane the
-  // mode falls through to `'solo'` and the renderer suppresses chips
+  // mode falls through to `'default'` and the renderer suppresses chips
   // via the dedicated `isDirectLaneContext` flag.
   assert.deepEqual(
     resolveDraftStarterSuggestionContext({
@@ -19,7 +19,7 @@ test('starter suggestion context surfaces isDirectLaneContext separately from co
       parallelTargetCount: 0,
     }),
     {
-      mode: 'solo',
+      mode: 'default',
       isGroupDraft: false,
       isDirectLaneContext: true,
     },
@@ -39,7 +39,7 @@ test('starter suggestion context surfaces isDirectLaneContext separately from co
       parallelTargetCount: 0,
     }),
     {
-      mode: 'solo',
+      mode: 'default',
       isGroupDraft: false,
       isDirectLaneContext: false,
     },
@@ -80,7 +80,7 @@ test('starter suggestion context keeps group and parallel routes distinct', () =
   );
 });
 
-test('starter suggestion context falls back to solo when no cats are selected', () => {
+test('starter suggestion context falls back to default when no cats are selected', () => {
   assert.deepEqual(
     resolveDraftStarterSuggestionContext({
       allowAddCat: true,
@@ -91,7 +91,7 @@ test('starter suggestion context falls back to solo when no cats are selected', 
       parallelTargetCount: 0,
     }),
     {
-      mode: 'solo',
+      mode: 'default',
       isGroupDraft: false,
       isDirectLaneContext: false,
     },

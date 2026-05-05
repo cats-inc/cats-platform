@@ -157,7 +157,7 @@ export function CompanionWorkspace({
     <>
       <div
         className="viewShell viewShellChannel"
-        data-conversation-mode="direct_lane"
+        data-conversation-mode="direct_message"
         data-layout-mode="companion"
       >
         <header className="channelTopBar">

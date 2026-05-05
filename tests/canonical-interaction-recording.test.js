@@ -22,7 +22,7 @@ test('recordDispatchExecutionInteraction projects persisted assistant messages i
     channels: [
       {
         id: 'channel-1',
-        channelKind: 'direct_lane',
+        channelKind: 'direct_message',
         roomRouting: {
           defaultRecipientId: 'participant-cat-1',
         },
@@ -186,7 +186,7 @@ test('recordDispatchExecutionInteraction prefers assistant segment transport bin
     channels: [
       {
         id: 'channel-transport',
-        channelKind: 'multi_cat_room',
+        channelKind: 'chat_channel',
         roomRouting: {
           defaultRecipientId: null,
         },

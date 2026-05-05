@@ -56,9 +56,9 @@ function createLegacyPayload() {
         updatedAt: '2026-03-20T00:00:00.000Z',
         messages: [],
         routingStatus: 'idle',
-        channelKind: 'direct_lane',
+        channelKind: 'direct_message',
         roomRouting: {
-          mode: 'direct_cat_chat',
+          mode: 'direct_message',
           defaultRecipientId: 'cat-nova',
           workflow: {
             activeTurn: null,
@@ -161,7 +161,7 @@ test('resolveVisibleChatChannel picks the direct-lane channel when the chats rou
   assert.equal(resolveVisibleChatChannelId(null, directLaneChannel), 'channel-direct');
 });
 
-test('WorkspaceProductApp gates solo and participant-room chatSurfaceProps off visibleChannel so direct-lane routes (/chat/dm/:catId, /work/dm/:catId, /code/dm/:catId) keep direct-lane controls', () => {
+test('WorkspaceProductApp gates default and participant-chat chatSurfaceProps off visibleChannel so direct-lane routes (/chat/dm/:catId, /work/dm/:catId, /code/dm/:catId) keep direct-lane controls', () => {
   const source = readFileSync(
     resolveProjectPath(import.meta.url, 'src/products/shared/renderer/WorkspaceProductApp.tsx'),
     'utf8',
@@ -176,17 +176,17 @@ test('WorkspaceProductApp gates solo and participant-room chatSurfaceProps off v
 
   assert.match(
     chatSurfaceRegion,
-    /onStartFresh:\s*\n?\s*visibleChatChannelId\s*&&\s*visibleChannel\s*&&\s*isSoloThreadChannel\(visibleChannel\)/u,
-    'onStartFresh should gate on visibleChannel so direct-lane routes inherit the solo control',
+    /onStartFresh:\s*\n?\s*visibleChatChannelId\s*&&\s*visibleChannel\s*&&\s*isDefaultChatChannel\(visibleChannel\)/u,
+    'onStartFresh should gate on visibleChannel so direct-lane routes inherit the default control',
   );
   assert.match(
     chatSurfaceRegion,
-    /selectedExecutionTarget:\s*\n?\s*visibleChannel\s*&&\s*isSoloThreadChannel\(visibleChannel\)/u,
+    /selectedExecutionTarget:\s*\n?\s*visibleChannel\s*&&\s*isDefaultChatChannel\(visibleChannel\)/u,
     'selectedExecutionTarget should gate on visibleChannel',
   );
   assert.match(
     chatSurfaceRegion,
-    /onExecutionTargetChange:\s*\n?\s*visibleChannel\s*&&\s*isSoloThreadChannel\(visibleChannel\)/u,
+    /onExecutionTargetChange:\s*\n?\s*visibleChannel\s*&&\s*isDefaultChatChannel\(visibleChannel\)/u,
     'onExecutionTargetChange should gate on visibleChannel',
   );
   assert.match(

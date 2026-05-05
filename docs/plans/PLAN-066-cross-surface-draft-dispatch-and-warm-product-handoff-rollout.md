@@ -182,7 +182,7 @@ follow-up list instead of open-ended drift.
 | Warm seam becomes over-generalized before the first ship | Medium | Keep the first consumer limited to draft submit while shaping types around navigation target + optional snapshot data |
 | Product boundaries get muddied by direct imports | Medium | Keep registry and handoff store in platform/shared renderer space |
 | Lazy chunk prefetch adds hidden coupling to route code | Medium | Centralize prefetch through one platform registry instead of scattered product calls |
-| Parallel/group flows lag behind solo cross-surface support | Medium | Make topology support explicit in Phase 4 instead of assuming the seam is solo-only |
+| Parallel/group flows lag behind default cross-surface support | Medium | Make topology support explicit in Phase 4 instead of assuming the seam is default-only |
 
 ## Progress Log
 

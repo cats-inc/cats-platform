@@ -125,7 +125,7 @@ live rendering and persisted transcript state.
   next named waiting bubble without losing avatar/header continuity.
 - Live and persisted transcript behavior become aligned instead of fighting
   each other.
-- Group, direct, and solo surfaces can share one truthful assistant-turn
+- Group, direct, and default surfaces can share one truthful assistant-turn
   contract.
 - Renderer logic becomes less dependent on fragile timing heuristics because
   the canonical state is richer.

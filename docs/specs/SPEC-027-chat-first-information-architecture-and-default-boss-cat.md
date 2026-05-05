@@ -6,7 +6,7 @@ Status: Approved
 > refined by [SPEC-030](./SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md).
 > This accepted spec still governs chat-first IA, `My Cats`, direct lanes, and
 > Cat-led chat behavior, while `+ New Chat` for normal `Recents` threads now
-> follows the solo-composer refinement in `SPEC-030`.
+> follows the default-composer refinement in `SPEC-030`.
 >
 > Revision note (2026-04-08): [ADR-055](../decisions/055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md)
 > and [SPEC-052](./SPEC-052-current-turn-recipients-dispatch-policy-and-parallel-chat-terminology.md)
@@ -50,7 +50,7 @@ The key rule is:
 
 1. Every chat has at least one visible Cat participant.
    - Revision note: for ordinary `Recents` threads, `SPEC-030` supersedes this
-     assumption during the initial solo-composer phase before a lead Cat is
+     assumption during the initial default-composer phase before a lead Cat is
      chosen.
 2. The product always has one current global `Boss Cat`.
 3. First-run setup auto-provisions a neutral default `Boss Cat` if no Cat exists.
@@ -78,7 +78,7 @@ The product should still feel immediately familiar:
   `Boss Cat`, even when it is the only Cat
 - the environment already has a default `Boss Cat`
 - the fallback display name is `Boss Cat` until the user renames it
-- new `Recents` threads may begin in solo composer mode without a visible Cat
+- new `Recents` threads may begin in default composer mode without a visible Cat
   participant, while `My Cats` still exposes the current `Boss Cat`
 
 The user should be able to ignore Cat customization entirely and still use the
@@ -182,17 +182,17 @@ Each recent item should show:
 ### If only the default Boss Cat exists
 
 `SPEC-030` now refines ordinary `Recents` new-chat behavior so that a normal
-thread may begin in solo composer mode before a visible lead Cat is chosen.
+thread may begin in default composer mode before a visible lead Cat is chosen.
 
 The environment may still have only one configured `Boss Cat`, and explicit
 Boss-led or Cat-led chats remain valid, but the default `Recents` path no
-longer needs to begin as a visible Cat-led thread.
+longer needs to begin as a visible participant chat.
 
 ### If multiple Cats exist
 
 `SPEC-030` now refines ordinary `Recents` new-chat behavior so that:
 
-- a thread may begin in solo composer mode by default
+- a thread may begin in default composer mode by default
 - adding one Cat upgrades the thread into a Cat-led chat
 - choosing another single Cat or starting a group chat remains valid
 

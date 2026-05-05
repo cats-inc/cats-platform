@@ -177,7 +177,7 @@ export interface CompanionSessionContext {
   retrieval: MemoryRetrievalContext | null;
   channelContext: {
     channelId: string | null;
-    roomMode: 'boss_chat' | 'direct_cat_chat' | null;
+    roomMode: 'chat_channel' | 'direct_message' | null;
     transport: 'telegram' | 'line' | 'web' | null;
   };
 }

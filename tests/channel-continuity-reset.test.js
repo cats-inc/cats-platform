@@ -168,7 +168,7 @@ async function withServer(
   }
 }
 
-test('PATCH /api/channels/:channelId flushes pending runtime memory hooks before solo continuity reset', async () => {
+test('PATCH /api/channels/:channelId flushes pending runtime memory hooks before default continuity reset', async () => {
   const runtimeClient = createRuntimeStub();
   const chatStore = new MemoryChatStore();
   const flushedChannels = [];
@@ -207,7 +207,7 @@ test('PATCH /api/channels/:channelId flushes pending runtime memory hooks before
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        title: 'Solo Draft',
+        title: 'Default Draft',
         topic: 'Flush memory before explicit fresh-start resets.',
         originSurface: 'chat',
         pendingProvider: 'claude',

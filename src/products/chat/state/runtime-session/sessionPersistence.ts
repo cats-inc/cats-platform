@@ -10,7 +10,7 @@ import {
   setChannelPendingExecutionTarget,
   setGlobalOrchestratorExecutionTarget,
 } from '../model/index.js';
-import { isProviderSoloThreadChannel } from '../../shared/channelTopology.js';
+import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
 import {
   ensureChannelAttachmentWorkspace,
   syncChannelAttachmentsToWorkspace,
@@ -59,7 +59,7 @@ export function persistCreatedTargetExecutionTarget(input: {
 }): ChatState {
   if (input.target.participantKind === 'orchestrator') {
     const runtimeChannel = requireChannel(input.state, input.channelId);
-    return isProviderSoloThreadChannel(runtimeChannel) && runtimeChannel.pendingProvider
+    return isProviderDefaultChatChannel(runtimeChannel) && runtimeChannel.pendingProvider
       ? setChannelPendingExecutionTarget(
         input.state,
         input.channelId,

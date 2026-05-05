@@ -167,7 +167,7 @@ The previous always-visible four-card rail creates several problems:
 
 - it competes with transcript as the primary visual focus
 - it feels heavy even in cat-led rooms
-- it is confusing in solo/direct chat
+- it is confusing in default/direct chat
 - it scales poorly once artifact split view exists
 
 The preferred model is:
@@ -345,7 +345,7 @@ will feel opaque and untrustworthy.
 
 ## Recommended Default Behavior
 
-### Solo/direct chat
+### Default/direct chat
 
 - no always-on operator cards
 - no forced artifact split
@@ -354,7 +354,7 @@ will feel opaque and untrustworthy.
 
 ### Cat-led room
 
-- same spatial model as solo/direct chat
+- same spatial model as default/direct chat
 - cat-led orchestration does not justify permanent operator clutter
 - blocking events may show indicator badges or notifications
 - thread-local tasks remain available, while broader Chat work should surface

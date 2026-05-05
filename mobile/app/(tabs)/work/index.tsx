@@ -36,7 +36,7 @@ export default function WorkSidebarScreen() {
           title: getMobileChannelTitle(copy, 'work', actionId),
           topic: '',
           originSurface: 'work',
-          entryKind: actionId === 'team' ? 'group' : 'solo',
+          entryKind: actionId === 'team' ? 'group' : 'default',
         });
         router.push(`/(tabs)/work/${channelId}`);
       } catch {

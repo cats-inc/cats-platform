@@ -47,7 +47,7 @@ import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import {
   resolveNextPendingExecutionTarget,
 } from '../pendingExecutionTarget.js';
-import { isProviderSoloThreadChannel } from '../../shared/channelTopology.js';
+import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
 import {
   type RuntimeTransportContext,
 } from '../runtimeTargeting.js';
@@ -299,7 +299,7 @@ export async function beginChannelMessageDispatch(
   let nextState = state;
   const channelBeforeMessage = requireChannel(nextState, channelId);
   const nextTarget = resolveNextPendingExecutionTarget(channelBeforeMessage, payload);
-  const pendingTargetChanged = isProviderSoloThreadChannel(channelBeforeMessage)
+  const pendingTargetChanged = isProviderDefaultChatChannel(channelBeforeMessage)
     && (
       nextTarget.provider !== channelBeforeMessage.pendingProvider
       || nextTarget.model !== channelBeforeMessage.pendingModel
@@ -662,7 +662,7 @@ export async function settleBegunChannelMessageDispatchFailure(
   const canonicalIdentity = resolveChannelCanonicalIdentity(latestState, channelId);
   const { conversationId, containerId } = canonicalIdentity;
   const transportBindingId = options.transportBindingId
-    ?? (latestChannel.channelKind === 'direct_lane'
+    ?? (latestChannel.channelKind === 'direct_message'
       ? buildDirectLaneTransportBindingId(channelId)
       : null);
   let nextState = appendMessage(

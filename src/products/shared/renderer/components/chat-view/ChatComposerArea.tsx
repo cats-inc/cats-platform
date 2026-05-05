@@ -36,7 +36,7 @@ export interface ChatComposerAreaProps {
   defaultRecipientParticipantId: string | null;
   composerStackParticipants: ComposerStackParticipant[];
   isDirectLane: boolean;
-  isSoloComposer: boolean;
+  isDefaultChatComposer: boolean;
   activeWorkflowShape: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys: string[] | null;
@@ -85,7 +85,7 @@ export function ChatComposerArea({
   defaultRecipientParticipantId,
   composerStackParticipants,
   isDirectLane,
-  isSoloComposer,
+  isDefaultChatComposer,
   activeWorkflowShape,
   onToggleActiveWorkflowShape,
   activeAudienceKeys,
@@ -338,7 +338,7 @@ export function ChatComposerArea({
               composerStackParticipants={composerStackParticipants}
               directLaneCat={directLaneCat}
               isDirectLane={isDirectLane}
-              isSoloComposer={isSoloComposer}
+              isDefaultChatComposer={isDefaultChatComposer}
               activeWorkflowShape={activeWorkflowShape}
               onToggleActiveWorkflowShape={onToggleActiveWorkflowShape}
               activeAudienceKeys={activeAudienceKeys}

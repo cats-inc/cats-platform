@@ -22,7 +22,7 @@ function createPayload(): AppShellPayload {
   } as unknown as AppShellPayload;
 }
 
-test('chat composer keeps solo implicit recipient controls on the active audience chip tooltip', () => {
+test('chat composer keeps default implicit recipient controls on the active audience chip tooltip', () => {
   const markup = renderToStaticMarkup(
     <ChatComposerArea
       hasConversationStarted
@@ -57,7 +57,7 @@ test('chat composer keeps solo implicit recipient controls on the active audienc
       defaultRecipientParticipantId={null}
       composerStackParticipants={[]}
       isDirectLane={false}
-      isSoloComposer
+      isDefaultChatComposer
       activeWorkflowShape="sequential"
       onToggleActiveWorkflowShape={() => {}}
       activeAudienceKeys={null}
@@ -123,7 +123,7 @@ test('chat composer preserves runtime-backed implicit audience labels instead of
       defaultRecipientParticipantId={null}
       composerStackParticipants={[]}
       isDirectLane={false}
-      isSoloComposer
+      isDefaultChatComposer
       activeWorkflowShape="sequential"
       onToggleActiveWorkflowShape={() => {}}
       activeAudienceKeys={null}
@@ -228,7 +228,7 @@ test('chat composer renders a cat-backed audience chip for direct lanes', () => 
         },
       ]}
       isDirectLane
-      isSoloComposer={false}
+      isDefaultChatComposer={false}
       activeWorkflowShape="sequential"
       onToggleActiveWorkflowShape={() => {}}
       activeAudienceKeys={null}
@@ -315,7 +315,7 @@ test('chat composer renders a multi-audience chip for group chats', () => {
         },
       ]}
       isDirectLane={false}
-      isSoloComposer={false}
+      isDefaultChatComposer={false}
       activeWorkflowShape="sequential"
       onToggleActiveWorkflowShape={() => {}}
       activeAudienceKeys={null}

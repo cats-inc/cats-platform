@@ -147,7 +147,7 @@ test('runtime bridge flushes cats-owned memory when runtime inspection advertise
       body: JSON.stringify({
         title: 'Bridge Thread',
         topic: 'Exercise runtime maintenance bridges.',
-        roomMode: 'boss_chat',
+        roomMode: 'chat_channel',
       }),
     });
     assert.equal(createChannelResponse.status, 201);

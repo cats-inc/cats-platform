@@ -5,7 +5,7 @@ import type {
 import { activeAssignedParticipants } from '../shared/channelParticipants.js';
 import type { SelectedChannelView } from '../shared/channelEntry.js';
 import {
-  isSoloThreadChannel,
+  isDefaultChatChannel,
   supportsParticipantAudienceSelection,
 } from '../shared/channelTopology.js';
 
@@ -140,7 +140,7 @@ export function resolveActiveChannelMessageMetadata(options: {
   }
 
   if (
-    isSoloThreadChannel(selectedChannel)
+    isDefaultChatChannel(selectedChannel)
     || !supportsParticipantAudienceSelection(selectedChannel)
   ) {
     return null;

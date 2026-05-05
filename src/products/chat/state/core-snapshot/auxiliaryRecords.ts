@@ -35,9 +35,9 @@ export function normalizeBotBinding(
   }
 
   const rawStatus = readString(bindingRecord.status, 'active');
-  const rawRoomMode = readString(bindingRecord.roomMode ?? bindingRecord.defaultRoomMode, 'boss_chat');
+  const rawRoomMode = readString(bindingRecord.roomMode ?? bindingRecord.defaultRoomMode, 'chat_channel');
   const roomMode: BotBindingRecord['roomMode'] =
-    rawRoomMode === 'direct_cat_chat' ? 'direct_cat_chat' : 'boss_chat';
+    rawRoomMode === 'direct_message' ? 'direct_message' : 'chat_channel';
   const rawInboundMode = readString(bindingRecord.inboundMode);
   const inboundMode: BotBindingRecord['inboundMode'] =
     rawInboundMode === 'polling' || rawInboundMode === 'webhook'

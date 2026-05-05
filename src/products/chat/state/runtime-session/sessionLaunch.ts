@@ -5,14 +5,14 @@ import {
   buildChannelView,
   requireChannel,
 } from '../model/index.js';
-import { isSoloThreadChannel } from '../../shared/channelTopology.js';
+import { isDefaultChatChannel } from '../../shared/channelTopology.js';
 import type { RoutingTarget } from '../mentionRouter.js';
 import {
-  buildSoloChatContinuityTransplantPackage,
+  buildDefaultChatContinuityTransplantPackage,
   buildTargetedChatHandoffPackage,
 } from '../prompts.js';
 import {
-  applySoloChatContinuityBoundary,
+  applyDefaultChatContinuityBoundary,
   hasVisibleResponseFromLogicalTarget,
   messagesBeforeSource,
   resolveRuntimeEnvelopeForTarget,
@@ -63,10 +63,10 @@ function resolveNewSessionContinuityMetadata(input: {
   continuityResetAt: string | null;
 } | null {
   const channel = buildChannelView(input.state, input.channelId);
-  const isSoloOrchestrator = input.target.participantKind === 'orchestrator'
-    && isSoloThreadChannel(channel);
+  const isDefaultChatOrchestrator = input.target.participantKind === 'orchestrator'
+    && isDefaultChatChannel(channel);
   const isParticipantTarget = input.target.participantKind === 'cat';
-  if (!isSoloOrchestrator && !isParticipantTarget) {
+  if (!isDefaultChatOrchestrator && !isParticipantTarget) {
     return null;
   }
 
@@ -75,17 +75,17 @@ function resolveNewSessionContinuityMetadata(input: {
     return {
       continuityMode: 'fresh_start',
       continuityDeliveryMode: 'none',
-      continuityResetAt: isSoloOrchestrator
+      continuityResetAt: isDefaultChatOrchestrator
         ? channel.continuityResetAt?.trim() || null
         : null,
     };
   }
 
-  const continuityResetAt = isSoloOrchestrator
+  const continuityResetAt = isDefaultChatOrchestrator
     ? channel.continuityResetAt?.trim() || null
     : null;
-  const continuityMessages = isSoloOrchestrator
-    ? applySoloChatContinuityBoundary(channel, channel.messages)
+  const continuityMessages = isDefaultChatOrchestrator
+    ? applyDefaultChatContinuityBoundary(channel, channel.messages)
     : channel.messages;
   const sourceMessage = continuityMessages.find((message) => message.id === sourceMessageId) ?? null;
   const hasLogicalPriorResponse = sourceMessage
@@ -93,7 +93,7 @@ function resolveNewSessionContinuityMetadata(input: {
     : false;
   const supportsParticipantContinuity = input.target.participantKind === 'cat'
     && (supportsSameChatParticipantContinuity(channel) || hasLogicalPriorResponse);
-  if (!isSoloOrchestrator && !supportsParticipantContinuity) {
+  if (!isDefaultChatOrchestrator && !supportsParticipantContinuity) {
     const targetedHandoffPackage = buildTargetedChatHandoffPackage({
       priorMessages: sourceMessage
         ? messagesBeforeSource(continuityMessages, sourceMessage)
@@ -108,7 +108,7 @@ function resolveNewSessionContinuityMetadata(input: {
   const priorMessages = sourceMessage
     ? messagesBeforeSource(continuityMessages, sourceMessage)
     : [];
-  const continuityPackage = buildSoloChatContinuityTransplantPackage(priorMessages);
+  const continuityPackage = buildDefaultChatContinuityTransplantPackage(priorMessages);
 
   return {
     continuityMode: continuityPackage.instructions ? continuityPackage.mode : 'fresh_start',

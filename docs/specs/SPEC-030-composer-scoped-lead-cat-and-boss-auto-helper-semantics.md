@@ -3,7 +3,7 @@
 Status: Superseded by SPEC-052
 
 This record remains for historical context only.
-Its lead-based composer model and `solo` framing no longer match the current
+Its lead-based composer model and `default` framing no longer match the current
 recipient-centric direction for Cats Chat.
 
 ## Summary
@@ -33,7 +33,7 @@ Follow-on implementation should therefore:
   `+ New Chat`
 - stop auto-sending a visible `Boss Cat` greeting merely because a normal
   `Recents` thread was opened
-- add explicit state that distinguishes solo composer mode from Cat-led mode
+- add explicit state that distinguishes default composer mode from Cat-led mode
   for normal `Recents` threads
 
 This migration note is about ordinary `Recents` chats only.
@@ -73,7 +73,7 @@ It does not change `My Cats` direct lanes.
   the Cat's preset, understanding that the preset is reused in other places.
 - As an operator, I want `Boss Cat` to remain able to orchestrate when present,
   even if another Cat is the visible lead speaker.
-- As an operator, if I add a Cat after several solo turns already exist, I want
+- As an operator, if I add a Cat after several default chat turns already exist, I want
   the system to handle that history transition intentionally rather than
   ambiguously.
 
@@ -94,7 +94,7 @@ This spec does not apply to:
 
 ## Core Decision
 
-`Recents` threads may begin in a **solo** composer mode with no visible Cat.
+`Recents` threads may begin in a **default** composer mode with no visible Cat.
 The composer then shows a model/provider selector for the **next** outgoing
 turn only.
 
@@ -117,7 +117,7 @@ If `Boss Cat` is the lead, it still retains orchestration authority.
 
 ## Conversation Modes
 
-### 1. Solo Composer Mode
+### 1. Default Composer Mode
 
 Definition:
 
@@ -164,7 +164,7 @@ Behavior:
 
 ## Composer Control Rules
 
-### Solo Composer Control
+### Default Composer Control
 
 When the thread has no lead Cat:
 
@@ -214,13 +214,13 @@ editing to ship before that scope is made safe.
 
 Adding the first Cat to a normal `Recents` thread shall:
 
-- end solo composer mode
+- end default composer mode
 - set `leadCatId` to that Cat
 - replace the composer model selector with the Cat avatar affordance
 - make that Cat the default responder for unmentioned turns
 
 This action is intentionally stronger than "invite a helper."
-It upgrades the thread from model-first solo chat into a Cat-led thread.
+It upgrades the thread from model-first default chat into a participant chat.
 
 ### Adding Additional Cats
 
@@ -238,7 +238,7 @@ Instead:
 
 If all Cats are removed from a `Recents` thread:
 
-- the thread returns to solo composer mode
+- the thread returns to default composer mode
 - the composer model selector returns
 
 If the current lead Cat is removed while other Cats remain:
@@ -328,7 +328,7 @@ This means:
 
 1. Explicit `@mentions` override the default next-turn target.
 2. If no explicit valid mention is present:
-   - solo mode uses the composer-selected pending provider/model
+   - default mode uses the composer-selected pending provider/model
    - Cat-led modes default to the `leadCat`
 3. After an explicit mention turn completes, the thread's default target remains
    the current lead unless another action changes that lead.
@@ -347,9 +347,9 @@ At minimum, each message or turn record should keep:
 
 This matters because:
 
-- the thread may start in solo mode and later become Cat-led
+- the thread may start in default mode and later become Cat-led
 - Cat preset changes may affect future turns but must not rewrite past turns
-- provider catalog metadata may change later, but historical solo/provider-tag
+- provider catalog metadata may change later, but historical default/provider-tag
   transcript labels must continue to reflect what the user saw when the message
   was created
 
@@ -362,7 +362,7 @@ replacements for per-message provenance.
 Transcript sender presentation shall distinguish execution provenance from Cat
 identity:
 
-- solo-mode or hidden-orchestrator replies may present a provider/backend tag
+- default-mode or hidden-orchestrator replies may present a provider/backend tag
   derived from the per-message execution-label snapshot
 - that provider/backend tag shall not be recomputed from the current provider
   catalog if a historical snapshot is available
@@ -378,21 +378,20 @@ represent equivalent concepts such as:
 
 - `leadCatId: string | null`
 - `participantCatIds: string[]`
-- `composerMode: 'solo' | 'cat_led'`
+- explicit channel intent derived from `channelKind` and active participants
 - `bossParticipation: 'absent' | 'background_auto_helper' | 'lead'`
 - `pendingProvider: string | null`
 - `pendingModel: string | null`
 - per-message execution provenance fields
 
-The first implementation slice will likely also need an explicit
-`composerMode: 'solo' | 'cat_led'` or equivalent state to avoid inferring the
-mode only from older Boss-led metadata.
+The current implementation should not persist draft-state routing aliases.
+Composer presets are UI state; channel intent is derived from topology.
 
 ## Interaction Summary
 
 ```text
 Start new thread
-  -> solo composer mode
+  -> default composer mode
   -> composer shows model selector
 
 Add first Cat
@@ -426,8 +425,8 @@ Make Boss Cat lead
 
 - [ ] Should the first slice allow a thread-local temporary override of a lead
       Cat's provider/model without mutating the Cat preset globally?
-- [ ] When a solo-mode thread already has several turns of history and the
-      operator adds the first Cat, should that Cat inherit the prior solo
+- [ ] When a default-mode thread already has several turns of history and the
+      operator adds the first Cat, should that Cat inherit the prior default
       transcript as execution context immediately, or should the handoff be
       summarized/filtered through a dedicated hydration step?
 - [ ] When the lead Cat is removed from a multi-Cat thread, should the next lead

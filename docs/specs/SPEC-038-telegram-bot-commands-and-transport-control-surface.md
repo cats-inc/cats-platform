@@ -205,7 +205,7 @@ private lane.
 
 - Telegram Bot API command/menu behavior
 - Existing product-owned Telegram transport seam under `src/platform/transports/telegram/`
-- Existing Cat private-lane routing semantics in `direct_cat_chat`
+- Existing Cat private-lane routing semantics in `direct_message`
 
 ---
 

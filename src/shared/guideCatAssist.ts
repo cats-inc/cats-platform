@@ -124,12 +124,12 @@ export interface GuideCatAssistRefreshContextInput {
 
 /**
  * The +New chat workspace is a single guide-cat-assist surface. Earlier
- * revisions split it by composer state (`solo`/`direct`/`group`/`parallel`)
+ * revisions split it by transient composer presets
  * and gave each one its own scope key, but that conflated stable surface
  * identity with transient composer state — the user lands on `/chat/new`
- * regardless and shapes the chat through the composer. Direct lane is
- * outside guide-cat-assist altogether (DM has no helper chips and the
- * guide cat / boss cat will never insert content into a private 1:1
+ * regardless and shapes the chat through the composer. Direct-message routes
+ * are outside guide-cat-assist altogether (DM has no helper chips and the
+ * guide cat will never insert content into a private 1:1
  * conversation), so it does not get its own scope key here either. If
  * runtime-backed generation later produces meaningfully different
  * content for some sub-context, that is the moment to introduce a new

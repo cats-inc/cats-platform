@@ -24,7 +24,7 @@ import type { AppShellPayload } from '../../api/contracts';
 import {
   normalizeSelectedChannelView,
 } from '../../shared/channelEntry';
-import { isSoloThreadChannel } from '../../shared/channelTopology.js';
+import { isDefaultChatChannel } from '../../shared/channelTopology.js';
 import {
   isDirectLaneSelectedForCat,
   prepareWorkspaceSendContext,
@@ -196,7 +196,7 @@ export function useComposerSubmit(options: {
   setComposerDraft: Dispatch<SetStateAction<string>>;
   showingNewChatDraft: boolean;
   showingMyCatDirectLane: boolean;
-  draftEntryKind: 'solo' | 'group' | 'direct';
+  draftEntryKind: 'default' | 'group' | 'direct';
   draftDefaultRecipientCatId: string | null;
   draftParticipantCatIds: string[];
   draftTemporaryParticipants: DraftTemporaryParticipant[];
@@ -214,8 +214,8 @@ export function useComposerSubmit(options: {
   setDraftAudienceKeys: Dispatch<SetStateAction<string[] | null>>;
   draftExecutionTarget: ExecutionTargetValue;
   setDraftExecutionTarget: Dispatch<SetStateAction<ExecutionTargetValue>>;
-  soloChannelExecutionTarget: ExecutionTargetValue;
-  setSoloChannelExecutionTarget: Dispatch<SetStateAction<ExecutionTargetValue>>;
+  defaultChannelExecutionTarget: ExecutionTargetValue;
+  setDefaultChannelExecutionTarget: Dispatch<SetStateAction<ExecutionTargetValue>>;
   showingParallelChatDraft: boolean;
   draftParallelChatTargets: Array<ExecutionTargetValue & DraftParallelTargetBranchFields>;
   draftWorkflowShape: 'sequential' | 'concurrent';
@@ -258,8 +258,8 @@ export function useComposerSubmit(options: {
     setDraftAudienceKeys,
     draftExecutionTarget,
     setDraftExecutionTarget,
-    soloChannelExecutionTarget,
-    setSoloChannelExecutionTarget,
+    defaultChannelExecutionTarget,
+    setDefaultChannelExecutionTarget,
     showingParallelChatDraft,
     draftParallelChatTargets,
     draftWorkflowShape,
@@ -366,14 +366,14 @@ export function useComposerSubmit(options: {
           ? currentDraftExecutionTarget
           : nextExecutionTarget);
     };
-    const updateSoloChannelExecutionTargetIfChanged = (
+    const updateDefaultChatExecutionTargetIfChanged = (
       nextExecutionTarget: ExecutionTargetValue,
     ): void => {
-      setSoloChannelExecutionTarget((currentSoloChannelExecutionTarget) =>
-        sameExecutionTargetValue(currentSoloChannelExecutionTarget, nextExecutionTarget)
-          && (currentSoloChannelExecutionTarget.executionLabel ?? null)
+      setDefaultChannelExecutionTarget((currentDefaultChatExecutionTarget) =>
+        sameExecutionTargetValue(currentDefaultChatExecutionTarget, nextExecutionTarget)
+          && (currentDefaultChatExecutionTarget.executionLabel ?? null)
             === (nextExecutionTarget.executionLabel ?? null)
-          ? currentSoloChannelExecutionTarget
+          ? currentDefaultChatExecutionTarget
           : nextExecutionTarget);
     };
     const buildTargetChannelPath = (nextChannelId: string): string =>
@@ -515,7 +515,7 @@ export function useComposerSubmit(options: {
       ));
 
       let effectiveDraftExecutionTarget = draftExecutionTarget;
-      let effectiveSoloChannelExecutionTarget = soloChannelExecutionTarget;
+      let effectiveDefaultChannelExecutionTarget = defaultChannelExecutionTarget;
       if (wasDraftingNewChat || (isCatScopedLaneRoute && !hydratedDirectLane)) {
         effectiveDraftExecutionTarget = await resolveDispatchExecutionTargetValue(
           draftExecutionTarget,
@@ -523,12 +523,12 @@ export function useComposerSubmit(options: {
         updateDraftExecutionTargetIfChanged(effectiveDraftExecutionTarget);
       } else if (
         initialSelectedChannel?.id === channelId
-        && isSoloThreadChannel(initialSelectedChannel)
+        && isDefaultChatChannel(initialSelectedChannel)
       ) {
-        effectiveSoloChannelExecutionTarget = await resolveDispatchExecutionTargetValue(
-          soloChannelExecutionTarget,
+        effectiveDefaultChannelExecutionTarget = await resolveDispatchExecutionTargetValue(
+          defaultChannelExecutionTarget,
         );
-        updateSoloChannelExecutionTargetIfChanged(effectiveSoloChannelExecutionTarget);
+        updateDefaultChatExecutionTargetIfChanged(effectiveDefaultChannelExecutionTarget);
       }
 
       const preparedSendContext = await prepareWorkspaceSendContext({
@@ -548,7 +548,7 @@ export function useComposerSubmit(options: {
         draftEntryKind,
         draftExecutionTarget: effectiveDraftExecutionTarget,
         selectedChannel,
-        soloChannelExecutionTarget: effectiveSoloChannelExecutionTarget,
+        defaultChannelExecutionTarget: effectiveDefaultChannelExecutionTarget,
         draftFiles,
         channelFiles,
         createChatChannel,
@@ -569,7 +569,7 @@ export function useComposerSubmit(options: {
       channelId = preparedSendContext.channelId;
       successNavigationPath = preparedSendContext.rollbackPath;
       restoreFiles = preparedSendContext.restoreFiles;
-      const { messageBody, soloDispatchTarget } = preparedSendContext;
+      const { messageBody, defaultDispatchTarget } = preparedSendContext;
       const draftAudienceParticipantIds = wasDraftingNewChat
         && draftEntryKind === 'group'
         && !showingParallelChatDraft
@@ -619,8 +619,8 @@ export function useComposerSubmit(options: {
             }
           : baseMessageMetadata;
 
-      if (soloDispatchTarget) {
-        payload = applyPendingExecutionTargetPreview(payload, channelId, soloDispatchTarget);
+      if (defaultDispatchTarget) {
+        payload = applyPendingExecutionTargetPreview(payload, channelId, defaultDispatchTarget);
       }
       setState({ status: 'ready', payload });
       setComposerDraft('');
@@ -634,7 +634,7 @@ export function useComposerSubmit(options: {
       const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
         senderName: payload.ownerDisplayName,
-        ...(soloDispatchTarget ?? {}),
+        ...(defaultDispatchTarget ?? {}),
         ...(messageMetadata
           ? {
               messageMetadata,
@@ -765,10 +765,10 @@ export function useComposerSubmit(options: {
     activeWorkflowShape,
     showingMyCatDirectLane,
     showingNewChatDraft,
-    soloChannelExecutionTarget.instance,
-    soloChannelExecutionTarget.modelSelection,
-    soloChannelExecutionTarget.model,
-    soloChannelExecutionTarget.provider,
+    defaultChannelExecutionTarget.instance,
+    defaultChannelExecutionTarget.modelSelection,
+    defaultChannelExecutionTarget.model,
+    defaultChannelExecutionTarget.provider,
     state,
     t,
   ]);

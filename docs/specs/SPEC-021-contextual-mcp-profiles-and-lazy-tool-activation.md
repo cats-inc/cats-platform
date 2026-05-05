@@ -138,7 +138,7 @@ interface ToolIntentManifest {
   lazyGroups?: string[];
   context?: {
     catId?: string;
-    roomMode?: 'boss_chat' | 'direct_cat_chat';
+    roomMode?: 'chat_channel' | 'direct_message';
     transport?: 'telegram' | 'line' | 'web' | null;
   };
   strict?: boolean;
@@ -164,7 +164,7 @@ Notes:
 
 - specialist Cats may request broader or narrower profiles depending on room
   mode
-- a coder Cat in `direct_cat_chat` may start with a stronger tool set than that
+- a coder Cat in `direct_message` may start with a stronger tool set than that
   same Cat inside a summary-oriented transport flow
 
 ### Efficiency Rule

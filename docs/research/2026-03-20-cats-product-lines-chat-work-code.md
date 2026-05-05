@@ -53,7 +53,7 @@ friends the user can call on.
 
 ### Cats Work — Digital Company (工作情境)
 
-**Target user**: Solo entrepreneur, small team lead, agency owner.
+**Target user**: Default entrepreneur, small team lead, agency owner.
 
 **Core use cases**:
 

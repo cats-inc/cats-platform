@@ -276,7 +276,7 @@ documented in `SPEC-052`.
 | `src/products/chat/state/runtime-dispatch/**` | Refactor | Rename `parallel` workflow shape and stage ids to `concurrent` |
 | `src/products/chat/api/resources/concurrentGroupRoutes.ts` | Rename + refactor | Align `Parallel Chat` resource names with product language |
 | `src/products/chat/renderer/components/ChatView.tsx` | Refactor heavily | Make the composer slot recipient-centric and separate it from room roster UI |
-| `src/products/shared/renderer/components/ExecutionTarget.ts` | Refactor | Keep implicit execution-target labeling shared instead of routing it through product-local solo-mode wrappers |
+| `src/products/shared/renderer/components/ExecutionTarget.ts` | Refactor | Keep implicit execution-target labeling shared instead of routing it through product-local default-mode wrappers |
 | `src/products/chat/renderer/components/NewChatDraft.tsx` | Refactor | Expose recipient and dispatch-policy choices during channel creation where needed |
 | `src/products/chat/renderer/components/ComposerCatStack.tsx` | Refactor or replace | Move from lead-centric cat stack rendering to recipient-centric chip/stack rendering |
 | `src/products/chat/renderer/hooks/useComposerSubmit.ts` | Refactor heavily | Carry dispatch-policy overrides and renamed busy keys through send flows |

@@ -117,7 +117,7 @@ export function resolveChatParticipantAgentId(
 export function resolveChatConversationKind(
   channelKind: ChatChannelKind | null | undefined,
 ): 'chat_channel' | 'direct_message' {
-  return channelKind === 'direct_lane' ? 'direct_message' : 'chat_channel';
+  return channelKind === 'direct_message' ? 'direct_message' : 'chat_channel';
 }
 
 export function resolveChatConversationActorIds(input: {
@@ -128,7 +128,7 @@ export function resolveChatConversationActorIds(input: {
   const participantActorIds = input.assignments.map((assignment) =>
     resolveChatParticipantAgentId(assignment));
 
-  return input.channelKind === 'direct_lane'
+  return input.channelKind === 'direct_message'
     ? [OWNER_ACTOR_ID, ...participantActorIds]
     : [OWNER_ACTOR_ID, GLOBAL_ORCHESTRATOR_ACTOR_ID, ...participantActorIds];
 }

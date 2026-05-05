@@ -11,7 +11,7 @@ test('useDirectLaneCompanionMode stays direct-lane only and does not own chat ev
   assert.doesNotMatch(source, /useChatEvents/u);
   assert.doesNotMatch(source, /fetchAppShell/u);
   assert.match(source, /useDirectLaneCompanionMode/u);
-  assert.match(source, /channelKind === 'direct_lane'/u);
+  assert.match(source, /channelKind === 'direct_message'/u);
 });
 
 test('useChatAppShellRefresh owns event-driven chat app-shell refresh', async () => {

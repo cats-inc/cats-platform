@@ -35,7 +35,7 @@ export function createChatTelegramRoomBridge(input: {
       return input.mutationGate ? input.mutationGate.run(key, operation) : operation();
     },
     findReusableRoomId(state, room) {
-      if (room.roomMode !== 'direct_cat_chat') {
+      if (room.roomMode !== 'direct_message') {
         return null;
       }
 
@@ -46,7 +46,7 @@ export function createChatTelegramRoomBridge(input: {
       }
 
       return state.channels.find((channel) =>
-        channel.roomRouting?.mode === 'direct_cat_chat'
+        channel.roomRouting?.mode === 'direct_message'
         && channel.roomRouting.defaultRecipientId === defaultRecipientCatId,
       )?.id ?? null;
     },

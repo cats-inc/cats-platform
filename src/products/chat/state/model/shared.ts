@@ -70,7 +70,7 @@ export function syncChannelDefaultRecipientAndTopology(channel: ChatChannelState
   const currentLeadId = roomRouting.defaultRecipientId;
   const hasValidLead = Boolean(currentLeadId && activeParticipantIds.includes(currentLeadId));
 
-  if (channel.channelKind === 'direct_lane') {
+  if (channel.channelKind === 'direct_message') {
     roomRouting.defaultRecipientId = resolveDirectLaneRecipientId(
       channel.participantAssignments,
       currentLeadId,

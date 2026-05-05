@@ -100,7 +100,7 @@ ClickUp 提供 custom role permissions 的管理頁，audit logs 於 Enterprise 
 | 工具 | 分數 | 簡短評語 | 關鍵風險與限制 | 適用情境建議 |
 |---|---:|---|---|---|
 | Airtable | 8 | enterprise 治理語意完整（roles、SSO/SCIM、audit logs、data residency）。 | 多數進階治理在 Enterprise 才完整；MVP 期可先簡化。 | 你若預期未來 multi‑tenant/合規，Airtable 的治理模型很能借鏡。 |
-| monday.com | 8 | 權限中心與 custom roles 對「公司治理感」非常直覺。 | advanced security 多在 Enterprise；solo 成本可能偏高。 | 你若優先「像在管理公司」，monday 的 governance UX 值得抄。 |
+| monday.com | 8 | 權限中心與 custom roles 對「公司治理感」非常直覺。 | advanced security 多在 Enterprise；default 成本可能偏高。 | 你若優先「像在管理公司」，monday 的 governance UX 值得抄。 |
 | ClickUp | 7 | custom roles 細緻；audit logs/監控偏 Enterprise。 | audit logs 保留期限制；要合規通常得 Enterprise。 | 適合需要把少量真人與外包拉進來但又要控權限的情境。 |
 
 **維度六：observability 與 metrics（logs、runs、performance）**  
@@ -122,7 +122,7 @@ ClickUp 定價頁指出 AI Super Credits 為 pay‑as‑you‑go、可用於 Sup
 | 工具 | 分數 | 簡短評語 | 關鍵風險與限制 | 適用情境建議 |
 |---|---:|---|---|---|
 | Airtable | 7 | 對 AOS MVP 很友善：資料/狀態先落地，日後搬到自建 DB 也相對順。 | record/automation/AI credits 可能變瓶頸；需規劃抽換到 DB。 | 「先快後穩」：Airtable 做 state store → 逐步外移核心表到 Postgres。 |
-| monday.com | 5 | bucket pricing 對 solo 不利；但 cockpit 成熟。 | 成本與資料模型使得長期當唯一本體層較難。 | 當你把「快速像公司」擺第一，且可接受座位成本。 |
+| monday.com | 5 | bucket pricing 對 default 不利；但 cockpit 成熟。 | 成本與資料模型使得長期當唯一本體層較難。 | 當你把「快速像公司」擺第一，且可接受座位成本。 |
 | ClickUp | 6 | 以 tasks 為核心的 MVP 成本通常可控；AI 另以 credits 管理。 | 遷移到 DB 時需重新定義非任務類本體資料。 | 研發/交付先跑起來，会社治理資料逐步外移到資料層。 |
 
 **維度八：上手難度與 business-user 可配置性**  

@@ -26,7 +26,7 @@ export function useCompanionPresence(
   return useMemo(() => {
     const directLane = payload.chat.channels.find(
       (channel) =>
-        channel.channelKind === 'direct_lane'
+        channel.channelKind === 'direct_message'
         && channel.defaultRecipientCatId === catId,
     );
 

@@ -46,7 +46,7 @@ function createTelegramBinding(id = 'telegram-binding-1'): BotBindingRecord {
     botToken: 'redacted-token',
     webhookSecret: null,
     inboundMode: 'polling',
-    roomMode: 'direct_cat_chat',
+    roomMode: 'direct_message',
     status: 'active',
     outboundFanoutEnabled: true,
     createdAt: NOW,

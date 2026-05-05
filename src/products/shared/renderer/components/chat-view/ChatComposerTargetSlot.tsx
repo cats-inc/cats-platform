@@ -19,7 +19,7 @@ export interface ChatComposerTargetSlotProps {
   composerStackParticipants: ComposerStackParticipant[];
   directLaneCat: AppShellPayload['chat']['cats'][number] | null;
   isDirectLane: boolean;
-  isSoloComposer: boolean;
+  isDefaultChatComposer: boolean;
   activeWorkflowShape: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys: string[] | null;
@@ -82,7 +82,7 @@ export function ChatComposerTargetSlot({
   composerStackParticipants,
   directLaneCat,
   isDirectLane,
-  isSoloComposer,
+  isDefaultChatComposer,
   activeWorkflowShape,
   onToggleActiveWorkflowShape,
   activeAudienceKeys,
@@ -101,7 +101,7 @@ export function ChatComposerTargetSlot({
   }
 
   // Group chat: multiple participants with audience selection
-  if (!isSoloComposer && composerStackParticipants.length > 0) {
+  if (!isDefaultChatComposer && composerStackParticipants.length > 0) {
     return (
       <ChatComposerAudienceChip
         composerStackParticipants={composerStackParticipants}
@@ -144,7 +144,7 @@ export function ChatComposerTargetSlot({
       <AudienceChip
         audienceParticipants={participants}
         onSingleClick={() => onOpenSection(
-          isDirectLane || isSoloComposer ? 'execution' : 'cats',
+          isDirectLane || isDefaultChatComposer ? 'execution' : 'cats',
         )}
         disabled={composerBusy}
       />

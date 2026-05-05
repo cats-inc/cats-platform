@@ -94,7 +94,7 @@ export function ParallelDraftShadowBranchRow({
         <div className="parallelStubTargetControls">
           <AudienceChip
             audienceParticipants={displayParticipants}
-            // Solo shadow (0 or 1 branch member) behaves like a
+            // Default shadow (0 or 1 branch member) behaves like a
             // target-only row: no popover to pick audience, no
             // multi-select affordance. The popover reappears once the
             // shadow has grown via +collaborate into an M >= 2 branch.

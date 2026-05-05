@@ -33,17 +33,17 @@ function scoreMatch(
 
 function resolvePolicy(input: {
   channelId: string | null;
-  roomMode?: 'boss_chat' | 'direct_cat_chat' | null;
+  roomMode?: 'chat_channel' | 'direct_message' | null;
   transport?: 'telegram' | 'line' | 'web' | null;
   includeOwnerProfile?: boolean;
 }): MemoryRetrievalPolicy {
   let visibility: MemoryVisibility = 'owner_private';
   if (input.transport && input.transport !== 'web') {
     visibility = 'transport';
-  } else if (input.roomMode === 'boss_chat') {
+  } else if (input.roomMode === 'chat_channel') {
     visibility = 'shared_room';
   } else if (input.channelId) {
-    visibility = input.roomMode === 'direct_cat_chat' ? 'owner_private' : 'channel_private';
+    visibility = input.roomMode === 'direct_message' ? 'owner_private' : 'channel_private';
   }
 
   return {
@@ -283,7 +283,7 @@ export function buildMemoryRetrievalContext(input: {
   channelTitle?: string;
   channelTopic?: string;
   workingMemory?: MemoryCheckpointSummary;
-  roomMode?: 'boss_chat' | 'direct_cat_chat' | null;
+  roomMode?: 'chat_channel' | 'direct_message' | null;
   transport?: 'telegram' | 'line' | 'web' | null;
   relationshipIds?: string[];
   projectIds?: string[];

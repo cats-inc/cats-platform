@@ -264,7 +264,7 @@ test('assigning a cat keeps direct-lane transport binding on session_start_faile
         title: 'Spawn target direct failure',
         topic: 'Keep direct-lane binding on session_start_failed messages.',
         originSurface: 'chat',
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         defaultRecipientId: catId,
         repoPath: 'C:/repo/cats-platform',
         skipBossCatGreeting: true,

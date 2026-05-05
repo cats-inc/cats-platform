@@ -20,7 +20,7 @@ import {
   resolvePrimaryParticipantExecutionAssignment,
   resolveParticipantLeaseAttachment,
 } from '../../shared/channelParticipants.js';
-import { isProviderSoloThreadChannel } from '../../shared/channelTopology.js';
+import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
 import { clearTargetSessionLease } from './state.js';
 import type { RuntimeSessionRoutingOptions } from './shared.js';
 import type { ChannelTaskExecutionContext } from './taskExecution.js';
@@ -255,7 +255,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
   if (attachedTarget.participantKind === 'orchestrator') {
     const executionTarget = resolveOrchestratorExecutionTarget(state, channelState);
     const orchestratorLease = resolveOrchestratorLeaseAttachment(channelState);
-    const shouldRestartSoloSession = isProviderSoloThreadChannel(channelState)
+    const shouldRestartDefaultChatSession = isProviderDefaultChatChannel(channelState)
       && (
         orchestratorLease?.provider !== executionTarget.provider
         || orchestratorLease?.instance !== executionTarget.instance
@@ -266,7 +266,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
         )
       );
 
-    if (shouldRestartSoloSession) {
+    if (shouldRestartDefaultChatSession) {
       await bestEffortFlushRuntimeSessionMemory({
         runtimeClient,
         sessionId: attachedTarget.sessionId,

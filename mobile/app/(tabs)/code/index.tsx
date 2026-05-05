@@ -36,7 +36,7 @@ export default function CodeSidebarScreen() {
           title: getMobileChannelTitle(copy, 'code', actionId),
           topic: '',
           originSurface: 'code',
-          entryKind: actionId === 'team' ? 'group' : 'solo',
+          entryKind: actionId === 'team' ? 'group' : 'default',
         });
         router.push(`/(tabs)/code/${channelId}`);
       } catch {

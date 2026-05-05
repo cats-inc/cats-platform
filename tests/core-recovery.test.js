@@ -50,7 +50,7 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
                 source: 'task_override',
                 rationale: 'Safer retry rollout.',
               },
-              roomRoutingMode: 'boss_chat',
+              roomRoutingMode: 'chat_channel',
             },
             buildPendingOrchestratorDispatchRequest({
               channelId: 'channel-recovery',
@@ -180,7 +180,7 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
   assert.equal(recovery.context?.workflowConvergeTargetId, null);
   assert.equal(recovery.context?.channelId, 'channel-recovery');
   assert.equal(recovery.context?.transport, 'web');
-  assert.equal(recovery.context?.roomMode, 'boss_chat');
+  assert.equal(recovery.context?.roomMode, 'chat_channel');
   assert.equal(recovery.family.rootTaskId, 'task-recovery-view');
   assert.equal(recovery.family.childCount, 0);
   assert.equal(
@@ -332,7 +332,7 @@ test('queryCoreTaskRecoveryViews filters by replay flags and summarizes returned
             source: 'task_override',
             rationale: 'Workflow retry with owner gate.',
           },
-          roomRoutingMode: 'boss_chat',
+          roomRoutingMode: 'chat_channel',
         },
         buildWorkflowContinuationReplayRequest({
           channelId: 'channel-workflow',

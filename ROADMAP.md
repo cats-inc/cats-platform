@@ -123,7 +123,7 @@ contracts.
       multi-worker or clustered app-server deployment so
       `GET /api/debug/live-trace` can aggregate stream-target and attach events
       across workers instead of reporting only the handling process
-- [x] Freeze a shared composer busy-state contract across solo, parallel, and relay flows,
+- [x] Freeze a shared composer busy-state contract across default, parallel, and relay flows,
       and replace the previous ad-hoc `message:*` / `concurrent:*` string protocol
       with one typed workspace busy-state model so `isComposerBusy`,
       `isComposerDispatchBusy`, `isComposerSelectionBlocked`, compare-surface locks,
@@ -192,7 +192,7 @@ contracts.
       execution-target reconciliation, task-execution context, and activation
       result shaping now live in separated helpers instead of one orchestration
       function.
-- [x] Persist solo-composer model changes immediately on selector change instead of
+- [x] Persist default-composer model changes immediately on selector change instead of
       only committing the pending provider/model when the next message is sent
 - [x] Add a platform-local cache for truthful runtime-backed selector reads,
       model catalogs, and advanced catalogs so repeated setup, cat-creation,

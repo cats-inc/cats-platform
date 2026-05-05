@@ -48,7 +48,7 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
               containerId: 'container-chat-root',
               channelId: 'channel-control-plane',
               transport: 'web',
-              roomRoutingMode: 'boss_chat',
+              roomRoutingMode: 'chat_channel',
             },
             buildOrchestratorDispatchReplayRequest({
               channelId: 'channel-control-plane',
@@ -259,7 +259,7 @@ test('buildCoreTaskControlPlaneView exposes actions, attention, and workflow rec
   assert.equal(view.runtimeDeliveryIntent?.containerId, 'container-chat-root');
   assert.equal(view.runtimeDeliveryIntent?.conversationId, 'conversation-channel-control-plane');
   assert.equal(view.runtimeDeliveryIntent?.taskId, 'task-control-plane');
-  assert.equal(view.runtimeDeliveryIntent?.roomMode, 'boss_chat');
+  assert.equal(view.runtimeDeliveryIntent?.roomMode, 'chat_channel');
   assert.equal(view.runtimeDeliveryIntent?.transport, 'web');
   assert.equal(view.runtimeDeliveryIntent?.workflowStageId, 'continuation_handoff');
   assert.equal(view.runtimeDeliveryIntent?.workflowShape, 'converge');
@@ -297,7 +297,7 @@ test('queryCoreTaskControlPlaneViews filters and summarizes attention views', ()
               containerId: 'container-chat-root',
               channelId: 'channel-control-plane',
               transport: 'web',
-              roomRoutingMode: 'boss_chat',
+              roomRoutingMode: 'chat_channel',
             },
             buildOrchestratorDispatchReplayRequest({
               channelId: 'channel-control-plane',

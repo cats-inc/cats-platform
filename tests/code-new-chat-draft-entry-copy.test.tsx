@@ -456,7 +456,7 @@ test('team code and peer code drafts reuse the same code helper chips', () => {
   }
 });
 
-test('new code solo drafts without an explicit direct-lane route do not render the composer stack', () => {
+test('new code default drafts without an explicit direct-lane route do not render the composer stack', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({

@@ -46,7 +46,7 @@ import {
 import { resolveFullResponseText, type RuntimeMessageSegment } from '../../../../runtime/client.js';
 import type { DispatchExecution } from './execution.js';
 import { resolveExecutionMetadataForTarget } from '../runtimeTargeting.js';
-import { isSoloChatChannel } from '../runtimeTargeting.js';
+import { isDefaultChatRuntimeChannel } from '../runtimeTargeting.js';
 import {
   ASSISTANT_TURN_SEGMENT_EVENT,
   buildAssistantTurnDelivery,
@@ -678,15 +678,15 @@ export function applyDispatchExecutions(
       fullResponseText,
     );
     const channel = requireChannel(nextState, channelId);
-    const hiddenSoloReply = execution.target.participantKind === 'orchestrator'
-      && isSoloChatChannel(channel);
+    const hiddenDefaultChatReply = execution.target.participantKind === 'orchestrator'
+      && isDefaultChatRuntimeChannel(channel);
     const serializedWorkflowRecommendation = extractedWorkflowRecommendation.recommendation
       ? serializeWorkflowRecommendation(extractedWorkflowRecommendation.recommendation)
       : null;
     const senderKind = execution.target.participantKind === 'orchestrator'
-      ? (hiddenSoloReply ? 'agent' : 'orchestrator')
+      ? (hiddenDefaultChatReply ? 'agent' : 'orchestrator')
       : 'agent';
-    const senderName = hiddenSoloReply ? 'Orchestrator' : execution.target.participantName;
+    const senderName = hiddenDefaultChatReply ? 'Orchestrator' : execution.target.participantName;
     const executionMeta = resolveExecutionMetadataForTarget(nextState, channelId, execution.target);
     const assistantTurnId = randomUUID();
     const sourceLaneId = execution.target.laneId?.trim() || buildChatLaneId(

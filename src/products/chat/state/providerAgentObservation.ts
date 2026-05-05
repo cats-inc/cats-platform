@@ -19,8 +19,8 @@ import type {
 import { requireChannel } from './model/index.js';
 import {
   isDirectLaneChannel,
-  isProviderSoloThreadChannel,
-  isSoloThreadChannel,
+  isProviderDefaultChatChannel,
+  isDefaultChatChannel,
   supportsParticipantAudienceSelection,
 } from '../shared/channelTopology.js';
 
@@ -34,16 +34,16 @@ export interface ChatProviderAgentRoutingSummary {
 
 function resolveChannelIntentRef(channel: ReturnType<typeof requireChannel>): string {
   if (isDirectLaneChannel(channel)) {
-    return 'direct_participant_lane';
+    return 'direct_message';
   }
   if (supportsParticipantAudienceSelection(channel)) {
-    return 'participant_room';
+    return 'participant_chat';
   }
-  if (isProviderSoloThreadChannel(channel)) {
-    return 'provider_solo_thread';
+  if (isProviderDefaultChatChannel(channel)) {
+    return 'provider_default_chat';
   }
-  if (isSoloThreadChannel(channel)) {
-    return 'solo_thread';
+  if (isDefaultChatChannel(channel)) {
+    return 'default_chat';
   }
   return 'unknown';
 }
@@ -122,7 +122,7 @@ export function buildChatProviderAgentObservation(
     availableTools: structuredClone(input.availableTools ?? []),
     contextRefs: [
       `chat-channel:${channel.id}`,
-      `chat-room-mode:${channel.roomRouting?.mode ?? 'boss_chat'}`,
+      `chat-room-mode:${channel.roomRouting?.mode ?? 'chat_channel'}`,
       `chat-channel-intent:${resolveChannelIntentRef(channel)}`,
     ],
     summaries: buildRoutingSummaries(input),

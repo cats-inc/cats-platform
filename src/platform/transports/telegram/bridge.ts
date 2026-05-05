@@ -164,7 +164,7 @@ function truncateLabel(value: string, limit: number): string {
 }
 
 function resolveInternalRoomMode(binding: BotBindingRecord | null): RoomRoutingMode {
-  return binding?.roomMode === 'direct_cat_chat' ? 'direct_cat_chat' : 'boss_chat';
+  return binding?.roomMode === 'direct_message' ? 'direct_message' : 'chat_channel';
 }
 
 function resolveBoundCat(
@@ -354,22 +354,22 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
     const inboundBody = buildInboundBody(message);
     const roomMode = resolveInternalRoomMode(activeBinding);
     const createRoomInput: TelegramRoomBridgeCreateRoomInput = {
-      title: roomMode === 'direct_cat_chat' ? '' : buildRoomTitle(message, boundCat.catName),
+      title: roomMode === 'direct_message' ? '' : buildRoomTitle(message, boundCat.catName),
       topic: buildRoomTopic(activeBinding, senderName, input.receipt.chatId),
       roomMode,
-      defaultRecipientId: roomMode === 'direct_cat_chat' ? boundCat.catId ?? undefined : undefined,
-      participantCatIds: roomMode === 'direct_cat_chat' && boundCat.catId ? [boundCat.catId] : [],
+      defaultRecipientId: roomMode === 'direct_message' ? boundCat.catId ?? undefined : undefined,
+      participantCatIds: roomMode === 'direct_message' && boundCat.catId ? [boundCat.catId] : [],
     };
 
     try {
-      if (roomMode === 'direct_cat_chat') {
+      if (roomMode === 'direct_message') {
         roomId = input.roomBridge.findReusableRoomId(nextState, createRoomInput);
       }
 
       if (
         !roomExists(nextState, roomId)
         || (
-          roomMode !== 'direct_cat_chat'
+          roomMode !== 'direct_message'
           && shouldCreateNewRoom(message, roomId)
         )
       ) {

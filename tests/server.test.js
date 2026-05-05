@@ -762,7 +762,7 @@ test('GET /api/channels/:id/stream wakes immediately when POST /api/channels/:id
     {
       title: 'Activation wake lane',
       topic: 'Wake the stream waiter from the activation route.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       skipBossCatGreeting: true,
       defaultRecipientId: catId,
     },
@@ -3575,7 +3575,7 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
   }, chatStore);
 });
 
-test('GET /api/channels/:id/stream keeps direct lanes pinned to the lead cat session', async () => {
+test('GET /api/channels/:id/stream keeps direct lanes pinned to the direct recipient session', async () => {
   const chatStore = new MemoryChatStore();
   const runtime = createRuntimeStub();
   const seededAt = new Date('2026-03-11T00:00:00.000Z');
@@ -3596,7 +3596,7 @@ test('GET /api/channels/:id/stream keeps direct lanes pinned to the lead cat ses
     {
       title: 'Strict direct lane',
       topic: 'Do not stream from Boss Cat fallbacks.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
       skipBossCatGreeting: true,
@@ -3604,8 +3604,8 @@ test('GET /api/channels/:id/stream keeps direct lanes pinned to the lead cat ses
     seededAt,
   );
   const channelId = state.channels[0].id;
-  state.channels[0].channelKind = 'direct_lane';
-  state.channels[0].roomRouting.mode = 'boss_chat';
+  state.channels[0].channelKind = 'direct_message';
+  state.channels[0].roomRouting.mode = 'chat_channel';
   state = setChannelOrchestratorLease(
     state,
     channelId,
@@ -3675,7 +3675,7 @@ test('GET /api/channels/:id/stream exposes the direct-lane lease laneId when no 
     {
       title: 'Direct lane lease identity',
       topic: 'Expose the lease lane id through the idle direct-lane stream target.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
       skipBossCatGreeting: true,
@@ -5408,7 +5408,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
               source: 'task_override',
               rationale: 'Safer retry rollout.',
             },
-            roomRoutingMode: 'boss_chat',
+            roomRoutingMode: 'chat_channel',
           },
           buildPendingOrchestratorDispatchRequest({
             channelId: 'channel-recovery-routes',
@@ -5644,7 +5644,7 @@ test('core recovery routes expose normalized orchestrator replay state without l
     assert.equal(detailPayload.recovery.context.workflowConvergeTargetId, 'cat-followup');
     assert.equal(detailPayload.recovery.context.channelId, 'channel-recovery-routes');
     assert.equal(detailPayload.recovery.context.transport, 'web');
-    assert.equal(detailPayload.recovery.context.roomMode, 'boss_chat');
+    assert.equal(detailPayload.recovery.context.roomMode, 'chat_channel');
     assert.equal(detailPayload.recovery.latestActivity.resumeReason, 'target_recovered');
     assert.equal(detailPayload.recovery.family.rootTaskId, 'task-recovery-routes-root');
     assert.equal(detailPayload.recovery.family.parent.taskId, 'task-recovery-routes-root');
@@ -6439,7 +6439,7 @@ test('core control-plane routes expose grouped operator actions and workflow att
                   channelId: 'channel-control-plane-route',
                   containerId: 'container-chat-root',
                   transport: 'web',
-                  roomRoutingMode: 'boss_chat',
+                  roomRoutingMode: 'chat_channel',
                 },
                 buildOrchestratorDispatchReplayRequest({
                   channelId: 'channel-control-plane-route',
@@ -6695,7 +6695,7 @@ test('core control-plane routes expose grouped operator actions and workflow att
       'conversation-channel-control-plane-route',
     );
     assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.taskId, 'task-control-plane-route');
-    assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.roomMode, 'boss_chat');
+    assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.roomMode, 'chat_channel');
     assert.equal(detailPayload.controlPlane.runtimeDeliveryIntent.transport, 'web');
     assert.equal(
       detailPayload.controlPlane.runtimeDeliveryIntent.workflowStageId,
@@ -7003,7 +7003,7 @@ test('core operator inspection routes support additive filters and summaries', a
               },
               channelId: 'channel-ops',
               transport: 'web',
-              roomRoutingMode: 'boss_chat',
+              roomRoutingMode: 'chat_channel',
             },
             buildOrchestratorDispatchReplayRequest({
               channelId: 'channel-ops',
@@ -7079,7 +7079,7 @@ test('core operator inspection routes support additive filters and summaries', a
                   source: 'task_override',
                   rationale: 'Workflow retry with owner gate.',
                 },
-                roomRoutingMode: 'boss_chat',
+                roomRoutingMode: 'chat_channel',
               },
               buildWorkflowContinuationReplayRequest({
                 channelId: 'channel-ops',
@@ -8538,7 +8538,7 @@ test('GET /api/work/tasks/:id mirrors shared control-plane and recovery projecti
                   },
                   channelId: 'channel-work-projection-contract',
                   transport: 'web',
-                  roomRoutingMode: 'boss_chat',
+                  roomRoutingMode: 'chat_channel',
                 },
                 buildOrchestratorDispatchReplayRequest({
                   channelId: 'channel-work-projection-contract',
@@ -8731,7 +8731,7 @@ test('GET /api/code/tasks/:id mirrors shared control-plane and recovery projecti
                     },
                     channelId: 'channel-code-projection-contract',
                     transport: 'web',
-                    roomRoutingMode: 'boss_chat',
+                    roomRoutingMode: 'chat_channel',
                   },
                   buildOrchestratorDispatchReplayRequest({
                     channelId: 'channel-code-projection-contract',
@@ -8988,7 +8988,7 @@ test('POST /api/code/tasks mutations mirror shared detail, control-plane, and re
             },
             channelId: 'channel-code-mutation-projection-contract',
             transport: 'web',
-            roomRoutingMode: 'boss_chat',
+            roomRoutingMode: 'chat_channel',
           },
           buildOrchestratorDispatchReplayRequest({
             channelId: 'channel-code-mutation-projection-contract',
@@ -9381,7 +9381,7 @@ test('PATCH /api/preferences only selects the requested Boss Chat without waking
   });
 });
 
-test('first send persists a runtime-sanitized solo model selection after dropping a stale preset', async () => {
+test('first send persists a runtime-sanitized default model selection after dropping a stale preset', async () => {
   const runtimeClient = createRuntimeStub();
   runtimeClient.createSession = async function createSession(input) {
     const sessionId = `session-${this.createdSessions.length + 1}`;
@@ -9407,8 +9407,8 @@ test('first send persists a runtime-sanitized solo model selection after droppin
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        title: 'Sanitize Solo Preset',
-        topic: 'Wake should clean stale presets from solo chats.',
+        title: 'Sanitize Default Preset',
+        topic: 'Wake should clean stale presets from default chats.',
         originSurface: 'chat',
         pendingProvider: 'codex',
         pendingModel: 'gpt-5.4',
@@ -9457,7 +9457,7 @@ test('first send persists a runtime-sanitized solo model selection after droppin
   });
 });
 
-test('first send on a selected solo chat accepts the user turn before starting the orchestrator session', async () => {
+test('first send on a selected default chat accepts the user turn before starting the orchestrator session', async () => {
   const runtimeClient = createRuntimeStub();
   const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
   let releaseCreateSession = () => {};
@@ -10448,7 +10448,7 @@ test('ungrouping a parallel chat materializes member chats as standalone recents
   });
 });
 
-test('solo chats without a cwd create isolated runtime sessions', async () => {
+test('default chats without a cwd create isolated runtime sessions', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -10466,7 +10466,7 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        title: 'Solo Draft',
+        title: 'Default Draft',
         topic: 'Start without a repo path.',
         originSurface: 'chat',
         pendingProvider: 'claude',
@@ -10482,7 +10482,7 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        body: 'Hello from solo mode',
+        body: 'Hello from default mode',
         pendingProvider: 'claude',
         pendingInstance: 'native',
         pendingModel: 'claude-opus-4-6',
@@ -10491,7 +10491,7 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
     assert.equal(messageResponse.status, 200);
     const messagePayload = await messageResponse.json();
     assert.equal(messagePayload.phase, 'acknowledged');
-    assert.equal(messagePayload.message.body, 'Hello from solo mode');
+    assert.equal(messagePayload.message.body, 'Hello from default mode');
 
     await waitForCondition(() => runtimeClient.createdSessions.length === 1);
     assert.equal(runtimeClient.createdSessions[0].workspaceKind, 'sandbox');
@@ -10521,7 +10521,7 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
   });
 });
 
-test('PATCH /api/channels/:channelId can start a fresh solo continuity branch', async () => {
+test('PATCH /api/channels/:channelId can start a fresh default continuity branch', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -10531,7 +10531,7 @@ test('PATCH /api/channels/:channelId can start a fresh solo continuity branch', 
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        title: 'Solo Draft',
+        title: 'Default Draft',
         topic: 'Reset continuity without leaving the chat.',
         originSurface: 'chat',
         pendingProvider: 'claude',
@@ -10621,7 +10621,7 @@ test('PATCH /api/channels/:channelId can start a fresh solo continuity branch', 
   });
 });
 
-test('PATCH /api/channels/:channelId keeps repeated solo continuity resets idempotent until new branch activity exists', async () => {
+test('PATCH /api/channels/:channelId keeps repeated default continuity resets idempotent until new branch activity exists', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -10631,7 +10631,7 @@ test('PATCH /api/channels/:channelId keeps repeated solo continuity resets idemp
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        title: 'Solo Draft',
+        title: 'Default Draft',
         topic: 'Start fresh should not duplicate reset markers when pressed twice in a row.',
         originSurface: 'chat',
         pendingProvider: 'claude',
@@ -10680,7 +10680,7 @@ test('PATCH /api/channels/:channelId keeps repeated solo continuity resets idemp
   });
 });
 
-test('PATCH /api/channels/:channelId rejects continuity reset for non-solo chats', async () => {
+test('PATCH /api/channels/:channelId rejects continuity reset for non-default chats', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -10691,7 +10691,7 @@ test('PATCH /api/channels/:channelId rejects continuity reset for non-solo chats
       },
       body: JSON.stringify({
         title: 'Group Room',
-        topic: 'Start fresh should stay scoped to solo for now.',
+        topic: 'Start fresh should stay scoped to default for now.',
         originSurface: 'chat',
         temporaryParticipants: [
           {
@@ -10718,7 +10718,7 @@ test('PATCH /api/channels/:channelId rejects continuity reset for non-solo chats
     assert.equal(resetResponse.status, 400);
     const resetPayload = await resetResponse.json();
     assert.equal(resetPayload.error, 'continuity_reset_unsupported');
-    assert.match(resetPayload.message ?? '', /solo chats/u);
+    assert.match(resetPayload.message ?? '', /default chats/u);
     assert.deepEqual(runtimeClient.closedSessions, []);
   });
 });
@@ -10744,7 +10744,7 @@ test('POST /api/channels/:channelId/activations recreates closed direct-lane ses
     {
       title: 'Resume lane',
       topic: 'Manual activation should revive closed sessions.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       defaultRecipientId: catId,
       participantCatIds: [catId],
       skipBossCatGreeting: true,
@@ -10752,8 +10752,8 @@ test('POST /api/channels/:channelId/activations recreates closed direct-lane ses
     now,
   );
   const channelId = state.selectedChannelId;
-  state.channels[0].channelKind = 'direct_lane';
-  state.channels[0].roomRouting.mode = 'boss_chat';
+  state.channels[0].channelKind = 'direct_message';
+  state.channels[0].roomRouting.mode = 'chat_channel';
   state = setChannelCatLease(
     state,
     channelId,
@@ -10814,7 +10814,7 @@ test('POST /api/channels/:channelId/activations recreates closed direct-lane ses
   }, chatStore);
 });
 
-test('POST /api/channels keeps direct lanes scoped to the lead cat only', async () => {
+test('POST /api/channels keeps direct lanes scoped to the direct recipient only', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -10860,8 +10860,8 @@ test('POST /api/channels keeps direct lanes scoped to the lead cat only', async 
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         title: 'Scoped direct lane',
-        topic: 'A direct lane should only keep its lead cat.',
-        roomMode: 'direct_cat_chat',
+        topic: 'A direct message should only keep its direct recipient Cat.',
+        roomMode: 'direct_message',
         defaultRecipientId: defaultRecipientCatId,
         participantCatIds: [defaultRecipientCatId, extraCatId],
         skipBossCatGreeting: true,
@@ -10870,14 +10870,14 @@ test('POST /api/channels keeps direct lanes scoped to the lead cat only', async 
     assert.equal(createChannelResponse.status, 201);
     const createChannelPayload = await createChannelResponse.json();
 
-    assert.equal(createChannelPayload.channel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(createChannelPayload.channel.roomRouting.mode, 'direct_message');
     assert.equal(createChannelPayload.channel.assignedCats.length, 1);
     assert.equal(createChannelPayload.channel.assignedCats[0].catId, defaultRecipientCatId);
     assert.equal(createChannelPayload.channel.roomRouting.defaultRecipientId, defaultRecipientCatId);
   });
 });
 
-test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-lead cat to a direct lane', async () => {
+test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-recipient cat to a direct message', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
       method: 'POST',
@@ -10921,8 +10921,8 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-lead cat to 
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         title: 'Strict direct lane',
-        topic: 'Reject adding any non-lead cats.',
-        roomMode: 'direct_cat_chat',
+        topic: 'Reject adding any non-recipient Cats.',
+        roomMode: 'direct_message',
         participantCatIds: [defaultRecipientCatId],
         defaultRecipientId: defaultRecipientCatId,
         skipBossCatGreeting: true,
@@ -10943,7 +10943,7 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-lead cat to 
     assert.equal(assignResponse.status, 400);
     const assignPayload = await assignResponse.json();
     assert.equal(assignPayload.error.code, 'bad_request');
-    assert.match(assignPayload.error.message, /Direct lanes can only contain their lead cat/u);
+    assert.match(assignPayload.error.message, /Direct messages can only contain their direct recipient Cat/u);
 
     const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
     assert.equal(channelResponse.status, 200);
@@ -11026,7 +11026,7 @@ test('PATCH /api/preferences does not overwrite the last wake request because se
   });
 });
 
-test('PATCH /api/preferences only selects the requested direct chat lead without waking it', async () => {
+test('PATCH /api/preferences only selects the requested direct message recipient without waking it', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -11059,8 +11059,8 @@ test('PATCH /api/preferences only selects the requested direct chat lead without
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         title: 'Companion Direct',
-        topic: 'Wake the lead cat on persisted room entry.',
-        roomMode: 'direct_cat_chat',
+        topic: 'Wake the direct recipient Cat on persisted room entry.',
+        roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
         skipBossCatGreeting: true,
@@ -11084,7 +11084,7 @@ test('PATCH /api/preferences only selects the requested direct chat lead without
     const channelPayload = await channelResponse.json();
 
     assert.equal(runtimeClient.createdSessions.length, 0);
-    assert.equal(channelPayload.channel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(channelPayload.channel.roomRouting.mode, 'direct_message');
     assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
     assert.equal(
       channelPayload.channel.assignedCats[0].execution.lease.sessionId,
@@ -11128,7 +11128,7 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions without promo
         platform: 'telegram',
         botName: 'companion_bot',
         catId,
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         webhookSecret: 'companion-secret',
       }),
     });
@@ -11143,7 +11143,7 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions without promo
         title: 'Companion Direct',
         topic: 'Archive should not leave a hidden zombie lane.',
         originSurface: 'chat',
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
         skipBossCatGreeting: true,
@@ -11169,12 +11169,12 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions without promo
 
     assert.ok(runtimeClient.closedSessions.includes('session-1'));
     assert.equal(archivePayload.chat.selectedChannel.id, channelId);
-    assert.equal(archivePayload.chat.selectedChannel.channelKind, 'direct_lane');
-    assert.equal(archivePayload.chat.selectedChannel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(archivePayload.chat.selectedChannel.channelKind, 'direct_message');
+    assert.equal(archivePayload.chat.selectedChannel.roomRouting.mode, 'direct_message');
     assert.equal(archivePayload.chat.selectedChannel.roomRouting.defaultRecipientId, catId);
     assert.equal(archivePayload.chat.selectedChannel.assignedCats[0]?.status, 'removed');
-    assert.equal(archivePayload.chat.channels[0]?.channelKind, 'direct_lane');
-    assert.equal(archivePayload.chat.channels[0]?.roomMode, 'direct_cat_chat');
+    assert.equal(archivePayload.chat.channels[0]?.channelKind, 'direct_message');
+    assert.equal(archivePayload.chat.channels[0]?.roomMode, 'direct_message');
     assert.equal(
       archivePayload.chat.botBindings.find((binding) => binding.id === bindingId),
       undefined,
@@ -11246,7 +11246,7 @@ test('archived cats cannot receive new Telegram bot bindings', async () => {
         platform: 'telegram',
         botName: 'archived_companion',
         catId,
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
       }),
     });
     assert.equal(bindingResponse.status, 400);
@@ -11287,7 +11287,7 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
         title: 'Companion Direct',
         topic: 'Recover should rebuild the direct lane without waking it.',
         originSurface: 'chat',
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
         skipBossCatGreeting: true,
@@ -11311,7 +11311,7 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
         platform: 'telegram',
         botName: 'companion_bot',
         catId,
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
       }),
     });
     assert.equal(bindingResponse.status, 201);
@@ -11336,8 +11336,8 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
     assert.equal(recoveredCat?.status, 'active');
     assert.equal(recoveredCat?.archivedAt, null);
     assert.equal(recoveredCat?.avatarUrl, 'data:image/png;base64,recoverable-avatar');
-    assert.equal(recoveredChannel?.channelKind, 'direct_lane');
-    assert.equal(recoveredChannel?.roomMode, 'direct_cat_chat');
+    assert.equal(recoveredChannel?.channelKind, 'direct_message');
+    assert.equal(recoveredChannel?.roomMode, 'direct_message');
     assert.equal(recoveredChannel?.defaultRecipientCatId, catId);
     assert.equal(recoveredChannel?.defaultRecipientLeaseStatus, 'not_started');
     assert.equal(unarchivePayload.chat.botBindings.length, 0);
@@ -11349,7 +11349,7 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
         platform: 'telegram',
         botName: 'companion_bot_rebound',
         catId,
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
       }),
     });
     assert.equal(reboundResponse.status, 201);
@@ -11432,7 +11432,7 @@ test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', a
         platform: 'telegram',
         botName: 'companion_bot',
         catId,
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
       }),
     });
     assert.equal(bindingResponse.status, 201);
@@ -11444,7 +11444,7 @@ test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', a
         title: 'Companion Direct',
         topic: 'Delete should not promote this private lane into recents.',
         originSurface: 'chat',
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
         skipBossCatGreeting: true,
@@ -11474,7 +11474,7 @@ test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', a
   });
 });
 
-test('first send does not fall back to Boss Cat when a direct chat lead is missing', async () => {
+test('first send does not fall back to Boss Cat when a direct message recipient is missing', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -11509,7 +11509,7 @@ test('first send does not fall back to Boss Cat when a direct chat lead is missi
         title: 'Companion Direct',
         topic: 'Do not wake Boss Cat when the direct lead is gone.',
         originSurface: 'chat',
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
         skipBossCatGreeting: true,
@@ -11537,7 +11537,7 @@ test('first send does not fall back to Boss Cat when a direct chat lead is missi
 
     assert.equal(runtimeClient.createdSessions.length, 0);
     assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
-    assert.equal(channelPayload.channel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(channelPayload.channel.roomRouting.mode, 'direct_message');
     assert.equal(channelPayload.channel.roomRouting.lastWakeRequest, null);
     assert.equal(
       channelPayload.channel.messages.at(-1)?.metadata?.event,
@@ -11545,7 +11545,7 @@ test('first send does not fall back to Boss Cat when a direct chat lead is missi
     );
     assert.match(
       channelPayload.channel.messages.at(-1)?.body ?? '',
-      /active lead Cat/i,
+      /active recipient Cat/i,
     );
   });
 });
@@ -11584,7 +11584,7 @@ test('GET /api/app-shell stays read-only when booting a persisted room route', a
       body: JSON.stringify({
         title: 'Companion Direct',
         topic: 'App shell reads should not wake runtime sessions.',
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
         skipBossCatGreeting: true,
@@ -11601,7 +11601,7 @@ test('GET /api/app-shell stays read-only when booting a persisted room route', a
     const appShellPayload = await appShellResponse.json();
 
     assert.equal(runtimeClient.createdSessions.length, 0);
-    assert.equal(appShellPayload.chat.selectedChannel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(appShellPayload.chat.selectedChannel.roomRouting.mode, 'direct_message');
     assert.equal(appShellPayload.chat.selectedChannel.orchestratorLease.sessionId, null);
     assert.equal(
       appShellPayload.chat.selectedChannel.assignedCats[0].execution.lease.sessionId,

@@ -240,7 +240,7 @@ function normalizeRoomRoutingOutcome(rawOutcome: unknown): RoomRoutingOutcome | 
 
   return {
     turnId: readString(outcomeRecord.turnId, randomUUID()),
-    mode: normalizeRoomRoutingMode(outcomeRecord.mode, 'boss_chat'),
+    mode: normalizeRoomRoutingMode(outcomeRecord.mode, 'chat_channel'),
     sourceMessageId: readString(outcomeRecord.sourceMessageId),
     sourceSenderKind: normalizeMessageSenderKind(outcomeRecord.sourceSenderKind),
     sourceSenderName: readString(outcomeRecord.sourceSenderName, 'Chat'),

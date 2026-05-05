@@ -11,7 +11,7 @@ The agreed direction is:
 
 - one `Primary Orchestrator Cat` acts as the default public entry identity
 - `+ New Chat` no longer requires a visible Boss-led thread in the first
-  composer state; ordinary `Recents` threads may begin in solo composer mode,
+  composer state; ordinary `Recents` threads may begin in default composer mode,
   while Boss-led and transport-led chats remain valid orchestrated entry flows
 - orchestration mechanics remain real system capabilities, but they are not a
   second user-visible character
@@ -68,7 +68,7 @@ Terminology rule:
   orchestrator identity.
 - the product shall continue supporting orchestrated chats whose implicit lead
   participant is the `Primary Orchestrator Cat`, but ordinary `Recents` threads
-  may begin in solo composer mode as defined by `SPEC-030`
+  may begin in default composer mode as defined by `SPEC-030`
 - The initial chat UX shall not require the user to choose among multiple
   public orchestrators before starting a conversation.
 - Other Cats shall remain assignable as specialists or collaborators inside the
@@ -138,7 +138,7 @@ That section should be able to show:
 
 ### New Chat
 
-`+ New Chat` may begin as a solo composer entry for ordinary `Recents` threads,
+`+ New Chat` may begin as a default composer entry for ordinary `Recents` threads,
 while Boss-led chats remain a supported orchestrated mode.
 
 The primary orchestrator should still remain the default public identity for:

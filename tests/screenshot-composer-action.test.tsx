@@ -61,7 +61,7 @@ function createComposerProps(
     defaultRecipientParticipantId: null,
     composerStackParticipants: [],
     isDirectLane: false,
-    isSoloComposer: true,
+    isDefaultChatComposer: true,
     activeWorkflowShape: 'sequential',
     onToggleActiveWorkflowShape: () => {},
     activeAudienceKeys: null,

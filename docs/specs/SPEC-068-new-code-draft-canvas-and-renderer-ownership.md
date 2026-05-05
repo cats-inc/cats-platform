@@ -168,7 +168,7 @@ as:
 
 The first slice does not yet define the final visual language for
 worktree/access policy controls, but it does introduce a code-owned session
-policy row above the composer. In solo `+New code`, that header row owns the
+policy row above the composer. In default `+New code`, that header row owns the
 workspace-isolation and access-policy controls (cwd + workspace-kind chips on
 the left via `composerHeaderWhereExtras`, permission-mode chip on the right via
 `composerHeaderAccessory`), while the lower composer target slot remains

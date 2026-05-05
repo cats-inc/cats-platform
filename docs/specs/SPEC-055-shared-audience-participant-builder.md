@@ -24,9 +24,9 @@ updating every site; missing one produces an inconsistency.
   `WorkspaceComposerTargetSlot.tsx` (`catToAudienceParticipant`)
 - **DraftTemporaryParticipant** — `chatNewChatDraftSupport.ts`,
   `ChatNewChatDraft.tsx` (temp participant)
-- **ExecutionTargetValue** — `ChatNewChatDraft.tsx` (parallel targets, solo
+- **ExecutionTargetValue** — `ChatNewChatDraft.tsx` (parallel targets, default
   execution target), `ChatComposerTargetSlot.tsx` (implicit recipient),
-  `WorkspaceComposerTargetSlot.tsx` (solo execution target)
+  `WorkspaceComposerTargetSlot.tsx` (default execution target)
 - **RecipientChipTarget** — `ChatComposerTargetSlot.tsx`
   (`recipientToAudienceParticipant`)
 - **ComposerStackParticipant** (active-chat participants) —
@@ -106,7 +106,7 @@ builder:
 - `ChatNewChatDraft.tsx` — all five branches of `audienceParticipants`
 - `ChatComposerTargetSlot.tsx` — `recipientToAudienceParticipant`,
   `stackParticipantToAudienceParticipant`, directLaneCat, implicitRecipient
-- `WorkspaceComposerTargetSlot.tsx` — `catToAudienceParticipant`, solo
+- `WorkspaceComposerTargetSlot.tsx` — `catToAudienceParticipant`, default
   execution target
 
 ## Intermediate Interface Cleanup

@@ -119,7 +119,7 @@ draft-case change yet.
       currently create new direct-lane rooms — primarily the
       accepted-receipt branch of `bridgeTelegramWebhookToRoom`
       when `bridgeResult.roomCreated` is `true`. Emit
-      `direct_lane.room_created` on the cat subscription as
+      `direct_message.room_created` on the cat subscription as
       soon as the new `roomId` is known.
 - [ ] Task 3.3: Wire cat-patch emission for binding lifecycle
       changes (activate / pause / archive / metadata edit) where
@@ -137,12 +137,12 @@ draft-case change yet.
       cat state through the subscription hub.
 - [ ] Task 3.7: Direct-lane draft page wiring — open a cat
       subscription on mount when the route resolves to a cat id;
-      on receipt of a `direct_lane.room_created` patch for the
+      on receipt of a `direct_message.room_created` patch for the
       rendered direct lane, open a `kind='channel'` subscription
       for the new `channelId` and transition the page in-place.
 - [ ] Task 3.8: Renderer unit + integration tests — draft page
       mounts → opens cat subscription → receives
-      `direct_lane.room_created` patch → opens channel
+      `direct_message.room_created` patch → opens channel
       subscription → renders the room content coming in via
       `snapshot` + `patch`; no `refreshAppShell()` fire on the
       happy path.
@@ -172,10 +172,10 @@ via push, with the same streaming UX as active channels.
 | `cats-platform/src/platform/orchestration/entitySubscriptions/cat.ts` | Create | `kind='cat'` projector: `buildCatSubscriptionState`, `buildCatSubscriptionPatches`, `CAT_ENTITY_SUBSCRIPTION_VERSION`. |
 | `cats-platform/src/app/server/subscribeRoutes.ts` | Modify | Route `kind=cat` to the new projector. |
 | `cats-platform/src/products/shared/renderer/hooks/useEntitySubscription.ts` | Modify | Add `kind='cat'` specialization. |
-| `cats-platform/src/products/chat/renderer/App.tsx` | Modify | Direct-lane draft page opens cat subscription on mount; transitions in-place on `direct_lane.room_created` patch. |
+| `cats-platform/src/products/chat/renderer/App.tsx` | Modify | Direct-lane draft page opens cat subscription on mount; transitions in-place on `direct_message.room_created` patch. |
 | `cats-platform/tests/chat-event-hub.test.js` | Modify | Add `catId`-on-ingress assertion to the existing Telegram bridge test. |
 | `cats-platform/tests/telegram-polling.test.js` | Modify | Extend polling test to cover staged user-ingress + completion emission order. |
-| `cats-platform/tests/cat-entity-subscription.test.js` | Create | Cat subscription: snapshot + `direct_lane.room_created` patch on Telegram bridge; fallback without subscription. |
+| `cats-platform/tests/cat-entity-subscription.test.js` | Create | Cat subscription: snapshot + `direct_message.room_created` patch on Telegram bridge; fallback without subscription. |
 
 ## Technical Decisions
 
@@ -189,7 +189,7 @@ via push, with the same streaming UX as active channels.
   projector already emits the events the dot needs; staging the
   bridge is enough.
 - **Cat subscription scope stays minimal at first** — only
-  `direct_lane.room_created` and `direct_lane.binding_changed`
+  `direct_message.room_created` and `direct_message.binding_changed`
   patches ship in the first slice. Additional cat patches (name,
   avatar, memory) can land on demand without contract change.
 - **Keep ADR-041 fallback intact** — the `refreshAppShell()` path
@@ -207,7 +207,7 @@ via push, with the same streaming UX as active channels.
   - Telegram polling → bridge → user-ingress event fires before
     runtime turn (Phase 2)
   - New cat → first Telegram message → cat subscription emits
-    `direct_lane.room_created` patch (Phase 3)
+    `direct_message.room_created` patch (Phase 3)
   - Fallback: cat subscription unavailable, `refreshAppShell()`
     still recovers the new room (Phase 3)
 - **Manual Testing**:

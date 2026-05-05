@@ -63,7 +63,7 @@ zero:
 - chat-first IA with `Recents`, `My Cats`, and `Settings`
 - default `Boss Cat`, direct Cat lanes, and topology-aware routing
 - deterministic explicit `@mention` parsing and room-routing ownership
-- solo-composer to Cat-led thread semantics
+- default-composer to participant chat semantics
 - transcript export and file-backed persistence
 - operator-facing approvals, retry/reroute/acknowledge, progress, activity,
   traces, run inspection, and recovery read models
@@ -228,7 +228,7 @@ product still needs one coherent user-facing lifecycle story.
 This slice shall:
 
 1. freeze how session scope works across:
-   - `Recents` solo or Cat-led threads
+   - `Recents` default or participant chats
    - direct Cat lanes
    - Telegram-bound private lanes
 2. define when Chat should preserve continuity versus reset context
@@ -284,7 +284,7 @@ This polish bucket should focus on:
 1. the secondary-surface framework from the spatial-layout guidance
 2. split artifact / preview behavior where it helps Chat, not Code
 3. cleaner transcript-side operator indicators and companion quick controls
-4. layout consistency across solo, direct-lane, companion, and multi-Cat room
+4. layout consistency across default, direct-lane, companion, and multi-Cat room
    modes
 
 This is important, but it is intentionally lower priority than companion,

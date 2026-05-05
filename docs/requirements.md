@@ -837,7 +837,7 @@ or navigating independent branches.
 ### US-024: Code Entry Surfaces Match Different Working Styles
 
 **As a** code user,
-**I want to** choose between solo, shared-team, and peer-review entry points,
+**I want to** choose between default, shared-team, and peer-review entry points,
 **So that** I can start the right workflow without reconfiguring everything by
 hand after creation.
 

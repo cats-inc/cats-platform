@@ -36,9 +36,9 @@ surfaces:
 
 Channels now expose a topology-oriented `channelKind`:
 
-- `boss_thread`
-- `direct_lane`
-- `multi_cat_room`
+- `chat_channel`
+- `direct_message`
+- `chat_channel`
 
 This field answers "what kind of room is this?" independently from
 `roomRouting.mode`.
@@ -56,7 +56,7 @@ no longer the authoritative source for:
 
 ### 3. Direct-lane behavior is topology-driven
 
-When `channelKind === 'direct_lane'`:
+When `channelKind === 'direct_message'`:
 
 - only the lead Cat is eligible for activation and stream selection
 - orchestrator/Boss Cat wake fallbacks are blocked
@@ -68,10 +68,10 @@ When `channelKind === 'direct_lane'`:
 The renderer now derives an explicit conversation-mode layer above raw
 contracts:
 
-- `direct_lane`
-- `solo_thread`
-- `cat_led_thread`
-- `multi_cat_room`
+- `direct_message`
+- `default_chat`
+- `legacy participant-chat mode`
+- `chat_channel`
 
 This becomes the seam for future companion/agent switching UI without teaching
 that UI about wake/stream internals.

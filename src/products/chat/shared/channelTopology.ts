@@ -59,13 +59,11 @@ export function inferChannelKind(input: {
   roomMode: RoomRoutingMode;
   participants: readonly ChannelParticipantTopologyRef[];
 }): ChatChannelKind {
-  if (input.roomMode === 'direct_cat_chat') {
-    return 'direct_lane';
+  if (input.roomMode === 'direct_message') {
+    return 'direct_message';
   }
 
-  return countActiveParticipants(input.participants) > 1
-    ? 'multi_cat_room'
-    : 'boss_thread';
+  return 'chat_channel';
 }
 
 export function resolveChannelKind(input: {
@@ -77,19 +75,11 @@ export function resolveChannelKind(input: {
     roomMode: input.roomMode,
     participants: input.participants,
   });
-  if (input.channelKind === 'direct_lane') {
-    return 'direct_lane';
-  }
-  if (input.channelKind === 'multi_cat_room') {
-    return inferred === 'boss_thread' && input.participants.length === 0
-      ? 'boss_thread'
-      : 'multi_cat_room';
-  }
-  if (input.channelKind === 'boss_thread') {
-    return inferred === 'multi_cat_room' ? 'multi_cat_room' : 'boss_thread';
+  if (input.channelKind === 'direct_message' || inferred === 'direct_message') {
+    return 'direct_message';
   }
 
-  return inferred;
+  return 'chat_channel';
 }
 
 function readChannelTopologyParticipants(
@@ -124,33 +114,33 @@ export function resolveChannelKindForChannel(
 ): ChatChannelKind {
   return resolveChannelKind({
     channelKind: channel.channelKind,
-    roomMode: channel.roomRouting?.mode === 'direct_cat_chat' ? 'direct_cat_chat' : 'boss_chat',
+    roomMode: channel.roomRouting?.mode === 'direct_message' ? 'direct_message' : 'chat_channel',
     participants: readChannelTopologyParticipants(channel),
   });
 }
 
 export function isDirectLaneChannel(channel: ChannelTopologyCarrier): boolean {
-  return resolveChannelKindForChannel(channel) === 'direct_lane';
+  return resolveChannelKindForChannel(channel) === 'direct_message';
 }
 
-export function isProviderSoloThreadChannel(channel: ChannelTopologyCarrier): boolean {
+export function isProviderDefaultChatChannel(channel: ChannelTopologyCarrier): boolean {
   return !isDirectLaneChannel(channel)
     && !hasActiveChannelParticipants(channel)
     && Boolean(channel.pendingProvider?.trim());
 }
 
-export function isSoloThreadChannel(channel: ChannelTopologyCarrier): boolean {
+export function isDefaultChatChannel(channel: ChannelTopologyCarrier): boolean {
   return !isDirectLaneChannel(channel)
     && !hasActiveChannelParticipants(channel);
 }
 
-export function isParticipantRoomChannel(channel: ChannelTopologyCarrier): boolean {
+export function isParticipantChatChannel(channel: ChannelTopologyCarrier): boolean {
   return !isDirectLaneChannel(channel)
     && hasActiveChannelParticipants(channel);
 }
 
 export function supportsParticipantAudienceSelection(channel: ChannelTopologyCarrier): boolean {
-  return isParticipantRoomChannel(channel);
+  return isParticipantChatChannel(channel);
 }
 
 export function isDirectLaneSummary(
@@ -158,9 +148,9 @@ export function isDirectLaneSummary(
 ): boolean {
   return resolveChannelKind({
     channelKind: channel.channelKind,
-    roomMode: channel.roomMode === 'direct_cat_chat' ? 'direct_cat_chat' : 'boss_chat',
+    roomMode: channel.roomMode === 'direct_message' ? 'direct_message' : 'chat_channel',
     participants: [],
-  }) === 'direct_lane';
+  }) === 'direct_message';
 }
 
 export function resolveDirectLaneRecipientId(
@@ -193,17 +183,17 @@ export function normalizeChannelAssignmentsForRoomMode<T extends ChannelParticip
   defaultRecipientId: string | null | undefined,
 ): T[] {
   const dedupedAssignments = dedupeChannelAssignments(assignments);
-  if (roomMode !== 'direct_cat_chat') {
+  if (roomMode !== 'direct_message') {
     return dedupedAssignments;
   }
 
-  const directLeadId = resolveDirectLaneRecipientId(
+  const directRecipientId = resolveDirectLaneRecipientId(
     dedupedAssignments,
     defaultRecipientId,
   );
-  if (!directLeadId) {
+  if (!directRecipientId) {
     return [];
   }
 
-  return dedupedAssignments.filter((assignment) => readTopologyParticipantId(assignment) === directLeadId);
+  return dedupedAssignments.filter((assignment) => readTopologyParticipantId(assignment) === directRecipientId);
 }

@@ -10,7 +10,7 @@ import {
   cloneProviderModelSelection,
   type ProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
-import { isSoloThreadChannel } from '../../shared/channelTopology.js';
+import { isDefaultChatChannel } from '../../shared/channelTopology.js';
 import {
   resolveChannelParticipantAssignments,
   resolveParticipantExecutionAssignments,
@@ -169,15 +169,15 @@ export function setChannelPendingExecutionTarget(
   return nextState;
 }
 
-export function resetSoloChannelContinuity(
+export function resetDefaultChatContinuity(
   state: ChatState,
   channelId: string,
   now: Date = new Date(),
 ): ChatState {
   const nextState = cloneState(state);
   const channel = requireChannel(nextState, channelId);
-  if (!isSoloThreadChannel(channel)) {
-    throw new Error('Start fresh is currently only supported for solo chats.');
+  if (!isDefaultChatChannel(channel)) {
+    throw new Error('Start fresh is currently only supported for default chats.');
   }
 
   const existingResetAt = channel.continuityResetAt?.trim() || null;
@@ -201,7 +201,7 @@ export function resetSoloChannelContinuity(
       channelId,
       'system',
       'Chat',
-      'Started fresh. The next solo turn will not inherit earlier chat continuity.',
+      'Started fresh. The next default chat turn will not inherit earlier chat continuity.',
       nowIso,
       {
         event: 'continuity_reset',

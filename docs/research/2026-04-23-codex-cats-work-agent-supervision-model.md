@@ -71,7 +71,7 @@ has one role, but varies the management style.
 
 ## Addressable Targets and Cat Identity
 
-The discussion started from a Cats Chat modeling problem: solo targets,
+The discussion started from a Cats Chat modeling problem: default targets,
 temporary participants, My Cats, Boss Cat, and Guide Cat were being treated as
 separate product ideas without a clean shared abstraction.
 
@@ -364,7 +364,7 @@ strong agents for leverage and cheap/free/local models for bounded throughput.
 1. Cat identity and execution target must remain separate.
    A Cat can switch provider/model without becoming a different Cat.
 
-2. Solo, temporary participant, My Cat, Boss Cat, and Guide Cat can share an
+2. Default, temporary participant, My Cat, Boss Cat, and Guide Cat can share an
    addressable-target abstraction, but they should not all become the same
    durable registry record.
 

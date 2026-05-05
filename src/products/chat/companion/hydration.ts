@@ -22,7 +22,7 @@ export function shouldHydrateCompanionSession(
   box: CompanionBox,
   channel: { roomRouting?: ChatChannelView['roomRouting'] },
 ): boolean {
-  if (channel.roomRouting?.mode === 'direct_cat_chat') {
+  if (channel.roomRouting?.mode === 'direct_message') {
     return true;
   }
 

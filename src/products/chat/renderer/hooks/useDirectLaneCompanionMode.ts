@@ -45,7 +45,7 @@ export function useDirectLaneCompanionMode(options: {
     const channel = state.status === 'ready'
       ? state.payload.chat.channels.find(
           (ch) =>
-            ch.channelKind === 'direct_lane'
+            ch.channelKind === 'direct_message'
             && ch.defaultRecipientCatId === catId,
         )
       : null;
@@ -63,7 +63,7 @@ export function useDirectLaneCompanionMode(options: {
     const channel = state.status === 'ready'
       ? state.payload.chat.channels.find(
           (ch) =>
-            ch.channelKind === 'direct_lane'
+            ch.channelKind === 'direct_message'
             && ch.defaultRecipientCatId === catId,
         )
       : null;

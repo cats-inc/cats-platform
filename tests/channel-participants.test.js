@@ -66,7 +66,7 @@ test('createChannel keeps channel-only temporary participants outside cat assign
   const summary = toChannelSummary(persistedChannel, state);
   assert.equal(summary.containerId, CHAT_ROOT_CONTAINER_ID);
   assert.equal(summary.conversationId, buildChatConversationId(channelId));
-  assert.equal(summary.channelKind, 'multi_cat_room');
+  assert.equal(summary.channelKind, 'chat_channel');
   assert.equal(summary.catCount, 2);
   assert.equal(summary.activeCatCount, 2);
   assert.equal(summary.participantCount, 2);

@@ -157,7 +157,7 @@ export interface ToolIntentManifest {
     catId?: string;
     channelId?: string;
     participantKind?: 'orchestrator' | 'cat';
-    roomMode?: 'boss_chat' | 'direct_cat_chat';
+    roomMode?: 'chat_channel' | 'direct_message';
     transport?: OrchestratorTransportContext | null;
   };
   strict?: boolean;

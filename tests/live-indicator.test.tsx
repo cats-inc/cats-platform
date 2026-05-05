@@ -2041,7 +2041,7 @@ test('resolveWaitingIndicatorStateTransition increments the segment index for sa
           activeTurn: {
             status: 'running',
             sourceMessageId: 'message-user-current',
-            workflowShape: 'solo',
+            workflowShape: 'default',
             targetStatuses: [],
           },
         },
@@ -2347,7 +2347,7 @@ test('resolveWaitingIndicatorStateTransition increments an anonymous follow-up s
           activeTurn: {
             status: 'running',
             sourceMessageId: 'message-user-current',
-            workflowShape: 'solo',
+            workflowShape: 'default',
             targetStatuses: [],
           },
         },
@@ -3163,7 +3163,7 @@ test('shouldPromoteSealedBubbleToWaitingSpeaker stays off for the same logical s
   );
 });
 
-test('resolveLiveIndicatorSpeakerLabel uses the solo execution target label', () => {
+test('resolveLiveIndicatorSpeakerLabel uses the default execution target label', () => {
   const label = resolveLiveIndicatorSpeakerLabel({
     pendingProvider: 'gemini',
     pendingInstance: 'cli/native',
@@ -3176,7 +3176,7 @@ test('resolveLiveIndicatorSpeakerLabel uses the solo execution target label', ()
   assert.equal(label, 'Gemini-CLI');
 });
 
-test('resolveLiveIndicatorSpeakerLabel stays silent for participant rooms', () => {
+test('resolveLiveIndicatorSpeakerLabel stays silent for participant chats', () => {
   assert.equal(resolveLiveIndicatorSpeakerLabel({
     pendingProvider: 'gemini',
     pendingInstance: 'cli/native',
@@ -5758,7 +5758,7 @@ test('resolveVisibleLiveIndicator hides a later targeted speaker bubble using ta
   assert.equal(visible.segments[0]?.segmentIndex, 2);
 });
 
-test('resolveVisibleLiveIndicator does not hide a new solo segment because an older turn by the same speaker already has segment 0', () => {
+test('resolveVisibleLiveIndicator does not hide a new default segment because an older turn by the same speaker already has segment 0', () => {
   const liveIndicator = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
@@ -5901,7 +5901,7 @@ test('resolveVisibleLiveIndicator does not hide a targeted live bubble because t
   assert.equal(visible, liveIndicator);
 });
 
-test('applyLiveIndicatorEvent increments the segment index for same-speaker solo follow-up phases', () => {
+test('applyLiveIndicatorEvent increments the segment index for same-speaker default follow-up phases', () => {
   let state = createWaitingLiveIndicatorState({
     sourceMessageId: 'message-user-current',
     participantId: 'participant-claude',

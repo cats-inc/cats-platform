@@ -502,7 +502,7 @@ function buildChannelTaskMetadata(
   const roomRouting = channel.roomRouting;
   const pendingApproval = approval.status === 'pending';
   const effectiveDeliveryMode: CoreDeliveryMode = channel.repoPath ? 'commit_only' : 'artifact_only';
-  const effectiveDeliverySource: CoreEffectivePolicySource = roomRouting?.mode === 'direct_cat_chat'
+  const effectiveDeliverySource: CoreEffectivePolicySource = roomRouting?.mode === 'direct_message'
     ? 'room_tightening'
     : 'chat_default';
   const deliveryGates: CoreDeliveryGate[] = [
@@ -543,7 +543,7 @@ function buildChannelTaskMetadata(
     containerId,
     conversationId: resolveCanonicalConversationId(channel.id),
     taskId: buildChatTaskId(channel.id),
-    roomMode: roomRouting?.mode ?? 'boss_chat',
+    roomMode: roomRouting?.mode ?? 'chat_channel',
     transport: null,
     workflowStageId: latestTurn?.stageId ?? null,
     workflowShape: latestTurn?.workflowShape ?? null,
@@ -571,7 +571,7 @@ function buildChannelTaskMetadata(
     channelId: channel.id,
     containerId,
     parallelGroupId,
-    roomRoutingMode: roomRouting?.mode ?? 'boss_chat',
+    roomRoutingMode: roomRouting?.mode ?? 'chat_channel',
     workflowStageId: latestTurn?.stageId ?? null,
     workflowShape: latestTurn?.workflowShape ?? null,
     workflowLastCheckpointId:
@@ -622,7 +622,7 @@ function buildChannelWorkItemMetadata(
     channelId: channel.id,
     containerId,
     parallelGroupId,
-    roomRoutingMode: roomRouting?.mode ?? 'boss_chat',
+    roomRoutingMode: roomRouting?.mode ?? 'chat_channel',
     workflowStageId: latestTurn?.stageId ?? null,
     workflowShape: latestTurn?.workflowShape ?? null,
     workflowLastCheckpointId:
@@ -791,7 +791,7 @@ export function createChatConversationParticipants(
     },
   ];
 
-  if (channel.channelKind !== 'direct_lane') {
+  if (channel.channelKind !== 'direct_message') {
     participants.push({
       id: buildChatOrchestratorParticipantId(channel.id),
       conversationId,
@@ -883,7 +883,7 @@ export function createDirectLaneTransportBindings(
   chat: ChatState,
 ): TransportBindingRecord[] {
   return chat.channels
-    .filter((channel) => channel.channelKind === 'direct_lane')
+    .filter((channel) => channel.channelKind === 'direct_message')
     .map((channel) => {
       const conversationId = resolveCanonicalConversationId(channel.id);
       const defaultRecipientId = channel.roomRouting?.defaultRecipientId ?? null;
@@ -1186,7 +1186,7 @@ export function syncBotBindings(
             bossCatActorId,
             botToken: binding.botToken ?? null,
             webhookSecret: binding.webhookSecret ?? null,
-            roomMode: binding.roomMode ?? 'boss_chat',
+            roomMode: binding.roomMode ?? 'chat_channel',
             updatedAt,
           }
         : binding,
@@ -1205,7 +1205,7 @@ export function syncBotBindings(
       botToken: null,
       webhookSecret: null,
       inboundMode: 'polling' as const,
-      roomMode: 'boss_chat' as const,
+      roomMode: 'chat_channel' as const,
       status: 'active' as const,
       createdAt: updatedAt,
       updatedAt,

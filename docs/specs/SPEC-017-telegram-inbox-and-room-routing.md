@@ -62,7 +62,7 @@ transport binding that remains distinct from:
 ### Functional Requirements
 
 1. A Telegram bot binding shall deliver inbound messages into the bound Cat's
-   private lane (`direct_cat_chat`), not into a separate channel type.
+   private lane (`direct_message`), not into a separate channel type.
 2. `Cats Chat` rooms shall remain the canonical units for topic work and
    multi-Cat collaboration.
 3. One Cat's private lane may relate to many internal rooms over time.

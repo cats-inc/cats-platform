@@ -9,7 +9,7 @@ type ChatChannelSummaryRef = {
 };
 
 export type MyCatNavigationTarget =
-  | { kind: 'direct_lane'; path: string };
+  | { kind: 'direct_message'; path: string };
 
 export type MyCatStatusDot = 'no_dot' | 'sleeping' | 'waking_up' | 'awake' | 'error';
 
@@ -95,5 +95,5 @@ export function resolveMyCatNavigationTargetForPrefix(
   _channels: ChatChannelSummaryRef[],
   catId: string,
 ): MyCatNavigationTarget {
-  return { kind: 'direct_lane', path: buildMyCatPathForPrefix(chatPrefix, catId) };
+  return { kind: 'direct_message', path: buildMyCatPathForPrefix(chatPrefix, catId) };
 }

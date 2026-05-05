@@ -188,7 +188,7 @@ export interface MemoryRetrievalExcluded {
 export interface MemoryRetrievalPolicy {
   visibility: MemoryVisibility;
   transport: 'telegram' | 'line' | 'web' | null;
-  roomMode: 'boss_chat' | 'direct_cat_chat' | null;
+  roomMode: 'chat_channel' | 'direct_message' | null;
   includeOwnerProfile: boolean;
 }
 

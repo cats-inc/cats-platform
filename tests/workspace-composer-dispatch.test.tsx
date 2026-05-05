@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  buildSoloDispatchTarget,
+  buildDefaultChatDispatchTarget,
   isDirectLaneSelectedForCat,
   prepareComposerMessageBody,
   resolveComposerFilesToUpload,
@@ -13,7 +13,7 @@ function createPayload(overrides: Record<string, unknown> = {}) {
     chat: {
       selectedChannel: {
         id: 'channel-1',
-        channelKind: 'boss_thread',
+        channelKind: 'chat_channel',
         roomRouting: {
           defaultRecipientId: null,
         },
@@ -29,7 +29,7 @@ test('isDirectLaneSelectedForCat only accepts matching direct-lane recipients', 
   assert.equal(
     isDirectLaneSelectedForCat({
       id: 'channel-direct',
-      channelKind: 'direct_lane',
+      channelKind: 'direct_message',
       roomRouting: {
         defaultRecipientId: 'cat-1',
       },
@@ -39,7 +39,7 @@ test('isDirectLaneSelectedForCat only accepts matching direct-lane recipients', 
   assert.equal(
     isDirectLaneSelectedForCat({
       id: 'channel-direct',
-      channelKind: 'direct_lane',
+      channelKind: 'direct_message',
       roomRouting: {
         defaultRecipientId: 'cat-2',
       },
@@ -49,7 +49,7 @@ test('isDirectLaneSelectedForCat only accepts matching direct-lane recipients', 
   assert.equal(
     isDirectLaneSelectedForCat({
       id: 'channel-thread',
-      channelKind: 'boss_thread',
+      channelKind: 'chat_channel',
       roomRouting: {
         defaultRecipientId: 'cat-1',
       },
@@ -59,7 +59,7 @@ test('isDirectLaneSelectedForCat only accepts matching direct-lane recipients', 
   assert.equal(isDirectLaneSelectedForCat(null, 'cat-1'), false);
 });
 
-test('buildSoloDispatchTarget only derives pending target for the active solo room', () => {
+test('buildDefaultChatDispatchTarget only derives pending target for the active default room', () => {
   const executionTarget = {
     provider: 'codex',
     model: 'gpt-5.4',
@@ -71,14 +71,14 @@ test('buildSoloDispatchTarget only derives pending target for the active solo ro
   };
 
   assert.deepEqual(
-    buildSoloDispatchTarget({
+    buildDefaultChatDispatchTarget({
       wasDraftingNewChat: false,
       isCatScopedLaneRoute: false,
-      channelId: 'channel-solo',
+      channelId: 'channel-default',
       selectedChannel: {
-        id: 'channel-solo',
+        id: 'channel-default',
       },
-      soloChannelExecutionTarget: executionTarget,
+      defaultChannelExecutionTarget: executionTarget,
     }),
     {
       pendingProvider: 'codex',
@@ -92,43 +92,43 @@ test('buildSoloDispatchTarget only derives pending target for the active solo ro
   );
 
   assert.equal(
-    buildSoloDispatchTarget({
+    buildDefaultChatDispatchTarget({
       wasDraftingNewChat: true,
       isCatScopedLaneRoute: false,
-      channelId: 'channel-solo',
+      channelId: 'channel-default',
       selectedChannel: {
-        id: 'channel-solo',
+        id: 'channel-default',
       },
-      soloChannelExecutionTarget: executionTarget,
+      defaultChannelExecutionTarget: executionTarget,
     }),
     null,
   );
   assert.equal(
-    buildSoloDispatchTarget({
+    buildDefaultChatDispatchTarget({
       wasDraftingNewChat: false,
       isCatScopedLaneRoute: true,
-      channelId: 'channel-solo',
+      channelId: 'channel-default',
       selectedChannel: {
-        id: 'channel-solo',
+        id: 'channel-default',
       },
-      soloChannelExecutionTarget: executionTarget,
+      defaultChannelExecutionTarget: executionTarget,
     }),
     null,
   );
   assert.equal(
-    buildSoloDispatchTarget({
+    buildDefaultChatDispatchTarget({
       wasDraftingNewChat: false,
       isCatScopedLaneRoute: false,
-      channelId: 'channel-solo',
+      channelId: 'channel-default',
       selectedChannel: {
         id: 'channel-other',
       },
-      soloChannelExecutionTarget: executionTarget,
+      defaultChannelExecutionTarget: executionTarget,
     }),
     null,
   );
   assert.equal(
-    buildSoloDispatchTarget({
+    buildDefaultChatDispatchTarget({
       wasDraftingNewChat: false,
       isCatScopedLaneRoute: false,
       channelId: 'channel-participant',
@@ -136,7 +136,7 @@ test('buildSoloDispatchTarget only derives pending target for the active solo ro
         id: 'channel-participant',
         assignedCats: [{ catId: 'cat-1', status: 'active' }],
       },
-      soloChannelExecutionTarget: executionTarget,
+      defaultChannelExecutionTarget: executionTarget,
     }),
     null,
   );

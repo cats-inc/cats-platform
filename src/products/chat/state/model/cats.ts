@@ -38,14 +38,14 @@ function updateDirectLaneAfterLeadingCatRemoval(
   ) {
     if (options.preserveRecoverableDirectLane) {
       channel.recoverableDirectLaneCatId = catId;
-      channel.channelKind = 'direct_lane';
-      roomRouting.mode = 'direct_cat_chat';
+      channel.channelKind = 'direct_message';
+      roomRouting.mode = 'direct_message';
       roomRouting.defaultRecipientId = catId;
       channel.roomRouting = roomRouting;
     } else {
       channel.recoverableDirectLaneCatId = null;
-      channel.channelKind = 'boss_thread';
-      roomRouting.mode = 'boss_chat';
+      channel.channelKind = 'chat_channel';
+      roomRouting.mode = 'chat_channel';
       roomRouting.defaultRecipientId = null;
       channel.roomRouting = roomRouting;
     }
@@ -132,10 +132,10 @@ function restoreRecoverableDirectLane(
   };
 
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
-  roomRouting.mode = 'direct_cat_chat';
+  roomRouting.mode = 'direct_message';
   roomRouting.defaultRecipientId = catId;
   channel.roomRouting = roomRouting;
-  channel.channelKind = 'direct_lane';
+  channel.channelKind = 'direct_message';
   channel.recoverableDirectLaneCatId = null;
   channel.updatedAt = restoredAt;
   if (channel.status === 'planned') {

@@ -43,13 +43,13 @@ The product therefore needs a model that keeps three ideas distinct:
 `cats` will adopt a composer-scoped execution model for normal `Recents`
 threads.
 
-### 1. Normal `Recents` threads may start in solo composer mode
+### 1. Normal `Recents` threads may start in default composer mode
 
 - no visible Cat is required at the start
 - the composer shows the provider/model selector
 - that selector controls the next outgoing turn only
 
-### 2. Adding the first Cat upgrades the thread into a Cat-led thread
+### 2. Adding the first Cat upgrades the thread into a participant chat
 
 - the first added Cat becomes the `leadCat`
 - the composer control switches from model selector to the lead Cat's
@@ -95,7 +95,7 @@ threads.
 - `Boss Cat` can remain operationally powerful without being forced to occupy
   the front stage in every thread
 - per-message provider/model provenance remains compatible with threads that
-  evolve from solo to Cat-led
+  evolve from default to Cat-led
 
 ### Negative
 
@@ -121,7 +121,7 @@ threads.
 
 ### Alternative 1: Keep every normal thread as a visible `Boss Chat`
 
-- **Pros**: simple story; no new solo mode
+- **Pros**: simple story; no new default mode
 - **Cons**: pushes the product away from familiar chat UX and makes model
   switching feel heavier than needed
 - **Why rejected**: it makes every normal thread feel more agent-console-like

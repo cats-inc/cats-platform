@@ -587,7 +587,7 @@ test('group route restores remove controls once the draft has three participants
   assert.match(markup, /aria-label="Remove Inline Reviewer"/u);
 });
 
-test('solo draft without a recipient keeps the provider-model control on the audience chip', () => {
+test('default draft without a recipient keeps the provider-model control on the audience chip', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({

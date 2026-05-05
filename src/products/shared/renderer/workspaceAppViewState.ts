@@ -11,7 +11,7 @@ import {
 } from './workspaceChatUtils.js';
 import {
   isDirectConversationMode,
-  isSoloThreadConversationMode,
+  isDefaultChatConversationMode,
   resolveConversationMode,
 } from '../../../app/renderer/productShell/conversationMode.js';
 import { findDirectLaneForCat } from '../../../app/renderer/productShell/myCatNavigation.js';
@@ -164,7 +164,7 @@ export function deriveAppViewState(input: {
     (cat) => cat.id === payload.chat.bossCatId,
   )?.avatarColor ?? null;
   const showBossCatAvatar = Boolean(payload.chat.bossCatId)
-    && !isSoloThreadConversationMode(selectedConversationMode)
+    && !isDefaultChatConversationMode(selectedConversationMode)
     && !isDirectConversationMode(selectedConversationMode)
     && !activeAssignedCats.some((cat) => cat.catId === payload.chat.bossCatId);
   const selectableCats = payload.chat.cats.filter(

@@ -92,7 +92,7 @@ export interface MobileCreateChannelInput {
   title: string;
   topic: string;
   originSurface: MobilePlatformSurfaceId;
-  entryKind?: 'solo' | 'group' | 'direct';
+  entryKind?: 'default' | 'group' | 'direct';
 }
 
 export interface MobileCreatedChannel {

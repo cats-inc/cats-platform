@@ -89,7 +89,7 @@ function createBindingRecord(
     botToken: trimNullableString(input.botToken),
     webhookSecret: trimNullableString(input.webhookSecret),
     inboundMode,
-    roomMode: input.roomMode === 'boss_chat' ? 'direct_cat_chat' : input.roomMode ?? 'direct_cat_chat',
+    roomMode: input.roomMode === 'chat_channel' ? 'direct_message' : input.roomMode ?? 'direct_message',
     status: 'active',
     outboundFanoutEnabled: input.outboundFanoutEnabled !== false,
     createdAt: nowIso,
@@ -185,8 +185,8 @@ async function handleUpdateBotBinding(
 
   let catActorId = existing.catActorId ?? existing.bossCatActorId;
   let bossCatActorId = existing.bossCatActorId;
-  let roomMode = body.roomMode === 'boss_chat'
-    ? 'direct_cat_chat'
+  let roomMode = body.roomMode === 'chat_channel'
+    ? 'direct_message'
     : body.roomMode ?? resolveEffectiveBotBindingRoomMode(existing);
 
   if (body.catId !== undefined) {
@@ -194,7 +194,7 @@ async function handleUpdateBotBinding(
     catActorId = createCatActorId(cat.id);
     bossCatActorId = chat.bossCatId === cat.id ? catActorId : null;
     if (body.roomMode === undefined) {
-      roomMode = 'direct_cat_chat';
+      roomMode = 'direct_message';
     }
   }
 

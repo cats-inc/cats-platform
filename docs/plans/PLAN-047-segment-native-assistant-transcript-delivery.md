@@ -117,7 +117,7 @@ single synthetic assistant bubble
       consumes the full assistant turn correctly.
 - [ ] Task 5.5: Confirm stale local/dev snapshots may be discarded and no
       compatibility migration path remains in the landed product code.
-- [ ] Task 5.6: Manually smoke-check solo, direct, group sequential, and group
+- [ ] Task 5.6: Manually smoke-check default, direct, group sequential, and group
       concurrent rooms against the new segment-native model.
 
 **Deliverables**: validated segment-native assistant delivery with no reliance
@@ -170,7 +170,7 @@ on legacy single-response semantics
   segment, routing/recommendation parsing from aggregated turn text, and repair
   flows
 - **Manual Testing**:
-  - solo chat: first segment lands, its dots seal correctly, and the next
+  - default chat: first segment lands, its dots seal correctly, and the next
     same-speaker bubble appears with header + dots before later text
   - direct chat: same behavior without orchestrator leakage
   - group sequential: same-speaker segmentation plus next-speaker handoff

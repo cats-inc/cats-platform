@@ -179,7 +179,7 @@ test('POST /api/channels/:id/deactivate closes runtime sessions for temporary pa
   const now = new Date('2026-03-29T12:00:00.000Z');
   let state = await chatStore.read();
   state = createChannel(state, {
-    title: 'Temporary participant room',
+    title: 'Temporary participant chat',
     topic: 'deactivate temporary participant sessions',
     temporaryParticipants: [
       {
@@ -223,7 +223,7 @@ test('POST /api/channels/:id/deactivate closes the orchestrator runtime session 
   const now = new Date('2026-03-29T12:00:00.000Z');
   let state = await chatStore.read();
   state = createChannel(state, {
-    title: 'Solo room',
+    title: 'Default room',
     topic: 'deactivate orchestrator session',
     originSurface: 'chat',
     pendingProvider: 'claude',

@@ -319,7 +319,7 @@ start through the execution dispatcher / runtime bridge.
   a hidden set of sequential startups.
 - As a Chat user, I want `parallel` to feel like multiple bound private threads
   rather than one room transcript pretending to be a compare grid.
-- As a Code user, I want a clear entry point for solo coding work without
+- As a Code user, I want a clear entry point for default coding work without
   entering a team or branch-comparison workflow.
 - As a Code user, I want a team room where shared planning, implementation, and
   review can happen in one durable project thread.

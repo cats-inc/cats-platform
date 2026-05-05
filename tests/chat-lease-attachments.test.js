@@ -342,7 +342,7 @@ test('resolveChannelEntryParticipant uses participant lease state for direct lan
       title: 'Direct lane',
       topic: 'Lead participant lifecycle',
       entryKind: 'direct',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       skipBossCatGreeting: true,
     },

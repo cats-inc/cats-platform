@@ -13,7 +13,7 @@ function buildChannel(leaseStatus = 'ready') {
     title: 'Test',
     topic: '',
     status: 'active',
-    channelKind: 'direct_lane',
+    channelKind: 'direct_message',
     catAssignments: [
       {
         catId: 'cat-1',

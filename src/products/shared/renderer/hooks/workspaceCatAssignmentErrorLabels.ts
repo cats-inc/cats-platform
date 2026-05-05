@@ -33,8 +33,8 @@ export function localizeWorkspaceCatAssignmentErrorMessage(
     return t(messageKeys.chatCatAssignmentErrorAssignmentNotFound);
   }
 
-  if (message === 'Direct lanes can only contain their lead cat') {
-    return t(messageKeys.chatCatAssignmentErrorDirectLeadOnly);
+  if (message === 'Direct messages can only contain their direct recipient Cat') {
+    return t(messageKeys.chatCatAssignmentErrorDirectRecipientOnly);
   }
 
   const participantLimitMatch = message.match(/^Chat participant limit reached \(max (\d+)\)$/u);

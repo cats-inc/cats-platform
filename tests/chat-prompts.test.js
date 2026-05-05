@@ -12,7 +12,7 @@ import {
   buildCatPrompt,
   buildOrchestratorPrompt,
   buildBoundedRecentContextInstructions,
-  buildSoloChatContinuityTransplantPackage,
+  buildDefaultChatContinuityTransplantPackage,
 } from '../build/server/products/chat/state/prompts.js';
 import { buildPromptForTarget } from '../build/server/products/chat/state/runtimeTargeting.js';
 import { buildChatLaneId } from '../build/server/shared/chatCoreIds.js';
@@ -31,7 +31,7 @@ function createChannel() {
     mcpProfile: null,
     responseLanguage: 'en',
     roomRouting: {
-      mode: 'boss_chat',
+      mode: 'chat_channel',
     },
     assignedCats: [
       {
@@ -116,11 +116,11 @@ test('cat prompt omits blank transport sections when no transport context is pro
   assert.ok(!prompt.includes('\n\n\n'));
 });
 
-test('solo chat bootstrap instructions are absent without prior conversational messages', () => {
+test('default chat bootstrap instructions are absent without prior conversational messages', () => {
   assert.equal(buildBoundedRecentContextInstructions([]), null);
 });
 
-test('solo chat bootstrap instructions include only earlier conversational context', () => {
+test('default chat bootstrap instructions include only earlier conversational context', () => {
   const instructions = buildBoundedRecentContextInstructions([
     {
       senderKind: 'system',
@@ -148,14 +148,14 @@ test('solo chat bootstrap instructions include only earlier conversational conte
   assert.ok(!instructions.includes('Respond in English'));
 });
 
-test('solo chat continuity package compacts oversized transcripts into semantic transplant instructions', () => {
+test('default chat continuity package compacts oversized transcripts into semantic transplant instructions', () => {
   const oversizedTranscript = Array.from({ length: 48 }, (_value, index) => ({
     senderKind: index % 2 === 0 ? 'user' : 'agent',
     senderName: index % 2 === 0 ? 'Kenny' : 'Orchestrator',
     body: `Oversized earlier turn ${index + 1}: ${'x'.repeat(420)}`,
   }));
 
-  const continuityPackage = buildSoloChatContinuityTransplantPackage(oversizedTranscript);
+  const continuityPackage = buildDefaultChatContinuityTransplantPackage(oversizedTranscript);
 
   assert.equal(continuityPackage.mode, 'semantic_transplant');
   assert.ok(continuityPackage.instructions);
@@ -174,7 +174,7 @@ test('semantic continuity digest keeps a representative middle snippet instead o
       : `Oversized user turn ${index + 1}: ${'x'.repeat(160)}`,
   }));
 
-  const continuityPackage = buildSoloChatContinuityTransplantPackage(oversizedTranscript);
+  const continuityPackage = buildDefaultChatContinuityTransplantPackage(oversizedTranscript);
 
   assert.equal(continuityPackage.mode, 'semantic_transplant');
   assert.match(
@@ -183,8 +183,8 @@ test('semantic continuity digest keeps a representative middle snippet instead o
   );
 });
 
-test('solo chat continuity transplant instructions keep the full earlier conversational transcript', () => {
-  const continuityPackage = buildSoloChatContinuityTransplantPackage([
+test('default chat continuity transplant instructions keep the full earlier conversational transcript', () => {
+  const continuityPackage = buildDefaultChatContinuityTransplantPackage([
     {
       senderKind: 'system',
       senderName: 'Runtime',
@@ -206,8 +206,8 @@ test('solo chat continuity transplant instructions keep the full earlier convers
   assert.ok(!instructions.includes('Runtime'));
 });
 
-test('solo chat continuity transplant instructions preserve preceding tool labels for assistant turns', () => {
-  const instructions = buildSoloChatContinuityTransplantPackage([
+test('default chat continuity transplant instructions preserve preceding tool labels for assistant turns', () => {
+  const instructions = buildDefaultChatContinuityTransplantPackage([
     {
       senderKind: 'user',
       senderName: 'Kenny',
@@ -234,8 +234,8 @@ test('solo chat continuity transplant instructions preserve preceding tool label
   );
 });
 
-test('solo chat continuity transplant instructions fold segmented assistant turns into one line', () => {
-  const instructions = buildSoloChatContinuityTransplantPackage([
+test('default chat continuity transplant instructions fold segmented assistant turns into one line', () => {
+  const instructions = buildDefaultChatContinuityTransplantPackage([
     {
       senderKind: 'user',
       senderName: 'Kenny',
@@ -274,8 +274,8 @@ test('solo chat continuity transplant instructions fold segmented assistant turn
   );
 });
 
-test('solo chat continuity transplant instructions preserve structured choice responses without body text', () => {
-  const instructions = buildSoloChatContinuityTransplantPackage([
+test('default chat continuity transplant instructions preserve structured choice responses without body text', () => {
+  const instructions = buildDefaultChatContinuityTransplantPackage([
     {
       id: 'message-choice-response',
       channelId: 'channel-1',
@@ -311,14 +311,14 @@ test('solo chat continuity transplant instructions preserve structured choice re
   );
 });
 
-test('solo chat does not re-bootstrap when the same runtime session is reused across lanes', () => {
+test('default chat does not re-bootstrap when the same runtime session is reused across lanes', () => {
   const now = new Date('2026-04-15T00:00:00.000Z');
   let state = createDefaultChatState();
   state = createChatChannel(state, {
-    title: 'Solo bootstrap lane test',
+    title: 'Default bootstrap lane test',
     topic: 'Keep bootstrap gated by lane identity.',
-    entryKind: 'solo',
-    roomMode: 'boss_chat',
+    entryKind: 'default',
+    roomMode: 'chat_channel',
   }, now);
   const channelId = state.channels[0].id;
   const reusedSessionId = 'session-orchestrator-reused';

@@ -32,7 +32,7 @@ This spec defines a full architectural correction:
   preserving the assistant header across handoff
 - keep assistant-owned waiting states on the assistant lane after the first
   assistant segment appears
-- unify solo, direct, group, sequential, and concurrent surfaces under one
+- unify default, direct, group, sequential, and concurrent surfaces under one
   assistant-turn delivery model
 - remove the singular-response assumptions that currently drive regressions
 - avoid long-lived aliases or backward-compatibility semantics for the old
@@ -108,7 +108,7 @@ This spec defines a full architectural correction:
 
 - **Correctness**: live and durable transcript must describe the same assistant
   turn structure
-- **UX consistency**: direct, solo, group, sequential, and concurrent rooms
+- **UX consistency**: direct, default, group, sequential, and concurrent rooms
   must use the same assistant-turn segmentation rules
 - **Observability**: trace/debug surfaces must expose segment/turn boundaries so
   failures can be diagnosed without guesswork

@@ -180,7 +180,7 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
     body: 'Ship a small feature on an isolated worktree',
     existingCount: 0,
     originSurface: 'code',
-    entryKind: 'solo',
+    entryKind: 'default',
     repoPath: 'C:/repo/cats-platform',
     draftSessionPolicy: {
       workspaceKind: 'worktree',
@@ -309,7 +309,7 @@ test('code-origin runtime declare_artifact calls persist artifacts during dispat
     body: 'Create a preview artifact',
     existingCount: 0,
     originSurface: 'code',
-    entryKind: 'solo',
+    entryKind: 'default',
     repoPath: 'C:/repo/cats-platform',
     draftSessionPolicy: {
       workspaceKind: 'source',
@@ -427,7 +427,7 @@ test('code-origin finalization claims without accepted declarations are blocked'
     body: 'Create a preview artifact',
     existingCount: 0,
     originSurface: 'code',
-    entryKind: 'solo',
+    entryKind: 'default',
     repoPath: 'C:/repo/cats-platform',
     draftSessionPolicy: {
       workspaceKind: 'source',

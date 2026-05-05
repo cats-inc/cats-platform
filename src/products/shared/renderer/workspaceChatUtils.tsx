@@ -295,8 +295,8 @@ export function buildNewChatChannelInput(options: {
   const normalizedLeadCatId = defaultRecipientCatId?.trim() || null;
   const normalizedParticipantCatIds = participantCatIds.filter((id) => id !== normalizedLeadCatId);
   const resolvedEntryKind = entryKind
-    ?? (normalizedLeadCatId || normalizedParticipantCatIds.length > 0 ? 'group' : 'solo');
-  const directLeadCatId = normalizedLeadCatId ?? normalizedParticipantCatIds[0] ?? null;
+    ?? (normalizedLeadCatId || normalizedParticipantCatIds.length > 0 ? 'group' : 'default');
+  const directRecipientCatId = normalizedLeadCatId ?? normalizedParticipantCatIds[0] ?? null;
   const runtimeSessionPolicy = resolveCreateRuntimeSessionPolicy({
     repoPath,
     policy: draftSessionPolicy,
@@ -323,12 +323,12 @@ export function buildNewChatChannelInput(options: {
       : undefined,
   };
 
-  if (resolvedEntryKind === 'direct' && directLeadCatId) {
+  if (resolvedEntryKind === 'direct' && directRecipientCatId) {
     return {
       ...baseInput,
-      roomMode: 'direct_cat_chat',
-      defaultRecipientId: directLeadCatId,
-      participantCatIds: [directLeadCatId, ...normalizedParticipantCatIds.filter((id) => id !== directLeadCatId)],
+      roomMode: 'direct_message',
+      defaultRecipientId: directRecipientCatId,
+      participantCatIds: [directRecipientCatId, ...normalizedParticipantCatIds.filter((id) => id !== directRecipientCatId)],
     };
   }
 

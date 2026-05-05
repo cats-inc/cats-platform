@@ -23,18 +23,18 @@ mixed together:
 - the runtime session used to talk to the target
 - the provider-native session or thread holding model memory
 
-Those layers do not mean the same thing. In particular, a same-chat solo
+Those layers do not mean the same thing. In particular, a same-chat default
 retarget should not silently become "start fresh" just because the runtime or
 provider session changed, while a new participant joining a group chat should
 not automatically inherit full-room omniscience unless that is the intended join
 mode.
 
 This spec defines a product-owned continuity taxonomy for Chat. It separates
-`solo retarget`, `group handoff`, and `group join`, and it defines when the
+`default retarget`, `group handoff`, and `group join`, and it defines when the
 system must transplant prior context into a new provider session versus when a
 targeted continuity package or no prior context is the correct behavior.
 
-Today, same-chat `solo` provider/model switching can restart the backing
+Today, same-chat `default` provider/model switching can restart the backing
 session without delivering an equivalent continuity transplant. This should be
 treated as a product defect relative to expected chat behavior, not as a valid
 semantic of "new model, new blank context".
@@ -43,9 +43,9 @@ semantic of "new model, new blank context".
 
 - Define one explicit continuity model for Chat that does not depend on
   incidental runtime-session identity.
-- Make same-chat `solo` provider/model switching preserve continuity by
+- Make same-chat `default` provider/model switching preserve continuity by
   default.
-- Separate `solo retarget`, `group handoff`, and `group join` into different
+- Separate `default retarget`, `group handoff`, and `group join` into different
   semantic cases instead of one vague "new session" bucket.
 - Define what the first message into a new provider-native session must contain
   when continuity should be preserved.
@@ -63,7 +63,7 @@ semantic of "new model, new blank context".
 
 ## User Stories
 
-- As a Chat user, I want switching the model in the same solo chat to preserve
+- As a Chat user, I want switching the model in the same default chat to preserve
   the conversation unless I explicitly start fresh.
 - As a group-chat operator, I want a handoff to another room member to include
   the context they need, without assuming they must know the entire room
@@ -80,16 +80,16 @@ contract.
 
 The main defects and anti-patterns are:
 
-- same-chat `solo` retarget currently restarts the session when provider/model
+- same-chat `default` retarget currently restarts the session when provider/model
   changes, but it does not guarantee an equivalent continuity transplant into
   the replacement session
-- `buildSoloChatBootstrapInstructions` is being used as a thin re-entry patch
+- `buildDefaultChatBootstrapInstructions` is being used as a thin re-entry patch
   in cases where same-chat continuity should be a first-class semantic
   transplant
 - `MAX_PROMPT_RECENT_MESSAGES = 8` currently constrains that bootstrap path,
   which is acceptable for bounded recent-message formatting but not as the
   general continuity rule
-- `shouldRestartSoloSession` currently acts as a lifecycle gate for session
+- `shouldRestartDefaultChatSession` currently acts as a lifecycle gate for session
   restart, but it also effectively becomes a hidden continuity boundary because
   continuity is not re-established at equivalent fidelity after restart
 
@@ -110,15 +110,15 @@ bless.
    runtime-session or provider-session identity alone.
 3. A change in `runtime session`, by itself, shall not redefine what the user
    means by "same chat".
-4. A `solo retarget` shall mean:
+4. A `default retarget` shall mean:
    - same `conversation`
    - same `logical participant`
    - different `execution target`, `runtime session`, or `provider-native session`
-5. `solo retarget` shall preserve continuity by default.
-6. When `solo retarget` lands on a provider-native session that does not already
+5. `default retarget` shall preserve continuity by default.
+6. When `default retarget` lands on a provider-native session that does not already
    contain prior chat memory, the first new turn shall receive a continuity
    transplant.
-7. A `solo` continuity transplant shall be derived from the full relevant prior
+7. A `default` continuity transplant shall be derived from the full relevant prior
    conversation state for that participant. It shall not be modeled as an
    arbitrary fixed-size recent-message excerpt.
 8. When the full prior transcript cannot be sent verbatim due to provider
@@ -130,7 +130,7 @@ bless.
    - decisions or adopted outcomes already made
    - task-relevant facts and constraints
    - enough recent verbatim turns to continue naturally from the latest state
-9. Any UI action that intentionally clears `solo` continuity shall be explicit
+9. Any UI action that intentionally clears `default` continuity shall be explicit
    product language such as `Start fresh`, `New branch`, or equivalent. Changing
    provider or model alone shall not imply that behavior.
 10. A `group handoff` shall mean:
@@ -154,7 +154,7 @@ bless.
 15. First-slice default for mid-conversation participant joins shall be
     `task_scoped_member`, not implicit full-room continuity.
 16. `full_room_member` join shall allow a continuity transplant equivalent in
-    fidelity to a `solo retarget`, scoped to the room.
+    fidelity to a `default retarget`, scoped to the room.
 17. `task_scoped_member` join shall provide only the continuity package needed
     for the task the new participant is joining.
 18. `fresh_member` join shall not automatically include prior room history
@@ -178,7 +178,7 @@ bless.
     when the creation flow intends carry-over from a source chat or draft.
 25. The product shall test continuity selection at the semantic boundary. Tests
     should verify which continuity mode applies for:
-    - `solo retarget`
+    - `default retarget`
     - `group handoff`
     - `group join`
     - `parallel child conversation`
@@ -190,7 +190,7 @@ bless.
 
 ### Non-Functional Requirements
 
-- **Predictability**: same-chat `solo` retarget must behave consistently across
+- **Predictability**: same-chat `default` retarget must behave consistently across
   providers.
 - **Honesty**: group joins must not silently pretend a new participant knows
   room history that was never actually delivered.
@@ -207,7 +207,7 @@ bless.
 
 | Scenario | Conversation | Logical Participant | Default Continuity | First Turn Into New Provider Session |
 |----------|--------------|---------------------|--------------------|--------------------------------------|
-| `solo retarget` | Same | Same | Preserve | Full or semantically complete continuity transplant |
+| `default retarget` | Same | Same | Preserve | Full or semantically complete continuity transplant |
 | `group handoff` | Same | Different existing member | Targeted | Targeted handoff package |
 | `group join` | Same | New member | Depends on join mode | Join-mode-specific package |
 | `parallel child conversation` | Child-local | Child-local | Child-local | Explicit seed context only; no sibling transcript sharing by default |
@@ -249,16 +249,16 @@ retarget or any incompatible native-session boundary.
 
 The current-style "bootstrap instructions" approach of replaying only a small
 fixed recent excerpt is not sufficient as the general continuity contract for
-same-chat `solo retarget`.
+same-chat `default retarget`.
 
 Small recent excerpts may still appear as one ingredient inside a larger
 semantic transplant, but they must not be treated as the whole continuity model.
 
 The current implementation names that embody this anti-pattern include:
 
-- `buildSoloChatBootstrapInstructions`
+- `buildDefaultChatBootstrapInstructions`
 - `MAX_PROMPT_RECENT_MESSAGES`
-- `shouldRestartSoloSession` when used without an equivalent transplant path
+- `shouldRestartDefaultChatSession` when used without an equivalent transplant path
 
 They should remain bounded helpers or lifecycle gates, not the semantic source
 of truth for same-chat continuity.
@@ -281,7 +281,7 @@ This spec therefore treats parallel-chat continuity as:
 
 This spec implies these product-language rules:
 
-- same-chat solo model/provider changes mean `continue this chat`
+- same-chat default model/provider changes mean `continue this chat`
 - adding a new room member means `join with a defined continuity mode`
 - handing work to an existing member means `handoff`
 - wiping prior continuity must be explicit and user-visible

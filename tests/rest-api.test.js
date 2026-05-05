@@ -743,14 +743,14 @@ test('PATCH /api/preferences keeps work conversation behavior isolated from chat
   });
 });
 
-test('PATCH /api/channels/:channelId persists solo chat AI reply settings', async () => {
+test('PATCH /api/channels/:channelId persists default chat AI reply settings', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        title: 'Solo',
-        topic: 'Solo chat',
+        title: 'Default',
+        topic: 'Default chat',
         originSurface: 'chat',
       }),
     });
@@ -855,7 +855,7 @@ test('POST /api/channels supports direct Cat chat with existingCatIds and initia
       body: JSON.stringify({
         title: '',
         topic: 'Private companion lane',
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         participantCatIds: [companionCatId],
       }),
     });
@@ -865,7 +865,7 @@ test('POST /api/channels supports direct Cat chat with existingCatIds and initia
     assert.equal(createChannelPayload.channel.title, 'Companion Direct Chat');
     assert.equal(createChannelPayload.channel.assignedCats.length, 1);
     assert.equal(createChannelPayload.channel.assignedCats[0].catId, companionCatId);
-    assert.equal(createChannelPayload.channel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(createChannelPayload.channel.roomRouting.mode, 'direct_message');
     assert.equal(createChannelPayload.channel.roomRouting.defaultRecipientId, companionCatId);
     assert.deepEqual(createChannelPayload.channel.workingMemory, {
       summary: null,
@@ -924,7 +924,7 @@ test('bot binding routes support multiple Telegram bots across Cats', async () =
         platform: 'telegram',
         botName: 'companion_bot',
         catId: companionCatId,
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
       }),
     });
     assert.equal(companionBindingResponse.status, 201);
@@ -938,23 +938,23 @@ test('bot binding routes support multiple Telegram bots across Cats', async () =
     assert.ok(listBindingsPayload.botBindings.some((binding) =>
       binding.botName === 'boss_cat_bot'
       && binding.isBossBinding === true
-      && binding.roomMode === 'direct_cat_chat'));
+      && binding.roomMode === 'direct_message'));
     assert.ok(listBindingsPayload.botBindings.some((binding) =>
       binding.botName === 'companion_bot'
       && binding.catId === companionCatId
-      && binding.roomMode === 'direct_cat_chat'));
+      && binding.roomMode === 'direct_message'));
 
     const patchBindingResponse = await fetch(`${baseUrl}/api/bot-bindings/${companionBindingId}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         status: 'disabled',
       }),
     });
     assert.equal(patchBindingResponse.status, 200);
     const patchBindingPayload = await patchBindingResponse.json();
-    assert.equal(patchBindingPayload.botBinding.roomMode, 'direct_cat_chat');
+    assert.equal(patchBindingPayload.botBinding.roomMode, 'direct_message');
     assert.equal(patchBindingPayload.botBinding.status, 'disabled');
 
     const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);

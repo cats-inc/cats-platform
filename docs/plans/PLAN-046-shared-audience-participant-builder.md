@@ -57,7 +57,7 @@ five typed builder functions into a shared module and rewires every site.
       be eliminated by having `buildChatComposerStackParticipants` produce
       `DraftComposerStackParticipant[]` directly
 - [ ] Task 3.4: Replace `WorkspaceComposerTargetSlot.tsx` —
-      `catToAudienceParticipant` and solo execution-target inline construction
+      `catToAudienceParticipant` and default execution-target inline construction
       with builder calls
 
 **Deliverable**: active-chat and workspace surfaces use builders

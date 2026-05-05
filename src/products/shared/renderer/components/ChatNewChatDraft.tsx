@@ -658,7 +658,7 @@ export function NewChatDraft({
       return [buildAudienceParticipantFromTemporaryParticipant(effectiveDefaultRecipientTemporaryParticipant)];
     }
 
-    // Solo implicit: use the current execution target value
+    // Default implicit: use the current execution target value
     if (activePanelExecutionTarget) {
       return [buildAudienceParticipantFromExecutionTarget(activePanelExecutionTarget)];
     }

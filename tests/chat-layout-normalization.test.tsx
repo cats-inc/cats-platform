@@ -6,12 +6,12 @@ import { resolveLayoutMetrics } from '../src/design/chatLayout.ts';
 import { resolveProjectPath } from './helpers/projectRoot.js';
 import { readProductChatViewSource } from './helpers/readProductChatViewSource.js';
 
-test('resolveLayoutMetrics keeps the unified 720px transcript width and surfaces the side secondary panel for wide multi-cat rooms', () => {
+test('resolveLayoutMetrics keeps the unified 720px transcript width and surfaces the side secondary panel for wide participant chat rooms', () => {
   const metrics = resolveLayoutMetrics('multi_cat', 1280);
 
   // Owner directive (2026-05-01): unify transcript width to 720px across
   // every layout mode so the composer no longer jumps when the user
-  // switches between solo/direct/companion/multi_cat or sends the first
+  // switches between default/direct/companion/multi_cat or sends the first
   // message in a draft.
   assert.equal(metrics.transcriptMaxWidth, '720px');
   assert.equal(metrics.secondarySurfacePosition, 'side');

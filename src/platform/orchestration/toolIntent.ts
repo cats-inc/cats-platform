@@ -50,7 +50,7 @@ export function resolveToolIntentManifest(
     ? ['workspace.audit', 'delivery.audit']
     : ['session.observe'];
   const requiredCapabilities = input.participantKind === 'cat'
-    && input.roomMode === 'direct_cat_chat'
+    && input.roomMode === 'direct_message'
     ? ['workspace.audit']
     : ['session.observe'];
 

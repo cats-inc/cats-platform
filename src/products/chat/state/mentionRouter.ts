@@ -22,7 +22,7 @@ import type {
 } from '../../../shared/roomRouting.js';
 import {
   isDirectLaneChannel,
-  isSoloThreadChannel,
+  isDefaultChatChannel,
 } from '../shared/channelTopology.js';
 import {
   activeAssignedParticipants,
@@ -71,7 +71,7 @@ function buildOrchestratorTarget(state: ChatState, channel: ChatChannelView): Ro
   return {
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
-    participantName: isSoloThreadChannel(channel) ? ORCHESTRATOR_NAME : resolveOrchestratorDisplayName(state),
+    participantName: isDefaultChatChannel(channel) ? ORCHESTRATOR_NAME : resolveOrchestratorDisplayName(state),
     laneId: null,
     sessionId: null,
   };
@@ -125,7 +125,7 @@ function toParticipantRef(target: RoutingTarget): RoomRoutingParticipantRef {
   };
 }
 
-function buildDirectLeadParticipantRef(
+function buildDirectRecipientParticipantRef(
   state: ChatState,
   channel: ChatChannelView,
   defaultRecipientId: string,
@@ -158,18 +158,18 @@ export function resolveRoomDefaultRoutingTarget(
       return {
         participant: toParticipantRef(target),
         target,
-        defaultTargetReason: 'direct_chat_recipient',
+        defaultTargetReason: 'direct_message_recipient',
         blockedReason: null,
         note: null,
       };
     }
 
     return {
-      participant: buildDirectLeadParticipantRef(state, channel, routing.defaultRecipientId),
+      participant: buildDirectRecipientParticipantRef(state, channel, routing.defaultRecipientId),
       target: null,
-      defaultTargetReason: 'direct_chat_recipient',
-      blockedReason: 'missing_direct_chat_recipient',
-      note: 'This direct chat no longer has an active lead Cat. Re-add the Cat or mention another participant explicitly.',
+      defaultTargetReason: 'direct_message_recipient',
+      blockedReason: 'missing_direct_message_recipient',
+      note: 'This direct message no longer has an active recipient Cat. Re-add the Cat or mention another participant explicitly.',
     };
   }
 
@@ -177,7 +177,7 @@ export function resolveRoomDefaultRoutingTarget(
   return {
     participant: toParticipantRef(target),
     target,
-    defaultTargetReason: 'boss_chat_default',
+    defaultTargetReason: 'chat_channel_default',
     blockedReason: null,
     note: null,
   };
@@ -209,9 +209,9 @@ function createRouteResolution(input: {
  * construction and produces a structured result that the dispatch loop consumes.
  *
  * Routing rules:
- * - No mentions + boss_chat → Boss Cat (orchestrator) via room_default
- * - No mentions + direct_cat_chat → lead Cat via room_default
- * - No mentions + participant room → Boss Cat (orchestrator) via room_default
+ * - No mentions + chat_channel → Boss Cat (orchestrator) via room_default
+ * - No mentions + direct_message → direct recipient Cat via room_default
+ * - No mentions + participant chat → Boss Cat (orchestrator) via room_default
  * - @Cat_A → Cat_A via explicit_single
  * - @Cat_A @Cat_B → both via explicit_multi
  * - @UnknownName → appears in unresolvedMentions

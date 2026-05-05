@@ -10,7 +10,7 @@ import {
 test('resolveActiveChannelMessageMetadata reuses the latest active group audience metadata', () => {
   const metadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
-      channelKind: 'multi_cat_room',
+      channelKind: 'chat_channel',
       messages: [
         {
           id: 'message-user-1',
@@ -50,7 +50,7 @@ test('resolveActiveChannelMessageMetadata reuses the latest active group audienc
 test('resolveActiveChannelMessageMetadata falls back to all active room participants for follow-up sends', () => {
   const metadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
-      channelKind: 'multi_cat_room',
+      channelKind: 'chat_channel',
       messages: [
         {
           id: 'message-user-1',
@@ -88,15 +88,15 @@ test('resolveActiveChannelMessageMetadata falls back to all active room particip
   });
 });
 
-test('resolveActiveChannelMessageMetadata stays off for solo and direct lanes', () => {
+test('resolveActiveChannelMessageMetadata stays off for default and direct lanes', () => {
   const soloMetadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
-      channelKind: 'boss_thread',
+      channelKind: 'chat_channel',
       messages: [],
       assignedParticipants: [],
       assignedCats: [],
       roomRouting: {
-        mode: 'boss_chat',
+        mode: 'chat_channel',
         workflow: {
           activeTurn: null,
           turnHistory: [],
@@ -106,7 +106,7 @@ test('resolveActiveChannelMessageMetadata stays off for solo and direct lanes', 
   });
   const directMetadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
-      channelKind: 'direct_lane',
+      channelKind: 'direct_message',
       messages: [],
       assignedParticipants: [
         {
@@ -116,7 +116,7 @@ test('resolveActiveChannelMessageMetadata stays off for solo and direct lanes', 
       ],
       assignedCats: [],
       roomRouting: {
-        mode: 'direct_cat_chat',
+        mode: 'direct_message',
         workflow: {
           activeTurn: null,
           turnHistory: [],
@@ -132,7 +132,7 @@ test('resolveActiveChannelMessageMetadata stays off for solo and direct lanes', 
 test('resolveActiveChannelMessageMetadata honors the current active-room audience chip order', () => {
   const metadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
-      channelKind: 'multi_cat_room',
+      channelKind: 'chat_channel',
       messages: [
         {
           id: 'message-user-1',
@@ -177,7 +177,7 @@ test('resolveActiveChannelMessageMetadata honors the current active-room audienc
 test('resolveActiveChannelAudienceState restores the active-room chip order from the latest user metadata', () => {
   const audienceState = resolveActiveChannelAudienceState({
     selectedChannel: {
-      channelKind: 'multi_cat_room',
+      channelKind: 'chat_channel',
       messages: [
         {
           id: 'message-user-1',

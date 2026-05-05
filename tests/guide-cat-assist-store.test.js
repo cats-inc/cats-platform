@@ -48,7 +48,7 @@ test('guide cat assist refresh context hash stays stable across object key order
   const alphaHash = buildGuideCatAssistRefreshContextHash({
     scope: {
       surfaceId: 'chat:new',
-      surfaceMode: 'solo',
+      surfaceMode: 'default',
       audienceState: 'default',
     },
     guideCat: {
@@ -72,7 +72,7 @@ test('guide cat assist refresh context hash stays stable across object key order
   const betaHash = buildGuideCatAssistRefreshContextHash({
     scope: {
       surfaceId: 'chat:new',
-      surfaceMode: 'solo',
+      surfaceMode: 'default',
       audienceState: 'default',
     },
     guideCat: {

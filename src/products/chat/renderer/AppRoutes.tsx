@@ -118,7 +118,7 @@ export function AppRoutes({
                     composerStackParticipants={context.composerStackParticipants}
                     directLaneCat={context.directLaneCat}
                     isDirectLane={context.isDirectLane}
-                    isSoloComposer={context.isSoloComposer}
+                    isDefaultChatComposer={context.isDefaultChatComposer}
                     activeWorkflowShape={context.activeWorkflowShape}
                     onToggleActiveWorkflowShape={context.onToggleActiveWorkflowShape}
                     activeAudienceKeys={context.activeAudienceKeys}
@@ -192,7 +192,7 @@ export function AppRoutes({
                     composerStackParticipants={context.composerStackParticipants}
                     directLaneCat={context.directLaneCat}
                     isDirectLane={context.isDirectLane}
-                    isSoloComposer={context.isSoloComposer}
+                    isDefaultChatComposer={context.isDefaultChatComposer}
                     activeWorkflowShape={context.activeWorkflowShape}
                     onToggleActiveWorkflowShape={context.onToggleActiveWorkflowShape}
                     activeAudienceKeys={context.activeAudienceKeys}

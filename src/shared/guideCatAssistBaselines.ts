@@ -117,8 +117,8 @@ export function resolveLobbyGuideCatAssistBaseline(options: {
 
 /**
  * The +New chat surface is a single deterministic baseline. Composer
- * mode (solo / group / parallel) is renderer state, not a guide-cat-assist
- * scope axis, so the baseline does not switch on it. The renderer ignores
+ * preset state is renderer state, not a guide-cat-assist scope axis, so the
+ * baseline does not switch on it. The renderer ignores
  * deterministic-origin chips today (only runtime-origin chips render —
  * see `chatNewChatDraftSupport.ts`'s `resolvePayloadDraftAssist`), so the
  * baseline ships an empty `entryChips` array; the cached bundle still

@@ -67,7 +67,7 @@ bindings.
      the global household lead
 
 5. Transport messages route into the bound Cat's private lane
-   (`direct_cat_chat`).
+   (`direct_message`).
    - there is no separate `transport_inbox` channel type
    - each Cat has one private lane that receives both web and transport messages
    - the private lane can optionally bind to Telegram (or not)
@@ -81,7 +81,7 @@ bindings.
    - global `Boss Cat`
    - Cat identity/persona
    - transport bot binding (a property of the Cat, not a separate channel)
-   - private lane (the Cat's `direct_cat_chat` channel)
+   - private lane (the Cat's `direct_message` channel)
 
 ## Consequences
 

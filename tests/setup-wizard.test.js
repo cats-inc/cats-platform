@@ -340,14 +340,14 @@ test('after setup + activate, system messages stay generic and keep verbosity me
       'Fresh Boss Cat chat should start one implicit orchestrator session',
     );
 
-    // Solo-room orchestrator startup stays generic and hidden from the visible cat identity.
+    // Default-room orchestrator startup stays generic and hidden from the visible cat identity.
     const orchMessage = sessionStartedMessages.find(
       (m) => m.metadata.targetKind === 'orchestrator',
     );
     assert.ok(orchMessage, 'Orchestrator session_started message should exist');
-    assert.ok(orchMessage.body.includes('Claude-CLI'), 'Should use the execution label in solo rooms');
-    assert.ok(!orchMessage.body.includes('Orchestrator'), 'Should not expose the internal orchestrator placeholder in solo rooms');
-    assert.ok(!orchMessage.body.includes('將將'), 'Should not expose boss cat name in solo session messages');
+    assert.ok(orchMessage.body.includes('Claude-CLI'), 'Should use the execution label in default rooms');
+    assert.ok(!orchMessage.body.includes('Orchestrator'), 'Should not expose the internal orchestrator placeholder in default rooms');
+    assert.ok(!orchMessage.body.includes('將將'), 'Should not expose boss cat name in default session messages');
     assert.ok(
       /\n\(cwd: .*\\.cats[\\/]runtime[\\/]sessions[\\/].+\)/u.test(orchMessage.body),
       'Should include runtime cwd in the session message',
@@ -449,7 +449,7 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
   });
 });
 
-test('POST /api/channels creates a solo Boss Chat without assigning Boss Cat as a worker', async () => {
+test('POST /api/channels creates a default Boss Chat without assigning Boss Cat as a worker', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     // Complete setup first
     const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
@@ -481,24 +481,24 @@ test('POST /api/channels creates a solo Boss Chat without assigning Boss Cat as 
       'Boss Cat should stay implicit in the new channel',
     );
 
-    // Solo boss threads seed only the room_created system message.
+    // Default boss threads seed only the room_created system message.
     const roomCreated = createPayload.channel.messages.find(
       (m) => m.metadata?.event === 'room_created',
     );
-    assert.ok(roomCreated, 'Solo Boss Chat should seed a room_created system message');
+    assert.ok(roomCreated, 'Default Boss Chat should seed a room_created system message');
     assert.equal(roomCreated.body, 'Room created: Boss Chat.');
-    assert.equal(roomCreated.metadata.roomMode, 'boss_chat');
+    assert.equal(roomCreated.metadata.roomMode, 'chat_channel');
     assert.equal(
       createPayload.channel.messages.some(
         (m) => m.senderKind === 'orchestrator' && m.senderName === 'Smelly',
       ),
       false,
-      'Solo Boss Chat should not inject a Boss Cat greeting bubble',
+      'Default Boss Chat should not inject a Boss Cat greeting bubble',
     );
   });
 });
 
-test('POST /api/channels keeps the room_created system message when skipBossCatGreeting is set for solo Boss Chat', async () => {
+test('POST /api/channels keeps the room_created system message when skipBossCatGreeting is set for default Boss Chat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
       method: 'POST',
@@ -535,7 +535,7 @@ test('POST /api/channels keeps the room_created system message when skipBossCatG
   });
 });
 
-test('POST /api/channels treats explicit solo entry as solo even with participants', async () => {
+test('POST /api/channels treats explicit default entry as default even with participants', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
       method: 'POST',
@@ -552,10 +552,10 @@ test('POST /api/channels treats explicit solo entry as solo even with participan
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        title: 'Solo With Participant',
-        topic: 'Contradictory creation input should stay solo for greetings.',
+        title: 'Default With Participant',
+        topic: 'Contradictory creation input should stay default for greetings.',
         originSurface: 'chat',
-        entryKind: 'solo',
+        entryKind: 'default',
         cats: [{ name: 'Custom-Agent', provider: 'gemini', roles: ['coder'] }],
       }),
     });
@@ -569,7 +569,7 @@ test('POST /api/channels treats explicit solo entry as solo even with participan
         (m) => m.senderKind === 'orchestrator' && m.senderName === 'Smelly',
       ),
       false,
-      'Explicit solo creation should not inject a Boss Cat greeting bubble',
+      'Explicit default creation should not inject a Boss Cat greeting bubble',
     );
   });
 });

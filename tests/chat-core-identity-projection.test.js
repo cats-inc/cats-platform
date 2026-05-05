@@ -45,7 +45,7 @@ test('ChatStore projects direct-lane participants, temporary participant actors,
     {
       title: 'Companion Direct',
       topic: 'Direct lanes should stay owner-to-cat in core projection.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,

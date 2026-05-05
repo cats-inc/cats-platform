@@ -5,7 +5,7 @@ import type {
 } from '../../../shared/platform-contract.js';
 import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
 import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
-import { isSoloThreadChannel } from '../../chat/shared/channelTopology.js';
+import { isDefaultChatChannel } from '../../chat/shared/channelTopology.js';
 import {
   buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
@@ -27,7 +27,7 @@ export interface ComposerModelValue {
 
 export interface ComposerSelectedChannelLike {
   id: string;
-  channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
+  channelKind?: 'chat_channel' | 'direct_message' | null;
   pendingProvider?: string | null;
   roomRouting?: {
     mode?: RoomRoutingMode | null;
@@ -81,7 +81,7 @@ export interface PrepareComposerChannelDispatchResult<TPayload> {
 export interface PrepareWorkspaceSendContextResult<TPayload>
   extends PrepareComposerChannelDispatchResult<TPayload> {
   messageBody: string;
-  soloDispatchTarget: PendingExecutionTargetInput | null;
+  defaultDispatchTarget: PendingExecutionTargetInput | null;
 }
 
 export function isDirectLaneSelectedForCat<
@@ -94,11 +94,11 @@ export function isDirectLaneSelectedForCat<
     return false;
   }
 
-  return channel.channelKind === 'direct_lane'
+  return channel.channelKind === 'direct_message'
     && channel.roomRouting?.defaultRecipientId === catId;
 }
 
-export function buildSoloDispatchTarget<
+export function buildDefaultChatDispatchTarget<
   ModelValue extends ComposerModelValue,
   TSelectedChannel extends ComposerSelectedChannelLike,
 >(options: {
@@ -106,30 +106,30 @@ export function buildSoloDispatchTarget<
   isCatScopedLaneRoute: boolean;
   channelId: string;
   selectedChannel: TSelectedChannel | null;
-  soloChannelExecutionTarget: ModelValue;
+  defaultChannelExecutionTarget: ModelValue;
 }): PendingExecutionTargetInput | null {
   const {
     wasDraftingNewChat,
     isCatScopedLaneRoute,
     channelId,
     selectedChannel,
-    soloChannelExecutionTarget,
+    defaultChannelExecutionTarget,
   } = options;
 
   if (
     wasDraftingNewChat
     || isCatScopedLaneRoute
     || selectedChannel?.id !== channelId
-    || !isSoloThreadChannel(selectedChannel)
+    || !isDefaultChatChannel(selectedChannel)
   ) {
     return null;
   }
 
   return {
-    pendingProvider: soloChannelExecutionTarget.provider,
-    pendingModel: soloChannelExecutionTarget.model,
-    pendingInstance: soloChannelExecutionTarget.instance,
-    pendingModelSelection: soloChannelExecutionTarget.modelSelection,
+    pendingProvider: defaultChannelExecutionTarget.provider,
+    pendingModel: defaultChannelExecutionTarget.model,
+    pendingInstance: defaultChannelExecutionTarget.instance,
+    pendingModelSelection: defaultChannelExecutionTarget.modelSelection,
   };
 }
 
@@ -222,7 +222,7 @@ export async function prepareComposerChannelDispatch<
   draftDefaultRecipientCatId: string | null;
   participantCatIds: string[];
   temporaryParticipants?: ComposerTemporaryParticipantLike[];
-  draftEntryKind?: 'solo' | 'group' | 'direct';
+  draftEntryKind?: 'default' | 'group' | 'direct';
   draftExecutionTarget?: ComposerModelValue;
   assistantResponseLanguage?: AssistantResponseLanguage;
   t?: WorkspaceChatTranslator;
@@ -401,12 +401,12 @@ export async function prepareWorkspaceSendContext<
   draftDefaultRecipientCatId: string | null;
   participantCatIds: string[];
   temporaryParticipants?: ComposerTemporaryParticipantLike[];
-  draftEntryKind?: 'solo' | 'group' | 'direct';
+  draftEntryKind?: 'default' | 'group' | 'direct';
   draftExecutionTarget?: ModelValue;
   assistantResponseLanguage?: AssistantResponseLanguage;
   t?: WorkspaceChatTranslator;
   selectedChannel: ComposerSelectedChannelLike | null;
-  soloChannelExecutionTarget: ModelValue;
+  defaultChannelExecutionTarget: ModelValue;
   draftFiles: File[];
   channelFiles: File[];
   createChatChannel: (
@@ -454,7 +454,7 @@ export async function prepareWorkspaceSendContext<
     assistantResponseLanguage,
     t,
     selectedChannel,
-    soloChannelExecutionTarget,
+    defaultChannelExecutionTarget,
     draftFiles,
     channelFiles,
     createChatChannel,
@@ -502,12 +502,12 @@ export async function prepareWorkspaceSendContext<
   });
   payload = preparedChannel.payload;
 
-  const soloDispatchTarget = buildSoloDispatchTarget({
+  const defaultDispatchTarget = buildDefaultChatDispatchTarget({
     wasDraftingNewChat,
     isCatScopedLaneRoute,
     channelId: preparedChannel.channelId,
     selectedChannel,
-    soloChannelExecutionTarget,
+    defaultChannelExecutionTarget,
   });
   const filesToUpload = resolveComposerFilesToUpload({
     isCatScopedLaneRoute,
@@ -538,6 +538,6 @@ export async function prepareWorkspaceSendContext<
         ? payload
         : preparedChannel.rollbackPayload,
     messageBody: preparedMessage.messageBody,
-    soloDispatchTarget,
+    defaultDispatchTarget,
   };
 }

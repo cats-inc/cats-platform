@@ -74,7 +74,7 @@ export interface BuildMemoryRetrievalContextInput {
   channelTitle?: string;
   channelTopic?: string;
   workingMemory?: MemoryChannelContext['workingMemory'];
-  roomMode?: 'boss_chat' | 'direct_cat_chat' | null;
+  roomMode?: 'chat_channel' | 'direct_message' | null;
   transport?: 'telegram' | 'line' | 'web' | null;
   includeOwnerProfile?: boolean;
   companionStore?: MemoryCompanionSurface;

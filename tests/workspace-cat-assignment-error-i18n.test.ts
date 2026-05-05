@@ -23,7 +23,7 @@ test('workspace cat assignment localizes known channel assignment errors', () =>
   );
   assert.equal(
     localizeWorkspaceCatAssignmentErrorMessage(
-      'Direct lanes can only contain their lead cat',
+      'Direct messages can only contain their direct recipient Cat',
       t,
     ),
     '直接對話只能保留該對話的主要貓咪。',

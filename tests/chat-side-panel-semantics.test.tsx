@@ -8,12 +8,12 @@ import { buildChatSidePanelSections } from '../src/products/shared/renderer/comp
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
 function buildExecutionMarkup(overrides: {
-  isSoloComposer?: boolean;
+  isDefaultChatComposer?: boolean;
   isDirectLane?: boolean;
 } = {}): string {
   const sections = buildChatSidePanelSections({
     payload: { chat: { bossCatId: null, cats: [] } } as unknown as AppShellPayload,
-    selectedChannel: { id: 'channel-1', title: 'Solo Thread', topic: 'Test' } as never,
+    selectedChannel: { id: 'channel-1', title: 'Default Thread', topic: 'Test' } as never,
     busy: clearBusyState(),
     operatorView: null,
     operatorLoading: false,
@@ -25,7 +25,7 @@ function buildExecutionMarkup(overrides: {
     directLaneCat: null,
     directLaneExecutionTarget: null,
     isDirectLane: overrides.isDirectLane ?? false,
-    isSoloComposer: overrides.isSoloComposer ?? true,
+    isDefaultChatComposer: overrides.isDefaultChatComposer ?? true,
     selectedExecutionTarget: {
       provider: 'claude',
       instance: 'native',
@@ -54,15 +54,15 @@ function buildExecutionMarkup(overrides: {
   return renderToStaticMarkup(<>{executionSection.children}</>);
 }
 
-test('solo side panel exposes an explicit start-fresh action', () => {
+test('default side panel exposes an explicit start-fresh action', () => {
   const markup = buildExecutionMarkup();
 
   assert.match(markup, />Start fresh</u);
-  assert.match(markup, /reset solo continuity so the next turn starts a new branch/u);
+  assert.match(markup, /reset default continuity so the next turn starts a new branch/u);
 });
 
-test('non-solo execution side panels do not expose the start-fresh action', () => {
-  const markup = buildExecutionMarkup({ isSoloComposer: false });
+test('non-default execution side panels do not expose the start-fresh action', () => {
+  const markup = buildExecutionMarkup({ isDefaultChatComposer: false });
 
   assert.doesNotMatch(markup, />Start fresh</u);
 });

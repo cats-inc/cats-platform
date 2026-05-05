@@ -327,7 +327,7 @@ test('Sidebar exposes a dedicated Group chat primary action', () => {
     onCollapsedSidebarClick: () => {},
     onOpenChatsOverview: () => {},
     onStartNewChat: () => {
-      actions.push('solo');
+      actions.push('default');
     },
     onStartNewGroupChat: () => {
       actions.push('group');

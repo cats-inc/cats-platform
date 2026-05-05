@@ -32,7 +32,7 @@ import {
   fetchProviderRegistry,
 } from '../api/providers.js';
 import {
-  isSoloThreadChannel,
+  isDefaultChatChannel,
 } from '../../../chat/shared/channelTopology.js';
 import {
   createExecutionTargetValueFromProviderSelection,
@@ -70,7 +70,7 @@ export interface WorkspaceExecutionTargetChatLike {
 
 export interface WorkspaceExecutionTargetChannelLike {
   id: string;
-  channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
+  channelKind?: 'chat_channel' | 'direct_message' | null;
   roomRouting?: {
     mode?: RoomRoutingMode | null;
   } | null;
@@ -511,14 +511,14 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
   return createExecutionTargetValueFromProviderSelection(labeledTarget);
 }
 
-export function toSoloChannelExecutionTargetValue<
+export function toDefaultChatExecutionTargetValue<
   TChat extends WorkspaceExecutionTargetChatLike,
   TSelectedChannel extends WorkspaceExecutionTargetChannelLike,
 >(
   readyChat: TChat | null,
   readySelectedChannel: TSelectedChannel | null,
 ): ExecutionTargetValue | null {
-  if (!readyChat || !readySelectedChannel || !isSoloThreadChannel(readySelectedChannel)) {
+  if (!readyChat || !readySelectedChannel || !isDefaultChatChannel(readySelectedChannel)) {
     return null;
   }
 
@@ -560,7 +560,7 @@ export function useWorkspaceExecutionTargetState<
   const [draftExecutionTarget, setDraftExecutionTarget] = useState<ExecutionTargetValue>(
     createDefaultExecutionTargetValue,
   );
-  const [soloChannelExecutionTarget, setSoloChannelExecutionTarget] = useState<ExecutionTargetValue>(
+  const [defaultChannelExecutionTarget, setDefaultChannelExecutionTarget] = useState<ExecutionTargetValue>(
     createDefaultExecutionTargetValue,
   );
   const latestNewChatDefaultsSaveId = useRef(0);
@@ -568,16 +568,16 @@ export function useWorkspaceExecutionTargetState<
     typeof setTimeout
   > | null>(null);
   const pendingNewChatDefaultsSaveAbort = useRef<AbortController | null>(null);
-  const latestSoloChannelExecutionTargetSaveId = useRef(0);
-  const pendingSoloChannelExecutionTargetSaveTimeout = useRef<ReturnType<
+  const latestDefaultChatExecutionTargetSaveId = useRef(0);
+  const pendingDefaultChatExecutionTargetSaveTimeout = useRef<ReturnType<
     typeof setTimeout
   > | null>(null);
-  const pendingSoloChannelExecutionTargetSaveAbort = useRef<AbortController | null>(null);
+  const pendingDefaultChatExecutionTargetSaveAbort = useRef<AbortController | null>(null);
   const draftExecutionTargetReconcileSignature = buildExecutionTargetReconcileSignature(
     draftExecutionTarget,
   );
-  const soloChannelExecutionTargetReconcileSignature = buildExecutionTargetReconcileSignature(
-    soloChannelExecutionTarget,
+  const defaultChannelExecutionTargetReconcileSignature = buildExecutionTargetReconcileSignature(
+    defaultChannelExecutionTarget,
   );
 
   useEffect(() => {
@@ -603,26 +603,26 @@ export function useWorkspaceExecutionTargetState<
       }
       pendingNewChatDefaultsSaveAbort.current?.abort();
       pendingNewChatDefaultsSaveAbort.current = null;
-      if (pendingSoloChannelExecutionTargetSaveTimeout.current) {
-        clearTimeout(pendingSoloChannelExecutionTargetSaveTimeout.current);
-        pendingSoloChannelExecutionTargetSaveTimeout.current = null;
+      if (pendingDefaultChatExecutionTargetSaveTimeout.current) {
+        clearTimeout(pendingDefaultChatExecutionTargetSaveTimeout.current);
+        pendingDefaultChatExecutionTargetSaveTimeout.current = null;
       }
-      pendingSoloChannelExecutionTargetSaveAbort.current?.abort();
-      pendingSoloChannelExecutionTargetSaveAbort.current = null;
+      pendingDefaultChatExecutionTargetSaveAbort.current?.abort();
+      pendingDefaultChatExecutionTargetSaveAbort.current = null;
     };
   }, []);
 
   useEffect(() => {
-    const nextSoloChannelExecutionTarget = toSoloChannelExecutionTargetValue(
+    const nextDefaultChatExecutionTarget = toDefaultChatExecutionTargetValue(
       readyChat,
       readySelectedChannel,
     );
-    if (!nextSoloChannelExecutionTarget) {
+    if (!nextDefaultChatExecutionTarget) {
       return;
     }
 
-    setSoloChannelExecutionTarget((currentSoloChannelExecutionTarget) =>
-      mergeExecutionTargetValue(currentSoloChannelExecutionTarget, nextSoloChannelExecutionTarget));
+    setDefaultChannelExecutionTarget((currentDefaultChatExecutionTarget) =>
+      mergeExecutionTargetValue(currentDefaultChatExecutionTarget, nextDefaultChatExecutionTarget));
   }, [
     readySelectedChannel?.id,
     readySelectedChannel?.channelKind,
@@ -638,7 +638,7 @@ export function useWorkspaceExecutionTargetState<
   ]);
 
   useEffect(() => {
-    if (!readySelectedChannel || !isSoloThreadChannel(readySelectedChannel)) {
+    if (!readySelectedChannel || !isDefaultChatChannel(readySelectedChannel)) {
       return;
     }
 
@@ -648,8 +648,8 @@ export function useWorkspaceExecutionTargetState<
 
     const pendingProvider = readySelectedChannel.pendingProvider;
 
-    setSoloChannelExecutionTarget((currentSoloChannelExecutionTarget) =>
-      mergeExecutionTargetValue(currentSoloChannelExecutionTarget, {
+    setDefaultChannelExecutionTarget((currentDefaultChatExecutionTarget) =>
+      mergeExecutionTargetValue(currentDefaultChatExecutionTarget, {
         provider: pendingProvider,
         model: readySelectedChannel.pendingModel ?? null,
         instance: readySelectedChannel.pendingInstance ?? null,
@@ -690,24 +690,24 @@ export function useWorkspaceExecutionTargetState<
   ]);
 
   useEffect(() => {
-    if (state.status !== 'ready' || !readySelectedChannel || !isSoloThreadChannel(readySelectedChannel)) {
+    if (state.status !== 'ready' || !readySelectedChannel || !isDefaultChatChannel(readySelectedChannel)) {
       return;
     }
 
     let cancelled = false;
 
     void reconcileRuntimeBackedExecutionTargetValue({
-      target: soloChannelExecutionTarget,
-    }).then((nextSoloChannelExecutionTarget) => {
+      target: defaultChannelExecutionTarget,
+    }).then((nextDefaultChatExecutionTarget) => {
       if (cancelled) {
         return;
       }
 
-      setSoloChannelExecutionTarget((currentSoloChannelExecutionTarget) =>
-        mergeExecutionTargetValue(currentSoloChannelExecutionTarget, nextSoloChannelExecutionTarget));
+      setDefaultChannelExecutionTarget((currentDefaultChatExecutionTarget) =>
+        mergeExecutionTargetValue(currentDefaultChatExecutionTarget, nextDefaultChatExecutionTarget));
     }).catch((error) => {
       logExecutionTargetReconcileWarning(
-        `failed to reconcile solo execution target for ${soloChannelExecutionTarget.provider}:${soloChannelExecutionTarget.model ?? 'default'}`,
+        `failed to reconcile default chat execution target for ${defaultChannelExecutionTarget.provider}:${defaultChannelExecutionTarget.model ?? 'default'}`,
         error,
       );
     });
@@ -719,7 +719,7 @@ export function useWorkspaceExecutionTargetState<
     readySelectedChannel?.id,
     readySelectedChannel?.channelKind,
     readySelectedChannel?.roomRouting?.mode,
-    soloChannelExecutionTargetReconcileSignature,
+    defaultChannelExecutionTargetReconcileSignature,
     state.status,
   ]);
 
@@ -813,65 +813,65 @@ export function useWorkspaceExecutionTargetState<
       return;
     }
 
-    const persistedSoloChannelExecutionTarget = toSoloChannelExecutionTargetValue(
+    const persistedDefaultChatExecutionTarget = toDefaultChatExecutionTargetValue(
       readyChat,
       readySelectedChannel,
     );
     if (
       !readySelectedChannel
-      || !persistedSoloChannelExecutionTarget
+      || !persistedDefaultChatExecutionTarget
       || sameExecutionTargetValue(
-        soloChannelExecutionTarget,
-        persistedSoloChannelExecutionTarget,
+        defaultChannelExecutionTarget,
+        persistedDefaultChatExecutionTarget,
       )
     ) {
       return;
     }
 
-    if (pendingSoloChannelExecutionTargetSaveTimeout.current) {
-      clearTimeout(pendingSoloChannelExecutionTargetSaveTimeout.current);
-      pendingSoloChannelExecutionTargetSaveTimeout.current = null;
+    if (pendingDefaultChatExecutionTargetSaveTimeout.current) {
+      clearTimeout(pendingDefaultChatExecutionTargetSaveTimeout.current);
+      pendingDefaultChatExecutionTargetSaveTimeout.current = null;
     }
-    pendingSoloChannelExecutionTargetSaveAbort.current?.abort();
+    pendingDefaultChatExecutionTargetSaveAbort.current?.abort();
 
     const channelId = readySelectedChannel.id;
-    const saveId = latestSoloChannelExecutionTargetSaveId.current + 1;
-    latestSoloChannelExecutionTargetSaveId.current = saveId;
+    const saveId = latestDefaultChatExecutionTargetSaveId.current + 1;
+    latestDefaultChatExecutionTargetSaveId.current = saveId;
     const controller = new AbortController();
-    pendingSoloChannelExecutionTargetSaveAbort.current = controller;
-    const nextSoloChannelExecutionTarget = {
-      pendingProvider: soloChannelExecutionTarget.provider,
-      pendingModel: soloChannelExecutionTarget.model,
-      pendingInstance: soloChannelExecutionTarget.instance,
-      pendingModelSelection: soloChannelExecutionTarget.modelSelection,
+    pendingDefaultChatExecutionTargetSaveAbort.current = controller;
+    const nextDefaultChatExecutionTarget = {
+      pendingProvider: defaultChannelExecutionTarget.provider,
+      pendingModel: defaultChannelExecutionTarget.model,
+      pendingInstance: defaultChannelExecutionTarget.instance,
+      pendingModelSelection: defaultChannelExecutionTarget.modelSelection,
     };
 
-    pendingSoloChannelExecutionTargetSaveTimeout.current = setTimeout(() => {
-      pendingSoloChannelExecutionTargetSaveTimeout.current = null;
+    pendingDefaultChatExecutionTargetSaveTimeout.current = setTimeout(() => {
+      pendingDefaultChatExecutionTargetSaveTimeout.current = null;
 
       void updateChannelPendingExecutionTarget(
         channelId,
-        nextSoloChannelExecutionTarget,
+        nextDefaultChatExecutionTarget,
         controller.signal,
       )
         .then((payload) => {
           if (
             controller.signal.aborted
-            || latestSoloChannelExecutionTargetSaveId.current !== saveId
+            || latestDefaultChatExecutionTargetSaveId.current !== saveId
           ) {
             return;
           }
-          pendingSoloChannelExecutionTargetSaveAbort.current = null;
+          pendingDefaultChatExecutionTargetSaveAbort.current = null;
           startTransition(() => setState({ status: 'ready', payload }));
         })
         .catch((error) => {
           if (
             controller.signal.aborted
-            || latestSoloChannelExecutionTargetSaveId.current !== saveId
+            || latestDefaultChatExecutionTargetSaveId.current !== saveId
           ) {
             return;
           }
-          pendingSoloChannelExecutionTargetSaveAbort.current = null;
+          pendingDefaultChatExecutionTargetSaveAbort.current = null;
           setFeedback(formatWorkspaceExecutionTargetMutationError(
             error,
             t(messageKeys.sharedExecutionTargetSaveChatReplySettingsError),
@@ -881,9 +881,9 @@ export function useWorkspaceExecutionTargetState<
     }, debounceMs);
 
     return () => {
-      if (pendingSoloChannelExecutionTargetSaveTimeout.current) {
-        clearTimeout(pendingSoloChannelExecutionTargetSaveTimeout.current);
-        pendingSoloChannelExecutionTargetSaveTimeout.current = null;
+      if (pendingDefaultChatExecutionTargetSaveTimeout.current) {
+        clearTimeout(pendingDefaultChatExecutionTargetSaveTimeout.current);
+        pendingDefaultChatExecutionTargetSaveTimeout.current = null;
       }
       controller.abort();
     };
@@ -903,10 +903,10 @@ export function useWorkspaceExecutionTargetState<
     setFeedback,
     setState,
     t,
-    soloChannelExecutionTarget.instance,
-    soloChannelExecutionTarget.model,
-    soloChannelExecutionTarget.modelSelection,
-    soloChannelExecutionTarget.provider,
+    defaultChannelExecutionTarget.instance,
+    defaultChannelExecutionTarget.model,
+    defaultChannelExecutionTarget.modelSelection,
+    defaultChannelExecutionTarget.provider,
     state.status,
     updateChannelPendingExecutionTarget,
   ]);
@@ -914,7 +914,7 @@ export function useWorkspaceExecutionTargetState<
   return {
     draftExecutionTarget,
     setDraftExecutionTarget,
-    soloChannelExecutionTarget,
-    setSoloChannelExecutionTarget,
+    defaultChannelExecutionTarget,
+    setDefaultChannelExecutionTarget,
   };
 }

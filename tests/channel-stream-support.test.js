@@ -506,7 +506,7 @@ test('resolveChannelStreamTarget does not fall back to the room default recipien
 
 test('resolveChannelStreamTarget falls back to the default recipient while a single-target workflow turn is still materializing', () => {
   const channel = {
-    roomMode: 'direct_cat_chat',
+    roomMode: 'direct_message',
     orchestratorLease: { status: 'idle', sessionId: null },
     roomRouting: {
       defaultRecipientId: 'participant-1',
@@ -619,14 +619,14 @@ test('resolveChannelStreamTarget carries the orchestrator lease lane id outside 
   });
 });
 
-test('resolveChannelStreamTarget does not leak the internal Chat placeholder for solo orchestrator turns', () => {
+test('resolveChannelStreamTarget does not leak the internal Chat placeholder for default orchestrator turns', () => {
   const channel = {
     pendingProvider: 'claude',
     pendingInstance: 'cli/native',
     orchestratorLease: {
       status: 'ready',
       sessionId: 'session-orchestrator',
-      laneId: 'lane-turn-solo-orchestrator-target-orchestrator',
+      laneId: 'lane-turn-default-orchestrator-target-orchestrator',
       provider: 'claude',
       model: 'claude-sonnet',
     },
@@ -634,7 +634,7 @@ test('resolveChannelStreamTarget does not leak the internal Chat placeholder for
       defaultRecipientId: null,
       workflow: {
         activeTurn: {
-          id: 'turn-solo-orchestrator',
+          id: 'turn-default-orchestrator',
           status: 'running',
           targetStatuses: [
             {
@@ -656,7 +656,7 @@ test('resolveChannelStreamTarget does not leak the internal Chat placeholder for
 
   assert.deepEqual(resolveChannelStreamTarget(channel), {
     sessionId: 'session-orchestrator',
-    laneId: 'lane-turn-solo-orchestrator-target-orchestrator',
+    laneId: 'lane-turn-default-orchestrator-target-orchestrator',
     participantId: 'orchestrator',
     catId: null,
     speakerLabel: 'Claude-CLI',
@@ -666,14 +666,14 @@ test('resolveChannelStreamTarget does not leak the internal Chat placeholder for
   });
 });
 
-test('resolveChannelStreamTarget does not leak the internal Orchestrator placeholder for solo orchestrator turns', () => {
+test('resolveChannelStreamTarget does not leak the internal Orchestrator placeholder for default orchestrator turns', () => {
   const channel = {
     pendingProvider: 'gemini',
     pendingInstance: 'cli/native',
     orchestratorLease: {
       status: 'ready',
       sessionId: 'session-orchestrator',
-      laneId: 'lane-turn-solo-orchestrator-target-orchestrator',
+      laneId: 'lane-turn-default-orchestrator-target-orchestrator',
       provider: 'gemini',
       model: 'gemini-3.1-pro-preview',
     },
@@ -681,7 +681,7 @@ test('resolveChannelStreamTarget does not leak the internal Orchestrator placeho
       defaultRecipientId: null,
       workflow: {
         activeTurn: {
-          id: 'turn-solo-orchestrator',
+          id: 'turn-default-orchestrator',
           status: 'running',
           targetStatuses: [
             {
@@ -703,7 +703,7 @@ test('resolveChannelStreamTarget does not leak the internal Orchestrator placeho
 
   assert.deepEqual(resolveChannelStreamTarget(channel), {
     sessionId: 'session-orchestrator',
-    laneId: 'lane-turn-solo-orchestrator-target-orchestrator',
+    laneId: 'lane-turn-default-orchestrator-target-orchestrator',
     participantId: 'orchestrator',
     catId: null,
     speakerLabel: 'Gemini-CLI',

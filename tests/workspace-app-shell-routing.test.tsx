@@ -32,7 +32,7 @@ function createPayload(overrides: Record<string, unknown> = {}) {
     },
     bootstrapAttemptId: 'bootstrap-current',
     chat: {
-      channels: [{ id: 'channel-current', roomMode: 'boss_chat', channelKind: 'boss_thread' }],
+      channels: [{ id: 'channel-current', roomMode: 'chat_channel', channelKind: 'chat_channel' }],
       cats: [{ id: 'cat-current', status: 'active' }],
       selectedChannelId: 'channel-current',
     },
@@ -149,7 +149,7 @@ test('workspace background refresh keeps chat state while updating runtime envel
     },
     bootstrapAttemptId: 'bootstrap-next',
     chat: {
-      channels: [{ id: 'channel-overwrite', roomMode: 'direct_cat_chat', channelKind: 'direct_lane' }],
+      channels: [{ id: 'channel-overwrite', roomMode: 'direct_message', channelKind: 'direct_message' }],
       cats: [],
       selectedChannelId: 'channel-overwrite',
     },

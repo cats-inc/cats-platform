@@ -162,7 +162,7 @@ export function resolveFullResponseText(segments: RuntimeMessageSegment[]): stri
 
 export interface RuntimeSkillManifestContext {
   catId?: string;
-  roomMode?: 'boss_chat' | 'direct_cat_chat';
+  roomMode?: 'chat_channel' | 'direct_message';
   transport?: 'telegram' | 'line' | 'web' | null;
   labels?: string[];
   metadata?: Record<string, unknown>;

@@ -40,7 +40,7 @@ export function useWorkspaceParticipantPresentation(options: {
   activeAssignedCats: SelectedChannelView['assignedCats'];
   showBossCatAvatar: boolean;
   isDirectLane: boolean;
-  isSoloComposer: boolean;
+  isDefaultChatComposer: boolean;
 }) {
   const {
     payload,
@@ -48,7 +48,7 @@ export function useWorkspaceParticipantPresentation(options: {
     activeAssignedCats,
     showBossCatAvatar,
     isDirectLane,
-    isSoloComposer,
+    isDefaultChatComposer,
   } = options;
   const defaultRecipientId = selectedChannel.roomRouting.defaultRecipientId;
   const activeRoomParticipants = useMemo<ResolvedChannelParticipant[]>(
@@ -230,7 +230,7 @@ export function useWorkspaceParticipantPresentation(options: {
         });
       }
     } else {
-      if (showBossCatAvatar && !isSoloComposer && bossCatRecord) {
+      if (showBossCatAvatar && !isDefaultChatComposer && bossCatRecord) {
         ordered.push({
           key: `participant:${bossCatRecord.id}`,
           label: bossCatRecord.name,
@@ -265,7 +265,7 @@ export function useWorkspaceParticipantPresentation(options: {
     defaultRecipientCatRecord,
     defaultRecipientParticipant?.participantId,
     isDirectLane,
-    isSoloComposer,
+    isDefaultChatComposer,
     payload.chat.bossCatId,
     participantUsesNeutralAvatar,
     resolveParticipantDisplayName,

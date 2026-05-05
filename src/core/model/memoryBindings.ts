@@ -132,7 +132,7 @@ export function createBotBinding(
     platform: 'telegram' | 'line';
     botName: string;
     catId: string;
-    roomMode?: 'boss_chat' | 'direct_cat_chat';
+    roomMode?: 'chat_channel' | 'direct_message';
   },
   now: Date = new Date(),
 ): { core: CatsCoreState; binding: BotBindingRecord } {
@@ -147,7 +147,7 @@ export function createBotBinding(
     botToken: null,
     webhookSecret: null,
     inboundMode: 'polling',
-    roomMode: input.roomMode ?? 'direct_cat_chat',
+    roomMode: input.roomMode ?? 'direct_message',
     status: 'active',
     outboundFanoutEnabled: true,
     createdAt: nowIso,

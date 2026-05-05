@@ -26,8 +26,8 @@ test('resolveDefaultChatPath falls back to the dedicated new-chat route', () => 
 
 test('resolveVisibleChatPath skips hidden direct lanes when choosing Chats overview target', () => {
   const channels = [
-    { id: 'direct-1', roomMode: 'direct_cat_chat', originSurface: 'chat' },
-    { id: 'boss-1', roomMode: 'boss_chat', originSurface: 'chat' },
+    { id: 'direct-1', roomMode: 'direct_message', originSurface: 'chat' },
+    { id: 'boss-1', roomMode: 'chat_channel', originSurface: 'chat' },
   ];
 
   assert.equal(
@@ -40,14 +40,14 @@ test('resolveVisibleChatPath skips hidden direct lanes when choosing Chats overv
   );
   assert.equal(
     resolveVisibleChatPath([
-      { id: 'direct-1', roomMode: 'direct_cat_chat', originSurface: 'chat' },
+      { id: 'direct-1', roomMode: 'direct_message', originSurface: 'chat' },
     ], 'direct-1'),
     NEW_CHAT_PATH,
   );
 
   const crossSurfaceChannels = [
-    { id: 'chat-1', roomMode: 'boss_chat', originSurface: 'chat' },
-    { id: 'code-1', roomMode: 'boss_chat', originSurface: 'code' },
+    { id: 'chat-1', roomMode: 'chat_channel', originSurface: 'chat' },
+    { id: 'code-1', roomMode: 'chat_channel', originSurface: 'code' },
   ];
 
   assert.equal(
@@ -55,11 +55,11 @@ test('resolveVisibleChatPath skips hidden direct lanes when choosing Chats overv
     '/chat/chats/chat-1',
   );
   assert.equal(
-    resolveVisibleChatPath([{ id: 'code-1', roomMode: 'boss_chat', originSurface: 'code' }], 'code-1'),
+    resolveVisibleChatPath([{ id: 'code-1', roomMode: 'chat_channel', originSurface: 'code' }], 'code-1'),
     NEW_CHAT_PATH,
   );
   assert.equal(
-    resolveVisibleChatPath([{ id: 'legacy-1', roomMode: 'boss_chat' }], 'legacy-1'),
+    resolveVisibleChatPath([{ id: 'legacy-1', roomMode: 'chat_channel' }], 'legacy-1'),
     NEW_CHAT_PATH,
   );
 });
@@ -68,14 +68,14 @@ test('resolveVisibleChatPath trusts channelKind for direct lanes even when roomM
   const channels = [
     {
       id: 'direct-1',
-      channelKind: 'direct_lane',
-      roomMode: 'boss_chat',
+      channelKind: 'direct_message',
+      roomMode: 'chat_channel',
       originSurface: 'chat',
     },
     {
       id: 'boss-1',
-      channelKind: 'boss_thread',
-      roomMode: 'boss_chat',
+      channelKind: 'chat_channel',
+      roomMode: 'chat_channel',
       originSurface: 'chat',
     },
   ];

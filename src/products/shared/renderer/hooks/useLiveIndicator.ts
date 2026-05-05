@@ -28,7 +28,7 @@ import {
 } from '../../../../shared/workspaceBusy.js';
 import type { RoomRoutingMode } from '../../../../shared/roomRouting.js';
 import { resolveChannelCanonicalIdentity } from '../../../chat/shared/channelCanonicalIdentity.js';
-import { isProviderSoloThreadChannel } from '../../../chat/shared/channelTopology.js';
+import { isProviderDefaultChatChannel } from '../../../chat/shared/channelTopology.js';
 import { isOptimisticDraftChannelId } from '../../channelPaths.js';
 
 export type {
@@ -161,7 +161,7 @@ export function resolveLiveIndicatorSpeakerLabel(
     return null;
   }
 
-  if (!isProviderSoloThreadChannel(selectedChannel)) {
+  if (!isProviderDefaultChatChannel(selectedChannel)) {
     return null;
   }
 
@@ -724,7 +724,7 @@ function resolveLogicalSegmentParticipantId(
 function shouldAllowSameSpeakerWaitingFollowup(
   selectedChannel: LiveIndicatorSelectedChannelLike | null,
 ): boolean {
-  return selectedChannel?.roomRouting.workflow.activeTurn?.workflowShape === 'solo';
+  return selectedChannel ? isProviderDefaultChatChannel(selectedChannel) : false;
 }
 
 function shouldAdvanceWaitingSegmentIndex(

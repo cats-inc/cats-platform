@@ -158,7 +158,7 @@ primary expected path for deliberate cross-surface draft submits.
 
 - draft UI semantics and created conversation ownership line up again
 - `originSurface` stays the authoritative product-ownership field
-- cross-surface submit can remain topology-agnostic across solo, group, and
+- cross-surface submit can remain topology-agnostic across default, group, and
   parallel create paths
 - the lazy-route boundary becomes compatible with seamless cross-product
   product handoff

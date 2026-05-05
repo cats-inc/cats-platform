@@ -1410,8 +1410,8 @@ export const enCatalog: MessageCatalog = {
   'chat.catAssignment.error.channelNotFound': 'This chat channel was not found.',
   'chat.catAssignment.error.assignmentNotFound':
     'This cat is not assigned to the selected chat.',
-  'chat.catAssignment.error.directLeadOnly':
-    'Direct lanes can only keep their lead cat.',
+  'chat.catAssignment.error.directRecipientOnly':
+    'Direct messages can only keep their direct recipient Cat.',
   'chat.catAssignment.error.participantLimitReached':
     'This chat already has the maximum {maxParticipants} participants.',
   'chat.companion.tab.status': 'Status',
@@ -1532,7 +1532,7 @@ export const enCatalog: MessageCatalog = {
   'chat.sidePanel.startFresh': 'Start fresh',
   'chat.sidePanel.startingFreshBusy': 'Starting fresh...',
   'chat.sidePanel.startFreshHint':
-    'Keep this chat open, but reset solo continuity so the next turn starts a new branch.',
+    'Keep this chat open, but reset default continuity so the next turn starts a new branch.',
   'chat.sidePanel.runStatusTitle': 'Run Status',
   'chat.sidePanel.runStatusUnavailableTitle': 'Status unavailable',
   'chat.sidePanel.loadingTitle': 'Loading',

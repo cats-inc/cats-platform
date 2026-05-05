@@ -4,7 +4,7 @@ import type {
 } from '../api/workspaceContracts.js';
 import type { SelectedChannelView } from '../channelEntry.js';
 import {
-  isSoloThreadChannel,
+  isDefaultChatChannel,
   supportsParticipantAudienceSelection,
 } from '../../chat/shared/channelTopology.js';
 
@@ -144,7 +144,7 @@ export function resolveActiveChannelMessageMetadata(options: {
   }
 
   if (
-    isSoloThreadChannel(selectedChannel)
+    isDefaultChatChannel(selectedChannel)
     || !supportsParticipantAudienceSelection(selectedChannel)
   ) {
     return null;

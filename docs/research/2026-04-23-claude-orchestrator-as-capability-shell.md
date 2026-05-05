@@ -9,7 +9,7 @@
 
 重點結論有五：
 
-1. 「Solo / Temp Participant / My Cat / Boss / Guide Cat」五類對象不是技術必然，是歷史累積。
+1. 「Default / Temp Participant / My Cat / Boss / Guide Cat」五類對象不是技術必然，是歷史累積。
 2. 當前的 orchestrator 是規則驅動的靜態路由器，與以 LLM 為大腦、工具為能力的現代 agent 典範背道而馳 — 在 Cats Chat 尚可辯護，在 Cats Code / Work 則是結構性問題。
 3. 重塑後的 orchestrator 只有四項責任：UI、Tool surface、Invariant、Lifecycle。所有「決定下一步」的主權交還模型。
 4. 這個重塑對 Cats Work 的經濟可行性是決定性的 — Work 的使用場景是高頻批次，必須 hybrid（強模型駕駛 + 弱模型工人）才能成立。
@@ -19,7 +19,7 @@
 
 目前 Cats Chat 裡的「對話對象」有五種不同的型別表現：
 
-- **Solo target**：只有 `provider / model / control`，無身分、無 persona，一次性。
+- **Default target**：只有 `provider / model / control`，無身分、無 persona，一次性。
 - **Temp participant**：帶 role hint（譯者、面試官…），生命週期不超過 channel。
 - **My Cat**：使用者羅列的常駐 cat，有名字、頭像、persona。
 - **Boss Cat**：My Cat + `isBoss` 旗標。
@@ -29,12 +29,12 @@
 
 但**統一要分兩層講**，否則會把不該一起的東西混在一起：
 
-- **Runtime addressable-target / participant-like 層**：五者可共享同一個可被 mention、可被發話、可被渲染頭像的 participant shape。composer、participant resolver、audience 計算今天寫滿的 `if isSolo / else if isTemp / else if isCat` 分叉就是這層的稅金，應該抽掉。
-- **Durable Cat registry 層**：**不共用**。Solo 與 Temp 沒有「我被加進書櫃、可 rename、有 direct lane、可 delete / archive、有 memory、有 transport binding」這些語意。把它們硬塞進同一個 registry 會讓它們意外繼承 My Cat 的持久化副作用，這是目前型別分家所唯一保住的正確東西。
+- **Runtime addressable-target / participant-like 層**：五者可共享同一個可被 mention、可被發話、可被渲染頭像的 participant shape。composer、participant resolver、audience 計算今天寫滿的 `if isDefaultChat / else if isTemp / else if isCat` 分叉就是這層的稅金，應該抽掉。
+- **Durable Cat registry 層**：**不共用**。Default 與 Temp 沒有「我被加進書櫃、可 rename、有 direct lane、可 delete / archive、有 memory、有 transport binding」這些語意。把它們硬塞進同一個 registry 會讓它們意外繼承 My Cat 的持久化副作用，這是目前型別分家所唯一保住的正確東西。
 
 用 Codex 平行研究的分法：**identity / execution / supervision 三軸正交**。Cat 是 identity（有沒有登記、會不會被記住）、provider/model 是 execution（這次用誰發話）、orchestration 是 supervision（誰管束它）。前面五類貓真正共享的是 participant 形狀，不是 identity 倉儲 — 這個區分必須明文。
 
-- Solo = participant with no name, no avatar, no persona, lifetime-per-turn, **no registry record**
+- Default = participant with no name, no avatar, no persona, lifetime-per-turn, **no registry record**
 - Temp = participant with synthesized identity, lifetime-per-channel, **no registry record**
 - My = 基準形態，persistent，**registry record**
 - Boss = My + `flags.isBoss`
@@ -52,7 +52,7 @@
 由 planner、dispatcher、execution workflow 組成，**全 TypeScript deterministic**。它讀 mention、讀 channel state、讀 participants 結構，用規則決定這一輪由誰出聲、lane 怎麼切、audience 是誰。路由決策**不呼叫 LLM**。
 
 **Orchestrator-as-participant**
-`state.globalOrchestrator` 持有 `executionTarget = { provider, instance, model }`，當路由把 target 解析為 `participantKind === 'orchestrator'`（典型是 solo / +New Chat 模式）時，**這組 target 才會去呼叫 LLM**，但扮演的是「發話者」，不是「調度者」。
+`state.globalOrchestrator` 持有 `executionTarget = { provider, instance, model }`，當路由把 target 解析為 `participantKind === 'orchestrator'`（典型是 default / +New Chat 模式）時，**這組 target 才會去呼叫 LLM**，但扮演的是「發話者」，不是「調度者」。
 
 兩頂帽子共用同一個狀態 slot，在程式碼層面看起來像一個實體，但職責邏輯完全不同。使用者看到「orchestrator 回覆了」時，實際發生的是：**router（規則） → 解析到要 orchestrator 自己答 → participant（LLM）產生一段文字。**
 

@@ -1,10 +1,10 @@
 import type { ChatChannelView, ChatChannelKind } from '../../api/contracts.js';
 
 export type ContinuityTopology =
-  | 'solo_thread'
-  | 'boss_led_room'
-  | 'direct_lane'
-  | 'telegram_private_lane';
+  | 'default_chat'
+  | 'participant_chat'
+  | 'direct_message'
+  | 'telegram_direct_message';
 
 export type ContinuityResetBehavior = 'manual' | 'on_idle_timeout' | 'on_topic_change';
 export type ContinuityCompactionPolicy = 'none' | 'before_reset' | 'periodic';
@@ -21,20 +21,30 @@ export interface ContinuityRule {
 }
 
 export function classifyContinuityTopology(
-  channel: Pick<ChatChannelView, 'channelKind' | 'topic'>,
+  channel: Pick<ChatChannelView, 'channelKind' | 'topic'>
+    & Partial<Pick<
+      ChatChannelView,
+      'assignedParticipants' | 'assignedCats' | 'participantAssignments' | 'catAssignments'
+    >>,
 ): ContinuityTopology {
   const kind: ChatChannelKind | undefined = channel.channelKind;
 
-  if (kind === 'direct_lane') {
+  if (kind === 'direct_message') {
     const isTelegram = channel.topic?.toLowerCase().includes('telegram') ?? false;
-    return isTelegram ? 'telegram_private_lane' : 'direct_lane';
+    return isTelegram ? 'telegram_direct_message' : 'direct_message';
   }
 
-  if (kind === 'multi_cat_room') {
-    return 'boss_led_room';
+  const participants =
+    channel.assignedParticipants
+    ?? channel.assignedCats
+    ?? channel.participantAssignments
+    ?? channel.catAssignments
+    ?? [];
+  if (participants.some((participant) => participant.status === 'active')) {
+    return 'participant_chat';
   }
 
-  return 'solo_thread';
+  return 'default_chat';
 }
 
 const THIRTY_MINUTES = 30 * 60 * 1000;
@@ -42,7 +52,7 @@ const FIFTEEN_MINUTES = 15 * 60 * 1000;
 
 export function resolveContinuityRule(topology: ContinuityTopology): ContinuityRule {
   switch (topology) {
-    case 'solo_thread':
+    case 'default_chat':
       return {
         topology,
         resetBehavior: 'manual',
@@ -53,7 +63,7 @@ export function resolveContinuityRule(topology: ContinuityTopology): ContinuityR
         allowResume: false,
       };
 
-    case 'boss_led_room':
+    case 'participant_chat':
       return {
         topology,
         resetBehavior: 'manual',
@@ -64,7 +74,7 @@ export function resolveContinuityRule(topology: ContinuityTopology): ContinuityR
         allowResume: true,
       };
 
-    case 'direct_lane':
+    case 'direct_message':
       return {
         topology,
         resetBehavior: 'on_idle_timeout',
@@ -75,7 +85,7 @@ export function resolveContinuityRule(topology: ContinuityTopology): ContinuityR
         allowResume: true,
       };
 
-    case 'telegram_private_lane':
+    case 'telegram_direct_message':
       return {
         topology,
         resetBehavior: 'on_idle_timeout',

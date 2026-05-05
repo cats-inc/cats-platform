@@ -153,13 +153,13 @@ export function resolveShowRosterAvatars(input: {
   isDirectLane: boolean;
   defaultRecipientCat: ResolvedChannelParticipant | null;
   showBossCatAvatar: boolean;
-  isSoloComposer: boolean;
+  isDefaultChatComposer: boolean;
   activeRoomParticipants: ResolvedChannelParticipant[];
 }): boolean {
   return input.isDirectLane
     ? Boolean(input.defaultRecipientCat)
     : Boolean(
-      (input.showBossCatAvatar && !input.isSoloComposer)
+      (input.showBossCatAvatar && !input.isDefaultChatComposer)
       || input.activeRoomParticipants.length > 0
     );
 }
@@ -436,7 +436,7 @@ export function resolveChatViewTopBarPresenceState(input: {
 export function buildChatComposerRecipients(input: {
   isDirectLane: boolean;
   directLaneCat: AppShellPayload['chat']['cats'][number] | null;
-  isSoloComposer: boolean;
+  isDefaultChatComposer: boolean;
   selectedExecutionTarget: ExecutionTargetValue | undefined;
   defaultRecipientParticipant: ResolvedChannelParticipant | null;
   bossCatId: string | null;
@@ -474,7 +474,7 @@ export function buildChatComposerRecipients(input: {
       }),
     ];
   }
-  if (input.isSoloComposer && input.selectedExecutionTarget) {
+  if (input.isDefaultChatComposer && input.selectedExecutionTarget) {
     return [buildImplicitRecipient(input.selectedExecutionTarget)];
   }
   if (!input.defaultRecipientParticipant) {

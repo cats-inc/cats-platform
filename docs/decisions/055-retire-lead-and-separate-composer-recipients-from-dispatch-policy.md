@@ -21,7 +21,7 @@ Recent Cats Chat layout discussion exposed four separate problems:
    - Sometimes it behaves like a room roster.
    - Sometimes it behaves like a mode switch.
    - Sometimes it behaves like a "lead" identity.
-2. Treating `pending provider/model` as a standalone `solo` mode is misleading.
+2. Treating `pending provider/model` as a standalone `default` mode is misleading.
    - From the user's perspective, it still means "this is who I am asking next."
    - It behaves like an unnamed or implicit counterpart, not like the absence
      of a counterpart.

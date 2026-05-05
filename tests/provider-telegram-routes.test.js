@@ -999,7 +999,7 @@ test('telegram status reports Boss Cat binding after Telegram ingress is configu
     assert.equal(payload.telegram.botBinding.botName, 'smelly_bot');
     assert.equal(payload.telegram.webhookPath, '/api/transports/telegram/webhook');
     assert.equal(payload.telegram.diagnosticsPath, '/api/transports/telegram/diagnostics');
-    assert.equal(payload.telegram.roomRouting.transportConversationMode, 'direct_cat_chat');
+    assert.equal(payload.telegram.roomRouting.transportConversationMode, 'direct_message');
     assert.equal(payload.telegram.roomRouting.roomRoutingStatus, 'placeholder');
     assert.equal(payload.telegram.ingress.secretTokenConfigured, false);
     assert.equal(payload.telegram.delivery.status, 'not_configured');
@@ -1044,7 +1044,7 @@ test('telegram webhook routes inbox traffic into a room and relays a reply back 
       assert.equal(roomResponse.status, 200);
       const roomPayload = await roomResponse.json();
       assert.equal(roomPayload.channel.id, roomId);
-      assert.equal(roomPayload.channel.roomRouting.mode, 'boss_chat');
+      assert.equal(roomPayload.channel.roomRouting.mode, 'chat_channel');
 
       const messagesResponse = await fetch(`${baseUrl}/api/channels/${roomId}/messages`);
       assert.equal(messagesResponse.status, 200);
@@ -1140,7 +1140,7 @@ test('telegram slash commands stay transport-owned and can switch the bound cat 
           platform: 'telegram',
           botName: 'companion_bot',
           catId,
-          roomMode: 'direct_cat_chat',
+          roomMode: 'direct_message',
           webhookSecret: 'companion-secret',
         }),
       });
@@ -1314,7 +1314,7 @@ test('telegram bot binding mutations trigger command surface sync and carry stal
           platform: 'telegram',
           botName: 'boss_control_bot',
           catId: appShellPayload.chat.bossCatId,
-          roomMode: 'direct_cat_chat',
+          roomMode: 'direct_message',
           botToken: 'token-create-sync',
         }),
       });
@@ -1686,7 +1686,7 @@ test('telegram webhook routes can scope ingress to a specific bot binding path a
         platform: 'telegram',
         botName: 'companion_bot',
         catId: createCompanionPayload.cat.id,
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         webhookSecret: 'companion-secret',
       }),
     });
@@ -1769,7 +1769,7 @@ test('telegram webhook for a cat binding reuses that cat direct lane', async () 
         title: '',
         topic: 'Companion direct lane',
         originSurface: 'chat',
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
         skipBossCatGreeting: true,
@@ -1786,7 +1786,7 @@ test('telegram webhook for a cat binding reuses that cat direct lane', async () 
         platform: 'telegram',
         botName: 'companion_bot',
         catId,
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         webhookSecret: 'companion-secret',
       }),
     });
@@ -1826,7 +1826,7 @@ test('telegram webhook for a cat binding reuses that cat direct lane', async () 
     const roomResponse = await fetch(`${baseUrl}/api/channels/${directLaneId}`);
     assert.equal(roomResponse.status, 200);
     const roomPayload = await roomResponse.json();
-    assert.equal(roomPayload.channel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(roomPayload.channel.roomRouting.mode, 'direct_message');
     assert.equal(roomPayload.channel.roomRouting.defaultRecipientId, catId);
     const sessionStartedMessage = roomPayload.channel.messages.find((message) =>
       message.metadata?.event === 'session_started'
@@ -1885,7 +1885,7 @@ test('telegram webhook normalizes legacy boss room mode for cat-bound bots into 
         binding.id === bindingId
           ? {
               ...binding,
-              roomMode: 'boss_chat',
+              roomMode: 'chat_channel',
             }
           : binding),
     });
@@ -1894,7 +1894,7 @@ test('telegram webhook normalizes legacy boss room mode for cat-bound bots into 
     assert.equal(shellAfterLegacyResponse.status, 200);
     const shellAfterLegacyPayload = await shellAfterLegacyResponse.json();
     const legacyBinding = shellAfterLegacyPayload.chat.botBindings.find((binding) => binding.id === bindingId);
-    assert.equal(legacyBinding.roomMode, 'direct_cat_chat');
+    assert.equal(legacyBinding.roomMode, 'direct_message');
 
     const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook/${bindingId}`, {
       method: 'POST',
@@ -1928,7 +1928,7 @@ test('telegram webhook normalizes legacy boss room mode for cat-bound bots into 
     const roomResponse = await fetch(`${baseUrl}/api/channels/${telegramBinding.linkedRoomId}`);
     assert.equal(roomResponse.status, 200);
     const roomPayload = await roomResponse.json();
-    assert.equal(roomPayload.channel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(roomPayload.channel.roomRouting.mode, 'direct_message');
     assert.equal(roomPayload.channel.roomRouting.defaultRecipientId, bossCatId);
   }, chatStore);
 });

@@ -17,7 +17,7 @@ import {
   deleteChannel,
   exportChannel,
   removeCatFromChannel,
-  resetSoloChannelContinuity,
+  resetDefaultChatContinuity,
   toChannelSummary,
   unarchiveCat,
   updateGlobalOrchestrator,
@@ -104,7 +104,7 @@ test('FileChatStore persists configured channels, cats, assignments, and message
   assert.equal(createdChannel.messages.at(-1).mentions[0], 'Agent-1');
 });
 
-test('FileChatStore round-trips explicit solo continuity reset boundaries', async () => {
+test('FileChatStore round-trips explicit default continuity reset boundaries', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
   const statePath = path.join(tempDir, 'chat-state.json');
   const store = new FileChatStore(statePath);
@@ -114,7 +114,7 @@ test('FileChatStore round-trips explicit solo continuity reset boundaries', asyn
   state = createChannel(
     state,
     {
-      title: 'Solo Thread',
+      title: 'Default Thread',
       topic: 'Persist explicit continuity resets.',
       originSurface: 'chat',
       skipBossCatGreeting: true,
@@ -124,7 +124,7 @@ test('FileChatStore round-trips explicit solo continuity reset boundaries', asyn
     now,
   );
   const channelId = state.selectedChannelId;
-  state = resetSoloChannelContinuity(
+  state = resetDefaultChatContinuity(
     state,
     channelId,
     new Date('2026-04-17T00:00:30.000Z'),
@@ -140,69 +140,7 @@ test('FileChatStore round-trips explicit solo continuity reset boundaries', asyn
   assert.equal(reloadedChannel?.messages.at(-1)?.metadata?.event, 'continuity_reset');
 });
 
-test('FileChatStore strips legacy composerMode from message metadata on reload', async () => {
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
-  const statePath = path.join(tempDir, 'chat-state.json');
-  const store = new FileChatStore(statePath);
-  const now = new Date('2026-04-29T00:00:00.000Z');
-
-  let state = await store.read();
-  state = createChannel(
-    state,
-    {
-      title: 'Legacy Room Created',
-      topic: 'Normalize old room_created metadata.',
-      originSurface: 'chat',
-      skipBossCatGreeting: true,
-    },
-    now,
-  );
-  const channelId = state.selectedChannelId;
-  const roomCreated = state.channels
-    .find((channel) => channel.id === channelId)
-    ?.messages.find((message) => message.metadata?.event === 'room_created');
-  assert.ok(roomCreated);
-  roomCreated.metadata.composerMode = 'cat_led';
-  roomCreated.metadata.roomMode = 'boss_chat';
-  state = appendMessage(
-    state,
-    channelId,
-    {
-      senderKind: 'system',
-      senderName: 'Chat',
-      body: 'Participant assigned.',
-    },
-    now,
-    {
-      metadata: {
-        event: 'participant_assigned',
-        composerMode: 'cat_led',
-        participantId: 'legacy-participant',
-      },
-      incrementUnread: false,
-    },
-  ).state;
-
-  await store.write(state);
-
-  const reloadedStore = new FileChatStore(statePath);
-  const reloadedState = await reloadedStore.read();
-  const reloadedRoomCreated = reloadedState.channels
-    .find((channel) => channel.id === channelId)
-    ?.messages.find((message) => message.metadata?.event === 'room_created');
-  const reloadedParticipantAssigned = reloadedState.channels
-    .find((channel) => channel.id === channelId)
-    ?.messages.find((message) => message.metadata?.event === 'participant_assigned');
-
-  assert.ok(reloadedRoomCreated);
-  assert.equal('composerMode' in reloadedRoomCreated.metadata, false);
-  assert.equal(reloadedRoomCreated.metadata.roomMode, 'boss_chat');
-  assert.ok(reloadedParticipantAssigned);
-  assert.equal('composerMode' in reloadedParticipantAssigned.metadata, false);
-  assert.equal(reloadedParticipantAssigned.metadata.participantId, 'legacy-participant');
-});
-
-test('normalizeMessage returns owned metadata objects while stripping legacy fields', () => {
+test('normalizeMessage returns owned metadata objects', () => {
   const rawMessage = {
     id: 'message-1',
     channelId: 'channel-1',
@@ -219,35 +157,16 @@ test('normalizeMessage returns owned metadata objects while stripping legacy fie
   assert.notEqual(normalized.metadata, rawMessage.metadata);
   normalized.metadata.status = 'mutated';
   assert.equal(rawMessage.metadata.status, 'active');
-
-  const legacyRawMessage = {
-    id: 'message-2',
-    channelId: 'channel-1',
-    senderKind: 'system',
-    senderName: 'Chat',
-    body: 'Participant assigned.',
-    metadata: {
-      event: 'participant_assigned',
-      composerMode: 'cat_led',
-      participantId: 'legacy-participant',
-    },
-  };
-  const normalizedLegacy = normalizeMessage(legacyRawMessage, 'channel-1');
-
-  assert.notEqual(normalizedLegacy.metadata, legacyRawMessage.metadata);
-  assert.equal('composerMode' in normalizedLegacy.metadata, false);
-  assert.equal('composerMode' in legacyRawMessage.metadata, true);
-  assert.equal(normalizedLegacy.metadata.participantId, 'legacy-participant');
 });
 
-test('resetSoloChannelContinuity is idempotent before the new branch starts', async () => {
+test('resetDefaultChatContinuity is idempotent before the new branch starts', async () => {
   const now = new Date('2026-04-17T00:00:00.000Z');
   let state = createDefaultChatState();
 
   state = createChannel(
     state,
     {
-      title: 'Solo Thread',
+      title: 'Default Thread',
       topic: 'Do not append duplicate reset markers before any new branch activity.',
       originSurface: 'chat',
       skipBossCatGreeting: true,
@@ -257,12 +176,12 @@ test('resetSoloChannelContinuity is idempotent before the new branch starts', as
     now,
   );
   const channelId = state.selectedChannelId;
-  const firstResetState = resetSoloChannelContinuity(
+  const firstResetState = resetDefaultChatContinuity(
     state,
     channelId,
     new Date('2026-04-17T00:00:30.000Z'),
   );
-  const secondResetState = resetSoloChannelContinuity(
+  const secondResetState = resetDefaultChatContinuity(
     firstResetState,
     channelId,
     new Date('2026-04-17T00:01:00.000Z'),
@@ -293,7 +212,7 @@ test('assigning and removing the first participant keeps default recipient topol
   state = createChannel(
     state,
     {
-      title: 'Solo Thread',
+      title: 'Default Thread',
       topic: 'Starts without visible cats.',
       originSurface: 'chat',
       skipBossCatGreeting: true,
@@ -330,7 +249,7 @@ test('assigning and removing the first participant keeps default recipient topol
   );
 });
 
-test('channel topology infers direct lanes and multi-cat rooms independently from routing mode', () => {
+test('channel topology infers direct lanes and participant chat rooms independently from routing mode', () => {
   const now = new Date('2026-03-28T00:00:00.000Z');
   let state = createDefaultChatState();
 
@@ -350,15 +269,15 @@ test('channel topology infers direct lanes and multi-cat rooms independently fro
     {
       title: 'Companion lane',
       topic: 'Direct lanes expose their own channel kind.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [companionId],
       defaultRecipientId: companionId,
       skipBossCatGreeting: true,
     },
     now,
   );
-  assert.equal(state.channels[0].channelKind, 'direct_lane');
-  assert.equal(buildChannelView(state, state.selectedChannelId)?.channelKind, 'direct_lane');
+  assert.equal(state.channels[0].channelKind, 'direct_message');
+  assert.equal(buildChannelView(state, state.selectedChannelId)?.channelKind, 'direct_message');
 
   state = createCat(
     state,
@@ -384,8 +303,8 @@ test('channel topology infers direct lanes and multi-cat rooms independently fro
   state = assignCatToChannel(state, roomId, { catId: companionId, provider: 'claude' }, now);
   state = assignCatToChannel(state, roomId, { catId: reviewerId, provider: 'gemini' }, now);
 
-  assert.equal(state.channels[0].channelKind, 'multi_cat_room');
-  assert.equal(toChannelSummary(state.channels[0]).channelKind, 'multi_cat_room');
+  assert.equal(state.channels[0].channelKind, 'chat_channel');
+  assert.equal(toChannelSummary(state.channels[0]).channelKind, 'chat_channel');
 });
 
 test('FileChatStore repairs legacy active snapshots that are missing setupCompleteAt', async () => {
@@ -531,7 +450,7 @@ test('archiving a direct-lane cat preserves private lane history without promoti
       title: 'Companion Direct',
       topic: 'Keep this transcript private after archiving the cat.',
       originSurface: 'chat',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
       skipBossCatGreeting: true,
@@ -550,8 +469,8 @@ test('archiving a direct-lane cat preserves private lane history without promoti
   assert.ok(assignment.leftAt);
   assert.equal(assignment.execution.lease.sessionId, null);
   assert.equal(assignment.execution.lease.status, 'removed');
-  assert.equal(channel.channelKind, 'direct_lane');
-  assert.equal(channel.roomRouting?.mode, 'direct_cat_chat');
+  assert.equal(channel.channelKind, 'direct_message');
+  assert.equal(channel.roomRouting?.mode, 'direct_message');
   assert.equal(channel.roomRouting?.defaultRecipientId, catId);
   assert.equal(channel.recoverableDirectLaneCatId, catId);
 });
@@ -578,7 +497,7 @@ test('unarchiving a cat restores its direct lane while keeping avatar metadata a
       title: 'Companion Direct',
       topic: 'Recover should not silently rebuild the lane.',
       originSurface: 'chat',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
       skipBossCatGreeting: true,
@@ -601,8 +520,8 @@ test('unarchiving a cat restores its direct lane while keeping avatar metadata a
   assert.equal(assignment.leftAt, null);
   assert.equal(assignment.execution.lease.sessionId, null);
   assert.equal(assignment.execution.lease.status, 'not_started');
-  assert.equal(channel.channelKind, 'direct_lane');
-  assert.equal(channel.roomRouting?.mode, 'direct_cat_chat');
+  assert.equal(channel.channelKind, 'direct_message');
+  assert.equal(channel.roomRouting?.mode, 'direct_message');
   assert.equal(channel.roomRouting?.defaultRecipientId, catId);
   assert.equal(channel.recoverableDirectLaneCatId ?? null, null);
 });
@@ -628,7 +547,7 @@ test('deleting a direct-lane cat removes the private lane instead of promoting i
       title: 'Companion Direct',
       topic: 'Deleting the cat should not strand the channel.',
       originSurface: 'chat',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [catId],
       defaultRecipientId: catId,
       skipBossCatGreeting: true,
@@ -673,8 +592,8 @@ test('direct lanes reject assigning a second cat beyond the lead', () => {
     state,
     {
       title: 'Strict direct lane',
-      topic: 'Only the lead cat should remain assignable.',
-      roomMode: 'direct_cat_chat',
+      topic: 'Only the direct recipient Cat should remain assignable.',
+      roomMode: 'direct_message',
       participantCatIds: [defaultRecipientCatId],
       defaultRecipientId: defaultRecipientCatId,
       skipBossCatGreeting: true,
@@ -692,11 +611,11 @@ test('direct lanes reject assigning a second cat beyond the lead', () => {
       },
       now,
     ),
-    /Direct lanes can only contain their lead cat/u,
+    /Direct messages can only contain their direct recipient Cat/u,
   );
 });
 
-test('FileChatStore normalizes contaminated direct lanes back to the lead cat topology', async () => {
+test('FileChatStore normalizes contaminated direct lanes back to the direct-recipient topology', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
   const statePath = path.join(tempDir, 'chat-state.json');
   const store = new FileChatStore(statePath);
@@ -730,7 +649,7 @@ test('FileChatStore normalizes contaminated direct lanes back to the lead cat to
     {
       title: 'Legacy Direct',
       topic: 'Normalize stale topology on read.',
-      roomMode: 'direct_cat_chat',
+      roomMode: 'direct_message',
       participantCatIds: [defaultRecipientCatId],
       defaultRecipientId: defaultRecipientCatId,
       skipBossCatGreeting: true,
@@ -785,7 +704,7 @@ test('FileChatStore normalizes contaminated direct lanes back to the lead cat to
   assert.ok(recoveredChannel);
   assert.equal(recoveredChannel.catAssignments.length, 1);
   assert.equal(recoveredChannel.catAssignments[0].catId, defaultRecipientCatId);
-  assert.equal(recoveredChannel.roomRouting?.mode, 'direct_cat_chat');
+  assert.equal(recoveredChannel.roomRouting?.mode, 'direct_message');
   assert.equal(recoveredChannel.roomRouting?.defaultRecipientId, defaultRecipientCatId);
   assert.equal(recoveredChannel.orchestratorLease.sessionId, null);
   assert.equal(recoveredChannel.orchestratorLease.status, 'not_started');
@@ -1083,7 +1002,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.resolution.selectionKind, 'explicit_mentions');
   assert.equal(
     reloadedChannel?.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
-    'boss_chat_default',
+    'chat_channel_default',
   );
   assert.deepEqual(
     reloadedChannel?.roomRouting?.wakeHistory.map((wake) => wake.reason),
@@ -1991,7 +1910,7 @@ test('FileChatStore preserves null room route targets when reloading persisted r
   assert.ok(channelRecord);
   channelRecord.roomRouting.lastOutcome = {
     turnId: 'turn-blocked-room',
-    mode: 'boss_chat',
+    mode: 'chat_channel',
     sourceMessageId: 'message-blocked-room',
     sourceSenderKind: 'user',
     sourceSenderName: 'User',
@@ -2051,7 +1970,7 @@ test('FileChatStore drops malformed assistant turn deliveries when reloading per
   assert.ok(channelRecord);
   channelRecord.roomRouting.lastOutcome = {
     turnId: 'turn-malformed-response',
-    mode: 'boss_chat',
+    mode: 'chat_channel',
     sourceMessageId: 'message-user-malformed',
     sourceSenderKind: 'user',
     sourceSenderName: 'User',
@@ -2064,7 +1983,7 @@ test('FileChatStore drops malformed assistant turn deliveries when reloading per
         participantId: 'orchestrator',
         participantName: 'Chat',
       },
-      defaultTargetReason: 'boss_chat_default',
+      defaultTargetReason: 'chat_channel_default',
       fallbackTarget: null,
       blockedReason: null,
       note: null,

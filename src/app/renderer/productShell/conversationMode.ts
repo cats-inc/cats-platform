@@ -2,10 +2,9 @@ import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
 import type { ProductChannelKind } from './channelTopology.js';
 
 export type ChatConversationMode =
-  | 'direct_lane'
-  | 'solo_thread'
-  | 'participant_thread'
-  | 'multi_cat_room';
+  | 'direct_message'
+  | 'default_chat'
+  | 'participant_chat';
 
 type ConversationModeCarrier = {
   assignedCats: Array<{ status: string }>;
@@ -17,32 +16,32 @@ export function resolveConversationMode(
   channel: ConversationModeCarrier,
 ): ChatConversationMode {
   if (
-    channel.channelKind === 'direct_lane'
-    || channel.roomRouting?.mode === 'direct_cat_chat'
+    channel.channelKind === 'direct_message'
+    || channel.roomRouting?.mode === 'direct_message'
   ) {
-    return 'direct_lane';
+    return 'direct_message';
   }
 
   const activeCatCount = channel.assignedCats.filter((cat) => cat.status === 'active').length;
   if (activeCatCount === 0) {
-    return 'solo_thread';
+    return 'default_chat';
   }
 
-  if (channel.channelKind === 'multi_cat_room' || activeCatCount > 1) {
-    return 'multi_cat_room';
+  if (activeCatCount > 0) {
+    return 'participant_chat';
   }
 
-  return 'participant_thread';
+  return 'default_chat';
 }
 
 export function isDirectConversationMode(
   conversationMode: ChatConversationMode | null | undefined,
 ): boolean {
-  return conversationMode === 'direct_lane';
+  return conversationMode === 'direct_message';
 }
 
-export function isSoloThreadConversationMode(
+export function isDefaultChatConversationMode(
   conversationMode: ChatConversationMode | null | undefined,
 ): boolean {
-  return conversationMode === 'solo_thread';
+  return conversationMode === 'default_chat';
 }

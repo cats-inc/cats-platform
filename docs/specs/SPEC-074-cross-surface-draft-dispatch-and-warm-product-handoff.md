@@ -111,7 +111,7 @@ The platform therefore needs both:
 6. The platform shall support this contract for both:
    - single-conversation create
    - parallel container/group create
-7. The contract shall be topology-neutral. It must not assume that only solo
+7. The contract shall be topology-neutral. It must not assume that only default
    drafts can cross surfaces.
 8. If a draft has not switched surfaces, submit shall continue to use the
    current product route and ownership behavior unchanged.

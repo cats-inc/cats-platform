@@ -47,7 +47,7 @@ This plan also carries the first continuity follow-through for Chat rather than
 opening a separate continuity plan. In this plan's scope:
 
 - `parallel` remains a container/composition concept
-- `solo retarget` continuity remains a same-conversation semantic
+- `default retarget` continuity remains a same-conversation semantic
 - parallel child conversations own continuity independently
 - same-chat provider/model switching must stop degrading into excerpt-only
   bootstrap
@@ -85,16 +85,16 @@ concurrent vs parallel.
 
 ### Phase 1B: Chat Continuity Follow-Through
 
-- [x] Task 1B.1: Fix the same-chat `solo retarget` defect so provider/model
+- [x] Task 1B.1: Fix the same-chat `default retarget` defect so provider/model
       switching no longer silently drops continuity when a replacement runtime
       session is created
 - [x] Task 1B.2: Split same-chat continuity transplant from targeted handoff
-      packaging instead of reusing `buildSoloChatBootstrapInstructions` as the
+      packaging instead of reusing `buildDefaultChatBootstrapInstructions` as the
       general continuity path
 - [x] Task 1B.3: Remove the coupling between same-chat continuity and
       `MAX_PROMPT_RECENT_MESSAGES` so excerpt budgets remain bounded helpers
       rather than the semantic contract
-- [x] Task 1B.4: Keep `shouldRestartSoloSession` as a lifecycle/restart gate
+- [x] Task 1B.4: Keep `shouldRestartDefaultChatSession` as a lifecycle/restart gate
       only; ensure continuity survives restart through native resume or
       transplant instead of treating restart as an implicit fresh start
 - [ ] Task 1B.5: Define parallel-child continuity rules so each child
@@ -108,7 +108,7 @@ concurrent vs parallel.
       resetting continuity is a visible operator action rather than an implicit
       side effect of provider/model switching
 
-**Deliverables**: first continuity implementation slice for `solo retarget`,
+**Deliverables**: first continuity implementation slice for `default retarget`,
 plus explicit follow-through boundaries for parallel child continuity and later
 group-join modes.
 
@@ -116,7 +116,7 @@ group-join modes.
 
 **Task 1B.1**
 
-- same-chat `solo` provider/model switching preserves continuity when the
+- same-chat `default` provider/model switching preserves continuity when the
   replacement runtime session cannot reuse compatible native continuity
 - regression coverage includes at least:
   - same-provider different-model retarget
@@ -126,7 +126,7 @@ group-join modes.
 
 - same-chat continuity transplant has its own builder/delivery path
 - targeted handoff packaging has its own builder/delivery path
-- `buildSoloChatBootstrapInstructions` is no longer the semantic owner of
+- `buildDefaultChatBootstrapInstructions` is no longer the semantic owner of
   same-chat continuity
 
 **Task 1B.3**
@@ -137,7 +137,7 @@ group-join modes.
 
 **Task 1B.4**
 
-- `shouldRestartSoloSession` remains a lifecycle gate only
+- `shouldRestartDefaultChatSession` remains a lifecycle gate only
 - restart without compatible native continuity still results in preserved
   conversation continuity through transplant
 
@@ -240,11 +240,11 @@ notes.
 
 - `concurrent` and `parallel` are different abstraction layers and must stay so
   in contracts, UI, and tests.
-- same-chat `solo retarget` continuity belongs to conversation/participant
+- same-chat `default retarget` continuity belongs to conversation/participant
   semantics, not to runtime-session reuse alone.
 - `convergencePolicy` belongs to concurrent fan-out, not to parallel container
   identity.
-- `buildSoloChatBootstrapInstructions` and `MAX_PROMPT_RECENT_MESSAGES` cannot
+- `buildDefaultChatBootstrapInstructions` and `MAX_PROMPT_RECENT_MESSAGES` cannot
   remain the general contract for same-chat continuity.
 - first-slice continuity work must explicitly choose which material is carried
   as session-scoped bootstrap state versus per-turn instructions; this
@@ -279,7 +279,7 @@ notes.
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Concurrent and parallel semantics drift again in implementation | High | Freeze shared vocabulary first and add projection regression tests |
-| Same-chat solo continuity regresses back to excerpt-only bootstrap | High | Separate transplant helpers from bounded recent-message formatting and add retarget regression tests |
+| Same-chat default continuity regresses back to excerpt-only bootstrap | High | Separate transplant helpers from bounded recent-message formatting and add retarget regression tests |
 | Code entry presets start leaking runtime-only details into ad hoc form state | Medium | Promote `executionProfile` into a first-class contract early |
 | Peer-code automation becomes hidden branch mutation | High | Require explicit policy ids, provenance, and branch-level auditability |
 
@@ -289,11 +289,11 @@ notes.
 |------|--------|
 | 2026-04-14 | Plan created to formalize concurrent vs parallel semantics and map `Cats Code` entry points onto the shared engine |
 | 2026-04-17 | Reserved SPEC-068 / ADR-067 for the first `+New code` slice and started moving default Code draft ownership out of the chat-specific draft re-export path |
-| 2026-04-17 | Added continuity follow-through under the same plan so same-chat solo retarget, parallel child continuity, and excerpt-bootstrap removal stay attached to the shared semantics work |
-| 2026-04-17 | Scoped the default `+New code` target slot so solo drafts stop duplicating the execution chip while direct-lane participant stacks still use the lower composer row |
+| 2026-04-17 | Added continuity follow-through under the same plan so same-chat default retarget, parallel child continuity, and excerpt-bootstrap removal stay attached to the shared semantics work |
+| 2026-04-17 | Scoped the default `+New code` target slot so default drafts stop duplicating the execution chip while direct-lane participant stacks still use the lower composer row |
 | 2026-04-17 | Extended the shared copy seam so default `+New code` direct-lane hero text no longer falls back to chat-specific wording such as `Private Chat` |
 | 2026-04-18 | Wired the current `+New code` footer policy chips into create-channel payloads, persisted channel runtime defaults, and runtime session creation so workspace isolation and access policy no longer stop at renderer state |
-| 2026-04-17 | Implemented the first continuity follow-through slices: solo retarget full-transplant semantics, explicit `Start fresh`, same-participant restart transplants for cat/direct rooms, and structured choice-response packaging in continuity transcripts |
+| 2026-04-17 | Implemented the first continuity follow-through slices: default retarget full-transplant semantics, explicit `Start fresh`, same-participant restart transplants for cat/direct rooms, and structured choice-response packaging in continuity transcripts |
 | 2026-04-17 | Left Task 1B.6 open: preceding tool labels and structured choice responses are now carried, but tool-result/file-preview first-slice packaging still needs a final contract |
 | 2026-04-17 | Follow-up slice added token-budgeted semantic transplant fallback, explicit targeted handoff packaging, and fresh-start pre-reset memory flush; Task 1B.5 was corrected back to open because prior regressions only covered current child-local isolation, not an explicit production guard or source-seed rule |
 | 2026-04-20 | Removed the shared draft header-accessory seam after deciding it duplicated existing draft context controls and created a second, misleading summary lane above the composer |

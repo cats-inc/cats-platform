@@ -23,12 +23,12 @@ import {
 
 test('workspace channel paths keep product prefixes while sharing visible-chat semantics', () => {
   const workChannels = [
-    { id: 'direct-1', originSurface: 'work' as const, roomMode: 'direct_cat_chat' as const },
-    { id: 'boss-1', originSurface: 'work' as const, roomMode: 'boss_chat' as const },
+    { id: 'direct-1', originSurface: 'work' as const, roomMode: 'direct_message' as const },
+    { id: 'boss-1', originSurface: 'work' as const, roomMode: 'chat_channel' as const },
   ];
   const codeChannels = [
-    { id: 'direct-1', originSurface: 'code' as const, roomMode: 'direct_cat_chat' as const },
-    { id: 'boss-1', originSurface: 'code' as const, roomMode: 'boss_chat' as const },
+    { id: 'direct-1', originSurface: 'code' as const, roomMode: 'direct_message' as const },
+    { id: 'boss-1', originSurface: 'code' as const, roomMode: 'chat_channel' as const },
   ];
 
   assert.equal(buildWorkNewChatPath('cat-1'), '/work/new?cat=cat-1');
@@ -49,8 +49,8 @@ test('workspace channel paths keep product prefixes while sharing visible-chat s
   assert.equal(resolveCodeVisibleChatPath(codeChannels, 'direct-1'), '/code/chats/boss-1');
 
   const crossSurfaceChannels = [
-    { id: 'code-1', originSurface: 'code' as const, roomMode: 'boss_chat' as const },
-    { id: 'chat-1', originSurface: 'chat' as const, roomMode: 'boss_chat' as const },
+    { id: 'code-1', originSurface: 'code' as const, roomMode: 'chat_channel' as const },
+    { id: 'chat-1', originSurface: 'chat' as const, roomMode: 'chat_channel' as const },
   ];
 
   assert.equal(
@@ -62,7 +62,7 @@ test('workspace channel paths keep product prefixes while sharing visible-chat s
   assert.equal(
     resolveWorkspaceVisibleChatPath(
       '/code',
-      [{ id: 'legacy-1', roomMode: 'boss_chat' as const }],
+      [{ id: 'legacy-1', roomMode: 'chat_channel' as const }],
       'legacy-1',
       'code',
     ),
@@ -70,7 +70,7 @@ test('workspace channel paths keep product prefixes while sharing visible-chat s
   );
   assert.equal(
     resolveCodeVisibleChatPath(
-      [{ id: 'chat-1', originSurface: 'chat' as const, roomMode: 'boss_chat' as const }],
+      [{ id: 'chat-1', originSurface: 'chat' as const, roomMode: 'chat_channel' as const }],
       'chat-1',
     ),
     '/code/new',

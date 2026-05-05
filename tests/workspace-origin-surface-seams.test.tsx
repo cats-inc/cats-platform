@@ -66,7 +66,7 @@ test('prepareComposerChannelDispatch keeps work-owned drafts stamped as work', a
   assert.deepEqual(navigations, [{ path: '/work/chats/channel-work-1', replace: true }]);
 });
 
-test('prepareComposerChannelDispatch keeps code-owned solo drafts stamped as code', async () => {
+test('prepareComposerChannelDispatch keeps code-owned default drafts stamped as code', async () => {
   const createdInputs: Array<Record<string, unknown>> = [];
 
   await prepareComposerChannelDispatch({
@@ -87,7 +87,7 @@ test('prepareComposerChannelDispatch keeps code-owned solo drafts stamped as cod
     originSurface: 'code',
     draftDefaultRecipientCatId: null,
     participantCatIds: [],
-    draftEntryKind: 'solo',
+    draftEntryKind: 'default',
     draftExecutionTarget: {
       provider: 'claude',
       model: 'claude-opus-4-6',
@@ -115,7 +115,7 @@ test('prepareComposerChannelDispatch keeps code-owned solo drafts stamped as cod
 
   assert.equal(createdInputs.length, 1);
   assert.equal(createdInputs[0]?.originSurface, 'code');
-  assert.equal(createdInputs[0]?.entryKind, 'solo');
+  assert.equal(createdInputs[0]?.entryKind, 'default');
   assert.equal(createdInputs[0]?.runtimeWorkspaceKind, 'worktree');
   assert.equal(createdInputs[0]?.runtimeWorkspaceAccess, 'read_only');
   assert.equal(createdInputs[0]?.runtimePermissionMode, 'default');

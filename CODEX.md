@@ -99,19 +99,19 @@ When debugging Chat live typing or session-start regressions, Codex should use a
 fresh-channel probe against the already running `dev:server` and `dev:web`.
 Do not trust stale UI state or older transcripts.
 
-- Treat `direct_cat_chat` and `solo`/orchestrator as separate contracts. Probe
-  both paths; a fix in one does not prove the other.
+- Treat `direct_message` and default-chat/orchestrator as separate contracts.
+  Probe both paths; a fix in one does not prove the other.
 - For new-runtime-session flows, the expected UX handoff is
   `user dots -> session_started system message -> assistant dots -> first
   assistant text chunk`.
 - If the final assistant reply appears without a visible assistant typing bubble,
   the handoff gate is still wrong even if the response content is correct.
 - Create fresh probe channels through the API instead of reusing existing rooms.
-- For direct/cat probes, `POST /api/channels` with `entryKind: 'direct'`,
-  `roomMode: 'direct_cat_chat'`, `participantCatIds`, and
+- For direct-message probes, `POST /api/channels` with `entryKind: 'direct'`,
+  `roomMode: 'direct_message'`, `participantCatIds`, and
   `skipBossCatGreeting: true`.
-- For solo/orchestrator probes, `POST /api/channels` with `entryKind: 'solo'`,
-  `composerMode: 'solo'`, `pendingProvider`, `pendingModel`, and
+- For default-chat/orchestrator probes, `POST /api/channels` with
+  `entryKind: 'default'`, `pendingProvider`, `pendingModel`, and
   `skipBossCatGreeting: true`.
 - Open the exact room URL in the renderer:
   `http://127.0.0.1:5173/chat/chats/<channelId>`. Do not rely on
@@ -179,7 +179,7 @@ Codex MUST treat the following as hard guardrails when refactoring `cats`.
 
 - **MUST** preserve mode-specific composer semantics. These are not cosmetic;
   they encode product behavior.
-- `New chat` solo draft: provider/model chip, no recipient-plus icon.
+- `New chat` default draft: provider/model chip, no recipient-plus icon.
 - `Group chat` draft: avatar stack, collapsed by default, hover-expand,
   delete gating remains product-specific.
 - `Parallel chat` draft: every branch keeps model-aware chips/stubs; do not

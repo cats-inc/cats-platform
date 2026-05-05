@@ -56,14 +56,14 @@ shared routing layer owned by the product, not mainly by prompt conventions.
 ### Functional Requirements
 
 1. The product shall support at least these room modes:
-   - `boss_chat`
-   - `direct_cat_chat` (which may optionally bind to external transports such
+   - `chat_channel`
+   - `direct_message` (which may optionally bind to external transports such
      as Telegram)
 2. Every persisted conversation that appears in `Recents` shall have a routing
    mode.
 3. A room or Cat-private lane may declare a default direct counterpart
    participant for default target resolution.
-4. `+ New Chat` shall continue creating `boss_chat` rooms by default.
+4. `+ New Chat` shall continue creating `chat_channel` rooms by default.
 5. The product shall support a Cat-private lane whose default direct
    counterpart is a chosen Cat.
 6. Selecting a Cat from `My Cats` shall resolve to that Cat's private lane.
@@ -71,8 +71,8 @@ shared routing layer owned by the product, not mainly by prompt conventions.
    chat/channel record in `Recents`.
    Opening it from `My Cats` shall not create a new persisted chat/channel
    record as a side effect.
-7. In `boss_chat`, an unmentioned operator turn shall default to `Boss Cat`.
-8. In `direct_cat_chat`, an unmentioned operator turn (or inbound transport
+7. In `chat_channel`, an unmentioned operator turn shall default to `Boss Cat`.
+8. In `direct_message`, an unmentioned operator turn (or inbound transport
    message) shall default to the chosen direct counterpart Cat.
 10. Explicit `@mentions` shall be parsed and resolved by the routing layer
    before prompt construction.
@@ -103,8 +103,8 @@ shared routing layer owned by the product, not mainly by prompt conventions.
 ### Core Concepts
 
 - `roomMode`
-  - `boss_chat`
-  - `direct_cat_chat` (with optional transport binding)
+  - `chat_channel`
+  - `direct_message` (with optional transport binding)
 - `defaultDirectCounterpartParticipantId`
   - the default non-mentioned target for that room mode
 - `resolvedTargets`
@@ -124,8 +124,8 @@ Parse explicit @mentions
         |
         +--> if no valid explicit mentions:
                 use roomMode default target
-                  - boss_chat -> Boss Cat
-                  - direct_cat_chat -> default direct counterpart
+                  - chat_channel -> Boss Cat
+                  - direct_message -> default direct counterpart
         |
         v
 Wake missing targets if needed
@@ -218,7 +218,7 @@ Dispatch
 
 - [ ] What is the best first UI affordance for starting a direct Cat chat:
       cat card action, add button menu, or a new composer picker?
-- [ ] Should a `direct_cat_chat` room allow `Boss Cat` to be added later as a
+- [ ] Should a `direct_message` room allow `Boss Cat` to be added later as a
       participant or escalation path?
 - [x] Direct lanes stay one-counterpart; escalation to broader collaboration
       should create or switch into an explicit normal room instead of mutating

@@ -205,7 +205,7 @@ test('queryCoreOperatorInboxItems filters actionable tasks and returns summary c
               containerId: 'container-chat-root',
               channelId: 'channel-inbox',
               transport: 'web',
-              roomRoutingMode: 'boss_chat',
+              roomRoutingMode: 'chat_channel',
             },
             buildOrchestratorDispatchReplayRequest({
               channelId: 'channel-inbox',

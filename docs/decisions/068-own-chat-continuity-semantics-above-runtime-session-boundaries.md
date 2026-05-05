@@ -15,7 +15,7 @@ an implementation accident of session reuse.
 
 That creates three different kinds of confusion:
 
-1. In `solo`, the user reasonably expects that changing model or provider in
+1. In `default`, the user reasonably expects that changing model or provider in
    the same chat still means the same participant knows the earlier chat.
 2. In `group`, a handoff to another room member is not the same thing as
    replaying the entire room history.
@@ -33,7 +33,7 @@ Those are important delivery details, but they are not the right source of
 truth for continuity semantics. If the product lets continuity meaning drift
 with those mechanisms, the user-visible behavior becomes arbitrary:
 
-- same-chat solo retarget silently loses continuity today when provider/model
+- same-chat default retarget silently loses continuity today when provider/model
   switching restarts the backing session without an equivalent continuity
   transplant; this is a user-facing UX defect, not an acceptable product
   semantic
@@ -57,7 +57,7 @@ The product will treat these as separate concepts:
 Changing runtime or provider session identity does not automatically change the
 continuity contract.
 
-### 2. `solo retarget` preserves continuity by default
+### 2. `default retarget` preserves continuity by default
 
 When the same logical participant in the same chat changes execution target,
 the product will treat that as one continuing conversation unless the operator
@@ -71,7 +71,7 @@ conversation.
 
 ### 3. `group handoff` and `group join` are distinct continuity modes
 
-The product will not reuse the `solo retarget` rule for all group cases.
+The product will not reuse the `default retarget` rule for all group cases.
 
 - `group handoff`
   - targeted continuity to an existing room member
@@ -84,9 +84,9 @@ The product will not reuse the `solo retarget` rule for all group cases.
 
 Fixed-size recent-message excerpts may still be useful as one ingredient, but
 they are not an acceptable product-level substitute for same-chat continuity.
-Current helpers such as `buildSoloChatBootstrapInstructions` and
+Current helpers such as `buildDefaultChatBootstrapInstructions` and
 `MAX_PROMPT_RECENT_MESSAGES` must not remain the general continuity contract
-for same-chat `solo` retarget.
+for same-chat `default` retarget.
 
 The product contract should prefer:
 
@@ -104,9 +104,9 @@ changing provider, changing model, or rotating runtime sessions.
 
 ### Positive
 
-- Same-chat solo model/provider switching gets a clear, user-aligned meaning.
+- Same-chat default model/provider switching gets a clear, user-aligned meaning.
 - Group handoff and group join can be designed honestly instead of borrowing
-  `solo` assumptions.
+  `default` assumptions.
 - Runtime and provider mechanics remain useful optimizations without owning the
   product story.
 - Continuity behavior becomes testable in stable semantic terms.
@@ -143,7 +143,7 @@ changing provider, changing model, or rotating runtime sessions.
 - **Pros**: simple conceptual rule; continuity loss is less likely
 - **Cons**: wrong for scoped joins and many handoffs; expensive and often
   unnecessary
-- **Why rejected**: `solo retarget`, `group handoff`, and `group join` do not
+- **Why rejected**: `default retarget`, `group handoff`, and `group join` do not
   mean the same thing
 
 ### Alternative 3: Use a fixed recent-message bootstrap excerpt as the continuity contract
@@ -152,7 +152,7 @@ changing provider, changing model, or rotating runtime sessions.
 - **Cons**: loses important earlier semantics and makes same-chat continuity
   brittle
 - **Why rejected**: a small recent excerpt is not faithful enough for the
-  default `solo` product promise
+  default `default` product promise
 
 ## References
 

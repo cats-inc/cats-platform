@@ -42,7 +42,7 @@ export interface BuildChatSidePanelSectionsOptions {
   directLaneCat: ChatCat | null;
   directLaneExecutionTarget: ExecutionTargetValue | null;
   isDirectLane: boolean;
-  isSoloComposer: boolean;
+  isDefaultChatComposer: boolean;
   selectedExecutionTarget?: ExecutionTargetValue;
   inspectedRun: ChatRunInspectorView | null;
   showAddCatButton: boolean;
@@ -87,7 +87,7 @@ export function buildChatSidePanelSections({
   directLaneCat,
   directLaneExecutionTarget,
   isDirectLane,
-  isSoloComposer,
+  isDefaultChatComposer,
   selectedExecutionTarget,
   inspectedRun,
   showAddCatButton,
@@ -177,7 +177,7 @@ export function buildChatSidePanelSections({
         </>
       );
     }
-    if (isSoloComposer && selectedExecutionTarget && onExecutionTargetChange) {
+    if (isDefaultChatComposer && selectedExecutionTarget && onExecutionTargetChange) {
       return (
         <>
           <ProviderModelFields
@@ -207,7 +207,7 @@ export function buildChatSidePanelSections({
         </>
       );
     }
-    if (!isSoloComposer && defaultRecipientParticipant) {
+    if (!isDefaultChatComposer && defaultRecipientParticipant) {
       const executionSummary = buildExecutionTargetSummary({
         provider: defaultRecipientParticipant.execution.target.provider,
         instance: defaultRecipientParticipant.execution.target.instance ?? null,

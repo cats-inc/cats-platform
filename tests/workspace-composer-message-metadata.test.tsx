@@ -10,7 +10,7 @@ import {
 test('workspace metadata reuses the latest group audience metadata for cat-backed rooms', () => {
   const metadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
-      channelKind: 'multi_cat_room',
+      channelKind: 'chat_channel',
       messages: [
         {
           id: 'message-user-1',
@@ -49,7 +49,7 @@ test('workspace metadata reuses the latest group audience metadata for cat-backe
 test('workspace metadata falls back to the active cat roster when the latest send had no explicit audience', () => {
   const metadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
-      channelKind: 'multi_cat_room',
+      channelKind: 'chat_channel',
       messages: [
         {
           id: 'message-user-1',
@@ -87,7 +87,7 @@ test('workspace metadata falls back to the active cat roster when the latest sen
 test('workspace metadata honors the current audience chip order and explicit concurrent override', () => {
   const metadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
-      channelKind: 'multi_cat_room',
+      channelKind: 'chat_channel',
       messages: [
         {
           id: 'message-user-1',
@@ -131,7 +131,7 @@ test('workspace metadata honors the current audience chip order and explicit con
 test('workspace audience state restores chip ordering while collapsing unsupported workflow shapes', () => {
   const audienceState = resolveActiveChannelAudienceState({
     selectedChannel: {
-      channelKind: 'multi_cat_room',
+      channelKind: 'chat_channel',
       messages: [
         {
           id: 'message-user-1',

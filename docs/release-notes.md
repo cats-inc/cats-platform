@@ -25,7 +25,7 @@ Deprecations:
 
 Behavior change:
 
-Existing non-direct participant rooms changed routing behavior: a no-mention
+Existing non-direct participant chats changed routing behavior: a no-mention
 user turn now enters the orchestrator first instead of auto-dispatching to
 `defaultRecipientId`. Direct/private lanes still route unmentioned turns to the
 direct participant, and explicit `@mention` routing is unchanged.

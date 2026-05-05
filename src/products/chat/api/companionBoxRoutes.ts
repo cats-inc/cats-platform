@@ -610,7 +610,7 @@ async function handleGetCompanionSessionContext(
           title: `${cat.name} Companion`,
           topic: 'Companion hydration preview.',
           roomRouting: createDefaultRoomRoutingState({
-            mode: 'direct_cat_chat',
+            mode: 'direct_message',
             defaultRecipientId: cat.id,
           }),
           workingMemory: undefined,
@@ -618,7 +618,7 @@ async function handleGetCompanionSessionContext(
     const requestedSkills = resolveSkillProfileManifest({
       profileId: cat.skillProfile,
       catId: cat.id,
-      roomMode: channel.roomRouting?.mode ?? 'direct_cat_chat',
+      roomMode: channel.roomRouting?.mode ?? 'direct_message',
       transport: 'web',
       metadata: { catId: cat.id },
     })?.requestedSkills ?? [];

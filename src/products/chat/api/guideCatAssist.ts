@@ -21,8 +21,8 @@ import {
 
 export interface ChatGuideCatAssistReadModel {
   lobby: GuideCatAssistSurfaceReadModel;
-  /** Single +New chat surface read model. Composer mode (solo / group /
-   * parallel) is renderer state, not a separate cache scope — see
+  /** Single +New chat surface read model. Composer preset state is renderer
+   * state, not a separate cache scope — see
    * `shared/guideCatAssist.ts` `GUIDE_CAT_ASSIST_V1_SCOPE_KEYS`. */
   newChat: GuideCatAssistSurfaceReadModel;
   newCode: GuideCatAssistSurfaceReadModel;

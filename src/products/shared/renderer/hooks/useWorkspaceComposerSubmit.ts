@@ -97,7 +97,7 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   setComposerDraft: Dispatch<SetStateAction<string>>;
   showingNewChatDraft: boolean;
   showingMyCatDirectLane: boolean;
-  draftEntryKind?: 'solo' | 'group' | 'direct';
+  draftEntryKind?: 'default' | 'group' | 'direct';
   draftDefaultRecipientCatId: string | null;
   draftCatIds: string[];
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
@@ -116,7 +116,7 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   setDraftWorkflowShape?: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys?: Dispatch<SetStateAction<string[] | null>>;
   draftExecutionTarget: ModelValue;
-  soloChannelExecutionTarget: ModelValue;
+  defaultChannelExecutionTarget: ModelValue;
   showingParallelChatDraft?: boolean;
   draftParallelChatTargets?: Array<ModelValue & DraftParallelTargetBranchFields>;
   draftWorkflowShape?: 'sequential' | 'concurrent';
@@ -159,7 +159,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setComposerDraft,
     showingNewChatDraft,
     showingMyCatDirectLane,
-    draftEntryKind = 'solo',
+    draftEntryKind = 'default',
     draftDefaultRecipientCatId,
     draftCatIds,
     draftTemporaryParticipants = [],
@@ -178,7 +178,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setDraftWorkflowShape,
     setDraftAudienceKeys,
     draftExecutionTarget,
-    soloChannelExecutionTarget,
+    defaultChannelExecutionTarget,
     showingParallelChatDraft = false,
     draftParallelChatTargets = [],
     draftWorkflowShape = 'sequential',
@@ -392,7 +392,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         draftExecutionTarget,
         assistantResponseLanguage: initialPayload.language?.assistantResponseLanguage,
         selectedChannel,
-        soloChannelExecutionTarget,
+        defaultChannelExecutionTarget,
         draftFiles,
         channelFiles,
         createChatChannel,
@@ -414,7 +414,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
       channelId = preparedSendContext.channelId;
       rollbackPath = preparedSendContext.rollbackPath;
       restoreFiles = preparedSendContext.restoreFiles;
-      const { messageBody, soloDispatchTarget } = preparedSendContext;
+      const { messageBody, defaultDispatchTarget } = preparedSendContext;
       const maxAudienceParticipants =
         state.status === 'ready'
           ? state.payload.chat.capabilities.maxAudienceParticipants
@@ -447,8 +447,8 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         : null;
       const messageMetadata = draftMessageMetadata ?? activeChannelMessageMetadata;
 
-      if (soloDispatchTarget) {
-        payload = applyOptimisticPendingExecutionTarget(payload, channelId, soloDispatchTarget);
+      if (defaultDispatchTarget) {
+        payload = applyOptimisticPendingExecutionTarget(payload, channelId, defaultDispatchTarget);
       }
       payload = appendOptimisticUserMessage(payload, channelId, messageBody);
       setState({ status: 'ready', payload });
@@ -461,7 +461,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
       const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
         senderName: payload.ownerDisplayName,
-        ...(soloDispatchTarget ?? {}),
+        ...(defaultDispatchTarget ?? {}),
         ...(messageMetadata ? { messageMetadata } : {}),
       }, ackController.signal);
       clearAckRequestIfCurrent(submitId);
@@ -586,10 +586,10 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     showingParallelChatDraft,
     showingMyCatDirectLane,
     showingNewChatDraft,
-    soloChannelExecutionTarget.instance,
-    soloChannelExecutionTarget.modelSelection,
-    soloChannelExecutionTarget.model,
-    soloChannelExecutionTarget.provider,
+    defaultChannelExecutionTarget.instance,
+    defaultChannelExecutionTarget.modelSelection,
+    defaultChannelExecutionTarget.model,
+    defaultChannelExecutionTarget.provider,
     resetDraftParallelChatTargets,
     state,
     t,

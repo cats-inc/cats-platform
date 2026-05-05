@@ -137,7 +137,7 @@ export type ChatChannelStatus =
   | 'archived';
 
 export type ChannelFormationMode = 'manual' | 'orchestrator_suggested';
-export type ChatChannelKind = 'boss_thread' | 'direct_lane' | 'multi_cat_room';
+export type ChatChannelKind = 'chat_channel' | 'direct_message';
 // TODO: extend when branch/peer container modes land.
 export type ParallelChatMode = 'parallel';
 export type ParallelChatStatus = 'active' | 'archived';
@@ -561,7 +561,7 @@ export interface UpdateSelectedChannelInput {
   selectedChannelId: string;
 }
 
-export type NewChatEntryKind = 'solo' | 'group' | 'direct';
+export type NewChatEntryKind = 'default' | 'group' | 'direct';
 
 export interface CreateTemporaryParticipantInput {
   participantId?: string;

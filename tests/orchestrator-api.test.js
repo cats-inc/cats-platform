@@ -263,7 +263,7 @@ async function createChannel(baseUrl, options = {}) {
       title: options.title ?? 'Orchestrator Lab',
       topic: options.topic ?? 'Validate contract-first orchestration seams.',
       originSurface: 'chat',
-      roomMode: options.roomMode ?? 'boss_chat',
+      roomMode: options.roomMode ?? 'chat_channel',
       cats: options.cats ?? [
         {
           name: 'Inline-Agent',
@@ -1171,7 +1171,7 @@ test('GET /api/orchestrator/channels/:id/execution-loop exposes task-scoped deli
           },
           channelId,
           transport: 'web',
-          roomRoutingMode: 'boss_chat',
+          roomRoutingMode: 'chat_channel',
         },
       },
       new Date('2026-04-15T04:10:00.000Z'),
@@ -2149,7 +2149,7 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
   const seededChannel = chat.channels.find((candidate) => candidate.id === channelId);
   assert.ok(seededChannel);
   seededChannel.roomRouting = createDefaultRoomRoutingState({
-    mode: 'boss_chat',
+    mode: 'chat_channel',
     defaultRecipientId: null,
   });
   const inlineAssignment = seededChannel.catAssignments[0];

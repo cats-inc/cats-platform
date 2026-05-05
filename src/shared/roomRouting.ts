@@ -8,7 +8,7 @@ export type ParticipantSessionStatus =
 
 export type ChatMessageSenderKind = 'user' | 'agent' | 'system' | 'orchestrator';
 
-export type RoomRoutingMode = 'boss_chat' | 'direct_cat_chat';
+export type RoomRoutingMode = 'chat_channel' | 'direct_message';
 
 export type RoomRoutingTrigger =
   | 'room_default'
@@ -26,14 +26,14 @@ export type RoomRouteSelectionKind =
   | 'blocked';
 
 export type RoomRouteBlockedReason =
-  | 'missing_direct_chat_recipient'
+  | 'missing_direct_message_recipient'
   | 'missing_default_recipient'
   | 'no_valid_targets'
   | 'user_cancelled';
 
 export type RoomRouteDefaultTargetReason =
-  | 'boss_chat_default'
-  | 'direct_chat_recipient'
+  | 'chat_channel_default'
+  | 'direct_message_recipient'
   | 'default_recipient';
 
 export type RoomRoutingTurnStatus =

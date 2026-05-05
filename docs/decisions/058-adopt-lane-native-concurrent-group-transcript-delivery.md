@@ -31,7 +31,7 @@ The current architecture still mixes three different identities:
 - the runtime session identity
 - the renderer bubble identity
 
-That coupling is acceptable for solo or direct flows only because there is
+That coupling is acceptable for default or direct flows only because there is
 effectively one visible assistant lane. It breaks down in concurrent group
 chat, where the user expectation is different:
 
@@ -174,7 +174,7 @@ assistant list.
 
 - the backend may still start actual jobs sequentially for operational reasons
 - this ADR does not define the final CSS/card treatment for lane containers
-- this ADR does not by itself redesign direct-lane or solo reconnect behavior
+- this ADR does not by itself redesign direct-lane or default reconnect behavior
 
 ## Alternatives Considered
 

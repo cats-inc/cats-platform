@@ -5,7 +5,7 @@ import { isDirectLaneSummary } from '../shared/channelTopology.js';
 import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
 
 export type MyCatNavigationTarget =
-  | { kind: 'direct_lane'; path: string };
+  | { kind: 'direct_message'; path: string };
 
 export type MyCatStatusDot = 'no_dot' | 'sleeping' | 'waking_up' | 'awake' | 'error';
 
@@ -61,5 +61,5 @@ export function resolveMyCatNavigationTarget(
   _channels: ChatChannelSummary[],
   catId: string,
 ): MyCatNavigationTarget {
-  return { kind: 'direct_lane', path: buildDirectMessagePath(catId) };
+  return { kind: 'direct_message', path: buildDirectMessagePath(catId) };
 }

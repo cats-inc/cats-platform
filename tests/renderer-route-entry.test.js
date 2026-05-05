@@ -83,12 +83,12 @@ test('renderer route entry does not wake when the route channel is missing', () 
   );
 });
 
-test('direct chat entry lifecycle stays null when the lead cat is missing instead of falling back to Boss Cat', () => {
+test('direct message entry lifecycle stays null when the direct recipient is missing instead of falling back to Boss Cat', () => {
   const lifecycle = resolveSelectedChannelEntryLifecycle({
     id: 'channel-1',
     title: 'Companion Direct',
     topic: '',
-    channelKind: 'direct_lane',
+    channelKind: 'direct_message',
     status: 'configured',
     unreadCount: 0,
     repoPath: null,
@@ -117,7 +117,7 @@ test('direct chat entry lifecycle stays null when the lead cat is missing instea
     messages: [],
     assignedCats: [],
     roomRouting: {
-      mode: 'boss_chat',
+      mode: 'chat_channel',
       defaultRecipientId: 'companion-cat',
       maxContinuations: 6,
       maxDispatchesPerTurn: 12,
@@ -145,12 +145,12 @@ test('direct chat entry lifecycle stays null when the lead cat is missing instea
   assert.equal(lifecycle, null);
 });
 
-test('direct chat entry lifecycle follows the lead participant execution lease status', () => {
+test('direct message entry lifecycle follows the lead participant execution lease status', () => {
   const lifecycle = resolveSelectedChannelEntryLifecycle({
     id: 'channel-direct',
     title: 'Companion Direct',
     topic: '',
-    channelKind: 'direct_lane',
+    channelKind: 'direct_message',
     status: 'configured',
     unreadCount: 0,
     repoPath: null,
@@ -221,7 +221,7 @@ test('direct chat entry lifecycle follows the lead participant execution lease s
       },
     ],
     roomRouting: {
-      mode: 'direct_cat_chat',
+      mode: 'direct_message',
       defaultRecipientId: 'companion-cat',
       maxContinuations: 6,
       maxDispatchesPerTurn: 12,
@@ -254,7 +254,7 @@ test('boss chat entry lifecycle follows the orchestrator execution lease status'
     id: 'channel-boss',
     title: 'Boss Room',
     topic: '',
-    channelKind: 'boss_thread',
+    channelKind: 'chat_channel',
     status: 'configured',
     unreadCount: 0,
     repoPath: null,
@@ -283,7 +283,7 @@ test('boss chat entry lifecycle follows the orchestrator execution lease status'
     messages: [],
     assignedCats: [],
     roomRouting: {
-      mode: 'boss_chat',
+      mode: 'chat_channel',
       defaultRecipientId: null,
       maxContinuations: 6,
       maxDispatchesPerTurn: 12,

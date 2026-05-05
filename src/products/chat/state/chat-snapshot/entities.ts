@@ -59,19 +59,6 @@ import {
   readStringArray,
 } from './shared.js';
 
-const LEGACY_MESSAGE_METADATA_FIELDS = new Set([
-  'composerMode',
-]);
-
-function hasLegacyMessageMetadata(metadataRecord: Record<string, unknown>): boolean {
-  for (const field of LEGACY_MESSAGE_METADATA_FIELDS) {
-    if (field in metadataRecord) {
-      return true;
-    }
-  }
-  return false;
-}
-
 export function normalizeMessage(rawMessage: unknown, channelId: string): ChatMessage {
   const messageRecord = asRecord(rawMessage);
   const usageRecord = asRecord(messageRecord?.usage);
@@ -80,14 +67,8 @@ export function normalizeMessage(rawMessage: unknown, channelId: string): ChatMe
   const metadataRecord = asRecord(messageRecord?.metadata) ?? {};
   // Always return owned metadata; never share refs with the source raw record.
   // Callers mutate normalized messages downstream, and shared refs would
-  // silently corrupt the source store on every legacy-free reload.
-  const normalizedMetadata = hasLegacyMessageMetadata(metadataRecord)
-    ? Object.fromEntries(
-        Object.entries(metadataRecord).filter(
-          ([key]) => !LEGACY_MESSAGE_METADATA_FIELDS.has(key),
-        ),
-      )
-    : { ...metadataRecord };
+  // silently corrupt the source store on reload.
+  const normalizedMetadata = { ...metadataRecord };
   const senderKind = (
     rawSenderKind === 'user'
     || rawSenderKind === 'agent'
@@ -321,15 +302,15 @@ export function normalizeChannel(
   );
   const channelKind = resolveChannelKind({
     channelKind:
-      channelRecord.channelKind === 'boss_thread'
-      || channelRecord.channelKind === 'direct_lane'
-      || channelRecord.channelKind === 'multi_cat_room'
+      channelRecord.channelKind === 'chat_channel'
+      || channelRecord.channelKind === 'direct_message'
+      || channelRecord.channelKind === 'chat_channel'
         ? channelRecord.channelKind
         : null,
     roomMode: roomRouting.mode,
     participants: normalizedParticipantAssignments,
   });
-  if (channelKind === 'direct_lane') {
+  if (channelKind === 'direct_message') {
     roomRouting.defaultRecipientId = resolveDirectLaneRecipientId(
       normalizedParticipantAssignments,
       roomRouting.defaultRecipientId,
@@ -383,7 +364,7 @@ export function normalizeChannel(
     updatedAt: readString(channelRecord.updatedAt, new Date().toISOString()),
     lastMessageAt: readNullableString(channelRecord.lastMessageAt),
     lastActivatedAt: readNullableString(channelRecord.lastActivatedAt),
-    orchestratorLease: channelKind === 'direct_lane'
+    orchestratorLease: channelKind === 'direct_message'
       ? createEmptyExecutionLease()
       : normalizeExecutionLease(
         channelRecord.orchestratorLease,

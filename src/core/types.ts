@@ -742,7 +742,7 @@ export interface BotBindingRecord {
   botToken: string | null;
   webhookSecret: string | null;
   inboundMode: BotBindingInboundMode;
-  roomMode: 'boss_chat' | 'direct_cat_chat';
+  roomMode: 'chat_channel' | 'direct_message';
   status: 'active' | 'disabled';
   outboundFanoutEnabled?: boolean;
   createdAt: string;

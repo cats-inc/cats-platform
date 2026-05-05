@@ -29,7 +29,7 @@ That created repeated product problems:
 
 This also blurred two separate concerns:
 
-- `channel topology`: solo thread, boss room, direct lane
+- `channel topology`: default chat, boss room, direct lane
 - `fan-out`: single-channel dispatch vs parallel dispatch across multiple
   channels
 
@@ -92,7 +92,7 @@ the send lifecycle.
 ### Positive
 
 - user bubbles only appear after the backend has accepted them
-- first-send behavior is consistent across solo, boss, direct, and parallel
+- first-send behavior is consistent across default, boss, direct, and parallel
   chat flows
 - room switching is no longer blocked by the full runtime reply duration
 - ACK-stage hangs can be cancelled without conflating transport abort with

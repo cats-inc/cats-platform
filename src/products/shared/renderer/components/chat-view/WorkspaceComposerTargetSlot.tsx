@@ -20,7 +20,7 @@ export interface WorkspaceComposerTargetSlotProps {
   assignedCatRecords: ChatCat[];
   leadCatRecord: ChatCat | null;
   isDirectLane: boolean;
-  isSoloComposer: boolean;
+  isDefaultChatComposer: boolean;
   activeWorkflowShape?: 'sequential' | 'concurrent';
   onToggleActiveWorkflowShape?: () => void;
   activeAudienceKeys?: string[] | null;
@@ -37,7 +37,7 @@ export function WorkspaceComposerTargetSlot({
   assignedCatRecords,
   leadCatRecord,
   isDirectLane,
-  isSoloComposer,
+  isDefaultChatComposer,
   activeWorkflowShape = 'sequential',
   onToggleActiveWorkflowShape,
   activeAudienceKeys = null,
@@ -78,7 +78,7 @@ export function WorkspaceComposerTargetSlot({
     );
   }
 
-  if (isSoloComposer && selectedExecutionTarget) {
+  if (isDefaultChatComposer && selectedExecutionTarget) {
     return (
       <AudienceChip
         audienceParticipants={[buildAudienceParticipantFromExecutionTarget(selectedExecutionTarget)]}
@@ -88,7 +88,7 @@ export function WorkspaceComposerTargetSlot({
     );
   }
 
-  if (!isSoloComposer && (defaultRecipientCat || groupParticipants.length > 0)) {
+  if (!isDefaultChatComposer && (defaultRecipientCat || groupParticipants.length > 0)) {
     if (groupParticipants.length === 0) {
       return null;
     }

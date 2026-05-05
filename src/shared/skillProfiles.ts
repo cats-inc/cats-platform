@@ -27,7 +27,7 @@ function findSkillProfile(profileId: string | null | undefined): SkillProfileOpt
 export function resolveSkillProfileManifest(input: {
   profileId?: string | null;
   catId?: string | null;
-  roomMode?: 'boss_chat' | 'direct_cat_chat';
+  roomMode?: 'chat_channel' | 'direct_message';
   transport?: 'telegram' | 'line' | 'web' | null;
   labels?: string[];
   metadata?: Record<string, unknown>;

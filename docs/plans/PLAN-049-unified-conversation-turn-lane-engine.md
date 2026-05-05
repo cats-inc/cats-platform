@@ -28,7 +28,7 @@ canonical write model.
 
 The target end state is:
 
-- one execution model for direct, solo, sequential group, concurrent group,
+- one execution model for direct, default, sequential group, concurrent group,
   and parallel container flows
 - stable lane identity that survives reconnect, replay, and repair
 - transcript projection derived from canonical state instead of session timing
@@ -121,7 +121,7 @@ copies of the same original input
 
 ### Phase 5: Migrate Surfaces to the Shared Engine
 
-- [x] Task 5.1: Migrate direct lane and solo-thread projections onto the new
+- [x] Task 5.1: Migrate direct lane and default-chat projections onto the new
       engine without preserving legacy direct-only special cases.
 - [x] Task 5.2: Migrate sequential group rendering and room repair onto the
       shared engine contract.
@@ -213,7 +213,7 @@ through one engine
 | 2026-04-15 | Route-support cat wake-up and runtime-session wake now both resolve channel canonical identity through the same helper, so runtime lifecycle metadata stops carrying duplicated `channelId -> conversation/container` derivations across separate hot paths |
 | 2026-04-15 | Channel stream routes now also resolve `containerId` / `conversationId` through that same canonical helper, so stream-target tracing and SSE speaker envelopes no longer preserve a separate stream-only identity derivation path |
 | 2026-04-15 | Runtime dispatch failure notices and Telegram bridge runtime-error fallbacks now also resolve channel canonical identity through the shared helper, so outer runtime-error metadata no longer preserves transport-specific `channelId -> conversation/container` derivations |
-| 2026-04-15 | Runtime targeting session context and derived memory layers now also resolve channel canonical identity through the shared helper, and solo bootstrap gating now prefers `laneId` over reused `sessionId`, so prompt/memory hot paths stop preserving separate channel-identity derivations while stale same-session replies no longer suppress lane-local bootstrap context |
+| 2026-04-15 | Runtime targeting session context and derived memory layers now also resolve channel canonical identity through the shared helper, and default bootstrap gating now prefers `laneId` over reused `sessionId`, so prompt/memory hot paths stop preserving separate channel-identity derivations while stale same-session replies no longer suppress lane-local bootstrap context |
 | 2026-04-15 | Channel retry/read-repair paths now also resolve canonical identity through the shared helper, so canonical rebuild, drift repair, and synthetic `session_started` metadata stop preserving separate read-side `channelId -> conversation/container` derivations |
 | 2026-04-15 | `chatCoreInterop` now also resolves canonical conversation scope through the shared helper, so transcript/core rebuild seams stop preserving a separate conversation-id derivation path from the rest of the chat runtime |
 | 2026-04-15 | Core projection sync and interaction writes now also resolve channel canonical identity through the shared helper, so the canonical write path no longer preserves a separate projection-only `channelId -> conversation/container` derivation from the runtime/read side |

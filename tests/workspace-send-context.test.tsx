@@ -8,7 +8,7 @@ function createPayload(overrides: Record<string, unknown> = {}) {
     chat: {
       selectedChannel: {
         id: 'channel-1',
-        channelKind: 'boss_thread',
+        channelKind: 'chat_channel',
         roomRouting: {
           defaultRecipientId: null,
         },
@@ -21,7 +21,7 @@ function createPayload(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test('prepareWorkspaceSendContext composes solo dispatch target with attachment hydration for an existing room', async () => {
+test('prepareWorkspaceSendContext composes default dispatch target with attachment hydration for an existing room', async () => {
   const stateUpdates: unknown[] = [];
   const restoreCalls: File[][] = [];
   const trace: string[] = [];
@@ -43,7 +43,7 @@ test('prepareWorkspaceSendContext composes solo dispatch target with attachment 
     selectedChannel: {
       id: 'channel-1',
     },
-    soloChannelExecutionTarget: {
+    defaultChannelExecutionTarget: {
       provider: 'codex',
       model: 'gpt-5.4',
       instance: 'native',
@@ -76,7 +76,7 @@ test('prepareWorkspaceSendContext composes solo dispatch target with attachment 
         chat: {
           selectedChannel: {
             id: 'channel-1',
-            channelKind: 'boss_thread',
+            channelKind: 'chat_channel',
             roomRouting: {
               defaultRecipientId: null,
             },
@@ -94,7 +94,7 @@ test('prepareWorkspaceSendContext composes solo dispatch target with attachment 
 
   assert.equal(result.channelId, 'channel-1');
   assert.equal(result.rollbackPath, '/chat/chats/channel-1');
-  assert.deepEqual(result.soloDispatchTarget, {
+  assert.deepEqual(result.defaultDispatchTarget, {
     pendingProvider: 'codex',
     pendingModel: 'gpt-5.4',
     pendingInstance: 'native',
@@ -139,7 +139,7 @@ test('prepareWorkspaceSendContext creates missing direct lanes, uses draft files
     draftDefaultRecipientCatId: 'cat-lead',
     participantCatIds: ['cat-lead'],
     selectedChannel: null,
-    soloChannelExecutionTarget: {
+    defaultChannelExecutionTarget: {
       provider: 'claude',
       model: 'opus',
       instance: 'native',
@@ -157,7 +157,7 @@ test('prepareWorkspaceSendContext creates missing direct lanes, uses draft files
         ...payload.chat,
         selectedChannel: {
           id: createdChannel.id,
-          channelKind: 'direct_lane',
+          channelKind: 'direct_message',
           roomRouting: {
             defaultRecipientId: 'cat-lead',
           },
@@ -193,7 +193,7 @@ test('prepareWorkspaceSendContext creates missing direct lanes, uses draft files
   assert.equal(createdInputs[0]?.defaultRecipientId, 'cat-lead');
   assert.equal(result.channelId, 'channel-direct-1');
   assert.equal(result.rollbackPath, '/chat/dm/cat-lead');
-  assert.equal(result.soloDispatchTarget, null);
+  assert.equal(result.defaultDispatchTarget, null);
   assert.equal(
     result.messageBody,
     '[Attached files in working directory:]\n- .cats-attachments/direct.txt\n\nWake up and inspect the direct lane attachment.',

@@ -1,203 +1,63 @@
-# ADR-091: Retire `composerMode = cat_led` in Favor of Channel Intent
-
-> Finish the retirement that ADR-055 began: remove the `cat_led` routing
-> shortcut from Chat, split channel intent into explicit derived predicates,
-> and keep the orchestrator as the single deterministic router that ADR-082
-> declared it would be.
+# ADR-091: Retire `composerMode` in Favor of Channel Intent
 
 ## Status
 
 Accepted
 
-> Completes ADR-055 ("Retire lead semantics and separate composer recipients
-> from dispatch policy"). Restores the ADR-082 invariant that **deterministic
-> routing is an orchestrator responsibility**, not a parallel branch in the
-> mention router.
-
 ## Context
 
-Two prior decisions left an unresolved seam:
+Earlier Chat prototypes let draft UI state leak into routing and persistence.
+That made the codebase treat "how the user entered the composer" as if it were
+the domain shape of the conversation.
 
-- **ADR-055** (2026-04-08) retired the *language* of lead Cats: it renamed
-  `leadParticipantId` → `defaultRecipientId`, removed the lead badge from the
-  composer, and unified the composer chip slot. It did **not** remove the
-  `composerMode: 'cat_led'` enum, the channel field that persists it, or the
-  dispatch branch that reads it.
-- **ADR-082** (2026-04-25) declared that the platform orchestrator owns
-  deterministic routing — explicit `@mention` resolution, channel-wired
-  dispatch to a named target, and weak-model SOP fallback. It did not address
-  the existing `cat_led` short-circuit in `mentionRouter`.
+The current IA separates those concerns:
 
-Before this ADR, the result was a grey zone:
+- Domain topology: `direct_message` vs `chat_channel`.
+- Entry UI: `+ New Chat` default/group/parallel presets.
+- Feature mode: parallel group execution.
+- Routing internals: direct-message recipient vs orchestrated non-direct
+  channel routing.
 
-- `src/products/chat/state/mentionRouter.ts:178-207` short-circuits to the
-  `defaultRecipientId` participant whenever `channel.composerMode === 'cat_led'`,
-  bypassing the orchestrator entirely. This is a *second* deterministic router
-  living outside the orchestrator system layer.
-- `src/products/chat/state/chat-snapshot/entities.ts:314-322` infers and
-  persists the field at channel creation time, so every existing channel
-  records one of `'solo'` or `'cat_led'` as a permanent routing decision.
-- `src/products/chat/state/room-routing/index.ts` still carried product-side
-  normalizer aliases for `'missing_cat_led_recipient'` and
-  `'cat_led_recipient'`, keeping old routing-result names visible in product
-  code even after the shared recipient vocabulary had moved on.
-- The legacy term reached UI workflow-shape gates, session-launch branches,
-  API/read-model contracts, tests, and Guide Cat assist scope tables.
-
-The split is a maintenance trap: every new routing rule has to choose
-between living in the orchestrator (ADR-082's home) or the mentionRouter
-short-circuit (cat_led's home). Neither side is wrong on its own; the
-divergence is the bug.
+`composerMode` crossed those layers. It also encouraged compatibility aliases
+for retired prototype states, which this pre-release product deliberately does
+not keep.
 
 ## Decision
 
-Retire `cat_led` as a routing concept and remove `composerMode` from the
-Chat storage/API/read-model contract. No routing rule may depend on
-`composerMode === 'cat_led'`, and new channel records must not write
-`composerMode`.
+Remove `composerMode` from Chat storage, API/read models, UI gates, and routing
+contracts. The current contract is:
 
-This product is pre-release, so the cleanup does **not** keep backward-
-compatibility shims for old prototype records. Persisted records are treated as
-mutable local development state; the current contract is the source of truth.
+- `channelKind`: `direct_message` or `chat_channel`.
+- `roomRouting.mode`: `direct_message` or `chat_channel`.
+- `entryKind`: `direct`, `default`, or `group` where this is strictly create UI
+  intent, not persistent routing taxonomy.
+- conversation mode: `direct_message`, `default_chat`, or `participant_chat`.
+- continuity topology: `direct_message`, `telegram_direct_message`,
+  `default_chat`, or `participant_chat`.
 
-- **Split channel intent into derived predicates** instead of overloading
-  `composerMode`:
-  - provider solo thread: no active participants, not a direct lane, and an
-    optional pending provider/model target;
-  - direct participant lane: `roomMode === direct_cat_chat` / direct-lane
-    topology, always routed to the direct participant;
-  - participant room: non-direct room with active participants; supports
-    audience selection and workflow-shape controls, but does not own default
-    routing.
-- **Rewrite mentionRouter** so no non-direct participant room bypasses the
-  orchestrator:
-  - Explicit `@mention` → that participant (unchanged).
-  - Direct lane with no `@mention` → direct participant (unchanged).
-  - Non-direct room with no `@mention`, even when `defaultRecipientId` is set
-    → orchestrator handles the turn first. The default recipient remains room
-    context the orchestrator may use, not an automatic target.
-  - No `@mention` and no `defaultRecipientId` → orchestrator handles the
-    turn directly (today's `solo` behaviour).
-- **Treat this as an intentional product behavior change** for group and
-  parallel participant rooms. The old behavior made the default participant
-  speak first deterministically. The new behavior makes the orchestrator speak
-  first unless the operator explicitly mentions a participant or chooses a
-  per-turn audience.
-- **Remove the legacy enum values** `'missing_cat_led_recipient'` and
-  `'cat_led_recipient'` from room-routing result contracts. Replace call sites
-  with the recipient-state equivalents (`'missing_default_recipient'` /
-  `'default_recipient'`).
-- **Replace UI gates** that key on `composerMode === 'cat_led'` with explicit
-  channel-intent predicates such as `supportsParticipantAudienceSelection`.
+No code should add aliases or fallbacks for retired prototype routing names.
+Persisted local development records can be regenerated because the product has
+not had a public stable release.
 
-This preserves two existing behaviors:
-
-- Pure provider/model solo chats (`+ New chat` and pure provider branches in
-  `+ Parallel chat`) continue to send the operator's message directly to the
-  selected provider/model.
-- Direct/private lanes continue to route directly to the selected participant.
-
-It intentionally changes one behavior:
-
-- Group/parallel participant rooms no longer auto-dispatch a no-mention turn
-  to `defaultRecipientId`. They route to the orchestrator first.
-
-The migration dependency order was staged as implementation slices, not as a
-compatibility window:
-
-1. **Slice 1 — channel-intent helpers.** Add derived predicates for provider
-   solo, direct participant lane, participant room, and participant-audience
-   support. Replace routing/session reads that currently depend on
-   `composerMode === 'solo'` or `composerMode === 'cat_led'` with the derived
-   predicates.
-2. **Slice 2 — routing behavior change.** Remove the
-   `composerMode === 'cat_led'` short-circuit in `mentionRouter`. Direct lanes
-   still route directly to their participant; non-direct participant rooms
-   route no-mention turns to the orchestrator.
-3. **Slice 3 — UI gate cleanup.** Replace active audience/workflow-shape gates
-   and conversation-mode naming with participant-room predicates and neutral
-   labels.
-4. **Slice 4 — storage/contract cleanup.** Stop writing and exposing
-   `composerMode`; delete `ComposerMode` from chat/workspace contracts and
-   chat snapshots/read models.
-5. **Slice 5 — terminology cleanup.** Remove legacy room-routing enum values
-   and rename remaining current identifiers/scope keys from `cat_led` to
-   participant/default-recipient language.
-
-Slices 1-3 are behavior-preserving or behavior-changing UI/routing work.
-Slices 4-5 are the contract-breaking cleanup and must land only after product
-surfaces no longer depend on `composerMode`. In practice, that dependency had
-already been satisfied when this ADR was implemented, so the cleanup landed as
-one consolidated change plus follow-up verification rather than five separate
-commits.
+Guide Cat assist follows the same split: `/chat/new` is one assist surface.
+Default/group/parallel composer presets do not create separate assist scope
+keys, and direct-message routes do not get Guide Cat helper chips.
 
 ## Consequences
 
-### Positive
-
-- ADR-082's "orchestrator owns deterministic routing" invariant is
-  restored. There is exactly one deterministic router.
-- ADR-055's intent is fully realized: lead semantics is gone in name **and**
-  in storage shape; per-turn recipients + dispatch policy is the only mental
-  model.
-- Channel records get smaller and one frozen-contract enum shrinks.
-- New routing rules have a single home (orchestrator routing) and do not
-  have to choose between two deterministic branches.
-
-### Negative
-
-- Touches many source files, the chat API contract, and the shared
-  room-routing result contract. Slices 4 and 5 are coordinated edits
-  that cannot land independently without breaking the dispatch.
-- Non-direct participant rooms lose the old no-mention direct-to-default
-  behavior. Users who want a specific participant to answer must mention that
-  participant, choose a per-turn audience, or rely on the orchestrator to route
-  the work.
-- Local development state or tests that expected `composerMode` to be a stable,
-  persisted field need updating to explicit topology/recipient state.
-
-### Neutral
-
-- Channel creation paths (`+ New chat`, `+ Group chat`, `+ Parallel chat`)
-  do not need new UX. They keep setting `roomMode` and (for `+ New chat` /
-  `+ Group chat` with a default recipient) `defaultRecipientId`. The
-  derivation handles the rest.
-
-## Alternatives Considered
-
-### Adopt `cat_led` as an orchestrator-owned routing rule
-
-- **Pros**: Smaller diff. Keeps the existing dispatch decisions verbatim.
-- **Cons**: Still leaves the `composerMode` enum in the persisted channel
-  record. Future routing rules still have to choose between
-  "orchestrator-owned" and "channel-mode-owned" placement. The
-  channel-mode branch becomes a special case the orchestrator must
-  remember.
-- **Why rejected**: This is the half-fix that ADR-055 already attempted.
-  Repeating it would just push the grey zone forward by one ADR cycle.
-
-### Leave `cat_led` in place as legacy
-
-- **Pros**: Zero risk. No migration.
-- **Cons**: The grey zone keeps biting every time a new ADR touches
-  routing or channel modes. The ADR-082 invariant stays nominally
-  declared but actually violated by the running code.
-- **Why rejected**: ADR-055 is already amended once; layering more amendments
-  on top of unfinished cleanup is the pattern this ADR is trying to break.
+- Routing can reason from channel topology first instead of inferred draft
+  state.
+- Group and parallel participant chats are non-direct chat channels; no-mention
+  turns go through the orchestrator unless the operator explicitly mentions a
+  participant or chooses a per-turn audience.
+- Direct messages remain recipient-routed.
+- Tests and docs must use the current names only: `direct_message`,
+  `chat_channel`, `default_chat`, `participant_chat`, and UI `default/group`
+  presets.
 
 ## References
 
-- [ADR-055: Retire lead semantics and separate composer recipients from dispatch policy](./055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md)
-- [ADR-082: Recast the orchestrator as a capability shell with policy-dial supervision](./082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md)
-- [ADR-042: Separate channel topology from routing mode](./042-separate-channel-topology-from-routing-mode.md)
-- `src/products/chat/state/mentionRouter.ts` — historical `cat_led` short-circuit
-- `src/products/chat/state/chat-snapshot/entities.ts` — historical `composerMode` inference + persistence
-- `src/products/chat/state/room-routing/index.ts` — historical product-side legacy routing-result aliases
-- `src/shared/roomRouting.ts` — current shared room-routing result vocabulary
-
----
-
-*Accepted: 2026-04-29*
-*Amended: 2026-04-30 — corrected the legacy routing-result location: `missing_cat_led_recipient` / `cat_led_recipient` lived in the product-side room-routing normalizer, not in the frozen shared `src/shared/roomRouting.ts` contract.*
-*Amended: 2026-04-30 — recorded that implementation landed as one consolidated cleanup after product surfaces no longer depended on `composerMode`, so the slices are dependency order rather than a commit-splitting requirement.*
-*Proposed by: Claude, after the owner flagged that `cat_led` still bypasses the orchestrator's deterministic routing.*
+- ADR-055: retire lead semantics and separate composer recipients from dispatch
+  policy.
+- ADR-082: orchestrator-owned deterministic routing.
+- SPEC-067: Guide Cat assist cache and scope keys.

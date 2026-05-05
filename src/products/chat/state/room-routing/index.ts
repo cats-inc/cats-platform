@@ -48,8 +48,8 @@ export {
 } from '../../../../core/roomRoutingState.js';
 
 const ROOM_ROUTING_MODES = new Set<RoomRoutingMode>([
-  'boss_chat',
-  'direct_cat_chat',
+  'chat_channel',
+  'direct_message',
 ]);
 
 const ROOM_ROUTING_TRIGGERS = new Set<RoomRoutingTrigger>([
@@ -71,15 +71,15 @@ const ROOM_ROUTE_SELECTION_KINDS = new Set<RoomRouteSelectionKind>([
 ]);
 
 const ROOM_ROUTE_BLOCKED_REASONS = new Set<RoomRouteBlockedReason>([
-  'missing_direct_chat_recipient',
+  'missing_direct_message_recipient',
   'missing_default_recipient',
   'no_valid_targets',
   'user_cancelled',
 ]);
 
 const ROOM_ROUTE_DEFAULT_TARGET_REASONS = new Set<RoomRouteDefaultTargetReason>([
-  'boss_chat_default',
-  'direct_chat_recipient',
+  'chat_channel_default',
+  'direct_message_recipient',
   'default_recipient',
 ]);
 
@@ -191,7 +191,7 @@ const ROOM_WAKE_REQUEST_STATUSES = new Set<RoomWakeRequestStatus>([
 
 export function normalizeRoomRoutingMode(
   value: unknown,
-  fallback: RoomRoutingMode = 'boss_chat',
+  fallback: RoomRoutingMode = 'chat_channel',
 ): RoomRoutingMode {
   return typeof value === 'string' && ROOM_ROUTING_MODES.has(value as RoomRoutingMode)
     ? value as RoomRoutingMode
@@ -221,7 +221,7 @@ export function normalizeRoomRouteSelectionKind(
 export function normalizeRoomRouteBlockedReason(
   value: unknown,
 ): RoomRouteBlockedReason | null {
-  if (value === 'missing_direct_chat_lead') return 'missing_direct_chat_recipient';
+  if (value === 'missing_direct_chat_lead') return 'missing_direct_message_recipient';
   return typeof value === 'string'
     && ROOM_ROUTE_BLOCKED_REASONS.has(value as RoomRouteBlockedReason)
     ? value as RoomRouteBlockedReason
@@ -231,7 +231,7 @@ export function normalizeRoomRouteBlockedReason(
 export function normalizeRoomRouteDefaultTargetReason(
   value: unknown,
 ): RoomRouteDefaultTargetReason | null {
-  if (value === 'direct_chat_lead') return 'direct_chat_recipient';
+  if (value === 'direct_chat_lead') return 'direct_message_recipient';
   return typeof value === 'string'
     && ROOM_ROUTE_DEFAULT_TARGET_REASONS.has(value as RoomRouteDefaultTargetReason)
     ? value as RoomRouteDefaultTargetReason

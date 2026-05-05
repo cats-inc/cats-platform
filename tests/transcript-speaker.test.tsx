@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { resolveTranscriptMessageSpeaker } from '../src/products/chat/renderer/chatUtils.tsx';
 
-test('solo orchestrator replies use the stored execution label snapshot instead of recomputing from current catalog state', () => {
+test('default orchestrator replies use the stored execution label snapshot instead of recomputing from current catalog state', () => {
   const speaker = resolveTranscriptMessageSpeaker(
     {
       id: 'message-1',
@@ -32,7 +32,7 @@ test('solo orchestrator replies use the stored execution label snapshot instead 
   });
 });
 
-test('legacy solo orchestrator replies do not surface the internal Chat placeholder as the speaker name', () => {
+test('legacy default orchestrator replies do not surface the internal Chat placeholder as the speaker name', () => {
   const speaker = resolveTranscriptMessageSpeaker(
     {
       id: 'message-legacy',
@@ -61,7 +61,7 @@ test('legacy solo orchestrator replies do not surface the internal Chat placehol
   });
 });
 
-test('solo orchestrator replies do not surface the internal Orchestrator placeholder as the speaker name', () => {
+test('default orchestrator replies do not surface the internal Orchestrator placeholder as the speaker name', () => {
   const speaker = resolveTranscriptMessageSpeaker(
     {
       id: 'message-modern',

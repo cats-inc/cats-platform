@@ -28,7 +28,7 @@ export function createDefaultRoomRoutingState(
   } = {},
 ): RoomRoutingState {
   return {
-    mode: overrides.mode ?? 'boss_chat',
+    mode: overrides.mode ?? 'chat_channel',
     defaultRecipientId: overrides.defaultRecipientId ?? null,
     maxContinuations: DEFAULT_MAX_ROUTING_CONTINUATIONS,
     maxDispatchesPerTurn: DEFAULT_MAX_ROUTING_DISPATCHES,

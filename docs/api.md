@@ -365,14 +365,13 @@ Each channel now exposes a `roomRouting` read model with:
 
 Channels also expose a topology-oriented `channelKind` field:
 
-- `boss_thread`
-- `direct_lane`
-- `multi_cat_room`
+- `chat_channel`
+- `direct_message`
 
 `channelKind` answers what kind of room the product is dealing with, while
-`roomRouting.mode` remains the default-routing compatibility seam. Direct-lane
-resume, stream selection, and renderer chrome now key off `channelKind`
-instead of assuming every room still has Boss Cat topology behind it.
+`roomRouting.mode` remains the routing-policy read model. Direct-message resume,
+stream selection, and renderer chrome now key off `channelKind` instead of
+inferring topology from the routing policy.
 
 ### Channel Messages
 
@@ -386,7 +385,7 @@ POST /api/channels/{channelId}/messages
   `{ message: { ...userMessage }, dispatch: { channelId, results } }`.
 - `dispatch.results` now covers the whole live routing loop for that user turn,
   not just the first target. A single `POST` may therefore include:
-  - the default Boss Cat dispatch
+  - the default orchestrator dispatch
   - explicit multi-target fan-out dispatches
   - continuation dispatches triggered by later agent `@mentions`
 
@@ -403,7 +402,7 @@ product-owned `companionSession` metadata. That payload includes:
 - the current `CompanionResponseProfile`
 - owner notes and direct-session constraints
 - retrieval context assembled inside `cats`
-- channel/transport context for the current direct lane
+- channel/transport context for the current direct message
 
 This hydration seam is additive and product-owned. `cats-runtime` still remains
 the execution boundary rather than the long-lived companion-box store.
@@ -467,11 +466,11 @@ PATCH /api/preferences
   the updated preferences payload.
 - Updating `selectedChannelId` also wakes the selected room's visible entry
   participant when that room is currently sleeping:
-  - `boss_chat` wakes `Boss Cat`
-  - `direct_cat_chat` wakes the room's lead Cat
-- If a `direct_cat_chat` no longer has an active lead Cat, the selection write
+  - `chat_channel` wakes the default orchestrator entry participant
+  - `direct_message` wakes the room's direct recipient Cat
+- If a `direct_message` no longer has an active direct recipient Cat, the selection write
   stays explicit and records a failed `roomRouting.lastWakeRequest` instead of
-  silently falling back to `Boss Cat`.
+  silently falling back to chat-channel orchestration.
 - Renderer room-entry wake now goes through this explicit selection mutation so
   persisted-room wake keeps a write seam instead of piggybacking on app-shell
   reads.
@@ -1819,7 +1818,7 @@ control-plane view for one task:
       "channelId": "channel-system-1",
       "conversationId": "conversation-system-1",
       "taskId": "task-system-1",
-      "roomMode": "boss_chat",
+      "roomMode": "chat_channel",
       "transport": "web",
       "workflowStageId": "continuation_handoff",
       "workflowShape": "converge"
@@ -2234,7 +2233,7 @@ for one task:
         "workflowShape": "sequential",
         "channelId": "channel-123",
         "transport": "web",
-        "roomMode": "boss_chat"
+        "roomMode": "chat_channel"
       },
       "taskId": "task-system-1",
       "pendingDispatch": {

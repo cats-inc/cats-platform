@@ -6,9 +6,9 @@ import type {
   GuideCatAssistSurfaceReadModel,
 } from '../src/shared/guideCatAssist.ts';
 import {
-  resolveDraftStarterSuggestionsBaseline,
   resolveLobbyGuideCatAssistBaseline,
   resolveNewCodeGuideCatAssistBaseline,
+  resolveNewChatGuideCatAssistBaseline,
 } from '../src/shared/guideCatAssistBaselines.ts';
 import { resolveGuideCatAssistGreeting } from '../src/shared/guideCatAssistPresentation.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
@@ -83,19 +83,7 @@ test('Guide Cat assist baselines can be generated from the shared zh-TW catalog'
   assert.equal(codeBundle.content.entryChips[0]?.label, '建置番茄鐘應用程式');
   assert.equal(codeBundle.content.entryChips[4]?.prompt, '開始一個小專案來追蹤里程碑。');
 
-  const directChips = resolveDraftStarterSuggestionsBaseline({
-    mode: 'direct',
-    t: zh,
-  });
-  assert.equal(
-    directChips[0]?.prompt,
-    '請這隻貓咪針對這項任務給我聚焦的更新或建議。',
-  );
-
-  const participantChips = resolveDraftStarterSuggestionsBaseline({
-    mode: 'participant',
-    defaultRecipientName: 'Milo',
-    t: zh,
-  });
-  assert.equal(participantChips[0]?.prompt, '請Milo先做第一版，再一起收斂計畫。');
+  const chatBundle = resolveNewChatGuideCatAssistBaseline({ t: zh });
+  assert.equal(chatBundle.content.entryChips.length, 0);
+  assert.ok(chatBundle.content.greeting);
 });

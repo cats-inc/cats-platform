@@ -44,7 +44,7 @@ export default function ChatSidebarScreen() {
           title: getMobileChannelTitle(copy, 'chat', actionId),
           topic: '',
           originSurface: 'chat',
-          entryKind: actionId === 'group' ? 'group' : 'solo',
+          entryKind: actionId === 'group' ? 'group' : 'default',
         });
         router.push(`/(tabs)/chat/${channelId}`);
       } catch {

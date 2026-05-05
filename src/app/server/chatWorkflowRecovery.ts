@@ -125,7 +125,7 @@ function createFallbackOutcome(
 ): RoomRoutingOutcome {
   return {
     turnId: turn.id,
-    mode: channel.roomRouting?.mode ?? 'boss_chat',
+    mode: channel.roomRouting?.mode ?? 'chat_channel',
     sourceMessageId: turn.sourceMessageId,
     sourceSenderKind: turn.sourceSenderKind,
     sourceSenderName: turn.sourceSenderName,

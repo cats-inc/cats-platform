@@ -8,7 +8,7 @@
 > Current code may still contain older `concurrent*` identifiers until the
 > rename refactor lands.
 
-Cats Chat needs a parallel mode that sits between a normal solo chat and a fully shared group chat. A user should be able to open multiple private AI threads at once, send the same prompt to all of them, switch between them quickly, and selectively relay one model's reply into the other private threads using reusable command patterns.
+Cats Chat needs a parallel mode that sits between a normal default chat and a fully shared group chat. A user should be able to open multiple private AI threads at once, send the same prompt to all of them, switch between them quickly, and selectively relay one model's reply into the other private threads using reusable command patterns.
 
 This spec should now be read with the stricter shared-engine distinction:
 

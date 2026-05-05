@@ -364,7 +364,7 @@ test('direct companion chat routes hydrated companion session context into runti
         title: '',
         topic: 'Private companion lane',
         originSurface: 'chat',
-        roomMode: 'direct_cat_chat',
+        roomMode: 'direct_message',
         participantCatIds: [cat.id],
       }),
     });
@@ -502,8 +502,8 @@ test('mentioning a companion in a Recents thread hydrates the participant runtim
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        title: 'Solo thread',
-        topic: 'Start solo, then bring a companion into the Recents chat.',
+        title: 'Default thread',
+        topic: 'Start default, then bring a companion into the Recents chat.',
         originSurface: 'chat',
         skipBossCatGreeting: true,
         pendingProvider: 'gemini',

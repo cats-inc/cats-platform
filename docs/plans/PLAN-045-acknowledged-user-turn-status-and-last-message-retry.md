@@ -104,9 +104,9 @@ avoids duplicate user turns
       assistant-bubble promotion after session startup, and hover-only retry.
 - [ ] Task 4.2: Add route/runtime tests that prove retry replays the same
       acknowledged source message without adding a second user bubble.
-- [ ] Task 4.3: Add regression coverage for sequential multi-participant rooms
+- [ ] Task 4.3: Add regression coverage for sequential participant chats
       so speaker handoff does not reintroduce pre-session identity bubbles.
-- [ ] Task 4.4: Manually smoke-check solo, direct, group, and sequential room
+- [ ] Task 4.4: Manually smoke-check default, direct, group, and sequential room
       flows because transcript truthfulness is a product contract, not just a
       unit-test detail.
 
@@ -162,7 +162,7 @@ retry seam
   and transcript/live-indicator handoff across ACK, session startup, and
   failure
 - **Manual Testing**:
-  - send a solo message and verify:
+  - send a default message and verify:
     user bubble appears after ACK, shows a generic spinner, then hands off to
     the assistant bubble only after session startup
   - break runtime startup before `session_started` and verify:

@@ -109,7 +109,7 @@ daily use.
 ### Phase 4: Session and Memory Discipline
 
 - [ ] Freeze Chat continuity rules across:
-      - solo recents threads
+      - default recents threads
       - lead-Cat or routed rooms
       - direct Cat lanes
       - Telegram-bound private lanes
@@ -144,7 +144,7 @@ an ops console.
 
 ### Phase 6: Spatial Polish and V1 Exit
 
-- [ ] Normalize layout behavior across solo, direct-lane, companion, and
+- [ ] Normalize layout behavior across default, direct-lane, companion, and
       multi-Cat modes
 - [ ] Refine secondary-surface placement, preview behavior, and operator
       indicators using the existing spatial-layout guidance
