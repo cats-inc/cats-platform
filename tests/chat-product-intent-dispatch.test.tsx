@@ -12,6 +12,10 @@ import {
 } from '../src/products/chat/state/runtime-dispatch/routing.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import type { RuntimeClient } from '../src/platform/runtime/client.ts';
+import {
+  parseProviderCapabilityBootstrapConfigDocument,
+  type ProviderCapabilityBootstrapConfig,
+} from '../src/platform/supervision/index.ts';
 
 function runtimeStub(onClose?: () => void): RuntimeClient {
   return {
@@ -19,6 +23,37 @@ function runtimeStub(onClose?: () => void): RuntimeClient {
       onClose?.();
     },
   } as RuntimeClient;
+}
+
+function fixtureBootstrapConfig(
+  initialTreatment: 'strong_agent' | 'weak_worker' = 'strong_agent',
+): ProviderCapabilityBootstrapConfig {
+  const parsed = parseProviderCapabilityBootstrapConfigDocument(
+    {
+      version: 1,
+      profiles: [
+        {
+          id: 'claude-native-sonnet-strong',
+          selector: {
+            provider: 'claude',
+            instance: 'native',
+            model: 'sonnet',
+            control: 'default',
+          },
+          initialTreatment,
+          confidenceLevel: 'catalog_only',
+          reason: `Fixture direct audience Cat is ${initialTreatment}.`,
+        },
+      ],
+    },
+    { observedAt: '2026-05-06T08:00:00.000Z' },
+  );
+
+  if (!parsed.config) {
+    throw new Error('Expected fixture bootstrap config to parse.');
+  }
+
+  return parsed.config;
 }
 
 function createDirectState() {
@@ -67,6 +102,7 @@ test('beginChannelMessageDispatch records direct product intent as posture event
     new Date('2026-05-06T08:01:00.000Z'),
     {
       chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
     },
   );
 
@@ -84,6 +120,7 @@ test('beginChannelMessageDispatch records direct product intent as posture event
         sourceTransport?: unknown;
         sourceChannelId?: unknown;
         audienceCatId?: unknown;
+        capabilityProfileKind?: unknown;
       }
     | undefined;
   const core = await store.readCore();
@@ -109,12 +146,60 @@ test('beginChannelMessageDispatch records direct product intent as posture event
   assert.equal(postureChange?.sourceTransport, 'web');
   assert.equal(postureChange?.sourceChannelId, channelId);
   assert.equal(postureChange?.audienceCatId, state.cats[0]?.id);
+  assert.equal(postureChange?.capabilityProfileKind, 'strong_agent');
   assert.equal(segment?.kind, 'system');
   assert.equal(segment?.status, 'complete');
   assert.equal(segment?.metadata.sourceMessageId, userMessage?.id);
   assert.equal(segment?.metadata.activeProductPosture, 'work');
   assert.equal(segmentPostureChange?.posture, 'work');
   assert.equal(segmentPostureChange?.sourceChannelId, channelId);
+});
+
+test('beginChannelMessageDispatch records weak direct audience capability outcome', async () => {
+  const { state, channelId } = createDirectState();
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig('weak_worker'),
+    },
+  );
+
+  const ackMessage = requireChannel(begun.state, channelId).messages.at(-1);
+  const postureChange = ackMessage?.metadata.directSlashModePostureChange as
+    | { capabilityProfileKind?: unknown }
+    | undefined;
+
+  assert.equal(postureChange?.capabilityProfileKind, 'weak_worker');
+});
+
+test('beginChannelMessageDispatch records unknown direct audience capability outcome', async () => {
+  const { state, channelId } = createDirectState();
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+  );
+
+  const ackMessage = requireChannel(begun.state, channelId).messages.at(-1);
+  const postureChange = ackMessage?.metadata.directSlashModePostureChange as
+    | { capabilityProfileKind?: unknown }
+    | undefined;
+
+  assert.equal(postureChange?.capabilityProfileKind, 'unknown');
 });
 
 test('beginChannelMessageDispatch rejects product intent posture changes outside direct lanes', async () => {
@@ -149,6 +234,74 @@ test('beginChannelMessageDispatch rejects product intent posture changes outside
   assert.equal(ackMessage?.senderKind, 'system');
   assert.equal(ackMessage?.metadata.event, 'product_intent_unsupported_context');
   assert.equal(ackMessage?.metadata.accepted, false);
+  assert.equal(ackMessage?.metadata.directSlashModePostureChange, undefined);
+});
+
+test('beginChannelMessageDispatch rejects direct product intent without one audience Cat', async () => {
+  const now = new Date('2026-05-06T08:00:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Empty direct lane',
+      topic: 'Direct work intake',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify this',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+  );
+
+  const ackMessage = requireChannel(begun.state, channelId).messages.at(-1);
+
+  assert.equal(begun.preparedTurn, null);
+  assert.equal(ackMessage?.metadata.event, 'product_intent_unsupported_context');
+  assert.equal(ackMessage?.metadata.rejectionReason, 'missing_direct_audience_cat');
+  assert.equal(ackMessage?.metadata.directSlashModePostureChange, undefined);
+});
+
+test('beginChannelMessageDispatch rejects direct product intent with multiple audience Cats', async () => {
+  const { state, channelId } = createDirectState();
+  const channel = requireChannel(state, channelId);
+  const existingAssignment = channel.catAssignments[0];
+  if (!existingAssignment) {
+    throw new Error('Expected direct lane cat assignment.');
+  }
+  channel.catAssignments.push({
+    ...structuredClone(existingAssignment),
+    participantId: 'second-direct-cat',
+    catId: 'second-direct-cat',
+    sourceRefId: 'second-direct-cat',
+    name: 'SecondDirectCat',
+  });
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify this',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+  );
+
+  const ackMessage = requireChannel(begun.state, channelId).messages.at(-1);
+
+  assert.equal(begun.preparedTurn, null);
+  assert.equal(ackMessage?.metadata.event, 'product_intent_unsupported_context');
+  assert.equal(ackMessage?.metadata.rejectionReason, 'missing_direct_audience_cat');
   assert.equal(ackMessage?.metadata.directSlashModePostureChange, undefined);
 });
 

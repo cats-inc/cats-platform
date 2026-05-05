@@ -95,15 +95,15 @@ creation.
 
 ### Phase 2: Direct audience capability bridge
 
-- [ ] Task 2.1: Add a helper that resolves a direct lane to exactly one
+- [x] Task 2.1: Add a helper that resolves a direct lane to exactly one
       audience Cat.
-- [ ] Task 2.2: Add a helper that resolves the audience Cat to its execution
+- [x] Task 2.2: Add a helper that resolves the audience Cat to its execution
       target and provider capability profile.
-- [ ] Task 2.3: Ensure the bridge consumes the active PLAN-080 bootstrap config
+- [x] Task 2.3: Ensure the bridge consumes the active PLAN-080 bootstrap config
       path used by existing Chat dispatch/provider-agent observation code.
-- [ ] Task 2.4: Add tests for `strong_agent`, `weak_worker`, and `unknown`
+- [x] Task 2.4: Add tests for `strong_agent`, `weak_worker`, and `unknown`
       direct-audience capability outcomes.
-- [ ] Task 2.5: Add negative tests for no audience, multiple audiences, and
+- [x] Task 2.5: Add negative tests for no audience, multiple audiences, and
       provider-name/model-name inference attempts.
 
 **Deliverables**: direct-message work-intake permission is a deterministic
@@ -327,6 +327,7 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Direct audience capability slice: product-intent posture changes now require exactly one direct audience Cat, resolve that Cat's execution target through the existing provider capability profile resolver, consume the PLAN-080 bootstrap config, and record `strong_agent` / `weak_worker` / `unknown` in `directSlashModePostureChange.capabilityProfileKind`. Tests cover no-audience, multi-audience, weak, strong, and unknown outcomes without provider-name inference. |
 | 2026-05-06 | Posture event slice: Web and Telegram product-intent commands now enter the same Chat dispatch boundary; recognized `/chat` / `/work` / `/code` messages write the user command, a visible system acknowledgement, and a Core system segment carrying `directSlashModePostureChange`. Non-direct usage produces a visible rejection without dispatching to runtime, and repeated posture commands are recorded as unchanged (`changed: false`). |
 | 2026-05-06 | Web composer slice: outgoing Web messages are tagged with `messageMetadata.productIntentCommand` when the shared parser recognizes `/chat`, `/work`, or `/code`; non-product slash commands still pass through as ordinary message content. |
 | 2026-05-06 | Telegram discoverability slice: command catalog and localized `/help` text now list `/chat`, `/work`, and `/code` without registering those product-intent commands as transport-control handlers. SPEC-038 now documents the discoverability-only relationship. |

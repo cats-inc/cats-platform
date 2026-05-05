@@ -17,9 +17,10 @@ import {
   upsertCoreTurn,
 } from '../../../../core/model/index.js';
 import type { ProviderAgentDecision } from '../../../../platform/orchestration/index.js';
-import type {
-  ProviderCapabilityBootstrapConfig,
-  ProviderCapabilityBootstrapDiagnosticSink,
+import {
+  resolveProviderCapabilityProfile,
+  type ProviderCapabilityBootstrapConfig,
+  type ProviderCapabilityBootstrapDiagnosticSink,
 } from '../../../../platform/supervision/index.js';
 import type {
   RoomRoutingGuardReason,
@@ -87,7 +88,10 @@ import {
   finalizeWorkflowTurn,
 } from '../room-routing/workflow.js';
 import { applyRoomRoutingSnapshot } from '../runtime-session/state.js';
-import { resolveOrchestratorLeaseAttachment } from '../../shared/channelParticipants.js';
+import {
+  resolveOrchestratorLeaseAttachment,
+  resolvePrimaryParticipantExecutionAssignment,
+} from '../../shared/channelParticipants.js';
 import { parseProductIntentCommand } from '../../shared/productIntentCommands.js';
 
 export type ProviderAgentDecisionRequester = (input: {
@@ -249,25 +253,106 @@ function resolvePreviousProductPosture(
   return null;
 }
 
-function resolveDirectAudienceCatId(
+interface ProductIntentAudienceResolution {
+  accepted: boolean;
+  audienceCatId: string | null;
+  participantId: string | null;
+  rejectionReason: 'non_direct_channel' | 'missing_direct_audience_cat' | null;
+}
+
+function resolveProductIntentAudience(
   channel: ReturnType<typeof requireChannel>,
-): string | null {
+): ProductIntentAudienceResolution {
   if (
     channel.channelKind !== 'direct_message'
     && channel.roomRouting?.mode !== 'direct_message'
   ) {
+    return {
+      accepted: false,
+      audienceCatId: null,
+      participantId: null,
+      rejectionReason: 'non_direct_channel',
+    };
+  }
+
+  const activeCatAssignments = channel.catAssignments.filter((assignment) =>
+    assignment.status === 'active');
+  if (activeCatAssignments.length !== 1) {
+    return {
+      accepted: false,
+      audienceCatId: null,
+      participantId: null,
+      rejectionReason: 'missing_direct_audience_cat',
+    };
+  }
+  const defaultRecipientId = channel.roomRouting?.defaultRecipientId?.trim()
+    || channel.recoverableDirectLaneCatId?.trim()
+    || null;
+  const matchedAssignment = defaultRecipientId
+    ? activeCatAssignments.find((assignment) =>
+        assignment.participantId === defaultRecipientId
+        || assignment.catId === defaultRecipientId)
+      ?? null
+    : activeCatAssignments[0]!;
+  if (!matchedAssignment) {
+    return {
+      accepted: false,
+      audienceCatId: null,
+      participantId: null,
+      rejectionReason: 'missing_direct_audience_cat',
+    };
+  }
+
+  return {
+    accepted: true,
+    audienceCatId: matchedAssignment.catId,
+    participantId: matchedAssignment.participantId,
+    rejectionReason: null,
+  };
+}
+
+function resolveDirectAudienceCapabilityProfileKind(input: {
+  channel: ReturnType<typeof requireChannel>;
+  audience: ProductIntentAudienceResolution;
+  assessedAt: string;
+  providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
+  providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
+}): DirectSlashModePostureChangeMetadata['capabilityProfileKind'] {
+  if (!input.audience.accepted || !input.audience.participantId) {
     return null;
   }
 
-  return channel.roomRouting?.defaultRecipientId?.trim()
-    || channel.recoverableDirectLaneCatId?.trim()
-    || null;
+  const assignment = resolvePrimaryParticipantExecutionAssignment(
+    input.channel,
+    input.audience.participantId,
+  );
+  const target = assignment?.execution.target ?? null;
+  if (!target?.provider) {
+    return 'unknown';
+  }
+
+  const capabilityProfile = resolveProviderCapabilityProfile(
+    {
+      provider: target.provider,
+      instance: target.instance,
+      model: target.model,
+      modelSelection: assignment?.execution.modelSelection ?? null,
+    },
+    {
+      assessedAt: input.assessedAt,
+      bootstrapConfig: input.providerCapabilityBootstrapConfig,
+    },
+  );
+  input.providerCapabilityBootstrapDiagnosticSink?.emitMany(capabilityProfile.diagnostics);
+  return capabilityProfile.kind;
 }
 
 function buildProductPostureChangeMetadata(input: {
   channel: ReturnType<typeof requireChannel>;
   channelId: string;
   productIntentCommand: ProductIntentCommandMetadata;
+  audience: ProductIntentAudienceResolution;
+  capabilityProfileKind: DirectSlashModePostureChangeMetadata['capabilityProfileKind'];
 }): DirectSlashModePostureChangeMetadata {
   const previousPosture = resolvePreviousProductPosture(input.channel);
   return {
@@ -279,17 +364,20 @@ function buildProductPostureChangeMetadata(input: {
     changed: previousPosture !== input.productIntentCommand.posture,
     sourceTransport: input.productIntentCommand.source,
     sourceChannelId: input.channelId,
-    audienceCatId: resolveDirectAudienceCatId(input.channel),
-    capabilityProfileKind: null,
+    audienceCatId: input.audience.audienceCatId,
+    capabilityProfileKind: input.capabilityProfileKind,
   };
 }
 
 function describeProductIntentCommandAck(
   productIntentCommand: ProductIntentCommandMetadata,
   accepted: boolean,
+  rejectionReason: ProductIntentAudienceResolution['rejectionReason'] = null,
 ): string {
   if (!accepted) {
-    return 'Product mode commands are available in direct messages for this MVP.';
+    return rejectionReason === 'missing_direct_audience_cat'
+      ? 'Product mode commands need exactly one direct audience Cat for this MVP.'
+      : 'Product mode commands are available in direct messages for this MVP.';
   }
 
   switch (productIntentCommand.command) {
@@ -583,13 +671,22 @@ export async function beginChannelMessageDispatch(
       },
     );
     nextState = userAppend.state;
-    const accepted = channelBeforeMessage.channelKind === 'direct_message'
-      || channelBeforeMessage.roomRouting?.mode === 'direct_message';
-    const postureChange = accepted
+    const audience = resolveProductIntentAudience(channelBeforeMessage);
+    const capabilityProfileKind = resolveDirectAudienceCapabilityProfileKind({
+      channel: channelBeforeMessage,
+      audience,
+      assessedAt: now.toISOString(),
+      providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
+      providerCapabilityBootstrapDiagnosticSink:
+        options.providerCapabilityBootstrapDiagnosticSink,
+    });
+    const postureChange = audience.accepted
       ? buildProductPostureChangeMetadata({
           channel: channelBeforeMessage,
           channelId,
           productIntentCommand,
+          audience,
+          capabilityProfileKind,
         })
       : null;
     const ackAppend = appendMessage(
@@ -598,12 +695,16 @@ export async function beginChannelMessageDispatch(
       {
         senderKind: 'system',
         senderName: 'Cats',
-        body: describeProductIntentCommandAck(productIntentCommand, accepted),
+        body: describeProductIntentCommandAck(
+          productIntentCommand,
+          audience.accepted,
+          audience.rejectionReason,
+        ),
       },
       now,
       {
         metadata: {
-          event: accepted
+          event: audience.accepted
             ? 'product_intent_posture_changed'
             : 'product_intent_unsupported_context',
           productIntentCommand,
@@ -615,7 +716,18 @@ export async function beginChannelMessageDispatch(
           sourceMessageId: userAppend.message.id,
           activeProductPosture: productIntentCommand.posture,
           targetProduct: productIntentCommand.targetProduct,
-          accepted,
+          accepted: audience.accepted,
+          audienceCatId: audience.audienceCatId,
+          ...(audience.rejectionReason
+            ? {
+                rejectionReason: audience.rejectionReason,
+              }
+            : {}),
+          ...(capabilityProfileKind
+            ? {
+                capabilityProfileKind,
+              }
+            : {}),
         },
         incrementUnread: false,
       },
@@ -632,7 +744,7 @@ export async function beginChannelMessageDispatch(
       ackMessage: ackAppend.message,
       productIntentCommand,
       postureChange,
-      accepted,
+      accepted: audience.accepted,
       now,
     });
     options.onStateWritten?.(channelId);
