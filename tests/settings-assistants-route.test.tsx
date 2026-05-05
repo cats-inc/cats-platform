@@ -14,6 +14,20 @@ test('resolveSettingsSectionConfig returns the assistants section for /settings/
   assert.equal(config.title, 'settingsRouteTitleAssistants');
 });
 
+test('resolveSettingsSectionConfig treats /settings root as General', () => {
+  const root = resolveSettingsSectionConfig('/settings', translate);
+  assert.equal(root.section, 'general');
+  assert.equal(root.title, 'settingsRouteTitleGeneral');
+
+  const trailingSlash = resolveSettingsSectionConfig('/settings/', translate);
+  assert.equal(trailingSlash.section, 'general');
+  assert.equal(trailingSlash.title, 'settingsRouteTitleGeneral');
+
+  const general = resolveSettingsSectionConfig('/settings/general', translate);
+  assert.equal(general.section, 'general');
+  assert.equal(general.title, 'settingsRouteTitleGeneral');
+});
+
 test('resolveSettingsSectionConfig keeps cats active only for canonical cats settings routes', () => {
   const cats = resolveSettingsSectionConfig('/settings/cats', translate);
   assert.equal(cats.section, 'cats');

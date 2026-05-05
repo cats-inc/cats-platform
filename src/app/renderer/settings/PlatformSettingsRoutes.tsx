@@ -35,6 +35,13 @@ export function resolveSettingsSectionConfig(
   pathname: string,
   translate: (key: MessageKey) => string,
 ): { section: string; title: string } {
+  if (
+    pathname === '/settings'
+    || pathname === '/settings/'
+    || isSettingsSectionPath(pathname, '/settings/general')
+  ) {
+    return { section: 'general', title: translate('settingsRouteTitleGeneral') };
+  }
   if (isSettingsSectionPath(pathname, '/settings/assistants')) {
     return { section: 'assistants', title: translate('settingsRouteTitleAssistants') };
   }
