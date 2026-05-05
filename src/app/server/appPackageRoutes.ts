@@ -24,6 +24,7 @@ import {
 } from '../../platform/apps/envelope.js';
 import { resolveCatsAppStoragePathsFromChatState } from '../../platform/apps/paths.js';
 import { FileCatsAppRegistry } from '../../platform/apps/registry.js';
+import { PLATFORM_ENTITY_PATH_PREFIXES } from '../../shared/platformRoutePaths.js';
 
 export interface AppPackageApiDependencies {
   config: Pick<AppConfig, 'chatStatePath'>;
@@ -185,6 +186,7 @@ async function validateLocalManifestPackage(
       .filter((record) => record.installState !== 'uninstalled')
       .map((record) => record.id),
     productRoutePrefixes: [
+      ...PLATFORM_ENTITY_PATH_PREFIXES,
       ...productDescriptors.map((product) => product.routePrefix),
       ...readInstalledProductModuleRoutePrefixes(registryState.apps),
     ],

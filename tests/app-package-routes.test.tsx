@@ -315,6 +315,27 @@ test('POST /api/apps/install rejects manifests that shadow product routes', asyn
   assert.deepEqual((list.payload as { apps: unknown[] }).apps, []);
 });
 
+test('POST /api/apps/install rejects product modules that shadow platform entity routes', async () => {
+  const platformDir = await createTempPlatformDir();
+  const packagePath = await createPackage(
+    platformDir,
+    createProductModuleManifest('system.cats-shadow', 'cats-shadow', '/cats'),
+  );
+
+  const install = await routeJson(platformDir, 'POST', '/api/apps/install', {
+    packagePath,
+    enable: true,
+  });
+  const list = await routeJson(platformDir, 'GET', '/api/apps');
+
+  assert.equal(install.statusCode, 400);
+  assert.ok(
+    (install.payload as { issues: Array<{ code: string }> }).issues
+      .some((issue) => issue.code === 'cats_app_product_route_collision'),
+  );
+  assert.deepEqual((list.payload as { apps: unknown[] }).apps, []);
+});
+
 test('POST /api/apps/install rejects product modules that shadow installed product modules', async () => {
   const platformDir = await createTempPlatformDir();
   const learnPackagePath = await createPackage(
