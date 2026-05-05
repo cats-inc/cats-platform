@@ -4,11 +4,41 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { fetchAppShell, updateCatProfile } from '../../../products/shared/renderer/api/index.js';
 import { hasCompanionSkill } from '../../../products/chat/renderer/chatUtils.js';
+import { messageKeys } from '../../../shared/i18n/index.js';
+import { useI18n } from '../i18n/index.js';
 import { CompanionWorkspace } from './companion/CompanionWorkspace.js';
 // Pull in the chat companion stylesheet so the header chrome / feed
 // tiles / side-panel styling render the same way they did under the
 // chat product surface.
 import '../../../products/chat/renderer/styles/chat-companion.css';
+
+export function CatProfileNotFound({ catId }: { catId: string }) {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+
+  return (
+    <div className="screen screenCentered entityComingSoonScreen">
+      <section className="entityComingSoonPanel">
+        <div className="entityComingSoonHeader">
+          <div>
+            <p className="eyebrow">{t(messageKeys.entityDetailBreadcrumbLobby)}</p>
+            <h1>{t(messageKeys.catProfileNotFoundTitle)}</h1>
+          </div>
+          <button
+            type="button"
+            className="secondaryButton"
+            onClick={() => navigate('/lobby')}
+          >
+            {t(messageKeys.entityComingSoonBackToLobby)}
+          </button>
+        </div>
+        <p className="entityComingSoonBody">
+          {t(messageKeys.catProfileNotFoundBody, { catId })}
+        </p>
+      </section>
+    </div>
+  );
+}
 
 /**
  * Platform-level page for `/entities/cats/:catId`. Mounts the (copied)
@@ -47,7 +77,7 @@ export function CatProfilePage() {
 
   const cat = payload.chat.cats.find((entry) => entry.id === catId);
   if (!cat) {
-    return <div className="catProfilePageNotFound" />;
+    return <CatProfileNotFound catId={catId} />;
   }
 
   const hideFeed = !hasCompanionSkill(cat);

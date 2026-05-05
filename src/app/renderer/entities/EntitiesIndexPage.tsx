@@ -14,7 +14,7 @@ export function EntitiesIndexPage({ envelope }: { envelope: PlatformHostEnvelope
       <header className="entityCanvasHeader">
         <div>
           <p className="eyebrow">{t(messageKeys.entityIndexEyebrow)}</p>
-          <h1 className="entityCanvasTitle">{t(messageKeys.entitiesShellSurfaceLabel)}</h1>
+          <h1 className="entityCanvasTitle">{t(messageKeys.entityIndexTitle)}</h1>
         </div>
       </header>
 

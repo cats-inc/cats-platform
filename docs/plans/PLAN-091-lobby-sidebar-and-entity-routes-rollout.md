@@ -520,6 +520,8 @@ suite unless explicitly asked.
       for callers that need them.
 - [x] Surface label rename: `entitiesShellSurfaceLabel`
       "Cats Lobby" → "Cats Directory" (en + zh-TW).
+      `/entities` H1 uses a separate `entityIndex.title` key so
+      page title copy is decoupled from the sidebar surface label.
 - [x] Sidebar primary action rename: `entitiesSidebar.backToLobby`
       "Main page" → "Back to Lobby" (en) / "回大廳" (zh-TW).
 - [x] All caller migrations: `EntitiesAppShellSidebar.tsx` route
@@ -559,6 +561,9 @@ suite unless explicitly asked.
 - [x] `LobbyAppShellSidebar.tsx` renamed to
       `EntitiesAppShellSidebar.tsx`; helper/type names and
       `data-shell-surface` now use `Entities` / `entities`.
+- [x] `EntitiesShell.tsx` and `EntitiesAppShellSidebar.tsx` moved from
+      `src/app/renderer/lobby/` to `src/app/renderer/entities-shell/`
+      so the file path matches the entity-domain surface.
 - [x] Removed compatibility redirects for `/settings/cats/my-cats`
       and `/settings/desktop-startup`. Settings sidebar navigates
       directly to canonical `/settings/cats`; `/settings/cats/new`
@@ -569,6 +574,8 @@ suite unless explicitly asked.
 - [x] Removed the dormant `CatHome` / `CatsListPage` route scaffolding,
       its obsolete i18n keys, and its tests. Cats routes now have only
       the current `CatsCanvasPage` and `CatProfilePage` implementation.
+- [x] `CatProfilePage` now renders a real missing-cat panel with a
+      Back to Lobby action instead of an empty div.
 - [x] Route and renderer tests updated to assert the current
       no-alias contract.
 

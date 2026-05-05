@@ -5,7 +5,10 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { Route, Routes, StaticRouter } from 'react-router-dom';
 
-import { CatProfilePage } from '../src/app/renderer/entities/CatProfilePage.tsx';
+import {
+  CatProfileNotFound,
+  CatProfilePage,
+} from '../src/app/renderer/entities/CatProfilePage.tsx';
 import { CatsCanvasPage } from '../src/app/renderer/entities/CatsCanvasPage.tsx';
 import { CatteryHome } from '../src/app/renderer/entities/CatteryHome.tsx';
 import { ClowderHome } from '../src/app/renderer/entities/ClowderHome.tsx';
@@ -15,7 +18,7 @@ import {
 } from '../src/app/renderer/entities/EntityCanvasPages.tsx';
 import { EntitiesIndexPage } from '../src/app/renderer/entities/EntitiesIndexPage.tsx';
 import { I18nProvider } from '../src/app/renderer/i18n/I18nProvider.tsx';
-import { EntitiesShell } from '../src/app/renderer/lobby/EntitiesShell.tsx';
+import { EntitiesShell } from '../src/app/renderer/entities-shell/EntitiesShell.tsx';
 import { PlatformLobby } from '../src/app/renderer/PlatformLobby.tsx';
 import { GuideCatPlacementProvider } from '../src/app/renderer/GuideCatPlacementProvider.tsx';
 import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
@@ -433,13 +436,27 @@ test('Drilled-down /entities/cats/:catId route also mounts the EntitiesShell', (
   assert.match(markup, /class="myCatAvatarWrap catAvatar catAvatarBoss"/u);
 });
 
+test('CatProfileNotFound renders a useful missing-cat panel', () => {
+  const markup = renderToStaticMarkup(
+    <I18nProvider locale="en">
+      <StaticRouter location="/entities/cats/missing-cat">
+        <CatProfileNotFound catId="missing-cat" />
+      </StaticRouter>
+    </I18nProvider>,
+  );
+
+  assert.match(markup, /Cat not found/u);
+  assert.match(markup, /No Cat with id &quot;missing-cat&quot; exists/u);
+  assert.match(markup, />Back to Lobby</u);
+});
+
 test('EntitiesShell loads the chat-thread-base avatar primitives so MY CATS rows show the 28px disc', () => {
   // Sanity check that EntitiesShell.tsx still imports the file
   // carrying `.catAvatar` rules. Imports are easy to drop accidentally
   // when refactoring style bundles, and SSR markup alone can't surface
   // an "invisible avatar" regression. Tests run from the package root
   // (`node --test build/test/*.js`), so resolve relative to cwd.
-  const path = `${process.cwd()}/src/app/renderer/lobby/EntitiesShell.tsx`;
+  const path = `${process.cwd()}/src/app/renderer/entities-shell/EntitiesShell.tsx`;
   const source = readFileSync(path, 'utf8');
   assert.match(source, /chat-thread-base\.css/u);
 });

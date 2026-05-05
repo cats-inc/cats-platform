@@ -3186,6 +3186,8 @@ export const messageKeys = {
   entityCanvasOpenClowderAction: 'entityCanvas.openClowderAction',
   entityCanvasOpenCatteryAction: 'entityCanvas.openCatteryAction',
   entityCanvasCatterySubtitle: 'entityCanvas.catterySubtitle',
+  catProfileNotFoundTitle: 'catProfile.notFound.title',
+  catProfileNotFoundBody: 'catProfile.notFound.body',
   // Entities sidebar reuses the ConversationSidebarMyCatsSection
   // primitive. The section needs only a header label and a "+ New X"
   // placeholder label per kind; the chat/code/work-style aria +
@@ -3198,6 +3200,7 @@ export const messageKeys = {
   entitiesSidebarNewCattery: 'entitiesSidebar.newCattery',
   entitiesSidebarBackToLobby: 'entitiesSidebar.backToLobby',
   entityIndexEyebrow: 'entityIndex.eyebrow',
+  entityIndexTitle: 'entityIndex.title',
   entityIndexColumnHeaderCats: 'entityIndex.columnHeader.cats',
   entityIndexColumnHeaderClowders: 'entityIndex.columnHeader.clowders',
   entityIndexColumnHeaderCatteries: 'entityIndex.columnHeader.catteries',

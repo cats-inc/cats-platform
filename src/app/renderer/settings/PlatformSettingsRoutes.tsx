@@ -45,7 +45,7 @@ export function resolveSettingsSectionConfig(
   if (isSettingsSectionPath(pathname, '/settings/assistants')) {
     return { section: 'assistants', title: translate('settingsRouteTitleAssistants') };
   }
-  if (pathname === '/settings/cats' || pathname === '/settings/cats/new') {
+  if (isCatsSettingsSectionPath(pathname)) {
     return { section: 'cats', title: translate('settingsRouteTitleMyCats') };
   }
   if (isSettingsSectionPath(pathname, '/settings/chat')) {
@@ -74,6 +74,13 @@ export function resolveSettingsSectionConfig(
 
 function isSettingsSectionPath(pathname: string, sectionPath: string): boolean {
   return pathname === sectionPath || pathname.startsWith(`${sectionPath}/`);
+}
+
+function isCatsSettingsSectionPath(pathname: string): boolean {
+  // `/settings/cats` is a temporary holdout while cat creation still
+  // lives in Settings. Keep this as an allow-list so removed routes like
+  // `/settings/cats/my-cats` and `/settings/cats/assistants` stay gone.
+  return pathname === '/settings/cats' || pathname === '/settings/cats/new';
 }
 
 // Pure builder — deliberately hook-free so route structure tests can call it

@@ -48,7 +48,7 @@ import {
   CatteriesCanvasPage,
   ClowdersCanvasPage,
 } from './entities/EntityCanvasPages.js';
-import { EntitiesShell } from './lobby/EntitiesShell.js';
+import { EntitiesShell } from './entities-shell/EntitiesShell.js';
 import { PlatformLobby } from './PlatformLobby';
 import {
   GuideCatPlacementProvider,

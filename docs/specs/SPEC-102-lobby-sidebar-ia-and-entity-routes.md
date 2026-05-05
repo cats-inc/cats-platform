@@ -29,7 +29,7 @@
   entity column-cards (Cats / Clowders / Catteries), products grid,
   apps grid, `LobbyBouncingCats` background.
 - **Entity-domain routes mount the Entities workspace
-  shell** (`EntitiesShell` in `src/app/renderer/lobby/EntitiesShell.tsx`).
+  shell** (`EntitiesShell` in `src/app/renderer/entities-shell/EntitiesShell.tsx`).
   This is a chat-style appshell — `screen claudeShell` outer grid,
   `EntitiesAppShellSidebar` on the left, `<main class="canvas">` on the
   right. The shell wraps:
@@ -39,7 +39,9 @@
 - **`EntitiesAppShellSidebar` reuses the chat / code / work
   `ConversationSidebar*` primitives**:
   - `PlatformSurfaceSwitcher` at the top with the
-    `entitiesShellSurfaceLabel` ("Cats Directory") override
+    `entitiesShellSurfaceLabel` ("Cats Directory") override. The
+    `/entities` index page title uses its own `entityIndex.title`
+    key so page copy can evolve independently from sidebar chrome.
   - `primaryActions = [Back to Lobby]` only (navigates `/lobby`)
   - Scrollable middle: three `<nav class="navGroup">` blocks, one per
     entity kind. Each starts with a `.navItem` button (My Cats /

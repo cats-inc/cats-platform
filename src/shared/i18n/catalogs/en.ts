@@ -2508,6 +2508,9 @@ export const enCatalog: MessageCatalog = {
   'entityCanvas.openCatteryAction': 'Open Cattery',
   'entityCanvas.catterySubtitle':
     '{clowderCount} Clowders · {memberCount} members',
+  'catProfile.notFound.title': 'Cat not found',
+  'catProfile.notFound.body':
+    'No Cat with id "{catId}" exists in this workspace. It may have been removed, or the link is stale.',
   'entitiesSidebar.section.cats': 'My Cats',
   'entitiesSidebar.section.clowders': 'My Clowders',
   'entitiesSidebar.section.catteries': 'My Catteries',
@@ -2516,6 +2519,7 @@ export const enCatalog: MessageCatalog = {
   'entitiesSidebar.newCattery': 'New cattery',
   'entitiesSidebar.backToLobby': 'Back to Lobby',
   'entityIndex.eyebrow': 'Directory',
+  'entityIndex.title': 'Cats Directory',
   'entityIndex.columnHeader.cats': 'Cats',
   'entityIndex.columnHeader.clowders': 'Clowders',
   'entityIndex.columnHeader.catteries': 'Catteries',
