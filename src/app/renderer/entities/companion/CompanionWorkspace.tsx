@@ -30,7 +30,7 @@ export interface CompanionWorkspaceProps {
   onSleep: (catId: string) => void;
   onCatAvatarSave?: (catId: string, dataUrl: string) => void;
   /** Hide the bottom Post / Photo / activity feed (CompanionFeed).
-   * Used by the platform-level `/cats/:catId` mount when the cat
+   * Used by the platform-level `/entities/cats/:catId` mount when the cat
    * doesn't have the companion skill — same chrome / header /
    * side panel, just no feed. */
   hideFeed?: boolean;

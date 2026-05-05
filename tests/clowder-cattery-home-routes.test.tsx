@@ -107,8 +107,8 @@ function renderClowderRoute(pathname: string, envelope: PlatformHostEnvelope): s
     <I18nProvider locale="en">
       <StaticRouter location={pathname}>
         <Routes>
-          <Route path="/clowders/:clowderId" element={<ClowderHome envelope={envelope} />} />
-          <Route path="/clowders/:clowderId/:tab" element={<ClowderHome envelope={envelope} />} />
+          <Route path="/entities/clowders/:clowderId" element={<ClowderHome envelope={envelope} />} />
+          <Route path="/entities/clowders/:clowderId/:tab" element={<ClowderHome envelope={envelope} />} />
         </Routes>
       </StaticRouter>
     </I18nProvider>,
@@ -120,8 +120,8 @@ function renderCatteryRoute(pathname: string, envelope: PlatformHostEnvelope): s
     <I18nProvider locale="en">
       <StaticRouter location={pathname}>
         <Routes>
-          <Route path="/catteries/:catteryId" element={<CatteryHome envelope={envelope} />} />
-          <Route path="/catteries/:catteryId/:tab" element={<CatteryHome envelope={envelope} />} />
+          <Route path="/entities/catteries/:catteryId" element={<CatteryHome envelope={envelope} />} />
+          <Route path="/entities/catteries/:catteryId/:tab" element={<CatteryHome envelope={envelope} />} />
         </Routes>
       </StaticRouter>
     </I18nProvider>,
@@ -130,7 +130,7 @@ function renderCatteryRoute(pathname: string, envelope: PlatformHostEnvelope): s
 
 test('ClowderHome renders Cats tab by default and shows the parent-Cattery chip', () => {
   const markup = renderClowderRoute(
-    '/clowders/clw-dev',
+    '/entities/clowders/clw-dev',
     createEnvelope({
       lobby: {
         animationMode: 'reduced',
@@ -149,7 +149,7 @@ test('ClowderHome renders Cats tab by default and shows the parent-Cattery chip'
 
 test('ClowderHome shows the cross-unit task force chip when parentCatteryId is null', () => {
   const markup = renderClowderRoute(
-    '/clowders/clw-phoenix',
+    '/entities/clowders/clw-phoenix',
     createEnvelope({
       lobby: {
         animationMode: 'reduced',
@@ -164,9 +164,9 @@ test('ClowderHome shows the cross-unit task force chip when parentCatteryId is n
   assert.match(markup, />Cross-unit task force</u);
 });
 
-test('ClowderHome /clowders/:id/settings renders the Settings tab', () => {
+test('ClowderHome /entities/clowders/:id/settings renders the Settings tab', () => {
   const markup = renderClowderRoute(
-    '/clowders/clw-dev/settings',
+    '/entities/clowders/clw-dev/settings',
     createEnvelope({
       lobby: {
         animationMode: 'reduced',
@@ -183,7 +183,7 @@ test('ClowderHome /clowders/:id/settings renders the Settings tab', () => {
 
 test('ClowderHome shows the not-found pane when the id is not in the registry', () => {
   const markup = renderClowderRoute(
-    '/clowders/missing-clowder',
+    '/entities/clowders/missing-clowder',
     createEnvelope({
       lobby: { animationMode: 'reduced', cats: [], clowders: [], catteries: [] },
     }),
@@ -195,7 +195,7 @@ test('ClowderHome shows the not-found pane when the id is not in the registry', 
 
 test('CatteryHome renders Members tab by default and exposes all four tab links', () => {
   const markup = renderCatteryRoute(
-    '/catteries/acme',
+    '/entities/catteries/acme',
     createEnvelope({
       lobby: {
         animationMode: 'reduced',
@@ -208,16 +208,16 @@ test('CatteryHome renders Members tab by default and exposes all four tab links'
 
   assert.match(markup, />Acme Co\.</u);
   assert.match(markup, /aria-current="page"[^>]*>Members</u);
-  assert.match(markup, /href="\/catteries\/acme\/members"/u);
-  assert.match(markup, /href="\/catteries\/acme\/clowders"/u);
-  assert.match(markup, /href="\/catteries\/acme\/cats"/u);
-  assert.match(markup, /href="\/catteries\/acme\/settings"/u);
+  assert.match(markup, /href="\/entities\/catteries\/acme\/members"/u);
+  assert.match(markup, /href="\/entities\/catteries\/acme\/clowders"/u);
+  assert.match(markup, /href="\/entities\/catteries\/acme\/cats"/u);
+  assert.match(markup, /href="\/entities\/catteries\/acme\/settings"/u);
   assert.match(markup, /No members yet/u);
 });
 
-test('CatteryHome /catteries/:id/clowders renders the Clowders tab empty state', () => {
+test('CatteryHome /entities/catteries/:id/clowders renders the Clowders tab empty state', () => {
   const markup = renderCatteryRoute(
-    '/catteries/acme/clowders',
+    '/entities/catteries/acme/clowders',
     createEnvelope({
       lobby: {
         animationMode: 'reduced',
@@ -232,9 +232,9 @@ test('CatteryHome /catteries/:id/clowders renders the Clowders tab empty state',
   assert.match(markup, /No clowders in this Cattery yet/u);
 });
 
-test('CatteryHome /catteries/:id/cats renders the aggregate-Cats tab empty state', () => {
+test('CatteryHome /entities/catteries/:id/cats renders the aggregate-Cats tab empty state', () => {
   const markup = renderCatteryRoute(
-    '/catteries/acme/cats',
+    '/entities/catteries/acme/cats',
     createEnvelope({
       lobby: {
         animationMode: 'reduced',
@@ -251,7 +251,7 @@ test('CatteryHome /catteries/:id/cats renders the aggregate-Cats tab empty state
 
 test('CatteryHome shows the not-found pane when the id is not in the registry', () => {
   const markup = renderCatteryRoute(
-    '/catteries/missing-cattery',
+    '/entities/catteries/missing-cattery',
     createEnvelope({
       lobby: { animationMode: 'reduced', cats: [], clowders: [], catteries: [] },
     }),

@@ -97,22 +97,22 @@ function renderApp(pathname: string, envelope: PlatformHostEnvelope): string {
           <Routes>
             <Route path="/lobby" element={<PlatformLobby envelope={envelope} />} />
             <Route element={<EntitiesShell envelope={envelope} />}>
-              <Route path="/cats" element={<CatsListPage envelope={envelope} />} />
-              <Route path="/cats/:catId" element={<CatHome envelope={envelope} />} />
+              <Route path="/entities/cats" element={<CatsListPage envelope={envelope} />} />
+              <Route path="/entities/cats/:catId" element={<CatHome envelope={envelope} />} />
               <Route
-                path="/clowders"
+                path="/entities/clowders"
                 element={<ClowdersCanvasPage envelope={envelope} />}
               />
               <Route
-                path="/clowders/:clowderId"
+                path="/entities/clowders/:clowderId"
                 element={<ClowderHome envelope={envelope} />}
               />
               <Route
-                path="/catteries"
+                path="/entities/catteries"
                 element={<CatteriesCanvasPage envelope={envelope} />}
               />
               <Route
-                path="/catteries/:catteryId"
+                path="/entities/catteries/:catteryId"
                 element={<CatteryHome envelope={envelope} />}
               />
             </Route>
@@ -332,8 +332,8 @@ test('Lobby clowder and cattery cards sort stubs by creation time', () => {
   assert.ok(acmeIndex < betaIndex);
 });
 
-test('Drilled-down /cats route mounts the chat-style appshell (claudeShell + sidebar + canvas)', () => {
-  const markup = renderApp('/cats', createEnvelope());
+test('Drilled-down /entities/cats route mounts the chat-style appshell (claudeShell + sidebar + canvas)', () => {
+  const markup = renderApp('/entities/cats', createEnvelope());
 
   // Same outer wrapper chat / code / work use — `screen claudeShell`
   // for the 260px sidebar + 1fr canvas grid.
@@ -355,35 +355,35 @@ test('Drilled-down /cats route mounts the chat-style appshell (claudeShell + sid
   assert.match(markup, />My Catteries</u);
 });
 
-test('LobbyAppShellSidebar surface switcher trigger reads "Cats Lobby" via the label override', () => {
-  const markup = renderApp('/cats', createEnvelope());
+test('LobbyAppShellSidebar surface switcher trigger reads "Cats Directory" via the label override', () => {
+  const markup = renderApp('/entities/cats', createEnvelope());
 
   // The PlatformSurfaceSwitcher trigger button writes the active
   // product label inside its inner `<span class="brandLabel">`. With
   // `activeLabelOverride` set by LobbyAppShellSidebar, that label
-  // should read "Cats Lobby" rather than the user's last-product
+  // should read "Cats Directory" rather than the user's last-product
   // surface name.
-  assert.match(markup, /class="brandLabel">Cats Lobby</u);
+  assert.match(markup, /class="brandLabel">Cats Directory</u);
 });
 
-test('LobbyAppShellSidebar renders the "Main page" primary action with hover (no active highlight)', () => {
-  const markup = renderApp('/cats', createEnvelope());
+test('LobbyAppShellSidebar renders the "Back to Lobby" primary action with hover (no active highlight)', () => {
+  const markup = renderApp('/entities/cats', createEnvelope());
 
   // Mirrors chat's "+ New chat" slot. The primary action should
   // render as a `<button class="navItem">` (no `navItemActive`,
   // since /lobby is never the surface this sidebar runs on) carrying
-  // the "Main page" label. The button is the user's path back to the
-  // unframed /lobby canvas.
+  // the "Back to Lobby" label. The button is the user's path back to
+  // the unframed /lobby canvas.
   assert.match(
     markup,
-    /<button[^>]*class="navItem"[^>]*>(?:(?!class="navItemActive").)*Main page/su,
+    /<button[^>]*class="navItem"[^>]*>(?:(?!class="navItemActive").)*Back to Lobby/su,
   );
-  assert.doesNotMatch(markup, /class="navItemActive"[^>]*>(?:[^<]*)Main page/su);
+  assert.doesNotMatch(markup, /class="navItemActive"[^>]*>(?:[^<]*)Back to Lobby/su);
 });
 
-test('Drilled-down /cats/:catId route also mounts the EntitiesShell', () => {
+test('Drilled-down /entities/cats/:catId route also mounts the EntitiesShell', () => {
   const markup = renderApp(
-    '/cats/cat-concierge',
+    '/entities/cats/cat-concierge',
     createEnvelope({
       lobby: {
         animationMode: 'reduced',
@@ -430,7 +430,7 @@ test('EntitiesShell loads the chat-thread-base avatar primitives so MY CATS rows
   assert.match(source, /chat-thread-base\.css/u);
 });
 
-test('Drilled-down /clowders/:id and /catteries/:id routes both mount the EntitiesShell', () => {
+test('Drilled-down /entities/clowders/:id and /entities/catteries/:id routes both mount the EntitiesShell', () => {
   const envelope = createEnvelope({
     lobby: {
       animationMode: 'reduced',
@@ -460,18 +460,18 @@ test('Drilled-down /clowders/:id and /catteries/:id routes both mount the Entiti
     },
   });
 
-  const clowderMarkup = renderApp('/clowders/clw-dev', envelope);
+  const clowderMarkup = renderApp('/entities/clowders/clw-dev', envelope);
   assert.match(clowderMarkup, /<div[^>]*class="screen claudeShell"/u);
   assert.match(clowderMarkup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="lobby"/u);
   assert.match(clowderMarkup, />Dev Team</u);
 
-  const catteryMarkup = renderApp('/catteries/acme', envelope);
+  const catteryMarkup = renderApp('/entities/catteries/acme', envelope);
   assert.match(catteryMarkup, /<div[^>]*class="screen claudeShell"/u);
   assert.match(catteryMarkup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="lobby"/u);
   assert.match(catteryMarkup, />Acme Co\.</u);
 });
 
-test('Drilled-down /clowders and /catteries canvas routes both mount the EntitiesShell', () => {
+test('Drilled-down /entities/clowders and /entities/catteries canvas routes both mount the EntitiesShell', () => {
   const envelope = createEnvelope({
     lobby: {
       animationMode: 'reduced',
@@ -519,25 +519,25 @@ test('Drilled-down /clowders and /catteries canvas routes both mount the Entitie
     },
   });
 
-  const clowdersMarkup = renderApp('/clowders', envelope);
+  const clowdersMarkup = renderApp('/entities/clowders', envelope);
   assert.match(clowdersMarkup, /<div[^>]*class="screen claudeShell"/u);
   assert.match(clowdersMarkup, /class="entityCanvas entityCanvas--clowders"/u);
-  assert.match(clowdersMarkup, /href="\/clowders\/clw-dev"/u);
+  assert.match(clowdersMarkup, /href="\/entities\/clowders\/clw-dev"/u);
   assert.match(clowdersMarkup, />New Team</u);
   assert.match(clowdersMarkup, />Parent Cattery</u);
-  assert.match(clowdersMarkup, /href="\/catteries\/acme"/u);
+  assert.match(clowdersMarkup, /href="\/entities\/catteries\/acme"/u);
   assert.match(clowdersMarkup, />My Clowders</u);
   const devClowderIndex = clowdersMarkup.indexOf('class="entityCanvasRowName">Dev Team');
   const newClowderIndex = clowdersMarkup.indexOf('class="entityCanvasRowName">New Team');
   assert.ok(devClowderIndex < newClowderIndex);
 
-  const catteriesMarkup = renderApp('/catteries', envelope);
+  const catteriesMarkup = renderApp('/entities/catteries', envelope);
   assert.match(catteriesMarkup, /<div[^>]*class="screen claudeShell"/u);
   assert.match(catteriesMarkup, /class="entityCanvas entityCanvas--catteries"/u);
-  assert.match(catteriesMarkup, /href="\/catteries\/acme"/u);
+  assert.match(catteriesMarkup, /href="\/entities\/catteries\/acme"/u);
   assert.match(catteriesMarkup, />Beta Co\.</u);
   assert.match(catteriesMarkup, />Formal Clowder</u);
-  assert.match(catteriesMarkup, /href="\/clowders\/clw-dev"/u);
+  assert.match(catteriesMarkup, /href="\/entities\/clowders\/clw-dev"/u);
   assert.match(catteriesMarkup, />My Catteries</u);
   const acmeCatteryIndex = catteriesMarkup.indexOf('class="entityCanvasRowName">Acme Co.');
   const betaCatteryIndex = catteriesMarkup.indexOf('class="entityCanvasRowName">Beta Co.');

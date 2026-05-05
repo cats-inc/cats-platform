@@ -95,9 +95,9 @@ const sampleCats = [
 function renderCatsList(envelope: PlatformHostEnvelope): string {
   return renderToStaticMarkup(
     <I18nProvider locale="en">
-      <StaticRouter location="/cats">
+      <StaticRouter location="/entities/cats">
         <Routes>
-          <Route path="/cats" element={<CatsListPage envelope={envelope} />} />
+          <Route path="/entities/cats" element={<CatsListPage envelope={envelope} />} />
         </Routes>
       </StaticRouter>
     </I18nProvider>,
@@ -114,8 +114,8 @@ test('CatsListPage lists every cat from the lobby envelope and links to the cano
   assert.match(markup, />My Cats</u);
   assert.match(markup, />Concierge</u);
   assert.match(markup, />Coder</u);
-  assert.match(markup, /href="\/cats\/cat-concierge"/u);
-  assert.match(markup, /href="\/cats\/cat-coder"/u);
+  assert.match(markup, /href="\/entities\/cats\/cat-concierge"/u);
+  assert.match(markup, /href="\/entities\/cats\/cat-coder"/u);
 });
 
 test('CatsListPage encodes catIds with spaces or slashes when building the row href', () => {
@@ -136,7 +136,7 @@ test('CatsListPage encodes catIds with spaces or slashes when building the row h
     }),
   );
 
-  assert.match(markup, /href="\/cats\/cat%20with%2Fslash"/u);
+  assert.match(markup, /href="\/entities\/cats\/cat%20with%2Fslash"/u);
 });
 
 test('CatsListPage shows the empty-state copy when no cats are registered', () => {
@@ -148,5 +148,5 @@ test('CatsListPage shows the empty-state copy when no cats are registered', () =
 
   assert.match(markup, />My Cats</u);
   assert.match(markup, /No cats yet\. Open the Lobby to add one/u);
-  assert.doesNotMatch(markup, /href="\/cats\//u);
+  assert.doesNotMatch(markup, /href="\/entities\/cats\//u);
 });

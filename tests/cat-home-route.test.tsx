@@ -85,8 +85,8 @@ function renderCatRoute(pathname: string, envelope: PlatformHostEnvelope): strin
     <I18nProvider locale="en">
       <StaticRouter location={pathname}>
         <Routes>
-          <Route path="/cats/:catId" element={<CatHome envelope={envelope} />} />
-          <Route path="/cats/:catId/:lens" element={<CatHome envelope={envelope} />} />
+          <Route path="/entities/cats/:catId" element={<CatHome envelope={envelope} />} />
+          <Route path="/entities/cats/:catId/:lens" element={<CatHome envelope={envelope} />} />
         </Routes>
       </StaticRouter>
     </I18nProvider>,
@@ -95,7 +95,7 @@ function renderCatRoute(pathname: string, envelope: PlatformHostEnvelope): strin
 
 test('CatHome renders Overview by default with default-executor summary and Memberships placeholder', () => {
   const markup = renderCatRoute(
-    '/cats/cat-concierge',
+    '/entities/cats/cat-concierge',
     createEnvelope({
       lobby: { animationMode: 'reduced', cats: [conciergeCat] },
     }),
@@ -118,9 +118,9 @@ test('CatHome renders Overview by default with default-executor summary and Memb
   assert.doesNotMatch(markup, /class="entityDetailBreadcrumb/u);
 });
 
-test('CatHome /cats/:id/overview deep-link still renders Overview with active tab', () => {
+test('CatHome /entities/cats/:id/overview deep-link still renders Overview with active tab', () => {
   const markup = renderCatRoute(
-    '/cats/cat-concierge/overview',
+    '/entities/cats/cat-concierge/overview',
     createEnvelope({
       lobby: { animationMode: 'reduced', cats: [conciergeCat] },
     }),
@@ -130,9 +130,9 @@ test('CatHome /cats/:id/overview deep-link still renders Overview with active ta
   assert.match(markup, /aria-current="page"[^>]*>Overview</u);
 });
 
-test('CatHome /cats/:id/chat renders the Chat lens stub', () => {
+test('CatHome /entities/cats/:id/chat renders the Chat lens stub', () => {
   const markup = renderCatRoute(
-    '/cats/cat-concierge/chat',
+    '/entities/cats/cat-concierge/chat',
     createEnvelope({
       lobby: { animationMode: 'reduced', cats: [conciergeCat] },
     }),
@@ -143,9 +143,9 @@ test('CatHome /cats/:id/chat renders the Chat lens stub', () => {
   assert.match(markup, /Chat lens is not implemented yet/u);
 });
 
-test('CatHome /cats/:id/work renders the Work lens stub', () => {
+test('CatHome /entities/cats/:id/work renders the Work lens stub', () => {
   const markup = renderCatRoute(
-    '/cats/cat-concierge/work',
+    '/entities/cats/cat-concierge/work',
     createEnvelope({
       lobby: { animationMode: 'reduced', cats: [conciergeCat] },
     }),
@@ -155,9 +155,9 @@ test('CatHome /cats/:id/work renders the Work lens stub', () => {
   assert.match(markup, /Work lens is not implemented yet/u);
 });
 
-test('CatHome /cats/:id/code renders the Code lens stub', () => {
+test('CatHome /entities/cats/:id/code renders the Code lens stub', () => {
   const markup = renderCatRoute(
-    '/cats/cat-concierge/code',
+    '/entities/cats/cat-concierge/code',
     createEnvelope({
       lobby: { animationMode: 'reduced', cats: [conciergeCat] },
     }),
@@ -169,7 +169,7 @@ test('CatHome /cats/:id/code renders the Code lens stub', () => {
 
 test('CatHome shows the Cat-not-found pane when the id is not in the registry', () => {
   const markup = renderCatRoute(
-    '/cats/cat-missing',
+    '/entities/cats/cat-missing',
     createEnvelope({
       lobby: { animationMode: 'reduced', cats: [conciergeCat] },
     }),
@@ -190,7 +190,7 @@ test('CatHome surfaces "No default executor configured" when defaultExecutionTar
   };
 
   const markup = renderCatRoute(
-    '/cats/cat-bare',
+    '/entities/cats/cat-bare',
     createEnvelope({
       lobby: { animationMode: 'reduced', cats: [minimalCat] },
     }),

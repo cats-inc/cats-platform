@@ -22,7 +22,7 @@ function CatRowAvatar({ cat }: { cat: PlatformLobbyCatSummary }) {
 }
 
 /**
- * Mounted inside EntitiesShell on `/cats`. The shell already provides
+ * Mounted inside EntitiesShell on `/entities/cats`. The shell already provides
  * the back-to-Lobby affordance via the surface switcher in its
  * sidebar, so this page only renders the list itself.
  */
@@ -42,7 +42,7 @@ export function CatsListPage({ envelope }: { envelope: PlatformHostEnvelope }) {
         <ul className="catsListItems">
           {cats.map((cat) => (
             <li key={cat.id} className="catsListItem">
-              <Link to={`/cats/${encodeURIComponent(cat.id)}`} className="catsListLink">
+              <Link to={`/entities/cats/${encodeURIComponent(cat.id)}`} className="catsListLink">
                 <CatRowAvatar cat={cat} />
                 <span className="catsListName">{cat.name}</span>
               </Link>

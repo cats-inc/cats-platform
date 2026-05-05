@@ -33,8 +33,8 @@ import type {
 
 /**
  * Sidebar for the Lobby-drill-down workspace shell (entity routes
- * `/cats`, `/clowders`, `/catteries` and their `/:id` / `/:id/:tab`
- * variants).
+ * `/entities/cats`, `/entities/clowders`, `/entities/catteries` and
+ * their `/:id` / `/:id/:tab` variants).
  *
  * Per the user's IA correction: this sidebar reuses the appshell
  * primitives chat / code / work already use — surface switcher at
@@ -142,16 +142,16 @@ export function LobbyAppShellSidebar({
   // shared hook so this lobby sidebar doesn't reinvent it.
   useSidebarOverflowMenuDismiss(overflowMenuOpenId, setOverflowMenuOpenId);
 
-  const activeCatMatch = useMatch('/cats/:catId/*');
+  const activeCatMatch = useMatch('/entities/cats/:catId/*');
   const activeCatId = activeCatMatch?.params.catId ?? null;
   // Cats / Clowders / Catteries nav items light up while the user is
   // anywhere under that entity's path tree — same pattern Cats Work
   // uses for its `/work/projects` nav item (`isWorkProjectsPath` =
   // `pathname.startsWith(WORK_PROJECTS_PATH)`).
   const currentPath = useLocation().pathname;
-  const isCatsRoute = currentPath === '/cats' || currentPath.startsWith('/cats/');
-  const isClowdersRoute = currentPath === '/clowders' || currentPath.startsWith('/clowders/');
-  const isCatteriesRoute = currentPath === '/catteries' || currentPath.startsWith('/catteries/');
+  const isCatsRoute = currentPath === '/entities/cats' || currentPath.startsWith('/entities/cats/');
+  const isClowdersRoute = currentPath === '/entities/clowders' || currentPath.startsWith('/entities/clowders/');
+  const isCatteriesRoute = currentPath === '/entities/catteries' || currentPath.startsWith('/entities/catteries/');
 
   const { payload, cats, bossCatId } = buildSidebarPayload(envelope);
 
@@ -340,7 +340,7 @@ export function LobbyAppShellSidebar({
             <button
               type="button"
               className={isCatsRoute ? 'navItem navItemActive' : 'navItem'}
-              onClick={() => navigate('/cats')}
+              onClick={() => navigate('/entities/cats')}
             >
               <span className="navGlyph" aria-hidden="true">{catsNavIcon}</span>
               <span className="navLabel">
@@ -358,7 +358,7 @@ export function LobbyAppShellSidebar({
               overflowMenuOpenId={overflowMenuOpenId}
               onOverflowMenuToggle={setOverflowMenuOpenId}
               onDirectChatCat={(catId) =>
-                navigate(`/cats/${encodeURIComponent(catId)}`)
+                navigate(`/entities/cats/${encodeURIComponent(catId)}`)
               }
               onArchiveCat={(catId) => {
                 void onArchiveCat(catId);
@@ -379,7 +379,7 @@ export function LobbyAppShellSidebar({
             <button
               type="button"
               className={isClowdersRoute ? 'navItem navItemActive' : 'navItem'}
-              onClick={() => navigate('/clowders')}
+              onClick={() => navigate('/entities/clowders')}
             >
               <span className="navGlyph" aria-hidden="true">{clowdersNavIcon}</span>
               <span className="navLabel">
@@ -406,7 +406,7 @@ export function LobbyAppShellSidebar({
             <button
               type="button"
               className={isCatteriesRoute ? 'navItem navItemActive' : 'navItem'}
-              onClick={() => navigate('/catteries')}
+              onClick={() => navigate('/entities/catteries')}
             >
               <span className="navGlyph" aria-hidden="true">{catteriesNavIcon}</span>
               <span className="navLabel">

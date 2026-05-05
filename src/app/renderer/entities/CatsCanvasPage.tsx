@@ -6,7 +6,7 @@ import { WorkspaceCatsCanvas } from '../../../products/shared/renderer/component
 // The cats canvas was originally Settings-only, so its styling lives
 // in `products/shared/renderer/styles/settings.css`. Pull it in here
 // so the canvas renders correctly when mounted from the lobby
-// drill-down `/cats` route (the chat product surface no longer hosts
+// drill-down `/entities/cats` route (the chat product surface no longer hosts
 // it for this path).
 import '../../../products/shared/renderer/styles/settings.css';
 import {
@@ -15,7 +15,7 @@ import {
 } from '../../../shared/workspaceBusy.js';
 
 /**
- * Platform-level page for `/cats`. Mounts the
+ * Platform-level page for `/entities/cats`. Mounts the
  * `WorkspaceCatsCanvas` (the same canvas the Settings shell hosts at
  * `/settings/cats`) but inside the lobby drill-down EntitiesShell, so
  * the sidebar is the platform-level lobby sidebar — not chat's

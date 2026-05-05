@@ -820,7 +820,7 @@ export function NewChatDraft({
           type="button"
           className="draftHeaderAction"
           onClick={() =>
-            navigate(`/cats/${encodeURIComponent(defaultRecipientCat.id)}`)
+            navigate(`/entities/cats/${encodeURIComponent(defaultRecipientCat.id)}`)
           }
         >
           <svg

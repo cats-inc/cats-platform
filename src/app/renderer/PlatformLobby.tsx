@@ -61,8 +61,8 @@ interface LobbyEntityCard {
    */
   overflowAvatarRows: readonly LobbyEntityRowSummary[];
   totalCount: number;
-  routePath: '/cats' | '/clowders' | '/catteries';
-  detailPathPrefix: '/cats/' | '/clowders/' | '/catteries/';
+  routePath: '/entities/cats' | '/entities/clowders' | '/entities/catteries';
+  detailPathPrefix: '/entities/cats/' | '/entities/clowders/' | '/entities/catteries/';
   placeholderLabelKey: MessageKey;
   placeholderIconKind: ConversationSidebarMyCatsPlaceholderIconKind;
   /**
@@ -204,8 +204,8 @@ export function PlatformLobby({
         .slice(LOBBY_CARD_ROW_COUNT, LOBBY_CARD_ROW_COUNT + LOBBY_CARD_OVERFLOW_AVATAR_CAP)
         .map(summarizeCat),
       totalCount: cats.length,
-      routePath: '/cats',
-      detailPathPrefix: '/cats/',
+      routePath: '/entities/cats',
+      detailPathPrefix: '/entities/cats/',
       placeholderLabelKey: messageKeys.lobbySidebarNewCat,
       placeholderIconKind: 'singlePerson',
       placeholderTarget: '/settings/cats/new',
@@ -218,8 +218,8 @@ export function PlatformLobby({
         .slice(LOBBY_CARD_ROW_COUNT, LOBBY_CARD_ROW_COUNT + LOBBY_CARD_OVERFLOW_AVATAR_CAP)
         .map(summarizeClowder),
       totalCount: clowders.length,
-      routePath: '/clowders',
-      detailPathPrefix: '/clowders/',
+      routePath: '/entities/clowders',
+      detailPathPrefix: '/entities/clowders/',
       placeholderLabelKey: messageKeys.lobbySidebarNewClowder,
       placeholderIconKind: 'groupPeople',
       placeholderTarget: null,
@@ -232,8 +232,8 @@ export function PlatformLobby({
         .slice(LOBBY_CARD_ROW_COUNT, LOBBY_CARD_ROW_COUNT + LOBBY_CARD_OVERFLOW_AVATAR_CAP)
         .map(summarizeCattery),
       totalCount: catteries.length,
-      routePath: '/catteries',
-      detailPathPrefix: '/catteries/',
+      routePath: '/entities/catteries',
+      detailPathPrefix: '/entities/catteries/',
       placeholderLabelKey: messageKeys.lobbySidebarNewCattery,
       placeholderIconKind: 'orgChart',
       placeholderTarget: null,
@@ -376,7 +376,7 @@ export function PlatformLobby({
                                 : (event) => {
                                     /* Stop the click from also reaching
                                      * `.lobbyEntityCardLink` underneath
-                                     * (which would route to `/cats`
+                                     * (which would route to `/entities/cats`
                                      * instead of the add-cat page). */
                                     event.stopPropagation();
                                     navigate(placeholderTarget);

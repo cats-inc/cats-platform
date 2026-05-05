@@ -76,7 +76,7 @@ function CatOverviewMemberships({
               <ul>
                 {clowders.map((clowder) => (
                   <li key={clowder.id}>
-                    <Link to={`/clowders/${encodeURIComponent(clowder.id)}`}>
+                    <Link to={`/entities/clowders/${encodeURIComponent(clowder.id)}`}>
                       {clowder.name}
                     </Link>
                   </li>
@@ -92,7 +92,7 @@ function CatOverviewMemberships({
               <ul>
                 {catteries.map((cattery) => (
                   <li key={cattery.id}>
-                    <Link to={`/catteries/${encodeURIComponent(cattery.id)}`}>
+                    <Link to={`/entities/catteries/${encodeURIComponent(cattery.id)}`}>
                       {cattery.name}
                     </Link>
                   </li>
@@ -193,7 +193,7 @@ export function CatHome({ envelope }: { envelope: PlatformHostEnvelope }) {
   const tabs = VALID_LENSES.map((lens) => ({
     key: lens,
     label: t(LENS_LABEL_KEY[lens]),
-    href: `/cats/${encodeURIComponent(cat.id)}/${lens}`,
+    href: `/entities/cats/${encodeURIComponent(cat.id)}/${lens}`,
     active: lens === activeLens,
   }));
 

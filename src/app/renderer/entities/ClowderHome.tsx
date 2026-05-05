@@ -101,7 +101,7 @@ export function ClowderHome({ envelope }: { envelope: PlatformHostEnvelope }) {
   const tabs = VALID_TABS.map((tab) => ({
     key: tab,
     label: t(TAB_LABEL_KEY[tab]),
-    href: `/clowders/${encodeURIComponent(clowder.id)}/${tab}`,
+    href: `/entities/clowders/${encodeURIComponent(clowder.id)}/${tab}`,
     active: tab === activeTab,
   }));
 

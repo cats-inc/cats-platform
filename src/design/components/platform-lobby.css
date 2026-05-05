@@ -18,8 +18,9 @@
  * Per PLAN-091 phase 7 (correction round), `/lobby` itself has NO
  * sidebar. Lobby is a clean landing page — greeting + entity cards
  * + products grid + apps grid — and the appshell sidebar lives on
- * the drilled-down entity routes (`/cats`, `/clowders`,
- * `/catteries`, …). The earlier `.lobbyMain` 2-column grid is gone.
+ * the drilled-down entity routes (`/entities/cats`,
+ * `/entities/clowders`, `/entities/catteries`, …). The earlier
+ * `.lobbyMain` 2-column grid is gone.
  * ────────────────────────────────────────────────────────────── */
 
 .platformLobby {

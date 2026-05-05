@@ -3,7 +3,20 @@ import { isSettingsPath, SETTINGS_PATH } from './settingsRoute.js';
 export const SETUP_PATH = '/setup';
 export const LOBBY_PATH = '/lobby';
 export const PRODUCTS_PATH = '/products';
-export const PLATFORM_ENTITY_PATH_PREFIXES = ['/cats', '/clowders', '/catteries'] as const;
+export const ENTITIES_PATH = '/entities';
+/**
+ * Entity-domain URLs all live under the `/entities/` prefix
+ * (`/entities/cats`, `/entities/clowders`, `/entities/catteries`).
+ * Reserving the prefix at the routing layer means platform helpers
+ * detect the surface from a single namespace, and product manifests
+ * cannot accidentally shadow the entity routes.
+ */
+export const PLATFORM_ENTITY_PATH_PREFIXES = [ENTITIES_PATH] as const;
+export const PLATFORM_ENTITY_KIND_PATHS = {
+  cats: '/entities/cats',
+  clowders: '/entities/clowders',
+  catteries: '/entities/catteries',
+} as const;
 
 export function isSetupPath(pathname: string): boolean {
   return pathname === SETUP_PATH;

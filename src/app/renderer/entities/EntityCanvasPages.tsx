@@ -262,7 +262,7 @@ export function ClowdersCanvasPage({ envelope }: { envelope: PlatformHostEnvelop
       name: clowder.name,
       avatarUrl: clowder.avatarUrl,
       createdAt: clowder.createdAt,
-      routePath: `/clowders/${encodeURIComponent(clowder.id)}`,
+      routePath: `/entities/clowders/${encodeURIComponent(clowder.id)}`,
       subtitle: parentCatteryLabel
         ? t(messageKeys.clowderHomeChipPartOf, { catteryName: parentCatteryLabel })
         : t(messageKeys.clowderHomeChipCrossUnit),
@@ -297,7 +297,7 @@ export function ClowdersCanvasPage({ envelope }: { envelope: PlatformHostEnvelop
               label: t(messageKeys.entityCanvasParentCatteryLabel),
               value: parentCatteryLabel,
               href: parentCattery
-                ? `/catteries/${encodeURIComponent(parentCattery.id)}`
+                ? `/entities/catteries/${encodeURIComponent(parentCattery.id)}`
                 : undefined,
             }
           : {
@@ -355,7 +355,7 @@ export function CatteriesCanvasPage({ envelope }: { envelope: PlatformHostEnvelo
       name: cattery.name,
       avatarUrl: cattery.avatarUrl,
       createdAt: cattery.createdAt,
-      routePath: `/catteries/${encodeURIComponent(cattery.id)}`,
+      routePath: `/entities/catteries/${encodeURIComponent(cattery.id)}`,
       subtitle: t(messageKeys.entityCanvasCatterySubtitle, {
         clowderCount: String(cattery.clowderCount),
         memberCount: String(cattery.memberCount),
@@ -393,7 +393,7 @@ export function CatteriesCanvasPage({ envelope }: { envelope: PlatformHostEnvelo
         key: clowder.id,
         label: t(messageKeys.entityCanvasFormalClowderLabel),
         value: clowder.name,
-        href: `/clowders/${encodeURIComponent(clowder.id)}`,
+        href: `/entities/clowders/${encodeURIComponent(clowder.id)}`,
       })),
     };
   });

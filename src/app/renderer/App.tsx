@@ -641,15 +641,20 @@ export default function PlatformApp() {
         <Routes>
           <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
           <Route element={<EntitiesShell envelope={readyEnvelope} />}>
-            <Route path="/cats" element={<CatsCanvasPage />} />
-            <Route path="/cats/:catId" element={<CatProfilePage />} />
-            <Route path="/clowders" element={<ClowdersCanvasPage envelope={readyEnvelope} />} />
-            <Route path="/clowders/:clowderId" element={<ClowderHome envelope={readyEnvelope} />} />
-            <Route path="/clowders/:clowderId/:tab" element={<ClowderHome envelope={readyEnvelope} />} />
-            <Route path="/catteries" element={<CatteriesCanvasPage envelope={readyEnvelope} />} />
-            <Route path="/catteries/:catteryId" element={<CatteryHome envelope={readyEnvelope} />} />
-            <Route path="/catteries/:catteryId/:tab" element={<CatteryHome envelope={readyEnvelope} />} />
+            <Route path="/entities/cats" element={<CatsCanvasPage />} />
+            <Route path="/entities/cats/:catId" element={<CatProfilePage />} />
+            <Route path="/entities/clowders" element={<ClowdersCanvasPage envelope={readyEnvelope} />} />
+            <Route path="/entities/clowders/:clowderId" element={<ClowderHome envelope={readyEnvelope} />} />
+            <Route path="/entities/clowders/:clowderId/:tab" element={<ClowderHome envelope={readyEnvelope} />} />
+            <Route path="/entities/catteries" element={<CatteriesCanvasPage envelope={readyEnvelope} />} />
+            <Route path="/entities/catteries/:catteryId" element={<CatteryHome envelope={readyEnvelope} />} />
+            <Route path="/entities/catteries/:catteryId/:tab" element={<CatteryHome envelope={readyEnvelope} />} />
           </Route>
+          {/* `/entities` itself has no dedicated index page yet — the
+           * surface for browsing all entity kinds is the lobby's
+           * three entity column-cards. Redirect bare `/entities` to
+           * `/lobby` (same pattern `/products` uses). */}
+          <Route path="/entities" element={<Navigate to="/lobby" replace />} />
           <Route path="/apps/:appId/*" element={<AppHostRoute envelope={readyEnvelope} />} />
           <Route path="/products" element={<Navigate to="/lobby" replace />} />
           <Route path="/settings/*" element={settingsSurfaceElement} />

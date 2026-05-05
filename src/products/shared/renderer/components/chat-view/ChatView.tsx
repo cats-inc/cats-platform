@@ -1047,7 +1047,7 @@ export function ChatView({
             isDirectLane && defaultRecipientCat?.catId
               ? () =>
                   navigate(
-                    `/cats/${encodeURIComponent(defaultRecipientCat.catId)}`,
+                    `/entities/cats/${encodeURIComponent(defaultRecipientCat.catId)}`,
                   )
               : undefined
           }

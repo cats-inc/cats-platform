@@ -28,7 +28,7 @@ export interface ChatViewTopBarProps {
   /** When set, renders an icon button to the left of the side-panel
    * toggle that takes the user to the cat's profile page. The chat
    * product wires this on direct-lane channels so the user can jump
-   * to `/cats/:catId` from inside an active conversation. */
+   * to `/entities/cats/:catId` from inside an active conversation. */
   onOpenCatProfile?: () => void;
 }
 

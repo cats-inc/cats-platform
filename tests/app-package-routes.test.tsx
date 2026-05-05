@@ -319,7 +319,7 @@ test('POST /api/apps/install rejects product modules that shadow platform entity
   const platformDir = await createTempPlatformDir();
   const packagePath = await createPackage(
     platformDir,
-    createProductModuleManifest('system.cats-shadow', 'cats-shadow', '/cats'),
+    createProductModuleManifest('system.cats-shadow', 'cats-shadow', '/entities'),
   );
 
   const install = await routeJson(platformDir, 'POST', '/api/apps/install', {
