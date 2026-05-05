@@ -19,8 +19,12 @@
   "include": ["src/**/*.ts"],
   "exclude": [
     "src/renderer/**/*",
+    // Renderer entity screens are client-only. Promote pure shared
+    // utilities out of this tree before importing them from server code.
     "src/app/renderer/entities/**/*",
     "src/app/renderer/i18n/**/*",
+    // Client DOM hook used by renderer shells. Future renderer-only .ts
+    // hooks need the same treatment or should live under an excluded tree.
     "src/app/renderer/productShell/useSidebarOverflowMenuDismiss.ts",
     "src/app/renderer/setup/**/*",
     "src/app/renderer/**/*.tsx",

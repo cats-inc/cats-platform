@@ -13,8 +13,12 @@ interface EntityListEntry {
   id: string;
   name: string;
   avatarUrl: string | null;
+  createdAt: string;
 }
 
+// Clowders / Catteries are still phase-6 list-page stubs. They
+// intentionally borrow the Cats list style primitives until the
+// canvas/side-panel parity decision lands.
 function EntityListAvatar({ entry }: { entry: EntityListEntry }) {
   const style = entry.avatarUrl
     ? {
@@ -73,11 +77,23 @@ function EntityListPage({
   );
 }
 
+function compareEntityListEntries(
+  left: EntityListEntry,
+  right: EntityListEntry,
+): number {
+  const createdAtOrder = left.createdAt.localeCompare(right.createdAt);
+  if (createdAtOrder !== 0) return createdAtOrder;
+  const nameOrder = left.name.localeCompare(right.name);
+  if (nameOrder !== 0) return nameOrder;
+  return left.id.localeCompare(right.id);
+}
+
 function toClowderEntry(clowder: PlatformLobbyClowderSummary): EntityListEntry {
   return {
     id: clowder.id,
     name: clowder.name,
     avatarUrl: clowder.avatarUrl,
+    createdAt: clowder.createdAt,
   };
 }
 
@@ -86,13 +102,16 @@ function toCatteryEntry(cattery: PlatformLobbyCatterySummary): EntityListEntry {
     id: cattery.id,
     name: cattery.name,
     avatarUrl: cattery.avatarUrl,
+    createdAt: cattery.createdAt,
   };
 }
 
 export function ClowdersListPage({ envelope }: { envelope: PlatformHostEnvelope }) {
   return (
     <EntityListPage
-      entries={(envelope.lobby.clowders ?? []).map(toClowderEntry)}
+      entries={(envelope.lobby.clowders ?? [])
+        .map(toClowderEntry)
+        .sort(compareEntityListEntries)}
       routePrefix="/clowders"
       titleKey={messageKeys.clowdersListTitle}
       eyebrowKey={messageKeys.clowdersListEyebrow}
@@ -104,7 +123,9 @@ export function ClowdersListPage({ envelope }: { envelope: PlatformHostEnvelope 
 export function CatteriesListPage({ envelope }: { envelope: PlatformHostEnvelope }) {
   return (
     <EntityListPage
-      entries={(envelope.lobby.catteries ?? []).map(toCatteryEntry)}
+      entries={(envelope.lobby.catteries ?? [])
+        .map(toCatteryEntry)
+        .sort(compareEntityListEntries)}
       routePrefix="/catteries"
       titleKey={messageKeys.catteriesListTitle}
       eyebrowKey={messageKeys.catteriesListEyebrow}

@@ -101,6 +101,18 @@ function sortLobbyCatsForDisplay(
   });
 }
 
+function sortLobbyEntitiesForDisplay<
+  T extends { createdAt: string; name: string; id: string },
+>(entries: readonly T[]): T[] {
+  return [...entries].sort((left, right) => {
+    const createdAtOrder = left.createdAt.localeCompare(right.createdAt);
+    if (createdAtOrder !== 0) return createdAtOrder;
+    const nameOrder = left.name.localeCompare(right.name);
+    if (nameOrder !== 0) return nameOrder;
+    return left.id.localeCompare(right.id);
+  });
+}
+
 function summarizeClowder(
   clowder: PlatformLobbyClowderSummary,
 ): LobbyEntityRowSummary {
@@ -180,8 +192,8 @@ export function PlatformLobby({
   };
 
   const cats = sortLobbyCatsForDisplay(envelope.lobby.cats);
-  const clowders = envelope.lobby.clowders ?? [];
-  const catteries = envelope.lobby.catteries ?? [];
+  const clowders = sortLobbyEntitiesForDisplay(envelope.lobby.clowders ?? []);
+  const catteries = sortLobbyEntitiesForDisplay(envelope.lobby.catteries ?? []);
 
   const entityCards: LobbyEntityCard[] = [
     {

@@ -160,6 +160,11 @@
   instead). The component still exists in
   `src/app/renderer/entities/CatHome.tsx` for potential future
   use; if you delete it, also remove its imports from `App.tsx`.
+- **`/clowders` and `/catteries` are still PLAN-091 phase-6
+  list-page stubs**, not final canvas peers of `/cats`. They mount
+  inside `EntitiesShell` for URL parity and stable navigation, but
+  canvas/side-panel parity with Cats is deferred to a later PLAN-091
+  phase or a follow-up plan.
 
 ### Path migrations + contracts
 
@@ -176,6 +181,10 @@
   concept per ADR-065) but the URLs are `/dm/`.
 - `PlatformLobbyCatSummary` gains a required `createdAt: string`
   field (post-phase-7 contract bump for sort tiebreaks).
+- `PlatformLobbyClowderSummary` and `PlatformLobbyCatterySummary`
+  also carry required `createdAt: string` fields while their full
+  records are still deferred, so Lobby cards and list-page stubs can
+  apply a stable `createdAt` ascending sort.
 
 ### Settings sidebar
 

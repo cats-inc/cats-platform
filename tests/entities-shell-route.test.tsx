@@ -269,6 +269,69 @@ test('Lobby cats card adds an avatar stack to the footer when there are more tha
   assert.equal(stacked.length, 2);
 });
 
+test('Lobby clowder and cattery cards sort stubs by creation time', () => {
+  const markup = renderApp(
+    '/lobby',
+    createEnvelope({
+      lobby: {
+        animationMode: 'reduced',
+        cats: [],
+        clowders: [
+          {
+            id: 'clw-new',
+            name: 'New Team',
+            avatarUrl: null,
+            createdAt: '2026-02-01T00:00:00.000Z',
+            parentCatteryId: null,
+            catCount: 1,
+            memberCount: 2,
+          },
+          {
+            id: 'clw-dev',
+            name: 'Dev Team',
+            avatarUrl: null,
+            createdAt: '2026-01-02T00:00:00.000Z',
+            parentCatteryId: 'acme',
+            catCount: 5,
+            memberCount: 8,
+          },
+        ],
+        catteries: [
+          {
+            id: 'beta',
+            name: 'Beta Co.',
+            avatarUrl: null,
+            createdAt: '2026-02-01T00:00:00.000Z',
+            memberCount: 3,
+            clowderCount: 1,
+            catCount: 2,
+          },
+          {
+            id: 'acme',
+            name: 'Acme Co.',
+            avatarUrl: null,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            memberCount: 12,
+            clowderCount: 3,
+            catCount: 7,
+          },
+        ],
+      },
+    }),
+  );
+
+  const devTeamIndex = markup.indexOf('class="lobbyEntityName">Dev Team');
+  const newTeamIndex = markup.indexOf('class="lobbyEntityName">New Team');
+  const acmeIndex = markup.indexOf('class="lobbyEntityName">Acme Co.');
+  const betaIndex = markup.indexOf('class="lobbyEntityName">Beta Co.');
+  assert.ok(devTeamIndex >= 0);
+  assert.ok(newTeamIndex >= 0);
+  assert.ok(acmeIndex >= 0);
+  assert.ok(betaIndex >= 0);
+  assert.ok(devTeamIndex < newTeamIndex);
+  assert.ok(acmeIndex < betaIndex);
+});
+
 test('Drilled-down /cats route mounts the chat-style appshell (claudeShell + sidebar + canvas)', () => {
   const markup = renderApp('/cats', createEnvelope());
 
@@ -377,6 +440,7 @@ test('Drilled-down /clowders/:id and /catteries/:id routes both mount the Entiti
           id: 'clw-dev',
           name: 'Dev Team',
           avatarUrl: null,
+          createdAt: '2026-01-02T00:00:00.000Z',
           parentCatteryId: 'acme',
           catCount: 5,
           memberCount: 8,
@@ -387,6 +451,7 @@ test('Drilled-down /clowders/:id and /catteries/:id routes both mount the Entiti
           id: 'acme',
           name: 'Acme Co.',
           avatarUrl: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
           memberCount: 12,
           clowderCount: 3,
           catCount: 7,
@@ -416,9 +481,19 @@ test('Drilled-down /clowders and /catteries list routes both mount the EntitiesS
           id: 'clw-dev',
           name: 'Dev Team',
           avatarUrl: null,
+          createdAt: '2026-01-02T00:00:00.000Z',
           parentCatteryId: 'acme',
           catCount: 5,
           memberCount: 8,
+        },
+        {
+          id: 'clw-new',
+          name: 'New Team',
+          avatarUrl: null,
+          createdAt: '2026-02-01T00:00:00.000Z',
+          parentCatteryId: null,
+          catCount: 1,
+          memberCount: 2,
         },
       ],
       catteries: [
@@ -426,9 +501,19 @@ test('Drilled-down /clowders and /catteries list routes both mount the EntitiesS
           id: 'acme',
           name: 'Acme Co.',
           avatarUrl: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
           memberCount: 12,
           clowderCount: 3,
           catCount: 7,
+        },
+        {
+          id: 'beta',
+          name: 'Beta Co.',
+          avatarUrl: null,
+          createdAt: '2026-02-01T00:00:00.000Z',
+          memberCount: 3,
+          clowderCount: 1,
+          catCount: 2,
         },
       ],
     },
@@ -437,10 +522,18 @@ test('Drilled-down /clowders and /catteries list routes both mount the EntitiesS
   const clowdersMarkup = renderApp('/clowders', envelope);
   assert.match(clowdersMarkup, /<div[^>]*class="screen claudeShell"/u);
   assert.match(clowdersMarkup, /href="\/clowders\/clw-dev"/u);
+  assert.match(clowdersMarkup, /href="\/clowders\/clw-new"/u);
   assert.match(clowdersMarkup, />My Clowders</u);
+  const devClowderIndex = clowdersMarkup.indexOf('href="/clowders/clw-dev"');
+  const newClowderIndex = clowdersMarkup.indexOf('href="/clowders/clw-new"');
+  assert.ok(devClowderIndex < newClowderIndex);
 
   const catteriesMarkup = renderApp('/catteries', envelope);
   assert.match(catteriesMarkup, /<div[^>]*class="screen claudeShell"/u);
   assert.match(catteriesMarkup, /href="\/catteries\/acme"/u);
+  assert.match(catteriesMarkup, /href="\/catteries\/beta"/u);
   assert.match(catteriesMarkup, />My Catteries</u);
+  const acmeCatteryIndex = catteriesMarkup.indexOf('href="/catteries/acme"');
+  const betaCatteryIndex = catteriesMarkup.indexOf('href="/catteries/beta"');
+  assert.ok(acmeCatteryIndex < betaCatteryIndex);
 });

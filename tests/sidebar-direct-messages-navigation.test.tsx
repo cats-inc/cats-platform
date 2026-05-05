@@ -14,6 +14,11 @@ import {
 import { isDirectLaneSummary } from '../src/products/chat/shared/channelTopology.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 
+// This file verifies the DIRECT MESSAGES resolver/view-model route
+// contract only. DOM row-click wiring is intentionally outside this
+// SSR-safe coverage after the old React tree traversal test was
+// removed.
+
 function createChannel(
   overrides: Partial<ChatChannelSummary> & { id: string; title: string },
 ): ChatChannelSummary {

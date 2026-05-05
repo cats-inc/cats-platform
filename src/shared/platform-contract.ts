@@ -128,13 +128,16 @@ export type MembershipStatus = 'formal' | 'temp' | 'external';
 /**
  * A clowder summary as it appears in the Lobby sidebar / list. Phase
  * 6 of PLAN-091 ships the full ClowderRecord (with members, cat list,
- * createdAt/By, etc.); the sidebar only needs identification + a
- * couple of counts to size the row.
+ * createdBy, etc.); the sidebar only needs identification + a
+ * couple of counts to size the row. `createdAt` is still carried in
+ * the summary so Lobby list/card surfaces can sort deterministically
+ * until the full record lands.
  */
 export interface PlatformLobbyClowderSummary {
   id: string;
   name: string;
   avatarUrl: string | null;
+  createdAt: string;
   /** When non-null, this Clowder is part of the named Cattery's formal org chart. */
   parentCatteryId: string | null;
   catCount: number;
@@ -149,6 +152,8 @@ export interface PlatformLobbyCatterySummary {
   id: string;
   name: string;
   avatarUrl: string | null;
+  /** Required by phase-6 list/card stubs for stable display ordering. */
+  createdAt: string;
   memberCount: number;
   /** Count of Clowders with `parentCatteryId === this.id`. */
   clowderCount: number;
