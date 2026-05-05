@@ -13,6 +13,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import type {
   AppShellPayload,
@@ -331,6 +332,7 @@ export function ChatView({
   sidePanelTitle = '',
 }: ChatViewProps) {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const resolvedSidePanelTitle = sidePanelTitle || t(messageKeys.chatNewChatDraftSidePanelTitle);
   const conversationBehavior = useMemo(
     () => resolveConversationBehaviorPreferences(
@@ -1041,6 +1043,14 @@ export function ChatView({
           approvalCount={operatorView?.approvals.length ?? 0}
           extraActions={topBarExtraActions}
           onToggleSidePanel={() => setSidePanelOpen(!sidePanelOpen)}
+          onOpenCatProfile={
+            isDirectLane && defaultRecipientCat?.catId
+              ? () =>
+                  navigate(
+                    `/cats/${encodeURIComponent(defaultRecipientCat.catId)}`,
+                  )
+              : undefined
+          }
         />
       )}
       statusRow={statusRow}

@@ -834,11 +834,11 @@ export function NewChatDraft({
             strokeLinejoin="round"
             aria-hidden="true"
           >
-            {/* Lucide-style pencil glyph: shaft + tip */}
-            <path d="M12 20h9" />
-            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+            {/* Lucide-style eye glyph — view, not edit. */}
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+            <circle cx="12" cy="12" r="3" />
           </svg>
-          {t(messageKeys.chatNewChatDraftEditCatProfileAction)}
+          {t(messageKeys.chatNewChatDraftViewCatProfileAction)}
         </button>
       )}
     />

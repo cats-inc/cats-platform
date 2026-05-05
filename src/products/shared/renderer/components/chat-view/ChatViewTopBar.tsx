@@ -25,6 +25,11 @@ export interface ChatViewTopBarProps {
   approvalCount: number;
   extraActions?: ReactNode;
   onToggleSidePanel: () => void;
+  /** When set, renders an icon button to the left of the side-panel
+   * toggle that takes the user to the cat's profile page. The chat
+   * product wires this on direct-lane channels so the user can jump
+   * to `/cats/:catId` from inside an active conversation. */
+  onOpenCatProfile?: () => void;
 }
 
 export function ChatViewTopBar({
@@ -36,6 +41,7 @@ export function ChatViewTopBar({
   approvalCount,
   extraActions,
   onToggleSidePanel,
+  onOpenCatProfile,
 }: ChatViewTopBarProps) {
   const { t } = useI18n();
   return (
@@ -79,6 +85,19 @@ export function ChatViewTopBar({
       </div>
       <div className="channelTopBarEnd">
         {extraActions}
+        {onOpenCatProfile ? (
+          <button
+            className="sidePanelToggle"
+            type="button"
+            onClick={onOpenCatProfile}
+            aria-label={t(messageKeys.chatTopBarOpenCatProfileAriaLabel)}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5z" />
+              <circle cx="8" cy="8" r="2" />
+            </svg>
+          </button>
+        ) : null}
         <button
           className="sidePanelToggle"
           type="button"
