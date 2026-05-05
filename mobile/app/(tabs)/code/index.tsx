@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -46,14 +45,6 @@ export default function CodeSidebarScreen() {
     [copy, createChannel, router],
   );
 
-  const handleSelectCat = useCallback(() => {
-    Alert.alert(
-      copy.directCatDesktopOnlyTitle,
-      copy.directCatDesktopOnlyBody.code,
-      [{ text: copy.desktopOnlyOkAction, style: 'cancel' }],
-    );
-  }, [copy]);
-
   const handleSelectRecent = useCallback(
     (channelId: string) => {
       router.push(`/(tabs)/code/${channelId}`);
@@ -82,13 +73,11 @@ export default function CodeSidebarScreen() {
         <TrimmedProductSidebar
           config={sidebarConfig}
           data={{
-            cats: state.kind === 'data' ? state.cats : [],
             recents: state.kind === 'data' ? state.recents : [],
           }}
           onPrimaryAction={(actionId) => {
             void handlePrimaryAction(actionId);
           }}
-          onSelectCat={handleSelectCat}
           onSelectRecent={handleSelectRecent}
         />
       )}

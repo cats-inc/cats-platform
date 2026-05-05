@@ -5,12 +5,12 @@ import {
   getMobileApiCopy,
   getMobileChatCopy,
   getMobileChannelTitle,
-  getMobileLobbyCopy,
+  getMobileCatsTabCopy,
   getMobileSettingsCopy,
   getMobileTabsCopy,
   type MobileAppShellPayload,
   resolveMobileLocale,
-  selectMobileLobby,
+  selectMobileCatsDirectory,
 } from '../src/mobile/index.ts';
 
 function createPayload(): MobileAppShellPayload {
@@ -44,13 +44,13 @@ function createPayload(): MobileAppShellPayload {
   };
 }
 
-test('selectMobileLobby projects chat cats into the mobile sidebar shape (PLAN-091 phase 5)', () => {
+test('selectMobileCatsDirectory projects chat cats into the mobile directory shape (PLAN-091 phase 5)', () => {
   // Locale resolution still routes zh-Hant-TW → zh-TW for the rest of
   // the mobile copy surfaces; assert that pre-existing contract here
-  // even though selectMobileLobby itself no longer takes a locale.
+  // even though selectMobileCatsDirectory itself no longer takes a locale.
   assert.equal(resolveMobileLocale('zh-Hant-TW'), 'zh-TW');
 
-  const data = selectMobileLobby(createPayload());
+  const data = selectMobileCatsDirectory(createPayload());
 
   assert.deepEqual(data.cats, [
     {
@@ -65,9 +65,12 @@ test('selectMobileLobby projects chat cats into the mobile sidebar shape (PLAN-0
   assert.deepEqual(data.catteries, []);
 });
 
-test('mobile lobby copy ships sidebar section labels and entity-detail strings (PLAN-091 phase 5)', () => {
-  const en = getMobileLobbyCopy('en');
-  const zh = getMobileLobbyCopy('zh-TW');
+test('mobile cats tab copy ships directory section labels and entity-detail strings', () => {
+  const en = getMobileCatsTabCopy('en');
+  const zh = getMobileCatsTabCopy('zh-TW');
+
+  assert.equal(en.catsTabTitle, 'Cats');
+  assert.equal(zh.catsTabTitle, 'Cats');
 
   assert.equal(en.sectionMyCats, 'My Cats');
   assert.equal(en.sectionMyClowders, 'My Clowders');
@@ -83,24 +86,24 @@ test('mobile lobby copy ships sidebar section labels and entity-detail strings (
   assert.equal(zh.expandSectionLabel('我的貓咪'), '展開 我的貓咪');
 
   // Entity detail (Stack screens that drill into a single Cat /
-  // Clowder / Cattery from the Lobby tab)
+  // Clowder / Cattery from the Cats tab)
   assert.equal(en.entityDetailEyebrow, 'Coming soon');
   assert.equal(en.entityDetailTitleCat, 'Cat home');
   assert.equal(en.entityDetailTitleClowder, 'Clowder home');
   assert.equal(en.entityDetailTitleCattery, 'Cattery home');
   assert.equal(en.entityDetailIdLabel, 'ID');
-  assert.equal(en.entityDetailBackToLobbyLabel, 'Back to Lobby');
+  assert.equal(en.entityDetailBackToDirectoryLabel, 'Back to Cats');
   assert.match(en.entityDetailBody, /This entity page is being built/u);
 
   assert.equal(zh.entityDetailEyebrow, '開發中');
   assert.equal(zh.entityDetailTitleCat, '貓的主頁');
   assert.equal(zh.entityDetailTitleClowder, '貓群主頁');
   assert.equal(zh.entityDetailTitleCattery, '貓窩主頁');
-  assert.equal(zh.entityDetailBackToLobbyLabel, '返回大廳');
+  assert.equal(zh.entityDetailBackToDirectoryLabel, '返回 Cats');
 });
 
-test('selectMobileLobby honors catsLimit when slicing the projection', () => {
-  const data = selectMobileLobby(
+test('selectMobileCatsDirectory honors catsLimit when slicing the projection', () => {
+  const data = selectMobileCatsDirectory(
     {
       ...createPayload(),
       chat: {
@@ -156,12 +159,13 @@ test('mobile tabs copy exposes localized fixed controls', () => {
   const en = getMobileTabsCopy('en');
 
   assert.equal(zh.tabTitle.settings, '設定');
+  assert.equal(en.tabTitle.cats, 'Cats');
+  assert.equal(zh.tabTitle.cats, 'Cats');
   assert.equal(zh.creatingChannelLabel, '建立頻道中…');
   assert.equal(zh.dismissAction, '關閉');
   assert.equal(zh.createChannelError('offline'), '無法建立頻道：offline');
   assert.equal(getMobileChannelTitle(zh, 'code', 'peer'), '新同儕程式碼');
   assert.equal(getMobileChannelTitle(zh, 'work', 'unknown'), '新工作');
-  assert.equal(zh.directCatDesktopOnlyTitle, '直接聊天僅限桌面版');
   assert.equal(en.parallelChatDesktopOnlyTitle, 'Parallel chat — desktop only');
 });
 

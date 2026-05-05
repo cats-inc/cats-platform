@@ -1,6 +1,6 @@
 export type MobileLocale = 'en' | 'zh-TW';
 export type MobileProductMode = 'chat' | 'code' | 'work';
-export type MobileTabId = 'lobby' | MobileProductMode | 'settings';
+export type MobileTabId = 'cats' | MobileProductMode | 'settings';
 
 export interface MobileChannelTitleMap {
   fallback: string;
@@ -8,18 +8,19 @@ export interface MobileChannelTitleMap {
 }
 
 /**
- * Per PLAN-091 phase 5, the mobile Lobby tab IS the sidebar — three
- * collapsible sections (My Cats / My Clowders / My Catteries) on top
- * of the existing connect-to-desktop / unconfigured affordances. The
- * earlier `statRow / quickEntryRow / recentActivity` shape was removed
- * cleanly per AGENTS.md §Pre-Release Compatibility Policy. Phase 6
- * lands the actual Clowder/Cattery registries (ADR-100 + SPEC-103).
+ * The mobile Cats tab is the directory landing — three collapsible
+ * sections (My Cats / My Clowders / My Catteries) on top of the
+ * existing connect-to-desktop / unconfigured affordances. It mirrors
+ * the desktop "Cats Directory" surface (`/entities/*`); web Lobby
+ * content (greeting, entity index cards) is intentionally NOT mirrored
+ * here. Phase 6 lands the actual Clowder/Cattery registries
+ * (ADR-100 + SPEC-103).
  */
-export interface MobileLobbyCopy {
+export interface MobileCatsTabCopy {
   connectDesktopTitle: string;
   connectDesktopBody: string;
-  couldNotLoadLobbyTitle: string;
-  lobbyTitle: string;
+  couldNotLoadDirectoryTitle: string;
+  catsTabTitle: string;
   openSettingsAction: string;
   sectionMyCats: string;
   sectionMyClowders: string;
@@ -38,7 +39,7 @@ export interface MobileLobbyCopy {
   entityDetailTitleCattery: string;
   entityDetailIdLabel: string;
   entityDetailBody: string;
-  entityDetailBackToLobbyLabel: string;
+  entityDetailBackToDirectoryLabel: string;
 }
 
 export interface MobileChatCopy {
@@ -93,8 +94,6 @@ export interface MobileTabsCopy {
   createChannelError: (message: string) => string;
   creatingChannelLabel: string;
   desktopOnlyOkAction: string;
-  directCatDesktopOnlyBody: Record<MobileProductMode, string>;
-  directCatDesktopOnlyTitle: string;
   dismissAction: string;
   parallelChatDesktopOnlyBody: string;
   parallelChatDesktopOnlyTitle: string;
@@ -104,23 +103,21 @@ export interface MobileTabsCopy {
 export interface MobileProductSidebarProductCopy {
   productLabel: string;
   primaryActions: Record<string, string>;
-  myLensLabel: string;
   recentsLabel: string;
 }
 
 export interface MobileProductSidebarCopy {
-  emptyCatsLabel: string;
   emptyRecentsLabel: string;
   statusLabel: Record<'ready' | 'warm' | 'sleeping', string>;
   products: Record<MobileProductMode, MobileProductSidebarProductCopy>;
 }
 
-const MOBILE_LOBBY_COPY: Record<MobileLocale, MobileLobbyCopy> = {
+const MOBILE_CATS_TAB_COPY: Record<MobileLocale, MobileCatsTabCopy> = {
   en: {
     connectDesktopTitle: 'Connect to your desktop',
-    connectDesktopBody: 'Set the desktop base URL in Settings to load your lobby.',
-    couldNotLoadLobbyTitle: 'Could not load lobby',
-    lobbyTitle: 'Lobby',
+    connectDesktopBody: 'Set the desktop base URL in Settings to load your cats directory.',
+    couldNotLoadDirectoryTitle: 'Could not load directory',
+    catsTabTitle: 'Cats',
     openSettingsAction: 'Open Settings',
     sectionMyCats: 'My Cats',
     sectionMyClowders: 'My Clowders',
@@ -140,13 +137,13 @@ const MOBILE_LOBBY_COPY: Record<MobileLocale, MobileLobbyCopy> = {
     entityDetailIdLabel: 'ID',
     entityDetailBody:
       'This entity page is being built. The route resolves; richer content lands with PLAN-091 phase 6 once the data model SPEC is approved.',
-    entityDetailBackToLobbyLabel: 'Back to Lobby',
+    entityDetailBackToDirectoryLabel: 'Back to Cats',
   },
   'zh-TW': {
     connectDesktopTitle: '連接桌面版',
-    connectDesktopBody: '請在設定中填入桌面版基底網址，以載入你的大廳。',
-    couldNotLoadLobbyTitle: '無法載入大廳',
-    lobbyTitle: '大廳',
+    connectDesktopBody: '請在設定中填入桌面版基底網址，以載入你的貓咪目錄。',
+    couldNotLoadDirectoryTitle: '無法載入目錄',
+    catsTabTitle: 'Cats',
     openSettingsAction: '開啟設定',
     sectionMyCats: '我的貓咪',
     sectionMyClowders: '我的貓群',
@@ -165,7 +162,7 @@ const MOBILE_LOBBY_COPY: Record<MobileLocale, MobileLobbyCopy> = {
     entityDetailTitleCattery: '貓窩主頁',
     entityDetailIdLabel: '識別碼',
     entityDetailBody: '此頁面正在建置中。路由已連通，等 PLAN-091 phase 6 的資料模型 SPEC 通過後就會接上實際內容。',
-    entityDetailBackToLobbyLabel: '返回大廳',
+    entityDetailBackToDirectoryLabel: '返回 Cats',
   },
 };
 
@@ -260,7 +257,7 @@ const MOBILE_SETTINGS_COPY: Record<MobileLocale, MobileSettingsCopy> = {
     profileFooter: 'Edit your avatar and name on the desktop.',
     profileSection: 'Profile',
     profileSectionDescription:
-      'Your platform-wide profile across Chat, Code, Work, and Lobby.',
+      'Your platform-wide profile across Chat, Code, Work, and Cats.',
     pushNotificationsDescription:
       'Alerts when an approval, escalation, or task completion lands.',
     pushNotificationsLabel: 'Push notifications',
@@ -285,7 +282,7 @@ const MOBILE_SETTINGS_COPY: Record<MobileLocale, MobileSettingsCopy> = {
     ownerFallbackName: '使用者',
     profileFooter: '請在桌面版編輯你的頭像與名字。',
     profileSection: '個人檔案',
-    profileSectionDescription: '這是跨聊天、程式碼、工作與大廳的平台個人檔案。',
+    profileSectionDescription: '這是跨聊天、程式碼、工作與 Cats 的平台個人檔案。',
     pushNotificationsDescription: '核准、升級或任務完成時提醒。',
     pushNotificationsLabel: '推播通知',
     settingsTitle: '設定',
@@ -316,21 +313,12 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
     createChannelError: (message) => `Could not create channel: ${message}`,
     creatingChannelLabel: 'Creating channel…',
     desktopOnlyOkAction: 'OK',
-    directCatDesktopOnlyBody: {
-      chat:
-        'Tapping a cat to start a direct conversation is not yet wired on mobile. Start the direct lane on the desktop; it will appear in RECENTS here once created.',
-      code:
-        'Tapping a clowder member to start a direct conversation is not yet wired on mobile. Start the direct lane on the desktop; it will appear in RECENTS here once created.',
-      work:
-        'Tapping a cattery member to start a direct conversation is not yet wired on mobile. Start the direct lane on the desktop; it will appear in RECENTS here once created.',
-    },
-    directCatDesktopOnlyTitle: 'Direct cat chat — desktop only',
     dismissAction: 'Dismiss',
     parallelChatDesktopOnlyBody:
       'Parallel chat creation is not yet wired on mobile. Use the desktop app to start one; it will appear in RECENTS here once created.',
     parallelChatDesktopOnlyTitle: 'Parallel chat — desktop only',
     tabTitle: {
-      lobby: 'Lobby',
+      cats: 'Cats',
       chat: 'Chat',
       code: 'Code',
       work: 'Work',
@@ -360,21 +348,12 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
     createChannelError: (message) => `無法建立頻道：${message}`,
     creatingChannelLabel: '建立頻道中…',
     desktopOnlyOkAction: '確定',
-    directCatDesktopOnlyBody: {
-      chat:
-        '行動版尚未支援點選貓咪開始直接對話。請在桌面版開始，建立後會出現在這裡的近期項目。',
-      code:
-        '行動版尚未支援點選成員開始直接對話。請在桌面版開始，建立後會出現在這裡的近期項目。',
-      work:
-        '行動版尚未支援點選成員開始直接對話。請在桌面版開始，建立後會出現在這裡的近期項目。',
-    },
-    directCatDesktopOnlyTitle: '直接聊天僅限桌面版',
     dismissAction: '關閉',
     parallelChatDesktopOnlyBody:
       '行動版尚未支援建立平行聊天。請在桌面版開始，建立後會出現在這裡的近期項目。',
     parallelChatDesktopOnlyTitle: '平行聊天僅限桌面版',
     tabTitle: {
-      lobby: '大廳',
+      cats: 'Cats',
       chat: '聊天',
       code: '程式碼',
       work: '工作',
@@ -385,7 +364,6 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
 
 const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy> = {
   en: {
-    emptyCatsLabel: 'No cats yet.',
     emptyRecentsLabel: 'No recent conversations yet.',
     statusLabel: {
       ready: 'Ready',
@@ -396,37 +374,33 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
       chat: {
         productLabel: 'CHAT',
         primaryActions: {
-          new: '+ New chat',
-          group: '+ Group chat',
-          parallel: '+ Parallel chat',
+          new: '+ New Chat',
+          group: '+ Group Chat',
+          parallel: '+ Parallel Chat',
         },
-        myLensLabel: 'DIRECT MESSAGES',
         recentsLabel: 'RECENTS',
       },
       code: {
         productLabel: 'CODE',
         primaryActions: {
-          new: '+ New code',
-          team: '+ Team code',
-          peer: '+ Peer code',
+          new: '+ New Code',
+          team: '+ Team Code',
+          peer: '+ Peer Code',
         },
-        myLensLabel: 'MY CLOWDERS',
         recentsLabel: 'RECENTS',
       },
       work: {
         productLabel: 'WORK',
         primaryActions: {
-          new: '+ New work',
-          team: '+ Team work',
-          parallel: '+ Parallel work',
+          new: '+ New Work',
+          team: '+ Team Work',
+          parallel: '+ Parallel Work',
         },
-        myLensLabel: 'MY CATTERIES',
         recentsLabel: 'RECENTS',
       },
     },
   },
   'zh-TW': {
-    emptyCatsLabel: '尚未有貓咪。',
     emptyRecentsLabel: '尚未有近期對話。',
     statusLabel: {
       ready: '可用',
@@ -441,7 +415,6 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
           group: '+ 群組聊天',
           parallel: '+ 平行聊天',
         },
-        myLensLabel: '直接訊息',
         recentsLabel: '近期項目',
       },
       code: {
@@ -451,7 +424,6 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
           team: '+ 團隊程式碼',
           peer: '+ 同儕程式碼',
         },
-        myLensLabel: '我的貓群',
         recentsLabel: '近期項目',
       },
       work: {
@@ -461,7 +433,6 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
           team: '+ 團隊工作',
           parallel: '+ 平行工作',
         },
-        myLensLabel: '我的貓舍',
         recentsLabel: '近期項目',
       },
     },
@@ -489,8 +460,8 @@ export function resolveDefaultMobileLocale(): MobileLocale {
   }
 }
 
-export function getMobileLobbyCopy(locale?: string | null): MobileLobbyCopy {
-  return MOBILE_LOBBY_COPY[resolveMobileLocale(locale)];
+export function getMobileCatsTabCopy(locale?: string | null): MobileCatsTabCopy {
+  return MOBILE_CATS_TAB_COPY[resolveMobileLocale(locale)];
 }
 
 export function getMobileChatCopy(locale?: string | null): MobileChatCopy {
@@ -522,10 +493,3 @@ export function getMobileChannelTitle(
 ): string {
   return copy.channelTitle[productMode][actionId] ?? copy.channelTitle[productMode].fallback;
 }
-
-// `formatMobileTodayLabel` and `formatMobileTimeAgo` were dropped in
-// PLAN-091 phase 5. They only served the old mobile Lobby
-// `todayLabel` eyebrow and `recentActivity` row hints, which are gone
-// now that the mobile Lobby tab is the sidebar. Per AGENTS.md
-// §Pre-Release Compatibility Policy, the dead helpers are removed in
-// the same change rather than kept as compatibility aliases.

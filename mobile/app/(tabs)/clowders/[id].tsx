@@ -2,13 +2,13 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 
 import { MobileEntityDetail } from '../../../src/renderer/screens/MobileEntityDetail';
 import {
-  getMobileLobbyCopy,
+  getMobileCatsTabCopy,
   resolveDefaultMobileLocale,
 } from '../../../../src/mobile/index.js';
 
 export default function MobileClowderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const copy = getMobileLobbyCopy(resolveDefaultMobileLocale());
+  const copy = getMobileCatsTabCopy(resolveDefaultMobileLocale());
   const resolvedId = typeof id === 'string' && id.length > 0 ? id : 'unknown-clowder';
 
   return (

@@ -14,24 +14,18 @@ const SIDEBAR_ACTION_IDS: Record<
 };
 
 /**
- * Trimmed sidebar configs for the Chat / Code / Work tabs. Mobile
- * uses the same five-entry shape across all three product tabs:
- * three primary action chips, the product MY-lens row, the product
- * Recents row.
- *
- * Chat's MY-lens row is now `DIRECT MESSAGES` to match the web
- * Chat sidebar relabel (PLAN-091 phase 2; SPEC-102 FR-15). Code's and
- * Work's MY-lens rows still surface their product's cat lens label —
- * the empty `My Clowders` / `My Catteries` placeholders that used to
- * sit in the web Code/Work sidebars were removed in the same phase.
- * Phase 5 reshapes the mobile Lobby tab (where the
- * cats / clowders / catteries entity sections live) and may revisit
- * the Code/Work MY-lens labels once that lands.
+ * Trimmed sidebar configs for the Chat / Code / Work tabs. Each tab
+ * renders three primary action chips plus a Recents list — the
+ * MY-lens section (DIRECT MESSAGES / MY CLOWDERS / MY CATTERIES) was
+ * removed in 2026-05-05 once the platform-level Cats tab took over
+ * cat / clowder / cattery rosters. Code's Workspaces / Artifacts and
+ * Work's Projects / Work Items / Tasks / Runs / Missions remain
+ * explicitly out of scope for mobile.
  *
  * Chat's three primary actions mirror the canonical web entry kinds
- * (+New chat / +Group chat / +Parallel chat). Code's match FR-038
- * (+New code / +Team code / +Peer code). Work mirrors the same
- * shape (+New work / +Team work / +Peer work).
+ * (+New Chat / +Group Chat / +Parallel Chat). Code's match FR-038
+ * (+New Code / +Team Code / +Peer Code). Work mirrors the same shape
+ * (+New Work / +Team Work / +Parallel Work).
  */
 function createSidebarConfig(
   product: MobileProductMode,
@@ -46,9 +40,7 @@ function createSidebarConfig(
       id,
       label: productCopy.primaryActions[id] ?? id,
     })) as TrimmedSidebarConfig['primaryActions'],
-    myLensLabel: productCopy.myLensLabel,
     recentsLabel: productCopy.recentsLabel,
-    emptyCatsLabel: copy.emptyCatsLabel,
     emptyRecentsLabel: copy.emptyRecentsLabel,
     catStatusLabels: copy.statusLabel,
   };

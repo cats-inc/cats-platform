@@ -2,19 +2,17 @@ import { useMemo } from 'react';
 
 import type { MobileApiError } from '../../api/client';
 import {
-  type MobileSidebarCat,
   type MobileSidebarRecent,
-  selectMobileMyCatsLens,
   selectMobileProductRecents,
 } from '../../../../src/mobile/index.js';
 import { useMobileAppShell } from './useMobileAppShell';
 
 /**
- * Combined hook for the trimmed product sidebar — yields both the
- * MY-lens cats and the product Recents off a single
- * `useMobileAppShell` fetch. Each Chat / Code / Work tab renders its
- * sidebar inline (cats + recents under section headers, like the
- * web sidebar) so it needs both projections at once.
+ * Recents projection for the trimmed product sidebar. The Chat / Code
+ * / Work tabs render three primary action chips plus a Recents list;
+ * the MY-lens section was removed in 2026-05-05 (cat / clowder /
+ * cattery rosters live under the Cats tab now), so this hook only
+ * yields recents off the shared `useMobileAppShell` fetch.
  */
 
 export type ProductSidebarState =
@@ -23,7 +21,6 @@ export type ProductSidebarState =
   | { kind: 'error'; error: MobileApiError }
   | {
       kind: 'data';
-      cats: MobileSidebarCat[];
       recents: MobileSidebarRecent[];
     };
 
@@ -36,14 +33,11 @@ export function useProductSidebarData(
   product: 'chat' | 'code' | 'work',
 ): ProductSidebarHook {
   const { state: shellState, refetch } = useMobileAppShell();
-  const projected = useMemo(() => {
+  const recents = useMemo(() => {
     if (shellState.kind !== 'data') {
       return null;
     }
-    return {
-      cats: selectMobileMyCatsLens(shellState.payload, product),
-      recents: selectMobileProductRecents(shellState.payload, product),
-    };
+    return selectMobileProductRecents(shellState.payload, product);
   }, [shellState, product]);
 
   let state: ProductSidebarState;
@@ -60,8 +54,7 @@ export function useProductSidebarData(
     case 'data':
       state = {
         kind: 'data',
-        cats: projected!.cats,
-        recents: projected!.recents,
+        recents: recents!,
       };
       break;
   }

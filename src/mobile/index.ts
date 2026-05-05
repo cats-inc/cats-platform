@@ -34,4 +34,4 @@ export * from './contracts.js';
 export * from './chat.js';
 export * from './messages.js';
 export * from './i18n.js';
-export * from './lobby.js';
+export * from './catsDirectory.js';

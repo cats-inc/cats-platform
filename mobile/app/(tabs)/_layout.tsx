@@ -35,8 +35,8 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="lobby"
-        options={{ title: copy.tabTitle.lobby, tabBarIcon: tabIcon('🏠') }}
+        name="cats"
+        options={{ title: copy.tabTitle.cats, tabBarIcon: tabIcon('🐱') }}
       />
       <Tabs.Screen
         name="chat"
@@ -55,15 +55,15 @@ export default function TabsLayout() {
         options={{ title: copy.tabTitle.settings, tabBarIcon: tabIcon('⚙') }}
       />
       {/*
-        Per PLAN-091 phase 5, the mobile Lobby tab is the only entry
+        Per PLAN-091 phase 5, the mobile Cats tab is the only entry
         point for the platform entity routes (Cat / Clowder / Cattery
-        homes). The detail screens live inside the (tabs) group so the
-        bottom tab bar stays mounted while the user drills into a
-        specific entity, but they do not appear as tabs themselves —
-        href: null hides them from the tab bar while keeping the
-        Stack-style push reachable from Lobby row taps.
+        homes). Cat detail pushes within the Cats tab's own stack
+        (`cats/_layout.tsx`); Clowder / Cattery detail screens live in
+        sibling folders so their bottom tab bar stays mounted, but
+        they do not appear as tabs themselves — `href: null` hides
+        them from the tab bar while keeping the Stack-style push
+        reachable from Cats directory row taps.
       */}
-      <Tabs.Screen name="cats/[id]" options={{ href: null }} />
       <Tabs.Screen name="clowders/[id]" options={{ href: null }} />
       <Tabs.Screen name="catteries/[id]" options={{ href: null }} />
     </Tabs>

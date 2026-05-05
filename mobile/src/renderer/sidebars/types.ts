@@ -14,29 +14,30 @@ import type {
  * Code / Work shape) — operator changed direction after seeing the
  * full inline-recents layout on a small viewport. The full
  * `ChatSidebar` component used during Phase 3 has been removed.
+ *
+ * 2026-05-05: the trimmed sidebar dropped the MY-lens section
+ * entirely (DIRECT MESSAGES / MY CLOWDERS / MY CATTERIES). Cat,
+ * Clowder, and Cattery rosters now live under the Cats tab instead.
  */
 
 export type {
-  MobileChatSidebarData as ChatSidebarData,
-  MobileSidebarCat as SidebarCatEntry,
   MobileSidebarRecent as SidebarRecentEntry,
 } from '../../../../src/mobile/index.js';
 
 export type { SidebarCatStatus };
 
 /**
- * Trimmed product sidebar (Chat / Code / Work) per SPEC-095. All
- * three product tabs now use the same five-entry shape: three
- * primary actions, the product MY-lens row, the product Recents
- * row. Code's Workspaces / Artifacts and Work's Projects / Work
- * Items / Tasks / Runs / Missions remain explicitly out of scope
+ * Trimmed product sidebar (Chat / Code / Work) per SPEC-095. Each
+ * product tab renders three primary action chips followed by a
+ * Recents list. Code's Workspaces / Artifacts and Work's Projects /
+ * Work Items / Tasks / Runs / Missions remain explicitly out of scope
  * for mobile.
  */
 export interface TrimmedSidebarPrimaryAction {
   /** Stable identifier — `new`, `team`, `peer`, `group`,
    *  `parallel`, etc. */
   id: string;
-  /** Visible chip label, e.g. `+ New code`. */
+  /** Visible chip label, e.g. `+ New Code`. */
   label: string;
 }
 
@@ -50,12 +51,8 @@ export interface TrimmedSidebarConfig {
     TrimmedSidebarPrimaryAction,
     TrimmedSidebarPrimaryAction,
   ];
-  /** Label for the MY-lens row, e.g. `MY CATS` / `MY CODES` / `MY WORKS`. */
-  myLensLabel: string;
   /** Label for the RECENTS row, e.g. `Recents (Code)`. */
   recentsLabel: string;
-  /** Empty row copy for the product-specific MY-lens section. */
-  emptyCatsLabel: string;
   /** Empty row copy for the product-scoped recents section. */
   emptyRecentsLabel: string;
   /** Visible status labels for cat presence chips. */
@@ -64,6 +61,5 @@ export interface TrimmedSidebarConfig {
 
 export interface TrimmedSidebarCallbacks {
   onPrimaryAction: (actionId: string) => void;
-  onOpenMyLens: () => void;
   onOpenRecents: () => void;
 }

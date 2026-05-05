@@ -61,22 +61,6 @@ export function selectMobileChatSidebar(
   return { recents, cats };
 }
 
-/**
- * Returns the cats that belong to the given product, sorted by name.
- * Drives the `MY CODES` / `MY WORKS` screens (PLAN-084 Phase 6
- * placeholder destinations becoming live). Matches FR-046 / FR-047 —
- * MY CATS is one platform-level home with lens projections.
- */
-export function selectMobileMyCatsLens(
-  payload: MobileAppShellPayload,
-  product: 'chat' | 'code' | 'work',
-): MobileSidebarCat[] {
-  return payload.chat.cats
-    .filter((cat) => cat.products.includes(product))
-    .map(catToSidebarCat)
-    .sort((a, b) => a.name.localeCompare(b.name));
-}
-
 export interface SelectProductRecentsOptions {
   recentLimit?: number;
 }

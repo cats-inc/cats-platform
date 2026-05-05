@@ -2,15 +2,19 @@ import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
-  getMobileLobbyCopy,
+  getMobileCatsTabCopy,
   resolveDefaultMobileLocale,
-  type MobileLobbyCopy,
 } from '../../../../src/mobile/index.js';
 import { colors, radii, spacing, typography } from '../theme';
 
 export type MobileEntityKind = 'cat' | 'clowder' | 'cattery';
 
-const TITLE_BY_KIND: Record<MobileEntityKind, keyof MobileLobbyCopy> = {
+type EntityDetailTitleKey =
+  | 'entityDetailTitleCat'
+  | 'entityDetailTitleClowder'
+  | 'entityDetailTitleCattery';
+
+const TITLE_BY_KIND: Record<MobileEntityKind, EntityDetailTitleKey> = {
   cat: 'entityDetailTitleCat',
   clowder: 'entityDetailTitleClowder',
   cattery: 'entityDetailTitleCattery',
@@ -23,7 +27,7 @@ export interface MobileEntityDetailProps {
 
 export function MobileEntityDetail({ kind, id }: MobileEntityDetailProps) {
   const router = useRouter();
-  const copy = getMobileLobbyCopy(resolveDefaultMobileLocale());
+  const copy = getMobileCatsTabCopy(resolveDefaultMobileLocale());
   const title = copy[TITLE_BY_KIND[kind]];
 
   return (
@@ -39,13 +43,13 @@ export function MobileEntityDetail({ kind, id }: MobileEntityDetailProps) {
       </View>
       <Pressable
         accessibilityRole="button"
-        onPress={() => router.replace('/(tabs)/lobby')}
+        onPress={() => router.replace('/(tabs)/cats')}
         style={({ pressed }) => [
           styles.backButton,
           pressed ? styles.backButtonPressed : null,
         ]}
       >
-        <Text style={styles.backButtonLabel}>{copy.entityDetailBackToLobbyLabel}</Text>
+        <Text style={styles.backButtonLabel}>{copy.entityDetailBackToDirectoryLabel}</Text>
       </Pressable>
     </ScrollView>
   );

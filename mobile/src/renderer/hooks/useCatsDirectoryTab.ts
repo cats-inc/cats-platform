@@ -2,42 +2,41 @@ import { useMemo } from 'react';
 
 import type { MobileApiError } from '../../api/client';
 import {
-  resolveDefaultMobileLocale,
-  type MobileLobbyData,
-  selectMobileLobby,
+  type MobileCatsDirectoryData,
+  selectMobileCatsDirectory,
 } from '../../../../src/mobile/index.js';
 import { useMobileAppShell } from './useMobileAppShell';
 
-export type MobileLobbyState =
+export type CatsDirectoryTabState =
   | { kind: 'loading' }
   | { kind: 'unconfigured' }
   | { kind: 'error'; error: MobileApiError }
-  | { kind: 'data'; data: MobileLobbyData };
+  | { kind: 'data'; data: MobileCatsDirectoryData };
 
-export interface MobileLobbyHook {
-  state: MobileLobbyState;
+export interface CatsDirectoryTabHook {
+  state: CatsDirectoryTabState;
   refetch: () => void;
 }
 
 /**
- * Composes `useMobileAppShell` + `selectMobileLobby`. Mobile derives
- * Lobby content from the same payload the sidebars consume — there
- * is no separate `/api/lobby` endpoint today (per SPEC-095 the
- * mobile lobby is a *subset* of the platform projection, not a
- * separate persistence schema).
+ * Composes `useMobileAppShell` + `selectMobileCatsDirectory`. The
+ * mobile Cats tab derives its directory content from the same payload
+ * the product sidebars consume — there is no separate `/api/cats`
+ * endpoint today (per SPEC-095 the mobile cats projection is a
+ * *subset* of the platform projection, not a separate persistence
+ * schema).
  */
-export function useMobileLobby(): MobileLobbyHook {
+export function useCatsDirectoryTab(): CatsDirectoryTabHook {
   const { state: shellState, refetch } = useMobileAppShell();
-  const locale = resolveDefaultMobileLocale();
   const data = useMemo(
     () =>
       shellState.kind === 'data'
-        ? selectMobileLobby(shellState.payload, { locale })
+        ? selectMobileCatsDirectory(shellState.payload)
         : null,
-    [locale, shellState],
+    [shellState],
   );
 
-  let state: MobileLobbyState;
+  let state: CatsDirectoryTabState;
   switch (shellState.kind) {
     case 'loading':
       state = { kind: 'loading' };

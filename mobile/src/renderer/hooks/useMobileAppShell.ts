@@ -12,9 +12,9 @@ import {
 /**
  * Shared hook that fetches `/api/app-shell` and exposes the explicit
  * state machine the screens consume. Other hooks
- * (`useMyCatsLens`, `useProductRecents`, `useMobileLobby`) compose
- * this one so the desktop is hit at most once per screen mount, not
- * once per derived selector.
+ * (`useProductSidebarData`, `useCatsDirectoryTab`) compose this one
+ * so the desktop is hit at most once per screen mount, not once per
+ * derived selector.
  *
  * NB: hooks that need *both* the app-shell and another endpoint (e.g.
  * `useChannelMessages`) intentionally do their own combined fetch

@@ -8,8 +8,6 @@ import {
 } from 'react-native';
 
 import type {
-  MobileSidebarCat,
-  MobileSidebarCatStatus,
   MobileSidebarRecent,
 } from '../../../../src/mobile/index.js';
 import { colors, radii, spacing, typography } from '../theme';
@@ -19,7 +17,6 @@ import type {
 } from './types';
 
 export interface TrimmedProductSidebarData {
-  cats: MobileSidebarCat[];
   recents: MobileSidebarRecent[];
 }
 
@@ -27,7 +24,6 @@ export interface TrimmedProductSidebarProps {
   config: TrimmedSidebarConfig;
   data: TrimmedProductSidebarData;
   onPrimaryAction: (actionId: string) => void;
-  onSelectCat: (catId: string) => void;
   onSelectRecent: (channelId: string) => void;
 }
 
@@ -35,7 +31,6 @@ type Row =
   | { kind: 'eyebrow'; label: string }
   | { kind: 'primary-actions'; actions: TrimmedSidebarPrimaryAction[] }
   | { kind: 'section-header'; label: string }
-  | { kind: 'cat'; entry: MobileSidebarCat }
   | { kind: 'recent'; entry: MobileSidebarRecent }
   | { kind: 'empty'; label: string; sectionId: string };
 
@@ -43,13 +38,6 @@ function buildRows(
   config: TrimmedSidebarConfig,
   data: TrimmedProductSidebarData,
 ): Row[] {
-  const catRows: Row[] = data.cats.length > 0
-    ? data.cats.map<Row>((entry) => ({ kind: 'cat', entry }))
-    : [{
-        kind: 'empty' as const,
-        label: config.emptyCatsLabel,
-        sectionId: 'my-lens',
-      }];
   const recentRows: Row[] = data.recents.length > 0
     ? data.recents.map<Row>((entry) => ({ kind: 'recent', entry }))
     : [{
@@ -60,8 +48,6 @@ function buildRows(
   return [
     { kind: 'eyebrow', label: config.productLabel },
     { kind: 'primary-actions', actions: [...config.primaryActions] },
-    { kind: 'section-header', label: config.myLensLabel },
-    ...catRows,
     { kind: 'section-header', label: config.recentsLabel },
     ...recentRows,
   ];
@@ -71,7 +57,6 @@ export function TrimmedProductSidebar({
   config,
   data,
   onPrimaryAction,
-  onSelectCat,
   onSelectRecent,
 }: TrimmedProductSidebarProps) {
   const rows = buildRows(config, data);
@@ -84,9 +69,7 @@ export function TrimmedProductSidebar({
       keyExtractor={rowKey}
       renderItem={(info) =>
         renderRow(info, {
-          catStatusLabels: config.catStatusLabels,
           onPrimaryAction,
-          onSelectCat,
           onSelectRecent,
         })
       }
@@ -102,8 +85,6 @@ function rowKey(row: Row, index: number): string {
       return 'primary-actions';
     case 'section-header':
       return `section:${row.label}`;
-    case 'cat':
-      return `cat:${row.entry.id}`;
     case 'recent':
       return `recent:${row.entry.id}`;
     case 'empty':
@@ -112,9 +93,7 @@ function rowKey(row: Row, index: number): string {
 }
 
 interface RowCallbacks {
-  catStatusLabels: Record<MobileSidebarCatStatus, string>;
   onPrimaryAction: (actionId: string) => void;
-  onSelectCat: (catId: string) => void;
   onSelectRecent: (channelId: string) => void;
 }
 
@@ -146,14 +125,6 @@ function renderRow(
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionHeaderText}>{item.label}</Text>
         </View>
-      );
-    case 'cat':
-      return (
-        <CatRow
-          entry={item.entry}
-          statusLabels={callbacks.catStatusLabels}
-          onPress={() => callbacks.onSelectCat(item.entry.id)}
-        />
       );
     case 'recent':
       return (
@@ -188,48 +159,6 @@ function PrimaryActionButton({ action, onPress }: PrimaryActionButtonProps) {
   );
 }
 
-interface CatRowProps {
-  entry: MobileSidebarCat;
-  statusLabels: Record<MobileSidebarCatStatus, string>;
-  onPress: () => void;
-}
-
-function CatRow({ entry, statusLabels, onPress }: CatRowProps) {
-  const initials = entry.name
-    .split(/\s+/)
-    .map((part) => part[0] ?? '')
-    .slice(0, 2)
-    .join('')
-    .toUpperCase() || entry.name.slice(0, 2).toUpperCase();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        pressed ? styles.rowPressed : null,
-      ]}
-    >
-      <View
-        style={[
-          styles.catAvatar,
-          { backgroundColor: entry.avatarColor ?? colors.bubble.mentionDefault },
-        ]}
-      >
-        <Text style={styles.catAvatarText}>{initials}</Text>
-      </View>
-      <View style={styles.rowText}>
-        <Text style={styles.rowTitle} numberOfLines={1}>
-          {entry.name}
-        </Text>
-        <View style={styles.catStatusInline}>
-          <StatusDot status={entry.status} />
-          <Text style={styles.catStatusText}>{statusLabels[entry.status]}</Text>
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
 interface RecentRowProps {
   entry: MobileSidebarRecent;
   onPress: () => void;
@@ -259,24 +188,6 @@ function RecentRow({ entry, onPress }: RecentRowProps) {
       </View>
     </Pressable>
   );
-}
-
-interface StatusDotProps {
-  status: MobileSidebarCatStatus;
-}
-
-function StatusDot({ status }: StatusDotProps) {
-  const dotColor = (() => {
-    switch (status) {
-      case 'ready':
-        return colors.status.readyText;
-      case 'warm':
-        return colors.status.warmText;
-      case 'sleeping':
-        return colors.status.mutedText;
-    }
-  })();
-  return <View style={[styles.statusDot, { backgroundColor: dotColor }]} />;
 }
 
 const styles = StyleSheet.create({
@@ -363,32 +274,6 @@ const styles = StyleSheet.create({
   recentIconBubbleText: {
     fontSize: 16,
     lineHeight: 20,
-  },
-  catAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  catAvatarText: {
-    color: colors.bubble.mentionText,
-    ...typography.label,
-    fontWeight: '700',
-  },
-  catStatusInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  catStatusText: {
-    color: colors.fg.muted,
-    ...typography.caption,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
   emptyText: {
     color: colors.fg.muted,

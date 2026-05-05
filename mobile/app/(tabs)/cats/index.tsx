@@ -1,12 +1,12 @@
 import { SafeAreaView, StyleSheet } from 'react-native';
 
-import { Lobby } from '../../src/renderer/screens/Lobby';
-import { colors } from '../../src/renderer/theme';
+import { CatsDirectoryTab } from '../../../src/renderer/screens/CatsDirectoryTab';
+import { colors } from '../../../src/renderer/theme';
 
-export default function LobbyScreen() {
+export default function CatsTabScreen() {
   return (
     <SafeAreaView style={styles.container}>
-      <Lobby />
+      <CatsDirectoryTab />
     </SafeAreaView>
   );
 }

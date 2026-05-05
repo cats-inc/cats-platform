@@ -54,14 +54,6 @@ export default function ChatSidebarScreen() {
     [copy, createChannel, router],
   );
 
-  const handleSelectCat = useCallback(() => {
-    Alert.alert(
-      copy.directCatDesktopOnlyTitle,
-      copy.directCatDesktopOnlyBody.chat,
-      [{ text: copy.desktopOnlyOkAction, style: 'cancel' }],
-    );
-  }, [copy]);
-
   const handleSelectRecent = useCallback(
     (channelId: string) => {
       router.push(`/(tabs)/chat/${channelId}`);
@@ -90,13 +82,11 @@ export default function ChatSidebarScreen() {
         <TrimmedProductSidebar
           config={sidebarConfig}
           data={{
-            cats: state.kind === 'data' ? state.cats : [],
             recents: state.kind === 'data' ? state.recents : [],
           }}
           onPrimaryAction={(actionId) => {
             void handlePrimaryAction(actionId);
           }}
-          onSelectCat={handleSelectCat}
           onSelectRecent={handleSelectRecent}
         />
       )}

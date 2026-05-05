@@ -9,14 +9,14 @@ import {
   View,
 } from 'react-native';
 
-import { useMobileLobby } from '../hooks/useMobileLobby';
+import { useCatsDirectoryTab } from '../hooks/useCatsDirectoryTab';
 import type {
-  MobileLobbyCatSummary,
-  MobileLobbyCopy,
-  MobileLobbyData,
+  MobileCatsDirectoryCatSummary,
+  MobileCatsDirectoryData,
+  MobileCatsTabCopy,
 } from '../../../../src/mobile/index.js';
 import {
-  getMobileLobbyCopy,
+  getMobileCatsTabCopy,
   resolveDefaultMobileLocale,
 } from '../../../../src/mobile/index.js';
 import { colors, radii, spacing, typography } from '../theme';
@@ -32,10 +32,10 @@ interface SectionDescriptor {
   empty: boolean;
 }
 
-export function Lobby() {
+export function CatsDirectoryTab() {
   const router = useRouter();
-  const { state } = useMobileLobby();
-  const copy = getMobileLobbyCopy(resolveDefaultMobileLocale());
+  const { state } = useCatsDirectoryTab();
+  const copy = getMobileCatsTabCopy(resolveDefaultMobileLocale());
 
   if (state.kind === 'loading') {
     return (
@@ -57,14 +57,14 @@ export function Lobby() {
   if (state.kind === 'error') {
     return (
       <Panel
-        title={copy.couldNotLoadLobbyTitle}
+        title={copy.couldNotLoadDirectoryTitle}
         body={state.error.message}
       />
     );
   }
 
   return (
-    <LobbyBody
+    <DirectoryBody
       data={state.data}
       copy={copy}
       onSelectCat={(catId) =>
@@ -74,13 +74,13 @@ export function Lobby() {
   );
 }
 
-interface LobbyBodyProps {
-  data: MobileLobbyData;
-  copy: MobileLobbyCopy;
+interface DirectoryBodyProps {
+  data: MobileCatsDirectoryData;
+  copy: MobileCatsTabCopy;
   onSelectCat: (catId: string) => void;
 }
 
-function LobbyBody({ data, copy, onSelectCat }: LobbyBodyProps) {
+function DirectoryBody({ data, copy, onSelectCat }: DirectoryBodyProps) {
   const sections: SectionDescriptor[] = [
     {
       key: 'cats',
@@ -111,29 +111,29 @@ function LobbyBody({ data, copy, onSelectCat }: LobbyBodyProps) {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.title}>{copy.lobbyTitle}</Text>
+        <Text style={styles.title}>{copy.catsTabTitle}</Text>
       </View>
 
       {sections.map((section) => (
-        <SidebarSection key={section.key} section={section} copy={copy}>
+        <DirectorySection key={section.key} section={section} copy={copy}>
           {section.key === 'cats'
             ? data.cats.map((cat) => (
                 <CatRow key={cat.id} cat={cat} onPress={() => onSelectCat(cat.id)} />
               ))
             : null}
-        </SidebarSection>
+        </DirectorySection>
       ))}
     </ScrollView>
   );
 }
 
-interface SidebarSectionProps {
+interface DirectorySectionProps {
   section: SectionDescriptor;
-  copy: MobileLobbyCopy;
+  copy: MobileCatsTabCopy;
   children: React.ReactNode;
 }
 
-function SidebarSection({ section, copy, children }: SidebarSectionProps) {
+function DirectorySection({ section, copy, children }: DirectorySectionProps) {
   // Default collapsed (PLAN-091 §Resolved Decisions). User-driven
   // expand state is local to the screen for the mobile slice — the
   // desktop sidebar persists in `localStorage`; AsyncStorage parity on
@@ -183,7 +183,7 @@ function SidebarSection({ section, copy, children }: SidebarSectionProps) {
 }
 
 interface CatRowProps {
-  cat: MobileLobbyCatSummary;
+  cat: MobileCatsDirectoryCatSummary;
   onPress: () => void;
 }
 
