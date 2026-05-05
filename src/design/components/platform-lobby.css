@@ -364,6 +364,17 @@
   /* Sits above the card link so row buttons keep their own click. */
   position: relative;
   z-index: 2;
+  /* The list itself is non-interactive — only the row buttons are.
+   * Without this the UL/LI swallows clicks across the whole card body
+   * and the full-card `.entityIndexCardLink` only triggers on the thin
+   * gap that the list does not cover. Individual interactive rows
+   * (`.entityIndexItem` not disabled) re-enable their own pointer
+   * events below. */
+  pointer-events: none;
+}
+
+.entityIndexCardItems .entityIndexItem:not(:disabled) {
+  pointer-events: auto;
 }
 
 .entityIndexRow {
@@ -448,6 +459,11 @@
 
 .entityIndexItemPlaceholder:disabled {
   cursor: default;
+  /* `pointer-events` not needed here: the parent `.entityIndexCardItems`
+   * is already pointer-events: none, and the `:not(:disabled)` rule
+   * above only re-enables enabled buttons. Disabled placeholders
+   * therefore inherit none, so clicks fall through to the full-card
+   * `.entityIndexCardLink`. */
 }
 
 .entityIndexAvatarPlaceholder {

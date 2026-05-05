@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 import { EntityDetailPane } from '../../../design/components/EntityDetailPane.js';
 import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
@@ -65,23 +65,12 @@ function CatterySettingsTab() {
 
 function CatteryNotFound({ catteryId }: { catteryId: string }) {
   const { t } = useI18n();
-  const navigate = useNavigate();
+  // No back button here — EntitiesShell's sidebar already carries a
+  // `Back to Lobby` primary action.
   return (
     <div className="screen screenCentered entityComingSoonScreen">
       <section className="entityComingSoonPanel">
-        <div className="entityComingSoonHeader">
-          <div>
-            <p className="eyebrow">{t(messageKeys.entityDetailBreadcrumbLobby)}</p>
-            <h1>{t(messageKeys.catteryHomeNotFoundTitle)}</h1>
-          </div>
-          <button
-            type="button"
-            className="secondaryButton"
-            onClick={() => navigate('/lobby')}
-          >
-            {t(messageKeys.entityComingSoonBackToLobby)}
-          </button>
-        </div>
+        <h1>{t(messageKeys.catteryHomeNotFoundTitle)}</h1>
         <p className="entityComingSoonBody">
           {t(messageKeys.catteryHomeNotFoundBody, { catteryId })}
         </p>

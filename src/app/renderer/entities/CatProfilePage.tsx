@@ -14,24 +14,14 @@ import '../../../products/chat/renderer/styles/chat-companion.css';
 
 export function CatProfileNotFound({ catId }: { catId: string }) {
   const { t } = useI18n();
-  const navigate = useNavigate();
 
+  // No back button here — EntitiesShell's sidebar already carries a
+  // `Back to Lobby` primary action, and stacking another inside the
+  // canvas was a duplicate affordance.
   return (
     <div className="screen screenCentered entityComingSoonScreen">
       <section className="entityComingSoonPanel">
-        <div className="entityComingSoonHeader">
-          <div>
-            <p className="eyebrow">{t(messageKeys.entityDetailBreadcrumbLobby)}</p>
-            <h1>{t(messageKeys.catProfileNotFoundTitle)}</h1>
-          </div>
-          <button
-            type="button"
-            className="secondaryButton"
-            onClick={() => navigate('/lobby')}
-          >
-            {t(messageKeys.entityComingSoonBackToLobby)}
-          </button>
-        </div>
+        <h1>{t(messageKeys.catProfileNotFoundTitle)}</h1>
         <p className="entityComingSoonBody">
           {t(messageKeys.catProfileNotFoundBody, { catId })}
         </p>

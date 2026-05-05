@@ -447,7 +447,9 @@ test('CatProfileNotFound renders a useful missing-cat panel', () => {
 
   assert.match(markup, /Cat not found/u);
   assert.match(markup, /No Cat with id &quot;missing-cat&quot; exists/u);
-  assert.match(markup, />Back to Lobby</u);
+  // No inline Back to Lobby — EntitiesShell's sidebar primary action
+  // owns that affordance, so the not-found panel must not duplicate it.
+  assert.doesNotMatch(markup, />Back to Lobby</u);
 });
 
 test('EntitiesShell loads the chat-thread-base avatar primitives so MY CATS rows show the 28px disc', () => {
