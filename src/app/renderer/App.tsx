@@ -33,7 +33,6 @@ import { normalizePlatformSurface } from '../../shared/platformSurfaces.js';
 import {
   isPlatformNonProductPath,
   resolvePreferredPlatformSurface,
-  resolvePlatformShellSurface,
   resolvePlatformSurfaceForPath,
   PLATFORM_SURFACE_ROUTES,
 } from './routeMap';
@@ -49,6 +48,8 @@ import {
   ClowdersCanvasPage,
 } from './entities/EntityCanvasPages.js';
 import { EntitiesShell } from './entities-shell/EntitiesShell.js';
+import { SettingsShell } from './settings/SettingsShell.js';
+import { SettingsCanvasContent } from './settings/SettingsCanvasContent.js';
 import { PlatformLobby } from './PlatformLobby';
 import {
   GuideCatPlacementProvider,
@@ -605,14 +606,11 @@ export default function PlatformApp() {
   }
 
   // Setup complete: products at their own prefix, settings at /settings/*.
-  const shellSurface = resolvePlatformShellSurface(location.pathname, preferredSurface);
+  // Settings is its own platform surface now (mounted via `SettingsShell`),
+  // so it no longer borrows the active product chrome — `renderProductSurface`
+  // is therefore only invoked for the actual chat / work / code surfaces below.
   const hasStoredSurface = Boolean(readyEnvelope.lastProductSurface);
   const entryPath = hasStoredSurface ? platformSurfaceRoutePrefix(preferredSurface) : '/lobby';
-  const settingsSurfaceElement = renderProductSurface(
-    shellSurface,
-    setProductSurfaceFallbackActive,
-    t,
-  );
   const guideCatSidecarInput = {
     guideCat: readyEnvelope.guideCat,
     productSurfaceFallbackActive,
@@ -656,7 +654,9 @@ export default function PlatformApp() {
           </Route>
           <Route path="/apps/:appId/*" element={<AppHostRoute envelope={readyEnvelope} />} />
           <Route path="/products" element={<Navigate to="/lobby" replace />} />
-          <Route path="/settings/*" element={settingsSurfaceElement} />
+          <Route element={<SettingsShell envelope={readyEnvelope} />}>
+            <Route path="/settings/*" element={<SettingsCanvasContent />} />
+          </Route>
           <Route
             path={`${PLATFORM_SURFACE_ROUTES.chat.routePrefix}/*`}
             element={renderProductSurface('chat', setProductSurfaceFallbackActive, t)}

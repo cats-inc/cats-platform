@@ -1448,10 +1448,4 @@
     flex-direction: row;
     gap: 4px;
   }
-
-  .settingsTab {
-    flex: 1;
-    text-align: center;
-    padding: 8px 10px;
-  }
 }

@@ -1,35 +1,32 @@
-.settingsShell {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: 24px;
-  width: min(100%, 940px);
-  margin: 0 auto;
-  padding: 32px 0;
-  box-sizing: border-box;
-  align-items: start;
-}
+/* Settings is a platform surface with its own appshell sidebar (see
+ * `SettingsShell` + `SettingsAppShellSidebar`). Earlier revisions
+ * laid Settings out as a 180px-sidebar / 1fr-canvas grid INSIDE the
+ * active product's chrome (`.settingsShell`, `.settingsSidebar`,
+ * `.settingsTab` rules). Those are gone — the sidebar is now the
+ * regular `.sidebar` chrome, navigation buttons are `.navItem`
+ * styled, and only the canvas-side bits live in this file. */
 
-.settingsSidebar {
+/* Settings sidebar header brand cell — sits inside the standard
+ * `.brandRow .brandCopy` shell, mirrors `.entitiesBrandCopy` so
+ * Cats Directory and Settings agree on the back-button + label
+ * layout. */
+.settingsBrandCopy {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 10px;
 }
 
-.settingsSidebarGroup {
-  display: grid;
-  gap: 2px;
-  padding-left: 10px;
+.settingsBrandLabel {
+  font-size: 1.05rem;
 }
 
-.settingsNavHeading {
-  padding: 0 12px;
-  margin: 0 0 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.settingsNavSubheading {
+/* Sidebar group separator: the "Cats" subheading above the My Cats
+ * / Assistants nav items reads as a small uppercase label sitting
+ * just inside the sidebar inset. Styled to look like the
+ * `sectionLabel` rule used in chat / code / work for "DIRECT
+ * MESSAGES" etc., but lives in this file because Settings is the
+ * only surface that uses it. */
+.settingsSidebarGroupHeading {
   padding: 12px 12px 4px;
   margin: 0;
   font-size: 0.72rem;
@@ -39,39 +36,86 @@
   text-transform: uppercase;
 }
 
-.settingsNavProductLabel {
-  padding: 8px 12px 0;
-  margin: 0;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text);
+.settingsSidebarGroupNav {
+  padding-left: 8px;
 }
 
-.settingsTab {
-  display: block;
+.settingsCanvasBoot {
   width: 100%;
-  padding: 10px 14px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
+  height: 100%;
+}
+
+.settingsFeedback {
+  margin: 12px 0 0;
+  font-size: 0.9rem;
   color: var(--muted);
-  text-align: left;
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 500;
-  cursor: pointer;
 }
 
-.settingsTab:hover {
-  background: var(--sidebar-hover-bg);
-  color: var(--text);
+/* ── Canvas side (per-section page chrome) ─────────────────────── */
+
+.settingsContent {
+  /* Center the canvas content with a comfortable max-width so
+   * settings forms don't stretch edge-to-edge on wide displays. */
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding: 32px 0;
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
-.settingsTabActive {
-  background: var(--sidebar-active-bg);
-  color: var(--text);
+.settingsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 16px;
+}
+
+.settingsHeader h1 {
+  margin: 0;
+  font-size: 1.4rem;
   font-weight: 600;
+  letter-spacing: -0.03em;
 }
+
+.settingsBody {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.settingsBody > * {
+  min-width: 0;
+}
+
+.settingsActionRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.settingsChipRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.settingsCardNote {
+  margin-bottom: 16px;
+}
+
+.settingsInlineLink {
+  display: inline-flex;
+  text-decoration: none;
+}
+
+/* ── Owner avatar (used by the General settings page) ──────────── */
 
 .settingsOwnerAvatarDock {
   position: relative;
@@ -155,88 +199,7 @@
   color: #fff;
 }
 
-.settingsContent {
-  min-width: 0;
-  width: 100%;
-  max-width: 100%;
-  display: grid;
-  align-content: start;
-  overflow: hidden;
-}
-
-.settingsHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 0 0 16px;
-}
-
-.settingsHeader h1 {
-  margin: 0;
-  font-size: 1.4rem;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-}
-
-.settingsCloseButton {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 1rem;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.settingsCloseButton:hover {
-  background: var(--panel-hover);
-  color: var(--text);
-}
-
-.settingsCloseButton:focus-visible {
-  outline: 2px solid var(--accent, #4a7bd6);
-  outline-offset: 2px;
-}
-
-.settingsBody {
-  display: grid;
-  gap: 16px;
-  width: 100%;
-  min-width: 0;
-}
-
-.settingsBody > * {
-  min-width: 0;
-}
-
-.settingsActionRow {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.settingsChipRow {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
-.settingsCardNote {
-  margin-bottom: 16px;
-}
-
-.settingsInlineLink {
-  display: inline-flex;
-  text-decoration: none;
-}
+/* ── Toggle (used by various settings pages) ───────────────────── */
 
 .toggleRow {
   display: flex;

@@ -1,13 +1,9 @@
-import { useCallback, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { type ReactNode } from 'react';
 
 import type {
   PlatformProductDescriptor,
   PlatformProductSettingsDescriptor,
 } from '../../../shared/platform-contract.js';
-import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
-import { getSettingsExitDelta } from './settingsExitMemory.js';
-import { useI18n } from '../i18n/index.js';
 import {
   resolvePlatformProductSettingsLabel,
   type PlatformProductCopyTranslator,
@@ -34,6 +30,14 @@ export interface PlatformSettingsShellProps {
   children: ReactNode;
 }
 
+/**
+ * Builds the per-product settings entries the Settings sidebar (`SettingsAppShellSidebar`)
+ * surfaces between the Cats group and Apps. Filters to installed
+ * products that actually expose at least one settings descriptor and
+ * resolves each entry's display label through the shared product-copy
+ * map so the sidebar matches the rest of the platform's product
+ * naming.
+ */
 export function buildPlatformSettingsProductEntries(
   products: readonly PlatformProductDescriptor[],
   t?: PlatformProductCopyTranslator,
@@ -49,118 +53,29 @@ export function buildPlatformSettingsProductEntries(
     );
 }
 
+/**
+ * Per-section canvas wrapper for `/settings/*`. After Settings was
+ * promoted to its own surface (see `SettingsShell` +
+ * `SettingsAppShellSidebar`), the section nav and the close button
+ * moved up into the app-shell sidebar — this wrapper now does just
+ * the canvas-side framing each section page needs: an `<h1>` title
+ * row plus a `.settingsBody` content slot. The `section` prop is
+ * retained for callers that already pass it; it is no longer used
+ * for any sidebar highlight (the sidebar derives its active state
+ * from the current pathname).
+ */
 export function PlatformSettingsShell({
-  section,
   title,
-  products,
   children,
 }: PlatformSettingsShellProps) {
-  const navigate = useNavigate();
-  const showDesktop = isDesktopEnvironment();
-  const { t } = useI18n();
-  const productEntries = buildPlatformSettingsProductEntries(products, t);
-
-  // settingsExitMemory tracks the idx just before the user entered /settings
-  // in this session. If we have that memory, navigate(-N) jumps past all
-  // in-settings tab navigations (General → My Cats → Assistants) in one
-  // step and lands on whatever non-settings surface the user came from.
-  // If memory is absent (tray direct, bookmark, hard reload on /settings),
-  // fall back to /lobby with replace so the forward button cannot un-close.
-  const handleClose = useCallback(() => {
-    const historyState = window.history.state as { idx?: number } | null;
-    const delta = getSettingsExitDelta(historyState?.idx);
-    if (delta !== null) {
-      navigate(delta);
-    } else {
-      navigate('/lobby', { replace: true });
-    }
-  }, [navigate]);
-
   return (
-    <div className="settingsShell">
-      <nav className="settingsSidebar">
-        <p className="settingsNavHeading">{t('settingsShellHeading')}</p>
-        <button
-          className={section === 'general' ? 'settingsTab settingsTabActive' : 'settingsTab'}
-          type="button"
-          onClick={() => navigate('/settings/general')}
-        >
-          {t('settingsShellSectionGeneral')}
-        </button>
-        <p className="settingsNavSubheading">{t('settingsShellSectionCats')}</p>
-        <div className="settingsSidebarGroup">
-          <button
-            className={section === 'cats' ? 'settingsTab settingsTabActive' : 'settingsTab'}
-            type="button"
-            onClick={() => navigate('/settings/cats')}
-          >
-            {t('settingsShellSubsectionMyCats')}
-          </button>
-          <button
-            className={section === 'assistants' ? 'settingsTab settingsTabActive' : 'settingsTab'}
-            type="button"
-            onClick={() => navigate('/settings/assistants')}
-          >
-            {t('settingsShellSubsectionAssistants')}
-          </button>
-        </div>
-        {productEntries.map((entry) => (
-          <button
-            key={`${entry.productId}:${entry.id}`}
-            className={section === entry.productId ? 'settingsTab settingsTabActive' : 'settingsTab'}
-            type="button"
-            onClick={() => navigate(entry.path)}
-          >
-            {entry.label}
-          </button>
-        ))}
-        <button
-          className={section === 'apps' ? 'settingsTab settingsTabActive' : 'settingsTab'}
-          type="button"
-          onClick={() => navigate('/settings/apps')}
-        >
-          {t('settingsShellSectionApps')}
-        </button>
-        {showDesktop ? (
-          <button
-            className={section === 'desktop' ? 'settingsTab settingsTabActive' : 'settingsTab'}
-            type="button"
-            onClick={() => navigate('/settings/desktop')}
-          >
-            {t('settingsShellSectionDesktop')}
-          </button>
-        ) : null}
-        <button
-          className={section === 'runtime' ? 'settingsTab settingsTabActive' : 'settingsTab'}
-          type="button"
-          onClick={() => navigate('/settings/runtime')}
-        >
-          {t('settingsShellSectionRuntime')}
-        </button>
-        <button
-          className={section === 'data' ? 'settingsTab settingsTabActive' : 'settingsTab'}
-          type="button"
-          onClick={() => navigate('/settings/data')}
-        >
-          {t('settingsShellSectionData')}
-        </button>
-      </nav>
-      <section className="settingsContent">
-        <header className="settingsHeader">
-          <h1>{title}</h1>
-          <button
-            type="button"
-            className="settingsCloseButton"
-            aria-label={t('settingsShellCloseButtonLabel')}
-            onClick={handleClose}
-          >
-            &#x2715;
-          </button>
-        </header>
-        <div className="settingsBody">
-          {children}
-        </div>
-      </section>
-    </div>
+    <section className="settingsContent">
+      <header className="settingsHeader">
+        <h1>{title}</h1>
+      </header>
+      <div className="settingsBody">
+        {children}
+      </div>
+    </section>
   );
 }

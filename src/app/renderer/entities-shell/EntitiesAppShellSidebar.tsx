@@ -312,7 +312,7 @@ export function EntitiesAppShellSidebar({
           <div className="brandCopy entitiesBrandCopy">
             <button
               type="button"
-              className="entitiesExitButton"
+              className="surfaceExitButton"
               aria-label={t(messageKeys.entitiesShellExitButtonAriaLabel)}
               onClick={onLeaveEntities}
             >

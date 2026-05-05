@@ -383,7 +383,7 @@ test('EntitiesAppShellSidebar header shows the back button + "Directory" label a
   // revisions used the surface switcher with a "Cats Directory"
   // override; this assertion locks in the new chrome and prevents
   // accidental regression back to the popover trigger.
-  assert.match(markup, /class="entitiesExitButton"/u);
+  assert.match(markup, /class="surfaceExitButton"/u);
   assert.match(
     markup,
     /class="brandLabel entitiesBrandLabel"[^>]*>Directory</u,
