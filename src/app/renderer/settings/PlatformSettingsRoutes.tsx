@@ -34,34 +34,38 @@ export function resolveSettingsSectionConfig(
   pathname: string,
   translate: (key: MessageKey) => string,
 ): { section: string; title: string } {
-  if (pathname.startsWith('/settings/assistants')) {
+  if (isSettingsSectionPath(pathname, '/settings/assistants')) {
     return { section: 'assistants', title: translate('settingsRouteTitleAssistants') };
   }
-  if (pathname.startsWith('/settings/cats')) {
+  if (isSettingsSectionPath(pathname, '/settings/cats')) {
     return { section: 'cats:my-cats', title: translate('settingsRouteTitleMyCats') };
   }
-  if (pathname.startsWith('/settings/chat')) {
+  if (isSettingsSectionPath(pathname, '/settings/chat')) {
     return { section: 'chat', title: translate('settingsRouteTitleChat') };
   }
-  if (pathname.startsWith('/settings/work')) {
+  if (isSettingsSectionPath(pathname, '/settings/work')) {
     return { section: 'work', title: translate('settingsRouteTitleWork') };
   }
-  if (pathname.startsWith('/settings/code')) {
+  if (isSettingsSectionPath(pathname, '/settings/code')) {
     return { section: 'code', title: translate('settingsRouteTitleCode') };
   }
-  if (pathname.startsWith('/settings/apps')) {
+  if (isSettingsSectionPath(pathname, '/settings/apps')) {
     return { section: 'apps', title: translate('settingsRouteTitleApps') };
   }
-  if (pathname.startsWith('/settings/desktop')) {
+  if (isSettingsSectionPath(pathname, '/settings/desktop')) {
     return { section: 'desktop', title: translate('settingsRouteTitleDesktop') };
   }
-  if (pathname.startsWith('/settings/runtime')) {
+  if (isSettingsSectionPath(pathname, '/settings/runtime')) {
     return { section: 'runtime', title: translate('settingsRouteTitleRuntime') };
   }
-  if (pathname.startsWith('/settings/data')) {
+  if (isSettingsSectionPath(pathname, '/settings/data')) {
     return { section: 'data', title: translate('settingsRouteTitleData') };
   }
   return { section: 'general', title: translate('settingsRouteTitleGeneral') };
+}
+
+function isSettingsSectionPath(pathname: string, sectionPath: string): boolean {
+  return pathname === sectionPath || pathname.startsWith(`${sectionPath}/`);
 }
 
 // Pure builder — deliberately hook-free so route structure tests can call it

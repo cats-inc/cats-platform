@@ -36,3 +36,22 @@ test('resolveSettingsSectionConfig falls back to general for unknown settings pa
   const config = resolveSettingsSectionConfig('/settings/unknown', translate);
   assert.equal(config.section, 'general');
 });
+
+test('resolveSettingsSectionConfig only matches settings sections on path segment boundaries', () => {
+  const cases = [
+    '/settings/assistants-old',
+    '/settings/catstack',
+    '/settings/chatty',
+    '/settings/workflow',
+    '/settings/codecs',
+    '/settings/apps2',
+    '/settings/desktop-startup',
+    '/settings/runtime2',
+    '/settings/database',
+  ];
+
+  for (const pathname of cases) {
+    const config = resolveSettingsSectionConfig(pathname, translate);
+    assert.equal(config.section, 'general', pathname);
+  }
+});
