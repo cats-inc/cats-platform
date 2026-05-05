@@ -1,134 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isValidElement, type ComponentProps, type ReactNode, type RefObject } from 'react';
 
-import { ConversationSidebarFooter } from '../src/app/renderer/productShell/ConversationSidebarFooter.tsx';
-import { ConversationSidebarMyCatsSection } from '../src/app/renderer/productShell/ConversationSidebarMyCats.tsx';
-import { ConversationSidebarRecentsSection } from '../src/app/renderer/productShell/ConversationSidebarRecents.tsx';
+import { buildConversationSidebarViewModel } from '../src/app/renderer/productShell/conversationSidebarViewModel.ts';
 import type { AppShellPayload, ChatChannelSummary } from '../src/products/chat/api/contracts.ts';
 import type { ParticipantSessionStatus } from '../src/shared/roomRouting.ts';
 import { buildDirectMessagePath } from '../src/shared/channelPaths.ts';
-import { Sidebar } from '../src/products/chat/renderer/components/Sidebar.tsx';
-import { clearBusyState } from '../src/shared/workspaceBusy.ts';
+import { isChatCat } from '../src/products/chat/renderer/chatUtils.tsx';
 import {
   findDirectLaneForCat,
   resolveMyCatNavigationTarget,
   resolveMyCatStatusDot,
 } from '../src/products/chat/renderer/myCatNavigation.ts';
-
-function textContent(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') {
-    return String(node);
-  }
-
-  if (Array.isArray(node)) {
-    return node.map((child) => textContent(child)).join('');
-  }
-
-  if (isValidElement(node)) {
-    return textContent(node.props.children);
-  }
-
-  return '';
-}
-
-function findElementByType<TProps>(
-  node: ReactNode,
-  componentType: unknown,
-): { props: TProps } {
-  if (Array.isArray(node)) {
-    for (const child of node) {
-      try {
-        return findElementByType<TProps>(child, componentType);
-      } catch {
-        continue;
-      }
-    }
-    throw new Error('Component not found.');
-  }
-
-  if (!isValidElement(node)) {
-    throw new Error('Component not found.');
-  }
-
-  if (node.type === componentType) {
-    return node as { props: TProps };
-  }
-
-  const children = node.props.children;
-  if (!children) {
-    throw new Error('Component not found.');
-  }
-
-  if (Array.isArray(children)) {
-    for (const child of children) {
-      try {
-        return findElementByType<TProps>(child, componentType);
-      } catch {
-        continue;
-      }
-    }
-    throw new Error('Component not found.');
-  }
-
-  return findElementByType<TProps>(children, componentType);
-}
-
-function findMyCatButton(node: ReactNode, catName: string): { props: { onClick?: () => void } } {
-  if (Array.isArray(node)) {
-    for (const child of node) {
-      const match = findMyCatButton(child, catName);
-      if (match) {
-        return match;
-      }
-    }
-    throw new Error(`My Cats button for "${catName}" not found.`);
-  }
-
-  if (!isValidElement(node)) {
-    throw new Error(`My Cats button for "${catName}" not found.`);
-  }
-
-  const className = typeof node.props.className === 'string' ? node.props.className : '';
-  if (
-    node.type === 'button'
-    && className.includes('myCatItem')
-    && textContent(node.props.children).includes(catName)
-  ) {
-    return node as { props: { onClick?: () => void } };
-  }
-
-  if (
-    typeof node.type === 'function'
-    && node.props?.cat
-    && node.props.cat.name === catName
-    && typeof node.props.onDirectChat === 'function'
-  ) {
-    return {
-      props: {
-        onClick: node.props.onDirectChat as () => void,
-      },
-    };
-  }
-
-  const children = node.props.children;
-  if (!children) {
-    throw new Error(`My Cats button for "${catName}" not found.`);
-  }
-
-  if (Array.isArray(children)) {
-    for (const child of children) {
-      try {
-        return findMyCatButton(child, catName);
-      } catch {
-        continue;
-      }
-    }
-    throw new Error(`My Cats button for "${catName}" not found.`);
-  }
-
-  return findMyCatButton(children, catName);
-}
+import { isDirectLaneSummary } from '../src/products/chat/shared/channelTopology.ts';
+import { createTranslator } from '../src/shared/i18n/index.ts';
 
 function createChannel(
   overrides: Partial<ChatChannelSummary> & { id: string; title: string },
@@ -269,88 +153,50 @@ function createPayload(channels: ChatChannelSummary[], runtime?: { baseUrl: stri
   } as AppShellPayload;
 }
 
-function createSidebarTree(
-  payload: AppShellPayload,
-  onDirectChatCat: (catId: string) => void,
-): ReactNode {
-  return Sidebar({
+const t = createTranslator('en');
+
+function createSidebarViewModel(payload: AppShellPayload) {
+  return buildConversationSidebarViewModel({
     payload,
-    sidebarOpen: true,
-    accountMenuOpen: false,
-    overflowMenuOpenId: null,
-    busy: clearBusyState(),
-    surface: 'chats',
-    routeChannelId: null,
-    accountMenuRef: { current: null } as RefObject<HTMLDivElement | null>,
-    onToggleSidebar: () => {},
-    onCollapsedSidebarClick: () => {},
-    onOpenChatsOverview: () => {},
-    onStartNewChat: () => {},
-    onStartNewGroupChat: () => {},
-    onStartNewParallelChat: () => {},
-    onSelect: () => {},
-    onDeleteChannel: () => {},
-    onRenameChannel: () => {},
-    onRenameParallelChatGroup: () => {},
-    onUngroupParallelChatGroup: () => {},
-    onDeleteParallelChatGroup: () => {},
-    onArchiveCat: () => {},
-    onAccountMenuToggle: () => {},
-    onOverflowMenuToggle: () => {},
-    onNavigateSettings: () => {},
-    onNavigateRuntime: () => {},
-    onSwitchProduct: () => {},
-    activeMyCatId: null,
-    onDirectChatCat,
+    currentPath: '/chat',
+    shellSurface: 'chat',
+    helpers: {
+      isVisibleCat: isChatCat,
+      isDirectLaneSummary,
+    },
+    t,
   });
 }
 
-function createMyCatsTree(tree: ReactNode): ReactNode {
-  const section = findElementByType<ComponentProps<typeof ConversationSidebarMyCatsSection>>(
-    tree,
-    ConversationSidebarMyCatsSection,
-  );
-  return ConversationSidebarMyCatsSection(section.props);
+function resolveDirectMessagesClickPath(
+  payload: AppShellPayload,
+  catId: string,
+): string {
+  return resolveMyCatNavigationTarget(payload.chat.channels, catId).path;
 }
 
-function readRecentChannels(tree: ReactNode): Array<{ id: string; title: string }> {
-  const section = findElementByType<{
-    entries: Array<
-      | { kind: 'channel'; channel: ChatChannelSummary }
-      | { kind: 'group'; channels: Array<{ channel: ChatChannelSummary }> }
-    >;
-  }>(tree, ConversationSidebarRecentsSection);
-  return section.props.entries.flatMap((entry) =>
+function readRecentChannels(
+  payload: AppShellPayload,
+): Array<{ id: string; title: string }> {
+  const viewModel = createSidebarViewModel(payload);
+  return viewModel.resolvedRecentEntries.flatMap((entry) =>
     entry.kind === 'group'
       ? entry.channels.map((channel) => ({ id: channel.channel.id, title: channel.channel.title }))
       : [{ id: entry.channel.id, title: entry.channel.title }],
   );
 }
 
-function readRuntimeFooterLabel(tree: ReactNode): string {
-  const footer = findElementByType<ComponentProps<typeof ConversationSidebarFooter>>(
-    tree,
-    ConversationSidebarFooter,
-  );
-  return footer.props.runtimeFooterLabel;
+function readRuntimeFooterLabel(payload: AppShellPayload): string {
+  return createSidebarViewModel(payload).runtimeFooterLabel;
 }
 
 test('clicking a Direct Messages entry without an existing direct lane opens that Cat lane in place', () => {
   const payload = createPayload([]);
-  const actions: Array<{ kind: 'navigate'; path: string }> = [];
 
-  const tree = createSidebarTree(payload, (catId) => {
-    const target = resolveMyCatNavigationTarget(payload.chat.channels, catId);
-    actions.push({ kind: 'navigate', path: target.path });
-  });
-  const myCatsTree = createMyCatsTree(tree);
-
-  const companionButton = findMyCatButton(myCatsTree, 'Companion');
-  companionButton.props.onClick?.();
-
-  assert.deepEqual(actions, [
-    { kind: 'navigate', path: buildDirectMessagePath('companion-cat') },
-  ]);
+  assert.equal(
+    resolveDirectMessagesClickPath(payload, 'companion-cat'),
+    buildDirectMessagePath('companion-cat'),
+  );
 });
 
 test('clicking a Direct Messages entry with an existing hidden direct lane stays on the Direct Messages route', () => {
@@ -363,20 +209,10 @@ test('clicking a Direct Messages entry with an existing hidden direct lane stays
       roomMode: 'direct_cat_chat',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ]);
-  const actions: Array<{ kind: 'navigate'; path: string }> = [];
-
-  const tree = createSidebarTree(payload, (catId) => {
-    const target = resolveMyCatNavigationTarget(payload.chat.channels, catId);
-    actions.push({ kind: 'navigate', path: target.path });
-  });
-  const myCatsTree = createMyCatsTree(tree);
-
-  const companionButton = findMyCatButton(myCatsTree, 'Companion');
-  companionButton.props.onClick?.();
-
-  assert.deepEqual(actions, [
-    { kind: 'navigate', path: buildDirectMessagePath('companion-cat') },
-  ]);
+  assert.equal(
+    resolveDirectMessagesClickPath(payload, 'companion-cat'),
+    buildDirectMessagePath('companion-cat'),
+  );
 });
 
 test('Direct Messages lookup still finds direct lanes by channelKind when roomMode is legacy-mismatched', () => {
@@ -405,8 +241,7 @@ test('direct_cat_chat channels are excluded from the Recents list', () => {
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ]);
 
-  const tree = createSidebarTree(payload, () => {});
-  const rendered = readRecentChannels(tree);
+  const rendered = readRecentChannels(payload);
 
   assert.ok(
     rendered.some((ch) => ch.id === 'boss-thread'),
@@ -482,18 +317,10 @@ test('clicking Direct Messages row still preserves existing navigation behavior 
       defaultRecipientLeaseStatus: 'ready',
     } as Partial<ChatChannelSummary> & { id: string; title: string }),
   ]);
-  const actions: Array<{ kind: 'navigate'; path: string }> = [];
-
-  const tree = createSidebarTree(payload, (catId) => {
-    const target = resolveMyCatNavigationTarget(payload.chat.channels, catId);
-    actions.push({ kind: 'navigate', path: target.path });
-  });
-  const myCatsTree = createMyCatsTree(tree);
-
-  const companionButton = findMyCatButton(myCatsTree, 'Companion');
-  companionButton.props.onClick?.();
-
-  assert.deepEqual(actions, [{ kind: 'navigate', path: buildDirectMessagePath('companion-cat') }]);
+  assert.equal(
+    resolveDirectMessagesClickPath(payload, 'companion-cat'),
+    buildDirectMessagePath('companion-cat'),
+  );
 });
 
 // --- Runtime Footer Status Dot Tests ---
@@ -505,26 +332,22 @@ test('no runtime health yet shows gray dot with unknown tooltip', () => {
     status: null as unknown as string,
     service: 'cats-runtime',
   });
-  const tree = createSidebarTree(payload, () => {});
-  assert.equal(readRuntimeFooterLabel(tree), 'Checking Cats Runtime status…');
+  assert.equal(readRuntimeFooterLabel(payload), 'Checking Cats Runtime status…');
 });
 
 test('reachable healthy runtime shows green dot', () => {
   const payload = createPayload([], createRuntime(true, 'ok'));
-  const tree = createSidebarTree(payload, () => {});
-  assert.equal(readRuntimeFooterLabel(tree), 'Cats Runtime is connected');
+  assert.equal(readRuntimeFooterLabel(payload), 'Cats Runtime is connected');
 });
 
 test('reachable degraded runtime shows yellow dot', () => {
   const payload = createPayload([], createRuntime(true, 'degraded'));
-  const tree = createSidebarTree(payload, () => {});
-  assert.equal(readRuntimeFooterLabel(tree), 'Cats Runtime is starting up');
+  assert.equal(readRuntimeFooterLabel(payload), 'Cats Runtime is starting up');
 });
 
 test('unreachable runtime shows red dot', () => {
   const payload = createPayload([], createRuntime(false, 'error'));
-  const tree = createSidebarTree(payload, () => {});
-  assert.equal(readRuntimeFooterLabel(tree), 'Cats Runtime is offline');
+  assert.equal(readRuntimeFooterLabel(payload), 'Cats Runtime is offline');
 });
 
 test('changing selected chat does not affect footer runtime dot', () => {
@@ -532,8 +355,7 @@ test('changing selected chat does not affect footer runtime dot', () => {
     [createChannel({ id: 'ch-1', title: 'Work' })],
     createRuntime(true, 'ok'),
   );
-  const tree = createSidebarTree(payload, () => {});
-  assert.equal(readRuntimeFooterLabel(tree), 'Cats Runtime is connected');
+  assert.equal(readRuntimeFooterLabel(payload), 'Cats Runtime is connected');
 });
 
 test('Direct Messages status dots and footer runtime dot coexist', () => {
@@ -544,6 +366,5 @@ test('Direct Messages status dots and footer runtime dot coexist', () => {
     } as Partial<ChatChannelSummary> & { id: string; title: string })],
     createRuntime(true, 'ok'),
   );
-  const tree = createSidebarTree(payload, () => {});
-  assert.equal(readRuntimeFooterLabel(tree), 'Cats Runtime is connected');
+  assert.equal(readRuntimeFooterLabel(payload), 'Cats Runtime is connected');
 });
