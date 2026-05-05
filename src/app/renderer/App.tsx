@@ -43,6 +43,10 @@ import { CatProfilePage } from './entities/CatProfilePage.js';
 import { CatsCanvasPage } from './entities/CatsCanvasPage.js';
 import { CatteryHome } from './entities/CatteryHome.js';
 import { ClowderHome } from './entities/ClowderHome.js';
+import {
+  CatteriesListPage,
+  ClowdersListPage,
+} from './entities/EntityListPages.js';
 import { EntitiesShell } from './lobby/EntitiesShell.js';
 import { PlatformLobby } from './PlatformLobby';
 import {
@@ -639,8 +643,10 @@ export default function PlatformApp() {
           <Route element={<EntitiesShell envelope={readyEnvelope} />}>
             <Route path="/cats" element={<CatsCanvasPage />} />
             <Route path="/cats/:catId" element={<CatProfilePage />} />
+            <Route path="/clowders" element={<ClowdersListPage envelope={readyEnvelope} />} />
             <Route path="/clowders/:clowderId" element={<ClowderHome envelope={readyEnvelope} />} />
             <Route path="/clowders/:clowderId/:tab" element={<ClowderHome envelope={readyEnvelope} />} />
+            <Route path="/catteries" element={<CatteriesListPage envelope={readyEnvelope} />} />
             <Route path="/catteries/:catteryId" element={<CatteryHome envelope={readyEnvelope} />} />
             <Route path="/catteries/:catteryId/:tab" element={<CatteryHome envelope={readyEnvelope} />} />
           </Route>

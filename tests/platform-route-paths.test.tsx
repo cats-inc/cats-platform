@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   isLobbyPath,
+  isPlatformEntityPath,
   isPlatformNonProductPath,
   isProductsPath,
   isSetupPath,
@@ -25,9 +26,19 @@ test('platform route path helpers recognize canonical non-product routes', () =>
   assert.equal(isProductsPath('/products'), true);
   assert.equal(isProductsPath('/products/chat'), true);
   assert.equal(isProductsPath('/product'), false);
+  assert.equal(isPlatformEntityPath('/cats'), true);
+  assert.equal(isPlatformEntityPath('/cats/cat-1'), true);
+  assert.equal(isPlatformEntityPath('/clowders'), true);
+  assert.equal(isPlatformEntityPath('/clowders/clw-dev'), true);
+  assert.equal(isPlatformEntityPath('/catteries'), true);
+  assert.equal(isPlatformEntityPath('/catteries/acme'), true);
+  assert.equal(isPlatformEntityPath('/catstail'), false);
   assert.equal(isPlatformNonProductPath('/setup'), true);
   assert.equal(isPlatformNonProductPath('/lobby'), true);
   assert.equal(isPlatformNonProductPath('/products'), true);
+  assert.equal(isPlatformNonProductPath('/cats/cat-1'), true);
+  assert.equal(isPlatformNonProductPath('/clowders/clw-dev'), true);
+  assert.equal(isPlatformNonProductPath('/catteries/acme'), true);
   assert.equal(isPlatformNonProductPath('/settings'), true);
   assert.equal(isPlatformNonProductPath('/settings/general'), true);
   assert.equal(isPlatformNonProductPath('/chat/new'), false);

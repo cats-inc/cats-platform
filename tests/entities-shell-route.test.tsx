@@ -9,6 +9,10 @@ import { CatHome } from '../src/app/renderer/entities/CatHome.tsx';
 import { CatsListPage } from '../src/app/renderer/entities/CatsListPage.tsx';
 import { CatteryHome } from '../src/app/renderer/entities/CatteryHome.tsx';
 import { ClowderHome } from '../src/app/renderer/entities/ClowderHome.tsx';
+import {
+  CatteriesListPage,
+  ClowdersListPage,
+} from '../src/app/renderer/entities/EntityListPages.tsx';
 import { I18nProvider } from '../src/app/renderer/i18n/I18nProvider.tsx';
 import { EntitiesShell } from '../src/app/renderer/lobby/EntitiesShell.tsx';
 import { PlatformLobby } from '../src/app/renderer/PlatformLobby.tsx';
@@ -96,8 +100,16 @@ function renderApp(pathname: string, envelope: PlatformHostEnvelope): string {
               <Route path="/cats" element={<CatsListPage envelope={envelope} />} />
               <Route path="/cats/:catId" element={<CatHome envelope={envelope} />} />
               <Route
+                path="/clowders"
+                element={<ClowdersListPage envelope={envelope} />}
+              />
+              <Route
                 path="/clowders/:clowderId"
                 element={<ClowderHome envelope={envelope} />}
+              />
+              <Route
+                path="/catteries"
+                element={<CatteriesListPage envelope={envelope} />}
               />
               <Route
                 path="/catteries/:catteryId"
@@ -392,4 +404,43 @@ test('Drilled-down /clowders/:id and /catteries/:id routes both mount the Entiti
   assert.match(catteryMarkup, /<div[^>]*class="screen claudeShell"/u);
   assert.match(catteryMarkup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="lobby"/u);
   assert.match(catteryMarkup, />Acme Co\.</u);
+});
+
+test('Drilled-down /clowders and /catteries list routes both mount the EntitiesShell', () => {
+  const envelope = createEnvelope({
+    lobby: {
+      animationMode: 'reduced',
+      cats: [],
+      clowders: [
+        {
+          id: 'clw-dev',
+          name: 'Dev Team',
+          avatarUrl: null,
+          parentCatteryId: 'acme',
+          catCount: 5,
+          memberCount: 8,
+        },
+      ],
+      catteries: [
+        {
+          id: 'acme',
+          name: 'Acme Co.',
+          avatarUrl: null,
+          memberCount: 12,
+          clowderCount: 3,
+          catCount: 7,
+        },
+      ],
+    },
+  });
+
+  const clowdersMarkup = renderApp('/clowders', envelope);
+  assert.match(clowdersMarkup, /<div[^>]*class="screen claudeShell"/u);
+  assert.match(clowdersMarkup, /href="\/clowders\/clw-dev"/u);
+  assert.match(clowdersMarkup, />My Clowders</u);
+
+  const catteriesMarkup = renderApp('/catteries', envelope);
+  assert.match(catteriesMarkup, /<div[^>]*class="screen claudeShell"/u);
+  assert.match(catteriesMarkup, /href="\/catteries\/acme"/u);
+  assert.match(catteriesMarkup, />My Catteries</u);
 });

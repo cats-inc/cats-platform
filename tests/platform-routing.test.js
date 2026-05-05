@@ -105,6 +105,10 @@ test('isPlatformNonProductPath excludes only canonical platform routes from prod
   assert.equal(isPlatformNonProductPath('/setup'), true);
   assert.equal(isPlatformNonProductPath('/lobby'), true);
   assert.equal(isPlatformNonProductPath('/products'), true);
+  assert.equal(isPlatformNonProductPath('/cats'), true);
+  assert.equal(isPlatformNonProductPath('/cats/cat-1'), true);
+  assert.equal(isPlatformNonProductPath('/clowders'), true);
+  assert.equal(isPlatformNonProductPath('/catteries/acme'), true);
   assert.equal(isPlatformNonProductPath('/settings'), true);
   assert.equal(isPlatformNonProductPath('/settings/general'), true);
   assert.equal(isPlatformNonProductPath('/chat/settings'), false);

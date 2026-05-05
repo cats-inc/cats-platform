@@ -3182,6 +3182,12 @@ export const messageKeys = {
   catsListTitle: 'catsList.title',
   catsListEyebrow: 'catsList.eyebrow',
   catsListEmptyState: 'catsList.emptyState',
+  clowdersListTitle: 'clowdersList.title',
+  clowdersListEyebrow: 'clowdersList.eyebrow',
+  clowdersListEmptyState: 'clowdersList.emptyState',
+  catteriesListTitle: 'catteriesList.title',
+  catteriesListEyebrow: 'catteriesList.eyebrow',
+  catteriesListEmptyState: 'catteriesList.emptyState',
   // Lobby drill-down sidebar reuses the ConversationSidebarMyCatsSection
   // primitive (per the user's IA correction in PLAN-091 phase 7). The
   // section needs only a header label and a "+ New X" placeholder

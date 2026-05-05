@@ -2502,6 +2502,14 @@ export const enCatalog: MessageCatalog = {
   'catsList.eyebrow': 'Cats',
   'catsList.emptyState':
     'No cats yet. Open the Lobby to add one — once any cat is registered it will appear here.',
+  'clowdersList.title': 'My Clowders',
+  'clowdersList.eyebrow': 'Clowders',
+  'clowdersList.emptyState':
+    'No clowders yet. Formal task forces appear here once the Clowder registry is connected.',
+  'catteriesList.title': 'My Catteries',
+  'catteriesList.eyebrow': 'Catteries',
+  'catteriesList.emptyState':
+    'No catteries yet. Organizations appear here once the Cattery registry is connected.',
   'lobbySidebar.section.cats': 'My Cats',
   'lobbySidebar.section.clowders': 'My Clowders',
   'lobbySidebar.section.catteries': 'My Catteries',
