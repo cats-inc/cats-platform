@@ -32,13 +32,13 @@ import type {
 } from '../productShell/ConversationSidebar.js';
 
 /**
- * Sidebar for the Lobby-drill-down workspace shell (entity routes
+ * Sidebar for the Entities workspace shell (entity routes
  * `/entities/cats`, `/entities/clowders`, `/entities/catteries` and
  * their `/:id` / `/:id/:tab` variants).
  *
- * Per the user's IA correction: this sidebar reuses the appshell
+ * This sidebar reuses the appshell
  * primitives chat / code / work already use — surface switcher at
- * the top (carries an "Open Lobby" affordance back to /lobby), the
+ * the top (carries a "Back to Lobby" affordance), the
  * shared `ConversationSidebarMyCatsSection` for each lens row, the
  * GuideCatDock slot, and the `ConversationSidebarFooter` identity
  * pill at the bottom — so navigating around entity homes feels
@@ -52,25 +52,24 @@ import type {
  *   • MY CATTERIES — same shape as Clowders, +New cattery row
  */
 
-const LOBBY_PASSIVE_DOT = 'no_dot';
+const ENTITIES_PASSIVE_DOT = 'no_dot';
 
-type LobbyDot = typeof LOBBY_PASSIVE_DOT;
+type EntitiesDot = typeof ENTITIES_PASSIVE_DOT;
 
-interface LobbyCat extends ConversationSidebarCat {
+interface EntitiesCat extends ConversationSidebarCat {
   createdAt: string;
 }
 
-const LOBBY_HELPERS: ConversationSidebarHelpers<
-  LobbyCat,
+const ENTITIES_HELPERS: ConversationSidebarHelpers<
+  EntitiesCat,
   ConversationSidebarChannel,
-  LobbyDot
+  EntitiesDot
 > = {
   catInitials: (name: string) => nameInitials(name),
   presentChannelTitle: (title: string) => title,
   isVisibleCat: () => true,
   /* Boss-first ordering, then `createdAt` ascending so older cats
-   * appear higher. Matches `sortLobbyCatsForDisplay` on the lobby
-   * main-page card. */
+   * appear higher. Matches the entity index card ordering. */
   sortCatsForDisplay: (cats, options) => {
     const bossId = Array.isArray(options.bossCatIds)
       ? options.bossCatIds[0] ?? null
@@ -84,17 +83,17 @@ const LOBBY_HELPERS: ConversationSidebarHelpers<
   },
   isDirectLaneSummary: () => false,
   findDirectLaneForCat: () => null,
-  resolveMyCatStatusDot: () => LOBBY_PASSIVE_DOT,
+  resolveMyCatStatusDot: () => ENTITIES_PASSIVE_DOT,
   statusDotClassName: () => '',
   statusDotLabel: () => null,
 };
 
 function buildSidebarPayload(envelope: PlatformHostEnvelope): {
-  payload: ConversationSidebarPayload<LobbyCat, ConversationSidebarChannel>;
-  cats: LobbyCat[];
+  payload: ConversationSidebarPayload<EntitiesCat, ConversationSidebarChannel>;
+  cats: EntitiesCat[];
   bossCatId: string | null;
 } {
-  const cats: LobbyCat[] = envelope.lobby.cats.map((summary) => ({
+  const cats: EntitiesCat[] = envelope.lobby.cats.map((summary) => ({
     id: summary.id,
     name: summary.name,
     status: 'active',
@@ -104,7 +103,7 @@ function buildSidebarPayload(envelope: PlatformHostEnvelope): {
   }));
   const bossCat = envelope.lobby.cats.find((summary) => summary.isBoss);
   const bossCatId = bossCat ? bossCat.id : null;
-  const payload: ConversationSidebarPayload<LobbyCat, ConversationSidebarChannel> = {
+  const payload: ConversationSidebarPayload<EntitiesCat, ConversationSidebarChannel> = {
     ownerDisplayName: envelope.ownerDisplayName,
     ownerAvatarUrl: envelope.ownerAvatarUrl,
     runtime: envelope.runtime,
@@ -120,7 +119,7 @@ function buildSidebarPayload(envelope: PlatformHostEnvelope): {
   return { payload, cats, bossCatId };
 }
 
-export function LobbyAppShellSidebar({
+export function EntitiesAppShellSidebar({
   envelope,
   sidebarOpen,
   onToggleSidebar,
@@ -139,7 +138,7 @@ export function LobbyAppShellSidebar({
   );
   // Outside-click dismissal for the row "..." popover. Same behaviour
   // chat / code / work get from `useAppChrome` — extracted into a
-  // shared hook so this lobby sidebar doesn't reinvent it.
+  // shared hook so this sidebar doesn't reinvent it.
   useSidebarOverflowMenuDismiss(overflowMenuOpenId, setOverflowMenuOpenId);
 
   const activeCatMatch = useMatch('/entities/cats/:catId/*');
@@ -150,8 +149,12 @@ export function LobbyAppShellSidebar({
   // `pathname.startsWith(WORK_PROJECTS_PATH)`).
   const currentPath = useLocation().pathname;
   const isCatsRoute = currentPath === '/entities/cats' || currentPath.startsWith('/entities/cats/');
-  const isClowdersRoute = currentPath === '/entities/clowders' || currentPath.startsWith('/entities/clowders/');
-  const isCatteriesRoute = currentPath === '/entities/catteries' || currentPath.startsWith('/entities/catteries/');
+  const isClowdersRoute =
+    currentPath === '/entities/clowders'
+    || currentPath.startsWith('/entities/clowders/');
+  const isCatteriesRoute =
+    currentPath === '/entities/catteries'
+    || currentPath.startsWith('/entities/catteries/');
 
   const { payload, cats, bossCatId } = buildSidebarPayload(envelope);
 
@@ -188,8 +191,8 @@ export function LobbyAppShellSidebar({
 
   // Surface switcher needs a "current" surface highlight. We are not
   // on a product surface here, so fall back to the user's last
-  // product. The switcher's "Open Lobby" affordance is what brings
-  // the user back to /lobby (see PlatformSurfaceSwitcher).
+  // product. The primary action below is what brings the user back to
+  // /lobby.
   const fallbackSurface: PlatformSurfaceId = envelope.lastProductSurface ?? 'chat';
 
   const settingsNavState = {
@@ -201,20 +204,13 @@ export function LobbyAppShellSidebar({
   };
 
   // Mirrors chat's "+ New chat" slot: primary action with hover but
-  // no `active` highlight (the bare /lobby route never lives inside
-  // EntitiesShell, so this button could not be the "current" surface
-  // anyway). Click navigates to `/lobby`, which renders the unframed
-  // landing page — no sidebar at all — by virtue of falling outside
-  // the EntitiesShell <Route element=> wrapper.
-  // Top primary actions stay in the fixed header — only Main page
-   // belongs there. The Cats / Clowders / Catteries nav items live
-   // inside the scrollable area below, paired with their own cat
-   // list (mirrors Cats Work's "Projects" nav item + pinned project
-   // rows pattern).
+  // no active highlight. The Cats / Clowders / Catteries nav items
+  // live inside the scrollable area below, paired with their own rows
+  // like Cats Work's "Projects" nav item + pinned project rows.
   const primaryActions: readonly ConversationSidebarAction[] = [
     {
-      key: 'lobby-main-page',
-      label: t(messageKeys.lobbySidebarMainPage),
+      key: 'entities-back-to-lobby',
+      label: t(messageKeys.entitiesSidebarBackToLobby),
       onClick: () => navigate('/lobby'),
       icon: (
         <svg
@@ -290,7 +286,7 @@ export function LobbyAppShellSidebar({
   );
 
   const catsPlaceholder: ConversationSidebarMyCatsPlaceholder = {
-    label: t(messageKeys.lobbySidebarNewCat),
+    label: t(messageKeys.entitiesSidebarNewCat),
     /* Mirrors the chat sidebar's "+ New cat" affordance — the
      * canonical add-cat flow lives at `/settings/cats/new` (see
      * `useWorkspaceAppNavigationActions.onCreateNewCat`). We carry
@@ -306,18 +302,18 @@ export function LobbyAppShellSidebar({
    * a noop button — clearer UX than a click affordance that does
    * nothing. Add routes will land in a later phase. */
   const clowdersPlaceholder: ConversationSidebarMyCatsPlaceholder = {
-    label: t(messageKeys.lobbySidebarNewClowder),
+    label: t(messageKeys.entitiesSidebarNewClowder),
     iconKind: 'groupPeople',
   };
   const catteriesPlaceholder: ConversationSidebarMyCatsPlaceholder = {
-    label: t(messageKeys.lobbySidebarNewCattery),
+    label: t(messageKeys.entitiesSidebarNewCattery),
     iconKind: 'orgChart',
   };
 
   return (
     <aside
       className={sidebarOpen ? 'sidebar' : 'sidebar sidebarCollapsed'}
-      data-shell-surface="lobby"
+      data-shell-surface="entities"
       onClick={onCollapsedSidebarClick}
     >
       <div className="sidebarInner">
@@ -344,7 +340,7 @@ export function LobbyAppShellSidebar({
             >
               <span className="navGlyph" aria-hidden="true">{catsNavIcon}</span>
               <span className="navLabel">
-                {t(messageKeys.lobbySidebarSectionCats)}
+                {t(messageKeys.entitiesSidebarSectionCats)}
               </span>
             </button>
             <ConversationSidebarMyCatsSection
@@ -354,7 +350,7 @@ export function LobbyAppShellSidebar({
               payloadChannels={[]}
               activeMyCatId={activeCatId}
               telegramBoundCatIds={new Set()}
-              helpers={LOBBY_HELPERS}
+              helpers={ENTITIES_HELPERS}
               overflowMenuOpenId={overflowMenuOpenId}
               onOverflowMenuToggle={setOverflowMenuOpenId}
               onDirectChatCat={(catId) =>
@@ -383,7 +379,7 @@ export function LobbyAppShellSidebar({
             >
               <span className="navGlyph" aria-hidden="true">{clowdersNavIcon}</span>
               <span className="navLabel">
-                {t(messageKeys.lobbySidebarSectionClowders)}
+                {t(messageKeys.entitiesSidebarSectionClowders)}
               </span>
             </button>
             <ConversationSidebarMyCatsSection
@@ -393,7 +389,7 @@ export function LobbyAppShellSidebar({
               payloadChannels={[]}
               activeMyCatId={null}
               telegramBoundCatIds={new Set()}
-              helpers={LOBBY_HELPERS}
+              helpers={ENTITIES_HELPERS}
               overflowMenuOpenId={null}
               onOverflowMenuToggle={() => undefined}
               onDirectChatCat={() => undefined}
@@ -410,7 +406,7 @@ export function LobbyAppShellSidebar({
             >
               <span className="navGlyph" aria-hidden="true">{catteriesNavIcon}</span>
               <span className="navLabel">
-                {t(messageKeys.lobbySidebarSectionCatteries)}
+                {t(messageKeys.entitiesSidebarSectionCatteries)}
               </span>
             </button>
             <ConversationSidebarMyCatsSection
@@ -420,7 +416,7 @@ export function LobbyAppShellSidebar({
               payloadChannels={[]}
               activeMyCatId={null}
               telegramBoundCatIds={new Set()}
-              helpers={LOBBY_HELPERS}
+              helpers={ENTITIES_HELPERS}
               overflowMenuOpenId={null}
               onOverflowMenuToggle={() => undefined}
               onDirectChatCat={() => undefined}

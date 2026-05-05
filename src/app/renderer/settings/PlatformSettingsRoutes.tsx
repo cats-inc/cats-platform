@@ -12,6 +12,7 @@ import { PlatformSettingsCode } from './PlatformSettingsCode.js';
 import { PlatformSettingsData } from './PlatformSettingsData.js';
 import { PlatformSettingsDesktopStartup } from './PlatformSettingsDesktopStartup.js';
 import { PlatformSettingsGeneral } from './PlatformSettingsGeneral.js';
+import { PlatformSettingsNotFound } from './PlatformSettingsNotFound.js';
 import { PlatformSettingsRuntime } from './PlatformSettingsRuntime.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 import { PlatformSettingsWork } from './PlatformSettingsWork.js';
@@ -37,8 +38,8 @@ export function resolveSettingsSectionConfig(
   if (isSettingsSectionPath(pathname, '/settings/assistants')) {
     return { section: 'assistants', title: translate('settingsRouteTitleAssistants') };
   }
-  if (isSettingsSectionPath(pathname, '/settings/cats')) {
-    return { section: 'cats:my-cats', title: translate('settingsRouteTitleMyCats') };
+  if (pathname === '/settings/cats' || pathname === '/settings/cats/new') {
+    return { section: 'cats', title: translate('settingsRouteTitleMyCats') };
   }
   if (isSettingsSectionPath(pathname, '/settings/chat')) {
     return { section: 'chat', title: translate('settingsRouteTitleChat') };
@@ -61,7 +62,7 @@ export function resolveSettingsSectionConfig(
   if (isSettingsSectionPath(pathname, '/settings/data')) {
     return { section: 'data', title: translate('settingsRouteTitleData') };
   }
-  return { section: 'general', title: translate('settingsRouteTitleGeneral') };
+  return { section: 'not-found', title: translate('settingsRouteTitleNotFound') };
 }
 
 function isSettingsSectionPath(pathname: string, sectionPath: string): boolean {
@@ -108,10 +109,6 @@ export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShel
       />
       <Route path="cats" element={catsElement} />
       <Route path="cats/new" element={catsElement} />
-      <Route
-        path="cats/my-cats"
-        element={<Navigate to="/settings/cats" replace />}
-      />
       <Route
         path="assistants"
         element={(
@@ -174,9 +171,6 @@ export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShel
           )}
         />
       ) : null}
-      {showDesktop ? (
-        <Route path="desktop-startup" element={<Navigate to="/settings/desktop" replace />} />
-      ) : null}
       <Route
         path="runtime"
         element={<PlatformSettingsRuntime payload={payload} />}
@@ -191,7 +185,7 @@ export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShel
           />
         )}
       />
-      <Route path="*" element={<Navigate to="/settings/general" replace />} />
+      <Route path="*" element={<PlatformSettingsNotFound />} />
     </Routes>
   );
 }

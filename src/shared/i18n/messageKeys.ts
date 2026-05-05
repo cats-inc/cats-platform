@@ -312,6 +312,9 @@ export const messageKeys = {
   settingsRouteTitleRuntime: 'settings.route.title.runtime',
   settingsRouteTitleData: 'settings.route.title.data',
   settingsRouteTitleGeneral: 'settings.route.title.general',
+  settingsRouteTitleNotFound: 'settings.route.title.notFound',
+  settingsRouteNotFoundDescription: 'settings.route.notFound.description',
+  settingsRouteNotFoundOpenGeneral: 'settings.route.notFound.openGeneral',
   settingsAppsSectionTitle: 'settings.apps.sectionTitle',
   settingsAppsSectionDescription: 'settings.apps.sectionDescription',
   settingsAppsInstalledPackagesLabel: 'settings.apps.installedPackagesLabel',
@@ -3155,33 +3158,10 @@ export const messageKeys = {
   designAccountIdentityMenuEnvironmentLabel:
     'design.accountIdentityMenu.environmentLabel',
   designNotificationDismissLabel: 'design.notification.dismissLabel',
-  // The Phase-1 EntityComingSoon stub was retired in PLAN-091 phase 6
-  // once CatHome / ClowderHome / CatteryHome shipped. The
-  // `entityComingSoonBackToLobby` label is still used by the
-  // not-found pane in each of those entity homes.
+  // The Phase-1 EntityComingSoon stub was retired in PLAN-091 phase 6.
+  // Clowder / Cattery not-found panes still use these shared labels.
   entityComingSoonBackToLobby: 'entity.comingSoon.backToLobby',
   entityDetailBreadcrumbLobby: 'entity.detail.breadcrumb.lobby',
-  catHomeAriaLabel: 'catHome.ariaLabel',
-  catHomeOpenInChatAction: 'catHome.openInChatAction',
-  catHomeBossBadge: 'catHome.bossBadge',
-  catHomeLensTabOverview: 'catHome.lens.tab.overview',
-  catHomeLensTabChat: 'catHome.lens.tab.chat',
-  catHomeLensTabWork: 'catHome.lens.tab.work',
-  catHomeLensTabCode: 'catHome.lens.tab.code',
-  catHomeOverviewSummaryHeading: 'catHome.overview.summaryHeading',
-  catHomeOverviewExecutorLabel: 'catHome.overview.executorLabel',
-  catHomeOverviewExecutorMissing: 'catHome.overview.executorMissing',
-  catHomeOverviewIdLabel: 'catHome.overview.idLabel',
-  catHomeOverviewMembershipsHeading: 'catHome.overview.memberships.heading',
-  catHomeOverviewMembershipsEmpty: 'catHome.overview.memberships.empty',
-  catHomeOverviewMembershipClowdersGroup: 'catHome.overview.memberships.clowdersGroup',
-  catHomeOverviewMembershipCatteriesGroup: 'catHome.overview.memberships.catteriesGroup',
-  catHomeLensStubBody: 'catHome.lens.stubBody',
-  catHomeNotFoundTitle: 'catHome.notFound.title',
-  catHomeNotFoundBody: 'catHome.notFound.body',
-  catsListTitle: 'catsList.title',
-  catsListEyebrow: 'catsList.eyebrow',
-  catsListEmptyState: 'catsList.emptyState',
   clowdersListTitle: 'clowdersList.title',
   clowdersListEyebrow: 'clowdersList.eyebrow',
   clowdersListEmptyState: 'clowdersList.emptyState',
@@ -3206,23 +3186,23 @@ export const messageKeys = {
   entityCanvasOpenClowderAction: 'entityCanvas.openClowderAction',
   entityCanvasOpenCatteryAction: 'entityCanvas.openCatteryAction',
   entityCanvasCatterySubtitle: 'entityCanvas.catterySubtitle',
-  // Lobby drill-down sidebar reuses the ConversationSidebarMyCatsSection
-  // primitive (per the user's IA correction in PLAN-091 phase 7). The
-  // section needs only a header label and a "+ New X" placeholder
-  // label per kind; the chat/code/work-style aria + empty-state +
-  // toggle copy is supplied by the section component itself.
-  lobbySidebarSectionCats: 'lobbySidebar.section.cats',
-  lobbySidebarSectionClowders: 'lobbySidebar.section.clowders',
-  lobbySidebarSectionCatteries: 'lobbySidebar.section.catteries',
-  lobbySidebarNewCat: 'lobbySidebar.newCat',
-  lobbySidebarNewClowder: 'lobbySidebar.newClowder',
-  lobbySidebarNewCattery: 'lobbySidebar.newCattery',
-  lobbySidebarMainPage: 'lobbySidebar.mainPage',
-  lobbyEntityColumnHeaderCats: 'lobby.entityColumnHeader.cats',
-  lobbyEntityColumnHeaderClowders: 'lobby.entityColumnHeader.clowders',
-  lobbyEntityColumnHeaderCatteries: 'lobby.entityColumnHeader.catteries',
-  lobbyEntityCardTotal: 'lobby.entityCard.total',
-  lobbyEntityCardOpenCanvasAriaLabel: 'lobby.entityCard.openCanvasAriaLabel',
+  // Entities sidebar reuses the ConversationSidebarMyCatsSection
+  // primitive. The section needs only a header label and a "+ New X"
+  // placeholder label per kind; the chat/code/work-style aria +
+  // empty-state + toggle copy is supplied by the section component.
+  entitiesSidebarSectionCats: 'entitiesSidebar.section.cats',
+  entitiesSidebarSectionClowders: 'entitiesSidebar.section.clowders',
+  entitiesSidebarSectionCatteries: 'entitiesSidebar.section.catteries',
+  entitiesSidebarNewCat: 'entitiesSidebar.newCat',
+  entitiesSidebarNewClowder: 'entitiesSidebar.newClowder',
+  entitiesSidebarNewCattery: 'entitiesSidebar.newCattery',
+  entitiesSidebarBackToLobby: 'entitiesSidebar.backToLobby',
+  entityIndexEyebrow: 'entityIndex.eyebrow',
+  entityIndexColumnHeaderCats: 'entityIndex.columnHeader.cats',
+  entityIndexColumnHeaderClowders: 'entityIndex.columnHeader.clowders',
+  entityIndexColumnHeaderCatteries: 'entityIndex.columnHeader.catteries',
+  entityIndexCardTotal: 'entityIndex.card.total',
+  entityIndexCardOpenCanvasAriaLabel: 'entityIndex.card.openCanvasAriaLabel',
   entitiesShellAriaLabel: 'entitiesShell.ariaLabel',
   entitiesShellSurfaceLabel: 'entitiesShell.surfaceLabel',
   clowderHomeAriaLabel: 'clowderHome.ariaLabel',

@@ -24,8 +24,8 @@ interface PlatformSurfaceSwitcherProps {
   /**
    * When set, the trigger button shows this label verbatim and the
    * menu items render without an `isCurrent` highlight. Used by the
-   * Lobby drill-down sidebar so the trigger reads "Cats Lobby" while
-   * the user is on /cats, /clowders, /catteries — none of those is a
+   * Entities sidebar so the trigger reads "Cats Directory" while
+   * the user is on /entities routes — none of those is a
    * `PlatformSurfaceId`, so we cannot piggy-back on `activeSurface`.
    */
   activeLabelOverride?: string;

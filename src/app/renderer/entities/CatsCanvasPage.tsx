@@ -5,9 +5,8 @@ import { fetchAppShell } from '../../../products/shared/renderer/api/index.js';
 import { WorkspaceCatsCanvas } from '../../../products/shared/renderer/components/cats/Cats.js';
 // The cats canvas was originally Settings-only, so its styling lives
 // in `products/shared/renderer/styles/settings.css`. Pull it in here
-// so the canvas renders correctly when mounted from the lobby
-// drill-down `/entities/cats` route (the chat product surface no longer hosts
-// it for this path).
+// so the canvas renders correctly when mounted from `/entities/cats`
+// (the chat product surface no longer hosts it for this path).
 import '../../../products/shared/renderer/styles/settings.css';
 import {
   IDLE_BUSY_STATE,
@@ -17,8 +16,8 @@ import {
 /**
  * Platform-level page for `/entities/cats`. Mounts the
  * `WorkspaceCatsCanvas` (the same canvas the Settings shell hosts at
- * `/settings/cats`) but inside the lobby drill-down EntitiesShell, so
- * the sidebar is the platform-level lobby sidebar — not chat's
+ * `/settings/cats`) but inside EntitiesShell, so
+ * the sidebar is the platform-level directory sidebar — not chat's
  * Direct Messages sidebar.
  *
  * `WorkspaceCatsCanvas` needs the chat-product `AppShellPayload` to

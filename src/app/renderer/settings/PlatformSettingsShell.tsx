@@ -16,7 +16,6 @@ import {
 type PlatformSettingsSection =
   | 'general'
   | 'cats'
-  | 'cats:my-cats'
   | 'assistants'
   | 'apps'
   | 'desktop'
@@ -91,9 +90,9 @@ export function PlatformSettingsShell({
         <p className="settingsNavSubheading">{t('settingsShellSectionCats')}</p>
         <div className="settingsSidebarGroup">
           <button
-            className={section === 'cats:my-cats' ? 'settingsTab settingsTabActive' : 'settingsTab'}
+            className={section === 'cats' ? 'settingsTab settingsTabActive' : 'settingsTab'}
             type="button"
-            onClick={() => navigate('/settings/cats/my-cats')}
+            onClick={() => navigate('/settings/cats')}
           >
             {t('settingsShellSubsectionMyCats')}
           </button>

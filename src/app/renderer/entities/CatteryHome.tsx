@@ -39,7 +39,7 @@ function CatteryAvatar({ cattery }: { cattery: PlatformLobbyCatterySummary }) {
     ? { backgroundImage: `url(${cattery.avatarUrl})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
     : undefined;
   return (
-    <span className="catHomeAvatarBubble" style={style}>
+    <span className="entityDetailAvatarBubble" style={style}>
       {cattery.avatarUrl ? null : nameInitials(cattery.name)}
     </span>
   );
@@ -48,7 +48,7 @@ function CatteryAvatar({ cattery }: { cattery: PlatformLobbyCatterySummary }) {
 function CatteryEmptyTab({ tab }: { tab: Exclude<CatteryTab, 'settings'> }) {
   const { t } = useI18n();
   return (
-    <div className="catHomeLensStub">
+    <div className="entityDetailLensStub">
       <p>{t(TAB_EMPTY_KEY[tab])}</p>
     </div>
   );
@@ -57,7 +57,7 @@ function CatteryEmptyTab({ tab }: { tab: Exclude<CatteryTab, 'settings'> }) {
 function CatterySettingsTab() {
   const { t } = useI18n();
   return (
-    <div className="catHomeLensStub">
+    <div className="entityDetailLensStub">
       <p>{t(messageKeys.catteryHomeSettingsBody)}</p>
     </div>
   );

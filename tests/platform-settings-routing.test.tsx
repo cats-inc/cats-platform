@@ -148,20 +148,16 @@ function createPayload(): AppShellPayload {
   } as unknown as AppShellPayload;
 }
 
-function assertNavigateRoute(routes: RouteDescriptor[], path: string, expectedTo: string): void {
-  const route = routes.find((entry) => entry.path === path);
-  assert.ok(route, `expected route "${path}"`);
-  assert.ok(isValidElement(route.element));
-  assert.equal(route.element.type, Navigate);
-  assert.equal(route.element.props.to, expectedTo);
-  assert.equal(route.element.props.replace, true);
-}
-
 function assertConcreteRoute(routes: RouteDescriptor[], path: string): void {
   const route = routes.find((entry) => entry.path === path);
   assert.ok(route, `expected route "${path}"`);
   assert.ok(isValidElement(route.element));
   assert.notEqual(route.element.type, Navigate);
+}
+
+function assertNoRoute(routes: RouteDescriptor[], path: string): void {
+  const route = routes.find((entry) => entry.path === path);
+  assert.equal(route, undefined, `did not expect route "${path}"`);
 }
 
 test('PlatformSettingsRoutes owns canonical platform settings routes', () => {
@@ -191,10 +187,11 @@ test('PlatformSettingsRoutes owns canonical platform settings routes', () => {
     assertConcreteRoute(routes, 'code');
     assertConcreteRoute(routes, 'apps/*');
     assertConcreteRoute(routes, 'desktop');
-    assertNavigateRoute(routes, 'desktop-startup', '/settings/desktop');
+    assertNoRoute(routes, 'cats/my-cats');
+    assertNoRoute(routes, 'desktop-startup');
     assertConcreteRoute(routes, 'runtime');
     assertConcreteRoute(routes, 'data');
-    assertNavigateRoute(routes, '*', '/settings/general');
+    assertConcreteRoute(routes, '*');
   } finally {
     if (previousBridge === undefined) {
       delete (globalThis as typeof globalThis & { catsDesktopHost?: object }).catsDesktopHost;

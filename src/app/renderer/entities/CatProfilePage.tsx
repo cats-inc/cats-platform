@@ -12,8 +12,8 @@ import '../../../products/chat/renderer/styles/chat-companion.css';
 
 /**
  * Platform-level page for `/entities/cats/:catId`. Mounts the (copied)
- * `CompanionWorkspace` under the lobby drill-down `EntitiesShell`,
- * so the sidebar is the platform-level lobby chrome — not chat's.
+ * `CompanionWorkspace` under `EntitiesShell`, so the sidebar is the
+ * platform-level directory chrome — not chat's.
  *
  * Cats with the `companion` skill render the full workspace
  * (header / Post / Photo / activity feed / side panel). Cats
@@ -71,7 +71,7 @@ export function CatProfilePage() {
   const onWake = (): void => undefined;
   const onSleep = (): void => undefined;
 
-  // No back-to-chat path here; lobby sidebar already provides
+  // No back-to-chat path here; Entities sidebar already provides
   // navigation back to /lobby via its surface switcher.
   const onBackToChat = (): void => {
     navigate('/entities/cats');

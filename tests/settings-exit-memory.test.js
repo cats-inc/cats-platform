@@ -15,7 +15,7 @@ test.beforeEach(() => {
 test('isSettingsPath recognises /settings root and subpaths', () => {
   assert.equal(isSettingsPath('/settings'), true);
   assert.equal(isSettingsPath('/settings/general'), true);
-  assert.equal(isSettingsPath('/settings/cats/my-cats'), true);
+  assert.equal(isSettingsPath('/settings/cats'), true);
   assert.equal(isSettingsPath('/settingsbar'), false);
   assert.equal(isSettingsPath('/chat'), false);
   assert.equal(isSettingsPath('/'), false);
@@ -30,7 +30,7 @@ test('entering /settings from a non-settings surface remembers the return delta'
 test('settings-tab navigations keep the original return target stable', () => {
   recordSettingsRouteTransition('/chat/foo', 5);
   recordSettingsRouteTransition('/settings/general', 6);
-  recordSettingsRouteTransition('/settings/cats/my-cats', 7);
+  recordSettingsRouteTransition('/settings/cats', 7);
   recordSettingsRouteTransition('/settings/runtime', 8);
   assert.equal(getSettingsExitDelta(8), -3);
 });

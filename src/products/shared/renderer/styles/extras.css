@@ -6,7 +6,7 @@
 }
 
 /* Headerless mode: the section is paired with an outer `.navItem`
- * button (lobby drill-down's Cats / Clowders / Catteries nav header)
+ * button (Entities sidebar's Cats / Clowders / Catteries nav header)
  * so the rows hang directly under that button — no extra top gap.
  * Mirrors `.navGroupPinnedList`'s `gap: 0` rhythm under the
  * "Projects" nav item in Cats Work. */
@@ -165,7 +165,7 @@
   color: #3856a0;
 }
 
-/* Lobby drill-down sidebar (PLAN-091 phase 7) hosts three lens
+/* Entities sidebar hosts three lens
  * sections in the same aside. Each section is wrapped with a
  * data-lens-kind="cats|clowders|catteries" so we can carry the
  * per-product placeholder tints over from the chat / code / work
@@ -173,31 +173,31 @@
  * orange tint is kept for cats; clowders pick up the code-green tint;
  * catteries pick up the work-blue tint. */
 
-.sidebar[data-shell-surface="lobby"] [data-lens-kind="clowders"] .myCatRowPlaceholder {
+.sidebar[data-shell-surface="entities"] [data-lens-kind="clowders"] .myCatRowPlaceholder {
   background: color-mix(in srgb, var(--sidebar-bg) 78%, #48a064 22%);
 }
 
-.sidebar[data-shell-surface="lobby"] [data-lens-kind="clowders"] .myCatRowPlaceholder:hover,
-.sidebar[data-shell-surface="lobby"] [data-lens-kind="clowders"] .myCatRowPlaceholderStatic:hover {
+.sidebar[data-shell-surface="entities"] [data-lens-kind="clowders"] .myCatRowPlaceholder:hover,
+.sidebar[data-shell-surface="entities"] [data-lens-kind="clowders"] .myCatRowPlaceholderStatic:hover {
   background: color-mix(in srgb, var(--sidebar-bg) 64%, #48a064 36%);
 }
 
-.sidebar[data-shell-surface="lobby"] [data-lens-kind="clowders"] .myCatItemPlaceholder,
-.sidebar[data-shell-surface="lobby"] [data-lens-kind="clowders"] .myCatNamePlaceholder {
+.sidebar[data-shell-surface="entities"] [data-lens-kind="clowders"] .myCatItemPlaceholder,
+.sidebar[data-shell-surface="entities"] [data-lens-kind="clowders"] .myCatNamePlaceholder {
   color: #2e6f43;
 }
 
-.sidebar[data-shell-surface="lobby"] [data-lens-kind="catteries"] .myCatRowPlaceholder {
+.sidebar[data-shell-surface="entities"] [data-lens-kind="catteries"] .myCatRowPlaceholder {
   background: color-mix(in srgb, var(--sidebar-bg) 78%, #5f87f0 22%);
 }
 
-.sidebar[data-shell-surface="lobby"] [data-lens-kind="catteries"] .myCatRowPlaceholder:hover,
-.sidebar[data-shell-surface="lobby"] [data-lens-kind="catteries"] .myCatRowPlaceholderStatic:hover {
+.sidebar[data-shell-surface="entities"] [data-lens-kind="catteries"] .myCatRowPlaceholder:hover,
+.sidebar[data-shell-surface="entities"] [data-lens-kind="catteries"] .myCatRowPlaceholderStatic:hover {
   background: color-mix(in srgb, var(--sidebar-bg) 64%, #5f87f0 36%);
 }
 
-.sidebar[data-shell-surface="lobby"] [data-lens-kind="catteries"] .myCatItemPlaceholder,
-.sidebar[data-shell-surface="lobby"] [data-lens-kind="catteries"] .myCatNamePlaceholder {
+.sidebar[data-shell-surface="entities"] [data-lens-kind="catteries"] .myCatItemPlaceholder,
+.sidebar[data-shell-surface="entities"] [data-lens-kind="catteries"] .myCatNamePlaceholder {
   color: #3856a0;
 }
 
@@ -308,7 +308,7 @@
 .myCatOverflowMenuDivider {
   /* Mirrors `.recentOverflowMenuDivider` in chat-thread-base.css —
    * 1px hairline of `--border` between popover entries (currently
-   * Direct message ↑ / Archive ↓ in the lobby drill-down sidebar). */
+   * Direct message / Archive in the Entities sidebar). */
   height: 1px;
   margin: 4px 8px;
   border: 0;

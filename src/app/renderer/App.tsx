@@ -43,6 +43,7 @@ import { CatProfilePage } from './entities/CatProfilePage.js';
 import { CatsCanvasPage } from './entities/CatsCanvasPage.js';
 import { CatteryHome } from './entities/CatteryHome.js';
 import { ClowderHome } from './entities/ClowderHome.js';
+import { EntitiesIndexPage } from './entities/EntitiesIndexPage.js';
 import {
   CatteriesCanvasPage,
   ClowdersCanvasPage,
@@ -641,6 +642,7 @@ export default function PlatformApp() {
         <Routes>
           <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
           <Route element={<EntitiesShell envelope={readyEnvelope} />}>
+            <Route path="/entities" element={<EntitiesIndexPage envelope={readyEnvelope} />} />
             <Route path="/entities/cats" element={<CatsCanvasPage />} />
             <Route path="/entities/cats/:catId" element={<CatProfilePage />} />
             <Route path="/entities/clowders" element={<ClowdersCanvasPage envelope={readyEnvelope} />} />
@@ -650,11 +652,6 @@ export default function PlatformApp() {
             <Route path="/entities/catteries/:catteryId" element={<CatteryHome envelope={readyEnvelope} />} />
             <Route path="/entities/catteries/:catteryId/:tab" element={<CatteryHome envelope={readyEnvelope} />} />
           </Route>
-          {/* `/entities` itself has no dedicated index page yet — the
-           * surface for browsing all entity kinds is the lobby's
-           * three entity column-cards. Redirect bare `/entities` to
-           * `/lobby` (same pattern `/products` uses). */}
-          <Route path="/entities" element={<Navigate to="/lobby" replace />} />
           <Route path="/apps/:appId/*" element={<AppHostRoute envelope={readyEnvelope} />} />
           <Route path="/products" element={<Navigate to="/lobby" replace />} />
           <Route path="/settings/*" element={settingsSurfaceElement} />

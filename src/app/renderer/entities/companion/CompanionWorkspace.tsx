@@ -35,7 +35,7 @@ export interface CompanionWorkspaceProps {
    * side panel, just no feed. */
   hideFeed?: boolean;
   /** Hide the back-to-chat toggle chip in the top bar — for the
-   * lobby drill-down mount where there is no chat surface to flip
+   * Entities mount where there is no chat surface to flip
    * back to. */
   hideCompanionToggle?: boolean;
 }

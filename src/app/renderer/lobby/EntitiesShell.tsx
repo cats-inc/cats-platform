@@ -6,12 +6,12 @@ import {
 } from 'react';
 import { Outlet } from 'react-router-dom';
 
-// The Lobby drill-down workspace mounts the same appshell layout
+// The Entities workspace mounts the same appshell layout
 // chat / code / work do — `screen claudeShell` outer grid (260px
 // sidebar / fluid canvas) and the `.sidebar` flex column with its own
 // scrollable middle. Those rules live in the chat-side stylesheet
 // bundle and were previously only loaded once a product surface
-// rendered. Pull the bundle in here so /cats, /clowders, /catteries
+// rendered. Pull the bundle in here so /entities/* routes
 // render with the same chrome before any product is mounted.
 //
 // `chat-thread-base.css` carries the `.catAvatar` / `.catAvatarBoss`
@@ -29,14 +29,13 @@ import {
   readSidebarOpenPreference,
   writeSidebarOpenPreference,
 } from '../../../shared/sidebarPreference.js';
-import { LobbyAppShellSidebar } from './LobbyAppShellSidebar.js';
+import { EntitiesAppShellSidebar } from './EntitiesAppShellSidebar.js';
 
 /**
- * Workspace shell for the Lobby drill-down entity routes (/cats,
- * /clowders, /catteries and their `/:id` / `/:id/:tab` variants).
+ * Workspace shell for entity-domain routes under `/entities`.
  *
  * Layout matches chat / code / work exactly: outer `screen claudeShell`
- * grid, sidebar on the left with surface switcher → "Open Lobby"
+ * grid, sidebar on the left with surface switcher, Back to Lobby
  * affordance / three lens sections / GuideCatDock + identity pill,
  * `<main className="canvas">` on the right hosting the matched
  * route's content. There is no separate top bar — the sidebar is the
@@ -101,7 +100,7 @@ export function EntitiesShell({
           : 'screen claudeShell claudeShellSidebarCollapsed'
       }
     >
-      <LobbyAppShellSidebar
+      <EntitiesAppShellSidebar
         envelope={envelope}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={onToggleSidebar}

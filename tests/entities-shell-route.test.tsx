@@ -5,14 +5,15 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { Route, Routes, StaticRouter } from 'react-router-dom';
 
-import { CatHome } from '../src/app/renderer/entities/CatHome.tsx';
-import { CatsListPage } from '../src/app/renderer/entities/CatsListPage.tsx';
+import { CatProfilePage } from '../src/app/renderer/entities/CatProfilePage.tsx';
+import { CatsCanvasPage } from '../src/app/renderer/entities/CatsCanvasPage.tsx';
 import { CatteryHome } from '../src/app/renderer/entities/CatteryHome.tsx';
 import { ClowderHome } from '../src/app/renderer/entities/ClowderHome.tsx';
 import {
   CatteriesCanvasPage,
   ClowdersCanvasPage,
 } from '../src/app/renderer/entities/EntityCanvasPages.tsx';
+import { EntitiesIndexPage } from '../src/app/renderer/entities/EntitiesIndexPage.tsx';
 import { I18nProvider } from '../src/app/renderer/i18n/I18nProvider.tsx';
 import { EntitiesShell } from '../src/app/renderer/lobby/EntitiesShell.tsx';
 import { PlatformLobby } from '../src/app/renderer/PlatformLobby.tsx';
@@ -97,8 +98,9 @@ function renderApp(pathname: string, envelope: PlatformHostEnvelope): string {
           <Routes>
             <Route path="/lobby" element={<PlatformLobby envelope={envelope} />} />
             <Route element={<EntitiesShell envelope={envelope} />}>
-              <Route path="/entities/cats" element={<CatsListPage envelope={envelope} />} />
-              <Route path="/entities/cats/:catId" element={<CatHome envelope={envelope} />} />
+              <Route path="/entities" element={<EntitiesIndexPage envelope={envelope} />} />
+              <Route path="/entities/cats" element={<CatsCanvasPage />} />
+              <Route path="/entities/cats/:catId" element={<CatProfilePage />} />
               <Route
                 path="/entities/clowders"
                 element={<ClowdersCanvasPage envelope={envelope} />}
@@ -133,12 +135,12 @@ test('Lobby /lobby renders WITHOUT the appshell sidebar (PLAN-091 phase 7 correc
   assert.doesNotMatch(markup, /class="screen claudeShell/u);
   // Three column headers replace the previous single "My identities"
   // eyebrow. Each header is a plain title (the whole entity card is
-  // already clickable via `.lobbyEntityCardLink`, so the header
+  // already clickable via `.entityIndexCardLink`, so the header
   // doesn't need to double as a button). Uppercase is supplied by
   // CSS, not by the i18n string.
-  assert.match(markup, /<p[^>]*class="lobbyEntityColumnHeader"[^>]*>Cats</u);
-  assert.match(markup, /<p[^>]*class="lobbyEntityColumnHeader"[^>]*>Clowders</u);
-  assert.match(markup, /<p[^>]*class="lobbyEntityColumnHeader"[^>]*>Catteries</u);
+  assert.match(markup, /<p[^>]*class="entityIndexColumnHeader"[^>]*>Cats</u);
+  assert.match(markup, /<p[^>]*class="entityIndexColumnHeader"[^>]*>Clowders</u);
+  assert.match(markup, /<p[^>]*class="entityIndexColumnHeader"[^>]*>Catteries</u);
 });
 
 test('Lobby entity cards keep their per-entity classes with a shared neutral accent', () => {
@@ -156,12 +158,12 @@ test('Lobby entity cards keep their per-entity classes with a shared neutral acc
 test('Each entity card carries a full-card background link that opens its canvas', () => {
   const markup = renderApp('/lobby', createEnvelope());
 
-  // The card link is a real `<button class="lobbyEntityCardLink">`
+  // The card link is a real `<button class="entityIndexCardLink">`
   // covering the card via absolute-inset CSS. Items / accent / total
   // sit at higher z-index (or pointer-events: none) so the link
   // catches non-row clicks. Three cards = three links, each with the
   // localised "Open …" aria-label.
-  const linkMatches = markup.match(/class="lobbyEntityCardLink"/gu) ?? [];
+  const linkMatches = markup.match(/class="entityIndexCardLink"/gu) ?? [];
   assert.equal(linkMatches.length, 3);
   assert.match(markup, /aria-label="Open Cats"/u);
   assert.match(markup, /aria-label="Open Clowders"/u);
@@ -176,12 +178,12 @@ test('Lobby entity cards show three fixed rows + placeholder when empty (no foot
   // is redundant with the placeholder.
   const markup = renderApp('/lobby', createEnvelope());
 
-  assert.match(markup, /class="lobbyEntityItem lobbyEntityItemPlaceholder"/u);
+  assert.match(markup, /class="entityIndexItem entityIndexItemPlaceholder"/u);
   assert.match(markup, />New cat</u);
   assert.match(markup, />New clowder</u);
   assert.match(markup, />New cattery</u);
-  assert.doesNotMatch(markup, /class="lobbyEntityCardFooter"/u);
-  assert.doesNotMatch(markup, /class="lobbyEntityCardTotal"/u);
+  assert.doesNotMatch(markup, /class="entityIndexCardFooter"/u);
+  assert.doesNotMatch(markup, /class="entityIndexCardTotal"/u);
   assert.doesNotMatch(markup, />0 total</u);
 });
 
@@ -211,34 +213,34 @@ test('Lobby cats card renders the boss cat with avatar + ellipsis-friendly name 
   );
 
   // The cat's row renders inside the cats column with the shared
-  // `.lobbyEntityItem` class (button), the 28×28 `.lobbyEntityAvatar`
-  // disc, and the `.lobbyEntityName` text node carrying the cat's
+  // `.entityIndexItem` class (button), the 28×28 `.entityIndexAvatar`
+  // disc, and the `.entityIndexName` text node carrying the cat's
   // name. Name overflow ellipsis is asserted via the CSS class — the
   // class chain pins the contract that lets the rule apply.
-  assert.match(markup, /class="lobbyEntityItem"/u);
-  // The avatar span carries `lobbyEntityAvatar` plus an optional
+  assert.match(markup, /class="entityIndexItem"/u);
+  // The avatar span carries `entityIndexAvatar` plus an optional
   // `catAvatarBoss` modifier when the cat is the boss — see
   // chat-thread-base.css for the gold-ring rule. Match on the lead
   // class so we don't pin the test to a particular boss state.
-  assert.match(markup, /class="lobbyEntityAvatar(?:\s|")/u);
+  assert.match(markup, /class="entityIndexAvatar(?:\s|")/u);
   // The Concierge fixture is `isBoss: true`, so the markup must
-  // carry the `catAvatarBoss` modifier alongside `lobbyEntityAvatar`.
+  // carry the `catAvatarBoss` modifier alongside `entityIndexAvatar`.
   // This is the regression guard for the "lobby card avatar didn't
   // get the gold ring" bug — boss visual lives in chat-thread-base.css
   // and the lobby card has to import that bundle.
-  assert.match(markup, /class="lobbyEntityAvatar catAvatarBoss"/u);
-  assert.match(markup, /class="lobbyEntityName">Concierge</u);
+  assert.match(markup, /class="entityIndexAvatar catAvatarBoss"/u);
+  assert.match(markup, /class="entityIndexName">Concierge</u);
   // Cats card now shows "1 total"; clowders / catteries still hide
   // the footer entirely (count = 0).
   assert.match(markup, />1 total</u);
   // No avatar stack when total ≤ 3.
-  assert.doesNotMatch(markup, /class="lobbyEntityAvatarStack"/u);
+  assert.doesNotMatch(markup, /class="entityIndexAvatarStack"/u);
 });
 
 test('Lobby cats card adds an avatar stack to the footer when there are more than 3 cats', () => {
   // Five cats — three fill the inline rows, the remaining two flow
   // into the footer's decorative avatar stack. The stack carries
-  // aria-hidden="true" and `lobbyEntityAvatarStacked` discs (no
+  // aria-hidden="true" and `entityIndexAvatarStacked` discs (no
   // hover / click handlers — the footer is purely decorative).
   const markup = renderApp(
     '/lobby',
@@ -263,9 +265,9 @@ test('Lobby cats card adds an avatar stack to the footer when there are more tha
   );
 
   assert.match(markup, />5 total</u);
-  assert.match(markup, /class="lobbyEntityAvatarStack"[^>]*aria-hidden="true"/u);
+  assert.match(markup, /class="entityIndexAvatarStack"[^>]*aria-hidden="true"/u);
   // Two overflow avatars (cats 4 + 5) — count via class occurrences.
-  const stacked = markup.match(/class="lobbyEntityAvatar lobbyEntityAvatarStacked"/gu) ?? [];
+  const stacked = markup.match(/class="entityIndexAvatar entityIndexAvatarStacked"/gu) ?? [];
   assert.equal(stacked.length, 2);
 });
 
@@ -320,16 +322,28 @@ test('Lobby clowder and cattery cards sort stubs by creation time', () => {
     }),
   );
 
-  const devTeamIndex = markup.indexOf('class="lobbyEntityName">Dev Team');
-  const newTeamIndex = markup.indexOf('class="lobbyEntityName">New Team');
-  const acmeIndex = markup.indexOf('class="lobbyEntityName">Acme Co.');
-  const betaIndex = markup.indexOf('class="lobbyEntityName">Beta Co.');
+  const devTeamIndex = markup.indexOf('class="entityIndexName">Dev Team');
+  const newTeamIndex = markup.indexOf('class="entityIndexName">New Team');
+  const acmeIndex = markup.indexOf('class="entityIndexName">Acme Co.');
+  const betaIndex = markup.indexOf('class="entityIndexName">Beta Co.');
   assert.ok(devTeamIndex >= 0);
   assert.ok(newTeamIndex >= 0);
   assert.ok(acmeIndex >= 0);
   assert.ok(betaIndex >= 0);
   assert.ok(devTeamIndex < newTeamIndex);
   assert.ok(acmeIndex < betaIndex);
+});
+
+test('Bare /entities renders the Cats Directory index inside EntitiesShell', () => {
+  const markup = renderApp('/entities', createEnvelope());
+
+  assert.match(markup, /<div[^>]*class="screen claudeShell"/u);
+  assert.match(markup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="entities"/u);
+  assert.match(markup, /class="brandLabel">Cats Directory</u);
+  assert.match(markup, /<h1[^>]*class="entityCanvasTitle"[^>]*>Cats Directory</u);
+  assert.match(markup, /<div[^>]*class="entityIndexCards"/u);
+  assert.match(markup, /aria-label="Open Cats"/u);
+  assert.doesNotMatch(markup, /Redirect/u);
 });
 
 test('Drilled-down /entities/cats route mounts the chat-style appshell (claudeShell + sidebar + canvas)', () => {
@@ -339,9 +353,9 @@ test('Drilled-down /entities/cats route mounts the chat-style appshell (claudeSh
   // for the 260px sidebar + 1fr canvas grid.
   assert.match(markup, /<div[^>]*class="screen claudeShell"/u);
   // Sidebar uses the appshell chrome (`.sidebar` aside + `.sidebarInner`
-  // + `.sidebarFooter`); `data-shell-surface="lobby"` lets the
+  // + `.sidebarFooter`); `data-shell-surface="entities"` lets the
   // per-lens-kind placeholder tints take over.
-  assert.match(markup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="lobby"/u);
+  assert.match(markup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="entities"/u);
   assert.match(markup, /class="sidebarInner"/u);
   assert.match(markup, /class="sidebarFooter"/u);
   // Canvas wraps Outlet content.
@@ -355,18 +369,18 @@ test('Drilled-down /entities/cats route mounts the chat-style appshell (claudeSh
   assert.match(markup, />My Catteries</u);
 });
 
-test('LobbyAppShellSidebar surface switcher trigger reads "Cats Directory" via the label override', () => {
+test('EntitiesAppShellSidebar surface switcher trigger reads "Cats Directory" via the label override', () => {
   const markup = renderApp('/entities/cats', createEnvelope());
 
   // The PlatformSurfaceSwitcher trigger button writes the active
   // product label inside its inner `<span class="brandLabel">`. With
-  // `activeLabelOverride` set by LobbyAppShellSidebar, that label
+  // `activeLabelOverride` set by EntitiesAppShellSidebar, that label
   // should read "Cats Directory" rather than the user's last-product
   // surface name.
   assert.match(markup, /class="brandLabel">Cats Directory</u);
 });
 
-test('LobbyAppShellSidebar renders the "Back to Lobby" primary action with hover (no active highlight)', () => {
+test('EntitiesAppShellSidebar renders the "Back to Lobby" primary action with hover (no active highlight)', () => {
   const markup = renderApp('/entities/cats', createEnvelope());
 
   // Mirrors chat's "+ New chat" slot. The primary action should
@@ -407,7 +421,7 @@ test('Drilled-down /entities/cats/:catId route also mounts the EntitiesShell', (
   );
 
   assert.match(markup, /<div[^>]*class="screen claudeShell"/u);
-  assert.match(markup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="lobby"/u);
+  assert.match(markup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="entities"/u);
   assert.match(markup, />Concierge</u);
   // The sidebar's MyCatRowItem renders the cat's avatar inside a
   // `<span class="myCatAvatarWrap catAvatar [catAvatarBoss]">`. The
@@ -462,12 +476,12 @@ test('Drilled-down /entities/clowders/:id and /entities/catteries/:id routes bot
 
   const clowderMarkup = renderApp('/entities/clowders/clw-dev', envelope);
   assert.match(clowderMarkup, /<div[^>]*class="screen claudeShell"/u);
-  assert.match(clowderMarkup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="lobby"/u);
+  assert.match(clowderMarkup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="entities"/u);
   assert.match(clowderMarkup, />Dev Team</u);
 
   const catteryMarkup = renderApp('/entities/catteries/acme', envelope);
   assert.match(catteryMarkup, /<div[^>]*class="screen claudeShell"/u);
-  assert.match(catteryMarkup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="lobby"/u);
+  assert.match(catteryMarkup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="entities"/u);
   assert.match(catteryMarkup, />Acme Co\.</u);
 });
 

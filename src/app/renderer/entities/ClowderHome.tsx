@@ -36,7 +36,7 @@ function ClowderAvatar({ clowder }: { clowder: PlatformLobbyClowderSummary }) {
     ? { backgroundImage: `url(${clowder.avatarUrl})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
     : undefined;
   return (
-    <span className="catHomeAvatarBubble" style={style}>
+    <span className="entityDetailAvatarBubble" style={style}>
       {clowder.avatarUrl ? null : nameInitials(clowder.name)}
     </span>
   );
@@ -45,7 +45,7 @@ function ClowderAvatar({ clowder }: { clowder: PlatformLobbyClowderSummary }) {
 function ClowderCatsTab() {
   const { t } = useI18n();
   return (
-    <div className="catHomeLensStub">
+    <div className="entityDetailLensStub">
       <p>{t(messageKeys.clowderHomeEmptyCats)}</p>
     </div>
   );
@@ -54,7 +54,7 @@ function ClowderCatsTab() {
 function ClowderSettingsTab() {
   const { t } = useI18n();
   return (
-    <div className="catHomeLensStub">
+    <div className="entityDetailLensStub">
       <p>{t(messageKeys.clowderHomeSettingsBody)}</p>
     </div>
   );

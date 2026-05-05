@@ -28,15 +28,15 @@
   canvas: `lobbyTopBar` identity pill, hero greeting, three
   entity column-cards (Cats / Clowders / Catteries), products grid,
   apps grid, `LobbyBouncingCats` background.
-- **Entity drill-down routes mount the lobby drill-down workspace
+- **Entity-domain routes mount the Entities workspace
   shell** (`EntitiesShell` in `src/app/renderer/lobby/EntitiesShell.tsx`).
   This is a chat-style appshell — `screen claudeShell` outer grid,
-  `LobbyAppShellSidebar` on the left, `<main class="canvas">` on the
+  `EntitiesAppShellSidebar` on the left, `<main class="canvas">` on the
   right. The shell wraps:
-  `/entities/cats`, `/entities/cats/:catId`, `/entities/clowders`,
+  `/entities`, `/entities/cats`, `/entities/cats/:catId`, `/entities/clowders`,
   `/entities/clowders/:clowderId(/:tab)?`, `/entities/catteries`,
   `/entities/catteries/:catteryId(/:tab)?`.
-- **`LobbyAppShellSidebar` reuses the chat / code / work
+- **`EntitiesAppShellSidebar` reuses the chat / code / work
   `ConversationSidebar*` primitives**:
   - `PlatformSurfaceSwitcher` at the top with the
     `entitiesShellSurfaceLabel` ("Cats Directory") override
@@ -54,26 +54,29 @@
   via the shared `readSidebarOpenPreference` / `writeSidebarOpenPreference`
   helpers — same key chat / code / work use, so toggling collapse
   carries across products.
-- **`/lobby` cards (CATS / CLOWDERS / CATTERIES)**: three-column
+- **Entity index cards (CATS / CLOWDERS / CATTERIES)**: three-column
   grid, plain text headers (not buttons), each card shows up to
   three entity rows + a "{N} TOTAL" red footer. Footer hidden when
   count === 0; an avatar stack appears in the footer when total
   count > 3. Whole-card click-target via an absolute-positioned
-  `.lobbyEntityCardLink` background button (rows + footer +
+  `.entityIndexCardLink` background button (rows + footer +
   accent stripe live above it via z-index / pointer-events). Cards
   share a single neutral `--muted-soft` accent stripe (no per-kind
   brand tints). Boss avatar carries `.catAvatarBoss` (gold ring) —
   the chat-thread-base.css primitive is the single source of that
   rule and the lobby imports it.
+- **`/entities` is a real index page**, not a redirect or inert prefix.
+  It renders the same `EntityIndexCards` directory inside `EntitiesShell`
+  so the namespace has a first-class landing route.
 
 ### Sort order
 
-- **Lobby cats card + lobby drill-down sidebar's My Cats**:
+- **Entity index cards + Entities sidebar's My Cats**:
   Boss-first; tiebreak by `createdAt` ascending (older cats float
   higher). `PlatformLobbyCatSummary` carries a required
-  `createdAt: string` field for this. Both `PlatformLobby`
-  `sortLobbyCatsForDisplay` and `LOBBY_HELPERS.sortCatsForDisplay`
-  in `LobbyAppShellSidebar` apply the same rule.
+  `createdAt: string` field for this. Both `EntityIndexCards`
+  and `ENTITIES_HELPERS.sortCatsForDisplay` in
+  `EntitiesAppShellSidebar` apply the same rule.
 - **Chat sidebar DIRECT MESSAGES**:
   Recency-first via `sortChatCatsByRecency(cats, channels)` (chat
   Sidebar.tsx, inline). Each cat's score is its direct-lane
@@ -156,12 +159,10 @@
     keep the same chrome (header / settings panel) but the
     `<CompanionFeed>` Post / Photo region is suppressed
   - `hideCompanionToggle` always — there is no chat surface to
-    flip back to from the lobby drill-down
-- **`CatHome` + entity-lens scaffolding from phase 3 is no longer
-  mounted on `/entities/cats/:catId`** (the route renders `CatProfilePage`
-  instead). The component still exists in
-  `src/app/renderer/entities/CatHome.tsx` for potential future
-  use; if you delete it, also remove its imports from `App.tsx`.
+    flip back to from the Entities mount
+- **`CatHome` + `CatsListPage` scaffolding from earlier phases is removed**.
+  `/entities/cats` is `CatsCanvasPage`, and `/entities/cats/:catId`
+  is `CatProfilePage`; no dormant alternate cat route/component tree is kept.
 - **`/entities/clowders` and `/entities/catteries` mount canvas entry pages**
   inside `EntitiesShell`, matching `/entities/cats` as platform-level management
   entrypoints. The current canvases use a registry + detail-panel
@@ -194,16 +195,19 @@
   but the sidebar **UI** still nests it under the `CATS`
   subheading group, mirroring `My Cats` indentation. The lift
   applied to the route, not the visual grouping.
-- `/settings/cats/my-cats` redirect target is **`/settings/cats`**
-  (kept pointing at the in-Settings canvas). The phase-3 retarget
-  to `/entities/cats` was reverted.
+- `/settings/cats/my-cats` is **removed**. Settings sidebar's My Cats
+  row navigates directly to canonical `/settings/cats`; no compatibility
+  redirect is kept.
+- Unknown Settings child routes render the Settings not-found pane instead
+  of redirecting to `/settings/general`, so removed routes cannot survive
+  as implicit aliases.
 
 ### Hooks / shared primitives extracted during the iterations
 
 - `useSidebarOverflowMenuDismiss` (`src/app/renderer/productShell/`)
   — outside-click dismissal for the `.myCatOverflowMenu` /
   `.recentOverflowMenu` popover. Originally inline in
-  `useAppChrome`; lifted out so the lobby drill-down sidebar
+  `useAppChrome`; lifted out so the Entities sidebar
   (which doesn't go through `useAppChrome`) gets the same
   behaviour.
 - `WorkspaceProductSidebarProps.confirmDialog`
@@ -398,9 +402,10 @@ canvas shape rendered at each entity route.
     "global cat preferences" and "the assistants registry". Per AGENTS.md,
     the old `/settings/cats/assistants` path is removed in the same change
     (no alias).
-28. The existing `/settings/cats/my-cats` route (currently redirects to
-    `/settings/cats`) shall be retargeted to `/entities/cats` (the canonical cats
-    canvas page).
+28. The legacy `/settings/cats/my-cats` route shall be removed rather
+    than redirected. The Settings sidebar's My Cats row shall navigate
+    directly to `/settings/cats` until the `/settings/cats` vs.
+    `/entities/cats` split is finalized.
 
 #### Lobby Sidebar Default State
 
@@ -415,17 +420,18 @@ canvas shape rendered at each entity route.
 - **Surface independence**: removing Lobby in the future shall not break
   entity URLs. Tests must include a smoke check that `/entities/cats/:id` renders
   without `PlatformLobby` mounted.
-- **No backward compatibility shims**: `/chat/my-cats/:catId` and
-  `/settings/cats/assistants` are removed in the same change that
-  introduces the replacements. Per AGENTS.md §Pre-Release Compatibility
-  Policy.
+- **No backward compatibility shims**: `/chat/my-cats/:catId`,
+  `/settings/cats/assistants`, and `/settings/cats/my-cats` are
+  removed in the same change that introduces the replacements. Per
+  AGENTS.md §Pre-Release Compatibility Policy.
 - **i18n**: every new label uses messageKeys; both `en` and `zh-TW`
   catalogs ship in the same change.
 - **Test coverage**: each route shall have a renderer-level smoke test.
-  Removed paths (`/chat/my-cats/:catId`, `/settings/cats/assistants`)
-  shall have an explicit **404 assertion** to prove the path no longer
-  resolves — this is the regression guard that replaces the alias-test
-  pattern AGENTS.md forbids.
+  Removed paths (`/chat/my-cats/:catId`, `/settings/cats/assistants`,
+  `/settings/cats/my-cats`)
+  shall have an explicit **not-found / no-match assertion** to prove the
+  path no longer resolves to a live settings or entity page — this is the
+  regression guard that replaces the alias-test pattern AGENTS.md forbids.
 
 ## Design Overview
 
@@ -434,9 +440,9 @@ canvas shape rendered at each entity route.
 ```
 /lobby                                   ← LobbyHome (sidebar rail + hero + products + apps)
 
-/entities                                ← redirects to /lobby (no dedicated index page yet)
+/entities                                ← Cats Directory index
 /entities/cats                           ← Cats canvas
-/entities/cats/:catId                    ← StandaloneEntityPage (CatHome) — canonical
+/entities/cats/:catId                    ← CatProfilePage — canonical
 /entities/cats/:catId/:lens              ← lens deep-link (overview|chat|work|code)
 /entities/clowders                       ← Clowders canvas
 /entities/clowders/:clowderId            ← StandaloneEntityPage (ClowderHome) — canonical
@@ -610,13 +616,12 @@ click → /chat/my-cats/:id        click → /chat/dm/:id
 ## URL Map
 
 ```
-/lobby                                     ← LobbyHome (sidebar + hero + products + apps)
+/lobby                                     ← LobbyHome (hero + entity cards + products + apps)
                                              no /lobby/{type}/:id family
 
-/entities                                  ← redirects to /lobby (no dedicated index page yet)
+/entities                                  ← Cats Directory index
 /entities/cats                             ← Cats canvas
-/entities/cats/:catId                      ← Cat home (Overview default)
-/entities/cats/:catId/:lens                ← lens (overview|chat|work|code)
+/entities/cats/:catId                      ← CatProfilePage companion/profile mount
 /entities/clowders                         ← Clowders canvas
 /entities/clowders/:clowderId              ← Clowder home (Cats default)
 /entities/clowders/:clowderId/:tab         ← cats|settings
@@ -629,18 +634,17 @@ click → /chat/my-cats/:id        click → /chat/dm/:id
 /settings/cats                             ← global cat preferences (narrowed)
 /settings/assistants                       ← assistants registry (lifted from /settings/cats/assistants;
                                              old path removed in the same change)
-/settings/cats/my-cats                     ← 301 → /entities/cats
 ```
 
 ## Boundaries
 
-### What `LobbySidebar` is
+### What `EntitiesAppShellSidebar` is
 
 - A platform navigation surface listing the three entity types
 - A pure projection of the shared registry — clicking a row navigates; the
   row itself is not the entity
 
-### What `LobbySidebar` is not
+### What `EntitiesAppShellSidebar` is not
 
 - The owner of cats / clowders / catteries
 - A registry — it consumes the registry
