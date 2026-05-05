@@ -56,29 +56,30 @@ const LOBBY_PASSIVE_DOT = 'no_dot';
 
 type LobbyDot = typeof LOBBY_PASSIVE_DOT;
 
+interface LobbyCat extends ConversationSidebarCat {
+  createdAt: string;
+}
+
 const LOBBY_HELPERS: ConversationSidebarHelpers<
-  ConversationSidebarCat,
+  LobbyCat,
   ConversationSidebarChannel,
   LobbyDot
 > = {
   catInitials: (name: string) => nameInitials(name),
   presentChannelTitle: (title: string) => title,
   isVisibleCat: () => true,
-  /* Boss-first ordering, then keep the platform registry order for
-   * the rest (envelope.lobby.cats already arrives in createdAt order
-   * from the platform host). Mirrors `sortChatCatsForDisplay` in
-   * workspaceChatUtils.tsx so the lobby sidebar's MY CATS reads the
-   * same as the chat sidebar's. Array.prototype.sort is stable
-   * (ES2019), so non-boss cats retain their incoming order. */
+  /* Boss-first ordering, then `createdAt` ascending so older cats
+   * appear higher. Matches `sortLobbyCatsForDisplay` on the lobby
+   * main-page card. */
   sortCatsForDisplay: (cats, options) => {
     const bossId = Array.isArray(options.bossCatIds)
       ? options.bossCatIds[0] ?? null
       : options.bossCatIds ?? null;
-    if (!bossId) return cats;
     return [...cats].sort((left, right) => {
       const leftRank = left.id === bossId ? 0 : 1;
       const rightRank = right.id === bossId ? 0 : 1;
-      return leftRank - rightRank;
+      if (leftRank !== rightRank) return leftRank - rightRank;
+      return left.createdAt.localeCompare(right.createdAt);
     });
   },
   isDirectLaneSummary: () => false,
@@ -89,20 +90,21 @@ const LOBBY_HELPERS: ConversationSidebarHelpers<
 };
 
 function buildSidebarPayload(envelope: PlatformHostEnvelope): {
-  payload: ConversationSidebarPayload<ConversationSidebarCat, ConversationSidebarChannel>;
-  cats: ConversationSidebarCat[];
+  payload: ConversationSidebarPayload<LobbyCat, ConversationSidebarChannel>;
+  cats: LobbyCat[];
   bossCatId: string | null;
 } {
-  const cats: ConversationSidebarCat[] = envelope.lobby.cats.map((summary) => ({
+  const cats: LobbyCat[] = envelope.lobby.cats.map((summary) => ({
     id: summary.id,
     name: summary.name,
     status: 'active',
     avatarColor: summary.avatarColor,
     avatarUrl: summary.avatarUrl,
+    createdAt: summary.createdAt,
   }));
   const bossCat = envelope.lobby.cats.find((summary) => summary.isBoss);
   const bossCatId = bossCat ? bossCat.id : null;
-  const payload: ConversationSidebarPayload<ConversationSidebarCat, ConversationSidebarChannel> = {
+  const payload: ConversationSidebarPayload<LobbyCat, ConversationSidebarChannel> = {
     ownerDisplayName: envelope.ownerDisplayName,
     ownerAvatarUrl: envelope.ownerAvatarUrl,
     runtime: envelope.runtime,

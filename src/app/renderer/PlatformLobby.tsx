@@ -85,12 +85,10 @@ function summarizeCat(cat: PlatformLobbyCatSummary): LobbyEntityRowSummary {
 }
 
 /**
- * Boss-first ordering for the lobby cats card. Mirrors
- * `sortChatCatsForDisplay` in `workspaceChatUtils.tsx` (used by the
- * chat / code / work sidebars + the lobby drill-down sidebar). Boss
- * cats float to the top; the rest keep the platform host's incoming
- * order, which is already createdAt-ascending. Stable sort (ES2019)
- * preserves that secondary order.
+ * Boss-first ordering for the lobby cats card; ties broken by
+ * `createdAt` ascending so older cats appear higher in the list.
+ * The lobby drill-down sidebar (`LOBBY_HELPERS.sortCatsForDisplay`)
+ * uses the same rule.
  */
 function sortLobbyCatsForDisplay(
   cats: readonly PlatformLobbyCatSummary[],
@@ -98,7 +96,8 @@ function sortLobbyCatsForDisplay(
   return [...cats].sort((left, right) => {
     const leftRank = left.isBoss ? 0 : 1;
     const rightRank = right.isBoss ? 0 : 1;
-    return leftRank - rightRank;
+    if (leftRank !== rightRank) return leftRank - rightRank;
+    return left.createdAt.localeCompare(right.createdAt);
   });
 }
 

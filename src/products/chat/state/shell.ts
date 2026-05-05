@@ -187,6 +187,7 @@ function buildLobbyCats(
     avatarColor: string | null;
     avatarUrl: string | null;
     status: string;
+    createdAt: string;
     defaultExecutionTarget?: { provider: string; instance?: string | null; model?: string | null } | null;
     defaultModelSelection?: ProviderModelSelection | null;
   }[],
@@ -200,6 +201,7 @@ function buildLobbyCats(
       avatarColor: cat.avatarColor,
       avatarUrl: cat.avatarUrl,
       isBoss: cat.id === bossCatId,
+      createdAt: cat.createdAt,
       defaultExecutionTarget: cat.defaultExecutionTarget
         ? {
           provider: cat.defaultExecutionTarget.provider,

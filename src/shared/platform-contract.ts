@@ -107,6 +107,10 @@ export interface PlatformLobbyCatSummary {
   avatarColor: string | null;
   avatarUrl: string | null;
   isBoss: boolean;
+  /** Creation timestamp from the underlying ChatCat record. Lobby
+   * surfaces use this as the secondary sort key after Boss-cat
+   * pinning so older cats float toward the top of the list. */
+  createdAt: string;
   defaultExecutionTarget: ExecutionTargetSummary | null;
   defaultModelSelection?: ProviderModelSelection | null;
   executionLabel: string | null;

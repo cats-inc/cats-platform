@@ -8,12 +8,11 @@ import {
 import type { WorkspaceProductConfirmDialog } from '../../../shared/renderer/WorkspaceProductApp.js';
 import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
-import type { AppShellPayload, ChatChannelSummary } from '../../api/contracts.js';
+import type { AppShellPayload, ChatCat, ChatChannelSummary } from '../../api/contracts.js';
 import {
   catInitials,
   isChatCat,
   presentChannelTitle,
-  sortChatCatsForDisplay,
   type Surface,
 } from '../chatUtils';
 import {
@@ -133,6 +132,39 @@ function createPrimaryActions(
   ];
 }
 
+/**
+ * Recency-first ordering for the Chat product's DIRECT MESSAGES
+ * section. Each cat's score is the latest activity timestamp on its
+ * direct-lane channel (`lastActivatedAt` falls back to
+ * `lastMessageAt`); cats without a channel float to the top of the
+ * list keyed by their `createdAt`, so a brand-new cat appears
+ * immediately, and clearing a cat's lane (which deletes the channel)
+ * also sends the cat back to the top via that fallback. Sort is
+ * descending (most recent first) and intentionally ignores Boss-cat
+ * pinning — that's the lobby sidebar's behaviour, not chat's.
+ */
+function sortChatCatsByRecency(
+  cats: readonly ChatCat[],
+  channels: readonly ChatChannelSummary[],
+): ChatCat[] {
+  const recencyByCatId = new Map<string, string>();
+  for (const channel of channels) {
+    if (!isDirectLaneSummary(channel)) continue;
+    const catId = channel.defaultRecipientCatId;
+    if (!catId) continue;
+    const ts = channel.lastActivatedAt ?? channel.lastMessageAt ?? '';
+    const existing = recencyByCatId.get(catId);
+    if (!existing || existing.localeCompare(ts) < 0) {
+      recencyByCatId.set(catId, ts);
+    }
+  }
+  return [...cats].sort((left, right) => {
+    const leftTime = recencyByCatId.get(left.id) ?? left.createdAt;
+    const rightTime = recencyByCatId.get(right.id) ?? right.createdAt;
+    return rightTime.localeCompare(leftTime);
+  });
+}
+
 function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry<ChatChannelSummary>[] {
   return buildConversationSidebarRecentEntries({
     channels: props.payload.chat.channels,
@@ -189,17 +221,22 @@ export function Sidebar(props: SidebarProps) {
     accountMenuRef: props.accountMenuRef,
     primaryActions: createPrimaryActions(props, t),
     recentEntries: buildRecentEntries(props),
-    forceShowMyCatsSection: true,
-    myCatsEmptyStatePlaceholder: {
-      label: t(messageKeys.chatSidebarMyCatsEmptyStateLabel),
-      onClick: props.onCreateNewCat,
-    },
+    /* DIRECT MESSAGES section is rendered only when there is at
+     * least one cat. When the user has none, the section header,
+     * the rows, and the legacy "+ New cat" placeholder all stay
+     * hidden — cat creation lives elsewhere now. */
+    forceShowMyCatsSection: props.payload.chat.cats.length > 0,
     myCatsTerminalActionLabelKey: messageKeys.conversationSidebarClearButton,
     helpers: {
       catInitials,
       presentChannelTitle: (title) => presentChannelTitle(title, t),
       isVisibleCat: isChatCat,
-      sortCatsForDisplay: sortChatCatsForDisplay,
+      /* Chat orders DIRECT MESSAGES rows by direct-lane recency
+       * (latest channel activity bubbles up; brand-new cats with
+       * no channel yet float to the top via their createdAt). Boss
+       * cats are NOT pinned here — that's a Lobby-only sort. */
+      sortCatsForDisplay: (cats) =>
+        sortChatCatsByRecency(cats, props.payload.chat.channels),
       isDirectLaneSummary,
       findDirectLaneForCat,
       resolveMyCatStatusDot,
