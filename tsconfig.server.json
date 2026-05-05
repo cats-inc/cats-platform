@@ -19,7 +19,9 @@
   "include": ["src/**/*.ts"],
   "exclude": [
     "src/renderer/**/*",
+    "src/app/renderer/entities/**/*",
     "src/app/renderer/i18n/**/*",
+    "src/app/renderer/productShell/useSidebarOverflowMenuDismiss.ts",
     "src/app/renderer/setup/**/*",
     "src/app/renderer/**/*.tsx",
     "src/app/renderer/guideCatPanelDetection.ts",
