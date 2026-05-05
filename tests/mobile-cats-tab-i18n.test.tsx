@@ -12,6 +12,7 @@ import {
   resolveMobileLocale,
   selectMobileCatsDirectory,
 } from '../src/mobile/index.ts';
+import { getMobileDesktopOnlyAlertCopy } from '../mobile/src/api/fixtures/productSidebar.ts';
 
 function createPayload(): MobileAppShellPayload {
   return {
@@ -166,7 +167,19 @@ test('mobile tabs copy exposes localized fixed controls', () => {
   assert.equal(zh.createChannelError('offline'), '無法建立頻道：offline');
   assert.equal(getMobileChannelTitle(zh, 'code', 'peer'), '新同儕程式碼');
   assert.equal(getMobileChannelTitle(zh, 'work', 'unknown'), '新工作');
+
+  // Both `+ Parallel X` paths surface as desktop-only alerts; the copy
+  // must round-trip cleanly so the runtime intercept (chat/index.tsx,
+  // work/index.tsx) has something non-undefined to render.
   assert.equal(en.parallelChatDesktopOnlyTitle, 'Parallel chat — desktop only');
+  assert.equal(zh.parallelChatDesktopOnlyTitle, '平行聊天僅限桌面版');
+  assert.match(en.parallelChatDesktopOnlyBody, /Parallel chat creation is not yet wired/u);
+  assert.match(zh.parallelChatDesktopOnlyBody, /行動版尚未支援建立平行聊天/u);
+
+  assert.equal(en.parallelWorkDesktopOnlyTitle, 'Parallel work — desktop only');
+  assert.equal(zh.parallelWorkDesktopOnlyTitle, '平行工作僅限桌面版');
+  assert.match(en.parallelWorkDesktopOnlyBody, /Parallel work creation is not yet wired/u);
+  assert.match(zh.parallelWorkDesktopOnlyBody, /行動版尚未支援建立平行工作/u);
 });
 
 test('mobile api copy exposes localized deterministic errors', () => {
@@ -181,4 +194,61 @@ test('mobile api copy exposes localized deterministic errors', () => {
   assert.equal(zh.createChannelFailed, '無法建立頻道。');
   assert.equal(zh.sendFailed, '無法送出。');
   assert.equal(en.unknownError, 'Unknown error.');
+});
+
+// `getMobileDesktopOnlyAlertCopy` is the single canonical answer for
+// "should this primary-action chip skip createChannel and surface a
+// desktop-only alert instead?". `chat/index.tsx` and `work/index.tsx`
+// both consume it. These tests pin the contract so a regression to
+// the silent `entryKind: 'default'` fallback (the bug that caused the
+// 2026-05-05 follow-up) gets caught in CI instead of in production.
+test('getMobileDesktopOnlyAlertCopy routes Chat parallel into the desktop-only alert', () => {
+  const en = getMobileTabsCopy('en');
+  const zh = getMobileTabsCopy('zh-TW');
+
+  const enAlert = getMobileDesktopOnlyAlertCopy('chat', 'parallel', en);
+  assert.ok(enAlert, 'expected chat/parallel to be desktop-only on mobile');
+  assert.equal(enAlert.title, en.parallelChatDesktopOnlyTitle);
+  assert.equal(enAlert.body, en.parallelChatDesktopOnlyBody);
+
+  const zhAlert = getMobileDesktopOnlyAlertCopy('chat', 'parallel', zh);
+  assert.ok(zhAlert, 'expected chat/parallel to be desktop-only on mobile (zh-TW)');
+  assert.equal(zhAlert.title, zh.parallelChatDesktopOnlyTitle);
+  assert.equal(zhAlert.body, zh.parallelChatDesktopOnlyBody);
+});
+
+test('getMobileDesktopOnlyAlertCopy routes Work parallel into the desktop-only alert', () => {
+  const en = getMobileTabsCopy('en');
+  const zh = getMobileTabsCopy('zh-TW');
+
+  const enAlert = getMobileDesktopOnlyAlertCopy('work', 'parallel', en);
+  assert.ok(enAlert, 'expected work/parallel to be desktop-only on mobile');
+  assert.equal(enAlert.title, en.parallelWorkDesktopOnlyTitle);
+  assert.equal(enAlert.body, en.parallelWorkDesktopOnlyBody);
+
+  const zhAlert = getMobileDesktopOnlyAlertCopy('work', 'parallel', zh);
+  assert.ok(zhAlert, 'expected work/parallel to be desktop-only on mobile (zh-TW)');
+  assert.equal(zhAlert.title, zh.parallelWorkDesktopOnlyTitle);
+  assert.equal(zhAlert.body, zh.parallelWorkDesktopOnlyBody);
+});
+
+test('getMobileDesktopOnlyAlertCopy lets non-parallel actions through to createChannel', () => {
+  const en = getMobileTabsCopy('en');
+
+  // Chat: New / Group go through; only Parallel is desktop-only.
+  assert.equal(getMobileDesktopOnlyAlertCopy('chat', 'new', en), null);
+  assert.equal(getMobileDesktopOnlyAlertCopy('chat', 'group', en), null);
+
+  // Code: nothing is desktop-only today (no Parallel chip, no other
+  // create-time fan-out kinds). All three go through createChannel.
+  assert.equal(getMobileDesktopOnlyAlertCopy('code', 'new', en), null);
+  assert.equal(getMobileDesktopOnlyAlertCopy('code', 'team', en), null);
+  assert.equal(getMobileDesktopOnlyAlertCopy('code', 'peer', en), null);
+
+  // Work: New / Team go through; only Parallel is desktop-only. This
+  // is the regression the helper was extracted to pin — a previous
+  // version of work/index.tsx silently created a default Work channel
+  // on Parallel because the entryKind ternary fell through.
+  assert.equal(getMobileDesktopOnlyAlertCopy('work', 'new', en), null);
+  assert.equal(getMobileDesktopOnlyAlertCopy('work', 'team', en), null);
 });

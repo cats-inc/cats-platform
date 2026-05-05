@@ -252,3 +252,65 @@ structure scoped to dashboard / approvals) are superseded.
 sidebars (full Chat sidebar; trimmed Code / Work sidebars) plus Lobby and
 Settings should sit on mobile as bottom tabs, with bubble visual fidelity to
 the web renderer as a hard requirement.*
+
+## Subsequent Revision (2026-05-05)
+
+The original Decision section above is preserved as the historical
+record of what was approved on 2026-04-29. This subsequent revision
+records the IA reshape that landed on 2026-05-05 once SPEC-102 (Lobby
+sidebar IA + entity routes) closed and the desktop side promoted Cats
+Directory and Settings to standalone surfaces. Where this revision
+conflicts with the original Decision, this revision wins for current
+implementation work; where it is silent, the original Decision still
+governs.
+
+- **Bottom-tab inventory**: `Cats`, `Chat`, `Code`, `Work`, `Settings`
+  (replaces `Lobby`, `Chat`, `Code`, `Work`, `Settings`). The `Cats`
+  tab label stays English in zh-TW too, mirroring the desktop "Cats
+  Directory" branding.
+- **Cats tab content**: directory landing (My Cats / My Clowders / My
+  Catteries with cat drill-down), reachable as `/(tabs)/cats`. Web
+  Lobby's greeting + entity-index-card framing is **NOT** mirrored on
+  mobile — the mobile Cats tab is the directory view, period. (The
+  earlier "Lobby tab = today summary, quick entry chips, Guide Cat
+  greeting" framing in the original Decision is superseded by this.)
+- **Chat tab sidebar**: the MY-lens row (`DIRECT MESSAGES`) is
+  removed. The mobile Chat sidebar is now `+ New Chat / + Group Chat /
+  + Parallel Chat` followed by `RECENTS`. The Chat tab is therefore no
+  longer "the web Chat sidebar transposed onto mobile, intact" — the
+  cat-roster portion of that sidebar moved to the Cats tab.
+- **Code tab sidebar**: `MY CODES` is removed. Now `+ New Code / +
+  Team Code / + Peer Code` followed by `RECENTS (Code)`.
+- **Work tab sidebar**: `MY WORKS` is removed. Now `+ New Work / +
+  Team Work / + Parallel Work` followed by `RECENTS (Work)`.
+- **Cat presence chip**: removed from the trimmed product sidebars
+  along with the MY-lens rows.
+- **Boundary contract cleanup**: `MobileSidebarCatStatus`,
+  `MobileSidebarCat`, `MobileChatSidebarData`,
+  `selectMobileChatSidebar`, `selectMobileMyCatsLens` are removed
+  from the mobile-safe boundary; only `MobileSidebarRecent` and
+  `selectMobileProductRecents` remain. `MobileLobbyCopy /
+  MOBILE_LOBBY_COPY / getMobileLobbyCopy / selectMobileLobby` are
+  renamed to `MobileCatsTabCopy / MOBILE_CATS_TAB_COPY /
+  getMobileCatsTabCopy / selectMobileCatsDirectory`. `MobileTabId`
+  drops `'lobby'` and adds `'cats'`.
+- **Parallel Chat / Parallel Work**: still desktop-only on mobile
+  (mobile create contract has no parallel path). Both surface as
+  `parallelChatDesktopOnly{Title,Body}` /
+  `parallelWorkDesktopOnly{Title,Body}` alerts when the user taps the
+  `+ Parallel X` chip.
+
+This revision was driven by:
+
+- The `Lobby` → `Cats Directory` rename on the desktop side (web
+  `/cats|/clowders|/catteries` collapsed to `/entities/*` and Settings
+  was promoted to its own surface — see SPEC-102's 2026-05-05
+  follow-up section).
+- The owner's explicit instruction that the mobile Cats tab must NOT
+  port web Lobby content; the mobile rail label is `Cats` in both
+  locales.
+- Pulling cat / clowder / cattery rosters out of every product
+  sidebar so the platform-level Cats tab is the single canonical home
+  for those entities (matches the same "one platform-level home with
+  lens projections" intent as FR-046 / FR-047, just stricter on
+  mobile).

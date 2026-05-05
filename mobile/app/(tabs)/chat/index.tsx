@@ -10,7 +10,10 @@ import {
   View,
 } from 'react-native';
 
-import { getChatSidebarConfig } from '../../../src/api/fixtures/productSidebar';
+import {
+  getChatSidebarConfig,
+  getMobileDesktopOnlyAlertCopy,
+} from '../../../src/api/fixtures/productSidebar';
 import { useCreateChannel } from '../../../src/renderer/hooks/useCreateChannel';
 import { useProductSidebarData } from '../../../src/renderer/hooks/useProductSidebarData';
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
@@ -31,10 +34,11 @@ export default function ChatSidebarScreen() {
 
   const handlePrimaryAction = useCallback(
     async (actionId: string) => {
-      if (actionId === 'parallel') {
+      const desktopOnly = getMobileDesktopOnlyAlertCopy('chat', actionId, copy);
+      if (desktopOnly) {
         Alert.alert(
-          copy.parallelChatDesktopOnlyTitle,
-          copy.parallelChatDesktopOnlyBody,
+          desktopOnly.title,
+          desktopOnly.body,
           [{ text: copy.desktopOnlyOkAction, style: 'cancel' }],
         );
         return;

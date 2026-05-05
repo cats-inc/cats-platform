@@ -364,3 +364,103 @@ for historical traceability.
 *Created: 2026-04-29*
 *Author: Claude*
 *Related Plan: [PLAN-084](../plans/PLAN-084-cats-mobile-shell-rollout.md)*
+
+## Subsequent Revision (2026-05-05)
+
+The Goals / Functional Requirements above are preserved as the
+historical contract approved on 2026-04-29. This subsequent revision
+records the IA reshape that landed on 2026-05-05 in lockstep with
+ADR-092's "Subsequent Revision (2026-05-05)" section. Where this
+revision conflicts with the original FRs, this revision wins for
+current implementation work.
+
+### Amended functional requirements
+
+- **FR-1 (Shell layout) — bottom-tab inventory amended**: the canonical
+  order is now `Cats`, `Chat`, `Code`, `Work`, `Settings` (replaces
+  `Lobby`, `Chat`, `Code`, `Work`, `Settings`). The `Cats` tab label is
+  English in both `en` and `zh-TW`.
+- **FR-3 (tab labels and icons)**: the `Cats` tab label is English
+  in both locales. Other tabs' locale-specific labels (聊天 / 程式碼 /
+  工作 / 設定 in zh-TW) are unchanged.
+- **FR-5..6 (Lobby tab) — superseded by Cats tab**: there is no
+  `Lobby` tab on mobile. The platform's `Cats Directory` is now the
+  mobile landing tab — three sections (My Cats / My Clowders / My
+  Catteries) with cat drill-down. Web Lobby content (greeting,
+  entity-index cards, today summary, quick-entry chips, Guide Cat
+  assist greeting) is explicitly NOT mirrored on the mobile `Cats`
+  tab.
+- **FR-7..9 (Chat tab) — sidebar trimmed**: the Chat tab sidebar is
+  now a TrimmedProductSidebar with three primary action chips
+  (`+ New Chat / + Group Chat / + Parallel Chat`) and a `RECENTS` list.
+  The MY CATS / Direct Messages row is removed; the cat-roster portion
+  of the web Chat sidebar moves to the Cats tab. `Add cat in chat`
+  remains an in-thread interaction (not a sidebar entry on mobile).
+- **FR-10..12 (Code tab) — `MY CODES` removed**: now `+ New Code /
+  + Team Code / + Peer Code` followed by `RECENTS (Code)`. Workspaces /
+  Artifacts remain out of mobile scope.
+- **FR-13..15 (Work tab) — `MY WORKS` removed**: now `+ New Work /
+  + Team Work / + Parallel Work` followed by `RECENTS (Work)`.
+  `+ Parallel Work` surfaces a desktop-only alert when tapped on
+  mobile (same pattern as `+ Parallel Chat`) because the mobile create
+  contract supports only `default | group | direct`.
+- **FR-23..26 (Bubble rendering)**: unchanged.
+- **FR-27..28 (Type / package boundaries)**: amended — the
+  mobile-safe boundary surface is now `MobileSidebarRecent` and
+  `selectMobileProductRecents` only. `MobileSidebarCatStatus`,
+  `MobileSidebarCat`, `MobileChatSidebarData`,
+  `selectMobileChatSidebar`, `selectMobileMyCatsLens` are removed. The
+  Lobby projection is renamed to `selectMobileCatsDirectory` /
+  `MobileCatsDirectoryData`. The `MobileLobbyCopy` /
+  `getMobileLobbyCopy` symbols are renamed to `MobileCatsTabCopy` /
+  `getMobileCatsTabCopy`. `MobileTabId` drops `'lobby'` and adds
+  `'cats'`.
+
+### Amended primary-action labels (en)
+
+The primary-action chip labels ship in Title Case in `en`
+(`+ New Chat / + Group Chat / + Parallel Chat`, etc.); zh-TW labels
+remain `+ 新聊天 / + 群組聊天 / + 平行聊天` etc.
+
+### Amended tab/screen tree
+
+```text
+cats-platform/mobile/
+  app/
+    index.tsx                 ← Redirect → /(tabs)/cats
+    (tabs)/
+      _layout.tsx             ← bottom-tab navigator
+      cats/
+        _layout.tsx           ← Cats stack
+        index.tsx             ← Cats Directory (My Cats / Clowders / Catteries)
+        [id].tsx              ← Cat detail
+      clowders/[id].tsx       ← Clowder detail (href: null)
+      catteries/[id].tsx      ← Cattery detail (href: null)
+      chat/
+        _layout.tsx
+        index.tsx             ← Chat sidebar (trimmed)
+        [channelId].tsx       ← shared ChatView, productMode='chat'
+      code/
+        _layout.tsx
+        index.tsx             ← Code sidebar (trimmed)
+        [channelId].tsx       ← shared ChatView, productMode='code'
+      work/
+        _layout.tsx
+        index.tsx             ← Work sidebar (trimmed)
+        [channelId].tsx       ← shared ChatView, productMode='work'
+      settings/
+        _layout.tsx
+        index.tsx             ← Settings tab landing
+```
+
+### Why this revision exists
+
+- Desktop side promoted Settings and Cats Directory to their own
+  platform surfaces (commits `0b0308cc6`, `b8d3ce22b`, `1153ea178`),
+  collapsing `/cats|/clowders|/catteries` into `/entities/*` and
+  killing the "Settings borrows whichever product chrome the user
+  came from" bug class. Leaving mobile bottom-tabs labelled `Lobby`
+  with a fragmented MY-lens-per-product roster would have
+  re-introduced the same IA mismatch this SPEC was opened to close.
+- The owner explicitly instructed the mobile Cats tab must not port
+  web Lobby content; the mobile rail label is `Cats` in both locales.

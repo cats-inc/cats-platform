@@ -2,6 +2,7 @@ import type { TrimmedSidebarConfig } from '../../renderer/sidebars/types';
 import {
   getMobileProductSidebarCopy,
   type MobileProductMode,
+  type MobileTabsCopy,
 } from '../../../../src/mobile/index.js';
 
 const SIDEBAR_ACTION_IDS: Record<
@@ -60,3 +61,40 @@ export function getWorkSidebarConfig(locale?: string | null): TrimmedSidebarConf
 export const chatSidebarConfig: TrimmedSidebarConfig = getChatSidebarConfig('en');
 export const codeSidebarConfig: TrimmedSidebarConfig = getCodeSidebarConfig('en');
 export const workSidebarConfig: TrimmedSidebarConfig = getWorkSidebarConfig('en');
+
+/**
+ * The mobile create-channel contract supports `default | group | direct`
+ * only. A handful of primary-action chips on Chat and Work map to a
+ * "parallel" / "fan-out" creation flow that is desktop-only today.
+ * `getMobileDesktopOnlyAlertCopy` is the single source of truth for
+ * "for this (product, actionId), should the tab show a desktop-only
+ * alert instead of calling createChannel?" — both `chat/index.tsx`
+ * and `work/index.tsx` consume it so a future product can opt into
+ * the same intercept without re-implementing the predicate. Returning
+ * `null` means the action goes through the normal create-channel
+ * path.
+ */
+export interface MobileDesktopOnlyAlertCopy {
+  title: string;
+  body: string;
+}
+
+export function getMobileDesktopOnlyAlertCopy(
+  product: MobileProductMode,
+  actionId: string,
+  copy: MobileTabsCopy,
+): MobileDesktopOnlyAlertCopy | null {
+  if (product === 'chat' && actionId === 'parallel') {
+    return {
+      title: copy.parallelChatDesktopOnlyTitle,
+      body: copy.parallelChatDesktopOnlyBody,
+    };
+  }
+  if (product === 'work' && actionId === 'parallel') {
+    return {
+      title: copy.parallelWorkDesktopOnlyTitle,
+      body: copy.parallelWorkDesktopOnlyBody,
+    };
+  }
+  return null;
+}

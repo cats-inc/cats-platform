@@ -10,7 +10,10 @@ import {
   View,
 } from 'react-native';
 
-import { getWorkSidebarConfig } from '../../../src/api/fixtures/productSidebar';
+import {
+  getMobileDesktopOnlyAlertCopy,
+  getWorkSidebarConfig,
+} from '../../../src/api/fixtures/productSidebar';
 import { useCreateChannel } from '../../../src/renderer/hooks/useCreateChannel';
 import { useProductSidebarData } from '../../../src/renderer/hooks/useProductSidebarData';
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
@@ -31,13 +34,15 @@ export default function WorkSidebarScreen() {
 
   const handlePrimaryAction = useCallback(
     async (actionId: string) => {
-      // The mobile create contract only supports default | group | direct
-      // today; there is no parallel create path. Surface a desktop-only
-      // alert instead of silently falling back to a default channel.
-      if (actionId === 'parallel') {
+      // The mobile create contract supports default | group | direct
+      // only — `+ Parallel Work` has no create path. Route through the
+      // shared desktop-only-alert helper so the predicate stays in
+      // lockstep with `chat/index.tsx`'s parallel-chat intercept.
+      const desktopOnly = getMobileDesktopOnlyAlertCopy('work', actionId, copy);
+      if (desktopOnly) {
         Alert.alert(
-          copy.parallelWorkDesktopOnlyTitle,
-          copy.parallelWorkDesktopOnlyBody,
+          desktopOnly.title,
+          desktopOnly.body,
           [{ text: copy.desktopOnlyOkAction, style: 'cancel' }],
         );
         return;
