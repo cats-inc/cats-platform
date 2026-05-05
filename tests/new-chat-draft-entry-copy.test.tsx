@@ -210,42 +210,40 @@ test('default chat draft expanded to a group with runtime assist hides the chat-
   // chat-product wrapper still supplies it for entryPreset='default'.
   const payload = createPayload();
   payload.chat.newChatAssist = {
-    group: {
-      scopeKey: 'chat:new:group:default',
-      renderSource: 'cache',
-      cacheHit: true,
-      missing: false,
-      stale: false,
-      refreshEligible: false,
-      surfaceDisabled: false,
-      lastFailure: null,
-      bundle: {
-        bundleId: 'chat:new:group:default',
-        scope: {
-          surfaceId: 'chat:new',
-          surfaceMode: 'group',
-          audienceState: 'default',
-        },
-        content: {
-          greeting: 'Round up the room.',
-          entryChips: [
-            {
-              id: 'group-roles',
-              prompt: 'Brief the group, split roles, and ask for a coordinated plan.',
-            },
-          ],
-        },
-        provenance: {
-          originMode: 'runtime',
-          refreshContextHash: 'gca:v1:test-default-expanded-runtime',
-          missionId: null,
-          runId: null,
-        },
-        freshness: {
-          generatedAt: '2026-04-17T12:00:00.000Z',
-          expiresAt: null,
-          lastRefreshStatus: 'ok',
-        },
+    scopeKey: 'chat:new:default:default',
+    renderSource: 'cache',
+    cacheHit: true,
+    missing: false,
+    stale: false,
+    refreshEligible: false,
+    surfaceDisabled: false,
+    lastFailure: null,
+    bundle: {
+      bundleId: 'chat:new:default:default',
+      scope: {
+        surfaceId: 'chat:new',
+        surfaceMode: 'default',
+        audienceState: 'default',
+      },
+      content: {
+        greeting: 'Round up the room.',
+        entryChips: [
+          {
+            id: 'group-roles',
+            prompt: 'Brief the group, split roles, and ask for a coordinated plan.',
+          },
+        ],
+      },
+      provenance: {
+        originMode: 'runtime',
+        refreshContextHash: 'gca:v1:test-default-expanded-runtime',
+        missionId: null,
+        runId: null,
+      },
+      freshness: {
+        generatedAt: '2026-04-17T12:00:00.000Z',
+        expiresAt: null,
+        lastRefreshStatus: 'ok',
       },
     },
   } as typeof payload.chat.newChatAssist;
@@ -765,42 +763,40 @@ test('direct-lane draft ignores Telegram-bound private-lane copy and stays on th
 test('draft prefers payload-backed assist greeting and starter suggestions when the seam provides them', () => {
   const payload = createPayload();
   payload.chat.newChatAssist = {
-    solo: {
-      scopeKey: 'chat:new:solo:default',
-      renderSource: 'cache',
-      cacheHit: true,
-      missing: false,
-      stale: false,
-      refreshEligible: false,
-      surfaceDisabled: false,
-      lastFailure: null,
-      bundle: {
-        bundleId: 'chat:new:solo:default',
-        scope: {
-          surfaceId: 'chat:new',
-          surfaceMode: 'solo',
-          audienceState: 'default',
-        },
-        content: {
-          greeting: 'Payload says hello.',
-          entryChips: [
-            {
-              id: 'payload-plan',
-              prompt: 'Payload asks you to line up the first deliverable before you send anything.',
-            },
-          ],
-        },
-        provenance: {
-          originMode: 'runtime',
-          refreshContextHash: 'gca:v1:test-solo',
-          missionId: null,
-          runId: null,
-        },
-        freshness: {
-          generatedAt: '2026-04-17T12:00:00.000Z',
-          expiresAt: null,
-          lastRefreshStatus: 'ok',
-        },
+    scopeKey: 'chat:new:default:default',
+    renderSource: 'cache',
+    cacheHit: true,
+    missing: false,
+    stale: false,
+    refreshEligible: false,
+    surfaceDisabled: false,
+    lastFailure: null,
+    bundle: {
+      bundleId: 'chat:new:default:default',
+      scope: {
+        surfaceId: 'chat:new',
+        surfaceMode: 'default',
+        audienceState: 'default',
+      },
+      content: {
+        greeting: 'Payload says hello.',
+        entryChips: [
+          {
+            id: 'payload-plan',
+            prompt: 'Payload asks you to line up the first deliverable before you send anything.',
+          },
+        ],
+      },
+      provenance: {
+        originMode: 'runtime',
+        refreshContextHash: 'gca:v1:test-default',
+        missionId: null,
+        runId: null,
+      },
+      freshness: {
+        generatedAt: '2026-04-17T12:00:00.000Z',
+        expiresAt: null,
+        lastRefreshStatus: 'ok',
       },
     },
   } as typeof payload.chat.newChatAssist;
@@ -822,42 +818,40 @@ test('draft prefers payload-backed assist greeting and starter suggestions when 
 test('group draft ignores deterministic payload-backed starter prompts', () => {
   const payload = createPayload();
   payload.chat.newChatAssist = {
-    group: {
-      scopeKey: 'chat:new:group:default',
-      renderSource: 'deterministic',
-      cacheHit: false,
-      missing: true,
-      stale: false,
-      refreshEligible: false,
-      surfaceDisabled: false,
-      lastFailure: null,
-      bundle: {
-        bundleId: 'chat:new:group:default',
-        scope: {
-          surfaceId: 'chat:new',
-          surfaceMode: 'group',
-          audienceState: 'default',
-        },
-        content: {
-          greeting: 'Round up the room.',
-          entryChips: [
-            {
-              id: 'group-roles',
-              prompt: 'Brief the group, split roles, and ask for a coordinated plan.',
-            },
-          ],
-        },
-        provenance: {
-          originMode: 'deterministic',
-          refreshContextHash: 'gca:v1:test-group-deterministic',
-          missionId: null,
-          runId: null,
-        },
-        freshness: {
-          generatedAt: '2026-04-17T12:00:00.000Z',
-          expiresAt: null,
-          lastRefreshStatus: 'never',
-        },
+    scopeKey: 'chat:new:default:default',
+    renderSource: 'deterministic',
+    cacheHit: false,
+    missing: true,
+    stale: false,
+    refreshEligible: false,
+    surfaceDisabled: false,
+    lastFailure: null,
+    bundle: {
+      bundleId: 'chat:new:default:default',
+      scope: {
+        surfaceId: 'chat:new',
+        surfaceMode: 'default',
+        audienceState: 'default',
+      },
+      content: {
+        greeting: 'Round up the room.',
+        entryChips: [
+          {
+            id: 'group-roles',
+            prompt: 'Brief the group, split roles, and ask for a coordinated plan.',
+          },
+        ],
+      },
+      provenance: {
+        originMode: 'deterministic',
+        refreshContextHash: 'gca:v1:test-default-deterministic',
+        missionId: null,
+        runId: null,
+      },
+      freshness: {
+        generatedAt: '2026-04-17T12:00:00.000Z',
+        expiresAt: null,
+        lastRefreshStatus: 'never',
       },
     },
   } as typeof payload.chat.newChatAssist;
@@ -880,42 +874,40 @@ test('group draft ignores deterministic payload-backed starter prompts', () => {
 test('group draft surfaces runtime-origin payload-backed starter prompts', () => {
   const payload = createPayload();
   payload.chat.newChatAssist = {
-    group: {
-      scopeKey: 'chat:new:group:default',
-      renderSource: 'cache',
-      cacheHit: true,
-      missing: false,
-      stale: false,
-      refreshEligible: false,
-      surfaceDisabled: false,
-      lastFailure: null,
-      bundle: {
-        bundleId: 'chat:new:group:default',
-        scope: {
-          surfaceId: 'chat:new',
-          surfaceMode: 'group',
-          audienceState: 'default',
-        },
-        content: {
-          greeting: 'Runtime group greeting.',
-          entryChips: [
-            {
-              id: 'runtime-group-roles',
-              prompt: 'Runtime-generated coordinated plan suggestion.',
-            },
-          ],
-        },
-        provenance: {
-          originMode: 'runtime',
-          refreshContextHash: 'gca:v1:test-group-runtime',
-          missionId: null,
-          runId: null,
-        },
-        freshness: {
-          generatedAt: '2026-04-17T12:00:00.000Z',
-          expiresAt: null,
-          lastRefreshStatus: 'ok',
-        },
+    scopeKey: 'chat:new:default:default',
+    renderSource: 'cache',
+    cacheHit: true,
+    missing: false,
+    stale: false,
+    refreshEligible: false,
+    surfaceDisabled: false,
+    lastFailure: null,
+    bundle: {
+      bundleId: 'chat:new:default:default',
+      scope: {
+        surfaceId: 'chat:new',
+        surfaceMode: 'default',
+        audienceState: 'default',
+      },
+      content: {
+        greeting: 'Runtime new-chat greeting.',
+        entryChips: [
+          {
+            id: 'runtime-group-roles',
+            prompt: 'Runtime-generated coordinated plan suggestion.',
+          },
+        ],
+      },
+      provenance: {
+        originMode: 'runtime',
+        refreshContextHash: 'gca:v1:test-default-runtime',
+        missionId: null,
+        runId: null,
+      },
+      freshness: {
+        generatedAt: '2026-04-17T12:00:00.000Z',
+        expiresAt: null,
+        lastRefreshStatus: 'ok',
       },
     },
   } as typeof payload.chat.newChatAssist;
@@ -936,42 +928,40 @@ test('group draft surfaces runtime-origin payload-backed starter prompts', () =>
 test('group draft keeps runtime-origin helper chips visible while the user types manually', () => {
   const payload = createPayload();
   payload.chat.newChatAssist = {
-    group: {
-      scopeKey: 'chat:new:group:default',
-      renderSource: 'cache',
-      cacheHit: true,
-      missing: false,
-      stale: false,
-      refreshEligible: false,
-      surfaceDisabled: false,
-      lastFailure: null,
-      bundle: {
-        bundleId: 'chat:new:group:default',
-        scope: {
-          surfaceId: 'chat:new',
-          surfaceMode: 'group',
-          audienceState: 'default',
-        },
-        content: {
-          greeting: 'Runtime group greeting.',
-          entryChips: [
-            {
-              id: 'runtime-group-roles',
-              prompt: 'Runtime-generated coordinated plan suggestion.',
-            },
-          ],
-        },
-        provenance: {
-          originMode: 'runtime',
-          refreshContextHash: 'gca:v1:test-group-runtime-manual-typing',
-          missionId: null,
-          runId: null,
-        },
-        freshness: {
-          generatedAt: '2026-04-17T12:00:00.000Z',
-          expiresAt: null,
-          lastRefreshStatus: 'ok',
-        },
+    scopeKey: 'chat:new:default:default',
+    renderSource: 'cache',
+    cacheHit: true,
+    missing: false,
+    stale: false,
+    refreshEligible: false,
+    surfaceDisabled: false,
+    lastFailure: null,
+    bundle: {
+      bundleId: 'chat:new:default:default',
+      scope: {
+        surfaceId: 'chat:new',
+        surfaceMode: 'default',
+        audienceState: 'default',
+      },
+      content: {
+        greeting: 'Runtime new-chat greeting.',
+        entryChips: [
+          {
+            id: 'runtime-group-roles',
+            prompt: 'Runtime-generated coordinated plan suggestion.',
+          },
+        ],
+      },
+      provenance: {
+        originMode: 'runtime',
+        refreshContextHash: 'gca:v1:test-default-runtime-manual-typing',
+        missionId: null,
+        runId: null,
+      },
+      freshness: {
+        generatedAt: '2026-04-17T12:00:00.000Z',
+        expiresAt: null,
+        lastRefreshStatus: 'ok',
       },
     },
   } as typeof payload.chat.newChatAssist;
@@ -992,43 +982,45 @@ test('group draft keeps runtime-origin helper chips visible while the user types
 
 test('direct-lane draft ignores deterministic payload-backed starter prompts', () => {
   const payload = createPayload();
+  // The direct-lane suppression rule lives in the renderer
+  // (`isDirectLaneContext` in `chatNewChatDraftSupport.ts`) — the payload
+  // bundle still carries the +New chat assist; the chip simply never
+  // surfaces while the user is in the DM surface.
   payload.chat.newChatAssist = {
-    direct: {
-      scopeKey: 'chat:new:direct:default',
-      renderSource: 'deterministic',
-      cacheHit: false,
-      missing: true,
-      stale: false,
-      refreshEligible: false,
-      surfaceDisabled: false,
-      lastFailure: null,
-      bundle: {
-        bundleId: 'chat:new:direct:default',
-        scope: {
-          surfaceId: 'chat:new',
-          surfaceMode: 'direct',
-          audienceState: 'default',
-        },
-        content: {
-          greeting: 'Private lane for this Cat.',
-          entryChips: [
-            {
-              id: 'direct-update',
-              prompt: 'Ask this Cat for a focused update or recommendation on this task.',
-            },
-          ],
-        },
-        provenance: {
-          originMode: 'deterministic',
-          refreshContextHash: 'gca:v1:test-direct',
-          missionId: null,
-          runId: null,
-        },
-        freshness: {
-          generatedAt: '2026-04-17T12:00:00.000Z',
-          expiresAt: null,
-          lastRefreshStatus: 'never',
-        },
+    scopeKey: 'chat:new:default:default',
+    renderSource: 'deterministic',
+    cacheHit: false,
+    missing: true,
+    stale: false,
+    refreshEligible: false,
+    surfaceDisabled: false,
+    lastFailure: null,
+    bundle: {
+      bundleId: 'chat:new:default:default',
+      scope: {
+        surfaceId: 'chat:new',
+        surfaceMode: 'default',
+        audienceState: 'default',
+      },
+      content: {
+        greeting: 'Greeting that should stay hidden in DM.',
+        entryChips: [
+          {
+            id: 'direct-update',
+            prompt: 'Ask this Cat for a focused update or recommendation on this task.',
+          },
+        ],
+      },
+      provenance: {
+        originMode: 'deterministic',
+        refreshContextHash: 'gca:v1:test-dm-suppression-deterministic',
+        missionId: null,
+        runId: null,
+      },
+      freshness: {
+        generatedAt: '2026-04-17T12:00:00.000Z',
+        expiresAt: null,
+        lastRefreshStatus: 'never',
       },
     },
   } as typeof payload.chat.newChatAssist;
@@ -1050,43 +1042,44 @@ test('direct-lane draft ignores deterministic payload-backed starter prompts', (
 
 test('direct-lane draft suppresses even runtime-origin payload-backed starter prompts', () => {
   const payload = createPayload();
+  // Same DM-suppression rule as above. The payload carries a
+  // runtime-origin bundle, but the renderer must still drop chips when
+  // `isDirectLaneContext` is true.
   payload.chat.newChatAssist = {
-    direct: {
-      scopeKey: 'chat:new:direct:default',
-      renderSource: 'cache',
-      cacheHit: true,
-      missing: false,
-      stale: false,
-      refreshEligible: false,
-      surfaceDisabled: false,
-      lastFailure: null,
-      bundle: {
-        bundleId: 'chat:new:direct:default',
-        scope: {
-          surfaceId: 'chat:new',
-          surfaceMode: 'direct',
-          audienceState: 'default',
-        },
-        content: {
-          greeting: 'Private lane for this Cat.',
-          entryChips: [
-            {
-              id: 'runtime-direct',
-              prompt: 'Runtime-generated direct-lane suggestion.',
-            },
-          ],
-        },
-        provenance: {
-          originMode: 'runtime',
-          refreshContextHash: 'gca:v1:test-direct-runtime',
-          missionId: null,
-          runId: null,
-        },
-        freshness: {
-          generatedAt: '2026-04-17T12:00:00.000Z',
-          expiresAt: null,
-          lastRefreshStatus: 'ok',
-        },
+    scopeKey: 'chat:new:default:default',
+    renderSource: 'cache',
+    cacheHit: true,
+    missing: false,
+    stale: false,
+    refreshEligible: false,
+    surfaceDisabled: false,
+    lastFailure: null,
+    bundle: {
+      bundleId: 'chat:new:default:default',
+      scope: {
+        surfaceId: 'chat:new',
+        surfaceMode: 'default',
+        audienceState: 'default',
+      },
+      content: {
+        greeting: 'Runtime greeting that should stay hidden in DM.',
+        entryChips: [
+          {
+            id: 'runtime-direct',
+            prompt: 'Runtime-generated suggestion that should stay hidden in DM.',
+          },
+        ],
+      },
+      provenance: {
+        originMode: 'runtime',
+        refreshContextHash: 'gca:v1:test-dm-suppression-runtime',
+        missionId: null,
+        runId: null,
+      },
+      freshness: {
+        generatedAt: '2026-04-17T12:00:00.000Z',
+        expiresAt: null,
+        lastRefreshStatus: 'ok',
       },
     },
   } as typeof payload.chat.newChatAssist;
@@ -1102,7 +1095,7 @@ test('direct-lane draft suppresses even runtime-origin payload-backed starter pr
     />,
   );
 
-  assert.doesNotMatch(markup, /Runtime-generated direct-lane suggestion\./u);
+  assert.doesNotMatch(markup, /Runtime-generated suggestion that should stay hidden in DM\./u);
   assert.doesNotMatch(markup, /draftPromptChip/u);
 });
 

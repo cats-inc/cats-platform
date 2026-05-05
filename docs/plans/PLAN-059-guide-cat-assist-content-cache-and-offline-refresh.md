@@ -101,11 +101,18 @@ part of this plan's implementation scope.
       entry chips only.
 - [ ] Task 1.4: Freeze the first cache-key fields and exact adopted keys:
       - `lobby:default:default`
-      - `chat:new:solo:default`
-      - `chat:new:participant:default`
-      - `chat:new:direct:default`
-      - `chat:new:group:default`
-      - `chat:new:parallel:default`
+      - `chat:new:default:default`
+      - `code:new:default:default`
+
+      `chat:new` is a **single scope**. Composer state (solo / group /
+      parallel) is renderer state, not a cache axis — re-introducing
+      per-composer-state keys (e.g., `chat:new:solo:default`) was tried
+      in an earlier draft and reverted because the scope flipped on
+      every audience toggle and never paid for the cache it cost. Direct
+      lane (`/chat/dm`) is **not** a guide-cat-assist surface (the
+      guide cat / boss cat never authors content for a private 1:1 DM)
+      and therefore has no scope key. See SPEC-067 §V1 Legacy Mapping
+      for the rationale.
 - [ ] Task 1.5: Publish the deterministic baseline mapping from current
       renderer constants/functions into those keys.
 - [ ] Task 1.6: Freeze `refreshContextHash` inputs for v1:

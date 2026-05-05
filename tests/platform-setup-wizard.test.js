@@ -795,26 +795,26 @@ test('GET /api/app-shell uses last-good assist cache when runtime is offline', a
       },
     });
     await upsertGuideCatAssistBundle(config.chatStatePath, {
-      bundleId: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewSolo,
+      bundleId: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault,
       scope: {
         surfaceId: 'chat:new',
-        surfaceMode: 'solo',
+        surfaceMode: 'default',
         audienceState: 'default',
       },
       content: {
-        greeting: 'Cached offline solo greeting',
+        greeting: 'Cached offline new-chat greeting',
         entryChips: [
           {
-            id: 'cached-offline-solo',
-            prompt: 'Use the cached offline solo prompt.',
+            id: 'cached-offline-new-chat',
+            prompt: 'Use the cached offline new-chat prompt.',
           },
         ],
       },
       provenance: {
         originMode: 'runtime',
-        refreshContextHash: 'gca:v1:offline-solo',
-        missionId: 'mission-offline-solo',
-        runId: 'run-offline-solo',
+        refreshContextHash: 'gca:v1:offline-new-chat',
+        missionId: 'mission-offline-new-chat',
+        runId: 'run-offline-new-chat',
       },
       freshness: {
         generatedAt: '2026-03-24T23:59:00.000Z',
@@ -835,10 +835,10 @@ test('GET /api/app-shell uses last-good assist cache when runtime is offline', a
       shell.guideCatAssist?.codeNewDraft?.scopeKey,
       GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.codeNewDefault,
     );
-    assert.equal(shell.chat.newChatAssist?.solo.renderSource, 'cache');
+    assert.equal(shell.chat.newChatAssist?.renderSource, 'cache');
     assert.equal(
-      shell.chat.newChatAssist?.solo.bundle.content.entryChips[0]?.prompt,
-      'Use the cached offline solo prompt.',
+      shell.chat.newChatAssist?.bundle.content.entryChips[0]?.prompt,
+      'Use the cached offline new-chat prompt.',
     );
   });
 });
@@ -936,13 +936,13 @@ test('PUT /api/platform/guide-cat hydrates assist cache without requiring an app
       config.chatStatePath,
       GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
     );
-    const soloBundle = await waitForGuideCatAssistBundle(
+    const newChatBundle = await waitForGuideCatAssistBundle(
       config.chatStatePath,
-      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewSolo,
+      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault,
     );
 
     assert.equal(lobbyBundle.freshness.lastRefreshStatus, 'skipped');
-    assert.equal(soloBundle.freshness.lastRefreshStatus, 'skipped');
+    assert.equal(newChatBundle.freshness.lastRefreshStatus, 'skipped');
   });
 });
 
@@ -1023,11 +1023,11 @@ test('PATCH /api/platform/guide-cat status=active rehydrates assist cache after 
     assert.equal(restoreResponse.status, 200);
     await waitForGuideCatAssistRefreshIdle(config.chatStatePath);
 
-    const parallelBundle = await waitForGuideCatAssistBundle(
+    const newChatBundle = await waitForGuideCatAssistBundle(
       config.chatStatePath,
-      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParallel,
+      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault,
     );
-    assert.equal(parallelBundle.freshness.lastRefreshStatus, 'skipped');
+    assert.equal(newChatBundle.freshness.lastRefreshStatus, 'skipped');
   });
 });
 

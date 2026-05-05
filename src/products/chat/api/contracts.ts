@@ -39,7 +39,7 @@ import type {
   RoomWorkflowTurn,
 } from '../../../shared/roomRouting.js';
 import type {
-  GuideCatAssistNewChatByMode,
+  GuideCatAssistSurfaceReadModel,
 } from '../../../shared/guideCatAssist.js';
 import type {
   PlatformHostEnvelope,
@@ -547,7 +547,7 @@ export interface ChatShellState {
   advancedDraftControls?: AdvancedDraftControlsPreferences;
   folderBrowsePreferences?: FolderBrowsePreferences;
   botBindings: ChatBotBindingSummary[];
-  newChatAssist?: GuideCatAssistNewChatByMode | null;
+  newChatAssist?: GuideCatAssistSurfaceReadModel | null;
 }
 
 export interface AppShellPayload extends PlatformHostEnvelope {

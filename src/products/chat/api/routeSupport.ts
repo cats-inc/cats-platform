@@ -365,7 +365,7 @@ export async function buildAppShellPayload(
         animationMode: platformPrefs.lobbyAnimationMode,
       },
       lobbyGuideCatAssist: guideCatAssist.lobby,
-      newChatAssist: guideCatAssist.newChatByMode,
+      newChatAssist: guideCatAssist.newChat,
       codeGuideCatAssist: guideCatAssist.newCode,
       runtimeSetup,
       scopeId,

@@ -11,10 +11,6 @@ export type GuideCatAssistSurfaceId =
   | (string & {});
 export type GuideCatAssistSurfaceMode =
   | 'default'
-  | 'solo'
-  | 'direct'
-  | 'group'
-  | 'parallel'
   | (string & {});
 export type GuideCatAssistAudienceState =
   | 'default'
@@ -126,27 +122,24 @@ export interface GuideCatAssistRefreshContextInput {
   assistTemplateRevision?: string | null;
 }
 
+/**
+ * The +New chat workspace is a single guide-cat-assist surface. Earlier
+ * revisions split it by composer state (`solo`/`direct`/`group`/`parallel`)
+ * and gave each one its own scope key, but that conflated stable surface
+ * identity with transient composer state — the user lands on `/chat/new`
+ * regardless and shapes the chat through the composer. Direct lane is
+ * outside guide-cat-assist altogether (DM has no helper chips and the
+ * guide cat / boss cat will never insert content into a private 1:1
+ * conversation), so it does not get its own scope key here either. If
+ * runtime-backed generation later produces meaningfully different
+ * content for some sub-context, that is the moment to introduce a new
+ * scope key — not before.
+ */
 export const GUIDE_CAT_ASSIST_V1_SCOPE_KEYS = {
   lobbyDefault: 'lobby:default:default',
-  chatNewSolo: 'chat:new:solo:default',
-  chatNewDirect: 'chat:new:direct:default',
-  chatNewGroup: 'chat:new:group:default',
-  chatNewParallel: 'chat:new:parallel:default',
+  chatNewDefault: 'chat:new:default:default',
   codeNewDefault: 'code:new:default:default',
 } as const;
-
-export const GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE = {
-  solo: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewSolo,
-  direct: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDirect,
-  group: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewGroup,
-  parallel: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParallel,
-} as const;
-
-export type GuideCatAssistNewChatMode = keyof typeof GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE;
-export type GuideCatAssistNewChatByMode = Record<
-  GuideCatAssistNewChatMode,
-  GuideCatAssistSurfaceReadModel
->;
 
 type StableJsonValue =
   | string

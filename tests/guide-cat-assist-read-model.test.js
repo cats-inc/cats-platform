@@ -48,14 +48,16 @@ test('chat guide cat assist read model falls back to deterministic baseline when
   assert.equal(readModel.lobby.cacheHit, false);
   assert.equal(readModel.lobby.refreshEligible, false);
   assert.equal(readModel.lobby.bundle.scope.surfaceId, 'lobby');
-  assert.equal(readModel.newChatByMode.solo.renderSource, 'deterministic');
-  assert.equal(readModel.newChatByMode.direct.bundle.scope.surfaceMode, 'direct');
+  // +New chat is a single scope (`chat:new:default`) — composer mode is
+  // renderer state, not a cache axis. Deterministic baseline ships an
+  // empty chip array; runtime-origin chips are the only kind the
+  // renderer ever displays.
+  assert.equal(readModel.newChat.renderSource, 'deterministic');
+  assert.equal(readModel.newChat.bundle.scope.surfaceId, 'chat:new');
+  assert.equal(readModel.newChat.bundle.scope.surfaceMode, 'default');
+  assert.equal(readModel.newChat.bundle.content.entryChips.length, 0);
   assert.equal(readModel.newCode.bundle.scope.surfaceId, 'code:new');
-  assert.equal(readModel.newCode.bundle.content.entryChips.length, 3);
-  assert.match(
-    readModel.newChatByMode.direct.bundle.content.entryChips[0]?.prompt ?? '',
-    /this Cat/,
-  );
+  assert.equal(readModel.newCode.bundle.content.entryChips.length, 5);
 });
 
 test('chat guide cat assist read model prefers cache, respects overrides, and exposes refresh eligibility', async () => {
@@ -65,7 +67,7 @@ test('chat guide cat assist read model prefers cache, respects overrides, and ex
   await writeGuideCatAssistConfig(chatStatePath, {
     schemaVersion: 1,
     updatedAt: '2026-04-17T12:00:00.000Z',
-    disabledSurfaceKeys: [GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewGroup],
+    disabledSurfaceKeys: [GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault],
     deterministicSeed: 'seed-42',
     curatedOverrides: {
       [GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault]: {
@@ -114,8 +116,8 @@ test('chat guide cat assist read model prefers cache, respects overrides, and ex
   assert.equal(readModel.lobby.stale, true);
   assert.equal(readModel.lobby.refreshEligible, true);
   assert.equal(readModel.lobby.bundle.content.greeting, 'Override lobby greeting');
-  assert.equal(readModel.newChatByMode.group.surfaceDisabled, true);
-  assert.equal(readModel.newChatByMode.group.refreshEligible, false);
+  assert.equal(readModel.newChat.surfaceDisabled, true);
+  assert.equal(readModel.newChat.refreshEligible, false);
 });
 
 test('createAppShell carries guide cat assist read models into lobby and chat payloads', async () => {
@@ -146,15 +148,15 @@ test('createAppShell carries guide cat assist read models into lobby and chat pa
       ownerDisplayName: 'Owner',
       ownerAvatarColor: null,
       lobbyGuideCatAssist: guideCatAssist.lobby,
-      newChatAssist: guideCatAssist.newChatByMode,
+      newChatAssist: guideCatAssist.newChat,
       codeGuideCatAssist: guideCatAssist.newCode,
     },
   );
 
   assert.equal(payload.lobby.guideCatAssist?.scopeKey, GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault);
   assert.equal(
-    payload.chat.newChatAssist?.parallel.scopeKey,
-    GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParallel,
+    payload.chat.newChatAssist?.scopeKey,
+    GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault,
   );
   assert.equal(
     payload.guideCatAssist?.codeNewDraft?.scopeKey,
@@ -266,9 +268,8 @@ test('guide cat assist refresh can materialize eligible scopes into the local ca
     '2026-04-17T15:00:00.000Z',
   );
   assert.equal(
-    cache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewSolo]?.freshness.lastRefreshStatus,
+    cache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault]?.freshness.lastRefreshStatus,
     'skipped',
   );
-  assert.ok(cache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParallel]);
   assert.ok(cache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.codeNewDefault]);
 });

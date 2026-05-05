@@ -1,12 +1,9 @@
 import type { GuideCatRecord } from '../../../core/types.js';
 import {
-  type GuideCatAssistNewChatByMode,
-  GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE,
   buildGuideCatAssistRefreshContextHash,
   createGuideCatAssistScopeKey,
   isGuideCatAssistBundleStale,
   type GuideCatAssistContent,
-  type GuideCatAssistNewChatMode,
   type GuideCatAssistScope,
   type GuideCatAssistSurfaceReadModel,
 } from '../../../shared/guideCatAssist.js';
@@ -24,7 +21,10 @@ import {
 
 export interface ChatGuideCatAssistReadModel {
   lobby: GuideCatAssistSurfaceReadModel;
-  newChatByMode: GuideCatAssistNewChatByMode;
+  /** Single +New chat surface read model. Composer mode (solo / group /
+   * parallel) is renderer state, not a separate cache scope — see
+   * `shared/guideCatAssist.ts` `GUIDE_CAT_ASSIST_V1_SCOPE_KEYS`. */
+  newChat: GuideCatAssistSurfaceReadModel;
   newCode: GuideCatAssistSurfaceReadModel;
 }
 
@@ -204,38 +204,32 @@ export async function resolveChatGuideCatAssistReadModel(input: {
         seed: config.deterministicSeed,
       }),
     }),
-    newChatByMode: Object.keys(GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE)
-      .reduce<GuideCatAssistNewChatByMode>((acc, mode) => {
-        const newChatMode = mode as GuideCatAssistNewChatMode;
-        acc[newChatMode] = resolveSurfaceReadModel({
-          scope: {
-            surfaceId: 'chat:new',
-            surfaceMode: newChatMode,
-            audienceState: 'default',
-          },
-          guideCatExists: Boolean(input.guideCat),
-          runtimeReachable: input.runtimeReachable,
-          refreshContextHash: resolveGuideCatAssistRefreshContextHash({
-            scope: {
-              surfaceId: 'chat:new',
-              surfaceMode: newChatMode,
-              audienceState: 'default',
-            },
-            guideCat: input.guideCat,
-            ownerDisplayName: input.ownerDisplayName,
-          }),
-          refreshRuntimeEnabled: config.refreshPreferences.runtimeRefreshEnabled,
-          disabledSurfaceKeys: config.disabledSurfaceKeys,
-          curatedOverrides: config.curatedOverrides,
-          cacheBundles: cache.bundles,
-          refreshFailures: cache.refreshFailures,
-          baselineBundle: resolveNewChatGuideCatAssistBaseline({
-            mode: newChatMode,
-            seed: config.deterministicSeed,
-          }),
-        });
-        return acc;
-      }, {} as GuideCatAssistNewChatByMode),
+    newChat: resolveSurfaceReadModel({
+      scope: {
+        surfaceId: 'chat:new',
+        surfaceMode: 'default',
+        audienceState: 'default',
+      },
+      guideCatExists: Boolean(input.guideCat),
+      runtimeReachable: input.runtimeReachable,
+      refreshContextHash: resolveGuideCatAssistRefreshContextHash({
+        scope: {
+          surfaceId: 'chat:new',
+          surfaceMode: 'default',
+          audienceState: 'default',
+        },
+        guideCat: input.guideCat,
+        ownerDisplayName: input.ownerDisplayName,
+      }),
+      refreshRuntimeEnabled: config.refreshPreferences.runtimeRefreshEnabled,
+      disabledSurfaceKeys: config.disabledSurfaceKeys,
+      curatedOverrides: config.curatedOverrides,
+      cacheBundles: cache.bundles,
+      refreshFailures: cache.refreshFailures,
+      baselineBundle: resolveNewChatGuideCatAssistBaseline({
+        seed: config.deterministicSeed,
+      }),
+    }),
     newCode: resolveSurfaceReadModel({
       scope: newCodeScope,
       guideCatExists: Boolean(input.guideCat),
@@ -284,7 +278,7 @@ export async function refreshGuideCatAssistEligibleScopes(input: {
   ]);
   const refreshableSurfaces = [
     readModel.lobby,
-    ...Object.values(readModel.newChatByMode),
+    readModel.newChat,
     readModel.newCode,
   ].filter((surface) => surface.refreshEligible);
   if (refreshableSurfaces.length === 0) {

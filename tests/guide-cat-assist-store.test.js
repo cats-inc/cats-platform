@@ -96,10 +96,10 @@ test('guide cat assist refresh context hash stays stable across object key order
 
   assert.equal(alphaHash, betaHash);
   assert.deepEqual(
-    parseGuideCatAssistScopeKey(GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewSolo),
+    parseGuideCatAssistScopeKey(GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault),
     {
       surfaceId: 'chat:new',
-      surfaceMode: 'solo',
+      surfaceMode: 'default',
       audienceState: 'default',
     },
   );

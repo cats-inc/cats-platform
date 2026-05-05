@@ -287,8 +287,11 @@ The first slice should freeze one cache-key shape:
   - `chat:new`
   - later `chat:composer`
 - `surfaceMode`
-  - `default` when the surface has no mode split
-  - `solo`, `participant`, `direct`, `group`, or `parallel` for `chat:new`
+  - `default` is the only `chat:new` mode today. Composer state
+    (solo / group / parallel) is **not** a `surfaceMode` axis — see the
+    "Why composer mode is not a scope" note below.
+  - reserved for future surface-level splits where the cached bundle
+    really would diverge per mode (e.g., a different surface entirely)
 - `audienceState`
   - `default` for current greeting/chip migration
   - later `first_run`, `returning`, or `recap_candidate` when those surfaces
@@ -301,33 +304,44 @@ first cache key.
 ### V1 Legacy Mapping
 
 The first migration should preserve the current deterministic sources through a
-stable mode-to-scope mapping:
+stable mapping:
 
-| Current source | Current mode split | V1 scope key(s) | Notes |
-|------|------|------|------|
-| `LOBBY_GREETING_LINES` | none | `lobby:default:default` | Lobby greeting baseline |
-| `DRAFT_GREETING_LINES` | none | `chat:new:solo:default`, `chat:new:participant:default`, `chat:new:direct:default`, `chat:new:group:default`, `chat:new:parallel:default` | Same greeting baseline reused across initial `+New chat` modes |
-| `CODE_DRAFT_GREETING_LINES` | none | `code:new:default:default` | `+New code` greeting baseline |
-| `resolveDraftStarterSuggestionsBaseline('solo')` | `solo` | `chat:new:solo:default` | Starter chips (baseline content; renderer only surfaces when `originMode === 'runtime'`) |
-| `resolveDraftStarterSuggestionsBaseline('participant')` | `participant` | `chat:new:participant:default` | Starter chips (baseline content; renderer only surfaces when `originMode === 'runtime'`) |
-| `resolveDraftStarterSuggestionsBaseline('direct')` | `direct` | `chat:new:direct:default` | Starter chips produced for the baseline; renderer suppresses them in direct lane regardless of origin (private chat rule) |
-| `resolveDraftStarterSuggestionsBaseline('group')` | `group` | `chat:new:group:default` | Starter chips (baseline content; renderer only surfaces when `originMode === 'runtime'`) |
-| `resolveDraftStarterSuggestionsBaseline('parallel')` | `parallel` | `chat:new:parallel:default` | Starter chips (baseline content; renderer only surfaces when `originMode === 'runtime'`) |
-| `resolveNewCodeGuideCatAssistBaseline()` | `default` | `code:new:default:default` | Short helper chips for `+New code` |
+| Current source | V1 scope key | Notes |
+|------|------|------|
+| `LOBBY_GREETING_LINES` | `lobby:default:default` | Lobby greeting baseline |
+| `DRAFT_GREETING_LINES` | `chat:new:default:default` | Single +New chat greeting baseline |
+| `CODE_DRAFT_GREETING_LINES` | `code:new:default:default` | `+New code` greeting baseline |
+| `resolveNewChatGuideCatAssistBaseline()` | `chat:new:default:default` | Single +New chat assist bundle (greeting + empty `entryChips`). Composer state shapes the local draft — it does not pick a different bundle |
+| `resolveNewCodeGuideCatAssistBaseline()` | `code:new:default:default` | Short helper chips for `+New code` |
 
-This mapping is intentionally narrower than the long-term bundle model. It
-freezes the first migration target so existing greeting and starter-suggestion
-behavior can move into the shared assist cache without changing user-facing
-mode semantics.
+Direct lane (`/chat/dm/:catId`) is intentionally **absent** from this table.
+DM is not a guide-cat-assist surface: the guide cat / boss cat will never insert
+content into a private 1:1 conversation, so DM has no greeting bundle, no chip
+pool, and no scope key. The renderer enforces chip suppression on direct-lane
+drafts via `isDirectLaneContext`, not via a `chat:dm` scope lookup.
+
+#### Why composer mode is not a scope
+
+Earlier revisions split `chat:new` into per-composer-state scope keys
+(`chat:new:solo:default`, `chat:new:direct:default`, `chat:new:group:default`,
+`chat:new:parallel:default`) and exposed them as a `GuideCatAssistNewChatByMode`
+record on the chat payload. That conflated **stable surface identity** with
+**transient composer state**: the user lands on `/chat/new` regardless and
+shapes the chat through the composer, so the cache key flipped on every
+audience toggle and no cache slot ever stayed warm long enough to pay for
+itself. The split was reverted; do not reintroduce it without a concrete
+runtime-backed reason that meaningfully diverges per mode (and even then
+prefer encoding mode in `audienceState` or `variantKey` rather than
+`surfaceMode`).
 
 `+New chat` starter chips carry an additional renderer visibility rule that the
 cache does not itself enforce: the composer only shows chips from a bundle whose
-`provenance.originMode === 'runtime'`, and the `direct` lane never shows chips
-from any source. Deterministic baselines therefore populate the cache for parity
-and offline readiness but stay invisible in the composer until a runtime refresh
-writes a runtime-origin bundle. See
-`src/products/shared/renderer/components/chatNewChatDraftSupport.ts` for the
-gate implementation.
+`provenance.originMode === 'runtime'`, and the direct lane never shows chips
+from any source (suppressed via `isDirectLaneContext`, not via a separate
+scope). Deterministic baselines therefore ship empty `entryChips` and stay
+invisible in the composer until a runtime refresh writes a runtime-origin
+bundle. See `src/products/shared/renderer/components/chatNewChatDraftSupport.ts`
+for the gate implementation.
 
 ### Bundle Shape
 
@@ -353,10 +367,10 @@ Illustrative example:
 
 ```json
 {
-  "bundleId": "chat:new:solo:returning",
+  "bundleId": "chat:new:default:returning",
   "scope": {
     "surfaceId": "chat:new",
-    "surfaceMode": "solo",
+    "surfaceMode": "default",
     "product": "chat",
     "audienceState": "returning"
   },

@@ -3,7 +3,12 @@ import test from 'node:test';
 
 import { resolveDraftStarterSuggestionContext } from '../src/products/chat/renderer/draftStarterSuggestionContext.ts';
 
-test('starter suggestion context marks direct lanes separately from solo drafts', () => {
+test('starter suggestion context surfaces isDirectLaneContext separately from composer mode', () => {
+  // Direct lane (`/chat/dm/:catId` with no add-cat affordance) is its
+  // own surface — not a sub-mode of +New chat. The `mode` value is
+  // composer state for the +New chat surface only; on direct lane the
+  // mode falls through to `'solo'` and the renderer suppresses chips
+  // via the dedicated `isDirectLaneContext` flag.
   assert.deepEqual(
     resolveDraftStarterSuggestionContext({
       allowAddCat: false,
@@ -14,7 +19,7 @@ test('starter suggestion context marks direct lanes separately from solo drafts'
       parallelTargetCount: 0,
     }),
     {
-      mode: 'direct',
+      mode: 'solo',
       isGroupDraft: false,
       isDirectLaneContext: true,
     },

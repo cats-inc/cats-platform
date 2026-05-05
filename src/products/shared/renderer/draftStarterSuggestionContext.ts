@@ -1,8 +1,17 @@
 export type NewChatPreset = 'default' | 'group' | 'parallel';
+
+/**
+ * Composer-state hint used by the renderer to label the +New chat draft.
+ * This is purely renderer-internal — it does NOT correspond to a
+ * guide-cat-assist scope. The chat-new surface is a single scope (see
+ * `GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault`); composer mode just
+ * shapes how the local draft renders. Direct lane is a separate surface
+ * altogether and never produces helper chips, so it is not represented
+ * here — use `isDirectLaneContext` to suppress chip rendering instead.
+ */
 export type DraftStarterSuggestionMode =
   | 'solo'
   | 'group'
-  | 'direct'
   | 'parallel';
 
 export interface DraftStarterSuggestionContext {
@@ -27,11 +36,9 @@ export function resolveDraftStarterSuggestionContext(input: {
     && input.hasDefaultRecipientCat;
   const mode: DraftStarterSuggestionMode = isParallelMode
     ? 'parallel'
-    : isDirectLaneContext
-      ? 'direct'
-      : isGroupDraft
-        ? 'group'
-        : 'solo';
+    : isGroupDraft
+      ? 'group'
+      : 'solo';
 
   return {
     mode,

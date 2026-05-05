@@ -13,12 +13,10 @@ import {
 } from './i18n/index.js';
 import {
   GUIDE_CAT_ASSIST_REFRESH_CONTEXT_HASH_PREFIX,
-  GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE,
   GUIDE_CAT_ASSIST_V1_SCOPE_KEYS,
   createGuideCatAssistBundleId,
   type GuideCatAssistBundle,
   type GuideCatAssistContent,
-  type GuideCatAssistNewChatMode,
   type GuideCatAssistScope,
 } from './guideCatAssist.js';
 
@@ -39,15 +37,6 @@ export const CODE_DRAFT_GREETING_LINES = translateGuideCatAssistLines(
   CODE_NEW_GUIDE_CAT_ASSIST_GREETING_KEYS,
   defaultGuideCatAssistTranslator,
 );
-
-function withCatName(
-  template: string,
-  catName: string | null | undefined,
-  fallback: string,
-): string {
-  const name = catName?.trim() || fallback;
-  return template.replaceAll('{cat}', name);
-}
 
 function buildDeterministicRefreshContextHash(scopeKey: string): string {
   const digest = createHash('sha256')
@@ -126,116 +115,34 @@ export function resolveLobbyGuideCatAssistBaseline(options: {
   });
 }
 
-export function resolveDraftStarterSuggestionsBaseline(input: {
-  mode: GuideCatAssistNewChatMode;
-  defaultRecipientName?: string | null;
-  t?: GuideCatAssistTranslator;
-}): GuideCatAssistContent['entryChips'] {
-  const t = input.t ?? defaultGuideCatAssistTranslator;
-  const fallbackCatName = t(messageKeys.sharedSettingsCatsFallbackCatName);
-  switch (input.mode) {
-    case 'direct':
-      return [
-        {
-          id: 'direct-update',
-          prompt: withCatName(
-            t(messageKeys.chatNewChatDraftAssistDirectUpdatePrompt),
-            input.defaultRecipientName,
-            fallbackCatName,
-          ),
-        },
-        {
-          id: 'direct-next-step',
-          prompt: withCatName(
-            t(messageKeys.chatNewChatDraftAssistDirectNextStepPrompt),
-            input.defaultRecipientName,
-            fallbackCatName,
-          ),
-        },
-        {
-          id: 'direct-iterate',
-          prompt: withCatName(
-            t(messageKeys.chatNewChatDraftAssistDirectIteratePrompt),
-            input.defaultRecipientName,
-            fallbackCatName,
-          ),
-        },
-      ];
-    case 'group':
-      return [
-        {
-          id: 'group-roles',
-          prompt: t(messageKeys.chatNewChatDraftAssistGroupRolesPrompt),
-        },
-        {
-          id: 'group-compare',
-          prompt: t(messageKeys.chatNewChatDraftAssistGroupComparePrompt),
-        },
-        {
-          id: 'group-next-steps',
-          prompt: t(messageKeys.chatNewChatDraftAssistGroupNextStepsPrompt),
-        },
-      ];
-    case 'parallel':
-      return [
-        {
-          id: 'parallel-compare',
-          prompt: t(messageKeys.chatNewChatDraftAssistParallelComparePrompt),
-        },
-        {
-          id: 'parallel-options',
-          prompt: t(messageKeys.chatNewChatDraftAssistParallelOptionsPrompt),
-        },
-        {
-          id: 'parallel-tradeoffs',
-          prompt: t(messageKeys.chatNewChatDraftAssistParallelTradeoffsPrompt),
-        },
-      ];
-    case 'solo':
-    default:
-      return [
-        {
-          id: 'solo-plan',
-          prompt: t(messageKeys.chatNewChatDraftAssistSoloPlanPrompt),
-        },
-        {
-          id: 'solo-draft',
-          prompt: t(messageKeys.chatNewChatDraftAssistSoloDraftPrompt),
-        },
-        {
-          id: 'solo-decide',
-          prompt: t(messageKeys.chatNewChatDraftAssistSoloDecidePrompt),
-        },
-      ];
-  }
-}
-
+/**
+ * The +New chat surface is a single deterministic baseline. Composer
+ * mode (solo / group / parallel) is renderer state, not a guide-cat-assist
+ * scope axis, so the baseline does not switch on it. The renderer ignores
+ * deterministic-origin chips today (only runtime-origin chips render —
+ * see `chatNewChatDraftSupport.ts`'s `resolvePayloadDraftAssist`), so the
+ * baseline ships an empty `entryChips` array; the cached bundle still
+ * carries a stable greeting for offline / first-paint use.
+ */
 export function resolveNewChatGuideCatAssistBaseline(input: {
-  mode: GuideCatAssistNewChatMode;
-  defaultRecipientName?: string | null;
   seed?: string | null;
   t?: GuideCatAssistTranslator;
-}): GuideCatAssistBundle {
+} = {}): GuideCatAssistBundle {
   const t = input.t ?? defaultGuideCatAssistTranslator;
   const scope: GuideCatAssistScope = {
     surfaceId: 'chat:new',
-    surfaceMode: input.mode,
+    surfaceMode: 'default',
     audienceState: 'default',
   };
-  const scopeKey = GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE[input.mode];
   return createDeterministicBaselineBundle(scope, {
     greeting: selectDeterministicLine(translateGuideCatAssistLines(
       CHAT_NEW_GUIDE_CAT_ASSIST_GREETING_KEYS,
       t,
     ), {
-      scopeKey,
+      scopeKey: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault,
       seed: input.seed,
     }),
-    entryChips: resolveDraftStarterSuggestionsBaseline({
-      mode: input.mode,
-      defaultRecipientName: input.defaultRecipientName,
-      t,
-    }),
+    entryChips: [],
   });
 }
 

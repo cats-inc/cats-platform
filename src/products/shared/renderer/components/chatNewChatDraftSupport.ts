@@ -50,7 +50,12 @@ export interface DraftComposerStackParticipant {
 
 // Draft helper chips are gated on two rules the renderer treats as non-negotiable:
 //   1. Direct lane is a private chat; no prompt source may ever insert chips.
-//   2. Non-direct modes only surface chips sourced from a runtime-refreshed bundle
+//      The guide cat / boss cat will never insert content into a 1:1 DM and
+//      cannot author messages on the user's behalf, so DM has no assist
+//      content at all. Suppression is gated on `isDirectLaneContext`, not on
+//      a "direct" mode value — direct lane is a separate surface, not a
+//      sub-mode of +New chat.
+//   2. Non-direct surfaces only surface chips sourced from a runtime-refreshed bundle
 //      (provenance.originMode === 'runtime'); deterministic baselines stay silent so the
 //      composer does not advertise generic guidance the user has not opted into.
 // The payload bundle is therefore the single source of visible chips. Earlier revisions
@@ -59,10 +64,10 @@ export interface DraftComposerStackParticipant {
 // here rather than re-introducing that seam.
 function resolvePayloadDraftAssist(input: {
   payload: AppShellPayload;
-  mode: NonNullable<ReturnType<typeof resolveDraftStarterSuggestionContext>['mode']>;
+  isDirectLaneContext: boolean;
   t: ChatNewChatDraftTranslator;
 }) {
-  const assist = input.payload.chat.newChatAssist?.[input.mode] ?? null;
+  const assist = input.payload.chat.newChatAssist ?? null;
   if (!assist) {
     return {
       greeting: null,
@@ -70,12 +75,12 @@ function resolvePayloadDraftAssist(input: {
     };
   }
 
-  const isRuntimeOriginForVisibleMode =
-    input.mode !== 'direct' && assist.bundle.provenance.originMode === 'runtime';
+  const isRuntimeOriginForVisibleSurface =
+    !input.isDirectLaneContext && assist.bundle.provenance.originMode === 'runtime';
 
   return {
     greeting: resolveGuideCatAssistGreeting(assist, input.t),
-    starterSuggestions: isRuntimeOriginForVisibleMode
+    starterSuggestions: isRuntimeOriginForVisibleSurface
       ? assist.bundle.content.entryChips.map((chip) => ({
           id: chip.id,
           prompt: chip.prompt,
@@ -142,13 +147,14 @@ export function resolveChatNewChatDraftViewState(input: {
   });
   const payloadDraftAssist = resolvePayloadDraftAssist({
     payload: input.payload,
-    mode: draftSuggestionContext.mode,
+    isDirectLaneContext: draftSuggestionContext.isDirectLaneContext,
     t: input.t,
   });
   const visibleDraftCatIds = draftParticipants.participantCatIds;
-  // Direct lane is private chat: no chips from any source. Other modes only surface
-  // runtime-origin payload chips (resolvePayloadDraftAssist already enforces this).
-  const starterSuggestionInput = draftSuggestionContext.mode === 'direct'
+  // Direct lane is private chat: no chips from any source. Other surfaces only
+  // surface runtime-origin payload chips (resolvePayloadDraftAssist already
+  // enforces this).
+  const starterSuggestionInput = draftSuggestionContext.isDirectLaneContext
     ? []
     : (payloadDraftAssist.starterSuggestions ?? []);
   const visibleStarterSuggestions = resolveVisibleDraftStarterSuggestions({
