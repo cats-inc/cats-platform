@@ -261,8 +261,9 @@ Telegram/Web inbound direct message
 
 ### Posture Event Model
 
-Product posture is event-sourced in the message stream. Every recognized
-product-intent command writes a system segment with:
+Product posture is event-sourced in the message stream. Every accepted
+direct-lane product-intent command writes a system segment whose
+`metadata.directSlashModePostureChange` carries:
 
 ```ts
 interface DirectSlashModePostureChangeMetadata {

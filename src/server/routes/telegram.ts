@@ -30,6 +30,7 @@ import {
   type TelegramInteractionMode,
 } from '../../platform/transports/telegram/commandRouter.js';
 import { createDefaultCommands } from '../../platform/transports/telegram/commands/index.js';
+import { shouldBridgeTelegramProductIntentCommand } from '../telegramProductIntentCommands.js';
 
 const commandRouter = createTelegramCommandRouter();
 commandRouter.registerAll(createDefaultCommands());
@@ -329,7 +330,10 @@ export async function handleTelegramWebhook(
     if (receipt.status === 'accepted') {
       // Check for slash commands before bridging to room
       const messageText = update.message?.text?.trim() ?? '';
-      if (commandRouter.isCommand(messageText)) {
+      if (
+        commandRouter.isCommand(messageText)
+        && !shouldBridgeTelegramProductIntentCommand(messageText)
+      ) {
         const binding = context.selectedBotBinding ?? context.defaultBotBinding;
         const chatState = await dependencies.chatStore.read();
         const cat = binding ? findBindingChatCat(chatState, binding) : null;

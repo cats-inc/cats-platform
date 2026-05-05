@@ -46,15 +46,15 @@ The direct lane remains the conversational follow-up surface.
 
 ### Phase 1: Parser, posture events, and source refs
 
-- [ ] Task 1.1: Add a pure Chat-owned product-intent command parser for
+- [x] Task 1.1: Add a pure Chat-owned product-intent command parser for
       `/chat`, `/work`, and `/code`. The helper must be shared by Telegram and
       Web ingress, strip Telegram bot suffixes such as `/work@botname`, trim
       whitespace, return structured `argumentText`, and avoid transport-local
       parsing branches.
-- [ ] Task 1.2: Add tests proving `/start`, `/help`, `/commands`, `/status`,
+- [x] Task 1.2: Add tests proving `/start`, `/help`, `/commands`, `/status`,
       and `/mode` remain transport-control commands while `/chat`, `/work`, and
       `/code` are product-intent commands.
-- [ ] Task 1.3: Define and implement the
+- [x] Task 1.3: Define and implement the
       `metadata.directSlashModePostureChange` system-segment schema from
       SPEC-104. Per-lane posture may be cached for routing, but message-stream
       events are the audit source of truth.
@@ -74,17 +74,17 @@ The direct lane remains the conversational follow-up surface.
       (`completed`, `cancelled`, or `archived`), and start a fresh intake on
       a subsequent `/work` or `/code` rather than auto-resuming any earlier
       Work Item. Include tests for each clear/no-resume condition.
-- [ ] Task 1.6: Register `/chat`, `/work`, and `/code` through the same
+- [x] Task 1.6: Register `/chat`, `/work`, and `/code` through the same
       Telegram `setMyCommands` path that already owns SPEC-038 commands.
-- [ ] Task 1.7: Add tests proving direct lanes remain `direct_message` after
+- [x] Task 1.7: Add tests proving direct lanes remain `direct_message` after
       posture changes, repeated posture commands are idempotent, and non-direct
       channel usage returns a visible rejection without changing posture.
-- [ ] Task 1.8: Hook the Chat composer (Web ingress) so messages starting
+- [x] Task 1.8: Hook the Chat composer (Web ingress) so messages starting
       with `/` invoke the shared parser before send. Recognized product-intent
       commands route through the same dispatch path as Telegram-origin
       commands; non-recognized `/`-prefixed text passes through as ordinary
       message content (tested in Task 1.2).
-- [ ] Task 1.9: Update SPEC-038's `/help` and `/commands` outputs to list
+- [x] Task 1.9: Update SPEC-038's `/help` and `/commands` outputs to list
       `/chat`, `/work`, and `/code` alongside the transport-control commands.
       This is a docs-and-string follow-up; no new transport routing logic.
 
@@ -327,6 +327,8 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Posture event slice: Web and Telegram product-intent commands now enter the same Chat dispatch boundary; recognized `/chat` / `/work` / `/code` messages write the user command, a visible system acknowledgement, and a Core system segment carrying `directSlashModePostureChange`. Non-direct usage produces a visible rejection without dispatching to runtime, and repeated posture commands are recorded as unchanged (`changed: false`). |
+| 2026-05-06 | Web composer slice: outgoing Web messages are tagged with `messageMetadata.productIntentCommand` when the shared parser recognizes `/chat`, `/work`, or `/code`; non-product slash commands still pass through as ordinary message content. |
 | 2026-05-06 | Telegram discoverability slice: command catalog and localized `/help` text now list `/chat`, `/work`, and `/code` without registering those product-intent commands as transport-control handlers. SPEC-038 now documents the discoverability-only relationship. |
 | 2026-05-06 | Implementation started: added the Chat-owned `parseProductIntentCommand` shared parser with tests covering `/chat` / `/work` / `/code`, Telegram bot suffix stripping, multiline `argumentText`, transport-control separation, prefix false positives, and ordinary-text pass-through. Telegram/Web ingress hooks remain in Task 1.8 and later slices. |
 | 2026-05-06 | Third-pass close-out: locked active-anchor lifecycle (eager clear on `/chat`, clear on Work Item terminal status `completed`/`cancelled`/`archived`, no auto-resume on next `/work`); locked per-turn tool-grant separation between `createWorkItem` and `createTask`/`createRun`; specified the Concierge prompt protocol (one focal question per turn, default priority order, recap-before-creation); confirmed `CoreWorkItemRecord.conversationId` already exists and `CoreRecordMetadata` is open-ended so no Core schema changes are required; added Task 1.8 for web composer ingress and Task 1.9 for SPEC-038 `/help` follow-up. Risks table updated to cover prompt-stacking, tool-chain leakage, and active-anchor lifecycle drift. |

@@ -673,6 +673,24 @@ export interface ProductIntentCommandMetadata {
   botSuffix: string | null;
 }
 
+export type DirectSlashModeCapabilityProfileKind =
+  | 'strong_agent'
+  | 'weak_worker'
+  | 'unknown';
+
+export interface DirectSlashModePostureChangeMetadata {
+  version: 1;
+  command: ProductIntentCommandName;
+  previousPosture: ProductIntentPosture | null;
+  posture: ProductIntentPosture;
+  targetProduct: ProductIntentTargetProduct;
+  changed: boolean;
+  sourceTransport: ProductIntentCommandSource;
+  sourceChannelId: string;
+  audienceCatId: string | null;
+  capabilityProfileKind: DirectSlashModeCapabilityProfileKind | null;
+}
+
 export interface SendChannelMessageInput {
   body: string;
   senderName?: string;

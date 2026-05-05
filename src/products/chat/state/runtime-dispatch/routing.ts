@@ -6,8 +6,16 @@ import type {
   ChatMessage,
   ChatState,
   MessageOrigin,
+  DirectSlashModePostureChangeMetadata,
+  ProductIntentCommandMetadata,
+  ProductIntentCommandSource,
 } from '../../api/contracts.js';
 import type { CatsCoreState } from '../../../../core/types.js';
+import {
+  upsertCoreLane,
+  upsertCoreSegment,
+  upsertCoreTurn,
+} from '../../../../core/model/index.js';
 import type { ProviderAgentDecision } from '../../../../platform/orchestration/index.js';
 import type {
   ProviderCapabilityBootstrapConfig,
@@ -39,6 +47,7 @@ import {
 import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import {
   buildDirectLaneTransportBindingId,
+  buildChatOwnerParticipantId,
 } from '../../../../shared/chatCoreIds.js';
 import {
   buildCanonicalChatUserMessage,
@@ -79,6 +88,7 @@ import {
 } from '../room-routing/workflow.js';
 import { applyRoomRoutingSnapshot } from '../runtime-session/state.js';
 import { resolveOrchestratorLeaseAttachment } from '../../shared/channelParticipants.js';
+import { parseProductIntentCommand } from '../../shared/productIntentCommands.js';
 
 export type ProviderAgentDecisionRequester = (input: {
   state: ChatState;
@@ -145,6 +155,250 @@ function readMessageRetryMetadata(
 
 function resolveUserMessageOrigin(transport: RuntimeTransportContext | undefined): MessageOrigin {
   return transport === 'telegram' ? 'telegram' : 'web';
+}
+
+function resolveProductIntentCommandSource(
+  transport: RuntimeTransportContext | undefined,
+): ProductIntentCommandSource {
+  return transport === 'telegram' ? 'telegram' : 'web';
+}
+
+function resolveProductIntentCommandMetadata(
+  body: string,
+  source: ProductIntentCommandSource,
+): ProductIntentCommandMetadata | null {
+  const parsed = parseProductIntentCommand(body);
+  if (!parsed || parsed.kind !== 'product_intent_command') {
+    return null;
+  }
+
+  return {
+    version: 1,
+    source,
+    command: parsed.command,
+    posture: parsed.posture,
+    targetProduct: parsed.targetProduct,
+    argumentText: parsed.argumentText,
+    rawCommandToken: parsed.rawCommandToken,
+    botSuffix: parsed.botSuffix,
+  };
+}
+
+function buildBaseUserMessageMetadata(input: {
+  payload: SendChannelMessageInput;
+  channelId: string;
+  deterministicRoutingPlan: DeterministicChatRoutingPlan | null;
+  transportBindingId?: string | null;
+  productIntentCommand?: ProductIntentCommandMetadata | null;
+}): Record<string, unknown> {
+  return {
+    ...(input.payload.messageMetadata ?? {}),
+    ...(input.productIntentCommand
+      ? {
+          productIntentCommand: input.productIntentCommand,
+        }
+      : {}),
+    ...buildDeterministicRoutingPlanMessageMetadata(
+      input.deterministicRoutingPlan?.channelId === input.channelId
+        ? input.deterministicRoutingPlan
+        : null,
+    ),
+    ...(input.transportBindingId ? { transportBindingId: input.transportBindingId } : {}),
+    ...(input.payload.choiceResponse
+      ? {
+          event: 'choice_response',
+          sourceMessageId: input.payload.choiceResponse.sourceMessageId,
+        }
+      : {}),
+  };
+}
+
+function readProductPostureChangeMetadata(
+  value: unknown,
+): DirectSlashModePostureChangeMetadata | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  if (
+    record.version !== 1
+    || (
+      record.posture !== 'chat'
+      && record.posture !== 'work'
+      && record.posture !== 'code'
+    )
+  ) {
+    return null;
+  }
+
+  return record as unknown as DirectSlashModePostureChangeMetadata;
+}
+
+function resolvePreviousProductPosture(
+  channel: ReturnType<typeof requireChannel>,
+): DirectSlashModePostureChangeMetadata['posture'] | null {
+  for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
+    const message = channel.messages[index]!;
+    const postureChange = readProductPostureChangeMetadata(
+      message.metadata.directSlashModePostureChange,
+    );
+    if (postureChange) {
+      return postureChange.posture;
+    }
+  }
+  return null;
+}
+
+function resolveDirectAudienceCatId(
+  channel: ReturnType<typeof requireChannel>,
+): string | null {
+  if (
+    channel.channelKind !== 'direct_message'
+    && channel.roomRouting?.mode !== 'direct_message'
+  ) {
+    return null;
+  }
+
+  return channel.roomRouting?.defaultRecipientId?.trim()
+    || channel.recoverableDirectLaneCatId?.trim()
+    || null;
+}
+
+function buildProductPostureChangeMetadata(input: {
+  channel: ReturnType<typeof requireChannel>;
+  channelId: string;
+  productIntentCommand: ProductIntentCommandMetadata;
+}): DirectSlashModePostureChangeMetadata {
+  const previousPosture = resolvePreviousProductPosture(input.channel);
+  return {
+    version: 1,
+    command: input.productIntentCommand.command,
+    previousPosture,
+    posture: input.productIntentCommand.posture,
+    targetProduct: input.productIntentCommand.targetProduct,
+    changed: previousPosture !== input.productIntentCommand.posture,
+    sourceTransport: input.productIntentCommand.source,
+    sourceChannelId: input.channelId,
+    audienceCatId: resolveDirectAudienceCatId(input.channel),
+    capabilityProfileKind: null,
+  };
+}
+
+function describeProductIntentCommandAck(
+  productIntentCommand: ProductIntentCommandMetadata,
+  accepted: boolean,
+): string {
+  if (!accepted) {
+    return 'Product mode commands are available in direct messages for this MVP.';
+  }
+
+  switch (productIntentCommand.command) {
+    case 'chat':
+      return 'Chat mode is active.';
+    case 'work':
+      return 'Work mode is active. I will clarify the work before creating an item.';
+    case 'code':
+      return 'Code mode is active. I will clarify the coding work before creating an item.';
+  }
+}
+
+async function persistProductIntentCommandCoreSegment(input: {
+  chatStore?: Pick<ChatStore, 'updateCore'>;
+  state: ChatState;
+  channelId: string;
+  userMessage: ChatMessage;
+  ackMessage: ChatMessage;
+  productIntentCommand: ProductIntentCommandMetadata;
+  postureChange: DirectSlashModePostureChangeMetadata | null;
+  accepted: boolean;
+  now: Date;
+}): Promise<void> {
+  if (!input.chatStore) {
+    return;
+  }
+
+  const { conversationId, containerId } = resolveChannelCanonicalIdentity(
+    input.state,
+    input.channelId,
+  );
+  const turnId = `turn-product-intent-${input.userMessage.id}`;
+  const laneId = `lane-product-intent-${input.userMessage.id}`;
+  const segmentId = `segment-product-intent-${input.userMessage.id}`;
+  const event = input.accepted
+    ? 'product_intent_posture_changed'
+    : 'product_intent_unsupported_context';
+  const metadata = {
+    event,
+    version: 1,
+    channelId: input.channelId,
+    containerId,
+    sourceMessageId: input.userMessage.id,
+    ackMessageId: input.ackMessage.id,
+    accepted: input.accepted,
+    productIntentCommand: input.productIntentCommand,
+    ...(input.postureChange
+      ? {
+          directSlashModePostureChange: input.postureChange,
+        }
+      : {}),
+    activeProductPosture: input.productIntentCommand.posture,
+    targetProduct: input.productIntentCommand.targetProduct,
+    source: input.productIntentCommand.source,
+  };
+
+  await input.chatStore.updateCore((core) => {
+    let nextCore = core;
+    nextCore = upsertCoreTurn(
+      nextCore,
+      {
+        id: turnId,
+        conversationId,
+        kind: 'system',
+        status: 'completed',
+        sourceParticipantId: buildChatOwnerParticipantId(input.channelId),
+        createdAt: input.userMessage.createdAt,
+        startedAt: input.userMessage.createdAt,
+        completedAt: input.ackMessage.createdAt,
+        metadata,
+      },
+      input.now,
+    ).core;
+    nextCore = upsertCoreLane(
+      nextCore,
+      {
+        id: laneId,
+        turnId,
+        conversationId,
+        participantId: buildChatOwnerParticipantId(input.channelId),
+        agentId: null,
+        orderIndex: 0,
+        status: 'completed',
+        createdAt: input.userMessage.createdAt,
+        startedAt: input.userMessage.createdAt,
+        completedAt: input.ackMessage.createdAt,
+        metadata,
+      },
+      input.now,
+    ).core;
+    nextCore = upsertCoreSegment(
+      nextCore,
+      {
+        id: segmentId,
+        laneId,
+        turnId,
+        conversationId,
+        sequence: 0,
+        kind: 'system',
+        status: 'complete',
+        content: input.ackMessage.body,
+        createdAt: input.ackMessage.createdAt,
+        completedAt: input.ackMessage.createdAt,
+        metadata,
+      },
+      input.now,
+    ).core;
+    return nextCore;
+  });
 }
 
 function buildRetrySendPayload(message: ChatMessage): SendChannelMessageInput {
@@ -298,6 +552,98 @@ export async function beginChannelMessageDispatch(
 ): Promise<BegunChannelMessageDispatch> {
   let nextState = state;
   const channelBeforeMessage = requireChannel(nextState, channelId);
+  const deterministicRoutingPlan = options.deterministicRoutingPlan ?? null;
+  const productIntentCommand = resolveProductIntentCommandMetadata(
+    payload.body,
+    resolveProductIntentCommandSource(options.transport),
+  );
+  if (productIntentCommand) {
+    const userAppend = appendMessage(
+      nextState,
+      channelId,
+      {
+        senderKind: 'user',
+        senderName: payload.senderName?.trim() || 'User',
+        body: payload.body,
+      },
+      now,
+      {
+        metadata: buildBaseUserMessageMetadata({
+          payload,
+          channelId,
+          deterministicRoutingPlan,
+          transportBindingId: options.transportBindingId,
+          productIntentCommand,
+        }),
+        choiceResponse: payload.choiceResponse,
+        origin: resolveUserMessageOrigin(options.transport),
+        sourceTransportBindingId: options.transport === 'telegram'
+          ? options.transportBindingId ?? null
+          : null,
+      },
+    );
+    nextState = userAppend.state;
+    const accepted = channelBeforeMessage.channelKind === 'direct_message'
+      || channelBeforeMessage.roomRouting?.mode === 'direct_message';
+    const postureChange = accepted
+      ? buildProductPostureChangeMetadata({
+          channel: channelBeforeMessage,
+          channelId,
+          productIntentCommand,
+        })
+      : null;
+    const ackAppend = appendMessage(
+      nextState,
+      channelId,
+      {
+        senderKind: 'system',
+        senderName: 'Cats',
+        body: describeProductIntentCommandAck(productIntentCommand, accepted),
+      },
+      now,
+      {
+        metadata: {
+          event: accepted
+            ? 'product_intent_posture_changed'
+            : 'product_intent_unsupported_context',
+          productIntentCommand,
+          ...(postureChange
+            ? {
+                directSlashModePostureChange: postureChange,
+              }
+            : {}),
+          sourceMessageId: userAppend.message.id,
+          activeProductPosture: productIntentCommand.posture,
+          targetProduct: productIntentCommand.targetProduct,
+          accepted,
+        },
+        incrementUnread: false,
+      },
+    );
+    nextState = refreshDerivedMemoryLayers(ackAppend.state, channelId, now);
+    if (options.chatStore) {
+      nextState = await options.chatStore.write(nextState);
+    }
+    await persistProductIntentCommandCoreSegment({
+      chatStore: options.chatStore,
+      state: nextState,
+      channelId,
+      userMessage: userAppend.message,
+      ackMessage: ackAppend.message,
+      productIntentCommand,
+      postureChange,
+      accepted,
+      now,
+    });
+    options.onStateWritten?.(channelId);
+    return {
+      state: nextState,
+      results: [],
+      preparedTurn: null,
+      userMessage: userAppend.message,
+      providerAgentDecision: null,
+    };
+  }
   const nextTarget = resolveNextPendingExecutionTarget(channelBeforeMessage, payload);
   const pendingTargetChanged = isProviderDefaultChatChannel(channelBeforeMessage)
     && (
@@ -311,8 +657,6 @@ export async function beginChannelMessageDispatch(
     );
   const orchestratorSessionAttachment = resolveOrchestratorLeaseAttachment(channelBeforeMessage);
   const orchestratorSessionId = orchestratorSessionAttachment?.sessionId ?? null;
-  const deterministicRoutingPlan = options.deterministicRoutingPlan ?? null;
-
   if (
     pendingTargetChanged
     && orchestratorSessionId
@@ -366,17 +710,12 @@ export async function beginChannelMessageDispatch(
     now,
     {
       metadata: {
-        ...(payload.messageMetadata ?? {}),
-        ...buildDeterministicRoutingPlanMessageMetadata(
-          deterministicRoutingPlan?.channelId === channelId ? deterministicRoutingPlan : null,
-        ),
-        ...(options.transportBindingId ? { transportBindingId: options.transportBindingId } : {}),
-        ...(payload.choiceResponse
-          ? {
-              event: 'choice_response',
-              sourceMessageId: payload.choiceResponse.sourceMessageId,
-            }
-          : {}),
+        ...buildBaseUserMessageMetadata({
+          payload,
+          channelId,
+          deterministicRoutingPlan,
+          transportBindingId: options.transportBindingId,
+        }),
       },
       choiceResponse: payload.choiceResponse,
       origin: resolveUserMessageOrigin(options.transport),
