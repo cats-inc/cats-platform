@@ -2416,6 +2416,7 @@ export const zhTWCatalog: MessageCatalog = {
   'conversationSidebar.directMessageButton': '直接訊息',
   'conversationSidebar.clearButton': '清除',
   'conversationSidebar.clearConfirmMessage': '清除與 {catName} 的對話歷史？此操作無法復原。',
+  'chatNewChatDraft.editCatProfileAction': '編輯貓咪個人檔案',
   'design.sidePanel.closeLabel': '關閉',
   'design.accountIdentityMenu.label': '帳號選單',
   'design.accountIdentityMenu.menuLabel': '帳號選單',

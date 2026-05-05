@@ -31,6 +31,15 @@ export interface DraftHeaderProps {
   coverStorageKey?: string | null;
   onAvatarSave?: (dataUrl: string) => void;
   alwaysEditable?: boolean;
+  /**
+   * Force the cover + avatar visuals into read-only mode regardless of
+   * whether storage already holds an image. Used by the direct-lane
+   * NewChatDraft, which displays the cat's profile but routes editing
+   * over to a dedicated settings page (the "前往設定" action button).
+   * Existing covers / avatars still render — only the upload buttons
+   * disappear.
+   */
+  readOnlyVisuals?: boolean;
 }
 
 function buildAvatarStyle(input: {
@@ -82,6 +91,7 @@ export function DraftHeader({
   coverStorageKey,
   onAvatarSave,
   alwaysEditable = false,
+  readOnlyVisuals = false,
 }: DraftHeaderProps) {
   const hasAvatar = variant === 'profile' && Boolean(avatarName);
   const hasCover = variant === 'profile' && Boolean(coverStorageKey);
@@ -131,9 +141,10 @@ export function DraftHeader({
 
   const avatarIsEditable =
     hasAvatar
+    && !readOnlyVisuals
     && typeof onAvatarSave === 'function'
     && (alwaysEditable || !avatarUrl);
-  const coverIsEditable = hasCover && (alwaysEditable || !coverUrl);
+  const coverIsEditable = hasCover && !readOnlyVisuals && (alwaysEditable || !coverUrl);
   const coverButtonLabel = coverUrl
     ? t(messageKeys.sharedDraftHeaderChangeCoverPhoto)
     : t(messageKeys.sharedDraftHeaderAddCoverPhoto);

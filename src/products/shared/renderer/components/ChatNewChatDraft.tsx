@@ -7,6 +7,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
@@ -439,6 +440,7 @@ export function NewChatDraft({
   starterChips,
   sidePanel,
 }: NewChatDraftProps) {
+  const navigate = useNavigate();
   const {
     headerAccessory: composerHeaderAccessory = null,
     headerWhereExtras: composerHeaderWhereExtras = null,
@@ -806,11 +808,39 @@ export function NewChatDraft({
       avatarUrl={defaultRecipientCat.avatarUrl}
       avatarColor={defaultRecipientCat.avatarColor}
       coverStorageKey={defaultRecipientCat.id}
-      onAvatarSave={
-        onCatAvatarSave
-          ? (dataUrl) => onCatAvatarSave(defaultRecipientCat.id, dataUrl)
-          : undefined
-      }
+      /* Direct-lane drafts SHOW the cat's avatar + cover (read from
+       * profile / catCoverStorage) but never expose the upload buttons
+       * — editing routes over to the cat's settings page via the
+       * "前往設定" action below. `readOnlyVisuals` forces both the
+       * avatar's camera-badge button and the cover's "Add cover photo"
+       * button off without losing the imagery itself. */
+      readOnlyVisuals
+      actions={(
+        <button
+          type="button"
+          className="draftHeaderAction"
+          onClick={() =>
+            navigate(`/cats/${encodeURIComponent(defaultRecipientCat.id)}`)
+          }
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            {/* Lucide-style pencil glyph: shaft + tip */}
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+          </svg>
+          {t(messageKeys.chatNewChatDraftEditCatProfileAction)}
+        </button>
+      )}
     />
   ) : isParticipantDraft && effectiveDefaultRecipientCat ? (
     <DraftHeader

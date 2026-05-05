@@ -634,6 +634,31 @@ button.draftHeaderAvatar.draftHeaderAvatarEditable:hover .draftHeaderAvatarCamer
   gap: 8px;
 }
 
+/* Default action-button styling for buttons placed inside
+ * `.draftHeaderActions`. Mirrors the chat companion workspace's
+ * `.companionHeaderAction` so the direct-lane draft's "前往設定"
+ * button matches the visual weight of the companion surface's
+ * Subscribe / Share buttons (the user explicitly asked for that
+ * affordance to live in the same spot). */
+.draftHeaderAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface, var(--app-bg));
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.draftHeaderAction:hover {
+  background: var(--panel-hover);
+}
+
 .draftHeaderSupportingContent {
   margin-top: 12px;
 }

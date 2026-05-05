@@ -2586,6 +2586,7 @@ export const messageKeys = {
   conversationSidebarDirectMessageButton: 'conversationSidebar.directMessageButton',
   conversationSidebarClearButton: 'conversationSidebar.clearButton',
   conversationSidebarClearConfirmMessage: 'conversationSidebar.clearConfirmMessage',
+  chatNewChatDraftEditCatProfileAction: 'chatNewChatDraft.editCatProfileAction',
   codeActiveComposerDetachedBranch: 'code.activeComposer.detachedBranch',
   codeNewDraftGreeting: 'code.newDraft.greeting',
   codeNewDraftGreetingOpenRepo: 'code.newDraft.greeting.openRepo',

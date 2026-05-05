@@ -2466,6 +2466,7 @@ export const enCatalog: MessageCatalog = {
   'conversationSidebar.directMessageButton': 'Direct message',
   'conversationSidebar.clearButton': 'Clear',
   'conversationSidebar.clearConfirmMessage': 'Clear conversation history with {catName}? This cannot be undone.',
+  'chatNewChatDraft.editCatProfileAction': 'Edit cat profile',
   'design.sidePanel.closeLabel': 'Close',
   'design.accountIdentityMenu.label': 'Account menu',
   'design.accountIdentityMenu.menuLabel': 'Account menu',

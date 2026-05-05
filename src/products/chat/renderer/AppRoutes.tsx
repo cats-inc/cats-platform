@@ -165,16 +165,13 @@ export function AppRoutes({
         <Route
           path="dm/:catId"
           element={
-            companionMode && companionCat && hasCompanionSkill(companionCat) ? (
-              <CompanionWorkspace
-                payload={payload}
-                cat={companionCat}
-                onBackToChat={onToggleCompanionMode}
-                onWake={onCompanionWake}
-                onSleep={onCompanionSleep}
-                onCatAvatarSave={onCatAvatarSave}
-              />
-            ) : showDirectLaneBoot ? (
+            /* DIRECT MESSAGES is now strictly the dm channel surface —
+             * the per-cat companion workspace toggle was removed so a
+             * cat with the companion skill still presents its dm row
+             * in the sidebar with no inline mode switch. CompanionWorkspace
+             * still exists in the codebase for the eventual companion
+             * surface; it just isn't reachable from the dm route. */
+            showDirectLaneBoot ? (
               <BootShell />
             ) : directLaneChannel ? (
               <ChatView
@@ -203,14 +200,6 @@ export function AppRoutes({
                     onOpenSection={context.onOpenSection}
                   />
                 )}
-                renderTopBarExtraActions={(context) =>
-                  context.isDirectLane && hasCompanionSkill(context.directLaneCat) ? (
-                    <CompanionModeToggleChip
-                      companionMode={false}
-                      onToggle={onToggleCompanionMode}
-                    />
-                  ) : null
-                }
               />
             ) : (
               <NewChatDraft
