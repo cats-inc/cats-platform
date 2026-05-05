@@ -400,7 +400,7 @@ Telegram ingress is unchanged from SPEC-038 — `src/platform/transports/
 telegram/...` continues to own bot-side parsing, command-menu sync, and
 transport-control commands. The shared parser is the single point that both
 transports agree on for product-intent semantics. Drift between the two
-transports is prevented by the boundary tests in PLAN-092 Phase 2.
+transports is prevented by the parser and boundary tests in PLAN-092 Phase 1.
 
 SPEC-038 ownership extends to the `/help` and `/commands` outputs. Those
 outputs shall list `/chat`, `/work`, and `/code` alongside the existing
