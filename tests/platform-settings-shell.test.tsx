@@ -142,7 +142,7 @@ test('buildPlatformSettingsProductEntries localizes Cats-owned product settings 
     }),
   ], createTranslator('zh-TW'));
 
-  assert.deepEqual(entries.map((entry) => entry.label), ['聊天', '程式碼', 'Invest']);
+  assert.deepEqual(entries.map((entry) => entry.label), ['Chat', 'Code', 'Invest']);
 });
 
 test('PlatformSettingsShell places Apps under Work and above Runtime', () => {
