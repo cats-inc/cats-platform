@@ -145,11 +145,15 @@ export function deriveAppViewState(input: {
   const selectedConversationMode = selectedChannel
     ? resolveConversationMode(selectedChannel)
     : null;
-  const activeMyCatId = draftDefaultRecipientCatId
-    ? draftDefaultRecipientCatId
-    : isDirectConversationMode(activeConversationMode)
-      ? activeChannelView?.roomRouting.defaultRecipientId ?? null
-      : null;
+  // Highlight a MY CATS row only when the user is actually inside
+  // that cat's direct lane (`/chat/dm/:catId` resolved to a real
+  // channel). +New chat with a cat preset (`?cat=<id>`) is just a
+  // draft; the cat fills the audience picker, but the sidebar is not
+  // "focused" on that cat — that would imply the row is the user's
+  // current location, which it isn't.
+  const activeMyCatId = isDirectConversationMode(activeConversationMode)
+    ? activeChannelView?.roomRouting.defaultRecipientId ?? null
+    : null;
   const activeAssignedCats =
     activeChannelView?.assignedCats.filter((cat) => cat.status === 'active') ?? [];
   const assignedCatIds = new Set(

@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { fetchAppShell, updateCatProfile } from '../../../products/shared/renderer/api/index.js';
 import { hasCompanionSkill } from '../../../products/chat/renderer/chatUtils.js';
+import { buildWorkspaceNewChatPath } from '../../../products/shared/channelPaths.js';
 import { messageKeys } from '../../../shared/i18n/index.js';
+import { buildMyCatPathForPrefix } from '../productShell/myCatNavigation.js';
 import { useI18n } from '../i18n/index.js';
 import { CompanionWorkspace } from './companion/CompanionWorkspace.js';
 // Pull in the chat companion stylesheet so the header chrome / feed
@@ -97,6 +100,18 @@ export function CatProfilePage() {
     navigate('/entities/cats');
   };
 
+  // Header actions delegate into the chat surface: Direct message
+  // jumps to the cat's existing direct lane; +New chat opens the
+  // composer with the cat preselected as the lone participant /
+  // audience. Both reuse the same path helpers the chat product uses.
+  const chatPrefix = platformSurfaceRoutePrefix('chat');
+  const onDirectMessage = (targetCatId: string): void => {
+    navigate(buildMyCatPathForPrefix(chatPrefix, targetCatId));
+  };
+  const onStartNewChatWithCat = (targetCatId: string): void => {
+    navigate(buildWorkspaceNewChatPath(chatPrefix, targetCatId));
+  };
+
   return (
     <CompanionWorkspace
       payload={payload}
@@ -105,6 +120,8 @@ export function CatProfilePage() {
       onWake={onWake}
       onSleep={onSleep}
       onCatAvatarSave={onCatAvatarSave}
+      onDirectMessage={onDirectMessage}
+      onStartNewChatWithCat={onStartNewChatWithCat}
       hideFeed={hideFeed}
       hideCompanionToggle
     />

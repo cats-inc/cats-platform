@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { resolveDraftStarterSuggestionContext } from '../src/products/chat/renderer/draftStarterSuggestionContext.ts';
 
-test('starter suggestion context marks direct lanes separately from participant drafts', () => {
+test('starter suggestion context marks direct lanes separately from solo drafts', () => {
   assert.deepEqual(
     resolveDraftStarterSuggestionContext({
       allowAddCat: false,
@@ -17,10 +17,13 @@ test('starter suggestion context marks direct lanes separately from participant 
       mode: 'direct',
       isGroupDraft: false,
       isDirectLaneContext: true,
-      isParticipantDraft: false,
     },
   );
 
+  // +New chat opened with a cat preset (allowAddCat: true) is just a
+  // regular New chat draft. There is no separate "Participant Chat"
+  // mode — the cat fills the audience picker but the hero stays the
+  // standard greeting.
   assert.deepEqual(
     resolveDraftStarterSuggestionContext({
       allowAddCat: true,
@@ -31,10 +34,9 @@ test('starter suggestion context marks direct lanes separately from participant 
       parallelTargetCount: 0,
     }),
     {
-      mode: 'participant',
+      mode: 'solo',
       isGroupDraft: false,
       isDirectLaneContext: false,
-      isParticipantDraft: true,
     },
   );
 });
@@ -53,7 +55,6 @@ test('starter suggestion context keeps group and parallel routes distinct', () =
       mode: 'group',
       isGroupDraft: true,
       isDirectLaneContext: false,
-      isParticipantDraft: false,
     },
   );
 
@@ -70,7 +71,6 @@ test('starter suggestion context keeps group and parallel routes distinct', () =
       mode: 'parallel',
       isGroupDraft: false,
       isDirectLaneContext: false,
-      isParticipantDraft: false,
     },
   );
 });
@@ -89,7 +89,6 @@ test('starter suggestion context falls back to solo when no cats are selected', 
       mode: 'solo',
       isGroupDraft: false,
       isDirectLaneContext: false,
-      isParticipantDraft: false,
     },
   );
 });

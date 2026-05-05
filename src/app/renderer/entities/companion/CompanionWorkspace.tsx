@@ -29,6 +29,14 @@ export interface CompanionWorkspaceProps {
   onWake: (catId: string) => void;
   onSleep: (catId: string) => void;
   onCatAvatarSave?: (catId: string, dataUrl: string) => void;
+  /** Open the cat's direct-lane chat. Wired by `CatProfilePage` to
+   * the same `/chat/dm/:catId` URL the Entities sidebar's "Direct
+   * message" popover entry navigates to. */
+  onDirectMessage?: (catId: string) => void;
+  /** Open `+ New chat` with this cat preset as the lone participant
+   * and the only audience. Wired by `CatProfilePage` to
+   * `/chat/new?cat=<catId>` so the chat draft auto-fills. */
+  onStartNewChatWithCat?: (catId: string) => void;
   /** Hide the bottom Post / Photo / activity feed (CompanionFeed).
    * Used by the platform-level `/entities/cats/:catId` mount when the cat
    * doesn't have the companion skill — same chrome / header /
@@ -47,6 +55,8 @@ export function CompanionWorkspace({
   onWake,
   onSleep,
   onCatAvatarSave,
+  onDirectMessage,
+  onStartNewChatWithCat,
   hideFeed = false,
   hideCompanionToggle = false,
 }: CompanionWorkspaceProps) {
@@ -237,20 +247,49 @@ export function CompanionWorkspace({
                 <button
                   type="button"
                   className="companionHeaderAction companionHeaderActionPrimary"
-                  disabled
-                  title={t(messageKeys.chatCompanionWorkspaceSubscriptionDisabledTooltip)}
-                  aria-disabled
+                  onClick={() => onDirectMessage?.(cat.id)}
+                  disabled={!onDirectMessage}
                 >
-                  {t(messageKeys.chatCompanionWorkspaceSubscriptionLabel)}
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    {/* Speech-bubble idiom — open conversation. */}
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  {t(messageKeys.conversationSidebarDirectMessageButton)}
                 </button>
                 <button
                   type="button"
-                  className="companionHeaderAction"
-                  disabled
-                  title={t(messageKeys.chatCompanionWorkspaceShareDisabledTooltip)}
-                  aria-disabled
+                  className="companionHeaderAction companionHeaderActionIconOnly"
+                  onClick={() => onStartNewChatWithCat?.(cat.id)}
+                  disabled={!onStartNewChatWithCat}
+                  aria-label={t(messageKeys.chatSidebarPrimaryActionNewChat)}
+                  title={t(messageKeys.chatSidebarPrimaryActionNewChat)}
                 >
-                  {t(messageKeys.chatCompanionWorkspaceShareLabel)}
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    {/* Same plus glyph the chat sidebar's "+ New chat"
+                     * primary action uses (see chat Sidebar.tsx). */}
+                    <path d="M8 3v10" />
+                    <path d="M3 8h10" />
+                  </svg>
                 </button>
               </>
             )}

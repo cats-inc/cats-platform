@@ -1531,12 +1531,6 @@ export const enCatalog: MessageCatalog = {
     'Give {cat} a concrete task and ask for the next step.',
   'chat.newChatDraft.assist.direct.iteratePrompt':
     'Use this lane to iterate quickly with {cat} on one problem.',
-  'chat.newChatDraft.assist.participant.firstPassPrompt':
-    'Ask {cat} to take the first pass, then tighten the plan together.',
-  'chat.newChatDraft.assist.participant.reviewPrompt':
-    'Have {cat} review an idea and suggest the next concrete moves.',
-  'chat.newChatDraft.assist.participant.briefPrompt':
-    'Let {cat} turn a rough brief into a clear action plan.',
   'chat.newChatDraft.assist.group.rolesPrompt':
     'Brief the group, split roles, and ask for a coordinated plan.',
   'chat.newChatDraft.assist.group.comparePrompt':
@@ -1778,10 +1772,6 @@ export const enCatalog: MessageCatalog = {
     'Branch {branchIndex}: attachments are not yet per-branch; remove the override.',
   'chat.newChatDraft.collaborateAria': 'Add another model to collaborate',
   'chat.newChatDraft.collaborateHint': 'Add another model to collaborate',
-  'chat.newChatDraft.participantChatEyebrow': 'Participant Chat',
-  'chat.newChatDraft.participantChatTitle': 'Start with {recipientName}',
-  'chat.newChatDraft.participantChatDescription':
-    'Ask {recipientName} to take the first pass. Add more Cats anytime, or keep the thread focused.',
   'chat.newChatDraft.removeFolderAria': 'Remove folder',
   'chat.newChatDraft.attachmentRemoveAria': 'Remove {fileName}',
   'chat.newChatDraft.addPhotosAndFiles': 'Add photos and files',

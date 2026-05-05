@@ -1493,12 +1493,6 @@ export const zhTWCatalog: MessageCatalog = {
     '交給{cat}一項明確任務，並請它提出下一步。',
   'chat.newChatDraft.assist.direct.iteratePrompt':
     '用這條線和{cat}快速迭代一個問題。',
-  'chat.newChatDraft.assist.participant.firstPassPrompt':
-    '請{cat}先做第一版，再一起收斂計畫。',
-  'chat.newChatDraft.assist.participant.reviewPrompt':
-    '請{cat}審視一個想法，並建議下一個具體行動。',
-  'chat.newChatDraft.assist.participant.briefPrompt':
-    '讓{cat}把粗略簡報整理成清楚的行動計畫。',
   'chat.newChatDraft.assist.group.rolesPrompt':
     '向團隊說明背景、分配角色，並請大家協作提出計畫。',
   'chat.newChatDraft.assist.group.comparePrompt':
@@ -1734,10 +1728,6 @@ export const zhTWCatalog: MessageCatalog = {
     '第 {branchIndex} 分支：附件尚未支援逐分支設定；請移除覆寫。',
   'chat.newChatDraft.collaborateAria': '新增另一個模型共同推理',
   'chat.newChatDraft.collaborateHint': '新增另一個模型共同推理',
-  'chat.newChatDraft.participantChatEyebrow': '參與者聊天室',
-  'chat.newChatDraft.participantChatTitle': '從 {recipientName} 開始',
-  'chat.newChatDraft.participantChatDescription':
-    '請 {recipientName} 先做第一輪回覆，隨時可新增更多貓，或保持討論聚焦。',
   'chat.newChatDraft.removeFolderAria': '移除資料夾',
   'chat.newChatDraft.attachmentRemoveAria': '移除 {fileName}',
   'chat.newChatDraft.addPhotosAndFiles': '新增照片和檔案',

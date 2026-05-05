@@ -1581,12 +1581,6 @@ export const messageKeys = {
     'chat.newChatDraft.assist.direct.nextStepPrompt',
   chatNewChatDraftAssistDirectIteratePrompt:
     'chat.newChatDraft.assist.direct.iteratePrompt',
-  chatNewChatDraftAssistParticipantFirstPassPrompt:
-    'chat.newChatDraft.assist.participant.firstPassPrompt',
-  chatNewChatDraftAssistParticipantReviewPrompt:
-    'chat.newChatDraft.assist.participant.reviewPrompt',
-  chatNewChatDraftAssistParticipantBriefPrompt:
-    'chat.newChatDraft.assist.participant.briefPrompt',
   chatNewChatDraftAssistGroupRolesPrompt:
     'chat.newChatDraft.assist.group.rolesPrompt',
   chatNewChatDraftAssistGroupComparePrompt:
@@ -1851,11 +1845,6 @@ export const messageKeys = {
     'chat.newChatDraft.branchAttachmentOverrideError',
   chatNewChatDraftCollaborateAria: 'chat.newChatDraft.collaborateAria',
   chatNewChatDraftCollaborateHint: 'chat.newChatDraft.collaborateHint',
-  chatNewChatDraftParticipantChatEyebrow: 'chat.newChatDraft.participantChatEyebrow',
-  chatNewChatDraftParticipantChatTitle:
-    'chat.newChatDraft.participantChatTitle',
-  chatNewChatDraftParticipantChatDescription:
-    'chat.newChatDraft.participantChatDescription',
   chatNewChatDraftRemoveFolderAria: 'chat.newChatDraft.removeFolderAria',
   chatNewChatDraftAttachmentRemoveAria:
     'chat.newChatDraft.attachmentRemoveAria',

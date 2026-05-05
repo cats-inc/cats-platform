@@ -161,33 +161,6 @@ export function resolveDraftStarterSuggestionsBaseline(input: {
           ),
         },
       ];
-    case 'participant':
-      return [
-        {
-          id: 'participant-first-pass',
-          prompt: withCatName(
-            t(messageKeys.chatNewChatDraftAssistParticipantFirstPassPrompt),
-            input.defaultRecipientName,
-            fallbackCatName,
-          ),
-        },
-        {
-          id: 'participant-review',
-          prompt: withCatName(
-            t(messageKeys.chatNewChatDraftAssistParticipantReviewPrompt),
-            input.defaultRecipientName,
-            fallbackCatName,
-          ),
-        },
-        {
-          id: 'participant-brief',
-          prompt: withCatName(
-            t(messageKeys.chatNewChatDraftAssistParticipantBriefPrompt),
-            input.defaultRecipientName,
-            fallbackCatName,
-          ),
-        },
-      ];
     case 'group':
       return [
         {

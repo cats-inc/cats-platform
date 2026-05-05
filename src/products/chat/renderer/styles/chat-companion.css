@@ -101,6 +101,18 @@
   background: color-mix(in srgb, var(--accent) 90%, #000);
   border-color: color-mix(in srgb, var(--accent) 90%, #000);
 }
+.companionHeaderAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+/* Icon-only header action: square footprint matching the labelled
+ * variant's height, so the row alignment with avatar / name stays
+ * unchanged. Used by the +New chat affordance next to Direct message. */
+.companionHeaderActionIconOnly {
+  padding: 7px;
+  width: 34px;
+  justify-content: center;
+}
 
 /* Feed shell */
 .companionFeed {

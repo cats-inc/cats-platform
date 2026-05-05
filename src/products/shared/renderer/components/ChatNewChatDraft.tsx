@@ -552,7 +552,7 @@ export function NewChatDraft({
     busy,
     t,
   });
-  const { isGroupDraft, isDirectLaneContext, isParticipantDraft } = draftSuggestionContext;
+  const { isGroupDraft, isDirectLaneContext } = draftSuggestionContext;
   const {
     supported: voiceInputSupported,
     listening: voiceInputListening,
@@ -841,17 +841,6 @@ export function NewChatDraft({
           {t(messageKeys.chatNewChatDraftViewCatProfileAction)}
         </button>
       )}
-    />
-  ) : isParticipantDraft && effectiveDefaultRecipientCat ? (
-    <DraftHeader
-      variant="intro"
-      eyebrow={t(messageKeys.chatNewChatDraftParticipantChatEyebrow)}
-      title={t(messageKeys.chatNewChatDraftParticipantChatTitle, {
-        recipientName: effectiveDefaultRecipientCat.name,
-      })}
-      description={t(messageKeys.chatNewChatDraftParticipantChatDescription, {
-        recipientName: effectiveDefaultRecipientCat.name,
-      })}
     />
   ) : (
     <DraftHeader

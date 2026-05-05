@@ -12,7 +12,6 @@ export type GuideCatAssistSurfaceId =
 export type GuideCatAssistSurfaceMode =
   | 'default'
   | 'solo'
-  | 'participant'
   | 'direct'
   | 'group'
   | 'parallel'
@@ -130,7 +129,6 @@ export interface GuideCatAssistRefreshContextInput {
 export const GUIDE_CAT_ASSIST_V1_SCOPE_KEYS = {
   lobbyDefault: 'lobby:default:default',
   chatNewSolo: 'chat:new:solo:default',
-  chatNewParticipant: 'chat:new:participant:default',
   chatNewDirect: 'chat:new:direct:default',
   chatNewGroup: 'chat:new:group:default',
   chatNewParallel: 'chat:new:parallel:default',
@@ -139,7 +137,6 @@ export const GUIDE_CAT_ASSIST_V1_SCOPE_KEYS = {
 
 export const GUIDE_CAT_ASSIST_V1_CHAT_NEW_SCOPE_KEYS_BY_MODE = {
   solo: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewSolo,
-  participant: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParticipant,
   direct: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDirect,
   group: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewGroup,
   parallel: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewParallel,
