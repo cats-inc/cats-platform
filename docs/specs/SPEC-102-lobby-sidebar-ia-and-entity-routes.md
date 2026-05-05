@@ -10,6 +10,200 @@
 | **Related ADR** | [ADR-099](../decisions/099-promote-cats-clowders-catteries-to-platform-entities.md) |
 | **Related SPEC** | [SPEC-064](./SPEC-064-my-cats-platform-home-and-lens-projections.md) |
 
+## Implementation Status (2026-05-05)
+
+> **Read this first if you're touching `/lobby`, `/cats*`, `/clowders/*`,
+> `/catteries/*`, the chat sidebar's DIRECT MESSAGES section, or the
+> chat companion workspace.** The user iterated heavily on the IA
+> during phases 7+ and the as-shipped behaviour deviates from the
+> original FR list below in several load-bearing places. Don't
+> "fix" the corrections back to the original spec — they are
+> intentional. The deltas are listed here; the FR sections that
+> follow are kept as historical record of the initial design intent
+> only.
+
+### IA shape (as-shipped)
+
+- **`/lobby` is bare** — no sidebar at all. Body is the landing-page
+  canvas: `lobbyTopBar` identity pill, hero greeting, three
+  entity column-cards (Cats / Clowders / Catteries), products grid,
+  apps grid, `LobbyBouncingCats` background.
+- **Entity drill-down routes mount the lobby drill-down workspace
+  shell** (`EntitiesShell` in `src/app/renderer/lobby/EntitiesShell.tsx`).
+  This is a chat-style appshell — `screen claudeShell` outer grid,
+  `LobbyAppShellSidebar` on the left, `<main class="canvas">` on the
+  right. The shell wraps:
+  `/cats`, `/cats/:catId`, `/clowders/:clowderId(/:tab)?`,
+  `/catteries/:catteryId(/:tab)?`.
+- **`LobbyAppShellSidebar` reuses the chat / code / work
+  `ConversationSidebar*` primitives**:
+  - `PlatformSurfaceSwitcher` at the top with the
+    `entitiesShellSurfaceLabel` ("Cats Lobby") override
+  - `primaryActions = [Main page]` only (navigates `/lobby`)
+  - Scrollable middle: three `<nav class="navGroup">` blocks, one per
+    entity kind. Each starts with a `.navItem` button (My Cats /
+    My Clowders / My Catteries) with active state when the URL
+    starts with `/cats|/clowders|/catteries`. Underneath each nav
+    item, `<ConversationSidebarMyCatsSection hideLabel>` renders
+    the entity rows, mirroring the Cats Work "Projects + pinned
+    project rows" layout (Projects nav header + `.navGroupPinnedList`).
+  - `GuideCatDockSlot` + `ConversationSidebarFooter` at the bottom.
+- **Sidebar collapse state persists to `cats.sidebar-open` localStorage**
+  via the shared `readSidebarOpenPreference` / `writeSidebarOpenPreference`
+  helpers — same key chat / code / work use, so toggling collapse
+  carries across products.
+- **`/lobby` cards (CATS / CLOWDERS / CATTERIES)**: three-column
+  grid, plain text headers (not buttons), each card shows up to
+  three entity rows + a "{N} TOTAL" red footer. Footer hidden when
+  count === 0; an avatar stack appears in the footer when total
+  count > 3. Whole-card click-target via an absolute-positioned
+  `.lobbyEntityCardLink` background button (rows + footer +
+  accent stripe live above it via z-index / pointer-events). Cards
+  share a single neutral `--muted-soft` accent stripe (no per-kind
+  brand tints). Boss avatar carries `.catAvatarBoss` (gold ring) —
+  the chat-thread-base.css primitive is the single source of that
+  rule and the lobby imports it.
+
+### Sort order
+
+- **Lobby cats card + lobby drill-down sidebar's My Cats**:
+  Boss-first; tiebreak by `createdAt` ascending (older cats float
+  higher). `PlatformLobbyCatSummary` carries a required
+  `createdAt: string` field for this. Both `PlatformLobby`
+  `sortLobbyCatsForDisplay` and `LOBBY_HELPERS.sortCatsForDisplay`
+  in `LobbyAppShellSidebar` apply the same rule.
+- **Chat sidebar DIRECT MESSAGES**:
+  Recency-first via `sortChatCatsByRecency(cats, channels)` (chat
+  Sidebar.tsx, inline). Each cat's score is its direct-lane
+  channel's `lastActivatedAt` (falling back to `lastMessageAt`);
+  cats with no channel use `createdAt`. **Boss-cat pinning is NOT
+  applied here** — the Lobby is for management, the Chat sidebar is
+  recency-driven Slack-style DMs.
+
+### Chat sidebar — DIRECT MESSAGES section
+
+- Section is **opt-in** at the renderer level
+  (`forceShowMyCatsSection: cats.length > 0` in chat
+  `Sidebar.tsx`). When the user has no cats the section header,
+  the rows, and any placeholder all stay hidden.
+- The legacy "+ New cat" empty-state placeholder is **removed
+  permanently** from this section (cat creation lives elsewhere).
+- 3-dots overflow popover replaces "Archive" with **"Clear"**
+  (label key `conversationSidebar.clearButton`). Click confirms
+  via the app-level `<ConfirmDialog>` then deletes the cat's
+  direct-lane channel through the new
+  `useWorkspaceAppNavigationActions.onClearDirectLane(catId,
+  channelId)` flow — same `deleteChatChannel` API as
+  `onDeleteChannel` but the post-delete navigate goes to
+  `buildMyCatPathForPrefix(chatPrefix, catId)` (i.e. `/chat/dm/:catId`)
+  instead of falling back to `/chat/new`. The DM route renders
+  `NewChatDraft` when no direct-lane channel exists, so the user
+  stays on the cat in a fresh draft state.
+- Section was previously auto-rendering on every chat / code / work
+  sidebar whenever `payload.chat.cats.length > 0`. The opt-in
+  guard in `ConversationSidebar.tsx` (`showMyCatsSection =
+  forceShowMyCatsSection || myCatsEmptyStatePlaceholder != null`)
+  fixes that leak — Code / Work intentionally don't pass either.
+- `MY CATS` label rename to `Direct Messages` (FR-13 of the
+  original spec) lives only on chat. The default fallback in
+  `ConversationSidebar` still uses the directMessages key but no
+  other sidebar opts in.
+
+### Chat product chrome
+
+- **Sidebar primary action labels are Title-Case**:
+  `New Chat` / `Group Chat` / `Parallel Chat` (en). Same for
+  Work: `New Work` / `Team Work` / `Parallel Work`. Chinese
+  catalogs unchanged (no case concept).
+- **`ChatViewTopBar` profile button**: when the channel is a
+  direct lane, an eye-icon button appears to the left of the
+  side-panel toggle. Click navigates `/cats/:defaultRecipientCat.catId`.
+  Wired in `ChatView.tsx` via `useNavigate` + the new
+  `onOpenCatProfile?: () => void` prop on `ChatViewTopBar`.
+- **`NewChatDraft` direct-lane variant**: avatar + cover photo
+  display read-only (`readOnlyVisuals` on `DraftHeader` suppresses
+  the camera-badge and "Add cover photo" buttons but the imagery
+  still renders). The header `actions` slot carries an eye-icon
+  "View cat profile" button (label key
+  `chatNewChatDraft.viewCatProfileAction`) that navigates
+  `/cats/:defaultRecipientCat.id`.
+- **Companion-mode toggle removed from `/chat/dm/:catId`**.
+  `CompanionWorkspace` is no longer reachable from the chat
+  surface — it lives at `/cats/:catId` only (see below).
+  `CompanionModeToggleChip` and the in-line companion render in
+  chat `AppRoutes.tsx` are gone.
+
+### `/cats*` canvas + companion
+
+- **`/cats` mounts `CatsCanvasPage`** (`src/app/renderer/entities/CatsCanvasPage.tsx`)
+  inside `EntitiesShell`. The page fetches `AppShellPayload` once
+  via `fetchAppShell()` and renders
+  `<WorkspaceCatsCanvas>` from a fresh **copy** of the settings
+  canvas at `src/products/shared/renderer/components/cats/`. The
+  Settings canvas at `/settings/cats` still exists in parallel —
+  whether to delete it is **TBD** (cat creation flow at
+  `/settings/cats/new` is the holdout reason).
+- **`/cats/:catId` mounts `CatProfilePage`** (`src/app/renderer/entities/CatProfilePage.tsx`).
+  Renders a platform-level **copy** of the chat
+  `CompanionWorkspace` at
+  `src/app/renderer/entities/companion/` (7 components +
+  4 hooks copied; chat product types + APIs are still pulled
+  from their original location, single source of truth for
+  the backend pipeline). The page passes:
+  - `hideFeed = !hasCompanionSkill(cat)` — non-companion cats
+    keep the same chrome (header / settings panel) but the
+    `<CompanionFeed>` Post / Photo region is suppressed
+  - `hideCompanionToggle` always — there is no chat surface to
+    flip back to from the lobby drill-down
+- **`CatHome` + entity-lens scaffolding from phase 3 is no longer
+  mounted on `/cats/:catId`** (the route renders `CatProfilePage`
+  instead). The component still exists in
+  `src/app/renderer/entities/CatHome.tsx` for potential future
+  use; if you delete it, also remove its imports from `App.tsx`.
+
+### Path migrations + contracts
+
+- `/chat/my-cats/:catId` → `/chat/dm/:catId` (chat product) —
+  matches phase 2 of the plan. **Platform-shell helpers were also
+  migrated** in a follow-up:
+  `buildMyCatPathForPrefix` (`app/renderer/productShell/myCatNavigation.ts`),
+  `resolveWorkspaceMyCatsPathPrefix` and
+  `buildWorkspaceMyCatPath` (`products/shared/channelPaths.ts`),
+  the `<Route path="dm/:catId">` registration in
+  `WorkspaceAppRoutes.tsx`, and the `useMatch` in
+  `useWorkspaceLocationState` all emit / match `/dm/:catId` now.
+  Helper / constant names still say `MyCats` (the shared-agent
+  concept per ADR-065) but the URLs are `/dm/`.
+- `PlatformLobbyCatSummary` gains a required `createdAt: string`
+  field (post-phase-7 contract bump for sort tiebreaks).
+
+### Settings sidebar
+
+- Assistants navigates to `/settings/assistants` (per phase 3)
+  but the sidebar **UI** still nests it under the `CATS`
+  subheading group, mirroring `My Cats` indentation. The lift
+  applied to the route, not the visual grouping.
+- `/settings/cats/my-cats` redirect target is **`/settings/cats`**
+  (kept pointing at the in-Settings canvas). The phase-3 retarget
+  to `/cats` was reverted.
+
+### Hooks / shared primitives extracted during the iterations
+
+- `useSidebarOverflowMenuDismiss` (`src/app/renderer/productShell/`)
+  — outside-click dismissal for the `.myCatOverflowMenu` /
+  `.recentOverflowMenu` popover. Originally inline in
+  `useAppChrome`; lifted out so the lobby drill-down sidebar
+  (which doesn't go through `useAppChrome`) gets the same
+  behaviour.
+- `WorkspaceProductSidebarProps.confirmDialog`
+  (`WorkspaceProductApp.tsx`) — promise-based confirm bound to
+  the app-level `<ConfirmDialog>`, plumbed through to
+  `renderSidebar` so chat's "Clear" popover doesn't fall back to
+  `window.confirm`.
+- Chat sidebar wrapper now defines its own `sortChatCatsByRecency`
+  (replacing `sortChatCatsForDisplay` for the DIRECT MESSAGES
+  section).
+
 ## Summary
 
 Adds a `LobbySidebar` that lists the user's Cats, Clowders, and Catteries,
