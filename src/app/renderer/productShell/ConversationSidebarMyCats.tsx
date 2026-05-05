@@ -272,6 +272,7 @@ export function ConversationSidebarMyCatsSection<
   emptyStatePlaceholder,
   onDirectMessageCat,
   terminalActionLabelKey,
+  hideLabel = false,
 }: {
   label?: string;
   cats: readonly TCat[];
@@ -291,6 +292,11 @@ export function ConversationSidebarMyCatsSection<
   onDirectMessageCat?: (catId: string) => void;
   /** Forwarded to `MyCatRowItem`; default is the Archive copy. */
   terminalActionLabelKey?: MessageKey;
+  /** Suppresses the section's own `<p class="sectionLabel">` header.
+   * The lobby drill-down sidebar uses this when it pairs the cats
+   * list with an outer `.navItem` button (Cats / Clowders / Catteries
+   * nav header) so the label doesn't show twice. */
+  hideLabel?: boolean;
 }) {
   const { t } = useI18n();
   const activeCats = helpers.sortCatsForDisplay(
@@ -299,8 +305,16 @@ export function ConversationSidebarMyCatsSection<
   );
   const showPlaceholder = activeCats.length === 0 && emptyStatePlaceholder != null;
   return (
-    <section className="myCatsSection">
-      <p className="sectionLabel">{label ?? t(messageKeys.conversationSidebarDirectMessagesLabel)}</p>
+    <section
+      className={
+        hideLabel
+          ? 'myCatsSection myCatsSectionHeaderless'
+          : 'myCatsSection'
+      }
+    >
+      {hideLabel ? null : (
+        <p className="sectionLabel">{label ?? t(messageKeys.conversationSidebarDirectMessagesLabel)}</p>
+      )}
       <div className="myCatsList">
         {showPlaceholder ? (
           <MyCatPlaceholderRow

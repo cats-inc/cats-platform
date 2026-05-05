@@ -40,7 +40,7 @@ import {
 import { GuideCatSidecar } from '../../design/components/GuideCatSidecar';
 import { AppHostRoute } from './AppHostRoute.js';
 import { CatHome } from './entities/CatHome.js';
-import { CatsListPage } from './entities/CatsListPage.js';
+import { CatsCanvasPage } from './entities/CatsCanvasPage.js';
 import { CatteryHome } from './entities/CatteryHome.js';
 import { ClowderHome } from './entities/ClowderHome.js';
 import { EntitiesShell } from './lobby/EntitiesShell.js';
@@ -637,7 +637,7 @@ export default function PlatformApp() {
         <Routes>
           <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
           <Route element={<EntitiesShell envelope={readyEnvelope} />}>
-            <Route path="/cats" element={<CatsListPage envelope={readyEnvelope} />} />
+            <Route path="/cats" element={<CatsCanvasPage />} />
             <Route path="/cats/:catId" element={<CatHome envelope={readyEnvelope} />} />
             <Route path="/cats/:catId/:lens" element={<CatHome envelope={readyEnvelope} />} />
             <Route path="/clowders/:clowderId" element={<ClowderHome envelope={readyEnvelope} />} />

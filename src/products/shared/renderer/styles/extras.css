@@ -5,6 +5,15 @@
   margin-top: 16px;
 }
 
+/* Headerless mode: the section is paired with an outer `.navItem`
+ * button (lobby drill-down's Cats / Clowders / Catteries nav header)
+ * so the rows hang directly under that button — no extra top gap.
+ * Mirrors `.navGroupPinnedList`'s `gap: 0` rhythm under the
+ * "Projects" nav item in Cats Work. */
+.myCatsSection.myCatsSectionHeaderless {
+  margin-top: 0;
+}
+
 .myCatsSection > .sectionLabel {
   margin: 0 0 4px;
   padding: 0 12px;

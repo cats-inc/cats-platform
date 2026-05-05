@@ -1,5 +1,5 @@
 import { useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { useMatch, useNavigate } from 'react-router-dom';
+import { useLocation, useMatch, useNavigate } from 'react-router-dom';
 
 import { GuideCatDockSlot } from '../../../design/components/GuideCatDockSlot.js';
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
@@ -142,6 +142,14 @@ export function LobbyAppShellSidebar({
 
   const activeCatMatch = useMatch('/cats/:catId/*');
   const activeCatId = activeCatMatch?.params.catId ?? null;
+  // Cats / Clowders / Catteries nav items light up while the user is
+  // anywhere under that entity's path tree — same pattern Cats Work
+  // uses for its `/work/projects` nav item (`isWorkProjectsPath` =
+  // `pathname.startsWith(WORK_PROJECTS_PATH)`).
+  const currentPath = useLocation().pathname;
+  const isCatsRoute = currentPath === '/cats' || currentPath.startsWith('/cats/');
+  const isClowdersRoute = currentPath === '/clowders' || currentPath.startsWith('/clowders/');
+  const isCatteriesRoute = currentPath === '/catteries' || currentPath.startsWith('/catteries/');
 
   const { payload, cats, bossCatId } = buildSidebarPayload(envelope);
 
@@ -196,6 +204,11 @@ export function LobbyAppShellSidebar({
   // anyway). Click navigates to `/lobby`, which renders the unframed
   // landing page — no sidebar at all — by virtue of falling outside
   // the EntitiesShell <Route element=> wrapper.
+  // Top primary actions stay in the fixed header — only Main page
+   // belongs there. The Cats / Clowders / Catteries nav items live
+   // inside the scrollable area below, paired with their own cat
+   // list (mirrors Cats Work's "Projects" nav item + pinned project
+   // rows pattern).
   const primaryActions: readonly ConversationSidebarAction[] = [
     {
       key: 'lobby-main-page',
@@ -219,6 +232,60 @@ export function LobbyAppShellSidebar({
       ),
     },
   ];
+
+  const catsNavIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="8" cy="6" r="2.5" />
+      <path d="M3 13.5a5 5 0 0 1 10 0" />
+    </svg>
+  );
+
+  const clowdersNavIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="5" cy="6" r="2" />
+      <circle cx="11" cy="6" r="2" />
+      <path d="M2 13a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3" />
+    </svg>
+  );
+
+  const catteriesNavIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="6" y="2" width="4" height="3" rx="0.5" />
+      <rect x="1" y="11" width="4" height="3" rx="0.5" />
+      <rect x="11" y="11" width="4" height="3" rx="0.5" />
+      <path d="M8 5v3" />
+      <path d="M3 8h10" />
+      <path d="M3 8v3" />
+      <path d="M13 8v3" />
+    </svg>
+  );
 
   const catsPlaceholder: ConversationSidebarMyCatsPlaceholder = {
     label: t(messageKeys.lobbySidebarNewCat),
@@ -262,14 +329,24 @@ export function LobbyAppShellSidebar({
         />
 
         <div className="sidebarScrollable">
-          {/* The three sections inherit the same MyCatsSection
-           * primitive chat / code / work use, but each carries a
-           * `data-lens-kind` so the original per-product placeholder
-           * tints (chat orange / code green / work blue) survive into
-           * the Lobby drill-down sidebar — see extras.css. */}
-          <div data-lens-kind="cats">
+          {/* Each lens kind groups a `.navItem` button (Cats /
+           * Clowders / Catteries — same nav-item visual Cats Work uses
+           * for "Projects") with the per-kind `ConversationSidebarMyCatsSection`
+           * underneath, so the entity rows hang under their nav
+           * header like pinned project rows hang under "Projects". */}
+          <nav className="navGroup" data-lens-kind="cats">
+            <button
+              type="button"
+              className={isCatsRoute ? 'navItem navItemActive' : 'navItem'}
+              onClick={() => navigate('/cats')}
+            >
+              <span className="navGlyph" aria-hidden="true">{catsNavIcon}</span>
+              <span className="navLabel">
+                {t(messageKeys.lobbySidebarSectionCats)}
+              </span>
+            </button>
             <ConversationSidebarMyCatsSection
-              label={t(messageKeys.lobbySidebarSectionCats)}
+              hideLabel
               cats={cats}
               bossCatId={bossCatId}
               payloadChannels={[]}
@@ -294,11 +371,21 @@ export function LobbyAppShellSidebar({
                 )
               }
             />
-          </div>
+          </nav>
 
-          <div data-lens-kind="clowders">
+          <nav className="navGroup" data-lens-kind="clowders">
+            <button
+              type="button"
+              className={isClowdersRoute ? 'navItem navItemActive' : 'navItem'}
+              onClick={() => navigate('/clowders')}
+            >
+              <span className="navGlyph" aria-hidden="true">{clowdersNavIcon}</span>
+              <span className="navLabel">
+                {t(messageKeys.lobbySidebarSectionClowders)}
+              </span>
+            </button>
             <ConversationSidebarMyCatsSection
-              label={t(messageKeys.lobbySidebarSectionClowders)}
+              hideLabel
               cats={[]}
               bossCatId={null}
               payloadChannels={[]}
@@ -311,11 +398,21 @@ export function LobbyAppShellSidebar({
               onArchiveCat={() => undefined}
               emptyStatePlaceholder={clowdersPlaceholder}
             />
-          </div>
+          </nav>
 
-          <div data-lens-kind="catteries">
+          <nav className="navGroup" data-lens-kind="catteries">
+            <button
+              type="button"
+              className={isCatteriesRoute ? 'navItem navItemActive' : 'navItem'}
+              onClick={() => navigate('/catteries')}
+            >
+              <span className="navGlyph" aria-hidden="true">{catteriesNavIcon}</span>
+              <span className="navLabel">
+                {t(messageKeys.lobbySidebarSectionCatteries)}
+              </span>
+            </button>
             <ConversationSidebarMyCatsSection
-              label={t(messageKeys.lobbySidebarSectionCatteries)}
+              hideLabel
               cats={[]}
               bossCatId={null}
               payloadChannels={[]}
@@ -328,7 +425,7 @@ export function LobbyAppShellSidebar({
               onArchiveCat={() => undefined}
               emptyStatePlaceholder={catteriesPlaceholder}
             />
-          </div>
+          </nav>
         </div>
       </div>
 
