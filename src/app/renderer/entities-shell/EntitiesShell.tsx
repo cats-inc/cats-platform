@@ -6,6 +6,11 @@ import {
 } from 'react';
 import { Outlet } from 'react-router-dom';
 
+import {
+  ConfirmDialog,
+  useConfirmDialog,
+} from '../../../design/components/ConfirmDialog.js';
+
 // The Entities workspace mounts the same appshell layout
 // chat / code / work do — `screen claudeShell` outer grid (260px
 // sidebar / fluid canvas) and the `.sidebar` flex column with its own
@@ -64,6 +69,14 @@ export function EntitiesShell({
     ),
   );
 
+  // App-level confirm dialog plumbed down to the sidebar so destructive
+  // actions (Archive cat) use the in-app modal instead of `window.confirm`.
+  const {
+    dialog: confirmDialog,
+    confirm,
+    handleClose: onConfirmClose,
+  } = useConfirmDialog();
+
   useEffect(() => {
     writeSidebarOpenPreference(
       typeof window === 'undefined' ? null : window.localStorage,
@@ -105,10 +118,12 @@ export function EntitiesShell({
         sidebarOpen={sidebarOpen}
         onToggleSidebar={onToggleSidebar}
         onCollapsedSidebarClick={onCollapsedSidebarClick}
+        confirmDialog={confirm}
       />
       <main className="canvas">
         <Outlet />
       </main>
+      <ConfirmDialog dialog={confirmDialog} onClose={onConfirmClose} />
     </div>
   );
 }

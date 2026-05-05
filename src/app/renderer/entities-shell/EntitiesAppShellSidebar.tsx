@@ -1,6 +1,9 @@
 import { useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useLocation, useMatch, useNavigate } from 'react-router-dom';
 
+import type {
+  ConfirmDialogOptions,
+} from '../../../design/components/ConfirmDialog.js';
 import { GuideCatDockSlot } from '../../../design/components/GuideCatDockSlot.js';
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
 import { messageKeys } from '../../../shared/i18n/messageKeys.js';
@@ -124,11 +127,16 @@ export function EntitiesAppShellSidebar({
   sidebarOpen,
   onToggleSidebar,
   onCollapsedSidebarClick,
+  confirmDialog,
 }: {
   envelope: PlatformHostEnvelope;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
+  /** App-level confirm dialog plumbed in from `EntitiesShell` so
+   * destructive actions (Archive cat) use the in-app modal rather than
+   * `window.confirm`. */
+  confirmDialog: (options: ConfirmDialogOptions) => Promise<boolean>;
 }) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -159,29 +167,28 @@ export function EntitiesAppShellSidebar({
   const { payload, cats, bossCatId } = buildSidebarPayload(envelope);
 
   /* Archive flow for the row's three-dots → Archive popover. Mirrors
-   * the chat sidebar's `onArchiveCat`, but without the workspace
-   * payload state container the chat product wraps around it: we
-   * confirm with a native dialog, hit `PATCH /api/cats/:id` with
-   * `{ archive: true }`, and then `location.reload()` so the
-   * platform host's envelope refreshes and the cat drops out of the
-   * MY CATS list. Imperfect, but matches the user's "popover should
-   * still archive" expectation without rebuilding the chat product's
-   * busy/feedback machinery here. */
+   * the chat sidebar's `onClearDirectLane` shape: gate on the app-level
+   * `<ConfirmDialog>` (passed in from `EntitiesShell`), call
+   * `PATCH /api/cats/:id { archive: true }`, then `location.reload()`
+   * so the platform envelope refreshes and the cat drops out of MY
+   * CATS. The platform-level state container for richer toasts isn't
+   * available here, so an archive failure logs and bails — the row
+   * stays put, which itself signals the operation didn't take. */
   const onArchiveCat = async (catId: string): Promise<void> => {
     const cat = envelope.lobby.cats.find((entry) => entry.id === catId);
     const catName = cat?.name ?? catId;
-    const confirmed = window.confirm(
-      t(messageKeys.sharedSettingsCatsArchiveWithTelegramConfirmMessage, {
+    const confirmed = await confirmDialog({
+      title: t(messageKeys.sharedSettingsCatsArchiveConfirmTitle),
+      message: t(messageKeys.sharedSettingsCatsArchiveWithTelegramConfirmMessage, {
         catName,
       }),
-    );
+      confirmLabel: t(messageKeys.sharedSettingsCatsArchiveLabel),
+    });
     if (!confirmed) return;
     try {
       await updateCatProfile(catId, { archive: true });
-    } catch {
-      // Surface a minimal error — the platform-level state container
-      // for richer toasts isn't available from this sidebar.
-      window.alert(t(messageKeys.sharedSettingsCatsArchiveError));
+    } catch (error) {
+      console.error('[EntitiesAppShellSidebar] archive failed', error);
       return;
     }
     window.location.reload();

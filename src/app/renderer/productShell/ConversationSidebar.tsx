@@ -177,6 +177,10 @@ export interface ConversationSidebarProps<
    * the cat. The handler stays `onArchiveCat` — caller owns the
    * meaning. */
   myCatsTerminalActionLabelKey?: import('../../../shared/i18n/messageKeys.js').MessageKey;
+  /** When true, disable the MY CATS row popover's terminal action for
+   * cats that have no direct-lane channel yet. Chat sets this so the
+   * Clear menu item greys out on draft / cleared rows. */
+  myCatsDisableTerminalActionWhenDraft?: boolean;
   helpers: ConversationSidebarHelpers<TCat, TChannel, TDot>;
   onToggleSidebar: () => void;
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
@@ -218,6 +222,7 @@ export function ConversationSidebar<
   myCatsSectionCats,
   myCatsEmptyStatePlaceholder,
   myCatsTerminalActionLabelKey,
+  myCatsDisableTerminalActionWhenDraft,
   helpers,
   onToggleSidebar,
   onCollapsedSidebarClick,
@@ -349,6 +354,7 @@ export function ConversationSidebar<
               onArchiveCat={onArchiveCat}
               emptyStatePlaceholder={myCatsEmptyStatePlaceholder}
               terminalActionLabelKey={myCatsTerminalActionLabelKey}
+              disableTerminalActionWhenDraft={myCatsDisableTerminalActionWhenDraft}
             />
           ) : null}
 

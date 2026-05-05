@@ -24,6 +24,7 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
   onOverflowToggle,
   onDirectMessage,
   terminalActionLabelKey,
+  terminalActionDisabled,
 }: {
   cat: TCat;
   isBoss: boolean;
@@ -51,6 +52,11 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
    * channel rather than archiving the cat. The handler stays
    * `onArchive` — caller decides what archive vs. clear means. */
   terminalActionLabelKey?: MessageKey;
+  /** Disable the popover's terminal-action button. Chat sets this for
+   * cats that are still in draft state (no direct-lane channel yet,
+   * either brand-new or just cleared) so the Clear menu item doesn't
+   * pretend to act on something that isn't there. */
+  terminalActionDisabled?: boolean;
 }) {
   const { t } = useI18n();
   const overflowButtonRef = useRef<HTMLButtonElement>(null);
@@ -132,7 +138,11 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
               <hr className="myCatOverflowMenuDivider" aria-hidden="true" />
             </>
           ) : null}
-          <button type="button" disabled={false} onClick={onArchive}>
+          <button
+            type="button"
+            disabled={terminalActionDisabled === true}
+            onClick={onArchive}
+          >
             {t(terminalActionLabelKey ?? messageKeys.conversationSidebarArchiveButton)}
           </button>
         </SidebarFloatingMenuPortal>
@@ -272,6 +282,7 @@ export function ConversationSidebarMyCatsSection<
   emptyStatePlaceholder,
   onDirectMessageCat,
   terminalActionLabelKey,
+  disableTerminalActionWhenDraft = false,
   hideLabel = false,
 }: {
   label?: string;
@@ -292,6 +303,12 @@ export function ConversationSidebarMyCatsSection<
   onDirectMessageCat?: (catId: string) => void;
   /** Forwarded to `MyCatRowItem`; default is the Archive copy. */
   terminalActionLabelKey?: MessageKey;
+  /** When true, disable the popover's terminal action for any cat that
+   * has no direct-lane channel yet. Chat passes this so its "Clear"
+   * menu item greys out on draft / cleared rows where there is nothing
+   * to clear. The Entities sidebar leaves this off — Archive applies
+   * to the cat itself, not to a channel. */
+  disableTerminalActionWhenDraft?: boolean;
   /** Suppresses the section's own `<p class="sectionLabel">` header.
    * The Entities sidebar uses this when it pairs the cats
    * list with an outer `.navItem` button (Cats / Clowders / Catteries
@@ -336,6 +353,8 @@ export function ConversationSidebarMyCatsSection<
           const dotTitle = dotLabelKey ? t(dotLabelKey) : '';
           const overflowKey = `cat:${cat.id}`;
           const catOverflowOpen = overflowMenuOpenId === overflowKey;
+          const terminalActionDisabled =
+            disableTerminalActionWhenDraft && !directLane;
 
           return (
             <MyCatRowItem
@@ -365,6 +384,7 @@ export function ConversationSidebarMyCatsSection<
                   : undefined
               }
               terminalActionLabelKey={terminalActionLabelKey}
+              terminalActionDisabled={terminalActionDisabled}
             />
           );
         })}

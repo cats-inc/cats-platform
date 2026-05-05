@@ -227,6 +227,10 @@ export function Sidebar(props: SidebarProps) {
      * hidden — cat creation lives elsewhere now. */
     forceShowMyCatsSection: props.payload.chat.cats.length > 0,
     myCatsTerminalActionLabelKey: messageKeys.conversationSidebarClearButton,
+    /* Clear targets the cat's direct-lane channel — if there isn't
+     * one yet (brand-new cat or just-cleared row showing NewChatDraft)
+     * the menu item should grey out, not pretend to act. */
+    myCatsDisableTerminalActionWhenDraft: true,
     helpers: {
       catInitials,
       presentChannelTitle: (title) => presentChannelTitle(title, t),
