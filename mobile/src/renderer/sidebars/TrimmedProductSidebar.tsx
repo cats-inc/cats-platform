@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { TouchableOpacity } from 'react-native-gesture-handler';
 
 import {
   getMobileProductSidebarCopy,
@@ -239,6 +240,15 @@ function RecentRow({
     </Pressable>
   );
 
+  // The row body is `TouchableOpacity` from
+  // `react-native-gesture-handler` (NOT the RN one). Reason: RN's
+  // Pressable / TouchableOpacity use the React Native responder
+  // system, which doesn't coordinate cleanly with gesture-handler's
+  // Swipeable PanGestureHandler — RN catches the touch, fires
+  // onPress, and the horizontal pan never reaches Swipeable. Both
+  // touchables coming from the same gesture system means pan vs tap
+  // negotiates correctly: a horizontal drag activates Swipeable,
+  // a tap-up without movement fires onPress.
   return (
     <Swipeable
       ref={swipeableRef}
@@ -251,17 +261,14 @@ function RecentRow({
       // resolves.
       enabled={!isDeleting}
     >
-      <Pressable
+      <TouchableOpacity
         onPress={onPress}
         // Disable row tap while the Delete is in flight so the user
         // can't accidentally navigate into a channel that's about
         // to disappear.
         disabled={isDeleting}
-        style={({ pressed }) => [
-          styles.row,
-          pressed && !isDeleting ? styles.rowPressed : null,
-          isDeleting ? styles.rowBusy : null,
-        ]}
+        activeOpacity={0.6}
+        style={[styles.row, isDeleting ? styles.rowBusy : null]}
       >
         <View style={styles.recentIconBubble}>
           <Text style={styles.recentIconBubbleText}>💬</Text>
@@ -276,7 +283,7 @@ function RecentRow({
             </Text>
           ) : null}
         </View>
-      </Pressable>
+      </TouchableOpacity>
     </Swipeable>
   );
 }
