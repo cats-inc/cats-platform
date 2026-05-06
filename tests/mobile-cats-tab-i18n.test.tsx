@@ -432,6 +432,17 @@ test('resolveMobileDraftApiEntryKind maps Group/Team chips onto API entryKind="g
   assert.equal(resolveMobileDraftApiEntryKind('work', 'team'), 'group');
 });
 
+test('resolveMobileDraftApiEntryKind maps Chat direct-lane drafts onto API entryKind="direct"', () => {
+  // Tap on a cat in the Chat tab's DIRECT MESSAGES list with no
+  // existing direct-lane channel routes to the draft via
+  // `/(tabs)/chat/new?entryKind=direct&catId=...`. The mapping
+  // here is what `useDraftChannel`'s send path consumes when it
+  // POSTs `/api/channels`. The 'direct' value pairs with the
+  // `defaultRecipientCatId / participantCatIds` fields the hook
+  // sets so desktop creates the channel wired to the cat.
+  assert.equal(resolveMobileDraftApiEntryKind('chat', 'direct'), 'direct');
+});
+
 test('resolveMobileDraftApiEntryKind maps fan-out chips to null (desktop-only)', () => {
   // The send path must short-circuit on null and surface the same
   // desktop-only alert as the sidebar tap. Mapping any of these
@@ -688,6 +699,59 @@ test('selectMobileChatDirectLaneCats filters archived cats and applies the recen
   // sort it first; remaining cats sort by recency (cat-a's DM
   // activity beats cat-b's createdAt fallback).
   assert.deepEqual(sorted.map((cat) => cat.id), ['cat-a', 'cat-b']);
+});
+
+test('selectMobileChatDirectLaneCats filters cats whose products list does not include "chat"', () => {
+  // Mirrors web's `isChatCat` gate
+  // (`src/products/shared/renderer/workspaceChatUtils.tsx`): a cat
+  // scoped only to Code / Work would otherwise leak into the Chat
+  // tab's DM section. An empty / missing `products` array still
+  // counts as chat (the desktop default is `['chat']` from
+  // `defaultCatProducts()`).
+  const payload: MobileAppShellPayload = {
+    ownerDisplayName: 'Ken',
+    ownerAvatarUrl: null,
+    ownerAvatarColor: null,
+    chat: {
+      cats: [
+        buildCat({
+          id: 'cat-chat',
+          name: 'Chat-only',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          products: ['chat'],
+        }),
+        buildCat({
+          id: 'cat-code-only',
+          name: 'Code-only',
+          createdAt: '2026-05-02T00:00:00.000Z',
+          products: ['code'],
+        }),
+        buildCat({
+          id: 'cat-cross',
+          name: 'Cross',
+          createdAt: '2026-05-03T00:00:00.000Z',
+          products: ['chat', 'work'],
+        }),
+        buildCat({
+          id: 'cat-default',
+          name: 'Default',
+          createdAt: '2026-05-04T00:00:00.000Z',
+          // Empty products → defaults to chat.
+          products: [],
+        }),
+      ],
+      channels: [],
+    },
+  };
+
+  const sorted = selectMobileChatDirectLaneCats(payload);
+  // `cat-code-only` is dropped; the rest survive. Order is
+  // createdAt desc (no DM channels in this fixture, so all four
+  // — minus the filtered one — fall back to creation time).
+  assert.deepEqual(
+    sorted.map((cat) => cat.id),
+    ['cat-default', 'cat-cross', 'cat-chat'],
+  );
 });
 
 test('findMobileDirectLaneForCat returns the direct-lane channel when one exists', () => {

@@ -92,7 +92,13 @@ function buildRows(
         label: config.emptyRecentsLabel,
         sectionId: 'recents',
       }];
-  const dmRows: Row[] = directMessages
+  // Only render the DIRECT MESSAGES section header when there's
+  // at least one cat to show. Earlier the prop's mere presence
+  // forced the header to render — flagged on review because
+  // `chat/index.tsx` always passes `directMessages`, so the
+  // header showed up on the loading / unconfigured / no-chat-cats
+  // states with an empty body underneath.
+  const dmRows: Row[] = directMessages && directMessages.cats.length > 0
     ? [
         { kind: 'section-header', label: directMessages.label },
         ...directMessages.cats.map<Row>((cat) => ({ kind: 'dm-cat', cat })),

@@ -8,7 +8,7 @@ import {
 import type { WorkspaceProductConfirmDialog } from '../../../shared/renderer/WorkspaceProductApp.js';
 import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
-import type { AppShellPayload, ChatCat, ChatChannelSummary } from '../../api/contracts.js';
+import type { AppShellPayload, ChatChannelSummary } from '../../api/contracts.js';
 import {
   catInitials,
   isChatCat,
@@ -22,6 +22,7 @@ import {
   statusDotLabel,
 } from '../myCatNavigation';
 import { isDirectLaneSummary } from '../../shared/channelTopology.js';
+import { sortChatCatsByRecency } from '../../shared/directMessageSelectors.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import { messageKeys, type MessageKey } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
@@ -130,39 +131,6 @@ function createPrimaryActions(
       ),
     },
   ];
-}
-
-/**
- * Recency-first ordering for the Chat product's DIRECT MESSAGES
- * section. Each cat's score is the latest activity timestamp on its
- * direct-lane channel (`lastActivatedAt` falls back to
- * `lastMessageAt`); cats without a channel float to the top of the
- * list keyed by their `createdAt`, so a brand-new cat appears
- * immediately, and clearing a cat's lane (which deletes the channel)
- * also sends the cat back to the top via that fallback. Sort is
- * descending (most recent first) and intentionally ignores Boss-cat
- * pinning — that's the lobby sidebar's behaviour, not chat's.
- */
-function sortChatCatsByRecency(
-  cats: readonly ChatCat[],
-  channels: readonly ChatChannelSummary[],
-): ChatCat[] {
-  const recencyByCatId = new Map<string, string>();
-  for (const channel of channels) {
-    if (!isDirectLaneSummary(channel)) continue;
-    const catId = channel.defaultRecipientCatId;
-    if (!catId) continue;
-    const ts = channel.lastActivatedAt ?? channel.lastMessageAt ?? '';
-    const existing = recencyByCatId.get(catId);
-    if (!existing || existing.localeCompare(ts) < 0) {
-      recencyByCatId.set(catId, ts);
-    }
-  }
-  return [...cats].sort((left, right) => {
-    const leftTime = recencyByCatId.get(left.id) ?? left.createdAt;
-    const rightTime = recencyByCatId.get(right.id) ?? right.createdAt;
-    return rightTime.localeCompare(leftTime);
-  });
 }
 
 function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry<ChatChannelSummary>[] {

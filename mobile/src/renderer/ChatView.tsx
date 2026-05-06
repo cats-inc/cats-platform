@@ -53,7 +53,16 @@ export type ChatViewProductMode = 'chat' | 'code' | 'work';
  */
 export type ChatViewTarget =
   | { kind: 'channel'; channelId: string }
-  | { kind: 'draft'; entryActionId: string };
+  | {
+      kind: 'draft';
+      entryActionId: string;
+      /**
+       * When set, mounts the draft as a direct-lane preset. The
+       * Chat tab's DM-section tap path uses this to pre-attach the
+       * cat to the channel that gets created on first send.
+       */
+      directLane?: { catId: string; catName: string } | null;
+    };
 
 export interface ChatViewProps {
   target: ChatViewTarget;
@@ -86,6 +95,7 @@ export function ChatView({ target, productMode }: ChatViewProps) {
       <DraftChatViewHost
         productMode={productMode}
         entryActionId={target.entryActionId}
+        directLane={target.directLane ?? null}
       />
     );
   }
@@ -129,23 +139,39 @@ function ChannelChatViewHost({ productMode, channelId }: ChannelChatViewHostProp
 interface DraftChatViewHostProps {
   productMode: ChatViewProductMode;
   entryActionId: string;
+  directLane: { catId: string; catName: string } | null;
 }
 
-function DraftChatViewHost({ productMode, entryActionId }: DraftChatViewHostProps) {
-  const { state, refetch, send, sendState } = useDraftChannel(productMode, entryActionId);
-  // For drafts the Stack header shows the resolved channel title
-  // (e.g. "New chat" / "新聊天" / "New team work" / etc.) coming
-  // from `MobileTabsCopy.channelTitle[productMode][entryActionId]`.
-  // No async wait — the resolution is pure copy lookup.
+function DraftChatViewHost({
+  productMode,
+  entryActionId,
+  directLane,
+}: DraftChatViewHostProps) {
+  const { state, refetch, send, sendState } = useDraftChannel(
+    productMode,
+    entryActionId,
+    directLane,
+  );
+  // For drafts the Stack header shows the resolved channel title.
+  // Direct-lane drafts use the cat's display name so the header
+  // reads e.g. "Catlas" — matches the desktop `/chat/dm/:catId`
+  // header. Other drafts fall back to the entry-action title from
+  // `MobileTabsCopy.channelTitle[productMode][entryActionId]`.
   const tabsCopy = getMobileTabsCopy(resolveDefaultMobileLocale());
-  const headerTitle = getMobileChannelTitle(tabsCopy, productMode, entryActionId);
+  const headerTitle = directLane
+    ? directLane.catName
+    : getMobileChannelTitle(tabsCopy, productMode, entryActionId);
   return (
     <>
       <Stack.Screen options={{ title: headerTitle, headerShown: true }} />
       <ChatViewBody
         state={state}
         productMode={productMode}
-        conversationKey={`draft:${entryActionId}`}
+        conversationKey={
+          directLane
+            ? `draft:direct:${directLane.catId}`
+            : `draft:${entryActionId}`
+        }
         refetch={refetch}
         send={send}
         sendState={sendState}

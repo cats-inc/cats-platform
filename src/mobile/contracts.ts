@@ -127,6 +127,21 @@ export interface MobileCreateChannelInput {
   topic: string;
   originSurface: MobilePlatformSurfaceId;
   entryKind?: 'default' | 'group' | 'direct';
+  /**
+   * Direct-lane recipient cat id, populated when the user starts a
+   * DM from the Chat tab's DIRECT MESSAGES list. Pairs with
+   * `entryKind: 'direct'` and `participantCatIds: [<this id>]` so
+   * the desktop creates the channel with the cat already attached.
+   */
+  defaultRecipientCatId?: string;
+  /**
+   * Existing cat ids to assign at creation time. Currently only
+   * the DM flow uses this, passing the same id as
+   * `defaultRecipientCatId`; group / parallel flows leave it
+   * unset and let the desktop default-add cats based on
+   * `entryKind`.
+   */
+  participantCatIds?: string[];
 }
 
 export interface MobileCreatedChannel {

@@ -17,6 +17,7 @@ import {
   getMobileTabsCopy,
   resolveDefaultMobileLocale,
   selectMobileChatDirectLaneCats,
+  type MobileChatCat,
 } from '../../../../src/mobile/index.js';
 
 /**
@@ -59,12 +60,9 @@ export default function ChatSidebarScreen() {
       if (state.kind !== 'data') {
         return;
       }
-      // Existing direct-lane channel → push the user straight there,
-      // matching the desktop's `/chat/dm/:catId` deep link target.
-      // No existing channel → desktop-only alert; the mobile create
-      // contract doesn't yet carry `defaultRecipientCatId`, so
-      // starting a fresh DM has to happen on the desktop until we
-      // extend `MobileCreateChannelInput`.
+      // Existing direct-lane channel → push the user straight
+      // there, matching the desktop's `/chat/dm/:catId` deep link
+      // target.
       const directLane = findMobileDirectLaneForCat(
         state.payload.chat.channels,
         catId,
@@ -73,19 +71,25 @@ export default function ChatSidebarScreen() {
         router.push(`/(tabs)/chat/${directLane.id}`);
         return;
       }
-      Alert.alert(
-        copy.directChatDesktopOnlyTitle,
-        copy.directChatDesktopOnlyBody,
-        [{ text: copy.desktopOnlyOkAction, style: 'cancel' }],
+      // No existing DM yet → navigate to the chat draft route
+      // with `entryKind=direct` and the cat preset. Mirrors the
+      // desktop's auto-create-on-first-send behaviour:
+      // `useDraftChannel` POSTs `/api/channels` with
+      // `defaultRecipientCatId / participantCatIds` so the
+      // freshly-created channel arrives wired to this cat.
+      const cat = state.payload.chat.cats.find(
+        (entry: MobileChatCat) => entry.id === catId,
+      );
+      if (!cat) {
+        return;
+      }
+      router.push(
+        `/(tabs)/chat/new?entryKind=direct&catId=${encodeURIComponent(
+          catId,
+        )}&catName=${encodeURIComponent(cat.name)}`,
       );
     },
-    [
-      copy.directChatDesktopOnlyBody,
-      copy.directChatDesktopOnlyTitle,
-      copy.desktopOnlyOkAction,
-      router,
-      state,
-    ],
+    [router, state],
   );
 
   const handlePrimaryAction = useCallback(

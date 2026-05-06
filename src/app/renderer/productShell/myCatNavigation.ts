@@ -1,5 +1,6 @@
 import type { ParticipantSessionStatus, RoomRoutingMode } from '../../../shared/roomRouting.js';
-import { isDirectLaneSummary, type ProductChannelKind } from './channelTopology.js';
+import { type ProductChannelKind } from './channelTopology.js';
+import { findDirectLaneForCat as findDirectLaneForCatShared } from '../../../products/chat/shared/directMessageSelectors.js';
 import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
 
 type ChatChannelSummaryRef = {
@@ -32,13 +33,18 @@ export function buildMyCatPathForPrefix(chatPrefix: string, catId: string): stri
   return `${directMessagePathPrefix}/${encodeURIComponent(normalizedCatId)}`;
 }
 
+/**
+ * Re-export of the shared `findDirectLaneForCat` from
+ * `src/products/chat/shared/directMessageSelectors.ts`. Web call
+ * sites keep importing from here for backward compatibility; the
+ * canonical implementation lives in the chat product's shared
+ * module so mobile picks it up via the same source of truth.
+ */
 export function findDirectLaneForCat<TChannel extends ChatChannelSummaryRef>(
   channels: TChannel[],
   catId: string,
 ): TChannel | null {
-  return channels.find((channel) =>
-    channel.defaultRecipientCatId === catId && isDirectLaneSummary(channel),
-  ) ?? null;
+  return findDirectLaneForCatShared(channels, catId);
 }
 
 export function resolveMyCatStatusDot(

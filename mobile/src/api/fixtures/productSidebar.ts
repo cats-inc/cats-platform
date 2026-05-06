@@ -134,9 +134,11 @@ export type MobileCatsDirectorySectionKey = 'cats' | 'clowders' | 'catteries';
  * have been intercepted by `getMobileDesktopOnlyAlertCopy` first).
  *
  * Mapping:
- *   chat / 'group' → 'group'
- *   code / 'team'  → 'group'
- *   work / 'team'  → 'group'
+ *   chat / 'direct' → 'direct'   (Chat tab DM-section tap on a cat
+ *                                  with no existing direct lane)
+ *   chat / 'group'  → 'group'
+ *   code / 'team'   → 'group'
+ *   work / 'team'   → 'group'
  *   chat / 'parallel', work / 'parallel', code / 'peer' → null
  *     (desktop-only fan-out flows that have no
  *     default/group/direct API on mobile)
@@ -154,6 +156,9 @@ export function resolveMobileDraftApiEntryKind(
   }
   if (product === 'code' && actionId === 'peer') {
     return null;
+  }
+  if (product === 'chat' && actionId === 'direct') {
+    return 'direct';
   }
   if (product === 'chat' && actionId === 'group') {
     return 'group';
