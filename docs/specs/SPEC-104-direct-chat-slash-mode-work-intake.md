@@ -28,6 +28,9 @@ records; it asks the human to confirm or create them.
 
 This spec intentionally avoids adding new Chat channel kinds, entry-preset
 labels, runtime labels, or a second model-strength classifier.
+Implicit no-slash Work/Code detection is outside this spec and is covered by
+[SPEC-105](./SPEC-105-direct-chat-implicit-product-intent.md). SPEC-104 remains
+the explicit slash-command contract.
 
 ## Goals
 
@@ -52,6 +55,7 @@ labels, runtime labels, or a second model-strength classifier.
 - no standalone `/work/intake` route revival
 - no Telegram mini-app or custom rich transport UI
 - no automatic escalation from weak Cat to another Cat
+- no implicit natural-language Work/Code detection from ordinary chat text
 - no UI layout redesign in this spec
 
 ## User Stories
@@ -510,6 +514,7 @@ these semantics.
 - [ADR-101: Use the Direct-Audience Cat for Slash-Mode Work Intake](../decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md)
 - [SPEC-038: Telegram Bot Commands and Transport Control Surface](./SPEC-038-telegram-bot-commands-and-transport-control-surface.md)
 - [SPEC-082: Cats Work Agent Supervision and Tool Boundary](./SPEC-082-cats-work-agent-supervision-and-tool-boundary.md)
+- [SPEC-105: Direct Chat Implicit Product Intent Confirmation](./SPEC-105-direct-chat-implicit-product-intent.md)
 - [PLAN-080: Provider Capability Bootstrap Config Rollout](../plans/PLAN-080-provider-capability-bootstrap-config-rollout.md)
 
 ## Acceptance Criteria
@@ -586,6 +591,7 @@ these semantics.
 ## References
 
 - [PLAN-092: Direct Chat Slash-Mode Work Intake Rollout](../plans/PLAN-092-direct-chat-slash-mode-work-intake-rollout.md)
+- [SPEC-105: Direct Chat Implicit Product Intent Confirmation](./SPEC-105-direct-chat-implicit-product-intent.md)
 - [PLAN-075: Real Provider Orchestrator Integration](../plans/PLAN-075-real-provider-orchestrator-integration.md)
 - [PLAN-085: Mission Cancel and Run Stop Rollout](../plans/PLAN-085-mission-cancel-and-run-stop-rollout.md)
 

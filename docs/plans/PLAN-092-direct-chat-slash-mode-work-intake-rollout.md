@@ -41,6 +41,11 @@ Work, Code, or Telegram UI. The implementation target is a bridge:
    run boundaries.
 
 The direct lane remains the conversational follow-up surface.
+Implicit no-slash Work/Code detection from ordinary direct-chat text is not part
+of this rollout. That follow-up is tracked by
+[SPEC-105](../specs/SPEC-105-direct-chat-implicit-product-intent.md) and
+[PLAN-093](./PLAN-093-direct-chat-implicit-product-intent-rollout.md), and it
+must enter this slash-mode intake path only after explicit owner confirmation.
 
 ## Implementation Phases
 
@@ -252,6 +257,10 @@ demo Work Items unless the user explicitly approves a write.
 - [ ] Decide whether product-intent system segments need localization key /
       interpolation metadata beside rendered `content` for future reader-side
       i18n re-rendering.
+- [ ] Implement implicit no-slash Work/Code candidate detection only through
+      [PLAN-093](./PLAN-093-direct-chat-implicit-product-intent-rollout.md);
+      confirmed candidates must reuse this slash-mode intake pipeline rather
+      than create a parallel durable path.
 
 ## Files to Create/Modify
 
@@ -385,6 +394,7 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Follow-up scope split: implicit no-slash Work/Code detection is now explicitly tracked by SPEC-105/PLAN-093. PLAN-092 remains the explicit slash-command intake contract, and confirmed implicit candidates must bridge into this path instead of creating a parallel durable flow. |
 | 2026-05-06 | Follow-up contract alignment: SPEC-104 now records `productIntentArgumentProvided`, the empty-argument prompt marker, and the required "not owner wording" instruction; weak/unknown product-intent user messages also carry the argument-provided flag. Targeted suite passed with 38 tests and server typecheck passed. |
 | 2026-05-06 | Follow-up review alignment: ADR-101 now matches the implemented `/chat` draft-abandon contract; empty slash-mode arguments now use a neutral prompt marker plus Concierge instructions instead of localized synthetic user text; SPEC/PLAN track the remaining weak/unknown first-turn dialogue, hard clarification counter, and segment i18n follow-ups. Targeted suite passed with 38 tests, server typecheck passed, and UI test bundle passed. |
 | 2026-05-06 | Follow-up Concierge hardening: strong `/work` and `/code` command turns now create the draft anchor, surface the system acknowledgement, and immediately start the same direct Cat's chat-only Concierge turn. Telegram `from.language_code` now drives first-turn i18n, abandoned draft anchors are cancelled when posture is cleared without replacement, and the targeted suite passed with 37 tests plus server typecheck and UI test build. |

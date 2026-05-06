@@ -59,6 +59,8 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [SPEC-105](./specs/SPEC-105-direct-chat-implicit-product-intent.md) — no-slash Work/Code candidate detection for ordinary direct chat, requiring explicit owner confirmation before entering slash-mode intake
+- [PLAN-093](./plans/PLAN-093-direct-chat-implicit-product-intent-rollout.md) — rollout plan for implicit product-intent detection, Web/Telegram confirmation UX, and confirmed handoff into SPEC-104
 - [ADR-101](./decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md) — direct-message `/work`/`/code` MVP uses the same direct audience Cat, existing provider capability profiles, and a human gate for weak/unknown Cats
 - [SPEC-104](./specs/SPEC-104-direct-chat-slash-mode-work-intake.md) — Direct Chat Slash-Mode Work Intake contract for `/chat`, `/work`, `/code`, strong same-Cat clarification, and weak/unknown human gating
 - [PLAN-092](./plans/PLAN-092-direct-chat-slash-mode-work-intake-rollout.md) — rollout plan for command parsing, direct audience capability bridge, durable Work/Code anchor creation, weak/unknown human gate, and projections
