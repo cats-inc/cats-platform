@@ -122,20 +122,20 @@ prompt-only suggestion.
 
 ### Phase 4: Confirmation bridge into SPEC-104
 
-- [ ] Task 4.1: Convert confirmed Work proposals into the same intake behavior
+- [x] Task 4.1: Convert confirmed Work proposals into the same intake behavior
       as `/work <source>`.
-- [ ] Task 4.2: Convert confirmed Code proposals into the same intake behavior
+- [x] Task 4.2: Convert confirmed Code proposals into the same intake behavior
       as `/code <source>`.
-- [ ] Task 4.3: Preserve source owner message, proposal id, and proposing Cat in
+- [x] Task 4.3: Preserve source owner message, proposal id, and proposing Cat in
       confirmed command metadata.
-- [ ] Task 4.4: Use the sentinel raw command token
+- [x] Task 4.4: Use the sentinel raw command token
       `(cat-proposal-confirmation)` instead of a fake slash token.
-- [ ] Task 4.5: Reuse SPEC-104 direct audience capability gating after
+- [x] Task 4.5: Reuse SPEC-104 direct audience capability gating after
       confirmation.
-- [ ] Task 4.6: Set confirmed `argumentText` to `proposal.summary.trim()` when
+- [x] Task 4.6: Set confirmed `argumentText` to `proposal.summary.trim()` when
       non-empty, otherwise fall back to `originalMessage.body.trim()` for
       defensive legacy/migration handling.
-- [ ] Task 4.7: Add idempotency tests for repeated confirmation.
+- [x] Task 4.7: Add idempotency tests for repeated confirmation.
 
 **Deliverables**: confirmed Cat proposals use the existing durable intake path
 without introducing a parallel Work Item creation path.
@@ -279,6 +279,7 @@ the old heuristic cannot surprise users.
 | 2026-05-06 | Phase 2 contract foundation landed: v2 `catProductIntentProposal` / transition metadata, `proposeProductIntake` manifest, server-side validation helper, TTL/cooldown/idempotency helpers, and focused proposal contract tests. Remaining Phase 2 work is wiring actual append-only transcript writes and proving live proposal calls do not create Work Items. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-cat-product-intent-proposal` test, and `git diff --check`. |
 | 2026-05-06 | Phase 2 live append and Phase 3 initial exposure landed: eligible strong direct Cats receive `proposeProductIntake` in ordinary chat turns when effective mode is `cat_tool`; accepted tool requests write only v2 proposal system segments and do not create Work Items or anchors; `heuristic_prefilter` does not expose the Cat proposal tool. Remaining Phase 3 work is weak/unknown and owner-setting exposure coverage, prompt/tool rejection instructions, and per-turn guard tests. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-product-intent-dispatch` and `chat-cat-product-intent-proposal` tests, and `git diff --check`. |
 | 2026-05-06 | Phase 3 tool-grant guard coverage landed: proposal-tool observations now carry owner-confirmation and rejection-handling invariants, and dispatch tests prove weak, unknown, owner-disabled, heuristic-mode, and non-direct lanes do not receive `proposeProductIntake`. Remaining Phase 3 work is explicit provider-without-tool-call handling and future durable-tool separation tests. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-product-intent-dispatch` and `chat-provider-agent-observation` tests. |
+| 2026-05-06 | Phase 4 confirmation bridge landed: Cat proposal segments now carry reusable `ChatMessage.choices`; confirmed Work and Code proposals synthesize `(cat-proposal-confirmation)` command metadata, preserve source message/proposal/proposing Cat context, enter the existing SPEC-104 intake path, and repeated confirmations are idempotent. Declines write only proposal transitions and do not create Work Items. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-product-intent-dispatch` and `chat-cat-product-intent-proposal` tests. |
 
 ---
 

@@ -34,8 +34,10 @@ import {
   IMPLICIT_PRODUCT_INTENT_COMMAND_TOKEN,
 } from '../src/products/chat/shared/implicitProductIntent.ts';
 import {
+  CAT_PRODUCT_INTENT_PROPOSAL_COMMAND_TOKEN,
   CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
   type CatProductIntentProposalMetadata,
+  type CatProductIntentProposalTransitionMetadata,
 } from '../src/products/chat/shared/catProductIntentProposal.ts';
 import { buildWorkWorkItemListProjection } from '../src/products/work/api/projection.ts';
 import { buildTelegramImplicitProductIntentReplyMarkup } from '../src/platform/transports/telegram/bridge.ts';
@@ -225,6 +227,60 @@ async function suggestImplicitProductIntentCandidate(input: {
   return {
     state: routed.state,
     candidateMessage,
+  };
+}
+
+async function suggestCatProductIntentProposal(input: {
+  state: ChatState;
+  channelId: string;
+  store: MemoryChatStore;
+  body: string;
+  now: Date;
+  targetProduct?: 'work' | 'code';
+  summary?: string;
+}): Promise<{ state: ChatState; proposalMessage: ChatMessage }> {
+  const summary = input.summary ?? 'Plan onboarding requirements';
+  const routed = await routeChannelMessage(
+    input.state,
+    input.channelId,
+    {
+      body: input.body,
+      senderName: 'Kenneth',
+    },
+    runtimeReplyStub('I can discuss that.'),
+    input.now,
+    {
+      chatStore: input.store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+      providerAgentDecisionRequester: async () => ({
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: `decision-propose-${input.targetProduct ?? 'work'}-1`,
+        confidence: 'high',
+        toolName: CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
+        target: {
+          kind: 'worker_tool',
+          toolName: CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
+        },
+        input: {
+          targetProduct: input.targetProduct ?? 'work',
+          summary,
+          rationale: 'The owner is asking for product intake.',
+        },
+        rationaleSummary: 'Ask the owner to confirm product intake.',
+      }),
+    },
+  );
+  const proposalMessage = requireChannel(routed.state, input.channelId).messages
+    .find((message) => message.metadata.event === 'cat_product_intent_proposal_created');
+  if (!proposalMessage) {
+    throw new Error('Expected Cat product-intent proposal message.');
+  }
+
+  return {
+    state: routed.state,
+    proposalMessage,
   };
 }
 
@@ -837,6 +893,231 @@ test('routeChannelMessage does not expose proposal tools outside direct lanes', 
 
   assert.equal(capturedObservation?.actor.actorRef, 'cat:participant-concierge');
   assert.equal(observationExposesProposalTool(capturedObservation), false);
+});
+
+test('beginChannelMessageDispatch confirms Cat proposals through slash-mode intake once', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const initial = await suggestCatProductIntentProposal({
+    state,
+    channelId,
+    store,
+    body: 'Please plan the onboarding requirements',
+    now: new Date('2026-05-06T08:01:00.000Z'),
+    summary: 'Create onboarding plan',
+  });
+  const proposal = initial.proposalMessage.metadata.catProductIntentProposal as
+    | CatProductIntentProposalMetadata
+    | undefined;
+
+  const confirmed = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: 'Turn into Work',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(initial.proposalMessage, 'confirm_work'),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+    },
+  );
+
+  const channel = requireChannel(confirmed.state, channelId);
+  const choiceMessage = channel.messages.find((message) =>
+    message.choiceResponse?.sourceMessageId === initial.proposalMessage.id);
+  const transitionMessage = channel.messages.find((message) =>
+    message.metadata.event === 'cat_product_intent_proposal_confirmed');
+  const transition = transitionMessage?.metadata.catProductIntentProposalTransition as
+    | CatProductIntentProposalTransitionMetadata
+    | undefined;
+  const commandMetadata = choiceMessage?.metadata.productIntentCommand as
+    | {
+        rawCommandToken?: unknown;
+        proposalConfirmed?: unknown;
+        originalProposalId?: unknown;
+        originalMessageId?: unknown;
+        proposedByCatId?: unknown;
+      }
+    | undefined;
+  const core = await store.readCore();
+  const directWorkItems = core.workItems.filter((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  const directWorkItem = directWorkItems[0];
+  const intake = directWorkItem?.metadata.directSlashModeIntake as
+    | { draft?: { goal?: unknown }; command?: { name?: unknown } }
+    | undefined;
+
+  assert.notEqual(confirmed.preparedTurn, null);
+  assert.equal(initial.proposalMessage.choices?.[0]?.options[0]?.id, 'confirm_work');
+  assert.equal(confirmed.preparedTurn?.userMessage.body, 'Create onboarding plan');
+  assert.equal(commandMetadata?.rawCommandToken, CAT_PRODUCT_INTENT_PROPOSAL_COMMAND_TOKEN);
+  assert.equal(commandMetadata?.proposalConfirmed, true);
+  assert.equal(commandMetadata?.originalProposalId, proposal?.proposalId);
+  assert.equal(commandMetadata?.originalMessageId, proposal?.source.messageId);
+  assert.equal(commandMetadata?.proposedByCatId, proposal?.proposedBy.catId);
+  assert.equal(transitionMessage?.body, 'Confirmed Work intake.');
+  assert.equal(transition?.event, 'confirmed');
+  assert.equal(transition?.confirmedCommand?.argumentText, 'Create onboarding plan');
+  assert.equal(transition?.confirmedCommand?.proposedByCatId, proposal?.proposedBy.catId);
+  assert.equal(
+    transition?.confirmedCommand?.rawCommandToken,
+    CAT_PRODUCT_INTENT_PROPOSAL_COMMAND_TOKEN,
+  );
+  assert.equal(directWorkItems.length, 1);
+  assert.equal(directWorkItem?.status, 'draft');
+  assert.equal(intake?.draft?.goal, 'Create onboarding plan');
+  assert.equal(intake?.command?.name, 'work');
+
+  const duplicate = await beginChannelMessageDispatch(
+    confirmed.state,
+    channelId,
+    {
+      body: 'Turn into Work',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(
+        initial.proposalMessage,
+        'confirm_work',
+        '2026-05-06T08:04:00.000Z',
+      ),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:04:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+    },
+  );
+  const duplicateCore = await store.readCore();
+  const duplicateChannel = requireChannel(duplicate.state, channelId);
+
+  assert.equal(duplicate.preparedTurn, null);
+  assert.equal(
+    duplicateCore.workItems.filter((candidate) =>
+      Boolean(candidate.metadata.directSlashModeIntake)).length,
+    1,
+  );
+  assert.equal(
+    duplicateChannel.messages.filter((message) =>
+      message.metadata.event === 'cat_product_intent_proposal_confirmed').length,
+    1,
+  );
+});
+
+test('beginChannelMessageDispatch confirms Cat code proposals through slash-mode intake', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const initial = await suggestCatProductIntentProposal({
+    state,
+    channelId,
+    store,
+    body: 'Please add parser tests',
+    now: new Date('2026-05-06T08:01:00.000Z'),
+    targetProduct: 'code',
+    summary: 'Add parser tests',
+  });
+
+  const confirmed = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: 'Turn into Code',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(initial.proposalMessage, 'confirm_code'),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+    },
+  );
+
+  const channel = requireChannel(confirmed.state, channelId);
+  const transitionMessage = channel.messages.find((message) =>
+    message.metadata.event === 'cat_product_intent_proposal_confirmed');
+  const transition = transitionMessage?.metadata.catProductIntentProposalTransition as
+    | CatProductIntentProposalTransitionMetadata
+    | undefined;
+  const ackMessage = channel.messages.find((message) =>
+    message.metadata.event === 'product_intent_posture_changed');
+  const directSlashMode = ackMessage?.metadata.directSlashMode as
+    | { activeAnchor?: { targetProduct?: unknown } }
+    | undefined;
+  const core = await store.readCore();
+  const directWorkItem = core.workItems.find((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  const intake = directWorkItem?.metadata.directSlashModeIntake as
+    | {
+        targetProduct?: unknown;
+        command?: { name?: unknown; targetProduct?: unknown };
+        draft?: { goal?: unknown };
+      }
+    | undefined;
+
+  assert.notEqual(confirmed.preparedTurn, null);
+  assert.equal(initial.proposalMessage.choices?.[0]?.options[0]?.id, 'confirm_code');
+  assert.equal(confirmed.preparedTurn?.userMessage.body, 'Add parser tests');
+  assert.equal(transitionMessage?.body, 'Confirmed Code intake.');
+  assert.equal(transition?.event, 'confirmed');
+  assert.equal(transition?.confirmedCommand?.command, 'code');
+  assert.equal(transition?.confirmedCommand?.argumentText, 'Add parser tests');
+  assert.equal(directWorkItem?.status, 'draft');
+  assert.equal(intake?.draft?.goal, 'Add parser tests');
+  assert.equal(intake?.command?.name, 'code');
+  assert.equal(intake?.targetProduct, 'code');
+  assert.equal(directSlashMode?.activeAnchor?.targetProduct, 'code');
+});
+
+test('beginChannelMessageDispatch declines Cat proposals without product intake', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const initial = await suggestCatProductIntentProposal({
+    state,
+    channelId,
+    store,
+    body: 'Please plan the onboarding requirements',
+    now: new Date('2026-05-06T08:01:00.000Z'),
+  });
+
+  const declined = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: 'Keep as chat',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(initial.proposalMessage, 'decline'),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+    },
+  );
+
+  const channel = requireChannel(declined.state, channelId);
+  const transitionMessage = channel.messages.find((message) =>
+    message.metadata.event === 'cat_product_intent_proposal_declined');
+  const transition = transitionMessage?.metadata.catProductIntentProposalTransition as
+    | CatProductIntentProposalTransitionMetadata
+    | undefined;
+  const core = await store.readCore();
+
+  assert.equal(declined.preparedTurn, null);
+  assert.equal(transitionMessage?.body, 'Kept as chat.');
+  assert.equal(transition?.event, 'declined');
+  assert.equal(
+    core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
+    0,
+  );
 });
 
 test('beginChannelMessageDispatch suggests implicit candidates for room-routing direct lanes', async () => {

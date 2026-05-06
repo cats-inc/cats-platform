@@ -121,12 +121,15 @@ import {
 } from '../../shared/naturalProductIntentMode.js';
 import {
   CAT_PRODUCT_INTENT_PROPOSAL_METADATA_KEY,
+  CAT_PRODUCT_INTENT_PROPOSAL_COMMAND_TOKEN,
   CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
   CAT_PRODUCT_INTENT_PROPOSAL_TRANSITION_METADATA_KEY,
   buildCatProductIntentProposalMetadata,
   buildCatProductIntentProposalTransitionMetadata,
+  findCatProductIntentProposalTransition,
   hasRecentCatProductIntentProposalDecline,
   listExpiredCatProductIntentProposals,
+  readCatProductIntentProposalMetadata,
   shouldAppendCatProductIntentProposal,
   validateCatProductIntentProposalToolCall,
   type CatProductIntentProposalMetadata,
@@ -694,40 +697,103 @@ function describeCatProductIntentProposal(
   return proposal.proposal.summary;
 }
 
+function buildCatProductIntentProposalChoices(
+  proposal: CatProductIntentProposalMetadata,
+  translate: ProductIntentTranslator,
+): ChatMessage['choices'] {
+  const targetProduct = proposal.proposal.targetProduct;
+  const targetProductLabel = resolveProductIntentTargetLabel(targetProduct);
+  return [
+    {
+      question: translate(
+        messageKeys.chatImplicitProductIntentQuestion,
+        { targetProduct: targetProductLabel },
+      ),
+      allowSkip: true,
+      options: [
+        {
+          id: targetProduct === 'code' ? 'confirm_code' : 'confirm_work',
+          label: translate(
+            targetProduct === 'code'
+              ? messageKeys.chatImplicitProductIntentConfirmCode
+              : messageKeys.chatImplicitProductIntentConfirmWork,
+          ),
+          style: 'primary',
+        },
+        {
+          id: 'decline',
+          label: translate(messageKeys.chatImplicitProductIntentDecline),
+          style: 'secondary',
+        },
+      ],
+    },
+  ];
+}
+
+function describeCatProductIntentProposalTransition(
+  transition: ReturnType<typeof buildCatProductIntentProposalTransitionMetadata>,
+  translate: ProductIntentTranslator,
+): string {
+  if (transition.event === 'declined') {
+    return translate(messageKeys.chatImplicitProductIntentDeclined);
+  }
+  if (transition.event === 'expired') {
+    return translate(messageKeys.chatImplicitProductIntentExpired);
+  }
+
+  return translate(
+    transition.targetProduct === 'code'
+      ? messageKeys.chatImplicitProductIntentConfirmedCode
+      : messageKeys.chatImplicitProductIntentConfirmedWork,
+  );
+}
+
 function appendCatProductIntentProposalTransitionSidecar(input: {
   state: ChatState;
   channelId: string;
   proposal: CatProductIntentProposalMetadata;
-  event: 'expired';
+  proposalMessageId?: string;
+  originalMessage?: ChatMessage;
+  event: 'confirmed' | 'declined' | 'expired';
+  locale: MessageLocale;
   now: Date;
-}): ChatState {
+}): { state: ChatState; transitionMessage: ChatMessage } {
   const transition = buildCatProductIntentProposalTransitionMetadata({
     proposal: input.proposal,
     event: input.event,
+    originalMessageBody: input.originalMessage?.body,
   });
-  return appendMessage(
+  const translate = createTranslator(input.locale);
+  const append = appendMessage(
     input.state,
     input.channelId,
     {
       senderKind: 'system',
       senderName: 'Cats',
-      body: input.proposal.proposal.summary,
+      body: describeCatProductIntentProposalTransition(transition, translate),
     },
     input.now,
     {
       metadata: {
         event: `cat_product_intent_proposal_${input.event}`,
         sourceMessageId: input.proposal.source.messageId,
+        sourceProposalMessageId: input.proposalMessageId,
         [CAT_PRODUCT_INTENT_PROPOSAL_TRANSITION_METADATA_KEY]: transition,
       },
       incrementUnread: false,
     },
-  ).state;
+  );
+
+  return {
+    state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+    transitionMessage: append.message,
+  };
 }
 
 function expireCatProductIntentProposalSidecars(input: {
   state: ChatState;
   channelId: string;
+  locale: MessageLocale;
   now: Date;
   expireAll?: boolean;
 }): ChatState {
@@ -742,8 +808,9 @@ function expireCatProductIntentProposalSidecars(input: {
       channelId: input.channelId,
       proposal,
       event: 'expired',
+      locale: input.locale,
       now: input.now,
-    }), input.state);
+    }).state, input.state);
 }
 
 function appendCatProductIntentProposalSidecar(input: {
@@ -755,6 +822,7 @@ function appendCatProductIntentProposalSidecar(input: {
   effectiveMode: ChatNaturalProductIntentMode;
   capabilityProfileKind: DirectSlashModePostureChangeMetadata['capabilityProfileKind'];
   audienceCatId: string | null;
+  locale: MessageLocale;
   now: Date;
   transport: RuntimeTransportContext | undefined;
 }): { state: ChatState; proposalMessage: ChatMessage | null } {
@@ -809,9 +877,11 @@ function appendCatProductIntentProposalSidecar(input: {
   const stateWithPriorOpenProposalsExpired = expireCatProductIntentProposalSidecars({
     state: input.state,
     channelId: input.channelId,
+    locale: input.locale,
     now: input.now,
     expireAll: true,
   });
+  const translate = createTranslator(input.locale);
   const append = appendMessage(
     stateWithPriorOpenProposalsExpired,
     input.channelId,
@@ -827,6 +897,7 @@ function appendCatProductIntentProposalSidecar(input: {
         sourceMessageId: input.userMessage.id,
         [CAT_PRODUCT_INTENT_PROPOSAL_METADATA_KEY]: proposal,
       },
+      choices: buildCatProductIntentProposalChoices(proposal, translate),
       incrementUnread: false,
     },
   );
@@ -834,6 +905,166 @@ function appendCatProductIntentProposalSidecar(input: {
   return {
     state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
     proposalMessage: append.message,
+  };
+}
+
+type CatProductIntentProposalChoiceAction = 'confirm' | 'decline' | 'expired' | 'handled';
+
+interface ResolvedCatProductIntentProposalChoice {
+  action: CatProductIntentProposalChoiceAction;
+  proposalMessage: ChatMessage;
+  originalMessage: ChatMessage;
+  proposal: CatProductIntentProposalMetadata;
+  productIntentCommand: ProductIntentCommandMetadata | null;
+}
+
+function resolveCatProductIntentProposalChoiceAction(input: {
+  choiceResponse: NonNullable<SendChannelMessageInput['choiceResponse']>;
+  proposal: CatProductIntentProposalMetadata;
+}): CatProductIntentProposalChoiceAction | null {
+  if (input.choiceResponse.status !== 'submitted') {
+    return null;
+  }
+  const selectedOptionIds = new Set(
+    input.choiceResponse.answers.flatMap((answer) => answer.selectedOptionIds),
+  );
+  if (selectedOptionIds.has('decline')) {
+    return 'decline';
+  }
+  const confirmOptionId = input.proposal.proposal.targetProduct === 'code'
+    ? 'confirm_code'
+    : 'confirm_work';
+  return selectedOptionIds.has(confirmOptionId) ? 'confirm' : null;
+}
+
+function resolveCatProductIntentProposalChoice(input: {
+  channel: ChatChannelState;
+  choiceResponse?: SendChannelMessageInput['choiceResponse'];
+  source: ProductIntentCommandSource;
+  now: Date;
+}): ResolvedCatProductIntentProposalChoice | null {
+  if (!input.choiceResponse) {
+    return null;
+  }
+  const proposalMessage = input.channel.messages.find((message) =>
+    message.id === input.choiceResponse?.sourceMessageId);
+  const proposal = readCatProductIntentProposalMetadata(
+    proposalMessage?.metadata[CAT_PRODUCT_INTENT_PROPOSAL_METADATA_KEY],
+  );
+  if (!proposalMessage || !proposal) {
+    return null;
+  }
+  const originalMessage = input.channel.messages.find((message) =>
+    message.id === proposal.source.messageId);
+  if (!originalMessage || originalMessage.senderKind !== 'user') {
+    return null;
+  }
+  const existingTransition = findCatProductIntentProposalTransition({
+    messages: input.channel.messages,
+    proposalId: proposal.proposalId,
+  });
+  if (existingTransition) {
+    return {
+      action: 'handled',
+      proposalMessage,
+      originalMessage,
+      proposal,
+      productIntentCommand: null,
+    };
+  }
+  const expiresAt = Date.parse(proposal.expiresAt);
+  if (Number.isFinite(expiresAt) && expiresAt <= input.now.getTime()) {
+    return {
+      action: 'expired',
+      proposalMessage,
+      originalMessage,
+      proposal,
+      productIntentCommand: null,
+    };
+  }
+  const action = resolveCatProductIntentProposalChoiceAction({
+    choiceResponse: input.choiceResponse,
+    proposal,
+  });
+  if (!action) {
+    return null;
+  }
+
+  const targetProduct = proposal.proposal.targetProduct;
+  const argumentText = proposal.proposal.summary.trim() || originalMessage.body.trim();
+  return {
+    action,
+    proposalMessage,
+    originalMessage,
+    proposal,
+    productIntentCommand: action === 'confirm'
+      ? {
+          version: 1,
+          source: input.source,
+          command: targetProduct,
+          posture: targetProduct,
+          targetProduct,
+          argumentText,
+          rawCommandToken: CAT_PRODUCT_INTENT_PROPOSAL_COMMAND_TOKEN,
+          botSuffix: null,
+          sourceKind: 'cat_product_intent_proposal',
+          proposalConfirmed: true,
+          originalProposalId: proposal.proposalId,
+          originalMessageId: originalMessage.id,
+          proposedByCatId: proposal.proposedBy.catId,
+        }
+      : null,
+  };
+}
+
+function appendCatProductIntentProposalDecline(input: {
+  state: ChatState;
+  channelId: string;
+  payload: SendChannelMessageInput;
+  deterministicRoutingPlan: DeterministicChatRoutingPlan | null;
+  transportBindingId?: string | null;
+  transport: RuntimeTransportContext | undefined;
+  resolvedChoice: ResolvedCatProductIntentProposalChoice;
+  locale: MessageLocale;
+  now: Date;
+}): { state: ChatState; userMessage: ChatMessage } {
+  const userAppend = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'user',
+      senderName: input.payload.senderName?.trim() || 'User',
+      body: input.payload.body,
+    },
+    input.now,
+    {
+      metadata: buildBaseUserMessageMetadata({
+        payload: input.payload,
+        channelId: input.channelId,
+        deterministicRoutingPlan: input.deterministicRoutingPlan,
+        transportBindingId: input.transportBindingId,
+      }),
+      choiceResponse: input.payload.choiceResponse,
+      origin: resolveUserMessageOrigin(input.transport),
+      sourceTransportBindingId: input.transport === 'telegram'
+        ? input.transportBindingId ?? null
+        : null,
+    },
+  );
+  const transitionAppend = appendCatProductIntentProposalTransitionSidecar({
+    state: userAppend.state,
+    channelId: input.channelId,
+    proposal: input.resolvedChoice.proposal,
+    proposalMessageId: input.resolvedChoice.proposalMessage.id,
+    originalMessage: input.resolvedChoice.originalMessage,
+    event: 'declined',
+    locale: input.locale,
+    now: input.now,
+  });
+
+  return {
+    state: transitionAppend.state,
+    userMessage: userAppend.message,
   };
 }
 
@@ -1909,16 +2140,34 @@ export async function beginChannelMessageDispatch(
     source: productIntentSource,
     now,
   });
+  const catProductIntentProposalChoice = resolveCatProductIntentProposalChoice({
+    channel: channelBeforeMessage,
+    choiceResponse: payload.choiceResponse,
+    source: productIntentSource,
+    now,
+  });
   const productIntentCommand = resolveProductIntentCommandMetadata(
     payload.body,
     productIntentSource,
-  ) ?? implicitProductIntentChoice?.productIntentCommand ?? null;
+  )
+    ?? implicitProductIntentChoice?.productIntentCommand
+    ?? catProductIntentProposalChoice?.productIntentCommand
+    ?? null;
   if (implicitProductIntentChoice?.action === 'handled') {
     return {
       state: nextState,
       results: [],
       preparedTurn: null,
       userMessage: implicitProductIntentChoice.originalMessage,
+      providerAgentDecision: null,
+    };
+  }
+  if (catProductIntentProposalChoice?.action === 'handled') {
+    return {
+      state: nextState,
+      results: [],
+      preparedTurn: null,
+      userMessage: catProductIntentProposalChoice.originalMessage,
       providerAgentDecision: null,
     };
   }
@@ -1935,6 +2184,33 @@ export async function beginChannelMessageDispatch(
       transportBindingId: options.transportBindingId,
       transport: options.transport,
       resolvedChoice: implicitProductIntentChoice,
+      locale,
+      now,
+    });
+    nextState = declined.state;
+    nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+    options.onStateWritten?.(channelId);
+    return {
+      state: nextState,
+      results: [],
+      preparedTurn: null,
+      userMessage: declined.userMessage,
+      providerAgentDecision: null,
+    };
+  }
+  if (catProductIntentProposalChoice?.action === 'decline') {
+    const locale = resolveProductIntentMessageLocale(
+      channelBeforeMessage,
+      options.transportLocale,
+    );
+    const declined = appendCatProductIntentProposalDecline({
+      state: nextState,
+      channelId,
+      payload,
+      deterministicRoutingPlan,
+      transportBindingId: options.transportBindingId,
+      transport: options.transport,
+      resolvedChoice: catProductIntentProposalChoice,
       locale,
       now,
     });
@@ -1969,6 +2245,31 @@ export async function beginChannelMessageDispatch(
       results: [],
       preparedTurn: null,
       userMessage: implicitProductIntentChoice.originalMessage,
+      providerAgentDecision: null,
+    };
+  }
+  if (catProductIntentProposalChoice?.action === 'expired') {
+    const locale = resolveProductIntentMessageLocale(
+      channelBeforeMessage,
+      options.transportLocale,
+    );
+    nextState = appendCatProductIntentProposalTransitionSidecar({
+      state: nextState,
+      channelId,
+      proposal: catProductIntentProposalChoice.proposal,
+      proposalMessageId: catProductIntentProposalChoice.proposalMessage.id,
+      originalMessage: catProductIntentProposalChoice.originalMessage,
+      event: 'expired',
+      locale,
+      now,
+    }).state;
+    nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+    options.onStateWritten?.(channelId);
+    return {
+      state: nextState,
+      results: [],
+      preparedTurn: null,
+      userMessage: catProductIntentProposalChoice.originalMessage,
       providerAgentDecision: null,
     };
   }
@@ -2019,6 +2320,7 @@ export async function beginChannelMessageDispatch(
       nextState = expireCatProductIntentProposalSidecars({
         state: nextState,
         channelId,
+        locale,
         now,
         expireAll: true,
       });
@@ -2028,6 +2330,19 @@ export async function beginChannelMessageDispatch(
         state: nextState,
         channelId,
         resolvedChoice: implicitProductIntentChoice,
+        event: 'confirmed',
+        locale,
+        now,
+      });
+      nextState = transitionAppend.state;
+    }
+    if (catProductIntentProposalChoice?.action === 'confirm') {
+      const transitionAppend = appendCatProductIntentProposalTransitionSidecar({
+        state: nextState,
+        channelId,
+        proposal: catProductIntentProposalChoice.proposal,
+        proposalMessageId: catProductIntentProposalChoice.proposalMessage.id,
+        originalMessage: catProductIntentProposalChoice.originalMessage,
         event: 'confirmed',
         locale,
         now,
@@ -2434,15 +2749,20 @@ export async function beginChannelMessageDispatch(
     preparedTurn.latestCheckpoint,
     now,
   );
+  const ordinaryProductIntentLocale = resolveProductIntentMessageLocale(
+    channelBeforeMessage,
+    options.transportLocale,
+  );
   nextState = expireTtlImplicitProductIntentCandidates({
     state: nextState,
     channelId,
-    locale: resolveProductIntentMessageLocale(channelBeforeMessage, options.transportLocale),
+    locale: ordinaryProductIntentLocale,
     now,
   });
   nextState = expireCatProductIntentProposalSidecars({
     state: nextState,
     channelId,
+    locale: ordinaryProductIntentLocale,
     now,
   });
   const catProposalSidecar = appendCatProductIntentProposalSidecar({
@@ -2454,6 +2774,7 @@ export async function beginChannelMessageDispatch(
     effectiveMode: naturalProductIntentEffectiveMode,
     capabilityProfileKind: naturalProductIntentCapabilityProfileKind,
     audienceCatId: naturalProductIntentAudience.audienceCatId,
+    locale: ordinaryProductIntentLocale,
     now,
     transport: options.transport,
   });
@@ -2466,7 +2787,7 @@ export async function beginChannelMessageDispatch(
     body: payload.body,
     transport: options.transport,
     effectiveMode: naturalProductIntentEffectiveMode,
-    locale: resolveProductIntentMessageLocale(channelBeforeMessage, options.transportLocale),
+    locale: ordinaryProductIntentLocale,
     now,
     choiceResponse: payload.choiceResponse,
   });

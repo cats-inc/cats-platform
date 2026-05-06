@@ -84,6 +84,7 @@ test('cat product-intent proposal transition builder creates confirmed command m
   assert.equal(transition.confirmedCommand?.sourceKind, 'cat_product_intent_proposal');
   assert.equal(transition.confirmedCommand?.command, 'work');
   assert.equal(transition.confirmedCommand?.argumentText, 'Plan onboarding requirements');
+  assert.equal(transition.confirmedCommand?.proposedByCatId, 'cat-strong');
   assert.equal(
     transition.confirmedCommand?.rawCommandToken,
     CAT_PRODUCT_INTENT_PROPOSAL_COMMAND_TOKEN,

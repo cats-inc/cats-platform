@@ -71,6 +71,7 @@ export interface ConfirmedCatProductIntentCommandMetadata {
   proposalConfirmed: true;
   originalProposalId: string;
   originalMessageId: string;
+  proposedByCatId: string;
 }
 
 export interface CatProductIntentProposalTransitionMetadata {
@@ -346,6 +347,7 @@ export function buildCatProductIntentProposalTransitionMetadata(
       proposalConfirmed: true,
       originalProposalId: input.proposal.proposalId,
       originalMessageId: input.proposal.source.messageId,
+      proposedByCatId: input.proposal.proposedBy.catId,
     },
   };
 }
