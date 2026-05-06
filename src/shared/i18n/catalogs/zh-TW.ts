@@ -1832,6 +1832,14 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.productIntent.draft.outOfScope':
     '尚未確認，需等 owner 與 Cat 完成釐清。',
   'chat.productIntent.draft.openQuestion': '這項工作要產生什麼成果？',
+  'chat.implicitProductIntent.suggestion.work':
+    '這看起來像 Work。確認後 Cats 才會建立耐久工作。',
+  'chat.implicitProductIntent.suggestion.code':
+    '這看起來像 Code。確認後 Cats 才會建立耐久程式工作。',
+  'chat.implicitProductIntent.question': '要把這則訊息轉成 {targetProduct} intake 嗎？',
+  'chat.implicitProductIntent.confirm.work': '轉成 Work',
+  'chat.implicitProductIntent.confirm.code': '轉成 Code',
+  'chat.implicitProductIntent.decline': '保留為 chat',
   'shared.addCatPanelTitle': '新增貓到聊天室',
   'shared.addCatPanelClose': '關閉',
   'shared.addCatPanelChooseExisting': '選擇既有',

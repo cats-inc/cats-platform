@@ -1880,6 +1880,14 @@ export const enCatalog: MessageCatalog = {
   'chat.productIntent.draft.outOfScope':
     'Unconfirmed until the owner and Cat finish clarification.',
   'chat.productIntent.draft.openQuestion': 'What outcome should this work produce?',
+  'chat.implicitProductIntent.suggestion.work':
+    'This looks like Work. Confirm before Cats creates durable work.',
+  'chat.implicitProductIntent.suggestion.code':
+    'This looks like Code. Confirm before Cats creates durable code work.',
+  'chat.implicitProductIntent.question': 'Turn this message into {targetProduct} intake?',
+  'chat.implicitProductIntent.confirm.work': 'Turn into Work',
+  'chat.implicitProductIntent.confirm.code': 'Turn into Code',
+  'chat.implicitProductIntent.decline': 'Keep as chat',
   'shared.addCatPanelTitle': 'Add cat to chat',
   'shared.addCatPanelClose': 'Close',
   'shared.addCatPanelChooseExisting': 'Choose existing',

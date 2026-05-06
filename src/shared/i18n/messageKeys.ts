@@ -1960,6 +1960,16 @@ export const messageKeys = {
     'chat.productIntent.draft.successCriteria',
   chatProductIntentDraftOutOfScope: 'chat.productIntent.draft.outOfScope',
   chatProductIntentDraftOpenQuestion: 'chat.productIntent.draft.openQuestion',
+  chatImplicitProductIntentSuggestionWork:
+    'chat.implicitProductIntent.suggestion.work',
+  chatImplicitProductIntentSuggestionCode:
+    'chat.implicitProductIntent.suggestion.code',
+  chatImplicitProductIntentQuestion: 'chat.implicitProductIntent.question',
+  chatImplicitProductIntentConfirmWork:
+    'chat.implicitProductIntent.confirm.work',
+  chatImplicitProductIntentConfirmCode:
+    'chat.implicitProductIntent.confirm.code',
+  chatImplicitProductIntentDecline: 'chat.implicitProductIntent.decline',
   sharedAddCatPanelTitle: 'shared.addCatPanelTitle',
   sharedAddCatPanelClose: 'shared.addCatPanelClose',
   sharedAddCatPanelChooseExisting: 'shared.addCatPanelChooseExisting',

@@ -104,6 +104,12 @@ import {
   resolvePrimaryParticipantExecutionAssignment,
 } from '../../shared/channelParticipants.js';
 import { parseProductIntentCommand } from '../../shared/productIntentCommands.js';
+import {
+  buildImplicitProductIntentCandidateMetadata,
+  detectImplicitProductIntent,
+  type ImplicitProductIntentCandidateMetadata,
+  type ImplicitProductIntentTransport,
+} from '../../shared/implicitProductIntent.js';
 
 export type ProviderAgentDecisionRequester = (input: {
   state: ChatState;
@@ -176,6 +182,12 @@ function resolveUserMessageOrigin(transport: RuntimeTransportContext | undefined
 function resolveProductIntentCommandSource(
   transport: RuntimeTransportContext | undefined,
 ): ProductIntentCommandSource {
+  return transport === 'telegram' ? 'telegram' : 'web';
+}
+
+function resolveImplicitProductIntentTransport(
+  transport: RuntimeTransportContext | undefined,
+): ImplicitProductIntentTransport {
   return transport === 'telegram' ? 'telegram' : 'web';
 }
 
@@ -602,6 +614,114 @@ function buildDirectSlashModeHumanGateChoices(
       allowSkip: true,
     },
   ];
+}
+
+function describeImplicitProductIntentCandidate(
+  candidate: ImplicitProductIntentCandidateMetadata,
+  translate: ProductIntentTranslator,
+): string {
+  const targetProductLabel = resolveProductIntentTargetLabel(candidate.candidate.targetProduct);
+  return translate(
+    candidate.candidate.targetProduct === 'code'
+      ? messageKeys.chatImplicitProductIntentSuggestionCode
+      : messageKeys.chatImplicitProductIntentSuggestionWork,
+    { targetProduct: targetProductLabel },
+  );
+}
+
+function buildImplicitProductIntentCandidateChoices(
+  candidate: ImplicitProductIntentCandidateMetadata,
+  translate: ProductIntentTranslator,
+): ChatMessage['choices'] {
+  const targetProduct = candidate.candidate.targetProduct;
+  const targetProductLabel = resolveProductIntentTargetLabel(targetProduct);
+  return [
+    {
+      question: translate(
+        messageKeys.chatImplicitProductIntentQuestion,
+        { targetProduct: targetProductLabel },
+      ),
+      options: [
+        {
+          id: targetProduct === 'code' ? 'confirm_code' : 'confirm_work',
+          label: translate(
+            targetProduct === 'code'
+              ? messageKeys.chatImplicitProductIntentConfirmCode
+              : messageKeys.chatImplicitProductIntentConfirmWork,
+          ),
+          style: 'primary',
+        },
+        {
+          id: 'decline',
+          label: translate(messageKeys.chatImplicitProductIntentDecline),
+          style: 'secondary',
+        },
+      ],
+    },
+  ];
+}
+
+function appendImplicitProductIntentCandidateSidecar(input: {
+  state: ChatState;
+  channel: ChatChannelState;
+  channelId: string;
+  userMessage: ChatMessage;
+  body: string;
+  transport: RuntimeTransportContext | undefined;
+  locale: MessageLocale;
+  now: Date;
+  choiceResponse?: SendChannelMessageInput['choiceResponse'];
+}): { state: ChatState; candidateMessage: ChatMessage | null } {
+  if (input.choiceResponse) {
+    return { state: input.state, candidateMessage: null };
+  }
+
+  const detection = detectImplicitProductIntent({
+    rawText: input.body,
+    channelKind: input.channel.channelKind === 'direct_message'
+      ? 'direct_message'
+      : 'chat_channel',
+  });
+  if (detection.kind !== 'candidate') {
+    return { state: input.state, candidateMessage: null };
+  }
+
+  const { conversationId } = resolveChannelCanonicalIdentity(input.state, input.channelId);
+  const candidate = buildImplicitProductIntentCandidateMetadata({
+    messageId: input.userMessage.id,
+    channelId: input.channelId,
+    conversationId,
+    transport: resolveImplicitProductIntentTransport(input.transport),
+    targetProduct: detection.targetProduct,
+    confidence: detection.confidence,
+    reasonCode: detection.reasonCode,
+    now: input.now,
+  });
+  const translate = createTranslator(input.locale);
+  const append = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats',
+      body: describeImplicitProductIntentCandidate(candidate, translate),
+    },
+    input.now,
+    {
+      choices: buildImplicitProductIntentCandidateChoices(candidate, translate),
+      metadata: {
+        event: 'implicit_product_intent_candidate_suggested',
+        sourceMessageId: input.userMessage.id,
+        implicitProductIntentCandidate: candidate,
+      },
+      incrementUnread: false,
+    },
+  );
+
+  return {
+    state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+    candidateMessage: append.message,
+  };
 }
 
 function readDirectSlashModeActiveAnchor(
@@ -1652,6 +1772,18 @@ export async function beginChannelMessageDispatch(
     preparedTurn.latestCheckpoint,
     now,
   );
+  const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
+    state: nextState,
+    channel: channelBeforeMessage,
+    channelId,
+    userMessage: preparedTurn.userMessage,
+    body: payload.body,
+    transport: options.transport,
+    locale: resolveProductIntentMessageLocale(channelBeforeMessage, options.transportLocale),
+    now,
+    choiceResponse: payload.choiceResponse,
+  });
+  nextState = implicitCandidateSidecar.state;
   nextState = await persistInFlightDispatchState(options.chatStore, nextState);
   options.onStateWritten?.(channelId);
 

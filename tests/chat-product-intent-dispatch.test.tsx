@@ -17,6 +17,9 @@ import {
   parseProviderCapabilityBootstrapConfigDocument,
   type ProviderCapabilityBootstrapConfig,
 } from '../src/platform/supervision/index.ts';
+import type {
+  ImplicitProductIntentCandidateMetadata,
+} from '../src/products/chat/shared/implicitProductIntent.ts';
 
 function runtimeStub(onClose?: () => void): RuntimeClient {
   return {
@@ -332,6 +335,66 @@ test('routeChannelMessage sends the first strong product-intent command to the s
   assert.equal(assistantMessage?.senderName, 'ConciergeCat');
   assert.equal(assistantMessage?.body, 'What outcome should this work produce first?');
   assert.equal(dispatched.results.length, 1);
+});
+
+test('beginChannelMessageDispatch suggests implicit candidates while ordinary dispatch proceeds', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const channel = requireChannel(begun.state, channelId);
+  const userMessage = channel.messages.find((message) => message.senderKind === 'user');
+  const candidateMessage = channel.messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+  const candidateMetadata = candidateMessage?.metadata.implicitProductIntentCandidate as
+    | ImplicitProductIntentCandidateMetadata
+    | undefined;
+  const core = await store.readCore();
+
+  assert.notEqual(begun.preparedTurn, null);
+  assert.equal(begun.preparedTurn?.userMessage.id, userMessage?.id);
+  assert.equal(candidateMessage?.senderKind, 'system');
+  assert.match(candidateMessage?.body ?? '', /^This looks like Work\./u);
+  assert.equal(candidateMessage?.metadata.sourceMessageId, userMessage?.id);
+  assert.equal(candidateMetadata?.event, 'suggested');
+  assert.equal(candidateMetadata?.source.messageId, userMessage?.id);
+  assert.equal(candidateMetadata?.source.channelId, channelId);
+  assert.equal(candidateMetadata?.source.transport, 'web');
+  assert.equal(candidateMetadata?.candidate.targetProduct, 'work');
+  assert.deepEqual(
+    candidateMessage?.choices?.[0]?.options.map((option) => ({
+      id: option.id,
+      style: option.style,
+    })),
+    [
+      {
+        id: 'confirm_work',
+        style: 'primary',
+      },
+      {
+        id: 'decline',
+        style: 'secondary',
+      },
+    ],
+  );
+  assert.equal(
+    core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
+    0,
+  );
 });
 
 test('routeChannelMessage does not send localized synthetic user text for empty product-intent arguments', async () => {

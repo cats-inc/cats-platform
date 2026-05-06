@@ -65,7 +65,7 @@ semantics as SPEC-104: `/work <original message>` or `/code <original message>`.
       and obvious casual-chat false positives.
 - [x] Task 1.5: Add non-direct negative tests proving the detector is not
       applied outside `direct_message` lanes.
-- [ ] Task 1.6: Add tests proving ordinary direct-chat dispatch still proceeds
+- [x] Task 1.6: Add tests proving ordinary direct-chat dispatch still proceeds
       when a candidate is suggested. The suggestion is a system/UI sidecar, not
       a replacement for the Cat's ordinary reply.
 
@@ -74,7 +74,7 @@ durable product side effects.
 
 ### Phase 2: Web confirmation UX
 
-- [ ] Task 2.1: Show a Web direct-lane confirmation affordance for Work/Code
+- [x] Task 2.1: Show a Web direct-lane confirmation affordance for Work/Code
       candidates using localized copy and the existing `ChatMessage.choices`
       schema from SPEC-104's human-gate UI (`confirm_work` /
       `confirm_code` / `decline` option ids).
@@ -82,7 +82,7 @@ durable product side effects.
       anchors unchanged.
 - [ ] Task 2.3: Add idempotent confirm behavior so one candidate cannot create
       duplicate anchors.
-- [ ] Task 2.4: Add Web tests proving candidate suggestion does not create
+- [x] Task 2.4: Add Web tests proving candidate suggestion does not create
       Work Items before confirmation.
 - [ ] Task 2.5: Add the minimum Web happy-path integration test:
       strong-Cat Work candidate -> confirm -> SPEC-104 draft anchor appears.
@@ -242,7 +242,8 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
-| 2026-05-06 | Phase 1 detector/metadata slice landed: added the browser-safe deterministic `detectImplicitProductIntent` helper, candidate/transition metadata builders, typed channel metadata keys, and unit coverage for direct-only detection, slash-command bypass, casual false positives, candidate expiry, and sentinel confirmed-command metadata. Task 1.6 remains pending because routing has not yet been wired. |
+| 2026-05-06 | Phase 2 sidecar slice landed: ordinary direct messages that detect as Work/Code candidates now append a localized system suggestion with the existing `ChatMessage.choices` schema (`confirm_work` / `confirm_code` / `decline`) while preserving ordinary Cat dispatch and proving no Work Item is created before confirmation. Decline handling, confirm idempotency, and SPEC-104 handoff remain pending. |
+| 2026-05-06 | Phase 1 detector/metadata slice landed: added the browser-safe deterministic `detectImplicitProductIntent` helper, candidate/transition metadata builders, typed channel metadata keys, and unit coverage for direct-only detection, slash-command bypass, casual false positives, candidate expiry, and sentinel confirmed-command metadata. |
 | 2026-05-06 | Follow-up review close-out (round 2): metadata key names pinned (`metadata.implicitProductIntentCandidate` for suggestions, `metadata.implicitProductIntentTransition` for confirm/decline/expire) so renderers can disambiguate from SPEC-104's `metadata.directSlashMode` and weak-gate `ChatMessage.choices`; the candidate-write idempotency guard moved from Phase 1 (Task 1.2b) into Phase 5 (Task 5.1a) where the persistence layer can actually enforce it; mobile read-only constraint clarified as a v1 scope decision specific to implicit-intent confirmation rather than a global mobile rule. |
 | 2026-05-06 | Follow-up review close-out: `rawCommandToken` now stays string-only with `(implicit-confirmation)` sentinel; Web confirmation reuses `ChatMessage.choices`; mobile renders candidate/transition segments read-only with desktop-only alert on accidental action taps; detector cue examples are illustrative and repeated same-message detection is idempotent. |
 | 2026-05-06 | Follow-up review alignment: detector v1 is now locked to conservative deterministic heuristics; candidate/confirm/decline/expire are append-only system events; Web uses inline message choices, Telegram uses inline keyboard callback data; confirmed implicit commands synthesize routing metadata without rewriting transcript or faking slash tokens. |
