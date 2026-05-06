@@ -196,6 +196,11 @@ function resolveImplicitProductIntentTransport(
   return transport === 'telegram' ? 'telegram' : 'web';
 }
 
+function isImplicitProductIntentDirectLane(channel: ChatChannelState): boolean {
+  return channel.channelKind === 'direct_message'
+    || channel.roomRouting?.mode === 'direct_message';
+}
+
 function resolveProductIntentCommandMetadata(
   body: string,
   source: ProductIntentCommandSource,
@@ -686,7 +691,7 @@ function appendImplicitProductIntentCandidateSidecar(input: {
 
   const detection = detectImplicitProductIntent({
     rawText: input.body,
-    channelKind: input.channel.channelKind === 'direct_message'
+    channelKind: isImplicitProductIntentDirectLane(input.channel)
       ? 'direct_message'
       : 'chat_channel',
   });
@@ -711,9 +716,16 @@ function appendImplicitProductIntentCandidateSidecar(input: {
   })) {
     return { state: input.state, candidateMessage: null };
   }
+  const stateWithExpiredOpenCandidates = appendExpiredImplicitProductIntentCandidates({
+    state: input.state,
+    channelId: input.channelId,
+    expireAll: true,
+    locale: input.locale,
+    now: input.now,
+  });
   const translate = createTranslator(input.locale);
   const append = appendMessage(
-    input.state,
+    stateWithExpiredOpenCandidates,
     input.channelId,
     {
       senderKind: 'system',
@@ -738,7 +750,7 @@ function appendImplicitProductIntentCandidateSidecar(input: {
   };
 }
 
-type ImplicitProductIntentChoiceAction = 'confirm' | 'decline' | 'handled';
+type ImplicitProductIntentChoiceAction = 'confirm' | 'decline' | 'expired' | 'handled';
 const IMPLICIT_PRODUCT_INTENT_DECLINE_COOLDOWN_MS = 5 * 60 * 1000;
 
 interface ResolvedImplicitProductIntentChoice {
@@ -855,6 +867,7 @@ function resolveImplicitProductIntentChoice(input: {
   channel: ChatChannelState;
   choiceResponse?: SendChannelMessageInput['choiceResponse'];
   source: ProductIntentCommandSource;
+  now: Date;
 }): ResolvedImplicitProductIntentChoice | null {
   if (!input.choiceResponse) {
     return null;
@@ -879,6 +892,16 @@ function resolveImplicitProductIntentChoice(input: {
   if (existingTransition) {
     return {
       action: 'handled',
+      candidateMessage,
+      originalMessage,
+      candidate,
+      productIntentCommand: null,
+    };
+  }
+  const expiresAt = Date.parse(candidate.expiresAt);
+  if (Number.isFinite(expiresAt) && expiresAt <= input.now.getTime()) {
+    return {
+      action: 'expired',
       candidateMessage,
       originalMessage,
       candidate,
@@ -1689,6 +1712,7 @@ export async function beginChannelMessageDispatch(
     channel: channelBeforeMessage,
     choiceResponse: payload.choiceResponse,
     source: productIntentSource,
+    now,
   });
   const productIntentCommand = resolveProductIntentCommandMetadata(
     payload.body,
@@ -1727,6 +1751,29 @@ export async function beginChannelMessageDispatch(
       results: [],
       preparedTurn: null,
       userMessage: declined.userMessage,
+      providerAgentDecision: null,
+    };
+  }
+  if (implicitProductIntentChoice?.action === 'expired') {
+    const locale = resolveProductIntentMessageLocale(
+      channelBeforeMessage,
+      options.transportLocale,
+    );
+    nextState = appendImplicitProductIntentTransitionSidecar({
+      state: nextState,
+      channelId,
+      resolvedChoice: implicitProductIntentChoice,
+      event: 'expired',
+      locale,
+      now,
+    }).state;
+    nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+    options.onStateWritten?.(channelId);
+    return {
+      state: nextState,
+      results: [],
+      preparedTurn: null,
+      userMessage: implicitProductIntentChoice.originalMessage,
       providerAgentDecision: null,
     };
   }

@@ -225,7 +225,7 @@ async function confirmImplicitProductIntentCandidate(input: {
     input.state,
     input.channelId,
     {
-      body: 'Q: Turn this message into product intake?\nA: Confirm',
+      body: 'Confirm',
       senderName: 'Kenneth',
       choiceResponse: buildSingleChoiceResponse(
         input.candidateMessage,
@@ -513,6 +513,38 @@ test('beginChannelMessageDispatch suggests implicit candidates while ordinary di
   );
 });
 
+test('beginChannelMessageDispatch suggests implicit candidates for room-routing direct lanes', async () => {
+  const { state, channelId } = createDirectState();
+  requireChannel(state, channelId).channelKind = 'chat_channel';
+  const store = new MemoryChatStore(state);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const candidateMessage = requireChannel(begun.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+
+  assert.equal(candidateMessage?.senderKind, 'system');
+  assert.equal(
+    (candidateMessage?.metadata.implicitProductIntentCandidate as
+      | ImplicitProductIntentCandidateMetadata
+      | undefined)?.candidate.targetProduct,
+    'work',
+  );
+});
+
 test('beginChannelMessageDispatch records implicit candidate decline without product intake', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);
@@ -541,7 +573,7 @@ test('beginChannelMessageDispatch records implicit candidate decline without pro
     initial.state,
     channelId,
     {
-      body: 'Q: Turn this message into Work intake?\nA: Keep as chat',
+      body: 'Keep as chat',
       senderName: 'Kenneth',
       choiceResponse: buildSingleChoiceResponse(candidateMessage, 'decline'),
     },
@@ -602,7 +634,7 @@ test('routeChannelMessage suppresses implicit candidates briefly after decline',
     initial.state,
     channelId,
     {
-      body: 'Q: Turn this message into Work intake?\nA: Keep as chat',
+      body: 'Keep as chat',
       senderName: 'Kenneth',
       choiceResponse: buildSingleChoiceResponse(candidateMessage, 'decline'),
     },
@@ -728,6 +760,53 @@ test('routeChannelMessage expires old implicit candidates before suggesting anot
   );
 });
 
+test('routeChannelMessage expires unresolved implicit candidates before suggesting another', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('We can discuss it.');
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const next = await routeChannelMessage(
+    initial.state,
+    channelId,
+    {
+      body: 'Please plan the launch requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const channel = requireChannel(next.state, channelId);
+
+  assert.equal(
+    channel.messages.filter((message) =>
+      message.metadata.event === 'implicit_product_intent_candidate_expired').length,
+    1,
+  );
+  assert.equal(
+    channel.messages.filter((message) =>
+      message.metadata.event === 'implicit_product_intent_candidate_suggested').length,
+    2,
+  );
+});
+
 test('beginChannelMessageDispatch confirms implicit candidates through slash-mode intake once', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);
@@ -757,7 +836,7 @@ test('beginChannelMessageDispatch confirms implicit candidates through slash-mod
     initial.state,
     channelId,
     {
-      body: 'Q: Turn this message into Work intake?\nA: Turn into Work',
+      body: 'Turn into Work',
       senderName: 'Kenneth',
       choiceResponse,
     },
@@ -806,7 +885,7 @@ test('beginChannelMessageDispatch confirms implicit candidates through slash-mod
     confirmed.state,
     channelId,
     {
-      body: 'Q: Turn this message into Work intake?\nA: Turn into Work',
+      body: 'Turn into Work',
       senderName: 'Kenneth',
       choiceResponse: buildSingleChoiceResponse(
         candidateMessage,
@@ -834,6 +913,61 @@ test('beginChannelMessageDispatch confirms implicit candidates through slash-mod
     duplicateChannel.messages.filter((message) =>
       message.metadata.event === 'implicit_product_intent_candidate_confirmed').length,
     1,
+  );
+});
+
+test('beginChannelMessageDispatch expires stale implicit candidates instead of confirming them', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can discuss the onboarding requirements.');
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+  if (!candidateMessage) {
+    throw new Error('Expected implicit product-intent candidate message.');
+  }
+
+  const confirmed = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: 'Turn into Work',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(candidateMessage, 'confirm_work'),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:17:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const channel = requireChannel(confirmed.state, channelId);
+  const expiredTransition = channel.messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_expired');
+  const confirmedTransition = channel.messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_confirmed');
+  const core = await store.readCore();
+
+  assert.equal(expiredTransition?.body, 'Suggestion expired.');
+  assert.equal(confirmedTransition, undefined);
+  assert.equal(
+    core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
+    0,
   );
 });
 
@@ -865,7 +999,7 @@ test('beginChannelMessageDispatch confirms implicit code candidates with code ta
     initial.state,
     channelId,
     {
-      body: 'Q: Turn this message into Code intake?\nA: Turn into Code',
+      body: 'Turn into Code',
       senderName: 'Kenneth',
       choiceResponse: buildSingleChoiceResponse(candidateMessage, 'confirm_code'),
     },
@@ -942,7 +1076,7 @@ test('beginChannelMessageDispatch confirms Telegram implicit code candidates thr
     initial.state,
     channelId,
     {
-      body: 'Q: Turn this message into Code intake?\nA: Turn into Code',
+      body: 'Turn into Code',
       senderName: 'Kenneth',
       choiceResponse: buildSingleChoiceResponse(candidateMessage, 'confirm_code'),
     },
@@ -1008,7 +1142,7 @@ test('beginChannelMessageDispatch localizes Telegram implicit suggestions and co
     initial.state,
     channelId,
     {
-      body: 'Q: 要把這則訊息轉成 Code intake 嗎？\nA: 轉成 Code',
+      body: '轉成 Code',
       senderName: 'Kenneth',
       choiceResponse: buildSingleChoiceResponse(candidateMessage, 'confirm_code'),
     },
@@ -1226,7 +1360,7 @@ test('beginChannelMessageDispatch keeps confirmed implicit weak Cats human-gated
     initial.state,
     channelId,
     {
-      body: 'Q: Turn this message into Work intake?\nA: Turn into Work',
+      body: 'Turn into Work',
       senderName: 'Kenneth',
       choiceResponse: buildSingleChoiceResponse(candidateMessage, 'confirm_work'),
     },
@@ -1292,7 +1426,7 @@ test('beginChannelMessageDispatch keeps confirmed implicit unknown Cats human-ga
     initial.state,
     channelId,
     {
-      body: 'Q: Turn this message into Work intake?\nA: Turn into Work',
+      body: 'Turn into Work',
       senderName: 'Kenneth',
       choiceResponse: buildSingleChoiceResponse(candidateMessage, 'confirm_work'),
     },

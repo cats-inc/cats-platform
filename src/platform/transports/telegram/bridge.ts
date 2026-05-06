@@ -335,13 +335,12 @@ function resolveTelegramImplicitCandidateForCallback(input: {
 }
 
 function buildChoiceResponseBody(input: {
-  question: string;
   label: string;
 }): string {
-  return `Q: ${input.question}\nA: ${input.label}`;
+  return input.label;
 }
 
-function buildTelegramImplicitProductIntentChoiceResponse(input: {
+export function buildTelegramImplicitProductIntentChoiceResponse(input: {
   message: TelegramRoomBridgeMessage;
   action: TelegramImplicitProductIntentCallbackAction;
   submittedAt: string;
@@ -363,7 +362,6 @@ function buildTelegramImplicitProductIntentChoiceResponse(input: {
 
   return {
     body: buildChoiceResponseBody({
-      question: choice.question,
       label: option.label,
     }),
     choiceResponse: {

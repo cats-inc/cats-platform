@@ -45,6 +45,8 @@ test('detectImplicitProductIntent stays conservative for casual chat', () => {
     'I ate a bug burger yesterday',
     'please try the bug burger',
     'can you believe the weather',
+    '請 修復 這 個 問題 今天 先 看看',
+    'please refactor',
   ]) {
     const result = detectImplicitProductIntent({
       rawText,

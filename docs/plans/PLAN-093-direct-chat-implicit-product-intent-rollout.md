@@ -183,9 +183,9 @@ materialization, and command-pipeline drift.
   inline keyboards with compact `callback_data` carrying source message id,
   target product, and transition; the bridge resolves the full `candidateId`
   from transcript metadata.
-- Mobile renders candidate/confirmation system segments as read-only entries
-  in this MVP; accidental confirm/decline taps surface the standard
-  desktop-only alert.
+- Mobile implicit-intent UI is deferred. The current mobile message projection
+  filters system messages out, so candidate/confirmation choices are not
+  exposed on mobile in this MVP.
 - Confirmed implicit commands keep `ProductIntentCommandMetadata.rawCommandToken`
   as a string and use the sentinel `(implicit-confirmation)`. Do not widen it
   to nullable for this MVP.
@@ -213,12 +213,13 @@ materialization, and command-pipeline drift.
   - ordinary Cat dispatch still proceeds on a candidate suggestion
   - Web strong-Cat Work confirm creates the same draft anchor as SPEC-104
   - Telegram strong-Cat Code confirm creates the same draft anchor as SPEC-104
-  - mobile renders candidate/confirmation system segments read-only and blocks
-    confirm/decline with the standard desktop-only alert
+  - mobile does not expose implicit candidate choices in this MVP
   - confirmed Work candidate follows explicit `/work` semantics
   - confirmed Code candidate follows explicit `/code` semantics
   - weak/unknown Cats remain human-gated after confirmation
   - decline/ignore leaves posture and active anchors unchanged
+  - stale candidate confirmation appends `expired` and creates no Work Item
+  - a newer candidate expires any prior unresolved candidate in the lane
   - repeated confirmation is idempotent
 - **Regression tests**:
   - existing SPEC-104 slash-mode parser, posture, anchor, and human-gate suite
@@ -233,9 +234,17 @@ materialization, and command-pipeline drift.
 ## Verification
 
 - 2026-05-06: `npx tsx --test --test-isolation=none tests\chat-implicit-product-intent.test.ts tests\telegram-implicit-product-intent-candidates.test.ts tests\chat-product-intent-command-parser.test.tsx tests\chat-product-intent-dispatch.test.tsx tests\chat-direct-slash-mode-follow-up.test.tsx tests\chat-direct-slash-mode-work-projection.test.tsx tests\chat-direct-slash-mode-supervised-boundary.test.tsx`
-  passed with 57 tests.
+  passed with 61 tests.
 - 2026-05-06: `npx tsc --noEmit -p tsconfig.server.json` passed.
 - 2026-05-06: `npx tsc --noEmit -p tsconfig.json` passed.
+
+## Follow-up Backlog
+
+- Mobile read-only rendering for implicit candidate/transition system segments
+  is not implemented in this MVP. Mobile currently filters system messages out,
+  so no confirm/decline buttons are exposed; a later mobile slice must decide
+  whether to render those segments as read-only entries with desktop-only alert
+  interception.
 
 ## Risks & Mitigations
 
@@ -253,7 +262,8 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
-| 2026-05-06 | PLAN-093 close-out landed: targeted implicit-intent and SPEC-104 slash-mode regression suite passed with 57 tests, server/client typecheck passed, SPEC-105 now records implementation differences and verification notes, and Telegram callback handling now answers inline keyboard callback queries to clear client-side loading state. |
+| 2026-05-06 | Follow-up review close-out landed: stale candidate confirmation now expires instead of creating work, new unresolved candidates expire prior lane candidates, detector cue overlap was reduced, Telegram callback transcript text no longer adds English Q/A prefixes, effective direct-lane detection now follows SPEC-104's roomRouting fallback, and mobile scope is documented as deferred because mobile filters system messages out today. |
+| 2026-05-06 | Initial PLAN-093 close-out landed: targeted implicit-intent and SPEC-104 slash-mode regression suite passed at that point, server/client typecheck passed, SPEC-105 recorded implementation differences and verification notes, and Telegram callback handling answered inline keyboard callback queries. Later follow-up hardening expanded the verified suite to 61 tests and deferred mobile implicit-intent UI from v1. |
 | 2026-05-06 | Phase 5 i18n coverage landed: Web suggestion tests now pin localized question/labels, and Telegram zh-Hant coverage verifies candidate copy, inline keyboard labels, and confirmation transition copy all come from the i18n catalog. |
 | 2026-05-06 | Phase 5 duplicate-guard coverage landed: candidate-write idempotency is now expressed as a shared persistence-boundary helper used by routing and covered by tests proving the same `candidateId` is not appendable twice while a different target for the same message remains distinct. Decline cooldown coverage already proves immediate re-suggestion is suppressed. |
 | 2026-05-06 | Phase 4 lifecycle close-out landed: confirmed implicit Work/Code candidates now have integration coverage for weak/unknown gates, active-anchor supersede, `/chat` abandonment, and Work projection visibility through the same core Work Item path as explicit slash-mode. |
@@ -265,8 +275,8 @@ materialization, and command-pipeline drift.
 | 2026-05-06 | Phase 2 Web confirmation slice landed: Web `decline` now appends a declined transition without dispatching a Cat or creating durable intake; Web `confirm_work` now synthesizes the `(implicit-confirmation)` command metadata and enters SPEC-104's slash-mode intake path; repeated confirmation of the same candidate is a no-op and does not create duplicate anchors. |
 | 2026-05-06 | Phase 2 sidecar slice landed: ordinary direct messages that detect as Work/Code candidates now append a localized system suggestion with the existing `ChatMessage.choices` schema (`confirm_work` / `confirm_code` / `decline`) while preserving ordinary Cat dispatch and proving no Work Item is created before confirmation. |
 | 2026-05-06 | Phase 1 detector/metadata slice landed: added the browser-safe deterministic `detectImplicitProductIntent` helper, candidate/transition metadata builders, typed channel metadata keys, and unit coverage for direct-only detection, slash-command bypass, casual false positives, candidate expiry, and sentinel confirmed-command metadata. |
-| 2026-05-06 | Follow-up review close-out (round 2): metadata key names pinned (`metadata.implicitProductIntentCandidate` for suggestions, `metadata.implicitProductIntentTransition` for confirm/decline/expire) so renderers can disambiguate from SPEC-104's `metadata.directSlashMode` and weak-gate `ChatMessage.choices`; the candidate-write idempotency guard moved from Phase 1 (Task 1.2b) into Phase 5 (Task 5.1a) where the persistence layer can actually enforce it; mobile read-only constraint clarified as a v1 scope decision specific to implicit-intent confirmation rather than a global mobile rule. |
-| 2026-05-06 | Follow-up review close-out: `rawCommandToken` now stays string-only with `(implicit-confirmation)` sentinel; Web confirmation reuses `ChatMessage.choices`; mobile renders candidate/transition segments read-only with desktop-only alert on accidental action taps; detector cue examples are illustrative and repeated same-message detection is idempotent. |
+| 2026-05-06 | Follow-up review close-out (round 2): metadata key names pinned (`metadata.implicitProductIntentCandidate` for suggestions, `metadata.implicitProductIntentTransition` for confirm/decline/expire) so renderers can disambiguate from SPEC-104's `metadata.directSlashMode` and weak-gate `ChatMessage.choices`; the candidate-write idempotency guard moved from Phase 1 (Task 1.2b) into Phase 5 (Task 5.1a) where the persistence layer can actually enforce it; mobile implicit-intent behavior was scoped for implementation validation instead of being treated as a global mobile rule. |
+| 2026-05-06 | Follow-up review close-out: `rawCommandToken` now stays string-only with `(implicit-confirmation)` sentinel; Web confirmation reuses `ChatMessage.choices`; mobile implicit-intent interaction was left as a later slice pending renderer validation; detector cue examples are illustrative and repeated same-message detection is idempotent. |
 | 2026-05-06 | Follow-up review alignment: detector v1 is now locked to conservative deterministic heuristics; candidate/confirm/decline/expire are append-only system events; Web uses inline message choices, Telegram uses inline keyboard callback data; confirmed implicit commands synthesize routing metadata without rewriting transcript or faking slash tokens. |
 | 2026-05-06 | Plan created as a follow-up to PLAN-092. Natural-language Work/Code detection is candidate-only and must bridge into SPEC-104 after explicit owner confirmation. |
 

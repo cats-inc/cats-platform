@@ -343,18 +343,14 @@ UI. Candidate system segments carry choices with `confirm_work` or
 `confirm_code` plus `decline` option ids; they do not introduce a second inline
 choice widget contract.
 
-Mobile does not get an implicit-intent UI in this MVP, but shared transcripts
-may still contain candidate and transition system segments. Mobile shall render
-those segments as read-only system entries. If a mobile renderer exposes the
-shared choices by accident or through reused components, confirm/decline taps
-shall surface the standard desktop-only alert instead of performing the action.
-This mobile read-only constraint is a v1 scope decision specific to
-implicit-intent confirmation; SPEC-104's weak human-gate retains its existing
-mobile behavior, since that flow already shipped through mobile and is not
-affected by this spec. Mobile renderers identify implicit-intent segments by
-the `metadata.implicitProductIntentCandidate` /
-`metadata.implicitProductIntentTransition` keys, not by the presence of
-`ChatMessage.choices` alone.
+Mobile does not get an implicit-intent UI in this MVP. The current mobile
+message projection filters system messages out before rendering, so candidate
+and transition system segments are not exposed as mobile buttons and cannot be
+confirmed from mobile. A later mobile slice may add read-only system segment
+rendering and desktop-only alert interception keyed by
+`metadata.implicitProductIntentCandidate` /
+`metadata.implicitProductIntentTransition`; that behavior is explicitly
+deferred from v1 rather than implied by shared `ChatMessage.choices`.
 
 ### Suppression Model v1
 
@@ -364,6 +360,8 @@ Candidate suppression is lane-local:
   or decline it
 - switching the lane to explicit `/chat` expires outstanding suggested
   candidates
+- creating a new candidate expires any other unresolved candidate in the same
+  lane before writing the new suggestion
 - declining any Work/Code candidate starts a five-minute detector cooldown in
   that lane
 - during cooldown, detector hits return `none` instead of creating another
@@ -401,6 +399,8 @@ Candidate suppression is lane-local:
 - Candidate and confirmation metadata preserve original message source context.
 - Candidate writes treat repeated detection for the same `messageId` and target
   product as an idempotent duplicate; edits/resends require a new message id.
+- Confirming an expired candidate appends an `expired` transition and does not
+  create a Work Item.
 - False-positive tests prove casual chat does not nag the owner.
 - No retired route/control labels are introduced.
 
@@ -418,11 +418,13 @@ Candidate suppression is lane-local:
   loading state.
 - Candidate write idempotency is enforced at the persistence boundary by
   checking for an existing candidate segment with the same `candidateId`.
+- Direct-lane detection follows SPEC-104's effective direct-lane check:
+  `channelKind === 'direct_message'` or `roomRouting.mode === 'direct_message'`.
 
 ## Verification
 
 - `npx tsx --test --test-isolation=none tests\chat-implicit-product-intent.test.ts tests\telegram-implicit-product-intent-candidates.test.ts tests\chat-product-intent-command-parser.test.tsx tests\chat-product-intent-dispatch.test.tsx tests\chat-direct-slash-mode-follow-up.test.tsx tests\chat-direct-slash-mode-work-projection.test.tsx tests\chat-direct-slash-mode-supervised-boundary.test.tsx`
-  passed on 2026-05-06 with 57 tests.
+  passed on 2026-05-06 with 61 tests.
 - `npx tsc --noEmit -p tsconfig.server.json` passed on 2026-05-06.
 - `npx tsc --noEmit -p tsconfig.json` passed on 2026-05-06.
 

@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   buildTelegramImplicitProductIntentCallbackData,
+  buildTelegramImplicitProductIntentChoiceResponse,
   buildTelegramImplicitProductIntentReplyMarkup,
   parseTelegramImplicitProductIntentCallbackData,
 } from '../src/platform/transports/telegram/bridge.ts';
@@ -14,23 +15,23 @@ import { pickTelegramMessage } from '../src/platform/transports/telegram/utils.t
 
 const SOURCE_MESSAGE_ID = '72d884b7-cea8-4945-a405-e55cd1f6d1c3';
 
-test('Telegram implicit product intent reply markup uses compact callback data', () => {
-  const markup = buildTelegramImplicitProductIntentReplyMarkup({
+function createImplicitCandidateMessage() {
+  return {
     id: 'candidate-message',
     senderKind: 'system',
     senderName: 'Cats',
-    body: 'This looks like Code.',
+    body: '這看起來像 Code。',
     choices: [
       {
-        question: 'Turn this message into Code intake?',
+        question: '要把這則訊息轉成 Code intake 嗎？',
         options: [
           {
             id: 'confirm_code',
-            label: 'Turn into Code',
+            label: '轉成 Code',
           },
           {
             id: 'decline',
-            label: 'Keep as chat',
+            label: '保留為 chat',
           },
         ],
       },
@@ -54,17 +55,21 @@ test('Telegram implicit product intent reply markup uses compact callback data',
         expiresAt: '2026-05-06T08:15:00.000Z',
       },
     },
-  });
+  };
+}
+
+test('Telegram implicit product intent reply markup uses compact callback data', () => {
+  const markup = buildTelegramImplicitProductIntentReplyMarkup(createImplicitCandidateMessage());
 
   assert.deepEqual(markup, {
     inline_keyboard: [
       [
         {
-          text: 'Turn into Code',
+          text: '轉成 Code',
           callback_data: `ipi:v1:${SOURCE_MESSAGE_ID}:c:confirm`,
         },
         {
-          text: 'Keep as chat',
+          text: '保留為 chat',
           callback_data: `ipi:v1:${SOURCE_MESSAGE_ID}:c:decline`,
         },
       ],
@@ -113,6 +118,18 @@ test('Telegram implicit product intent reply markup uses compact callback data',
     }),
     `ipi:v1:${SOURCE_MESSAGE_ID}:w:confirm`,
   );
+});
+
+test('Telegram implicit product intent choice response keeps transcript body locale-neutral', () => {
+  const response = buildTelegramImplicitProductIntentChoiceResponse({
+    message: createImplicitCandidateMessage(),
+    action: 'confirm',
+    submittedAt: '2026-05-06T08:03:00.000Z',
+  });
+
+  assert.equal(response?.body, '轉成 Code');
+  assert.equal(response?.choiceResponse.answers[0]?.question, '要把這則訊息轉成 Code intake 嗎？');
+  assert.deepEqual(response?.choiceResponse.answers[0]?.selectedOptionIds, ['confirm_code']);
 });
 
 test('Telegram delivery client serializes inline reply markup', async () => {

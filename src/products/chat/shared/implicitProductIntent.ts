@@ -34,11 +34,9 @@ const STRONG_ACTION_PATTERNS = [
   /\bplan(?:ning|s|ned)?\b/u,
   /\bdraft(?:ing|s|ed)?\b/u,
   /\bsummarize(?:s|d)?\b/u,
-  /\brefactor(?:ing|s|ed)?\b/u,
   /幫我/u,
   /修復/u,
   /修正/u,
-  /除錯/u,
   /規劃/u,
   /撰寫/u,
   /整理/u,
@@ -61,8 +59,6 @@ const CODE_CUE_PATTERNS = [
   /測試/u,
   /程式/u,
   /除錯/u,
-  /修復/u,
-  /修正/u,
 ] as const;
 
 const WORK_CUE_PATTERNS = [
