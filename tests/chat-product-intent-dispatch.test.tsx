@@ -254,14 +254,42 @@ test('beginChannelMessageDispatch records weak direct audience capability outcom
     | { capabilityProfileKind?: unknown }
     | undefined;
   const directSlashMode = ackMessage?.metadata.directSlashMode as
-    | { humanGate?: { kind?: unknown; capabilityProfileKind?: unknown; targetProduct?: unknown } }
+    | {
+        humanGate?: {
+          kind?: unknown;
+          capabilityProfileKind?: unknown;
+          targetProduct?: unknown;
+          draftSummary?: unknown;
+          suggestedActions?: unknown;
+        };
+      }
     | undefined;
   const core = await store.readCore();
 
+  assert.equal(
+    ackMessage?.body,
+    'Work mode is active. I can help clarify here, but a human must create or confirm the Work Item in Work or switch to a Cat that can own durable work.',
+  );
   assert.equal(postureChange?.capabilityProfileKind, 'weak_worker');
   assert.equal(directSlashMode?.humanGate?.kind, 'human_gate_required');
   assert.equal(directSlashMode?.humanGate?.capabilityProfileKind, 'weak_worker');
   assert.equal(directSlashMode?.humanGate?.targetProduct, 'work');
+  assert.equal(directSlashMode?.humanGate?.draftSummary, 'clarify the MVP');
+  assert.deepEqual(directSlashMode?.humanGate?.suggestedActions, [
+    {
+      kind: 'continue_clarifying',
+      label: 'Continue clarifying in this direct chat',
+    },
+    {
+      kind: 'open_work_items',
+      label: 'Create or confirm a Work Item in Work',
+      path: '/work/work-items',
+    },
+    {
+      kind: 'switch_cat',
+      label: 'Switch to a Cat that can own durable work',
+    },
+  ]);
   assert.equal(
     core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
     0,
@@ -291,13 +319,18 @@ test('beginChannelMessageDispatch records unknown direct audience capability out
     | { capabilityProfileKind?: unknown }
     | undefined;
   const directSlashMode = ackMessage?.metadata.directSlashMode as
-    | { humanGate?: { kind?: unknown; capabilityProfileKind?: unknown } }
+    | { humanGate?: { kind?: unknown; capabilityProfileKind?: unknown; suggestedActions?: unknown } }
     | undefined;
   const core = await store.readCore();
 
+  assert.equal(
+    ackMessage?.body,
+    'Work mode is active. I can help clarify here, but a human must create or confirm the Work Item in Work or switch to a Cat that can own durable work.',
+  );
   assert.equal(postureChange?.capabilityProfileKind, 'unknown');
   assert.equal(directSlashMode?.humanGate?.kind, 'human_gate_required');
   assert.equal(directSlashMode?.humanGate?.capabilityProfileKind, 'unknown');
+  assert.ok(Array.isArray(directSlashMode?.humanGate?.suggestedActions));
   assert.equal(
     core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
     0,

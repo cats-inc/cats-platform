@@ -434,6 +434,12 @@ interface DirectSlashModeHumanGateMetadata {
   reason: 'direct_audience_not_strong';
   targetProduct: 'work' | 'code';
   capabilityProfileKind: 'weak_worker' | 'unknown';
+  draftSummary: string;
+  suggestedActions: Array<{
+    kind: 'continue_clarifying' | 'open_work_items' | 'switch_cat';
+    label: string;
+    path?: string;
+  }>;
 }
 
 interface DirectSlashModeClearMetadata {
@@ -473,6 +479,23 @@ function buildDirectSlashModeHumanGate(input: {
     reason: 'direct_audience_not_strong',
     targetProduct: input.productIntentCommand.targetProduct === 'code' ? 'code' : 'work',
     capabilityProfileKind,
+    draftSummary: input.productIntentCommand.argumentText
+      || `Clarify this ${input.productIntentCommand.targetProduct} request before creating work.`,
+    suggestedActions: [
+      {
+        kind: 'continue_clarifying',
+        label: 'Continue clarifying in this direct chat',
+      },
+      {
+        kind: 'open_work_items',
+        label: 'Create or confirm a Work Item in Work',
+        path: '/work/work-items',
+      },
+      {
+        kind: 'switch_cat',
+        label: 'Switch to a Cat that can own durable work',
+      },
+    ],
   };
 }
 
@@ -599,7 +622,7 @@ function describeProductIntentCommandAck(
       return 'Chat mode is active.';
     case 'work':
       if (capabilityProfileKind === 'weak_worker' || capabilityProfileKind === 'unknown') {
-        return 'Work mode is active. This Cat needs human confirmation before creating a Work Item.';
+        return 'Work mode is active. I can help clarify here, but a human must create or confirm the Work Item in Work or switch to a Cat that can own durable work.';
       }
       if (capabilityProfileKind === 'strong_agent') {
         return 'Work mode is active. Draft Work Item anchor created for clarification.';
@@ -607,7 +630,7 @@ function describeProductIntentCommandAck(
       return 'Work mode is active. I will clarify the work before creating an item.';
     case 'code':
       if (capabilityProfileKind === 'weak_worker' || capabilityProfileKind === 'unknown') {
-        return 'Code mode is active. This Cat needs human confirmation before creating a Work Item.';
+        return 'Code mode is active. I can help clarify here, but a human must create or confirm the Work Item in Work before Code execution can start.';
       }
       if (capabilityProfileKind === 'strong_agent') {
         return 'Code mode is active. Draft Work Item anchor created with Code target.';

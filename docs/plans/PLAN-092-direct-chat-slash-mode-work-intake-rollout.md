@@ -170,10 +170,10 @@ tested independently.
 - [ ] Task 4.2: Add the chosen human-gate UX: Web shows an inline direct-lane
       confirm action for creating the drafted Work Item; Telegram returns a
       short explanation plus a deep link to the Web confirmation/create surface.
-- [ ] Task 4.3: Add Telegram-safe copy for weak/unknown direct Cats that asks
+- [x] Task 4.3: Add Telegram-safe copy for weak/unknown direct Cats that asks
       the human to confirm/create or switch Cats without exposing internal
       provider jargon.
-- [ ] Task 4.4: Add tests proving weak/unknown Cats cannot create durable Work
+- [x] Task 4.4: Add tests proving weak/unknown Cats cannot create durable Work
       Items, Tasks, Runs, or Code execution without the human gate.
 
 **Deliverables**: weak and unknown paths fail safe while remaining useful.
@@ -327,6 +327,7 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Human-gate slice: weak/unknown `/work` and `/code` responses now carry a machine-readable human gate with draft summary and suggested next actions, use Telegram-safe copy without provider jargon, and tests assert no durable Work Item is created on weak/unknown paths. |
 | 2026-05-06 | Work projection slice: added coverage proving Work product projections list draft Work Items created from direct slash-mode chat, including source conversation and assigned direct Cat context. |
 | 2026-05-06 | Follow-up prompt/context slice: direct-lane follow-up messages now carry `directSlashModeIntakeRef` when an active anchor exists, runtime context forwards the anchor metadata, and Cat dispatch instructions include the Concierge protocol (one focal question, priority order, recap before task/run follow-up, no duplicate Work Item anchor). |
 | 2026-05-06 | Active-anchor lifecycle slice: `/chat` posture changes now write `directSlashMode.activeAnchor = null` with `clearReason: chat_posture`; terminal Work Items (`completed`, `cancelled`, `archived`) clear the cached anchor, and a later `/work` or `/code` starts a fresh intake even when posture itself is unchanged. Tests cover chat-clear, terminal-clear, and no duplicate anchor on idempotent repeats. |
