@@ -1,3 +1,21 @@
+import { enCatalog } from '../shared/i18n/catalogs/en.js';
+import { zhTWCatalog } from '../shared/i18n/catalogs/zh-TW.js';
+
+/**
+ * Strings that mirror a web catalog key are read from
+ * `enCatalog` / `zhTWCatalog` directly. Single source of truth —
+ * web changes propagate to mobile automatically, no parity test
+ * required for the live read. The pre-existing
+ * `tests/mobile-i18n-web-parity.test.ts` documents the mapping and
+ * keeps catching cases where someone accidentally swaps the read
+ * back to a hardcoded literal.
+ *
+ * Mobile-only strings (the swipe-delete failure title, the
+ * Cats-tab create-cat alert, the desktop-only intercept for
+ * Parallel chips, etc.) stay hardcoded — those have no web
+ * equivalent. Drift only matters for strings that ALSO render on
+ * web; for mobile-only strings the source of truth is right here.
+ */
 export type MobileLocale = 'en' | 'zh-TW';
 export type MobileProductMode = 'chat' | 'code' | 'work';
 export type MobileTabId = 'cats' | MobileProductMode | 'settings';
@@ -334,14 +352,19 @@ const MOBILE_SETTINGS_COPY: Record<MobileLocale, MobileSettingsCopy> = {
     pushNotificationsDescription:
       'Alerts when an approval, escalation, or task completion lands.',
     pushNotificationsLabel: 'Push notifications',
-    settingsTitle: 'Settings',
-    languageSection: 'Language',
+    settingsTitle: enCatalog['settings.shell.heading'],
+    // The five language-card strings mirror web. Reading from
+    // `enCatalog` makes that tie load-bearing — `tsc` errors here
+    // if web ever renames the key, and the rendered value is
+    // always whatever web ships.
+    languageSection: enCatalog['settings.general.languageTitle'],
     languageSectionDescription: 'Choose how Cats displays its interface.',
-    languagePreferenceLabel: 'Display language',
-    languageAutoLabel: 'Auto-detect',
+    languagePreferenceLabel: enCatalog['settings.general.languagePreferenceLabel'],
+    languageAutoLabel: enCatalog['settings.general.languageAutoOption'],
     languageAutoDescription: 'Follows your phone language.',
-    languageEnglishLabel: 'English',
-    languageTraditionalChineseLabel: 'Traditional Chinese',
+    languageEnglishLabel: enCatalog['settings.general.languageEnglishOption'],
+    languageTraditionalChineseLabel:
+      enCatalog['settings.general.languageTraditionalChineseOption'],
     languageReopenFooter:
       'Reopen the app to apply the new language across every tab.',
     languagePickerCloseLabel: 'Close language picker',
@@ -368,14 +391,16 @@ const MOBILE_SETTINGS_COPY: Record<MobileLocale, MobileSettingsCopy> = {
     profileSectionDescription: '這是跨聊天、程式碼、工作與 Cats 的平台個人檔案。',
     pushNotificationsDescription: '核准、升級或任務完成時提醒。',
     pushNotificationsLabel: '推播通知',
-    settingsTitle: '設定',
-    languageSection: '語言',
+    settingsTitle: zhTWCatalog['settings.shell.heading'],
+    languageSection: zhTWCatalog['settings.general.languageTitle'],
     languageSectionDescription: '選擇 Cats 介面的顯示語言。',
-    languagePreferenceLabel: '顯示語言',
-    languageAutoLabel: '自動偵測',
+    languagePreferenceLabel:
+      zhTWCatalog['settings.general.languagePreferenceLabel'],
+    languageAutoLabel: zhTWCatalog['settings.general.languageAutoOption'],
     languageAutoDescription: '跟隨手機語言。',
-    languageEnglishLabel: '英文',
-    languageTraditionalChineseLabel: '繁體中文',
+    languageEnglishLabel: zhTWCatalog['settings.general.languageEnglishOption'],
+    languageTraditionalChineseLabel:
+      zhTWCatalog['settings.general.languageTraditionalChineseOption'],
     languageReopenFooter:
       '重新開啟 app 才會在每個分頁套用新的語言。',
     languagePickerCloseLabel: '關閉語言選擇器',
@@ -484,7 +509,7 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
     emptyRecentsLabel: 'No recent conversations yet.',
     deleteAction: 'Delete',
     deleteFailedTitle: "Couldn't delete",
-    directMessagesLabel: 'Direct Messages',
+    directMessagesLabel: enCatalog['conversationSidebar.directMessagesLabel'],
     products: {
       chat: {
         productLabel: 'CHAT',
@@ -519,7 +544,7 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
     emptyRecentsLabel: '尚未有近期對話。',
     deleteAction: '刪除',
     deleteFailedTitle: '無法刪除',
-    directMessagesLabel: '直接訊息',
+    directMessagesLabel: zhTWCatalog['conversationSidebar.directMessagesLabel'],
     products: {
       chat: {
         productLabel: '聊天',
