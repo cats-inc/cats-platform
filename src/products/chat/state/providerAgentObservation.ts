@@ -58,6 +58,7 @@ export interface BuildChatProviderAgentObservationInput {
   messageCharacterCount: number;
   allowedFallbacks?: SupervisionFallbackPolicy[];
   availableTools?: ProviderAgentToolDescriptor[];
+  invariants?: string[];
   now?: Date;
 }
 
@@ -134,6 +135,7 @@ export function buildChatProviderAgentObservation(
       'Chat deterministic routing stays product-owned.',
       'Do not infer additional audience targets outside the routing summary.',
       'Do not request tools outside the bounded tool surface.',
+      ...(input.invariants ?? []),
     ],
   };
 }

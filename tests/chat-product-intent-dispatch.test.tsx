@@ -180,6 +180,13 @@ function buildSingleChoiceResponse(
   };
 }
 
+function observationExposesProposalTool(
+  observation: ProviderAgentBoundedObservation | null,
+): boolean {
+  return observation?.availableTools.some((tool) =>
+    tool.manifest.name === CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME) ?? false;
+}
+
 async function suggestImplicitProductIntentCandidate(input: {
   state: ChatState;
   channelId: string;
@@ -635,9 +642,15 @@ test('routeChannelMessage records Cat proposal tool requests without durable Wor
     | undefined;
   const core = await store.readCore();
 
+  assert.equal(observationExposesProposalTool(capturedObservation), true);
   assert.equal(
-    capturedObservation?.availableTools.some((tool) =>
-      tool.manifest.name === CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME),
+    capturedObservation?.invariants.some((invariant) =>
+      invariant.includes('must not be used for casual chat')),
+    true,
+  );
+  assert.equal(
+    capturedObservation?.invariants.some((invariant) =>
+      invariant.includes('At most one proposeProductIntake')),
     true,
   );
   assert.equal(proposalMessage?.senderKind, 'system');
@@ -680,11 +693,150 @@ test('routeChannelMessage does not expose proposal tools in heuristic mode', asy
     },
   );
 
-  assert.equal(
-    capturedObservation?.availableTools.some((tool) =>
-      tool.manifest.name === CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME),
-    false,
+  assert.equal(observationExposesProposalTool(capturedObservation), false);
+});
+
+test('routeChannelMessage does not expose proposal tools to weak direct Cats', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can discuss the onboarding requirements.');
+  let capturedObservation: ProviderAgentBoundedObservation | null = null;
+
+  await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig('weak_worker'),
+      naturalProductIntentMode: 'cat_tool',
+      providerAgentDecisionRequester: async ({ observation }) => {
+        capturedObservation = observation;
+        return null;
+      },
+    },
   );
+
+  assert.equal(observationExposesProposalTool(capturedObservation), false);
+});
+
+test('routeChannelMessage does not expose proposal tools to unknown direct Cats', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can discuss the onboarding requirements.');
+  let capturedObservation: ProviderAgentBoundedObservation | null = null;
+
+  await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      naturalProductIntentMode: 'cat_tool',
+      providerAgentDecisionRequester: async ({ observation }) => {
+        capturedObservation = observation;
+        return null;
+      },
+    },
+  );
+
+  assert.equal(observationExposesProposalTool(capturedObservation), false);
+});
+
+test('routeChannelMessage does not expose proposal tools when owner setting is off', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  await store.updateCore((core) => ({
+    ...core,
+    ownerProfile: {
+      ...core.ownerProfile,
+      naturalProductIntentProposalsEnabled: false,
+    },
+  }));
+  const runtimeClient = runtimeReplyStub('I can discuss the onboarding requirements.');
+  let capturedObservation: ProviderAgentBoundedObservation | null = null;
+
+  await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+      providerAgentDecisionRequester: async ({ observation }) => {
+        capturedObservation = observation;
+        return null;
+      },
+    },
+  );
+
+  assert.equal(observationExposesProposalTool(capturedObservation), false);
+});
+
+test('routeChannelMessage does not expose proposal tools outside direct lanes', async () => {
+  const now = new Date('2026-05-06T08:00:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Group room',
+      topic: 'Group product intent',
+      originSurface: 'chat',
+      entryKind: 'group',
+      temporaryParticipants: [
+        {
+          participantId: 'participant-concierge',
+          name: 'ConciergeCat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can discuss the onboarding requirements.');
+  let capturedObservation: ProviderAgentBoundedObservation | null = null;
+
+  await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: '@ConciergeCat please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+      providerAgentDecisionRequester: async ({ observation }) => {
+        capturedObservation = observation;
+        return null;
+      },
+    },
+  );
+
+  assert.equal(capturedObservation?.actor.actorRef, 'cat:participant-concierge');
+  assert.equal(observationExposesProposalTool(capturedObservation), false);
 });
 
 test('beginChannelMessageDispatch suggests implicit candidates for room-routing direct lanes', async () => {

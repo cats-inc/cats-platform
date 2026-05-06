@@ -512,6 +512,13 @@ function buildProviderAgentObservationForTurn(input: {
   if (policyDecision.status !== 'applied') {
     return null;
   }
+  const exposeCatProductIntentProposalTool = shouldExposeCatProductIntentProposalTool({
+    channel,
+    core: input.core,
+    capabilityProfileKind: capabilityProfile.kind,
+    naturalProductIntentMode: input.naturalProductIntentMode,
+    hasSingleCatTarget: Boolean(singleCatTarget),
+  });
 
   return buildChatProviderAgentObservation({
     state: input.state,
@@ -521,18 +528,20 @@ function buildProviderAgentObservationForTurn(input: {
       : 'orchestrator',
     capabilityProfile,
     policy: policyDecision.result.policy,
-    availableTools: shouldExposeCatProductIntentProposalTool({
-      channel,
-      core: input.core,
-      capabilityProfileKind: capabilityProfile.kind,
-      naturalProductIntentMode: input.naturalProductIntentMode,
-      hasSingleCatTarget: Boolean(singleCatTarget),
-    })
+    availableTools: exposeCatProductIntentProposalTool
       ? [
           {
             manifest: createCatProductIntentProposalToolManifest(),
             reason: 'Strong direct Cat can ask the owner to confirm Work/Code intake.',
           },
+        ]
+      : [],
+    invariants: exposeCatProductIntentProposalTool
+      ? [
+          'proposeProductIntake asks the owner to confirm Work/Code intake and must not be used for casual chat.',
+          'If a proposal tool request is rejected or ignored by platform policy, continue ordinary chat without exposing internal rejection details to the owner.',
+          'Do not request createWorkItem, createTask, or createRun in the same provider-agent decision as proposeProductIntake.',
+          'At most one proposeProductIntake request can be accepted per assistant turn.',
         ]
       : [],
     messageCharacterCount: input.payload.body.length,

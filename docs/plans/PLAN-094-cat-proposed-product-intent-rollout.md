@@ -102,15 +102,15 @@ durable Work/Code state.
 
 - [x] Task 3.1: Extend dispatch target preparation so eligible strong direct
       Cats receive the proposal tool in ordinary chat turns.
-- [ ] Task 3.2: Ensure weak/unknown Cats never receive the proposal tool.
-- [ ] Task 3.3: Inject prompt instructions that the tool asks for owner
+- [x] Task 3.2: Ensure weak/unknown Cats never receive the proposal tool.
+- [x] Task 3.3: Inject prompt instructions that the tool asks for owner
       confirmation and must not be used for casual chat. If a proposal tool
       call is rejected, the Cat must not surface the rejection reason to the
       owner; it should resume ordinary chat without insisting on the proposal.
 - [ ] Task 3.4: Ensure providers without tool-call support do not get a silent
       fallback that pretends to be a proposal. Structured-output fallback is
       deferred to a separate ADR/SPEC.
-- [ ] Task 3.5: Add tests proving the tool grant is controlled by capability,
+- [x] Task 3.5: Add tests proving the tool grant is controlled by capability,
       deployment mode, owner setting, and direct-lane membership.
 - [ ] Task 3.6: Add per-turn tool-grant separation guards:
       `proposeProductIntake` cannot ship in the same turn as future Work Item,
@@ -278,6 +278,7 @@ the old heuristic cannot surprise users.
 | 2026-05-06 | Phase 1 landed: `CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE` now defaults to `off`, owner-profile setting gates natural suggestions, explicit `/chat` / `/work` / `/code` still enter SPEC-104, and the v1 deterministic detector only runs in `heuristic_prefilter`. Validation: `npm run build:server`, `node --test --test-isolation=none tests/config.test.js`, bundled `chat-product-intent-dispatch` test, and `git diff --check`. |
 | 2026-05-06 | Phase 2 contract foundation landed: v2 `catProductIntentProposal` / transition metadata, `proposeProductIntake` manifest, server-side validation helper, TTL/cooldown/idempotency helpers, and focused proposal contract tests. Remaining Phase 2 work is wiring actual append-only transcript writes and proving live proposal calls do not create Work Items. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-cat-product-intent-proposal` test, and `git diff --check`. |
 | 2026-05-06 | Phase 2 live append and Phase 3 initial exposure landed: eligible strong direct Cats receive `proposeProductIntake` in ordinary chat turns when effective mode is `cat_tool`; accepted tool requests write only v2 proposal system segments and do not create Work Items or anchors; `heuristic_prefilter` does not expose the Cat proposal tool. Remaining Phase 3 work is weak/unknown and owner-setting exposure coverage, prompt/tool rejection instructions, and per-turn guard tests. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-product-intent-dispatch` and `chat-cat-product-intent-proposal` tests, and `git diff --check`. |
+| 2026-05-06 | Phase 3 tool-grant guard coverage landed: proposal-tool observations now carry owner-confirmation and rejection-handling invariants, and dispatch tests prove weak, unknown, owner-disabled, heuristic-mode, and non-direct lanes do not receive `proposeProductIntake`. Remaining Phase 3 work is explicit provider-without-tool-call handling and future durable-tool separation tests. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-product-intent-dispatch` and `chat-provider-agent-observation` tests. |
 
 ---
 
