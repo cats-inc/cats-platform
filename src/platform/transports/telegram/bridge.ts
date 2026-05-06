@@ -626,6 +626,19 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
       const channelBeforeDispatch = input.roomBridge.readRoom(nextState, roomId);
       messageCountBeforeDispatch = channelBeforeDispatch.messages.length;
       if (implicitCallback) {
+        let deliveryReceipt: TelegramDeliveryReceipt | null = null;
+        const callbackQueryId = readTelegramString(input.update.callback_query?.id);
+        if (callbackQueryId) {
+          deliveryReceipt = await input.telegramRelay.deliver({
+            request: {
+              operation: 'answer_callback',
+              conversationId: input.receipt.mappedConversationId,
+              chatId: input.receipt.chatId,
+              callbackQueryId,
+            },
+            context: input.context,
+          });
+        }
         const candidateMessage = resolveTelegramImplicitCandidateForCallback({
           channel: channelBeforeDispatch,
           sourceMessageId: implicitCallback.sourceMessageId,
@@ -646,7 +659,7 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
             },
             roomId,
             roomCreated,
-            deliveryReceipt: null,
+            deliveryReceipt,
             messages: [],
           };
         }
@@ -679,7 +692,6 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
           messageCountBeforeDispatch,
         });
         const chunks = chunkTelegramReply(replyText, TELEGRAM_REPLY_LIMIT);
-        let deliveryReceipt: TelegramDeliveryReceipt | null = null;
         for (const chunk of chunks) {
           deliveryReceipt = await input.telegramRelay.deliver({
             request: {

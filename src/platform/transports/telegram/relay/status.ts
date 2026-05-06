@@ -14,6 +14,7 @@ const SUPPORTED_DELIVERY_OPERATIONS: TelegramDeliveryOperation[] = [
   'edit',
   'delete',
   'send_media',
+  'answer_callback',
 ];
 
 function hasActiveDefaultBinding(context: TelegramRelayContext): boolean {

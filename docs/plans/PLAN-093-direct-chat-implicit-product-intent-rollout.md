@@ -149,9 +149,9 @@ pipeline, with no parallel durable intake path.
       same `messageId` does not append duplicate candidate segments.
 - [x] Task 5.3: Add i18n coverage for Web and Telegram suggestion/confirmation
       copy.
-- [ ] Task 5.4: Run the targeted implicit-intent suite plus the existing
+- [x] Task 5.4: Run the targeted implicit-intent suite plus the existing
       SPEC-104 slash-mode regression suite.
-- [ ] Task 5.5: Update SPEC-105 and PLAN-093 with implementation differences
+- [x] Task 5.5: Update SPEC-105 and PLAN-093 with implementation differences
       and verification notes.
 
 **Deliverables**: the flow is safe against false positives, duplicate
@@ -230,6 +230,13 @@ materialization, and command-pipeline drift.
     path as slash-mode
   - Casual direct chat: verify no repeated suggestion
 
+## Verification
+
+- 2026-05-06: `npx tsx --test --test-isolation=none tests\chat-implicit-product-intent.test.ts tests\telegram-implicit-product-intent-candidates.test.ts tests\chat-product-intent-command-parser.test.tsx tests\chat-product-intent-dispatch.test.tsx tests\chat-direct-slash-mode-follow-up.test.tsx tests\chat-direct-slash-mode-work-projection.test.tsx tests\chat-direct-slash-mode-supervised-boundary.test.tsx`
+  passed with 57 tests.
+- 2026-05-06: `npx tsc --noEmit -p tsconfig.server.json` passed.
+- 2026-05-06: `npx tsc --noEmit -p tsconfig.json` passed.
+
 ## Risks & Mitigations
 
 | Risk | Impact | Mitigation |
@@ -246,6 +253,7 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | PLAN-093 close-out landed: targeted implicit-intent and SPEC-104 slash-mode regression suite passed with 57 tests, server/client typecheck passed, SPEC-105 now records implementation differences and verification notes, and Telegram callback handling now answers inline keyboard callback queries to clear client-side loading state. |
 | 2026-05-06 | Phase 5 i18n coverage landed: Web suggestion tests now pin localized question/labels, and Telegram zh-Hant coverage verifies candidate copy, inline keyboard labels, and confirmation transition copy all come from the i18n catalog. |
 | 2026-05-06 | Phase 5 duplicate-guard coverage landed: candidate-write idempotency is now expressed as a shared persistence-boundary helper used by routing and covered by tests proving the same `candidateId` is not appendable twice while a different target for the same message remains distinct. Decline cooldown coverage already proves immediate re-suggestion is suppressed. |
 | 2026-05-06 | Phase 4 lifecycle close-out landed: confirmed implicit Work/Code candidates now have integration coverage for weak/unknown gates, active-anchor supersede, `/chat` abandonment, and Work projection visibility through the same core Work Item path as explicit slash-mode. |

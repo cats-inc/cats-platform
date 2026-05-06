@@ -131,6 +131,9 @@ function resolveApiMethod(request: TelegramDeliveryRequest): string {
   if (request.operation === 'send_media') {
     return resolveMediaApiSpec(request.mediaKind).method;
   }
+  if (request.operation === 'answer_callback') {
+    return 'answerCallbackQuery';
+  }
   return 'deleteMessage';
 }
 
@@ -177,6 +180,14 @@ function buildApiPayload(
       [mediaSpec.payloadField]: request.fileId ?? request.mediaUrl,
       caption: request.caption ?? undefined,
       parse_mode: request.parseMode ?? undefined,
+    };
+  }
+
+  if (request.operation === 'answer_callback') {
+    return {
+      callback_query_id: request.callbackQueryId ?? undefined,
+      text: request.text ?? undefined,
+      show_alert: request.showAlert === true,
     };
   }
 

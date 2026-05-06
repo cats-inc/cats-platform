@@ -177,6 +177,47 @@ test('Telegram delivery client serializes inline reply markup', async () => {
   });
 });
 
+test('Telegram delivery client answers implicit intent callback queries', async () => {
+  const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
+  const fetchImpl: TelegramFetch = async (url, options) => {
+    requests.push({
+      url,
+      body: JSON.parse(String(options?.body ?? '{}')) as Record<string, unknown>,
+    });
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          ok: true,
+          result: true,
+        };
+      },
+      async text() {
+        return 'ok';
+      },
+    };
+  };
+  const client = createTelegramBotApiDeliveryClient({
+    botToken: '123:token',
+    fetchImpl,
+    apiBaseUrl: 'https://telegram.test',
+  });
+
+  const result = await client.deliver({
+    operation: 'answer_callback',
+    chatId: '4242',
+    callbackQueryId: 'callback-1',
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(requests[0]?.url, 'https://telegram.test/bot123:token/answerCallbackQuery');
+  assert.deepEqual(requests[0]?.body, {
+    callback_query_id: 'callback-1',
+    show_alert: false,
+  });
+});
+
 test('Telegram callback query picking uses the callback sender, not the bot message sender', () => {
   const picked = pickTelegramMessage({
     update_id: 99,

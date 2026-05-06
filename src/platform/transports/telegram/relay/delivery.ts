@@ -207,6 +207,18 @@ export async function deliverTelegramRequest(
     });
   }
 
+  if (
+    options.request.operation === 'answer_callback'
+    && !readTelegramString(options.request.callbackQueryId)
+  ) {
+    return recordFailedTelegramDelivery(options.store, {
+      baseReceipt,
+      request: options.request,
+      reason: 'message_id_required',
+      messageId: null,
+    });
+  }
+
   if (options.request.operation === 'reply' && !baseReceipt.replyToMessageId) {
     return recordFailedTelegramDelivery(options.store, {
       baseReceipt,

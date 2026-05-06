@@ -404,6 +404,28 @@ Candidate suppression is lane-local:
 - False-positive tests prove casual chat does not nag the owner.
 - No retired route/control labels are introduced.
 
+## Implementation Notes
+
+- Detector v1 is deterministic and local. It does not call a provider-backed
+  classifier.
+- Web confirmation uses the existing `ChatMessage.choices` schema.
+- Telegram confirmation uses inline keyboards. Because Telegram
+  `callback_data` is limited to 64 bytes, callbacks carry the compact form
+  `ipi:v1:<sourceMessageId>:<w|c>:<confirm|decline>` and resolve the full
+  `candidateId` from transcript metadata.
+- Telegram callback handling answers the callback query before routing the
+  choice response so Telegram clients do not keep the inline button in a
+  loading state.
+- Candidate write idempotency is enforced at the persistence boundary by
+  checking for an existing candidate segment with the same `candidateId`.
+
+## Verification
+
+- `npx tsx --test --test-isolation=none tests\chat-implicit-product-intent.test.ts tests\telegram-implicit-product-intent-candidates.test.ts tests\chat-product-intent-command-parser.test.tsx tests\chat-product-intent-dispatch.test.tsx tests\chat-direct-slash-mode-follow-up.test.tsx tests\chat-direct-slash-mode-work-projection.test.tsx tests\chat-direct-slash-mode-supervised-boundary.test.tsx`
+  passed on 2026-05-06 with 57 tests.
+- `npx tsc --noEmit -p tsconfig.server.json` passed on 2026-05-06.
+- `npx tsc --noEmit -p tsconfig.json` passed on 2026-05-06.
+
 ## Open Questions
 
 - [ ] Should candidate history be visible in Work/Code projections, or only in

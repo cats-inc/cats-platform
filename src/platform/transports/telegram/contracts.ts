@@ -31,7 +31,13 @@ export type TelegramAttachmentKind =
   | 'location'
   | 'contact';
 export type TelegramDeliveryMediaKind = 'photo' | 'document' | 'audio' | 'video' | 'animation';
-export type TelegramDeliveryOperation = 'send' | 'reply' | 'edit' | 'delete' | 'send_media';
+export type TelegramDeliveryOperation =
+  | 'send'
+  | 'reply'
+  | 'edit'
+  | 'delete'
+  | 'send_media'
+  | 'answer_callback';
 export type TelegramDeliveryStatus = 'configured' | 'not_configured';
 export type TelegramDeliveryResult = 'sent' | 'edited' | 'deleted' | 'failed';
 
@@ -298,6 +304,8 @@ export interface TelegramDeliveryRequest {
   mediaUrl?: string | null;
   fileId?: string | null;
   caption?: string | null;
+  callbackQueryId?: string | null;
+  showAlert?: boolean;
   parseMode?: 'HTML' | 'MarkdownV2' | null;
   disableLinkPreview?: boolean;
   replyMarkup?: TelegramInlineKeyboardMarkup | null;
