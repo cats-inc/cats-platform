@@ -5,6 +5,7 @@ import type { RuntimeClient } from '../../runtime/client.js';
 import type { CatsMemoryService } from '../../memory/index.js';
 import type {
   TelegramDeliveryReceipt,
+  TelegramInlineKeyboardMarkup,
   TelegramMessagePayload,
   TelegramRelayContext,
   TelegramWebhookReceipt,
@@ -28,6 +29,13 @@ export interface TelegramRoomBridgeMessage {
   senderKind: string;
   senderName: string | null;
   body: string;
+  choices?: Array<{
+    question: string;
+    options: Array<{
+      id: string;
+      label: string;
+    }>;
+  }>;
   metadata?: Record<string, unknown> | null;
 }
 
@@ -162,6 +170,115 @@ function resolveSenderName(
 
 function truncateLabel(value: string, limit: number): string {
   return value.length <= limit ? value : `${value.slice(0, Math.max(1, limit - 1))}…`;
+}
+
+const TELEGRAM_IMPLICIT_PRODUCT_INTENT_CALLBACK_PREFIX = 'ipi:v1';
+
+type TelegramImplicitProductIntentCallbackAction = 'confirm' | 'decline';
+type TelegramImplicitProductIntentTarget = 'work' | 'code';
+
+interface TelegramImplicitProductIntentCandidate {
+  candidateId: string;
+  sourceMessageId: string;
+  targetProduct: TelegramImplicitProductIntentTarget;
+}
+
+function readTelegramImplicitProductIntentCandidate(
+  message: TelegramRoomBridgeMessage,
+): TelegramImplicitProductIntentCandidate | null {
+  const metadata = message.metadata?.implicitProductIntentCandidate;
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return null;
+  }
+  const record = metadata as Record<string, unknown>;
+  const source = record.source;
+  const candidate = record.candidate;
+  if (
+    record.version !== 1
+    || record.event !== 'suggested'
+    || typeof record.candidateId !== 'string'
+    || !source
+    || typeof source !== 'object'
+    || Array.isArray(source)
+    || typeof (source as Record<string, unknown>).messageId !== 'string'
+    || !candidate
+    || typeof candidate !== 'object'
+    || Array.isArray(candidate)
+    || (
+      (candidate as Record<string, unknown>).targetProduct !== 'work'
+      && (candidate as Record<string, unknown>).targetProduct !== 'code'
+    )
+  ) {
+    return null;
+  }
+
+  return {
+    candidateId: record.candidateId,
+    sourceMessageId: (source as Record<string, string>).messageId,
+    targetProduct: (candidate as Record<string, TelegramImplicitProductIntentTarget>).targetProduct,
+  };
+}
+
+export function buildTelegramImplicitProductIntentCallbackData(input: {
+  sourceMessageId: string;
+  targetProduct: TelegramImplicitProductIntentTarget;
+  action: TelegramImplicitProductIntentCallbackAction;
+}): string {
+  const compactTarget = input.targetProduct === 'code' ? 'c' : 'w';
+  return `${TELEGRAM_IMPLICIT_PRODUCT_INTENT_CALLBACK_PREFIX}:${
+    input.sourceMessageId
+  }:${compactTarget}:${input.action}`;
+}
+
+function resolveTelegramImplicitProductIntentButtonCallbackData(input: {
+  candidate: TelegramImplicitProductIntentCandidate;
+  optionId: string;
+}): string | null {
+  if (input.optionId === 'decline') {
+    return buildTelegramImplicitProductIntentCallbackData({
+      sourceMessageId: input.candidate.sourceMessageId,
+      targetProduct: input.candidate.targetProduct,
+      action: 'decline',
+    });
+  }
+  const expectedConfirmOption = input.candidate.targetProduct === 'code'
+    ? 'confirm_code'
+    : 'confirm_work';
+  if (input.optionId !== expectedConfirmOption) {
+    return null;
+  }
+
+  return buildTelegramImplicitProductIntentCallbackData({
+    sourceMessageId: input.candidate.sourceMessageId,
+    targetProduct: input.candidate.targetProduct,
+    action: 'confirm',
+  });
+}
+
+export function buildTelegramImplicitProductIntentReplyMarkup(
+  message: TelegramRoomBridgeMessage,
+): TelegramInlineKeyboardMarkup | null {
+  const candidate = readTelegramImplicitProductIntentCandidate(message);
+  const choice = message.choices?.[0] ?? null;
+  if (!candidate || !choice) {
+    return null;
+  }
+  const buttons = choice.options.flatMap((option) => {
+    const callbackData = resolveTelegramImplicitProductIntentButtonCallbackData({
+      candidate,
+      optionId: option.id,
+    });
+    return callbackData
+      ? [{ text: option.label, callback_data: callbackData }]
+      : [];
+  });
+  if (buttons.length === 0) {
+    return null;
+  }
+
+  return {
+    inline_keyboard: [buttons],
+  };
 }
 
 function resolveInternalRoomMode(binding: BotBindingRecord | null): RoomRoutingMode {
@@ -443,6 +560,23 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
             chatId: input.receipt.chatId,
             replyToMessageId: !deliveryReceipt ? input.receipt.messageId : undefined,
             text: chunk,
+            disableLinkPreview: true,
+          },
+          context: input.context,
+        });
+      }
+      for (const message of appendedMessages) {
+        const replyMarkup = buildTelegramImplicitProductIntentReplyMarkup(message);
+        if (!replyMarkup) {
+          continue;
+        }
+        deliveryReceipt = await input.telegramRelay.deliver({
+          request: {
+            operation: 'send',
+            conversationId: input.receipt.mappedConversationId,
+            chatId: input.receipt.chatId,
+            text: message.body,
+            replyMarkup,
             disableLinkPreview: true,
           },
           context: input.context,

@@ -81,6 +81,7 @@ export function createChatTelegramRoomBridge(input: {
           senderKind: message.senderKind,
           senderName: message.senderName ?? null,
           body: message.body,
+          choices: message.choices,
           metadata: message.metadata ?? {},
         })),
       };

@@ -143,6 +143,7 @@ function buildApiPayload(
       text: request.text,
       parse_mode: request.parseMode ?? undefined,
       disable_web_page_preview: request.disableLinkPreview === true,
+      reply_markup: request.replyMarkup ?? undefined,
     };
   }
 
@@ -154,6 +155,7 @@ function buildApiPayload(
       disable_web_page_preview: request.disableLinkPreview === true,
       reply_to_message_id: request.replyToMessageId ? Number(request.replyToMessageId) : undefined,
       allow_sending_without_reply: true,
+      reply_markup: request.replyMarkup ?? undefined,
     };
   }
 
@@ -164,6 +166,7 @@ function buildApiPayload(
       text: request.text,
       parse_mode: request.parseMode ?? undefined,
       disable_web_page_preview: request.disableLinkPreview === true,
+      reply_markup: request.replyMarkup ?? undefined,
     };
   }
 

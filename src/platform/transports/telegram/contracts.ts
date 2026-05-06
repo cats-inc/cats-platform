@@ -292,6 +292,16 @@ export interface TelegramDeliveryRequest {
   caption?: string | null;
   parseMode?: 'HTML' | 'MarkdownV2' | null;
   disableLinkPreview?: boolean;
+  replyMarkup?: TelegramInlineKeyboardMarkup | null;
+}
+
+export interface TelegramInlineKeyboardButton {
+  text: string;
+  callback_data: string;
+}
+
+export interface TelegramInlineKeyboardMarkup {
+  inline_keyboard: TelegramInlineKeyboardButton[][];
 }
 
 export interface TelegramDeliveryReceipt {
