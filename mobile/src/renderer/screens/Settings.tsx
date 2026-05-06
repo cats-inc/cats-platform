@@ -16,15 +16,19 @@ import {
   type ConnectionConfig,
   type NotificationPreferences,
   loadConnectionConfig,
+  loadLocalePreference,
   loadNotificationPreferences,
   resolveWebDashboardUrl,
   saveConnectionConfig,
+  saveLocalePreference,
   saveNotificationPreferences,
 } from '../../api/persistence';
 import { useMobileAppShell } from '../hooks/useMobileAppShell';
 import {
   getMobileSettingsCopy,
   resolveDefaultMobileLocale,
+  setMobileLocaleOverride,
+  type MobileLocaleOverride,
   type MobileSettingsCopy,
 } from '../../../../src/mobile/index.js';
 import { colors, radii, spacing, typography } from '../theme';
@@ -39,7 +43,13 @@ export function Settings() {
       enabled: true,
       approvalsOnly: false,
     });
+  const [localePreference, setLocalePreference] =
+    useState<MobileLocaleOverride>('auto');
   const { state: shellState } = useMobileAppShell();
+  // Resolved at render time; using `localePreference` as a key lets
+  // the Settings screen re-render with the new copy immediately when
+  // the user picks a different language, without waiting for the
+  // app-wide reopen the footer mentions.
   const copy = getMobileSettingsCopy(resolveDefaultMobileLocale());
 
   useEffect(() => {
@@ -56,6 +66,12 @@ export function Settings() {
         return;
       }
       setNotificationPrefs(loaded);
+    });
+    void loadLocalePreference().then((loaded) => {
+      if (!active) {
+        return;
+      }
+      setLocalePreference(loaded);
     });
     return () => {
       active = false;
@@ -79,6 +95,15 @@ export function Settings() {
   const updateNotifications = (next: NotificationPreferences) => {
     setNotificationPrefs(next);
     void saveNotificationPreferences(next);
+  };
+
+  const updateLocalePreference = (next: MobileLocaleOverride) => {
+    if (next === localePreference) {
+      return;
+    }
+    setLocalePreference(next);
+    setMobileLocaleOverride(next);
+    void saveLocalePreference(next);
   };
 
   const webDashboardUrl = resolveWebDashboardUrl(connectionConfig);
@@ -133,6 +158,31 @@ export function Settings() {
           <Text style={styles.baseUrlHint}>
             {copy.baseUrlHint}
           </Text>
+        </View>
+      </Section>
+
+      <Section
+        label={copy.languageSection}
+        description={copy.languageSectionDescription}
+        footer={copy.languageReopenFooter}
+      >
+        <View style={styles.languageRowContainer}>
+          <LanguageOptionRow
+            label={copy.languageAutoLabel}
+            description={copy.languageAutoDescription}
+            selected={localePreference === 'auto'}
+            onPress={() => updateLocalePreference('auto')}
+          />
+          <LanguageOptionRow
+            label={copy.languageEnglishLabel}
+            selected={localePreference === 'en'}
+            onPress={() => updateLocalePreference('en')}
+          />
+          <LanguageOptionRow
+            label={copy.languageTraditionalChineseLabel}
+            selected={localePreference === 'zh-TW'}
+            onPress={() => updateLocalePreference('zh-TW')}
+          />
         </View>
       </Section>
 
@@ -309,6 +359,47 @@ function Section({ label, description, footer, children }: SectionProps) {
   );
 }
 
+interface LanguageOptionRowProps {
+  label: string;
+  description?: string;
+  selected: boolean;
+  onPress: () => void;
+}
+
+function LanguageOptionRow({
+  label,
+  description,
+  selected,
+  onPress,
+}: LanguageOptionRowProps) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.languageRow,
+        pressed ? styles.languageRowPressed : null,
+      ]}
+    >
+      <View style={styles.languageRowText}>
+        <Text style={styles.languageRowLabel}>{label}</Text>
+        {description ? (
+          <Text style={styles.languageRowDescription}>{description}</Text>
+        ) : null}
+      </View>
+      <View
+        style={[
+          styles.languageRadio,
+          selected ? styles.languageRadioSelected : null,
+        ]}
+      >
+        {selected ? <View style={styles.languageRadioDot} /> : null}
+      </View>
+    </Pressable>
+  );
+}
+
 interface ToggleRowProps {
   label: string;
   description: string;
@@ -460,6 +551,50 @@ const styles = StyleSheet.create({
   },
   rowDisabled: {
     opacity: 0.4,
+  },
+  languageRowContainer: {
+    paddingVertical: spacing.xs,
+  },
+  languageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  languageRowPressed: {
+    backgroundColor: colors.bg.panelHover,
+  },
+  languageRowText: {
+    flex: 1,
+    gap: 2,
+  },
+  languageRowLabel: {
+    color: colors.fg.primary,
+    ...typography.body,
+  },
+  languageRowDescription: {
+    color: colors.fg.secondary,
+    ...typography.caption,
+  },
+  languageRadio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: colors.border.subtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.bg.panelSubtle,
+  },
+  languageRadioSelected: {
+    borderColor: colors.accent.primary,
+  },
+  languageRadioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.accent.primary,
   },
   linkRow: {
     flexDirection: 'row',

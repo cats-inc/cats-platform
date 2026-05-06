@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
+import type { MobileLocaleOverride } from '../../../src/mobile/index.js';
+
 /**
  * Persisted desktop connection. Today the mobile client only knows
  * one thing about the desktop: where to reach it (`baseUrl`). HTTP
@@ -152,4 +154,40 @@ export async function saveNotificationPreferences(
   prefs: NotificationPreferences,
 ): Promise<void> {
   await AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(prefs));
+}
+
+/**
+ * Persisted display-language preference. `'auto'` is the default —
+ * `resolveDefaultMobileLocale()` then falls back to the phone's
+ * `Intl` locale. Explicit `'en'` / `'zh-TW'` pin the UI regardless of
+ * the device locale. Mirrors the desktop Settings → General language
+ * card; see `MobileSettingsCopy` for the i18n keys.
+ */
+const LOCALE_STORAGE_KEY = 'cats-mobile.localePreference.v1';
+
+const DEFAULT_LOCALE_PREFERENCE: MobileLocaleOverride = 'auto';
+
+function normalizeLocalePreference(value: unknown): MobileLocaleOverride {
+  if (value === 'en' || value === 'zh-TW' || value === 'auto') {
+    return value;
+  }
+  return DEFAULT_LOCALE_PREFERENCE;
+}
+
+export async function loadLocalePreference(): Promise<MobileLocaleOverride> {
+  try {
+    const raw = await AsyncStorage.getItem(LOCALE_STORAGE_KEY);
+    if (raw === null) {
+      return DEFAULT_LOCALE_PREFERENCE;
+    }
+    return normalizeLocalePreference(JSON.parse(raw));
+  } catch {
+    return DEFAULT_LOCALE_PREFERENCE;
+  }
+}
+
+export async function saveLocalePreference(
+  preference: MobileLocaleOverride,
+): Promise<void> {
+  await AsyncStorage.setItem(LOCALE_STORAGE_KEY, JSON.stringify(preference));
 }

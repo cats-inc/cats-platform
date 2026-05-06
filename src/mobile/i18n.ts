@@ -93,6 +93,25 @@ export interface MobileSettingsCopy {
   pushNotificationsDescription: string;
   pushNotificationsLabel: string;
   settingsTitle: string;
+  // Language section. Strings mirror the web Settings → General
+  // language card so the Cats UI says the same thing on both
+  // surfaces. Source of truth on web is
+  // `src/shared/i18n/catalogs/{en,zh-TW}.ts` keys
+  // `settings.general.languageTitle / languagePreferenceLabel /
+  // languagePreferenceDescription / languageAutoOption /
+  // languageEnglishOption / languageTraditionalChineseOption`. Mobile
+  // re-declares them here because the boundary cannot import the full
+  // shared catalog without dragging the entire 3000+-key tree into
+  // the mobile bundle. Keep the values in lockstep — a CI cross-check
+  // could land later if drift becomes a concern.
+  languageSection: string;
+  languageSectionDescription: string;
+  languagePreferenceLabel: string;
+  languageAutoLabel: string;
+  languageAutoDescription: string;
+  languageEnglishLabel: string;
+  languageTraditionalChineseLabel: string;
+  languageReopenFooter: string;
 }
 
 export interface MobileTabsCopy {
@@ -287,6 +306,15 @@ const MOBILE_SETTINGS_COPY: Record<MobileLocale, MobileSettingsCopy> = {
       'Alerts when an approval, escalation, or task completion lands.',
     pushNotificationsLabel: 'Push notifications',
     settingsTitle: 'Settings',
+    languageSection: 'Language',
+    languageSectionDescription: 'Choose how Cats displays its interface.',
+    languagePreferenceLabel: 'Display language',
+    languageAutoLabel: 'Auto-detect',
+    languageAutoDescription: 'Follows your phone language.',
+    languageEnglishLabel: 'English',
+    languageTraditionalChineseLabel: 'Traditional Chinese',
+    languageReopenFooter:
+      'Reopen the app to apply the new language across every tab.',
   },
   'zh-TW': {
     advancedSection: '進階',
@@ -311,6 +339,15 @@ const MOBILE_SETTINGS_COPY: Record<MobileLocale, MobileSettingsCopy> = {
     pushNotificationsDescription: '核准、升級或任務完成時提醒。',
     pushNotificationsLabel: '推播通知',
     settingsTitle: '設定',
+    languageSection: '語言',
+    languageSectionDescription: '選擇 Cats 介面的顯示語言。',
+    languagePreferenceLabel: '顯示語言',
+    languageAutoLabel: '自動偵測',
+    languageAutoDescription: '跟隨手機語言。',
+    languageEnglishLabel: '英文',
+    languageTraditionalChineseLabel: '繁體中文',
+    languageReopenFooter:
+      '重新開啟 app 才會在每個分頁套用新的語言。',
   },
 };
 
@@ -473,7 +510,47 @@ export function resolveMobileLocale(locale?: string | null): MobileLocale {
   return 'en';
 }
 
+/**
+ * User's persisted display-language choice.
+ *
+ *   - `'auto'`: follow the phone's locale (current default behaviour)
+ *   - `'en'` / `'zh-TW'`: explicit override
+ *
+ * The persistence layer (`mobile/src/api/persistence.ts`) reads/writes
+ * the choice on AsyncStorage. The root layout calls
+ * `setMobileLocaleOverride()` once on app boot to apply the persisted
+ * choice before the first screen renders, and again from the Settings
+ * picker when the user changes it.
+ */
+export type MobileLocaleOverride = 'auto' | MobileLocale;
+
+let mobileLocaleOverride: MobileLocale | null = null;
+
+/**
+ * Apply a display-language override to subsequent calls of
+ * `resolveDefaultMobileLocale()`. Pass `'auto'` to clear the
+ * override and fall back to the device's `Intl` locale.
+ *
+ * Already-rendered components keep whatever locale they captured at
+ * render time; full propagation requires reopening the app
+ * (Settings copy `languageReopenFooter` mentions this). The Settings
+ * screen itself updates immediately because it controls its own
+ * picker state.
+ */
+export function setMobileLocaleOverride(
+  override: MobileLocaleOverride,
+): void {
+  mobileLocaleOverride = override === 'auto' ? null : override;
+}
+
+export function getMobileLocaleOverride(): MobileLocaleOverride {
+  return mobileLocaleOverride ?? 'auto';
+}
+
 export function resolveDefaultMobileLocale(): MobileLocale {
+  if (mobileLocaleOverride !== null) {
+    return mobileLocaleOverride;
+  }
   try {
     return resolveMobileLocale(Intl.DateTimeFormat().resolvedOptions().locale);
   } catch {

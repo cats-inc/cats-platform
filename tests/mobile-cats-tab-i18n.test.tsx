@@ -6,13 +6,16 @@ import {
   getMobileChatCopy,
   getMobileChannelTitle,
   getMobileCatsTabCopy,
+  getMobileLocaleOverride,
   getMobileSettingsCopy,
   getMobileTabsCopy,
   type MobileAppShellPayload,
   type MobileChatChannelSummary,
+  resolveDefaultMobileLocale,
   resolveMobileLocale,
   selectMobileCatsDirectory,
   selectMobileProductRecents,
+  setMobileLocaleOverride,
 } from '../src/mobile/index.ts';
 import {
   getMobileDesktopOnlyAlertCopy,
@@ -178,6 +181,51 @@ test('mobile settings copy exposes localized fixed controls', () => {
   );
   assert.equal(en.settingsTitle, 'Settings');
   assert.equal(en.openWebDashboardLabel, 'Open web dashboard');
+
+  // Language section. Values mirror the web Settings → General
+  // language card (`src/shared/i18n/catalogs/{en,zh-TW}.ts` keys
+  // `settings.general.language*`). Pin them here so a future drift
+  // on web doesn't silently leave mobile saying something different.
+  assert.equal(en.languageSection, 'Language');
+  assert.equal(zh.languageSection, '語言');
+  assert.equal(en.languagePreferenceLabel, 'Display language');
+  assert.equal(zh.languagePreferenceLabel, '顯示語言');
+  assert.equal(en.languageAutoLabel, 'Auto-detect');
+  assert.equal(zh.languageAutoLabel, '自動偵測');
+  assert.equal(en.languageEnglishLabel, 'English');
+  assert.equal(zh.languageEnglishLabel, '英文');
+  assert.equal(en.languageTraditionalChineseLabel, 'Traditional Chinese');
+  assert.equal(zh.languageTraditionalChineseLabel, '繁體中文');
+  assert.match(en.languageReopenFooter, /Reopen the app/u);
+  assert.match(zh.languageReopenFooter, /重新開啟 app/u);
+});
+
+// `setMobileLocaleOverride` lets the Settings → Language picker pin
+// the UI to a specific locale that ignores the device default. The
+// override is module-level so subsequent `resolveDefaultMobileLocale`
+// calls (used by every screen at render time) honor it. These tests
+// pin the contract so a regression to a stateless resolver — which
+// would silently revert the user's choice on every render — fails CI.
+test('setMobileLocaleOverride pins resolveDefaultMobileLocale to the chosen locale', () => {
+  // Reset to auto first so the test is deterministic regardless of
+  // earlier test state.
+  setMobileLocaleOverride('auto');
+  assert.equal(getMobileLocaleOverride(), 'auto');
+
+  setMobileLocaleOverride('en');
+  assert.equal(getMobileLocaleOverride(), 'en');
+  assert.equal(resolveDefaultMobileLocale(), 'en');
+
+  setMobileLocaleOverride('zh-TW');
+  assert.equal(getMobileLocaleOverride(), 'zh-TW');
+  assert.equal(resolveDefaultMobileLocale(), 'zh-TW');
+
+  // 'auto' clears the pin and falls back to whatever Intl reports
+  // (which inside `node --test` is typically en-* — assert the
+  // override reads back as 'auto', not the resolver's exact answer,
+  // since that depends on the test environment's Intl locale).
+  setMobileLocaleOverride('auto');
+  assert.equal(getMobileLocaleOverride(), 'auto');
 });
 
 test('mobile tabs copy exposes localized fixed controls', () => {
