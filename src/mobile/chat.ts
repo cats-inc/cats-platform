@@ -23,9 +23,31 @@ export interface SelectProductRecentsOptions {
 
 /**
  * Returns the channels whose `originSurface` matches the given product,
- * filtered to active status, sorted desc by last activity. Drives the
- * `Recents (Code)` / `Recents (Work)` screens. Matches the SPEC-070
- * product-scoped recents pattern.
+ * sorted desc by last activity, capped to `recentLimit`. Drives the
+ * `Recents (Chat)` / `Recents (Code)` / `Recents (Work)` lists on the
+ * trimmed product sidebars. Matches the SPEC-070 product-scoped
+ * recents pattern.
+ *
+ * Filter alignment with the web Chat sidebar
+ * (`src/app/renderer/productShell/conversationSidebarViewModel.ts`'s
+ * `recentsChannels` filter):
+ *
+ *   - `originSurface === product` (this is the product-scoping rule
+ *     SPEC-070 introduced; equivalent to web's
+ *     `channelMatchesActiveSurface`)
+ *   - `channelKind !== 'direct_message'` (mirrors web's
+ *     `!isDirectLaneSummary`; DMs live under the Cats tab on mobile,
+ *     never in the product Recents list)
+ *
+ * What this filter does NOT do:
+ *
+ *   - It does NOT gate on `status === 'active'`. The previous filter
+ *     dropped any channel that hadn't seen at least one round-trip,
+ *     so freshly-created-but-empty channels (status `'configured'` /
+ *     `'planned'`) were invisible on mobile while still showing up on
+ *     web. Aligning with web means the user sees the same set of
+ *     conversations on both surfaces — including drafts they
+ *     abandoned mid-thread.
  */
 export function selectMobileProductRecents(
   payload: MobileAppShellPayload,
@@ -36,7 +58,8 @@ export function selectMobileProductRecents(
   return payload.chat.channels
     .filter(
       (channel) =>
-        channel.status === 'active' && channel.originSurface === product,
+        channel.originSurface === product
+        && channel.channelKind !== 'direct_message',
     )
     .map(channelToRecent)
     .sort((a, b) => b.updatedAt - a.updatedAt)

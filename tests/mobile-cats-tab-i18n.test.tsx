@@ -9,8 +9,10 @@ import {
   getMobileSettingsCopy,
   getMobileTabsCopy,
   type MobileAppShellPayload,
+  type MobileChatChannelSummary,
   resolveMobileLocale,
   selectMobileCatsDirectory,
+  selectMobileProductRecents,
 } from '../src/mobile/index.ts';
 import {
   getMobileDesktopOnlyAlertCopy,
@@ -334,6 +336,148 @@ test('resolveMobileDraftApiEntryKind maps Parallel chips to null (desktop-only)'
   // the bug pinned by the chat/work parallel-chat tests above.
   assert.equal(resolveMobileDraftApiEntryKind('chat', 'parallel'), null);
   assert.equal(resolveMobileDraftApiEntryKind('work', 'parallel'), null);
+});
+
+// `selectMobileProductRecents` powers the trimmed sidebar Recents
+// list on Chat / Code / Work. The previous filter (`status === 'active'
+// && originSurface === product`) over-filtered: empty / configured-only
+// channels showed up on the web Chat sidebar but were invisible on
+// mobile. The contract was tightened to match web's
+// `recentsChannels` filter:
+//
+//   - originSurface === product   (SPEC-070 product scoping)
+//   - channelKind !== 'direct_message'   (DMs live under the Cats
+//                                          tab, not in product Recents)
+//
+// Status is no longer a gate. These tests pin both halves so a
+// regression to the old behavior — either re-adding the status gate
+// or letting DMs leak into Recents — fails CI.
+
+function buildChannel(
+  overrides: Partial<MobileChatChannelSummary> & Pick<MobileChatChannelSummary, 'id' | 'title'>,
+): MobileChatChannelSummary {
+  return {
+    topic: '',
+    status: 'configured',
+    unreadCount: 0,
+    lastMessageAt: null,
+    lastActivatedAt: '2026-05-05T00:00:00.000Z',
+    originSurface: 'chat',
+    ...overrides,
+  };
+}
+
+function buildPayloadWithChannels(
+  channels: MobileChatChannelSummary[],
+): MobileAppShellPayload {
+  return {
+    ownerDisplayName: 'Ken',
+    ownerAvatarUrl: null,
+    ownerAvatarColor: null,
+    chat: {
+      cats: [],
+      channels,
+    },
+  };
+}
+
+test('selectMobileProductRecents includes non-active channels (matches web filter)', () => {
+  const payload = buildPayloadWithChannels([
+    buildChannel({
+      id: 'configured-channel',
+      title: 'New chat',
+      status: 'configured',
+      lastMessageAt: '2026-05-05T10:00:00.000Z',
+    }),
+    buildChannel({
+      id: 'planned-channel',
+      title: 'New group chat',
+      status: 'planned',
+      lastMessageAt: '2026-05-05T11:00:00.000Z',
+    }),
+    buildChannel({
+      id: 'active-channel',
+      title: 'hi',
+      status: 'active',
+      lastMessageAt: '2026-05-05T12:00:00.000Z',
+    }),
+  ]);
+
+  const recents = selectMobileProductRecents(payload, 'chat');
+  // All three appear; previously the filter dropped configured /
+  // planned channels and only `active-channel` survived.
+  assert.deepEqual(
+    recents.map((entry) => entry.id),
+    ['active-channel', 'planned-channel', 'configured-channel'],
+  );
+});
+
+test('selectMobileProductRecents excludes direct-message channels', () => {
+  const payload = buildPayloadWithChannels([
+    buildChannel({
+      id: 'dm-with-qq',
+      title: 'QQ',
+      channelKind: 'direct_message',
+      status: 'active',
+      lastMessageAt: '2026-05-05T13:00:00.000Z',
+    }),
+    buildChannel({
+      id: 'public-chat',
+      title: 'Open thread',
+      channelKind: 'chat_channel',
+      status: 'active',
+      lastMessageAt: '2026-05-05T12:00:00.000Z',
+    }),
+    buildChannel({
+      id: 'no-kind-set',
+      title: 'Legacy channel',
+      // channelKind unset on the wire — must NOT be classified as DM.
+      status: 'active',
+      lastMessageAt: '2026-05-05T11:00:00.000Z',
+    }),
+  ]);
+
+  const recents = selectMobileProductRecents(payload, 'chat');
+  assert.deepEqual(
+    recents.map((entry) => entry.id),
+    ['public-chat', 'no-kind-set'],
+  );
+});
+
+test('selectMobileProductRecents continues to scope by originSurface (SPEC-070)', () => {
+  const payload = buildPayloadWithChannels([
+    buildChannel({
+      id: 'chat-channel',
+      title: 'Chat one',
+      originSurface: 'chat',
+      lastMessageAt: '2026-05-05T10:00:00.000Z',
+    }),
+    buildChannel({
+      id: 'code-channel',
+      title: 'Code one',
+      originSurface: 'code',
+      lastMessageAt: '2026-05-05T11:00:00.000Z',
+    }),
+    buildChannel({
+      id: 'work-channel',
+      title: 'Work one',
+      originSurface: 'work',
+      lastMessageAt: '2026-05-05T12:00:00.000Z',
+    }),
+  ]);
+
+  assert.deepEqual(
+    selectMobileProductRecents(payload, 'chat').map((entry) => entry.id),
+    ['chat-channel'],
+  );
+  assert.deepEqual(
+    selectMobileProductRecents(payload, 'code').map((entry) => entry.id),
+    ['code-channel'],
+  );
+  assert.deepEqual(
+    selectMobileProductRecents(payload, 'work').map((entry) => entry.id),
+    ['work-channel'],
+  );
 });
 
 test('resolveMobileDraftApiEntryKind maps every other chip to "default"', () => {

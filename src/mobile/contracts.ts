@@ -36,6 +36,18 @@ export type MobileChatChannelStatus =
 
 export type MobilePlatformSurfaceId = 'chat' | 'work' | 'code';
 
+/**
+ * Channel-kind classification on the wire. The desktop already
+ * resolves this in `toChannelSummary` (see
+ * `src/products/chat/state/model/readModels.ts`), considering
+ * `channel.channelKind`, `roomMode`, and the participant set, so
+ * mobile can read the resolved value directly. Used by
+ * `selectMobileProductRecents` to keep direct-lane (DM) channels out
+ * of the product Recents lists, mirroring the web Chat sidebar's
+ * `isDirectLaneSummary` exclusion.
+ */
+export type MobileChatChannelKind = 'chat_channel' | 'direct_message';
+
 export interface MobileChatChannelSummary {
   id: string;
   title: string;
@@ -45,6 +57,7 @@ export interface MobileChatChannelSummary {
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
   originSurface?: MobilePlatformSurfaceId | null;
+  channelKind?: MobileChatChannelKind;
 }
 
 export interface MobileChatShellState {
