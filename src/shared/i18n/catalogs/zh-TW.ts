@@ -1797,6 +1797,41 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.transcriptMessageRetryResponseLabel': '重試回覆',
   'chat.transcriptMessageRelayToOthersLabel': '轉發給其他人',
   'chat.transcriptMessageFailedStatusLabel': '回覆失敗',
+  'chat.productIntent.ack.unsupportedDirectAudience':
+    '產品模式指令在此 MVP 需要剛好一隻直接對話的 Cat。',
+  'chat.productIntent.ack.unsupportedContext':
+    '產品模式指令在此 MVP 只支援直接訊息。',
+  'chat.productIntent.ack.chatActive': 'Chat 模式已啟用。',
+  'chat.productIntent.ack.workHumanGate':
+    'Work 模式已啟用。我可以先在這裡協助釐清，但需要人類在 Work 建立或確認 Work Item，或改切換到能承接耐久工作的 Cat。',
+  'chat.productIntent.ack.workStrongAnchor':
+    'Work 模式已啟用。已建立用於釐清的 Work Item 草稿錨點。',
+  'chat.productIntent.ack.workClarify':
+    'Work 模式已啟用。我會先釐清工作再建立項目。',
+  'chat.productIntent.ack.codeHumanGate':
+    'Code 模式已啟用。我可以先在這裡協助釐清，但需要人類在 Work 建立或確認 Work Item，才能開始 Code 執行。',
+  'chat.productIntent.ack.codeStrongAnchor':
+    'Code 模式已啟用。已建立以 Code 為目標的 Work Item 草稿錨點。',
+  'chat.productIntent.ack.codeClarify':
+    'Code 模式已啟用。我會先釐清程式工作再建立項目。',
+  'chat.productIntent.humanGate.draftSummaryFallback':
+    '先釐清這個 {targetProduct} 請求，再建立工作。',
+  'chat.productIntent.humanGate.continueClarifying':
+    '在這個直接對話中繼續釐清',
+  'chat.productIntent.humanGate.openWorkItems': '在 Work 建立或確認 Work Item',
+  'chat.productIntent.humanGate.switchCat': '切換到能承接耐久工作的 Cat',
+  'chat.productIntent.humanGate.question': '選擇這次工作 intake 的下一步。',
+  'chat.productIntent.draft.title.work': '直接 Work intake',
+  'chat.productIntent.draft.title.code': '直接 Code intake',
+  'chat.productIntent.draft.summary':
+    '從直接對話建立的 {targetProduct} intake 草稿，用於釐清需求。',
+  'chat.productIntent.draft.goalFallback':
+    '釐清直接對話中的這個 {targetProduct} 請求。',
+  'chat.productIntent.draft.successCriteria':
+    '與 owner 釐清可衡量的成功條件。',
+  'chat.productIntent.draft.outOfScope':
+    '尚未確認，需等 owner 與 Cat 完成釐清。',
+  'chat.productIntent.draft.openQuestion': '這項工作要產生什麼成果？',
   'shared.addCatPanelTitle': '新增貓到聊天室',
   'shared.addCatPanelClose': '關閉',
   'shared.addCatPanelChooseExisting': '選擇既有',

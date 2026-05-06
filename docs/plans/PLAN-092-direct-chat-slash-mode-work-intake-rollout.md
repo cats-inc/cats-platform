@@ -73,7 +73,11 @@ The direct lane remains the conversational follow-up surface.
       linked Work Item reaches a terminal `CoreWorkItemStatus`
       (`completed`, `cancelled`, or `archived`), and start a fresh intake on
       a subsequent `/work` or `/code` rather than auto-resuming any earlier
-      Work Item. Include tests for each clear/no-resume condition.
+      Work Item. A direct `/work` <-> `/code` switch while a draft anchor is
+      active supersedes the old draft anchor, marks it cancelled when still
+      draft, and points metadata at the replacement; if no replacement can be
+      created, clear the stale cache without modifying the old Work Item.
+      Include tests for each clear/no-resume/supersede condition.
 - [x] Task 1.6: Register `/chat`, `/work`, and `/code` through the same
       Telegram `setMyCommands` path that already owns SPEC-038 commands.
 - [x] Task 1.7: Add tests proving direct lanes remain `direct_message` after
@@ -260,11 +264,15 @@ demo Work Items unless the user explicitly approves a write.
   `targetProduct: 'code'`, before Code task/run execution starts.
 - Active-anchor cache lifecycle is eager-clear: `/chat` posture change clears,
   Work Item terminal status clears, and a subsequent `/work` or `/code`
-  starts a fresh intake (no auto-resume).
+  starts a fresh intake (no auto-resume). Direct `/work` <-> `/code` switches
+  supersede the old draft anchor instead of leaving it orphaned; if policy
+  cannot create the replacement, the old active cache is still cleared.
 - Draft Work Item anchor creation and task/run follow-up are turn-separated.
   The successful Work Item anchor is surfaced to the user before any
   Conductor-style follow-up can run. SPEC-082 supervision gates apply on top of
-  this separation.
+  this separation. Future agent-tool exposure for `createWorkItem`,
+  `createTask`, or `createRun` must preserve this with a platform per-turn
+  capability gate, not prompt-only instructions.
 - Weak/unknown direct Cats require human confirmation; no automatic hand-off to
   another Cat in this plan.
 - Work Item durable record creation happens through product-owned APIs above
@@ -294,6 +302,8 @@ demo Work Items unless the user explicitly approves a write.
     `cancelled`, or `archived`
   - subsequent `/work` or `/code` after cache clear starts fresh intake
     (no auto-resume of any prior Work Item)
+  - `/work` <-> `/code` direct switches supersede the old draft anchor and
+    cancel it when still draft
 - **Prompt-behavior tests**:
   - Concierge prompt asks one focal question per turn, not stacked
   - prompt surfaces a current-understanding recap before proposing task/run
@@ -336,8 +346,9 @@ demo Work Items unless the user explicitly approves a write.
 | Weak Cat creates durable work by accident | High | Centralize durable-action permission result and test weak/unknown paths. |
 | Anchor creation lands without prompt/schema support | High | Phase 3 splits command gating, Concierge prompt, and schema validation into separate tasks/tests. |
 | `createTask` / `createRun` chained into the same turn as draft anchor creation | High | Phase 3 Task 3.2e enforces per-turn separation in the dispatch layer; tested in Task 3.6. |
+| Future tool exposure weakens turn separation into prompt-only behavior | High | ADR-101 and this plan require a platform per-turn capability gate before `createWorkItem`, `createTask`, or `createRun` are exposed as agent tools. |
 | Concierge stacks multiple questions per turn, overwhelming the user and burning the clarification budget | Medium | Phase 3 Task 3.2b prompt protocol mandates one focal question per turn with a recap before creation; tested in Task 3.6. |
-| Active-anchor cache leaks across postures (e.g. `/chat` does not detach, `/work` after `/chat` silently resumes prior Work Item) | Medium | Phase 1 Task 1.5 implements full lifecycle (clear on `/chat`, clear on terminal status, no auto-resume); covered by unit tests in Task 1.5 and integration tests in Phase 5. |
+| Active-anchor cache leaks across postures (e.g. `/chat` does not detach, `/work` after `/chat` silently resumes prior Work Item, or `/work` -> `/code` leaves an orphan draft) | Medium | Phase 1 Task 1.5 implements full lifecycle (clear on `/chat`, clear on terminal status, no auto-resume, supersede on target switch); covered by unit tests in Task 1.5 and integration tests in Phase 5. |
 | Direct lane silently hands off to another Cat | Medium | Store/source context checks require the same direct audience Cat unless the owner explicitly switches. |
 | Work Items become invisible outside Chat | Medium | Projection tests cover Work/Code surfaces and source direct-lane references. |
 | SPEC-038 `/help` falls out of sync with product-intent command surface | Low | Task 1.9 owns the `/help` and `/commands` text update; manual test in Phase 6 verifies the listing. |
@@ -347,6 +358,7 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Follow-up review hardening: product-intent acknowledgements, human-gate choices, and draft placeholder text now use i18n catalog entries; draft metadata records localization keys; stale follow-up prompts validate the Work Item's source conversation before injecting Concierge instructions; `/work` <-> `/code` direct switches supersede the prior draft anchor; ADR-101/PLAN-092 now require future tool exposure to use platform per-turn capability gates rather than prompt-only policy. |
 | 2026-05-06 | MVP close-out: Phase 6 verification notes are complete. Final targeted direct slash-mode suite passed (31 tests), `npx tsc --noEmit -p tsconfig.server.json` passed, and `npm run build:test-ui` passed. Web and Telegram notes document the non-persistent verification path used to avoid writing live demo records without explicit approval. |
 | 2026-05-06 | Supervised boundary slice: Core now has a single WorkItem-to-Task link helper; Work task creation and Code task creation accept `workItemId`, so direct slash-mode anchors can be promoted through existing Work/Code task APIs before Work supervised-run or Code execution APIs start. Tests prove Chat does not create runs directly, Work run creation waits until Work task linkage, and Code task creation links the anchor before execution. |
 | 2026-05-06 | Code projection slice: Code dashboard read-model now exposes code-target Work Item anchors, including draft anchors created from direct `/code` chat before any task/run bridge exists. Source-level projection tests cover both Work and Code visibility. |

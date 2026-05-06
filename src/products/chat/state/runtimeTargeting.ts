@@ -710,8 +710,60 @@ function readDirectSlashModeIntakeRef(
     : null;
 }
 
-function buildDirectSlashModeFollowUpInstructions(sourceMessage: ChatMessage): string | null {
+function resolveDirectSlashModeFollowUpIntakeRef(
+  sourceMessage: ChatMessage,
+  input: {
+    state: ChatState;
+    channelId: string;
+    core?: CatsCoreState;
+  },
+): { workItemId: string; commandSegmentId: string; targetProduct: 'work' | 'code' } | null {
   const intakeRef = readDirectSlashModeIntakeRef(sourceMessage);
+  if (!intakeRef) {
+    return null;
+  }
+
+  const workItem = input.core?.workItems.find((candidate) =>
+    candidate.id === intakeRef.workItemId) ?? null;
+  if (!workItem) {
+    return null;
+  }
+
+  const { conversationId } = resolveChannelCanonicalIdentity(input.state, input.channelId);
+  if (workItem.conversationId !== conversationId) {
+    return null;
+  }
+
+  const intake = workItem.metadata.directSlashModeIntake;
+  if (!intake || typeof intake !== 'object') {
+    return null;
+  }
+
+  const intakeRecord = intake as Record<string, unknown>;
+  const source = intakeRecord.source;
+  const sourceRecord = source && typeof source === 'object'
+    ? (source as Record<string, unknown>)
+    : null;
+  if (
+    intakeRecord.targetProduct !== intakeRef.targetProduct
+    || sourceRecord?.commandSegmentId !== intakeRef.commandSegmentId
+    || sourceRecord?.conversationId !== conversationId
+  ) {
+    return null;
+  }
+
+  return intakeRef;
+}
+
+function buildDirectSlashModeFollowUpInstructions(
+  sourceMessage: ChatMessage,
+  input: {
+    state: ChatState;
+    channelId: string;
+    core?: CatsCoreState;
+  },
+): string | null {
+  const intakeRef = resolveDirectSlashModeFollowUpIntakeRef(sourceMessage, input);
   if (!intakeRef) {
     return null;
   }
@@ -824,6 +876,11 @@ export function buildPromptForTarget(
     ?? null;
   const slashModeInstructions = buildDirectSlashModeFollowUpInstructions(
     request.sourceMessage,
+    {
+      state,
+      channelId,
+      core,
+    },
   );
   const continuityMode = participantContinuity
     ? resolveSameChatContinuityMode(promptMessages, request, sameChatContinuityPackage)

@@ -1933,6 +1933,33 @@ export const messageKeys = {
   chatTranscriptMessageRetryResponseLabel: 'chat.transcriptMessageRetryResponseLabel',
   chatTranscriptMessageRelayToOthersLabel: 'chat.transcriptMessageRelayToOthersLabel',
   chatTranscriptMessageFailedStatusLabel: 'chat.transcriptMessageFailedStatusLabel',
+  chatProductIntentAckUnsupportedDirectAudience:
+    'chat.productIntent.ack.unsupportedDirectAudience',
+  chatProductIntentAckUnsupportedContext:
+    'chat.productIntent.ack.unsupportedContext',
+  chatProductIntentAckChatActive: 'chat.productIntent.ack.chatActive',
+  chatProductIntentAckWorkHumanGate: 'chat.productIntent.ack.workHumanGate',
+  chatProductIntentAckWorkStrongAnchor: 'chat.productIntent.ack.workStrongAnchor',
+  chatProductIntentAckWorkClarify: 'chat.productIntent.ack.workClarify',
+  chatProductIntentAckCodeHumanGate: 'chat.productIntent.ack.codeHumanGate',
+  chatProductIntentAckCodeStrongAnchor: 'chat.productIntent.ack.codeStrongAnchor',
+  chatProductIntentAckCodeClarify: 'chat.productIntent.ack.codeClarify',
+  chatProductIntentHumanGateDraftSummaryFallback:
+    'chat.productIntent.humanGate.draftSummaryFallback',
+  chatProductIntentHumanGateContinueClarifying:
+    'chat.productIntent.humanGate.continueClarifying',
+  chatProductIntentHumanGateOpenWorkItems:
+    'chat.productIntent.humanGate.openWorkItems',
+  chatProductIntentHumanGateSwitchCat: 'chat.productIntent.humanGate.switchCat',
+  chatProductIntentHumanGateQuestion: 'chat.productIntent.humanGate.question',
+  chatProductIntentDraftTitleWork: 'chat.productIntent.draft.title.work',
+  chatProductIntentDraftTitleCode: 'chat.productIntent.draft.title.code',
+  chatProductIntentDraftSummary: 'chat.productIntent.draft.summary',
+  chatProductIntentDraftGoalFallback: 'chat.productIntent.draft.goalFallback',
+  chatProductIntentDraftSuccessCriteria:
+    'chat.productIntent.draft.successCriteria',
+  chatProductIntentDraftOutOfScope: 'chat.productIntent.draft.outOfScope',
+  chatProductIntentDraftOpenQuestion: 'chat.productIntent.draft.openQuestion',
   sharedAddCatPanelTitle: 'shared.addCatPanelTitle',
   sharedAddCatPanelClose: 'shared.addCatPanelClose',
   sharedAddCatPanelChooseExisting: 'shared.addCatPanelChooseExisting',
