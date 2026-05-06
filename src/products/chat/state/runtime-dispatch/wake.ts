@@ -44,6 +44,7 @@ import {
   applyDispatchChannelChatCwd,
   applyDispatchLeasePatch,
   classifyRuntimeDispatchRecoveryError,
+  createDispatchResumedSessionLeasePatch,
   createDispatchRecoveryErrorLeasePatch,
   extractTargetLeasePatchFromState,
 } from './recovery.js';
@@ -66,6 +67,22 @@ function collectRecoveredDispatchMessages(
   return requireChannel(recoveredState, channelId).messages
     .filter((message) => !baselineMessageIds.has(message.id))
     .map((message) => structuredClone(message));
+}
+
+async function tryResumeDispatchSession(input: {
+  runtimeClient: RuntimeClient;
+  sessionId: string | null | undefined;
+}): Promise<Awaited<ReturnType<RuntimeClient['createSession']>> | null> {
+  const sessionId = input.sessionId?.trim() || null;
+  if (!sessionId || typeof input.runtimeClient.resumeSession !== 'function') {
+    return null;
+  }
+
+  try {
+    return await input.runtimeClient.resumeSession(sessionId);
+  } catch {
+    return null;
+  }
 }
 
 export async function prepareReadyRequests(
@@ -349,6 +366,38 @@ export async function executeDispatchWithRecovery(input: {
     }
 
     staleRecoveryCount += 1;
+    const resumedSession = await tryResumeDispatchSession({
+      runtimeClient: input.runtimeClient,
+      sessionId: request.target.sessionId,
+    });
+    if (resumedSession) {
+      recoveredLeasePatch = createDispatchResumedSessionLeasePatch(resumedSession, input.now);
+      dispatchState = applyDispatchLeasePatch(
+        dispatchState,
+        input.channelId,
+        request.target,
+        recoveredLeasePatch,
+        input.now,
+      );
+      if (resumedSession.cwd) {
+        recoveredChannelChatCwd = resumedSession.cwd;
+        dispatchState = applyDispatchChannelChatCwd(
+          dispatchState,
+          input.channelId,
+          resumedSession.cwd,
+          input.now,
+        );
+      }
+      request = {
+        ...request,
+        target: {
+          ...request.target,
+          sessionId: resumedSession.id,
+        },
+      };
+      continue;
+    }
+
     if (request.target.sessionId) {
       await input.runtimeClient.closeSession(request.target.sessionId).catch(() => {});
     }

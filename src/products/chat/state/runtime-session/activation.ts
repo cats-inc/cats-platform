@@ -7,7 +7,6 @@ import { setChannelRoomRouting } from '../model/index.js';
 import { ensureTargetSession } from './wake.js';
 import {
   buildChannelActivationResult,
-  resolveTargetLeaseAttachment,
   type RuntimeSessionRoutingOptions,
 } from './shared.js';
 import { ensureChannelMarkedActive } from './state.js';
@@ -80,29 +79,6 @@ export async function wakeChannelEntryParticipant(
     return {
       state: nextState,
       result: roomEntryTarget.result,
-    };
-  }
-
-  const existingAttachment = resolveTargetLeaseAttachment(
-    nextState,
-    channelId,
-    target,
-    {
-      preferredLaneId: target.laneId?.trim() || null,
-    },
-  );
-  if (existingAttachment.sessionId) {
-    nextState = ensureChannelMarkedActive(nextState, channelId, now);
-    return {
-      state: nextState,
-      result: {
-        targetKind: target.participantKind,
-        targetId: target.participantId,
-        targetName: target.participantName,
-        laneId: existingAttachment.laneId,
-        status: 'already_started',
-        sessionId: existingAttachment.sessionId,
-      },
     };
   }
 

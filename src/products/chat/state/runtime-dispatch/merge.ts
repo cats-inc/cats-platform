@@ -1,5 +1,6 @@
 import type {
   ChatChannelState,
+  ParticipantExecutionLease,
   ChatState,
 } from '../../api/contracts.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
@@ -38,6 +39,103 @@ function mergeChangedValue<T>(
     return latest;
   }
   return structuredClone(dispatch);
+}
+
+function normalizeSessionId(lease: ParticipantExecutionLease): string | null {
+  return lease.sessionId?.trim() || null;
+}
+
+function isTerminalLeaseStatus(status: ParticipantExecutionLease['status']): boolean {
+  return status === 'closed' || status === 'removed';
+}
+
+function leaseStatusRank(status: ParticipantExecutionLease['status']): number {
+  switch (status) {
+    case 'ready':
+      return 3;
+    case 'initializing':
+      return 2;
+    case 'not_started':
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function pickLeaseStatus(input: {
+  latest: ParticipantExecutionLease;
+  dispatch: ParticipantExecutionLease;
+}): ParticipantExecutionLease['status'] {
+  if (isTerminalLeaseStatus(input.latest.status)) {
+    return input.latest.status;
+  }
+  if (input.dispatch.status === 'error') {
+    return 'error';
+  }
+  if (input.latest.status === 'error' && input.dispatch.status !== 'ready') {
+    return input.latest.status;
+  }
+  return leaseStatusRank(input.dispatch.status) >= leaseStatusRank(input.latest.status)
+    ? input.dispatch.status
+    : input.latest.status;
+}
+
+function mergeSameRuntimeLease(
+  latest: ParticipantExecutionLease,
+  dispatch: ParticipantExecutionLease,
+): ParticipantExecutionLease {
+  const mergedStatus = pickLeaseStatus({ latest, dispatch });
+  const mergedLastUsedAt = pickMaxIso(latest.lastUsedAt, dispatch.lastUsedAt);
+  const dispatchModelSelection = dispatch.modelSelection === undefined
+    ? undefined
+    : structuredClone(dispatch.modelSelection);
+  const latestModelSelection = latest.modelSelection === undefined
+    ? undefined
+    : structuredClone(latest.modelSelection);
+  const mergedModelSelection = dispatchModelSelection !== undefined
+    ? dispatchModelSelection
+    : latestModelSelection;
+
+  return {
+    sessionId: normalizeSessionId(dispatch) ?? normalizeSessionId(latest),
+    status: mergedStatus,
+    cwd: dispatch.cwd ?? latest.cwd,
+    lastError: mergedStatus === 'error'
+      ? (dispatch.lastError ?? latest.lastError)
+      : null,
+    laneId: dispatch.laneId ?? latest.laneId,
+    provider: dispatch.provider ?? latest.provider,
+    ...(
+      dispatch.instance !== undefined || latest.instance !== undefined
+        ? { instance: dispatch.instance ?? latest.instance ?? null }
+        : {}
+    ),
+    model: dispatch.model ?? latest.model,
+    ...(mergedModelSelection !== undefined ? { modelSelection: mergedModelSelection } : {}),
+    startedAt: latest.startedAt ?? dispatch.startedAt,
+    lastUsedAt: mergedLastUsedAt,
+  };
+}
+
+function mergeDispatchExecutionLease(
+  latest: ParticipantExecutionLease,
+  baseline: ParticipantExecutionLease,
+  dispatch: ParticipantExecutionLease,
+): ParticipantExecutionLease {
+  if (sameSnapshot(dispatch, baseline)) {
+    return latest;
+  }
+  if (sameSnapshot(latest, baseline)) {
+    return structuredClone(dispatch);
+  }
+
+  const latestSessionId = normalizeSessionId(latest);
+  const dispatchSessionId = normalizeSessionId(dispatch);
+  if (latestSessionId && dispatchSessionId && latestSessionId === dispatchSessionId) {
+    return mergeSameRuntimeLease(latest, dispatch);
+  }
+
+  return structuredClone(latest);
 }
 
 function mergeDispatchMessages(
@@ -79,7 +177,7 @@ function mergeDispatchAssignmentLeases(
       continue;
     }
 
-    latestAssignment.execution.lease = mergeChangedValue(
+    latestAssignment.execution.lease = mergeDispatchExecutionLease(
       latestAssignment.execution.lease,
       baselineAssignment.execution.lease,
       dispatchAssignment.execution.lease,
@@ -95,7 +193,7 @@ function mergeDispatchAssignmentLeases(
       continue;
     }
 
-    latestAssignment.execution.lease = mergeChangedValue(
+    latestAssignment.execution.lease = mergeDispatchExecutionLease(
       latestAssignment.execution.lease,
       baselineAssignment.execution.lease,
       dispatchAssignment.execution.lease,
@@ -189,7 +287,7 @@ export function mergeCompletedDispatchState(
 
   mergeDispatchMessages(latestChannel, baselineChannel, dispatchChannel);
   mergeDispatchAssignmentLeases(latestChannel, baselineChannel, dispatchChannel);
-  latestChannel.orchestratorLease = mergeChangedValue(
+  latestChannel.orchestratorLease = mergeDispatchExecutionLease(
     latestChannel.orchestratorLease,
     baselineChannel.orchestratorLease,
     dispatchChannel.orchestratorLease,

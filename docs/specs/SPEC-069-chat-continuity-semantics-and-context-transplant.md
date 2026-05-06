@@ -245,6 +245,30 @@ The product should think in these delivery modes:
 the same intended provider-native session. It does not cover cross-provider
 retarget or any incompatible native-session boundary.
 
+### Runtime Session Recovery Contract
+
+For a routed turn that targets the same logical participant in the same
+conversation, a stale or closed runtime session is not itself a product-level
+fresh start.
+
+If the execution lease still points at a runtime session ID and cats-runtime
+supports `resume` for that session, Chat shall attempt to resume that same
+runtime session before starting a replacement session. This applies both to
+explicit wake/activation paths and to stale-session recovery during message
+dispatch.
+
+Only when the existing runtime session cannot be resumed may Chat rotate to a
+new runtime session. That rotation must remain a runtime delivery boundary, not
+a hidden conversation boundary; the replacement path is then responsible for the
+appropriate `native_resume`, `full_transplant`, `semantic_transplant`,
+`targeted_handoff`, or `fresh_start` decision described above.
+
+In-flight dispatch persistence must also treat an execution lease as a
+single-owner lifecycle object. When concurrent product writes touch the same
+channel while the same runtime `sessionId` is advancing from `initializing` to
+`ready`, merge logic shall preserve the lifecycle advancement instead of
+letting an older persisted snapshot overwrite it.
+
 ### Anti-Pattern Clarification
 
 The current-style "bootstrap instructions" approach of replaying only a small

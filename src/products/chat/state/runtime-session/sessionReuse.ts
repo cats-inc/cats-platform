@@ -21,7 +21,10 @@ import {
   resolveParticipantLeaseAttachment,
 } from '../../shared/channelParticipants.js';
 import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
-import { clearTargetSessionLease } from './state.js';
+import {
+  clearTargetSessionLease,
+  normalizeRuntimeStatus,
+} from './state.js';
 import type { RuntimeSessionRoutingOptions } from './shared.js';
 import type { ChannelTaskExecutionContext } from './taskExecution.js';
 
@@ -60,6 +63,11 @@ export type ExistingTargetSessionOutcome =
       result: EnsureTargetSessionResult;
     };
 
+function normalizeOptionalExecutionValue(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
 function hasParticipantExecutionTargetDrift(input: {
   participantLease: ReturnType<typeof resolveParticipantLeaseAttachment>;
   assignment: ReturnType<typeof resolvePrimaryParticipantExecutionAssignment>;
@@ -75,15 +83,17 @@ function hasParticipantExecutionTargetDrift(input: {
   if (participantLease.provider !== assignment.execution.target.provider) {
     return true;
   }
+  const assignmentInstance = normalizeOptionalExecutionValue(assignment.execution.target.instance);
+  const assignmentModel = normalizeOptionalExecutionValue(assignment.execution.target.model);
   if (
-    assignment.execution.target.instance !== null
-    && participantLease.instance !== assignment.execution.target.instance
+    assignmentInstance !== null
+    && participantLease.instance !== assignmentInstance
   ) {
     return true;
   }
   if (
-    assignment.execution.target.model !== null
-    && participantLease.model !== assignment.execution.target.model
+    assignmentModel !== null
+    && participantLease.model !== assignmentModel
   ) {
     return true;
   }
@@ -195,6 +205,62 @@ function applyLeaseLaneAttachmentToTarget(
     );
 }
 
+async function resumeExistingTargetSession(input: {
+  state: ChatState;
+  channelId: string;
+  target: RoutingTarget;
+  sessionId: string;
+  runtimeClient: RuntimeClient;
+  now: Date;
+}): Promise<{
+  state: ChatState;
+  target: RoutingTarget;
+} | null> {
+  if (typeof input.runtimeClient.resumeSession !== 'function') {
+    return null;
+  }
+
+  let resumed: Awaited<ReturnType<RuntimeClient['createSession']>>;
+  try {
+    resumed = await input.runtimeClient.resumeSession(input.sessionId);
+  } catch {
+    return null;
+  }
+
+  const leasePatch = {
+    sessionId: resumed.id,
+    status: normalizeRuntimeStatus(resumed.status),
+    cwd: resumed.cwd,
+    lastError: null,
+    provider: resumed.provider,
+    model: resumed.model,
+    modelSelection: resumed.modelSelection ?? null,
+    lastUsedAt: input.now.toISOString(),
+  };
+  const nextState = input.target.participantKind === 'cat'
+    ? setChannelParticipantLease(
+      input.state,
+      input.channelId,
+      input.target.participantId,
+      leasePatch,
+      input.now,
+    )
+    : setChannelOrchestratorLease(
+      input.state,
+      input.channelId,
+      leasePatch,
+      input.now,
+    );
+
+  return {
+    state: nextState,
+    target: {
+      ...input.target,
+      sessionId: resumed.id,
+    },
+  };
+}
+
 export async function resolveExistingTargetSessionOutcome(input: {
   state: ChatState;
   channelId: string;
@@ -235,6 +301,33 @@ export async function resolveExistingTargetSessionOutcome(input: {
     runtimeClient,
     forceReviveClosedSessions,
   })) {
+    const resumed = await resumeExistingTargetSession({
+      state,
+      channelId,
+      target: attachedTarget,
+      sessionId: attachedTarget.sessionId,
+      runtimeClient,
+      now,
+    });
+    if (resumed) {
+      return {
+        kind: 'resolved',
+        result: {
+          state: applyLeaseLaneAttachmentToTarget(
+            resumed.state,
+            channelId,
+            resumed.target,
+            laneId,
+            now,
+          ),
+          target: resumed.target,
+          error: null,
+          wakeRequest: recordTargetWake('completed'),
+          taskExecutionContext,
+        },
+      };
+    }
+
     const resetState = clearTargetSessionLease(
       state,
       channelId,
