@@ -112,6 +112,7 @@ export interface MobileSettingsCopy {
   languageEnglishLabel: string;
   languageTraditionalChineseLabel: string;
   languageReopenFooter: string;
+  languagePickerCloseLabel: string;
 }
 
 export interface MobileTabsCopy {
@@ -315,6 +316,7 @@ const MOBILE_SETTINGS_COPY: Record<MobileLocale, MobileSettingsCopy> = {
     languageTraditionalChineseLabel: 'Traditional Chinese',
     languageReopenFooter:
       'Reopen the app to apply the new language across every tab.',
+    languagePickerCloseLabel: 'Close language picker',
   },
   'zh-TW': {
     advancedSection: '進階',
@@ -348,6 +350,7 @@ const MOBILE_SETTINGS_COPY: Record<MobileLocale, MobileSettingsCopy> = {
     languageTraditionalChineseLabel: '繁體中文',
     languageReopenFooter:
       '重新開啟 app 才會在每個分頁套用新的語言。',
+    languagePickerCloseLabel: '關閉語言選擇器',
   },
 };
 

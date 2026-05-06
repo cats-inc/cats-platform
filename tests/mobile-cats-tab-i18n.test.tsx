@@ -198,6 +198,8 @@ test('mobile settings copy exposes localized fixed controls', () => {
   assert.equal(zh.languageTraditionalChineseLabel, '繁體中文');
   assert.match(en.languageReopenFooter, /Reopen the app/u);
   assert.match(zh.languageReopenFooter, /重新開啟 app/u);
+  assert.equal(en.languagePickerCloseLabel, 'Close language picker');
+  assert.equal(zh.languagePickerCloseLabel, '關閉語言選擇器');
 });
 
 // `setMobileLocaleOverride` lets the Settings → Language picker pin

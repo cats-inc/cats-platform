@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import {
   Image,
   Linking,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -45,6 +46,7 @@ export function Settings() {
     });
   const [localePreference, setLocalePreference] =
     useState<MobileLocaleOverride>('auto');
+  const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
   const { state: shellState } = useMobileAppShell();
   // Resolved at render time; using `localePreference` as a key lets
   // the Settings screen re-render with the new copy immediately when
@@ -166,25 +168,38 @@ export function Settings() {
         description={copy.languageSectionDescription}
         footer={copy.languageReopenFooter}
       >
-        <View style={styles.languageRowContainer}>
-          <LanguageOptionRow
-            label={copy.languageAutoLabel}
-            description={copy.languageAutoDescription}
-            selected={localePreference === 'auto'}
-            onPress={() => updateLocalePreference('auto')}
-          />
-          <LanguageOptionRow
-            label={copy.languageEnglishLabel}
-            selected={localePreference === 'en'}
-            onPress={() => updateLocalePreference('en')}
-          />
-          <LanguageOptionRow
-            label={copy.languageTraditionalChineseLabel}
-            selected={localePreference === 'zh-TW'}
-            onPress={() => updateLocalePreference('zh-TW')}
-          />
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={copy.languagePreferenceLabel}
+          accessibilityValue={{
+            text: resolveLocaleOptionLabel(localePreference, copy),
+          }}
+          onPress={() => setLanguagePickerOpen(true)}
+          style={({ pressed }) => [
+            styles.languagePickerRow,
+            pressed ? styles.languagePickerRowPressed : null,
+          ]}
+        >
+          <Text style={styles.languagePickerLabel}>
+            {copy.languagePreferenceLabel}
+          </Text>
+          <Text style={styles.languagePickerValue}>
+            {resolveLocaleOptionLabel(localePreference, copy)}
+          </Text>
+          <Text style={styles.languagePickerChevron}>›</Text>
+        </Pressable>
       </Section>
+
+      <LanguagePickerModal
+        visible={languagePickerOpen}
+        copy={copy}
+        selected={localePreference}
+        onSelect={(next) => {
+          updateLocalePreference(next);
+          setLanguagePickerOpen(false);
+        }}
+        onClose={() => setLanguagePickerOpen(false)}
+      />
 
       <Section
         label={copy.notificationsSection}
@@ -359,44 +374,102 @@ function Section({ label, description, footer, children }: SectionProps) {
   );
 }
 
-interface LanguageOptionRowProps {
-  label: string;
-  description?: string;
-  selected: boolean;
-  onPress: () => void;
+function resolveLocaleOptionLabel(
+  preference: MobileLocaleOverride,
+  copy: MobileSettingsCopy,
+): string {
+  switch (preference) {
+    case 'en':
+      return copy.languageEnglishLabel;
+    case 'zh-TW':
+      return copy.languageTraditionalChineseLabel;
+    case 'auto':
+    default:
+      return copy.languageAutoLabel;
+  }
 }
 
-function LanguageOptionRow({
-  label,
-  description,
+interface LanguagePickerModalProps {
+  visible: boolean;
+  copy: MobileSettingsCopy;
+  selected: MobileLocaleOverride;
+  onSelect: (next: MobileLocaleOverride) => void;
+  onClose: () => void;
+}
+
+/**
+ * iOS-style bottom-sheet picker for the display language. Tap a row
+ * to commit the choice (and dismiss); tap the backdrop to dismiss
+ * without changing.
+ */
+function LanguagePickerModal({
+  visible,
+  copy,
   selected,
-  onPress,
-}: LanguageOptionRowProps) {
+  onSelect,
+  onClose,
+}: LanguagePickerModalProps) {
+  const options: { id: MobileLocaleOverride; label: string; description?: string }[] = [
+    {
+      id: 'auto',
+      label: copy.languageAutoLabel,
+      description: copy.languageAutoDescription,
+    },
+    { id: 'en', label: copy.languageEnglishLabel },
+    { id: 'zh-TW', label: copy.languageTraditionalChineseLabel },
+  ];
   return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.languageRow,
-        pressed ? styles.languageRowPressed : null,
-      ]}
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      onRequestClose={onClose}
     >
-      <View style={styles.languageRowText}>
-        <Text style={styles.languageRowLabel}>{label}</Text>
-        {description ? (
-          <Text style={styles.languageRowDescription}>{description}</Text>
-        ) : null}
-      </View>
-      <View
-        style={[
-          styles.languageRadio,
-          selected ? styles.languageRadioSelected : null,
-        ]}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={copy.languagePickerCloseLabel}
+        onPress={onClose}
+        style={styles.languageModalBackdrop}
       >
-        {selected ? <View style={styles.languageRadioDot} /> : null}
-      </View>
-    </Pressable>
+        <Pressable
+          // Stop propagation — tapping the sheet itself shouldn't
+          // dismiss it; only backdrop taps do.
+          onPress={() => {}}
+          style={styles.languageModalSheet}
+        >
+          <View style={styles.languageModalHeader}>
+            <Text style={styles.languageModalTitle}>
+              {copy.languagePreferenceLabel}
+            </Text>
+          </View>
+          {options.map((option, index) => (
+            <Pressable
+              key={option.id}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: selected === option.id }}
+              onPress={() => onSelect(option.id)}
+              style={({ pressed }) => [
+                styles.languageModalRow,
+                index < options.length - 1 ? styles.languageModalRowDivider : null,
+                pressed ? styles.languageModalRowPressed : null,
+              ]}
+            >
+              <View style={styles.languageModalRowText}>
+                <Text style={styles.languageModalRowLabel}>{option.label}</Text>
+                {option.description ? (
+                  <Text style={styles.languageModalRowDescription}>
+                    {option.description}
+                  </Text>
+                ) : null}
+              </View>
+              {selected === option.id ? (
+                <Text style={styles.languageModalCheck}>✓</Text>
+              ) : null}
+            </Pressable>
+          ))}
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -552,49 +625,81 @@ const styles = StyleSheet.create({
   rowDisabled: {
     opacity: 0.4,
   },
-  languageRowContainer: {
-    paddingVertical: spacing.xs,
-  },
-  languageRow: {
+  languagePickerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
   },
-  languageRowPressed: {
+  languagePickerRowPressed: {
     backgroundColor: colors.bg.panelHover,
   },
-  languageRowText: {
+  languagePickerLabel: {
+    flex: 1,
+    color: colors.fg.primary,
+    ...typography.bodyStrong,
+  },
+  languagePickerValue: {
+    color: colors.fg.secondary,
+    ...typography.body,
+  },
+  languagePickerChevron: {
+    color: colors.fg.muted,
+    fontSize: 22,
+    lineHeight: 22,
+  },
+  languageModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'flex-end',
+  },
+  languageModalSheet: {
+    backgroundColor: colors.bg.panel,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
+  },
+  languageModalHeader: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  languageModalTitle: {
+    color: colors.fg.primary,
+    ...typography.bodyStrong,
+  },
+  languageModalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  languageModalRowDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.subtle,
+  },
+  languageModalRowPressed: {
+    backgroundColor: colors.bg.panelHover,
+  },
+  languageModalRowText: {
     flex: 1,
     gap: 2,
   },
-  languageRowLabel: {
+  languageModalRowLabel: {
     color: colors.fg.primary,
     ...typography.body,
   },
-  languageRowDescription: {
+  languageModalRowDescription: {
     color: colors.fg.secondary,
     ...typography.caption,
   },
-  languageRadio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: colors.border.subtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bg.panelSubtle,
-  },
-  languageRadioSelected: {
-    borderColor: colors.accent.primary,
-  },
-  languageRadioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.accent.primary,
+  languageModalCheck: {
+    color: colors.accent.primary,
+    ...typography.title,
+    fontWeight: '600',
   },
   linkRow: {
     flexDirection: 'row',
