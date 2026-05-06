@@ -92,6 +92,9 @@ Natural-language product suggestions have two gates:
    owner wants natural-language proposals at all.
    This setting is owner-profile scoped. Per-lane and per-Cat overrides are out
    of v1.
+   The owner setting defaults to enabled so a deployment switching from `off`
+   to `cat_tool` does not require per-owner data migration. Owners can opt out
+   individually.
 
 The effective mode is `off` if either gate is off. Otherwise, the effective
 mode is the deployment mode. Explicit `/chat`, `/work`, and `/code` commands

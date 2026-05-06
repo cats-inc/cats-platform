@@ -189,6 +189,23 @@ function observationExposesProposalTool(
     tool.manifest.name === CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME) ?? false;
 }
 
+async function captureConsoleWarns<T>(callback: () => Promise<T>): Promise<{
+  result: T;
+  warnings: unknown[][];
+}> {
+  const originalWarn = console.warn;
+  const warnings: unknown[][] = [];
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args);
+  };
+  try {
+    const result = await callback();
+    return { result, warnings };
+  } finally {
+    console.warn = originalWarn;
+  }
+}
+
 async function suggestImplicitProductIntentCandidate(input: {
   state: ChatState;
   channelId: string;
@@ -1151,6 +1168,88 @@ test('beginChannelMessageDispatch declines Cat proposals without product intake'
   assert.equal(
     core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
     0,
+  );
+});
+
+test('routeChannelMessage suppresses Cat proposal tool requests during decline cooldown', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const initial = await suggestCatProductIntentProposal({
+    state,
+    channelId,
+    store,
+    body: 'Please plan the onboarding requirements',
+    now: new Date('2026-05-06T08:01:00.000Z'),
+  });
+  const declined = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: 'Keep as chat',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(initial.proposalMessage, 'decline'),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+    },
+  );
+
+  const { result: routed, warnings } = await captureConsoleWarns(() =>
+    routeChannelMessage(
+      declined.state,
+      channelId,
+      {
+        body: 'Actually, please plan the launch requirements too.',
+        senderName: 'Kenneth',
+      },
+      runtimeReplyStub('We can discuss it.'),
+      new Date('2026-05-06T08:03:00.000Z'),
+      {
+        chatStore: store,
+        providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+        naturalProductIntentMode: 'cat_tool',
+        providerAgentDecisionRequester: async () => ({
+          contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+          kind: 'tool_request',
+          decisionId: 'decision-propose-work-cooldown',
+          confidence: 'high',
+          toolName: CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
+          target: {
+            kind: 'worker_tool',
+            toolName: CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
+          },
+          input: {
+            targetProduct: 'work',
+            summary: 'Plan launch requirements',
+            rationale: 'The owner is asking for product intake.',
+          },
+          rationaleSummary: 'Ask the owner to confirm product intake.',
+        }),
+      },
+    ));
+  const channel = requireChannel(routed.state, channelId);
+
+  assert.equal(
+    channel.messages.filter((message) =>
+      message.metadata.event === 'cat_product_intent_proposal_created').length,
+    1,
+  );
+  assert.equal(
+    channel.messages.filter((message) =>
+      message.metadata.event === 'cat_product_intent_proposal_declined').length,
+    1,
+  );
+  assert.equal(
+    warnings.some((warning) =>
+      warning.some((part) =>
+        typeof part === 'object'
+        && part !== null
+        && (part as { reason?: unknown }).reason === 'cooldown_active')),
+    true,
   );
 });
 

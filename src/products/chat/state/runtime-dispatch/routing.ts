@@ -124,6 +124,8 @@ import {
   CAT_PRODUCT_INTENT_PROPOSAL_COMMAND_TOKEN,
   CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
   CAT_PRODUCT_INTENT_PROPOSAL_TRANSITION_METADATA_KEY,
+  buildCatProductIntentProposalCooldownResponse,
+  buildCatProductIntentProposalDuplicateResponse,
   buildCatProductIntentProposalMetadata,
   buildCatProductIntentProposalTransitionMetadata,
   findCatProductIntentProposalTransition,
@@ -133,6 +135,7 @@ import {
   shouldAppendCatProductIntentProposal,
   validateCatProductIntentProposalToolCall,
   type CatProductIntentProposalMetadata,
+  type CatProductIntentProposalValidationRejectionReason,
 } from '../../shared/catProductIntentProposal.js';
 
 export type ProviderAgentDecisionRequester = (input: {
@@ -848,7 +851,26 @@ function appendCatProductIntentProposalSidecar(input: {
       now: input.now,
     }),
   });
-  if (!validation.accepted || !input.audienceCatId) {
+  if (!validation.accepted) {
+    warnCatProductIntentProposalToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      reason: validation.reason,
+      errors: validation.errors,
+      response: validation.reason === 'cooldown_active'
+        ? buildCatProductIntentProposalCooldownResponse()
+        : null,
+    });
+    return { state: input.state, proposalMessage: null };
+  }
+  if (!input.audienceCatId) {
+    warnCatProductIntentProposalToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      reason: 'missing_audience_cat',
+      errors: [],
+      response: null,
+    });
     return { state: input.state, proposalMessage: null };
   }
 
@@ -871,6 +893,13 @@ function appendCatProductIntentProposalSidecar(input: {
     messages: input.channel.messages,
     proposalId: proposal.proposalId,
   })) {
+    warnCatProductIntentProposalToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      reason: 'duplicate_proposal',
+      errors: [],
+      response: buildCatProductIntentProposalDuplicateResponse(proposal.proposalId),
+    });
     return { state: input.state, proposalMessage: null };
   }
 
@@ -906,6 +935,25 @@ function appendCatProductIntentProposalSidecar(input: {
     state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
     proposalMessage: append.message,
   };
+}
+
+function warnCatProductIntentProposalToolCallIgnored(input: {
+  channelId: string;
+  messageId: string;
+  reason: CatProductIntentProposalValidationRejectionReason
+    | 'missing_audience_cat'
+    | 'duplicate_proposal';
+  errors: string[];
+  response: unknown;
+}): void {
+  console.warn('Cat product-intent proposal tool call ignored.', {
+    feature: 'cat_product_intent_proposal',
+    channelId: input.channelId,
+    messageId: input.messageId,
+    reason: input.reason,
+    ...(input.errors.length > 0 ? { errors: input.errors } : {}),
+    ...(input.response ? { response: input.response } : {}),
+  });
 }
 
 type CatProductIntentProposalChoiceAction = 'confirm' | 'decline' | 'expired' | 'handled';

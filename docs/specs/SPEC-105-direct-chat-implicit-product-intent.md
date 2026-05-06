@@ -342,6 +342,16 @@ Proposal suppression is lane-local and platform-enforced:
   distinct from cooldown rejection so the Cat does not retry an
   already-recorded proposal.
 
+The current MVP implementation uses the provider-agent observation/decision
+pattern, not a synchronous tool-result channel back into the same Cat turn.
+Therefore the `{ accepted | rejected }` shapes above are server-internal
+observability contracts for proposal handling. The Cat does not receive those
+objects as a same-turn tool result in v1; it observes proposal lifecycle through
+the presence or absence of `metadata.catProductIntentProposal` and
+`metadata.catProductIntentProposalTransition` segments in later context.
+Synchronous tool-result plumbing can replace this bridge only if the provider
+tool-call interface is promoted beyond the observation-decision seam.
+
 ### Heuristic Detector Status
 
 The deterministic detector from PLAN-093 is superseded as the default
