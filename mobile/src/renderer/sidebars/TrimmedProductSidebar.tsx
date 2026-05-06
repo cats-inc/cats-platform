@@ -304,7 +304,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.canvas,
   },
   listContent: {
-    paddingVertical: spacing.sm,
+    // Don't add paddingTop here — `tabTitle.paddingTop = spacing.lg`
+    // owns the top space, matching the Cats / Settings ScrollView
+    // pattern (`content.padding = spacing.lg`). Earlier
+    // `paddingVertical: spacing.sm` shifted the title 8 px lower
+    // than the Cats / Settings titles, which the user noticed as
+    // "tab間切來切去就看到他們在飄動". Keep an explicit
+    // `paddingBottom` so the last row has a comfortable bottom
+    // gutter — the previous `paddingVertical` was doing that on
+    // the bottom side, just clobbering the top alignment in the
+    // process.
+    paddingBottom: spacing.lg,
   },
   tabTitle: {
     paddingHorizontal: spacing.lg,

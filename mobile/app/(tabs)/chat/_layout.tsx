@@ -18,10 +18,13 @@ export default function ChatStackLayout() {
         headerTintColor: colors.fg.primary,
         contentStyle: { backgroundColor: colors.bg.canvas },
         headerShown: false,
-        // Drop the "index" back-title fallback iOS shows when the
-        // previous screen is the unnamed `index.tsx`. Empty string
-        // gives just the chevron, matching the user-requested look.
-        headerBackTitle: '',
+        // Drop the "< index" fallback iOS shows when the previous
+        // screen is the unnamed `index.tsx`. `headerBackTitle: ''`
+        // doesn't take effect on native-stack 7 (the back-button
+        // text falls back to the previous route name regardless);
+        // `headerBackButtonDisplayMode: 'minimal'` is the
+        // documented way to render only the chevron.
+        headerBackButtonDisplayMode: 'minimal',
       }}
     />
   );

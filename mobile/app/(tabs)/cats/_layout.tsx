@@ -18,7 +18,7 @@ export default function CatsStackLayout() {
         headerTintColor: colors.fg.primary,
         contentStyle: { backgroundColor: colors.bg.canvas },
         headerShown: false,
-        headerBackTitle: '',
+        headerBackButtonDisplayMode: 'minimal',
       }}
     />
   );
