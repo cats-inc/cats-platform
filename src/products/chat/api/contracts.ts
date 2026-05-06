@@ -658,6 +658,8 @@ export interface ChannelMessageMetadata extends Record<string, unknown> {
   recipientParticipantIds?: string[];
   workflowShape?: RoomWorkflowShape | 'parallel' | null;
   productIntentCommand?: ProductIntentCommandMetadata;
+  productIntentLocale?: 'en' | 'zh-TW';
+  productIntentArgumentProvided?: boolean;
 }
 
 export type ProductIntentCommandSource = 'web' | 'telegram';
@@ -671,6 +673,12 @@ export interface ProductIntentCommandMetadata {
   argumentText: string;
   rawCommandToken: string;
   botSuffix: string | null;
+}
+
+export interface ProductIntentUserMessageMetadata {
+  productIntentCommand: ProductIntentCommandMetadata;
+  productIntentLocale: 'en' | 'zh-TW';
+  productIntentArgumentProvided: boolean;
 }
 
 export type DirectSlashModeCapabilityProfileKind =

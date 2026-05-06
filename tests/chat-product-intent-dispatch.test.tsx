@@ -803,9 +803,11 @@ test('beginChannelMessageDispatch rejects product intent posture changes outside
   );
 
   const channel = requireChannel(begun.state, channelId);
+  const userMessage = channel.messages.find((message) => message.senderKind === 'user');
   const ackMessage = channel.messages.at(-1);
 
   assert.equal(begun.preparedTurn, null);
+  assert.equal(userMessage?.metadata.productIntentArgumentProvided, true);
   assert.equal(ackMessage?.senderKind, 'system');
   assert.equal(ackMessage?.metadata.event, 'product_intent_unsupported_context');
   assert.equal(ackMessage?.metadata.accepted, false);

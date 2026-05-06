@@ -10,6 +10,7 @@ import type {
   DirectSlashModePostureChangeMetadata,
   ProductIntentCommandMetadata,
   ProductIntentCommandSource,
+  ProductIntentUserMessageMetadata,
 } from '../../api/contracts.js';
 import { createCatActorId } from '../../../../core/actors.js';
 import type { CatsCoreState } from '../../../../core/types.js';
@@ -434,6 +435,18 @@ function normalizeWorkItemTitle(value: string, fallback: string): string {
 type ProductIntentTranslator = ReturnType<typeof createTranslator>;
 const PRODUCT_INTENT_EMPTY_ARGUMENT_PROMPT = '(no slash-command argument provided)';
 
+function buildProductIntentUserMessageMetadata(input: {
+  productIntentCommand: ProductIntentCommandMetadata;
+  locale: MessageLocale;
+}): ProductIntentUserMessageMetadata {
+  return {
+    productIntentCommand: input.productIntentCommand,
+    productIntentLocale: input.locale,
+    productIntentArgumentProvided:
+      input.productIntentCommand.argumentText.trim().length > 0,
+  };
+}
+
 function resolveProductIntentMessageLocale(
   channel: ChatChannelState,
   transportLocale?: string | null,
@@ -683,8 +696,6 @@ function annotateProductIntentUserMessageWithActiveAnchor(input: {
   messageId: string;
   activeAnchor: DirectSlashModeActiveAnchorMetadata;
   directSlashMode: Record<string, unknown> | null;
-  locale: MessageLocale;
-  argumentProvided: boolean;
   now: Date;
 }): { state: ChatState; userMessage: ChatMessage } {
   const nextState = structuredClone(input.state);
@@ -697,8 +708,6 @@ function annotateProductIntentUserMessageWithActiveAnchor(input: {
     ...(message.metadata ?? {}),
     ...(input.directSlashMode ? { directSlashMode: input.directSlashMode } : {}),
     directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(input.activeAnchor),
-    productIntentLocale: input.locale,
-    productIntentArgumentProvided: input.argumentProvided,
   };
   return {
     state: refreshDerivedMemoryLayers(nextState, input.channelId, input.now),
@@ -719,7 +728,6 @@ function buildProductIntentConciergePromptSource(input: {
     metadata: {
       ...(input.userMessage.metadata ?? {}),
       directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(input.activeAnchor),
-      productIntentArgumentProvided: hasArgument,
     },
   };
 }
@@ -1245,9 +1253,10 @@ export async function beginChannelMessageDispatch(
             transportBindingId: options.transportBindingId,
             productIntentCommand,
           }),
-          productIntentLocale: locale,
-          productIntentArgumentProvided:
-            productIntentCommand.argumentText.trim().length > 0,
+          ...buildProductIntentUserMessageMetadata({
+            productIntentCommand,
+            locale,
+          }),
         },
         choiceResponse: payload.choiceResponse,
         origin: resolveUserMessageOrigin(options.transport),
@@ -1332,8 +1341,6 @@ export async function beginChannelMessageDispatch(
         messageId: userAppend.message.id,
         activeAnchor,
         directSlashMode,
-        locale,
-        argumentProvided: productIntentCommand.argumentText.trim().length > 0,
         now,
       });
       nextState = annotated.state;
