@@ -105,9 +105,12 @@ import {
 } from '../../shared/channelParticipants.js';
 import { parseProductIntentCommand } from '../../shared/productIntentCommands.js';
 import {
+  IMPLICIT_PRODUCT_INTENT_COMMAND_TOKEN,
   buildImplicitProductIntentCandidateMetadata,
+  buildImplicitProductIntentTransitionMetadata,
   detectImplicitProductIntent,
   type ImplicitProductIntentCandidateMetadata,
+  type ImplicitProductIntentCandidateTransitionMetadata,
   type ImplicitProductIntentTransport,
 } from '../../shared/implicitProductIntent.js';
 
@@ -721,6 +724,285 @@ function appendImplicitProductIntentCandidateSidecar(input: {
   return {
     state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
     candidateMessage: append.message,
+  };
+}
+
+type ImplicitProductIntentChoiceAction = 'confirm' | 'decline' | 'handled';
+
+interface ResolvedImplicitProductIntentChoice {
+  action: ImplicitProductIntentChoiceAction;
+  candidateMessage: ChatMessage;
+  originalMessage: ChatMessage;
+  candidate: ImplicitProductIntentCandidateMetadata;
+  productIntentCommand: ProductIntentCommandMetadata | null;
+}
+
+function readImplicitProductIntentCandidateMetadata(
+  value: unknown,
+): ImplicitProductIntentCandidateMetadata | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const record = value as Partial<ImplicitProductIntentCandidateMetadata>;
+  const source = record.source;
+  const candidate = record.candidate;
+  if (
+    record.version !== 1
+    || record.event !== 'suggested'
+    || !source
+    || typeof source !== 'object'
+    || typeof source.messageId !== 'string'
+    || typeof source.channelId !== 'string'
+    || typeof source.conversationId !== 'string'
+    || (source.transport !== 'web' && source.transport !== 'telegram')
+    || !candidate
+    || typeof candidate !== 'object'
+    || (candidate.targetProduct !== 'work' && candidate.targetProduct !== 'code')
+    || (
+      candidate.confidence !== 'low'
+      && candidate.confidence !== 'medium'
+      && candidate.confidence !== 'high'
+    )
+    || typeof candidate.reasonCode !== 'string'
+    || typeof record.candidateId !== 'string'
+    || typeof record.expiresAt !== 'string'
+  ) {
+    return null;
+  }
+
+  return record as ImplicitProductIntentCandidateMetadata;
+}
+
+function readImplicitProductIntentTransitionMetadata(
+  value: unknown,
+): ImplicitProductIntentCandidateTransitionMetadata | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const record = value as Partial<ImplicitProductIntentCandidateTransitionMetadata>;
+  if (
+    record.version !== 1
+    || typeof record.candidateId !== 'string'
+    || (
+      record.event !== 'confirmed'
+      && record.event !== 'declined'
+      && record.event !== 'expired'
+    )
+    || typeof record.sourceMessageId !== 'string'
+    || (record.targetProduct !== 'work' && record.targetProduct !== 'code')
+    || typeof record.idempotencyKey !== 'string'
+  ) {
+    return null;
+  }
+
+  return record as ImplicitProductIntentCandidateTransitionMetadata;
+}
+
+function findImplicitProductIntentTransition(input: {
+  channel: ChatChannelState;
+  candidateId: string;
+}): ImplicitProductIntentCandidateTransitionMetadata | null {
+  for (const message of input.channel.messages) {
+    const transition = readImplicitProductIntentTransitionMetadata(
+      message.metadata.implicitProductIntentTransition,
+    );
+    if (transition?.candidateId === input.candidateId) {
+      return transition;
+    }
+  }
+
+  return null;
+}
+
+function resolveImplicitProductIntentChoiceAction(input: {
+  choiceResponse: NonNullable<SendChannelMessageInput['choiceResponse']>;
+  candidate: ImplicitProductIntentCandidateMetadata;
+}): ImplicitProductIntentChoiceAction | null {
+  if (input.choiceResponse.status !== 'submitted') {
+    return null;
+  }
+  const selectedOptionIds = new Set(
+    input.choiceResponse.answers.flatMap((answer) => answer.selectedOptionIds),
+  );
+  if (selectedOptionIds.has('decline')) {
+    return 'decline';
+  }
+  const confirmOptionId = input.candidate.candidate.targetProduct === 'code'
+    ? 'confirm_code'
+    : 'confirm_work';
+  return selectedOptionIds.has(confirmOptionId) ? 'confirm' : null;
+}
+
+function resolveImplicitProductIntentChoice(input: {
+  channel: ChatChannelState;
+  choiceResponse?: SendChannelMessageInput['choiceResponse'];
+  source: ProductIntentCommandSource;
+}): ResolvedImplicitProductIntentChoice | null {
+  if (!input.choiceResponse) {
+    return null;
+  }
+  const candidateMessage = input.channel.messages.find((message) =>
+    message.id === input.choiceResponse?.sourceMessageId);
+  const candidate = readImplicitProductIntentCandidateMetadata(
+    candidateMessage?.metadata.implicitProductIntentCandidate,
+  );
+  if (!candidateMessage || !candidate) {
+    return null;
+  }
+  const originalMessage = input.channel.messages.find((message) =>
+    message.id === candidate.source.messageId);
+  if (!originalMessage || originalMessage.senderKind !== 'user') {
+    return null;
+  }
+  const existingTransition = findImplicitProductIntentTransition({
+    channel: input.channel,
+    candidateId: candidate.candidateId,
+  });
+  if (existingTransition) {
+    return {
+      action: 'handled',
+      candidateMessage,
+      originalMessage,
+      candidate,
+      productIntentCommand: null,
+    };
+  }
+  const action = resolveImplicitProductIntentChoiceAction({
+    choiceResponse: input.choiceResponse,
+    candidate,
+  });
+  if (!action) {
+    return null;
+  }
+
+  const targetProduct = candidate.candidate.targetProduct;
+  return {
+    action,
+    candidateMessage,
+    originalMessage,
+    candidate,
+    productIntentCommand: action === 'confirm'
+      ? {
+          version: 1,
+          source: input.source,
+          command: targetProduct,
+          posture: targetProduct,
+          targetProduct,
+          argumentText: originalMessage.body.trim(),
+          rawCommandToken: IMPLICIT_PRODUCT_INTENT_COMMAND_TOKEN,
+          botSuffix: null,
+          sourceKind: 'implicit_confirmation',
+          implicitConfirmed: true,
+          originalCandidateId: candidate.candidateId,
+          originalMessageId: originalMessage.id,
+        }
+      : null,
+  };
+}
+
+function describeImplicitProductIntentTransition(
+  transition: ImplicitProductIntentCandidateTransitionMetadata,
+  translate: ProductIntentTranslator,
+): string {
+  if (transition.event === 'declined') {
+    return translate(messageKeys.chatImplicitProductIntentDeclined);
+  }
+
+  return translate(
+    transition.targetProduct === 'code'
+      ? messageKeys.chatImplicitProductIntentConfirmedCode
+      : messageKeys.chatImplicitProductIntentConfirmedWork,
+  );
+}
+
+function appendImplicitProductIntentTransitionSidecar(input: {
+  state: ChatState;
+  channelId: string;
+  resolvedChoice: ResolvedImplicitProductIntentChoice;
+  event: 'confirmed' | 'declined';
+  locale: MessageLocale;
+  now: Date;
+}): { state: ChatState; transitionMessage: ChatMessage } {
+  const transition = buildImplicitProductIntentTransitionMetadata({
+    candidateId: input.resolvedChoice.candidate.candidateId,
+    event: input.event,
+    sourceMessageId: input.resolvedChoice.originalMessage.id,
+    targetProduct: input.resolvedChoice.candidate.candidate.targetProduct,
+    originalMessageBody: input.resolvedChoice.originalMessage.body,
+  });
+  const translate = createTranslator(input.locale);
+  const append = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats',
+      body: describeImplicitProductIntentTransition(transition, translate),
+    },
+    input.now,
+    {
+      metadata: {
+        event: `implicit_product_intent_candidate_${input.event}`,
+        sourceMessageId: input.resolvedChoice.originalMessage.id,
+        sourceCandidateMessageId: input.resolvedChoice.candidateMessage.id,
+        implicitProductIntentTransition: transition,
+      },
+      incrementUnread: false,
+    },
+  );
+
+  return {
+    state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+    transitionMessage: append.message,
+  };
+}
+
+function appendImplicitProductIntentDecline(input: {
+  state: ChatState;
+  channelId: string;
+  payload: SendChannelMessageInput;
+  deterministicRoutingPlan: DeterministicChatRoutingPlan | null;
+  transportBindingId?: string | null;
+  transport: RuntimeTransportContext | undefined;
+  resolvedChoice: ResolvedImplicitProductIntentChoice;
+  locale: MessageLocale;
+  now: Date;
+}): { state: ChatState; userMessage: ChatMessage } {
+  const userAppend = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'user',
+      senderName: input.payload.senderName?.trim() || 'User',
+      body: input.payload.body,
+    },
+    input.now,
+    {
+      metadata: buildBaseUserMessageMetadata({
+        payload: input.payload,
+        channelId: input.channelId,
+        deterministicRoutingPlan: input.deterministicRoutingPlan,
+        transportBindingId: input.transportBindingId,
+      }),
+      choiceResponse: input.payload.choiceResponse,
+      origin: resolveUserMessageOrigin(input.transport),
+      sourceTransportBindingId: input.transport === 'telegram'
+        ? input.transportBindingId ?? null
+        : null,
+    },
+  );
+  const transitionAppend = appendImplicitProductIntentTransitionSidecar({
+    state: userAppend.state,
+    channelId: input.channelId,
+    resolvedChoice: input.resolvedChoice,
+    event: 'declined',
+    locale: input.locale,
+    now: input.now,
+  });
+
+  return {
+    state: transitionAppend.state,
+    userMessage: userAppend.message,
   };
 }
 
@@ -1348,10 +1630,52 @@ export async function beginChannelMessageDispatch(
   let nextState = state;
   const channelBeforeMessage = requireChannel(nextState, channelId);
   const deterministicRoutingPlan = options.deterministicRoutingPlan ?? null;
+  const productIntentSource = resolveProductIntentCommandSource(options.transport);
+  const implicitProductIntentChoice = resolveImplicitProductIntentChoice({
+    channel: channelBeforeMessage,
+    choiceResponse: payload.choiceResponse,
+    source: productIntentSource,
+  });
   const productIntentCommand = resolveProductIntentCommandMetadata(
     payload.body,
-    resolveProductIntentCommandSource(options.transport),
-  );
+    productIntentSource,
+  ) ?? implicitProductIntentChoice?.productIntentCommand ?? null;
+  if (implicitProductIntentChoice?.action === 'handled') {
+    return {
+      state: nextState,
+      results: [],
+      preparedTurn: null,
+      userMessage: implicitProductIntentChoice.originalMessage,
+      providerAgentDecision: null,
+    };
+  }
+  if (implicitProductIntentChoice?.action === 'decline') {
+    const locale = resolveProductIntentMessageLocale(
+      channelBeforeMessage,
+      options.transportLocale,
+    );
+    const declined = appendImplicitProductIntentDecline({
+      state: nextState,
+      channelId,
+      payload,
+      deterministicRoutingPlan,
+      transportBindingId: options.transportBindingId,
+      transport: options.transport,
+      resolvedChoice: implicitProductIntentChoice,
+      locale,
+      now,
+    });
+    nextState = declined.state;
+    nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+    options.onStateWritten?.(channelId);
+    return {
+      state: nextState,
+      results: [],
+      preparedTurn: null,
+      userMessage: declined.userMessage,
+      providerAgentDecision: null,
+    };
+  }
   if (productIntentCommand) {
     const locale = resolveProductIntentMessageLocale(
       channelBeforeMessage,
@@ -1388,6 +1712,17 @@ export async function beginChannelMessageDispatch(
       },
     );
     nextState = userAppend.state;
+    if (implicitProductIntentChoice?.action === 'confirm') {
+      const transitionAppend = appendImplicitProductIntentTransitionSidecar({
+        state: nextState,
+        channelId,
+        resolvedChoice: implicitProductIntentChoice,
+        event: 'confirmed',
+        locale,
+        now,
+      });
+      nextState = transitionAppend.state;
+    }
     const audience = resolveProductIntentAudience(channelBeforeMessage);
     const capabilityProfileKind = resolveDirectAudienceCapabilityProfileKind({
       channel: channelBeforeMessage,

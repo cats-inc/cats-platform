@@ -19,6 +19,10 @@ import {
 } from '../src/platform/supervision/index.ts';
 import type {
   ImplicitProductIntentCandidateMetadata,
+  ImplicitProductIntentCandidateTransitionMetadata,
+} from '../src/products/chat/shared/implicitProductIntent.ts';
+import {
+  IMPLICIT_PRODUCT_INTENT_COMMAND_TOKEN,
 } from '../src/products/chat/shared/implicitProductIntent.ts';
 
 function runtimeStub(onClose?: () => void): RuntimeClient {
@@ -136,6 +140,28 @@ function createDirectState() {
   return {
     state,
     channelId: state.selectedChannelId,
+  };
+}
+
+function buildSingleChoiceResponse(
+  sourceMessage: { id: string; choices?: Array<{ question: string }> },
+  selectedOptionId: string,
+  submittedAt = '2026-05-06T08:03:00.000Z',
+) {
+  const choice = sourceMessage.choices?.[0];
+  if (!choice) {
+    throw new Error('Expected source message choices.');
+  }
+  return {
+    sourceMessageId: sourceMessage.id,
+    status: 'submitted' as const,
+    submittedAt,
+    answers: [
+      {
+        question: choice.question,
+        selectedOptionIds: [selectedOptionId],
+      },
+    ],
   };
 }
 
@@ -394,6 +420,177 @@ test('beginChannelMessageDispatch suggests implicit candidates while ordinary di
   assert.equal(
     core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
     0,
+  );
+});
+
+test('beginChannelMessageDispatch records implicit candidate decline without product intake', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can discuss the onboarding requirements.');
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+  if (!candidateMessage) {
+    throw new Error('Expected implicit product-intent candidate message.');
+  }
+
+  const declined = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: 'Q: Turn this message into Work intake?\nA: Keep as chat',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(candidateMessage, 'decline'),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const channel = requireChannel(declined.state, channelId);
+  const transitionMessage = channel.messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_declined');
+  const transition = transitionMessage?.metadata.implicitProductIntentTransition as
+    | ImplicitProductIntentCandidateTransitionMetadata
+    | undefined;
+  const candidateMetadata = candidateMessage.metadata.implicitProductIntentCandidate as
+    | ImplicitProductIntentCandidateMetadata
+    | undefined;
+  const core = await store.readCore();
+
+  assert.equal(declined.preparedTurn, null);
+  assert.equal(transitionMessage?.senderKind, 'system');
+  assert.equal(transitionMessage?.body, 'Kept as chat.');
+  assert.equal(transition?.event, 'declined');
+  assert.equal(transition?.candidateId, candidateMetadata?.candidateId);
+  assert.equal(
+    core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
+    0,
+  );
+});
+
+test('beginChannelMessageDispatch confirms implicit candidates through slash-mode intake once', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can discuss the onboarding requirements.');
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+  if (!candidateMessage) {
+    throw new Error('Expected implicit product-intent candidate message.');
+  }
+  const choiceResponse = buildSingleChoiceResponse(candidateMessage, 'confirm_work');
+
+  const confirmed = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: 'Q: Turn this message into Work intake?\nA: Turn into Work',
+      senderName: 'Kenneth',
+      choiceResponse,
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const channel = requireChannel(confirmed.state, channelId);
+  const choiceMessage = channel.messages.find((message) =>
+    message.choiceResponse?.sourceMessageId === candidateMessage.id);
+  const transitionMessage = channel.messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_confirmed');
+  const transition = transitionMessage?.metadata.implicitProductIntentTransition as
+    | ImplicitProductIntentCandidateTransitionMetadata
+    | undefined;
+  const commandMetadata = choiceMessage?.metadata.productIntentCommand as
+    | { rawCommandToken?: unknown; implicitConfirmed?: unknown; originalMessageId?: unknown }
+    | undefined;
+  const core = await store.readCore();
+  const directWorkItems = core.workItems.filter((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  const directWorkItem = directWorkItems[0];
+  const intake = directWorkItem?.metadata.directSlashModeIntake as
+    | { draft?: { goal?: unknown }; command?: { name?: unknown } }
+    | undefined;
+
+  assert.notEqual(confirmed.preparedTurn, null);
+  assert.equal(confirmed.preparedTurn?.userMessage.body, 'Please plan the onboarding requirements');
+  assert.equal(commandMetadata?.rawCommandToken, IMPLICIT_PRODUCT_INTENT_COMMAND_TOKEN);
+  assert.equal(commandMetadata?.implicitConfirmed, true);
+  assert.equal(commandMetadata?.originalMessageId, transition?.sourceMessageId);
+  assert.equal(transitionMessage?.body, 'Confirmed Work intake.');
+  assert.equal(transition?.event, 'confirmed');
+  assert.equal(transition?.confirmedCommand?.argumentText, 'Please plan the onboarding requirements');
+  assert.equal(transition?.confirmedCommand?.rawCommandToken, IMPLICIT_PRODUCT_INTENT_COMMAND_TOKEN);
+  assert.equal(directWorkItems.length, 1);
+  assert.equal(directWorkItem?.status, 'draft');
+  assert.equal(intake?.draft?.goal, 'Please plan the onboarding requirements');
+  assert.equal(intake?.command?.name, 'work');
+
+  const duplicate = await beginChannelMessageDispatch(
+    confirmed.state,
+    channelId,
+    {
+      body: 'Q: Turn this message into Work intake?\nA: Turn into Work',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(
+        candidateMessage,
+        'confirm_work',
+        '2026-05-06T08:04:00.000Z',
+      ),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:04:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const duplicateCore = await store.readCore();
+  const duplicateChannel = requireChannel(duplicate.state, channelId);
+
+  assert.equal(duplicate.preparedTurn, null);
+  assert.equal(
+    duplicateCore.workItems.filter((candidate) =>
+      Boolean(candidate.metadata.directSlashModeIntake)).length,
+    1,
+  );
+  assert.equal(
+    duplicateChannel.messages.filter((message) =>
+      message.metadata.event === 'implicit_product_intent_candidate_confirmed').length,
+    1,
   );
 });
 

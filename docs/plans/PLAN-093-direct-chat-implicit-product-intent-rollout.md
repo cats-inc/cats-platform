@@ -78,13 +78,13 @@ durable product side effects.
       candidates using localized copy and the existing `ChatMessage.choices`
       schema from SPEC-104's human-gate UI (`confirm_work` /
       `confirm_code` / `decline` option ids).
-- [ ] Task 2.2: Add decline/ignore behavior that leaves posture and active
+- [x] Task 2.2: Add decline/ignore behavior that leaves posture and active
       anchors unchanged.
-- [ ] Task 2.3: Add idempotent confirm behavior so one candidate cannot create
+- [x] Task 2.3: Add idempotent confirm behavior so one candidate cannot create
       duplicate anchors.
 - [x] Task 2.4: Add Web tests proving candidate suggestion does not create
       Work Items before confirmation.
-- [ ] Task 2.5: Add the minimum Web happy-path integration test:
+- [x] Task 2.5: Add the minimum Web happy-path integration test:
       strong-Cat Work candidate -> confirm -> SPEC-104 draft anchor appears.
 
 **Deliverables**: Web users can confirm or decline implicit Work/Code
@@ -242,7 +242,8 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
-| 2026-05-06 | Phase 2 sidecar slice landed: ordinary direct messages that detect as Work/Code candidates now append a localized system suggestion with the existing `ChatMessage.choices` schema (`confirm_work` / `confirm_code` / `decline`) while preserving ordinary Cat dispatch and proving no Work Item is created before confirmation. Decline handling, confirm idempotency, and SPEC-104 handoff remain pending. |
+| 2026-05-06 | Phase 2 Web confirmation slice landed: Web `decline` now appends a declined transition without dispatching a Cat or creating durable intake; Web `confirm_work` now synthesizes the `(implicit-confirmation)` command metadata and enters SPEC-104's slash-mode intake path; repeated confirmation of the same candidate is a no-op and does not create duplicate anchors. |
+| 2026-05-06 | Phase 2 sidecar slice landed: ordinary direct messages that detect as Work/Code candidates now append a localized system suggestion with the existing `ChatMessage.choices` schema (`confirm_work` / `confirm_code` / `decline`) while preserving ordinary Cat dispatch and proving no Work Item is created before confirmation. |
 | 2026-05-06 | Phase 1 detector/metadata slice landed: added the browser-safe deterministic `detectImplicitProductIntent` helper, candidate/transition metadata builders, typed channel metadata keys, and unit coverage for direct-only detection, slash-command bypass, casual false positives, candidate expiry, and sentinel confirmed-command metadata. |
 | 2026-05-06 | Follow-up review close-out (round 2): metadata key names pinned (`metadata.implicitProductIntentCandidate` for suggestions, `metadata.implicitProductIntentTransition` for confirm/decline/expire) so renderers can disambiguate from SPEC-104's `metadata.directSlashMode` and weak-gate `ChatMessage.choices`; the candidate-write idempotency guard moved from Phase 1 (Task 1.2b) into Phase 5 (Task 5.1a) where the persistence layer can actually enforce it; mobile read-only constraint clarified as a v1 scope decision specific to implicit-intent confirmation rather than a global mobile rule. |
 | 2026-05-06 | Follow-up review close-out: `rawCommandToken` now stays string-only with `(implicit-confirmation)` sentinel; Web confirmation reuses `ChatMessage.choices`; mobile renders candidate/transition segments read-only with desktop-only alert on accidental action taps; detector cue examples are illustrative and repeated same-message detection is idempotent. |

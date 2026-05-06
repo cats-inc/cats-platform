@@ -1970,6 +1970,11 @@ export const messageKeys = {
   chatImplicitProductIntentConfirmCode:
     'chat.implicitProductIntent.confirm.code',
   chatImplicitProductIntentDecline: 'chat.implicitProductIntent.decline',
+  chatImplicitProductIntentConfirmedWork:
+    'chat.implicitProductIntent.confirmed.work',
+  chatImplicitProductIntentConfirmedCode:
+    'chat.implicitProductIntent.confirmed.code',
+  chatImplicitProductIntentDeclined: 'chat.implicitProductIntent.declined',
   sharedAddCatPanelTitle: 'shared.addCatPanelTitle',
   sharedAddCatPanelClose: 'shared.addCatPanelClose',
   sharedAddCatPanelChooseExisting: 'shared.addCatPanelChooseExisting',

@@ -679,6 +679,10 @@ export interface ProductIntentCommandMetadata {
   argumentText: string;
   rawCommandToken: string;
   botSuffix: string | null;
+  sourceKind?: 'implicit_confirmation';
+  implicitConfirmed?: true;
+  originalCandidateId?: string;
+  originalMessageId?: string;
 }
 
 export interface ProductIntentUserMessageMetadata {
