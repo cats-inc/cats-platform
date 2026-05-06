@@ -40,9 +40,14 @@ semantics as SPEC-104: `/work <original message>` or `/code <original message>`.
 
 ## V1 Suppression Rules (Historical)
 
-PLAN-094 may temporarily keep this v1 detector path behind
-`CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE=heuristic_prefilter`. When that mode is
-active, these historical suppression rules continue to apply to
+Although PLAN-093 is superseded as the default natural-intent path, the rules in
+this section remain **active in production** while PLAN-094 keeps the v1
+detector path behind `CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE=heuristic_prefilter`,
+and stay so until that mode is removed in PLAN-094 Phase 6. The "Historical"
+qualifier in the title means "captured here because SPEC-105 v2 no longer
+documents v1 contract", not "no longer enforced".
+
+When `heuristic_prefilter` mode is active, these suppression rules apply to
 `metadata.implicitProductIntentCandidate` and
 `metadata.implicitProductIntentTransition` segments:
 
@@ -55,6 +60,13 @@ active, these historical suppression rules continue to apply to
 - declining any Work/Code candidate starts a five-minute lane cooldown
 - repeated detection for the same `candidateId` is an idempotent duplicate and
   does not append a second candidate segment
+
+> Note: the v1 SPEC-105 suppression model also discussed a "materially new"
+> similarity gate ("a different normalized owner message after at least one
+> later owner turn"). That rule was never enforced in v1 implementation —
+> v1 only enforced the five rules listed above. The concept is dissolved in v2
+> because Cat judgment plus the v2 decline cooldown subsume it; it is not
+> carried into either v1 historical contract or v2 contract.
 
 ## Implementation Guardrails
 
