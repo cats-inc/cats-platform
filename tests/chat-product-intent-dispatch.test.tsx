@@ -594,6 +594,205 @@ test('beginChannelMessageDispatch confirms implicit candidates through slash-mod
   );
 });
 
+test('beginChannelMessageDispatch confirms implicit code candidates with code target', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can discuss the parser tests.');
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please fix the parser tests',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+  if (!candidateMessage) {
+    throw new Error('Expected implicit product-intent candidate message.');
+  }
+
+  const confirmed = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: 'Q: Turn this message into Code intake?\nA: Turn into Code',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(candidateMessage, 'confirm_code'),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const channel = requireChannel(confirmed.state, channelId);
+  const transitionMessage = channel.messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_confirmed');
+  const transition = transitionMessage?.metadata.implicitProductIntentTransition as
+    | ImplicitProductIntentCandidateTransitionMetadata
+    | undefined;
+  const ackMessage = channel.messages.find((message) =>
+    message.metadata.event === 'product_intent_posture_changed');
+  const directSlashMode = ackMessage?.metadata.directSlashMode as
+    | {
+        activeAnchor?: {
+          targetProduct?: unknown;
+        };
+      }
+    | undefined;
+  const core = await store.readCore();
+  const directWorkItem = core.workItems.find((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  const intake = directWorkItem?.metadata.directSlashModeIntake as
+    | { targetProduct?: unknown; command?: { name?: unknown } }
+    | undefined;
+
+  assert.notEqual(confirmed.preparedTurn, null);
+  assert.equal(confirmed.preparedTurn?.userMessage.body, 'Please fix the parser tests');
+  assert.equal(transitionMessage?.body, 'Confirmed Code intake.');
+  assert.equal(transition?.confirmedCommand?.command, 'code');
+  assert.equal(directSlashMode?.activeAnchor?.targetProduct, 'code');
+  assert.equal(directWorkItem?.title, 'Please fix the parser tests');
+  assert.equal(intake?.targetProduct, 'code');
+  assert.equal(intake?.command?.name, 'code');
+});
+
+test('beginChannelMessageDispatch keeps confirmed implicit weak Cats human-gated', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can discuss the onboarding requirements.');
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig('weak_worker'),
+    },
+  );
+  const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+  if (!candidateMessage) {
+    throw new Error('Expected implicit product-intent candidate message.');
+  }
+
+  const confirmed = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: 'Q: Turn this message into Work intake?\nA: Turn into Work',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(candidateMessage, 'confirm_work'),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig('weak_worker'),
+    },
+  );
+
+  const channel = requireChannel(confirmed.state, channelId);
+  const transitionMessage = channel.messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_confirmed');
+  const ackMessage = channel.messages.find((message) =>
+    message.metadata.event === 'product_intent_posture_changed');
+  const directSlashMode = ackMessage?.metadata.directSlashMode as
+    | {
+        humanGate?: {
+          kind?: unknown;
+          capabilityProfileKind?: unknown;
+          targetProduct?: unknown;
+        };
+      }
+    | undefined;
+  const core = await store.readCore();
+
+  assert.equal(confirmed.preparedTurn, null);
+  assert.equal(transitionMessage?.senderKind, 'system');
+  assert.equal(directSlashMode?.humanGate?.kind, 'human_gate_required');
+  assert.equal(directSlashMode?.humanGate?.capabilityProfileKind, 'weak_worker');
+  assert.equal(directSlashMode?.humanGate?.targetProduct, 'work');
+  assert.equal(
+    core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
+    0,
+  );
+});
+
+test('beginChannelMessageDispatch keeps confirmed implicit unknown Cats human-gated', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can discuss the onboarding requirements.');
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+    },
+  );
+  const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+  if (!candidateMessage) {
+    throw new Error('Expected implicit product-intent candidate message.');
+  }
+
+  const confirmed = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: 'Q: Turn this message into Work intake?\nA: Turn into Work',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(candidateMessage, 'confirm_work'),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+    },
+  );
+
+  const channel = requireChannel(confirmed.state, channelId);
+  const ackMessage = channel.messages.find((message) =>
+    message.metadata.event === 'product_intent_posture_changed');
+  const directSlashMode = ackMessage?.metadata.directSlashMode as
+    | {
+        humanGate?: {
+          kind?: unknown;
+          capabilityProfileKind?: unknown;
+        };
+      }
+    | undefined;
+  const core = await store.readCore();
+
+  assert.equal(confirmed.preparedTurn, null);
+  assert.equal(directSlashMode?.humanGate?.kind, 'human_gate_required');
+  assert.equal(directSlashMode?.humanGate?.capabilityProfileKind, 'unknown');
+  assert.equal(
+    core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
+    0,
+  );
+});
+
 test('routeChannelMessage does not send localized synthetic user text for empty product-intent arguments', async () => {
   const { state, channelId } = createDirectState();
   requireChannel(state, channelId).language = 'zh-TW';
