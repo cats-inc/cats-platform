@@ -678,6 +678,9 @@ function appendImplicitProductIntentCandidateSidecar(input: {
   if (input.choiceResponse) {
     return { state: input.state, candidateMessage: null };
   }
+  if (hasRecentImplicitProductIntentDecline({ channel: input.channel, now: input.now })) {
+    return { state: input.state, candidateMessage: null };
+  }
 
   const detection = detectImplicitProductIntent({
     rawText: input.body,
@@ -700,6 +703,12 @@ function appendImplicitProductIntentCandidateSidecar(input: {
     reasonCode: detection.reasonCode,
     now: input.now,
   });
+  if (hasImplicitProductIntentCandidate({
+    channel: input.channel,
+    candidateId: candidate.candidateId,
+  })) {
+    return { state: input.state, candidateMessage: null };
+  }
   const translate = createTranslator(input.locale);
   const append = appendMessage(
     input.state,
@@ -728,6 +737,7 @@ function appendImplicitProductIntentCandidateSidecar(input: {
 }
 
 type ImplicitProductIntentChoiceAction = 'confirm' | 'decline' | 'handled';
+const IMPLICIT_PRODUCT_INTENT_DECLINE_COOLDOWN_MS = 5 * 60 * 1000;
 
 interface ResolvedImplicitProductIntentChoice {
   action: ImplicitProductIntentChoiceAction;
@@ -812,6 +822,58 @@ function findImplicitProductIntentTransition(input: {
   }
 
   return null;
+}
+
+function hasImplicitProductIntentCandidate(input: {
+  channel: ChatChannelState;
+  candidateId: string;
+}): boolean {
+  return input.channel.messages.some((message) =>
+    readImplicitProductIntentCandidateMetadata(
+      message.metadata.implicitProductIntentCandidate,
+    )?.candidateId === input.candidateId);
+}
+
+function hasRecentImplicitProductIntentDecline(input: {
+  channel: ChatChannelState;
+  now: Date;
+}): boolean {
+  return input.channel.messages.some((message) => {
+    const transition = readImplicitProductIntentTransitionMetadata(
+      message.metadata.implicitProductIntentTransition,
+    );
+    if (transition?.event !== 'declined') {
+      return false;
+    }
+    const declinedAt = Date.parse(message.createdAt);
+    return Number.isFinite(declinedAt)
+      && input.now.getTime() - declinedAt < IMPLICIT_PRODUCT_INTENT_DECLINE_COOLDOWN_MS;
+  });
+}
+
+function listOpenImplicitProductIntentCandidates(
+  channel: ChatChannelState,
+): Array<{
+  candidateMessage: ChatMessage;
+  originalMessage: ChatMessage;
+  candidate: ImplicitProductIntentCandidateMetadata;
+}> {
+  return channel.messages.flatMap((candidateMessage) => {
+    const candidate = readImplicitProductIntentCandidateMetadata(
+      candidateMessage.metadata.implicitProductIntentCandidate,
+    );
+    if (!candidate) {
+      return [];
+    }
+    if (findImplicitProductIntentTransition({ channel, candidateId: candidate.candidateId })) {
+      return [];
+    }
+    const originalMessage = channel.messages.find((message) =>
+      message.id === candidate.source.messageId);
+    return originalMessage && originalMessage.senderKind === 'user'
+      ? [{ candidateMessage, originalMessage, candidate }]
+      : [];
+  });
 }
 
 function resolveImplicitProductIntentChoiceAction(input: {
@@ -907,6 +969,9 @@ function describeImplicitProductIntentTransition(
   if (transition.event === 'declined') {
     return translate(messageKeys.chatImplicitProductIntentDeclined);
   }
+  if (transition.event === 'expired') {
+    return translate(messageKeys.chatImplicitProductIntentExpired);
+  }
 
   return translate(
     transition.targetProduct === 'code'
@@ -919,7 +984,7 @@ function appendImplicitProductIntentTransitionSidecar(input: {
   state: ChatState;
   channelId: string;
   resolvedChoice: ResolvedImplicitProductIntentChoice;
-  event: 'confirmed' | 'declined';
+  event: 'confirmed' | 'declined' | 'expired';
   locale: MessageLocale;
   now: Date;
 }): { state: ChatState; transitionMessage: ChatMessage } {
@@ -955,6 +1020,39 @@ function appendImplicitProductIntentTransitionSidecar(input: {
     state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
     transitionMessage: append.message,
   };
+}
+
+function appendExpiredImplicitProductIntentCandidates(input: {
+  state: ChatState;
+  channelId: string;
+  expireAll: boolean;
+  locale: MessageLocale;
+  now: Date;
+}): ChatState {
+  const channel = requireChannel(input.state, input.channelId);
+  const openCandidates = listOpenImplicitProductIntentCandidates(channel);
+  return openCandidates.reduce((state, openCandidate) => {
+    const expiresAt = Date.parse(openCandidate.candidate.expiresAt);
+    const shouldExpire = input.expireAll
+      || (Number.isFinite(expiresAt) && expiresAt <= input.now.getTime());
+    if (!shouldExpire) {
+      return state;
+    }
+    return appendImplicitProductIntentTransitionSidecar({
+      state,
+      channelId: input.channelId,
+      resolvedChoice: {
+        action: 'handled',
+        candidateMessage: openCandidate.candidateMessage,
+        originalMessage: openCandidate.originalMessage,
+        candidate: openCandidate.candidate,
+        productIntentCommand: null,
+      },
+      event: 'expired',
+      locale: input.locale,
+      now: input.now,
+    }).state;
+  }, input.state);
 }
 
 function appendImplicitProductIntentDecline(input: {
@@ -1712,6 +1810,15 @@ export async function beginChannelMessageDispatch(
       },
     );
     nextState = userAppend.state;
+    if (productIntentCommand.command === 'chat') {
+      nextState = appendExpiredImplicitProductIntentCandidates({
+        state: nextState,
+        channelId,
+        expireAll: true,
+        locale,
+        now,
+      });
+    }
     if (implicitProductIntentChoice?.action === 'confirm') {
       const transitionAppend = appendImplicitProductIntentTransitionSidecar({
         state: nextState,
@@ -2107,9 +2214,16 @@ export async function beginChannelMessageDispatch(
     preparedTurn.latestCheckpoint,
     now,
   );
+  nextState = appendExpiredImplicitProductIntentCandidates({
+    state: nextState,
+    channelId,
+    expireAll: false,
+    locale: resolveProductIntentMessageLocale(channelBeforeMessage, options.transportLocale),
+    now,
+  });
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
-    channel: channelBeforeMessage,
+    channel: requireChannel(nextState, channelId),
     channelId,
     userMessage: preparedTurn.userMessage,
     body: payload.body,

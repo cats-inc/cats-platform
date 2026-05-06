@@ -1843,6 +1843,7 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.implicitProductIntent.confirmed.work': '已確認 Work intake。',
   'chat.implicitProductIntent.confirmed.code': '已確認 Code intake。',
   'chat.implicitProductIntent.declined': '已保留為 chat。',
+  'chat.implicitProductIntent.expired': '建議已過期。',
   'shared.addCatPanelTitle': '新增貓到聊天室',
   'shared.addCatPanelClose': '關閉',
   'shared.addCatPanelChooseExisting': '選擇既有',

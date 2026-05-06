@@ -1975,6 +1975,7 @@ export const messageKeys = {
   chatImplicitProductIntentConfirmedCode:
     'chat.implicitProductIntent.confirmed.code',
   chatImplicitProductIntentDeclined: 'chat.implicitProductIntent.declined',
+  chatImplicitProductIntentExpired: 'chat.implicitProductIntent.expired',
   sharedAddCatPanelTitle: 'shared.addCatPanelTitle',
   sharedAddCatPanelClose: 'shared.addCatPanelClose',
   sharedAddCatPanelChooseExisting: 'shared.addCatPanelChooseExisting',

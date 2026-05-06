@@ -135,11 +135,11 @@ pipeline, with no parallel durable intake path.
 
 ### Phase 5: Anti-nag controls and close-out
 
-- [ ] Task 5.1: Add candidate cooldown or suppression state for declined and
+- [x] Task 5.1: Add candidate cooldown or suppression state for declined and
       repeated suggestions: 15-minute candidate TTL, five-minute lane cooldown
       after decline, and expiry of outstanding suggestions when explicit
       `/chat` posture is selected.
-- [ ] Task 5.1a: At the candidate-write layer, treat a re-detected
+- [x] Task 5.1a: At the candidate-write layer, treat a re-detected
       `(messageId, targetProduct)` pair as an idempotent duplicate: do not
       append a second candidate system segment for the same `candidateId`. The
       detector itself is deterministic, so this guard sits at the persistence
@@ -180,7 +180,9 @@ materialization, and command-pipeline drift.
 - Candidate, confirm, decline, and expire are append-only system segments keyed
   by `candidateId`.
 - Web v1 reuses the existing `ChatMessage.choices` schema. Telegram v1 uses
-  inline keyboards with `callback_data` carrying `candidateId`.
+  inline keyboards with compact `callback_data` carrying source message id,
+  target product, and transition; the bridge resolves the full `candidateId`
+  from transcript metadata.
 - Mobile renders candidate/confirmation system segments as read-only entries
   in this MVP; accidental confirm/decline taps surface the standard
   desktop-only alert.
@@ -244,6 +246,7 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Phase 5 anti-nag slice landed: routing now suppresses new suggestions for five minutes after a decline, expires outstanding suggestions when `/chat` is selected, expires TTL-stale suggestions before later candidate writes, and skips duplicate candidate writes for the same `candidateId` at the persistence boundary. |
 | 2026-05-06 | Phase 3 Telegram callback slice landed: Telegram callback queries can now be parsed as implicit-intent confirm/decline actions and bridged into the same Chat `choiceResponse` path used by Web. Callback data uses `ipi:v1:<sourceMessageId>:<w|c>:<confirm|decline>` and the bridge resolves the full candidate from transcript metadata to stay under Telegram's 64-byte callback limit. |
 | 2026-05-06 | Phase 3 Telegram suggestion slice landed: ordinary Telegram direct text now uses the same routing-side detector path as Web, and candidate system messages can be delivered back to Telegram as a separate suggestion with inline keyboard markup. |
 | 2026-05-06 | Phase 4 handoff coverage slice landed: confirmed implicit Work and Code candidates now have tests proving they synthesize the same product-intent command shape as explicit `/work` and `/code`, preserve original-message context without rewriting the transcript, and reuse SPEC-104's strong/weak audience gate. Full lifecycle coverage for supersede, abandon, projection, and weak/unknown variants remains in Task 4.6. |

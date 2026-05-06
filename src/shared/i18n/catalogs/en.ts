@@ -1891,6 +1891,7 @@ export const enCatalog: MessageCatalog = {
   'chat.implicitProductIntent.confirmed.work': 'Confirmed Work intake.',
   'chat.implicitProductIntent.confirmed.code': 'Confirmed Code intake.',
   'chat.implicitProductIntent.declined': 'Kept as chat.',
+  'chat.implicitProductIntent.expired': 'Suggestion expired.',
   'shared.addCatPanelTitle': 'Add cat to chat',
   'shared.addCatPanelClose': 'Close',
   'shared.addCatPanelChooseExisting': 'Choose existing',

@@ -485,6 +485,159 @@ test('beginChannelMessageDispatch records implicit candidate decline without pro
   );
 });
 
+test('routeChannelMessage suppresses implicit candidates briefly after decline', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('We can keep chatting.');
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+  if (!candidateMessage) {
+    throw new Error('Expected implicit product-intent candidate message.');
+  }
+  const declined = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: 'Q: Turn this message into Work intake?\nA: Keep as chat',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(candidateMessage, 'decline'),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const next = await routeChannelMessage(
+    declined.state,
+    channelId,
+    {
+      body: 'Please plan the release requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:04:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const channel = requireChannel(next.state, channelId);
+
+  assert.equal(
+    channel.messages.filter((message) =>
+      message.metadata.event === 'implicit_product_intent_candidate_suggested').length,
+    1,
+  );
+});
+
+test('beginChannelMessageDispatch expires open implicit candidates on chat posture', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('We can keep chatting.');
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const cleared = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: '/chat',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const channel = requireChannel(cleared.state, channelId);
+  const expiredTransition = channel.messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_expired');
+  const transition = expiredTransition?.metadata.implicitProductIntentTransition as
+    | ImplicitProductIntentCandidateTransitionMetadata
+    | undefined;
+
+  assert.equal(expiredTransition?.body, 'Suggestion expired.');
+  assert.equal(transition?.event, 'expired');
+});
+
+test('routeChannelMessage expires old implicit candidates before suggesting another', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('We can discuss it.');
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const next = await routeChannelMessage(
+    initial.state,
+    channelId,
+    {
+      body: 'Please plan the launch requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:17:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const channel = requireChannel(next.state, channelId);
+
+  assert.equal(
+    channel.messages.filter((message) =>
+      message.metadata.event === 'implicit_product_intent_candidate_expired').length,
+    1,
+  );
+  assert.equal(
+    channel.messages.filter((message) =>
+      message.metadata.event === 'implicit_product_intent_candidate_suggested').length,
+    2,
+  );
+});
+
 test('beginChannelMessageDispatch confirms implicit candidates through slash-mode intake once', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);
