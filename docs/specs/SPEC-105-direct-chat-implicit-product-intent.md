@@ -131,10 +131,10 @@ message>`.
 27. Confirmed implicit Work/Code shall synthesize product-intent command
     metadata for routing, with `argumentText` set to the trimmed original owner
     message body and `productIntentArgumentProvided: true`.
-28. Confirmed implicit Work/Code shall not set `rawCommandToken` to a fake
-    slash token such as `/work` or `/code`. If the current command metadata
-    contract requires `rawCommandToken: string`, Phase 4 shall widen that field
-    before implementing implicit confirmation.
+28. Confirmed implicit Work/Code shall set `rawCommandToken` to the fixed
+    non-slash sentinel `(implicit-confirmation)`. The implementation shall not
+    widen `ProductIntentCommandMetadata.rawCommandToken` to nullable for this
+    MVP, and shall not set it to a fake slash token such as `/work` or `/code`.
 29. Confirmed implicit Work/Code command metadata shall carry
     `implicitConfirmed: true`, `originalCandidateId`, and `originalMessageId`
     or equivalent additive fields so downstream readers can distinguish it from
@@ -213,6 +213,10 @@ The baseline detector:
   is long enough to be actionable
 - treats `low` and ambiguous results as `none` in v1
 
+The cue lists above are illustrative, not exhaustive. The canonical v1 cue
+list lives in the detector implementation and its tests. SPEC-105 defines the
+contract and safety posture; it does not freeze every keyword.
+
 Provider-backed or hybrid classifiers are future work. They need a separate
 budget, opt-out, and observability decision before they can run on ordinary
 direct-chat traffic.
@@ -256,6 +260,9 @@ interface ImplicitProductIntentCandidateMetadata {
 `candidateId` is the idempotency key and is derived from the original message
 id, target product, and metadata version. A practical v1 format is
 `implicit-product-intent:v1:<messageId>:<targetProduct>`.
+Detector v1 does not rerun for the same `messageId`; edits or resends must
+produce a new message id. If the same `candidateId` is observed again, the
+candidate is treated as an idempotent duplicate, not a new suggestion.
 
 ### Confirmation Transcript Shape
 
@@ -274,7 +281,7 @@ interface ImplicitProductIntentCandidateTransitionMetadata {
     sourceKind: 'implicit_confirmation';
     command: 'work' | 'code';
     argumentText: string;
-    rawCommandToken: null;
+    rawCommandToken: '(implicit-confirmation)';
     botSuffix: null;
     implicitConfirmed: true;
     originalCandidateId: string;
@@ -303,7 +310,7 @@ For routing, confirmed implicit intent synthesizes command metadata with:
 - `targetProduct = command`
 - `argumentText = originalMessage.body.trim()`
 - `productIntentArgumentProvided = true`
-- `rawCommandToken = null` or an equivalent non-slash sentinel
+- `rawCommandToken = '(implicit-confirmation)'`
 - `botSuffix = null`
 - `implicitConfirmed = true`
 - `originalCandidateId` and `originalMessageId`
@@ -318,6 +325,17 @@ uses an inline keyboard with `callback_data` carrying the `candidateId` and the
 requested transition (`confirm` or `decline`). Reply keyboards and free-form
 text confirmation are out of v1 because they conflict with multiple outstanding
 candidates in the same chat.
+
+Web reuses the existing `ChatMessage.choices` schema from SPEC-104's human-gate
+UI. Candidate system segments carry choices with `confirm_work` or
+`confirm_code` plus `decline` option ids; they do not introduce a second inline
+choice widget contract.
+
+Mobile does not get an implicit-intent UI in this MVP, but shared transcripts
+may still contain candidate and transition system segments. Mobile shall render
+those segments as read-only system entries. If a mobile renderer exposes the
+shared choices by accident or through reused components, confirm/decline taps
+shall surface the standard desktop-only alert instead of performing the action.
 
 ### Suppression Model v1
 
@@ -357,11 +375,13 @@ Candidate suppression is lane-local:
   message>`.
 - Confirmed implicit command metadata uses the original message body as
   `argumentText`, sets `productIntentArgumentProvided: true`, and does not fake
-  a slash `rawCommandToken`.
+  a slash `rawCommandToken`; it uses `(implicit-confirmation)`.
 - Declining or ignoring a candidate leaves the lane as ordinary chat.
 - Weak/unknown direct Cats remain human-gated after confirmation.
 - Non-direct channels do not run implicit detection in this MVP.
 - Candidate and confirmation metadata preserve original message source context.
+- Detector v1 treats repeated detection for the same `messageId` as an
+  idempotent duplicate; edits/resends require a new message id.
 - False-positive tests prove casual chat does not nag the owner.
 - No retired route/control labels are introduced.
 
@@ -371,6 +391,8 @@ Candidate suppression is lane-local:
       Chat transcript metadata?
 - [ ] Should a future provider-backed detector exist behind an explicit opt-in
       budget, or should natural-language intent remain deterministic only?
+- [ ] Should a future v2 suppression model use semantic similarity or embedding
+      distance to decide whether a later owner message is materially new?
 
 ## References
 

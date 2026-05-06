@@ -57,6 +57,9 @@ semantics as SPEC-104: `/work <original message>` or `/code <original message>`.
       transitions: `suggested`, `confirmed`, `declined`, and `expired`.
       Projection status is derived from these events rather than mutating the
       original user message as the audit source.
+- [ ] Task 1.2b: Treat repeated detection for the same `messageId` and target
+      product as an idempotent duplicate. Detector v1 does not rerun for the
+      same message id; edits/resends must create a new message id.
 - [ ] Task 1.3: Ensure explicit `/chat`, `/work`, and `/code` messages remain
       owned by SPEC-104 and are never reclassified by this detector.
 - [ ] Task 1.4: Add unit tests for Work, Code, none, low-confidence ambiguity,
@@ -73,7 +76,9 @@ durable product side effects.
 ### Phase 2: Web confirmation UX
 
 - [ ] Task 2.1: Show a Web direct-lane confirmation affordance for Work/Code
-      candidates using localized copy.
+      candidates using localized copy and the existing `ChatMessage.choices`
+      schema from SPEC-104's human-gate UI (`confirm_work` /
+      `confirm_code` / `decline` option ids).
 - [ ] Task 2.2: Add decline/ignore behavior that leaves posture and active
       anchors unchanged.
 - [ ] Task 2.3: Add idempotent confirm behavior so one candidate cannot create
@@ -117,9 +122,9 @@ same confirmation semantics as Web.
       weak, and unknown Cats.
 - [ ] Task 4.5: Extend product-intent command metadata for implicit
       confirmation: `argumentText` is the trimmed original message body,
-      `productIntentArgumentProvided` is always true, no fake slash
-      `rawCommandToken` is written, and metadata carries `implicitConfirmed`,
-      `originalCandidateId`, and `originalMessageId`.
+      `productIntentArgumentProvided` is always true, `rawCommandToken` is the
+      fixed non-slash sentinel `(implicit-confirmation)`, and metadata carries
+      `implicitConfirmed`, `originalCandidateId`, and `originalMessageId`.
 - [ ] Task 4.6: Add integration tests proving confirmed implicit intent follows
       the same weak/unknown human-gate, active-anchor lifecycle, supersede,
       abandon, and projection paths as explicit slash commands.
@@ -167,8 +172,14 @@ materialization, and command-pipeline drift.
   command data is derived metadata.
 - Candidate, confirm, decline, and expire are append-only system segments keyed
   by `candidateId`.
-- Web v1 uses inline message choices. Telegram v1 uses inline keyboards with
-  `callback_data` carrying `candidateId`.
+- Web v1 reuses the existing `ChatMessage.choices` schema. Telegram v1 uses
+  inline keyboards with `callback_data` carrying `candidateId`.
+- Mobile renders candidate/confirmation system segments as read-only entries
+  in this MVP; accidental confirm/decline taps surface the standard
+  desktop-only alert.
+- Confirmed implicit commands keep `ProductIntentCommandMetadata.rawCommandToken`
+  as a string and use the sentinel `(implicit-confirmation)`. Do not widen it
+  to nullable for this MVP.
 - Candidate-stage Cat behavior remains ordinary direct chat. The detector is a
   product sidecar and does not suppress the Cat's normal reply.
 - Detection and Cat capability are separate. The detector identifies product
@@ -185,12 +196,16 @@ materialization, and command-pipeline drift.
   - candidate metadata includes `candidateId`, original message id, transport,
     and expiry
   - candidate transition metadata is append-only and idempotent
+  - repeated detector execution for the same `messageId` and target product is
+    a no-op
   - non-direct messages are ignored
 - **Integration tests**:
   - candidate suggestion creates no Work Item before confirmation
   - ordinary Cat dispatch still proceeds on a candidate suggestion
   - Web strong-Cat Work confirm creates the same draft anchor as SPEC-104
   - Telegram strong-Cat Code confirm creates the same draft anchor as SPEC-104
+  - mobile renders candidate/confirmation system segments read-only and blocks
+    confirm/decline with the standard desktop-only alert
   - confirmed Work candidate follows explicit `/work` semantics
   - confirmed Code candidate follows explicit `/code` semantics
   - weak/unknown Cats remain human-gated after confirmation
@@ -222,6 +237,7 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Follow-up review close-out: `rawCommandToken` now stays string-only with `(implicit-confirmation)` sentinel; Web confirmation reuses `ChatMessage.choices`; mobile renders candidate/transition segments read-only with desktop-only alert on accidental action taps; detector cue examples are illustrative and repeated same-message detection is idempotent. |
 | 2026-05-06 | Follow-up review alignment: detector v1 is now locked to conservative deterministic heuristics; candidate/confirm/decline/expire are append-only system events; Web uses inline message choices, Telegram uses inline keyboard callback data; confirmed implicit commands synthesize routing metadata without rewriting transcript or faking slash tokens. |
 | 2026-05-06 | Plan created as a follow-up to PLAN-092. Natural-language Work/Code detection is candidate-only and must bridge into SPEC-104 after explicit owner confirmation. |
 
