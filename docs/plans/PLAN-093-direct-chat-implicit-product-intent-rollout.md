@@ -46,24 +46,24 @@ semantics as SPEC-104: `/work <original message>` or `/code <original message>`.
 
 ### Phase 1: Detection contract and metadata
 
-- [ ] Task 1.1: Define a Chat-owned deterministic
+- [x] Task 1.1: Define a Chat-owned deterministic
       `detectImplicitProductIntent` contract for ordinary direct-message text.
       V1 is local heuristic only: no provider, runtime session, or LLM
       classifier call per ordinary chat message.
-- [ ] Task 1.2: Add the candidate metadata builder for original message id,
+- [x] Task 1.2: Add the candidate metadata builder for original message id,
       source channel/conversation, transport, target product, confidence,
       reason code, `candidateId`, and expiry timestamp.
-- [ ] Task 1.2a: Add append-only system-segment metadata for candidate
+- [x] Task 1.2a: Add append-only system-segment metadata for candidate
       transitions: `suggested`, `confirmed`, `declined`, and `expired`.
       Projection status is derived from these events rather than mutating the
       original user message as the audit source. Candidate and transition
       metadata live under `metadata.implicitProductIntentCandidate` and
       `metadata.implicitProductIntentTransition` on their system segments.
-- [ ] Task 1.3: Ensure explicit `/chat`, `/work`, and `/code` messages remain
+- [x] Task 1.3: Ensure explicit `/chat`, `/work`, and `/code` messages remain
       owned by SPEC-104 and are never reclassified by this detector.
-- [ ] Task 1.4: Add unit tests for Work, Code, none, low-confidence ambiguity,
+- [x] Task 1.4: Add unit tests for Work, Code, none, low-confidence ambiguity,
       and obvious casual-chat false positives.
-- [ ] Task 1.5: Add non-direct negative tests proving the detector is not
+- [x] Task 1.5: Add non-direct negative tests proving the detector is not
       applied outside `direct_message` lanes.
 - [ ] Task 1.6: Add tests proving ordinary direct-chat dispatch still proceeds
       when a candidate is suggested. The suggestion is a system/UI sidecar, not
@@ -242,6 +242,7 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Phase 1 detector/metadata slice landed: added the browser-safe deterministic `detectImplicitProductIntent` helper, candidate/transition metadata builders, typed channel metadata keys, and unit coverage for direct-only detection, slash-command bypass, casual false positives, candidate expiry, and sentinel confirmed-command metadata. Task 1.6 remains pending because routing has not yet been wired. |
 | 2026-05-06 | Follow-up review close-out (round 2): metadata key names pinned (`metadata.implicitProductIntentCandidate` for suggestions, `metadata.implicitProductIntentTransition` for confirm/decline/expire) so renderers can disambiguate from SPEC-104's `metadata.directSlashMode` and weak-gate `ChatMessage.choices`; the candidate-write idempotency guard moved from Phase 1 (Task 1.2b) into Phase 5 (Task 5.1a) where the persistence layer can actually enforce it; mobile read-only constraint clarified as a v1 scope decision specific to implicit-intent confirmation rather than a global mobile rule. |
 | 2026-05-06 | Follow-up review close-out: `rawCommandToken` now stays string-only with `(implicit-confirmation)` sentinel; Web confirmation reuses `ChatMessage.choices`; mobile renders candidate/transition segments read-only with desktop-only alert on accidental action taps; detector cue examples are illustrative and repeated same-message detection is idempotent. |
 | 2026-05-06 | Follow-up review alignment: detector v1 is now locked to conservative deterministic heuristics; candidate/confirm/decline/expire are append-only system events; Web uses inline message choices, Telegram uses inline keyboard callback data; confirmed implicit commands synthesize routing metadata without rewriting transcript or faking slash tokens. |
