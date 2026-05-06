@@ -115,31 +115,29 @@ capability lookup, not a new classifier.
       summary, `goal`, non-empty `successCriteria[]`, non-empty
       `outOfScope[]`, non-empty `openQuestions[]`, proposed next action, source
       conversation, audience Cat, command segment, and target product hint.
-- [ ] Task 3.2a: Gate `createWorkItem` tool exposure by direct posture and
-      capability profile. Strong `/work` and `/code` may receive the tool;
+- [x] Task 3.2a: Gate draft Work Item anchor creation by direct posture and
+      capability profile. Strong `/work` and `/code` create a draft anchor;
       weak/unknown and `/chat` must not.
 - [x] Task 3.2b: Add the Concierge prompt protocol per SPEC-104 §Concierge
       Prompt Framework: one focal clarifying question per assistant turn (no
       stacking), default priority order (`goal` → `successCriteria` →
       `outOfScope` → `openQuestions`) with consolidation when the user
       volunteers info unsolicited, a current-understanding recap surfaced at
-      least once before invoking `createWorkItem`, and explicit invocation
+      least once before proposing task/run follow-up, and explicit follow-up
       only when the schema is satisfied or the clarification budget is
       exhausted.
-- [ ] Task 3.2c: Enforce the `createWorkItem` schema so `goal`,
+- [x] Task 3.2c: Enforce the draft Work Item anchor schema so `goal`,
       `successCriteria[]`, `outOfScope[]`, and `openQuestions[]` are non-empty
       before durable creation.
-- [ ] Task 3.2d: Add the clarification escape hatch: after three assistant
+- [x] Task 3.2d: Add the clarification escape hatch: after three assistant
       clarification turns, the Cat must either create the Work Item if schema
       is satisfied or ask the human to confirm creation with stated
       assumptions.
-- [ ] Task 3.2e: Enforce per-turn tool-grant separation: when `createWorkItem`
-      succeeds in an assistant turn, the dispatch layer shall not expose
-      `createTask` or `createRun` in the same turn. Conductor tools become
-      available starting from the next user turn, on top of the existing
-      SPEC-082 supervision approval gates. The successful `createWorkItem`
-      result must be surfaced to the user (system or assistant message
-      naming the Work Item id and summary) within the same turn it ran.
+- [x] Task 3.2e: Enforce per-turn separation: product-intent turns create only
+      the draft Work Item anchor and return a system acknowledgement without
+      dispatching to runtime, `createTask`, `createRun`, or Code execution in
+      the same turn. Follow-up task/run work starts on later user turns through
+      existing Work/Code supervision boundaries.
 - [x] Task 3.3: Create the Work Item through existing Core/Work creation paths,
       writing `conversationId`, `metadata.directSlashModeIntake`, and lane
       active-anchor state.
@@ -147,19 +145,19 @@ capability lookup, not a new classifier.
       with `targetProduct: 'code'`; Code-bound task/run execution begins only
       after the Work Item exists and only in a subsequent user turn (Task
       3.2e).
-- [ ] Task 3.5: Add tests proving the same direct audience Cat remains attached
+- [x] Task 3.5: Add tests proving the same direct audience Cat remains attached
       to the follow-up path after anchor creation.
-- [ ] Task 3.6: Add separate tests for tool exposure (3.2a), Concierge prompt
+- [x] Task 3.6: Add separate tests for command gating (3.2a), Concierge prompt
       protocol — one focal question per turn + recap before creation (3.2b),
       schema validation (3.2c), clarification-budget behavior (3.2d),
-      tool-chain separation — same-turn `createWorkItem` does not expose
-      `createTask` / `createRun` and they reappear in the next user turn
+      turn separation — same-turn draft anchor creation does not dispatch to
+      runtime, `createTask`, `createRun`, or Code execution
       (3.2e), and full active-anchor lifecycle — clear on `/chat`, clear on
       Work Item terminal status, no auto-resume on next `/work` (Task 1.5
       behavior, exercised end-to-end here).
 
 **Deliverables**: strong direct Cats can create Work Item anchors through
-existing product boundaries, with prompt/tool/schema/turn-separation all
+existing product boundaries, with prompt/schema/turn-separation all
 tested independently.
 
 ### Phase 4: Weak / unknown human gate
@@ -188,7 +186,7 @@ tested independently.
       active-anchor resolution.
 - [ ] Task 5.3: Start supervised task/run execution only through existing
       Work/Code run APIs and supervision boundaries.
-- [ ] Task 5.4: Add tests proving direct slash-mode flows do not call runtime
+- [x] Task 5.4: Add tests proving direct slash-mode flows do not call runtime
       create/send directly from product code.
 - [ ] Task 5.5: Add read-model/projection tests proving Work/Code surfaces show
       Work Items created from direct chat.
@@ -219,10 +217,10 @@ demo Work Items unless the user explicitly approves a write.
 | `src/products/chat/renderer/components/Composer.tsx` (or equivalent) | Modify | Hook web composer to invoke shared parser on `/`-prefix before send (Task 1.8). |
 | `src/products/chat/**` | Modify | Write posture system segments, keep direct routing ownership, track active anchor current state with full lifecycle. |
 | `src/platform/transports/telegram/**` | Modify | Route product-intent commands separately from transport-control commands; sync command-menu entries via existing `setMyCommands`. |
-| `src/platform/supervision/**` | Reuse/Modify | Resolve capability profile through existing provider capability bootstrap config; enforce per-turn tool-grant separation between `createWorkItem` and `createTask` / `createRun`. |
+| `src/platform/supervision/**` | Reuse/Modify | Resolve capability profile through existing provider capability bootstrap config; keep follow-up task/run work inside existing supervision boundaries. |
 | `src/products/work/api/**` | Modify | Create/link Work Item anchors through existing Work/Core boundaries; populate `conversationId` and additive metadata only (no new Core fields). |
 | `src/products/code/api/**` | Modify | Create/link Code-bound task/run intent through existing Code boundaries; gated by Work Item anchor existing first. |
-| `tests/**` | Modify/Create | Command parsing, capability bridge, prompt-protocol, schema validation, tool-chain separation, active-anchor lifecycle, and projection coverage. |
+| `tests/**` | Modify/Create | Command parsing, capability bridge, prompt protocol, schema validation, turn separation, active-anchor lifecycle, and projection coverage. |
 | `docs/specs/SPEC-038-telegram-bot-commands-and-transport-control-surface.md` | Modify | Extend `/help` and `/commands` outputs to list `/chat`, `/work`, `/code` (Task 1.9). |
 | `docs/specs/SPEC-104-direct-chat-slash-mode-work-intake.md` | Modify | Keep requirement details aligned with implementation. |
 | `docs/plans/PLAN-092-direct-chat-slash-mode-work-intake-rollout.md` | Modify | Track progress by slice. |
@@ -242,9 +240,10 @@ demo Work Items unless the user explicitly approves a write.
 - Active-anchor cache lifecycle is eager-clear: `/chat` posture change clears,
   Work Item terminal status clears, and a subsequent `/work` or `/code`
   starts a fresh intake (no auto-resume).
-- `createWorkItem` and `createTask` / `createRun` are turn-separated. The
-  successful Work Item anchor is surfaced to the user before any Conductor
-  tool can run. SPEC-082 supervision gates apply on top of this separation.
+- Draft Work Item anchor creation and task/run follow-up are turn-separated.
+  The successful Work Item anchor is surfaced to the user before any
+  Conductor-style follow-up can run. SPEC-082 supervision gates apply on top of
+  this separation.
 - Weak/unknown direct Cats require human confirmation; no automatic hand-off to
   another Cat in this plan.
 - Work Item durable record creation happens through product-owned APIs above
@@ -276,16 +275,16 @@ demo Work Items unless the user explicitly approves a write.
     (no auto-resume of any prior Work Item)
 - **Prompt-behavior tests**:
   - Concierge prompt asks one focal question per turn, not stacked
-  - prompt surfaces a current-understanding recap before invoking
-    `createWorkItem`
-  - prompt invokes `createWorkItem` only when schema is satisfied or the
+  - prompt surfaces a current-understanding recap before proposing task/run
+    follow-up
+  - prompt proposes follow-up only when schema is satisfied or the
     clarification budget is exhausted
-- **Tool-grant separation tests**:
-  - successful `createWorkItem` in turn N does not expose `createTask` or
-    `createRun` in turn N
-  - both Conductor tools reappear in turn N+1 (next user turn)
+- **Turn-separation tests**:
+  - successful draft anchor creation in turn N does not dispatch runtime,
+    `createTask`, `createRun`, or Code execution in turn N
+  - follow-up prompt/context appears in turn N+1 (next user turn)
   - separation holds independently of SPEC-082 approval gate state
-  - `createWorkItem` result is surfaced to the user in the same turn it ran
+  - draft anchor result is surfaced to the user in the same turn it was created
 - **Integration tests**:
   - strong `/work` creates a Work Item with source conversation and Cat context
   - strong `/code` creates a Work Item with `targetProduct: 'code'`, then
@@ -314,8 +313,8 @@ demo Work Items unless the user explicitly approves a write.
 | Per-lane posture cache becomes the audit source of truth | High | Phase 1 requires message-stream posture events before durable creation. |
 | Strong/weak logic drifts into provider-name checks | High | Capability bridge tests use PLAN-080 config fixtures and absent-config cases. |
 | Weak Cat creates durable work by accident | High | Centralize durable-action permission result and test weak/unknown paths. |
-| Tool exposure lands without prompt/schema support | High | Phase 3 splits tool gating, Concierge prompt, and schema validation into separate tasks/tests. |
-| `createTask` / `createRun` chained into the same turn as `createWorkItem` | High | Phase 3 Task 3.2e enforces per-turn tool-grant separation in the dispatch layer; tested in Task 3.6. |
+| Anchor creation lands without prompt/schema support | High | Phase 3 splits command gating, Concierge prompt, and schema validation into separate tasks/tests. |
+| `createTask` / `createRun` chained into the same turn as draft anchor creation | High | Phase 3 Task 3.2e enforces per-turn separation in the dispatch layer; tested in Task 3.6. |
 | Concierge stacks multiple questions per turn, overwhelming the user and burning the clarification budget | Medium | Phase 3 Task 3.2b prompt protocol mandates one focal question per turn with a recap before creation; tested in Task 3.6. |
 | Active-anchor cache leaks across postures (e.g. `/chat` does not detach, `/work` after `/chat` silently resumes prior Work Item) | Medium | Phase 1 Task 1.5 implements full lifecycle (clear on `/chat`, clear on terminal status, no auto-resume); covered by unit tests in Task 1.5 and integration tests in Phase 5. |
 | Direct lane silently hands off to another Cat | Medium | Store/source context checks require the same direct audience Cat unless the owner explicitly switches. |
@@ -327,6 +326,7 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Spec alignment slice: SPEC-104 and PLAN-092 now reflect the implemented MVP contract: strong slash-mode command turns create a draft Work Item anchor directly, do not dispatch runtime/task/run in the same turn, and follow-up prompt/context handles Concierge clarification on later turns. |
 | 2026-05-06 | Human-gate slice: weak/unknown `/work` and `/code` responses now carry a machine-readable human gate with draft summary and suggested next actions, use Telegram-safe copy without provider jargon, and tests assert no durable Work Item is created on weak/unknown paths. |
 | 2026-05-06 | Work projection slice: added coverage proving Work product projections list draft Work Items created from direct slash-mode chat, including source conversation and assigned direct Cat context. |
 | 2026-05-06 | Follow-up prompt/context slice: direct-lane follow-up messages now carry `directSlashModeIntakeRef` when an active anchor exists, runtime context forwards the anchor metadata, and Cat dispatch instructions include the Concierge protocol (one focal question, priority order, recap before task/run follow-up, no duplicate Work Item anchor). |
@@ -337,7 +337,7 @@ demo Work Items unless the user explicitly approves a write.
 | 2026-05-06 | Web composer slice: outgoing Web messages are tagged with `messageMetadata.productIntentCommand` when the shared parser recognizes `/chat`, `/work`, or `/code`; non-product slash commands still pass through as ordinary message content. |
 | 2026-05-06 | Telegram discoverability slice: command catalog and localized `/help` text now list `/chat`, `/work`, and `/code` without registering those product-intent commands as transport-control handlers. SPEC-038 now documents the discoverability-only relationship. |
 | 2026-05-06 | Implementation started: added the Chat-owned `parseProductIntentCommand` shared parser with tests covering `/chat` / `/work` / `/code`, Telegram bot suffix stripping, multiline `argumentText`, transport-control separation, prefix false positives, and ordinary-text pass-through. Telegram/Web ingress hooks remain in Task 1.8 and later slices. |
-| 2026-05-06 | Third-pass close-out: locked active-anchor lifecycle (eager clear on `/chat`, clear on Work Item terminal status `completed`/`cancelled`/`archived`, no auto-resume on next `/work`); locked per-turn tool-grant separation between `createWorkItem` and `createTask`/`createRun`; specified the Concierge prompt protocol (one focal question per turn, default priority order, recap-before-creation); confirmed `CoreWorkItemRecord.conversationId` already exists and `CoreRecordMetadata` is open-ended so no Core schema changes are required; added Task 1.8 for web composer ingress and Task 1.9 for SPEC-038 `/help` follow-up. Risks table updated to cover prompt-stacking, tool-chain leakage, and active-anchor lifecycle drift. |
+| 2026-05-06 | Third-pass close-out: locked active-anchor lifecycle (eager clear on `/chat`, clear on Work Item terminal status `completed`/`cancelled`/`archived`, no auto-resume on next `/work`); locked per-turn separation between draft anchor creation and task/run follow-up; specified the Concierge prompt protocol (one focal question per turn, default priority order, recap-before-follow-up); confirmed `CoreWorkItemRecord.conversationId` already exists and `CoreRecordMetadata` is open-ended so no Core schema changes are required; added Task 1.8 for web composer ingress and Task 1.9 for SPEC-038 `/help` follow-up. Risks table updated to cover prompt-stacking, same-turn execution leakage, and active-anchor lifecycle drift. |
 | 2026-05-06 | Follow-up review close-out: locked posture to message-stream system segments, chose `/code` as Work Item anchor with Code target, defined source-ref metadata and active-anchor cache, split prompt/tool/schema tasks, and added parser/menu/idempotency/non-direct requirements. |
 | 2026-05-06 | Plan created with ADR-101 and SPEC-104 to capture direct-message slash-mode work intake MVP. |
 

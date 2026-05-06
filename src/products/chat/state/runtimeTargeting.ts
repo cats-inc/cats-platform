@@ -724,6 +724,7 @@ function buildDirectSlashModeFollowUpInstructions(sourceMessage: ChatMessage): s
     'Concierge protocol: ask one focal clarifying question per assistant turn.',
     'Prioritize goal, then success criteria, then out-of-scope boundaries, then remaining open questions.',
     'Surface a brief current-understanding recap before proposing task or run follow-up.',
+    'After three assistant clarification turns, either proceed with stated assumptions or ask the human to confirm creation with those assumptions.',
     'Do not create a second Work Item anchor for this turn.',
     intakeRef.targetProduct === 'code'
       ? 'Treat follow-up execution as Code-bound only after the Work Item remains the active anchor.'

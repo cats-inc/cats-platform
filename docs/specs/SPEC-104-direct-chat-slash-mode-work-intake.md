@@ -131,12 +131,13 @@ labels, runtime labels, or a second model-strength classifier.
     the first next action is Code-bound.
 24. The clarification loop shall be Cat-initiated when required; the user shall
     not need to fill a separate intake form for the MVP.
-25. The Cat shall create a durable Work Item only through a posture/capability-
-    gated `createWorkItem` tool with a schema that requires non-empty `goal`,
-    `successCriteria[]`, `outOfScope[]`, and `openQuestions[]`.
-26. The Concierge system prompt shall explicitly tell the Cat when to ask
-    clarifying questions and when to call the gated creation tool. Tool exposure
-    alone is not sufficient.
+25. The product shall create a durable draft Work Item anchor only through the
+    posture/capability-gated direct slash-mode command path. The draft schema
+    requires non-empty `goal`, `successCriteria[]`, `outOfScope[]`, and
+    `openQuestions[]`.
+26. The Concierge system prompt shall explicitly tell the Cat how to clarify
+    against the existing draft anchor and when to propose task/run follow-up.
+    Creating the anchor alone is not sufficient.
 27. The default clarification budget is three assistant clarification turns
     after entering `/work` or `/code`. When the budget is exhausted, the Cat
     shall either create the Work Item if the schema is satisfied or ask the
@@ -187,16 +188,16 @@ labels, runtime labels, or a second model-strength classifier.
 
 #### Tool-chain separation
 
-43. After a `createWorkItem` tool call succeeds in an assistant turn, that same
-    turn shall not expose `createTask` or `createRun`. Conductor tools become
-    available starting from the next user turn. The constraint applies even
-    when the same direct Cat is wearing both Concierge and Conductor hats.
+43. The product-intent command turn that creates a draft Work Item anchor shall
+    not dispatch to runtime, `createTask`, `createRun`, or Code execution in the
+    same turn. Follow-up task/run work begins only on later user turns. The
+    constraint applies even when the same direct Cat is wearing both Concierge
+    and Conductor hats.
 44. SPEC-082 supervision approval gates apply on top of the turn-separation
     rule above. Approval gates are not a substitute for the turn separation.
-45. The `createWorkItem` invocation result shall be surfaced to the user in the
-    same turn it succeeds (e.g. a system or assistant message that names the
-    Work Item id and summary), so the user sees the anchor before any
-    Conductor tool is offered.
+45. The draft Work Item anchor result shall be surfaced to the user in the same
+    turn it is created, so the user sees the anchor before any Conductor-style
+    follow-up can run.
 
 #### Active anchor lifecycle
 
@@ -367,11 +368,11 @@ re-attached to the lane.
 
 ### Concierge Prompt Framework
 
-The Concierge system prompt is what turns the gated `createWorkItem` tool
-exposure into observable intake behavior. Tool gating without an explicit
-prompt protocol leaves the Cat unsure when to ask vs when to call, and tends
-to either over-ask (repeats clarifying questions past the budget) or under-ask
-(creates a Work Item from one user message). The MVP prompt protocol is:
+The Concierge system prompt is what turns the gated draft Work Item anchor into
+observable intake behavior. Anchor creation without an explicit prompt protocol
+leaves the Cat unsure how to clarify and tends to either over-ask (repeats
+clarifying questions past the budget) or under-ask (jumps to execution from one
+user message). The MVP prompt protocol is:
 
 - **One focal question per assistant turn.** The Cat shall not stack multiple
   questions in one message. Stacked questions overwhelm the user, dilute
@@ -380,18 +381,17 @@ to either over-ask (repeats clarifying questions past the budget) or under-ask
   `outOfScope` → `openQuestions`. The Cat may consolidate when the user
   volunteers information unsolicited, and may revisit earlier topics if a
   later answer reveals a contradiction.
-- **Recap before creation.** The Cat shall surface a brief recap of current
-  understanding (what is clarified, what remains) at least once before
-  invoking `createWorkItem`, so the user has a chance to correct the
-  understanding before durable work is written.
-- **Explicit invocation.** The Cat shall call `createWorkItem` only when the
-  schema (`goal`, `successCriteria[]`, `outOfScope[]`, `openQuestions[]`) is
-  satisfied or when the FR-27 clarification budget is exhausted; in the latter
-  case the prompt directs the Cat to first ask the user to confirm creation
-  with stated assumptions rather than invoking the tool unilaterally.
+- **Recap before follow-up.** The Cat shall surface a brief recap of current
+  understanding (what is clarified, what remains) at least once before proposing
+  task/run follow-up, so the user has a chance to correct the understanding.
+- **Explicit follow-up.** The Cat shall propose task/run follow-up only when the
+  draft schema (`goal`, `successCriteria[]`, `outOfScope[]`, `openQuestions[]`)
+  is satisfied or when the FR-27 clarification budget is exhausted; in the
+  latter case the prompt directs the Cat to ask the user to confirm the stated
+  assumptions.
 
 This prompt content lives in product-owned prompt source (Phase 3 Task 3.2b)
-and is testable independently of tool exposure and schema validation.
+and is testable independently of command gating and schema validation.
 
 ### Web Composer Ingress
 
@@ -472,19 +472,19 @@ these semantics.
   the `conversationId` field plus `metadata.directSlashModeIntake`.
 - `/code` creates a Work Item anchor with `targetProduct: 'code'` before Code
   task/run execution begins.
-- Strong `/work` / `/code` paths test tool exposure, Concierge prompt protocol,
+- Strong `/work` / `/code` paths test command gating, Concierge prompt protocol,
   schema validation, and clarification-budget behavior independently.
-- A successful `createWorkItem` in a turn does not expose `createTask` or
-  `createRun` in the same turn; both become available in the following user
-  turn under SPEC-082 supervision approval gates.
-- The `createWorkItem` invocation result is surfaced to the user in the same
-  turn it succeeds, before any Conductor tool can run.
+- A successful draft anchor creation turn does not dispatch to runtime,
+  `createTask`, `createRun`, or Code execution in the same turn; follow-up can
+  only happen in a later user turn under SPEC-082 supervision approval gates.
+- The draft anchor result is surfaced to the user in the same turn it is
+  created, before any Conductor-style follow-up can run.
 - A `/chat` posture change clears the lane's active-anchor cache; a
   subsequent `/work` or `/code` starts a fresh intake.
 - A Work Item reaching `completed`, `cancelled`, or `archived` clears the
   lane's active-anchor cache.
 - The Concierge prompt enforces one focal question per assistant turn and
-  surfaces a recap of current understanding before invoking `createWorkItem`.
+  surfaces a recap of current understanding before proposing task/run follow-up.
 - Web composer routes `/`-prefixed messages through the shared parser before
   send; non-recognized `/`-prefixed text passes through as ordinary content.
 - SPEC-038 `/help` and `/commands` outputs list `/chat`, `/work`, and `/code`

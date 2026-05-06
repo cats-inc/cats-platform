@@ -134,6 +134,7 @@ test('direct slash-mode follow-up prompt carries Concierge protocol instructions
   assert.match(prompt.instructions ?? '', /Direct slash-mode Code intake is active/u);
   assert.match(prompt.instructions ?? '', /work-item-direct-intake-message-1/u);
   assert.match(prompt.instructions ?? '', /ask one focal clarifying question/u);
+  assert.match(prompt.instructions ?? '', /After three assistant clarification turns/u);
   assert.match(prompt.instructions ?? '', /Do not create a second Work Item anchor/u);
 });
 
