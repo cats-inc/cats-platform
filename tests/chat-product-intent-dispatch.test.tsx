@@ -243,6 +243,7 @@ test('beginChannelMessageDispatch records direct product intent and starts chat-
     directWorkItem?.id,
   );
   assert.equal(userMessage?.metadata.productIntentLocale, 'en');
+  assert.equal(userMessage?.metadata.productIntentArgumentProvided, true);
   assert.equal(userMessage?.body, '/work clarify the MVP');
   assert.equal(productIntentMetadata?.command, 'work');
   assert.equal(productIntentMetadata?.source, 'web');
@@ -331,6 +332,43 @@ test('routeChannelMessage sends the first strong product-intent command to the s
   assert.equal(assistantMessage?.senderName, 'ConciergeCat');
   assert.equal(assistantMessage?.body, 'What outcome should this work produce first?');
   assert.equal(dispatched.results.length, 1);
+});
+
+test('routeChannelMessage does not send localized synthetic user text for empty product-intent arguments', async () => {
+  const { state, channelId } = createDirectState();
+  requireChannel(state, channelId).language = 'zh-TW';
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('這項工作最重要的成果是什麼？');
+
+  await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: '/work',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  assert.equal(runtimeClient.sentMessages.length, 1);
+  assert.match(
+    runtimeClient.sentMessages[0]?.content ?? '',
+    /Latest user message:\n\(no slash-command argument provided\)/u,
+  );
+  assert.doesNotMatch(runtimeClient.sentMessages[0]?.content ?? '', /切換到 Work 模式/u);
+  assert.match(
+    runtimeClient.sentMessages[0]?.input?.instructions ?? '',
+    /did not provide an argument/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[0]?.input?.instructions ?? '',
+    /Reply in Traditional Chinese/u,
+  );
 });
 
 test('beginChannelMessageDispatch records weak direct audience capability outcome', async () => {
@@ -459,7 +497,8 @@ test('beginChannelMessageDispatch localizes direct product-intent acknowledgemen
     | undefined;
 
   assert.match(ackMessage?.body ?? '', /^Work 模式已啟用/u);
-  assert.match(begun.preparedTurn?.userMessage.body ?? '', /切換到 Work 模式/u);
+  assert.equal(begun.preparedTurn?.userMessage.body, '(no slash-command argument provided)');
+  assert.equal(begun.preparedTurn?.userMessage.metadata.productIntentArgumentProvided, false);
   assert.match(directWorkItem?.summary ?? '', /直接對話/u);
   assert.equal(intake?.draft?.localization?.locale, 'zh-TW');
 });
@@ -497,7 +536,8 @@ test('beginChannelMessageDispatch prefers Telegram transport locale for first pr
 
   assert.match(ackMessage?.body ?? '', /^Work 模式已啟用/u);
   assert.equal(userMessage?.metadata.productIntentLocale, 'zh-TW');
-  assert.match(begun.preparedTurn?.userMessage.body ?? '', /切換到 Work 模式/u);
+  assert.equal(begun.preparedTurn?.userMessage.body, '(no slash-command argument provided)');
+  assert.equal(begun.preparedTurn?.userMessage.metadata.productIntentArgumentProvided, false);
   assert.equal(intake?.draft?.localization?.locale, 'zh-TW');
 });
 

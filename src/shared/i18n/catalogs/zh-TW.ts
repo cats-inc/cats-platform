@@ -1832,10 +1832,6 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.productIntent.draft.outOfScope':
     '尚未確認，需等 owner 與 Cat 完成釐清。',
   'chat.productIntent.draft.openQuestion': '這項工作要產生什麼成果？',
-  'chat.productIntent.concierge.emptyWorkPrompt':
-    'Owner 已切換到 Work 模式，但尚未提供細節。請問一個焦點問題來釐清這項工作。',
-  'chat.productIntent.concierge.emptyCodePrompt':
-    'Owner 已切換到 Code 模式，但尚未提供細節。請問一個焦點問題來釐清這項程式工作。',
   'shared.addCatPanelTitle': '新增貓到聊天室',
   'shared.addCatPanelClose': '關閉',
   'shared.addCatPanelChooseExisting': '選擇既有',

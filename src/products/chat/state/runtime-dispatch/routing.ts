@@ -432,6 +432,7 @@ function normalizeWorkItemTitle(value: string, fallback: string): string {
 }
 
 type ProductIntentTranslator = ReturnType<typeof createTranslator>;
+const PRODUCT_INTENT_EMPTY_ARGUMENT_PROMPT = '(no slash-command argument provided)';
 
 function resolveProductIntentMessageLocale(
   channel: ChatChannelState,
@@ -683,6 +684,7 @@ function annotateProductIntentUserMessageWithActiveAnchor(input: {
   activeAnchor: DirectSlashModeActiveAnchorMetadata;
   directSlashMode: Record<string, unknown> | null;
   locale: MessageLocale;
+  argumentProvided: boolean;
   now: Date;
 }): { state: ChatState; userMessage: ChatMessage } {
   const nextState = structuredClone(input.state);
@@ -696,6 +698,7 @@ function annotateProductIntentUserMessageWithActiveAnchor(input: {
     ...(input.directSlashMode ? { directSlashMode: input.directSlashMode } : {}),
     directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(input.activeAnchor),
     productIntentLocale: input.locale,
+    productIntentArgumentProvided: input.argumentProvided,
   };
   return {
     state: refreshDerivedMemoryLayers(nextState, input.channelId, input.now),
@@ -707,18 +710,16 @@ function buildProductIntentConciergePromptSource(input: {
   userMessage: ChatMessage;
   productIntentCommand: ProductIntentCommandMetadata;
   activeAnchor: DirectSlashModeActiveAnchorMetadata;
-  translate: ProductIntentTranslator;
 }): ChatMessage {
   const argumentText = input.productIntentCommand.argumentText.trim();
-  const emptyPromptKey = input.productIntentCommand.command === 'code'
-    ? messageKeys.chatProductIntentConciergeEmptyCodePrompt
-    : messageKeys.chatProductIntentConciergeEmptyWorkPrompt;
+  const hasArgument = argumentText.length > 0;
   return {
     ...structuredClone(input.userMessage),
-    body: argumentText || input.translate(emptyPromptKey),
+    body: hasArgument ? argumentText : PRODUCT_INTENT_EMPTY_ARGUMENT_PROMPT,
     metadata: {
       ...(input.userMessage.metadata ?? {}),
       directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(input.activeAnchor),
+      productIntentArgumentProvided: hasArgument,
     },
   };
 }
@@ -1327,6 +1328,7 @@ export async function beginChannelMessageDispatch(
         activeAnchor,
         directSlashMode,
         locale,
+        argumentProvided: productIntentCommand.argumentText.trim().length > 0,
         now,
       });
       nextState = annotated.state;
@@ -1411,7 +1413,6 @@ export async function beginChannelMessageDispatch(
         userMessage: productIntentUserMessage,
         productIntentCommand,
         activeAnchor,
-        translate,
       });
       const conciergePayload: SendChannelMessageInput = {
         ...payload,

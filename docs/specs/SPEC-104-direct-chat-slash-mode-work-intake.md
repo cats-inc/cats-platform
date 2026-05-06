@@ -539,6 +539,9 @@ these semantics.
 - [ ] Should future UI allow multiple active Work anchors per direct lane with
       explicit selection, or is one active anchor enough until group
       orchestration lands?
+- [ ] Should persisted product-intent system segments carry localization keys
+      and interpolation values in addition to rendered `content`, so future
+      readers can re-render acknowledgements in a different locale?
 
 ## References
 
