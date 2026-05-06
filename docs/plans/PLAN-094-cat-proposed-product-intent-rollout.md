@@ -170,10 +170,16 @@ classifier/provider terminology.
 - [x] Task 6.3: If keeping the detector temporarily, confine it to
       `heuristic_prefilter` and document it as experimental.
 - [x] Task 6.4: Define and test migration cleanup for unresolved v1 candidates
-      when switching from `heuristic_prefilter` to `cat_tool`. Either sweep
-      outstanding `metadata.implicitProductIntentCandidate` suggestions to
-      expired during mode change, or keep the v1 expiry cleanup active
-      independently from detector execution.
+      when switching from `heuristic_prefilter` to `cat_tool`. **Implementation
+      chose option B: keep the v1 expiry cleanup active independently from
+      detector execution.** Both ordinary and retry dispatch run
+      `expireTtlImplicitProductIntentCandidates` regardless of effective mode,
+      so an existing `metadata.implicitProductIntentCandidate` segment
+      continues to expire on its 15-minute TTL even after the deployment
+      switches away from `heuristic_prefilter`. The retry-dispatch test
+      `beginChannelMessageRetryDispatch expires stale implicit candidates`
+      pins this cross-mode behavior; the alternative one-shot sweep on mode
+      change is not implemented.
 - [x] Task 6.5: Update SPEC-105 verification notes once the proposal-tool path
       replaces the heuristic path.
 - [x] Task 6.6: Run targeted SPEC-104/SPEC-105 regression tests and typechecks.
