@@ -264,6 +264,14 @@ Detector v1 does not rerun for the same `messageId`; edits or resends must
 produce a new message id. If the same `candidateId` is observed again, the
 candidate is treated as an idempotent duplicate, not a new suggestion.
 
+The candidate metadata is stored on the system segment under
+`metadata.implicitProductIntentCandidate`, parallel to SPEC-104's
+`metadata.directSlashMode`. Confirmation, decline, and expire transitions are
+stored on later system segments under `metadata.implicitProductIntentTransition`
+so renderers (Web, Telegram, mobile) can identify implicit-intent segments
+without conflating them with SPEC-104's slash-mode metadata or its weak-gate
+`ChatMessage.choices`.
+
 ### Confirmation Transcript Shape
 
 Confirm, decline, and expire transitions are also append-only system segments.
@@ -336,6 +344,13 @@ may still contain candidate and transition system segments. Mobile shall render
 those segments as read-only system entries. If a mobile renderer exposes the
 shared choices by accident or through reused components, confirm/decline taps
 shall surface the standard desktop-only alert instead of performing the action.
+This mobile read-only constraint is a v1 scope decision specific to
+implicit-intent confirmation; SPEC-104's weak human-gate retains its existing
+mobile behavior, since that flow already shipped through mobile and is not
+affected by this spec. Mobile renderers identify implicit-intent segments by
+the `metadata.implicitProductIntentCandidate` /
+`metadata.implicitProductIntentTransition` keys, not by the presence of
+`ChatMessage.choices` alone.
 
 ### Suppression Model v1
 

@@ -56,10 +56,9 @@ semantics as SPEC-104: `/work <original message>` or `/code <original message>`.
 - [ ] Task 1.2a: Add append-only system-segment metadata for candidate
       transitions: `suggested`, `confirmed`, `declined`, and `expired`.
       Projection status is derived from these events rather than mutating the
-      original user message as the audit source.
-- [ ] Task 1.2b: Treat repeated detection for the same `messageId` and target
-      product as an idempotent duplicate. Detector v1 does not rerun for the
-      same message id; edits/resends must create a new message id.
+      original user message as the audit source. Candidate and transition
+      metadata live under `metadata.implicitProductIntentCandidate` and
+      `metadata.implicitProductIntentTransition` on their system segments.
 - [ ] Task 1.3: Ensure explicit `/chat`, `/work`, and `/code` messages remain
       owned by SPEC-104 and are never reclassified by this detector.
 - [ ] Task 1.4: Add unit tests for Work, Code, none, low-confidence ambiguity,
@@ -138,8 +137,14 @@ pipeline, with no parallel durable intake path.
       repeated suggestions: 15-minute candidate TTL, five-minute lane cooldown
       after decline, and expiry of outstanding suggestions when explicit
       `/chat` posture is selected.
+- [ ] Task 5.1a: At the candidate-write layer, treat a re-detected
+      `(messageId, targetProduct)` pair as an idempotent duplicate: do not
+      append a second candidate system segment for the same `candidateId`. The
+      detector itself is deterministic, so this guard sits at the persistence
+      boundary, not inside the pure detection contract from Phase 1.
 - [ ] Task 5.2: Add tests proving declined candidates are not immediately
-      re-suggested for the same message.
+      re-suggested for the same message, and that repeated detection for the
+      same `messageId` does not append duplicate candidate segments.
 - [ ] Task 5.3: Add i18n coverage for Web and Telegram suggestion/confirmation
       copy.
 - [ ] Task 5.4: Run the targeted implicit-intent suite plus the existing
@@ -237,6 +242,7 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Follow-up review close-out (round 2): metadata key names pinned (`metadata.implicitProductIntentCandidate` for suggestions, `metadata.implicitProductIntentTransition` for confirm/decline/expire) so renderers can disambiguate from SPEC-104's `metadata.directSlashMode` and weak-gate `ChatMessage.choices`; the candidate-write idempotency guard moved from Phase 1 (Task 1.2b) into Phase 5 (Task 5.1a) where the persistence layer can actually enforce it; mobile read-only constraint clarified as a v1 scope decision specific to implicit-intent confirmation rather than a global mobile rule. |
 | 2026-05-06 | Follow-up review close-out: `rawCommandToken` now stays string-only with `(implicit-confirmation)` sentinel; Web confirmation reuses `ChatMessage.choices`; mobile renders candidate/transition segments read-only with desktop-only alert on accidental action taps; detector cue examples are illustrative and repeated same-message detection is idempotent. |
 | 2026-05-06 | Follow-up review alignment: detector v1 is now locked to conservative deterministic heuristics; candidate/confirm/decline/expire are append-only system events; Web uses inline message choices, Telegram uses inline keyboard callback data; confirmed implicit commands synthesize routing metadata without rewriting transcript or faking slash tokens. |
 | 2026-05-06 | Plan created as a follow-up to PLAN-092. Natural-language Work/Code detection is candidate-only and must bridge into SPEC-104 after explicit owner confirmation. |
