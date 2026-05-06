@@ -39,6 +39,18 @@ export interface TelegramRoomBridgeMessage {
   metadata?: Record<string, unknown> | null;
 }
 
+export interface TelegramRoomBridgeChoiceResponse {
+  sourceMessageId: string;
+  status: 'submitted' | 'skipped';
+  submittedAt: string;
+  answers: Array<{
+    question: string;
+    selectedOptionIds: string[];
+    customText?: string;
+    skipped?: boolean;
+  }>;
+}
+
 export interface TelegramRoomBridgeView {
   id: string;
   title: string;
@@ -95,6 +107,7 @@ export interface TelegramRoomBridge<TState extends TelegramRoomBridgeState = Tel
     roomId: string;
     body: string;
     senderName: string;
+    choiceResponse?: TelegramRoomBridgeChoiceResponse | null;
     bindingId?: string | null;
     transportLocale?: string | null;
     runtimeClient: RuntimeClient;
@@ -155,9 +168,10 @@ function buildInboundBody(message: TelegramMessagePayload | null): string {
 function resolveSenderName(
   message: TelegramMessagePayload | null,
   receipt: TelegramWebhookReceipt,
+  sender: TelegramMessagePayload['from'] | null = message?.from ?? null,
 ): string {
-  const firstName = readTelegramString(message?.from?.first_name);
-  const lastName = readTelegramString(message?.from?.last_name);
+  const firstName = readTelegramString(sender?.first_name);
+  const lastName = readTelegramString(sender?.last_name);
   const displayName = [firstName, lastName].filter(Boolean).join(' ').trim();
   if (displayName) {
     return displayName;
@@ -230,6 +244,33 @@ export function buildTelegramImplicitProductIntentCallbackData(input: {
   }:${compactTarget}:${input.action}`;
 }
 
+export function parseTelegramImplicitProductIntentCallbackData(
+  value: string | null | undefined,
+): {
+  sourceMessageId: string;
+  targetProduct: TelegramImplicitProductIntentTarget;
+  action: TelegramImplicitProductIntentCallbackAction;
+} | null {
+  const normalized = readTelegramString(value);
+  if (!normalized?.startsWith(`${TELEGRAM_IMPLICIT_PRODUCT_INTENT_CALLBACK_PREFIX}:`)) {
+    return null;
+  }
+  const [, , sourceMessageId, compactTarget, action] = normalized.split(':');
+  if (
+    !sourceMessageId
+    || (compactTarget !== 'w' && compactTarget !== 'c')
+    || (action !== 'confirm' && action !== 'decline')
+  ) {
+    return null;
+  }
+
+  return {
+    sourceMessageId,
+    targetProduct: compactTarget === 'c' ? 'code' : 'work',
+    action,
+  };
+}
+
 function resolveTelegramImplicitProductIntentButtonCallbackData(input: {
   candidate: TelegramImplicitProductIntentCandidate;
   optionId: string;
@@ -278,6 +319,64 @@ export function buildTelegramImplicitProductIntentReplyMarkup(
 
   return {
     inline_keyboard: [buttons],
+  };
+}
+
+function resolveTelegramImplicitCandidateForCallback(input: {
+  channel: TelegramRoomBridgeView;
+  sourceMessageId: string;
+  targetProduct: TelegramImplicitProductIntentTarget;
+}): TelegramRoomBridgeMessage | null {
+  return input.channel.messages.find((message) => {
+    const candidate = readTelegramImplicitProductIntentCandidate(message);
+    return candidate?.sourceMessageId === input.sourceMessageId
+      && candidate.targetProduct === input.targetProduct;
+  }) ?? null;
+}
+
+function buildChoiceResponseBody(input: {
+  question: string;
+  label: string;
+}): string {
+  return `Q: ${input.question}\nA: ${input.label}`;
+}
+
+function buildTelegramImplicitProductIntentChoiceResponse(input: {
+  message: TelegramRoomBridgeMessage;
+  action: TelegramImplicitProductIntentCallbackAction;
+  submittedAt: string;
+}): { body: string; choiceResponse: TelegramRoomBridgeChoiceResponse } | null {
+  const candidate = readTelegramImplicitProductIntentCandidate(input.message);
+  const choice = input.message.choices?.[0] ?? null;
+  if (!candidate || !choice) {
+    return null;
+  }
+  const optionId = input.action === 'decline'
+    ? 'decline'
+    : candidate.targetProduct === 'code'
+      ? 'confirm_code'
+      : 'confirm_work';
+  const option = choice.options.find((candidateOption) => candidateOption.id === optionId) ?? null;
+  if (!option || !input.message.id) {
+    return null;
+  }
+
+  return {
+    body: buildChoiceResponseBody({
+      question: choice.question,
+      label: option.label,
+    }),
+    choiceResponse: {
+      sourceMessageId: input.message.id,
+      status: 'submitted',
+      submittedAt: input.submittedAt,
+      answers: [
+        {
+          question: choice.question,
+          selectedOptionIds: [optionId],
+        },
+      ],
+    },
   };
 }
 
@@ -459,8 +558,12 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
   return runExclusive(async () => {
     const now = input.now ?? (() => new Date());
     const timestamp = now();
-    const { message } = pickTelegramMessage(input.update);
-    const senderName = resolveSenderName(message, input.receipt);
+    const pickedMessage = pickTelegramMessage(input.update);
+    const { message } = pickedMessage;
+    const senderName = resolveSenderName(message, input.receipt, pickedMessage.sender);
+    const implicitCallback = parseTelegramImplicitProductIntentCallbackData(
+      input.update.callback_query?.data,
+    );
     const activeBinding = resolveActiveTelegramBinding(input.context, input.receipt.bindingId);
     const currentState = await input.roomBridge.readState();
     const boundCat = resolveBoundCat(currentState, activeBinding, input.context);
@@ -522,6 +625,85 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
       });
       const channelBeforeDispatch = input.roomBridge.readRoom(nextState, roomId);
       messageCountBeforeDispatch = channelBeforeDispatch.messages.length;
+      if (implicitCallback) {
+        const candidateMessage = resolveTelegramImplicitCandidateForCallback({
+          channel: channelBeforeDispatch,
+          sourceMessageId: implicitCallback.sourceMessageId,
+          targetProduct: implicitCallback.targetProduct,
+        });
+        const choicePayload = candidateMessage
+          ? buildTelegramImplicitProductIntentChoiceResponse({
+              message: candidateMessage,
+              action: implicitCallback.action,
+              submittedAt: timestamp.toISOString(),
+            })
+          : null;
+        if (!choicePayload) {
+          return {
+            receipt: {
+              ...input.receipt,
+              roomRouting: describeTelegramRoomRouting(linkedBinding),
+            },
+            roomId,
+            roomCreated,
+            deliveryReceipt: null,
+            messages: [],
+          };
+        }
+        const dispatch = await input.roomBridge.routeRoomMessage({
+          state: nextState,
+          roomId,
+          body: choicePayload.body,
+          senderName,
+          choiceResponse: choicePayload.choiceResponse,
+          bindingId: input.receipt.bindingId,
+          transportLocale: input.update.callback_query?.from?.language_code ?? null,
+          runtimeClient: input.runtimeClient,
+          memoryService: input.memoryService,
+          timestamp,
+        });
+        dispatchedState = dispatch.state;
+        const persistedState = await input.roomBridge.writeState(
+          restoreSelection(dispatch.state, currentState.selectedChannelId),
+        );
+        nextState = persistedState;
+        const appendedMessages = input.roomBridge
+          .readRoom(persistedState, roomId)
+          .messages
+          .slice(messageCountBeforeDispatch);
+        const replyText = buildTelegramReplyText({
+          roomBridge: input.roomBridge,
+          state: persistedState,
+          roomId,
+          roomCreated,
+          messageCountBeforeDispatch,
+        });
+        const chunks = chunkTelegramReply(replyText, TELEGRAM_REPLY_LIMIT);
+        let deliveryReceipt: TelegramDeliveryReceipt | null = null;
+        for (const chunk of chunks) {
+          deliveryReceipt = await input.telegramRelay.deliver({
+            request: {
+              operation: 'send',
+              conversationId: input.receipt.mappedConversationId,
+              chatId: input.receipt.chatId,
+              text: chunk,
+              disableLinkPreview: true,
+            },
+            context: input.context,
+          });
+        }
+
+        return {
+          receipt: {
+            ...input.receipt,
+            roomRouting: describeTelegramRoomRouting(linkedBinding),
+          },
+          roomId,
+          roomCreated,
+          deliveryReceipt,
+          messages: appendedMessages,
+        };
+      }
       const dispatch = await input.roomBridge.routeRoomMessage({
         state: nextState,
         roomId,

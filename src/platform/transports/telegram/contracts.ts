@@ -39,6 +39,14 @@ export interface TelegramWebhookUpdate {
   update_id?: number;
   message?: TelegramMessagePayload;
   edited_message?: TelegramMessagePayload;
+  callback_query?: TelegramCallbackQueryPayload;
+}
+
+export interface TelegramCallbackQueryPayload {
+  id?: string;
+  data?: string;
+  message?: TelegramMessagePayload;
+  from?: TelegramMessagePayload['from'];
 }
 
 export interface TelegramMessagePayload {

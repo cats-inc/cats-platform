@@ -8,6 +8,8 @@ import type {
 export interface PickedTelegramMessage {
   message: TelegramMessagePayload | null;
   isEdited: boolean;
+  isCallbackQuery: boolean;
+  sender: TelegramMessagePayload['from'] | null;
 }
 
 export function readTelegramString(value: string | null | undefined): string | null {
@@ -16,12 +18,30 @@ export function readTelegramString(value: string | null | undefined): string | n
 
 export function pickTelegramMessage(update: TelegramWebhookUpdate): PickedTelegramMessage {
   if (update.message) {
-    return { message: update.message, isEdited: false };
+    return {
+      message: update.message,
+      isEdited: false,
+      isCallbackQuery: false,
+      sender: update.message.from ?? null,
+    };
   }
   if (update.edited_message) {
-    return { message: update.edited_message, isEdited: true };
+    return {
+      message: update.edited_message,
+      isEdited: true,
+      isCallbackQuery: false,
+      sender: update.edited_message.from ?? null,
+    };
   }
-  return { message: null, isEdited: false };
+  if (update.callback_query?.message) {
+    return {
+      message: update.callback_query.message,
+      isEdited: false,
+      isCallbackQuery: true,
+      sender: update.callback_query.from ?? null,
+    };
+  }
+  return { message: null, isEdited: false, isCallbackQuery: false, sender: null };
 }
 
 export function resolveActiveTelegramBinding(

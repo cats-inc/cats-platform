@@ -75,6 +75,7 @@ export function receiveTelegramUpdate(options: ReceiveTelegramUpdateOptions): Te
   const updateId = typeof options.update.update_id === 'number' ? options.update.update_id : null;
   const pickedMessage = pickTelegramMessage(options.update);
   const message = pickedMessage.message;
+  const sender = pickedMessage.sender;
   const chatId = message?.chat?.id != null ? String(message.chat.id) : null;
   const messageId = typeof message?.message_id === 'number' ? String(message.message_id) : null;
   const activeBinding = resolveActiveTelegramBinding(options.context);
@@ -135,7 +136,7 @@ export function receiveTelegramUpdate(options: ReceiveTelegramUpdateOptions): Te
     });
   }
 
-  if (message.from?.is_bot === true) {
+  if (sender?.is_bot === true) {
     return recordTelegramIngressReceipt(options.store, {
       context: options.context,
       binding: activeBinding,

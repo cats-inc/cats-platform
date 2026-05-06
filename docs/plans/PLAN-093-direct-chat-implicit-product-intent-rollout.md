@@ -97,9 +97,11 @@ the bridge into SPEC-104 before Telegram work starts.
       contract after transport-control and slash-command parsing.
 - [x] Task 3.2: Add Telegram-safe localized suggestion copy that does not expose
       classifier or provider terminology.
-- [ ] Task 3.3: Implement Telegram confirmation with inline keyboard
-      `callback_data` carrying `candidateId` plus confirm/decline transition.
-      Reply-keyboard and free-form text confirmation are out of v1.
+- [x] Task 3.3: Implement Telegram confirmation with inline keyboard
+      `callback_data` carrying a compact candidate reference plus
+      confirm/decline transition. The bridge resolves the full `candidateId`
+      from the candidate message metadata because Telegram limits callback data
+      to 64 bytes. Reply-keyboard and free-form text confirmation are out of v1.
 - [ ] Task 3.4: Add transport parity tests for Telegram and Web candidate
       semantics.
 - [ ] Task 3.5: Add the minimum Telegram happy-path integration test:
@@ -242,7 +244,8 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
-| 2026-05-06 | Phase 3 Telegram suggestion slice landed: ordinary Telegram direct text now uses the same routing-side detector path as Web, and candidate system messages can be delivered back to Telegram as a separate suggestion with inline keyboard markup. Callback ingress for confirm/decline remains pending. |
+| 2026-05-06 | Phase 3 Telegram callback slice landed: Telegram callback queries can now be parsed as implicit-intent confirm/decline actions and bridged into the same Chat `choiceResponse` path used by Web. Callback data uses `ipi:v1:<sourceMessageId>:<w|c>:<confirm|decline>` and the bridge resolves the full candidate from transcript metadata to stay under Telegram's 64-byte callback limit. |
+| 2026-05-06 | Phase 3 Telegram suggestion slice landed: ordinary Telegram direct text now uses the same routing-side detector path as Web, and candidate system messages can be delivered back to Telegram as a separate suggestion with inline keyboard markup. |
 | 2026-05-06 | Phase 4 handoff coverage slice landed: confirmed implicit Work and Code candidates now have tests proving they synthesize the same product-intent command shape as explicit `/work` and `/code`, preserve original-message context without rewriting the transcript, and reuse SPEC-104's strong/weak audience gate. Full lifecycle coverage for supersede, abandon, projection, and weak/unknown variants remains in Task 4.6. |
 | 2026-05-06 | Phase 2 Web confirmation slice landed: Web `decline` now appends a declined transition without dispatching a Cat or creating durable intake; Web `confirm_work` now synthesizes the `(implicit-confirmation)` command metadata and enters SPEC-104's slash-mode intake path; repeated confirmation of the same candidate is a no-op and does not create duplicate anchors. |
 | 2026-05-06 | Phase 2 sidecar slice landed: ordinary direct messages that detect as Work/Code candidates now append a localized system suggestion with the existing `ChatMessage.choices` schema (`confirm_work` / `confirm_code` / `decline`) while preserving ordinary Cat dispatch and proving no Work Item is created before confirmation. |

@@ -330,9 +330,12 @@ The implementation shall not create a fake transcript message containing
 ### Confirmation UX Baseline
 
 Web v1 uses inline message choices on the candidate system segment. Telegram v1
-uses an inline keyboard with `callback_data` carrying the `candidateId` and the
-requested transition (`confirm` or `decline`). Reply keyboards and free-form
-text confirmation are out of v1 because they conflict with multiple outstanding
+uses an inline keyboard with compact `callback_data` carrying the source message
+id, target product, and requested transition (`confirm` or `decline`). The
+bridge resolves the full `candidateId` from the candidate system segment
+metadata because Telegram callback data is limited to 64 bytes and the full
+v1 `candidateId` may exceed that limit. Reply keyboards and free-form text
+confirmation are out of v1 because they conflict with multiple outstanding
 candidates in the same chat.
 
 Web reuses the existing `ChatMessage.choices` schema from SPEC-104's human-gate
