@@ -441,10 +441,16 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
       '行動版尚未支援建立同儕程式碼。請在桌面版開始，建立後會出現在這裡的近期項目。',
     peerCodeDesktopOnlyTitle: '同儕程式碼僅限桌面版',
     tabTitle: {
+      // The four product tabs ship as fixed English brand
+      // labels in every locale ("Cats" / "Chat" / "Code" /
+      // "Work"). Only the platform-generic Settings tab gets
+      // a localized label. Keeps the rail brand-stable across
+      // locales while still translating the one chrome entry
+      // that is not a product name.
       cats: 'Cats',
-      chat: '聊天',
-      code: '程式碼',
-      work: '工作',
+      chat: 'Chat',
+      code: 'Code',
+      work: 'Work',
       settings: '設定',
     },
   },
@@ -551,24 +557,54 @@ export type MobileLocaleOverride = 'auto' | MobileLocale;
 let mobileLocaleOverride: MobileLocale | null = null;
 
 /**
+ * Subscriber set for components that want to re-render on locale
+ * change. Each `subscribeMobileLocale` call adds a callback;
+ * `setMobileLocaleOverride` invokes every callback after updating
+ * the module state. Components that consume `resolveDefaultMobileLocale()`
+ * at render time (e.g. the bottom-tab rail in `(tabs)/_layout.tsx`)
+ * pair the subscriber with a forced re-render via the
+ * `useMobileLocale()` hook so a Settings → Language change is
+ * reflected immediately, not on next reopen.
+ */
+const localeSubscribers = new Set<() => void>();
+
+/**
  * Apply a display-language override to subsequent calls of
  * `resolveDefaultMobileLocale()`. Pass `'auto'` to clear the
  * override and fall back to the device's `Intl` locale.
  *
- * Already-rendered components keep whatever locale they captured at
- * render time; full propagation requires reopening the app
- * (Settings copy `languageReopenFooter` mentions this). The Settings
- * screen itself updates immediately because it controls its own
- * picker state.
+ * Notifies every `useMobileLocale()` subscriber so subscribed
+ * components re-render with the new locale on the next render
+ * cycle. Components that read `resolveDefaultMobileLocale()`
+ * directly without subscribing keep whatever locale they captured
+ * at render time — full propagation across those still requires
+ * reopening the app (Settings copy `languageReopenFooter` mentions
+ * this).
  */
 export function setMobileLocaleOverride(
   override: MobileLocaleOverride,
 ): void {
   mobileLocaleOverride = override === 'auto' ? null : override;
+  for (const callback of localeSubscribers) {
+    callback();
+  }
 }
 
 export function getMobileLocaleOverride(): MobileLocaleOverride {
   return mobileLocaleOverride ?? 'auto';
+}
+
+/**
+ * Register `callback` to fire whenever `setMobileLocaleOverride`
+ * runs. Returns an unsubscribe function suitable for
+ * `useEffect`'s cleanup slot. Used internally by
+ * `useMobileLocale()`; renderer code should prefer the hook.
+ */
+export function subscribeMobileLocale(callback: () => void): () => void {
+  localeSubscribers.add(callback);
+  return () => {
+    localeSubscribers.delete(callback);
+  };
 }
 
 export function resolveDefaultMobileLocale(): MobileLocale {

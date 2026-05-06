@@ -1,11 +1,9 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Tabs } from 'expo-router';
 
+import { useMobileLocale } from '../../src/renderer/hooks/useMobileLocale';
 import { colors, typography } from '../../src/renderer/theme';
-import {
-  getMobileTabsCopy,
-  resolveDefaultMobileLocale,
-} from '../../../src/mobile/index.js';
+import { getMobileTabsCopy } from '../../../src/mobile/index.js';
 
 type TabIconProps = { color: string };
 
@@ -26,7 +24,11 @@ function tabIcon(name: MaterialCommunityIconName) {
 }
 
 export default function TabsLayout() {
-  const copy = getMobileTabsCopy(resolveDefaultMobileLocale());
+  // Subscribe to locale changes so a Settings → Language pick
+  // immediately re-renders the rail labels (e.g. "Settings" →
+  // "設定"). Without this hook the labels stay cached until the
+  // user reopens the app.
+  const copy = getMobileTabsCopy(useMobileLocale());
 
   return (
     <Tabs

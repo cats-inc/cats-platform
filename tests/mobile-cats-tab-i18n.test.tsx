@@ -246,9 +246,20 @@ test('mobile tabs copy exposes localized fixed controls', () => {
   const zh = getMobileTabsCopy('zh-TW');
   const en = getMobileTabsCopy('en');
 
-  assert.equal(zh.tabTitle.settings, '設定');
+  // Only the Settings tab carries a localized rail label; the four
+  // product tabs ship as fixed English brand labels in every locale
+  // ("Cats" / "Chat" / "Code" / "Work"). Pin both halves so a
+  // future drift back to translated product names fails CI.
   assert.equal(en.tabTitle.cats, 'Cats');
   assert.equal(zh.tabTitle.cats, 'Cats');
+  assert.equal(en.tabTitle.chat, 'Chat');
+  assert.equal(zh.tabTitle.chat, 'Chat');
+  assert.equal(en.tabTitle.code, 'Code');
+  assert.equal(zh.tabTitle.code, 'Code');
+  assert.equal(en.tabTitle.work, 'Work');
+  assert.equal(zh.tabTitle.work, 'Work');
+  assert.equal(en.tabTitle.settings, 'Settings');
+  assert.equal(zh.tabTitle.settings, '設定');
   assert.equal(zh.creatingChannelLabel, '建立頻道中…');
   assert.equal(zh.dismissAction, '關閉');
   assert.equal(zh.createChannelError('offline'), '無法建立頻道：offline');
