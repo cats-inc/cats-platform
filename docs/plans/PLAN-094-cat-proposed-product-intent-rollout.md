@@ -158,9 +158,14 @@ classifier/provider terminology.
 - [ ] Task 6.2: Remove the deterministic detector from default dispatch.
 - [ ] Task 6.3: If keeping the detector temporarily, confine it to
       `heuristic_prefilter` and document it as experimental.
-- [ ] Task 6.4: Update SPEC-105 verification notes once the proposal-tool path
+- [ ] Task 6.4: Define and test migration cleanup for unresolved v1 candidates
+      when switching from `heuristic_prefilter` to `cat_tool`. Either sweep
+      outstanding `metadata.implicitProductIntentCandidate` suggestions to
+      expired during mode change, or keep the v1 expiry cleanup active
+      independently from detector execution.
+- [ ] Task 6.5: Update SPEC-105 verification notes once the proposal-tool path
       replaces the heuristic path.
-- [ ] Task 6.5: Run targeted SPEC-104/SPEC-105 regression tests and typechecks.
+- [ ] Task 6.6: Run targeted SPEC-104/SPEC-105 regression tests and typechecks.
 
 **Deliverables**: no-slash product suggestions are Cat-proposed by default, and
 the old heuristic cannot surprise users.
@@ -229,6 +234,8 @@ the old heuristic cannot surprise users.
   - owner setting off blocks no-slash suggestions
   - heuristic detector does not run unless `heuristic_prefilter` is selected
   - PLAN-093 detector tests set `heuristic_prefilter` explicitly
+  - strong direct Cat does not get proposal tool when deployment mode is
+    `heuristic_prefilter`, even when all other gates are open
   - proposal tool grant blocks future durable-action tools in the same turn
     once those tools become agent-callable
   - provider without tool-call support receives no natural proposal fallback
@@ -251,6 +258,9 @@ the old heuristic cannot surprise users.
   deferred to a separate ADR/SPEC.
 - Per-lane and per-Cat natural-intent proposal overrides are out of v1; owner
   profile scope is the only setting scope.
+- Migration cleanup for unresolved v1 `metadata.implicitProductIntentCandidate`
+  suggestions during `heuristic_prefilter` -> `cat_tool` mode changes must be
+  decided in Phase 6 before removing the default detector path.
 - Work/Code projections for proposal history are undecided and remain an open
   product question.
 
