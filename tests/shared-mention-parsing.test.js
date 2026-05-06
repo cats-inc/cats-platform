@@ -4,16 +4,16 @@ import test from 'node:test';
 import {
   parseMentions,
   parseMentionsWithPositions,
-} from '../build/server/core/mentionParsing.js';
+} from '../build/server/shared/mentionParsing.js';
 
-test('core mention parsing returns unique mention names in encounter order', () => {
+test('shared mention parsing returns unique mention names in encounter order', () => {
   assert.deepEqual(
     parseMentions('Ask @Mochi to pair with @Ghost, then check @Mochi again.'),
     ['Mochi', 'Ghost'],
   );
 });
 
-test('core mention parsing preserves mention positions for renderer highlighting', () => {
+test('shared mention parsing preserves mention positions for renderer highlighting', () => {
   assert.deepEqual(
     parseMentionsWithPositions('Ping @Mochi, then @Ghost!'),
     {

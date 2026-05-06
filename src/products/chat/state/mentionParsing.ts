@@ -1,1 +1,1 @@
-export * from '../../../core/mentionParsing.js';
+export * from '../../../shared/mentionParsing.js';

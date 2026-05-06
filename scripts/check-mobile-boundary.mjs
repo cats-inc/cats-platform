@@ -138,8 +138,9 @@ const ALLOWED_CONSUMER_PROJECT_DIRS = [
   // `/renderer/components/` because that's where the web
   // renderer's siblings live; the file itself has no React /
   // DOM deps and transitively only pulls
-  // `src/core/mentionParsing.ts` (a regex-only module audited
-  // separately — see comment immediately below).
+  // `src/shared/mentionParsing.ts` (a regex-only module that
+  // used to live under `src/core/` until the `/core/` deny rule
+  // landed — moved to keep the deny rule consistent with reality).
   'src/products/shared/renderer/components/messageBodySegmenter.ts',
   // Cross-product i18n catalogs + key registry. The catalogs are
   // pure object literals and `messageKeys.ts` is a pure const map.

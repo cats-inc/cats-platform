@@ -1,7 +1,7 @@
 import { useMemo, type CSSProperties } from 'react';
 
 import type { ChatCat } from '../../api/workspaceContracts.js';
-import { parseMentionsWithPositions } from '../../../../core/mentionParsing.js';
+import { parseMentionsWithPositions } from '../../../../shared/mentionParsing.js';
 
 export interface ComposerHighlightProps {
   text: string;

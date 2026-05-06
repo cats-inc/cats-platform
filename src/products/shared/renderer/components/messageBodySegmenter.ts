@@ -1,4 +1,4 @@
-import { parseMentionsWithPositions } from '../../../../core/mentionParsing.js';
+import { parseMentionsWithPositions } from '../../../../shared/mentionParsing.js';
 
 /**
  * Minimum cat shape the segmenter needs in order to render mentions.

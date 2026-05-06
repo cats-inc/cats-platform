@@ -3,7 +3,7 @@ import type {
   ParallelChatTarget,
 } from '../api/contracts.js';
 import { resolveExecutionTargetLabel } from '../../../shared/executionLabel.js';
-import { parseMentionsWithPositions } from '../../../core/mentionParsing.js';
+import { parseMentionsWithPositions } from '../../../shared/mentionParsing.js';
 import {
   createTranslator,
   messageKeys,
