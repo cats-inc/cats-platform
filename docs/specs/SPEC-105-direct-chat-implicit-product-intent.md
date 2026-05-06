@@ -67,7 +67,9 @@ message>`.
 #### Candidate detection
 
 1. The platform shall run implicit product-intent detection only for ordinary
-   text messages in `direct_message` lanes.
+   text messages in direct lanes. Effective direct-lane membership follows
+   SPEC-104: `channelKind === 'direct_message'` or
+   `roomRouting.mode === 'direct_message'`.
 2. The detector shall produce one of `none`, `work`, or `code`.
 3. The detector shall not produce durable product records. It only produces a
    candidate suggestion.

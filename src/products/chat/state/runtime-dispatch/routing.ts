@@ -716,16 +716,16 @@ function appendImplicitProductIntentCandidateSidecar(input: {
   })) {
     return { state: input.state, candidateMessage: null };
   }
-  const stateWithExpiredOpenCandidates = appendExpiredImplicitProductIntentCandidates({
+  const stateWithPriorOpenCandidatesExpired =
+    expireOpenImplicitProductIntentCandidatesBeforeSuggestion({
     state: input.state,
     channelId: input.channelId,
-    expireAll: true,
     locale: input.locale,
     now: input.now,
   });
   const translate = createTranslator(input.locale);
   const append = appendMessage(
-    stateWithExpiredOpenCandidates,
+    stateWithPriorOpenCandidatesExpired,
     input.channelId,
     {
       senderKind: 'system',
@@ -1032,6 +1032,30 @@ function appendExpiredImplicitProductIntentCandidates(input: {
       now: input.now,
     }).state;
   }, input.state);
+}
+
+function expireTtlImplicitProductIntentCandidates(input: {
+  state: ChatState;
+  channelId: string;
+  locale: MessageLocale;
+  now: Date;
+}): ChatState {
+  return appendExpiredImplicitProductIntentCandidates({
+    ...input,
+    expireAll: false,
+  });
+}
+
+function expireOpenImplicitProductIntentCandidatesBeforeSuggestion(input: {
+  state: ChatState;
+  channelId: string;
+  locale: MessageLocale;
+  now: Date;
+}): ChatState {
+  return appendExpiredImplicitProductIntentCandidates({
+    ...input,
+    expireAll: true,
+  });
 }
 
 function appendImplicitProductIntentDecline(input: {
@@ -2217,10 +2241,9 @@ export async function beginChannelMessageDispatch(
     preparedTurn.latestCheckpoint,
     now,
   );
-  nextState = appendExpiredImplicitProductIntentCandidates({
+  nextState = expireTtlImplicitProductIntentCandidates({
     state: nextState,
     channelId,
-    expireAll: false,
     locale: resolveProductIntentMessageLocale(channelBeforeMessage, options.transportLocale),
     now,
   });
