@@ -3,6 +3,7 @@ import {
   isCatPartOfChatProduct,
   sortChatCatsByRecency,
 } from '../products/chat/shared/directMessageSelectors.js';
+import { filterChatChannelsForProductRecents } from '../products/chat/shared/recentsFilter.js';
 
 // Both helpers are re-exported below for the mobile boundary's
 // public surface; we also use them locally in
@@ -67,12 +68,12 @@ export function selectMobileProductRecents(
   options: SelectProductRecentsOptions = {},
 ): MobileSidebarRecent[] {
   const recentLimit = options.recentLimit ?? 50;
-  return payload.chat.channels
-    .filter(
-      (channel) =>
-        channel.originSurface === product
-        && channel.channelKind !== 'direct_message',
-    )
+  // Filter goes through the shared
+  // `filterChatChannelsForProductRecents` so the predicate stays in
+  // lockstep with web. Earlier this function inlined the filter,
+  // which let mobile and web drift (the `channelKind === 'direct_message'`
+  // semantics differed before alignment).
+  return filterChatChannelsForProductRecents(payload.chat.channels, product)
     .slice(0, recentLimit)
     .map(channelToRecent);
 }

@@ -1,4 +1,5 @@
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import { filterChatChannelsForProductRecents } from '../../../products/chat/shared/recentsFilter.js';
 import {
   type ConversationSidebarChannel,
   type ConversationSidebarRecentEntry,
@@ -39,9 +40,16 @@ export function buildConversationSidebarRecentEntries<
 >(
   input: BuildConversationSidebarRecentEntriesInput<TChannel>,
 ): ConversationSidebarRecentEntry<TChannel>[] {
-  const recentsChannels = input.channels.filter((channel) =>
-    !input.isDirectLaneSummary(channel)
-    && resolveConversationSidebarChannelSurface(channel.originSurface) === input.activeSurface,
+  // Channel-level filter goes through the shared
+  // `filterChatChannelsForProductRecents` so web + mobile share one
+  // predicate. The `input.isDirectLaneSummary` callback is no
+  // longer needed for this filter — the shared check uses the
+  // resolved `channelKind` (web's `toChannelSummary` always sets
+  // it; the helper also accepts `roomMode === 'direct_message'`
+  // for any caller whose channel shape predates the resolution).
+  const recentsChannels = filterChatChannelsForProductRecents(
+    input.channels,
+    input.activeSurface,
   );
   const activeParallelChatGroups = (input.parallelChatGroups ?? []).filter(
     (group) =>
