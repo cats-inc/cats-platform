@@ -165,7 +165,7 @@ tested independently.
 - [x] Task 4.1: Define the weak/unknown response contract:
       `human_gate_required`, reason, optional draft summary, and suggested
       next actions.
-- [ ] Task 4.2: Add the chosen human-gate UX: Web shows an inline direct-lane
+- [x] Task 4.2: Add the chosen human-gate UX: Web shows an inline direct-lane
       confirm action for creating the drafted Work Item; Telegram returns a
       short explanation plus a deep link to the Web confirmation/create surface.
 - [x] Task 4.3: Add Telegram-safe copy for weak/unknown direct Cats that asks
@@ -326,6 +326,7 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Human-gate UI slice: weak/unknown system acknowledgements now reuse existing chat message choices to show inline next-step actions, including the Work Items path as the primary option while keeping the same metadata path for transport/deep-link handling. |
 | 2026-05-06 | Spec alignment slice: SPEC-104 and PLAN-092 now reflect the implemented MVP contract: strong slash-mode command turns create a draft Work Item anchor directly, do not dispatch runtime/task/run in the same turn, and follow-up prompt/context handles Concierge clarification on later turns. |
 | 2026-05-06 | Human-gate slice: weak/unknown `/work` and `/code` responses now carry a machine-readable human gate with draft summary and suggested next actions, use Telegram-safe copy without provider jargon, and tests assert no durable Work Item is created on weak/unknown paths. |
 | 2026-05-06 | Work projection slice: added coverage proving Work product projections list draft Work Items created from direct slash-mode chat, including source conversation and assigned direct Cat context. |

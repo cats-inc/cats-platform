@@ -290,6 +290,36 @@ test('beginChannelMessageDispatch records weak direct audience capability outcom
       label: 'Switch to a Cat that can own durable work',
     },
   ]);
+  assert.equal(ackMessage?.choices?.[0]?.question, 'Choose the next step for this work intake.');
+  assert.equal(ackMessage?.choices?.[0]?.allowSkip, true);
+  assert.deepEqual(
+    ackMessage?.choices?.[0]?.options.map((option) => ({
+      id: option.id,
+      label: option.label,
+      description: option.description,
+      style: option.style,
+    })),
+    [
+      {
+        id: 'continue_clarifying',
+        label: 'Continue clarifying in this direct chat',
+        description: undefined,
+        style: 'secondary',
+      },
+      {
+        id: 'open_work_items',
+        label: 'Create or confirm a Work Item in Work',
+        description: '/work/work-items',
+        style: 'primary',
+      },
+      {
+        id: 'switch_cat',
+        label: 'Switch to a Cat that can own durable work',
+        description: undefined,
+        style: 'secondary',
+      },
+    ],
+  );
   assert.equal(
     core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
     0,

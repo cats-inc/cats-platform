@@ -520,6 +520,28 @@ function buildDirectSlashModeStateMetadata(input: {
   };
 }
 
+function buildDirectSlashModeHumanGateChoices(
+  humanGate: DirectSlashModeHumanGateMetadata | null,
+): ChatMessage['choices'] {
+  if (!humanGate) {
+    return undefined;
+  }
+
+  return [
+    {
+      question: 'Choose the next step for this work intake.',
+      options: humanGate.suggestedActions.map((action) => ({
+        id: action.kind,
+        label: action.label,
+        ...(action.kind === 'open_work_items'
+          ? { description: action.path ?? '/work/work-items', style: 'primary' as const }
+          : { style: 'secondary' as const }),
+      })),
+      allowSkip: true,
+    },
+  ];
+}
+
 function readDirectSlashModeActiveAnchor(
   value: unknown,
 ): DirectSlashModeActiveAnchorMetadata | null {
@@ -1056,6 +1078,7 @@ export async function beginChannelMessageDispatch(
       },
       now,
       {
+        choices: buildDirectSlashModeHumanGateChoices(humanGate),
         metadata: {
           event: audience.accepted
             ? 'product_intent_posture_changed'
