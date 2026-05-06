@@ -97,6 +97,16 @@ export function getMobileDesktopOnlyAlertCopy(
       body: copy.parallelWorkDesktopOnlyBody,
     };
   }
+  // `+ Peer Code` is the Code-tab analogue of `+ Parallel Chat /
+  // Work` — a multi-recipient fan-out flow with no `default | group
+  // | direct` API on mobile. Without this intercept it would
+  // silently create a default Code channel.
+  if (product === 'code' && actionId === 'peer') {
+    return {
+      title: copy.peerCodeDesktopOnlyTitle,
+      body: copy.peerCodeDesktopOnlyBody,
+    };
+  }
   return null;
 }
 
@@ -127,8 +137,10 @@ export type MobileCatsDirectorySectionKey = 'cats' | 'clowders' | 'catteries';
  *   chat / 'group' → 'group'
  *   code / 'team'  → 'group'
  *   work / 'team'  → 'group'
- *   everything else (new / peer / parallel) → 'default'
- *   chat / 'parallel' and work / 'parallel' → null (desktop-only)
+ *   chat / 'parallel', work / 'parallel', code / 'peer' → null
+ *     (desktop-only fan-out flows that have no
+ *     default/group/direct API on mobile)
+ *   everything else (new) → 'default'
  */
 export function resolveMobileDraftApiEntryKind(
   product: MobileProductMode,
@@ -138,6 +150,9 @@ export function resolveMobileDraftApiEntryKind(
     return null;
   }
   if (product === 'work' && actionId === 'parallel') {
+    return null;
+  }
+  if (product === 'code' && actionId === 'peer') {
     return null;
   }
   if (product === 'chat' && actionId === 'group') {

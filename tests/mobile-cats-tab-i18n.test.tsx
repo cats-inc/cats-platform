@@ -243,9 +243,11 @@ test('mobile tabs copy exposes localized fixed controls', () => {
   assert.equal(getMobileChannelTitle(zh, 'code', 'peer'), '新同儕程式碼');
   assert.equal(getMobileChannelTitle(zh, 'work', 'unknown'), '新工作');
 
-  // Both `+ Parallel X` paths surface as desktop-only alerts; the copy
-  // must round-trip cleanly so the runtime intercept (chat/index.tsx,
-  // work/index.tsx) has something non-undefined to render.
+  // The three fan-out chips (`+ Parallel Chat`, `+ Parallel Work`,
+  // `+ Peer Code`) all surface as desktop-only alerts; the copy
+  // must round-trip cleanly so the runtime intercept
+  // (chat/index.tsx, work/index.tsx, code/index.tsx) has something
+  // non-undefined to render.
   assert.equal(en.parallelChatDesktopOnlyTitle, 'Parallel chat — desktop only');
   assert.equal(zh.parallelChatDesktopOnlyTitle, '平行聊天僅限桌面版');
   assert.match(en.parallelChatDesktopOnlyBody, /Parallel chat creation is not yet wired/u);
@@ -255,6 +257,11 @@ test('mobile tabs copy exposes localized fixed controls', () => {
   assert.equal(zh.parallelWorkDesktopOnlyTitle, '平行工作僅限桌面版');
   assert.match(en.parallelWorkDesktopOnlyBody, /Parallel work creation is not yet wired/u);
   assert.match(zh.parallelWorkDesktopOnlyBody, /行動版尚未支援建立平行工作/u);
+
+  assert.equal(en.peerCodeDesktopOnlyTitle, 'Peer code — desktop only');
+  assert.equal(zh.peerCodeDesktopOnlyTitle, '同儕程式碼僅限桌面版');
+  assert.match(en.peerCodeDesktopOnlyBody, /Peer code creation is not yet wired/u);
+  assert.match(zh.peerCodeDesktopOnlyBody, /行動版尚未支援建立同儕程式碼/u);
 });
 
 test('mobile api copy exposes localized deterministic errors', () => {
@@ -307,6 +314,25 @@ test('getMobileDesktopOnlyAlertCopy routes Work parallel into the desktop-only a
   assert.equal(zhAlert.body, zh.parallelWorkDesktopOnlyBody);
 });
 
+test('getMobileDesktopOnlyAlertCopy routes Code peer into the desktop-only alert', () => {
+  // `+ Peer Code` is the Code-tab analogue of `+ Parallel Chat /
+  // Work` — multi-recipient fan-out with no `default | group |
+  // direct` API on mobile. The contract has to match the other
+  // two so the three fan-out chips are consistent.
+  const en = getMobileTabsCopy('en');
+  const zh = getMobileTabsCopy('zh-TW');
+
+  const enAlert = getMobileDesktopOnlyAlertCopy('code', 'peer', en);
+  assert.ok(enAlert, 'expected code/peer to be desktop-only on mobile');
+  assert.equal(enAlert.title, en.peerCodeDesktopOnlyTitle);
+  assert.equal(enAlert.body, en.peerCodeDesktopOnlyBody);
+
+  const zhAlert = getMobileDesktopOnlyAlertCopy('code', 'peer', zh);
+  assert.ok(zhAlert, 'expected code/peer to be desktop-only on mobile (zh-TW)');
+  assert.equal(zhAlert.title, zh.peerCodeDesktopOnlyTitle);
+  assert.equal(zhAlert.body, zh.peerCodeDesktopOnlyBody);
+});
+
 // `getMobileNewEntityDesktopOnlyAlertCopy` is the parallel of
 // `getMobileDesktopOnlyAlertCopy` for the Cats tab's `+ New X` rows.
 // Until the mobile entity-creation contract lands, all three section
@@ -339,7 +365,7 @@ test('getMobileNewEntityDesktopOnlyAlertCopy returns desktop-only copy for every
   assert.equal(enCatteries.body, en.newCatteryDesktopOnlyBody);
 });
 
-test('getMobileDesktopOnlyAlertCopy lets non-parallel actions through to the draft route', () => {
+test('getMobileDesktopOnlyAlertCopy lets non-fan-out actions through to the draft route', () => {
   const en = getMobileTabsCopy('en');
 
   // Chat: New / Group go through to the draft route; only Parallel
@@ -347,12 +373,10 @@ test('getMobileDesktopOnlyAlertCopy lets non-parallel actions through to the dra
   assert.equal(getMobileDesktopOnlyAlertCopy('chat', 'new', en), null);
   assert.equal(getMobileDesktopOnlyAlertCopy('chat', 'group', en), null);
 
-  // Code: nothing is desktop-only today (no Parallel chip, no other
-  // create-time fan-out kinds). All three go through to the draft
-  // route.
+  // Code: New / Team go through to the draft route; only Peer is
+  // desktop-only (it's the Code-tab fan-out flow).
   assert.equal(getMobileDesktopOnlyAlertCopy('code', 'new', en), null);
   assert.equal(getMobileDesktopOnlyAlertCopy('code', 'team', en), null);
-  assert.equal(getMobileDesktopOnlyAlertCopy('code', 'peer', en), null);
 
   // Work: New / Team go through; only Parallel is desktop-only. This
   // is the regression the helper was extracted to pin — a previous
@@ -379,13 +403,18 @@ test('resolveMobileDraftApiEntryKind maps Group/Team chips onto API entryKind="g
   assert.equal(resolveMobileDraftApiEntryKind('work', 'team'), 'group');
 });
 
-test('resolveMobileDraftApiEntryKind maps Parallel chips to null (desktop-only)', () => {
+test('resolveMobileDraftApiEntryKind maps fan-out chips to null (desktop-only)', () => {
   // The send path must short-circuit on null and surface the same
-  // desktop-only alert as the sidebar tap. Mapping Parallel to
-  // 'default' would silently create a default channel and re-introduce
-  // the bug pinned by the chat/work parallel-chat tests above.
+  // desktop-only alert as the sidebar tap. Mapping any of these
+  // chips to 'default' would silently create a default channel and
+  // re-introduce the bug pinned by the chat/work/code fan-out alert
+  // tests above. The three fan-out chips are kept consistent here
+  // — `+ Parallel Chat`, `+ Parallel Work`, `+ Peer Code` all
+  // belong to the same desktop-only equivalence class because the
+  // mobile create contract has no fan-out / multi-recipient path.
   assert.equal(resolveMobileDraftApiEntryKind('chat', 'parallel'), null);
   assert.equal(resolveMobileDraftApiEntryKind('work', 'parallel'), null);
+  assert.equal(resolveMobileDraftApiEntryKind('code', 'peer'), null);
 });
 
 // `selectMobileProductRecents` powers the trimmed sidebar Recents
@@ -533,7 +562,6 @@ test('selectMobileProductRecents continues to scope by originSurface (SPEC-070)'
 test('resolveMobileDraftApiEntryKind maps every other chip to "default"', () => {
   assert.equal(resolveMobileDraftApiEntryKind('chat', 'new'), 'default');
   assert.equal(resolveMobileDraftApiEntryKind('code', 'new'), 'default');
-  assert.equal(resolveMobileDraftApiEntryKind('code', 'peer'), 'default');
   assert.equal(resolveMobileDraftApiEntryKind('work', 'new'), 'default');
   // Unknown ids fall through to 'default' rather than throwing — the
   // route layer is responsible for input validation, not this mapping.

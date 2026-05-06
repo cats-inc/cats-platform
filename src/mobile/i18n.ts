@@ -125,6 +125,8 @@ export interface MobileTabsCopy {
   parallelChatDesktopOnlyTitle: string;
   parallelWorkDesktopOnlyBody: string;
   parallelWorkDesktopOnlyTitle: string;
+  peerCodeDesktopOnlyBody: string;
+  peerCodeDesktopOnlyTitle: string;
   tabTitle: Record<MobileTabId, string>;
 }
 
@@ -385,6 +387,9 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
     parallelWorkDesktopOnlyBody:
       'Parallel work creation is not yet wired on mobile. Use the desktop app to start one; it will appear in RECENTS here once created.',
     parallelWorkDesktopOnlyTitle: 'Parallel work — desktop only',
+    peerCodeDesktopOnlyBody:
+      'Peer code creation is not yet wired on mobile. Use the desktop app to start one; it will appear in RECENTS here once created.',
+    peerCodeDesktopOnlyTitle: 'Peer code — desktop only',
     tabTitle: {
       cats: 'Cats',
       chat: 'Chat',
@@ -423,6 +428,9 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
     parallelWorkDesktopOnlyBody:
       '行動版尚未支援建立平行工作。請在桌面版開始，建立後會出現在這裡的近期項目。',
     parallelWorkDesktopOnlyTitle: '平行工作僅限桌面版',
+    peerCodeDesktopOnlyBody:
+      '行動版尚未支援建立同儕程式碼。請在桌面版開始，建立後會出現在這裡的近期項目。',
+    peerCodeDesktopOnlyTitle: '同儕程式碼僅限桌面版',
     tabTitle: {
       cats: 'Cats',
       chat: '聊天',
