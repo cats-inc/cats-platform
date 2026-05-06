@@ -238,8 +238,20 @@ demo Work Items unless the user explicitly approves a write.
   bridge into the same Chat dispatch boundary used by Web.
 - Final commands run on 2026-05-06:
   `npx tsx --test tests/chat-product-intent-command-parser.test.tsx tests/chat-composer-message-metadata.test.ts tests/chat-product-intent-dispatch.test.tsx tests/chat-direct-slash-mode-follow-up.test.tsx tests/chat-direct-slash-mode-work-projection.test.tsx tests/chat-direct-slash-mode-supervised-boundary.test.tsx`
-  passed with 37 tests; `npx tsc --noEmit -p tsconfig.server.json` passed;
+  passed with 38 tests; `npx tsc --noEmit -p tsconfig.server.json` passed;
   `npm run build:test-ui` passed.
+
+### Follow-up Backlog
+
+- [ ] Promote the prompt-only three-clarification-turn escape hatch into a
+      tracked lane/anchor counter before the next slash-mode phase claims hard
+      enforcement.
+- [ ] Decide whether weak/unknown direct Cats should also receive a first-turn
+      chat-only human-gate dispatch, with durable Work/Code tools still closed,
+      so users hear from the Cat instead of only the system acknowledgement.
+- [ ] Decide whether product-intent system segments need localization key /
+      interpolation metadata beside rendered `content` for future reader-side
+      i18n re-rendering.
 
 ## Files to Create/Modify
 
@@ -373,6 +385,8 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Follow-up contract alignment: SPEC-104 now records `productIntentArgumentProvided`, the empty-argument prompt marker, and the required "not owner wording" instruction; weak/unknown product-intent user messages also carry the argument-provided flag. Targeted suite passed with 38 tests and server typecheck passed. |
+| 2026-05-06 | Follow-up review alignment: ADR-101 now matches the implemented `/chat` draft-abandon contract; empty slash-mode arguments now use a neutral prompt marker plus Concierge instructions instead of localized synthetic user text; SPEC/PLAN track the remaining weak/unknown first-turn dialogue, hard clarification counter, and segment i18n follow-ups. Targeted suite passed with 38 tests, server typecheck passed, and UI test bundle passed. |
 | 2026-05-06 | Follow-up Concierge hardening: strong `/work` and `/code` command turns now create the draft anchor, surface the system acknowledgement, and immediately start the same direct Cat's chat-only Concierge turn. Telegram `from.language_code` now drives first-turn i18n, abandoned draft anchors are cancelled when posture is cleared without replacement, and the targeted suite passed with 37 tests plus server typecheck and UI test build. |
 | 2026-05-06 | Follow-up review hardening: product-intent acknowledgements, human-gate choices, and draft placeholder text now use i18n catalog entries; draft metadata records localization keys; stale follow-up prompts validate the Work Item's source conversation before injecting Concierge instructions; `/work` <-> `/code` direct switches supersede the prior draft anchor; ADR-101/PLAN-092 now require future tool exposure to use platform per-turn capability gates rather than prompt-only policy. |
 | 2026-05-06 | MVP close-out: Phase 6 verification notes are complete. Final targeted direct slash-mode suite passed (37 tests), `npx tsc --noEmit -p tsconfig.server.json` passed, and `npm run build:test-ui` passed. Web and Telegram notes document the non-persistent verification path used to avoid writing live demo records without explicit approval. |

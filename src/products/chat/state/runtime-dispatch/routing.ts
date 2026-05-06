@@ -10,6 +10,7 @@ import type {
   DirectSlashModePostureChangeMetadata,
   ProductIntentCommandMetadata,
   ProductIntentCommandSource,
+  ProductIntentUserMessageMetadata,
 } from '../../api/contracts.js';
 import { createCatActorId } from '../../../../core/actors.js';
 import type { CatsCoreState } from '../../../../core/types.js';
@@ -432,6 +433,19 @@ function normalizeWorkItemTitle(value: string, fallback: string): string {
 }
 
 type ProductIntentTranslator = ReturnType<typeof createTranslator>;
+const PRODUCT_INTENT_EMPTY_ARGUMENT_PROMPT = '(no slash-command argument provided)';
+
+function buildProductIntentUserMessageMetadata(input: {
+  productIntentCommand: ProductIntentCommandMetadata;
+  locale: MessageLocale;
+}): ProductIntentUserMessageMetadata {
+  return {
+    productIntentCommand: input.productIntentCommand,
+    productIntentLocale: input.locale,
+    productIntentArgumentProvided:
+      input.productIntentCommand.argumentText.trim().length > 0,
+  };
+}
 
 function resolveProductIntentMessageLocale(
   channel: ChatChannelState,
@@ -682,7 +696,6 @@ function annotateProductIntentUserMessageWithActiveAnchor(input: {
   messageId: string;
   activeAnchor: DirectSlashModeActiveAnchorMetadata;
   directSlashMode: Record<string, unknown> | null;
-  locale: MessageLocale;
   now: Date;
 }): { state: ChatState; userMessage: ChatMessage } {
   const nextState = structuredClone(input.state);
@@ -695,7 +708,6 @@ function annotateProductIntentUserMessageWithActiveAnchor(input: {
     ...(message.metadata ?? {}),
     ...(input.directSlashMode ? { directSlashMode: input.directSlashMode } : {}),
     directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(input.activeAnchor),
-    productIntentLocale: input.locale,
   };
   return {
     state: refreshDerivedMemoryLayers(nextState, input.channelId, input.now),
@@ -707,15 +719,12 @@ function buildProductIntentConciergePromptSource(input: {
   userMessage: ChatMessage;
   productIntentCommand: ProductIntentCommandMetadata;
   activeAnchor: DirectSlashModeActiveAnchorMetadata;
-  translate: ProductIntentTranslator;
 }): ChatMessage {
   const argumentText = input.productIntentCommand.argumentText.trim();
-  const emptyPromptKey = input.productIntentCommand.command === 'code'
-    ? messageKeys.chatProductIntentConciergeEmptyCodePrompt
-    : messageKeys.chatProductIntentConciergeEmptyWorkPrompt;
+  const hasArgument = argumentText.length > 0;
   return {
     ...structuredClone(input.userMessage),
-    body: argumentText || input.translate(emptyPromptKey),
+    body: hasArgument ? argumentText : PRODUCT_INTENT_EMPTY_ARGUMENT_PROMPT,
     metadata: {
       ...(input.userMessage.metadata ?? {}),
       directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(input.activeAnchor),
@@ -1236,13 +1245,19 @@ export async function beginChannelMessageDispatch(
       },
       now,
       {
-        metadata: buildBaseUserMessageMetadata({
-          payload,
-          channelId,
-          deterministicRoutingPlan,
-          transportBindingId: options.transportBindingId,
-          productIntentCommand,
-        }),
+        metadata: {
+          ...buildBaseUserMessageMetadata({
+            payload,
+            channelId,
+            deterministicRoutingPlan,
+            transportBindingId: options.transportBindingId,
+            productIntentCommand,
+          }),
+          ...buildProductIntentUserMessageMetadata({
+            productIntentCommand,
+            locale,
+          }),
+        },
         choiceResponse: payload.choiceResponse,
         origin: resolveUserMessageOrigin(options.transport),
         sourceTransportBindingId: options.transport === 'telegram'
@@ -1326,7 +1341,6 @@ export async function beginChannelMessageDispatch(
         messageId: userAppend.message.id,
         activeAnchor,
         directSlashMode,
-        locale,
         now,
       });
       nextState = annotated.state;
@@ -1411,7 +1425,6 @@ export async function beginChannelMessageDispatch(
         userMessage: productIntentUserMessage,
         productIntentCommand,
         activeAnchor,
-        translate,
       });
       const conciergePayload: SendChannelMessageInput = {
         ...payload,

@@ -781,6 +781,10 @@ function resolveDirectSlashModePromptLocale(
     ?? null;
 }
 
+function didProductIntentCommandOmitArgument(sourceMessage: ChatMessage): boolean {
+  return sourceMessage.metadata.productIntentArgumentProvided === false;
+}
+
 function buildDirectSlashModeFollowUpInstructions(
   sourceMessage: ChatMessage,
   input: {
@@ -804,9 +808,13 @@ function buildDirectSlashModeFollowUpInstructions(
     : locale === 'en'
       ? 'Reply in English unless the owner explicitly asks otherwise.'
       : null;
+  const emptyArgumentInstruction = didProductIntentCommandOmitArgument(sourceMessage)
+    ? 'The owner did not provide an argument after the slash command; do not treat the marker text as owner wording.'
+    : null;
   return [
     responseLanguageInstruction,
     `Direct slash-mode ${productLabel} intake is active.`,
+    emptyArgumentInstruction,
     `Use existing draft Work Item ${intakeRef.workItemId} as the durable anchor for this direct lane.`,
     `The source posture command segment is ${intakeRef.commandSegmentId}.`,
     'Concierge protocol: ask one focal clarifying question per assistant turn.',

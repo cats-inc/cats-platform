@@ -84,8 +84,12 @@ may keep a current-state cache for routing convenience, but that cache is not
 the audit source of truth. Later Work Item anchors must be replayable back to
 the exact command segment that switched posture.
 
-A `/chat` posture change clears the lane's active-anchor cache. The Work Item
-itself stays in the Work product surface and remains addressable from there.
+A `/chat` posture change clears the lane's active-anchor cache. If the linked
+Work Item is still `draft` and belongs to the same source conversation, it is
+marked `cancelled` with
+`metadata.directSlashModeAbandonedBy.reason = 'posture_abandoned'` so the Work
+surface does not retain an untracked orphan. Non-draft Work Items remain
+unchanged and addressable from the Work product surface.
 A subsequent `/work` or `/code` posture change in the same lane does not
 auto-resume the prior anchor; it starts a fresh intake. Resuming an existing
 Work Item from a direct lane is out of scope for this MVP and would require

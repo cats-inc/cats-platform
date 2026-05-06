@@ -199,22 +199,31 @@ labels, runtime labels, or a second model-strength classifier.
 45. The draft Work Item anchor result shall be surfaced to the user before the
     Concierge reply in the same turn it is created, so the user sees the anchor
     before any Conductor-style follow-up can run.
+46. Product-intent user messages shall carry
+    `metadata.productIntentArgumentProvided: boolean`, independent of whether
+    the direct audience Cat is strong enough to create an anchor. This flag
+    records whether the slash command included non-empty argument text.
+47. When a strong `/work` or `/code` command has no argument text, the
+    chat-only Concierge prompt source shall use the fixed marker
+    `(no slash-command argument provided)` as the immediate prompt body and
+    must include an instruction that the marker is not owner wording. Localized
+    synthetic text shall not be sent as owner wording.
 
 #### Active anchor lifecycle
 
-46. After a `/chat` posture change, the lane's
+48. After a `/chat` posture change, the lane's
     `metadata.directSlashMode.activeAnchor` cache shall be cleared. If the
     linked Work Item is still a draft in the same source conversation, it shall
     be marked `cancelled` with posture-abandoned metadata instead of remaining
     as an untracked orphan.
-47. When the active Work Item reaches a terminal `CoreWorkItemStatus`
+49. When the active Work Item reaches a terminal `CoreWorkItemStatus`
     (`completed`, `cancelled`, or `archived`), the lane's active-anchor cache
     shall be cleared.
-48. A subsequent `/work` or `/code` posture change in a lane that previously
+50. A subsequent `/work` or `/code` posture change in a lane that previously
     had its active-anchor cache cleared shall start a fresh intake; it shall
     not auto-resume any earlier Work Item. Future explicit-resume UI is
     covered by the multi-anchor open question and is out of MVP scope.
-49. A direct `/work` <-> `/code` posture switch while a draft active anchor
+51. A direct `/work` <-> `/code` posture switch while a draft active anchor
     exists shall supersede the prior draft anchor. The old Work Item shall be
     marked `cancelled` when still `draft` and shall carry metadata pointing to
     the replacement Work Item. The lane cache shall point only at the new
@@ -222,13 +231,13 @@ labels, runtime labels, or a second model-strength classifier.
 
 #### Boundary and naming
 
-50. This flow shall not reintroduce retired prototype route/control labels.
-51. The canonical domain split remains `direct_message` vs `chat_channel`.
-52. Entry UI labels such as default/group/parallel shall not be used to decide
+52. This flow shall not reintroduce retired prototype route/control labels.
+53. The canonical domain split remains `direct_message` vs `chat_channel`.
+54. Entry UI labels such as default/group/parallel shall not be used to decide
     model strength or durable work permissions.
-53. Strong/weak resolution shall be deterministic policy lookup, not an LLM
+55. Strong/weak resolution shall be deterministic policy lookup, not an LLM
     self-assessment.
-54. The MVP shall not introduce new fields on Core record types.
+56. The MVP shall not introduce new fields on Core record types.
     `CoreWorkItemRecord.conversationId` already exists and is the source-id
     field; everything else lives in additive `CoreRecordMetadata` keys
     (`metadata.directSlashModeIntake`, `metadata.directSlashModeIntakeRef`,
@@ -297,6 +306,24 @@ The system segment content should be a short acknowledgement in both Web and
 Telegram, including idempotent repeats (`changed: false`). Non-direct channels
 receive a visible rejection system segment and do not write posture-change
 state.
+
+### Product Intent User Message Metadata
+
+The original user transcript message remains the user's slash command text
+(`/work`, `/work clarify scope`, etc.). Product-owned metadata records the
+parsed command and whether the user supplied argument text:
+
+```ts
+interface ProductIntentUserMessageMetadata {
+  productIntentCommand: ProductIntentCommandMetadata;
+  productIntentLocale: 'en' | 'zh-TW';
+  productIntentArgumentProvided: boolean;
+}
+```
+
+`productIntentArgumentProvided` is written for strong, weak, unknown, and
+unsupported product-intent commands. It is not tied to Work Item anchor
+creation.
 
 ### Work Item Intake Metadata
 
@@ -383,10 +410,11 @@ Item reaches a terminal `CoreWorkItemStatus` (`completed`, `cancelled`, or
 `archived`). This pointer is a convenience cache; audit and projection tests
 must still rely on the Work Item source metadata and posture event.
 
-The cache is cleared eagerly when posture flips to `/chat` (FR-46) and when the
-linked Work Item reaches a terminal status (FR-47). A subsequent `/work` or
-`/code` in the same lane starts a fresh intake (FR-48); the prior Work Item
-remains addressable from the Work product surface but is not implicitly
+The cache is cleared eagerly when posture flips to `/chat` (FR-48) and when the
+linked Work Item reaches a terminal status (FR-49). A subsequent `/work` or
+`/code` in the same lane starts a fresh intake (FR-50); the prior Work Item is
+cancelled when it is still a same-conversation draft, while non-draft Work Items
+remain addressable from the Work product surface and are not implicitly
 re-attached to the lane.
 
 If the fresh intake is caused by a direct `/work` <-> `/code` switch while an
@@ -395,8 +423,10 @@ left orphaned. The new command segment records `clearReason:
 anchor_superseded`, the old draft Work Item is cancelled when it is still in
 `draft` status, and metadata on the old record points at the replacement Work
 Item. If policy cannot create a replacement anchor for the new posture, the
-old cache is still cleared with `clearReason: posture_changed` and the prior
-Work Item remains available from Work without being implicitly re-attached.
+old cache is still cleared with `clearReason: posture_changed`; if the prior
+same-conversation Work Item is still a draft, it is cancelled with
+`directSlashModeAbandonedBy.reason = 'posture_abandoned'` instead of remaining
+as an untracked draft.
 
 ### Concierge Prompt Framework
 
@@ -421,6 +451,11 @@ user message). The MVP prompt protocol is:
   is satisfied or when the FR-27 clarification budget is exhausted; in the
   latter case the prompt directs the Cat to ask the user to confirm the stated
   assumptions.
+- **Empty command argument marker.** If the slash command has no argument text,
+  the immediate Concierge prompt body shall be the fixed marker
+  `(no slash-command argument provided)`, and the instructions shall explicitly
+  tell the Cat not to treat that marker as owner wording. The transcript still
+  stores the owner's original slash command.
 
 This prompt content lives in product-owned prompt source (Phase 3 Task 3.2b)
 and is testable independently of command gating and schema validation.
@@ -489,6 +524,8 @@ these semantics.
   sync.
 - Product-intent commands write auditable system segments with posture-change
   metadata.
+- Product-intent user messages write `productIntentArgumentProvided` for
+  strong, weak, unknown, and unsupported contexts.
 - Repeating the active posture command is idempotent and does not reset the
   active anchor.
 - Product-intent commands in non-direct channels produce a visible rejection and
@@ -510,6 +547,9 @@ these semantics.
   a chat-only Concierge reply, but does not dispatch `createTask`, `createRun`,
   or Code execution in the same turn; follow-up execution can only happen in a
   later user turn under SPEC-082 supervision approval gates.
+- First-turn slash-mode dispatch with empty `argumentText` sends the fixed
+  `(no slash-command argument provided)` marker, not localized synthetic owner
+  wording, and includes an instruction that the marker is not owner wording.
 - The draft anchor result is surfaced to the user in the same turn it is
   created, before any Conductor-style follow-up can run.
 - A `/chat` posture change clears the lane's active-anchor cache, cancels the
@@ -539,6 +579,9 @@ these semantics.
 - [ ] Should future UI allow multiple active Work anchors per direct lane with
       explicit selection, or is one active anchor enough until group
       orchestration lands?
+- [ ] Should persisted product-intent system segments carry localization keys
+      and interpolation values in addition to rendered `content`, so future
+      readers can re-render acknowledgements in a different locale?
 
 ## References
 

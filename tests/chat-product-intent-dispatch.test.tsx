@@ -243,6 +243,7 @@ test('beginChannelMessageDispatch records direct product intent and starts chat-
     directWorkItem?.id,
   );
   assert.equal(userMessage?.metadata.productIntentLocale, 'en');
+  assert.equal(userMessage?.metadata.productIntentArgumentProvided, true);
   assert.equal(userMessage?.body, '/work clarify the MVP');
   assert.equal(productIntentMetadata?.command, 'work');
   assert.equal(productIntentMetadata?.source, 'web');
@@ -333,6 +334,43 @@ test('routeChannelMessage sends the first strong product-intent command to the s
   assert.equal(dispatched.results.length, 1);
 });
 
+test('routeChannelMessage does not send localized synthetic user text for empty product-intent arguments', async () => {
+  const { state, channelId } = createDirectState();
+  requireChannel(state, channelId).language = 'zh-TW';
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('這項工作最重要的成果是什麼？');
+
+  await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: '/work',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  assert.equal(runtimeClient.sentMessages.length, 1);
+  assert.match(
+    runtimeClient.sentMessages[0]?.content ?? '',
+    /Latest user message:\n\(no slash-command argument provided\)/u,
+  );
+  assert.doesNotMatch(runtimeClient.sentMessages[0]?.content ?? '', /切換到 Work 模式/u);
+  assert.match(
+    runtimeClient.sentMessages[0]?.input?.instructions ?? '',
+    /did not provide an argument/u,
+  );
+  assert.match(
+    runtimeClient.sentMessages[0]?.input?.instructions ?? '',
+    /Reply in Traditional Chinese/u,
+  );
+});
+
 test('beginChannelMessageDispatch records weak direct audience capability outcome', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);
@@ -352,7 +390,9 @@ test('beginChannelMessageDispatch records weak direct audience capability outcom
     },
   );
 
-  const ackMessage = requireChannel(begun.state, channelId).messages.at(-1);
+  const weakChannel = requireChannel(begun.state, channelId);
+  const userMessage = weakChannel.messages.find((message) => message.senderKind === 'user');
+  const ackMessage = weakChannel.messages.at(-1);
   const postureChange = ackMessage?.metadata.directSlashModePostureChange as
     | { capabilityProfileKind?: unknown }
     | undefined;
@@ -370,6 +410,7 @@ test('beginChannelMessageDispatch records weak direct audience capability outcom
   const core = await store.readCore();
 
   assert.match(ackMessage?.body ?? '', /^Work mode is active\./u);
+  assert.equal(userMessage?.metadata.productIntentArgumentProvided, true);
   assert.equal(postureChange?.capabilityProfileKind, 'weak_worker');
   assert.equal(directSlashMode?.humanGate?.kind, 'human_gate_required');
   assert.equal(directSlashMode?.humanGate?.capabilityProfileKind, 'weak_worker');
@@ -450,7 +491,9 @@ test('beginChannelMessageDispatch localizes direct product-intent acknowledgemen
     },
   );
 
-  const ackMessage = requireChannel(begun.state, channelId).messages.at(-1);
+  const unknownChannel = requireChannel(begun.state, channelId);
+  const userMessage = unknownChannel.messages.find((message) => message.senderKind === 'user');
+  const ackMessage = unknownChannel.messages.at(-1);
   const core = await store.readCore();
   const directWorkItem = core.workItems.find((candidate) =>
     Boolean(candidate.metadata.directSlashModeIntake));
@@ -459,7 +502,8 @@ test('beginChannelMessageDispatch localizes direct product-intent acknowledgemen
     | undefined;
 
   assert.match(ackMessage?.body ?? '', /^Work 模式已啟用/u);
-  assert.match(begun.preparedTurn?.userMessage.body ?? '', /切換到 Work 模式/u);
+  assert.equal(begun.preparedTurn?.userMessage.body, '(no slash-command argument provided)');
+  assert.equal(begun.preparedTurn?.userMessage.metadata.productIntentArgumentProvided, false);
   assert.match(directWorkItem?.summary ?? '', /直接對話/u);
   assert.equal(intake?.draft?.localization?.locale, 'zh-TW');
 });
@@ -497,7 +541,8 @@ test('beginChannelMessageDispatch prefers Telegram transport locale for first pr
 
   assert.match(ackMessage?.body ?? '', /^Work 模式已啟用/u);
   assert.equal(userMessage?.metadata.productIntentLocale, 'zh-TW');
-  assert.match(begun.preparedTurn?.userMessage.body ?? '', /切換到 Work 模式/u);
+  assert.equal(begun.preparedTurn?.userMessage.body, '(no slash-command argument provided)');
+  assert.equal(begun.preparedTurn?.userMessage.metadata.productIntentArgumentProvided, false);
   assert.equal(intake?.draft?.localization?.locale, 'zh-TW');
 });
 
@@ -519,7 +564,9 @@ test('beginChannelMessageDispatch records unknown direct audience capability out
     },
   );
 
-  const ackMessage = requireChannel(begun.state, channelId).messages.at(-1);
+  const unknownChannel = requireChannel(begun.state, channelId);
+  const userMessage = unknownChannel.messages.find((message) => message.senderKind === 'user');
+  const ackMessage = unknownChannel.messages.at(-1);
   const postureChange = ackMessage?.metadata.directSlashModePostureChange as
     | { capabilityProfileKind?: unknown }
     | undefined;
@@ -529,6 +576,7 @@ test('beginChannelMessageDispatch records unknown direct audience capability out
   const core = await store.readCore();
 
   assert.match(ackMessage?.body ?? '', /^Work mode is active\./u);
+  assert.equal(userMessage?.metadata.productIntentArgumentProvided, true);
   assert.equal(postureChange?.capabilityProfileKind, 'unknown');
   assert.equal(directSlashMode?.humanGate?.kind, 'human_gate_required');
   assert.equal(directSlashMode?.humanGate?.capabilityProfileKind, 'unknown');
@@ -755,9 +803,11 @@ test('beginChannelMessageDispatch rejects product intent posture changes outside
   );
 
   const channel = requireChannel(begun.state, channelId);
+  const userMessage = channel.messages.find((message) => message.senderKind === 'user');
   const ackMessage = channel.messages.at(-1);
 
   assert.equal(begun.preparedTurn, null);
+  assert.equal(userMessage?.metadata.productIntentArgumentProvided, true);
   assert.equal(ackMessage?.senderKind, 'system');
   assert.equal(ackMessage?.metadata.event, 'product_intent_unsupported_context');
   assert.equal(ackMessage?.metadata.accepted, false);
