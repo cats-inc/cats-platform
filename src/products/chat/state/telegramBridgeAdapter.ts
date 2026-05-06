@@ -91,6 +91,7 @@ export function createChatTelegramRoomBridge(input: {
       body,
       senderName,
       bindingId,
+      transportLocale,
       runtimeClient,
       memoryService,
       timestamp,
@@ -106,6 +107,7 @@ export function createChatTelegramRoomBridge(input: {
         timestamp,
         {
           transport: 'telegram',
+          transportLocale,
           transportBindingId: bindingId
             ? buildTelegramBotTransportBindingId(bindingId)
             : null,

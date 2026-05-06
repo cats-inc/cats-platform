@@ -1880,6 +1880,10 @@ export const enCatalog: MessageCatalog = {
   'chat.productIntent.draft.outOfScope':
     'Unconfirmed until the owner and Cat finish clarification.',
   'chat.productIntent.draft.openQuestion': 'What outcome should this work produce?',
+  'chat.productIntent.concierge.emptyWorkPrompt':
+    'The owner switched to Work mode without additional details. Ask one focal question to clarify the work request.',
+  'chat.productIntent.concierge.emptyCodePrompt':
+    'The owner switched to Code mode without additional details. Ask one focal question to clarify the coding request.',
   'shared.addCatPanelTitle': 'Add cat to chat',
   'shared.addCatPanelClose': 'Close',
   'shared.addCatPanelChooseExisting': 'Choose existing',

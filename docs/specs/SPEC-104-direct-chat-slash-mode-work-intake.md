@@ -189,21 +189,24 @@ labels, runtime labels, or a second model-strength classifier.
 #### Tool-chain separation
 
 43. The product-intent command turn that creates a draft Work Item anchor shall
-    not dispatch to runtime, `createTask`, `createRun`, or Code execution in the
-    same turn. Follow-up task/run work begins only on later user turns. The
-    constraint applies even when the same direct Cat is wearing both Concierge
-    and Conductor hats.
+    not dispatch to `createTask`, `createRun`, or Code execution in the same
+    turn. It may dispatch the same direct Cat for a chat-only Concierge reply
+    that asks clarification or recaps the request. Follow-up task/run work
+    begins only on later user turns. The constraint applies even when the same
+    direct Cat is wearing both Concierge and Conductor hats.
 44. SPEC-082 supervision approval gates apply on top of the turn-separation
     rule above. Approval gates are not a substitute for the turn separation.
-45. The draft Work Item anchor result shall be surfaced to the user in the same
-    turn it is created, so the user sees the anchor before any Conductor-style
-    follow-up can run.
+45. The draft Work Item anchor result shall be surfaced to the user before the
+    Concierge reply in the same turn it is created, so the user sees the anchor
+    before any Conductor-style follow-up can run.
 
 #### Active anchor lifecycle
 
 46. After a `/chat` posture change, the lane's
-    `metadata.directSlashMode.activeAnchor` cache shall be cleared. The Work
-    Item itself shall not be modified by the posture change.
+    `metadata.directSlashMode.activeAnchor` cache shall be cleared. If the
+    linked Work Item is still a draft in the same source conversation, it shall
+    be marked `cancelled` with posture-abandoned metadata instead of remaining
+    as an untracked orphan.
 47. When the active Work Item reaches a terminal `CoreWorkItemStatus`
     (`completed`, `cancelled`, or `archived`), the lane's active-anchor cache
     shall be cleared.
@@ -503,13 +506,15 @@ these semantics.
   task/run execution begins.
 - Strong `/work` / `/code` paths test command gating, Concierge prompt protocol,
   schema validation, and clarification-budget behavior independently.
-- A successful draft anchor creation turn does not dispatch to runtime,
-  `createTask`, `createRun`, or Code execution in the same turn; follow-up can
-  only happen in a later user turn under SPEC-082 supervision approval gates.
+- A successful draft anchor creation turn may dispatch the same direct Cat for
+  a chat-only Concierge reply, but does not dispatch `createTask`, `createRun`,
+  or Code execution in the same turn; follow-up execution can only happen in a
+  later user turn under SPEC-082 supervision approval gates.
 - The draft anchor result is surfaced to the user in the same turn it is
   created, before any Conductor-style follow-up can run.
-- A `/chat` posture change clears the lane's active-anchor cache; a
-  subsequent `/work` or `/code` starts a fresh intake.
+- A `/chat` posture change clears the lane's active-anchor cache, cancels the
+  same-conversation draft anchor as abandoned when applicable, and a subsequent
+  `/work` or `/code` starts a fresh intake.
 - Switching directly between `/work` and `/code` supersedes the prior draft
   anchor instead of leaving it as an untracked orphan.
 - A Work Item reaching `completed`, `cancelled`, or `archived` clears the

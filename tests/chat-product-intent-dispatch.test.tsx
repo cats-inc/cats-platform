@@ -9,6 +9,7 @@ import {
 } from '../src/products/chat/state/model/index.ts';
 import {
   beginChannelMessageDispatch,
+  routeChannelMessage,
 } from '../src/products/chat/state/runtime-dispatch/routing.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import type { RuntimeClient } from '../src/platform/runtime/client.ts';
@@ -23,6 +24,57 @@ function runtimeStub(onClose?: () => void): RuntimeClient {
       onClose?.();
     },
   } as RuntimeClient;
+}
+
+function runtimeReplyStub(reply: string): RuntimeClient & {
+  sentMessages: Array<{
+    sessionId: string;
+    content: string;
+    input?: { instructions?: string | null };
+  }>;
+} {
+  let nextSession = 1;
+  const sentMessages: Array<{
+    sessionId: string;
+    content: string;
+    input?: { instructions?: string | null };
+  }> = [];
+  return {
+    sentMessages,
+    async createSession(input) {
+      const sessionId = `session-${nextSession}`;
+      nextSession += 1;
+      return {
+        id: sessionId,
+        provider: input.provider,
+        model: input.model ?? null,
+        modelSelection: input.modelSelection ?? null,
+        modelResolution: null,
+        status: 'ready',
+        cwd: input.cwd ?? null,
+      };
+    },
+    async sendMessage(sessionId, content, input) {
+      sentMessages.push({ sessionId, content, input });
+      return {
+        segments: [{ kind: 'text', text: reply, toolName: null, toolId: null }],
+        inputTokens: 1,
+        outputTokens: 1,
+        tokensUsed: 2,
+      };
+    },
+    async closeSession() {},
+    async observeSession(sessionId) {
+      return { session: { id: sessionId, status: 'ready' } };
+    },
+    async streamSession() {},
+  } as RuntimeClient & {
+    sentMessages: Array<{
+      sessionId: string;
+      content: string;
+      input?: { instructions?: string | null };
+    }>;
+  };
 }
 
 function fixtureBootstrapConfig(
@@ -84,7 +136,7 @@ function createDirectState() {
   };
 }
 
-test('beginChannelMessageDispatch records direct product intent as posture event without runtime dispatch', async () => {
+test('beginChannelMessageDispatch records direct product intent and starts chat-only Concierge dispatch', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);
   let closeSessionCalls = 0;
@@ -173,9 +225,24 @@ test('beginChannelMessageDispatch records direct product intent as posture event
       }
     | undefined;
 
-  assert.equal(begun.preparedTurn, null);
+  assert.notEqual(begun.preparedTurn, null);
   assert.deepEqual(begun.results, []);
   assert.equal(closeSessionCalls, 0);
+  assert.equal(begun.preparedTurn?.userMessage.id, userMessage?.id);
+  assert.equal(begun.preparedTurn?.userMessage.body, 'clarify the MVP');
+  assert.equal(
+    (begun.preparedTurn?.userMessage.metadata.directSlashModeIntakeRef as
+      | { workItemId?: unknown }
+      | undefined)?.workItemId,
+    directWorkItem?.id,
+  );
+  assert.equal(
+    (userMessage?.metadata.directSlashModeIntakeRef as
+      | { workItemId?: unknown }
+      | undefined)?.workItemId,
+    directWorkItem?.id,
+  );
+  assert.equal(userMessage?.metadata.productIntentLocale, 'en');
   assert.equal(userMessage?.body, '/work clarify the MVP');
   assert.equal(productIntentMetadata?.command, 'work');
   assert.equal(productIntentMetadata?.source, 'web');
@@ -226,6 +293,44 @@ test('beginChannelMessageDispatch records direct product intent as posture event
   assert.equal(Array.isArray(directWorkItemIntake?.draft?.openQuestions), true);
   assert.equal((directWorkItemIntake?.draft?.openQuestions as unknown[] | undefined)?.length, 1);
   assert.equal(directWorkItemIntake?.draft?.proposedNextAction, 'clarify');
+});
+
+test('routeChannelMessage sends the first strong product-intent command to the same Cat', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('What outcome should this work produce first?');
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const channel = requireChannel(dispatched.state, channelId);
+  const ackMessage = channel.messages.find((message) =>
+    message.metadata.event === 'product_intent_posture_changed');
+  const assistantMessage = channel.messages.at(-1);
+
+  assert.equal(runtimeClient.sentMessages.length, 1);
+  assert.match(runtimeClient.sentMessages[0]?.content ?? '', /clarify the MVP/u);
+  assert.match(
+    runtimeClient.sentMessages[0]?.input?.instructions ?? '',
+    /Direct slash-mode Work intake is active/u,
+  );
+  assert.equal(ackMessage?.senderKind, 'system');
+  assert.equal(assistantMessage?.senderKind, 'agent');
+  assert.equal(assistantMessage?.senderName, 'ConciergeCat');
+  assert.equal(assistantMessage?.body, 'What outcome should this work produce first?');
+  assert.equal(dispatched.results.length, 1);
 });
 
 test('beginChannelMessageDispatch records weak direct audience capability outcome', async () => {
@@ -354,7 +459,45 @@ test('beginChannelMessageDispatch localizes direct product-intent acknowledgemen
     | undefined;
 
   assert.match(ackMessage?.body ?? '', /^Work 模式已啟用/u);
+  assert.match(begun.preparedTurn?.userMessage.body ?? '', /切換到 Work 模式/u);
   assert.match(directWorkItem?.summary ?? '', /直接對話/u);
+  assert.equal(intake?.draft?.localization?.locale, 'zh-TW');
+});
+
+test('beginChannelMessageDispatch prefers Telegram transport locale for first product-intent turn', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      transport: 'telegram',
+      transportLocale: 'zh-Hant',
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const channel = requireChannel(begun.state, channelId);
+  const userMessage = channel.messages.find((message) => message.senderKind === 'user');
+  const ackMessage = channel.messages.at(-1);
+  const core = await store.readCore();
+  const directWorkItem = core.workItems.find((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  const intake = directWorkItem?.metadata.directSlashModeIntake as
+    | { draft?: { localization?: { locale?: unknown } } }
+    | undefined;
+
+  assert.match(ackMessage?.body ?? '', /^Work 模式已啟用/u);
+  assert.equal(userMessage?.metadata.productIntentLocale, 'zh-TW');
+  assert.match(begun.preparedTurn?.userMessage.body ?? '', /切換到 Work 模式/u);
   assert.equal(intake?.draft?.localization?.locale, 'zh-TW');
 });
 
@@ -568,13 +711,18 @@ test('beginChannelMessageDispatch clears active anchors on product switch withou
       }
     | undefined;
   const core = await store.readCore();
+  const abandonedWorkItem = core.workItems.find((candidate) => candidate.id === firstWorkItem.id);
+  const abandonedBy = abandonedWorkItem?.metadata.directSlashModeAbandonedBy as
+    | { reason?: unknown; segmentId?: unknown }
+    | undefined;
 
   assert.equal(directSlashMode?.activeAnchor, null);
   assert.equal(directSlashMode?.clearReason, 'posture_changed');
   assert.equal(directSlashMode?.clearedActiveAnchor?.workItemId, firstWorkItem.id);
   assert.equal(directSlashMode?.humanGate?.kind, 'human_gate_required');
   assert.equal(directSlashMode?.humanGate?.capabilityProfileKind, 'unknown');
-  assert.equal(core.workItems.find((candidate) => candidate.id === firstWorkItem.id)?.status, 'draft');
+  assert.equal(abandonedWorkItem?.status, 'cancelled');
+  assert.equal(abandonedBy?.reason, 'posture_abandoned');
   assert.equal(
     core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
     1,
@@ -780,10 +928,16 @@ test('beginChannelMessageDispatch clears active slash-mode anchors on chat postu
       }
     | undefined;
   const core = await store.readCore();
+  const abandonedWorkItem = core.workItems.find((candidate) => candidate.id === firstWorkItem?.id);
+  const abandonedBy = abandonedWorkItem?.metadata.directSlashModeAbandonedBy as
+    | { reason?: unknown }
+    | undefined;
 
   assert.equal(directSlashMode?.activeAnchor, null);
   assert.equal(directSlashMode?.clearReason, 'chat_posture');
   assert.equal(directSlashMode?.clearedActiveAnchor?.workItemId, firstWorkItem?.id);
+  assert.equal(abandonedWorkItem?.status, 'cancelled');
+  assert.equal(abandonedBy?.reason, 'posture_abandoned');
   assert.equal(
     core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
     1,

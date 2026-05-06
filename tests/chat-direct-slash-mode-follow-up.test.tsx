@@ -99,6 +99,7 @@ function createDirectSlashModeDispatchRequest(): {
           commandSegmentId: 'segment-product-intent-message-1',
           targetProduct: 'code',
         },
+        productIntentLocale: 'zh-TW',
       },
     },
   );
@@ -178,6 +179,7 @@ test('direct slash-mode follow-up prompt carries Concierge protocol instructions
 
   const prompt = buildPromptForTarget(state, channelId, request, undefined, core);
 
+  assert.match(prompt.instructions ?? '', /Reply in Traditional Chinese/u);
   assert.match(prompt.instructions ?? '', /Direct slash-mode Code intake is active/u);
   assert.match(prompt.instructions ?? '', /work-item-direct-intake-message-1/u);
   assert.match(prompt.instructions ?? '', /ask one focal clarifying question/u);

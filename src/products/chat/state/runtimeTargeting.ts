@@ -32,6 +32,10 @@ import {
   buildDirectLaneTransportBindingId,
 } from '../../../shared/chatCoreIds.js';
 import {
+  parseMessageLocale,
+  type MessageLocale,
+} from '../../../shared/i18n/index.js';
+import {
   resolveTranscriptOrCanonicalConversationMessages,
   readChatCoreMetadataString,
   resolveRawChatParticipantId,
@@ -755,6 +759,28 @@ function resolveDirectSlashModeFollowUpIntakeRef(
   return intakeRef;
 }
 
+function resolveDirectSlashModePromptLocale(
+  sourceMessage: ChatMessage,
+  input: {
+    state: ChatState;
+    channelId: string;
+  },
+): MessageLocale | null {
+  const metadataLocale = parseMessageLocale(
+    typeof sourceMessage.metadata.productIntentLocale === 'string'
+      ? sourceMessage.metadata.productIntentLocale
+      : null,
+  );
+  if (metadataLocale) {
+    return metadataLocale;
+  }
+
+  const channel = requireChannel(input.state, input.channelId);
+  return parseMessageLocale(channel.responseLanguage)
+    ?? parseMessageLocale(channel.language)
+    ?? null;
+}
+
 function buildDirectSlashModeFollowUpInstructions(
   sourceMessage: ChatMessage,
   input: {
@@ -769,7 +795,17 @@ function buildDirectSlashModeFollowUpInstructions(
   }
 
   const productLabel = intakeRef.targetProduct === 'code' ? 'Code' : 'Work';
+  const locale = resolveDirectSlashModePromptLocale(sourceMessage, input);
+  const responseLanguageInstruction = locale === 'zh-TW'
+    ? [
+        'Reply in Traditional Chinese unless the owner explicitly asks otherwise.',
+        'Keep product names, code, paths, and technical identifiers in English.',
+      ].join(' ')
+    : locale === 'en'
+      ? 'Reply in English unless the owner explicitly asks otherwise.'
+      : null;
   return [
+    responseLanguageInstruction,
     `Direct slash-mode ${productLabel} intake is active.`,
     `Use existing draft Work Item ${intakeRef.workItemId} as the durable anchor for this direct lane.`,
     `The source posture command segment is ${intakeRef.commandSegmentId}.`,
@@ -781,7 +817,7 @@ function buildDirectSlashModeFollowUpInstructions(
     intakeRef.targetProduct === 'code'
       ? 'Treat follow-up execution as Code-bound only after the Work Item remains the active anchor.'
       : 'Treat follow-up execution as Work-bound only after the Work Item remains the active anchor.',
-  ].join('\n');
+  ].filter((line): line is string => Boolean(line)).join('\n');
 }
 
 function joinRuntimeInstructions(

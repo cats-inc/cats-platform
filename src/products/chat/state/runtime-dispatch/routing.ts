@@ -72,6 +72,7 @@ import {
 } from '../runtimeTargeting.js';
 import {
   prepareDispatchTurn,
+  prepareDispatchTurnForUserMessage,
   prepareDispatchTurnForExistingUserMessage,
 } from './turn.js';
 import {
@@ -114,6 +115,7 @@ export type ProviderAgentDecisionRequester = (input: {
 
 interface RouteChannelMessageOptions {
   transport?: RuntimeTransportContext;
+  transportLocale?: string | null;
   transportBindingId?: string | null;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
@@ -431,17 +433,28 @@ function normalizeWorkItemTitle(value: string, fallback: string): string {
 
 type ProductIntentTranslator = ReturnType<typeof createTranslator>;
 
-function resolveProductIntentMessageLocale(channel: ChatChannelState): MessageLocale {
-  const explicitLocale = parseMessageLocale(channel.language)
+function resolveProductIntentMessageLocale(
+  channel: ChatChannelState,
+  transportLocale?: string | null,
+): MessageLocale {
+  const explicitLocale = parseMessageLocale(transportLocale)
+    ?? parseMessageLocale(channel.language)
     ?? parseMessageLocale(channel.responseLanguage);
   if (explicitLocale) {
     return explicitLocale;
   }
 
-  const responseLanguage = channel.responseLanguage.trim().toLowerCase();
-  return responseLanguage.includes('zh')
-    || responseLanguage.includes('chinese')
-    || responseLanguage.includes('traditional')
+  const languageHint = [
+    transportLocale,
+    channel.language,
+    channel.responseLanguage,
+  ].filter((candidate): candidate is string =>
+    typeof candidate === 'string' && candidate.trim().length > 0)
+    .join(' ')
+    .toLowerCase();
+  return languageHint.includes('zh')
+    || languageHint.includes('chinese')
+    || languageHint.includes('traditional')
     ? 'zh-TW'
     : 'en';
 }
@@ -663,6 +676,53 @@ function buildDirectSlashModeIntakeRef(
   };
 }
 
+function annotateProductIntentUserMessageWithActiveAnchor(input: {
+  state: ChatState;
+  channelId: string;
+  messageId: string;
+  activeAnchor: DirectSlashModeActiveAnchorMetadata;
+  directSlashMode: Record<string, unknown> | null;
+  locale: MessageLocale;
+  now: Date;
+}): { state: ChatState; userMessage: ChatMessage } {
+  const nextState = structuredClone(input.state);
+  const channel = requireChannel(nextState, input.channelId);
+  const message = channel.messages.find((candidate) => candidate.id === input.messageId);
+  if (!message) {
+    throw new Error(`Product-intent user message not found: ${input.messageId}`);
+  }
+  message.metadata = {
+    ...(message.metadata ?? {}),
+    ...(input.directSlashMode ? { directSlashMode: input.directSlashMode } : {}),
+    directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(input.activeAnchor),
+    productIntentLocale: input.locale,
+  };
+  return {
+    state: refreshDerivedMemoryLayers(nextState, input.channelId, input.now),
+    userMessage: message,
+  };
+}
+
+function buildProductIntentConciergePromptSource(input: {
+  userMessage: ChatMessage;
+  productIntentCommand: ProductIntentCommandMetadata;
+  activeAnchor: DirectSlashModeActiveAnchorMetadata;
+  translate: ProductIntentTranslator;
+}): ChatMessage {
+  const argumentText = input.productIntentCommand.argumentText.trim();
+  const emptyPromptKey = input.productIntentCommand.command === 'code'
+    ? messageKeys.chatProductIntentConciergeEmptyCodePrompt
+    : messageKeys.chatProductIntentConciergeEmptyWorkPrompt;
+  return {
+    ...structuredClone(input.userMessage),
+    body: argumentText || input.translate(emptyPromptKey),
+    metadata: {
+      ...(input.userMessage.metadata ?? {}),
+      directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(input.activeAnchor),
+    },
+  };
+}
+
 function describeProductIntentCommandAck(
   productIntentCommand: ProductIntentCommandMetadata,
   accepted: boolean,
@@ -721,6 +781,32 @@ function mergeSupersededDirectSlashModeMetadata(input: {
             ...(directSlashModeIntake as Record<string, unknown>),
             supersededByWorkItemId: input.supersededByWorkItemId,
             supersededBy,
+          },
+        }
+      : {}),
+  };
+}
+
+function mergeAbandonedDirectSlashModeMetadata(input: {
+  metadata: Record<string, unknown>;
+  reason: 'posture_abandoned';
+  abandonedAt: string;
+  abandonedBySegmentId: string;
+}): Record<string, unknown> {
+  const abandonedBy = {
+    reason: input.reason,
+    segmentId: input.abandonedBySegmentId,
+    abandonedAt: input.abandonedAt,
+  };
+  const directSlashModeIntake = input.metadata.directSlashModeIntake;
+  return {
+    ...input.metadata,
+    directSlashModeAbandonedBy: abandonedBy,
+    ...(directSlashModeIntake && typeof directSlashModeIntake === 'object'
+      ? {
+          directSlashModeIntake: {
+            ...(directSlashModeIntake as Record<string, unknown>),
+            abandonedBy,
           },
         }
       : {}),
@@ -915,28 +1001,63 @@ async function persistProductIntentCommandCoreSegment(input: {
         },
         input.now,
       ).core;
-      if (input.activeAnchorClear?.clearReason === 'anchor_superseded') {
-        const existingWorkItem = nextCore.workItems.find((candidate) =>
-          candidate.id === input.activeAnchorClear?.clearedActiveAnchor.workItemId) ?? null;
-        if (existingWorkItem) {
-          nextCore = upsertCoreWorkItem(
-            nextCore,
-            {
-              id: existingWorkItem.id,
-              title: existingWorkItem.title,
-              status: existingWorkItem.status === 'draft'
-                ? 'cancelled'
-                : existingWorkItem.status,
-              metadata: mergeSupersededDirectSlashModeMetadata({
-                metadata: existingWorkItem.metadata,
-                supersededByWorkItemId: workItemId,
-                supersededBySegmentId: segmentId,
-                supersededAt: input.ackMessage.createdAt,
-              }),
-            },
-            input.now,
-          ).core;
-        }
+    }
+    if (
+      input.activeAnchor
+      && input.activeAnchorClear?.clearReason === 'anchor_superseded'
+      && input.activeAnchor.workItemId === input.activeAnchorClear.clearedActiveAnchor.workItemId
+    ) {
+      throw new Error('Direct slash-mode replacement anchor id matched the cleared anchor id.');
+    }
+    if (
+      input.activeAnchor
+      && input.activeAnchorClear?.clearReason === 'anchor_superseded'
+    ) {
+      const existingWorkItem = nextCore.workItems.find((candidate) =>
+        candidate.id === input.activeAnchorClear?.clearedActiveAnchor.workItemId) ?? null;
+      if (existingWorkItem) {
+        nextCore = upsertCoreWorkItem(
+          nextCore,
+          {
+            id: existingWorkItem.id,
+            title: existingWorkItem.title,
+            status: existingWorkItem.status === 'draft'
+              ? 'cancelled'
+              : existingWorkItem.status,
+            metadata: mergeSupersededDirectSlashModeMetadata({
+              metadata: existingWorkItem.metadata,
+              supersededByWorkItemId: workItemId,
+              supersededBySegmentId: segmentId,
+              supersededAt: input.ackMessage.createdAt,
+            }),
+          },
+          input.now,
+        ).core;
+      }
+    }
+    if (
+      input.activeAnchorClear?.clearReason === 'posture_changed'
+      || input.activeAnchorClear?.clearReason === 'chat_posture'
+    ) {
+      const abandonedWorkItem = nextCore.workItems.find((candidate) =>
+        candidate.id === input.activeAnchorClear?.clearedActiveAnchor.workItemId
+        && candidate.conversationId === conversationId) ?? null;
+      if (abandonedWorkItem?.status === 'draft') {
+        nextCore = upsertCoreWorkItem(
+          nextCore,
+          {
+            id: abandonedWorkItem.id,
+            title: abandonedWorkItem.title,
+            status: 'cancelled',
+            metadata: mergeAbandonedDirectSlashModeMetadata({
+              metadata: abandonedWorkItem.metadata,
+              reason: 'posture_abandoned',
+              abandonedAt: input.ackMessage.createdAt,
+              abandonedBySegmentId: segmentId,
+            }),
+          },
+          input.now,
+        ).core;
       }
     }
     return nextCore;
@@ -1100,7 +1221,10 @@ export async function beginChannelMessageDispatch(
     resolveProductIntentCommandSource(options.transport),
   );
   if (productIntentCommand) {
-    const locale = resolveProductIntentMessageLocale(channelBeforeMessage);
+    const locale = resolveProductIntentMessageLocale(
+      channelBeforeMessage,
+      options.transportLocale,
+    );
     const translate = createTranslator(locale);
     const userAppend = appendMessage(
       nextState,
@@ -1194,6 +1318,20 @@ export async function beginChannelMessageDispatch(
       clear: activeAnchorClear,
       humanGate,
     });
+    let productIntentUserMessage = userAppend.message;
+    if (activeAnchor) {
+      const annotated = annotateProductIntentUserMessageWithActiveAnchor({
+        state: nextState,
+        channelId,
+        messageId: userAppend.message.id,
+        activeAnchor,
+        directSlashMode,
+        locale,
+        now,
+      });
+      nextState = annotated.state;
+      productIntentUserMessage = annotated.userMessage;
+    }
     const ackAppend = appendMessage(
       nextState,
       channelId,
@@ -1249,7 +1387,7 @@ export async function beginChannelMessageDispatch(
       chatStore: options.chatStore,
       state: nextState,
       channelId,
-      userMessage: userAppend.message,
+      userMessage: productIntentUserMessage,
       ackMessage: ackAppend.message,
       productIntentCommand,
       postureChange,
@@ -1262,13 +1400,89 @@ export async function beginChannelMessageDispatch(
       translate,
       now,
     });
+    let productIntentResults: ChannelDispatchResult[] = [];
+    let productIntentPreparedTurn: import('./turn.js').PreparedDispatchTurn | null = null;
+    let providerAgentDecision: ProviderAgentDecision | null = null;
+    if (activeAnchor && productIntentCommand.command !== 'chat') {
+      const coreAfterProductIntent = options.chatStore
+        ? await options.chatStore.readCore()
+        : null;
+      const conciergeSourceMessage = buildProductIntentConciergePromptSource({
+        userMessage: productIntentUserMessage,
+        productIntentCommand,
+        activeAnchor,
+        translate,
+      });
+      const conciergePayload: SendChannelMessageInput = {
+        ...payload,
+        body: conciergeSourceMessage.body,
+      };
+      const preparedTurn = prepareDispatchTurnForUserMessage(
+        nextState,
+        channelId,
+        conciergePayload,
+        conciergeSourceMessage,
+        now,
+        coreAfterProductIntent ?? undefined,
+        {
+          deterministicRoutingPlan,
+          providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
+          providerCapabilityBootstrapDiagnosticSink:
+            options.providerCapabilityBootstrapDiagnosticSink,
+        },
+      );
+      const effectiveDeterministicRoutingPlan =
+        deterministicRoutingPlan
+        ?? buildPreparedTurnDeterministicRoutingPlan(channelId, preparedTurn);
+      const metadataApplied = applyDeterministicPlanMetadataToExistingUserMessage(
+        preparedTurn.state,
+        channelId,
+        preparedTurn.userMessage.id,
+        effectiveDeterministicRoutingPlan,
+        now,
+      );
+      if (metadataApplied.userMessage) {
+        preparedTurn.state = metadataApplied.state;
+        preparedTurn.userMessage = {
+          ...preparedTurn.userMessage,
+          metadata: metadataApplied.userMessage.metadata,
+        };
+      }
+      providerAgentDecision = preparedTurn.providerAgentObservation
+        && options.providerAgentDecisionRequester
+        ? await options.providerAgentDecisionRequester({
+            state: preparedTurn.state,
+            channelId,
+            payload: conciergePayload,
+            observation: preparedTurn.providerAgentObservation,
+            runtimeClient,
+            now,
+          })
+        : null;
+      if (preparedTurn.terminalResult) {
+        nextState = preparedTurn.terminalResult.state;
+        productIntentResults = preparedTurn.terminalResult.results;
+      } else {
+        productIntentPreparedTurn = preparedTurn;
+        nextState = materializeInFlightDispatchState(
+          preparedTurn.state,
+          channelId,
+          preparedTurn.baseRoomRouting,
+          preparedTurn.workflow,
+          preparedTurn.outcome,
+          preparedTurn.latestCheckpoint,
+          now,
+        );
+        nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+      }
+    }
     options.onStateWritten?.(channelId);
     return {
       state: nextState,
-      results: [],
-      preparedTurn: null,
-      userMessage: userAppend.message,
-      providerAgentDecision: null,
+      results: productIntentResults,
+      preparedTurn: productIntentPreparedTurn,
+      userMessage: productIntentUserMessage,
+      providerAgentDecision,
     };
   }
   const nextTarget = resolveNextPendingExecutionTarget(channelBeforeMessage, payload);

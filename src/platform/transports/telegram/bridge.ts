@@ -88,6 +88,7 @@ export interface TelegramRoomBridge<TState extends TelegramRoomBridgeState = Tel
     body: string;
     senderName: string;
     bindingId?: string | null;
+    transportLocale?: string | null;
     runtimeClient: RuntimeClient;
     memoryService: CatsMemoryService;
     timestamp: Date;
@@ -410,6 +411,7 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
         body: inboundBody,
         senderName,
         bindingId: input.receipt.bindingId,
+        transportLocale: message?.from?.language_code ?? null,
         runtimeClient: input.runtimeClient,
         memoryService: input.memoryService,
         timestamp,

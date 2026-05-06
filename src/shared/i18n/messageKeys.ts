@@ -1960,6 +1960,10 @@ export const messageKeys = {
     'chat.productIntent.draft.successCriteria',
   chatProductIntentDraftOutOfScope: 'chat.productIntent.draft.outOfScope',
   chatProductIntentDraftOpenQuestion: 'chat.productIntent.draft.openQuestion',
+  chatProductIntentConciergeEmptyWorkPrompt:
+    'chat.productIntent.concierge.emptyWorkPrompt',
+  chatProductIntentConciergeEmptyCodePrompt:
+    'chat.productIntent.concierge.emptyCodePrompt',
   sharedAddCatPanelTitle: 'shared.addCatPanelTitle',
   sharedAddCatPanelClose: 'shared.addCatPanelClose',
   sharedAddCatPanelChooseExisting: 'shared.addCatPanelChooseExisting',
