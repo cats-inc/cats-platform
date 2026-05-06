@@ -102,9 +102,9 @@ the bridge into SPEC-104 before Telegram work starts.
       confirm/decline transition. The bridge resolves the full `candidateId`
       from the candidate message metadata because Telegram limits callback data
       to 64 bytes. Reply-keyboard and free-form text confirmation are out of v1.
-- [ ] Task 3.4: Add transport parity tests for Telegram and Web candidate
+- [x] Task 3.4: Add transport parity tests for Telegram and Web candidate
       semantics.
-- [ ] Task 3.5: Add the minimum Telegram happy-path integration test:
+- [x] Task 3.5: Add the minimum Telegram happy-path integration test:
       strong-Cat Code candidate -> inline-keyboard confirm -> SPEC-104 draft
       anchor appears with `targetProduct: 'code'`.
 
@@ -246,6 +246,7 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Telegram parity close-out landed: targeted dispatch coverage now proves Telegram-sourced implicit Code candidates preserve `source: 'telegram'` through confirmation and create the same Code-target draft anchor as Web/explicit slash-mode. |
 | 2026-05-06 | Phase 5 anti-nag slice landed: routing now suppresses new suggestions for five minutes after a decline, expires outstanding suggestions when `/chat` is selected, expires TTL-stale suggestions before later candidate writes, and skips duplicate candidate writes for the same `candidateId` at the persistence boundary. |
 | 2026-05-06 | Phase 3 Telegram callback slice landed: Telegram callback queries can now be parsed as implicit-intent confirm/decline actions and bridged into the same Chat `choiceResponse` path used by Web. Callback data uses `ipi:v1:<sourceMessageId>:<w|c>:<confirm|decline>` and the bridge resolves the full candidate from transcript metadata to stay under Telegram's 64-byte callback limit. |
 | 2026-05-06 | Phase 3 Telegram suggestion slice landed: ordinary Telegram direct text now uses the same routing-side detector path as Web, and candidate system messages can be delivered back to Telegram as a separate suggestion with inline keyboard markup. |

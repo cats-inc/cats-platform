@@ -819,6 +819,75 @@ test('beginChannelMessageDispatch confirms implicit code candidates with code ta
   assert.equal(intake?.command?.name, 'code');
 });
 
+test('beginChannelMessageDispatch confirms Telegram implicit code candidates through the same path', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can discuss the parser tests.');
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please fix the parser tests',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      transport: 'telegram',
+      transportLocale: 'en',
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+  if (!candidateMessage) {
+    throw new Error('Expected implicit product-intent candidate message.');
+  }
+  const candidateMetadata = candidateMessage.metadata.implicitProductIntentCandidate as
+    | ImplicitProductIntentCandidateMetadata
+    | undefined;
+
+  const confirmed = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: 'Q: Turn this message into Code intake?\nA: Turn into Code',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(candidateMessage, 'confirm_code'),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      transport: 'telegram',
+      transportLocale: 'en',
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const channel = requireChannel(confirmed.state, channelId);
+  const choiceMessage = channel.messages.find((message) =>
+    message.choiceResponse?.sourceMessageId === candidateMessage.id);
+  const commandMetadata = choiceMessage?.metadata.productIntentCommand as
+    | { source?: unknown; rawCommandToken?: unknown; implicitConfirmed?: unknown }
+    | undefined;
+  const core = await store.readCore();
+  const directWorkItem = core.workItems.find((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  const intake = directWorkItem?.metadata.directSlashModeIntake as
+    | { targetProduct?: unknown; command?: { name?: unknown } }
+    | undefined;
+
+  assert.equal(candidateMetadata?.source.transport, 'telegram');
+  assert.equal(commandMetadata?.source, 'telegram');
+  assert.equal(commandMetadata?.rawCommandToken, IMPLICIT_PRODUCT_INTENT_COMMAND_TOKEN);
+  assert.equal(commandMetadata?.implicitConfirmed, true);
+  assert.equal(directWorkItem?.status, 'draft');
+  assert.equal(intake?.targetProduct, 'code');
+  assert.equal(intake?.command?.name, 'code');
+});
+
 test('beginChannelMessageDispatch keeps confirmed implicit weak Cats human-gated', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);
