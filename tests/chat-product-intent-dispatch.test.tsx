@@ -30,6 +30,7 @@ import {
   IMPLICIT_PRODUCT_INTENT_COMMAND_TOKEN,
 } from '../src/products/chat/shared/implicitProductIntent.ts';
 import { buildWorkWorkItemListProjection } from '../src/products/work/api/projection.ts';
+import { buildTelegramImplicitProductIntentReplyMarkup } from '../src/platform/transports/telegram/bridge.ts';
 
 function runtimeStub(onClose?: () => void): RuntimeClient {
   return {
@@ -489,19 +490,23 @@ test('beginChannelMessageDispatch suggests implicit candidates while ordinary di
   assert.deepEqual(
     candidateMessage?.choices?.[0]?.options.map((option) => ({
       id: option.id,
+      label: option.label,
       style: option.style,
     })),
     [
       {
         id: 'confirm_work',
+        label: 'Turn into Work',
         style: 'primary',
       },
       {
         id: 'decline',
+        label: 'Keep as chat',
         style: 'secondary',
       },
     ],
   );
+  assert.equal(candidateMessage?.choices?.[0]?.question, 'Turn this message into Work intake?');
   assert.equal(
     core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
     0,
@@ -971,6 +976,65 @@ test('beginChannelMessageDispatch confirms Telegram implicit code candidates thr
   assert.equal(directWorkItem?.status, 'draft');
   assert.equal(intake?.targetProduct, 'code');
   assert.equal(intake?.command?.name, 'code');
+});
+
+test('beginChannelMessageDispatch localizes Telegram implicit suggestions and confirmations', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: '請幫我修正 parser 測試',
+      senderName: 'Kenneth',
+    },
+    runtimeReplyStub('我可以先了解狀況。'),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      transport: 'telegram',
+      transportLocale: 'zh-Hant',
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+  if (!candidateMessage) {
+    throw new Error('Expected implicit product-intent candidate message.');
+  }
+  const replyMarkup = buildTelegramImplicitProductIntentReplyMarkup(candidateMessage);
+
+  const confirmed = await beginChannelMessageDispatch(
+    initial.state,
+    channelId,
+    {
+      body: 'Q: 要把這則訊息轉成 Code intake 嗎？\nA: 轉成 Code',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(candidateMessage, 'confirm_code'),
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      transport: 'telegram',
+      transportLocale: 'zh-Hant',
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const transitionMessage = requireChannel(confirmed.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_confirmed');
+
+  assert.equal(candidateMessage.body, '這看起來像 Code。確認後 Cats 才會建立耐久程式工作。');
+  assert.equal(candidateMessage.choices?.[0]?.question, '要把這則訊息轉成 Code intake 嗎？');
+  assert.deepEqual(
+    candidateMessage.choices?.[0]?.options.map((option) => option.label),
+    ['轉成 Code', '保留為 chat'],
+  );
+  assert.deepEqual(
+    replyMarkup?.inline_keyboard[0]?.map((button) => button.text),
+    ['轉成 Code', '保留為 chat'],
+  );
+  assert.equal(transitionMessage?.body, '已確認 Code intake。');
 });
 
 test('beginChannelMessageDispatch supersedes implicit draft anchors when confirmed posture switches', async () => {
