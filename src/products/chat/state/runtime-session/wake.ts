@@ -76,7 +76,7 @@ export async function ensureTargetSession(
     laneId: preparedWake.laneId,
     recordTargetWake: preparedWake.recordTargetWake,
     taskExecutionContext: preparedWake.taskExecutionContext,
-    forceReviveClosedSessions: options.forceReviveClosedSessions ?? false,
+    observeRuntimeForRevive: options.observeRuntimeForRevive ?? false,
     routingOptions: {
       memoryService: options.memoryService,
       companionStore: options.companionStore,

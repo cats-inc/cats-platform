@@ -23,17 +23,19 @@ import {
 import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
 import {
   clearTargetSessionLease,
-  normalizeRuntimeStatus,
 } from './state.js';
 import type { RuntimeSessionRoutingOptions } from './shared.js';
 import type { ChannelTaskExecutionContext } from './taskExecution.js';
+import {
+  buildResumedRuntimeSessionLeasePatch,
+  tryResumeRuntimeSession,
+} from './sessionResume.js';
 
 const MANUALLY_REVIVABLE_SESSION_STATES = new Set([
   'closed',
   'closing',
   'terminated',
   'terminated_with_error',
-  'error',
 ]);
 
 type EnsureTargetWakeRecorder = (
@@ -136,7 +138,7 @@ async function shouldReviveExistingTargetSession(input: {
   target: RoutingTarget;
   sessionId: string | null;
   runtimeClient: RuntimeClient;
-  forceReviveClosedSessions: boolean;
+  observeRuntimeForRevive: boolean;
 }): Promise<boolean> {
   if (!input.sessionId) {
     return false;
@@ -156,7 +158,7 @@ async function shouldReviveExistingTargetSession(input: {
   }
 
   if (
-    input.forceReviveClosedSessions
+    input.observeRuntimeForRevive
     && lease.status === 'error'
     && typeof lease.lastError === 'string'
     && classifyRuntimeDispatchRecoveryError(lease.lastError)?.reason === 'stale_session'
@@ -164,7 +166,7 @@ async function shouldReviveExistingTargetSession(input: {
     return true;
   }
 
-  if (!input.forceReviveClosedSessions) {
+  if (!input.observeRuntimeForRevive) {
     return false;
   }
 
@@ -216,27 +218,16 @@ async function resumeExistingTargetSession(input: {
   state: ChatState;
   target: RoutingTarget;
 } | null> {
-  if (typeof input.runtimeClient.resumeSession !== 'function') {
+  const resumed = await tryResumeRuntimeSession({
+    runtimeClient: input.runtimeClient,
+    sessionId: input.sessionId,
+    scope: 'target_session_revive',
+  });
+  if (!resumed) {
     return null;
   }
 
-  let resumed: Awaited<ReturnType<RuntimeClient['createSession']>>;
-  try {
-    resumed = await input.runtimeClient.resumeSession(input.sessionId);
-  } catch {
-    return null;
-  }
-
-  const leasePatch = {
-    sessionId: resumed.id,
-    status: normalizeRuntimeStatus(resumed.status),
-    cwd: resumed.cwd,
-    lastError: null,
-    provider: resumed.provider,
-    model: resumed.model,
-    modelSelection: resumed.modelSelection ?? null,
-    lastUsedAt: input.now.toISOString(),
-  };
+  const leasePatch = buildResumedRuntimeSessionLeasePatch(resumed, input.now);
   const nextState = input.target.participantKind === 'cat'
     ? setChannelParticipantLease(
       input.state,
@@ -270,7 +261,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
   laneId: string | null;
   recordTargetWake: EnsureTargetWakeRecorder;
   taskExecutionContext: ChannelTaskExecutionContext | undefined;
-  forceReviveClosedSessions: boolean;
+  observeRuntimeForRevive: boolean;
   routingOptions: Pick<
     RuntimeSessionRoutingOptions,
     'memoryService' | 'companionStore' | 'chatStore'
@@ -285,7 +276,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
     laneId,
     recordTargetWake,
     taskExecutionContext,
-    forceReviveClosedSessions,
+    observeRuntimeForRevive,
     routingOptions,
   } = input;
 
@@ -299,7 +290,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
     target: attachedTarget,
     sessionId: attachedTarget.sessionId,
     runtimeClient,
-    forceReviveClosedSessions,
+    observeRuntimeForRevive,
   })) {
     const resumed = await resumeExistingTargetSession({
       state,

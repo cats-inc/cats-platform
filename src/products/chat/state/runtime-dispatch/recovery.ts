@@ -4,7 +4,6 @@ import type {
 } from '../../api/contracts.js';
 import type { RuntimeSessionInfo } from '../../../../platform/runtime/client.js';
 import type { ParticipantSessionStatus } from '../../../../shared/roomRouting.js';
-import { normalizeRuntimeStatus } from '../runtime-session/state.js';
 import type { RoutingTarget } from '../mentionRouter.js';
 import {
   resolveExecutionLeaseSnapshot,
@@ -96,22 +95,6 @@ export function createDispatchSessionLeasePatch(
     model: session.model,
     startedAt: timestamp,
     lastUsedAt: timestamp,
-  };
-}
-
-export function createDispatchResumedSessionLeasePatch(
-  session: RuntimeSessionInfo,
-  now: Date,
-): DispatchLeasePatch {
-  return {
-    sessionId: session.id,
-    status: normalizeRuntimeStatus(session.status),
-    cwd: session.cwd,
-    lastError: null,
-    provider: session.provider,
-    model: session.model,
-    modelSelection: session.modelSelection ?? null,
-    lastUsedAt: now.toISOString(),
   };
 }
 

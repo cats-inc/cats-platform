@@ -3864,7 +3864,7 @@ test('ensureTargetSession only resolves channel task execution context once acro
     now,
     {
       chatStore: taskExecutionStore,
-      forceReviveClosedSessions: true,
+      observeRuntimeForRevive: true,
     },
   );
 

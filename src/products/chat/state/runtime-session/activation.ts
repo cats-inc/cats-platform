@@ -36,7 +36,7 @@ export async function activateChannelSessions(
       now,
       {
         ...options,
-        forceReviveClosedSessions: true,
+        observeRuntimeForRevive: true,
       },
     );
     nextState = ensured.state;
@@ -91,7 +91,7 @@ export async function wakeChannelEntryParticipant(
     {
       companionStore: options.companionStore,
       memoryService: options.memoryService,
-      forceReviveClosedSessions: options.forceReviveClosedSessions,
+      observeRuntimeForRevive: options.observeRuntimeForRevive,
       roomRouting,
       wakeTrigger: 'room_entry',
       wakeReason: 'room_entry',

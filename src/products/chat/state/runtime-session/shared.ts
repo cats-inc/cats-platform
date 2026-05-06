@@ -28,7 +28,7 @@ export interface RuntimeSessionRoutingOptions {
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
   chatStore?: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>;
-  forceReviveClosedSessions?: boolean;
+  observeRuntimeForRevive?: boolean;
   chatStatePath?: string;
   runtimeDataDir?: string;
   dispatchContextMetadata?: Record<string, unknown>;

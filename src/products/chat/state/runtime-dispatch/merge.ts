@@ -49,6 +49,21 @@ function isTerminalLeaseStatus(status: ParticipantExecutionLease['status']): boo
   return status === 'closed' || status === 'removed';
 }
 
+function pickTerminalLeaseStatus(input: {
+  latest: ParticipantExecutionLease;
+  dispatch: ParticipantExecutionLease;
+}): ParticipantExecutionLease['status'] | null {
+  const latestTerminal = isTerminalLeaseStatus(input.latest.status);
+  const dispatchTerminal = isTerminalLeaseStatus(input.dispatch.status);
+  if (!latestTerminal && !dispatchTerminal) {
+    return null;
+  }
+  if (input.latest.status === 'removed' || input.dispatch.status === 'removed') {
+    return 'removed';
+  }
+  return dispatchTerminal ? input.dispatch.status : input.latest.status;
+}
+
 function leaseStatusRank(status: ParticipantExecutionLease['status']): number {
   switch (status) {
     case 'ready':
@@ -66,8 +81,9 @@ function pickLeaseStatus(input: {
   latest: ParticipantExecutionLease;
   dispatch: ParticipantExecutionLease;
 }): ParticipantExecutionLease['status'] {
-  if (isTerminalLeaseStatus(input.latest.status)) {
-    return input.latest.status;
+  const terminalStatus = pickTerminalLeaseStatus(input);
+  if (terminalStatus) {
+    return terminalStatus;
   }
   if (input.dispatch.status === 'error') {
     return 'error';
@@ -117,6 +133,20 @@ function mergeSameRuntimeLease(
   };
 }
 
+function warnConcurrentRuntimeLeaseRotation(input: {
+  baselineSessionId: string | null;
+  latestSessionId: string | null;
+  dispatchSessionId: string | null;
+}): void {
+  console.warn('Concurrent runtime session lease rotation detected; latest lease wins.', {
+    feature: 'runtime_session_lease_merge',
+    reason: 'concurrent_session_rotation',
+    baselineSessionId: input.baselineSessionId,
+    latestSessionId: input.latestSessionId,
+    dispatchSessionId: input.dispatchSessionId,
+  });
+}
+
 function mergeDispatchExecutionLease(
   latest: ParticipantExecutionLease,
   baseline: ParticipantExecutionLease,
@@ -135,6 +165,13 @@ function mergeDispatchExecutionLease(
     return mergeSameRuntimeLease(latest, dispatch);
   }
 
+  if (latestSessionId && dispatchSessionId) {
+    warnConcurrentRuntimeLeaseRotation({
+      baselineSessionId: normalizeSessionId(baseline),
+      latestSessionId,
+      dispatchSessionId,
+    });
+  }
   return structuredClone(latest);
 }
 

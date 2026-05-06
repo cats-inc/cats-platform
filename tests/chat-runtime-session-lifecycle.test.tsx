@@ -12,6 +12,7 @@ import {
 import { routeChannelMessage } from '../src/products/chat/state/runtime-dispatch/routing.ts';
 import { mergeCompletedDispatchState } from '../src/products/chat/state/runtime-dispatch/merge.ts';
 import { wakeChannelEntryParticipant } from '../src/products/chat/state/runtime-session/activation.ts';
+import { tryResumeRuntimeSession } from '../src/products/chat/state/runtime-session/sessionResume.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import { resolveParticipantLeaseAttachment } from '../src/products/chat/shared/channelParticipants.ts';
 
@@ -107,6 +108,51 @@ function resumableRuntimeStub(): RuntimeClient & {
     sentSessionIds: string[];
   };
 }
+
+async function captureConsoleWarnings<T>(
+  operation: () => T | Promise<T>,
+): Promise<{
+  result: T;
+  warnings: unknown[][];
+}> {
+  const originalWarn = console.warn;
+  const warnings: unknown[][] = [];
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args);
+  };
+  try {
+    return {
+      result: await operation(),
+      warnings,
+    };
+  } finally {
+    console.warn = originalWarn;
+  }
+}
+
+test('runtime session resume failures emit a diagnostic warning before fallback', async () => {
+  const runtimeClient = {
+    async resumeSession() {
+      throw new Error('runtime gateway unavailable');
+    },
+  } as RuntimeClient;
+
+  const captured = await captureConsoleWarnings(() =>
+    tryResumeRuntimeSession({
+      runtimeClient,
+      sessionId: 'session-direct-1',
+      scope: 'dispatch_stale_recovery',
+    }));
+
+  assert.equal(captured.result, null);
+  assert.equal(captured.warnings.length, 1);
+  assert.match(String(captured.warnings[0]?.[0]), /Failed to resume runtime session/);
+  const metadata = captured.warnings[0]?.[1] as Record<string, unknown>;
+  assert.equal(metadata.feature, 'runtime_session_resume');
+  assert.equal(metadata.scope, 'dispatch_stale_recovery');
+  assert.equal(metadata.sessionId, 'session-direct-1');
+  assert.equal(metadata.error, 'runtime gateway unavailable');
+});
 
 test('direct-message dispatch resumes a stale runtime session instead of creating a replacement', async () => {
   const { state, channelId, participantId } = createDirectState();
@@ -225,6 +271,129 @@ test('dispatch merge preserves ready lease advancement for the same runtime sess
   );
 });
 
+test('dispatch merge keeps terminal dispatch lease status for the same runtime session', () => {
+  const { state, channelId, participantId } = createDirectState();
+  const baseline = setChannelParticipantLease(
+    state,
+    channelId,
+    participantId,
+    {
+      sessionId: 'session-direct-1',
+      status: 'ready',
+      cwd: 'C:\\tmp\\cats-session-direct-1',
+      provider: 'claude',
+      instance: 'native',
+      model: 'sonnet',
+      laneId: 'lane-direct-1',
+      startedAt: '2026-05-07T03:00:30.000Z',
+      lastUsedAt: '2026-05-07T03:00:30.000Z',
+    },
+    new Date('2026-05-07T03:00:30.000Z'),
+  );
+  const latest = appendMessage(
+    baseline,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Runtime',
+      body: 'Unrelated product write.',
+    },
+    new Date('2026-05-07T03:00:40.000Z'),
+    { metadata: { event: 'unrelated_product_write' } },
+  ).state;
+  const dispatchClosed = setChannelParticipantLease(
+    baseline,
+    channelId,
+    participantId,
+    {
+      status: 'closed',
+      lastError: null,
+      lastUsedAt: '2026-05-07T03:01:00.000Z',
+    },
+    new Date('2026-05-07T03:01:00.000Z'),
+  );
+
+  const merged = mergeCompletedDispatchState(
+    latest,
+    baseline,
+    dispatchClosed,
+    channelId,
+    new Date('2026-05-07T03:01:01.000Z'),
+  );
+  const lease = resolveParticipantLeaseAttachment(requireChannel(merged, channelId), participantId);
+
+  assert.equal(lease?.sessionId, 'session-direct-1');
+  assert.equal(lease?.status, 'closed');
+});
+
+test('dispatch merge warns when concurrent session rotations choose latest lease', async () => {
+  const { state, channelId, participantId } = createDirectState();
+  const baseline = setChannelParticipantLease(
+    state,
+    channelId,
+    participantId,
+    {
+      sessionId: 'session-direct-1',
+      status: 'ready',
+      cwd: 'C:\\tmp\\cats-session-direct-1',
+      provider: 'claude',
+      instance: 'native',
+      model: 'sonnet',
+      laneId: 'lane-direct-1',
+      startedAt: '2026-05-07T03:00:30.000Z',
+      lastUsedAt: '2026-05-07T03:00:30.000Z',
+    },
+    new Date('2026-05-07T03:00:30.000Z'),
+  );
+  const latest = setChannelParticipantLease(
+    baseline,
+    channelId,
+    participantId,
+    {
+      sessionId: 'session-direct-3',
+      status: 'ready',
+      cwd: 'C:\\tmp\\cats-session-direct-3',
+      lastUsedAt: '2026-05-07T03:01:00.000Z',
+    },
+    new Date('2026-05-07T03:01:00.000Z'),
+  );
+  const dispatch = setChannelParticipantLease(
+    baseline,
+    channelId,
+    participantId,
+    {
+      sessionId: 'session-direct-2',
+      status: 'ready',
+      cwd: 'C:\\tmp\\cats-session-direct-2',
+      lastUsedAt: '2026-05-07T03:01:10.000Z',
+    },
+    new Date('2026-05-07T03:01:10.000Z'),
+  );
+
+  const captured = await captureConsoleWarnings(() =>
+    mergeCompletedDispatchState(
+      latest,
+      baseline,
+      dispatch,
+      channelId,
+      new Date('2026-05-07T03:01:11.000Z'),
+    ));
+  const lease = resolveParticipantLeaseAttachment(
+    requireChannel(captured.result, channelId),
+    participantId,
+  );
+
+  assert.equal(lease?.sessionId, 'session-direct-3');
+  assert.equal(captured.warnings.length, 1);
+  assert.match(String(captured.warnings[0]?.[0]), /Concurrent runtime session lease rotation/);
+  const metadata = captured.warnings[0]?.[1] as Record<string, unknown>;
+  assert.equal(metadata.feature, 'runtime_session_lease_merge');
+  assert.equal(metadata.reason, 'concurrent_session_rotation');
+  assert.equal(metadata.baselineSessionId, 'session-direct-1');
+  assert.equal(metadata.latestSessionId, 'session-direct-3');
+  assert.equal(metadata.dispatchSessionId, 'session-direct-2');
+});
+
 test('direct-message room-entry wake resumes a closed lease before creating a replacement', async () => {
   const { state, channelId, participantId } = createDirectState();
   const runtimeClient = resumableRuntimeStub();
@@ -251,7 +420,7 @@ test('direct-message room-entry wake resumes a closed lease before creating a re
     channelId,
     runtimeClient,
     new Date('2026-05-07T03:03:00.000Z'),
-    { forceReviveClosedSessions: true },
+    { observeRuntimeForRevive: true },
   );
   const channel = requireChannel(awakened.state, channelId);
   const lease = resolveParticipantLeaseAttachment(channel, participantId);

@@ -251,8 +251,8 @@ For a routed turn that targets the same logical participant in the same
 conversation, a stale or closed runtime session is not itself a product-level
 fresh start.
 
-If the execution lease still points at a runtime session ID and cats-runtime
-supports `resume` for that session, Chat shall attempt to resume that same
+If the execution lease still points at a runtime session ID and the runtime
+client supports the `resume` operation, Chat shall attempt to resume that same
 runtime session before starting a replacement session. This applies both to
 explicit wake/activation paths and to stale-session recovery during message
 dispatch.
@@ -268,6 +268,15 @@ single-owner lifecycle object. When concurrent product writes touch the same
 channel while the same runtime `sessionId` is advancing from `initializing` to
 `ready`, merge logic shall preserve the lifecycle advancement instead of
 letting an older persisted snapshot overwrite it.
+
+Terminal runtime lease statuses are lifecycle-monotonic in the same merge path:
+`closed` and `removed` must not be overwritten by an older non-terminal
+snapshot during in-flight dispatch persistence.
+
+Activation for a healthy attached session shall use the same
+ensure-target-session pathway as recovery. The resulting room wake entry may be
+recorded as `skipped`, while the user-facing activation result still maps that
+case to `already_started`.
 
 ### Anti-Pattern Clarification
 
