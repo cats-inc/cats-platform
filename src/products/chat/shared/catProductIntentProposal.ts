@@ -135,7 +135,9 @@ export type CatProductIntentProposalValidationRejectionReason =
   | 'invalid_tool_input'
   | 'missing_source_message'
   | 'source_message_not_owner'
-  | 'source_message_wrong_lane';
+  | 'source_message_wrong_lane'
+  | 'missing_audience_cat'
+  | 'duplicate_proposal';
 
 export type CatProductIntentProposalValidationResult =
   | {

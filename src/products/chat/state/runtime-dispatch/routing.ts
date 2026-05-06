@@ -940,9 +940,7 @@ function appendCatProductIntentProposalSidecar(input: {
 function warnCatProductIntentProposalToolCallIgnored(input: {
   channelId: string;
   messageId: string;
-  reason: CatProductIntentProposalValidationRejectionReason
-    | 'missing_audience_cat'
-    | 'duplicate_proposal';
+  reason: CatProductIntentProposalValidationRejectionReason;
   errors: string[];
   response: unknown;
 }): void {

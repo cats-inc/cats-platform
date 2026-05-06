@@ -279,6 +279,10 @@ the old heuristic cannot surprise users.
   path has enough usage evidence. It remains experimental and opt-in.
 - Work/Code projections for proposal history are undecided and remain an open
   product question.
+- Synchronous tool-result delivery for proposal tool calls is deferred. v1 uses
+  the observation-decision pattern; promoting the provider tool-call interface
+  beyond that seam would let the Cat receive `{ rejected | accepted |
+  idempotent }` shapes synchronously and is a separate cross-product change.
 
 ## Progress Log
 
