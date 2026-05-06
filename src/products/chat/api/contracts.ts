@@ -60,6 +60,10 @@ import type {
   ImplicitProductIntentCandidateTransitionMetadata,
 } from '../shared/implicitProductIntent.js';
 import type {
+  CatProductIntentProposalMetadata,
+  CatProductIntentProposalTransitionMetadata,
+} from '../shared/catProductIntentProposal.js';
+import type {
   RuntimePermissionMode,
   RuntimeSessionPolicy,
   RuntimeSessionCreateContractInput,
@@ -666,6 +670,8 @@ export interface ChannelMessageMetadata extends Record<string, unknown> {
   productIntentArgumentProvided?: boolean;
   implicitProductIntentCandidate?: ImplicitProductIntentCandidateMetadata;
   implicitProductIntentTransition?: ImplicitProductIntentCandidateTransitionMetadata;
+  catProductIntentProposal?: CatProductIntentProposalMetadata;
+  catProductIntentProposalTransition?: CatProductIntentProposalTransitionMetadata;
 }
 
 export type ProductIntentCommandSource = 'web' | 'telegram';
