@@ -15,6 +15,7 @@ export default function WorkStackLayout() {
         headerTintColor: colors.fg.primary,
         contentStyle: { backgroundColor: colors.bg.canvas },
         headerShown: false,
+        headerBackTitle: '',
       }}
     />
   );

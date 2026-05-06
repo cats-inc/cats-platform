@@ -1,3 +1,4 @@
+import { Stack } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -24,7 +25,9 @@ import { useDraftChannel } from './hooks/useDraftChannel';
 import { MessageBody, type ResolveAttachmentUrl } from './MessageBody';
 import { MessageBubble } from './MessageBubble';
 import {
+  getMobileChannelTitle,
   getMobileChatCopy,
+  getMobileTabsCopy,
   resolveDefaultMobileLocale,
   type MobileChatCopy,
   type MobileRenderedMessage,
@@ -101,15 +104,25 @@ interface ChannelChatViewHostProps {
 
 function ChannelChatViewHost({ productMode, channelId }: ChannelChatViewHostProps) {
   const { state, refetch, send, sendState } = useChannelMessages(channelId);
+  // Drive the Stack header from the live channel title once the
+  // app-shell payload resolves. Before resolution we use the tab
+  // name as a placeholder so the header isn't blank during the
+  // first fetch.
+  const tabsCopy = getMobileTabsCopy(resolveDefaultMobileLocale());
+  const headerTitle =
+    state.kind === 'data' ? state.channelTitle : tabsCopy.tabTitle[productMode];
   return (
-    <ChatViewBody
-      state={state}
-      productMode={productMode}
-      conversationKey={channelId}
-      refetch={refetch}
-      send={send}
-      sendState={sendState}
-    />
+    <>
+      <Stack.Screen options={{ title: headerTitle, headerShown: true }} />
+      <ChatViewBody
+        state={state}
+        productMode={productMode}
+        conversationKey={channelId}
+        refetch={refetch}
+        send={send}
+        sendState={sendState}
+      />
+    </>
   );
 }
 
@@ -120,15 +133,24 @@ interface DraftChatViewHostProps {
 
 function DraftChatViewHost({ productMode, entryActionId }: DraftChatViewHostProps) {
   const { state, refetch, send, sendState } = useDraftChannel(productMode, entryActionId);
+  // For drafts the Stack header shows the resolved channel title
+  // (e.g. "New chat" / "新聊天" / "New team work" / etc.) coming
+  // from `MobileTabsCopy.channelTitle[productMode][entryActionId]`.
+  // No async wait — the resolution is pure copy lookup.
+  const tabsCopy = getMobileTabsCopy(resolveDefaultMobileLocale());
+  const headerTitle = getMobileChannelTitle(tabsCopy, productMode, entryActionId);
   return (
-    <ChatViewBody
-      state={state}
-      productMode={productMode}
-      conversationKey={`draft:${entryActionId}`}
-      refetch={refetch}
-      send={send}
-      sendState={sendState}
-    />
+    <>
+      <Stack.Screen options={{ title: headerTitle, headerShown: true }} />
+      <ChatViewBody
+        state={state}
+        productMode={productMode}
+        conversationKey={`draft:${entryActionId}`}
+        refetch={refetch}
+        send={send}
+        sendState={sendState}
+      />
+    </>
   );
 }
 
@@ -312,12 +334,6 @@ function LiveConversation({
             resolveAttachmentUrl={state.resolveAttachmentUrl}
           />
         )}
-        ListHeaderComponent={
-          <ChatViewHeader
-            title={state.channelTitle}
-            productMode={productMode}
-          />
-        }
         ListEmptyComponent={
           <Text style={styles.emptyState}>
             {copy.emptyMessages}
@@ -399,31 +415,6 @@ function MessageBubbleItem({
       </MessageBubble>
     </View>
   );
-}
-
-interface ChatViewHeaderProps {
-  title: string;
-  productMode: ChatViewProductMode;
-}
-
-function ChatViewHeader({ title, productMode }: ChatViewHeaderProps) {
-  const copy = getMobileChatCopy(resolveDefaultMobileLocale());
-  // Phase 5 TODO: this header is where product-mode side-panel
-  // triggers will live (CodeBuilderView / ApprovalQueuePanel /
-  // ProjectDetailView / DeliveryPanel as bottom sheets per
-  // SPEC-095 #21). The mobile shell currently renders just the
-  // eyebrow + title — product-specific surfaces show up only via
-  // recents / lens screens, not as inline panels here.
-  return (
-    <View style={styles.header}>
-      <Text style={styles.headerEyebrow}>{productLabel(productMode, copy)}</Text>
-      <Text style={styles.headerTitle}>{title}</Text>
-    </View>
-  );
-}
-
-function productLabel(productMode: ChatViewProductMode, copy: MobileChatCopy): string {
-  return copy.productLabel[productMode];
 }
 
 interface PanelViewProps {
@@ -517,24 +508,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: spacing.xl,
     paddingHorizontal: spacing.lg,
-  },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    gap: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-    marginBottom: spacing.sm,
-  },
-  headerEyebrow: {
-    color: colors.fg.muted,
-    ...typography.label,
-    letterSpacing: 0.6,
-  },
-  headerTitle: {
-    color: colors.fg.primary,
-    ...typography.title,
   },
   messageMeta: {
     paddingHorizontal: spacing.lg,

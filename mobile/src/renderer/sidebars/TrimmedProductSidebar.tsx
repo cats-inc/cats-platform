@@ -13,7 +13,9 @@ import { TouchableOpacity } from 'react-native-gesture-handler';
 
 import {
   getMobileProductSidebarCopy,
+  getMobileTabsCopy,
   resolveDefaultMobileLocale,
+  type MobileProductMode,
   type MobileSidebarRecent,
 } from '../../../../src/mobile/index.js';
 import { colors, radii, spacing, typography } from '../theme';
@@ -50,7 +52,7 @@ export interface TrimmedProductSidebarProps {
 }
 
 type Row =
-  | { kind: 'eyebrow'; label: string }
+  | { kind: 'tab-title'; label: string }
   | { kind: 'primary-actions'; actions: TrimmedSidebarPrimaryAction[] }
   | { kind: 'section-header'; label: string }
   | { kind: 'recent'; entry: MobileSidebarRecent }
@@ -59,6 +61,7 @@ type Row =
 function buildRows(
   config: TrimmedSidebarConfig,
   data: TrimmedProductSidebarData,
+  tabTitle: string,
 ): Row[] {
   const recentRows: Row[] = data.recents.length > 0
     ? data.recents.map<Row>((entry) => ({ kind: 'recent', entry }))
@@ -68,7 +71,7 @@ function buildRows(
         sectionId: 'recents',
       }];
   return [
-    { kind: 'eyebrow', label: config.productLabel },
+    { kind: 'tab-title', label: tabTitle },
     { kind: 'primary-actions', actions: [...config.primaryActions] },
     { kind: 'section-header', label: config.recentsLabel },
     ...recentRows,
@@ -83,8 +86,15 @@ export function TrimmedProductSidebar({
   onDeleteRecent,
   isDeletingRecent = NEVER_DELETING,
 }: TrimmedProductSidebarProps) {
-  const rows = buildRows(config, data);
-  const sidebarCopy = getMobileProductSidebarCopy(resolveDefaultMobileLocale());
+  const locale = resolveDefaultMobileLocale();
+  const sidebarCopy = getMobileProductSidebarCopy(locale);
+  const tabsCopy = getMobileTabsCopy(locale);
+  // Render the tab's display title (e.g. "Chat" / "聊天") at
+  // typography.display so the visual matches the Cats and Settings
+  // tabs. The previous "eyebrow" used `productLabel` ('CHAT' /
+  // '聊天') in tiny caps which the user reported as "又小又淡".
+  const tabTitle = tabsCopy.tabTitle[config.product as MobileProductMode];
+  const rows = buildRows(config, data, tabTitle);
 
   return (
     <FlatList
@@ -109,8 +119,8 @@ const NEVER_DELETING = (): boolean => false;
 
 function rowKey(row: Row, index: number): string {
   switch (row.kind) {
-    case 'eyebrow':
-      return 'eyebrow';
+    case 'tab-title':
+      return 'tab-title';
     case 'primary-actions':
       return 'primary-actions';
     case 'section-header':
@@ -135,10 +145,10 @@ function renderRow(
   callbacks: RowCallbacks,
 ) {
   switch (item.kind) {
-    case 'eyebrow':
+    case 'tab-title':
       return (
-        <View style={styles.eyebrow}>
-          <Text style={styles.eyebrowText}>{item.label}</Text>
+        <View style={styles.tabTitle}>
+          <Text style={styles.tabTitleText}>{item.label}</Text>
         </View>
       );
     case 'primary-actions':
@@ -296,15 +306,14 @@ const styles = StyleSheet.create({
   listContent: {
     paddingVertical: spacing.sm,
   },
-  eyebrow: {
+  tabTitle: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.md,
   },
-  eyebrowText: {
-    color: colors.fg.muted,
-    ...typography.label,
-    letterSpacing: 1.0,
+  tabTitleText: {
+    color: colors.fg.primary,
+    ...typography.display,
   },
   primaryActions: {
     paddingHorizontal: spacing.md,

@@ -15,6 +15,7 @@ export default function CodeStackLayout() {
         headerTintColor: colors.fg.primary,
         contentStyle: { backgroundColor: colors.bg.canvas },
         headerShown: false,
+        headerBackTitle: '',
       }}
     />
   );

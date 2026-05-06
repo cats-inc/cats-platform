@@ -87,14 +87,11 @@ test('mobile cats tab copy ships directory section labels and entity-detail stri
   assert.equal(en.sectionMyClowders, 'My Clowders');
   assert.equal(en.sectionMyCatteries, 'My Catteries');
   assert.equal(en.newCat, '+ New Cat');
-  assert.equal(en.expandSectionLabel('My Cats'), 'Expand My Cats');
-  assert.equal(en.collapseSectionLabel('My Cats'), 'Collapse My Cats');
 
   assert.equal(zh.sectionMyCats, '我的貓咪');
   assert.equal(zh.sectionMyClowders, '我的貓群');
   assert.equal(zh.sectionMyCatteries, '我的貓窩');
   assert.equal(zh.newCat, '+ 新增貓咪');
-  assert.equal(zh.expandSectionLabel('我的貓咪'), '展開 我的貓咪');
 
   // `+ New X` rows on the Cats tab fire a desktop-only alert until the
   // mobile entity-creation contract lands. The copy must round-trip

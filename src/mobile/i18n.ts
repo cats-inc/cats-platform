@@ -37,8 +37,6 @@ export interface MobileCatsTabCopy {
   newClowderDesktopOnlyBody: string;
   newCatteryDesktopOnlyTitle: string;
   newCatteryDesktopOnlyBody: string;
-  expandSectionLabel: (sectionLabel: string) => string;
-  collapseSectionLabel: (sectionLabel: string) => string;
   entityDetailEyebrow: string;
   entityDetailTitleCat: string;
   entityDetailTitleClowder: string;
@@ -181,8 +179,6 @@ const MOBILE_CATS_TAB_COPY: Record<MobileLocale, MobileCatsTabCopy> = {
     newCatteryDesktopOnlyTitle: 'New cattery — desktop only',
     newCatteryDesktopOnlyBody:
       'Creating a new cattery is not yet wired on mobile. Use the desktop app to add one; it will appear here once created.',
-    expandSectionLabel: (sectionLabel) => `Expand ${sectionLabel}`,
-    collapseSectionLabel: (sectionLabel) => `Collapse ${sectionLabel}`,
     entityDetailEyebrow: 'Coming soon',
     entityDetailTitleCat: 'Cat home',
     entityDetailTitleClowder: 'Clowder home',
@@ -216,8 +212,6 @@ const MOBILE_CATS_TAB_COPY: Record<MobileLocale, MobileCatsTabCopy> = {
     newCatteryDesktopOnlyTitle: '新增貓窩僅限桌面版',
     newCatteryDesktopOnlyBody:
       '行動版尚未支援新增貓窩。請在桌面版新增，建立後會出現在這裡。',
-    expandSectionLabel: (sectionLabel) => `展開 ${sectionLabel}`,
-    collapseSectionLabel: (sectionLabel) => `收合 ${sectionLabel}`,
     entityDetailEyebrow: '開發中',
     entityDetailTitleCat: '貓的主頁',
     entityDetailTitleClowder: '貓群主頁',

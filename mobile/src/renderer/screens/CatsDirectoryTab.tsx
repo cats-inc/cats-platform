@@ -1,4 +1,3 @@
-import { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -140,7 +139,6 @@ function DirectoryBody({ data, copy, onSelectCat, onCreateNew }: DirectoryBodyPr
         <DirectorySection
           key={section.key}
           section={section}
-          copy={copy}
           onCreateNew={() => onCreateNew(section.key)}
         >
           {section.key === 'cats'
@@ -156,58 +154,39 @@ function DirectoryBody({ data, copy, onSelectCat, onCreateNew }: DirectoryBodyPr
 
 interface DirectorySectionProps {
   section: SectionDescriptor;
-  copy: MobileCatsTabCopy;
   onCreateNew: () => void;
   children: React.ReactNode;
 }
 
-function DirectorySection({ section, copy, onCreateNew, children }: DirectorySectionProps) {
-  // Default collapsed (PLAN-091 §Resolved Decisions). User-driven
-  // expand state is local to the screen for the mobile slice — the
-  // desktop sidebar persists in `localStorage`; AsyncStorage parity on
-  // mobile is a separate task.
-  const [expanded, setExpanded] = useState(false);
-  const toggle = useCallback(() => setExpanded((current) => !current), []);
-  const toggleLabel = expanded
-    ? copy.collapseSectionLabel(section.label)
-    : copy.expandSectionLabel(section.label);
-
+function DirectorySection({ section, onCreateNew, children }: DirectorySectionProps) {
+  // Sections are static (no expand/collapse) so they match the web
+  // Cats Directory's flat layout. Earlier mobile slice introduced a
+  // toggle here to defer the empty-state copy; web doesn't have it
+  // and the user explicitly asked for the same shape on mobile.
   return (
     <View style={styles.section}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={toggleLabel}
-        accessibilityState={{ expanded }}
-        onPress={toggle}
-        style={({ pressed }) => [
-          styles.sectionHeader,
-          pressed ? styles.sectionHeaderPressed : null,
-        ]}
-      >
-        <Text style={styles.sectionChevron}>{expanded ? '▾' : '▸'}</Text>
+      <View style={styles.sectionHeader}>
         <Text style={styles.sectionLabel}>{section.label}</Text>
         <Text style={styles.sectionCount}>({section.count})</Text>
-      </Pressable>
-      {expanded ? (
-        <View style={styles.sectionBody}>
-          {section.empty ? (
-            <Text style={styles.sectionEmpty}>{section.emptyLabel}</Text>
-          ) : (
-            children
-          )}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={section.newRowLabel}
-            onPress={onCreateNew}
-            style={({ pressed }) => [
-              styles.newRow,
-              pressed ? styles.newRowPressed : null,
-            ]}
-          >
-            <Text style={styles.newRowLabel}>{section.newRowLabel}</Text>
-          </Pressable>
-        </View>
-      ) : null}
+      </View>
+      <View style={styles.sectionBody}>
+        {section.empty ? (
+          <Text style={styles.sectionEmpty}>{section.emptyLabel}</Text>
+        ) : (
+          children
+        )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={section.newRowLabel}
+          onPress={onCreateNew}
+          style={({ pressed }) => [
+            styles.newRow,
+            pressed ? styles.newRowPressed : null,
+          ]}
+        >
+          <Text style={styles.newRowLabel}>{section.newRowLabel}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -307,14 +286,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
-  },
-  sectionHeaderPressed: {
-    backgroundColor: colors.bg.panelHover,
-  },
-  sectionChevron: {
-    color: colors.fg.muted,
-    width: 14,
-    textAlign: 'center',
   },
   sectionLabel: {
     flex: 1,

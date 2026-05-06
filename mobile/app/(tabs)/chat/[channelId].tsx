@@ -1,26 +1,24 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 
 import { ChatView } from '../../../src/renderer/ChatView';
-import {
-  getMobileTabsCopy,
-  resolveDefaultMobileLocale,
-} from '../../../../src/mobile/index.js';
 
+/**
+ * Channel-mode ChatView host. The Stack header title is owned by
+ * `ChatView` (it knows the live `channelTitle` from
+ * `useChannelMessages`); this route just resolves the params and
+ * mounts the view.
+ */
 export default function ChatViewChatModeScreen() {
   const { channelId } = useLocalSearchParams<{ channelId: string }>();
-  const copy = getMobileTabsCopy(resolveDefaultMobileLocale());
   const resolvedChannelId =
     typeof channelId === 'string' && channelId.length > 0
       ? channelId
       : 'unknown-channel';
 
   return (
-    <>
-      <Stack.Screen options={{ title: copy.tabTitle.chat, headerShown: true }} />
-      <ChatView
-        target={{ kind: 'channel', channelId: resolvedChannelId }}
-        productMode="chat"
-      />
-    </>
+    <ChatView
+      target={{ kind: 'channel', channelId: resolvedChannelId }}
+      productMode="chat"
+    />
   );
 }

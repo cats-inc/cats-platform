@@ -18,6 +18,10 @@ export default function ChatStackLayout() {
         headerTintColor: colors.fg.primary,
         contentStyle: { backgroundColor: colors.bg.canvas },
         headerShown: false,
+        // Drop the "index" back-title fallback iOS shows when the
+        // previous screen is the unnamed `index.tsx`. Empty string
+        // gives just the chevron, matching the user-requested look.
+        headerBackTitle: '',
       }}
     />
   );
