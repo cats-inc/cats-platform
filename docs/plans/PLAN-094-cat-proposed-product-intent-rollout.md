@@ -101,7 +101,9 @@ durable Work/Code state.
       Cats receive the proposal tool in ordinary chat turns.
 - [ ] Task 3.2: Ensure weak/unknown Cats never receive the proposal tool.
 - [ ] Task 3.3: Inject prompt instructions that the tool asks for owner
-      confirmation and must not be used for casual chat.
+      confirmation and must not be used for casual chat. If a proposal tool
+      call is rejected, the Cat must not surface the rejection reason to the
+      owner; it should resume ordinary chat without insisting on the proposal.
 - [ ] Task 3.4: Ensure providers without tool-call support do not get a silent
       fallback that pretends to be a proposal. Structured-output fallback is
       deferred to a separate ADR/SPEC.
@@ -173,6 +175,7 @@ the old heuristic cannot surprise users.
 | `src/products/chat/api/contracts.ts` | Modify | Setting/config contracts if needed. |
 | `src/shared/i18n/**` or current catalog location | Modify | Proposal and disabled-state strings. |
 | `src/platform/transports/telegram/**` | Modify | Callback data and proposal confirmation bridge. |
+| `tests/chat-cat-product-intent-proposal.test.ts` | Create | Proposal metadata, config gating, suppression, idempotency, and confirmation bridge coverage. |
 | `tests/**` | Modify | Config gating, tool exposure, proposal lifecycle, transport parity, SPEC-104 handoff. |
 | `docs/specs/SPEC-105-direct-chat-implicit-product-intent.md` | Modify | Keep contract aligned with proposal-tool implementation. |
 | `docs/plans/PLAN-093-direct-chat-implicit-product-intent-rollout.md` | Modify | Mark heuristic rollout as historical/superseded. |
@@ -187,6 +190,11 @@ the old heuristic cannot surprise users.
   materialization.
 - Confirmation is the only bridge into SPEC-104 durable intake.
 - The heuristic detector is experimental only and must be opt-in.
+- `heuristic_prefilter` is detector-only. It does not expose the Cat proposal
+  tool, and it keeps the v1 detector candidate path as the only no-slash
+  suggestion path.
+- Effective mode is `off` if either the deployment gate or owner setting is
+  off. Otherwise, effective mode is the deployment mode.
 - The deployment gate can force the feature off regardless of owner settings.
 - Owner setting lives at owner-profile scope, such as
   `ChatStateOwnerProfile.naturalProductIntentProposalsEnabled` or equivalent.

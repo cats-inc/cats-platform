@@ -122,8 +122,9 @@ original owner message and Cat proposal as source context.
     slash commands available.
 20. `cat_tool` shall expose proposal tools to eligible strong direct Cats.
 21. `heuristic_prefilter` may temporarily enable the previous deterministic
-    detector as an experimental fallback or prefilter. It shall not be the
-    default mode.
+    detector as an experimental detector-only backstop. In this mode, the
+    proposal tool is not exposed and the v1 detector candidate path is the only
+    no-slash suggestion path. It shall not be the default mode.
 22. Until the Cat proposal tool path ships, the deployment default shall be
     `off`. After that path ships, the deployment default may become `cat_tool`,
     but it shall not default to `heuristic_prefilter`.
@@ -131,21 +132,24 @@ original owner message and Cat proposal as source context.
     control stored at the owner-profile level. One switch covers all direct
     lanes for that owner; per-lane and per-Cat overrides are out of v1. The
     deployment gate can force the feature off even if the owner setting is on.
+24. The effective natural-intent mode shall be `off` if either the deployment
+    gate or owner setting is off. Otherwise, the effective mode is the
+    deployment mode.
 
 #### Audit and metadata
 
-24. Proposal metadata shall record the original message id, channel id,
+25. Proposal metadata shall record the original message id, channel id,
     conversation id, transport, proposing Cat id, target product, rationale,
     created timestamp, expiry timestamp, and status.
-25. Confirmation metadata shall link the confirmation event back to the
+26. Confirmation metadata shall link the confirmation event back to the
     original proposal and owner message id.
-26. Work Items created from confirmed proposals shall preserve the original
+27. Work Items created from confirmed proposals shall preserve the original
     message and proposal context in the same durable source fields used by
     SPEC-104, with an additional marker identifying the source as a Cat-authored
     proposal.
-27. The original user transcript shall remain the user's ordinary text. The
+28. The original user transcript shall remain the user's ordinary text. The
     platform shall not rewrite it as if the user typed a slash command.
-28. If a later projection needs a slash-equivalent command, it shall be derived
+29. If a later projection needs a slash-equivalent command, it shall be derived
     metadata, not replacement transcript text.
 
 ### Non-Functional Requirements
@@ -329,12 +333,12 @@ Proposal suppression is lane-local and platform-enforced:
   not close established Work Items
 - when a new ordinary owner message arrives in the same lane, the platform
   expires any existing unresolved proposal before allowing a new proposal
+- repeating the same `proposalId` tool call is an idempotent no-op, not a new
+  proposal
 - declining any Work/Code proposal starts a five-minute lane cooldown
 - during cooldown, the server rejects later proposal tool calls in that lane
   with `{ rejected: true, reason: 'cooldown_active' }`; this is not a prompt
   suggestion
-- repeating the same `proposalId` tool call is an idempotent no-op, not a new
-  proposal
 
 ### Heuristic Detector Status
 
@@ -343,6 +347,8 @@ natural-language path. During migration it may remain behind
 `CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE=heuristic_prefilter`, but:
 
 - it must be off unless explicitly selected;
+- it is detector-only: the proposal tool is not exposed in this mode, and the
+  v1 detector candidate path is the only no-slash suggestion path;
 - it must still require owner confirmation;
 - it must not create durable product records;
 - it must be removable without changing SPEC-104;

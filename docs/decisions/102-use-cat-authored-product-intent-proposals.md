@@ -84,18 +84,21 @@ Natural-language product suggestions have two gates:
    - `off`: no no-slash product suggestions.
    - `cat_tool`: expose proposal tools to eligible strong direct Cats.
    - `heuristic_prefilter`: allow the old deterministic detector as an
-     experimental prefilter/fallback. This mode is not a default.
+     experimental detector-only backstop. In this mode, the proposal tool is
+     not exposed and the v1 detector candidate path is the only no-slash
+     suggestion path. This mode is not a default.
 2. **Owner setting**:
    a user-facing "Suggest Work/Code from chat" setting controls whether the
    owner wants natural-language proposals at all.
    This setting is owner-profile scoped. Per-lane and per-Cat overrides are out
    of v1.
 
-The effective mode is the stricter of the two gates. Explicit `/chat`, `/work`,
-and `/code` commands are always available and are not disabled by this setting.
-Until the Cat proposal tool path ships, the deployment default shall be `off`.
-After that path ships, the deployment default may become `cat_tool`, but it
-shall not default to `heuristic_prefilter`.
+The effective mode is `off` if either gate is off. Otherwise, the effective
+mode is the deployment mode. Explicit `/chat`, `/work`, and `/code` commands
+are always available and are not disabled by this setting. Until the Cat
+proposal tool path ships, the deployment default shall be `off`. After that
+path ships, the deployment default may become `cat_tool`, but it shall not
+default to `heuristic_prefilter`.
 
 ## Consequences
 
@@ -156,6 +159,9 @@ shall not default to `heuristic_prefilter`.
 - [ADR-101: Use the Direct-Audience Cat for Slash-Mode Work Intake](./101-use-direct-audience-cat-for-slash-mode-work-intake.md)
 - [SPEC-104: Direct Chat Slash-Mode Work Intake](../specs/SPEC-104-direct-chat-slash-mode-work-intake.md)
 - [SPEC-105: Direct Chat Implicit Product Intent Confirmation](../specs/SPEC-105-direct-chat-implicit-product-intent.md)
+  - See SPEC-105 Proposal Metadata for the v2 system segment keys
+    `metadata.catProductIntentProposal` and
+    `metadata.catProductIntentProposalTransition`.
 - [PLAN-093: Direct Chat Implicit Product Intent Rollout](../plans/PLAN-093-direct-chat-implicit-product-intent-rollout.md)
 - [PLAN-094: Cat-Proposed Product Intent Rollout](../plans/PLAN-094-cat-proposed-product-intent-rollout.md)
 
