@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import {
   FlatList,
   type ListRenderItemInfo,
@@ -6,9 +7,12 @@ import {
   Text,
   View,
 } from 'react-native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 
-import type {
-  MobileSidebarRecent,
+import {
+  getMobileProductSidebarCopy,
+  resolveDefaultMobileLocale,
+  type MobileSidebarRecent,
 } from '../../../../src/mobile/index.js';
 import { colors, radii, spacing, typography } from '../theme';
 import type {
@@ -25,6 +29,13 @@ export interface TrimmedProductSidebarProps {
   data: TrimmedProductSidebarData;
   onPrimaryAction: (actionId: string) => void;
   onSelectRecent: (channelId: string) => void;
+  /**
+   * Fires when the user swipes a Recents row left and taps the
+   * revealed Delete button. The handler is responsible for the
+   * actual DELETE network call + refetch — see chat/code/work
+   * `index.tsx` and `useDeleteRecent`.
+   */
+  onDeleteRecent: (channelId: string) => void;
 }
 
 type Row =
@@ -58,8 +69,10 @@ export function TrimmedProductSidebar({
   data,
   onPrimaryAction,
   onSelectRecent,
+  onDeleteRecent,
 }: TrimmedProductSidebarProps) {
   const rows = buildRows(config, data);
+  const sidebarCopy = getMobileProductSidebarCopy(resolveDefaultMobileLocale());
 
   return (
     <FlatList
@@ -71,6 +84,8 @@ export function TrimmedProductSidebar({
         renderRow(info, {
           onPrimaryAction,
           onSelectRecent,
+          onDeleteRecent,
+          deleteActionLabel: sidebarCopy.deleteAction,
         })
       }
     />
@@ -95,6 +110,8 @@ function rowKey(row: Row, index: number): string {
 interface RowCallbacks {
   onPrimaryAction: (actionId: string) => void;
   onSelectRecent: (channelId: string) => void;
+  onDeleteRecent: (channelId: string) => void;
+  deleteActionLabel: string;
 }
 
 function renderRow(
@@ -130,7 +147,9 @@ function renderRow(
       return (
         <RecentRow
           entry={item.entry}
+          deleteActionLabel={callbacks.deleteActionLabel}
           onPress={() => callbacks.onSelectRecent(item.entry.id)}
+          onDelete={() => callbacks.onDeleteRecent(item.entry.id)}
         />
       );
     case 'empty':
@@ -161,32 +180,70 @@ function PrimaryActionButton({ action, onPress }: PrimaryActionButtonProps) {
 
 interface RecentRowProps {
   entry: MobileSidebarRecent;
+  deleteActionLabel: string;
   onPress: () => void;
+  onDelete: () => void;
 }
 
-function RecentRow({ entry, onPress }: RecentRowProps) {
-  return (
+function RecentRow({
+  entry,
+  deleteActionLabel,
+  onPress,
+  onDelete,
+}: RecentRowProps) {
+  // Hold a ref so tapping Delete also closes the swipe (otherwise
+  // the red action stays revealed under the row that's about to
+  // disappear via refetch — looks janky during the network round
+  // trip).
+  const swipeableRef = useRef<Swipeable>(null);
+
+  const renderRightActions = () => (
     <Pressable
-      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={deleteActionLabel}
+      onPress={() => {
+        swipeableRef.current?.close();
+        onDelete();
+      }}
       style={({ pressed }) => [
-        styles.row,
-        pressed ? styles.rowPressed : null,
+        styles.deleteAction,
+        pressed ? styles.deleteActionPressed : null,
       ]}
     >
-      <View style={styles.recentIconBubble}>
-        <Text style={styles.recentIconBubbleText}>💬</Text>
-      </View>
-      <View style={styles.rowText}>
-        <Text style={styles.rowTitle} numberOfLines={1}>
-          {entry.title}
-        </Text>
-        {entry.subtitle ? (
-          <Text style={styles.rowSubtitle} numberOfLines={1}>
-            {entry.subtitle}
-          </Text>
-        ) : null}
-      </View>
+      <Text style={styles.deleteActionLabel}>{deleteActionLabel}</Text>
     </Pressable>
+  );
+
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      friction={2}
+      rightThreshold={40}
+    >
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.row,
+          pressed ? styles.rowPressed : null,
+        ]}
+      >
+        <View style={styles.recentIconBubble}>
+          <Text style={styles.recentIconBubbleText}>💬</Text>
+        </View>
+        <View style={styles.rowText}>
+          <Text style={styles.rowTitle} numberOfLines={1}>
+            {entry.title}
+          </Text>
+          {entry.subtitle ? (
+            <Text style={styles.rowSubtitle} numberOfLines={1}>
+              {entry.subtitle}
+            </Text>
+          ) : null}
+        </View>
+      </Pressable>
+    </Swipeable>
   );
 }
 
@@ -280,5 +337,20 @@ const styles = StyleSheet.create({
     ...typography.caption,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xs,
+  },
+  deleteAction: {
+    backgroundColor: colors.accent.danger,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    minWidth: 88,
+  },
+  deleteActionPressed: {
+    opacity: 0.85,
+  },
+  deleteActionLabel: {
+    color: colors.fg.inverse,
+    ...typography.body,
+    fontWeight: '600',
   },
 });

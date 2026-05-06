@@ -7,6 +7,7 @@ import {
   getMobileDesktopOnlyAlertCopy,
 } from '../../../src/api/fixtures/productSidebar';
 import { useProductSidebarData } from '../../../src/renderer/hooks/useProductSidebarData';
+import { useRecentDeleteHandler } from '../../../src/renderer/hooks/useRecentDeleteHandler';
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
 import { colors } from '../../../src/renderer/theme';
 import {
@@ -30,10 +31,11 @@ import {
  */
 export default function ChatSidebarScreen() {
   const router = useRouter();
-  const { state } = useProductSidebarData('chat');
+  const { state, refetch } = useProductSidebarData('chat');
   const locale = resolveDefaultMobileLocale();
   const copy = getMobileTabsCopy(locale);
   const sidebarConfig = getChatSidebarConfig(locale);
+  const handleDeleteRecent = useRecentDeleteHandler(refetch);
 
   const handlePrimaryAction = useCallback(
     (actionId: string) => {
@@ -69,6 +71,7 @@ export default function ChatSidebarScreen() {
         }}
         onPrimaryAction={handlePrimaryAction}
         onSelectRecent={handleSelectRecent}
+        onDeleteRecent={handleDeleteRecent}
       />
     </SafeAreaView>
   );

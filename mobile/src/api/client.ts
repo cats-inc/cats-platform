@@ -33,6 +33,10 @@ export interface MobileApiClient {
   get<T>(path: string): Promise<T>;
   /** POSTs `body` as JSON to `path` and parses JSON. Throws on !ok. */
   post<T>(path: string, body: unknown): Promise<T>;
+  /** DELETEs `path` and parses JSON. Throws on !ok. Used for
+   *  Recents-row delete (mirrors the web `deleteChatChannel`
+   *  helper). */
+  del<T>(path: string): Promise<T>;
   /** Resolved base URL (without trailing slash). Useful for callers
    *  building auxiliary URLs (e.g. attachment fetch). */
   readonly baseUrl: string;
@@ -58,7 +62,7 @@ export function createMobileApiClient(
   const baseUrl = config.baseUrl.trim().replace(/\/+$/, '');
 
   async function call<T>(
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'DELETE',
     path: string,
     body?: unknown,
   ): Promise<T> {
@@ -103,6 +107,7 @@ export function createMobileApiClient(
     baseUrl,
     get: (path) => call('GET', path),
     post: (path, body) => call('POST', path, body),
+    del: (path) => call('DELETE', path),
   };
 }
 

@@ -138,6 +138,21 @@ export interface MobileProductSidebarProductCopy {
 
 export interface MobileProductSidebarCopy {
   emptyRecentsLabel: string;
+  /**
+   * Label for the swipe-to-delete action revealed when the user
+   * swipes a Recents row. Mirrors web's overflow-menu Delete entry
+   * (`messageKeys.conversationSidebarDeleteAllLabel`); same "no
+   * confirmation" semantics — the swipe gesture itself is the
+   * commit.
+   */
+  deleteAction: string;
+  /**
+   * Title for the failure Alert when the DELETE call rejects.
+   * Body text comes from the underlying `MobileApiError.message`
+   * (already localized through `MobileApiCopy`), so no separate
+   * body string is needed here.
+   */
+  deleteFailedTitle: string;
   products: Record<MobileProductMode, MobileProductSidebarProductCopy>;
 }
 
@@ -444,6 +459,8 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
 const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy> = {
   en: {
     emptyRecentsLabel: 'No recent conversations yet.',
+    deleteAction: 'Delete',
+    deleteFailedTitle: "Couldn't delete",
     products: {
       chat: {
         productLabel: 'CHAT',
@@ -476,6 +493,8 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
   },
   'zh-TW': {
     emptyRecentsLabel: '尚未有近期對話。',
+    deleteAction: '刪除',
+    deleteFailedTitle: '無法刪除',
     products: {
       chat: {
         productLabel: '聊天',

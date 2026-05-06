@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { loadLocalePreference } from '../src/api/persistence';
 import { colors } from '../src/renderer/theme';
@@ -32,13 +32,18 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg.canvas }}>
+    // GestureHandlerRootView is required by `react-native-gesture-handler`
+    // (used by the swipe-to-delete on Recents rows). Putting it at
+    // the root layer ensures every Swipeable / pan / tap registered
+    // anywhere in the tree gets routed through the native gesture
+    // system instead of silently no-op'ing on Android.
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg.canvas }}>
       <StatusBar style="dark" />
       {localeReady ? (
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         </Stack>
       ) : null}
-    </View>
+    </GestureHandlerRootView>
   );
 }

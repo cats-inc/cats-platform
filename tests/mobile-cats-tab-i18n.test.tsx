@@ -7,6 +7,7 @@ import {
   getMobileChannelTitle,
   getMobileCatsTabCopy,
   getMobileLocaleOverride,
+  getMobileProductSidebarCopy,
   getMobileSettingsCopy,
   getMobileTabsCopy,
   type MobileAppShellPayload,
@@ -200,6 +201,20 @@ test('mobile settings copy exposes localized fixed controls', () => {
   assert.match(zh.languageReopenFooter, /重新開啟 app/u);
   assert.equal(en.languagePickerCloseLabel, 'Close language picker');
   assert.equal(zh.languagePickerCloseLabel, '關閉語言選擇器');
+});
+
+// Recents-row delete copy. The swipe-to-delete reveal label and the
+// failure-Alert title both live on `MobileProductSidebarCopy` so the
+// Chat / Code / Work sidebars share the same strings. Pin them so a
+// regression that drops either key shows up here before it ships.
+test('mobile product sidebar copy exposes Recents delete strings', () => {
+  const en = getMobileProductSidebarCopy('en');
+  const zh = getMobileProductSidebarCopy('zh-TW');
+
+  assert.equal(en.deleteAction, 'Delete');
+  assert.equal(zh.deleteAction, '刪除');
+  assert.equal(en.deleteFailedTitle, "Couldn't delete");
+  assert.equal(zh.deleteFailedTitle, '無法刪除');
 });
 
 // `setMobileLocaleOverride` lets the Settings → Language picker pin

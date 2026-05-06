@@ -7,6 +7,7 @@ import {
   getWorkSidebarConfig,
 } from '../../../src/api/fixtures/productSidebar';
 import { useProductSidebarData } from '../../../src/renderer/hooks/useProductSidebarData';
+import { useRecentDeleteHandler } from '../../../src/renderer/hooks/useRecentDeleteHandler';
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
 import { colors } from '../../../src/renderer/theme';
 import {
@@ -23,10 +24,11 @@ import {
  */
 export default function WorkSidebarScreen() {
   const router = useRouter();
-  const { state } = useProductSidebarData('work');
+  const { state, refetch } = useProductSidebarData('work');
   const locale = resolveDefaultMobileLocale();
   const copy = getMobileTabsCopy(locale);
   const sidebarConfig = getWorkSidebarConfig(locale);
+  const handleDeleteRecent = useRecentDeleteHandler(refetch);
 
   const handlePrimaryAction = useCallback(
     (actionId: string) => {
@@ -62,6 +64,7 @@ export default function WorkSidebarScreen() {
         }}
         onPrimaryAction={handlePrimaryAction}
         onSelectRecent={handleSelectRecent}
+        onDeleteRecent={handleDeleteRecent}
       />
     </SafeAreaView>
   );
