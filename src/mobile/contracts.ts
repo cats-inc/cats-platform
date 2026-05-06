@@ -128,16 +128,23 @@ export interface MobileCreateChannelInput {
   originSurface: MobilePlatformSurfaceId;
   entryKind?: 'default' | 'group' | 'direct';
   /**
-   * Direct-lane recipient cat id, populated when the user starts a
-   * DM from the Chat tab's DIRECT MESSAGES list. Pairs with
-   * `entryKind: 'direct'` and `participantCatIds: [<this id>]` so
-   * the desktop creates the channel with the cat already attached.
+   * Direct-lane recipient cat id (write-side field name —
+   * matches the desktop `CreateChatChannelInput.defaultRecipientId`
+   * shape). Populated by the Chat tab's DM-section tap path
+   * alongside `entryKind: 'direct'` and `participantCatIds:
+   * [<this id>]`. The server then auto-resolves
+   * `roomMode: 'direct_message'` from the entryKind (see
+   * `chat/api/routeSupport.ts`'s `requestedRoomMode` derivation).
+   *
+   * NB: read-side responses use the resolved
+   * `defaultRecipientCatId` field on `MobileChatChannelSummary` —
+   * the read/write field-name mismatch is intentional, mirroring
+   * the desktop contract.
    */
-  defaultRecipientCatId?: string;
+  defaultRecipientId?: string;
   /**
-   * Existing cat ids to assign at creation time. Currently only
-   * the DM flow uses this, passing the same id as
-   * `defaultRecipientCatId`; group / parallel flows leave it
+   * Existing cat ids to assign at creation time. The DM flow
+   * passes `[directLane.catId]`; group / parallel flows leave it
    * unset and let the desktop default-add cats based on
    * `entryKind`.
    */

@@ -168,11 +168,15 @@ export function useDraftChannel(
           entryKind: apiEntryKind,
         };
         if (directLane) {
-          // Pair `defaultRecipientCatId` and `participantCatIds` —
+          // Pair `defaultRecipientId` and `participantCatIds` —
           // desktop expects both for direct-lane creates so it
           // wires the cat both as the routing recipient and as a
-          // first-class participant on the channel.
-          createInput.defaultRecipientCatId = directLane.catId;
+          // first-class participant on the channel. The server
+          // auto-resolves `roomMode: 'direct_message'` from
+          // `entryKind: 'direct'`
+          // (`chat/api/routeSupport.ts:403`), so mobile doesn't
+          // need to set roomMode explicitly.
+          createInput.defaultRecipientId = directLane.catId;
           createInput.participantCatIds = [directLane.catId];
         }
         const created = await client.post<MobileCreateChannelResponse>(
