@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,11 +18,16 @@ import type {
 } from '../../../../src/mobile/index.js';
 import {
   getMobileCatsTabCopy,
+  getMobileTabsCopy,
   resolveDefaultMobileLocale,
 } from '../../../../src/mobile/index.js';
+import {
+  getMobileNewEntityDesktopOnlyAlertCopy,
+  type MobileCatsDirectorySectionKey,
+} from '../../api/fixtures/productSidebar';
 import { colors, radii, spacing, typography } from '../theme';
 
-type SectionKey = 'cats' | 'clowders' | 'catteries';
+type SectionKey = MobileCatsDirectorySectionKey;
 
 interface SectionDescriptor {
   key: SectionKey;
@@ -35,7 +41,9 @@ interface SectionDescriptor {
 export function CatsDirectoryTab() {
   const router = useRouter();
   const { state } = useCatsDirectoryTab();
-  const copy = getMobileCatsTabCopy(resolveDefaultMobileLocale());
+  const locale = resolveDefaultMobileLocale();
+  const copy = getMobileCatsTabCopy(locale);
+  const tabsCopy = getMobileTabsCopy(locale);
 
   if (state.kind === 'loading') {
     return (
@@ -63,6 +71,18 @@ export function CatsDirectoryTab() {
     );
   }
 
+  const handleCreateNew = (sectionKey: SectionKey) => {
+    const desktopOnly = getMobileNewEntityDesktopOnlyAlertCopy(sectionKey, copy);
+    if (!desktopOnly) {
+      return;
+    }
+    Alert.alert(
+      desktopOnly.title,
+      desktopOnly.body,
+      [{ text: tabsCopy.desktopOnlyOkAction, style: 'cancel' }],
+    );
+  };
+
   return (
     <DirectoryBody
       data={state.data}
@@ -70,6 +90,7 @@ export function CatsDirectoryTab() {
       onSelectCat={(catId) =>
         router.push(`/(tabs)/cats/${encodeURIComponent(catId)}`)
       }
+      onCreateNew={handleCreateNew}
     />
   );
 }
@@ -78,9 +99,10 @@ interface DirectoryBodyProps {
   data: MobileCatsDirectoryData;
   copy: MobileCatsTabCopy;
   onSelectCat: (catId: string) => void;
+  onCreateNew: (sectionKey: SectionKey) => void;
 }
 
-function DirectoryBody({ data, copy, onSelectCat }: DirectoryBodyProps) {
+function DirectoryBody({ data, copy, onSelectCat, onCreateNew }: DirectoryBodyProps) {
   const sections: SectionDescriptor[] = [
     {
       key: 'cats',
@@ -115,7 +137,12 @@ function DirectoryBody({ data, copy, onSelectCat }: DirectoryBodyProps) {
       </View>
 
       {sections.map((section) => (
-        <DirectorySection key={section.key} section={section} copy={copy}>
+        <DirectorySection
+          key={section.key}
+          section={section}
+          copy={copy}
+          onCreateNew={() => onCreateNew(section.key)}
+        >
           {section.key === 'cats'
             ? data.cats.map((cat) => (
                 <CatRow key={cat.id} cat={cat} onPress={() => onSelectCat(cat.id)} />
@@ -130,10 +157,11 @@ function DirectoryBody({ data, copy, onSelectCat }: DirectoryBodyProps) {
 interface DirectorySectionProps {
   section: SectionDescriptor;
   copy: MobileCatsTabCopy;
+  onCreateNew: () => void;
   children: React.ReactNode;
 }
 
-function DirectorySection({ section, copy, children }: DirectorySectionProps) {
+function DirectorySection({ section, copy, onCreateNew, children }: DirectorySectionProps) {
   // Default collapsed (PLAN-091 §Resolved Decisions). User-driven
   // expand state is local to the screen for the mobile slice — the
   // desktop sidebar persists in `localStorage`; AsyncStorage parity on
@@ -169,6 +197,8 @@ function DirectorySection({ section, copy, children }: DirectorySectionProps) {
           )}
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={section.newRowLabel}
+            onPress={onCreateNew}
             style={({ pressed }) => [
               styles.newRow,
               pressed ? styles.newRowPressed : null,

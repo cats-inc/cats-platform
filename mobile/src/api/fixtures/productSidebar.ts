@@ -1,6 +1,7 @@
 import type { TrimmedSidebarConfig } from '../../renderer/sidebars/types';
 import {
   getMobileProductSidebarCopy,
+  type MobileCatsTabCopy,
   type MobileProductMode,
   type MobileTabsCopy,
 } from '../../../../src/mobile/index.js';
@@ -94,6 +95,43 @@ export function getMobileDesktopOnlyAlertCopy(
     return {
       title: copy.parallelWorkDesktopOnlyTitle,
       body: copy.parallelWorkDesktopOnlyBody,
+    };
+  }
+  return null;
+}
+
+export type MobileCatsDirectorySectionKey = 'cats' | 'clowders' | 'catteries';
+
+/**
+ * The mobile create-channel contract (chat / code / work) does not
+ * cover entity creation — `+ New Cat / + New Clowder / + New Cattery`
+ * have no mobile API today and the desktop `+ New Cat` flow itself is
+ * still an open question (see PLAN-091 §Open Questions). Until the
+ * mobile entity-creation contract lands, the three Cats-tab "new" rows
+ * surface a desktop-only alert in the same shape as `+ Parallel Chat /
+ * Work`. Returning `null` is reserved for "this section's create flow
+ * is wired on mobile" — currently never.
+ */
+export function getMobileNewEntityDesktopOnlyAlertCopy(
+  sectionKey: MobileCatsDirectorySectionKey,
+  copy: MobileCatsTabCopy,
+): MobileDesktopOnlyAlertCopy | null {
+  if (sectionKey === 'cats') {
+    return {
+      title: copy.newCatDesktopOnlyTitle,
+      body: copy.newCatDesktopOnlyBody,
+    };
+  }
+  if (sectionKey === 'clowders') {
+    return {
+      title: copy.newClowderDesktopOnlyTitle,
+      body: copy.newClowderDesktopOnlyBody,
+    };
+  }
+  if (sectionKey === 'catteries') {
+    return {
+      title: copy.newCatteryDesktopOnlyTitle,
+      body: copy.newCatteryDesktopOnlyBody,
     };
   }
   return null;

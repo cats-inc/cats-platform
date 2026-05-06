@@ -12,7 +12,10 @@ import {
   resolveMobileLocale,
   selectMobileCatsDirectory,
 } from '../src/mobile/index.ts';
-import { getMobileDesktopOnlyAlertCopy } from '../mobile/src/api/fixtures/productSidebar.ts';
+import {
+  getMobileDesktopOnlyAlertCopy,
+  getMobileNewEntityDesktopOnlyAlertCopy,
+} from '../mobile/src/api/fixtures/productSidebar.ts';
 
 function createPayload(): MobileAppShellPayload {
   return {
@@ -85,6 +88,25 @@ test('mobile cats tab copy ships directory section labels and entity-detail stri
   assert.equal(zh.sectionMyCatteries, '我的貓窩');
   assert.equal(zh.newCat, '+ 新增貓咪');
   assert.equal(zh.expandSectionLabel('我的貓咪'), '展開 我的貓咪');
+
+  // `+ New X` rows on the Cats tab fire a desktop-only alert until the
+  // mobile entity-creation contract lands. The copy must round-trip
+  // cleanly so the runtime intercept (CatsDirectoryTab) has something
+  // non-undefined to render.
+  assert.equal(en.newCatDesktopOnlyTitle, 'New cat — desktop only');
+  assert.equal(zh.newCatDesktopOnlyTitle, '新增貓咪僅限桌面版');
+  assert.match(en.newCatDesktopOnlyBody, /Creating a new cat is not yet wired/u);
+  assert.match(zh.newCatDesktopOnlyBody, /行動版尚未支援新增貓咪/u);
+
+  assert.equal(en.newClowderDesktopOnlyTitle, 'New clowder — desktop only');
+  assert.equal(zh.newClowderDesktopOnlyTitle, '新增貓群僅限桌面版');
+  assert.match(en.newClowderDesktopOnlyBody, /Creating a new clowder is not yet wired/u);
+  assert.match(zh.newClowderDesktopOnlyBody, /行動版尚未支援新增貓群/u);
+
+  assert.equal(en.newCatteryDesktopOnlyTitle, 'New cattery — desktop only');
+  assert.equal(zh.newCatteryDesktopOnlyTitle, '新增貓窩僅限桌面版');
+  assert.match(en.newCatteryDesktopOnlyBody, /Creating a new cattery is not yet wired/u);
+  assert.match(zh.newCatteryDesktopOnlyBody, /行動版尚未支援新增貓窩/u);
 
   // Entity detail (Stack screens that drill into a single Cat /
   // Clowder / Cattery from the Cats tab)
@@ -230,6 +252,38 @@ test('getMobileDesktopOnlyAlertCopy routes Work parallel into the desktop-only a
   assert.ok(zhAlert, 'expected work/parallel to be desktop-only on mobile (zh-TW)');
   assert.equal(zhAlert.title, zh.parallelWorkDesktopOnlyTitle);
   assert.equal(zhAlert.body, zh.parallelWorkDesktopOnlyBody);
+});
+
+// `getMobileNewEntityDesktopOnlyAlertCopy` is the parallel of
+// `getMobileDesktopOnlyAlertCopy` for the Cats tab's `+ New X` rows.
+// Until the mobile entity-creation contract lands, all three section
+// keys (`cats`, `clowders`, `catteries`) MUST resolve to a desktop-only
+// alert pair — a regression to the silent no-op (the bug that prompted
+// 2026-05-06 follow-up after the user reported `+ New cat` did
+// nothing) gets caught in CI instead of in production.
+test('getMobileNewEntityDesktopOnlyAlertCopy returns desktop-only copy for every Cats-tab section', () => {
+  const en = getMobileCatsTabCopy('en');
+  const zh = getMobileCatsTabCopy('zh-TW');
+
+  const enCats = getMobileNewEntityDesktopOnlyAlertCopy('cats', en);
+  assert.ok(enCats, 'expected cats section to be desktop-only on mobile');
+  assert.equal(enCats.title, en.newCatDesktopOnlyTitle);
+  assert.equal(enCats.body, en.newCatDesktopOnlyBody);
+
+  const zhCats = getMobileNewEntityDesktopOnlyAlertCopy('cats', zh);
+  assert.ok(zhCats, 'expected cats section to be desktop-only on mobile (zh-TW)');
+  assert.equal(zhCats.title, zh.newCatDesktopOnlyTitle);
+  assert.equal(zhCats.body, zh.newCatDesktopOnlyBody);
+
+  const enClowders = getMobileNewEntityDesktopOnlyAlertCopy('clowders', en);
+  assert.ok(enClowders, 'expected clowders section to be desktop-only on mobile');
+  assert.equal(enClowders.title, en.newClowderDesktopOnlyTitle);
+  assert.equal(enClowders.body, en.newClowderDesktopOnlyBody);
+
+  const enCatteries = getMobileNewEntityDesktopOnlyAlertCopy('catteries', en);
+  assert.ok(enCatteries, 'expected catteries section to be desktop-only on mobile');
+  assert.equal(enCatteries.title, en.newCatteryDesktopOnlyTitle);
+  assert.equal(enCatteries.body, en.newCatteryDesktopOnlyBody);
 });
 
 test('getMobileDesktopOnlyAlertCopy lets non-parallel actions through to createChannel', () => {

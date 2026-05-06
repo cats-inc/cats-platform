@@ -31,6 +31,12 @@ export interface MobileCatsTabCopy {
   newCat: string;
   newClowder: string;
   newCattery: string;
+  newCatDesktopOnlyTitle: string;
+  newCatDesktopOnlyBody: string;
+  newClowderDesktopOnlyTitle: string;
+  newClowderDesktopOnlyBody: string;
+  newCatteryDesktopOnlyTitle: string;
+  newCatteryDesktopOnlyBody: string;
   expandSectionLabel: (sectionLabel: string) => string;
   collapseSectionLabel: (sectionLabel: string) => string;
   entityDetailEyebrow: string;
@@ -129,6 +135,15 @@ const MOBILE_CATS_TAB_COPY: Record<MobileLocale, MobileCatsTabCopy> = {
     newCat: '+ New Cat',
     newClowder: '+ New Clowder',
     newCattery: '+ New Cattery',
+    newCatDesktopOnlyTitle: 'New cat — desktop only',
+    newCatDesktopOnlyBody:
+      'Creating a new cat is not yet wired on mobile. Use the desktop app to add one; it will appear here once created.',
+    newClowderDesktopOnlyTitle: 'New clowder — desktop only',
+    newClowderDesktopOnlyBody:
+      'Creating a new clowder is not yet wired on mobile. Use the desktop app to add one; it will appear here once created.',
+    newCatteryDesktopOnlyTitle: 'New cattery — desktop only',
+    newCatteryDesktopOnlyBody:
+      'Creating a new cattery is not yet wired on mobile. Use the desktop app to add one; it will appear here once created.',
     expandSectionLabel: (sectionLabel) => `Expand ${sectionLabel}`,
     collapseSectionLabel: (sectionLabel) => `Collapse ${sectionLabel}`,
     entityDetailEyebrow: 'Coming soon',
@@ -155,6 +170,15 @@ const MOBILE_CATS_TAB_COPY: Record<MobileLocale, MobileCatsTabCopy> = {
     newCat: '+ 新增貓咪',
     newClowder: '+ 新增貓群',
     newCattery: '+ 新增貓窩',
+    newCatDesktopOnlyTitle: '新增貓咪僅限桌面版',
+    newCatDesktopOnlyBody:
+      '行動版尚未支援新增貓咪。請在桌面版新增，建立後會出現在這裡。',
+    newClowderDesktopOnlyTitle: '新增貓群僅限桌面版',
+    newClowderDesktopOnlyBody:
+      '行動版尚未支援新增貓群。請在桌面版新增，建立後會出現在這裡。',
+    newCatteryDesktopOnlyTitle: '新增貓窩僅限桌面版',
+    newCatteryDesktopOnlyBody:
+      '行動版尚未支援新增貓窩。請在桌面版新增，建立後會出現在這裡。',
     expandSectionLabel: (sectionLabel) => `展開 ${sectionLabel}`,
     collapseSectionLabel: (sectionLabel) => `收合 ${sectionLabel}`,
     entityDetailEyebrow: '開發中',
