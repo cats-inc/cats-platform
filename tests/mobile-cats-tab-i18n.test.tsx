@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  findMobileDirectLaneForCat,
   getMobileApiCopy,
   getMobileChatCopy,
   getMobileChannelTitle,
@@ -11,12 +12,15 @@ import {
   getMobileSettingsCopy,
   getMobileTabsCopy,
   type MobileAppShellPayload,
+  type MobileChatCat,
   type MobileChatChannelSummary,
   resolveDefaultMobileLocale,
   resolveMobileLocale,
   selectMobileCatsDirectory,
+  selectMobileChatDirectLaneCats,
   selectMobileProductRecents,
   setMobileLocaleOverride,
+  sortChatCatsByRecency,
 } from '../src/mobile/index.ts';
 import {
   getMobileDesktopOnlyAlertCopy,
@@ -35,6 +39,8 @@ function createPayload(): MobileAppShellPayload {
           id: 'cat-1',
           name: 'Catlas',
           avatarColor: null,
+          avatarUrl: null,
+          createdAt: '2026-05-01T00:00:00.000Z',
           status: 'active',
           products: ['chat'],
         },
@@ -135,9 +141,9 @@ test('selectMobileCatsDirectory honors catsLimit when slicing the projection', (
       ...createPayload(),
       chat: {
         cats: [
-          { id: 'a', name: 'A', avatarColor: null, status: 'active', products: ['chat'] },
-          { id: 'b', name: 'B', avatarColor: null, status: 'active', products: ['chat'] },
-          { id: 'c', name: 'C', avatarColor: null, status: 'active', products: ['chat'] },
+          { id: 'a', name: 'A', avatarColor: null, avatarUrl: null, createdAt: '2026-05-01T00:00:00.000Z', status: 'active', products: ['chat'] },
+          { id: 'b', name: 'B', avatarColor: null, avatarUrl: null, createdAt: '2026-05-02T00:00:00.000Z', status: 'active', products: ['chat'] },
+          { id: 'c', name: 'C', avatarColor: null, avatarUrl: null, createdAt: '2026-05-03T00:00:00.000Z', status: 'active', products: ['chat'] },
         ],
         channels: [],
       },
@@ -506,11 +512,15 @@ test('selectMobileProductRecents includes non-active channels (matches web filte
   ]);
 
   const recents = selectMobileProductRecents(payload, 'chat');
-  // All three appear; previously the filter dropped configured /
-  // planned channels and only `active-channel` survived.
+  // All three appear (the previous filter dropped configured /
+  // planned channels and only `active-channel` survived); order is
+  // the input/wire order — desktop maintains `state.channels`
+  // newest-first via `unshift`, and mobile preserves it now to
+  // match web. Earlier the selector re-sorted by `lastMessageAt`,
+  // which produced a divergent order from the web Chat sidebar.
   assert.deepEqual(
     recents.map((entry) => entry.id),
-    ['active-channel', 'planned-channel', 'configured-channel'],
+    ['configured-channel', 'planned-channel', 'active-channel'],
   );
 });
 
@@ -544,6 +554,191 @@ test('selectMobileProductRecents excludes direct-message channels', () => {
     recents.map((entry) => entry.id),
     ['public-chat', 'no-kind-set'],
   );
+});
+
+// Direct-lane (DIRECT MESSAGES) helpers. The Chat tab renders a
+// DM section above RECENTS, sorted via the shared
+// `sortChatCatsByRecency` algorithm — same pure function the web
+// Chat sidebar uses (defined in
+// `src/products/chat/renderer/components/Sidebar.tsx`). Pinning
+// here covers the boundary copy of the algorithm so a regression
+// surfaces before it ships.
+
+function buildCat(
+  overrides: Partial<MobileChatCat> & Pick<MobileChatCat, 'id' | 'name' | 'createdAt'>,
+): MobileChatCat {
+  return {
+    avatarColor: null,
+    avatarUrl: null,
+    status: 'active',
+    products: ['chat'],
+    ...overrides,
+  };
+}
+
+test('sortChatCatsByRecency sorts cats by their direct-lane channel activity desc', () => {
+  const cats: MobileChatCat[] = [
+    buildCat({ id: 'cat-old', name: 'Old', createdAt: '2026-04-01T00:00:00.000Z' }),
+    buildCat({ id: 'cat-new', name: 'New', createdAt: '2026-04-02T00:00:00.000Z' }),
+    buildCat({ id: 'cat-fresh', name: 'Fresh', createdAt: '2026-04-03T00:00:00.000Z' }),
+  ];
+  const channels: MobileChatChannelSummary[] = [
+    buildChannel({
+      id: 'dm-old',
+      title: 'Old DM',
+      channelKind: 'direct_message',
+      defaultRecipientCatId: 'cat-old',
+      lastActivatedAt: '2026-05-01T00:00:00.000Z',
+      lastMessageAt: null,
+    }),
+    buildChannel({
+      id: 'dm-new',
+      title: 'New DM',
+      channelKind: 'direct_message',
+      defaultRecipientCatId: 'cat-new',
+      lastActivatedAt: '2026-05-05T00:00:00.000Z',
+      lastMessageAt: null,
+    }),
+    // cat-fresh has NO direct-lane channel — falls back to its
+    // own createdAt (2026-04-03), which is earlier than both DM
+    // activity timestamps, so it sorts to the bottom.
+  ];
+
+  const sorted = sortChatCatsByRecency(cats, channels);
+  assert.deepEqual(
+    sorted.map((cat) => cat.id),
+    ['cat-new', 'cat-old', 'cat-fresh'],
+  );
+});
+
+test('sortChatCatsByRecency surfaces brand-new cats with no DM at the top via createdAt', () => {
+  // Mirror of the web `sortChatCatsByRecency` fallback rule: when
+  // a cat has no direct-lane channel, its `createdAt` is the
+  // sort key. A cat created today appears above an older cat
+  // whose only DM has gone stale.
+  const cats: MobileChatCat[] = [
+    buildCat({ id: 'cat-stale-dm', name: 'Stale', createdAt: '2025-01-01T00:00:00.000Z' }),
+    buildCat({ id: 'cat-fresh', name: 'Fresh', createdAt: '2026-05-06T12:00:00.000Z' }),
+  ];
+  const channels: MobileChatChannelSummary[] = [
+    buildChannel({
+      id: 'dm-stale',
+      title: 'Stale DM',
+      channelKind: 'direct_message',
+      defaultRecipientCatId: 'cat-stale-dm',
+      lastActivatedAt: '2026-04-01T00:00:00.000Z',
+      lastMessageAt: null,
+    }),
+  ];
+
+  const sorted = sortChatCatsByRecency(cats, channels);
+  assert.deepEqual(sorted.map((cat) => cat.id), ['cat-fresh', 'cat-stale-dm']);
+});
+
+test('sortChatCatsByRecency ignores non-direct-lane channels when building the recency map', () => {
+  // A regular chat channel for cat-x should NOT bump cat-x in the
+  // DM list — only direct_message channels feed the recency map.
+  const cats: MobileChatCat[] = [
+    buildCat({ id: 'cat-x', name: 'X', createdAt: '2026-04-01T00:00:00.000Z' }),
+    buildCat({ id: 'cat-y', name: 'Y', createdAt: '2026-04-02T00:00:00.000Z' }),
+  ];
+  const channels: MobileChatChannelSummary[] = [
+    // Regular chat with cat-x as default recipient — irrelevant.
+    buildChannel({
+      id: 'group-x',
+      title: 'Group X',
+      channelKind: 'chat_channel',
+      defaultRecipientCatId: 'cat-x',
+      lastActivatedAt: '2026-05-05T00:00:00.000Z',
+      lastMessageAt: null,
+    }),
+  ];
+
+  const sorted = sortChatCatsByRecency(cats, channels);
+  // Both cats fall back to createdAt; cat-y is later, so it's first.
+  assert.deepEqual(sorted.map((cat) => cat.id), ['cat-y', 'cat-x']);
+});
+
+test('selectMobileChatDirectLaneCats filters archived cats and applies the recency sort', () => {
+  const payload: MobileAppShellPayload = {
+    ownerDisplayName: 'Ken',
+    ownerAvatarUrl: null,
+    ownerAvatarColor: null,
+    chat: {
+      cats: [
+        buildCat({ id: 'cat-archived', name: 'Z', createdAt: '2026-05-10T00:00:00.000Z', status: 'archived' }),
+        buildCat({ id: 'cat-a', name: 'A', createdAt: '2026-05-01T00:00:00.000Z' }),
+        buildCat({ id: 'cat-b', name: 'B', createdAt: '2026-05-02T00:00:00.000Z' }),
+      ],
+      channels: [
+        buildChannel({
+          id: 'dm-a',
+          title: 'DM A',
+          channelKind: 'direct_message',
+          defaultRecipientCatId: 'cat-a',
+          lastActivatedAt: '2026-05-06T00:00:00.000Z',
+          lastMessageAt: null,
+        }),
+      ],
+    },
+  };
+
+  const sorted = selectMobileChatDirectLaneCats(payload);
+  // Archived cat is filtered out even though its createdAt would
+  // sort it first; remaining cats sort by recency (cat-a's DM
+  // activity beats cat-b's createdAt fallback).
+  assert.deepEqual(sorted.map((cat) => cat.id), ['cat-a', 'cat-b']);
+});
+
+test('findMobileDirectLaneForCat returns the direct-lane channel when one exists', () => {
+  const channels: MobileChatChannelSummary[] = [
+    buildChannel({
+      id: 'group-public',
+      title: 'Public',
+      channelKind: 'chat_channel',
+      defaultRecipientCatId: 'cat-a',
+    }),
+    buildChannel({
+      id: 'dm-with-a',
+      title: 'A',
+      channelKind: 'direct_message',
+      defaultRecipientCatId: 'cat-a',
+    }),
+    buildChannel({
+      id: 'dm-with-b',
+      title: 'B',
+      channelKind: 'direct_message',
+      defaultRecipientCatId: 'cat-b',
+    }),
+  ];
+
+  // Returns the direct-lane channel, not the public one with the
+  // same defaultRecipientCatId. A regression that drops the
+  // `channelKind === 'direct_message'` guard would make this
+  // return `group-public` and break the DM tap target.
+  assert.equal(findMobileDirectLaneForCat(channels, 'cat-a')?.id, 'dm-with-a');
+  assert.equal(findMobileDirectLaneForCat(channels, 'cat-b')?.id, 'dm-with-b');
+  assert.equal(findMobileDirectLaneForCat(channels, 'cat-missing'), null);
+});
+
+test('mobile product sidebar copy ships the DIRECT MESSAGES section label', () => {
+  const en = getMobileProductSidebarCopy('en');
+  const zh = getMobileProductSidebarCopy('zh-TW');
+  assert.equal(en.directMessagesLabel, 'Direct messages');
+  assert.equal(zh.directMessagesLabel, '直接訊息');
+});
+
+test('mobile tabs copy ships the desktop-only direct-chat alert pair', () => {
+  // Surfaced when the user taps a cat in the Chat-tab DIRECT
+  // MESSAGES list that has no direct-lane channel yet. Keeps the
+  // round-trip verification consistent with the parallel-chat /
+  // parallel-work / peer-code intercepts.
+  const en = getMobileTabsCopy('en');
+  const zh = getMobileTabsCopy('zh-TW');
+  assert.equal(en.directChatDesktopOnlyTitle, 'Direct message — desktop only');
+  assert.equal(zh.directChatDesktopOnlyTitle, '直接訊息僅限桌面版');
+  assert.match(en.directChatDesktopOnlyBody, /Starting a direct message with this cat is not yet wired/u);
+  assert.match(zh.directChatDesktopOnlyBody, /行動版尚未支援與這隻貓開啟直接訊息/u);
 });
 
 test('selectMobileProductRecents continues to scope by originSurface (SPEC-070)', () => {

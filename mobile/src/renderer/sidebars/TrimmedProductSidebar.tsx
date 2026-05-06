@@ -15,6 +15,7 @@ import {
   getMobileProductSidebarCopy,
   getMobileTabsCopy,
   resolveDefaultMobileLocale,
+  type MobileChatCat,
   type MobileProductMode,
   type MobileSidebarRecent,
 } from '../../../../src/mobile/index.js';
@@ -26,6 +27,19 @@ import type {
 
 export interface TrimmedProductSidebarData {
   recents: MobileSidebarRecent[];
+}
+
+/**
+ * DIRECT MESSAGES section input. Optional — only the Chat tab
+ * passes this today; Code / Work omit it. The list is the cats to
+ * render (already sorted via `selectMobileChatDirectLaneCats` in
+ * the parent), the label is the localized section header, and
+ * `onSelectCat` fires when the user taps a row.
+ */
+export interface TrimmedProductSidebarDirectMessages {
+  cats: readonly MobileChatCat[];
+  label: string;
+  onSelectCat: (catId: string) => void;
 }
 
 export interface TrimmedProductSidebarProps {
@@ -49,12 +63,19 @@ export interface TrimmedProductSidebarProps {
    * no in-flight tracking.
    */
   isDeletingRecent?: (channelId: string) => boolean;
+  /**
+   * Optional DIRECT MESSAGES section (rendered above RECENTS).
+   * Currently only the Chat tab passes this; Code / Work omit it
+   * so they only get primary actions + Recents.
+   */
+  directMessages?: TrimmedProductSidebarDirectMessages;
 }
 
 type Row =
   | { kind: 'tab-title'; label: string }
   | { kind: 'primary-actions'; actions: TrimmedSidebarPrimaryAction[] }
   | { kind: 'section-header'; label: string }
+  | { kind: 'dm-cat'; cat: MobileChatCat }
   | { kind: 'recent'; entry: MobileSidebarRecent }
   | { kind: 'empty'; label: string; sectionId: string };
 
@@ -62,6 +83,7 @@ function buildRows(
   config: TrimmedSidebarConfig,
   data: TrimmedProductSidebarData,
   tabTitle: string,
+  directMessages: TrimmedProductSidebarDirectMessages | undefined,
 ): Row[] {
   const recentRows: Row[] = data.recents.length > 0
     ? data.recents.map<Row>((entry) => ({ kind: 'recent', entry }))
@@ -70,9 +92,16 @@ function buildRows(
         label: config.emptyRecentsLabel,
         sectionId: 'recents',
       }];
+  const dmRows: Row[] = directMessages
+    ? [
+        { kind: 'section-header', label: directMessages.label },
+        ...directMessages.cats.map<Row>((cat) => ({ kind: 'dm-cat', cat })),
+      ]
+    : [];
   return [
     { kind: 'tab-title', label: tabTitle },
     { kind: 'primary-actions', actions: [...config.primaryActions] },
+    ...dmRows,
     { kind: 'section-header', label: config.recentsLabel },
     ...recentRows,
   ];
@@ -85,6 +114,7 @@ export function TrimmedProductSidebar({
   onSelectRecent,
   onDeleteRecent,
   isDeletingRecent = NEVER_DELETING,
+  directMessages,
 }: TrimmedProductSidebarProps) {
   const locale = resolveDefaultMobileLocale();
   const sidebarCopy = getMobileProductSidebarCopy(locale);
@@ -94,7 +124,7 @@ export function TrimmedProductSidebar({
   // tabs. The previous "eyebrow" used `productLabel` ('CHAT' /
   // '聊天') in tiny caps which the user reported as "又小又淡".
   const tabTitle = tabsCopy.tabTitle[config.product as MobileProductMode];
-  const rows = buildRows(config, data, tabTitle);
+  const rows = buildRows(config, data, tabTitle, directMessages);
 
   return (
     <FlatList
@@ -107,6 +137,7 @@ export function TrimmedProductSidebar({
           onPrimaryAction,
           onSelectRecent,
           onDeleteRecent,
+          onSelectDirectMessageCat: directMessages?.onSelectCat ?? NEVER_SELECTING_CAT,
           isDeletingRecent,
           deleteActionLabel: sidebarCopy.deleteAction,
         })
@@ -116,6 +147,7 @@ export function TrimmedProductSidebar({
 }
 
 const NEVER_DELETING = (): boolean => false;
+const NEVER_SELECTING_CAT = (): void => undefined;
 
 function rowKey(row: Row, index: number): string {
   switch (row.kind) {
@@ -125,6 +157,8 @@ function rowKey(row: Row, index: number): string {
       return 'primary-actions';
     case 'section-header':
       return `section:${row.label}`;
+    case 'dm-cat':
+      return `dm-cat:${row.cat.id}`;
     case 'recent':
       return `recent:${row.entry.id}`;
     case 'empty':
@@ -136,6 +170,7 @@ interface RowCallbacks {
   onPrimaryAction: (actionId: string) => void;
   onSelectRecent: (channelId: string) => void;
   onDeleteRecent: (channelId: string) => void;
+  onSelectDirectMessageCat: (catId: string) => void;
   isDeletingRecent: (channelId: string) => boolean;
   deleteActionLabel: string;
 }
@@ -168,6 +203,13 @@ function renderRow(
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionHeaderText}>{item.label}</Text>
         </View>
+      );
+    case 'dm-cat':
+      return (
+        <DirectMessageCatRow
+          cat={item.cat}
+          onPress={() => callbacks.onSelectDirectMessageCat(item.cat.id)}
+        />
       );
     case 'recent':
       return (
@@ -202,6 +244,40 @@ function PrimaryActionButton({ action, onPress }: PrimaryActionButtonProps) {
     >
       <Text style={styles.primaryActionLabel}>{action.label}</Text>
     </Pressable>
+  );
+}
+
+interface DirectMessageCatRowProps {
+  cat: MobileChatCat;
+  onPress: () => void;
+}
+
+function DirectMessageCatRow({ cat, onPress }: DirectMessageCatRowProps) {
+  // Avatar bubble + name layout. Mirrors the Cats Directory cat
+  // row shape so the visual stays consistent across surfaces. No
+  // swipe action here yet — DMs don't have a delete-row shortcut
+  // (the desktop archives the cat from /settings/cats; mobile
+  // routes a no-op tap to a desktop-only alert when no channel
+  // exists yet).
+  const initial = cat.name.slice(0, 1).toUpperCase();
+  const fallbackColor = cat.avatarColor ?? colors.bubble.mentionDefault;
+  return (
+    <TouchableOpacity
+      accessibilityRole="link"
+      accessibilityLabel={cat.name}
+      onPress={onPress}
+      activeOpacity={0.6}
+      style={styles.row}
+    >
+      <View style={[styles.dmAvatar, { backgroundColor: fallbackColor }]}>
+        <Text style={styles.dmAvatarInitial}>{initial}</Text>
+      </View>
+      <View style={styles.rowText}>
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {cat.name}
+        </Text>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -390,6 +466,17 @@ const styles = StyleSheet.create({
     borderColor: colors.border.subtle,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dmAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dmAvatarInitial: {
+    color: colors.bubble.mentionText,
+    ...typography.bodyStrong,
   },
   recentIconBubbleText: {
     fontSize: 16,

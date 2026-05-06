@@ -23,6 +23,20 @@ export interface MobileChatCat {
   id: string;
   name: string;
   avatarColor: string | null;
+  /**
+   * Cats with no direct-lane channel yet sort by `createdAt` so a
+   * brand-new cat surfaces at the top of the DIRECT MESSAGES list
+   * before any DM has happened. Mirrors the desktop's
+   * `sortChatCatsByRecency` fallback rule.
+   */
+  createdAt: string;
+  /**
+   * Optional avatar image (relative to the desktop base URL when
+   * present) — when null, the renderer draws a colour bubble with
+   * the cat's first initial. Same shape the web `MyCatRowItem`
+   * consumes.
+   */
+  avatarUrl: string | null;
   status: 'active' | 'archived';
   products: string[];
 }
@@ -58,6 +72,13 @@ export interface MobileChatChannelSummary {
   lastActivatedAt: string | null;
   originSurface?: MobilePlatformSurfaceId | null;
   channelKind?: MobileChatChannelKind;
+  /**
+   * For direct-lane channels (`channelKind === 'direct_message'`),
+   * the cat the user is talking to. Drives the DM-section row
+   * lookup (`findMobileDirectLaneForCat`) and the
+   * `sortChatCatsByRecency` recency map.
+   */
+  defaultRecipientCatId?: string | null;
 }
 
 export interface MobileChatShellState {

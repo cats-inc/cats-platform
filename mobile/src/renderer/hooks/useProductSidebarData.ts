@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import type { MobileApiError } from '../../api/client';
 import {
+  type MobileAppShellPayload,
   type MobileSidebarRecent,
   selectMobileProductRecents,
 } from '../../../../src/mobile/index.js';
@@ -13,6 +14,13 @@ import { useMobileAppShell } from './useMobileAppShell';
  * the MY-lens section was removed in 2026-05-05 (cat / clowder /
  * cattery rosters live under the Cats tab now), so this hook only
  * yields recents off the shared `useMobileAppShell` fetch.
+ *
+ * The full `payload` is exposed alongside `recents` so callers can
+ * derive product-specific extras without re-fetching `/api/app-shell`
+ * (the Chat tab uses this to project the DIRECT MESSAGES section
+ * via `selectMobileChatDirectLaneCats` /
+ * `findMobileDirectLaneForCat`). Code / Work simply ignore the
+ * payload field.
  */
 
 export type ProductSidebarState =
@@ -22,6 +30,7 @@ export type ProductSidebarState =
   | {
       kind: 'data';
       recents: MobileSidebarRecent[];
+      payload: MobileAppShellPayload;
     };
 
 export interface ProductSidebarHook {
@@ -55,6 +64,7 @@ export function useProductSidebarData(
       state = {
         kind: 'data',
         recents: recents!,
+        payload: shellState.payload,
       };
       break;
   }

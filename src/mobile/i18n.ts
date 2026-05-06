@@ -125,6 +125,15 @@ export interface MobileTabsCopy {
   parallelWorkDesktopOnlyTitle: string;
   peerCodeDesktopOnlyBody: string;
   peerCodeDesktopOnlyTitle: string;
+  /**
+   * Surfaced when the user taps a cat in the Chat tab's DIRECT
+   * MESSAGES section that does NOT yet have a direct-lane channel.
+   * Web auto-creates a draft DM; mobile's create contract doesn't
+   * yet support `defaultRecipientCatId`, so we route the tap to a
+   * desktop-only alert instead of silently doing nothing.
+   */
+  directChatDesktopOnlyBody: string;
+  directChatDesktopOnlyTitle: string;
   tabTitle: Record<MobileTabId, string>;
 }
 
@@ -151,6 +160,14 @@ export interface MobileProductSidebarCopy {
    * body string is needed here.
    */
   deleteFailedTitle: string;
+  /**
+   * Section header above the cat list on the Chat tab. Mirrors web's
+   * `conversationSidebarDirectMessagesLabel` ('Direct messages' /
+   * '直接訊息'). Top-level on this copy object because only the Chat
+   * sidebar renders a DM section today; if Code / Work ever grow
+   * one, this can stay shared.
+   */
+  directMessagesLabel: string;
   products: Record<MobileProductMode, MobileProductSidebarProductCopy>;
 }
 
@@ -399,6 +416,9 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
     peerCodeDesktopOnlyBody:
       'Peer code creation is not yet wired on mobile. Use the desktop app to start one; it will appear in RECENTS here once created.',
     peerCodeDesktopOnlyTitle: 'Peer code — desktop only',
+    directChatDesktopOnlyBody:
+      'Starting a direct message with this cat is not yet wired on mobile. Use the desktop app to start one; it will appear in DIRECT MESSAGES here once created.',
+    directChatDesktopOnlyTitle: 'Direct message — desktop only',
     tabTitle: {
       cats: 'Cats',
       chat: 'Chat',
@@ -440,6 +460,9 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
     peerCodeDesktopOnlyBody:
       '行動版尚未支援建立同儕程式碼。請在桌面版開始，建立後會出現在這裡的近期項目。',
     peerCodeDesktopOnlyTitle: '同儕程式碼僅限桌面版',
+    directChatDesktopOnlyBody:
+      '行動版尚未支援與這隻貓開啟直接訊息。請在桌面版開始，建立後會出現在直接訊息區塊。',
+    directChatDesktopOnlyTitle: '直接訊息僅限桌面版',
     tabTitle: {
       // The four product tabs ship as fixed English brand
       // labels in every locale ("Cats" / "Chat" / "Code" /
@@ -461,6 +484,7 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
     emptyRecentsLabel: 'No recent conversations yet.',
     deleteAction: 'Delete',
     deleteFailedTitle: "Couldn't delete",
+    directMessagesLabel: 'Direct messages',
     products: {
       chat: {
         productLabel: 'CHAT',
@@ -495,6 +519,7 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
     emptyRecentsLabel: '尚未有近期對話。',
     deleteAction: '刪除',
     deleteFailedTitle: '無法刪除',
+    directMessagesLabel: '直接訊息',
     products: {
       chat: {
         productLabel: '聊天',

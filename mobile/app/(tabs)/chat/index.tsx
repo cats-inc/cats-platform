@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,8 +12,11 @@ import { useRecentDeleteHandler } from '../../../src/renderer/hooks/useRecentDel
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
 import { colors } from '../../../src/renderer/theme';
 import {
+  findMobileDirectLaneForCat,
+  getMobileProductSidebarCopy,
   getMobileTabsCopy,
   resolveDefaultMobileLocale,
+  selectMobileChatDirectLaneCats,
 } from '../../../../src/mobile/index.js';
 
 /**
@@ -35,8 +38,55 @@ export default function ChatSidebarScreen() {
   const { state } = useProductSidebarData('chat');
   const locale = resolveDefaultMobileLocale();
   const copy = getMobileTabsCopy(locale);
+  const sidebarCopy = getMobileProductSidebarCopy(locale);
   const sidebarConfig = getChatSidebarConfig(locale);
   const { onDelete: handleDeleteRecent, isDeleting } = useRecentDeleteHandler();
+
+  // Project the DIRECT MESSAGES section off the same `/api/app-shell`
+  // payload the Recents row consumes — sorted via the shared
+  // `sortChatCatsByRecency` algorithm. Chat-only; Code / Work omit
+  // this section entirely.
+  const directLaneCats = useMemo(
+    () =>
+      state.kind === 'data'
+        ? selectMobileChatDirectLaneCats(state.payload)
+        : [],
+    [state],
+  );
+
+  const handleSelectDirectMessageCat = useCallback(
+    (catId: string) => {
+      if (state.kind !== 'data') {
+        return;
+      }
+      // Existing direct-lane channel → push the user straight there,
+      // matching the desktop's `/chat/dm/:catId` deep link target.
+      // No existing channel → desktop-only alert; the mobile create
+      // contract doesn't yet carry `defaultRecipientCatId`, so
+      // starting a fresh DM has to happen on the desktop until we
+      // extend `MobileCreateChannelInput`.
+      const directLane = findMobileDirectLaneForCat(
+        state.payload.chat.channels,
+        catId,
+      );
+      if (directLane) {
+        router.push(`/(tabs)/chat/${directLane.id}`);
+        return;
+      }
+      Alert.alert(
+        copy.directChatDesktopOnlyTitle,
+        copy.directChatDesktopOnlyBody,
+        [{ text: copy.desktopOnlyOkAction, style: 'cancel' }],
+      );
+    },
+    [
+      copy.directChatDesktopOnlyBody,
+      copy.directChatDesktopOnlyTitle,
+      copy.desktopOnlyOkAction,
+      router,
+      state,
+    ],
+  );
 
   const handlePrimaryAction = useCallback(
     (actionId: string) => {
@@ -74,6 +124,11 @@ export default function ChatSidebarScreen() {
         onSelectRecent={handleSelectRecent}
         onDeleteRecent={handleDeleteRecent}
         isDeletingRecent={isDeleting}
+        directMessages={{
+          cats: directLaneCats,
+          label: sidebarCopy.directMessagesLabel,
+          onSelectCat: handleSelectDirectMessageCat,
+        }}
       />
     </SafeAreaView>
   );
