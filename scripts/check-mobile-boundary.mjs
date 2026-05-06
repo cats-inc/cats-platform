@@ -70,46 +70,70 @@ const FORBIDDEN_PROJECT_SUBSTRINGS = [
 ];
 
 /**
- * Browser+RN safe directories under `cats-platform/src/` that the
- * mobile consumer (`mobile/app/**`, `mobile/src/**`) is allowed to
- * import directly without going through `src/mobile/**`. Each path
- * is project-relative, forward-slash normalised, and refers to a
- * directory whose contents have been audited:
+ * Browser+RN safe paths under `cats-platform/src/` that the mobile
+ * consumer (`mobile/app/**`, `mobile/src/**`) is allowed to import
+ * directly without going through `src/mobile/**`.
  *
- *   - No `node:*` imports
- *   - No transitive Node deps (verified via the mobile workspace's
- *     `npm run typecheck` after each addition)
- *   - No React DOM / browser-only APIs
+ * Each entry is project-relative, forward-slash normalised, and
+ * either a specific file (preferred) or a directory whose ENTIRE
+ * tree has been audited. Specific-file allow-listing is the
+ * default — directory-level allow-listing only when every current
+ * AND future file under that root is guaranteed Node-clean
+ * (e.g. an i18n catalog tree where the convention is "data only,
+ * no imports").
  *
- * This list lets canonical chat-product domain logic live where it
- * belongs (e.g. `src/products/chat/shared/directMessageSelectors.ts`)
- * instead of being shoved into `src/mobile/**` for the sole reason
- * that mobile-side code can reach it. See
- * `docs/plans/PLAN-094-mobile-shared-boundary-realignment.md` for
- * the architectural rationale.
+ * Why specific files: this checker scans direct imports only, not
+ * transitive dependency graphs. An audited directory can grow a
+ * `node:crypto`-tainted file later without the checker noticing,
+ * and the next mobile consumer importing that file passes the
+ * scan. Specific-file allow-list keeps the audit surface explicit
+ * — adding a new file requires a deliberate allow-list change
+ * paired with that file's audit.
  *
- * Adding a new entry requires:
- *   1. Audit the directory for `node:*` imports + DOM / window /
- *      document references.
- *   2. Run `node scripts/check-mobile-boundary.mjs` then
+ * Audit checklist before adding an entry:
+ *   1. Read every line of the file (or for directory entries,
+ *      every line of every file under the tree).
+ *   2. Confirm no `node:*` imports.
+ *   3. Confirm no imports of `src/server/`, `src/desktop/`,
+ *      `src/runtime/`, `src/app/server/`, `src/core/` (most files
+ *      under there pull `node:crypto`), `src/shared/guideCatAssist*`,
+ *      or `src/products/shared/api/workspaceContracts`.
+ *   4. Confirm no React DOM / `window` / `document` references.
+ *   5. Run `node scripts/check-mobile-boundary.mjs` followed by
  *      `cd mobile && npm run typecheck` to confirm transitive
- *      cleanliness.
- *   3. Land the entry alongside the consumer change that needs it.
+ *      type cleanliness.
+ *   6. Land the entry alongside the consumer change that needs it.
+ *
+ * (Cross-platform layering rationale documented in the proposal at
+ * the top of `tests/mobile-i18n-web-parity.test.ts` and inline in
+ * each shared module's header comment.)
  */
 const ALLOWED_CONSUMER_PROJECT_DIRS = [
   // Mobile boundary — the existing path; everything else here is an
   // additional allow-list entry on top.
   'src/mobile',
-  // Per-product browser+RN safe shared algorithms, types, and
-  // selectors. Currently only chat has a populated `shared/`; code
-  // and work mirror the structure when their own DM-style logic
-  // lands.
-  'src/products/chat/shared',
+  // Per-product browser+RN safe canonical algorithms.
+  // Specific-file granularity because `src/products/chat/shared/`
+  // also hosts files (e.g. `parallelChats.ts`,
+  // `channelEntry.ts`, `operator-loop/index.ts`) that
+  // transitively pull `src/core/*` — those are NOT mobile-safe.
+  'src/products/chat/shared/directMessageSelectors.ts',
+  // Cross-product browser+RN safe channel-recents filter. Lives
+  // under `src/products/shared/` because it's used by every
+  // product sidebar (chat / code / work) and by the mobile
+  // boundary; specific-file scope because that directory also
+  // hosts Node-tainted pieces (e.g. `api/workspaceContracts.ts`
+  // — separately denied via FORBIDDEN_PROJECT_SUBSTRINGS).
+  'src/products/shared/recentsFilter.ts',
   // Cross-product i18n catalogs + key registry. The catalogs are
-  // pure object literals and `messageKeys.ts` is a pure const map;
-  // both are Node-clean.
+  // pure object literals and `messageKeys.ts` is a pure const map.
+  // Directory-level allow-list because the convention here is
+  // "data only, no imports beyond the catalog interface" — any
+  // future file under this root MUST keep that convention.
   'src/shared/i18n',
-  // Browser+RN safe primitives shared across products.
+  // Browser+RN safe primitives shared across products. Specific
+  // files because `src/shared/` also hosts Node-tainted pieces
+  // (`guideCatAssist*.ts`, `catsAppSdk.ts`, etc.).
   'src/shared/platformSurfaces.ts',
   'src/shared/platform-contract.ts',
   'src/shared/roomRouting.ts',

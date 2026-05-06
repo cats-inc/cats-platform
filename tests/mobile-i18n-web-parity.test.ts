@@ -15,22 +15,39 @@ import {
  * (`src/mobile/i18n.ts`) and the web full catalog
  * (`src/shared/i18n/catalogs/{en,zh-TW}.ts`).
  *
- * Why mobile has a separate catalog at all: the web catalog has
- * ~3000 keys, most of them desktop-only (runtime status, telegram
- * setup, etc.). Importing the entire catalog into the mobile bundle
- * for ~95 strings would inflate the JS bundle by ~200 KB of Hermes
- * bytecode. The mobile boundary instead re-declares only the strings
- * mobile actually renders.
+ * Mobile imports the web catalogs at module init and reads the
+ * mirrored strings directly — see `src/mobile/i18n.ts:1-3` for the
+ * `enCatalog / zhTWCatalog` import. That makes drift impossible
+ * for the live runtime read: if a web key is renamed, `tsc`
+ * errors at the mobile read site; if the value changes, mobile
+ * picks it up automatically.
  *
- * The trade-off: nothing stops a future PR from changing the web
- * catalog without updating the mobile copy. Reviewer flagged this
- * exact risk:
+ * What this test still buys you:
+ *
+ *   1. Catches a regression where someone reverts a mirrored
+ *      string back to a hardcoded literal (intentional or
+ *      otherwise).
+ *   2. Documents the explicit mobile-to-web key mapping for code
+ *      review — easier to audit "is this the right web key?" than
+ *      to grep through `src/mobile/i18n.ts`.
+ *   3. Pre-flight parity check during a planned web key rename:
+ *      run this test against a staged catalog change to see
+ *      what mobile would render, before pushing the rename
+ *      anywhere.
+ *
+ * Reviewer's underlying ask:
  *
  * > 我真的非常不希望看到 web 字串改了, mobile (因為是另外一份)卻又漏掉的情況.
  *
- * This test pins every string mobile claims to mirror from web. If
- * the web catalog drifts (or someone updates the mobile copy without
- * realising it broke parity), CI fails before the PR lands.
+ * Bundle trade-off: importing the web catalog adds ~200 KB of
+ * Hermes bytecode (full ~3000 keys × 2 locales). On a 5 MB mobile
+ * bundle that's ~4 % overhead, which we accepted in exchange for
+ * the drift safety. If a future audit shows the mobile bundle
+ * needs to shrink, the alternative is splitting the web catalog
+ * into a shared `core/` (used by both) plus a `desktop-extended/`
+ * (web-only) — see the proposal at the top of
+ * `tests/mobile-i18n-web-parity.test.ts`'s history (commit
+ * 82f8f0597's message) for that contingency plan.
  *
  * Keep the mapping below in lockstep with the comments / doc strings
  * in `src/mobile/i18n.ts` that say "mirrors web …" — every such

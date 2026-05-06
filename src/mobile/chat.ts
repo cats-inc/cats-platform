@@ -3,7 +3,7 @@ import {
   isCatPartOfChatProduct,
   sortChatCatsByRecency,
 } from '../products/chat/shared/directMessageSelectors.js';
-import { filterChatChannelsForProductRecents } from '../products/chat/shared/recentsFilter.js';
+import { filterChatChannelsForProductRecents } from '../products/shared/recentsFilter.js';
 
 // Both helpers are re-exported below for the mobile boundary's
 // public surface; we also use them locally in

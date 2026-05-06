@@ -792,19 +792,6 @@ test('mobile product sidebar copy ships the DIRECT MESSAGES section label', () =
   assert.equal(zh.directMessagesLabel, '直接訊息');
 });
 
-test('mobile tabs copy ships the desktop-only direct-chat alert pair', () => {
-  // Surfaced when the user taps a cat in the Chat-tab DIRECT
-  // MESSAGES list that has no direct-lane channel yet. Keeps the
-  // round-trip verification consistent with the parallel-chat /
-  // parallel-work / peer-code intercepts.
-  const en = getMobileTabsCopy('en');
-  const zh = getMobileTabsCopy('zh-TW');
-  assert.equal(en.directChatDesktopOnlyTitle, 'Direct message — desktop only');
-  assert.equal(zh.directChatDesktopOnlyTitle, '直接訊息僅限桌面版');
-  assert.match(en.directChatDesktopOnlyBody, /Starting a direct message with this cat is not yet wired/u);
-  assert.match(zh.directChatDesktopOnlyBody, /行動版尚未支援與這隻貓開啟直接訊息/u);
-});
-
 test('selectMobileProductRecents continues to scope by originSurface (SPEC-070)', () => {
   const payload = buildPayloadWithChannels([
     buildChannel({

@@ -1,5 +1,5 @@
-import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
-import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import { normalizePlatformSurface } from '../../shared/platformSurfaces.js';
+import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
 
 const DIRECT_MESSAGE_KIND = 'direct_message';
 

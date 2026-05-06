@@ -76,7 +76,7 @@ export default function ChatSidebarScreen() {
       // with `entryKind=direct` and the cat preset. Mirrors the
       // desktop's auto-create-on-first-send behaviour:
       // `useDraftChannel` POSTs `/api/channels` with
-      // `defaultRecipientCatId / participantCatIds` so the
+      // `defaultRecipientId / participantCatIds` so the
       // freshly-created channel arrives wired to this cat.
       const cat = state.payload.chat.cats.find(
         (entry: MobileChatCat) => entry.id === catId,

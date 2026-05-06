@@ -1,5 +1,5 @@
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
-import { filterChatChannelsForProductRecents } from '../../../products/chat/shared/recentsFilter.js';
+import { filterChatChannelsForProductRecents } from '../../../products/shared/recentsFilter.js';
 import {
   type ConversationSidebarChannel,
   type ConversationSidebarRecentEntry,
