@@ -146,6 +146,7 @@ export interface OwnerProfilePatchInput {
   communicationPreferences?: string[];
   decisionPreferences?: string[];
   escalationPreferences?: string[];
+  naturalProductIntentProposalsEnabled?: boolean;
 }
 
 export interface CoreApprovalWriteInput {

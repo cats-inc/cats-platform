@@ -1,5 +1,6 @@
 import type { TelegramRoomBridge } from '../../../platform/transports/telegram/bridge.js';
 import type { RuntimeDispatchRecoveryPolicy } from '../../../shared/runtimeRecovery.js';
+import type { ChatNaturalProductIntentMode } from '../shared/naturalProductIntentMode.js';
 import {
   buildTelegramBotTransportBindingId,
 } from '../../../shared/chatCoreIds.js';
@@ -23,6 +24,7 @@ export function createChatTelegramRoomBridge(input: {
   runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
   chatStatePath?: string;
   runtimeDataDir?: string;
+  naturalProductIntentMode?: ChatNaturalProductIntentMode;
 }): TelegramRoomBridge<ChatState> {
   return {
     readState() {
@@ -120,6 +122,7 @@ export function createChatTelegramRoomBridge(input: {
           runtimeRecovery: input.runtimeRecovery,
           chatStatePath: input.chatStatePath,
           runtimeDataDir: input.runtimeDataDir,
+          naturalProductIntentMode: input.naturalProductIntentMode,
         },
       );
     },

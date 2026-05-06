@@ -51,25 +51,25 @@ to Cat-authored proposal tools:
 
 ### Phase 1: Gates and heuristic containment
 
-- [ ] Task 1.1: Add deployment config
+- [x] Task 1.1: Add deployment config
       `CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE=off|cat_tool|heuristic_prefilter`.
       Default to `off` until the Cat proposal tool path ships; never default
       to `heuristic_prefilter`.
-- [ ] Task 1.2: Add an owner setting for "Suggest Work/Code from chat".
+- [x] Task 1.2: Add an owner setting for "Suggest Work/Code from chat".
       Store it at owner-profile scope. Per-lane and per-Cat overrides are out
       of v1.
-- [ ] Task 1.3: Ensure explicit `/chat`, `/work`, and `/code` ignore the
+- [x] Task 1.3: Ensure explicit `/chat`, `/work`, and `/code` ignore the
       natural-intent setting and continue through SPEC-104.
-- [ ] Task 1.4: Move the PLAN-093 deterministic detector behind
+- [x] Task 1.4: Move the PLAN-093 deterministic detector behind
       `heuristic_prefilter` only. It shall not run in `off` or `cat_tool` mode.
       Decouple v1 segment expiry cleanup from the v1 detector trigger so Phase
       6 can either sweep outstanding v1 candidates on mode change or keep the
       cleanup path active independently from detector execution.
-- [ ] Task 1.4a: Migrate the PLAN-093 detector test suite to set
+- [x] Task 1.4a: Migrate the PLAN-093 detector test suite to set
       `mode = heuristic_prefilter` explicitly. Tests that previously asserted
       detector behavior under default mode shall assert it under
       `heuristic_prefilter` and add parallel `cat_tool` / `off` negative cases.
-- [ ] Task 1.5: Add tests proving no no-slash suggestions appear when the
+- [x] Task 1.5: Add tests proving no no-slash suggestions appear when the
       effective mode is `off`.
 
 **Deliverables**: natural-language suggestions can be disabled cleanly, and the
@@ -207,6 +207,9 @@ the old heuristic cannot surprise users.
 - Owner setting lives at owner-profile scope, such as
   `ChatStateOwnerProfile.naturalProductIntentProposalsEnabled` or equivalent.
   Per-lane and per-Cat overrides are out of v1.
+- The first implementation defaults the owner setting to enabled while the
+  deployment gate defaults to `off`, so existing owners only see no-slash
+  suggestions after an explicit deployment-mode opt-in.
 - Providers without tool-call support do not get structured-output fallback in
   v1. Owners use explicit `/work` or `/code` with those Cats.
 - Proposal metadata is stored under `metadata.catProductIntentProposal`.
@@ -272,6 +275,7 @@ the old heuristic cannot surprise users.
 | Date | Update |
 |------|--------|
 | 2026-05-06 | Plan created to pivot no-slash product intent from platform heuristics to Cat-authored proposal tools with owner confirmation. |
+| 2026-05-06 | Phase 1 landed: `CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE` now defaults to `off`, owner-profile setting gates natural suggestions, explicit `/chat` / `/work` / `/code` still enter SPEC-104, and the v1 deterministic detector only runs in `heuristic_prefilter`. Validation: `npm run build:server`, `node --test --test-isolation=none tests/config.test.js`, bundled `chat-product-intent-dispatch` test, and `git diff --check`. |
 
 ---
 

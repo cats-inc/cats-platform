@@ -12,6 +12,10 @@ import {
   resolvePlatformStateDir,
   resolvePlatformStatePath,
 } from './shared/platformPaths.js';
+import {
+  parseChatNaturalProductIntentMode,
+  type ChatNaturalProductIntentMode,
+} from './products/chat/shared/naturalProductIntentMode.js';
 
 export interface AppConfig {
   host: string;
@@ -27,6 +31,7 @@ export interface AppConfig {
   debugLiveTrace: boolean;
   debugKeepRuntimeSessionsOnProductDelete: boolean;
   chatProviderAgentDecisionEnabled?: boolean;
+  chatNaturalProductIntentMode: ChatNaturalProductIntentMode;
   mobilePairingEnabled: boolean;
   mobileBundleRoot: string;
   runtimeDataDir: string;
@@ -166,6 +171,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     chatProviderAgentDecisionEnabled: parseBoolean(
       env.CATS_CHAT_PROVIDER_AGENT_DECISION_ENABLED,
       false,
+    ),
+    chatNaturalProductIntentMode: parseChatNaturalProductIntentMode(
+      env.CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE,
     ),
     mobilePairingEnabled: parseBoolean(env.CATS_DESKTOP_MOBILE_PAIRING_ENABLED, true),
     mobileBundleRoot: env.CATS_MOBILE_BUNDLE_ROOT?.trim()

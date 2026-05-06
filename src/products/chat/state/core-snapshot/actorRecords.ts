@@ -16,6 +16,7 @@ import {
   normalizeExecutionTarget,
   normalizeMemoryCheckpoint,
   normalizeMetadata,
+  readBoolean,
   readNullableString,
   readString,
   readStringArray,
@@ -34,6 +35,10 @@ export function normalizeOwnerProfile(rawOwnerProfile: unknown): OwnerProfileRec
     communicationPreferences: readStringArray(ownerProfileRecord?.communicationPreferences),
     decisionPreferences: readStringArray(ownerProfileRecord?.decisionPreferences),
     escalationPreferences: readStringArray(ownerProfileRecord?.escalationPreferences),
+    naturalProductIntentProposalsEnabled: readBoolean(
+      ownerProfileRecord?.naturalProductIntentProposalsEnabled,
+      fallback.naturalProductIntentProposalsEnabled,
+    ),
     updatedAt: readString(ownerProfileRecord?.updatedAt, fallback.updatedAt),
   };
 }

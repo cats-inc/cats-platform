@@ -2,6 +2,7 @@ import { patchOwnerProfile } from '../model/index.js';
 import { syncCanonicalOwnerMemoryBestEffort } from '../../platform/memory/maintenance.js';
 import {
   handleCoreError,
+  readOptionalBoolean,
   readNullableString,
   readObjectBody,
   readOptionalString,
@@ -40,6 +41,10 @@ async function handleOwnerProfileWrite(
         escalationPreferences: readStringArray(
           body.escalationPreferences,
           'escalationPreferences',
+        ),
+        naturalProductIntentProposalsEnabled: readOptionalBoolean(
+          body.naturalProductIntentProposalsEnabled,
+          'naturalProductIntentProposalsEnabled',
         ),
       },
     );

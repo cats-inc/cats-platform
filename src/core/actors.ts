@@ -35,6 +35,7 @@ export function createDefaultOwnerProfile(
     communicationPreferences: [],
     decisionPreferences: [],
     escalationPreferences: [],
+    naturalProductIntentProposalsEnabled: true,
     updatedAt,
   };
 }

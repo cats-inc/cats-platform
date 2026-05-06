@@ -56,6 +56,7 @@ test('loadConfig derives storage paths from canonical root directories', () => {
   assert.equal(config.debugLiveTrace, false);
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.chatProviderAgentDecisionEnabled, false);
+  assert.equal(config.chatNaturalProductIntentMode, 'off');
   assert.equal(config.mobilePairingEnabled, true);
   assert.equal(config.mobileBundleRoot, path.resolve(process.cwd(), 'build', 'mobile'));
   assert.equal(config.runtimeStaleSessionRetryLimit, 3);
@@ -175,4 +176,22 @@ test('loadConfig enables Chat provider-agent decisions only when explicitly true
   assert.equal(enabled.chatProviderAgentDecisionEnabled, true);
   assert.equal(disabled.chatProviderAgentDecisionEnabled, false);
   assert.equal(unset.chatProviderAgentDecisionEnabled, false);
+});
+
+test('loadConfig parses the Chat natural product-intent deployment mode', () => {
+  const off = loadConfig({});
+  const catTool = loadConfig({
+    CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE: 'cat_tool',
+  });
+  const heuristic = loadConfig({
+    CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE: 'heuristic_prefilter',
+  });
+
+  assert.equal(off.chatNaturalProductIntentMode, 'off');
+  assert.equal(catTool.chatNaturalProductIntentMode, 'cat_tool');
+  assert.equal(heuristic.chatNaturalProductIntentMode, 'heuristic_prefilter');
+  assert.throws(
+    () => loadConfig({ CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE: 'keywords' }),
+    /Invalid CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE/u,
+  );
 });

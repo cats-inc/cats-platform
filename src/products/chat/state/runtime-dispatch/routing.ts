@@ -115,6 +115,10 @@ import {
   type ImplicitProductIntentCandidateTransitionMetadata,
   type ImplicitProductIntentTransport,
 } from '../../shared/implicitProductIntent.js';
+import {
+  resolveEffectiveChatNaturalProductIntentMode,
+  type ChatNaturalProductIntentMode,
+} from '../../shared/naturalProductIntentMode.js';
 
 export type ProviderAgentDecisionRequester = (input: {
   state: ChatState;
@@ -142,6 +146,7 @@ interface RouteChannelMessageOptions {
   providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
+  naturalProductIntentMode?: ChatNaturalProductIntentMode;
 }
 
 function readMessageRetryMetadata(
@@ -678,10 +683,14 @@ function appendImplicitProductIntentCandidateSidecar(input: {
   userMessage: ChatMessage;
   body: string;
   transport: RuntimeTransportContext | undefined;
+  effectiveMode: ChatNaturalProductIntentMode;
   locale: MessageLocale;
   now: Date;
   choiceResponse?: SendChannelMessageInput['choiceResponse'];
 }): { state: ChatState; candidateMessage: ChatMessage | null } {
+  if (input.effectiveMode !== 'heuristic_prefilter') {
+    return { state: input.state, candidateMessage: null };
+  }
   if (input.choiceResponse) {
     return { state: input.state, candidateMessage: null };
   }
@@ -2148,6 +2157,11 @@ export async function beginChannelMessageDispatch(
   const coreBeforeUserMessage = options.chatStore
     ? await options.chatStore.readCore()
     : null;
+  const naturalProductIntentEffectiveMode = resolveEffectiveChatNaturalProductIntentMode({
+    deploymentMode: options.naturalProductIntentMode,
+    ownerEnabled:
+      coreBeforeUserMessage?.ownerProfile.naturalProductIntentProposalsEnabled,
+  });
   const followUpActiveAnchorState = resolveDirectSlashModeActiveAnchorState({
     channel: channelBeforeMessage,
     core: coreBeforeUserMessage,
@@ -2255,6 +2269,7 @@ export async function beginChannelMessageDispatch(
     userMessage: preparedTurn.userMessage,
     body: payload.body,
     transport: options.transport,
+    effectiveMode: naturalProductIntentEffectiveMode,
     locale: resolveProductIntentMessageLocale(channelBeforeMessage, options.transportLocale),
     now,
     choiceResponse: payload.choiceResponse,

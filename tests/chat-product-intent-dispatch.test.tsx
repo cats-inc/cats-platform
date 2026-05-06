@@ -195,6 +195,7 @@ async function suggestImplicitProductIntentCandidate(input: {
       transport: input.transport,
       transportLocale: input.transportLocale,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const candidateMessage = requireChannel(routed.state, input.channelId).messages
@@ -270,6 +271,7 @@ test('beginChannelMessageDispatch records direct product intent and starts chat-
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -428,6 +430,7 @@ test('routeChannelMessage sends the first strong product-intent command to the s
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -465,6 +468,7 @@ test('beginChannelMessageDispatch suggests implicit candidates while ordinary di
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -513,6 +517,66 @@ test('beginChannelMessageDispatch suggests implicit candidates while ordinary di
   );
 });
 
+test('beginChannelMessageDispatch does not suggest implicit candidates when deployment mode is off', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const candidateMessage = requireChannel(begun.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+
+  assert.equal(candidateMessage, undefined);
+  assert.notEqual(begun.preparedTurn, null);
+});
+
+test('beginChannelMessageDispatch does not suggest implicit candidates when owner setting is off', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  await store.updateCore((core) => ({
+    ...core,
+    ownerProfile: {
+      ...core.ownerProfile,
+      naturalProductIntentProposalsEnabled: false,
+    },
+  }));
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+
+  const candidateMessage = requireChannel(begun.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+
+  assert.equal(candidateMessage, undefined);
+  assert.notEqual(begun.preparedTurn, null);
+});
+
 test('beginChannelMessageDispatch suggests implicit candidates for room-routing direct lanes', async () => {
   const { state, channelId } = createDirectState();
   requireChannel(state, channelId).channelKind = 'chat_channel';
@@ -530,6 +594,7 @@ test('beginChannelMessageDispatch suggests implicit candidates for room-routing 
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -561,6 +626,7 @@ test('beginChannelMessageDispatch records implicit candidate decline without pro
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
@@ -582,6 +648,7 @@ test('beginChannelMessageDispatch records implicit candidate decline without pro
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -623,6 +690,7 @@ test('routeChannelMessage suppresses implicit candidates briefly after decline',
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
@@ -643,6 +711,7 @@ test('routeChannelMessage suppresses implicit candidates briefly after decline',
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -658,6 +727,7 @@ test('routeChannelMessage suppresses implicit candidates briefly after decline',
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const channel = requireChannel(next.state, channelId);
@@ -685,6 +755,7 @@ test('beginChannelMessageDispatch expires open implicit candidates on chat postu
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -700,6 +771,7 @@ test('beginChannelMessageDispatch expires open implicit candidates on chat postu
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const channel = requireChannel(cleared.state, channelId);
@@ -729,6 +801,7 @@ test('routeChannelMessage expires old implicit candidates before suggesting anot
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -744,6 +817,7 @@ test('routeChannelMessage expires old implicit candidates before suggesting anot
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const channel = requireChannel(next.state, channelId);
@@ -776,6 +850,7 @@ test('routeChannelMessage expires unresolved implicit candidates before suggesti
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -791,6 +866,7 @@ test('routeChannelMessage expires unresolved implicit candidates before suggesti
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const channel = requireChannel(next.state, channelId);
@@ -823,6 +899,7 @@ test('beginChannelMessageDispatch confirms implicit candidates through slash-mod
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
@@ -845,6 +922,7 @@ test('beginChannelMessageDispatch confirms implicit candidates through slash-mod
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -898,6 +976,7 @@ test('beginChannelMessageDispatch confirms implicit candidates through slash-mod
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const duplicateCore = await store.readCore();
@@ -932,6 +1011,7 @@ test('beginChannelMessageDispatch expires stale implicit candidates instead of c
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
@@ -953,6 +1033,7 @@ test('beginChannelMessageDispatch expires stale implicit candidates instead of c
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -987,6 +1068,7 @@ test('beginChannelMessageDispatch confirms implicit code candidates with code ta
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
@@ -1008,6 +1090,7 @@ test('beginChannelMessageDispatch confirms implicit code candidates with code ta
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -1061,6 +1144,7 @@ test('beginChannelMessageDispatch confirms Telegram implicit code candidates thr
       transport: 'telegram',
       transportLocale: 'en',
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
@@ -1087,6 +1171,7 @@ test('beginChannelMessageDispatch confirms Telegram implicit code candidates thr
       transport: 'telegram',
       transportLocale: 'en',
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -1129,6 +1214,7 @@ test('beginChannelMessageDispatch localizes Telegram implicit suggestions and co
       transport: 'telegram',
       transportLocale: 'zh-Hant',
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
@@ -1153,6 +1239,7 @@ test('beginChannelMessageDispatch localizes Telegram implicit suggestions and co
       transport: 'telegram',
       transportLocale: 'zh-Hant',
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const transitionMessage = requireChannel(confirmed.state, channelId).messages.find((message) =>
@@ -1276,6 +1363,7 @@ test('beginChannelMessageDispatch abandons implicit draft anchors on chat postur
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -1348,6 +1436,7 @@ test('beginChannelMessageDispatch keeps confirmed implicit weak Cats human-gated
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig('weak_worker'),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
@@ -1369,6 +1458,7 @@ test('beginChannelMessageDispatch keeps confirmed implicit weak Cats human-gated
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig('weak_worker'),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -1414,6 +1504,7 @@ test('beginChannelMessageDispatch keeps confirmed implicit unknown Cats human-ga
     new Date('2026-05-06T08:01:00.000Z'),
     {
       chatStore: store,
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const candidateMessage = requireChannel(initial.state, channelId).messages.find((message) =>
@@ -1434,6 +1525,7 @@ test('beginChannelMessageDispatch keeps confirmed implicit unknown Cats human-ga
     new Date('2026-05-06T08:03:00.000Z'),
     {
       chatStore: store,
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -1477,6 +1569,7 @@ test('routeChannelMessage does not send localized synthetic user text for empty 
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -1613,6 +1706,7 @@ test('beginChannelMessageDispatch localizes direct product-intent acknowledgemen
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -1651,6 +1745,7 @@ test('beginChannelMessageDispatch prefers Telegram transport locale for first pr
       transport: 'telegram',
       transportLocale: 'zh-Hant',
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -1728,6 +1823,7 @@ test('beginChannelMessageDispatch creates code-target Work Item anchors for stro
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -1780,6 +1876,7 @@ test('beginChannelMessageDispatch supersedes active draft anchors when product p
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const coreAfterWork = await store.readCore();
@@ -1801,6 +1898,7 @@ test('beginChannelMessageDispatch supersedes active draft anchors when product p
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -1851,6 +1949,7 @@ test('beginChannelMessageDispatch clears active anchors on product switch withou
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const coreAfterWork = await store.readCore();
@@ -2022,6 +2121,7 @@ test('beginChannelMessageDispatch marks repeated product posture commands as unc
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const second = await beginChannelMessageDispatch(
@@ -2036,6 +2136,7 @@ test('beginChannelMessageDispatch marks repeated product posture commands as unc
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -2073,6 +2174,7 @@ test('beginChannelMessageDispatch clears active slash-mode anchors on chat postu
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const coreAfterWork = await store.readCore();
@@ -2091,6 +2193,7 @@ test('beginChannelMessageDispatch clears active slash-mode anchors on chat postu
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 
@@ -2134,6 +2237,7 @@ test('beginChannelMessageDispatch starts fresh slash-mode intake after terminal 
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
   const coreAfterWork = await store.readCore();
@@ -2162,6 +2266,7 @@ test('beginChannelMessageDispatch starts fresh slash-mode intake after terminal 
     {
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
     },
   );
 

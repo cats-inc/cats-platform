@@ -87,6 +87,17 @@ export function readStringArray(value: unknown, fieldName: string): string[] | u
   return value;
 }
 
+export function readOptionalBoolean(value: unknown, fieldName: string): boolean | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== 'boolean') {
+    throw new CoreValidationError(`${fieldName} must be a boolean`);
+  }
+
+  return value;
+}
+
 export function readMetadata(
   value: unknown,
   fieldName: string,

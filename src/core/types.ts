@@ -768,6 +768,7 @@ export interface OwnerProfileRecord {
   communicationPreferences: string[];
   decisionPreferences: string[];
   escalationPreferences: string[];
+  naturalProductIntentProposalsEnabled: boolean;
   updatedAt: string;
 }
 

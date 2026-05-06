@@ -176,6 +176,10 @@ export function patchOwnerProfile(
       patch.escalationPreferences === undefined
         ? structuredClone(core.ownerProfile.escalationPreferences)
         : normalizeStringArray(patch.escalationPreferences),
+    naturalProductIntentProposalsEnabled:
+      patch.naturalProductIntentProposalsEnabled === undefined
+        ? core.ownerProfile.naturalProductIntentProposalsEnabled
+        : patch.naturalProductIntentProposalsEnabled,
     updatedAt: nowIso,
   };
 

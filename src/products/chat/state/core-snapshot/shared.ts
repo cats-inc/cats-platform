@@ -24,6 +24,10 @@ export function readNumber(value: unknown, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
+export function readBoolean(value: unknown, fallback = false): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
 export function readStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
