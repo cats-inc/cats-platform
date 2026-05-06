@@ -8,6 +8,7 @@ import {
 import {
   appendCoreActivity,
   appendCoreTrace,
+  linkCoreWorkItemToTask,
   listCoreWorkGraphLinks,
   removeCoreProject,
   removeCoreTask,
@@ -95,6 +96,7 @@ export {
   createDefaultOwnerProfile,
   createEmptyMemoryCheckpoint,
   GLOBAL_ORCHESTRATOR_ACTOR_ID,
+  linkCoreWorkItemToTask,
   listCoreWorkGraphLinks,
   listDurableMemoryBySubject,
   OWNER_ACTOR_ID,

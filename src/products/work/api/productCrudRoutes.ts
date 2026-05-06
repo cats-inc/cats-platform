@@ -6,6 +6,7 @@ import {
   type RouteContext,
 } from '../../../shared/http.js';
 import {
+  linkCoreWorkItemToTask,
   removeCoreProject,
   removeCoreTask,
   removeCoreWorkItem,
@@ -99,6 +100,7 @@ interface CreateTaskPayload {
   summary?: string | null;
   assignedActorIds?: string[];
   metadata?: Record<string, unknown>;
+  workItemId?: string | null;
 }
 
 export async function routeWorkProductCrudApi(
@@ -339,8 +341,22 @@ async function handleCreateTask(
       },
       now,
     );
-    if (result.created) {
-      await context.dependencies.coreStore.writeCore(result.core);
+    let nextCore = result.core;
+    let linked = false;
+    if (validation.payload.workItemId) {
+      const link = linkCoreWorkItemToTask(
+        nextCore,
+        {
+          workItemId: validation.payload.workItemId,
+          taskId: result.task.id,
+        },
+        now,
+      );
+      nextCore = link.core;
+      linked = link.linked;
+    }
+    if (result.created || linked) {
+      await context.dependencies.coreStore.writeCore(nextCore);
     }
     const status = result.created ? 201 : 200;
     sendJson(context.response, status, {
@@ -474,6 +490,8 @@ function validateCreateTask(
   if (assignedActorIds.error) return { payload: null, error: assignedActorIds.error };
   const metadata = readMetadata(body.metadata);
   if (metadata.error) return { payload: null, error: metadata.error };
+  const workItemId = readNullableString(body.workItemId, 'workItemId');
+  if (workItemId.error) return { payload: null, error: workItemId.error };
   return {
     payload: {
       title,
@@ -485,6 +503,7 @@ function validateCreateTask(
       summary: summary.value,
       assignedActorIds: assignedActorIds.value,
       metadata: metadata.value,
+      workItemId: workItemId.value,
     },
     error: null,
   };

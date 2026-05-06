@@ -2,6 +2,7 @@ import type { CoreStore } from '../../../core/store.js';
 import type { CatsCoreState, CoreRunRecord, CoreTaskRecord } from '../../../core/types.js';
 import type { RuntimeClient, RuntimeSessionInfo } from '../../../runtime/client.js';
 import { upsertCoreRun } from '../../../core/model/executionRecords.js';
+import { linkCoreWorkItemToTask } from '../../../core/model/planningRecords.js';
 import { upsertCoreTask } from '../../../core/model/taskControls.js';
 import {
   createDurableToolEvidenceSink,
@@ -28,6 +29,7 @@ export interface CreateCodeTaskInput {
   conversationId?: string | null;
   assignedActorIds?: string[];
   acceptanceCriteria?: string | null;
+  workItemId?: string | null;
 }
 
 export interface CreateCodeTaskResult {
@@ -97,8 +99,18 @@ export function createCodeTask(
     assignedActorIds: input.assignedActorIds,
     metadata,
   }, now);
+  const linked = input.workItemId?.trim()
+    ? linkCoreWorkItemToTask(
+        result.core,
+        {
+          workItemId: input.workItemId,
+          taskId: result.task.id,
+        },
+        now,
+      )
+    : null;
 
-  return { core: result.core, task: result.task };
+  return { core: linked?.core ?? result.core, task: result.task };
 }
 
 export function resumeCodeTask(

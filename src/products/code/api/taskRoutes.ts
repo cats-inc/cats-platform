@@ -29,6 +29,7 @@ interface CreateTaskBody {
   conversationId?: string | null;
   assignedActorIds?: string[];
   acceptanceCriteria?: string | null;
+  workItemId?: string | null;
 }
 
 interface ExecuteTaskBody {
@@ -200,6 +201,7 @@ export async function routeCodeTaskMutationApi(
       conversationId: body.conversationId,
       assignedActorIds: body.assignedActorIds,
       acceptanceCriteria: body.acceptanceCriteria,
+      workItemId: body.workItemId,
     };
 
     try {

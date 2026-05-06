@@ -1,5 +1,6 @@
 export { upsertCoreActor } from './actorRecords.js';
 export {
+  linkCoreWorkItemToTask,
   removeCoreProject,
   removeCoreWorkItem,
   upsertCoreArtifact,

@@ -59,6 +59,7 @@ export interface CreateTaskInput {
   parentTaskId?: string | null;
   summary?: string | null;
   metadata?: Record<string, unknown>;
+  workItemId?: string | null;
 }
 
 export async function listWorkProjects(

@@ -34,6 +34,7 @@ export interface CreateCodeTaskInput {
   workspaceKind?: CodeWorkspaceKind | null;
   parentTaskId?: string | null;
   acceptanceCriteria?: string | null;
+  workItemId?: string | null;
 }
 
 export interface ExecuteCodeTaskInput {

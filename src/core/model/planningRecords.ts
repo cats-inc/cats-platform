@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { CoreValidationError } from '../errors.js';
+import {
+  CoreConflictError,
+  CoreNotFoundError,
+  CoreValidationError,
+} from '../errors.js';
 import type {
   CoreArtifactWriteInput,
   CoreProjectWriteInput,
@@ -147,6 +151,70 @@ export function upsertCoreWorkItem(
     ),
     workItem,
     created,
+  };
+}
+
+export function linkCoreWorkItemToTask(
+  core: CatsCoreState,
+  input: {
+    workItemId: string | null | undefined;
+    taskId: string | null | undefined;
+  },
+  now: Date = new Date(),
+): { core: CatsCoreState; workItem: CoreWorkItemRecord; linked: boolean } {
+  const workItemId = normalizeNullableString(input.workItemId);
+  if (!workItemId) {
+    throw new CoreValidationError('Work item id is required', 'work_item_id_required');
+  }
+
+  const taskId = normalizeNullableString(input.taskId);
+  if (!taskId) {
+    throw new CoreValidationError('Task id is required', 'task_id_required');
+  }
+
+  const workItem = core.workItems.find((candidate) => candidate.id === workItemId) ?? null;
+  if (!workItem) {
+    throw new CoreNotFoundError(`No work item found for id ${workItemId}.`, 'work_item_not_found');
+  }
+
+  if (!core.tasks.some((candidate) => candidate.id === taskId)) {
+    throw new CoreNotFoundError(`No task found for id ${taskId}.`, 'task_not_found');
+  }
+
+  if (workItem.taskId && workItem.taskId !== taskId) {
+    throw new CoreConflictError(
+      `Work item ${workItemId} is already linked to task ${workItem.taskId}.`,
+      'work_item_task_conflict',
+    );
+  }
+
+  if (workItem.taskId === taskId) {
+    return { core, workItem, linked: false };
+  }
+
+  const result = upsertCoreWorkItem(
+    core,
+    {
+      id: workItem.id,
+      title: workItem.title,
+      status: workItem.status,
+      projectId: workItem.projectId,
+      conversationId: workItem.conversationId,
+      taskId,
+      parentWorkItemId: workItem.parentWorkItemId,
+      ownerActorId: workItem.ownerActorId,
+      assignedActorIds: workItem.assignedActorIds,
+      summary: workItem.summary,
+      createdAt: workItem.createdAt,
+      metadata: workItem.metadata,
+    },
+    now,
+  );
+
+  return {
+    core: result.core,
+    workItem: result.workItem,
+    linked: true,
   };
 }
 
