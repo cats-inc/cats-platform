@@ -48,6 +48,12 @@ import {
 import {
   sameProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
+import {
+  createTranslator,
+  messageKeys,
+  parseMessageLocale,
+  type MessageLocale,
+} from '../../../../shared/i18n/index.js';
 import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import {
   buildDirectLaneTransportBindingId,
@@ -66,6 +72,7 @@ import {
 } from '../runtimeTargeting.js';
 import {
   prepareDispatchTurn,
+  prepareDispatchTurnForUserMessage,
   prepareDispatchTurnForExistingUserMessage,
 } from './turn.js';
 import {
@@ -108,6 +115,7 @@ export type ProviderAgentDecisionRequester = (input: {
 
 interface RouteChannelMessageOptions {
   transport?: RuntimeTransportContext;
+  transportLocale?: string | null;
   transportBindingId?: string | null;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
@@ -397,6 +405,7 @@ function shouldCreateProductIntentWorkItemAnchor(input: {
   ) && (
     input.postureChange?.changed === true
     || input.activeAnchorClear?.clearReason === 'work_item_terminal'
+    || input.activeAnchorClear?.clearReason === 'anchor_superseded'
   )
     && input.postureChange?.capabilityProfileKind === 'strong_agent';
 }
@@ -422,6 +431,38 @@ function normalizeWorkItemTitle(value: string, fallback: string): string {
   return normalized.length <= 72 ? normalized : `${normalized.slice(0, 69)}...`;
 }
 
+type ProductIntentTranslator = ReturnType<typeof createTranslator>;
+
+function resolveProductIntentMessageLocale(
+  channel: ChatChannelState,
+  transportLocale?: string | null,
+): MessageLocale {
+  const explicitLocale = parseMessageLocale(transportLocale)
+    ?? parseMessageLocale(channel.language)
+    ?? parseMessageLocale(channel.responseLanguage);
+  if (explicitLocale) {
+    return explicitLocale;
+  }
+
+  const languageHint = [
+    transportLocale,
+    channel.language,
+    channel.responseLanguage,
+  ].filter((candidate): candidate is string =>
+    typeof candidate === 'string' && candidate.trim().length > 0)
+    .join(' ')
+    .toLowerCase();
+  return languageHint.includes('zh')
+    || languageHint.includes('chinese')
+    || languageHint.includes('traditional')
+    ? 'zh-TW'
+    : 'en';
+}
+
+function resolveProductIntentTargetLabel(targetProduct: 'work' | 'code'): string {
+  return targetProduct === 'code' ? 'Code' : 'Work';
+}
+
 interface DirectSlashModeActiveAnchorMetadata {
   workItemId: string;
   targetProduct: 'work' | 'code';
@@ -444,7 +485,7 @@ interface DirectSlashModeHumanGateMetadata {
 
 interface DirectSlashModeClearMetadata {
   clearedActiveAnchor: DirectSlashModeActiveAnchorMetadata;
-  clearReason: 'chat_posture' | 'work_item_terminal';
+  clearReason: 'chat_posture' | 'work_item_terminal' | 'anchor_superseded' | 'posture_changed';
 }
 
 function buildDirectSlashModeActiveAnchor(input: {
@@ -464,6 +505,7 @@ function buildDirectSlashModeActiveAnchor(input: {
 function buildDirectSlashModeHumanGate(input: {
   productIntentCommand: ProductIntentCommandMetadata;
   postureChange: DirectSlashModePostureChangeMetadata | null;
+  translate: ProductIntentTranslator;
 }): DirectSlashModeHumanGateMetadata | null {
   if (!shouldRequireHumanWorkItemGate(input)) {
     return null;
@@ -474,26 +516,32 @@ function buildDirectSlashModeHumanGate(input: {
     return null;
   }
 
+  const targetProduct = input.productIntentCommand.targetProduct === 'code' ? 'code' : 'work';
+  const targetProductLabel = resolveProductIntentTargetLabel(targetProduct);
+
   return {
     kind: 'human_gate_required',
     reason: 'direct_audience_not_strong',
-    targetProduct: input.productIntentCommand.targetProduct === 'code' ? 'code' : 'work',
+    targetProduct,
     capabilityProfileKind,
     draftSummary: input.productIntentCommand.argumentText
-      || `Clarify this ${input.productIntentCommand.targetProduct} request before creating work.`,
+      || input.translate(
+        messageKeys.chatProductIntentHumanGateDraftSummaryFallback,
+        { targetProduct: targetProductLabel },
+      ),
     suggestedActions: [
       {
         kind: 'continue_clarifying',
-        label: 'Continue clarifying in this direct chat',
+        label: input.translate(messageKeys.chatProductIntentHumanGateContinueClarifying),
       },
       {
         kind: 'open_work_items',
-        label: 'Create or confirm a Work Item in Work',
+        label: input.translate(messageKeys.chatProductIntentHumanGateOpenWorkItems),
         path: '/work/work-items',
       },
       {
         kind: 'switch_cat',
-        label: 'Switch to a Cat that can own durable work',
+        label: input.translate(messageKeys.chatProductIntentHumanGateSwitchCat),
       },
     ],
   };
@@ -522,6 +570,7 @@ function buildDirectSlashModeStateMetadata(input: {
 
 function buildDirectSlashModeHumanGateChoices(
   humanGate: DirectSlashModeHumanGateMetadata | null,
+  translate: ProductIntentTranslator,
 ): ChatMessage['choices'] {
   if (!humanGate) {
     return undefined;
@@ -529,7 +578,7 @@ function buildDirectSlashModeHumanGateChoices(
 
   return [
     {
-      question: 'Choose the next step for this work intake.',
+      question: translate(messageKeys.chatProductIntentHumanGateQuestion),
       options: humanGate.suggestedActions.map((action) => ({
         id: action.kind,
         label: action.label,
@@ -627,38 +676,141 @@ function buildDirectSlashModeIntakeRef(
   };
 }
 
+function annotateProductIntentUserMessageWithActiveAnchor(input: {
+  state: ChatState;
+  channelId: string;
+  messageId: string;
+  activeAnchor: DirectSlashModeActiveAnchorMetadata;
+  directSlashMode: Record<string, unknown> | null;
+  locale: MessageLocale;
+  now: Date;
+}): { state: ChatState; userMessage: ChatMessage } {
+  const nextState = structuredClone(input.state);
+  const channel = requireChannel(nextState, input.channelId);
+  const message = channel.messages.find((candidate) => candidate.id === input.messageId);
+  if (!message) {
+    throw new Error(`Product-intent user message not found: ${input.messageId}`);
+  }
+  message.metadata = {
+    ...(message.metadata ?? {}),
+    ...(input.directSlashMode ? { directSlashMode: input.directSlashMode } : {}),
+    directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(input.activeAnchor),
+    productIntentLocale: input.locale,
+  };
+  return {
+    state: refreshDerivedMemoryLayers(nextState, input.channelId, input.now),
+    userMessage: message,
+  };
+}
+
+function buildProductIntentConciergePromptSource(input: {
+  userMessage: ChatMessage;
+  productIntentCommand: ProductIntentCommandMetadata;
+  activeAnchor: DirectSlashModeActiveAnchorMetadata;
+  translate: ProductIntentTranslator;
+}): ChatMessage {
+  const argumentText = input.productIntentCommand.argumentText.trim();
+  const emptyPromptKey = input.productIntentCommand.command === 'code'
+    ? messageKeys.chatProductIntentConciergeEmptyCodePrompt
+    : messageKeys.chatProductIntentConciergeEmptyWorkPrompt;
+  return {
+    ...structuredClone(input.userMessage),
+    body: argumentText || input.translate(emptyPromptKey),
+    metadata: {
+      ...(input.userMessage.metadata ?? {}),
+      directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(input.activeAnchor),
+    },
+  };
+}
+
 function describeProductIntentCommandAck(
   productIntentCommand: ProductIntentCommandMetadata,
   accepted: boolean,
+  translate: ProductIntentTranslator,
   rejectionReason: ProductIntentAudienceResolution['rejectionReason'] = null,
   capabilityProfileKind: DirectSlashModePostureChangeMetadata['capabilityProfileKind'] = null,
 ): string {
   if (!accepted) {
     return rejectionReason === 'missing_direct_audience_cat'
-      ? 'Product mode commands need exactly one direct audience Cat for this MVP.'
-      : 'Product mode commands are available in direct messages for this MVP.';
+      ? translate(messageKeys.chatProductIntentAckUnsupportedDirectAudience)
+      : translate(messageKeys.chatProductIntentAckUnsupportedContext);
   }
 
   switch (productIntentCommand.command) {
     case 'chat':
-      return 'Chat mode is active.';
+      return translate(messageKeys.chatProductIntentAckChatActive);
     case 'work':
       if (capabilityProfileKind === 'weak_worker' || capabilityProfileKind === 'unknown') {
-        return 'Work mode is active. I can help clarify here, but a human must create or confirm the Work Item in Work or switch to a Cat that can own durable work.';
+        return translate(messageKeys.chatProductIntentAckWorkHumanGate);
       }
       if (capabilityProfileKind === 'strong_agent') {
-        return 'Work mode is active. Draft Work Item anchor created for clarification.';
+        return translate(messageKeys.chatProductIntentAckWorkStrongAnchor);
       }
-      return 'Work mode is active. I will clarify the work before creating an item.';
+      return translate(messageKeys.chatProductIntentAckWorkClarify);
     case 'code':
       if (capabilityProfileKind === 'weak_worker' || capabilityProfileKind === 'unknown') {
-        return 'Code mode is active. I can help clarify here, but a human must create or confirm the Work Item in Work before Code execution can start.';
+        return translate(messageKeys.chatProductIntentAckCodeHumanGate);
       }
       if (capabilityProfileKind === 'strong_agent') {
-        return 'Code mode is active. Draft Work Item anchor created with Code target.';
+        return translate(messageKeys.chatProductIntentAckCodeStrongAnchor);
       }
-      return 'Code mode is active. I will clarify the coding work before creating an item.';
+      return translate(messageKeys.chatProductIntentAckCodeClarify);
+    default:
+      return translate(messageKeys.chatProductIntentAckUnsupportedContext);
   }
+}
+
+function mergeSupersededDirectSlashModeMetadata(input: {
+  metadata: Record<string, unknown>;
+  supersededByWorkItemId: string;
+  supersededBySegmentId: string;
+  supersededAt: string;
+}): Record<string, unknown> {
+  const supersededBy = {
+    workItemId: input.supersededByWorkItemId,
+    segmentId: input.supersededBySegmentId,
+    supersededAt: input.supersededAt,
+  };
+  const directSlashModeIntake = input.metadata.directSlashModeIntake;
+  return {
+    ...input.metadata,
+    directSlashModeSupersededBy: supersededBy,
+    ...(directSlashModeIntake && typeof directSlashModeIntake === 'object'
+      ? {
+          directSlashModeIntake: {
+            ...(directSlashModeIntake as Record<string, unknown>),
+            supersededByWorkItemId: input.supersededByWorkItemId,
+            supersededBy,
+          },
+        }
+      : {}),
+  };
+}
+
+function mergeAbandonedDirectSlashModeMetadata(input: {
+  metadata: Record<string, unknown>;
+  reason: 'posture_abandoned';
+  abandonedAt: string;
+  abandonedBySegmentId: string;
+}): Record<string, unknown> {
+  const abandonedBy = {
+    reason: input.reason,
+    segmentId: input.abandonedBySegmentId,
+    abandonedAt: input.abandonedAt,
+  };
+  const directSlashModeIntake = input.metadata.directSlashModeIntake;
+  return {
+    ...input.metadata,
+    directSlashModeAbandonedBy: abandonedBy,
+    ...(directSlashModeIntake && typeof directSlashModeIntake === 'object'
+      ? {
+          directSlashModeIntake: {
+            ...(directSlashModeIntake as Record<string, unknown>),
+            abandonedBy,
+          },
+        }
+      : {}),
+  };
 }
 
 async function persistProductIntentCommandCoreSegment(input: {
@@ -674,6 +826,8 @@ async function persistProductIntentCommandCoreSegment(input: {
   activeAnchorClear: DirectSlashModeClearMetadata | null;
   humanGate: DirectSlashModeHumanGateMetadata | null;
   accepted: boolean;
+  locale: MessageLocale;
+  translate: ProductIntentTranslator;
   now: Date;
 }): Promise<void> {
   if (!input.chatStore) {
@@ -766,22 +920,30 @@ async function persistProductIntentCommandCoreSegment(input: {
     ).core;
     if (input.activeAnchor && input.postureChange?.audienceCatId) {
       const targetProduct = input.productIntentCommand.targetProduct === 'code' ? 'code' : 'work';
+      const targetProductLabel = resolveProductIntentTargetLabel(targetProduct);
+      const titleFallbackKey = targetProduct === 'code'
+        ? messageKeys.chatProductIntentDraftTitleCode
+        : messageKeys.chatProductIntentDraftTitleWork;
       const goal = input.productIntentCommand.argumentText
-        || `Clarify this ${targetProduct} request from the direct conversation.`;
+        || input.translate(
+          messageKeys.chatProductIntentDraftGoalFallback,
+          { targetProduct: targetProductLabel },
+        );
       nextCore = upsertCoreWorkItem(
         nextCore,
         {
           id: workItemId,
           title: normalizeWorkItemTitle(
             input.productIntentCommand.argumentText,
-            targetProduct === 'code'
-              ? 'Direct code intake'
-              : 'Direct work intake',
+            input.translate(titleFallbackKey),
           ),
           status: 'draft',
           conversationId,
           assignedActorIds: [createCatActorId(input.postureChange.audienceCatId)],
-          summary: `Draft ${targetProduct} intake created from direct chat for clarification.`,
+          summary: input.translate(
+            messageKeys.chatProductIntentDraftSummary,
+            { targetProduct: targetProductLabel },
+          ),
           createdAt: input.ackMessage.createdAt,
           metadata: {
             directSlashModeIntake: {
@@ -806,10 +968,27 @@ async function persistProductIntentCommandCoreSegment(input: {
               },
               draft: {
                 goal,
-                successCriteria: ['Clarify measurable success criteria with the owner.'],
-                outOfScope: ['Unconfirmed until the owner and Cat finish clarification.'],
-                openQuestions: ['What outcome should this work produce?'],
+                successCriteria: [
+                  input.translate(messageKeys.chatProductIntentDraftSuccessCriteria),
+                ],
+                outOfScope: [
+                  input.translate(messageKeys.chatProductIntentDraftOutOfScope),
+                ],
+                openQuestions: [
+                  input.translate(messageKeys.chatProductIntentDraftOpenQuestion),
+                ],
                 proposedNextAction: 'clarify',
+                placeholder: true,
+                requiresClarification: true,
+                localization: {
+                  locale: input.locale,
+                  titleFallbackKey,
+                  summaryKey: messageKeys.chatProductIntentDraftSummary,
+                  goalFallbackKey: messageKeys.chatProductIntentDraftGoalFallback,
+                  successCriteriaKeys: [messageKeys.chatProductIntentDraftSuccessCriteria],
+                  outOfScopeKeys: [messageKeys.chatProductIntentDraftOutOfScope],
+                  openQuestionKeys: [messageKeys.chatProductIntentDraftOpenQuestion],
+                },
               },
             },
             directSlashMode: {
@@ -822,6 +1001,64 @@ async function persistProductIntentCommandCoreSegment(input: {
         },
         input.now,
       ).core;
+    }
+    if (
+      input.activeAnchor
+      && input.activeAnchorClear?.clearReason === 'anchor_superseded'
+      && input.activeAnchor.workItemId === input.activeAnchorClear.clearedActiveAnchor.workItemId
+    ) {
+      throw new Error('Direct slash-mode replacement anchor id matched the cleared anchor id.');
+    }
+    if (
+      input.activeAnchor
+      && input.activeAnchorClear?.clearReason === 'anchor_superseded'
+    ) {
+      const existingWorkItem = nextCore.workItems.find((candidate) =>
+        candidate.id === input.activeAnchorClear?.clearedActiveAnchor.workItemId) ?? null;
+      if (existingWorkItem) {
+        nextCore = upsertCoreWorkItem(
+          nextCore,
+          {
+            id: existingWorkItem.id,
+            title: existingWorkItem.title,
+            status: existingWorkItem.status === 'draft'
+              ? 'cancelled'
+              : existingWorkItem.status,
+            metadata: mergeSupersededDirectSlashModeMetadata({
+              metadata: existingWorkItem.metadata,
+              supersededByWorkItemId: workItemId,
+              supersededBySegmentId: segmentId,
+              supersededAt: input.ackMessage.createdAt,
+            }),
+          },
+          input.now,
+        ).core;
+      }
+    }
+    if (
+      input.activeAnchorClear?.clearReason === 'posture_changed'
+      || input.activeAnchorClear?.clearReason === 'chat_posture'
+    ) {
+      const abandonedWorkItem = nextCore.workItems.find((candidate) =>
+        candidate.id === input.activeAnchorClear?.clearedActiveAnchor.workItemId
+        && candidate.conversationId === conversationId) ?? null;
+      if (abandonedWorkItem?.status === 'draft') {
+        nextCore = upsertCoreWorkItem(
+          nextCore,
+          {
+            id: abandonedWorkItem.id,
+            title: abandonedWorkItem.title,
+            status: 'cancelled',
+            metadata: mergeAbandonedDirectSlashModeMetadata({
+              metadata: abandonedWorkItem.metadata,
+              reason: 'posture_abandoned',
+              abandonedAt: input.ackMessage.createdAt,
+              abandonedBySegmentId: segmentId,
+            }),
+          },
+          input.now,
+        ).core;
+      }
     }
     return nextCore;
   });
@@ -984,6 +1221,11 @@ export async function beginChannelMessageDispatch(
     resolveProductIntentCommandSource(options.transport),
   );
   if (productIntentCommand) {
+    const locale = resolveProductIntentMessageLocale(
+      channelBeforeMessage,
+      options.transportLocale,
+    );
+    const translate = createTranslator(locale);
     const userAppend = appendMessage(
       nextState,
       channelId,
@@ -1034,13 +1276,25 @@ export async function beginChannelMessageDispatch(
       channel: channelBeforeMessage,
       core: coreBeforeProductIntent,
     });
+    const activeAnchorPostureChangeClear = (
+      productIntentCommand.command === 'work'
+      || productIntentCommand.command === 'code'
+    ) && activeAnchorState.activeAnchor
+      && postureChange?.changed === true
+      ? {
+          clearedActiveAnchor: activeAnchorState.activeAnchor,
+          clearReason: postureChange.capabilityProfileKind === 'strong_agent'
+            ? 'anchor_superseded' as const
+            : 'posture_changed' as const,
+        }
+      : null;
     const activeAnchorClear = productIntentCommand.command === 'chat'
       && activeAnchorState.activeAnchor
       ? {
           clearedActiveAnchor: activeAnchorState.activeAnchor,
           clearReason: 'chat_posture' as const,
         }
-      : activeAnchorState.clear;
+      : activeAnchorPostureChangeClear ?? activeAnchorState.clear;
     const coreIds = resolveProductIntentCoreIds(userAppend.message.id);
     const activeAnchor = shouldCreateProductIntentWorkItemAnchor({
       productIntentCommand,
@@ -1057,12 +1311,27 @@ export async function beginChannelMessageDispatch(
     const humanGate = buildDirectSlashModeHumanGate({
       productIntentCommand,
       postureChange,
+      translate,
     });
     const directSlashMode = buildDirectSlashModeStateMetadata({
       activeAnchor: activeAnchor ?? (activeAnchorClear ? null : undefined),
       clear: activeAnchorClear,
       humanGate,
     });
+    let productIntentUserMessage = userAppend.message;
+    if (activeAnchor) {
+      const annotated = annotateProductIntentUserMessageWithActiveAnchor({
+        state: nextState,
+        channelId,
+        messageId: userAppend.message.id,
+        activeAnchor,
+        directSlashMode,
+        locale,
+        now,
+      });
+      nextState = annotated.state;
+      productIntentUserMessage = annotated.userMessage;
+    }
     const ackAppend = appendMessage(
       nextState,
       channelId,
@@ -1072,13 +1341,14 @@ export async function beginChannelMessageDispatch(
         body: describeProductIntentCommandAck(
           productIntentCommand,
           audience.accepted,
+          translate,
           audience.rejectionReason,
           capabilityProfileKind,
         ),
       },
       now,
       {
-        choices: buildDirectSlashModeHumanGateChoices(humanGate),
+        choices: buildDirectSlashModeHumanGateChoices(humanGate, translate),
         metadata: {
           event: audience.accepted
             ? 'product_intent_posture_changed'
@@ -1117,7 +1387,7 @@ export async function beginChannelMessageDispatch(
       chatStore: options.chatStore,
       state: nextState,
       channelId,
-      userMessage: userAppend.message,
+      userMessage: productIntentUserMessage,
       ackMessage: ackAppend.message,
       productIntentCommand,
       postureChange,
@@ -1126,15 +1396,93 @@ export async function beginChannelMessageDispatch(
       activeAnchorClear,
       humanGate,
       accepted: audience.accepted,
+      locale,
+      translate,
       now,
     });
+    let productIntentResults: ChannelDispatchResult[] = [];
+    let productIntentPreparedTurn: import('./turn.js').PreparedDispatchTurn | null = null;
+    let providerAgentDecision: ProviderAgentDecision | null = null;
+    if (activeAnchor && productIntentCommand.command !== 'chat') {
+      const coreAfterProductIntent = options.chatStore
+        ? await options.chatStore.readCore()
+        : null;
+      const conciergeSourceMessage = buildProductIntentConciergePromptSource({
+        userMessage: productIntentUserMessage,
+        productIntentCommand,
+        activeAnchor,
+        translate,
+      });
+      const conciergePayload: SendChannelMessageInput = {
+        ...payload,
+        body: conciergeSourceMessage.body,
+      };
+      const preparedTurn = prepareDispatchTurnForUserMessage(
+        nextState,
+        channelId,
+        conciergePayload,
+        conciergeSourceMessage,
+        now,
+        coreAfterProductIntent ?? undefined,
+        {
+          deterministicRoutingPlan,
+          providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
+          providerCapabilityBootstrapDiagnosticSink:
+            options.providerCapabilityBootstrapDiagnosticSink,
+        },
+      );
+      const effectiveDeterministicRoutingPlan =
+        deterministicRoutingPlan
+        ?? buildPreparedTurnDeterministicRoutingPlan(channelId, preparedTurn);
+      const metadataApplied = applyDeterministicPlanMetadataToExistingUserMessage(
+        preparedTurn.state,
+        channelId,
+        preparedTurn.userMessage.id,
+        effectiveDeterministicRoutingPlan,
+        now,
+      );
+      if (metadataApplied.userMessage) {
+        preparedTurn.state = metadataApplied.state;
+        preparedTurn.userMessage = {
+          ...preparedTurn.userMessage,
+          metadata: metadataApplied.userMessage.metadata,
+        };
+      }
+      providerAgentDecision = preparedTurn.providerAgentObservation
+        && options.providerAgentDecisionRequester
+        ? await options.providerAgentDecisionRequester({
+            state: preparedTurn.state,
+            channelId,
+            payload: conciergePayload,
+            observation: preparedTurn.providerAgentObservation,
+            runtimeClient,
+            now,
+          })
+        : null;
+      if (preparedTurn.terminalResult) {
+        nextState = preparedTurn.terminalResult.state;
+        productIntentResults = preparedTurn.terminalResult.results;
+      } else {
+        productIntentPreparedTurn = preparedTurn;
+        nextState = materializeInFlightDispatchState(
+          preparedTurn.state,
+          channelId,
+          preparedTurn.baseRoomRouting,
+          preparedTurn.workflow,
+          preparedTurn.outcome,
+          preparedTurn.latestCheckpoint,
+          now,
+        );
+        nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+      }
+    }
     options.onStateWritten?.(channelId);
     return {
       state: nextState,
-      results: [],
-      preparedTurn: null,
-      userMessage: userAppend.message,
-      providerAgentDecision: null,
+      results: productIntentResults,
+      preparedTurn: productIntentPreparedTurn,
+      userMessage: productIntentUserMessage,
+      providerAgentDecision,
     };
   }
   const nextTarget = resolveNextPendingExecutionTarget(channelBeforeMessage, payload);

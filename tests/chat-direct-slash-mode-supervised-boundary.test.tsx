@@ -186,7 +186,7 @@ test('direct slash-mode Code anchors link through Code task creation before exec
   const codeTask = buildCodeTaskListProjection(result.core)
     .tasks.find((candidate) => candidate.id === result.task.id);
 
-  assert.equal(result.core.runs.length, 0);
+  assert.equal(result.core.runs.filter((run) => run.taskId === result.task.id).length, 0);
   assert.equal(linkedWorkItem?.taskId, result.task.id);
   assert.equal(codeTask?.workItemId, workItem.id);
   assert.equal(codeTask?.conversationId, workItem.conversationId);

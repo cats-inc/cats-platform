@@ -1845,6 +1845,45 @@ export const enCatalog: MessageCatalog = {
   'chat.transcriptMessageRetryResponseLabel': 'Retry response',
   'chat.transcriptMessageRelayToOthersLabel': 'Relay to others',
   'chat.transcriptMessageFailedStatusLabel': 'Response failed',
+  'chat.productIntent.ack.unsupportedDirectAudience':
+    'Product mode commands need exactly one direct audience Cat for this MVP.',
+  'chat.productIntent.ack.unsupportedContext':
+    'Product mode commands are available in direct messages for this MVP.',
+  'chat.productIntent.ack.chatActive': 'Chat mode is active.',
+  'chat.productIntent.ack.workHumanGate':
+    'Work mode is active. I can help clarify here, but a human must create or confirm the Work Item in Work or switch to a Cat that can own durable work.',
+  'chat.productIntent.ack.workStrongAnchor':
+    'Work mode is active. Draft Work Item anchor created for clarification.',
+  'chat.productIntent.ack.workClarify':
+    'Work mode is active. I will clarify the work before creating an item.',
+  'chat.productIntent.ack.codeHumanGate':
+    'Code mode is active. I can help clarify here, but a human must create or confirm the Work Item in Work before Code execution can start.',
+  'chat.productIntent.ack.codeStrongAnchor':
+    'Code mode is active. Draft Work Item anchor created with Code target.',
+  'chat.productIntent.ack.codeClarify':
+    'Code mode is active. I will clarify the coding work before creating an item.',
+  'chat.productIntent.humanGate.draftSummaryFallback':
+    'Clarify this {targetProduct} request before creating work.',
+  'chat.productIntent.humanGate.continueClarifying':
+    'Continue clarifying in this direct chat',
+  'chat.productIntent.humanGate.openWorkItems': 'Create or confirm a Work Item in Work',
+  'chat.productIntent.humanGate.switchCat': 'Switch to a Cat that can own durable work',
+  'chat.productIntent.humanGate.question': 'Choose the next step for this work intake.',
+  'chat.productIntent.draft.title.work': 'Direct work intake',
+  'chat.productIntent.draft.title.code': 'Direct code intake',
+  'chat.productIntent.draft.summary':
+    'Draft {targetProduct} intake created from direct chat for clarification.',
+  'chat.productIntent.draft.goalFallback':
+    'Clarify this {targetProduct} request from the direct conversation.',
+  'chat.productIntent.draft.successCriteria':
+    'Clarify measurable success criteria with the owner.',
+  'chat.productIntent.draft.outOfScope':
+    'Unconfirmed until the owner and Cat finish clarification.',
+  'chat.productIntent.draft.openQuestion': 'What outcome should this work produce?',
+  'chat.productIntent.concierge.emptyWorkPrompt':
+    'The owner switched to Work mode without additional details. Ask one focal question to clarify the work request.',
+  'chat.productIntent.concierge.emptyCodePrompt':
+    'The owner switched to Code mode without additional details. Ask one focal question to clarify the coding request.',
   'shared.addCatPanelTitle': 'Add cat to chat',
   'shared.addCatPanelClose': 'Close',
   'shared.addCatPanelChooseExisting': 'Choose existing',

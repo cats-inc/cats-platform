@@ -9,14 +9,22 @@ import {
   appendMessage,
   createChannel,
   requireChannel,
+  resolveChannelCanonicalIdentity,
 } from '../src/products/chat/state/model/index.ts';
 import { buildPromptForTarget } from '../src/products/chat/state/runtimeTargeting.ts';
 import type { DispatchRequest } from '../src/products/chat/state/room-routing/runtime.ts';
+import {
+  createDefaultCoreState,
+  upsertCoreConversation,
+  upsertCoreWorkItem,
+} from '../src/core/model/index.ts';
+import type { CatsCoreState } from '../src/core/types.ts';
 
 function createDirectSlashModeDispatchRequest(): {
   state: ReturnType<typeof createDefaultChatState>;
   channelId: string;
   request: DispatchRequest;
+  core: CatsCoreState;
 } {
   const now = new Date('2026-05-06T08:00:00.000Z');
   let state = createChannel(
@@ -91,6 +99,7 @@ function createDirectSlashModeDispatchRequest(): {
           commandSegmentId: 'segment-product-intent-message-1',
           targetProduct: 'code',
         },
+        productIntentLocale: 'zh-TW',
       },
     },
   );
@@ -103,10 +112,49 @@ function createDirectSlashModeDispatchRequest(): {
     laneId: null,
     sessionId: 'runtime-session-direct-code',
   };
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  let core = createDefaultCoreState();
+  core = upsertCoreConversation(
+    core,
+    {
+      id: conversationId,
+      title: 'Direct code intake',
+      kind: 'direct_message',
+      status: 'active',
+      sourceChannelId: channelId,
+      responseLanguage: 'en',
+    },
+    now,
+  ).core;
+  core = upsertCoreWorkItem(
+    core,
+    {
+      id: 'work-item-direct-intake-message-1',
+      title: 'Parser tests',
+      status: 'draft',
+      conversationId,
+      metadata: {
+        directSlashModeIntake: {
+          version: 1,
+          targetProduct: 'code',
+          source: {
+            channelId,
+            conversationId,
+            commandTurnId: 'turn-product-intent-message-1',
+            commandLaneId: 'lane-product-intent-message-1',
+            commandSegmentId: 'segment-product-intent-message-1',
+            transport: 'web',
+          },
+        },
+      },
+    },
+    now,
+  ).core;
 
   return {
     state,
     channelId,
+    core,
     request: {
       sourceMessage: userAppend.message,
       sourceParticipant: null,
@@ -127,15 +175,32 @@ function createDirectSlashModeDispatchRequest(): {
 }
 
 test('direct slash-mode follow-up prompt carries Concierge protocol instructions', () => {
-  const { state, channelId, request } = createDirectSlashModeDispatchRequest();
+  const { state, channelId, request, core } = createDirectSlashModeDispatchRequest();
 
-  const prompt = buildPromptForTarget(state, channelId, request);
+  const prompt = buildPromptForTarget(state, channelId, request, undefined, core);
 
+  assert.match(prompt.instructions ?? '', /Reply in Traditional Chinese/u);
   assert.match(prompt.instructions ?? '', /Direct slash-mode Code intake is active/u);
   assert.match(prompt.instructions ?? '', /work-item-direct-intake-message-1/u);
   assert.match(prompt.instructions ?? '', /ask one focal clarifying question/u);
   assert.match(prompt.instructions ?? '', /After three assistant clarification turns/u);
   assert.match(prompt.instructions ?? '', /Do not create a second Work Item anchor/u);
+});
+
+test('direct slash-mode follow-up prompt ignores stale anchors from another conversation', () => {
+  const { state, channelId, request, core } = createDirectSlashModeDispatchRequest();
+  const staleCore = {
+    ...core,
+    workItems: core.workItems.map((workItem) =>
+      workItem.id === 'work-item-direct-intake-message-1'
+        ? { ...workItem, conversationId: 'conversation-other-direct-lane' }
+        : workItem),
+  };
+
+  const prompt = buildPromptForTarget(state, channelId, request, undefined, staleCore);
+
+  assert.doesNotMatch(prompt.instructions ?? '', /Direct slash-mode Code intake is active/u);
+  assert.doesNotMatch(prompt.instructions ?? '', /work-item-direct-intake-message-1/u);
 });
 
 test('direct slash-mode follow-up runtime context carries anchor references', () => {

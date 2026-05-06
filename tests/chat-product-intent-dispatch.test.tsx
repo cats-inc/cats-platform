@@ -9,6 +9,7 @@ import {
 } from '../src/products/chat/state/model/index.ts';
 import {
   beginChannelMessageDispatch,
+  routeChannelMessage,
 } from '../src/products/chat/state/runtime-dispatch/routing.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import type { RuntimeClient } from '../src/platform/runtime/client.ts';
@@ -23,6 +24,57 @@ function runtimeStub(onClose?: () => void): RuntimeClient {
       onClose?.();
     },
   } as RuntimeClient;
+}
+
+function runtimeReplyStub(reply: string): RuntimeClient & {
+  sentMessages: Array<{
+    sessionId: string;
+    content: string;
+    input?: { instructions?: string | null };
+  }>;
+} {
+  let nextSession = 1;
+  const sentMessages: Array<{
+    sessionId: string;
+    content: string;
+    input?: { instructions?: string | null };
+  }> = [];
+  return {
+    sentMessages,
+    async createSession(input) {
+      const sessionId = `session-${nextSession}`;
+      nextSession += 1;
+      return {
+        id: sessionId,
+        provider: input.provider,
+        model: input.model ?? null,
+        modelSelection: input.modelSelection ?? null,
+        modelResolution: null,
+        status: 'ready',
+        cwd: input.cwd ?? null,
+      };
+    },
+    async sendMessage(sessionId, content, input) {
+      sentMessages.push({ sessionId, content, input });
+      return {
+        segments: [{ kind: 'text', text: reply, toolName: null, toolId: null }],
+        inputTokens: 1,
+        outputTokens: 1,
+        tokensUsed: 2,
+      };
+    },
+    async closeSession() {},
+    async observeSession(sessionId) {
+      return { session: { id: sessionId, status: 'ready' } };
+    },
+    async streamSession() {},
+  } as RuntimeClient & {
+    sentMessages: Array<{
+      sessionId: string;
+      content: string;
+      input?: { instructions?: string | null };
+    }>;
+  };
 }
 
 function fixtureBootstrapConfig(
@@ -84,7 +136,7 @@ function createDirectState() {
   };
 }
 
-test('beginChannelMessageDispatch records direct product intent as posture event without runtime dispatch', async () => {
+test('beginChannelMessageDispatch records direct product intent and starts chat-only Concierge dispatch', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);
   let closeSessionCalls = 0;
@@ -173,19 +225,31 @@ test('beginChannelMessageDispatch records direct product intent as posture event
       }
     | undefined;
 
-  assert.equal(begun.preparedTurn, null);
+  assert.notEqual(begun.preparedTurn, null);
   assert.deepEqual(begun.results, []);
   assert.equal(closeSessionCalls, 0);
+  assert.equal(begun.preparedTurn?.userMessage.id, userMessage?.id);
+  assert.equal(begun.preparedTurn?.userMessage.body, 'clarify the MVP');
+  assert.equal(
+    (begun.preparedTurn?.userMessage.metadata.directSlashModeIntakeRef as
+      | { workItemId?: unknown }
+      | undefined)?.workItemId,
+    directWorkItem?.id,
+  );
+  assert.equal(
+    (userMessage?.metadata.directSlashModeIntakeRef as
+      | { workItemId?: unknown }
+      | undefined)?.workItemId,
+    directWorkItem?.id,
+  );
+  assert.equal(userMessage?.metadata.productIntentLocale, 'en');
   assert.equal(userMessage?.body, '/work clarify the MVP');
   assert.equal(productIntentMetadata?.command, 'work');
   assert.equal(productIntentMetadata?.source, 'web');
   assert.equal(ackMessage?.senderKind, 'system');
   assert.equal(ackMessage?.metadata.event, 'product_intent_posture_changed');
   assert.equal(ackMessage?.metadata.accepted, true);
-  assert.equal(
-    ackMessage?.body,
-    'Work mode is active. Draft Work Item anchor created for clarification.',
-  );
+  assert.match(ackMessage?.body ?? '', /^Work mode is active\./u);
   assert.equal(postureChange?.command, 'work');
   assert.equal(postureChange?.previousPosture, null);
   assert.equal(postureChange?.posture, 'work');
@@ -215,19 +279,58 @@ test('beginChannelMessageDispatch records direct product intent as posture event
   assert.equal(directWorkItemIntake?.audience?.catId, state.cats[0]?.id);
   assert.equal(directWorkItemIntake?.audience?.capabilityProfileKind, 'strong_agent');
   assert.equal(directWorkItemIntake?.draft?.goal, 'clarify the MVP');
-  assert.deepEqual(
-    directWorkItemIntake?.draft?.successCriteria,
-    ['Clarify measurable success criteria with the owner.'],
+  const draftMetadata = directWorkItemIntake?.draft as Record<string, unknown> | undefined;
+  const draftLocalization = draftMetadata?.localization as { locale?: unknown } | undefined;
+  assert.equal(
+    draftMetadata?.placeholder,
+    true,
   );
-  assert.deepEqual(
-    directWorkItemIntake?.draft?.outOfScope,
-    ['Unconfirmed until the owner and Cat finish clarification.'],
-  );
-  assert.deepEqual(
-    directWorkItemIntake?.draft?.openQuestions,
-    ['What outcome should this work produce?'],
-  );
+  assert.equal(draftLocalization?.locale, 'en');
+  assert.equal(Array.isArray(directWorkItemIntake?.draft?.successCriteria), true);
+  assert.equal((directWorkItemIntake?.draft?.successCriteria as unknown[] | undefined)?.length, 1);
+  assert.equal(Array.isArray(directWorkItemIntake?.draft?.outOfScope), true);
+  assert.equal((directWorkItemIntake?.draft?.outOfScope as unknown[] | undefined)?.length, 1);
+  assert.equal(Array.isArray(directWorkItemIntake?.draft?.openQuestions), true);
+  assert.equal((directWorkItemIntake?.draft?.openQuestions as unknown[] | undefined)?.length, 1);
   assert.equal(directWorkItemIntake?.draft?.proposedNextAction, 'clarify');
+});
+
+test('routeChannelMessage sends the first strong product-intent command to the same Cat', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('What outcome should this work produce first?');
+
+  const dispatched = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const channel = requireChannel(dispatched.state, channelId);
+  const ackMessage = channel.messages.find((message) =>
+    message.metadata.event === 'product_intent_posture_changed');
+  const assistantMessage = channel.messages.at(-1);
+
+  assert.equal(runtimeClient.sentMessages.length, 1);
+  assert.match(runtimeClient.sentMessages[0]?.content ?? '', /clarify the MVP/u);
+  assert.match(
+    runtimeClient.sentMessages[0]?.input?.instructions ?? '',
+    /Direct slash-mode Work intake is active/u,
+  );
+  assert.equal(ackMessage?.senderKind, 'system');
+  assert.equal(assistantMessage?.senderKind, 'agent');
+  assert.equal(assistantMessage?.senderName, 'ConciergeCat');
+  assert.equal(assistantMessage?.body, 'What outcome should this work produce first?');
+  assert.equal(dispatched.results.length, 1);
 });
 
 test('beginChannelMessageDispatch records weak direct audience capability outcome', async () => {
@@ -266,55 +369,56 @@ test('beginChannelMessageDispatch records weak direct audience capability outcom
     | undefined;
   const core = await store.readCore();
 
-  assert.equal(
-    ackMessage?.body,
-    'Work mode is active. I can help clarify here, but a human must create or confirm the Work Item in Work or switch to a Cat that can own durable work.',
-  );
+  assert.match(ackMessage?.body ?? '', /^Work mode is active\./u);
   assert.equal(postureChange?.capabilityProfileKind, 'weak_worker');
   assert.equal(directSlashMode?.humanGate?.kind, 'human_gate_required');
   assert.equal(directSlashMode?.humanGate?.capabilityProfileKind, 'weak_worker');
   assert.equal(directSlashMode?.humanGate?.targetProduct, 'work');
   assert.equal(directSlashMode?.humanGate?.draftSummary, 'clarify the MVP');
-  assert.deepEqual(directSlashMode?.humanGate?.suggestedActions, [
-    {
-      kind: 'continue_clarifying',
-      label: 'Continue clarifying in this direct chat',
-    },
-    {
-      kind: 'open_work_items',
-      label: 'Create or confirm a Work Item in Work',
-      path: '/work/work-items',
-    },
-    {
-      kind: 'switch_cat',
-      label: 'Switch to a Cat that can own durable work',
-    },
-  ]);
-  assert.equal(ackMessage?.choices?.[0]?.question, 'Choose the next step for this work intake.');
+  assert.deepEqual(
+    (directSlashMode?.humanGate?.suggestedActions as Array<{
+      kind?: unknown;
+      path?: unknown;
+    }> | undefined)?.map((action) => ({
+      kind: action.kind,
+      path: action.path,
+    })),
+    [
+      {
+        kind: 'continue_clarifying',
+        path: undefined,
+      },
+      {
+        kind: 'open_work_items',
+        path: '/work/work-items',
+      },
+      {
+        kind: 'switch_cat',
+        path: undefined,
+      },
+    ],
+  );
+  assert.match(ackMessage?.choices?.[0]?.question ?? '', /next step/u);
   assert.equal(ackMessage?.choices?.[0]?.allowSkip, true);
   assert.deepEqual(
     ackMessage?.choices?.[0]?.options.map((option) => ({
       id: option.id,
-      label: option.label,
       description: option.description,
       style: option.style,
     })),
     [
       {
         id: 'continue_clarifying',
-        label: 'Continue clarifying in this direct chat',
         description: undefined,
         style: 'secondary',
       },
       {
         id: 'open_work_items',
-        label: 'Create or confirm a Work Item in Work',
         description: '/work/work-items',
         style: 'primary',
       },
       {
         id: 'switch_cat',
-        label: 'Switch to a Cat that can own durable work',
         description: undefined,
         style: 'secondary',
       },
@@ -324,6 +428,77 @@ test('beginChannelMessageDispatch records weak direct audience capability outcom
     core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
     0,
   );
+});
+
+test('beginChannelMessageDispatch localizes direct product-intent acknowledgements and drafts', async () => {
+  const { state, channelId } = createDirectState();
+  requireChannel(state, channelId).language = 'zh-TW';
+  const store = new MemoryChatStore(state);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const ackMessage = requireChannel(begun.state, channelId).messages.at(-1);
+  const core = await store.readCore();
+  const directWorkItem = core.workItems.find((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  const intake = directWorkItem?.metadata.directSlashModeIntake as
+    | { draft?: { localization?: { locale?: unknown } } }
+    | undefined;
+
+  assert.match(ackMessage?.body ?? '', /^Work 模式已啟用/u);
+  assert.match(begun.preparedTurn?.userMessage.body ?? '', /切換到 Work 模式/u);
+  assert.match(directWorkItem?.summary ?? '', /直接對話/u);
+  assert.equal(intake?.draft?.localization?.locale, 'zh-TW');
+});
+
+test('beginChannelMessageDispatch prefers Telegram transport locale for first product-intent turn', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      transport: 'telegram',
+      transportLocale: 'zh-Hant',
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const channel = requireChannel(begun.state, channelId);
+  const userMessage = channel.messages.find((message) => message.senderKind === 'user');
+  const ackMessage = channel.messages.at(-1);
+  const core = await store.readCore();
+  const directWorkItem = core.workItems.find((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  const intake = directWorkItem?.metadata.directSlashModeIntake as
+    | { draft?: { localization?: { locale?: unknown } } }
+    | undefined;
+
+  assert.match(ackMessage?.body ?? '', /^Work 模式已啟用/u);
+  assert.equal(userMessage?.metadata.productIntentLocale, 'zh-TW');
+  assert.match(begun.preparedTurn?.userMessage.body ?? '', /切換到 Work 模式/u);
+  assert.equal(intake?.draft?.localization?.locale, 'zh-TW');
 });
 
 test('beginChannelMessageDispatch records unknown direct audience capability outcome', async () => {
@@ -353,10 +528,7 @@ test('beginChannelMessageDispatch records unknown direct audience capability out
     | undefined;
   const core = await store.readCore();
 
-  assert.equal(
-    ackMessage?.body,
-    'Work mode is active. I can help clarify here, but a human must create or confirm the Work Item in Work or switch to a Cat that can own durable work.',
-  );
+  assert.match(ackMessage?.body ?? '', /^Work mode is active\./u);
   assert.equal(postureChange?.capabilityProfileKind, 'unknown');
   assert.equal(directSlashMode?.humanGate?.kind, 'human_gate_required');
   assert.equal(directSlashMode?.humanGate?.capabilityProfileKind, 'unknown');
@@ -409,10 +581,7 @@ test('beginChannelMessageDispatch creates code-target Work Item anchors for stro
     | { productHint?: unknown }
     | undefined;
 
-  assert.equal(
-    ackMessage?.body,
-    'Code mode is active. Draft Work Item anchor created with Code target.',
-  );
+  assert.match(ackMessage?.body ?? '', /^Code mode is active\./u);
   assert.equal(directSlashMode?.activeAnchor?.targetProduct, 'code');
   assert.equal(directSlashMode?.activeAnchor?.workItemId, directWorkItem?.id);
   assert.equal(directWorkItems.length, 1);
@@ -421,6 +590,143 @@ test('beginChannelMessageDispatch creates code-target Work Item anchors for stro
   assert.equal(intake?.command?.name, 'code');
   assert.equal(intake?.command?.posture, 'code');
   assert.equal(planning?.productHint, 'code');
+});
+
+test('beginChannelMessageDispatch supersedes active draft anchors when product posture switches', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const first = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const coreAfterWork = await store.readCore();
+  const firstWorkItem = coreAfterWork.workItems.find((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  if (!firstWorkItem) {
+    throw new Error('Expected first direct slash-mode Work Item.');
+  }
+
+  const second = await beginChannelMessageDispatch(
+    first.state,
+    channelId,
+    {
+      body: '/code add command parsing tests',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const ackMessage = requireChannel(second.state, channelId).messages.at(-1);
+  const directSlashMode = ackMessage?.metadata.directSlashMode as
+    | {
+        activeAnchor?: {
+          workItemId?: unknown;
+          targetProduct?: unknown;
+          establishedBySegmentId?: unknown;
+        };
+        clearReason?: unknown;
+        clearedActiveAnchor?: { workItemId?: unknown };
+      }
+    | undefined;
+  const core = await store.readCore();
+  const directWorkItems = core.workItems.filter((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  const oldWorkItem = core.workItems.find((candidate) => candidate.id === firstWorkItem.id);
+  const newWorkItem = directWorkItems.find((candidate) => candidate.id !== firstWorkItem.id);
+  const supersededBy = oldWorkItem?.metadata.directSlashModeSupersededBy as
+    | { workItemId?: unknown; segmentId?: unknown }
+    | undefined;
+
+  assert.equal(directSlashMode?.clearReason, 'anchor_superseded');
+  assert.equal(directSlashMode?.clearedActiveAnchor?.workItemId, firstWorkItem.id);
+  assert.equal(directSlashMode?.activeAnchor?.workItemId, newWorkItem?.id);
+  assert.equal(directSlashMode?.activeAnchor?.targetProduct, 'code');
+  assert.equal(directWorkItems.length, 2);
+  assert.equal(oldWorkItem?.status, 'cancelled');
+  assert.equal(newWorkItem?.status, 'draft');
+  assert.equal(supersededBy?.workItemId, newWorkItem?.id);
+  assert.equal(supersededBy?.segmentId, directSlashMode?.activeAnchor?.establishedBySegmentId);
+});
+
+test('beginChannelMessageDispatch clears active anchors on product switch without replacement', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const first = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const coreAfterWork = await store.readCore();
+  const firstWorkItem = coreAfterWork.workItems.find((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  if (!firstWorkItem) {
+    throw new Error('Expected first direct slash-mode Work Item.');
+  }
+
+  const second = await beginChannelMessageDispatch(
+    first.state,
+    channelId,
+    {
+      body: '/code add command parsing tests',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+    },
+  );
+
+  const ackMessage = requireChannel(second.state, channelId).messages.at(-1);
+  const directSlashMode = ackMessage?.metadata.directSlashMode as
+    | {
+        activeAnchor?: unknown;
+        clearReason?: unknown;
+        clearedActiveAnchor?: { workItemId?: unknown };
+        humanGate?: { kind?: unknown; capabilityProfileKind?: unknown };
+      }
+    | undefined;
+  const core = await store.readCore();
+  const abandonedWorkItem = core.workItems.find((candidate) => candidate.id === firstWorkItem.id);
+  const abandonedBy = abandonedWorkItem?.metadata.directSlashModeAbandonedBy as
+    | { reason?: unknown; segmentId?: unknown }
+    | undefined;
+
+  assert.equal(directSlashMode?.activeAnchor, null);
+  assert.equal(directSlashMode?.clearReason, 'posture_changed');
+  assert.equal(directSlashMode?.clearedActiveAnchor?.workItemId, firstWorkItem.id);
+  assert.equal(directSlashMode?.humanGate?.kind, 'human_gate_required');
+  assert.equal(directSlashMode?.humanGate?.capabilityProfileKind, 'unknown');
+  assert.equal(abandonedWorkItem?.status, 'cancelled');
+  assert.equal(abandonedBy?.reason, 'posture_abandoned');
+  assert.equal(
+    core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
+    1,
+  );
 });
 
 test('beginChannelMessageDispatch rejects product intent posture changes outside direct lanes', async () => {
@@ -622,10 +928,16 @@ test('beginChannelMessageDispatch clears active slash-mode anchors on chat postu
       }
     | undefined;
   const core = await store.readCore();
+  const abandonedWorkItem = core.workItems.find((candidate) => candidate.id === firstWorkItem?.id);
+  const abandonedBy = abandonedWorkItem?.metadata.directSlashModeAbandonedBy as
+    | { reason?: unknown }
+    | undefined;
 
   assert.equal(directSlashMode?.activeAnchor, null);
   assert.equal(directSlashMode?.clearReason, 'chat_posture');
   assert.equal(directSlashMode?.clearedActiveAnchor?.workItemId, firstWorkItem?.id);
+  assert.equal(abandonedWorkItem?.status, 'cancelled');
+  assert.equal(abandonedBy?.reason, 'posture_abandoned');
   assert.equal(
     core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
     1,
@@ -702,5 +1014,6 @@ test('beginChannelMessageDispatch starts fresh slash-mode intake after terminal 
 
 test('Telegram product intent slash commands bridge into chat instead of transport command handling', () => {
   assert.equal(shouldBridgeTelegramProductIntentCommand('/work@CatsBot clarify scope'), true);
+  assert.equal(shouldBridgeTelegramProductIntentCommand('/Work@CatsBot clarify scope'), true);
   assert.equal(shouldBridgeTelegramProductIntentCommand('/help'), false);
 });

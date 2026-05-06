@@ -32,6 +32,10 @@ import {
   buildDirectLaneTransportBindingId,
 } from '../../../shared/chatCoreIds.js';
 import {
+  parseMessageLocale,
+  type MessageLocale,
+} from '../../../shared/i18n/index.js';
+import {
   resolveTranscriptOrCanonicalConversationMessages,
   readChatCoreMetadataString,
   resolveRawChatParticipantId,
@@ -710,14 +714,98 @@ function readDirectSlashModeIntakeRef(
     : null;
 }
 
-function buildDirectSlashModeFollowUpInstructions(sourceMessage: ChatMessage): string | null {
+function resolveDirectSlashModeFollowUpIntakeRef(
+  sourceMessage: ChatMessage,
+  input: {
+    state: ChatState;
+    channelId: string;
+    core?: CatsCoreState;
+  },
+): { workItemId: string; commandSegmentId: string; targetProduct: 'work' | 'code' } | null {
   const intakeRef = readDirectSlashModeIntakeRef(sourceMessage);
   if (!intakeRef) {
     return null;
   }
 
+  const workItem = input.core?.workItems.find((candidate) =>
+    candidate.id === intakeRef.workItemId) ?? null;
+  if (!workItem) {
+    return null;
+  }
+
+  const { conversationId } = resolveChannelCanonicalIdentity(input.state, input.channelId);
+  if (workItem.conversationId !== conversationId) {
+    return null;
+  }
+
+  const intake = workItem.metadata.directSlashModeIntake;
+  if (!intake || typeof intake !== 'object') {
+    return null;
+  }
+
+  const intakeRecord = intake as Record<string, unknown>;
+  const source = intakeRecord.source;
+  const sourceRecord = source && typeof source === 'object'
+    ? (source as Record<string, unknown>)
+    : null;
+  if (
+    intakeRecord.targetProduct !== intakeRef.targetProduct
+    || sourceRecord?.commandSegmentId !== intakeRef.commandSegmentId
+    || sourceRecord?.conversationId !== conversationId
+  ) {
+    return null;
+  }
+
+  return intakeRef;
+}
+
+function resolveDirectSlashModePromptLocale(
+  sourceMessage: ChatMessage,
+  input: {
+    state: ChatState;
+    channelId: string;
+  },
+): MessageLocale | null {
+  const metadataLocale = parseMessageLocale(
+    typeof sourceMessage.metadata.productIntentLocale === 'string'
+      ? sourceMessage.metadata.productIntentLocale
+      : null,
+  );
+  if (metadataLocale) {
+    return metadataLocale;
+  }
+
+  const channel = requireChannel(input.state, input.channelId);
+  return parseMessageLocale(channel.responseLanguage)
+    ?? parseMessageLocale(channel.language)
+    ?? null;
+}
+
+function buildDirectSlashModeFollowUpInstructions(
+  sourceMessage: ChatMessage,
+  input: {
+    state: ChatState;
+    channelId: string;
+    core?: CatsCoreState;
+  },
+): string | null {
+  const intakeRef = resolveDirectSlashModeFollowUpIntakeRef(sourceMessage, input);
+  if (!intakeRef) {
+    return null;
+  }
+
   const productLabel = intakeRef.targetProduct === 'code' ? 'Code' : 'Work';
+  const locale = resolveDirectSlashModePromptLocale(sourceMessage, input);
+  const responseLanguageInstruction = locale === 'zh-TW'
+    ? [
+        'Reply in Traditional Chinese unless the owner explicitly asks otherwise.',
+        'Keep product names, code, paths, and technical identifiers in English.',
+      ].join(' ')
+    : locale === 'en'
+      ? 'Reply in English unless the owner explicitly asks otherwise.'
+      : null;
   return [
+    responseLanguageInstruction,
     `Direct slash-mode ${productLabel} intake is active.`,
     `Use existing draft Work Item ${intakeRef.workItemId} as the durable anchor for this direct lane.`,
     `The source posture command segment is ${intakeRef.commandSegmentId}.`,
@@ -729,7 +817,7 @@ function buildDirectSlashModeFollowUpInstructions(sourceMessage: ChatMessage): s
     intakeRef.targetProduct === 'code'
       ? 'Treat follow-up execution as Code-bound only after the Work Item remains the active anchor.'
       : 'Treat follow-up execution as Work-bound only after the Work Item remains the active anchor.',
-  ].join('\n');
+  ].filter((line): line is string => Boolean(line)).join('\n');
 }
 
 function joinRuntimeInstructions(
@@ -824,6 +912,11 @@ export function buildPromptForTarget(
     ?? null;
   const slashModeInstructions = buildDirectSlashModeFollowUpInstructions(
     request.sourceMessage,
+    {
+      state,
+      channelId,
+      core,
+    },
   );
   const continuityMode = participantContinuity
     ? resolveSameChatContinuityMode(promptMessages, request, sameChatContinuityPackage)

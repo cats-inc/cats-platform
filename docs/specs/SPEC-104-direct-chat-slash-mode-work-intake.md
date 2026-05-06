@@ -189,21 +189,24 @@ labels, runtime labels, or a second model-strength classifier.
 #### Tool-chain separation
 
 43. The product-intent command turn that creates a draft Work Item anchor shall
-    not dispatch to runtime, `createTask`, `createRun`, or Code execution in the
-    same turn. Follow-up task/run work begins only on later user turns. The
-    constraint applies even when the same direct Cat is wearing both Concierge
-    and Conductor hats.
+    not dispatch to `createTask`, `createRun`, or Code execution in the same
+    turn. It may dispatch the same direct Cat for a chat-only Concierge reply
+    that asks clarification or recaps the request. Follow-up task/run work
+    begins only on later user turns. The constraint applies even when the same
+    direct Cat is wearing both Concierge and Conductor hats.
 44. SPEC-082 supervision approval gates apply on top of the turn-separation
     rule above. Approval gates are not a substitute for the turn separation.
-45. The draft Work Item anchor result shall be surfaced to the user in the same
-    turn it is created, so the user sees the anchor before any Conductor-style
-    follow-up can run.
+45. The draft Work Item anchor result shall be surfaced to the user before the
+    Concierge reply in the same turn it is created, so the user sees the anchor
+    before any Conductor-style follow-up can run.
 
 #### Active anchor lifecycle
 
 46. After a `/chat` posture change, the lane's
-    `metadata.directSlashMode.activeAnchor` cache shall be cleared. The Work
-    Item itself shall not be modified by the posture change.
+    `metadata.directSlashMode.activeAnchor` cache shall be cleared. If the
+    linked Work Item is still a draft in the same source conversation, it shall
+    be marked `cancelled` with posture-abandoned metadata instead of remaining
+    as an untracked orphan.
 47. When the active Work Item reaches a terminal `CoreWorkItemStatus`
     (`completed`, `cancelled`, or `archived`), the lane's active-anchor cache
     shall be cleared.
@@ -211,16 +214,21 @@ labels, runtime labels, or a second model-strength classifier.
     had its active-anchor cache cleared shall start a fresh intake; it shall
     not auto-resume any earlier Work Item. Future explicit-resume UI is
     covered by the multi-anchor open question and is out of MVP scope.
+49. A direct `/work` <-> `/code` posture switch while a draft active anchor
+    exists shall supersede the prior draft anchor. The old Work Item shall be
+    marked `cancelled` when still `draft` and shall carry metadata pointing to
+    the replacement Work Item. The lane cache shall point only at the new
+    active anchor.
 
 #### Boundary and naming
 
-49. This flow shall not reintroduce retired prototype route/control labels.
-50. The canonical domain split remains `direct_message` vs `chat_channel`.
-51. Entry UI labels such as default/group/parallel shall not be used to decide
+50. This flow shall not reintroduce retired prototype route/control labels.
+51. The canonical domain split remains `direct_message` vs `chat_channel`.
+52. Entry UI labels such as default/group/parallel shall not be used to decide
     model strength or durable work permissions.
-52. Strong/weak resolution shall be deterministic policy lookup, not an LLM
+53. Strong/weak resolution shall be deterministic policy lookup, not an LLM
     self-assessment.
-53. The MVP shall not introduce new fields on Core record types.
+54. The MVP shall not introduce new fields on Core record types.
     `CoreWorkItemRecord.conversationId` already exists and is the source-id
     field; everything else lives in additive `CoreRecordMetadata` keys
     (`metadata.directSlashModeIntake`, `metadata.directSlashModeIntakeRef`,
@@ -234,6 +242,10 @@ labels, runtime labels, or a second model-strength classifier.
   `metadata.directSlashModeIntake` source context for later review.
 - **Transport parity**: Telegram and Web direct lanes share the same product
   intent semantics after transport command parsing.
+- **Localization**: visible acknowledgements, human-gate choices, and durable
+  draft placeholder text shall come from the shared i18n catalog. Durable draft
+  metadata shall retain enough localization key context for later projection
+  or UI re-rendering.
 - **Layering**: Chat owns direct-lane routing; supervision owns capability and
   policy gates; Work/Code own durable product records and run projection.
 - **Pre-release cleanup**: no compatibility aliases for retired prototype
@@ -331,6 +343,17 @@ interface DirectSlashModeIntakeMetadata {
     outOfScope: string[];
     openQuestions: string[];
     proposedNextAction: 'clarify' | 'create_task' | 'create_run';
+    placeholder?: boolean;
+    requiresClarification?: boolean;
+    localization?: {
+      locale: 'en' | 'zh-TW';
+      titleFallbackKey: string;
+      summaryKey: string;
+      goalFallbackKey: string;
+      successCriteriaKeys: string[];
+      outOfScopeKeys: string[];
+      openQuestionKeys: string[];
+    };
   };
 }
 ```
@@ -365,6 +388,15 @@ linked Work Item reaches a terminal status (FR-47). A subsequent `/work` or
 `/code` in the same lane starts a fresh intake (FR-48); the prior Work Item
 remains addressable from the Work product surface but is not implicitly
 re-attached to the lane.
+
+If the fresh intake is caused by a direct `/work` <-> `/code` switch while an
+older draft anchor is still active, the prior draft is superseded rather than
+left orphaned. The new command segment records `clearReason:
+anchor_superseded`, the old draft Work Item is cancelled when it is still in
+`draft` status, and metadata on the old record points at the replacement Work
+Item. If policy cannot create a replacement anchor for the new posture, the
+old cache is still cleared with `clearReason: posture_changed` and the prior
+Work Item remains available from Work without being implicitly re-attached.
 
 ### Concierge Prompt Framework
 
@@ -474,17 +506,24 @@ these semantics.
   task/run execution begins.
 - Strong `/work` / `/code` paths test command gating, Concierge prompt protocol,
   schema validation, and clarification-budget behavior independently.
-- A successful draft anchor creation turn does not dispatch to runtime,
-  `createTask`, `createRun`, or Code execution in the same turn; follow-up can
-  only happen in a later user turn under SPEC-082 supervision approval gates.
+- A successful draft anchor creation turn may dispatch the same direct Cat for
+  a chat-only Concierge reply, but does not dispatch `createTask`, `createRun`,
+  or Code execution in the same turn; follow-up execution can only happen in a
+  later user turn under SPEC-082 supervision approval gates.
 - The draft anchor result is surfaced to the user in the same turn it is
   created, before any Conductor-style follow-up can run.
-- A `/chat` posture change clears the lane's active-anchor cache; a
-  subsequent `/work` or `/code` starts a fresh intake.
+- A `/chat` posture change clears the lane's active-anchor cache, cancels the
+  same-conversation draft anchor as abandoned when applicable, and a subsequent
+  `/work` or `/code` starts a fresh intake.
+- Switching directly between `/work` and `/code` supersedes the prior draft
+  anchor instead of leaving it as an untracked orphan.
 - A Work Item reaching `completed`, `cancelled`, or `archived` clears the
   lane's active-anchor cache.
 - The Concierge prompt enforces one focal question per assistant turn and
   surfaces a recap of current understanding before proposing task/run follow-up.
+- Follow-up prompt injection validates that the referenced Work Item still
+  belongs to the source direct conversation before treating an intake ref as
+  active.
 - Web composer routes `/`-prefixed messages through the shared parser before
   send; non-recognized `/`-prefixed text passes through as ordinary content.
 - SPEC-038 `/help` and `/commands` outputs list `/chat`, `/work`, and `/code`

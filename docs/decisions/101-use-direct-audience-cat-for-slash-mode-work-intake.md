@@ -99,6 +99,16 @@ same Work Item anchor flow as `/work`, with `targetProduct: 'code'` and a
 Code-bound next action. Code execution starts only after the Work Item anchor
 exists and the supervised Code/Work boundary allows the follow-up task/run.
 
+Concierge and Conductor are phases of the same direct audience Cat, not
+separate workers. The product-intent command turn may expose only the
+Concierge-side durable-anchor result plus a chat-only Concierge reply; task/run
+/ Code execution capability is withheld until a later follow-up turn. The
+current MVP may dispatch the same direct Cat during the command turn only to
+ask clarification or recap the request. It must not grant task/run/Code
+execution tools in that turn. If those actions are later exposed as agent
+tools, the platform must enforce the same split with a per-turn capability gate
+rather than relying on prompt text alone.
+
 ### Capability gate uses existing supervision
 
 The direct audience Cat is mapped to its execution target, and that target is
