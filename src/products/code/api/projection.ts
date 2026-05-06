@@ -65,6 +65,7 @@ import {
 } from '../shared/productMetadata.js';
 
 const CODE_DASHBOARD_TASK_LIMIT = 16;
+const CODE_DASHBOARD_WORK_ITEM_LIMIT = 16;
 const CODE_DASHBOARD_ARTIFACT_LIMIT = 18;
 const CODE_TIMELINE_PREVIEW_LIMIT = 12;
 const CODE_DETAIL_ARTIFACT_LIMIT = 12;
@@ -74,6 +75,7 @@ export interface CodeDashboardSummary {
   ownerActorId: string;
   actorCount: number;
   conversationCount: number;
+  workItemCount: number;
   taskCount: number;
   artifactCount: number;
   buildCount: number;
@@ -109,6 +111,37 @@ export interface CodeTaskListSummary {
   inProgressCount: number;
   blockedCount: number;
   completedCount: number;
+}
+
+export interface CodeWorkItemListItem {
+  id: string;
+  title: string;
+  status: CoreWorkItemStatus;
+  summary: string | null;
+  targetProduct: 'code';
+  conversationId: string | null;
+  conversationTitle: string | null;
+  conversationSourceChannelId: string | null;
+  taskId: string | null;
+  taskTitle: string | null;
+  ownerActorId: string;
+  ownerName: string;
+  assignedActors: Array<{
+    actorId: string;
+    displayName: string;
+  }>;
+  updatedAt: string;
+}
+
+export interface CodeWorkItemListSummary {
+  totalAvailable: number;
+  returned: number;
+  draftCount: number;
+  readyCount: number;
+  inProgressCount: number;
+  blockedCount: number;
+  completedCount: number;
+  linkedTaskCount: number;
 }
 
 export interface CodeArtifactListItem {
@@ -200,6 +233,11 @@ export interface CodeTaskListProjection {
   summary: CodeTaskListSummary;
 }
 
+export interface CodeWorkItemListProjection {
+  workItems: CodeWorkItemListItem[];
+  summary: CodeWorkItemListSummary;
+}
+
 export interface CodeArtifactListProjection {
   filter: 'all' | 'build' | 'preview';
   artifacts: CodeArtifactListItem[];
@@ -266,10 +304,12 @@ export interface CodeDashboardProjection {
   };
   summary: CodeDashboardSummary;
   sections: {
+    workItems: CodeDashboardSection<CodeWorkItemListItem, CodeWorkItemListSummary>;
     tasks: CodeDashboardSection<CodeTaskListItem, CodeTaskListSummary>;
     artifacts: CodeDashboardSection<CodeArtifactListItem, CodeArtifactListSummary>;
   };
   selection: {
+    defaultWorkItemId: string | null;
     defaultTaskId: string | null;
     defaultArtifactId: string | null;
   };
@@ -289,6 +329,18 @@ function resolveConversation(core: CatsCoreState, conversationId: string | null)
   }
 
   return core.conversations.find((conversation) => conversation.id === conversationId) ?? null;
+}
+
+function resolveCodeActorName(core: CatsCoreState, actorId: string | null | undefined): string {
+  if (!actorId) {
+    return 'Unknown owner';
+  }
+
+  if (actorId === core.ownerProfile.actorId) {
+    return core.ownerProfile.displayName;
+  }
+
+  return core.actors.find((actor) => actor.id === actorId)?.name ?? actorId;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -431,6 +483,119 @@ function buildCodeTaskListSummary(
     inProgressCount: 0,
     blockedCount: 0,
     completedCount: 0,
+  });
+}
+
+function readWorkItemDirectSlashModeTargetProduct(
+  workItem: CoreWorkItemRecord,
+): 'work' | 'code' | null {
+  const intake = asRecord(workItem.metadata.directSlashModeIntake);
+  return intake?.targetProduct === 'work' || intake?.targetProduct === 'code'
+    ? intake.targetProduct
+    : null;
+}
+
+function readWorkItemPlanningProductHint(
+  workItem: CoreWorkItemRecord,
+): 'chat' | 'work' | 'code' | null {
+  const planning = asRecord(workItem.metadata.planning);
+  return planning?.productHint === 'chat'
+    || planning?.productHint === 'work'
+    || planning?.productHint === 'code'
+    ? planning.productHint
+    : null;
+}
+
+function isCodeWorkItem(core: CatsCoreState, workItem: CoreWorkItemRecord): boolean {
+  if (readWorkItemDirectSlashModeTargetProduct(workItem) === 'code') {
+    return true;
+  }
+
+  if (readWorkItemPlanningProductHint(workItem) === 'code') {
+    return true;
+  }
+
+  const linkedTask = workItem.taskId
+    ? core.tasks.find((task) => task.id === workItem.taskId) ?? null
+    : null;
+  if (linkedTask && isCodeTask(core, linkedTask)) {
+    return true;
+  }
+
+  return core.artifacts.some((artifact) =>
+    artifact.workItemId === workItem.id
+    && (artifact.kind === 'build' || artifact.kind === 'preview'));
+}
+
+function listCodeWorkItems(core: CatsCoreState): CoreWorkItemRecord[] {
+  return [...core.workItems]
+    .filter((workItem) => isCodeWorkItem(core, workItem))
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+}
+
+function buildCodeWorkItemListItem(
+  core: CatsCoreState,
+  workItem: CoreWorkItemRecord,
+): CodeWorkItemListItem {
+  const conversation = resolveConversation(core, workItem.conversationId);
+  const linkedTask = workItem.taskId
+    ? core.tasks.find((task) => task.id === workItem.taskId) ?? null
+    : null;
+
+  return {
+    id: workItem.id,
+    title: workItem.title,
+    status: workItem.status,
+    summary: workItem.summary,
+    targetProduct: 'code',
+    conversationId: workItem.conversationId,
+    conversationTitle: resolveConversationTitle(conversation),
+    conversationSourceChannelId: conversation?.sourceChannelId ?? null,
+    taskId: workItem.taskId,
+    taskTitle: linkedTask?.title ?? null,
+    ownerActorId: workItem.ownerActorId,
+    ownerName: resolveCodeActorName(core, workItem.ownerActorId),
+    assignedActors: workItem.assignedActorIds.map((actorId) => ({
+      actorId,
+      displayName: resolveCodeActorName(core, actorId),
+    })),
+    updatedAt: workItem.updatedAt,
+  };
+}
+
+function buildCodeWorkItemListSummary(
+  allWorkItems: CoreWorkItemRecord[],
+  returnedWorkItems: CodeWorkItemListItem[],
+): CodeWorkItemListSummary {
+  return allWorkItems.reduce<CodeWorkItemListSummary>((summary, workItem) => {
+    if (workItem.status === 'draft') {
+      summary.draftCount += 1;
+    }
+    if (workItem.status === 'ready') {
+      summary.readyCount += 1;
+    }
+    if (workItem.status === 'in_progress') {
+      summary.inProgressCount += 1;
+    }
+    if (workItem.status === 'blocked') {
+      summary.blockedCount += 1;
+    }
+    if (workItem.status === 'completed') {
+      summary.completedCount += 1;
+    }
+    if (workItem.taskId) {
+      summary.linkedTaskCount += 1;
+    }
+    return summary;
+  }, {
+    totalAvailable: allWorkItems.length,
+    returned: returnedWorkItems.length,
+    draftCount: 0,
+    readyCount: 0,
+    inProgressCount: 0,
+    blockedCount: 0,
+    completedCount: 0,
+    linkedTaskCount: 0,
   });
 }
 
@@ -764,6 +929,18 @@ export function buildCodeTaskListProjection(core: CatsCoreState): CodeTaskListPr
   };
 }
 
+export function buildCodeWorkItemListProjection(core: CatsCoreState): CodeWorkItemListProjection {
+  const allWorkItems = listCodeWorkItems(core);
+  const workItems = allWorkItems
+    .slice(0, CODE_DASHBOARD_WORK_ITEM_LIMIT)
+    .map((workItem) => buildCodeWorkItemListItem(core, workItem));
+
+  return {
+    workItems,
+    summary: buildCodeWorkItemListSummary(allWorkItems, workItems),
+  };
+}
+
 export function buildCodeWorkspaceListProjection(core: CatsCoreState): CodeWorkspaceListProjection {
   const allWorkspaces = buildCodeWorkspaceItems(core);
   const workspaces = allWorkspaces.slice(0, CODE_WORKSPACE_LIST_LIMIT);
@@ -949,6 +1126,7 @@ export function buildCodeArtifactDetailProjection(
 
 export function buildCodeDashboardProjection(core: CatsCoreState): CodeDashboardProjection {
   const taskList = buildCodeTaskListProjection(core);
+  const workItemList = buildCodeWorkItemListProjection(core);
   const artifactList = buildCodeArtifactListProjection(core);
 
   return {
@@ -957,6 +1135,7 @@ export function buildCodeDashboardProjection(core: CatsCoreState): CodeDashboard
       ownerActorId: core.ownerProfile.actorId,
       actorCount: core.actors.length,
       conversationCount: core.conversations.length,
+      workItemCount: workItemList.summary.totalAvailable,
       taskCount: taskList.summary.totalAvailable,
       artifactCount: artifactList.summary.totalAvailable,
       buildCount: artifactList.summary.buildCount,
@@ -965,6 +1144,12 @@ export function buildCodeDashboardProjection(core: CatsCoreState): CodeDashboard
       readyArtifactCount: artifactList.summary.readyCount,
     },
     sections: {
+      workItems: {
+        title: 'Code Work Items',
+        emptyState: 'No code-targeted Work Items have been created yet.',
+        items: workItemList.workItems,
+        summary: workItemList.summary,
+      },
       tasks: {
         title: 'Code Tasks',
         emptyState: 'No code-oriented tasks have been routed into Cats Core yet.',
@@ -979,6 +1164,7 @@ export function buildCodeDashboardProjection(core: CatsCoreState): CodeDashboard
       },
     },
     selection: {
+      defaultWorkItemId: workItemList.workItems[0]?.id ?? null,
       defaultTaskId: taskList.tasks[0]?.id ?? null,
       defaultArtifactId: selectDefaultCodeArtifactId(artifactList.artifacts),
     },

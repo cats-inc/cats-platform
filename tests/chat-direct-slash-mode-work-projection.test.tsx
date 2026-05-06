@@ -13,6 +13,7 @@ import type { RuntimeClient } from '../src/platform/runtime/client.ts';
 import {
   parseProviderCapabilityBootstrapConfigDocument,
 } from '../src/platform/supervision/index.ts';
+import { buildCodeDashboardProjection } from '../src/products/code/api/projection.ts';
 import { buildWorkWorkItemListProjection } from '../src/products/work/api/projection.ts';
 
 function runtimeStub(): RuntimeClient {
@@ -99,4 +100,58 @@ test('Work projection lists Work Items created from direct slash-mode chat', asy
   assert.equal(directWorkItem.conversationTitle, 'ConciergeCat Direct Chat');
   assert.equal(directWorkItem.conversationSourceChannelId, channelId);
   assert.equal(directWorkItem.assignedActors[0]?.displayName, 'ConciergeCat');
+});
+
+test('Code projection lists code-target Work Item anchors created from direct slash-mode chat', async () => {
+  const now = new Date('2026-05-06T08:00:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Direct code projection',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'BuilderCat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const store = new MemoryChatStore(state);
+
+  await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/code wire the projection surface',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: strongBootstrapConfig(),
+    },
+  );
+
+  const core = await store.readCore();
+  const projection = buildCodeDashboardProjection(core);
+  const directCodeWorkItem = projection.sections.workItems.items.find((candidate) =>
+    candidate.title === 'wire the projection surface');
+
+  assert.ok(directCodeWorkItem);
+  assert.equal(projection.summary.workItemCount, 1);
+  assert.equal(projection.selection.defaultWorkItemId, directCodeWorkItem.id);
+  assert.equal(directCodeWorkItem.status, 'draft');
+  assert.equal(directCodeWorkItem.targetProduct, 'code');
+  assert.equal(directCodeWorkItem.conversationTitle, 'BuilderCat Direct Chat');
+  assert.equal(directCodeWorkItem.conversationSourceChannelId, channelId);
+  assert.equal(directCodeWorkItem.assignedActors[0]?.displayName, 'BuilderCat');
 });
