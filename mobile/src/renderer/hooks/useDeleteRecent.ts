@@ -13,28 +13,37 @@ import {
  * confirmation step on either surface — the swipe-to-reveal +
  * second-tap on the red button is the commit on mobile.
  *
- * Callers typically pair the mutation with a refetch of the parent
- * sidebar data (`useProductSidebarData.refetch`) so the row
- * disappears once the desktop has acked. The hook does NOT mutate
- * any local list itself; that stays the call site's responsibility
- * because the server is the source of truth for which channels
- * still exist.
+ * State shape is per-channelId (a `Set` of in-flight ids) rather
+ * than a single state machine, because:
+ *
+ *   - Multiple rows can be deleted in parallel; tracking them
+ *     independently lets each row render its own spinner without
+ *     blocking the others.
+ *   - Multi-tap dedupe — a second tap on the same row's Delete
+ *     button while the first DELETE is in flight is a no-op,
+ *     preventing the renderer from issuing duplicate DELETEs to
+ *     the desktop.
+ *
+ * Callers do NOT need to call `refetch()` after a successful
+ * delete: `useMobileAppShell` subscribes to the desktop's SSE
+ * `recents_changed` event so the app-shell payload re-fetches on
+ * its own. (See `useMobileAppShell.ts` for the SSE wiring.)
  */
 
-export type DeleteRecentState =
-  | { kind: 'idle' }
-  | { kind: 'deleting'; channelId: string }
-  | { kind: 'error'; error: MobileApiError };
-
 export interface DeleteRecentHook {
-  state: DeleteRecentState;
   /**
    * Issues the DELETE. Resolves on success, rejects with
-   * `MobileApiError` on failure. The hook also moves to
-   * `state.kind === 'error'` on rejection so the screen can render
-   * the message inline if it doesn't handle the rejection itself.
+   * `MobileApiError` on failure. Calling while a delete on the same
+   * channelId is already in flight is a no-op (resolves
+   * immediately). The hook tracks the in-flight set so callers can
+   * render per-row UI via `isDeleting(channelId)`.
    */
   delete: (channelId: string) => Promise<void>;
+  /** True while a DELETE for this channelId is in flight. */
+  isDeleting: (channelId: string) => boolean;
+  /** The most recent failure, if any. Reset by the next `delete`
+   *  call or by `reset`. */
+  lastError: MobileApiError | null;
   reset: () => void;
 }
 
@@ -42,12 +51,27 @@ const channelDetailPath = (channelId: string): string =>
   `/api/channels/${encodeURIComponent(channelId)}`;
 
 export function useDeleteRecent(): DeleteRecentHook {
-  const [state, setState] = useState<DeleteRecentState>({ kind: 'idle' });
+  const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
+  const [lastError, setLastError] = useState<MobileApiError | null>(null);
   const copy = getMobileApiCopy(resolveDefaultMobileLocale());
+
+  const isDeleting = useCallback(
+    (channelId: string) => pending.has(channelId),
+    [pending],
+  );
 
   const deleteRecent = useCallback(
     async (channelId: string): Promise<void> => {
-      setState({ kind: 'deleting', channelId });
+      if (pending.has(channelId)) {
+        // Multi-tap dedupe — the row already has a DELETE in flight.
+        return;
+      }
+      setLastError(null);
+      setPending((prev) => {
+        const next = new Set(prev);
+        next.add(channelId);
+        return next;
+      });
       try {
         const config = await loadConnectionConfig();
         if (!config.baseUrl) {
@@ -56,12 +80,17 @@ export function useDeleteRecent(): DeleteRecentHook {
             null,
             null,
           );
-          setState({ kind: 'error', error });
+          setLastError(error);
           throw error;
         }
         const client = createMobileApiClient(config);
         await client.del(channelDetailPath(channelId));
-        setState({ kind: 'idle' });
+        // Note: we deliberately keep the channelId in `pending` on
+        // success. The SSE-driven refetch on `useMobileAppShell`
+        // unmounts the row shortly after; clearing here would let
+        // the spinner flicker back to the Delete label for a beat
+        // before the row vanishes. Clearing happens when the
+        // component unmounts.
       } catch (error) {
         const apiError =
           error instanceof MobileApiError
@@ -71,16 +100,33 @@ export function useDeleteRecent(): DeleteRecentHook {
                 null,
                 error,
               );
-        setState({ kind: 'error', error: apiError });
+        setLastError(apiError);
+        // On failure, clear the pending entry so the row's button
+        // re-enables for a retry (the row is still visible because
+        // the server didn't actually delete the channel).
+        setPending((prev) => {
+          if (!prev.has(channelId)) {
+            return prev;
+          }
+          const next = new Set(prev);
+          next.delete(channelId);
+          return next;
+        });
         throw apiError;
       }
     },
-    [copy],
+    [copy, pending],
   );
 
   const reset = useCallback(() => {
-    setState({ kind: 'idle' });
+    setLastError(null);
+    setPending(new Set());
   }, []);
 
-  return { state, delete: deleteRecent, reset };
+  return {
+    delete: deleteRecent,
+    isDeleting,
+    lastError,
+    reset,
+  };
 }

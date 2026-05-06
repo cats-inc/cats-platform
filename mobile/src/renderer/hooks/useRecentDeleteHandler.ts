@@ -8,41 +8,44 @@ import {
 } from '../../../../src/mobile/index.js';
 import { useDeleteRecent } from './useDeleteRecent';
 
+export interface RecentDeleteHandlerHook {
+  /**
+   * Callback for the trimmed product sidebar's revealed Delete
+   * action. Issues the DELETE, lets `useMobileAppShell`'s SSE
+   * subscription refresh the list, and surfaces a failure Alert
+   * when the call rejects. Multi-tap dedupe lives inside
+   * `useDeleteRecent` — calling this with the same channelId
+   * while a previous call is still in flight is a no-op.
+   */
+  onDelete: (channelId: string) => void;
+  /** True while a DELETE on this channelId is still in flight. */
+  isDeleting: (channelId: string) => boolean;
+}
+
 /**
- * Builds the `onDeleteRecent` callback the trimmed product sidebar
- * passes through `Swipeable`'s revealed Delete action. Centralised
- * so chat / code / work `index.tsx` don't each re-implement the
- * "DELETE → refetch → Alert on failure" lifecycle. Mirrors web's
+ * Builds the `onDelete / isDeleting` pair the trimmed product
+ * sidebar consumes. Centralised so chat / code / work `index.tsx`
+ * don't each re-implement the lifecycle. Mirrors web's
  * `deleteChatChannel` semantics: no confirmation step — the swipe
- * is the commit.
- *
- *   - On success: refetch the parent sidebar data so the row
- *     disappears once the desktop has acked. Optimistic local
- *     removal would be nicer; the trade-off is that an optimistic
- *     remove + failed DELETE leaves the UI lying about the
- *     desktop's state until the next refetch fires. Refetch-on-
- *     ack is server-truth-first.
- *   - On failure: refetch (in case the channel actually was
- *     deleted server-side) and surface the error message via
- *     Alert. Title pulls from `MobileProductSidebarCopy.deleteFailedTitle`;
- *     body is the underlying `MobileApiError.message`.
+ * is the commit. The list re-renders via SSE from
+ * `useMobileAppShell`, NOT via an explicit refetch here, so the
+ * delete is always reconciled against server truth.
  */
-export function useRecentDeleteHandler(
-  refetch: () => void,
-): (channelId: string) => void {
+export function useRecentDeleteHandler(): RecentDeleteHandlerHook {
   const deleteRecent = useDeleteRecent();
   const locale = resolveDefaultMobileLocale();
   const tabsCopy = getMobileTabsCopy(locale);
   const sidebarCopy = getMobileProductSidebarCopy(locale);
 
-  return useCallback(
+  const onDelete = useCallback(
     (channelId: string) => {
       void (async () => {
         try {
           await deleteRecent.delete(channelId);
-          refetch();
+          // Don't refetch here — `useMobileAppShell` subscribes to
+          // the desktop's `recents_changed` SSE event and refetches
+          // automatically when the server publishes the mutation.
         } catch (error) {
-          refetch();
           const message = error instanceof Error ? error.message : '';
           Alert.alert(sidebarCopy.deleteFailedTitle, message, [
             { text: tabsCopy.desktopOnlyOkAction, style: 'cancel' },
@@ -50,6 +53,8 @@ export function useRecentDeleteHandler(
         }
       })();
     },
-    [deleteRecent, refetch, sidebarCopy.deleteFailedTitle, tabsCopy.desktopOnlyOkAction],
+    [deleteRecent, sidebarCopy.deleteFailedTitle, tabsCopy.desktopOnlyOkAction],
   );
+
+  return { onDelete, isDeleting: deleteRecent.isDeleting };
 }

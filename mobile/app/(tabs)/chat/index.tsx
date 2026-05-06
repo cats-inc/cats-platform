@@ -31,11 +31,11 @@ import {
  */
 export default function ChatSidebarScreen() {
   const router = useRouter();
-  const { state, refetch } = useProductSidebarData('chat');
+  const { state } = useProductSidebarData('chat');
   const locale = resolveDefaultMobileLocale();
   const copy = getMobileTabsCopy(locale);
   const sidebarConfig = getChatSidebarConfig(locale);
-  const handleDeleteRecent = useRecentDeleteHandler(refetch);
+  const { onDelete: handleDeleteRecent, isDeleting } = useRecentDeleteHandler();
 
   const handlePrimaryAction = useCallback(
     (actionId: string) => {
@@ -72,6 +72,7 @@ export default function ChatSidebarScreen() {
         onPrimaryAction={handlePrimaryAction}
         onSelectRecent={handleSelectRecent}
         onDeleteRecent={handleDeleteRecent}
+        isDeletingRecent={isDeleting}
       />
     </SafeAreaView>
   );

@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   type ListRenderItemInfo,
   Pressable,
@@ -32,10 +33,19 @@ export interface TrimmedProductSidebarProps {
   /**
    * Fires when the user swipes a Recents row left and taps the
    * revealed Delete button. The handler is responsible for the
-   * actual DELETE network call + refetch — see chat/code/work
-   * `index.tsx` and `useDeleteRecent`.
+   * actual DELETE network call — see chat/code/work `index.tsx`
+   * and `useRecentDeleteHandler`.
    */
   onDeleteRecent: (channelId: string) => void;
+  /**
+   * True while a DELETE on this channelId is still in flight.
+   * Drives the per-row spinner + button-disabled state inside
+   * `Swipeable`'s revealed action so the user gets feedback that
+   * the tap registered and can't fire duplicate DELETEs by
+   * tapping again. Defaults to `() => false` if the parent has
+   * no in-flight tracking.
+   */
+  isDeletingRecent?: (channelId: string) => boolean;
 }
 
 type Row =
@@ -70,6 +80,7 @@ export function TrimmedProductSidebar({
   onPrimaryAction,
   onSelectRecent,
   onDeleteRecent,
+  isDeletingRecent = NEVER_DELETING,
 }: TrimmedProductSidebarProps) {
   const rows = buildRows(config, data);
   const sidebarCopy = getMobileProductSidebarCopy(resolveDefaultMobileLocale());
@@ -85,12 +96,15 @@ export function TrimmedProductSidebar({
           onPrimaryAction,
           onSelectRecent,
           onDeleteRecent,
+          isDeletingRecent,
           deleteActionLabel: sidebarCopy.deleteAction,
         })
       }
     />
   );
 }
+
+const NEVER_DELETING = (): boolean => false;
 
 function rowKey(row: Row, index: number): string {
   switch (row.kind) {
@@ -111,6 +125,7 @@ interface RowCallbacks {
   onPrimaryAction: (actionId: string) => void;
   onSelectRecent: (channelId: string) => void;
   onDeleteRecent: (channelId: string) => void;
+  isDeletingRecent: (channelId: string) => boolean;
   deleteActionLabel: string;
 }
 
@@ -148,6 +163,7 @@ function renderRow(
         <RecentRow
           entry={item.entry}
           deleteActionLabel={callbacks.deleteActionLabel}
+          isDeleting={callbacks.isDeletingRecent(item.entry.id)}
           onPress={() => callbacks.onSelectRecent(item.entry.id)}
           onDelete={() => callbacks.onDeleteRecent(item.entry.id)}
         />
@@ -181,6 +197,7 @@ function PrimaryActionButton({ action, onPress }: PrimaryActionButtonProps) {
 interface RecentRowProps {
   entry: MobileSidebarRecent;
   deleteActionLabel: string;
+  isDeleting: boolean;
   onPress: () => void;
   onDelete: () => void;
 }
@@ -188,29 +205,37 @@ interface RecentRowProps {
 function RecentRow({
   entry,
   deleteActionLabel,
+  isDeleting,
   onPress,
   onDelete,
 }: RecentRowProps) {
-  // Hold a ref so tapping Delete also closes the swipe (otherwise
-  // the red action stays revealed under the row that's about to
-  // disappear via refetch — looks janky during the network round
-  // trip).
+  // Keep a ref to the Swipeable so tapping the row body (when no
+  // delete is in flight) closes any leftover swipe state.
   const swipeableRef = useRef<Swipeable>(null);
 
   const renderRightActions = () => (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={deleteActionLabel}
-      onPress={() => {
-        swipeableRef.current?.close();
-        onDelete();
-      }}
+      accessibilityState={{ busy: isDeleting, disabled: isDeleting }}
+      disabled={isDeleting}
+      // Don't auto-close on tap — leave the action revealed so the
+      // spinner is visible during the network round trip. The row
+      // unmounts when the SSE-driven refetch removes the channel
+      // from the data, which destroys the Swipeable container
+      // alongside it.
+      onPress={onDelete}
       style={({ pressed }) => [
         styles.deleteAction,
-        pressed ? styles.deleteActionPressed : null,
+        pressed && !isDeleting ? styles.deleteActionPressed : null,
+        isDeleting ? styles.deleteActionBusy : null,
       ]}
     >
-      <Text style={styles.deleteActionLabel}>{deleteActionLabel}</Text>
+      {isDeleting ? (
+        <ActivityIndicator color={colors.fg.inverse} size="small" />
+      ) : (
+        <Text style={styles.deleteActionLabel}>{deleteActionLabel}</Text>
+      )}
     </Pressable>
   );
 
@@ -221,12 +246,21 @@ function RecentRow({
       overshootRight={false}
       friction={2}
       rightThreshold={40}
+      // Don't allow a fresh swipe to close while a delete is in
+      // flight — keeps the spinner visible until the refetch
+      // resolves.
+      enabled={!isDeleting}
     >
       <Pressable
         onPress={onPress}
+        // Disable row tap while the Delete is in flight so the user
+        // can't accidentally navigate into a channel that's about
+        // to disappear.
+        disabled={isDeleting}
         style={({ pressed }) => [
           styles.row,
-          pressed ? styles.rowPressed : null,
+          pressed && !isDeleting ? styles.rowPressed : null,
+          isDeleting ? styles.rowBusy : null,
         ]}
       >
         <View style={styles.recentIconBubble}>
@@ -348,9 +382,15 @@ const styles = StyleSheet.create({
   deleteActionPressed: {
     opacity: 0.85,
   },
+  deleteActionBusy: {
+    opacity: 0.75,
+  },
   deleteActionLabel: {
     color: colors.fg.inverse,
     ...typography.body,
     fontWeight: '600',
+  },
+  rowBusy: {
+    opacity: 0.6,
   },
 });

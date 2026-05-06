@@ -24,11 +24,11 @@ import {
  */
 export default function WorkSidebarScreen() {
   const router = useRouter();
-  const { state, refetch } = useProductSidebarData('work');
+  const { state } = useProductSidebarData('work');
   const locale = resolveDefaultMobileLocale();
   const copy = getMobileTabsCopy(locale);
   const sidebarConfig = getWorkSidebarConfig(locale);
-  const handleDeleteRecent = useRecentDeleteHandler(refetch);
+  const { onDelete: handleDeleteRecent, isDeleting } = useRecentDeleteHandler();
 
   const handlePrimaryAction = useCallback(
     (actionId: string) => {
@@ -65,6 +65,7 @@ export default function WorkSidebarScreen() {
         onPrimaryAction={handlePrimaryAction}
         onSelectRecent={handleSelectRecent}
         onDeleteRecent={handleDeleteRecent}
+        isDeletingRecent={isDeleting}
       />
     </SafeAreaView>
   );
