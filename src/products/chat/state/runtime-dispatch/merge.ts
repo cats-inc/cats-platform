@@ -82,7 +82,7 @@ function pickLeaseStatus(input: {
   dispatch: ParticipantExecutionLease;
 }): ParticipantExecutionLease['status'] {
   const terminalStatus = pickTerminalLeaseStatus(input);
-  if (terminalStatus) {
+  if (terminalStatus !== null) {
     return terminalStatus;
   }
   if (input.dispatch.status === 'error') {
