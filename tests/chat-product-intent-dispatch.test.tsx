@@ -1351,6 +1351,106 @@ test('beginChannelMessageDispatch suggests implicit candidates for room-routing 
   );
 });
 
+test('beginChannelMessageRetryDispatch suggests implicit candidates for retried messages', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeReplyStub('I can discuss that.'),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'off',
+    },
+  );
+  const initialUserMessage = requireChannel(initial.state, channelId).messages.find((message) =>
+    message.senderKind === 'user'
+    && message.body === 'Please plan the onboarding requirements');
+  if (!initialUserMessage) {
+    throw new Error('Expected initial user message.');
+  }
+
+  const retried = await beginChannelMessageRetryDispatch(
+    initial.state,
+    channelId,
+    initialUserMessage.id,
+    runtimeStub(),
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+  const candidateMessage = requireChannel(retried.state, channelId).messages.find((message) =>
+    message.metadata.event === 'implicit_product_intent_candidate_suggested');
+  const candidate = candidateMessage?.metadata.implicitProductIntentCandidate as
+    | ImplicitProductIntentCandidateMetadata
+    | undefined;
+
+  assert.equal(retried.userMessage.id, initialUserMessage.id);
+  assert.equal(candidateMessage?.senderKind, 'system');
+  assert.equal(candidateMessage?.metadata.sourceMessageId, initialUserMessage.id);
+  assert.equal(candidate?.candidate.targetProduct, 'work');
+});
+
+test('beginChannelMessageRetryDispatch expires stale implicit candidates', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeReplyStub('I can discuss that.'),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+  const initialUserMessage = requireChannel(initial.state, channelId).messages.find((message) =>
+    message.senderKind === 'user'
+    && message.body === 'Please plan the onboarding requirements');
+  if (!initialUserMessage) {
+    throw new Error('Expected initial user message.');
+  }
+
+  const retried = await beginChannelMessageRetryDispatch(
+    initial.state,
+    channelId,
+    initialUserMessage.id,
+    runtimeStub(),
+    new Date('2026-05-06T08:17:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+    },
+  );
+  const channel = requireChannel(retried.state, channelId);
+
+  assert.equal(
+    channel.messages.filter((message) =>
+      message.metadata.event === 'implicit_product_intent_candidate_suggested').length,
+    1,
+  );
+  assert.equal(
+    channel.messages.filter((message) =>
+      message.metadata.event === 'implicit_product_intent_candidate_expired').length,
+    1,
+  );
+});
+
 test('beginChannelMessageDispatch records implicit candidate decline without product intake', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);

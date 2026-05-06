@@ -262,6 +262,18 @@ the old heuristic cannot surprise users.
   - Telegram callback confirmation maps to proposal id
   - localized visible copy does not affect proposal semantics
 
+## Verification Notes
+
+- Retry dispatch mirrors ordinary dispatch for natural-intent cleanup and
+  sidecars: v1 implicit candidates TTL-expire, v2 Cat proposals TTL-expire, and
+  the selected effective mode controls whether v1 heuristic candidates or v2
+  Cat proposal sidecars can be appended.
+- Duplicate proposal suppression is verified through the retry-dispatch path,
+  which is the natural way duplicate proposal ids occur because the same owner
+  message id, Cat id, and target product are reused. The lower-level
+  `shouldAppendCatProductIntentProposal` helper remains covered by
+  `chat-cat-product-intent-proposal.test.tsx`.
+
 ## Open Questions
 
 - Should proposal history appear in Work/Code projections, or only in Chat
@@ -296,6 +308,7 @@ the old heuristic cannot surprise users.
 | 2026-05-06 | Phase 4 confirmation bridge landed: Cat proposal segments now carry reusable `ChatMessage.choices`; confirmed Work and Code proposals synthesize `(cat-proposal-confirmation)` command metadata, preserve source message/proposal/proposing Cat context, enter the existing SPEC-104 intake path, and repeated confirmations are idempotent. Declines write only proposal transitions and do not create Work Items. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-product-intent-dispatch` and `chat-cat-product-intent-proposal` tests. |
 | 2026-05-06 | Phase 5 Web/Telegram parity landed for confirmation transport: Web reuses `ChatMessage.choices`, Telegram now emits `cpi:v2` inline keyboard callbacks for `metadata.catProductIntentProposal`, callback responses point at the proposal segment, and v1 `ipi:v1` remains confined to the heuristic path. Remaining Phase 5 work is catalog cleanup for any proposal-specific visible copy that should not reuse the existing implicit-intent strings. Validation: `npm run build:server`, `npm run build:test-ui`, `npx tsx --test --test-isolation=none tests/telegram-implicit-product-intent-candidates.test.ts`. |
 | 2026-05-06 | Phase 6 close-out landed: PLAN-093 is historical, the deterministic detector remains opt-in under `heuristic_prefilter`, `cat_tool` has no platform fallback without a Cat tool request, and old v1 candidates TTL-expire through an independent cleanup path after switching modes. Validation: targeted SPEC-104/SPEC-105 dispatch, proposal, provider-observation, Telegram callback, server build, UI test build, and `git diff --check`. |
+| 2026-05-07 | Retry dispatch natural-intent parity landed: retry now runs the same v1 implicit-candidate cleanup/sidecar and v2 Cat-proposal cleanup/sidecar tail as ordinary dispatch, and duplicate proposal suppression is covered through retrying the same source owner message. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-product-intent-dispatch` and `chat-cat-product-intent-proposal` tests, and `git diff --check`. |
 
 ---
 

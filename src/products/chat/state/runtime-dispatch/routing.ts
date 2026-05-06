@@ -2965,6 +2965,12 @@ export async function beginChannelMessageRetryDispatch(
     retryChannelForNaturalIntent,
     options.transportLocale,
   );
+  nextState = expireTtlImplicitProductIntentCandidates({
+    state: nextState,
+    channelId,
+    locale: retryProductIntentLocale,
+    now,
+  });
   nextState = expireCatProductIntentProposalSidecars({
     state: nextState,
     channelId,
@@ -2985,6 +2991,19 @@ export async function beginChannelMessageRetryDispatch(
     transport: options.transport,
   });
   nextState = catProposalSidecar.state;
+  const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
+    state: nextState,
+    channel: requireChannel(nextState, channelId),
+    channelId,
+    userMessage: sourceMessage,
+    body: sourceMessage.body,
+    transport: options.transport,
+    effectiveMode: retryNaturalProductIntentEffectiveMode,
+    locale: retryProductIntentLocale,
+    now,
+    choiceResponse: sourceMessage.choiceResponse,
+  });
+  nextState = implicitCandidateSidecar.state;
   nextState = await persistInFlightDispatchState(options.chatStore, nextState);
   options.onStateWritten?.(channelId);
 
