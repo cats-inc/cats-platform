@@ -13,6 +13,12 @@ export type RuntimeSessionResumeScope =
   | 'dispatch_stale_recovery'
   | 'target_session_revive';
 
+export interface RuntimeSessionResumeOutcome {
+  attempted: boolean;
+  session: RuntimeSessionInfo | null;
+  error: string | null;
+}
+
 function normalizeResumeError(error: unknown): string {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
@@ -36,25 +42,38 @@ export function buildResumedRuntimeSessionLeasePatch(
   };
 }
 
-export async function tryResumeRuntimeSession(input: {
+export async function resumeRuntimeSession(input: {
   runtimeClient: RuntimeClient;
   sessionId: string | null | undefined;
   scope: RuntimeSessionResumeScope;
-}): Promise<RuntimeSessionInfo | null> {
+}): Promise<RuntimeSessionResumeOutcome> {
   const sessionId = input.sessionId?.trim() || null;
   if (!sessionId || typeof input.runtimeClient.resumeSession !== 'function') {
-    return null;
+    return {
+      attempted: false,
+      session: null,
+      error: null,
+    };
   }
 
   try {
-    return await input.runtimeClient.resumeSession(sessionId);
+    return {
+      attempted: true,
+      session: await input.runtimeClient.resumeSession(sessionId),
+      error: null,
+    };
   } catch (error) {
-    console.warn('Failed to resume runtime session, falling back to replacement-session path.', {
+    const normalizedError = normalizeResumeError(error);
+    console.warn('Failed to resume runtime session.', {
       feature: 'runtime_session_resume',
       scope: input.scope,
       sessionId,
-      error: normalizeResumeError(error),
+      error: normalizedError,
     });
-    return null;
+    return {
+      attempted: true,
+      session: null,
+      error: normalizedError,
+    };
   }
 }

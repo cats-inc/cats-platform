@@ -12,7 +12,7 @@ import {
 import { routeChannelMessage } from '../src/products/chat/state/runtime-dispatch/routing.ts';
 import { mergeCompletedDispatchState } from '../src/products/chat/state/runtime-dispatch/merge.ts';
 import { wakeChannelEntryParticipant } from '../src/products/chat/state/runtime-session/activation.ts';
-import { tryResumeRuntimeSession } from '../src/products/chat/state/runtime-session/sessionResume.ts';
+import { resumeRuntimeSession } from '../src/products/chat/state/runtime-session/sessionResume.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import { resolveParticipantLeaseAttachment } from '../src/products/chat/shared/channelParticipants.ts';
 
@@ -130,7 +130,7 @@ async function captureConsoleWarnings<T>(
   }
 }
 
-test('runtime session resume failures emit a diagnostic warning before fallback', async () => {
+test('runtime session resume failures emit a diagnostic warning', async () => {
   const runtimeClient = {
     async resumeSession() {
       throw new Error('runtime gateway unavailable');
@@ -138,13 +138,17 @@ test('runtime session resume failures emit a diagnostic warning before fallback'
   } as RuntimeClient;
 
   const captured = await captureConsoleWarnings(() =>
-    tryResumeRuntimeSession({
+    resumeRuntimeSession({
       runtimeClient,
       sessionId: 'session-direct-1',
       scope: 'dispatch_stale_recovery',
     }));
 
-  assert.equal(captured.result, null);
+  assert.deepEqual(captured.result, {
+    attempted: true,
+    session: null,
+    error: 'runtime gateway unavailable',
+  });
   assert.equal(captured.warnings.length, 1);
   assert.match(String(captured.warnings[0]?.[0]), /Failed to resume runtime session/);
   const metadata = captured.warnings[0]?.[1] as Record<string, unknown>;
@@ -196,6 +200,95 @@ test('direct-message dispatch resumes a stale runtime session instead of creatin
   assert.equal(lease?.sessionId, 'session-direct-1');
   assert.equal(lease?.status, 'ready');
   assert.equal(channel.chatCwd, 'C:\\tmp\\cats-session-direct-1');
+});
+
+test('direct-message dispatch surfaces resume failure without creating a replacement', async () => {
+  const { state, channelId, participantId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  let sendCount = 0;
+  const closeCalls: string[] = [];
+  const runtimeClient = {
+    createCalls: 0,
+    closeCalls,
+    async createSession() {
+      this.createCalls += 1;
+      return {
+        id: 'session-direct-1',
+        provider: 'claude',
+        model: 'sonnet',
+        modelSelection: null,
+        modelResolution: null,
+        status: 'ready',
+        cwd: 'C:\\tmp\\cats-session-direct-1',
+      } satisfies RuntimeSessionInfo;
+    },
+    async sendMessage() {
+      sendCount += 1;
+      if (sendCount === 2) {
+        throw new Error('Session is closed. Resume it first.');
+      }
+      return {
+        segments: [{ kind: 'text', text: 'reply-1', toolName: null, toolId: null }],
+        inputTokens: 1,
+        outputTokens: 1,
+        tokensUsed: 2,
+      };
+    },
+    async resumeSession() {
+      throw new Error('runtime gateway unavailable');
+    },
+    async closeSession(sessionId: string) {
+      closeCalls.push(sessionId);
+    },
+    async cancelSession() {},
+    async observeSession(sessionId: string) {
+      return { session: { id: sessionId, status: 'closed' } };
+    },
+    async streamSession() {},
+  } as RuntimeClient & {
+    closeCalls: string[];
+    createCalls: number;
+  };
+
+  const first = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please create a calculator page',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-07T03:01:00.000Z'),
+    { chatStore: store },
+  );
+  const captured = await captureConsoleWarnings(() =>
+    routeChannelMessage(
+      first.state,
+      channelId,
+      {
+        body: 'Continue in the same workspace',
+        senderName: 'Kenneth',
+      },
+      runtimeClient,
+      new Date('2026-05-07T03:02:00.000Z'),
+      { chatStore: store },
+    ));
+
+  const channel = requireChannel(captured.result.state, channelId);
+  const lease = resolveParticipantLeaseAttachment(channel, participantId);
+
+  assert.equal(runtimeClient.createCalls, 1);
+  assert.deepEqual(runtimeClient.closeCalls, []);
+  assert.equal(
+    channel.messages.filter((message) => message.metadata.event === 'session_started').length,
+    1,
+  );
+  assert.equal(lease?.sessionId, 'session-direct-1');
+  assert.equal(lease?.status, 'error');
+  assert.match(lease?.lastError ?? '', /replacement session was not started/);
+  assert.equal(captured.result.results[0]?.status, 'error');
+  assert.match(captured.result.results[0]?.error ?? '', /replacement session was not started/);
+  assert.equal(captured.warnings.length, 1);
 });
 
 test('dispatch merge preserves ready lease advancement for the same runtime session', () => {
@@ -431,4 +524,67 @@ test('direct-message room-entry wake resumes a closed lease before creating a re
   assert.equal(awakened.result?.sessionId, 'session-direct-1');
   assert.equal(lease?.sessionId, 'session-direct-1');
   assert.equal(lease?.status, 'ready');
+});
+
+test('direct-message room-entry wake reports resume failure without creating a replacement', async () => {
+  const { state, channelId, participantId } = createDirectState();
+  const closedLeaseState = setChannelParticipantLease(
+    state,
+    channelId,
+    participantId,
+    {
+      sessionId: 'session-direct-1',
+      status: 'closed',
+      cwd: 'C:\\tmp\\cats-session-direct-1',
+      provider: 'claude',
+      instance: 'native',
+      model: 'sonnet',
+      laneId: 'lane-direct-1',
+      startedAt: '2026-05-07T03:00:30.000Z',
+      lastUsedAt: '2026-05-07T03:00:30.000Z',
+    },
+    new Date('2026-05-07T03:00:30.000Z'),
+  );
+  const closeCalls: string[] = [];
+  const runtimeClient = {
+    createCalls: 0,
+    async createSession() {
+      this.createCalls += 1;
+      throw new Error('createSession should not be called');
+    },
+    async sendMessage() {
+      throw new Error('sendMessage should not be called');
+    },
+    async resumeSession() {
+      throw new Error('runtime gateway unavailable');
+    },
+    async closeSession(sessionId: string) {
+      closeCalls.push(sessionId);
+    },
+    async cancelSession() {},
+    async observeSession(sessionId: string) {
+      return { session: { id: sessionId, status: 'closed' } };
+    },
+    async streamSession() {},
+  } as RuntimeClient & { createCalls: number };
+
+  const captured = await captureConsoleWarnings(() =>
+    wakeChannelEntryParticipant(
+      closedLeaseState,
+      channelId,
+      runtimeClient,
+      new Date('2026-05-07T03:03:00.000Z'),
+      { observeRuntimeForRevive: true },
+    ));
+  const channel = requireChannel(captured.result.state, channelId);
+  const lease = resolveParticipantLeaseAttachment(channel, participantId);
+
+  assert.equal(runtimeClient.createCalls, 0);
+  assert.deepEqual(closeCalls, []);
+  assert.equal(captured.result.result?.status, 'error');
+  assert.match(captured.result.result?.error ?? '', /replacement session was not started/);
+  assert.equal(lease?.sessionId, 'session-direct-1');
+  assert.equal(lease?.status, 'error');
+  assert.match(lease?.lastError ?? '', /replacement session was not started/);
+  assert.equal(captured.warnings.length, 1);
 });

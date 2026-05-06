@@ -28,8 +28,12 @@ import type { RuntimeSessionRoutingOptions } from './shared.js';
 import type { ChannelTaskExecutionContext } from './taskExecution.js';
 import {
   buildResumedRuntimeSessionLeasePatch,
-  tryResumeRuntimeSession,
+  resumeRuntimeSession,
 } from './sessionResume.js';
+import {
+  buildDirectMessageRuntimeResumeFailure,
+  shouldPreserveDirectMessageRuntimeSession,
+} from './sessionContinuity.js';
 
 const MANUALLY_REVIVABLE_SESSION_STATES = new Set([
   'closed',
@@ -215,16 +219,24 @@ async function resumeExistingTargetSession(input: {
   runtimeClient: RuntimeClient;
   now: Date;
 }): Promise<{
+  kind: 'resumed';
   state: ChatState;
   target: RoutingTarget;
-} | null> {
-  const resumed = await tryResumeRuntimeSession({
+} | {
+  kind: 'failed';
+  error: string | null;
+}> {
+  const resumeOutcome = await resumeRuntimeSession({
     runtimeClient: input.runtimeClient,
     sessionId: input.sessionId,
     scope: 'target_session_revive',
   });
+  const resumed = resumeOutcome.session;
   if (!resumed) {
-    return null;
+    return {
+      kind: 'failed',
+      error: resumeOutcome.error,
+    };
   }
 
   const leasePatch = buildResumedRuntimeSessionLeasePatch(resumed, input.now);
@@ -244,6 +256,7 @@ async function resumeExistingTargetSession(input: {
     );
 
   return {
+    kind: 'resumed',
     state: nextState,
     target: {
       ...input.target,
@@ -284,6 +297,19 @@ export async function resolveExistingTargetSessionOutcome(input: {
     return { kind: 'continue' };
   }
 
+  const channelState = requireChannel(state, channelId);
+  const hasDirectCatExecutionTargetDrift = attachedTarget.participantKind === 'cat'
+    && hasParticipantExecutionTargetDrift({
+      participantLease: resolveParticipantLeaseAttachment(
+        channelState,
+        attachedTarget.participantId,
+      ),
+      assignment: resolvePrimaryParticipantExecutionAssignment(
+        channelState,
+        attachedTarget.participantId,
+      ),
+    });
+
   if (await shouldReviveExistingTargetSession({
     state,
     channelId,
@@ -300,7 +326,7 @@ export async function resolveExistingTargetSessionOutcome(input: {
       runtimeClient,
       now,
     });
-    if (resumed) {
+    if (resumed.kind === 'resumed') {
       return {
         kind: 'resolved',
         result: {
@@ -314,6 +340,45 @@ export async function resolveExistingTargetSessionOutcome(input: {
           target: resumed.target,
           error: null,
           wakeRequest: recordTargetWake('completed'),
+          taskExecutionContext,
+        },
+      };
+    }
+
+    const shouldPreserveDirectSession = shouldPreserveDirectMessageRuntimeSession({
+      state,
+      channelId,
+      target: attachedTarget,
+    }) && !hasDirectCatExecutionTargetDrift;
+    if (shouldPreserveDirectSession) {
+      const error = buildDirectMessageRuntimeResumeFailure({
+        sessionId: attachedTarget.sessionId,
+        resumeError: resumed.error,
+      });
+      const errorState = setChannelParticipantLease(
+        state,
+        channelId,
+        attachedTarget.participantId,
+        {
+          status: 'error',
+          lastError: error,
+          lastUsedAt: now.toISOString(),
+        },
+        now,
+      );
+      return {
+        kind: 'resolved',
+        result: {
+          state: applyLeaseLaneAttachmentToTarget(
+            errorState,
+            channelId,
+            attachedTarget,
+            laneId,
+            now,
+          ),
+          target: attachedTarget,
+          error,
+          wakeRequest: recordTargetWake('failed', error),
           taskExecutionContext,
         },
       };
@@ -333,8 +398,6 @@ export async function resolveExistingTargetSessionOutcome(input: {
       target: { ...attachedTarget, sessionId: null },
     };
   }
-
-  const channelState = requireChannel(state, channelId);
 
   if (attachedTarget.participantKind === 'orchestrator') {
     const executionTarget = resolveOrchestratorExecutionTarget(state, channelState);

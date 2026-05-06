@@ -49,8 +49,12 @@ import {
 } from './recovery.js';
 import {
   buildResumedRuntimeSessionLeasePatch,
-  tryResumeRuntimeSession,
+  resumeRuntimeSession,
 } from '../runtime-session/sessionResume.js';
+import {
+  buildDirectMessageRuntimeResumeFailure,
+  shouldPreserveDirectMessageRuntimeSession,
+} from '../runtime-session/sessionContinuity.js';
 import { requireChannel } from '../model/index.js';
 
 export interface ReadyDispatchRequest {
@@ -340,12 +344,25 @@ export async function executeDispatchWithRecovery(input: {
       !classifiedError.retryable
       || staleRecoveryCount >= input.runtimeRecovery.staleSessionRetryLimit
     ) {
+      const preserveDirectSession = classifiedError.reason === 'stale_session'
+        && shouldPreserveDirectMessageRuntimeSession({
+          state: dispatchState,
+          channelId: input.channelId,
+          target: request.target,
+        });
+      const recoveryError = preserveDirectSession
+        ? buildDirectMessageRuntimeResumeFailure({
+            sessionId: request.target.sessionId,
+            resumeError: execution.error,
+          })
+        : execution.error;
       return {
         ...execution,
+        error: recoveryError,
         leasePatch: createDispatchRecoveryErrorLeasePatch(
-          execution.error,
+          recoveryError,
           input.now,
-          { clearSession: true },
+          { clearSession: !preserveDirectSession },
         ),
         ...(recoveredChannelChatCwd ? { channelChatCwd: recoveredChannelChatCwd } : {}),
         ...(recoveredMessages ? { recoveredMessages } : {}),
@@ -353,11 +370,12 @@ export async function executeDispatchWithRecovery(input: {
     }
 
     staleRecoveryCount += 1;
-    const resumedSession = await tryResumeRuntimeSession({
+    const resumeOutcome = await resumeRuntimeSession({
       runtimeClient: input.runtimeClient,
       sessionId: request.target.sessionId,
       scope: 'dispatch_stale_recovery',
     });
+    const resumedSession = resumeOutcome.session;
     if (resumedSession) {
       recoveredLeasePatch = buildResumedRuntimeSessionLeasePatch(resumedSession, input.now);
       dispatchState = applyDispatchLeasePatch(
@@ -384,6 +402,28 @@ export async function executeDispatchWithRecovery(input: {
         },
       };
       continue;
+    }
+
+    if (shouldPreserveDirectMessageRuntimeSession({
+      state: dispatchState,
+      channelId: input.channelId,
+      target: request.target,
+    })) {
+      const recoveryError = buildDirectMessageRuntimeResumeFailure({
+        sessionId: request.target.sessionId,
+        resumeError: resumeOutcome.error ?? execution.error,
+      });
+      return {
+        ...execution,
+        error: recoveryError,
+        leasePatch: createDispatchRecoveryErrorLeasePatch(
+          recoveryError,
+          input.now,
+          { clearSession: false },
+        ),
+        ...(recoveredChannelChatCwd ? { channelChatCwd: recoveredChannelChatCwd } : {}),
+        ...(recoveredMessages ? { recoveredMessages } : {}),
+      };
     }
 
     if (request.target.sessionId) {

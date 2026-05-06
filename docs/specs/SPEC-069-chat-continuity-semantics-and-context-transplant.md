@@ -263,6 +263,14 @@ a hidden conversation boundary; the replacement path is then responsible for the
 appropriate `native_resume`, `full_transplant`, `semantic_transplant`,
 `targeted_handoff`, or `fresh_start` decision described above.
 
+Direct-message Cat lanes are stricter than shared rooms. When a direct-message
+lane already has a runtime `sessionId`, stale-session recovery must not silently
+rotate to a replacement runtime session. If native resume is unavailable or
+fails, Chat shall mark the existing direct-lane lease `error`, preserve its
+`sessionId` / `cwd` for a later retry or explicit reset, and avoid appending a
+second `session_started` message. Replacement is allowed only after an explicit
+user/operator action that intentionally resets or retargets the direct lane.
+
 In-flight dispatch persistence must also treat an execution lease as a
 single-owner lifecycle object. When concurrent product writes touch the same
 channel while the same runtime `sessionId` is advancing from `initializing` to

@@ -4241,7 +4241,7 @@ test('direct message ignores workflow recommendations that target Boss Cat', asy
   assert.match(channel.messages.at(-1)?.body ?? '', /I think Boss Cat should take a look\./u);
 });
 
-test('direct message recreates a stale direct-recipient session once when runtime reports session not found', async () => {
+test('direct message does not replace a stale direct-recipient session when runtime reports session not found', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-24T00:00:00.000Z');
@@ -4312,20 +4312,24 @@ test('direct message recreates a stale direct-recipient session once when runtim
   );
   const channel = buildChannelView(dispatched.state, channelId);
 
-  assert.equal(runtimeClient.sentMessages.length, 2);
+  assert.equal(runtimeClient.sentMessages.length, 1);
   assert.deepEqual(
     runtimeClient.sentMessages.map((message) => message.sessionId),
-    ['session-stale', 'session-1'],
+    ['session-stale'],
   );
-  assert.equal(runtimeClient.createdSessions.length, 1);
-  assert.deepEqual(runtimeClient.closedSessions, ['session-stale']);
-  assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-1');
-  assert.equal(channel.assignedCats[0]?.execution.lease.status, 'ready');
-  assert.equal(channel.assignedCats[0]?.execution.lease.lastError, null);
-  assert.match(channel.messages.at(-1)?.body ?? '', /recovered the direct lane/i);
+  assert.equal(runtimeClient.createdSessions.length, 0);
+  assert.deepEqual(runtimeClient.closedSessions, []);
+  assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-stale');
+  assert.equal(channel.assignedCats[0]?.execution.lease.status, 'error');
+  assert.match(
+    channel.assignedCats[0]?.execution.lease.lastError ?? '',
+    /replacement session was not started/i,
+  );
+  assert.equal(dispatched.results[0]?.status, 'error');
+  assert.match(dispatched.results[0]?.error ?? '', /replacement session was not started/i);
 });
 
-test('direct message recreates a closed direct-recipient session once when runtime demands resume first', async () => {
+test('direct message does not replace a closed direct-recipient session when runtime demands resume first', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-24T00:00:00.000Z');
@@ -4396,17 +4400,21 @@ test('direct message recreates a closed direct-recipient session once when runti
   );
   const channel = buildChannelView(dispatched.state, channelId);
 
-  assert.equal(runtimeClient.sentMessages.length, 2);
+  assert.equal(runtimeClient.sentMessages.length, 1);
   assert.deepEqual(
     runtimeClient.sentMessages.map((message) => message.sessionId),
-    ['session-closed', 'session-1'],
+    ['session-closed'],
   );
-  assert.equal(runtimeClient.createdSessions.length, 1);
-  assert.deepEqual(runtimeClient.closedSessions, ['session-closed']);
-  assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-1');
-  assert.equal(channel.assignedCats[0]?.execution.lease.status, 'ready');
-  assert.equal(channel.assignedCats[0]?.execution.lease.lastError, null);
-  assert.match(channel.messages.at(-1)?.body ?? '', /reopened the direct lane/i);
+  assert.equal(runtimeClient.createdSessions.length, 0);
+  assert.deepEqual(runtimeClient.closedSessions, []);
+  assert.equal(channel.assignedCats[0]?.execution.lease.sessionId, 'session-closed');
+  assert.equal(channel.assignedCats[0]?.execution.lease.status, 'error');
+  assert.match(
+    channel.assignedCats[0]?.execution.lease.lastError ?? '',
+    /replacement session was not started/i,
+  );
+  assert.equal(dispatched.results[0]?.status, 'error');
+  assert.match(dispatched.results[0]?.error ?? '', /replacement session was not started/i);
 });
 
 test('session-full errors stop immediately and clear the direct lane lease instead of retrying', async () => {

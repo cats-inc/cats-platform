@@ -69,6 +69,13 @@ session, including any cross-provider retarget, the first turn into the new
 provider session must receive a continuity transplant derived from the prior
 conversation.
 
+Direct-message Cat lanes do not use that transplant path as a hidden recovery
+fallback. A direct lane with an existing runtime session is the user's ongoing
+Cat workspace; if native resume fails, the product surfaces the runtime error
+and preserves the old session attachment instead of silently creating a new
+session. Starting a new direct-lane runtime session requires an explicit reset,
+retarget, or other user/operator action.
+
 ### 3. `group handoff` and `group join` are distinct continuity modes
 
 The product will not reuse the `default retarget` rule for all group cases.
