@@ -1034,24 +1034,25 @@ function appendExpiredImplicitProductIntentCandidates(input: {
   }, input.state);
 }
 
-function expireTtlImplicitProductIntentCandidates(input: {
+interface ExpireImplicitProductIntentCandidatesInput {
   state: ChatState;
   channelId: string;
   locale: MessageLocale;
   now: Date;
-}): ChatState {
+}
+
+function expireTtlImplicitProductIntentCandidates(
+  input: ExpireImplicitProductIntentCandidatesInput,
+): ChatState {
   return appendExpiredImplicitProductIntentCandidates({
     ...input,
     expireAll: false,
   });
 }
 
-function expireOpenImplicitProductIntentCandidatesBeforeSuggestion(input: {
-  state: ChatState;
-  channelId: string;
-  locale: MessageLocale;
-  now: Date;
-}): ChatState {
+function expireOpenImplicitProductIntentCandidatesBeforeSuggestion(
+  input: ExpireImplicitProductIntentCandidatesInput,
+): ChatState {
   return appendExpiredImplicitProductIntentCandidates({
     ...input,
     expireAll: true,
