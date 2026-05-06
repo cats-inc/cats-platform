@@ -58,13 +58,18 @@ const FORBIDDEN_NODE_BARE_NAMES = new Set([
 /**
  * Project-internal paths that are known to leak Node deps. Each entry
  * is a substring that, if present anywhere in the resolved import
- * path (forward-slash normalised), fails the boundary scan.
+ * path (forward-slash normalised), fails the boundary scan. These
+ * are checked alongside the allow-list as defence in depth — even an
+ * allow-listed directory is rejected if a forbidden substring sneaks
+ * into a transitive subfolder (e.g. someone places a `/server/`
+ * folder under an audited shared root).
  */
 const FORBIDDEN_PROJECT_SUBSTRINGS = [
   '/server/',
   '/desktop/',
   '/runtime/',
   '/app/server/',
+  '/core/',
   '/shared/guideCatAssist',
   '/products/shared/api/workspaceContracts',
 ];
@@ -125,6 +130,17 @@ const ALLOWED_CONSUMER_PROJECT_DIRS = [
   // hosts Node-tainted pieces (e.g. `api/workspaceContracts.ts`
   // — separately denied via FORBIDDEN_PROJECT_SUBSTRINGS).
   'src/products/shared/recentsFilter.ts',
+  // Pure-data segmenter for chat message bodies. Splits a message
+  // string into text / mention / link / attachment segments —
+  // both the web `MessageBody.tsx` and the mobile RN
+  // `MessageBody.tsx` consume this single segmenter so the
+  // splitting logic can't drift across surfaces. Lives under
+  // `/renderer/components/` because that's where the web
+  // renderer's siblings live; the file itself has no React /
+  // DOM deps and transitively only pulls
+  // `src/core/mentionParsing.ts` (a regex-only module audited
+  // separately — see comment immediately below).
+  'src/products/shared/renderer/components/messageBodySegmenter.ts',
   // Cross-product i18n catalogs + key registry. The catalogs are
   // pure object literals and `messageKeys.ts` is a pure const map.
   // Directory-level allow-list because the convention here is
@@ -174,49 +190,68 @@ function projectRel(absolute) {
 }
 
 /**
- * Boundary scan: rejects forbidden Node + project-internal imports
- * directly inside `src/mobile/**`.
+ * Strip the source-file extension from a project-relative path so
+ * the allow-list can stay in canonical `.ts` / `.tsx` form while
+ * accepting `.js` import specifiers (the NodeNext convention used
+ * everywhere in this codebase). Without this, a mobile consumer
+ * writing `import {…} from '../products/chat/shared/foo.js'`
+ * would resolve to `…/foo.js`, which fails to match an allow-list
+ * entry written as `…/foo.ts`.
  */
-function classifyBoundaryImport(importPath, sourceFile) {
-  for (const prefix of FORBIDDEN_NODE_PREFIXES) {
-    if (importPath.startsWith(prefix)) {
-      return { ok: false, reason: `forbidden ${prefix}* import` };
-    }
-  }
+function stripSourceExtension(rel) {
+  return rel.replace(/\.(ts|tsx|js|jsx)$/, '');
+}
 
-  if (FORBIDDEN_NODE_BARE_NAMES.has(importPath)) {
-    return {
-      ok: false,
-      reason: `forbidden bare Node import "${importPath}"`,
-    };
-  }
-
-  if (importPath.startsWith('.')) {
-    const resolved = path.resolve(path.dirname(sourceFile), importPath);
-    const rel = projectRel(resolved);
-    for (const fragment of FORBIDDEN_PROJECT_SUBSTRINGS) {
-      if (rel.includes(fragment)) {
-        return {
-          ok: false,
-          reason: `forbidden project path fragment "${fragment}" in "${rel}"`,
-        };
-      }
-    }
-  }
-
-  return { ok: true };
+function isFileAllowListEntry(allowed) {
+  return /\.(ts|tsx|js|jsx)$/.test(allowed);
 }
 
 /**
- * Consumer scan: rejects mobile imports that reach into
- * `cats-platform/src/**` outside the boundary, or that hit a
- * forbidden Node module directly. Mobile may import:
- *
- *   - `cats-platform/src/mobile/**` (the boundary)
- *   - own files under `cats-platform/mobile/**`
- *   - npm packages
+ * Returns true if `rel` (forward-slash, project-relative) is in
+ * `ALLOWED_CONSUMER_PROJECT_DIRS`, comparing extensionless for
+ * file entries and prefix-matching for directory entries.
  */
-function classifyConsumerImport(importPath, sourceFile) {
+function matchesAllowedProjectPath(rel) {
+  const relStripped = stripSourceExtension(rel);
+  for (const allowed of ALLOWED_CONSUMER_PROJECT_DIRS) {
+    if (isFileAllowListEntry(allowed)) {
+      if (relStripped === stripSourceExtension(allowed)) {
+        return true;
+      }
+    } else if (rel === allowed || rel.startsWith(`${allowed}/`)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Unified import classifier shared by the boundary scan
+ * (`src/mobile/**` files) and the consumer scan (`mobile/app/**`,
+ * `mobile/src/**` files). Both surfaces apply the same allow-list
+ * + forbidden-substring rules:
+ *
+ *   - Reject `node:*` and Node bare-name imports
+ *   - Allow npm packages (no `.` prefix)
+ *   - Allow paths that resolve outside `cats-platform/src/` (own
+ *     workspace code, build siblings, etc.)
+ *   - For paths that resolve INSIDE `cats-platform/src/`:
+ *     - Reject if any FORBIDDEN_PROJECT_SUBSTRINGS appears in the
+ *       resolved path (defence in depth — catches forbidden
+ *       subfolders even under allow-listed roots)
+ *     - Reject unless the resolved path matches
+ *       ALLOWED_CONSUMER_PROJECT_DIRS (specific file or directory
+ *       prefix)
+ *
+ * Earlier the boundary scan only checked forbidden substrings, not
+ * the allow-list. That meant a `src/mobile/` file could import any
+ * `../products/chat/shared/*.ts` whose path didn't happen to
+ * include `/server/` etc., bypassing the specific-file allow-list
+ * the consumer scan applied. Reviewer flagged this as the very
+ * loophole the allow-list was supposed to close. Both scans now
+ * share `classifyImport`.
+ */
+function classifyImport(importPath, sourceFile) {
   for (const prefix of FORBIDDEN_NODE_PREFIXES) {
     if (importPath.startsWith(prefix)) {
       return { ok: false, reason: `forbidden ${prefix}* import` };
@@ -236,40 +271,36 @@ function classifyConsumerImport(importPath, sourceFile) {
   }
 
   const resolved = path.resolve(path.dirname(sourceFile), importPath);
-  // If it resolves outside cats-platform/src/ entirely, it is either
-  // own mobile code or some other consumer — fine.
+  // Resolves outside cats-platform/src/ — own workspace code,
+  // build siblings, etc. Not subject to the allow-list.
   if (!resolved.startsWith(`${PLATFORM_SRC_DIR}${path.sep}`)) {
     return { ok: true };
   }
-  // It does point into cats-platform/src/. Allow if it lands inside
-  // any of the audited browser+RN safe directories.
+
   const rel = projectRel(resolved);
-  for (const allowed of ALLOWED_CONSUMER_PROJECT_DIRS) {
-    if (rel === allowed || rel.startsWith(`${allowed}/`)) {
-      // Defence in depth: even an allowed directory must not have
-      // a forbidden substring in the resolved path. Catches
-      // accidental layering errors (e.g. someone placing a
-      // /server/ subfolder under an allowed root).
-      for (const fragment of FORBIDDEN_PROJECT_SUBSTRINGS) {
-        if (rel.includes(fragment)) {
-          return {
-            ok: false,
-            reason:
-              `import "${importPath}" lands in allow-listed "${allowed}" `
-              + `but the resolved path "${rel}" contains forbidden fragment "${fragment}"`,
-          };
-        }
-      }
-      return { ok: true };
+
+  // Defence in depth: forbidden substrings always reject, even
+  // inside an otherwise allow-listed root.
+  for (const fragment of FORBIDDEN_PROJECT_SUBSTRINGS) {
+    if (rel.includes(fragment)) {
+      return {
+        ok: false,
+        reason: `forbidden project path fragment "${fragment}" in "${rel}"`,
+      };
     }
   }
+
+  if (matchesAllowedProjectPath(rel)) {
+    return { ok: true };
+  }
+
   return {
     ok: false,
     reason:
-      `mobile must reach cats-platform/src only via the boundary or an `
-      + `allow-listed shared directory; got "${rel}". `
-      + `If this directory is browser+RN safe, add it to ALLOWED_CONSUMER_PROJECT_DIRS `
-      + `in scripts/check-mobile-boundary.mjs after auditing for node:* imports.`,
+      `import target "${rel}" is not in the mobile-safe allow-list `
+      + `(ALLOWED_CONSUMER_PROJECT_DIRS in scripts/check-mobile-boundary.mjs). `
+      + `If the file is browser+RN safe, audit per the doc string and add a `
+      + `specific-file entry alongside the change that needs it.`,
   };
 }
 
@@ -316,20 +347,24 @@ async function runScan(label, dir, classify) {
 }
 
 async function main() {
+  // All three scans share the same `classifyImport` — boundary
+  // and consumer rules are now identical. Earlier they diverged
+  // (boundary skipped the allow-list check), which let
+  // `src/mobile/**` reach into any non-forbidden `src/` path.
   const boundaryReport = await runScan(
     'src/mobile/ boundary',
     BOUNDARY_DIR,
-    classifyBoundaryImport,
+    classifyImport,
   );
   const consumerAppReport = await runScan(
     'mobile/app/ consumer',
     MOBILE_APP_DIR,
-    classifyConsumerImport,
+    classifyImport,
   );
   const consumerSrcReport = await runScan(
     'mobile/src/ consumer',
     MOBILE_SRC_DIR,
-    classifyConsumerImport,
+    classifyImport,
   );
 
   const reports = [boundaryReport, consumerAppReport, consumerSrcReport];

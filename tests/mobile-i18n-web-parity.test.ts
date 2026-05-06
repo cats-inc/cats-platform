@@ -42,12 +42,27 @@ import {
  * Bundle trade-off: importing the web catalog adds ~200 KB of
  * Hermes bytecode (full ~3000 keys × 2 locales). On a 5 MB mobile
  * bundle that's ~4 % overhead, which we accepted in exchange for
- * the drift safety. If a future audit shows the mobile bundle
- * needs to shrink, the alternative is splitting the web catalog
- * into a shared `core/` (used by both) plus a `desktop-extended/`
- * (web-only) — see the proposal at the top of
- * `tests/mobile-i18n-web-parity.test.ts`'s history (commit
- * 82f8f0597's message) for that contingency plan.
+ * the drift safety.
+ *
+ * Contingency plan if the mobile bundle ever needs to shrink:
+ * split the web catalog into two object literals that the web-side
+ * `index.ts` combines —
+ *
+ *   - `src/shared/i18n/catalogs/core/{en,zh-TW}.ts`: strings used
+ *     on both surfaces (settings chrome, draft chrome, conversation
+ *     sidebar, the language card, etc.).
+ *   - `src/shared/i18n/catalogs/desktop-extended/{en,zh-TW}.ts`:
+ *     strings only the desktop renderer ever shows (runtime
+ *     status panels, transport setup wizards, settings sub-pages).
+ *
+ * Mobile would import only `core` (rough estimate ~50 KB instead
+ * of ~200 KB). Web's existing top-level `enCatalog` / `zhTWCatalog`
+ * stay shaped as `{ ...core, ...desktopExtended }` so no web call
+ * site changes. Not done today because (1) splitting ~3000 keys
+ * by hand is grunt work, (2) the bundle hit is acceptable now,
+ * and (3) the strict /audit-each-allow-list-entry/ rule in
+ * `scripts/check-mobile-boundary.mjs` is the better guarantee
+ * against drift than a separate plan doc.
  *
  * Keep the mapping below in lockstep with the comments / doc strings
  * in `src/mobile/i18n.ts` that say "mirrors web …" — every such
