@@ -2,11 +2,16 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { createMobileApiClient, MobileApiError } from '../../api/client';
+import {
+  type ChatEventStreamHandle,
+  openChatEventStream,
+} from '../../api/eventStream';
 import { loadConnectionConfig } from '../../api/persistence';
 import {
   getMobileApiCopy,
   resolveDefaultMobileLocale,
   type MobileAppShellPayload,
+  type MobileChatEventKind,
 } from '../../../../src/mobile/index.js';
 
 /**
@@ -15,6 +20,26 @@ import {
  * (`useProductSidebarData`, `useCatsDirectoryTab`) compose this one
  * so the desktop is hit at most once per screen mount, not once per
  * derived selector.
+ *
+ * **Sync model** mirrors web's
+ * `src/products/shared/renderer/hooks/useWorkspaceChatEvents.ts`:
+ *
+ *   - On mount: fetch `/api/app-shell` (or pull from the persisted
+ *     `unconfigured` / `error` state machine).
+ *   - During the lifetime of the hook: open an SSE subscription to
+ *     `/api/events/chat`. Every server-published mutation
+ *     (`room_updated`, `recents_changed`, `unread_changed`,
+ *     `transport_ingress`) bumps the internal `version` so the next
+ *     effect re-runs the fetch. The `keepPreviousData` branch in
+ *     the fetch effect keeps the existing payload visible during
+ *     the round trip — no flicker.
+ *
+ * Mutations (`useDeleteRecent` and friends) therefore do NOT need
+ * to call `refetch()` after they succeed; the server-side
+ * `publishChannelMutationEvents` already emits the SSE event that
+ * drives the refetch. The explicit `refetch` is still exported for
+ * pull-to-refresh, focus-recovery, and the rare case where the
+ * server can't be the source of truth (e.g. mid-pairing).
  *
  * NB: hooks that need *both* the app-shell and another endpoint (e.g.
  * `useChannelMessages`) intentionally do their own combined fetch
@@ -108,6 +133,50 @@ export function useMobileAppShell(): MobileAppShellHook {
       setVersion((current) => current + 1);
     }, []),
   );
+
+  // Subscribe to the desktop's `/api/events/chat` SSE stream so any
+  // mutation (delete, rename, message-add, etc.) on the desktop side
+  // — whether triggered from this device or another — bumps `version`
+  // and refetches. Mirrors web's `useWorkspaceChatEvents` behaviour
+  // exactly: same set of subscribed kinds, same "merge into state on
+  // arrival" model. The existing `keepPreviousData` fetch branch
+  // covers the no-flicker requirement.
+  //
+  // We do NOT subscribe to `transport_outbound` / `session_state_changed`
+  // here — those don't change the app-shell projection.
+  useEffect(() => {
+    let cancelled = false;
+    let handle: ChatEventStreamHandle | null = null;
+    const SHELL_INVALIDATING_KINDS: ReadonlySet<MobileChatEventKind> = new Set([
+      'room_updated',
+      'recents_changed',
+      'unread_changed',
+      'transport_ingress',
+    ]);
+
+    (async () => {
+      try {
+        const config = await loadConnectionConfig();
+        if (cancelled || !config.baseUrl) {
+          return;
+        }
+        handle = openChatEventStream(config, (event) => {
+          if (SHELL_INVALIDATING_KINDS.has(event.type)) {
+            setVersion((current) => current + 1);
+          }
+        });
+      } catch {
+        // SSE is best-effort; the focus refetch + manual refetch
+        // remain as fallback paths if the stream can't open.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      handle?.close();
+      handle = null;
+    };
+  }, []);
 
   const refetch = useCallback(() => {
     setVersion((current) => current + 1);
