@@ -118,7 +118,7 @@ capability lookup, not a new classifier.
 - [ ] Task 3.2a: Gate `createWorkItem` tool exposure by direct posture and
       capability profile. Strong `/work` and `/code` may receive the tool;
       weak/unknown and `/chat` must not.
-- [ ] Task 3.2b: Add the Concierge prompt protocol per SPEC-104 §Concierge
+- [x] Task 3.2b: Add the Concierge prompt protocol per SPEC-104 §Concierge
       Prompt Framework: one focal clarifying question per assistant turn (no
       stacking), default priority order (`goal` → `successCriteria` →
       `outOfScope` → `openQuestions`) with consolidation when the user
@@ -183,7 +183,7 @@ tested independently.
 - [ ] Task 5.1: Link created Work Item anchors back to the source direct
       conversation and audience Cat through `conversationId` and
       `metadata.directSlashModeIntake`.
-- [ ] Task 5.2: Ensure follow-up messages in the direct lane can reference the
+- [x] Task 5.2: Ensure follow-up messages in the direct lane can reference the
       active Work Item / Code task and current run state through lane
       active-anchor resolution.
 - [ ] Task 5.3: Start supervised task/run execution only through existing
@@ -327,6 +327,7 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Follow-up prompt/context slice: direct-lane follow-up messages now carry `directSlashModeIntakeRef` when an active anchor exists, runtime context forwards the anchor metadata, and Cat dispatch instructions include the Concierge protocol (one focal question, priority order, recap before task/run follow-up, no duplicate Work Item anchor). |
 | 2026-05-06 | Active-anchor lifecycle slice: `/chat` posture changes now write `directSlashMode.activeAnchor = null` with `clearReason: chat_posture`; terminal Work Items (`completed`, `cancelled`, `archived`) clear the cached anchor, and a later `/work` or `/code` starts a fresh intake even when posture itself is unchanged. Tests cover chat-clear, terminal-clear, and no duplicate anchor on idempotent repeats. |
 | 2026-05-06 | Work Item anchor slice: strong direct `/work` and `/code` posture changes now create a draft Core Work Item anchor with `conversationId`, `metadata.directSlashModeIntake`, `metadata.directSlashMode.activeAnchor`, and `metadata.planning.productHint`; repeated posture commands do not duplicate anchors. Weak/unknown direct Cats now record `directSlashMode.humanGate.kind = human_gate_required` and create no durable Work Item. |
 | 2026-05-06 | Direct audience capability slice: product-intent posture changes now require exactly one direct audience Cat, resolve that Cat's execution target through the existing provider capability profile resolver, consume the PLAN-080 bootstrap config, and record `strong_agent` / `weak_worker` / `unknown` in `directSlashModePostureChange.capabilityProfileKind`. Tests cover no-audience, multi-audience, weak, strong, and unknown outcomes without provider-name inference. |

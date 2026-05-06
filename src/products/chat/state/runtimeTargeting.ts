@@ -690,6 +690,56 @@ export interface DispatchPrompt {
   continuityResetAt?: string | null;
 }
 
+function readDirectSlashModeIntakeRef(
+  message: ChatMessage,
+): { workItemId: string; commandSegmentId: string; targetProduct: 'work' | 'code' } | null {
+  const candidate = message.metadata.directSlashModeIntakeRef;
+  if (!candidate || typeof candidate !== 'object') {
+    return null;
+  }
+
+  const record = candidate as Record<string, unknown>;
+  return typeof record.workItemId === 'string'
+    && typeof record.commandSegmentId === 'string'
+    && (record.targetProduct === 'work' || record.targetProduct === 'code')
+    ? {
+        workItemId: record.workItemId,
+        commandSegmentId: record.commandSegmentId,
+        targetProduct: record.targetProduct,
+      }
+    : null;
+}
+
+function buildDirectSlashModeFollowUpInstructions(sourceMessage: ChatMessage): string | null {
+  const intakeRef = readDirectSlashModeIntakeRef(sourceMessage);
+  if (!intakeRef) {
+    return null;
+  }
+
+  const productLabel = intakeRef.targetProduct === 'code' ? 'Code' : 'Work';
+  return [
+    `Direct slash-mode ${productLabel} intake is active.`,
+    `Use existing draft Work Item ${intakeRef.workItemId} as the durable anchor for this direct lane.`,
+    `The source posture command segment is ${intakeRef.commandSegmentId}.`,
+    'Concierge protocol: ask one focal clarifying question per assistant turn.',
+    'Prioritize goal, then success criteria, then out-of-scope boundaries, then remaining open questions.',
+    'Surface a brief current-understanding recap before proposing task or run follow-up.',
+    'Do not create a second Work Item anchor for this turn.',
+    intakeRef.targetProduct === 'code'
+      ? 'Treat follow-up execution as Code-bound only after the Work Item remains the active anchor.'
+      : 'Treat follow-up execution as Work-bound only after the Work Item remains the active anchor.',
+  ].join('\n');
+}
+
+function joinRuntimeInstructions(
+  ...parts: Array<string | null | undefined>
+): string | null {
+  const normalized = parts
+    .map((part) => part?.trim() ?? '')
+    .filter((part) => part.length > 0);
+  return normalized.length > 0 ? normalized.join('\n\n') : null;
+}
+
 export function buildPromptForTarget(
   state: ChatState,
   channelId: string,
@@ -771,6 +821,9 @@ export function buildPromptForTarget(
   const instructions = sameChatContinuityPackage?.instructions
     ?? targetedHandoffPackage?.instructions
     ?? null;
+  const slashModeInstructions = buildDirectSlashModeFollowUpInstructions(
+    request.sourceMessage,
+  );
   const continuityMode = participantContinuity
     ? resolveSameChatContinuityMode(promptMessages, request, sameChatContinuityPackage)
     : targetedHandoffPackage?.instructions
@@ -784,10 +837,10 @@ export function buildPromptForTarget(
       promptSourceMessage,
       routingContext,
     ),
-    instructions,
+    instructions: joinRuntimeInstructions(instructions, slashModeInstructions),
     continuityMode,
     continuityDeliveryMode: continuityMode == null
       ? null
-      : instructions ? 'turn_instructions' : 'none',
+      : instructions || slashModeInstructions ? 'turn_instructions' : 'none',
   };
 }

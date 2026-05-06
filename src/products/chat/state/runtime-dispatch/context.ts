@@ -29,6 +29,8 @@ export function buildDispatchRuntimeContextMetadata(
     continuityResetAt?: string | null;
   } = {},
 ): Record<string, unknown> {
+  const directSlashMode = request.sourceMessage.metadata.directSlashMode;
+  const directSlashModeIntakeRef = request.sourceMessage.metadata.directSlashModeIntakeRef;
   return {
     dispatchId: request.dispatchId,
     turnId: request.turnId,
@@ -50,6 +52,10 @@ export function buildDispatchRuntimeContextMetadata(
     continuityMode: options.continuityMode ?? null,
     continuityDeliveryMode: options.continuityDeliveryMode ?? null,
     continuityResetAt: options.continuityResetAt ?? null,
+    ...(directSlashMode ? { directSlashMode: structuredClone(directSlashMode) } : {}),
+    ...(directSlashModeIntakeRef
+      ? { directSlashModeIntakeRef: structuredClone(directSlashModeIntakeRef) }
+      : {}),
   };
 }
 
