@@ -62,6 +62,9 @@ to Cat-authored proposal tools:
       natural-intent setting and continue through SPEC-104.
 - [ ] Task 1.4: Move the PLAN-093 deterministic detector behind
       `heuristic_prefilter` only. It shall not run in `off` or `cat_tool` mode.
+      Decouple v1 segment expiry cleanup from the v1 detector trigger so Phase
+      6 can either sweep outstanding v1 candidates on mode change or keep the
+      cleanup path active independently from detector execution.
 - [ ] Task 1.4a: Migrate the PLAN-093 detector test suite to set
       `mode = heuristic_prefilter` explicitly. Tests that previously asserted
       detector behavior under default mode shall assert it under

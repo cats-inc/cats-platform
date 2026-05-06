@@ -338,9 +338,9 @@ Proposal suppression is lane-local and platform-enforced:
   with `{ rejected: true, reason: 'cooldown_active' }`; this is not a prompt
   suggestion
 - repeating the same `proposalId` tool call returns the existing proposal
-  segment with `{ accepted: true, idempotent: true, proposalId }` or an
-  equivalent accepted-but-marked-idempotent shape. This is distinct from
-  cooldown rejection so the Cat does not retry an already-recorded proposal.
+  segment with `{ accepted: true, idempotent: true, proposalId }`. This is
+  distinct from cooldown rejection so the Cat does not retry an
+  already-recorded proposal.
 
 ### Heuristic Detector Status
 
@@ -351,10 +351,10 @@ natural-language path. During migration it may remain behind
 - it must be off unless explicitly selected;
 - it is detector-only: the proposal tool is not exposed in this mode, and the
   v1 detector candidate path is the only no-slash suggestion path;
-- v1 anti-nag rules from the historical SPEC-105 v1 suppression model continue
-  to apply to `metadata.implicitProductIntentCandidate` segments. The v2
-  suppression model applies only to `metadata.catProductIntentProposal`
-  segments and is not active when proposal tools are not exposed;
+- the historical v1 suppression rules recorded in PLAN-093 continue to apply to
+  `metadata.implicitProductIntentCandidate` segments. The v2 suppression model
+  applies only to `metadata.catProductIntentProposal` segments and is not
+  active when proposal tools are not exposed;
 - it must still require owner confirmation;
 - it must not create durable product records;
 - it must be removable without changing SPEC-104;

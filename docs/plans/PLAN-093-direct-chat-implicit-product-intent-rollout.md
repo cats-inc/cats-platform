@@ -38,6 +38,24 @@ looks like Work or Code, but it cannot change posture or create durable product
 state by itself. A confirmed candidate is translated into the same command
 semantics as SPEC-104: `/work <original message>` or `/code <original message>`.
 
+## V1 Suppression Rules (Historical)
+
+PLAN-094 may temporarily keep this v1 detector path behind
+`CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE=heuristic_prefilter`. When that mode is
+active, these historical suppression rules continue to apply to
+`metadata.implicitProductIntentCandidate` and
+`metadata.implicitProductIntentTransition` segments:
+
+- a suggested candidate expires after 15 minutes if the owner does not confirm
+  or decline it
+- switching the lane to explicit `/chat` expires all outstanding suggested
+  candidates
+- when a new ordinary owner message arrives in the same lane, the platform
+  expires any existing unresolved candidate before allowing a new candidate
+- declining any Work/Code candidate starts a five-minute lane cooldown
+- repeated detection for the same `candidateId` is an idempotent duplicate and
+  does not append a second candidate segment
+
 ## Implementation Guardrails
 
 - Do not bypass the SPEC-104 slash-mode intake pipeline.
