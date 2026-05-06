@@ -1,8 +1,8 @@
-# SPEC-105: Direct Chat Implicit Product Intent Confirmation
+# SPEC-105: Direct Chat Cat-Proposed Product Intent Confirmation
 
-> Define the follow-up MVP where ordinary direct-chat messages can be detected
-> as likely Work or Code intent, but require explicit human confirmation before
-> switching posture or creating durable anchors.
+> Define the no-slash direct-chat flow where a strong Cat can propose turning
+> ordinary conversation into Work or Code intake, but the owner must confirm
+> before any durable product state is created.
 
 ## Metadata
 
@@ -11,441 +11,348 @@
 | **Status** | Draft |
 | **Owner** | Codex |
 | **Reviewer** | User |
-| **Related ADR** | [ADR-101](../decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md) |
-| **Related Plan** | [PLAN-093](../plans/PLAN-093-direct-chat-implicit-product-intent-rollout.md) |
+| **Related ADRs** | [ADR-101](../decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md), [ADR-102](../decisions/102-use-cat-authored-product-intent-proposals.md) |
+| **Related Plan** | [PLAN-094](../plans/PLAN-094-cat-proposed-product-intent-rollout.md) |
+| **Historical Plan** | [PLAN-093](../plans/PLAN-093-direct-chat-implicit-product-intent-rollout.md) |
 
 ## Summary
 
-SPEC-104 covers explicit slash commands: `/chat`, `/work`, and `/code`.
-This spec covers the next layer: when the owner sends ordinary text in a
-`direct_message` lane and the platform believes the message is really a work or
-code request, Cats may suggest a product switch. The suggestion is only a
-candidate. It must not change posture, create a Work Item, start a Task, or
-start Code execution until the owner confirms.
+SPEC-104 covers explicit product commands in direct chat: `/chat`, `/work`, and
+`/code`. Those commands are platform-owned control inputs.
 
-After confirmation, the flow must enter the same product-intent intake path as
-SPEC-104. Confirmation of a Work candidate is equivalent to `/work <original
-message>`. Confirmation of a Code candidate is equivalent to `/code <original
-message>`.
+This spec covers the no-slash path. When the owner sends ordinary direct-chat
+text, Cats should not rely on a platform-owned keyword detector to infer
+meaning. Instead, the ordinary message is dispatched to the addressed direct
+Cat. If that Cat is capability-gated as strong and natural-language suggestions
+are enabled, the platform may expose a proposal-only tool. The Cat can call that
+tool to ask the owner whether the current request should become Work or Code.
+
+The proposal is only a candidate. It must not change posture, create a Work
+Item, start a Task, create a Run, or start Code execution until the owner
+confirms. After confirmation, the flow enters the same SPEC-104 slash-mode
+intake path as `/work <source>` or `/code <source>`, while preserving the
+original owner message and Cat proposal as source context.
 
 ## Goals
 
-- detect likely Work or Code intent from ordinary direct-chat text
-- preserve ordinary chat as the default when confidence is low or the owner
-  ignores/declines the suggestion
-- require explicit human confirmation before posture changes or durable product
+- keep explicit `/chat`, `/work`, and `/code` deterministic and platform-owned
+- let the addressed strong Cat own natural-language semantic interpretation
+- avoid platform keyword lists as the default multilingual strategy
+- require explicit owner confirmation before posture changes or durable product
   actions
 - reuse the SPEC-104 direct slash-mode intake pipeline after confirmation
-- keep source context and audit metadata tied to the original owner message
-- support both Web direct chat and Telegram ordinary-text ingress
+- keep source context and audit metadata tied to the original owner message and
+  Cat proposal
+- support Web and Telegram direct-chat ingress through the same proposal and
+  confirmation contract
+- provide deployment and owner settings for natural-language suggestions
 
 ## Non-Goals
 
-- no automatic Work Item, Task, Run, or Code execution from classifier output
-- no group, parallel, or multi-audience implicit intent support in this MVP
+- no automatic Work Item, Task, Run, or Code execution from ordinary text
+- no platform-owned semantic classifier as the default no-slash path
+- no group, parallel, or multi-audience proposal support in this MVP
 - no replacement for explicit `/chat`, `/work`, or `/code`
-- no new channel kind, room mode, or retired prototype label
 - no hidden escalation from weak or unknown Cats to another Cat
 - no mobile implicit-intent UI in this MVP
-- no UI layout redesign beyond the confirmation affordance
-
-## User Stories
-
-- As an owner, I can tell a Cat "please fix the parser tests" without typing
-  `/work`, and Cats can ask whether I want to turn that into Work.
-- As an owner, I can describe a coding request in Telegram and confirm that it
-  should become Code work without learning the slash command first.
-- As an owner, casual conversation should stay casual. Cats should not keep
-  nagging me to turn normal chat into Work.
-- As a maintainer, I want implicit detection to reuse the explicit slash-mode
-  pipeline so the two paths do not drift.
+- no UI layout redesign beyond proposal confirmation affordances
 
 ## Requirements
 
 ### Functional Requirements
 
-#### Candidate detection
+#### Explicit command baseline
 
-1. The platform shall run implicit product-intent detection only for ordinary
-   text messages in direct lanes. Effective direct-lane membership follows
-   SPEC-104: `channelKind === 'direct_message'` or
+1. The platform shall continue to handle `/chat`, `/work`, and `/code`
+   deterministically through SPEC-104.
+2. `/chat` shall mean ordinary conversational posture. It is valid inside a
+   lane that has Work context; it does not close an established Work Item or
+   erase source context. For an unconfirmed draft intake, `/chat` may abandon
+   that draft to avoid orphan records.
+3. Explicit commands shall not depend on the natural-language proposal setting.
+   The owner can always type `/work` or `/code` manually.
+
+#### Cat-authored proposal
+
+4. Natural-language product suggestions shall be created by an addressed direct
+   Cat through a structured proposal tool, not by a default platform semantic
+   detector.
+5. The proposal tool shall be exposed only in effective direct lanes. Effective
+   direct-lane membership follows SPEC-104:
+   `channelKind === 'direct_message'` or
    `roomRouting.mode === 'direct_message'`.
-2. The detector shall produce one of `none`, `work`, or `code`.
-3. The detector shall not produce durable product records. It only produces a
-   candidate suggestion.
-4. The detector shall not reinterpret explicit `/chat`, `/work`, or `/code`
-   commands. Those remain owned by SPEC-104.
-5. The detector shall not run for non-direct channels in this MVP.
-6. The detector shall keep ordinary chat as the default. Low-confidence or
-   ambiguous messages shall return `none`.
-7. The detector shall be shared by Web and Telegram ordinary-text ingress, not
-   duplicated per transport.
-8. Detector v1 shall be deterministic and local. It shall not call a provider,
-   runtime session, or LLM classifier for every ordinary direct message.
+6. The proposal tool shall be exposed only when the addressed direct Cat is
+   capability-gated as `strong_agent`.
+7. The proposal tool shall be exposed only when both deployment policy and
+   owner settings allow natural-language product suggestions.
+8. Weak or unknown direct Cats shall not receive the proposal tool. They may
+   continue ordinary chat and can tell the owner to use `/work` or `/code`.
+9. A proposal tool call shall write an append-only candidate/proposal system
+   segment. It shall not create a Work Item, Task, Run, active anchor, or Code
+   execution.
+10. The proposal shall identify `targetProduct: 'work' | 'code'`, source
+    message context, the proposing Cat, and a short owner-facing rationale.
 
 #### Confirmation gate
 
-9. A Work or Code candidate shall require explicit owner confirmation before
-   any posture change.
-10. Declining or ignoring the suggestion shall leave the lane in ordinary chat
-   with no durable Work/Code state change.
-11. Confirming a Work candidate shall invoke the same product-intent intake
-    semantics as `/work <original message>`.
-12. Confirming a Code candidate shall invoke the same product-intent intake
-    semantics as `/code <original message>`.
-13. Confirmation shall preserve the original owner message id as source context.
-14. Confirmation shall be idempotent for the same candidate. Repeating the
+11. A Work or Code proposal shall require explicit owner confirmation before
+    any posture change.
+12. Declining or ignoring the proposal shall leave the lane in ordinary chat
+    with no durable Work/Code state change.
+13. Confirming a Work proposal shall invoke the same product-intent intake
+    semantics as `/work <source>`.
+14. Confirming a Code proposal shall invoke the same product-intent intake
+    semantics as `/code <source>`.
+15. Confirmation shall preserve the original owner message id and proposal id
+    as source context.
+16. Confirmation shall be idempotent for the same proposal. Repeating the
     confirmation must not create duplicate anchors.
-15. The confirmation UI shall make the product target visible without exposing
-    internal classifier or provider terminology.
-16. Candidate suggestions, confirmations, declines, and expirations shall be
-    represented as append-only message-stream system segments. The
-    implementation shall not rely on mutating the original user message as the
-    audit source of truth.
+17. Proposal, confirm, decline, and expire events shall be represented as
+    append-only message-stream system segments. The implementation shall not
+    rely on mutating the original user message as the audit source of truth.
 
-#### Capability and posture behavior
+#### Configuration
 
-17. After confirmation, capability gating shall use the same direct audience
-    Cat and provider capability profile behavior as SPEC-104.
-18. Strong direct Cats may enter the same Work Item anchor and chat-only
-    Concierge path as slash-mode intake.
-19. Weak or unknown direct Cats shall remain human-gated and shall not
-    autonomously create Work Items, Tasks, Runs, or Code execution.
-20. The platform shall not infer Cat strength from the implicit classifier.
-    Product intent and capability are separate decisions.
-21. Confirmed implicit Work/Code intent shall not introduce new product modes
-    beyond SPEC-104 posture values.
+18. Deployment config shall provide
+    `CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE=off|cat_tool|heuristic_prefilter`.
+19. `off` shall disable no-slash product suggestions while leaving explicit
+    slash commands available.
+20. `cat_tool` shall expose proposal tools to eligible strong direct Cats.
+21. `heuristic_prefilter` may temporarily enable the previous deterministic
+    detector as an experimental fallback or prefilter. It shall not be the
+    default mode.
+22. Until the Cat proposal tool path ships, the deployment default shall be
+    `off`. After that path ships, the deployment default may become `cat_tool`,
+    but it shall not default to `heuristic_prefilter`.
+23. Owner settings shall provide a user-facing "Suggest Work/Code from chat"
+    control. The deployment gate can force the feature off even if the owner
+    setting is on.
 
 #### Audit and metadata
 
-22. Candidate detection shall write auditable metadata that records the original
-    message id, source transport, candidate target, confidence/reason signal,
-    and candidate status.
-23. Confirmation metadata shall link the confirmation event back to the
-    original candidate and message id.
-24. Work Items created from confirmed implicit intent shall preserve the
-    original message source context in the same durable fields used by SPEC-104,
-    with an additional metadata marker identifying the source as implicit.
-25. The original user transcript shall remain the user's ordinary text. The
+24. Proposal metadata shall record the original message id, channel id,
+    conversation id, transport, proposing Cat id, target product, rationale,
+    created timestamp, expiry timestamp, and status.
+25. Confirmation metadata shall link the confirmation event back to the
+    original proposal and owner message id.
+26. Work Items created from confirmed proposals shall preserve the original
+    message and proposal context in the same durable source fields used by
+    SPEC-104, with an additional marker identifying the source as a Cat-authored
+    proposal.
+27. The original user transcript shall remain the user's ordinary text. The
     platform shall not rewrite it as if the user typed a slash command.
-26. If a later projection needs a slash-equivalent command, it shall be derived
+28. If a later projection needs a slash-equivalent command, it shall be derived
     metadata, not replacement transcript text.
-27. Confirmed implicit Work/Code shall synthesize product-intent command
-    metadata for routing, with `argumentText` set to the trimmed original owner
-    message body and `productIntentArgumentProvided: true`.
-28. Confirmed implicit Work/Code shall set `rawCommandToken` to the fixed
-    non-slash sentinel `(implicit-confirmation)`. The implementation shall not
-    widen `ProductIntentCommandMetadata.rawCommandToken` to nullable for this
-    MVP, and shall not set it to a fake slash token such as `/work` or `/code`.
-29. Confirmed implicit Work/Code command metadata shall carry
-    `implicitConfirmed: true`, `originalCandidateId`, and `originalMessageId`
-    or equivalent additive fields so downstream readers can distinguish it from
-    owner-typed slash commands.
-30. The SPEC-104 empty-argument marker path does not apply to confirmed
-    implicit Work/Code. The ordinary message itself is the argument.
-
-#### Anti-nag and false-positive controls
-
-31. The platform shall avoid repeatedly suggesting Work/Code conversion for the
-    same message or same unresolved candidate.
-32. The platform shall provide a cooldown or equivalent suppression mechanism
-    for repeated false positives in the same lane.
-33. A declined candidate shall not be immediately re-suggested unless the owner
-    sends a materially new message.
-34. Tests shall cover obvious false positives such as greetings, short casual
-    replies, and ordinary direct questions.
 
 ### Non-Functional Requirements
 
 - **Safety**: no durable product action occurs without explicit owner
   confirmation.
-- **Auditability**: confirmed implicit intent can be traced back to the
-  original owner message and candidate event.
-- **Transport parity**: Web and Telegram use the same detection contract and
-  confirmation semantics after ingress.
-- **Layering**: Chat owns detection and confirmation; SPEC-104 owns the
-  confirmed intake path; Work/Code own durable records and execution.
-- **Localization**: visible suggestion, confirmation, decline, and human-gate
-  copy shall come from the shared i18n catalog.
-- **Cost**: detector v1 is deterministic and local. Any future provider-backed
-  detector must be opt-in or guarded by a per-lane budget/cooldown before it can
-  run on ordinary chat traffic.
+- **Auditability**: confirmed proposals can be traced back to the owner message,
+  proposing Cat, and proposal event.
+- **Transport parity**: Web and Telegram use the same proposal and confirmation
+  semantics after ingress.
+- **Layering**: Cats own natural-language semantic proposals; Chat owns
+  proposal persistence and confirmation; SPEC-104 owns confirmed intake; Work
+  and Code own durable records and execution.
+- **Localization**: visible proposal, confirmation, decline, and human-gate copy
+  shall come from the shared i18n catalog.
+- **Cost**: no hidden classifier call shall run for every ordinary chat message
+  by default.
 
 ## Design Overview
 
 ```text
 ordinary direct message
-  -> implicit product-intent detector
-      none -> ordinary direct chat dispatch
-      work/code -> ordinary direct chat dispatch still proceeds
-                   write candidate system segment and show confirmation
+  -> ordinary direct Cat dispatch
+      no proposal tool call -> ordinary chat only
+      proposal tool call -> append proposal system segment
   -> owner confirms
-      work -> SPEC-104 equivalent: /work <original message>
-      code -> SPEC-104 equivalent: /code <original message>
+      work -> SPEC-104 equivalent: /work <source>
+      code -> SPEC-104 equivalent: /code <source>
   -> SPEC-104 direct audience capability gating
       strong_agent -> draft anchor + chat-only Concierge reply
       weak_worker/unknown -> human gate
 ```
 
-### Detector v1 Baseline
+### Proposal Tool Contract
 
-Detector v1 is a conservative deterministic heuristic. It is intentionally
-allowed to miss marginal Work/Code requests because the owner can still type the
-explicit slash command from SPEC-104. It is not allowed to create costly false
-positives on casual direct chat.
+The implementation may choose exact provider-facing tool names, but the
+semantic contract should be one of:
 
-The baseline detector:
+- one tool: `proposeProductIntake`
+- two narrow tools: `proposeWorkIntake` and `proposeCodeIntake`
 
-- normalizes whitespace and case, and ignores recognized slash commands before
-  matching
-- returns `none` for greetings, one-word replies, pure social chat, and short
-  questions without action cues
-- requires at least one owner-action cue such as "please", "help me",
-  "can you", "fix", "build", "write", "implement", "debug", "plan", "draft",
-  "summarize", "請", "幫我", or "麻煩"
-- requires at least one product cue:
-  - Code cue examples: "code", "test", "parser", "bug", "repo", "commit",
-    "PR", "component", "API", "refactor", "修 code", "測試", "程式"
-  - Work cue examples: "work item", "task", "plan", "milestone", "scope",
-    "schedule", "requirement", "deliverable", "需求", "任務", "排程", "規劃"
-- prefers `code` over `work` when code-specific cues are present
-- returns `high` when the message has an action cue plus two product cues or
-  one product cue with an explicit implementation/fix verb
-- returns `medium` when the message has an action cue plus one product cue and
-  is long enough to be actionable
-- treats `low` and ambiguous results as `none` in v1
-
-The cue lists above are illustrative, not exhaustive. The canonical v1 cue
-list lives in the detector implementation and its tests. SPEC-105 defines the
-contract and safety posture; it does not freeze every keyword.
-
-Provider-backed or hybrid classifiers are future work. They need a separate
-budget, opt-out, and observability decision before they can run on ordinary
-direct-chat traffic.
-
-### Candidate-Stage Cat Behavior
-
-Candidate detection does not decide whether the Cat should answer. In v1, the
-ordinary direct-chat dispatch proceeds normally, and the product suggestion is
-an additional system/UI sidecar attached to the same owner turn. This keeps the
-Cat responsive and avoids a separate detector LLM call. If the owner confirms,
-the SPEC-104 intake runs on a later confirmation event and may produce the
-Concierge reply for Work/Code intake.
-
-### Candidate Metadata
-
-Candidate suggestions are append-only system segments. The original user
-message may carry a lightweight reference, but the system segment is the audit
-source of truth. The implementation may choose the exact TypeScript name, but
-the durable shape should preserve these semantics:
+The single-tool shape is preferred unless provider tooling strongly benefits
+from separate names:
 
 ```ts
-interface ImplicitProductIntentCandidateMetadata {
-  version: 1;
-  candidateId: string;
-  event: 'suggested';
+interface ProposeProductIntakeInput {
+  targetProduct: 'work' | 'code';
+  sourceMessageId?: string;
+  title?: string;
+  summary: string;
+  rationale: string;
+  suggestedNextQuestion?: string;
+}
+```
+
+Validation rules:
+
+- `targetProduct` must be `work` or `code`.
+- `summary` and `rationale` must be non-empty.
+- `sourceMessageId`, when present, must belong to the same direct lane.
+- The platform may default `sourceMessageId` to the current owner turn when the
+  tool call happens during that turn.
+- The tool result is a proposal segment, not a Work Item.
+
+### Proposal Metadata
+
+Proposal suggestions are append-only system segments. The original user message
+may carry a lightweight reference, but the proposal system segment is the audit
+source of truth.
+
+```ts
+interface CatProductIntentProposalMetadata {
+  version: 2;
+  proposalId: string;
+  event: 'proposed';
   source: {
     messageId: string;
     channelId: string;
     conversationId: string;
     transport: 'web' | 'telegram';
   };
-  candidate: {
-    targetProduct: 'work' | 'code';
-    confidence: 'low' | 'medium' | 'high';
-    reasonCode: string;
+  proposedBy: {
+    catId: string;
+    actorId: string;
+    capabilityProfileKind: 'strong_agent';
   };
+  proposal: {
+    targetProduct: 'work' | 'code';
+    title?: string;
+    summary: string;
+    rationale: string;
+    suggestedNextQuestion?: string;
+  };
+  createdAt: string;
   expiresAt: string;
 }
 ```
 
-`candidateId` is the idempotency key and is derived from the original message
-id, target product, and metadata version. A practical v1 format is
-`implicit-product-intent:v1:<messageId>:<targetProduct>`.
-Candidate-write v1 does not append a second suggestion for the same `messageId`
-and target product; edits or resends must produce a new message id. If the same
-`candidateId` is observed again at the persistence boundary, the candidate is
-treated as an idempotent duplicate, not a new suggestion.
-
-The candidate metadata is stored on the system segment under
-`metadata.implicitProductIntentCandidate`, parallel to SPEC-104's
-`metadata.directSlashMode`. Confirmation, decline, and expire transitions are
-stored on later system segments under `metadata.implicitProductIntentTransition`
-so renderers (Web, Telegram, mobile) can identify implicit-intent segments
-without conflating them with SPEC-104's slash-mode metadata or its weak-gate
-`ChatMessage.choices`.
+`proposalId` is the idempotency key. A practical v2 format is
+`cat-product-intent:v2:<messageId>:<catId>:<targetProduct>`.
 
 ### Confirmation Transcript Shape
 
 Confirm, decline, and expire transitions are also append-only system segments.
-They do not mutate the candidate system segment as the audit source.
+They do not mutate the proposal system segment as the audit source.
 
 ```ts
-interface ImplicitProductIntentCandidateTransitionMetadata {
-  version: 1;
-  candidateId: string;
+interface CatProductIntentProposalTransitionMetadata {
+  version: 2;
+  proposalId: string;
   event: 'confirmed' | 'declined' | 'expired';
   sourceMessageId: string;
+  proposedByCatId: string;
   targetProduct: 'work' | 'code';
   idempotencyKey: string;
   confirmedCommand?: {
-    sourceKind: 'implicit_confirmation';
+    sourceKind: 'cat_product_intent_proposal';
     command: 'work' | 'code';
     argumentText: string;
-    rawCommandToken: '(implicit-confirmation)';
+    rawCommandToken: '(cat-proposal-confirmation)';
     botSuffix: null;
-    implicitConfirmed: true;
-    originalCandidateId: string;
+    proposalConfirmed: true;
+    originalProposalId: string;
     originalMessageId: string;
   };
 }
 ```
 
-Repeating confirmation for the same `candidateId` is a no-op: it must not write
-a second Work Item anchor, and it may return or surface the already-confirmed
-state. Decline after confirmation is ignored or rejected as stale. Confirm after
-decline requires a new candidate from a materially new owner message.
+Repeating confirmation for the same `proposalId` is a no-op: it must not write a
+second Work Item anchor. Decline after confirmation is ignored or rejected as
+stale. Confirm after decline requires a new proposal.
 
 ### Confirmation Semantics
 
 Confirmation is a bridge into SPEC-104, not a parallel intake implementation.
-The confirmed command name and `argumentText` are derived from the original
-message, while the transcript keeps the original ordinary text. Tests should
-assert that confirmed implicit Work/Code follows the same durable anchor,
-capability, active-anchor, and human-gate behavior as explicit slash commands.
+The confirmed command name and `argumentText` are derived from the source owner
+message and Cat proposal. The transcript keeps the original ordinary text.
 
-For routing, confirmed implicit intent synthesizes command metadata with:
+For routing, confirmed Cat proposals synthesize command metadata with:
 
 - `command = 'work'` or `'code'`
 - `posture = command`
 - `targetProduct = command`
-- `argumentText = originalMessage.body.trim()`
+- `argumentText = proposal.summary` or the source owner message body when the
+  proposal did not provide a stronger summary
 - `productIntentArgumentProvided = true`
-- `rawCommandToken = '(implicit-confirmation)'`
+- `rawCommandToken = '(cat-proposal-confirmation)'`
 - `botSuffix = null`
-- `implicitConfirmed = true`
-- `originalCandidateId` and `originalMessageId`
+- `proposalConfirmed = true`
+- `originalProposalId` and `originalMessageId`
 
 The implementation shall not create a fake transcript message containing
 `/work ...` or `/code ...`.
 
-### Confirmation UX Baseline
+### Heuristic Detector Status
 
-Web v1 uses inline message choices on the candidate system segment. Telegram v1
-uses an inline keyboard with compact `callback_data` carrying the source message
-id, target product, and requested transition (`confirm` or `decline`). The
-bridge resolves the full `candidateId` from the candidate system segment
-metadata because Telegram callback data is limited to 64 bytes and the full
-v1 `candidateId` may exceed that limit. Reply keyboards and free-form text
-confirmation are out of v1 because they conflict with multiple outstanding
-candidates in the same chat.
+The deterministic detector from PLAN-093 is superseded as the default
+natural-language path. During migration it may remain behind
+`CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE=heuristic_prefilter`, but:
 
-Web reuses the existing `ChatMessage.choices` schema from SPEC-104's human-gate
-UI. Candidate system segments carry choices with `confirm_work` or
-`confirm_code` plus `decline` option ids; they do not introduce a second inline
-choice widget contract.
-
-Mobile does not get an implicit-intent UI in this MVP. The current mobile
-message projection filters system messages out before rendering, so candidate
-and transition system segments are not exposed as mobile buttons and cannot be
-confirmed from mobile. A later mobile slice may add read-only system segment
-rendering and desktop-only alert interception keyed by
-`metadata.implicitProductIntentCandidate` /
-`metadata.implicitProductIntentTransition`; that behavior is explicitly
-deferred from v1 rather than implied by shared `ChatMessage.choices`.
-
-### Suppression Model v1
-
-Candidate suppression is lane-local:
-
-- a suggested candidate expires after 15 minutes if the owner does not confirm
-  or decline it
-- switching the lane to explicit `/chat` expires outstanding suggested
-  candidates
-- creating a new candidate expires any other unresolved candidate in the same
-  lane before writing the new suggestion
-- declining any Work/Code candidate starts a five-minute detector cooldown in
-  that lane
-- during cooldown, detector hits return `none` instead of creating another
-  suggestion
-- "materially new" means a different normalized owner message after at least
-  one later owner turn; v1 does not need semantic similarity scoring
-
-## Dependencies
-
-- [ADR-101: Use the Direct-Audience Cat for Slash-Mode Work Intake](../decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md)
-- [SPEC-104: Direct Chat Slash-Mode Work Intake](./SPEC-104-direct-chat-slash-mode-work-intake.md)
-- [SPEC-082: Cats Work Agent Supervision and Tool Boundary](./SPEC-082-cats-work-agent-supervision-and-tool-boundary.md)
-- [SPEC-038: Telegram Bot Commands and Transport Control Surface](./SPEC-038-telegram-bot-commands-and-transport-control-surface.md)
+- it must be off unless explicitly selected;
+- it must still require owner confirmation;
+- it must not create durable product records;
+- it must be removable without changing SPEC-104;
+- new language support must not be implemented by expanding keyword lists as
+  the primary strategy.
 
 ## Acceptance Criteria
 
-- Ordinary Web direct-chat text can produce a Work/Code candidate suggestion
-  without changing posture.
-- Ordinary Telegram direct-chat text can produce the same candidate suggestion
-  through the shared detector contract.
+- Explicit `/chat`, `/work`, and `/code` continue to work regardless of natural
+  suggestion settings.
+- `/chat` inside Work context behaves as ordinary conversational posture and
+  does not close established Work Items.
+- Strong direct Cats can create Work/Code proposal segments only through the
+  proposal tool and only when the feature is enabled.
+- Weak/unknown Cats never receive the proposal tool.
 - No Work Item, Task, Run, Code execution, or active-anchor state is created
   before owner confirmation.
-- Candidate, confirm, decline, and expire transitions are written as
-  append-only system segments with stable candidate idempotency keys.
-- Confirming a Work candidate enters the same behavior as `/work <original
-  message>`.
-- Confirming a Code candidate enters the same behavior as `/code <original
-  message>`.
-- Confirmed implicit command metadata uses the original message body as
-  `argumentText`, sets `productIntentArgumentProvided: true`, and does not fake
-  a slash `rawCommandToken`; it uses `(implicit-confirmation)`.
-- Declining or ignoring a candidate leaves the lane as ordinary chat.
-- Weak/unknown direct Cats remain human-gated after confirmation.
-- Non-direct channels do not run implicit detection in this MVP.
-- Candidate and confirmation metadata preserve original message source context.
-- Candidate writes treat repeated detection for the same `messageId` and target
-  product as an idempotent duplicate; edits/resends require a new message id.
-- Confirming an expired candidate appends an `expired` transition and does not
-  create a Work Item.
-- False-positive tests prove casual chat does not nag the owner.
-- No retired route/control labels are introduced.
-
-## Implementation Notes
-
-- Detector v1 is deterministic and local. It does not call a provider-backed
-  classifier.
-- Web confirmation uses the existing `ChatMessage.choices` schema.
-- Telegram confirmation uses inline keyboards. Because Telegram
-  `callback_data` is limited to 64 bytes, callbacks carry the compact form
-  `ipi:v1:<sourceMessageId>:<w|c>:<confirm|decline>` and resolve the full
-  `candidateId` from transcript metadata.
-- Telegram callback handling answers the callback query before routing the
-  choice response so Telegram clients do not keep the inline button in a
-  loading state.
-- Candidate write idempotency is enforced at the persistence boundary by
-  checking for an existing candidate segment with the same `candidateId`.
-- Direct-lane detection follows SPEC-104's effective direct-lane check:
-  `channelKind === 'direct_message'` or `roomRouting.mode === 'direct_message'`.
-
-## Verification
-
-- `npx tsx --test --test-isolation=none tests\chat-implicit-product-intent.test.ts tests\telegram-implicit-product-intent-candidates.test.ts tests\chat-product-intent-command-parser.test.tsx tests\chat-product-intent-dispatch.test.tsx tests\chat-direct-slash-mode-follow-up.test.tsx tests\chat-direct-slash-mode-work-projection.test.tsx tests\chat-direct-slash-mode-supervised-boundary.test.tsx`
-  passed on 2026-05-06 with 61 tests.
-- `npx tsc --noEmit -p tsconfig.server.json` passed on 2026-05-06.
-- `npx tsc --noEmit -p tsconfig.json` passed on 2026-05-06.
+- Confirming a Work proposal enters the same behavior as `/work <source>`.
+- Confirming a Code proposal enters the same behavior as `/code <source>`.
+- Declining or ignoring a proposal leaves the lane as ordinary chat.
+- Proposal and confirmation metadata preserve original owner message context
+  and proposing Cat context.
+- The old heuristic detector is disabled unless explicitly selected by
+  deployment config.
+- UI-visible proposal copy is localized; semantic classification is not
+  localized through platform keyword lists.
 
 ## Open Questions
 
-- [ ] Should candidate history be visible in Work/Code projections, or only in
-      Chat transcript metadata?
-- [ ] Should a future provider-backed detector exist behind an explicit opt-in
-      budget, or should natural-language intent remain deterministic only?
-- [ ] Should a future v2 suppression model use semantic similarity or embedding
-      distance to decide whether a later owner message is materially new?
+- [ ] Should the owner setting default to off for the first proposal-tool
+      release, or can it default on when the deployment mode is `cat_tool`?
+- [ ] Should providers without tool-call support get a structured-output bridge
+      or no natural-language proposal capability?
+- [ ] Should confirmed proposal `argumentText` prefer the Cat summary or the
+      original owner message body when both exist?
+- [ ] Should proposal history appear in Work/Code projections, or only in Chat
+      transcript metadata?
 
 ## References
 
+- [ADR-101: Use the Direct-Audience Cat for Slash-Mode Work Intake](../decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md)
+- [ADR-102: Use Cat-Authored Product Intent Proposals for Natural-Language Intake](../decisions/102-use-cat-authored-product-intent-proposals.md)
+- [PLAN-094: Cat-Proposed Product Intent Rollout](../plans/PLAN-094-cat-proposed-product-intent-rollout.md)
 - [PLAN-093: Direct Chat Implicit Product Intent Rollout](../plans/PLAN-093-direct-chat-implicit-product-intent-rollout.md)
-- [PLAN-092: Direct Chat Slash-Mode Work Intake Rollout](../plans/PLAN-092-direct-chat-slash-mode-work-intake-rollout.md)
+- [SPEC-104: Direct Chat Slash-Mode Work Intake](./SPEC-104-direct-chat-slash-mode-work-intake.md)
+- [SPEC-082: Cats Work Agent Supervision and Tool Boundary](./SPEC-082-cats-work-agent-supervision-and-tool-boundary.md)
 
 ---
 
 *Created: 2026-05-06*
+*Updated: 2026-05-06*
 *Author: Codex*
-*Related Plan: [PLAN-093](../plans/PLAN-093-direct-chat-implicit-product-intent-rollout.md)*
+*Related Plan: [PLAN-094](../plans/PLAN-094-cat-proposed-product-intent-rollout.md)*

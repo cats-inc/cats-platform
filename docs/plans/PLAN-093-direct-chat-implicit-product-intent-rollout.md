@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Historical / Superseded by [PLAN-094](./PLAN-094-cat-proposed-product-intent-rollout.md) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -25,6 +25,12 @@
 - [SPEC-082: Cats Work Agent Supervision and Tool Boundary](../specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md)
 
 ## Overview
+
+> Historical note: PLAN-093 implemented a deterministic platform heuristic for
+> no-slash Work/Code suggestions. ADR-102 supersedes that default strategy.
+> Future natural-language product intent work continues in PLAN-094, where
+> strong Cats create proposal-tool requests and the platform only owns
+> confirmation and durable state.
 
 This plan intentionally builds on the explicit command MVP instead of creating
 a second intake system. The detector may notice that ordinary direct-chat text
@@ -262,6 +268,7 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Superseded by PLAN-094: natural-language product intent will move from platform heuristic detection to Cat-authored proposal tools gated by deployment config, owner settings, and strong-Cat capability. |
 | 2026-05-06 | Progress log retraction: earlier entries claiming mobile read-only rendering with desktop-only alert behavior landed are retracted. Implementation validation showed mobile currently filters system messages out, so implicit-intent mobile UI is deferred and tracked in the Follow-up Backlog. |
 | 2026-05-06 | Follow-up review close-out landed: stale candidate confirmation now expires instead of creating work, new unresolved candidates expire prior lane candidates, detector cue overlap was reduced, Telegram callback transcript text no longer adds English Q/A prefixes, effective direct-lane detection now follows SPEC-104's roomRouting fallback, and mobile scope is documented as deferred because mobile filters system messages out today. |
 | 2026-05-06 | PLAN-093 close-out landed: targeted implicit-intent and SPEC-104 slash-mode regression suite passed with 57 tests, server/client typecheck passed, SPEC-105 now records implementation differences and verification notes, and Telegram callback handling now answers inline keyboard callback queries to clear client-side loading state. |
