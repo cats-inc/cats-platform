@@ -20,6 +20,7 @@ import {
   type ChannelSendState,
   useChannelMessages,
 } from './hooks/useChannelMessages';
+import { useDraftChannel } from './hooks/useDraftChannel';
 import { MessageBody, type ResolveAttachmentUrl } from './MessageBody';
 import { MessageBubble } from './MessageBubble';
 import {
@@ -32,8 +33,27 @@ import { colors, radii, spacing, typography } from './theme';
 
 export type ChatViewProductMode = 'chat' | 'code' | 'work';
 
+/**
+ * What conversation surface this `ChatView` instance is showing:
+ *
+ *   - `channel`: a real channel that already exists on the desktop;
+ *     the view fetches messages and subscribes to SSE updates.
+ *   - `draft`: a not-yet-created channel that mirrors the web
+ *     `<NewChatDraft>` lifecycle. No fetching, empty messages list,
+ *     composer enabled. The first send creates the channel +
+ *     persists the message and navigates the user to the real route.
+ *
+ * Splitting the two through a discriminated union keeps the channel
+ * fetch path entirely off the draft surface — there is no
+ * `channelId === 'new'` magic string and no chance of a draft hook
+ * leaking into a real conversation.
+ */
+export type ChatViewTarget =
+  | { kind: 'channel'; channelId: string }
+  | { kind: 'draft'; entryActionId: string };
+
 export interface ChatViewProps {
-  channelId: string;
+  target: ChatViewTarget;
   productMode: ChatViewProductMode;
 }
 
@@ -46,14 +66,90 @@ const STICKY_BOTTOM_THRESHOLD_PX = 80;
 /**
  * Shared mobile ChatView. PLAN-084 Phase 4b wires the FlatList of
  * messages to the live `/api/channels/{id}/messages` endpoint via
- * `useChannelMessages`. Phase 4c will replace the no-op composer with
- * the real send path. Phase 5 adds product-mode side panels (bottom
- * sheet / fullscreen modal).
+ * `useChannelMessages`. Phase 4c replaced the no-op composer with the
+ * real send path. Draft mode (mirroring web `<NewChatDraft>`) lands
+ * via the `target.kind === 'draft'` branch — see `useDraftChannel`.
+ * Phase 5 adds product-mode side panels (bottom sheet / fullscreen
+ * modal).
  */
-export function ChatView({ channelId, productMode }: ChatViewProps) {
-  const { state, refetch, send, sendState } = useChannelMessages(channelId);
-  const copy = getMobileChatCopy(resolveDefaultMobileLocale());
+export function ChatView({ target, productMode }: ChatViewProps) {
+  // Pick the inner host component based on `target.kind` so each only
+  // mounts the hook it needs — `useChannelMessages` fetches against
+  // `/api/channels/{id}/messages` on mount, so we cannot call it with
+  // an empty channelId on the draft surface. The two hosts share
+  // rendering through `ChatViewBody` below.
+  if (target.kind === 'draft') {
+    return (
+      <DraftChatViewHost
+        productMode={productMode}
+        entryActionId={target.entryActionId}
+      />
+    );
+  }
+  return (
+    <ChannelChatViewHost
+      productMode={productMode}
+      channelId={target.channelId}
+    />
+  );
+}
 
+interface ChannelChatViewHostProps {
+  productMode: ChatViewProductMode;
+  channelId: string;
+}
+
+function ChannelChatViewHost({ productMode, channelId }: ChannelChatViewHostProps) {
+  const { state, refetch, send, sendState } = useChannelMessages(channelId);
+  return (
+    <ChatViewBody
+      state={state}
+      productMode={productMode}
+      conversationKey={channelId}
+      refetch={refetch}
+      send={send}
+      sendState={sendState}
+    />
+  );
+}
+
+interface DraftChatViewHostProps {
+  productMode: ChatViewProductMode;
+  entryActionId: string;
+}
+
+function DraftChatViewHost({ productMode, entryActionId }: DraftChatViewHostProps) {
+  const { state, refetch, send, sendState } = useDraftChannel(productMode, entryActionId);
+  return (
+    <ChatViewBody
+      state={state}
+      productMode={productMode}
+      conversationKey={`draft:${entryActionId}`}
+      refetch={refetch}
+      send={send}
+      sendState={sendState}
+    />
+  );
+}
+
+interface ChatViewBodyProps {
+  state: ChannelMessagesState;
+  productMode: ChatViewProductMode;
+  conversationKey: string;
+  refetch: () => void;
+  send: (body: string) => Promise<void>;
+  sendState: ChannelSendState;
+}
+
+function ChatViewBody({
+  state,
+  productMode,
+  conversationKey,
+  refetch,
+  send,
+  sendState,
+}: ChatViewBodyProps) {
+  const copy = getMobileChatCopy(resolveDefaultMobileLocale());
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -62,7 +158,15 @@ export function ChatView({ channelId, productMode }: ChatViewProps) {
         Platform.OS === 'ios' ? KEYBOARD_VERTICAL_OFFSET_IOS : 0
       }
     >
-      {renderBody({ state, productMode, channelId, refetch, send, sendState, copy })}
+      {renderBody({
+        state,
+        productMode,
+        conversationKey,
+        refetch,
+        send,
+        sendState,
+        copy,
+      })}
     </KeyboardAvoidingView>
   );
 }
@@ -70,7 +174,7 @@ export function ChatView({ channelId, productMode }: ChatViewProps) {
 interface RenderBodyArgs {
   state: ChannelMessagesState;
   productMode: ChatViewProductMode;
-  channelId: string;
+  conversationKey: string;
   refetch: () => void;
   send: (body: string) => Promise<void>;
   sendState: ChannelSendState;
@@ -80,7 +184,7 @@ interface RenderBodyArgs {
 function renderBody({
   state,
   productMode,
-  channelId,
+  conversationKey,
   refetch,
   send,
   sendState,
@@ -114,7 +218,7 @@ function renderBody({
         <LiveConversation
           state={state}
           productMode={productMode}
-          channelId={channelId}
+          conversationKey={conversationKey}
           refetch={refetch}
           send={send}
           sendState={sendState}
@@ -127,7 +231,7 @@ function renderBody({
 interface LiveConversationProps {
   state: Extract<ChannelMessagesState, { kind: 'data' }>;
   productMode: ChatViewProductMode;
-  channelId: string;
+  conversationKey: string;
   refetch: () => void;
   send: (body: string) => Promise<void>;
   sendState: ChannelSendState;
@@ -137,7 +241,7 @@ interface LiveConversationProps {
 function LiveConversation({
   state,
   productMode,
-  channelId,
+  conversationKey,
   refetch,
   send,
   sendState,
@@ -150,10 +254,10 @@ function LiveConversation({
   const sending = sendState.kind === 'sending';
   const canSubmit = draft.trim().length > 0 && !sending;
 
-  // Re-arm sticky-bottom whenever the channel switches.
+  // Re-arm sticky-bottom whenever the channel (or draft) switches.
   useEffect(() => {
     isNearBottomRef.current = true;
-  }, [channelId]);
+  }, [conversationKey]);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
@@ -203,7 +307,7 @@ function LiveConversation({
         }
         renderItem={({ item }) => (
           <MessageBubbleItem
-            channelId={channelId}
+            conversationKey={conversationKey}
             message={item}
             resolveAttachmentUrl={state.resolveAttachmentUrl}
           />
@@ -261,7 +365,7 @@ function LiveConversation({
 }
 
 interface MessageBubbleItemProps {
-  channelId: string;
+  conversationKey: string;
   message: MobileRenderedMessage;
   resolveAttachmentUrl: ResolveAttachmentUrl;
 }
@@ -271,7 +375,7 @@ function messageKey(message: MobileRenderedMessage): string {
 }
 
 function MessageBubbleItem({
-  channelId,
+  conversationKey,
   message,
   resolveAttachmentUrl,
 }: MessageBubbleItemProps) {
@@ -289,7 +393,7 @@ function MessageBubbleItem({
         <MessageBody
           segments={message.segments}
           attachments={message.attachments}
-          channelId={channelId}
+          channelId={conversationKey}
           resolveAttachmentUrl={resolveAttachmentUrl}
         />
       </MessageBubble>

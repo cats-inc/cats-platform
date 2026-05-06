@@ -1,43 +1,35 @@
 import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, SafeAreaView, StyleSheet } from 'react-native';
 
 import {
   getMobileDesktopOnlyAlertCopy,
   getWorkSidebarConfig,
 } from '../../../src/api/fixtures/productSidebar';
-import { useCreateChannel } from '../../../src/renderer/hooks/useCreateChannel';
 import { useProductSidebarData } from '../../../src/renderer/hooks/useProductSidebarData';
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
-import { colors, spacing, typography } from '../../../src/renderer/theme';
+import { colors } from '../../../src/renderer/theme';
 import {
-  getMobileChannelTitle,
   getMobileTabsCopy,
   resolveDefaultMobileLocale,
 } from '../../../../src/mobile/index.js';
 
+/**
+ * Work sidebar. See `chat/index.tsx` for the draft-route rationale —
+ * tapping a primary action chip navigates to
+ * `/(tabs)/work/new?entryKind=…` instead of POSTing `/api/channels`.
+ * `+ Parallel Work` is desktop-only on mobile (mirrors
+ * `+ Parallel Chat`), routed through `getMobileDesktopOnlyAlertCopy`.
+ */
 export default function WorkSidebarScreen() {
   const router = useRouter();
-  const createChannel = useCreateChannel();
   const { state } = useProductSidebarData('work');
   const locale = resolveDefaultMobileLocale();
   const copy = getMobileTabsCopy(locale);
   const sidebarConfig = getWorkSidebarConfig(locale);
 
   const handlePrimaryAction = useCallback(
-    async (actionId: string) => {
-      // The mobile create contract supports default | group | direct
-      // only — `+ Parallel Work` has no create path. Route through the
-      // shared desktop-only-alert helper so the predicate stays in
-      // lockstep with `chat/index.tsx`'s parallel-chat intercept.
+    (actionId: string) => {
       const desktopOnly = getMobileDesktopOnlyAlertCopy('work', actionId, copy);
       if (desktopOnly) {
         Alert.alert(
@@ -47,19 +39,11 @@ export default function WorkSidebarScreen() {
         );
         return;
       }
-      try {
-        const channelId = await createChannel.create({
-          title: getMobileChannelTitle(copy, 'work', actionId),
-          topic: '',
-          originSurface: 'work',
-          entryKind: actionId === 'team' ? 'group' : 'default',
-        });
-        router.push(`/(tabs)/work/${channelId}`);
-      } catch {
-        // hook state already carries the error; banner renders.
-      }
+      router.push(
+        `/(tabs)/work/new?entryKind=${encodeURIComponent(actionId)}`,
+      );
     },
-    [copy, createChannel, router],
+    [copy, router],
   );
 
   const handleSelectRecent = useCallback(
@@ -71,33 +55,14 @@ export default function WorkSidebarScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {createChannel.state.kind === 'error' ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText} numberOfLines={2}>
-            {copy.createChannelError(createChannel.state.error.message)}
-          </Text>
-          <Pressable onPress={createChannel.reset}>
-            <Text style={styles.errorBannerDismiss}>{copy.dismissAction}</Text>
-          </Pressable>
-        </View>
-      ) : null}
-      {createChannel.state.kind === 'creating' ? (
-        <View style={styles.creatingOverlay}>
-          <ActivityIndicator color={colors.accent.primary} />
-          <Text style={styles.creatingLabel}>{copy.creatingChannelLabel}</Text>
-        </View>
-      ) : (
-        <TrimmedProductSidebar
-          config={sidebarConfig}
-          data={{
-            recents: state.kind === 'data' ? state.recents : [],
-          }}
-          onPrimaryAction={(actionId) => {
-            void handlePrimaryAction(actionId);
-          }}
-          onSelectRecent={handleSelectRecent}
-        />
-      )}
+      <TrimmedProductSidebar
+        config={sidebarConfig}
+        data={{
+          recents: state.kind === 'data' ? state.recents : [],
+        }}
+        onPrimaryAction={handlePrimaryAction}
+        onSelectRecent={handleSelectRecent}
+      />
     </SafeAreaView>
   );
 }
@@ -106,36 +71,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg.canvas,
-  },
-  creatingOverlay: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  creatingLabel: {
-    color: colors.fg.secondary,
-    ...typography.body,
-  },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.accent.soft,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  errorBannerText: {
-    flex: 1,
-    color: colors.accent.danger,
-    ...typography.caption,
-  },
-  errorBannerDismiss: {
-    color: colors.accent.primary,
-    ...typography.label,
-    fontWeight: '600',
   },
 });

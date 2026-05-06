@@ -112,6 +112,45 @@ export type MobileCatsDirectorySectionKey = 'cats' | 'clowders' | 'catteries';
  * Work`. Returning `null` is reserved for "this section's create flow
  * is wired on mobile" — currently never.
  */
+/**
+ * Map a sidebar primary-action chip id to the API `entryKind` value the
+ * desktop expects when creating a chat channel via `POST /api/channels`.
+ * Mirrors the inline ternaries that previously lived in each tab's
+ * `index.tsx` so the same mapping can be reused from
+ * `useDraftChannel` (the draft-mode send path) and so a regression
+ * gets caught by a single unit test.
+ *
+ * Returns `null` when the action has no create path (i.e. it should
+ * have been intercepted by `getMobileDesktopOnlyAlertCopy` first).
+ *
+ * Mapping:
+ *   chat / 'group' → 'group'
+ *   code / 'team'  → 'group'
+ *   work / 'team'  → 'group'
+ *   everything else (new / peer / parallel) → 'default'
+ *   chat / 'parallel' and work / 'parallel' → null (desktop-only)
+ */
+export function resolveMobileDraftApiEntryKind(
+  product: MobileProductMode,
+  actionId: string,
+): MobileCreateChannelInputEntryKind | null {
+  if (product === 'chat' && actionId === 'parallel') {
+    return null;
+  }
+  if (product === 'work' && actionId === 'parallel') {
+    return null;
+  }
+  if (product === 'chat' && actionId === 'group') {
+    return 'group';
+  }
+  if ((product === 'code' || product === 'work') && actionId === 'team') {
+    return 'group';
+  }
+  return 'default';
+}
+
+type MobileCreateChannelInputEntryKind = 'default' | 'group' | 'direct';
+
 export function getMobileNewEntityDesktopOnlyAlertCopy(
   sectionKey: MobileCatsDirectorySectionKey,
   copy: MobileCatsTabCopy,

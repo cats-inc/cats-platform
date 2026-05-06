@@ -15,6 +15,7 @@ import {
 import {
   getMobileDesktopOnlyAlertCopy,
   getMobileNewEntityDesktopOnlyAlertCopy,
+  resolveMobileDraftApiEntryKind,
 } from '../mobile/src/api/fixtures/productSidebar.ts';
 
 function createPayload(): MobileAppShellPayload {
@@ -286,15 +287,17 @@ test('getMobileNewEntityDesktopOnlyAlertCopy returns desktop-only copy for every
   assert.equal(enCatteries.body, en.newCatteryDesktopOnlyBody);
 });
 
-test('getMobileDesktopOnlyAlertCopy lets non-parallel actions through to createChannel', () => {
+test('getMobileDesktopOnlyAlertCopy lets non-parallel actions through to the draft route', () => {
   const en = getMobileTabsCopy('en');
 
-  // Chat: New / Group go through; only Parallel is desktop-only.
+  // Chat: New / Group go through to the draft route; only Parallel
+  // is desktop-only.
   assert.equal(getMobileDesktopOnlyAlertCopy('chat', 'new', en), null);
   assert.equal(getMobileDesktopOnlyAlertCopy('chat', 'group', en), null);
 
   // Code: nothing is desktop-only today (no Parallel chip, no other
-  // create-time fan-out kinds). All three go through createChannel.
+  // create-time fan-out kinds). All three go through to the draft
+  // route.
   assert.equal(getMobileDesktopOnlyAlertCopy('code', 'new', en), null);
   assert.equal(getMobileDesktopOnlyAlertCopy('code', 'team', en), null);
   assert.equal(getMobileDesktopOnlyAlertCopy('code', 'peer', en), null);
@@ -305,4 +308,40 @@ test('getMobileDesktopOnlyAlertCopy lets non-parallel actions through to createC
   // on Parallel because the entryKind ternary fell through.
   assert.equal(getMobileDesktopOnlyAlertCopy('work', 'new', en), null);
   assert.equal(getMobileDesktopOnlyAlertCopy('work', 'team', en), null);
+});
+
+// `resolveMobileDraftApiEntryKind` is the single source of truth for
+// "given a sidebar primary-action chip id, what `entryKind` should we
+// pass to `POST /api/channels`?". Both `useDraftChannel` (the
+// draft-mode send path that mirrors web's `<NewChatDraft>` lifecycle)
+// and any future entry point that needs to translate a chip id into
+// the create-channel API contract must consume this helper. The two
+// previous in-line ternaries in `chat/index.tsx` and `code/index.tsx`
+// were extracted here so the mapping cannot drift across products.
+test('resolveMobileDraftApiEntryKind maps Group/Team chips onto API entryKind="group"', () => {
+  // Chat: + Group Chat → 'group'.
+  assert.equal(resolveMobileDraftApiEntryKind('chat', 'group'), 'group');
+  // Code: + Team Code → 'group'.
+  assert.equal(resolveMobileDraftApiEntryKind('code', 'team'), 'group');
+  // Work: + Team Work → 'group'.
+  assert.equal(resolveMobileDraftApiEntryKind('work', 'team'), 'group');
+});
+
+test('resolveMobileDraftApiEntryKind maps Parallel chips to null (desktop-only)', () => {
+  // The send path must short-circuit on null and surface the same
+  // desktop-only alert as the sidebar tap. Mapping Parallel to
+  // 'default' would silently create a default channel and re-introduce
+  // the bug pinned by the chat/work parallel-chat tests above.
+  assert.equal(resolveMobileDraftApiEntryKind('chat', 'parallel'), null);
+  assert.equal(resolveMobileDraftApiEntryKind('work', 'parallel'), null);
+});
+
+test('resolveMobileDraftApiEntryKind maps every other chip to "default"', () => {
+  assert.equal(resolveMobileDraftApiEntryKind('chat', 'new'), 'default');
+  assert.equal(resolveMobileDraftApiEntryKind('code', 'new'), 'default');
+  assert.equal(resolveMobileDraftApiEntryKind('code', 'peer'), 'default');
+  assert.equal(resolveMobileDraftApiEntryKind('work', 'new'), 'default');
+  // Unknown ids fall through to 'default' rather than throwing — the
+  // route layer is responsible for input validation, not this mapping.
+  assert.equal(resolveMobileDraftApiEntryKind('chat', 'unknown'), 'default');
 });

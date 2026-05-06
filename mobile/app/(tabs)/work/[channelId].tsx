@@ -17,7 +17,10 @@ export default function ChatViewWorkModeScreen() {
   return (
     <>
       <Stack.Screen options={{ title: copy.tabTitle.work, headerShown: true }} />
-      <ChatView channelId={resolvedChannelId} productMode="work" />
+      <ChatView
+        target={{ kind: 'channel', channelId: resolvedChannelId }}
+        productMode="work"
+      />
     </>
   );
 }
