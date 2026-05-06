@@ -188,7 +188,7 @@ tested independently.
       Work/Code run APIs and supervision boundaries.
 - [x] Task 5.4: Add tests proving direct slash-mode flows do not call runtime
       create/send directly from product code.
-- [ ] Task 5.5: Add read-model/projection tests proving Work/Code surfaces show
+- [x] Task 5.5: Add read-model/projection tests proving Work/Code surfaces show
       Work Items created from direct chat.
 
 **Deliverables**: durable work created from direct chat is visible in both the
@@ -197,8 +197,8 @@ originating lane and the owning product surface.
 ### Phase 6: Verification and documentation close-out
 
 - [x] Task 6.1: Run targeted tests for command parsing, direct capability
-      bridge, strong creation, weak human gate, Code-target anchors, and Work
-      projection.
+      bridge, strong creation, weak human gate, Code-target anchors, and
+      Work/Code projection.
 - [ ] Task 6.2: Add one manual Web direct-lane verification note.
 - [ ] Task 6.3: Add one manual Telegram direct-lane verification note when a
       Telegram dev binding is available.
@@ -327,6 +327,7 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Code projection slice: Code dashboard read-model now exposes code-target Work Item anchors, including draft anchors created from direct `/code` chat before any task/run bridge exists. Source-level projection tests cover both Work and Code visibility. |
 | 2026-05-06 | Final validation slice: targeted direct slash-mode suite passed (28 tests), `npx tsc --noEmit -p tsconfig.server.json` passed, and `npm run build:test-ui` passed. No `docs/terminology.md` update was needed because no new durable terminology was introduced beyond `directSlashMode` metadata already documented in SPEC-104/PLAN-092. Live Web/Telegram manual verification was not executed in this session to avoid writing verification records into the user's persisted dev state without explicit approval. |
 | 2026-05-06 | Human-gate UI slice: weak/unknown system acknowledgements now reuse existing chat message choices to show inline next-step actions, including the Work Items path as the primary option while keeping the same metadata path for transport/deep-link handling. |
 | 2026-05-06 | Spec alignment slice: SPEC-104 and PLAN-092 now reflect the implemented MVP contract: strong slash-mode command turns create a draft Work Item anchor directly, do not dispatch runtime/task/run in the same turn, and follow-up prompt/context handles Concierge clarification on later turns. |
