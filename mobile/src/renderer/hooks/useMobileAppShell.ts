@@ -43,7 +43,18 @@ export function useMobileAppShell(): MobileAppShellHook {
 
   useEffect(() => {
     let active = true;
-    setState({ kind: 'loading' });
+    // Don't flush a previously successful fetch back to `loading`
+    // when the user (or another hook) bumps `version` — flushing
+    // makes every refetch flicker the consuming list to empty for
+    // the duration of the round trip. Behaviour matches React
+    // Query's `keepPreviousData` and the equivalent web pattern: the
+    // stale payload stays on screen until the new one arrives. We
+    // still show the loading state on first mount and after an
+    // error (where there is no previous payload to keep), so the
+    // initial-load and recover-from-error UX are unchanged.
+    setState((current) =>
+      current.kind === 'data' ? current : { kind: 'loading' },
+    );
     (async () => {
       try {
         const config = await loadConnectionConfig();
