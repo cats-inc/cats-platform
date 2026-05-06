@@ -187,15 +187,32 @@ function truncateLabel(value: string, limit: number): string {
 }
 
 const TELEGRAM_IMPLICIT_PRODUCT_INTENT_CALLBACK_PREFIX = 'ipi:v1';
+const TELEGRAM_CAT_PRODUCT_INTENT_CALLBACK_PREFIX = 'cpi:v2';
 
 type TelegramImplicitProductIntentCallbackAction = 'confirm' | 'decline';
 type TelegramImplicitProductIntentTarget = 'work' | 'code';
+type TelegramProductIntentCallbackAction = 'confirm' | 'decline';
+type TelegramProductIntentTarget = 'work' | 'code';
 
 interface TelegramImplicitProductIntentCandidate {
   candidateId: string;
   sourceMessageId: string;
   targetProduct: TelegramImplicitProductIntentTarget;
 }
+
+interface TelegramCatProductIntentProposal {
+  proposalId: string;
+  sourceMessageId: string;
+  targetProduct: TelegramProductIntentTarget;
+}
+
+type TelegramProductIntentCallback =
+  | ({
+      kind: 'implicit_candidate';
+    } & NonNullable<ReturnType<typeof parseTelegramImplicitProductIntentCallbackData>>)
+  | ({
+      kind: 'cat_proposal';
+    } & NonNullable<ReturnType<typeof parseTelegramCatProductIntentProposalCallbackData>>);
 
 function readTelegramImplicitProductIntentCandidate(
   message: TelegramRoomBridgeMessage,
@@ -230,6 +247,42 @@ function readTelegramImplicitProductIntentCandidate(
     candidateId: record.candidateId,
     sourceMessageId: (source as Record<string, string>).messageId,
     targetProduct: (candidate as Record<string, TelegramImplicitProductIntentTarget>).targetProduct,
+  };
+}
+
+function readTelegramCatProductIntentProposal(
+  message: TelegramRoomBridgeMessage,
+): TelegramCatProductIntentProposal | null {
+  const metadata = message.metadata?.catProductIntentProposal;
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return null;
+  }
+  const record = metadata as Record<string, unknown>;
+  const source = record.source;
+  const proposal = record.proposal;
+  if (
+    record.version !== 2
+    || record.event !== 'proposed'
+    || typeof record.proposalId !== 'string'
+    || !source
+    || typeof source !== 'object'
+    || Array.isArray(source)
+    || typeof (source as Record<string, unknown>).messageId !== 'string'
+    || !proposal
+    || typeof proposal !== 'object'
+    || Array.isArray(proposal)
+    || (
+      (proposal as Record<string, unknown>).targetProduct !== 'work'
+      && (proposal as Record<string, unknown>).targetProduct !== 'code'
+    )
+  ) {
+    return null;
+  }
+
+  return {
+    proposalId: record.proposalId,
+    sourceMessageId: (source as Record<string, string>).messageId,
+    targetProduct: (proposal as Record<string, TelegramProductIntentTarget>).targetProduct,
   };
 }
 
@@ -271,6 +324,57 @@ export function parseTelegramImplicitProductIntentCallbackData(
   };
 }
 
+export function buildTelegramCatProductIntentProposalCallbackData(input: {
+  sourceMessageId: string;
+  targetProduct: TelegramProductIntentTarget;
+  action: TelegramProductIntentCallbackAction;
+}): string {
+  const compactTarget = input.targetProduct === 'code' ? 'c' : 'w';
+  return `${TELEGRAM_CAT_PRODUCT_INTENT_CALLBACK_PREFIX}:${
+    input.sourceMessageId
+  }:${compactTarget}:${input.action}`;
+}
+
+export function parseTelegramCatProductIntentProposalCallbackData(
+  value: string | null | undefined,
+): {
+  sourceMessageId: string;
+  targetProduct: TelegramProductIntentTarget;
+  action: TelegramProductIntentCallbackAction;
+} | null {
+  const normalized = readTelegramString(value);
+  if (!normalized?.startsWith(`${TELEGRAM_CAT_PRODUCT_INTENT_CALLBACK_PREFIX}:`)) {
+    return null;
+  }
+  const [, , sourceMessageId, compactTarget, action] = normalized.split(':');
+  if (
+    !sourceMessageId
+    || (compactTarget !== 'w' && compactTarget !== 'c')
+    || (action !== 'confirm' && action !== 'decline')
+  ) {
+    return null;
+  }
+
+  return {
+    sourceMessageId,
+    targetProduct: compactTarget === 'c' ? 'code' : 'work',
+    action,
+  };
+}
+
+function parseTelegramProductIntentCallbackData(
+  value: string | null | undefined,
+): TelegramProductIntentCallback | null {
+  const catProposal = parseTelegramCatProductIntentProposalCallbackData(value);
+  if (catProposal) {
+    return { kind: 'cat_proposal', ...catProposal };
+  }
+  const implicitCandidate = parseTelegramImplicitProductIntentCallbackData(value);
+  return implicitCandidate
+    ? { kind: 'implicit_candidate', ...implicitCandidate }
+    : null;
+}
+
 function resolveTelegramImplicitProductIntentButtonCallbackData(input: {
   candidate: TelegramImplicitProductIntentCandidate;
   optionId: string;
@@ -292,6 +396,32 @@ function resolveTelegramImplicitProductIntentButtonCallbackData(input: {
   return buildTelegramImplicitProductIntentCallbackData({
     sourceMessageId: input.candidate.sourceMessageId,
     targetProduct: input.candidate.targetProduct,
+    action: 'confirm',
+  });
+}
+
+function resolveTelegramCatProductIntentProposalButtonCallbackData(input: {
+  sourceMessageId: string;
+  proposal: TelegramCatProductIntentProposal;
+  optionId: string;
+}): string | null {
+  if (input.optionId === 'decline') {
+    return buildTelegramCatProductIntentProposalCallbackData({
+      sourceMessageId: input.sourceMessageId,
+      targetProduct: input.proposal.targetProduct,
+      action: 'decline',
+    });
+  }
+  const expectedConfirmOption = input.proposal.targetProduct === 'code'
+    ? 'confirm_code'
+    : 'confirm_work';
+  if (input.optionId !== expectedConfirmOption) {
+    return null;
+  }
+
+  return buildTelegramCatProductIntentProposalCallbackData({
+    sourceMessageId: input.sourceMessageId,
+    targetProduct: input.proposal.targetProduct,
     action: 'confirm',
   });
 }
@@ -322,6 +452,40 @@ export function buildTelegramImplicitProductIntentReplyMarkup(
   };
 }
 
+export function buildTelegramCatProductIntentProposalReplyMarkup(
+  message: TelegramRoomBridgeMessage,
+): TelegramInlineKeyboardMarkup | null {
+  const proposal = readTelegramCatProductIntentProposal(message);
+  const choice = message.choices?.[0] ?? null;
+  if (!proposal || !choice || !message.id) {
+    return null;
+  }
+  const buttons = choice.options.flatMap((option) => {
+    const callbackData = resolveTelegramCatProductIntentProposalButtonCallbackData({
+      sourceMessageId: message.id!,
+      proposal,
+      optionId: option.id,
+    });
+    return callbackData
+      ? [{ text: option.label, callback_data: callbackData }]
+      : [];
+  });
+  if (buttons.length === 0) {
+    return null;
+  }
+
+  return {
+    inline_keyboard: [buttons],
+  };
+}
+
+export function buildTelegramProductIntentReplyMarkup(
+  message: TelegramRoomBridgeMessage,
+): TelegramInlineKeyboardMarkup | null {
+  return buildTelegramCatProductIntentProposalReplyMarkup(message)
+    ?? buildTelegramImplicitProductIntentReplyMarkup(message);
+}
+
 function resolveTelegramImplicitCandidateForCallback(input: {
   channel: TelegramRoomBridgeView;
   sourceMessageId: string;
@@ -331,6 +495,20 @@ function resolveTelegramImplicitCandidateForCallback(input: {
     const candidate = readTelegramImplicitProductIntentCandidate(message);
     return candidate?.sourceMessageId === input.sourceMessageId
       && candidate.targetProduct === input.targetProduct;
+  }) ?? null;
+}
+
+function resolveTelegramCatProposalForCallback(input: {
+  channel: TelegramRoomBridgeView;
+  sourceMessageId: string;
+  targetProduct: TelegramProductIntentTarget;
+}): TelegramRoomBridgeMessage | null {
+  return input.channel.messages.find((message) => {
+    if (message.id !== input.sourceMessageId) {
+      return false;
+    }
+    const proposal = readTelegramCatProductIntentProposal(message);
+    return proposal?.targetProduct === input.targetProduct;
   }) ?? null;
 }
 
@@ -376,6 +554,78 @@ export function buildTelegramImplicitProductIntentChoiceResponse(input: {
       ],
     },
   };
+}
+
+export function buildTelegramCatProductIntentProposalChoiceResponse(input: {
+  message: TelegramRoomBridgeMessage;
+  action: TelegramProductIntentCallbackAction;
+  submittedAt: string;
+}): { body: string; choiceResponse: TelegramRoomBridgeChoiceResponse } | null {
+  const proposal = readTelegramCatProductIntentProposal(input.message);
+  const choice = input.message.choices?.[0] ?? null;
+  if (!proposal || !choice) {
+    return null;
+  }
+  const optionId = input.action === 'decline'
+    ? 'decline'
+    : proposal.targetProduct === 'code'
+      ? 'confirm_code'
+      : 'confirm_work';
+  const option = choice.options.find((candidateOption) => candidateOption.id === optionId) ?? null;
+  if (!option || !input.message.id) {
+    return null;
+  }
+
+  return {
+    body: buildChoiceResponseBody({
+      label: option.label,
+    }),
+    choiceResponse: {
+      sourceMessageId: input.message.id,
+      status: 'submitted',
+      submittedAt: input.submittedAt,
+      answers: [
+        {
+          question: choice.question,
+          selectedOptionIds: [optionId],
+        },
+      ],
+    },
+  };
+}
+
+function resolveTelegramProductIntentChoicePayload(input: {
+  channel: TelegramRoomBridgeView;
+  callback: TelegramProductIntentCallback;
+  submittedAt: string;
+}): { body: string; choiceResponse: TelegramRoomBridgeChoiceResponse } | null {
+  if (input.callback.kind === 'cat_proposal') {
+    const proposalMessage = resolveTelegramCatProposalForCallback({
+      channel: input.channel,
+      sourceMessageId: input.callback.sourceMessageId,
+      targetProduct: input.callback.targetProduct,
+    });
+    return proposalMessage
+      ? buildTelegramCatProductIntentProposalChoiceResponse({
+          message: proposalMessage,
+          action: input.callback.action,
+          submittedAt: input.submittedAt,
+        })
+      : null;
+  }
+
+  const candidateMessage = resolveTelegramImplicitCandidateForCallback({
+    channel: input.channel,
+    sourceMessageId: input.callback.sourceMessageId,
+    targetProduct: input.callback.targetProduct,
+  });
+  return candidateMessage
+    ? buildTelegramImplicitProductIntentChoiceResponse({
+        message: candidateMessage,
+        action: input.callback.action,
+        submittedAt: input.submittedAt,
+      })
+    : null;
 }
 
 function resolveInternalRoomMode(binding: BotBindingRecord | null): RoomRoutingMode {
@@ -559,7 +809,7 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
     const pickedMessage = pickTelegramMessage(input.update);
     const { message } = pickedMessage;
     const senderName = resolveSenderName(message, input.receipt, pickedMessage.sender);
-    const implicitCallback = parseTelegramImplicitProductIntentCallbackData(
+    const productIntentCallback = parseTelegramProductIntentCallbackData(
       input.update.callback_query?.data,
     );
     const activeBinding = resolveActiveTelegramBinding(input.context, input.receipt.bindingId);
@@ -623,7 +873,7 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
       });
       const channelBeforeDispatch = input.roomBridge.readRoom(nextState, roomId);
       messageCountBeforeDispatch = channelBeforeDispatch.messages.length;
-      if (implicitCallback) {
+      if (productIntentCallback) {
         let deliveryReceipt: TelegramDeliveryReceipt | null = null;
         const callbackQueryId = readTelegramString(input.update.callback_query?.id);
         if (callbackQueryId) {
@@ -637,18 +887,11 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
             context: input.context,
           });
         }
-        const candidateMessage = resolveTelegramImplicitCandidateForCallback({
+        const choicePayload = resolveTelegramProductIntentChoicePayload({
           channel: channelBeforeDispatch,
-          sourceMessageId: implicitCallback.sourceMessageId,
-          targetProduct: implicitCallback.targetProduct,
+          callback: productIntentCallback,
+          submittedAt: timestamp.toISOString(),
         });
-        const choicePayload = candidateMessage
-          ? buildTelegramImplicitProductIntentChoiceResponse({
-              message: candidateMessage,
-              action: implicitCallback.action,
-              submittedAt: timestamp.toISOString(),
-            })
-          : null;
         if (!choicePayload) {
           return {
             receipt: {
@@ -758,7 +1001,7 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
         });
       }
       for (const message of appendedMessages) {
-        const replyMarkup = buildTelegramImplicitProductIntentReplyMarkup(message);
+        const replyMarkup = buildTelegramProductIntentReplyMarkup(message);
         if (!replyMarkup) {
           continue;
         }

@@ -2,9 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildTelegramCatProductIntentProposalCallbackData,
+  buildTelegramCatProductIntentProposalChoiceResponse,
+  buildTelegramCatProductIntentProposalReplyMarkup,
   buildTelegramImplicitProductIntentCallbackData,
   buildTelegramImplicitProductIntentChoiceResponse,
   buildTelegramImplicitProductIntentReplyMarkup,
+  buildTelegramProductIntentReplyMarkup,
+  parseTelegramCatProductIntentProposalCallbackData,
   parseTelegramImplicitProductIntentCallbackData,
 } from '../src/platform/transports/telegram/bridge.ts';
 import {
@@ -52,6 +57,55 @@ function createImplicitCandidateMessage() {
           confidence: 'high',
           reasonCode: 'code_high_action_product_cue',
         },
+        expiresAt: '2026-05-06T08:15:00.000Z',
+      },
+    },
+  };
+}
+
+function createCatProposalMessage() {
+  return {
+    id: 'proposal-message',
+    senderKind: 'system',
+    senderName: 'Cats',
+    body: 'Plan onboarding requirements',
+    choices: [
+      {
+        question: '要把這則訊息轉成 Work intake 嗎？',
+        options: [
+          {
+            id: 'confirm_work',
+            label: '轉成 Work',
+          },
+          {
+            id: 'decline',
+            label: '保留為 chat',
+          },
+        ],
+      },
+    ],
+    metadata: {
+      catProductIntentProposal: {
+        version: 2,
+        proposalId: `cat-product-intent:v2:${SOURCE_MESSAGE_ID}:cat-strong:work`,
+        event: 'proposed',
+        source: {
+          messageId: SOURCE_MESSAGE_ID,
+          channelId: 'channel-1',
+          conversationId: 'conversation-1',
+          transport: 'telegram',
+        },
+        proposedBy: {
+          catId: 'cat-strong',
+          actorId: 'actor-cat-strong',
+          capabilityProfileKind: 'strong_agent',
+        },
+        proposal: {
+          targetProduct: 'work',
+          summary: 'Plan onboarding requirements',
+          rationale: 'The owner is asking for planning.',
+        },
+        createdAt: '2026-05-06T08:00:00.000Z',
         expiresAt: '2026-05-06T08:15:00.000Z',
       },
     },
@@ -120,6 +174,41 @@ test('Telegram implicit product intent reply markup uses compact callback data',
   );
 });
 
+test('Telegram Cat product intent proposal reply markup uses v2 callback data', () => {
+  const markup = buildTelegramCatProductIntentProposalReplyMarkup(createCatProposalMessage());
+
+  assert.deepEqual(markup, {
+    inline_keyboard: [
+      [
+        {
+          text: '轉成 Work',
+          callback_data: 'cpi:v2:proposal-message:w:confirm',
+        },
+        {
+          text: '保留為 chat',
+          callback_data: 'cpi:v2:proposal-message:w:decline',
+        },
+      ],
+    ],
+  });
+  assert.deepEqual(buildTelegramProductIntentReplyMarkup(createCatProposalMessage()), markup);
+  assert.ok((markup?.inline_keyboard[0]?.[0]?.callback_data.length ?? 0) <= 64);
+  assert.equal(
+    parseTelegramCatProductIntentProposalCallbackData(
+      buildTelegramCatProductIntentProposalCallbackData({
+        sourceMessageId: 'proposal-message',
+        targetProduct: 'work',
+        action: 'confirm',
+      }),
+    )?.sourceMessageId,
+    'proposal-message',
+  );
+  assert.equal(
+    parseTelegramCatProductIntentProposalCallbackData('/work nope'),
+    null,
+  );
+});
+
 test('Telegram implicit product intent choice response keeps transcript body locale-neutral', () => {
   const response = buildTelegramImplicitProductIntentChoiceResponse({
     message: createImplicitCandidateMessage(),
@@ -130,6 +219,19 @@ test('Telegram implicit product intent choice response keeps transcript body loc
   assert.equal(response?.body, '轉成 Code');
   assert.equal(response?.choiceResponse.answers[0]?.question, '要把這則訊息轉成 Code intake 嗎？');
   assert.deepEqual(response?.choiceResponse.answers[0]?.selectedOptionIds, ['confirm_code']);
+});
+
+test('Telegram Cat product intent proposal choice response keeps proposal source message id', () => {
+  const response = buildTelegramCatProductIntentProposalChoiceResponse({
+    message: createCatProposalMessage(),
+    action: 'confirm',
+    submittedAt: '2026-05-06T08:03:00.000Z',
+  });
+
+  assert.equal(response?.body, '轉成 Work');
+  assert.equal(response?.choiceResponse.sourceMessageId, 'proposal-message');
+  assert.equal(response?.choiceResponse.answers[0]?.question, '要把這則訊息轉成 Work intake 嗎？');
+  assert.deepEqual(response?.choiceResponse.answers[0]?.selectedOptionIds, ['confirm_work']);
 });
 
 test('Telegram delivery client serializes inline reply markup', async () => {

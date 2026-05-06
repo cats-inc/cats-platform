@@ -142,15 +142,15 @@ without introducing a parallel Work Item creation path.
 
 ### Phase 5: Web and Telegram confirmation UX
 
-- [ ] Task 5.1: Reuse existing Web `ChatMessage.choices` rendering for proposal
+- [x] Task 5.1: Reuse existing Web `ChatMessage.choices` rendering for proposal
       confirm/decline.
-- [ ] Task 5.2: Keep Telegram inline keyboard callback handling, but change the
+- [x] Task 5.2: Keep Telegram inline keyboard callback handling, but change the
       source metadata from heuristic candidate ids to Cat proposal ids.
 - [ ] Task 5.3: Localize proposal, confirm, decline, expired, and disabled-copy
       strings.
-- [ ] Task 5.4: Keep mobile implicit proposal UI out of scope unless a separate
+- [x] Task 5.4: Keep mobile implicit proposal UI out of scope unless a separate
       mobile slice chooses read-only rendering.
-- [ ] Task 5.5: Add transport parity tests for Web and Telegram.
+- [x] Task 5.5: Add transport parity tests for Web and Telegram.
 
 **Deliverables**: owner confirmation works in Web and Telegram without exposing
 classifier/provider terminology.
@@ -280,6 +280,7 @@ the old heuristic cannot surprise users.
 | 2026-05-06 | Phase 2 live append and Phase 3 initial exposure landed: eligible strong direct Cats receive `proposeProductIntake` in ordinary chat turns when effective mode is `cat_tool`; accepted tool requests write only v2 proposal system segments and do not create Work Items or anchors; `heuristic_prefilter` does not expose the Cat proposal tool. Remaining Phase 3 work is weak/unknown and owner-setting exposure coverage, prompt/tool rejection instructions, and per-turn guard tests. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-product-intent-dispatch` and `chat-cat-product-intent-proposal` tests, and `git diff --check`. |
 | 2026-05-06 | Phase 3 tool-grant guard coverage landed: proposal-tool observations now carry owner-confirmation and rejection-handling invariants, and dispatch tests prove weak, unknown, owner-disabled, heuristic-mode, and non-direct lanes do not receive `proposeProductIntake`. Remaining Phase 3 work is explicit provider-without-tool-call handling and future durable-tool separation tests. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-product-intent-dispatch` and `chat-provider-agent-observation` tests. |
 | 2026-05-06 | Phase 4 confirmation bridge landed: Cat proposal segments now carry reusable `ChatMessage.choices`; confirmed Work and Code proposals synthesize `(cat-proposal-confirmation)` command metadata, preserve source message/proposal/proposing Cat context, enter the existing SPEC-104 intake path, and repeated confirmations are idempotent. Declines write only proposal transitions and do not create Work Items. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-product-intent-dispatch` and `chat-cat-product-intent-proposal` tests. |
+| 2026-05-06 | Phase 5 Web/Telegram parity landed for confirmation transport: Web reuses `ChatMessage.choices`, Telegram now emits `cpi:v2` inline keyboard callbacks for `metadata.catProductIntentProposal`, callback responses point at the proposal segment, and v1 `ipi:v1` remains confined to the heuristic path. Remaining Phase 5 work is catalog cleanup for any proposal-specific visible copy that should not reuse the existing implicit-intent strings. Validation: `npm run build:server`, `npm run build:test-ui`, `npx tsx --test --test-isolation=none tests/telegram-implicit-product-intent-candidates.test.ts`. |
 
 ---
 
