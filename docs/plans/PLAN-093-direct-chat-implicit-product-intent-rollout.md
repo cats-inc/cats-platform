@@ -126,7 +126,7 @@ same confirmation semantics as Web.
       `productIntentArgumentProvided` is always true, `rawCommandToken` is the
       fixed non-slash sentinel `(implicit-confirmation)`, and metadata carries
       `implicitConfirmed`, `originalCandidateId`, and `originalMessageId`.
-- [ ] Task 4.6: Add integration tests proving confirmed implicit intent follows
+- [x] Task 4.6: Add integration tests proving confirmed implicit intent follows
       the same weak/unknown human-gate, active-anchor lifecycle, supersede,
       abandon, and projection paths as explicit slash commands.
 
@@ -246,6 +246,7 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Phase 4 lifecycle close-out landed: confirmed implicit Work/Code candidates now have integration coverage for weak/unknown gates, active-anchor supersede, `/chat` abandonment, and Work projection visibility through the same core Work Item path as explicit slash-mode. |
 | 2026-05-06 | Telegram parity close-out landed: targeted dispatch coverage now proves Telegram-sourced implicit Code candidates preserve `source: 'telegram'` through confirmation and create the same Code-target draft anchor as Web/explicit slash-mode. |
 | 2026-05-06 | Phase 5 anti-nag slice landed: routing now suppresses new suggestions for five minutes after a decline, expires outstanding suggestions when `/chat` is selected, expires TTL-stale suggestions before later candidate writes, and skips duplicate candidate writes for the same `candidateId` at the persistence boundary. |
 | 2026-05-06 | Phase 3 Telegram callback slice landed: Telegram callback queries can now be parsed as implicit-intent confirm/decline actions and bridged into the same Chat `choiceResponse` path used by Web. Callback data uses `ipi:v1:<sourceMessageId>:<w|c>:<confirm|decline>` and the bridge resolves the full candidate from transcript metadata to stay under Telegram's 64-byte callback limit. |

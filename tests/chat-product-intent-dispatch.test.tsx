@@ -18,12 +18,18 @@ import {
   type ProviderCapabilityBootstrapConfig,
 } from '../src/platform/supervision/index.ts';
 import type {
+  ChatMessage,
+  ChatState,
+} from '../src/products/chat/api/contracts.ts';
+import type { RuntimeTransportContext } from '../src/products/chat/state/runtimeTargeting.ts';
+import type {
   ImplicitProductIntentCandidateMetadata,
   ImplicitProductIntentCandidateTransitionMetadata,
 } from '../src/products/chat/shared/implicitProductIntent.ts';
 import {
   IMPLICIT_PRODUCT_INTENT_COMMAND_TOKEN,
 } from '../src/products/chat/shared/implicitProductIntent.ts';
+import { buildWorkWorkItemListProjection } from '../src/products/work/api/projection.ts';
 
 function runtimeStub(onClose?: () => void): RuntimeClient {
   return {
@@ -163,6 +169,85 @@ function buildSingleChoiceResponse(
       },
     ],
   };
+}
+
+async function suggestImplicitProductIntentCandidate(input: {
+  state: ChatState;
+  channelId: string;
+  store: MemoryChatStore;
+  body: string;
+  now: Date;
+  transport?: RuntimeTransportContext;
+  transportLocale?: string | null;
+}): Promise<{ state: ChatState; candidateMessage: ChatMessage }> {
+  const routed = await routeChannelMessage(
+    input.state,
+    input.channelId,
+    {
+      body: input.body,
+      senderName: 'Kenneth',
+    },
+    runtimeReplyStub('I can discuss that.'),
+    input.now,
+    {
+      chatStore: input.store,
+      transport: input.transport,
+      transportLocale: input.transportLocale,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+  const candidateMessage = requireChannel(routed.state, input.channelId).messages
+    .filter((message) =>
+      message.metadata.event === 'implicit_product_intent_candidate_suggested'
+      && message.metadata.sourceMessageId)
+    .at(-1);
+  if (!candidateMessage) {
+    throw new Error('Expected implicit product-intent candidate message.');
+  }
+
+  return {
+    state: routed.state,
+    candidateMessage,
+  };
+}
+
+async function confirmImplicitProductIntentCandidate(input: {
+  state: ChatState;
+  channelId: string;
+  store: MemoryChatStore;
+  candidateMessage: ChatMessage;
+  selectedOptionId: 'confirm_work' | 'confirm_code';
+  now: Date;
+  providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
+}): Promise<BegunImplicitConfirmation> {
+  const begun = await beginChannelMessageDispatch(
+    input.state,
+    input.channelId,
+    {
+      body: 'Q: Turn this message into product intake?\nA: Confirm',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(
+        input.candidateMessage,
+        input.selectedOptionId,
+        input.now.toISOString(),
+      ),
+    },
+    runtimeStub(),
+    input.now,
+    {
+      chatStore: input.store,
+      providerCapabilityBootstrapConfig:
+        input.providerCapabilityBootstrapConfig === undefined
+          ? fixtureBootstrapConfig()
+          : input.providerCapabilityBootstrapConfig,
+    },
+  );
+
+  return begun;
+}
+
+interface BegunImplicitConfirmation {
+  state: ChatState;
 }
 
 test('beginChannelMessageDispatch records direct product intent and starts chat-only Concierge dispatch', async () => {
@@ -886,6 +971,167 @@ test('beginChannelMessageDispatch confirms Telegram implicit code candidates thr
   assert.equal(directWorkItem?.status, 'draft');
   assert.equal(intake?.targetProduct, 'code');
   assert.equal(intake?.command?.name, 'code');
+});
+
+test('beginChannelMessageDispatch supersedes implicit draft anchors when confirmed posture switches', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const workSuggestion = await suggestImplicitProductIntentCandidate({
+    state,
+    channelId,
+    store,
+    body: 'Please plan the onboarding requirements',
+    now: new Date('2026-05-06T08:01:00.000Z'),
+  });
+  const confirmedWork = await confirmImplicitProductIntentCandidate({
+    state: workSuggestion.state,
+    channelId,
+    store,
+    candidateMessage: workSuggestion.candidateMessage,
+    selectedOptionId: 'confirm_work',
+    now: new Date('2026-05-06T08:02:00.000Z'),
+  });
+  const coreAfterWork = await store.readCore();
+  const firstWorkItem = coreAfterWork.workItems.find((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  if (!firstWorkItem) {
+    throw new Error('Expected confirmed implicit Work Item.');
+  }
+  const codeSuggestion = await suggestImplicitProductIntentCandidate({
+    state: confirmedWork.state,
+    channelId,
+    store,
+    body: 'Please fix the parser tests',
+    now: new Date('2026-05-06T08:03:00.000Z'),
+  });
+
+  const confirmedCode = await confirmImplicitProductIntentCandidate({
+    state: codeSuggestion.state,
+    channelId,
+    store,
+    candidateMessage: codeSuggestion.candidateMessage,
+    selectedOptionId: 'confirm_code',
+    now: new Date('2026-05-06T08:04:00.000Z'),
+  });
+
+  const ackMessage = requireChannel(confirmedCode.state, channelId).messages.at(-1);
+  const directSlashMode = ackMessage?.metadata.directSlashMode as
+    | {
+        activeAnchor?: { workItemId?: unknown; targetProduct?: unknown };
+        clearReason?: unknown;
+        clearedActiveAnchor?: { workItemId?: unknown };
+      }
+    | undefined;
+  const core = await store.readCore();
+  const directWorkItems = core.workItems.filter((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  const oldWorkItem = core.workItems.find((candidate) => candidate.id === firstWorkItem.id);
+  const newWorkItem = directWorkItems.find((candidate) => candidate.id !== firstWorkItem.id);
+  const supersededBy = oldWorkItem?.metadata.directSlashModeSupersededBy as
+    | { workItemId?: unknown }
+    | undefined;
+
+  assert.equal(directSlashMode?.clearReason, 'anchor_superseded');
+  assert.equal(directSlashMode?.clearedActiveAnchor?.workItemId, firstWorkItem.id);
+  assert.equal(directSlashMode?.activeAnchor?.workItemId, newWorkItem?.id);
+  assert.equal(directSlashMode?.activeAnchor?.targetProduct, 'code');
+  assert.equal(directWorkItems.length, 2);
+  assert.equal(oldWorkItem?.status, 'cancelled');
+  assert.equal(newWorkItem?.status, 'draft');
+  assert.equal(supersededBy?.workItemId, newWorkItem?.id);
+});
+
+test('beginChannelMessageDispatch abandons implicit draft anchors on chat posture', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const suggestion = await suggestImplicitProductIntentCandidate({
+    state,
+    channelId,
+    store,
+    body: 'Please plan the onboarding requirements',
+    now: new Date('2026-05-06T08:01:00.000Z'),
+  });
+  const confirmed = await confirmImplicitProductIntentCandidate({
+    state: suggestion.state,
+    channelId,
+    store,
+    candidateMessage: suggestion.candidateMessage,
+    selectedOptionId: 'confirm_work',
+    now: new Date('2026-05-06T08:02:00.000Z'),
+  });
+  const coreAfterWork = await store.readCore();
+  const firstWorkItem = coreAfterWork.workItems.find((candidate) =>
+    Boolean(candidate.metadata.directSlashModeIntake));
+  if (!firstWorkItem) {
+    throw new Error('Expected confirmed implicit Work Item.');
+  }
+
+  const cleared = await beginChannelMessageDispatch(
+    confirmed.state,
+    channelId,
+    {
+      body: '/chat',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    },
+  );
+
+  const ackMessage = requireChannel(cleared.state, channelId).messages.at(-1);
+  const directSlashMode = ackMessage?.metadata.directSlashMode as
+    | {
+        activeAnchor?: unknown;
+        clearReason?: unknown;
+        clearedActiveAnchor?: { workItemId?: unknown };
+      }
+    | undefined;
+  const core = await store.readCore();
+  const abandonedWorkItem = core.workItems.find((candidate) => candidate.id === firstWorkItem.id);
+  const abandonedBy = abandonedWorkItem?.metadata.directSlashModeAbandonedBy as
+    | { reason?: unknown }
+    | undefined;
+
+  assert.equal(directSlashMode?.activeAnchor, null);
+  assert.equal(directSlashMode?.clearReason, 'chat_posture');
+  assert.equal(directSlashMode?.clearedActiveAnchor?.workItemId, firstWorkItem.id);
+  assert.equal(abandonedWorkItem?.status, 'cancelled');
+  assert.equal(abandonedBy?.reason, 'posture_abandoned');
+});
+
+test('Work projection lists Work Items created from confirmed implicit candidates', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const suggestion = await suggestImplicitProductIntentCandidate({
+    state,
+    channelId,
+    store,
+    body: 'Please plan the onboarding requirements',
+    now: new Date('2026-05-06T08:01:00.000Z'),
+  });
+
+  await confirmImplicitProductIntentCandidate({
+    state: suggestion.state,
+    channelId,
+    store,
+    candidateMessage: suggestion.candidateMessage,
+    selectedOptionId: 'confirm_work',
+    now: new Date('2026-05-06T08:02:00.000Z'),
+  });
+
+  const core = await store.readCore();
+  const projection = buildWorkWorkItemListProjection(core);
+  const projectedWorkItem = projection.workItems.find((candidate) =>
+    candidate.title === 'Please plan the onboarding requirements');
+
+  assert.ok(projectedWorkItem);
+  assert.equal(projectedWorkItem.status, 'draft');
+  assert.equal(projectedWorkItem.conversationTitle, 'ConciergeCat Direct Chat');
+  assert.equal(projectedWorkItem.conversationSourceChannelId, channelId);
+  assert.equal(projectedWorkItem.assignedActors[0]?.displayName, 'ConciergeCat');
 });
 
 test('beginChannelMessageDispatch keeps confirmed implicit weak Cats human-gated', async () => {
