@@ -390,7 +390,9 @@ test('beginChannelMessageDispatch records weak direct audience capability outcom
     },
   );
 
-  const ackMessage = requireChannel(begun.state, channelId).messages.at(-1);
+  const weakChannel = requireChannel(begun.state, channelId);
+  const userMessage = weakChannel.messages.find((message) => message.senderKind === 'user');
+  const ackMessage = weakChannel.messages.at(-1);
   const postureChange = ackMessage?.metadata.directSlashModePostureChange as
     | { capabilityProfileKind?: unknown }
     | undefined;
@@ -408,6 +410,7 @@ test('beginChannelMessageDispatch records weak direct audience capability outcom
   const core = await store.readCore();
 
   assert.match(ackMessage?.body ?? '', /^Work mode is active\./u);
+  assert.equal(userMessage?.metadata.productIntentArgumentProvided, true);
   assert.equal(postureChange?.capabilityProfileKind, 'weak_worker');
   assert.equal(directSlashMode?.humanGate?.kind, 'human_gate_required');
   assert.equal(directSlashMode?.humanGate?.capabilityProfileKind, 'weak_worker');
@@ -488,7 +491,9 @@ test('beginChannelMessageDispatch localizes direct product-intent acknowledgemen
     },
   );
 
-  const ackMessage = requireChannel(begun.state, channelId).messages.at(-1);
+  const unknownChannel = requireChannel(begun.state, channelId);
+  const userMessage = unknownChannel.messages.find((message) => message.senderKind === 'user');
+  const ackMessage = unknownChannel.messages.at(-1);
   const core = await store.readCore();
   const directWorkItem = core.workItems.find((candidate) =>
     Boolean(candidate.metadata.directSlashModeIntake));
@@ -559,7 +564,9 @@ test('beginChannelMessageDispatch records unknown direct audience capability out
     },
   );
 
-  const ackMessage = requireChannel(begun.state, channelId).messages.at(-1);
+  const unknownChannel = requireChannel(begun.state, channelId);
+  const userMessage = unknownChannel.messages.find((message) => message.senderKind === 'user');
+  const ackMessage = unknownChannel.messages.at(-1);
   const postureChange = ackMessage?.metadata.directSlashModePostureChange as
     | { capabilityProfileKind?: unknown }
     | undefined;
@@ -569,6 +576,7 @@ test('beginChannelMessageDispatch records unknown direct audience capability out
   const core = await store.readCore();
 
   assert.match(ackMessage?.body ?? '', /^Work mode is active\./u);
+  assert.equal(userMessage?.metadata.productIntentArgumentProvided, true);
   assert.equal(postureChange?.capabilityProfileKind, 'unknown');
   assert.equal(directSlashMode?.humanGate?.kind, 'human_gate_required');
   assert.equal(directSlashMode?.humanGate?.capabilityProfileKind, 'unknown');

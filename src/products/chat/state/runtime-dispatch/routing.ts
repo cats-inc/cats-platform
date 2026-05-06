@@ -1237,13 +1237,18 @@ export async function beginChannelMessageDispatch(
       },
       now,
       {
-        metadata: buildBaseUserMessageMetadata({
-          payload,
-          channelId,
-          deterministicRoutingPlan,
-          transportBindingId: options.transportBindingId,
-          productIntentCommand,
-        }),
+        metadata: {
+          ...buildBaseUserMessageMetadata({
+            payload,
+            channelId,
+            deterministicRoutingPlan,
+            transportBindingId: options.transportBindingId,
+            productIntentCommand,
+          }),
+          productIntentLocale: locale,
+          productIntentArgumentProvided:
+            productIntentCommand.argumentText.trim().length > 0,
+        },
         choiceResponse: payload.choiceResponse,
         origin: resolveUserMessageOrigin(options.transport),
         sourceTransportBindingId: options.transport === 'telegram'
