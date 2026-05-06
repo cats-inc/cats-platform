@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import { Alert, SafeAreaView, StyleSheet } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   getCodeSidebarConfig,
@@ -56,7 +57,7 @@ export default function CodeSidebarScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <TrimmedProductSidebar
         config={sidebarConfig}
         data={{

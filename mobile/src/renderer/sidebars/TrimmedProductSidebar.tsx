@@ -326,7 +326,10 @@ const styles = StyleSheet.create({
     ...typography.display,
   },
   primaryActions: {
-    paddingHorizontal: spacing.md,
+    // Match the Cats / Settings ScrollView `padding: spacing.lg`
+    // so primary-action buttons line up with the title and with
+    // section panels on the other tabs.
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
     gap: spacing.xs,
   },
@@ -360,7 +363,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
   },
   rowPressed: {

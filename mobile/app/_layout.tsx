@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { loadLocalePreference } from '../src/api/persistence';
 import { colors } from '../src/renderer/theme';
@@ -32,18 +33,27 @@ export default function RootLayout() {
   }, []);
 
   return (
+    // SafeAreaProvider feeds insets to every `SafeAreaView` from
+    // `react-native-safe-area-context` in the tree. Required for
+    // Android — RN's built-in `SafeAreaView` only respects the iOS
+    // notch, leaving the Android system status bar (clock / battery
+    // / wifi) overlapping our content. Library version handles both
+    // platforms uniformly via the provider's measured insets.
+    //
     // GestureHandlerRootView is required by `react-native-gesture-handler`
     // (used by the swipe-to-delete on Recents rows). Putting it at
     // the root layer ensures every Swipeable / pan / tap registered
     // anywhere in the tree gets routed through the native gesture
     // system instead of silently no-op'ing on Android.
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg.canvas }}>
-      <StatusBar style="dark" />
-      {localeReady ? (
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        </Stack>
-      ) : null}
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg.canvas }}>
+        <StatusBar style="dark" />
+        {localeReady ? (
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          </Stack>
+        ) : null}
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

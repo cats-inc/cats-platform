@@ -1,5 +1,5 @@
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
 
 import { colors, typography } from '../../src/renderer/theme';
 import {
@@ -9,9 +9,19 @@ import {
 
 type TabIconProps = { color: string };
 
-function tabIcon(glyph: string) {
+// Drive the rail off MaterialCommunityIcons so all five icons share
+// one stroke weight + one cross-platform glyph set. Earlier mix of
+// emoji (🐱 💬 📋 — colorful, render with the system emoji font and
+// look different on iOS vs Android) plus monochrome Unicode symbols
+// (⌘ ⚙ — sans-serif glyphs) was visually inconsistent both
+// cross-platform and inside one platform.
+type MaterialCommunityIconName = React.ComponentProps<
+  typeof MaterialCommunityIcons
+>['name'];
+
+function tabIcon(name: MaterialCommunityIconName) {
   return ({ color }: TabIconProps) => (
-    <Text style={{ color, fontSize: 18, lineHeight: 22 }}>{glyph}</Text>
+    <MaterialCommunityIcons name={name} size={22} color={color} />
   );
 }
 
@@ -36,23 +46,35 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="cats"
-        options={{ title: copy.tabTitle.cats, tabBarIcon: tabIcon('🐱') }}
+        options={{ title: copy.tabTitle.cats, tabBarIcon: tabIcon('cat') }}
       />
       <Tabs.Screen
         name="chat"
-        options={{ title: copy.tabTitle.chat, tabBarIcon: tabIcon('💬') }}
+        options={{
+          title: copy.tabTitle.chat,
+          tabBarIcon: tabIcon('chat-outline'),
+        }}
       />
       <Tabs.Screen
         name="code"
-        options={{ title: copy.tabTitle.code, tabBarIcon: tabIcon('⌘') }}
+        options={{
+          title: copy.tabTitle.code,
+          tabBarIcon: tabIcon('code-tags'),
+        }}
       />
       <Tabs.Screen
         name="work"
-        options={{ title: copy.tabTitle.work, tabBarIcon: tabIcon('📋') }}
+        options={{
+          title: copy.tabTitle.work,
+          tabBarIcon: tabIcon('briefcase-outline'),
+        }}
       />
       <Tabs.Screen
         name="settings"
-        options={{ title: copy.tabTitle.settings, tabBarIcon: tabIcon('⚙') }}
+        options={{
+          title: copy.tabTitle.settings,
+          tabBarIcon: tabIcon('cog-outline'),
+        }}
       />
       {/*
         Per PLAN-091 phase 5, the mobile Cats tab is the only entry
