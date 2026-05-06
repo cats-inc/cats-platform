@@ -199,6 +199,7 @@ the old heuristic cannot surprise users.
 | `src/platform/transports/telegram/**` | Modify | Callback data and proposal confirmation bridge. |
 | `tests/chat-cat-product-intent-proposal.test.tsx` | Create | Proposal metadata, config gating, suppression, idempotency, and confirmation bridge coverage. |
 | `tests/**` | Modify | Config gating, tool exposure, proposal lifecycle, transport parity, SPEC-104 handoff. |
+| `.env.example` | Modify | Document the `CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE` deployment gate, its three values (`off` / `cat_tool` / `heuristic_prefilter`), and the effective-mode interaction with the owner-profile setting. |
 | `docs/specs/SPEC-105-direct-chat-implicit-product-intent.md` | Modify | Keep contract aligned with proposal-tool implementation. |
 | `docs/plans/PLAN-093-direct-chat-implicit-product-intent-rollout.md` | Modify | Mark heuristic rollout as historical/superseded. |
 
@@ -306,6 +307,7 @@ the old heuristic cannot surprise users.
 
 | Date | Update |
 |------|--------|
+| 2026-05-07 | Documentation gap fix: `CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE` is now documented in `.env.example` with the three valid values, default `off`, the effective-mode interaction with the owner-profile setting, and the `heuristic_prefilter` detector-only caveat. Phase 1 landed the env var in `src/config.ts` but missed `.env.example`, so operators reading the env template had no way to discover the gate. |
 | 2026-05-06 | Plan created to pivot no-slash product intent from platform heuristics to Cat-authored proposal tools with owner confirmation. |
 | 2026-05-06 | Phase 1 landed: `CATS_CHAT_NATURAL_PRODUCT_INTENT_MODE` now defaults to `off`, owner-profile setting gates natural suggestions, explicit `/chat` / `/work` / `/code` still enter SPEC-104, and the v1 deterministic detector only runs in `heuristic_prefilter`. Validation: `npm run build:server`, `node --test --test-isolation=none tests/config.test.js`, bundled `chat-product-intent-dispatch` test, and `git diff --check`. |
 | 2026-05-06 | Phase 2 contract foundation landed: v2 `catProductIntentProposal` / transition metadata, `proposeProductIntake` manifest, server-side validation helper, TTL/cooldown/idempotency helpers, and focused proposal contract tests. Remaining Phase 2 work is wiring actual append-only transcript writes and proving live proposal calls do not create Work Items. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-cat-product-intent-proposal` test, and `git diff --check`. |
