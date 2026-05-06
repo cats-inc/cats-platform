@@ -57,6 +57,7 @@ import {
 } from '../room-routing/workflow.js';
 import {
   resolveChoiceResponseTarget,
+  resolveExecutionMetadataForTarget,
   resolveOrchestratorExecutionTarget,
 } from '../runtimeTargeting.js';
 import {
@@ -64,6 +65,13 @@ import {
   buildChatProviderAgentObservation,
   createChatProviderAgentDecisionManifest,
 } from '../providerAgentObservation.js';
+import {
+  createCatProductIntentProposalToolManifest,
+} from '../../shared/catProductIntentProposal.js';
+import {
+  resolveEffectiveChatNaturalProductIntentMode,
+  type ChatNaturalProductIntentMode,
+} from '../../shared/naturalProductIntentMode.js';
 import {
   applyRoomRoutingSnapshot,
   toParticipantRef,
@@ -118,6 +126,7 @@ export interface PrepareDispatchTurnOptions {
   deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
+  naturalProductIntentMode?: ChatNaturalProductIntentMode;
 }
 
 function resolveDeterministicPlanInitialResolution(
@@ -212,8 +221,10 @@ export function prepareDispatchTurnForUserMessage(
     userMessage,
     initialResolution,
     nowIso,
+    core,
     providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
     providerCapabilityBootstrapDiagnosticSink: options.providerCapabilityBootstrapDiagnosticSink,
+    naturalProductIntentMode: options.naturalProductIntentMode,
   });
   const channelRouting = requireChannel(nextState, channelId).roomRouting;
   const baseRoomRouting = resolveRoomRoutingState(channelRouting);
@@ -460,14 +471,22 @@ function buildProviderAgentObservationForTurn(input: {
   userMessage: ChatMessage;
   initialResolution: TargetResolution;
   nowIso: string;
+  core?: CatsCoreState;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
+  naturalProductIntentMode?: ChatNaturalProductIntentMode;
 }): ProviderAgentBoundedObservation | null {
   const channel = requireChannel(input.state, input.channelId);
-  const executionTarget = resolveOrchestratorExecutionTarget(input.state, channel);
+  const singleTarget = input.initialResolution.targets.length === 1
+    ? input.initialResolution.targets[0]!
+    : null;
+  const singleCatTarget = singleTarget?.participantKind === 'cat' ? singleTarget : null;
+  const executionTarget = singleCatTarget
+    ? resolveExecutionMetadataForTarget(input.state, input.channelId, singleCatTarget)
+    : resolveOrchestratorExecutionTarget(input.state, channel);
   const capabilityProfile = resolveProviderCapabilityProfile(
     {
-      provider: executionTarget.provider,
+      provider: executionTarget.provider ?? 'unknown',
       instance: executionTarget.instance,
       model: executionTarget.model,
       modelSelection: executionTarget.modelSelection ?? null,
@@ -497,9 +516,25 @@ function buildProviderAgentObservationForTurn(input: {
   return buildChatProviderAgentObservation({
     state: input.state,
     channelId: input.channelId,
-    actorRef: 'orchestrator',
+    actorRef: singleCatTarget
+      ? `cat:${singleCatTarget.participantId}`
+      : 'orchestrator',
     capabilityProfile,
     policy: policyDecision.result.policy,
+    availableTools: shouldExposeCatProductIntentProposalTool({
+      channel,
+      core: input.core,
+      capabilityProfileKind: capabilityProfile.kind,
+      naturalProductIntentMode: input.naturalProductIntentMode,
+      hasSingleCatTarget: Boolean(singleCatTarget),
+    })
+      ? [
+          {
+            manifest: createCatProductIntentProposalToolManifest(),
+            reason: 'Strong direct Cat can ask the owner to confirm Work/Code intake.',
+          },
+        ]
+      : [],
     messageCharacterCount: input.payload.body.length,
     routing: {
       trigger: input.initialResolution.trigger,
@@ -510,6 +545,26 @@ function buildProviderAgentObservationForTurn(input: {
     },
     now: new Date(input.nowIso),
   });
+}
+
+function shouldExposeCatProductIntentProposalTool(input: {
+  channel: ReturnType<typeof requireChannel>;
+  core: CatsCoreState | undefined;
+  capabilityProfileKind: 'strong_agent' | 'weak_worker' | 'unknown';
+  naturalProductIntentMode: ChatNaturalProductIntentMode | undefined;
+  hasSingleCatTarget: boolean;
+}): boolean {
+  const effectiveMode = resolveEffectiveChatNaturalProductIntentMode({
+    deploymentMode: input.naturalProductIntentMode,
+    ownerEnabled: input.core?.ownerProfile.naturalProductIntentProposalsEnabled,
+  });
+  return effectiveMode === 'cat_tool'
+    && input.hasSingleCatTarget
+    && input.capabilityProfileKind === 'strong_agent'
+    && (
+      input.channel.channelKind === 'direct_message'
+      || input.channel.roomRouting?.mode === 'direct_message'
+    );
 }
 
 function findChannelUserMessage(

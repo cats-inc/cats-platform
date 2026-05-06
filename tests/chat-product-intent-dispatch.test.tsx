@@ -17,6 +17,10 @@ import {
   parseProviderCapabilityBootstrapConfigDocument,
   type ProviderCapabilityBootstrapConfig,
 } from '../src/platform/supervision/index.ts';
+import {
+  PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+  type ProviderAgentBoundedObservation,
+} from '../src/platform/orchestration/index.ts';
 import type {
   ChatMessage,
   ChatState,
@@ -29,6 +33,10 @@ import type {
 import {
   IMPLICIT_PRODUCT_INTENT_COMMAND_TOKEN,
 } from '../src/products/chat/shared/implicitProductIntent.ts';
+import {
+  CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
+  type CatProductIntentProposalMetadata,
+} from '../src/products/chat/shared/catProductIntentProposal.ts';
 import { buildWorkWorkItemListProjection } from '../src/products/work/api/projection.ts';
 import { buildTelegramImplicitProductIntentReplyMarkup } from '../src/platform/transports/telegram/bridge.ts';
 
@@ -575,6 +583,108 @@ test('beginChannelMessageDispatch does not suggest implicit candidates when owne
 
   assert.equal(candidateMessage, undefined);
   assert.notEqual(begun.preparedTurn, null);
+});
+
+test('routeChannelMessage records Cat proposal tool requests without durable Work intake', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can help clarify that.');
+  let capturedObservation: ProviderAgentBoundedObservation | null = null;
+
+  const routed = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+      providerAgentDecisionRequester: async ({ observation }) => {
+        capturedObservation = observation;
+        return {
+          contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+          kind: 'tool_request',
+          decisionId: 'decision-propose-work-1',
+          confidence: 'high',
+          toolName: CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
+          target: {
+            kind: 'worker_tool',
+            toolName: CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
+          },
+          input: {
+            targetProduct: 'work',
+            summary: 'Plan onboarding requirements',
+            rationale: 'The owner is asking for planning, not casual chat.',
+          },
+          rationaleSummary: 'Ask the owner to confirm Work intake.',
+        };
+      },
+    },
+  );
+
+  const channel = requireChannel(routed.state, channelId);
+  const proposalMessage = channel.messages.find((message) =>
+    message.metadata.event === 'cat_product_intent_proposal_created');
+  const proposal = proposalMessage?.metadata.catProductIntentProposal as
+    | CatProductIntentProposalMetadata
+    | undefined;
+  const core = await store.readCore();
+
+  assert.equal(
+    capturedObservation?.availableTools.some((tool) =>
+      tool.manifest.name === CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME),
+    true,
+  );
+  assert.equal(proposalMessage?.senderKind, 'system');
+  assert.equal(proposalMessage?.body, 'Plan onboarding requirements');
+  assert.equal(proposal?.version, 2);
+  assert.equal(proposal?.event, 'proposed');
+  assert.equal(proposal?.proposal.targetProduct, 'work');
+  assert.equal(proposal?.proposal.summary, 'Plan onboarding requirements');
+  assert.equal(proposal?.source.channelId, channelId);
+  assert.equal(proposal?.proposedBy.capabilityProfileKind, 'strong_agent');
+  assert.equal(
+    core.workItems.filter((candidate) => Boolean(candidate.metadata.directSlashModeIntake)).length,
+    0,
+  );
+});
+
+test('routeChannelMessage does not expose proposal tools in heuristic mode', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can discuss the onboarding requirements.');
+  let capturedObservation: ProviderAgentBoundedObservation | null = null;
+
+  await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+      providerAgentDecisionRequester: async ({ observation }) => {
+        capturedObservation = observation;
+        return null;
+      },
+    },
+  );
+
+  assert.equal(
+    capturedObservation?.availableTools.some((tool) =>
+      tool.manifest.name === CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME),
+    false,
+  );
 });
 
 test('beginChannelMessageDispatch suggests implicit candidates for room-routing direct lanes', async () => {

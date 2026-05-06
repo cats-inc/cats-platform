@@ -119,6 +119,18 @@ import {
   resolveEffectiveChatNaturalProductIntentMode,
   type ChatNaturalProductIntentMode,
 } from '../../shared/naturalProductIntentMode.js';
+import {
+  CAT_PRODUCT_INTENT_PROPOSAL_METADATA_KEY,
+  CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
+  CAT_PRODUCT_INTENT_PROPOSAL_TRANSITION_METADATA_KEY,
+  buildCatProductIntentProposalMetadata,
+  buildCatProductIntentProposalTransitionMetadata,
+  hasRecentCatProductIntentProposalDecline,
+  listExpiredCatProductIntentProposals,
+  shouldAppendCatProductIntentProposal,
+  validateCatProductIntentProposalToolCall,
+  type CatProductIntentProposalMetadata,
+} from '../../shared/catProductIntentProposal.js';
 
 export type ProviderAgentDecisionRequester = (input: {
   state: ChatState;
@@ -674,6 +686,155 @@ function buildImplicitProductIntentCandidateChoices(
       ],
     },
   ];
+}
+
+function describeCatProductIntentProposal(
+  proposal: CatProductIntentProposalMetadata,
+): string {
+  return proposal.proposal.summary;
+}
+
+function appendCatProductIntentProposalTransitionSidecar(input: {
+  state: ChatState;
+  channelId: string;
+  proposal: CatProductIntentProposalMetadata;
+  event: 'expired';
+  now: Date;
+}): ChatState {
+  const transition = buildCatProductIntentProposalTransitionMetadata({
+    proposal: input.proposal,
+    event: input.event,
+  });
+  return appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats',
+      body: input.proposal.proposal.summary,
+    },
+    input.now,
+    {
+      metadata: {
+        event: `cat_product_intent_proposal_${input.event}`,
+        sourceMessageId: input.proposal.source.messageId,
+        [CAT_PRODUCT_INTENT_PROPOSAL_TRANSITION_METADATA_KEY]: transition,
+      },
+      incrementUnread: false,
+    },
+  ).state;
+}
+
+function expireCatProductIntentProposalSidecars(input: {
+  state: ChatState;
+  channelId: string;
+  now: Date;
+  expireAll?: boolean;
+}): ChatState {
+  const channel = requireChannel(input.state, input.channelId);
+  return listExpiredCatProductIntentProposals({
+    messages: channel.messages,
+    now: input.now,
+    expireAll: input.expireAll,
+  }).reduce((state, proposal) =>
+    appendCatProductIntentProposalTransitionSidecar({
+      state,
+      channelId: input.channelId,
+      proposal,
+      event: 'expired',
+      now: input.now,
+    }), input.state);
+}
+
+function appendCatProductIntentProposalSidecar(input: {
+  state: ChatState;
+  channel: ChatChannelState;
+  channelId: string;
+  userMessage: ChatMessage;
+  providerAgentDecision: ProviderAgentDecision | null;
+  effectiveMode: ChatNaturalProductIntentMode;
+  capabilityProfileKind: DirectSlashModePostureChangeMetadata['capabilityProfileKind'];
+  audienceCatId: string | null;
+  now: Date;
+  transport: RuntimeTransportContext | undefined;
+}): { state: ChatState; proposalMessage: ChatMessage | null } {
+  if (
+    input.providerAgentDecision?.kind !== 'tool_request'
+    || input.providerAgentDecision.toolName !== CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME
+  ) {
+    return { state: input.state, proposalMessage: null };
+  }
+  const validation = validateCatProductIntentProposalToolCall({
+    toolInput: input.providerAgentDecision.input,
+    effectiveMode: input.effectiveMode,
+    directLane: isImplicitProductIntentDirectLane(input.channel),
+    capabilityProfileKind: input.capabilityProfileKind,
+    sourceMessage: {
+      id: input.userMessage.id,
+      channelId: input.userMessage.channelId,
+      senderKind: input.userMessage.senderKind,
+    },
+    channelId: input.channelId,
+    cooldownActive: hasRecentCatProductIntentProposalDecline({
+      messages: input.channel.messages,
+      now: input.now,
+    }),
+  });
+  if (!validation.accepted || !input.audienceCatId) {
+    return { state: input.state, proposalMessage: null };
+  }
+
+  const { conversationId } = resolveChannelCanonicalIdentity(input.state, input.channelId);
+  const proposal = buildCatProductIntentProposalMetadata({
+    messageId: input.userMessage.id,
+    channelId: input.channelId,
+    conversationId,
+    transport: resolveImplicitProductIntentTransport(input.transport),
+    catId: input.audienceCatId,
+    actorId: createCatActorId(input.audienceCatId),
+    targetProduct: validation.toolInput.targetProduct,
+    title: validation.toolInput.title,
+    summary: validation.toolInput.summary,
+    rationale: validation.toolInput.rationale,
+    suggestedNextQuestion: validation.toolInput.suggestedNextQuestion,
+    now: input.now,
+  });
+  if (!shouldAppendCatProductIntentProposal({
+    messages: input.channel.messages,
+    proposalId: proposal.proposalId,
+  })) {
+    return { state: input.state, proposalMessage: null };
+  }
+
+  const stateWithPriorOpenProposalsExpired = expireCatProductIntentProposalSidecars({
+    state: input.state,
+    channelId: input.channelId,
+    now: input.now,
+    expireAll: true,
+  });
+  const append = appendMessage(
+    stateWithPriorOpenProposalsExpired,
+    input.channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats',
+      body: describeCatProductIntentProposal(proposal),
+    },
+    input.now,
+    {
+      metadata: {
+        event: 'cat_product_intent_proposal_created',
+        sourceMessageId: input.userMessage.id,
+        [CAT_PRODUCT_INTENT_PROPOSAL_METADATA_KEY]: proposal,
+      },
+      incrementUnread: false,
+    },
+  );
+
+  return {
+    state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+    proposalMessage: append.message,
+  };
 }
 
 function appendImplicitProductIntentCandidateSidecar(input: {
@@ -1855,6 +2016,12 @@ export async function beginChannelMessageDispatch(
         locale,
         now,
       });
+      nextState = expireCatProductIntentProposalSidecars({
+        state: nextState,
+        channelId,
+        now,
+        expireAll: true,
+      });
     }
     if (implicitProductIntentChoice?.action === 'confirm') {
       const transitionAppend = appendImplicitProductIntentTransitionSidecar({
@@ -2043,6 +2210,7 @@ export async function beginChannelMessageDispatch(
           providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
           providerCapabilityBootstrapDiagnosticSink:
             options.providerCapabilityBootstrapDiagnosticSink,
+          naturalProductIntentMode: options.naturalProductIntentMode,
         },
       );
       const effectiveDeterministicRoutingPlan =
@@ -2162,6 +2330,15 @@ export async function beginChannelMessageDispatch(
     ownerEnabled:
       coreBeforeUserMessage?.ownerProfile.naturalProductIntentProposalsEnabled,
   });
+  const naturalProductIntentAudience = resolveProductIntentAudience(channelBeforeMessage);
+  const naturalProductIntentCapabilityProfileKind = resolveDirectAudienceCapabilityProfileKind({
+    channel: channelBeforeMessage,
+    audience: naturalProductIntentAudience,
+    assessedAt: now.toISOString(),
+    providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
+    providerCapabilityBootstrapDiagnosticSink:
+      options.providerCapabilityBootstrapDiagnosticSink,
+  });
   const followUpActiveAnchorState = resolveDirectSlashModeActiveAnchorState({
     channel: channelBeforeMessage,
     core: coreBeforeUserMessage,
@@ -2215,12 +2392,13 @@ export async function beginChannelMessageDispatch(
     channelId,
     payload,
     now,
-    choiceResponseCore,
+    choiceResponseCore ?? coreBeforeUserMessage ?? undefined,
     {
       deterministicRoutingPlan,
       providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
       providerCapabilityBootstrapDiagnosticSink:
         options.providerCapabilityBootstrapDiagnosticSink,
+      naturalProductIntentMode: options.naturalProductIntentMode,
     },
   );
   const effectiveDeterministicRoutingPlan =
@@ -2262,6 +2440,24 @@ export async function beginChannelMessageDispatch(
     locale: resolveProductIntentMessageLocale(channelBeforeMessage, options.transportLocale),
     now,
   });
+  nextState = expireCatProductIntentProposalSidecars({
+    state: nextState,
+    channelId,
+    now,
+  });
+  const catProposalSidecar = appendCatProductIntentProposalSidecar({
+    state: nextState,
+    channel: requireChannel(nextState, channelId),
+    channelId,
+    userMessage: preparedTurn.userMessage,
+    providerAgentDecision,
+    effectiveMode: naturalProductIntentEffectiveMode,
+    capabilityProfileKind: naturalProductIntentCapabilityProfileKind,
+    audienceCatId: naturalProductIntentAudience.audienceCatId,
+    now,
+    transport: options.transport,
+  });
+  nextState = catProposalSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),
@@ -2341,6 +2537,7 @@ export async function beginChannelMessageRetryDispatch(
       providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
       providerCapabilityBootstrapDiagnosticSink:
         options.providerCapabilityBootstrapDiagnosticSink,
+      naturalProductIntentMode: options.naturalProductIntentMode,
     },
   );
   const effectiveDeterministicRoutingPlan =
