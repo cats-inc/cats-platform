@@ -46,18 +46,26 @@ semantics as SPEC-104: `/work <original message>` or `/code <original message>`.
 
 ### Phase 1: Detection contract and metadata
 
-- [ ] Task 1.1: Define a Chat-owned `detectImplicitProductIntent` contract for
-      ordinary direct-message text, returning `none`, `work`, or `code` plus
-      confidence/reason metadata.
+- [ ] Task 1.1: Define a Chat-owned deterministic
+      `detectImplicitProductIntent` contract for ordinary direct-message text.
+      V1 is local heuristic only: no provider, runtime session, or LLM
+      classifier call per ordinary chat message.
 - [ ] Task 1.2: Add the candidate metadata builder for original message id,
       source channel/conversation, transport, target product, confidence,
-      reason code, and status.
+      reason code, `candidateId`, and expiry timestamp.
+- [ ] Task 1.2a: Add append-only system-segment metadata for candidate
+      transitions: `suggested`, `confirmed`, `declined`, and `expired`.
+      Projection status is derived from these events rather than mutating the
+      original user message as the audit source.
 - [ ] Task 1.3: Ensure explicit `/chat`, `/work`, and `/code` messages remain
       owned by SPEC-104 and are never reclassified by this detector.
 - [ ] Task 1.4: Add unit tests for Work, Code, none, low-confidence ambiguity,
       and obvious casual-chat false positives.
 - [ ] Task 1.5: Add non-direct negative tests proving the detector is not
       applied outside `direct_message` lanes.
+- [ ] Task 1.6: Add tests proving ordinary direct-chat dispatch still proceeds
+      when a candidate is suggested. The suggestion is a system/UI sidecar, not
+      a replacement for the Cat's ordinary reply.
 
 **Deliverables**: shared candidate detection exists as a pure contract with no
 durable product side effects.
@@ -72,9 +80,12 @@ durable product side effects.
       duplicate anchors.
 - [ ] Task 2.4: Add Web tests proving candidate suggestion does not create
       Work Items before confirmation.
+- [ ] Task 2.5: Add the minimum Web happy-path integration test:
+      strong-Cat Work candidate -> confirm -> SPEC-104 draft anchor appears.
 
 **Deliverables**: Web users can confirm or decline implicit Work/Code
-suggestions without automatic materialization.
+suggestions without automatic materialization, and the Web confirm path proves
+the bridge into SPEC-104 before Telegram work starts.
 
 ### Phase 3: Telegram confirmation UX
 
@@ -82,10 +93,14 @@ suggestions without automatic materialization.
       contract after transport-control and slash-command parsing.
 - [ ] Task 3.2: Add Telegram-safe localized suggestion copy that does not expose
       classifier or provider terminology.
-- [ ] Task 3.3: Choose and implement the first Telegram confirmation affordance
-      (reply keyboard, deep link, or text confirmation).
+- [ ] Task 3.3: Implement Telegram confirmation with inline keyboard
+      `callback_data` carrying `candidateId` plus confirm/decline transition.
+      Reply-keyboard and free-form text confirmation are out of v1.
 - [ ] Task 3.4: Add transport parity tests for Telegram and Web candidate
       semantics.
+- [ ] Task 3.5: Add the minimum Telegram happy-path integration test:
+      strong-Cat Code candidate -> inline-keyboard confirm -> SPEC-104 draft
+      anchor appears with `targetProduct: 'code'`.
 
 **Deliverables**: Telegram ordinary text can suggest Work/Code intent with the
 same confirmation semantics as Web.
@@ -100,9 +115,14 @@ same confirmation semantics as Web.
       transcript text unchanged.
 - [ ] Task 4.4: Reuse SPEC-104 direct audience capability gating for strong,
       weak, and unknown Cats.
-- [ ] Task 4.5: Add integration tests proving confirmed implicit intent follows
-      the same Work Item anchor, human-gate, active-anchor, and projection
-      paths as explicit slash commands.
+- [ ] Task 4.5: Extend product-intent command metadata for implicit
+      confirmation: `argumentText` is the trimmed original message body,
+      `productIntentArgumentProvided` is always true, no fake slash
+      `rawCommandToken` is written, and metadata carries `implicitConfirmed`,
+      `originalCandidateId`, and `originalMessageId`.
+- [ ] Task 4.6: Add integration tests proving confirmed implicit intent follows
+      the same weak/unknown human-gate, active-anchor lifecycle, supersede,
+      abandon, and projection paths as explicit slash commands.
 
 **Deliverables**: confirmed implicit intent enters the existing slash-mode
 pipeline, with no parallel durable intake path.
@@ -110,7 +130,9 @@ pipeline, with no parallel durable intake path.
 ### Phase 5: Anti-nag controls and close-out
 
 - [ ] Task 5.1: Add candidate cooldown or suppression state for declined and
-      repeated suggestions.
+      repeated suggestions: 15-minute candidate TTL, five-minute lane cooldown
+      after decline, and expiry of outstanding suggestions when explicit
+      `/chat` posture is selected.
 - [ ] Task 5.2: Add tests proving declined candidates are not immediately
       re-suggested for the same message.
 - [ ] Task 5.3: Add i18n coverage for Web and Telegram suggestion/confirmation
@@ -143,6 +165,12 @@ materialization, and command-pipeline drift.
 - Confirmation bridges into SPEC-104 and must not fork the durable intake path.
 - The original user message remains ordinary transcript text; slash-equivalent
   command data is derived metadata.
+- Candidate, confirm, decline, and expire are append-only system segments keyed
+  by `candidateId`.
+- Web v1 uses inline message choices. Telegram v1 uses inline keyboards with
+  `callback_data` carrying `candidateId`.
+- Candidate-stage Cat behavior remains ordinary direct chat. The detector is a
+  product sidecar and does not suppress the Cat's normal reply.
 - Detection and Cat capability are separate. The detector identifies product
   intent, while SPEC-104 provider capability profiles decide durable action.
 - MVP scope is direct-message only.
@@ -151,12 +179,18 @@ materialization, and command-pipeline drift.
 
 - **Unit tests**:
   - detector returns `none`, `work`, or `code`
+  - detector v1 does not call provider/runtime/LLM classifier dependencies
   - false positives return `none`
   - explicit slash commands bypass implicit detection
-  - candidate metadata includes original message id and transport
+  - candidate metadata includes `candidateId`, original message id, transport,
+    and expiry
+  - candidate transition metadata is append-only and idempotent
   - non-direct messages are ignored
 - **Integration tests**:
   - candidate suggestion creates no Work Item before confirmation
+  - ordinary Cat dispatch still proceeds on a candidate suggestion
+  - Web strong-Cat Work confirm creates the same draft anchor as SPEC-104
+  - Telegram strong-Cat Code confirm creates the same draft anchor as SPEC-104
   - confirmed Work candidate follows explicit `/work` semantics
   - confirmed Code candidate follows explicit `/code` semantics
   - weak/unknown Cats remain human-gated after confirmation
@@ -178,6 +212,7 @@ materialization, and command-pipeline drift.
 |------|--------|------------|
 | Classifier creates durable work without user intent | High | Candidate-only contract, confirmation gate, tests proving no pre-confirmation durable writes. |
 | Natural chat gets nagged as Work/Code | High | Low-confidence returns `none`, false-positive tests, cooldown/suppression state. |
+| Per-message detector overhead inflates cost on chatty direct lanes | High | V1 is deterministic/local only. Any future provider-backed detector requires opt-in budget, per-lane cooldown, and observability before activation. |
 | Web and Telegram drift | Medium | Shared detector contract and transport parity tests. |
 | Implicit path forks away from SPEC-104 | High | Confirmed candidates translate into the existing slash-mode command input. |
 | Original transcript loses user wording | Medium | Store slash-equivalent data as metadata only; keep transcript unchanged. |
@@ -187,6 +222,7 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Follow-up review alignment: detector v1 is now locked to conservative deterministic heuristics; candidate/confirm/decline/expire are append-only system events; Web uses inline message choices, Telegram uses inline keyboard callback data; confirmed implicit commands synthesize routing metadata without rewriting transcript or faking slash tokens. |
 | 2026-05-06 | Plan created as a follow-up to PLAN-092. Natural-language Work/Code detection is candidate-only and must bridge into SPEC-104 after explicit owner confirmation. |
 
 ---

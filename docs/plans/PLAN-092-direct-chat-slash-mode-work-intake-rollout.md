@@ -254,6 +254,8 @@ demo Work Items unless the user explicitly approves a write.
 - [ ] Decide whether weak/unknown direct Cats should also receive a first-turn
       chat-only human-gate dispatch, with durable Work/Code tools still closed,
       so users hear from the Cat instead of only the system acknowledgement.
+      This deferred decision applies to both explicit `/work`/`/code`
+      (PLAN-092) and confirmed implicit Work/Code candidates (PLAN-093).
 - [ ] Decide whether product-intent system segments need localization key /
       interpolation metadata beside rendered `content` for future reader-side
       i18n re-rendering.
