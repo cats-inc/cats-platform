@@ -260,9 +260,10 @@ interface ImplicitProductIntentCandidateMetadata {
 `candidateId` is the idempotency key and is derived from the original message
 id, target product, and metadata version. A practical v1 format is
 `implicit-product-intent:v1:<messageId>:<targetProduct>`.
-Detector v1 does not rerun for the same `messageId`; edits or resends must
-produce a new message id. If the same `candidateId` is observed again, the
-candidate is treated as an idempotent duplicate, not a new suggestion.
+Candidate-write v1 does not append a second suggestion for the same `messageId`
+and target product; edits or resends must produce a new message id. If the same
+`candidateId` is observed again at the persistence boundary, the candidate is
+treated as an idempotent duplicate, not a new suggestion.
 
 The candidate metadata is stored on the system segment under
 `metadata.implicitProductIntentCandidate`, parallel to SPEC-104's
@@ -395,8 +396,8 @@ Candidate suppression is lane-local:
 - Weak/unknown direct Cats remain human-gated after confirmation.
 - Non-direct channels do not run implicit detection in this MVP.
 - Candidate and confirmation metadata preserve original message source context.
-- Detector v1 treats repeated detection for the same `messageId` as an
-  idempotent duplicate; edits/resends require a new message id.
+- Candidate writes treat repeated detection for the same `messageId` and target
+  product as an idempotent duplicate; edits/resends require a new message id.
 - False-positive tests prove casual chat does not nag the owner.
 - No retired route/control labels are introduced.
 

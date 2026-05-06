@@ -201,8 +201,8 @@ materialization, and command-pipeline drift.
   - candidate metadata includes `candidateId`, original message id, transport,
     and expiry
   - candidate transition metadata is append-only and idempotent
-  - repeated detector execution for the same `messageId` and target product is
-    a no-op
+  - repeated candidate writes for the same `messageId` and target product are
+    a no-op at the persistence boundary
   - non-direct messages are ignored
 - **Integration tests**:
   - candidate suggestion creates no Work Item before confirmation
