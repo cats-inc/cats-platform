@@ -4,13 +4,12 @@ import test from 'node:test';
 import { shouldBridgeTelegramProductIntentCommand } from '../src/server/telegramProductIntentCommands.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import {
-  appendMessage,
   createChannel,
   requireChannel,
-  resolveChannelCanonicalIdentity,
 } from '../src/products/chat/state/model/index.ts';
 import {
   beginChannelMessageDispatch,
+  beginChannelMessageRetryDispatch,
   routeChannelMessage,
 } from '../src/products/chat/state/runtime-dispatch/routing.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
@@ -37,9 +36,7 @@ import {
 } from '../src/products/chat/shared/implicitProductIntent.ts';
 import {
   CAT_PRODUCT_INTENT_PROPOSAL_COMMAND_TOKEN,
-  CAT_PRODUCT_INTENT_PROPOSAL_METADATA_KEY,
   CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
-  buildCatProductIntentProposalMetadata,
   type CatProductIntentProposalMetadata,
   type CatProductIntentProposalTransitionMetadata,
 } from '../src/products/chat/shared/catProductIntentProposal.ts';
@@ -1257,94 +1254,58 @@ test('routeChannelMessage suppresses Cat proposal tool requests during decline c
   );
 });
 
-test('routeChannelMessage drops duplicate Cat proposal tool requests for the same proposal id', async () => {
+test('beginChannelMessageRetryDispatch drops duplicate Cat proposal tool requests for the same proposal id', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);
-  const runtimeClient = runtimeReplyStub('I can discuss the onboarding requirements.');
+  const initial = await suggestCatProductIntentProposal({
+    state,
+    channelId,
+    store,
+    body: 'Please plan the onboarding requirements',
+    now: new Date('2026-05-06T08:01:00.000Z'),
+  });
+  const proposal = initial.proposalMessage.metadata.catProductIntentProposal as
+    | CatProductIntentProposalMetadata
+    | undefined;
+  if (!proposal) {
+    throw new Error('Expected initial Cat product-intent proposal metadata.');
+  }
 
-  const { result: routed, warnings } = await captureConsoleWarns(() =>
-    routeChannelMessage(
-      state,
+  const { result: duplicate, warnings } = await captureConsoleWarns(() =>
+    beginChannelMessageRetryDispatch(
+      initial.state,
       channelId,
-      {
-        body: 'Please plan the onboarding requirements',
-        senderName: 'Kenneth',
-      },
-      runtimeClient,
-      new Date('2026-05-06T08:01:00.000Z'),
+      proposal.source.messageId,
+      runtimeReplyStub('I can discuss the onboarding requirements.'),
+      new Date('2026-05-06T08:02:00.000Z'),
       {
         chatStore: store,
         providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
         naturalProductIntentMode: 'cat_tool',
-        providerAgentDecisionRequester: async ({ state: preparedState, observation }) => {
-          const channel = requireChannel(preparedState, channelId);
-          const userMessage = channel.messages.find((message) =>
-            message.senderKind === 'user'
-            && message.body === 'Please plan the onboarding requirements');
-          const catId = observation.actor.actorRef.startsWith('cat:')
-            ? observation.actor.actorRef.slice('cat:'.length)
-            : channel.catAssignments[0]?.catId;
-          if (!userMessage || !catId) {
-            throw new Error('Expected prepared direct user message and Cat actor.');
-          }
-          const { conversationId } = resolveChannelCanonicalIdentity(preparedState, channelId);
-          const duplicateProposal = buildCatProductIntentProposalMetadata({
-            messageId: userMessage.id,
-            channelId,
-            conversationId,
-            transport: 'web',
-            catId,
-            actorId: `cat:${catId}`,
+        providerAgentDecisionRequester: async () => ({
+          contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+          kind: 'tool_request',
+          decisionId: 'decision-propose-work-duplicate',
+          confidence: 'high',
+          toolName: CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
+          target: {
+            kind: 'worker_tool',
+            toolName: CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
+          },
+          input: {
             targetProduct: 'work',
             summary: 'Plan onboarding requirements',
-            rationale: 'Seed existing proposal to exercise duplicate suppression.',
-            now: new Date('2026-05-06T08:01:00.000Z'),
-          });
-          const seeded = appendMessage(
-            preparedState,
-            channelId,
-            {
-              senderKind: 'system',
-              senderName: 'Cats',
-              body: 'Plan onboarding requirements',
-            },
-            new Date('2026-05-06T08:01:00.000Z'),
-            {
-              metadata: {
-                event: 'cat_product_intent_proposal_created',
-                sourceMessageId: userMessage.id,
-                [CAT_PRODUCT_INTENT_PROPOSAL_METADATA_KEY]: duplicateProposal,
-              },
-              incrementUnread: false,
-            },
-          );
-          preparedState.channels = seeded.state.channels;
-          preparedState.selectedChannelId = seeded.state.selectedChannelId;
-
-          return {
-            contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
-            kind: 'tool_request',
-            decisionId: 'decision-propose-work-duplicate',
-            confidence: 'high',
-            toolName: CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
-            target: {
-              kind: 'worker_tool',
-              toolName: CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
-            },
-            input: {
-              targetProduct: 'work',
-              summary: 'Plan onboarding requirements',
-              rationale: 'The owner is asking for product intake.',
-            },
-            rationaleSummary: 'Ask the owner to confirm product intake.',
-          };
-        },
+            rationale: 'The owner is asking for product intake.',
+          },
+          rationaleSummary: 'Ask the owner to confirm product intake.',
+        }),
       },
     ));
-  const channel = requireChannel(routed.state, channelId);
+  const channel = requireChannel(duplicate.state, channelId);
   const proposalMessages = channel.messages.filter((message) =>
     message.metadata.event === 'cat_product_intent_proposal_created');
 
+  assert.equal(duplicate.userMessage.id, proposal.source.messageId);
   assert.equal(proposalMessages.length, 1);
   assert.equal(
     warnings.some((warning) =>

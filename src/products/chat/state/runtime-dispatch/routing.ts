@@ -135,7 +135,7 @@ import {
   shouldAppendCatProductIntentProposal,
   validateCatProductIntentProposalToolCall,
   type CatProductIntentProposalMetadata,
-  type CatProductIntentProposalValidationRejectionReason,
+  type CatProductIntentProposalRejectionReason,
 } from '../../shared/catProductIntentProposal.js';
 
 export type ProviderAgentDecisionRequester = (input: {
@@ -940,7 +940,7 @@ function appendCatProductIntentProposalSidecar(input: {
 function warnCatProductIntentProposalToolCallIgnored(input: {
   channelId: string;
   messageId: string;
-  reason: CatProductIntentProposalValidationRejectionReason;
+  reason: CatProductIntentProposalRejectionReason;
   errors: string[];
   response: unknown;
 }): void {
@@ -2932,18 +2932,60 @@ export async function beginChannelMessageRetryDispatch(
         now,
       })
     : null;
-  nextState = await persistInFlightDispatchState(
-    options.chatStore,
-    materializeInFlightDispatchState(
-      preparedTurn.state,
-      channelId,
-      preparedTurn.baseRoomRouting,
-      preparedTurn.workflow,
-      preparedTurn.outcome,
-      preparedTurn.latestCheckpoint,
-      now,
-    ),
+  nextState = materializeInFlightDispatchState(
+    preparedTurn.state,
+    channelId,
+    preparedTurn.baseRoomRouting,
+    preparedTurn.workflow,
+    preparedTurn.outcome,
+    preparedTurn.latestCheckpoint,
+    now,
   );
+  const retryCoreForNaturalIntent = options.chatStore
+    ? (core ?? await options.chatStore.readCore())
+    : null;
+  const retryChannelForNaturalIntent = requireChannel(nextState, channelId);
+  const retryNaturalProductIntentEffectiveMode = resolveEffectiveChatNaturalProductIntentMode({
+    deploymentMode: options.naturalProductIntentMode,
+    ownerEnabled:
+      retryCoreForNaturalIntent?.ownerProfile.naturalProductIntentProposalsEnabled,
+  });
+  const retryNaturalProductIntentAudience =
+    resolveProductIntentAudience(retryChannelForNaturalIntent);
+  const retryNaturalProductIntentCapabilityProfileKind =
+    resolveDirectAudienceCapabilityProfileKind({
+      channel: retryChannelForNaturalIntent,
+      audience: retryNaturalProductIntentAudience,
+      assessedAt: now.toISOString(),
+      providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
+      providerCapabilityBootstrapDiagnosticSink:
+        options.providerCapabilityBootstrapDiagnosticSink,
+    });
+  const retryProductIntentLocale = resolveProductIntentMessageLocale(
+    retryChannelForNaturalIntent,
+    options.transportLocale,
+  );
+  nextState = expireCatProductIntentProposalSidecars({
+    state: nextState,
+    channelId,
+    locale: retryProductIntentLocale,
+    now,
+  });
+  const catProposalSidecar = appendCatProductIntentProposalSidecar({
+    state: nextState,
+    channel: requireChannel(nextState, channelId),
+    channelId,
+    userMessage: sourceMessage,
+    providerAgentDecision,
+    effectiveMode: retryNaturalProductIntentEffectiveMode,
+    capabilityProfileKind: retryNaturalProductIntentCapabilityProfileKind,
+    audienceCatId: retryNaturalProductIntentAudience.audienceCatId,
+    locale: retryProductIntentLocale,
+    now,
+    transport: options.transport,
+  });
+  nextState = catProposalSidecar.state;
+  nextState = await persistInFlightDispatchState(options.chatStore, nextState);
   options.onStateWritten?.(channelId);
 
   return {
