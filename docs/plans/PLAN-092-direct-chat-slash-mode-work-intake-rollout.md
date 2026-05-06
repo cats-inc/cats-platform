@@ -199,8 +199,8 @@ originating lane and the owning product surface.
 - [x] Task 6.1: Run targeted tests for command parsing, direct capability
       bridge, strong creation, weak human gate, Code-target anchors, and
       Work/Code projection/supervised boundary handoff.
-- [ ] Task 6.2: Add one manual Web direct-lane verification note.
-- [ ] Task 6.3: Add one manual Telegram direct-lane verification note when a
+- [x] Task 6.2: Add one manual Web direct-lane verification note.
+- [x] Task 6.3: Add one manual Telegram direct-lane verification note when a
       Telegram dev binding is available.
 - [x] Task 6.4: Update SPEC-104 and this plan if implementation paths differ
       from the planned seams.
@@ -209,6 +209,26 @@ originating lane and the owning product surface.
 
 **Deliverables**: the MVP is verified without polluting user dev state with
 demo Work Items unless the user explicitly approves a write.
+
+### Phase 6 Verification Notes
+
+- Web direct-lane verification: verified without writing to the persisted local
+  dev state by exercising the Web composer metadata helper and the shared Chat
+  dispatch boundary against in-memory stores. The final targeted suite covered
+  `/chat`, `/work`, and `/code` Web-origin command tagging, direct-lane posture
+  segments, strong/weak/unknown capability outcomes, active-anchor lifecycle,
+  Work/Code projection visibility, and WorkItem-to-Task supervised-boundary
+  handoff.
+- Telegram direct-lane verification: no live Telegram dev binding was used in
+  this session, so no bot messages or demo records were written to external
+  services or the user's persisted dev state. The verified path covered
+  Telegram suffix parsing (`/work@botname`), Telegram command-menu/help
+  discoverability, transport-control separation, and the Telegram product-intent
+  bridge into the same Chat dispatch boundary used by Web.
+- Final commands run on 2026-05-06:
+  `npx tsx --test tests/chat-product-intent-command-parser.test.tsx tests/chat-composer-message-metadata.test.ts tests/chat-product-intent-dispatch.test.tsx tests/chat-direct-slash-mode-follow-up.test.tsx tests/chat-direct-slash-mode-work-projection.test.tsx tests/chat-direct-slash-mode-supervised-boundary.test.tsx`
+  passed with 31 tests; `npx tsc --noEmit -p tsconfig.server.json` passed;
+  `npm run build:test-ui` passed.
 
 ## Files to Create/Modify
 
@@ -327,6 +347,7 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | MVP close-out: Phase 6 verification notes are complete. Final targeted direct slash-mode suite passed (31 tests), `npx tsc --noEmit -p tsconfig.server.json` passed, and `npm run build:test-ui` passed. Web and Telegram notes document the non-persistent verification path used to avoid writing live demo records without explicit approval. |
 | 2026-05-06 | Supervised boundary slice: Core now has a single WorkItem-to-Task link helper; Work task creation and Code task creation accept `workItemId`, so direct slash-mode anchors can be promoted through existing Work/Code task APIs before Work supervised-run or Code execution APIs start. Tests prove Chat does not create runs directly, Work run creation waits until Work task linkage, and Code task creation links the anchor before execution. |
 | 2026-05-06 | Code projection slice: Code dashboard read-model now exposes code-target Work Item anchors, including draft anchors created from direct `/code` chat before any task/run bridge exists. Source-level projection tests cover both Work and Code visibility. |
 | 2026-05-06 | Final validation slice: targeted direct slash-mode suite passed (28 tests), `npx tsc --noEmit -p tsconfig.server.json` passed, and `npm run build:test-ui` passed. No `docs/terminology.md` update was needed because no new durable terminology was introduced beyond `directSlashMode` metadata already documented in SPEC-104/PLAN-092. Live Web/Telegram manual verification was not executed in this session to avoid writing verification records into the user's persisted dev state without explicit approval. |
