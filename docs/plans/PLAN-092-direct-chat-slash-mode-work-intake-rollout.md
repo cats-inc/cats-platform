@@ -180,7 +180,7 @@ tested independently.
 
 ### Phase 5: Follow-up and supervised execution bridge
 
-- [ ] Task 5.1: Link created Work Item anchors back to the source direct
+- [x] Task 5.1: Link created Work Item anchors back to the source direct
       conversation and audience Cat through `conversationId` and
       `metadata.directSlashModeIntake`.
 - [x] Task 5.2: Ensure follow-up messages in the direct lane can reference the
@@ -327,6 +327,7 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Work projection slice: added coverage proving Work product projections list draft Work Items created from direct slash-mode chat, including source conversation and assigned direct Cat context. |
 | 2026-05-06 | Follow-up prompt/context slice: direct-lane follow-up messages now carry `directSlashModeIntakeRef` when an active anchor exists, runtime context forwards the anchor metadata, and Cat dispatch instructions include the Concierge protocol (one focal question, priority order, recap before task/run follow-up, no duplicate Work Item anchor). |
 | 2026-05-06 | Active-anchor lifecycle slice: `/chat` posture changes now write `directSlashMode.activeAnchor = null` with `clearReason: chat_posture`; terminal Work Items (`completed`, `cancelled`, `archived`) clear the cached anchor, and a later `/work` or `/code` starts a fresh intake even when posture itself is unchanged. Tests cover chat-clear, terminal-clear, and no duplicate anchor on idempotent repeats. |
 | 2026-05-06 | Work Item anchor slice: strong direct `/work` and `/code` posture changes now create a draft Core Work Item anchor with `conversationId`, `metadata.directSlashModeIntake`, `metadata.directSlashMode.activeAnchor`, and `metadata.planning.productHint`; repeated posture commands do not duplicate anchors. Weak/unknown direct Cats now record `directSlashMode.humanGate.kind = human_gate_required` and create no durable Work Item. |
