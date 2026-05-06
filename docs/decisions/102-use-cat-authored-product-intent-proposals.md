@@ -58,8 +58,16 @@ For ordinary no-slash direct-chat text:
    ordinary chat.
 
 Weak or unknown direct Cats do not receive the proposal tool. They may still
-answer conversationally and can tell the owner to use `/work` or `/code`, but
-they cannot generate confirmable product-intake proposals.
+answer conversationally. Their system prompt may include a soft hint that they
+can suggest the owner type `/work` or `/code` when they perceive Work/Code
+intent, but the platform does not enforce or validate that conversational hint.
+They cannot generate confirmable product-intake proposals.
+
+Providers without tool-call support do not get a structured-output bridge in
+v1. Strong Cats backed by those providers do not surface natural-language
+product proposals; the owner can still use explicit `/work` or `/code`. A
+structured-output bridge needs a separate ADR/SPEC because it would create a
+second provider adaptation path.
 
 The deterministic heuristic detector from PLAN-093 is not the normative
 natural-language path. It may remain temporarily as an experimental prefilter or
@@ -80,6 +88,8 @@ Natural-language product suggestions have two gates:
 2. **Owner setting**:
    a user-facing "Suggest Work/Code from chat" setting controls whether the
    owner wants natural-language proposals at all.
+   This setting is owner-profile scoped. Per-lane and per-Cat overrides are out
+   of v1.
 
 The effective mode is the stricter of the two gates. Explicit `/chat`, `/work`,
 and `/code` commands are always available and are not disabled by this setting.
@@ -102,10 +112,10 @@ shall not default to `heuristic_prefilter`.
 
 ### Negative
 
-- The MVP needs a provider/tool-call path before no-slash suggestions work
-  correctly.
+- The MVP needs a provider/tool-call path before no-slash suggestions work for
+  a given Cat.
 - Providers without tool calling cannot participate in Cat-authored proposals
-  unless the platform adds a separate structured-output bridge.
+  in v1.
 - A pure chat reply from the Cat is no longer enough; proposal intent must be a
   structured tool call so the platform can audit and confirm it.
 

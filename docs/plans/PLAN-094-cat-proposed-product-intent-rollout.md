@@ -39,6 +39,9 @@ to Cat-authored proposal tools:
 - Do not create Work Items, Tasks, Runs, Code execution, or active anchors from
   proposal tool calls alone.
 - Do not expose proposal tools to weak or unknown Cats.
+- Do not expose proposal tools in the same assistant turn as durable-action
+  tools such as `createWorkItem`, `createTask`, or `createRun`.
+- Do not allow more than one proposal tool call per assistant turn.
 - Do not use platform keyword lists as the default multilingual strategy.
 - Do not disable explicit slash commands through natural-intent settings.
 - Do not treat `/chat` as "close Work"; it is ordinary conversational posture
@@ -53,10 +56,16 @@ to Cat-authored proposal tools:
       Default to `off` until the Cat proposal tool path ships; never default
       to `heuristic_prefilter`.
 - [ ] Task 1.2: Add an owner setting for "Suggest Work/Code from chat".
+      Store it at owner-profile scope. Per-lane and per-Cat overrides are out
+      of v1.
 - [ ] Task 1.3: Ensure explicit `/chat`, `/work`, and `/code` ignore the
       natural-intent setting and continue through SPEC-104.
 - [ ] Task 1.4: Move the PLAN-093 deterministic detector behind
       `heuristic_prefilter` only. It shall not run in `off` or `cat_tool` mode.
+- [ ] Task 1.4a: Migrate the PLAN-093 detector test suite to set
+      `mode = heuristic_prefilter` explicitly. Tests that previously asserted
+      detector behavior under default mode shall assert it under
+      `heuristic_prefilter` and add parallel `cat_tool` / `off` negative cases.
 - [ ] Task 1.5: Add tests proving no no-slash suggestions appear when the
       effective mode is `off`.
 
@@ -78,6 +87,10 @@ heuristic path is no longer the default.
       non-empty summary/rationale.
 - [ ] Task 2.5: Add tests proving proposal tool calls do not create Work Items
       or anchors.
+- [ ] Task 2.6: Add lane-local suppression and idempotency helpers: 15-minute
+      proposal TTL, five-minute decline cooldown, `/chat` expiry of outstanding
+      proposals, new-message expiry of unresolved proposals, and duplicate
+      `proposalId` no-op behavior.
 
 **Deliverables**: a strong Cat can produce an auditable proposal segment, but no
 durable Work/Code state.
@@ -90,9 +103,14 @@ durable Work/Code state.
 - [ ] Task 3.3: Inject prompt instructions that the tool asks for owner
       confirmation and must not be used for casual chat.
 - [ ] Task 3.4: Ensure providers without tool-call support do not get a silent
-      fallback that pretends to be a proposal.
+      fallback that pretends to be a proposal. Structured-output fallback is
+      deferred to a separate ADR/SPEC.
 - [ ] Task 3.5: Add tests proving the tool grant is controlled by capability,
       deployment mode, owner setting, and direct-lane membership.
+- [ ] Task 3.6: Add per-turn tool-grant separation guards:
+      `proposeProductIntake` cannot ship in the same turn as future Work Item,
+      Task, or Run tool grants, and at most one proposal call is accepted per
+      assistant turn.
 
 **Deliverables**: proposal capability is a real policy-gated tool surface, not a
 prompt-only suggestion.
@@ -109,7 +127,10 @@ prompt-only suggestion.
       `(cat-proposal-confirmation)` instead of a fake slash token.
 - [ ] Task 4.5: Reuse SPEC-104 direct audience capability gating after
       confirmation.
-- [ ] Task 4.6: Add idempotency tests for repeated confirmation.
+- [ ] Task 4.6: Set confirmed `argumentText` to `proposal.summary.trim()` when
+      non-empty, otherwise fall back to `originalMessage.body.trim()` for
+      defensive legacy/migration handling.
+- [ ] Task 4.7: Add idempotency tests for repeated confirmation.
 
 **Deliverables**: confirmed Cat proposals use the existing durable intake path
 without introducing a parallel Work Item creation path.
@@ -148,6 +169,7 @@ the old heuristic cannot surprise users.
 |------|--------|-------------|
 | `src/products/chat/state/runtime-dispatch/**` | Modify | Tool grant gating, proposal handling, confirmation bridge. |
 | `src/products/chat/shared/**` | Modify | Proposal metadata helpers; quarantine old heuristic detector. |
+| `src/products/chat/shared/catProductIntentProposal.ts` | Create | Cat product-intent proposal metadata builders, validators, suppression helpers, and idempotency helpers. Mirrors the v1 `implicitProductIntent.ts` shape without reusing v1 metadata keys. |
 | `src/products/chat/api/contracts.ts` | Modify | Setting/config contracts if needed. |
 | `src/shared/i18n/**` or current catalog location | Modify | Proposal and disabled-state strings. |
 | `src/platform/transports/telegram/**` | Modify | Callback data and proposal confirmation bridge. |
@@ -166,6 +188,16 @@ the old heuristic cannot surprise users.
 - Confirmation is the only bridge into SPEC-104 durable intake.
 - The heuristic detector is experimental only and must be opt-in.
 - The deployment gate can force the feature off regardless of owner settings.
+- Owner setting lives at owner-profile scope, such as
+  `ChatStateOwnerProfile.naturalProductIntentProposalsEnabled` or equivalent.
+  Per-lane and per-Cat overrides are out of v1.
+- Providers without tool-call support do not get structured-output fallback in
+  v1. Owners use explicit `/work` or `/code` with those Cats.
+- Proposal metadata is stored under `metadata.catProductIntentProposal`.
+  Transition metadata is stored under
+  `metadata.catProductIntentProposalTransition`.
+- Proposal tool calls are server-side suppressed after decline cooldown and are
+  limited to one accepted proposal per assistant turn.
 
 ## Testing Strategy
 
@@ -174,7 +206,9 @@ the old heuristic cannot surprise users.
   - owner setting effective-mode resolution
   - proposal metadata and transition metadata builders
   - proposal idempotency
+  - proposal TTL, decline cooldown, `/chat` expiry, and new-message expiry
   - invalid proposal tool calls are rejected
+  - per-turn proposal call limit is enforced
 - **Integration tests**:
   - strong direct Cat gets proposal tool when enabled
   - weak/unknown Cat does not get proposal tool
@@ -186,6 +220,10 @@ the old heuristic cannot surprise users.
   - deployment `off` blocks no-slash suggestions
   - owner setting off blocks no-slash suggestions
   - heuristic detector does not run unless `heuristic_prefilter` is selected
+  - PLAN-093 detector tests set `heuristic_prefilter` explicitly
+  - proposal tool grant blocks future durable-action tools in the same turn
+    once those tools become agent-callable
+  - provider without tool-call support receives no natural proposal fallback
 - **Transport tests**:
   - Web choice confirmation maps to proposal id
   - Telegram callback confirmation maps to proposal id
@@ -194,11 +232,19 @@ the old heuristic cannot surprise users.
 ## Open Questions
 
 - Should owner setting default to off for the first proposal-tool release?
-- Should providers without tool calling get a structured-output bridge?
-- Should `argumentText` use proposal summary or original message body by
-  default?
 - Should the temporary heuristic mode be deleted immediately after proposal tool
   landing, or kept as an experimental prefilter?
+
+## Follow-up Backlog
+
+- Mobile read-only rendering for Cat proposal and transition system segments is
+  deferred; mobile implicit proposal UI remains out of v1.
+- Structured-output proposal fallback for providers without tool-call support is
+  deferred to a separate ADR/SPEC.
+- Per-lane and per-Cat natural-intent proposal overrides are out of v1; owner
+  profile scope is the only setting scope.
+- Work/Code projections for proposal history are undecided and remain an open
+  product question.
 
 ## Progress Log
 

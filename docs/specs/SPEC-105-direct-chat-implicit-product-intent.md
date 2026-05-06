@@ -86,7 +86,10 @@ original owner message and Cat proposal as source context.
 7. The proposal tool shall be exposed only when both deployment policy and
    owner settings allow natural-language product suggestions.
 8. Weak or unknown direct Cats shall not receive the proposal tool. They may
-   continue ordinary chat and can tell the owner to use `/work` or `/code`.
+   continue ordinary chat. Their system prompt may include a soft hint that
+   they can suggest the owner type `/work` or `/code` when they perceive
+   Work/Code intent, but the platform does not enforce or validate that
+   conversational hint.
 9. A proposal tool call shall write an append-only candidate/proposal system
    segment. It shall not create a Work Item, Task, Run, active anchor, or Code
    execution.
@@ -125,8 +128,9 @@ original owner message and Cat proposal as source context.
     `off`. After that path ships, the deployment default may become `cat_tool`,
     but it shall not default to `heuristic_prefilter`.
 23. Owner settings shall provide a user-facing "Suggest Work/Code from chat"
-    control. The deployment gate can force the feature off even if the owner
-    setting is on.
+    control stored at the owner-profile level. One switch covers all direct
+    lanes for that owner; per-lane and per-Cat overrides are out of v1. The
+    deployment gate can force the feature off even if the owner setting is on.
 
 #### Audit and metadata
 
@@ -159,6 +163,10 @@ original owner message and Cat proposal as source context.
   shall come from the shared i18n catalog.
 - **Cost**: no hidden classifier call shall run for every ordinary chat message
   by default.
+- **Provider compatibility**: providers without tool-call support do not get a
+  structured-output bridge in v1. Strong Cats backed by such providers do not
+  surface natural-language proposals; the owner can still use explicit `/work`
+  or `/code`.
 
 ## Design Overview
 
@@ -206,6 +214,13 @@ Validation rules:
   tool call happens during that turn.
 - The tool result is a proposal segment, not a Work Item.
 
+The `proposeProductIntake` grant is subject to ADR-101's per-turn tool-chain
+separation. Within a single assistant turn, the Cat shall not also receive
+`createWorkItem`, `createTask`, or `createRun` tool grants once those become
+agent-callable tools. The Cat shall not call `proposeProductIntake` more than
+once per assistant turn. Both rules are platform-enforced policy gates, not
+prompt-only suggestions.
+
 ### Proposal Metadata
 
 Proposal suggestions are append-only system segments. The original user message
@@ -242,6 +257,14 @@ interface CatProductIntentProposalMetadata {
 
 `proposalId` is the idempotency key. A practical v2 format is
 `cat-product-intent:v2:<messageId>:<catId>:<targetProduct>`.
+
+Proposal metadata is stored on the proposal system segment under
+`metadata.catProductIntentProposal`. Confirm, decline, and expire transitions
+are stored on later system segments under
+`metadata.catProductIntentProposalTransition`. These keys are deliberately
+distinct from PLAN-093's `metadata.implicitProductIntentCandidate` and
+`metadata.implicitProductIntentTransition` so v1 and v2 segments can coexist
+during the migration window.
 
 ### Confirmation Transcript Shape
 
@@ -285,8 +308,8 @@ For routing, confirmed Cat proposals synthesize command metadata with:
 - `command = 'work'` or `'code'`
 - `posture = command`
 - `targetProduct = command`
-- `argumentText = proposal.summary` or the source owner message body when the
-  proposal did not provide a stronger summary
+- `argumentText = proposal.summary.trim()` when non-empty; otherwise fall back
+  to `originalMessage.body.trim()` for defensive legacy/migration handling
 - `productIntentArgumentProvided = true`
 - `rawCommandToken = '(cat-proposal-confirmation)'`
 - `botSuffix = null`
@@ -295,6 +318,23 @@ For routing, confirmed Cat proposals synthesize command metadata with:
 
 The implementation shall not create a fake transcript message containing
 `/work ...` or `/code ...`.
+
+### Suppression Model v2
+
+Proposal suppression is lane-local and platform-enforced:
+
+- a proposal expires after 15 minutes if the owner does not confirm or decline
+  it
+- switching the lane to explicit `/chat` expires outstanding proposals but does
+  not close established Work Items
+- when a new ordinary owner message arrives in the same lane, the platform
+  expires any existing unresolved proposal before allowing a new proposal
+- declining any Work/Code proposal starts a five-minute lane cooldown
+- during cooldown, the server rejects later proposal tool calls in that lane
+  with `{ rejected: true, reason: 'cooldown_active' }`; this is not a prompt
+  suggestion
+- repeating the same `proposalId` tool call is an idempotent no-op, not a new
+  proposal
 
 ### Heuristic Detector Status
 
@@ -318,13 +358,21 @@ natural-language path. During migration it may remain behind
 - Strong direct Cats can create Work/Code proposal segments only through the
   proposal tool and only when the feature is enabled.
 - Weak/unknown Cats never receive the proposal tool.
+- Providers without tool-call support do not receive a structured-output
+  proposal fallback in v1.
 - No Work Item, Task, Run, Code execution, or active-anchor state is created
   before owner confirmation.
 - Confirming a Work proposal enters the same behavior as `/work <source>`.
 - Confirming a Code proposal enters the same behavior as `/code <source>`.
 - Declining or ignoring a proposal leaves the lane as ordinary chat.
+- Declining a proposal starts server-side cooldown, and proposal tool calls
+  during cooldown are rejected with `cooldown_active`.
+- Explicit `/chat` expires outstanding proposals without closing established
+  Work Items.
 - Proposal and confirmation metadata preserve original owner message context
   and proposing Cat context.
+- Proposal and transition metadata use `metadata.catProductIntentProposal` and
+  `metadata.catProductIntentProposalTransition`.
 - The old heuristic detector is disabled unless explicitly selected by
   deployment config.
 - UI-visible proposal copy is localized; semantic classification is not
@@ -334,10 +382,6 @@ natural-language path. During migration it may remain behind
 
 - [ ] Should the owner setting default to off for the first proposal-tool
       release, or can it default on when the deployment mode is `cat_tool`?
-- [ ] Should providers without tool-call support get a structured-output bridge
-      or no natural-language proposal capability?
-- [ ] Should confirmed proposal `argumentText` prefer the Cat summary or the
-      original owner message body when both exist?
 - [ ] Should proposal history appear in Work/Code projections, or only in Chat
       transcript metadata?
 
