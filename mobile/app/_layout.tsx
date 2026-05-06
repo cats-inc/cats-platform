@@ -1,5 +1,3 @@
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -19,17 +17,6 @@ export default function RootLayout() {
   // boot is cheaper than threading a re-render-on-locale-change
   // contract through every screen.
   const [localeReady, setLocaleReady] = useState(false);
-
-  // Explicitly preload the icon font that the bottom-tab rail
-  // (`(tabs)/_layout.tsx`) consumes via `<MaterialCommunityIcons />`.
-  // `@expo/vector-icons` ships the .ttf inside the package, but
-  // without this `useFonts` call Expo CLI's manifest probe in
-  // offline mode warns "Unable to resolve manifest assets. Icons
-  // and fonts might not work" — and on cold start the rail can
-  // briefly render with missing-glyph boxes before the font
-  // resolves. Preloading at the root before the (tabs) Stack
-  // mounts removes both rough edges.
-  const [iconFontsLoaded] = useFonts(MaterialCommunityIcons.font);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,7 +48,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg.canvas }}>
         <StatusBar style="dark" />
-        {localeReady && iconFontsLoaded ? (
+        {localeReady ? (
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           </Stack>
