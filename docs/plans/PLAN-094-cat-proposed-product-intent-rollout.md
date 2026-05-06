@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Implemented (MVP) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -107,15 +107,19 @@ durable Work/Code state.
       confirmation and must not be used for casual chat. If a proposal tool
       call is rejected, the Cat must not surface the rejection reason to the
       owner; it should resume ordinary chat without insisting on the proposal.
-- [ ] Task 3.4: Ensure providers without tool-call support do not get a silent
+- [x] Task 3.4: Ensure providers without tool-call support do not get a silent
       fallback that pretends to be a proposal. Structured-output fallback is
       deferred to a separate ADR/SPEC.
 - [x] Task 3.5: Add tests proving the tool grant is controlled by capability,
       deployment mode, owner setting, and direct-lane membership.
-- [ ] Task 3.6: Add per-turn tool-grant separation guards:
+- [x] Task 3.6: Add per-turn tool-grant separation guards:
       `proposeProductIntake` cannot ship in the same turn as future Work Item,
       Task, or Run tool grants, and at most one proposal call is accepted per
       assistant turn.
+      Current MVP enforcement exposes only the proposal tool in this turn
+      surface and records at most one accepted provider-agent tool request;
+      future durable-action tool grants must reuse this policy gate before
+      becoming agent-callable.
 
 **Deliverables**: proposal capability is a real policy-gated tool surface, not a
 prompt-only suggestion.
@@ -146,8 +150,12 @@ without introducing a parallel Work Item creation path.
       confirm/decline.
 - [x] Task 5.2: Keep Telegram inline keyboard callback handling, but change the
       source metadata from heuristic candidate ids to Cat proposal ids.
-- [ ] Task 5.3: Localize proposal, confirm, decline, expired, and disabled-copy
+- [x] Task 5.3: Localize proposal, confirm, decline, expired, and disabled-copy
       strings.
+      Confirmation, decline, and expiry reuse the existing product-intent
+      catalog keys. The proposal body itself is Cat-authored owner-facing
+      content, not platform catalog copy. Disabled copy is not surfaced in v1
+      because ineligible modes do not render proposal controls.
 - [x] Task 5.4: Keep mobile implicit proposal UI out of scope unless a separate
       mobile slice chooses read-only rendering.
 - [x] Task 5.5: Add transport parity tests for Web and Telegram.
@@ -157,18 +165,18 @@ classifier/provider terminology.
 
 ### Phase 6: Retire or quarantine PLAN-093 heuristic behavior
 
-- [ ] Task 6.1: Mark PLAN-093 as historical/superseded by PLAN-094.
-- [ ] Task 6.2: Remove the deterministic detector from default dispatch.
-- [ ] Task 6.3: If keeping the detector temporarily, confine it to
+- [x] Task 6.1: Mark PLAN-093 as historical/superseded by PLAN-094.
+- [x] Task 6.2: Remove the deterministic detector from default dispatch.
+- [x] Task 6.3: If keeping the detector temporarily, confine it to
       `heuristic_prefilter` and document it as experimental.
-- [ ] Task 6.4: Define and test migration cleanup for unresolved v1 candidates
+- [x] Task 6.4: Define and test migration cleanup for unresolved v1 candidates
       when switching from `heuristic_prefilter` to `cat_tool`. Either sweep
       outstanding `metadata.implicitProductIntentCandidate` suggestions to
       expired during mode change, or keep the v1 expiry cleanup active
       independently from detector execution.
-- [ ] Task 6.5: Update SPEC-105 verification notes once the proposal-tool path
+- [x] Task 6.5: Update SPEC-105 verification notes once the proposal-tool path
       replaces the heuristic path.
-- [ ] Task 6.6: Run targeted SPEC-104/SPEC-105 regression tests and typechecks.
+- [x] Task 6.6: Run targeted SPEC-104/SPEC-105 regression tests and typechecks.
 
 **Deliverables**: no-slash product suggestions are Cat-proposed by default, and
 the old heuristic cannot surprise users.
@@ -217,6 +225,10 @@ the old heuristic cannot surprise users.
   `metadata.catProductIntentProposalTransition`.
 - Proposal tool calls are server-side suppressed after decline cooldown and are
   limited to one accepted proposal per assistant turn.
+- V1 unresolved candidate migration uses the independent expiry path: old
+  `metadata.implicitProductIntentCandidate` segments continue to TTL-expire
+  during ordinary dispatch even when deployment mode has moved to `cat_tool`.
+  The v1 detector itself remains disabled outside `heuristic_prefilter`.
 
 ## Testing Strategy
 
@@ -252,9 +264,8 @@ the old heuristic cannot surprise users.
 
 ## Open Questions
 
-- Should owner setting default to off for the first proposal-tool release?
-- Should the temporary heuristic mode be deleted immediately after proposal tool
-  landing, or kept as an experimental prefilter?
+- Should proposal history appear in Work/Code projections, or only in Chat
+  transcript metadata?
 
 ## Follow-up Backlog
 
@@ -264,9 +275,8 @@ the old heuristic cannot surprise users.
   deferred to a separate ADR/SPEC.
 - Per-lane and per-Cat natural-intent proposal overrides are out of v1; owner
   profile scope is the only setting scope.
-- Migration cleanup for unresolved v1 `metadata.implicitProductIntentCandidate`
-  suggestions during `heuristic_prefilter` -> `cat_tool` mode changes must be
-  decided in Phase 6 before removing the default detector path.
+- Removing `heuristic_prefilter` entirely is deferred until the Cat proposal
+  path has enough usage evidence. It remains experimental and opt-in.
 - Work/Code projections for proposal history are undecided and remain an open
   product question.
 
@@ -281,6 +291,7 @@ the old heuristic cannot surprise users.
 | 2026-05-06 | Phase 3 tool-grant guard coverage landed: proposal-tool observations now carry owner-confirmation and rejection-handling invariants, and dispatch tests prove weak, unknown, owner-disabled, heuristic-mode, and non-direct lanes do not receive `proposeProductIntake`. Remaining Phase 3 work is explicit provider-without-tool-call handling and future durable-tool separation tests. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-product-intent-dispatch` and `chat-provider-agent-observation` tests. |
 | 2026-05-06 | Phase 4 confirmation bridge landed: Cat proposal segments now carry reusable `ChatMessage.choices`; confirmed Work and Code proposals synthesize `(cat-proposal-confirmation)` command metadata, preserve source message/proposal/proposing Cat context, enter the existing SPEC-104 intake path, and repeated confirmations are idempotent. Declines write only proposal transitions and do not create Work Items. Validation: `npm run build:server`, `npm run build:test-ui`, bundled `chat-product-intent-dispatch` and `chat-cat-product-intent-proposal` tests. |
 | 2026-05-06 | Phase 5 Web/Telegram parity landed for confirmation transport: Web reuses `ChatMessage.choices`, Telegram now emits `cpi:v2` inline keyboard callbacks for `metadata.catProductIntentProposal`, callback responses point at the proposal segment, and v1 `ipi:v1` remains confined to the heuristic path. Remaining Phase 5 work is catalog cleanup for any proposal-specific visible copy that should not reuse the existing implicit-intent strings. Validation: `npm run build:server`, `npm run build:test-ui`, `npx tsx --test --test-isolation=none tests/telegram-implicit-product-intent-candidates.test.ts`. |
+| 2026-05-06 | Phase 6 close-out landed: PLAN-093 is historical, the deterministic detector remains opt-in under `heuristic_prefilter`, `cat_tool` has no platform fallback without a Cat tool request, and old v1 candidates TTL-expire through an independent cleanup path after switching modes. Validation: targeted SPEC-104/SPEC-105 dispatch, proposal, provider-observation, Telegram callback, server build, UI test build, and `git diff --check`. |
 
 ---
 

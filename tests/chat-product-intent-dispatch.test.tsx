@@ -723,6 +723,40 @@ test('routeChannelMessage records Cat proposal tool requests without durable Wor
   );
 });
 
+test('routeChannelMessage does not synthesize Cat proposals without a tool request', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can discuss the onboarding requirements.');
+
+  const routed = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+    },
+  );
+  const channel = requireChannel(routed.state, channelId);
+
+  assert.equal(
+    channel.messages.some((message) =>
+      message.metadata.event === 'cat_product_intent_proposal_created'),
+    false,
+  );
+  assert.equal(
+    channel.messages.some((message) =>
+      message.metadata.event === 'implicit_product_intent_candidate_suggested'),
+    false,
+  );
+});
+
 test('routeChannelMessage does not expose proposal tools in heuristic mode', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);
@@ -1374,6 +1408,60 @@ test('routeChannelMessage expires old implicit candidates before suggesting anot
     channel.messages.filter((message) =>
       message.metadata.event === 'implicit_product_intent_candidate_suggested').length,
     2,
+  );
+});
+
+test('routeChannelMessage expires old implicit candidates even after switching to Cat proposals', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('We can discuss it.');
+  const initial = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please plan the onboarding requirements',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+
+  const next = await routeChannelMessage(
+    initial.state,
+    channelId,
+    {
+      body: 'This is a normal follow-up chat message.',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-06T08:17:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+    },
+  );
+  const channel = requireChannel(next.state, channelId);
+
+  assert.equal(
+    channel.messages.filter((message) =>
+      message.metadata.event === 'implicit_product_intent_candidate_expired').length,
+    1,
+  );
+  assert.equal(
+    channel.messages.filter((message) =>
+      message.metadata.event === 'implicit_product_intent_candidate_suggested').length,
+    1,
+  );
+  assert.equal(
+    channel.messages.some((message) =>
+      message.metadata.event === 'cat_product_intent_proposal_created'),
+    false,
   );
 });
 

@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Active / MVP Implemented |
 | **Owner** | Codex |
 | **Reviewer** | User |
 | **Related ADRs** | [ADR-101](../decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md), [ADR-102](../decisions/102-use-cat-authored-product-intent-proposals.md) |
@@ -390,10 +390,41 @@ natural-language path. During migration it may remain behind
 - UI-visible proposal copy is localized; semantic classification is not
   localized through platform keyword lists.
 
+## Verification Notes
+
+The current MVP implementation uses `cat_tool` as the Cat-authored proposal
+path and keeps the v1 heuristic detector quarantined behind
+`heuristic_prefilter`. The deployment default remains `off`; the owner-profile
+setting defaults to enabled so deployments can opt in without per-owner data
+migration.
+
+Verified behavior:
+
+- explicit `/chat`, `/work`, and `/code` still enter SPEC-104 regardless of
+  natural-intent mode;
+- `cat_tool` exposes `proposeProductIntake` only to eligible strong direct Cats;
+- no Cat proposal segment is synthesized without a Cat tool request;
+- proposal segments use `metadata.catProductIntentProposal`;
+- confirm/decline/expire transitions use
+  `metadata.catProductIntentProposalTransition`;
+- confirmed Work/Code proposals synthesize
+  `(cat-proposal-confirmation)` command metadata and enter SPEC-104;
+- Telegram callbacks use the v2 proposal id path while `ipi:v1` remains only
+  for `heuristic_prefilter`;
+- old v1 candidate TTL cleanup remains active after switching to `cat_tool`,
+  but the v1 detector does not run outside `heuristic_prefilter`.
+
+Targeted validation for the MVP is:
+
+- `npm run build:server`
+- `npm run build:test-ui`
+- `node --test --test-isolation=none build/test/chat-product-intent-dispatch.test.js`
+- `node --test --test-isolation=none build/test/chat-cat-product-intent-proposal.test.js`
+- `node --test --test-isolation=none build/test/chat-provider-agent-observation.test.js`
+- `npx tsx --test --test-isolation=none tests/telegram-implicit-product-intent-candidates.test.ts`
+
 ## Open Questions
 
-- [ ] Should the owner setting default to off for the first proposal-tool
-      release, or can it default on when the deployment mode is `cat_tool`?
 - [ ] Should proposal history appear in Work/Code projections, or only in Chat
       transcript metadata?
 
