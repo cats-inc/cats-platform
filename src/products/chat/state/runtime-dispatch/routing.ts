@@ -205,15 +205,9 @@ function buildBaseUserMessageMetadata(input: {
   channelId: string;
   deterministicRoutingPlan: DeterministicChatRoutingPlan | null;
   transportBindingId?: string | null;
-  productIntentCommand?: ProductIntentCommandMetadata | null;
 }): Record<string, unknown> {
   return {
     ...(input.payload.messageMetadata ?? {}),
-    ...(input.productIntentCommand
-      ? {
-          productIntentCommand: input.productIntentCommand,
-        }
-      : {}),
     ...buildDeterministicRoutingPlanMessageMetadata(
       input.deterministicRoutingPlan?.channelId === input.channelId
         ? input.deterministicRoutingPlan
@@ -435,6 +429,11 @@ function normalizeWorkItemTitle(value: string, fallback: string): string {
 type ProductIntentTranslator = ReturnType<typeof createTranslator>;
 const PRODUCT_INTENT_EMPTY_ARGUMENT_PROMPT = '(no slash-command argument provided)';
 
+// Single sanctioned builder for product-intent user-message metadata.
+// All product-intent paths (strong, weak, unknown, unsupported) MUST funnel
+// through here so `productIntentCommand`, `productIntentLocale`, and
+// `productIntentArgumentProvided` stay in lockstep — see SPEC-104 §FR-46
+// and the `ProductIntentUserMessageMetadata` contract in `chat/api/contracts.ts`.
 function buildProductIntentUserMessageMetadata(input: {
   productIntentCommand: ProductIntentCommandMetadata;
   locale: MessageLocale;
@@ -720,11 +719,15 @@ function buildProductIntentConciergePromptSource(input: {
   productIntentCommand: ProductIntentCommandMetadata;
   activeAnchor: DirectSlashModeActiveAnchorMetadata;
 }): ChatMessage {
-  const argumentText = input.productIntentCommand.argumentText.trim();
-  const hasArgument = argumentText.length > 0;
+  // Trust the flag written by `buildProductIntentUserMessageMetadata` at
+  // append time rather than recomputing from `argumentText.trim()`. Keeps
+  // the empty-argument contract single-sourced on the user message.
+  const hasArgument = input.userMessage.metadata.productIntentArgumentProvided === true;
   return {
     ...structuredClone(input.userMessage),
-    body: hasArgument ? argumentText : PRODUCT_INTENT_EMPTY_ARGUMENT_PROMPT,
+    body: hasArgument
+      ? input.productIntentCommand.argumentText.trim()
+      : PRODUCT_INTENT_EMPTY_ARGUMENT_PROMPT,
     metadata: {
       ...(input.userMessage.metadata ?? {}),
       directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(input.activeAnchor),
@@ -1251,7 +1254,6 @@ export async function beginChannelMessageDispatch(
             channelId,
             deterministicRoutingPlan,
             transportBindingId: options.transportBindingId,
-            productIntentCommand,
           }),
           ...buildProductIntentUserMessageMetadata({
             productIntentCommand,
