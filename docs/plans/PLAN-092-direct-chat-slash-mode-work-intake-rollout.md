@@ -196,14 +196,15 @@ originating lane and the owning product surface.
 
 ### Phase 6: Verification and documentation close-out
 
-- [ ] Task 6.1: Run targeted tests for command parsing, direct capability
-      bridge, strong creation, weak human gate, and Work/Code projection.
+- [x] Task 6.1: Run targeted tests for command parsing, direct capability
+      bridge, strong creation, weak human gate, Code-target anchors, and Work
+      projection.
 - [ ] Task 6.2: Add one manual Web direct-lane verification note.
 - [ ] Task 6.3: Add one manual Telegram direct-lane verification note when a
       Telegram dev binding is available.
-- [ ] Task 6.4: Update SPEC-104 and this plan if implementation paths differ
+- [x] Task 6.4: Update SPEC-104 and this plan if implementation paths differ
       from the planned seams.
-- [ ] Task 6.5: Update `docs/terminology.md` only if implementation introduces
+- [x] Task 6.5: Update `docs/terminology.md` only if implementation introduces
       new durable terminology. Do not add retired mode aliases.
 
 **Deliverables**: the MVP is verified without polluting user dev state with
@@ -326,6 +327,7 @@ demo Work Items unless the user explicitly approves a write.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Final validation slice: targeted direct slash-mode suite passed (28 tests), `npx tsc --noEmit -p tsconfig.server.json` passed, and `npm run build:test-ui` passed. No `docs/terminology.md` update was needed because no new durable terminology was introduced beyond `directSlashMode` metadata already documented in SPEC-104/PLAN-092. Live Web/Telegram manual verification was not executed in this session to avoid writing verification records into the user's persisted dev state without explicit approval. |
 | 2026-05-06 | Human-gate UI slice: weak/unknown system acknowledgements now reuse existing chat message choices to show inline next-step actions, including the Work Items path as the primary option while keeping the same metadata path for transport/deep-link handling. |
 | 2026-05-06 | Spec alignment slice: SPEC-104 and PLAN-092 now reflect the implemented MVP contract: strong slash-mode command turns create a draft Work Item anchor directly, do not dispatch runtime/task/run in the same turn, and follow-up prompt/context handles Concierge clarification on later turns. |
 | 2026-05-06 | Human-gate slice: weak/unknown `/work` and `/code` responses now carry a machine-readable human gate with draft summary and suggested next actions, use Telegram-safe copy without provider jargon, and tests assert no durable Work Item is created on weak/unknown paths. |
