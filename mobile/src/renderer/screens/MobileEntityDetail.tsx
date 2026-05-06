@@ -5,6 +5,7 @@ import {
   getMobileCatsTabCopy,
   resolveDefaultMobileLocale,
 } from '../../../../src/mobile/index.js';
+import { mobileRoutes } from '../../routes';
 import { colors, radii, spacing, typography } from '../theme';
 
 export type MobileEntityKind = 'cat' | 'clowder' | 'cattery';
@@ -43,7 +44,7 @@ export function MobileEntityDetail({ kind, id }: MobileEntityDetailProps) {
       </View>
       <Pressable
         accessibilityRole="button"
-        onPress={() => router.replace('/(tabs)/cats')}
+        onPress={() => router.replace(mobileRoutes.catsDirectory())}
         style={({ pressed }) => [
           styles.backButton,
           pressed ? styles.backButtonPressed : null,

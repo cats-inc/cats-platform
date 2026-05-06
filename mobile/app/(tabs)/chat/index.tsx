@@ -9,6 +9,7 @@ import {
 } from '../../../src/api/fixtures/productSidebar';
 import { useProductSidebarData } from '../../../src/renderer/hooks/useProductSidebarData';
 import { useRecentDeleteHandler } from '../../../src/renderer/hooks/useRecentDeleteHandler';
+import { mobileRoutes } from '../../../src/routes';
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
 import { colors } from '../../../src/renderer/theme';
 import {
@@ -68,7 +69,7 @@ export default function ChatSidebarScreen() {
         catId,
       );
       if (directLane) {
-        router.push(`/(tabs)/chat/${directLane.id}`);
+        router.push(mobileRoutes.productChannel('chat', directLane.id));
         return;
       }
       // No existing DM yet → navigate to the chat draft route
@@ -84,9 +85,10 @@ export default function ChatSidebarScreen() {
         return;
       }
       router.push(
-        `/(tabs)/chat/new?entryKind=direct&catId=${encodeURIComponent(
-          catId,
-        )}&catName=${encodeURIComponent(cat.name)}`,
+        mobileRoutes.productNewDraft('chat', {
+          entryKind: 'direct',
+          directLane: { catId, catName: cat.name },
+        }),
       );
     },
     [router, state],
@@ -104,7 +106,7 @@ export default function ChatSidebarScreen() {
         return;
       }
       router.push(
-        `/(tabs)/chat/new?entryKind=${encodeURIComponent(actionId)}`,
+        mobileRoutes.productNewDraft('chat', { entryKind: actionId }),
       );
     },
     [copy, router],
@@ -112,7 +114,7 @@ export default function ChatSidebarScreen() {
 
   const handleSelectRecent = useCallback(
     (channelId: string) => {
-      router.push(`/(tabs)/chat/${channelId}`);
+      router.push(mobileRoutes.productChannel('chat', channelId));
     },
     [router],
   );

@@ -8,6 +8,7 @@ import {
 } from '../../api/client';
 import { resolveMobileDraftApiEntryKind } from '../../api/fixtures/productSidebar';
 import { loadConnectionConfig } from '../../api/persistence';
+import { mobileRoutes } from '../../routes';
 import {
   getMobileApiCopy,
   getMobileChannelTitle,
@@ -181,7 +182,7 @@ export function useDraftChannel(
         const newChannelId = created.channel.id;
         await client.post(messagesPath(newChannelId), { body: trimmed });
         setSendState({ kind: 'idle' });
-        router.replace(`/(tabs)/${productMode}/${newChannelId}`);
+        router.replace(mobileRoutes.productChannel(productMode, newChannelId));
       } catch (error) {
         if (error instanceof MobileApiError) {
           setSendState({ kind: 'error', error });

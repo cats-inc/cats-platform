@@ -9,6 +9,7 @@ import {
 } from '../../../src/api/fixtures/productSidebar';
 import { useProductSidebarData } from '../../../src/renderer/hooks/useProductSidebarData';
 import { useRecentDeleteHandler } from '../../../src/renderer/hooks/useRecentDeleteHandler';
+import { mobileRoutes } from '../../../src/routes';
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
 import { colors } from '../../../src/renderer/theme';
 import {
@@ -43,7 +44,7 @@ export default function WorkSidebarScreen() {
         return;
       }
       router.push(
-        `/(tabs)/work/new?entryKind=${encodeURIComponent(actionId)}`,
+        mobileRoutes.productNewDraft('work', { entryKind: actionId }),
       );
     },
     [copy, router],
@@ -51,7 +52,7 @@ export default function WorkSidebarScreen() {
 
   const handleSelectRecent = useCallback(
     (channelId: string) => {
-      router.push(`/(tabs)/work/${channelId}`);
+      router.push(mobileRoutes.productChannel('work', channelId));
     },
     [router],
   );

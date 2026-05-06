@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import { mobileRoutes } from '../../routes';
 import { useCatsDirectoryTab } from '../hooks/useCatsDirectoryTab';
 import type {
   MobileCatsDirectoryCatSummary,
@@ -57,7 +58,7 @@ export function CatsDirectoryTab() {
         title={copy.connectDesktopTitle}
         body={copy.connectDesktopBody}
         actionLabel={copy.openSettingsAction}
-        onAction={() => router.push('/(tabs)/settings')}
+        onAction={() => router.push(mobileRoutes.settings())}
       />
     );
   }
@@ -86,9 +87,7 @@ export function CatsDirectoryTab() {
     <DirectoryBody
       data={state.data}
       copy={copy}
-      onSelectCat={(catId) =>
-        router.push(`/(tabs)/cats/${encodeURIComponent(catId)}`)
-      }
+      onSelectCat={(catId) => router.push(mobileRoutes.catDetail(catId))}
       onCreateNew={handleCreateNew}
     />
   );
