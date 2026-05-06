@@ -484,7 +484,7 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
     emptyRecentsLabel: 'No recent conversations yet.',
     deleteAction: 'Delete',
     deleteFailedTitle: "Couldn't delete",
-    directMessagesLabel: 'Direct messages',
+    directMessagesLabel: 'Direct Messages',
     products: {
       chat: {
         productLabel: 'CHAT',

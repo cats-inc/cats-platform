@@ -69,6 +69,53 @@ const FORBIDDEN_PROJECT_SUBSTRINGS = [
   '/products/shared/api/workspaceContracts',
 ];
 
+/**
+ * Browser+RN safe directories under `cats-platform/src/` that the
+ * mobile consumer (`mobile/app/**`, `mobile/src/**`) is allowed to
+ * import directly without going through `src/mobile/**`. Each path
+ * is project-relative, forward-slash normalised, and refers to a
+ * directory whose contents have been audited:
+ *
+ *   - No `node:*` imports
+ *   - No transitive Node deps (verified via the mobile workspace's
+ *     `npm run typecheck` after each addition)
+ *   - No React DOM / browser-only APIs
+ *
+ * This list lets canonical chat-product domain logic live where it
+ * belongs (e.g. `src/products/chat/shared/directMessageSelectors.ts`)
+ * instead of being shoved into `src/mobile/**` for the sole reason
+ * that mobile-side code can reach it. See
+ * `docs/plans/PLAN-094-mobile-shared-boundary-realignment.md` for
+ * the architectural rationale.
+ *
+ * Adding a new entry requires:
+ *   1. Audit the directory for `node:*` imports + DOM / window /
+ *      document references.
+ *   2. Run `node scripts/check-mobile-boundary.mjs` then
+ *      `cd mobile && npm run typecheck` to confirm transitive
+ *      cleanliness.
+ *   3. Land the entry alongside the consumer change that needs it.
+ */
+const ALLOWED_CONSUMER_PROJECT_DIRS = [
+  // Mobile boundary — the existing path; everything else here is an
+  // additional allow-list entry on top.
+  'src/mobile',
+  // Per-product browser+RN safe shared algorithms, types, and
+  // selectors. Currently only chat has a populated `shared/`; code
+  // and work mirror the structure when their own DM-style logic
+  // lands.
+  'src/products/chat/shared',
+  // Cross-product i18n catalogs + key registry. The catalogs are
+  // pure object literals and `messageKeys.ts` is a pure const map;
+  // both are Node-clean.
+  'src/shared/i18n',
+  // Browser+RN safe primitives shared across products.
+  'src/shared/platformSurfaces.ts',
+  'src/shared/platform-contract.ts',
+  'src/shared/roomRouting.ts',
+  'src/shared/channelPaths.ts',
+];
+
 const IMPORT_REGEX =
   /^\s*(?:import|export)(?:\s+type)?\s+(?:[^"'`]+?\s+from\s+)?["']([^"'`]+)["']/gm;
 
@@ -170,17 +217,35 @@ function classifyConsumerImport(importPath, sourceFile) {
   if (!resolved.startsWith(`${PLATFORM_SRC_DIR}${path.sep}`)) {
     return { ok: true };
   }
-  // It does point into cats-platform/src/. Allow only if it lands
-  // inside the boundary directory.
-  if (
-    resolved === BOUNDARY_DIR ||
-    resolved.startsWith(`${BOUNDARY_DIR}${path.sep}`)
-  ) {
-    return { ok: true };
+  // It does point into cats-platform/src/. Allow if it lands inside
+  // any of the audited browser+RN safe directories.
+  const rel = projectRel(resolved);
+  for (const allowed of ALLOWED_CONSUMER_PROJECT_DIRS) {
+    if (rel === allowed || rel.startsWith(`${allowed}/`)) {
+      // Defence in depth: even an allowed directory must not have
+      // a forbidden substring in the resolved path. Catches
+      // accidental layering errors (e.g. someone placing a
+      // /server/ subfolder under an allowed root).
+      for (const fragment of FORBIDDEN_PROJECT_SUBSTRINGS) {
+        if (rel.includes(fragment)) {
+          return {
+            ok: false,
+            reason:
+              `import "${importPath}" lands in allow-listed "${allowed}" `
+              + `but the resolved path "${rel}" contains forbidden fragment "${fragment}"`,
+          };
+        }
+      }
+      return { ok: true };
+    }
   }
   return {
     ok: false,
-    reason: `mobile must reach cats-platform/src only via src/mobile/**; got "${projectRel(resolved)}"`,
+    reason:
+      `mobile must reach cats-platform/src only via the boundary or an `
+      + `allow-listed shared directory; got "${rel}". `
+      + `If this directory is browser+RN safe, add it to ALLOWED_CONSUMER_PROJECT_DIRS `
+      + `in scripts/check-mobile-boundary.mjs after auditing for node:* imports.`,
   };
 }
 

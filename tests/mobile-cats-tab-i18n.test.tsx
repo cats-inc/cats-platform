@@ -788,7 +788,7 @@ test('findMobileDirectLaneForCat returns the direct-lane channel when one exists
 test('mobile product sidebar copy ships the DIRECT MESSAGES section label', () => {
   const en = getMobileProductSidebarCopy('en');
   const zh = getMobileProductSidebarCopy('zh-TW');
-  assert.equal(en.directMessagesLabel, 'Direct messages');
+  assert.equal(en.directMessagesLabel, 'Direct Messages');
   assert.equal(zh.directMessagesLabel, '直接訊息');
 });
 
