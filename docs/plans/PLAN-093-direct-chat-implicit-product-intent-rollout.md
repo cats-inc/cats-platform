@@ -144,7 +144,7 @@ pipeline, with no parallel durable intake path.
       append a second candidate system segment for the same `candidateId`. The
       detector itself is deterministic, so this guard sits at the persistence
       boundary, not inside the pure detection contract from Phase 1.
-- [ ] Task 5.2: Add tests proving declined candidates are not immediately
+- [x] Task 5.2: Add tests proving declined candidates are not immediately
       re-suggested for the same message, and that repeated detection for the
       same `messageId` does not append duplicate candidate segments.
 - [ ] Task 5.3: Add i18n coverage for Web and Telegram suggestion/confirmation
@@ -246,6 +246,7 @@ materialization, and command-pipeline drift.
 
 | Date | Update |
 |------|--------|
+| 2026-05-06 | Phase 5 duplicate-guard coverage landed: candidate-write idempotency is now expressed as a shared persistence-boundary helper used by routing and covered by tests proving the same `candidateId` is not appendable twice while a different target for the same message remains distinct. Decline cooldown coverage already proves immediate re-suggestion is suppressed. |
 | 2026-05-06 | Phase 4 lifecycle close-out landed: confirmed implicit Work/Code candidates now have integration coverage for weak/unknown gates, active-anchor supersede, `/chat` abandonment, and Work projection visibility through the same core Work Item path as explicit slash-mode. |
 | 2026-05-06 | Telegram parity close-out landed: targeted dispatch coverage now proves Telegram-sourced implicit Code candidates preserve `source: 'telegram'` through confirmation and create the same Code-target draft anchor as Web/explicit slash-mode. |
 | 2026-05-06 | Phase 5 anti-nag slice landed: routing now suppresses new suggestions for five minutes after a decline, expires outstanding suggestions when `/chat` is selected, expires TTL-stale suggestions before later candidate writes, and skips duplicate candidate writes for the same `candidateId` at the persistence boundary. |

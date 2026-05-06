@@ -170,6 +170,10 @@ export interface BuildImplicitProductIntentTransitionMetadataInput {
   originalMessageBody?: string;
 }
 
+export interface ImplicitProductIntentMetadataCarrier {
+  metadata?: Record<string, unknown> | null;
+}
+
 function normalizeText(rawText: string | null | undefined): string {
   return typeof rawText === 'string'
     ? rawText.trim().replace(/\s+/gu, ' ').toLowerCase()
@@ -212,6 +216,58 @@ export function buildImplicitProductIntentTransitionIdempotencyKey(input: {
   event: ImplicitProductIntentTransitionEvent;
 }): string {
   return `${TRANSITION_ID_PREFIX}:${input.candidateId}:${input.event}`;
+}
+
+export function readImplicitProductIntentCandidateMetadata(
+  value: unknown,
+): ImplicitProductIntentCandidateMetadata | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const record = value as Partial<ImplicitProductIntentCandidateMetadata>;
+  const source = record.source;
+  const candidate = record.candidate;
+  if (
+    record.version !== 1
+    || record.event !== 'suggested'
+    || !source
+    || typeof source !== 'object'
+    || typeof source.messageId !== 'string'
+    || typeof source.channelId !== 'string'
+    || typeof source.conversationId !== 'string'
+    || (source.transport !== 'web' && source.transport !== 'telegram')
+    || !candidate
+    || typeof candidate !== 'object'
+    || (candidate.targetProduct !== 'work' && candidate.targetProduct !== 'code')
+    || (
+      candidate.confidence !== 'low'
+      && candidate.confidence !== 'medium'
+      && candidate.confidence !== 'high'
+    )
+    || typeof candidate.reasonCode !== 'string'
+    || typeof record.candidateId !== 'string'
+    || typeof record.expiresAt !== 'string'
+  ) {
+    return null;
+  }
+
+  return record as ImplicitProductIntentCandidateMetadata;
+}
+
+export function shouldAppendImplicitProductIntentCandidateSegment(input: {
+  messages: Iterable<ImplicitProductIntentMetadataCarrier>;
+  candidateId: string;
+}): boolean {
+  for (const message of input.messages) {
+    const candidate = readImplicitProductIntentCandidateMetadata(
+      message.metadata?.[IMPLICIT_PRODUCT_INTENT_CANDIDATE_METADATA_KEY],
+    );
+    if (candidate?.candidateId === input.candidateId) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export function detectImplicitProductIntent(

@@ -9,6 +9,7 @@ import {
   buildImplicitProductIntentCandidateMetadata,
   buildImplicitProductIntentTransitionMetadata,
   detectImplicitProductIntent,
+  shouldAppendImplicitProductIntentCandidateSegment,
 } from '../src/products/chat/shared/implicitProductIntent.js';
 
 test('detectImplicitProductIntent detects code work in direct messages', () => {
@@ -146,4 +147,42 @@ test('non-confirmed implicit product intent transitions do not synthesize comman
 
   assert.equal(transition.event, 'declined');
   assert.equal(transition.confirmedCommand, undefined);
+});
+
+test('candidate write guard rejects repeated segments for the same message and target', () => {
+  const candidate = buildImplicitProductIntentCandidateMetadata({
+    messageId: 'message-1',
+    channelId: 'channel-1',
+    conversationId: 'conversation-1',
+    transport: 'web',
+    targetProduct: 'work',
+    confidence: 'high',
+    reasonCode: 'work_high_action_product_cue',
+    now: new Date('2026-05-06T00:00:00.000Z'),
+  });
+  const records = [
+    {
+      metadata: {
+        implicitProductIntentCandidate: candidate,
+      },
+    },
+  ];
+
+  assert.equal(
+    shouldAppendImplicitProductIntentCandidateSegment({
+      messages: records,
+      candidateId: candidate.candidateId,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldAppendImplicitProductIntentCandidateSegment({
+      messages: records,
+      candidateId: buildImplicitProductIntentCandidateId({
+        messageId: 'message-1',
+        targetProduct: 'code',
+      }),
+    }),
+    true,
+  );
 });

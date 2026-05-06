@@ -109,6 +109,8 @@ import {
   buildImplicitProductIntentCandidateMetadata,
   buildImplicitProductIntentTransitionMetadata,
   detectImplicitProductIntent,
+  readImplicitProductIntentCandidateMetadata,
+  shouldAppendImplicitProductIntentCandidateSegment,
   type ImplicitProductIntentCandidateMetadata,
   type ImplicitProductIntentCandidateTransitionMetadata,
   type ImplicitProductIntentTransport,
@@ -703,8 +705,8 @@ function appendImplicitProductIntentCandidateSidecar(input: {
     reasonCode: detection.reasonCode,
     now: input.now,
   });
-  if (hasImplicitProductIntentCandidate({
-    channel: input.channel,
+  if (!shouldAppendImplicitProductIntentCandidateSegment({
+    messages: input.channel.messages,
     candidateId: candidate.candidateId,
   })) {
     return { state: input.state, candidateMessage: null };
@@ -747,42 +749,6 @@ interface ResolvedImplicitProductIntentChoice {
   productIntentCommand: ProductIntentCommandMetadata | null;
 }
 
-function readImplicitProductIntentCandidateMetadata(
-  value: unknown,
-): ImplicitProductIntentCandidateMetadata | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null;
-  }
-  const record = value as Partial<ImplicitProductIntentCandidateMetadata>;
-  const source = record.source;
-  const candidate = record.candidate;
-  if (
-    record.version !== 1
-    || record.event !== 'suggested'
-    || !source
-    || typeof source !== 'object'
-    || typeof source.messageId !== 'string'
-    || typeof source.channelId !== 'string'
-    || typeof source.conversationId !== 'string'
-    || (source.transport !== 'web' && source.transport !== 'telegram')
-    || !candidate
-    || typeof candidate !== 'object'
-    || (candidate.targetProduct !== 'work' && candidate.targetProduct !== 'code')
-    || (
-      candidate.confidence !== 'low'
-      && candidate.confidence !== 'medium'
-      && candidate.confidence !== 'high'
-    )
-    || typeof candidate.reasonCode !== 'string'
-    || typeof record.candidateId !== 'string'
-    || typeof record.expiresAt !== 'string'
-  ) {
-    return null;
-  }
-
-  return record as ImplicitProductIntentCandidateMetadata;
-}
-
 function readImplicitProductIntentTransitionMetadata(
   value: unknown,
 ): ImplicitProductIntentCandidateTransitionMetadata | null {
@@ -822,16 +788,6 @@ function findImplicitProductIntentTransition(input: {
   }
 
   return null;
-}
-
-function hasImplicitProductIntentCandidate(input: {
-  channel: ChatChannelState;
-  candidateId: string;
-}): boolean {
-  return input.channel.messages.some((message) =>
-    readImplicitProductIntentCandidateMetadata(
-      message.metadata.implicitProductIntentCandidate,
-    )?.candidateId === input.candidateId);
 }
 
 function hasRecentImplicitProductIntentDecline(input: {
