@@ -147,9 +147,13 @@ either half does not eliminate the flicker on its own.
     registry maintained by the workspace composer. The pair MUST come from
     the registry, NOT from `previousPayload.chat.selectedChannelId` —
     relying on the selected-channel id breaks down when the owner switches
-    channels mid-send or when more than one optimistic send is in flight
-    across channels (multi-tab or pinned-surface case). Registry lifecycle
-    is defined under §Refresh-Race Handling.
+    channels mid-send. Registry lifecycle is defined under §Refresh-Race
+    Handling. v1 invariant: at most one pending optimistic send per
+    channel; the workspace composer disables submit while a previous send
+    is in flight for the same channel. Cross-tab is out of scope: the
+    registry is renderer-instance local (each browser tab has its own
+    Map), so multi-tab or multi-surface concurrency is not a goal of this
+    SPEC.
 13. The preserve rule shall not interfere with cancel / abort flows. When
     `sendChatMessage` rejects, the composer rollback shall remove the
     optimistic entry from the registry AND from
@@ -191,16 +195,28 @@ either half does not eliminate the flicker on its own.
 ### Non-Functional Requirements
 
 - **Stability**: no transient empty-transcript frame between optimistic add
-  and canonical ack in the happy path.
-- **Auditability**: client-supplied id shall be visible in the canonical
-  message record so post-hoc inspection of the transcript can correlate the
-  client send with the server message.
+  and canonical ack in the happy path (owner stays on the channel during
+  the pending window). The channel-switch trade-off is documented under
+  §Refresh-Race Handling and is explicitly not in scope for v1 stability.
+- **Auditability**: when the client supplies a `clientMessageId`, the
+  server shall stamp `metadata.clientMessageId` (the value the client
+  actually sent) and `metadata.clientMessageIdSource` (the same value as
+  `messageIdentity.source`) on the persisted canonical `ChatMessage`,
+  regardless of whether the canonical id honored the client value or fell
+  back to a server UUID. Post-hoc transcript inspection can then correlate
+  the client send with the server message even when the canonical id is
+  not the client id.
 - **Backward compatibility**: omitting `clientMessageId` shall behave
   identically to the current implementation. Other transports (Telegram
-  ingress, server-internal appends) are unaffected.
-- **Idempotency safety**: the same `clientMessageId` used twice in the same
-  channel shall not produce two transcript entries, two posture events, or
-  two Cat proposals.
+  ingress, server-internal appends) are unaffected and produce no
+  `metadata.clientMessageId` / `metadata.clientMessageIdSource` keys.
+- **Idempotency safety (well-formed only)**: a *well-formed* (v4 UUID)
+  `clientMessageId` used twice in the same channel for an *equivalent*
+  user message shall not produce two transcript entries, two posture
+  events, or two Cat proposals (FR-6). This guarantee does NOT extend to
+  malformed `clientMessageId` values: each malformed retry falls back to
+  a fresh server UUID per FR-4 and therefore appends a new entry. Clients
+  that need idempotency MUST send well-formed v4 UUIDs.
 
 ## Design Overview
 
@@ -283,11 +299,36 @@ optimistic user message. The marker is **client-only**:
 - Client renderer reads it to decide whether the row is still pending.
 - The merge helper reads it to decide which row in the previous payload may
   be re-introduced into a refreshed payload.
-- Server-side `appendMessage` deletes the key from the metadata payload
-  before persisting. Canonical messages never carry it.
+- Server-side `appendMessage` deletes the `optimistic` key from the
+  metadata payload before persisting. Canonical messages never carry it.
 
 Once the canonical record arrives, the optimistic flag disappears because
 the row's metadata is replaced by the canonical metadata wholesale.
+
+### Audit Metadata on the Canonical Record
+
+To satisfy NFR Auditability, server-side append SHALL stamp two fields
+onto `ChatMessage.metadata` whenever the request carried a non-empty
+`clientMessageId`:
+
+- `metadata.clientMessageId: string` — the value the client actually
+  sent, even when the canonical id fell back to a server UUID.
+- `metadata.clientMessageIdSource: 'client' | 'server_fallback' |
+  'idempotent'` — same enum as `messageIdentity.source` in the response.
+
+These fields persist with the message, so a transcript export or
+post-hoc audit can correlate any canonical record back to the original
+client send and tell whether the canonical id is honored or fell back.
+
+For idempotent collision (FR-6), the *existing* canonical message is
+returned without re-stamping; its earlier `metadata.clientMessageId` /
+`metadata.clientMessageIdSource` values (set by the original successful
+send) remain authoritative. The duplicate retry is not persisted, so it
+contributes no metadata.
+
+Telegram ingress, server-internal appends, and server-internal retries
+do NOT carry a `clientMessageId` and therefore do NOT receive these
+metadata fields.
 
 ### Refresh-Race Handling
 
@@ -316,9 +357,28 @@ the only component that has this knowledge at submit time, so it owns the
 registry.
 
 ```ts
-// in workspace composer renderer surface
+// renderer-instance local — one Map per browser tab / workspace shell mount.
+// v1: at most one entry per channelId (composer disables submit while
+// a previous send is in flight for the same channel).
 const pendingOptimisticSends = new Map<channelId, optimisticMessageId>();
 ```
+
+**Cardinality (v1)**: at most one entry per `channelId`. The workspace
+composer disables its submit affordance while a previous send is in flight
+for the same channel, so this is enforced at the UI layer rather than the
+registry layer. If a register call ever attempts to overwrite an existing
+entry for the same channel (defensive case — should not happen under
+normal flow), the helper shall log a structured warn under
+`feature: 'chat_optimistic_message_replaced_in_flight'` and adopt the
+newer entry. A future revision can lift this cap to
+`Map<channelId, Set<optimisticMessageId>>` if a use case requires it.
+
+**Scope**: the registry lives in module / hook scope inside the renderer
+process. It does NOT span browser tabs (tabs do not share JS heap), and it
+does NOT span unrelated workspace shell remounts. Each tab and each
+renderer instance maintains its own registry. Cross-tab idempotency is out
+of scope for SPEC-106 v1 — the server-side idempotency boundary (FR-6 /
+FR-7) is the cross-tab guarantee, not this client registry.
 
 Lifecycle:
 
@@ -347,6 +407,30 @@ empty registry means no preserve is required.
 The registry is in-memory only and does not survive a renderer reload; any
 optimistic send in flight at reload time is naturally invalidated when the
 composer remounts and clears its state.
+
+**Channel-switch limitation (v1)**: the registry stores only the
+`optimisticMessageId`, not the full optimistic message body. The preserve
+helper looks up the optimistic row by id from
+`previousPayload.chat.selectedChannel.messages`. When the owner navigates
+away from the sending channel, `previousPayload.chat.selectedChannel`
+swaps to the new channel and the optimistic row is no longer in
+in-memory state for the original channel. The helper has nothing to
+preserve. If the owner navigates back to the original channel before the
+HTTP ack arrives, the freshly fetched channel state does NOT contain the
+optimistic row either (it has not been persisted yet) and the registry
+holds only an id — there is no body to re-inject. The user briefly sees
+an empty transcript at the original channel until the HTTP ack arrives or
+the next SSE refresh fetches the channel after persistence.
+
+v1 accepts this trade-off. The flicker eliminated by SPEC-106 is the
+"stay on channel during pending send" case, which is the dominant use
+case. Switching away mid-send is a rare flow, and the message is not
+*lost* — it lands as soon as the server persists it; only the visual
+continuity gap is wider than the no-switch case. Storing full optimistic
+snapshots in the registry to cover the switch-back-before-ack case is
+tracked under §Open Questions; if user testing surfaces it, v2 can lift
+the registry value type to `{ optimisticMessageId, snapshot: ChatMessage
+}`.
 
 ### Idempotency Boundary
 
@@ -387,17 +471,26 @@ client id and sets
 `{ source: 'server_fallback', reason: 'invalid-uuid', canonicalMessageId,
 clientMessageId }` per FR-4.
 
+In every case where a `clientMessageId` was supplied (well-formed or not,
+collision or not), the persisted canonical record carries
+`metadata.clientMessageId` and `metadata.clientMessageIdSource` per the
+§Audit Metadata on the Canonical Record contract. The idempotent path
+(FR-6) is the only exception: it returns the *existing* canonical record
+without modifying its metadata, so the audit trail belongs to the
+original successful send.
+
 ## Acceptance Criteria
 
 - A workspace-composer send produces a single React row that transitions
   from optimistic to canonical without unmounting.
 - The live-indicator log no longer shows a `msgs[N]` frame in which N is
   smaller than the previous frame's N during the optimistic → canonical
-  window for a healthy send.
-- A second `sendChatMessage` with the same `clientMessageId` and equivalent
-  body/senderName returns the existing canonical message with
-  `idempotent: true` and `messageIdentity.source = 'idempotent'`, and does
-  not create a duplicate transcript entry, posture event, or Cat proposal.
+  window for a healthy send while the owner stays on the channel.
+- A second `sendChatMessage` with the same well-formed `clientMessageId`
+  and equivalent body/senderName returns the existing canonical message
+  with `idempotent: true` and `messageIdentity.source = 'idempotent'`,
+  and does not create a duplicate transcript entry, posture event, or Cat
+  proposal.
 - A `sendChatMessage` whose `clientMessageId` collides with a non-user
   message (system/agent/event) or with a user message of divergent
   body/senderName falls back to a fresh server UUID, runs all side
@@ -405,16 +498,34 @@ clientMessageId }` per FR-4.
   the appropriate `reason`.
 - A malformed `clientMessageId` (non-UUID) falls back to a fresh server
   UUID and surfaces `messageIdentity.source = 'server_fallback'` with
-  `reason = 'invalid-uuid'`. The send is not rejected.
+  `reason = 'invalid-uuid'`. The send is not rejected. Re-sending the
+  same malformed value does NOT enjoy idempotency protection — each
+  retry appends a new entry with a fresh server UUID.
 - Telegram ingress and server-internal appends still produce
   server-generated message ids unchanged. The response surfaces no
-  `messageIdentity` because no `clientMessageId` was supplied.
+  `messageIdentity` because no `clientMessageId` was supplied, and the
+  persisted record carries no `metadata.clientMessageId` /
+  `metadata.clientMessageIdSource`.
+- Every persisted canonical record for a request that *did* carry a
+  `clientMessageId` has `metadata.clientMessageId` (the original value
+  the client sent) and `metadata.clientMessageIdSource` (matching
+  `messageIdentity.source`) stamped on it, except for the idempotent
+  return path which leaves the existing record untouched.
 - Optimistic-preserve never re-introduces an entry that the composer has
   rolled back due to send failure (registry entry removed before next
   refresh).
 - The optimistic-preserve helper consumes `(channelId, optimisticId)` from
   the in-flight send registry, never from `selectedChannelId`. Channel
   switches mid-send do not cause the wrong channel to be preserved.
+- The registry holds at most one `(channelId, optimisticMessageId)` per
+  channel in v1; a register attempt that would replace an existing entry
+  emits a `feature: 'chat_optimistic_message_replaced_in_flight'` warn.
+- Channel-switch trade-off (v1): when the owner switches away from the
+  sending channel before the HTTP ack arrives and switches back before
+  the ack lands, the optimistic row is NOT re-injected. The user sees
+  the channel without the typed message until the ack or next SSE
+  refresh persists the canonical record. This is documented behavior,
+  not a bug.
 - Server-side persisted `ChatMessage.metadata` for owner-typed messages
   never contains `optimistic: true`.
 
@@ -428,6 +539,19 @@ clientMessageId }` per FR-4.
       `room_updated` event payload so passive clients (other tabs) can avoid
       duplicate UI animations? Default v1 answer: no — the SSE refetch will
       converge naturally.
+- [ ] Should the pending-send registry store the full optimistic
+      `ChatMessage` snapshot (`Map<channelId, { optimisticMessageId,
+      snapshot: ChatMessage }>`) so that switching away from the sending
+      channel and back before the HTTP ack still shows the typed message?
+      Default v1 answer: no — the channel-switch case is rare and the
+      message is not lost (only the visual continuity is wider). v2 can
+      lift the value type if user testing shows it matters.
+- [ ] Should the registry support multiple pending sends per channel
+      (`Map<channelId, Set<optimisticMessageId>>`)? Default v1 answer:
+      no — the workspace composer disables submit while a send is in
+      flight, so the cap-of-one is enforced at the UI layer. Lift this
+      only if a future flow (e.g. a queue-style composer that allows
+      drafts) needs it.
 
 ## References
 
