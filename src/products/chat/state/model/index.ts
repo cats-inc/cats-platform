@@ -1,5 +1,6 @@
 import type {
   AssignChannelCatInput,
+  ClientMessageIdSource,
   ChannelCatAssignment,
   ChannelParticipantAssignment,
   CreateParallelChatGroupInput,
@@ -733,6 +734,12 @@ export function appendMessage(
       model?: string | null;
       instance?: string | null;
     };
+    clientMessageIdentity?: {
+      canonicalId?: string;
+      clientMessageId: string;
+      source: ClientMessageIdSource;
+      fingerprint: string;
+    };
     origin?: MessageOrigin;
     sourceTransportBindingId?: string | null;
     incrementUnread?: boolean;
@@ -764,6 +771,14 @@ export function appendMessage(
     {
       choices: options.choices,
       choiceResponse: options.choiceResponse,
+      messageId: options.clientMessageIdentity?.canonicalId,
+      clientMessageAudit: options.clientMessageIdentity
+        ? {
+            clientMessageId: options.clientMessageIdentity.clientMessageId,
+            clientMessageIdSource: options.clientMessageIdentity.source,
+            clientMessageFingerprint: options.clientMessageIdentity.fingerprint,
+          }
+        : undefined,
     },
   );
 

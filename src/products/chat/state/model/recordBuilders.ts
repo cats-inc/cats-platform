@@ -15,6 +15,10 @@ import {
   extractChatMessageChoicesFromBody,
   normalizeChatMessageChoiceResponse,
 } from '../../shared/messageChoices.js';
+import {
+  stripClientMessageAuditMetadata,
+  type ClientMessageAuditMetadata,
+} from '../../shared/clientMessageIdentity.js';
 import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { defaultCatProducts, normalizePlatformSurfaceList } from '../../../../shared/platformSurfaces.js';
 import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
@@ -39,6 +43,8 @@ export function createMessageRecord(
   structured: {
     choices?: ChatMessage['choices'];
     choiceResponse?: ChatMessage['choiceResponse'];
+    messageId?: string;
+    clientMessageAudit?: ClientMessageAuditMetadata;
   } = {},
 ): ChatMessage {
   const { body: normalizedBody, choices } = extractChatMessageChoicesFromBody(
@@ -50,7 +56,7 @@ export function createMessageRecord(
     ? null
     : execution.instance ?? null;
   const normalizedMetadata = {
-    ...metadata,
+    ...stripClientMessageAuditMetadata(metadata),
     ...(execution.provider
       ? {
           executionLabelSnapshot: buildExecutionLabel(
@@ -60,10 +66,11 @@ export function createMessageRecord(
           ),
         }
       : {}),
+    ...(structured.clientMessageAudit ?? {}),
   };
 
   return {
-    id: randomUUID(),
+    id: structured.messageId ?? randomUUID(),
     channelId,
     senderKind,
     senderName,

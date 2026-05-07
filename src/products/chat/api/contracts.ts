@@ -665,6 +665,9 @@ export interface UpdateGlobalOrchestratorInput {
 export interface ChannelMessageMetadata extends Record<string, unknown> {
   recipientParticipantIds?: string[];
   workflowShape?: RoomWorkflowShape | 'parallel' | null;
+  clientMessageId?: string;
+  clientMessageIdSource?: ClientMessageIdSource;
+  clientMessageFingerprint?: string;
   productIntentCommand?: ProductIntentCommandMetadata;
   productIntentLocale?: 'en' | 'zh-TW';
   productIntentArgumentProvided?: boolean;
@@ -672,6 +675,22 @@ export interface ChannelMessageMetadata extends Record<string, unknown> {
   implicitProductIntentTransition?: ImplicitProductIntentCandidateTransitionMetadata;
   catProductIntentProposal?: CatProductIntentProposalMetadata;
   catProductIntentProposalTransition?: CatProductIntentProposalTransitionMetadata;
+}
+
+export type ClientMessageIdSource = 'client' | 'server_fallback';
+
+export type SendChannelMessageIdentitySource = ClientMessageIdSource | 'idempotent';
+
+export type SendChannelMessageIdentityReason =
+  | 'invalid-uuid'
+  | 'collision-foreign-sender'
+  | 'collision-equivalence-mismatch';
+
+export interface SendChannelMessageIdentity {
+  source: SendChannelMessageIdentitySource;
+  canonicalMessageId: string;
+  clientMessageId?: string;
+  reason?: SendChannelMessageIdentityReason;
 }
 
 export type ProductIntentCommandSource = 'web' | 'telegram';
@@ -720,6 +739,7 @@ export interface DirectSlashModePostureChangeMetadata {
 
 export interface SendChannelMessageInput {
   body: string;
+  clientMessageId?: string;
   senderName?: string;
   pendingProvider?: string;
   pendingModel?: string | null;
@@ -837,6 +857,8 @@ export interface SendChannelMessageResponse {
   phase: 'acknowledged';
   results: ChannelDispatchResult[];
   dispatch?: ChannelDispatchAcknowledgement;
+  idempotent?: true;
+  messageIdentity?: SendChannelMessageIdentity;
 }
 
 export interface CancelChannelResponse {

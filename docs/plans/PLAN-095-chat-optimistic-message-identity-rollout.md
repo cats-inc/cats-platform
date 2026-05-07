@@ -55,13 +55,13 @@ frames.
 
 ### Phase 1: Client-supplied stable id contract
 
-- [ ] Task 1.1: Extend `SendChannelMessageInput` in
+- [x] Task 1.1: Extend `SendChannelMessageInput` in
       `src/products/chat/api/contracts.ts` with optional
       `clientMessageId?: string`. Document the UUID-v4 expectation.
-- [ ] Task 1.2: Update `createMessageRecord` in
+- [x] Task 1.2: Update `createMessageRecord` in
       `src/products/chat/state/model/recordBuilders.ts` to accept an optional
       override id. When omitted, fall back to `randomUUID()` as today.
-- [ ] Task 1.3: Update `appendMessage` in
+- [x] Task 1.3: Update `appendMessage` in
       `src/products/chat/state/model/index.ts` to plumb the optional override
       through. Strip `metadata.optimistic` from the persisted message
       regardless of senderKind. When the caller supplies a non-empty
@@ -77,7 +77,7 @@ frames.
         described in Task 1.5)
       Idempotent collision (FR-6) returns the existing record untouched —
       do NOT re-stamp.
-- [ ] Task 1.4: Update `beginChannelMessageDispatch` and any other
+- [x] Task 1.4: Update `beginChannelMessageDispatch` and any other
       direct-from-user-send caller in
       `src/products/chat/state/runtime-dispatch/routing.ts` to pass
       `payload.clientMessageId`, the resolved `clientMessageIdSource`,
@@ -85,7 +85,7 @@ frames.
       path so Task 1.3 can stamp the audit metadata correctly. Telegram
       ingress and server-internal appends continue to pass nothing on
       this path.
-- [ ] Task 1.5: Implement the SPEC-106 collision matrix in
+- [x] Task 1.5: Implement the SPEC-106 collision matrix in
       `beginChannelMessageDispatch` / `appendMessage`. Define the
       canonical fingerprint as a deterministic SHA-256 over a stable
       JSON serialization of:
@@ -117,7 +117,7 @@ frames.
         `reason = 'collision-foreign-sender'` /
         `'collision-equivalence-mismatch'`. Emit a structured warn
         under `feature: 'chat_client_message_id_collision'`.
-- [ ] Task 1.6: Update the `sendChatMessage` HTTP handler in
+- [x] Task 1.6: Update the `sendChatMessage` HTTP handler in
       `src/products/chat/api/resources/channelRoutes.ts` to accept
       `clientMessageId` and surface SPEC-106 contract on the response:
       - **Length cap (FR-4)**: trim surrounding whitespace, then reject
@@ -522,6 +522,7 @@ and a live observation, and the rollout is closed.
 | 2026-05-07 | Follow-up review pointed out 5 contract gaps in the initial draft: (1) invalid-clientMessageId behavior contradicted across SPEC FR-3 / Task 1.10 / Testing Strategy, (2) response shape definition silently dropped existing fields (`phase`/`results`/`dispatch`), (3) `idempotent?: true` alone could not express server-fallback decisions, (4) collision rules only handled the user-message case, leaving system/agent collisions and divergent-body cases undefined, (5) preserve wire-up did not specify the channelId source. SPEC-106 now defines the `messageIdentity` schema (FR-14), splits the collision matrix into FR-6 (equivalent → idempotent) and FR-7 (non-equivalent → server fallback), pins the response shape as additive only, and introduces the in-flight send registry that the preserve helper consumes (FR-12). PLAN-095 Task 1.5 / 1.6 / 1.10 / 2.1 / 2.2 / 2.5 align with the updated contract. |
 | 2026-05-07 | Second follow-up review pointed out 5 more contract gaps: (1) `Map<channelId, optimisticMessageId>` cardinality vs the multi-tab / multi-pending claim, (2) module-scope registry cannot support real cross-tab multi-tab — needs renderer-instance framing, (3) registry stores only the id, not the optimistic body, so channel-switch-back-before-ack loses the typed row from the local view, (4) NFR Idempotency-safety promised "same `clientMessageId` never produces duplicates" but malformed-id fallback path violates this, (5) NFR Auditability said the client-supplied id is visible on the canonical record but the design only exposed it on the response payload. SPEC-106 now caps the registry at one entry per channel for v1 (renderer-instance local, no cross-tab claim), documents the channel-switch-back trade-off explicitly, scopes idempotency safety to well-formed UUIDs, and adds the §Audit Metadata on the Canonical Record contract that stamps `metadata.clientMessageId` / `metadata.clientMessageIdSource` on the persisted record. PLAN-095 Task 1.3 / 1.4 / 1.10 / 2.1 / 2.5 / Files / Risks / Open Questions / Testing Strategy aligned with the updated contract. |
 | 2026-05-07 | Third follow-up review pointed out 5 more inconsistencies: (1) Non-Goals still claimed "no message schema change" while later requiring `metadata.clientMessageId` / `clientMessageIdSource` keys, (2) audit metadata enum included `'idempotent'` even though FR-6 returns existing records and never persists a fresh row, (3) malformed `clientMessageId` had no length cap so a misbehaving client could inflate state files via the audit metadata, (4) FR-6 equivalence used "same trimmed body / senderName" but the append pipeline runs normalization (mention extraction, choice extraction, fenced JSON parsing) so literal equality is unstable, (5) registry section claimed "multi-tab idempotency comes from server FR-6/FR-7" but the server only dedupes on `(channelId, clientMessageId)` — distinct UUIDs from different tabs bypass dedupe. SPEC-106 Non-Goals expanded to allow audit metadata keys; FR-4 added a 128-char cap with HTTP 400 for oversized; FR-6 / FR-7 / §Audit Metadata / §Idempotency Boundary rewritten around a canonical fingerprint (SHA-256 over normalized fields), with `clientMessageIdSource` enum on persisted records narrowed to `'client' \| 'server_fallback'` only and a new `metadata.clientMessageFingerprint` audit key added. PLAN-095 Task 1.3 / 1.4 / 1.5 / 1.6 / 1.10 / Files / Technical Decisions / Risks / Testing Strategy aligned with the corrected contract; the multi-tab claim was rewritten to be precise about `(channelId, clientMessageId)` keying and the cross-tab dedupe out-of-scope position. |
+| 2026-05-07 | Phase 1 server contract slice landed. `clientMessageId` is now part of the chat send request/response contract; server appends can honor a well-formed v4 UUID as the canonical user-message id, stamp `metadata.clientMessageId` / `clientMessageIdSource` / `clientMessageFingerprint`, strip client-only `metadata.optimistic` and spoofed audit keys, and return `idempotent: true` for equivalent duplicate sends without rerunning downstream side effects. Malformed ids within the 128-char trimmed cap fall back to server UUIDs; oversized ids are rejected by the REST handler before dispatch. Non-equivalent collisions fall back to server UUIDs with SPEC-106 reason codes and a `feature: 'chat_client_message_id_collision'` warn. Targeted verification: `npx tsx --test tests/chat-client-message-identity.test.tsx` (7 tests) and `npx tsc --noEmit -p tsconfig.server.json`. Full `npm run typecheck` remains blocked by pre-existing mobile type resolution for `src/shared/guideCatAssist.ts` importing `node:crypto`. |
 
 ---
 

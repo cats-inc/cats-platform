@@ -11,6 +11,7 @@ import type {
   ProductIntentCommandMetadata,
   ProductIntentCommandSource,
   ProductIntentUserMessageMetadata,
+  SendChannelMessageIdentity,
 } from '../../api/contracts.js';
 import { createCatActorId } from '../../../../core/actors.js';
 import type { CatsCoreState } from '../../../../core/types.js';
@@ -137,6 +138,14 @@ import {
   type CatProductIntentProposalMetadata,
   type CatProductIntentProposalRejectionReason,
 } from '../../shared/catProductIntentProposal.js';
+import {
+  CLIENT_MESSAGE_ID_MAX_LENGTH,
+  buildClientMessageFingerprint,
+  normalizeClientMessageId,
+  readPersistedClientMessageFingerprint,
+  type ClientMessageIdentityFallbackReason,
+  type ClientMessageIdSource,
+} from '../../shared/clientMessageIdentity.js';
 
 export type ProviderAgentDecisionRequester = (input: {
   state: ChatState;
@@ -165,6 +174,19 @@ interface RouteChannelMessageOptions {
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
   naturalProductIntentMode?: ChatNaturalProductIntentMode;
+}
+
+interface ClientMessageAppendPlan {
+  kind: 'none' | 'append' | 'idempotent';
+  existingMessage?: ChatMessage;
+  appendIdentity?: {
+    canonicalId?: string;
+    clientMessageId: string;
+    source: ClientMessageIdSource;
+    fingerprint: string;
+    reason?: ClientMessageIdentityFallbackReason;
+  };
+  messageIdentity?: SendChannelMessageIdentity;
 }
 
 function readMessageRetryMetadata(
@@ -265,6 +287,110 @@ function buildBaseUserMessageMetadata(input: {
           sourceMessageId: input.payload.choiceResponse.sourceMessageId,
         }
       : {}),
+  };
+}
+
+function resolveClientMessageAppendPlan(input: {
+  channel: ChatChannelState;
+  payload: SendChannelMessageInput;
+  senderName: string;
+  metadata: Record<string, unknown>;
+}): ClientMessageAppendPlan {
+  const clientMessageId = normalizeClientMessageId(input.payload.clientMessageId);
+  if (!clientMessageId.supplied || !clientMessageId.value) {
+    return { kind: 'none' };
+  }
+  if (clientMessageId.tooLong) {
+    throw new Error(
+      `clientMessageId must be at most ${CLIENT_MESSAGE_ID_MAX_LENGTH} characters.`,
+    );
+  }
+
+  const fingerprint = buildClientMessageFingerprint({
+    senderName: input.senderName,
+    body: input.payload.body,
+    messageMetadata: input.metadata,
+    choiceResponse: input.payload.choiceResponse,
+  });
+  const existingMessage = input.channel.messages.find((message) =>
+    message.id === clientMessageId.value);
+
+  if (clientMessageId.wellFormedV4Uuid && !existingMessage) {
+    return {
+      kind: 'append',
+      appendIdentity: {
+        canonicalId: clientMessageId.value,
+        clientMessageId: clientMessageId.value,
+        source: 'client',
+        fingerprint,
+      },
+      messageIdentity: {
+        source: 'client',
+        canonicalMessageId: clientMessageId.value,
+        clientMessageId: clientMessageId.value,
+      },
+    };
+  }
+
+  if (
+    clientMessageId.wellFormedV4Uuid
+    && existingMessage
+    && existingMessage.senderKind === 'user'
+    && readPersistedClientMessageFingerprint(existingMessage) === fingerprint
+  ) {
+    return {
+      kind: 'idempotent',
+      existingMessage,
+      messageIdentity: {
+        source: 'idempotent',
+        canonicalMessageId: existingMessage.id,
+        clientMessageId: clientMessageId.value,
+      },
+    };
+  }
+
+  const reason: ClientMessageIdentityFallbackReason = clientMessageId.wellFormedV4Uuid
+    ? existingMessage?.senderKind === 'user'
+      ? 'collision-equivalence-mismatch'
+      : 'collision-foreign-sender'
+    : 'invalid-uuid';
+  if (clientMessageId.wellFormedV4Uuid) {
+    console.warn('Client message id collision; falling back to server-generated id.', {
+      feature: 'chat_client_message_id_collision',
+      channelId: input.channel.id,
+      clientMessageId: clientMessageId.value,
+      reason,
+      existingSenderKind: existingMessage?.senderKind ?? null,
+    });
+  }
+  return {
+    kind: 'append',
+    appendIdentity: {
+      clientMessageId: clientMessageId.value,
+      source: 'server_fallback',
+      fingerprint,
+      reason,
+    },
+    messageIdentity: {
+      source: 'server_fallback',
+      canonicalMessageId: '',
+      clientMessageId: clientMessageId.value,
+      reason,
+    },
+  };
+}
+
+function buildFreshClientMessageIdentity(
+  plan: ClientMessageAppendPlan,
+  messageId: string,
+): SendChannelMessageIdentity | undefined {
+  if (!plan.messageIdentity) {
+    return undefined;
+  }
+
+  return {
+    ...plan.messageIdentity,
+    canonicalMessageId: messageId,
   };
 }
 
@@ -2166,6 +2292,8 @@ export interface BegunChannelMessageDispatch {
   preparedTurn: import('./turn.js').PreparedDispatchTurn | null;
   userMessage: ChatMessage;
   providerAgentDecision: ProviderAgentDecision | null;
+  idempotent?: true;
+  messageIdentity?: SendChannelMessageIdentity;
 }
 
 export async function beginChannelMessageDispatch(
@@ -2325,34 +2453,58 @@ export async function beginChannelMessageDispatch(
       options.transportLocale,
     );
     const translate = createTranslator(locale);
+    const senderName = payload.senderName?.trim() || 'User';
+    const userMessageMetadata = {
+      ...buildBaseUserMessageMetadata({
+        payload,
+        channelId,
+        deterministicRoutingPlan,
+        transportBindingId: options.transportBindingId,
+      }),
+      ...buildProductIntentUserMessageMetadata({
+        productIntentCommand,
+        locale,
+      }),
+    };
+    const clientMessagePlan = resolveClientMessageAppendPlan({
+      channel: channelBeforeMessage,
+      payload,
+      senderName,
+      metadata: userMessageMetadata,
+    });
+    if (clientMessagePlan.kind === 'idempotent' && clientMessagePlan.existingMessage) {
+      return {
+        state: nextState,
+        results: [],
+        preparedTurn: null,
+        userMessage: clientMessagePlan.existingMessage,
+        providerAgentDecision: null,
+        idempotent: true,
+        messageIdentity: clientMessagePlan.messageIdentity,
+      };
+    }
     const userAppend = appendMessage(
       nextState,
       channelId,
       {
         senderKind: 'user',
-        senderName: payload.senderName?.trim() || 'User',
+        senderName,
         body: payload.body,
       },
       now,
       {
-        metadata: {
-          ...buildBaseUserMessageMetadata({
-            payload,
-            channelId,
-            deterministicRoutingPlan,
-            transportBindingId: options.transportBindingId,
-          }),
-          ...buildProductIntentUserMessageMetadata({
-            productIntentCommand,
-            locale,
-          }),
-        },
+        metadata: userMessageMetadata,
         choiceResponse: payload.choiceResponse,
+        clientMessageIdentity: clientMessagePlan.appendIdentity,
         origin: resolveUserMessageOrigin(options.transport),
         sourceTransportBindingId: options.transport === 'telegram'
           ? options.transportBindingId ?? null
           : null,
       },
+    );
+    const messageIdentity = buildFreshClientMessageIdentity(
+      clientMessagePlan,
+      userAppend.message.id,
     );
     nextState = userAppend.state;
     if (productIntentCommand.command === 'chat') {
@@ -2626,6 +2778,7 @@ export async function beginChannelMessageDispatch(
       preparedTurn: productIntentPreparedTurn,
       userMessage: productIntentUserMessage,
       providerAgentDecision,
+      ...(messageIdentity ? { messageIdentity } : {}),
     };
   }
   const nextTarget = resolveNextPendingExecutionTarget(channelBeforeMessage, payload);
@@ -2710,39 +2863,64 @@ export async function beginChannelMessageDispatch(
     clear: followUpActiveAnchorState.clear,
     humanGate: null,
   });
-  nextState = appendMessage(
+  const senderName = payload.senderName?.trim() || 'User';
+  const userMessageMetadata = {
+    ...buildBaseUserMessageMetadata({
+      payload,
+      channelId,
+      deterministicRoutingPlan,
+      transportBindingId: options.transportBindingId,
+    }),
+    ...(followUpDirectSlashMode ? { directSlashMode: followUpDirectSlashMode } : {}),
+    ...(followUpActiveAnchorState.activeAnchor
+      ? {
+          directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(
+            followUpActiveAnchorState.activeAnchor,
+          ),
+        }
+      : {}),
+  };
+  const clientMessagePlan = resolveClientMessageAppendPlan({
+    channel: channelBeforeMessage,
+    payload,
+    senderName,
+    metadata: userMessageMetadata,
+  });
+  if (clientMessagePlan.kind === 'idempotent' && clientMessagePlan.existingMessage) {
+    return {
+      state: nextState,
+      results: [],
+      preparedTurn: null,
+      userMessage: clientMessagePlan.existingMessage,
+      providerAgentDecision: null,
+      idempotent: true,
+      messageIdentity: clientMessagePlan.messageIdentity,
+    };
+  }
+  const userAppend = appendMessage(
     nextState,
     channelId,
     {
       senderKind: 'user',
-      senderName: payload.senderName?.trim() || 'User',
+      senderName,
       body: payload.body,
     },
     now,
     {
-      metadata: {
-        ...buildBaseUserMessageMetadata({
-          payload,
-          channelId,
-          deterministicRoutingPlan,
-          transportBindingId: options.transportBindingId,
-        }),
-        ...(followUpDirectSlashMode ? { directSlashMode: followUpDirectSlashMode } : {}),
-        ...(followUpActiveAnchorState.activeAnchor
-          ? {
-              directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(
-                followUpActiveAnchorState.activeAnchor,
-              ),
-            }
-          : {}),
-      },
+      metadata: userMessageMetadata,
       choiceResponse: payload.choiceResponse,
+      clientMessageIdentity: clientMessagePlan.appendIdentity,
       origin: resolveUserMessageOrigin(options.transport),
       sourceTransportBindingId: options.transport === 'telegram'
         ? options.transportBindingId ?? null
         : null,
     },
-  ).state;
+  );
+  const messageIdentity = buildFreshClientMessageIdentity(
+    clientMessagePlan,
+    userAppend.message.id,
+  );
+  nextState = userAppend.state;
   nextState = refreshDerivedMemoryLayers(nextState, channelId, now);
 
   const choiceResponseCore = payload.choiceResponse && options.chatStore
@@ -2847,6 +3025,7 @@ export async function beginChannelMessageDispatch(
     preparedTurn: preparedTurn.terminalResult ? null : preparedTurn,
     userMessage: preparedTurn.userMessage,
     providerAgentDecision,
+    ...(messageIdentity ? { messageIdentity } : {}),
   };
 }
 
@@ -3235,7 +3414,12 @@ export async function routeChannelMessage(
   runtimeClient: RuntimeClient,
   now: Date = new Date(),
   options: RouteChannelMessageOptions = {},
-): Promise<{ state: ChatState; results: ChannelDispatchResult[] }> {
+): Promise<{
+  state: ChatState;
+  results: ChannelDispatchResult[];
+  idempotent?: true;
+  messageIdentity?: SendChannelMessageIdentity;
+}> {
   const begun = await beginChannelMessageDispatch(
     state,
     channelId,
@@ -3244,11 +3428,16 @@ export async function routeChannelMessage(
     now,
     options,
   );
-  return continueBegunChannelMessageDispatch(
+  const completed = await continueBegunChannelMessageDispatch(
     begun,
     channelId,
     runtimeClient,
     now,
     options,
   );
+  return {
+    ...completed,
+    ...(begun.idempotent ? { idempotent: true as const } : {}),
+    ...(begun.messageIdentity ? { messageIdentity: begun.messageIdentity } : {}),
+  };
 }
