@@ -1,6 +1,6 @@
 import { sendJson } from '../../../shared/http.js';
 import { RuntimeSessionPolicyError } from '../../../shared/runtimeSessionPolicy.js';
-import { ClientMessageIdTooLongError } from '../shared/clientMessageIdentity.js';
+import { isClientMessageIdTooLongError } from '../shared/clientMessageIdentity.js';
 import type { ChatApiRouteContext } from './routeSupport.js';
 
 export function errorStatusCode(error: unknown): number {
@@ -71,8 +71,11 @@ export function handleRestError(
     return;
   }
 
-  if (error instanceof ClientMessageIdTooLongError) {
-    sendRestError(context, error.statusCode, error.code, error.message);
+  if (isClientMessageIdTooLongError(error)) {
+    const message = error instanceof Error
+      ? error.message
+      : 'clientMessageId must be at most 128 characters.';
+    sendRestError(context, 400, 'client_message_id_too_long', message);
     return;
   }
 

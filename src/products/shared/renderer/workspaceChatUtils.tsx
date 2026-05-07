@@ -624,6 +624,7 @@ export function preserveOptimisticUserMessageAfterRefresh(
   if (existingMessage) {
     const isCanonicalOwnerMessageForOptimisticId =
       existingMessage.senderKind === optimisticMessage.senderKind
+      && existingMessage.senderName === optimisticMessage.senderName
       && existingMessage.metadata?.clientMessageId === optimisticMessage.id;
     const hasEquivalentVisibleBody =
       existingMessage.senderKind === optimisticMessage.senderKind

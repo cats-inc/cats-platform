@@ -90,6 +90,18 @@ export function assertClientMessageIdLengthCap(
   }
 }
 
+export function isClientMessageIdTooLongError(error: unknown): boolean {
+  if (error instanceof ClientMessageIdTooLongError) {
+    return true;
+  }
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const record = error as { code?: unknown; name?: unknown };
+  return record.code === 'client_message_id_too_long'
+    || record.name === 'ClientMessageIdTooLongError';
+}
+
 export function stripClientMessageAuditMetadata(
   metadata: Record<string, unknown> | null | undefined,
 ): ChannelMessageMetadata {

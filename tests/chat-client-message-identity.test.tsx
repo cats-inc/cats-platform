@@ -13,6 +13,7 @@ import {
   ClientMessageIdTooLongError,
   assertClientMessageIdLengthCap,
   buildClientMessageFingerprint,
+  isClientMessageIdTooLongError,
   normalizeClientMessageId,
 } from '../src/products/chat/shared/clientMessageIdentity.ts';
 
@@ -331,6 +332,10 @@ test('clientMessageId validation applies the trimmed 128-character cap', () => {
   assert.throws(
     () => assertClientMessageIdLengthCap('a'.repeat(129)),
     ClientMessageIdTooLongError,
+  );
+  assert.equal(
+    isClientMessageIdTooLongError({ code: 'client_message_id_too_long' }),
+    true,
   );
 });
 

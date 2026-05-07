@@ -7,7 +7,7 @@ import {
   preserveOptimisticUserMessageAfterRefresh,
 } from '../src/products/shared/renderer/workspaceChatUtils.tsx';
 import {
-  clearAllPendingOptimisticSends,
+  __resetPendingOptimisticSendsForTesting,
   clearPendingOptimisticSend,
   listPendingOptimisticSends,
   registerPendingOptimisticSend,
@@ -547,8 +547,116 @@ test('preserveOptimisticUserMessageAfterRefresh accepts canonical owner rows wit
   }
 });
 
+test('preserveOptimisticUserMessageAfterRefresh rejects same-id rows from another sender', () => {
+  const optimisticMessage = {
+    id: '17c0bd79-e36d-4532-af2b-36b70a629198',
+    channelId: 'channel-1',
+    senderKind: 'user',
+    senderName: 'Kenny',
+    body: 'Still sending...',
+    mentions: [],
+    metadata: {
+      optimistic: true,
+    },
+    usage: null,
+    createdAt: '2026-04-20T12:01:00.000Z',
+  };
+  const previousPayload = createPayload({
+    chat: {
+      selectedChannelId: 'channel-1',
+      selectedChannel: {
+        id: 'channel-1',
+        title: 'Room',
+        topic: 'Test room',
+        unreadCount: 0,
+        updatedAt: '2026-04-20T12:01:00.000Z',
+        lastMessageAt: '2026-04-20T12:01:00.000Z',
+        pendingProvider: 'claude',
+        pendingModel: 'opus',
+        pendingInstance: 'native',
+        pendingModelSelection: null,
+        messages: [optimisticMessage],
+      },
+      channels: [
+        {
+          id: 'channel-1',
+          title: 'Room',
+          topic: 'Test room',
+          unreadCount: 0,
+          lastMessageAt: '2026-04-20T12:01:00.000Z',
+          pendingProvider: 'claude',
+          pendingModel: 'opus',
+          pendingModelSelection: null,
+        },
+      ],
+    },
+  });
+  const refreshedPayload = createPayload({
+    chat: {
+      selectedChannelId: 'channel-1',
+      selectedChannel: {
+        id: 'channel-1',
+        title: 'Room',
+        topic: 'Test room',
+        unreadCount: 0,
+        updatedAt: '2026-04-20T12:01:01.000Z',
+        lastMessageAt: '2026-04-20T12:01:01.000Z',
+        pendingProvider: 'claude',
+        pendingModel: 'opus',
+        pendingInstance: 'native',
+        pendingModelSelection: null,
+        messages: [
+          {
+            ...optimisticMessage,
+            senderName: 'Another owner',
+            body: 'Different sender, same client id.',
+            metadata: {
+              clientMessageId: optimisticMessage.id,
+            },
+          },
+        ],
+      },
+      channels: [
+        {
+          id: 'channel-1',
+          title: 'Room',
+          topic: 'Test room',
+          unreadCount: 0,
+          lastMessageAt: '2026-04-20T12:01:01.000Z',
+          pendingProvider: 'claude',
+          pendingModel: 'opus',
+          pendingModelSelection: null,
+        },
+      ],
+    },
+  });
+  const warnings: unknown[][] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args);
+  };
+  try {
+    assert.equal(
+      preserveOptimisticUserMessageAfterRefresh(
+        previousPayload,
+        refreshedPayload,
+        'channel-1',
+        optimisticMessage.id,
+      ),
+      refreshedPayload,
+    );
+    assert.equal(warnings.length, 1);
+    assert.equal(
+      (warnings[0]?.[1] as { feature?: string } | undefined)?.feature,
+      'chat_optimistic_message_preserve',
+    );
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
 test('pending optimistic send registry replaces defensively and clears by id', () => {
-  clearAllPendingOptimisticSends();
+  __resetPendingOptimisticSendsForTesting();
   const warnings: unknown[][] = [];
   const originalWarn = console.warn;
   console.warn = (...args: unknown[]) => {
@@ -576,12 +684,12 @@ test('pending optimistic send registry replaces defensively and clears by id', (
     assert.equal(listPendingOptimisticSends().length, 0);
   } finally {
     console.warn = originalWarn;
-    clearAllPendingOptimisticSends();
+    __resetPendingOptimisticSendsForTesting();
   }
 });
 
 test('workspace chat refresh preserves registered pending optimistic sends', () => {
-  clearAllPendingOptimisticSends();
+  __resetPendingOptimisticSendsForTesting();
   const optimisticMessage = {
     id: '17c0bd79-e36d-4532-af2b-36b70a629198',
     channelId: 'channel-1',
@@ -671,12 +779,12 @@ test('workspace chat refresh preserves registered pending optimistic sends', () 
     assert.equal(next.chat.selectedChannel?.messages.length, 1);
     assert.deepEqual(next.chat.selectedChannel?.messages[0], optimisticMessage);
   } finally {
-    clearAllPendingOptimisticSends();
+    __resetPendingOptimisticSendsForTesting();
   }
 });
 
 test('workspace chat refresh preserves the registered optimistic id, not the latest row', () => {
-  clearAllPendingOptimisticSends();
+  __resetPendingOptimisticSendsForTesting();
   const registeredOptimisticMessage = {
     id: '17c0bd79-e36d-4532-af2b-36b70a629198',
     channelId: 'channel-1',
@@ -773,12 +881,12 @@ test('workspace chat refresh preserves the registered optimistic id, not the lat
     assert.equal(next.chat.selectedChannel?.messages[0]?.id, registeredOptimisticMessage.id);
     assert.equal(next.chat.selectedChannel?.messages[0]?.body, 'Registered send.');
   } finally {
-    clearAllPendingOptimisticSends();
+    __resetPendingOptimisticSendsForTesting();
   }
 });
 
 test('workspace chat refresh does not resurrect optimistic sends after rollback clears registry', () => {
-  clearAllPendingOptimisticSends();
+  __resetPendingOptimisticSendsForTesting();
   const optimisticMessage = {
     id: '17c0bd79-e36d-4532-af2b-36b70a629198',
     channelId: 'channel-1',
@@ -868,7 +976,7 @@ test('workspace chat refresh does not resurrect optimistic sends after rollback 
 });
 
 test('workspace chat refresh does not re-inject channel-switch-back sends without a body snapshot', () => {
-  clearAllPendingOptimisticSends();
+  __resetPendingOptimisticSendsForTesting();
   const refreshedPayload = createPayload({
     metadata: {
       generatedAt: '2026-04-20T12:01:01.000Z',
@@ -943,12 +1051,12 @@ test('workspace chat refresh does not re-inject channel-switch-back sends withou
       },
     ]);
   } finally {
-    clearAllPendingOptimisticSends();
+    __resetPendingOptimisticSendsForTesting();
   }
 });
 
 test('workspace chat refresh does not preserve channel A optimistic row into channel B', () => {
-  clearAllPendingOptimisticSends();
+  __resetPendingOptimisticSendsForTesting();
   const optimisticMessage = {
     id: '17c0bd79-e36d-4532-af2b-36b70a629198',
     channelId: 'channel-1',
@@ -1062,6 +1170,6 @@ test('workspace chat refresh does not preserve channel A optimistic row into cha
     assert.equal(listPendingOptimisticSends().length, 0);
   } finally {
     console.warn = originalWarn;
-    clearAllPendingOptimisticSends();
+    __resetPendingOptimisticSendsForTesting();
   }
 });

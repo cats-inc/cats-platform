@@ -653,7 +653,7 @@ persisted `clientMessageIdSource`.
   trade-off, orphan cleanup, and defensive replacement warnings.
 - `npx tsx --test tests/chat-client-message-identity.test.tsx
   tests/workspace-chat-optimistic.test.tsx
-  tests/chat-runtime-session-lifecycle.test.tsx` passed 30 tests,
+  tests/chat-runtime-session-lifecycle.test.tsx` passed 31 tests,
   covering the SPEC-106 slices together with the SPEC-069 recovery
   regression set.
 - `npx tsx --test tests/chat-product-intent-dispatch.test.tsx` passed 51
