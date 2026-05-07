@@ -12,6 +12,7 @@ export function preservePendingOptimisticSendsAfterWorkspaceRefresh(
       previousPayload,
       nextPayload,
       pendingSend.channelId,
+      pendingSend.optimisticMessageId,
     );
   }
 

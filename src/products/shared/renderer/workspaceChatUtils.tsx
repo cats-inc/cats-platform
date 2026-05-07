@@ -587,12 +587,16 @@ export function preserveOptimisticUserMessageAfterRefresh(
   previousPayload: AppShellPayload,
   refreshedPayload: AppShellPayload,
   channelId: string,
+  optimisticMessageId: string,
 ): AppShellPayload {
   const previousSelectedChannel = previousPayload.chat.selectedChannel;
   const optimisticMessage =
     previousSelectedChannel?.id === channelId
-      ? [...previousSelectedChannel.messages].reverse().find(
-          (message) => message.senderKind === 'user' && message.metadata?.optimistic,
+      ? previousSelectedChannel.messages.find(
+          (message) =>
+            message.id === optimisticMessageId
+            && message.senderKind === 'user'
+            && message.metadata?.optimistic,
         ) ?? null
       : null;
 
