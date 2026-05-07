@@ -301,6 +301,7 @@ test('direct-message dispatch can replace a stale lease after explicit retarget 
   let createCalls = 0;
   const resumeCalls: string[] = [];
   const sentSessionIds: string[] = [];
+  const closeCalls: string[] = [];
   const runtimeClient = {
     async createSession() {
       createCalls += 1;
@@ -334,7 +335,9 @@ test('direct-message dispatch can replace a stale lease after explicit retarget 
       resumeCalls.push(sessionId);
       throw new Error('runtime gateway unavailable');
     },
-    async closeSession() {},
+    async closeSession(sessionId: string) {
+      closeCalls.push(sessionId);
+    },
     async cancelSession() {},
     async observeSession(sessionId: string) {
       return { session: { id: sessionId, status: 'closed' } };
@@ -390,6 +393,7 @@ test('direct-message dispatch can replace a stale lease after explicit retarget 
   assert.deepEqual(resumeCalls, ['session-direct-1']);
   assert.equal(createCalls, 2);
   assert.deepEqual(sentSessionIds, ['session-direct-1', 'session-direct-2']);
+  assert.deepEqual(closeCalls, []);
   assert.equal(
     channel.messages.filter((message) => message.metadata.event === 'session_started').length,
     2,
@@ -401,6 +405,7 @@ test('direct-message dispatch can replace a stale lease after explicit retarget 
   assert.equal(lease?.model, 'gpt-5.4');
   assert.equal(lease?.status, 'ready');
   assert.equal(lease?.lastError, null);
+  assert.equal(captured.warnings.length, 1);
 });
 
 test('dispatch merge preserves ready lease advancement for the same runtime session', () => {
