@@ -57,9 +57,9 @@ either half does not eliminate the flicker on its own.
 - Make the existing app-shell refresher resilient to the SSE/HTTP race
   whether or not the message has been persisted on the server when the next
   refresh fetches.
-- Preserve idempotency: a second `sendChatMessage` carrying the same
-  `clientMessageId` for a channel must not create a duplicate transcript
-  entry.
+- Preserve idempotency for well-formed client ids: a second
+  `sendChatMessage` carrying the same v4 UUID `clientMessageId` for a
+  channel must not create a duplicate transcript entry.
 - Avoid regressions in non-optimistic message paths (Telegram ingress, server
   internal appends, retry flow).
 
@@ -73,9 +73,10 @@ either half does not eliminate the flicker on its own.
   - The optional `clientMessageId` field on `SendChannelMessageInput`.
   - The optional `idempotent` and `messageIdentity` fields on
     `SendChannelMessageResponse`.
-  - The two audit metadata keys (`metadata.clientMessageId`,
-    `metadata.clientMessageIdSource`) added on persisted `ChatMessage`
-    records (only when the request carried a non-empty `clientMessageId`).
+  - The three audit metadata keys (`metadata.clientMessageId`,
+    `metadata.clientMessageIdSource`, `metadata.clientMessageFingerprint`)
+    added on persisted `ChatMessage` records (only when the request carried
+    a non-empty `clientMessageId`).
   Existing `ChatMessage` fields, `ChannelMessageMetadata` enums, and the
   rest of the chat domain schema are unchanged.
 - No change to mobile composer flows that do not go through the workspace
@@ -99,8 +100,8 @@ either half does not eliminate the flicker on its own.
 3. When `clientMessageId` is omitted, server-side append behavior shall be
    unchanged (server generates a fresh `randomUUID()`).
 4. When `clientMessageId` is supplied but malformed (not a v4 UUID) and
-   its length is at most 128 characters, the server shall NOT reject the
-   request. It shall fall back to a fresh `randomUUID()` for the canonical
+   its trimmed length is at most 128 characters, the server shall NOT reject
+   the request. It shall fall back to a fresh `randomUUID()` for the canonical
    id, append the user message normally, run all dispatch side effects,
    and surface the fallback decision via
    `messageIdentity.source = 'server_fallback'` with
@@ -136,12 +137,12 @@ either half does not eliminate the flicker on its own.
    field-by-field comparison would be unstable. Two requests are
    equivalent iff they all hold:
    - existing entry has `senderKind === 'user'`;
-   - canonical fingerprint of (trimmed `senderName`, trimmed `body` after
-     the same pre-persistence normalization the server applies on
-     append, structural equality of `choiceResponse`, and structural
-     equality of `messageMetadata` after the `optimistic` flag is
-     stripped) is identical to the fingerprint stored on the existing
-     entry.
+   - canonical fingerprint of (trimmed `senderName`, trimmed `body` and
+     normalized `choices` after the same pre-persistence normalization the
+     server applies on append, structural equality of `choiceResponse`,
+     and structural equality of `messageMetadata` after stripping
+     `optimistic` and all server-managed client-message audit keys) is
+     identical to the fingerprint stored on the existing entry.
    The fingerprint shall be computed deterministically (e.g. a stable
    JSON serialization hashed with SHA-256) and stamped on the persisted
    record's metadata at append time so subsequent collision checks do
@@ -157,9 +158,10 @@ either half does not eliminate the flicker on its own.
    `messageIdentity.source = 'server_fallback'` with `reason =
    'collision-foreign-sender'` (different senderKind) or
    `reason = 'collision-equivalence-mismatch'` (same senderKind but
-   divergent fingerprint covering body / senderName / choiceResponse /
-   messageMetadata). A diagnostic warn line shall be emitted under the
-   `feature: 'chat_client_message_id_collision'` convention.
+   divergent fingerprint covering body / choices / senderName /
+   choiceResponse / messageMetadata). A diagnostic warn line shall be
+   emitted under the `feature: 'chat_client_message_id_collision'`
+   convention.
 8. Idempotent collision (FR-6 only) shall not advance any side effect that
    has already advanced for the original send (no second posture change,
    no second Cat proposal, no second turn start). Non-equivalent collision
@@ -356,10 +358,11 @@ onto `ChatMessage.metadata` whenever the request carried a non-empty
   `clientMessageIdSource = 'idempotent'` legitimately.
 - `metadata.clientMessageFingerprint: string` — the canonical
   fingerprint defined under FR-6 (stable serialization of trimmed
-  `senderName`, normalized `body`, structural `choiceResponse`,
-  `messageMetadata` sans `optimistic`, hashed deterministically). Used
-  by future collision checks to avoid re-deriving fingerprints from the
-  live message tree.
+  `senderName`, normalized `body`, normalized `choices`, structural
+  `choiceResponse`, and `messageMetadata` sans `optimistic` plus the
+  server-managed client-message audit keys, hashed deterministically).
+  Used by future collision checks to avoid re-deriving fingerprints from
+  the live message tree.
 
 These fields persist with the message, so a transcript export or
 post-hoc audit can correlate any canonical record back to the original
@@ -504,9 +507,13 @@ serialization) over:
 - the trimmed `senderName`;
 - the normalized `body` (the same normalization the append pipeline
   applies, so the fingerprint matches what is persisted);
+- the normalized structural `choices` value (or `null`) produced by the
+  same append-time choice extraction;
 - the structural value of `choiceResponse` (or `null`);
 - the structural value of `messageMetadata` after stripping the
-  `optimistic` flag.
+  `optimistic` flag and the server-managed client-message audit keys
+  (`clientMessageId`, `clientMessageIdSource`,
+  `clientMessageFingerprint`).
 
 The first send stamps this fingerprint on the persisted record's
 `metadata.clientMessageFingerprint`. Subsequent collision checks compare
@@ -524,8 +531,9 @@ re-deriving from the live message tree.
     clientMessageId }` on the response.
 
 - **Non-equivalent collision** (FR-7 — different senderKind, or
-  fingerprint differs on `body` / `senderName` / `choiceResponse` /
-  `messageMetadata`, indicating client bug or id-space pollution):
+  fingerprint differs on `body` / `choices` / `senderName` /
+  `choiceResponse` / `messageMetadata`, indicating client bug or id-space
+  pollution):
   - Do NOT reuse the colliding id.
   - Generate a fresh `randomUUID()` for the canonical id of the new entry.
   - Append the new user message and run all dispatch side effects as a
@@ -571,8 +579,9 @@ persisted `clientMessageIdSource`.
   duplicate transcript entry, posture event, or Cat proposal.
 - A `sendChatMessage` whose `clientMessageId` collides with a non-user
   message (system/agent/event) or with a user message of divergent
-  fingerprint (different `body` after normalization, `senderName`,
-  `choiceResponse`, or non-`optimistic` `messageMetadata`) falls back
+  fingerprint (different `body` / `choices` after normalization,
+  `senderName`, `choiceResponse`, or non-server-managed
+  `messageMetadata`) falls back
   to a fresh server UUID, runs all side effects, and surfaces
   `messageIdentity.source = 'server_fallback'` with the appropriate
   `reason`.

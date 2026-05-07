@@ -93,9 +93,13 @@ frames.
       - the normalized `body` (after the same pre-persistence
         normalization the append pipeline applies — mention extraction,
         choice extraction, fenced JSON parsing, body trimming),
+      - the normalized structural `choices` value (or `null`) produced by
+        the same append-time choice extraction,
       - the structural value of `choiceResponse` (or `null`),
       - the structural value of `messageMetadata` after stripping the
-        `optimistic` flag.
+        `optimistic` flag and the server-managed client-message audit keys
+        (`clientMessageId`, `clientMessageIdSource`,
+        `clientMessageFingerprint`).
       Compare *fingerprints*, not raw fields, on collision:
       - **Equivalent collision** — existing entry has
         `senderKind === 'user'` AND the stored
@@ -116,8 +120,9 @@ frames.
 - [ ] Task 1.6: Update the `sendChatMessage` HTTP handler in
       `src/products/chat/api/resources/channelRoutes.ts` to accept
       `clientMessageId` and surface SPEC-106 contract on the response:
-      - **Length cap (FR-4)**: reject with HTTP 400 when the supplied
-        `clientMessageId` exceeds 128 characters. The 128-char cap is
+      - **Length cap (FR-4)**: trim surrounding whitespace, then reject
+        with HTTP 400 when the supplied `clientMessageId` exceeds 128
+        characters. The 128-char cap is
         the only sanitation step beyond trimming whitespace and is
         designed to prevent a misbehaving client from inflating
         transcript / state files via the audit metadata.
@@ -161,10 +166,10 @@ frames.
         `clientMessageIdSource = 'idempotent'`.
       - Equivalence is determined by the canonical fingerprint, not raw
         fields. A retry whose `body` differs only in trailing whitespace
-        or where mention extraction would yield the same normalized body
-        is treated as equivalent. A retry whose `choiceResponse` or
-        non-`optimistic` `messageMetadata` differs structurally is
-        non-equivalent.
+        or where mention / choice extraction would yield the same
+        normalized body and choices is treated as equivalent. A retry
+        whose `choiceResponse` or non-server-managed `messageMetadata`
+        differs structurally is non-equivalent.
       - Non-equivalent collision (foreign sender / divergent fingerprint)
         falls back to a server UUID, surfaces
         `messageIdentity.source = 'server_fallback'` with the appropriate
@@ -334,9 +339,10 @@ and a live observation, and the rollout is closed.
   non-equivalent (FR-7) → server fallback. There is no
   "merge-into-existing" path. Equivalence is decided by a canonical
   fingerprint (SHA-256 over a stable serialization of trimmed
-  senderName, normalized body, structural choiceResponse, and
-  messageMetadata sans `optimistic`), NOT by raw fields, because the
-  message append pipeline runs normalization (mention extraction,
+  senderName, normalized body, normalized choices, structural
+  choiceResponse, and messageMetadata sans `optimistic` plus the
+  server-managed client-message audit keys), NOT by raw fields, because
+  the message append pipeline runs normalization (mention extraction,
   choice extraction, fenced JSON parsing, body trimming) before
   persistence and a literal field comparison would be unstable.
 - Idempotency safety is scoped to **well-formed v4 UUIDs** only. Two
@@ -407,8 +413,8 @@ and a live observation, and the rollout is closed.
     `messageIdentity.source = 'server_fallback'` with
     `reason = 'collision-foreign-sender'`.
   - Non-equivalent collision (FR-7) — divergent fingerprint (different
-    body after normalization, senderName, choiceResponse, or non-
-    `optimistic` messageMetadata): same fallback path with
+    body / choices after normalization, senderName, choiceResponse, or
+    non-server-managed messageMetadata): same fallback path with
     `reason = 'collision-equivalence-mismatch'`.
   - Invalid `clientMessageId` (non-UUID, ≤128 chars): falls back to
     server UUID, surfaces
@@ -505,7 +511,7 @@ and a live observation, and the rollout is closed.
 | Repeated malformed `clientMessageId` produces duplicate transcript entries | Low | NFR Idempotency-safety scopes guarantees only to well-formed v4 UUIDs. Each malformed retry falls back to a fresh server UUID, so duplicates are by design. Unit test in Task 1.10 pins the behavior so future readers don't mistake it for a bug. Clients that need idempotency MUST send well-formed UUIDs. |
 | Audit trail for fallback path is lost after the response is discarded | Medium | Server stamps `metadata.clientMessageId`, `metadata.clientMessageIdSource ∈ { 'client', 'server_fallback' }`, and `metadata.clientMessageFingerprint` on the persisted canonical record (Task 1.3 / 1.4). Post-hoc transcript inspection can correlate the persisted record back to the original client send even when the canonical id is a server fallback. The persisted source enum never carries `'idempotent'`. |
 | Misbehaving client inflates state files via oversize `clientMessageId` payload | Medium | Hard cap of 128 chars on `clientMessageId` (Task 1.6); oversize requests rejected with HTTP 400 before the dispatch path. Within the cap, malformed values are stamped literally on `metadata.clientMessageId` for audit, but the bound prevents arbitrary bloat. Unit test in Task 1.10 pins the 400 path. |
-| Equivalence check unstable under append-time normalization (mention extraction, fenced JSON, choiceResponse) | Medium | FR-6 equivalence is decided by a canonical fingerprint (SHA-256 over a stable serialization of trimmed senderName, normalized body, structural choiceResponse, messageMetadata sans `optimistic`), stamped at append time on `metadata.clientMessageFingerprint`. Subsequent collisions compare fingerprints, not raw fields. Task 1.10 includes positive and negative fingerprint tests so future changes to the normalization pipeline either preserve the contract or update both the helper and the tests in lockstep. |
+| Equivalence check unstable under append-time normalization (mention extraction, fenced JSON, choiceResponse) | Medium | FR-6 equivalence is decided by a canonical fingerprint (SHA-256 over a stable serialization of trimmed senderName, normalized body, normalized choices, structural choiceResponse, messageMetadata sans `optimistic` plus server-managed client-message audit keys), stamped at append time on `metadata.clientMessageFingerprint`. Subsequent collisions compare fingerprints, not raw fields. Task 1.10 includes positive and negative fingerprint tests so future changes to the normalization pipeline either preserve the contract or update both the helper and the tests in lockstep. |
 | Cross-tab logical duplicate sends bypass server idempotency | Low | SPEC-106 server-side dedupe is keyed only on `(channelId, clientMessageId)`. Two tabs that each generate their own UUID for the same logical message produce two persisted records by design. Documented in §Technical Decisions and pinned by a multi-tab test in §Testing Strategy. Cross-tab dedupe of distinct UUIDs is out of scope and would need its own design. |
 
 ## Progress Log
