@@ -270,6 +270,12 @@ fails, Chat shall mark the existing direct-lane lease `error`, preserve its
 `sessionId` / `cwd` for a later retry or explicit reset, and avoid appending a
 second `session_started` message. Replacement is allowed only after an explicit
 user/operator action that intentionally resets or retargets the direct lane.
+For this path, `staleSessionRetryLimit` values greater than `1` are capped to
+one resume attempt; `0` still disables the resume attempt. Recovery surfaces are
+the same operations that intentionally clear or drift the direct-lane lease:
+resetting the participant runtime attachment, starting a fresh direct lane, or
+retargeting the Cat execution provider/model/instance from the channel or Cat
+detail controls.
 
 In-flight dispatch persistence must also treat an execution lease as a
 single-owner lifecycle object. When concurrent product writes touch the same

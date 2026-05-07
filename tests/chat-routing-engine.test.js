@@ -4323,10 +4323,10 @@ test('direct message does not replace a stale direct-recipient session when runt
   assert.equal(channel.assignedCats[0]?.execution.lease.status, 'error');
   assert.match(
     channel.assignedCats[0]?.execution.lease.lastError ?? '',
-    /replacement session was not started/i,
+    /lane is paused until you reset or retarget/i,
   );
   assert.equal(dispatched.results[0]?.status, 'error');
-  assert.match(dispatched.results[0]?.error ?? '', /replacement session was not started/i);
+  assert.match(dispatched.results[0]?.error ?? '', /lane is paused until you reset or retarget/i);
 });
 
 test('direct message does not replace a closed direct-recipient session when runtime demands resume first', async () => {
@@ -4411,10 +4411,10 @@ test('direct message does not replace a closed direct-recipient session when run
   assert.equal(channel.assignedCats[0]?.execution.lease.status, 'error');
   assert.match(
     channel.assignedCats[0]?.execution.lease.lastError ?? '',
-    /replacement session was not started/i,
+    /lane is paused until you reset or retarget/i,
   );
   assert.equal(dispatched.results[0]?.status, 'error');
-  assert.match(dispatched.results[0]?.error ?? '', /replacement session was not started/i);
+  assert.match(dispatched.results[0]?.error ?? '', /lane is paused until you reset or retarget/i);
 });
 
 test('session-full errors stop immediately and clear the direct lane lease instead of retrying', async () => {

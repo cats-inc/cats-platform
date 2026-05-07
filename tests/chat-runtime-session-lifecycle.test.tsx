@@ -7,6 +7,7 @@ import {
   appendMessage,
   createChannel,
   requireChannel,
+  setChannelCatExecutionTarget,
   setChannelParticipantLease,
 } from '../src/products/chat/state/model/index.ts';
 import { routeChannelMessage } from '../src/products/chat/state/runtime-dispatch/routing.ts';
@@ -41,6 +42,7 @@ function createDirectState() {
   return {
     state,
     channelId: state.selectedChannelId,
+    catId: requireChannel(state, state.selectedChannelId).catAssignments[0]!.catId,
     participantId: requireChannel(state, state.selectedChannelId).catAssignments[0]!.participantId,
   };
 }
@@ -285,9 +287,12 @@ test('direct-message dispatch surfaces resume failure without creating a replace
   );
   assert.equal(lease?.sessionId, 'session-direct-1');
   assert.equal(lease?.status, 'error');
-  assert.match(lease?.lastError ?? '', /replacement session was not started/);
+  assert.match(lease?.lastError ?? '', /lane is paused until you reset or retarget/);
   assert.equal(captured.result.results[0]?.status, 'error');
-  assert.match(captured.result.results[0]?.error ?? '', /replacement session was not started/);
+  assert.match(
+    captured.result.results[0]?.error ?? '',
+    /lane is paused until you reset or retarget/,
+  );
   assert.equal(captured.warnings.length, 1);
 });
 
@@ -582,9 +587,91 @@ test('direct-message room-entry wake reports resume failure without creating a r
   assert.equal(runtimeClient.createCalls, 0);
   assert.deepEqual(closeCalls, []);
   assert.equal(captured.result.result?.status, 'error');
-  assert.match(captured.result.result?.error ?? '', /replacement session was not started/);
+  assert.match(captured.result.result?.error ?? '', /lane is paused until you reset or retarget/);
   assert.equal(lease?.sessionId, 'session-direct-1');
   assert.equal(lease?.status, 'error');
-  assert.match(lease?.lastError ?? '', /replacement session was not started/);
+  assert.match(lease?.lastError ?? '', /lane is paused until you reset or retarget/);
+  assert.equal(captured.warnings.length, 1);
+});
+
+test('direct-message room-entry wake can replace a stale lease after explicit retarget drift', async () => {
+  const { state, channelId, catId, participantId } = createDirectState();
+  const closedLeaseState = setChannelParticipantLease(
+    state,
+    channelId,
+    participantId,
+    {
+      sessionId: 'session-direct-1',
+      status: 'closed',
+      cwd: 'C:\\tmp\\cats-session-direct-1',
+      provider: 'claude',
+      instance: 'native',
+      model: 'sonnet',
+      laneId: 'lane-direct-1',
+      startedAt: '2026-05-07T03:00:30.000Z',
+      lastUsedAt: '2026-05-07T03:00:30.000Z',
+    },
+    new Date('2026-05-07T03:00:30.000Z'),
+  );
+  const retargetedState = setChannelCatExecutionTarget(
+    closedLeaseState,
+    channelId,
+    catId,
+    {
+      provider: 'codex',
+      model: 'gpt-5.4',
+    },
+    new Date('2026-05-07T03:02:00.000Z'),
+  );
+  const resumeCalls: string[] = [];
+  const runtimeClient = {
+    createCalls: 0,
+    async createSession() {
+      this.createCalls += 1;
+      return {
+        id: 'session-direct-2',
+        provider: 'codex',
+        model: 'gpt-5.4',
+        modelSelection: null,
+        modelResolution: null,
+        status: 'ready',
+        cwd: 'C:\\tmp\\cats-session-direct-2',
+      } satisfies RuntimeSessionInfo;
+    },
+    async sendMessage() {
+      throw new Error('sendMessage should not be called');
+    },
+    async resumeSession(sessionId: string) {
+      resumeCalls.push(sessionId);
+      throw new Error('runtime gateway unavailable');
+    },
+    async closeSession() {},
+    async cancelSession() {},
+    async observeSession(sessionId: string) {
+      return { session: { id: sessionId, status: 'closed' } };
+    },
+    async streamSession() {},
+  } as RuntimeClient & { createCalls: number };
+
+  const captured = await captureConsoleWarnings(() =>
+    wakeChannelEntryParticipant(
+      retargetedState,
+      channelId,
+      runtimeClient,
+      new Date('2026-05-07T03:03:00.000Z'),
+      { observeRuntimeForRevive: true },
+    ));
+  const channel = requireChannel(captured.result.state, channelId);
+  const lease = resolveParticipantLeaseAttachment(channel, participantId);
+
+  assert.deepEqual(resumeCalls, ['session-direct-1']);
+  assert.equal(runtimeClient.createCalls, 1);
+  assert.equal(captured.result.result?.status, 'started');
+  assert.equal(captured.result.result?.sessionId, 'session-direct-2');
+  assert.equal(lease?.sessionId, 'session-direct-2');
+  assert.equal(lease?.provider, 'codex');
+  assert.equal(lease?.model, 'gpt-5.4');
+  assert.equal(lease?.status, 'ready');
+  assert.equal(lease?.lastError, null);
   assert.equal(captured.warnings.length, 1);
 });

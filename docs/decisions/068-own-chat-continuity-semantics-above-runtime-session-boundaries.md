@@ -74,7 +74,12 @@ fallback. A direct lane with an existing runtime session is the user's ongoing
 Cat workspace; if native resume fails, the product surfaces the runtime error
 and preserves the old session attachment instead of silently creating a new
 session. Starting a new direct-lane runtime session requires an explicit reset,
-retarget, or other user/operator action.
+retarget, or other user/operator action. The stale-session retry budget is
+therefore capped to at most one resume attempt for direct lanes; higher
+`staleSessionRetryLimit` values do not trigger repeated resume attempts. The
+intended recovery surface is an explicit participant-session reset, a fresh
+direct lane, or a Cat execution retarget that makes the old lease drift from
+the selected provider/model/instance.
 
 ### 3. `group handoff` and `group join` are distinct continuity modes
 

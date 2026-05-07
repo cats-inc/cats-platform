@@ -20,6 +20,6 @@ export function buildDirectMessageRuntimeResumeFailure(input: {
   const sessionId = input.sessionId?.trim() || 'unknown';
   const detail = input.resumeError?.trim();
   return detail
-    ? `Runtime session ${sessionId} could not be resumed; replacement session was not started for this direct message lane. ${detail}`
-    : `Runtime session ${sessionId} could not be resumed; replacement session was not started for this direct message lane.`;
+    ? `Direct lane runtime session ${sessionId} could not be resumed; lane is paused until you reset or retarget. ${detail}`
+    : `Direct lane runtime session ${sessionId} could not be resumed; lane is paused until you reset or retarget.`;
 }
