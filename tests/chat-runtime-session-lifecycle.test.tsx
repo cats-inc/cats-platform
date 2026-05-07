@@ -296,6 +296,113 @@ test('direct-message dispatch surfaces resume failure without creating a replace
   assert.equal(captured.warnings.length, 1);
 });
 
+test('direct-message dispatch can replace a stale lease after explicit retarget drift', async () => {
+  const { state, channelId, catId, participantId } = createDirectState();
+  let createCalls = 0;
+  const resumeCalls: string[] = [];
+  const sentSessionIds: string[] = [];
+  const runtimeClient = {
+    async createSession() {
+      createCalls += 1;
+      return {
+        id: createCalls === 1 ? 'session-direct-1' : 'session-direct-2',
+        provider: createCalls === 1 ? 'claude' : 'codex',
+        model: createCalls === 1 ? 'sonnet' : 'gpt-5.4',
+        modelSelection: null,
+        modelResolution: null,
+        status: 'ready',
+        cwd: createCalls === 1
+          ? 'C:\\tmp\\cats-session-direct-1'
+          : 'C:\\tmp\\cats-session-direct-2',
+      } satisfies RuntimeSessionInfo;
+    },
+    async sendMessage(sessionId: string) {
+      sentSessionIds.push(sessionId);
+      return {
+        segments: [{
+          kind: 'text',
+          text: `reply-${sentSessionIds.length}`,
+          toolName: null,
+          toolId: null,
+        }],
+        inputTokens: 1,
+        outputTokens: 1,
+        tokensUsed: 2,
+      };
+    },
+    async resumeSession(sessionId: string) {
+      resumeCalls.push(sessionId);
+      throw new Error('runtime gateway unavailable');
+    },
+    async closeSession() {},
+    async cancelSession() {},
+    async observeSession(sessionId: string) {
+      return { session: { id: sessionId, status: 'closed' } };
+    },
+    async streamSession() {},
+  } as RuntimeClient;
+
+  const first = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Please create a calculator page',
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-07T03:01:00.000Z'),
+  );
+  const closedLeaseState = setChannelParticipantLease(
+    first.state,
+    channelId,
+    participantId,
+    {
+      status: 'closed',
+      lastUsedAt: '2026-05-07T03:01:30.000Z',
+    },
+    new Date('2026-05-07T03:01:30.000Z'),
+  );
+  const retargetedState = setChannelCatExecutionTarget(
+    closedLeaseState,
+    channelId,
+    catId,
+    {
+      provider: 'codex',
+      model: 'gpt-5.4',
+    },
+    new Date('2026-05-07T03:02:00.000Z'),
+  );
+
+  const captured = await captureConsoleWarnings(() =>
+    routeChannelMessage(
+      retargetedState,
+      channelId,
+      {
+        body: 'Continue after the retarget',
+        senderName: 'Kenneth',
+      },
+      runtimeClient,
+      new Date('2026-05-07T03:03:00.000Z'),
+    ));
+  const channel = requireChannel(captured.result.state, channelId);
+  const lease = resolveParticipantLeaseAttachment(channel, participantId);
+
+  assert.deepEqual(resumeCalls, ['session-direct-1']);
+  assert.equal(createCalls, 2);
+  assert.deepEqual(sentSessionIds, ['session-direct-1', 'session-direct-2']);
+  assert.equal(
+    channel.messages.filter((message) => message.metadata.event === 'session_started').length,
+    2,
+  );
+  assert.equal(captured.result.results[0]?.status, 'sent');
+  assert.equal(captured.result.results[0]?.sessionId, 'session-direct-2');
+  assert.equal(lease?.sessionId, 'session-direct-2');
+  assert.equal(lease?.provider, 'codex');
+  assert.equal(lease?.model, 'gpt-5.4');
+  assert.equal(lease?.status, 'ready');
+  assert.equal(lease?.lastError, null);
+});
+
 test('dispatch merge preserves ready lease advancement for the same runtime session', () => {
   const { state, channelId, participantId } = createDirectState();
   const baseline = setChannelParticipantLease(
