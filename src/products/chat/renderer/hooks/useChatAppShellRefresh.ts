@@ -11,6 +11,12 @@ import { entitySubscriptionHub } from '../../../shared/renderer/entitySubscripti
 import {
   mergeAppShellPreservingActiveEntityState,
 } from '../../../shared/renderer/mergeAppShellPreservingActiveEntityState.js';
+import {
+  preservePendingOptimisticSendsAfterWorkspaceRefresh,
+} from '../../../shared/renderer/optimisticRefresh.js';
+import type {
+  AppShellPayload as WorkspaceAppShellPayload,
+} from '../../../shared/api/workspaceContracts.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -155,13 +161,19 @@ export function useChatAppShellRefresh(options: {
               entitySubscriptionHub.getActiveSubscribedIds('channel'),
             )
           : payload;
-        latestPayloadGeneratedAtRef.current = mergedPayload.metadata.generatedAt;
-        latestPayloadRef.current = mergedPayload;
+        const preservedPayload = currentPayload
+          ? preservePendingOptimisticSendsAfterWorkspaceRefresh(
+              currentPayload as unknown as WorkspaceAppShellPayload,
+              mergedPayload as unknown as WorkspaceAppShellPayload,
+            ) as unknown as AppShellPayload
+          : mergedPayload;
+        latestPayloadGeneratedAtRef.current = preservedPayload.metadata.generatedAt;
+        latestPayloadRef.current = preservedPayload;
         if (setPayloadImmediate) {
-          setPayloadImmediate(mergedPayload);
+          setPayloadImmediate(preservedPayload);
           return;
         }
-        updatePayload(mergedPayload);
+        updatePayload(preservedPayload);
       },
     )();
   }, [setPayloadImmediate, updatePayload]);

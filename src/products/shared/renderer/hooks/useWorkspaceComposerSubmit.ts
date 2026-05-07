@@ -57,6 +57,10 @@ import {
   insertCreatedChannelIntoPayload,
 } from '../workspaceChatUtils.js';
 import {
+  clearPendingOptimisticSend,
+  registerPendingOptimisticSend,
+} from '../pendingOptimisticSends.js';
+import {
   captureManagedComposerLocation,
   clearManagedComposerLocation,
   navigateWithinManagedComposerFlow,
@@ -263,6 +267,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         setChannelFiles(originalChannelFiles);
       }
     };
+    let pendingOptimisticMessageId: string | null = null;
     const navigateWithinManagedFlow = (nextPath: string): boolean =>
       navigateWithinManagedComposerFlow(
         managedNavigationLocationRef,
@@ -452,6 +457,8 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
       }
       const optimisticAppend = appendOptimisticUserMessage(payload, channelId, messageBody);
       payload = optimisticAppend.payload;
+      pendingOptimisticMessageId = optimisticAppend.optimisticMessageId;
+      registerPendingOptimisticSend(channelId, optimisticAppend.optimisticMessageId);
       setState({ status: 'ready', payload });
       setComposerDraft('');
       setDraftFiles([]);
@@ -466,6 +473,8 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         ...(defaultDispatchTarget ?? {}),
         ...(messageMetadata ? { messageMetadata } : {}),
       }, ackController.signal);
+      clearPendingOptimisticSend(channelId, optimisticAppend.optimisticMessageId);
+      pendingOptimisticMessageId = null;
       clearAckRequestIfCurrent(submitId);
       setState({ status: 'ready', payload: dispatch.appShell });
       if (isChannelDispatchRunning(dispatch.appShell, channelId)) {
@@ -516,6 +525,10 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
       clearAckRequestIfCurrent(submitId);
       if (activeDispatchRequestRef.current?.id === submitId) {
         setActiveDispatchRequest(null);
+      }
+      if (pendingOptimisticMessageId) {
+        clearPendingOptimisticSend(channelId, pendingOptimisticMessageId);
+        pendingOptimisticMessageId = null;
       }
       setState({ status: 'ready', payload: rollbackPayload });
       setComposerDraft(body);

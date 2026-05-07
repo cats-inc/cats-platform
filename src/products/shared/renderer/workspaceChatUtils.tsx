@@ -34,6 +34,7 @@ import {
   type MessageInterpolationValues,
   type MessageKey,
 } from '../../../shared/i18n/index.js';
+import { clearPendingOptimisticSend } from './pendingOptimisticSends.js';
 
 export type WorkspaceChatTranslator = (
   key: MessageKey,
@@ -604,13 +605,31 @@ export function preserveOptimisticUserMessageAfterRefresh(
   const channelSummary = next.chat.channels.find((channel) => channel.id === channelId);
 
   if (!selectedChannel || selectedChannel.id !== channelId || !channelSummary) {
+    console.warn('Pending optimistic message channel disappeared during refresh.', {
+      feature: 'chat_optimistic_message_orphaned_channel',
+      channelId,
+      optimisticMessageId: optimisticMessage.id,
+    });
+    clearPendingOptimisticSend(channelId, optimisticMessage.id);
     return refreshedPayload;
   }
 
-  const alreadyPresent = selectedChannel.messages.some(
+  const existingMessage = selectedChannel.messages.find(
     (message) => message.id === optimisticMessage.id,
   );
-  if (alreadyPresent) {
+  if (existingMessage) {
+    if (
+      existingMessage.senderKind !== optimisticMessage.senderKind
+      || existingMessage.body !== optimisticMessage.body
+    ) {
+      console.warn('Skipped preserving optimistic message because refreshed row owns the id.', {
+        feature: 'chat_optimistic_message_preserve',
+        reason: 'id_collision',
+        channelId,
+        optimisticMessageId: optimisticMessage.id,
+        existingSenderKind: existingMessage.senderKind,
+      });
+    }
     return refreshedPayload;
   }
 

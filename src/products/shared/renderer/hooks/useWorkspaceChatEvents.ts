@@ -14,6 +14,9 @@ import {
   mergeAppShellPreservingActiveEntityState,
   type MergeableAppShellPayload,
 } from '../mergeAppShellPreservingActiveEntityState.js';
+import {
+  preservePendingOptimisticSendsAfterWorkspaceRefresh,
+} from '../optimisticRefresh.js';
 
 type LoadStateLike<TPayload> =
   | { status: 'loading' }
@@ -113,9 +116,15 @@ export function useWorkspaceChatEvents<
               entitySubscriptionHub.getActiveSubscribedIds('channel'),
             )
           : nextPayload;
-        latestPayloadRef.current = mergedPayload;
+        const preservedPayload = currentPayload
+          ? preservePendingOptimisticSendsAfterWorkspaceRefresh(
+              currentPayload as unknown as AppShellPayload,
+              mergedPayload as unknown as AppShellPayload,
+            ) as unknown as TPayload
+          : mergedPayload;
+        latestPayloadRef.current = preservedPayload;
         startTransition(() => {
-          setState({ status: 'ready', payload: mergedPayload });
+          setState({ status: 'ready', payload: preservedPayload });
         });
       })
       .catch(() => {})
