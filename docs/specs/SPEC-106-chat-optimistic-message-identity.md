@@ -456,10 +456,13 @@ Lifecycle:
   'chat_optimistic_message_orphaned_channel'` warn line.
 
 The refresh pipeline iterates the registry and calls
-`preserveOptimisticUserMessageAfterRefresh(prev, next, channelId)` once per
-entry, threading the channel id through explicitly. The helper MUST NOT
-fall back to `prev.chat.selectedChannelId` if the registry is empty —
-empty registry means no preserve is required.
+`preserveOptimisticUserMessageAfterRefresh(prev, next, channelId,
+optimisticMessageId)` once per entry, threading the full registry pair
+through explicitly. The helper MUST preserve the optimistic row with that
+exact `optimisticMessageId`; it MUST NOT guess by taking the latest
+optimistic row in the channel. The helper MUST NOT fall back to
+`prev.chat.selectedChannelId` if the registry is empty — empty registry
+means no preserve is required.
 
 The registry is in-memory only and does not survive a renderer reload; any
 optimistic send in flight at reload time is naturally invalidated when the
@@ -610,7 +613,9 @@ persisted `clientMessageIdSource`.
   refresh).
 - The optimistic-preserve helper consumes `(channelId, optimisticId)` from
   the in-flight send registry, never from `selectedChannelId`. Channel
-  switches mid-send do not cause the wrong channel to be preserved.
+  switches mid-send do not cause the wrong channel to be preserved, and
+  same-channel defensive replacement cannot cause the helper to preserve
+  a different optimistic row than the registry entry named.
 - The registry holds at most one `(channelId, optimisticMessageId)` per
   channel in v1; a register attempt that would replace an existing entry
   emits a `feature: 'chat_optimistic_message_replaced_in_flight'` warn.
@@ -622,6 +627,40 @@ persisted `clientMessageIdSource`.
   not a bug.
 - Server-side persisted `ChatMessage.metadata` for owner-typed messages
   never contains `optimistic: true`.
+
+## Verification Notes
+
+2026-05-07 targeted automated verification:
+
+- `npx tsx --test tests/chat-client-message-identity.test.tsx` passed 7
+  tests covering server-side client-message ids, idempotent duplicate
+  handling, fallback collision reasons, oversized-id rejection, and audit
+  metadata stripping/stamping.
+- `npx tsx --test tests/workspace-chat-optimistic.test.tsx` passed 12
+  tests covering bare optimistic UUID ids, registry register/clear,
+  refresh preservation, exact `optimisticMessageId` matching, rollback
+  non-resurrection, channel-switch behavior, channel-switch-back v1
+  trade-off, orphan cleanup, and defensive replacement warnings.
+- `npx tsx --test tests/chat-client-message-identity.test.tsx
+  tests/workspace-chat-optimistic.test.tsx
+  tests/chat-runtime-session-lifecycle.test.tsx` passed 29 tests,
+  covering the SPEC-106 slices together with the SPEC-069 recovery
+  regression set.
+- `npx tsx --test tests/chat-product-intent-dispatch.test.tsx` passed 51
+  tests, confirming slash / product-intent dispatch paths still pass
+  after the client-message-id changes.
+- `npx tsc --noEmit -p tsconfig.server.json`,
+  `npx tsc --noEmit -p tsconfig.json`, and
+  `npx tsc --noEmit -p tsconfig.desktop.json` passed for the server,
+  renderer, and desktop TypeScript targets.
+
+No browser live-smoke write was performed in this slice because the repo's
+state-hygiene policy forbids creating verification records in the user's
+persisted dev state without explicit approval. The remaining unverified
+acceptance item is the visual `[CV] li ...` live-indicator observation in
+a real browser session; the automated coverage above validates the
+underlying idempotency and refresh-preserve contracts without writing to
+the user's dev transcript.
 
 ## Open Questions
 
