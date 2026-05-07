@@ -89,58 +89,104 @@ either half does not eliminate the flicker on its own.
    string` field. When provided and well-formed (UUID), the server shall use
    that value as the canonical persisted message id for the user message
    appended in this dispatch.
-3. When `clientMessageId` is omitted or malformed, server-side append
-   behavior shall be unchanged (server generates a fresh `randomUUID`).
-4. The optimistic message metadata flag `metadata.optimistic === true` shall
+3. When `clientMessageId` is omitted, server-side append behavior shall be
+   unchanged (server generates a fresh `randomUUID()`).
+4. When `clientMessageId` is supplied but malformed (not a v4 UUID), the
+   server shall NOT reject the request. It shall fall back to a fresh
+   `randomUUID()` for the canonical id, append the user message normally,
+   run all dispatch side effects, and surface the fallback decision via
+   `messageIdentity.source = 'server_fallback'` with
+   `reason = 'invalid-uuid'` (see FR-14).
+5. The optimistic message metadata flag `metadata.optimistic === true` shall
    remain a client-only marker. Server-side `appendMessage` shall strip the
    `optimistic` key before persisting so that no canonical message ever
    carries it.
 
 #### Idempotency
 
-5. When the server observes a `sendChatMessage` request whose
-   `clientMessageId` already exists in the addressed channel as a user
-   message, the server shall return the existing canonical message and the
-   already-built dispatch state without appending a duplicate. The response
-   payload shall include an idempotency marker (e.g.
-   `idempotent: true`) so the client and operator tooling can distinguish
-   the deduplicated round-trip from a fresh send.
-6. Idempotent collision shall not advance any side effect that has already
-   advanced for the original send (no second posture change, no second Cat
-   proposal, no second turn start).
-7. Replay through `retryChatMessage` or other server-internal append paths
+6. **Equivalent collision** — when the server observes a `sendChatMessage`
+   request whose `clientMessageId` already exists in the addressed channel
+   as an *equivalent* user message (existing entry has
+   `senderKind === 'user'`, the same trimmed `body`, and the same
+   `senderName`), the server shall return the existing canonical message
+   and the already-built dispatch state without appending a duplicate. The
+   response shall set `idempotent: true` and
+   `messageIdentity.source = 'idempotent'` so the client and operator
+   tooling can distinguish the deduplicated round-trip from a fresh send.
+7. **Non-equivalent collision** — when the supplied `clientMessageId`
+   matches an existing entry that is NOT an equivalent user message
+   (different `senderKind` such as `system`/`agent`/transcript event, or
+   same `senderKind` with divergent `body` / `senderName`), the server
+   shall NOT reuse the colliding id and shall NOT treat the request as
+   idempotent. It shall fall back to a fresh `randomUUID()` for the
+   canonical id, append the new user message, run all dispatch side
+   effects as a fresh send, and surface the decision via
+   `messageIdentity.source = 'server_fallback'` with `reason =
+   'collision-foreign-sender'` (different senderKind) or
+   `reason = 'collision-equivalence-mismatch'` (same senderKind but
+   divergent body/senderName). A diagnostic warn line shall be emitted
+   under the `feature: 'chat_client_message_id_collision'` convention.
+8. Idempotent collision (FR-6 only) shall not advance any side effect that
+   has already advanced for the original send (no second posture change,
+   no second Cat proposal, no second turn start). Non-equivalent collision
+   (FR-7) is treated as a brand-new send and runs its own side effects.
+9. Replay through `retryChatMessage` or other server-internal append paths
    shall not consume the `clientMessageId` slot; only the original outbound
    send claims it.
 
 #### Refresh-race resilience
 
-8. The app-shell SSE refresher shall preserve a still-pending optimistic
-   user message in the currently selected channel when the refreshed payload
-   does not yet carry a canonical message with the same id.
-9. Once the refreshed payload includes the canonical message with the same
-   id, the optimistic copy shall be replaced in place (React preserves the
-   component instance because the row key is stable).
-10. The preserve-optimistic rule shall apply only to the most recent
-    `metadata.optimistic === true` user message in the previously rendered
-    selected channel. Other optimistic markers (older, unsent, or
-    intentionally orphaned) shall not be replayed.
-11. The preserve rule shall not interfere with cancel / abort flows. When
+10. The app-shell SSE refresher shall preserve a still-pending optimistic
+    user message when the refreshed payload does not yet carry a canonical
+    message with the same id.
+11. Once the refreshed payload includes the canonical message with the same
+    id, the optimistic copy shall be replaced in place (React preserves the
+    component instance because the row key is stable).
+12. The preserve-optimistic rule shall be scoped by an explicit
+    `(channelId, optimisticMessageId)` pair carried by an in-flight send
+    registry maintained by the workspace composer. The pair MUST come from
+    the registry, NOT from `previousPayload.chat.selectedChannelId` —
+    relying on the selected-channel id breaks down when the owner switches
+    channels mid-send or when more than one optimistic send is in flight
+    across channels (multi-tab or pinned-surface case). Registry lifecycle
+    is defined under §Refresh-Race Handling.
+13. The preserve rule shall not interfere with cancel / abort flows. When
     `sendChatMessage` rejects, the composer rollback shall remove the
-    optimistic entry, and a subsequent SSE refresh shall not re-introduce
-    it.
+    optimistic entry from the registry AND from
+    `selectedChannel.messages`, so a subsequent SSE refresh shall not
+    re-introduce it.
 
 #### Audit and metadata
 
-12. Server-side response to a `sendChatMessage` carrying a recognized
-    `clientMessageId` shall surface the identity decision (used the supplied
-    id, fell back to a server id, or returned an existing message
-    idempotently) so the renderer and operator logs can reason about state.
-13. The optimistic-preserve rule shall not silently swallow merge conflicts.
+14. Every `sendChatMessage` response shall surface the identity decision
+    through a `messageIdentity` field with the following shape:
+
+    ```ts
+    interface SendChannelMessageMessageIdentity {
+      source: 'client' | 'server_fallback' | 'idempotent';
+      canonicalMessageId: string;
+      clientMessageId?: string;       // present whenever the client supplied one
+      reason?: 'invalid-uuid'
+        | 'collision-foreign-sender'
+        | 'collision-equivalence-mismatch';
+    }
+    ```
+
+    `source: 'client'` means the supplied id was honored as the canonical
+    id. `source: 'server_fallback'` means the server generated a fresh id
+    (with `reason` explaining why the supplied id was not used).
+    `source: 'idempotent'` means the request was deduplicated against an
+    equivalent prior send (FR-6). `messageIdentity` is omitted when no
+    `clientMessageId` was supplied (server is free to omit it) so legacy
+    callers see no schema change.
+
+15. The optimistic-preserve rule shall not silently swallow merge conflicts.
     When the preserve helper rejects an optimistic candidate (for example,
-    because the channel changed underneath), the renderer shall log a
-    diagnostic warn line consistent with the
-    `feature: 'chat_optimistic_message_*'` convention used elsewhere in the
-    workspace shell diagnostics.
+    because the channel changed underneath, the registry pair refers to a
+    channel that disappeared, or a refreshed entry with the same id has a
+    different `senderKind`/`body`), the renderer shall log a diagnostic
+    warn line consistent with the `feature: 'chat_optimistic_message_*'`
+    convention used elsewhere in the workspace shell diagnostics.
 
 ### Non-Functional Requirements
 
@@ -182,11 +228,16 @@ composer submit
 
 ### Identity Schema
 
+SPEC-106 is **additive** on top of the existing `SendChannelMessageInput` /
+`SendChannelMessageResponse` shapes in `src/products/chat/api/contracts.ts`.
+Existing fields (`phase`, `results`, `dispatch`, `message: ChatMessage |
+null`, etc.) MUST be preserved. The new fields below are additions only.
+
 ```ts
 interface SendChannelMessageInput {
   body: string;
   senderName?: string;
-  clientMessageId?: string;            // SPEC-106: optional UUID v4
+  clientMessageId?: string;                  // SPEC-106: optional UUID v4
   pendingProvider?: string;
   pendingModel?: string | null;
   pendingInstance?: string | null;
@@ -195,17 +246,34 @@ interface SendChannelMessageInput {
   choiceResponse?: ChatMessageChoiceResponse | null;
 }
 
+// Existing fields unchanged; SPEC-106 adds `idempotent` and `messageIdentity`
 interface SendChannelMessageResponse {
   appShell: AppShellPayload;
-  message: ChatMessage;                // canonical record (after persist)
-  idempotent?: true;                   // SPEC-106: present when the same
-                                       // clientMessageId was already persisted
+  message: ChatMessage | null;               // existing — unchanged
+  phase: 'acknowledged';                     // existing — unchanged
+  results: ChannelDispatchResult[];          // existing — unchanged
+  dispatch?: ChannelDispatchAcknowledgement; // existing — unchanged
+  idempotent?: true;                         // SPEC-106 (FR-6): set when an
+                                             // equivalent prior send exists
+  messageIdentity?: SendChannelMessageMessageIdentity; // SPEC-106 FR-14
+}
+
+interface SendChannelMessageMessageIdentity {
+  source: 'client' | 'server_fallback' | 'idempotent';
+  canonicalMessageId: string;
+  clientMessageId?: string;
+  reason?: 'invalid-uuid'
+    | 'collision-foreign-sender'
+    | 'collision-equivalence-mismatch';
 }
 ```
 
-The canonical persisted `ChatMessage.id` equals `clientMessageId` when the
-client supplied a valid UUID and there was no prior collision. Otherwise the
-server keeps generating fresh ids.
+The canonical persisted `ChatMessage.id` equals `clientMessageId` only when
+(a) the client supplied a well-formed v4 UUID, (b) there was no prior
+collision, and (c) FR-7 did not trigger a fallback. In that case the
+response carries `messageIdentity.source = 'client'`. Otherwise the server
+generates a fresh id and surfaces `source: 'server_fallback'` (with
+`reason`) or `source: 'idempotent'` per FR-6.
 
 ### Optimistic Marker Lifecycle
 
@@ -233,28 +301,91 @@ through optimistic preservation before being committed to React state.
 
 The helper compares optimistic message ids against the refreshed channel's
 message id list. With the identity contract from §Functional Requirements
-4–6, the comparison is `clientMessageId === canonical.id`, so:
+3–7, the comparison is `clientMessageId === canonical.id`, so:
 
 - Pre-ack refresh: id not present → optimistic preserved.
 - Post-ack refresh: id present → no re-add, canonical row stays.
 - Cancelled / aborted send: composer rollback removes the optimistic entry
   before the next refresh; helper finds nothing to preserve.
 
+#### Pending-send registry (channelId source contract)
+
+FR-12 requires the preserve step to know exactly which `(channelId,
+optimisticMessageId)` pairs are still pending. The workspace composer is
+the only component that has this knowledge at submit time, so it owns the
+registry.
+
+```ts
+// in workspace composer renderer surface
+const pendingOptimisticSends = new Map<channelId, optimisticMessageId>();
+```
+
+Lifecycle:
+
+- **Add**: `useWorkspaceComposerSubmit` inserts `(channelId, optimisticId)`
+  into the registry immediately after `appendOptimisticUserMessage`
+  succeeds, *before* the `sendChatMessage` HTTP call goes out.
+- **Remove on success**: when `sendChatMessage` resolves with the canonical
+  message (regardless of `messageIdentity.source`), the entry for that
+  `channelId` is removed.
+- **Remove on idempotent success**: same as above; the canonical message is
+  already in the refreshed payload, so preserve has nothing to do.
+- **Remove on rollback**: when `sendChatMessage` rejects and the composer
+  resets to `rollbackPayload`, the entry for that `channelId` is removed
+  *before* the next SSE refresh runs.
+- **Remove on channel deletion**: if the channel disappears from the
+  refreshed payload while a send is pending (rare), the entry is removed
+  silently and the helper logs a `feature:
+  'chat_optimistic_message_orphaned_channel'` warn line.
+
+The refresh pipeline iterates the registry and calls
+`preserveOptimisticUserMessageAfterRefresh(prev, next, channelId)` once per
+entry, threading the channel id through explicitly. The helper MUST NOT
+fall back to `prev.chat.selectedChannelId` if the registry is empty —
+empty registry means no preserve is required.
+
+The registry is in-memory only and does not survive a renderer reload; any
+optimistic send in flight at reload time is naturally invalidated when the
+composer remounts and clears its state.
+
 ### Idempotency Boundary
 
 Server-side `appendMessage` (or its caller in
 `beginChannelMessageDispatch`) checks the channel's message list for an
-existing entry with `id === clientMessageId` before appending. On collision:
+existing entry with `id === clientMessageId` before appending. The action
+depends on whether the colliding entry is *equivalent* to the incoming
+send (`senderKind === 'user'`, same trimmed `body`, same `senderName`):
 
-- Skip the append.
-- Skip all downstream side effects of this dispatch (posture event, Cat
-  proposal, runtime session creation).
-- Return the existing message and the current channel state as the response.
-- Set `idempotent: true` on the response so the renderer can skip secondary
-  state transitions if needed.
+- **Equivalent collision** (FR-6 — idempotent retry of a successful send):
+  - Skip the append.
+  - Skip all downstream side effects of this dispatch (posture event,
+    Cat proposal, runtime session creation).
+  - Return the existing message and the current channel state.
+  - Set `idempotent: true` and
+    `messageIdentity = { source: 'idempotent', canonicalMessageId,
+    clientMessageId }` on the response.
 
-A collision of this kind is already the right behavior for retries that
-arrive after a successful original send; the contract makes it explicit.
+- **Non-equivalent collision** (FR-7 — different senderKind / body /
+  senderName, indicating client bug or id-space pollution):
+  - Do NOT reuse the colliding id.
+  - Generate a fresh `randomUUID()` for the canonical id of the new entry.
+  - Append the new user message and run all dispatch side effects as a
+    fresh send.
+  - Set `messageIdentity = { source: 'server_fallback',
+    canonicalMessageId, clientMessageId, reason }` where `reason` is
+    `'collision-foreign-sender'` (different senderKind) or
+    `'collision-equivalence-mismatch'` (same senderKind, divergent
+    body/senderName).
+  - Emit a structured warn line under
+    `feature: 'chat_client_message_id_collision'` so operators can
+    investigate id-reuse patterns.
+
+A non-collision send (no existing entry with the supplied id) honors the
+client id and sets
+`messageIdentity = { source: 'client', canonicalMessageId, clientMessageId }`
+— or, if the supplied value is not a v4 UUID,
+`{ source: 'server_fallback', reason: 'invalid-uuid', canonicalMessageId,
+clientMessageId }` per FR-4.
 
 ## Acceptance Criteria
 
@@ -263,13 +394,27 @@ arrive after a successful original send; the contract makes it explicit.
 - The live-indicator log no longer shows a `msgs[N]` frame in which N is
   smaller than the previous frame's N during the optimistic → canonical
   window for a healthy send.
-- A second `sendChatMessage` with the same `clientMessageId` returns the
-  existing canonical message with `idempotent: true` and does not create a
-  duplicate transcript entry, posture event, or Cat proposal.
-- Telegram ingress and server-internal appends still produce server-generated
-  message ids unchanged.
+- A second `sendChatMessage` with the same `clientMessageId` and equivalent
+  body/senderName returns the existing canonical message with
+  `idempotent: true` and `messageIdentity.source = 'idempotent'`, and does
+  not create a duplicate transcript entry, posture event, or Cat proposal.
+- A `sendChatMessage` whose `clientMessageId` collides with a non-user
+  message (system/agent/event) or with a user message of divergent
+  body/senderName falls back to a fresh server UUID, runs all side
+  effects, and surfaces `messageIdentity.source = 'server_fallback'` with
+  the appropriate `reason`.
+- A malformed `clientMessageId` (non-UUID) falls back to a fresh server
+  UUID and surfaces `messageIdentity.source = 'server_fallback'` with
+  `reason = 'invalid-uuid'`. The send is not rejected.
+- Telegram ingress and server-internal appends still produce
+  server-generated message ids unchanged. The response surfaces no
+  `messageIdentity` because no `clientMessageId` was supplied.
 - Optimistic-preserve never re-introduces an entry that the composer has
-  rolled back due to send failure.
+  rolled back due to send failure (registry entry removed before next
+  refresh).
+- The optimistic-preserve helper consumes `(channelId, optimisticId)` from
+  the in-flight send registry, never from `selectedChannelId`. Channel
+  switches mid-send do not cause the wrong channel to be preserved.
 - Server-side persisted `ChatMessage.metadata` for owner-typed messages
   never contains `optimistic: true`.
 
