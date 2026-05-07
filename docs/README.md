@@ -59,6 +59,8 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [SPEC-106](./specs/SPEC-106-chat-optimistic-message-identity.md) — workspace composer optimistic-message identity contract (client-supplied stable id + SSE-refresh optimistic-preserve) closing the first-message flicker
+- [PLAN-095](./plans/PLAN-095-chat-optimistic-message-identity-rollout.md) — two-phase rollout of the optimistic-id contract and the wired-up preserve helper, plus end-to-end validation against the SSE/HTTP race
 - [SPEC-105](./specs/SPEC-105-direct-chat-implicit-product-intent.md) — no-slash Work/Code candidate detection for ordinary direct chat, requiring explicit owner confirmation before entering slash-mode intake
 - [PLAN-093](./plans/PLAN-093-direct-chat-implicit-product-intent-rollout.md) — rollout plan for implicit product-intent detection, Web/Telegram confirmation UX, and confirmed handoff into SPEC-104
 - [ADR-101](./decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md) — direct-message `/work`/`/code` MVP uses the same direct audience Cat, existing provider capability profiles, and a human gate for weak/unknown Cats
