@@ -65,39 +65,65 @@ frames.
       `src/products/chat/state/model/index.ts` to plumb the optional override
       through. Strip `metadata.optimistic` from the persisted message
       regardless of senderKind. When the caller supplies a non-empty
-      `clientMessageId`, stamp `metadata.clientMessageId` (the supplied
-      value, even if malformed or fallback-bound) and
-      `metadata.clientMessageIdSource` (`'client'` | `'server_fallback'` |
-      `'idempotent'`) on the persisted record per SPEC-106 NFR
-      Auditability. Idempotent collision (FR-6) returns the existing
-      record untouched — do NOT re-stamp.
+      `clientMessageId` AND a fresh canonical record is being persisted,
+      stamp three audit metadata keys on the new record:
+      - `metadata.clientMessageId` (the trimmed client-supplied value)
+      - `metadata.clientMessageIdSource: 'client' | 'server_fallback'`
+        (the persistence-time enum is narrower than
+        `messageIdentity.source` — `'idempotent'` is response-only and
+        never persisted because FR-6 returns the existing record
+        untouched)
+      - `metadata.clientMessageFingerprint` (the canonical fingerprint
+        described in Task 1.5)
+      Idempotent collision (FR-6) returns the existing record untouched —
+      do NOT re-stamp.
 - [ ] Task 1.4: Update `beginChannelMessageDispatch` and any other
       direct-from-user-send caller in
       `src/products/chat/state/runtime-dispatch/routing.ts` to pass
-      `payload.clientMessageId` into the user-message append path along
-      with the resolved `clientMessageIdSource` so Task 1.3 can stamp the
-      audit metadata correctly. Telegram ingress and server-internal
-      appends continue to pass nothing on this path.
+      `payload.clientMessageId`, the resolved `clientMessageIdSource`,
+      and the computed canonical fingerprint into the user-message append
+      path so Task 1.3 can stamp the audit metadata correctly. Telegram
+      ingress and server-internal appends continue to pass nothing on
+      this path.
 - [ ] Task 1.5: Implement the SPEC-106 collision matrix in
-      `beginChannelMessageDispatch` / `appendMessage`:
-      - **Equivalent collision** (existing entry has `senderKind === 'user'`,
-        same trimmed `body`, same `senderName`) — skip the append and all
+      `beginChannelMessageDispatch` / `appendMessage`. Define the
+      canonical fingerprint as a deterministic SHA-256 over a stable
+      JSON serialization of:
+      - the trimmed `senderName`,
+      - the normalized `body` (after the same pre-persistence
+        normalization the append pipeline applies — mention extraction,
+        choice extraction, fenced JSON parsing, body trimming),
+      - the structural value of `choiceResponse` (or `null`),
+      - the structural value of `messageMetadata` after stripping the
+        `optimistic` flag.
+      Compare *fingerprints*, not raw fields, on collision:
+      - **Equivalent collision** — existing entry has
+        `senderKind === 'user'` AND the stored
+        `metadata.clientMessageFingerprint` matches the incoming
+        request's freshly computed fingerprint. Skip the append and all
         downstream side effects (posture, Cat proposal, runtime session
-        creation, SSE publish-once gate). Return the existing message and
-        set `idempotent: true` with `messageIdentity.source = 'idempotent'`.
-      - **Non-equivalent collision** (different `senderKind`, or same
-        sender with divergent body/senderName) — do NOT reuse the colliding
-        id. Generate a fresh `randomUUID()`, append the new message, run
-        all side effects normally, and surface
+        creation, SSE publish-once gate). Return the existing message
+        and set `idempotent: true` with
+        `messageIdentity.source = 'idempotent'`.
+      - **Non-equivalent collision** — different `senderKind`, or same
+        senderKind with a divergent fingerprint. Do NOT reuse the
+        colliding id. Generate a fresh `randomUUID()`, append the new
+        message, run all side effects normally, and surface
         `messageIdentity.source = 'server_fallback'` with
         `reason = 'collision-foreign-sender'` /
-        `'collision-equivalence-mismatch'`. Emit a structured warn under
-        `feature: 'chat_client_message_id_collision'`.
+        `'collision-equivalence-mismatch'`. Emit a structured warn
+        under `feature: 'chat_client_message_id_collision'`.
 - [ ] Task 1.6: Update the `sendChatMessage` HTTP handler in
       `src/products/chat/api/resources/channelRoutes.ts` to accept
       `clientMessageId` and surface SPEC-106 contract on the response:
-      - When `clientMessageId` is present but malformed (not a v4 UUID),
-        fall back to a server UUID rather than returning HTTP 400. Surface
+      - **Length cap (FR-4)**: reject with HTTP 400 when the supplied
+        `clientMessageId` exceeds 128 characters. The 128-char cap is
+        the only sanitation step beyond trimming whitespace and is
+        designed to prevent a misbehaving client from inflating
+        transcript / state files via the audit metadata.
+      - When `clientMessageId` is present but malformed (not a v4 UUID)
+        and within the 128-char cap, fall back to a server UUID rather
+        than returning HTTP 400. Surface
         `messageIdentity.source = 'server_fallback'` with
         `reason = 'invalid-uuid'`.
       - When `clientMessageId` is honored, surface
@@ -125,30 +151,41 @@ frames.
       pin the new contract:
       - Server honors a well-formed supplied id and surfaces
         `messageIdentity.source = 'client'`. The persisted record carries
-        `metadata.clientMessageId === <supplied>` and
-        `metadata.clientMessageIdSource === 'client'`.
+        `metadata.clientMessageId === <supplied>`,
+        `metadata.clientMessageIdSource === 'client'`, and a non-empty
+        `metadata.clientMessageFingerprint`.
       - Equivalent idempotent collision returns the existing message
         without side effects, surfaces both `idempotent: true` and
         `messageIdentity.source = 'idempotent'`, and does NOT re-stamp
-        the existing record's metadata.
-      - Non-equivalent collision (foreign sender / divergent body) falls
-        back to a server UUID, surfaces
+        the existing record's metadata. Persisted records never carry
+        `clientMessageIdSource = 'idempotent'`.
+      - Equivalence is determined by the canonical fingerprint, not raw
+        fields. A retry whose `body` differs only in trailing whitespace
+        or where mention extraction would yield the same normalized body
+        is treated as equivalent. A retry whose `choiceResponse` or
+        non-`optimistic` `messageMetadata` differs structurally is
+        non-equivalent.
+      - Non-equivalent collision (foreign sender / divergent fingerprint)
+        falls back to a server UUID, surfaces
         `messageIdentity.source = 'server_fallback'` with the appropriate
         `reason`, runs side effects, and stamps
-        `metadata.clientMessageId` / `metadata.clientMessageIdSource =
-        'server_fallback'` on the new record.
-      - Malformed `clientMessageId` (non-UUID) falls back to a server UUID
-        with `messageIdentity.source = 'server_fallback'` and
-        `reason = 'invalid-uuid'`; the send is NOT rejected. Two
+        `metadata.clientMessageId`, `metadata.clientMessageIdSource =
+        'server_fallback'`, and the new fingerprint on the new record.
+      - Malformed `clientMessageId` (non-UUID, ≤128 chars) falls back to
+        a server UUID with `messageIdentity.source = 'server_fallback'`
+        and `reason = 'invalid-uuid'`; the send is NOT rejected. Two
         successive sends with the same malformed value produce two
         independent canonical records (no idempotency for malformed
         values; SPEC-106 NFR Idempotency-safety scopes only well-formed
         UUIDs).
+      - Oversized `clientMessageId` (>128 chars) returns HTTP 400 and
+        does NOT enter the dispatch path; no record is appended.
       - Telegram ingress and server-internal append paths produce no
         `messageIdentity` field (because they pass no `clientMessageId`)
         and continue to use server-generated UUIDs. The persisted record
-        carries no `metadata.clientMessageId` /
-        `metadata.clientMessageIdSource` keys.
+        carries none of the audit metadata keys
+        (`metadata.clientMessageId`, `metadata.clientMessageIdSource`,
+        `metadata.clientMessageFingerprint`).
 
 **Deliverables**: a workspace send always produces a transcript entry whose
 id was generated by the client, and a duplicate send is idempotent.
@@ -174,8 +211,13 @@ id was generated by the client, and a duplicate send is idempotent.
         channel; the registry's replace-with-warn is a defensive
         backstop, not the primary enforcement.
       - **Renderer-instance local.** No cross-tab sharing; each browser
-        tab maintains its own Map. Multi-tab idempotency comes from the
-        server-side FR-6 / FR-7 boundary, not from this client registry.
+        tab maintains its own Map. Server-side FR-6 / FR-7 only dedupes
+        on the `(channelId, clientMessageId)` pair: if two tabs each
+        generate their own UUID and submit logically the same message,
+        the server has no way to tell they are the same and persists
+        both. Cross-tab dedupe of distinct UUIDs is out of scope for
+        SPEC-106 — that is a separate problem (e.g. a shared submit
+        intent broker over SSE) and would need its own design.
       Lifecycle (per SPEC-106 §Refresh-Race Handling):
       - Add: `useWorkspaceComposerSubmit` registers immediately after
         `appendOptimisticUserMessage`, before the HTTP call.
@@ -255,10 +297,10 @@ and a live observation, and the rollout is closed.
 | File | Action | Description |
 |------|--------|-------------|
 | `src/products/chat/api/contracts.ts` | Modify | Add optional `clientMessageId` on `SendChannelMessageInput`; additively add `idempotent?: true` and `messageIdentity?: SendChannelMessageMessageIdentity` on the response (do NOT change existing `appShell` / `message` / `phase` / `results` / `dispatch` fields). |
-| `src/products/chat/state/model/recordBuilders.ts` | Modify | Accept optional override id in `createMessageRecord`; strip `metadata.optimistic` defensively. Accept the resolved `clientMessageIdSource` so the persistence call site can stamp `metadata.clientMessageId` and `metadata.clientMessageIdSource` per SPEC-106 NFR Auditability. |
-| `src/products/chat/state/model/index.ts` | Modify | Plumb the override id through `appendMessage`; stamp `metadata.clientMessageId` / `metadata.clientMessageIdSource` on the persisted record when the caller supplied a `clientMessageId` (skip stamping on the idempotent return path — existing record stays untouched). |
-| `src/products/chat/state/runtime-dispatch/routing.ts` | Modify | Pass `payload.clientMessageId` and the resolved `clientMessageIdSource` into the user-message append path; implement collision matrix (FR-6 / FR-7) with idempotent short-circuit vs server-fallback paths. |
-| `src/products/chat/api/contracts.ts` (ChannelMessageMetadata) | Modify | Allow optional `clientMessageId?: string` and `clientMessageIdSource?: 'client' \| 'server_fallback' \| 'idempotent'` on the persisted message metadata schema. Other transports (Telegram, server-internal) leave both keys undefined. |
+| `src/products/chat/state/model/recordBuilders.ts` | Modify | Accept optional override id in `createMessageRecord`; strip `metadata.optimistic` defensively. Accept the resolved `clientMessageIdSource` and pre-computed canonical fingerprint so the persistence call site can stamp `metadata.clientMessageId`, `metadata.clientMessageIdSource`, and `metadata.clientMessageFingerprint` per SPEC-106 NFR Auditability. |
+| `src/products/chat/state/model/index.ts` | Modify | Plumb the override id, source, and fingerprint through `appendMessage`; stamp the three audit metadata keys on the persisted record when the caller supplied a `clientMessageId` (skip stamping on the idempotent return path — existing record stays untouched). |
+| `src/products/chat/state/runtime-dispatch/routing.ts` | Modify | Compute the canonical fingerprint over the normalized append-time inputs; pass `payload.clientMessageId`, the resolved `clientMessageIdSource`, and the fingerprint into the user-message append path; implement collision matrix (FR-6 / FR-7) by comparing the incoming fingerprint against the stored `metadata.clientMessageFingerprint` of the colliding record, NOT raw fields. |
+| `src/products/chat/api/contracts.ts` (ChannelMessageMetadata) | Modify | Add three optional persisted audit keys: `clientMessageId?: string`, `clientMessageIdSource?: 'client' \| 'server_fallback'` (note: `'idempotent'` is response-only and never persisted), `clientMessageFingerprint?: string`. Telegram / server-internal append paths leave all three undefined. |
 | `src/products/chat/api/resources/channelRoutes.ts` | Modify | On invalid UUID, fall back to server UUID instead of returning 400; surface `idempotent` AND `messageIdentity` decision on the response. |
 | `src/products/shared/renderer/pendingOptimisticSends.ts` | Create | SPEC-106 in-flight send registry: `Map<channelId, optimisticMessageId>` with register/clear/iterate helpers. (Location may move into a hook adjacent to `useWorkspaceComposerSubmit` if that fits the codebase better; the contract is unchanged.) |
 | `src/products/shared/renderer/workspaceChatUtils.tsx` | Modify | Bare UUID for optimistic id; expose generated id from `appendOptimisticUserMessage`; keep `metadata.optimistic` as the client-only marker. |
@@ -278,29 +320,47 @@ and a live observation, and the rollout is closed.
   retired because it forced an id mismatch on every server ack.
 - The `metadata.optimistic` flag stays as the in-flight marker. Server-side
   append strips it before persistence. Canonical messages never carry it.
-- Invalid `clientMessageId` (not a v4 UUID) is **not** rejected as an HTTP
-  error. The server falls back to a fresh UUID, the body still posts, and
-  `messageIdentity.source = 'server_fallback'` with
-  `reason = 'invalid-uuid'` exposes the decision for audit. Rationale:
-  matches Telegram / server-internal append behavior (which also pass no
-  client id) and avoids breaking misbehaving clients with a 400.
+- Invalid `clientMessageId` (not a v4 UUID, ≤128 chars) is **not**
+  rejected as an HTTP error. The server falls back to a fresh UUID, the
+  body still posts, and `messageIdentity.source = 'server_fallback'`
+  with `reason = 'invalid-uuid'` exposes the decision for audit.
+  Rationale: matches Telegram / server-internal append behavior (which
+  also pass no client id) and avoids breaking misbehaving clients with a
+  400. **Oversized** `clientMessageId` (>128 chars) IS rejected with
+  HTTP 400 — this hard cap is the only sanitation step beyond trimming
+  and is designed to prevent a misbehaving client from inflating
+  transcript / state files via the audit metadata key.
 - The collision matrix is binary: equivalent (FR-6) → idempotent reuse;
-  non-equivalent (FR-7) → server fallback. There is no "merge-into-existing"
-  path. Same `clientMessageId` with divergent body or non-user senderKind
-  always falls back, never reuses the colliding row.
+  non-equivalent (FR-7) → server fallback. There is no
+  "merge-into-existing" path. Equivalence is decided by a canonical
+  fingerprint (SHA-256 over a stable serialization of trimmed
+  senderName, normalized body, structural choiceResponse, and
+  messageMetadata sans `optimistic`), NOT by raw fields, because the
+  message append pipeline runs normalization (mention extraction,
+  choice extraction, fenced JSON parsing, body trimming) before
+  persistence and a literal field comparison would be unstable.
 - Idempotency safety is scoped to **well-formed v4 UUIDs** only. Two
   successive sends with the same malformed `clientMessageId` produce two
   independent canonical records (each fallback gets a fresh server UUID).
   Clients that need idempotency MUST send well-formed values.
 - Audit metadata (`metadata.clientMessageId`,
-  `metadata.clientMessageIdSource`) lives on the persisted canonical
-  record so post-hoc inspection works without keeping the response
-  payload around. Idempotent collisions do NOT re-stamp; the existing
-  record's metadata stays authoritative.
+  `metadata.clientMessageIdSource`, `metadata.clientMessageFingerprint`)
+  lives on the persisted canonical record so post-hoc inspection works
+  without keeping the response payload around. The persisted
+  `clientMessageIdSource` enum is narrower than the response one —
+  only `'client'` and `'server_fallback'` ever appear on a record;
+  `'idempotent'` is response-only because FR-6 returns the existing
+  record untouched and never persists a fresh row. Idempotent
+  collisions do NOT re-stamp; the existing record's metadata stays
+  authoritative.
 - The pending-send registry caps at one entry per channel in v1
   (composer disables submit while in-flight). It is renderer-instance
-  local — no cross-tab sharing. Cross-tab idempotency is the server's
-  job (FR-6 / FR-7), not this client registry.
+  local — no cross-tab sharing. Server-side FR-6 / FR-7 only dedupes on
+  the `(channelId, clientMessageId)` pair: distinct UUIDs from
+  different tabs that represent logically the same submission are NOT
+  deduped (each tab generates its own UUID and the server has no way
+  to tell them apart). Cross-tab dedupe of distinct UUIDs is out of
+  scope for SPEC-106.
 - Channel-switch trade-off (v1): the registry holds only the
   `optimisticMessageId`, not the message body. Switching away from the
   sending channel and back before the HTTP ack means the typed message
@@ -326,25 +386,36 @@ and a live observation, and the rollout is closed.
 - **Unit tests**:
   - `clientMessageId` flows through `createMessageRecord` when supplied.
   - `appendMessage` strips `metadata.optimistic` before persisting.
-  - `appendMessage` stamps `metadata.clientMessageId` and
-    `metadata.clientMessageIdSource` when the caller supplied a
-    `clientMessageId` (covers honor / fallback / collision cases).
-  - `appendMessage` does NOT stamp those keys for Telegram or
-    server-internal append paths (no `clientMessageId` supplied).
+  - `appendMessage` stamps `metadata.clientMessageId`,
+    `metadata.clientMessageIdSource ∈ { 'client', 'server_fallback' }`,
+    and `metadata.clientMessageFingerprint` when the caller supplied a
+    `clientMessageId` (covers honor / fallback / collision cases). No
+    persisted record ever carries
+    `clientMessageIdSource = 'idempotent'`.
+  - `appendMessage` does NOT stamp any of the three audit keys for
+    Telegram or server-internal append paths (no `clientMessageId`
+    supplied).
   - Idempotent return (FR-6) does NOT re-stamp the existing record's
     metadata; original audit values stay authoritative.
-  - Equivalent collision (FR-6): returns existing message, skips side
-    effects, surfaces `idempotent: true` AND
-    `messageIdentity.source = 'idempotent'`.
+  - Equivalent collision (FR-6) by canonical fingerprint: returns
+    existing message, skips side effects, surfaces `idempotent: true`
+    AND `messageIdentity.source = 'idempotent'`. Includes a positive
+    test that two retries differing only in trailing whitespace or
+    mention-extraction-equivalent prefixes are deduped.
   - Non-equivalent collision (FR-7) — foreign sender: falls back to server
     UUID, runs side effects, surfaces
     `messageIdentity.source = 'server_fallback'` with
     `reason = 'collision-foreign-sender'`.
-  - Non-equivalent collision (FR-7) — divergent body/senderName: same
-    fallback path with `reason = 'collision-equivalence-mismatch'`.
-  - Invalid `clientMessageId` (non-UUID): falls back to server UUID,
-    surfaces `messageIdentity.source = 'server_fallback'` with
+  - Non-equivalent collision (FR-7) — divergent fingerprint (different
+    body after normalization, senderName, choiceResponse, or non-
+    `optimistic` messageMetadata): same fallback path with
+    `reason = 'collision-equivalence-mismatch'`.
+  - Invalid `clientMessageId` (non-UUID, ≤128 chars): falls back to
+    server UUID, surfaces
+    `messageIdentity.source = 'server_fallback'` with
     `reason = 'invalid-uuid'`. The send is NOT rejected.
+  - Oversized `clientMessageId` (>128 chars): HTTP 400; no record
+    appended; no audit metadata written.
   - Two successive sends with the same malformed `clientMessageId`
     produce two independent canonical records (no idempotency for
     malformed values).
@@ -371,8 +442,14 @@ and a live observation, and the rollout is closed.
     snapshot-in-registry limitation.
   - Telegram ingress test still produces server-generated ids and no
     `messageIdentity` field on its persistence path; the persisted
-    record carries no `metadata.clientMessageId` /
-    `metadata.clientMessageIdSource`.
+    record carries none of the audit keys (`metadata.clientMessageId`,
+    `metadata.clientMessageIdSource`,
+    `metadata.clientMessageFingerprint`).
+  - Multi-tab logical duplicate test: two tabs each generate their own
+    UUID, both submit equivalent bodies in the same channel; the server
+    persists two independent canonical records. Pins that SPEC-106 is
+    NOT a cross-tab dedupe mechanism (different `clientMessageId`
+    values bypass FR-6).
 - **Regression tests**:
   - Existing SPEC-069 recovery tests are unaffected.
   - Existing `isOptimisticDraftChannelId` (channel-id concept) tests still
@@ -426,7 +503,10 @@ and a live observation, and the rollout is closed.
 | Channel switch mid-send drops optimistic preserve for the wrong channel | Medium | Pending-sends registry is keyed by `channelId`; refresh iterates the registry rather than reading `selectedChannelId`. Channel-switch integration test in Task 2.5 pins the behavior. |
 | Owner switches away then back to the sending channel before HTTP ack — typed message briefly absent | Low (v1 trade-off) | Documented as the v1 channel-switch trade-off in SPEC-106 §Refresh-Race Handling and Acceptance Criteria. The message is not lost; it lands as soon as the server persists. v2 may store snapshots in the registry to close this gap; tracked in §Follow-up Backlog. Task 2.5 includes a baseline test pinning the documented v1 behavior. |
 | Repeated malformed `clientMessageId` produces duplicate transcript entries | Low | NFR Idempotency-safety scopes guarantees only to well-formed v4 UUIDs. Each malformed retry falls back to a fresh server UUID, so duplicates are by design. Unit test in Task 1.10 pins the behavior so future readers don't mistake it for a bug. Clients that need idempotency MUST send well-formed UUIDs. |
-| Audit trail for fallback path is lost after the response is discarded | Medium | Server stamps `metadata.clientMessageId` and `metadata.clientMessageIdSource` on the persisted canonical record (Task 1.3 / 1.4). Post-hoc transcript inspection can correlate the persisted record back to the original client send even when the canonical id is a server fallback. |
+| Audit trail for fallback path is lost after the response is discarded | Medium | Server stamps `metadata.clientMessageId`, `metadata.clientMessageIdSource ∈ { 'client', 'server_fallback' }`, and `metadata.clientMessageFingerprint` on the persisted canonical record (Task 1.3 / 1.4). Post-hoc transcript inspection can correlate the persisted record back to the original client send even when the canonical id is a server fallback. The persisted source enum never carries `'idempotent'`. |
+| Misbehaving client inflates state files via oversize `clientMessageId` payload | Medium | Hard cap of 128 chars on `clientMessageId` (Task 1.6); oversize requests rejected with HTTP 400 before the dispatch path. Within the cap, malformed values are stamped literally on `metadata.clientMessageId` for audit, but the bound prevents arbitrary bloat. Unit test in Task 1.10 pins the 400 path. |
+| Equivalence check unstable under append-time normalization (mention extraction, fenced JSON, choiceResponse) | Medium | FR-6 equivalence is decided by a canonical fingerprint (SHA-256 over a stable serialization of trimmed senderName, normalized body, structural choiceResponse, messageMetadata sans `optimistic`), stamped at append time on `metadata.clientMessageFingerprint`. Subsequent collisions compare fingerprints, not raw fields. Task 1.10 includes positive and negative fingerprint tests so future changes to the normalization pipeline either preserve the contract or update both the helper and the tests in lockstep. |
+| Cross-tab logical duplicate sends bypass server idempotency | Low | SPEC-106 server-side dedupe is keyed only on `(channelId, clientMessageId)`. Two tabs that each generate their own UUID for the same logical message produce two persisted records by design. Documented in §Technical Decisions and pinned by a multi-tab test in §Testing Strategy. Cross-tab dedupe of distinct UUIDs is out of scope and would need its own design. |
 
 ## Progress Log
 
@@ -435,6 +515,7 @@ and a live observation, and the rollout is closed.
 | 2026-05-07 | Plan created from a live diagnosis of the first-message flicker. SPEC-106 captures the contract; PLAN-095 splits the rollout into the client-supplied id contract (Phase 1), the optimistic-preserve wire-up (Phase 2), and an end-to-end validation slice (Phase 3). Existing `preserveOptimisticUserMessageAfterRefresh` helper is reused; it was already implemented and tested but never wired into production. |
 | 2026-05-07 | Follow-up review pointed out 5 contract gaps in the initial draft: (1) invalid-clientMessageId behavior contradicted across SPEC FR-3 / Task 1.10 / Testing Strategy, (2) response shape definition silently dropped existing fields (`phase`/`results`/`dispatch`), (3) `idempotent?: true` alone could not express server-fallback decisions, (4) collision rules only handled the user-message case, leaving system/agent collisions and divergent-body cases undefined, (5) preserve wire-up did not specify the channelId source. SPEC-106 now defines the `messageIdentity` schema (FR-14), splits the collision matrix into FR-6 (equivalent → idempotent) and FR-7 (non-equivalent → server fallback), pins the response shape as additive only, and introduces the in-flight send registry that the preserve helper consumes (FR-12). PLAN-095 Task 1.5 / 1.6 / 1.10 / 2.1 / 2.2 / 2.5 align with the updated contract. |
 | 2026-05-07 | Second follow-up review pointed out 5 more contract gaps: (1) `Map<channelId, optimisticMessageId>` cardinality vs the multi-tab / multi-pending claim, (2) module-scope registry cannot support real cross-tab multi-tab — needs renderer-instance framing, (3) registry stores only the id, not the optimistic body, so channel-switch-back-before-ack loses the typed row from the local view, (4) NFR Idempotency-safety promised "same `clientMessageId` never produces duplicates" but malformed-id fallback path violates this, (5) NFR Auditability said the client-supplied id is visible on the canonical record but the design only exposed it on the response payload. SPEC-106 now caps the registry at one entry per channel for v1 (renderer-instance local, no cross-tab claim), documents the channel-switch-back trade-off explicitly, scopes idempotency safety to well-formed UUIDs, and adds the §Audit Metadata on the Canonical Record contract that stamps `metadata.clientMessageId` / `metadata.clientMessageIdSource` on the persisted record. PLAN-095 Task 1.3 / 1.4 / 1.10 / 2.1 / 2.5 / Files / Risks / Open Questions / Testing Strategy aligned with the updated contract. |
+| 2026-05-07 | Third follow-up review pointed out 5 more inconsistencies: (1) Non-Goals still claimed "no message schema change" while later requiring `metadata.clientMessageId` / `clientMessageIdSource` keys, (2) audit metadata enum included `'idempotent'` even though FR-6 returns existing records and never persists a fresh row, (3) malformed `clientMessageId` had no length cap so a misbehaving client could inflate state files via the audit metadata, (4) FR-6 equivalence used "same trimmed body / senderName" but the append pipeline runs normalization (mention extraction, choice extraction, fenced JSON parsing) so literal equality is unstable, (5) registry section claimed "multi-tab idempotency comes from server FR-6/FR-7" but the server only dedupes on `(channelId, clientMessageId)` — distinct UUIDs from different tabs bypass dedupe. SPEC-106 Non-Goals expanded to allow audit metadata keys; FR-4 added a 128-char cap with HTTP 400 for oversized; FR-6 / FR-7 / §Audit Metadata / §Idempotency Boundary rewritten around a canonical fingerprint (SHA-256 over normalized fields), with `clientMessageIdSource` enum on persisted records narrowed to `'client' \| 'server_fallback'` only and a new `metadata.clientMessageFingerprint` audit key added. PLAN-095 Task 1.3 / 1.4 / 1.5 / 1.6 / 1.10 / Files / Technical Decisions / Risks / Testing Strategy aligned with the corrected contract; the multi-tab claim was rewritten to be precise about `(channelId, clientMessageId)` keying and the cross-tab dedupe out-of-scope position. |
 
 ---
 

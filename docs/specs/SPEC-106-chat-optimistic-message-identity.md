@@ -69,8 +69,15 @@ either half does not eliminate the flicker on its own.
   recovery semantics.
 - No new SSE event kinds. The existing `/api/events/chat` and
   `/api/subscribe?kind=channel&id=...` channels remain authoritative.
-- No structural change to the message schema beyond the optional
-  `clientMessageId` request field and the corresponding response surface.
+- No structural change to the message schema beyond:
+  - The optional `clientMessageId` field on `SendChannelMessageInput`.
+  - The optional `idempotent` and `messageIdentity` fields on
+    `SendChannelMessageResponse`.
+  - The two audit metadata keys (`metadata.clientMessageId`,
+    `metadata.clientMessageIdSource`) added on persisted `ChatMessage`
+    records (only when the request carried a non-empty `clientMessageId`).
+  Existing `ChatMessage` fields, `ChannelMessageMetadata` enums, and the
+  rest of the chat domain schema are unchanged.
 - No change to mobile composer flows that do not go through the workspace
   composer (they will inherit the contract when they migrate; not in v1
   scope).
@@ -91,12 +98,22 @@ either half does not eliminate the flicker on its own.
    appended in this dispatch.
 3. When `clientMessageId` is omitted, server-side append behavior shall be
    unchanged (server generates a fresh `randomUUID()`).
-4. When `clientMessageId` is supplied but malformed (not a v4 UUID), the
-   server shall NOT reject the request. It shall fall back to a fresh
-   `randomUUID()` for the canonical id, append the user message normally,
-   run all dispatch side effects, and surface the fallback decision via
+4. When `clientMessageId` is supplied but malformed (not a v4 UUID) and
+   its length is at most 128 characters, the server shall NOT reject the
+   request. It shall fall back to a fresh `randomUUID()` for the canonical
+   id, append the user message normally, run all dispatch side effects,
+   and surface the fallback decision via
    `messageIdentity.source = 'server_fallback'` with
-   `reason = 'invalid-uuid'` (see FR-14).
+   `reason = 'invalid-uuid'` (see FR-14). The literal client-supplied
+   value (after trimming surrounding whitespace) is stamped on
+   `metadata.clientMessageId` for audit. When the supplied value exceeds
+   128 characters in length, the server SHALL reject the request with
+   HTTP 400 and surface the error to the client; this hard cap prevents a
+   misbehaving client from inflating transcript / state files with
+   arbitrary payloads under the `clientMessageId` key. The 128-char cap
+   is generous relative to a v4 UUID (36 chars with hyphens, 32 without)
+   and is the only sanitation step required of the server beyond
+   trimming whitespace.
 5. The optimistic message metadata flag `metadata.optimistic === true` shall
    remain a client-only marker. Server-side `appendMessage` shall strip the
    `optimistic` key before persisting so that no canonical message ever
@@ -106,17 +123,33 @@ either half does not eliminate the flicker on its own.
 
 6. **Equivalent collision** — when the server observes a `sendChatMessage`
    request whose `clientMessageId` already exists in the addressed channel
-   as an *equivalent* user message (existing entry has
-   `senderKind === 'user'`, the same trimmed `body`, and the same
-   `senderName`), the server shall return the existing canonical message
-   and the already-built dispatch state without appending a duplicate. The
-   response shall set `idempotent: true` and
+   as an *equivalent* user message, the server shall return the existing
+   canonical message and the already-built dispatch state without
+   appending a duplicate. The response shall set `idempotent: true` and
    `messageIdentity.source = 'idempotent'` so the client and operator
    tooling can distinguish the deduplicated round-trip from a fresh send.
+
+   *Equivalence* is defined by a server-side canonical fingerprint, not
+   by the raw request fields, because the message append pipeline runs
+   normalization (mention extraction, choice extraction, fenced JSON
+   parsing, body trimming) before persistence and a literal
+   field-by-field comparison would be unstable. Two requests are
+   equivalent iff they all hold:
+   - existing entry has `senderKind === 'user'`;
+   - canonical fingerprint of (trimmed `senderName`, trimmed `body` after
+     the same pre-persistence normalization the server applies on
+     append, structural equality of `choiceResponse`, and structural
+     equality of `messageMetadata` after the `optimistic` flag is
+     stripped) is identical to the fingerprint stored on the existing
+     entry.
+   The fingerprint shall be computed deterministically (e.g. a stable
+   JSON serialization hashed with SHA-256) and stamped on the persisted
+   record's metadata at append time so subsequent collision checks do
+   not need to re-derive it from the live message tree.
 7. **Non-equivalent collision** — when the supplied `clientMessageId`
-   matches an existing entry that is NOT an equivalent user message
+   matches an existing entry that is NOT equivalent under FR-6
    (different `senderKind` such as `system`/`agent`/transcript event, or
-   same `senderKind` with divergent `body` / `senderName`), the server
+   same `senderKind` with a divergent canonical fingerprint), the server
    shall NOT reuse the colliding id and shall NOT treat the request as
    idempotent. It shall fall back to a fresh `randomUUID()` for the
    canonical id, append the new user message, run all dispatch side
@@ -124,8 +157,9 @@ either half does not eliminate the flicker on its own.
    `messageIdentity.source = 'server_fallback'` with `reason =
    'collision-foreign-sender'` (different senderKind) or
    `reason = 'collision-equivalence-mismatch'` (same senderKind but
-   divergent body/senderName). A diagnostic warn line shall be emitted
-   under the `feature: 'chat_client_message_id_collision'` convention.
+   divergent fingerprint covering body / senderName / choiceResponse /
+   messageMetadata). A diagnostic warn line shall be emitted under the
+   `feature: 'chat_client_message_id_collision'` convention.
 8. Idempotent collision (FR-6 only) shall not advance any side effect that
    has already advanced for the original send (no second posture change,
    no second Cat proposal, no second turn start). Non-equivalent collision
@@ -307,28 +341,40 @@ the row's metadata is replaced by the canonical metadata wholesale.
 
 ### Audit Metadata on the Canonical Record
 
-To satisfy NFR Auditability, server-side append SHALL stamp two fields
+To satisfy NFR Auditability, server-side append SHALL stamp three fields
 onto `ChatMessage.metadata` whenever the request carried a non-empty
-`clientMessageId`:
+`clientMessageId` AND a new canonical record is being persisted:
 
-- `metadata.clientMessageId: string` — the value the client actually
-  sent, even when the canonical id fell back to a server UUID.
-- `metadata.clientMessageIdSource: 'client' | 'server_fallback' |
-  'idempotent'` — same enum as `messageIdentity.source` in the response.
+- `metadata.clientMessageId: string` — the trimmed value the client
+  actually sent (≤128 chars per FR-4), even when the canonical id fell
+  back to a server UUID.
+- `metadata.clientMessageIdSource: 'client' | 'server_fallback'` — the
+  decision recorded on this persisted record. The enum is **narrower
+  than** `messageIdentity.source` on the response: `'idempotent'` is a
+  *response-only* state because FR-6 returns the existing record
+  untouched and never persists a fresh row, so no record can ever carry
+  `clientMessageIdSource = 'idempotent'` legitimately.
+- `metadata.clientMessageFingerprint: string` — the canonical
+  fingerprint defined under FR-6 (stable serialization of trimmed
+  `senderName`, normalized `body`, structural `choiceResponse`,
+  `messageMetadata` sans `optimistic`, hashed deterministically). Used
+  by future collision checks to avoid re-deriving fingerprints from the
+  live message tree.
 
 These fields persist with the message, so a transcript export or
 post-hoc audit can correlate any canonical record back to the original
 client send and tell whether the canonical id is honored or fell back.
 
 For idempotent collision (FR-6), the *existing* canonical message is
-returned without re-stamping; its earlier `metadata.clientMessageId` /
-`metadata.clientMessageIdSource` values (set by the original successful
-send) remain authoritative. The duplicate retry is not persisted, so it
-contributes no metadata.
+returned without re-stamping; its earlier
+`metadata.clientMessageId` / `metadata.clientMessageIdSource` /
+`metadata.clientMessageFingerprint` values (set by the original
+successful send) remain authoritative. The duplicate retry is not
+persisted, so it contributes no metadata.
 
 Telegram ingress, server-internal appends, and server-internal retries
-do NOT carry a `clientMessageId` and therefore do NOT receive these
-metadata fields.
+do NOT carry a `clientMessageId` and therefore do NOT receive any of
+these metadata fields.
 
 ### Refresh-Race Handling
 
@@ -376,9 +422,17 @@ newer entry. A future revision can lift this cap to
 **Scope**: the registry lives in module / hook scope inside the renderer
 process. It does NOT span browser tabs (tabs do not share JS heap), and it
 does NOT span unrelated workspace shell remounts. Each tab and each
-renderer instance maintains its own registry. Cross-tab idempotency is out
-of scope for SPEC-106 v1 — the server-side idempotency boundary (FR-6 /
-FR-7) is the cross-tab guarantee, not this client registry.
+renderer instance maintains its own registry.
+
+Cross-tab dedupe of *logically duplicate* sends is out of scope. The
+server-side idempotency boundary (FR-6 / FR-7) keys only on the
+`(channelId, clientMessageId)` pair: two tabs that each generate their
+own UUID for the same logical message produce two persisted records
+because their `clientMessageId` values differ and the server has no
+mechanism to recognize them as the same intent. SPEC-106 does NOT
+attempt to dedupe across tabs; that would require a separate design
+(e.g. a shared submit-intent broker over SSE) and is not part of this
+SPEC.
 
 Lifecycle:
 
@@ -437,10 +491,30 @@ the registry value type to `{ optimisticMessageId, snapshot: ChatMessage
 Server-side `appendMessage` (or its caller in
 `beginChannelMessageDispatch`) checks the channel's message list for an
 existing entry with `id === clientMessageId` before appending. The action
-depends on whether the colliding entry is *equivalent* to the incoming
-send (`senderKind === 'user'`, same trimmed `body`, same `senderName`):
+depends on whether the colliding entry is *equivalent* under FR-6's
+canonical fingerprint, NOT on a literal field-by-field comparison
+(message append runs normalization — mention extraction, choice
+extraction, fenced JSON parsing, body trimming — before persistence, so
+literal equality of the raw input is not stable enough for the dedupe
+check).
 
-- **Equivalent collision** (FR-6 — idempotent retry of a successful send):
+The fingerprint is a deterministic hash (e.g. SHA-256 of a stable JSON
+serialization) over:
+
+- the trimmed `senderName`;
+- the normalized `body` (the same normalization the append pipeline
+  applies, so the fingerprint matches what is persisted);
+- the structural value of `choiceResponse` (or `null`);
+- the structural value of `messageMetadata` after stripping the
+  `optimistic` flag.
+
+The first send stamps this fingerprint on the persisted record's
+`metadata.clientMessageFingerprint`. Subsequent collision checks compare
+the incoming-request fingerprint against the stored one without
+re-deriving from the live message tree.
+
+- **Equivalent collision** (FR-6 — idempotent retry of a successful send,
+  fingerprint matches):
   - Skip the append.
   - Skip all downstream side effects of this dispatch (posture event,
     Cat proposal, runtime session creation).
@@ -449,8 +523,9 @@ send (`senderKind === 'user'`, same trimmed `body`, same `senderName`):
     `messageIdentity = { source: 'idempotent', canonicalMessageId,
     clientMessageId }` on the response.
 
-- **Non-equivalent collision** (FR-7 — different senderKind / body /
-  senderName, indicating client bug or id-space pollution):
+- **Non-equivalent collision** (FR-7 — different senderKind, or
+  fingerprint differs on `body` / `senderName` / `choiceResponse` /
+  `messageMetadata`, indicating client bug or id-space pollution):
   - Do NOT reuse the colliding id.
   - Generate a fresh `randomUUID()` for the canonical id of the new entry.
   - Append the new user message and run all dispatch side effects as a
@@ -459,7 +534,7 @@ send (`senderKind === 'user'`, same trimmed `body`, same `senderName`):
     canonicalMessageId, clientMessageId, reason }` where `reason` is
     `'collision-foreign-sender'` (different senderKind) or
     `'collision-equivalence-mismatch'` (same senderKind, divergent
-    body/senderName).
+    fingerprint).
   - Emit a structured warn line under
     `feature: 'chat_client_message_id_collision'` so operators can
     investigate id-reuse patterns.
@@ -471,13 +546,16 @@ client id and sets
 `{ source: 'server_fallback', reason: 'invalid-uuid', canonicalMessageId,
 clientMessageId }` per FR-4.
 
-In every case where a `clientMessageId` was supplied (well-formed or not,
-collision or not), the persisted canonical record carries
-`metadata.clientMessageId` and `metadata.clientMessageIdSource` per the
-§Audit Metadata on the Canonical Record contract. The idempotent path
-(FR-6) is the only exception: it returns the *existing* canonical record
-without modifying its metadata, so the audit trail belongs to the
-original successful send.
+In every case where a `clientMessageId` was supplied AND a fresh
+canonical record is persisted (i.e. all paths *except* the idempotent
+return path), that new record carries `metadata.clientMessageId`,
+`metadata.clientMessageIdSource ∈ { 'client', 'server_fallback' }`, and
+`metadata.clientMessageFingerprint` per §Audit Metadata on the Canonical
+Record. The idempotent path (FR-6) returns the *existing* canonical
+record without modifying its metadata, so the audit trail belongs to
+the original successful send. The `'idempotent'` value of
+`messageIdentity.source` is response-only and never appears as a
+persisted `clientMessageIdSource`.
 
 ## Acceptance Criteria
 
@@ -487,30 +565,37 @@ original successful send.
   smaller than the previous frame's N during the optimistic → canonical
   window for a healthy send while the owner stays on the channel.
 - A second `sendChatMessage` with the same well-formed `clientMessageId`
-  and equivalent body/senderName returns the existing canonical message
-  with `idempotent: true` and `messageIdentity.source = 'idempotent'`,
-  and does not create a duplicate transcript entry, posture event, or Cat
-  proposal.
+  and a canonical fingerprint matching the existing entry returns the
+  existing canonical message with `idempotent: true` and
+  `messageIdentity.source = 'idempotent'`, and does not create a
+  duplicate transcript entry, posture event, or Cat proposal.
 - A `sendChatMessage` whose `clientMessageId` collides with a non-user
   message (system/agent/event) or with a user message of divergent
-  body/senderName falls back to a fresh server UUID, runs all side
-  effects, and surfaces `messageIdentity.source = 'server_fallback'` with
-  the appropriate `reason`.
-- A malformed `clientMessageId` (non-UUID) falls back to a fresh server
-  UUID and surfaces `messageIdentity.source = 'server_fallback'` with
+  fingerprint (different `body` after normalization, `senderName`,
+  `choiceResponse`, or non-`optimistic` `messageMetadata`) falls back
+  to a fresh server UUID, runs all side effects, and surfaces
+  `messageIdentity.source = 'server_fallback'` with the appropriate
+  `reason`.
+- A malformed `clientMessageId` (non-UUID) of length ≤128 falls back to
+  a fresh server UUID and surfaces
+  `messageIdentity.source = 'server_fallback'` with
   `reason = 'invalid-uuid'`. The send is not rejected. Re-sending the
   same malformed value does NOT enjoy idempotency protection — each
   retry appends a new entry with a fresh server UUID.
+- A `clientMessageId` longer than 128 characters is rejected with HTTP
+  400; the request never enters the dispatch path.
 - Telegram ingress and server-internal appends still produce
   server-generated message ids unchanged. The response surfaces no
   `messageIdentity` because no `clientMessageId` was supplied, and the
-  persisted record carries no `metadata.clientMessageId` /
-  `metadata.clientMessageIdSource`.
-- Every persisted canonical record for a request that *did* carry a
-  `clientMessageId` has `metadata.clientMessageId` (the original value
-  the client sent) and `metadata.clientMessageIdSource` (matching
-  `messageIdentity.source`) stamped on it, except for the idempotent
-  return path which leaves the existing record untouched.
+  persisted record carries none of the audit metadata keys
+  (`clientMessageId`, `clientMessageIdSource`,
+  `clientMessageFingerprint`).
+- Every fresh persisted canonical record for a request that carried a
+  `clientMessageId` has `metadata.clientMessageId`,
+  `metadata.clientMessageIdSource ∈ { 'client', 'server_fallback' }`,
+  and `metadata.clientMessageFingerprint` stamped on it. The idempotent
+  return path leaves the existing record untouched and never persists
+  `clientMessageIdSource = 'idempotent'`.
 - Optimistic-preserve never re-introduces an entry that the composer has
   rolled back due to send failure (registry entry removed before next
   refresh).
