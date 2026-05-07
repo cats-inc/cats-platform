@@ -622,9 +622,15 @@ export function preserveOptimisticUserMessageAfterRefresh(
     (message) => message.id === optimisticMessage.id,
   );
   if (existingMessage) {
+    const isCanonicalOwnerMessageForOptimisticId =
+      existingMessage.senderKind === optimisticMessage.senderKind
+      && existingMessage.metadata?.clientMessageId === optimisticMessage.id;
+    const hasEquivalentVisibleBody =
+      existingMessage.senderKind === optimisticMessage.senderKind
+      && existingMessage.body.trim() === optimisticMessage.body.trim();
     if (
-      existingMessage.senderKind !== optimisticMessage.senderKind
-      || existingMessage.body !== optimisticMessage.body
+      !isCanonicalOwnerMessageForOptimisticId
+      && !hasEquivalentVisibleBody
     ) {
       console.warn('Skipped preserving optimistic message because refreshed row owns the id.', {
         feature: 'chat_optimistic_message_preserve',

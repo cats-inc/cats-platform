@@ -85,6 +85,9 @@ import {
   createDefaultRoomRoutingState,
   resolveRoomRoutingState,
 } from '../room-routing/index.js';
+import {
+  buildClientMessageAuditMetadata,
+} from '../../shared/clientMessageIdentity.js';
 
 export type { ChatLifecycleState } from '../../shared/lifecycle.js';
 export { resolveChannelCanonicalIdentity } from '../../shared/channelCanonicalIdentity.js';
@@ -773,11 +776,7 @@ export function appendMessage(
       choiceResponse: options.choiceResponse,
       messageId: options.clientMessageIdentity?.canonicalId,
       clientMessageAudit: options.clientMessageIdentity
-        ? {
-            clientMessageId: options.clientMessageIdentity.clientMessageId,
-            clientMessageIdSource: options.clientMessageIdentity.source,
-            clientMessageFingerprint: options.clientMessageIdentity.fingerprint,
-          }
+        ? buildClientMessageAuditMetadata(options.clientMessageIdentity)
         : undefined,
     },
   );

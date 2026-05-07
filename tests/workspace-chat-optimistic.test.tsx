@@ -444,6 +444,109 @@ test('preserveOptimisticUserMessageAfterRefresh rejects refreshed id collisions'
   }
 });
 
+test('preserveOptimisticUserMessageAfterRefresh accepts canonical owner rows with normalized bodies', () => {
+  const optimisticMessage = {
+    id: '17c0bd79-e36d-4532-af2b-36b70a629198',
+    channelId: 'channel-1',
+    senderKind: 'user',
+    senderName: 'Kenny',
+    body: 'Still sending...\n\n',
+    mentions: [],
+    metadata: {
+      optimistic: true,
+    },
+    usage: null,
+    createdAt: '2026-04-20T12:01:00.000Z',
+  };
+  const previousPayload = createPayload({
+    chat: {
+      selectedChannelId: 'channel-1',
+      selectedChannel: {
+        id: 'channel-1',
+        title: 'Room',
+        topic: 'Test room',
+        unreadCount: 0,
+        updatedAt: '2026-04-20T12:01:00.000Z',
+        lastMessageAt: '2026-04-20T12:01:00.000Z',
+        pendingProvider: 'claude',
+        pendingModel: 'opus',
+        pendingInstance: 'native',
+        pendingModelSelection: null,
+        messages: [optimisticMessage],
+      },
+      channels: [
+        {
+          id: 'channel-1',
+          title: 'Room',
+          topic: 'Test room',
+          unreadCount: 0,
+          lastMessageAt: '2026-04-20T12:01:00.000Z',
+          pendingProvider: 'claude',
+          pendingModel: 'opus',
+          pendingModelSelection: null,
+        },
+      ],
+    },
+  });
+  const refreshedPayload = createPayload({
+    chat: {
+      selectedChannelId: 'channel-1',
+      selectedChannel: {
+        id: 'channel-1',
+        title: 'Room',
+        topic: 'Test room',
+        unreadCount: 0,
+        updatedAt: '2026-04-20T12:01:01.000Z',
+        lastMessageAt: '2026-04-20T12:01:01.000Z',
+        pendingProvider: 'claude',
+        pendingModel: 'opus',
+        pendingInstance: 'native',
+        pendingModelSelection: null,
+        messages: [
+          {
+            ...optimisticMessage,
+            body: 'Still sending...',
+            metadata: {
+              clientMessageId: optimisticMessage.id,
+            },
+          },
+        ],
+      },
+      channels: [
+        {
+          id: 'channel-1',
+          title: 'Room',
+          topic: 'Test room',
+          unreadCount: 0,
+          lastMessageAt: '2026-04-20T12:01:01.000Z',
+          pendingProvider: 'claude',
+          pendingModel: 'opus',
+          pendingModelSelection: null,
+        },
+      ],
+    },
+  });
+  const warnings: unknown[][] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args);
+  };
+  try {
+    assert.equal(
+      preserveOptimisticUserMessageAfterRefresh(
+        previousPayload,
+        refreshedPayload,
+        'channel-1',
+        optimisticMessage.id,
+      ),
+      refreshedPayload,
+    );
+    assert.equal(warnings.length, 0);
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
 test('pending optimistic send registry replaces defensively and clears by id', () => {
   clearAllPendingOptimisticSends();
   const warnings: unknown[][] = [];

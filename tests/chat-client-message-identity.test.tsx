@@ -10,6 +10,8 @@ import {
 } from '../src/products/chat/state/model/index.ts';
 import { routeChannelMessage } from '../src/products/chat/state/runtime-dispatch/routing.ts';
 import {
+  ClientMessageIdTooLongError,
+  assertClientMessageIdLengthCap,
   buildClientMessageFingerprint,
   normalizeClientMessageId,
 } from '../src/products/chat/shared/clientMessageIdentity.ts';
@@ -326,6 +328,10 @@ test('clientMessageId validation applies the trimmed 128-character cap', () => {
   });
   assert.equal(normalizeClientMessageId(`${'a'.repeat(128)} `).tooLong, false);
   assert.equal(normalizeClientMessageId('a'.repeat(129)).tooLong, true);
+  assert.throws(
+    () => assertClientMessageIdLengthCap('a'.repeat(129)),
+    ClientMessageIdTooLongError,
+  );
 });
 
 test('client message fingerprint strips optimistic and audit metadata while including choices', () => {

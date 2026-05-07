@@ -1,5 +1,6 @@
 import { sendJson } from '../../../shared/http.js';
 import { RuntimeSessionPolicyError } from '../../../shared/runtimeSessionPolicy.js';
+import { ClientMessageIdTooLongError } from '../shared/clientMessageIdentity.js';
 import type { ChatApiRouteContext } from './routeSupport.js';
 
 export function errorStatusCode(error: unknown): number {
@@ -67,6 +68,11 @@ export function handleRestError(
       error.issue.message,
       error.issue.details,
     );
+    return;
+  }
+
+  if (error instanceof ClientMessageIdTooLongError) {
+    sendRestError(context, error.statusCode, error.code, error.message);
     return;
   }
 

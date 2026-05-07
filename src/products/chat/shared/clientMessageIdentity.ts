@@ -42,6 +42,16 @@ export interface NormalizedClientMessageId {
 const UUID_V4_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
+export class ClientMessageIdTooLongError extends Error {
+  readonly code = 'client_message_id_too_long';
+  readonly statusCode = 400;
+
+  constructor() {
+    super(`clientMessageId must be at most ${CLIENT_MESSAGE_ID_MAX_LENGTH} characters.`);
+    this.name = 'ClientMessageIdTooLongError';
+  }
+}
+
 export function normalizeClientMessageId(
   value: SendChannelMessageInput['clientMessageId'],
 ): NormalizedClientMessageId {
@@ -70,6 +80,14 @@ export function normalizeClientMessageId(
     tooLong: trimmed.length > CLIENT_MESSAGE_ID_MAX_LENGTH,
     wellFormedV4Uuid: UUID_V4_PATTERN.test(trimmed),
   };
+}
+
+export function assertClientMessageIdLengthCap(
+  value: SendChannelMessageInput['clientMessageId'],
+): void {
+  if (normalizeClientMessageId(value).tooLong) {
+    throw new ClientMessageIdTooLongError();
+  }
 }
 
 export function stripClientMessageAuditMetadata(

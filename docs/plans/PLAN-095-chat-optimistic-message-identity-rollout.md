@@ -33,8 +33,19 @@ because two contracts are missing:
 Either gap on its own causes a visible flicker; the existing
 `preserveOptimisticUserMessageAfterRefresh` helper was written for this but
 was never wired into production. PLAN-095 lands both contracts together and
-validates the end-to-end happy path with no transient empty-transcript
-frames.
+targets end-to-end validation of the happy path with no transient
+empty-transcript frames.
+
+## Outstanding Verification
+
+- Browser live observation for Task 3.1 is still outstanding. Automated
+  tests cover the server idempotency contract and registry-driven preserve
+  behavior, but they do not prove the `[CV] li ...` live-indicator trace
+  never passes through a lower message count in an actual browser renderer.
+- This was intentionally not performed in the current automation slice
+  because it would require sending a verification message into the user's
+  persisted dev transcript. Under the repo state-hygiene policy, that
+  needs explicit user approval for the exact write payload before running.
 
 ## Implementation Guardrails
 
@@ -437,6 +448,9 @@ and a live observation, and the rollout is closed.
     `optimisticMessageId`; the helper preserves the named row and does not
     infer a different row from the latest optimistic message in the
     channel.
+  - Fingerprint idempotency includes server-augmented append-time metadata,
+    so retries are only idempotent while those state-derived keys remain
+    stable.
   - Pending-sends registry: register adds, clear removes, rollback path
     clears the entry before refresh; defensive replace emits the
     `chat_optimistic_message_replaced_in_flight` warn.
@@ -535,7 +549,8 @@ and a live observation, and the rollout is closed.
 | 2026-05-07 | Phase 1 renderer send slice landed. `createOptimisticUserMessage` now uses the bare UUID as the optimistic row id, `appendOptimisticUserMessage` returns `{ payload, optimisticMessageId }`, and `useWorkspaceComposerSubmit` passes that same id as `clientMessageId` to `sendChatMessage`. The first optimistic helper test no longer asserts the removed `optimistic-` prefix and now checks UUID-v4 shape. Targeted verification: `npx tsx --test tests/workspace-chat-optimistic.test.tsx`, `npx tsc --noEmit -p tsconfig.json`, and `npx tsc --noEmit -p tsconfig.server.json`. |
 | 2026-05-07 | Phase 2 refresh-preserve slice landed. Added renderer-instance-local `pendingOptimisticSends`, wired composer register/clear lifecycle, and routed both shared workspace SSE refresh and legacy chat app-shell refresh through `preservePendingOptimisticSendsAfterWorkspaceRefresh`. The preserve helper now rejects refreshed id collisions with `feature: 'chat_optimistic_message_preserve'`, logs orphaned-channel diagnostics, and clears orphaned registry entries. Targeted verification: `npx tsx --test tests/workspace-chat-optimistic.test.tsx` (10 tests), `npx tsc --noEmit -p tsconfig.json`, and `npx tsc --noEmit -p tsconfig.desktop.json`. Full race-mode E2E remains tracked in Task 2.5 / Phase 3. |
 | 2026-05-07 | Phase 2 hardening slice landed. The registry-driven refresh path now passes the exact `optimisticMessageId` into `preserveOptimisticUserMessageAfterRefresh`, preventing same-channel defensive replacement from preserving the wrong optimistic row. Added targeted coverage for exact-id preserve and the documented channel-switch-back v1 trade-off. Targeted verification: `npx tsx --test tests/workspace-chat-optimistic.test.tsx` (12 tests), `npx tsc --noEmit -p tsconfig.json`, and `npx tsc --noEmit -p tsconfig.desktop.json`. |
-| 2026-05-07 | Phase 3 targeted regression sweep completed without a live dev-state write. Verification recorded in SPEC-106: `npx tsx --test tests/chat-client-message-identity.test.tsx tests/workspace-chat-optimistic.test.tsx tests/chat-runtime-session-lifecycle.test.tsx` passed 29 tests, and `npx tsx --test tests/chat-product-intent-dispatch.test.tsx` passed 51 tests. Browser `[CV] li ...` live observation remains intentionally unperformed because it would require creating a verification transcript in the user's persisted dev state without explicit approval. |
+| 2026-05-07 | Phase 3 targeted regression sweep completed without a live dev-state write. Verification recorded in SPEC-106: `npx tsx --test tests/chat-client-message-identity.test.tsx tests/workspace-chat-optimistic.test.tsx tests/chat-runtime-session-lifecycle.test.tsx` passed 30 tests, and `npx tsx --test tests/chat-product-intent-dispatch.test.tsx` passed 51 tests. Browser `[CV] li ...` live observation remains intentionally unperformed because it would require creating a verification transcript in the user's persisted dev state without explicit approval. |
+| 2026-05-07 | Follow-up hardening after the local implementation stack: the exact-id preserve fix is recorded as a separate detour from the earlier refresh-preserve slice, `buildClientMessageAuditMetadata` is now the single helper for persisted audit metadata, client-message length-cap failures use a shared domain error across REST and dispatch entry points, and SPEC-106 now documents that fingerprints include server-derived append-time metadata. |
 
 ---
 

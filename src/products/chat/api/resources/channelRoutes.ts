@@ -56,10 +56,8 @@ import {
   readChatCoreTurnMetadataString,
 } from '../../state/chatCoreInterop.js';
 import {
-  CLIENT_MESSAGE_ID_MAX_LENGTH,
-  normalizeClientMessageId,
+  assertClientMessageIdLengthCap,
 } from '../../shared/clientMessageIdentity.js';
-import { ChatApiError } from '../routeErrors.js';
 
 function publishChannelMutationEvents(
   context: ChatApiRouteContext,
@@ -132,17 +130,6 @@ function buildRestErrorPayload(code: string, message: string): {
       message,
     },
   };
-}
-
-function assertValidRestClientMessageId(input: SendChannelMessageInput): void {
-  const clientMessageId = normalizeClientMessageId(input.clientMessageId);
-  if (clientMessageId.tooLong) {
-    throw new ChatApiError(
-      400,
-      'client_message_id_too_long',
-      `clientMessageId must be at most ${CLIENT_MESSAGE_ID_MAX_LENGTH} characters.`,
-    );
-  }
 }
 
 function findLatestUserMessageId(
@@ -554,7 +541,9 @@ async function handleRestSendMessage(
   try {
     requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<SendChannelMessageInput>(context.request);
-    assertValidRestClientMessageId(body);
+    // Length-only sanitation gate. Malformed UUIDs intentionally fall back to
+    // server ids in the dispatch layer per SPEC-106 FR-4.
+    assertClientMessageIdLengthCap(body.clientMessageId);
     let begunDispatch:
       | Awaited<ReturnType<typeof beginChannelMessageDispatch>>
       | null = null;

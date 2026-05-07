@@ -518,6 +518,16 @@ serialization) over:
   (`clientMessageId`, `clientMessageIdSource`,
   `clientMessageFingerprint`).
 
+`messageMetadata` in this fingerprint is the append-time metadata after
+the server has merged state-derived routing keys such as direct slash-mode
+intake references, product-intent posture metadata, transport binding
+ids, and choice-response markers. It is not limited to the raw client
+payload's `messageMetadata` object. Therefore idempotency only holds when
+those derived keys are stable across retries; if channel state changes
+between the original send and a retry such that the derived metadata
+changes, the retry is intentionally treated as a non-equivalent collision
+and follows FR-7 server-fallback behavior.
+
 The first send stamps this fingerprint on the persisted record's
 `metadata.clientMessageFingerprint`. Subsequent collision checks compare
 the incoming-request fingerprint against the stored one without
@@ -643,7 +653,7 @@ persisted `clientMessageIdSource`.
   trade-off, orphan cleanup, and defensive replacement warnings.
 - `npx tsx --test tests/chat-client-message-identity.test.tsx
   tests/workspace-chat-optimistic.test.tsx
-  tests/chat-runtime-session-lifecycle.test.tsx` passed 29 tests,
+  tests/chat-runtime-session-lifecycle.test.tsx` passed 30 tests,
   covering the SPEC-106 slices together with the SPEC-069 recovery
   regression set.
 - `npx tsx --test tests/chat-product-intent-dispatch.test.tsx` passed 51

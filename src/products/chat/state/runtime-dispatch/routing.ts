@@ -139,7 +139,7 @@ import {
   type CatProductIntentProposalRejectionReason,
 } from '../../shared/catProductIntentProposal.js';
 import {
-  CLIENT_MESSAGE_ID_MAX_LENGTH,
+  ClientMessageIdTooLongError,
   buildClientMessageFingerprint,
   normalizeClientMessageId,
   readPersistedClientMessageFingerprint,
@@ -301,9 +301,7 @@ function resolveClientMessageAppendPlan(input: {
     return { kind: 'none' };
   }
   if (clientMessageId.tooLong) {
-    throw new Error(
-      `clientMessageId must be at most ${CLIENT_MESSAGE_ID_MAX_LENGTH} characters.`,
-    );
+    throw new ClientMessageIdTooLongError();
   }
 
   const fingerprint = buildClientMessageFingerprint({

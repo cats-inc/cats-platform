@@ -42,6 +42,8 @@ export function listPendingOptimisticSends(): PendingOptimisticSend[] {
   }));
 }
 
+// Test reset hook. Production composer paths clear individual entries as each
+// send resolves or rolls back.
 export function clearAllPendingOptimisticSends(): void {
   pendingOptimisticSends.clear();
 }
