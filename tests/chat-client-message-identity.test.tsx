@@ -337,6 +337,14 @@ test('clientMessageId validation applies the trimmed 128-character cap', () => {
     isClientMessageIdTooLongError({ code: 'client_message_id_too_long' }),
     true,
   );
+  assert.equal(
+    isClientMessageIdTooLongError({ name: 'ClientMessageIdTooLongError' }),
+    true,
+  );
+  assert.equal(
+    isClientMessageIdTooLongError({ code: 'something_else' }),
+    false,
+  );
 });
 
 test('client message fingerprint strips optimistic and audit metadata while including choices', () => {

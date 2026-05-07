@@ -628,6 +628,7 @@ export function preserveOptimisticUserMessageAfterRefresh(
       && existingMessage.metadata?.clientMessageId === optimisticMessage.id;
     const hasEquivalentVisibleBody =
       existingMessage.senderKind === optimisticMessage.senderKind
+      && existingMessage.senderName === optimisticMessage.senderName
       && existingMessage.body.trim() === optimisticMessage.body.trim();
     if (
       !isCanonicalOwnerMessageForOptimisticId
