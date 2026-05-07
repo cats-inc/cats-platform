@@ -560,3 +560,212 @@ test('workspace chat refresh preserves registered pending optimistic sends', () 
     clearAllPendingOptimisticSends();
   }
 });
+
+test('workspace chat refresh does not resurrect optimistic sends after rollback clears registry', () => {
+  clearAllPendingOptimisticSends();
+  const optimisticMessage = {
+    id: '17c0bd79-e36d-4532-af2b-36b70a629198',
+    channelId: 'channel-1',
+    senderKind: 'user',
+    senderName: 'Kenny',
+    body: 'Rolled back.',
+    mentions: [],
+    metadata: {
+      optimistic: true,
+    },
+    usage: null,
+    createdAt: '2026-04-20T12:01:00.000Z',
+  };
+  const previousPayload = createPayload({
+    chat: {
+      selectedChannelId: 'channel-1',
+      selectedChannel: {
+        id: 'channel-1',
+        title: 'Room',
+        topic: 'Test room',
+        unreadCount: 0,
+        updatedAt: '2026-04-20T12:01:00.000Z',
+        lastMessageAt: '2026-04-20T12:01:00.000Z',
+        pendingProvider: 'claude',
+        pendingModel: 'opus',
+        pendingInstance: 'native',
+        pendingModelSelection: null,
+        messages: [optimisticMessage],
+      },
+      channels: [
+        {
+          id: 'channel-1',
+          title: 'Room',
+          topic: 'Test room',
+          unreadCount: 0,
+          lastMessageAt: '2026-04-20T12:01:00.000Z',
+          pendingProvider: 'claude',
+          pendingModel: 'opus',
+          pendingModelSelection: null,
+        },
+      ],
+    },
+  });
+  const refreshedPayload = createPayload({
+    metadata: {
+      generatedAt: '2026-04-20T12:01:01.000Z',
+      requestId: 'request-2',
+      version: 'test',
+    },
+    chat: {
+      selectedChannelId: 'channel-1',
+      selectedChannel: {
+        id: 'channel-1',
+        title: 'Room',
+        topic: 'Test room',
+        unreadCount: 0,
+        updatedAt: '2026-04-20T12:01:01.000Z',
+        lastMessageAt: '2026-04-20T12:00:59.000Z',
+        pendingProvider: 'claude',
+        pendingModel: 'opus',
+        pendingInstance: 'native',
+        pendingModelSelection: null,
+        messages: [],
+      },
+      channels: [
+        {
+          id: 'channel-1',
+          title: 'Room',
+          topic: 'Test room',
+          unreadCount: 0,
+          lastMessageAt: '2026-04-20T12:00:59.000Z',
+          pendingProvider: 'claude',
+          pendingModel: 'opus',
+          pendingModelSelection: null,
+        },
+      ],
+    },
+  });
+
+  registerPendingOptimisticSend('channel-1', optimisticMessage.id);
+  clearPendingOptimisticSend('channel-1', optimisticMessage.id);
+
+  assert.equal(
+    preservePendingOptimisticSendsAfterWorkspaceRefresh(previousPayload, refreshedPayload),
+    refreshedPayload,
+  );
+});
+
+test('workspace chat refresh does not preserve channel A optimistic row into channel B', () => {
+  clearAllPendingOptimisticSends();
+  const optimisticMessage = {
+    id: '17c0bd79-e36d-4532-af2b-36b70a629198',
+    channelId: 'channel-1',
+    senderKind: 'user',
+    senderName: 'Kenny',
+    body: 'Channel A send.',
+    mentions: [],
+    metadata: {
+      optimistic: true,
+    },
+    usage: null,
+    createdAt: '2026-04-20T12:01:00.000Z',
+  };
+  const previousPayload = createPayload({
+    chat: {
+      selectedChannelId: 'channel-1',
+      selectedChannel: {
+        id: 'channel-1',
+        title: 'Room A',
+        topic: 'Test room A',
+        unreadCount: 0,
+        updatedAt: '2026-04-20T12:01:00.000Z',
+        lastMessageAt: '2026-04-20T12:01:00.000Z',
+        pendingProvider: 'claude',
+        pendingModel: 'opus',
+        pendingInstance: 'native',
+        pendingModelSelection: null,
+        messages: [optimisticMessage],
+      },
+      channels: [
+        {
+          id: 'channel-1',
+          title: 'Room A',
+          topic: 'Test room A',
+          unreadCount: 0,
+          lastMessageAt: '2026-04-20T12:01:00.000Z',
+          pendingProvider: 'claude',
+          pendingModel: 'opus',
+          pendingModelSelection: null,
+        },
+        {
+          id: 'channel-2',
+          title: 'Room B',
+          topic: 'Test room B',
+          unreadCount: 0,
+          lastMessageAt: null,
+          pendingProvider: 'claude',
+          pendingModel: 'opus',
+          pendingModelSelection: null,
+        },
+      ],
+    },
+  });
+  const refreshedPayload = createPayload({
+    chat: {
+      selectedChannelId: 'channel-2',
+      selectedChannel: {
+        id: 'channel-2',
+        title: 'Room B',
+        topic: 'Test room B',
+        unreadCount: 0,
+        updatedAt: '2026-04-20T12:01:01.000Z',
+        lastMessageAt: null,
+        pendingProvider: 'claude',
+        pendingModel: 'opus',
+        pendingInstance: 'native',
+        pendingModelSelection: null,
+        messages: [],
+      },
+      channels: [
+        {
+          id: 'channel-1',
+          title: 'Room A',
+          topic: 'Test room A',
+          unreadCount: 0,
+          lastMessageAt: '2026-04-20T12:01:00.000Z',
+          pendingProvider: 'claude',
+          pendingModel: 'opus',
+          pendingModelSelection: null,
+        },
+        {
+          id: 'channel-2',
+          title: 'Room B',
+          topic: 'Test room B',
+          unreadCount: 0,
+          lastMessageAt: null,
+          pendingProvider: 'claude',
+          pendingModel: 'opus',
+          pendingModelSelection: null,
+        },
+      ],
+    },
+  });
+
+  const warnings: unknown[][] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args);
+  };
+  try {
+    registerPendingOptimisticSend('channel-1', optimisticMessage.id);
+    assert.equal(
+      preservePendingOptimisticSendsAfterWorkspaceRefresh(previousPayload, refreshedPayload),
+      refreshedPayload,
+    );
+    assert.equal(warnings.length, 1);
+    assert.equal(
+      (warnings[0]?.[1] as { feature?: string } | undefined)?.feature,
+      'chat_optimistic_message_orphaned_channel',
+    );
+    assert.equal(listPendingOptimisticSends().length, 0);
+  } finally {
+    console.warn = originalWarn;
+    clearAllPendingOptimisticSends();
+  }
+});
