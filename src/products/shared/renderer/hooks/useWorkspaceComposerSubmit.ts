@@ -450,7 +450,8 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
       if (defaultDispatchTarget) {
         payload = applyOptimisticPendingExecutionTarget(payload, channelId, defaultDispatchTarget);
       }
-      payload = appendOptimisticUserMessage(payload, channelId, messageBody);
+      const optimisticAppend = appendOptimisticUserMessage(payload, channelId, messageBody);
+      payload = optimisticAppend.payload;
       setState({ status: 'ready', payload });
       setComposerDraft('');
       setDraftFiles([]);
@@ -460,6 +461,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
 
       const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
+        clientMessageId: optimisticAppend.optimisticMessageId,
         senderName: payload.ownerDisplayName,
         ...(defaultDispatchTarget ?? {}),
         ...(messageMetadata ? { messageMetadata } : {}),

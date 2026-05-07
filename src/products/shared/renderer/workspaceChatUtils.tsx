@@ -413,6 +413,10 @@ export function resolveBossCatName(payload: AppShellPayload): string | null {
 
 export type { SelectedChannelView } from '../channelEntry.js';
 
+export interface AppendOptimisticUserMessageResult {
+  payload: AppShellPayload;
+  optimisticMessageId: string;
+}
 
 export function createOptimisticUserMessage(
   channelId: string,
@@ -420,8 +424,9 @@ export function createOptimisticUserMessage(
   senderName: string,
   createdAt: string,
 ) {
+  const messageId = crypto.randomUUID();
   return {
-    id: `optimistic-${crypto.randomUUID()}`,
+    id: messageId,
     channelId,
     senderKind: 'user' as const,
     senderName: senderName.trim() || 'User',
@@ -437,7 +442,7 @@ export function appendOptimisticUserMessage(
   payload: AppShellPayload,
   channelId: string,
   body: string,
-): AppShellPayload {
+): AppendOptimisticUserMessageResult {
   const createdAt = new Date().toISOString();
   const next = structuredClone(payload);
   const selectedChannel = next.chat.selectedChannel;
@@ -447,9 +452,13 @@ export function appendOptimisticUserMessage(
     throw new Error('No chat is available for optimistic updates.');
   }
 
-  selectedChannel.messages.push(
-    createOptimisticUserMessage(channelId, body, next.ownerDisplayName, createdAt),
+  const optimisticMessage = createOptimisticUserMessage(
+    channelId,
+    body,
+    next.ownerDisplayName,
+    createdAt,
   );
+  selectedChannel.messages.push(optimisticMessage);
   selectedChannel.updatedAt = createdAt;
   selectedChannel.lastMessageAt = createdAt;
   selectedChannel.unreadCount = 0;
@@ -459,7 +468,10 @@ export function appendOptimisticUserMessage(
   next.chat.selectedChannelId = channelId;
   next.metadata.generatedAt = createdAt;
 
-  return next;
+  return {
+    payload: next,
+    optimisticMessageId: optimisticMessage.id,
+  };
 }
 
 export function applyOptimisticPendingExecutionTarget<TPayload extends AppShellPayload>(

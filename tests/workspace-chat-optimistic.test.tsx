@@ -51,12 +51,20 @@ test('appendOptimisticUserMessage stamps the selected room and summary with one 
   const payload = createPayload();
   const before = Date.now();
 
-  const next = appendOptimisticUserMessage(payload, 'channel-1', 'Ship it.');
+  const { payload: next, optimisticMessageId } = appendOptimisticUserMessage(
+    payload,
+    'channel-1',
+    'Ship it.',
+  );
   const createdAt = next.chat.selectedChannel?.messages[0]?.createdAt ?? '';
 
   assert.notEqual(next, payload);
   assert.equal(next.chat.selectedChannel?.messages.length, 1);
-  assert.match(next.chat.selectedChannel?.messages[0]?.id ?? '', /^optimistic-/u);
+  assert.equal(next.chat.selectedChannel?.messages[0]?.id, optimisticMessageId);
+  assert.match(
+    optimisticMessageId,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu,
+  );
   assert.equal(next.chat.selectedChannel?.messages[0]?.senderKind, 'user');
   assert.equal(next.chat.selectedChannel?.messages[0]?.senderName, 'Kenny');
   assert.equal(next.chat.selectedChannel?.messages[0]?.metadata?.optimistic, true);
@@ -115,7 +123,7 @@ test('applyOptimisticPendingExecutionTarget updates the selected room and summar
 
 test('preserveOptimisticUserMessageAfterRefresh replays the latest optimistic turn when refresh drops it', () => {
   const optimisticMessage = {
-    id: 'optimistic-1',
+    id: '17c0bd79-e36d-4532-af2b-36b70a629198',
     channelId: 'channel-1',
     senderKind: 'user',
     senderName: 'Kenny',
@@ -237,7 +245,7 @@ test('preserveOptimisticUserMessageAfterRefresh replays the latest optimistic tu
 
 test('preserveOptimisticUserMessageAfterRefresh leaves refresh payload unchanged when the optimistic turn already survived', () => {
   const optimisticMessage = {
-    id: 'optimistic-1',
+    id: '17c0bd79-e36d-4532-af2b-36b70a629198',
     channelId: 'channel-1',
     senderKind: 'user',
     senderName: 'Kenny',
