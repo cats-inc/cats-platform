@@ -1193,7 +1193,6 @@ function appendCatProductIntentProposalSidecar(input: {
   const validation = validateCatProductIntentProposalToolCall({
     toolInput: input.providerAgentDecision.input,
     effectiveMode: input.effectiveMode,
-    directLane: isImplicitProductIntentDirectLane(input.channel),
     capabilityProfileKind: input.capabilityProfileKind,
     sourceMessage: {
       id: input.userMessage.id,

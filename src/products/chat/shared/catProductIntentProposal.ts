@@ -115,7 +115,6 @@ export interface CatProductIntentProposalMetadataCarrier {
 export interface CatProductIntentProposalValidationInput {
   toolInput: unknown;
   effectiveMode: ChatNaturalProductIntentMode;
-  directLane: boolean;
   capabilityProfileKind: DirectSlashModeCapabilityProfileKind | null;
   sourceMessage: {
     id: string;
@@ -129,7 +128,6 @@ export interface CatProductIntentProposalValidationInput {
 export type CatProductIntentProposalValidationRejectionReason =
   | 'feature_disabled'
   | 'proposal_tool_not_enabled'
-  | 'non_direct_lane'
   | 'direct_cat_not_strong'
   | 'cooldown_active'
   | 'invalid_tool_input'
