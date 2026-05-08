@@ -61,7 +61,11 @@ it, and unsupported contexts fail closed.
       `metadata.productIntentIntake`,
       `metadata.productIntentIntakeRef`,
       proposal transition metadata, and
-      `metadata.productIntent.activeAnchor`.
+      `metadata.productIntent.activeAnchor`. For container-backed presets, if
+      a first-class branch metadata record does not yet exist, store the
+      active-anchor cache under the container metadata in a
+      `containerId + branchId`-keyed map; the SPEC-107 storage location is the
+      target shape once branch metadata lands.
 - [ ] Task 2.2: Migrate direct slash-mode Work Item creation to write
       preset-neutral metadata.
 - [ ] Task 2.3: Migrate direct Cat-proposal confirmation to write

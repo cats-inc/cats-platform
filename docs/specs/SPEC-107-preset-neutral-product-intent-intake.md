@@ -376,9 +376,7 @@ back to the same Work Item. It is stored on the source routing owner:
   conversation routing metadata keyed by `channelId`.
 - For container-backed presets (`parallel_chat`, `peer_code`,
   `parallel_work`), store the cache on the container branch routing metadata
-  keyed by `containerId + branchId`. If the implementation does not have a
-  first-class branch metadata record yet, store it under the container metadata
-  in a branch-keyed map.
+  keyed by `containerId + branchId`.
 
 ```ts
 interface ProductIntentActiveAnchorMetadata {
@@ -401,22 +399,47 @@ interface ProductIntentActiveAnchorMetadata {
 
 The active-anchor cache must be treated as invalid unless
 `workItem.metadata.productIntentIntake.sourceContext` matches
-`sourceContextRef`. Matching means exact equality after normalizing missing
-optional fields to `null` for these fields only:
+`sourceContextRef`.
 
-- `sourceProduct`
-- `presetId`
-- `channelId`
-- `conversationId`
-- `containerId`
-- `laneId`
-- `branchId`
+Matching is field-by-field over the source identity fields:
+
+- Required fields, must be present and equal on both sides:
+  - `sourceProduct`
+  - `presetId`
+- Optional source-id fields, equal when both sides are absent (treated as
+  `null`) or both sides hold the same string value:
+  - `channelId`
+  - `conversationId`
+  - `containerId`
+  - `laneId`
+  - `branchId`
+
+`originSurface` and `transport` are intentionally excluded from the match,
+because anchors are conversation/branch-scoped and the same anchor should
+resolve from any cross-surface ingress (desktop, mobile, Telegram, API) into
+the same source context. `turnId` and `segmentId` are also excluded because
+they advance every turn, while the anchor must persist across turns.
 
 Display-only changes such as channel rename do not invalidate the cache because
 ids are stable. Moving a conversation or branch to a different channel,
 container, lane, or branch invalidates the cache because one of the identity
-fields above no longer matches. Projections and audits should read the Work
-Item metadata; the cache only speeds follow-up routing.
+fields above no longer matches.
+
+In addition to read-time matching, the following write-time triggers must
+explicitly clear or supersede the cache:
+
+- Terminal Work Item statuses (per requirement 53).
+- Source-object deletion (channel, conversation, container, or branch
+  deleted from Core).
+- Source identity move that changes one of the matched id fields.
+- Owner `/chat` in the same source context, which clears unresolved
+  draft-intake state (per requirement 51).
+- A new `/work` or `/code` in the same source context superseding a prior
+  draft anchor (per requirement 52).
+
+Variations not covered by these triggers fall back to the read-time match
+check. Projections and audits should read the Work Item metadata; the cache
+only speeds follow-up routing.
 
 ## Dependencies
 
