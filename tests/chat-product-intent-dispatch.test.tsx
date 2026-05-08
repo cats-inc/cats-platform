@@ -1114,6 +1114,20 @@ test('beginChannelMessageDispatch confirms Cat proposals through slash-mode inta
   const directWorkItems = core.workItems.filter((candidate) =>
     Boolean(candidate.metadata.directSlashModeIntake));
   const directWorkItem = directWorkItems[0];
+  const productIntentIntake = directWorkItem?.metadata.productIntentIntake as
+    | {
+        targetProduct?: unknown;
+        command?: {
+          sourceKind?: unknown;
+          name?: unknown;
+          argumentText?: unknown;
+          rawCommandToken?: unknown;
+          proposalId?: unknown;
+          originalMessageId?: unknown;
+        };
+        draft?: { goal?: unknown };
+      }
+    | undefined;
   const intake = directWorkItem?.metadata.directSlashModeIntake as
     | { draft?: { goal?: unknown }; command?: { name?: unknown } }
     | undefined;
@@ -1136,6 +1150,14 @@ test('beginChannelMessageDispatch confirms Cat proposals through slash-mode inta
   );
   assert.equal(directWorkItems.length, 1);
   assert.equal(directWorkItem?.status, 'draft');
+  assert.equal(productIntentIntake?.targetProduct, 'work');
+  assert.equal(productIntentIntake?.command?.sourceKind, 'cat_product_intent_proposal');
+  assert.equal(productIntentIntake?.command?.name, 'work');
+  assert.equal(productIntentIntake?.command?.argumentText, 'Create onboarding plan');
+  assert.equal(productIntentIntake?.command?.rawCommandToken, CAT_PRODUCT_INTENT_PROPOSAL_COMMAND_TOKEN);
+  assert.equal(productIntentIntake?.command?.proposalId, proposal?.proposalId);
+  assert.equal(productIntentIntake?.command?.originalMessageId, proposal?.source.messageId);
+  assert.equal(productIntentIntake?.draft?.goal, 'Create onboarding plan');
   assert.equal(intake?.draft?.goal, 'Create onboarding plan');
   assert.equal(intake?.command?.name, 'work');
 
@@ -1219,6 +1241,13 @@ test('beginChannelMessageDispatch confirms Cat code proposals through slash-mode
   const core = await store.readCore();
   const directWorkItem = core.workItems.find((candidate) =>
     Boolean(candidate.metadata.directSlashModeIntake));
+  const productIntentIntake = directWorkItem?.metadata.productIntentIntake as
+    | {
+        targetProduct?: unknown;
+        command?: { sourceKind?: unknown; name?: unknown; argumentText?: unknown };
+        draft?: { goal?: unknown };
+      }
+    | undefined;
   const intake = directWorkItem?.metadata.directSlashModeIntake as
     | {
         targetProduct?: unknown;
@@ -1235,6 +1264,11 @@ test('beginChannelMessageDispatch confirms Cat code proposals through slash-mode
   assert.equal(transition?.confirmedCommand?.command, 'code');
   assert.equal(transition?.confirmedCommand?.argumentText, 'Add parser tests');
   assert.equal(directWorkItem?.status, 'draft');
+  assert.equal(productIntentIntake?.targetProduct, 'code');
+  assert.equal(productIntentIntake?.command?.sourceKind, 'cat_product_intent_proposal');
+  assert.equal(productIntentIntake?.command?.name, 'code');
+  assert.equal(productIntentIntake?.command?.argumentText, 'Add parser tests');
+  assert.equal(productIntentIntake?.draft?.goal, 'Add parser tests');
   assert.equal(intake?.draft?.goal, 'Add parser tests');
   assert.equal(intake?.command?.name, 'code');
   assert.equal(intake?.targetProduct, 'code');
