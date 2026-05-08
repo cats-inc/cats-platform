@@ -253,6 +253,7 @@ writing demo records into the user's persisted dev state.
 | Date | Update |
 |------|--------|
 | 2026-05-09 | Plan created with ADR-103 and SPEC-107 to generalize direct-message Work/Code intake to all Chat/Code/Work presets. |
+| 2026-05-09 | v1 narrowing recorded: `shouldExposeCatProductIntentProposalTool` requires a single addressed Cat target. SPEC-107 §28 allows any addressed/active strong Cat in group/team presets to propose, but the current observation pipeline produces one observation per turn keyed off `singleCatTarget`. Lifting the gate without per-Cat observations would fall back to the orchestrator capability profile and bypass the strong-agent check. Per-Cat observation work is deferred; until it lands, multi-addressed turns keep the proposal tool suppressed and the one-proposal-per-turn invariant continues to come from `catProductIntentProposal` validation. |
 
 ---
 

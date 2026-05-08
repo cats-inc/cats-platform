@@ -711,6 +711,7 @@ function shouldCreateProductIntentWorkItemAnchor(input: {
   ) && (
     input.postureChange?.changed === true
     || input.activeAnchorClear?.clearReason === 'work_item_terminal'
+    || input.activeAnchorClear?.clearReason === 'work_item_missing'
     || input.activeAnchorClear?.clearReason === 'anchor_superseded'
   )
     && input.postureChange?.capabilityProfileKind === 'strong_agent';
@@ -809,7 +810,12 @@ interface DirectSlashModeHumanGateMetadata {
 
 interface DirectSlashModeClearMetadata {
   clearedActiveAnchor: DirectSlashModeActiveAnchorMetadata;
-  clearReason: 'chat_posture' | 'work_item_terminal' | 'anchor_superseded' | 'posture_changed';
+  clearReason:
+    | 'chat_posture'
+    | 'work_item_terminal'
+    | 'work_item_missing'
+    | 'anchor_superseded'
+    | 'posture_changed';
 }
 
 function buildDirectSlashModeActiveAnchor(input: {
@@ -826,6 +832,14 @@ function buildDirectSlashModeActiveAnchor(input: {
   };
 }
 
+// Note: `ProductPresetIntentOriginSurface` also includes `'api'` and
+// `ProductPresetIntentTransport` allows `null` per SPEC-107 §95/§99. Those
+// variants are reserved for product-internal / server-side automation ingress
+// that would resolve a preset context without a user-facing transport. No such
+// caller exists in the current `ProductIntentCommandSource` union (`'web' |
+// 'telegram' | 'mobile'`); when that ingress is added, extend
+// `ProductIntentCommandSource` and map the new arm to `originSurface: 'api'`
+// and `transport: null` here.
 function resolveProductPresetIntentOriginSurface(
   source: ProductIntentCommandSource,
 ): ProductPresetIntentOriginSurface {
@@ -949,6 +963,10 @@ function buildProductPresetIntentContextForSource(input: {
     channelId: input.channelId,
   });
   const parallelGroup = resolveProductPresetIntentParallelGroup(input.state, input.channelId);
+  // TODO(SPEC-107): when concurrent turn lane materialization ships for
+  // group_chat / team_code / team_work, populate `laneId` here. Keep this in
+  // sync with `buildProductIntentActiveAnchorSourceContextRefForChannel` so
+  // read-time matches do not silently miss the writer's value.
   const source = parallelGroup
     ? {
         containerId: parallelGroup.id,
@@ -974,6 +992,13 @@ function buildProductPresetIntentContextForSource(input: {
   });
 }
 
+// Builds the reader-side source-context-ref used by the active-anchor cache
+// matcher. Must produce the same identity field set that
+// `buildProductPresetIntentContextForSource` writes, so that
+// `doesProductIntentActiveAnchorMatchSourceContextRef` returns true for valid
+// follow-ups. When the writer above starts setting `laneId`, this builder must
+// add it too — otherwise team/group concurrent-lane follow-ups will silently
+// fail the match.
 function buildProductIntentActiveAnchorSourceContextRefForChannel(input: {
   state: ChatState;
   channelId: string;
@@ -2186,11 +2211,21 @@ function resolveLatestDirectSlashModeActiveAnchor(
   return null;
 }
 
+// Bound the backward transcript walk so a long channel does not pay O(N) per
+// dispatch. The cache only needs to find the most recent active anchor or its
+// matching cleared marker, which is always within the recent turns; older
+// history is irrelevant. Tune if a real workload demands more headroom.
+const PRODUCT_INTENT_ACTIVE_ANCHOR_TRANSCRIPT_SCAN_LIMIT = 200;
+
 function resolveLatestProductIntentActiveAnchorFromTranscript(
   channel: ChatChannelState,
 ): ProductIntentActiveAnchorMetadata | null {
   const clearedWorkItemIds = new Set<string>();
-  for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
+  const minIndex = Math.max(
+    0,
+    channel.messages.length - PRODUCT_INTENT_ACTIVE_ANCHOR_TRANSCRIPT_SCAN_LIMIT,
+  );
+  for (let index = channel.messages.length - 1; index >= minIndex; index -= 1) {
     const message = channel.messages[index]!;
     const productIntent = readMessageProductIntentMetadata(message);
     if (productIntent && Object.hasOwn(productIntent, 'activeAnchor')) {
@@ -2201,6 +2236,10 @@ function resolveLatestProductIntentActiveAnchorFromTranscript(
       return activeAnchor;
     }
 
+    // Phase 2 dual-write fallback: read the legacy `directSlashMode.clearedActiveAnchor`
+    // marker so canonical reads still see clears emitted only on the legacy path.
+    // Remove this branch when the legacy `directSlashMode` writes are dropped in
+    // PLAN-096 Phase 2 close-out.
     const directSlashMode = readMessageDirectSlashModeMetadata(message);
     if (!directSlashMode || !Object.hasOwn(directSlashMode, 'clearedActiveAnchor')) {
       continue;
@@ -2238,6 +2277,15 @@ function resolveDirectSlashModeActiveAnchorState(input: {
 
   const workItem = input.core?.workItems.find((candidate) =>
     candidate.id === activeAnchor.workItemId) ?? null;
+  if (input.core && !workItem) {
+    return {
+      activeAnchor: null,
+      clear: {
+        clearedActiveAnchor: activeAnchor,
+        clearReason: 'work_item_missing',
+      },
+    };
+  }
   if (workItem && isTerminalProductIntentWorkItemStatus(workItem.status)) {
     return {
       activeAnchor: null,

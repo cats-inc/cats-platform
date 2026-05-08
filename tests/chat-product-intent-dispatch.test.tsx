@@ -809,6 +809,7 @@ test('beginChannelMessageDispatch does not carry canonical product intent refs a
   assert.equal(followUpMessage?.senderKind, 'user');
   assert.equal(followUpMessage?.metadata.productIntentIntakeRef, undefined);
   assert.equal(followUpMessage?.metadata.productIntent, undefined);
+  assert.equal(followUpMessage?.metadata.directSlashModeIntakeRef, undefined);
 });
 
 test('beginChannelMessageDispatch does not carry canonical product intent refs after chat posture', async () => {

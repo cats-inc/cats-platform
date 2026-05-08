@@ -556,6 +556,15 @@ function buildProviderAgentObservationForTurn(input: {
   });
 }
 
+// v1 narrowing: SPEC-107 §28 allows any addressed/active strong Cat in
+// group/team presets to propose, but the current observation pipeline builds
+// a single observation per turn keyed off `singleCatTarget`, with one
+// capability profile. Exposing the proposal tool when multiple Cats are
+// addressed would fall back to the orchestrator capability profile and risk
+// bypassing the strong-agent gate. Until per-Cat observations land, this
+// helper deliberately requires a single addressed Cat target. The one-
+// proposal-per-turn invariant is enforced in `catProductIntentProposal`
+// validation regardless. Tracked in PLAN-096 Progress Log (2026-05-09).
 function shouldExposeCatProductIntentProposalTool(input: {
   channel: ReturnType<typeof requireChannel>;
   core: CatsCoreState | undefined;
