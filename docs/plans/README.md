@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-096](./PLAN-096-preset-neutral-product-intent-intake-rollout.md) | Preset-Neutral Product Intent Intake Rollout | Draft | [SPEC-107](../specs/SPEC-107-preset-neutral-product-intent-intake.md), [ADR-103](../decisions/103-use-preset-neutral-product-intent-intake.md) |
 | [PLAN-095](./PLAN-095-chat-optimistic-message-identity-rollout.md) | Chat Optimistic Message Identity Rollout | Draft | [SPEC-106](../specs/SPEC-106-chat-optimistic-message-identity.md) |
 | [PLAN-094](./PLAN-094-cat-proposed-product-intent-rollout.md) | Cat-Proposed Product Intent Rollout | Draft | [SPEC-105](../specs/SPEC-105-direct-chat-implicit-product-intent.md), [ADR-102](../decisions/102-use-cat-authored-product-intent-proposals.md) |
 | [PLAN-093](./PLAN-093-direct-chat-implicit-product-intent-rollout.md) | Direct Chat Implicit Product Intent Rollout | Historical / Superseded by PLAN-094 | [SPEC-105](../specs/SPEC-105-direct-chat-implicit-product-intent.md), [ADR-101](../decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md), [ADR-102](../decisions/102-use-cat-authored-product-intent-proposals.md) |
@@ -149,6 +150,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-05-07 (PLAN-095 added: Chat Optimistic Message Identity rollout in two phases — client-supplied stable message id contract plus optimistic-preserve wire-up in the SSE-driven app-shell refresher — closing the first-message flicker in workspace composer sends; PLAN-094 added: Cat-Proposed Product Intent rollout pivoting natural-intent away from platform heuristics into strong-Cat proposal tools; PLAN-093 added: Direct Chat Implicit Product Intent rollout for no-slash Work/Code candidate detection (now superseded by PLAN-094); PLAN-092 added: Direct Chat Slash-Mode Work Intake rollout; PLAN-091 added: 6-phase Lobby sidebar and entity routes rollout; PLAN-090 added for Cats Code Artifact Canvas rollout; PLAN-089 added for platform authentication and Google identity rollout; PLAN-088 added for Mobile pairing manifest server rollout; PLAN-087 added for Cats App Package interface rollout; PLAN-086 added for platform language settings and UI localization rollout; PLAN-085 added for Mission cancel and Run stop rollout.)*
+*Last updated: 2026-05-09 (PLAN-096 added: Preset-Neutral Product Intent Intake rollout for explicit commands and strong-Cat Work/Code proposals across all Chat/Code/Work presets; PLAN-095 added: Chat Optimistic Message Identity rollout; PLAN-094 added: Cat-Proposed Product Intent rollout pivoting natural-intent away from platform heuristics into strong-Cat proposal tools; PLAN-093 added: Direct Chat Implicit Product Intent rollout for no-slash Work/Code candidate detection, now superseded by PLAN-094; PLAN-092 added: Direct Chat Slash-Mode Work Intake rollout.)*
 
 *See also: [specs/](../specs/) for feature specifications*

@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [103-use-preset-neutral-product-intent-intake](./103-use-preset-neutral-product-intent-intake.md) | Use Preset-Neutral Product Intent Intake | Proposed | 2026-05-09 |
 | [102-use-cat-authored-product-intent-proposals](./102-use-cat-authored-product-intent-proposals.md) | Use Cat-Authored Product Intent Proposals for Natural-Language Intake | Proposed | 2026-05-06 |
 | [101-use-direct-audience-cat-for-slash-mode-work-intake](./101-use-direct-audience-cat-for-slash-mode-work-intake.md) | Use the Direct-Audience Cat for Slash-Mode Work Intake | Proposed | 2026-05-06 |
 | [100-cats-as-canonical-identity-with-clowder-and-cattery-as-associations](./100-cats-as-canonical-identity-with-clowder-and-cattery-as-associations.md) | Cats as Canonical Identity With Clowder and Cattery as Membership Associations | Proposed | 2026-05-05 |
@@ -144,6 +145,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-05-06 (ADR-102 added: natural-language Work/Code intake uses Cat-authored proposal tools with owner confirmation instead of default platform heuristics; ADR-101 added: direct-message slash-mode work intake uses the same direct audience Cat, gates durable Work/Code creation through existing provider capability profiles, and requires a human gate for weak/unknown Cats; ADR-100 added: cats are canonical identity, Clowder and Cattery are membership associations with formal/temp/external status as a first-class field; ADR-099 added: promote cats/clowders/catteries to platform entities with canonical top-level URLs.)*
+*Last updated: 2026-05-09 (ADR-103 added: product-intent intake is generalized from direct messages to a preset-neutral Chat/Code/Work contract; ADR-102 added: natural-language Work/Code intake uses Cat-authored proposal tools with owner confirmation instead of default platform heuristics; ADR-101 added: direct-message slash-mode work intake uses the same direct audience Cat, gates durable Work/Code creation through existing provider capability profiles, and requires a human gate for weak/unknown Cats.)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

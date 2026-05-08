@@ -59,6 +59,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [ADR-103](./decisions/103-use-preset-neutral-product-intent-intake.md) — preset-neutral product-intent intake for explicit commands and strong-Cat Work/Code proposals across Chat, Code, and Work presets
+- [SPEC-107](./specs/SPEC-107-preset-neutral-product-intent-intake.md) — requirements for applying `/chat` / `/work` / `/code` and Cat-authored Work/Code proposals to every supported product preset
+- [PLAN-096](./plans/PLAN-096-preset-neutral-product-intent-intake-rollout.md) — rollout plan for context builders, canonical metadata, command routing, proposal tools, confirmation, projections, mobile, and Telegram parity
 - [SPEC-106](./specs/SPEC-106-chat-optimistic-message-identity.md) — workspace composer optimistic-message identity contract (client-supplied stable id + SSE-refresh optimistic-preserve) closing the first-message flicker
 - [PLAN-095](./plans/PLAN-095-chat-optimistic-message-identity-rollout.md) — two-phase rollout of the optimistic-id contract and the wired-up preserve helper, plus end-to-end validation against the SSE/HTTP race
 - [SPEC-105](./specs/SPEC-105-direct-chat-implicit-product-intent.md) — no-slash Work/Code candidate detection for ordinary direct chat, requiring explicit owner confirmation before entering slash-mode intake
