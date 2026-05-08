@@ -390,6 +390,21 @@ test('beginChannelMessageDispatch records direct product intent and starts chat-
         };
       }
     | undefined;
+  const productIntent = ackMessage?.metadata.productIntent as
+    | {
+        activeAnchor?: {
+          workItemId?: unknown;
+          targetProduct?: unknown;
+          sourceContextRef?: {
+            sourceProduct?: unknown;
+            presetId?: unknown;
+            channelId?: unknown;
+            conversationId?: unknown;
+          };
+          establishedBySegmentId?: unknown;
+        };
+      }
+    | undefined;
   const core = await store.readCore();
   const segment = core.segments.find((candidate) =>
     candidate.metadata.event === 'product_intent_posture_changed');
@@ -405,9 +420,65 @@ test('beginChannelMessageDispatch records direct product intent and starts chat-
         };
       }
     | undefined;
+  const segmentProductIntent = segment?.metadata.productIntent as
+    | {
+        activeAnchor?: {
+          workItemId?: unknown;
+          targetProduct?: unknown;
+          establishedBySegmentId?: unknown;
+        };
+      }
+    | undefined;
   const directWorkItems = core.workItems.filter((candidate) =>
     Boolean(candidate.metadata.directSlashModeIntake));
   const directWorkItem = directWorkItems[0];
+  const productIntentIntake = directWorkItem?.metadata.productIntentIntake as
+    | {
+        targetProduct?: unknown;
+        sourceContext?: {
+          sourceProduct?: unknown;
+          presetId?: unknown;
+          source?: {
+            channelId?: unknown;
+            conversationId?: unknown;
+            turnId?: unknown;
+            segmentId?: unknown;
+          };
+          originSurface?: unknown;
+          transport?: unknown;
+          eligibleCats?: Array<{
+            catId?: unknown;
+            actorId?: unknown;
+            capabilityProfileKind?: unknown;
+          }>;
+        };
+        command?: {
+          sourceKind?: unknown;
+          name?: unknown;
+          argumentText?: unknown;
+          rawCommandToken?: unknown;
+        };
+        draft?: {
+          goal?: unknown;
+          successCriteria?: unknown;
+          outOfScope?: unknown;
+          openQuestions?: unknown;
+          proposedNextAction?: unknown;
+        };
+      }
+    | undefined;
+  const workItemProductIntent = directWorkItem?.metadata.productIntent as
+    | {
+        activeAnchor?: {
+          workItemId?: unknown;
+          targetProduct?: unknown;
+          sourceContextRef?: {
+            channelId?: unknown;
+            conversationId?: unknown;
+          };
+        };
+      }
+    | undefined;
   const directWorkItemIntake = directWorkItem?.metadata.directSlashModeIntake as
     | {
         targetProduct?: unknown;
@@ -443,6 +514,12 @@ test('beginChannelMessageDispatch records direct product intent and starts chat-
     directWorkItem?.id,
   );
   assert.equal(
+    (begun.preparedTurn?.userMessage.metadata.productIntentIntakeRef as
+      | { workItemId?: unknown }
+      | undefined)?.workItemId,
+    directWorkItem?.id,
+  );
+  assert.equal(
     (userMessage?.metadata.directSlashModeIntakeRef as
       | { workItemId?: unknown }
       | undefined)?.workItemId,
@@ -473,12 +550,49 @@ test('beginChannelMessageDispatch records direct product intent and starts chat-
   assert.equal(segmentPostureChange?.sourceChannelId, channelId);
   assert.equal(directSlashMode?.activeAnchor?.workItemId, directWorkItem?.id);
   assert.equal(directSlashMode?.activeAnchor?.targetProduct, 'work');
+  assert.equal(productIntent?.activeAnchor?.workItemId, directWorkItem?.id);
+  assert.equal(productIntent?.activeAnchor?.targetProduct, 'work');
+  assert.equal(productIntent?.activeAnchor?.sourceContextRef?.sourceProduct, 'chat');
+  assert.equal(productIntent?.activeAnchor?.sourceContextRef?.presetId, 'direct');
+  assert.equal(productIntent?.activeAnchor?.sourceContextRef?.channelId, channelId);
   assert.equal(segmentDirectSlashMode?.activeAnchor?.workItemId, directWorkItem?.id);
   assert.equal(segmentDirectSlashMode?.activeAnchor?.establishedBySegmentId, segment?.id);
+  assert.equal(segmentProductIntent?.activeAnchor?.workItemId, directWorkItem?.id);
+  assert.equal(segmentProductIntent?.activeAnchor?.establishedBySegmentId, segment?.id);
   assert.equal(directWorkItems.length, 1);
   assert.equal(directWorkItem?.status, 'draft');
   assert.equal(directWorkItem?.conversationId, segment?.conversationId);
   assert.deepEqual(directWorkItem?.assignedActorIds, [`actor-cat-${state.cats[0]?.id}`]);
+  assert.equal(productIntentIntake?.targetProduct, 'work');
+  assert.equal(productIntentIntake?.sourceContext?.sourceProduct, 'chat');
+  assert.equal(productIntentIntake?.sourceContext?.presetId, 'direct');
+  assert.equal(productIntentIntake?.sourceContext?.source?.channelId, channelId);
+  assert.equal(productIntentIntake?.sourceContext?.source?.conversationId, segment?.conversationId);
+  assert.equal(productIntentIntake?.sourceContext?.source?.turnId, segment?.turnId);
+  assert.equal(productIntentIntake?.sourceContext?.source?.segmentId, segment?.id);
+  assert.equal(productIntentIntake?.sourceContext?.originSurface, 'desktop');
+  assert.equal(productIntentIntake?.sourceContext?.transport, 'web');
+  assert.equal(productIntentIntake?.sourceContext?.eligibleCats?.[0]?.catId, state.cats[0]?.id);
+  assert.equal(
+    productIntentIntake?.sourceContext?.eligibleCats?.[0]?.actorId,
+    `actor-cat-${state.cats[0]?.id}`,
+  );
+  assert.equal(
+    productIntentIntake?.sourceContext?.eligibleCats?.[0]?.capabilityProfileKind,
+    'strong_agent',
+  );
+  assert.equal(productIntentIntake?.command?.sourceKind, 'explicit_command');
+  assert.equal(productIntentIntake?.command?.name, 'work');
+  assert.equal(productIntentIntake?.command?.argumentText, 'clarify the MVP');
+  assert.equal(productIntentIntake?.command?.rawCommandToken, '/work');
+  assert.equal(productIntentIntake?.draft?.goal, 'clarify the MVP');
+  assert.equal(productIntentIntake?.draft?.proposedNextAction, 'clarify');
+  assert.equal(workItemProductIntent?.activeAnchor?.workItemId, directWorkItem?.id);
+  assert.equal(workItemProductIntent?.activeAnchor?.sourceContextRef?.channelId, channelId);
+  assert.equal(
+    workItemProductIntent?.activeAnchor?.sourceContextRef?.conversationId,
+    segment?.conversationId,
+  );
   assert.equal(directWorkItemIntake?.targetProduct, 'work');
   assert.equal(directWorkItemIntake?.source?.channelId, channelId);
   assert.equal(directWorkItemIntake?.source?.commandSegmentId, segment?.id);
