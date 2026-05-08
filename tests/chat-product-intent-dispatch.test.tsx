@@ -655,6 +655,74 @@ test('routeChannelMessage sends the first strong product-intent command to the s
   assert.equal(dispatched.results.length, 1);
 });
 
+test('beginChannelMessageDispatch records product intent from single-Cat Code channels', async () => {
+  const now = new Date('2026-05-06T08:00:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Code channel',
+      topic: 'Code work intake',
+      originSurface: 'code',
+      roomMode: 'chat_channel',
+      cats: [
+        {
+          name: 'BuilderCat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const store = new MemoryChatStore(state);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/code add parser coverage',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+
+  const channel = requireChannel(begun.state, channelId);
+  const ackMessage = channel.messages.find((message) =>
+    message.metadata.event === 'product_intent_posture_changed');
+  const core = await store.readCore();
+  const workItem = core.workItems.find((candidate) =>
+    Boolean(candidate.metadata.productIntentIntake));
+  const productIntentIntake = workItem?.metadata.productIntentIntake as
+    | {
+        targetProduct?: unknown;
+        sourceContext?: {
+          sourceProduct?: unknown;
+          presetId?: unknown;
+          source?: {
+            channelId?: unknown;
+            conversationId?: unknown;
+          };
+        };
+      }
+    | undefined;
+
+  assert.notEqual(begun.preparedTurn, null);
+  assert.equal(ackMessage?.metadata.accepted, true);
+  assert.equal(workItem?.status, 'draft');
+  assert.equal(productIntentIntake?.targetProduct, 'code');
+  assert.equal(productIntentIntake?.sourceContext?.sourceProduct, 'code');
+  assert.equal(productIntentIntake?.sourceContext?.presetId, 'new_code');
+  assert.equal(productIntentIntake?.sourceContext?.source?.channelId, channelId);
+});
+
 test('beginChannelMessageDispatch suggests implicit candidates while ordinary dispatch proceeds', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);

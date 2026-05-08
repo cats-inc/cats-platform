@@ -106,9 +106,11 @@ import {
 } from '../../shared/channelParticipants.js';
 import { parseProductIntentCommand } from '../../shared/productIntentCommands.js';
 import {
-  buildDirectProductPresetIntentContext,
+  buildProductPresetIntentContext,
   type ProductPresetIntentContext,
   type ProductPresetIntentOriginSurface,
+  type ProductPresetIntentPresetId,
+  type ProductPresetIntentSourceProduct,
   type ProductPresetIntentTransport,
 } from '../../shared/productPresetIntentContext.js';
 import {
@@ -452,20 +454,28 @@ interface ProductIntentAudienceResolution {
 function resolveProductIntentAudience(
   channel: ReturnType<typeof requireChannel>,
 ): ProductIntentAudienceResolution {
-  if (
-    channel.channelKind !== 'direct_message'
-    && channel.roomRouting?.mode !== 'direct_message'
-  ) {
+  const activeCatAssignments = channel.catAssignments.filter((assignment) =>
+    assignment.status === 'active');
+  const isDirectLane = channel.channelKind === 'direct_message'
+    || channel.roomRouting?.mode === 'direct_message';
+
+  if (!isDirectLane) {
+    if (activeCatAssignments.length !== 1) {
+      return {
+        accepted: false,
+        audienceCatId: null,
+        participantId: null,
+        rejectionReason: 'missing_direct_audience_cat',
+      };
+    }
     return {
-      accepted: false,
-      audienceCatId: null,
-      participantId: null,
-      rejectionReason: 'non_direct_channel',
+      accepted: true,
+      audienceCatId: activeCatAssignments[0]!.catId,
+      participantId: activeCatAssignments[0]!.participantId,
+      rejectionReason: null,
     };
   }
 
-  const activeCatAssignments = channel.catAssignments.filter((assignment) =>
-    assignment.status === 'active');
   if (activeCatAssignments.length !== 1) {
     return {
       accepted: false,
@@ -474,6 +484,7 @@ function resolveProductIntentAudience(
       rejectionReason: 'missing_direct_audience_cat',
     };
   }
+
   const defaultRecipientId = channel.roomRouting?.defaultRecipientId?.trim()
     || channel.recoverableDirectLaneCatId?.trim()
     || null;
@@ -720,7 +731,60 @@ function resolveProductIntentIntakeTargetProduct(
       : null;
 }
 
-function buildDirectProductPresetIntentContextForCommand(input: {
+function resolveProductPresetIntentSourceProduct(
+  channel: ChatChannelState,
+): ProductPresetIntentSourceProduct {
+  if (channel.originSurface === 'code' || channel.originSurface === 'work') {
+    return channel.originSurface;
+  }
+  return 'chat';
+}
+
+function resolveProductPresetIntentParallelGroup(
+  state: Pick<ChatState, 'parallelChatGroups'>,
+  channelId: string,
+): ChatState['parallelChatGroups'][number] | null {
+  return state.parallelChatGroups.find((group) =>
+    group.status === 'active' && group.memberChannelIds.includes(channelId)) ?? null;
+}
+
+function resolveProductPresetIntentPresetId(input: {
+  state: Pick<ChatState, 'parallelChatGroups'>;
+  channel: ChatChannelState;
+  channelId: string;
+}): ProductPresetIntentPresetId {
+  const sourceProduct = resolveProductPresetIntentSourceProduct(input.channel);
+  if (
+    input.channel.channelKind === 'direct_message'
+    || input.channel.roomRouting?.mode === 'direct_message'
+  ) {
+    return 'direct';
+  }
+
+  const parallelGroup = resolveProductPresetIntentParallelGroup(input.state, input.channelId);
+  if (parallelGroup) {
+    if (sourceProduct === 'code') {
+      return 'peer_code';
+    }
+    if (sourceProduct === 'work') {
+      return 'parallel_work';
+    }
+    return 'parallel_chat';
+  }
+
+  const activeCatCount = input.channel.catAssignments.filter((assignment) =>
+    assignment.status === 'active').length;
+  if (sourceProduct === 'code') {
+    return activeCatCount > 1 ? 'team_code' : 'new_code';
+  }
+  if (sourceProduct === 'work') {
+    return activeCatCount > 1 ? 'team_work' : 'new_work';
+  }
+  return activeCatCount > 1 ? 'group_chat' : 'new_chat';
+}
+
+function buildProductPresetIntentContextForCommand(input: {
+  state: ChatState;
   channelId: string;
   conversationId: string;
   turnId: string;
@@ -728,11 +792,33 @@ function buildDirectProductPresetIntentContextForCommand(input: {
   productIntentCommand: ProductIntentCommandMetadata;
   postureChange: DirectSlashModePostureChangeMetadata | null;
 }): ProductPresetIntentContext {
-  return buildDirectProductPresetIntentContext({
+  const channel = requireChannel(input.state, input.channelId);
+  const sourceProduct = resolveProductPresetIntentSourceProduct(channel);
+  const presetId = resolveProductPresetIntentPresetId({
+    state: input.state,
+    channel,
     channelId: input.channelId,
-    conversationId: input.conversationId,
-    turnId: input.turnId,
-    segmentId: input.segmentId,
+  });
+  const parallelGroup = resolveProductPresetIntentParallelGroup(input.state, input.channelId);
+  const source = parallelGroup
+    ? {
+        containerId: parallelGroup.id,
+        branchId: input.channelId,
+        conversationId: input.conversationId,
+        turnId: input.turnId,
+        segmentId: input.segmentId,
+      }
+    : {
+        channelId: input.channelId,
+        conversationId: input.conversationId,
+        turnId: input.turnId,
+        segmentId: input.segmentId,
+      };
+
+  return buildProductPresetIntentContext({
+    sourceProduct,
+    presetId,
+    source,
     originSurface: resolveProductPresetIntentOriginSurface(input.productIntentCommand.source),
     transport: resolveProductPresetIntentTransport(input.productIntentCommand.source),
     eligibleCats: input.postureChange?.audienceCatId
@@ -2095,7 +2181,8 @@ async function persistProductIntentCommandCoreSegment(input: {
   });
   const productIntentSourceContext = input.activeAnchor
     && buildProductIntentIntakeCommandMetadata(input.productIntentCommand)
-    ? buildDirectProductPresetIntentContextForCommand({
+    ? buildProductPresetIntentContextForCommand({
+        state: input.state,
         channelId: input.channelId,
         conversationId,
         turnId,
@@ -2811,7 +2898,8 @@ export async function beginChannelMessageDispatch(
       ? buildProductIntentIntakeCommandMetadata(productIntentCommand)
       : null;
     const productIntentSourceContext = activeAnchor && productIntentIntakeCommandMetadata
-      ? buildDirectProductPresetIntentContextForCommand({
+      ? buildProductPresetIntentContextForCommand({
+          state: nextState,
           channelId,
           conversationId: resolveChannelCanonicalIdentity(nextState, channelId).conversationId,
           turnId: coreIds.turnId,
