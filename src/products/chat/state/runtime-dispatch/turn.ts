@@ -532,7 +532,7 @@ function buildProviderAgentObservationForTurn(input: {
       ? [
           {
             manifest: createCatProductIntentProposalToolManifest(),
-            reason: 'Strong direct Cat can ask the owner to confirm Work/Code intake.',
+            reason: 'Strong Cat can ask the owner to confirm Work/Code intake.',
           },
         ]
       : [],
@@ -569,11 +569,7 @@ function shouldExposeCatProductIntentProposalTool(input: {
   });
   return effectiveMode === 'cat_tool'
     && input.hasSingleCatTarget
-    && input.capabilityProfileKind === 'strong_agent'
-    && (
-      input.channel.channelKind === 'direct_message'
-      || input.channel.roomRouting?.mode === 'direct_message'
-    );
+    && input.capabilityProfileKind === 'strong_agent';
 }
 
 function findChannelUserMessage(

@@ -1257,7 +1257,7 @@ test('routeChannelMessage does not expose proposal tools when owner setting is o
   assert.equal(observationExposesProposalTool(capturedObservation), false);
 });
 
-test('routeChannelMessage does not expose proposal tools outside direct lanes', async () => {
+test('routeChannelMessage exposes proposal tools in single-target group channels', async () => {
   const now = new Date('2026-05-06T08:00:00.000Z');
   const state = createChannel(
     createDefaultChatState(),
@@ -1266,9 +1266,8 @@ test('routeChannelMessage does not expose proposal tools outside direct lanes', 
       topic: 'Group product intent',
       originSurface: 'chat',
       entryKind: 'group',
-      temporaryParticipants: [
+      cats: [
         {
-          participantId: 'participant-concierge',
           name: 'ConciergeCat',
           provider: 'claude',
           instance: 'native',
@@ -1279,11 +1278,12 @@ test('routeChannelMessage does not expose proposal tools outside direct lanes', 
     now,
   );
   const channelId = state.selectedChannelId;
+  const participantId = requireChannel(state, channelId).catAssignments[0]?.participantId;
   const store = new MemoryChatStore(state);
   const runtimeClient = runtimeReplyStub('I can discuss the onboarding requirements.');
   let capturedObservation: ProviderAgentBoundedObservation | null = null;
 
-  await routeChannelMessage(
+  const routed = await routeChannelMessage(
     state,
     channelId,
     {
@@ -1298,13 +1298,39 @@ test('routeChannelMessage does not expose proposal tools outside direct lanes', 
       naturalProductIntentMode: 'cat_tool',
       providerAgentDecisionRequester: async ({ observation }) => {
         capturedObservation = observation;
-        return null;
+        return {
+          contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+          kind: 'tool_request',
+          decisionId: 'decision-group-propose-work-1',
+          confidence: 'high',
+          toolName: CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
+          target: {
+            kind: 'worker_tool',
+            toolName: CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME,
+          },
+          input: {
+            targetProduct: 'work',
+            summary: 'Plan onboarding requirements',
+            rationale: 'The owner is asking for planning from a group channel.',
+          },
+          rationaleSummary: 'Ask the owner to confirm Work intake.',
+        };
       },
     },
   );
 
-  assert.equal(capturedObservation?.actor.actorRef, 'cat:participant-concierge');
-  assert.equal(observationExposesProposalTool(capturedObservation), false);
+  const channel = requireChannel(routed.state, channelId);
+  const proposalMessage = channel.messages.find((message) =>
+    message.metadata.event === 'cat_product_intent_proposal_created');
+  const proposal = proposalMessage?.metadata.catProductIntentProposal as
+    | CatProductIntentProposalMetadata
+    | undefined;
+
+  assert.equal(capturedObservation?.actor.actorRef, `cat:${participantId}`);
+  assert.equal(observationExposesProposalTool(capturedObservation), true);
+  assert.equal(proposalMessage?.senderKind, 'system');
+  assert.equal(proposal?.proposal.targetProduct, 'work');
+  assert.equal(proposal?.source.channelId, channelId);
 });
 
 test('beginChannelMessageDispatch confirms Cat proposals through slash-mode intake once', async () => {

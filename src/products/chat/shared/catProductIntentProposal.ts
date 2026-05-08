@@ -497,9 +497,6 @@ export function validateCatProductIntentProposalToolCall(
   if (input.effectiveMode !== 'cat_tool') {
     return rejectProposalToolCall('proposal_tool_not_enabled');
   }
-  if (!input.directLane) {
-    return rejectProposalToolCall('non_direct_lane');
-  }
   if (input.capabilityProfileKind !== 'strong_agent') {
     return rejectProposalToolCall('direct_cat_not_strong');
   }
