@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Active / MVP Implemented |
+| **Status** | Active / MVP Implemented / generalized by [SPEC-107](./SPEC-107-preset-neutral-product-intent-intake.md) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 | **Related ADRs** | [ADR-101](../decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md), [ADR-102](../decisions/102-use-cat-authored-product-intent-proposals.md) |

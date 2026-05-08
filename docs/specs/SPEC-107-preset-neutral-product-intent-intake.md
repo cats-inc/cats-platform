@@ -189,8 +189,8 @@ and transport that produced the intent.
     `metadata.productIntent.activeAnchor` or an equivalent preset-neutral
     field.
 44. The metadata shall include schema version, source product, preset id,
-    conversation/container id, lane/branch id, turn id, source segment id,
-    transport, origin surface, target product, eligible/proposing Cat,
+    channel/conversation/container id, lane/branch id, turn id, source segment
+    id, transport, origin surface, target product, eligible/proposing Cat,
     capability profile kind, and confirmation/proposal ids when present.
 45. The existing direct MVP metadata names such as `directSlashMode` shall be
     migrated or replaced during rollout so the canonical path is
@@ -318,18 +318,20 @@ are required by preset shape:
 |-----------|------------------------|-------|
 | `direct` | `channelId`, `conversationId` | Telegram direct fallback resolves to this shape after transport binding lookup. |
 | `new_chat` | `channelId`, `conversationId` | One ordinary Chat conversation. |
-| `group_chat` | `channelId`, `conversationId` | One shared conversation; `laneId` is present only when a concurrent turn lane is materialized. |
+| `group_chat` | `channelId`, `conversationId`, `laneId` when materialized | One shared conversation. The lane id is conditionally required once a concurrent turn lane exists for the source turn. |
 | `parallel_chat` | `containerId`, `branchId`, `conversationId` | Commands bind to the currently focused child branch in v1. |
 | `new_code` | `channelId`, `conversationId` | Primary Code conversation with Code-target context. |
-| `team_code` | `channelId`, `conversationId` | Shared Code conversation; `laneId` is present only when a concurrent turn lane is materialized. |
+| `team_code` | `channelId`, `conversationId`, `laneId` when materialized | Shared Code conversation. The lane id is conditionally required once a concurrent turn lane exists for the source turn. |
 | `peer_code` | `containerId`, `branchId`, `conversationId` | Peer branch/review container; commands bind to the focused branch. |
 | `new_work` | `channelId`, `conversationId` | Primary Work conversation. |
-| `team_work` | `channelId`, `conversationId` | Shared Work conversation; `laneId` is present only when a concurrent turn lane is materialized. |
+| `team_work` | `channelId`, `conversationId`, `laneId` when materialized | Shared Work conversation. The lane id is conditionally required once a concurrent turn lane exists for the source turn. |
 | `parallel_work` | `containerId`, `branchId`, `conversationId` | Parallel Work container; commands bind to the focused branch. |
 
 `channelId` may also be present for container-backed presets when a child
 branch has a channel projection, but `containerId + branchId + conversationId`
-are the required audit identifiers for those presets.
+are the required audit identifiers for those presets. For every
+container-backed preset, `conversationId` is the branch-scoped child
+conversation, not a container-level parent conversation.
 
 ### Product Intent Metadata
 
@@ -367,7 +369,16 @@ interface ProductIntentIntakeMetadata {
 
 `ProductIntentIntakeMetadata` is stored on the Work Item and is the durable
 audit source. The active-anchor field is only a source-context cache that points
-back to the same Work Item:
+back to the same Work Item. It is stored on the source routing owner:
+
+- For channel-backed presets (`direct`, `new_chat`, `group_chat`, `new_code`,
+  `team_code`, `new_work`, `team_work`), store the cache on the channel or
+  conversation routing metadata keyed by `channelId`.
+- For container-backed presets (`parallel_chat`, `peer_code`,
+  `parallel_work`), store the cache on the container branch routing metadata
+  keyed by `containerId + branchId`. If the implementation does not have a
+  first-class branch metadata record yet, store it under the container metadata
+  in a branch-keyed map.
 
 ```ts
 interface ProductIntentActiveAnchorMetadata {
@@ -390,8 +401,22 @@ interface ProductIntentActiveAnchorMetadata {
 
 The active-anchor cache must be treated as invalid unless
 `workItem.metadata.productIntentIntake.sourceContext` matches
-`sourceContextRef`. Projections and audits should read the Work Item metadata;
-the cache only speeds follow-up routing.
+`sourceContextRef`. Matching means exact equality after normalizing missing
+optional fields to `null` for these fields only:
+
+- `sourceProduct`
+- `presetId`
+- `channelId`
+- `conversationId`
+- `containerId`
+- `laneId`
+- `branchId`
+
+Display-only changes such as channel rename do not invalidate the cache because
+ids are stable. Moving a conversation or branch to a different channel,
+container, lane, or branch invalidates the cache because one of the identity
+fields above no longer matches. Projections and audits should read the Work
+Item metadata; the cache only speeds follow-up routing.
 
 ## Dependencies
 

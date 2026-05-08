@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Draft / generalized by [SPEC-107](./SPEC-107-preset-neutral-product-intent-intake.md) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 | **Related ADR** | [ADR-101](../decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md) |
