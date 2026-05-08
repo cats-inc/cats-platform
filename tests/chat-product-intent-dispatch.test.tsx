@@ -656,6 +656,53 @@ test('routeChannelMessage sends the first strong product-intent command to the s
   assert.equal(dispatched.results.length, 1);
 });
 
+test('beginChannelMessageDispatch writes canonical product intent refs on follow-up turns', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+
+  const anchored = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+  const workItem = (await store.readCore()).workItems.find((candidate) =>
+    Boolean(candidate.metadata.productIntentIntake));
+  const followUp = await beginChannelMessageDispatch(
+    anchored.state,
+    channelId,
+    {
+      body: 'The MVP should cover onboarding.',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+  const channel = requireChannel(followUp.state, channelId);
+  const followUpMessage = channel.messages.at(-1);
+  const productIntentIntakeRef = followUpMessage?.metadata.productIntentIntakeRef as
+    | { workItemId?: unknown; targetProduct?: unknown }
+    | undefined;
+
+  assert.equal(followUpMessage?.senderKind, 'user');
+  assert.equal(productIntentIntakeRef?.workItemId, workItem?.id);
+  assert.equal(productIntentIntakeRef?.targetProduct, 'work');
+});
+
 test('beginChannelMessageDispatch records product intent from single-Cat Code channels', async () => {
   const now = new Date('2026-05-06T08:00:00.000Z');
   const state = createChannel(

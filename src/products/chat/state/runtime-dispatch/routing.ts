@@ -1940,6 +1940,42 @@ function readMessageDirectSlashModeMetadata(
     : null;
 }
 
+function readProductIntentActiveAnchor(
+  value: unknown,
+): ProductIntentActiveAnchorMetadata | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const sourceContextRef = candidate.sourceContextRef;
+  return candidate.version === 1
+    && typeof candidate.workItemId === 'string'
+    && (candidate.targetProduct === 'work' || candidate.targetProduct === 'code')
+    && sourceContextRef !== null
+    && typeof sourceContextRef === 'object'
+    && typeof candidate.establishedBySegmentId === 'string'
+    && typeof candidate.establishedAt === 'string'
+    ? {
+        version: 1,
+        workItemId: candidate.workItemId,
+        targetProduct: candidate.targetProduct,
+        sourceContextRef: sourceContextRef as ProductIntentActiveAnchorMetadata['sourceContextRef'],
+        establishedBySegmentId: candidate.establishedBySegmentId,
+        establishedAt: candidate.establishedAt,
+      }
+    : null;
+}
+
+function readMessageProductIntentMetadata(
+  message: ChatMessage,
+): Record<string, unknown> | null {
+  const candidate = message.metadata.productIntent;
+  return candidate && typeof candidate === 'object'
+    ? candidate as Record<string, unknown>
+    : null;
+}
+
 function resolveLatestDirectSlashModeActiveAnchor(
   channel: ChatChannelState,
 ): DirectSlashModeActiveAnchorMetadata | null {
@@ -1949,6 +1985,20 @@ function resolveLatestDirectSlashModeActiveAnchor(
       continue;
     }
     return readDirectSlashModeActiveAnchor(directSlashMode.activeAnchor);
+  }
+
+  return null;
+}
+
+function resolveLatestProductIntentActiveAnchor(
+  channel: ChatChannelState,
+): ProductIntentActiveAnchorMetadata | null {
+  for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
+    const productIntent = readMessageProductIntentMetadata(channel.messages[index]!);
+    if (!productIntent || !Object.hasOwn(productIntent, 'activeAnchor')) {
+      continue;
+    }
+    return readProductIntentActiveAnchor(productIntent.activeAnchor);
   }
 
   return null;
@@ -3181,6 +3231,13 @@ export async function beginChannelMessageDispatch(
     channel: channelBeforeMessage,
     core: coreBeforeUserMessage,
   });
+  const followUpProductIntentActiveAnchor = followUpActiveAnchorState.activeAnchor
+    ? resolveLatestProductIntentActiveAnchor(channelBeforeMessage)
+    : null;
+  const matchedFollowUpProductIntentActiveAnchor = followUpProductIntentActiveAnchor?.workItemId
+    === followUpActiveAnchorState.activeAnchor?.workItemId
+    ? followUpProductIntentActiveAnchor
+    : null;
   const followUpDirectSlashMode = buildDirectSlashModeStateMetadata({
     activeAnchor: followUpActiveAnchorState.activeAnchor
       ?? (followUpActiveAnchorState.clear ? null : undefined),
@@ -3200,6 +3257,16 @@ export async function beginChannelMessageDispatch(
       ? {
           directSlashModeIntakeRef: buildDirectSlashModeIntakeRef(
             followUpActiveAnchorState.activeAnchor,
+          ),
+        }
+      : {}),
+    ...(matchedFollowUpProductIntentActiveAnchor
+      ? {
+          productIntent: {
+            activeAnchor: matchedFollowUpProductIntentActiveAnchor,
+          },
+          productIntentIntakeRef: buildProductIntentIntakeRef(
+            matchedFollowUpProductIntentActiveAnchor,
           ),
         }
       : {}),
