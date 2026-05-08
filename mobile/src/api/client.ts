@@ -69,6 +69,7 @@ export function createMobileApiClient(
     const url = `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
     const headers: Record<string, string> = {
       Accept: 'application/json',
+      'X-Cats-Client': 'mobile',
     };
     if (body !== undefined) {
       headers['Content-Type'] = 'application/json';

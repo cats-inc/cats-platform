@@ -59,7 +59,7 @@ import { resolveRoomRoutingState } from './room-routing/index.js';
 import type { DispatchRequest } from './room-routing/runtime.js';
 import { isAssistantTurnSegmentMessage } from './assistantTurnSegments.js';
 
-export type RuntimeTransportContext = 'telegram' | 'web';
+export type RuntimeTransportContext = 'telegram' | 'web' | 'mobile';
 
 const MAX_RECENT_CONTEXT_MESSAGES = MAX_BOUNDED_RECENT_CONTEXT_MESSAGES;
 
@@ -244,8 +244,8 @@ function resolveCanonicalChoiceResponseTarget(
 function resolveTransportContext(
   _channel: ChatChannelView,
   transport?: RuntimeTransportContext,
-): RuntimeTransportContext {
-  return transport ?? 'web';
+): 'telegram' | 'web' {
+  return transport === 'telegram' ? 'telegram' : 'web';
 }
 
 export function supportsSameChatParticipantContinuity(

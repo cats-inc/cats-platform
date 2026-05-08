@@ -58,6 +58,21 @@ import {
 import {
   assertClientMessageIdLengthCap,
 } from '../../shared/clientMessageIdentity.js';
+import type { RuntimeTransportContext } from '../../state/runtimeTargeting.js';
+
+function resolveRestMessageTransport(
+  request: ChatApiRouteContext['request'],
+): RuntimeTransportContext | undefined {
+  const clientHeader = request.headers['x-cats-client'];
+  const surfaceHeader = request.headers['x-cats-surface'];
+  const normalized = [
+    ...(Array.isArray(clientHeader) ? clientHeader : [clientHeader]),
+    ...(Array.isArray(surfaceHeader) ? surfaceHeader : [surfaceHeader]),
+  ]
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim().toLowerCase());
+  return normalized.includes('mobile') ? 'mobile' : undefined;
+}
 
 function publishChannelMutationEvents(
   context: ChatApiRouteContext,
@@ -558,6 +573,7 @@ async function handleRestSendMessage(
         context.dependencies.runtimeClient,
         now,
         {
+          transport: resolveRestMessageTransport(context.request),
           companionStore: context.dependencies.companionStore,
           memoryService: context.dependencies.memoryService,
           chatStore: context.dependencies.chatStore,

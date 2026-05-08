@@ -439,14 +439,14 @@ test('beginChannelMessageDispatch records direct product intent and starts chat-
         sourceContext?: {
           sourceProduct?: unknown;
           presetId?: unknown;
+          originSurface?: unknown;
+          transport?: unknown;
           source?: {
             channelId?: unknown;
             conversationId?: unknown;
             turnId?: unknown;
             segmentId?: unknown;
           };
-          originSurface?: unknown;
-          transport?: unknown;
           eligibleCats?: Array<{
             catId?: unknown;
             actorId?: unknown;
@@ -692,6 +692,7 @@ test('beginChannelMessageDispatch records product intent from single-Cat Code ch
       chatStore: store,
       providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
       naturalProductIntentMode: 'heuristic_prefilter',
+      transport: 'mobile',
     },
   );
 
@@ -707,6 +708,8 @@ test('beginChannelMessageDispatch records product intent from single-Cat Code ch
         sourceContext?: {
           sourceProduct?: unknown;
           presetId?: unknown;
+          originSurface?: unknown;
+          transport?: unknown;
           source?: {
             channelId?: unknown;
             conversationId?: unknown;
@@ -721,6 +724,8 @@ test('beginChannelMessageDispatch records product intent from single-Cat Code ch
   assert.equal(productIntentIntake?.targetProduct, 'code');
   assert.equal(productIntentIntake?.sourceContext?.sourceProduct, 'code');
   assert.equal(productIntentIntake?.sourceContext?.presetId, 'new_code');
+  assert.equal(productIntentIntake?.sourceContext?.originSurface, 'mobile');
+  assert.equal(productIntentIntake?.sourceContext?.transport, 'mobile');
   assert.equal(productIntentIntake?.sourceContext?.source?.channelId, channelId);
 });
 

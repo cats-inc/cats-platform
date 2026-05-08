@@ -248,6 +248,9 @@ function resolveUserMessageOrigin(transport: RuntimeTransportContext | undefined
 function resolveProductIntentCommandSource(
   transport: RuntimeTransportContext | undefined,
 ): ProductIntentCommandSource {
+  if (transport === 'mobile') {
+    return 'mobile';
+  }
   return transport === 'telegram' ? 'telegram' : 'web';
 }
 
@@ -712,6 +715,9 @@ function buildDirectSlashModeActiveAnchor(input: {
 function resolveProductPresetIntentOriginSurface(
   source: ProductIntentCommandSource,
 ): ProductPresetIntentOriginSurface {
+  if (source === 'mobile') {
+    return 'mobile';
+  }
   return source === 'telegram' ? 'telegram' : 'desktop';
 }
 

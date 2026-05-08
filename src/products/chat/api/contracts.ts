@@ -693,7 +693,7 @@ export interface SendChannelMessageIdentity {
   reason?: SendChannelMessageIdentityReason;
 }
 
-export type ProductIntentCommandSource = 'web' | 'telegram';
+export type ProductIntentCommandSource = 'web' | 'telegram' | 'mobile';
 
 export interface ProductIntentCommandMetadata {
   version: 1;
