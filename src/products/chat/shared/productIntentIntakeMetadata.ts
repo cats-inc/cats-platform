@@ -23,9 +23,19 @@ export interface ProductIntentIntakeProposalCommandMetadata {
   originalMessageId: string;
 }
 
+export interface ProductIntentIntakeImplicitConfirmationCommandMetadata {
+  sourceKind: 'implicit_confirmation';
+  name: ProductIntentIntakeTargetProduct;
+  argumentText: string;
+  rawCommandToken: '(implicit-confirmation)';
+  candidateId: string;
+  originalMessageId: string;
+}
+
 export type ProductIntentIntakeCommandMetadata =
   | ProductIntentIntakeExplicitCommandMetadata
-  | ProductIntentIntakeProposalCommandMetadata;
+  | ProductIntentIntakeProposalCommandMetadata
+  | ProductIntentIntakeImplicitConfirmationCommandMetadata;
 
 export interface ProductIntentIntakeDraftMetadata {
   goal: string;
@@ -164,6 +174,15 @@ function normalizeProductIntentIntakeCommandMetadata(
     return {
       ...command,
       argumentText: command.argumentText.trim(),
+    };
+  }
+
+  if (command.sourceKind === 'implicit_confirmation') {
+    return {
+      ...command,
+      argumentText: command.argumentText.trim(),
+      candidateId: command.candidateId.trim(),
+      originalMessageId: command.originalMessageId.trim(),
     };
   }
 

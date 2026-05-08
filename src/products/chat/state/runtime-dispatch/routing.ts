@@ -101,6 +101,9 @@ import {
 } from '../room-routing/workflow.js';
 import { applyRoomRoutingSnapshot } from '../runtime-session/state.js';
 import {
+  resolveTargets,
+} from '../room-routing/runtime.js';
+import {
   resolveOrchestratorLeaseAttachment,
   resolvePrimaryParticipantExecutionAssignment,
 } from '../../shared/channelParticipants.js';
@@ -116,6 +119,7 @@ import {
 import {
   buildProductIntentActiveAnchorMetadata,
   buildProductIntentIntakeMetadata,
+  doesProductIntentActiveAnchorMatchSourceContext,
   type ProductIntentActiveAnchorMetadata,
   type ProductIntentIntakeCommandMetadata,
   type ProductIntentIntakeMetadata,
@@ -454,9 +458,108 @@ interface ProductIntentAudienceResolution {
   rejectionReason: 'non_direct_channel' | 'missing_direct_audience_cat' | null;
 }
 
-function resolveProductIntentAudience(
+type ProductIntentAudienceAssignment = ChatChannelState['catAssignments'][number];
+
+function pushUniqueProductIntentAudienceParticipantId(
+  target: string[],
+  participantId: string | null | undefined,
+): void {
+  const normalized = participantId?.trim();
+  if (normalized && !target.includes(normalized)) {
+    target.push(normalized);
+  }
+}
+
+function resolvePrimaryProductIntentAudienceAssignment(
   channel: ReturnType<typeof requireChannel>,
-): ProductIntentAudienceResolution {
+  activeCatAssignments: ProductIntentAudienceAssignment[],
+): ProductIntentAudienceAssignment | null {
+  const defaultRecipientId = channel.roomRouting?.defaultRecipientId?.trim()
+    || channel.recoverableDirectLaneCatId?.trim()
+    || null;
+  if (defaultRecipientId) {
+    return activeCatAssignments.find((assignment) =>
+      assignment.participantId === defaultRecipientId
+      || assignment.catId === defaultRecipientId) ?? null;
+  }
+  return activeCatAssignments[0] ?? null;
+}
+
+function resolveProductIntentAddressedAudienceAssignment(input: {
+  state?: ChatState;
+  channel: ReturnType<typeof requireChannel>;
+  channelId?: string;
+  payload?: SendChannelMessageInput;
+  deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
+  productIntentCommand?: ProductIntentCommandMetadata | null;
+  activeCatAssignments: ProductIntentAudienceAssignment[];
+}): ProductIntentAudienceAssignment | null {
+  if (input.productIntentCommand?.proposedByCatId) {
+    const proposedByAssignment = input.activeCatAssignments.find((assignment) =>
+      assignment.catId === input.productIntentCommand?.proposedByCatId) ?? null;
+    if (proposedByAssignment) {
+      return proposedByAssignment;
+    }
+  }
+
+  const candidateParticipantIds: string[] = [];
+  if (
+    input.deterministicRoutingPlan
+    && input.channelId
+    && input.deterministicRoutingPlan.channelId === input.channelId
+  ) {
+    for (const target of input.deterministicRoutingPlan.routing.initialTargets) {
+      if (target.participantKind === 'cat') {
+        pushUniqueProductIntentAudienceParticipantId(
+          candidateParticipantIds,
+          target.participantId,
+        );
+      }
+    }
+  }
+
+  const payloadRecipientIds = input.payload?.messageMetadata?.recipientParticipantIds;
+  if (Array.isArray(payloadRecipientIds)) {
+    for (const participantId of payloadRecipientIds) {
+      pushUniqueProductIntentAudienceParticipantId(candidateParticipantIds, participantId);
+    }
+  }
+
+  if (input.state && input.channelId && input.payload?.body) {
+    const mentionedTargets = resolveTargets(input.state, input.channelId, input.payload.body, {
+      allowDefaultTarget: false,
+      explicitTrigger: 'explicit_mention',
+    });
+    for (const target of mentionedTargets.targets) {
+      if (target.participantKind === 'cat') {
+        pushUniqueProductIntentAudienceParticipantId(
+          candidateParticipantIds,
+          target.participantId,
+        );
+      }
+    }
+  }
+
+  for (const participantId of candidateParticipantIds) {
+    const assignment = input.activeCatAssignments.find((candidate) =>
+      candidate.participantId === participantId) ?? null;
+    if (assignment) {
+      return assignment;
+    }
+  }
+
+  return null;
+}
+
+function resolveProductIntentAudience(input: {
+  state?: ChatState;
+  channel: ReturnType<typeof requireChannel>;
+  channelId?: string;
+  payload?: SendChannelMessageInput;
+  deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
+  productIntentCommand?: ProductIntentCommandMetadata | null;
+}): ProductIntentAudienceResolution {
+  const { channel } = input;
   const activeCatAssignments = channel.catAssignments.filter((assignment) =>
     assignment.status === 'active');
   const isDirectLane = channel.channelKind === 'direct_message'
@@ -471,10 +574,25 @@ function resolveProductIntentAudience(
         rejectionReason: 'missing_direct_audience_cat',
       };
     }
+    const addressedAssignment = resolveProductIntentAddressedAudienceAssignment({
+      ...input,
+      channel,
+      activeCatAssignments,
+    });
+    const matchedAssignment = addressedAssignment
+      ?? resolvePrimaryProductIntentAudienceAssignment(channel, activeCatAssignments);
+    if (!matchedAssignment) {
+      return {
+        accepted: false,
+        audienceCatId: null,
+        participantId: null,
+        rejectionReason: 'missing_direct_audience_cat',
+      };
+    }
     return {
       accepted: true,
-      audienceCatId: activeCatAssignments[0]!.catId,
-      participantId: activeCatAssignments[0]!.participantId,
+      audienceCatId: matchedAssignment.catId,
+      participantId: matchedAssignment.participantId,
       rejectionReason: null,
     };
   }
@@ -488,15 +606,10 @@ function resolveProductIntentAudience(
     };
   }
 
-  const defaultRecipientId = channel.roomRouting?.defaultRecipientId?.trim()
-    || channel.recoverableDirectLaneCatId?.trim()
-    || null;
-  const matchedAssignment = defaultRecipientId
-    ? activeCatAssignments.find((assignment) =>
-        assignment.participantId === defaultRecipientId
-        || assignment.catId === defaultRecipientId)
-      ?? null
-    : activeCatAssignments[0]!;
+  const matchedAssignment = resolvePrimaryProductIntentAudienceAssignment(
+    channel,
+    activeCatAssignments,
+  );
   if (!matchedAssignment) {
     return {
       accepted: false,
@@ -798,6 +911,35 @@ function buildProductPresetIntentContextForCommand(input: {
   productIntentCommand: ProductIntentCommandMetadata;
   postureChange: DirectSlashModePostureChangeMetadata | null;
 }): ProductPresetIntentContext {
+  return buildProductPresetIntentContextForSource({
+    state: input.state,
+    channelId: input.channelId,
+    conversationId: input.conversationId,
+    turnId: input.turnId,
+    segmentId: input.segmentId,
+    source: input.productIntentCommand.source,
+    eligibleCats: input.postureChange?.audienceCatId
+      && input.postureChange.capabilityProfileKind
+      ? [
+          {
+            catId: input.postureChange.audienceCatId,
+            actorId: createCatActorId(input.postureChange.audienceCatId),
+            capabilityProfileKind: input.postureChange.capabilityProfileKind,
+          },
+        ]
+      : [],
+  });
+}
+
+function buildProductPresetIntentContextForSource(input: {
+  state: ChatState;
+  channelId: string;
+  conversationId: string;
+  turnId: string;
+  segmentId: string;
+  source: ProductIntentCommandSource;
+  eligibleCats?: ProductPresetIntentContext['eligibleCats'];
+}): ProductPresetIntentContext {
   const channel = requireChannel(input.state, input.channelId);
   const sourceProduct = resolveProductPresetIntentSourceProduct(channel);
   const presetId = resolveProductPresetIntentPresetId({
@@ -825,18 +967,9 @@ function buildProductPresetIntentContextForCommand(input: {
     sourceProduct,
     presetId,
     source,
-    originSurface: resolveProductPresetIntentOriginSurface(input.productIntentCommand.source),
-    transport: resolveProductPresetIntentTransport(input.productIntentCommand.source),
-    eligibleCats: input.postureChange?.audienceCatId
-      && input.postureChange.capabilityProfileKind
-      ? [
-          {
-            catId: input.postureChange.audienceCatId,
-            actorId: createCatActorId(input.postureChange.audienceCatId),
-            capabilityProfileKind: input.postureChange.capabilityProfileKind,
-          },
-        ]
-      : [],
+    originSurface: resolveProductPresetIntentOriginSurface(input.source),
+    transport: resolveProductPresetIntentTransport(input.source),
+    eligibleCats: input.eligibleCats ?? [],
   });
 }
 
@@ -858,6 +991,20 @@ function buildProductIntentIntakeCommandMetadata(
       argumentText: productIntentCommand.argumentText,
       rawCommandToken: CAT_PRODUCT_INTENT_PROPOSAL_COMMAND_TOKEN,
       proposalId: productIntentCommand.originalProposalId,
+      originalMessageId: productIntentCommand.originalMessageId,
+    };
+  }
+
+  if (productIntentCommand.sourceKind === 'implicit_confirmation') {
+    if (!productIntentCommand.originalCandidateId || !productIntentCommand.originalMessageId) {
+      return null;
+    }
+    return {
+      sourceKind: 'implicit_confirmation',
+      name: targetProduct,
+      argumentText: productIntentCommand.argumentText,
+      rawCommandToken: IMPLICIT_PRODUCT_INTENT_COMMAND_TOKEN,
+      candidateId: productIntentCommand.originalCandidateId,
       originalMessageId: productIntentCommand.originalMessageId,
     };
   }
@@ -2034,6 +2181,33 @@ function resolveDirectSlashModeActiveAnchorState(input: {
   return { activeAnchor, clear: null };
 }
 
+function resolveProductIntentActiveAnchorState(input: {
+  channel: ChatChannelState;
+  core: CatsCoreState | null;
+  sourceContext: ProductPresetIntentContext | null;
+}): {
+  activeAnchor: ProductIntentActiveAnchorMetadata | null;
+} {
+  const activeAnchor = resolveLatestProductIntentActiveAnchor(input.channel);
+  if (!activeAnchor) {
+    return { activeAnchor: null };
+  }
+
+  const workItem = input.core?.workItems.find((candidate) =>
+    candidate.id === activeAnchor.workItemId) ?? null;
+  if (workItem && isTerminalDirectSlashModeWorkItemStatus(workItem.status)) {
+    return { activeAnchor: null };
+  }
+  if (
+    input.sourceContext
+    && !doesProductIntentActiveAnchorMatchSourceContext(activeAnchor, input.sourceContext)
+  ) {
+    return { activeAnchor: null };
+  }
+
+  return { activeAnchor };
+}
+
 function buildDirectSlashModeIntakeRef(
   activeAnchor: DirectSlashModeActiveAnchorMetadata,
 ): Record<string, unknown> {
@@ -2892,7 +3066,14 @@ export async function beginChannelMessageDispatch(
       });
       nextState = transitionAppend.state;
     }
-    const audience = resolveProductIntentAudience(channelBeforeMessage);
+    const audience = resolveProductIntentAudience({
+      state: nextState,
+      channel: channelBeforeMessage,
+      channelId,
+      payload,
+      deterministicRoutingPlan,
+      productIntentCommand,
+    });
     const capabilityProfileKind = resolveDirectAudienceCapabilityProfileKind({
       channel: channelBeforeMessage,
       audience,
@@ -3217,7 +3398,13 @@ export async function beginChannelMessageDispatch(
     ownerEnabled:
       coreBeforeUserMessage?.ownerProfile.naturalProductIntentProposalsEnabled,
   });
-  const naturalProductIntentAudience = resolveProductIntentAudience(channelBeforeMessage);
+  const naturalProductIntentAudience = resolveProductIntentAudience({
+    state: nextState,
+    channel: channelBeforeMessage,
+    channelId,
+    payload,
+    deterministicRoutingPlan,
+  });
   const naturalProductIntentCapabilityProfileKind = resolveDirectAudienceCapabilityProfileKind({
     channel: channelBeforeMessage,
     audience: naturalProductIntentAudience,
@@ -3230,13 +3417,28 @@ export async function beginChannelMessageDispatch(
     channel: channelBeforeMessage,
     core: coreBeforeUserMessage,
   });
-  const followUpProductIntentActiveAnchor = followUpActiveAnchorState.activeAnchor
-    ? resolveLatestProductIntentActiveAnchor(channelBeforeMessage)
-    : null;
-  const matchedFollowUpProductIntentActiveAnchor = followUpProductIntentActiveAnchor?.workItemId
-    === followUpActiveAnchorState.activeAnchor?.workItemId
-    ? followUpProductIntentActiveAnchor
-    : null;
+  const followUpProductIntentSourceContext = buildProductPresetIntentContextForSource({
+    state: nextState,
+    channelId,
+    conversationId: resolveChannelCanonicalIdentity(nextState, channelId).conversationId,
+    turnId: `turn-product-intent-follow-up-${channelId}`,
+    segmentId: `segment-product-intent-follow-up-${channelId}`,
+    source: productIntentSource,
+  });
+  const followUpProductIntentActiveAnchorState = resolveProductIntentActiveAnchorState({
+    channel: channelBeforeMessage,
+    core: coreBeforeUserMessage,
+    sourceContext: followUpProductIntentSourceContext,
+  });
+  const matchedFollowUpProductIntentActiveAnchor =
+    followUpProductIntentActiveAnchorState.activeAnchor
+    && (
+      !followUpActiveAnchorState.activeAnchor
+      || followUpProductIntentActiveAnchorState.activeAnchor.workItemId
+        === followUpActiveAnchorState.activeAnchor.workItemId
+    )
+      ? followUpProductIntentActiveAnchorState.activeAnchor
+      : null;
   const followUpDirectSlashMode = buildDirectSlashModeStateMetadata({
     activeAnchor: followUpActiveAnchorState.activeAnchor
       ?? (followUpActiveAnchorState.clear ? null : undefined),
@@ -3520,7 +3722,13 @@ export async function beginChannelMessageRetryDispatch(
       retryCoreForNaturalIntent?.ownerProfile.naturalProductIntentProposalsEnabled,
   });
   const retryNaturalProductIntentAudience =
-    resolveProductIntentAudience(retryChannelForNaturalIntent);
+    resolveProductIntentAudience({
+      state: nextState,
+      channel: retryChannelForNaturalIntent,
+      channelId,
+      payload: buildRetrySendPayload(sourceMessage),
+      deterministicRoutingPlan,
+    });
   const retryNaturalProductIntentCapabilityProfileKind =
     resolveDirectAudienceCapabilityProfileKind({
       channel: retryChannelForNaturalIntent,

@@ -112,7 +112,6 @@ test('cat product-intent proposal validation accepts only enabled strong direct 
       rationale: '  The owner is asking for a planning artifact  ',
     },
     effectiveMode: 'cat_tool',
-    directLane: true,
     capabilityProfileKind: 'strong_agent',
     sourceMessage: {
       id: 'message-owner-1',
@@ -136,7 +135,6 @@ test('cat product-intent proposal validation rejects disabled or unsafe contexts
       rationale: 'The owner is asking for planning.',
     },
     effectiveMode: 'cat_tool' as const,
-    directLane: true,
     capabilityProfileKind: 'strong_agent' as const,
     sourceMessage: {
       id: 'message-owner-1',
@@ -160,17 +158,6 @@ test('cat product-intent proposal validation rejects disabled or unsafe contexts
       effectiveMode: 'heuristic_prefilter',
     }).accepted,
     false,
-  );
-  assert.deepEqual(
-    validateCatProductIntentProposalToolCall({
-      ...base,
-      directLane: false,
-    }),
-    {
-      accepted: false,
-      reason: 'non_direct_lane',
-      errors: ['non_direct_lane'],
-    },
   );
   assert.equal(
     validateCatProductIntentProposalToolCall({

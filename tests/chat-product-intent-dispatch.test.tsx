@@ -4,6 +4,7 @@ import test from 'node:test';
 import { shouldBridgeTelegramProductIntentCommand } from '../src/server/telegramProductIntentCommands.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import {
+  appendMessage,
   createChannel,
   createParallelChatGroup,
   requireChannel,
@@ -703,6 +704,156 @@ test('beginChannelMessageDispatch writes canonical product intent refs on follow
   assert.equal(productIntentIntakeRef?.targetProduct, 'work');
 });
 
+test('beginChannelMessageDispatch does not carry canonical product intent refs after terminal Work Item status', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+
+  const anchored = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+  const workItem = (await store.readCore()).workItems.find((candidate) =>
+    Boolean(candidate.metadata.productIntentIntake));
+  if (!workItem) {
+    throw new Error('Expected anchored Work Item.');
+  }
+  await store.updateCore((core) => ({
+    ...core,
+    workItems: core.workItems.map((candidate) =>
+      candidate.id === workItem.id
+        ? { ...candidate, status: 'completed' as const }
+        : candidate),
+  }));
+
+  const followUp = await beginChannelMessageDispatch(
+    anchored.state,
+    channelId,
+    {
+      body: 'The MVP should cover onboarding.',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+
+  const followUpMessage = requireChannel(followUp.state, channelId).messages.at(-1);
+
+  assert.equal(followUpMessage?.senderKind, 'user');
+  assert.equal(followUpMessage?.metadata.productIntentIntakeRef, undefined);
+  assert.equal(followUpMessage?.metadata.productIntent, undefined);
+});
+
+test('beginChannelMessageDispatch does not carry canonical product intent refs across source mismatches', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+
+  const anchored = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+  const workItem = (await store.readCore()).workItems.find((candidate) =>
+    Boolean(candidate.metadata.productIntentIntake));
+  const intake = workItem?.metadata.productIntentIntake as
+    | {
+        targetProduct?: 'work' | 'code';
+        sourceContext?: {
+          source?: { conversationId?: string };
+        };
+      }
+    | undefined;
+  if (!workItem || !intake?.targetProduct) {
+    throw new Error('Expected canonical product intent intake.');
+  }
+
+  const mismatchedAnchor = appendMessage(
+    anchored.state,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats',
+      body: 'Mismatched anchor marker.',
+    },
+    new Date('2026-05-06T08:01:30.000Z'),
+    {
+      metadata: {
+        directSlashMode: {
+          activeAnchor: {
+            workItemId: workItem.id,
+            targetProduct: intake.targetProduct,
+            establishedBySegmentId: 'segment-product-intent-message-1',
+            establishedAt: '2026-05-06T08:01:00.000Z',
+          },
+        },
+        productIntent: {
+          activeAnchor: {
+            version: 1,
+            workItemId: workItem.id,
+            targetProduct: intake.targetProduct,
+            sourceContextRef: {
+              sourceProduct: 'chat',
+              presetId: 'direct',
+              channelId: 'channel-other',
+              conversationId: intake.sourceContext?.source?.conversationId,
+            },
+            establishedBySegmentId: 'segment-product-intent-message-1',
+            establishedAt: '2026-05-06T08:01:00.000Z',
+          },
+        },
+      },
+    },
+  );
+
+  const followUp = await beginChannelMessageDispatch(
+    mismatchedAnchor.state,
+    channelId,
+    {
+      body: 'The MVP should cover onboarding.',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+
+  const followUpMessage = requireChannel(followUp.state, channelId).messages.at(-1);
+
+  assert.equal(followUpMessage?.senderKind, 'user');
+  assert.equal(followUpMessage?.metadata.directSlashModeIntakeRef !== undefined, true);
+  assert.equal(followUpMessage?.metadata.productIntentIntakeRef, undefined);
+  assert.equal(followUpMessage?.metadata.productIntent, undefined);
+});
+
 test('beginChannelMessageDispatch records product intent from single-Cat Code channels', async () => {
   const now = new Date('2026-05-06T08:00:00.000Z');
   const state = createChannel(
@@ -849,6 +1000,84 @@ test('beginChannelMessageDispatch records product intent from team Work channels
   assert.equal(
     productIntentIntake?.sourceContext?.eligibleCats?.[0]?.capabilityProfileKind,
     'strong_agent',
+  );
+});
+
+test('beginChannelMessageDispatch assigns team Work intent to the addressed Cat', async () => {
+  const now = new Date('2026-05-06T08:00:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Team Work channel',
+      topic: 'Team work intake',
+      originSurface: 'work',
+      roomMode: 'chat_channel',
+      cats: [
+        {
+          name: 'ReviewerCat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+        {
+          name: 'PlannerCat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const channel = requireChannel(state, channelId);
+  const reviewerCatId = channel.catAssignments.find((assignment) =>
+    assignment.name === 'ReviewerCat')?.catId;
+  const plannerAssignment = channel.catAssignments.find((assignment) =>
+    assignment.name === 'PlannerCat');
+  if (!plannerAssignment || !reviewerCatId) {
+    throw new Error('Expected PlannerCat and ReviewerCat assignments.');
+  }
+  const store = new MemoryChatStore(state);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work @PlannerCat plan the release checklist',
+      senderName: 'Kenneth',
+      messageMetadata: {
+        recipientParticipantIds: [plannerAssignment.participantId],
+      },
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+
+  const core = await store.readCore();
+  const workItem = core.workItems.find((candidate) =>
+    Boolean(candidate.metadata.productIntentIntake));
+  const productIntentIntake = workItem?.metadata.productIntentIntake as
+    | {
+        sourceContext?: {
+          eligibleCats?: Array<{
+            catId?: unknown;
+          }>;
+        };
+      }
+    | undefined;
+
+  assert.notEqual(begun.preparedTurn, null);
+  assert.deepEqual(workItem?.assignedActorIds, [`actor-cat-${plannerAssignment.catId}`]);
+  assert.notDeepEqual(workItem?.assignedActorIds, [`actor-cat-${reviewerCatId}`]);
+  assert.equal(
+    productIntentIntake?.sourceContext?.eligibleCats?.[0]?.catId,
+    plannerAssignment.catId,
   );
 });
 
@@ -2303,6 +2532,19 @@ test('beginChannelMessageDispatch confirms implicit candidates through slash-mod
   const directWorkItems = core.workItems.filter((candidate) =>
     Boolean(candidate.metadata.directSlashModeIntake));
   const directWorkItem = directWorkItems[0];
+  const productIntentIntake = directWorkItem?.metadata.productIntentIntake as
+    | {
+        command?: {
+          sourceKind?: unknown;
+          name?: unknown;
+          argumentText?: unknown;
+          rawCommandToken?: unknown;
+          candidateId?: unknown;
+          originalMessageId?: unknown;
+        };
+        draft?: { goal?: unknown };
+      }
+    | undefined;
   const intake = directWorkItem?.metadata.directSlashModeIntake as
     | { draft?: { goal?: unknown }; command?: { name?: unknown } }
     | undefined;
@@ -2318,6 +2560,16 @@ test('beginChannelMessageDispatch confirms implicit candidates through slash-mod
   assert.equal(transition?.confirmedCommand?.rawCommandToken, IMPLICIT_PRODUCT_INTENT_COMMAND_TOKEN);
   assert.equal(directWorkItems.length, 1);
   assert.equal(directWorkItem?.status, 'draft');
+  assert.equal(productIntentIntake?.command?.sourceKind, 'implicit_confirmation');
+  assert.equal(productIntentIntake?.command?.name, 'work');
+  assert.equal(
+    productIntentIntake?.command?.argumentText,
+    'Please plan the onboarding requirements',
+  );
+  assert.equal(productIntentIntake?.command?.rawCommandToken, IMPLICIT_PRODUCT_INTENT_COMMAND_TOKEN);
+  assert.equal(productIntentIntake?.command?.candidateId, transition?.candidateId);
+  assert.equal(productIntentIntake?.command?.originalMessageId, transition?.sourceMessageId);
+  assert.equal(productIntentIntake?.draft?.goal, 'Please plan the onboarding requirements');
   assert.equal(intake?.draft?.goal, 'Please plan the onboarding requirements');
   assert.equal(intake?.command?.name, 'work');
 
@@ -3363,7 +3615,7 @@ test('beginChannelMessageDispatch clears active anchors on product switch withou
   );
 });
 
-test('beginChannelMessageDispatch rejects product intent posture changes outside direct lanes', async () => {
+test('beginChannelMessageDispatch rejects product intent when the channel has no audience Cat', async () => {
   const now = new Date('2026-05-06T08:00:00.000Z');
   const state = createChannel(
     createDefaultChatState(),
