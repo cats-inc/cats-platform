@@ -5,6 +5,7 @@ import { shouldBridgeTelegramProductIntentCommand } from '../src/server/telegram
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import {
   createChannel,
+  createParallelChatGroup,
   requireChannel,
 } from '../src/products/chat/state/model/index.ts';
 import {
@@ -797,6 +798,102 @@ test('beginChannelMessageDispatch records product intent from team Work channels
     productIntentIntake?.sourceContext?.eligibleCats?.[0]?.capabilityProfileKind,
     'strong_agent',
   );
+});
+
+test('beginChannelMessageDispatch records product intent from parallel Code branches', async () => {
+  const now = new Date('2026-05-06T08:00:00.000Z');
+  const baseState = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Seed Cat channel',
+      topic: 'Seed Cat channel',
+      originSurface: 'code',
+      roomMode: 'chat_channel',
+      cats: [
+        {
+          name: 'ParallelBuilderCat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const participantCatId = baseState.cats[0]?.id;
+  if (!participantCatId) {
+    throw new Error('Expected seed Cat.');
+  }
+  const state = createParallelChatGroup(
+    baseState,
+    {
+      title: 'Parallel Code review',
+      originSurface: 'code',
+      participantCatIds: [participantCatId],
+      targets: [
+        {
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+        {
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const group = state.parallelChatGroups[0];
+  const channelId = group?.memberChannelIds[0];
+  if (!group || !channelId) {
+    throw new Error('Expected parallel group branch.');
+  }
+  const store = new MemoryChatStore(state);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/code compare parser branches',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+
+  const core = await store.readCore();
+  const workItem = core.workItems.find((candidate) =>
+    Boolean(candidate.metadata.productIntentIntake));
+  const productIntentIntake = workItem?.metadata.productIntentIntake as
+    | {
+        targetProduct?: unknown;
+        sourceContext?: {
+          sourceProduct?: unknown;
+          presetId?: unknown;
+          source?: {
+            containerId?: unknown;
+            branchId?: unknown;
+            conversationId?: unknown;
+          };
+        };
+      }
+    | undefined;
+
+  assert.notEqual(begun.preparedTurn, null);
+  assert.equal(workItem?.status, 'draft');
+  assert.equal(productIntentIntake?.targetProduct, 'code');
+  assert.equal(productIntentIntake?.sourceContext?.sourceProduct, 'code');
+  assert.equal(productIntentIntake?.sourceContext?.presetId, 'peer_code');
+  assert.equal(productIntentIntake?.sourceContext?.source?.containerId, group.id);
+  assert.equal(productIntentIntake?.sourceContext?.source?.branchId, channelId);
+  assert.equal(productIntentIntake?.sourceContext?.source?.conversationId, workItem?.conversationId);
 });
 
 test('beginChannelMessageDispatch suggests implicit candidates while ordinary dispatch proceeds', async () => {
