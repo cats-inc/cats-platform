@@ -142,6 +142,13 @@ export function doesProductIntentActiveAnchorMatchSourceContext(
   return doesProductIntentSourceContextRefMatch(anchor.sourceContextRef, expectedRef);
 }
 
+export function doesProductIntentActiveAnchorMatchSourceContextRef(
+  anchor: ProductIntentActiveAnchorMetadata,
+  sourceContextRef: ProductIntentActiveAnchorSourceContextRef,
+): boolean {
+  return doesProductIntentSourceContextRefMatch(anchor.sourceContextRef, sourceContextRef);
+}
+
 export function doesProductIntentActiveAnchorMatchIntake(
   anchor: ProductIntentActiveAnchorMetadata,
   intake: ProductIntentIntakeMetadata,

@@ -119,8 +119,9 @@ import {
 import {
   buildProductIntentActiveAnchorMetadata,
   buildProductIntentIntakeMetadata,
-  doesProductIntentActiveAnchorMatchSourceContext,
+  doesProductIntentActiveAnchorMatchSourceContextRef,
   type ProductIntentActiveAnchorMetadata,
+  type ProductIntentActiveAnchorSourceContextRef,
   type ProductIntentIntakeCommandMetadata,
   type ProductIntentIntakeMetadata,
   type ProductIntentIntakeTargetProduct,
@@ -973,6 +974,37 @@ function buildProductPresetIntentContextForSource(input: {
   });
 }
 
+function buildProductIntentActiveAnchorSourceContextRefForChannel(input: {
+  state: ChatState;
+  channelId: string;
+  conversationId: string;
+}): ProductIntentActiveAnchorSourceContextRef {
+  const channel = requireChannel(input.state, input.channelId);
+  const sourceProduct = resolveProductPresetIntentSourceProduct(channel);
+  const presetId = resolveProductPresetIntentPresetId({
+    state: input.state,
+    channel,
+    channelId: input.channelId,
+  });
+  const parallelGroup = resolveProductPresetIntentParallelGroup(input.state, input.channelId);
+  if (parallelGroup) {
+    return {
+      sourceProduct,
+      presetId,
+      containerId: parallelGroup.id,
+      branchId: input.channelId,
+      conversationId: input.conversationId,
+    };
+  }
+
+  return {
+    sourceProduct,
+    presetId,
+    channelId: input.channelId,
+    conversationId: input.conversationId,
+  };
+}
+
 function buildProductIntentIntakeCommandMetadata(
   productIntentCommand: ProductIntentCommandMetadata,
 ): ProductIntentIntakeCommandMetadata | null {
@@ -1125,6 +1157,18 @@ function buildDirectSlashModeStateMetadata(input: {
         }
       : {}),
     ...(input.humanGate ? { humanGate: input.humanGate } : {}),
+  };
+}
+
+function buildProductIntentStateMetadata(input: {
+  activeAnchor?: ProductIntentActiveAnchorMetadata | null;
+}): Record<string, unknown> | null {
+  if (input.activeAnchor === undefined) {
+    return null;
+  }
+
+  return {
+    activeAnchor: input.activeAnchor,
   };
 }
 
@@ -2122,6 +2166,12 @@ function readMessageProductIntentMetadata(
     : null;
 }
 
+function readDirectSlashModeClearedActiveAnchor(
+  value: Record<string, unknown>,
+): DirectSlashModeActiveAnchorMetadata | null {
+  return readDirectSlashModeActiveAnchor(value.clearedActiveAnchor);
+}
+
 function resolveLatestDirectSlashModeActiveAnchor(
   channel: ChatChannelState,
 ): DirectSlashModeActiveAnchorMetadata | null {
@@ -2136,21 +2186,41 @@ function resolveLatestDirectSlashModeActiveAnchor(
   return null;
 }
 
-function resolveLatestProductIntentActiveAnchor(
+function resolveLatestProductIntentActiveAnchorFromTranscript(
   channel: ChatChannelState,
 ): ProductIntentActiveAnchorMetadata | null {
+  const clearedWorkItemIds = new Set<string>();
   for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
-    const productIntent = readMessageProductIntentMetadata(channel.messages[index]!);
-    if (!productIntent || !Object.hasOwn(productIntent, 'activeAnchor')) {
+    const message = channel.messages[index]!;
+    const productIntent = readMessageProductIntentMetadata(message);
+    if (productIntent && Object.hasOwn(productIntent, 'activeAnchor')) {
+      const activeAnchor = readProductIntentActiveAnchor(productIntent.activeAnchor);
+      if (!activeAnchor || clearedWorkItemIds.has(activeAnchor.workItemId)) {
+        return null;
+      }
+      return activeAnchor;
+    }
+
+    const directSlashMode = readMessageDirectSlashModeMetadata(message);
+    if (!directSlashMode || !Object.hasOwn(directSlashMode, 'clearedActiveAnchor')) {
       continue;
     }
-    return readProductIntentActiveAnchor(productIntent.activeAnchor);
+    const clearedActiveAnchor = readDirectSlashModeClearedActiveAnchor(directSlashMode);
+    if (clearedActiveAnchor) {
+      clearedWorkItemIds.add(clearedActiveAnchor.workItemId);
+    }
   }
 
   return null;
 }
 
-function isTerminalDirectSlashModeWorkItemStatus(status: unknown): boolean {
+function resolveLatestProductIntentActiveAnchor(
+  channel: ChatChannelState,
+): ProductIntentActiveAnchorMetadata | null {
+  return resolveLatestProductIntentActiveAnchorFromTranscript(channel);
+}
+
+function isTerminalProductIntentWorkItemStatus(status: unknown): boolean {
   return status === 'completed' || status === 'cancelled' || status === 'archived';
 }
 
@@ -2168,7 +2238,7 @@ function resolveDirectSlashModeActiveAnchorState(input: {
 
   const workItem = input.core?.workItems.find((candidate) =>
     candidate.id === activeAnchor.workItemId) ?? null;
-  if (workItem && isTerminalDirectSlashModeWorkItemStatus(workItem.status)) {
+  if (workItem && isTerminalProductIntentWorkItemStatus(workItem.status)) {
     return {
       activeAnchor: null,
       clear: {
@@ -2184,7 +2254,7 @@ function resolveDirectSlashModeActiveAnchorState(input: {
 function resolveProductIntentActiveAnchorState(input: {
   channel: ChatChannelState;
   core: CatsCoreState | null;
-  sourceContext: ProductPresetIntentContext | null;
+  sourceContextRef: ProductIntentActiveAnchorSourceContextRef | null;
 }): {
   activeAnchor: ProductIntentActiveAnchorMetadata | null;
 } {
@@ -2195,12 +2265,15 @@ function resolveProductIntentActiveAnchorState(input: {
 
   const workItem = input.core?.workItems.find((candidate) =>
     candidate.id === activeAnchor.workItemId) ?? null;
-  if (workItem && isTerminalDirectSlashModeWorkItemStatus(workItem.status)) {
+  if (
+    (input.core && !workItem)
+    || (workItem && isTerminalProductIntentWorkItemStatus(workItem.status))
+  ) {
     return { activeAnchor: null };
   }
   if (
-    input.sourceContext
-    && !doesProductIntentActiveAnchorMatchSourceContext(activeAnchor, input.sourceContext)
+    input.sourceContextRef
+    && !doesProductIntentActiveAnchorMatchSourceContextRef(activeAnchor, input.sourceContextRef)
   ) {
     return { activeAnchor: null };
   }
@@ -2426,6 +2499,9 @@ async function persistProductIntentCommandCoreSegment(input: {
         sourceContext: productIntentSourceContext,
       })
     : null;
+  const productIntent = buildProductIntentStateMetadata({
+    activeAnchor: productIntentActiveAnchor ?? (input.activeAnchorClear ? null : undefined),
+  });
   const metadata = {
     event,
     version: 1,
@@ -2443,13 +2519,7 @@ async function persistProductIntentCommandCoreSegment(input: {
     activeProductPosture: input.productIntentCommand.posture,
     targetProduct: input.productIntentCommand.targetProduct,
     source: input.productIntentCommand.source,
-    ...(productIntentActiveAnchor
-      ? {
-          productIntent: {
-            activeAnchor: productIntentActiveAnchor,
-          },
-        }
-      : {}),
+    ...(productIntent ? { productIntent } : {}),
     ...(directSlashMode ? { directSlashMode } : {}),
   };
 
@@ -3160,6 +3230,9 @@ export async function beginChannelMessageDispatch(
       clear: activeAnchorClear,
       humanGate,
     });
+    const productIntent = buildProductIntentStateMetadata({
+      activeAnchor: productIntentActiveAnchor ?? (activeAnchorClear ? null : undefined),
+    });
     let productIntentUserMessage = userAppend.message;
     if (activeAnchor) {
       const annotated = annotateProductIntentUserMessageWithActiveAnchor({
@@ -3204,13 +3277,7 @@ export async function beginChannelMessageDispatch(
           sourceMessageId: userAppend.message.id,
           activeProductPosture: productIntentCommand.posture,
           targetProduct: productIntentCommand.targetProduct,
-          ...(productIntentActiveAnchor
-            ? {
-                productIntent: {
-                  activeAnchor: productIntentActiveAnchor,
-                },
-              }
-            : {}),
+          ...(productIntent ? { productIntent } : {}),
           ...(directSlashMode ? { directSlashMode } : {}),
           accepted: audience.accepted,
           audienceCatId: audience.audienceCatId,
@@ -3417,18 +3484,16 @@ export async function beginChannelMessageDispatch(
     channel: channelBeforeMessage,
     core: coreBeforeUserMessage,
   });
-  const followUpProductIntentSourceContext = buildProductPresetIntentContextForSource({
-    state: nextState,
-    channelId,
-    conversationId: resolveChannelCanonicalIdentity(nextState, channelId).conversationId,
-    turnId: `turn-product-intent-follow-up-${channelId}`,
-    segmentId: `segment-product-intent-follow-up-${channelId}`,
-    source: productIntentSource,
-  });
+  const followUpProductIntentSourceContextRef =
+    buildProductIntentActiveAnchorSourceContextRefForChannel({
+      state: nextState,
+      channelId,
+      conversationId: resolveChannelCanonicalIdentity(nextState, channelId).conversationId,
+    });
   const followUpProductIntentActiveAnchorState = resolveProductIntentActiveAnchorState({
     channel: channelBeforeMessage,
     core: coreBeforeUserMessage,
-    sourceContext: followUpProductIntentSourceContext,
+    sourceContextRef: followUpProductIntentSourceContextRef,
   });
   const matchedFollowUpProductIntentActiveAnchor =
     followUpProductIntentActiveAnchorState.activeAnchor

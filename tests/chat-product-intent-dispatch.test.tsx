@@ -759,6 +759,192 @@ test('beginChannelMessageDispatch does not carry canonical product intent refs a
   assert.equal(followUpMessage?.metadata.productIntent, undefined);
 });
 
+test('beginChannelMessageDispatch does not carry canonical product intent refs after Work Item deletion', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+
+  const anchored = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+  const workItem = (await store.readCore()).workItems.find((candidate) =>
+    Boolean(candidate.metadata.productIntentIntake));
+  if (!workItem) {
+    throw new Error('Expected anchored Work Item.');
+  }
+  await store.updateCore((core) => ({
+    ...core,
+    workItems: core.workItems.filter((candidate) => candidate.id !== workItem.id),
+  }));
+
+  const followUp = await beginChannelMessageDispatch(
+    anchored.state,
+    channelId,
+    {
+      body: 'The MVP should cover onboarding.',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+
+  const followUpMessage = requireChannel(followUp.state, channelId).messages.at(-1);
+
+  assert.equal(followUpMessage?.senderKind, 'user');
+  assert.equal(followUpMessage?.metadata.productIntentIntakeRef, undefined);
+  assert.equal(followUpMessage?.metadata.productIntent, undefined);
+});
+
+test('beginChannelMessageDispatch does not carry canonical product intent refs after chat posture', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+
+  const anchored = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+  const chatPosture = await beginChannelMessageDispatch(
+    anchored.state,
+    channelId,
+    {
+      body: '/chat thanks',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+  const followUp = await beginChannelMessageDispatch(
+    chatPosture.state,
+    channelId,
+    {
+      body: 'This should be ordinary chat.',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+
+  const chatAckMessage = requireChannel(chatPosture.state, channelId).messages.find((message) =>
+    message.metadata.event === 'product_intent_posture_changed'
+    && message.metadata.activeProductPosture === 'chat');
+  const chatProductIntent = chatAckMessage?.metadata.productIntent as
+    | { activeAnchor?: unknown }
+    | undefined;
+  const followUpMessage = requireChannel(followUp.state, channelId).messages.at(-1);
+
+  assert.equal(chatProductIntent?.activeAnchor, null);
+  assert.equal(followUpMessage?.senderKind, 'user');
+  assert.equal(followUpMessage?.metadata.productIntentIntakeRef, undefined);
+  assert.equal(followUpMessage?.metadata.productIntent, undefined);
+});
+
+test('beginChannelMessageDispatch carries only the superseding canonical product intent ref', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+
+  const workAnchored = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work clarify the MVP',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+  const workItem = (await store.readCore()).workItems.find((candidate) =>
+    candidate.metadata.productIntentIntake
+    && (candidate.metadata.productIntentIntake as { targetProduct?: unknown }).targetProduct
+      === 'work');
+  const codeAnchored = await beginChannelMessageDispatch(
+    workAnchored.state,
+    channelId,
+    {
+      body: '/code implement parser tests',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+  const codeItem = (await store.readCore()).workItems.find((candidate) =>
+    candidate.metadata.productIntentIntake
+    && (candidate.metadata.productIntentIntake as { targetProduct?: unknown }).targetProduct
+      === 'code');
+  const followUp = await beginChannelMessageDispatch(
+    codeAnchored.state,
+    channelId,
+    {
+      body: 'Add coverage around the parser edge cases.',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:03:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+
+  const followUpMessage = requireChannel(followUp.state, channelId).messages.at(-1);
+  const productIntentIntakeRef = followUpMessage?.metadata.productIntentIntakeRef as
+    | { workItemId?: unknown; targetProduct?: unknown }
+    | undefined;
+
+  assert.notEqual(workItem?.id, undefined);
+  assert.notEqual(codeItem?.id, undefined);
+  assert.notEqual(workItem?.id, codeItem?.id);
+  assert.equal(productIntentIntakeRef?.workItemId, codeItem?.id);
+  assert.equal(productIntentIntakeRef?.targetProduct, 'code');
+});
+
 test('beginChannelMessageDispatch does not carry canonical product intent refs across source mismatches', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);
@@ -1175,6 +1361,142 @@ test('beginChannelMessageDispatch records product intent from parallel Code bran
   assert.equal(productIntentIntake?.sourceContext?.source?.containerId, group.id);
   assert.equal(productIntentIntake?.sourceContext?.source?.branchId, channelId);
   assert.equal(productIntentIntake?.sourceContext?.source?.conversationId, workItem?.conversationId);
+});
+
+test('beginChannelMessageDispatch does not carry canonical product intent refs across parallel branches', async () => {
+  const now = new Date('2026-05-06T08:00:00.000Z');
+  const baseState = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Seed Cat channel',
+      topic: 'Seed Cat channel',
+      originSurface: 'code',
+      roomMode: 'chat_channel',
+      cats: [
+        {
+          name: 'ParallelBuilderCat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const participantCatId = baseState.cats[0]?.id;
+  if (!participantCatId) {
+    throw new Error('Expected seed Cat.');
+  }
+  const state = createParallelChatGroup(
+    baseState,
+    {
+      title: 'Parallel Code review',
+      originSurface: 'code',
+      participantCatIds: [participantCatId],
+      targets: [
+        {
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+        {
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const group = state.parallelChatGroups[0];
+  const channelId = group?.memberChannelIds[0];
+  const otherBranchId = group?.memberChannelIds[1];
+  if (!group || !channelId || !otherBranchId) {
+    throw new Error('Expected parallel group branches.');
+  }
+  const store = new MemoryChatStore(state);
+
+  const anchored = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/code compare parser branches',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+  const workItem = (await store.readCore()).workItems.find((candidate) =>
+    Boolean(candidate.metadata.productIntentIntake));
+  const productIntentIntake = workItem?.metadata.productIntentIntake as
+    | {
+        targetProduct?: 'work' | 'code';
+        sourceContext?: {
+          source?: { conversationId?: string };
+        };
+      }
+    | undefined;
+  if (!workItem || !productIntentIntake?.targetProduct) {
+    throw new Error('Expected parallel Code Work Item.');
+  }
+
+  const mismatchedBranchAnchor = appendMessage(
+    anchored.state,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats',
+      body: 'Mismatched branch anchor marker.',
+    },
+    new Date('2026-05-06T08:01:30.000Z'),
+    {
+      metadata: {
+        productIntent: {
+          activeAnchor: {
+            version: 1,
+            workItemId: workItem.id,
+            targetProduct: productIntentIntake.targetProduct,
+            sourceContextRef: {
+              sourceProduct: 'code',
+              presetId: 'peer_code',
+              containerId: group.id,
+              branchId: otherBranchId,
+              conversationId: productIntentIntake.sourceContext?.source?.conversationId,
+            },
+            establishedBySegmentId: 'segment-product-intent-message-1',
+            establishedAt: '2026-05-06T08:01:00.000Z',
+          },
+        },
+      },
+    },
+  );
+
+  const followUp = await beginChannelMessageDispatch(
+    mismatchedBranchAnchor.state,
+    channelId,
+    {
+      body: 'Continue on this branch only.',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:02:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+
+  const followUpMessage = requireChannel(followUp.state, channelId).messages.at(-1);
+
+  assert.equal(followUpMessage?.senderKind, 'user');
+  assert.equal(followUpMessage?.metadata.productIntentIntakeRef, undefined);
+  assert.equal(followUpMessage?.metadata.productIntent, undefined);
 });
 
 test('beginChannelMessageDispatch suggests implicit candidates while ordinary dispatch proceeds', async () => {
