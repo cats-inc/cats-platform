@@ -41,7 +41,7 @@ context instead of checking only for `direct_message`.
 
 The canonical supported preset set for this rollout is:
 
-- Chat: `new_chat`, `group_chat`, `parallel_chat`, and direct/private lanes.
+- Chat: `direct`, `new_chat`, `group_chat`, and `parallel_chat`.
 - Code: `new_code`, `team_code`, and `peer_code`.
 - Work: `new_work`, `team_work`, and `parallel_work`.
 
@@ -200,5 +200,5 @@ action.
 
 ---
 
-*Decision made: 2026-05-09*
+*Created: 2026-05-09*
 *Decision makers: Owner, Codex*

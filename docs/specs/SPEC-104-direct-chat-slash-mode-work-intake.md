@@ -14,6 +14,14 @@
 | **Related ADR** | [ADR-101](../decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md) |
 | **Related Plan** | [PLAN-092](../plans/PLAN-092-direct-chat-slash-mode-work-intake-rollout.md) |
 
+## Generalization Note
+
+This spec records the direct-message MVP. [SPEC-107](./SPEC-107-preset-neutral-product-intent-intake.md)
+generalizes the same explicit command and Work Item anchor contract to all
+supported Chat, Code, and Work presets. For future implementation work, the
+direct-only rejection rule in this spec is superseded when the current surface
+can supply a valid preset-neutral product-intent context.
+
 ## Summary
 
 The first slash-mode work intake MVP starts from a `direct_message` with one

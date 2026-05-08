@@ -15,6 +15,14 @@
 | **Related Plan** | [PLAN-094](../plans/PLAN-094-cat-proposed-product-intent-rollout.md) |
 | **Historical Plan** | [PLAN-093](../plans/PLAN-093-direct-chat-implicit-product-intent-rollout.md) |
 
+## Generalization Note
+
+This spec records the direct-message MVP for Cat-authored Work/Code proposals.
+[SPEC-107](./SPEC-107-preset-neutral-product-intent-intake.md) generalizes the
+proposal, confirmation, and Work Item anchor contract to all supported Chat,
+Code, and Work presets. Future work should treat direct chat as one preset
+context, not as the only supported natural-language proposal surface.
+
 ## Summary
 
 SPEC-104 covers explicit product commands in direct chat: `/chat`, `/work`, and

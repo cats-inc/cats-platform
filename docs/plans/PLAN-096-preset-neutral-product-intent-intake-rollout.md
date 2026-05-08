@@ -78,7 +78,7 @@ metadata is preset-neutral.
 ### Phase 3: Explicit command generalization across presets
 
 - [ ] Task 3.1: Route desktop Chat composers for `+New chat`, `+Group chat`,
-      `+Parallel chat`, and direct/private lanes through the shared parser and
+      `+Parallel chat`, and `direct` lanes through the shared parser and
       context resolver before send.
 - [ ] Task 3.2: Route Code composers for `+New code`, `+Team code`, and
       `+Peer code` through the same parser and context resolver.

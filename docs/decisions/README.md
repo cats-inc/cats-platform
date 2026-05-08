@@ -145,6 +145,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-05-09 (ADR-103 added: product-intent intake is generalized from direct messages to a preset-neutral Chat/Code/Work contract; ADR-102 added: natural-language Work/Code intake uses Cat-authored proposal tools with owner confirmation instead of default platform heuristics; ADR-101 added: direct-message slash-mode work intake uses the same direct audience Cat, gates durable Work/Code creation through existing provider capability profiles, and requires a human gate for weak/unknown Cats.)*
+*Last updated: 2026-05-09 (ADR-103 added: product-intent intake is generalized from direct messages to a preset-neutral Chat/Code/Work contract; ADR-102 added: natural-language Work/Code intake uses Cat-authored proposal tools with owner confirmation instead of default platform heuristics; ADR-101 added: direct-message slash-mode work intake uses the same direct audience Cat, gates durable Work/Code creation through existing provider capability profiles, and requires a human gate for weak/unknown Cats; ADR-100 added: cats are canonical identity, Clowder and Cattery are membership associations with formal/temp/external status as a first-class field; ADR-099 added: promote cats/clowders/catteries to platform entities with canonical top-level URLs.)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

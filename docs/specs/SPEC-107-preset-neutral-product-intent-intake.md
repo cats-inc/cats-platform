@@ -76,8 +76,8 @@ and transport that produced the intent.
 #### Preset coverage
 
 1. The platform shall support product-intent intake from these current presets:
-   `new_chat`, `group_chat`, `parallel_chat`, direct/private lanes,
-   `new_code`, `team_code`, `peer_code`, `new_work`, `team_work`, and
+   `direct`, `new_chat`, `group_chat`, `parallel_chat`, `new_code`,
+   `team_code`, `peer_code`, `new_work`, `team_work`, and
    `parallel_work`.
 2. Each supported preset shall be able to produce a
    `ProductPresetIntentContext`.
@@ -85,134 +85,152 @@ and transport that produced the intent.
    container id, lane or branch id when present, current turn id, source
    segment/message id, origin surface, transport, and eligible Cat
    participants.
-4. A preset that cannot produce a valid context shall reject product-intent
+4. `source.channelId` shall identify the Chat/Core channel that owns the
+   transcript when one exists. `source.conversationId` shall identify the
+   child or primary conversation used for follow-up. `source.containerId` shall
+   identify a parallel/peer container when the preset is container-scoped.
+   `source.laneId` shall identify a concurrent turn lane when the turn engine
+   assigns one. `source.branchId` shall identify the selected child branch for
+   parallel and peer presets.
+5. `originSurface` shall identify the entry surface that accepted the owner
+   input: `desktop`, `mobile`, `telegram`, or `api`. `api` is reserved for
+   server-side or automation ingress that already resolves to a supported
+   preset context.
+6. `transport` shall identify the external or client transport that delivered
+   the message: `web`, `telegram`, `mobile`, or `null` for product-internal
+   API calls with no transport envelope.
+7. A preset that cannot produce a valid context shall reject product-intent
    commands with visible, localized copy and shall not create durable state.
-5. The context resolver shall be shared by explicit commands and Cat-authored
+8. The context resolver shall be shared by explicit commands and Cat-authored
    proposals.
 
 #### Explicit command behavior
 
-6. `/chat`, `/work`, and `/code` shall use one shared parser across Web,
+9. `/chat`, `/work`, and `/code` shall use one shared parser across Web,
    mobile, Telegram-linked ingress, and product composers.
-7. Product-intent commands shall be evaluated before normal assistant dispatch.
-8. `/chat` shall set ordinary conversation posture for the current source
+10. Product-intent commands shall be evaluated before normal assistant dispatch.
+11. `/chat` shall set ordinary conversation posture for the current source
    context. It may expire unresolved proposals and abandon unconfirmed draft
    intake, but it shall not close established Work Items.
-9. `/work` shall request Work-targeted intake from the current source context.
-10. `/code` shall request Code-targeted intake from the current source context.
-11. Command handling shall not create a new channel kind or persistent preset
+12. `/work` shall request Work-targeted intake from the current source context.
+13. `/code` shall request Code-targeted intake from the current source context.
+14. Command handling shall not create a new channel kind or persistent preset
     kind.
-12. Unknown slash commands shall continue through ordinary message handling
+15. Unknown slash commands shall continue through ordinary message handling
     unless another transport-control command owns them.
-13. Telegram command suffixes such as `/work@botname` shall still normalize to
+16. Telegram command suffixes such as `/work@botname` shall still normalize to
     the shared product-intent command.
-14. Transport-control commands such as `/start`, `/help`, `/commands`,
+17. Transport-control commands such as `/start`, `/help`, `/commands`,
     `/status`, and `/mode` shall remain separate from product-intent commands.
 
 #### Strong-Cat proposal behavior
 
-15. Natural-language product suggestions shall be created by eligible strong
+18. Natural-language product suggestions shall be created by eligible strong
     Cats through the existing proposal-only tool family.
-16. Proposal tools shall be exposed only when deployment policy and owner
+19. Proposal tools shall be exposed only when deployment policy and owner
     settings allow natural-language product suggestions.
-17. Proposal tools shall be exposed only to Cats whose resolved provider
+20. Proposal tools shall be exposed only to Cats whose resolved provider
     capability profile is `strong_agent`.
-18. Weak or unknown Cats shall not receive proposal tools.
-19. A proposal tool call shall write an append-only proposal system segment and
+21. Weak or unknown Cats shall not receive proposal tools.
+22. A proposal tool call shall write an append-only proposal system segment and
     shall not create a Work Item, Task, Run, active anchor, or Code execution.
-20. A source lane or branch shall accept at most one product-intent proposal per
+23. A source lane or branch shall accept at most one product-intent proposal per
     assistant turn.
-21. Proposal tools shall not be exposed in the same assistant turn as durable
+24. Proposal tools shall not be exposed in the same assistant turn as durable
     Work Item, Task, Run, or Code execution tools.
-22. Providers without tool-call support shall not receive a structured-output
+25. Providers without tool-call support shall not receive a structured-output
     fallback in this spec.
 
 #### Eligible Cat resolution
 
-23. Direct/private presets shall use the addressed direct Cat.
-24. Single-recipient Chat, Code, or Work presets shall use the selected or
+26. The `direct` preset shall use the addressed direct Cat.
+27. Single-recipient Chat, Code, or Work presets shall use the selected or
     assigned Cat for the current turn.
-25. Group and team presets may accept proposals from any addressed or active
+28. Group and team presets may accept proposals from any addressed or active
     Cat in the current turn, subject to capability and one-proposal-per-turn
     limits.
-26. Parallel and peer presets shall scope eligible Cats, proposals, and anchors
+29. Parallel and peer presets shall scope eligible Cats, proposals, and anchors
     to the child lane or branch where the message was produced.
-27. The platform shall not silently switch to another Cat when all eligible
+30. The platform shall not silently switch to another Cat when all eligible
     Cats are weak or unknown.
-28. If multiple strong Cats attempt to propose in the same lane/turn, the first
+31. If multiple strong Cats attempt to propose in the same lane/turn, the first
     accepted proposal is the only active proposal; later proposals are rejected
     or ignored with an auditable reason.
 
 #### Confirmation and durable intake
 
-29. No-slash proposals require explicit owner confirmation before posture or
+32. No-slash proposals require explicit owner confirmation before posture or
     durable Work/Code state changes.
-30. Confirming a Work proposal shall enter the same preset-neutral intake path
+33. Confirming a Work proposal shall enter the same preset-neutral intake path
     as `/work <source>`.
-31. Confirming a Code proposal shall enter the same preset-neutral intake path
+34. Confirming a Code proposal shall enter the same preset-neutral intake path
     as `/code <source>`.
-32. Confirmation shall be idempotent for the same proposal id.
-33. Declining or ignoring a proposal shall leave the source context in ordinary
+35. Confirmation shall be idempotent for the same proposal id.
+36. Declining or ignoring a proposal shall leave the source context in ordinary
     conversation posture and shall not create durable product state.
-34. Proposal, confirmation, decline, and expiry shall be represented as
+37. Proposal, confirmation, decline, and expiry shall be represented as
     append-only message-stream system segments.
-35. The original user transcript shall not be rewritten into a fake slash
+38. The original user transcript shall not be rewritten into a fake slash
     command.
+39. For confirmed Cat proposals, `command.originalMessageId` shall point to
+    the original owner message that the Cat proposal interpreted. It is the
+    audit bridge from the confirmed command metadata back to the unmodified
+    transcript text.
 
 #### Work Item anchors and metadata
 
-36. The Work Item shall remain the durable anchor for both Work-targeted and
+40. The Work Item shall remain the durable anchor for both Work-targeted and
     Code-targeted intake.
-37. Work Items created by this flow shall preserve source context in additive
+41. Work Items created by this flow shall preserve source context in additive
     metadata under `metadata.productIntentIntake`.
-38. Follow-up Tasks shall carry compact references under
+42. Follow-up Tasks shall carry compact references under
     `metadata.productIntentIntakeRef`.
-39. Active anchor state shall be scoped by source context under
+43. Active anchor state shall be scoped by source context under
     `metadata.productIntent.activeAnchor` or an equivalent preset-neutral
     field.
-40. The metadata shall include schema version, source product, preset id,
+44. The metadata shall include schema version, source product, preset id,
     conversation/container id, lane/branch id, turn id, source segment id,
     transport, origin surface, target product, eligible/proposing Cat,
     capability profile kind, and confirmation/proposal ids when present.
-41. The existing direct MVP metadata names such as `directSlashMode` shall be
+45. The existing direct MVP metadata names such as `directSlashMode` shall be
     migrated or replaced during rollout so the canonical path is
     preset-neutral.
-42. The rollout shall not add new fields to Core record types unless a later
+46. The rollout shall not add new fields to Core record types unless a later
     ADR approves a schema change. Additive metadata is the default.
 
 #### Follow-up and execution
 
-43. Creating a Work Item anchor shall be separated from Task, Run, or Code
+47. Creating a Work Item anchor shall be separated from Task, Run, or Code
     execution.
-44. The command or confirmation turn may surface the new anchor and a
+48. The command or confirmation turn may surface the new anchor and a
     chat-only clarification or recap from the eligible Cat.
-45. Task, Run, or Code execution may begin only through existing Work/Code
+49. Task, Run, or Code execution may begin only through existing Work/Code
     supervision boundaries on a later owner turn or explicit follow-up action.
-46. Follow-up messages in the same source context shall be able to resolve the
+50. Follow-up messages in the same source context shall be able to resolve the
     active anchor when the anchor still belongs to that source context.
-47. `/chat` shall clear unresolved proposal or draft-intake state for the
+51. `/chat` shall clear unresolved proposal or draft-intake state for the
     source context but shall not close established Work Items.
-48. Switching between `/work` and `/code` while an unconfirmed or draft anchor
+52. Switching between `/work` and `/code` while an unconfirmed or draft anchor
     exists shall supersede the prior draft in the same source context rather
     than leave an orphan.
-49. Terminal Work Item statuses shall clear the matching active-anchor cache.
+53. Terminal Work Item statuses shall clear the matching active-anchor cache.
 
 #### Transport and client parity
 
-50. Web desktop product composers shall invoke the shared parser before send.
-51. Mobile product composers shall attach the same command metadata when
+54. Web desktop product composers shall invoke the shared parser before send.
+55. Mobile product composers shall attach the same command metadata when
     sending into a supported preset.
-52. Telegram ingress shall map incoming product-intent commands and proposal
+56. Telegram ingress shall map incoming product-intent commands and proposal
     callbacks to the linked preset context when one exists.
-53. Telegram shall fall back to the direct inbox context only when the thread is
+57. Telegram shall fall back to the direct inbox context only when the thread is
     not linked to another supported preset.
-54. Web confirmation may use existing `ChatMessage.choices`.
-55. Telegram confirmation may use inline keyboard callbacks keyed by proposal
+58. Web confirmation may use existing `ChatMessage.choices`.
+59. Telegram confirmation may use inline keyboard callbacks keyed by proposal
     id.
-56. Mobile shall at minimum render proposal/transition segments and route
+60. Mobile shall at minimum render proposal/transition segments and route
     unsupported confirmation actions to a desktop/product deep link rather than
     dropping them silently.
-57. Visible command acknowledgements, proposal controls, confirmation results,
+61. Visible command acknowledgements, proposal controls, confirmation results,
     human gates, and unsupported-context copy shall come from the shared i18n
     catalog.
 
@@ -282,7 +300,7 @@ interface ProductPresetIntentContext {
     segmentId: string;
   };
   originSurface: 'desktop' | 'mobile' | 'telegram' | 'api';
-  transport: 'web' | 'telegram' | 'line' | 'mobile' | null;
+  transport: 'web' | 'telegram' | 'mobile' | null;
   eligibleCats: Array<{
     catId: string;
     actorId: string;
@@ -290,6 +308,28 @@ interface ProductPresetIntentContext {
   }>;
 }
 ```
+
+### Required Source Fields by Preset
+
+All contexts require `turnId` and `segmentId`. The remaining source identifiers
+are required by preset shape:
+
+| Preset id | Required source fields | Notes |
+|-----------|------------------------|-------|
+| `direct` | `channelId`, `conversationId` | Telegram direct fallback resolves to this shape after transport binding lookup. |
+| `new_chat` | `channelId`, `conversationId` | One ordinary Chat conversation. |
+| `group_chat` | `channelId`, `conversationId` | One shared conversation; `laneId` is present only when a concurrent turn lane is materialized. |
+| `parallel_chat` | `containerId`, `branchId`, `conversationId` | Commands bind to the currently focused child branch in v1. |
+| `new_code` | `channelId`, `conversationId` | Primary Code conversation with Code-target context. |
+| `team_code` | `channelId`, `conversationId` | Shared Code conversation; `laneId` is present only when a concurrent turn lane is materialized. |
+| `peer_code` | `containerId`, `branchId`, `conversationId` | Peer branch/review container; commands bind to the focused branch. |
+| `new_work` | `channelId`, `conversationId` | Primary Work conversation. |
+| `team_work` | `channelId`, `conversationId` | Shared Work conversation; `laneId` is present only when a concurrent turn lane is materialized. |
+| `parallel_work` | `containerId`, `branchId`, `conversationId` | Parallel Work container; commands bind to the focused branch. |
+
+`channelId` may also be present for container-backed presets when a child
+branch has a channel projection, but `containerId + branchId + conversationId`
+are the required audit identifiers for those presets.
 
 ### Product Intent Metadata
 
@@ -324,6 +364,34 @@ interface ProductIntentIntakeMetadata {
   };
 }
 ```
+
+`ProductIntentIntakeMetadata` is stored on the Work Item and is the durable
+audit source. The active-anchor field is only a source-context cache that points
+back to the same Work Item:
+
+```ts
+interface ProductIntentActiveAnchorMetadata {
+  version: 1;
+  workItemId: string;
+  targetProduct: 'work' | 'code';
+  sourceContextRef: {
+    sourceProduct: 'chat' | 'code' | 'work';
+    presetId: ProductPresetIntentContext['presetId'];
+    channelId?: string;
+    conversationId?: string;
+    containerId?: string;
+    laneId?: string;
+    branchId?: string;
+  };
+  establishedBySegmentId: string;
+  establishedAt: string;
+}
+```
+
+The active-anchor cache must be treated as invalid unless
+`workItem.metadata.productIntentIntake.sourceContext` matches
+`sourceContextRef`. Projections and audits should read the Work Item metadata;
+the cache only speeds follow-up routing.
 
 ## Dependencies
 
@@ -367,11 +435,14 @@ interface ProductIntentIntakeMetadata {
 - Proposal and command UI strings are localized in desktop, mobile, and
   Telegram-visible copy.
 
+## Resolved v1 Scope
+
+- Parallel, peer, and other container-level `/work` or `/code` commands bind
+  to the currently focused child branch in v1. Fan-out across all branches
+  would be a separate orchestration feature and is not part of this spec.
+
 ## Open Questions
 
-- [ ] Should parallel container-level `/work` or `/code` commands fan out to
-      all branches, or should they always bind to the currently focused branch
-      in v1?
 - [ ] Should group/team presets allow proposals from any strong Cat that
       replied, or only from the Cat currently selected as the turn's primary
       responder?
