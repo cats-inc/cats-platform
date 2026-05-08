@@ -460,7 +460,7 @@ function resolveProductIntentAudience(
     || channel.roomRouting?.mode === 'direct_message';
 
   if (!isDirectLane) {
-    if (activeCatAssignments.length !== 1) {
+    if (activeCatAssignments.length < 1) {
       return {
         accepted: false,
         audienceCatId: null,

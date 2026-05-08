@@ -723,6 +723,82 @@ test('beginChannelMessageDispatch records product intent from single-Cat Code ch
   assert.equal(productIntentIntake?.sourceContext?.source?.channelId, channelId);
 });
 
+test('beginChannelMessageDispatch records product intent from team Work channels', async () => {
+  const now = new Date('2026-05-06T08:00:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Team Work channel',
+      topic: 'Team work intake',
+      originSurface: 'work',
+      roomMode: 'chat_channel',
+      cats: [
+        {
+          name: 'PlannerCat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+        {
+          name: 'ReviewerCat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const firstCatId = requireChannel(state, channelId).catAssignments[0]?.catId;
+  const store = new MemoryChatStore(state);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: '/work plan the release checklist',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'heuristic_prefilter',
+    },
+  );
+
+  const core = await store.readCore();
+  const workItem = core.workItems.find((candidate) =>
+    Boolean(candidate.metadata.productIntentIntake));
+  const productIntentIntake = workItem?.metadata.productIntentIntake as
+    | {
+        targetProduct?: unknown;
+        sourceContext?: {
+          sourceProduct?: unknown;
+          presetId?: unknown;
+          eligibleCats?: Array<{
+            catId?: unknown;
+            capabilityProfileKind?: unknown;
+          }>;
+        };
+      }
+    | undefined;
+
+  assert.notEqual(begun.preparedTurn, null);
+  assert.equal(workItem?.status, 'draft');
+  assert.deepEqual(workItem?.assignedActorIds, [`actor-cat-${firstCatId}`]);
+  assert.equal(productIntentIntake?.targetProduct, 'work');
+  assert.equal(productIntentIntake?.sourceContext?.sourceProduct, 'work');
+  assert.equal(productIntentIntake?.sourceContext?.presetId, 'team_work');
+  assert.equal(productIntentIntake?.sourceContext?.eligibleCats?.[0]?.catId, firstCatId);
+  assert.equal(
+    productIntentIntake?.sourceContext?.eligibleCats?.[0]?.capabilityProfileKind,
+    'strong_agent',
+  );
+});
+
 test('beginChannelMessageDispatch suggests implicit candidates while ordinary dispatch proceeds', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);
