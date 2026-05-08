@@ -694,15 +694,26 @@ export interface DispatchPrompt {
   continuityResetAt?: string | null;
 }
 
-function readDirectSlashModeIntakeRef(
-  message: ChatMessage,
+interface ProductIntentFollowUpIntakeRef {
+  workItemId: string;
+  commandSegmentId: string;
+  targetProduct: 'work' | 'code';
+}
+
+function asMetadataRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function readProductIntentFollowUpIntakeRefValue(
+  value: unknown,
 ): { workItemId: string; commandSegmentId: string; targetProduct: 'work' | 'code' } | null {
-  const candidate = message.metadata.directSlashModeIntakeRef;
-  if (!candidate || typeof candidate !== 'object') {
+  const record = asMetadataRecord(value);
+  if (!record) {
     return null;
   }
 
-  const record = candidate as Record<string, unknown>;
   return typeof record.workItemId === 'string'
     && typeof record.commandSegmentId === 'string'
     && (record.targetProduct === 'work' || record.targetProduct === 'code')
@@ -714,6 +725,13 @@ function readDirectSlashModeIntakeRef(
     : null;
 }
 
+function readProductIntentFollowUpIntakeRef(
+  message: ChatMessage,
+): ProductIntentFollowUpIntakeRef | null {
+  return readProductIntentFollowUpIntakeRefValue(message.metadata.productIntentIntakeRef)
+    ?? readProductIntentFollowUpIntakeRefValue(message.metadata.directSlashModeIntakeRef);
+}
+
 function resolveDirectSlashModeFollowUpIntakeRef(
   sourceMessage: ChatMessage,
   input: {
@@ -721,8 +739,8 @@ function resolveDirectSlashModeFollowUpIntakeRef(
     channelId: string;
     core?: CatsCoreState;
   },
-): { workItemId: string; commandSegmentId: string; targetProduct: 'work' | 'code' } | null {
-  const intakeRef = readDirectSlashModeIntakeRef(sourceMessage);
+): ProductIntentFollowUpIntakeRef | null {
+  const intakeRef = readProductIntentFollowUpIntakeRef(sourceMessage);
   if (!intakeRef) {
     return null;
   }
@@ -738,16 +756,31 @@ function resolveDirectSlashModeFollowUpIntakeRef(
     return null;
   }
 
+  const productIntentIntake = asMetadataRecord(workItem.metadata.productIntentIntake);
+  const sourceContext = asMetadataRecord(productIntentIntake?.sourceContext);
+  const productIntentSource = asMetadataRecord(sourceContext?.source);
+  if (
+    productIntentIntake
+    && (
+      productIntentIntake.targetProduct !== intakeRef.targetProduct
+      || productIntentSource?.segmentId !== intakeRef.commandSegmentId
+      || productIntentSource?.conversationId !== conversationId
+    )
+  ) {
+    return null;
+  }
+  if (productIntentIntake) {
+    return intakeRef;
+  }
+
   const intake = workItem.metadata.directSlashModeIntake;
-  if (!intake || typeof intake !== 'object') {
+  const intakeRecord = asMetadataRecord(intake);
+  if (!intakeRecord) {
     return null;
   }
 
-  const intakeRecord = intake as Record<string, unknown>;
   const source = intakeRecord.source;
-  const sourceRecord = source && typeof source === 'object'
-    ? (source as Record<string, unknown>)
-    : null;
+  const sourceRecord = asMetadataRecord(source);
   if (
     intakeRecord.targetProduct !== intakeRef.targetProduct
     || sourceRecord?.commandSegmentId !== intakeRef.commandSegmentId

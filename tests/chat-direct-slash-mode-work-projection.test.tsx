@@ -51,6 +51,14 @@ function strongBootstrapConfig() {
   return parsed.config;
 }
 
+function stripLegacyDirectProductMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+  const nextMetadata = { ...metadata };
+  delete nextMetadata.directSlashMode;
+  delete nextMetadata.directSlashModeIntake;
+  delete nextMetadata.planning;
+  return nextMetadata;
+}
+
 test('Work projection lists Work Items created from direct slash-mode chat', async () => {
   const now = new Date('2026-05-06T08:00:00.000Z');
   const state = createChannel(
@@ -142,7 +150,17 @@ test('Code projection lists code-target Work Item anchors created from direct sl
   );
 
   const core = await store.readCore();
-  const projection = buildCodeDashboardProjection(core);
+  const canonicalOnlyCore = {
+    ...core,
+    workItems: core.workItems.map((workItem) =>
+      workItem.title === 'wire the projection surface'
+        ? {
+            ...workItem,
+            metadata: stripLegacyDirectProductMetadata(workItem.metadata),
+          }
+        : workItem),
+  };
+  const projection = buildCodeDashboardProjection(canonicalOnlyCore);
   const directCodeWorkItem = projection.sections.workItems.items.find((candidate) =>
     candidate.title === 'wire the projection surface');
 

@@ -486,9 +486,17 @@ function buildCodeTaskListSummary(
   });
 }
 
-function readWorkItemDirectSlashModeTargetProduct(
+function readWorkItemProductIntentTargetProduct(
   workItem: CoreWorkItemRecord,
 ): 'work' | 'code' | null {
+  const productIntentIntake = asRecord(workItem.metadata.productIntentIntake);
+  if (
+    productIntentIntake?.targetProduct === 'work'
+    || productIntentIntake?.targetProduct === 'code'
+  ) {
+    return productIntentIntake.targetProduct;
+  }
+
   const intake = asRecord(workItem.metadata.directSlashModeIntake);
   return intake?.targetProduct === 'work' || intake?.targetProduct === 'code'
     ? intake.targetProduct
@@ -507,7 +515,7 @@ function readWorkItemPlanningProductHint(
 }
 
 function isCodeWorkItem(core: CatsCoreState, workItem: CoreWorkItemRecord): boolean {
-  if (readWorkItemDirectSlashModeTargetProduct(workItem) === 'code') {
+  if (readWorkItemProductIntentTargetProduct(workItem) === 'code') {
     return true;
   }
 

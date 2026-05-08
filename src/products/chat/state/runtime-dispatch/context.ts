@@ -31,6 +31,8 @@ export function buildDispatchRuntimeContextMetadata(
 ): Record<string, unknown> {
   const directSlashMode = request.sourceMessage.metadata.directSlashMode;
   const directSlashModeIntakeRef = request.sourceMessage.metadata.directSlashModeIntakeRef;
+  const productIntent = request.sourceMessage.metadata.productIntent;
+  const productIntentIntakeRef = request.sourceMessage.metadata.productIntentIntakeRef;
   return {
     dispatchId: request.dispatchId,
     turnId: request.turnId,
@@ -52,6 +54,10 @@ export function buildDispatchRuntimeContextMetadata(
     continuityMode: options.continuityMode ?? null,
     continuityDeliveryMode: options.continuityDeliveryMode ?? null,
     continuityResetAt: options.continuityResetAt ?? null,
+    ...(productIntent ? { productIntent: structuredClone(productIntent) } : {}),
+    ...(productIntentIntakeRef
+      ? { productIntentIntakeRef: structuredClone(productIntentIntakeRef) }
+      : {}),
     ...(directSlashMode ? { directSlashMode: structuredClone(directSlashMode) } : {}),
     ...(directSlashModeIntakeRef
       ? { directSlashModeIntakeRef: structuredClone(directSlashModeIntakeRef) }
