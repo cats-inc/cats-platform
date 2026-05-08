@@ -532,7 +532,7 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
     directMessagesLabel: zhTWCatalog['conversationSidebar.directMessagesLabel'],
     products: {
       chat: {
-        productLabel: '聊天',
+        productLabel: 'CHAT',
         primaryActions: {
           new: '+ 新聊天',
           group: '+ 群組聊天',
@@ -541,7 +541,7 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
         recentsLabel: '近期項目',
       },
       code: {
-        productLabel: '程式碼',
+        productLabel: 'CODE',
         primaryActions: {
           new: '+ 新程式碼',
           team: '+ 團隊程式碼',
@@ -550,7 +550,7 @@ const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy
         recentsLabel: '近期項目',
       },
       work: {
-        productLabel: '工作',
+        productLabel: 'WORK',
         primaryActions: {
           new: '+ 新工作',
           team: '+ 團隊工作',
