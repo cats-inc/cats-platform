@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { spawn as spawnChildProcess, type ChildProcess } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import test from 'node:test';
 
 import { createRealLivePreviewProcessAdapter } from '../src/products/code/livePreview/realProcessAdapter.ts';
@@ -133,4 +135,65 @@ test('Real live preview adapter stop with killProcessTree exercises platform tre
       5_000,
     )),
   ]);
+});
+
+test('Real live preview adapter keeps graceful taskkill failure inside the grace window', async (t) => {
+  const taskkillCalls: string[][] = [];
+  const directSignals: string[] = [];
+  const spawnProcess = ((
+    command: string,
+    args: readonly string[] = [],
+    options?: object,
+  ): ChildProcess => {
+    if (command === 'taskkill') {
+      taskkillCalls.push([...args]);
+      const fakeTaskkill = new EventEmitter() as ChildProcess;
+      process.nextTick(() => fakeTaskkill.emit('exit', 1, null));
+      return fakeTaskkill;
+    }
+
+    const child = spawnChildProcess(command, [...args], options);
+    const originalKill = child.kill.bind(child);
+    const patchedKill: ChildProcess['kill'] = (signal) => {
+      directSignals.push(String(signal ?? 'SIGTERM'));
+      return originalKill(signal);
+    };
+    child.kill = patchedKill;
+    return child;
+  }) as typeof spawnChildProcess;
+
+  const adapter = createRealLivePreviewProcessAdapter({
+    platform: 'win32',
+    spawnProcess,
+  });
+  const handle = await adapter.spawn({
+    ...SPAWN_INPUT_TEMPLATE,
+    executable: process.execPath,
+    args: ['-e', 'setTimeout(() => process.exit(0), 30_000)'],
+  });
+  t.after(async () => {
+    await handle.stop({ graceMs: 0, killProcessTree: false }).catch(() => undefined);
+  });
+
+  const exitObserved = new Promise<void>((resolve) => {
+    handle.onExit(() => resolve());
+  });
+  const startedAt = Date.now();
+  await handle.stop({ graceMs: 200, killProcessTree: true });
+  await Promise.race([
+    exitObserved,
+    new Promise<void>((_, reject) => setTimeout(
+      () => reject(new Error('Child did not exit after force taskkill fallback')),
+      5_000,
+    )),
+  ]);
+
+  assert.ok(
+    Date.now() - startedAt >= 150,
+    'graceful taskkill failure should not direct-kill before the grace window elapses',
+  );
+  assert.equal(taskkillCalls.length, 2);
+  assert.equal(taskkillCalls[0]?.includes('/F'), false);
+  assert.equal(taskkillCalls[1]?.includes('/F'), true);
+  assert.deepEqual(directSignals, ['SIGKILL']);
 });

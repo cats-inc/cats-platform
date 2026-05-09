@@ -8,6 +8,25 @@ import type {
   LivePreviewProcessStopOptions,
 } from './processAdapter.js';
 
+type SpawnProcess = typeof spawn;
+
+export interface RealLivePreviewProcessAdapterOptions {
+  /**
+   * Test seam only. Production callers should use the default node
+   * child_process.spawn implementation.
+   */
+  spawnProcess?: SpawnProcess;
+  /**
+   * Test seam for exercising Windows tree-kill behavior on non-Windows CI.
+   */
+  platform?: NodeJS.Platform;
+}
+
+interface RealLivePreviewProcessRuntime {
+  spawnProcess: SpawnProcess;
+  platform: NodeJS.Platform;
+}
+
 /**
  * Real subprocess adapter for Cats Code live previews (PLAN-097 Task 5.3).
  *
@@ -24,30 +43,40 @@ import type {
  * - Stdout/stderr capture is line-bounded by the supervisor; this adapter
  *   only forwards chunks. The supervisor enforces `logMaxBytes`.
  * - On stop, SIGTERM is sent first; if the process has not exited within
- *   `graceMs`, SIGKILL is escalated. `killProcessTree` triggers
- *   `taskkill /T /F` on Windows or a process-group SIGTERM on POSIX.
+ *   `graceMs`, SIGKILL is escalated. `killProcessTree` triggers a graceful
+ *   `taskkill /T` on Windows or a process-group SIGTERM on POSIX first, then
+ *   `taskkill /T /F` or process-group SIGKILL on escalation.
  *
  * Operators enabling the real adapter must complete PLAN-097 Task 5.1
  * security review and Task 5.4 end-to-end validation in an isolated temp
  * workspace before pointing this at user dev state.
  */
-export function createRealLivePreviewProcessAdapter(): LivePreviewProcessAdapter {
+export function createRealLivePreviewProcessAdapter(
+  options: RealLivePreviewProcessAdapterOptions = {},
+): LivePreviewProcessAdapter {
+  const runtime: RealLivePreviewProcessRuntime = {
+    spawnProcess: options.spawnProcess ?? spawn,
+    platform: options.platform ?? process.platform,
+  };
   return {
     spawn(input: LivePreviewProcessSpawnInput): Promise<LivePreviewProcessHandle> {
-      const child = spawn(input.executable, input.args, {
+      const child = runtime.spawnProcess(input.executable, input.args, {
         cwd: input.cwd,
         env: { ...process.env, ...input.env, PORT: String(input.port) },
         shell: false,
         windowsHide: true,
-        detached: process.platform !== 'win32',
+        detached: runtime.platform !== 'win32',
         stdio: ['ignore', 'pipe', 'pipe'],
       });
-      return waitForSpawn(child);
+      return waitForSpawn(child, runtime);
     },
   };
 }
 
-function waitForSpawn(child: ChildProcess): Promise<LivePreviewProcessHandle> {
+function waitForSpawn(
+  child: ChildProcess,
+  runtime: RealLivePreviewProcessRuntime,
+): Promise<LivePreviewProcessHandle> {
   return new Promise((resolve, reject) => {
     let settled = false;
 
@@ -65,7 +94,7 @@ function waitForSpawn(child: ChildProcess): Promise<LivePreviewProcessHandle> {
       }
       settled = true;
       child.removeListener('error', onError);
-      resolve(wrapChildProcess(child));
+      resolve(wrapChildProcess(child, runtime));
     };
 
     child.once('error', onError);
@@ -73,7 +102,10 @@ function waitForSpawn(child: ChildProcess): Promise<LivePreviewProcessHandle> {
   });
 }
 
-function wrapChildProcess(child: ChildProcess): LivePreviewProcessHandle {
+function wrapChildProcess(
+  child: ChildProcess,
+  runtime: RealLivePreviewProcessRuntime,
+): LivePreviewProcessHandle {
   const stdoutListeners = new Set<(chunk: string) => void>();
   const stderrListeners = new Set<(chunk: string) => void>();
   const exitListeners = new Set<(exit: LivePreviewProcessExit) => void>();
@@ -140,7 +172,7 @@ function wrapChildProcess(child: ChildProcess): LivePreviewProcessHandle {
       if (exited) {
         return;
       }
-      await terminateChildProcess(child, options);
+      await terminateChildProcess(child, options, runtime);
     },
   };
 }
@@ -148,15 +180,16 @@ function wrapChildProcess(child: ChildProcess): LivePreviewProcessHandle {
 async function terminateChildProcess(
   child: ChildProcess,
   options: LivePreviewProcessStopOptions,
+  runtime: RealLivePreviewProcessRuntime,
 ): Promise<void> {
-  trySendSignal(child, 'SIGTERM', options.killProcessTree, /* force */ false);
+  trySendSignal(child, 'SIGTERM', options.killProcessTree, /* force */ false, runtime);
   await new Promise<void>((resolve) => {
     if (child.exitCode !== null || child.signalCode) {
       resolve();
       return;
     }
     const timer = setTimeout(() => {
-      trySendSignal(child, 'SIGKILL', options.killProcessTree, /* force */ true);
+      trySendSignal(child, 'SIGKILL', options.killProcessTree, /* force */ true, runtime);
       resolve();
     }, Math.max(0, options.graceMs));
     child.once('exit', () => {
@@ -171,14 +204,15 @@ function trySendSignal(
   signal: NodeJS.Signals,
   killProcessTree: boolean,
   force: boolean,
+  runtime: RealLivePreviewProcessRuntime,
 ): void {
   try {
     if (!killProcessTree || child.pid === undefined) {
       child.kill(signal);
       return;
     }
-    if (process.platform === 'win32') {
-      tryTaskkill(child, signal, force);
+    if (runtime.platform === 'win32') {
+      tryTaskkill(child, signal, force, runtime);
       return;
     }
     try {
@@ -195,6 +229,7 @@ function tryTaskkill(
   child: ChildProcess,
   fallbackSignal: NodeJS.Signals,
   force: boolean,
+  runtime: RealLivePreviewProcessRuntime,
 ): void {
   if (child.pid === undefined) {
     child.kill(fallbackSignal);
@@ -208,34 +243,40 @@ function tryTaskkill(
     ? ['/pid', String(child.pid), '/T', '/F']
     : ['/pid', String(child.pid), '/T'];
   try {
-    const tree = spawn('taskkill', args, {
+    const tree = runtime.spawnProcess('taskkill', args, {
       windowsHide: true,
       stdio: 'ignore',
     });
     // Swallow taskkill's own error events so a missing taskkill (extremely
-    // unlikely on Windows) does not crash the host. Fall back to direct
-    // kill if taskkill exits with a non-zero status.
+    // unlikely on Windows) does not crash the host. Direct kill fallback only
+    // runs in the force phase so graceful failures still respect `graceMs`.
     tree.once('error', () => {
-      try {
-        child.kill(fallbackSignal);
-      } catch {
-        // child already gone
-      }
+      fallbackFromTaskkillFailure(child, fallbackSignal, force);
     });
     tree.once('exit', (code) => {
       if (code !== 0) {
-        try {
-          child.kill(fallbackSignal);
-        } catch {
-          // child already gone
-        }
+        fallbackFromTaskkillFailure(child, fallbackSignal, force);
       }
     });
   } catch {
-    try {
-      child.kill(fallbackSignal);
-    } catch {
-      // child already gone
-    }
+    fallbackFromTaskkillFailure(child, fallbackSignal, force);
+  }
+}
+
+function fallbackFromTaskkillFailure(
+  child: ChildProcess,
+  fallbackSignal: NodeJS.Signals,
+  force: boolean,
+): void {
+  if (!force) {
+    // Preserve the grace window. If graceful tree termination fails, the stop
+    // timer will escalate and retry with `/F` before we fall back to direct
+    // process kill.
+    return;
+  }
+  try {
+    child.kill(fallbackSignal);
+  } catch {
+    // child already gone
   }
 }

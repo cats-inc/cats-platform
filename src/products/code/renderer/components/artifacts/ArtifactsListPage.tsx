@@ -2,6 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
+  CORE_ARTIFACT_KINDS,
+  CORE_ARTIFACT_STATUSES,
+} from '../../../../../core/api/constants.js';
+import type {
+  CoreArtifactKind,
+  CoreArtifactStatus,
+} from '../../../../../core/types.js';
+import {
   fetchCodeArtifacts,
   type CodeArtifactListItemSummary,
 } from '../../api/codeTask.js';
@@ -14,37 +22,19 @@ import {
 } from '../codeStatusLabels.js';
 import './artifactsList.css';
 
-type CodeArtifactKind =
-  | 'build'
-  | 'preview'
-  | 'document'
-  | 'report'
-  | 'attachment'
-  | 'transcript_export'
-  | 'dataset';
+type KindFilter = 'all' | CoreArtifactKind;
 
-type KindFilter = 'all' | CodeArtifactKind;
-
-type StatusFilter = 'all' | 'draft' | 'ready' | 'published' | 'archived';
+type StatusFilter = 'all' | CoreArtifactStatus;
 
 const FILTER_ORDER: readonly KindFilter[] = [
   'all',
-  'build',
-  'preview',
-  'document',
-  'report',
-  'attachment',
-  'transcript_export',
-  'dataset',
-];
+  ...CORE_ARTIFACT_KINDS,
+] as const;
 
 const STATUS_FILTER_ORDER: readonly StatusFilter[] = [
   'all',
-  'draft',
-  'ready',
-  'published',
-  'archived',
-];
+  ...CORE_ARTIFACT_STATUSES,
+] as const;
 
 function formatRelative(iso: string, locale: string): string {
   const then = new Date(iso).getTime();
