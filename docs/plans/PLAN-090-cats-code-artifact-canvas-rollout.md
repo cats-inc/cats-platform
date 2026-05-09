@@ -34,7 +34,7 @@ process-supervision and security review (Phase 4).
 
 ### Phase 1: Contract, Projection, and Tool Effect
 
-- [ ] Task 1.1: Add `ArtifactCanvasProjection`,
+- [x] Task 1.1: Add `ArtifactCanvasProjection`,
       `ArtifactCanvasNavigateIntent`, `CanvasSurfaceRef`, and
       `CanvasSurfaceRouteRegistry` types in
       `src/products/shared/artifactCanvas/contracts.ts`
@@ -88,7 +88,7 @@ process-supervision and security review (Phase 4).
       with `artifact_canvas_declaration_collision`. The index is
       same-turn-only — no cross-turn lookup; prior-turn matches reject as
       `artifact_canvas_declaration_unknown`.
-- [ ] Task 1.6: Add `artifactCanvas.runtimePreviewOriginAllowlist` to
+- [x] Task 1.6: Add `artifactCanvas.runtimePreviewOriginAllowlist` to
       platform viewer config as the **flat array**
       `{ hostname: string; schemes?: ('http' | 'https')[]; ports?: number[] | '*' }[]`
       (no `{ entries: [...] }` wrapper). SPEC-101 default value:
@@ -98,7 +98,7 @@ process-supervision and security review (Phase 4).
       URL parser does NOT strip IPv6 brackets from `URL.hostname`).
       Boot-time validation rejects empty hostnames, unknown schemes, and
       non-positive port numbers.
-- [ ] Task 1.7: Add `artifactCanvas.scriptedPreviewProducerAllowlist`
+- [x] Task 1.7: Add `artifactCanvas.scriptedPreviewProducerAllowlist`
       to platform viewer config as the **flat array**
       `{ producerKind: 'tool' | 'system' | 'user'; producerIdentity: string }[]`,
       defaulting to `[]` (empty). The producer-eligibility check is:
@@ -112,7 +112,7 @@ process-supervision and security review (Phase 4).
       existing builder/artifact preview iframes or accept the
       static-only regression; that decision is captured separately and
       not baked into the Phase 1 default.
-- [ ] Task 1.8: Add `policyVersion` to the projection (`ArtifactCanvasProjection`),
+- [x] Task 1.8: Add `policyVersion` to the projection (`ArtifactCanvasProjection`),
       to the `show_in_canvas` accepted result, to the
       `ArtifactCanvasNavigateIntent`, and to the
       `artifact_canvas_show_intent` Activity record metadata. Implement the
@@ -132,7 +132,7 @@ process-supervision and security review (Phase 4).
       `ArtifactCanvasNavigateIntent` from before the reload that still
       reaches the renderer will be reconciled when the renderer
       fetches the projection.
-- [ ] Task 1.8b: Add route-registry round-trip tests:
+- [x] Task 1.8b: Add route-registry round-trip tests:
       `parse(canvasUrl(surface, artifactId, 'auto'))` returns
       `{ kind: 'canvas', surface, artifactId, presentationRequested: 'auto' }`
       without a `/view/auto` segment; each explicit presentation returns
@@ -141,8 +141,8 @@ process-supervision and security review (Phase 4).
       `ArtifactCanvasNavigateIntent.targetUrl` must parse back to the
       same `surface`, `artifactId`, and `presentationRequested` carried
       in the intent.
-- [ ] Task 1.9: Add canonicalization test vectors at
-      `tests/code-canvas-policy-version.test.tsx`: empty config, default
+- [x] Task 1.9: Add canonicalization test vectors at
+      `tests/artifact-canvas-policy-version.test.tsx`: empty config, default
       config, default config with reordered entries (must equal default
       hash), default config with a single entry's `ports` written as
       `[5173, 4321]` vs `[4321, 5173]` (must equal each other), and a
@@ -150,7 +150,7 @@ process-supervision and security review (Phase 4).
       must include literal expected canonical JSON strings and exact
       16-hex hashes, not only equality/difference assertions, so they
       pin the canonicalization across implementations.
-- [ ] Task 1.4: Add the surface-scoped canvas projection HTTP routes:
+- [x] Task 1.4: Add the surface-scoped canvas projection HTTP routes:
       `/api/canvas/:surfaceKind/:surfaceId/artifacts/:artifactId`
       and
       `/api/canvas/:surfaceKind/:surfaceId/artifacts/:artifactId/view/:presentation`,
@@ -349,7 +349,7 @@ this plan before Phase 4 approval.
 | `docs/tool-calls.md` | Modify | Keep tool-call registry aligned (short summary, link to SPEC-101) |
 | `tests/code-canvas-projection.test.tsx` | Create | Server-side projection tests (sandbox profile resolution, error codes, policyVersion correctness) |
 | `tests/code-canvas-tool.test.tsx` | Create | `show_in_canvas` / `clear_canvas` tool effect tests (Activity write + navigate-intent push; no metadata writes) |
-| `tests/code-canvas-policy-version.test.tsx` | Create | Canonicalization vectors with literal expected JSON + 16-hex hashes |
+| `tests/artifact-canvas-policy-version.test.tsx` | Create | Canonicalization vectors with literal expected JSON + 16-hex hashes |
 | `tests/canvas-pane.test.tsx` | Create | Renderer tests: child route mount/unmount on URL change; close button = `navigate()` only; collapse = local state; iframe attributes per profile; defense-in-depth scheme + same-origin-with-shell |
 
 ## Technical Decisions
@@ -635,6 +635,7 @@ this plan before Phase 4 approval.
 | 2026-05-09 | Added the shared Artifact Canvas resize divider with per-surface `localStorage` pane-width persistence, pointer dragging, and keyboard separator controls (`ArrowLeft` / `ArrowRight` / `Home` / `End`). Parent surface URLs no longer reserve an empty canvas column when the nested canvas route is absent. This completes Tasks 3.4 and 3.5. |
 | 2026-05-09 | Mounted the shared Artifact Canvas child route on Cats Work project, task, and work item detail surfaces through `withSharedViewerRoutes`. This completes Task 3.6 for route-level Work integration; artifact link affordances remain renderer-only navigation and do not require Work-side server delegates. |
 | 2026-05-09 | Mounted the shared Artifact Canvas child route on Cats Chat conversation routes and aligned the canvas route registry/docs with the actual product paths (`/chat/chats/:channelId`, `/work/work-items/:workItemId`). This completes Task 3.7. |
+| 2026-05-09 | Reconciled Phase 1 implementation status after the Artifact Canvas route registry, projection API, policy config, policyVersion snapshots, route round-trip tests, and canonicalization vectors landed. Added the missing empty-allowlist policyVersion vector and aligned SPEC-101 with the implemented canonical JSON shape. |
 
 ---
 

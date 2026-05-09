@@ -13,6 +13,10 @@ import {
   type ArtifactCanvasPolicyConfig,
 } from '../src/products/shared/artifactCanvas/iframePolicy.ts';
 
+const EMPTY_CANONICAL_JSON =
+  '{"algorithm":"artifact-canvas-policy-v1","catsShellOrigin":"http://127.0.0.1:5173","runtimePreviewOriginAllowlist":[],"scriptedPreviewProducerAllowlist":[]}';
+const EMPTY_POLICY_VERSION = '9fd0daecceb94e0c';
+
 const DEFAULT_CANONICAL_JSON =
   '{"algorithm":"artifact-canvas-policy-v1","catsShellOrigin":"http://127.0.0.1:5173","runtimePreviewOriginAllowlist":[{"hostname":"127.0.0.1","ports":"*","schemes":["http"]},{"hostname":"::1","ports":"*","schemes":["http"]},{"hostname":"localhost","ports":"*","schemes":["http"]}],"scriptedPreviewProducerAllowlist":[]}';
 const DEFAULT_POLICY_VERSION = '924ecad525730480';
@@ -24,6 +28,20 @@ const PORT_REORDERED_POLICY_VERSION = 'edb4acc5fe0498c7';
 const PRODUCER_CANONICAL_JSON =
   '{"algorithm":"artifact-canvas-policy-v1","catsShellOrigin":"http://127.0.0.1:5173","runtimePreviewOriginAllowlist":[{"hostname":"127.0.0.1","ports":"*","schemes":["http"]},{"hostname":"::1","ports":"*","schemes":["http"]},{"hostname":"localhost","ports":"*","schemes":["http"]}],"scriptedPreviewProducerAllowlist":[{"producerIdentity":"tool:cats_runtime_preview_bridge","producerKind":"tool"}]}';
 const PRODUCER_POLICY_VERSION = '99210a14a9fa3da3';
+
+test('Artifact Canvas policyVersion canonicalizes empty allowlists', () => {
+  assert.deepEqual(
+    buildArtifactCanvasPolicyVersion({
+      runtimePreviewOriginAllowlist: [],
+      scriptedPreviewProducerAllowlist: [],
+      catsShellOrigin: 'http://127.0.0.1:5173',
+    }),
+    {
+      canonicalJson: EMPTY_CANONICAL_JSON,
+      policyVersion: EMPTY_POLICY_VERSION,
+    },
+  );
+});
 
 test('Artifact Canvas policyVersion canonicalizes the default config', () => {
   assert.deepEqual(buildArtifactCanvasPolicyVersion(DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG), {

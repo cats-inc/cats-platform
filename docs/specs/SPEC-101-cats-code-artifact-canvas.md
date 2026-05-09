@@ -1164,9 +1164,10 @@ produce a different hash. The algorithm:
    alphabetical order:
    ```
    {
+     "algorithm": "artifact-canvas-policy-v1",
      "catsShellOrigin": <normalized string>,
-     "originAllowlist": <sorted normalized array>,
-     "producerAllowlist": <sorted normalized array>
+     "runtimePreviewOriginAllowlist": <sorted normalized array>,
+     "scriptedPreviewProducerAllowlist": <sorted normalized array>
    }
    ```
 7. **Serialize via canonical JSON**: every object's keys are emitted in
@@ -1178,14 +1179,14 @@ produce a different hash. The algorithm:
 
 Implementation note: a small canonical-JSON helper (sorted-keys recursive
 serializer) is the only non-obvious piece. Test vectors shall be checked
-into `tests/code-canvas-policy-version.test.tsx` with literal expected
+into `tests/artifact-canvas-policy-version.test.tsx` with literal expected
 canonical JSON strings and 16-hex hashes, not only equality/difference
 assertions. Minimum baseline vectors:
 
 | Vector | Canonical JSON | Hash |
 |--------|----------------|------|
-| Empty allowlists, shell `http://127.0.0.1:5173` | `{"catsShellOrigin":"http://127.0.0.1:5173","originAllowlist":[],"producerAllowlist":[]}` | `24c20a6275ac4b18` |
-| Phase 1 default origin allowlist, empty producer allowlist, shell `http://127.0.0.1:5173` | `{"catsShellOrigin":"http://127.0.0.1:5173","originAllowlist":[{"hostname":"127.0.0.1","ports":"*","schemes":["http"]},{"hostname":"::1","ports":"*","schemes":["http"]},{"hostname":"localhost","ports":"*","schemes":["http"]}],"producerAllowlist":[]}` | `cf7a2fc9e81778ff` |
+| Empty allowlists, shell `http://127.0.0.1:5173` | `{"algorithm":"artifact-canvas-policy-v1","catsShellOrigin":"http://127.0.0.1:5173","runtimePreviewOriginAllowlist":[],"scriptedPreviewProducerAllowlist":[]}` | `9fd0daecceb94e0c` |
+| Phase 1 default origin allowlist, empty producer allowlist, shell `http://127.0.0.1:5173` | `{"algorithm":"artifact-canvas-policy-v1","catsShellOrigin":"http://127.0.0.1:5173","runtimePreviewOriginAllowlist":[{"hostname":"127.0.0.1","ports":"*","schemes":["http"]},{"hostname":"::1","ports":"*","schemes":["http"]},{"hostname":"localhost","ports":"*","schemes":["http"]}],"scriptedPreviewProducerAllowlist":[]}` | `924ecad525730480` |
 
 The test file shall also include reordered-entry and ports-permutation
 fixtures that assert the same literal hash as their canonical baseline,
