@@ -114,14 +114,62 @@ export function createCodeArtifactDetailPayload(
   return artifact ? buildCodeArtifactDetailProjection(core, artifact) : null;
 }
 
-function readArtifactListFiltersFromQuery(url: URL): CodeArtifactListFilters {
+const ALLOWED_ARTIFACT_KIND_FILTERS = new Set<string>([
+  'all',
+  'build',
+  'preview',
+  'document',
+  'report',
+  'attachment',
+  'transcript_export',
+  'dataset',
+]);
+
+const ALLOWED_ARTIFACT_STATUS_FILTERS = new Set<string>([
+  'draft',
+  'ready',
+  'published',
+  'archived',
+]);
+
+export interface InvalidArtifactListFilterError {
+  field: 'kind' | 'status';
+  value: string;
+  allowed: readonly string[];
+}
+
+export function readArtifactListFiltersFromQuery(
+  url: URL,
+):
+  | { ok: true; filters: CodeArtifactListFilters }
+  | { ok: false; error: InvalidArtifactListFilterError } {
   const filters: CodeArtifactListFilters = {};
   const kind = url.searchParams.get('kind')?.trim();
   if (kind) {
+    if (!ALLOWED_ARTIFACT_KIND_FILTERS.has(kind)) {
+      return {
+        ok: false,
+        error: {
+          field: 'kind',
+          value: kind,
+          allowed: [...ALLOWED_ARTIFACT_KIND_FILTERS],
+        },
+      };
+    }
     filters.kind = kind as CodeArtifactListFilters['kind'];
   }
   const status = url.searchParams.get('status')?.trim();
   if (status) {
+    if (!ALLOWED_ARTIFACT_STATUS_FILTERS.has(status)) {
+      return {
+        ok: false,
+        error: {
+          field: 'status',
+          value: status,
+          allowed: [...ALLOWED_ARTIFACT_STATUS_FILTERS],
+        },
+      };
+    }
     filters.status = status as CodeArtifactListFilters['status'];
   }
   const producerLabel = url.searchParams.get('producerLabel')?.trim();
@@ -144,7 +192,7 @@ function readArtifactListFiltersFromQuery(url: URL): CodeArtifactListFilters {
   if (excludeUndeclaredSourceEdits === 'true' || excludeUndeclaredSourceEdits === '1') {
     filters.excludeUndeclaredSourceEdits = true;
   }
-  return filters;
+  return { ok: true, filters };
 }
 
 export async function routeCodeApi(
@@ -258,13 +306,28 @@ export async function routeCodeApi(
       return true;
     }
 
-    const filters = readArtifactListFiltersFromQuery(context.url);
+    const parsed = readArtifactListFiltersFromQuery(context.url);
+    if (!parsed.ok) {
+      sendJson(context.response, 400, {
+        error: {
+          code: 'invalid_artifact_list_filter',
+          message: `Invalid value '${parsed.error.value}' for ${parsed.error.field}. `
+            + `Allowed: ${parsed.error.allowed.join(', ')}.`,
+          details: {
+            field: parsed.error.field,
+            value: parsed.error.value,
+            allowed: parsed.error.allowed,
+          },
+        },
+      });
+      return true;
+    }
     sendJson(
       context.response,
       200,
       createCodeArtifactListPayload(
         await context.dependencies.coreStore.readCore(),
-        filters,
+        parsed.filters,
       ),
     );
     return true;

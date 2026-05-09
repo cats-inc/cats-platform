@@ -8,6 +8,7 @@ import { upsertCoreArtifact } from '../src/core/model/planningRecords.ts';
 import {
   buildCodeArtifactListProjection,
 } from '../src/products/code/api/projection.ts';
+import { readArtifactListFiltersFromQuery } from '../src/products/code/api/index.ts';
 
 function createArtifactCore() {
   let core = createDefaultCoreState();
@@ -276,6 +277,41 @@ test('buildCodeArtifactListProjection treats Windows drive paths and UNC paths a
     'Windows backslash drive-letter paths must be filtered out as local source edits');
   assert.equal(ids.includes('artifact-unc'), false,
     'UNC paths must be filtered out as local source edits');
+});
+
+test('readArtifactListFiltersFromQuery accepts known kind / status values', () => {
+  const url = new URL('http://localhost/api/code/artifacts?kind=preview&status=ready'
+    + '&excludeUndeclaredSourceEdits=true&taskId=task-1');
+  const parsed = readArtifactListFiltersFromQuery(url);
+  assert.equal(parsed.ok, true);
+  if (parsed.ok) {
+    assert.equal(parsed.filters.kind, 'preview');
+    assert.equal(parsed.filters.status, 'ready');
+    assert.equal(parsed.filters.excludeUndeclaredSourceEdits, true);
+    assert.equal(parsed.filters.taskId, 'task-1');
+  }
+});
+
+test('readArtifactListFiltersFromQuery rejects unknown kind values', () => {
+  const url = new URL('http://localhost/api/code/artifacts?kind=mystery');
+  const parsed = readArtifactListFiltersFromQuery(url);
+  assert.equal(parsed.ok, false);
+  if (!parsed.ok) {
+    assert.equal(parsed.error.field, 'kind');
+    assert.equal(parsed.error.value, 'mystery');
+    assert.ok(parsed.error.allowed.includes('preview'));
+  }
+});
+
+test('readArtifactListFiltersFromQuery rejects unknown status values', () => {
+  const url = new URL('http://localhost/api/code/artifacts?status=expired');
+  const parsed = readArtifactListFiltersFromQuery(url);
+  assert.equal(parsed.ok, false);
+  if (!parsed.ok) {
+    assert.equal(parsed.error.field, 'status');
+    assert.equal(parsed.error.value, 'expired');
+    assert.deepEqual([...parsed.error.allowed].sort(), ['archived', 'draft', 'published', 'ready']);
+  }
 });
 
 test('buildCodeArtifactListProjection treats codeArtifactDeclaration without producerLabel as declared', () => {
