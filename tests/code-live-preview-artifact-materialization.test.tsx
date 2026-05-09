@@ -7,8 +7,11 @@ import { upsertCoreConversation } from '../src/core/model/structuralRecords.ts';
 import { upsertCoreTask } from '../src/core/model/taskControls.ts';
 import { buildArtifactCanvasProjection } from '../src/products/shared/artifactCanvas/projection.ts';
 import { DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG } from '../src/products/shared/artifactCanvas/iframePolicy.ts';
+import type { ArtifactCanvasNavigateIntent } from '../src/products/shared/artifactCanvas/contracts.ts';
+import { ArtifactCanvasRenderIntentHub } from '../src/products/shared/artifactCanvas/renderIntent.ts';
 import {
   CODE_LIVE_PREVIEW_PRODUCER_IDENTITY,
+  materializeLivePreviewArtifactAndShowInCanvas,
   materializeLivePreviewArtifact,
 } from '../src/products/code/livePreview/artifactMaterialization.ts';
 import type { LivePreviewLease } from '../src/products/code/livePreview/contracts.ts';
@@ -126,6 +129,76 @@ test('live-preview materialization skips non-ready leases and non-Code surfaces'
     { status: unsupported.status, reason: unsupported.status === 'skipped' ? unsupported.reason : null },
     { status: 'skipped', reason: 'unsupported_surface' },
   );
+});
+
+test('live-preview materialization can trigger the shared Artifact Canvas show intent path', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreConversation(core, {
+    id: 'conversation-live',
+    title: 'Live preview conversation',
+    kind: 'code_thread',
+    status: 'active',
+  }).core;
+  core = upsertCoreTask(core, {
+    id: 'task-live',
+    title: 'Live preview task',
+    status: 'in_progress',
+    conversationId: 'conversation-live',
+  }).core;
+
+  const hub = new ArtifactCanvasRenderIntentHub();
+  const deliveries: ArtifactCanvasNavigateIntent[] = [];
+  const unsubscribe = hub.subscribe({
+    surface: { kind: 'code_task', surfaceId: 'task-live' },
+    sessionId: 'session-owner',
+    send: (intent) => deliveries.push(intent),
+    now: new Date('2026-05-09T00:00:00.000Z'),
+  });
+  try {
+    const result = materializeLivePreviewArtifactAndShowInCanvas(
+      core,
+      createLease({
+        previewId: 'preview-show',
+        surface: { kind: 'code_task', surfaceId: 'task-live' },
+      }),
+      {
+        now: new Date('2026-05-09T00:00:02.000Z'),
+        intentIdFactory: () => 'intent-live-preview',
+        renderIntentHub: hub,
+        targetSessionId: 'session-owner',
+        policyConfig: {
+          ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+          scriptedPreviewProducerAllowlist: [
+            { producerKind: 'tool', producerIdentity: CODE_LIVE_PREVIEW_PRODUCER_IDENTITY },
+          ],
+        },
+      },
+    );
+
+    assert.equal(result.status, 'shown');
+    if (result.status !== 'shown') {
+      return;
+    }
+    assert.equal(result.delivery.delivered, true);
+    assert.equal(result.activity.kind, 'artifact_canvas_show_intent');
+    assert.equal(result.activity.artifactId, result.artifact.id);
+    assert.equal(result.intent.intentId, 'intent-live-preview');
+    assert.equal(result.intent.activityId, result.activity.id);
+    assert.equal(deliveries.length, 1);
+    assert.equal(deliveries[0]?.intentId, 'intent-live-preview');
+    assert.match(
+      result.intent.targetUrl,
+      new RegExp(`/code/tasks/task-live/canvas/${result.artifact.id}`, 'u'),
+    );
+    assert.equal(result.core.activities.at(-1)?.id, result.activity.id);
+    assert.equal(
+      ((result.activity.metadata.artifactCanvas as Record<string, unknown>)
+        .iframeSandboxProfile as { name?: string } | null)?.name,
+      'scripted-cross-origin',
+    );
+  } finally {
+    unsubscribe();
+  }
 });
 
 function createLease(overrides: Partial<LivePreviewLease> = {}): LivePreviewLease {

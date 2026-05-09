@@ -91,7 +91,7 @@ real process spawning is enabled.
 - [x] Task 4.3: Require supervisor-owned origin qualification before a preview
       URL can receive `scripted-cross-origin`; otherwise demote to `static`
       using SPEC-101 behavior.
-- [ ] Task 4.4: Trigger the existing `show_in_canvas` path after artifact
+- [x] Task 4.4: Trigger the existing `show_in_canvas` path after artifact
       materialization so Activity audit and render-intent behavior stays shared.
 - [ ] Task 4.5: Add integration tests covering ready preview artifact creation,
       non-lease loopback demotion, stale lease demotion, and same-surface lease
@@ -175,6 +175,7 @@ not bypass the existing viewer contract.
 | 2026-05-09 | Completed Phase 3 renderer affordances by mounting the live-preview panel on Code task and codespace surfaces, adding status/stop/retry/log controls, i18n strings, and renderer/API helper tests. Retry remains disabled until the start route is approved in a later phase. |
 | 2026-05-09 | Added the Artifact Canvas supervisor-owned preview-origin gate and wired projection/API dependencies so allowlisted loopback previews receive `scripted-cross-origin` only when a ready lease matches the artifact, source surface, and workspace scope. Missing, stale, or mismatched leases demote to `static`. |
 | 2026-05-09 | Added live-preview artifact materialization for ready Code task/codespace leases. The materializer writes deterministic `CoreArtifactRecord(kind = preview)` rows with `codeLivePreview` metadata and returns an updated lease carrying the artifact id; tests verify the artifact closes the Artifact Canvas lease gate. |
+| 2026-05-09 | Added a product-local materialize-and-show helper that reuses the shared Artifact Canvas activity and render-intent path after live-preview artifact creation. Tests verify the activity audit row, navigate intent, session-targeted delivery, and privileged iframe metadata are produced through the shared contract. |
 
 ---
 

@@ -3,10 +3,33 @@ import { createHash } from 'node:crypto';
 import { upsertCoreArtifact } from '../../../core/model/planningRecords.js';
 import type {
   CatsCoreState,
+  CoreActivityRecord,
   CoreArtifactRecord,
   CoreRecordMetadata,
 } from '../../../core/types.js';
-import type { CanvasSurfaceRef } from '../../shared/artifactCanvas/contracts.js';
+import {
+  appendArtifactCanvasIntentActivity,
+} from '../../shared/artifactCanvas/activity.js';
+import {
+  canvasSurfaceRouteRegistry,
+  composeArtifactCanvasNavigateIntent,
+  type ArtifactCanvasError,
+  type ArtifactCanvasNavigateIntent,
+  type ArtifactCanvasPresentationInput,
+  type CanvasSurfaceRef,
+} from '../../shared/artifactCanvas/contracts.js';
+import {
+  DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+  type ArtifactCanvasPolicyConfig,
+  type ArtifactCanvasSupervisorPreviewLeaseStore,
+} from '../../shared/artifactCanvas/iframePolicy.js';
+import { buildArtifactCanvasProjection } from '../../shared/artifactCanvas/projection.js';
+import {
+  type ArtifactCanvasRenderIntentDeliveryResult,
+  type ArtifactCanvasRenderIntentHub,
+  createArtifactCanvasIntentId,
+  getDefaultArtifactCanvasRenderIntentHub,
+} from '../../shared/artifactCanvas/renderIntent.js';
 import type { LivePreviewLease } from './contracts.js';
 
 export const CODE_LIVE_PREVIEW_ARTIFACT_METADATA_SCHEMA_VERSION = '1.0' as const;
@@ -38,6 +61,41 @@ export interface LivePreviewArtifactMaterializationOptions {
   title?: string | null;
   summary?: string | null;
   now?: Date;
+}
+
+export type LivePreviewArtifactCanvasShowResult =
+  | {
+      status: 'shown';
+      core: CatsCoreState;
+      artifact: CoreArtifactRecord;
+      activity: CoreActivityRecord;
+      delivery: ArtifactCanvasRenderIntentDeliveryResult;
+      intent: ArtifactCanvasNavigateIntent;
+      lease: LivePreviewLease;
+    }
+  | {
+      status: 'skipped';
+      reason: LivePreviewArtifactMaterializationSkippedReason;
+      core: CatsCoreState;
+      lease: LivePreviewLease;
+    }
+  | {
+      status: 'rejected';
+      reason: 'artifact_canvas_projection_error';
+      core: CatsCoreState;
+      error: ArtifactCanvasError;
+      lease: LivePreviewLease;
+    };
+
+export interface LivePreviewArtifactCanvasShowOptions
+  extends LivePreviewArtifactMaterializationOptions {
+  actorId?: string | null;
+  intentIdFactory?: () => string;
+  policyConfig?: ArtifactCanvasPolicyConfig;
+  presentationRequested?: ArtifactCanvasPresentationInput;
+  renderIntentHub?: ArtifactCanvasRenderIntentHub;
+  supervisorPreviewLeaseStore?: ArtifactCanvasSupervisorPreviewLeaseStore | null;
+  targetSessionId?: string | null;
 }
 
 interface ResolvedLivePreviewArtifactAnchors {
@@ -92,6 +150,95 @@ export function materializeLivePreviewArtifact(
       ...lease,
       artifactId: result.artifact.id,
     },
+  };
+}
+
+export function materializeLivePreviewArtifactAndShowInCanvas(
+  core: CatsCoreState,
+  lease: LivePreviewLease,
+  options: LivePreviewArtifactCanvasShowOptions = {},
+): LivePreviewArtifactCanvasShowResult {
+  const now = options.now ?? new Date();
+  const materialized = materializeLivePreviewArtifact(core, lease, {
+    title: options.title,
+    summary: options.summary,
+    now,
+  });
+  if (materialized.status === 'skipped') {
+    return materialized;
+  }
+
+  const presentationRequested = options.presentationRequested ?? 'auto';
+  const projection = buildArtifactCanvasProjection({
+    core: materialized.core,
+    surface: materialized.lease.surface,
+    artifactId: materialized.artifact.id,
+    presentationRequested,
+    policyConfig: options.policyConfig ?? DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+    supervisorPreviewLeaseStore: createMaterializedLeaseStore(
+      materialized.lease,
+      options.supervisorPreviewLeaseStore,
+    ),
+  });
+  if (projection.status === 'error') {
+    return {
+      status: 'rejected',
+      reason: 'artifact_canvas_projection_error',
+      core: materialized.core,
+      error: projection.error,
+      lease: materialized.lease,
+    };
+  }
+
+  const targetUrl = canvasSurfaceRouteRegistry.canvasUrl(
+    materialized.lease.surface,
+    materialized.artifact.id,
+    presentationRequested,
+  );
+  const activity = appendArtifactCanvasIntentActivity({
+    core: materialized.core,
+    kind: 'artifact_canvas_show_intent',
+    surface: materialized.lease.surface,
+    actorId: options.actorId ?? null,
+    artifactId: materialized.artifact.id,
+    targetUrl,
+    policyVersion: projection.projection.policyVersion,
+    presentationRequested,
+    presentationResolved: projection.projection.presentationResolved,
+    iframeSandboxProfile: projection.projection.iframeSandboxProfile,
+    message: 'Live preview opened in Artifact Canvas.',
+    metadata: {
+      codeLivePreview: {
+        previewId: materialized.lease.previewId,
+        artifactId: materialized.artifact.id,
+      },
+    },
+    now,
+  });
+  const intent = composeArtifactCanvasNavigateIntent({
+    intentId: options.intentIdFactory?.() ?? createArtifactCanvasIntentId(),
+    activityId: activity.activity.id,
+    surface: materialized.lease.surface,
+    artifactId: materialized.artifact.id,
+    presentationRequested,
+    policyVersion: projection.projection.policyVersion,
+    triggeredAt: now.toISOString(),
+  });
+  const hub = options.renderIntentHub ?? getDefaultArtifactCanvasRenderIntentHub();
+  const delivery = hub.publish({
+    intent,
+    targetSessionId: options.targetSessionId,
+    now,
+  });
+
+  return {
+    status: 'shown',
+    core: activity.core,
+    artifact: materialized.artifact,
+    activity: activity.activity,
+    delivery,
+    intent,
+    lease: materialized.lease,
   };
 }
 
@@ -164,6 +311,20 @@ function buildLivePreviewArtifactMetadata(input: {
         rootPath: input.lease.workspaceRef.rootPath,
       },
       sourceSurface: cloneCanvasSurface(input.lease.surface),
+    },
+  };
+}
+
+function createMaterializedLeaseStore(
+  lease: LivePreviewLease,
+  fallback?: ArtifactCanvasSupervisorPreviewLeaseStore | null,
+): ArtifactCanvasSupervisorPreviewLeaseStore {
+  return {
+    getLease(previewId: string) {
+      if (previewId === lease.previewId) {
+        return lease;
+      }
+      return fallback?.getLease(previewId) ?? null;
     },
   };
 }
