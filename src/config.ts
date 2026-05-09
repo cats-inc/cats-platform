@@ -23,6 +23,12 @@ import {
   type ArtifactCanvasRuntimePreviewOriginAllowlistEntry,
   type ArtifactCanvasScriptedPreviewProducerAllowlistEntry,
 } from './products/shared/artifactCanvas/iframePolicy.js';
+import {
+  DEFAULT_LIVE_PREVIEW_CONFIG,
+  type LivePreviewCommandProfile,
+  type LivePreviewConfig,
+} from './products/code/livePreview/contracts.js';
+import { validateLivePreviewConfig } from './products/code/livePreview/profileValidation.js';
 
 export interface AppConfig {
   host: string;
@@ -58,6 +64,7 @@ export interface AppConfig {
   maxAudienceParticipants: number;
   maxParallelChats: number;
   artifactCanvas: ArtifactCanvasPolicyConfig;
+  codeLivePreview: LivePreviewConfig;
 }
 
 const DEFAULT_HOST = '127.0.0.1';
@@ -150,6 +157,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   );
   const artifactCanvas = loadArtifactCanvasPolicyConfig(env);
   validateArtifactCanvasPolicyConfig(artifactCanvas);
+  const codeLivePreview = loadCodeLivePreviewConfig(env);
+  validateLivePreviewConfig(codeLivePreview);
   return {
     host: readFirstDefined(env, ['CATS_HOST', 'CATS_INC_HOST']) || DEFAULT_HOST,
     port: parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), DEFAULT_PORT),
@@ -217,6 +226,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     ),
     maxParallelChats: parsePositiveInt(env.CATS_MAX_PARALLEL_CHATS, DEFAULT_MAX_PARALLEL_CHATS),
     artifactCanvas,
+    codeLivePreview,
   };
 }
 
@@ -315,6 +325,87 @@ function readArtifactCanvasPorts(
     throw new Error('Artifact Canvas allowlist entry ports must be "*" or an integer array.');
   }
   return value;
+}
+
+function loadCodeLivePreviewConfig(env: NodeJS.ProcessEnv): LivePreviewConfig {
+  return {
+    enabled: parseBoolean(env.CATS_CODE_LIVE_PREVIEW_ENABLED, DEFAULT_LIVE_PREVIEW_CONFIG.enabled),
+    portRange: parseLivePreviewPortRange(
+      env.CATS_CODE_LIVE_PREVIEW_PORT_RANGE,
+      DEFAULT_LIVE_PREVIEW_CONFIG.portRange,
+    ),
+    maxConcurrentGlobal: parseStrictPositiveInt(
+      env.CATS_CODE_LIVE_PREVIEW_MAX_GLOBAL,
+      DEFAULT_LIVE_PREVIEW_CONFIG.maxConcurrentGlobal,
+      'CATS_CODE_LIVE_PREVIEW_MAX_GLOBAL',
+    ),
+    maxConcurrentPerWorkspace: parseStrictPositiveInt(
+      env.CATS_CODE_LIVE_PREVIEW_MAX_PER_WORKSPACE,
+      DEFAULT_LIVE_PREVIEW_CONFIG.maxConcurrentPerWorkspace,
+      'CATS_CODE_LIVE_PREVIEW_MAX_PER_WORKSPACE',
+    ),
+    defaultLeaseTtlMs: parseStrictPositiveInt(
+      env.CATS_CODE_LIVE_PREVIEW_LEASE_TTL_MS,
+      DEFAULT_LIVE_PREVIEW_CONFIG.defaultLeaseTtlMs,
+      'CATS_CODE_LIVE_PREVIEW_LEASE_TTL_MS',
+    ),
+    logMaxBytes: parseStrictPositiveInt(
+      env.CATS_CODE_LIVE_PREVIEW_LOG_MAX_BYTES,
+      DEFAULT_LIVE_PREVIEW_CONFIG.logMaxBytes,
+      'CATS_CODE_LIVE_PREVIEW_LOG_MAX_BYTES',
+    ),
+    allowIpv6Loopback: parseBoolean(
+      env.CATS_CODE_LIVE_PREVIEW_ALLOW_IPV6_LOOPBACK,
+      DEFAULT_LIVE_PREVIEW_CONFIG.allowIpv6Loopback,
+    ),
+    commandProfiles:
+      parseLivePreviewCommandProfiles(env.CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES)
+      ?? [...DEFAULT_LIVE_PREVIEW_CONFIG.commandProfiles],
+  };
+}
+
+function parseLivePreviewPortRange(
+  raw: string | undefined,
+  fallback: LivePreviewConfig['portRange'],
+): LivePreviewConfig['portRange'] {
+  const trimmed = raw?.trim();
+  if (!trimmed) {
+    return { ...fallback };
+  }
+  const match = /^(\d+)-(\d+)$/u.exec(trimmed);
+  if (!match) {
+    throw new Error('CATS_CODE_LIVE_PREVIEW_PORT_RANGE must use start-end syntax.');
+  }
+  return {
+    start: Number.parseInt(match[1]!, 10),
+    end: Number.parseInt(match[2]!, 10),
+  };
+}
+
+function parseStrictPositiveInt(raw: string | undefined, fallback: number, name: string): number {
+  const trimmed = raw?.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(trimmed, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${name} must be a positive integer.`);
+  }
+  return parsed;
+}
+
+function parseLivePreviewCommandProfiles(
+  raw: string | undefined,
+): LivePreviewCommandProfile[] | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = JSON.parse(trimmed) as unknown;
+  if (!Array.isArray(parsed) || !parsed.every((entry) => isRecord(entry))) {
+    throw new Error('CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES must be a JSON array of objects.');
+  }
+  return parsed as unknown as LivePreviewCommandProfile[];
 }
 
 function isRecord(input: unknown): input is Record<string, unknown> {

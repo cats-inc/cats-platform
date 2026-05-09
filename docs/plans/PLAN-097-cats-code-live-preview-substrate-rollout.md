@@ -31,19 +31,19 @@ Artifact Canvas.
 
 ### Phase 1: Contracts and Configuration
 
-- [ ] Task 1.1: Add `LivePreviewCommandProfile`, `LivePreviewLease`,
+- [x] Task 1.1: Add `LivePreviewCommandProfile`, `LivePreviewLease`,
       `LivePreviewStartRequest`, `LivePreviewStartResult`, and
       `LivePreviewStopResult` types under `src/products/code/livePreview/`.
-- [ ] Task 1.2: Add command-profile validation that rejects raw shell strings,
+- [x] Task 1.2: Add command-profile validation that rejects raw shell strings,
       unknown placeholders, non-loopback host settings, missing readiness
       probes, and invalid stop policies.
-- [ ] Task 1.3: Add disabled-by-default config for live previews:
+- [x] Task 1.3: Add disabled-by-default config for live previews:
       enabled flag, port range, global concurrency limit, per-workspace
       concurrency limit, default lease TTL, log size limit, and IPv6 loopback
       opt-in.
-- [ ] Task 1.4: Update `docs/services.md` and check the project-bootstrap port
+- [x] Task 1.4: Update `docs/services.md` and check the project-bootstrap port
       registry before reserving the default preview range.
-- [ ] Task 1.5: Add tests proving assistant/tool input cannot bypass profiles
+- [x] Task 1.5: Add tests proving assistant/tool input cannot bypass profiles
       with a free-form command.
 
 **Deliverables**: Typed substrate and boot-time validation with no process
@@ -169,6 +169,7 @@ not bypass the existing viewer contract.
 | Date | Update |
 |------|--------|
 | 2026-05-09 | Plan created as PLAN-090 Phase 4 continuation. Process spawning remains disabled until the Phase 5 approval gate. |
+| 2026-05-09 | Completed Phase 1 contracts/config/validation: added live-preview profile and lease types, disabled-by-default config, strict profile/start-request validation, service registry port-range documentation, and tests proving raw command fields cannot bypass profiles. Checked the project-bootstrap registry for `47100-47199` conflicts before documenting the candidate range. No supervisor or process spawning is enabled. |
 
 ---
 

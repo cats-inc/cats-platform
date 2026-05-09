@@ -13,6 +13,12 @@
 The host repo/package target is now `cats-platform`, but the running local app
 service names remain `cats` for product-facing and operational continuity.
 
+## Planned Dynamic Port Ranges
+
+| Service Name | Port Range | Protocol | Status | Description |
+|--------------|------------|----------|--------|-------------|
+| `Cats Code` live previews | 47100-47199 | TCP | Planned / disabled by default | Reserved candidate range for supervised loopback-only preview child processes under SPEC-108 / PLAN-097. No process spawning is enabled until the live-preview supervisor approval gate lands. |
+
 ## Planned Shared Service Boundaries
 
 - `Cats Core v1` is a required shared contract for `Cats Chat` and
@@ -42,6 +48,14 @@ Port numbers should be configurable via environment variables so developers can 
 | `CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS` | `60000` | Runtime client | Timeout budget for runtime session creation and provider/workspace startup |
 | `CATS_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS` | `max(2000, budget / 6)` | Runtime client | Threshold above which a successful session create still emits a `slow_session_create` diagnostic record (see ADR-089) |
 | `CATS_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS` | `120000` | Runtime client | Idle timeout for NDJSON message streams; reset whenever the runtime emits another chunk. Depends on the runtime keepalive contract documented in ADR-089 |
+| `CATS_CODE_LIVE_PREVIEW_ENABLED` | `false` | Cats Code live preview | Enables the supervised live-preview substrate after PLAN-097 approval; disabled by default |
+| `CATS_CODE_LIVE_PREVIEW_PORT_RANGE` | `47100-47199` | Cats Code live preview | Candidate loopback port range for supervised preview child processes |
+| `CATS_CODE_LIVE_PREVIEW_MAX_GLOBAL` | `3` | Cats Code live preview | Global concurrent live-preview lease limit |
+| `CATS_CODE_LIVE_PREVIEW_MAX_PER_WORKSPACE` | `1` | Cats Code live preview | Per-workspace concurrent live-preview lease limit |
+| `CATS_CODE_LIVE_PREVIEW_LEASE_TTL_MS` | `1800000` | Cats Code live preview | Default live-preview lease TTL |
+| `CATS_CODE_LIVE_PREVIEW_LOG_MAX_BYTES` | `1048576` | Cats Code live preview | Bounded stdout/stderr capture size per preview |
+| `CATS_CODE_LIVE_PREVIEW_ALLOW_IPV6_LOOPBACK` | `false` | Cats Code live preview | Allows `[::1]` leases when explicitly enabled |
+| `CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES` | `[]` | Cats Code live preview | JSON array of declarative command profiles; assistants cannot provide raw shell commands |
 
 ## Cross-Project Port Coordination
 
@@ -60,4 +74,4 @@ This project was created from **project-bootstrap**, which maintains a central p
 
 ---
 
-*Last updated: 2026-03-16*
+*Last updated: 2026-05-09*
