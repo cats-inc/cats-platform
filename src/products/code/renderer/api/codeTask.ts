@@ -236,6 +236,7 @@ export interface CodeArtifactListFiltersSummary {
   workspacePath?: string;
   taskId?: string;
   runId?: string;
+  excludeUndeclaredSourceEdits?: boolean;
 }
 
 export interface CodeArtifactListResponse {
@@ -529,6 +530,9 @@ export async function fetchCodeArtifacts(
   if (filters.workspacePath) params.set('workspacePath', filters.workspacePath);
   if (filters.taskId) params.set('taskId', filters.taskId);
   if (filters.runId) params.set('runId', filters.runId);
+  if (filters.excludeUndeclaredSourceEdits) {
+    params.set('excludeUndeclaredSourceEdits', 'true');
+  }
   const query = params.toString();
   const url = query ? `${CODE_API_ARTIFACTS_PATH}?${query}` : CODE_API_ARTIFACTS_PATH;
   return fetchJson<CodeArtifactListResponse>(url, errorMessage);

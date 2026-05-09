@@ -182,3 +182,56 @@ test('buildCodeArtifactListProjection accepts legacy string filter for backward 
   assert.deepEqual(projection.artifacts.map((entry) => entry.id), ['artifact-preview-ready']);
   assert.equal(projection.filter, 'preview');
 });
+
+test('buildCodeArtifactListProjection hides undeclared local-path artifacts when excludeUndeclaredSourceEdits is set', () => {
+  let core = createArtifactCore();
+  core = upsertCoreArtifact(core, {
+    id: 'artifact-source-edit',
+    title: 'Edited file',
+    kind: 'document',
+    status: 'ready',
+    conversationId: 'conversation-1',
+    taskId: 'task-1',
+    path: 'src/products/code/foo.ts',
+  }).core;
+  core = upsertCoreArtifact(core, {
+    id: 'artifact-declared-patch',
+    title: 'Declared patch bundle',
+    kind: 'patch',
+    status: 'ready',
+    conversationId: 'conversation-1',
+    taskId: 'task-1',
+    path: 'src/products/code/foo.patch',
+    metadata: {
+      codeArtifactDeclaration: {
+        producerLabel: 'patch_bundle',
+        disposition: 'record',
+      },
+    },
+  }).core;
+  core = upsertCoreArtifact(core, {
+    id: 'artifact-undeclared-url',
+    title: 'Externally-referenced URL artifact',
+    kind: 'document',
+    status: 'ready',
+    conversationId: 'conversation-1',
+    taskId: 'task-1',
+    path: 'https://example.com/page',
+  }).core;
+
+  const filtered = buildCodeArtifactListProjection(core, {
+    excludeUndeclaredSourceEdits: true,
+  });
+  const ids = filtered.artifacts.map((entry) => entry.id).sort();
+  assert.deepEqual(
+    ids,
+    ['artifact-declared-patch', 'artifact-undeclared-url'],
+    'undeclared local-path artifact should be filtered out, but URL paths and declared artifacts kept',
+  );
+
+  const unfiltered = buildCodeArtifactListProjection(core, {});
+  assert.ok(
+    unfiltered.artifacts.some((entry) => entry.id === 'artifact-source-edit'),
+    'undeclared source edit should still appear when filter is off',
+  );
+});

@@ -140,6 +140,10 @@ function readArtifactListFiltersFromQuery(url: URL): CodeArtifactListFilters {
   if (runId) {
     filters.runId = runId;
   }
+  const excludeUndeclaredSourceEdits = url.searchParams.get('excludeUndeclaredSourceEdits');
+  if (excludeUndeclaredSourceEdits === 'true' || excludeUndeclaredSourceEdits === '1') {
+    filters.excludeUndeclaredSourceEdits = true;
+  }
   return filters;
 }
 

@@ -251,6 +251,13 @@ export interface CodeArtifactListFilters {
   workspacePath?: string;
   taskId?: string;
   runId?: string;
+  /**
+   * When true, artifacts without a `codeArtifactDeclaration` whose path
+   * looks like a workspace-local file edit are hidden. Used by the Artifacts
+   * sidebar so raw source edits do not appear unless they have been declared
+   * as a patch/report/summary artifact (PLAN-081 Task 4.4).
+   */
+  excludeUndeclaredSourceEdits?: boolean;
 }
 
 export type CodeArtifactListLegacyFilter = 'all' | 'build' | 'preview';
@@ -1058,6 +1065,24 @@ function resolveLegacyKindFilter(
   return kind === 'build' || kind === 'preview' ? kind : 'all';
 }
 
+function isLocalFilePath(path: string): boolean {
+  const trimmed = path.trim();
+  if (!trimmed) {
+    return false;
+  }
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) {
+    return false;
+  }
+  return true;
+}
+
+function isUndeclaredSourceEdit(artifact: CoreArtifactRecord): boolean {
+  if (readArtifactDeclarationProducerLabel(artifact) !== null) {
+    return false;
+  }
+  return artifact.path !== null && isLocalFilePath(artifact.path);
+}
+
 function applyExtendedArtifactFilters(
   core: CatsCoreState,
   artifacts: CoreArtifactRecord[],
@@ -1091,6 +1116,9 @@ function applyExtendedArtifactFilters(
       if (!path || !workspacePathMatches(path, filters.workspacePath)) {
         return false;
       }
+    }
+    if (filters.excludeUndeclaredSourceEdits && isUndeclaredSourceEdit(artifact)) {
+      return false;
     }
     return true;
   });
