@@ -156,6 +156,7 @@ conversation records.
 |------|--------|
 | 2026-04-14 | Plan created |
 | 2026-04-15 | First migration-wave chat slices now persist `transportBindingId`, `containerId`, and `conversationId` through canonical writes and expose `containerId` in delivery intent, recovery/control-plane/operator read models, and task-view filters |
+| 2026-05-09 | Phase 1 type / record-family freeze recorded as already landed in `src/core/types.ts` (canonical IDs `agentId`/`participantId`/`containerId`/`conversationId`/`turnId`/`laneId`/`sessionId`/`transportBindingId`/`managedWorkId`/`missionId`/`runId` plus `AgentRecord`/`ParticipantRecord`/`ContainerRecord`/`ConversationRecord`/`TurnRecord`/`LaneRecord`/`SegmentRecord`/`SessionRecord`/`TransportBindingRecord`/`ManagedWorkRecord`/`MissionRecord`/`RunRecord` aliases). Durable-vs-ephemeral identity rules are documented inline (`laneId` durable, `sessionId` ephemeral). Phase 4 first slice landed: `src/core/myCatsProjection.ts` introduces `MyCatsProjection` with per-agent `chat` / `work` / `code` lens metrics derived from existing canonical records (conversations, work items, missions, tasks, runs, artifacts), backed by `tests/my-cats-projection.test.ts`. |
 
 ---
 
