@@ -32,7 +32,7 @@ unsupported placeholders, or shell metacharacters. Validation
 
 | Profile id | Status | Working dir | Executable + args | Stop policy | Notes |
 |------------|--------|-------------|-------------------|-------------|-------|
-| `vite` | Reviewed; disabled by default | `artifactDirectory` | `npx vite --host 127.0.0.1 --port {port} --strictPort` | `5s` graceful, kill process tree | Bound to leased loopback port; readiness probes `/` for `200` within `30s` |
+| `vite` | Reviewed; disabled by default | `artifactDirectory` | `node node_modules/vite/bin/vite.js --host 127.0.0.1 --port {port} --strictPort` | `5s` graceful, kill process tree | Bound to leased loopback port; readiness probes `/` for `200` within `30s`. Operators must install `vite` into the artifact directory's `node_modules` (or supply an alternative reviewed profile). |
 
 The `vite` profile lives as `VITE_LIVE_PREVIEW_PROFILE` and is also exposed
 as `BUILTIN_LIVE_PREVIEW_PROFILES`. Operators must explicitly merge it
@@ -40,6 +40,15 @@ into `commandProfiles` (e.g., via
 `CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES=[{...}]` or by code-level
 config composition) and set `enabled: true` on the profile entry — the
 source ships with `enabled: false` so a bare merge stays dormant.
+
+**Why `node` instead of `npx`:** the supervisor spawns with `shell: false`
+to keep agent inputs from reaching a shell. On Windows, `npx` resolves
+to a `.cmd` shim that requires `shell: true` to launch; using `node`
+directly with the installed `vite/bin/vite.js` script keeps the spawn
+shell-free on every platform. Operators must therefore install `vite`
+into the artifact directory's `node_modules` (`cd <artifactDir> && npm
+install vite`) before starting a preview, or define an equivalent
+shell-free profile pointing at their preferred dev server entry.
 
 ## Port allocation
 

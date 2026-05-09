@@ -180,14 +180,21 @@ export const DEFAULT_LIVE_PREVIEW_CONFIG: LivePreviewConfig = {
  * the real process adapter must be wired in (PLAN-097 Task 5.3). Even when
  * registered, `enabled: false` here keeps the profile dormant until an
  * operator explicitly turns it on.
+ *
+ * The executable is `node` rather than `npx` so the profile is shell-free on
+ * Windows. `npx` resolves to a `.cmd` shim that needs `shell: true` to launch,
+ * which the supervisor refuses for security. The args invoke Vite's CLI
+ * directly via its installed JS entry; the artifact directory must therefore
+ * have `vite` installed in `node_modules` (operator responsibility, captured
+ * in the operator guide).
  */
 export const VITE_LIVE_PREVIEW_PROFILE: LivePreviewCommandProfile = {
   id: 'vite',
   label: 'Vite (artifact directory)',
   enabled: false,
-  executable: 'npx',
+  executable: 'node',
   args: [
-    'vite',
+    'node_modules/vite/bin/vite.js',
     '--host',
     '127.0.0.1',
     '--port',
