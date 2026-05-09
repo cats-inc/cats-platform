@@ -1,3 +1,4 @@
+import { isActiveMission } from './missionStatus.js';
 import type {
   AgentId,
   CatsCoreState,
@@ -10,7 +11,6 @@ import type {
   CoreTaskRecord,
   CoreWorkItemRecord,
   MissionRecord,
-  MissionRecordStatus,
 } from './types.js';
 
 export interface MyCatsAgentChatMetrics {
@@ -62,12 +62,6 @@ export interface MyCatsProjectionQuery {
   hasCodeRun?: boolean;
   limit?: number;
 }
-
-const ACTIVE_MISSION_STATUSES: ReadonlySet<MissionRecordStatus> = new Set([
-  'planned',
-  'queued',
-  'running',
-]);
 
 const ACTOR_KINDS: readonly CoreActorKind[] = [
   'owner',
@@ -171,7 +165,7 @@ function buildAgentWorkMetrics(
       continue;
     }
     totalMissionCount += 1;
-    if (ACTIVE_MISSION_STATUSES.has(mission.status)) {
+    if (isActiveMission(mission)) {
       activeMissionCount += 1;
     }
     lastMissionUpdatedAt = maxIso(lastMissionUpdatedAt, mission.updatedAt);
