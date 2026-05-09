@@ -369,6 +369,13 @@ export async function routeRequest(
       supervisorPreviewLeaseStore: dependencies.code.livePreviewStore,
     },
   };
+  const entitySubscriptionContext = {
+    ...context,
+    dependencies: {
+      ...chatContext.dependencies,
+      coreStore: dependencies.shared.coreStore,
+    },
+  };
   const appPackageContext = {
     ...context,
     dependencies: {
@@ -448,7 +455,7 @@ export async function routeRequest(
     return;
   }
 
-  if (await routeEntitySubscriptionApi(chatContext)) {
+  if (await routeEntitySubscriptionApi(entitySubscriptionContext)) {
     return;
   }
 

@@ -1,6 +1,6 @@
 import type { ServerResponse } from 'node:http';
 
-export type EntitySubscriptionKind = 'channel';
+export type EntitySubscriptionKind = 'channel' | 'artifact';
 
 export interface EntitySubscriptionSnapshotEvent<TState = unknown> {
   kind: EntitySubscriptionKind;
