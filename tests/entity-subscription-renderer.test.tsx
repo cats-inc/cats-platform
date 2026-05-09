@@ -18,6 +18,7 @@ import { createDefaultRoomRoutingState } from '../src/core/roomRoutingState.js';
 class FakeEventSource {
   listeners = new Map<string, Array<(event: MessageEvent) => void>>();
   closed = false;
+  onerror: (() => void) | null = null;
 
   constructor(readonly url: string) {}
 
@@ -381,6 +382,39 @@ test('entity subscription hub coalesces same entity subscribers', () => {
   assert.equal(sources[0]?.closed, true);
 });
 
+test('entity subscription hub reconnects and delivers fresh snapshots after source errors', async () => {
+  const sources: FakeEventSource[] = [];
+  const hub = new EntitySubscriptionHub((url) => {
+    const source = new FakeEventSource(url);
+    sources.push(source);
+    return source as unknown as EventSource;
+  });
+  const snapshots: Array<EntitySubscriptionSnapshot<{ value: number }>> = [];
+  const unsubscribe = hub.subscribe<{ value: number }, never>({
+    kind: 'channel',
+    id: 'channel-1',
+    onSnapshot: (snapshot) => snapshots.push(snapshot),
+    onPatch: () => {},
+  });
+
+  assert.equal(sources.length, 1);
+  sources[0]?.onerror?.();
+  assert.equal(sources[0]?.closed, true);
+  await waitForCondition(() => sources.length === 2);
+  assert.equal(sources[1]?.url, '/api/subscribe?kind=channel&id=channel-1');
+
+  sources[1]?.emit('snapshot', {
+    kind: 'channel',
+    id: 'channel-1',
+    version: 1,
+    state: { value: 2 },
+  });
+
+  assert.deepEqual(snapshots.map((snapshot) => snapshot.state.value), [2]);
+  unsubscribe();
+  assert.equal(sources[1]?.closed, true);
+});
+
 test('entity subscription hub coalesces artifact subscribers independently', () => {
   const sources: FakeEventSource[] = [];
   const hub = new EntitySubscriptionHub((url) => {
@@ -454,3 +488,16 @@ test('artifact subscription dispatcher refreshes only the matching Artifact Canv
   assert.equal(shouldRefreshArtifactCanvasForPatch('artifact-1', patch), true);
   assert.equal(shouldRefreshArtifactCanvasForPatch('artifact-2', patch), false);
 });
+
+async function waitForCondition(
+  predicate: () => boolean,
+  timeoutMs = 1_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate()) {
+    if (Date.now() > deadline) {
+      throw new Error('Timed out waiting for condition.');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
