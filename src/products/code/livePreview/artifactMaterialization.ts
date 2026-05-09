@@ -408,7 +408,7 @@ function createMaterializedLeaseStore(
       if (fallbackLease && shouldPreferSupervisorLease(fallbackLease, lease, now)) {
         return fallbackLease;
       }
-      return previewId === lease.previewId ? lease : null;
+      return lease;
     },
   };
 }
@@ -437,12 +437,20 @@ function isSameLivePreviewAuthority(
   right: LivePreviewLease,
 ): boolean {
   return left.previewId === right.previewId
-    && left.origin === right.origin
+    && normalizeLivePreviewOrigin(left.origin) === normalizeLivePreviewOrigin(right.origin)
     && left.surface.kind === right.surface.kind
     && left.surface.surfaceId === right.surface.surfaceId
     && left.workspaceRef.id === right.workspaceRef.id
     && normalizePathToken(left.workspaceRef.rootPath)
       === normalizePathToken(right.workspaceRef.rootPath);
+}
+
+function normalizeLivePreviewOrigin(value: string): string {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return value;
+  }
 }
 
 function resolveLivePreviewArtifactScope(

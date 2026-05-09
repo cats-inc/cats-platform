@@ -369,6 +369,56 @@ test('live-preview canvas show keeps scripted iframe when supervisor lease is re
   }
 });
 
+test('live-preview codespace show keeps scripted iframe when supervisor lease is ready but not yet stamped with artifact id', () => {
+  const workspacePath = 'C:/repo/live-preview';
+  const codespaceSurface = {
+    kind: 'code_codespace',
+    surfaceId: createCodespaceId(workspacePath),
+  } as const;
+  const workspaceRef = {
+    kind: 'code_workspace',
+    id: 'workspace-live',
+    rootPath: workspacePath,
+  } as const;
+  const fallbackStore = new InMemoryLivePreviewLeaseStore();
+  fallbackStore.upsertLease(createLease({
+    previewId: 'preview-codespace-ready',
+    artifactId: null,
+    origin: 'http://127.0.0.1:47100/',
+    surface: codespaceSurface,
+    workspaceRef,
+  }));
+
+  const result = materializeLivePreviewArtifactAndShowInCanvas(
+    createDefaultCoreState(),
+    createLease({
+      previewId: 'preview-codespace-ready',
+      surface: codespaceSurface,
+      workspaceRef,
+    }),
+    {
+      now: new Date('2026-05-09T00:00:03.000Z'),
+      policyConfig: {
+        ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+        scriptedPreviewProducerAllowlist: [
+          { producerKind: 'tool', producerIdentity: CODE_LIVE_PREVIEW_PRODUCER_IDENTITY },
+        ],
+      },
+      renderIntentHub: new ArtifactCanvasRenderIntentHub(),
+      supervisorPreviewLeaseStore: fallbackStore,
+    },
+  );
+
+  assert.equal(result.status, 'shown');
+  if (result.status === 'shown') {
+    assert.equal(
+      ((result.activity.metadata.artifactCanvas as Record<string, unknown>)
+        .iframeSandboxProfile as { name?: string } | null)?.name,
+      'scripted-cross-origin',
+    );
+  }
+});
+
 test('live-preview canvas show leaves core and lease untouched when projection rejects', () => {
   let core = createDefaultCoreState();
   core = upsertCoreConversation(core, {
