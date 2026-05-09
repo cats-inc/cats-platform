@@ -20,10 +20,15 @@ PLAN-098 also landed `artifact` as the second entity kind:
 `/api/subscribe?kind=artifact&id=<artifact-id>` streams artifact snapshots and
 update/removal patches, and Artifact Canvas refreshes its mounted projection
 from that subscription. The browser acceptance fixture covers a mounted
-Artifact Canvas observing two subscription mutations. The post-polymorphism
-cleanup decision keeps `/api/channels/:id/stream` separate for liveIndicator
-because it carries ephemeral turn-progress and segment timeline state, while
-`/api/subscribe` carries authoritative entity snapshots and patches.
+Artifact Canvas observing two subscription mutations. The artifact route uses
+store-level core-change notifications when available; fixed-cadence polling is
+only a fallback for non-observable stores. Artifact Canvas remains a
+surface-scoped presentation projection: the entity subscription is authoritative
+for the `CoreArtifactRecord`, and matching subscription events invalidate the
+canvas projection endpoint. The post-polymorphism cleanup decision keeps
+`/api/channels/:id/stream` separate for liveIndicator because it carries
+ephemeral turn-progress and segment timeline state, while `/api/subscribe`
+carries authoritative entity snapshots and patches.
 
 ## Context
 
@@ -180,7 +185,10 @@ other's concerns.
 - Scope: the authoritative state of a single entity the current view
   is rendering. For `kind='channel'`: `selectedChannel.messages`,
   `selectedChannel.roomRouting.workflow`, runtime metadata for that
-  channel, and any channel-local fields that the server projects.
+  channel, and any channel-local fields that the server projects. For
+  `kind='artifact'`: the subscribed `CoreArtifactRecord`; Artifact Canvas
+  uses that stream as the invalidation source for its surface-scoped canvas
+  projection.
 - Shape: snapshot + ordered patches (fine). Renderer applies
   patches without refetching.
 

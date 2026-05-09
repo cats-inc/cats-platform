@@ -13,7 +13,7 @@
 | **Status** | Partially Implemented |
 | **Owner** | Codex (channel slice); polymorphic follow-up tracked in PLAN-098 |
 | **Reviewer** | User |
-| **Implementation Note** | Channel slice implemented; polymorphic proof pending |
+| **Implementation Note** | Channel slice implemented; artifact proof landed; broader transcript parity remains open |
 | **Related ADR** | [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md) |
 | **Companion ADR** | [ADR-041](../decisions/041-push-transport-and-chat-invalidations-over-sse.md) (collection-level invalidation tier) |
 | **Channel rollout / closeout** | [PLAN-068](../plans/PLAN-068-per-entity-state-subscription-rollout.md) |
@@ -21,14 +21,16 @@
 
 ## Summary
 
-**Implementation status, 2026-05-09**: the first `channel` slice has
+**Implementation status, 2026-05-10**: the first `channel` slice has
 landed and PLAN-068 is now a closeout record. PLAN-098 has also landed
 `artifact` as the second entity kind for the polymorphism proof, including
-mounted Artifact Canvas refresh over repeated subscription mutations. Remaining
-SPEC-level acceptance still includes broader channel transcript parity; the
-PLAN-098 post-polymorphism decision is complete: `/api/channels/:id/stream`
-stays as the specialized liveIndicator stream instead of folding into
-`/api/subscribe`.
+mounted Artifact Canvas refresh over repeated subscription mutations. The
+artifact route is event-driven when the backing store exposes
+`CoreStore.subscribeCore`; fixed-cadence polling is only a fallback for
+non-observable stores. Remaining SPEC-level acceptance still includes broader
+channel transcript parity; the PLAN-098 post-polymorphism decision is complete:
+`/api/channels/:id/stream` stays as the specialized liveIndicator stream instead
+of folding into `/api/subscribe`.
 
 Today the renderer keeps entity state "fresh" through three loosely
 coupled mechanisms — cold fetch of `/api/app-shell`, cross-surface
@@ -194,11 +196,23 @@ state to the target surface.
    `CoreArtifactRecord`; its patch vocabulary covers artifact record
    updates and removal.
 
+10. **FR-10: Artifact Canvas projection boundary.** For
+    `kind='artifact'`, FR-2 and FR-3 apply to the entity state
+    represented by `CoreArtifactRecord`. Artifact Canvas rendering is a
+    surface-scoped presentation projection because sandbox policy, preview
+    lease authority, and canvas URL depend on the mounted surface. A matching
+    artifact snapshot or patch is therefore an authoritative invalidation of
+    `/api/canvas/.../artifacts/...`, not a full replacement for that projection
+    payload.
+
 ### Non-Functional Requirements
 
 - **Performance:**
   - snapshot event delivered within 500ms p95 under normal conditions
   - patch event end-to-end latency within 200ms p95 once projected
+  - implemented `artifact` routes meet this through core-change events when
+    backed by a store with `CoreStore.subscribeCore`; polling is a fallback for
+    non-observable stores and is not the production scalability model
   - subscription open call non-blocking; first paint must not wait
     for snapshot
 - **Scalability:**
@@ -210,6 +224,8 @@ state to the target surface.
     the landed `channel` slice deduplicates at the projection-rebuild layer
     rather than a per-write-path publisher registry. PLAN-098 Phase 1.1
     owns rewriting this wording.)*
+  - `artifact` subscriptions consume store-level core-change notifications
+    instead of per-subscriber polling when the store supports them
 - **Reliability:**
   - automatic reconnect with exponential backoff on transient network
     loss
@@ -337,8 +353,7 @@ interface ArtifactSubscriptionState {
 Patch event kinds:
 
 - `artifact.updated` — the subscribed `CoreArtifactRecord` changed.
-  Payload carries `artifactId`, the updated `artifact`, and the full
-  replacement subscription `state`.
+  Payload carries `artifactId` and the updated `artifact`.
 - `artifact.removed` — the subscribed artifact disappeared from the
   authoritative core state. Payload carries `artifactId`; the stream
   then closes with a missing-artifact reason.
@@ -348,10 +363,13 @@ mounted artifact id and refreshes its surface-scoped canvas projection
 when a matching artifact snapshot or patch arrives. Canvas projection
 itself remains surface-scoped and is still fetched from the existing
 `/api/canvas/.../artifacts/...` projection API because presentation,
-policy, and lease decisions depend on the mounted canvas surface.
+policy, and lease decisions depend on the mounted canvas surface. The
+subscription is the state source for the `CoreArtifactRecord`; the canvas
+projection endpoint remains the presentation source for the mounted surface.
 The browser acceptance fixture covers a mounted Code task Artifact Canvas
 observing two artifact subscription patches and refreshing that projection
-without replacing the app shell.
+without replacing the app shell, and also covers the initial snapshot path so
+mounting does not double-fetch the same projection.
 Source-level merge regression covers ADR-041 collection refresh flowing sibling
 collection state while preserving the active subscribed channel.
 
@@ -480,15 +498,18 @@ Field names refer to the actual shapes of
 
 4. **Chat collection fields** (inside `chat: ChatShellState`).
    Copy from `next` unconditionally: `id`, `name`, `bossCatId`,
-   `cats`, `channels`, `globalOrchestrator`, `newChatDefaults`,
+   `cats`, `globalOrchestrator`, `newChatDefaults`,
    `capabilities`, `conversationBehavior`,
    `advancedDraftControls`, `folderBrowsePreferences`,
    `botBindings`, `newChatAssist`. These describe sibling
    channels, the whole-tenant roster, and product-level settings;
    they are not owned by any single channel subscription.
-   Per-channel unread counts and last-activity markers live
-   inside `ChatChannelSummary` entries on `chat.channels`, so
-   they ride along with the collection refresh.
+   For `channels`, start from `next.chat.channels` but preserve the
+   `ChatChannelSummary` entries whose ids are currently active subscribed
+   channel ids. This keeps the mounted `selectedChannel` and its sidebar
+   summary coherent while still allowing sibling channel unread counts,
+   titles, and last-activity markers to ride along with the collection
+   refresh.
 
 5. **Selection identity pair** (`chat.selectedChannelId` and
    `chat.selectedChannel`). These **must move together**. The

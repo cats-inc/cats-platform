@@ -10,7 +10,7 @@
 | Field | Value |
 |-------|-------|
 | **Status** | Implemented |
-| **Owner** | TBD (Conductor on accept) |
+| **Owner** | Codex |
 | **Reviewer** | User |
 
 ## Related Spec / Dependencies
@@ -52,6 +52,9 @@ proof and the cleanup decisions that should happen after it.
   artifact id, and targeted tests cover snapshot, repeated update patches,
   removal/close behavior, rejection cases, hub coalescing, dispatcher matching,
   and mounted Artifact Canvas refresh.
+- Artifact subscription is event-driven for production stores that expose
+  `CoreStore.subscribeCore`; the 500ms poll remains only as a fallback for
+  stores without core-change notifications.
 - Browser-level Artifact Canvas acceptance now proves a mounted surface observes
   two artifact subscription mutations. ADR-041 collection-refetch coexistence is
   covered by source-level merge regression.
@@ -156,6 +159,8 @@ not merely a channel-specific workaround.
 | File | Action | Description |
 |------|--------|-------------|
 | `docs/specs/SPEC-076-per-entity-state-subscription-protocol.md` | Modify | Align protocol notes with the landed channel implementation and second-kind contract. |
+| `src/core/store.ts` | Modified | Adds optional core-change subscription support to the shared core store contract. |
+| `src/products/chat/state/store.ts` | Modified | Emits core-change notifications from chat-backed stores so artifact subscriptions do not poll in production. |
 | `src/platform/orchestration/entitySubscriptions/index.ts` | Modified | Extended server-side kind typing to `channel | artifact`. |
 | `src/platform/orchestration/entitySubscriptions/artifact.ts` | Created | Artifact snapshot and patch projector. |
 | `src/app/server/subscribeRoutes.ts` | Modified | Validates and routes `kind=artifact` without changing the public route shape. |
@@ -177,6 +182,14 @@ not merely a channel-specific workaround.
   patch application stay owned by the entity kind.
 - **Use `artifact` as the second kind.** Cats Code Artifact Canvas is active
   enough to make this proof useful instead of artificial.
+- **Treat Artifact Canvas as a projection consumer.** The `artifact`
+  subscription's authoritative entity state is the `CoreArtifactRecord`.
+  Artifact Canvas presentation remains surface-scoped and is still resolved
+  through `/api/canvas/.../artifacts/...`; matching artifact snapshots and
+  patches invalidate that projection rather than replacing it locally.
+- **Use event-driven artifact refresh when the store supports it.**
+  `CoreStore.subscribeCore` is the production path. The fixed-cadence poll is a
+  fallback for non-observable stores, not the intended scalability model.
 - **No compatibility shims for unreleased paths.** If cleanup retires an old
   stream or obsolete state path, remove the old path in the same slice.
 - **Keep liveIndicator separate.** `/api/channels/:id/stream` remains the
@@ -212,6 +225,7 @@ not merely a channel-specific workaround.
 
 | Date | Update |
 |------|--------|
+| 2026-05-10 | Follow-up tightened artifact subscription semantics: production stores now expose core-change notifications, Artifact Canvas skips the initial snapshot duplicate refresh, artifact patches no longer carry redundant `state`, and the plan records the projection-invalidation boundary explicitly. |
 | 2026-05-09 | PLAN-098 completed. Phase 6 decision keeps `/api/channels/:id/stream` separate for liveIndicator and leaves `/api/subscribe` focused on authoritative entity snapshots/patches. |
 | 2026-05-09 | Channel baseline cleanup completed: reconnect, stale snapshot, active merge, repeated patch, and ADR-041 coexistence regressions are covered; broader transcript parity remains a SPEC-076 acceptance item rather than a PLAN-098 blocker. |
 | 2026-05-09 | ADR-041 collection-refresh coexistence regression landed for active subscriptions. |
