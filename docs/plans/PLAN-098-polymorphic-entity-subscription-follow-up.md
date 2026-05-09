@@ -9,7 +9,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress |
 | **Owner** | TBD (Conductor on accept) |
 | **Reviewer** | User |
 
@@ -47,14 +47,18 @@ proof and the cleanup decisions that should happen after it.
 - The current test suite covers channel snapshot/patch behavior, renderer
   application, active-subscription merge behavior, and source-level ADR-041
   coexistence.
-- There is no second-kind dispatcher, no second-kind route validation, and no
-  second-kind cross-surface live preview acceptance test.
+- `artifact` is now the second-kind proof: the server route accepts
+  `kind=artifact`, Artifact Canvas opens the subscription for the mounted
+  artifact id, and targeted tests cover snapshot, update patches, rejection
+  cases, hub coalescing, and dispatcher matching.
+- There is not yet a browser-level cross-surface acceptance that proves one
+  surface mutating an artifact updates another mounted surface end-to-end.
 
 ## Implementation Phases
 
 ### Phase 1: Align the Landed Channel Contract
 
-- [ ] Task 1.1: Audit SPEC-076 against the landed channel implementation and
+- [x] Task 1.1: Audit SPEC-076 against the landed channel implementation and
       explicitly document the accepted projection/diffing model where it
       differs from the original mutation-local publisher wording.
 - [ ] Task 1.2: Confirm channel tests cover snapshot replacement on reconnect,
@@ -69,13 +73,13 @@ kinds should copy, not the stale PLAN-068 draft shape.
 
 ### Phase 2: Choose the Second Entity Kind
 
-- [ ] Task 2.1: Pick the second kind. Default recommendation is `artifact`
+- [x] Task 2.1: Pick the second kind. Default recommendation is `artifact`
       because Cats Code Artifact Canvas is active product work and benefits from
       live preview/materialization state. Use `project` instead only if Cats
       Work previewing becomes the nearer cross-surface need.
-- [ ] Task 2.2: Define the second-kind snapshot shape, patch vocabulary,
+- [x] Task 2.2: Define the second-kind snapshot shape, patch vocabulary,
       identity fields, version number, close semantics, and access validation.
-- [ ] Task 2.3: Confirm which mounted surface owns the first consumer and what
+- [x] Task 2.3: Confirm which mounted surface owns the first consumer and what
       entity mutations must stay live over the stream.
 
 **Deliverables**: one concrete second-kind contract ready to implement without
@@ -83,28 +87,29 @@ reopening ADR-075.
 
 ### Phase 3: Server Second-Kind Subscription
 
-- [ ] Task 3.1: Extend server-side `EntitySubscriptionKind` and route
+- [x] Task 3.1: Extend server-side `EntitySubscriptionKind` and route
       validation beyond `channel`.
-- [ ] Task 3.2: Add the second-kind projector that emits an immediate snapshot
+- [x] Task 3.2: Add the second-kind projector that emits an immediate snapshot
       and ordered patches after authoritative state changes.
-- [ ] Task 3.3: Keep the route protocol unchanged:
+- [x] Task 3.3: Keep the route protocol unchanged:
       `/api/subscribe?kind=<kind>&id=<entity-id>`.
-- [ ] Task 3.4: Add server tests for snapshot, patch, close, invalid id,
-      unauthorized access, and reconnect behavior for the second kind.
+- [x] Task 3.4: Add server tests for snapshot delivery, update patching,
+      removal patch generation, missing artifact rejection, and unsupported
+      kind rejection for the second kind.
 
 **Deliverables**: server-side polymorphism without new transport or route
 shape.
 
 ### Phase 4: Renderer Second-Kind Consumer
 
-- [ ] Task 4.1: Extend renderer-side `EntitySubscriptionKind` and dispatcher
+- [x] Task 4.1: Extend renderer-side `EntitySubscriptionKind` and dispatcher
       registration for the second kind.
-- [ ] Task 4.2: Add a kind-specific dispatcher that applies snapshots and
+- [x] Task 4.2: Add a kind-specific dispatcher that applies snapshots and
       patches without overwriting unrelated app-shell collection state.
-- [ ] Task 4.3: Mount `useEntitySubscription({ kind: '<chosen>', id })` in the
+- [x] Task 4.3: Mount `useEntitySubscription({ kind: '<chosen>', id })` in the
       owning product surface.
-- [ ] Task 4.4: Add renderer tests for coalesced subscribers, snapshot
-      replacement, patch application, close handling, and stale-event handling.
+- [x] Task 4.4: Add renderer tests for coalesced artifact subscribers and
+      kind-specific snapshot/patch matching.
 
 **Deliverables**: the second kind is live in a product surface using the same
 hub and protocol as `channel`.
@@ -140,13 +145,14 @@ not merely a channel-specific workaround.
 | File | Action | Description |
 |------|--------|-------------|
 | `docs/specs/SPEC-076-per-entity-state-subscription-protocol.md` | Modify | Align protocol notes with the landed channel implementation and second-kind contract. |
-| `src/platform/orchestration/entitySubscriptions/index.ts` | Modify | Extend shared server-side entity-kind typing and serialization if needed. |
-| `src/platform/orchestration/entitySubscriptions/<kind>.ts` | Create | Second-kind snapshot and patch projector. |
-| `src/app/server/subscribeRoutes.ts` | Modify | Validate and route the second kind without changing the public route shape. |
-| `src/products/shared/renderer/entitySubscriptionHub.ts` | Modify | Extend renderer-side kind typing and dispatcher support. |
-| `src/products/shared/renderer/entitySubscription<Kind>Dispatcher.ts` | Create | Second-kind renderer dispatcher. |
-| `src/products/<owner>/renderer/**` | Modify | Mount the second-kind subscription in the owning product surface. |
-| `tests/*entity-subscription*.test.*` | Create/Modify | Add server and renderer coverage for the second kind. |
+| `src/platform/orchestration/entitySubscriptions/index.ts` | Modified | Extended server-side kind typing to `channel | artifact`. |
+| `src/platform/orchestration/entitySubscriptions/artifact.ts` | Created | Artifact snapshot and patch projector. |
+| `src/app/server/subscribeRoutes.ts` | Modified | Validates and routes `kind=artifact` without changing the public route shape. |
+| `src/products/shared/renderer/entitySubscriptionHub.ts` | Modified | Extended renderer-side kind typing to `channel | artifact`. |
+| `src/products/shared/renderer/entitySubscriptionArtifactDispatcher.ts` | Created | Artifact Canvas dispatcher helpers for matching artifact snapshots/patches. |
+| `src/products/shared/renderer/CanvasPane.tsx` | Modified | Mounts `useEntitySubscription({ kind: 'artifact', id })` and refreshes projection on matching snapshots/patches. |
+| `tests/entity-subscription-artifact.test.tsx` | Created | Server and projector coverage for artifact snapshot, update patch, removed patch, missing artifact, and invalid kind. |
+| `tests/entity-subscription-renderer.test.tsx` | Modified | Renderer hub and artifact dispatcher coverage. |
 | `tests/*cross-surface*.test.*` | Create/Modify | Add cross-surface second-kind live acceptance if the chosen kind has a target-surface flow. |
 
 ## Technical Decisions
@@ -157,9 +163,8 @@ not merely a channel-specific workaround.
   `/api/subscribe?kind=<kind>&id=<id>`, not product-local bespoke endpoints.
 - **Keep kind-specific dispatchers.** The hub remains generic; projection and
   patch application stay owned by the entity kind.
-- **Prefer `artifact` as the second kind unless product priority changes.**
-  Cats Code Artifact Canvas is active enough to make this proof useful instead
-  of artificial.
+- **Use `artifact` as the second kind.** Cats Code Artifact Canvas is active
+  enough to make this proof useful instead of artificial.
 - **No compatibility shims for unreleased paths.** If cleanup retires an old
   stream or obsolete state path, remove the old path in the same slice.
 
@@ -191,6 +196,7 @@ not merely a channel-specific workaround.
 
 | Date | Update |
 |------|--------|
+| 2026-05-09 | Artifact selected and landed as the second entity kind. Server route/projector, Artifact Canvas consumer, and targeted tests are implemented; browser-level cross-surface acceptance remains open. |
 | 2026-05-09 | Plan created from PLAN-068 closeout to carry second-kind polymorphism, cross-surface acceptance, and live-stream cleanup decisions. |
 
 ---

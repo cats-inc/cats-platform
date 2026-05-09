@@ -15,10 +15,12 @@ Proposed
 As of 2026-05-09, the first `channel` slice has landed: the platform host
 serves `/api/subscribe?kind=channel&id=<channel-id>`, the renderer consumes it
 through the shared entity subscription hub, and ADR-041 collection refetches use
-subscription-aware merging instead of replacing the mounted channel state. The
-decision is not considered fully proven until a second entity kind lands; that
-follow-up is tracked in
-[PLAN-098](../plans/PLAN-098-polymorphic-entity-subscription-follow-up.md).
+subscription-aware merging instead of replacing the mounted channel state.
+PLAN-098 also landed `artifact` as the second entity kind:
+`/api/subscribe?kind=artifact&id=<artifact-id>` streams artifact snapshots and
+update/removal patches, and Artifact Canvas refreshes its mounted projection
+from that subscription. Remaining follow-up is browser-level cross-surface
+acceptance and the optional liveIndicator stream-consolidation decision.
 
 ## Context
 

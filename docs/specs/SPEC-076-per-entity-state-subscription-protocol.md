@@ -22,10 +22,11 @@
 ## Summary
 
 **Implementation status, 2026-05-09**: the first `channel` slice has
-landed and PLAN-068 is now a closeout record. The protocol remains
-pending for its stated polymorphism goal because `EntitySubscriptionKind`
-is still only `channel`; second-kind proof and cleanup are tracked in
-[PLAN-098](../plans/PLAN-098-polymorphic-entity-subscription-follow-up.md).
+landed and PLAN-068 is now a closeout record. PLAN-098 has also landed
+`artifact` as the second entity kind for the polymorphism proof. Remaining
+work is browser-level cross-surface acceptance and the post-polymorphism
+decision on whether the legacy channel liveIndicator stream should fold into
+the entity-subscription layer.
 
 Today the renderer keeps entity state "fresh" through three loosely
 coupled mechanisms — cold fetch of `/api/app-shell`, cross-surface
@@ -185,6 +186,12 @@ state to the target surface.
    its `snapshot` and `patch` event payloads; it must not require
    changes to the transport, hub, or general client machinery.
 
+9. **FR-9: Artifact second-kind proof.** `kind='artifact'` must use
+   the same `/api/subscribe?kind=<kind>&id=<id>` route and renderer
+   hub as `channel`. Its snapshot carries the subscribed
+   `CoreArtifactRecord`; its patch vocabulary covers artifact record
+   updates and removal.
+
 ### Non-Functional Requirements
 
 - **Performance:**
@@ -314,12 +321,37 @@ Exact payload shapes are enumerated in the implementation plan; the
 contract owner here is that every patch carries enough identity
 (`messageId`, `turnId`, `sessionId`) to be applied idempotently.
 
-### Future kinds (not implemented in first slice)
+### Event vocabulary for `kind = 'artifact'` (second slice)
+
+`artifact` is the first non-channel proof of the polymorphic protocol.
+The snapshot `state` payload is:
+
+```ts
+interface ArtifactSubscriptionState {
+  artifact: CoreArtifactRecord;
+}
+```
+
+Patch event kinds:
+
+- `artifact.updated` — the subscribed `CoreArtifactRecord` changed.
+  Payload carries `artifactId`, the updated `artifact`, and the full
+  replacement subscription `state`.
+- `artifact.removed` — the subscribed artifact disappeared from the
+  authoritative core state. Payload carries `artifactId`; the stream
+  then closes with a missing-artifact reason.
+
+The first consumer is Artifact Canvas. `CanvasPane` subscribes to the
+mounted artifact id and refreshes its surface-scoped canvas projection
+when a matching artifact snapshot or patch arrives. Canvas projection
+itself remains surface-scoped and is still fetched from the existing
+`/api/canvas/.../artifacts/...` projection API because presentation,
+policy, and lease decisions depend on the mounted canvas surface.
+
+### Future kinds (not implemented yet)
 
 - `project` — for Chat→Work project previews; patches like
   `task.added`, `task.updated`, `status.changed`
-- `artifact` — for Work→Code artifact previews; patches like
-  `artifact.file.changed`, `artifact.run.attached`
 - `run` — for Work→Code run detail; patches like `run.phase.updated`,
   `run.log.appended`
 - `cat`, `memory`, `deployment` — TBD per future roadmap
@@ -607,8 +639,8 @@ once the subscription layer has matured.
       on Code surface) shows identical transcripts end-to-end.
 - [ ] `mergeWorkspaceBackgroundRefreshPayload` remains scoped to
       runtime-health fields; no chat state leaks into the poll path.
-- [ ] Adding a second entity kind (tracked in PLAN-098) touches
-      server-side projector + schema + consuming view only; no
+- [x] Adding a second entity kind (`artifact`, tracked in PLAN-098)
+      touches server-side projector + schema + consuming view only; no
       subscription hub or transport change required.
 - [ ] ADR-041 collection-level invalidation continues to flow on
       **every** target surface (Chat / Code / Work) after cross-
