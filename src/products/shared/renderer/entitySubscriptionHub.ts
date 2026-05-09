@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export type EntitySubscriptionKind = 'channel';
+export type EntitySubscriptionKind = 'channel' | 'artifact';
 
 export interface EntitySubscriptionSnapshot<TState = unknown> {
   kind: EntitySubscriptionKind;

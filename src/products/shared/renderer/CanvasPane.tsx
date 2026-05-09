@@ -14,6 +14,13 @@ import { ImageViewer } from './viewers/ImageViewer.js';
 import { IframeViewer } from './viewers/IframeViewer.js';
 import { PdfViewer } from './viewers/PdfViewer.js';
 import { useArtifactCanvasSurfaceOutletContext } from './withSharedViewerRoutes.js';
+import { useEntitySubscription } from './entitySubscriptionHub.js';
+import {
+  shouldRefreshArtifactCanvasForPatch,
+  shouldRefreshArtifactCanvasForSnapshot,
+  type ArtifactSubscriptionPatch,
+  type ArtifactSubscriptionState,
+} from './entitySubscriptionArtifactDispatcher.js';
 
 type CanvasPaneState =
   | { status: 'loading' }
@@ -43,6 +50,22 @@ export function CanvasPane(): JSX.Element {
       presentationRequested,
     );
   }, [artifactId, presentationRequested, surface]);
+
+  useEntitySubscription<ArtifactSubscriptionState, ArtifactSubscriptionPatch>({
+    kind: 'artifact',
+    id: artifactId ?? null,
+    enabled: projectionUrl !== null,
+    onSnapshot: (snapshot) => {
+      if (shouldRefreshArtifactCanvasForSnapshot(artifactId, snapshot)) {
+        setRefreshToken((value) => value + 1);
+      }
+    },
+    onPatch: (patch) => {
+      if (shouldRefreshArtifactCanvasForPatch(artifactId, patch)) {
+        setRefreshToken((value) => value + 1);
+      }
+    },
+  });
 
   useEffect(() => {
     if (!projectionUrl) {

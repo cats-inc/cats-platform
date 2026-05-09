@@ -6,6 +6,10 @@ import {
   type ChannelSubscriptionState,
 } from '../src/products/shared/renderer/entitySubscriptionChannelDispatcher.js';
 import {
+  shouldRefreshArtifactCanvasForPatch,
+  shouldRefreshArtifactCanvasForSnapshot,
+} from '../src/products/shared/renderer/entitySubscriptionArtifactDispatcher.js';
+import {
   EntitySubscriptionHub,
   type EntitySubscriptionSnapshot,
 } from '../src/products/shared/renderer/entitySubscriptionHub.js';
@@ -375,4 +379,78 @@ test('entity subscription hub coalesces same entity subscribers', () => {
   unsubscribeB();
   assert.deepEqual(hub.getActiveSubscribedIds('channel'), []);
   assert.equal(sources[0]?.closed, true);
+});
+
+test('entity subscription hub coalesces artifact subscribers independently', () => {
+  const sources: FakeEventSource[] = [];
+  const hub = new EntitySubscriptionHub((url) => {
+    const source = new FakeEventSource(url);
+    sources.push(source);
+    return source as unknown as EventSource;
+  });
+  const unsubscribeA = hub.subscribe<{ value: number }, never>({
+    kind: 'artifact',
+    id: 'artifact-1',
+    onSnapshot: () => {},
+    onPatch: () => {},
+  });
+  const unsubscribeB = hub.subscribe<{ value: number }, never>({
+    kind: 'artifact',
+    id: 'artifact-1',
+    onSnapshot: () => {},
+    onPatch: () => {},
+  });
+
+  assert.equal(sources.length, 1);
+  assert.equal(sources[0]?.url, '/api/subscribe?kind=artifact&id=artifact-1');
+  assert.deepEqual(hub.getActiveSubscribedIds('artifact'), ['artifact-1']);
+  assert.deepEqual(hub.getActiveSubscribedIds('channel'), []);
+
+  unsubscribeA();
+  unsubscribeB();
+  assert.equal(sources[0]?.closed, true);
+});
+
+test('artifact subscription dispatcher refreshes only the matching Artifact Canvas entity', () => {
+  const snapshot = {
+    kind: 'artifact',
+    id: 'artifact-1',
+    version: 1,
+    state: {
+      artifact: {
+        id: 'artifact-1',
+        title: 'Artifact',
+        kind: 'document',
+        status: 'ready',
+        projectId: null,
+        workItemId: null,
+        conversationId: null,
+        taskId: null,
+        runId: null,
+        path: null,
+        mimeType: null,
+        sizeBytes: null,
+        summary: null,
+        createdAt: '2026-05-09T00:00:00.000Z',
+        updatedAt: '2026-05-09T00:00:00.000Z',
+        metadata: {},
+      },
+    },
+  } as const;
+  const patch = {
+    kind: 'artifact',
+    id: 'artifact-1',
+    version: 1,
+    patch: {
+      kind: 'artifact.updated',
+      artifactId: 'artifact-1',
+      artifact: snapshot.state.artifact,
+      state: snapshot.state,
+    },
+  } as const;
+
+  assert.equal(shouldRefreshArtifactCanvasForSnapshot('artifact-1', snapshot), true);
+  assert.equal(shouldRefreshArtifactCanvasForSnapshot('artifact-2', snapshot), false);
+  assert.equal(shouldRefreshArtifactCanvasForPatch('artifact-1', patch), true);
+  assert.equal(shouldRefreshArtifactCanvasForPatch('artifact-2', patch), false);
 });
