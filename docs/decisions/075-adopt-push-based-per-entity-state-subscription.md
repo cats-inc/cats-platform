@@ -21,8 +21,8 @@ PLAN-098 also landed `artifact` as the second entity kind:
 update/removal patches, and Artifact Canvas refreshes its mounted projection
 from that subscription. The browser acceptance fixture covers a mounted
 Artifact Canvas observing two subscription mutations. Remaining follow-up is
-ADR-041 collection-refetch coexistence verification and the optional
-liveIndicator stream-consolidation decision.
+channel-focused acceptance cleanup and the optional liveIndicator
+stream-consolidation decision.
 
 ## Context
 

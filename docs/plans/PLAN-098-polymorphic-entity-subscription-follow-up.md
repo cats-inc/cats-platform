@@ -53,8 +53,8 @@ proof and the cleanup decisions that should happen after it.
   removal/close behavior, rejection cases, hub coalescing, dispatcher matching,
   and mounted Artifact Canvas refresh.
 - Browser-level Artifact Canvas acceptance now proves a mounted surface observes
-  two artifact subscription mutations. ADR-041 collection-refetch coexistence
-  remains open.
+  two artifact subscription mutations. ADR-041 collection-refetch coexistence is
+  covered by source-level merge regression.
 
 ## Implementation Phases
 
@@ -124,7 +124,7 @@ hub and protocol as `channel`.
       it twice.
 - [x] Task 5.2: Assert the mounted target surface observes both mutations
       through the subscription without a full app-shell replacement.
-- [ ] Task 5.3: Assert ADR-041 collection refetches still refresh collection
+- [x] Task 5.3: Assert ADR-041 collection refetches still refresh collection
       state without overwriting the mounted subscribed entity.
 
 **Deliverables**: explicit evidence that the protocol is truly polymorphic and
@@ -157,7 +157,7 @@ not merely a channel-specific workaround.
 | `tests/entity-subscription-artifact.test.tsx` | Created | Server and projector coverage for artifact snapshot, repeated update patches, removed patch and stream close, missing artifact, and invalid kind. |
 | `tests/entity-subscription-artifact-canvas.test.tsx` | Created | Mounted Artifact Canvas acceptance for two artifact subscription patch refreshes. |
 | `tests/entity-subscription-renderer.test.tsx` | Modified | Renderer hub and artifact dispatcher coverage. |
-| `tests/*cross-surface*.test.*` | Pending | Add ADR-041 collection-refetch coexistence coverage if it still adds value beyond source-level tests. |
+| `tests/merge-app-shell-preserving-active-entity-state.test.tsx` | Modified | ADR-041 collection-refresh coexistence regression for active subscriptions. |
 
 ## Technical Decisions
 
@@ -201,7 +201,8 @@ not merely a channel-specific workaround.
 
 | Date | Update |
 |------|--------|
-| 2026-05-09 | Artifact Canvas mounted acceptance landed for two subscription mutations. Remaining PLAN-098 work is ADR-041 coexistence verification and the post-polymorphism stream consolidation decision. |
+| 2026-05-09 | ADR-041 collection-refresh coexistence regression landed for active subscriptions. Remaining PLAN-098 work is channel baseline cleanup and the post-polymorphism stream consolidation decision. |
+| 2026-05-09 | Artifact Canvas mounted acceptance landed for two subscription mutations. |
 | 2026-05-09 | Artifact selected and landed as the second entity kind. Server route/projector, Artifact Canvas consumer, and targeted tests are implemented. |
 | 2026-05-09 | Plan created from PLAN-068 closeout to carry second-kind polymorphism, cross-surface acceptance, and live-stream cleanup decisions. |
 

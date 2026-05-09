@@ -25,9 +25,9 @@
 landed and PLAN-068 is now a closeout record. PLAN-098 has also landed
 `artifact` as the second entity kind for the polymorphism proof, including
 mounted Artifact Canvas refresh over repeated subscription mutations. Remaining
-work is ADR-041 collection-refetch coexistence verification and the
-post-polymorphism decision on whether the legacy channel liveIndicator stream
-should fold into the entity-subscription layer.
+work is channel-focused acceptance cleanup and the post-polymorphism decision on
+whether the legacy channel liveIndicator stream should fold into the
+entity-subscription layer.
 
 Today the renderer keeps entity state "fresh" through three loosely
 coupled mechanisms — cold fetch of `/api/app-shell`, cross-surface
@@ -351,6 +351,8 @@ policy, and lease decisions depend on the mounted canvas surface.
 The browser acceptance fixture covers a mounted Code task Artifact Canvas
 observing two artifact subscription patches and refreshing that projection
 without replacing the app shell.
+Source-level merge regression covers ADR-041 collection refresh flowing sibling
+collection state while preserving the active subscribed channel.
 
 ### Future kinds (not implemented yet)
 
