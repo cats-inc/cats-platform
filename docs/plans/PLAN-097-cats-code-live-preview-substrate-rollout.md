@@ -93,7 +93,7 @@ real process spawning is enabled.
       using SPEC-101 behavior.
 - [x] Task 4.4: Trigger the existing `show_in_canvas` path after artifact
       materialization so Activity audit and render-intent behavior stays shared.
-- [ ] Task 4.5: Add integration tests covering ready preview artifact creation,
+- [x] Task 4.5: Add integration tests covering ready preview artifact creation,
       non-lease loopback demotion, stale lease demotion, and same-surface lease
       matching.
 
@@ -176,6 +176,7 @@ not bypass the existing viewer contract.
 | 2026-05-09 | Added the Artifact Canvas supervisor-owned preview-origin gate and wired projection/API dependencies so allowlisted loopback previews receive `scripted-cross-origin` only when a ready lease matches the artifact, source surface, and workspace scope. Missing, stale, or mismatched leases demote to `static`. |
 | 2026-05-09 | Added live-preview artifact materialization for ready Code task/codespace leases. The materializer writes deterministic `CoreArtifactRecord(kind = preview)` rows with `codeLivePreview` metadata and returns an updated lease carrying the artifact id; tests verify the artifact closes the Artifact Canvas lease gate. |
 | 2026-05-09 | Added a product-local materialize-and-show helper that reuses the shared Artifact Canvas activity and render-intent path after live-preview artifact creation. Tests verify the activity audit row, navigate intent, session-targeted delivery, and privileged iframe metadata are produced through the shared contract. |
+| 2026-05-09 | Closed Phase 4 test coverage: `artifact-canvas-live-preview-lease` covers ready/same-surface lease matching, missing lease demotion, stale lease demotion, and scope mismatch demotion; `code-live-preview-artifact-materialization` covers preview artifact creation and the shared show-intent path. |
 
 ---
 
