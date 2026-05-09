@@ -61,6 +61,49 @@ test('LivePreviewPanel exposes status, stop, retry, and log controls', async (t)
   assert.equal(view.getByRole('button', { name: 'Logs' }).textContent, 'Logs');
 });
 
+test('LivePreviewPanel labels each preview status and disables Stop when not ready/starting', async (t) => {
+  const restoreDom = installDom();
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    cleanup();
+    globalThis.fetch = originalFetch;
+    restoreDom();
+  });
+
+  globalThis.fetch = (async () => jsonResponse({
+    previews: [
+      createPreviewSummary({ previewId: 'preview-ready', surfaceId: 'task-multi', status: 'ready' }),
+      createPreviewSummary({ previewId: 'preview-starting', surfaceId: 'task-multi', status: 'starting' }),
+      createPreviewSummary({ previewId: 'preview-stopping', surfaceId: 'task-multi', status: 'stopping' }),
+      createPreviewSummary({ previewId: 'preview-expired', surfaceId: 'task-multi', status: 'expired' }),
+      createPreviewSummary({ previewId: 'preview-failed', surfaceId: 'task-multi', status: 'failed' }),
+    ],
+  })) as typeof fetch;
+
+  const view = renderLivePreviewPanel({ surfaceKind: 'code_task', surfaceId: 'task-multi' });
+  await view.findByText('preview-ready');
+
+  // Status badges are rendered for every preview row from
+  // `labelLivePreviewStatus`.
+  assert.equal(view.getByText('Ready').textContent, 'Ready');
+  assert.equal(view.getByText('Starting').textContent, 'Starting');
+  assert.equal(view.getByText('Stopping').textContent, 'Stopping');
+  assert.equal(view.getByText('Expired').textContent, 'Expired');
+  assert.equal(view.getByText('Failed').textContent, 'Failed');
+
+  // Every row renders one Stop button; only ready and starting are
+  // operator-actionable, the rest (stopping / expired / failed) are
+  // disabled. The component-local `stoppingId` state stays null
+  // because we have not clicked anything, so each button renders the
+  // base "Stop" label rather than "Stopping...".
+  const stopButtons = view.getAllByRole('button', { name: 'Stop' });
+  assert.equal(stopButtons.length, 5);
+  const enabledStops = stopButtons.filter((button) => !(button as HTMLButtonElement).disabled);
+  const disabledStops = stopButtons.filter((button) => (button as HTMLButtonElement).disabled);
+  assert.equal(enabledStops.length, 2);
+  assert.equal(disabledStops.length, 3);
+});
+
 test('LivePreviewPanel ignores stale stop refreshes after switching surfaces', async (t) => {
   const restoreDom = installDom();
   const originalFetch = globalThis.fetch;
@@ -119,6 +162,86 @@ test('LivePreviewPanel ignores stale stop refreshes after switching surfaces', a
       requests.filter((request) =>
         request.method === 'GET'
         && request.url.includes('surfaceId=task-a')).length,
+      1,
+    ));
+});
+
+test('LivePreviewPanel ignores stale stop refreshes after switching code_codespace surfaces', async (t) => {
+  // Symmetric race regression for the codespace surface — the surface
+  // identity hash is the only thing that differs from the code_task
+  // path, but it is computed via `createLivePreviewSurfaceIdentity`
+  // and the same staleness invariants must hold.
+  const restoreDom = installDom();
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ method: string; url: string }> = [];
+  let resolveStop: (() => void) | null = null;
+  t.after(() => {
+    cleanup();
+    globalThis.fetch = originalFetch;
+    restoreDom();
+  });
+
+  const codespaceA = 'codespace-a';
+  const codespaceB = 'codespace-b';
+
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    const method = init?.method ?? 'GET';
+    requests.push({ method, url });
+    if (url.startsWith('/api/code/live-previews?')) {
+      const surfaceId = new URL(`http://localhost${url}`).searchParams.get('surfaceId');
+      return jsonResponse({
+        previews: surfaceId === codespaceA
+          ? [createPreviewSummary({
+              previewId: 'preview-codespace-a',
+              surfaceId: codespaceA,
+              surfaceKind: 'code_codespace',
+            })]
+          : [createPreviewSummary({
+              previewId: 'preview-codespace-b',
+              surfaceId: codespaceB,
+              surfaceKind: 'code_codespace',
+            })],
+      });
+    }
+    if (url === '/api/code/live-previews/preview-codespace-a/stop') {
+      return new Promise<Response>((resolve) => {
+        resolveStop = () => resolve(jsonResponse({
+          status: 'accepted',
+          previewId: 'preview-codespace-a',
+          stopReason: 'operator',
+        }));
+      });
+    }
+    return jsonResponse({ error: { code: 'not_found' } }, { status: 404 });
+  }) as typeof fetch;
+
+  const view = renderLivePreviewPanel({
+    surfaceKind: 'code_codespace',
+    surfaceId: codespaceA,
+  });
+  await view.findByText('preview-codespace-a');
+
+  await act(async () => {
+    fireEvent.click(view.getByRole('button', { name: 'Stop' }));
+  });
+  await waitFor(() => assert.ok(resolveStop));
+
+  view.rerender(
+    <I18nProvider locale="en">
+      <LivePreviewPanel surfaceKind="code_codespace" surfaceId={codespaceB} />
+    </I18nProvider>,
+  );
+  await view.findByText('preview-codespace-b');
+
+  await act(async () => {
+    resolveStop?.();
+  });
+  await waitFor(() =>
+    assert.equal(
+      requests.filter((request) =>
+        request.method === 'GET'
+        && request.url.includes(`surfaceId=${codespaceA}`)).length,
       1,
     ));
 });
@@ -202,12 +325,14 @@ function renderLivePreviewPanel(input: {
 function createPreviewSummary(input: {
   previewId: string;
   surfaceId: string;
+  surfaceKind?: 'code_task' | 'code_codespace';
+  status?: CodeLivePreviewSummary['status'];
 }): CodeLivePreviewSummary {
   return {
     previewId: input.previewId,
     commandProfileId: 'vite',
     surface: {
-      kind: 'code_task',
+      kind: input.surfaceKind ?? 'code_task',
       surfaceId: input.surfaceId,
     },
     workspace: {
@@ -215,7 +340,7 @@ function createPreviewSummary(input: {
       rootPath: 'C:/repo/live-preview',
     },
     origin: 'http://127.0.0.1:47100',
-    status: 'ready',
+    status: input.status ?? 'ready',
     artifactId: null,
     createdAt: '2026-05-09T00:00:00.000Z',
     readyAt: '2026-05-09T00:00:01.000Z',

@@ -493,7 +493,14 @@ function cloneCanvasSurface(surface: CanvasSurfaceRef): CanvasSurfaceRef {
   };
 }
 
-function createCodespaceId(workspacePath: string): string {
+/**
+ * Deterministic id for a Code codespace surface, derived from the
+ * workspace's root path. Exported so tests and other callers compose
+ * the same hash rule rather than re-implementing it (drift between a
+ * test copy and this implementation would silently leave both green
+ * while behaviour diverges).
+ */
+export function createCodespaceId(workspacePath: string): string {
   return `codespace-${hashToken(normalizePathToken(workspacePath))}`;
 }
 

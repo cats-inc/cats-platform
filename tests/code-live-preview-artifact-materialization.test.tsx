@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -11,6 +10,7 @@ import type { ArtifactCanvasNavigateIntent } from '../src/products/shared/artifa
 import { ArtifactCanvasRenderIntentHub } from '../src/products/shared/artifactCanvas/renderIntent.ts';
 import {
   CODE_LIVE_PREVIEW_PRODUCER_IDENTITY,
+  createCodespaceId,
   materializeLivePreviewArtifactAndShowInCanvas,
   materializeLivePreviewArtifact,
 } from '../src/products/code/livePreview/artifactMaterialization.ts';
@@ -478,8 +478,3 @@ function createLease(overrides: Partial<LivePreviewLease> = {}): LivePreviewLeas
   };
 }
 
-function createCodespaceId(workspacePath: string): string {
-  const normalized = workspacePath.trim().replace(/\\/g, '/');
-  const digest = createHash('sha256').update(normalized).digest('hex').slice(0, 16);
-  return `codespace-${digest}`;
-}

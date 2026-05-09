@@ -135,7 +135,17 @@ export function LivePreviewPanel({
           : t(messageKeys.codeLivePreviewErrorStop));
       }
     } finally {
-      if (isCurrentLivePreviewRequest(mountedRef, requestVersionRef, requestVersion)) {
+      // Clear the stopping spinner regardless of request-version
+      // staleness: the in-flight stop is now resolved/rejected, so
+      // the transient UI flag should not linger. The version guard
+      // above already gates the surface-specific feedback / refresh,
+      // but the spinner is a per-component flag that must reset on
+      // every completed stop while the component is still mounted.
+      // Without this, a locale (`t`) change between the start and
+      // resolution of a stop would bump the request version and
+      // leave the spinner stuck forever, since the surface-change
+      // effect would not fire.
+      if (mountedRef.current) {
         setStoppingId(null);
       }
     }
@@ -172,7 +182,12 @@ export function LivePreviewPanel({
           : t(messageKeys.codeLivePreviewErrorLogs));
       }
     } finally {
-      if (isCurrentLivePreviewRequest(mountedRef, requestVersionRef, requestVersion)) {
+      // Same reasoning as `handleStop`: clear the per-component
+      // loading spinner whenever the in-flight logs fetch finishes,
+      // even if the request version moved on. The version guards on
+      // the response-application path already keep stale logs from
+      // being committed to state.
+      if (mountedRef.current) {
         setLogsLoadingId(null);
       }
     }
