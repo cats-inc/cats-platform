@@ -9,7 +9,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Owner** | TBD (Conductor on accept) |
 | **Reviewer** | User |
 
@@ -57,6 +57,10 @@ proof and the cleanup decisions that should happen after it.
   covered by source-level merge regression.
 - Channel baseline cleanup is also covered by dispatcher stale-snapshot tests,
   active-merge tests, repeated server patch tests, and hub reconnect regression.
+- Post-polymorphism cleanup decision: keep `/api/channels/:id/stream` as the
+  specialized liveIndicator stream. Entity subscriptions own authoritative
+  entity snapshots and patches; liveIndicator owns ephemeral turn-progress and
+  segment timeline state.
 
 ## Implementation Phases
 
@@ -136,12 +140,12 @@ not merely a channel-specific workaround.
 
 ### Phase 6: Post-Polymorphism Cleanup Decision
 
-- [ ] Task 6.1: Decide whether `/api/channels/:id/stream` remains a separate
+- [x] Task 6.1: Decide whether `/api/channels/:id/stream` remains a separate
       live-indicator stream or folds into the channel entity subscription.
-- [ ] Task 6.2: If folding is adopted, migrate consumers in one slice and remove
+- [x] Task 6.2: If folding is adopted, migrate consumers in one slice and remove
       obsolete stream semantics rather than keeping unreleased compatibility
-      shims.
-- [ ] Task 6.3: Update SPEC-076, ADR-075, and relevant tests to reflect the
+      shims. Folding is not adopted for this plan, so no migration is needed.
+- [x] Task 6.3: Update SPEC-076, ADR-075, and relevant tests to reflect the
       final split between collection invalidations, entity subscriptions, and
       any remaining specialized streams.
 
@@ -175,6 +179,9 @@ not merely a channel-specific workaround.
   enough to make this proof useful instead of artificial.
 - **No compatibility shims for unreleased paths.** If cleanup retires an old
   stream or obsolete state path, remove the old path in the same slice.
+- **Keep liveIndicator separate.** `/api/channels/:id/stream` remains the
+  specialized ephemeral live turn stream; `/api/subscribe` remains the
+  authoritative entity snapshot/patch stream.
 
 ## Testing Strategy
 
@@ -205,8 +212,9 @@ not merely a channel-specific workaround.
 
 | Date | Update |
 |------|--------|
+| 2026-05-09 | PLAN-098 completed. Phase 6 decision keeps `/api/channels/:id/stream` separate for liveIndicator and leaves `/api/subscribe` focused on authoritative entity snapshots/patches. |
 | 2026-05-09 | Channel baseline cleanup completed: reconnect, stale snapshot, active merge, repeated patch, and ADR-041 coexistence regressions are covered; broader transcript parity remains a SPEC-076 acceptance item rather than a PLAN-098 blocker. |
-| 2026-05-09 | ADR-041 collection-refresh coexistence regression landed for active subscriptions. Remaining PLAN-098 work is the post-polymorphism stream consolidation decision. |
+| 2026-05-09 | ADR-041 collection-refresh coexistence regression landed for active subscriptions. |
 | 2026-05-09 | Artifact Canvas mounted acceptance landed for two subscription mutations. |
 | 2026-05-09 | Artifact selected and landed as the second entity kind. Server route/projector, Artifact Canvas consumer, and targeted tests are implemented. |
 | 2026-05-09 | Plan created from PLAN-068 closeout to carry second-kind polymorphism, cross-surface acceptance, and live-stream cleanup decisions. |

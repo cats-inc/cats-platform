@@ -26,8 +26,9 @@ landed and PLAN-068 is now a closeout record. PLAN-098 has also landed
 `artifact` as the second entity kind for the polymorphism proof, including
 mounted Artifact Canvas refresh over repeated subscription mutations. Remaining
 SPEC-level acceptance still includes broader channel transcript parity; the
-remaining PLAN-098 work is the post-polymorphism decision on whether the legacy
-channel liveIndicator stream should fold into the entity-subscription layer.
+PLAN-098 post-polymorphism decision is complete: `/api/channels/:id/stream`
+stays as the specialized liveIndicator stream instead of folding into
+`/api/subscribe`.
 
 Today the renderer keeps entity state "fresh" through three loosely
 coupled mechanisms — cold fetch of `/api/app-shell`, cross-surface
@@ -353,6 +354,15 @@ observing two artifact subscription patches and refreshing that projection
 without replacing the app shell.
 Source-level merge regression covers ADR-041 collection refresh flowing sibling
 collection state while preserving the active subscribed channel.
+
+### Post-polymorphism stream split
+
+`/api/subscribe?kind=<kind>&id=<id>` owns authoritative entity snapshots and
+patches. `/api/channels/:id/stream` remains separate because it owns ephemeral
+liveIndicator state: waiting/typing state, segment-native streaming progress,
+assistant identity handoff, and transient runtime turn events. Those events are
+not persisted entity-state patches and must not be mixed into the
+entity-subscription contract.
 
 ### Future kinds (not implemented yet)
 

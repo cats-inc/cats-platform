@@ -20,8 +20,10 @@ PLAN-098 also landed `artifact` as the second entity kind:
 `/api/subscribe?kind=artifact&id=<artifact-id>` streams artifact snapshots and
 update/removal patches, and Artifact Canvas refreshes its mounted projection
 from that subscription. The browser acceptance fixture covers a mounted
-Artifact Canvas observing two subscription mutations. Remaining follow-up is
-the optional liveIndicator stream-consolidation decision.
+Artifact Canvas observing two subscription mutations. The post-polymorphism
+cleanup decision keeps `/api/channels/:id/stream` separate for liveIndicator
+because it carries ephemeral turn-progress and segment timeline state, while
+`/api/subscribe` carries authoritative entity snapshots and patches.
 
 ## Context
 
