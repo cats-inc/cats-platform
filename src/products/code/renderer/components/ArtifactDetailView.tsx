@@ -340,19 +340,23 @@ export function ArtifactDetailView() {
                 </span>
               </div>
               <p>{payload.conversation.title}</p>
-              <div className="operatorActionRow">
-                <button
-                  type="button"
-                  className="operatorActionButton"
-                  onClick={() => {
-                    if (payload.conversation) {
-                      navigate(buildPlatformChatChannelPath(payload.conversation.id));
-                    }
-                  }}
-                >
-                  {t(messageKeys.codeArtifactDetailOpenConversationAction)}
-                </button>
-              </div>
+              {payload.conversation.sourceChannelId ? (
+                <div className="operatorActionRow">
+                  <button
+                    type="button"
+                    className="operatorActionButton"
+                    onClick={() => {
+                      if (payload.conversation?.sourceChannelId) {
+                        navigate(buildPlatformChatChannelPath(
+                          payload.conversation.sourceChannelId,
+                        ));
+                      }
+                    }}
+                  >
+                    {t(messageKeys.codeArtifactDetailOpenConversationAction)}
+                  </button>
+                </div>
+              ) : null}
             </article>
           ) : null}
         </div>

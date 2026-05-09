@@ -267,6 +267,7 @@ export interface CodeArtifactConversationSummary {
   id: string;
   title: string;
   kind: string;
+  sourceChannelId: string | null;
 }
 
 export interface CodeArtifactRelatedSummary extends CodeArtifactSummary {}
