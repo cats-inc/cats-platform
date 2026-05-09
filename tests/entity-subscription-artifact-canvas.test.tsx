@@ -177,7 +177,6 @@ function createArtifactSnapshot(artifactId: string) {
 }
 
 function createArtifactUpdatedPatch(artifactId: string) {
-  const artifact = createProjection('Patch artifact', 'patch content').artifact;
   return {
     kind: 'artifact',
     id: artifactId,
@@ -185,7 +184,6 @@ function createArtifactUpdatedPatch(artifactId: string) {
     patch: {
       kind: 'artifact.updated',
       artifactId,
-      artifact,
     },
   };
 }

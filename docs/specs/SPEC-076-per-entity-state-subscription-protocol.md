@@ -203,7 +203,9 @@ state to the target surface.
     lease authority, and canvas URL depend on the mounted surface. A matching
     artifact snapshot or patch is therefore an authoritative invalidation of
     `/api/canvas/.../artifacts/...`, not a full replacement for that projection
-    payload.
+    payload. Consumers may dedupe a fresh-mount snapshot against their own
+    first cold fetch of the projection endpoint, so long as no later patches are
+    dropped.
 
 ### Non-Functional Requirements
 
@@ -353,7 +355,9 @@ interface ArtifactSubscriptionState {
 Patch event kinds:
 
 - `artifact.updated` — the subscribed `CoreArtifactRecord` changed.
-  Payload carries `artifactId` and the updated `artifact`.
+  Payload carries `artifactId`. Artifact Canvas uses this as an invalidation
+  signal for its surface-scoped projection rather than consuming the artifact
+  record from the patch payload.
 - `artifact.removed` — the subscribed artifact disappeared from the
   authoritative core state. Payload carries `artifactId`; the stream
   then closes with a missing-artifact reason.

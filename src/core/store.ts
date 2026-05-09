@@ -1,6 +1,7 @@
 import type { CatsCoreState } from './types.js';
 import { createDefaultCoreState } from './model/index.js';
 
+// Listener input is a snapshot and must be treated as read-only by subscribers.
 export type CoreStoreListener = (state: CatsCoreState) => void;
 
 export interface CoreStore {
@@ -47,8 +48,24 @@ export class MemoryCoreStore implements CoreStore {
   #emitCoreChange(): CatsCoreState {
     const snapshot = structuredClone(this.#state);
     for (const listener of this.#listeners) {
-      listener(structuredClone(snapshot));
+      try {
+        listener(snapshot);
+      } catch (error) {
+        reportCoreStoreDiagnostic('core_listener_failed', {
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
     return snapshot;
   }
+}
+
+function reportCoreStoreDiagnostic(
+  scope: string,
+  details: Record<string, unknown>,
+): void {
+  const serialized = Object.entries(details)
+    .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
+    .join(' ');
+  console.error(`[cats-platform-core-store] ${scope}${serialized ? ` ${serialized}` : ''}`);
 }

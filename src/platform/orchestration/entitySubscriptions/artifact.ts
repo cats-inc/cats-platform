@@ -14,7 +14,6 @@ export type ArtifactSubscriptionPatch =
   | {
       kind: 'artifact.updated';
       artifactId: string;
-      artifact: CoreArtifactRecord;
     }
   | {
       kind: 'artifact.removed';
@@ -72,6 +71,5 @@ export function buildArtifactSubscriptionPatches(
   return [{
     kind: 'artifact.updated',
     artifactId: next.artifact.id,
-    artifact: next.artifact,
   }];
 }

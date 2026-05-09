@@ -148,7 +148,7 @@ export class FileChatStore implements ChatStore {
     const snapshot = structuredClone(core);
     for (const listener of this.coreListeners) {
       try {
-        listener(structuredClone(snapshot));
+        listener(snapshot);
       } catch (error) {
         reportStoreDiagnostic('core_listener_failed', {
           filePath: this.filePath,
@@ -268,8 +268,7 @@ export class FileChatStore implements ChatStore {
     return this.runExclusive(async () => {
       const currentCore = extractCoreState(await this.readPersistedSnapshotUnsafe());
       const nextChatState = structuredClone(state);
-      const persisted = await this.writeSnapshotUnsafe(nextChatState, currentCore);
-      this.emitCoreChange(extractCoreState(persisted));
+      await this.writeSnapshotUnsafe(nextChatState, currentCore);
       return structuredClone(nextChatState);
     });
   }
@@ -329,7 +328,8 @@ export class MemoryChatStore implements ChatStore {
   }
 
   async write(state: ChatState): Promise<ChatState> {
-    await this.writeSnapshot(state, this.coreState);
+    this.chatState = structuredClone(state);
+    this.coreState = syncCoreStateWithChatState(this.chatState, structuredClone(this.coreState));
     return structuredClone(this.chatState);
   }
 
@@ -354,7 +354,14 @@ export class MemoryChatStore implements ChatStore {
   private emitCoreChange(): void {
     const snapshot = structuredClone(this.coreState);
     for (const listener of this.coreListeners) {
-      listener(structuredClone(snapshot));
+      try {
+        listener(snapshot);
+      } catch (error) {
+        reportStoreDiagnostic('core_listener_failed', {
+          store: 'memory',
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
   }
 }

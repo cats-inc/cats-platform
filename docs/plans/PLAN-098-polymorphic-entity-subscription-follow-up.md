@@ -158,7 +158,7 @@ not merely a channel-specific workaround.
 
 | File | Action | Description |
 |------|--------|-------------|
-| `docs/specs/SPEC-076-per-entity-state-subscription-protocol.md` | Modify | Align protocol notes with the landed channel implementation and second-kind contract. |
+| `docs/specs/SPEC-076-per-entity-state-subscription-protocol.md` | Modified | Align protocol notes with the landed channel implementation and second-kind contract. |
 | `src/core/store.ts` | Modified | Adds optional core-change subscription support to the shared core store contract. |
 | `src/products/chat/state/store.ts` | Modified | Emits core-change notifications from chat-backed stores so artifact subscriptions do not poll in production. |
 | `src/platform/orchestration/entitySubscriptions/index.ts` | Modified | Extended server-side kind typing to `channel | artifact`. |
@@ -225,7 +225,7 @@ not merely a channel-specific workaround.
 
 | Date | Update |
 |------|--------|
-| 2026-05-10 | Follow-up tightened artifact subscription semantics: production stores now expose core-change notifications, Artifact Canvas skips the initial snapshot duplicate refresh, artifact patches no longer carry redundant `state`, and the plan records the projection-invalidation boundary explicitly. |
+| 2026-05-10 | Follow-up tightened artifact subscription semantics: production stores now expose core-change notifications, Artifact Canvas skips the initial snapshot duplicate refresh, artifact update patches are id-only invalidations, and the plan records the projection-invalidation boundary explicitly. |
 | 2026-05-09 | PLAN-098 completed. Phase 6 decision keeps `/api/channels/:id/stream` separate for liveIndicator and leaves `/api/subscribe` focused on authoritative entity snapshots/patches. |
 | 2026-05-09 | Channel baseline cleanup completed: reconnect, stale snapshot, active merge, repeated patch, and ADR-041 coexistence regressions are covered; broader transcript parity remains a SPEC-076 acceptance item rather than a PLAN-098 blocker. |
 | 2026-05-09 | ADR-041 collection-refresh coexistence regression landed for active subscriptions. |

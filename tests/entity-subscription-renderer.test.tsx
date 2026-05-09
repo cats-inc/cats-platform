@@ -478,7 +478,6 @@ test('artifact subscription dispatcher refreshes only the matching Artifact Canv
     patch: {
       kind: 'artifact.updated',
       artifactId: 'artifact-1',
-      artifact: snapshot.state.artifact,
     },
   } as const;
 

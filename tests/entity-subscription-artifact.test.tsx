@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { upsertCoreArtifact } from '../src/core/model/planningRecords.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
+import { FileChatStore, MemoryChatStore } from '../src/products/chat/state/store.ts';
 import {
   buildArtifactSubscriptionPatches,
   buildArtifactSubscriptionState,
@@ -55,7 +59,6 @@ test('buildArtifactSubscriptionPatches emits artifact.updated for changed record
   assert.equal(patches.length, 1);
   assert.equal(patches[0].kind, 'artifact.updated');
   assert.equal(patches[0].artifactId, 'artifact-1');
-  assert.equal(patches[0].artifact.title, 'Updated artifact');
 });
 
 test('buildArtifactSubscriptionPatches emits artifact.removed for missing records', async () => {
@@ -102,7 +105,7 @@ test('GET /api/subscribe streams artifact snapshots and update patches', async (
 
   const patch = await readUntil(reader, '"artifact.updated"');
   assert.match(patch, /event: patch/u);
-  assert.match(patch, /Updated through stream/u);
+  assert.match(patch, /"artifactId":"artifact-1"/u);
 
   await store.updateCore((core) => upsertCoreArtifact(core, {
     id: 'artifact-1',
@@ -116,9 +119,67 @@ test('GET /api/subscribe streams artifact snapshots and update patches', async (
     summary: 'Second updated summary',
   }).core);
 
-  const secondPatch = await readUntil(reader, 'Updated through stream again');
+  const secondPatch = await readUntil(reader, '"artifact.updated"');
   assert.match(secondPatch, /event: patch/u);
   assert.match(secondPatch, /"artifact\.updated"/u);
+});
+
+test('MemoryCoreStore core listener failures do not abort writes', async () => {
+  const store = createArtifactStore();
+  const originalError = console.error;
+  const diagnostics: string[] = [];
+  console.error = (...args: unknown[]) => {
+    diagnostics.push(args.map(String).join(' '));
+  };
+  try {
+    store.subscribeCore(() => {
+      throw new Error('listener failed');
+    });
+
+    const nextCore = await store.updateCore((core) => upsertCoreArtifact(core, {
+      ...core.artifacts[0]!,
+      title: 'Updated despite listener failure',
+    }).core);
+
+    assert.equal(nextCore.artifacts[0]?.title, 'Updated despite listener failure');
+  } finally {
+    console.error = originalError;
+  }
+
+  assert.match(diagnostics.join('\n'), /core_listener_failed/u);
+});
+
+test('MemoryChatStore does not notify core subscribers for chat-only writes', async () => {
+  const store = new MemoryChatStore();
+  let notifications = 0;
+  store.subscribeCore(() => {
+    notifications += 1;
+  });
+
+  await store.write(await store.read());
+  assert.equal(notifications, 0);
+
+  await store.writeCore(await store.readCore());
+  assert.equal(notifications, 1);
+});
+
+test('FileChatStore does not notify core subscribers for chat-only writes', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'cats-platform-chat-store-'));
+  t.after(async () => {
+    await rm(directory, { recursive: true, force: true });
+  });
+  const store = new FileChatStore(path.join(directory, 'chat.json'));
+  await store.read();
+  let notifications = 0;
+  store.subscribeCore(() => {
+    notifications += 1;
+  });
+
+  await store.write(await store.read());
+  assert.equal(notifications, 0);
+
+  await store.writeCore(await store.readCore());
+  assert.equal(notifications, 1);
 });
 
 test('GET /api/subscribe emits artifact removal patch before closing', async (t) => {
