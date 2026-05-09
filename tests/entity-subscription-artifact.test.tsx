@@ -102,6 +102,44 @@ test('GET /api/subscribe streams artifact snapshots and update patches', async (
   assert.match(patch, /Updated through stream/u);
 });
 
+test('GET /api/subscribe rejects missing artifact subscriptions', async (t) => {
+  const store = createArtifactStore();
+  const server = createArtifactSubscriptionServer(store);
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const response = await fetch(`${baseUrl(server)}/api/subscribe?kind=artifact&id=missing`);
+  const payload = await response.json() as {
+    error?: {
+      code?: string;
+      message?: string;
+    };
+  };
+
+  assert.equal(response.status, 404);
+  assert.equal(payload.error?.code, 'subscription_entity_not_found');
+  assert.match(payload.error?.message ?? '', /Artifact not found: missing/u);
+});
+
+test('GET /api/subscribe rejects unsupported entity subscription kinds', async (t) => {
+  const store = createArtifactStore();
+  const server = createArtifactSubscriptionServer(store);
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const response = await fetch(`${baseUrl(server)}/api/subscribe?kind=project&id=project-1`);
+  const payload = await response.json() as {
+    error?: {
+      code?: string;
+      message?: string;
+    };
+  };
+
+  assert.equal(response.status, 400);
+  assert.equal(payload.error?.code, 'invalid_subscription');
+  assert.match(payload.error?.message ?? '', /kind=<channel\|artifact>/u);
+});
+
 function createArtifactSubscriptionServer(store: MemoryCoreStore) {
   return createServer(async (request, response) => {
     const url = new URL(request.url ?? '/', 'http://localhost');
