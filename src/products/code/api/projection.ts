@@ -1070,14 +1070,36 @@ function isLocalFilePath(path: string): boolean {
   if (!trimmed) {
     return false;
   }
-  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) {
+  // Windows drive paths (`C:/foo`, `D:\bar`) and UNC paths (`\\server\share`)
+  // must be recognised as local before the URI-scheme check below — `C:` would
+  // otherwise match the scheme regex and the artifact would slip through the
+  // `excludeUndeclaredSourceEdits` filter.
+  if (/^[A-Za-z]:[\\/]/.test(trimmed)) {
+    return true;
+  }
+  if (trimmed.startsWith('\\\\')) {
+    return true;
+  }
+  // Multi-character scheme followed by `:` (e.g. `http:`, `file:`, `data:`).
+  // Single-letter prefixes are excluded above, so this only flags real URI
+  // schemes as non-local.
+  if (/^[A-Za-z][A-Za-z0-9+.-]+:/.test(trimmed)) {
     return false;
   }
   return true;
 }
 
+function hasArtifactDeclaration(artifact: CoreArtifactRecord): boolean {
+  return asRecord(artifact.metadata.codeArtifactDeclaration) !== null;
+}
+
 function isUndeclaredSourceEdit(artifact: CoreArtifactRecord): boolean {
-  if (readArtifactDeclarationProducerLabel(artifact) !== null) {
+  // PLAN-081 Task 4.4 frames "declared" as "has a `codeArtifactDeclaration`",
+  // not the narrower "has a `producerLabel`". A declaration object can exist
+  // without a producerLabel (legacy declarations, system-candidate variants),
+  // and those should still be considered declared so they remain in the
+  // sidebar.
+  if (hasArtifactDeclaration(artifact)) {
     return false;
   }
   return artifact.path !== null && isLocalFilePath(artifact.path);

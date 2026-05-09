@@ -235,3 +235,75 @@ test('buildCodeArtifactListProjection hides undeclared local-path artifacts when
     'undeclared source edit should still appear when filter is off',
   );
 });
+
+test('buildCodeArtifactListProjection treats Windows drive paths and UNC paths as local source edits', () => {
+  let core = createArtifactCore();
+  core = upsertCoreArtifact(core, {
+    id: 'artifact-windows-drive',
+    title: 'Edited Windows file',
+    kind: 'document',
+    status: 'ready',
+    conversationId: 'conversation-1',
+    taskId: 'task-1',
+    path: 'C:/repo/src/products/code/foo.ts',
+  }).core;
+  core = upsertCoreArtifact(core, {
+    id: 'artifact-windows-backslash',
+    title: 'Edited Windows file (backslash)',
+    kind: 'document',
+    status: 'ready',
+    conversationId: 'conversation-1',
+    taskId: 'task-1',
+    path: 'D:\\repo\\src\\foo.ts',
+  }).core;
+  core = upsertCoreArtifact(core, {
+    id: 'artifact-unc',
+    title: 'Edited UNC share file',
+    kind: 'document',
+    status: 'ready',
+    conversationId: 'conversation-1',
+    taskId: 'task-1',
+    path: '\\\\server\\share\\foo.ts',
+  }).core;
+
+  const filtered = buildCodeArtifactListProjection(core, {
+    excludeUndeclaredSourceEdits: true,
+  });
+  const ids = filtered.artifacts.map((entry) => entry.id);
+  assert.equal(ids.includes('artifact-windows-drive'), false,
+    'Windows drive-letter paths must be filtered out as local source edits');
+  assert.equal(ids.includes('artifact-windows-backslash'), false,
+    'Windows backslash drive-letter paths must be filtered out as local source edits');
+  assert.equal(ids.includes('artifact-unc'), false,
+    'UNC paths must be filtered out as local source edits');
+});
+
+test('buildCodeArtifactListProjection treats codeArtifactDeclaration without producerLabel as declared', () => {
+  let core = createArtifactCore();
+  core = upsertCoreArtifact(core, {
+    id: 'artifact-declaration-no-label',
+    title: 'Legacy declared artifact',
+    kind: 'document',
+    status: 'ready',
+    conversationId: 'conversation-1',
+    taskId: 'task-1',
+    path: 'C:/repo/src/legacy.ts',
+    metadata: {
+      // Declaration object exists but the producerLabel was never stamped.
+      // PLAN-081 Task 4.4 says "declared" means "has a codeArtifactDeclaration",
+      // not the stricter "has a producerLabel".
+      codeArtifactDeclaration: {
+        declarationId: 'legacy-declaration',
+        disposition: 'candidate',
+      },
+    },
+  }).core;
+
+  const filtered = buildCodeArtifactListProjection(core, {
+    excludeUndeclaredSourceEdits: true,
+  });
+  assert.ok(
+    filtered.artifacts.some((entry) => entry.id === 'artifact-declaration-no-label'),
+    'declaration object without a producerLabel should still count as declared',
+  );
+});
