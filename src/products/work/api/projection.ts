@@ -33,11 +33,17 @@ import {
   type SupervisedRunInspectionProjection,
 } from '../../../platform/supervision/index.js';
 import {
+  inspectMission,
+  type MissionInspectionResult,
+} from '../../../core/missionInspection.js';
+import {
   classifyMissionVisibility,
   suggestMissionPromotion,
   type MissionPromotionDecision,
   type MissionVisibility,
 } from '../../../core/missionVisibility.js';
+import type { MissionLinkageDiagnostic } from '../../../core/missionLinkageValidation.js';
+import type { MissionProvenanceSummary } from '../../../core/missionProvenance.js';
 import type {
   CatsCoreState,
   CoreConversationRecord,
@@ -386,6 +392,54 @@ export interface WorkMissionListProjection {
   };
   missions: WorkMissionListItem[];
   summary: WorkMissionListSummary;
+}
+
+export interface WorkMissionListProjectionOptions {
+  /**
+   * Include `internal` missions in the returned `missions` array.
+   * Default `false`: the Work mission list defaults to hiding
+   * background helper activity, surfacing only `work_facing` and
+   * `requires_review` lanes. The summary always reports the full
+   * lane breakdown so callers can show "N internal missions hidden".
+   */
+  includeInternal?: boolean;
+}
+
+export interface WorkMissionDetailProjection {
+  product: {
+    id: 'work';
+    name: typeof WORK_PRODUCT_NAME;
+  };
+  mission: WorkMissionListItem;
+  /** Direct mission runs from `inspectMission`, including those
+   *  surfaced via `mission.metadata.runId` AND
+   *  `run.metadata.missionId`. Always populated even when the
+   *  mission has no managed-work bridge. */
+  runs: Array<{
+    id: string;
+    title: string;
+    status: CoreRunStatus;
+    taskId: string | null;
+    conversationId: string | null;
+    createdAt: string;
+    startedAt: string | null;
+    completedAt: string | null;
+    updatedAt: string;
+  }>;
+  activeRunCount: number;
+  terminalRunCount: number;
+  /** Linkage diagnostics from validateMissionLinkage. Empty when
+   *  every anchor on the mission resolves cleanly. */
+  linkageDiagnostics: MissionLinkageDiagnostic[];
+  /** Mission provenance summary (trigger event, schedule rule,
+   *  parent-mission link, idempotency key, conversation/turn/lane
+   *  source ids). */
+  provenance: MissionProvenanceSummary;
+  /** Parent-chain ancestor mission ids (oldest at the end). Empty
+   *  when the mission has no parentMissionId metadata. */
+  ancestorMissionIds: string[];
+  lineageBrokenAt: string | null;
+  lineageCycleDetected: boolean;
 }
 
 export interface WorkTaskActionContext {
@@ -1012,10 +1066,11 @@ export function buildWorkRunListProjection(
 
 function buildMissionListSummary(
   missions: readonly WorkMissionListItem[],
+  options: { returned?: number } = {},
 ): WorkMissionListSummary {
   const summary: WorkMissionListSummary = {
     totalAvailable: missions.length,
-    returned: missions.length,
+    returned: options.returned ?? missions.length,
     draftCount: 0,
     plannedCount: 0,
     queuedCount: 0,
@@ -1074,8 +1129,39 @@ function buildMissionListSummary(
   return summary;
 }
 
+function buildWorkMissionListItem(
+  core: CatsCoreState,
+  mission: CatsCoreState['missions'][number],
+  workItemTitleById: Map<string, string>,
+  conversationTitleById: Map<string, string>,
+): WorkMissionListItem {
+  return {
+    id: mission.id,
+    title: mission.title,
+    status: mission.status,
+    summary: mission.summary,
+    managedWorkId: mission.managedWorkId,
+    managedWorkTitle: mission.managedWorkId
+      ? workItemTitleById.get(mission.managedWorkId) ?? null
+      : null,
+    conversationId: mission.conversationId,
+    conversationTitle: mission.conversationId
+      ? conversationTitleById.get(mission.conversationId) ?? null
+      : null,
+    assignedAgentId: mission.assignedAgentId,
+    assignedAgentName: mission.assignedAgentId
+      ? resolveActorName(core, mission.assignedAgentId)
+      : null,
+    visibility: classifyMissionVisibility(mission),
+    promotion: suggestMissionPromotion(mission),
+    createdAt: mission.createdAt,
+    updatedAt: mission.updatedAt,
+  };
+}
+
 export function buildWorkMissionListProjection(
   core: CatsCoreState,
+  options: WorkMissionListProjectionOptions = {},
 ): WorkMissionListProjection {
   const workItemTitleById = new Map<string, string>();
   for (const workItem of core.workItems) {
@@ -1086,35 +1172,79 @@ export function buildWorkMissionListProjection(
     conversationTitleById.set(conversation.id, conversation.title || conversation.id);
   }
 
-  const missions: WorkMissionListItem[] = [...core.missions]
+  const allMissions: WorkMissionListItem[] = [...core.missions]
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    .map((mission) => ({
-      id: mission.id,
-      title: mission.title,
-      status: mission.status,
-      summary: mission.summary,
-      managedWorkId: mission.managedWorkId,
-      managedWorkTitle: mission.managedWorkId
-        ? workItemTitleById.get(mission.managedWorkId) ?? null
-        : null,
-      conversationId: mission.conversationId,
-      conversationTitle: mission.conversationId
-        ? conversationTitleById.get(mission.conversationId) ?? null
-        : null,
-      assignedAgentId: mission.assignedAgentId,
-      assignedAgentName: mission.assignedAgentId
-        ? resolveActorName(core, mission.assignedAgentId)
-        : null,
-      visibility: classifyMissionVisibility(mission),
-      promotion: suggestMissionPromotion(mission),
-      createdAt: mission.createdAt,
-      updatedAt: mission.updatedAt,
-    }));
+    .map((mission) => buildWorkMissionListItem(
+      core,
+      mission,
+      workItemTitleById,
+      conversationTitleById,
+    ));
+
+  // Default behavior: hide internal background missions from the
+  // Work mission list. `includeInternal: true` opts in for explicit
+  // debug / internal-view consumers.
+  const missions = options.includeInternal
+    ? allMissions
+    : allMissions.filter((item) => item.visibility !== 'internal');
 
   return {
     product: createWorkProductRef(),
     missions,
-    summary: buildMissionListSummary(missions),
+    // Build the summary from the full mission set so the visibility
+    // breakdown reports the *real* lane counts (otherwise hiding
+    // internal also hides the count of how many were hidden). The
+    // explicit `returned` reflects the filtered array length so
+    // callers can distinguish "totalAvailable = N, returned = M".
+    summary: buildMissionListSummary(allMissions, { returned: missions.length }),
+  };
+}
+
+export function buildWorkMissionDetailProjection(
+  core: CatsCoreState,
+  missionId: string,
+): WorkMissionDetailProjection | null {
+  const inspection: MissionInspectionResult | null = inspectMission(core, missionId);
+  if (inspection === null) {
+    return null;
+  }
+  const workItemTitleById = new Map<string, string>();
+  for (const workItem of core.workItems) {
+    workItemTitleById.set(workItem.id, workItem.title);
+  }
+  const conversationTitleById = new Map<string, string>();
+  for (const conversation of core.conversations) {
+    conversationTitleById.set(conversation.id, conversation.title || conversation.id);
+  }
+  const missionItem = buildWorkMissionListItem(
+    core,
+    inspection.mission,
+    workItemTitleById,
+    conversationTitleById,
+  );
+  return {
+    product: createWorkProductRef(),
+    mission: missionItem,
+    runs: inspection.runs.map((run) => ({
+      id: run.id,
+      title: run.title,
+      status: run.status,
+      taskId: run.taskId,
+      conversationId: run.conversationId,
+      createdAt: run.createdAt,
+      startedAt: run.startedAt,
+      completedAt: run.completedAt,
+      updatedAt: run.updatedAt,
+    })),
+    activeRunCount: inspection.activeRuns.length,
+    terminalRunCount: inspection.terminalRuns.length,
+    linkageDiagnostics: inspection.linkageDiagnostics,
+    provenance: inspection.provenance,
+    ancestorMissionIds: inspection.lineage.entries
+      .slice(1)
+      .map((entry) => entry.mission.id),
+    lineageBrokenAt: inspection.lineage.brokenLinkAt,
+    lineageCycleDetected: inspection.lineage.cycleDetected,
   };
 }
 
