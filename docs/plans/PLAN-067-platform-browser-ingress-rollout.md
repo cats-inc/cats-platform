@@ -8,9 +8,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress |
+| **Status** | Mostly Implemented (Phase 1A runtime-surface seam + Phase 1B core LAN ergonomics + Phase 2 tunnel/overlay docs landed; Task 2.3 second-device manual verification + Task 3.3 tunnel diagnostics gated on operator need) |
 | **Owner** | Codex |
 | **Reviewer** | User |
+| **Implementation Note** | Code changes are landed: platform-owned runtime-surface adapter, `/runtime/api/*` reverse proxy with stream-safe passthrough, configurable Vite dev/preview host, env examples, and Tailscale/ngrok deployment shape are all in place. The two open `[ ]` tasks are operator-driven — manual second-device LAN verification (2.3) and conditional tunnel diagnostics (3.3, "only if a concrete operator workflow needs them"). Neither blocks code merging. |
 
 ## Related Spec
 

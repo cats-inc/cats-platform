@@ -4,10 +4,11 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress (Phase 7–14 IA correction landed 2026-05-05; legacy Phases 1–6 superseded; Phase 6 Clowder/Cattery still gated on user approval) |
 | **Owner** | Claude |
 | **Related Spec** | [SPEC-102](../specs/SPEC-102-lobby-sidebar-ia-and-entity-routes.md) |
 | **Related ADR** | [ADR-099](../decisions/099-promote-cats-clowders-catteries-to-platform-entities.md) |
+| **Implementation Note** | Phases 1–6 above describe the original draft. The shipped behaviour follows the [Phase 7+ — IA Correction & Polish](#phase-7--ia-correction--polish-2026-05-05) section and [SPEC-102 §Implementation Status (2026-05-05)](../specs/SPEC-102-lobby-sidebar-ia-and-entity-routes.md#implementation-status-2026-05-05). Outstanding items are tracked in [Open follow-ups](#open-follow-ups); Phase 6 Clowder & Cattery business logic is intentionally deferred until ADR-100 / SPEC-103 are accepted. |
 
 ## Objective
 

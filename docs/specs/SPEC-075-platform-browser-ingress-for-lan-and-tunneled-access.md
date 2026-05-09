@@ -8,9 +8,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Implemented (LAN ingress + reverse proxy + tunnel docs landed; second-device verification operator-gated) |
 | **Owner** | Codex |
 | **Reviewer** | User |
+| **Implementation Note** | PLAN-067 Phase 1A / 1B core / Phase 2 docs are landed. Outstanding items (Task 2.3 manual second-device LAN verification, Task 3.3 conditional tunnel diagnostics) are operator-driven and do not block the contract. |
 
 ## Summary
 

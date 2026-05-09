@@ -4,11 +4,12 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress (IA shipped 2026-05-05 per Implementation Status §; Clowder/Cattery still gated on ADR-100 / SPEC-103) |
 | **Owner** | Claude |
 | **Reviewer** | User |
 | **Related ADR** | [ADR-099](../decisions/099-promote-cats-clowders-catteries-to-platform-entities.md) |
 | **Related SPEC** | [SPEC-064](./SPEC-064-my-cats-platform-home-and-lens-projections.md) |
+| **Implementation Note** | The §Implementation Status (2026-05-05) section below documents what actually shipped. The original FR list that follows it is kept as historical design intent — `/entities/*` was retreated, the DM section is opt-in, and the lobby is a bare landing page. PLAN-091 Phase 7+ tracks the shipped behaviour. |
 
 ## Implementation Status (2026-05-05, post-`/entities/*` migration)
 
