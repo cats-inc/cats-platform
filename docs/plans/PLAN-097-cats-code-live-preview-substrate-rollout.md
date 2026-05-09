@@ -82,7 +82,7 @@ real process spawning is enabled.
 
 ### Phase 4: Artifact Canvas Integration
 
-- [ ] Task 4.1: Materialize ready previews as `CoreArtifactRecord` rows with
+- [x] Task 4.1: Materialize ready previews as `CoreArtifactRecord` rows with
       `kind = 'preview'`, safe `preview_url`, `previewId`, command profile id,
       workspace ref, and source surface metadata.
 - [x] Task 4.2: Add the server-side
@@ -174,6 +174,7 @@ not bypass the existing viewer contract.
 | 2026-05-09 | Added the Phase 3 API/read-model seam: in-memory lease store, live-preview summary/detail projections, diagnostics mapping, Code API paths/routes for list/detail/logs/stop, and route tests. Task 3.3 renderer affordances remain pending. |
 | 2026-05-09 | Completed Phase 3 renderer affordances by mounting the live-preview panel on Code task and codespace surfaces, adding status/stop/retry/log controls, i18n strings, and renderer/API helper tests. Retry remains disabled until the start route is approved in a later phase. |
 | 2026-05-09 | Added the Artifact Canvas supervisor-owned preview-origin gate and wired projection/API dependencies so allowlisted loopback previews receive `scripted-cross-origin` only when a ready lease matches the artifact, source surface, and workspace scope. Missing, stale, or mismatched leases demote to `static`. |
+| 2026-05-09 | Added live-preview artifact materialization for ready Code task/codespace leases. The materializer writes deterministic `CoreArtifactRecord(kind = preview)` rows with `codeLivePreview` metadata and returns an updated lease carrying the artifact id; tests verify the artifact closes the Artifact Canvas lease gate. |
 
 ---
 
