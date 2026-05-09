@@ -73,29 +73,24 @@ export function buildMissionsByConversation(
 ): MissionConversationIndex {
   const byConversationId = new Map<ConversationId, MissionConversationIndexEntry>();
   const unanchoredMissions: MissionConversationLink[] = [];
-  // Track every run id that any mission has already claimed via the
-  // strong reference set, so the loose-conversation pass at the end
-  // does not re-attach the same run.
-  const claimedRunIdsByConversation = new Map<ConversationId, Set<string>>();
-
-  function recordClaimedRun(conversationId: ConversationId, runId: string): void {
-    const existing = claimedRunIdsByConversation.get(conversationId);
-    if (existing) {
-      existing.add(runId);
-    } else {
-      claimedRunIdsByConversation.set(conversationId, new Set([runId]));
-    }
-  }
+  // Global set of every run id that any mission has already claimed
+  // via the strong reference set. Tracked across conversations so a
+  // run claimed by mission A in conversation A cannot also surface as
+  // a loose run on conversation B even if `run.conversationId` is B
+  // (mismatch between mission anchor and run anchor is rare but real
+  // — typically a recovered run that re-anchored to a different
+  // conversation while the mission still claims it).
+  const claimedRunIds = new Set<string>();
 
   for (const mission of core.missions) {
     const runs = resolveRunsForMission(core.runs, mission);
     const link: MissionConversationLink = { mission, runs };
+    for (const run of runs) {
+      claimedRunIds.add(run.id);
+    }
     if (mission.conversationId === null) {
       unanchoredMissions.push(link);
       continue;
-    }
-    for (const run of runs) {
-      recordClaimedRun(mission.conversationId, run.id);
     }
     const existing = byConversationId.get(mission.conversationId);
     if (existing) {
@@ -111,10 +106,9 @@ export function buildMissionsByConversation(
 
   // Second pass: attach loose runs to each conversation entry. A run
   // is "loose" when it shares the conversation but neither side
-  // references the other.
+  // references the other and no mission anywhere has claimed it.
   for (const entry of byConversationId.values()) {
-    const claimed = claimedRunIdsByConversation.get(entry.conversationId) ?? new Set<string>();
-    entry.looseRuns = findLooseRunsForConversation(core.runs, entry.conversationId, claimed);
+    entry.looseRuns = findLooseRunsForConversation(core.runs, entry.conversationId, claimedRunIds);
   }
 
   const entries = Array.from(byConversationId.values()).sort((left, right) =>

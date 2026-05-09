@@ -142,6 +142,47 @@ test('buildMissionsByConversation surfaces loose conversation runs at the entry 
   assert.equal(looseRuns[0]?.id, 'run-conversation-only');
 });
 
+test('buildMissionsByConversation does not double-count a strongly-claimed run when run.conversationId differs from mission.conversationId', () => {
+  let core = createDefaultCoreState();
+  core = seedConversation(core, 'conversation-mission');
+  core = seedConversation(core, 'conversation-run');
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-mismatch',
+      title: 'Mission anchored to conversation-mission, claims a run anchored elsewhere',
+      conversationId: 'conversation-mission',
+      status: 'running',
+      metadata: { runId: 'run-elsewhere' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-elsewhere',
+      title: 'Run anchored to conversation-run',
+      status: 'running',
+      conversationId: 'conversation-run',
+      orchestratorActorId: null,
+    },
+    new Date('2026-04-14T22:00:30.000Z'),
+  ).core;
+
+  const index = buildMissionsByConversation(core);
+  const missionLinks = findMissionsForConversation(index, 'conversation-mission');
+  assert.equal(missionLinks.length, 1);
+  assert.equal(missionLinks[0]?.runs.length, 1);
+  assert.equal(missionLinks[0]?.runs[0]?.id, 'run-elsewhere');
+  // Critical regression guard: even though the run lives on
+  // conversation-run, it must NOT also appear as a loose run there
+  // because mission-mismatch already strongly claims it.
+  assert.deepEqual(
+    findLooseRunsForConversationFromIndex(index, 'conversation-run'),
+    [],
+  );
+});
+
 test('buildMissionsByConversation does not surface a strongly-claimed run as a loose run', () => {
   let core = createDefaultCoreState();
   core = seedConversation(core, 'conversation-a');
