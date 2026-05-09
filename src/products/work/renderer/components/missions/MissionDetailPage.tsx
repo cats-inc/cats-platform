@@ -8,6 +8,7 @@ import { formatRelative } from "../topdown/shared";
 import { cancelWorkMission } from "../../api/runCancellation.js";
 import {
   MISSIONS_QUERY_KEY,
+  useMissionDetailQuery,
   useMissionsQuery,
 } from "../../state/queries/missionsQuery.js";
 import { RUNS_QUERY_KEY, useRunsQuery } from "../../state/queries/runsQuery.js";
@@ -26,14 +27,19 @@ export function MissionDetailPage(): JSX.Element {
   const { missionId } = useParams<{ missionId: string }>();
   const queryClient = useQueryClient();
   const missionsQuery = useMissionsQuery();
+  const missionDetailQuery = useMissionDetailQuery(missionId);
   const workItemsQuery = useWorkItemsQuery();
   const tasksQuery = useTasksQuery();
   const runsQuery = useRunsQuery();
   const { t } = useI18n();
   const [cancelBlockerMessage, setCancelBlockerMessage] = useState<string | null>(null);
 
+  // Prefer the list query (it carries data for the common case) but
+  // fall back to the detail query so direct URLs to internal /
+  // hidden missions still resolve when the list filter excludes them.
   const mission = missionId
     ? missionsQuery.data?.missions.find((m) => m.id === missionId)
+      ?? missionDetailQuery.data?.mission
     : undefined;
 
   const cancelMissionMutation = useMutation({
@@ -101,7 +107,55 @@ export function MissionDetailPage(): JSX.Element {
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [runsQuery.data, transitiveTasks]);
 
-  if (missionsQuery.isPending) {
+  // Direct mission runs from the detail projection (anchored via
+  // mission.metadata.runId or run.metadata.missionId). These cover
+  // missions that have no managed-work bridge but still produced
+  // runs — previously these missions silently rendered "no linked
+  // work item / no run" because the detail page only walked
+  // managedWorkId -> taskId -> runs.
+  const directMissionRuns = useMemo(() => {
+    const detailRuns = missionDetailQuery.data?.runs ?? [];
+    if (detailRuns.length === 0) return [];
+    const allRuns = runsQuery.data?.runs ?? [];
+    const allRunsById = new Map(allRuns.map((run) => [run.id, run]));
+    return detailRuns
+      .map((detailRun) => {
+        const enriched = allRunsById.get(detailRun.id);
+        if (enriched) {
+          // Prefer the WorkRunListItem shape (carries taskTitle etc.)
+          // when the run is already in the runs list query.
+          return enriched;
+        }
+        // Fallback shape mirroring WorkRunListItem fields the renderer
+        // consumes (id / title / status / taskId / updatedAt).
+        return {
+          id: detailRun.id,
+          title: detailRun.title,
+          status: detailRun.status,
+          taskId: detailRun.taskId,
+          taskTitle: null,
+          updatedAt: detailRun.updatedAt,
+        };
+      })
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }, [missionDetailQuery.data, runsQuery.data]);
+
+  // Unified run set: direct mission runs (covers managed-work-less
+  // missions) merged with transitive runs (covers the legacy
+  // managedWork -> task -> run path), deduplicated by run id with
+  // direct-mission ordering preserved.
+  const effectiveRuns = useMemo(() => {
+    const seen = new Set<string>();
+    const merged: typeof transitiveRuns = [];
+    for (const run of [...directMissionRuns, ...transitiveRuns]) {
+      if (seen.has(run.id)) continue;
+      seen.add(run.id);
+      merged.push(run);
+    }
+    return merged;
+  }, [directMissionRuns, transitiveRuns]);
+
+  if (missionsQuery.isPending && missionDetailQuery.isPending) {
     return <MissionDetailLoading />;
   }
   if (!mission) {
@@ -269,20 +323,18 @@ export function MissionDetailPage(): JSX.Element {
         <section className="missionDetail__section">
           <h2 className="missionDetail__sectionHeading">
             {t("workMissionRunsHeading", {
-              count: `${transitiveRuns.length}`,
+              count: `${effectiveRuns.length}`,
             })}
           </h2>
-          {!linkedWorkItem ? (
+          {effectiveRuns.length === 0 ? (
             <p className="missionDetail__empty">
-              {t("workMissionNoLinkedWorkItemForRuns")}
-            </p>
-          ) : transitiveRuns.length === 0 ? (
-            <p className="missionDetail__empty">
-              {t("workMissionNoTransitiveRuns")}
+              {linkedWorkItem
+                ? t("workMissionNoTransitiveRuns")
+                : t("workMissionNoLinkedWorkItemForRuns")}
             </p>
           ) : (
             <ul className="missionDetail__transitiveList">
-              {transitiveRuns.map((run) => (
+              {effectiveRuns.map((run) => (
                 <li key={run.id} className="missionDetail__transitiveRow">
                   <Link
                     to={buildWorkRunPath(run.taskId ?? "orphan", run.id)}
