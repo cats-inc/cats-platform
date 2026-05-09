@@ -476,6 +476,58 @@ test('validateRunLinkage flags cross_mission_conflict when two missions claim th
   assert.equal(diagnostics[0]?.conflictingMissionId, 'mission-a');
 });
 
+test('validateRunLinkage flags cross_mission_conflict when 2+ missions claim the same run via metadata.runId without run-side metadata', () => {
+  let core = createDefaultCoreState();
+  // Two missions both nominate run-shared via mission.metadata.runId.
+  // The run itself has no metadata.missionId — the previous detection
+  // path required that key, so this case slipped through.
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-alpha',
+      title: 'Mission Alpha',
+      status: 'running',
+      metadata: { runId: 'run-shared' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-beta',
+      title: 'Mission Beta',
+      status: 'running',
+      metadata: { runId: 'run-shared' },
+    },
+    new Date('2026-04-14T22:00:30.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-shared',
+      title: 'Shared run with no run-side claim',
+      status: 'running',
+      orchestratorActorId: null,
+    },
+    new Date('2026-04-14T22:01:00.000Z'),
+  ).core;
+  const run = core.runs.find((candidate) => candidate.id === 'run-shared');
+  assert.ok(run);
+
+  const diagnostics = validateRunLinkage(core, run);
+  // Exactly one cross_mission_conflict diagnostic, naming both
+  // claimants between `referencedId` and `conflictingMissionId`.
+  assert.equal(diagnostics.length, 1);
+  assert.equal(diagnostics[0]?.anchor, 'metadata_mission');
+  assert.equal(diagnostics[0]?.reason, 'cross_mission_conflict');
+  const namedClaimants = new Set([
+    diagnostics[0]?.referencedId,
+    diagnostics[0]?.conflictingMissionId,
+  ]);
+  assert.ok(namedClaimants.has('mission-alpha'));
+  assert.ok(namedClaimants.has('mission-beta'));
+});
+
 test('validateRunLinkage stays silent when only the claimed mission references the run', () => {
   let core = createDefaultCoreState();
   core = upsertCoreMission(

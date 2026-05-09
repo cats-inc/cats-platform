@@ -257,31 +257,53 @@ export function validateRunLinkage(
     });
   }
   const claimedMissionId = readRunMetadataMissionId(run);
-  if (claimedMissionId !== null) {
-    if (!recordExistsById(core.missions, claimedMissionId)) {
+  if (claimedMissionId !== null
+    && !recordExistsById(core.missions, claimedMissionId)) {
+    diagnostics.push({
+      runId: run.id,
+      anchor: 'metadata_mission',
+      referencedId: claimedMissionId,
+      reason: 'missing_record',
+    });
+  }
+
+  // Conflict detection: enumerate every mission that claims this run.
+  // The unified resolver (resolveRunsForMission) attributes a run to
+  // every mission in this set, so 2+ entries means the run will
+  // double-attribute regardless of whether the run carries
+  // `metadata.missionId`. Walking via missionRunResolution-equivalent
+  // logic catches both:
+  //   - run.metadata.missionId === A AND another mission B has
+  //     mission.metadata.runId === run.id (run claims A, B claims run)
+  //   - mission A and mission B both have metadata.runId === run.id
+  //     (no run-side metadata required to trip the conflict)
+  const claimingMissions = core.missions.filter((mission) =>
+    readMissionMetadataRunId(mission) === run.id);
+  const claimantSet = new Set<string>(claimingMissions.map((mission) => mission.id));
+  if (claimedMissionId !== null && recordExistsById(core.missions, claimedMissionId)) {
+    claimantSet.add(claimedMissionId);
+  }
+  if (claimantSet.size > 1) {
+    const claimantList = Array.from(claimantSet);
+    // Surface one diagnostic per conflicting pair, with `referencedId`
+    // pointing at the run-claimed mission when present (so the audit
+    // can see which side the run itself nominated) and
+    // `conflictingMissionId` carrying the other claimant.
+    const primary = claimedMissionId !== null
+      && recordExistsById(core.missions, claimedMissionId)
+      ? claimedMissionId
+      : claimantList[0]!;
+    for (const claimantId of claimantList) {
+      if (claimantId === primary) {
+        continue;
+      }
       diagnostics.push({
         runId: run.id,
         anchor: 'metadata_mission',
-        referencedId: claimedMissionId,
-        reason: 'missing_record',
+        referencedId: primary,
+        reason: 'cross_mission_conflict',
+        conflictingMissionId: claimantId,
       });
-    } else {
-      // Cross-claim conflict: another mission also claims this run via
-      // `mission.metadata.runId`. The unified resolver would attribute
-      // the run to BOTH missions, which is a real provenance bug —
-      // surface it so audit can decide which side wins.
-      const conflictingMission = core.missions.find((mission) =>
-        mission.id !== claimedMissionId
-        && readMissionMetadataRunId(mission) === run.id) ?? null;
-      if (conflictingMission !== null) {
-        diagnostics.push({
-          runId: run.id,
-          anchor: 'metadata_mission',
-          referencedId: claimedMissionId,
-          reason: 'cross_mission_conflict',
-          conflictingMissionId: conflictingMission.id,
-        });
-      }
     }
   }
 

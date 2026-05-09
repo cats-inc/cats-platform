@@ -50,19 +50,24 @@ test('buildCoreLinkageDiagnostics aggregates mission / run / transport binding i
     },
     new Date('2026-04-14T22:01:00.000Z'),
   ).core;
-  // Inbound transport binding pointing at a non-existent conversation.
+  // Direct-lane projection binding pointing at a non-existent
+  // conversation. Real direct-lane bindings always carry
+  // `metadata.channelKind === "direct_message"` (stamped by
+  // `createDirectLaneTransportBindings`).
   core = upsertCoreTransportBinding(
     core,
     {
       id: 'binding-stale',
-      platform: 'telegram',
-      direction: 'inbound',
+      platform: 'internal',
+      direction: 'bidirectional',
       conversationId: 'conversation-deleted',
       status: 'active',
+      metadata: { channelId: 'channel-stale', channelKind: 'direct_message' },
     },
     new Date('2026-04-14T22:02:00.000Z'),
   ).core;
-  // Healthy transport binding linked to a real direct conversation.
+  // Healthy direct-lane projection binding linked to a real direct
+  // conversation.
   core = upsertCoreConversation(
     core,
     {
@@ -76,10 +81,11 @@ test('buildCoreLinkageDiagnostics aggregates mission / run / transport binding i
     core,
     {
       id: 'binding-healthy',
-      platform: 'telegram',
-      direction: 'inbound',
+      platform: 'internal',
+      direction: 'bidirectional',
       conversationId: 'conversation-direct-1',
       status: 'active',
+      metadata: { channelId: 'channel-healthy', channelKind: 'direct_message' },
     },
     new Date('2026-04-14T22:04:00.000Z'),
   ).core;
@@ -227,7 +233,7 @@ test('buildCoreLinkageDiagnostics does not flag bot bindings even if they happen
   assert.equal(report.summary.transportBindingDiagnosticCount, 0);
 });
 
-test('buildCoreLinkageDiagnostics flags an inbound binding pointing at the wrong conversation kind', () => {
+test('buildCoreLinkageDiagnostics flags a direct-lane binding pointing at the wrong conversation kind', () => {
   let core = createDefaultCoreState();
   core = upsertCoreConversation(
     core,
@@ -242,10 +248,11 @@ test('buildCoreLinkageDiagnostics flags an inbound binding pointing at the wrong
     core,
     {
       id: 'binding-misrouted',
-      platform: 'telegram',
-      direction: 'inbound',
+      platform: 'internal',
+      direction: 'bidirectional',
       conversationId: 'conversation-channel-1',
       status: 'active',
+      metadata: { channelId: 'channel-misrouted', channelKind: 'direct_message' },
     },
     new Date('2026-04-14T22:00:00.000Z'),
   ).core;
@@ -253,4 +260,38 @@ test('buildCoreLinkageDiagnostics flags an inbound binding pointing at the wrong
   const report = buildCoreLinkageDiagnostics(core);
   assert.equal(report.summary.transportBindingDiagnosticCount, 1);
   assert.equal(report.transportBindings[0]?.status, 'conversation_not_direct_lane');
+});
+
+test('buildCoreLinkageDiagnostics does not flag inbound bindings without direct-lane metadata', () => {
+  // Regression for the dropped `direction === "inbound"` fallback.
+  // A future Telegram bot ingress binding pointing at a chat_channel
+  // is not a direct-lane projection; the direct-lane resolver would
+  // mis-flag `conversation_not_direct_lane` if we still let inbound
+  // bindings into scope without the explicit metadata signal.
+  let core = createDefaultCoreState();
+  core = upsertCoreConversation(
+    core,
+    {
+      id: 'conversation-channel-1',
+      title: 'Group channel',
+      kind: 'chat_channel',
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreTransportBinding(
+    core,
+    {
+      id: 'binding-inbound-no-metadata',
+      platform: 'telegram',
+      direction: 'inbound',
+      conversationId: 'conversation-channel-1',
+      status: 'active',
+      metadata: { bindingId: 'bot-binding-future', botName: 'group_bot' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+
+  const report = buildCoreLinkageDiagnostics(core);
+  assert.equal(report.summary.transportBindingDiagnosticCount, 0);
+  assert.equal(isCoreLinkageHealthy(report), true);
 });

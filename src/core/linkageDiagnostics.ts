@@ -83,16 +83,16 @@ function shouldRunDirectLaneCheckOn(binding: TransportBindingRecord): boolean {
   if (binding.status !== 'active') {
     return false;
   }
-  // Direct-lane projections are the primary scope: the resolver was
-  // designed for them, and they always produce a binding even before
-  // the conversation row catches up.
-  if (isDirectLaneProjectionBinding(binding)) {
-    return true;
-  }
-  // Future-proof: explicit `inbound` direction reserves the resolver
-  // semantic for new transport adapters that have not yet adopted the
-  // metadata signal.
-  return binding.direction === 'inbound';
+  // The direct-lane resolver was designed for direct-lane projections
+  // specifically (they stamp `metadata.channelKind = "direct_message"`
+  // — see `createDirectLaneTransportBindings`). Other inbound shapes
+  // (telegram bot bindings, future external transports targeting
+  // group / external-transport conversations) will resolve into
+  // `conversation_not_direct_lane` and surface as false-positive
+  // canonical breakage. New inbound transports that want their own
+  // ingress-readiness diagnostics should ship transport-specific
+  // helpers rather than reusing the direct-lane resolver here.
+  return isDirectLaneProjectionBinding(binding);
 }
 
 function summarizeTransportBindingDirectLane(
