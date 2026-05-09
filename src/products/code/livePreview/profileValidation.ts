@@ -43,6 +43,12 @@ export function validateLivePreviewConfig(
   if (typeof config.allowIpv6Loopback !== 'boolean') {
     throw new Error('livePreview.allowIpv6Loopback must be a boolean.');
   }
+  if (
+    config.useRealProcessAdapter !== undefined
+    && typeof config.useRealProcessAdapter !== 'boolean'
+  ) {
+    throw new Error('livePreview.useRealProcessAdapter must be a boolean.');
+  }
   if (!Array.isArray(config.commandProfiles)) {
     throw new Error('livePreview.commandProfiles must be an array.');
   }

@@ -47,6 +47,13 @@ export interface LivePreviewPortRange {
 
 export interface LivePreviewConfig {
   enabled: boolean;
+  /**
+   * When true AND `enabled` is true, the supervisor uses the real
+   * `child_process.spawn` adapter; otherwise it falls back to the fake
+   * adapter. Default false. Flipping this requires PLAN-097 Task 5.1
+   * security review approval and an isolated test workspace per Task 5.4.
+   */
+  useRealProcessAdapter?: boolean;
   portRange: LivePreviewPortRange;
   maxConcurrentGlobal: number;
   maxConcurrentPerWorkspace: number;
@@ -153,6 +160,7 @@ export type LivePreviewStopResult =
 
 export const DEFAULT_LIVE_PREVIEW_CONFIG: LivePreviewConfig = {
   enabled: false,
+  useRealProcessAdapter: false,
   portRange: { start: 47_100, end: 47_199 },
   maxConcurrentGlobal: 3,
   maxConcurrentPerWorkspace: 1,

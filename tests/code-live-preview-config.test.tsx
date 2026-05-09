@@ -45,6 +45,7 @@ test('loadConfig accepts Cats Code live preview env overrides and profiles', () 
 
   assert.deepEqual(config.codeLivePreview, {
     enabled: true,
+    useRealProcessAdapter: false,
     portRange: { start: 47_150, end: 47_155 },
     maxConcurrentGlobal: 2,
     maxConcurrentPerWorkspace: 1,

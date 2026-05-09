@@ -330,6 +330,10 @@ function readArtifactCanvasPorts(
 function loadCodeLivePreviewConfig(env: NodeJS.ProcessEnv): LivePreviewConfig {
   return {
     enabled: parseBoolean(env.CATS_CODE_LIVE_PREVIEW_ENABLED, DEFAULT_LIVE_PREVIEW_CONFIG.enabled),
+    useRealProcessAdapter: parseBoolean(
+      env.CATS_CODE_LIVE_PREVIEW_USE_REAL_PROCESS_ADAPTER,
+      DEFAULT_LIVE_PREVIEW_CONFIG.useRealProcessAdapter ?? false,
+    ),
     portRange: parseLivePreviewPortRange(
       env.CATS_CODE_LIVE_PREVIEW_PORT_RANGE,
       DEFAULT_LIVE_PREVIEW_CONFIG.portRange,
