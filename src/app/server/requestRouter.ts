@@ -35,6 +35,7 @@ import {
 } from '../../shared/http.js';
 import { routeChatApi } from '../../products/chat/api/index.js';
 import { routeCodeApi } from '../../products/code/api/index.js';
+import { routeArtifactCanvasApi } from '../../products/shared/artifactCanvas/api.js';
 import { routeWorkApi } from '../../products/work/api/index.js';
 import { routeEntitySubscriptionApi } from './subscribeRoutes.js';
 import {
@@ -360,6 +361,12 @@ export async function routeRequest(
     ...context,
     dependencies: dependencies.code,
   };
+  const artifactCanvasContext = {
+    ...context,
+    dependencies: {
+      coreStore: dependencies.shared.coreStore,
+    },
+  };
   const appPackageContext = {
     ...context,
     dependencies: {
@@ -432,6 +439,10 @@ export async function routeRequest(
   }
 
   if (await routeCoreApi(coreContext)) {
+    return;
+  }
+
+  if (await routeArtifactCanvasApi(artifactCanvasContext)) {
     return;
   }
 
