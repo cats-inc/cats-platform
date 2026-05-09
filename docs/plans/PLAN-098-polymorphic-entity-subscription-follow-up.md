@@ -55,6 +55,8 @@ proof and the cleanup decisions that should happen after it.
 - Browser-level Artifact Canvas acceptance now proves a mounted surface observes
   two artifact subscription mutations. ADR-041 collection-refetch coexistence is
   covered by source-level merge regression.
+- Channel baseline cleanup is also covered by dispatcher stale-snapshot tests,
+  active-merge tests, repeated server patch tests, and hub reconnect regression.
 
 ## Implementation Phases
 
@@ -63,12 +65,14 @@ proof and the cleanup decisions that should happen after it.
 - [x] Task 1.1: Audit SPEC-076 against the landed channel implementation and
       explicitly document the accepted projection/diffing model where it
       differs from the original mutation-local publisher wording.
-- [ ] Task 1.2: Confirm channel tests cover snapshot replacement on reconnect,
+- [x] Task 1.2: Confirm channel tests cover snapshot replacement on reconnect,
       patch ordering assumptions, stale patch handling, active subscription
       merge behavior, and ADR-041 coexistence.
-- [ ] Task 1.3: Identify whether a browser-level Chat/Code/Work transcript
+- [x] Task 1.3: Identify whether a browser-level Chat/Code/Work transcript
       parity acceptance still adds value beyond existing unit/source-level
-      coverage; add it if it will catch real regressions.
+      coverage; add it if it will catch real regressions. Current decision:
+      keep SPEC-076's broader transcript parity acceptance open, but do not add
+      a PLAN-098 browser fixture unless a concrete regression appears.
 
 **Deliverables**: SPEC-076 and tests describe the channel baseline that future
 kinds should copy, not the stale PLAN-068 draft shape.
@@ -156,7 +160,7 @@ not merely a channel-specific workaround.
 | `src/products/shared/renderer/CanvasPane.tsx` | Modified | Mounts `useEntitySubscription({ kind: 'artifact', id })` and refreshes projection on matching snapshots/patches. |
 | `tests/entity-subscription-artifact.test.tsx` | Created | Server and projector coverage for artifact snapshot, repeated update patches, removed patch and stream close, missing artifact, and invalid kind. |
 | `tests/entity-subscription-artifact-canvas.test.tsx` | Created | Mounted Artifact Canvas acceptance for two artifact subscription patch refreshes. |
-| `tests/entity-subscription-renderer.test.tsx` | Modified | Renderer hub and artifact dispatcher coverage. |
+| `tests/entity-subscription-renderer.test.tsx` | Modified | Renderer hub reconnect, channel dispatcher, and artifact dispatcher coverage. |
 | `tests/merge-app-shell-preserving-active-entity-state.test.tsx` | Modified | ADR-041 collection-refresh coexistence regression for active subscriptions. |
 
 ## Technical Decisions
@@ -201,7 +205,8 @@ not merely a channel-specific workaround.
 
 | Date | Update |
 |------|--------|
-| 2026-05-09 | ADR-041 collection-refresh coexistence regression landed for active subscriptions. Remaining PLAN-098 work is channel baseline cleanup and the post-polymorphism stream consolidation decision. |
+| 2026-05-09 | Channel baseline cleanup completed: reconnect, stale snapshot, active merge, repeated patch, and ADR-041 coexistence regressions are covered; broader transcript parity remains a SPEC-076 acceptance item rather than a PLAN-098 blocker. |
+| 2026-05-09 | ADR-041 collection-refresh coexistence regression landed for active subscriptions. Remaining PLAN-098 work is the post-polymorphism stream consolidation decision. |
 | 2026-05-09 | Artifact Canvas mounted acceptance landed for two subscription mutations. |
 | 2026-05-09 | Artifact selected and landed as the second entity kind. Server route/projector, Artifact Canvas consumer, and targeted tests are implemented. |
 | 2026-05-09 | Plan created from PLAN-068 closeout to carry second-kind polymorphism, cross-surface acceptance, and live-stream cleanup decisions. |

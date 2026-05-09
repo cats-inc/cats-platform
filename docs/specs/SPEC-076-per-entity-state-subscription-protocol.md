@@ -25,9 +25,9 @@
 landed and PLAN-068 is now a closeout record. PLAN-098 has also landed
 `artifact` as the second entity kind for the polymorphism proof, including
 mounted Artifact Canvas refresh over repeated subscription mutations. Remaining
-work is channel-focused acceptance cleanup and the post-polymorphism decision on
-whether the legacy channel liveIndicator stream should fold into the
-entity-subscription layer.
+SPEC-level acceptance still includes broader channel transcript parity; the
+remaining PLAN-098 work is the post-polymorphism decision on whether the legacy
+channel liveIndicator stream should fold into the entity-subscription layer.
 
 Today the renderer keeps entity state "fresh" through three loosely
 coupled mechanisms — cold fetch of `/api/app-shell`, cross-surface
