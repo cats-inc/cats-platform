@@ -59,6 +59,8 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-098](./plans/PLAN-098-polymorphic-entity-subscription-follow-up.md) — follow-up plan for proving per-entity subscriptions with a second entity kind after PLAN-068's channel slice
+- [PLAN-068](./plans/PLAN-068-per-entity-state-subscription-rollout.md) — reconciled as the channel-slice closeout for per-entity state subscriptions
 - [ADR-104](./decisions/104-adopt-managed-live-preview-supervisor-for-artifact-canvas.md) — Cats Code live previews require a managed supervisor before any process spawning or privileged preview-origin treatment
 - [SPEC-108](./specs/SPEC-108-cats-code-live-preview-substrate.md) — requirements for command profiles, process supervision, port leases, logs, lifecycle cleanup, and Artifact Canvas preview-origin qualification
 - [PLAN-097](./plans/PLAN-097-cats-code-live-preview-substrate-rollout.md) — rollout plan for the managed live-preview substrate, with real process spawning gated until security approval
@@ -132,7 +134,6 @@ Recent additions:
 - [SPEC-079](./specs/SPEC-079-region-screenshot-composer-attachments.md)
 - [ADR-078](./decisions/078-use-electron-native-region-screenshot-with-web-fallback.md)
 - [2026-04-21 Region Screenshot Composer Feasibility](./research/2026-04-21-region-screenshot-composer-feasibility.md)
-- [PLAN-068](./plans/PLAN-068-per-entity-state-subscription-rollout.md)
 - [SPEC-076](./specs/SPEC-076-per-entity-state-subscription-protocol.md)
 - [ADR-075](./decisions/075-adopt-push-based-per-entity-state-subscription.md)
 - [2026-04-21 Per-Entity State Subscription Architecture](./research/2026-04-21-per-entity-state-subscription-architecture.md)

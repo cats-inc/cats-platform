@@ -1,0 +1,199 @@
+# PLAN-098: Polymorphic Entity Subscription Follow-up
+
+> Finish the non-channel work that PLAN-068 intentionally left open:
+> prove the per-entity subscription protocol with a second entity kind,
+> lock cross-surface acceptance, and decide whether remaining legacy
+> channel streams should converge into the entity-subscription layer.
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| **Status** | Draft |
+| **Owner** | TBD (Conductor on accept) |
+| **Reviewer** | User |
+
+## Related Spec / Dependencies
+
+- [SPEC-076: Per-Entity State Subscription Protocol](../specs/SPEC-076-per-entity-state-subscription-protocol.md)
+- [ADR-075: Adopt Push-Based Per-Entity State Subscription](../decisions/075-adopt-push-based-per-entity-state-subscription.md)
+- [ADR-041: Push Transport and Chat Invalidations Over SSE](../decisions/041-push-transport-and-chat-invalidations-over-sse.md)
+- [PLAN-068: Per-Entity State Subscription Rollout](./PLAN-068-per-entity-state-subscription-rollout.md) — channel-slice closeout
+- [PLAN-090: Cats Code Artifact Canvas Rollout](./PLAN-090-cats-code-artifact-canvas-rollout.md)
+
+## Overview
+
+The `channel` slice proved the basic subscription shape:
+
+- server route: `/api/subscribe?kind=channel&id=<channel-id>`
+- server projection: snapshot + diffs from the authoritative platform host state
+- renderer hub: one upstream stream per active `(kind, id)`
+- renderer dispatcher: kind-specific state application
+- coexistence: ADR-041 collection invalidation refetches use a merge helper so
+  collection freshness does not overwrite the mounted subscription-owned entity
+
+What it has not proven is the contract's stated polymorphism. Today the shared
+type still admits only `channel`, so a future `project`, `artifact`, `run`, or
+other entity kind would still require new integration work. This plan owns that
+proof and the cleanup decisions that should happen after it.
+
+## Baseline Facts
+
+- `EntitySubscriptionKind` is currently `channel` in both server and renderer
+  subscription modules.
+- The channel implementation uses projection/diffing after existing chat
+  events rather than a mutation-local publisher called directly by each write
+  path.
+- The current test suite covers channel snapshot/patch behavior, renderer
+  application, active-subscription merge behavior, and source-level ADR-041
+  coexistence.
+- There is no second-kind dispatcher, no second-kind route validation, and no
+  second-kind cross-surface live preview acceptance test.
+
+## Implementation Phases
+
+### Phase 1: Align the Landed Channel Contract
+
+- [ ] Task 1.1: Audit SPEC-076 against the landed channel implementation and
+      explicitly document the accepted projection/diffing model where it
+      differs from the original mutation-local publisher wording.
+- [ ] Task 1.2: Confirm channel tests cover snapshot replacement on reconnect,
+      patch ordering assumptions, stale patch handling, active subscription
+      merge behavior, and ADR-041 coexistence.
+- [ ] Task 1.3: Identify whether a browser-level Chat/Code/Work transcript
+      parity acceptance still adds value beyond existing unit/source-level
+      coverage; add it if it will catch real regressions.
+
+**Deliverables**: SPEC-076 and tests describe the channel baseline that future
+kinds should copy, not the stale PLAN-068 draft shape.
+
+### Phase 2: Choose the Second Entity Kind
+
+- [ ] Task 2.1: Pick the second kind. Default recommendation is `artifact`
+      because Cats Code Artifact Canvas is active product work and benefits from
+      live preview/materialization state. Use `project` instead only if Cats
+      Work previewing becomes the nearer cross-surface need.
+- [ ] Task 2.2: Define the second-kind snapshot shape, patch vocabulary,
+      identity fields, version number, close semantics, and access validation.
+- [ ] Task 2.3: Confirm which mounted surface owns the first consumer and what
+      entity mutations must stay live over the stream.
+
+**Deliverables**: one concrete second-kind contract ready to implement without
+reopening ADR-075.
+
+### Phase 3: Server Second-Kind Subscription
+
+- [ ] Task 3.1: Extend server-side `EntitySubscriptionKind` and route
+      validation beyond `channel`.
+- [ ] Task 3.2: Add the second-kind projector that emits an immediate snapshot
+      and ordered patches after authoritative state changes.
+- [ ] Task 3.3: Keep the route protocol unchanged:
+      `/api/subscribe?kind=<kind>&id=<entity-id>`.
+- [ ] Task 3.4: Add server tests for snapshot, patch, close, invalid id,
+      unauthorized access, and reconnect behavior for the second kind.
+
+**Deliverables**: server-side polymorphism without new transport or route
+shape.
+
+### Phase 4: Renderer Second-Kind Consumer
+
+- [ ] Task 4.1: Extend renderer-side `EntitySubscriptionKind` and dispatcher
+      registration for the second kind.
+- [ ] Task 4.2: Add a kind-specific dispatcher that applies snapshots and
+      patches without overwriting unrelated app-shell collection state.
+- [ ] Task 4.3: Mount `useEntitySubscription({ kind: '<chosen>', id })` in the
+      owning product surface.
+- [ ] Task 4.4: Add renderer tests for coalesced subscribers, snapshot
+      replacement, patch application, close handling, and stale-event handling.
+
+**Deliverables**: the second kind is live in a product surface using the same
+hub and protocol as `channel`.
+
+### Phase 5: Cross-Surface Acceptance
+
+- [ ] Task 5.1: Create a cross-surface acceptance fixture where one surface
+      opens the second-kind entity and another surface or server path mutates
+      it twice.
+- [ ] Task 5.2: Assert the mounted target surface observes both mutations
+      through the subscription without a full app-shell replacement.
+- [ ] Task 5.3: Assert ADR-041 collection refetches still refresh collection
+      state without overwriting the mounted subscribed entity.
+
+**Deliverables**: explicit evidence that the protocol is truly polymorphic and
+not merely a channel-specific workaround.
+
+### Phase 6: Post-Polymorphism Cleanup Decision
+
+- [ ] Task 6.1: Decide whether `/api/channels/:id/stream` remains a separate
+      live-indicator stream or folds into the channel entity subscription.
+- [ ] Task 6.2: If folding is adopted, migrate consumers in one slice and remove
+      obsolete stream semantics rather than keeping unreleased compatibility
+      shims.
+- [ ] Task 6.3: Update SPEC-076, ADR-075, and relevant tests to reflect the
+      final split between collection invalidations, entity subscriptions, and
+      any remaining specialized streams.
+
+**Deliverables**: clear post-v1 ownership for all renderer live-update paths.
+
+## Files to Create/Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `docs/specs/SPEC-076-per-entity-state-subscription-protocol.md` | Modify | Align protocol notes with the landed channel implementation and second-kind contract. |
+| `src/platform/orchestration/entitySubscriptions/index.ts` | Modify | Extend shared server-side entity-kind typing and serialization if needed. |
+| `src/platform/orchestration/entitySubscriptions/<kind>.ts` | Create | Second-kind snapshot and patch projector. |
+| `src/app/server/subscribeRoutes.ts` | Modify | Validate and route the second kind without changing the public route shape. |
+| `src/products/shared/renderer/entitySubscriptionHub.ts` | Modify | Extend renderer-side kind typing and dispatcher support. |
+| `src/products/shared/renderer/entitySubscription<Kind>Dispatcher.ts` | Create | Second-kind renderer dispatcher. |
+| `src/products/<owner>/renderer/**` | Modify | Mount the second-kind subscription in the owning product surface. |
+| `tests/*entity-subscription*.test.*` | Create/Modify | Add server and renderer coverage for the second kind. |
+| `tests/*cross-surface*.test.*` | Create/Modify | Add cross-surface second-kind live acceptance if the chosen kind has a target-surface flow. |
+
+## Technical Decisions
+
+- **Keep SSE for this follow-up.** The goal is protocol polymorphism, not a
+  transport redesign.
+- **Keep one route shape.** New kinds must use
+  `/api/subscribe?kind=<kind>&id=<id>`, not product-local bespoke endpoints.
+- **Keep kind-specific dispatchers.** The hub remains generic; projection and
+  patch application stay owned by the entity kind.
+- **Prefer `artifact` as the second kind unless product priority changes.**
+  Cats Code Artifact Canvas is active enough to make this proof useful instead
+  of artificial.
+- **No compatibility shims for unreleased paths.** If cleanup retires an old
+  stream or obsolete state path, remove the old path in the same slice.
+
+## Testing Strategy
+
+- **Unit Tests**:
+  - second-kind projector emits stable snapshots and ordered patches
+  - renderer dispatcher applies snapshots/patches idempotently
+  - hub still coalesces multiple subscribers per `(kind, id)`
+  - invalid ids and closed streams do not leave stale subscribed state
+- **Integration Tests**:
+  - `GET /api/subscribe?kind=<second-kind>&id=<id>` emits snapshot then patches
+  - reconnect emits a fresh authoritative snapshot
+  - ADR-041 collection refetch does not overwrite the mounted subscribed entity
+- **Acceptance Tests**:
+  - one cross-surface flow stays live over at least two server-side mutations of
+    the chosen second-kind entity
+
+## Risks & Mitigations
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Second kind is chosen only to satisfy architecture, not product need | Medium | Default to `artifact` because Cats Code Artifact Canvas is active; otherwise wait for the nearest real product surface. |
+| Entity snapshot starts carrying collection state | Medium | Keep SPEC-076's two-tier boundary: ADR-041 owns collection freshness, entity subscriptions own mounted entity deep state. |
+| Renderer hub becomes over-generic and hides kind-specific semantics | Medium | Keep per-kind dispatchers and tests; do not collapse patch application into a universal reducer. |
+| Old channel stream and entity subscription diverge | Medium | Phase 6 requires an explicit keep/fold decision after polymorphism proof. |
+
+## Progress Log
+
+| Date | Update |
+|------|--------|
+| 2026-05-09 | Plan created from PLAN-068 closeout to carry second-kind polymorphism, cross-surface acceptance, and live-stream cleanup decisions. |
+
+---
+
+*Created: 2026-05-09*
+*Author: Codex*

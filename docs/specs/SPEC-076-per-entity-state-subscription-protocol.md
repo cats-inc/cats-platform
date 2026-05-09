@@ -10,14 +10,21 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Channel slice implemented; polymorphic proof pending |
 | **Owner** | TBD (Conductor on accept) |
 | **Reviewer** | User |
 | **Related ADR** | [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md) |
 | **Companion ADR** | [ADR-041](../decisions/041-push-transport-and-chat-invalidations-over-sse.md) (collection-level invalidation tier) |
-| **Follow-up plan** | [PLAN-068](../plans/PLAN-068-per-entity-state-subscription-rollout.md) |
+| **Channel rollout / closeout** | [PLAN-068](../plans/PLAN-068-per-entity-state-subscription-rollout.md) |
+| **Polymorphic follow-up** | [PLAN-098](../plans/PLAN-098-polymorphic-entity-subscription-follow-up.md) |
 
 ## Summary
+
+**Implementation status, 2026-05-09**: the first `channel` slice has
+landed and PLAN-068 is now a closeout record. The protocol remains
+pending for its stated polymorphism goal because `EntitySubscriptionKind`
+is still only `channel`; second-kind proof and cleanup are tracked in
+[PLAN-098](../plans/PLAN-098-polymorphic-entity-subscription-follow-up.md).
 
 Today the renderer keeps entity state "fresh" through three loosely
 coupled mechanisms — cold fetch of `/api/app-shell`, cross-surface
@@ -581,7 +588,7 @@ once the subscription layer has matured.
       on Code surface) shows identical transcripts end-to-end.
 - [ ] `mergeWorkspaceBackgroundRefreshPayload` remains scoped to
       runtime-health fields; no chat state leaks into the poll path.
-- [ ] Adding a second entity kind (in a follow-up slice) touches
+- [ ] Adding a second entity kind (tracked in PLAN-098) touches
       server-side projector + schema + consuming view only; no
       subscription hub or transport change required.
 - [ ] ADR-041 collection-level invalidation continues to flow on
@@ -602,7 +609,8 @@ once the subscription layer has matured.
 
 - [ADR-075: Adopt Push-Based Per-Entity State Subscription](../decisions/075-adopt-push-based-per-entity-state-subscription.md)
 - [ADR-041: Push Transport and Chat Invalidations Over SSE](../decisions/041-push-transport-and-chat-invalidations-over-sse.md)
-- [PLAN-068: Per-Entity State Subscription Rollout](../plans/PLAN-068-per-entity-state-subscription-rollout.md)
+- [PLAN-068: Per-Entity State Subscription Rollout](../plans/PLAN-068-per-entity-state-subscription-rollout.md) — channel-slice closeout
+- [PLAN-098: Polymorphic Entity Subscription Follow-up](../plans/PLAN-098-polymorphic-entity-subscription-follow-up.md)
 - [Research: Per-Entity State Subscription Architecture](../research/2026-04-21-per-entity-state-subscription-architecture.md)
 - [ADR-073](../decisions/073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md)
 - [SPEC-074](./SPEC-074-cross-surface-draft-dispatch-and-warm-product-handoff.md)
@@ -619,4 +627,4 @@ once the subscription layer has matured.
 
 *Created: 2026-04-21*
 *Author: Claude under user-directed investigation*
-*Related Plan: [PLAN-068](../plans/PLAN-068-per-entity-state-subscription-rollout.md)*
+*Related Plans: [PLAN-068](../plans/PLAN-068-per-entity-state-subscription-rollout.md), [PLAN-098](../plans/PLAN-098-polymorphic-entity-subscription-follow-up.md)*

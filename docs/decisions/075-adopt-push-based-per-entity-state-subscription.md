@@ -8,7 +8,17 @@
 
 ## Status
 
-Proposed
+Proposed (channel slice implemented; polymorphic proof pending)
+
+## Implementation Note
+
+As of 2026-05-09, the first `channel` slice has landed: the platform host
+serves `/api/subscribe?kind=channel&id=<channel-id>`, the renderer consumes it
+through the shared entity subscription hub, and ADR-041 collection refetches use
+subscription-aware merging instead of replacing the mounted channel state. The
+decision is not considered fully proven until a second entity kind lands; that
+follow-up is tracked in
+[PLAN-098](../plans/PLAN-098-polymorphic-entity-subscription-follow-up.md).
 
 ## Context
 
@@ -302,7 +312,8 @@ defined by that message family.
 - [SPEC-059: Heterogeneous Runtime Delivery Normalization](../specs/SPEC-059-heterogeneous-runtime-delivery-normalization.md)
 - [ADR-041: Push Transport and Chat Invalidations Over SSE](./041-push-transport-and-chat-invalidations-over-sse.md)
 - [SPEC-076: Per-Entity State Subscription Protocol](../specs/SPEC-076-per-entity-state-subscription-protocol.md)
-- [PLAN-068: Per-Entity State Subscription Rollout](../plans/PLAN-068-per-entity-state-subscription-rollout.md)
+- [PLAN-068: Per-Entity State Subscription Rollout](../plans/PLAN-068-per-entity-state-subscription-rollout.md) — channel-slice closeout
+- [PLAN-098: Polymorphic Entity Subscription Follow-up](../plans/PLAN-098-polymorphic-entity-subscription-follow-up.md)
 
 ---
 
