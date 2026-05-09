@@ -2,6 +2,10 @@ import type { ProductPreviewSurfaceTarget } from '../../../../core/previewSurfac
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import {
+  ARTIFACT_CANVAS_RENDERER_STATIC_IFRAME_PROFILE,
+  IframeViewer,
+} from '../../../shared/renderer/viewers/IframeViewer.js';
+import {
   labelCodeArtifactKindForLocale,
   labelCodeArtifactStatusForLocale,
 } from './codeStatusLabels.js';
@@ -60,10 +64,10 @@ export function BuildPreviewPanel({
 
       {previewTarget?.inlineUrl ? (
         <div className="codeBuildPreviewFrame">
-          <iframe
-            src={previewTarget.inlineUrl}
+          <IframeViewer
             title={t(messageKeys.codePreviewIframeTitle)}
-            sandbox="allow-scripts allow-same-origin"
+            safeUrl={previewTarget.inlineUrl}
+            iframeSandboxProfile={ARTIFACT_CANVAS_RENDERER_STATIC_IFRAME_PROFILE}
             className="codeBuildPreviewIframe"
           />
         </div>

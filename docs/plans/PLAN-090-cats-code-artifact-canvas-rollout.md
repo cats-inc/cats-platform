@@ -276,7 +276,7 @@ accepted/rejected tool calls + projection responses.
       `withSharedViewerRoutes` so the canvas pane mounts under
       Code task / Code codespace routes. **No** server clear delegate
       wiring is needed — close is renderer-only `navigate()`.
-- [ ] Task 2.6: Update the existing artifact detail / builder preview iframe
+- [x] Task 2.6: Update the existing artifact detail / builder preview iframe
       path (`ArtifactDetailView.tsx`, `BuildPreviewPanel.tsx`) to share the
       same preview target, sandbox-profile decision, and renderer-side
       defense-in-depth checks. If the migration chooses to preserve scripted
@@ -629,6 +629,7 @@ this plan before Phase 4 approval.
 | 2026-05-09 | Added the first Code assistant-effect execution path for `show_in_canvas` / `clear_canvas`: same-turn accepted declaration resolution, projection / URL-policy validation, Activity audit writes, render-intent publish attempts, and local `tool_result` projection with no `intentId` leakage. This completes Task 1.2 and the main happy-path / validation subset of Task 1.3; the full producer/scope-keyed declaration index and cross-producer / cross-scope rejection matrix remain pending before Task 1.3 can be checked off. |
 | 2026-05-09 | Completed Task 1.3's same-turn declaration index: `show_in_canvas({ declarationId })` now resolves only against the caller's own SPEC-092 producer key and scope key, accepts idempotent duplicate declarations, rejects same-key artifact collisions, rejects other-producer same-scope matches with `artifact_canvas_declaration_producer_mismatch`, and treats cross-scope / prior-turn misses as `artifact_canvas_declaration_unknown`. |
 | 2026-05-09 | Added the renderer-side Artifact Canvas substrate: browser-safe render-intent stream URL construction, `useCanvasNavigateIntent` with best-effort ack retries, `withSharedViewerRoutes`, `<CanvasPane>`, `<IframeViewer>`, shared CSS, Code `codespaces/:codespaceId` + `tasks/:taskId` canvas child routes, and a minimal Code task parent surface. This completes Task 1.10's renderer consumption plus Tasks 2.1-2.5; Task 2.6 remains for migrating the older artifact detail / build preview iframes onto the shared viewer policy. |
+| 2026-05-09 | Migrated the existing Code artifact detail and build preview inline iframes to the shared `<IframeViewer>` with the Artifact Canvas static sandbox profile. This completes Task 2.6 by accepting the documented static-only fallback for those legacy previews until Phase 4/live-preview producer allowlist work explicitly preserves scripted dev preview identities. |
 
 ---
 

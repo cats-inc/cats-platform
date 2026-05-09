@@ -157,3 +157,19 @@ test('ArtifactDetailView consumes typed artifact detail responses without local 
   assert.match(viewSource, /type CodeArtifactDetailResponse/u);
   assert.doesNotMatch(viewSource, /as ArtifactDetailPayload/u);
 });
+
+test('Code preview iframes use shared Artifact Canvas viewer policy', () => {
+  const buildPreviewSource = readFileSync(
+    new URL('../src/products/code/renderer/components/BuildPreviewPanel.tsx', import.meta.url),
+    'utf8',
+  );
+  const artifactDetailSource = readFileSync(
+    new URL('../src/products/code/renderer/components/ArtifactDetailView.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(buildPreviewSource, /IframeViewer/u);
+  assert.match(artifactDetailSource, /IframeViewer/u);
+  assert.doesNotMatch(buildPreviewSource, /allow-scripts allow-same-origin/u);
+  assert.doesNotMatch(artifactDetailSource, /allow-scripts allow-same-origin/u);
+});

@@ -15,6 +15,10 @@ import {
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import {
+  ARTIFACT_CANVAS_RENDERER_STATIC_IFRAME_PROFILE,
+  IframeViewer,
+} from '../../../shared/renderer/viewers/IframeViewer.js';
+import {
   labelCodeArtifactKindForLocale,
   labelCodeArtifactStatusForLocale,
   labelCodeConversationKindForLocale,
@@ -190,10 +194,10 @@ export function ArtifactDetailView() {
 
         {previewTarget?.inlineUrl ? (
           <div className="codeBuildPreviewFrame">
-            <iframe
-              src={previewTarget.inlineUrl}
+            <IframeViewer
               title={payload.artifact.title}
-              sandbox="allow-scripts allow-same-origin"
+              safeUrl={previewTarget.inlineUrl}
+              iframeSandboxProfile={ARTIFACT_CANVAS_RENDERER_STATIC_IFRAME_PROFILE}
               className="codeBuildPreviewIframe"
             />
           </div>
