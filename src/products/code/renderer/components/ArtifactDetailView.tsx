@@ -10,6 +10,7 @@ import {
 } from '../api/codeTask.js';
 import {
   buildCodeArtifactPath,
+  buildCodeTaskPath,
   CODE_BUILD_PATH,
 } from '../codePaths.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
@@ -240,6 +241,19 @@ export function ArtifactDetailView() {
                 </span>
               </div>
               <p>{payload.task.title}</p>
+              <div className="operatorActionRow">
+                <button
+                  type="button"
+                  className="operatorActionButton"
+                  onClick={() => {
+                    if (payload.task) {
+                      navigate(buildCodeTaskPath(payload.task.id));
+                    }
+                  }}
+                >
+                  {t(messageKeys.codeArtifactDetailOpenTaskAction)}
+                </button>
+              </div>
             </article>
           ) : null}
 

@@ -2689,6 +2689,7 @@ export const messageKeys = {
   codeArtifactDetailRelatedEmpty: 'code.artifactDetail.relatedEmpty',
   codeArtifactDetailRelatedEyebrow: 'code.artifactDetail.relatedEyebrow',
   codeArtifactDetailRelatedTitle: 'code.artifactDetail.relatedTitle',
+  codeArtifactDetailOpenTaskAction: 'code.artifactDetail.openTaskAction',
   codeArtifactDetailTaskLabel: 'code.artifactDetail.taskLabel',
   codeArtifactDetailTitle: 'code.artifactDetail.title',
   codeArtifactDetailViewArtifact: 'code.artifactDetail.viewArtifact',

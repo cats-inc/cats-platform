@@ -2671,6 +2671,7 @@ export const enCatalog: MessageCatalog = {
     'No related artifacts were recorded for this task or work item.',
   'code.artifactDetail.relatedEyebrow': 'Related',
   'code.artifactDetail.relatedTitle': 'Neighboring Artifacts',
+  'code.artifactDetail.openTaskAction': 'Open task',
   'code.artifactDetail.taskLabel': 'Task',
   'code.artifactDetail.title': 'Artifact',
   'code.artifactDetail.viewArtifact': 'View artifact',

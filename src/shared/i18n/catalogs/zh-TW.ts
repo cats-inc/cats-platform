@@ -2608,6 +2608,7 @@ export const zhTWCatalog: MessageCatalog = {
   'code.artifactDetail.relatedEmpty': '這個任務或工作項目尚未記錄相關成品。',
   'code.artifactDetail.relatedEyebrow': '相關',
   'code.artifactDetail.relatedTitle': '鄰近成品',
+  'code.artifactDetail.openTaskAction': '開啟任務',
   'code.artifactDetail.taskLabel': '任務',
   'code.artifactDetail.title': '成品',
   'code.artifactDetail.viewArtifact': '查看成品',
