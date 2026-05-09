@@ -21,6 +21,11 @@ import {
   MemoryScheduleStore,
   type ScheduleStore,
 } from '../../platform/scheduler/index.js';
+import {
+  createFileBackedPlatformAuthStore,
+  MemoryPlatformAuthStore,
+  type PlatformAuthStore,
+} from '../../platform/auth/index.js';
 import { createTelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import { createTelegramRelay } from '../../platform/transports/telegram/relay/index.js';
 import {
@@ -107,6 +112,15 @@ function createDefaultScheduleStore(
     : createFileBackedScheduleStore(shared.config.chatStatePath, shared.now);
 }
 
+function createDefaultAuthStore(
+  shared: SharedServerDependencies,
+  chat: ChatServerDependencies,
+): PlatformAuthStore {
+  return chat.chatStore instanceof MemoryChatStore
+    ? new MemoryPlatformAuthStore(undefined, shared.now)
+    : createFileBackedPlatformAuthStore(shared.config.chatStatePath, shared.now);
+}
+
 function createDefaultTelegramRelay(
   shared: SharedServerDependencies,
   chat: ChatServerDependencies,
@@ -148,6 +162,8 @@ export function resolveServerDependencies(
   registerCodeArtifactRuntimeFinalizationGate();
 
   const sharedCoreStore = dependencies.shared.coreStore ?? dependencies.chat.chatStore;
+  const authStore = dependencies.shared.authStore
+    ?? createDefaultAuthStore(dependencies.shared, dependencies.chat);
   const startup = dependencies.shared.startup ?? createAppStartupState({
     phase: 'ready',
     ready: true,
@@ -289,6 +305,7 @@ export function resolveServerDependencies(
       ...dependencies.shared,
       coreStore: sharedCoreStore,
       startup,
+      authStore,
       resumePendingOrchestratorDispatch,
       resumeWorkflowContinuationDispatch,
       providerCapabilityBootstrapConfig: capabilityBootstrapLoaded.config,

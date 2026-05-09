@@ -536,6 +536,7 @@ operators before implementation is marked complete.
 | 2026-04-30 | Aligned origin gate with Vite/reverse-proxy reality: allowed browser-origin set is explicit and Phase 2 atomic, `same-site` no longer passes without an allowlisted `Origin`, recovery tokens stay out of structured logs, and aggregate cooldowns have TTL/non-destructive recovery so the v1 owner is not forced to delete auth state. |
 | 2026-04-30 | Added Expo Go / Cats Mobile device-session slice: QR pairing remains bundle bootstrap only, mobile data access requires bearer device sessions, and mobile Google login is separate from browser GIS. |
 | 2026-05-10 | Phase 1 landed: added `src/platform/auth/**` domain types, state normalization, memory/file auth stores, local password hashing, browser/mobile session token helpers, auth config parsing, and focused tests. No route gate is enabled yet. |
+| 2026-05-10 | Phase 2 route skeleton started: added `/api/auth/status`, local `/api/auth/login`, `/api/auth/logout`, auth-store dependency wiring, browser-origin gate for login, session cookie issuance/revocation, and route tests. Product route gate, setup bootstrap integration, CSRF middleware, throttling, and repair flow remain pending. |
 
 ---
 

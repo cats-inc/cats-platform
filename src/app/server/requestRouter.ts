@@ -6,6 +6,7 @@ import path from 'node:path';
 import type { ResolvedServerDependencies } from './contracts.js';
 import { routeAppPackageApi } from './appPackageRoutes.js';
 import { routeMobileManifestApi } from './mobileManifestRoutes.js';
+import { routePlatformAuthApi } from './authRoutes.js';
 import { routePlatformSetupApi } from './platformSetupRoutes.js';
 import {
   handleRuntimeApiProxyRoute,
@@ -390,6 +391,14 @@ export async function routeRequest(
       now: dependencies.shared.now,
     },
   };
+  const authContext = {
+    ...context,
+    dependencies: {
+      authStore: dependencies.shared.authStore,
+      auth: dependencies.shared.config.auth,
+      now: dependencies.shared.now,
+    },
+  };
 
   if (url.pathname === '/health') {
     if (method !== 'GET') {
@@ -432,6 +441,10 @@ export async function routeRequest(
   }
 
   if (await handleRuntimeApiProxyRoute(request, response, url, dependencies)) {
+    return;
+  }
+
+  if (await routePlatformAuthApi(authContext)) {
     return;
   }
 

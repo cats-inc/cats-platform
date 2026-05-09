@@ -25,6 +25,7 @@ import type {
   CanonicalMemoryStore,
   CatsMemoryService,
 } from '../../platform/memory/index.js';
+import type { PlatformAuthStore } from '../../platform/auth/index.js';
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { CompanionActivityStore } from '../../products/chat/companion/activityStore.js';
 import type { CompanionBoxStore } from '../../products/chat/state/companion-box/index.js';
@@ -57,6 +58,7 @@ export interface SharedServerDependencies {
   runtimeClient: RuntimeClient;
   coreStore?: CoreStore;
   startup?: AppStartupState;
+  authStore?: PlatformAuthStore;
   now?: () => Date;
   resumePendingOrchestratorDispatch?: ResumePendingOrchestratorDispatch;
   resumeWorkflowContinuationDispatch?: ResumeWorkflowContinuationDispatch;
@@ -97,6 +99,7 @@ export interface ServerDependencies {
 export interface ResolvedSharedServerDependencies extends SharedServerDependencies {
   coreStore: CoreStore;
   startup: AppStartupState;
+  authStore: PlatformAuthStore;
   resumePendingOrchestratorDispatch: ResumePendingOrchestratorDispatch;
   resumeWorkflowContinuationDispatch: ResumeWorkflowContinuationDispatch;
   providerCapabilityBootstrapConfig: ProviderCapabilityBootstrapConfig | null;

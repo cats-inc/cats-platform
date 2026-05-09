@@ -63,7 +63,7 @@ export async function createLocalPasswordHash(
 
 export async function verifyLocalPassword(
   password: string,
-  stored: Pick<LocalPasswordHashResult, 'passwordHash' | 'passwordHashAlgorithm'>,
+  stored: { passwordHash: string; passwordHashAlgorithm: string },
 ): Promise<boolean> {
   if (stored.passwordHashAlgorithm !== LOCAL_PASSWORD_HASH_ALGORITHM) {
     return false;
