@@ -1,0 +1,270 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  createDefaultCoreState,
+  upsertCoreActor,
+  upsertCoreConversation,
+  upsertCoreMission,
+  upsertCoreRun,
+  upsertCoreTask,
+  upsertCoreWorkItem,
+} from '../src/core/model/index.js';
+import {
+  findOrphanedMissionLinkages,
+  findOrphanedRunLinkages,
+  validateCoreMissionRunLinkages,
+  validateMissionLinkage,
+  validateRunLinkage,
+} from '../src/core/missionLinkageValidation.js';
+
+function seedAgent(coreInput: ReturnType<typeof createDefaultCoreState>, id: string)
+: ReturnType<typeof createDefaultCoreState> {
+  return upsertCoreActor(
+    coreInput,
+    {
+      id,
+      name: id,
+      kind: 'worker',
+      status: 'active',
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+}
+
+test('validateMissionLinkage accepts a fully unanchored mission', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-1',
+      title: 'Floating mission',
+      status: 'planned',
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  const mission = core.missions.find((candidate) => candidate.id === 'mission-1');
+  assert.ok(mission);
+
+  assert.deepEqual(validateMissionLinkage(core, mission), []);
+});
+
+test('validateMissionLinkage accepts every anchor when records exist', () => {
+  let core = createDefaultCoreState();
+  core = seedAgent(core, 'agent-cat-a');
+  core = upsertCoreConversation(
+    core,
+    {
+      id: 'conversation-1',
+      title: 'Mission conversation',
+      kind: 'work_thread',
+      participantActorIds: ['agent-cat-a'],
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreWorkItem(
+    core,
+    {
+      id: 'work-item-1',
+      title: 'Anchored work',
+      ownerActorId: 'agent-cat-a',
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-1',
+      title: 'Run for mission',
+      status: 'running',
+      orchestratorActorId: 'agent-cat-a',
+    },
+    new Date('2026-04-14T22:05:00.000Z'),
+  ).core;
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-1',
+      title: 'Anchored mission',
+      managedWorkId: 'work-item-1',
+      conversationId: 'conversation-1',
+      assignedAgentId: 'agent-cat-a',
+      status: 'running',
+      metadata: { runId: 'run-1' },
+    },
+    new Date('2026-04-14T22:10:00.000Z'),
+  ).core;
+  const mission = core.missions.find((candidate) => candidate.id === 'mission-1');
+  assert.ok(mission);
+
+  assert.deepEqual(validateMissionLinkage(core, mission), []);
+});
+
+test('validateMissionLinkage flags every anchor missing its record', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-broken',
+      title: 'Broken mission',
+      managedWorkId: 'work-item-missing',
+      conversationId: 'conversation-missing',
+      sourceTurnId: 'turn-missing',
+      sourceLaneId: 'lane-missing',
+      assignedAgentId: 'agent-missing',
+      status: 'planned',
+      metadata: { runId: 'run-missing' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  const mission = core.missions.find((candidate) => candidate.id === 'mission-broken');
+  assert.ok(mission);
+
+  const diagnostics = validateMissionLinkage(core, mission);
+  const anchors = diagnostics.map((diagnostic) => diagnostic.anchor).sort();
+  assert.deepEqual(anchors, [
+    'assigned_agent',
+    'conversation',
+    'managed_work',
+    'metadata_run',
+    'source_lane',
+    'source_turn',
+  ]);
+  assert.ok(diagnostics.every((diagnostic) =>
+    diagnostic.missionId === 'mission-broken'
+    && diagnostic.reason === 'missing_record'));
+});
+
+test('validateMissionLinkage ignores blank metadata runId values', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-blank-run',
+      title: 'Mission with blank metadata runId',
+      status: 'draft',
+      metadata: { runId: '   ' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  const mission = core.missions.find((candidate) => candidate.id === 'mission-blank-run');
+  assert.ok(mission);
+
+  assert.deepEqual(validateMissionLinkage(core, mission), []);
+});
+
+test('validateRunLinkage flags missing task / conversation / parent run / orchestrator', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-broken',
+      title: 'Broken run',
+      taskId: 'task-missing',
+      conversationId: 'conversation-missing',
+      parentRunId: 'parent-run-missing',
+      orchestratorActorId: 'agent-missing',
+      status: 'queued',
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  const run = core.runs.find((candidate) => candidate.id === 'run-broken');
+  assert.ok(run);
+
+  const diagnostics = validateRunLinkage(core, run);
+  const anchors = diagnostics.map((diagnostic) => diagnostic.anchor).sort();
+  assert.deepEqual(anchors, [
+    'conversation',
+    'orchestrator_actor',
+    'parent_run',
+    'task',
+  ]);
+});
+
+test('validateRunLinkage accepts a fully anchored run', () => {
+  let core = createDefaultCoreState();
+  core = seedAgent(core, 'agent-cat-a');
+  core = upsertCoreConversation(
+    core,
+    {
+      id: 'conversation-1',
+      title: 'Run conversation',
+      kind: 'code_thread',
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-1',
+      title: 'Anchored task',
+      ownerActorId: 'agent-cat-a',
+      orchestratorActorId: null,
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-parent',
+      title: 'Parent',
+      status: 'completed',
+      orchestratorActorId: 'agent-cat-a',
+    },
+    new Date('2026-04-14T22:01:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-child',
+      title: 'Child',
+      taskId: 'task-1',
+      conversationId: 'conversation-1',
+      parentRunId: 'run-parent',
+      orchestratorActorId: 'agent-cat-a',
+      status: 'running',
+    },
+    new Date('2026-04-14T22:02:00.000Z'),
+  ).core;
+  const run = core.runs.find((candidate) => candidate.id === 'run-child');
+  assert.ok(run);
+
+  assert.deepEqual(validateRunLinkage(core, run), []);
+});
+
+test('validateCoreMissionRunLinkages aggregates per-record diagnostics', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-1',
+      title: 'Mission with bad work item',
+      managedWorkId: 'work-item-missing',
+      status: 'planned',
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-1',
+      title: 'Run with bad task',
+      taskId: 'task-missing',
+      orchestratorActorId: null,
+      status: 'queued',
+    },
+    new Date('2026-04-14T22:01:00.000Z'),
+  ).core;
+
+  const aggregate = validateCoreMissionRunLinkages(core);
+
+  assert.equal(aggregate.missions.length, 1);
+  assert.equal(aggregate.missions[0]?.anchor, 'managed_work');
+  assert.equal(aggregate.runs.length, 1);
+  assert.equal(aggregate.runs[0]?.anchor, 'task');
+
+  const orphans = findOrphanedMissionLinkages(core);
+  assert.equal(orphans.length, 1);
+  const runOrphans = findOrphanedRunLinkages(core);
+  assert.equal(runOrphans.length, 1);
+});

@@ -168,6 +168,7 @@ with Telegram and future transports
 |------|--------|
 | 2026-04-14 | Plan created for agent missions, managed work, execution runs, and transport bindings |
 | 2026-05-09 | Phase 1 (Freeze Taxonomy) recorded as already converged in `docs/terminology.md` (Entity / Agent / Participant / Conversational vs Operational vs Hybrid Agent / Managed Work / Mission / Run / Schedule + Trigger / Transport Binding all defined; `Job` flagged as overloaded legacy in favor of `Mission` / `Run`). Canonical record ownership lives in `CORE_CANONICAL_RECORD_FAMILIES` (`src/core/types.ts:21-34`) and the Managed Work / Execution layering in `docs/terminology.md` Managed Work and Execution Terms section. |
+| 2026-05-09 | Phase 2 task 2.2 first slice landed: `src/core/missionLinkageValidation.ts` introduces `validateMissionLinkage` / `validateRunLinkage` / `validateCoreMissionRunLinkages` plus `findOrphanedMissionLinkages` and `findOrphanedRunLinkages` helpers that surface dangling references between missions/runs and their anchored records (`workItem`, `conversation`, `turn`, `lane`, `actor`, `task`, `parent run`, `metadata.runId`). Backed by `tests/mission-linkage-validation.test.ts`. |
 
 ---
 
