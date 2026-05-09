@@ -155,6 +155,51 @@ test('buildCoreLinkageDiagnostics ignores non-inbound bindings (no direct-lane i
   assert.equal(isCoreLinkageHealthy(report), true);
 });
 
+test('buildCoreLinkageDiagnostics flags a bidirectional direct-lane binding pointing at a deleted conversation', () => {
+  let core = createDefaultCoreState();
+  // Mirrors createDirectLaneTransportBindings: platform internal,
+  // direction bidirectional, conversationId set.
+  core = upsertCoreTransportBinding(
+    core,
+    {
+      id: 'binding-direct-lane',
+      platform: 'internal',
+      direction: 'bidirectional',
+      conversationId: 'conversation-deleted',
+      status: 'active',
+      metadata: { channelId: 'channel-1', channelKind: 'direct_message' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+
+  const report = buildCoreLinkageDiagnostics(core);
+  assert.equal(report.summary.transportBindingDiagnosticCount, 1);
+  assert.equal(report.transportBindings[0]?.transportBindingId, 'binding-direct-lane');
+  assert.equal(report.transportBindings[0]?.status, 'no_conversation_linked');
+});
+
+test('buildCoreLinkageDiagnostics ignores telegram bot bindings (bidirectional, conversationId null)', () => {
+  let core = createDefaultCoreState();
+  // Mirrors createBotTransportBindings: direction bidirectional,
+  // conversationId null, telegram platform.
+  core = upsertCoreTransportBinding(
+    core,
+    {
+      id: 'binding-bot',
+      platform: 'telegram',
+      direction: 'bidirectional',
+      conversationId: null,
+      status: 'active',
+      metadata: { bindingId: 'bot-binding-1', botName: 'cats_bot' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+
+  const report = buildCoreLinkageDiagnostics(core);
+  assert.equal(report.summary.transportBindingDiagnosticCount, 0);
+  assert.equal(isCoreLinkageHealthy(report), true);
+});
+
 test('buildCoreLinkageDiagnostics flags an inbound binding pointing at the wrong conversation kind', () => {
   let core = createDefaultCoreState();
   core = upsertCoreConversation(

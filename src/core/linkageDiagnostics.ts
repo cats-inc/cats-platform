@@ -72,10 +72,19 @@ function shouldRunDirectLaneCheckOn(binding: TransportBindingRecord): boolean {
   if (binding.status !== 'active') {
     return false;
   }
-  // Bindings that are not inbound do not feed a direct-lane ingress
-  // path, so the direct-lane resolver is not the right linter for
-  // them.
-  return binding.direction === 'inbound';
+  // Heuristic: a binding is a "direct-lane projection" subject to the
+  // direct-lane resolver when it either:
+  //   - already claims a `conversationId` (something we can verify
+  //     resolves to a direct-lane conversation), OR
+  //   - is explicitly `inbound` and therefore expects to land at a
+  //     direct lane even if the conversationId has not yet been set.
+  // Direction alone is not enough: real direct-lane projections
+  // (`createDirectLaneTransportBindings` in
+  // `src/products/chat/state/core-projection/entities.ts`) write
+  // `direction: 'bidirectional'`. Conversely, telegram bot bindings
+  // (`createBotTransportBindings`) are bidirectional with
+  // `conversationId: null`, so they skip both arms here.
+  return binding.conversationId !== null || binding.direction === 'inbound';
 }
 
 function summarizeTransportBindingDirectLane(
