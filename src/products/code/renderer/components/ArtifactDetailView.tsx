@@ -13,6 +13,21 @@ import {
   buildCodeTaskPath,
   CODE_BUILD_PATH,
 } from '../codePaths.js';
+
+// Cross-product navigation targets. Imported as URL strings rather than as
+// builder helpers because Code product code must not pull from Work / Chat
+// renderer trees per the parallel delivery rules.
+function buildPlatformWorkItemPath(workItemId: string): string {
+  return `/work/work-items/${encodeURIComponent(workItemId)}`;
+}
+
+function buildPlatformProjectPath(projectId: string): string {
+  return `/work/projects/${encodeURIComponent(projectId)}`;
+}
+
+function buildPlatformChatChannelPath(channelId: string): string {
+  return `/chat/chats/${encodeURIComponent(channelId)}`;
+}
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import {
@@ -275,6 +290,19 @@ export function ArtifactDetailView() {
                   </span>
                 ) : null}
               </div>
+              <div className="operatorActionRow">
+                <button
+                  type="button"
+                  className="operatorActionButton"
+                  onClick={() => {
+                    if (payload.workItem) {
+                      navigate(buildPlatformWorkItemPath(payload.workItem.id));
+                    }
+                  }}
+                >
+                  {t(messageKeys.codeArtifactDetailOpenWorkItemAction)}
+                </button>
+              </div>
             </article>
           ) : null}
 
@@ -287,6 +315,19 @@ export function ArtifactDetailView() {
                 </span>
               </div>
               <p>{payload.project.title}</p>
+              <div className="operatorActionRow">
+                <button
+                  type="button"
+                  className="operatorActionButton"
+                  onClick={() => {
+                    if (payload.project) {
+                      navigate(buildPlatformProjectPath(payload.project.id));
+                    }
+                  }}
+                >
+                  {t(messageKeys.codeArtifactDetailOpenProjectAction)}
+                </button>
+              </div>
             </article>
           ) : null}
 
@@ -299,6 +340,19 @@ export function ArtifactDetailView() {
                 </span>
               </div>
               <p>{payload.conversation.title}</p>
+              <div className="operatorActionRow">
+                <button
+                  type="button"
+                  className="operatorActionButton"
+                  onClick={() => {
+                    if (payload.conversation) {
+                      navigate(buildPlatformChatChannelPath(payload.conversation.id));
+                    }
+                  }}
+                >
+                  {t(messageKeys.codeArtifactDetailOpenConversationAction)}
+                </button>
+              </div>
             </article>
           ) : null}
         </div>
