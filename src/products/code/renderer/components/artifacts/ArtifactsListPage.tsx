@@ -74,7 +74,10 @@ export function ArtifactsListPage(): JSX.Element {
     setLoading(true);
     setError(null);
 
-    void fetchCodeArtifacts(t(messageKeys.codeArtifactListLoadFailed))
+    void fetchCodeArtifacts(
+      t(messageKeys.codeArtifactListLoadFailed),
+      { excludeUndeclaredSourceEdits: true },
+    )
       .then((payload) => {
         if (cancelled) return;
         setArtifacts(payload.artifacts);
@@ -162,6 +165,11 @@ export function ArtifactsListPage(): JSX.Element {
                       >
                         {labelCodeArtifactKindForLocale(art.kind, t)}
                       </span>
+                      {art.producerLabel ? (
+                        <span className="codeArtifactsList__producerPill">
+                          {art.producerLabel}
+                        </span>
+                      ) : null}
                       <div className="codeArtifactsList__rowText">
                         <span className="codeArtifactsList__rowTitle">
                           {art.title}
