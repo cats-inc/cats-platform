@@ -365,6 +365,7 @@ export async function routeRequest(
     ...context,
     dependencies: {
       coreStore: dependencies.shared.coreStore,
+      policyConfig: dependencies.shared.config.artifactCanvas,
     },
   };
   const appPackageContext = {

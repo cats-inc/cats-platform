@@ -16,6 +16,13 @@ import {
   parseChatNaturalProductIntentMode,
   type ChatNaturalProductIntentMode,
 } from './products/chat/shared/naturalProductIntentMode.js';
+import {
+  DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+  validateArtifactCanvasPolicyConfig,
+  type ArtifactCanvasPolicyConfig,
+  type ArtifactCanvasRuntimePreviewOriginAllowlistEntry,
+  type ArtifactCanvasScriptedPreviewProducerAllowlistEntry,
+} from './products/shared/artifactCanvas/iframePolicy.js';
 
 export interface AppConfig {
   host: string;
@@ -50,6 +57,7 @@ export interface AppConfig {
   maxChatParticipants: number;
   maxAudienceParticipants: number;
   maxParallelChats: number;
+  artifactCanvas: ArtifactCanvasPolicyConfig;
 }
 
 const DEFAULT_HOST = '127.0.0.1';
@@ -140,6 +148,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     env.CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
     DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
   );
+  const artifactCanvas = loadArtifactCanvasPolicyConfig(env);
+  validateArtifactCanvasPolicyConfig(artifactCanvas);
   return {
     host: readFirstDefined(env, ['CATS_HOST', 'CATS_INC_HOST']) || DEFAULT_HOST,
     port: parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), DEFAULT_PORT),
@@ -206,9 +216,107 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       DEFAULT_MAX_AUDIENCE_PARTICIPANTS,
     ),
     maxParallelChats: parsePositiveInt(env.CATS_MAX_PARALLEL_CHATS, DEFAULT_MAX_PARALLEL_CHATS),
+    artifactCanvas,
   };
 }
 
 function joinCatsHomePath(homeDir: string | undefined, section: string): string {
   return path.join(homeDir || '', '.cats', section);
+}
+
+function loadArtifactCanvasPolicyConfig(env: NodeJS.ProcessEnv): ArtifactCanvasPolicyConfig {
+  return {
+    runtimePreviewOriginAllowlist:
+      parseArtifactCanvasRuntimePreviewOriginAllowlist(
+        env.CATS_ARTIFACT_CANVAS_RUNTIME_PREVIEW_ORIGIN_ALLOWLIST,
+      ) ?? [...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG.runtimePreviewOriginAllowlist],
+    scriptedPreviewProducerAllowlist:
+      parseArtifactCanvasScriptedPreviewProducerAllowlist(
+        env.CATS_ARTIFACT_CANVAS_SCRIPTED_PREVIEW_PRODUCER_ALLOWLIST,
+      ) ?? [...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG.scriptedPreviewProducerAllowlist],
+    catsShellOrigin:
+      env.CATS_ARTIFACT_CANVAS_SHELL_ORIGIN?.trim()
+      || DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG.catsShellOrigin,
+  };
+}
+
+function parseArtifactCanvasRuntimePreviewOriginAllowlist(
+  raw: string | undefined,
+): ArtifactCanvasRuntimePreviewOriginAllowlistEntry[] | null {
+  const parsed = parseArtifactCanvasJsonArray(raw);
+  return parsed === null
+    ? null
+    : parsed.map((entry) => ({
+        hostname: readArtifactCanvasString(entry, 'hostname'),
+        schemes: readOptionalArtifactCanvasStringArray(entry, 'schemes') as
+          ArtifactCanvasRuntimePreviewOriginAllowlistEntry['schemes'],
+        ports: readArtifactCanvasPorts(entry),
+      }));
+}
+
+function parseArtifactCanvasScriptedPreviewProducerAllowlist(
+  raw: string | undefined,
+): ArtifactCanvasScriptedPreviewProducerAllowlistEntry[] | null {
+  const parsed = parseArtifactCanvasJsonArray(raw);
+  return parsed === null
+    ? null
+    : parsed.map((entry) => ({
+        producerKind: readArtifactCanvasString(entry, 'producerKind') as
+          ArtifactCanvasScriptedPreviewProducerAllowlistEntry['producerKind'],
+        producerIdentity: readArtifactCanvasString(entry, 'producerIdentity'),
+      }));
+}
+
+function parseArtifactCanvasJsonArray(raw: string | undefined): Record<string, unknown>[] | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = JSON.parse(trimmed) as unknown;
+  if (!Array.isArray(parsed) || !parsed.every((entry) => isRecord(entry))) {
+    throw new Error('Artifact Canvas allowlist config must be a JSON array of objects.');
+  }
+  return parsed;
+}
+
+function readArtifactCanvasString(record: Record<string, unknown>, key: string): string {
+  const value = record[key];
+  if (typeof value !== 'string') {
+    throw new Error(`Artifact Canvas allowlist entry ${key} must be a string.`);
+  }
+  return value;
+}
+
+function readOptionalArtifactCanvasStringArray(
+  record: Record<string, unknown>,
+  key: string,
+): string[] | undefined {
+  const value = record[key];
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'string')) {
+    throw new Error(`Artifact Canvas allowlist entry ${key} must be a string array.`);
+  }
+  return value;
+}
+
+function readArtifactCanvasPorts(
+  record: Record<string, unknown>,
+): ArtifactCanvasRuntimePreviewOriginAllowlistEntry['ports'] {
+  const value = record.ports;
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === '*') {
+    return '*';
+  }
+  if (!Array.isArray(value) || !value.every((entry) => Number.isInteger(entry))) {
+    throw new Error('Artifact Canvas allowlist entry ports must be "*" or an integer array.');
+  }
+  return value;
+}
+
+function isRecord(input: unknown): input is Record<string, unknown> {
+  return typeof input === 'object' && input !== null && !Array.isArray(input);
 }
