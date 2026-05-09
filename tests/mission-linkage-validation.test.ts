@@ -281,6 +281,60 @@ test('validateMissionLinkage flags broken transport_ingress trigger references',
   assert.deepEqual(anchors, ['trigger_conversation', 'trigger_transport_binding']);
 });
 
+test('validateMissionLinkage flags a broken owner_action trigger ownerActorId', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-owner',
+      title: 'Owner-triggered mission',
+      status: 'queued',
+      metadata: {
+        trigger: {
+          kind: 'owner_action',
+          ownerActorId: 'agent-deleted',
+          invokedAt: '2026-05-09T01:00:00.000Z',
+          reason: null,
+        },
+      },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  const mission = core.missions.find((candidate) => candidate.id === 'mission-owner');
+  assert.ok(mission);
+
+  const diagnostics = validateMissionLinkage(core, mission);
+  assert.equal(diagnostics.length, 1);
+  assert.equal(diagnostics[0]?.anchor, 'trigger_owner_actor');
+  assert.equal(diagnostics[0]?.referencedId, 'agent-deleted');
+});
+
+test('validateMissionLinkage stays silent when owner_action trigger references a real actor', () => {
+  let core = createDefaultCoreState();
+  core = seedAgent(core, 'agent-owner');
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-owner-ok',
+      title: 'Owner-triggered mission',
+      status: 'queued',
+      metadata: {
+        trigger: {
+          kind: 'owner_action',
+          ownerActorId: 'agent-owner',
+          invokedAt: '2026-05-09T01:00:00.000Z',
+          reason: null,
+        },
+      },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  const mission = core.missions.find((candidate) => candidate.id === 'mission-owner-ok');
+  assert.ok(mission);
+
+  assert.deepEqual(validateMissionLinkage(core, mission), []);
+});
+
 test('validateMissionLinkage flags broken workflow_continuation trigger references', () => {
   let core = createDefaultCoreState();
   core = upsertCoreMission(

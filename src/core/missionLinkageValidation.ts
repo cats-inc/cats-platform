@@ -15,6 +15,7 @@ export type MissionLinkageDiagnosticAnchor =
   | 'parent_mission'
   | 'trigger_transport_binding'
   | 'trigger_conversation'
+  | 'trigger_owner_actor'
   | 'trigger_parent_mission'
   | 'trigger_parent_run';
 
@@ -152,6 +153,16 @@ export function validateMissionLinkage(
           missionId: mission.id,
           anchor: 'trigger_conversation',
           referencedId: trigger.conversationId,
+          reason: 'missing_record',
+        });
+      }
+    }
+    if (trigger.kind === 'owner_action') {
+      if (!recordExistsById(core.actors, trigger.ownerActorId)) {
+        diagnostics.push({
+          missionId: mission.id,
+          anchor: 'trigger_owner_actor',
+          referencedId: trigger.ownerActorId,
           reason: 'missing_record',
         });
       }
