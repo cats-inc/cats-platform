@@ -196,14 +196,27 @@ system-candidate artifact path.
 
 ### Phase 4: Projection and Sidebar Integration
 
-- [ ] Task 4.1: Update Code artifact projections to read materialized
-      `CoreArtifactRecord` rows and declaration metadata.
-- [ ] Task 4.2: Add artifact filters by producer label, Core kind, status,
-      workspace, task, and producing run.
-- [ ] Task 4.3: Ensure artifact detail deep-links to conversation, task, run,
-      workspace, and Work anchors when available.
-- [ ] Task 4.4: Keep source file edits out of the artifact sidebar unless they
-      are represented by a declared patch/report/summary artifact.
+- [x] Task 4.1: Update Code artifact projections to read materialized
+      `CoreArtifactRecord` rows and declaration metadata. Landed:
+      `CodeArtifactListItem` exposes `producerLabel`, `workspacePath`,
+      `conversationId`, and `disposition` derived from
+      `metadata.codeArtifactDeclaration`.
+- [x] Task 4.2: Add artifact filters by producer label, Core kind, status,
+      workspace, task, and producing run. Landed:
+      `CodeArtifactListFilters` accepts kind, status, producerLabel,
+      workspacePath, taskId, runId; `/api/code/artifacts` reads each as a
+      query param.
+- [x] Task 4.3: Ensure artifact detail deep-links to conversation, task, run,
+      workspace, and Work anchors when available. Already covered by
+      `CodeArtifactDetailProjection` (task / workItem / project /
+      conversation references resolved via `resolveConversation` and the
+      task/work-item lookups).
+- [x] Task 4.4: Keep source file edits out of the artifact sidebar unless they
+      are represented by a declared patch/report/summary artifact. Landed:
+      `excludeUndeclaredSourceEdits` filter hides artifacts with no
+      `codeArtifactDeclaration` and a non-URL local path; the renderer
+      Artifacts page passes the flag by default so undeclared raw source
+      edits stay out of the sidebar.
 
 **Deliverables**: Code `Artifacts` sidebar reads the materialized artifact
 contract and stays separate from workspace file browsing.
@@ -382,6 +395,7 @@ and implementation review.
 | 2026-04-30 | Phase 3 slice 6 wired the structured Code finalization gate into runtime dispatch response commit. Registered finalization gates evaluate before visible assistant messages are appended; Code-origin `artifactClaims[]` metadata must match same-turn accepted `declare_artifact` results or the response is blocked with `artifact_claim_without_declaration`. Text heuristics and live retry-back-to-agent remain follow-up slices. |
 | 2026-04-30 | Phase 3 slice 7 added runtime finalization-envelope ingress. Runtime streams can now deliver `finalization` events, `result.finalization`, or `result.finalizationEnvelope`; dispatch carries that structured envelope into platform finalization gates so Code artifact claims no longer depend on transcript JSON or ad hoc metadata injection. Live retry-back-to-agent remains a follow-up slice. |
 | 2026-04-30 | Phase 2 slice 4 added frozen-scope idempotency recovery. When a retry resolves to a lower-precedence scope but an existing artifact has the same producer identity and `declarationId`, materialization reuses the frozen idempotency key / artifact id and preserves existing anchors instead of creating a duplicate artifact. Ambiguous fallback matches fail with `artifact_idempotency_ambiguous`. |
+| 2026-05-10 | Phase 4 landed: `CodeArtifactListItem` exposes declaration metadata (`producerLabel`, `workspacePath`, `conversationId`, `disposition`); `buildCodeArtifactListProjection` accepts a richer `CodeArtifactListFilters` object covering producer label, status, workspace, task, and run filters plus the legacy kind-string parameter; `excludeUndeclaredSourceEdits` filter hides raw source-file edits unless a declaration represents them, and the renderer Artifacts page passes the flag by default. Phase 1–3 task checkboxes were not previously ticked but the underlying contracts/runtime/persistence work has been live since the 2026-04-30 slices recorded above; Phase 4 is the first batch ticked in this plan. |
 
 ---
 
