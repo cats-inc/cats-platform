@@ -6,6 +6,7 @@ import { upsertCoreConversation } from '../src/core/model/structuralRecords.ts';
 import { upsertCoreTask } from '../src/core/model/taskControls.ts';
 import { upsertCoreArtifact } from '../src/core/model/planningRecords.ts';
 import {
+  buildCodeArtifactDetailProjection,
   buildCodeArtifactListProjection,
 } from '../src/products/code/api/projection.ts';
 import { readArtifactListFiltersFromQuery } from '../src/products/code/api/index.ts';
@@ -277,6 +278,58 @@ test('buildCodeArtifactListProjection treats Windows drive paths and UNC paths a
     'Windows backslash drive-letter paths must be filtered out as local source edits');
   assert.equal(ids.includes('artifact-unc'), false,
     'UNC paths must be filtered out as local source edits');
+});
+
+test('buildCodeArtifactDetailProjection normalizes conversation to summary with sourceChannelId', () => {
+  let core = createArtifactCore();
+  core = upsertCoreConversation(core, {
+    id: 'conversation-1',
+    title: 'Code conversation',
+    kind: 'code_thread',
+    status: 'active',
+    sourceChannelId: 'channel-7',
+  }).core;
+  const upsert = upsertCoreArtifact(core, {
+    id: 'artifact-detail-conv',
+    title: 'Detail with conversation link',
+    kind: 'document',
+    status: 'ready',
+    conversationId: 'conversation-1',
+    taskId: 'task-1',
+  });
+  const detail = buildCodeArtifactDetailProjection(upsert.core, upsert.artifact);
+  assert.ok(detail.conversation, 'conversation summary should be present');
+  assert.equal(detail.conversation.id, 'conversation-1');
+  assert.equal(detail.conversation.kind, 'code_thread');
+  assert.equal(detail.conversation.sourceChannelId, 'channel-7');
+  assert.equal(detail.conversation.title, 'Code conversation');
+  // Summary shape is a closed surface — no extra Core record fields.
+  assert.deepEqual(
+    Object.keys(detail.conversation).sort(),
+    ['id', 'kind', 'sourceChannelId', 'title'],
+  );
+});
+
+test('buildCodeArtifactDetailProjection emits null sourceChannelId when conversation has none', () => {
+  let core = createArtifactCore();
+  core = upsertCoreConversation(core, {
+    id: 'conversation-2',
+    title: 'Agent-only conversation',
+    kind: 'code_thread',
+    status: 'active',
+    // sourceChannelId omitted — agent-only conversations have no Chat channel
+  }).core;
+  const upsert = upsertCoreArtifact(core, {
+    id: 'artifact-detail-no-channel',
+    title: 'Detail without channel link',
+    kind: 'document',
+    status: 'ready',
+    conversationId: 'conversation-2',
+    taskId: 'task-1',
+  });
+  const detail = buildCodeArtifactDetailProjection(upsert.core, upsert.artifact);
+  assert.ok(detail.conversation);
+  assert.equal(detail.conversation.sourceChannelId, null);
 });
 
 test('readArtifactListFiltersFromQuery accepts known kind / status values', () => {

@@ -225,13 +225,20 @@ export interface CodeArtifactDetailProjection {
     updatedAt: string;
   } | null;
   project: CoreProjectRecord | null;
-  conversation: CoreConversationRecord | null;
+  conversation: CodeArtifactConversationSummary | null;
   relatedArtifacts: CodeArtifactListItem[];
   focus: {
     kind: 'build' | 'preview' | 'artifact';
     isReady: boolean;
     isPublished: boolean;
   };
+}
+
+export interface CodeArtifactConversationSummary {
+  id: string;
+  title: string;
+  kind: CoreConversationRecord['kind'];
+  sourceChannelId: string | null;
 }
 
 export interface CodeTaskListProjection {
@@ -1260,7 +1267,7 @@ export function buildCodeArtifactDetailProjection(
     task: taskProjection,
     workItem: buildWorkItemReference(core, workItem),
     project,
-    conversation,
+    conversation: buildArtifactConversationSummary(conversation),
     relatedArtifacts,
     focus: {
       kind: artifact.kind === 'build'
@@ -1271,6 +1278,20 @@ export function buildCodeArtifactDetailProjection(
       isReady: artifact.status === 'ready',
       isPublished: artifact.status === 'published',
     },
+  };
+}
+
+function buildArtifactConversationSummary(
+  conversation: CoreConversationRecord | null,
+): CodeArtifactConversationSummary | null {
+  if (!conversation) {
+    return null;
+  }
+  return {
+    id: conversation.id,
+    title: conversation.title,
+    kind: conversation.kind,
+    sourceChannelId: conversation.sourceChannelId,
   };
 }
 
