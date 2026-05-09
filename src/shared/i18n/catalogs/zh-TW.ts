@@ -1747,6 +1747,7 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.artifactCanvas.expand': '展開',
   'shared.artifactCanvas.refresh': '重新整理',
   'shared.artifactCanvas.openExternal': '外部開啟',
+  'shared.artifactCanvas.resizePane': '調整 Artifact Canvas 窗格寬度',
   'shared.artifactCanvas.unsupportedTitle': '目前無法內嵌顯示',
   'shared.artifactCanvas.unsupportedBody':
     '此成品尚未提供安全的內嵌呈現。',

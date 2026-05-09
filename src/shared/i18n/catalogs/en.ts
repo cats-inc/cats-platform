@@ -1792,6 +1792,7 @@ export const enCatalog: MessageCatalog = {
   'shared.artifactCanvas.expand': 'Expand',
   'shared.artifactCanvas.refresh': 'Refresh',
   'shared.artifactCanvas.openExternal': 'Open external',
+  'shared.artifactCanvas.resizePane': 'Resize Artifact Canvas pane',
   'shared.artifactCanvas.unsupportedTitle': 'No inline view available',
   'shared.artifactCanvas.unsupportedBody':
     'This artifact does not have a safe inline presentation yet.',

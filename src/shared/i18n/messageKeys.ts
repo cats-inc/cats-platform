@@ -1871,6 +1871,7 @@ export const messageKeys = {
   sharedArtifactCanvasExpand: 'shared.artifactCanvas.expand',
   sharedArtifactCanvasRefresh: 'shared.artifactCanvas.refresh',
   sharedArtifactCanvasOpenExternal: 'shared.artifactCanvas.openExternal',
+  sharedArtifactCanvasResizePane: 'shared.artifactCanvas.resizePane',
   sharedArtifactCanvasUnsupportedTitle: 'shared.artifactCanvas.unsupportedTitle',
   sharedArtifactCanvasUnsupportedBody: 'shared.artifactCanvas.unsupportedBody',
   sharedArtifactCanvasPolicyVersion: 'shared.artifactCanvas.policyVersion',

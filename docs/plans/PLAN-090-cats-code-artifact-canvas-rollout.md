@@ -295,8 +295,8 @@ artifacts, close/refresh/open controls, and renderer tests for pane state.
 - [x] Task 3.2: Add PDF viewer for safe PDF artifacts.
 - [x] Task 3.3: Add code/text viewer for `inline_summary` and server-served
       text artifacts.
-- [ ] Task 3.4: Add persisted pane width and resizable divider.
-- [ ] Task 3.5: Add keyboard accessibility checks for pane controls and divider.
+- [x] Task 3.4: Add persisted pane width and resizable divider.
+- [x] Task 3.5: Add keyboard accessibility checks for pane controls and divider.
 
 **Deliverables**: Image, PDF, and code/text rendering plus pane resizing.
 
@@ -632,6 +632,7 @@ this plan before Phase 4 approval.
 | 2026-05-09 | Migrated the existing Code artifact detail and build preview inline iframes to the shared `<IframeViewer>` with the Artifact Canvas static sandbox profile. This completes Task 2.6 by accepting the documented static-only fallback for those legacy previews until Phase 4/live-preview producer allowlist work explicitly preserves scripted dev preview identities. |
 | 2026-05-09 | Added platform-shared `ImageViewer` and `PdfViewer` materialized Artifact Canvas renderers, switched `presentation = auto` to resolve safe image/PDF artifacts to dedicated `image` / `pdf` presentations, and updated the platform viewer-ownership table. This completes Tasks 3.1 and 3.2; Task 3.8 remains open until the code/text viewer row is finalized. |
 | 2026-05-09 | Added platform-shared `CodeViewer` for inline summaries and server-served text artifacts. Projections now carry `textContent` for `inline_summary`, resolve text/code MIME or text extensions to `presentationResolved = code`, keep iframe sandbox profiles null for code, and document the complete viewer ownership row. This completes Tasks 3.3 and 3.8. |
+| 2026-05-09 | Added the shared Artifact Canvas resize divider with per-surface `localStorage` pane-width persistence, pointer dragging, and keyboard separator controls (`ArrowLeft` / `ArrowRight` / `Home` / `End`). Parent surface URLs no longer reserve an empty canvas column when the nested canvas route is absent. This completes Tasks 3.4 and 3.5. |
 
 ---
 

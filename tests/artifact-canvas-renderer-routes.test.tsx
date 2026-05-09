@@ -47,7 +47,45 @@ test('shared viewer route renders parent and Artifact Canvas pane on nested canv
 
   assert.match(markup, /fixtureParent/u);
   assert.match(markup, /artifactCanvasSurfaceFrame/u);
+  assert.match(markup, /artifactCanvasResizeHandle/u);
+  assert.match(markup, /role="separator"/u);
+  assert.match(markup, /aria-orientation="vertical"/u);
   assert.match(markup, /artifactCanvasPane/u);
+});
+
+test('shared viewer route does not reserve pane width on parent URL', () => {
+  const markup = renderToStaticMarkup(
+    <StaticRouter location="/code/codespaces/codespace-1">
+      <Routes>
+        {withSharedViewerRoutes({
+          key: 'codespace-detail',
+          path: '/code/codespaces/:codespaceId',
+          surfaceKind: 'code_codespace',
+          surfaceIdParam: 'codespaceId',
+          element: <div className="fixtureParent">Parent surface</div>,
+        })}
+      </Routes>
+    </StaticRouter>,
+  );
+
+  assert.match(markup, /fixtureParent/u);
+  assert.doesNotMatch(markup, /artifactCanvasSurfaceFrame/u);
+  assert.doesNotMatch(markup, /artifactCanvasResizeHandle/u);
+});
+
+test('Artifact Canvas resize handle persists width and supports keyboard controls', async () => {
+  const source = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/withSharedViewerRoutes.tsx'),
+    'utf8',
+  );
+
+  assert.match(source, /cats\.artifactCanvas\.paneWidth/u);
+  assert.match(source, /localStorage\.getItem/u);
+  assert.match(source, /localStorage\.setItem/u);
+  assert.match(source, /event\.key === 'ArrowLeft'/u);
+  assert.match(source, /event\.key === 'ArrowRight'/u);
+  assert.match(source, /event\.key === 'Home'/u);
+  assert.match(source, /event\.key === 'End'/u);
 });
 
 test('Artifact Canvas materialized viewers render without iframe', async () => {
