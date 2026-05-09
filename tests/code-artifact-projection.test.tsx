@@ -91,3 +91,94 @@ test('CodeArtifactListItem leaves declaration fields null for undeclared artifac
   assert.equal(item.conversationId, 'conversation-1');
   assert.equal(item.workspacePath, 'C:/repo/cats-platform');
 });
+
+function createMixedArtifactCore() {
+  let core = createArtifactCore();
+  core = upsertCoreArtifact(core, {
+    id: 'artifact-preview-ready',
+    title: 'Local preview',
+    kind: 'preview',
+    status: 'ready',
+    conversationId: 'conversation-1',
+    taskId: 'task-1',
+    runId: 'run-1',
+    path: 'http://127.0.0.1:5173/',
+    metadata: {
+      codeArtifactDeclaration: {
+        producerLabel: 'preview_url',
+        disposition: 'record',
+        anchors: { workspacePath: 'C:/repo/cats-platform' },
+      },
+    },
+  }).core;
+  core = upsertCoreArtifact(core, {
+    id: 'artifact-build-failed',
+    title: 'Build attempt',
+    kind: 'build',
+    status: 'failed',
+    conversationId: 'conversation-1',
+    taskId: 'task-1',
+    runId: 'run-2',
+    metadata: {
+      codeArtifactDeclaration: {
+        producerLabel: 'build_output',
+        disposition: 'record',
+        anchors: { workspacePath: 'C:/repo/cats-platform' },
+      },
+    },
+  }).core;
+  core = upsertCoreArtifact(core, {
+    id: 'artifact-report-draft',
+    title: 'Test report',
+    kind: 'report',
+    status: 'draft',
+    conversationId: 'conversation-1',
+    taskId: 'task-1',
+    runId: 'run-1',
+    metadata: {
+      codeArtifactDeclaration: {
+        producerLabel: 'test_report',
+        disposition: 'candidate',
+        anchors: { workspacePath: 'C:/repo/other-repo' },
+      },
+    },
+  }).core;
+  return core;
+}
+
+test('buildCodeArtifactListProjection filters by producer label', () => {
+  const core = createMixedArtifactCore();
+  const projection = buildCodeArtifactListProjection(core, { producerLabel: 'preview_url' });
+  assert.deepEqual(projection.artifacts.map((entry) => entry.id), ['artifact-preview-ready']);
+  assert.equal(projection.filters.producerLabel, 'preview_url');
+});
+
+test('buildCodeArtifactListProjection filters by status', () => {
+  const core = createMixedArtifactCore();
+  const projection = buildCodeArtifactListProjection(core, { status: 'failed' });
+  assert.deepEqual(projection.artifacts.map((entry) => entry.id), ['artifact-build-failed']);
+});
+
+test('buildCodeArtifactListProjection filters by run id', () => {
+  const core = createMixedArtifactCore();
+  const projection = buildCodeArtifactListProjection(core, { runId: 'run-1' });
+  assert.deepEqual(
+    projection.artifacts.map((entry) => entry.id).sort(),
+    ['artifact-preview-ready', 'artifact-report-draft'],
+  );
+});
+
+test('buildCodeArtifactListProjection filters by workspace path', () => {
+  const core = createMixedArtifactCore();
+  const projection = buildCodeArtifactListProjection(core, {
+    workspacePath: 'C:/repo/other-repo',
+  });
+  assert.deepEqual(projection.artifacts.map((entry) => entry.id), ['artifact-report-draft']);
+});
+
+test('buildCodeArtifactListProjection accepts legacy string filter for backward compatibility', () => {
+  const core = createMixedArtifactCore();
+  const projection = buildCodeArtifactListProjection(core, 'preview');
+  assert.deepEqual(projection.artifacts.map((entry) => entry.id), ['artifact-preview-ready']);
+  assert.equal(projection.filter, 'preview');
+});

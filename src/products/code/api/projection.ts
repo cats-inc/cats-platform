@@ -244,8 +244,20 @@ export interface CodeWorkItemListProjection {
   summary: CodeWorkItemListSummary;
 }
 
+export interface CodeArtifactListFilters {
+  kind?: 'all' | 'build' | 'preview' | CoreArtifactKind;
+  status?: CoreArtifactStatus;
+  producerLabel?: string;
+  workspacePath?: string;
+  taskId?: string;
+  runId?: string;
+}
+
+export type CodeArtifactListLegacyFilter = 'all' | 'build' | 'preview';
+
 export interface CodeArtifactListProjection {
-  filter: 'all' | 'build' | 'preview';
+  filter: CodeArtifactListLegacyFilter;
+  filters: CodeArtifactListFilters;
   artifacts: CodeArtifactListItem[];
   summary: CodeArtifactListSummary;
 }
@@ -1031,22 +1043,79 @@ export function buildCodeWorkspaceDetailProjection(
   };
 }
 
+function normalizeArtifactFilters(
+  filtersOrLegacy: CodeArtifactListFilters | CodeArtifactListLegacyFilter,
+): CodeArtifactListFilters {
+  if (typeof filtersOrLegacy === 'string') {
+    return { kind: filtersOrLegacy };
+  }
+  return filtersOrLegacy;
+}
+
+function resolveLegacyKindFilter(
+  kind: CodeArtifactListFilters['kind'],
+): CodeArtifactListLegacyFilter {
+  return kind === 'build' || kind === 'preview' ? kind : 'all';
+}
+
+function applyExtendedArtifactFilters(
+  core: CatsCoreState,
+  artifacts: CoreArtifactRecord[],
+  filters: CodeArtifactListFilters,
+): CoreArtifactRecord[] {
+  return artifacts.filter((artifact) => {
+    if (
+      filters.kind
+      && filters.kind !== 'all'
+      && filters.kind !== 'build'
+      && filters.kind !== 'preview'
+      && artifact.kind !== filters.kind
+    ) {
+      return false;
+    }
+    if (filters.status && artifact.status !== filters.status) {
+      return false;
+    }
+    if (filters.producerLabel
+      && readArtifactDeclarationProducerLabel(artifact) !== filters.producerLabel) {
+      return false;
+    }
+    if (filters.taskId && artifact.taskId !== filters.taskId) {
+      return false;
+    }
+    if (filters.runId && artifact.runId !== filters.runId) {
+      return false;
+    }
+    if (filters.workspacePath) {
+      const path = resolveArtifactWorkspacePath(core, artifact);
+      if (!path || !workspacePathMatches(path, filters.workspacePath)) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
 export function buildCodeArtifactListProjection(
   core: CatsCoreState,
-  filter: 'all' | 'build' | 'preview' = 'all',
+  filtersOrLegacy: CodeArtifactListFilters | CodeArtifactListLegacyFilter = {},
 ): CodeArtifactListProjection {
+  const filters = normalizeArtifactFilters(filtersOrLegacy);
+  const legacyKindFilter = resolveLegacyKindFilter(filters.kind);
   const allTasks = listCodeTasks(core);
   const taskItems = allTasks.map((task) => buildCodeTaskListItem(core, task));
   const taskItemById = new Map(taskItems.map((task) => [task.id, task]));
-  const allArtifacts = listCodeArtifacts(core, allTasks, filter, {
+  const baseArtifacts = listCodeArtifacts(core, allTasks, legacyKindFilter, {
     includeWorkspaceAnchored: true,
   });
+  const allArtifacts = applyExtendedArtifactFilters(core, baseArtifacts, filters);
   const artifacts = allArtifacts
     .slice(0, CODE_DASHBOARD_ARTIFACT_LIMIT)
     .map((artifact) => buildCodeArtifactListItem(core, artifact, taskItemById));
 
   return {
-    filter,
+    filter: legacyKindFilter,
+    filters,
     artifacts,
     summary: buildCodeArtifactListSummary(allArtifacts, artifacts),
   };

@@ -11,6 +11,8 @@ import {
   buildCodeWorkspaceDetailProjection,
   buildCodeWorkspaceListProjection,
   type CodeArtifactDetailProjection,
+  type CodeArtifactListFilters,
+  type CodeArtifactListLegacyFilter,
   type CodeArtifactListProjection,
   type CodeDashboardProjection,
   type CodeTaskDetailProjection,
@@ -99,9 +101,9 @@ export function createCodeTaskDetailPayload(
 
 export function createCodeArtifactListPayload(
   core: Awaited<ReturnType<CoreStore['readCore']>>,
-  filter: 'all' | 'build' | 'preview' = 'all',
+  filtersOrLegacy: CodeArtifactListFilters | CodeArtifactListLegacyFilter = {},
 ): CodeArtifactListProjection {
-  return buildCodeArtifactListProjection(core, filter);
+  return buildCodeArtifactListProjection(core, filtersOrLegacy);
 }
 
 export function createCodeArtifactDetailPayload(
@@ -110,6 +112,35 @@ export function createCodeArtifactDetailPayload(
 ): CodeArtifactDetailProjection | null {
   const artifact = core.artifacts.find((candidate) => candidate.id === artifactId) ?? null;
   return artifact ? buildCodeArtifactDetailProjection(core, artifact) : null;
+}
+
+function readArtifactListFiltersFromQuery(url: URL): CodeArtifactListFilters {
+  const filters: CodeArtifactListFilters = {};
+  const kind = url.searchParams.get('kind')?.trim();
+  if (kind) {
+    filters.kind = kind as CodeArtifactListFilters['kind'];
+  }
+  const status = url.searchParams.get('status')?.trim();
+  if (status) {
+    filters.status = status as CodeArtifactListFilters['status'];
+  }
+  const producerLabel = url.searchParams.get('producerLabel')?.trim();
+  if (producerLabel) {
+    filters.producerLabel = producerLabel;
+  }
+  const workspacePath = url.searchParams.get('workspacePath')?.trim();
+  if (workspacePath) {
+    filters.workspacePath = workspacePath;
+  }
+  const taskId = url.searchParams.get('taskId')?.trim();
+  if (taskId) {
+    filters.taskId = taskId;
+  }
+  const runId = url.searchParams.get('runId')?.trim();
+  if (runId) {
+    filters.runId = runId;
+  }
+  return filters;
 }
 
 export async function routeCodeApi(
@@ -223,10 +254,14 @@ export async function routeCodeApi(
       return true;
     }
 
+    const filters = readArtifactListFiltersFromQuery(context.url);
     sendJson(
       context.response,
       200,
-      createCodeArtifactListPayload(await context.dependencies.coreStore.readCore(), 'all'),
+      createCodeArtifactListPayload(
+        await context.dependencies.coreStore.readCore(),
+        filters,
+      ),
     );
     return true;
   }

@@ -229,8 +229,18 @@ export interface CodeArtifactListItemSummary extends CodeArtifactSummary {
   disposition: CodeArtifactDispositionSummary | null;
 }
 
+export interface CodeArtifactListFiltersSummary {
+  kind?: string;
+  status?: string;
+  producerLabel?: string;
+  workspacePath?: string;
+  taskId?: string;
+  runId?: string;
+}
+
 export interface CodeArtifactListResponse {
   filter: 'all' | 'build' | 'preview';
+  filters: CodeArtifactListFiltersSummary;
   artifacts: CodeArtifactListItemSummary[];
   summary: {
     totalAvailable: number;
@@ -510,8 +520,18 @@ export async function fetchCodeArtifactDetail(
 
 export async function fetchCodeArtifacts(
   errorMessage = translate(messageKeys.codeArtifactListLoadFailed),
+  filters: CodeArtifactListFiltersSummary = {},
 ): Promise<CodeArtifactListResponse> {
-  return fetchJson<CodeArtifactListResponse>(CODE_API_ARTIFACTS_PATH, errorMessage);
+  const params = new URLSearchParams();
+  if (filters.kind) params.set('kind', filters.kind);
+  if (filters.status) params.set('status', filters.status);
+  if (filters.producerLabel) params.set('producerLabel', filters.producerLabel);
+  if (filters.workspacePath) params.set('workspacePath', filters.workspacePath);
+  if (filters.taskId) params.set('taskId', filters.taskId);
+  if (filters.runId) params.set('runId', filters.runId);
+  const query = params.toString();
+  const url = query ? `${CODE_API_ARTIFACTS_PATH}?${query}` : CODE_API_ARTIFACTS_PATH;
+  return fetchJson<CodeArtifactListResponse>(url, errorMessage);
 }
 
 export async function fetchCodeWorkspaces(
