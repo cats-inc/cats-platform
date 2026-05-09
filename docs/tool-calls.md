@@ -384,7 +384,7 @@ active product surface opens in the shared Artifact Canvas.
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Planned; contract documented by SPEC-101 and rollout tracked by PLAN-090 |
+| Current status | Code runtime tool catalog registration wired; assistant-effect execution and renderer consumption still pending |
 | First channel | `runtime_tool` |
 | Tool names | `show_in_canvas`, `clear_canvas` |
 | Implementation entry point | Planned: `src/products/code/state/runtimeArtifactCanvasExecution.ts` |

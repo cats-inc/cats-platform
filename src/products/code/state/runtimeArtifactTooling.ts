@@ -24,6 +24,12 @@ import {
   type CodeArtifactDeclarationErrorCode,
   type CodeArtifactToolInput,
 } from '../shared/artifactDeclaration.js';
+import {
+  ARTIFACT_CANVAS_CLEAR_TOOL_NAME,
+  ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+  ARTIFACT_CANVAS_TOOL_DEFINITIONS,
+  ARTIFACT_CANVAS_TOOL_SCHEMA_VERSION,
+} from '../../shared/artifactCanvas/contracts.js';
 
 export const CODE_ARTIFACT_RUNTIME_HOOK_ID = 'cats-code.artifact-declaration' as const;
 export const CODE_ARTIFACT_RUNTIME_CONTEXT_METADATA_KEY = 'codeArtifactDeclaration' as const;
@@ -36,6 +42,13 @@ const AGENT_VISIBLE_DECLARATION_FIELDS = [
   'summary',
   'metadata',
 ] as const;
+
+const CODE_RUNTIME_TOOL_DEFINITIONS = [
+  CODE_ARTIFACT_DECLARATION_TOOL.definition,
+  ...ARTIFACT_CANVAS_TOOL_DEFINITIONS,
+] as const;
+
+const CODE_RUNTIME_TOOL_NAMES = CODE_RUNTIME_TOOL_DEFINITIONS.map((tool) => tool.name);
 
 const POSITIVE_ARTIFACT_EXAMPLES = [
   'preview URLs',
@@ -85,6 +98,22 @@ export interface CodeArtifactRuntimeToolingMetadata {
   sourceChannelId?: string | null;
   sourceChannelTitle?: string | null;
   workspacePath?: string | null;
+  runtimeToolCatalog: {
+    owner: 'cats-code';
+    channel: 'runtime_tool';
+    toolNames: readonly string[];
+    definitions: readonly unknown[];
+  };
+  artifactCanvas: {
+    enabled: true;
+    owner: 'cats-code';
+    channel: 'runtime_tool';
+    schemaVersion: typeof ARTIFACT_CANVAS_TOOL_SCHEMA_VERSION;
+    toolNames: readonly [
+      typeof ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+      typeof ARTIFACT_CANVAS_CLEAR_TOOL_NAME,
+    ];
+  };
 }
 
 export interface CodeArtifactRuntimeToolCallSummary {
@@ -131,6 +160,19 @@ export function buildCodeArtifactRuntimeToolingMetadata(
     sourceChannelId: channel.id ?? null,
     sourceChannelTitle: channel.title ?? null,
     workspacePath: channel.chatCwd ?? null,
+    runtimeToolCatalog: {
+      owner: 'cats-code',
+      channel: 'runtime_tool',
+      toolNames: CODE_RUNTIME_TOOL_NAMES,
+      definitions: CODE_RUNTIME_TOOL_DEFINITIONS,
+    },
+    artifactCanvas: {
+      enabled: true,
+      owner: 'cats-code',
+      channel: 'runtime_tool',
+      schemaVersion: ARTIFACT_CANVAS_TOOL_SCHEMA_VERSION,
+      toolNames: [ARTIFACT_CANVAS_SHOW_TOOL_NAME, ARTIFACT_CANVAS_CLEAR_TOOL_NAME],
+    },
   };
 }
 
@@ -172,6 +214,20 @@ export function buildCodeArtifactOnboardingBlock(): string {
     [
       'Declare each artifact exactly once per logical output. Reuse the same',
       'declarationId across retries.',
+    ].join(' '),
+    '',
+    'You can request Artifact Canvas navigation with the runtime tools',
+    `${ARTIFACT_CANVAS_SHOW_TOOL_NAME} and ${ARTIFACT_CANVAS_CLEAR_TOOL_NAME}.`,
+    [
+      `${ARTIFACT_CANVAS_SHOW_TOOL_NAME} opens a canvas-eligible artifact in`,
+      'the active Code surface. Pass exactly one of artifactId or same-turn',
+      'declarationId, and use presentation auto unless a specific viewer is',
+      'needed.',
+    ].join(' '),
+    [
+      `${ARTIFACT_CANVAS_CLEAR_TOOL_NAME} clears the current Artifact Canvas`,
+      'focus by returning to the parent surface. Do not use markdown links or',
+      'prose as canvas commands.',
     ].join(' '),
   ].join('\n');
 }
@@ -324,7 +380,9 @@ function withCodeArtifactRuntimeContext(
 ): RuntimeSessionInvocationContext {
   const labels = new Set(context?.labels ?? []);
   labels.add('product:code');
-  labels.add(`runtime-tool:${CODE_ARTIFACT_DECLARATION_TOOL_NAME}`);
+  for (const toolName of CODE_RUNTIME_TOOL_NAMES) {
+    labels.add(`runtime-tool:${toolName}`);
+  }
   labels.add(`code-artifact-onboarding:${CODE_ARTIFACT_DECLARATION_ONBOARDING_BLOCK_VERSION}`);
 
   return {

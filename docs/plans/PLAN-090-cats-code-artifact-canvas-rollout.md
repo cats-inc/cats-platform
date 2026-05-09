@@ -161,7 +161,7 @@ process-supervision and security review (Phase 4).
       (artifact not found / not canvas-eligible / not anchored to that
       surface) are surfaced verbatim to the renderer so the
       `unsupported` / error pane can render a useful message.
-- [ ] Task 1.5: Register `show_in_canvas` and `clear_canvas` in the
+- [x] Task 1.5: Register `show_in_canvas` and `clear_canvas` in the
       active Code runtime tool catalog without changing
       `declare_artifact`. The catalog entry references SPEC-101's
       shape and the SPEC-101 § Error Code Registry.
@@ -625,6 +625,7 @@ this plan before Phase 4 approval.
 | 2026-05-09 | Wired `artifactCanvas` viewer policy into `AppConfig` with flat JSON env overrides for runtime-preview origins and scripted-preview producers, boot-time validation, and projection-route consumption. This completes the config portion of Tasks 1.6 / 1.7, with runtime reload publication still pending under Task 1.8 / 1.10. |
 | 2026-05-09 | Promoted `artifact_canvas_show_intent` / `artifact_canvas_clear_intent` into first-class Core Activity kinds, updated Activity filters / timeline / operator metadata, and added the shared audit writer with source-anchor derivation, conflict fail-fast checks, historical task-surface snapshot coverage, and private `intentId` non-persistence tests. This completes Tasks 1.11 / 1.12; ack security tests remain under Task 1.13. |
 | 2026-05-09 | Added the server-side Artifact Canvas render-intent hub plus `/api/canvas/intents/stream` and fixed-body `/api/canvas/intents/ack` routes. Tests cover no-subscriber no-queue behavior, surface-scoped delivery, session-bound ack ownership, repeated / unknown / malformed ack indistinguishability, replay removal after owner ack, and keeping `intentId` off URLs. This completes Task 1.13 and the server substrate portion of Task 1.10; renderer consumption / retry wiring remains pending. |
+| 2026-05-09 | Registered `show_in_canvas` and `clear_canvas` alongside `declare_artifact` in the Code runtime tool catalog metadata, labels, and onboarding instructions, with shared tool definitions and schema tests that reject `unsupported` as an input presentation. This completes Task 1.5; assistant-effect execution remains pending before the tools can mutate audit / render intents. |
 
 ---
 

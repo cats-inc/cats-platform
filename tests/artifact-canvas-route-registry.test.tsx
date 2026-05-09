@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  ARTIFACT_CANVAS_CLEAR_TOOL_DEFINITION,
+  ARTIFACT_CANVAS_CLEAR_TOOL_NAME,
+  ARTIFACT_CANVAS_SHOW_TOOL_DEFINITION,
+  ARTIFACT_CANVAS_SHOW_TOOL_NAME,
   canvasSurfaceRouteRegistry,
   composeArtifactCanvasNavigateIntent,
   normalizeArtifactCanvasClearToolInput,
@@ -131,4 +135,26 @@ test('Artifact Canvas tool shape validation enforces one identity and active sur
       input: { action: 'clear_canvas' },
     },
   );
+});
+
+test('Artifact Canvas runtime tool definitions expose only canvas command fields', () => {
+  assert.equal(ARTIFACT_CANVAS_SHOW_TOOL_DEFINITION.name, ARTIFACT_CANVAS_SHOW_TOOL_NAME);
+  assert.deepEqual(
+    Object.keys(ARTIFACT_CANVAS_SHOW_TOOL_DEFINITION.inputSchema.properties).sort(),
+    ['artifactId', 'declarationId', 'presentation'],
+  );
+  assert.deepEqual(
+    ARTIFACT_CANVAS_SHOW_TOOL_DEFINITION.inputSchema.properties.presentation.enum,
+    ['auto', 'iframe', 'image', 'pdf', 'code'],
+  );
+  assert.equal(
+    Array.from(
+      ARTIFACT_CANVAS_SHOW_TOOL_DEFINITION.inputSchema.properties.presentation.enum,
+    ).includes('unsupported'),
+    false,
+  );
+
+  assert.equal(ARTIFACT_CANVAS_CLEAR_TOOL_DEFINITION.name, ARTIFACT_CANVAS_CLEAR_TOOL_NAME);
+  assert.deepEqual(ARTIFACT_CANVAS_CLEAR_TOOL_DEFINITION.inputSchema.properties, {});
+  assert.deepEqual(ARTIFACT_CANVAS_CLEAR_TOOL_DEFINITION.inputSchema.required, []);
 });

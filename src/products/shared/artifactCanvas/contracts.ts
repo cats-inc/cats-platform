@@ -34,6 +34,53 @@ export type ArtifactCanvasPresentationInput =
 export type ArtifactCanvasResolvedPresentation =
   (typeof ARTIFACT_CANVAS_RESOLVED_PRESENTATIONS)[number];
 
+export const ARTIFACT_CANVAS_SHOW_TOOL_NAME = 'show_in_canvas' as const;
+export const ARTIFACT_CANVAS_CLEAR_TOOL_NAME = 'clear_canvas' as const;
+export const ARTIFACT_CANVAS_TOOL_SCHEMA_VERSION = '1.0' as const;
+
+export const ARTIFACT_CANVAS_SHOW_TOOL_DEFINITION = {
+  name: ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+  schemaVersion: ARTIFACT_CANVAS_TOOL_SCHEMA_VERSION,
+  description: [
+    'Open a canvas-eligible artifact in the active product surface Artifact Canvas.',
+    'Pass exactly one of artifactId or declarationId.',
+    'Use presentation auto unless the user or artifact type requires iframe, image, pdf, or code.',
+  ].join(' '),
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      artifactId: { type: ['string', 'null'], minLength: 1 },
+      declarationId: { type: ['string', 'null'], minLength: 1 },
+      presentation: {
+        type: ['string', 'null'],
+        enum: ARTIFACT_CANVAS_INPUT_PRESENTATIONS,
+      },
+    },
+    oneOf: [
+      { required: ['artifactId'] },
+      { required: ['declarationId'] },
+    ],
+  },
+} as const;
+
+export const ARTIFACT_CANVAS_CLEAR_TOOL_DEFINITION = {
+  name: ARTIFACT_CANVAS_CLEAR_TOOL_NAME,
+  schemaVersion: ARTIFACT_CANVAS_TOOL_SCHEMA_VERSION,
+  description: 'Clear the active product surface Artifact Canvas by navigating back to the parent surface.',
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {},
+    required: [],
+  },
+} as const;
+
+export const ARTIFACT_CANVAS_TOOL_DEFINITIONS = [
+  ARTIFACT_CANVAS_SHOW_TOOL_DEFINITION,
+  ARTIFACT_CANVAS_CLEAR_TOOL_DEFINITION,
+] as const;
+
 export type ArtifactCanvasErrorCode =
   | 'artifact_canvas_required_field_empty'
   | 'artifact_canvas_identity_ambiguous'

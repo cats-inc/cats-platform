@@ -17,6 +17,10 @@ import {
   enrichCodeArtifactRuntimeInvocation,
   shouldAttachCodeArtifactRuntimeTooling,
 } from '../src/products/code/state/runtimeArtifactTooling.ts';
+import {
+  ARTIFACT_CANVAS_CLEAR_TOOL_NAME,
+  ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+} from '../src/products/shared/artifactCanvas/contracts.ts';
 
 beforeEach(() => {
   clearRuntimeInvocationRegistries();
@@ -52,14 +56,26 @@ test('Code artifact runtime tooling attaches only to Code-origin active sessions
     /codeArtifactDeclaration\.onboardingBlockVersion=v1/u,
   );
   assert.deepEqual(
-    codeInvocation.context?.labels?.filter((label) => label.includes('declare_artifact')),
-    ['runtime-tool:declare_artifact'],
+    codeInvocation.context?.labels?.filter((label) => label.startsWith('runtime-tool:')),
+    [
+      'runtime-tool:declare_artifact',
+      `runtime-tool:${ARTIFACT_CANVAS_SHOW_TOOL_NAME}`,
+      `runtime-tool:${ARTIFACT_CANVAS_CLEAR_TOOL_NAME}`,
+    ],
   );
 
   const metadata = codeInvocation.context?.metadata?.[
     CODE_ARTIFACT_RUNTIME_CONTEXT_METADATA_KEY
   ] as Record<string, unknown> | undefined;
   assert.equal(metadata?.toolName, 'declare_artifact');
+  assert.deepEqual(
+    (metadata?.runtimeToolCatalog as { toolNames?: unknown } | undefined)?.toolNames,
+    ['declare_artifact', ARTIFACT_CANVAS_SHOW_TOOL_NAME, ARTIFACT_CANVAS_CLEAR_TOOL_NAME],
+  );
+  assert.deepEqual(
+    (metadata?.artifactCanvas as { toolNames?: unknown } | undefined)?.toolNames,
+    [ARTIFACT_CANVAS_SHOW_TOOL_NAME, ARTIFACT_CANVAS_CLEAR_TOOL_NAME],
+  );
   assert.equal(metadata?.sourceChannelId, 'channel-code');
   assert.equal(metadata?.workspacePath, 'C:/repo/cats-platform');
   assert.equal(codeInvocation.context?.metadata?.channelId, 'channel-code');
