@@ -11,7 +11,7 @@
 | Field | Value |
 |-------|-------|
 | **Status** | Partially Implemented |
-| **Owner** | TBD (Conductor on accept) |
+| **Owner** | Codex (channel slice); polymorphic follow-up tracked in PLAN-098 |
 | **Reviewer** | User |
 | **Implementation Note** | Channel slice implemented; polymorphic proof pending |
 | **Related ADR** | [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md) |
@@ -168,6 +168,11 @@ state to the target surface.
    events into entity state and publishes corresponding `patch`
    events. The renderer must not contain projection logic that would
    derive the same state from a different event stream.
+   *(See the "Implementation note" callout at the start of this section:
+   the landed `channel` slice realizes "publishes" by listening to existing
+   chat event-hub signals, rebuilding the channel projection, and emitting
+   projection diffs — not via a write-path-local publisher. PLAN-098
+   Phase 1.1 owns rewriting this wording.)*
 
 7. **FR-7: First-paint warm snapshot handoff.** When a view mounts
    against a warm-handoff bundle from ADR-073, the renderer must
@@ -192,6 +197,10 @@ state to the target surface.
     without degradation
   - server must deduplicate publishers per `(kind, id)` so one
     projection does not fan out N times internally
+    *(See the "Implementation note" callout at the start of Requirements:
+    the landed `channel` slice deduplicates at the projection-rebuild layer
+    rather than a per-write-path publisher registry. PLAN-098 Phase 1.1
+    owns rewriting this wording.)*
 - **Reliability:**
   - automatic reconnect with exponential backoff on transient network
     loss
