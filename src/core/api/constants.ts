@@ -217,6 +217,12 @@ export const CORE_MISSION_STATUSES = [
   'cancelled',
 ] as const satisfies readonly MissionRecordStatus[];
 
+export const CORE_MISSION_VISIBILITIES = [
+  'internal',
+  'work_facing',
+  'requires_review',
+] as const;
+
 export const CORE_TRANSPORT_BINDING_PLATFORMS = [
   'telegram',
   'line',

@@ -85,6 +85,7 @@ import {
   CORE_CONVERSATION_KINDS,
   CORE_CONVERSATION_STATUSES,
   CORE_MISSION_STATUSES,
+  CORE_MISSION_VISIBILITIES,
   CORE_OUTCOME_STATUSES,
   CORE_PROJECT_STATUSES,
   CORE_RUN_STATUSES,
@@ -514,6 +515,11 @@ export function readMissionRunProjectionQuery(
     taskIds: readOptionalQueryValues(searchParams, 'taskId'),
     runIds: readOptionalQueryValues(searchParams, 'runId'),
     hasRun: readBooleanQuery(searchParams, 'hasRun'),
+    visibilities: readEnumQueryValues(
+      searchParams,
+      'visibility',
+      CORE_MISSION_VISIBILITIES,
+    ),
     limit: readPositiveIntegerQuery(searchParams, 'limit'),
   };
 }
