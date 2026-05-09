@@ -74,6 +74,7 @@ export interface CodeArtifactRuntimeAssistantEffectMetadata {
 
 export interface CodeArtifactRuntimeCanvasExecutionContext {
   actorId: string | null;
+  runtimeSessionId?: string | null;
   anchors: CodeArtifactDeclarationAnchors;
   surface: CanvasSurfaceRef | null;
   policyConfig?: ArtifactCanvasPolicyConfig;
@@ -173,6 +174,11 @@ export function executeCodeArtifactRuntimeCanvasIntents(input: {
 
   let core = input.core;
   const canvas: CodeArtifactRuntimeCanvasExecutionItem[] = [];
+  const declarationIndex = buildArtifactCanvasDeclarationIndex({
+    core,
+    declarations: input.declarations,
+    context: input.context,
+  });
   for (const segment of input.segments) {
     if (segment.kind !== 'tool_use') {
       continue;
@@ -181,7 +187,7 @@ export function executeCodeArtifactRuntimeCanvasIntents(input: {
       const execution = executeShowInCanvasToolUse({
         core,
         segment,
-        declarations: input.declarations,
+        declarationIndex,
         context: input.context,
         now: input.now,
       });
@@ -247,6 +253,7 @@ export function createCodeArtifactRuntimeAssistantEffectProcessor(): RuntimeInvo
         declarations: execution.declarations,
         context: {
           actorId: normalizeOptionalString(context.actorId),
+          runtimeSessionId: normalizeOptionalString(context.runtimeSessionId),
           anchors,
           surface: resolveRuntimeArtifactCanvasSurface(anchors),
         },
@@ -432,7 +439,7 @@ export function registerCodeArtifactRuntimeAssistantEffectProcessor(): void {
 function executeShowInCanvasToolUse(input: {
   core: CatsCoreState;
   segment: Extract<RuntimeMessageSegment, { kind: 'tool_use' }>;
-  declarations: readonly CodeArtifactRuntimeDeclarationExecutionItem[];
+  declarationIndex: ArtifactCanvasDeclarationIndex;
   context: CodeArtifactRuntimeCanvasExecutionContext;
   now?: Date;
 }): { core: CatsCoreState; item: CodeArtifactRuntimeCanvasExecutionItem } {
@@ -454,7 +461,7 @@ function executeShowInCanvasToolUse(input: {
 
   const artifactId = resolveArtifactCanvasToolArtifactId(
     normalized.input.identity,
-    input.declarations,
+    input.declarationIndex,
   );
   if (artifactId.status === 'rejected') {
     return rejectedCanvasExecutionItem(input.core, input.segment, artifactId.error);
@@ -609,24 +616,33 @@ function rejectedCanvasExecutionItem(
 
 function resolveArtifactCanvasToolArtifactId(
   identity: ArtifactCanvasToolIdentity,
-  declarations: readonly CodeArtifactRuntimeDeclarationExecutionItem[],
+  index: ArtifactCanvasDeclarationIndex,
 ): { status: 'accepted'; artifactId: string } | { status: 'rejected'; error: ArtifactCanvasError } {
   if (identity.kind === 'artifact') {
     return { status: 'accepted', artifactId: identity.artifactId };
   }
 
-  const matches = declarations.filter((declaration) =>
-    declaration.declarationId === identity.declarationId
-    && declaration.result.status === 'accepted'
-    && typeof declaration.result.artifactId === 'string'
-    && declaration.result.artifactId.trim().length > 0);
-  const artifactIds = [...new Set(matches.map((declaration) =>
-    declaration.result.status === 'accepted' ? declaration.result.artifactId ?? '' : ''))]
-    .filter((artifactId) => artifactId.trim().length > 0);
-  if (artifactIds.length === 1) {
-    return { status: 'accepted', artifactId: artifactIds[0]! };
+  if (!index.caller) {
+    return {
+      status: 'rejected',
+      error: {
+        code: 'artifact_canvas_declaration_unknown',
+        message: 'show_in_canvas declarationId did not resolve to an accepted artifact.',
+        details: { declarationId: identity.declarationId },
+      },
+    };
   }
-  if (artifactIds.length > 1) {
+
+  const lookupKey = buildArtifactCanvasDeclarationLookupKey({
+    producerKey: index.caller.producerKey,
+    scopeKey: index.caller.scopeKey,
+    declarationId: identity.declarationId,
+  });
+  const artifactIds = index.artifactIdsByLookupKey.get(lookupKey) ?? new Set<string>();
+  if (artifactIds.size === 1) {
+    return { status: 'accepted', artifactId: [...artifactIds][0]! };
+  }
+  if (artifactIds.size > 1) {
     return {
       status: 'rejected',
       error: {
@@ -636,6 +652,27 @@ function resolveArtifactCanvasToolArtifactId(
       },
     };
   }
+
+  const sameScopeProducerKeys = index.producerKeysByScopeDeclarationKey.get(
+    buildArtifactCanvasScopeDeclarationKey({
+      scopeKey: index.caller.scopeKey,
+      declarationId: identity.declarationId,
+    }),
+  ) ?? new Set<string>();
+  if (
+    sameScopeProducerKeys.size > 0
+    && !sameScopeProducerKeys.has(index.caller.producerKey)
+  ) {
+    return {
+      status: 'rejected',
+      error: {
+        code: 'artifact_canvas_declaration_producer_mismatch',
+        message: 'show_in_canvas declarationId belongs to another same-turn producer.',
+        details: { declarationId: identity.declarationId },
+      },
+    };
+  }
+
   return {
     status: 'rejected',
     error: {
@@ -644,6 +681,193 @@ function resolveArtifactCanvasToolArtifactId(
       details: { declarationId: identity.declarationId },
     },
   };
+}
+
+type ArtifactCanvasDeclarationScopeKind =
+  | 'run'
+  | 'runtime'
+  | 'conversation'
+  | 'workspace';
+
+interface ArtifactCanvasDeclarationCallerKey {
+  producerKey: string;
+  scopeKey: string;
+}
+
+interface ArtifactCanvasDeclarationIdempotency {
+  producerKind: CodeArtifactProducer['kind'];
+  producerIdentity: string;
+  scopeKind: ArtifactCanvasDeclarationScopeKind;
+  scopeId: string;
+  declarationId: string;
+}
+
+interface ArtifactCanvasDeclarationIndex {
+  caller: ArtifactCanvasDeclarationCallerKey | null;
+  artifactIdsByLookupKey: Map<string, Set<string>>;
+  producerKeysByScopeDeclarationKey: Map<string, Set<string>>;
+}
+
+function buildArtifactCanvasDeclarationIndex(input: {
+  core: CatsCoreState;
+  declarations: readonly CodeArtifactRuntimeDeclarationExecutionItem[];
+  context: CodeArtifactRuntimeCanvasExecutionContext;
+}): ArtifactCanvasDeclarationIndex {
+  const index: ArtifactCanvasDeclarationIndex = {
+    caller: resolveArtifactCanvasDeclarationCallerKey(input.context),
+    artifactIdsByLookupKey: new Map(),
+    producerKeysByScopeDeclarationKey: new Map(),
+  };
+
+  for (const declaration of input.declarations) {
+    if (
+      declaration.result.status !== 'accepted'
+      || !normalizeOptionalString(declaration.result.artifactId)
+    ) {
+      continue;
+    }
+    const artifactId = normalizeOptionalString(declaration.result.artifactId);
+    const resultDeclarationId =
+      normalizeOptionalString(declaration.result.declarationId)
+      ?? normalizeOptionalString(declaration.declarationId);
+    if (!artifactId || !resultDeclarationId) {
+      continue;
+    }
+
+    const artifact = input.core.artifacts.find((candidate) => candidate.id === artifactId) ?? null;
+    const idempotency = readArtifactCanvasDeclarationIdempotency(artifact);
+    if (!idempotency || idempotency.declarationId !== resultDeclarationId) {
+      continue;
+    }
+
+    const producerKey = `${idempotency.producerKind}:${idempotency.producerIdentity}`;
+    const scopeKey = `${idempotency.scopeKind}:${idempotency.scopeId}`;
+    const lookupKey = buildArtifactCanvasDeclarationLookupKey({
+      producerKey,
+      scopeKey,
+      declarationId: idempotency.declarationId,
+    });
+    const artifactIds = index.artifactIdsByLookupKey.get(lookupKey) ?? new Set<string>();
+    artifactIds.add(artifactId);
+    index.artifactIdsByLookupKey.set(lookupKey, artifactIds);
+
+    const scopeDeclarationKey = buildArtifactCanvasScopeDeclarationKey({
+      scopeKey,
+      declarationId: idempotency.declarationId,
+    });
+    const producerKeys =
+      index.producerKeysByScopeDeclarationKey.get(scopeDeclarationKey) ?? new Set<string>();
+    producerKeys.add(producerKey);
+    index.producerKeysByScopeDeclarationKey.set(scopeDeclarationKey, producerKeys);
+  }
+
+  return index;
+}
+
+function resolveArtifactCanvasDeclarationCallerKey(
+  context: CodeArtifactRuntimeCanvasExecutionContext,
+): ArtifactCanvasDeclarationCallerKey | null {
+  const actorId = normalizeOptionalString(context.actorId);
+  if (!actorId) {
+    return null;
+  }
+  const scope = resolveArtifactCanvasDeclarationScopeKey(context);
+  if (!scope) {
+    return null;
+  }
+  return {
+    producerKey: `agent:actor:${actorId}`,
+    scopeKey: scope,
+  };
+}
+
+function resolveArtifactCanvasDeclarationScopeKey(
+  context: CodeArtifactRuntimeCanvasExecutionContext,
+): string | null {
+  const runId = normalizeOptionalString(context.anchors.runId);
+  if (runId) {
+    return `run:${runId}`;
+  }
+  const runtimeSessionId = normalizeOptionalString(context.runtimeSessionId);
+  if (runtimeSessionId) {
+    return `runtime:${runtimeSessionId}`;
+  }
+  const conversationId = normalizeOptionalString(context.anchors.conversationId);
+  if (conversationId) {
+    return `conversation:${conversationId}`;
+  }
+  const workspacePath = normalizeOptionalString(context.anchors.workspacePath);
+  if (workspacePath) {
+    return `workspace:${normalizeArtifactCanvasWorkspaceScopeId(workspacePath)}`;
+  }
+  return null;
+}
+
+function readArtifactCanvasDeclarationIdempotency(
+  artifact: CatsCoreState['artifacts'][number] | null,
+): ArtifactCanvasDeclarationIdempotency | null {
+  const declaration = asRecord(artifact?.metadata.codeArtifactDeclaration);
+  const idempotency = asRecord(declaration?.idempotency);
+  const producerKind = normalizeOptionalString(idempotency?.producerKind);
+  const producerIdentity = normalizeOptionalString(idempotency?.producerIdentity);
+  const scopeKind = normalizeOptionalString(idempotency?.scopeKind);
+  const scopeId = normalizeOptionalString(idempotency?.scopeId);
+  const declarationId = normalizeOptionalString(idempotency?.declarationId);
+  if (
+    !isCodeArtifactProducerKind(producerKind)
+    || !producerIdentity
+    || !isArtifactCanvasDeclarationScopeKind(scopeKind)
+    || !scopeId
+    || !declarationId
+  ) {
+    return null;
+  }
+
+  return {
+    producerKind,
+    producerIdentity,
+    scopeKind,
+    scopeId,
+    declarationId,
+  };
+}
+
+function buildArtifactCanvasDeclarationLookupKey(input: {
+  producerKey: string;
+  scopeKey: string;
+  declarationId: string;
+}): string {
+  return `${input.producerKey}\u0000${input.scopeKey}\u0000${input.declarationId}`;
+}
+
+function buildArtifactCanvasScopeDeclarationKey(input: {
+  scopeKey: string;
+  declarationId: string;
+}): string {
+  return `${input.scopeKey}\u0000${input.declarationId}`;
+}
+
+function normalizeArtifactCanvasWorkspaceScopeId(workspacePath: string): string {
+  const normalized = workspacePath.replaceAll('\\', '/').replace(/\/+$/u, '') || '/';
+  return /^[a-zA-Z]:\//u.test(normalized) ? normalized.toLowerCase() : normalized;
+}
+
+function isCodeArtifactProducerKind(
+  value: string | null,
+): value is CodeArtifactProducer['kind'] {
+  return value === 'agent'
+    || value === 'tool'
+    || value === 'system'
+    || value === 'user';
+}
+
+function isArtifactCanvasDeclarationScopeKind(
+  value: string | null,
+): value is ArtifactCanvasDeclarationScopeKind {
+  return value === 'run'
+    || value === 'runtime'
+    || value === 'conversation'
+    || value === 'workspace';
 }
 
 function resolveRuntimeArtifactCanvasSurface(

@@ -55,7 +55,7 @@ process-supervision and security review (Phase 4).
       helpers with context-free validation, the SPEC-101 error code union,
       and the active-surface precondition. The accepted result includes
       `targetUrl`; the legacy `cleared: true` boolean is removed.
-- [ ] Task 1.3: Add a Code assistant-effect processor that resolves
+- [x] Task 1.3: Add a Code assistant-effect processor that resolves
       `artifactId` or same-turn `declarationId`, validates active
       surface compatibility, hard-rejects credential URLs, applies
       the runtime preview origin allowlist + scripted preview producer
@@ -627,6 +627,7 @@ this plan before Phase 4 approval.
 | 2026-05-09 | Added the server-side Artifact Canvas render-intent hub plus `/api/canvas/intents/stream` and fixed-body `/api/canvas/intents/ack` routes. Tests cover no-subscriber no-queue behavior, surface-scoped delivery, session-bound ack ownership, repeated / unknown / malformed ack indistinguishability, replay removal after owner ack, and keeping `intentId` off URLs. This completes Task 1.13 and the server substrate portion of Task 1.10; renderer consumption / retry wiring remains pending. |
 | 2026-05-09 | Registered `show_in_canvas` and `clear_canvas` alongside `declare_artifact` in the Code runtime tool catalog metadata, labels, and onboarding instructions, with shared tool definitions and schema tests that reject `unsupported` as an input presentation. This completes Task 1.5; assistant-effect execution remains pending before the tools can mutate audit / render intents. |
 | 2026-05-09 | Added the first Code assistant-effect execution path for `show_in_canvas` / `clear_canvas`: same-turn accepted declaration resolution, projection / URL-policy validation, Activity audit writes, render-intent publish attempts, and local `tool_result` projection with no `intentId` leakage. This completes Task 1.2 and the main happy-path / validation subset of Task 1.3; the full producer/scope-keyed declaration index and cross-producer / cross-scope rejection matrix remain pending before Task 1.3 can be checked off. |
+| 2026-05-09 | Completed Task 1.3's same-turn declaration index: `show_in_canvas({ declarationId })` now resolves only against the caller's own SPEC-092 producer key and scope key, accepts idempotent duplicate declarations, rejects same-key artifact collisions, rejects other-producer same-scope matches with `artifact_canvas_declaration_producer_mismatch`, and treats cross-scope / prior-turn misses as `artifact_canvas_declaration_unknown`. |
 
 ---
 

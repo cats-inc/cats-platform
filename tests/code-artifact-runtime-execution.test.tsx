@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type { RuntimeMessageSegment } from '../src/platform/runtime/client.ts';
+import type { CatsCoreState } from '../src/core/types.ts';
 import { createDefaultCoreState } from '../src/core/model/index.ts';
+import { upsertCoreArtifact } from '../src/core/model/planningRecords.ts';
 import { upsertCoreRun } from '../src/core/model/executionRecords.ts';
 import { upsertCoreTask } from '../src/core/model/taskControls.ts';
 import { upsertCoreConversation } from '../src/core/model/structuralRecords.ts';
@@ -55,6 +57,102 @@ function createExecutionContext() {
       runId: 'run-code-1',
       workspacePath: 'C:/repo/cats-platform',
     },
+  };
+}
+
+function addIndexedArtifact(
+  core: CatsCoreState,
+  input: {
+    id: string;
+    declarationId: string;
+    producerKind?: 'agent' | 'tool' | 'system' | 'user';
+    producerIdentity?: string;
+    producerRuntimeSessionId?: string | null;
+    scopeKind?: 'run' | 'runtime' | 'conversation' | 'workspace';
+    scopeId?: string;
+  },
+): CatsCoreState {
+  const producerKind = input.producerKind ?? 'agent';
+  const producerIdentity = input.producerIdentity ?? 'actor:actor-code-agent';
+  const scopeKind = input.scopeKind ?? 'run';
+  const scopeId = input.scopeId ?? 'run-code-1';
+  const path = `http://127.0.0.1:5173/${input.id}`;
+  return upsertCoreArtifact(core, {
+    id: input.id,
+    title: input.id,
+    kind: 'preview',
+    status: 'ready',
+    conversationId: 'conversation-code-1',
+    taskId: 'task-code-1',
+    runId: 'run-code-1',
+    path,
+    metadata: {
+      codeArtifactDeclaration: {
+        declarationId: input.declarationId,
+        producerKind,
+        producerIdentity,
+        location: { kind: 'url', value: path },
+        anchors: {
+          conversationId: 'conversation-code-1',
+          taskId: 'task-code-1',
+          runId: 'run-code-1',
+          workspacePath: 'C:/repo/cats-platform',
+        },
+        idempotency: {
+          key: [
+            'code-artifact-declaration:v1',
+            `producer=${producerKind}:${producerIdentity}`,
+            `scope=${scopeKind}:${scopeId}`,
+            `declaration=${input.declarationId}`,
+          ].join(':'),
+          producerKind,
+          producerIdentity,
+          producerRuntimeSessionId: input.producerRuntimeSessionId ?? null,
+          scopeKind,
+          scopeId,
+          declarationId: input.declarationId,
+          recoveredFromFrozenScope: false,
+          retryScope: null,
+        },
+      },
+    },
+  }, new Date('2026-05-09T07:00:00.000Z')).core;
+}
+
+function acceptedDeclaration(input: {
+  toolId: string;
+  declarationId: string;
+  artifactId: string;
+}) {
+  return {
+    toolId: input.toolId,
+    declarationId: input.declarationId,
+    result: {
+      status: 'accepted' as const,
+      declarationId: input.declarationId,
+      disposition: 'record' as const,
+      artifactId: input.artifactId,
+      artifactStatus: 'ready' as const,
+    },
+  };
+}
+
+function showDeclarationSegment(declarationId: string): RuntimeMessageSegment {
+  return {
+    kind: 'tool_use',
+    toolName: ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+    toolId: 'tool-canvas',
+    text: '',
+    toolArgs: { declarationId, presentation: 'iframe' },
+  };
+}
+
+function createCanvasExecutionContext() {
+  return {
+    actorId: 'actor-code-agent',
+    runtimeSessionId: 'runtime-session-1',
+    anchors: createExecutionContext().anchors,
+    surface: { kind: 'code_task' as const, surfaceId: 'task-code-1' },
   };
 }
 
@@ -193,6 +291,7 @@ test('Code runtime canvas execution shows same-turn declared artifacts', () => {
       declarations: declarations.declarations,
       context: {
         actorId: 'actor-code-agent',
+        runtimeSessionId: 'runtime-session-1',
         anchors: createExecutionContext().anchors,
         surface: { kind: 'code_task', surfaceId: 'task-code-1' },
         renderIntentHub: hub,
@@ -207,6 +306,217 @@ test('Code runtime canvas execution shows same-turn declared artifacts', () => {
     assert.equal(canvas.core.activities[1].artifactId, declarations.core.artifacts[0].id);
     assert.equal(deliveries.length, 1);
     assert.doesNotMatch(JSON.stringify(canvas.canvas[0].result), /intentId/u);
+  } finally {
+    unsubscribe();
+  }
+});
+
+test('Code runtime canvas declaration lookup prefers caller producer and scope', () => {
+  let core = createAnchoredCodeCore();
+  core = addIndexedArtifact(core, {
+    id: 'artifact-agent-preview',
+    declarationId: 'preview-shared',
+    producerRuntimeSessionId: 'runtime-session-1',
+  });
+  core = addIndexedArtifact(core, {
+    id: 'artifact-tool-preview',
+    declarationId: 'preview-shared',
+    producerKind: 'tool',
+    producerIdentity: 'tool:builder',
+  });
+
+  const result = executeCodeArtifactRuntimeCanvasIntents({
+    core,
+    channel: { originSurface: 'code', id: 'channel-code' },
+    segments: [showDeclarationSegment('preview-shared')],
+    declarations: [
+      acceptedDeclaration({
+        toolId: 'tool-agent',
+        declarationId: 'preview-shared',
+        artifactId: 'artifact-agent-preview',
+      }),
+      acceptedDeclaration({
+        toolId: 'tool-builder',
+        declarationId: 'preview-shared',
+        artifactId: 'artifact-tool-preview',
+      }),
+    ],
+    context: createCanvasExecutionContext(),
+    now: new Date('2026-05-09T07:00:01.000Z'),
+  });
+
+  assert.equal(result.canvas[0].result.status, 'accepted');
+  assert.equal(
+    result.canvas[0].result.status === 'accepted' ? result.canvas[0].result.artifactId : null,
+    'artifact-agent-preview',
+  );
+  assert.equal(result.core.activities.length, 1);
+  assert.equal(result.core.activities[0].artifactId, 'artifact-agent-preview');
+});
+
+test('Code runtime canvas declaration lookup rejects other producer only matches', () => {
+  let core = createAnchoredCodeCore();
+  core = addIndexedArtifact(core, {
+    id: 'artifact-tool-preview',
+    declarationId: 'preview-tool-only',
+    producerKind: 'tool',
+    producerIdentity: 'tool:builder',
+  });
+
+  const result = executeCodeArtifactRuntimeCanvasIntents({
+    core,
+    channel: { originSurface: 'code', id: 'channel-code' },
+    segments: [showDeclarationSegment('preview-tool-only')],
+    declarations: [
+      acceptedDeclaration({
+        toolId: 'tool-builder',
+        declarationId: 'preview-tool-only',
+        artifactId: 'artifact-tool-preview',
+      }),
+    ],
+    context: createCanvasExecutionContext(),
+    now: new Date('2026-05-09T07:00:01.000Z'),
+  });
+
+  assert.equal(result.core.activities.length, 0);
+  assert.deepEqual(result.canvas[0].result, {
+    status: 'rejected',
+    error: {
+      code: 'artifact_canvas_declaration_producer_mismatch',
+      message: 'show_in_canvas declarationId belongs to another same-turn producer.',
+      details: { declarationId: 'preview-tool-only' },
+    },
+  });
+});
+
+test('Code runtime canvas declaration lookup rejects cross-scope declaration ids as unknown', () => {
+  let core = createAnchoredCodeCore();
+  core = addIndexedArtifact(core, {
+    id: 'artifact-runtime-preview',
+    declarationId: 'preview-other-scope',
+    producerRuntimeSessionId: 'runtime-session-1',
+    scopeKind: 'runtime',
+    scopeId: 'runtime-session-1',
+  });
+
+  const result = executeCodeArtifactRuntimeCanvasIntents({
+    core,
+    channel: { originSurface: 'code', id: 'channel-code' },
+    segments: [showDeclarationSegment('preview-other-scope')],
+    declarations: [
+      acceptedDeclaration({
+        toolId: 'tool-agent',
+        declarationId: 'preview-other-scope',
+        artifactId: 'artifact-runtime-preview',
+      }),
+    ],
+    context: createCanvasExecutionContext(),
+    now: new Date('2026-05-09T07:00:01.000Z'),
+  });
+
+  assert.equal(result.core.activities.length, 0);
+  assert.deepEqual(result.canvas[0].result, {
+    status: 'rejected',
+    error: {
+      code: 'artifact_canvas_declaration_unknown',
+      message: 'show_in_canvas declarationId did not resolve to an accepted artifact.',
+      details: { declarationId: 'preview-other-scope' },
+    },
+  });
+});
+
+test('Code runtime canvas declaration lookup accepts idempotent duplicate declarations', () => {
+  let core = createAnchoredCodeCore();
+  core = addIndexedArtifact(core, {
+    id: 'artifact-agent-preview',
+    declarationId: 'preview-duplicate',
+    producerRuntimeSessionId: 'runtime-session-1',
+  });
+
+  const result = executeCodeArtifactRuntimeCanvasIntents({
+    core,
+    channel: { originSurface: 'code', id: 'channel-code' },
+    segments: [showDeclarationSegment('preview-duplicate')],
+    declarations: [
+      acceptedDeclaration({
+        toolId: 'tool-agent-a',
+        declarationId: 'preview-duplicate',
+        artifactId: 'artifact-agent-preview',
+      }),
+      acceptedDeclaration({
+        toolId: 'tool-agent-b',
+        declarationId: 'preview-duplicate',
+        artifactId: 'artifact-agent-preview',
+      }),
+    ],
+    context: createCanvasExecutionContext(),
+    now: new Date('2026-05-09T07:00:01.000Z'),
+  });
+
+  assert.equal(result.canvas[0].result.status, 'accepted');
+  assert.equal(
+    result.canvas[0].result.status === 'accepted' ? result.canvas[0].result.artifactId : null,
+    'artifact-agent-preview',
+  );
+  assert.equal(result.core.activities.length, 1);
+});
+
+test('Code runtime canvas declaration lookup rejects same-key artifact collisions', () => {
+  const hub = new ArtifactCanvasRenderIntentHub();
+  const deliveries: unknown[] = [];
+  const unsubscribe = hub.subscribe({
+    surface: { kind: 'code_task', surfaceId: 'task-code-1' },
+    sessionId: 'anonymous',
+    send: (intent) => deliveries.push(intent),
+    now: new Date('2026-05-09T07:00:00.000Z'),
+  });
+
+  try {
+    let core = createAnchoredCodeCore();
+    core = addIndexedArtifact(core, {
+      id: 'artifact-agent-preview-a',
+      declarationId: 'preview-collision',
+      producerRuntimeSessionId: 'runtime-session-1',
+    });
+    core = addIndexedArtifact(core, {
+      id: 'artifact-agent-preview-b',
+      declarationId: 'preview-collision',
+      producerRuntimeSessionId: 'runtime-session-1',
+    });
+
+    const result = executeCodeArtifactRuntimeCanvasIntents({
+      core,
+      channel: { originSurface: 'code', id: 'channel-code' },
+      segments: [showDeclarationSegment('preview-collision')],
+      declarations: [
+        acceptedDeclaration({
+          toolId: 'tool-agent-a',
+          declarationId: 'preview-collision',
+          artifactId: 'artifact-agent-preview-a',
+        }),
+        acceptedDeclaration({
+          toolId: 'tool-agent-b',
+          declarationId: 'preview-collision',
+          artifactId: 'artifact-agent-preview-b',
+        }),
+      ],
+      context: {
+        ...createCanvasExecutionContext(),
+        renderIntentHub: hub,
+      },
+      now: new Date('2026-05-09T07:00:01.000Z'),
+    });
+
+    assert.equal(result.core.activities.length, 0);
+    assert.equal(deliveries.length, 0);
+    assert.deepEqual(result.canvas[0].result, {
+      status: 'rejected',
+      error: {
+        code: 'artifact_canvas_declaration_collision',
+        message: 'show_in_canvas declarationId resolved to multiple artifact ids.',
+        details: { declarationId: 'preview-collision' },
+      },
+    });
   } finally {
     unsubscribe();
   }
