@@ -28,6 +28,8 @@ import { CompanionModeToggleChip } from './components/companion/CompanionModeTog
 import {
   CompanionWorkspace,
 } from './components/companion/CompanionWorkspace.js';
+import { withSharedViewerRoutes } from '../../shared/renderer/withSharedViewerRoutes.js';
+
 function noop(): void {}
 
 type ChatSurfaceProps = Omit<
@@ -96,63 +98,67 @@ export function AppRoutes({
           index
           element={<Navigate to={resolveAppEntryPath(payload.setupCompleteAt)} replace />}
         />
-        <Route
-          path="chats/:channelId"
-          element={
-            selectedChannel ? (
-              <ChatView
-                {...chatSurfaceProps}
-                payload={payload}
-                selectedChannel={selectedChannel}
-                routeChannelId={routeChannelId}
-                onOpenAddCat={onToggleAddCat}
-                renderComposerHeaderAccessory={(ctx) => (
-                  <ActiveSessionPermissionChip channel={ctx.selectedChannel} />
-                )}
-                renderComposerTargetSlot={(context) => (
-                  <ChatComposerTargetSlot
-                    payload={context.payload}
-                    composerBusy={context.composerBusy}
-                    composerRecipients={context.composerRecipients}
-                    defaultRecipientParticipantId={context.defaultRecipientParticipantId}
-                    composerStackParticipants={context.composerStackParticipants}
-                    directLaneCat={context.directLaneCat}
-                    isDirectLane={context.isDirectLane}
-                    isDefaultChatComposer={context.isDefaultChatComposer}
-                    activeWorkflowShape={context.activeWorkflowShape}
-                    onToggleActiveWorkflowShape={context.onToggleActiveWorkflowShape}
-                    activeAudienceKeys={context.activeAudienceKeys}
-                    onSetActiveAudienceKeys={context.onSetActiveAudienceKeys}
-                    onOpenSection={context.onOpenSection}
+        {withSharedViewerRoutes({
+          key: 'chat-conversation',
+          path: 'chats/:channelId',
+          surfaceKind: 'chat_conversation',
+          surfaceIdParam: 'channelId',
+          element: selectedChannel ? (
+            <ChatView
+              {...chatSurfaceProps}
+              payload={payload}
+              selectedChannel={selectedChannel}
+              routeChannelId={routeChannelId}
+              onOpenAddCat={onToggleAddCat}
+              renderComposerHeaderAccessory={(ctx) => (
+                <ActiveSessionPermissionChip channel={ctx.selectedChannel} />
+              )}
+              renderComposerTargetSlot={(context) => (
+                <ChatComposerTargetSlot
+                  payload={context.payload}
+                  composerBusy={context.composerBusy}
+                  composerRecipients={context.composerRecipients}
+                  defaultRecipientParticipantId={context.defaultRecipientParticipantId}
+                  composerStackParticipants={context.composerStackParticipants}
+                  directLaneCat={context.directLaneCat}
+                  isDirectLane={context.isDirectLane}
+                  isDefaultChatComposer={context.isDefaultChatComposer}
+                  activeWorkflowShape={context.activeWorkflowShape}
+                  onToggleActiveWorkflowShape={context.onToggleActiveWorkflowShape}
+                  activeAudienceKeys={context.activeAudienceKeys}
+                  onSetActiveAudienceKeys={context.onSetActiveAudienceKeys}
+                  onOpenSection={context.onOpenSection}
+                />
+              )}
+              renderStatusRow={(context) => {
+                const indicators = context.activeAssignedCats
+                  .map((assignment) => {
+                    const cat = context.payload.chat.cats.find(
+                      (candidate) => candidate.id === assignment.catId,
+                    );
+                    if (!cat) {
+                      return null;
+                    }
+                    return resolveCatStatusIndicator(
+                      cat,
+                      context.selectedChannel,
+                      context.operatorView,
+                    );
+                  })
+                  .filter((indicator): indicator is NonNullable<typeof indicator> =>
+                    indicator != null);
+                return indicators.length > 0 ? (
+                  <CatStatusRow
+                    indicators={indicators}
+                    onInspect={(catId) => context.openSidePanelTo(`cat:${catId}`)}
                   />
-                )}
-                renderStatusRow={(context) => {
-                  const indicators = context.activeAssignedCats
-                    .map((assignment) => {
-                      const cat = context.payload.chat.cats.find((candidate) => candidate.id === assignment.catId);
-                      if (!cat) {
-                        return null;
-                      }
-                      return resolveCatStatusIndicator(
-                        cat,
-                        context.selectedChannel,
-                        context.operatorView,
-                      );
-                    })
-                    .filter((indicator): indicator is NonNullable<typeof indicator> => indicator != null);
-                  return indicators.length > 0 ? (
-                    <CatStatusRow
-                      indicators={indicators}
-                      onInspect={(catId) => context.openSidePanelTo(`cat:${catId}`)}
-                    />
-                  ) : null;
-                }}
-              />
-            ) : (
-              <BootShell />
-            )
-          }
-        />
+                ) : null;
+              }}
+            />
+          ) : (
+            <BootShell />
+          ),
+        })}
         <Route
           path="chats"
           element={

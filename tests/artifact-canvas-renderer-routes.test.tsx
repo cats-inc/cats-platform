@@ -50,6 +50,18 @@ test('Work routes register Artifact Canvas child routes for project, task, and w
   );
 });
 
+test('Chat routes register Artifact Canvas child route for conversation surfaces', async () => {
+  const source = await readFile(
+    path.join(process.cwd(), 'src/products/chat/renderer/AppRoutes.tsx'),
+    'utf8',
+  );
+
+  assert.match(
+    source,
+    /withSharedViewerRoutes\(\{\s+key: 'chat-conversation',\s+path: 'chats\/:channelId',\s+surfaceKind: 'chat_conversation',/u,
+  );
+});
+
 test('shared viewer route renders parent and Artifact Canvas pane on nested canvas URL', () => {
   const markup = renderToStaticMarkup(
     <StaticRouter location="/code/codespaces/codespace-1/canvas/artifact-1">

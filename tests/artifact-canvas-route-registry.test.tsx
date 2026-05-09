@@ -76,6 +76,42 @@ test('Artifact Canvas registry preserves explicit presentation in route and API 
   });
 });
 
+test('Artifact Canvas registry matches mounted Work and Chat product paths', () => {
+  const workItem: CanvasSurfaceRef = {
+    kind: 'work_item',
+    surfaceId: 'work-item-1',
+  };
+  const chatConversation: CanvasSurfaceRef = {
+    kind: 'chat_conversation',
+    surfaceId: 'channel-1',
+  };
+
+  assert.equal(
+    canvasSurfaceRouteRegistry.canvasUrl(workItem, 'artifact-1'),
+    '/work/work-items/work-item-1/canvas/artifact-1',
+  );
+  assert.deepEqual(
+    canvasSurfaceRouteRegistry.parse('/work/work-items/work-item-1'),
+    {
+      kind: 'parent',
+      surface: workItem,
+      parentUrl: '/work/work-items/work-item-1',
+    },
+  );
+  assert.equal(
+    canvasSurfaceRouteRegistry.canvasUrl(chatConversation, 'artifact-1'),
+    '/chat/chats/channel-1/canvas/artifact-1',
+  );
+  assert.deepEqual(
+    canvasSurfaceRouteRegistry.parse('/chat/chats/channel-1'),
+    {
+      kind: 'parent',
+      surface: chatConversation,
+      parentUrl: '/chat/chats/channel-1',
+    },
+  );
+});
+
 test('Artifact Canvas navigate intents use registry-composed URLs', () => {
   const intent = composeArtifactCanvasNavigateIntent({
     intentId: 'secret-intent',

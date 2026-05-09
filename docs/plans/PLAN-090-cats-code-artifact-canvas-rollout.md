@@ -307,7 +307,7 @@ artifacts, close/refresh/open controls, and renderer tests for pane state.
       links to anchored artifacts use renderer-only `navigate()` to
       enter the shared canvas child route. No server tool call from
       Work side.
-- [ ] Task 3.7: Wire Cats Chat conversation surfaces likewise. A chat
+- [x] Task 3.7: Wire Cats Chat conversation surfaces likewise. A chat
       message that references an artifact can become a clickable
       navigate target.
 - [x] Task 3.8: Add platform-viewer-policy entry for any new
@@ -634,6 +634,7 @@ this plan before Phase 4 approval.
 | 2026-05-09 | Added platform-shared `CodeViewer` for inline summaries and server-served text artifacts. Projections now carry `textContent` for `inline_summary`, resolve text/code MIME or text extensions to `presentationResolved = code`, keep iframe sandbox profiles null for code, and document the complete viewer ownership row. This completes Tasks 3.3 and 3.8. |
 | 2026-05-09 | Added the shared Artifact Canvas resize divider with per-surface `localStorage` pane-width persistence, pointer dragging, and keyboard separator controls (`ArrowLeft` / `ArrowRight` / `Home` / `End`). Parent surface URLs no longer reserve an empty canvas column when the nested canvas route is absent. This completes Tasks 3.4 and 3.5. |
 | 2026-05-09 | Mounted the shared Artifact Canvas child route on Cats Work project, task, and work item detail surfaces through `withSharedViewerRoutes`. This completes Task 3.6 for route-level Work integration; artifact link affordances remain renderer-only navigation and do not require Work-side server delegates. |
+| 2026-05-09 | Mounted the shared Artifact Canvas child route on Cats Chat conversation routes and aligned the canvas route registry/docs with the actual product paths (`/chat/chats/:channelId`, `/work/work-items/:workItemId`). This completes Task 3.7. |
 
 ---
 

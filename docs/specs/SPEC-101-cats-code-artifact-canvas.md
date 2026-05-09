@@ -99,10 +99,10 @@ This spec covers the Phase 1 contract:
    - `/code/tasks/:taskId/canvas/:artifactId`
    - `/code/tasks/:taskId/canvas/:artifactId/view/iframe`
    - `/code/codespaces/:codespaceId/canvas/:artifactId`
-   - `/work/items/:itemId/canvas/:artifactId`
+   - `/work/work-items/:workItemId/canvas/:artifactId`
    - `/work/projects/:projectId/canvas/:artifactId`
    - `/work/tasks/:taskId/canvas/:artifactId`
-   - `/chat/conversations/:convId/canvas/:artifactId`
+   - `/chat/chats/:channelId/canvas/:artifactId`
    The canvas pane component, viewer registry, and safety policy are
    platform-shared (see FR3); each product only registers the child
    route and supplies its own surrounding chrome on the parent route.

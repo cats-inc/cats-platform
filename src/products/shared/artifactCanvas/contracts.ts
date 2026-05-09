@@ -246,10 +246,10 @@ export type CanvasUrlParse = CanvasParentUrlParse | CanvasArtifactUrlParse;
 const SURFACE_ROUTE_PREFIXES: Record<CanvasSurfaceKind, string> = {
   code_task: '/code/tasks',
   code_codespace: '/code/codespaces',
-  work_item: '/work/items',
+  work_item: '/work/work-items',
   work_project: '/work/projects',
   work_task: '/work/tasks',
-  chat_conversation: '/chat/conversations',
+  chat_conversation: '/chat/chats',
 };
 
 export interface CanvasSurfaceRouteRegistry {

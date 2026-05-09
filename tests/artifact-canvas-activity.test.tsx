@@ -180,7 +180,7 @@ test('Artifact Canvas clear activity records parent navigation without artifact 
     core: createDefaultCoreState(),
     kind: 'artifact_canvas_clear_intent',
     surface: { kind: 'chat_conversation', surfaceId: 'conversation-1' },
-    targetUrl: '/chat/conversations/conversation-1',
+    targetUrl: '/chat/chats/conversation-1',
     policyVersion: 'policy-v1',
     now: new Date('2026-05-09T03:00:00.000Z'),
   });
@@ -193,7 +193,7 @@ test('Artifact Canvas clear activity records parent navigation without artifact 
     surfaceKind: 'chat_conversation',
     surfaceId: 'conversation-1',
     surfaceAnchorSource: 'activity_conversation_anchor',
-    targetUrl: '/chat/conversations/conversation-1',
+    targetUrl: '/chat/chats/conversation-1',
     policyVersion: 'policy-v1',
     presentationRequested: null,
     presentationResolved: null,
@@ -211,7 +211,7 @@ test('Artifact Canvas activity writer rejects conflicting metadata before write'
         kind: 'artifact_canvas_show_intent',
         surface: { kind: 'work_item', surfaceId: 'work-item-1' },
         artifactId: 'artifact-1',
-        targetUrl: '/work/items/work-item-1/canvas/artifact-1',
+        targetUrl: '/work/work-items/work-item-1/canvas/artifact-1',
         policyVersion: 'policy-v1',
         metadata: {
           artifactCanvas: {

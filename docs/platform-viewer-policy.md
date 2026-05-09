@@ -97,13 +97,13 @@ Examples (current and illustrative future):
 ```
 /code/tasks/:taskId/canvas/:artifactId
 /code/tasks/:taskId/canvas/:artifactId/view/iframe
-/work/items/:itemId/canvas/:artifactId
+/work/work-items/:workItemId/canvas/:artifactId
 /work/tasks/:taskId/canvas/:artifactId
-/chat/conversations/:convId/canvas/:artifactId
+/chat/chats/:channelId/canvas/:artifactId
 
 # Hypothetical future viewers (not implemented):
 /code/tasks/:taskId/activity/:activityId
-/work/items/:itemId/approval/:approvalId
+/work/work-items/:workItemId/approval/:approvalId
 ```
 
 Implementation guidance:

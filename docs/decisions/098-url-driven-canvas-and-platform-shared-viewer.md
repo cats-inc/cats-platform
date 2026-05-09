@@ -62,9 +62,9 @@ surface that opts in:
 /code/tasks/:taskId                              ← left pane only
 /code/tasks/:taskId/canvas/:artifactId           ← left + right
 /code/tasks/:taskId/canvas/:artifactId/view/iframe  ← explicit viewer
-/work/items/:itemId/canvas/:artifactId           ← same pane in Work
+/work/work-items/:workItemId/canvas/:artifactId  ← same pane in Work
 /work/tasks/:taskId/canvas/:artifactId           ← same pane for Work task
-/chat/conversations/:convId/canvas/:artifactId   ← same pane in Chat
+/chat/chats/:channelId/canvas/:artifactId        ← same pane in Chat
 ```
 
 `/canvas/:artifactId[/view/:presentation]` is a shared child-route
