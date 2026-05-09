@@ -1,4 +1,8 @@
 import type { AppConfig } from '../../../config.js';
+import {
+  CORE_ARTIFACT_KINDS,
+  CORE_ARTIFACT_STATUSES,
+} from '../../../core/api/constants.js';
 import type { CoreStore } from '../../../core/store.js';
 import type { EvidenceEvent } from '../../../core/types.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
@@ -114,23 +118,16 @@ export function createCodeArtifactDetailPayload(
   return artifact ? buildCodeArtifactDetailProjection(core, artifact) : null;
 }
 
+// Artifact kind / status allowlists derive from the canonical Core enums so a
+// new kind / status added to `CoreArtifactKind` / `CoreArtifactStatus` flows
+// through here without hand-editing this list. `'all'` is the only filter-only
+// keyword that lives on top of the Core kinds.
 const ALLOWED_ARTIFACT_KIND_FILTERS = new Set<string>([
   'all',
-  'build',
-  'preview',
-  'document',
-  'report',
-  'attachment',
-  'transcript_export',
-  'dataset',
+  ...CORE_ARTIFACT_KINDS,
 ]);
 
-const ALLOWED_ARTIFACT_STATUS_FILTERS = new Set<string>([
-  'draft',
-  'ready',
-  'published',
-  'archived',
-]);
+const ALLOWED_ARTIFACT_STATUS_FILTERS = new Set<string>(CORE_ARTIFACT_STATUSES);
 
 export interface InvalidArtifactListFilterError {
   field: 'kind' | 'status';
