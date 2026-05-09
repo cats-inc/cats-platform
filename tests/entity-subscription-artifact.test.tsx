@@ -102,6 +102,34 @@ test('GET /api/subscribe streams artifact snapshots and update patches', async (
   assert.match(patch, /Updated through stream/u);
 });
 
+test('GET /api/subscribe emits artifact removal patch before closing', async (t) => {
+  const store = createArtifactStore();
+  const server = createArtifactSubscriptionServer(store);
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const response = await fetch(`${baseUrl(server)}/api/subscribe?kind=artifact&id=artifact-1`);
+  assert.equal(response.status, 200);
+  assert.ok(response.body);
+  const reader = response.body.getReader();
+  t.after(() => {
+    void reader.cancel();
+  });
+
+  const snapshot = await readUntil(reader, '"kind":"artifact"');
+  assert.match(snapshot, /event: snapshot/u);
+
+  await store.updateCore((core) => ({
+    ...core,
+    artifacts: core.artifacts.filter((artifact) => artifact.id !== 'artifact-1'),
+  }));
+
+  const close = await readUntil(reader, 'event: close');
+  assert.match(close, /event: patch/u);
+  assert.match(close, /"artifact\.removed"/u);
+  assert.match(close, /Artifact not found: artifact-1/u);
+});
+
 test('GET /api/subscribe rejects missing artifact subscriptions', async (t) => {
   const store = createArtifactStore();
   const server = createArtifactSubscriptionServer(store);
