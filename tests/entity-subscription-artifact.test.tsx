@@ -9,6 +9,9 @@ import {
   buildArtifactSubscriptionPatches,
   buildArtifactSubscriptionState,
 } from '../src/platform/orchestration/entitySubscriptions/artifact.ts';
+import {
+  SUPPORTED_ENTITY_SUBSCRIPTION_KINDS,
+} from '../src/platform/orchestration/entitySubscriptions/index.ts';
 import { routeEntitySubscriptionApi } from '../src/app/server/subscribeRoutes.ts';
 
 function createArtifactStore(): MemoryCoreStore {
@@ -52,7 +55,7 @@ test('buildArtifactSubscriptionPatches emits artifact.updated for changed record
   assert.equal(patches.length, 1);
   assert.equal(patches[0].kind, 'artifact.updated');
   assert.equal(patches[0].artifactId, 'artifact-1');
-  assert.equal(patches[0].state.artifact.title, 'Updated artifact');
+  assert.equal(patches[0].artifact.title, 'Updated artifact');
 });
 
 test('buildArtifactSubscriptionPatches emits artifact.removed for missing records', async () => {
@@ -181,7 +184,10 @@ test('GET /api/subscribe rejects unsupported entity subscription kinds', async (
 
   assert.equal(response.status, 400);
   assert.equal(payload.error?.code, 'invalid_subscription');
-  assert.match(payload.error?.message ?? '', /kind=<channel\|artifact>/u);
+  assert.match(
+    payload.error?.message ?? '',
+    new RegExp(`kind=<${SUPPORTED_ENTITY_SUBSCRIPTION_KINDS.join('\\|')}>`, 'u'),
+  );
 });
 
 function createArtifactSubscriptionServer(store: MemoryCoreStore) {

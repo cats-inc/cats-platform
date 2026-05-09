@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import type { ChatState } from '../api/contracts.js';
 import type { CatsCoreState } from '../../../core/types.js';
-import type { CoreStore } from '../../../core/store.js';
+import type { CoreStore, CoreStoreListener } from '../../../core/store.js';
 import { createDefaultChatState } from './defaults.js';
 import { createDefaultCoreState } from '../../../core/model/index.js';
 import { syncCoreStateWithChatState } from './core-projection/index.js';
@@ -110,6 +110,7 @@ function repairPersistedSetupCompletion(
 export class FileChatStore implements ChatStore {
   private mutationQueue: Promise<void> = Promise.resolve();
   private lastKnownSnapshot: PersistedChatSnapshot | null = null;
+  private readonly coreListeners = new Set<CoreStoreListener>();
 
   constructor(private readonly filePath: string) {}
 
@@ -141,6 +142,21 @@ export class FileChatStore implements ChatStore {
     const snapshot = buildPersistedChatSnapshot(nextChatState, nextCore);
     await writePersistedChatSnapshot(this.filePath, snapshot);
     return structuredClone(this.cacheSnapshot(snapshot));
+  }
+
+  private emitCoreChange(core: CatsCoreState): CatsCoreState {
+    const snapshot = structuredClone(core);
+    for (const listener of this.coreListeners) {
+      try {
+        listener(structuredClone(snapshot));
+      } catch (error) {
+        reportStoreDiagnostic('core_listener_failed', {
+          filePath: this.filePath,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+    return snapshot;
   }
 
   private async tryReadSnapshotFile(filePath: string): Promise<PersistedChatSnapshot> {
@@ -241,14 +257,19 @@ export class FileChatStore implements ChatStore {
   }
 
   async writeSnapshot(chat: ChatState, core: CatsCoreState): Promise<PersistedChatSnapshot> {
-    return this.runExclusive(async () => this.writeSnapshotUnsafe(chat, core));
+    return this.runExclusive(async () => {
+      const persisted = await this.writeSnapshotUnsafe(chat, core);
+      this.emitCoreChange(extractCoreState(persisted));
+      return persisted;
+    });
   }
 
   async write(state: ChatState): Promise<ChatState> {
     return this.runExclusive(async () => {
       const currentCore = extractCoreState(await this.readPersistedSnapshotUnsafe());
       const nextChatState = structuredClone(state);
-      await this.writeSnapshotUnsafe(nextChatState, currentCore);
+      const persisted = await this.writeSnapshotUnsafe(nextChatState, currentCore);
+      this.emitCoreChange(extractCoreState(persisted));
       return structuredClone(nextChatState);
     });
   }
@@ -257,7 +278,7 @@ export class FileChatStore implements ChatStore {
     return this.runExclusive(async () => {
       const currentChat = (await this.readPersistedSnapshotUnsafe()).chat;
       const persisted = await this.writeSnapshotUnsafe(currentChat, state);
-      return structuredClone(extractCoreState(persisted));
+      return this.emitCoreChange(extractCoreState(persisted));
     });
   }
 
@@ -266,14 +287,22 @@ export class FileChatStore implements ChatStore {
       const current = await this.readPersistedSnapshotUnsafe();
       const nextCore = await mutator(structuredClone(extractCoreState(current)));
       const persisted = await this.writeSnapshotUnsafe(current.chat, nextCore);
-      return structuredClone(extractCoreState(persisted));
+      return this.emitCoreChange(extractCoreState(persisted));
     });
+  }
+
+  subscribeCore(listener: CoreStoreListener): () => void {
+    this.coreListeners.add(listener);
+    return () => {
+      this.coreListeners.delete(listener);
+    };
   }
 }
 
 export class MemoryChatStore implements ChatStore {
   private chatState: ChatState;
   private coreState: CatsCoreState;
+  private readonly coreListeners = new Set<CoreStoreListener>();
 
   constructor(
     initialState: ChatState | CatsCoreState | PersistedChatSnapshot = createDefaultChatState(),
@@ -295,6 +324,7 @@ export class MemoryChatStore implements ChatStore {
     this.chatState = structuredClone(chat);
     this.coreState = syncCoreStateWithChatState(this.chatState, structuredClone(core));
     const snapshot = buildPersistedChatSnapshot(this.chatState, this.coreState);
+    this.emitCoreChange();
     return structuredClone(snapshot);
   }
 
@@ -312,5 +342,19 @@ export class MemoryChatStore implements ChatStore {
     const nextCore = await mutator(structuredClone(this.coreState));
     await this.writeSnapshot(this.chatState, nextCore);
     return structuredClone(this.coreState);
+  }
+
+  subscribeCore(listener: CoreStoreListener): () => void {
+    this.coreListeners.add(listener);
+    return () => {
+      this.coreListeners.delete(listener);
+    };
+  }
+
+  private emitCoreChange(): void {
+    const snapshot = structuredClone(this.coreState);
+    for (const listener of this.coreListeners) {
+      listener(structuredClone(snapshot));
+    }
   }
 }

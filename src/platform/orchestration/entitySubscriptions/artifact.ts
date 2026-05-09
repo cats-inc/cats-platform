@@ -15,14 +15,13 @@ export type ArtifactSubscriptionPatch =
       kind: 'artifact.updated';
       artifactId: string;
       artifact: CoreArtifactRecord;
-      state: ArtifactSubscriptionState;
     }
   | {
       kind: 'artifact.removed';
       artifactId: string;
     };
 
-function stableSerialize(value: unknown): string {
+function serializeArtifactRecord(value: CoreArtifactRecord): string {
   return JSON.stringify(value);
 }
 
@@ -66,7 +65,7 @@ export function buildArtifactSubscriptionPatches(
     }];
   }
 
-  if (stableSerialize(previous.artifact) === stableSerialize(next.artifact)) {
+  if (serializeArtifactRecord(previous.artifact) === serializeArtifactRecord(next.artifact)) {
     return [];
   }
 
@@ -74,6 +73,5 @@ export function buildArtifactSubscriptionPatches(
     kind: 'artifact.updated',
     artifactId: next.artifact.id,
     artifact: next.artifact,
-    state: next,
   }];
 }

@@ -1,6 +1,8 @@
 import type { ServerResponse } from 'node:http';
 
-export type EntitySubscriptionKind = 'channel' | 'artifact';
+export const SUPPORTED_ENTITY_SUBSCRIPTION_KINDS = ['channel', 'artifact'] as const;
+
+export type EntitySubscriptionKind = typeof SUPPORTED_ENTITY_SUBSCRIPTION_KINDS[number];
 
 export interface EntitySubscriptionSnapshotEvent<TState = unknown> {
   kind: EntitySubscriptionKind;

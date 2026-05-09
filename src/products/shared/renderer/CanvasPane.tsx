@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import {
@@ -38,6 +38,7 @@ export function CanvasPane(): JSX.Element {
   const [collapsed, setCollapsed] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
   const [state, setState] = useState<CanvasPaneState>({ status: 'loading' });
+  const skippedInitialSnapshotRef = useRef<string | null>(null);
 
   const presentationRequested = normalizePresentation(presentation);
   const projectionUrl = useMemo(() => {
@@ -57,6 +58,10 @@ export function CanvasPane(): JSX.Element {
     enabled: projectionUrl !== null,
     onSnapshot: (snapshot) => {
       if (shouldRefreshArtifactCanvasForSnapshot(artifactId, snapshot)) {
+        if (skippedInitialSnapshotRef.current !== projectionUrl) {
+          skippedInitialSnapshotRef.current = projectionUrl;
+          return;
+        }
         setRefreshToken((value) => value + 1);
       }
     },

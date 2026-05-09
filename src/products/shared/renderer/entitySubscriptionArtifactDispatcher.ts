@@ -1,24 +1,16 @@
-import type { CoreArtifactRecord } from '../../../core/types.js';
 import type {
   EntitySubscriptionPatch,
   EntitySubscriptionSnapshot,
 } from './entitySubscriptionHub.js';
+import type {
+  ArtifactSubscriptionPatch,
+  ArtifactSubscriptionState,
+} from '../../../platform/orchestration/entitySubscriptions/artifact.js';
 
-export interface ArtifactSubscriptionState {
-  artifact: CoreArtifactRecord;
-}
-
-export type ArtifactSubscriptionPatch =
-  | {
-      kind: 'artifact.updated';
-      artifactId: string;
-      artifact: CoreArtifactRecord;
-      state: ArtifactSubscriptionState;
-    }
-  | {
-      kind: 'artifact.removed';
-      artifactId: string;
-    };
+export type {
+  ArtifactSubscriptionPatch,
+  ArtifactSubscriptionState,
+};
 
 function isMatchingArtifact(
   expectedArtifactId: string | null | undefined,

@@ -7,6 +7,7 @@ import {
   ARTIFACT_ENTITY_SUBSCRIPTION_VERSION,
   buildArtifactSubscriptionPatches,
   buildArtifactSubscriptionState,
+  buildArtifactSubscriptionStateFromCore,
   type ArtifactSubscriptionState,
 } from '../../platform/orchestration/entitySubscriptions/artifact.js';
 import {
@@ -16,6 +17,8 @@ import {
   type ChannelSubscriptionState,
 } from '../../platform/orchestration/entitySubscriptions/channel.js';
 import {
+  SUPPORTED_ENTITY_SUBSCRIPTION_KINDS,
+  type EntitySubscriptionKind,
   writeEntitySubscriptionHeaders,
   writeEntitySubscriptionSseEvent,
 } from '../../platform/orchestration/entitySubscriptions/index.js';
@@ -28,13 +31,21 @@ export interface EntitySubscriptionRouteContext {
   dependencies: ChatApiDependencies & {
     coreStore: CoreStore;
   };
+  artifactRefreshMs?: number;
 }
 
-const ARTIFACT_ENTITY_SUBSCRIPTION_REFRESH_MS = 500;
+export const ARTIFACT_ENTITY_SUBSCRIPTION_REFRESH_MS = 500;
+const ENTITY_SUBSCRIPTION_KIND_LABEL = SUPPORTED_ENTITY_SUBSCRIPTION_KINDS.join('|');
 
 function normalizeSubscriptionId(value: string | null): string | null {
   const normalized = value?.trim();
   return normalized ? normalized : null;
+}
+
+function isSupportedEntitySubscriptionKind(
+  value: string | null,
+): value is EntitySubscriptionKind {
+  return SUPPORTED_ENTITY_SUBSCRIPTION_KINDS.includes(value as EntitySubscriptionKind);
 }
 
 function shouldRefreshChannelSubscription(
@@ -169,19 +180,17 @@ async function routeArtifactSubscription(
   const heartbeat = writeSubscriptionHeartbeat(context.response);
   let refreshQueue = Promise.resolve();
 
-  const refresh = (): void => {
+  const refresh = (nextStateInput?: ArtifactSubscriptionState | null): void => {
     refreshQueue = refreshQueue
       .then(async () => {
         if (context.response.writableEnded) {
           return;
         }
 
-        let nextState: ArtifactSubscriptionState | null;
-        try {
-          nextState = await buildArtifactSubscriptionState(context.dependencies.coreStore, id);
-        } catch {
-          nextState = null;
-        }
+        const nextState = nextStateInput !== undefined
+          ? nextStateInput
+          : await buildArtifactSubscriptionState(context.dependencies.coreStore, id)
+            .catch(() => null);
 
         const patches = buildArtifactSubscriptionPatches(latestState, nextState);
         for (const patch of patches) {
@@ -226,11 +235,29 @@ async function routeArtifactSubscription(
       });
   };
 
-  const refreshInterval = setInterval(refresh, ARTIFACT_ENTITY_SUBSCRIPTION_REFRESH_MS);
+  const unsubscribeCore = context.dependencies.coreStore.subscribeCore?.((core) => {
+    let nextState: ArtifactSubscriptionState | null;
+    try {
+      nextState = buildArtifactSubscriptionStateFromCore(core, id);
+    } catch {
+      nextState = null;
+    }
+    refresh(nextState);
+  });
+  const refreshInterval = unsubscribeCore
+    ? null
+    : setInterval(
+      refresh,
+      context.artifactRefreshMs ?? ARTIFACT_ENTITY_SUBSCRIPTION_REFRESH_MS,
+    );
+  refresh();
 
   context.response.on('close', () => {
     clearInterval(heartbeat);
-    clearInterval(refreshInterval);
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+    unsubscribeCore?.();
   });
 }
 
@@ -248,11 +275,11 @@ export async function routeEntitySubscriptionApi(
 
   const kind = normalizeSubscriptionId(context.url.searchParams.get('kind'));
   const id = normalizeSubscriptionId(context.url.searchParams.get('id'));
-  if ((kind !== 'channel' && kind !== 'artifact') || !id) {
+  if (!isSupportedEntitySubscriptionKind(kind) || !id) {
     sendJson(context.response, 400, {
       error: {
         code: 'invalid_subscription',
-        message: 'Expected /api/subscribe?kind=<channel|artifact>&id=<entity-id>.',
+        message: `Expected /api/subscribe?kind=<${ENTITY_SUBSCRIPTION_KIND_LABEL}>&id=<entity-id>.`,
       },
     });
     return true;

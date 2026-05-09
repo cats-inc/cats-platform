@@ -99,6 +99,13 @@ test('Artifact Canvas refreshes a mounted projection after two artifact subscrip
   assert.ok(artifactSource);
 
   await act(async () => {
+    artifactSource.emit('snapshot', createArtifactSnapshot('artifact-1'));
+  });
+  assert.deepEqual(projectionFetches, [
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-1',
+  ]);
+
+  await act(async () => {
     artifactSource.emit('patch', createArtifactUpdatedPatch('artifact-1'));
   });
   assert.equal(await view.findByText('Artifact version 2'), view.getByText('Artifact version 2'));
@@ -159,6 +166,16 @@ function installDom(eventSources: FakeEventSource[]): () => void {
   };
 }
 
+function createArtifactSnapshot(artifactId: string) {
+  const artifact = createProjection('Snapshot artifact', 'snapshot content').artifact;
+  return {
+    kind: 'artifact',
+    id: artifactId,
+    version: 1,
+    state: { artifact },
+  };
+}
+
 function createArtifactUpdatedPatch(artifactId: string) {
   const artifact = createProjection('Patch artifact', 'patch content').artifact;
   return {
@@ -169,7 +186,6 @@ function createArtifactUpdatedPatch(artifactId: string) {
       kind: 'artifact.updated',
       artifactId,
       artifact,
-      state: { artifact },
     },
   };
 }
