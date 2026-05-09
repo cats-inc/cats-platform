@@ -29,12 +29,12 @@ test('Real live preview adapter spawn rejects when executable is missing', async
   );
 });
 
-test('Real live preview adapter spawn resolves and exposes a handle for a real binary', async (t) => {
+test('Real live preview adapter spawn resolves and onExit fires for the child', async (t) => {
   const adapter = createRealLivePreviewProcessAdapter();
   const nodeExecutable = process.execPath;
   // Spawn a node process that exits immediately with status 0. Validates the
   // resolve path: spawn promise resolves, handle exposes processId, exit
-  // listener fires.
+  // listener fires (no timeout fallback -- listener must actually be called).
   const handle = await adapter.spawn({
     ...SPAWN_INPUT_TEMPLATE,
     executable: nodeExecutable,
@@ -42,15 +42,48 @@ test('Real live preview adapter spawn resolves and exposes a handle for a real b
   });
   assert.ok(typeof handle.processId === 'number' || handle.processId === null);
 
-  await new Promise<void>((resolve) => {
-    handle.onExit(() => resolve());
-    // belt + suspenders: if the process has already exited, resolve
-    setTimeout(resolve, 2_000);
-  });
+  const exit = await new Promise<{ code: number | null; signal: string | null }>(
+    (resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('onExit listener was not called within 5s'));
+      }, 5_000);
+      handle.onExit((event) => {
+        clearTimeout(timeout);
+        resolve(event);
+      });
+    },
+  );
+  assert.equal(exit.code, 0);
 
   // stop on an already-exited process must be a no-op
   await handle.stop({ graceMs: 100, killProcessTree: false });
   t.diagnostic('handle observed exit and stop completed without throwing');
+});
+
+test('Real live preview adapter onExit replays terminal event for late subscribers', async () => {
+  const adapter = createRealLivePreviewProcessAdapter();
+  const handle = await adapter.spawn({
+    ...SPAWN_INPUT_TEMPLATE,
+    executable: process.execPath,
+    args: ['-e', 'process.exit(0)'],
+  });
+  // Wait long enough for the short-lived child to definitely exit before we
+  // register an onExit listener. This is the production-relevant race the
+  // supervisor would otherwise mishandle as a readiness timeout.
+  await new Promise<void>((resolve) => setTimeout(resolve, 200));
+
+  const exit = await new Promise<{ code: number | null; signal: string | null }>(
+    (resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Late onExit subscriber was not replayed within 1s'));
+      }, 1_000);
+      handle.onExit((event) => {
+        clearTimeout(timeout);
+        resolve(event);
+      });
+    },
+  );
+  assert.equal(exit.code, 0);
 });
 
 test('Real live preview adapter stop on a still-running process terminates within graceMs', async () => {

@@ -78,7 +78,7 @@ shell-free profile pointing at their preferred dev server entry.
 |-------|----------|
 | `start` | Supervisor leases a port from the configured range, validates the request, calls the process adapter's `spawn`, and probes readiness against the leased origin |
 | `ready` | First successful readiness probe response materializes the artifact and emits `show_in_canvas` |
-| `stop` (operator or expiry) | SIGTERM sent first; if the process has not exited within `stop.graceMs`, SIGKILL is escalated. `killProcessTree: true` triggers `taskkill /T /F` on Windows or a process-group SIGTERM on POSIX |
+| `stop` (operator or expiry) | SIGTERM sent first; if the process has not exited within `stop.graceMs`, SIGKILL is escalated. With `killProcessTree: true`, the SIGTERM phase issues `taskkill /pid PID /T` on Windows (graceful tree close — no `/F`) or a process-group SIGTERM on POSIX; the SIGKILL phase escalates to `taskkill /pid PID /T /F` (force) on Windows or a process-group SIGKILL on POSIX |
 | Process exits unexpectedly | Lease moves to `failed`; supervisor does not auto-restart. Operator may inspect logs and start a fresh lease |
 | Platform shutdown | Supervisor stops all active previews with a default grace period; orphan processes are best-effort cleaned up via the same `taskkill` / process-group path |
 

@@ -78,6 +78,19 @@ function wrapChildProcess(child: ChildProcess): LivePreviewProcessHandle {
   const stderrListeners = new Set<(chunk: string) => void>();
   const exitListeners = new Set<(exit: LivePreviewProcessExit) => void>();
   let exited = false;
+  let lastExit: LivePreviewProcessExit | null = null;
+
+  const recordExit = (exit: LivePreviewProcessExit): void => {
+    if (exited) {
+      return;
+    }
+    exited = true;
+    lastExit = exit;
+    for (const listener of exitListeners) {
+      listener(exit);
+    }
+    exitListeners.clear();
+  };
 
   child.stdout?.setEncoding('utf-8');
   child.stderr?.setEncoding('utf-8');
@@ -93,28 +106,14 @@ function wrapChildProcess(child: ChildProcess): LivePreviewProcessHandle {
     }
   });
   child.on('exit', (code, signal) => {
-    exited = true;
-    const exit: LivePreviewProcessExit = { code, signal };
-    for (const listener of exitListeners) {
-      listener(exit);
-    }
+    recordExit({ code, signal });
   });
   // Once spawn has succeeded, runtime errors from the child process should
   // not crash the host. Surface them as an exit if the child has not already
   // emitted one.
   child.on('error', (error) => {
-    if (exited) {
-      return;
-    }
-    exited = true;
-    const exit: LivePreviewProcessExit = {
-      code: null,
-      signal: null,
-    };
-    for (const listener of exitListeners) {
-      listener(exit);
-    }
     void error;
+    recordExit({ code: null, signal: null });
   });
 
   return {
@@ -126,7 +125,13 @@ function wrapChildProcess(child: ChildProcess): LivePreviewProcessHandle {
       stderrListeners.add(listener);
     },
     onExit(listener) {
-      if (exited) {
+      // Late subscribers (registered after the child has already exited)
+      // must still observe the terminal event. Without this the supervisor
+      // could miss the `process_exited` signal for short-lived processes
+      // that exit between spawn-promise resolve and `onExit` registration,
+      // and would only later notice via readiness timeout.
+      if (exited && lastExit) {
+        listener(lastExit);
         return;
       }
       exitListeners.add(listener);
@@ -144,14 +149,14 @@ async function terminateChildProcess(
   child: ChildProcess,
   options: LivePreviewProcessStopOptions,
 ): Promise<void> {
-  trySendSignal(child, 'SIGTERM', options.killProcessTree);
+  trySendSignal(child, 'SIGTERM', options.killProcessTree, /* force */ false);
   await new Promise<void>((resolve) => {
     if (child.exitCode !== null || child.signalCode) {
       resolve();
       return;
     }
     const timer = setTimeout(() => {
-      trySendSignal(child, 'SIGKILL', options.killProcessTree);
+      trySendSignal(child, 'SIGKILL', options.killProcessTree, /* force */ true);
       resolve();
     }, Math.max(0, options.graceMs));
     child.once('exit', () => {
@@ -165,6 +170,7 @@ function trySendSignal(
   child: ChildProcess,
   signal: NodeJS.Signals,
   killProcessTree: boolean,
+  force: boolean,
 ): void {
   try {
     if (!killProcessTree || child.pid === undefined) {
@@ -172,7 +178,7 @@ function trySendSignal(
       return;
     }
     if (process.platform === 'win32') {
-      tryTaskkill(child, signal);
+      tryTaskkill(child, signal, force);
       return;
     }
     try {
@@ -185,13 +191,24 @@ function trySendSignal(
   }
 }
 
-function tryTaskkill(child: ChildProcess, fallbackSignal: NodeJS.Signals): void {
+function tryTaskkill(
+  child: ChildProcess,
+  fallbackSignal: NodeJS.Signals,
+  force: boolean,
+): void {
   if (child.pid === undefined) {
     child.kill(fallbackSignal);
     return;
   }
+  // Honour the documented stop contract: graceful first (taskkill /T sends
+  // WM_CLOSE / Ctrl+Break-style termination to the tree without /F so
+  // children can run their shutdown handlers), then escalate to /F on
+  // SIGKILL when the grace period expires.
+  const args = force
+    ? ['/pid', String(child.pid), '/T', '/F']
+    : ['/pid', String(child.pid), '/T'];
   try {
-    const tree = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
+    const tree = spawn('taskkill', args, {
       windowsHide: true,
       stdio: 'ignore',
     });
