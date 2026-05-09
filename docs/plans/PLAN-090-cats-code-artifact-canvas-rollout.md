@@ -222,7 +222,7 @@ process-supervision and security review (Phase 4).
       historical snapshot; do not retroactively rewrite). Add a
       backfill test: bulk update / migration code does not touch
       existing `metadata.surfaceKind` values.
-- [ ] Task 1.13: Add ack-endpoint security tests. (a) An ack request
+- [x] Task 1.13: Add ack-endpoint security tests. (a) An ack request
       whose session does not own the intent returns the fixed
       `200 OK` body `{ "status": "ok" }`, identical to unknown /
       expired / already-acked `intentId` (the server must not leak
@@ -624,6 +624,7 @@ this plan before Phase 4 approval.
 | 2026-05-09 | Added the read-only surface-scoped projection delegate for `/api/canvas/:surfaceKind/:surfaceId/artifacts/:artifactId[/view/:presentation]`, including anchor validation, URL policy enforcement, unsupported-pane projection, and no-write route coverage. This completes the first implementation pass for Task 1.4; platform config overrides and renderer consumption are still pending. |
 | 2026-05-09 | Wired `artifactCanvas` viewer policy into `AppConfig` with flat JSON env overrides for runtime-preview origins and scripted-preview producers, boot-time validation, and projection-route consumption. This completes the config portion of Tasks 1.6 / 1.7, with runtime reload publication still pending under Task 1.8 / 1.10. |
 | 2026-05-09 | Promoted `artifact_canvas_show_intent` / `artifact_canvas_clear_intent` into first-class Core Activity kinds, updated Activity filters / timeline / operator metadata, and added the shared audit writer with source-anchor derivation, conflict fail-fast checks, historical task-surface snapshot coverage, and private `intentId` non-persistence tests. This completes Tasks 1.11 / 1.12; ack security tests remain under Task 1.13. |
+| 2026-05-09 | Added the server-side Artifact Canvas render-intent hub plus `/api/canvas/intents/stream` and fixed-body `/api/canvas/intents/ack` routes. Tests cover no-subscriber no-queue behavior, surface-scoped delivery, session-bound ack ownership, repeated / unknown / malformed ack indistinguishability, replay removal after owner ack, and keeping `intentId` off URLs. This completes Task 1.13 and the server substrate portion of Task 1.10; renderer consumption / retry wiring remains pending. |
 
 ---
 
