@@ -2944,21 +2944,26 @@ export async function beginChannelMessageDispatch(
 ): Promise<BegunChannelMessageDispatch> {
   let nextState = state;
   const channelBeforeMessage = requireChannel(nextState, channelId);
-  // Inbound transport-binding pre-flight: when a caller (Telegram
-  // bridge, future API ingress) explicitly supplies a transport
-  // binding id, verify it actually resolves to a direct-lane
-  // conversation BEFORE producing any user-message records or
-  // downstream dispatch state. If the resolver short-circuits
-  // (binding_not_found / no_conversation_linked /
-  // conversation_not_direct_lane / binding_disabled / binding_archived),
-  // append a diagnostic system message and bail. Inbound dispatches
-  // without a chatStore (rare, mostly tests) skip this gate because
-  // the resolver needs the canonical core state.
-  if (options.transportBindingId && options.chatStore) {
+  // Inbound direct-lane pre-flight: when the channel is a direct-
+  // message lane and a chatStore is available, verify the canonical
+  // direct-lane transport binding (deterministically derived from
+  // the channel id, NOT from `options.transportBindingId`) actually
+  // resolves to a direct-lane conversation. The deterministic id
+  // matters: callers like the Telegram bridge supply *bot* binding
+  // ids in `options.transportBindingId` (those are bidirectional
+  // bindings with `conversationId: null` — see
+  // `createBotTransportBindings`), and feeding them into the direct-
+  // lane resolver would falsely return `no_conversation_linked` and
+  // block legitimate Telegram inbound. The right gate question is
+  // "does this channel's own direct-lane projection resolve cleanly?"
+  // — that's the binding the chat runtime stamps on outbound
+  // messages and the canonical anchor for inbound continuation.
+  if (options.chatStore && channelBeforeMessage.channelKind === 'direct_message') {
+    const directLaneBindingId = buildDirectLaneTransportBindingId(channelId);
     const inboundCoreSnapshot = await options.chatStore.readCore();
     const inboundBindingResolution = resolveTransportBindingDirectLane(
       inboundCoreSnapshot,
-      options.transportBindingId,
+      directLaneBindingId,
     );
     if (inboundBindingResolution.status !== 'resolved') {
       const diagnostic = appendMessage(
@@ -2967,7 +2972,7 @@ export async function beginChannelMessageDispatch(
         {
           senderKind: 'system',
           senderName: 'Runtime',
-          body: `Inbound transport binding ${options.transportBindingId} is not ready for dispatch: ${
+          body: `Direct-lane transport binding ${directLaneBindingId} is not ready for dispatch: ${
             inboundBindingResolution.reason ?? inboundBindingResolution.status
           }`,
         },
@@ -2975,7 +2980,7 @@ export async function beginChannelMessageDispatch(
         {
           metadata: {
             event: 'transport_binding_inbound_rejected',
-            transportBindingId: options.transportBindingId,
+            transportBindingId: directLaneBindingId,
             status: inboundBindingResolution.status,
             reason: inboundBindingResolution.reason,
           },

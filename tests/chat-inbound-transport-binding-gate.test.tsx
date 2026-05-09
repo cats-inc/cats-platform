@@ -9,6 +9,7 @@ import {
 import { beginChannelMessageDispatch } from '../src/products/chat/state/runtime-dispatch/routing.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import type { RuntimeClient } from '../src/platform/runtime/client.ts';
+import { buildTelegramBotTransportBindingId } from '../src/shared/chatCoreIds.ts';
 
 function runtimeStub(): RuntimeClient {
   return { async closeSession() {} } as RuntimeClient;
@@ -38,17 +39,84 @@ function createDirectState() {
   return { state, channelId: state.selectedChannelId };
 }
 
-test('beginChannelMessageDispatch short-circuits when supplied transportBindingId does not exist in core', async () => {
+function createGroupState() {
+  const now = new Date('2026-05-06T08:00:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Team room',
+      topic: 'Group lane',
+      originSurface: 'chat',
+      entryKind: 'group',
+      roomMode: 'chat_channel',
+      cats: [
+        {
+          name: 'ConciergeCat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  return { state, channelId: state.selectedChannelId };
+}
+
+test('beginChannelMessageDispatch proceeds normally when direct-lane binding is healthy (Telegram bot binding id passes through unchecked)', async () => {
+  // CRITICAL regression: the gate must NOT rely on
+  // `options.transportBindingId`. Telegram bridge feeds this with a
+  // BOT binding id (bidirectional, conversationId: null,
+  // metadata.channelKind absent) — running that through the
+  // direct-lane resolver would falsely reject every Telegram inbound
+  // message. The gate uses the channel-derived deterministic id
+  // instead and ignores the supplied bot binding id.
   const { state, channelId } = createDirectState();
+  // The MemoryChatStore constructor projects chat state into core,
+  // including a healthy direct-lane TransportBindingRecord
+  // (`createDirectLaneTransportBindings` produces it during
+  // syncCoreStateWithChatState). No extra seeding required.
   const store = new MemoryChatStore(state);
 
   const result = await beginChannelMessageDispatch(
     state,
     channelId,
     {
-      body: 'Hello from a transport whose binding has not been written',
+      body: 'Inbound from Telegram bridge',
       senderName: 'Owner',
     },
+    runtimeStub(),
+    new Date('2026-05-06T08:01:00.000Z'),
+    {
+      chatStore: store,
+      // Telegram bridge passes a bot binding id; this used to falsely
+      // trip the resolver (no_conversation_linked) and short-circuit
+      // every Telegram inbound message. After the fix, this id is
+      // ignored by the gate.
+      transportBindingId: buildTelegramBotTransportBindingId('bot-binding-1'),
+    },
+  );
+
+  assert.equal(result.userMessage.senderKind, 'user');
+  assert.equal(result.userMessage.body, 'Inbound from Telegram bridge');
+
+  const channel = requireChannel(result.state, channelId);
+  const rejections = channel.messages.filter((message) =>
+    message.metadata.event === 'transport_binding_inbound_rejected');
+  assert.equal(rejections.length, 0);
+});
+
+test('beginChannelMessageDispatch does not gate non-direct-message channels even with a chatStore', async () => {
+  // Group / chat_channel rooms have no direct-lane binding to
+  // validate. The gate must not fire for them, regardless of any
+  // supplied transportBindingId.
+  const { state, channelId } = createGroupState();
+  const store = new MemoryChatStore(state);
+
+  const result = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    { body: 'Group chat message', senderName: 'Owner' },
     runtimeStub(),
     new Date('2026-05-06T08:01:00.000Z'),
     {
@@ -57,95 +125,6 @@ test('beginChannelMessageDispatch short-circuits when supplied transportBindingI
     },
   );
 
-  assert.equal(result.results.length, 0);
-  assert.equal(result.preparedTurn, null);
-  assert.equal(result.userMessage.senderKind, 'system');
-  assert.equal(
-    result.userMessage.metadata.event,
-    'transport_binding_inbound_rejected',
-  );
-  assert.equal(
-    result.userMessage.metadata.transportBindingId,
-    'transport-binding-never-seeded',
-  );
-  assert.equal(result.userMessage.metadata.status, 'binding_not_found');
-
-  // The diagnostic was persisted to the channel transcript and no
-  // user-authored message ever entered the channel.
-  const channel = requireChannel(result.state, channelId);
-  const userMessages = channel.messages.filter((message) => message.senderKind === 'user');
-  assert.equal(userMessages.length, 0);
-  const diagnosticMessages = channel.messages.filter((message) =>
-    message.metadata.event === 'transport_binding_inbound_rejected');
-  assert.equal(diagnosticMessages.length, 1);
-});
-
-test('beginChannelMessageDispatch short-circuits when transportBindingId points at a deleted conversation', async () => {
-  const { state, channelId } = createDirectState();
-  const store = new MemoryChatStore(state);
-  // Seed a transport binding whose conversationId points at nothing,
-  // mirroring the canonical direct-lane projection metadata signal.
-  await store.updateCore((core) => ({
-    ...core,
-    transportBindings: [
-      ...core.transportBindings,
-      {
-        id: 'binding-stale',
-        platform: 'internal',
-        direction: 'bidirectional',
-        conversationId: 'conversation-deleted',
-        participantId: null,
-        agentId: null,
-        externalThreadKey: null,
-        status: 'active',
-        createdAt: '2026-05-06T07:59:00.000Z',
-        updatedAt: '2026-05-06T07:59:00.000Z',
-        metadata: { channelId: 'channel-stale', channelKind: 'direct_message' },
-      },
-    ],
-  }));
-
-  const result = await beginChannelMessageDispatch(
-    state,
-    channelId,
-    { body: 'Inbound message', senderName: 'Owner' },
-    runtimeStub(),
-    new Date('2026-05-06T08:01:00.000Z'),
-    {
-      chatStore: store,
-      transportBindingId: 'binding-stale',
-    },
-  );
-
-  assert.equal(result.results.length, 0);
-  assert.equal(result.preparedTurn, null);
-  assert.equal(
-    result.userMessage.metadata.event,
-    'transport_binding_inbound_rejected',
-  );
-  assert.equal(
-    result.userMessage.metadata.status,
-    'no_conversation_linked',
-  );
-});
-
-test('beginChannelMessageDispatch proceeds normally when no transportBindingId is supplied', async () => {
-  const { state, channelId } = createDirectState();
-  const store = new MemoryChatStore(state);
-
-  const result = await beginChannelMessageDispatch(
-    state,
-    channelId,
-    { body: 'Plain owner message', senderName: 'Owner' },
-    runtimeStub(),
-    new Date('2026-05-06T08:01:00.000Z'),
-    {
-      chatStore: store,
-    },
-  );
-
-  // Without an inbound binding to gate, dispatch goes through the
-  // normal path and produces a real user message.
   assert.equal(result.userMessage.senderKind, 'user');
-  assert.equal(result.userMessage.body, 'Plain owner message');
+  assert.equal(result.userMessage.body, 'Group chat message');
 });

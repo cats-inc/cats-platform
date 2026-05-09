@@ -10,9 +10,12 @@
 // only — references that point to records the rest of the core does
 // not contain. Operator-intentional states (a transport binding that
 // is `disabled` or `archived`) are NOT broken; they should not show
-// up here. Bindings whose `direction` is not `inbound` also do not
-// participate in direct-lane ingress, so failing the direct-lane
-// resolver against them would only produce noise.
+// up here. The direct-lane resolver only runs for bindings flagged
+// `metadata.channelKind === "direct_message"` (the canonical signal
+// stamped by `createDirectLaneTransportBindings`); bot bindings,
+// future external transports, and any other shape skip the resolver
+// and stay healthy in this report. Other inbound transport
+// readiness lives behind transport-specific diagnostics, not here.
 //
 // Direct-lane *ingress readiness* (which is a separate concern — it
 // asks "can this transport binding accept inbound messages right now?"
