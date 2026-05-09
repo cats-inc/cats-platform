@@ -41,16 +41,16 @@ first-party client slice using Cats-owned mobile device bearer sessions.
 
 ### Phase 1: Auth Domain and Configuration
 
-- [ ] Task 1.1: Add platform auth types for accounts, identities, sessions,
+- [x] Task 1.1: Add platform auth types for accounts, identities, sessions,
       memberships, and principals.
-- [ ] Task 1.2: Add an auth state store beside existing platform state paths,
+- [x] Task 1.2: Add an auth state store beside existing platform state paths,
       with memory-store test support and file-store production support.
-- [ ] Task 1.3: Add auth config parsing for session secret, session TTL,
+- [x] Task 1.3: Add auth config parsing for session secret, session TTL,
       Google client ID, Google hosted-domain allowlist, and explicit dev/test
       auth mode.
-- [ ] Task 1.4: Add password hashing helpers using Node crypto or an approved
+- [x] Task 1.4: Add password hashing helpers using Node crypto or an approved
       dependency, with algorithm/version metadata in stored password identities.
-- [ ] Task 1.5: Add session token generation, token hashing, expiration, and
+- [x] Task 1.5: Add session token generation, token hashing, expiration, and
       revocation helpers.
 
 **Deliverables**: auth state can be read/written in isolated tests; local
@@ -535,6 +535,7 @@ operators before implementation is marked complete.
 | 2026-04-30 | Closed pre-auth bootstrap CSRF gap with allowed-browser-origin gate on `/setup`/`/api/auth/login`/repair; constrained repair first-admin creation to loopback or one-time recovery token so the escape hatch does not re-open LAN admin bootstrap; pinned `E_CSRF_MISMATCH` / `E_FORBIDDEN` / `E_UNAUTHENTICATED` error codes; promoted per-account aggregate guards (progressive delay, bounded daily cooldown, per-/24 subnet budget) from optional to required. |
 | 2026-04-30 | Aligned origin gate with Vite/reverse-proxy reality: allowed browser-origin set is explicit and Phase 2 atomic, `same-site` no longer passes without an allowlisted `Origin`, recovery tokens stay out of structured logs, and aggregate cooldowns have TTL/non-destructive recovery so the v1 owner is not forced to delete auth state. |
 | 2026-04-30 | Added Expo Go / Cats Mobile device-session slice: QR pairing remains bundle bootstrap only, mobile data access requires bearer device sessions, and mobile Google login is separate from browser GIS. |
+| 2026-05-10 | Phase 1 landed: added `src/platform/auth/**` domain types, state normalization, memory/file auth stores, local password hashing, browser/mobile session token helpers, auth config parsing, and focused tests. No route gate is enabled yet. |
 
 ---
 

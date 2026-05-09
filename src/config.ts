@@ -29,6 +29,10 @@ import {
   type LivePreviewConfig,
 } from './products/code/livePreview/contracts.js';
 import { validateLivePreviewConfig } from './products/code/livePreview/profileValidation.js';
+import {
+  loadPlatformAuthConfig,
+  type PlatformAuthConfig,
+} from './platform/auth/config.js';
 
 export interface AppConfig {
   host: string;
@@ -63,6 +67,7 @@ export interface AppConfig {
   maxChatParticipants: number;
   maxAudienceParticipants: number;
   maxParallelChats: number;
+  auth: PlatformAuthConfig;
   artifactCanvas: ArtifactCanvasPolicyConfig;
   codeLivePreview: LivePreviewConfig;
 }
@@ -144,6 +149,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     || resolveDefaultPlatformDir(catsHomeDir);
   const platformStateDir = resolvePlatformStateDir(platformDir);
   const platformConfigDir = resolvePlatformConfigDir(platformDir);
+  const host = readFirstDefined(env, ['CATS_HOST', 'CATS_INC_HOST']) || DEFAULT_HOST;
+  const port = parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), DEFAULT_PORT);
   const runtimeDir = env.CATS_RUNTIME_DIR?.trim()
     || joinCatsHomePath(catsHomeDir, 'runtime');
   const desktopDir = env.CATS_DESKTOP_DIR?.trim()
@@ -159,9 +166,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   validateArtifactCanvasPolicyConfig(artifactCanvas);
   const codeLivePreview = loadCodeLivePreviewConfig(env);
   validateLivePreviewConfig(codeLivePreview);
+  const chatStatePath = resolvePlatformStatePath(platformDir);
+  const auth = loadPlatformAuthConfig({
+    env,
+    host,
+    port,
+    chatStatePath,
+  });
   return {
-    host: readFirstDefined(env, ['CATS_HOST', 'CATS_INC_HOST']) || DEFAULT_HOST,
-    port: parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), DEFAULT_PORT),
+    host,
+    port,
     runtimeBaseUrl: (env.CATS_RUNTIME_BASE_URL || DEFAULT_RUNTIME_BASE_URL).replace(/\/+$/, ''),
     runtimeApiKey: env.CATS_RUNTIME_API_KEY?.trim() || '',
     runtimeSessionCreateTimeoutMs,
@@ -213,7 +227,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       || path.join(platformConfigDir, 'provider-capability-bootstrap.yaml'),
     providerCapabilityBootstrapBundledExamplePath:
       resolveBundledPlatformConfigExamplePath('provider-capability-bootstrap.yaml', env),
-    chatStatePath: resolvePlatformStatePath(platformDir),
+    chatStatePath,
     maxBossCats: parsePositiveInt(env.CATS_MAX_BOSS_CATS, DEFAULT_MAX_BOSS_CATS),
     maxCats: parsePositiveInt(env.CATS_MAX_CATS, DEFAULT_MAX_CATS),
     maxChatParticipants: parsePositiveInt(
@@ -225,6 +239,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       DEFAULT_MAX_AUDIENCE_PARTICIPANTS,
     ),
     maxParallelChats: parsePositiveInt(env.CATS_MAX_PARALLEL_CHATS, DEFAULT_MAX_PARALLEL_CHATS),
+    auth,
     artifactCanvas,
     codeLivePreview,
   };

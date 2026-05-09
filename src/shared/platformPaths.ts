@@ -133,3 +133,17 @@ export function resolveProviderSnapshotPathFromChatState(
   const layout = resolvePlatformStorageLayout(chatStatePath);
   return path.join(layout.stateDir, 'provider-snapshot.local.json');
 }
+
+export function resolvePlatformAuthStatePathFromChatState(
+  chatStatePath: string,
+): string {
+  const layout = resolvePlatformStorageLayout(chatStatePath);
+  return path.join(layout.stateDir, 'auth-state.local.json');
+}
+
+export function resolvePlatformAuthRecoveryTokenPathFromChatState(
+  chatStatePath: string,
+): string {
+  const layout = resolvePlatformStorageLayout(chatStatePath);
+  return path.join(layout.stateDir, 'auth-recovery-token.local.txt');
+}
