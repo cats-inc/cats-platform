@@ -51,16 +51,16 @@ spawning.
 
 ### Phase 2: Supervisor Core With Fake Process Adapter
 
-- [ ] Task 2.1: Implement `LivePreviewSupervisor` with an injected process
+- [x] Task 2.1: Implement `LivePreviewSupervisor` with an injected process
       adapter so tests can exercise lifecycle without spawning real processes.
-- [ ] Task 2.2: Implement loopback port leasing, collision handling, and release
+- [x] Task 2.2: Implement loopback port leasing, collision handling, and release
       on failure/stop/expiry.
-- [ ] Task 2.3: Implement readiness probes against the leased origin with
+- [x] Task 2.3: Implement readiness probes against the leased origin with
       timeout and terminal failure diagnostics.
-- [ ] Task 2.4: Implement bounded stdout/stderr log capture through the process
+- [x] Task 2.4: Implement bounded stdout/stderr log capture through the process
       adapter.
-- [ ] Task 2.5: Implement idempotent stop and best-effort process-tree cleanup.
-- [ ] Task 2.6: Add unit tests for spawn success, spawn failure, readiness
+- [x] Task 2.5: Implement idempotent stop and best-effort process-tree cleanup.
+- [x] Task 2.6: Add unit tests for spawn success, spawn failure, readiness
       timeout, unexpected process exit, explicit stop, expiry, port conflict,
       and cleanup failure.
 
@@ -170,6 +170,7 @@ not bypass the existing viewer contract.
 |------|--------|
 | 2026-05-09 | Plan created as PLAN-090 Phase 4 continuation. Process spawning remains disabled until the Phase 5 approval gate. |
 | 2026-05-09 | Completed Phase 1 contracts/config/validation: added live-preview profile and lease types, disabled-by-default config, strict profile/start-request validation, service registry port-range documentation, and tests proving raw command fields cannot bypass profiles. Checked the project-bootstrap registry for `47100-47199` conflicts before documenting the candidate range. No supervisor or process spawning is enabled. |
+| 2026-05-09 | Completed Phase 2 supervisor core with an injected process adapter and readiness probe. Tests cover ready start, spawn failure, readiness timeout, unexpected exit, stop idempotency, concurrency and port limits, expiry, bounded logs, and cleanup failure. No real process adapter is provided or enabled. |
 
 ---
 

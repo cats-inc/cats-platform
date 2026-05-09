@@ -101,10 +101,17 @@ export type LivePreviewErrorCode =
   | 'live_preview_command_profile_disabled'
   | 'live_preview_command_profile_invalid'
   | 'live_preview_command_profile_not_found'
+  | 'live_preview_concurrency_limit_exceeded'
   | 'live_preview_config_invalid'
   | 'live_preview_disabled'
+  | 'live_preview_not_found'
+  | 'live_preview_port_unavailable'
+  | 'live_preview_process_exited'
   | 'live_preview_raw_command_not_allowed'
-  | 'live_preview_request_invalid';
+  | 'live_preview_readiness_timeout'
+  | 'live_preview_request_invalid'
+  | 'live_preview_spawn_failed'
+  | 'live_preview_stop_failed';
 
 export interface LivePreviewError {
   code: LivePreviewErrorCode;
