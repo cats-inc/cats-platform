@@ -23,10 +23,11 @@
 
 **Implementation status, 2026-05-09**: the first `channel` slice has
 landed and PLAN-068 is now a closeout record. PLAN-098 has also landed
-`artifact` as the second entity kind for the polymorphism proof. Remaining
-work is browser-level cross-surface acceptance and the post-polymorphism
-decision on whether the legacy channel liveIndicator stream should fold into
-the entity-subscription layer.
+`artifact` as the second entity kind for the polymorphism proof, including
+mounted Artifact Canvas refresh over repeated subscription mutations. Remaining
+work is ADR-041 collection-refetch coexistence verification and the
+post-polymorphism decision on whether the legacy channel liveIndicator stream
+should fold into the entity-subscription layer.
 
 Today the renderer keeps entity state "fresh" through three loosely
 coupled mechanisms — cold fetch of `/api/app-shell`, cross-surface
@@ -347,6 +348,9 @@ when a matching artifact snapshot or patch arrives. Canvas projection
 itself remains surface-scoped and is still fetched from the existing
 `/api/canvas/.../artifacts/...` projection API because presentation,
 policy, and lease decisions depend on the mounted canvas surface.
+The browser acceptance fixture covers a mounted Code task Artifact Canvas
+observing two artifact subscription patches and refreshing that projection
+without replacing the app shell.
 
 ### Future kinds (not implemented yet)
 
@@ -642,6 +646,8 @@ once the subscription layer has matured.
 - [x] Adding a second entity kind (`artifact`, tracked in PLAN-098)
       touches server-side projector + schema + consuming view only; no
       subscription hub or transport change required.
+- [x] Mounted Artifact Canvas observes two artifact subscription mutations and
+      refreshes its surface-scoped projection without an app-shell replacement.
 - [ ] ADR-041 collection-level invalidation continues to flow on
       **every** target surface (Chat / Code / Work) after cross-
       surface handoff, not only on the Chat shell. The shared

@@ -49,10 +49,12 @@ proof and the cleanup decisions that should happen after it.
   coexistence.
 - `artifact` is now the second-kind proof: the server route accepts
   `kind=artifact`, Artifact Canvas opens the subscription for the mounted
-  artifact id, and targeted tests cover snapshot, update patches, rejection
-  cases, hub coalescing, and dispatcher matching.
-- There is not yet a browser-level cross-surface acceptance that proves one
-  surface mutating an artifact updates another mounted surface end-to-end.
+  artifact id, and targeted tests cover snapshot, repeated update patches,
+  removal/close behavior, rejection cases, hub coalescing, dispatcher matching,
+  and mounted Artifact Canvas refresh.
+- Browser-level Artifact Canvas acceptance now proves a mounted surface observes
+  two artifact subscription mutations. ADR-041 collection-refetch coexistence
+  remains open.
 
 ## Implementation Phases
 
@@ -94,8 +96,9 @@ reopening ADR-075.
 - [x] Task 3.3: Keep the route protocol unchanged:
       `/api/subscribe?kind=<kind>&id=<entity-id>`.
 - [x] Task 3.4: Add server tests for snapshot delivery, update patching,
-      removal patch generation, missing artifact rejection, and unsupported
-      kind rejection for the second kind.
+      repeated update patching, removal patch generation and stream close,
+      missing artifact rejection, and unsupported kind rejection for the second
+      kind.
 
 **Deliverables**: server-side polymorphism without new transport or route
 shape.
@@ -116,10 +119,10 @@ hub and protocol as `channel`.
 
 ### Phase 5: Cross-Surface Acceptance
 
-- [ ] Task 5.1: Create a cross-surface acceptance fixture where one surface
+- [x] Task 5.1: Create a cross-surface acceptance fixture where one surface
       opens the second-kind entity and another surface or server path mutates
       it twice.
-- [ ] Task 5.2: Assert the mounted target surface observes both mutations
+- [x] Task 5.2: Assert the mounted target surface observes both mutations
       through the subscription without a full app-shell replacement.
 - [ ] Task 5.3: Assert ADR-041 collection refetches still refresh collection
       state without overwriting the mounted subscribed entity.
@@ -151,9 +154,10 @@ not merely a channel-specific workaround.
 | `src/products/shared/renderer/entitySubscriptionHub.ts` | Modified | Extended renderer-side kind typing to `channel | artifact`. |
 | `src/products/shared/renderer/entitySubscriptionArtifactDispatcher.ts` | Created | Artifact Canvas dispatcher helpers for matching artifact snapshots/patches. |
 | `src/products/shared/renderer/CanvasPane.tsx` | Modified | Mounts `useEntitySubscription({ kind: 'artifact', id })` and refreshes projection on matching snapshots/patches. |
-| `tests/entity-subscription-artifact.test.tsx` | Created | Server and projector coverage for artifact snapshot, update patch, removed patch, missing artifact, and invalid kind. |
+| `tests/entity-subscription-artifact.test.tsx` | Created | Server and projector coverage for artifact snapshot, repeated update patches, removed patch and stream close, missing artifact, and invalid kind. |
+| `tests/entity-subscription-artifact-canvas.test.tsx` | Created | Mounted Artifact Canvas acceptance for two artifact subscription patch refreshes. |
 | `tests/entity-subscription-renderer.test.tsx` | Modified | Renderer hub and artifact dispatcher coverage. |
-| `tests/*cross-surface*.test.*` | Create/Modify | Add cross-surface second-kind live acceptance if the chosen kind has a target-surface flow. |
+| `tests/*cross-surface*.test.*` | Pending | Add ADR-041 collection-refetch coexistence coverage if it still adds value beyond source-level tests. |
 
 ## Technical Decisions
 
@@ -176,12 +180,13 @@ not merely a channel-specific workaround.
   - hub still coalesces multiple subscribers per `(kind, id)`
   - invalid ids and closed streams do not leave stale subscribed state
 - **Integration Tests**:
-  - `GET /api/subscribe?kind=<second-kind>&id=<id>` emits snapshot then patches
+  - `GET /api/subscribe?kind=<second-kind>&id=<id>` emits snapshot, repeated
+    patches, and removal close
   - reconnect emits a fresh authoritative snapshot
   - ADR-041 collection refetch does not overwrite the mounted subscribed entity
 - **Acceptance Tests**:
-  - one cross-surface flow stays live over at least two server-side mutations of
-    the chosen second-kind entity
+  - mounted Artifact Canvas stays live over at least two subscription mutations
+    of the chosen second-kind entity
 
 ## Risks & Mitigations
 
@@ -196,7 +201,8 @@ not merely a channel-specific workaround.
 
 | Date | Update |
 |------|--------|
-| 2026-05-09 | Artifact selected and landed as the second entity kind. Server route/projector, Artifact Canvas consumer, and targeted tests are implemented; browser-level cross-surface acceptance remains open. |
+| 2026-05-09 | Artifact Canvas mounted acceptance landed for two subscription mutations. Remaining PLAN-098 work is ADR-041 coexistence verification and the post-polymorphism stream consolidation decision. |
+| 2026-05-09 | Artifact selected and landed as the second entity kind. Server route/projector, Artifact Canvas consumer, and targeted tests are implemented. |
 | 2026-05-09 | Plan created from PLAN-068 closeout to carry second-kind polymorphism, cross-surface acceptance, and live-stream cleanup decisions. |
 
 ---

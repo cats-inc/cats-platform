@@ -19,8 +19,10 @@ subscription-aware merging instead of replacing the mounted channel state.
 PLAN-098 also landed `artifact` as the second entity kind:
 `/api/subscribe?kind=artifact&id=<artifact-id>` streams artifact snapshots and
 update/removal patches, and Artifact Canvas refreshes its mounted projection
-from that subscription. Remaining follow-up is browser-level cross-surface
-acceptance and the optional liveIndicator stream-consolidation decision.
+from that subscription. The browser acceptance fixture covers a mounted
+Artifact Canvas observing two subscription mutations. Remaining follow-up is
+ADR-041 collection-refetch coexistence verification and the optional
+liveIndicator stream-consolidation decision.
 
 ## Context
 
