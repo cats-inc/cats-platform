@@ -51,7 +51,7 @@ process-supervision and security review (Phase 4).
       the URL is the visible state and the server stores no focus
       record. The registry is the only allowed helper for composing /
       parsing parent URLs, canvas URLs, and projection API URLs.
-- [ ] Task 1.2: Add `show_in_canvas` and `clear_canvas` tool input/result
+- [x] Task 1.2: Add `show_in_canvas` and `clear_canvas` tool input/result
       helpers with context-free validation, the SPEC-101 error code union,
       and the active-surface precondition. The accepted result includes
       `targetUrl`; the legacy `cleared: true` boolean is removed.
@@ -626,6 +626,7 @@ this plan before Phase 4 approval.
 | 2026-05-09 | Promoted `artifact_canvas_show_intent` / `artifact_canvas_clear_intent` into first-class Core Activity kinds, updated Activity filters / timeline / operator metadata, and added the shared audit writer with source-anchor derivation, conflict fail-fast checks, historical task-surface snapshot coverage, and private `intentId` non-persistence tests. This completes Tasks 1.11 / 1.12; ack security tests remain under Task 1.13. |
 | 2026-05-09 | Added the server-side Artifact Canvas render-intent hub plus `/api/canvas/intents/stream` and fixed-body `/api/canvas/intents/ack` routes. Tests cover no-subscriber no-queue behavior, surface-scoped delivery, session-bound ack ownership, repeated / unknown / malformed ack indistinguishability, replay removal after owner ack, and keeping `intentId` off URLs. This completes Task 1.13 and the server substrate portion of Task 1.10; renderer consumption / retry wiring remains pending. |
 | 2026-05-09 | Registered `show_in_canvas` and `clear_canvas` alongside `declare_artifact` in the Code runtime tool catalog metadata, labels, and onboarding instructions, with shared tool definitions and schema tests that reject `unsupported` as an input presentation. This completes Task 1.5; assistant-effect execution remains pending before the tools can mutate audit / render intents. |
+| 2026-05-09 | Added the first Code assistant-effect execution path for `show_in_canvas` / `clear_canvas`: same-turn accepted declaration resolution, projection / URL-policy validation, Activity audit writes, render-intent publish attempts, and local `tool_result` projection with no `intentId` leakage. This completes Task 1.2 and the main happy-path / validation subset of Task 1.3; the full producer/scope-keyed declaration index and cross-producer / cross-scope rejection matrix remain pending before Task 1.3 can be checked off. |
 
 ---
 

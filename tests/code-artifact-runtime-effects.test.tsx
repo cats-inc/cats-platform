@@ -15,6 +15,9 @@ import { CODE_ARTIFACT_RUNTIME_HOOK_ID } from '../src/products/code/state/runtim
 import {
   registerCodeArtifactRuntimeAssistantEffectProcessor,
 } from '../src/products/code/state/runtimeArtifactExecution.ts';
+import {
+  ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+} from '../src/products/shared/artifactCanvas/contracts.ts';
 
 function createAnchoredCodeCore() {
   let core = createDefaultCoreState();
@@ -128,6 +131,63 @@ test('runtime assistant effects materialize Code declare_artifact tool calls', (
     artifactId: result.core.artifacts[0].id,
     artifactStatus: 'ready',
   });
+});
+
+test('runtime assistant effects project Artifact Canvas tool results', () => {
+  registerCodeArtifactRuntimeAssistantEffectProcessor();
+  const showToolUse: RuntimeMessageSegment = {
+    kind: 'tool_use',
+    toolName: ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+    toolId: 'tool-canvas',
+    text: '',
+    toolArgs: {
+      declarationId: 'preview-localhost:preview_url',
+      presentation: 'iframe',
+    },
+  };
+  const result = applyRuntimeInvocationAssistantEffects(
+    {
+      originSurface: 'code',
+      id: 'channel-code',
+      chatCwd: 'C:/repo/cats-platform',
+    },
+    {
+      core: createAnchoredCodeCore(),
+      segments: [createPreviewToolUse(), showToolUse],
+    },
+    {
+      actorId: 'actor-code-agent',
+      runtimeSessionId: 'runtime-session-1',
+      runtimeContext: {
+        metadata: {
+          conversationId: 'conversation-code-1',
+        },
+      },
+      now: new Date('2026-05-09T08:00:00.000Z'),
+    },
+  );
+
+  assert.equal(result.core.artifacts.length, 1);
+  assert.equal(result.core.activities.length, 2);
+  assert.equal(result.core.activities[1].kind, 'artifact_canvas_show_intent');
+  assert.equal(result.segments.length, 4);
+  assert.equal(result.segments[2]?.toolName, ARTIFACT_CANVAS_SHOW_TOOL_NAME);
+  assert.equal(result.segments[3]?.kind, 'tool_result');
+  assert.equal(result.segments[3]?.toolName, ARTIFACT_CANVAS_SHOW_TOOL_NAME);
+
+  const canvasResult = JSON.parse(result.segments[3]?.text ?? '{}') as Record<string, unknown>;
+  assert.equal(canvasResult.status, 'accepted');
+  assert.equal(canvasResult.toolName, ARTIFACT_CANVAS_SHOW_TOOL_NAME);
+  assert.equal(canvasResult.artifactId, result.core.artifacts[0].id);
+  assert.equal(canvasResult.presentationResolved, 'iframe');
+  assert.equal(typeof canvasResult.activityId, 'string');
+  assert.doesNotMatch(JSON.stringify(canvasResult), /intentId/u);
+  assert.equal(
+    (result.metadata[CODE_ARTIFACT_RUNTIME_HOOK_ID] as {
+      artifactCanvasToolResults?: unknown[];
+    }).artifactCanvasToolResults?.length,
+    1,
+  );
 });
 
 test('runtime assistant effects skip non-Code channels', () => {

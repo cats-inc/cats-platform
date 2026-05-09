@@ -384,7 +384,7 @@ active product surface opens in the shared Artifact Canvas.
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Code runtime tool catalog registration wired; assistant-effect execution and renderer consumption still pending |
+| Current status | Code runtime tool catalog and first assistant-effect execution path wired; renderer consumption and full same-caller declaration-index matrix still pending |
 | First channel | `runtime_tool` |
 | Tool names | `show_in_canvas`, `clear_canvas` |
 | Implementation entry point | Planned: `src/products/code/state/runtimeArtifactCanvasExecution.ts` |

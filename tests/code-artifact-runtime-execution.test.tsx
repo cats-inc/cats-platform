@@ -7,9 +7,16 @@ import { upsertCoreRun } from '../src/core/model/executionRecords.ts';
 import { upsertCoreTask } from '../src/core/model/taskControls.ts';
 import { upsertCoreConversation } from '../src/core/model/structuralRecords.ts';
 import {
+  executeCodeArtifactRuntimeCanvasIntents,
   executeCodeArtifactRuntimeDeclarations,
   projectCodeArtifactToolResultsIntoSegments,
 } from '../src/products/code/state/runtimeArtifactExecution.ts';
+import {
+  ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+} from '../src/products/shared/artifactCanvas/contracts.ts';
+import {
+  ArtifactCanvasRenderIntentHub,
+} from '../src/products/shared/artifactCanvas/renderIntent.ts';
 
 function createAnchoredCodeCore() {
   let core = createDefaultCoreState();
@@ -123,6 +130,118 @@ test('Code runtime declaration execution materializes valid declare_artifact cal
   assert.equal(declarationMetadata.producerKind, 'agent');
   assert.equal(declarationMetadata.producerIdentity, 'actor:actor-code-agent');
   assert.equal(declarationMetadata.producerLabel, 'preview_url');
+});
+
+test('Code runtime canvas execution shows same-turn declared artifacts', () => {
+  const hub = new ArtifactCanvasRenderIntentHub();
+  const deliveries: unknown[] = [];
+  const unsubscribe = hub.subscribe({
+    surface: { kind: 'code_task', surfaceId: 'task-code-1' },
+    sessionId: 'anonymous',
+    send: (intent) => deliveries.push(intent),
+    now: new Date('2026-05-09T07:00:00.000Z'),
+  });
+
+  try {
+    const segments: RuntimeMessageSegment[] = [
+      {
+        kind: 'tool_use',
+        toolName: 'declare_artifact',
+        toolId: 'tool-declare',
+        text: '',
+        toolArgs: {
+          declarationId: 'preview-localhost:preview_url',
+          label: 'preview_url',
+          title: 'Local preview',
+          location: {
+            kind: 'url',
+            value: 'http://127.0.0.1:5173',
+          },
+          summary: 'Preview is available.',
+        },
+      },
+      {
+        kind: 'tool_use',
+        toolName: ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+        toolId: 'tool-canvas',
+        text: '',
+        toolArgs: {
+          declarationId: 'preview-localhost:preview_url',
+          presentation: 'iframe',
+        },
+      },
+    ];
+    const declarations = executeCodeArtifactRuntimeDeclarations({
+      core: createAnchoredCodeCore(),
+      channel: {
+        originSurface: 'code',
+        id: 'channel-code',
+        chatCwd: 'C:/repo/cats-platform',
+      },
+      segments,
+      context: createExecutionContext(),
+      now: new Date('2026-05-09T07:00:00.000Z'),
+    });
+    const canvas = executeCodeArtifactRuntimeCanvasIntents({
+      core: declarations.core,
+      channel: {
+        originSurface: 'code',
+        id: 'channel-code',
+        chatCwd: 'C:/repo/cats-platform',
+      },
+      segments,
+      declarations: declarations.declarations,
+      context: {
+        actorId: 'actor-code-agent',
+        anchors: createExecutionContext().anchors,
+        surface: { kind: 'code_task', surfaceId: 'task-code-1' },
+        renderIntentHub: hub,
+      },
+      now: new Date('2026-05-09T07:00:01.000Z'),
+    });
+
+    assert.equal(canvas.canvas.length, 1);
+    assert.equal(canvas.canvas[0].result.status, 'accepted');
+    assert.equal(canvas.core.activities.length, 2);
+    assert.equal(canvas.core.activities[1].kind, 'artifact_canvas_show_intent');
+    assert.equal(canvas.core.activities[1].artifactId, declarations.core.artifacts[0].id);
+    assert.equal(deliveries.length, 1);
+    assert.doesNotMatch(JSON.stringify(canvas.canvas[0].result), /intentId/u);
+  } finally {
+    unsubscribe();
+  }
+});
+
+test('Code runtime canvas execution rejects when no Code surface is active', () => {
+  const result = executeCodeArtifactRuntimeCanvasIntents({
+    core: createAnchoredCodeCore(),
+    channel: { originSurface: 'code', id: 'channel-code' },
+    segments: [
+      {
+        kind: 'tool_use',
+        toolName: ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+        toolId: 'tool-canvas',
+        text: '',
+        toolArgs: { artifactId: 'artifact-missing' },
+      },
+    ],
+    declarations: [],
+    context: {
+      actorId: 'actor-code-agent',
+      anchors: {},
+      surface: null,
+    },
+  });
+
+  assert.equal(result.core.activities.length, 0);
+  assert.equal(result.canvas.length, 1);
+  assert.deepEqual(result.canvas[0].result, {
+    status: 'rejected',
+    error: {
+      code: 'artifact_canvas_no_active_surface',
+      message: 'Artifact Canvas tools require an active product surface.',
+    },
+  });
 });
 
 test('Code runtime declaration execution returns rejected results without mutating core', () => {

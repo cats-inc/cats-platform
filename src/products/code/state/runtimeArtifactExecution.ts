@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { RuntimeMessageSegment } from '../../../platform/runtime/client.js';
 import {
   RuntimeEnricherPriority,
@@ -6,6 +8,32 @@ import {
   type RuntimeInvocationAssistantEffectProcessor,
 } from '../../../platform/runtime/invocationEnrichment.js';
 import type { CatsCoreState } from '../../../core/types.js';
+import {
+  appendArtifactCanvasIntentActivity,
+} from '../../shared/artifactCanvas/activity.js';
+import {
+  ARTIFACT_CANVAS_CLEAR_TOOL_NAME,
+  ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+  canvasSurfaceRouteRegistry,
+  composeArtifactCanvasNavigateIntent,
+  normalizeArtifactCanvasClearToolInput,
+  normalizeArtifactCanvasShowToolInput,
+  type ArtifactCanvasError,
+  type ArtifactCanvasToolIdentity,
+  type ArtifactCanvasToolResult,
+  type CanvasSurfaceRef,
+} from '../../shared/artifactCanvas/contracts.js';
+import {
+  DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+  buildArtifactCanvasPolicyVersion,
+  type ArtifactCanvasPolicyConfig,
+} from '../../shared/artifactCanvas/iframePolicy.js';
+import {
+  type ArtifactCanvasRenderIntentHub,
+  createArtifactCanvasIntentId,
+  getDefaultArtifactCanvasRenderIntentHub,
+} from '../../shared/artifactCanvas/renderIntent.js';
+import { buildArtifactCanvasProjection } from '../../shared/artifactCanvas/projection.js';
 import {
   CODE_ARTIFACT_DECLARATION_TOOL,
   CODE_ARTIFACT_DECLARATION_TOOL_NAME,
@@ -41,6 +69,26 @@ export interface CodeArtifactRuntimeDeclarationExecutionResult {
 
 export interface CodeArtifactRuntimeAssistantEffectMetadata {
   codeArtifactToolResults: CodeArtifactRuntimeDeclarationExecutionItem[];
+  artifactCanvasToolResults?: CodeArtifactRuntimeCanvasExecutionItem[];
+}
+
+export interface CodeArtifactRuntimeCanvasExecutionContext {
+  actorId: string | null;
+  anchors: CodeArtifactDeclarationAnchors;
+  surface: CanvasSurfaceRef | null;
+  policyConfig?: ArtifactCanvasPolicyConfig;
+  renderIntentHub?: ArtifactCanvasRenderIntentHub;
+}
+
+export interface CodeArtifactRuntimeCanvasExecutionItem {
+  toolId: string | null;
+  toolName: typeof ARTIFACT_CANVAS_SHOW_TOOL_NAME | typeof ARTIFACT_CANVAS_CLEAR_TOOL_NAME;
+  result: ArtifactCanvasToolResult;
+}
+
+export interface CodeArtifactRuntimeCanvasExecutionResult {
+  core: CatsCoreState;
+  canvas: CodeArtifactRuntimeCanvasExecutionItem[];
 }
 
 export function executeCodeArtifactRuntimeDeclarations(input: {
@@ -111,6 +159,49 @@ export function executeCodeArtifactRuntimeDeclarations(input: {
   return { core, declarations };
 }
 
+export function executeCodeArtifactRuntimeCanvasIntents(input: {
+  core: CatsCoreState;
+  channel: CodeArtifactRuntimeToolingChannel;
+  segments: readonly RuntimeMessageSegment[];
+  declarations: readonly CodeArtifactRuntimeDeclarationExecutionItem[];
+  context: CodeArtifactRuntimeCanvasExecutionContext;
+  now?: Date;
+}): CodeArtifactRuntimeCanvasExecutionResult {
+  if (!shouldAttachCodeArtifactRuntimeTooling(input.channel)) {
+    return { core: input.core, canvas: [] };
+  }
+
+  let core = input.core;
+  const canvas: CodeArtifactRuntimeCanvasExecutionItem[] = [];
+  for (const segment of input.segments) {
+    if (segment.kind !== 'tool_use') {
+      continue;
+    }
+    if (segment.toolName === ARTIFACT_CANVAS_SHOW_TOOL_NAME) {
+      const execution = executeShowInCanvasToolUse({
+        core,
+        segment,
+        declarations: input.declarations,
+        context: input.context,
+        now: input.now,
+      });
+      core = execution.core;
+      canvas.push(execution.item);
+    } else if (segment.toolName === ARTIFACT_CANVAS_CLEAR_TOOL_NAME) {
+      const execution = executeClearCanvasToolUse({
+        core,
+        segment,
+        context: input.context,
+        now: input.now,
+      });
+      core = execution.core;
+      canvas.push(execution.item);
+    }
+  }
+
+  return { core, canvas };
+}
+
 export function createCodeArtifactRuntimeAssistantEffectProcessor(): RuntimeInvocationAssistantEffectProcessor {
   return {
     id: CODE_ARTIFACT_RUNTIME_HOOK_ID,
@@ -119,12 +210,21 @@ export function createCodeArtifactRuntimeAssistantEffectProcessor(): RuntimeInvo
       return shouldAttachCodeArtifactRuntimeTooling(channel)
         && segments.some((segment) =>
           segment.kind === 'tool_use'
-          && segment.toolName === CODE_ARTIFACT_DECLARATION_TOOL_NAME);
+          && (
+            segment.toolName === CODE_ARTIFACT_DECLARATION_TOOL_NAME
+            || segment.toolName === ARTIFACT_CANVAS_SHOW_TOOL_NAME
+            || segment.toolName === ARTIFACT_CANVAS_CLEAR_TOOL_NAME
+          ));
     },
     applyAssistantEffects(channel, input, context) {
       if (!shouldAttachCodeArtifactRuntimeTooling(channel)) {
         return null;
       }
+      const anchors = resolveRuntimeDeclarationAnchors(
+        input.core,
+        channel,
+        context,
+      );
 
       const execution = executeCodeArtifactRuntimeDeclarations({
         core: input.core,
@@ -136,29 +236,56 @@ export function createCodeArtifactRuntimeAssistantEffectProcessor(): RuntimeInvo
             actorId: normalizeOptionalString(context.actorId),
             runtimeSessionId: normalizeOptionalString(context.runtimeSessionId),
           },
-          anchors: resolveRuntimeDeclarationAnchors(
-            input.core,
-            channel,
-            context,
-          ),
+          anchors,
+        },
+        now: context.now,
+      });
+      const canvasExecution = executeCodeArtifactRuntimeCanvasIntents({
+        core: execution.core,
+        channel,
+        segments: input.segments,
+        declarations: execution.declarations,
+        context: {
+          actorId: normalizeOptionalString(context.actorId),
+          anchors,
+          surface: resolveRuntimeArtifactCanvasSurface(anchors),
         },
         now: context.now,
       });
 
-      return execution.declarations.length > 0
-        ? {
-            core: execution.core,
-            segments: projectCodeArtifactToolResultsIntoSegments(
-              input.segments,
-              execution.declarations,
-            ),
-            metadata: {
-              codeArtifactToolResults: execution.declarations,
-            } satisfies CodeArtifactRuntimeAssistantEffectMetadata,
-          }
-        : {
-            core: execution.core,
-          };
+      const hasDeclarations = execution.declarations.length > 0;
+      const hasCanvas = canvasExecution.canvas.length > 0;
+      if (!hasDeclarations && !hasCanvas) {
+        return { core: canvasExecution.core };
+      }
+
+      let segments = input.segments;
+      if (hasDeclarations) {
+        segments = projectCodeArtifactToolResultsIntoSegments(
+          segments,
+          execution.declarations,
+        );
+      }
+      if (hasCanvas) {
+        segments = projectCodeArtifactCanvasToolResultsIntoSegments(
+          segments,
+          canvasExecution.canvas,
+        );
+      }
+
+      const metadata: Partial<CodeArtifactRuntimeAssistantEffectMetadata> = {};
+      if (hasDeclarations) {
+        metadata.codeArtifactToolResults = execution.declarations;
+      }
+      if (hasCanvas) {
+        metadata.artifactCanvasToolResults = canvasExecution.canvas;
+      }
+
+      return {
+        core: canvasExecution.core,
+        segments,
+        metadata,
+      };
     },
   };
 }
@@ -193,6 +320,47 @@ export function projectCodeArtifactToolResultsIntoSegments(
   for (const entry of unusedDeclarations) {
     if (!entry.used) {
       projected.push(buildCodeArtifactToolResultSegment(entry.declaration));
+    }
+  }
+
+  return projected;
+}
+
+export function projectCodeArtifactCanvasToolResultsIntoSegments(
+  segments: readonly RuntimeMessageSegment[],
+  canvasResults: readonly CodeArtifactRuntimeCanvasExecutionItem[],
+): RuntimeMessageSegment[] {
+  const projected: RuntimeMessageSegment[] = [];
+  const unusedResults = canvasResults.map((canvas) => ({
+    canvas,
+    used: false,
+  }));
+
+  for (const segment of segments) {
+    projected.push(segment);
+    if (
+      segment.kind !== 'tool_use'
+      || (
+        segment.toolName !== ARTIFACT_CANVAS_SHOW_TOOL_NAME
+        && segment.toolName !== ARTIFACT_CANVAS_CLEAR_TOOL_NAME
+      )
+    ) {
+      continue;
+    }
+    const match = unusedResults.find((candidate) =>
+      !candidate.used
+      && candidate.canvas.toolName === segment.toolName
+      && candidate.canvas.toolId === (segment.toolId ?? null));
+    if (!match) {
+      continue;
+    }
+    match.used = true;
+    projected.push(buildArtifactCanvasToolResultSegment(match.canvas));
+  }
+
+  for (const entry of unusedResults) {
+    if (!entry.used) {
+      projected.push(buildArtifactCanvasToolResultSegment(entry.canvas));
     }
   }
 
@@ -240,6 +408,18 @@ function buildCodeArtifactToolResultSegment(
   };
 }
 
+function buildArtifactCanvasToolResultSegment(
+  canvas: CodeArtifactRuntimeCanvasExecutionItem,
+): RuntimeMessageSegment {
+  return {
+    kind: 'tool_result',
+    text: JSON.stringify(canvas.result),
+    toolName: canvas.toolName,
+    toolId: canvas.toolId,
+    ...(canvas.result.status === 'rejected' ? { isError: true } : {}),
+  };
+}
+
 const codeArtifactRuntimeAssistantEffectProcessor =
   createCodeArtifactRuntimeAssistantEffectProcessor();
 
@@ -247,6 +427,279 @@ export function registerCodeArtifactRuntimeAssistantEffectProcessor(): void {
   registerRuntimeInvocationAssistantEffectProcessor(
     codeArtifactRuntimeAssistantEffectProcessor,
   );
+}
+
+function executeShowInCanvasToolUse(input: {
+  core: CatsCoreState;
+  segment: Extract<RuntimeMessageSegment, { kind: 'tool_use' }>;
+  declarations: readonly CodeArtifactRuntimeDeclarationExecutionItem[];
+  context: CodeArtifactRuntimeCanvasExecutionContext;
+  now?: Date;
+}): { core: CatsCoreState; item: CodeArtifactRuntimeCanvasExecutionItem } {
+  const toolArgs = readCanvasToolUseArguments(input.segment);
+  if (!toolArgs.ok) {
+    return rejectedCanvasExecutionItem(input.core, input.segment, {
+      code: 'artifact_canvas_required_field_empty',
+      message: toolArgs.message,
+    });
+  }
+
+  const normalized = normalizeArtifactCanvasShowToolInput(
+    toolArgs.value,
+    input.context.surface,
+  );
+  if (normalized.status === 'rejected') {
+    return rejectedCanvasExecutionItem(input.core, input.segment, normalized.error);
+  }
+
+  const artifactId = resolveArtifactCanvasToolArtifactId(
+    normalized.input.identity,
+    input.declarations,
+  );
+  if (artifactId.status === 'rejected') {
+    return rejectedCanvasExecutionItem(input.core, input.segment, artifactId.error);
+  }
+
+  const surface = input.context.surface!;
+  const projection = buildArtifactCanvasProjection({
+    core: input.core,
+    surface,
+    artifactId: artifactId.artifactId,
+    presentationRequested: normalized.input.presentation,
+    policyConfig: input.context.policyConfig,
+  });
+  if (projection.status === 'error') {
+    return rejectedCanvasExecutionItem(input.core, input.segment, projection.error);
+  }
+
+  const targetUrl = canvasSurfaceRouteRegistry.canvasUrl(
+    surface,
+    artifactId.artifactId,
+    normalized.input.presentation,
+  );
+  const now = input.now ?? new Date();
+  const activity = appendArtifactCanvasIntentActivity({
+    core: input.core,
+    kind: 'artifact_canvas_show_intent',
+    surface,
+    actorId: input.context.actorId,
+    artifactId: artifactId.artifactId,
+    targetUrl,
+    policyVersion: projection.projection.policyVersion,
+    presentationRequested: projection.projection.presentationRequested,
+    presentationResolved: projection.projection.presentationResolved,
+    iframeSandboxProfile: projection.projection.iframeSandboxProfile,
+    now,
+  });
+  const intent = composeArtifactCanvasNavigateIntent({
+    intentId: createArtifactCanvasIntentId(),
+    activityId: activity.activity.id,
+    surface,
+    artifactId: artifactId.artifactId,
+    presentationRequested: projection.projection.presentationRequested,
+    policyVersion: projection.projection.policyVersion,
+    triggeredAt: now.toISOString(),
+  });
+  const hub = input.context.renderIntentHub ?? getDefaultArtifactCanvasRenderIntentHub();
+  hub.publish({ intent, now });
+
+  return {
+    core: activity.core,
+    item: {
+      toolId: input.segment.toolId ?? null,
+      toolName: ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+      result: {
+        status: 'accepted',
+        toolName: ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+        activityId: activity.activity.id,
+        targetUrl,
+        policyVersion: projection.projection.policyVersion,
+        artifactId: artifactId.artifactId,
+        presentationRequested: projection.projection.presentationRequested,
+        presentationResolved: projection.projection.presentationResolved,
+      },
+    },
+  };
+}
+
+function executeClearCanvasToolUse(input: {
+  core: CatsCoreState;
+  segment: Extract<RuntimeMessageSegment, { kind: 'tool_use' }>;
+  context: CodeArtifactRuntimeCanvasExecutionContext;
+  now?: Date;
+}): { core: CatsCoreState; item: CodeArtifactRuntimeCanvasExecutionItem } {
+  const toolArgs = readCanvasToolUseArguments(input.segment);
+  if (!toolArgs.ok) {
+    return rejectedCanvasExecutionItem(input.core, input.segment, {
+      code: 'artifact_canvas_required_field_empty',
+      message: toolArgs.message,
+    });
+  }
+
+  const normalized = normalizeArtifactCanvasClearToolInput(
+    toolArgs.value,
+    input.context.surface,
+  );
+  if (normalized.status === 'rejected') {
+    return rejectedCanvasExecutionItem(input.core, input.segment, normalized.error);
+  }
+
+  const surface = input.context.surface!;
+  const targetUrl = canvasSurfaceRouteRegistry.parentUrl(surface);
+  const policyVersion = buildArtifactCanvasPolicyVersion(
+    input.context.policyConfig ?? DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+  ).policyVersion;
+  const now = input.now ?? new Date();
+  const activity = appendArtifactCanvasIntentActivity({
+    core: input.core,
+    kind: 'artifact_canvas_clear_intent',
+    surface,
+    actorId: input.context.actorId,
+    targetUrl,
+    policyVersion,
+    now,
+  });
+  const intent = composeArtifactCanvasNavigateIntent({
+    intentId: createArtifactCanvasIntentId(),
+    activityId: activity.activity.id,
+    surface,
+    artifactId: null,
+    presentationRequested: null,
+    policyVersion,
+    triggeredAt: now.toISOString(),
+  });
+  const hub = input.context.renderIntentHub ?? getDefaultArtifactCanvasRenderIntentHub();
+  hub.publish({ intent, now });
+
+  return {
+    core: activity.core,
+    item: {
+      toolId: input.segment.toolId ?? null,
+      toolName: ARTIFACT_CANVAS_CLEAR_TOOL_NAME,
+      result: {
+        status: 'accepted',
+        toolName: ARTIFACT_CANVAS_CLEAR_TOOL_NAME,
+        activityId: activity.activity.id,
+        targetUrl,
+        policyVersion,
+      },
+    },
+  };
+}
+
+function rejectedCanvasExecutionItem(
+  core: CatsCoreState,
+  segment: Extract<RuntimeMessageSegment, { kind: 'tool_use' }>,
+  error: ArtifactCanvasError,
+): { core: CatsCoreState; item: CodeArtifactRuntimeCanvasExecutionItem } {
+  return {
+    core,
+    item: {
+      toolId: segment.toolId ?? null,
+      toolName: segment.toolName === ARTIFACT_CANVAS_CLEAR_TOOL_NAME
+        ? ARTIFACT_CANVAS_CLEAR_TOOL_NAME
+        : ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+      result: {
+        status: 'rejected',
+        error,
+      },
+    },
+  };
+}
+
+function resolveArtifactCanvasToolArtifactId(
+  identity: ArtifactCanvasToolIdentity,
+  declarations: readonly CodeArtifactRuntimeDeclarationExecutionItem[],
+): { status: 'accepted'; artifactId: string } | { status: 'rejected'; error: ArtifactCanvasError } {
+  if (identity.kind === 'artifact') {
+    return { status: 'accepted', artifactId: identity.artifactId };
+  }
+
+  const matches = declarations.filter((declaration) =>
+    declaration.declarationId === identity.declarationId
+    && declaration.result.status === 'accepted'
+    && typeof declaration.result.artifactId === 'string'
+    && declaration.result.artifactId.trim().length > 0);
+  const artifactIds = [...new Set(matches.map((declaration) =>
+    declaration.result.status === 'accepted' ? declaration.result.artifactId ?? '' : ''))]
+    .filter((artifactId) => artifactId.trim().length > 0);
+  if (artifactIds.length === 1) {
+    return { status: 'accepted', artifactId: artifactIds[0]! };
+  }
+  if (artifactIds.length > 1) {
+    return {
+      status: 'rejected',
+      error: {
+        code: 'artifact_canvas_declaration_collision',
+        message: 'show_in_canvas declarationId resolved to multiple artifact ids.',
+        details: { declarationId: identity.declarationId },
+      },
+    };
+  }
+  return {
+    status: 'rejected',
+    error: {
+      code: 'artifact_canvas_declaration_unknown',
+      message: 'show_in_canvas declarationId did not resolve to an accepted artifact.',
+      details: { declarationId: identity.declarationId },
+    },
+  };
+}
+
+function resolveRuntimeArtifactCanvasSurface(
+  anchors: CodeArtifactDeclarationAnchors,
+): CanvasSurfaceRef | null {
+  const taskId = normalizeOptionalString(anchors.taskId);
+  if (taskId) {
+    return { kind: 'code_task', surfaceId: taskId };
+  }
+  const workspacePath = normalizeOptionalString(anchors.workspacePath);
+  if (workspacePath) {
+    return { kind: 'code_codespace', surfaceId: createCodespaceId(workspacePath) };
+  }
+  return null;
+}
+
+function createCodespaceId(workspacePath: string): string {
+  const normalized = workspacePath.trim().replace(/\\/g, '/');
+  const digest = createHash('sha256').update(normalized).digest('hex').slice(0, 16);
+  return `codespace-${digest}`;
+}
+
+type CanvasToolUseArgumentsReadResult =
+  | { ok: true; value: Record<string, unknown> }
+  | { ok: false; message: string };
+
+function readCanvasToolUseArguments(
+  segment: Extract<RuntimeMessageSegment, { kind: 'tool_use' }>,
+): CanvasToolUseArgumentsReadResult {
+  if (
+    segment.toolArgs
+    && typeof segment.toolArgs === 'object'
+    && !Array.isArray(segment.toolArgs)
+  ) {
+    return { ok: true, value: segment.toolArgs };
+  }
+
+  const raw = segment.text.trim();
+  if (!raw) {
+    return { ok: true, value: {} };
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {
+        ok: false,
+        message: `${segment.toolName ?? 'Artifact Canvas'} tool arguments must be an object.`,
+      };
+    }
+    return { ok: true, value: parsed as Record<string, unknown> };
+  } catch {
+    return {
+      ok: false,
+      message: `${segment.toolName ?? 'Artifact Canvas'} tool arguments must be valid JSON.`,
+    };
+  }
 }
 
 function resolveRuntimeDeclarationAnchors(
