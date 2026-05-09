@@ -60,7 +60,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 Recent additions:
 
 - [PLAN-098](./plans/PLAN-098-polymorphic-entity-subscription-follow-up.md) — follow-up plan for proving per-entity subscriptions with a second entity kind after PLAN-068's channel slice
-- [PLAN-068](./plans/PLAN-068-per-entity-state-subscription-rollout.md) — reconciled as the channel-slice closeout for per-entity state subscriptions
+- [PLAN-068](./plans/PLAN-068-per-entity-state-subscription-rollout.md) — reconciled as the channel-slice closeout for per-entity state subscriptions; this is a status reconciliation, not a newly added plan
 - [ADR-104](./decisions/104-adopt-managed-live-preview-supervisor-for-artifact-canvas.md) — Cats Code live previews require a managed supervisor before any process spawning or privileged preview-origin treatment
 - [SPEC-108](./specs/SPEC-108-cats-code-live-preview-substrate.md) — requirements for command profiles, process supervision, port leases, logs, lifecycle cleanup, and Artifact Canvas preview-origin qualification
 - [PLAN-097](./plans/PLAN-097-cats-code-live-preview-substrate-rollout.md) — rollout plan for the managed live-preview substrate, with real process spawning gated until security approval

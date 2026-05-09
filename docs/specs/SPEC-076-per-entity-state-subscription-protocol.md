@@ -10,9 +10,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Channel slice implemented; polymorphic proof pending |
+| **Status** | Partially Implemented |
 | **Owner** | TBD (Conductor on accept) |
 | **Reviewer** | User |
+| **Implementation Note** | Channel slice implemented; polymorphic proof pending |
 | **Related ADR** | [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md) |
 | **Companion ADR** | [ADR-041](../decisions/041-push-transport-and-chat-invalidations-over-sse.md) (collection-level invalidation tier) |
 | **Channel rollout / closeout** | [PLAN-068](../plans/PLAN-068-per-entity-state-subscription-rollout.md) |
@@ -120,6 +121,15 @@ poll is scoped to runtime health only. Nothing carries projected
 state to the target surface.
 
 ## Requirements
+
+> **Implementation note:** several requirements below still use the original
+> draft wording of "publishers" and "patches for every mutation projected onto
+> that entity." That wording is protocol intent, not a claim that the landed
+> `channel` slice uses a mutation-local publisher called directly by every
+> write path. The landed `channel` implementation routes `/api/subscribe`,
+> listens to existing chat event-hub signals, rebuilds the channel projection,
+> and emits projection diffs as subscription patches. PLAN-098 Phase 1.1 owns
+> rewriting the body text into that accepted projection/diffing model.
 
 ### Functional Requirements
 

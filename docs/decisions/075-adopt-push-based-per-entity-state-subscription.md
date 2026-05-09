@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposed (channel slice implemented; polymorphic proof pending)
+Proposed
 
 ## Implementation Note
 

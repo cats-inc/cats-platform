@@ -9,9 +9,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Channel slice implemented; follow-up split to PLAN-098 |
+| **Status** | Partially Implemented |
 | **Owner** | Historical rollout |
 | **Reviewer** | User |
+| **Closeout** | Channel slice implemented; follow-up split to PLAN-098 |
 
 ## Related Spec / Dependencies
 
