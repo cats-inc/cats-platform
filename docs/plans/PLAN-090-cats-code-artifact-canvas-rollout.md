@@ -317,10 +317,10 @@ artifacts, close/refresh/open controls, and renderer tests for pane state.
 
 ### Phase 4: Live Preview Substrate Planning
 
-- [ ] Task 4.1: Create separate research/spec work for command whitelist,
+- [x] Task 4.1: Create separate research/spec work for command whitelist,
       process supervision, port allocation, lifecycle, logs, and preview URL
       declaration.
-- [ ] Task 4.2: Define how a runtime-owned preview origin qualifies for
+- [x] Task 4.2: Define how a runtime-owned preview origin qualifies for
       iframe `allow-same-origin`.
 - [ ] Task 4.3: Only after approval, wire a live-preview producer that creates
       a `preview_url` artifact and then calls `show_in_canvas`.
@@ -636,6 +636,7 @@ this plan before Phase 4 approval.
 | 2026-05-09 | Mounted the shared Artifact Canvas child route on Cats Work project, task, and work item detail surfaces through `withSharedViewerRoutes`. This completes Task 3.6 for route-level Work integration; artifact link affordances remain renderer-only navigation and do not require Work-side server delegates. |
 | 2026-05-09 | Mounted the shared Artifact Canvas child route on Cats Chat conversation routes and aligned the canvas route registry/docs with the actual product paths (`/chat/chats/:channelId`, `/work/work-items/:workItemId`). This completes Task 3.7. |
 | 2026-05-09 | Reconciled Phase 1 implementation status after the Artifact Canvas route registry, projection API, policy config, policyVersion snapshots, route round-trip tests, and canonicalization vectors landed. Added the missing empty-allowlist policyVersion vector and aligned SPEC-101 with the implemented canonical JSON shape. |
+| 2026-05-09 | Created ADR-104, SPEC-108, and PLAN-097 for the managed Cats Code live-preview supervisor. This completes PLAN-090 Tasks 4.1 and 4.2 by defining command profiles, process supervision, port leases, lifecycle/log handling, preview artifact declaration, and lease-based runtime-owned preview-origin qualification. Task 4.3 remains gated on approval; no process spawning is enabled by PLAN-090. |
 
 ---
 

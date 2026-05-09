@@ -44,9 +44,9 @@ This spec covers the Phase 1 contract:
   preview origin allowlist, scripted preview producer allowlist,
   credential URL hard reject, hostname normalization, `policyVersion`
   canonicalization) centralized at the platform layer.
-- An iframe viewer for safe preview URL artifacts. Image, PDF, code
-  viewers, and live `npm start`-style process supervision are follow-up
-  work.
+- Iframe, image, PDF, and code/text viewers for safe artifacts. Live
+  `npm start`-style process supervision is follow-up work under
+  [SPEC-108](./SPEC-108-cats-code-live-preview-substrate.md).
 
 ## Goals
 

@@ -59,6 +59,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [ADR-104](./decisions/104-adopt-managed-live-preview-supervisor-for-artifact-canvas.md) — Cats Code live previews require a managed supervisor before any process spawning or privileged preview-origin treatment
+- [SPEC-108](./specs/SPEC-108-cats-code-live-preview-substrate.md) — requirements for command profiles, process supervision, port leases, logs, lifecycle cleanup, and Artifact Canvas preview-origin qualification
+- [PLAN-097](./plans/PLAN-097-cats-code-live-preview-substrate-rollout.md) — rollout plan for the managed live-preview substrate, with real process spawning gated until security approval
 - [ADR-103](./decisions/103-use-preset-neutral-product-intent-intake.md) — preset-neutral product-intent intake for explicit commands and strong-Cat Work/Code proposals across Chat, Code, and Work presets
 - [SPEC-107](./specs/SPEC-107-preset-neutral-product-intent-intake.md) — requirements for applying `/chat` / `/work` / `/code` and Cat-authored Work/Code proposals to every supported product preset
 - [PLAN-096](./plans/PLAN-096-preset-neutral-product-intent-intake-rollout.md) — rollout plan for context builders, canonical metadata, command routing, proposal tools, confirmation, projections, mobile, and Telegram parity
@@ -248,4 +251,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-05-06*
+*Last updated: 2026-05-09*
