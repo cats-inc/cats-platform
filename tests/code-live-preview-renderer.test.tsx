@@ -48,6 +48,9 @@ test('LivePreviewPanel guards async stop and logs updates against stale surfaces
 
   assert.match(panel, /requestVersionRef/u);
   assert.match(panel, /mountedRef/u);
+  assert.match(panel, /surfaceIdentityRef/u);
+  assert.match(panel, /createLivePreviewSurfaceIdentity/u);
+  assert.match(panel, /if \(surfaceChanged\) \{\s*setLogsByPreviewId\(\{\}\);\s*setLogsLoadingId\(null\);\s*setStoppingId\(null\);\s*setActionFeedback\(null\);\s*\}/u);
   assert.match(panel, /isCurrentLivePreviewRequest/u);
   assert.match(panel, /expireLivePreviewRequest/u);
   assert.match(panel, /refreshPreviews\(\{\s*requestVersion,\s*surfaceKind: currentSurfaceKind,\s*surfaceId: currentSurfaceId,\s*\}\);/u);

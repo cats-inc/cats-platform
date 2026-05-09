@@ -21,6 +21,7 @@ import {
 import {
   DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
   type ArtifactCanvasPolicyConfig,
+  type ArtifactCanvasSupervisorPreviewLease,
   type ArtifactCanvasSupervisorPreviewLeaseStore,
 } from '../../shared/artifactCanvas/iframePolicy.js';
 import { buildArtifactCanvasProjection } from '../../shared/artifactCanvas/projection.js';
@@ -43,6 +44,7 @@ export type LivePreviewArtifactMaterializationSkippedReason =
   | 'lease_not_ready'
   | 'lease_origin_invalid'
   | 'lease_origin_not_loopback'
+  | 'task_anchor_unresolved'
   | 'workspace_anchor_unresolved'
   | 'unsupported_surface';
 
@@ -116,6 +118,7 @@ export function materializeLivePreviewArtifact(
   options: LivePreviewArtifactMaterializationOptions = {},
 ): LivePreviewArtifactMaterializationResult {
   const validation = validateLivePreviewLeaseForMaterialization(
+    core,
     lease,
     options.now ?? new Date(),
   );
@@ -183,6 +186,7 @@ export function materializeLivePreviewArtifactAndShowInCanvas(
     supervisorPreviewLeaseStore: createMaterializedLeaseStore(
       materialized.lease,
       options.supervisorPreviewLeaseStore,
+      now,
     ),
     now,
   });
@@ -267,6 +271,7 @@ function resolveLivePreviewArtifactAnchors(
 }
 
 function validateLivePreviewLeaseForMaterialization(
+  core: CatsCoreState,
   lease: LivePreviewLease,
   now: Date,
 ): LivePreviewArtifactMaterializationSkippedReason | null {
@@ -283,6 +288,12 @@ function validateLivePreviewLeaseForMaterialization(
   const originValidation = validateLoopbackPreviewLeaseOrigin(lease);
   if (originValidation) {
     return originValidation;
+  }
+  if (
+    lease.surface.kind === 'code_task'
+    && !core.tasks.some((candidate) => candidate.id === lease.surface.surfaceId)
+  ) {
+    return 'task_anchor_unresolved';
   }
   if (lease.surface.kind === 'code_codespace') {
     const expectedCodespaceId = createCodespaceId(lease.workspaceRef.rootPath);
@@ -386,16 +397,52 @@ function buildLivePreviewArtifactMetadata(input: {
 function createMaterializedLeaseStore(
   lease: LivePreviewLease,
   fallback?: ArtifactCanvasSupervisorPreviewLeaseStore | null,
+  now: Date = new Date(),
 ): ArtifactCanvasSupervisorPreviewLeaseStore {
   return {
     getLease(previewId: string) {
       const fallbackLease = fallback?.getLease(previewId) ?? null;
-      if (fallbackLease) {
+      if (previewId !== lease.previewId) {
+        return fallbackLease;
+      }
+      if (fallbackLease && shouldPreferSupervisorLease(fallbackLease, lease, now)) {
         return fallbackLease;
       }
       return previewId === lease.previewId ? lease : null;
     },
   };
+}
+
+function shouldPreferSupervisorLease(
+  supervisorLease: ArtifactCanvasSupervisorPreviewLease,
+  materializedLease: LivePreviewLease,
+  now: Date,
+): boolean {
+  if (supervisorLease.status !== 'ready') {
+    return true;
+  }
+  const supervisorExpiresAt = Date.parse(supervisorLease.expiresAt);
+  if (!Number.isFinite(supervisorExpiresAt) || supervisorExpiresAt <= now.getTime()) {
+    return true;
+  }
+  if (!isSameLivePreviewAuthority(supervisorLease, materializedLease)) {
+    return true;
+  }
+  return supervisorLease.artifactId !== null
+    && supervisorLease.artifactId !== materializedLease.artifactId;
+}
+
+function isSameLivePreviewAuthority(
+  left: ArtifactCanvasSupervisorPreviewLease,
+  right: LivePreviewLease,
+): boolean {
+  return left.previewId === right.previewId
+    && left.origin === right.origin
+    && left.surface.kind === right.surface.kind
+    && left.surface.surfaceId === right.surface.surfaceId
+    && left.workspaceRef.id === right.workspaceRef.id
+    && normalizePathToken(left.workspaceRef.rootPath)
+      === normalizePathToken(right.workspaceRef.rootPath);
 }
 
 function resolveLivePreviewArtifactScope(

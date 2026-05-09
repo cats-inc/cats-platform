@@ -183,6 +183,20 @@ test('live-preview materialization requires codespace leases to match workspace 
   );
 });
 
+test('live-preview materialization skips task leases without a task anchor', () => {
+  const result = materializeLivePreviewArtifact(
+    createDefaultCoreState(),
+    createLease({
+      previewId: 'preview-task-missing',
+      surface: { kind: 'code_task', surfaceId: 'task-missing' },
+    }),
+  );
+  assert.deepEqual(
+    { status: result.status, reason: result.status === 'skipped' ? result.reason : null },
+    { status: 'skipped', reason: 'task_anchor_unresolved' },
+  );
+});
+
 test('live-preview materialization can trigger the shared Artifact Canvas show intent path', () => {
   let core = createDefaultCoreState();
   core = upsertCoreConversation(core, {
@@ -301,6 +315,56 @@ test('live-preview canvas show uses canonical supervisor lease state before synt
       ((result.activity.metadata.artifactCanvas as Record<string, unknown>)
         .iframeSandboxProfile as { name?: string } | null)?.name,
       'static',
+    );
+  }
+});
+
+test('live-preview canvas show keeps scripted iframe when supervisor lease is ready but not yet stamped with artifact id', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreConversation(core, {
+    id: 'conversation-live',
+    title: 'Live preview conversation',
+    kind: 'code_thread',
+    status: 'active',
+  }).core;
+  core = upsertCoreTask(core, {
+    id: 'task-live',
+    title: 'Live preview task',
+    status: 'in_progress',
+    conversationId: 'conversation-live',
+  }).core;
+
+  const fallbackStore = new InMemoryLivePreviewLeaseStore();
+  fallbackStore.upsertLease(createLease({
+    previewId: 'preview-show-ready',
+    artifactId: null,
+    surface: { kind: 'code_task', surfaceId: 'task-live' },
+  }));
+  const result = materializeLivePreviewArtifactAndShowInCanvas(
+    core,
+    createLease({
+      previewId: 'preview-show-ready',
+      surface: { kind: 'code_task', surfaceId: 'task-live' },
+    }),
+    {
+      now: new Date('2026-05-09T00:00:03.000Z'),
+      policyConfig: {
+        ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+        scriptedPreviewProducerAllowlist: [
+          { producerKind: 'tool', producerIdentity: CODE_LIVE_PREVIEW_PRODUCER_IDENTITY },
+        ],
+      },
+      renderIntentHub: new ArtifactCanvasRenderIntentHub(),
+      supervisorPreviewLeaseStore: fallbackStore,
+    },
+  );
+
+  assert.equal(result.status, 'shown');
+  if (result.status === 'shown') {
+    assert.equal(
+      ((result.activity.metadata.artifactCanvas as Record<string, unknown>)
+        .iframeSandboxProfile as { name?: string } | null)?.name,
+      'scripted-cross-origin',
     );
   }
 });

@@ -30,6 +30,7 @@ export function LivePreviewPanel({
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const mountedRef = useRef(false);
   const requestVersionRef = useRef(0);
+  const surfaceIdentityRef = useRef<string | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -41,11 +42,16 @@ export function LivePreviewPanel({
 
   useEffect(() => {
     const requestVersion = requestVersionRef.current + 1;
+    const surfaceIdentity = createLivePreviewSurfaceIdentity(surfaceKind, surfaceId);
+    const surfaceChanged = surfaceIdentityRef.current !== surfaceIdentity;
+    surfaceIdentityRef.current = surfaceIdentity;
     requestVersionRef.current = requestVersion;
-    setLogsByPreviewId({});
-    setLogsLoadingId(null);
-    setStoppingId(null);
-    setActionFeedback(null);
+    if (surfaceChanged) {
+      setLogsByPreviewId({});
+      setLogsLoadingId(null);
+      setStoppingId(null);
+      setActionFeedback(null);
+    }
     if (!surfaceId.trim()) {
       setPreviews([]);
       setLoading(false);
@@ -313,6 +319,13 @@ function expireLivePreviewRequest(
   if (requestVersionRef.current === requestVersion) {
     requestVersionRef.current += 1;
   }
+}
+
+function createLivePreviewSurfaceIdentity(
+  surfaceKind: CodeLivePreviewSurfaceKind,
+  surfaceId: string,
+): string {
+  return `${surfaceKind}:${surfaceId}`;
 }
 
 function labelLivePreviewStatus(
