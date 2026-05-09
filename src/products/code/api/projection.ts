@@ -144,6 +144,8 @@ export interface CodeWorkItemListSummary {
   linkedTaskCount: number;
 }
 
+export type CodeArtifactProjectionDisposition = 'candidate' | 'record';
+
 export interface CodeArtifactListItem {
   id: string;
   title: string;
@@ -156,6 +158,10 @@ export interface CodeArtifactListItem {
   workItemId: string | null;
   workItemTitle: string | null;
   runId: string | null;
+  conversationId: string | null;
+  workspacePath: string | null;
+  producerLabel: string | null;
+  disposition: CodeArtifactProjectionDisposition | null;
   updatedAt: string;
 }
 
@@ -384,6 +390,19 @@ function readArtifactDeclarationWorkspacePath(artifact: CoreArtifactRecord): str
   const declaration = asRecord(artifact.metadata.codeArtifactDeclaration);
   const anchors = asRecord(declaration?.anchors);
   return readNonEmptyString(anchors?.workspacePath);
+}
+
+function readArtifactDeclarationProducerLabel(artifact: CoreArtifactRecord): string | null {
+  const declaration = asRecord(artifact.metadata.codeArtifactDeclaration);
+  return readNonEmptyString(declaration?.producerLabel);
+}
+
+function readArtifactDeclarationDisposition(
+  artifact: CoreArtifactRecord,
+): CodeArtifactProjectionDisposition | null {
+  const declaration = asRecord(artifact.metadata.codeArtifactDeclaration);
+  const disposition = declaration?.disposition;
+  return disposition === 'candidate' || disposition === 'record' ? disposition : null;
 }
 
 function resolveTaskWorkItemRecord(
@@ -653,6 +672,10 @@ function buildCodeArtifactListItem(
     workItemId: artifact.workItemId,
     workItemTitle: linkedWorkItem?.title ?? null,
     runId: artifact.runId,
+    conversationId: artifact.conversationId,
+    workspacePath: resolveArtifactWorkspacePath(core, artifact),
+    producerLabel: readArtifactDeclarationProducerLabel(artifact),
+    disposition: readArtifactDeclarationDisposition(artifact),
     updatedAt: artifact.updatedAt,
   };
 }

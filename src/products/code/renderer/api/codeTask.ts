@@ -215,12 +215,18 @@ export interface CodeArtifactSummary {
   updatedAt: string;
 }
 
+export type CodeArtifactDispositionSummary = 'candidate' | 'record';
+
 export interface CodeArtifactListItemSummary extends CodeArtifactSummary {
   taskId: string | null;
   taskTitle: string | null;
   workItemId: string | null;
   workItemTitle: string | null;
   runId: string | null;
+  conversationId: string | null;
+  workspacePath: string | null;
+  producerLabel: string | null;
+  disposition: CodeArtifactDispositionSummary | null;
 }
 
 export interface CodeArtifactListResponse {
