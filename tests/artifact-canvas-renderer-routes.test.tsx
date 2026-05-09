@@ -30,6 +30,26 @@ test('Code routes register Artifact Canvas child routes for task and codespace s
   );
 });
 
+test('Work routes register Artifact Canvas child routes for project, task, and work item surfaces', async () => {
+  const source = await readFile(
+    path.join(process.cwd(), 'src/products/work/renderer/AppRoutes.tsx'),
+    'utf8',
+  );
+
+  assert.match(
+    source,
+    /withSharedViewerRoutes\(\{\s+key: 'project-detail',\s+path: 'projects\/:projectId',\s+surfaceKind: 'work_project',/u,
+  );
+  assert.match(
+    source,
+    /withSharedViewerRoutes\(\{\s+key: 'task-detail',\s+path: 'tasks\/:taskId',\s+surfaceKind: 'work_task',/u,
+  );
+  assert.match(
+    source,
+    /withSharedViewerRoutes\(\{\s+key: 'work-item-detail',\s+path: 'work-items\/:workItemId',\s+surfaceKind: 'work_item',/u,
+  );
+});
+
 test('shared viewer route renders parent and Artifact Canvas pane on nested canvas URL', () => {
   const markup = renderToStaticMarkup(
     <StaticRouter location="/code/codespaces/codespace-1/canvas/artifact-1">

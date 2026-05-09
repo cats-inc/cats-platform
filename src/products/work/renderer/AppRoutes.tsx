@@ -40,6 +40,7 @@ import {
   WorkspaceAppRoutes,
   type WorkspaceAppRoutesProps,
 } from '../../shared/renderer/WorkspaceAppRoutes.js';
+import { withSharedViewerRoutes } from '../../shared/renderer/withSharedViewerRoutes.js';
 
 type ChatSurfaceProps = Omit<
   ChatViewProps,
@@ -98,9 +99,21 @@ export function AppRoutes({
     extraRoutes: [
       <Route key="war-room" path="war-room" element={<WarRoomView />} />,
       <Route key="project-list" path="projects" element={<ProjectsListPage />} />,
-      <Route key="project-detail" path="projects/:projectId" element={<ProjectDetailPage />} />,
+      withSharedViewerRoutes({
+        key: 'project-detail',
+        path: 'projects/:projectId',
+        surfaceKind: 'work_project',
+        surfaceIdParam: 'projectId',
+        element: <ProjectDetailPage />,
+      }),
       <Route key="task-list" path="tasks" element={<TasksListPage />} />,
-      <Route key="task-detail" path="tasks/:taskId" element={<TaskDetailPage />} />,
+      withSharedViewerRoutes({
+        key: 'task-detail',
+        path: 'tasks/:taskId',
+        surfaceKind: 'work_task',
+        surfaceIdParam: 'taskId',
+        element: <TaskDetailPage />,
+      }),
       <Route key="run-detail" path="tasks/:taskId/runs/:runId" element={<RunDetailPage />} />,
       <Route key="run-list" path="runs" element={<RunsListPage />} />,
       <Route key="mission-list" path="missions" element={<MissionsListPage />} />,
@@ -108,7 +121,13 @@ export function AppRoutes({
       <Route key="schedule-list" path="schedules" element={<SchedulesListPage />} />,
       <Route key="schedule-detail" path="schedules/:scheduleId" element={<SchedulesDetailPage />} />,
       <Route key="work-item-list" path="work-items" element={<WorkItemsListPage />} />,
-      <Route key="work-item-detail" path="work-items/:workItemId" element={<WorkItemDetailPage />} />,
+      withSharedViewerRoutes({
+        key: 'work-item-detail',
+        path: 'work-items/:workItemId',
+        surfaceKind: 'work_item',
+        surfaceIdParam: 'workItemId',
+        element: <WorkItemDetailPage />,
+      }),
       <Route key="system-map" path="system-map" element={<SystemMapPage />} />,
       <Route key="cockpit" path="cockpit" element={<CockpitPage />} />,
       <Route key="broken-links" path="broken-links" element={<BrokenLinksPage />} />,
