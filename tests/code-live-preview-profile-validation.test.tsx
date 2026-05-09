@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  BUILTIN_LIVE_PREVIEW_PROFILES,
   DEFAULT_LIVE_PREVIEW_CONFIG,
+  VITE_LIVE_PREVIEW_PROFILE,
   type LivePreviewCommandProfile,
   type LivePreviewConfig,
 } from '../src/products/code/livePreview/contracts.ts';
@@ -107,6 +109,14 @@ test('Cats Code live preview start validation rejects missing or disabled profil
   if (disabledProfile.status === 'rejected') {
     assert.equal(disabledProfile.error.code, 'live_preview_command_profile_disabled');
   }
+});
+
+test('Built-in Vite live preview profile is reviewed but stays disabled by default', () => {
+  assert.doesNotThrow(() => validateLivePreviewCommandProfile(VITE_LIVE_PREVIEW_PROFILE));
+  assert.equal(VITE_LIVE_PREVIEW_PROFILE.enabled, false);
+  assert.equal(VITE_LIVE_PREVIEW_PROFILE.workingDirectory, 'artifactDirectory');
+  assert.deepEqual(BUILTIN_LIVE_PREVIEW_PROFILES, [VITE_LIVE_PREVIEW_PROFILE]);
+  assert.deepEqual(DEFAULT_LIVE_PREVIEW_CONFIG.commandProfiles, []);
 });
 
 function validStartRequest(): Record<string, unknown> {

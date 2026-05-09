@@ -161,3 +161,50 @@ export const DEFAULT_LIVE_PREVIEW_CONFIG: LivePreviewConfig = {
   allowIpv6Loopback: false,
   commandProfiles: [],
 };
+
+/**
+ * First reviewed real command profile (PLAN-097 Phase 5 Task 5.2).
+ *
+ * Vite serves the local artifact directory, binds the loopback host that the
+ * supervisor leases, and exits cleanly on SIGTERM. The profile is **not**
+ * included in `DEFAULT_LIVE_PREVIEW_CONFIG` — operators must opt in by adding
+ * it to their `commandProfiles` and flipping the top-level `enabled` flag, and
+ * the real process adapter must be wired in (PLAN-097 Task 5.3). Even when
+ * registered, `enabled: false` here keeps the profile dormant until an
+ * operator explicitly turns it on.
+ */
+export const VITE_LIVE_PREVIEW_PROFILE: LivePreviewCommandProfile = {
+  id: 'vite',
+  label: 'Vite (artifact directory)',
+  enabled: false,
+  executable: 'npx',
+  args: [
+    'vite',
+    '--host',
+    '127.0.0.1',
+    '--port',
+    '{port}',
+    '--strictPort',
+  ],
+  workingDirectory: 'artifactDirectory',
+  port: { mode: 'argument', name: '--port' },
+  readiness: {
+    path: '/',
+    timeoutMs: 30_000,
+    intervalMs: 250,
+    expectedStatus: 200,
+  },
+  stop: {
+    graceMs: 5_000,
+    killProcessTree: true,
+  },
+};
+
+/**
+ * Reviewed-but-disabled built-in profiles operators may opt into. The platform
+ * does not auto-register these — adding to `commandProfiles` is an explicit
+ * decision per SPEC-108 § Process Supervision.
+ */
+export const BUILTIN_LIVE_PREVIEW_PROFILES: readonly LivePreviewCommandProfile[] = [
+  VITE_LIVE_PREVIEW_PROFILE,
+] as const;
