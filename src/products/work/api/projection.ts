@@ -32,6 +32,12 @@ import {
   buildSupervisedRunInspectionProjection,
   type SupervisedRunInspectionProjection,
 } from '../../../platform/supervision/index.js';
+import {
+  classifyMissionVisibility,
+  suggestMissionPromotion,
+  type MissionPromotionDecision,
+  type MissionVisibility,
+} from '../../../core/missionVisibility.js';
 import type {
   CatsCoreState,
   CoreConversationRecord,
@@ -339,6 +345,21 @@ export interface WorkMissionListItem {
   conversationTitle: string | null;
   assignedAgentId: string | null;
   assignedAgentName: string | null;
+  /**
+   * Canonical mission visibility classification. Work surfaces can
+   * group / filter on this without re-deriving the rule:
+   * - `work_facing`: shows on the operator-managed Work board
+   * - `requires_review`: shows in the review inbox surface
+   * - `internal`: hidden by default (background helper activity)
+   * Source of truth: src/core/missionVisibility.ts.
+   */
+  visibility: MissionVisibility;
+  /**
+   * Suggested promotion routing for the mission. Carried alongside
+   * `visibility` so UI can render explicit promote-to-work or
+   * promote-to-review affordances without rerunning the heuristic.
+   */
+  promotion: MissionPromotionDecision;
   createdAt: string;
   updatedAt: string;
 }
@@ -353,6 +374,9 @@ export interface WorkMissionListSummary {
   completedCount: number;
   failedCount: number;
   cancelledCount: number;
+  workFacingCount: number;
+  requiresReviewCount: number;
+  internalCount: number;
 }
 
 export interface WorkMissionListProjection {
@@ -999,6 +1023,9 @@ function buildMissionListSummary(
     completedCount: 0,
     failedCount: 0,
     cancelledCount: 0,
+    workFacingCount: 0,
+    requiresReviewCount: 0,
+    internalCount: 0,
   };
   for (const mission of missions) {
     switch (mission.status) {
@@ -1025,6 +1052,21 @@ function buildMissionListSummary(
         break;
       default: {
         const exhaustive: never = mission.status;
+        void exhaustive;
+      }
+    }
+    switch (mission.visibility) {
+      case 'work_facing':
+        summary.workFacingCount += 1;
+        break;
+      case 'requires_review':
+        summary.requiresReviewCount += 1;
+        break;
+      case 'internal':
+        summary.internalCount += 1;
+        break;
+      default: {
+        const exhaustive: never = mission.visibility;
         void exhaustive;
       }
     }
@@ -1063,6 +1105,8 @@ export function buildWorkMissionListProjection(
       assignedAgentName: mission.assignedAgentId
         ? resolveActorName(core, mission.assignedAgentId)
         : null,
+      visibility: classifyMissionVisibility(mission),
+      promotion: suggestMissionPromotion(mission),
       createdAt: mission.createdAt,
       updatedAt: mission.updatedAt,
     }));
