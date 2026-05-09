@@ -33,7 +33,7 @@ import type {
  */
 export function createRealLivePreviewProcessAdapter(): LivePreviewProcessAdapter {
   return {
-    async spawn(input: LivePreviewProcessSpawnInput): Promise<LivePreviewProcessHandle> {
+    spawn(input: LivePreviewProcessSpawnInput): Promise<LivePreviewProcessHandle> {
       const child = spawn(input.executable, input.args, {
         cwd: input.cwd,
         env: { ...process.env, ...input.env, PORT: String(input.port) },
@@ -42,9 +42,35 @@ export function createRealLivePreviewProcessAdapter(): LivePreviewProcessAdapter
         detached: process.platform !== 'win32',
         stdio: ['ignore', 'pipe', 'pipe'],
       });
-      return wrapChildProcess(child);
+      return waitForSpawn(child);
     },
   };
+}
+
+function waitForSpawn(child: ChildProcess): Promise<LivePreviewProcessHandle> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+
+    const onError = (error: Error): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      child.removeListener('spawn', onSpawn);
+      reject(error);
+    };
+    const onSpawn = (): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      child.removeListener('error', onError);
+      resolve(wrapChildProcess(child));
+    };
+
+    child.once('error', onError);
+    child.once('spawn', onSpawn);
+  });
 }
 
 function wrapChildProcess(child: ChildProcess): LivePreviewProcessHandle {
@@ -72,6 +98,23 @@ function wrapChildProcess(child: ChildProcess): LivePreviewProcessHandle {
     for (const listener of exitListeners) {
       listener(exit);
     }
+  });
+  // Once spawn has succeeded, runtime errors from the child process should
+  // not crash the host. Surface them as an exit if the child has not already
+  // emitted one.
+  child.on('error', (error) => {
+    if (exited) {
+      return;
+    }
+    exited = true;
+    const exit: LivePreviewProcessExit = {
+      code: null,
+      signal: null,
+    };
+    for (const listener of exitListeners) {
+      listener(exit);
+    }
+    void error;
   });
 
   return {
@@ -101,8 +144,7 @@ async function terminateChildProcess(
   child: ChildProcess,
   options: LivePreviewProcessStopOptions,
 ): Promise<void> {
-  const signal: NodeJS.Signals = process.platform === 'win32' ? 'SIGTERM' : 'SIGTERM';
-  trySendSignal(child, signal, options.killProcessTree);
+  trySendSignal(child, 'SIGTERM', options.killProcessTree);
   await new Promise<void>((resolve) => {
     if (child.exitCode !== null || child.signalCode) {
       resolve();
@@ -130,10 +172,7 @@ function trySendSignal(
       return;
     }
     if (process.platform === 'win32') {
-      const { spawn: spawnSync } = require('node:child_process') as typeof import('node:child_process');
-      spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
-        windowsHide: true,
-      });
+      tryTaskkill(child, signal);
       return;
     }
     try {
@@ -143,5 +182,43 @@ function trySendSignal(
     }
   } catch {
     // child has already exited; nothing to signal
+  }
+}
+
+function tryTaskkill(child: ChildProcess, fallbackSignal: NodeJS.Signals): void {
+  if (child.pid === undefined) {
+    child.kill(fallbackSignal);
+    return;
+  }
+  try {
+    const tree = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    // Swallow taskkill's own error events so a missing taskkill (extremely
+    // unlikely on Windows) does not crash the host. Fall back to direct
+    // kill if taskkill exits with a non-zero status.
+    tree.once('error', () => {
+      try {
+        child.kill(fallbackSignal);
+      } catch {
+        // child already gone
+      }
+    });
+    tree.once('exit', (code) => {
+      if (code !== 0) {
+        try {
+          child.kill(fallbackSignal);
+        } catch {
+          // child already gone
+        }
+      }
+    });
+  } catch {
+    try {
+      child.kill(fallbackSignal);
+    } catch {
+      // child already gone
+    }
   }
 }
