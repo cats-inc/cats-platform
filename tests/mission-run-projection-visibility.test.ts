@@ -196,6 +196,46 @@ test('buildMissionRunProjection taskIds filter matches both linkedTask and runs[
   assert.equal(both.items.length, 2);
 });
 
+test('buildMissionRunProjection linkedTask falls back to runs[].taskId when managed work has none', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-from-run',
+      title: 'Task surfaced through the run',
+      ownerActorId: 'actor-owner',
+      orchestratorActorId: null,
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-no-managed-work',
+      title: 'Mission without managed work',
+      status: 'running',
+    },
+    new Date('2026-04-14T22:00:30.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-task-anchor',
+      title: 'Run',
+      status: 'running',
+      taskId: 'task-from-run',
+      orchestratorActorId: null,
+      metadata: { missionId: 'mission-no-managed-work' },
+    },
+    new Date('2026-04-14T22:01:00.000Z'),
+  ).core;
+
+  const projection = buildMissionRunProjection(core);
+  const item = projection.items.find((candidate) => candidate.mission.id === 'mission-no-managed-work');
+  assert.ok(item);
+  assert.equal(item?.linkedTask?.id, 'task-from-run');
+});
+
 test('buildMissionRunProjection filters by visibilities query', () => {
   let core = createDefaultCoreState();
   core = seedAgent(core, 'agent-cat-a');

@@ -407,6 +407,104 @@ test('validateMissionLinkage stays silent when trigger references resolve', () =
   assert.deepEqual(validateMissionLinkage(core, mission), []);
 });
 
+test('validateRunLinkage flags a broken run.metadata.missionId reference', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-orphan-mission-claim',
+      title: 'Run claiming a deleted mission',
+      status: 'queued',
+      orchestratorActorId: null,
+      metadata: { missionId: 'mission-deleted' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  const run = core.runs.find((candidate) => candidate.id === 'run-orphan-mission-claim');
+  assert.ok(run);
+
+  const diagnostics = validateRunLinkage(core, run);
+  assert.equal(diagnostics.length, 1);
+  assert.equal(diagnostics[0]?.anchor, 'metadata_mission');
+  assert.equal(diagnostics[0]?.reason, 'missing_record');
+  assert.equal(diagnostics[0]?.referencedId, 'mission-deleted');
+});
+
+test('validateRunLinkage flags cross_mission_conflict when two missions claim the same run', () => {
+  let core = createDefaultCoreState();
+  // Mission A claims this run via metadata.runId.
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-a',
+      title: 'Mission A',
+      status: 'running',
+      metadata: { runId: 'run-disputed' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  // Mission B is what the run claims back.
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-b',
+      title: 'Mission B',
+      status: 'running',
+    },
+    new Date('2026-04-14T22:00:30.000Z'),
+  ).core;
+  // Run points at mission-b but mission-a is the one claiming it.
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-disputed',
+      title: 'Disputed run',
+      status: 'running',
+      orchestratorActorId: null,
+      metadata: { missionId: 'mission-b' },
+    },
+    new Date('2026-04-14T22:01:00.000Z'),
+  ).core;
+  const run = core.runs.find((candidate) => candidate.id === 'run-disputed');
+  assert.ok(run);
+
+  const diagnostics = validateRunLinkage(core, run);
+  assert.equal(diagnostics.length, 1);
+  assert.equal(diagnostics[0]?.anchor, 'metadata_mission');
+  assert.equal(diagnostics[0]?.reason, 'cross_mission_conflict');
+  assert.equal(diagnostics[0]?.referencedId, 'mission-b');
+  assert.equal(diagnostics[0]?.conflictingMissionId, 'mission-a');
+});
+
+test('validateRunLinkage stays silent when only the claimed mission references the run', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-anchor',
+      title: 'Anchor mission',
+      status: 'running',
+      metadata: { runId: 'run-clean' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-clean',
+      title: 'Run with consistent claim',
+      status: 'running',
+      orchestratorActorId: null,
+      metadata: { missionId: 'mission-anchor' },
+    },
+    new Date('2026-04-14T22:00:30.000Z'),
+  ).core;
+  const run = core.runs.find((candidate) => candidate.id === 'run-clean');
+  assert.ok(run);
+
+  assert.deepEqual(validateRunLinkage(core, run), []);
+});
+
 test('validateCoreMissionRunLinkages aggregates per-record diagnostics', () => {
   let core = createDefaultCoreState();
   core = upsertCoreMission(

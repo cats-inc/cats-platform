@@ -183,6 +183,71 @@ test('buildMissionsByConversation does not double-count a strongly-claimed run w
   );
 });
 
+test('buildMissionsByConversation cross-conversation claim: claimed run never duplicates onto another conversation that also has missions', () => {
+  // Stronger regression: both conversations have missions of their
+  // own, and a run that conversation B owns is claimed by mission A
+  // in conversation A. Previously this could appear twice — once in
+  // mission-A.runs and once in conversation-B's mission runs[]
+  // (loose-bridge fallthrough) or B's looseRuns. With the global
+  // claimedRunIds set, the run must show up exactly once.
+  let core = createDefaultCoreState();
+  core = seedConversation(core, 'conversation-a');
+  core = seedConversation(core, 'conversation-b');
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-a',
+      title: 'Mission in A claiming run in B',
+      conversationId: 'conversation-a',
+      status: 'running',
+      metadata: { runId: 'run-b' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-b',
+      title: 'Independent mission in B',
+      conversationId: 'conversation-b',
+      status: 'running',
+    },
+    new Date('2026-04-14T22:00:30.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-b',
+      title: 'Run anchored to conversation-b',
+      status: 'running',
+      conversationId: 'conversation-b',
+      orchestratorActorId: null,
+    },
+    new Date('2026-04-14T22:01:00.000Z'),
+  ).core;
+
+  const index = buildMissionsByConversation(core);
+
+  // Mission A in conversation-a is the sole claimant of run-b.
+  const aMissions = findMissionsForConversation(index, 'conversation-a');
+  assert.equal(aMissions.length, 1);
+  assert.equal(aMissions[0]?.runs.length, 1);
+  assert.equal(aMissions[0]?.runs[0]?.id, 'run-b');
+
+  // Mission B in conversation-b must NOT inherit run-b just because
+  // it shares the conversation. Its runs[] stays empty.
+  const bMissions = findMissionsForConversation(index, 'conversation-b');
+  assert.equal(bMissions.length, 1);
+  assert.equal(bMissions[0]?.runs.length, 0);
+
+  // Conversation-b's looseRuns must NOT contain run-b either, since
+  // mission A globally claims it.
+  assert.deepEqual(
+    findLooseRunsForConversationFromIndex(index, 'conversation-b'),
+    [],
+  );
+});
+
 test('buildMissionsByConversation does not surface a strongly-claimed run as a loose run', () => {
   let core = createDefaultCoreState();
   core = seedConversation(core, 'conversation-a');

@@ -200,6 +200,33 @@ test('buildCoreLinkageDiagnostics ignores telegram bot bindings (bidirectional, 
   assert.equal(isCoreLinkageHealthy(report), true);
 });
 
+test('buildCoreLinkageDiagnostics does not flag bot bindings even if they happen to carry a conversationId', () => {
+  // Defensive: even if a bot binding ever ends up with a non-null
+  // conversationId (e.g. via metadata copy-paste), the absence of
+  // metadata.channelKind === "direct_message" must keep it out of
+  // direct-lane scope.
+  let core = createDefaultCoreState();
+  core = upsertCoreTransportBinding(
+    core,
+    {
+      id: 'binding-bot-with-conversation',
+      platform: 'telegram',
+      direction: 'bidirectional',
+      conversationId: 'conversation-deleted',
+      status: 'active',
+      metadata: {
+        bindingId: 'bot-binding-2',
+        botName: 'cats_bot',
+        inboundMode: 'webhook',
+      },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+
+  const report = buildCoreLinkageDiagnostics(core);
+  assert.equal(report.summary.transportBindingDiagnosticCount, 0);
+});
+
 test('buildCoreLinkageDiagnostics flags an inbound binding pointing at the wrong conversation kind', () => {
   let core = createDefaultCoreState();
   core = upsertCoreConversation(

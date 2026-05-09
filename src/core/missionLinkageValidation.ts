@@ -30,13 +30,26 @@ export type RunLinkageDiagnosticAnchor =
   | 'task'
   | 'conversation'
   | 'parent_run'
-  | 'orchestrator_actor';
+  | 'orchestrator_actor'
+  | 'metadata_mission';
+
+export type RunLinkageDiagnosticReason =
+  | 'missing_record'
+  | 'cross_mission_conflict';
 
 export interface RunLinkageDiagnostic {
   runId: string;
   anchor: RunLinkageDiagnosticAnchor;
   referencedId: string;
-  reason: 'missing_record';
+  reason: RunLinkageDiagnosticReason;
+  /**
+   * Populated only for `cross_mission_conflict`: the id of the *other*
+   * mission that also claims this run (via `mission.metadata.runId`).
+   * `referencedId` carries the mission the run claims via
+   * `run.metadata.missionId`. Auditors can use both ids to decide
+   * which side to fix.
+   */
+  conflictingMissionId?: string;
 }
 
 function readMissionMetadataRunId(mission: MissionRecord): string | null {
@@ -46,6 +59,11 @@ function readMissionMetadataRunId(mission: MissionRecord): string | null {
 
 function readMissionMetadataParentMissionId(mission: MissionRecord): string | null {
   const value = mission.metadata.parentMissionId;
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function readRunMetadataMissionId(run: CoreRunRecord): string | null {
+  const value = run.metadata.missionId;
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
@@ -237,6 +255,34 @@ export function validateRunLinkage(
       referencedId: run.orchestratorActorId,
       reason: 'missing_record',
     });
+  }
+  const claimedMissionId = readRunMetadataMissionId(run);
+  if (claimedMissionId !== null) {
+    if (!recordExistsById(core.missions, claimedMissionId)) {
+      diagnostics.push({
+        runId: run.id,
+        anchor: 'metadata_mission',
+        referencedId: claimedMissionId,
+        reason: 'missing_record',
+      });
+    } else {
+      // Cross-claim conflict: another mission also claims this run via
+      // `mission.metadata.runId`. The unified resolver would attribute
+      // the run to BOTH missions, which is a real provenance bug —
+      // surface it so audit can decide which side wins.
+      const conflictingMission = core.missions.find((mission) =>
+        mission.id !== claimedMissionId
+        && readMissionMetadataRunId(mission) === run.id) ?? null;
+      if (conflictingMission !== null) {
+        diagnostics.push({
+          runId: run.id,
+          anchor: 'metadata_mission',
+          referencedId: claimedMissionId,
+          reason: 'cross_mission_conflict',
+          conflictingMissionId: conflictingMission.id,
+        });
+      }
+    }
   }
 
   return diagnostics;

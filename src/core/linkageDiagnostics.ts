@@ -66,25 +66,33 @@ const BROKEN_DIRECT_LANE_STATUSES: ReadonlySet<TransportDirectLaneStatus> = new 
   'conversation_not_direct_lane',
 ]);
 
+function isDirectLaneProjectionBinding(binding: TransportBindingRecord): boolean {
+  // `createDirectLaneTransportBindings` in
+  // `src/products/chat/state/core-projection/entities.ts` stamps
+  // `metadata.channelKind: 'direct_message'` on every binding it
+  // produces. Bot bindings (`createBotTransportBindings`) write
+  // `metadata.bindingId` / `botName` / `inboundMode` but no
+  // `channelKind`, so this signal cleanly separates the two without
+  // depending on direction (both writers use `bidirectional`).
+  return binding.metadata.channelKind === 'direct_message';
+}
+
 function shouldRunDirectLaneCheckOn(binding: TransportBindingRecord): boolean {
   // Operator-intentional states do not represent canonical record
   // breakage and should not appear in this aggregate report.
   if (binding.status !== 'active') {
     return false;
   }
-  // Heuristic: a binding is a "direct-lane projection" subject to the
-  // direct-lane resolver when it either:
-  //   - already claims a `conversationId` (something we can verify
-  //     resolves to a direct-lane conversation), OR
-  //   - is explicitly `inbound` and therefore expects to land at a
-  //     direct lane even if the conversationId has not yet been set.
-  // Direction alone is not enough: real direct-lane projections
-  // (`createDirectLaneTransportBindings` in
-  // `src/products/chat/state/core-projection/entities.ts`) write
-  // `direction: 'bidirectional'`. Conversely, telegram bot bindings
-  // (`createBotTransportBindings`) are bidirectional with
-  // `conversationId: null`, so they skip both arms here.
-  return binding.conversationId !== null || binding.direction === 'inbound';
+  // Direct-lane projections are the primary scope: the resolver was
+  // designed for them, and they always produce a binding even before
+  // the conversation row catches up.
+  if (isDirectLaneProjectionBinding(binding)) {
+    return true;
+  }
+  // Future-proof: explicit `inbound` direction reserves the resolver
+  // semantic for new transport adapters that have not yet adopted the
+  // metadata signal.
+  return binding.direction === 'inbound';
 }
 
 function summarizeTransportBindingDirectLane(

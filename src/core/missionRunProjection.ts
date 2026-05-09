@@ -162,9 +162,23 @@ export function buildMissionRunProjection(
       const assignedAgent = mission.assignedAgentId
         ? core.actors.find((candidate) => candidate.id === mission.assignedAgentId) ?? null
         : null;
-      const linkedTask = managedWork?.taskId
-        ? core.tasks.find((task) => task.id === managedWork.taskId) ?? null
-        : null;
+      const linkedTask = (() => {
+        // Primary: managed work supplies the task explicitly.
+        if (managedWork?.taskId) {
+          return core.tasks.find((task) => task.id === managedWork.taskId) ?? null;
+        }
+        // Fallback: after the mission-run resolver unification, runs
+        // can carry their own taskId. Surface the first run-anchored
+        // task so consumers picking `linkedTask` for a "primary task"
+        // signal stay symmetrical with the runs[].taskId entries that
+        // taskIds filter now matches.
+        for (const run of runs) {
+          if (run.taskId !== null) {
+            return core.tasks.find((task) => task.id === run.taskId) ?? null;
+          }
+        }
+        return null;
+      })();
       const latestRunUpdatedAt = runs
         .map((run) => run.updatedAt)
         .filter((value): value is string => typeof value === 'string' && value.length > 0)
