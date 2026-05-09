@@ -9,6 +9,7 @@ import {
 } from '../artifactCanvas/contracts.js';
 import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../app/renderer/i18n/index.js';
+import { CodeViewer } from './viewers/CodeViewer.js';
 import { ImageViewer } from './viewers/ImageViewer.js';
 import { IframeViewer } from './viewers/IframeViewer.js';
 import { PdfViewer } from './viewers/PdfViewer.js';
@@ -173,6 +174,9 @@ function renderCanvasPaneBody(
   }
   if (projection.presentationResolved === 'pdf') {
     return <PdfViewer projection={projection} />;
+  }
+  if (projection.presentationResolved === 'code') {
+    return <CodeViewer projection={projection} />;
   }
   if (
     projection.safeUrl

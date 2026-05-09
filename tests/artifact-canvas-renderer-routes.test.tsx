@@ -9,6 +9,7 @@ import { Routes, StaticRouter } from 'react-router-dom';
 import type {
   ArtifactCanvasProjection,
 } from '../src/products/shared/artifactCanvas/contracts.ts';
+import { CodeViewer } from '../src/products/shared/renderer/viewers/CodeViewer.tsx';
 import { ImageViewer } from '../src/products/shared/renderer/viewers/ImageViewer.tsx';
 import { PdfViewer } from '../src/products/shared/renderer/viewers/PdfViewer.tsx';
 import { withSharedViewerRoutes } from '../src/products/shared/renderer/withSharedViewerRoutes.tsx';
@@ -49,7 +50,7 @@ test('shared viewer route renders parent and Artifact Canvas pane on nested canv
   assert.match(markup, /artifactCanvasPane/u);
 });
 
-test('Artifact Canvas materialized viewers render image and PDF without iframe', async () => {
+test('Artifact Canvas materialized viewers render without iframe', async () => {
   const canvasPaneSource = await readFile(
     path.join(process.cwd(), 'src/products/shared/renderer/CanvasPane.tsx'),
     'utf8',
@@ -64,19 +65,29 @@ test('Artifact Canvas materialized viewers render image and PDF without iframe',
       projection={createProjection('pdf', 'http://127.0.0.1:4321/artifact.pdf')}
     />,
   );
+  const codeMarkup = renderToStaticMarkup(
+    <CodeViewer
+      projection={createProjection('code', null, 'const answer = 42;')}
+    />,
+  );
 
   assert.match(canvasPaneSource, /ImageViewer/u);
   assert.match(canvasPaneSource, /PdfViewer/u);
+  assert.match(canvasPaneSource, /CodeViewer/u);
   assert.match(imageMarkup, /<img/u);
   assert.doesNotMatch(imageMarkup, /<iframe/u);
   assert.match(pdfMarkup, /<object/u);
   assert.match(pdfMarkup, /type="application\/pdf"/u);
   assert.doesNotMatch(pdfMarkup, /<iframe/u);
+  assert.match(codeMarkup, /<pre/u);
+  assert.match(codeMarkup, /const answer = 42;/u);
+  assert.doesNotMatch(codeMarkup, /<iframe/u);
 });
 
 function createProjection(
-  presentationResolved: 'image' | 'pdf',
-  safeUrl: string,
+  presentationResolved: 'image' | 'pdf' | 'code',
+  safeUrl: string | null,
+  textContent: string | null = null,
 ): ArtifactCanvasProjection {
   return {
     surface: { kind: 'code_task', surfaceId: 'task-canvas' },
@@ -87,9 +98,7 @@ function createProjection(
       status: 'ready',
       summary: null,
       path: safeUrl,
-      mimeType: presentationResolved === 'image'
-        ? 'image/png'
-        : 'application/pdf',
+      mimeType: resolveMimeType(presentationResolved),
       sizeBytes: null,
       updatedAt: '2026-05-09T00:00:00.000Z',
     },
@@ -103,7 +112,20 @@ function createProjection(
     },
     safeUrl,
     externalUrl: safeUrl,
+    textContent,
     policyVersion: 'policy-v1',
     error: null,
   };
+}
+
+function resolveMimeType(
+  presentationResolved: 'image' | 'pdf' | 'code',
+): string {
+  if (presentationResolved === 'image') {
+    return 'image/png';
+  }
+  if (presentationResolved === 'pdf') {
+    return 'application/pdf';
+  }
+  return 'text/plain';
 }

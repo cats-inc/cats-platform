@@ -60,6 +60,34 @@ function createCanvasStore() {
     },
   }).core;
   core = upsertCoreArtifact(core, {
+    id: 'artifact-text-url',
+    title: 'Server text',
+    kind: 'document',
+    status: 'ready',
+    conversationId: 'conversation-canvas',
+    taskId: 'task-canvas',
+    path: 'http://127.0.0.1:4321/output.txt',
+    mimeType: 'text/plain',
+    metadata: {
+      codeArtifactDeclaration: {
+        producerKind: 'agent',
+        producerIdentity: 'actor:cat-canvas',
+        location: {
+          kind: 'url',
+          value: 'http://127.0.0.1:4321/output.txt',
+        },
+      },
+    },
+  }).core;
+  core = upsertCoreArtifact(core, {
+    id: 'artifact-empty',
+    title: 'Empty artifact',
+    kind: 'report',
+    status: 'ready',
+    conversationId: 'conversation-canvas',
+    taskId: 'task-canvas',
+  }).core;
+  core = upsertCoreArtifact(core, {
     id: 'artifact-image',
     title: 'Screenshot',
     kind: 'attachment',
@@ -213,6 +241,43 @@ test('GET /api/canvas resolves image and PDF media to dedicated presentations', 
   assert.equal(pdfExplicit.payload?.presentationResolved, 'pdf');
 });
 
+test('GET /api/canvas resolves inline and server-served text as code', async (t) => {
+  const store = createCanvasStore();
+  const server = createTestServer(store);
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const inline = await request(
+    server,
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-summary',
+  );
+  assert.equal(inline.status, 200);
+  assert.equal(inline.payload?.presentationRequested, 'auto');
+  assert.equal(inline.payload?.presentationResolved, 'code');
+  assert.equal(inline.payload?.safeUrl, null);
+  assert.equal(inline.payload?.textContent, 'No inline viewer yet.');
+  assert.equal(inline.payload?.iframeSandboxProfile, null);
+
+  const textUrl = await request(
+    server,
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-text-url',
+  );
+  assert.equal(textUrl.status, 200);
+  assert.equal(textUrl.payload?.presentationRequested, 'auto');
+  assert.equal(textUrl.payload?.presentationResolved, 'code');
+  assert.equal(textUrl.payload?.safeUrl, 'http://127.0.0.1:4321/output.txt');
+  assert.equal(textUrl.payload?.textContent, null);
+  assert.equal(textUrl.payload?.iframeSandboxProfile, null);
+
+  const explicitCode = await request(
+    server,
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-text-url/view/code',
+  );
+  assert.equal(explicitCode.status, 200);
+  assert.equal(explicitCode.payload?.presentationRequested, 'code');
+  assert.equal(explicitCode.payload?.presentationResolved, 'code');
+});
+
 test('GET /api/canvas surfaces missing, anchor, presentation, and URL policy errors', async (t) => {
   const store = createCanvasStore();
   const server = createTestServer(store);
@@ -268,7 +333,7 @@ test('GET /api/canvas auto projection can render an unsupported metadata pane', 
 
   const result = await request(
     server,
-    '/api/canvas/code_task/task-canvas/artifacts/artifact-summary',
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-empty',
   );
 
   assert.equal(result.status, 200);

@@ -396,6 +396,11 @@ interface ArtifactCanvasProjection {
   // of silently downgrading. Auto may resolve to unsupported.
   presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
   iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
+  safeUrl: string | null;
+  externalUrl: string | null;
+  // Server-projected text for inline_summary artifacts. Server-served
+  // text/code URL artifacts use safeUrl and let the renderer fetch text.
+  textContent: string | null;
   // Identifier for the iframe-policy snapshot under which
   // iframeSandboxProfile was decided. Lower-case hex string, first 16
   // chars of SHA-256 over the canonicalized policy tuple (see §Policy
@@ -856,13 +861,13 @@ Phase 1 routes all viewer-shaped presentations through the iframe viewer, but
 selects the sandbox profile (see §Iframe Policy) per content type so that
 static media never receives `allow-scripts`.
 
-| Artifact signal | Phase 1 `presentationResolved` | `iframeSandboxProfile` |
+| Artifact signal | Current `presentationResolved` | `iframeSandboxProfile` |
 |-----------------|--------------------------------|------------------------|
 | `kind = 'preview'` and URL passes scheme + runtime-preview-origin allowlist (and other §Iframe Policy conditions) | `iframe` | `scripted-cross-origin` |
 | `kind = 'preview'` and URL passes scheme but fails the origin allowlist | `iframe` (silently demoted) | `static` |
-| URL path ending in a known image extension and URL passes scheme | `iframe` | `static` |
-| URL path ending in `.pdf` and URL passes scheme | `iframe` | `static` |
-| `location.kind = 'inline_summary'` or text/code mime type | `unsupported` in Phase 1; `code` in Phase 2 | `null` |
+| URL path ending in a known image extension and URL passes scheme | `image` | `static` |
+| URL path ending in `.pdf` and URL passes scheme | `pdf` | `static` |
+| `location.kind = 'inline_summary'` or text/code mime type | `code` | `null` |
 | URL fails scheme allowlist | rejected with `artifact_canvas_iframe_scheme_rejected` | n/a |
 | no safe inline target (and `presentation: 'auto'`) | `unsupported` | `null` |
 

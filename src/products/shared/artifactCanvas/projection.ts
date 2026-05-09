@@ -68,6 +68,7 @@ export function buildArtifactCanvasProjection(input: {
   }
 
   const safeUrl = resolveArtifactCanvasSafeUrl(artifact);
+  const textContent = resolveArtifactCanvasTextContent(artifact);
   const producer = resolveArtifactCanvasProducer(artifact);
   const policy = safeUrl
     ? resolveArtifactCanvasIframePolicy({
@@ -86,6 +87,7 @@ export function buildArtifactCanvasProjection(input: {
   const resolvedPresentation = resolveProjectionPresentation({
     artifact,
     safeUrl,
+    textContent,
     presentationRequested,
   });
   if (resolvedPresentation === null) {
@@ -117,11 +119,15 @@ export function buildArtifactCanvasProjection(input: {
       },
       presentationRequested,
       presentationResolved: resolvedPresentation,
-      iframeSandboxProfile: safeUrl && policy?.status === 'accepted'
+      iframeSandboxProfile:
+        safeUrl
+        && policy?.status === 'accepted'
+        && resolvedPresentation !== 'code'
         ? policy.profile
         : null,
       safeUrl,
       externalUrl: safeUrl,
+      textContent,
       policyVersion,
       error: resolvedPresentation === 'unsupported'
         ? {
@@ -170,6 +176,19 @@ export function resolveArtifactCanvasSafeUrl(artifact: CoreArtifactRecord): stri
   return null;
 }
 
+export function resolveArtifactCanvasTextContent(
+  artifact: CoreArtifactRecord,
+): string | null {
+  const declaration = readCodeArtifactDeclarationMetadata(artifact.metadata);
+  const location = asRecord(declaration?.location);
+  const locationKind = readNonEmptyString(location?.kind);
+  const locationValue = readNonEmptyString(location?.value);
+  if (locationKind === 'inline_summary' && locationValue) {
+    return locationValue;
+  }
+  return null;
+}
+
 export function resolveArtifactCanvasProjectionApiPath(input: {
   surface: CanvasSurfaceRef;
   artifactId: string;
@@ -185,6 +204,7 @@ export function resolveArtifactCanvasProjectionApiPath(input: {
 function resolveProjectionPresentation(input: {
   artifact: CoreArtifactRecord;
   safeUrl: string | null;
+  textContent: string | null;
   presentationRequested: ArtifactCanvasPresentationInput;
 }): ArtifactCanvasProjection['presentationResolved'] | null {
   if (input.presentationRequested === 'auto') {
@@ -193,6 +213,9 @@ function resolveProjectionPresentation(input: {
     }
     if (input.safeUrl && isPdfPresentationArtifact(input.artifact, input.safeUrl)) {
       return 'pdf';
+    }
+    if (isCodePresentationArtifact(input.artifact, input.safeUrl, input.textContent)) {
+      return 'code';
     }
     return input.safeUrl ? 'iframe' : 'unsupported';
   }
@@ -210,7 +233,7 @@ function resolveProjectionPresentation(input: {
       : null;
   }
   if (input.presentationRequested === 'code') {
-    return input.safeUrl && input.artifact.mimeType?.startsWith('text/')
+    return isCodePresentationArtifact(input.artifact, input.safeUrl, input.textContent)
       ? 'code'
       : null;
   }
@@ -240,6 +263,40 @@ function isPdfPresentationArtifact(
 ): boolean {
   return artifact.mimeType === 'application/pdf'
     || hasPathExtension(safeUrl, ['.pdf']);
+}
+
+function isCodePresentationArtifact(
+  artifact: CoreArtifactRecord,
+  safeUrl: string | null,
+  textContent: string | null,
+): boolean {
+  return textContent !== null
+    || isCodeMimeType(artifact.mimeType)
+    || (safeUrl
+      ? hasPathExtension(safeUrl, [
+          '.css',
+          '.csv',
+          '.diff',
+          '.html',
+          '.js',
+          '.json',
+          '.log',
+          '.md',
+          '.patch',
+          '.ts',
+          '.tsx',
+          '.txt',
+          '.xml',
+          '.yaml',
+          '.yml',
+        ])
+      : false);
+}
+
+function isCodeMimeType(mimeType: string | null): boolean {
+  return mimeType?.startsWith('text/') === true
+    || mimeType === 'application/json'
+    || mimeType === 'application/xml';
 }
 
 function hasPathExtension(safeUrl: string, extensions: string[]): boolean {

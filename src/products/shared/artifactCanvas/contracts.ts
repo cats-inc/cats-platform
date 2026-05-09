@@ -198,6 +198,7 @@ export interface ArtifactCanvasProjection {
   iframeSandboxProfile: ArtifactCanvasIframeSandboxProfile | null;
   safeUrl: string | null;
   externalUrl: string | null;
+  textContent: string | null;
   policyVersion: string;
   error: ArtifactCanvasError | null;
 }
