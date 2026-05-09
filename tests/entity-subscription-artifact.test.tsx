@@ -100,6 +100,22 @@ test('GET /api/subscribe streams artifact snapshots and update patches', async (
   const patch = await readUntil(reader, '"artifact.updated"');
   assert.match(patch, /event: patch/u);
   assert.match(patch, /Updated through stream/u);
+
+  await store.updateCore((core) => upsertCoreArtifact(core, {
+    id: 'artifact-1',
+    title: 'Updated through stream again',
+    kind: 'document',
+    status: 'ready',
+    conversationId: 'conversation-1',
+    taskId: 'task-1',
+    path: 'http://127.0.0.1:4321/output.txt',
+    mimeType: 'text/plain',
+    summary: 'Second updated summary',
+  }).core);
+
+  const secondPatch = await readUntil(reader, 'Updated through stream again');
+  assert.match(secondPatch, /event: patch/u);
+  assert.match(secondPatch, /"artifact\.updated"/u);
 });
 
 test('GET /api/subscribe emits artifact removal patch before closing', async (t) => {
