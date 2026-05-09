@@ -1,0 +1,199 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+  buildArtifactCanvasPolicyVersion,
+  canUseScriptedArtifactCanvasPreview,
+  matchesArtifactCanvasRuntimePreviewOrigin,
+  normalizeArtifactCanvasHostname,
+  rejectArtifactCanvasCredentialUrl,
+  resolveArtifactCanvasIframePolicy,
+  validateArtifactCanvasPolicyConfig,
+  type ArtifactCanvasPolicyConfig,
+} from '../src/products/shared/artifactCanvas/iframePolicy.ts';
+
+const DEFAULT_CANONICAL_JSON =
+  '{"algorithm":"artifact-canvas-policy-v1","catsShellOrigin":"http://127.0.0.1:5173","runtimePreviewOriginAllowlist":[{"hostname":"127.0.0.1","ports":"*","schemes":["http"]},{"hostname":"::1","ports":"*","schemes":["http"]},{"hostname":"localhost","ports":"*","schemes":["http"]}],"scriptedPreviewProducerAllowlist":[]}';
+const DEFAULT_POLICY_VERSION = '924ecad525730480';
+
+const PORT_REORDERED_CANONICAL_JSON =
+  '{"algorithm":"artifact-canvas-policy-v1","catsShellOrigin":"http://127.0.0.1:5173","runtimePreviewOriginAllowlist":[{"hostname":"dev.local","ports":[4321,5173],"schemes":["http"]}],"scriptedPreviewProducerAllowlist":[]}';
+const PORT_REORDERED_POLICY_VERSION = 'edb4acc5fe0498c7';
+
+const PRODUCER_CANONICAL_JSON =
+  '{"algorithm":"artifact-canvas-policy-v1","catsShellOrigin":"http://127.0.0.1:5173","runtimePreviewOriginAllowlist":[{"hostname":"127.0.0.1","ports":"*","schemes":["http"]},{"hostname":"::1","ports":"*","schemes":["http"]},{"hostname":"localhost","ports":"*","schemes":["http"]}],"scriptedPreviewProducerAllowlist":[{"producerIdentity":"tool:cats_runtime_preview_bridge","producerKind":"tool"}]}';
+const PRODUCER_POLICY_VERSION = '99210a14a9fa3da3';
+
+test('Artifact Canvas policyVersion canonicalizes the default config', () => {
+  assert.deepEqual(buildArtifactCanvasPolicyVersion(DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG), {
+    canonicalJson: DEFAULT_CANONICAL_JSON,
+    policyVersion: DEFAULT_POLICY_VERSION,
+  });
+});
+
+test('Artifact Canvas policyVersion is stable across reordered allowlist entries', () => {
+  const reordered = buildArtifactCanvasPolicyVersion({
+    ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+    runtimePreviewOriginAllowlist: [
+      ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG.runtimePreviewOriginAllowlist,
+    ].reverse(),
+  });
+
+  assert.deepEqual(reordered, {
+    canonicalJson: DEFAULT_CANONICAL_JSON,
+    policyVersion: DEFAULT_POLICY_VERSION,
+  });
+});
+
+test('Artifact Canvas policyVersion sorts ports and detects producer allowlist changes', () => {
+  const left = buildArtifactCanvasPolicyVersion({
+    runtimePreviewOriginAllowlist: [
+      { hostname: 'dev.local', schemes: ['http'], ports: [5173, 4321] },
+    ],
+    scriptedPreviewProducerAllowlist: [],
+    catsShellOrigin: 'http://127.0.0.1:5173',
+  });
+  const right = buildArtifactCanvasPolicyVersion({
+    runtimePreviewOriginAllowlist: [
+      { hostname: 'dev.local', schemes: ['http'], ports: [4321, 5173] },
+    ],
+    scriptedPreviewProducerAllowlist: [],
+    catsShellOrigin: 'http://127.0.0.1:5173',
+  });
+  const producer = buildArtifactCanvasPolicyVersion({
+    ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+    scriptedPreviewProducerAllowlist: [
+      {
+        producerKind: 'tool',
+        producerIdentity: 'tool:cats_runtime_preview_bridge',
+      },
+    ],
+  });
+
+  assert.deepEqual(left, {
+    canonicalJson: PORT_REORDERED_CANONICAL_JSON,
+    policyVersion: PORT_REORDERED_POLICY_VERSION,
+  });
+  assert.deepEqual(right, left);
+  assert.deepEqual(producer, {
+    canonicalJson: PRODUCER_CANONICAL_JSON,
+    policyVersion: PRODUCER_POLICY_VERSION,
+  });
+  assert.notEqual(producer.policyVersion, DEFAULT_POLICY_VERSION);
+});
+
+test('Artifact Canvas runtime preview origin allowlist matches loopback and IPv6 safely', () => {
+  assert.equal(normalizeArtifactCanvasHostname('[::1]'), '::1');
+  assert.equal(
+    matchesArtifactCanvasRuntimePreviewOrigin('http://127.0.0.1:4321/preview'),
+    true,
+  );
+  assert.equal(
+    matchesArtifactCanvasRuntimePreviewOrigin('http://[::1]:5173/preview'),
+    true,
+  );
+  assert.equal(
+    matchesArtifactCanvasRuntimePreviewOrigin('https://example.com/preview'),
+    false,
+  );
+  assert.equal(
+    matchesArtifactCanvasRuntimePreviewOrigin('http://127.0.0.1:5173'),
+    false,
+    'Cats shell origin must demote even when it otherwise matches loopback.',
+  );
+});
+
+test('Artifact Canvas policy validates ports, schemes, credentials, and producer allowlist', () => {
+  assert.throws(
+    () =>
+      validateArtifactCanvasPolicyConfig({
+        ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+        runtimePreviewOriginAllowlist: [{ hostname: '', schemes: ['http'], ports: '*' }],
+      }),
+    /hostname is required/u,
+  );
+  assert.throws(
+    () =>
+      validateArtifactCanvasPolicyConfig({
+        ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+        runtimePreviewOriginAllowlist: [
+          { hostname: 'localhost', schemes: ['ftp' as 'http'], ports: '*' },
+        ],
+      }),
+    /Unsupported Artifact Canvas runtime preview scheme/u,
+  );
+  assert.throws(
+    () =>
+      validateArtifactCanvasPolicyConfig({
+        ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+        runtimePreviewOriginAllowlist: [
+          { hostname: 'localhost', schemes: ['http'], ports: [0] },
+        ],
+      }),
+    /Invalid Artifact Canvas runtime preview port/u,
+  );
+
+  assert.equal(
+    rejectArtifactCanvasCredentialUrl('https://user:pass@example.com/')?.code,
+    'artifact_canvas_url_credentials_not_allowed',
+  );
+  assert.equal(
+    canUseScriptedArtifactCanvasPreview({
+      producer: { kind: 'agent', producerIdentity: 'actor:cat-1' },
+    }),
+    false,
+  );
+
+  const allowlisted: ArtifactCanvasPolicyConfig = {
+    ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+    scriptedPreviewProducerAllowlist: [
+      { producerKind: 'tool', producerIdentity: 'tool:cats_runtime_preview_bridge' },
+    ],
+  };
+  assert.equal(
+    canUseScriptedArtifactCanvasPreview({
+      producer: { kind: 'tool', producerIdentity: 'tool:cats_runtime_preview_bridge' },
+      config: allowlisted,
+    }),
+    true,
+  );
+});
+
+test('Artifact Canvas iframe policy rejects unsafe schemes and demotes default producers', () => {
+  const rejected = resolveArtifactCanvasIframePolicy({
+    url: 'javascript:alert(1)',
+    artifactKind: 'preview',
+    producer: { kind: 'tool', producerIdentity: 'tool:cats_runtime_preview_bridge' },
+  });
+  assert.equal(rejected.status, 'rejected');
+  if (rejected.status === 'rejected') {
+    assert.equal(rejected.error.code, 'artifact_canvas_iframe_scheme_rejected');
+  }
+
+  const demoted = resolveArtifactCanvasIframePolicy({
+    url: 'http://127.0.0.1:4321/preview',
+    artifactKind: 'preview',
+    producer: { kind: 'agent', producerIdentity: 'actor:cat-1' },
+  });
+  assert.equal(demoted.status, 'accepted');
+  if (demoted.status === 'accepted') {
+    assert.equal(demoted.profile.name, 'static');
+  }
+
+  const scripted = resolveArtifactCanvasIframePolicy({
+    url: 'http://127.0.0.1:4321/preview',
+    artifactKind: 'preview',
+    producer: { kind: 'tool', producerIdentity: 'tool:cats_runtime_preview_bridge' },
+    config: {
+      ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+      scriptedPreviewProducerAllowlist: [
+        { producerKind: 'tool', producerIdentity: 'tool:cats_runtime_preview_bridge' },
+      ],
+    },
+  });
+  assert.equal(scripted.status, 'accepted');
+  if (scripted.status === 'accepted') {
+    assert.equal(scripted.profile.name, 'scripted-cross-origin');
+  }
+});
