@@ -4,6 +4,9 @@ import test from 'node:test';
 import {
   buildCodeApiArtifactPath,
   buildCodeApiCodespacePath,
+  buildCodeApiLivePreviewLogsPath,
+  buildCodeApiLivePreviewPath,
+  buildCodeApiLivePreviewStopPath,
   buildCodeApiRelayFanOutPath,
   buildCodeApiRelayRosterEntryPath,
   buildCodeApiRuntimeSessionObservePath,
@@ -22,6 +25,10 @@ import {
   CODE_API_DELIVERY_REPO_COMMIT_PATH,
   CODE_API_DELIVERY_REPO_PUSH_PATH,
   CODE_API_DELIVERY_REPO_STATUS_PATH,
+  CODE_API_LIVE_PREVIEWS_PATH,
+  CODE_API_LIVE_PREVIEW_DETAIL_PATH_TEMPLATE,
+  CODE_API_LIVE_PREVIEW_LOGS_PATH_TEMPLATE,
+  CODE_API_LIVE_PREVIEW_STOP_PATH_TEMPLATE,
   CODE_API_PREFIX,
   CODE_API_PREVIEWS_PATH,
   CODE_API_RELAY_FAN_OUT_PATH_TEMPLATE,
@@ -49,6 +56,7 @@ test('code api path helpers build stable collection and detail paths', () => {
   assert.equal(CODE_API_DELIVERY_REPO_PUSH_PATH, '/api/code/delivery/repo/push');
   assert.equal(CODE_API_DELIVERY_ARTIFACT_EXPORT_PATH, '/api/code/delivery/artifacts/export');
   assert.equal(CODE_API_RELAY_THREADS_PATH, '/api/code/relay/threads');
+  assert.equal(CODE_API_LIVE_PREVIEWS_PATH, '/api/code/live-previews');
   assert.equal(CODE_API_TASK_DETAIL_PATH_TEMPLATE, '/api/code/tasks/:taskId');
   assert.equal(CODE_API_TASK_EXECUTE_PATH_TEMPLATE, '/api/code/tasks/:taskId/execute');
   assert.equal(CODE_API_TASK_RESUME_PATH_TEMPLATE, '/api/code/tasks/:taskId/resume');
@@ -65,6 +73,15 @@ test('code api path helpers build stable collection and detail paths', () => {
     '/api/code/relay/threads/:threadId/roster/:agentId',
   );
   assert.equal(CODE_API_RELAY_FAN_OUT_PATH_TEMPLATE, '/api/code/relay/threads/:threadId/fan-out');
+  assert.equal(CODE_API_LIVE_PREVIEW_DETAIL_PATH_TEMPLATE, '/api/code/live-previews/:previewId');
+  assert.equal(
+    CODE_API_LIVE_PREVIEW_LOGS_PATH_TEMPLATE,
+    '/api/code/live-previews/:previewId/logs',
+  );
+  assert.equal(
+    CODE_API_LIVE_PREVIEW_STOP_PATH_TEMPLATE,
+    '/api/code/live-previews/:previewId/stop',
+  );
   assert.equal(buildCodeApiTaskPath(), '/api/code/tasks');
   assert.equal(buildCodeApiTaskPath('task/1'), '/api/code/tasks/task%2F1');
   assert.equal(buildCodeApiCodespacePath(), '/api/code/codespaces');
@@ -89,5 +106,18 @@ test('code api path helpers build stable collection and detail paths', () => {
   assert.equal(
     buildCodeApiRelayFanOutPath('thread/1'),
     '/api/code/relay/threads/thread%2F1/fan-out',
+  );
+  assert.equal(buildCodeApiLivePreviewPath(), '/api/code/live-previews');
+  assert.equal(
+    buildCodeApiLivePreviewPath('preview/1'),
+    '/api/code/live-previews/preview%2F1',
+  );
+  assert.equal(
+    buildCodeApiLivePreviewLogsPath('preview/1'),
+    '/api/code/live-previews/preview%2F1/logs',
+  );
+  assert.equal(
+    buildCodeApiLivePreviewStopPath('preview/1'),
+    '/api/code/live-previews/preview%2F1/stop',
   );
 });

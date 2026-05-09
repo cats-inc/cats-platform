@@ -25,6 +25,7 @@ import { routeCodeDeliveryApi } from './deliveryRoutes.js';
 import { routeCodeRuntimeBridgeApi } from './runtimeBridgeRoutes.js';
 import { routeCodeRelayApi } from './relayRoutes.js';
 import { routeCodeArtifactDeclarationApi } from './artifactDeclarationRoutes.js';
+import { routeCodeLivePreviewApi } from './livePreviewRoutes.js';
 import {
   matchRoute,
   sendJson,
@@ -32,6 +33,8 @@ import {
   type RouteContext,
 } from '../../../shared/http.js';
 import type { PlatformApiLogger } from '../../../shared/platformApiLogger.js';
+import type { LivePreviewStopResult } from '../livePreview/contracts.js';
+import type { LivePreviewLeaseStore } from '../livePreview/leaseStore.js';
 import {
   CODE_API_ARTIFACT_DETAIL_PATTERN,
   CODE_API_ARTIFACTS_PATH,
@@ -53,6 +56,8 @@ export interface CodeApiDependencies {
   logger?: PlatformApiLogger;
   evidenceDataDir?: string;
   readEvidenceEvents?: (conversationId: string) => EvidenceEvent[];
+  livePreviewStore?: LivePreviewLeaseStore;
+  stopLivePreview?: (previewId: string, reason?: string) => Promise<LivePreviewStopResult>;
   now?: () => Date;
 }
 
@@ -129,6 +134,9 @@ export async function routeCodeApi(
     return true;
   }
   if (await routeCodeArtifactDeclarationApi(context)) {
+    return true;
+  }
+  if (await routeCodeLivePreviewApi(context)) {
     return true;
   }
 
