@@ -8,6 +8,8 @@ import test from 'node:test';
 import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { upsertCoreArtifact } from '../src/core/model/planningRecords.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
+import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
+import { createParallelChatGroup } from '../src/products/chat/state/model/index.ts';
 import { FileChatStore, MemoryChatStore } from '../src/products/chat/state/store.ts';
 import {
   buildArtifactSubscriptionPatches,
@@ -18,7 +20,9 @@ import {
 } from '../src/platform/orchestration/entitySubscriptions/index.ts';
 import { routeEntitySubscriptionApi } from '../src/app/server/subscribeRoutes.ts';
 
-function createArtifactStore(): MemoryCoreStore {
+function createArtifactStore(
+  diagnosticReporter?: (scope: string, details: Record<string, unknown>) => void,
+): MemoryCoreStore {
   const core = upsertCoreArtifact(createDefaultCoreState(), {
     id: 'artifact-1',
     title: 'Initial artifact',
@@ -30,7 +34,29 @@ function createArtifactStore(): MemoryCoreStore {
     mimeType: 'text/plain',
     summary: 'Initial summary',
   }).core;
-  return new MemoryCoreStore(core);
+  return new MemoryCoreStore(core, diagnosticReporter);
+}
+
+function createChatStateWithProjectedCoreChange() {
+  return createParallelChatGroup(createDefaultChatState(), {
+    title: 'Projected core change',
+    originSurface: 'code',
+    repoPath: 'C:/repo/main',
+    targets: [
+      {
+        provider: 'claude',
+        instance: null,
+        model: 'claude-opus-4-6',
+        modelSelection: null,
+      },
+      {
+        provider: 'codex',
+        instance: null,
+        model: 'gpt-5.4',
+        modelSelection: null,
+      },
+    ],
+  }, new Date('2026-05-10T00:00:00.000Z'));
 }
 
 test('buildArtifactSubscriptionState projects the subscribed artifact', async () => {
@@ -125,31 +151,25 @@ test('GET /api/subscribe streams artifact snapshots and update patches', async (
 });
 
 test('MemoryCoreStore core listener failures do not abort writes', async () => {
-  const store = createArtifactStore();
-  const originalError = console.error;
-  const diagnostics: string[] = [];
-  console.error = (...args: unknown[]) => {
-    diagnostics.push(args.map(String).join(' '));
-  };
-  try {
-    store.subscribeCore(() => {
-      throw new Error('listener failed');
-    });
+  const diagnostics: Array<{ scope: string; details: Record<string, unknown> }> = [];
+  const store = createArtifactStore((scope, details) => {
+    diagnostics.push({ scope, details });
+  });
+  store.subscribeCore(() => {
+    throw new Error('listener failed');
+  });
 
-    const nextCore = await store.updateCore((core) => upsertCoreArtifact(core, {
-      ...core.artifacts[0]!,
-      title: 'Updated despite listener failure',
-    }).core);
+  const nextCore = await store.updateCore((core) => upsertCoreArtifact(core, {
+    ...core.artifacts[0]!,
+    title: 'Updated despite listener failure',
+  }).core);
 
-    assert.equal(nextCore.artifacts[0]?.title, 'Updated despite listener failure');
-  } finally {
-    console.error = originalError;
-  }
-
-  assert.match(diagnostics.join('\n'), /core_listener_failed/u);
+  assert.equal(nextCore.artifacts[0]?.title, 'Updated despite listener failure');
+  assert.equal(diagnostics[0]?.scope, 'core_listener_failed');
+  assert.equal(diagnostics[0]?.details.message, 'listener failed');
 });
 
-test('MemoryChatStore does not notify core subscribers for chat-only writes', async () => {
+test('MemoryChatStore notifies core subscribers only when chat writes change projected core', async () => {
   const store = new MemoryChatStore();
   let notifications = 0;
   store.subscribeCore(() => {
@@ -159,11 +179,14 @@ test('MemoryChatStore does not notify core subscribers for chat-only writes', as
   await store.write(await store.read());
   assert.equal(notifications, 0);
 
-  await store.writeCore(await store.readCore());
+  await store.write(createChatStateWithProjectedCoreChange());
+  assert.equal(notifications, 1);
+
+  await store.write(await store.read());
   assert.equal(notifications, 1);
 });
 
-test('FileChatStore does not notify core subscribers for chat-only writes', async (t) => {
+test('FileChatStore notifies core subscribers only when chat writes change projected core', async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), 'cats-platform-chat-store-'));
   t.after(async () => {
     await rm(directory, { recursive: true, force: true });
@@ -178,7 +201,10 @@ test('FileChatStore does not notify core subscribers for chat-only writes', asyn
   await store.write(await store.read());
   assert.equal(notifications, 0);
 
-  await store.writeCore(await store.readCore());
+  await store.write(createChatStateWithProjectedCoreChange());
+  assert.equal(notifications, 1);
+
+  await store.write(await store.read());
   assert.equal(notifications, 1);
 });
 

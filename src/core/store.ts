@@ -3,6 +3,10 @@ import { createDefaultCoreState } from './model/index.js';
 
 // Listener input is a snapshot and must be treated as read-only by subscribers.
 export type CoreStoreListener = (state: CatsCoreState) => void;
+export type CoreStoreDiagnosticReporter = (
+  scope: string,
+  details: Record<string, unknown>,
+) => void;
 
 export interface CoreStore {
   readCore(): Promise<CatsCoreState>;
@@ -16,9 +20,14 @@ export interface CoreStore {
 export class MemoryCoreStore implements CoreStore {
   #state: CatsCoreState;
   #listeners = new Set<CoreStoreListener>();
+  #diagnosticReporter: CoreStoreDiagnosticReporter;
 
-  constructor(initialState: CatsCoreState = createDefaultCoreState()) {
+  constructor(
+    initialState: CatsCoreState = createDefaultCoreState(),
+    diagnosticReporter: CoreStoreDiagnosticReporter = reportCoreStoreDiagnostic,
+  ) {
     this.#state = structuredClone(initialState);
+    this.#diagnosticReporter = diagnosticReporter;
   }
 
   async readCore(): Promise<CatsCoreState> {
@@ -51,7 +60,7 @@ export class MemoryCoreStore implements CoreStore {
       try {
         listener(snapshot);
       } catch (error) {
-        reportCoreStoreDiagnostic('core_listener_failed', {
+        this.#diagnosticReporter('core_listener_failed', {
           message: error instanceof Error ? error.message : String(error),
         });
       }
@@ -60,12 +69,12 @@ export class MemoryCoreStore implements CoreStore {
   }
 }
 
-function reportCoreStoreDiagnostic(
+const reportCoreStoreDiagnostic: CoreStoreDiagnosticReporter = (
   scope: string,
   details: Record<string, unknown>,
-): void {
+): void => {
   const serialized = Object.entries(details)
     .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
     .join(' ');
   console.error(`[cats-platform-core-store] ${scope}${serialized ? ` ${serialized}` : ''}`);
-}
+};

@@ -203,9 +203,9 @@ state to the target surface.
     lease authority, and canvas URL depend on the mounted surface. A matching
     artifact snapshot or patch is therefore an authoritative invalidation of
     `/api/canvas/.../artifacts/...`, not a full replacement for that projection
-    payload. Consumers may dedupe a fresh-mount snapshot against their own
-    first cold fetch of the projection endpoint, so long as no later patches are
-    dropped.
+    payload. Consumers may dedupe a snapshot received after their own cold
+    fetch of the corresponding projection endpoint, so long as no later patches
+    are dropped.
 
 ### Non-Functional Requirements
 
