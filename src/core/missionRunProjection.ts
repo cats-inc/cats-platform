@@ -1,3 +1,7 @@
+import {
+  classifyMissionVisibility,
+  type MissionVisibility,
+} from './missionVisibility.js';
 import type {
   CatsCoreState,
   CoreActorRecord,
@@ -20,6 +24,7 @@ export interface CoreMissionRunProjectionItem {
   assignedAgent: CoreActorRecord | null;
   linkedTask: CoreTaskRecord | null;
   linkedRun: CoreRunRecord | null;
+  visibility: MissionVisibility;
   updatedAt: string;
 }
 
@@ -48,6 +53,7 @@ export interface CoreMissionRunProjectionQuery {
   taskIds?: string[];
   runIds?: string[];
   hasRun?: boolean;
+  visibilities?: MissionVisibility[];
   limit?: number;
 }
 
@@ -115,6 +121,9 @@ function matchesQuery(
   if (query.hasRun !== undefined && (item.linkedRun !== null) !== query.hasRun) {
     return false;
   }
+  if (query.visibilities && !query.visibilities.includes(item.visibility)) {
+    return false;
+  }
   return true;
 }
 
@@ -165,6 +174,7 @@ export function buildMissionRunProjection(
         assignedAgent,
         linkedTask,
         linkedRun,
+        visibility: classifyMissionVisibility(mission),
         updatedAt,
       };
     })
