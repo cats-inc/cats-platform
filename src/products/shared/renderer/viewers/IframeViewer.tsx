@@ -4,6 +4,7 @@ import type {
 } from '../../artifactCanvas/contracts.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { resolveArtifactCanvasRendererSafeUrl } from './viewerUrl.js';
 
 export const ARTIFACT_CANVAS_RENDERER_STATIC_IFRAME_PROFILE:
   ArtifactCanvasIframeSandboxProfile = {
@@ -71,7 +72,7 @@ function resolveRendererIframeDecision(
   | {
       status: 'unsupported';
     } {
-  const safeUrl = input.safeUrl?.trim();
+  const safeUrl = resolveArtifactCanvasRendererSafeUrl(input.safeUrl);
   const profile = input.iframeSandboxProfile;
   if (!safeUrl || !profile) {
     return {
@@ -84,23 +85,10 @@ function resolveRendererIframeDecision(
     };
   }
 
-  let url: URL;
-  try {
-    url = new URL(safeUrl);
-  } catch {
-    return {
-      status: 'unsupported',
-    };
-  }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    return {
-      status: 'unsupported',
-    };
-  }
-
   const shellOrigin = typeof window === 'undefined'
     ? null
     : window.location.origin;
+  const url = new URL(safeUrl);
   const effectiveProfile =
     profile.name === 'scripted-cross-origin' && shellOrigin === url.origin
       ? ARTIFACT_CANVAS_RENDERER_STATIC_IFRAME_PROFILE

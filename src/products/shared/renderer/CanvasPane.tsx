@@ -9,7 +9,9 @@ import {
 } from '../artifactCanvas/contracts.js';
 import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../app/renderer/i18n/index.js';
+import { ImageViewer } from './viewers/ImageViewer.js';
 import { IframeViewer } from './viewers/IframeViewer.js';
+import { PdfViewer } from './viewers/PdfViewer.js';
 import { useArtifactCanvasSurfaceOutletContext } from './withSharedViewerRoutes.js';
 
 type CanvasPaneState =
@@ -166,14 +168,16 @@ function renderCanvasPaneBody(
   }
 
   const projection = state.projection;
+  if (projection.presentationResolved === 'image') {
+    return <ImageViewer projection={projection} />;
+  }
+  if (projection.presentationResolved === 'pdf') {
+    return <PdfViewer projection={projection} />;
+  }
   if (
     projection.safeUrl
     && projection.iframeSandboxProfile
-    && (
-      projection.presentationResolved === 'iframe'
-      || projection.presentationResolved === 'image'
-      || projection.presentationResolved === 'pdf'
-    )
+    && projection.presentationResolved === 'iframe'
   ) {
     return <IframeViewer projection={projection} />;
   }

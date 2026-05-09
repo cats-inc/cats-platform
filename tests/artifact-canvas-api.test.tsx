@@ -60,6 +60,46 @@ function createCanvasStore() {
     },
   }).core;
   core = upsertCoreArtifact(core, {
+    id: 'artifact-image',
+    title: 'Screenshot',
+    kind: 'attachment',
+    status: 'ready',
+    conversationId: 'conversation-canvas',
+    taskId: 'task-canvas',
+    path: 'http://127.0.0.1:4321/screenshot.png',
+    mimeType: 'image/png',
+    metadata: {
+      codeArtifactDeclaration: {
+        producerKind: 'agent',
+        producerIdentity: 'actor:cat-canvas',
+        location: {
+          kind: 'url',
+          value: 'http://127.0.0.1:4321/screenshot.png',
+        },
+      },
+    },
+  }).core;
+  core = upsertCoreArtifact(core, {
+    id: 'artifact-pdf',
+    title: 'Report PDF',
+    kind: 'report',
+    status: 'ready',
+    conversationId: 'conversation-canvas',
+    taskId: 'task-canvas',
+    path: 'http://127.0.0.1:4321/report.pdf',
+    mimeType: 'application/pdf',
+    metadata: {
+      codeArtifactDeclaration: {
+        producerKind: 'agent',
+        producerIdentity: 'actor:cat-canvas',
+        location: {
+          kind: 'url',
+          value: 'http://127.0.0.1:4321/report.pdf',
+        },
+      },
+    },
+  }).core;
+  core = upsertCoreArtifact(core, {
     id: 'artifact-credential-url',
     title: 'Credential URL',
     kind: 'preview',
@@ -127,6 +167,50 @@ test('GET /api/canvas returns a surface-scoped preview projection without writin
     'static',
   );
   assert.deepEqual(after.activities, before.activities);
+});
+
+test('GET /api/canvas resolves image and PDF media to dedicated presentations', async (t) => {
+  const store = createCanvasStore();
+  const server = createTestServer(store);
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const imageAuto = await request(
+    server,
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-image',
+  );
+  assert.equal(imageAuto.status, 200);
+  assert.equal(imageAuto.payload?.presentationRequested, 'auto');
+  assert.equal(imageAuto.payload?.presentationResolved, 'image');
+  assert.equal(
+    imageAuto.payload?.safeUrl,
+    'http://127.0.0.1:4321/screenshot.png',
+  );
+
+  const imageExplicit = await request(
+    server,
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-image/view/image',
+  );
+  assert.equal(imageExplicit.status, 200);
+  assert.equal(imageExplicit.payload?.presentationRequested, 'image');
+  assert.equal(imageExplicit.payload?.presentationResolved, 'image');
+
+  const pdfAuto = await request(
+    server,
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-pdf',
+  );
+  assert.equal(pdfAuto.status, 200);
+  assert.equal(pdfAuto.payload?.presentationRequested, 'auto');
+  assert.equal(pdfAuto.payload?.presentationResolved, 'pdf');
+  assert.equal(pdfAuto.payload?.safeUrl, 'http://127.0.0.1:4321/report.pdf');
+
+  const pdfExplicit = await request(
+    server,
+    '/api/canvas/code_task/task-canvas/artifacts/artifact-pdf/view/pdf',
+  );
+  assert.equal(pdfExplicit.status, 200);
+  assert.equal(pdfExplicit.payload?.presentationRequested, 'pdf');
+  assert.equal(pdfExplicit.payload?.presentationResolved, 'pdf');
 });
 
 test('GET /api/canvas surfaces missing, anchor, presentation, and URL policy errors', async (t) => {

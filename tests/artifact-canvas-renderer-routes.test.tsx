@@ -6,6 +6,11 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { Routes, StaticRouter } from 'react-router-dom';
 
+import type {
+  ArtifactCanvasProjection,
+} from '../src/products/shared/artifactCanvas/contracts.ts';
+import { ImageViewer } from '../src/products/shared/renderer/viewers/ImageViewer.tsx';
+import { PdfViewer } from '../src/products/shared/renderer/viewers/PdfViewer.tsx';
 import { withSharedViewerRoutes } from '../src/products/shared/renderer/withSharedViewerRoutes.tsx';
 
 test('Code routes register Artifact Canvas child routes for task and codespace surfaces', async () => {
@@ -43,3 +48,62 @@ test('shared viewer route renders parent and Artifact Canvas pane on nested canv
   assert.match(markup, /artifactCanvasSurfaceFrame/u);
   assert.match(markup, /artifactCanvasPane/u);
 });
+
+test('Artifact Canvas materialized viewers render image and PDF without iframe', async () => {
+  const canvasPaneSource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/CanvasPane.tsx'),
+    'utf8',
+  );
+  const imageMarkup = renderToStaticMarkup(
+    <ImageViewer
+      projection={createProjection('image', 'http://127.0.0.1:4321/artifact.png')}
+    />,
+  );
+  const pdfMarkup = renderToStaticMarkup(
+    <PdfViewer
+      projection={createProjection('pdf', 'http://127.0.0.1:4321/artifact.pdf')}
+    />,
+  );
+
+  assert.match(canvasPaneSource, /ImageViewer/u);
+  assert.match(canvasPaneSource, /PdfViewer/u);
+  assert.match(imageMarkup, /<img/u);
+  assert.doesNotMatch(imageMarkup, /<iframe/u);
+  assert.match(pdfMarkup, /<object/u);
+  assert.match(pdfMarkup, /type="application\/pdf"/u);
+  assert.doesNotMatch(pdfMarkup, /<iframe/u);
+});
+
+function createProjection(
+  presentationResolved: 'image' | 'pdf',
+  safeUrl: string,
+): ArtifactCanvasProjection {
+  return {
+    surface: { kind: 'code_task', surfaceId: 'task-canvas' },
+    artifact: {
+      id: `artifact-${presentationResolved}`,
+      title: `Artifact ${presentationResolved}`,
+      kind: 'attachment',
+      status: 'ready',
+      summary: null,
+      path: safeUrl,
+      mimeType: presentationResolved === 'image'
+        ? 'image/png'
+        : 'application/pdf',
+      sizeBytes: null,
+      updatedAt: '2026-05-09T00:00:00.000Z',
+    },
+    presentationRequested: 'auto',
+    presentationResolved,
+    iframeSandboxProfile: {
+      name: 'static',
+      sandbox: '',
+      referrerPolicy: 'no-referrer',
+      allow: '',
+    },
+    safeUrl,
+    externalUrl: safeUrl,
+    policyVersion: 'policy-v1',
+    error: null,
+  };
+}

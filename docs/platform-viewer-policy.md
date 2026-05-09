@@ -152,7 +152,7 @@ entity.
 
 | Entity (Core record) | Inherent-content viewer | Owning location | URL convention | Safety policy authority | Source of decision |
 |----------------------|-------------------------|-----------------|----------------|-------------------------|--------------------|
-| `CoreArtifactRecord` | `<CanvasPane>` (iframe / future image / pdf / code) | Platform primitive in `src/products/shared/renderer/` | `/<product>/<surface>/:id/canvas/:artifactId[/view/:presentation]` | Server: sandbox profile + origin allowlist + producer allowlist + scheme + credential reject + `policyVersion` | [SPEC-101](./specs/SPEC-101-cats-code-artifact-canvas.md), [ADR-098](./decisions/098-url-driven-canvas-and-platform-shared-viewer.md) |
+| `CoreArtifactRecord` | `<CanvasPane>` (`IframeViewer` / `ImageViewer` / `PdfViewer`; future code viewer) | Platform primitive in `src/products/shared/renderer/` | `/<product>/<surface>/:id/canvas/:artifactId[/view/:presentation]` | Server: sandbox profile + origin allowlist + producer allowlist + scheme + credential reject + `policyVersion` | [SPEC-101](./specs/SPEC-101-cats-code-artifact-canvas.md), [ADR-098](./decisions/098-url-driven-canvas-and-platform-shared-viewer.md) |
 
 Future entries are added via the SPEC / ADR that introduces the viewer.
 Each row records what the viewer is, where it lives, the URL

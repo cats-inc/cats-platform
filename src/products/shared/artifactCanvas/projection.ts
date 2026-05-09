@@ -188,18 +188,24 @@ function resolveProjectionPresentation(input: {
   presentationRequested: ArtifactCanvasPresentationInput;
 }): ArtifactCanvasProjection['presentationResolved'] | null {
   if (input.presentationRequested === 'auto') {
+    if (input.safeUrl && isImagePresentationArtifact(input.artifact, input.safeUrl)) {
+      return 'image';
+    }
+    if (input.safeUrl && isPdfPresentationArtifact(input.artifact, input.safeUrl)) {
+      return 'pdf';
+    }
     return input.safeUrl ? 'iframe' : 'unsupported';
   }
   if (input.presentationRequested === 'iframe') {
     return input.safeUrl ? 'iframe' : null;
   }
   if (input.presentationRequested === 'image') {
-    return input.safeUrl && input.artifact.mimeType?.startsWith('image/')
+    return input.safeUrl && isImagePresentationArtifact(input.artifact, input.safeUrl)
       ? 'image'
       : null;
   }
   if (input.presentationRequested === 'pdf') {
-    return input.safeUrl && input.artifact.mimeType === 'application/pdf'
+    return input.safeUrl && isPdfPresentationArtifact(input.artifact, input.safeUrl)
       ? 'pdf'
       : null;
   }
@@ -211,7 +217,43 @@ function resolveProjectionPresentation(input: {
   return null;
 }
 
-function resolveArtifactCanvasProducer(artifact: CoreArtifactRecord): ArtifactCanvasProducerIdentity {
+function isImagePresentationArtifact(
+  artifact: CoreArtifactRecord,
+  safeUrl: string,
+): boolean {
+  return artifact.mimeType?.startsWith('image/') === true
+    || hasPathExtension(safeUrl, [
+      '.avif',
+      '.bmp',
+      '.gif',
+      '.jpeg',
+      '.jpg',
+      '.png',
+      '.svg',
+      '.webp',
+    ]);
+}
+
+function isPdfPresentationArtifact(
+  artifact: CoreArtifactRecord,
+  safeUrl: string,
+): boolean {
+  return artifact.mimeType === 'application/pdf'
+    || hasPathExtension(safeUrl, ['.pdf']);
+}
+
+function hasPathExtension(safeUrl: string, extensions: string[]): boolean {
+  try {
+    const pathname = new URL(safeUrl).pathname.toLowerCase();
+    return extensions.some((extension) => pathname.endsWith(extension));
+  } catch {
+    return false;
+  }
+}
+
+function resolveArtifactCanvasProducer(
+  artifact: CoreArtifactRecord,
+): ArtifactCanvasProducerIdentity {
   const declaration = readCodeArtifactDeclarationMetadata(artifact.metadata);
   const idempotency = asRecord(declaration?.idempotency);
   const producerKind =
