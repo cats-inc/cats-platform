@@ -232,6 +232,127 @@ test('validateRunLinkage accepts a fully anchored run', () => {
   assert.deepEqual(validateRunLinkage(core, run), []);
 });
 
+test('validateMissionLinkage flags a broken parentMissionId metadata reference', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-orphan-parent',
+      title: 'Orphan parent mission',
+      status: 'queued',
+      metadata: { parentMissionId: 'mission-missing' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  const mission = core.missions.find((candidate) => candidate.id === 'mission-orphan-parent');
+  assert.ok(mission);
+
+  const diagnostics = validateMissionLinkage(core, mission);
+  assert.equal(diagnostics.length, 1);
+  assert.equal(diagnostics[0]?.anchor, 'parent_mission');
+  assert.equal(diagnostics[0]?.referencedId, 'mission-missing');
+});
+
+test('validateMissionLinkage flags broken transport_ingress trigger references', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-transport',
+      title: 'Transport-triggered mission',
+      status: 'queued',
+      metadata: {
+        trigger: {
+          kind: 'transport_ingress',
+          transportBindingId: 'binding-missing',
+          conversationId: 'conversation-missing',
+          receivedAt: '2026-05-09T01:00:00.000Z',
+        },
+      },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  const mission = core.missions.find((candidate) => candidate.id === 'mission-transport');
+  assert.ok(mission);
+
+  const anchors = validateMissionLinkage(core, mission)
+    .map((diagnostic) => diagnostic.anchor)
+    .sort();
+  assert.deepEqual(anchors, ['trigger_conversation', 'trigger_transport_binding']);
+});
+
+test('validateMissionLinkage flags broken workflow_continuation trigger references', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-continued',
+      title: 'Workflow-continued mission',
+      status: 'queued',
+      metadata: {
+        trigger: {
+          kind: 'workflow_continuation',
+          parentMissionId: 'mission-missing',
+          parentRunId: 'run-missing',
+          continuedAt: '2026-05-09T01:00:00.000Z',
+        },
+      },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  const mission = core.missions.find((candidate) => candidate.id === 'mission-continued');
+  assert.ok(mission);
+
+  const anchors = validateMissionLinkage(core, mission)
+    .map((diagnostic) => diagnostic.anchor)
+    .sort();
+  assert.deepEqual(anchors, ['trigger_parent_mission', 'trigger_parent_run']);
+});
+
+test('validateMissionLinkage stays silent when trigger references resolve', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-parent',
+      title: 'Parent',
+      status: 'completed',
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-parent',
+      title: 'Parent run',
+      status: 'completed',
+      orchestratorActorId: null,
+    },
+    new Date('2026-04-14T22:00:30.000Z'),
+  ).core;
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-continued',
+      title: 'Continued mission',
+      status: 'queued',
+      metadata: {
+        trigger: {
+          kind: 'workflow_continuation',
+          parentMissionId: 'mission-parent',
+          parentRunId: 'run-parent',
+          continuedAt: '2026-05-09T01:00:00.000Z',
+        },
+      },
+    },
+    new Date('2026-04-14T22:01:00.000Z'),
+  ).core;
+  const mission = core.missions.find((candidate) => candidate.id === 'mission-continued');
+  assert.ok(mission);
+
+  assert.deepEqual(validateMissionLinkage(core, mission), []);
+});
+
 test('validateCoreMissionRunLinkages aggregates per-record diagnostics', () => {
   let core = createDefaultCoreState();
   core = upsertCoreMission(

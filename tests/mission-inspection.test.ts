@@ -119,7 +119,7 @@ test('inspectMission surfaces linkage diagnostics and broken-link lineage for un
   const anchors = inspection?.linkageDiagnostics
     .map((diagnostic) => diagnostic.anchor)
     .sort();
-  assert.deepEqual(anchors, ['conversation', 'metadata_run']);
+  assert.deepEqual(anchors, ['conversation', 'metadata_run', 'parent_mission']);
   assert.equal(inspection?.visibility, 'requires_review');
   assert.equal(inspection?.runs.length, 0);
   assert.equal(inspection?.lineage.brokenLinkAt, 'mission-also-missing');

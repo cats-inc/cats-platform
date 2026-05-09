@@ -1,3 +1,4 @@
+import { readMissionTriggerEventFromMetadata } from './missionTriggers.js';
 import type {
   CatsCoreState,
   CoreRunRecord,
@@ -10,7 +11,12 @@ export type MissionLinkageDiagnosticAnchor =
   | 'source_turn'
   | 'source_lane'
   | 'assigned_agent'
-  | 'metadata_run';
+  | 'metadata_run'
+  | 'parent_mission'
+  | 'trigger_transport_binding'
+  | 'trigger_conversation'
+  | 'trigger_parent_mission'
+  | 'trigger_parent_run';
 
 export interface MissionLinkageDiagnostic {
   missionId: string;
@@ -34,6 +40,11 @@ export interface RunLinkageDiagnostic {
 
 function readMissionMetadataRunId(mission: MissionRecord): string | null {
   const value = mission.metadata.runId;
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function readMissionMetadataParentMissionId(mission: MissionRecord): string | null {
+  const value = mission.metadata.parentMissionId;
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
@@ -104,6 +115,71 @@ export function validateMissionLinkage(
       referencedId: metadataRunId,
       reason: 'missing_record',
     });
+  }
+  const parentMissionId = readMissionMetadataParentMissionId(mission);
+  if (parentMissionId !== null
+    && !recordExistsById(core.missions, parentMissionId)) {
+    diagnostics.push({
+      missionId: mission.id,
+      anchor: 'parent_mission',
+      referencedId: parentMissionId,
+      reason: 'missing_record',
+    });
+  }
+
+  // Trigger event anchors. The trigger union carries optional
+  // references to other canonical records; broken refs there are also
+  // canonical breakage even though they live under metadata.
+  const trigger = readMissionTriggerEventFromMetadata(mission.metadata);
+  if (trigger !== null) {
+    if (trigger.kind === 'transport_ingress') {
+      if (
+        trigger.transportBindingId !== null
+        && !recordExistsById(core.transportBindings, trigger.transportBindingId)
+      ) {
+        diagnostics.push({
+          missionId: mission.id,
+          anchor: 'trigger_transport_binding',
+          referencedId: trigger.transportBindingId,
+          reason: 'missing_record',
+        });
+      }
+      if (
+        trigger.conversationId !== null
+        && !recordExistsById(core.conversations, trigger.conversationId)
+      ) {
+        diagnostics.push({
+          missionId: mission.id,
+          anchor: 'trigger_conversation',
+          referencedId: trigger.conversationId,
+          reason: 'missing_record',
+        });
+      }
+    }
+    if (trigger.kind === 'workflow_continuation') {
+      if (
+        trigger.parentMissionId !== null
+        && !recordExistsById(core.missions, trigger.parentMissionId)
+      ) {
+        diagnostics.push({
+          missionId: mission.id,
+          anchor: 'trigger_parent_mission',
+          referencedId: trigger.parentMissionId,
+          reason: 'missing_record',
+        });
+      }
+      if (
+        trigger.parentRunId !== null
+        && !recordExistsById(core.runs, trigger.parentRunId)
+      ) {
+        diagnostics.push({
+          missionId: mission.id,
+          anchor: 'trigger_parent_run',
+          referencedId: trigger.parentRunId,
+          reason: 'missing_record',
+        });
+      }
+    }
   }
 
   return diagnostics;
