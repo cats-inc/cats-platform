@@ -178,6 +178,63 @@ test('findSessionsForTransportBinding only returns matching sessions', () => {
   assert.equal(bSessions[0]?.id, 'session-b');
 });
 
+test('buildTransportBindingObservabilitySnapshot reads metadata.bindingId hint produced by createBotTransportBindings', async () => {
+  const { createBotTransportBindings } = await import(
+    '../src/products/chat/state/core-projection/entities.js'
+  );
+  const botBindings = [
+    {
+      id: 'bot-binding-将将',
+      platform: 'telegram' as const,
+      botName: '将将_bot',
+      orchestratorActorId: 'actor-orchestrator-global',
+      catActorId: 'agent-cat-将将',
+      bossCatActorId: null,
+      botToken: null,
+      webhookSecret: null,
+      inboundMode: 'webhook' as const,
+      roomMode: 'direct_message' as const,
+      status: 'active' as const,
+      outboundFanoutEnabled: false,
+      createdAt: '2026-04-14T22:00:00.000Z',
+      updatedAt: '2026-04-14T22:00:00.000Z',
+    },
+  ];
+  const transportBindings = createBotTransportBindings(botBindings);
+  let core = createDefaultCoreState();
+  core = {
+    ...core,
+    transportBindings: [...core.transportBindings, ...transportBindings],
+  };
+
+  const snapshot = buildTransportBindingObservabilitySnapshot(
+    core,
+    transportBindings[0]!.id,
+  );
+
+  assert.ok(snapshot);
+  assert.equal(snapshot?.botBindingIdHint, 'bot-binding-将将');
+  assert.equal(snapshot?.platform, 'telegram');
+});
+
+test('buildTransportBindingObservabilitySnapshot still honors the legacy botBindingId metadata key', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreTransportBinding(
+    core,
+    {
+      id: 'binding-legacy',
+      platform: 'telegram',
+      direction: 'inbound',
+      status: 'active',
+      metadata: { botBindingId: 'bot-binding-legacy' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+
+  const snapshot = buildTransportBindingObservabilitySnapshot(core, 'binding-legacy');
+  assert.equal(snapshot?.botBindingIdHint, 'bot-binding-legacy');
+});
+
 test('buildAllTransportBindingObservabilitySnapshots covers every binding', () => {
   let core = createDefaultCoreState();
   core = upsertCoreTransportBinding(

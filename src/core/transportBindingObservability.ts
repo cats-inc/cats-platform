@@ -26,7 +26,17 @@ import type {
   TurnId,
 } from './types.js';
 
-export const TRANSPORT_BINDING_METADATA_BOT_BINDING_KEY = 'botBindingId' as const;
+// Bot-binding-id metadata key.
+//
+// The chat-side projection that materializes Telegram bot bindings into
+// canonical TransportBindingRecord rows already stamps `bindingId` on
+// the binding metadata (see `src/products/chat/state/core-projection/
+// entities.ts` — `bindingId: binding.id`). Reading a different key
+// here would silently miss every real-world binding, so we honor that
+// canonical key. `botBindingId` is kept as a back-compat fallback for
+// fixtures or future writers that adopt the more explicit name.
+export const TRANSPORT_BINDING_METADATA_BOT_BINDING_KEY = 'bindingId' as const;
+export const TRANSPORT_BINDING_METADATA_BOT_BINDING_LEGACY_KEY = 'botBindingId' as const;
 
 export interface TransportBindingObservabilitySessionSnapshot {
   sessionId: SessionId;
@@ -61,8 +71,16 @@ export interface TransportBindingObservabilitySnapshot {
 }
 
 function readBotBindingHint(binding: TransportBindingRecord): string | null {
-  const value = binding.metadata[TRANSPORT_BINDING_METADATA_BOT_BINDING_KEY];
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+  const candidates = [
+    binding.metadata[TRANSPORT_BINDING_METADATA_BOT_BINDING_KEY],
+    binding.metadata[TRANSPORT_BINDING_METADATA_BOT_BINDING_LEGACY_KEY],
+  ];
+  for (const value of candidates) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return null;
 }
 
 function projectSessionSnapshot(
