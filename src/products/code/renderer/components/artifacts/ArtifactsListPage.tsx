@@ -85,9 +85,19 @@ export function ArtifactsListPage(): JSX.Element {
     setLoading(true);
     setError(null);
 
+    const serverFilters: Parameters<typeof fetchCodeArtifacts>[1] = {
+      excludeUndeclaredSourceEdits: true,
+    };
+    if (filter !== 'all') {
+      serverFilters.kind = filter;
+    }
+    if (statusFilter !== 'all') {
+      serverFilters.status = statusFilter;
+    }
+
     void fetchCodeArtifacts(
       t(messageKeys.codeArtifactListLoadFailed),
-      { excludeUndeclaredSourceEdits: true },
+      serverFilters,
     )
       .then((payload) => {
         if (cancelled) return;
@@ -106,20 +116,16 @@ export function ArtifactsListPage(): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [filter, statusFilter, t]);
 
+  // Server already applies kind / status / declared-only filters through the
+  // query string above. Just sort the returned page by recency for display.
   const visible = useMemo(() => {
-    const byKind = filter === 'all'
-      ? artifacts
-      : artifacts.filter((a) => a.kind === filter);
-    const byStatus = statusFilter === 'all'
-      ? byKind
-      : byKind.filter((a) => a.status === statusFilter);
-    return [...byStatus].sort(
+    return [...artifacts].sort(
       (a, b) =>
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
-  }, [artifacts, filter, statusFilter]);
+  }, [artifacts]);
 
   return (
     <div className="codeArtifactsList">
