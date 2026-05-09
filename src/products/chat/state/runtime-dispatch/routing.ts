@@ -15,6 +15,7 @@ import type {
 } from '../../api/contracts.js';
 import { createCatActorId } from '../../../../core/actors.js';
 import type { CatsCoreState } from '../../../../core/types.js';
+import { resolveTransportBindingDirectLane } from '../../../../core/transportBindingDirectLane.js';
 import {
   upsertCoreLane,
   upsertCoreSegment,
@@ -2943,6 +2944,58 @@ export async function beginChannelMessageDispatch(
 ): Promise<BegunChannelMessageDispatch> {
   let nextState = state;
   const channelBeforeMessage = requireChannel(nextState, channelId);
+  // Inbound transport-binding pre-flight: when a caller (Telegram
+  // bridge, future API ingress) explicitly supplies a transport
+  // binding id, verify it actually resolves to a direct-lane
+  // conversation BEFORE producing any user-message records or
+  // downstream dispatch state. If the resolver short-circuits
+  // (binding_not_found / no_conversation_linked /
+  // conversation_not_direct_lane / binding_disabled / binding_archived),
+  // append a diagnostic system message and bail. Inbound dispatches
+  // without a chatStore (rare, mostly tests) skip this gate because
+  // the resolver needs the canonical core state.
+  if (options.transportBindingId && options.chatStore) {
+    const inboundCoreSnapshot = await options.chatStore.readCore();
+    const inboundBindingResolution = resolveTransportBindingDirectLane(
+      inboundCoreSnapshot,
+      options.transportBindingId,
+    );
+    if (inboundBindingResolution.status !== 'resolved') {
+      const diagnostic = appendMessage(
+        nextState,
+        channelId,
+        {
+          senderKind: 'system',
+          senderName: 'Runtime',
+          body: `Inbound transport binding ${options.transportBindingId} is not ready for dispatch: ${
+            inboundBindingResolution.reason ?? inboundBindingResolution.status
+          }`,
+        },
+        now,
+        {
+          metadata: {
+            event: 'transport_binding_inbound_rejected',
+            transportBindingId: options.transportBindingId,
+            status: inboundBindingResolution.status,
+            reason: inboundBindingResolution.reason,
+          },
+        },
+      );
+      nextState = diagnostic.state;
+      nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+      options.onStateWritten?.(channelId);
+      return {
+        state: nextState,
+        results: [],
+        preparedTurn: null,
+        // No user message is produced when the binding is broken; the
+        // diagnostic system message stands in to keep the contract on
+        // BegunChannelMessageDispatch.userMessage non-null.
+        userMessage: diagnostic.message,
+        providerAgentDecision: null,
+      };
+    }
+  }
   const deterministicRoutingPlan = options.deterministicRoutingPlan ?? null;
   const productIntentSource = resolveProductIntentCommandSource(options.transport);
   const implicitProductIntentChoice = resolveImplicitProductIntentChoice({
