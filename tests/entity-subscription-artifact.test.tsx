@@ -208,6 +208,29 @@ test('FileChatStore notifies core subscribers only when chat writes change proje
   assert.equal(notifications, 1);
 });
 
+test('MemoryCoreStore writeCore and updateCore only notify on substantive change', async () => {
+  const store = createArtifactStore();
+  let notifications = 0;
+  store.subscribeCore(() => {
+    notifications += 1;
+  });
+
+  await store.writeCore(await store.readCore());
+  assert.equal(notifications, 0);
+
+  await store.updateCore((core) => core);
+  assert.equal(notifications, 0);
+
+  await store.updateCore((core) => upsertCoreArtifact(core, {
+    ...core.artifacts[0]!,
+    title: 'Substantive update',
+  }).core);
+  assert.equal(notifications, 1);
+
+  await store.updateCore((core) => core);
+  assert.equal(notifications, 1);
+});
+
 test('GET /api/subscribe emits artifact removal patch before closing', async (t) => {
   const store = createArtifactStore();
   const server = createArtifactSubscriptionServer(store);

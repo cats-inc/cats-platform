@@ -4,7 +4,11 @@ import path from 'node:path';
 
 import type { ChatState } from '../api/contracts.js';
 import type { CatsCoreState } from '../../../core/types.js';
-import type { CoreStore, CoreStoreListener } from '../../../core/store.js';
+import {
+  hasSubstantiveCoreChange,
+  type CoreStore,
+  type CoreStoreListener,
+} from '../../../core/store.js';
 import { createDefaultChatState } from './defaults.js';
 import { createDefaultCoreState } from '../../../core/model/index.js';
 import { syncCoreStateWithChatState } from './core-projection/index.js';
@@ -39,23 +43,6 @@ export interface ChatStore extends CoreStore {
 type CoreStateMutator = (
   state: CatsCoreState,
 ) => CatsCoreState | Promise<CatsCoreState>;
-
-function serializeCoreStateForNotification(core: CatsCoreState): string {
-  const comparable: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(core)) {
-    if (key !== 'updatedAt') {
-      comparable[key] = value;
-    }
-  }
-  return JSON.stringify(comparable);
-}
-
-function hasSubstantiveCoreChange(
-  previous: CatsCoreState,
-  next: CatsCoreState,
-): boolean {
-  return serializeCoreStateForNotification(previous) !== serializeCoreStateForNotification(next);
-}
 
 async function writePersistedChatSnapshot(
   filePath: string,
@@ -275,8 +262,12 @@ export class FileChatStore implements ChatStore {
 
   async writeSnapshot(chat: ChatState, core: CatsCoreState): Promise<PersistedChatSnapshot> {
     return this.runExclusive(async () => {
+      const previousCore = extractCoreState(await this.readPersistedSnapshotUnsafe());
       const persisted = await this.writeSnapshotUnsafe(chat, core);
-      this.emitCoreChange(extractCoreState(persisted));
+      const nextCore = extractCoreState(persisted);
+      if (hasSubstantiveCoreChange(previousCore, nextCore)) {
+        this.emitCoreChange(nextCore);
+      }
       return persisted;
     });
   }
@@ -296,18 +287,28 @@ export class FileChatStore implements ChatStore {
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
     return this.runExclusive(async () => {
-      const currentChat = (await this.readPersistedSnapshotUnsafe()).chat;
-      const persisted = await this.writeSnapshotUnsafe(currentChat, state);
-      return this.emitCoreChange(extractCoreState(persisted));
+      const currentSnapshot = await this.readPersistedSnapshotUnsafe();
+      const previousCore = extractCoreState(currentSnapshot);
+      const persisted = await this.writeSnapshotUnsafe(currentSnapshot.chat, state);
+      const nextCore = extractCoreState(persisted);
+      if (hasSubstantiveCoreChange(previousCore, nextCore)) {
+        return this.emitCoreChange(nextCore);
+      }
+      return nextCore;
     });
   }
 
   async updateCore(mutator: CoreStateMutator): Promise<CatsCoreState> {
     return this.runExclusive(async () => {
       const current = await this.readPersistedSnapshotUnsafe();
-      const nextCore = await mutator(structuredClone(extractCoreState(current)));
+      const previousCore = extractCoreState(current);
+      const nextCore = await mutator(structuredClone(previousCore));
       const persisted = await this.writeSnapshotUnsafe(current.chat, nextCore);
-      return this.emitCoreChange(extractCoreState(persisted));
+      const persistedCore = extractCoreState(persisted);
+      if (hasSubstantiveCoreChange(previousCore, persistedCore)) {
+        return this.emitCoreChange(persistedCore);
+      }
+      return persistedCore;
     });
   }
 
@@ -341,17 +342,16 @@ export class MemoryChatStore implements ChatStore {
   }
 
   async writeSnapshot(chat: ChatState, core: CatsCoreState): Promise<PersistedChatSnapshot> {
+    const previousCore = this.coreState;
     const snapshot = this.applySnapshotState(chat, core);
-    this.emitCoreChange();
+    if (hasSubstantiveCoreChange(previousCore, this.coreState)) {
+      this.emitCoreChange();
+    }
     return structuredClone(snapshot);
   }
 
   async write(state: ChatState): Promise<ChatState> {
-    const previousCore = structuredClone(this.coreState);
-    this.applySnapshotState(state, previousCore);
-    if (hasSubstantiveCoreChange(previousCore, this.coreState)) {
-      this.emitCoreChange();
-    }
+    await this.writeSnapshot(state, this.coreState);
     return structuredClone(this.chatState);
   }
 

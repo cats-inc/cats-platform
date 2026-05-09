@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import type { CatsCoreState } from './types.js';
 import { createDefaultCoreState } from './model/index.js';
 
@@ -7,6 +9,30 @@ export type CoreStoreDiagnosticReporter = (
   scope: string,
   details: Record<string, unknown>,
 ) => void;
+
+// Fields on `CatsCoreState` that change on every write but do not carry
+// semantic meaning for downstream subscribers. Add to this set if the shape
+// ever grows other write-time-only metadata (e.g., `revisionId`,
+// `lastSyncedAt`); otherwise spurious listener notifications will fire on
+// every write.
+const IGNORED_NOTIFICATION_FIELDS: ReadonlySet<string> = new Set(['updatedAt']);
+
+function withoutIgnoredFields(core: CatsCoreState): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(core)) {
+    if (!IGNORED_NOTIFICATION_FIELDS.has(key)) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+export function hasSubstantiveCoreChange(
+  previous: CatsCoreState,
+  next: CatsCoreState,
+): boolean {
+  return !isDeepStrictEqual(withoutIgnoredFields(previous), withoutIgnoredFields(next));
+}
 
 export interface CoreStore {
   readCore(): Promise<CatsCoreState>;
@@ -35,16 +61,24 @@ export class MemoryCoreStore implements CoreStore {
   }
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
+    const previous = this.#state;
     this.#state = structuredClone(state);
-    return this.#emitCoreChange();
+    if (hasSubstantiveCoreChange(previous, this.#state)) {
+      return this.#emitCoreChange();
+    }
+    return structuredClone(this.#state);
   }
 
   async updateCore(
     mutator: (state: CatsCoreState) => CatsCoreState | Promise<CatsCoreState>,
   ): Promise<CatsCoreState> {
+    const previous = this.#state;
     const next = await mutator(structuredClone(this.#state));
     this.#state = structuredClone(next);
-    return this.#emitCoreChange();
+    if (hasSubstantiveCoreChange(previous, this.#state)) {
+      return this.#emitCoreChange();
+    }
+    return structuredClone(this.#state);
   }
 
   subscribeCore(listener: CoreStoreListener): () => void {
