@@ -5,6 +5,8 @@ import {
   createDefaultCoreState,
   upsertCoreActor,
   upsertCoreMission,
+  upsertCoreRun,
+  upsertCoreTask,
   upsertCoreWorkItem,
 } from '../src/core/model/index.js';
 import { buildMissionRunProjection } from '../src/core/missionRunProjection.js';
@@ -107,6 +109,91 @@ test('buildMissionRunProjection classifies each mission with the canonical visib
   assert.equal(byId.get('mission-internal')?.visibility, 'internal');
   assert.equal(byId.get('mission-review-flagged')?.visibility, 'requires_review');
   assert.equal(byId.get('mission-explicit-internal')?.visibility, 'internal');
+});
+
+test('buildMissionRunProjection taskIds filter matches both linkedTask and runs[].taskId', () => {
+  let core = createDefaultCoreState();
+  core = seedAgent(core, 'agent-cat-a');
+  // Mission A: linked through managed work -> task-via-work
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-via-work',
+      title: 'Task linked through managed work',
+      ownerActorId: 'agent-cat-a',
+      orchestratorActorId: null,
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-via-run',
+      title: 'Task only surfaced through run',
+      ownerActorId: 'agent-cat-a',
+      orchestratorActorId: null,
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreWorkItem(
+    core,
+    {
+      id: 'work-item-1',
+      title: 'Work A',
+      ownerActorId: 'agent-cat-a',
+      taskId: 'task-via-work',
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-with-linked-task',
+      title: 'Mission with managed-work task',
+      managedWorkId: 'work-item-1',
+      status: 'running',
+    },
+    new Date('2026-04-14T22:00:30.000Z'),
+  ).core;
+  // Mission B: only run-side back-reference points at task-via-run.
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-on-task-via-run',
+      title: 'Run',
+      status: 'running',
+      taskId: 'task-via-run',
+      orchestratorActorId: null,
+      metadata: { missionId: 'mission-via-run-task' },
+    },
+    new Date('2026-04-14T22:01:00.000Z'),
+  ).core;
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-via-run-task',
+      title: 'Mission whose task only surfaces via run',
+      status: 'running',
+    },
+    new Date('2026-04-14T22:01:30.000Z'),
+  ).core;
+
+  const linkedHit = buildMissionRunProjection(core, { taskIds: ['task-via-work'] });
+  assert.deepEqual(
+    linkedHit.items.map((item) => item.mission.id),
+    ['mission-with-linked-task'],
+  );
+
+  const runHit = buildMissionRunProjection(core, { taskIds: ['task-via-run'] });
+  assert.deepEqual(
+    runHit.items.map((item) => item.mission.id),
+    ['mission-via-run-task'],
+  );
+
+  const both = buildMissionRunProjection(core, {
+    taskIds: ['task-via-work', 'task-via-run'],
+  });
+  assert.equal(both.items.length, 2);
 });
 
 test('buildMissionRunProjection filters by visibilities query', () => {

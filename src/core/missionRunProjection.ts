@@ -114,11 +114,15 @@ function matchesQuery(
   ) {
     return false;
   }
-  if (
-    query.taskIds
-    && !query.taskIds.includes(item.linkedTask?.id ?? '')
-  ) {
-    return false;
+  if (query.taskIds) {
+    const taskIdSet = new Set(query.taskIds);
+    const linkedTaskMatches = item.linkedTask !== null
+      && taskIdSet.has(item.linkedTask.id);
+    const runTaskMatches = item.runs.some((run) =>
+      run.taskId !== null && taskIdSet.has(run.taskId));
+    if (!linkedTaskMatches && !runTaskMatches) {
+      return false;
+    }
   }
   if (query.runIds) {
     const runIdSet = new Set(query.runIds);
