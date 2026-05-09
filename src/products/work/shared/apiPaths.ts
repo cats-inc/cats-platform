@@ -64,6 +64,7 @@ export const WORK_API_RUN_STOP_PATTERN =
 export const WORK_API_MISSION_CANCEL_PATTERN =
   /^\/api\/work\/missions\/([^/]+)\/cancel$/u;
 export const WORK_API_LINK_DETAIL_PATTERN = /^\/api\/work\/links\/([^/]+)$/u;
+export const WORK_API_MISSION_DETAIL_PATTERN = /^\/api\/work\/missions\/([^/]+)$/u;
 export const WORK_API_LINK_DETAIL_PATH_TEMPLATE = `${WORK_API_LINKS_PATH}/:linkId`;
 
 export function buildWorkApiLinkPath(linkId?: string | null): string {
@@ -103,6 +104,10 @@ export function buildWorkApiScheduleTestFirePath(scheduleId: string): string {
 
 export function buildWorkApiRunStopPath(runId: string): string {
   return `${buildWorkApiDetailPath(WORK_API_RUNS_PATH, runId)}/stop`;
+}
+
+export function buildWorkApiMissionPath(missionId?: string | null): string {
+  return buildWorkApiDetailPath(WORK_API_MISSIONS_PATH, missionId);
 }
 
 export function buildWorkApiMissionCancelPath(missionId: string): string {

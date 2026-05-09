@@ -38,6 +38,7 @@ import { startProviderAgentRunLoop } from '../../../platform/orchestration/index
 import { buildWorkTaskRuntimeExecutionRequest } from '../state/taskExecutionRequest.js';
 import {
   buildWorkDashboardProjection,
+  buildWorkMissionDetailProjection,
   buildWorkMissionListProjection,
   buildWorkProjectDetailProjection,
   buildWorkProjectListProjection,
@@ -47,7 +48,9 @@ import {
   buildWorkWorkItemDetailProjection,
   buildWorkWorkItemListProjection,
   type WorkDashboardProjection,
+  type WorkMissionDetailProjection,
   type WorkMissionListProjection,
+  type WorkMissionListProjectionOptions,
   type WorkProjectDetailProjection,
   type WorkRunListProjection,
   type WorkSupervisedRunLaunchProjection,
@@ -69,6 +72,7 @@ import {
   buildWorkApiProjectPath,
   buildWorkApiTaskPath,
   buildWorkApiWorkItemPath,
+  WORK_API_MISSION_DETAIL_PATTERN,
   WORK_API_MISSIONS_PATH,
   WORK_API_PREFIX,
   WORK_API_PROJECT_DETAIL_PATTERN,
@@ -328,8 +332,16 @@ export function createWorkRunListPayload(
 
 export function createWorkMissionListPayload(
   core: Awaited<ReturnType<CoreStore['readCore']>>,
+  options: WorkMissionListProjectionOptions = {},
 ): WorkMissionListProjection {
-  return buildWorkMissionListProjection(core);
+  return buildWorkMissionListProjection(core, options);
+}
+
+export function createWorkMissionDetailPayload(
+  core: Awaited<ReturnType<CoreStore['readCore']>>,
+  missionId: string,
+): WorkMissionDetailProjection | null {
+  return buildWorkMissionDetailProjection(core, missionId);
 }
 
 export function createWorkProjectDetailPayload(
@@ -500,11 +512,54 @@ export async function routeWorkApi(
       return true;
     }
 
+    const includeInternal = context.url.searchParams.get('includeInternal') === 'true';
     sendJson(
       context.response,
       200,
-      createWorkMissionListPayload(await context.dependencies.coreStore.readCore()),
+      createWorkMissionListPayload(
+        await context.dependencies.coreStore.readCore(),
+        { includeInternal },
+      ),
     );
+    return true;
+  }
+
+  const missionDetailMatch = matchRoute(
+    context.url.pathname,
+    WORK_API_MISSION_DETAIL_PATTERN,
+  );
+  if (missionDetailMatch) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+
+    const missionId = missionDetailMatch[0];
+    if (!missionId) {
+      sendJson(context.response, 400, {
+        error: {
+          code: 'invalid_mission_id',
+          message: 'Mission id is required.',
+        },
+      });
+      return true;
+    }
+
+    const detail = createWorkMissionDetailPayload(
+      await context.dependencies.coreStore.readCore(),
+      missionId,
+    );
+    if (detail === null) {
+      sendJson(context.response, 404, {
+        error: {
+          code: 'mission_not_found',
+          message: `Mission ${missionId} does not exist.`,
+        },
+      });
+      return true;
+    }
+
+    sendJson(context.response, 200, detail);
     return true;
   }
 
