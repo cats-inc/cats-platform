@@ -21,6 +21,7 @@ import {
   labelCodeRecordStatusForLocale,
   labelCodeWorkspaceStatusForLocale,
 } from '../codeStatusLabels.js';
+import { LivePreviewPanel } from '../LivePreviewPanel.js';
 import './workspaces.css';
 
 function labelWorkspaceSource(
@@ -277,6 +278,8 @@ export function WorkspaceDetailPage(): JSX.Element {
             </div>
           </div>
         </section>
+
+        <LivePreviewPanel surfaceKind="code_codespace" surfaceId={workspace.id} />
 
         <section className="codeWorkspaceDetail__section">
           <header className="codeWorkspaceDetail__sectionHeader">

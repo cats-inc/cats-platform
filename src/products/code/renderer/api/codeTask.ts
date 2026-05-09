@@ -10,6 +10,9 @@ import type {
 import {
   buildCodeApiArtifactPath,
   buildCodeApiCodespacePath,
+  buildCodeApiLivePreviewLogsPath,
+  buildCodeApiLivePreviewPath,
+  buildCodeApiLivePreviewStopPath,
   buildCodeApiRuntimeSessionObservePath,
   buildCodeApiTaskExecutePath,
   buildCodeApiTaskPath,
@@ -26,6 +29,7 @@ import {
   CODE_API_TASKS_PATH,
 } from '../../shared/apiPaths.js';
 import { messageKeys, t as translate } from '../../../../shared/i18n/index.js';
+import type { CanvasSurfaceKind } from '../../../shared/artifactCanvas/contracts.js';
 
 export interface CreateCodeTaskInput {
   title: string;
@@ -135,6 +139,70 @@ export interface RuntimeObservationSession {
 
 export interface RuntimeObservationResponse extends Record<string, unknown> {
   session?: RuntimeObservationSession;
+}
+
+export type CodeLivePreviewSurfaceKind = Extract<
+  CanvasSurfaceKind,
+  'code_codespace' | 'code_task'
+>;
+
+export type CodeLivePreviewStatus =
+  | 'expired'
+  | 'failed'
+  | 'ready'
+  | 'starting'
+  | 'stopped'
+  | 'stopping';
+
+export interface CodeLivePreviewDiagnostic {
+  code: string;
+  severity: 'error' | 'info' | 'warning';
+  message: string;
+}
+
+export interface CodeLivePreviewSummary {
+  previewId: string;
+  commandProfileId: string;
+  surface: {
+    kind: CanvasSurfaceKind;
+    surfaceId: string;
+  };
+  workspace: {
+    id: string;
+    rootPath: string;
+  };
+  origin: string;
+  status: CodeLivePreviewStatus;
+  artifactId: string | null;
+  createdAt: string;
+  readyAt: string | null;
+  expiresAt: string;
+  stoppedAt: string | null;
+  stopReason: string | null;
+  diagnostic: CodeLivePreviewDiagnostic | null;
+}
+
+export interface CodeLivePreviewDetail extends CodeLivePreviewSummary {
+  host: string;
+  port: number;
+  processId: number | null;
+  logPath: string;
+  logs: string | null;
+}
+
+export interface CodeLivePreviewListResponse {
+  previews: CodeLivePreviewSummary[];
+}
+
+export interface CodeLivePreviewLogsResponse {
+  previewId: string;
+  logs: string;
+}
+
+export interface CodeLivePreviewStopResponse {
+  status: 'accepted';
+  previewId: string;
+  stopReason: string;
 }
 
 export interface CodeArtifactSummary {
@@ -456,6 +524,42 @@ export async function fetchCodeWorkspaceDetail(
   );
 }
 
+export async function fetchCodeLivePreviews(
+  surfaceKind: CodeLivePreviewSurfaceKind,
+  surfaceId: string,
+  errorMessage = translate(messageKeys.codeLivePreviewErrorLoad),
+): Promise<CodeLivePreviewListResponse> {
+  const searchParams = new URLSearchParams({ surfaceKind, surfaceId });
+  const response = await fetchJsonOrNullOnStatus<CodeLivePreviewListResponse>(
+    `${buildCodeApiLivePreviewPath()}?${searchParams.toString()}`,
+    [503],
+    errorMessage,
+  );
+  return response ?? { previews: [] };
+}
+
+export async function fetchCodeLivePreviewLogs(
+  previewId: string,
+  errorMessage = translate(messageKeys.codeLivePreviewErrorLogs),
+): Promise<CodeLivePreviewLogsResponse> {
+  return fetchJson<CodeLivePreviewLogsResponse>(
+    buildCodeApiLivePreviewLogsPath(previewId),
+    errorMessage,
+  );
+}
+
+export async function stopCodeLivePreview(
+  previewId: string,
+  errorMessage = translate(messageKeys.codeLivePreviewErrorStop),
+): Promise<CodeLivePreviewStopResponse> {
+  return postJson<CodeLivePreviewStopResponse>(
+    buildCodeApiLivePreviewStopPath(previewId),
+    {},
+    'POST',
+    errorMessage,
+  );
+}
+
 export async function observeRuntimeSession(
   sessionId: string,
   errorMessage = translate(messageKeys.codeBuilderRuntimeObservationFailed),
@@ -469,6 +573,25 @@ export async function observeRuntimeSession(
 async function fetchJson<T>(url: string, errorMessage: string): Promise<T> {
   try {
     const response = await fetch(url);
+    return await expectCodeJson<T>(response, errorMessage);
+  } catch (error) {
+    if (error instanceof Error && error.message === errorMessage) {
+      throw error;
+    }
+    throw new Error(errorMessage);
+  }
+}
+
+async function fetchJsonOrNullOnStatus<T>(
+  url: string,
+  emptyStatuses: readonly number[],
+  errorMessage: string,
+): Promise<T | null> {
+  try {
+    const response = await fetch(url);
+    if (emptyStatuses.includes(response.status)) {
+      return null;
+    }
     return await expectCodeJson<T>(response, errorMessage);
   } catch (error) {
     if (error instanceof Error && error.message === errorMessage) {

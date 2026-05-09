@@ -13,6 +13,7 @@ import {
 import type { CodeTaskBuilderDetailSummary } from '../../shared/taskDetailSummary.js';
 import { CodeExecutionSummaryPanel } from './CodeExecutionSummaryPanel.js';
 import { CodeWorkspaceSummaryPanel } from './CodeWorkspaceSummaryPanel.js';
+import { LivePreviewPanel } from './LivePreviewPanel.js';
 
 export function CodeTaskDetailPage(): JSX.Element {
   const { taskId } = useParams<{ taskId: string }>();
@@ -102,6 +103,7 @@ export function CodeTaskDetailPage(): JSX.Element {
         provider={null}
         model={null}
       />
+      <LivePreviewPanel surfaceKind="code_task" surfaceId={detail.taskId} />
       {detail.summary ? (
         <section className="operatorPanel">
           <div className="operatorPanelHeader">

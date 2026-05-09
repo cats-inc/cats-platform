@@ -222,6 +222,88 @@
   background: rgba(255, 255, 255, 0.76);
 }
 
+/* Live preview */
+
+.codeLivePreviewPanel {
+  align-self: stretch;
+}
+
+.codeLivePreviewDescription {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.codeLivePreviewCard {
+  display: grid;
+  gap: 10px;
+}
+
+.codeLivePreviewMeta,
+.codeLivePreviewActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.codeLivePreviewMeta {
+  color: var(--muted-soft);
+  font-size: 0.75rem;
+}
+
+.codeLivePreviewDiagnostic {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(196, 101, 58, 0.08);
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.codeLivePreviewDiagnostic.is-error {
+  border: 1px solid rgba(182, 68, 50, 0.28);
+}
+
+.codeLivePreviewDiagnostic.is-warning {
+  border: 1px solid rgba(191, 146, 73, 0.34);
+}
+
+.codeLivePreviewStatus--ready {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.codeLivePreviewStatus--failed,
+.codeLivePreviewStatus--expired {
+  background: rgba(182, 68, 50, 0.08);
+  color: #9f3025;
+}
+
+.codeLivePreviewStatus--starting,
+.codeLivePreviewStatus--stopping {
+  background: var(--warm-bg);
+  color: var(--warm-text);
+}
+
+.codeLivePreviewStatus--stopped {
+  background: var(--muted-bg);
+  color: var(--muted-text);
+}
+
+.codeLivePreviewLogs {
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #15110f;
+  color: #f7eee7;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
 /* Delivery */
 
 .codeDeliveryCommitForm {

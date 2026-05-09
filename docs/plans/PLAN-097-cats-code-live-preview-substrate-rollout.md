@@ -72,7 +72,7 @@ spawning.
       read projection for Cats Code surfaces.
 - [x] Task 3.2: Add Cats Code API routes for listing previews by surface,
       reading one preview, stopping one preview, and reading bounded logs.
-- [ ] Task 3.3: Add renderer affordances on Code task/codespace surfaces for
+- [x] Task 3.3: Add renderer affordances on Code task/codespace surfaces for
       preview status, stop, retry, and logs.
 - [x] Task 3.4: Add diagnostics mapping for port conflict, command disabled,
       readiness timeout, process exit, and cleanup failure.
@@ -172,6 +172,7 @@ not bypass the existing viewer contract.
 | 2026-05-09 | Completed Phase 1 contracts/config/validation: added live-preview profile and lease types, disabled-by-default config, strict profile/start-request validation, service registry port-range documentation, and tests proving raw command fields cannot bypass profiles. Checked the project-bootstrap registry for `47100-47199` conflicts before documenting the candidate range. No supervisor or process spawning is enabled. |
 | 2026-05-09 | Completed Phase 2 supervisor core with an injected process adapter and readiness probe. Tests cover ready start, spawn failure, readiness timeout, unexpected exit, stop idempotency, concurrency and port limits, expiry, bounded logs, and cleanup failure. No real process adapter is provided or enabled. |
 | 2026-05-09 | Added the Phase 3 API/read-model seam: in-memory lease store, live-preview summary/detail projections, diagnostics mapping, Code API paths/routes for list/detail/logs/stop, and route tests. Task 3.3 renderer affordances remain pending. |
+| 2026-05-09 | Completed Phase 3 renderer affordances by mounting the live-preview panel on Code task and codespace surfaces, adding status/stop/retry/log controls, i18n strings, and renderer/API helper tests. Retry remains disabled until the start route is approved in a later phase. |
 
 ---
 
