@@ -207,6 +207,11 @@ function buildAgentCodeMetrics(
 
   let runCount = 0;
   let lastRunActivityAt: string | null = null;
+  // Track every run id that ended up in this agent's scope so the
+  // artifact bridge below can attribute run-only artifacts (artifacts
+  // with `runId` set but no `taskId` / `conversationId`) without
+  // re-deriving the run scope rules.
+  const codeRunIds = new Set<string>();
   for (const run of runs) {
     const conversation = run.conversationId
       ? conversationIndex.get(run.conversationId)
@@ -222,6 +227,7 @@ function buildAgentCodeMetrics(
       continue;
     }
     runCount += 1;
+    codeRunIds.add(run.id);
     lastRunActivityAt = maxIso(
       lastRunActivityAt,
       run.completedAt,
@@ -236,6 +242,14 @@ function buildAgentCodeMetrics(
     // Strong attribution: artifact attached to a task this agent is
     // already scoped into.
     if (artifact.taskId !== null && codeTaskIds.has(artifact.taskId)) {
+      artifactCount += 1;
+      continue;
+    }
+    // Run-only attribution: code artifact materialization sometimes
+    // writes `runId` without `taskId` (see
+    // `src/products/code/state/artifactMaterialization.ts`). The
+    // artifact still belongs to whichever Cat owned the run.
+    if (artifact.runId !== null && codeRunIds.has(artifact.runId)) {
       artifactCount += 1;
       continue;
     }

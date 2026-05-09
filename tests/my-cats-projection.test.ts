@@ -294,6 +294,59 @@ test('buildMyCatsProjection scopes code metrics to code-thread conversations', (
   assert.equal(projection.summary.agentsWithCodeRuns, 2);
 });
 
+test('buildMyCatsProjection counts run-only code artifacts under the run orchestrator', () => {
+  let core = createDefaultCoreState();
+  core = seedAgent(core, { id: 'agent-builder', name: 'BuilderCat', kind: 'worker' });
+  core = seedAgent(core, { id: 'agent-bystander', name: 'BystanderCat', kind: 'worker' });
+  core = upsertCoreConversation(
+    core,
+    {
+      id: 'conversation-code-1',
+      title: 'Code thread',
+      kind: 'code_thread',
+      participantActorIds: ['agent-builder'],
+    },
+    new Date('2026-04-15T08:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-builder',
+      title: 'Builder run',
+      status: 'running',
+      conversationId: 'conversation-code-1',
+      orchestratorActorId: 'agent-builder',
+    },
+    new Date('2026-04-15T08:01:00.000Z'),
+  ).core;
+  // Run-only artifact (no taskId, no conversationId) — the legitimate
+  // shape produced by code artifact materialization that previously
+  // never reached any agent because there was no anchor to bridge on.
+  core = upsertCoreArtifact(
+    core,
+    {
+      id: 'artifact-run-only',
+      title: 'Run-only build artifact',
+      kind: 'build',
+      runId: 'run-builder',
+      taskId: null,
+      conversationId: null,
+      createdAt: '2026-04-15T08:02:00.000Z',
+    },
+    new Date('2026-04-15T08:02:00.000Z'),
+  ).core;
+
+  const projection = buildMyCatsProjection(core);
+  const builder = projection.agents.find((entry) => entry.agent.id === 'agent-builder');
+  const bystander = projection.agents.find((entry) => entry.agent.id === 'agent-bystander');
+
+  // BuilderCat owns the run that produced the artifact.
+  assert.equal(builder?.code.artifactCount, 1);
+  // BystanderCat is unrelated; the run-only attribution should NOT
+  // leak across agents.
+  assert.equal(bystander?.code.artifactCount, 0);
+});
+
 test('buildMyCatsProjection scopes conversation-anchored code artifacts to actual participants', () => {
   let core = createDefaultCoreState();
   core = seedAgent(core, { id: 'agent-builder', name: 'BuilderCat', kind: 'worker' });
