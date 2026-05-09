@@ -281,6 +281,8 @@ function readActivityCategory(activity: CoreActivityRecord): CoreTaskTimelineCat
     case 'checkpoint_recorded':
       return 'workflow';
     case 'artifact_recorded':
+    case 'artifact_canvas_show_intent':
+    case 'artifact_canvas_clear_intent':
       return 'execution';
     case 'status_change':
     case 'work_item_updated':
@@ -300,6 +302,10 @@ function buildActivityTitle(activity: CoreActivityRecord): string {
       return 'Operator action';
     case 'artifact_recorded':
       return 'Artifact recorded';
+    case 'artifact_canvas_show_intent':
+      return 'Artifact canvas show intent';
+    case 'artifact_canvas_clear_intent':
+      return 'Artifact canvas clear intent';
     case 'checkpoint_recorded':
       return 'Checkpoint recorded';
     case 'work_item_updated':

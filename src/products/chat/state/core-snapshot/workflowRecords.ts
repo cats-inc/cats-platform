@@ -275,6 +275,8 @@ export function normalizeCoreActivity(rawActivity: unknown): CoreActivityRecord 
     || rawKind === 'approval_decided'
     || rawKind === 'operator_action'
     || rawKind === 'artifact_recorded'
+    || rawKind === 'artifact_canvas_show_intent'
+    || rawKind === 'artifact_canvas_clear_intent'
     || rawKind === 'checkpoint_recorded'
     || rawKind === 'work_item_updated'
   )

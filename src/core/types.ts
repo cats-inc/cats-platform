@@ -711,6 +711,8 @@ export type CoreActivityKind =
   | 'approval_decided'
   | 'operator_action'
   | 'artifact_recorded'
+  | 'artifact_canvas_show_intent'
+  | 'artifact_canvas_clear_intent'
   | 'checkpoint_recorded'
   | 'work_item_updated';
 

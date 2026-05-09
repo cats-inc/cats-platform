@@ -192,6 +192,8 @@ export function severityForActivity(activity: CoreActivityRecord): ChatOperatorS
     case 'operator_action':
       return 'progress';
     case 'status_change':
+    case 'artifact_canvas_show_intent':
+    case 'artifact_canvas_clear_intent':
       return 'progress';
     default:
       return 'muted';
@@ -229,6 +231,8 @@ export function labelForActivity(activity: CoreActivityRecord): string {
     case 'status_change':
       return 'Status';
     case 'artifact_recorded':
+    case 'artifact_canvas_show_intent':
+    case 'artifact_canvas_clear_intent':
       return 'Artifact';
     case 'work_item_updated':
       return 'Update';

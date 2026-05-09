@@ -200,12 +200,12 @@ process-supervision and security review (Phase 4).
       currently subscribed for the target surface, the server does not
       queue the intent for later automatic navigation. The Activity
       record / tool result remain the durable audit.
-- [ ] Task 1.11: Extend `CoreActivityKind` in `src/core/types.ts` with
+- [x] Task 1.11: Extend `CoreActivityKind` in `src/core/types.ts` with
       `artifact_canvas_show_intent` and `artifact_canvas_clear_intent`.
       Update any Activity filters / projections / tests that enumerate
       known kinds so the audit records are first-class Core Activity
       records, not undocumented metadata.
-- [ ] Task 1.12: Add Activity anchor invariant tests. For
+- [x] Task 1.12: Add Activity anchor invariant tests. For
       `code_task`, `work_task`, `work_item`, `work_project`, and
       `chat_conversation`, top-level Activity anchors are source of
       truth for surface identity, and metadata `surfaceId` /
@@ -623,6 +623,7 @@ this plan before Phase 4 approval.
 | 2026-05-09 | Implementation slice started: added the platform-shared Artifact Canvas contract / route-registry module and iframe-policy module with route round-trip and policyVersion test vectors. This lands the reusable foundation for Tasks 1.1 / 1.2 / 1.6-1.9, but platform config boot wiring, projection routes, assistant effects, and render-intent stream remain pending before those tasks can be marked complete. |
 | 2026-05-09 | Added the read-only surface-scoped projection delegate for `/api/canvas/:surfaceKind/:surfaceId/artifacts/:artifactId[/view/:presentation]`, including anchor validation, URL policy enforcement, unsupported-pane projection, and no-write route coverage. This completes the first implementation pass for Task 1.4; platform config overrides and renderer consumption are still pending. |
 | 2026-05-09 | Wired `artifactCanvas` viewer policy into `AppConfig` with flat JSON env overrides for runtime-preview origins and scripted-preview producers, boot-time validation, and projection-route consumption. This completes the config portion of Tasks 1.6 / 1.7, with runtime reload publication still pending under Task 1.8 / 1.10. |
+| 2026-05-09 | Promoted `artifact_canvas_show_intent` / `artifact_canvas_clear_intent` into first-class Core Activity kinds, updated Activity filters / timeline / operator metadata, and added the shared audit writer with source-anchor derivation, conflict fail-fast checks, historical task-surface snapshot coverage, and private `intentId` non-persistence tests. This completes Tasks 1.11 / 1.12; ack security tests remain under Task 1.13. |
 
 ---
 

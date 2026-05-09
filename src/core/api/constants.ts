@@ -265,6 +265,8 @@ export const CORE_ACTIVITY_KINDS = [
   'approval_decided',
   'operator_action',
   'artifact_recorded',
+  'artifact_canvas_show_intent',
+  'artifact_canvas_clear_intent',
   'checkpoint_recorded',
   'work_item_updated',
 ] as const satisfies readonly CoreActivityKind[];
