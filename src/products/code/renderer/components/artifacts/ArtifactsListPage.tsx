@@ -25,6 +25,8 @@ type CodeArtifactKind =
 
 type KindFilter = 'all' | CodeArtifactKind;
 
+type StatusFilter = 'all' | 'draft' | 'ready' | 'published' | 'archived';
+
 const FILTER_ORDER: readonly KindFilter[] = [
   'all',
   'build',
@@ -34,6 +36,14 @@ const FILTER_ORDER: readonly KindFilter[] = [
   'attachment',
   'transcript_export',
   'dataset',
+];
+
+const STATUS_FILTER_ORDER: readonly StatusFilter[] = [
+  'all',
+  'draft',
+  'ready',
+  'published',
+  'archived',
 ];
 
 function formatRelative(iso: string, locale: string): string {
@@ -68,6 +78,7 @@ export function ArtifactsListPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<KindFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   useEffect(() => {
     let cancelled = false;
@@ -98,14 +109,17 @@ export function ArtifactsListPage(): JSX.Element {
   }, [t]);
 
   const visible = useMemo(() => {
-    const base = filter === 'all'
+    const byKind = filter === 'all'
       ? artifacts
       : artifacts.filter((a) => a.kind === filter);
-    return [...base].sort(
+    const byStatus = statusFilter === 'all'
+      ? byKind
+      : byKind.filter((a) => a.status === statusFilter);
+    return [...byStatus].sort(
       (a, b) =>
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
-  }, [artifacts, filter]);
+  }, [artifacts, filter, statusFilter]);
 
   return (
     <div className="codeArtifactsList">
@@ -138,6 +152,29 @@ export function ArtifactsListPage(): JSX.Element {
         </div>
         <div className="channelTopBarEnd" />
       </header>
+      <div className="codeArtifactsList__statusBar" role="toolbar">
+        <span className="codeArtifactsList__statusBarLabel">
+          {t(messageKeys.codeArtifactListStatusFilterLabel)}
+        </span>
+        {STATUS_FILTER_ORDER.map((status) => (
+          <button
+            key={status}
+            type="button"
+            className={[
+              'codeArtListTopBar__filterBtn',
+              statusFilter === status ? 'codeArtListTopBar__filterBtn--active' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => setStatusFilter(status)}
+            aria-pressed={statusFilter === status}
+          >
+            {status === 'all'
+              ? t(messageKeys.codeArtifactListAllFilter)
+              : labelCodeArtifactStatusForLocale(status, t)}
+          </button>
+        ))}
+      </div>
       <main className="codeArtifactsList__main">
         {loading && visible.length === 0 ? (
           <p className="codeArtifactsList__empty">{t(messageKeys.codeArtifactListLoading)}</p>

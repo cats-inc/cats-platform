@@ -24,6 +24,7 @@ const ARTIFACT_STATUS_LABEL_KEYS: Record<string, MessageKey> = {
   draft: messageKeys.codeArtifactStatusDraft,
   ready: messageKeys.codeArtifactStatusReady,
   published: messageKeys.codeArtifactStatusPublished,
+  archived: messageKeys.codeArtifactStatusArchived,
 };
 
 const CONVERSATION_KIND_LABEL_KEYS: Record<string, MessageKey> = {

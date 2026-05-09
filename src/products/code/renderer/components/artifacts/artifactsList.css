@@ -229,6 +229,23 @@ main.canvas:has(> .codeArtifactDetail) {
   color: var(--muted-text);
 }
 
+.codeArtifactsList__statusBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+  flex-wrap: wrap;
+}
+
+.codeArtifactsList__statusBarLabel {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--muted-text);
+  margin-right: 4px;
+}
+
 .codeArtifactsList__producerPill {
   font-size: 0.62rem;
   font-weight: 500;
