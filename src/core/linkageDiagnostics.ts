@@ -1,4 +1,4 @@
-// Aggregate linkage diagnostics across the entire core state.
+// Aggregate canonical linkage diagnostics across the entire core state.
 //
 // Existing per-record helpers (`validateMissionLinkage`,
 // `validateRunLinkage`, `resolveTransportBindingDirectLane`) cover one
@@ -6,11 +6,19 @@
 // inspection panels often need the platform-wide picture: "what is
 // currently broken across the canonical record set?"
 //
-// `buildCoreLinkageDiagnostics` walks every mission, run, and
-// transport binding once and produces one structured report grouped by
-// record family. Each section preserves the original diagnostic shape
-// so consumers do not lose detail; the report adds a top-level
-// summary for quick triage.
+// Scope discipline: this report flags **canonical record breakage**
+// only — references that point to records the rest of the core does
+// not contain. Operator-intentional states (a transport binding that
+// is `disabled` or `archived`) are NOT broken; they should not show
+// up here. Bindings whose `direction` is not `inbound` also do not
+// participate in direct-lane ingress, so failing the direct-lane
+// resolver against them would only produce noise.
+//
+// Direct-lane *ingress readiness* (which is a separate concern — it
+// asks "can this transport binding accept inbound messages right now?"
+// and includes operator-state diagnostics) lives in
+// `transportBindingDirectLane.ts` via `resolveTransportBindingDirectLane`.
+// Callers that need the broader view should compose both.
 
 import {
   findOrphanedMissionLinkages,
@@ -20,14 +28,22 @@ import {
 } from './missionLinkageValidation.js';
 import {
   resolveTransportBindingDirectLane,
-  type TransportDirectLaneResolution,
   type TransportDirectLaneStatus,
 } from './transportBindingDirectLane.js';
-import type { CatsCoreState } from './types.js';
+import type {
+  CatsCoreState,
+  TransportBindingRecord,
+} from './types.js';
+
+/** Transport-binding statuses that this canonical report treats as
+ *  "broken anchor" rather than "intentional operator state". */
+export type TransportBindingBrokenStatus =
+  | 'no_conversation_linked'
+  | 'conversation_not_direct_lane';
 
 export interface TransportBindingDiagnostic {
   transportBindingId: string;
-  status: TransportDirectLaneStatus;
+  status: TransportBindingBrokenStatus;
   reason: string | null;
 }
 
@@ -45,22 +61,37 @@ export interface CoreLinkageDiagnosticsReport {
   transportBindings: TransportBindingDiagnostic[];
 }
 
-const TRANSPORT_BINDING_HEALTHY_STATUSES: ReadonlySet<TransportDirectLaneStatus> = new Set([
-  'resolved',
+const BROKEN_DIRECT_LANE_STATUSES: ReadonlySet<TransportDirectLaneStatus> = new Set([
+  'no_conversation_linked',
+  'conversation_not_direct_lane',
 ]);
 
-function summarizeTransportBindingResolution(
-  resolution: TransportDirectLaneResolution,
+function shouldRunDirectLaneCheckOn(binding: TransportBindingRecord): boolean {
+  // Operator-intentional states do not represent canonical record
+  // breakage and should not appear in this aggregate report.
+  if (binding.status !== 'active') {
+    return false;
+  }
+  // Bindings that are not inbound do not feed a direct-lane ingress
+  // path, so the direct-lane resolver is not the right linter for
+  // them.
+  return binding.direction === 'inbound';
+}
+
+function summarizeTransportBindingDirectLane(
+  binding: TransportBindingRecord,
+  core: CatsCoreState,
 ): TransportBindingDiagnostic | null {
-  if (TRANSPORT_BINDING_HEALTHY_STATUSES.has(resolution.status)) {
+  if (!shouldRunDirectLaneCheckOn(binding)) {
     return null;
   }
-  if (!resolution.binding) {
+  const resolution = resolveTransportBindingDirectLane(core, binding.id);
+  if (!BROKEN_DIRECT_LANE_STATUSES.has(resolution.status)) {
     return null;
   }
   return {
-    transportBindingId: resolution.binding.id,
-    status: resolution.status,
+    transportBindingId: binding.id,
+    status: resolution.status as TransportBindingBrokenStatus,
     reason: resolution.reason,
   };
 }
@@ -73,8 +104,7 @@ export function buildCoreLinkageDiagnostics(
 
   const transportBindings: TransportBindingDiagnostic[] = [];
   for (const binding of core.transportBindings) {
-    const resolution = resolveTransportBindingDirectLane(core, binding.id);
-    const diagnostic = summarizeTransportBindingResolution(resolution);
+    const diagnostic = summarizeTransportBindingDirectLane(binding, core);
     if (diagnostic !== null) {
       transportBindings.push(diagnostic);
     }

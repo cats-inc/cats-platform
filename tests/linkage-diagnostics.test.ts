@@ -50,12 +50,13 @@ test('buildCoreLinkageDiagnostics aggregates mission / run / transport binding i
     },
     new Date('2026-04-14T22:01:00.000Z'),
   ).core;
-  // Transport binding pointing at a non-existent conversation.
+  // Inbound transport binding pointing at a non-existent conversation.
   core = upsertCoreTransportBinding(
     core,
     {
       id: 'binding-stale',
       platform: 'telegram',
+      direction: 'inbound',
       conversationId: 'conversation-deleted',
       status: 'active',
     },
@@ -76,6 +77,7 @@ test('buildCoreLinkageDiagnostics aggregates mission / run / transport binding i
     {
       id: 'binding-healthy',
       platform: 'telegram',
+      direction: 'inbound',
       conversationId: 'conversation-direct-1',
       status: 'active',
     },
@@ -96,7 +98,7 @@ test('buildCoreLinkageDiagnostics aggregates mission / run / transport binding i
   assert.equal(report.transportBindings[0]?.status, 'no_conversation_linked');
 });
 
-test('buildCoreLinkageDiagnostics also flags disabled / archived bindings as transport diagnostics', () => {
+test('buildCoreLinkageDiagnostics treats disabled / archived bindings as healthy operator state', () => {
   let core = createDefaultCoreState();
   core = upsertCoreConversation(
     core,
@@ -112,13 +114,71 @@ test('buildCoreLinkageDiagnostics also flags disabled / archived bindings as tra
     {
       id: 'binding-disabled',
       platform: 'telegram',
+      direction: 'inbound',
       conversationId: 'conversation-direct-1',
       status: 'disabled',
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreTransportBinding(
+    core,
+    {
+      id: 'binding-archived',
+      platform: 'telegram',
+      direction: 'inbound',
+      conversationId: 'conversation-direct-1',
+      status: 'archived',
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+
+  const report = buildCoreLinkageDiagnostics(core);
+  assert.equal(report.summary.transportBindingDiagnosticCount, 0);
+});
+
+test('buildCoreLinkageDiagnostics ignores non-inbound bindings (no direct-lane ingress to validate)', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreTransportBinding(
+    core,
+    {
+      id: 'binding-bidirectional',
+      platform: 'internal',
+      direction: 'bidirectional',
+      conversationId: null,
+      status: 'active',
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+
+  const report = buildCoreLinkageDiagnostics(core);
+  assert.equal(report.summary.transportBindingDiagnosticCount, 0);
+  assert.equal(isCoreLinkageHealthy(report), true);
+});
+
+test('buildCoreLinkageDiagnostics flags an inbound binding pointing at the wrong conversation kind', () => {
+  let core = createDefaultCoreState();
+  core = upsertCoreConversation(
+    core,
+    {
+      id: 'conversation-channel-1',
+      title: 'Group channel',
+      kind: 'chat_channel',
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreTransportBinding(
+    core,
+    {
+      id: 'binding-misrouted',
+      platform: 'telegram',
+      direction: 'inbound',
+      conversationId: 'conversation-channel-1',
+      status: 'active',
     },
     new Date('2026-04-14T22:00:00.000Z'),
   ).core;
 
   const report = buildCoreLinkageDiagnostics(core);
   assert.equal(report.summary.transportBindingDiagnosticCount, 1);
-  assert.equal(report.transportBindings[0]?.status, 'binding_disabled');
+  assert.equal(report.transportBindings[0]?.status, 'conversation_not_direct_lane');
 });
