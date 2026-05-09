@@ -103,18 +103,32 @@ not bypass the existing viewer contract.
 ### Phase 5: Real Process Enablement Gate
 
 - [ ] Task 5.1: Review SPEC-108 / PLAN-097 security posture and command profile
-      defaults before enabling real subprocess execution.
-- [ ] Task 5.2: Add the first real command profile. Prefer Vite-only unless the
-      review explicitly approves a broader `npm run dev` profile.
-- [ ] Task 5.3: Enable real process adapter behind config with default disabled
-      in development and packaged builds until manually opted in.
+      defaults before enabling real subprocess execution. *(Operator/reviewer
+      action; not a code change.)*
+- [x] Task 5.2: Add the first real command profile. Prefer Vite-only unless the
+      review explicitly approves a broader `npm run dev` profile. Landed as
+      `VITE_LIVE_PREVIEW_PROFILE` and `BUILTIN_LIVE_PREVIEW_PROFILES` in
+      `src/products/code/livePreview/contracts.ts`. Profile ships with
+      `enabled: false` and is **not** auto-registered.
+- [x] Task 5.3: Enable real process adapter behind config with default disabled
+      in development and packaged builds until manually opted in. Landed as
+      `realProcessAdapter.ts` + `processAdapterFactory.ts`; new
+      `livePreview.useRealProcessAdapter` config flag + matching env var keep
+      the inert adapter active unless explicitly opted in. Supervisor wiring
+      remains a follow-up gated on Tasks 5.1 / 5.4.
 - [ ] Task 5.4: Add end-to-end validation that starts a real preview in an
       isolated temporary workspace, waits for readiness, opens Artifact Canvas,
-      and stops/cleans the preview without writing user dev state.
-- [ ] Task 5.5: Update operator docs with the supported profile list, port
-      range, logs path, and stop behavior.
+      and stops/cleans the preview without writing user dev state. *(Requires
+      Task 5.1 sign-off; defer until operator approval.)*
+- [x] Task 5.5: Update operator docs with the supported profile list, port
+      range, logs path, and stop behavior. Landed as
+      `docs/live-preview-operator-guide.md` plus the
+      `CATS_CODE_LIVE_PREVIEW_USE_REAL_PROCESS_ADAPTER` env var entry in
+      `docs/services.md`.
 
-**Deliverables**: First approved real live-preview producer.
+**Deliverables**: First approved real live-preview producer is staged for
+operator opt-in. Tasks 5.1 / 5.4 remain operator gates and will close out
+this phase once approval and isolated validation are recorded.
 
 ## Files to Create/Modify
 
@@ -182,6 +196,7 @@ not bypass the existing viewer contract.
 | 2026-05-09 | Added a product-local materialize-and-show helper that reuses the shared Artifact Canvas activity and render-intent path after live-preview artifact creation. Tests verify the activity audit row, navigate intent, session-targeted delivery, and privileged iframe metadata are produced through the shared contract. |
 | 2026-05-09 | Closed Phase 4 test coverage: `artifact-canvas-live-preview-lease` covers ready/same-surface lease matching, missing lease demotion, stale lease demotion, and scope mismatch demotion; `code-live-preview-artifact-materialization` covers preview artifact creation and the shared show-intent path. |
 | 2026-05-09 | Hardened Phase 4 follow-up behavior: ready supervisor leases that have not yet been stamped with the materialized artifact id no longer demote the happy path to `static`; terminal/stale/mismatched supervisor leases still win. The materializer now rejects unanchored Code task leases before writing orphan preview artifacts. |
+| 2026-05-10 | Phase 5 partially landed: reviewed Vite command profile (`VITE_LIVE_PREVIEW_PROFILE`) plus opt-in `BUILTIN_LIVE_PREVIEW_PROFILES` registry; real `child_process.spawn` adapter behind `livePreview.useRealProcessAdapter` opt-in flag with inert-adapter fallback; operator guide documenting profile/port/log/stop semantics. Tasks 5.1 (security review) and 5.4 (isolated E2E) remain operator-owned gates. Supervisor wiring with the real adapter is not yet flipped at the platform host. |
 
 ---
 

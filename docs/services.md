@@ -49,6 +49,7 @@ Port numbers should be configurable via environment variables so developers can 
 | `CATS_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS` | `max(2000, budget / 6)` | Runtime client | Threshold above which a successful session create still emits a `slow_session_create` diagnostic record (see ADR-089) |
 | `CATS_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS` | `120000` | Runtime client | Idle timeout for NDJSON message streams; reset whenever the runtime emits another chunk. Depends on the runtime keepalive contract documented in ADR-089 |
 | `CATS_CODE_LIVE_PREVIEW_ENABLED` | `false` | Cats Code live preview | Enables the supervised live-preview substrate after PLAN-097 approval; disabled by default |
+| `CATS_CODE_LIVE_PREVIEW_USE_REAL_PROCESS_ADAPTER` | `false` | Cats Code live preview | Switches the supervisor from the inert adapter to the real `child_process.spawn` adapter; only takes effect when `_ENABLED` is also true and an approved profile is registered |
 | `CATS_CODE_LIVE_PREVIEW_PORT_RANGE` | `47100-47199` | Cats Code live preview | Candidate loopback port range for supervised preview child processes |
 | `CATS_CODE_LIVE_PREVIEW_MAX_GLOBAL` | `3` | Cats Code live preview | Global concurrent live-preview lease limit |
 | `CATS_CODE_LIVE_PREVIEW_MAX_PER_WORKSPACE` | `1` | Cats Code live preview | Per-workspace concurrent live-preview lease limit |
