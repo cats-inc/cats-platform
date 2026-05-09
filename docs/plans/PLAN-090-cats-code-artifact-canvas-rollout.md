@@ -322,11 +322,18 @@ artifacts, close/refresh/open controls, and renderer tests for pane state.
       declaration.
 - [x] Task 4.2: Define how a runtime-owned preview origin qualifies for
       iframe `allow-same-origin`.
-- [ ] Task 4.3: Only after approval, wire a live-preview producer that creates
-      a `preview_url` artifact and then calls `show_in_canvas`.
+- [x] Task 4.3: Only after approval, wire a live-preview producer that creates
+      a `preview_url` artifact and then calls `show_in_canvas`. Landed:
+      `materializeLivePreviewArtifactAndShowInCanvas` in
+      `src/products/code/livePreview/artifactMaterialization.ts` materializes
+      the `preview_url` artifact and reuses the shared Artifact Canvas
+      activity + render-intent stream. The producer remains dormant until an
+      operator wires the supervisor with the real process adapter behind
+      `livePreview.useRealProcessAdapter` (PLAN-097 Task 5.3).
 
 **Deliverables**: Approved live-preview security plan; no process spawning in
-this plan before Phase 4 approval.
+this plan before Phase 4 approval. Producer wiring is in place; live
+end-to-end execution is gated on PLAN-097 Tasks 5.1 / 5.4.
 
 ## Files to Create/Modify
 
