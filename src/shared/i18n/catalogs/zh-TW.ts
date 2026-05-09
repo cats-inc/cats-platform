@@ -2635,6 +2635,8 @@ export const zhTWCatalog: MessageCatalog = {
   'code.artifactList.loading': '正在載入成品…',
   'code.artifactList.error': '無法載入成品：{error}',
   'code.artifactList.loadFailed': '成品清單請求失敗。',
+  'code.artifactList.candidateHint': '候選成品尚未升級為持久記錄。',
+  'code.artifactList.candidateLabel': '候選',
   'code.artifactList.provenance.run': '執行',
   'code.artifactList.statusFilterLabel': '狀態:',
   'code.artifactList.provenance.task': '任務',

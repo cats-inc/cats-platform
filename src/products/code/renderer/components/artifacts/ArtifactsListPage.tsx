@@ -207,6 +207,11 @@ export function ArtifactsListPage(): JSX.Element {
                           {art.producerLabel}
                         </span>
                       ) : null}
+                      {art.disposition === 'candidate' ? (
+                        <span className="codeArtifactsList__candidatePill" title={t(messageKeys.codeArtifactListCandidateHint)}>
+                          {t(messageKeys.codeArtifactListCandidateLabel)}
+                        </span>
+                      ) : null}
                       <div className="codeArtifactsList__rowText">
                         <span className="codeArtifactsList__rowTitle">
                           {art.title}

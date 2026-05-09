@@ -2715,6 +2715,8 @@ export const messageKeys = {
   codeArtifactListLoading: 'code.artifactList.loading',
   codeArtifactListError: 'code.artifactList.error',
   codeArtifactListLoadFailed: 'code.artifactList.loadFailed',
+  codeArtifactListCandidateHint: 'code.artifactList.candidateHint',
+  codeArtifactListCandidateLabel: 'code.artifactList.candidateLabel',
   codeArtifactListProvenanceRun: 'code.artifactList.provenance.run',
   codeArtifactListProvenanceTask: 'code.artifactList.provenance.task',
   codeArtifactListStatusFilterLabel: 'code.artifactList.statusFilterLabel',

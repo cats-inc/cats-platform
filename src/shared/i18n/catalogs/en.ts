@@ -2699,6 +2699,8 @@ export const enCatalog: MessageCatalog = {
   'code.artifactList.loading': 'Loading artifacts...',
   'code.artifactList.error': 'Artifacts could not be loaded: {error}',
   'code.artifactList.loadFailed': 'Artifact list request failed.',
+  'code.artifactList.candidateHint': 'Candidate artifacts have not yet been promoted to a durable record.',
+  'code.artifactList.candidateLabel': 'Candidate',
   'code.artifactList.provenance.run': 'run',
   'code.artifactList.statusFilterLabel': 'Status:',
   'code.artifactList.provenance.task': 'task',
