@@ -11,6 +11,10 @@
 // not have to re-cross-reference `mission.metadata.runId` and
 // `run.metadata.missionId` themselves.
 
+import {
+  readRunMetadataMissionId,
+  resolveRunsForMission,
+} from './missionRunResolution.js';
 import type {
   CatsCoreState,
   ConversationId,
@@ -20,20 +24,25 @@ import type {
 
 export interface MissionConversationLink {
   mission: MissionRecord;
-  /** All runs anchored on this mission, deduplicated across:
-   *  - `run.id === mission.metadata.runId`
-   *  - `run.metadata.missionId === mission.id`
-   *  - `run.conversationId === mission.conversationId` (only when the
-   *    mission's conversation is set; this last bridge is the loosest
-   *    rule and exists so Work surfaces still see "runs that ran in
-   *    this conversation" even when the writer skipped the missionId
-   *    metadata key). */
+  /** Runs anchored on this mission via the strong references:
+   *  - `run.id === mission.metadata.runId` (mission-claimed run)
+   *  - `run.metadata.missionId === mission.id` (run back-reference)
+   *  Loose runs that share the conversation but reference no mission
+   *  are surfaced at the entry level under `looseRuns` so they are
+   *  not duplicated across every mission in the conversation. */
   runs: CoreRunRecord[];
 }
 
 export interface MissionConversationIndexEntry {
   conversationId: ConversationId;
   missions: MissionConversationLink[];
+  /** Runs whose `conversationId` matches the entry but whose mission
+   *  anchor is ambiguous (no mission claims them via metadata.runId,
+   *  no run.metadata.missionId points back). They belong to the
+   *  conversation but cannot be uniquely attributed to one mission, so
+   *  they live at the conversation level — UI can render them as
+   *  "other runs in this conversation" without inflating mission cards. */
+  looseRuns: CoreRunRecord[];
 }
 
 export interface MissionConversationIndex {
@@ -48,53 +57,15 @@ export interface MissionConversationIndex {
   unanchoredMissions: MissionConversationLink[];
 }
 
-function readMissionMetadataRunId(mission: MissionRecord): string | null {
-  const value = mission.metadata.runId;
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
-}
-
-function readRunMetadataMissionId(run: CoreRunRecord): string | null {
-  const value = run.metadata.missionId;
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
-}
-
-function collectRunsForMission(
-  core: CatsCoreState,
-  mission: MissionRecord,
+function findLooseRunsForConversation(
+  runs: ReadonlyArray<CoreRunRecord>,
+  conversationId: ConversationId,
+  claimedRunIds: Set<string>,
 ): CoreRunRecord[] {
-  const seen = new Set<string>();
-  const result: CoreRunRecord[] = [];
-  const claimedRunId = readMissionMetadataRunId(mission);
-  if (claimedRunId !== null) {
-    const claimedRun = core.runs.find((run) => run.id === claimedRunId) ?? null;
-    if (claimedRun !== null && !seen.has(claimedRun.id)) {
-      seen.add(claimedRun.id);
-      result.push(claimedRun);
-    }
-  }
-  for (const run of core.runs) {
-    if (seen.has(run.id)) {
-      continue;
-    }
-    if (readRunMetadataMissionId(run) === mission.id) {
-      seen.add(run.id);
-      result.push(run);
-      continue;
-    }
-    if (
-      mission.conversationId !== null
-      && run.conversationId === mission.conversationId
-      && claimedRunId === null
-      && readRunMetadataMissionId(run) === null
-    ) {
-      // Loose conversation bridge: only fire when neither side
-      // explicitly references the other. Avoids overlapping with the
-      // strong references above and keeps the index honest.
-      seen.add(run.id);
-      result.push(run);
-    }
-  }
-  return result;
+  return runs.filter((run) =>
+    run.conversationId === conversationId
+    && !claimedRunIds.has(run.id)
+    && readRunMetadataMissionId(run) === null);
 }
 
 export function buildMissionsByConversation(
@@ -102,15 +73,29 @@ export function buildMissionsByConversation(
 ): MissionConversationIndex {
   const byConversationId = new Map<ConversationId, MissionConversationIndexEntry>();
   const unanchoredMissions: MissionConversationLink[] = [];
+  // Track every run id that any mission has already claimed via the
+  // strong reference set, so the loose-conversation pass at the end
+  // does not re-attach the same run.
+  const claimedRunIdsByConversation = new Map<ConversationId, Set<string>>();
+
+  function recordClaimedRun(conversationId: ConversationId, runId: string): void {
+    const existing = claimedRunIdsByConversation.get(conversationId);
+    if (existing) {
+      existing.add(runId);
+    } else {
+      claimedRunIdsByConversation.set(conversationId, new Set([runId]));
+    }
+  }
 
   for (const mission of core.missions) {
-    const link: MissionConversationLink = {
-      mission,
-      runs: collectRunsForMission(core, mission),
-    };
+    const runs = resolveRunsForMission(core.runs, mission);
+    const link: MissionConversationLink = { mission, runs };
     if (mission.conversationId === null) {
       unanchoredMissions.push(link);
       continue;
+    }
+    for (const run of runs) {
+      recordClaimedRun(mission.conversationId, run.id);
     }
     const existing = byConversationId.get(mission.conversationId);
     if (existing) {
@@ -119,8 +104,17 @@ export function buildMissionsByConversation(
       byConversationId.set(mission.conversationId, {
         conversationId: mission.conversationId,
         missions: [link],
+        looseRuns: [],
       });
     }
+  }
+
+  // Second pass: attach loose runs to each conversation entry. A run
+  // is "loose" when it shares the conversation but neither side
+  // references the other.
+  for (const entry of byConversationId.values()) {
+    const claimed = claimedRunIdsByConversation.get(entry.conversationId) ?? new Set<string>();
+    entry.looseRuns = findLooseRunsForConversation(core.runs, entry.conversationId, claimed);
   }
 
   const entries = Array.from(byConversationId.values()).sort((left, right) =>
@@ -134,4 +128,11 @@ export function findMissionsForConversation(
   conversationId: ConversationId,
 ): MissionConversationLink[] {
   return index.byConversationId.get(conversationId)?.missions ?? [];
+}
+
+export function findLooseRunsForConversationFromIndex(
+  index: MissionConversationIndex,
+  conversationId: ConversationId,
+): CoreRunRecord[] {
+  return index.byConversationId.get(conversationId)?.looseRuns ?? [];
 }

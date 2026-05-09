@@ -16,6 +16,7 @@ import {
   type MissionLineageResult,
   type MissionProvenanceSummary,
 } from './missionProvenance.js';
+import { resolveRunsForMission } from './missionRunResolution.js';
 import { isActiveRun, isTerminalRun } from './missionStatus.js';
 import {
   classifyMissionVisibility,
@@ -44,37 +45,6 @@ export interface MissionInspectionResult {
   lineage: MissionLineageResult;
 }
 
-function findRunsForMission(
-  core: CatsCoreState,
-  mission: MissionRecord,
-): CoreRunRecord[] {
-  const candidateIds = new Set<string>();
-  const metadataRunId = mission.metadata.runId;
-  if (typeof metadataRunId === 'string' && metadataRunId.trim().length > 0) {
-    candidateIds.add(metadataRunId.trim());
-  }
-  const matchedById = core.runs.filter((run) => candidateIds.has(run.id));
-  // Some pipelines anchor runs back to a mission via metadata.missionId.
-  const matchedByMissionRef = core.runs.filter((run) => {
-    const missionRef = run.metadata.missionId;
-    return typeof missionRef === 'string'
-      && missionRef.trim().length > 0
-      && missionRef.trim() === mission.id;
-  });
-  // Deduplicate while preserving insertion order: matchedById first, then
-  // anything new from the metadata.missionId scan.
-  const seen = new Set<string>();
-  const merged: CoreRunRecord[] = [];
-  for (const run of [...matchedById, ...matchedByMissionRef]) {
-    if (seen.has(run.id)) {
-      continue;
-    }
-    seen.add(run.id);
-    merged.push(run);
-  }
-  return merged;
-}
-
 export function inspectMission(
   core: CatsCoreState,
   missionId: MissionId,
@@ -86,7 +56,7 @@ export function inspectMission(
   const managedWork = mission.managedWorkId
     ? core.workItems.find((candidate) => candidate.id === mission.managedWorkId) ?? null
     : null;
-  const runs = findRunsForMission(core, mission);
+  const runs = resolveRunsForMission(core.runs, mission);
   const activeRuns = runs.filter(isActiveRun);
   const terminalRuns = runs.filter(isTerminalRun);
 

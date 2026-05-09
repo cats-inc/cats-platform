@@ -1,3 +1,4 @@
+import { resolveRunsForMission } from './missionRunResolution.js';
 import {
   classifyMissionVisibility,
   type MissionVisibility,
@@ -23,7 +24,19 @@ export interface CoreMissionRunProjectionItem {
   sourceLane: LaneRecord | null;
   assignedAgent: CoreActorRecord | null;
   linkedTask: CoreTaskRecord | null;
+  /**
+   * Primary run for this mission. Equals `runs[0] ?? null`. Preserves
+   * the legacy single-run shape for callers that only consume one run
+   * per mission. New code that needs to surface every anchored run
+   * should consume `runs` instead — see SHA cf1354859 / d2bd5a7c4.
+   */
   linkedRun: CoreRunRecord | null;
+  /**
+   * Every run anchored on this mission via either `mission.metadata.runId`
+   * (mission-claimed) or `run.metadata.missionId` (run back-reference),
+   * deduplicated. The mission-claimed run, if any, appears first.
+   */
+  runs: CoreRunRecord[];
   visibility: MissionVisibility;
   updatedAt: string;
 }
@@ -70,11 +83,6 @@ function buildEmptySummary(): CoreMissionRunProjectionSummary {
   };
 }
 
-function resolveMissionRunId(mission: MissionRecord): string | null {
-  const value = mission.metadata.runId;
-  return typeof value === 'string' && value.trim().length > 0 ? value : null;
-}
-
 function matchesQuery(
   item: CoreMissionRunProjectionItem,
   query: CoreMissionRunProjectionQuery,
@@ -112,13 +120,13 @@ function matchesQuery(
   ) {
     return false;
   }
-  if (
-    query.runIds
-    && !query.runIds.includes(item.linkedRun?.id ?? '')
-  ) {
-    return false;
+  if (query.runIds) {
+    const runIdSet = new Set(query.runIds);
+    if (!item.runs.some((run) => runIdSet.has(run.id))) {
+      return false;
+    }
   }
-  if (query.hasRun !== undefined && (item.linkedRun !== null) !== query.hasRun) {
+  if (query.hasRun !== undefined && (item.runs.length > 0) !== query.hasRun) {
     return false;
   }
   if (query.visibilities && !query.visibilities.includes(item.visibility)) {
@@ -136,12 +144,8 @@ export function buildMissionRunProjection(
       const managedWork = mission.managedWorkId
         ? core.workItems.find((workItem) => workItem.id === mission.managedWorkId) ?? null
         : null;
-      const linkedRun = (() => {
-        const runId = resolveMissionRunId(mission);
-        return runId
-          ? core.runs.find((run) => run.id === runId) ?? null
-          : null;
-      })();
+      const runs = resolveRunsForMission(core.runs, mission);
+      const linkedRun = runs[0] ?? null;
       const conversation = mission.conversationId
         ? core.conversations.find((candidate) => candidate.id === mission.conversationId) ?? null
         : null;
@@ -157,9 +161,13 @@ export function buildMissionRunProjection(
       const linkedTask = managedWork?.taskId
         ? core.tasks.find((task) => task.id === managedWork.taskId) ?? null
         : null;
+      const latestRunUpdatedAt = runs
+        .map((run) => run.updatedAt)
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .sort((left, right) => right.localeCompare(left))[0] ?? null;
       const updatedAt = [
         mission.updatedAt,
-        linkedRun?.updatedAt ?? null,
+        latestRunUpdatedAt,
         managedWork?.updatedAt ?? null,
       ]
         .filter((value): value is string => typeof value === 'string' && value.length > 0)
@@ -174,6 +182,7 @@ export function buildMissionRunProjection(
         assignedAgent,
         linkedTask,
         linkedRun,
+        runs,
         visibility: classifyMissionVisibility(mission),
         updatedAt,
       };

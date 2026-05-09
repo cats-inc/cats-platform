@@ -9,6 +9,7 @@ import {
 } from '../src/core/model/index.js';
 import {
   buildMissionsByConversation,
+  findLooseRunsForConversationFromIndex,
   findMissionsForConversation,
 } from '../src/core/missionsByConversation.js';
 
@@ -93,7 +94,7 @@ test('buildMissionsByConversation folds in runs via run.metadata.missionId back-
   assert.equal(link[0]?.runs[0]?.id, 'run-back-ref');
 });
 
-test('buildMissionsByConversation uses the loose conversation bridge only when neither reference is present', () => {
+test('buildMissionsByConversation surfaces loose conversation runs at the entry level, not per mission', () => {
   let core = createDefaultCoreState();
   core = seedConversation(core, 'conversation-a');
   core = upsertCoreMission(
@@ -106,6 +107,16 @@ test('buildMissionsByConversation uses the loose conversation bridge only when n
     },
     new Date('2026-04-14T22:00:00.000Z'),
   ).core;
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-b',
+      title: 'Mission b',
+      conversationId: 'conversation-a',
+      status: 'queued',
+    },
+    new Date('2026-04-14T22:00:30.000Z'),
+  ).core;
   core = upsertCoreRun(
     core,
     {
@@ -115,14 +126,55 @@ test('buildMissionsByConversation uses the loose conversation bridge only when n
       conversationId: 'conversation-a',
       orchestratorActorId: null,
     },
+    new Date('2026-04-14T22:01:00.000Z'),
+  ).core;
+
+  const index = buildMissionsByConversation(core);
+  const links = findMissionsForConversation(index, 'conversation-a');
+  assert.equal(links.length, 2);
+  // Critical regression guard: a loose run must NOT be duplicated
+  // across every mission of the same conversation.
+  assert.equal(links[0]?.runs.length, 0);
+  assert.equal(links[1]?.runs.length, 0);
+
+  const looseRuns = findLooseRunsForConversationFromIndex(index, 'conversation-a');
+  assert.equal(looseRuns.length, 1);
+  assert.equal(looseRuns[0]?.id, 'run-conversation-only');
+});
+
+test('buildMissionsByConversation does not surface a strongly-claimed run as a loose run', () => {
+  let core = createDefaultCoreState();
+  core = seedConversation(core, 'conversation-a');
+  core = upsertCoreMission(
+    core,
+    {
+      id: 'mission-a',
+      title: 'Mission a',
+      conversationId: 'conversation-a',
+      status: 'running',
+      metadata: { runId: 'run-claimed' },
+    },
+    new Date('2026-04-14T22:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-claimed',
+      title: 'Strongly claimed run',
+      status: 'completed',
+      conversationId: 'conversation-a',
+      orchestratorActorId: null,
+    },
     new Date('2026-04-14T22:00:30.000Z'),
   ).core;
 
   const index = buildMissionsByConversation(core);
-  const link = findMissionsForConversation(index, 'conversation-a');
-  assert.equal(link.length, 1);
-  assert.equal(link[0]?.runs.length, 1);
-  assert.equal(link[0]?.runs[0]?.id, 'run-conversation-only');
+  const links = findMissionsForConversation(index, 'conversation-a');
+  assert.equal(links[0]?.runs.length, 1);
+  assert.equal(
+    findLooseRunsForConversationFromIndex(index, 'conversation-a').length,
+    0,
+  );
 });
 
 test('buildMissionsByConversation surfaces unanchored missions separately', () => {
