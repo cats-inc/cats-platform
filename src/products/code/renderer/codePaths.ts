@@ -5,6 +5,7 @@ export const CODE_RELAY_PATH = `${CODE_ROUTE_PREFIX}/relay`;
 export const CODE_BUILD_PATH = `${CODE_ROUTE_PREFIX}/build`;
 export const CODE_ARTIFACTS_PATH = `${CODE_ROUTE_PREFIX}/artifacts`;
 export const CODE_CODESPACES_PATH = `${CODE_ROUTE_PREFIX}/codespaces`;
+export const CODE_TASKS_PATH = `${CODE_ROUTE_PREFIX}/tasks`;
 
 export function buildCodeArtifactPath(artifactId?: string | null): string {
   const normalized = artifactId?.trim();
@@ -20,6 +21,13 @@ export function buildCodeCodespacePath(codespaceId?: string | null): string {
     : CODE_CODESPACES_PATH;
 }
 
+export function buildCodeTaskPath(taskId?: string | null): string {
+  const normalized = taskId?.trim();
+  return normalized
+    ? `${CODE_TASKS_PATH}/${encodeURIComponent(normalized)}`
+    : CODE_BUILD_PATH;
+}
+
 export function isCodeRelayPath(pathname: string): boolean {
   return pathname.startsWith(CODE_RELAY_PATH);
 }
@@ -30,6 +38,10 @@ export function isCodeBuildPath(pathname: string): boolean {
 
 export function isCodeCodespacesPath(pathname: string): boolean {
   return pathname.startsWith(CODE_CODESPACES_PATH);
+}
+
+export function isCodeTasksPath(pathname: string): boolean {
+  return pathname.startsWith(CODE_TASKS_PATH);
 }
 
 /**

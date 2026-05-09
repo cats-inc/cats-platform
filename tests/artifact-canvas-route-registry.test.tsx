@@ -6,6 +6,7 @@ import {
   ARTIFACT_CANVAS_CLEAR_TOOL_NAME,
   ARTIFACT_CANVAS_SHOW_TOOL_DEFINITION,
   ARTIFACT_CANVAS_SHOW_TOOL_NAME,
+  buildArtifactCanvasRenderIntentStreamUrl,
   canvasSurfaceRouteRegistry,
   composeArtifactCanvasNavigateIntent,
   normalizeArtifactCanvasClearToolInput,
@@ -94,6 +95,16 @@ test('Artifact Canvas navigate intents use registry-composed URLs', () => {
     assert.equal(parsed.artifactId, intent.artifactId);
     assert.equal(parsed.presentationRequested, intent.presentationRequested);
   }
+});
+
+test('Artifact Canvas render-intent stream URL is browser-safe and surface-scoped', () => {
+  assert.equal(
+    buildArtifactCanvasRenderIntentStreamUrl({
+      kind: 'code_codespace',
+      surfaceId: 'C:/repo/cats-platform',
+    }),
+    '/api/canvas/intents/stream?surfaceKind=code_codespace&surfaceId=C%3A%2Frepo%2Fcats-platform',
+  );
 });
 
 test('Artifact Canvas tool shape validation enforces one identity and active surface', () => {

@@ -3,18 +3,22 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import {
   ARTIFACT_CANVAS_SURFACE_KINDS,
+  ARTIFACT_CANVAS_RENDER_INTENT_ACK_PATH,
+  ARTIFACT_CANVAS_RENDER_INTENT_STREAM_PATH,
   type ArtifactCanvasNavigateIntent,
   type CanvasSurfaceKind,
   type CanvasSurfaceRef,
 } from './contracts.js';
 
+export {
+  ARTIFACT_CANVAS_RENDER_INTENT_ACK_PATH,
+  ARTIFACT_CANVAS_RENDER_INTENT_STREAM_PATH,
+  buildArtifactCanvasRenderIntentStreamUrl,
+} from './contracts.js';
+
 export const ARTIFACT_CANVAS_RENDER_INTENT_TTL_MS = 30_000;
 export const ARTIFACT_CANVAS_RENDER_INTENT_SESSION_HEADER =
   'x-cats-renderer-session-id';
-export const ARTIFACT_CANVAS_RENDER_INTENT_STREAM_PATH =
-  '/api/canvas/intents/stream';
-export const ARTIFACT_CANVAS_RENDER_INTENT_ACK_PATH =
-  '/api/canvas/intents/ack';
 
 export interface ArtifactCanvasRenderIntentPendingRecord {
   intent: ArtifactCanvasNavigateIntent;

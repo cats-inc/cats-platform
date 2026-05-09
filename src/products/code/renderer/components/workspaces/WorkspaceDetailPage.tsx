@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import {
   CODE_CODESPACES_PATH,
   buildCodeArtifactPath,
+  buildCodeTaskPath,
 } from '../../codePaths.js';
 import {
   fetchCodeWorkspaceDetail,
@@ -342,7 +343,11 @@ export function WorkspaceDetailPage(): JSX.Element {
           ) : (
             <ul className="codeWorkspaceDetail__items">
               {tasks.map((task) => (
-                <li key={task.id} className="codeWorkspaceDetail__item">
+                <li key={task.id}>
+                  <Link
+                    to={buildCodeTaskPath(task.id)}
+                    className="codeWorkspaceDetail__item"
+                  >
                   <span className="codeWorkspaceDetail__itemKind">
                     {t(messageKeys.codeWorkspaceDetailTaskLabel)}
                   </span>
@@ -352,6 +357,7 @@ export function WorkspaceDetailPage(): JSX.Element {
                   <span className="codeWorkspaceDetail__itemMeta">
                     {labelCodeRecordStatusForLocale(task.status, t)}
                   </span>
+                  </Link>
                 </li>
               ))}
             </ul>

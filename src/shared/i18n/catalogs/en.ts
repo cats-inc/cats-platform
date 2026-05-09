@@ -1782,6 +1782,20 @@ export const enCatalog: MessageCatalog = {
     'Native wlroots screenshot capture requires grim and slurp.',
   'shared.screenshotCapture.wlrootsSelectionParseFailed':
     'Could not parse wlroots screenshot selection geometry.',
+  'shared.artifactCanvas.title': 'Artifact Canvas',
+  'shared.artifactCanvas.loading': 'Loading Artifact Canvas…',
+  'shared.artifactCanvas.loadFailed': 'Artifact Canvas could not be loaded.',
+  'shared.artifactCanvas.invalidRoute':
+    'Artifact Canvas route is missing an artifact id.',
+  'shared.artifactCanvas.close': 'Close',
+  'shared.artifactCanvas.collapse': 'Collapse',
+  'shared.artifactCanvas.expand': 'Expand',
+  'shared.artifactCanvas.refresh': 'Refresh',
+  'shared.artifactCanvas.openExternal': 'Open external',
+  'shared.artifactCanvas.unsupportedTitle': 'No inline view available',
+  'shared.artifactCanvas.unsupportedBody':
+    'This artifact does not have a safe inline presentation yet.',
+  'shared.artifactCanvas.policyVersion': 'Policy version',
   'chat.newChatDraft.cancelSendAria': 'Cancel send',
   'chat.newChatDraft.sendAria': 'Send',
   'chat.newChatDraft.sendAllChatsAria': 'Send to all chats',

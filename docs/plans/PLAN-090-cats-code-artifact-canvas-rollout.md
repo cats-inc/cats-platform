@@ -165,7 +165,7 @@ process-supervision and security review (Phase 4).
       active Code runtime tool catalog without changing
       `declare_artifact`. The catalog entry references SPEC-101's
       shape and the SPEC-101 § Error Code Registry.
-- [ ] Task 1.10: Implement the platform render-intent stream for
+- [x] Task 1.10: Implement the platform render-intent stream for
       `ArtifactCanvasNavigateIntent`. Surface key is
       `(surfaceKind, surfaceId)` — e.g.
       `('code_task', 'task-abc')`. This stream may share the same
@@ -242,12 +242,12 @@ accepted/rejected tool calls + projection responses.
 
 ### Phase 2: Platform-Shared Pane, Iframe Viewer, and Code Integration
 
-- [ ] Task 2.1: Add the platform-shared shell layout helper at
+- [x] Task 2.1: Add the platform-shared shell layout helper at
       `src/products/shared/renderer/withSharedViewerRoutes.ts` that
       attaches the `/canvas/:artifactId` child route to any product
       surface route in one call. The helper renders the parent route
       with `<Outlet />` for the right pane.
-- [ ] Task 2.2: Add `<CanvasPane>` at
+- [x] Task 2.2: Add `<CanvasPane>` at
       `src/products/shared/renderer/CanvasPane.tsx` with pane-local
       top bar: close (renderer-only `navigate()` to drop the
       child segment), collapse / expand (renderer-only), refresh,
@@ -257,13 +257,13 @@ accepted/rejected tool calls + projection responses.
       route (with optional `/view/:presentation`) on mount, on
       `:artifactId` change, and on explicit presentation segment
       change.
-- [ ] Task 2.3: Add `<IframeViewer>` at
+- [x] Task 2.3: Add `<IframeViewer>` at
       `src/products/shared/renderer/viewers/IframeViewer.tsx`. It
       consumes the projection's `iframeSandboxProfile` literally,
       applies the SPEC-101 scheme allowlist, re-runs the same-origin
       with-shell short-circuit on the renderer, and demotes to
       `static` or `unsupported` on any defense-in-depth failure.
-- [ ] Task 2.4: Subscribe the shell-level renderer to the
+- [x] Task 2.4: Subscribe the shell-level renderer to the
       `ArtifactCanvasNavigateIntent` stream for the currently mounted
       surface. On matching intent receipt, call `navigate(targetUrl)`
       and, after route commit, acknowledge through
@@ -272,7 +272,7 @@ accepted/rejected tool calls + projection responses.
       replayed when the user later mounts that surface. Phase 1
       auto-navigates only for the active surface; the soft-suggest mode
       is a Phase 2 follow-up open question per SPEC-101.
-- [ ] Task 2.5: Register Code's product surfaces with
+- [x] Task 2.5: Register Code's product surfaces with
       `withSharedViewerRoutes` so the canvas pane mounts under
       Code task / Code codespace routes. **No** server clear delegate
       wiring is needed — close is renderer-only `navigate()`.
@@ -628,6 +628,7 @@ this plan before Phase 4 approval.
 | 2026-05-09 | Registered `show_in_canvas` and `clear_canvas` alongside `declare_artifact` in the Code runtime tool catalog metadata, labels, and onboarding instructions, with shared tool definitions and schema tests that reject `unsupported` as an input presentation. This completes Task 1.5; assistant-effect execution remains pending before the tools can mutate audit / render intents. |
 | 2026-05-09 | Added the first Code assistant-effect execution path for `show_in_canvas` / `clear_canvas`: same-turn accepted declaration resolution, projection / URL-policy validation, Activity audit writes, render-intent publish attempts, and local `tool_result` projection with no `intentId` leakage. This completes Task 1.2 and the main happy-path / validation subset of Task 1.3; the full producer/scope-keyed declaration index and cross-producer / cross-scope rejection matrix remain pending before Task 1.3 can be checked off. |
 | 2026-05-09 | Completed Task 1.3's same-turn declaration index: `show_in_canvas({ declarationId })` now resolves only against the caller's own SPEC-092 producer key and scope key, accepts idempotent duplicate declarations, rejects same-key artifact collisions, rejects other-producer same-scope matches with `artifact_canvas_declaration_producer_mismatch`, and treats cross-scope / prior-turn misses as `artifact_canvas_declaration_unknown`. |
+| 2026-05-09 | Added the renderer-side Artifact Canvas substrate: browser-safe render-intent stream URL construction, `useCanvasNavigateIntent` with best-effort ack retries, `withSharedViewerRoutes`, `<CanvasPane>`, `<IframeViewer>`, shared CSS, Code `codespaces/:codespaceId` + `tasks/:taskId` canvas child routes, and a minimal Code task parent surface. This completes Task 1.10's renderer consumption plus Tasks 2.1-2.5; Task 2.6 remains for migrating the older artifact detail / build preview iframes onto the shared viewer policy. |
 
 ---
 

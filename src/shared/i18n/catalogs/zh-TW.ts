@@ -1737,6 +1737,20 @@ export const zhTWCatalog: MessageCatalog = {
     '原生 wlroots 截圖需要 grim 和 slurp。',
   'shared.screenshotCapture.wlrootsSelectionParseFailed':
     '無法解析 wlroots 截圖選取範圍。',
+  'shared.artifactCanvas.title': 'Artifact Canvas',
+  'shared.artifactCanvas.loading': '正在載入 Artifact Canvas…',
+  'shared.artifactCanvas.loadFailed': '無法載入 Artifact Canvas。',
+  'shared.artifactCanvas.invalidRoute':
+    'Artifact Canvas 路由缺少成品 ID。',
+  'shared.artifactCanvas.close': '關閉',
+  'shared.artifactCanvas.collapse': '收合',
+  'shared.artifactCanvas.expand': '展開',
+  'shared.artifactCanvas.refresh': '重新整理',
+  'shared.artifactCanvas.openExternal': '外部開啟',
+  'shared.artifactCanvas.unsupportedTitle': '目前無法內嵌顯示',
+  'shared.artifactCanvas.unsupportedBody':
+    '此成品尚未提供安全的內嵌呈現。',
+  'shared.artifactCanvas.policyVersion': 'Policy version',
   'chat.newChatDraft.cancelSendAria': '取消發送',
   'chat.newChatDraft.sendAria': '送出',
   'chat.newChatDraft.sendAllChatsAria': '送出給全部聊天室',

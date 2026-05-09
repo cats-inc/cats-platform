@@ -20,6 +20,7 @@ import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSu
 import { ArtifactDetailView } from './components/ArtifactDetailView.js';
 import { ArtifactsListPage } from './components/artifacts/ArtifactsListPage.js';
 import { CodeBuilderView } from './components/CodeBuilderView.js';
+import { CodeTaskDetailPage } from './components/CodeTaskDetailPage.js';
 import { CodeRelayView } from './components/CodeRelayView.js';
 import { WorkspaceDetailPage } from './components/workspaces/WorkspaceDetailPage.js';
 import { WorkspacesListPage } from './components/workspaces/WorkspacesListPage.js';
@@ -31,6 +32,7 @@ import {
   WorkspaceAppRoutes,
   type WorkspaceAppRoutesProps,
 } from '../../shared/renderer/WorkspaceAppRoutes.js';
+import { withSharedViewerRoutes } from '../../shared/renderer/withSharedViewerRoutes.js';
 
 type ChatSurfaceProps = Omit<
   ChatViewProps,
@@ -99,11 +101,20 @@ export function AppRoutes({
         path="codespaces"
         element={<WorkspacesListPage />}
       />,
-      <Route
-        key="codespace-detail"
-        path="codespaces/:codespaceId"
-        element={<WorkspaceDetailPage />}
-      />,
+      withSharedViewerRoutes({
+        key: 'codespace-detail',
+        path: 'codespaces/:codespaceId',
+        surfaceKind: 'code_codespace',
+        surfaceIdParam: 'codespaceId',
+        element: <WorkspaceDetailPage />,
+      }),
+      withSharedViewerRoutes({
+        key: 'task-detail',
+        path: 'tasks/:taskId',
+        surfaceKind: 'code_task',
+        surfaceIdParam: 'taskId',
+        element: <CodeTaskDetailPage />,
+      }),
       <Route
         key="artifacts-list"
         path="artifacts"

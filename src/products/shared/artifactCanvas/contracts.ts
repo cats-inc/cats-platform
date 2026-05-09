@@ -37,6 +37,10 @@ export type ArtifactCanvasResolvedPresentation =
 export const ARTIFACT_CANVAS_SHOW_TOOL_NAME = 'show_in_canvas' as const;
 export const ARTIFACT_CANVAS_CLEAR_TOOL_NAME = 'clear_canvas' as const;
 export const ARTIFACT_CANVAS_TOOL_SCHEMA_VERSION = '1.0' as const;
+export const ARTIFACT_CANVAS_RENDER_INTENT_STREAM_PATH =
+  '/api/canvas/intents/stream' as const;
+export const ARTIFACT_CANVAS_RENDER_INTENT_ACK_PATH =
+  '/api/canvas/intents/ack' as const;
 
 export const ARTIFACT_CANVAS_SHOW_TOOL_DEFINITION = {
   name: ARTIFACT_CANVAS_SHOW_TOOL_NAME,
@@ -280,6 +284,15 @@ export const canvasSurfaceRouteRegistry: CanvasSurfaceRouteRegistry = {
     return parseCanvasProjectionApiPath(pathname);
   },
 };
+
+export function buildArtifactCanvasRenderIntentStreamUrl(surface: CanvasSurfaceRef): string {
+  assertCanvasSurface(surface);
+  const params = new URLSearchParams({
+    surfaceKind: surface.kind,
+    surfaceId: surface.surfaceId,
+  });
+  return `${ARTIFACT_CANVAS_RENDER_INTENT_STREAM_PATH}?${params.toString()}`;
+}
 
 export function normalizeArtifactCanvasShowToolInput(
   input: unknown,
