@@ -184,6 +184,43 @@ test('active subscription preserves selectedChannelId and selectedChannel togeth
   assert.deepEqual(merged.chat.cats, [{ id: 'cat-1', name: 'Fresh cat' }]);
 });
 
+test('active subscription preserves mounted channel while ADR-041 collection refresh flows', () => {
+  const current = payload({
+    selectedChannelId: 'channel-a',
+    selectedChannelTitle: 'Subscribed',
+    selectedMessages: ['subscription-message'],
+    selectedChannelOverride: {
+      ...selectedChannel({ id: 'channel-a', title: 'Subscribed' }),
+      messages: [{ id: 'subscription-message' }],
+    },
+    cats: [{ id: 'cat-old', name: 'Old cat' }],
+    channels: [
+      channelSummary({ id: 'channel-a', title: 'Subscribed' }),
+      channelSummary({ id: 'channel-b', title: 'Old sibling' }),
+    ],
+  });
+  const next = payload({
+    selectedChannelId: 'channel-b',
+    selectedChannelTitle: 'Refetched selected',
+    selectedMessages: ['refetch-message'],
+    cats: [{ id: 'cat-fresh', name: 'Fresh cat' }],
+    channels: [
+      channelSummary({ id: 'channel-a', title: 'Refetched active' }),
+      channelSummary({ id: 'channel-b', title: 'Fresh sibling' }),
+    ],
+  });
+
+  const merged = mergeAppShellPreservingActiveEntityState(current, next, ['channel-a']);
+  const mountedSummary = merged.chat.channels.find((channel) => channel.id === 'channel-a');
+  const siblingSummary = merged.chat.channels.find((channel) => channel.id === 'channel-b');
+
+  assert.equal(merged.chat.selectedChannelId, 'channel-a');
+  assert.deepEqual(merged.chat.selectedChannel?.messages, [{ id: 'subscription-message' }]);
+  assert.equal(mountedSummary?.title, 'Subscribed');
+  assert.equal(siblingSummary?.title, 'Fresh sibling');
+  assert.deepEqual(merged.chat.cats, [{ id: 'cat-fresh', name: 'Fresh cat' }]);
+});
+
 test('active subscription preserves selected channel summary routing across refreshes', () => {
   const completedAt = '2026-04-21T00:00:03.000Z';
   const current = payload({
