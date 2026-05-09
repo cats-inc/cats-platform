@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
@@ -28,16 +28,33 @@ export function LivePreviewPanel({
   const [logsLoadingId, setLogsLoadingId] = useState<string | null>(null);
   const [stoppingId, setStoppingId] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  const mountedRef = useRef(false);
+  const requestVersionRef = useRef(0);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      requestVersionRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    const requestVersion = requestVersionRef.current + 1;
+    requestVersionRef.current = requestVersion;
+    setLogsByPreviewId({});
+    setLogsLoadingId(null);
+    setStoppingId(null);
+    setActionFeedback(null);
     if (!surfaceId.trim()) {
       setPreviews([]);
       setLoading(false);
       setError(null);
-      return;
+      return () => {
+        expireLivePreviewRequest(requestVersionRef, requestVersion);
+      };
     }
 
-    let cancelled = false;
     setLoading(true);
     setError(null);
     void fetchCodeLivePreviews(
@@ -46,25 +63,25 @@ export function LivePreviewPanel({
       t(messageKeys.codeLivePreviewErrorLoad),
     )
       .then((response) => {
-        if (!cancelled) {
+        if (isCurrentLivePreviewRequest(mountedRef, requestVersionRef, requestVersion)) {
           setPreviews(response.previews);
         }
       })
       .catch((fetchError: unknown) => {
-        if (!cancelled) {
+        if (isCurrentLivePreviewRequest(mountedRef, requestVersionRef, requestVersion)) {
           setError(fetchError instanceof Error
             ? fetchError.message
             : t(messageKeys.codeLivePreviewErrorLoad));
         }
       })
       .finally(() => {
-        if (!cancelled) {
+        if (isCurrentLivePreviewRequest(mountedRef, requestVersionRef, requestVersion)) {
           setLoading(false);
         }
       });
 
     return () => {
-      cancelled = true;
+      expireLivePreviewRequest(requestVersionRef, requestVersion);
     };
   }, [surfaceId, surfaceKind, t]);
 
@@ -72,29 +89,49 @@ export function LivePreviewPanel({
     return null;
   }
 
-  async function refreshPreviews(): Promise<void> {
+  async function refreshPreviews(input: {
+    requestVersion: number;
+    surfaceKind: CodeLivePreviewSurfaceKind;
+    surfaceId: string;
+  }): Promise<void> {
     const response = await fetchCodeLivePreviews(
-      surfaceKind,
-      surfaceId,
+      input.surfaceKind,
+      input.surfaceId,
       t(messageKeys.codeLivePreviewErrorLoad),
     );
-    setPreviews(response.previews);
+    if (isCurrentLivePreviewRequest(mountedRef, requestVersionRef, input.requestVersion)) {
+      setPreviews(response.previews);
+    }
   }
 
   async function handleStop(previewId: string): Promise<void> {
+    const requestVersion = requestVersionRef.current;
+    const currentSurfaceKind = surfaceKind;
+    const currentSurfaceId = surfaceId;
     setStoppingId(previewId);
     setActionFeedback(null);
     setError(null);
     try {
       await stopCodeLivePreview(previewId, t(messageKeys.codeLivePreviewErrorStop));
+      if (!isCurrentLivePreviewRequest(mountedRef, requestVersionRef, requestVersion)) {
+        return;
+      }
       setActionFeedback(t(messageKeys.codeLivePreviewStopRequested));
-      await refreshPreviews();
+      await refreshPreviews({
+        requestVersion,
+        surfaceKind: currentSurfaceKind,
+        surfaceId: currentSurfaceId,
+      });
     } catch (stopError) {
-      setError(stopError instanceof Error
-        ? stopError.message
-        : t(messageKeys.codeLivePreviewErrorStop));
+      if (isCurrentLivePreviewRequest(mountedRef, requestVersionRef, requestVersion)) {
+        setError(stopError instanceof Error
+          ? stopError.message
+          : t(messageKeys.codeLivePreviewErrorStop));
+      }
     } finally {
-      setStoppingId(null);
+      if (isCurrentLivePreviewRequest(mountedRef, requestVersionRef, requestVersion)) {
+        setStoppingId(null);
+      }
     }
   }
 
@@ -108,6 +145,7 @@ export function LivePreviewPanel({
       return;
     }
 
+    const requestVersion = requestVersionRef.current;
     setLogsLoadingId(previewId);
     setError(null);
     try {
@@ -115,16 +153,22 @@ export function LivePreviewPanel({
         previewId,
         t(messageKeys.codeLivePreviewErrorLogs),
       );
-      setLogsByPreviewId((current) => ({
-        ...current,
-        [previewId]: response.logs,
-      }));
+      if (isCurrentLivePreviewRequest(mountedRef, requestVersionRef, requestVersion)) {
+        setLogsByPreviewId((current) => ({
+          ...current,
+          [previewId]: response.logs,
+        }));
+      }
     } catch (logsError) {
-      setError(logsError instanceof Error
-        ? logsError.message
-        : t(messageKeys.codeLivePreviewErrorLogs));
+      if (isCurrentLivePreviewRequest(mountedRef, requestVersionRef, requestVersion)) {
+        setError(logsError instanceof Error
+          ? logsError.message
+          : t(messageKeys.codeLivePreviewErrorLogs));
+      }
     } finally {
-      setLogsLoadingId(null);
+      if (isCurrentLivePreviewRequest(mountedRef, requestVersionRef, requestVersion)) {
+        setLogsLoadingId(null);
+      }
     }
   }
 
@@ -248,6 +292,27 @@ export function LivePreviewPanel({
       )}
     </section>
   );
+}
+
+interface LivePreviewRequestRef<T> {
+  current: T;
+}
+
+function isCurrentLivePreviewRequest(
+  mountedRef: LivePreviewRequestRef<boolean>,
+  requestVersionRef: LivePreviewRequestRef<number>,
+  requestVersion: number,
+): boolean {
+  return mountedRef.current && requestVersionRef.current === requestVersion;
+}
+
+function expireLivePreviewRequest(
+  requestVersionRef: LivePreviewRequestRef<number>,
+  requestVersion: number,
+): void {
+  if (requestVersionRef.current === requestVersion) {
+    requestVersionRef.current += 1;
+  }
 }
 
 function labelLivePreviewStatus(

@@ -225,8 +225,21 @@ test('Artifact Canvas iframe policy rejects unsafe schemes and demotes default p
       url: 'http://127.0.0.1:4321/preview',
       artifact,
       leaseStore,
+      now: new Date('2026-05-09T00:01:00.000Z'),
     }),
     true,
+  );
+  assert.equal(
+    isSupervisorOwnedPreviewOrigin({
+      url: 'http://127.0.0.1:4321/preview',
+      artifact,
+      leaseStore: createPreviewLeaseStore(createLivePreviewLease({
+        expiresAt: '2026-05-09T00:00:00.000Z',
+      })),
+      now: new Date('2026-05-09T00:01:00.000Z'),
+    }),
+    false,
+    'expired ready leases must not authorize scripted iframe privileges.',
   );
 
   const scripted = resolveArtifactCanvasIframePolicy({
@@ -307,6 +320,7 @@ function createLivePreviewLease(
       rootPath: 'C:/repo/app',
     },
     artifactId: 'artifact-live-preview',
+    expiresAt: '2999-05-09T00:30:00.000Z',
     ...overrides,
   };
 }

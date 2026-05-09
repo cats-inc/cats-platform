@@ -41,6 +41,7 @@ export interface ArtifactCanvasSupervisorPreviewLease {
     rootPath: string;
   };
   artifactId: string | null;
+  expiresAt: string;
 }
 
 export interface ArtifactCanvasSupervisorPreviewLeaseStore {
@@ -213,6 +214,7 @@ export function isSupervisorOwnedPreviewOrigin(input: {
   url: string;
   artifact: CoreArtifactRecord;
   leaseStore?: ArtifactCanvasSupervisorPreviewLeaseStore | null;
+  now?: Date;
 }): boolean {
   const leaseStore = input.leaseStore ?? null;
   if (!leaseStore || input.artifact.kind !== 'preview') {
@@ -224,6 +226,9 @@ export function isSupervisorOwnedPreviewOrigin(input: {
   }
   const lease = leaseStore.getLease(livePreview.previewId);
   if (!lease || lease.status !== 'ready') {
+    return false;
+  }
+  if (isSupervisorPreviewLeaseExpired(lease, input.now ?? new Date())) {
     return false;
   }
   if (lease.artifactId !== input.artifact.id) {
@@ -254,6 +259,7 @@ export function resolveArtifactCanvasIframePolicy(input: {
   artifactKind?: string | null;
   config?: ArtifactCanvasPolicyConfig;
   supervisorPreviewLeaseStore?: ArtifactCanvasSupervisorPreviewLeaseStore | null;
+  now?: Date;
 }): ArtifactCanvasIframePolicyDecision {
   const config = input.config ?? DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG;
   const { policyVersion } = buildArtifactCanvasPolicyVersion(config);
@@ -286,6 +292,7 @@ export function resolveArtifactCanvasIframePolicy(input: {
       url: parsed.toString(),
       artifact: input.artifact,
       leaseStore: input.supervisorPreviewLeaseStore,
+      now: input.now,
     })
     && canUseScriptedArtifactCanvasPreview({ producer: input.producer, config });
   return {
@@ -405,6 +412,14 @@ function normalizeOrigin(url: URL): string {
 function normalizeHttpOrigin(value: string): string | null {
   const parsed = parseHttpUrl(value);
   return parsed ? normalizeOrigin(parsed) : null;
+}
+
+function isSupervisorPreviewLeaseExpired(
+  lease: ArtifactCanvasSupervisorPreviewLease,
+  now: Date,
+): boolean {
+  const expiresAt = Date.parse(lease.expiresAt);
+  return !Number.isFinite(expiresAt) || expiresAt <= now.getTime();
 }
 
 function readArtifactLivePreviewMetadata(

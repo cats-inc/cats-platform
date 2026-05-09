@@ -126,6 +126,9 @@ not bypass the existing viewer contract.
 | `src/products/code/livePreview/processAdapter.ts` | Create | Real and fake process adapter seam |
 | `src/products/code/livePreview/leaseStore.ts` | Create | v1 lease store and lookup helpers |
 | `src/products/code/api/livePreviewRoutes.ts` | Create | Product-owned API routes for preview status, stop, and logs |
+| `src/app/server/dependencies.ts` | Modify | Integration-owned wiring for the live-preview store dependency |
+| `src/app/server/requestRouter.ts` | Modify | Integration-owned wiring that passes supervisor lease context into Artifact Canvas projection routes |
+| `src/products/shared/artifactCanvas/api.ts` | Modify | Shared API dependency seam for supervisor preview lease stores |
 | `src/products/shared/artifactCanvas/iframePolicy.ts` | Modify | Add supervisor-owned preview origin predicate before privileged profile |
 | `src/products/shared/artifactCanvas/projection.ts` | Modify | Pass live preview lease context into iframe policy |
 | `src/products/code/renderer/**` | Modify | Add status, stop, retry, and log affordances on Code surfaces |
@@ -174,6 +177,7 @@ not bypass the existing viewer contract.
 | 2026-05-09 | Added the Phase 3 API/read-model seam: in-memory lease store, live-preview summary/detail projections, diagnostics mapping, Code API paths/routes for list/detail/logs/stop, and route tests. Task 3.3 renderer affordances remain pending. |
 | 2026-05-09 | Completed Phase 3 renderer affordances by mounting the live-preview panel on Code task and codespace surfaces, adding status/stop/retry/log controls, i18n strings, and renderer/API helper tests. Retry remains disabled until the start route is approved in a later phase. |
 | 2026-05-09 | Added the Artifact Canvas supervisor-owned preview-origin gate and wired projection/API dependencies so allowlisted loopback previews receive `scripted-cross-origin` only when a ready lease matches the artifact, source surface, and workspace scope. Missing, stale, or mismatched leases demote to `static`. |
+| 2026-05-09 | Recorded Phase 4 integrator-owned wiring in `src/app/server/**` and `src/products/shared/artifactCanvas/api.ts`. Codex acted as the PLAN owner/integrator for these seams so Cats Code live-preview lease context could reach the shared Artifact Canvas route without adding product-owned server shims. |
 | 2026-05-09 | Added live-preview artifact materialization for ready Code task/codespace leases. The materializer writes deterministic `CoreArtifactRecord(kind = preview)` rows with `codeLivePreview` metadata and returns an updated lease carrying the artifact id; tests verify the artifact closes the Artifact Canvas lease gate. |
 | 2026-05-09 | Added a product-local materialize-and-show helper that reuses the shared Artifact Canvas activity and render-intent path after live-preview artifact creation. Tests verify the activity audit row, navigate intent, session-targeted delivery, and privileged iframe metadata are produced through the shared contract. |
 | 2026-05-09 | Closed Phase 4 test coverage: `artifact-canvas-live-preview-lease` covers ready/same-surface lease matching, missing lease demotion, stale lease demotion, and scope mismatch demotion; `code-live-preview-artifact-materialization` covers preview artifact creation and the shared show-intent path. |

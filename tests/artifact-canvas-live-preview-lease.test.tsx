@@ -48,6 +48,10 @@ test('Artifact Canvas grants scripted preview only to supervisor-owned live prev
 
   const staleLeaseStore = new InMemoryLivePreviewLeaseStore();
   staleLeaseStore.upsertLease(createLease({ status: 'stopped' }));
+  const expiredReadyLeaseStore = new InMemoryLivePreviewLeaseStore();
+  expiredReadyLeaseStore.upsertLease(createLease({
+    expiresAt: '2000-01-01T00:00:00.000Z',
+  }));
   const staleLease = buildArtifactCanvasProjection({
     core,
     surface: SURFACE,
@@ -58,6 +62,17 @@ test('Artifact Canvas grants scripted preview only to supervisor-owned live prev
   assert.equal(staleLease.status, 'ok');
   if (staleLease.status === 'ok') {
     assert.equal(staleLease.projection.iframeSandboxProfile?.name, 'static');
+  }
+  const expiredReadyLease = buildArtifactCanvasProjection({
+    core,
+    surface: SURFACE,
+    artifactId: 'artifact-live-preview',
+    policyConfig,
+    supervisorPreviewLeaseStore: expiredReadyLeaseStore,
+  });
+  assert.equal(expiredReadyLease.status, 'ok');
+  if (expiredReadyLease.status === 'ok') {
+    assert.equal(expiredReadyLease.projection.iframeSandboxProfile?.name, 'static');
   }
 });
 
@@ -171,7 +186,7 @@ function createLease(overrides: Partial<LivePreviewLease> = {}): LivePreviewLeas
     artifactId: 'artifact-live-preview',
     createdAt: '2026-05-09T00:00:00.000Z',
     readyAt: '2026-05-09T00:00:01.000Z',
-    expiresAt: '2026-05-09T00:30:00.000Z',
+    expiresAt: '2999-05-09T00:30:00.000Z',
     stoppedAt: null,
     stopReason: null,
     ...overrides,

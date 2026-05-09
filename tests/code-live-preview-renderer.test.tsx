@@ -40,6 +40,20 @@ test('LivePreviewPanel exposes status, stop, retry, and log controls', () => {
   assert.match(panel, /codeLivePreviewLogsEmpty/u);
 });
 
+test('LivePreviewPanel guards async stop and logs updates against stale surfaces', () => {
+  const panel = readFileSync(
+    new URL('../src/products/code/renderer/components/LivePreviewPanel.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(panel, /requestVersionRef/u);
+  assert.match(panel, /mountedRef/u);
+  assert.match(panel, /isCurrentLivePreviewRequest/u);
+  assert.match(panel, /expireLivePreviewRequest/u);
+  assert.match(panel, /refreshPreviews\(\{\s*requestVersion,\s*surfaceKind: currentSurfaceKind,\s*surfaceId: currentSurfaceId,\s*\}\);/u);
+  assert.match(panel, /if \(!isCurrentLivePreviewRequest\(mountedRef, requestVersionRef, requestVersion\)\) \{\s*return;\s*\}/u);
+});
+
 test('live-preview renderer API treats unavailable supervisor as empty previews', async (t) => {
   const originalFetch = globalThis.fetch;
   t.after(() => {

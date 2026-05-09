@@ -40,6 +40,7 @@ export function buildArtifactCanvasProjection(input: {
   presentationRequested?: ArtifactCanvasPresentationInput;
   policyConfig?: ArtifactCanvasPolicyConfig;
   supervisorPreviewLeaseStore?: ArtifactCanvasSupervisorPreviewLeaseStore | null;
+  now?: Date;
 }): ArtifactCanvasProjectionResult {
   const presentationRequested = input.presentationRequested ?? 'auto';
   const policyConfig = input.policyConfig ?? DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG;
@@ -80,6 +81,7 @@ export function buildArtifactCanvasProjection(input: {
         producer,
         config: policyConfig,
         supervisorPreviewLeaseStore: input.supervisorPreviewLeaseStore,
+        now: input.now,
       })
     : null;
   const policyVersion = policy?.policyVersion

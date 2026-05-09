@@ -39,7 +39,11 @@ export const CODE_LIVE_PREVIEW_PRODUCER_IDENTITY =
   `tool:${CODE_LIVE_PREVIEW_PRODUCER_TOOL_NAME}` as const;
 
 export type LivePreviewArtifactMaterializationSkippedReason =
+  | 'lease_expired'
   | 'lease_not_ready'
+  | 'lease_origin_invalid'
+  | 'lease_origin_not_loopback'
+  | 'workspace_anchor_unresolved'
   | 'unsupported_surface';
 
 export type LivePreviewArtifactMaterializationResult =
@@ -111,15 +115,16 @@ export function materializeLivePreviewArtifact(
   lease: LivePreviewLease,
   options: LivePreviewArtifactMaterializationOptions = {},
 ): LivePreviewArtifactMaterializationResult {
-  if (lease.status !== 'ready') {
-    return { status: 'skipped', reason: 'lease_not_ready', core, lease };
-  }
-  if (lease.surface.kind !== 'code_task' && lease.surface.kind !== 'code_codespace') {
-    return { status: 'skipped', reason: 'unsupported_surface', core, lease };
+  const validation = validateLivePreviewLeaseForMaterialization(
+    lease,
+    options.now ?? new Date(),
+  );
+  if (validation) {
+    return { status: 'skipped', reason: validation, core, lease };
   }
 
   const anchors = resolveLivePreviewArtifactAnchors(core, lease);
-  const artifactId = buildLivePreviewArtifactId(lease.previewId);
+  const artifactId = buildLivePreviewArtifactId(lease);
   const declarationId = `live-preview:${lease.previewId}`;
   const metadata = buildLivePreviewArtifactMetadata({
     lease,
@@ -179,14 +184,15 @@ export function materializeLivePreviewArtifactAndShowInCanvas(
       materialized.lease,
       options.supervisorPreviewLeaseStore,
     ),
+    now,
   });
   if (projection.status === 'error') {
     return {
       status: 'rejected',
       reason: 'artifact_canvas_projection_error',
-      core: materialized.core,
+      core,
       error: projection.error,
-      lease: materialized.lease,
+      lease,
     };
   }
 
@@ -206,7 +212,6 @@ export function materializeLivePreviewArtifactAndShowInCanvas(
     presentationRequested,
     presentationResolved: projection.projection.presentationResolved,
     iframeSandboxProfile: projection.projection.iframeSandboxProfile,
-    message: 'Live preview opened in Artifact Canvas.',
     metadata: {
       codeLivePreview: {
         previewId: materialized.lease.previewId,
@@ -259,6 +264,69 @@ function resolveLivePreviewArtifactAnchors(
     workItemId: workItem?.id ?? null,
     workspacePath: lease.workspaceRef.rootPath,
   };
+}
+
+function validateLivePreviewLeaseForMaterialization(
+  lease: LivePreviewLease,
+  now: Date,
+): LivePreviewArtifactMaterializationSkippedReason | null {
+  if (lease.status !== 'ready') {
+    return 'lease_not_ready';
+  }
+  if (lease.surface.kind !== 'code_task' && lease.surface.kind !== 'code_codespace') {
+    return 'unsupported_surface';
+  }
+  const expiresAt = Date.parse(lease.expiresAt);
+  if (!Number.isFinite(expiresAt) || expiresAt <= now.getTime()) {
+    return 'lease_expired';
+  }
+  const originValidation = validateLoopbackPreviewLeaseOrigin(lease);
+  if (originValidation) {
+    return originValidation;
+  }
+  if (lease.surface.kind === 'code_codespace') {
+    const expectedCodespaceId = createCodespaceId(lease.workspaceRef.rootPath);
+    if (lease.surface.surfaceId !== expectedCodespaceId) {
+      return 'workspace_anchor_unresolved';
+    }
+  }
+  return null;
+}
+
+function validateLoopbackPreviewLeaseOrigin(
+  lease: LivePreviewLease,
+): Extract<
+  LivePreviewArtifactMaterializationSkippedReason,
+  'lease_origin_invalid' | 'lease_origin_not_loopback'
+> | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(lease.origin);
+  } catch {
+    return 'lease_origin_invalid';
+  }
+  if (
+    parsed.protocol !== 'http:'
+    || parsed.username !== ''
+    || parsed.password !== ''
+    || parsed.pathname !== '/'
+    || parsed.search !== ''
+    || parsed.hash !== ''
+  ) {
+    return 'lease_origin_invalid';
+  }
+  const originHost = normalizeHostToken(parsed.hostname);
+  const leaseHost = normalizeHostToken(lease.host);
+  const parsedPort = parsed.port ? Number(parsed.port) : 80;
+  if (
+    (originHost !== '127.0.0.1' && originHost !== '::1')
+    || (leaseHost !== '127.0.0.1' && leaseHost !== '::1')
+    || originHost !== leaseHost
+    || parsedPort !== lease.port
+  ) {
+    return 'lease_origin_not_loopback';
+  }
+  return null;
 }
 
 function buildLivePreviewArtifactMetadata(input: {
@@ -321,10 +389,11 @@ function createMaterializedLeaseStore(
 ): ArtifactCanvasSupervisorPreviewLeaseStore {
   return {
     getLease(previewId: string) {
-      if (previewId === lease.previewId) {
-        return lease;
+      const fallbackLease = fallback?.getLease(previewId) ?? null;
+      if (fallbackLease) {
+        return fallbackLease;
       }
-      return fallback?.getLease(previewId) ?? null;
+      return previewId === lease.previewId ? lease : null;
     },
   };
 }
@@ -337,8 +406,15 @@ function resolveLivePreviewArtifactScope(
     : { scopeKind: 'workspace', scopeId: normalizePathToken(anchors.workspacePath) };
 }
 
-function buildLivePreviewArtifactId(previewId: string): string {
-  return `artifact-live-preview-${hashToken(previewId)}`;
+function buildLivePreviewArtifactId(lease: LivePreviewLease): string {
+  return `artifact-live-preview-${hashStableJson({
+    previewId: lease.previewId,
+    sourceSurface: lease.surface,
+    workspace: {
+      id: lease.workspaceRef.id,
+      rootPath: normalizePathToken(lease.workspaceRef.rootPath),
+    },
+  })}`;
 }
 
 function buildMaterialChangeSignature(
@@ -362,8 +438,19 @@ function cloneCanvasSurface(surface: CanvasSurfaceRef): CanvasSurfaceRef {
   };
 }
 
+function createCodespaceId(workspacePath: string): string {
+  return `codespace-${hashToken(normalizePathToken(workspacePath))}`;
+}
+
 function normalizePathToken(value: string): string {
   return value.trim().replace(/\\/g, '/');
+}
+
+function normalizeHostToken(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  return normalized.startsWith('[') && normalized.endsWith(']')
+    ? normalized.slice(1, -1)
+    : normalized;
 }
 
 function hashToken(value: string): string {
