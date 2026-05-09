@@ -332,6 +332,8 @@ export function resolveServerDependencies(
       readEvidenceEvents: dependencies.code?.readEvidenceEvents
         ?? ((conversationId: string) =>
           readPersistedEvidenceEvents(dependencies.shared.config.chatStatePath, conversationId)),
+      livePreviewStore: dependencies.code?.livePreviewStore,
+      stopLivePreview: dependencies.code?.stopLivePreview,
       now: dependencies.code?.now ?? dependencies.shared.now,
     },
   };

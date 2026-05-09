@@ -366,6 +366,7 @@ export async function routeRequest(
     dependencies: {
       coreStore: dependencies.shared.coreStore,
       policyConfig: dependencies.shared.config.artifactCanvas,
+      supervisorPreviewLeaseStore: dependencies.code.livePreviewStore,
     },
   };
   const appPackageContext = {

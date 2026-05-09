@@ -85,10 +85,10 @@ real process spawning is enabled.
 - [ ] Task 4.1: Materialize ready previews as `CoreArtifactRecord` rows with
       `kind = 'preview'`, safe `preview_url`, `previewId`, command profile id,
       workspace ref, and source surface metadata.
-- [ ] Task 4.2: Add the server-side
+- [x] Task 4.2: Add the server-side
       `isSupervisorOwnedPreviewOrigin(url, artifact, leaseStore)` predicate to
       Artifact Canvas iframe policy.
-- [ ] Task 4.3: Require supervisor-owned origin qualification before a preview
+- [x] Task 4.3: Require supervisor-owned origin qualification before a preview
       URL can receive `scripted-cross-origin`; otherwise demote to `static`
       using SPEC-101 behavior.
 - [ ] Task 4.4: Trigger the existing `show_in_canvas` path after artifact
@@ -173,6 +173,7 @@ not bypass the existing viewer contract.
 | 2026-05-09 | Completed Phase 2 supervisor core with an injected process adapter and readiness probe. Tests cover ready start, spawn failure, readiness timeout, unexpected exit, stop idempotency, concurrency and port limits, expiry, bounded logs, and cleanup failure. No real process adapter is provided or enabled. |
 | 2026-05-09 | Added the Phase 3 API/read-model seam: in-memory lease store, live-preview summary/detail projections, diagnostics mapping, Code API paths/routes for list/detail/logs/stop, and route tests. Task 3.3 renderer affordances remain pending. |
 | 2026-05-09 | Completed Phase 3 renderer affordances by mounting the live-preview panel on Code task and codespace surfaces, adding status/stop/retry/log controls, i18n strings, and renderer/API helper tests. Retry remains disabled until the start route is approved in a later phase. |
+| 2026-05-09 | Added the Artifact Canvas supervisor-owned preview-origin gate and wired projection/API dependencies so allowlisted loopback previews receive `scripted-cross-origin` only when a ready lease matches the artifact, source surface, and workspace scope. Missing, stale, or mismatched leases demote to `static`. |
 
 ---
 

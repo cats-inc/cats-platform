@@ -11,7 +11,10 @@ import {
 import {
   buildArtifactCanvasProjection,
 } from './projection.js';
-import type { ArtifactCanvasPolicyConfig } from './iframePolicy.js';
+import type {
+  ArtifactCanvasPolicyConfig,
+  ArtifactCanvasSupervisorPreviewLeaseStore,
+} from './iframePolicy.js';
 import {
   ARTIFACT_CANVAS_RENDER_INTENT_ACK_PATH,
   ARTIFACT_CANVAS_RENDER_INTENT_STREAM_PATH,
@@ -26,6 +29,7 @@ import {
 export interface ArtifactCanvasApiDependencies {
   coreStore: CoreStore;
   policyConfig?: ArtifactCanvasPolicyConfig;
+  supervisorPreviewLeaseStore?: ArtifactCanvasSupervisorPreviewLeaseStore | null;
   renderIntentHub?: ArtifactCanvasRenderIntentHub;
 }
 
@@ -59,6 +63,7 @@ export async function routeArtifactCanvasApi(
     artifactId: route.artifactId,
     presentationRequested: route.presentationRequested,
     policyConfig: context.dependencies.policyConfig,
+    supervisorPreviewLeaseStore: context.dependencies.supervisorPreviewLeaseStore,
   });
   if (result.status === 'error') {
     sendJson(context.response, result.statusCode, { error: result.error });

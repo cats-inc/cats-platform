@@ -18,6 +18,7 @@ import {
   resolveArtifactCanvasIframePolicy,
   type ArtifactCanvasPolicyConfig,
   type ArtifactCanvasProducerIdentity,
+  type ArtifactCanvasSupervisorPreviewLeaseStore,
 } from './iframePolicy.js';
 
 export type ArtifactCanvasProjectionResult =
@@ -38,6 +39,7 @@ export function buildArtifactCanvasProjection(input: {
   artifactId: string;
   presentationRequested?: ArtifactCanvasPresentationInput;
   policyConfig?: ArtifactCanvasPolicyConfig;
+  supervisorPreviewLeaseStore?: ArtifactCanvasSupervisorPreviewLeaseStore | null;
 }): ArtifactCanvasProjectionResult {
   const presentationRequested = input.presentationRequested ?? 'auto';
   const policyConfig = input.policyConfig ?? DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG;
@@ -73,9 +75,11 @@ export function buildArtifactCanvasProjection(input: {
   const policy = safeUrl
     ? resolveArtifactCanvasIframePolicy({
         url: safeUrl,
+        artifact,
         artifactKind: artifact.kind,
         producer,
         config: policyConfig,
+        supervisorPreviewLeaseStore: input.supervisorPreviewLeaseStore,
       })
     : null;
   const policyVersion = policy?.policyVersion

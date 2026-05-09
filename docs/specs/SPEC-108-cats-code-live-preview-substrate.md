@@ -86,7 +86,7 @@ port leasing, lifecycle cleanup, and lease-based preview-origin qualification.
 10. On readiness success, the platform shall materialize a `CoreArtifactRecord`
     with `kind = 'preview'`, a safe `preview_url` location, and metadata linking
     the artifact to `previewId`, command profile id, workspace, and source
-    surface.
+    surface. The canonical metadata key is `metadata.codeLivePreview`.
 11. After materializing the artifact, the platform shall use the existing
     Artifact Canvas path to show it: `show_in_canvas` or an equivalent
     product-internal call that writes the same Activity audit and render-intent
@@ -219,6 +219,25 @@ The predicate returns true only when the URL host/port exactly matches a live
 ready lease, the artifact points at the same `previewId`, and the artifact
 surface/workspace scope matches the lease scope. SPEC-101's scheme,
 credential, shell-origin, and producer allowlist checks still run.
+
+### Preview Artifact Metadata Shape
+
+```ts
+interface CodeLivePreviewArtifactMetadata {
+  schemaVersion: '1.0';
+  previewId: string;
+  commandProfileId: string;
+  workspace: {
+    id: string;
+    rootPath: string;
+  };
+  sourceSurface: CanvasSurfaceRef;
+}
+```
+
+`sourceSurface` is the Cats Code task or codespace surface that requested the
+preview. It must match the supervisor lease surface before Artifact Canvas can
+grant the privileged iframe profile.
 
 ## Dependencies
 

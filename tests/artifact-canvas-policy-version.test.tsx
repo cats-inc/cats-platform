@@ -5,13 +5,16 @@ import {
   DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
   buildArtifactCanvasPolicyVersion,
   canUseScriptedArtifactCanvasPreview,
+  isSupervisorOwnedPreviewOrigin,
   matchesArtifactCanvasRuntimePreviewOrigin,
   normalizeArtifactCanvasHostname,
   rejectArtifactCanvasCredentialUrl,
   resolveArtifactCanvasIframePolicy,
+  type ArtifactCanvasSupervisorPreviewLease,
   validateArtifactCanvasPolicyConfig,
   type ArtifactCanvasPolicyConfig,
 } from '../src/products/shared/artifactCanvas/iframePolicy.ts';
+import type { CoreArtifactRecord } from '../src/core/types.ts';
 
 const EMPTY_CANONICAL_JSON =
   '{"algorithm":"artifact-canvas-policy-v1","catsShellOrigin":"http://127.0.0.1:5173","runtimePreviewOriginAllowlist":[],"scriptedPreviewProducerAllowlist":[]}';
@@ -199,7 +202,7 @@ test('Artifact Canvas iframe policy rejects unsafe schemes and demotes default p
     assert.equal(demoted.profile.name, 'static');
   }
 
-  const scripted = resolveArtifactCanvasIframePolicy({
+  const allowlistedWithoutLease = resolveArtifactCanvasIframePolicy({
     url: 'http://127.0.0.1:4321/preview',
     artifactKind: 'preview',
     producer: { kind: 'tool', producerIdentity: 'tool:cats_runtime_preview_bridge' },
@@ -210,8 +213,108 @@ test('Artifact Canvas iframe policy rejects unsafe schemes and demotes default p
       ],
     },
   });
+  assert.equal(allowlistedWithoutLease.status, 'accepted');
+  if (allowlistedWithoutLease.status === 'accepted') {
+    assert.equal(allowlistedWithoutLease.profile.name, 'static');
+  }
+
+  const artifact = createLivePreviewArtifact();
+  const leaseStore = createPreviewLeaseStore(createLivePreviewLease());
+  assert.equal(
+    isSupervisorOwnedPreviewOrigin({
+      url: 'http://127.0.0.1:4321/preview',
+      artifact,
+      leaseStore,
+    }),
+    true,
+  );
+
+  const scripted = resolveArtifactCanvasIframePolicy({
+    url: 'http://127.0.0.1:4321/preview',
+    artifact,
+    producer: { kind: 'tool', producerIdentity: 'tool:cats_runtime_preview_bridge' },
+    config: {
+      ...DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG,
+      scriptedPreviewProducerAllowlist: [
+        { producerKind: 'tool', producerIdentity: 'tool:cats_runtime_preview_bridge' },
+      ],
+    },
+    supervisorPreviewLeaseStore: leaseStore,
+  });
   assert.equal(scripted.status, 'accepted');
   if (scripted.status === 'accepted') {
     assert.equal(scripted.profile.name, 'scripted-cross-origin');
   }
 });
+
+function createLivePreviewArtifact(): CoreArtifactRecord {
+  return {
+    id: 'artifact-live-preview',
+    title: 'Live preview',
+    kind: 'preview',
+    status: 'ready',
+    projectId: null,
+    workItemId: null,
+    conversationId: 'conversation-canvas',
+    taskId: 'task-canvas',
+    runId: null,
+    path: 'http://127.0.0.1:4321/preview',
+    mimeType: null,
+    sizeBytes: null,
+    summary: null,
+    createdAt: '2026-05-09T00:00:00.000Z',
+    updatedAt: '2026-05-09T00:00:00.000Z',
+    metadata: {
+      codeArtifactDeclaration: {
+        producerKind: 'tool',
+        producerIdentity: 'tool:cats_runtime_preview_bridge',
+        location: { kind: 'url', value: 'http://127.0.0.1:4321/preview' },
+        idempotency: {
+          producerKind: 'tool',
+          producerIdentity: 'tool:cats_runtime_preview_bridge',
+        },
+      },
+      codeLivePreview: {
+        schemaVersion: '1.0',
+        previewId: 'preview-live',
+        commandProfileId: 'vite',
+        workspace: {
+          id: 'workspace-1',
+          rootPath: 'C:/repo/app',
+        },
+        sourceSurface: {
+          kind: 'code_task',
+          surfaceId: 'task-canvas',
+        },
+      },
+    },
+  };
+}
+
+function createLivePreviewLease(
+  overrides: Partial<ArtifactCanvasSupervisorPreviewLease> = {},
+): ArtifactCanvasSupervisorPreviewLease {
+  return {
+    previewId: 'preview-live',
+    origin: 'http://127.0.0.1:4321',
+    status: 'ready',
+    surface: {
+      kind: 'code_task',
+      surfaceId: 'task-canvas',
+    },
+    workspaceRef: {
+      id: 'workspace-1',
+      rootPath: 'C:/repo/app',
+    },
+    artifactId: 'artifact-live-preview',
+    ...overrides,
+  };
+}
+
+function createPreviewLeaseStore(lease: ArtifactCanvasSupervisorPreviewLease) {
+  return {
+    getLease(previewId: string): ArtifactCanvasSupervisorPreviewLease | null {
+      return previewId === lease.previewId ? lease : null;
+    },
+  };
+}

@@ -3,7 +3,9 @@ import { createHash } from 'node:crypto';
 import type {
   ArtifactCanvasError,
   ArtifactCanvasIframeSandboxProfile,
+  CanvasSurfaceRef,
 } from './contracts.js';
+import type { CoreArtifactRecord } from '../../../core/types.js';
 
 export type ArtifactCanvasUrlScheme = 'http' | 'https';
 
@@ -27,6 +29,22 @@ export interface ArtifactCanvasPolicyConfig {
 export interface ArtifactCanvasProducerIdentity {
   kind: 'agent' | 'tool' | 'system' | 'user';
   producerIdentity: string | null;
+}
+
+export interface ArtifactCanvasSupervisorPreviewLease {
+  previewId: string;
+  origin: string;
+  status: string;
+  surface: CanvasSurfaceRef;
+  workspaceRef: {
+    id: string;
+    rootPath: string;
+  };
+  artifactId: string | null;
+}
+
+export interface ArtifactCanvasSupervisorPreviewLeaseStore {
+  getLease(previewId: string): ArtifactCanvasSupervisorPreviewLease | null;
 }
 
 export type ArtifactCanvasIframePolicyDecision =
@@ -191,11 +209,51 @@ export function canUseScriptedArtifactCanvasPreview(input: {
     && entry.producerIdentity === producerIdentity);
 }
 
+export function isSupervisorOwnedPreviewOrigin(input: {
+  url: string;
+  artifact: CoreArtifactRecord;
+  leaseStore?: ArtifactCanvasSupervisorPreviewLeaseStore | null;
+}): boolean {
+  const leaseStore = input.leaseStore ?? null;
+  if (!leaseStore || input.artifact.kind !== 'preview') {
+    return false;
+  }
+  const livePreview = readArtifactLivePreviewMetadata(input.artifact);
+  if (!livePreview) {
+    return false;
+  }
+  const lease = leaseStore.getLease(livePreview.previewId);
+  if (!lease || lease.status !== 'ready') {
+    return false;
+  }
+  if (lease.artifactId !== input.artifact.id) {
+    return false;
+  }
+  const inputOrigin = normalizeHttpOrigin(input.url);
+  const leaseOrigin = normalizeHttpOrigin(lease.origin);
+  if (!inputOrigin || !leaseOrigin || inputOrigin !== leaseOrigin) {
+    return false;
+  }
+  if (!isSameCanvasSurface(lease.surface, livePreview.sourceSurface)) {
+    return false;
+  }
+  if (
+    lease.workspaceRef.id !== livePreview.workspace.id
+    || normalizePathToken(lease.workspaceRef.rootPath)
+      !== normalizePathToken(livePreview.workspace.rootPath)
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function resolveArtifactCanvasIframePolicy(input: {
   url: string;
   producer: ArtifactCanvasProducerIdentity;
+  artifact?: CoreArtifactRecord | null;
   artifactKind?: string | null;
   config?: ArtifactCanvasPolicyConfig;
+  supervisorPreviewLeaseStore?: ArtifactCanvasSupervisorPreviewLeaseStore | null;
 }): ArtifactCanvasIframePolicyDecision {
   const config = input.config ?? DEFAULT_ARTIFACT_CANVAS_POLICY_CONFIG;
   const { policyVersion } = buildArtifactCanvasPolicyVersion(config);
@@ -219,8 +277,16 @@ export function resolveArtifactCanvasIframePolicy(input: {
     };
   }
 
-  const canScript = input.artifactKind === 'preview'
+  const artifactKind = input.artifact?.kind ?? input.artifactKind;
+  const canScript = artifactKind === 'preview'
     && matchesArtifactCanvasRuntimePreviewOrigin(parsed.toString(), config)
+    && input.artifact !== null
+    && input.artifact !== undefined
+    && isSupervisorOwnedPreviewOrigin({
+      url: parsed.toString(),
+      artifact: input.artifact,
+      leaseStore: input.supervisorPreviewLeaseStore,
+    })
     && canUseScriptedArtifactCanvasPreview({ producer: input.producer, config });
   return {
     status: 'accepted',
@@ -229,6 +295,15 @@ export function resolveArtifactCanvasIframePolicy(input: {
       ? ARTIFACT_CANVAS_SCRIPTED_CROSS_ORIGIN_IFRAME_SANDBOX_PROFILE
       : ARTIFACT_CANVAS_STATIC_IFRAME_SANDBOX_PROFILE,
     policyVersion,
+  };
+}
+
+interface ArtifactLivePreviewMetadata {
+  previewId: string;
+  sourceSurface: CanvasSurfaceRef;
+  workspace: {
+    id: string;
+    rootPath: string;
   };
 }
 
@@ -325,6 +400,75 @@ function normalizeOrigin(url: URL): string {
   const portSuffix = port === defaultPort ? '' : `:${port}`;
   const bracketedHost = hostname.includes(':') ? `[${hostname}]` : hostname;
   return `${scheme}://${bracketedHost}${portSuffix}`;
+}
+
+function normalizeHttpOrigin(value: string): string | null {
+  const parsed = parseHttpUrl(value);
+  return parsed ? normalizeOrigin(parsed) : null;
+}
+
+function readArtifactLivePreviewMetadata(
+  artifact: CoreArtifactRecord,
+): ArtifactLivePreviewMetadata | null {
+  const livePreview = asRecord(artifact.metadata.codeLivePreview);
+  const sourceSurface = asRecord(livePreview?.sourceSurface);
+  const workspace = asRecord(livePreview?.workspace);
+  const previewId = readNonEmptyString(livePreview?.previewId);
+  const sourceSurfaceKind = readNonEmptyString(sourceSurface?.kind);
+  const sourceSurfaceId = readNonEmptyString(sourceSurface?.surfaceId);
+  const workspaceId = readNonEmptyString(workspace?.id);
+  const workspaceRootPath = readNonEmptyString(workspace?.rootPath);
+  if (
+    !previewId
+    || !isCanvasSurfaceKind(sourceSurfaceKind)
+    || !sourceSurfaceId
+    || !workspaceId
+    || !workspaceRootPath
+  ) {
+    return null;
+  }
+  return {
+    previewId,
+    sourceSurface: {
+      kind: sourceSurfaceKind,
+      surfaceId: sourceSurfaceId,
+    },
+    workspace: {
+      id: workspaceId,
+      rootPath: workspaceRootPath,
+    },
+  };
+}
+
+function isCanvasSurfaceKind(value: string | null): value is CanvasSurfaceRef['kind'] {
+  return value === 'code_task'
+    || value === 'code_codespace'
+    || value === 'work_item'
+    || value === 'work_project'
+    || value === 'work_task'
+    || value === 'chat_conversation';
+}
+
+function isSameCanvasSurface(left: CanvasSurfaceRef, right: CanvasSurfaceRef): boolean {
+  return left.kind === right.kind && left.surfaceId === right.surfaceId;
+}
+
+function normalizePathToken(value: string): string {
+  return value.trim().replace(/\\/g, '/');
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function readNonEmptyString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function parseHttpUrl(value: string): URL | null {
