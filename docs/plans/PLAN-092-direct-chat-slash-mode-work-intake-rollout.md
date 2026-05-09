@@ -8,9 +8,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Implemented |
 | **Owner** | Codex |
 | **Reviewer** | User |
+| **Closeout** | MVP close-out 2026-05-06; Phase 1–6 landed with 37-test targeted suite passing. Remaining items live in the Follow-up Backlog section below and are intentionally deferred (not blocking). |
 
 ## Related Spec
 
@@ -402,6 +403,7 @@ demo Work Items unless the user explicitly approves a write.
 | 2026-05-06 | Follow-up Concierge hardening: strong `/work` and `/code` command turns now create the draft anchor, surface the system acknowledgement, and immediately start the same direct Cat's chat-only Concierge turn. Telegram `from.language_code` now drives first-turn i18n, abandoned draft anchors are cancelled when posture is cleared without replacement, and the targeted suite passed with 37 tests plus server typecheck and UI test build. |
 | 2026-05-06 | Follow-up review hardening: product-intent acknowledgements, human-gate choices, and draft placeholder text now use i18n catalog entries; draft metadata records localization keys; stale follow-up prompts validate the Work Item's source conversation before injecting Concierge instructions; `/work` <-> `/code` direct switches supersede the prior draft anchor; ADR-101/PLAN-092 now require future tool exposure to use platform per-turn capability gates rather than prompt-only policy. |
 | 2026-05-06 | MVP close-out: Phase 6 verification notes are complete. Final targeted direct slash-mode suite passed (37 tests), `npx tsc --noEmit -p tsconfig.server.json` passed, and `npm run build:test-ui` passed. Web and Telegram notes document the non-persistent verification path used to avoid writing live demo records without explicit approval. |
+| 2026-05-10 | Status field updated from `Draft` → `Implemented` to match the 2026-05-06 MVP close-out. Phase 1–6 had been ticked end-to-end since 2026-05-06 (parser + posture events; direct audience capability bridge; Strong Cat clarification + Work Item anchor; weak/unknown human gate; follow-up + supervised execution bridge; verification + close-out notes), but the metadata `Status` remained `Draft` and was misleading audits. README index entries for `docs/plans/`, `docs/specs/SPEC-104`, and `docs/decisions/ADR-101` are realigned in the same slice. The Follow-up Backlog items (escape-hatch promotion, weak/unknown first-turn nudge, segment i18n decision, additional implicit-detection variants) remain open by design and are not phase work. |
 | 2026-05-06 | Supervised boundary slice: Core now has a single WorkItem-to-Task link helper; Work task creation and Code task creation accept `workItemId`, so direct slash-mode anchors can be promoted through existing Work/Code task APIs before Work supervised-run or Code execution APIs start. Tests prove Chat does not create runs directly, Work run creation waits until Work task linkage, and Code task creation links the anchor before execution. |
 | 2026-05-06 | Code projection slice: Code dashboard read-model now exposes code-target Work Item anchors, including draft anchors created from direct `/code` chat before any task/run bridge exists. Source-level projection tests cover both Work and Code visibility. |
 | 2026-05-06 | Final validation slice: targeted direct slash-mode suite passed (28 tests), `npx tsc --noEmit -p tsconfig.server.json` passed, and `npm run build:test-ui` passed. No `docs/terminology.md` update was needed because no new durable terminology was introduced beyond `directSlashMode` metadata already documented in SPEC-104/PLAN-092. Live Web/Telegram manual verification was not executed in this session to avoid writing verification records into the user's persisted dev state without explicit approval. |

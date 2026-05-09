@@ -42,7 +42,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [104-adopt-managed-live-preview-supervisor-for-artifact-canvas](./104-adopt-managed-live-preview-supervisor-for-artifact-canvas.md) | Adopt a Managed Live Preview Supervisor for Artifact Canvas | Proposed | 2026-05-09 |
 | [103-use-preset-neutral-product-intent-intake](./103-use-preset-neutral-product-intent-intake.md) | Use Preset-Neutral Product Intent Intake | Proposed | 2026-05-09 |
 | [102-use-cat-authored-product-intent-proposals](./102-use-cat-authored-product-intent-proposals.md) | Use Cat-Authored Product Intent Proposals for Natural-Language Intake | Proposed | 2026-05-06 |
-| [101-use-direct-audience-cat-for-slash-mode-work-intake](./101-use-direct-audience-cat-for-slash-mode-work-intake.md) | Use the Direct-Audience Cat for Slash-Mode Work Intake | Proposed | 2026-05-06 |
+| [101-use-direct-audience-cat-for-slash-mode-work-intake](./101-use-direct-audience-cat-for-slash-mode-work-intake.md) | Use the Direct-Audience Cat for Slash-Mode Work Intake | Accepted | 2026-05-06 |
 | [100-cats-as-canonical-identity-with-clowder-and-cattery-as-associations](./100-cats-as-canonical-identity-with-clowder-and-cattery-as-associations.md) | Cats as Canonical Identity With Clowder and Cattery as Membership Associations | Proposed | 2026-05-05 |
 | [099-promote-cats-clowders-catteries-to-platform-entities](./099-promote-cats-clowders-catteries-to-platform-entities.md) | Promote Cats / Clowders / Catteries to First-Class Platform Entities | Proposed | 2026-05-04 |
 | [098-url-driven-canvas-and-platform-shared-viewer](./098-url-driven-canvas-and-platform-shared-viewer.md) | URL-Driven Canvas View-State and Platform-Shared Viewer for Core-Tier Entities | Proposed | 2026-04-30 |

@@ -2,7 +2,15 @@
 
 ## Status
 
-Proposed
+Accepted
+
+## Implementation Note
+
+PLAN-092 closed out the MVP on 2026-05-06 with the 37-test targeted suite
+passing; SPEC-104 records the implemented contract. Subsequent generalization
+work (SPEC-107 / PLAN-096 / ADR-103) extends the same explicit-command and
+Work Item anchor contract to non-direct surfaces but does not invalidate this
+decision.
 
 ## Context
 

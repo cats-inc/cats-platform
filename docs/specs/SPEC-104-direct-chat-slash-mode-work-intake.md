@@ -8,11 +8,11 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Implemented |
 | **Owner** | Codex |
 | **Reviewer** | User |
 | **Related ADR** | [ADR-101](../decisions/101-use-direct-audience-cat-for-slash-mode-work-intake.md) |
-| **Related Plan** | [PLAN-092](../plans/PLAN-092-direct-chat-slash-mode-work-intake-rollout.md) |
+| **Related Plan** | [PLAN-092](../plans/PLAN-092-direct-chat-slash-mode-work-intake-rollout.md) (MVP close-out 2026-05-06) |
 
 ## Generalization Note
 
