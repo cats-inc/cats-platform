@@ -233,13 +233,22 @@ function buildAgentCodeMetrics(
 
   let artifactCount = 0;
   for (const artifact of artifacts) {
+    // Strong attribution: artifact attached to a task this agent is
+    // already scoped into.
     if (artifact.taskId !== null && codeTaskIds.has(artifact.taskId)) {
       artifactCount += 1;
       continue;
     }
+    // Conversation-scoped artifacts only count when the agent actually
+    // participates in that code-thread conversation. Without this
+    // guard every agent in the projection would inherit every code-
+    // thread artifact, regardless of involvement.
     if (artifact.conversationId) {
       const conversation = conversationIndex.get(artifact.conversationId);
-      if (isCodeConversation(conversation)) {
+      if (
+        isCodeConversation(conversation)
+        && conversation?.participantActorIds.includes(agentId)
+      ) {
         artifactCount += 1;
       }
     }

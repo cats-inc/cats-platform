@@ -294,6 +294,49 @@ test('buildMyCatsProjection scopes code metrics to code-thread conversations', (
   assert.equal(projection.summary.agentsWithCodeRuns, 2);
 });
 
+test('buildMyCatsProjection scopes conversation-anchored code artifacts to actual participants', () => {
+  let core = createDefaultCoreState();
+  core = seedAgent(core, { id: 'agent-builder', name: 'BuilderCat', kind: 'worker' });
+  core = seedAgent(core, { id: 'agent-bystander', name: 'BystanderCat', kind: 'worker' });
+
+  // Code conversation that only BuilderCat participates in.
+  core = upsertCoreConversation(
+    core,
+    {
+      id: 'conversation-code-builder',
+      title: 'Builder code thread',
+      kind: 'code_thread',
+      participantActorIds: ['agent-builder'],
+      lastMessageAt: '2026-04-15T08:00:00.000Z',
+    },
+    new Date('2026-04-15T08:00:00.000Z'),
+  ).core;
+
+  // Artifact only anchored to the conversation (no task linkage), so
+  // it can ONLY land in artifactCount via the conversation bridge.
+  core = upsertCoreArtifact(
+    core,
+    {
+      id: 'artifact-code-build',
+      title: 'Conversation-only build artifact',
+      kind: 'build',
+      conversationId: 'conversation-code-builder',
+      createdAt: '2026-04-15T08:30:00.000Z',
+    },
+    new Date('2026-04-15T08:30:00.000Z'),
+  ).core;
+
+  const projection = buildMyCatsProjection(core);
+  const builder = projection.agents.find((entry) => entry.agent.id === 'agent-builder');
+  const bystander = projection.agents.find((entry) => entry.agent.id === 'agent-bystander');
+
+  assert.equal(builder?.code.artifactCount, 1);
+  // Critical regression guard: bystander does not participate in the
+  // code conversation, so the artifact must NOT show up on their
+  // metrics.
+  assert.equal(bystander?.code.artifactCount, 0);
+});
+
 test('buildMyCatsProjection filters by agentIds and hasActiveMission, sorts by lastActivityAt', () => {
   let core = createDefaultCoreState();
   core = seedAgent(core, {
