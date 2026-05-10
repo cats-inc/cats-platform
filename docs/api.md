@@ -87,6 +87,10 @@ includes:
 - `GET /api/mobile/auth/status` for Cats Mobile bearer-session status;
 - `POST /api/mobile/auth/login` for local password mobile login, returning the
   raw bearer token exactly once;
+- `POST /api/mobile/auth/google/login` for Cats Mobile Google login. The route
+  accepts a mobile OAuth/OIDC ID token, verifies it against
+  `CATS_AUTH_GOOGLE_MOBILE_AUDIENCES`, and returns the raw mobile bearer token
+  exactly once for an already linked Google identity;
 - `POST /api/mobile/auth/logout` for mobile device session revocation.
 
 Google browser credential routes use GIS double-submit CSRF first, then verify
@@ -95,6 +99,12 @@ the ID token against Google's JWKS using RS256 signature validation plus `aud`,
 issues a Cats browser session for an already linked identity; setup creates the
 first owner/admin identity; link attaches Google to the authenticated browser
 session.
+
+Google mobile login is deliberately separate from the browser GIS routes. Cats
+Mobile does not send browser cookies, browser origin headers, or GIS
+double-submit CSRF; it obtains a mobile-native token through AuthSession,
+native OAuth, or an equivalent mobile OIDC provider, and the server verifies
+that token only against configured mobile audiences.
 
 The global route gate now runs before product/Core/runtime/shell/transport
 dispatch. Setup-complete unauthenticated app-shell reads receive only the

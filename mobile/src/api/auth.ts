@@ -23,6 +23,13 @@ export interface MobileLocalLoginInput {
   appVersion?: string;
 }
 
+export interface MobileGoogleLoginInput {
+  idToken: string;
+  deviceLabel?: string;
+  devicePlatform?: 'ios' | 'android' | 'web' | 'unknown';
+  appVersion?: string;
+}
+
 export function fetchMobileAuthStatus(
   client: MobileApiClient,
 ): Promise<MobileAuthStatusPayload> {
@@ -34,6 +41,13 @@ export function loginMobileLocal(
   input: MobileLocalLoginInput,
 ): Promise<MobileAuthStatusPayload> {
   return client.post<MobileAuthStatusPayload>('/api/mobile/auth/login', input);
+}
+
+export function loginMobileGoogle(
+  client: MobileApiClient,
+  input: MobileGoogleLoginInput,
+): Promise<MobileAuthStatusPayload> {
+  return client.post<MobileAuthStatusPayload>('/api/mobile/auth/google/login', input);
 }
 
 export function logoutMobile(client: MobileApiClient): Promise<MobileAuthStatusPayload> {

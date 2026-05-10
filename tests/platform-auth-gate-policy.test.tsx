@@ -17,6 +17,7 @@ test('platform auth gate keeps renderer, health, mobile, and auth bootstrap rout
     ['GET', '/api/mobile/assets/icon.png'],
     ['GET', '/api/mobile/auth/status'],
     ['POST', '/api/mobile/auth/login'],
+    ['POST', '/api/mobile/auth/google/login'],
     ['POST', '/api/mobile/auth/logout'],
     ['GET', '/api/auth/status'],
     ['POST', '/api/auth/login'],

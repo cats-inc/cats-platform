@@ -12,6 +12,8 @@ import {
   createEmptyPlatformAuthState,
   createFirstAdminLocalAuthState,
   MemoryPlatformAuthStore,
+  type PlatformGoogleIdTokenClaims,
+  type PlatformGoogleIdTokenVerifier,
 } from '../src/platform/auth/index.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 
@@ -142,6 +144,102 @@ test('mobile auth local login shares composite failed-login lockout', async (t) 
   assert.match(blocked.payload?.error?.message ?? '', /too many/i);
 });
 
+test('mobile auth google login issues bearer session for linked mobile audience', async (t) => {
+  const store = await createSeededStore();
+  await linkGoogleIdentity(store, 'mobile-google-subject');
+  const server = createTestServer(
+    store,
+    { CATS_AUTH_GOOGLE_MOBILE_AUDIENCES: 'mobile-client-id' },
+    fakeGoogleVerifier({
+      sub: 'mobile-google-subject',
+      aud: 'mobile-client-id',
+      iss: 'https://accounts.google.com',
+      exp: Math.floor(NOW.getTime() / 1000) + 600,
+      email: 'owner-google@example.test',
+      email_verified: true,
+      picture: 'https://example.test/avatar.png',
+    }),
+  );
+  await listen(server);
+  t.after(() => server.close());
+
+  const login = await request(server, '/api/mobile/auth/google/login', {
+    method: 'POST',
+    body: {
+      idToken: 'mobile-google-id-token',
+      deviceLabel: 'Owner Android',
+      devicePlatform: 'android',
+      appVersion: '2.0.0',
+    },
+  });
+
+  assert.equal(login.status, 200);
+  assert.equal(login.payload?.authenticated, true);
+  assert.equal(typeof login.payload?.token, 'string');
+  assert.equal(login.setCookie, null);
+  assert.equal(login.payload?.principal?.email, 'owner-google@example.test');
+
+  const token = login.payload?.token;
+  assert.equal(typeof token, 'string');
+  const status = await request(server, '/api/mobile/auth/status', {
+    authorization: `Bearer ${token}`,
+  });
+  assert.equal(status.status, 200);
+  assert.equal(status.payload?.authenticated, true);
+
+  const state = await store.readState();
+  assert.equal(state.sessions.length, 1);
+  assert.equal(state.sessions[0]?.kind, 'mobile_device');
+  assert.equal(state.sessions[0]?.deviceLabel, 'Owner Android');
+  assert.equal(state.sessions[0]?.devicePlatform, 'android');
+  assert.equal(state.sessions[0]?.appVersion, '2.0.0');
+  assert.equal(state.accounts[0]?.email, 'owner-google@example.test');
+});
+
+test('mobile auth google login rejects browser-only audiences', async (t) => {
+  const store = await createSeededStore();
+  await linkGoogleIdentity(store, 'mobile-google-subject');
+  const server = createTestServer(
+    store,
+    { CATS_AUTH_GOOGLE_MOBILE_AUDIENCES: 'mobile-client-id' },
+    fakeGoogleVerifier({
+      sub: 'mobile-google-subject',
+      aud: 'browser-client-id',
+      iss: 'https://accounts.google.com',
+      exp: Math.floor(NOW.getTime() / 1000) + 600,
+      email: 'owner@example.test',
+      email_verified: true,
+    }),
+  );
+  await listen(server);
+  t.after(() => server.close());
+
+  const login = await request(server, '/api/mobile/auth/google/login', {
+    method: 'POST',
+    body: { idToken: 'browser-google-id-token' },
+  });
+
+  assert.equal(login.status, 401);
+  assert.equal(login.payload?.error?.code, 'E_UNAUTHENTICATED');
+  const state = await store.readState();
+  assert.equal(state.sessions.length, 0);
+});
+
+test('mobile auth google login requires mobile audiences and verifier', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store);
+  await listen(server);
+  t.after(() => server.close());
+
+  const login = await request(server, '/api/mobile/auth/google/login', {
+    method: 'POST',
+    body: { idToken: 'mobile-google-id-token' },
+  });
+
+  assert.equal(login.status, 503);
+  assert.equal(login.payload?.error?.code, 'E_FORBIDDEN');
+});
+
 test('request router serves mobile auth before mobile manifest pairing gate', async (t) => {
   const fixture = await createAppFixture(t, {
     CATS_DESKTOP_MOBILE_PAIRING_ENABLED: 'false',
@@ -168,9 +266,31 @@ async function createSeededStore(): Promise<MemoryPlatformAuthStore> {
   }, () => NOW);
 }
 
+async function linkGoogleIdentity(
+  store: MemoryPlatformAuthStore,
+  providerSubject: string,
+): Promise<void> {
+  await store.updateState((state) => ({
+    ...state,
+    identities: [
+      ...state.identities,
+      {
+        id: 'auth-identity-google',
+        accountId: state.accounts[0]!.id,
+        provider: 'google',
+        providerSubject,
+        email: 'owner@example.test',
+        createdAt: NOW.toISOString(),
+        updatedAt: NOW.toISOString(),
+      },
+    ],
+  }));
+}
+
 function createTestServer(
   store: MemoryPlatformAuthStore,
   env: NodeJS.ProcessEnv = {},
+  googleVerifier?: PlatformGoogleIdTokenVerifier,
 ) {
   const config = loadConfig({
     HOME: 'C:/Users/tester',
@@ -187,6 +307,7 @@ function createTestServer(
       dependencies: {
         authStore: store,
         auth: config.auth,
+        googleVerifier,
         now: () => NOW,
         sleep: async () => {},
       },
@@ -239,6 +360,16 @@ function createRuntimeStub() {
         status: 'ok',
         service: 'cats-runtime',
       };
+    },
+  };
+}
+
+function fakeGoogleVerifier(
+  claims: Partial<PlatformGoogleIdTokenClaims>,
+): PlatformGoogleIdTokenVerifier {
+  return {
+    async verifyIdToken() {
+      return claims;
     },
   };
 }

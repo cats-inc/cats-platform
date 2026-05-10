@@ -5,16 +5,19 @@ import {
   evaluateLoginThrottle,
   findActiveSessionByToken,
   issueMobileDeviceSession,
-  normalizeAccountIdentifier,
   recordFailedLogin,
   recordSuccessfulLogin,
+  normalizeAccountIdentifier,
   resolveMobilePrincipalFromBearerToken,
   revokeSession,
   summarizePlatformPrincipal,
+  verifyPlatformGoogleIdentityToken,
   verifyPlatformLocalPasswordCredential,
   type PlatformAuthErrorCode,
   type PlatformAuthStore,
   type PlatformDevicePlatform,
+  type PlatformGoogleIdTokenVerifier,
+  type PlatformVerifiedGoogleIdentity,
 } from '../../platform/auth/index.js';
 import type { PlatformAuthConfig } from '../../platform/auth/config.js';
 import {
@@ -28,6 +31,7 @@ import { sendPlatformAuthError } from './authErrorResponses.js';
 export interface MobileAuthRouteDependencies {
   authStore: PlatformAuthStore;
   auth: PlatformAuthConfig;
+  googleVerifier?: PlatformGoogleIdTokenVerifier;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
 }
@@ -60,6 +64,15 @@ export async function routeMobileAuthApi(
       return true;
     }
     await handleMobileLocalLogin(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/mobile/auth/google/login') {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleMobileGoogleLogin(context);
     return true;
   }
 
@@ -174,6 +187,126 @@ async function handleMobileLocalLogin(
   }, issued.token));
 }
 
+async function handleMobileGoogleLogin(
+  context: RouteContext<MobileAuthRouteDependencies>,
+): Promise<void> {
+  const sessionSecret = context.dependencies.auth.sessionSecret;
+  const mobileAudiences = context.dependencies.auth.google.mobileAudiences;
+  const verifier = context.dependencies.googleVerifier;
+  if (!sessionSecret || mobileAudiences.length === 0 || !verifier) {
+    sendMobileAuthError(context, 503, 'E_FORBIDDEN', 'Mobile Google login is not configured.');
+    return;
+  }
+
+  let body: {
+    idToken?: unknown;
+    deviceLabel?: unknown;
+    devicePlatform?: unknown;
+    appVersion?: unknown;
+  };
+  try {
+    body = await readJsonBody(context.request);
+  } catch {
+    sendMobileAuthError(context, 400, 'E_FORBIDDEN', 'Invalid Google auth request body.');
+    return;
+  }
+  if (typeof body.idToken !== 'string' || !body.idToken.trim()) {
+    sendMobileAuthError(context, 400, 'E_FORBIDDEN', 'Google ID token is required.');
+    return;
+  }
+
+  const now = context.dependencies.now?.() ?? new Date();
+  const identity = await verifyMobileGoogleIdentity(context, body.idToken, now);
+  if (!identity) {
+    return;
+  }
+
+  const state = await context.dependencies.authStore.readState();
+  const throttleSubject = createLoginThrottleSubject({
+    provider: 'google',
+    accountKey: identity.providerSubject,
+    remoteAddress: readRemoteAddress(context.request),
+  });
+  const throttle = evaluateLoginThrottle(state, {
+    subject: throttleSubject,
+    policy: context.dependencies.auth,
+    now,
+  });
+  if (throttle.blocked) {
+    sendMobileAuthError(context, 403, 'E_FORBIDDEN', 'Too many login attempts.');
+    return;
+  }
+  if (throttle.delayMs > 0) {
+    await sleep(throttle.delayMs, context.dependencies.sleep);
+  }
+
+  const providerIdentity = state.identities.find((candidate) =>
+    candidate.provider === 'google'
+    && candidate.providerSubject === identity.providerSubject,
+  ) ?? null;
+  const account = providerIdentity
+    ? state.accounts.find((candidate) => candidate.id === providerIdentity.accountId) ?? null
+    : null;
+  const membership = account
+    ? state.memberships.find((candidate) => candidate.accountId === account.id) ?? null
+    : null;
+  if (!providerIdentity || !account || !membership || account.status !== 'active') {
+    await context.dependencies.authStore.updateState((current) =>
+      recordFailedLogin(current, {
+        subject: throttleSubject,
+        policy: context.dependencies.auth,
+        now,
+      }),
+    );
+    sendMobileAuthError(context, 401, 'E_UNAUTHENTICATED', 'Google account is not linked.');
+    return;
+  }
+
+  const issued = issueMobileDeviceSession({
+    accountId: account.id,
+    sessionSecret,
+    ttlMs: context.dependencies.auth.mobileSessionTtlMs,
+    now,
+    deviceLabel: readOptionalString(body.deviceLabel),
+    devicePlatform: readDevicePlatform(body.devicePlatform),
+    appVersion: readOptionalString(body.appVersion),
+    remoteAddress: readRemoteAddress(context.request),
+  });
+  const nowIso = now.toISOString();
+  const updatedIdentity = {
+    ...providerIdentity,
+    email: identity.email,
+    updatedAt: nowIso,
+  };
+  const updatedAccount = {
+    ...account,
+    email: identity.email,
+    avatarUrl: identity.avatarUrl ?? account.avatarUrl,
+    updatedAt: nowIso,
+  };
+
+  await context.dependencies.authStore.writeState(recordSuccessfulLogin({
+    ...state,
+    updatedAt: nowIso,
+    accounts: state.accounts.map((candidate) =>
+      candidate.id === account.id ? updatedAccount : candidate,
+    ),
+    identities: state.identities.map((candidate) =>
+      candidate.id === providerIdentity.id ? updatedIdentity : candidate,
+    ),
+    sessions: [...state.sessions, issued.session],
+  }, {
+    subject: throttleSubject,
+    now,
+  }));
+
+  sendJson(context.response, 200, buildMobileAuthStatusPayload({
+    account: updatedAccount,
+    membership,
+    session: issued.session,
+  }, issued.token));
+}
+
 async function handleMobileLogout(
   context: RouteContext<MobileAuthRouteDependencies>,
 ): Promise<void> {
@@ -238,6 +371,37 @@ function readBearerToken(request: IncomingMessage): string | null {
 
 function readOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+async function verifyMobileGoogleIdentity(
+  context: RouteContext<MobileAuthRouteDependencies>,
+  idToken: string,
+  now: Date,
+): Promise<PlatformVerifiedGoogleIdentity | null> {
+  try {
+    return await verifyPlatformGoogleIdentityToken({
+      token: idToken,
+      audiences: context.dependencies.auth.google.mobileAudiences,
+      hostedDomains: context.dependencies.auth.google.hostedDomains,
+      verifier: context.dependencies.googleVerifier!,
+      now,
+    });
+  } catch {
+    const throttleSubject = createLoginThrottleSubject({
+      provider: 'google',
+      accountKey: 'google:invalid',
+      remoteAddress: readRemoteAddress(context.request),
+    });
+    await context.dependencies.authStore.updateState((current) =>
+      recordFailedLogin(current, {
+        subject: throttleSubject,
+        policy: context.dependencies.auth,
+        now,
+      }),
+    );
+    sendMobileAuthError(context, 401, 'E_UNAUTHENTICATED', 'Invalid Google credential.');
+    return null;
+  }
 }
 
 function readDevicePlatform(value: unknown): PlatformDevicePlatform | undefined {

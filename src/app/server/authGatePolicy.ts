@@ -94,6 +94,8 @@ function isPublicMobileAuthRoute(pathname: string, method: string): boolean {
   ) || (
     pathname === '/api/mobile/auth/login' && method === 'POST'
   ) || (
+    pathname === '/api/mobile/auth/google/login' && method === 'POST'
+  ) || (
     pathname === '/api/mobile/auth/logout' && method === 'POST'
   );
 }

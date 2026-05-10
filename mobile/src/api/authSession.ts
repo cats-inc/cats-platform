@@ -5,9 +5,11 @@ import {
 } from './client';
 import {
   fetchMobileAuthStatus,
+  loginMobileGoogle,
   loginMobileLocal,
   logoutMobile,
   type MobileAuthPrincipalSummary,
+  type MobileGoogleLoginInput,
   type MobileLocalLoginInput,
 } from './auth';
 import {
@@ -67,6 +69,24 @@ export async function loginMobileLocalSession(
   }
   const client = createClient(config);
   const status = await loginMobileLocal(client, input);
+  if (status.authenticated && status.token) {
+    await saveMobileAuthToken(storage, status.token);
+  } else {
+    await clearMobileAuthToken(storage);
+  }
+  return status;
+}
+
+export async function loginMobileGoogleSession(
+  config: ConnectionConfig,
+  input: MobileGoogleLoginInput,
+  storage: MobileSecureTokenStorage = getDefaultMobileAuthTokenStorage(),
+) {
+  if (!config.baseUrl) {
+    return { authenticated: false, principal: null };
+  }
+  const client = createClient(config);
+  const status = await loginMobileGoogle(client, input);
   if (status.authenticated && status.token) {
     await saveMobileAuthToken(storage, status.token);
   } else {

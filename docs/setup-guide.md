@@ -158,6 +158,10 @@ Current implementation status:
   `/api/mobile/auth/status` and complete local or Google mobile login before it
   can fetch product data. The server-side route gate accepts valid mobile
   bearer sessions for product-data requests without requiring browser CSRF.
+  Mobile Google login posts a mobile-native ID token to
+  `/api/mobile/auth/google/login`, where the server verifies it against
+  `CATS_AUTH_GOOGLE_MOBILE_AUDIENCES`; it does not reuse the browser GIS POST
+  route or its cookies.
   Cats Mobile uses Expo SecureStore for bearer-token persistence when that
   module is present, and otherwise falls back only to volatile memory for
   development/test; it does not store bearer tokens in AsyncStorage.

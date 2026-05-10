@@ -10,11 +10,13 @@ const { createMobileApiClient, createMobileApiClientWithStoredAuth } =
   mobileClientModule as typeof import('../mobile/src/api/client.ts');
 const {
   fetchMobileAuthStatus,
+  loginMobileGoogle,
   loginMobileLocal,
   logoutMobile,
 } = mobileAuthModule as typeof import('../mobile/src/api/auth.ts');
 const {
   loadMobileAuthenticatedSession,
+  loginMobileGoogleSession,
   loginMobileLocalSession,
 } = mobileAuthSessionModule as typeof import('../mobile/src/api/authSession.ts');
 const { saveMobileAuthToken } = mobileAuthTokenStoreModule as typeof import(
@@ -59,13 +61,23 @@ test('mobile auth api wrappers use canonical mobile auth endpoints', async (t) =
     password: 'correct-password',
     devicePlatform: 'ios',
   });
+  await loginMobileGoogle(client, {
+    idToken: 'mobile-google-id-token',
+    devicePlatform: 'ios',
+  });
   await logoutMobile(client);
 
   assert.equal(calls[0]?.url, 'http://127.0.0.1:3000/api/mobile/auth/login');
   assert.equal(calls[0]?.init?.method, 'POST');
   assert.equal(readHeader(calls[0]?.init, 'Authorization'), null);
-  assert.equal(calls[1]?.url, 'http://127.0.0.1:3000/api/mobile/auth/logout');
+  assert.equal(calls[1]?.url, 'http://127.0.0.1:3000/api/mobile/auth/google/login');
   assert.equal(calls[1]?.init?.method, 'POST');
+  assert.deepEqual(JSON.parse(String(calls[1]?.init?.body)), {
+    idToken: 'mobile-google-id-token',
+    devicePlatform: 'ios',
+  });
+  assert.equal(calls[2]?.url, 'http://127.0.0.1:3000/api/mobile/auth/logout');
+  assert.equal(calls[2]?.init?.method, 'POST');
 });
 
 test('mobile authenticated api client loads bearer token from secure storage boundary', async (t) => {
@@ -213,6 +225,40 @@ test('mobile local login stores the returned bearer token through secure storage
   assert.equal(status.authenticated, true);
   assert.equal(calls[0]?.url, 'http://127.0.0.1:3000/api/mobile/auth/login');
   assert.equal(await storage.getItemAsync('cats-mobile.authToken.v1'), 'issued-mobile-token');
+});
+
+test('mobile google login stores the returned bearer token through secure storage', async (t) => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(input), init });
+    return jsonResponse({
+      authenticated: true,
+      principal: {
+        accountId: 'account-owner',
+        displayName: 'Owner',
+        email: 'owner@example.test',
+        roles: ['owner', 'admin'],
+        coreActorId: 'actor-owner',
+        sessionId: 'session-mobile',
+      },
+      token: 'issued-mobile-google-token',
+    });
+  }) as typeof fetch;
+
+  const storage = createMemorySecureStorage();
+  const status = await loginMobileGoogleSession(
+    { baseUrl: 'http://127.0.0.1:3000' },
+    { idToken: 'mobile-google-id-token' },
+    storage,
+  );
+
+  assert.equal(status.authenticated, true);
+  assert.equal(calls[0]?.url, 'http://127.0.0.1:3000/api/mobile/auth/google/login');
+  assert.equal(await storage.getItemAsync('cats-mobile.authToken.v1'), 'issued-mobile-google-token');
 });
 
 function jsonResponse(body: unknown): Response {
