@@ -256,6 +256,51 @@ test('platform auth google login rejects missing google csrf token', async (t) =
   assert.equal(errorCode(response.payload), 'E_FORBIDDEN');
 });
 
+test('platform auth google login enforces composite failed-login lockout', async (t) => {
+  const googleIdentity = createGoogleIdentity();
+  const bootstrap = createFirstAdminGoogleAuthState({
+    state: createEmptyPlatformAuthState(NOW),
+    identity: googleIdentity,
+    sessionSecret: SESSION_SECRET,
+    sessionTtlMs: 60_000,
+    now: NOW,
+  });
+  const store = new MemoryPlatformAuthStore({
+    ...bootstrap.state,
+    accounts: [{ ...bootstrap.account, status: 'disabled' }],
+    sessions: [],
+  }, () => NOW);
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+    CATS_AUTH_LOGIN_FAILURE_LIMIT: '2',
+    CATS_AUTH_LOGIN_LOCKOUT_MS: '30000',
+  }, fakeGoogleVerifier({
+    sub: googleIdentity.providerSubject,
+    aud: 'browser-client-id',
+    iss: 'https://accounts.google.com',
+    exp: Math.floor(NOW.getTime() / 1000) + 600,
+    email: googleIdentity.email,
+    email_verified: true,
+  }));
+  await listen(server);
+  t.after(() => server.close());
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const failed = await googleLoginRequest(server);
+    assert.equal(failed.status, 401);
+    assert.equal(errorCode(failed.payload), 'E_UNAUTHENTICATED');
+  }
+  await store.updateState((state) => ({
+    ...state,
+    accounts: state.accounts.map((account) => ({ ...account, status: 'active' })),
+  }));
+
+  const blocked = await googleLoginRequest(server);
+  assert.equal(blocked.status, 403);
+  assert.equal(errorCode(blocked.payload), 'E_FORBIDDEN');
+  assert.match(blocked.payload?.error?.message ?? '', /too many/i);
+});
+
 async function createSeededStore(): Promise<MemoryPlatformAuthStore> {
   const bootstrap = await createFirstAdminLocalAuthState({
     state: createEmptyPlatformAuthState(NOW),
@@ -359,6 +404,16 @@ async function request(
 
 function errorCode(payload: Record<string, any> | null): string | undefined {
   return payload?.error?.code;
+}
+
+async function googleLoginRequest(server: ReturnType<typeof createServer>) {
+  return request(server, '/api/auth/google/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: 'g_csrf_token=csrf-token',
+    body: { credential: 'id-token', csrfToken: 'csrf-token' },
+  });
 }
 
 function createGoogleIdentity() {

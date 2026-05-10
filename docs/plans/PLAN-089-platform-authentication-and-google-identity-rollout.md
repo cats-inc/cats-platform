@@ -96,7 +96,7 @@ re-opens LAN admin bootstrap.
 - [ ] Task 2.8: Require admin auth for setup reset after setup is complete.
 - [ ] Task 2.9: Add structured `401 unauthenticated` and `403 forbidden`
       responses.
-- [ ] Task 2.10: Add failed-login throttling and lockout for local and Google
+- [x] Task 2.10: Add failed-login throttling and lockout for local and Google
       auth attempts. The lockout key shall be the composite
       `(account_or_provider_subject, remote_address)`, defaulting to 5
       failures followed by at least 30 seconds of lockout with secret-free
@@ -181,7 +181,7 @@ log out, log back in, and access Chat/Work/Code only while authenticated.
       `CATS_AUTH_GOOGLE_CLIENT_ID`.
 - [ ] Task 4.5: Add UI fallback messaging for raw LAN-IP / unavailable Google
       origin cases.
-- [ ] Task 4.6: Validate Google CSRF token handling for GIS POST credential
+- [x] Task 4.6: Validate Google CSRF token handling for GIS POST credential
       submissions separately from Cats authenticated-API CSRF.
 
 **Deliverables**: Google can create the first admin or log in an existing
@@ -576,6 +576,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Reconciled completed checkboxes for the landed server/mobile auth foundations: Tasks 2.1, 2.3, 4b.1, 6.2, 6.3, and 6.7 are now marked complete. The global route gate, repair flow, renderer login UX, and Google HTTP routes remain open. |
 | 2026-05-10 | Phase 4 Google credential request parser slice landed: added a parser for Google GIS `application/x-www-form-urlencoded` credential posts plus JSON test clients, returning normalized credential and `g_csrf_token` values. Browser Google HTTP route remains pending. |
 | 2026-05-10 | Phase 4 browser Google linked-login route slice started: `/api/auth/google/login` now enforces the pre-auth origin gate, GIS double-submit CSRF, injected Google ID-token verifier, linked-account lookup, Google throttling records, and browser session cookie issuance for existing linked accounts. First-admin Google setup/linking and real verifier dependency remain pending. |
+| 2026-05-10 | Google route lockout regression added and completed task reconciliation updated: Task 2.10 is checked for local+Google composite failed-login lockout, and Task 4.6 is checked for GIS CSRF validation remaining separate from Cats synchronizer CSRF. Aggregate guard recovery/clearing work remains under Task 2.11. |
 
 ---
 
