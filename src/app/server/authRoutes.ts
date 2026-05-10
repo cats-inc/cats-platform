@@ -46,7 +46,10 @@ export interface AuthRouteDependencies {
   auth: PlatformAuthConfig;
   googleVerifier?: PlatformGoogleIdTokenVerifier;
   authRecoveryTokenState?: PlatformAuthRecoveryTokenState | null;
-  setAuthRecoveryTokenState?: (state: PlatformAuthRecoveryTokenState | null) => void | Promise<void>;
+  getAuthRecoveryTokenState?: () => PlatformAuthRecoveryTokenState | null;
+  setAuthRecoveryTokenState?: (
+    state: PlatformAuthRecoveryTokenState | null
+  ) => void | Promise<void>;
   readSetupCompleteAt?: () => Promise<string | null>;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
@@ -173,7 +176,9 @@ async function handleRepairFirstAdmin(
   const authorization = authorizePlatformAuthRepairBootstrap({
     remoteAddress: readRemoteAddress(context.request),
     recoveryToken: typeof body.recoveryToken === 'string' ? body.recoveryToken : null,
-    recoveryTokenState: context.dependencies.authRecoveryTokenState ?? null,
+    recoveryTokenState: context.dependencies.getAuthRecoveryTokenState?.()
+      ?? context.dependencies.authRecoveryTokenState
+      ?? null,
     sessionSecret,
     now,
   });

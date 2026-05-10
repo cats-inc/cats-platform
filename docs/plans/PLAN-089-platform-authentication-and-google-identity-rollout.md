@@ -115,7 +115,7 @@ re-opens LAN admin bootstrap.
       `CATS_AUTH_ACCOUNT_COOLDOWN_MS` /
       `CATS_AUTH_SUBNET_DAILY_FAILURE_CAP` but shall not be able to disable
       the guards entirely.
-- [ ] Task 2.12: Add an allowed-browser-origin gate to all pre-auth mutating endpoints
+- [x] Task 2.12: Add an allowed-browser-origin gate to all pre-auth mutating endpoints
       (`/setup` first-admin creation, `/api/auth/login`, repair first-admin
       creation, Google credential POST). The gate shall reject requests when
       `Origin` is absent or not in the configured allowed browser-origin set,
@@ -123,7 +123,7 @@ re-opens LAN admin bootstrap.
       without an allowlisted `Origin`, or `Sec-Fetch-Site` is `none` on an API
       mutation. This is in addition to (not a replacement for) the authenticated
       synchronizer CSRF token and the GIS `g_csrf_token` double-submit.
-- [ ] Task 2.13: Constrain the auth-state-file repair first-admin creation
+- [x] Task 2.13: Constrain the auth-state-file repair first-admin creation
       endpoint so it is reachable only from loopback (`127.0.0.1` / `::1`)
       OR with a one-time recovery token. At repair-mode start-up the
       platform shall generate the token, write its hash to memory, and write
@@ -582,7 +582,8 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2 origin-preservation follow-up landed for Vite dev: renderer proxy routes now use explicit proxy objects with `changeOrigin: false` plus cookie domain/path rewrite settings so browser-origin and session-cookie behavior remain stable during auth testing. Reverse-proxy deployment audit remains pending before Task 2.15 is checked off. |
 | 2026-05-10 | Phase 2 repair-startup prerequisite landed: added a helper that issues the one-time recovery token only when readiness is in repair mode and returns a structured log payload containing the reason and token-file path but not the raw token. Startup wiring and the constrained repair first-admin route remain pending. |
 | 2026-05-10 | Phase 2 repair authorization prerequisite landed: repair bootstrap authorization now has a tested loopback-or-one-time-token decision helper, with IPv4-mapped loopback support and consumed-token state returned only for the successful recovery-token path. The HTTP repair first-admin route still needs to call it. |
-| 2026-05-10 | Phase 2 repair first-admin route slice started: `/api/auth/repair/first-admin` can recreate missing/corrupt auth state from an allowlisted loopback browser request, uses the loopback-or-token authorization helper, and is registered as a pre-auth public auth route. Non-loopback recovery-token route coverage is now present; startup token-state wiring remains pending before Tasks 2.4/2.13 are checked off. |
+| 2026-05-10 | Phase 2 repair first-admin route slice started: `/api/auth/repair/first-admin` can recreate missing/corrupt auth state from an allowlisted loopback browser request, uses the loopback-or-token authorization helper, and is registered as a pre-auth public auth route. Non-loopback recovery-token route coverage is present. |
+| 2026-05-10 | Phase 2 repair token startup wiring landed: startup recovery now detects setup-complete missing/corrupt auth state, writes the one-time recovery token to the configured state-dir file, stores only token state in memory, and makes that token state available to `/api/auth/repair/first-admin`. Tasks 2.12 and 2.13 are now checked; full repair UX and global route-gate install remain under Tasks 2.4/2.5. |
 
 ---
 

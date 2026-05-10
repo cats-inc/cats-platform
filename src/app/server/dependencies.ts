@@ -24,6 +24,7 @@ import {
 import {
   createFileBackedPlatformAuthStore,
   MemoryPlatformAuthStore,
+  type PlatformAuthRecoveryTokenState,
   type PlatformAuthStore,
 } from '../../platform/auth/index.js';
 import { createTelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
@@ -164,6 +165,14 @@ export function resolveServerDependencies(
   const sharedCoreStore = dependencies.shared.coreStore ?? dependencies.chat.chatStore;
   const authStore = dependencies.shared.authStore
     ?? createDefaultAuthStore(dependencies.shared, dependencies.chat);
+  let authRecoveryTokenState: PlatformAuthRecoveryTokenState | null =
+    dependencies.shared.authRecoveryTokenState ?? null;
+  const getAuthRecoveryTokenState = dependencies.shared.getAuthRecoveryTokenState
+    ?? (() => authRecoveryTokenState);
+  const setAuthRecoveryTokenState = dependencies.shared.setAuthRecoveryTokenState
+    ?? ((state: PlatformAuthRecoveryTokenState | null) => {
+      authRecoveryTokenState = state;
+    });
   const startup = dependencies.shared.startup ?? createAppStartupState({
     phase: 'ready',
     ready: true,
@@ -306,6 +315,9 @@ export function resolveServerDependencies(
       coreStore: sharedCoreStore,
       startup,
       authStore,
+      authRecoveryTokenState: getAuthRecoveryTokenState(),
+      getAuthRecoveryTokenState,
+      setAuthRecoveryTokenState,
       resumePendingOrchestratorDispatch,
       resumeWorkflowContinuationDispatch,
       providerCapabilityBootstrapConfig: capabilityBootstrapLoaded.config,

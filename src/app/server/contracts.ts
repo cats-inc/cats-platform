@@ -65,6 +65,7 @@ export interface SharedServerDependencies {
   authStore?: PlatformAuthStore;
   googleVerifier?: PlatformGoogleIdTokenVerifier;
   authRecoveryTokenState?: PlatformAuthRecoveryTokenState | null;
+  getAuthRecoveryTokenState?: () => PlatformAuthRecoveryTokenState | null;
   setAuthRecoveryTokenState?: (
     state: PlatformAuthRecoveryTokenState | null
   ) => void | Promise<void>;
