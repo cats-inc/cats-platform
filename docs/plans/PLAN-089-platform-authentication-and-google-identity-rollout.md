@@ -558,6 +558,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2 repair readiness slice started: added a setup/auth-state readiness helper that maps pre-setup, post-setup, and post-setup missing/corrupt auth state into explicit gate phases and repair reasons. Startup repair detector, recovery-token route, and request-router enforcement remain pending. |
 | 2026-05-10 | Phase 4 Google verifier contract slice started: added an injected Google ID-token verifier interface plus server-side claim validation for issuer, audience, expiration, verified email, hosted-domain allowlist, and mobile audiences. The maintained verifier dependency and browser/mobile Google login routes remain pending before Tasks 4.1-4.3/4b.7 can be checked off. |
 | 2026-05-10 | Local credential verification was extracted behind `verifyPlatformLocalPasswordCredential` and both browser and mobile local-login routes now use the shared helper. This reduces route drift before adding Google and repair bootstrap routes. |
+| 2026-05-10 | Phase 2 pre-auth origin gate expanded to `/api/platform/setup/complete`, so first-admin setup mutations now require an allowlisted browser origin and reject missing/cross-site origins with pinned `E_FORBIDDEN`. Repair and Google credential POST still need the same gate before Task 2.12 can be checked off. |
 
 ---
 

@@ -24,9 +24,11 @@ import {
 } from '../../products/chat/api/routeSupport.js';
 import {
   createFirstAdminLocalAuthState,
+  evaluatePreAuthOriginGate,
   serializeAuthSessionCookie,
   type PlatformAuthStore,
   type PlatformAuthState,
+  type PreAuthOriginGateRejectionReason,
 } from '../../platform/auth/index.js';
 import type { PlatformAuthConfig } from '../../platform/auth/config.js';
 import type { RouteContext } from '../../shared/http.js';
@@ -81,6 +83,10 @@ async function recordProductEvent(
 async function handlePlatformSetupComplete(
   context: PlatformSetupContext,
 ): Promise<void> {
+  if (!enforceSetupPreAuthOriginGate(context)) {
+    return;
+  }
+
   let body: LegacyPlatformSetupCompleteInput;
   try {
     body = await readJsonBody<LegacyPlatformSetupCompleteInput>(context.request);
@@ -377,6 +383,36 @@ async function handlePlatformSetupComplete(
         message: error instanceof Error ? error.message : 'Unexpected server error',
       },
     });
+  }
+}
+
+function enforceSetupPreAuthOriginGate(context: PlatformSetupContext): boolean {
+  const decision = evaluatePreAuthOriginGate({
+    origin: context.request.headers.origin,
+    fetchSite: context.request.headers['sec-fetch-site'],
+    method: context.method,
+    allowedBrowserOrigins: context.dependencies.auth.allowedBrowserOrigins,
+  });
+  if (!decision.allowed) {
+    sendJson(context.response, 403, {
+      error: {
+        code: 'E_FORBIDDEN',
+        message: setupPreAuthOriginGateMessage(decision.reason),
+      },
+    });
+    return false;
+  }
+  return true;
+}
+
+function setupPreAuthOriginGateMessage(reason: PreAuthOriginGateRejectionReason): string {
+  switch (reason) {
+    case 'origin_not_allowed':
+      return 'Origin is not allowed.';
+    case 'fetch_site_not_allowed':
+      return 'Fetch site is not allowed.';
+    case 'origin_required':
+      return 'Origin is required.';
   }
 }
 

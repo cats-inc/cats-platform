@@ -20,6 +20,8 @@ test('platform setup can create first local admin and browser session', async (t
   const fixture = await createSetupFixture(t);
   const response = await request(fixture.server, '/api/platform/setup/complete', {
     method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
     body: {
       ownerDisplayName: 'Owner',
       createGuideCat: false,
@@ -52,10 +54,12 @@ test('platform setup can create first local admin and browser session', async (t
   assert.ok(core.setupCompleteAt);
 });
 
-test('platform setup rejects partial first-admin credentials without setup completion', async (t) => {
+test('platform setup rejects partial first-admin credentials before completion', async (t) => {
   const fixture = await createSetupFixture(t);
   const response = await request(fixture.server, '/api/platform/setup/complete', {
     method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
     body: {
       ownerDisplayName: 'Owner',
       createGuideCat: false,
@@ -65,6 +69,37 @@ test('platform setup rejects partial first-admin credentials without setup compl
 
   assert.equal(response.status, 400);
   assert.equal(response.payload?.error?.code, 'bad_request');
+  assert.equal((await fixture.authStore.readState()).accounts.length, 0);
+  assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
+});
+
+test('platform setup rejects first-admin creation without allowlisted origin', async (t) => {
+  const fixture = await createSetupFixture(t);
+  const missingOrigin = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'correct-password',
+    },
+  });
+  assert.equal(missingOrigin.status, 403);
+  assert.equal(missingOrigin.payload?.error?.code, 'E_FORBIDDEN');
+
+  const crossSite = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://evil.example.test',
+    secFetchSite: 'cross-site',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'correct-password',
+    },
+  });
+  assert.equal(crossSite.status, 403);
+  assert.equal(crossSite.payload?.error?.code, 'E_FORBIDDEN');
   assert.equal((await fixture.authStore.readState()).accounts.length, 0);
   assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
 });
@@ -124,6 +159,8 @@ async function request(
   options: {
     method?: string;
     body?: unknown;
+    origin?: string;
+    secFetchSite?: string;
   } = {},
 ): Promise<{
   status: number;
@@ -137,6 +174,12 @@ async function request(
   const headers: Record<string, string> = {};
   if (options.body !== undefined) {
     headers['content-type'] = 'application/json';
+  }
+  if (options.origin) {
+    headers.origin = options.origin;
+  }
+  if (options.secFetchSite) {
+    headers['sec-fetch-site'] = options.secFetchSite;
   }
   const response = await fetch(`http://127.0.0.1:${address.port}${pathname}`, {
     method: options.method ?? 'GET',
