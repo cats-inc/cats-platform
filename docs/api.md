@@ -96,10 +96,11 @@ issues a Cats browser session for an already linked identity; setup creates the
 first owner/admin identity; link attaches Google to the authenticated browser
 session.
 
-The global product-route gate is not installed yet. Until the PLAN-089 atomic
-gate slice lands, existing Chat/Work/Code/Core routes still dispatch through
-their current route modules. Do not treat LAN exposure as fully closed until
-that gate is installed and the release notes say the rollout is complete.
+The global route gate now runs before product/Core/runtime/shell/transport
+dispatch. Unauthenticated app-shell reads receive only the minimal setup/auth
+bootstrap envelope; authenticated app-shell reads continue to the full product
+payload. Browser-cookie mutations require `X-Cats-CSRF-Token`; valid Cats
+Mobile bearer sessions do not require browser CSRF.
 
 Pinned auth error codes are:
 

@@ -153,9 +153,10 @@ Current implementation status:
   the manifest so Cats Mobile can connect without manual URL entry.
 - The QR and manifest are not authorization. Cats Mobile must call
   `/api/mobile/auth/status` and complete local or Google mobile login before it
-  can fetch product data. The server-side mobile bearer auth routes exist, but
-  the full product-data route gate and SecureStore-backed client persistence
-  are still landing under PLAN-089.
+  can fetch product data. The server-side route gate accepts valid mobile
+  bearer sessions for product-data requests without requiring browser CSRF.
+  SecureStore-backed client persistence and launch/login UI are still landing
+  under PLAN-089.
 
 If the card reports no LAN address while the bind host is already
 LAN-visible, verify the machine has a non-loopback IPv4 address on the trusted

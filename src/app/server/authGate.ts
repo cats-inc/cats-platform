@@ -64,6 +64,17 @@ export async function evaluatePlatformAuthGate(
     pathname: input.pathname,
   });
   if (policy.access === 'public') {
+    if (policy.minimalEnvelope) {
+      const resolved = await resolveRequestPrincipal(input);
+      if (resolved) {
+        return {
+          allowed: true,
+          policy,
+          principal: resolved.principal,
+          credentialKind: resolved.credentialKind,
+        };
+      }
+    }
     return {
       allowed: true,
       policy,
@@ -123,9 +134,20 @@ async function resolveRequestPrincipal(
   if (!sessionSecret) {
     return null;
   }
-  const state = await input.authStore.readState();
-  const now = input.now?.() ?? new Date();
   const bearerToken = readBearerToken(input.request);
+  const browserToken = readCookie(input.request, AUTH_SESSION_COOKIE_NAME);
+  if (!bearerToken && !browserToken) {
+    return null;
+  }
+
+  let state;
+  try {
+    state = await input.authStore.readState();
+  } catch {
+    return null;
+  }
+
+  const now = input.now?.() ?? new Date();
   if (bearerToken) {
     const principal = resolveMobilePrincipalFromBearerToken(state, {
       token: bearerToken,
@@ -137,7 +159,6 @@ async function resolveRequestPrincipal(
     }
   }
 
-  const browserToken = readCookie(input.request, AUTH_SESSION_COOKIE_NAME);
   if (!browserToken) {
     return null;
   }

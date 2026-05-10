@@ -116,6 +116,36 @@ test('auth gate readiness allows authenticated admin after setup', async () => {
   assert.equal(decision.principal?.membership.coreActorId, 'actor-owner');
 });
 
+test('auth gate readiness keeps authenticated app-shell eligible for full payload', async () => {
+  const bootstrap = await createFirstAdminLocalAuthState({
+    state: createEmptyPlatformAuthState(NOW),
+    displayName: 'Owner',
+    identifier: 'owner@example.test',
+    password: 'correct-password',
+    sessionSecret: SESSION_SECRET,
+    sessionTtlMs: 60_000,
+    now: NOW,
+  });
+  const readiness = resolvePlatformAuthReadiness({
+    setupCompleteAt: NOW.toISOString(),
+    authStateStatus: { status: 'ready', state: bootstrap.state },
+  });
+  const decision = await evaluatePlatformAuthGate({
+    ...createFixture(new MemoryPlatformAuthStore(bootstrap.state, () => NOW)),
+    phase: readiness.phase,
+    request: requestWithHeaders({
+      cookie: `${AUTH_SESSION_COOKIE_NAME}=${encodeURIComponent(bootstrap.session.token)}`,
+    }),
+    method: 'GET',
+    pathname: '/api/app-shell',
+  });
+
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.policy.minimalEnvelope, true);
+  assert.equal(decision.credentialKind, 'browser_cookie');
+  assert.equal(decision.principal?.account.id, bootstrap.account.id);
+});
+
 test('auth gate readiness rejects setup-complete browser mutations without csrf', async () => {
   const bootstrap = await createFirstAdminLocalAuthState({
     state: createEmptyPlatformAuthState(NOW),

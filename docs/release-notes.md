@@ -25,12 +25,13 @@ Deprecations:
 
 Behavior change:
 
-PLAN-089 server-side auth foundations are landing behind the not-yet-installed
-global route gate. Browser local login/logout/status and Cats Mobile bearer
-login/logout/status routes now exist, and setup-complete missing/corrupt auth
-state now enters a constrained repair path through
-`POST /api/auth/repair/first-admin`. Product APIs are not fully protected until
-the dedicated gate slice lands, so do not treat LAN exposure as closed yet.
+PLAN-089 server-side auth foundations now include the global route gate.
+Browser local login/logout/status and Cats Mobile bearer login/logout/status
+routes exist, setup-complete missing/corrupt auth state enters a constrained
+repair path through `POST /api/auth/repair/first-admin`, and protected
+Chat/Work/Code/Core/runtime/shell/transport APIs reject unauthenticated
+requests before product dispatch. Unauthenticated app-shell reads return only
+the minimal setup/auth bootstrap envelope.
 
 Migration steps:
 

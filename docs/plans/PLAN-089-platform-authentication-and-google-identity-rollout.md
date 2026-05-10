@@ -87,14 +87,14 @@ re-opens LAN admin bootstrap.
       Corrupt means JSON parse failure, missing required top-level fields, or a
       schema version newer than this code can read; unknown extra fields are
       allowed.
-- [ ] Task 2.5: Add platform request middleware before product route dispatch.
-- [ ] Task 2.6: Implement public-route allowlists for pre-setup and post-setup
+- [x] Task 2.5: Add platform request middleware before product route dispatch.
+- [x] Task 2.6: Implement public-route allowlists for pre-setup and post-setup
       states.
-- [ ] Task 2.7: Return only a minimal setup/auth bootstrap envelope from
+- [x] Task 2.7: Return only a minimal setup/auth bootstrap envelope from
       unauthenticated app-shell reads, including
       `auth.providers.google = { enabled, clientId }`.
 - [x] Task 2.8: Require admin auth for setup reset after setup is complete.
-- [ ] Task 2.9: Add structured `401 unauthenticated` and `403 forbidden`
+- [x] Task 2.9: Add structured `401 unauthenticated` and `403 forbidden`
       responses.
 - [x] Task 2.10: Add failed-login throttling and lockout for local and Google
       auth attempts. The lockout key shall be the composite
@@ -200,7 +200,7 @@ or transport data until this phase exists.
 - [x] Task 4b.2: Add mobile auth routes for status, local login, logout, and
       session revocation. Successful mobile login returns the raw bearer token
       exactly once; persisted state stores only the hash.
-- [ ] Task 4b.3: Add route-gate support for `Authorization: Bearer` mobile
+- [x] Task 4b.3: Add route-gate support for `Authorization: Bearer` mobile
       device sessions. Browser cookie sessions still require the browser
       CSRF/origin policy; mobile bearer sessions do not require
       `X-Cats-CSRF-Token`.
@@ -578,6 +578,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4 browser Google linked-login route slice started: `/api/auth/google/login` now enforces the pre-auth origin gate, GIS double-submit CSRF, injected Google ID-token verifier, linked-account lookup, Google throttling records, and browser session cookie issuance for existing linked accounts. First-admin Google setup/linking and real verifier dependency remain pending. |
 | 2026-05-10 | Phase 4b mobile secure-client follow-up landed: Cats Mobile can now construct REST API clients by loading the bearer token from the injected secure-storage boundary, keeping tokens out of connection config and AsyncStorage. Real Expo SecureStore wiring plus launch/login UI remain pending before Tasks 4b.4/4b.5 can be checked. |
 | 2026-05-10 | Phase 4 Google HTTP routes landed: `/api/auth/google/setup` can create the first owner/admin auth account from a verified GIS credential, `/api/auth/google/link` links Google to the authenticated browser session with both Cats and GIS CSRF checks, and Task 4.3 is now checked. GIS frontend integration and LAN/IP fallback UI remain under Tasks 4.4/4.5. |
+| 2026-05-10 | Phase 2/4b route-gate install landed: `requestRouter` now evaluates the platform auth gate before product/Core/runtime/shell/transport dispatch, returns the minimal setup/auth envelope for unauthenticated app-shell reads, preserves full app-shell dispatch for authenticated principals, emits pinned auth errors, and accepts mobile bearer sessions without browser CSRF. Tasks 2.5/2.6/2.7/2.9/4b.3 are now checked; repair UX and principal propagation remain open. |
 | 2026-05-10 | Google route lockout regression added and completed task reconciliation updated: Task 2.10 is checked for local+Google composite failed-login lockout, and Task 4.6 is checked for GIS CSRF validation remaining separate from Cats synchronizer CSRF. Aggregate guard recovery/clearing work remains under Task 2.11. |
 | 2026-05-10 | Phase 6 route-gate readiness regression slice landed: focused tests now cover pre-setup product API rejection with public minimal app-shell, setup-complete unauthenticated rejection, setup-complete authenticated admin access, repair-mode fail-closed behavior, and browser-cookie mutation CSRF rejection. The evaluator is still not installed in `requestRouter`. |
 | 2026-05-10 | Phase 2 setup-reset protection landed: legacy `/api/setup/reset` now requires an authenticated admin browser session after setup completion and validates the Cats synchronizer CSRF token before clearing setup state. Full product mutation CSRF middleware remains pending under Task 2.2/6.4. |

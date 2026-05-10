@@ -8,6 +8,10 @@ import { routeAppPackageApi } from './appPackageRoutes.js';
 import { routeMobileAuthApi } from './mobileAuthRoutes.js';
 import { routeMobileManifestApi } from './mobileManifestRoutes.js';
 import { routePlatformAuthApi } from './authRoutes.js';
+import {
+  evaluatePlatformAuthGate,
+  sendPlatformAuthGateRejection,
+} from './authGate.js';
 import { routePlatformSetupApi } from './platformSetupRoutes.js';
 import {
   handleRuntimeApiProxyRoute,
@@ -40,6 +44,12 @@ import { routeCodeApi } from '../../products/code/api/index.js';
 import { routeArtifactCanvasApi } from '../../products/shared/artifactCanvas/api.js';
 import { routeWorkApi } from '../../products/work/api/index.js';
 import { routeEntitySubscriptionApi } from './subscribeRoutes.js';
+import {
+  buildPlatformAuthBootstrapEnvelope,
+  PLATFORM_AUTH_ERROR_CODES,
+  resolveEffectivePlatformAuthGateMode,
+  resolvePlatformAuthReadiness,
+} from '../../platform/auth/index.js';
 import {
   getAppLifecycleContract,
   getAppOperationalStatus,
@@ -302,6 +312,70 @@ async function handleShellOpenFolder(
   }
 }
 
+async function handlePlatformAuthGate(
+  request: IncomingMessage,
+  response: import('node:http').ServerResponse,
+  url: URL,
+  method: string,
+  dependencies: ResolvedServerDependencies,
+): Promise<boolean> {
+  const { auth } = dependencies.shared.config;
+  const [core, authStateStatus] = await Promise.all([
+    dependencies.shared.coreStore.readCore(),
+    dependencies.shared.authStore.readStateStatus(),
+  ]);
+  const effectiveMode = resolveEffectivePlatformAuthGateMode({
+    configuredMode: auth.mode,
+    host: dependencies.shared.config.host,
+    setupCompleteAt: core.setupCompleteAt,
+  });
+  if (effectiveMode.status === 'configuration_error') {
+    sendJson(response, 503, {
+      error: {
+        code: PLATFORM_AUTH_ERROR_CODES.forbidden,
+        message: effectiveMode.message,
+      },
+    });
+    return true;
+  }
+  if (effectiveMode.status === 'unsafe_disabled') {
+    return false;
+  }
+
+  const readiness = resolvePlatformAuthReadiness({
+    setupCompleteAt: core.setupCompleteAt,
+    authStateStatus,
+  });
+  const decision = await evaluatePlatformAuthGate({
+    request,
+    pathname: url.pathname,
+    method,
+    phase: readiness.phase,
+    authStore: dependencies.shared.authStore,
+    auth,
+    now: dependencies.shared.now,
+  });
+
+  if (!decision.allowed) {
+    sendPlatformAuthGateRejection(response, decision);
+    return true;
+  }
+
+  if (decision.policy.minimalEnvelope && decision.principal === null) {
+    sendJson(response, 200, buildPlatformAuthBootstrapEnvelope({
+      auth,
+      host: dependencies.shared.config.host,
+      port: dependencies.shared.config.port,
+      setupCompleteAt: readiness.setupCompleteAt,
+      authStateStatus: readiness.authStateStatus,
+      now: dependencies.shared.now?.(),
+    }));
+    return true;
+  }
+
+  return false;
+}
+
 export async function routeRequest(
   request: IncomingMessage,
   response: import('node:http').ServerResponse,
@@ -318,6 +392,7 @@ export async function routeRequest(
     url,
     method,
   };
+
   const coreContext = {
     ...context,
     dependencies: {
@@ -416,6 +491,10 @@ export async function routeRequest(
       return;
     }
     await handleHealth(dependencies, response);
+    return;
+  }
+
+  if (await handlePlatformAuthGate(request, response, url, method, dependencies)) {
     return;
   }
 
