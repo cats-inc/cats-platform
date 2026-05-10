@@ -159,7 +159,7 @@ CSRF; repeated invalid logins are throttled.
 - [x] Task 3.2: Add `/login` route and login screen for existing workspaces.
 - [ ] Task 3.3: Update platform bootstrap loading so unauthenticated app loads
       redirect to `/login` instead of surfacing raw API failures.
-- [ ] Task 3.4: Add logout action in an existing account/settings surface.
+- [x] Task 3.4: Add logout action in an existing account/settings surface.
 - [ ] Task 3.5: Verify Vite dev proxy and built server both preserve
       Set-Cookie / Cookie behavior after the Phase 2 origin-preservation work
       has landed. Keep `vite.config.ts` proxy `changeOrigin`,
@@ -589,6 +589,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 3 renderer login prerequisite slice started: added a renderer auth API client for `/api/auth/status`, local login, Google login, and logout, with pinned-code error mapping. Login route UI and stale-CSRF retry wiring remain pending. |
 | 2026-05-10 | Phase 3 setup credential UI landed: `/setup` step 1 now collects first-admin login email/password separately from owner display profile and sends those fields to setup completion. Task 3.1 is now checked. |
 | 2026-05-10 | Phase 3 local login route landed: `/login` now renders a local admin login screen backed by the renderer auth API client and refreshes the app-shell after successful login. Task 3.2 is now checked; automatic unauthenticated redirects remain under Task 3.3. |
+| 2026-05-10 | Phase 3 logout surface landed: Settings > General now exposes a Sign out action that fetches `/api/auth/status` for the current Cats CSRF token, calls `/api/auth/logout`, and routes back to `/login`. Task 3.4 is now checked. |
 
 ---
 

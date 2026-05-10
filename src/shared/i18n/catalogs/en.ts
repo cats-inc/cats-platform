@@ -78,6 +78,16 @@ export const enCatalog: MessageCatalog = {
   'settings.general.avatarUploadLabel': 'Upload avatar',
   'settings.general.avatarRemoveLabel': 'Remove avatar',
   'settings.general.nameLabel': 'Name',
+  'settings.general.accountTitle': 'Account',
+  'settings.general.accountDescription':
+    'End the current browser session on this device.',
+  'settings.general.signOutButton': 'Sign out',
+  'settings.general.signingOutButton': 'Signing out…',
+  'settings.general.signOutFailed': 'Sign-out failed.',
+  'settings.general.signOutFailedWithStatus': 'Sign-out failed ({status}).',
+  'settings.general.signOutCsrfError': 'Security token mismatch. Refresh and try again.',
+  'settings.general.signOutForbiddenError': 'Sign-out is not allowed right now.',
+  'settings.general.signOutUnauthenticated': 'You are already signed out.',
   'settings.general.languageTitle': 'Language',
   'settings.general.languageDescription':
     'Choose how assistants answer and how Cats displays its interface.',

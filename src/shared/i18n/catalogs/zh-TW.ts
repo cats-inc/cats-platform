@@ -78,6 +78,16 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.general.avatarUploadLabel': '上傳頭像',
   'settings.general.avatarRemoveLabel': '移除頭像',
   'settings.general.nameLabel': '名字',
+  'settings.general.accountTitle': '帳號',
+  'settings.general.accountDescription':
+    '結束這台裝置目前的瀏覽器 session。',
+  'settings.general.signOutButton': '登出',
+  'settings.general.signingOutButton': '登出中…',
+  'settings.general.signOutFailed': '登出失敗。',
+  'settings.general.signOutFailedWithStatus': '登出失敗（{status}）。',
+  'settings.general.signOutCsrfError': '安全權杖不一致，請重新整理後再試。',
+  'settings.general.signOutForbiddenError': '目前不允許登出。',
+  'settings.general.signOutUnauthenticated': '你已經登出。',
   'settings.general.languageTitle': '語言',
   'settings.general.languageDescription':
     '選擇助理回覆語言，以及 Cats 介面的顯示語言。',

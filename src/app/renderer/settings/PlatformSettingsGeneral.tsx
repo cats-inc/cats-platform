@@ -27,6 +27,11 @@ import {
 } from '../../../shared/guideCatIdentity.js';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n/index.js';
+import {
+  fetchPlatformAuthStatus,
+  logoutPlatformSession,
+} from '../auth/api.js';
+import { PLATFORM_AUTH_ERROR_CODES } from '../../../platform/auth/errorCodes.js';
 
 export interface PlatformSettingsGeneralProps {
   payload: AppShellPayload;
@@ -73,6 +78,7 @@ export function PlatformSettingsGeneral({
   const [savingLobbyPrefs, setSavingLobbyPrefs] = useState(false);
   const [savingLanguagePreference, setSavingLanguagePreference] = useState(false);
   const [savingAssistantLanguage, setSavingAssistantLanguage] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [nameDraft, setNameDraft] = useState(payload.ownerDisplayName);
   const [savingName, setSavingName] = useState(false);
   // Escape sets this synchronously before calling blur(); commitOwnerDisplayName
@@ -322,6 +328,34 @@ export function PlatformSettingsGeneral({
     }
   }
 
+  async function signOut(): Promise<void> {
+    setSigningOut(true);
+    try {
+      const status = await fetchPlatformAuthStatus({
+        fallbackMessageForStatus: (statusCode) =>
+          t('settingsGeneralSignOutFailedWithStatus', { status: statusCode }),
+      });
+      if (!status.csrfToken) {
+        navigate('/login', { replace: true });
+        return;
+      }
+      await logoutPlatformSession(status.csrfToken, {
+        fallbackMessageForStatus: (statusCode) =>
+          t('settingsGeneralSignOutFailedWithStatus', { status: statusCode }),
+        errorMessagesByCode: {
+          [PLATFORM_AUTH_ERROR_CODES.csrfMismatch]: t('settingsGeneralSignOutCsrfError'),
+          [PLATFORM_AUTH_ERROR_CODES.forbidden]: t('settingsGeneralSignOutForbiddenError'),
+          [PLATFORM_AUTH_ERROR_CODES.unauthenticated]: t('settingsGeneralSignOutUnauthenticated'),
+        },
+      });
+      navigate('/login', { replace: true });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('settingsGeneralSignOutFailed'));
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
   const avatarUrl = payload.ownerAvatarUrl;
   const initials = nameInitials(nameDraft || payload.ownerDisplayName);
   const guideCatName = resolveClientGuideCatName();
@@ -419,6 +453,28 @@ export function PlatformSettingsGeneral({
                 aria-busy={savingName}
               />
             </label>
+          </div>
+          </SettingsSection>
+
+        <SettingsSection
+          header={
+            <SettingsSectionHeader
+              title={t('settingsGeneralAccountTitle')}
+              description={t('settingsGeneralAccountDescription')}
+            />
+          }
+        >
+          <div className="setupActionGroup">
+            <button
+              type="button"
+              className="secondaryButton"
+              disabled={signingOut}
+              onClick={() => void signOut()}
+            >
+              {signingOut
+                ? t('settingsGeneralSigningOutButton')
+                : t('settingsGeneralSignOutButton')}
+            </button>
           </div>
         </SettingsSection>
 
