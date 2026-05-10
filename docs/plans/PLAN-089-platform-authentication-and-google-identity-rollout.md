@@ -288,6 +288,7 @@ operators before implementation is marked complete.
 |------|--------|-------------|
 | `src/platform/auth/**` | Create | Auth state, password, session, Google verifier, and policy helpers |
 | `src/platform/auth/actorAttribution.ts` | Create | Fail-closed Core actor attribution helper for authenticated principals |
+| `src/platform/auth/googleAccount.ts` | Create | Google first-admin account bootstrap helper |
 | `src/platform/auth/googleVerifier.ts` | Create | Injected Google ID-token verifier contract and claim validation |
 | `src/platform/auth/localLogin.ts` | Create | Shared local password credential verification for browser/mobile/repair routes |
 | `src/platform/auth/readiness.ts` | Create | Setup/auth-state readiness helper that drives post-setup repair mode |
@@ -567,6 +568,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4b secure-token boundary slice started: Cats Mobile now has an injected secure-storage token store boundary for bearer tokens, with no AsyncStorage path for auth tokens. Wiring the real Expo SecureStore module into launch/login/logout UI remains pending before Task 4b.5 can be checked off. |
 | 2026-05-10 | Phase 5 attribution prerequisite slice started: added a fail-closed helper for resolving Core actor attribution from authenticated principals, so memberships with `coreActorId: null` cannot silently fall back to `actor-owner`. Product write paths still need to adopt the helper before Tasks 5.1-5.3 can be checked off. |
 | 2026-05-10 | Auth gate response adapter slice landed: the shared gate evaluator now has a single HTTP rejection sender for pinned `E_UNAUTHENTICATED` and `E_CSRF_MISMATCH` JSON bodies. Request-router installation remains pending. |
+| 2026-05-10 | Phase 4 Google account bootstrap slice started: added a domain helper for creating the first admin account, Google identity, owner/admin membership, and browser session from a verified Google identity. Browser Google HTTP setup/login routes remain pending. |
 
 ---
 
