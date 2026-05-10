@@ -28,6 +28,10 @@ export const zhTWCatalog: MessageCatalog = {
   'auth.login.csrfMismatch': '安全權杖不一致，請重新整理後再試。',
   'auth.login.failed': '登入失敗。',
   'auth.login.failedWithStatus': '登入失敗（{status}）。',
+  'auth.login.googleOriginHint':
+    'Google 登入只會在已授權的 Google JavaScript origin 上運作。如果目前的 LAN/IP origin 未授權，請使用本機 Admin 登入資料。',
+  'auth.login.googleUnavailable':
+    '此 origin 無法使用 Google 登入。請使用本機 Admin 登入資料，或從已授權的 origin 開啟 Cats。',
   'appHost.label': '應用程式',
   'appHost.notInstalledTitle': '此應用程式未安裝',
   'appHost.backToLobby': '返回大廳',

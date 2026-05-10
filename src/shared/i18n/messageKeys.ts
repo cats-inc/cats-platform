@@ -25,6 +25,8 @@ export const messageKeys = {
   authLoginCsrfMismatch: 'auth.login.csrfMismatch',
   authLoginFailed: 'auth.login.failed',
   authLoginFailedWithStatus: 'auth.login.failedWithStatus',
+  authLoginGoogleOriginHint: 'auth.login.googleOriginHint',
+  authLoginGoogleUnavailable: 'auth.login.googleUnavailable',
   appHostLabel: 'appHost.label',
   appHostNotInstalledTitle: 'appHost.notInstalledTitle',
   appHostBackToLobby: 'appHost.backToLobby',

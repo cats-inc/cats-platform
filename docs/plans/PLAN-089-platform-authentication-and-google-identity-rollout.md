@@ -177,9 +177,9 @@ log out, log back in, and access Chat/Work/Code only while authenticated.
       `aud`, `iss`, `exp`, optional `hd`, and verified email.
 - [x] Task 4.3: Add Google bootstrap/login endpoints that create or link a
       Google identity to a Cats account.
-- [ ] Task 4.4: Add Google Identity Services frontend integration gated by
+- [x] Task 4.4: Add Google Identity Services frontend integration gated by
       `CATS_AUTH_GOOGLE_CLIENT_ID`.
-- [ ] Task 4.5: Add UI fallback messaging for raw LAN-IP / unavailable Google
+- [x] Task 4.5: Add UI fallback messaging for raw LAN-IP / unavailable Google
       origin cases.
 - [x] Task 4.6: Validate Google CSRF token handling for GIS POST credential
       submissions separately from Cats authenticated-API CSRF.
@@ -581,6 +581,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2/4b route-gate install landed: `requestRouter` now evaluates the platform auth gate before product/Core/runtime/shell/transport dispatch, returns the minimal setup/auth envelope for setup-complete unauthenticated app-shell reads, preserves full app-shell dispatch for authenticated principals, emits pinned auth errors, and accepts mobile bearer sessions without browser CSRF. Tasks 2.5/2.6/2.7/2.9/4b.3 are now checked; repair UX and product write attribution adoption remain open. |
 | 2026-05-10 | Phase 3 route-gate renderer follow-up landed: renderer app-shell loading now treats minimal `routeTarget: "login"` auth bootstrap envelopes as unauthenticated login state and `routeTarget: "repair"` as a hard repair-required error instead of casting the minimal payload to a full `PlatformHostEnvelope`. Pre-setup app-shell continues through the existing setup wizard path until that wizard can consume the minimal setup envelope directly. |
 | 2026-05-10 | Phase 2/5 route-context follow-up landed: the installed route gate now enforces Cats synchronizer CSRF for protected browser-cookie mutations, keeps mobile bearer mutations exempt from browser CSRF, and carries `{ principal, credentialKind }` through optional shared `RouteContext.auth` for downstream product adoption. Tasks 2.2 and 5.1 are now checked; product write paths still need to opt into fail-closed actor attribution where needed. |
+| 2026-05-10 | Phase 4 GIS frontend slice landed: `/login` now reads provider status, loads Google Identity Services only when `CATS_AUTH_GOOGLE_CLIENT_ID` is configured, writes the GIS double-submit CSRF cookie before credential callbacks, posts Google ID tokens to `/api/auth/google/login`, and shows an authorized-origin fallback hint for raw LAN/IP cases. Tasks 4.4 and 4.5 are now checked. |
 | 2026-05-10 | Google route lockout regression added and completed task reconciliation updated: Task 2.10 is checked for local+Google composite failed-login lockout, and Task 4.6 is checked for GIS CSRF validation remaining separate from Cats synchronizer CSRF. Aggregate guard recovery/clearing work remains under Task 2.11. |
 | 2026-05-10 | Phase 6 route-gate readiness regression slice landed: focused tests now cover pre-setup product API rejection with public minimal app-shell, setup-complete unauthenticated rejection, setup-complete authenticated admin access, repair-mode fail-closed behavior, and browser-cookie mutation CSRF rejection. The evaluator is still not installed in `requestRouter`. |
 | 2026-05-10 | Phase 2 setup-reset protection landed: legacy `/api/setup/reset` now requires an authenticated admin browser session after setup completion and validates the Cats synchronizer CSRF token before clearing setup state. Full product mutation CSRF middleware remains pending under Task 2.2/6.4. |

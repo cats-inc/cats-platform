@@ -28,6 +28,10 @@ export const enCatalog: MessageCatalog = {
   'auth.login.csrfMismatch': 'Security token mismatch. Refresh and try again.',
   'auth.login.failed': 'Sign-in failed.',
   'auth.login.failedWithStatus': 'Sign-in failed ({status}).',
+  'auth.login.googleOriginHint':
+    'Google sign-in only works on authorized Google JavaScript origins. If this LAN/IP origin is not authorized, use local admin credentials.',
+  'auth.login.googleUnavailable':
+    'Google sign-in is unavailable on this origin. Use local admin credentials or open Cats from an authorized origin.',
   'appHost.label': 'App',
   'appHost.notInstalledTitle': 'App not installed',
   'appHost.backToLobby': 'Back to Lobby',
