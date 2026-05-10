@@ -23,6 +23,7 @@ import {
 } from '../../platform/scheduler/index.js';
 import {
   createFileBackedPlatformAuthStore,
+  createGoogleJwksIdTokenVerifier,
   MemoryPlatformAuthStore,
   type PlatformAuthRecoveryTokenState,
   type PlatformAuthStore,
@@ -165,6 +166,13 @@ export function resolveServerDependencies(
   const sharedCoreStore = dependencies.shared.coreStore ?? dependencies.chat.chatStore;
   const authStore = dependencies.shared.authStore
     ?? createDefaultAuthStore(dependencies.shared, dependencies.chat);
+  const googleVerifier = dependencies.shared.googleVerifier
+    ?? (
+      dependencies.shared.config.auth.google.clientId
+      || dependencies.shared.config.auth.google.mobileAudiences.length > 0
+        ? createGoogleJwksIdTokenVerifier()
+        : undefined
+    );
   let authRecoveryTokenState: PlatformAuthRecoveryTokenState | null =
     dependencies.shared.authRecoveryTokenState ?? null;
   const getAuthRecoveryTokenState = dependencies.shared.getAuthRecoveryTokenState
@@ -315,6 +323,7 @@ export function resolveServerDependencies(
       coreStore: sharedCoreStore,
       startup,
       authStore,
+      googleVerifier,
       authRecoveryTokenState: getAuthRecoveryTokenState(),
       getAuthRecoveryTokenState,
       setAuthRecoveryTokenState,

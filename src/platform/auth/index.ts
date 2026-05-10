@@ -8,6 +8,7 @@ export * from './effectiveMode.js';
 export * from './errorCodes.js';
 export * from './googleAccount.js';
 export * from './googleCsrf.js';
+export * from './googleJwksVerifier.js';
 export * from './googleVerifier.js';
 export * from './localLogin.js';
 export * from './originGate.js';

@@ -82,6 +82,11 @@ includes:
   raw bearer token exactly once;
 - `POST /api/mobile/auth/logout` for mobile device session revocation.
 
+Google browser login uses GIS double-submit CSRF first, then verifies the ID
+token against Google's JWKS using RS256 signature validation plus `aud`, `iss`,
+`exp`, verified email, and optional hosted-domain checks before issuing a Cats
+browser session for an already linked identity.
+
 The global product-route gate is not installed yet. Until the PLAN-089 atomic
 gate slice lands, existing Chat/Work/Code/Core routes still dispatch through
 their current route modules. Do not treat LAN exposure as fully closed until

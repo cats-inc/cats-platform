@@ -171,9 +171,9 @@ log out, log back in, and access Chat/Work/Code only while authenticated.
 
 ### Phase 4: Browser Google Identity Provider
 
-- [ ] Task 4.1: Choose and add the ID-token verifier dependency after checking
+- [x] Task 4.1: Choose and add the ID-token verifier dependency after checking
       dependency footprint and Node ESM compatibility.
-- [ ] Task 4.2: Implement server-side Google token verification for signature,
+- [x] Task 4.2: Implement server-side Google token verification for signature,
       `aud`, `iss`, `exp`, optional `hd`, and verified email.
 - [ ] Task 4.3: Add Google bootstrap/login endpoints that create or link a
       Google identity to a Cats account.
@@ -599,6 +599,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2 aggregate throttle recovery helper slice landed: auth throttle now has account-scoped and full recovery clearing helpers, with tests proving account clearing does not erase subnet cooldowns and recovery clearing removes all active failure budgets. Task 2.11 remains open until admin/loopback/recovery routes call these helpers and alert logging is wired. |
 | 2026-05-10 | Phase 2 aggregate throttle route integration landed: `/api/auth/throttle/clear` now clears login throttle state through authenticated admin+CSRF, loopback-local recovery, or one-time recovery token authorization; aggregate account/subnet cooldown creation reports a secret-free alert hook; focused route tests cover admin, loopback, token, and alert behavior. Task 2.11 is now checked. |
 | 2026-05-10 | Phase 2/3 origin-preservation audit landed: route tests now prove the pre-auth gate ignores arbitrary `X-Forwarded-*` headers and requires an explicit allowlisted browser `Origin`; Vite proxy tests cover `changeOrigin: false`, cookie rewrites, and host-only built-server cookies; `.env.example`, setup, and deployment docs now state the reverse-proxy Origin requirement. Tasks 2.15 and 3.5 are now checked. |
+| 2026-05-10 | Phase 4 Google verifier landed: chose a dependency-free Node WebCrypto/JWKS verifier instead of adding a runtime package, because the existing claim-normalization layer already enforces audience/issuer/expiry/hosted-domain policy. Default server dependencies now create the verifier when Google browser or mobile audiences are configured; tests cover RS256 signature validation, cache reuse, key refresh, unsupported headers, and tampered payload rejection. Tasks 4.1 and 4.2 are now checked. |
 
 ---
 
