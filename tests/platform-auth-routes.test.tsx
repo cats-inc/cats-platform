@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { loadConfig } from '../src/config.ts';
@@ -8,7 +11,9 @@ import {
   createEmptyPlatformAuthState,
   createFirstAdminLocalAuthState,
   createFirstAdminGoogleAuthState,
+  issuePlatformAuthRecoveryToken,
   MemoryPlatformAuthStore,
+  type PlatformAuthRecoveryTokenState,
   type PlatformAuthState,
   type PlatformAuthStateReadStatus,
   type PlatformAuthStore,
@@ -357,6 +362,58 @@ test('platform auth repair first-admin rejects when repair is not active', async
   assert.equal(errorCode(response.payload), 'E_FORBIDDEN');
 });
 
+test('platform auth repair first-admin consumes recovery token off loopback', async (t) => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'cats-auth-route-repair-'));
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+  const issued = await issuePlatformAuthRecoveryToken({
+    sessionSecret: SESSION_SECRET,
+    recoveryTokenPath: path.join(tempDir, 'auth-recovery-token.local.txt'),
+    now: NOW,
+  });
+  let recoveryTokenState: PlatformAuthRecoveryTokenState | null = issued.state;
+  const store = createRepairAuthStore({ status: 'missing' });
+  const server = createTestServer(store, {}, undefined, {
+    readSetupCompleteAt: async () => NOW.toISOString(),
+    remoteAddress: '192.168.1.20',
+    authRecoveryTokenState: () => recoveryTokenState,
+    setAuthRecoveryTokenState: (state) => {
+      recoveryTokenState = state;
+    },
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  const missingToken = await request(server, '/api/auth/repair/first-admin', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      displayName: 'Owner',
+      identifier: 'owner@example.test',
+      password: 'correct-password',
+    },
+  });
+  assert.equal(missingToken.status, 403);
+  assert.equal(errorCode(missingToken.payload), 'E_FORBIDDEN');
+
+  const repaired = await request(server, '/api/auth/repair/first-admin', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      displayName: 'Owner',
+      identifier: 'owner@example.test',
+      password: 'correct-password',
+      recoveryToken: issued.token,
+    },
+  });
+  assert.equal(repaired.status, 200);
+  assert.equal(repaired.payload?.authenticated, true);
+  assert.equal(recoveryTokenState?.consumedAt, NOW.toISOString());
+});
+
 async function createSeededStore(): Promise<MemoryPlatformAuthStore> {
   const bootstrap = await createFirstAdminLocalAuthState({
     state: createEmptyPlatformAuthState(NOW),
@@ -379,6 +436,9 @@ function createTestServer(
   googleVerifier?: PlatformGoogleIdTokenVerifier,
   options: {
     readSetupCompleteAt?: () => Promise<string | null>;
+    remoteAddress?: string;
+    authRecoveryTokenState?: () => PlatformAuthRecoveryTokenState | null;
+    setAuthRecoveryTokenState?: (state: PlatformAuthRecoveryTokenState | null) => void;
   } = {},
 ) {
   const config = loadConfig({
@@ -387,6 +447,12 @@ function createTestServer(
     ...env,
   });
   return createServer(async (request, response) => {
+    if (options.remoteAddress) {
+      Object.defineProperty(request.socket, 'remoteAddress', {
+        configurable: true,
+        value: options.remoteAddress,
+      });
+    }
     const url = new URL(request.url ?? '/', 'http://localhost');
     const handled = await routePlatformAuthApi({
       request,
@@ -398,6 +464,8 @@ function createTestServer(
         auth: config.auth,
         googleVerifier,
         readSetupCompleteAt: options.readSetupCompleteAt,
+        authRecoveryTokenState: options.authRecoveryTokenState?.() ?? null,
+        setAuthRecoveryTokenState: options.setAuthRecoveryTokenState,
         now: () => NOW,
         sleep: async () => {},
       },
