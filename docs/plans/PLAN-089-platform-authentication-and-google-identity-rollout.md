@@ -235,7 +235,7 @@ securely, and can revoke/logout without deleting all auth state.
       for existing single-owner writes. Later memberships default
       `coreActorId` to `null`; write paths that need Core actor attribution
       must fail closed until explicit mapping exists.
-- [ ] Task 5.3: Add forward-invariant attribution tests that create a second
+- [x] Task 5.3: Add forward-invariant attribution tests that create a second
       admin membership with `coreActorId: null` and assert actor-attributed
       writes fail closed instead of silently using `actor-owner`.
 - [ ] Task 5.4: Document the follow-up boundary for account management UI and
@@ -590,6 +590,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 3 setup credential UI landed: `/setup` step 1 now collects first-admin login email/password separately from owner display profile and sends those fields to setup completion. Task 3.1 is now checked. |
 | 2026-05-10 | Phase 3 local login route landed: `/login` now renders a local admin login screen backed by the renderer auth API client and refreshes the app-shell after successful login. Task 3.2 is now checked; automatic unauthenticated redirects remain under Task 3.3. |
 | 2026-05-10 | Phase 3 logout surface landed: Settings > General now exposes a Sign out action that fetches `/api/auth/status` for the current Cats CSRF token, calls `/api/auth/logout`, and routes back to `/login`. Task 3.4 is now checked. |
+| 2026-05-10 | Phase 5 attribution invariant regression landed: actor-attribution tests now build a real auth state with the first admin plus a later admin whose membership has `coreActorId: null`, resolve both principals through the browser-session resolver, and assert the later admin fails closed instead of inheriting `actor-owner`. Task 5.3 is now checked. |
 
 ---
 
