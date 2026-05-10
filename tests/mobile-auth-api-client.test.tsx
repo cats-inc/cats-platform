@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import mobileClientModule from '../mobile/src/api/client.ts';
 import mobileAuthModule from '../mobile/src/api/auth.ts';
+import mobileAuthSessionModule from '../mobile/src/api/authSession.ts';
 import mobileAuthTokenStoreModule from '../mobile/src/api/authTokenStore.ts';
 
 const { createMobileApiClient, createMobileApiClientWithStoredAuth } =
@@ -12,6 +13,10 @@ const {
   loginMobileLocal,
   logoutMobile,
 } = mobileAuthModule as typeof import('../mobile/src/api/auth.ts');
+const {
+  loadMobileAuthenticatedSession,
+  loginMobileLocalSession,
+} = mobileAuthSessionModule as typeof import('../mobile/src/api/authSession.ts');
 const { saveMobileAuthToken } = mobileAuthTokenStoreModule as typeof import(
   '../mobile/src/api/authTokenStore.ts'
 );
@@ -108,6 +113,106 @@ test('mobile authenticated api client omits authorization when secure store has 
   await fetchMobileAuthStatus(client);
 
   assert.equal(readHeader(calls[0]?.init, 'Authorization'), null);
+});
+
+test('mobile authenticated session checks status before product data fetches', async (t) => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(input), init });
+    if (String(input).endsWith('/api/mobile/auth/status')) {
+      return jsonResponse({
+        authenticated: true,
+        principal: {
+          accountId: 'account-owner',
+          displayName: 'Owner',
+          email: 'owner@example.test',
+          roles: ['owner', 'admin'],
+          coreActorId: 'actor-owner',
+          sessionId: 'session-mobile',
+        },
+      });
+    }
+    return jsonResponse({ products: { chat: true } });
+  }) as typeof fetch;
+
+  const storage = createMemorySecureStorage();
+  await saveMobileAuthToken(storage, 'stored-mobile-token');
+
+  const session = await loadMobileAuthenticatedSession(
+    { baseUrl: 'http://127.0.0.1:3000' },
+    storage,
+  );
+  assert.equal(session.kind, 'authenticated');
+  assert.equal(calls[0]?.url, 'http://127.0.0.1:3000/api/mobile/auth/status');
+  assert.equal(readHeader(calls[0]?.init, 'Authorization'), 'Bearer stored-mobile-token');
+
+  if (session.kind === 'authenticated') {
+    await session.client.get('/api/app-shell');
+  }
+  assert.equal(calls[1]?.url, 'http://127.0.0.1:3000/api/app-shell');
+  assert.equal(readHeader(calls[1]?.init, 'Authorization'), 'Bearer stored-mobile-token');
+});
+
+test('mobile authenticated session clears stale tokens before product data', async (t) => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(input), init });
+    return jsonResponse({ authenticated: false, principal: null });
+  }) as typeof fetch;
+
+  const storage = createMemorySecureStorage();
+  await saveMobileAuthToken(storage, 'stale-mobile-token');
+
+  const session = await loadMobileAuthenticatedSession(
+    { baseUrl: 'http://127.0.0.1:3000' },
+    storage,
+  );
+  assert.equal(session.kind, 'unauthenticated');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]?.url, 'http://127.0.0.1:3000/api/mobile/auth/status');
+  assert.equal(await storage.getItemAsync('cats-mobile.authToken.v1'), null);
+});
+
+test('mobile local login stores the returned bearer token through secure storage', async (t) => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(input), init });
+    return jsonResponse({
+      authenticated: true,
+      principal: {
+        accountId: 'account-owner',
+        displayName: 'Owner',
+        email: 'owner@example.test',
+        roles: ['owner', 'admin'],
+        coreActorId: 'actor-owner',
+        sessionId: 'session-mobile',
+      },
+      token: 'issued-mobile-token',
+    });
+  }) as typeof fetch;
+
+  const storage = createMemorySecureStorage();
+  const status = await loginMobileLocalSession(
+    { baseUrl: 'http://127.0.0.1:3000' },
+    { identifier: 'owner@example.test', password: 'correct-password' },
+    storage,
+  );
+
+  assert.equal(status.authenticated, true);
+  assert.equal(calls[0]?.url, 'http://127.0.0.1:3000/api/mobile/auth/login');
+  assert.equal(await storage.getItemAsync('cats-mobile.authToken.v1'), 'issued-mobile-token');
 });
 
 function jsonResponse(body: unknown): Response {

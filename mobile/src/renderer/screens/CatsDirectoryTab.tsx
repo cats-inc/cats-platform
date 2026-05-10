@@ -25,6 +25,7 @@ import {
   getMobileNewEntityDesktopOnlyAlertCopy,
   type MobileCatsDirectorySectionKey,
 } from '../../api/fixtures/productSidebar';
+import { MobileAuthPanel } from './MobileAuthPanel';
 import { colors, radii, spacing, typography } from '../theme';
 
 type SectionKey = MobileCatsDirectorySectionKey;
@@ -40,7 +41,7 @@ interface SectionDescriptor {
 
 export function CatsDirectoryTab() {
   const router = useRouter();
-  const { state } = useCatsDirectoryTab();
+  const { state, refetch } = useCatsDirectoryTab();
   const locale = resolveDefaultMobileLocale();
   const copy = getMobileCatsTabCopy(locale);
   const tabsCopy = getMobileTabsCopy(locale);
@@ -61,6 +62,9 @@ export function CatsDirectoryTab() {
         onAction={() => router.push(mobileRoutes.settings())}
       />
     );
+  }
+  if (state.kind === 'unauthenticated') {
+    return <MobileAuthPanel onAuthenticated={refetch} />;
   }
   if (state.kind === 'error') {
     return (

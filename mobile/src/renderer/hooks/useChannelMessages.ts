@@ -3,10 +3,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   buildAttachmentResolver,
-  createMobileApiClient,
   type MobileApiClient,
   MobileApiError,
 } from '../../api/client';
+import { loadMobileAuthenticatedSession } from '../../api/authSession';
 import {
   type ChatEventStreamHandle,
   openChatEventStream,
@@ -41,6 +41,7 @@ import {
 export type ChannelMessagesState =
   | { kind: 'loading' }
   | { kind: 'unconfigured' }
+  | { kind: 'unauthenticated' }
   | { kind: 'channelNotFound' }
   | { kind: 'error'; error: MobileApiError }
   | {
@@ -150,15 +151,26 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
           setState({ kind: 'unconfigured' });
           return;
         }
-        const client = createMobileApiClient(config);
+        const session = await loadMobileAuthenticatedSession(config);
+        if (!activeRef.current) {
+          return;
+        }
+        if (session.kind === 'unconfigured') {
+          setState({ kind: 'unconfigured' });
+          return;
+        }
+        if (session.kind === 'unauthenticated') {
+          setState({ kind: 'unauthenticated' });
+          return;
+        }
         const { shell, messagesPayload } = await loadShellAndMessages(
-          client,
+          session.client,
           channelId,
         );
         if (!activeRef.current) {
           return;
         }
-        setState(buildDataState(client, shell, messagesPayload, channelId));
+        setState(buildDataState(session.client, shell, messagesPayload, channelId));
       } catch (error) {
         if (!activeRef.current) {
           return;
@@ -201,26 +213,34 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
           if (!active || !config.baseUrl) {
             return;
           }
-          handle = openChatEventStream(config, (event) => {
-            if (event.type !== 'room_updated') {
-              return;
-            }
-            if (event.channelId !== channelId) {
-              return;
-            }
-            const detail = event.detail as MobileRoomUpdatedDetail | null;
-            if (
-              detail !== null &&
-              detail !== undefined &&
-              typeof detail === 'object' &&
-              'mutation' in detail &&
-              (detail.mutation === 'message_added' ||
-                detail.mutation === 'updated' ||
-                detail.mutation === 'created')
-            ) {
-              setVersion((current) => current + 1);
-            }
-          });
+          const session = await loadMobileAuthenticatedSession(config);
+          if (!active || session.kind !== 'authenticated') {
+            return;
+          }
+          handle = openChatEventStream(
+            config,
+            (event) => {
+              if (event.type !== 'room_updated') {
+                return;
+              }
+              if (event.channelId !== channelId) {
+                return;
+              }
+              const detail = event.detail as MobileRoomUpdatedDetail | null;
+              if (
+                detail !== null &&
+                detail !== undefined &&
+                typeof detail === 'object' &&
+                'mutation' in detail &&
+                (detail.mutation === 'message_added' ||
+                  detail.mutation === 'updated' ||
+                  detail.mutation === 'created')
+              ) {
+                setVersion((current) => current + 1);
+              }
+            },
+            { bearerToken: session.bearerToken },
+          );
         } catch {
           // SSE open failures degrade gracefully — focus refetch + the
           // post-send refetch + pull-to-refresh still keep the
@@ -260,8 +280,15 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
           });
           return;
         }
-        const client = createMobileApiClient(config);
-        await client.post(messagesPath(channelId), { body: trimmed });
+        const session = await loadMobileAuthenticatedSession(config);
+        if (session.kind !== 'authenticated') {
+          setSendState({
+            kind: 'error',
+            error: new MobileApiError(copy.authenticationRequired, 401, null),
+          });
+          return;
+        }
+        await session.client.post(messagesPath(channelId), { body: trimmed });
         setSendState({ kind: 'idle' });
         // Refetch to pick up both the persisted user message and the
         // first assistant reply (when fast). The user can pull-to-

@@ -10,6 +10,7 @@ import {
 import { useProductSidebarData } from '../../../src/renderer/hooks/useProductSidebarData';
 import { useRecentDeleteHandler } from '../../../src/renderer/hooks/useRecentDeleteHandler';
 import { mobileRoutes } from '../../../src/routes';
+import { MobileAuthPanel } from '../../../src/renderer/screens/MobileAuthPanel';
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
 import { colors } from '../../../src/renderer/theme';
 import {
@@ -26,7 +27,7 @@ import {
  */
 export default function CodeSidebarScreen() {
   const router = useRouter();
-  const { state } = useProductSidebarData('code');
+  const { state, refetch } = useProductSidebarData('code');
   const locale = resolveDefaultMobileLocale();
   const copy = getMobileTabsCopy(locale);
   const sidebarConfig = getCodeSidebarConfig(locale);
@@ -59,16 +60,20 @@ export default function CodeSidebarScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <TrimmedProductSidebar
-        config={sidebarConfig}
-        data={{
-          recents: state.kind === 'data' ? state.recents : [],
-        }}
-        onPrimaryAction={handlePrimaryAction}
-        onSelectRecent={handleSelectRecent}
-        onDeleteRecent={handleDeleteRecent}
-        isDeletingRecent={isDeleting}
-      />
+      {state.kind === 'unauthenticated' ? (
+        <MobileAuthPanel onAuthenticated={refetch} />
+      ) : (
+        <TrimmedProductSidebar
+          config={sidebarConfig}
+          data={{
+            recents: state.kind === 'data' ? state.recents : [],
+          }}
+          onPrimaryAction={handlePrimaryAction}
+          onSelectRecent={handleSelectRecent}
+          onDeleteRecent={handleDeleteRecent}
+          isDeletingRecent={isDeleting}
+        />
+      )}
     </SafeAreaView>
   );
 }

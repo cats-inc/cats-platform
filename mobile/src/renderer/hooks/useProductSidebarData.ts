@@ -26,6 +26,7 @@ import { useMobileAppShell } from './useMobileAppShell';
 export type ProductSidebarState =
   | { kind: 'loading' }
   | { kind: 'unconfigured' }
+  | { kind: 'unauthenticated' }
   | { kind: 'error'; error: MobileApiError }
   | {
       kind: 'data';
@@ -56,6 +57,9 @@ export function useProductSidebarData(
       break;
     case 'unconfigured':
       state = { kind: 'unconfigured' };
+      break;
+    case 'unauthenticated':
+      state = { kind: 'unauthenticated' };
       break;
     case 'error':
       state = { kind: 'error', error: shellState.error };

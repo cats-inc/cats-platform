@@ -78,12 +78,23 @@ export interface MobileChatCopy {
 }
 
 export interface MobileApiCopy {
+  authenticationRequired: string;
   configureBaseUrlBeforeCreatingChannel: string;
   configureBaseUrlBeforeSending: string;
   configureBaseUrlForClient: string;
   createChannelFailed: string;
   sendFailed: string;
   unknownError: string;
+}
+
+export interface MobileAuthCopy {
+  loginTitle: string;
+  loginBody: string;
+  emailLabel: string;
+  passwordLabel: string;
+  signInAction: string;
+  loginFailedTitle: string;
+  missingCredentials: string;
 }
 
 export interface MobileSettingsCopy {
@@ -294,6 +305,7 @@ const MOBILE_CHAT_COPY: Record<MobileLocale, MobileChatCopy> = {
 
 const MOBILE_API_COPY: Record<MobileLocale, MobileApiCopy> = {
   en: {
+    authenticationRequired: 'Sign in to Cats Mobile before loading product data.',
     configureBaseUrlBeforeCreatingChannel:
       'Set a desktop base URL in Settings before creating a channel.',
     configureBaseUrlBeforeSending:
@@ -305,6 +317,7 @@ const MOBILE_API_COPY: Record<MobileLocale, MobileApiCopy> = {
     unknownError: 'Unknown error.',
   },
   'zh-TW': {
+    authenticationRequired: '載入產品資料前，請先登入 Cats Mobile。',
     configureBaseUrlBeforeCreatingChannel:
       '建立頻道前，請先在設定中填入桌面版基底網址。',
     configureBaseUrlBeforeSending:
@@ -314,6 +327,28 @@ const MOBILE_API_COPY: Record<MobileLocale, MobileApiCopy> = {
     createChannelFailed: '無法建立頻道。',
     sendFailed: '無法送出。',
     unknownError: '未知錯誤。',
+  },
+};
+
+const MOBILE_AUTH_COPY: Record<MobileLocale, MobileAuthCopy> = {
+  en: {
+    loginTitle: 'Sign in to Cats Mobile',
+    loginBody:
+      'Use your local Admin account to unlock Chat, Code, Work, and Cats data on this device.',
+    emailLabel: 'Email',
+    passwordLabel: 'Password',
+    signInAction: 'Sign in',
+    loginFailedTitle: 'Sign-in failed',
+    missingCredentials: 'Enter an email and password.',
+  },
+  'zh-TW': {
+    loginTitle: '登入 Cats Mobile',
+    loginBody: '使用你的本機 Admin 帳號，解鎖此裝置上的 Chat、Code、Work 與 Cats 資料。',
+    emailLabel: 'Email',
+    passwordLabel: '密碼',
+    signInAction: '登入',
+    loginFailedTitle: '登入失敗',
+    missingCredentials: '請輸入 Email 與密碼。',
   },
 };
 
@@ -663,6 +698,10 @@ export function getMobileChatCopy(locale?: string | null): MobileChatCopy {
 
 export function getMobileApiCopy(locale?: string | null): MobileApiCopy {
   return MOBILE_API_COPY[resolveMobileLocale(locale)];
+}
+
+export function getMobileAuthCopy(locale?: string | null): MobileAuthCopy {
+  return MOBILE_AUTH_COPY[resolveMobileLocale(locale)];
 }
 
 export function getMobileSettingsCopy(locale?: string | null): MobileSettingsCopy {

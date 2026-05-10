@@ -25,6 +25,10 @@ export interface ChatEventStreamHandle {
   close(): void;
 }
 
+export interface ChatEventStreamOptions {
+  bearerToken?: string | null;
+}
+
 const SUBSCRIBED_KINDS: MobileChatEventKind[] = [
   'room_updated',
   'recents_changed',
@@ -48,6 +52,7 @@ const EVENTS_PATH = '/api/events/chat';
 export function openChatEventStream(
   config: ConnectionConfig,
   listener: ChatEventListener,
+  options: ChatEventStreamOptions = {},
 ): ChatEventStreamHandle | null {
   if (!config.baseUrl) {
     return null;
@@ -58,6 +63,10 @@ export function openChatEventStream(
   const headers: Record<string, string> = {
     Accept: 'text/event-stream',
   };
+  const bearerToken = options.bearerToken?.trim();
+  if (bearerToken) {
+    headers.Authorization = `Bearer ${bearerToken}`;
+  }
 
   const source = new EventSource<MobileChatEventKind>(url, {
     headers,

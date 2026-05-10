@@ -1,7 +1,8 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { createMobileApiClient, MobileApiError } from '../../api/client';
+import { MobileApiError } from '../../api/client';
+import { loadMobileAuthenticatedSession } from '../../api/authSession';
 import {
   type ChatEventStreamHandle,
   openChatEventStream,
@@ -50,6 +51,7 @@ import {
 export type MobileAppShellState =
   | { kind: 'loading' }
   | { kind: 'unconfigured' }
+  | { kind: 'unauthenticated' }
   | { kind: 'error'; error: MobileApiError }
   | { kind: 'data'; payload: MobileAppShellPayload };
 
@@ -90,8 +92,19 @@ export function useMobileAppShell(): MobileAppShellHook {
           setState({ kind: 'unconfigured' });
           return;
         }
-        const client = createMobileApiClient(config);
-        const payload = await client.get<MobileAppShellPayload>(APP_SHELL_PATH);
+        const session = await loadMobileAuthenticatedSession(config);
+        if (!active) {
+          return;
+        }
+        if (session.kind === 'unconfigured') {
+          setState({ kind: 'unconfigured' });
+          return;
+        }
+        if (session.kind === 'unauthenticated') {
+          setState({ kind: 'unauthenticated' });
+          return;
+        }
+        const payload = await session.client.get<MobileAppShellPayload>(APP_SHELL_PATH);
         if (!active) {
           return;
         }
@@ -160,11 +173,19 @@ export function useMobileAppShell(): MobileAppShellHook {
         if (cancelled || !config.baseUrl) {
           return;
         }
-        handle = openChatEventStream(config, (event) => {
-          if (SHELL_INVALIDATING_KINDS.has(event.type)) {
-            setVersion((current) => current + 1);
-          }
-        });
+        const session = await loadMobileAuthenticatedSession(config);
+        if (cancelled || session.kind !== 'authenticated') {
+          return;
+        }
+        handle = openChatEventStream(
+          config,
+          (event) => {
+            if (SHELL_INVALIDATING_KINDS.has(event.type)) {
+              setVersion((current) => current + 1);
+            }
+          },
+          { bearerToken: session.bearerToken },
+        );
       } catch {
         // SSE is best-effort; the focus refetch + manual refetch
         // remain as fallback paths if the stream can't open.

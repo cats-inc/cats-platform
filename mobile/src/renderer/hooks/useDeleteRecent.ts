@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 
-import { createMobileApiClient, MobileApiError } from '../../api/client';
+import { MobileApiError } from '../../api/client';
+import { loadMobileAuthenticatedSession } from '../../api/authSession';
 import { loadConnectionConfig } from '../../api/persistence';
 import {
   getMobileApiCopy,
@@ -83,8 +84,11 @@ export function useDeleteRecent(): DeleteRecentHook {
           setLastError(error);
           throw error;
         }
-        const client = createMobileApiClient(config);
-        await client.del(channelDetailPath(channelId));
+        const session = await loadMobileAuthenticatedSession(config);
+        if (session.kind !== 'authenticated') {
+          throw new MobileApiError(copy.authenticationRequired, 401, null);
+        }
+        await session.client.del(channelDetailPath(channelId));
         // Note: we deliberately keep the channelId in `pending` on
         // success. The SSE-driven refetch on `useMobileAppShell`
         // unmounts the row shortly after; clearing here would let

@@ -3,9 +3,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   buildAttachmentResolver,
-  createMobileApiClient,
   MobileApiError,
 } from '../../api/client';
+import { loadMobileAuthenticatedSession } from '../../api/authSession';
 import { resolveMobileDraftApiEntryKind } from '../../api/fixtures/productSidebar';
 import { loadConnectionConfig } from '../../api/persistence';
 import { mobileRoutes } from '../../routes';
@@ -83,7 +83,9 @@ export function useDraftChannel(
   const tabsCopy = getMobileTabsCopy(resolveDefaultMobileLocale());
   const apiCopy = getMobileApiCopy(resolveDefaultMobileLocale());
 
-  const [unconfigured, setUnconfigured] = useState<boolean | null>(null);
+  const [readiness, setReadiness] = useState<
+    'loading' | 'unconfigured' | 'unauthenticated' | 'ready'
+  >('loading');
   const [sendState, setSendState] = useState<ChannelSendState>({ kind: 'idle' });
   const cancelledRef = useRef(false);
 
@@ -94,7 +96,15 @@ export function useDraftChannel(
       if (cancelledRef.current) {
         return;
       }
-      setUnconfigured(!config.baseUrl);
+      if (!config.baseUrl) {
+        setReadiness('unconfigured');
+        return;
+      }
+      const session = await loadMobileAuthenticatedSession(config);
+      if (cancelledRef.current) {
+        return;
+      }
+      setReadiness(session.kind === 'authenticated' ? 'ready' : session.kind);
     })();
     return () => {
       cancelledRef.current = true;
@@ -110,16 +120,18 @@ export function useDraftChannel(
     : getMobileChannelTitle(tabsCopy, productMode, entryActionId);
 
   const state: ChannelMessagesState =
-    unconfigured === null
+    readiness === 'loading'
       ? { kind: 'loading' }
-      : unconfigured
+      : readiness === 'unconfigured'
         ? { kind: 'unconfigured' }
-        : {
-            kind: 'data',
-            channelTitle,
-            messages: [],
-            resolveAttachmentUrl: NOOP_RESOLVE_ATTACHMENT_URL,
-          };
+        : readiness === 'unauthenticated'
+          ? { kind: 'unauthenticated' }
+          : {
+              kind: 'data',
+              channelTitle,
+              messages: [],
+              resolveAttachmentUrl: NOOP_RESOLVE_ATTACHMENT_URL,
+            };
 
   const send = useCallback(
     async (body: string): Promise<void> => {
@@ -156,7 +168,14 @@ export function useDraftChannel(
           });
           return;
         }
-        const client = createMobileApiClient(config);
+        const session = await loadMobileAuthenticatedSession(config);
+        if (session.kind !== 'authenticated') {
+          setSendState({
+            kind: 'error',
+            error: new MobileApiError(apiCopy.authenticationRequired, 401, null),
+          });
+          return;
+        }
         // Drop the attachment-resolver result; we just instantiate the
         // client to share the connection config + headers behaviour.
         void buildAttachmentResolver;
@@ -179,12 +198,12 @@ export function useDraftChannel(
           createInput.defaultRecipientId = directLane.catId;
           createInput.participantCatIds = [directLane.catId];
         }
-        const created = await client.post<MobileCreateChannelResponse>(
+        const created = await session.client.post<MobileCreateChannelResponse>(
           CREATE_CHANNEL_PATH,
           createInput,
         );
         const newChannelId = created.channel.id;
-        await client.post(messagesPath(newChannelId), { body: trimmed });
+        await session.client.post(messagesPath(newChannelId), { body: trimmed });
         setSendState({ kind: 'idle' });
         router.replace(mobileRoutes.productChannel(productMode, newChannelId));
       } catch (error) {

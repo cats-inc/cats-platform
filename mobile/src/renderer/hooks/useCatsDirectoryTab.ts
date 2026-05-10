@@ -10,6 +10,7 @@ import { useMobileAppShell } from './useMobileAppShell';
 export type CatsDirectoryTabState =
   | { kind: 'loading' }
   | { kind: 'unconfigured' }
+  | { kind: 'unauthenticated' }
   | { kind: 'error'; error: MobileApiError }
   | { kind: 'data'; data: MobileCatsDirectoryData };
 
@@ -43,6 +44,9 @@ export function useCatsDirectoryTab(): CatsDirectoryTabHook {
       break;
     case 'unconfigured':
       state = { kind: 'unconfigured' };
+      break;
+    case 'unauthenticated':
+      state = { kind: 'unauthenticated' };
       break;
     case 'error':
       state = { kind: 'error', error: shellState.error };

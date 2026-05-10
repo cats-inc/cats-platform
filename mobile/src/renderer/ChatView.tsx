@@ -24,6 +24,7 @@ import {
 import { useDraftChannel } from './hooks/useDraftChannel';
 import { MessageBody, type ResolveAttachmentUrl } from './MessageBody';
 import { MessageBubble } from './MessageBubble';
+import { MobileAuthPanel } from './screens/MobileAuthPanel';
 import {
   getMobileChannelTitle,
   getMobileChatCopy,
@@ -252,6 +253,8 @@ function renderBody({
           body={copy.connectDesktopBody}
         />
       );
+    case 'unauthenticated':
+      return <MobileAuthPanel onAuthenticated={refetch} />;
     case 'channelNotFound':
       return (
         <PanelView

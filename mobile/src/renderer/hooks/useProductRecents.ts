@@ -10,6 +10,7 @@ import { useMobileAppShell } from './useMobileAppShell';
 export type ProductRecentsState =
   | { kind: 'loading' }
   | { kind: 'unconfigured' }
+  | { kind: 'unauthenticated' }
   | { kind: 'error'; error: MobileApiError }
   | { kind: 'data'; recents: MobileSidebarRecent[] };
 
@@ -37,6 +38,9 @@ export function useProductRecents(
       break;
     case 'unconfigured':
       state = { kind: 'unconfigured' };
+      break;
+    case 'unauthenticated':
+      state = { kind: 'unauthenticated' };
       break;
     case 'error':
       state = { kind: 'error', error: shellState.error };
