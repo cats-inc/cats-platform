@@ -293,6 +293,62 @@ test('mobile auth google login requires mobile audiences and verifier', async (t
   assert.equal(login.payload?.error?.code, 'E_FORBIDDEN');
 });
 
+test('mobile auth google login rejects oversized id token before throttle bucket', async (t) => {
+  const store = await createSeededStore();
+  let verifyCalls = 0;
+  const verifier: PlatformGoogleIdTokenVerifier = {
+    async verifyIdToken() {
+      verifyCalls += 1;
+      throw new Error('verifier should not be called for oversized payload');
+    },
+  };
+  const server = createTestServer(
+    store,
+    { CATS_AUTH_GOOGLE_MOBILE_AUDIENCES: 'mobile-client-id' },
+    verifier,
+  );
+  await listen(server);
+  t.after(() => server.close());
+
+  const oversized = 'a'.repeat(10_000);
+  const login = await request(server, '/api/mobile/auth/google/login', {
+    method: 'POST',
+    body: { idToken: oversized, nonce: 'mobile-google-nonce' },
+  });
+  assert.equal(login.status, 400);
+  assert.equal(login.payload?.error?.code, 'E_FORBIDDEN');
+  assert.match(String(login.payload?.error?.message ?? ''), /too large/u);
+  assert.equal(verifyCalls, 0);
+});
+
+test('mobile auth google login rejects oversized nonce before throttle bucket', async (t) => {
+  const store = await createSeededStore();
+  let verifyCalls = 0;
+  const verifier: PlatformGoogleIdTokenVerifier = {
+    async verifyIdToken() {
+      verifyCalls += 1;
+      throw new Error('verifier should not be called for oversized nonce');
+    },
+  };
+  const server = createTestServer(
+    store,
+    { CATS_AUTH_GOOGLE_MOBILE_AUDIENCES: 'mobile-client-id' },
+    verifier,
+  );
+  await listen(server);
+  t.after(() => server.close());
+
+  const oversized = 'b'.repeat(300);
+  const login = await request(server, '/api/mobile/auth/google/login', {
+    method: 'POST',
+    body: { idToken: 'mobile-google-id-token', nonce: oversized },
+  });
+  assert.equal(login.status, 400);
+  assert.equal(login.payload?.error?.code, 'E_FORBIDDEN');
+  assert.match(String(login.payload?.error?.message ?? ''), /too large/u);
+  assert.equal(verifyCalls, 0);
+});
+
 test('mobile auth google login rejects nonce mismatch', async (t) => {
   const store = await createSeededStore();
   await linkGoogleIdentity(store, 'mobile-google-subject');

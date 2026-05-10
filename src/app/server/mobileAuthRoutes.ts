@@ -28,6 +28,14 @@ import {
 } from '../../shared/http.js';
 import { sendPlatformAuthError } from './authErrorResponses.js';
 
+// Defensive caps on body-supplied Google credential fields. Real Google ID
+// tokens are JWTs of a few KB; production nonces are 32-byte random strings.
+// These bounds are generous but cheap to enforce, and they keep an
+// unauthenticated attacker from forcing the server to JSON-parse / hash a
+// multi-MB string before the throttle gate runs.
+const MOBILE_GOOGLE_ID_TOKEN_MAX_LENGTH = 8_192;
+const MOBILE_GOOGLE_NONCE_MAX_LENGTH = 256;
+
 export interface MobileAuthRouteDependencies {
   authStore: PlatformAuthStore;
   auth: PlatformAuthConfig;
@@ -225,17 +233,34 @@ async function handleMobileGoogleLogin(
     sendMobileAuthError(context, 400, 'E_FORBIDDEN', 'Google ID token is required.');
     return;
   }
+  if (body.idToken.length > MOBILE_GOOGLE_ID_TOKEN_MAX_LENGTH) {
+    sendMobileAuthError(context, 400, 'E_FORBIDDEN', 'Google ID token is too large.');
+    return;
+  }
   if (typeof body.nonce !== 'string' || !body.nonce.trim()) {
     sendMobileAuthError(context, 400, 'E_FORBIDDEN', 'Google nonce is required.');
+    return;
+  }
+  if (body.nonce.length > MOBILE_GOOGLE_NONCE_MAX_LENGTH) {
+    sendMobileAuthError(context, 400, 'E_FORBIDDEN', 'Google nonce is too large.');
     return;
   }
 
   const now = context.dependencies.now?.() ?? new Date();
   const state = await context.dependencies.authStore.readState();
   const remoteAddress = readRemoteAddress(context.request);
+  // Refuse rather than fall through to a shared `'remote:unknown'` throttle
+  // bucket: a missing `socket.remoteAddress` is a transport misconfiguration
+  // (e.g. unix socket without forwarding, broken reverse proxy) and we do not
+  // want every such caller to share a single throttle counter that one
+  // attacker could lock out.
+  if (!remoteAddress) {
+    sendMobileAuthError(context, 503, 'E_FORBIDDEN', 'Mobile Google login requires a remote address.');
+    return;
+  }
   const verifierThrottleSubject = createLoginThrottleSubject({
     provider: 'google',
-    accountKey: `remote:${remoteAddress ?? 'unknown'}`,
+    accountKey: `remote:${remoteAddress}`,
     remoteAddress,
   });
   const verifierThrottle = evaluateLoginThrottle(state, {
