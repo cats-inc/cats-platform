@@ -95,6 +95,7 @@ test('platform auth logout revokes current browser session and clears cookie', a
   const logout = await request(server, '/api/auth/logout', {
     method: 'POST',
     cookie,
+    csrfToken: login.payload?.csrfToken,
   });
   assert.equal(logout.status, 200);
   assert.equal(logout.payload?.authenticated, false);
@@ -102,6 +103,64 @@ test('platform auth logout revokes current browser session and clears cookie', a
 
   const status = await request(server, '/api/auth/status', { cookie });
   assert.equal(status.payload?.authenticated, false);
+});
+
+test('platform auth logout rejects missing csrf for active browser sessions', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store);
+  await listen(server);
+  t.after(() => server.close());
+
+  const login = await request(server, '/api/auth/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  const cookie = (login.setCookie ?? '').split(';')[0]!;
+
+  const missingCsrf = await request(server, '/api/auth/logout', {
+    method: 'POST',
+    cookie,
+  });
+  assert.equal(missingCsrf.status, 403);
+  assert.equal(errorCode(missingCsrf.payload), 'E_CSRF_MISMATCH');
+
+  const stillAuthenticated = await request(server, '/api/auth/status', { cookie });
+  assert.equal(stillAuthenticated.payload?.authenticated, true);
+});
+
+test('platform auth logout rejects stale csrf after status rotation', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store);
+  await listen(server);
+  t.after(() => server.close());
+
+  const login = await request(server, '/api/auth/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  const cookie = (login.setCookie ?? '').split(';')[0]!;
+  const status = await request(server, '/api/auth/status', { cookie });
+  assert.notEqual(status.payload?.csrfToken, login.payload?.csrfToken);
+
+  const staleLogout = await request(server, '/api/auth/logout', {
+    method: 'POST',
+    cookie,
+    csrfToken: login.payload?.csrfToken,
+  });
+  assert.equal(staleLogout.status, 403);
+  assert.equal(errorCode(staleLogout.payload), 'E_CSRF_MISMATCH');
+
+  const freshLogout = await request(server, '/api/auth/logout', {
+    method: 'POST',
+    cookie,
+    csrfToken: status.payload?.csrfToken,
+  });
+  assert.equal(freshLogout.status, 200);
+  assert.equal(freshLogout.payload?.authenticated, false);
 });
 
 test('platform auth local login enforces composite failed-login lockout', async (t) => {
@@ -194,6 +253,7 @@ async function request(
     origin?: string;
     secFetchSite?: string;
     cookie?: string;
+    csrfToken?: unknown;
   } = {},
 ): Promise<{
   status: number;
@@ -216,6 +276,9 @@ async function request(
   }
   if (options.cookie) {
     headers.cookie = options.cookie;
+  }
+  if (typeof options.csrfToken === 'string') {
+    headers['x-cats-csrf-token'] = options.csrfToken;
   }
   const response = await fetch(`http://127.0.0.1:${address.port}${path}`, {
     method: options.method ?? 'GET',

@@ -12,6 +12,7 @@ import {
   recordSuccessfulLogin,
   revokeSession,
   touchSession,
+  verifySessionTokenHash,
   verifyLocalPassword,
   type PlatformAuthStore,
   type PlatformAuthState,
@@ -248,14 +249,15 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
 }
 
 async function handleLogout(context: RouteContext<AuthRouteDependencies>): Promise<void> {
-  const token = readCookie(context.request, AUTH_SESSION_COOKIE_NAME);
-  const sessionSecret = context.dependencies.auth.sessionSecret;
-  if (token && sessionSecret) {
-    const tokenHash = hashSessionToken(token, sessionSecret);
+  const resolved = await resolveBrowserPrincipal(context);
+  if (resolved) {
+    if (!validateCatsCsrfToken(context, resolved.session)) {
+      return;
+    }
     await context.dependencies.authStore.updateState((state) => ({
       ...state,
       sessions: state.sessions.map((session) =>
-        session.tokenHash === tokenHash
+        session.id === resolved.session.id
           ? revokeSession(session, context.dependencies.now?.() ?? new Date())
           : session,
       ),
@@ -382,6 +384,24 @@ function sendAuthError(
       message,
     },
   });
+}
+
+function validateCatsCsrfToken(
+  context: RouteContext<AuthRouteDependencies>,
+  session: PlatformSessionRecord,
+): boolean {
+  const sessionSecret = context.dependencies.auth.sessionSecret;
+  const csrfToken = context.request.headers['x-cats-csrf-token'];
+  if (
+    !sessionSecret
+    || typeof csrfToken !== 'string'
+    || !session.csrfTokenHash
+    || !verifySessionTokenHash(csrfToken, session.csrfTokenHash, sessionSecret)
+  ) {
+    sendAuthError(context.response, 403, 'E_CSRF_MISMATCH', 'CSRF token is missing or invalid.');
+    return false;
+  }
+  return true;
 }
 
 function readCookie(request: IncomingMessage, name: string): string | null {
