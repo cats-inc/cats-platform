@@ -4,4 +4,5 @@ export * from './password.js';
 export * from './session.js';
 export * from './state.js';
 export * from './store.js';
+export * from './throttle.js';
 export * from './types.js';

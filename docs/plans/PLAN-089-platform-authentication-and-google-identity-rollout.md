@@ -537,6 +537,7 @@ operators before implementation is marked complete.
 | 2026-04-30 | Added Expo Go / Cats Mobile device-session slice: QR pairing remains bundle bootstrap only, mobile data access requires bearer device sessions, and mobile Google login is separate from browser GIS. |
 | 2026-05-10 | Phase 1 landed: added `src/platform/auth/**` domain types, state normalization, memory/file auth stores, local password hashing, browser/mobile session token helpers, auth config parsing, and focused tests. No route gate is enabled yet. |
 | 2026-05-10 | Phase 2 route skeleton started: added `/api/auth/status`, local `/api/auth/login`, `/api/auth/logout`, auth-store dependency wiring, browser-origin gate for login, session cookie issuance/revocation, and route tests. Product route gate, setup bootstrap integration, CSRF middleware, throttling, and repair flow remain pending. |
+| 2026-05-10 | Phase 2 throttling slice started: auth state now carries failed-login and bounded cooldown records, local password login enforces composite `(account, address)` lockout plus account/subnet aggregate guards, and focused throttle/route tests cover local login. Google credential throttling, admin cooldown clearing, and repair-token clearing remain pending before Tasks 2.10/2.11 can be checked off. |
 
 ---
 

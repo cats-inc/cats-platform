@@ -104,6 +104,37 @@ test('platform auth logout revokes current browser session and clears cookie', a
   assert.equal(status.payload?.authenticated, false);
 });
 
+test('platform auth local login enforces composite failed-login lockout', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store, {
+    CATS_AUTH_LOGIN_FAILURE_LIMIT: '2',
+    CATS_AUTH_LOGIN_LOCKOUT_MS: '30000',
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const failed = await request(server, '/api/auth/login', {
+      method: 'POST',
+      origin: 'http://localhost:5173',
+      secFetchSite: 'same-origin',
+      body: { identifier: 'owner@example.test', password: 'wrong-password' },
+    });
+    assert.equal(failed.status, 401);
+    assert.equal(errorCode(failed.payload), 'E_UNAUTHENTICATED');
+  }
+
+  const blocked = await request(server, '/api/auth/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  assert.equal(blocked.status, 403);
+  assert.equal(errorCode(blocked.payload), 'E_FORBIDDEN');
+  assert.match(blocked.payload?.error?.message ?? '', /too many/i);
+});
+
 async function createSeededStore(): Promise<MemoryPlatformAuthStore> {
   const bootstrap = await createFirstAdminLocalAuthState({
     state: createEmptyPlatformAuthState(NOW),
@@ -140,6 +171,7 @@ function createTestServer(
         authStore: store,
         auth: config.auth,
         now: () => NOW,
+        sleep: async () => {},
       },
     });
     if (!handled) {

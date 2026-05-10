@@ -3,6 +3,8 @@ import {
   type PlatformAccountRecord,
   type PlatformAuthState,
   type PlatformIdentityRecord,
+  type PlatformLoginCooldownRecord,
+  type PlatformLoginFailureRecord,
   type PlatformMembershipRecord,
   type PlatformSessionRecord,
 } from './types.js';
@@ -29,6 +31,8 @@ export function createEmptyPlatformAuthState(
     identities: [],
     sessions: [],
     memberships: [],
+    loginFailures: [],
+    loginCooldowns: [],
   };
 }
 
@@ -57,6 +61,12 @@ export function normalizePlatformAuthState(
     identities: readArray(record.identities, 'identities').map(readIdentityRecord),
     sessions: readArray(record.sessions, 'sessions').map(readSessionRecord),
     memberships: readArray(record.memberships, 'memberships').map(readMembershipRecord),
+    loginFailures: readOptionalArray(record.loginFailures, 'loginFailures').map(
+      readLoginFailureRecord,
+    ),
+    loginCooldowns: readOptionalArray(record.loginCooldowns, 'loginCooldowns').map(
+      readLoginCooldownRecord,
+    ),
   };
 }
 
@@ -167,6 +177,38 @@ function readMembershipRecord(input: unknown): PlatformMembershipRecord {
   };
 }
 
+function readLoginFailureRecord(input: unknown): PlatformLoginFailureRecord {
+  const record = readRecord(input, 'loginFailure');
+  const provider = readIdentityProvider(record.provider, 'loginFailure.provider');
+  return {
+    id: readString(record.id, 'loginFailure.id'),
+    provider,
+    accountKey: readString(record.accountKey, 'loginFailure.accountKey'),
+    remoteAddress: readString(record.remoteAddress, 'loginFailure.remoteAddress'),
+    subnetKey: readString(record.subnetKey, 'loginFailure.subnetKey'),
+    failedAt: readString(record.failedAt, 'loginFailure.failedAt'),
+  };
+}
+
+function readLoginCooldownRecord(input: unknown): PlatformLoginCooldownRecord {
+  const record = readRecord(input, 'loginCooldown');
+  const reason = readString(record.reason, 'loginCooldown.reason');
+  if (!['composite_lockout', 'account_daily_cap', 'subnet_daily_cap'].includes(reason)) {
+    throw new PlatformAuthStateCorruptError(`Invalid login cooldown reason: ${reason}.`);
+  }
+  const provider = readIdentityProvider(record.provider, 'loginCooldown.provider');
+  return {
+    id: readString(record.id, 'loginCooldown.id'),
+    reason: reason as PlatformLoginCooldownRecord['reason'],
+    provider,
+    accountKey: readNullableString(record.accountKey, 'loginCooldown.accountKey'),
+    remoteAddress: readNullableString(record.remoteAddress, 'loginCooldown.remoteAddress'),
+    subnetKey: readNullableString(record.subnetKey, 'loginCooldown.subnetKey'),
+    createdAt: readString(record.createdAt, 'loginCooldown.createdAt'),
+    expiresAt: readString(record.expiresAt, 'loginCooldown.expiresAt'),
+  };
+}
+
 function readRecord(input: unknown, label: string): Record<string, unknown> {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     throw new PlatformAuthStateCorruptError(`${label} must be an object.`);
@@ -174,11 +216,29 @@ function readRecord(input: unknown, label: string): Record<string, unknown> {
   return input as Record<string, unknown>;
 }
 
+function readIdentityProvider(
+  input: unknown,
+  label: string,
+): PlatformLoginFailureRecord['provider'] {
+  const provider = readString(input, label);
+  if (provider !== 'local_password' && provider !== 'google') {
+    throw new PlatformAuthStateCorruptError(`Invalid identity provider: ${provider}.`);
+  }
+  return provider;
+}
+
 function readArray(input: unknown, label: string): unknown[] {
   if (!Array.isArray(input)) {
     throw new PlatformAuthStateCorruptError(`${label} must be an array.`);
   }
   return input;
+}
+
+function readOptionalArray(input: unknown, label: string): unknown[] {
+  if (input === undefined) {
+    return [];
+  }
+  return readArray(input, label);
 }
 
 function readString(input: unknown, label: string): string {

@@ -6,6 +6,10 @@ import {
   isSessionActive,
   issueBrowserSession,
   normalizeAccountIdentifier,
+  createLoginThrottleSubject,
+  evaluateLoginThrottle,
+  recordFailedLogin,
+  recordSuccessfulLogin,
   revokeSession,
   touchSession,
   verifyLocalPassword,
@@ -32,6 +36,7 @@ export interface AuthRouteDependencies {
   authStore: PlatformAuthStore;
   auth: PlatformAuthConfig;
   now?: () => Date;
+  sleep?: (ms: number) => Promise<void>;
 }
 
 export interface AuthPrincipalSummary {
@@ -162,7 +167,26 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
   }
 
   const identifier = normalizeAccountIdentifier(body.identifier);
+  const now = context.dependencies.now?.() ?? new Date();
+  const throttleSubject = createLoginThrottleSubject({
+    provider: 'local_password',
+    accountKey: identifier,
+    remoteAddress: readRemoteAddress(context.request),
+  });
   const state = await context.dependencies.authStore.readState();
+  const throttle = evaluateLoginThrottle(state, {
+    subject: throttleSubject,
+    policy: context.dependencies.auth,
+    now,
+  });
+  if (throttle.blocked) {
+    sendAuthError(context.response, 403, 'E_FORBIDDEN', 'Too many login attempts.');
+    return;
+  }
+  if (throttle.delayMs > 0) {
+    await sleep(throttle.delayMs, context.dependencies.sleep);
+  }
+
   const identity = findLocalPasswordIdentity(state, identifier);
   const account = identity
     ? state.accounts.find((candidate) => candidate.id === identity.accountId) ?? null
@@ -178,6 +202,13 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
     : false;
 
   if (!identity || !account || !membership || account.status !== 'active' || !valid) {
+    await context.dependencies.authStore.updateState((current) =>
+      recordFailedLogin(current, {
+        subject: throttleSubject,
+        policy: context.dependencies.auth,
+        now,
+      }),
+    );
     sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Invalid credentials.');
     return;
   }
@@ -186,12 +217,18 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
     accountId: account.id,
     sessionSecret,
     ttlMs: context.dependencies.auth.sessionTtlMs,
-    now: context.dependencies.now?.() ?? new Date(),
+    now,
   });
-  await context.dependencies.authStore.updateState((current) => ({
-    ...current,
-    sessions: [...current.sessions, issued.session],
-  }));
+  await context.dependencies.authStore.updateState((current) => {
+    const cleared = recordSuccessfulLogin(current, {
+      subject: throttleSubject,
+      now,
+    });
+    return {
+      ...cleared,
+      sessions: [...cleared.sessions, issued.session],
+    };
+  });
 
   sendJson(
     context.response,
@@ -383,4 +420,18 @@ function clearSessionCookie(): string {
 
 function readRemoteAddress(request: IncomingMessage): string | undefined {
   return request.socket.remoteAddress ?? undefined;
+}
+
+async function sleep(
+  ms: number,
+  injectedSleep: ((ms: number) => Promise<void>) | undefined,
+): Promise<void> {
+  if (ms <= 0) {
+    return;
+  }
+  if (injectedSleep) {
+    await injectedSleep(ms);
+    return;
+  }
+  await new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
