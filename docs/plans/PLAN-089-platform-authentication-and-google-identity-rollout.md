@@ -289,6 +289,7 @@ operators before implementation is marked complete.
 | `src/platform/auth/**` | Create | Auth state, password, session, Google verifier, and policy helpers |
 | `src/platform/auth/actorAttribution.ts` | Create | Fail-closed Core actor attribution helper for authenticated principals |
 | `src/platform/auth/googleAccount.ts` | Create | Google first-admin account bootstrap helper |
+| `src/platform/auth/googleCsrf.ts` | Create | Google GIS double-submit CSRF validation helper |
 | `src/platform/auth/googleVerifier.ts` | Create | Injected Google ID-token verifier contract and claim validation |
 | `src/platform/auth/localLogin.ts` | Create | Shared local password credential verification for browser/mobile/repair routes |
 | `src/platform/auth/readiness.ts` | Create | Setup/auth-state readiness helper that drives post-setup repair mode |
@@ -570,6 +571,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Auth gate response adapter slice landed: the shared gate evaluator now has a single HTTP rejection sender for pinned `E_UNAUTHENTICATED` and `E_CSRF_MISMATCH` JSON bodies. Request-router installation remains pending. |
 | 2026-05-10 | Phase 4 Google account bootstrap slice started: added a domain helper for creating the first admin account, Google identity, owner/admin membership, and browser session from a verified Google identity. Browser Google HTTP setup/login routes remain pending. |
 | 2026-05-10 | Phase 4 Google linked-login domain slice landed: added a helper that issues a browser session for an existing active linked Google identity, refreshes display email/avatar metadata, and fails closed for unknown or disabled accounts. Browser Google HTTP route remains pending. |
+| 2026-05-10 | Phase 4 Google CSRF prerequisite slice landed: added a Google GIS `g_csrf_token` double-submit validator that is separate from Cats synchronizer CSRF. Browser Google credential POST route remains pending. |
 
 ---
 
