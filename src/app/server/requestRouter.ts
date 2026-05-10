@@ -401,6 +401,11 @@ export async function routeRequest(
       authStore: dependencies.shared.authStore,
       auth: dependencies.shared.config.auth,
       now: dependencies.shared.now,
+      googleVerifier: dependencies.shared.googleVerifier,
+      authRecoveryTokenState: dependencies.shared.authRecoveryTokenState,
+      setAuthRecoveryTokenState: dependencies.shared.setAuthRecoveryTokenState,
+      readSetupCompleteAt: async () => (await dependencies.shared.coreStore.readCore())
+        .setupCompleteAt,
     },
   };
 

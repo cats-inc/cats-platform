@@ -9,6 +9,9 @@ import {
   createFirstAdminLocalAuthState,
   createFirstAdminGoogleAuthState,
   MemoryPlatformAuthStore,
+  type PlatformAuthState,
+  type PlatformAuthStateReadStatus,
+  type PlatformAuthStore,
   type PlatformGoogleIdTokenClaims,
   type PlatformGoogleIdTokenVerifier,
 } from '../src/platform/auth/index.ts';
@@ -301,6 +304,59 @@ test('platform auth google login enforces composite failed-login lockout', async
   assert.match(blocked.payload?.error?.message ?? '', /too many/i);
 });
 
+test('platform auth repair first-admin recreates missing auth state from loopback', async (t) => {
+  const store = createRepairAuthStore({ status: 'missing' });
+  const server = createTestServer(store, {}, undefined, {
+    readSetupCompleteAt: async () => NOW.toISOString(),
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  const response = await request(server, '/api/auth/repair/first-admin', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      displayName: 'Owner',
+      identifier: 'owner@example.test',
+      password: 'correct-password',
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.payload?.authenticated, true);
+  assert.equal(response.payload?.principal?.coreActorId, 'actor-owner');
+  assert.equal(typeof response.payload?.csrfToken, 'string');
+  assert.match(response.setCookie ?? '', /cats_session=/u);
+  const state = await store.readState();
+  assert.equal(state.accounts.length, 1);
+  assert.equal(state.identities[0]?.provider, 'local_password');
+  assert.equal(state.sessions.length, 1);
+});
+
+test('platform auth repair first-admin rejects when repair is not active', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store, {}, undefined, {
+    readSetupCompleteAt: async () => NOW.toISOString(),
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  const response = await request(server, '/api/auth/repair/first-admin', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      displayName: 'Owner',
+      identifier: 'owner@example.test',
+      password: 'correct-password',
+    },
+  });
+
+  assert.equal(response.status, 409);
+  assert.equal(errorCode(response.payload), 'E_FORBIDDEN');
+});
+
 async function createSeededStore(): Promise<MemoryPlatformAuthStore> {
   const bootstrap = await createFirstAdminLocalAuthState({
     state: createEmptyPlatformAuthState(NOW),
@@ -318,9 +374,12 @@ async function createSeededStore(): Promise<MemoryPlatformAuthStore> {
 }
 
 function createTestServer(
-  store: MemoryPlatformAuthStore,
+  store: PlatformAuthStore,
   env: NodeJS.ProcessEnv = {},
   googleVerifier?: PlatformGoogleIdTokenVerifier,
+  options: {
+    readSetupCompleteAt?: () => Promise<string | null>;
+  } = {},
 ) {
   const config = loadConfig({
     HOME: 'C:/Users/tester',
@@ -338,6 +397,7 @@ function createTestServer(
         authStore: store,
         auth: config.auth,
         googleVerifier,
+        readSetupCompleteAt: options.readSetupCompleteAt,
         now: () => NOW,
         sleep: async () => {},
       },
@@ -347,6 +407,38 @@ function createTestServer(
       response.end(JSON.stringify({ error: 'not found' }));
     }
   });
+}
+
+function createRepairAuthStore(
+  initialStatus: PlatformAuthStateReadStatus,
+): PlatformAuthStore {
+  let status: PlatformAuthStateReadStatus = initialStatus;
+  return {
+    async readStateStatus() {
+      return status;
+    },
+    async readState() {
+      if (status.status === 'ready') {
+        return structuredClone(status.state);
+      }
+      if (status.status === 'corrupt') {
+        throw status.error;
+      }
+      throw new Error('Auth state is missing.');
+    },
+    async writeState(state: PlatformAuthState) {
+      status = { status: 'ready', state: structuredClone(state) };
+      return structuredClone(state);
+    },
+    async updateState(mutator) {
+      const current = status.status === 'ready'
+        ? structuredClone(status.state)
+        : createEmptyPlatformAuthState(NOW);
+      const next = await mutator(current);
+      status = { status: 'ready', state: structuredClone(next) };
+      return structuredClone(next);
+    },
+  };
 }
 
 async function listen(server: ReturnType<typeof createServer>): Promise<void> {

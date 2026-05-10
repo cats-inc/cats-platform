@@ -2,8 +2,11 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import {
   generateSessionTokenMaterial,
+  createEmptyPlatformAuthState,
+  createFirstAdminLocalAuthState,
   issueBrowserSession,
   normalizeAccountIdentifier,
+  authorizePlatformAuthRepairBootstrap,
   createLoginThrottleSubject,
   evaluateLoginThrottle,
   recordFailedLogin,
@@ -22,6 +25,7 @@ import {
   verifyPlatformGoogleIdentityToken,
   verifyPlatformLocalPasswordCredential,
   type PlatformAuthStore,
+  type PlatformAuthRecoveryTokenState,
   type PlatformGoogleIdTokenVerifier,
   type PlatformPrincipal,
   type PlatformPrincipalSummary,
@@ -41,6 +45,9 @@ export interface AuthRouteDependencies {
   authStore: PlatformAuthStore;
   auth: PlatformAuthConfig;
   googleVerifier?: PlatformGoogleIdTokenVerifier;
+  authRecoveryTokenState?: PlatformAuthRecoveryTokenState | null;
+  setAuthRecoveryTokenState?: (state: PlatformAuthRecoveryTokenState | null) => void | Promise<void>;
+  readSetupCompleteAt?: () => Promise<string | null>;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
 }
@@ -97,6 +104,18 @@ export async function routePlatformAuthApi(
     return true;
   }
 
+  if (context.url.pathname === '/api/auth/repair/first-admin') {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    if (!enforcePreAuthOriginGate(context)) {
+      return true;
+    }
+    await handleRepairFirstAdmin(context);
+    return true;
+  }
+
   if (context.url.pathname === '/api/auth/logout') {
     if (context.method !== 'POST') {
       sendMethodNotAllowed(context.response, ['POST']);
@@ -107,6 +126,95 @@ export async function routePlatformAuthApi(
   }
 
   return false;
+}
+
+async function handleRepairFirstAdmin(
+  context: RouteContext<AuthRouteDependencies>,
+): Promise<void> {
+  const sessionSecret = context.dependencies.auth.sessionSecret;
+  if (!sessionSecret) {
+    sendAuthError(
+      context.response,
+      503,
+      'E_FORBIDDEN',
+      'Auth repair is not configured because CATS_AUTH_SESSION_SECRET is missing.',
+    );
+    return;
+  }
+  const setupCompleteAt = await context.dependencies.readSetupCompleteAt?.() ?? null;
+  if (!setupCompleteAt) {
+    sendAuthError(context.response, 409, 'E_FORBIDDEN', 'Setup is not complete.');
+    return;
+  }
+  const status = await context.dependencies.authStore.readStateStatus();
+  if (status.status === 'ready') {
+    sendAuthError(context.response, 409, 'E_FORBIDDEN', 'Auth repair is not required.');
+    return;
+  }
+
+  let body: {
+    displayName?: unknown;
+    identifier?: unknown;
+    password?: unknown;
+    recoveryToken?: unknown;
+  };
+  try {
+    body = await readJsonBody(context.request);
+  } catch {
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Invalid auth repair request body.');
+    return;
+  }
+  if (typeof body.identifier !== 'string' || typeof body.password !== 'string') {
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Identifier and password are required.');
+    return;
+  }
+
+  const now = context.dependencies.now?.() ?? new Date();
+  const authorization = authorizePlatformAuthRepairBootstrap({
+    remoteAddress: readRemoteAddress(context.request),
+    recoveryToken: typeof body.recoveryToken === 'string' ? body.recoveryToken : null,
+    recoveryTokenState: context.dependencies.authRecoveryTokenState ?? null,
+    sessionSecret,
+    now,
+  });
+  if (!authorization.allowed) {
+    sendAuthError(context.response, 403, 'E_FORBIDDEN', repairAuthorizationMessage(
+      authorization.reason,
+    ));
+    return;
+  }
+
+  const created = await createFirstAdminLocalAuthState({
+    state: createEmptyPlatformAuthState(now),
+    displayName: typeof body.displayName === 'string' && body.displayName.trim()
+      ? body.displayName
+      : 'Owner',
+    identifier: body.identifier,
+    password: body.password,
+    sessionSecret,
+    sessionTtlMs: context.dependencies.auth.sessionTtlMs,
+    now,
+  });
+  await context.dependencies.authStore.writeState(created.state);
+  if (authorization.mode === 'recovery_token') {
+    await context.dependencies.setAuthRecoveryTokenState?.(authorization.consumedTokenState);
+  }
+
+  sendJson(
+    context.response,
+    200,
+    buildAuthStatusPayload(context.dependencies.auth, {
+      account: created.account,
+      membership: created.membership,
+      session: created.session.session,
+    }, created.session.csrfToken),
+    {
+      'Set-Cookie': serializeAuthSessionCookie(
+        created.session.token,
+        context.dependencies.auth.sessionTtlMs,
+      ),
+    },
+  );
 }
 
 async function handleAuthStatus(context: RouteContext<AuthRouteDependencies>): Promise<void> {
@@ -449,9 +557,22 @@ function preAuthOriginGateMessage(reason: PreAuthOriginGateRejectionReason): str
   }
 }
 
+function repairAuthorizationMessage(reason: string): string {
+  switch (reason) {
+    case 'missing_session_secret':
+      return 'Auth repair is not configured.';
+    case 'non_loopback_without_recovery_token':
+      return 'Auth repair requires a loopback request or recovery token.';
+    case 'invalid_recovery_token':
+      return 'Recovery token is missing or invalid.';
+    default:
+      return 'Auth repair is not authorized.';
+  }
+}
+
 function sendAuthError(
   response: ServerResponse,
-  statusCode: 401 | 403 | 400 | 503,
+  statusCode: 401 | 403 | 400 | 409 | 503,
   code: 'E_UNAUTHENTICATED' | 'E_FORBIDDEN' | 'E_CSRF_MISMATCH',
   message: string,
 ): void {
