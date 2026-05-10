@@ -5,6 +5,7 @@ export * from './config.js';
 export * from './cookies.js';
 export * from './csrf.js';
 export * from './effectiveMode.js';
+export * from './errorCodes.js';
 export * from './googleAccount.js';
 export * from './googleCsrf.js';
 export * from './googleVerifier.js';

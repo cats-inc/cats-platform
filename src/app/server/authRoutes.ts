@@ -24,6 +24,7 @@ import {
   validateGoogleGisCsrfToken,
   verifyPlatformGoogleIdentityToken,
   verifyPlatformLocalPasswordCredential,
+  type PlatformAuthErrorCode,
   type PlatformAuthStore,
   type PlatformAuthRecoveryTokenState,
   type PlatformGoogleIdTokenVerifier,
@@ -40,6 +41,7 @@ import {
   type RouteContext,
 } from '../../shared/http.js';
 import { readGoogleCredentialRequestPayload } from './googleAuthRequest.js';
+import { sendPlatformAuthError } from './authErrorResponses.js';
 
 export interface AuthRouteDependencies {
   authStore: PlatformAuthStore;
@@ -578,15 +580,10 @@ function repairAuthorizationMessage(reason: string): string {
 function sendAuthError(
   response: ServerResponse,
   statusCode: 401 | 403 | 400 | 409 | 503,
-  code: 'E_UNAUTHENTICATED' | 'E_FORBIDDEN' | 'E_CSRF_MISMATCH',
+  code: PlatformAuthErrorCode,
   message: string,
 ): void {
-  sendJson(response, statusCode, {
-    error: {
-      code,
-      message,
-    },
-  });
+  sendPlatformAuthError(response, statusCode, code, message);
 }
 
 function enforceCatsCsrfToken(

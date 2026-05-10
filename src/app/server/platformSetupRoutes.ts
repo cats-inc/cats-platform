@@ -25,6 +25,7 @@ import {
 import {
   createFirstAdminLocalAuthState,
   evaluatePreAuthOriginGate,
+  PLATFORM_AUTH_ERROR_CODES,
   serializeAuthSessionCookie,
   type PlatformAuthStore,
   type PlatformAuthState,
@@ -40,6 +41,7 @@ import { routePlatformSetupDiagnosticsApi } from './platformSetupDiagnosticsRout
 import { routePlatformGuideCatApi } from './platformSetupGuideCatRoutes.js';
 import { routePlatformPreferenceApi } from './platformSetupPreferenceRoutes.js';
 import { resolveGuideCatSystemName } from '../../shared/guideCatIdentity.js';
+import { sendPlatformAuthError } from './authErrorResponses.js';
 
 export interface PlatformSetupAuthDependencies {
   authStore: PlatformAuthStore;
@@ -394,12 +396,12 @@ function enforceSetupPreAuthOriginGate(context: PlatformSetupContext): boolean {
     allowedBrowserOrigins: context.dependencies.auth.allowedBrowserOrigins,
   });
   if (!decision.allowed) {
-    sendJson(context.response, 403, {
-      error: {
-        code: 'E_FORBIDDEN',
-        message: setupPreAuthOriginGateMessage(decision.reason),
-      },
-    });
+    sendPlatformAuthError(
+      context.response,
+      403,
+      PLATFORM_AUTH_ERROR_CODES.forbidden,
+      setupPreAuthOriginGateMessage(decision.reason),
+    );
     return false;
   }
   return true;

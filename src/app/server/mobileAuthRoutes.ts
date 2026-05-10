@@ -12,6 +12,7 @@ import {
   revokeSession,
   summarizePlatformPrincipal,
   verifyPlatformLocalPasswordCredential,
+  type PlatformAuthErrorCode,
   type PlatformAuthStore,
   type PlatformDevicePlatform,
 } from '../../platform/auth/index.js';
@@ -22,6 +23,7 @@ import {
   sendMethodNotAllowed,
   type RouteContext,
 } from '../../shared/http.js';
+import { sendPlatformAuthError } from './authErrorResponses.js';
 
 export interface MobileAuthRouteDependencies {
   authStore: PlatformAuthStore;
@@ -253,12 +255,10 @@ function readDevicePlatform(value: unknown): PlatformDevicePlatform | undefined 
 function sendMobileAuthError(
   context: RouteContext<MobileAuthRouteDependencies>,
   statusCode: 401 | 403 | 400 | 503,
-  code: 'E_UNAUTHENTICATED' | 'E_FORBIDDEN',
+  code: PlatformAuthErrorCode,
   message: string,
 ): void {
-  sendJson(context.response, statusCode, {
-    error: { code, message },
-  });
+  sendPlatformAuthError(context.response, statusCode, code, message);
 }
 
 function readRemoteAddress(request: IncomingMessage): string | undefined {

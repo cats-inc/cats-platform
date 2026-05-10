@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import {
   AUTH_SESSION_COOKIE_NAME,
+  PLATFORM_AUTH_ERROR_CODES,
   resolveBrowserPrincipalFromToken,
   resolveMobilePrincipalFromBearerToken,
   validateCatsCsrfToken,
@@ -14,7 +15,7 @@ import {
   type PlatformAuthGatePhase,
   type PlatformAuthRoutePolicy,
 } from './authGatePolicy.js';
-import { sendJson } from '../../shared/http.js';
+import { sendPlatformAuthError } from './authErrorResponses.js';
 
 export type PlatformAuthGateCredentialKind = 'browser_cookie' | 'mobile_bearer';
 
@@ -77,7 +78,7 @@ export async function evaluatePlatformAuthGate(
       allowed: false,
       policy,
       statusCode: 401,
-      code: 'E_UNAUTHENTICATED',
+      code: PLATFORM_AUTH_ERROR_CODES.unauthenticated,
       message: 'Authentication is required.',
     };
   }
@@ -94,7 +95,7 @@ export async function evaluatePlatformAuthGate(
         allowed: false,
         policy,
         statusCode: 403,
-        code: 'E_CSRF_MISMATCH',
+        code: PLATFORM_AUTH_ERROR_CODES.csrfMismatch,
         message: 'CSRF token is missing or invalid.',
       };
     }
@@ -112,12 +113,7 @@ export function sendPlatformAuthGateRejection(
   response: ServerResponse,
   decision: PlatformAuthGateRejection,
 ): void {
-  sendJson(response, decision.statusCode, {
-    error: {
-      code: decision.code,
-      message: decision.message,
-    },
-  });
+  sendPlatformAuthError(response, decision.statusCode, decision.code, decision.message);
 }
 
 async function resolveRequestPrincipal(
