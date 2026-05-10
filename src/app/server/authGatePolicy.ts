@@ -29,6 +29,9 @@ export function classifyPlatformAuthRoute(
   if (isPublicMobileBootstrapRoute(pathname, method)) {
     return publicRoute('mobile_bootstrap');
   }
+  if (isPublicMobileAuthRoute(pathname, method)) {
+    return publicRoute('mobile_auth');
+  }
   if (isPublicAuthRoute(pathname, method)) {
     return publicRoute('auth');
   }
@@ -78,9 +81,21 @@ function isPublicMobileBootstrapRoute(pathname: string, method: string): boolean
   if (method !== 'GET') {
     return false;
   }
-  return pathname.startsWith('/api/mobile/')
+  return pathname === '/api/mobile/manifest'
+    || pathname.startsWith('/api/mobile/bundle/')
+    || pathname.startsWith('/api/mobile/assets/')
     || pathname === '/assets'
     || pathname.startsWith('/assets/');
+}
+
+function isPublicMobileAuthRoute(pathname: string, method: string): boolean {
+  return (
+    pathname === '/api/mobile/auth/status' && method === 'GET'
+  ) || (
+    pathname === '/api/mobile/auth/login' && method === 'POST'
+  ) || (
+    pathname === '/api/mobile/auth/logout' && method === 'POST'
+  );
 }
 
 function isPublicAuthRoute(pathname: string, method: string): boolean {
