@@ -69,6 +69,10 @@ includes:
 - `POST /api/auth/login` for local password browser login;
 - `POST /api/auth/logout` for browser logout, requiring
   `X-Cats-CSRF-Token` for active browser sessions;
+- `POST /api/auth/repair/first-admin` for setup-complete workspaces whose auth
+  state is missing or corrupt. The route is pre-auth but constrained to an
+  allowlisted browser origin plus either loopback source address or the
+  one-time recovery token written to the state directory at repair startup;
 - `GET /api/mobile/auth/status` for Cats Mobile bearer-session status;
 - `POST /api/mobile/auth/login` for local password mobile login, returning the
   raw bearer token exactly once;
@@ -78,6 +82,14 @@ The global product-route gate is not installed yet. Until the PLAN-089 atomic
 gate slice lands, existing Chat/Work/Code/Core routes still dispatch through
 their current route modules. Do not treat LAN exposure as fully closed until
 that gate is installed and the release notes say the rollout is complete.
+
+Pinned auth error codes are:
+
+- `E_UNAUTHENTICATED` for unauthenticated `401` responses;
+- `E_FORBIDDEN` for pre-auth origin failures, repair authorization failures,
+  login lockout, and other plain authorization denials;
+- `E_CSRF_MISMATCH` for Cats synchronizer CSRF failures on authenticated
+  browser mutations.
 
 Telegram webhook ingress may optionally enforce the standard
 `x-telegram-bot-api-secret-token` header when

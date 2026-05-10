@@ -39,6 +39,24 @@ If the renderer is served from a non-default origin, add it to:
 CATS_AUTH_ALLOWED_BROWSER_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
 
+Forgotten-credential and repair behavior:
+
+- Browser session state is stored separately from product data at
+  `<platform-state-dir>/auth-state.local.json`. In dev and packaged desktop,
+  the default path is `~/.cats/platform/state/auth-state.local.json` unless
+  `CATS_PLATFORM_DIR` points to a different platform root.
+- Deleting `auth-state.local.json` discards accounts, identities, memberships,
+  and sessions. It leaves owner profile, Guide Cat state, conversations, Work,
+  Code, and other product data untouched.
+- If setup was already completed and the auth state file is missing or corrupt,
+  startup enters auth repair mode and writes a one-time token to
+  `<platform-state-dir>/auth-recovery-token.local.txt`.
+- Repair first-admin creation is accepted only from loopback or with that
+  recovery token, and still requires an allowlisted browser `Origin`.
+  Structured logs include the token file path, never the raw token.
+- For LAN-bound deployments, rebind Cats to loopback or use the recovery token
+  before allowing LAN browsers to reach the host during repair.
+
 ### 2. Install dependencies
 
 ```bash

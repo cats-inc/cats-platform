@@ -66,6 +66,25 @@ Current decision:
   because it verifies that `/runtime/*` and `/runtime/api/*` still resolve
   through the Cats origin
 
+Auth and repair constraints for LAN/tunnel access:
+
+- Set `CATS_AUTH_SESSION_SECRET` before testing or exposing browser/mobile
+  auth routes.
+- `CATS_AUTH_ENABLED=false` is not a LAN deployment option and is rejected
+  after setup completion.
+- Keep `CATS_AUTH_ALLOWED_BROWSER_ORIGINS` explicit for every browser-facing
+  origin that may submit pre-auth mutations, including Vite dev, trusted LAN,
+  or tunnel origins.
+- If a setup-complete workspace starts with missing/corrupt auth state, the
+  server writes the raw one-time repair token only to
+  `<platform-state-dir>/auth-recovery-token.local.txt` (default:
+  `~/.cats/platform/state/auth-recovery-token.local.txt` in dev and packaged
+  desktop); structured logs expose only the token-file path.
+- Repair first-admin creation is loopback-only unless the request supplies the
+  recovery token. For LAN or tunnel recovery, either temporarily rebind to
+  loopback or keep the recovery token local to the operator while completing
+  repair.
+
 ### Desktop Host First Slice
 
 The first desktop-host slice is now in-tree:

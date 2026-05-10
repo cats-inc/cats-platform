@@ -27,14 +27,30 @@ Behavior change:
 
 PLAN-089 server-side auth foundations are landing behind the not-yet-installed
 global route gate. Browser local login/logout/status and Cats Mobile bearer
-login/logout/status routes now exist, but product APIs are not fully protected
-until the dedicated gate slice lands.
+login/logout/status routes now exist, and setup-complete missing/corrupt auth
+state now enters a constrained repair path through
+`POST /api/auth/repair/first-admin`. Product APIs are not fully protected until
+the dedicated gate slice lands, so do not treat LAN exposure as closed yet.
 
 Migration steps:
 
 Set `CATS_AUTH_SESSION_SECRET` before testing first-admin local login or mobile
-bearer sessions. Do not rely on `CATS_AUTH_ENABLED=false`; it is an unsafe
-dev/test escape hatch and will be rejected after setup is complete.
+bearer sessions. Keep `CATS_AUTH_ALLOWED_BROWSER_ORIGINS` explicit for every
+trusted browser origin that may submit setup/login/repair/Google credential
+POST requests.
+
+Do not rely on `CATS_AUTH_ENABLED=false`; it is an unsafe dev/test escape hatch
+and is rejected after `setupCompleteAt` exists. When an operator forgets the
+only admin credential, delete only
+`<platform-state-dir>/auth-state.local.json`, restart, and complete repair from
+loopback or with the one-time token written to
+`<platform-state-dir>/auth-recovery-token.local.txt`. Deleting the auth state
+file removes accounts, identities, memberships, and sessions, but leaves
+product data intact.
+
+Downstream tooling may key on these pinned error codes: `E_UNAUTHENTICATED`
+for `401`, `E_FORBIDDEN` for plain authorization failures, and
+`E_CSRF_MISMATCH` for Cats synchronizer CSRF failures.
 
 Deprecations:
 

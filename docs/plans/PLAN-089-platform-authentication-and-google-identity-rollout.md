@@ -255,7 +255,7 @@ product write path.
       instead of live Google calls.
 - [ ] Task 6.4: Add CSRF tests for Google credential POST and authenticated
       mutations.
-- [ ] Task 6.5: Update `docs/api.md`, `docs/setup-guide.md`,
+- [x] Task 6.5: Update `docs/api.md`, `docs/setup-guide.md`,
       `docs/deployment.md`, and `.env.example`. The setup-guide and deployment
       docs shall explicitly document:
       (a) the forgotten-credential escape hatch — the exact path to the
@@ -269,7 +269,7 @@ product write path.
       structured logs expose only the token file path, not the raw token;
       LAN-bound deployments should rebind to loopback or use the recovery
       token before allowing the LAN to reach the host during recovery.
-- [ ] Task 6.6: Add release notes covering: (a) LAN-facing workspaces now
+- [x] Task 6.6: Add release notes covering: (a) LAN-facing workspaces now
       require login after setup; (b) `CATS_AUTH_ENABLED=false` is rejected
       after `setupCompleteAt`; (c) the auth state file escape hatch and the
       loopback/recovery-token constraint on the repair flow; (d) pinned
@@ -584,6 +584,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2 repair authorization prerequisite landed: repair bootstrap authorization now has a tested loopback-or-one-time-token decision helper, with IPv4-mapped loopback support and consumed-token state returned only for the successful recovery-token path. The HTTP repair first-admin route still needs to call it. |
 | 2026-05-10 | Phase 2 repair first-admin route slice started: `/api/auth/repair/first-admin` can recreate missing/corrupt auth state from an allowlisted loopback browser request, uses the loopback-or-token authorization helper, and is registered as a pre-auth public auth route. Non-loopback recovery-token route coverage is present. |
 | 2026-05-10 | Phase 2 repair token startup wiring landed: startup recovery now detects setup-complete missing/corrupt auth state, writes the one-time recovery token to the configured state-dir file, stores only token state in memory, and makes that token state available to `/api/auth/repair/first-admin`. Tasks 2.12 and 2.13 are now checked; full repair UX and global route-gate install remain under Tasks 2.4/2.5. |
+| 2026-05-10 | Phase 6 repair documentation landed: API docs, setup guide, deployment notes, and release notes now cover the repair first-admin route, auth-state file path, recovery-token file path, loopback-or-token constraint, `CATS_AUTH_ENABLED=false` post-setup rejection, and pinned auth error codes. Tasks 6.5 and 6.6 are now checked; the release note still states that the global product-route gate is pending. |
 
 ---
 
