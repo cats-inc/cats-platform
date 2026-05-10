@@ -4,6 +4,7 @@ export * from './config.js';
 export * from './cookies.js';
 export * from './csrf.js';
 export * from './effectiveMode.js';
+export * from './googleVerifier.js';
 export * from './originGate.js';
 export * from './password.js';
 export * from './principal.js';

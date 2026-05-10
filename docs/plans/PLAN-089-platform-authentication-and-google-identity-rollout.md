@@ -287,6 +287,7 @@ operators before implementation is marked complete.
 | File | Action | Description |
 |------|--------|-------------|
 | `src/platform/auth/**` | Create | Auth state, password, session, Google verifier, and policy helpers |
+| `src/platform/auth/googleVerifier.ts` | Create | Injected Google ID-token verifier contract and claim validation |
 | `src/platform/auth/readiness.ts` | Create | Setup/auth-state readiness helper that drives post-setup repair mode |
 | `src/app/server/authRoutes.ts` | Create | Auth status/login/logout/bootstrap routes |
 | `src/app/server/authGate.ts` | Create | Shared route-gate decision helper for browser cookie and mobile bearer principals |
@@ -554,6 +555,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2/4b route-policy follow-up landed: mobile auth routes are explicitly public, mobile static bootstrap is narrowed to manifest/bundle/assets, and unknown/future mobile product-data paths remain protected for the future bearer-session gate. The classifier is still not installed in `requestRouter`. |
 | 2026-05-10 | Phase 2/4b route-gate decision slice started: added a shared auth-gate evaluator that classifies routes, resolves browser cookie or mobile bearer principals, requires Cats CSRF on mutating browser-cookie requests, and allows valid mobile bearer mutations without browser CSRF. The evaluator is tested but not yet installed in `requestRouter`, so product routes remain publicly dispatched until the atomic gate slice lands. |
 | 2026-05-10 | Phase 2 repair readiness slice started: added a setup/auth-state readiness helper that maps pre-setup, post-setup, and post-setup missing/corrupt auth state into explicit gate phases and repair reasons. Startup repair detector, recovery-token route, and request-router enforcement remain pending. |
+| 2026-05-10 | Phase 4 Google verifier contract slice started: added an injected Google ID-token verifier interface plus server-side claim validation for issuer, audience, expiration, verified email, hosted-domain allowlist, and mobile audiences. The maintained verifier dependency and browser/mobile Google login routes remain pending before Tasks 4.1-4.3/4b.7 can be checked off. |
 
 ---
 
