@@ -3,15 +3,18 @@ import test from 'node:test';
 
 import mobileClientModule from '../mobile/src/api/client.ts';
 import mobileAuthModule from '../mobile/src/api/auth.ts';
+import mobileAuthTokenStoreModule from '../mobile/src/api/authTokenStore.ts';
 
-const { createMobileApiClient } = mobileClientModule as typeof import(
-  '../mobile/src/api/client.ts'
-);
+const { createMobileApiClient, createMobileApiClientWithStoredAuth } =
+  mobileClientModule as typeof import('../mobile/src/api/client.ts');
 const {
   fetchMobileAuthStatus,
   loginMobileLocal,
   logoutMobile,
 } = mobileAuthModule as typeof import('../mobile/src/api/auth.ts');
+const { saveMobileAuthToken } = mobileAuthTokenStoreModule as typeof import(
+  '../mobile/src/api/authTokenStore.ts'
+);
 
 test('mobile api client attaches bearer token only from runtime options', async (t) => {
   const calls: Array<{ url: string; init?: RequestInit }> = [];
@@ -60,6 +63,53 @@ test('mobile auth api wrappers use canonical mobile auth endpoints', async (t) =
   assert.equal(calls[1]?.init?.method, 'POST');
 });
 
+test('mobile authenticated api client loads bearer token from secure storage boundary', async (t) => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(input), init });
+    return jsonResponse({ authenticated: true, principal: null });
+  }) as typeof fetch;
+
+  const storage = createMemorySecureStorage();
+  await saveMobileAuthToken(storage, '  stored-mobile-token  ');
+
+  const client = await createMobileApiClientWithStoredAuth(
+    { baseUrl: 'http://127.0.0.1:3000/' },
+    storage,
+  );
+  await fetchMobileAuthStatus(client);
+
+  assert.equal(calls[0]?.url, 'http://127.0.0.1:3000/api/mobile/auth/status');
+  assert.equal(
+    readHeader(calls[0]?.init, 'Authorization'),
+    'Bearer stored-mobile-token',
+  );
+});
+
+test('mobile authenticated api client omits authorization when secure store has no token', async (t) => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(input), init });
+    return jsonResponse({ authenticated: false, principal: null });
+  }) as typeof fetch;
+
+  const client = await createMobileApiClientWithStoredAuth(
+    { baseUrl: 'http://127.0.0.1:3000/' },
+    createMemorySecureStorage(),
+  );
+  await fetchMobileAuthStatus(client);
+
+  assert.equal(readHeader(calls[0]?.init, 'Authorization'), null);
+});
+
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status: 200,
@@ -73,4 +123,20 @@ function readHeader(init: RequestInit | undefined, name: string): string | null 
     return headers instanceof Headers ? headers.get(name) : null;
   }
   return headers[name] ?? null;
+}
+
+function createMemorySecureStorage() {
+  const values = new Map<string, string>();
+  return {
+    values,
+    async getItemAsync(key: string): Promise<string | null> {
+      return values.get(key) ?? null;
+    },
+    async setItemAsync(key: string, value: string): Promise<void> {
+      values.set(key, value);
+    },
+    async deleteItemAsync(key: string): Promise<void> {
+      values.delete(key);
+    },
+  };
 }

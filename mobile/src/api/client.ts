@@ -1,5 +1,9 @@
 import type { ConnectionConfig } from './persistence';
 import {
+  loadMobileAuthToken,
+  type MobileSecureTokenStorage,
+} from './authTokenStore';
+import {
   getMobileApiCopy,
   resolveDefaultMobileLocale,
 } from '../../../src/mobile/index.js';
@@ -119,6 +123,20 @@ export function createMobileApiClient(
     post: (path, body) => call('POST', path, body),
     del: (path) => call('DELETE', path),
   };
+}
+
+/**
+ * Builds the same API client after loading the bearer token from the
+ * injected secure-token boundary. This deliberately does not read from
+ * `ConnectionConfig`: connection URLs can live in AsyncStorage, bearer
+ * tokens must not.
+ */
+export async function createMobileApiClientWithStoredAuth(
+  config: ConnectionConfig,
+  storage: MobileSecureTokenStorage,
+): Promise<MobileApiClient> {
+  const bearerToken = await loadMobileAuthToken(storage);
+  return createMobileApiClient(config, { bearerToken });
 }
 
 /**
