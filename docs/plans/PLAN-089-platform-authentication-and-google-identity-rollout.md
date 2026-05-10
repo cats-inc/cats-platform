@@ -71,14 +71,14 @@ The loopback/recovery-token constraint on repair (Task 2.13) is part of the
 atomic group because shipping the auth-state-file escape hatch without it
 re-opens LAN admin bootstrap.
 
-- [ ] Task 2.1: Add a platform auth route module:
+- [x] Task 2.1: Add a platform auth route module:
       `/api/auth/status`, `/api/auth/login`, `/api/auth/logout`, and local
       bootstrap/login helpers. `/api/auth/status` is the canonical source for
       the Cats synchronizer CSRF token for authenticated sessions; app-shell or
       bootstrap payloads may only mirror that token.
 - [ ] Task 2.2: Implement synchronizer CSRF validation for mutating
       authenticated API routes using `X-Cats-CSRF-Token`.
-- [ ] Task 2.3: Extend setup completion so the local credentials path creates
+- [x] Task 2.3: Extend setup completion so the local credentials path creates
       the first admin account, identity, membership, owner profile update, and
       session in one logical transaction.
 - [ ] Task 2.4: Add the repair flow for existing setup-complete workspaces that
@@ -194,7 +194,7 @@ feature. ADR-095 / SPEC-099 may expose static manifest and bundle routes, but
 the mobile app cannot read Chat, Work, Code, Core, runtime proxy, shell helper,
 or transport data until this phase exists.
 
-- [ ] Task 4b.1: Extend auth state and session helpers with
+- [x] Task 4b.1: Extend auth state and session helpers with
       `kind: 'mobile_device'`, token hashing, expiration, revocation,
       last-seen updates, and device metadata.
 - [x] Task 4b.2: Add mobile auth routes for status, local login, logout, and
@@ -249,9 +249,9 @@ product write path.
 
 - [ ] Task 6.1: Add route-gate tests covering setup incomplete, setup complete
       unauthenticated, authenticated admin, and forbidden cases.
-- [ ] Task 6.2: Add auth-store tests for password hash ownership, session
+- [x] Task 6.2: Add auth-store tests for password hash ownership, session
       revocation, expiration, and token-hash lookup.
-- [ ] Task 6.3: Add Google verifier tests with injected fake verifier/JWKS
+- [x] Task 6.3: Add Google verifier tests with injected fake verifier/JWKS
       instead of live Google calls.
 - [ ] Task 6.4: Add CSRF tests for Google credential POST and authenticated
       mutations.
@@ -275,7 +275,7 @@ product write path.
       loopback/recovery-token constraint on the repair flow; (d) pinned
       `E_UNAUTHENTICATED` / `E_FORBIDDEN` / `E_CSRF_MISMATCH` error codes
       that downstream tooling can rely on.
-- [ ] Task 6.7: Update mobile pairing docs to state that the Expo Go QR loads
+- [x] Task 6.7: Update mobile pairing docs to state that the Expo Go QR loads
       only the mobile bundle; Cats Mobile must complete local or Google mobile
       login before any product data is fetched.
 
@@ -572,6 +572,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4 Google account bootstrap slice started: added a domain helper for creating the first admin account, Google identity, owner/admin membership, and browser session from a verified Google identity. Browser Google HTTP setup/login routes remain pending. |
 | 2026-05-10 | Phase 4 Google linked-login domain slice landed: added a helper that issues a browser session for an existing active linked Google identity, refreshes display email/avatar metadata, and fails closed for unknown or disabled accounts. Browser Google HTTP route remains pending. |
 | 2026-05-10 | Phase 4 Google CSRF prerequisite slice landed: added a Google GIS `g_csrf_token` double-submit validator that is separate from Cats synchronizer CSRF. Browser Google credential POST route remains pending. |
+| 2026-05-10 | Reconciled completed checkboxes for the landed server/mobile auth foundations: Tasks 2.1, 2.3, 4b.1, 6.2, 6.3, and 6.7 are now marked complete. The global route gate, repair flow, renderer login UX, and Google HTTP routes remain open. |
 
 ---
 
