@@ -594,6 +594,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 3 unauthenticated app-load redirect landed: `/api/app-shell` 401 responses now enter a renderer unauthenticated state instead of the generic error panel, route users to `/login`, and recover to the normal entry surface after successful login. Task 3.3 is now checked. |
 | 2026-05-10 | Phase 6 CSRF regression slice landed: auth route tests now assert browser logout rejects GIS `g_csrf_token` as a Cats CSRF substitute, while Google credential POST rejects `X-Cats-CSRF-Token` as a GIS CSRF substitute. Task 6.4 is now checked. |
 | 2026-05-10 | Phase 5 account-management boundary documented: API and setup docs now state that first-admin creation is the only v1 account UI, only that membership maps to `actor-owner`, later memberships keep `coreActorId: null`, and invitations/password reset/role editing/non-admin policy are follow-up work. Task 5.4 is now checked. |
+| 2026-05-10 | Phase 4b manifest safety regression started: source-level mobile route tests now assert the diagnostic manifest, Expo Go manifest, and served bundle do not append server config secrets, auth-state/recovery-token paths, session cookie names, bearer-token markers, or fake product-data identifiers. Task 4b.8 remains open until bearer-gated mobile product-data requests are installed and covered. |
 
 ---
 
