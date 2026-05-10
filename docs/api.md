@@ -97,10 +97,11 @@ first owner/admin identity; link attaches Google to the authenticated browser
 session.
 
 The global route gate now runs before product/Core/runtime/shell/transport
-dispatch. Unauthenticated app-shell reads receive only the minimal setup/auth
-bootstrap envelope; authenticated app-shell reads continue to the full product
-payload. Browser-cookie mutations require `X-Cats-CSRF-Token`; valid Cats
-Mobile bearer sessions do not require browser CSRF.
+dispatch. Setup-complete unauthenticated app-shell reads receive only the
+minimal setup/auth bootstrap envelope; authenticated app-shell reads continue
+to the full product payload. Browser-cookie mutations require
+`X-Cats-CSRF-Token`; valid Cats Mobile bearer sessions do not require browser
+CSRF.
 
 Pinned auth error codes are:
 

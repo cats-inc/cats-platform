@@ -18,8 +18,8 @@ import {
 const NOW = new Date('2026-05-10T00:00:00.000Z');
 const SESSION_SECRET = 'test-session-secret-at-least-sixteen-chars';
 
-test('request router returns minimal app-shell envelope for unauthenticated auth bootstrap', async (t) => {
-  const server = createTestServer({ setupCompleteAt: null });
+test('request router returns minimal app-shell envelope for unauthenticated login bootstrap', async (t) => {
+  const server = createTestServer({ setupCompleteAt: NOW.toISOString() });
   await listen(server);
   t.after(() => server.close());
 
@@ -27,8 +27,8 @@ test('request router returns minimal app-shell envelope for unauthenticated auth
   const payload = await response.json() as Record<string, any>;
 
   assert.equal(response.status, 200);
-  assert.equal(payload.routeTarget, 'setup');
-  assert.equal(payload.setup.required, true);
+  assert.equal(payload.routeTarget, 'login');
+  assert.equal(payload.setup.required, false);
   assert.equal(payload.auth.authenticated, false);
   assert.equal('products' in payload, false);
   assert.equal('chat' in payload, false);

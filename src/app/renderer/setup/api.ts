@@ -89,6 +89,19 @@ function readSetupApiErrorPayload(payload: unknown): { code?: unknown; message?:
     : null;
 }
 
+function readAuthBootstrapRouteTarget(payload: unknown): 'setup' | 'login' | 'repair' | null {
+  if (typeof payload !== 'object' || payload === null) {
+    return null;
+  }
+  if (!('routeTarget' in payload) || !('auth' in payload) || !('setup' in payload)) {
+    return null;
+  }
+  const routeTarget = (payload as { routeTarget?: unknown }).routeTarget;
+  return routeTarget === 'setup' || routeTarget === 'login' || routeTarget === 'repair'
+    ? routeTarget
+    : null;
+}
+
 export async function completePlatformSetup(
   input: PlatformSetupCompleteInput,
   options: SetupApiRequestOptions,
@@ -123,7 +136,24 @@ export async function fetchPlatformEnvelope(
     throw new PlatformSetupApiError(details.message, response.status, details.code);
   }
 
-  return (await response.json()) as PlatformHostEnvelope;
+  const payload = await response.json() as unknown;
+  const routeTarget = readAuthBootstrapRouteTarget(payload);
+  if (routeTarget === 'login') {
+    throw new PlatformSetupApiError(
+      'Authentication is required.',
+      401,
+      PLATFORM_AUTH_ERROR_CODES.unauthenticated,
+    );
+  }
+  if (routeTarget === 'repair') {
+    throw new PlatformSetupApiError(
+      'Auth repair is required.',
+      403,
+      PLATFORM_AUTH_ERROR_CODES.forbidden,
+    );
+  }
+
+  return payload as PlatformHostEnvelope;
 }
 
 export async function markPlatformSetupOpened(

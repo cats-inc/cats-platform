@@ -366,7 +366,11 @@ async function handlePlatformAuthGate(
     return { handled: true };
   }
 
-  if (decision.policy.minimalEnvelope && decision.principal === null) {
+  if (
+    decision.policy.minimalEnvelope
+    && decision.principal === null
+    && readiness.phase !== 'pre_setup'
+  ) {
     sendJson(response, 200, buildPlatformAuthBootstrapEnvelope({
       auth,
       host: dependencies.shared.config.host,

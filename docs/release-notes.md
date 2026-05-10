@@ -30,8 +30,8 @@ Browser local login/logout/status and Cats Mobile bearer login/logout/status
 routes exist, setup-complete missing/corrupt auth state enters a constrained
 repair path through `POST /api/auth/repair/first-admin`, and protected
 Chat/Work/Code/Core/runtime/shell/transport APIs reject unauthenticated
-requests before product dispatch. Unauthenticated app-shell reads return only
-the minimal setup/auth bootstrap envelope.
+requests before product dispatch. Setup-complete unauthenticated app-shell
+reads return only the minimal setup/auth bootstrap envelope.
 
 Migration steps:
 
