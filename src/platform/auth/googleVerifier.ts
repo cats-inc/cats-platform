@@ -130,6 +130,19 @@ export async function verifyPlatformGoogleIdentityToken(input: {
   };
 }
 
+// `expectedNonce` is the value the caller (e.g. mobile login route) recorded
+// as the nonce it sent to Google. Verifying that the ID token's `nonce` claim
+// matches it satisfies OIDC §3.1.2.7 / §3.2.2.11 and prevents a different
+// relying party's ID tokens (different nonce) from replaying against Cats.
+//
+// Residual risk: this is "client-supplied nonce" binding, not "server-issued
+// nonce" binding. The nonce travels in the JWT payload (base64-encoded plain
+// text), so an attacker who obtains the bare ID token can read the nonce off
+// of it and replay both together. The remaining mitigations are TLS, Google's
+// short ID-token expiry, and the per-remote-address login throttle. ADR-096
+// §4 ("Google is implemented as an identity provider") records this as a
+// known limitation; a future hardening is to have the platform host issue and
+// pin the nonce itself.
 function validateNonce(value: unknown, expectedNonce: string | null | undefined): void {
   const expected = expectedNonce?.trim();
   if (!expected) {

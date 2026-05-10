@@ -160,7 +160,24 @@ The Google provider must:
   in production;
 - validate signature, `aud`, `iss`, and `exp`;
 - optionally enforce a configured Google Workspace hosted domain (`hd`);
+- on flows that issue a `nonce` (mobile OIDC), require the caller to supply
+  the same `nonce` it sent to Google and verify that the ID token's `nonce`
+  claim matches before accepting the credential;
 - use Google `sub` as the stable identity key, not email.
+
+Residual replay risk for the client-supplied-nonce model: the server takes
+the caller-supplied `nonce` as the expected value rather than issuing the
+nonce itself. This satisfies OIDC §3.1.2.7 / §3.2.2.11 and prevents a
+different relying party's ID tokens (different nonce) from replaying against
+Cats, but a leaked ID token still carries its nonce in the JWT payload, so
+an attacker who obtains the bare token can extract the nonce and replay both
+together. The remaining mitigations are TLS for transport, the short Google
+ID-token expiry, and the per-remote-address login throttle. A future
+hardening would be to have the platform host issue and pin the nonce
+itself (server-issued nonce stored in a short-lived browser/mobile-bound
+cookie or session), at the cost of an extra round-trip; this is documented
+here so future readers do not assume nonce binding alone is sufficient
+against ID-token leakage.
 
 For LAN raw-IP access, Google Sign-In may be unavailable because Google's Web
 OAuth origin and redirect rules generally reject raw IP hosts and plain HTTP
