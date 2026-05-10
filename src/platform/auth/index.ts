@@ -1,3 +1,4 @@
+export * from './actorAttribution.js';
 export * from './bootstrap.js';
 export * from './bootstrapEnvelope.js';
 export * from './config.js';

@@ -287,6 +287,7 @@ operators before implementation is marked complete.
 | File | Action | Description |
 |------|--------|-------------|
 | `src/platform/auth/**` | Create | Auth state, password, session, Google verifier, and policy helpers |
+| `src/platform/auth/actorAttribution.ts` | Create | Fail-closed Core actor attribution helper for authenticated principals |
 | `src/platform/auth/googleVerifier.ts` | Create | Injected Google ID-token verifier contract and claim validation |
 | `src/platform/auth/localLogin.ts` | Create | Shared local password credential verification for browser/mobile/repair routes |
 | `src/platform/auth/readiness.ts` | Create | Setup/auth-state readiness helper that drives post-setup repair mode |
@@ -564,6 +565,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4b mobile client API slice started: Cats Mobile now has auth API wrappers for status/local-login/logout, and the generic mobile API client can attach a runtime bearer token without persisting it to AsyncStorage. SecureStore-backed token persistence and launch-flow login UI remain pending before Tasks 4b.4/4b.5 can be checked off. |
 | 2026-05-10 | Phase 6 documentation slice started: `.env.example`, API docs, setup guide, and release notes now document the auth rollout status, session secret, origin allowlist, mobile auth routes, and the fact that the global product-route gate is not installed yet. Full recovery-flow documentation remains pending. |
 | 2026-05-10 | Phase 4b secure-token boundary slice started: Cats Mobile now has an injected secure-storage token store boundary for bearer tokens, with no AsyncStorage path for auth tokens. Wiring the real Expo SecureStore module into launch/login/logout UI remains pending before Task 4b.5 can be checked off. |
+| 2026-05-10 | Phase 5 attribution prerequisite slice started: added a fail-closed helper for resolving Core actor attribution from authenticated principals, so memberships with `coreActorId: null` cannot silently fall back to `actor-owner`. Product write paths still need to adopt the helper before Tasks 5.1-5.3 can be checked off. |
 
 ---
 
