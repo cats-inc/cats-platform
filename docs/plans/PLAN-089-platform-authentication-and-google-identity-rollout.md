@@ -542,6 +542,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2 route-policy slice started: added a server-side auth gate classifier for pre-setup, post-setup, and repair phases with focused tests for public renderer/auth/mobile/bootstrap routes and protected product/Core/runtime/shell/transport/subscription APIs. The classifier is not installed in `requestRouter` yet, so Tasks 2.5/2.6 remain unchecked until principal resolution, minimal envelopes, setup bootstrap, and repair are wired atomically. |
 | 2026-05-10 | Phase 2 minimal-envelope slice started: added an auth/bootstrap envelope builder that exposes only setup routing state, unauthenticated auth/provider availability, and response metadata while explicitly omitting Chat/Lobby/runtime/product data. It is not yet served by `/api/app-shell`, so Task 2.7 remains unchecked until the auth gate installs it. |
 | 2026-05-10 | Phase 2 first-admin setup slice started: platform setup completion can now accept local admin credentials, prepare the first auth account/identity/membership/session, persist auth state, and return a browser session cookie. The renderer setup form, pre-auth origin gate on setup, and making credentials mandatory are still pending before Task 2.3 can be checked off. |
+| 2026-05-10 | Phase 2 pre-auth origin helper slice landed: extracted the shared allowed-browser-origin / `Sec-Fetch-Site` decision helper and rewired `/api/auth/login` to use it. Setup, repair, and Google credential POST still need to call the helper before Task 2.12 can be checked off. |
 
 ---
 

@@ -14,12 +14,14 @@ import {
   AUTH_SESSION_COOKIE_NAME,
   clearAuthSessionCookie,
   serializeAuthSessionCookie,
+  evaluatePreAuthOriginGate,
   touchSession,
   verifySessionTokenHash,
   verifyLocalPassword,
   type PlatformAuthStore,
   type PlatformAuthState,
   type PlatformMembershipRecord,
+  type PreAuthOriginGateRejectionReason,
   type PlatformSessionRecord,
 } from '../../platform/auth/index.js';
 import type { PlatformAuthConfig } from '../../platform/auth/config.js';
@@ -348,28 +350,32 @@ function summarizePrincipal(resolved: BrowserPrincipalResolution): AuthPrincipal
 }
 
 function enforcePreAuthOriginGate(context: RouteContext<AuthRouteDependencies>): boolean {
-  const origin = context.request.headers.origin;
-  const fetchSite = context.request.headers['sec-fetch-site'];
-  if (typeof origin !== 'string' || origin.trim().length === 0) {
-    sendAuthError(context.response, 403, 'E_FORBIDDEN', 'Origin is required.');
-    return false;
-  }
-  if (!context.dependencies.auth.allowedBrowserOrigins.includes(normalizeOrigin(origin))) {
-    sendAuthError(context.response, 403, 'E_FORBIDDEN', 'Origin is not allowed.');
-    return false;
-  }
-  if (fetchSite === 'cross-site' || fetchSite === 'none') {
-    sendAuthError(context.response, 403, 'E_FORBIDDEN', 'Fetch site is not allowed.');
+  const decision = evaluatePreAuthOriginGate({
+    origin: context.request.headers.origin,
+    fetchSite: context.request.headers['sec-fetch-site'],
+    method: context.method,
+    allowedBrowserOrigins: context.dependencies.auth.allowedBrowserOrigins,
+  });
+  if (!decision.allowed) {
+    sendAuthError(
+      context.response,
+      403,
+      'E_FORBIDDEN',
+      preAuthOriginGateMessage(decision.reason),
+    );
     return false;
   }
   return true;
 }
 
-function normalizeOrigin(origin: string): string {
-  try {
-    return new URL(origin).origin;
-  } catch {
-    return origin;
+function preAuthOriginGateMessage(reason: PreAuthOriginGateRejectionReason): string {
+  switch (reason) {
+    case 'origin_not_allowed':
+      return 'Origin is not allowed.';
+    case 'fetch_site_not_allowed':
+      return 'Fetch site is not allowed.';
+    case 'origin_required':
+      return 'Origin is required.';
   }
 }
 
