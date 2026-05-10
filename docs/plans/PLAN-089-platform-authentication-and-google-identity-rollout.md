@@ -547,6 +547,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2 CSRF helper slice started: extracted Cats synchronizer CSRF token validation so logout and the future authenticated route gate share one token/hash decision path. Product mutation middleware remains pending before Task 2.2 can be checked off. |
 | 2026-05-10 | Phase 5 prerequisite slice started ahead of route-gate integration: principal resolution now supports mobile bearer `mobile_device` sessions without browser CSRF. Mobile HTTP auth routes and secure-client storage remain pending. |
 | 2026-05-10 | Phase 2 repair prerequisite slice started: added one-time recovery token helpers that write the raw token only to the configured local recovery-token file while keeping only an HMAC hash in memory and supporting single-use consumption. The repair-mode detector and constrained first-admin route remain pending before Task 2.13 can be checked off. |
+| 2026-05-10 | Phase 2 effective-mode slice started: added the effective auth-gate mode resolver so `CATS_AUTH_ENABLED=false` is allowed only on loopback before setup, and becomes a configuration error after setup or on LAN/packaged hosts. Startup enforcement is still pending. |
 
 ---
 
