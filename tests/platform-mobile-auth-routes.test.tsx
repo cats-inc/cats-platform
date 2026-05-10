@@ -22,7 +22,9 @@ const SESSION_SECRET = 'test-session-secret-at-least-sixteen-chars';
 
 test('mobile auth status is public and unauthenticated without bearer token', async (t) => {
   const store = await createSeededStore();
-  const server = createTestServer(store);
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_MOBILE_AUDIENCES: 'mobile-ios,mobile-android',
+  });
   await listen(server);
   t.after(() => server.close());
 
@@ -31,6 +33,7 @@ test('mobile auth status is public and unauthenticated without bearer token', as
   assert.deepEqual(response.payload, {
     authenticated: false,
     principal: null,
+    providers: mobileProviders(['mobile-ios', 'mobile-android']),
   });
 });
 
@@ -108,6 +111,7 @@ test('mobile auth logout revokes bearer session without csrf', async (t) => {
   assert.deepEqual(logout.payload, {
     authenticated: false,
     principal: null,
+    providers: mobileProviders(),
   });
 
   const status = await request(server, '/api/mobile/auth/status', {
@@ -370,6 +374,15 @@ function fakeGoogleVerifier(
   return {
     async verifyIdToken() {
       return claims;
+    },
+  };
+}
+
+function mobileProviders(clientIds: string[] = []) {
+  return {
+    google: {
+      enabled: clientIds.length > 0,
+      clientIds,
     },
   };
 }

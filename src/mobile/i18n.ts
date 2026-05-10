@@ -93,6 +93,8 @@ export interface MobileAuthCopy {
   emailLabel: string;
   passwordLabel: string;
   signInAction: string;
+  googleSignInAction: string;
+  googleUnavailable: string;
   loginFailedTitle: string;
   missingCredentials: string;
 }
@@ -338,6 +340,8 @@ const MOBILE_AUTH_COPY: Record<MobileLocale, MobileAuthCopy> = {
     emailLabel: 'Email',
     passwordLabel: 'Password',
     signInAction: 'Sign in',
+    googleSignInAction: 'Continue with Google',
+    googleUnavailable: 'Google sign-in was cancelled or is unavailable on this device.',
     loginFailedTitle: 'Sign-in failed',
     missingCredentials: 'Enter an email and password.',
   },
@@ -347,6 +351,8 @@ const MOBILE_AUTH_COPY: Record<MobileLocale, MobileAuthCopy> = {
     emailLabel: 'Email',
     passwordLabel: '密碼',
     signInAction: '登入',
+    googleSignInAction: '使用 Google 繼續',
+    googleUnavailable: 'Google 登入已取消，或此裝置無法使用 Google 登入。',
     loginFailedTitle: '登入失敗',
     missingCredentials: '請輸入 Email 與密碼。',
   },

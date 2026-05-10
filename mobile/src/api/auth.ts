@@ -13,6 +13,12 @@ export interface MobileAuthStatusPayload {
   authenticated: boolean;
   principal: MobileAuthPrincipalSummary | null;
   token?: string;
+  providers: {
+    google: {
+      enabled: boolean;
+      clientIds: string[];
+    };
+  };
 }
 
 export interface MobileLocalLoginInput {

@@ -53,6 +53,12 @@ Bounded aggregate login cooldowns no longer require auth-state deletion for
 recovery. Operators can clear throttle state through the authenticated
 admin+CSRF route, loopback-local recovery, or the one-time recovery token.
 
+Cats Mobile now keeps Google login separate from browser GIS. The mobile
+client discovers public mobile Google client ids from `/api/mobile/auth/status`,
+starts a mobile OIDC flow, posts the resulting ID token to
+`/api/mobile/auth/google/login`, and receives a mobile bearer token only after
+the server verifies the token against `CATS_AUTH_GOOGLE_MOBILE_AUDIENCES`.
+
 Downstream tooling may key on these pinned error codes: `E_UNAUTHENTICATED`
 for `401`, `E_FORBIDDEN` for plain authorization failures, and
 `E_CSRF_MISMATCH` for Cats synchronizer CSRF failures.

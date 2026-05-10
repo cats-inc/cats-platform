@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -8,8 +9,13 @@ import {
   View,
 } from 'react-native';
 
-import { MobileApiError } from '../../api/client';
-import { loginMobileLocalSession } from '../../api/authSession';
+import { createMobileApiClient, MobileApiError } from '../../api/client';
+import { fetchMobileAuthStatus } from '../../api/auth';
+import {
+  loginMobileGoogleSession,
+  loginMobileLocalSession,
+} from '../../api/authSession';
+import { requestMobileGoogleOidcIdToken } from '../../api/googleOidc';
 import { loadConnectionConfig } from '../../api/persistence';
 import {
   getMobileAuthCopy,
@@ -26,10 +32,36 @@ export function MobileAuthPanel({ onAuthenticated }: MobileAuthPanelProps) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const [googleClientIds, setGoogleClientIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const busy = submitting || googleSubmitting;
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const config = await loadConnectionConfig();
+        if (!config.baseUrl) {
+          return;
+        }
+        const status = await fetchMobileAuthStatus(createMobileApiClient(config));
+        if (active && status.providers.google.enabled) {
+          setGoogleClientIds(status.providers.google.clientIds);
+        }
+      } catch {
+        if (active) {
+          setGoogleClientIds([]);
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const submit = () => {
-    if (submitting) {
+    if (busy) {
       return;
     }
     const trimmedIdentifier = identifier.trim();
@@ -45,6 +77,7 @@ export function MobileAuthPanel({ onAuthenticated }: MobileAuthPanelProps) {
         const status = await loginMobileLocalSession(config, {
           identifier: trimmedIdentifier,
           password,
+          devicePlatform: resolveMobileDevicePlatform(),
         });
         if (!status.authenticated) {
           setError(copy.loginFailedTitle);
@@ -60,6 +93,42 @@ export function MobileAuthPanel({ onAuthenticated }: MobileAuthPanelProps) {
         );
       } finally {
         setSubmitting(false);
+      }
+    })();
+  };
+
+  const submitGoogle = () => {
+    if (busy) {
+      return;
+    }
+    setGoogleSubmitting(true);
+    setError(null);
+    void (async () => {
+      try {
+        const result = await requestMobileGoogleOidcIdToken({ clientIds: googleClientIds });
+        if (result.status !== 'success') {
+          setError(copy.googleUnavailable);
+          return;
+        }
+        const config = await loadConnectionConfig();
+        const status = await loginMobileGoogleSession(config, {
+          idToken: result.idToken,
+          devicePlatform: resolveMobileDevicePlatform(),
+        });
+        if (!status.authenticated) {
+          setError(copy.loginFailedTitle);
+          return;
+        }
+        setPassword('');
+        onAuthenticated();
+      } catch (caught) {
+        setError(
+          caught instanceof MobileApiError || caught instanceof Error
+            ? caught.message
+            : copy.loginFailedTitle,
+        );
+      } finally {
+        setGoogleSubmitting(false);
       }
     })();
   };
@@ -93,13 +162,13 @@ export function MobileAuthPanel({ onAuthenticated }: MobileAuthPanelProps) {
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Pressable
           accessibilityRole="button"
-          accessibilityState={{ busy: submitting, disabled: submitting }}
-          disabled={submitting}
+          accessibilityState={{ busy: submitting, disabled: busy }}
+          disabled={busy}
           onPress={submit}
           style={({ pressed }) => [
             styles.button,
-            pressed && !submitting ? styles.buttonPressed : null,
-            submitting ? styles.buttonDisabled : null,
+            pressed && !busy ? styles.buttonPressed : null,
+            busy ? styles.buttonDisabled : null,
           ]}
         >
           {submitting ? (
@@ -108,9 +177,35 @@ export function MobileAuthPanel({ onAuthenticated }: MobileAuthPanelProps) {
             <Text style={styles.buttonLabel}>{copy.signInAction}</Text>
           )}
         </Pressable>
+        {googleClientIds.length > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ busy: googleSubmitting, disabled: busy }}
+            disabled={busy}
+            onPress={submitGoogle}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              pressed && !busy ? styles.secondaryButtonPressed : null,
+              busy ? styles.buttonDisabled : null,
+            ]}
+          >
+            {googleSubmitting ? (
+              <ActivityIndicator color={colors.fg.primary} size="small" />
+            ) : (
+              <Text style={styles.secondaryButtonLabel}>{copy.googleSignInAction}</Text>
+            )}
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
+}
+
+function resolveMobileDevicePlatform(): 'ios' | 'android' | 'web' | 'unknown' {
+  if (Platform.OS === 'ios' || Platform.OS === 'android' || Platform.OS === 'web') {
+    return Platform.OS;
+  }
+  return 'unknown';
 }
 
 const styles = StyleSheet.create({
@@ -167,6 +262,23 @@ const styles = StyleSheet.create({
   },
   buttonLabel: {
     color: colors.fg.inverse,
+    ...typography.bodyStrong,
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    backgroundColor: colors.bg.panel,
+    borderColor: colors.border.subtle,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  secondaryButtonPressed: {
+    opacity: 0.85,
+  },
+  secondaryButtonLabel: {
+    color: colors.fg.primary,
     ...typography.bodyStrong,
   },
 });

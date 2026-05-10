@@ -212,7 +212,7 @@ or transport data until this phase exists.
       AsyncStorage, URLs, logs, app-shell payloads, or manifests.
 - [x] Task 4b.6: Add mobile local-login throttling to the same composite
       lockout and aggregate brute-force guard policy used by browser login.
-- [ ] Task 4b.7: Add mobile Google login using Expo AuthSession, a native
+- [x] Task 4b.7: Add mobile Google login using Expo AuthSession, a native
       Google provider, or another approved mobile OAuth/OIDC flow. Keep it
       separate from the browser GIS credential POST route and verify the
       resulting ID token or code exchange server-side against
@@ -612,6 +612,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4b SecureStore resolver landed: the default mobile auth-token boundary now uses Expo SecureStore when that module is available, otherwise falls back only to volatile memory for development/test and never to AsyncStorage, URLs, manifests, or logs. Task 4b.5 is now checked. |
 | 2026-05-10 | Phase 2 repair UX landed: app-shell repair bootstrap now routes to `/repair` instead of the generic error panel, the renderer repair form recreates the first local Admin through `/api/auth/repair/first-admin`, and successful repair reloads the authenticated app-shell while protected product APIs remain fail-closed. Task 2.4 is now checked. |
 | 2026-05-10 | Phase 4b mobile Google server/API slice landed: `/api/mobile/auth/google/login` is a public mobile-auth route that verifies ID tokens only against `CATS_AUTH_GOOGLE_MOBILE_AUDIENCES`, issues one-time-returned mobile bearer sessions for already linked Google identities, and exposes typed Cats Mobile API/session helpers. Mobile AuthSession/native UI wiring remains pending before Task 4b.7 can be checked. |
+| 2026-05-10 | Phase 4b mobile Google UI landed: `/api/mobile/auth/status` now advertises configured public mobile Google client ids, Cats Mobile starts a mobile OIDC ID-token flow from the login panel, posts the verified result to `/api/mobile/auth/google/login`, persists the returned bearer through the existing secure-token boundary, and leaves browser GIS/CSRF/cookies out of the mobile path. Task 4b.7 is now checked. |
 
 ---
 

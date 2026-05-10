@@ -85,6 +85,8 @@ includes:
   either an authenticated admin browser session with `X-Cats-CSRF-Token`,
   loopback source address, or the one-time recovery token;
 - `GET /api/mobile/auth/status` for Cats Mobile bearer-session status;
+  unauthenticated responses also expose whether Google mobile login is enabled
+  and the configured public mobile client ids;
 - `POST /api/mobile/auth/login` for local password mobile login, returning the
   raw bearer token exactly once;
 - `POST /api/mobile/auth/google/login` for Cats Mobile Google login. The route

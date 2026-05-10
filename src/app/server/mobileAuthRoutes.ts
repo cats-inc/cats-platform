@@ -40,6 +40,12 @@ export interface MobileAuthStatusPayload {
   authenticated: boolean;
   principal: ReturnType<typeof summarizePlatformPrincipal> | null;
   token?: string;
+  providers: {
+    google: {
+      enabled: boolean;
+      clientIds: string[];
+    };
+  };
 }
 
 export async function routeMobileAuthApi(
@@ -92,7 +98,11 @@ async function handleMobileAuthStatus(
   context: RouteContext<MobileAuthRouteDependencies>,
 ): Promise<void> {
   const principal = await resolveMobilePrincipal(context);
-  sendJson(context.response, 200, buildMobileAuthStatusPayload(principal, null));
+  sendJson(
+    context.response,
+    200,
+    buildMobileAuthStatusPayload(context.dependencies.auth, principal, null),
+  );
 }
 
 async function handleMobileLocalLogin(
@@ -180,7 +190,7 @@ async function handleMobileLocalLogin(
     };
   });
 
-  sendJson(context.response, 200, buildMobileAuthStatusPayload({
+  sendJson(context.response, 200, buildMobileAuthStatusPayload(context.dependencies.auth, {
     account: credential.account,
     membership: credential.membership,
     session: issued.session,
@@ -300,7 +310,7 @@ async function handleMobileGoogleLogin(
     now,
   }));
 
-  sendJson(context.response, 200, buildMobileAuthStatusPayload({
+  sendJson(context.response, 200, buildMobileAuthStatusPayload(context.dependencies.auth, {
     account: updatedAccount,
     membership,
     session: issued.session,
@@ -330,7 +340,7 @@ async function handleMobileLogout(
       }));
     }
   }
-  sendJson(context.response, 200, buildMobileAuthStatusPayload(null, null));
+  sendJson(context.response, 200, buildMobileAuthStatusPayload(context.dependencies.auth, null, null));
 }
 
 async function resolveMobilePrincipal(
@@ -350,6 +360,7 @@ async function resolveMobilePrincipal(
 }
 
 function buildMobileAuthStatusPayload(
+  auth: PlatformAuthConfig,
   principal: Parameters<typeof summarizePlatformPrincipal>[0] | null,
   token: string | null,
 ): MobileAuthStatusPayload {
@@ -357,6 +368,12 @@ function buildMobileAuthStatusPayload(
     authenticated: principal !== null,
     principal: principal ? summarizePlatformPrincipal(principal) : null,
     ...(token ? { token } : {}),
+    providers: {
+      google: {
+        enabled: auth.google.mobileAudiences.length > 0,
+        clientIds: auth.google.mobileAudiences,
+      },
+    },
   };
 }
 
