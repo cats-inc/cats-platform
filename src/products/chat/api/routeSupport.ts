@@ -13,6 +13,8 @@ import type {
   ProviderCapabilityBootstrapDiagnosticSink,
 } from '../../../platform/supervision/index.js';
 import type { CatsMemoryService } from '../../../platform/memory/index.js';
+import type { PlatformAuthConfig } from '../../../platform/auth/config.js';
+import type { PlatformAuthStore } from '../../../platform/auth/index.js';
 import type { ChatEventHub } from './chatEventHub.js';
 import type { ProviderAgentDecisionRequester } from '../state/runtime-dispatch/routing.js';
 import type {
@@ -169,6 +171,8 @@ export interface ChatApiDependencies {
   providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
+  authStore?: PlatformAuthStore;
+  auth?: PlatformAuthConfig;
   now?: () => Date;
 }
 

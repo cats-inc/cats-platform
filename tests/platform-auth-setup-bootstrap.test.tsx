@@ -104,6 +104,46 @@ test('platform setup rejects first-admin creation without allowlisted origin', a
   assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
 });
 
+test('setup reset requires authenticated admin csrf after setup is complete', async (t) => {
+  const fixture = await createSetupFixture(t);
+  const setup = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'correct-password',
+    },
+  });
+  assert.equal(setup.status, 200);
+  const cookie = (setup.setCookie ?? '').split(';')[0]!;
+
+  const unauthenticated = await request(fixture.server, '/api/setup/reset', {
+    method: 'POST',
+  });
+  assert.equal(unauthenticated.status, 401);
+  assert.equal(unauthenticated.payload?.error?.code, 'E_UNAUTHENTICATED');
+
+  const missingCsrf = await request(fixture.server, '/api/setup/reset', {
+    method: 'POST',
+    cookie,
+  });
+  assert.equal(missingCsrf.status, 403);
+  assert.equal(missingCsrf.payload?.error?.code, 'E_CSRF_MISMATCH');
+  assert.ok((await fixture.chatStore.readCore()).setupCompleteAt);
+
+  const status = await request(fixture.server, '/api/auth/status', { cookie });
+  const reset = await request(fixture.server, '/api/setup/reset', {
+    method: 'POST',
+    cookie,
+    csrfToken: status.payload?.csrfToken,
+  });
+  assert.equal(reset.status, 200);
+  assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
+});
+
 async function createSetupFixture(t: TestContext): Promise<{
   server: ReturnType<typeof createServer>;
   authStore: MemoryPlatformAuthStore;
@@ -161,6 +201,8 @@ async function request(
     body?: unknown;
     origin?: string;
     secFetchSite?: string;
+    cookie?: string;
+    csrfToken?: unknown;
   } = {},
 ): Promise<{
   status: number;
@@ -180,6 +222,12 @@ async function request(
   }
   if (options.secFetchSite) {
     headers['sec-fetch-site'] = options.secFetchSite;
+  }
+  if (options.cookie) {
+    headers.cookie = options.cookie;
+  }
+  if (typeof options.csrfToken === 'string') {
+    headers['x-cats-csrf-token'] = options.csrfToken;
   }
   const response = await fetch(`http://127.0.0.1:${address.port}${pathname}`, {
     method: options.method ?? 'GET',

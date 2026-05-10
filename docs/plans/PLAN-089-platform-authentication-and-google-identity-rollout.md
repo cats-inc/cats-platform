@@ -93,7 +93,7 @@ re-opens LAN admin bootstrap.
 - [ ] Task 2.7: Return only a minimal setup/auth bootstrap envelope from
       unauthenticated app-shell reads, including
       `auth.providers.google = { enabled, clientId }`.
-- [ ] Task 2.8: Require admin auth for setup reset after setup is complete.
+- [x] Task 2.8: Require admin auth for setup reset after setup is complete.
 - [ ] Task 2.9: Add structured `401 unauthenticated` and `403 forbidden`
       responses.
 - [x] Task 2.10: Add failed-login throttling and lockout for local and Google
@@ -578,6 +578,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4 browser Google linked-login route slice started: `/api/auth/google/login` now enforces the pre-auth origin gate, GIS double-submit CSRF, injected Google ID-token verifier, linked-account lookup, Google throttling records, and browser session cookie issuance for existing linked accounts. First-admin Google setup/linking and real verifier dependency remain pending. |
 | 2026-05-10 | Google route lockout regression added and completed task reconciliation updated: Task 2.10 is checked for local+Google composite failed-login lockout, and Task 4.6 is checked for GIS CSRF validation remaining separate from Cats synchronizer CSRF. Aggregate guard recovery/clearing work remains under Task 2.11. |
 | 2026-05-10 | Phase 6 route-gate readiness regression slice landed: focused tests now cover pre-setup product API rejection with public minimal app-shell, setup-complete unauthenticated rejection, setup-complete authenticated admin access, repair-mode fail-closed behavior, and browser-cookie mutation CSRF rejection. The evaluator is still not installed in `requestRouter`. |
+| 2026-05-10 | Phase 2 setup-reset protection landed: legacy `/api/setup/reset` now requires an authenticated admin browser session after setup completion and validates the Cats synchronizer CSRF token before clearing setup state. Full product mutation CSRF middleware remains pending under Task 2.2/6.4. |
 
 ---
 
