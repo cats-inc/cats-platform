@@ -197,7 +197,7 @@ or transport data until this phase exists.
 - [ ] Task 4b.1: Extend auth state and session helpers with
       `kind: 'mobile_device'`, token hashing, expiration, revocation,
       last-seen updates, and device metadata.
-- [ ] Task 4b.2: Add mobile auth routes for status, local login, logout, and
+- [x] Task 4b.2: Add mobile auth routes for status, local login, logout, and
       session revocation. Successful mobile login returns the raw bearer token
       exactly once; persisted state stores only the hash.
 - [ ] Task 4b.3: Add route-gate support for `Authorization: Bearer` mobile
@@ -210,7 +210,7 @@ or transport data until this phase exists.
 - [ ] Task 4b.5: Store mobile bearer tokens through the mobile secure-storage
       adapter backed by Expo SecureStore when available. Do not store tokens in
       AsyncStorage, URLs, logs, app-shell payloads, or manifests.
-- [ ] Task 4b.6: Add mobile local-login throttling to the same composite
+- [x] Task 4b.6: Add mobile local-login throttling to the same composite
       lockout and aggregate brute-force guard policy used by browser login.
 - [ ] Task 4b.7: Add mobile Google login using Expo AuthSession, a native
       Google provider, or another approved mobile OAuth/OIDC flow. Keep it
@@ -548,6 +548,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 5 prerequisite slice started ahead of route-gate integration: principal resolution now supports mobile bearer `mobile_device` sessions without browser CSRF. Mobile HTTP auth routes and secure-client storage remain pending. |
 | 2026-05-10 | Phase 2 repair prerequisite slice started: added one-time recovery token helpers that write the raw token only to the configured local recovery-token file while keeping only an HMAC hash in memory and supporting single-use consumption. The repair-mode detector and constrained first-admin route remain pending before Task 2.13 can be checked off. |
 | 2026-05-10 | Phase 2 effective-mode slice started: added the effective auth-gate mode resolver so `CATS_AUTH_ENABLED=false` is allowed only on loopback before setup, and becomes a configuration error after setup or on LAN/packaged hosts. Startup enforcement is still pending. |
+| 2026-05-10 | Phase 4b mobile auth route slice landed: added `/api/mobile/auth/status`, `/api/mobile/auth/login`, and `/api/mobile/auth/logout`, issuing one-time-returned bearer device tokens backed by hashed `mobile_device` sessions, sharing the local-login throttle policy, and routing mobile auth before the mobile manifest pairing fallback. Product-data route gating and mobile secure-token client storage remain pending. |
 
 ---
 

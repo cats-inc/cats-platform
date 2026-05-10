@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { ResolvedServerDependencies } from './contracts.js';
 import { routeAppPackageApi } from './appPackageRoutes.js';
+import { routeMobileAuthApi } from './mobileAuthRoutes.js';
 import { routeMobileManifestApi } from './mobileManifestRoutes.js';
 import { routePlatformAuthApi } from './authRoutes.js';
 import { routePlatformSetupApi } from './platformSetupRoutes.js';
@@ -455,6 +456,10 @@ export async function routeRequest(
   }
 
   if (await routeAppPackageApi(appPackageContext)) {
+    return;
+  }
+
+  if (await routeMobileAuthApi(authContext)) {
     return;
   }
 
