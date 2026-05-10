@@ -304,6 +304,7 @@ operators before implementation is marked complete.
 | `src/app/renderer/auth/**` | Create | Login screen and auth API client |
 | `mobile/**` | Modify | Add mobile auth status/login/logout flow, secure token storage, and mobile Google provider integration |
 | `mobile/src/api/auth.ts` | Create | Cats Mobile auth API wrapper for status, local login, and logout |
+| `mobile/src/api/authTokenStore.ts` | Create | Secure-storage-only bearer token persistence boundary for Cats Mobile |
 | `src/mobile/**` | Modify | Keep shared mobile contracts aligned with mobile auth status and bearer-session requirements |
 | `src/app/server/platformSetupRoutes.ts` | Modify | Canonical platform setup route; create first admin during platform setup |
 | `src/products/chat/api/setupRoutes.ts` | Audit/Delete or Modify | Legacy setup/reset route; remove if unused, otherwise align with the canonical auth gate and require admin auth after setup |
@@ -562,6 +563,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2 pre-auth origin gate expanded to `/api/platform/setup/complete`, so first-admin setup mutations now require an allowlisted browser origin and reject missing/cross-site origins with pinned `E_FORBIDDEN`. Repair and Google credential POST still need the same gate before Task 2.12 can be checked off. |
 | 2026-05-10 | Phase 4b mobile client API slice started: Cats Mobile now has auth API wrappers for status/local-login/logout, and the generic mobile API client can attach a runtime bearer token without persisting it to AsyncStorage. SecureStore-backed token persistence and launch-flow login UI remain pending before Tasks 4b.4/4b.5 can be checked off. |
 | 2026-05-10 | Phase 6 documentation slice started: `.env.example`, API docs, setup guide, and release notes now document the auth rollout status, session secret, origin allowlist, mobile auth routes, and the fact that the global product-route gate is not installed yet. Full recovery-flow documentation remains pending. |
+| 2026-05-10 | Phase 4b secure-token boundary slice started: Cats Mobile now has an injected secure-storage token store boundary for bearer tokens, with no AsyncStorage path for auth tokens. Wiring the real Expo SecureStore module into launch/login/logout UI remains pending before Task 4b.5 can be checked off. |
 
 ---
 
