@@ -108,6 +108,64 @@ test('actor attribution does not let a later admin inherit actor-owner', async (
   );
 });
 
+test('actor attribution does not let a later owner inherit actor-owner', async () => {
+  const firstAdmin = await createFirstAdminLocalAuthState({
+    state: createEmptyPlatformAuthState(NOW),
+    displayName: 'Owner',
+    identifier: 'owner@example.test',
+    password: 'correct horse battery staple',
+    sessionSecret: SESSION_SECRET,
+    sessionTtlMs: SESSION_TTL_MS,
+    now: NOW,
+  });
+  const laterOwnerSession = issueBrowserSession({
+    accountId: 'auth-account-second-owner',
+    sessionSecret: SESSION_SECRET,
+    ttlMs: SESSION_TTL_MS,
+    now: NOW,
+  });
+  const state = {
+    ...firstAdmin.state,
+    accounts: [
+      ...firstAdmin.state.accounts,
+      {
+        id: 'auth-account-second-owner',
+        displayName: 'Second Owner',
+        email: 'second-owner@example.test',
+        avatarUrl: null,
+        status: 'active' as const,
+        createdAt: NOW.toISOString(),
+        updatedAt: NOW.toISOString(),
+      },
+    ],
+    memberships: [
+      ...firstAdmin.state.memberships,
+      {
+        id: 'auth-membership-second-owner',
+        accountId: 'auth-account-second-owner',
+        roles: ['owner' as const, 'admin' as const],
+        coreActorId: null,
+        createdAt: NOW.toISOString(),
+        updatedAt: NOW.toISOString(),
+      },
+    ],
+    sessions: [...firstAdmin.state.sessions, laterOwnerSession.session],
+  };
+
+  const laterPrincipal = resolveBrowserPrincipalFromToken(state, {
+    token: laterOwnerSession.token,
+    sessionSecret: SESSION_SECRET,
+    now: NOW,
+  });
+
+  assert.ok(laterPrincipal);
+  assert.deepEqual(laterPrincipal.membership.roles, ['owner', 'admin']);
+  assert.deepEqual(resolveCoreActorIdForPrincipal(laterPrincipal), {
+    ok: false,
+    reason: 'missing_core_actor_mapping',
+  });
+});
+
 function createPrincipal(coreActorId: string | null): PlatformPrincipal {
   return {
     account: {

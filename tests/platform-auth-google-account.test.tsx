@@ -100,6 +100,30 @@ test('google linked-identity helper issues browser session for active account', 
   );
 });
 
+test('google linked-identity helper preserves explicit membership actor mapping', () => {
+  const first = createFirstAdminGoogleAuthState({
+    state: createEmptyPlatformAuthState(NOW),
+    identity: GOOGLE_IDENTITY,
+    sessionSecret: SESSION_SECRET,
+    sessionTtlMs: 60_000,
+    now: NOW,
+  });
+  const login = createGoogleBrowserSessionForLinkedIdentity({
+    state: {
+      ...first.state,
+      memberships: [{ ...first.membership, coreActorId: null }],
+      sessions: [],
+    },
+    identity: GOOGLE_IDENTITY,
+    sessionSecret: SESSION_SECRET,
+    sessionTtlMs: 60_000,
+    now: NOW,
+  });
+
+  assert.ok(login);
+  assert.equal(login.membership.coreActorId, null);
+});
+
 test('google linked-identity helper rejects unknown or disabled accounts', () => {
   const first = createFirstAdminGoogleAuthState({
     state: createEmptyPlatformAuthState(NOW),

@@ -231,7 +231,7 @@ securely, and can revoke/logout without deleting all auth state.
 
 - [ ] Task 5.1: Add `auth` / `principal` to shared route contexts without
       reshaping frozen product contracts.
-- [ ] Task 5.2: Preserve only the first admin's explicit `actor-owner` mapping
+- [x] Task 5.2: Preserve only the first admin's explicit `actor-owner` mapping
       for existing single-owner writes. Later memberships default
       `coreActorId` to `null`; write paths that need Core actor attribution
       must fail closed until explicit mapping exists.
@@ -600,6 +600,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2 aggregate throttle route integration landed: `/api/auth/throttle/clear` now clears login throttle state through authenticated admin+CSRF, loopback-local recovery, or one-time recovery token authorization; aggregate account/subnet cooldown creation reports a secret-free alert hook; focused route tests cover admin, loopback, token, and alert behavior. Task 2.11 is now checked. |
 | 2026-05-10 | Phase 2/3 origin-preservation audit landed: route tests now prove the pre-auth gate ignores arbitrary `X-Forwarded-*` headers and requires an explicit allowlisted browser `Origin`; Vite proxy tests cover `changeOrigin: false`, cookie rewrites, and host-only built-server cookies; `.env.example`, setup, and deployment docs now state the reverse-proxy Origin requirement. Tasks 2.15 and 3.5 are now checked. |
 | 2026-05-10 | Phase 4 Google verifier landed: chose a dependency-free Node WebCrypto/JWKS verifier instead of adding a runtime package, because the existing claim-normalization layer already enforces audience/issuer/expiry/hosted-domain policy. Default server dependencies now create the verifier when Google browser or mobile audiences are configured; tests cover RS256 signature validation, cache reuse, key refresh, unsupported headers, and tampered payload rejection. Tasks 4.1 and 4.2 are now checked. |
+| 2026-05-10 | Phase 5 actor-mapping invariant tightened: tests now cover later `owner`+`admin` memberships with `coreActorId: null` and Google linked-login preserving the stored membership mapping rather than synthesizing `actor-owner`. Task 5.2 is now checked. |
 
 ---
 
