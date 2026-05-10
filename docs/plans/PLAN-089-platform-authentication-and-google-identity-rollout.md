@@ -238,7 +238,7 @@ securely, and can revoke/logout without deleting all auth state.
 - [x] Task 5.3: Add forward-invariant attribution tests that create a second
       admin membership with `coreActorId: null` and assert actor-attributed
       writes fail closed instead of silently using `actor-owner`.
-- [ ] Task 5.4: Document the follow-up boundary for account management UI and
+- [x] Task 5.4: Document the follow-up boundary for account management UI and
       non-admin roles.
 
 **Deliverables**: the codebase has a clear path from browser session to future
@@ -593,6 +593,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 5 attribution invariant regression landed: actor-attribution tests now build a real auth state with the first admin plus a later admin whose membership has `coreActorId: null`, resolve both principals through the browser-session resolver, and assert the later admin fails closed instead of inheriting `actor-owner`. Task 5.3 is now checked. |
 | 2026-05-10 | Phase 3 unauthenticated app-load redirect landed: `/api/app-shell` 401 responses now enter a renderer unauthenticated state instead of the generic error panel, route users to `/login`, and recover to the normal entry surface after successful login. Task 3.3 is now checked. |
 | 2026-05-10 | Phase 6 CSRF regression slice landed: auth route tests now assert browser logout rejects GIS `g_csrf_token` as a Cats CSRF substitute, while Google credential POST rejects `X-Cats-CSRF-Token` as a GIS CSRF substitute. Task 6.4 is now checked. |
+| 2026-05-10 | Phase 5 account-management boundary documented: API and setup docs now state that first-admin creation is the only v1 account UI, only that membership maps to `actor-owner`, later memberships keep `coreActorId: null`, and invitations/password reset/role editing/non-admin policy are follow-up work. Task 5.4 is now checked. |
 
 ---
 

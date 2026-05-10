@@ -91,6 +91,19 @@ Pinned auth error codes are:
 - `E_CSRF_MISMATCH` for Cats synchronizer CSRF failures on authenticated
   browser mutations.
 
+Account-management boundary for this rollout:
+
+- PLAN-089 creates the first local admin account during setup and can issue
+  browser/mobile sessions for that account.
+- The first admin membership is the only membership that receives the legacy
+  `coreActorId: "actor-owner"` mapping automatically.
+- Later memberships must keep `coreActorId: null` until an explicit Core actor
+  mapping workflow exists. Actor-attributed write paths must fail closed for
+  those principals instead of silently falling back to `actor-owner`.
+- In-band account management UI, invitations, password reset, role editing,
+  and non-admin authorization policy are follow-up work, not part of the
+  current auth gate slice.
+
 Telegram webhook ingress may optionally enforce the standard
 `x-telegram-bot-api-secret-token` header when
 `CATS_TELEGRAM_WEBHOOK_SECRET` is configured.

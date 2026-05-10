@@ -57,6 +57,18 @@ Forgotten-credential and repair behavior:
 - For LAN-bound deployments, rebind Cats to loopback or use the recovery token
   before allowing LAN browsers to reach the host during repair.
 
+Account and role boundary:
+
+- First setup creates one local admin account and maps only that first admin to
+  the existing Core owner actor (`actor-owner`).
+- Additional account creation, invitations, password reset, role editing, and
+  Core actor mapping UI are follow-up work. Do not hand-edit auth state to add
+  shared-user accounts unless you also understand that memberships without
+  `coreActorId` intentionally fail actor-attributed writes closed.
+- Non-admin roles exist in the auth state model for forward compatibility, but
+  this rollout does not yet expose product-specific non-admin authorization
+  policy.
+
 ### 2. Install dependencies
 
 ```bash
