@@ -6,7 +6,7 @@ export interface MobileGoogleOidcRequestInput {
 }
 
 export type MobileGoogleOidcRequestResult =
-  | { status: 'success'; idToken: string }
+  | { status: 'success'; idToken: string; nonce: string }
   | { status: 'cancelled' }
   | { status: 'unavailable' };
 
@@ -48,7 +48,7 @@ export async function requestMobileGoogleOidcIdToken(
     }, input.timeoutMs ?? DEFAULT_GOOGLE_OIDC_TIMEOUT_MS);
 
     subscription = Linking.addEventListener('url', (event) => {
-      const result = readMobileGoogleOidcRedirect(event.url, { redirectUri, state });
+      const result = readMobileGoogleOidcRedirect(event.url, { redirectUri, state, nonce });
       if (!result) {
         return;
       }
@@ -80,6 +80,8 @@ export function buildMobileGoogleOidcAuthorizationUrl(input: {
     scope: 'openid email profile',
     state: input.state,
     nonce: input.nonce,
+    // Force account choice for every login so mobile does not silently bind
+    // a stale Google account selected by a previous browser/session.
     prompt: 'select_account',
   });
   return `${GOOGLE_OIDC_AUTHORIZATION_URL}?${params.toString()}`;
@@ -87,9 +89,9 @@ export function buildMobileGoogleOidcAuthorizationUrl(input: {
 
 export function readMobileGoogleOidcRedirect(
   url: string,
-  expected: { redirectUri: string; state: string },
+  expected: { redirectUri: string; state: string; nonce: string },
 ): MobileGoogleOidcRequestResult | null {
-  if (!url.startsWith(expected.redirectUri)) {
+  if (!isExpectedRedirectUrl(url, expected.redirectUri)) {
     return null;
   }
   const params = readUrlParams(url);
@@ -100,7 +102,19 @@ export function readMobileGoogleOidcRedirect(
   if (!idToken) {
     return { status: 'cancelled' };
   }
-  return { status: 'success', idToken };
+  return { status: 'success', idToken, nonce: expected.nonce };
+}
+
+function isExpectedRedirectUrl(url: string, redirectUri: string): boolean {
+  try {
+    const actual = new URL(url);
+    const expected = new URL(redirectUri);
+    return actual.protocol === expected.protocol
+      && actual.host === expected.host
+      && actual.pathname === expected.pathname;
+  } catch {
+    return false;
+  }
 }
 
 function readUrlParams(url: string): URLSearchParams {
@@ -117,13 +131,10 @@ function readUrlParams(url: string): URLSearchParams {
 
 function createOpaqueToken(): string {
   const bytes = new Uint8Array(16);
-  if (globalThis.crypto?.getRandomValues) {
-    globalThis.crypto.getRandomValues(bytes);
-  } else {
-    for (let index = 0; index < bytes.length; index += 1) {
-      bytes[index] = Math.floor(Math.random() * 256);
-    }
+  if (!globalThis.crypto?.getRandomValues) {
+    throw new Error('Secure random source is unavailable for Google sign-in.');
   }
+  globalThis.crypto.getRandomValues(bytes);
   return Array.from(bytes)
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');

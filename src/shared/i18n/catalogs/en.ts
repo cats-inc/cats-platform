@@ -42,13 +42,13 @@ export const enCatalog: MessageCatalog = {
   'auth.repair.passwordLabel': 'Admin password',
   'auth.repair.passwordPlaceholder': 'Create a replacement password',
   'auth.repair.recoveryTokenLabel': 'Recovery token',
-  'auth.repair.recoveryTokenPlaceholder': 'Optional on loopback',
+  'auth.repair.recoveryTokenPlaceholder': 'Required recovery token',
   'auth.repair.recoveryTokenHint':
-    'Required only when repairing from a non-loopback browser. Read it from the local auth-recovery-token file printed at startup.',
+    'Required for every repair. Read it from the local auth-recovery-token file printed at startup.',
   'auth.repair.submit': 'Repair and sign in',
   'auth.repair.submitting': 'Repairing…',
   'auth.repair.forbidden':
-    'Repair requires loopback access or the one-time recovery token.',
+    'Repair requires the one-time recovery token.',
   'auth.repair.failed': 'Repair failed.',
   'auth.repair.failedWithStatus': 'Repair failed ({status}).',
   'appHost.label': 'App',

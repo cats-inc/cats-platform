@@ -64,10 +64,10 @@ middleware without login/status endpoints, first-admin setup, repair flow,
 allowlists, CSRF issuance/validation, setup-reset protection, structured
 errors, login throttling, aggregate brute-force guards, the pre-auth
 allowed-browser-origin gate, Vite/reverse-proxy origin preservation, the
-loopback/recovery-token-constrained repair endpoint, pinned error codes, and
+recovery-token-constrained repair endpoint, pinned error codes, and
 the minimal unauthenticated envelope; do not ship
 login endpoints as the only auth change while protected routes remain public.
-The loopback/recovery-token constraint on repair (Task 2.13) is part of the
+The recovery-token constraint on repair (Task 2.13) is part of the
 atomic group because shipping the auth-state-file escape hatch without it
 re-opens LAN admin bootstrap.
 
@@ -109,7 +109,7 @@ re-opens LAN admin bootstrap.
       budget that triggers a logged alert and bounded extended cooldown;
       (c) per-/24 IPv4 (or /64 IPv6) subnet failure budget. The account
       cooldown shall expire after a configured TTL and shall also be clearable
-      by authenticated admin action, loopback-local recovery, or the recovery
+      by authenticated admin action or the recovery
       token flow without requiring auth-state deletion. Operators may tune
       thresholds via `CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP` /
       `CATS_AUTH_ACCOUNT_COOLDOWN_MS` /
@@ -124,8 +124,9 @@ re-opens LAN admin bootstrap.
       mutation. This is in addition to (not a replacement for) the authenticated
       synchronizer CSRF token and the GIS `g_csrf_token` double-submit.
 - [x] Task 2.13: Constrain the auth-state-file repair first-admin creation
-      endpoint so it is reachable only from loopback (`127.0.0.1` / `::1`)
-      OR with a one-time recovery token. At repair-mode start-up the
+      endpoint so it is reachable only with a one-time recovery token.
+      Loopback source address is not sufficient because LAN/tunnel reverse
+      proxies can make remote clients appear local. At repair-mode start-up the
       platform shall generate the token, write its hash to memory, and write
       the raw token only to `<state-dir>/auth-recovery-token.local.txt` with
       restrictive filesystem permissions where the OS supports them. Structured
@@ -264,15 +265,15 @@ product write path.
       memberships while leaving owner profile, Guide Cat state, and product
       data untouched;
       (b) the recovery flow constraint — repair first-admin creation only
-      accepts loopback requests OR a one-time recovery token written to
+      accepts a one-time recovery token written to
       `<state-dir>/auth-recovery-token.local.txt` at repair-mode start-up;
       structured logs expose only the token file path, not the raw token;
-      LAN-bound deployments should rebind to loopback or use the recovery
-      token before allowing the LAN to reach the host during recovery.
+      LAN-bound deployments should keep the recovery token operator-local
+      before allowing the LAN to reach the host during recovery.
 - [x] Task 6.6: Add release notes covering: (a) LAN-facing workspaces now
       require login after setup; (b) `CATS_AUTH_ENABLED=false` is rejected
       after `setupCompleteAt`; (c) the auth state file escape hatch and the
-      loopback/recovery-token constraint on the repair flow; (d) pinned
+      recovery-token constraint on the repair flow; (d) pinned
       `E_UNAUTHENTICATED` / `E_FORBIDDEN` / `E_CSRF_MISMATCH` error codes
       that downstream tooling can rely on.
 - [x] Task 6.7: Update mobile pairing docs to state that the Expo Go QR loads
@@ -365,17 +366,18 @@ operators before implementation is marked complete.
   This sits in addition to, not in place of, the synchronizer CSRF token used
   by authenticated mutations and the `g_csrf_token` double-submit used by
   Google credentials.
-- Repair-mode admin bootstrap is loopback-only OR requires a one-time
-  recovery token written to a restrictive state-dir file at repair start-up.
+- Repair-mode admin bootstrap requires a one-time recovery token written to a
+  restrictive state-dir file at repair start-up.
   Structured logs never contain the raw token; an interactive local console may
   print it only when not routed into structured/remote logging. Token is
   single-use, rotates per restart, and is invalidated after first-admin
-  re-creation. This prevents the escape hatch from re-opening LAN admin
-  bootstrap.
+  re-creation. Loopback source address is not accepted as authorization because
+  reverse proxies and tunnels can make remote clients appear local. This
+  prevents the escape hatch from re-opening LAN admin bootstrap.
 - Login throttle hard-lockout key is composite `(account, address)`;
   per-account progressive delay, bounded per-account 24-hour cooldown, and
   per-/24 subnet budget are mandatory aggregate guards on top. Cooldowns expire
-  by TTL and can be cleared by admin/loopback/recovery token flow, so the
+  by TTL and can be cleared by admin/recovery token flow, so the
   single v1 owner is not forced into deleting auth state after mistakes.
 - Auth/CSRF gate uses pinned structured error codes (`E_UNAUTHENTICATED` /
   `E_FORBIDDEN` / `E_CSRF_MISMATCH`) rather than relying on HTTP status
@@ -473,11 +475,10 @@ operators before implementation is marked complete.
     a configured trusted proxy hop;
   - the allowed-browser-origin gate is enforced on Google credential POST and is not
     bypassed by provider name;
-  - the repair first-admin creation endpoint rejects requests from non-loopback
-    addresses without a valid recovery token, accepts loopback requests
-    without a token, and accepts non-loopback requests with the issued
-    token; the token is single-use and a second attempt with the same token
-    is rejected;
+  - the repair first-admin creation endpoint rejects requests without a valid
+    recovery token even when the socket source address is loopback, accepts
+    requests with the issued token, and rejects a second attempt with the same
+    single-use token;
   - error responses from the auth/CSRF gate carry stable `code` fields
     (`E_UNAUTHENTICATED`, `E_FORBIDDEN`, `E_CSRF_MISMATCH`) and renderer
     retry logic keys on those codes only;
@@ -527,11 +528,11 @@ operators before implementation is marked complete.
 | Route allowlist accidentally leaves a privileged route public | High | Add static route-policy tests and review runtime/shell/transport routes explicitly |
 | Cats CSRF and Google GIS CSRF are conflated | High | Keep Cats auth routes and Google credential routes in distinct modules; add static tests that `X-Cats-CSRF-Token` middleware is not registered on Google credential routes and that Cats mutation routes reject requests supplying only `g_csrf_token` |
 | Operator forgets the only admin credential and bricks their workspace | High | Document the auth-state-file escape hatch in setup-guide, deployment, and release notes; ensure the repair flow does not require the lost password |
-| Escape hatch re-opens LAN admin bootstrap | High | Constrain repair first-admin creation to loopback OR a one-time recovery token written to a restrictive state-dir file; never expose the repair endpoint as a plain LAN-reachable bootstrap; document the loopback/token requirement in deployment docs |
+| Escape hatch re-opens LAN admin bootstrap | High | Constrain repair first-admin creation to a one-time recovery token written to a restrictive state-dir file; never expose the repair endpoint as a plain LAN-reachable bootstrap; document that loopback source address is not authorization in deployment docs |
 | Pre-auth CSRF on `/setup` / `/api/auth/login` / repair from cross-site POST | High | Allowed-browser-origin gate via `Origin` + `Sec-Fetch-Site` on all pre-auth mutating endpoints, including Google credential POST; static test that the gate is registered on every pre-auth route |
 | Distributed brute force shares budget per account | High | Mandatory aggregate guards: per-account progressive delay, bounded per-account 24-hour cooldown with non-destructive recovery, per-/24 subnet failure budget; cannot be disabled |
 | Renderer retries non-CSRF `403` and masks real authz failures | Medium | Pin `code: 'E_CSRF_MISMATCH'`; renderer keys retry on that code only; static test asserts no retry on `E_FORBIDDEN` |
-| Legitimate admin DoS via per-account global hard lockout | Medium | Use composite `(account, address)` hard-lockout key; aggregate guards add delay and bounded cooldowns with TTL/admin/loopback/recovery-token clearing |
+| Legitimate admin DoS via per-account global hard lockout | Medium | Use composite `(account, address)` hard-lockout key; aggregate guards add delay and bounded cooldowns with TTL/admin/recovery-token clearing |
 | Stale CSRF token after rotation breaks UX silently | Medium | Renderer must refresh `/api/auth/status` on `E_CSRF_MISMATCH` and retry once; a second mismatch surfaces a hard error |
 | `CATS_AUTH_ENABLED=false` honored after setup re-opens LAN exposure | High | Reject the override as a configuration error after `setupCompleteAt` on every host; cover with config-validation tests |
 | Future multi-user attribution is blocked by first slice shortcuts | Medium | Carry principal in route context and fail closed for `coreActorId: null` instead of mapping every admin to owner |
@@ -613,6 +614,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2 repair UX landed: app-shell repair bootstrap now routes to `/repair` instead of the generic error panel, the renderer repair form recreates the first local Admin through `/api/auth/repair/first-admin`, and successful repair reloads the authenticated app-shell while protected product APIs remain fail-closed. Task 2.4 is now checked. |
 | 2026-05-10 | Phase 4b mobile Google server/API slice landed: `/api/mobile/auth/google/login` is a public mobile-auth route that verifies ID tokens only against `CATS_AUTH_GOOGLE_MOBILE_AUDIENCES`, issues one-time-returned mobile bearer sessions for already linked Google identities, and exposes typed Cats Mobile API/session helpers. Mobile AuthSession/native UI wiring remains pending before Task 4b.7 can be checked. |
 | 2026-05-10 | Phase 4b mobile Google UI landed: `/api/mobile/auth/status` now advertises configured public mobile Google client ids, Cats Mobile starts a mobile OIDC ID-token flow from the login panel, posts the verified result to `/api/mobile/auth/google/login`, persists the returned bearer through the existing secure-token boundary, and leaves browser GIS/CSRF/cookies out of the mobile path. Task 4b.7 is now checked. |
+| 2026-05-10 | Repair/mobile Google security follow-up landed: repair first-admin and throttle recovery now require the one-time recovery token even when the socket source address is loopback, closing reverse-proxy/tunnel repair-mode bypass risk; Cats Mobile now sends the per-attempt OIDC nonce to `/api/mobile/auth/google/login`, server verification checks the nonce claim, invalid mobile Google attempts are throttled before verifier calls, and the mobile OIDC helper uses secure randomness plus exact redirect matching. |
 
 ---
 

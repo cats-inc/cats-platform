@@ -78,12 +78,13 @@ includes:
   `X-Cats-CSRF-Token` for active browser sessions;
 - `POST /api/auth/repair/first-admin` for setup-complete workspaces whose auth
   state is missing or corrupt. The route is pre-auth but constrained to an
-  allowlisted browser origin plus either loopback source address or the
-  one-time recovery token written to the state directory at repair startup;
+  allowlisted browser origin plus the one-time recovery token written to the
+  state directory at repair startup. Loopback source address is not sufficient
+  because reverse proxies and tunnels can make remote clients appear local;
 - `POST /api/auth/throttle/clear` for clearing aggregate login-throttle state
   after owner recovery. The route requires an allowlisted browser origin plus
-  either an authenticated admin browser session with `X-Cats-CSRF-Token`,
-  loopback source address, or the one-time recovery token;
+  either an authenticated admin browser session with `X-Cats-CSRF-Token` or the
+  one-time recovery token;
 - `GET /api/mobile/auth/status` for Cats Mobile bearer-session status;
   unauthenticated responses also expose whether Google mobile login is enabled
   and the configured public mobile client ids;
@@ -106,7 +107,8 @@ Google mobile login is deliberately separate from the browser GIS routes. Cats
 Mobile does not send browser cookies, browser origin headers, or GIS
 double-submit CSRF; it obtains a mobile-native token through AuthSession,
 native OAuth, or an equivalent mobile OIDC provider, and the server verifies
-that token only against configured mobile audiences.
+that token only against configured mobile audiences plus the nonce generated
+for that mobile sign-in attempt.
 
 The global route gate now runs before product/Core/runtime/shell/transport
 dispatch. Setup-complete unauthenticated app-shell reads receive only the

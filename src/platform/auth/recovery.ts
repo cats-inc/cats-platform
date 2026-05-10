@@ -33,11 +33,6 @@ export interface PlatformAuthRepairStartupResult {
 export type PlatformAuthRepairAuthorization =
   | {
       allowed: true;
-      mode: 'loopback';
-      consumedTokenState: null;
-    }
-  | {
-      allowed: true;
       mode: 'recovery_token';
       consumedTokenState: PlatformAuthRecoveryTokenState;
     }
@@ -45,7 +40,7 @@ export type PlatformAuthRepairAuthorization =
       allowed: false;
       reason:
         | 'missing_session_secret'
-        | 'non_loopback_without_recovery_token'
+        | 'missing_recovery_token'
         | 'invalid_recovery_token';
     };
 
@@ -77,17 +72,10 @@ export function authorizePlatformAuthRepairBootstrap(input: {
   sessionSecret: string | null;
   now?: Date;
 }): PlatformAuthRepairAuthorization {
-  if (isLoopbackRepairRemoteAddress(input.remoteAddress)) {
-    return {
-      allowed: true,
-      mode: 'loopback',
-      consumedTokenState: null,
-    };
-  }
   if (!input.recoveryToken) {
     return {
       allowed: false,
-      reason: 'non_loopback_without_recovery_token',
+      reason: 'missing_recovery_token',
     };
   }
   if (!input.sessionSecret) {
@@ -174,15 +162,4 @@ async function chmodRecoveryTokenFile(recoveryTokenPath: string): Promise<void> 
   } catch {
     // Windows and some filesystems do not support POSIX mode updates.
   }
-}
-
-function isLoopbackRepairRemoteAddress(remoteAddress: string | null | undefined): boolean {
-  const normalized = remoteAddress?.trim().toLowerCase()
-    .replace(/^\[/u, '')
-    .replace(/\]$/u, '')
-    .replace(/^::ffff:/u, '');
-  return normalized === '127.0.0.1'
-    || normalized === 'localhost'
-    || normalized === '::1'
-    || normalized === '0:0:0:0:0:0:0:1';
 }

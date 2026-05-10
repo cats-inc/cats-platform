@@ -58,13 +58,15 @@ Forgotten-credential and repair behavior:
 - During auth repair mode, browser app loads route to `/repair` instead of
   Chat/Code/Work product data. The repair screen recreates the first local
   Admin account, then reloads the authenticated app shell.
-- Repair first-admin creation is accepted only from loopback or with that
-  recovery token, and still requires an allowlisted browser `Origin`.
+- Repair first-admin creation always requires that recovery token and still
+  requires an allowlisted browser `Origin`. Loopback source address is not
+  treated as authorization because reverse proxies and tunnels can make remote
+  clients appear local.
   Structured logs include the token file path, never the raw token.
 - Bounded aggregate login cooldowns can be cleared without deleting auth
-  state by using the authenticated admin+CSRF throttle-clear route, loopback,
-  or the one-time recovery token.
-- For LAN-bound deployments, rebind Cats to loopback or use the recovery token
+  state by using the authenticated admin+CSRF throttle-clear route or the
+  one-time recovery token.
+- For LAN-bound deployments, keep the recovery token local to the operator
   before allowing LAN browsers to reach the host during repair.
 
 Account and role boundary:
@@ -160,8 +162,8 @@ Current implementation status:
   bearer sessions for product-data requests without requiring browser CSRF.
   Mobile Google login posts a mobile-native ID token to
   `/api/mobile/auth/google/login`, where the server verifies it against
-  `CATS_AUTH_GOOGLE_MOBILE_AUDIENCES`; it does not reuse the browser GIS POST
-  route or its cookies.
+  `CATS_AUTH_GOOGLE_MOBILE_AUDIENCES` and the per-attempt OIDC nonce; it does
+  not reuse the browser GIS POST route or its cookies.
   Cats Mobile uses Expo SecureStore for bearer-token persistence when that
   module is present, and otherwise falls back only to volatile memory for
   development/test; it does not store bearer tokens in AsyncStorage.

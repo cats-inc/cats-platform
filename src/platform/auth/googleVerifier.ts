@@ -7,7 +7,8 @@ export type PlatformGoogleTokenVerificationErrorCode =
   | 'missing_subject'
   | 'missing_email'
   | 'email_unverified'
-  | 'hosted_domain_mismatch';
+  | 'hosted_domain_mismatch'
+  | 'nonce_mismatch';
 
 export class PlatformGoogleTokenVerificationError extends Error {
   constructor(
@@ -29,6 +30,7 @@ export interface PlatformGoogleIdTokenClaims {
   hd?: unknown;
   name?: unknown;
   picture?: unknown;
+  nonce?: unknown;
 }
 
 export interface PlatformVerifiedGoogleIdentity {
@@ -60,6 +62,7 @@ export async function verifyPlatformGoogleIdentityToken(input: {
   audiences: readonly string[];
   hostedDomains?: readonly string[];
   verifier: PlatformGoogleIdTokenVerifier;
+  expectedNonce?: string | null;
   now?: Date;
   clockSkewMs?: number;
 }): Promise<PlatformVerifiedGoogleIdentity> {
@@ -85,6 +88,7 @@ export async function verifyPlatformGoogleIdentityToken(input: {
   }
 
   const audience = readAudience(claims.aud, audiences);
+  validateNonce(claims.nonce, input.expectedNonce);
   const expiresAt = readExpiry(claims.exp);
   const nowMs = input.now?.getTime() ?? Date.now();
   const clockSkewMs = input.clockSkewMs ?? DEFAULT_CLOCK_SKEW_MS;
@@ -124,6 +128,19 @@ export async function verifyPlatformGoogleIdentityToken(input: {
     issuer,
     expiresAt: expiresAt.toISOString(),
   };
+}
+
+function validateNonce(value: unknown, expectedNonce: string | null | undefined): void {
+  const expected = expectedNonce?.trim();
+  if (!expected) {
+    return;
+  }
+  if (readOptionalString(value) !== expected) {
+    throw new PlatformGoogleTokenVerificationError(
+      'nonce_mismatch',
+      'Google nonce is not valid for this request.',
+    );
+  }
 }
 
 function readAudience(value: unknown, allowedAudiences: readonly string[]): string {

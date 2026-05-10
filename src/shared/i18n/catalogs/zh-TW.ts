@@ -42,13 +42,13 @@ export const zhTWCatalog: MessageCatalog = {
   'auth.repair.passwordLabel': 'Admin 密碼',
   'auth.repair.passwordPlaceholder': '建立替代密碼',
   'auth.repair.recoveryTokenLabel': '修復權杖',
-  'auth.repair.recoveryTokenPlaceholder': 'loopback 可省略',
+  'auth.repair.recoveryTokenPlaceholder': '必填的一次性修復權杖',
   'auth.repair.recoveryTokenHint':
-    '只有從非 loopback 瀏覽器修復時才需要。請從啟動時列出的本機 auth-recovery-token 檔案讀取。',
+    '所有修復都必須提供。請從啟動時列出的本機 auth-recovery-token 檔案讀取。',
   'auth.repair.submit': '修復並登入',
   'auth.repair.submitting': '修復中…',
   'auth.repair.forbidden':
-    '修復需要 loopback 存取或一次性修復權杖。',
+    '修復需要一次性修復權杖。',
   'auth.repair.failed': '修復失敗。',
   'auth.repair.failedWithStatus': '修復失敗（{status}）。',
   'appHost.label': '應用程式',

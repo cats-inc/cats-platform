@@ -162,6 +162,7 @@ test('mobile auth google login issues bearer session for linked mobile audience'
       email: 'owner-google@example.test',
       email_verified: true,
       picture: 'https://example.test/avatar.png',
+      nonce: 'mobile-google-nonce',
     }),
   );
   await listen(server);
@@ -171,6 +172,7 @@ test('mobile auth google login issues bearer session for linked mobile audience'
     method: 'POST',
     body: {
       idToken: 'mobile-google-id-token',
+      nonce: 'mobile-google-nonce',
       deviceLabel: 'Owner Android',
       devicePlatform: 'android',
       appVersion: '2.0.0',
@@ -213,6 +215,7 @@ test('mobile auth google login rejects browser-only audiences', async (t) => {
       exp: Math.floor(NOW.getTime() / 1000) + 600,
       email: 'owner@example.test',
       email_verified: true,
+      nonce: 'mobile-google-nonce',
     }),
   );
   await listen(server);
@@ -220,13 +223,59 @@ test('mobile auth google login rejects browser-only audiences', async (t) => {
 
   const login = await request(server, '/api/mobile/auth/google/login', {
     method: 'POST',
-    body: { idToken: 'browser-google-id-token' },
+    body: { idToken: 'browser-google-id-token', nonce: 'mobile-google-nonce' },
   });
 
   assert.equal(login.status, 401);
   assert.equal(login.payload?.error?.code, 'E_UNAUTHENTICATED');
   const state = await store.readState();
   assert.equal(state.sessions.length, 0);
+});
+
+test('mobile auth google login throttles invalid tokens before verifier', async (t) => {
+  const store = await createSeededStore();
+  let verifyCalls = 0;
+  const verifier: PlatformGoogleIdTokenVerifier = {
+    async verifyIdToken() {
+      verifyCalls += 1;
+      return {
+        sub: 'mobile-google-subject',
+        aud: 'browser-client-id',
+        iss: 'https://accounts.google.com',
+        exp: Math.floor(NOW.getTime() / 1000) + 600,
+        email: 'owner@example.test',
+        email_verified: true,
+        nonce: 'mobile-google-nonce',
+      };
+    },
+  };
+  const server = createTestServer(
+    store,
+    {
+      CATS_AUTH_GOOGLE_MOBILE_AUDIENCES: 'mobile-client-id',
+      CATS_AUTH_LOGIN_FAILURE_LIMIT: '1',
+      CATS_AUTH_LOGIN_LOCKOUT_MS: '30000',
+    },
+    verifier,
+  );
+  await listen(server);
+  t.after(() => server.close());
+
+  const body = { idToken: 'invalid-google-id-token', nonce: 'mobile-google-nonce' };
+  const first = await request(server, '/api/mobile/auth/google/login', {
+    method: 'POST',
+    body,
+  });
+  assert.equal(first.status, 401);
+  assert.equal(verifyCalls, 1);
+
+  const second = await request(server, '/api/mobile/auth/google/login', {
+    method: 'POST',
+    body,
+  });
+  assert.equal(second.status, 403);
+  assert.equal(second.payload?.error?.code, 'E_FORBIDDEN');
+  assert.equal(verifyCalls, 1);
 });
 
 test('mobile auth google login requires mobile audiences and verifier', async (t) => {
@@ -237,11 +286,42 @@ test('mobile auth google login requires mobile audiences and verifier', async (t
 
   const login = await request(server, '/api/mobile/auth/google/login', {
     method: 'POST',
-    body: { idToken: 'mobile-google-id-token' },
+    body: { idToken: 'mobile-google-id-token', nonce: 'mobile-google-nonce' },
   });
 
   assert.equal(login.status, 503);
   assert.equal(login.payload?.error?.code, 'E_FORBIDDEN');
+});
+
+test('mobile auth google login rejects nonce mismatch', async (t) => {
+  const store = await createSeededStore();
+  await linkGoogleIdentity(store, 'mobile-google-subject');
+  const server = createTestServer(
+    store,
+    { CATS_AUTH_GOOGLE_MOBILE_AUDIENCES: 'mobile-client-id' },
+    fakeGoogleVerifier({
+      sub: 'mobile-google-subject',
+      aud: 'mobile-client-id',
+      iss: 'https://accounts.google.com',
+      exp: Math.floor(NOW.getTime() / 1000) + 600,
+      email: 'owner@example.test',
+      email_verified: true,
+      nonce: 'different-nonce',
+    }),
+  );
+  await listen(server);
+  t.after(() => server.close());
+
+  const login = await request(server, '/api/mobile/auth/google/login', {
+    method: 'POST',
+    body: {
+      idToken: 'mobile-google-id-token',
+      nonce: 'mobile-google-nonce',
+    },
+  });
+
+  assert.equal(login.status, 401);
+  assert.equal(login.payload?.error?.code, 'E_UNAUTHENTICATED');
 });
 
 test('request router serves mobile auth before mobile manifest pairing gate', async (t) => {

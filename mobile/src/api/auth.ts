@@ -31,6 +31,7 @@ export interface MobileLocalLoginInput {
 
 export interface MobileGoogleLoginInput {
   idToken: string;
+  nonce: string;
   deviceLabel?: string;
   devicePlatform?: 'ios' | 'android' | 'web' | 'unknown';
   appVersion?: string;

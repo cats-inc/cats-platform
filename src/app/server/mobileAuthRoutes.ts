@@ -210,6 +210,7 @@ async function handleMobileGoogleLogin(
 
   let body: {
     idToken?: unknown;
+    nonce?: unknown;
     deviceLabel?: unknown;
     devicePlatform?: unknown;
     appVersion?: unknown;
@@ -224,14 +225,44 @@ async function handleMobileGoogleLogin(
     sendMobileAuthError(context, 400, 'E_FORBIDDEN', 'Google ID token is required.');
     return;
   }
+  if (typeof body.nonce !== 'string' || !body.nonce.trim()) {
+    sendMobileAuthError(context, 400, 'E_FORBIDDEN', 'Google nonce is required.');
+    return;
+  }
 
   const now = context.dependencies.now?.() ?? new Date();
-  const identity = await verifyMobileGoogleIdentity(context, body.idToken, now);
+  const state = await context.dependencies.authStore.readState();
+  const remoteAddress = readRemoteAddress(context.request);
+  const verifierThrottleSubject = createLoginThrottleSubject({
+    provider: 'google',
+    accountKey: `remote:${remoteAddress ?? 'unknown'}`,
+    remoteAddress,
+  });
+  const verifierThrottle = evaluateLoginThrottle(state, {
+    subject: verifierThrottleSubject,
+    policy: context.dependencies.auth,
+    now,
+  });
+  if (verifierThrottle.blocked) {
+    sendMobileAuthError(context, 403, 'E_FORBIDDEN', 'Too many login attempts.');
+    return;
+  }
+  if (verifierThrottle.delayMs > 0) {
+    await sleep(verifierThrottle.delayMs, context.dependencies.sleep);
+  }
+
+  const identity = await verifyMobileGoogleIdentity({
+    context,
+    idToken: body.idToken,
+    expectedNonce: body.nonce,
+    verifier,
+    failedSubject: verifierThrottleSubject,
+    now,
+  });
   if (!identity) {
     return;
   }
 
-  const state = await context.dependencies.authStore.readState();
   const throttleSubject = createLoginThrottleSubject({
     provider: 'google',
     accountKey: identity.providerSubject,
@@ -391,29 +422,31 @@ function readOptionalString(value: unknown): string | undefined {
 }
 
 async function verifyMobileGoogleIdentity(
-  context: RouteContext<MobileAuthRouteDependencies>,
-  idToken: string,
-  now: Date,
+  input: {
+    context: RouteContext<MobileAuthRouteDependencies>;
+    idToken: string;
+    expectedNonce: string;
+    verifier: PlatformGoogleIdTokenVerifier;
+    failedSubject: ReturnType<typeof createLoginThrottleSubject>;
+    now: Date;
+  },
 ): Promise<PlatformVerifiedGoogleIdentity | null> {
+  const { context } = input;
   try {
     return await verifyPlatformGoogleIdentityToken({
-      token: idToken,
+      token: input.idToken,
       audiences: context.dependencies.auth.google.mobileAudiences,
       hostedDomains: context.dependencies.auth.google.hostedDomains,
-      verifier: context.dependencies.googleVerifier!,
-      now,
+      verifier: input.verifier,
+      expectedNonce: input.expectedNonce,
+      now: input.now,
     });
   } catch {
-    const throttleSubject = createLoginThrottleSubject({
-      provider: 'google',
-      accountKey: 'google:invalid',
-      remoteAddress: readRemoteAddress(context.request),
-    });
     await context.dependencies.authStore.updateState((current) =>
       recordFailedLogin(current, {
-        subject: throttleSubject,
+        subject: input.failedSubject,
         policy: context.dependencies.auth,
-        now,
+        now: input.now,
       }),
     );
     sendMobileAuthError(context, 401, 'E_UNAUTHENTICATED', 'Invalid Google credential.');

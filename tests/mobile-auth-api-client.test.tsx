@@ -63,6 +63,7 @@ test('mobile auth api wrappers use canonical mobile auth endpoints', async (t) =
   });
   await loginMobileGoogle(client, {
     idToken: 'mobile-google-id-token',
+    nonce: 'mobile-google-nonce',
     devicePlatform: 'ios',
   });
   await logoutMobile(client);
@@ -74,6 +75,7 @@ test('mobile auth api wrappers use canonical mobile auth endpoints', async (t) =
   assert.equal(calls[1]?.init?.method, 'POST');
   assert.deepEqual(JSON.parse(String(calls[1]?.init?.body)), {
     idToken: 'mobile-google-id-token',
+    nonce: 'mobile-google-nonce',
     devicePlatform: 'ios',
   });
   assert.equal(calls[2]?.url, 'http://127.0.0.1:3000/api/mobile/auth/logout');
@@ -252,7 +254,7 @@ test('mobile google login stores the returned bearer token through secure storag
   const storage = createMemorySecureStorage();
   const status = await loginMobileGoogleSession(
     { baseUrl: 'http://127.0.0.1:3000' },
-    { idToken: 'mobile-google-id-token' },
+    { idToken: 'mobile-google-id-token', nonce: 'mobile-google-nonce' },
     storage,
   );
 

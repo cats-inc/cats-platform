@@ -19,7 +19,7 @@ export function PlatformRepairScreen({
   const [recoveryToken, setRecoveryToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
-  const canSubmit = Boolean(identifier.trim() && password && !busy);
+  const canSubmit = Boolean(identifier.trim() && password && recoveryToken.trim() && !busy);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();

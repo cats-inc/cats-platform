@@ -44,20 +44,21 @@ Do not rely on `CATS_AUTH_ENABLED=false`; it is an unsafe dev/test escape hatch
 and is rejected after `setupCompleteAt` exists. When an operator forgets the
 only admin credential, delete only
 `<platform-state-dir>/auth-state.local.json`, restart, and complete repair from
-loopback or with the one-time token written to
+the one-time token written to
 `<platform-state-dir>/auth-recovery-token.local.txt`. Deleting the auth state
 file removes accounts, identities, memberships, and sessions, but leaves
 product data intact.
 
 Bounded aggregate login cooldowns no longer require auth-state deletion for
 recovery. Operators can clear throttle state through the authenticated
-admin+CSRF route, loopback-local recovery, or the one-time recovery token.
+admin+CSRF route or the one-time recovery token.
 
 Cats Mobile now keeps Google login separate from browser GIS. The mobile
 client discovers public mobile Google client ids from `/api/mobile/auth/status`,
 starts a mobile OIDC flow, posts the resulting ID token to
 `/api/mobile/auth/google/login`, and receives a mobile bearer token only after
-the server verifies the token against `CATS_AUTH_GOOGLE_MOBILE_AUDIENCES`.
+the server verifies the token against `CATS_AUTH_GOOGLE_MOBILE_AUDIENCES` and
+the per-attempt nonce.
 
 Downstream tooling may key on these pinned error codes: `E_UNAUTHENTICATED`
 for `401`, `E_FORBIDDEN` for plain authorization failures, and

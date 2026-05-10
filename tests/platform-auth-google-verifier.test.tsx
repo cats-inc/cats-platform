@@ -110,6 +110,28 @@ test('google verifier accepts configured mobile audiences', async () => {
   assert.equal(identity.audience, 'ios-client-id');
 });
 
+test('google verifier enforces expected nonce when provided', async () => {
+  const identity = await verifyPlatformGoogleIdentityToken({
+    token: 'mobile-id-token',
+    audiences: ['ios-client-id'],
+    verifier: fakeVerifier({ ...BASE_CLAIMS, aud: 'ios-client-id', nonce: 'nonce-1' }),
+    expectedNonce: 'nonce-1',
+    now: NOW,
+  });
+  assert.equal(identity.audience, 'ios-client-id');
+
+  await assert.rejects(
+    () => verifyPlatformGoogleIdentityToken({
+      token: 'mobile-id-token',
+      audiences: ['ios-client-id'],
+      verifier: fakeVerifier({ ...BASE_CLAIMS, aud: 'ios-client-id', nonce: 'nonce-2' }),
+      expectedNonce: 'nonce-1',
+      now: NOW,
+    }),
+    (error) => isVerificationError(error, 'nonce_mismatch'),
+  );
+});
+
 function fakeVerifier(claims: PlatformGoogleIdTokenClaims): PlatformGoogleIdTokenVerifier {
   return {
     async verifyIdToken() {

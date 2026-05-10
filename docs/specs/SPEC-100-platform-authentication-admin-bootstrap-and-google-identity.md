@@ -158,8 +158,8 @@ the ADR-095 pairing QR.
        account into extended cooldown. The cooldown shall have a bounded
        default TTL and shall not force the single v1 owner into deleting auth
        state as the only recovery path. It may also be cleared by an
-       authenticated admin, by loopback-local recovery, or by the recovery
-       token flow (§58-62). Default cap and cooldown duration shall be
+       authenticated admin or by the recovery token flow (§58-62). Default cap
+       and cooldown duration shall be
        configurable (`CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP`,
        `CATS_AUTH_ACCOUNT_COOLDOWN_MS`).
      - **Per-/24 subnet budget**: a rolling failure budget per /24 IPv4 (or
@@ -244,6 +244,11 @@ the ADR-095 pairing QR.
      `g_csrf_token`, browser `Origin`, or `Sec-Fetch-Site` headers. It shall
      still use OAuth/OIDC `state`/PKCE or the provider library's equivalent
      anti-forgery contract.
+45c. Mobile Google login shall bind the mobile OAuth/OIDC response to the
+     initiating app session with a per-attempt nonce. The mobile client shall
+     send the expected nonce with the ID-token login request, and server-side
+     Google ID-token verification shall reject tokens whose `nonce` claim does
+     not exactly match that expected nonce.
 
 #### CSRF and browser safety
 
@@ -407,33 +412,31 @@ Effective auth gate state:
 59. The repair first-admin creation endpoint shall NOT be reachable as a
     plain `setupCompleteAt`-aware mutation from arbitrary LAN clients.
     Instead, the platform shall accept repair first-admin creation only when
-    at least one of the following holds:
-    - **Loopback origin**: the request originated from `127.0.0.1` / `::1`
-      (loopback only, not LAN host IPs); or
-    - **Recovery token**: the request carries a one-time recovery token
-      whose hash matches a token the platform generated at start-up after
-      detecting the missing/corrupt auth state. The platform shall write the
-      raw recovery token only to a file in the state directory (e.g.
-      `<state-dir>/auth-recovery-token.local.txt`) with restrictive filesystem
-      permissions where the OS supports them. Structured logs shall never
-      include the raw token; they may include only the token file path and a
-      repair-mode-active event. An interactive console may print the raw token
-      only when the server is attached to a local terminal and not using a
-      structured/remote log sink.
-      The token shall be single-use, rotate on every repair-mode start-up,
-      and be invalidated as soon as the first-admin repair completes or the
-      platform restarts.
+    the request carries a one-time recovery token whose hash matches a token
+    the platform generated at start-up after detecting the missing/corrupt
+    auth state. Loopback source address shall not be accepted as
+    authorization, because reverse proxies and tunnels can make remote
+    clients appear local. The platform shall write the raw recovery token only
+    to a file in the state directory (e.g.
+    `<state-dir>/auth-recovery-token.local.txt`) with restrictive filesystem
+    permissions where the OS supports them. Structured logs shall never
+    include the raw token; they may include only the token file path and a
+    repair-mode-active event. An interactive console may print the raw token
+    only when the server is attached to a local terminal and not using a
+    structured/remote log sink. The token shall be single-use, rotate on every
+    repair-mode start-up, and be invalidated as soon as the first-admin repair
+    completes or the platform restarts.
 60. Repair-mode start-up shall log a high-visibility warning that the
     workspace is in repair mode, where the recovery-token file is located, and
-    that LAN-bound deployments should rebind to loopback or use the recovery
-    token before allowing the LAN to reach the host. Routes other than the
+    that LAN-bound deployments should keep the recovery token operator-local
+    before allowing the LAN to reach the host. Routes other than the
     constrained repair first-admin creation endpoint shall remain failed
     closed during repair (per §16, §55).
 61. The escape hatch shall be documented in `docs/setup-guide.md`,
     `docs/deployment.md`, and the rollout release notes so operators discover
     it before they need it. The documentation shall name the exact file paths
-    for both packaged and dev deployments, explain the loopback / recovery
-    token constraint, and warn that all existing sessions, identities, and
+    for both packaged and dev deployments, explain the recovery-token
+    constraint, and warn that all existing sessions, identities, and
     memberships will be discarded.
 62. The repair flow shall not bypass `setupCompleteAt`; the rebuilt admin
     inherits the existing owner profile and Guide Cat state. Product data

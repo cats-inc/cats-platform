@@ -113,6 +113,7 @@ export function MobileAuthPanel({ onAuthenticated }: MobileAuthPanelProps) {
         const config = await loadConnectionConfig();
         const status = await loginMobileGoogleSession(config, {
           idToken: result.idToken,
+          nonce: result.nonce,
           devicePlatform: resolveMobileDevicePlatform(),
         });
         if (!status.authenticated) {

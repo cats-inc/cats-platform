@@ -839,8 +839,8 @@ function repairAuthorizationMessage(reason: string): string {
   switch (reason) {
     case 'missing_session_secret':
       return 'Auth repair is not configured.';
-    case 'non_loopback_without_recovery_token':
-      return 'Auth repair requires a loopback request or recovery token.';
+    case 'missing_recovery_token':
+      return 'Auth repair requires the one-time recovery token.';
     case 'invalid_recovery_token':
       return 'Recovery token is missing or invalid.';
     default:

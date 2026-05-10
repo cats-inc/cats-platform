@@ -325,7 +325,7 @@ test('platform auth throttle clear accepts authenticated admin csrf', async (t) 
   assert.equal(state.loginCooldowns.length, 0);
 });
 
-test('platform auth throttle clear accepts loopback recovery without auth', async (t) => {
+test('platform auth throttle clear rejects recovery without token even on loopback', async (t) => {
   const { store } = await createSeededLockedStore({
     CATS_AUTH_LOGIN_FAILURE_LIMIT: '10',
     CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP: '2',
@@ -343,11 +343,11 @@ test('platform auth throttle clear accepts loopback recovery without auth', asyn
     secFetchSite: 'same-origin',
   });
 
-  assert.equal(response.status, 200);
-  assert.deepEqual(response.payload, { cleared: true, mode: 'loopback' });
+  assert.equal(response.status, 403);
+  assert.equal(errorCode(response.payload), 'E_FORBIDDEN');
   const state = await store.readState();
-  assert.equal(state.loginFailures.length, 0);
-  assert.equal(state.loginCooldowns.length, 0);
+  assert.notEqual(state.loginFailures.length, 0);
+  assert.notEqual(state.loginCooldowns.length, 0);
 });
 
 test('platform auth throttle clear consumes recovery token off loopback', async (t) => {
@@ -654,7 +654,7 @@ test('platform auth google link requires Cats csrf and GIS csrf independently', 
   assert.equal(errorCode(missingGoogleCsrf.payload), 'E_FORBIDDEN');
 });
 
-test('platform auth repair first-admin recreates missing auth state from loopback', async (t) => {
+test('platform auth repair first-admin rejects loopback without recovery token', async (t) => {
   const store = createRepairAuthStore({ status: 'missing' });
   const server = createTestServer(store, {}, undefined, {
     readSetupCompleteAt: async () => NOW.toISOString(),
@@ -673,15 +673,9 @@ test('platform auth repair first-admin recreates missing auth state from loopbac
     },
   });
 
-  assert.equal(response.status, 200);
-  assert.equal(response.payload?.authenticated, true);
-  assert.equal(response.payload?.principal?.coreActorId, 'actor-owner');
-  assert.equal(typeof response.payload?.csrfToken, 'string');
-  assert.match(response.setCookie ?? '', /cats_session=/u);
-  const state = await store.readState();
-  assert.equal(state.accounts.length, 1);
-  assert.equal(state.identities[0]?.provider, 'local_password');
-  assert.equal(state.sessions.length, 1);
+  assert.equal(response.status, 403);
+  assert.equal(errorCode(response.payload), 'E_FORBIDDEN');
+  await assert.rejects(() => store.readState());
 });
 
 test('platform auth repair first-admin rejects when repair is not active', async (t) => {

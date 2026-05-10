@@ -114,7 +114,7 @@ test('platform auth repair startup is inert outside repair mode', async () => {
   }), null);
 });
 
-test('platform auth repair authorization allows loopback without recovery token', async () => {
+test('platform auth repair authorization requires one-time token even on loopback', async () => {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'cats-auth-repair-authorization-'));
   try {
     const issued = await issuePlatformAuthRecoveryToken({
@@ -123,23 +123,23 @@ test('platform auth repair authorization allows loopback without recovery token'
       now: NOW,
     });
 
-    assert.deepEqual(authorizePlatformAuthRepairBootstrap({
+    const missing = authorizePlatformAuthRepairBootstrap({
       remoteAddress: '::ffff:127.0.0.1',
       recoveryToken: null,
       recoveryTokenState: issued.state,
       sessionSecret: SESSION_SECRET,
       now: NOW,
-    }), {
-      allowed: true,
-      mode: 'loopback',
-      consumedTokenState: null,
+    });
+    assert.deepEqual(missing, {
+      allowed: false,
+      reason: 'missing_recovery_token',
     });
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
 });
 
-test('platform auth repair authorization requires one-time token off loopback', async () => {
+test('platform auth repair authorization consumes valid one-time token', async () => {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'cats-auth-repair-authorization-'));
   try {
     const issued = await issuePlatformAuthRecoveryToken({
@@ -156,7 +156,7 @@ test('platform auth repair authorization requires one-time token off loopback', 
     });
     assert.deepEqual(missing, {
       allowed: false,
-      reason: 'non_loopback_without_recovery_token',
+      reason: 'missing_recovery_token',
     });
 
     const invalid = authorizePlatformAuthRepairBootstrap({

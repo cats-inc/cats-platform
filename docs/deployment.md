@@ -83,12 +83,12 @@ Auth and repair constraints for LAN/tunnel access:
   `<platform-state-dir>/auth-recovery-token.local.txt` (default:
   `~/.cats/platform/state/auth-recovery-token.local.txt` in dev and packaged
   desktop); structured logs expose only the token-file path.
-- Repair first-admin creation is loopback-only unless the request supplies the
-  recovery token. For LAN or tunnel recovery, either temporarily rebind to
-  loopback or keep the recovery token local to the operator while completing
-  repair.
+- Repair first-admin creation always requires the recovery token. Loopback
+  source address is not treated as authorization because reverse proxies and
+  tunnels can make remote clients appear local. Keep the recovery token local
+  to the operator while completing repair.
 - Aggregate login-throttle state can be cleared through the admin+CSRF
-  browser route, loopback-local recovery, or the one-time recovery token route;
+  browser route or the one-time recovery token route;
   do not delete the auth-state file just to clear a bounded cooldown.
 
 ### Desktop Host First Slice

@@ -230,16 +230,17 @@ state, and product data (Chat, Work, Code, Core) untouched.
 Repair first-admin creation is **not** a publicly-reachable mutation on a
 LAN-bound deployment. Without this constraint, deleting the auth state file on
 a LAN-facing host would let any same-network client race to become the new
-admin. The repair endpoint accepts a request only when it originates from
-loopback (`127.0.0.1` / `::1`) or carries a one-time recovery token that the
-platform generates and writes to a restrictive state-directory file at
-repair-mode start-up. Structured logs contain only the recovery mode event and
-token file path, never the raw token; an interactive local console may print
-the raw token only when it is not routed into structured or remote logging. The
-token is single-use, rotates on every repair-mode start-up, and is invalidated
-when the first admin is re-created or the platform restarts. The deployment
-docs warn operators to rebind to loopback or use the recovery token before
-exposing the host on the LAN during recovery.
+admin. The repair endpoint accepts a request only when it carries a one-time
+recovery token that the platform generates and writes to a restrictive
+state-directory file at repair-mode start-up. Loopback source address is not
+authorization, because reverse proxies and tunnels can make remote clients
+appear local. Structured logs contain only the recovery mode event and token
+file path, never the raw token; an interactive local console may print the raw
+token only when it is not routed into structured or remote logging. The token
+is single-use, rotates on every repair-mode start-up, and is invalidated when
+the first admin is re-created or the platform restarts. The deployment docs
+warn operators to keep the recovery token local before exposing the host on
+the LAN during recovery.
 
 ### 6. Multi-user support is future-proofed but not fully shipped in v1
 
@@ -348,7 +349,7 @@ that need Core actor attribution until an explicit mapping exists.
 
 *Decision made: 2026-04-30*
 *Amended: 2026-04-30 — composite `(account, address)` throttle key; uniform `CATS_AUTH_ENABLED=false` rejection after `setupCompleteAt`; pre-auth CSRF token explicitly absent; renderer stale-CSRF retry contract; rotation on privilege changes marked forward-looking; auth-state-file escape hatch for forgotten credentials documented.*
-*Amended: 2026-04-30 — closed pre-auth bootstrap CSRF gap with same-origin gate on `/setup`/`/api/auth/login`/repair; constrained repair first-admin creation to loopback or one-time recovery token so the escape hatch does not re-open LAN admin bootstrap; pinned `E_CSRF_MISMATCH` error code so renderer retry cannot collide with `E_FORBIDDEN`; promoted per-account aggregate guards (progressive delay, daily failure budget, per-/24 subnet budget) from optional to required.*
+*Amended: 2026-04-30 — closed pre-auth bootstrap CSRF gap with same-origin gate on `/setup`/`/api/auth/login`/repair; constrained repair first-admin creation to a one-time recovery token so the escape hatch does not re-open LAN admin bootstrap through reverse proxies or tunnels; pinned `E_CSRF_MISMATCH` error code so renderer retry cannot collide with `E_FORBIDDEN`; promoted per-account aggregate guards (progressive delay, daily failure budget, per-/24 subnet budget) from optional to required.*
 *Amended: 2026-04-30 — aligned the pre-auth gate with Vite/reverse-proxy topologies by using an explicit allowed browser-origin set; clarified that `same-site` does not pass without an allowlisted `Origin`; kept raw recovery tokens out of structured logs; made aggregate account cooldown bounded and recoverable without deleting auth state.*
 *Amended: 2026-04-30 — added Expo Go / Cats Mobile as a first-party non-browser client: QR pairing only bootstraps the bundle, product data requires a mobile device bearer session, and mobile Google login is separate from browser GIS credential POST.*
 *Decision makers: user + Codex*
