@@ -303,6 +303,7 @@ operators before implementation is marked complete.
 | `src/app/renderer/setup/**` | Modify | Add first-admin local credential and optional Google bootstrap UI |
 | `src/app/renderer/auth/**` | Create | Login screen and auth API client |
 | `mobile/**` | Modify | Add mobile auth status/login/logout flow, secure token storage, and mobile Google provider integration |
+| `mobile/src/api/auth.ts` | Create | Cats Mobile auth API wrapper for status, local login, and logout |
 | `src/mobile/**` | Modify | Keep shared mobile contracts aligned with mobile auth status and bearer-session requirements |
 | `src/app/server/platformSetupRoutes.ts` | Modify | Canonical platform setup route; create first admin during platform setup |
 | `src/products/chat/api/setupRoutes.ts` | Audit/Delete or Modify | Legacy setup/reset route; remove if unused, otherwise align with the canonical auth gate and require admin auth after setup |
@@ -559,6 +560,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4 Google verifier contract slice started: added an injected Google ID-token verifier interface plus server-side claim validation for issuer, audience, expiration, verified email, hosted-domain allowlist, and mobile audiences. The maintained verifier dependency and browser/mobile Google login routes remain pending before Tasks 4.1-4.3/4b.7 can be checked off. |
 | 2026-05-10 | Local credential verification was extracted behind `verifyPlatformLocalPasswordCredential` and both browser and mobile local-login routes now use the shared helper. This reduces route drift before adding Google and repair bootstrap routes. |
 | 2026-05-10 | Phase 2 pre-auth origin gate expanded to `/api/platform/setup/complete`, so first-admin setup mutations now require an allowlisted browser origin and reject missing/cross-site origins with pinned `E_FORBIDDEN`. Repair and Google credential POST still need the same gate before Task 2.12 can be checked off. |
+| 2026-05-10 | Phase 4b mobile client API slice started: Cats Mobile now has auth API wrappers for status/local-login/logout, and the generic mobile API client can attach a runtime bearer token without persisting it to AsyncStorage. SecureStore-backed token persistence and launch-flow login UI remain pending before Tasks 4b.4/4b.5 can be checked off. |
 
 ---
 

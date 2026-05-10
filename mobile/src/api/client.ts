@@ -42,6 +42,10 @@ export interface MobileApiClient {
   readonly baseUrl: string;
 }
 
+export interface MobileApiClientOptions {
+  bearerToken?: string | null;
+}
+
 /**
  * Builds a `MobileApiClient` against the given config. Throws
  * synchronously when `baseUrl` is empty so the caller can surface a
@@ -50,6 +54,7 @@ export interface MobileApiClient {
  */
 export function createMobileApiClient(
   config: ConnectionConfig,
+  options: MobileApiClientOptions = {},
 ): MobileApiClient {
   if (!config.baseUrl) {
     const copy = getMobileApiCopy(resolveDefaultMobileLocale());
@@ -73,6 +78,10 @@ export function createMobileApiClient(
     };
     if (body !== undefined) {
       headers['Content-Type'] = 'application/json';
+    }
+    const bearerToken = options.bearerToken?.trim();
+    if (bearerToken) {
+      headers.Authorization = `Bearer ${bearerToken}`;
     }
     let response: Response;
     try {
