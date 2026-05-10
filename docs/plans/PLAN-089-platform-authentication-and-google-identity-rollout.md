@@ -295,6 +295,7 @@ operators before implementation is marked complete.
 | `src/platform/auth/readiness.ts` | Create | Setup/auth-state readiness helper that drives post-setup repair mode |
 | `src/app/server/authRoutes.ts` | Create | Auth status/login/logout/bootstrap routes |
 | `src/app/server/authGate.ts` | Create | Shared route-gate decision helper for browser cookie and mobile bearer principals |
+| `src/app/server/googleAuthRequest.ts` | Create | Google credential POST parser for GIS form posts and JSON tests |
 | `src/app/server/mobileAuthRoutes.ts` | Create | Mobile status/login/logout/revocation routes issuing bearer device sessions |
 | `src/app/server/requestRouter.ts` | Modify | Install auth gate before product/runtime route dispatch |
 | `src/app/server/contracts.ts` | Modify | Add auth dependencies/principal to resolved route contexts |
@@ -573,6 +574,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4 Google linked-login domain slice landed: added a helper that issues a browser session for an existing active linked Google identity, refreshes display email/avatar metadata, and fails closed for unknown or disabled accounts. Browser Google HTTP route remains pending. |
 | 2026-05-10 | Phase 4 Google CSRF prerequisite slice landed: added a Google GIS `g_csrf_token` double-submit validator that is separate from Cats synchronizer CSRF. Browser Google credential POST route remains pending. |
 | 2026-05-10 | Reconciled completed checkboxes for the landed server/mobile auth foundations: Tasks 2.1, 2.3, 4b.1, 6.2, 6.3, and 6.7 are now marked complete. The global route gate, repair flow, renderer login UX, and Google HTTP routes remain open. |
+| 2026-05-10 | Phase 4 Google credential request parser slice landed: added a parser for Google GIS `application/x-www-form-urlencoded` credential posts plus JSON test clients, returning normalized credential and `g_csrf_token` values. Browser Google HTTP route remains pending. |
 
 ---
 
