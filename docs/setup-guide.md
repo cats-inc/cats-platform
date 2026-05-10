@@ -39,6 +39,10 @@ If the renderer is served from a non-default origin, add it to:
 CATS_AUTH_ALLOWED_BROWSER_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
 
+For reverse proxies, include the public browser-facing origin in that list and
+preserve the browser's `Origin` header. Cats intentionally ignores arbitrary
+`X-Forwarded-*` headers for pre-auth origin decisions.
+
 Forgotten-credential and repair behavior:
 
 - Browser session state is stored separately from product data at

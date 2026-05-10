@@ -75,6 +75,9 @@ Auth and repair constraints for LAN/tunnel access:
 - Keep `CATS_AUTH_ALLOWED_BROWSER_ORIGINS` explicit for every browser-facing
   origin that may submit pre-auth mutations, including Vite dev, trusted LAN,
   or tunnel origins.
+- Reverse proxies must preserve the browser's `Origin` header and list the
+  public origin in `CATS_AUTH_ALLOWED_BROWSER_ORIGINS`; Cats does not trust
+  arbitrary `X-Forwarded-*` headers to reconstruct pre-auth browser origins.
 - If a setup-complete workspace starts with missing/corrupt auth state, the
   server writes the raw one-time repair token only to
   `<platform-state-dir>/auth-recovery-token.local.txt` (default:

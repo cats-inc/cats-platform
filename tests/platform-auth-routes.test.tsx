@@ -67,6 +67,36 @@ test('platform auth login requires an allowlisted browser origin', async (t) => 
   assert.equal(errorCode(crossSite.payload), 'E_FORBIDDEN');
 });
 
+test('platform auth login ignores untrusted forwarded origin headers', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store, {
+    CATS_AUTH_ALLOWED_BROWSER_ORIGINS: 'https://cats.example.test',
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  const forwardedOnly = await request(server, '/api/auth/login', {
+    method: 'POST',
+    secFetchSite: 'same-origin',
+    headers: {
+      'x-forwarded-host': 'cats.example.test',
+      'x-forwarded-proto': 'https',
+    },
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  assert.equal(forwardedOnly.status, 403);
+  assert.equal(errorCode(forwardedOnly.payload), 'E_FORBIDDEN');
+
+  const explicitOrigin = await request(server, '/api/auth/login', {
+    method: 'POST',
+    origin: 'https://cats.example.test',
+    secFetchSite: 'same-origin',
+    body: { identifier: 'owner@example.test', password: 'wrong-password' },
+  });
+  assert.equal(explicitOrigin.status, 401);
+  assert.equal(errorCode(explicitOrigin.payload), 'E_UNAUTHENTICATED');
+});
+
 test('platform auth local login issues cookie and status rotates csrf', async (t) => {
   const store = await createSeededStore();
   const server = createTestServer(store);
@@ -762,6 +792,7 @@ async function request(
     secFetchSite?: string;
     cookie?: string;
     csrfToken?: unknown;
+    headers?: Record<string, string>;
   } = {},
 ): Promise<{
   status: number;
@@ -772,7 +803,7 @@ async function request(
   if (!address || typeof address === 'string') {
     throw new Error('Server is not listening.');
   }
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...options.headers };
   if (options.body !== undefined) {
     headers['content-type'] = 'application/json';
   }

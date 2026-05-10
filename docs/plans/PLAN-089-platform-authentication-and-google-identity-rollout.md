@@ -139,7 +139,7 @@ re-opens LAN admin bootstrap.
       for plain authorization failures, and `E_CSRF_MISMATCH` for CSRF
       failures. The renderer logic shall key on these codes, never on
       user-visible text.
-- [ ] Task 2.15: Wire browser-origin preservation for dev and deployed
+- [x] Task 2.15: Wire browser-origin preservation for dev and deployed
       topologies before enabling the pre-auth gate. Add
       `CATS_AUTH_ALLOWED_BROWSER_ORIGINS`, include Vite dev origin(s) such as
       `http://localhost:5173` explicitly in dev/test configuration, and audit
@@ -160,7 +160,7 @@ CSRF; repeated invalid logins are throttled.
 - [x] Task 3.3: Update platform bootstrap loading so unauthenticated app loads
       redirect to `/login` instead of surfacing raw API failures.
 - [x] Task 3.4: Add logout action in an existing account/settings surface.
-- [ ] Task 3.5: Verify Vite dev proxy and built server both preserve
+- [x] Task 3.5: Verify Vite dev proxy and built server both preserve
       Set-Cookie / Cookie behavior after the Phase 2 origin-preservation work
       has landed. Keep `vite.config.ts` proxy `changeOrigin`,
       `cookieDomainRewrite`, and `cookiePathRewrite` behavior covered by the
@@ -598,6 +598,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2 renderer CSRF retry landed: auth API errors now carry stable `status/code`, renderer mutation helper refreshes `/api/auth/status` and retries exactly once only for `E_CSRF_MISMATCH`, Settings sign-out uses the helper, and tests assert no retry on `E_FORBIDDEN` plus hard failure on a second CSRF mismatch. Task 2.14 is now checked. |
 | 2026-05-10 | Phase 2 aggregate throttle recovery helper slice landed: auth throttle now has account-scoped and full recovery clearing helpers, with tests proving account clearing does not erase subnet cooldowns and recovery clearing removes all active failure budgets. Task 2.11 remains open until admin/loopback/recovery routes call these helpers and alert logging is wired. |
 | 2026-05-10 | Phase 2 aggregate throttle route integration landed: `/api/auth/throttle/clear` now clears login throttle state through authenticated admin+CSRF, loopback-local recovery, or one-time recovery token authorization; aggregate account/subnet cooldown creation reports a secret-free alert hook; focused route tests cover admin, loopback, token, and alert behavior. Task 2.11 is now checked. |
+| 2026-05-10 | Phase 2/3 origin-preservation audit landed: route tests now prove the pre-auth gate ignores arbitrary `X-Forwarded-*` headers and requires an explicit allowlisted browser `Origin`; Vite proxy tests cover `changeOrigin: false`, cookie rewrites, and host-only built-server cookies; `.env.example`, setup, and deployment docs now state the reverse-proxy Origin requirement. Tasks 2.15 and 3.5 are now checked. |
 
 ---
 
