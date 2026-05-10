@@ -17,16 +17,14 @@ import {
   evaluatePreAuthOriginGate,
   validateCatsCsrfToken as validateCatsSessionCsrfToken,
   touchSession,
-  verifyLocalPassword,
+  verifyPlatformLocalPasswordCredential,
   type PlatformAuthStore,
-  type PlatformAuthState,
   type PlatformPrincipal,
   type PlatformPrincipalSummary,
   type PreAuthOriginGateRejectionReason,
   type PlatformSessionRecord,
 } from '../../platform/auth/index.js';
 import type { PlatformAuthConfig } from '../../platform/auth/config.js';
-import type { PlatformIdentityRecord } from '../../platform/auth/types.js';
 import {
   readJsonBody,
   sendJson,
@@ -174,21 +172,11 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
     await sleep(throttle.delayMs, context.dependencies.sleep);
   }
 
-  const identity = findLocalPasswordIdentity(state, identifier);
-  const account = identity
-    ? state.accounts.find((candidate) => candidate.id === identity.accountId) ?? null
-    : null;
-  const membership = account
-    ? state.memberships.find((candidate) => candidate.accountId === account.id) ?? null
-    : null;
-  const valid = identity?.passwordHash && identity.passwordHashAlgorithm
-    ? await verifyLocalPassword(body.password, {
-        passwordHash: identity.passwordHash,
-        passwordHashAlgorithm: identity.passwordHashAlgorithm,
-      })
-    : false;
-
-  if (!identity || !account || !membership || account.status !== 'active' || !valid) {
+  const credential = await verifyPlatformLocalPasswordCredential(state, {
+    identifier,
+    password: body.password,
+  });
+  if (!credential) {
     await context.dependencies.authStore.updateState((current) =>
       recordFailedLogin(current, {
         subject: throttleSubject,
@@ -201,7 +189,7 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
   }
 
   const issued = issueBrowserSession({
-    accountId: account.id,
+    accountId: credential.account.id,
     sessionSecret,
     ttlMs: context.dependencies.auth.sessionTtlMs,
     now,
@@ -221,8 +209,8 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
     context.response,
     200,
     buildAuthStatusPayload(context.dependencies.auth, {
-      account,
-      membership,
+      account: credential.account,
+      membership: credential.membership,
       session: issued.session,
     }, issued.csrfToken),
     {
@@ -271,19 +259,6 @@ async function resolveBrowserPrincipal(
     sessionSecret,
     now: context.dependencies.now?.() ?? new Date(),
   });
-}
-
-function findLocalPasswordIdentity(
-  state: PlatformAuthState,
-  identifier: string,
-): PlatformIdentityRecord | null {
-  return structuredClone(state.identities.find((identity) =>
-    identity.provider === 'local_password'
-    && (
-      identity.providerSubject === identifier
-      || identity.email?.toLowerCase() === identifier
-    ),
-  ) ?? null);
 }
 
 function buildAuthStatusPayload(

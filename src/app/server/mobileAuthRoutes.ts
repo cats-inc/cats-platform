@@ -11,13 +11,11 @@ import {
   resolveMobilePrincipalFromBearerToken,
   revokeSession,
   summarizePlatformPrincipal,
-  verifyLocalPassword,
+  verifyPlatformLocalPasswordCredential,
   type PlatformAuthStore,
-  type PlatformAuthState,
   type PlatformDevicePlatform,
 } from '../../platform/auth/index.js';
 import type { PlatformAuthConfig } from '../../platform/auth/config.js';
-import type { PlatformIdentityRecord } from '../../platform/auth/types.js';
 import {
   readJsonBody,
   sendJson,
@@ -130,21 +128,11 @@ async function handleMobileLocalLogin(
     await sleep(throttle.delayMs, context.dependencies.sleep);
   }
 
-  const identity = findLocalPasswordIdentity(state, identifier);
-  const account = identity
-    ? state.accounts.find((candidate) => candidate.id === identity.accountId) ?? null
-    : null;
-  const membership = account
-    ? state.memberships.find((candidate) => candidate.accountId === account.id) ?? null
-    : null;
-  const valid = identity?.passwordHash && identity.passwordHashAlgorithm
-    ? await verifyLocalPassword(body.password, {
-        passwordHash: identity.passwordHash,
-        passwordHashAlgorithm: identity.passwordHashAlgorithm,
-      })
-    : false;
-
-  if (!identity || !account || !membership || account.status !== 'active' || !valid) {
+  const credential = await verifyPlatformLocalPasswordCredential(state, {
+    identifier,
+    password: body.password,
+  });
+  if (!credential) {
     await context.dependencies.authStore.updateState((current) =>
       recordFailedLogin(current, {
         subject: throttleSubject,
@@ -157,7 +145,7 @@ async function handleMobileLocalLogin(
   }
 
   const issued = issueMobileDeviceSession({
-    accountId: account.id,
+    accountId: credential.account.id,
     sessionSecret,
     ttlMs: context.dependencies.auth.mobileSessionTtlMs,
     now,
@@ -178,8 +166,8 @@ async function handleMobileLocalLogin(
   });
 
   sendJson(context.response, 200, buildMobileAuthStatusPayload({
-    account,
-    membership,
+    account: credential.account,
+    membership: credential.membership,
     session: issued.session,
   }, issued.token));
 }
@@ -235,19 +223,6 @@ function buildMobileAuthStatusPayload(
     principal: principal ? summarizePlatformPrincipal(principal) : null,
     ...(token ? { token } : {}),
   };
-}
-
-function findLocalPasswordIdentity(
-  state: PlatformAuthState,
-  identifier: string,
-): PlatformIdentityRecord | null {
-  return structuredClone(state.identities.find((identity) =>
-    identity.provider === 'local_password'
-    && (
-      identity.providerSubject === identifier
-      || identity.email?.toLowerCase() === identifier
-    ),
-  ) ?? null);
 }
 
 function readBearerToken(request: IncomingMessage): string | null {
