@@ -15,6 +15,7 @@ import {
   fetchProviderModelCatalogFromClientCache,
 } from '../providerCatalogClient.js';
 import { fetchProviderRegistryFromClientCache } from '../providerRegistryClient.js';
+import { PLATFORM_AUTH_ERROR_CODES } from '../../../platform/auth/errorCodes.js';
 
 interface SetupApiRequestOptions {
   signal?: AbortSignal;
@@ -22,24 +23,70 @@ interface SetupApiRequestOptions {
   errorMessagesByCode?: Readonly<Record<string, string>>;
 }
 
+interface SetupApiErrorDetails {
+  message: string;
+  code: string | null;
+}
+
+export class PlatformSetupApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly code: string | null,
+  ) {
+    super(message);
+    this.name = 'PlatformSetupApiError';
+  }
+}
+
+export function isUnauthenticatedPlatformEnvelopeError(error: unknown): boolean {
+  return error instanceof PlatformSetupApiError
+    && error.status === 401
+    && (
+      error.code === null
+      || error.code === PLATFORM_AUTH_ERROR_CODES.unauthenticated
+    );
+}
+
 export async function readSetupApiErrorMessage(
   response: Response,
   options: SetupApiRequestOptions,
 ): Promise<string> {
+  return (await readSetupApiErrorDetails(response, options)).message;
+}
+
+async function readSetupApiErrorDetails(
+  response: Response,
+  options: SetupApiRequestOptions,
+): Promise<SetupApiErrorDetails> {
   try {
-    const payload = await response.json();
-    if (typeof payload?.error?.code === 'string') {
-      const mappedMessage = options.errorMessagesByCode?.[payload.error.code];
+    const payload = await response.json() as unknown;
+    const error = readSetupApiErrorPayload(payload);
+    if (typeof error?.code === 'string') {
+      const mappedMessage = options.errorMessagesByCode?.[error.code];
       if (mappedMessage) {
-        return mappedMessage;
+        return { message: mappedMessage, code: error.code };
       }
-      return options.fallbackMessageForStatus(response.status);
+      return {
+        message: options.fallbackMessageForStatus(response.status),
+        code: error.code,
+      };
     }
-    if (typeof payload?.error?.message === 'string') {
-      return payload.error.message;
+    if (typeof error?.message === 'string') {
+      return { message: error.message, code: null };
     }
   } catch { /* ignore */ }
-  return options.fallbackMessageForStatus(response.status);
+  return { message: options.fallbackMessageForStatus(response.status), code: null };
+}
+
+function readSetupApiErrorPayload(payload: unknown): { code?: unknown; message?: unknown } | null {
+  if (typeof payload !== 'object' || payload === null) {
+    return null;
+  }
+  const error = (payload as { error?: unknown }).error;
+  return typeof error === 'object' && error !== null
+    ? error as { code?: unknown; message?: unknown }
+    : null;
 }
 
 export async function completePlatformSetup(
@@ -72,7 +119,8 @@ export async function fetchPlatformEnvelope(
   });
 
   if (!response.ok) {
-    throw new Error(options.fallbackMessageForStatus(response.status));
+    const details = await readSetupApiErrorDetails(response, options);
+    throw new PlatformSetupApiError(details.message, response.status, details.code);
   }
 
   return (await response.json()) as PlatformHostEnvelope;

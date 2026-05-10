@@ -59,6 +59,11 @@ import { PLATFORM_ENVELOPE_REFRESH_EVENT } from './platformEnvelopeEvents.js';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
 import { PlatformLoginScreen } from './auth/PlatformLoginScreen.js';
+import {
+  PLATFORM_LOGIN_ROUTE,
+  resolvePlatformEnvelopeLoadFailureDecision,
+  resolvePostAuthenticationEntryPath,
+} from './auth/appAuthRouting.js';
 import { prefetchProviderCatalogsForRegistryFromClientCache } from './providerCatalogClient.js';
 import { fetchProviderRegistryFromClientCache } from './providerRegistryClient.js';
 import { recordSettingsRouteTransition } from './settings/settingsExitMemory.js';
@@ -73,6 +78,7 @@ import { createLazyProductSurface } from './productSurfaceEntries.js';
 
 type PlatformLoadState =
   | { status: 'loading' }
+  | { status: 'unauthenticated' }
   | { status: 'ready'; envelope: PlatformHostEnvelope }
   | { status: 'error'; message: string };
 
@@ -270,11 +276,19 @@ export default function PlatformApp() {
           startTransition(() => setState({ status: 'ready', envelope }));
         }
       } catch (error) {
-        if (!signal?.aborted && !options?.suppressErrors) {
-          setState({
-            status: 'error',
-            message: error instanceof Error ? error.message : t('appLoadErrorMessage'),
-          });
+        if (signal?.aborted) {
+          return;
+        }
+        const decision = resolvePlatformEnvelopeLoadFailureDecision(
+          error,
+          t('appLoadErrorMessage'),
+        );
+        if (decision.status === 'unauthenticated') {
+          startTransition(() => setState({ status: 'unauthenticated' }));
+          return;
+        }
+        if (!options?.suppressErrors) {
+          setState(decision);
         }
       }
     },
@@ -552,6 +566,32 @@ export default function PlatformApp() {
             <p>{state.message}</p>
           </div>
         </div>
+      </I18nProvider>
+    );
+  }
+
+  if (state.status === 'unauthenticated') {
+    return (
+      <I18nProvider
+        languagePreference={uiLanguagePreference}
+        locale={uiLocale}
+        setLanguagePreference={setOptimisticLanguagePreference}
+      >
+        <Routes>
+          <Route
+            path={PLATFORM_LOGIN_ROUTE}
+            element={(
+              <PlatformLoginScreen
+                onAuthenticated={(nextEnvelope) => {
+                  const nextEntryPath = resolvePostAuthenticationEntryPath(nextEnvelope);
+                  flushSync(() => setState({ status: 'ready', envelope: nextEnvelope }));
+                  navigate(nextEntryPath, { replace: true });
+                }}
+              />
+            )}
+          />
+          <Route path="*" element={<Navigate to={PLATFORM_LOGIN_ROUTE} replace />} />
+        </Routes>
       </I18nProvider>
     );
   }

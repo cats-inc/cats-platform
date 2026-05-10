@@ -157,7 +157,7 @@ CSRF; repeated invalid logins are throttled.
 - [x] Task 3.1: Update `/setup` step 1 to collect first-admin local
       credentials without conflating login account fields with owner profile.
 - [x] Task 3.2: Add `/login` route and login screen for existing workspaces.
-- [ ] Task 3.3: Update platform bootstrap loading so unauthenticated app loads
+- [x] Task 3.3: Update platform bootstrap loading so unauthenticated app loads
       redirect to `/login` instead of surfacing raw API failures.
 - [x] Task 3.4: Add logout action in an existing account/settings surface.
 - [ ] Task 3.5: Verify Vite dev proxy and built server both preserve
@@ -591,6 +591,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 3 local login route landed: `/login` now renders a local admin login screen backed by the renderer auth API client and refreshes the app-shell after successful login. Task 3.2 is now checked; automatic unauthenticated redirects remain under Task 3.3. |
 | 2026-05-10 | Phase 3 logout surface landed: Settings > General now exposes a Sign out action that fetches `/api/auth/status` for the current Cats CSRF token, calls `/api/auth/logout`, and routes back to `/login`. Task 3.4 is now checked. |
 | 2026-05-10 | Phase 5 attribution invariant regression landed: actor-attribution tests now build a real auth state with the first admin plus a later admin whose membership has `coreActorId: null`, resolve both principals through the browser-session resolver, and assert the later admin fails closed instead of inheriting `actor-owner`. Task 5.3 is now checked. |
+| 2026-05-10 | Phase 3 unauthenticated app-load redirect landed: `/api/app-shell` 401 responses now enter a renderer unauthenticated state instead of the generic error panel, route users to `/login`, and recover to the normal entry surface after successful login. Task 3.3 is now checked. |
 
 ---
 
