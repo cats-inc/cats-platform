@@ -4,7 +4,9 @@ import test from 'node:test';
 import {
   createEmptyPlatformAuthState,
   createFirstAdminLocalAuthState,
+  issueMobileDeviceSession,
   resolveBrowserPrincipalFromToken,
+  resolveMobilePrincipalFromBearerToken,
   revokeSession,
   summarizePlatformPrincipal,
 } from '../src/platform/auth/index.ts';
@@ -72,6 +74,45 @@ test('browser principal resolver rejects inactive sessions and accounts', async 
     accounts: [{ ...bootstrap.account, status: 'disabled' }],
   }, {
     token: bootstrap.session.token,
+    sessionSecret: SESSION_SECRET,
+    now: NOW,
+  }), null);
+});
+
+test('mobile principal resolver maps bearer session without browser csrf', async () => {
+  const bootstrap = await createFirstAdminLocalAuthState({
+    state: createEmptyPlatformAuthState(NOW),
+    displayName: 'Owner',
+    identifier: 'owner@example.test',
+    password: 'correct-password',
+    sessionSecret: SESSION_SECRET,
+    sessionTtlMs: 60_000,
+    now: NOW,
+  });
+  const mobile = issueMobileDeviceSession({
+    accountId: bootstrap.account.id,
+    sessionSecret: SESSION_SECRET,
+    ttlMs: 60_000,
+    now: NOW,
+    deviceLabel: 'Owner iPhone',
+    devicePlatform: 'ios',
+  });
+  const state = {
+    ...bootstrap.state,
+    sessions: [mobile.session],
+  };
+  const principal = resolveMobilePrincipalFromBearerToken(state, {
+    token: mobile.token,
+    sessionSecret: SESSION_SECRET,
+    now: NOW,
+  });
+
+  assert.ok(principal);
+  assert.equal(principal.session.kind, 'mobile_device');
+  assert.equal(principal.session.csrfTokenHash, undefined);
+  assert.equal(summarizePlatformPrincipal(principal).accountId, bootstrap.account.id);
+  assert.equal(resolveBrowserPrincipalFromToken(state, {
+    token: mobile.token,
     sessionSecret: SESSION_SECRET,
     now: NOW,
   }), null);

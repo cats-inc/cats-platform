@@ -5,6 +5,7 @@ import type {
   PlatformMembershipRecord,
   PlatformPrincipal,
   PlatformSessionRecord,
+  PlatformSessionKind,
 } from './types.js';
 
 export interface PlatformPrincipalSummary {
@@ -24,9 +25,38 @@ export function resolveBrowserPrincipalFromToken(
     now?: Date;
   },
 ): PlatformPrincipal | null {
+  return resolvePrincipalFromToken(state, {
+    ...input,
+    kind: 'browser',
+  });
+}
+
+export function resolveMobilePrincipalFromBearerToken(
+  state: PlatformAuthState,
+  input: {
+    token: string;
+    sessionSecret: string;
+    now?: Date;
+  },
+): PlatformPrincipal | null {
+  return resolvePrincipalFromToken(state, {
+    ...input,
+    kind: 'mobile_device',
+  });
+}
+
+function resolvePrincipalFromToken(
+  state: PlatformAuthState,
+  input: {
+    token: string;
+    sessionSecret: string;
+    kind: PlatformSessionKind;
+    now?: Date;
+  },
+): PlatformPrincipal | null {
   const tokenHash = hashSessionToken(input.token, input.sessionSecret);
   const session = state.sessions.find((candidate) =>
-    candidate.kind === 'browser'
+    candidate.kind === input.kind
     && candidate.tokenHash === tokenHash
     && isSessionActive(candidate, input.now ?? new Date()),
   ) ?? null;
