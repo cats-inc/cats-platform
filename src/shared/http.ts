@@ -1,10 +1,19 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { PlatformPrincipal } from '../platform/auth/index.js';
+
+export type RouteAuthCredentialKind = 'browser_cookie' | 'mobile_bearer';
+
+export interface RouteAuthContext {
+  principal: PlatformPrincipal | null;
+  credentialKind: RouteAuthCredentialKind | null;
+}
 
 export interface RouteContext<TDependencies> {
   request: IncomingMessage;
   response: ServerResponse;
   url: URL;
   method: string;
+  auth?: RouteAuthContext;
   dependencies: TDependencies;
 }
 

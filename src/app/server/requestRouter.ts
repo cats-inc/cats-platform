@@ -35,6 +35,7 @@ import {
 import {
   matchRoute,
   readJsonBody,
+  type RouteAuthContext,
   sendBinary,
   sendJson,
   sendMethodNotAllowed,
@@ -56,6 +57,10 @@ import {
   getAppReadinessSnapshot,
   getAppShutdownContract,
 } from './startup.js';
+
+type PlatformAuthGateHandlingResult =
+  | { handled: true }
+  | { handled: false; auth: RouteAuthContext | null };
 
 const WEB_BUILD_ROOT = path.resolve(path.dirname(process.argv[1]!), '..', 'renderer');
 const MIME_TYPES: Record<string, string> = {
@@ -318,7 +323,7 @@ async function handlePlatformAuthGate(
   url: URL,
   method: string,
   dependencies: ResolvedServerDependencies,
-): Promise<boolean> {
+): Promise<PlatformAuthGateHandlingResult> {
   const { auth } = dependencies.shared.config;
   const [core, authStateStatus] = await Promise.all([
     dependencies.shared.coreStore.readCore(),
@@ -336,10 +341,10 @@ async function handlePlatformAuthGate(
         message: effectiveMode.message,
       },
     });
-    return true;
+    return { handled: true };
   }
   if (effectiveMode.status === 'unsafe_disabled') {
-    return false;
+    return { handled: false, auth: null };
   }
 
   const readiness = resolvePlatformAuthReadiness({
@@ -358,7 +363,7 @@ async function handlePlatformAuthGate(
 
   if (!decision.allowed) {
     sendPlatformAuthGateRejection(response, decision);
-    return true;
+    return { handled: true };
   }
 
   if (decision.policy.minimalEnvelope && decision.principal === null) {
@@ -370,10 +375,16 @@ async function handlePlatformAuthGate(
       authStateStatus: readiness.authStateStatus,
       now: dependencies.shared.now?.(),
     }));
-    return true;
+    return { handled: true };
   }
 
-  return false;
+  return {
+    handled: false,
+    auth: {
+      principal: decision.principal,
+      credentialKind: decision.credentialKind,
+    },
+  };
 }
 
 export async function routeRequest(
@@ -386,11 +397,27 @@ export async function routeRequest(
     `http://${request.headers.host ?? 'localhost'}`,
   );
   const method = request.method ?? 'GET';
+
+  if (url.pathname === '/health') {
+    if (method !== 'GET') {
+      sendMethodNotAllowed(response, ['GET']);
+      return;
+    }
+    await handleHealth(dependencies, response);
+    return;
+  }
+
+  const authGateResult = await handlePlatformAuthGate(request, response, url, method, dependencies);
+  if (authGateResult.handled) {
+    return;
+  }
+
   const context = {
     request,
     response,
     url,
     method,
+    ...(authGateResult.auth ? { auth: authGateResult.auth } : {}),
   };
 
   const coreContext = {
@@ -484,19 +511,6 @@ export async function routeRequest(
         .setupCompleteAt,
     },
   };
-
-  if (url.pathname === '/health') {
-    if (method !== 'GET') {
-      sendMethodNotAllowed(response, ['GET']);
-      return;
-    }
-    await handleHealth(dependencies, response);
-    return;
-  }
-
-  if (await handlePlatformAuthGate(request, response, url, method, dependencies)) {
-    return;
-  }
 
   if (url.pathname === '/api/shell/browse') {
     if (method !== 'GET') {
