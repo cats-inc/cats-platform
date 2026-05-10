@@ -569,6 +569,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 5 attribution prerequisite slice started: added a fail-closed helper for resolving Core actor attribution from authenticated principals, so memberships with `coreActorId: null` cannot silently fall back to `actor-owner`. Product write paths still need to adopt the helper before Tasks 5.1-5.3 can be checked off. |
 | 2026-05-10 | Auth gate response adapter slice landed: the shared gate evaluator now has a single HTTP rejection sender for pinned `E_UNAUTHENTICATED` and `E_CSRF_MISMATCH` JSON bodies. Request-router installation remains pending. |
 | 2026-05-10 | Phase 4 Google account bootstrap slice started: added a domain helper for creating the first admin account, Google identity, owner/admin membership, and browser session from a verified Google identity. Browser Google HTTP setup/login routes remain pending. |
+| 2026-05-10 | Phase 4 Google linked-login domain slice landed: added a helper that issues a browser session for an existing active linked Google identity, refreshes display email/avatar metadata, and fails closed for unknown or disabled accounts. Browser Google HTTP route remains pending. |
 
 ---
 

@@ -25,6 +25,22 @@ export interface CreateFirstAdminGoogleResult {
   session: BrowserSessionIssueResult;
 }
 
+export interface CreateGoogleBrowserSessionInput {
+  state: PlatformAuthState;
+  identity: PlatformVerifiedGoogleIdentity;
+  sessionSecret: string;
+  sessionTtlMs: number;
+  now?: Date;
+}
+
+export interface CreateGoogleBrowserSessionResult {
+  state: PlatformAuthState;
+  account: PlatformAccountRecord;
+  identity: PlatformIdentityRecord;
+  membership: PlatformMembershipRecord;
+  session: BrowserSessionIssueResult;
+}
+
 export function createFirstAdminGoogleAuthState(
   input: CreateFirstAdminGoogleInput,
 ): CreateFirstAdminGoogleResult {
@@ -79,6 +95,62 @@ export function createFirstAdminGoogleAuthState(
     account,
     identity: providerIdentity,
     membership,
+    session,
+  };
+}
+
+export function createGoogleBrowserSessionForLinkedIdentity(
+  input: CreateGoogleBrowserSessionInput,
+): CreateGoogleBrowserSessionResult | null {
+  const providerIdentity = input.state.identities.find((candidate) =>
+    candidate.provider === 'google'
+    && candidate.providerSubject === input.identity.providerSubject,
+  ) ?? null;
+  const account = providerIdentity
+    ? input.state.accounts.find((candidate) => candidate.id === providerIdentity.accountId) ?? null
+    : null;
+  const membership = account
+    ? input.state.memberships.find((candidate) => candidate.accountId === account.id) ?? null
+    : null;
+  if (!providerIdentity || !account || !membership || account.status !== 'active') {
+    return null;
+  }
+
+  const now = input.now ?? new Date();
+  const nowIso = now.toISOString();
+  const session = issueBrowserSession({
+    accountId: account.id,
+    sessionSecret: input.sessionSecret,
+    ttlMs: input.sessionTtlMs,
+    now,
+  });
+  const updatedIdentity: PlatformIdentityRecord = {
+    ...providerIdentity,
+    email: input.identity.email,
+    updatedAt: nowIso,
+  };
+  const updatedAccount: PlatformAccountRecord = {
+    ...account,
+    email: input.identity.email,
+    avatarUrl: input.identity.avatarUrl ?? account.avatarUrl,
+    updatedAt: nowIso,
+  };
+
+  return {
+    state: {
+      ...input.state,
+      updatedAt: nowIso,
+      accounts: input.state.accounts.map((candidate) =>
+        candidate.id === account.id ? updatedAccount : candidate,
+      ),
+      identities: input.state.identities.map((candidate) =>
+        candidate.id === providerIdentity.id ? updatedIdentity : candidate,
+      ),
+      sessions: [...input.state.sessions, session.session],
+    },
+    account: updatedAccount,
+    identity: updatedIdentity,
+    membership: structuredClone(membership),
     session,
   };
 }
