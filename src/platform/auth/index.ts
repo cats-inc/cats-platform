@@ -1,6 +1,7 @@
 export * from './bootstrap.js';
 export * from './bootstrapEnvelope.js';
 export * from './config.js';
+export * from './cookies.js';
 export * from './password.js';
 export * from './session.js';
 export * from './state.js';

@@ -351,6 +351,8 @@ export async function routeRequest(
       providerCapabilityBootstrapConfig: dependencies.shared.providerCapabilityBootstrapConfig,
       providerCapabilityBootstrapDiagnosticSink:
         dependencies.shared.providerCapabilityBootstrapDiagnosticSink,
+      authStore: dependencies.shared.authStore,
+      auth: dependencies.shared.config.auth,
       now: dependencies.shared.now,
     },
   };

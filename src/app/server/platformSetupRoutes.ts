@@ -9,7 +9,10 @@ import {
 } from '../../shared/platformEnvelopeMetadata.js';
 import { appendPlatformOnboardingEvent } from '../../shared/platformOnboardingHistory.js';
 import { listPlatformProductDescriptors } from '../../shared/platformProducts.js';
-import { readPlatformPreferences, writePlatformPreferences } from '../../shared/platformPreferences.js';
+import {
+  readPlatformPreferences,
+  writePlatformPreferences,
+} from '../../shared/platformPreferences.js';
 import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
 import {
   readRuntimeSetupSummary,
@@ -19,6 +22,13 @@ import {
   enqueueGuideCatAssistRefreshIfRuntimeReachable,
   type ChatApiDependencies,
 } from '../../products/chat/api/routeSupport.js';
+import {
+  createFirstAdminLocalAuthState,
+  serializeAuthSessionCookie,
+  type PlatformAuthStore,
+  type PlatformAuthState,
+} from '../../platform/auth/index.js';
+import type { PlatformAuthConfig } from '../../platform/auth/config.js';
 import type { RouteContext } from '../../shared/http.js';
 import {
   buildSetupDebugContext,
@@ -29,7 +39,14 @@ import { routePlatformGuideCatApi } from './platformSetupGuideCatRoutes.js';
 import { routePlatformPreferenceApi } from './platformSetupPreferenceRoutes.js';
 import { resolveGuideCatSystemName } from '../../shared/guideCatIdentity.js';
 
-export type PlatformSetupContext = RouteContext<ChatApiDependencies>;
+export interface PlatformSetupAuthDependencies {
+  authStore: PlatformAuthStore;
+  auth: PlatformAuthConfig;
+}
+
+export type PlatformSetupContext = RouteContext<
+  ChatApiDependencies & PlatformSetupAuthDependencies
+>;
 
 const GUIDE_CAT_PRIMARY_ID = 'guide-cat-primary';
 
@@ -41,6 +58,8 @@ interface LegacyPlatformSetupCompleteInput extends PlatformSetupCompleteInput {
   bossCatModelSelection?: ProviderModelSelection | null;
   /** @deprecated No longer sent by the wizard. */
   selectedProduct?: string;
+  adminIdentifier?: string;
+  adminPassword?: string;
 }
 
 function reportSyncFailure(scope: string, error: unknown): void {
@@ -89,6 +108,8 @@ async function handlePlatformSetupComplete(
   const now = context.dependencies.now?.() ?? new Date();
   let core = await context.dependencies.chatStore.readCore();
   let chatState = await context.dependencies.chatStore.read();
+  const previousCore = structuredClone(core);
+  const previousChatState = structuredClone(chatState);
 
   if (core.setupCompleteAt) {
     sendJson(context.response, 409, {
@@ -101,8 +122,22 @@ async function handlePlatformSetupComplete(
   }
 
   const ownerDisplayName = body.ownerDisplayName?.trim() || 'Owner';
+  let adminCredentials: { identifier: string; password: string } | null;
+  try {
+    adminCredentials = readOptionalAdminCredentials(body);
+  } catch (error) {
+    sendJson(context.response, 400, {
+      error: {
+        code: 'bad_request',
+        message: error instanceof Error ? error.message : 'Invalid admin credentials.',
+      },
+    });
+    return;
+  }
   const createGuideCat = body.createGuideCat ?? body.createBossCat ?? false;
-  const resolvedGuideCatName = resolveGuideCatSystemName(context.request.headers['accept-language']);
+  const resolvedGuideCatName = resolveGuideCatSystemName(
+    context.request.headers['accept-language'],
+  );
   const guideCatName = createGuideCat ? resolvedGuideCatName : null;
   const guideCatProvider = body.guideCatProvider ?? body.bossCatProvider;
   const guideCatInstance = body.guideCatInstance ?? body.bossCatInstance;
@@ -131,6 +166,15 @@ async function handlePlatformSetupComplete(
   });
 
   try {
+    const firstAdminSession = adminCredentials
+      ? await prepareFirstAdminDuringSetup(context, {
+          displayName: ownerDisplayName,
+          identifier: adminCredentials.identifier,
+          password: adminCredentials.password,
+          now,
+        })
+      : null;
+
     if (createGuideCat) {
       const nowIso = now.toISOString();
       createdGuideCatId = core.guideCat?.id ?? GUIDE_CAT_PRIMARY_ID;
@@ -166,6 +210,14 @@ async function handlePlatformSetupComplete(
 
     // Commit chat/core as one persisted snapshot so setup cannot land in a half-written state.
     await context.dependencies.chatStore.writeSnapshot(chatState, core);
+    if (firstAdminSession) {
+      try {
+        await context.dependencies.authStore.writeState(firstAdminSession.state);
+      } catch (error) {
+        await context.dependencies.chatStore.writeSnapshot(previousChatState, previousCore);
+        throw error;
+      }
+    }
     await enqueueGuideCatAssistRefreshIfRuntimeReachable(context.dependencies, {
       guideCat: createGuideCat ? core.guideCat : null,
       ownerDisplayName: core.ownerProfile.displayName,
@@ -194,7 +246,9 @@ async function handlePlatformSetupComplete(
     // Best-effort: honour legacy selectedProduct if the client still sends it.
     if (legacyProduct === 'chat' || legacyProduct === 'work' || legacyProduct === 'code') {
       try {
-        const currentPrefs = await readPlatformPreferences(context.dependencies.config.chatStatePath);
+        const currentPrefs = await readPlatformPreferences(
+          context.dependencies.config.chatStatePath,
+        );
         await writePlatformPreferences(context.dependencies.config.chatStatePath, {
           ...currentPrefs,
           lastProductSurface: legacyProduct,
@@ -282,7 +336,19 @@ async function handlePlatformSetupComplete(
       },
     });
 
-    sendJson(context.response, 200, payload);
+    sendJson(
+      context.response,
+      200,
+      payload,
+      firstAdminSession
+        ? {
+            'Set-Cookie': serializeAuthSessionCookie(
+              firstAdminSession.token,
+              context.dependencies.auth.sessionTtlMs,
+            ),
+          }
+        : undefined,
+    );
   } catch (error) {
     reportSyncFailure('setup_complete', error);
     await recordProductEvent(context, {
@@ -312,6 +378,52 @@ async function handlePlatformSetupComplete(
       },
     });
   }
+}
+
+function readOptionalAdminCredentials(
+  body: LegacyPlatformSetupCompleteInput,
+): { identifier: string; password: string } | null {
+  const identifier = typeof body.adminIdentifier === 'string'
+    ? body.adminIdentifier.trim()
+    : '';
+  const password = typeof body.adminPassword === 'string'
+    ? body.adminPassword
+    : '';
+  if (!identifier && !password) {
+    return null;
+  }
+  if (!identifier || !password) {
+    throw new Error('Admin identifier and password are both required.');
+  }
+  return { identifier, password };
+}
+
+async function prepareFirstAdminDuringSetup(
+  context: PlatformSetupContext,
+  input: {
+    displayName: string;
+    identifier: string;
+    password: string;
+    now: Date;
+  },
+): Promise<{ state: PlatformAuthState; token: string } | null> {
+  const sessionSecret = context.dependencies.auth.sessionSecret;
+  if (!sessionSecret) {
+    throw new Error('CATS_AUTH_SESSION_SECRET is required to create the first admin session.');
+  }
+  const created = await createFirstAdminLocalAuthState({
+    state: await context.dependencies.authStore.readState(),
+    displayName: input.displayName,
+    identifier: input.identifier,
+    password: input.password,
+    sessionSecret,
+    sessionTtlMs: context.dependencies.auth.sessionTtlMs,
+    now: input.now,
+  });
+  return {
+    state: created.state,
+    token: created.session.token,
+  };
 }
 
 export async function routePlatformSetupApi(

@@ -11,6 +11,9 @@ import {
   recordFailedLogin,
   recordSuccessfulLogin,
   revokeSession,
+  AUTH_SESSION_COOKIE_NAME,
+  clearAuthSessionCookie,
+  serializeAuthSessionCookie,
   touchSession,
   verifySessionTokenHash,
   verifyLocalPassword,
@@ -30,8 +33,6 @@ import {
   sendMethodNotAllowed,
   type RouteContext,
 } from '../../shared/http.js';
-
-export const AUTH_SESSION_COOKIE_NAME = 'cats_session';
 
 export interface AuthRouteDependencies {
   authStore: PlatformAuthStore;
@@ -240,7 +241,7 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
       session: issued.session,
     }, issued.csrfToken),
     {
-      'Set-Cookie': serializeSessionCookie(
+      'Set-Cookie': serializeAuthSessionCookie(
         issued.token,
         context.dependencies.auth.sessionTtlMs,
       ),
@@ -267,7 +268,7 @@ async function handleLogout(context: RouteContext<AuthRouteDependencies>): Promi
     context.response,
     200,
     buildAuthStatusPayload(context.dependencies.auth, null, null),
-    { 'Set-Cookie': clearSessionCookie() },
+    { 'Set-Cookie': clearAuthSessionCookie() },
   );
 }
 
@@ -416,26 +417,6 @@ function readCookie(request: IncomingMessage, name: string): string | null {
     }
   }
   return null;
-}
-
-function serializeSessionCookie(token: string, ttlMs: number): string {
-  return [
-    `${AUTH_SESSION_COOKIE_NAME}=${encodeURIComponent(token)}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    `Max-Age=${Math.max(1, Math.floor(ttlMs / 1000))}`,
-  ].join('; ');
-}
-
-function clearSessionCookie(): string {
-  return [
-    `${AUTH_SESSION_COOKIE_NAME}=`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    'Max-Age=0',
-  ].join('; ');
 }
 
 function readRemoteAddress(request: IncomingMessage): string | undefined {
