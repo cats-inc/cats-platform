@@ -253,7 +253,7 @@ product write path.
       revocation, expiration, and token-hash lookup.
 - [x] Task 6.3: Add Google verifier tests with injected fake verifier/JWKS
       instead of live Google calls.
-- [ ] Task 6.4: Add CSRF tests for Google credential POST and authenticated
+- [x] Task 6.4: Add CSRF tests for Google credential POST and authenticated
       mutations.
 - [x] Task 6.5: Update `docs/api.md`, `docs/setup-guide.md`,
       `docs/deployment.md`, and `.env.example`. The setup-guide and deployment
@@ -592,6 +592,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 3 logout surface landed: Settings > General now exposes a Sign out action that fetches `/api/auth/status` for the current Cats CSRF token, calls `/api/auth/logout`, and routes back to `/login`. Task 3.4 is now checked. |
 | 2026-05-10 | Phase 5 attribution invariant regression landed: actor-attribution tests now build a real auth state with the first admin plus a later admin whose membership has `coreActorId: null`, resolve both principals through the browser-session resolver, and assert the later admin fails closed instead of inheriting `actor-owner`. Task 5.3 is now checked. |
 | 2026-05-10 | Phase 3 unauthenticated app-load redirect landed: `/api/app-shell` 401 responses now enter a renderer unauthenticated state instead of the generic error panel, route users to `/login`, and recover to the normal entry surface after successful login. Task 3.3 is now checked. |
+| 2026-05-10 | Phase 6 CSRF regression slice landed: auth route tests now assert browser logout rejects GIS `g_csrf_token` as a Cats CSRF substitute, while Google credential POST rejects `X-Cats-CSRF-Token` as a GIS CSRF substitute. Task 6.4 is now checked. |
 
 ---
 

@@ -141,6 +141,32 @@ test('platform auth logout rejects missing csrf for active browser sessions', as
   assert.equal(stillAuthenticated.payload?.authenticated, true);
 });
 
+test('platform auth logout rejects google csrf as a Cats csrf substitute', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store);
+  await listen(server);
+  t.after(() => server.close());
+
+  const login = await request(server, '/api/auth/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  const cookie = `${(login.setCookie ?? '').split(';')[0]!}; g_csrf_token=google-csrf-token`;
+
+  const response = await request(server, '/api/auth/logout', {
+    method: 'POST',
+    cookie,
+    body: { g_csrf_token: 'google-csrf-token' },
+  });
+
+  assert.equal(response.status, 403);
+  assert.equal(errorCode(response.payload), 'E_CSRF_MISMATCH');
+  const stillAuthenticated = await request(server, '/api/auth/status', { cookie });
+  assert.equal(stillAuthenticated.payload?.authenticated, true);
+});
+
 test('platform auth logout rejects stale csrf after status rotation', async (t) => {
   const store = await createSeededStore();
   const server = createTestServer(store);
@@ -260,6 +286,26 @@ test('platform auth google login rejects missing google csrf token', async (t) =
     secFetchSite: 'same-origin',
     body: { credential: 'id-token' },
   });
+  assert.equal(response.status, 403);
+  assert.equal(errorCode(response.payload), 'E_FORBIDDEN');
+});
+
+test('platform auth google login does not accept Cats csrf in place of GIS csrf', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+  }, fakeGoogleVerifier({}));
+  await listen(server);
+  t.after(() => server.close());
+
+  const response = await request(server, '/api/auth/google/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    csrfToken: 'cats-csrf-token',
+    body: { credential: 'id-token', csrfToken: null },
+  });
+
   assert.equal(response.status, 403);
   assert.equal(errorCode(response.payload), 'E_FORBIDDEN');
 });
