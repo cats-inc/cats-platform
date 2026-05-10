@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  PlatformAuthApiError,
   fetchPlatformAuthStatus,
   loginPlatformGoogle,
   loginPlatformLocal,
   logoutPlatformSession,
   readPlatformAuthApiErrorMessage,
+  runPlatformAuthCsrfMutation,
 } from '../src/app/renderer/auth/api.ts';
 import { PLATFORM_AUTH_ERROR_CODES } from '../src/platform/auth/errorCodes.ts';
 
@@ -93,6 +95,140 @@ test('renderer auth api maps pinned error codes instead of matching messages', a
   assert.equal(message, 'Refresh auth status and retry.');
 });
 
+test('renderer auth csrf mutation refreshes status and retries once on csrf mismatch', async () => {
+  const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    calls.push({ input, init });
+    if (input === '/api/auth/status') {
+      const csrfToken = calls.filter((call) => call.input === '/api/auth/status').length === 1
+        ? 'stale-csrf'
+        : 'fresh-csrf';
+      return jsonResponse({
+        authenticated: true,
+        principal: null,
+        csrfToken,
+        providers: { google: { enabled: false, clientId: null } },
+      });
+    }
+    const csrfHeader = readHeader(init, 'x-cats-csrf-token');
+    if (csrfHeader === 'stale-csrf') {
+      return jsonResponse({
+        error: {
+          code: PLATFORM_AUTH_ERROR_CODES.csrfMismatch,
+          message: 'server wording may change',
+        },
+      }, { status: 403 });
+    }
+    return jsonResponse({
+      authenticated: false,
+      principal: null,
+      csrfToken: null,
+      providers: { google: { enabled: false, clientId: null } },
+    });
+  };
+  try {
+    const result = await runPlatformAuthCsrfMutation(
+      (csrfToken) => logoutPlatformSession(csrfToken, fallbackOptions()),
+      fallbackOptions(),
+    );
+
+    assert.equal(result.authenticated, false);
+    assert.deepEqual(calls.map((call) => call.input), [
+      '/api/auth/status',
+      '/api/auth/logout',
+      '/api/auth/status',
+      '/api/auth/logout',
+    ]);
+    assert.equal(readHeader(calls[1]?.init, 'x-cats-csrf-token'), 'stale-csrf');
+    assert.equal(readHeader(calls[3]?.init, 'x-cats-csrf-token'), 'fresh-csrf');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('renderer auth csrf mutation does not retry non-csrf authorization failures', async () => {
+  const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    calls.push({ input, init });
+    if (input === '/api/auth/status') {
+      return jsonResponse({
+        authenticated: true,
+        principal: null,
+        csrfToken: 'csrf-token',
+        providers: { google: { enabled: false, clientId: null } },
+      });
+    }
+    return jsonResponse({
+      error: {
+        code: PLATFORM_AUTH_ERROR_CODES.forbidden,
+        message: 'forbidden wording may change',
+      },
+    }, { status: 403 });
+  };
+  try {
+    await assert.rejects(
+      () => runPlatformAuthCsrfMutation(
+        (csrfToken) => logoutPlatformSession(csrfToken, fallbackOptions()),
+        fallbackOptions(),
+      ),
+      (error) =>
+        error instanceof PlatformAuthApiError
+        && error.code === PLATFORM_AUTH_ERROR_CODES.forbidden,
+    );
+
+    assert.deepEqual(calls.map((call) => call.input), [
+      '/api/auth/status',
+      '/api/auth/logout',
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('renderer auth csrf mutation surfaces a second csrf mismatch as hard error', async () => {
+  const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    calls.push({ input, init });
+    if (input === '/api/auth/status') {
+      return jsonResponse({
+        authenticated: true,
+        principal: null,
+        csrfToken: `csrf-${calls.filter((call) => call.input === '/api/auth/status').length}`,
+        providers: { google: { enabled: false, clientId: null } },
+      });
+    }
+    return jsonResponse({
+      error: {
+        code: PLATFORM_AUTH_ERROR_CODES.csrfMismatch,
+        message: 'still stale',
+      },
+    }, { status: 403 });
+  };
+  try {
+    await assert.rejects(
+      () => runPlatformAuthCsrfMutation(
+        (csrfToken) => logoutPlatformSession(csrfToken, fallbackOptions()),
+        fallbackOptions(),
+      ),
+      (error) =>
+        error instanceof PlatformAuthApiError
+        && error.code === PLATFORM_AUTH_ERROR_CODES.csrfMismatch,
+    );
+
+    assert.deepEqual(calls.map((call) => call.input), [
+      '/api/auth/status',
+      '/api/auth/logout',
+      '/api/auth/status',
+      '/api/auth/logout',
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 function fallbackOptions() {
   return {
     fallbackMessageForStatus: (status: number) => `Request failed (${status}).`,
@@ -104,4 +240,15 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
     status: init.status ?? 200,
     headers: { 'content-type': 'application/json' },
   });
+}
+
+function readHeader(init: RequestInit | undefined, name: string): string | null {
+  const headers = init?.headers;
+  if (!headers || Array.isArray(headers)) {
+    return null;
+  }
+  if (headers instanceof Headers) {
+    return headers.get(name);
+  }
+  return headers[name] ?? null;
 }

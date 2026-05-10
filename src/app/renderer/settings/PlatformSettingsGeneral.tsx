@@ -28,8 +28,9 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n/index.js';
 import {
-  fetchPlatformAuthStatus,
   logoutPlatformSession,
+  runPlatformAuthCsrfMutation,
+  type PlatformAuthApiRequestOptions,
 } from '../auth/api.js';
 import { PLATFORM_AUTH_ERROR_CODES } from '../../../platform/auth/errorCodes.js';
 
@@ -331,15 +332,7 @@ export function PlatformSettingsGeneral({
   async function signOut(): Promise<void> {
     setSigningOut(true);
     try {
-      const status = await fetchPlatformAuthStatus({
-        fallbackMessageForStatus: (statusCode) =>
-          t('settingsGeneralSignOutFailedWithStatus', { status: statusCode }),
-      });
-      if (!status.csrfToken) {
-        navigate('/login', { replace: true });
-        return;
-      }
-      await logoutPlatformSession(status.csrfToken, {
+      const authOptions: PlatformAuthApiRequestOptions = {
         fallbackMessageForStatus: (statusCode) =>
           t('settingsGeneralSignOutFailedWithStatus', { status: statusCode }),
         errorMessagesByCode: {
@@ -347,7 +340,11 @@ export function PlatformSettingsGeneral({
           [PLATFORM_AUTH_ERROR_CODES.forbidden]: t('settingsGeneralSignOutForbiddenError'),
           [PLATFORM_AUTH_ERROR_CODES.unauthenticated]: t('settingsGeneralSignOutUnauthenticated'),
         },
-      });
+      };
+      await runPlatformAuthCsrfMutation(
+        (csrfToken) => logoutPlatformSession(csrfToken, authOptions),
+        authOptions,
+      );
       navigate('/login', { replace: true });
     } catch (error) {
       showToast(error instanceof Error ? error.message : t('settingsGeneralSignOutFailed'));

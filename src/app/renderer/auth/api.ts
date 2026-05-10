@@ -39,10 +39,40 @@ export interface PlatformAuthApiRequestOptions {
   errorMessagesByCode?: Partial<Record<PlatformAuthErrorCode, string>>;
 }
 
+interface PlatformAuthApiErrorDetails {
+  message: string;
+  code: PlatformAuthErrorCode | null;
+}
+
+export class PlatformAuthApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly code: PlatformAuthErrorCode | null,
+  ) {
+    super(message);
+    this.name = 'PlatformAuthApiError';
+  }
+}
+
+export function isPlatformAuthApiErrorWithCode(
+  error: unknown,
+  code: PlatformAuthErrorCode,
+): error is PlatformAuthApiError {
+  return error instanceof PlatformAuthApiError && error.code === code;
+}
+
 export async function readPlatformAuthApiErrorMessage(
   response: Response,
   options: PlatformAuthApiRequestOptions,
 ): Promise<string> {
+  return (await readPlatformAuthApiErrorDetails(response, options)).message;
+}
+
+async function readPlatformAuthApiErrorDetails(
+  response: Response,
+  options: PlatformAuthApiRequestOptions,
+): Promise<PlatformAuthApiErrorDetails> {
   try {
     const payload = await response.json() as unknown;
     const error = readErrorPayload(payload);
@@ -50,17 +80,17 @@ export async function readPlatformAuthApiErrorMessage(
       const code = error.code as PlatformAuthErrorCode;
       const mappedMessage = options.errorMessagesByCode?.[code];
       if (mappedMessage) {
-        return mappedMessage;
+        return { message: mappedMessage, code };
       }
-      return options.fallbackMessageForStatus(response.status);
+      return { message: options.fallbackMessageForStatus(response.status), code };
     }
     if (typeof error?.message === 'string') {
-      return error.message;
+      return { message: error.message, code: null };
     }
   } catch {
     // Fall through to the status-based message.
   }
-  return options.fallbackMessageForStatus(response.status);
+  return { message: options.fallbackMessageForStatus(response.status), code: null };
 }
 
 export async function fetchPlatformAuthStatus(
@@ -122,14 +152,45 @@ export async function logoutPlatformSession(
   return readPlatformAuthJsonResponse(response, options);
 }
 
+export async function runPlatformAuthCsrfMutation<T>(
+  mutation: (csrfToken: string) => Promise<T>,
+  options: PlatformAuthApiRequestOptions,
+): Promise<T> {
+  const firstStatus = await fetchPlatformAuthStatus(options);
+  const firstCsrfToken = readRequiredCsrfToken(firstStatus);
+  try {
+    return await mutation(firstCsrfToken);
+  } catch (error) {
+    if (!isPlatformAuthApiErrorWithCode(error, 'E_CSRF_MISMATCH')) {
+      throw error;
+    }
+  }
+
+  const refreshedStatus = await fetchPlatformAuthStatus(options);
+  return mutation(readRequiredCsrfToken(refreshedStatus));
+}
+
 async function readPlatformAuthJsonResponse(
   response: Response,
   options: PlatformAuthApiRequestOptions,
 ): Promise<PlatformAuthStatusPayload> {
   if (!response.ok) {
-    throw new Error(await readPlatformAuthApiErrorMessage(response, options));
+    const details = await readPlatformAuthApiErrorDetails(response, options);
+    throw new PlatformAuthApiError(details.message, response.status, details.code);
   }
   return (await response.json()) as PlatformAuthStatusPayload;
+}
+
+function readRequiredCsrfToken(status: PlatformAuthStatusPayload): string {
+  const token = status.csrfToken?.trim();
+  if (!token) {
+    throw new PlatformAuthApiError(
+      'Authenticated session did not return a Cats CSRF token.',
+      403,
+      'E_CSRF_MISMATCH',
+    );
+  }
+  return token;
 }
 
 function readErrorPayload(value: unknown): { code?: unknown; message?: unknown } | null {

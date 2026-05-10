@@ -134,7 +134,7 @@ re-opens LAN admin bootstrap.
       when it is not routed into structured/remote logging. The token shall be
       single-use, rotate on every repair-mode start-up, and be invalidated after
       first-admin re-creation or platform restart.
-- [ ] Task 2.14: Pin error response codes for the auth/CSRF gate. Use stable
+- [x] Task 2.14: Pin error response codes for the auth/CSRF gate. Use stable
       structured `code` fields: `E_UNAUTHENTICATED` for `401`, `E_FORBIDDEN`
       for plain authorization failures, and `E_CSRF_MISMATCH` for CSRF
       failures. The renderer logic shall key on these codes, never on
@@ -595,6 +595,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 6 CSRF regression slice landed: auth route tests now assert browser logout rejects GIS `g_csrf_token` as a Cats CSRF substitute, while Google credential POST rejects `X-Cats-CSRF-Token` as a GIS CSRF substitute. Task 6.4 is now checked. |
 | 2026-05-10 | Phase 5 account-management boundary documented: API and setup docs now state that first-admin creation is the only v1 account UI, only that membership maps to `actor-owner`, later memberships keep `coreActorId: null`, and invitations/password reset/role editing/non-admin policy are follow-up work. Task 5.4 is now checked. |
 | 2026-05-10 | Phase 4b manifest safety regression started: source-level mobile route tests now assert the diagnostic manifest, Expo Go manifest, and served bundle do not append server config secrets, auth-state/recovery-token paths, session cookie names, bearer-token markers, or fake product-data identifiers. Task 4b.8 remains open until bearer-gated mobile product-data requests are installed and covered. |
+| 2026-05-10 | Phase 2 renderer CSRF retry landed: auth API errors now carry stable `status/code`, renderer mutation helper refreshes `/api/auth/status` and retries exactly once only for `E_CSRF_MISMATCH`, Settings sign-out uses the helper, and tests assert no retry on `E_FORBIDDEN` plus hard failure on a second CSRF mismatch. Task 2.14 is now checked. |
 
 ---
 
