@@ -581,6 +581,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2 setup-reset protection landed: legacy `/api/setup/reset` now requires an authenticated admin browser session after setup completion and validates the Cats synchronizer CSRF token before clearing setup state. Full product mutation CSRF middleware remains pending under Task 2.2/6.4. |
 | 2026-05-10 | Phase 2 origin-preservation follow-up landed for Vite dev: renderer proxy routes now use explicit proxy objects with `changeOrigin: false` plus cookie domain/path rewrite settings so browser-origin and session-cookie behavior remain stable during auth testing. Reverse-proxy deployment audit remains pending before Task 2.15 is checked off. |
 | 2026-05-10 | Phase 2 repair-startup prerequisite landed: added a helper that issues the one-time recovery token only when readiness is in repair mode and returns a structured log payload containing the reason and token-file path but not the raw token. Startup wiring and the constrained repair first-admin route remain pending. |
+| 2026-05-10 | Phase 2 repair authorization prerequisite landed: repair bootstrap authorization now has a tested loopback-or-one-time-token decision helper, with IPv4-mapped loopback support and consumed-token state returned only for the successful recovery-token path. The HTTP repair first-admin route still needs to call it. |
 
 ---
 

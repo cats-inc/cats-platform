@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  authorizePlatformAuthRepairBootstrap,
   consumePlatformAuthRecoveryToken,
   issuePlatformAuthRecoveryToken,
   resolvePlatformAuthReadiness,
@@ -111,4 +112,81 @@ test('platform auth repair startup is inert outside repair mode', async () => {
     recoveryTokenPath: 'unused',
     now: NOW,
   }), null);
+});
+
+test('platform auth repair authorization allows loopback without recovery token', async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'cats-auth-repair-authorization-'));
+  try {
+    const issued = await issuePlatformAuthRecoveryToken({
+      sessionSecret: SESSION_SECRET,
+      recoveryTokenPath: path.join(tempDir, 'auth-recovery-token.local.txt'),
+      now: NOW,
+    });
+
+    assert.deepEqual(authorizePlatformAuthRepairBootstrap({
+      remoteAddress: '::ffff:127.0.0.1',
+      recoveryToken: null,
+      recoveryTokenState: issued.state,
+      sessionSecret: SESSION_SECRET,
+      now: NOW,
+    }), {
+      allowed: true,
+      mode: 'loopback',
+      consumedTokenState: null,
+    });
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('platform auth repair authorization requires one-time token off loopback', async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'cats-auth-repair-authorization-'));
+  try {
+    const issued = await issuePlatformAuthRecoveryToken({
+      sessionSecret: SESSION_SECRET,
+      recoveryTokenPath: path.join(tempDir, 'auth-recovery-token.local.txt'),
+      now: NOW,
+    });
+    const missing = authorizePlatformAuthRepairBootstrap({
+      remoteAddress: '192.168.1.20',
+      recoveryToken: null,
+      recoveryTokenState: issued.state,
+      sessionSecret: SESSION_SECRET,
+      now: NOW,
+    });
+    assert.deepEqual(missing, {
+      allowed: false,
+      reason: 'non_loopback_without_recovery_token',
+    });
+
+    const invalid = authorizePlatformAuthRepairBootstrap({
+      remoteAddress: '192.168.1.20',
+      recoveryToken: 'wrong-token',
+      recoveryTokenState: issued.state,
+      sessionSecret: SESSION_SECRET,
+      now: NOW,
+    });
+    assert.deepEqual(invalid, {
+      allowed: false,
+      reason: 'invalid_recovery_token',
+    });
+
+    const authorized = authorizePlatformAuthRepairBootstrap({
+      remoteAddress: '192.168.1.20',
+      recoveryToken: issued.token,
+      recoveryTokenState: issued.state,
+      sessionSecret: SESSION_SECRET,
+      now: NOW,
+    });
+    assert.equal(authorized.allowed, true);
+    assert.equal(authorized.allowed ? authorized.mode : null, 'recovery_token');
+    assert.equal(
+      authorized.allowed && authorized.mode === 'recovery_token'
+        ? authorized.consumedTokenState.consumedAt
+        : null,
+      NOW.toISOString(),
+    );
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 });

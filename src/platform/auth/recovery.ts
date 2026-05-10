@@ -30,6 +30,25 @@ export interface PlatformAuthRepairStartupResult {
   structuredLog: PlatformAuthRepairStartupLog;
 }
 
+export type PlatformAuthRepairAuthorization =
+  | {
+      allowed: true;
+      mode: 'loopback';
+      consumedTokenState: null;
+    }
+  | {
+      allowed: true;
+      mode: 'recovery_token';
+      consumedTokenState: PlatformAuthRecoveryTokenState;
+    }
+  | {
+      allowed: false;
+      reason:
+        | 'missing_session_secret'
+        | 'non_loopback_without_recovery_token'
+        | 'invalid_recovery_token';
+    };
+
 export async function issuePlatformAuthRecoveryToken(input: {
   sessionSecret: string;
   recoveryTokenPath: string;
@@ -48,6 +67,52 @@ export async function issuePlatformAuthRecoveryToken(input: {
       recoveryTokenPath: input.recoveryTokenPath,
       consumedAt: null,
     },
+  };
+}
+
+export function authorizePlatformAuthRepairBootstrap(input: {
+  remoteAddress: string | null | undefined;
+  recoveryToken: string | null | undefined;
+  recoveryTokenState: PlatformAuthRecoveryTokenState | null;
+  sessionSecret: string | null;
+  now?: Date;
+}): PlatformAuthRepairAuthorization {
+  if (isLoopbackRepairRemoteAddress(input.remoteAddress)) {
+    return {
+      allowed: true,
+      mode: 'loopback',
+      consumedTokenState: null,
+    };
+  }
+  if (!input.recoveryToken) {
+    return {
+      allowed: false,
+      reason: 'non_loopback_without_recovery_token',
+    };
+  }
+  if (!input.sessionSecret) {
+    return {
+      allowed: false,
+      reason: 'missing_session_secret',
+    };
+  }
+  if (!verifyPlatformAuthRecoveryToken({
+    state: input.recoveryTokenState,
+    token: input.recoveryToken,
+    sessionSecret: input.sessionSecret,
+  })) {
+    return {
+      allowed: false,
+      reason: 'invalid_recovery_token',
+    };
+  }
+  return {
+    allowed: true,
+    mode: 'recovery_token',
+    consumedTokenState: consumePlatformAuthRecoveryToken(
+      input.recoveryTokenState!,
+      input.now ?? new Date(),
+    ),
   };
 }
 
@@ -109,4 +174,15 @@ async function chmodRecoveryTokenFile(recoveryTokenPath: string): Promise<void> 
   } catch {
     // Windows and some filesystems do not support POSIX mode updates.
   }
+}
+
+function isLoopbackRepairRemoteAddress(remoteAddress: string | null | undefined): boolean {
+  const normalized = remoteAddress?.trim().toLowerCase()
+    .replace(/^\[/u, '')
+    .replace(/\]$/u, '')
+    .replace(/^::ffff:/u, '');
+  return normalized === '127.0.0.1'
+    || normalized === 'localhost'
+    || normalized === '::1'
+    || normalized === '0:0:0:0:0:0:0:1';
 }
