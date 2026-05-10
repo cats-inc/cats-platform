@@ -6,17 +6,12 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../src/app/server/index.ts';
+import { loadConfig } from '../src/config.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 
-const BASE_CONFIG = {
-  host: '127.0.0.1',
-  port: 8181,
-  runtimeBaseUrl: 'http://127.0.0.1:3110',
-  runtimeApiKey: 'runtime-api-secret-that-must-not-leak',
-  chatStatePath: 'private-chat-state-path-that-must-not-leak',
-  mobilePairingEnabled: true,
-  mobileBundleRoot: 'unused-for-tests',
-};
+const RUNTIME_API_SECRET = 'runtime-api-secret-that-must-not-leak';
+const PLATFORM_DIR_SEGMENT = 'private-chat-state-path-that-must-not-leak';
+const AUTH_SESSION_SECRET = 'auth-session-secret-that-must-not-leak';
 
 test('mobile manifest and bundle routes do not append product data or credentials', async () => {
   await withServer(async (baseUrl, { mobileBundleRoot }) => {
@@ -43,8 +38,9 @@ test('mobile manifest and bundle routes do not append product data or credential
     assert.equal(diagnosticResponse.status, 200);
     assert.equal(expoResponse.status, 200);
     assert.equal(bundleResponse.status, 200);
-    assert.doesNotMatch(combined, /runtime-api-secret-that-must-not-leak/u);
-    assert.doesNotMatch(combined, /private-chat-state-path-that-must-not-leak/u);
+    assert.doesNotMatch(combined, new RegExp(RUNTIME_API_SECRET, 'u'));
+    assert.doesNotMatch(combined, new RegExp(PLATFORM_DIR_SEGMENT, 'u'));
+    assert.doesNotMatch(combined, new RegExp(AUTH_SESSION_SECRET, 'u'));
     assert.doesNotMatch(combined, /auth-state\.local\.json/u);
     assert.doesNotMatch(combined, /auth-recovery-token\.local\.txt/u);
     assert.doesNotMatch(combined, /cats_session/u);
@@ -79,12 +75,17 @@ async function withServer(
 ): Promise<void> {
   const tempRoot = await mkdtemp(path.join(tmpdir(), 'cats-mobile-security-'));
   const mobileBundleRoot = path.join(tempRoot, 'mobile');
+  const config = loadConfig({
+    HOME: tempRoot,
+    CATS_PLATFORM_DIR: path.join(tempRoot, PLATFORM_DIR_SEGMENT),
+    CATS_AUTH_SESSION_SECRET: AUTH_SESSION_SECRET,
+    CATS_RUNTIME_API_KEY: RUNTIME_API_SECRET,
+    CATS_DESKTOP_MOBILE_PAIRING_ENABLED: 'true',
+    CATS_MOBILE_BUNDLE_ROOT: mobileBundleRoot,
+  });
   const server = createServer({
     shared: {
-      config: {
-        ...BASE_CONFIG,
-        mobileBundleRoot,
-      } as never,
+      config,
       runtimeClient: createRuntimeStub() as never,
       now: () => new Date('2026-05-10T00:00:00.000Z'),
     },

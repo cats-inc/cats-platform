@@ -217,7 +217,7 @@ or transport data until this phase exists.
       separate from the browser GIS credential POST route and verify the
       resulting ID token or code exchange server-side against
       `CATS_AUTH_GOOGLE_MOBILE_AUDIENCES`.
-- [ ] Task 4b.8: Add tests proving mobile manifest/bundle routes contain no
+- [x] Task 4b.8: Add tests proving mobile manifest/bundle routes contain no
       product data or credentials, unauthenticated mobile API calls receive
       `E_UNAUTHENTICATED`, valid mobile bearer sessions resolve to the same
       principal shape as browser sessions, and browser CSRF cannot be bypassed
@@ -607,6 +607,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2/3 origin-preservation audit landed: route tests now prove the pre-auth gate ignores arbitrary `X-Forwarded-*` headers and requires an explicit allowlisted browser `Origin`; Vite proxy tests cover `changeOrigin: false`, cookie rewrites, and host-only built-server cookies; `.env.example`, setup, and deployment docs now state the reverse-proxy Origin requirement. Tasks 2.15 and 3.5 are now checked. |
 | 2026-05-10 | Phase 4 Google verifier landed: chose a dependency-free Node WebCrypto/JWKS verifier instead of adding a runtime package, because the existing claim-normalization layer already enforces audience/issuer/expiry/hosted-domain policy. Default server dependencies now create the verifier when Google browser or mobile audiences are configured; tests cover RS256 signature validation, cache reuse, key refresh, unsupported headers, and tampered payload rejection. Tasks 4.1 and 4.2 are now checked. |
 | 2026-05-10 | Phase 5 actor-mapping invariant tightened: tests now cover later `owner`+`admin` memberships with `coreActorId: null` and Google linked-login preserving the stored membership mapping rather than synthesizing `actor-owner`. Task 5.2 is now checked. |
+| 2026-05-10 | Phase 4b mobile route-gate coverage landed: request-router tests now assert mobile product-data paths reject unauthenticated requests with `E_UNAUTHENTICATED`, valid mobile bearer sessions can read protected Core data without Cats browser CSRF, mobile/browser status principals share the same summary shape, and invalid bearer headers cannot bypass browser-cookie CSRF. Task 4b.8 is now checked. |
 
 ---
 
