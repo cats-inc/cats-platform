@@ -155,8 +155,9 @@ Current implementation status:
   `/api/mobile/auth/status` and complete local or Google mobile login before it
   can fetch product data. The server-side route gate accepts valid mobile
   bearer sessions for product-data requests without requiring browser CSRF.
-  SecureStore-backed client persistence and launch/login UI are still landing
-  under PLAN-089.
+  Cats Mobile uses Expo SecureStore for bearer-token persistence when that
+  module is present, and otherwise falls back only to volatile memory for
+  development/test; it does not store bearer tokens in AsyncStorage.
 
 If the card reports no LAN address while the bind host is already
 LAN-visible, verify the machine has a non-loopback IPv4 address on the trusted

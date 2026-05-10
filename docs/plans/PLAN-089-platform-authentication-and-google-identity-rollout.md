@@ -207,7 +207,7 @@ or transport data until this phase exists.
 - [x] Task 4b.4: Wire Cats Mobile launch flow so QR-loaded apps call mobile
       auth status first, show login when unauthenticated, and fetch product
       data only after a valid mobile session exists.
-- [ ] Task 4b.5: Store mobile bearer tokens through the mobile secure-storage
+- [x] Task 4b.5: Store mobile bearer tokens through the mobile secure-storage
       adapter backed by Expo SecureStore when available. Do not store tokens in
       AsyncStorage, URLs, logs, app-shell payloads, or manifests.
 - [x] Task 4b.6: Add mobile local-login throttling to the same composite
@@ -609,6 +609,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 5 actor-mapping invariant tightened: tests now cover later `owner`+`admin` memberships with `coreActorId: null` and Google linked-login preserving the stored membership mapping rather than synthesizing `actor-owner`. Task 5.2 is now checked. |
 | 2026-05-10 | Phase 4b mobile route-gate coverage landed: request-router tests now assert mobile product-data paths reject unauthenticated requests with `E_UNAUTHENTICATED`, valid mobile bearer sessions can read protected Core data without Cats browser CSRF, mobile/browser status principals share the same summary shape, and invalid bearer headers cannot bypass browser-cookie CSRF. Task 4b.8 is now checked. |
 | 2026-05-10 | Phase 4b mobile launch gate landed: Cats Mobile now calls `/api/mobile/auth/status` before app-shell/messages/draft-send/delete/SSE product data paths, shows a local Admin login panel when unauthenticated, saves successful local-login bearer tokens through the mobile token-storage boundary, and refetches product data only after a valid mobile session exists. Task 4b.4 is now checked; replacing the volatile default token boundary with real Expo SecureStore remains under Task 4b.5. |
+| 2026-05-10 | Phase 4b SecureStore resolver landed: the default mobile auth-token boundary now uses Expo SecureStore when that module is available, otherwise falls back only to volatile memory for development/test and never to AsyncStorage, URLs, manifests, or logs. Task 4b.5 is now checked. |
 
 ---
 

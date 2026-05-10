@@ -1,3 +1,6 @@
+import { resolveExpoSecureStoreAuthTokenStorage } from './expoSecureStore';
+export { createExpoSecureStoreAuthTokenStorage } from './expoSecureStore';
+
 export interface MobileSecureTokenStorage {
   getItemAsync(key: string): Promise<string | null>;
   setItemAsync(key: string, value: string): Promise<void>;
@@ -7,6 +10,7 @@ export interface MobileSecureTokenStorage {
 export const MOBILE_AUTH_TOKEN_STORAGE_KEY = 'cats-mobile.authToken.v1';
 
 let volatileAuthToken: string | null = null;
+let resolvedDefaultStorage: MobileSecureTokenStorage | null = null;
 
 export const volatileMobileAuthTokenStorage: MobileSecureTokenStorage = {
   async getItemAsync(key: string): Promise<string | null> {
@@ -47,14 +51,10 @@ export async function clearMobileAuthToken(storage: MobileSecureTokenStorage): P
   await storage.deleteItemAsync(MOBILE_AUTH_TOKEN_STORAGE_KEY);
 }
 
-export function createExpoSecureStoreAuthTokenStorage(
-  secureStore: MobileSecureTokenStorage,
-): MobileSecureTokenStorage {
-  return secureStore;
-}
-
 export function getDefaultMobileAuthTokenStorage(): MobileSecureTokenStorage {
-  return volatileMobileAuthTokenStorage;
+  resolvedDefaultStorage ??=
+    resolveExpoSecureStoreAuthTokenStorage() ?? volatileMobileAuthTokenStorage;
+  return resolvedDefaultStorage;
 }
 
 function normalizeToken(value: string | null): string | null {
