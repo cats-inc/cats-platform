@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   PLATFORM_LOGIN_ROUTE,
   PLATFORM_LOBBY_ROUTE,
+  PLATFORM_REPAIR_ROUTE,
   resolvePlatformEnvelopeLoadFailureDecision,
   resolvePostAuthenticationEntryPath,
 } from '../src/app/renderer/auth/appAuthRouting.ts';
@@ -36,6 +37,20 @@ test('platform app keeps non-auth app-shell failures on the error path', () => {
     resolvePlatformEnvelopeLoadFailureDecision('unknown failure', 'fallback'),
     { status: 'error', message: 'fallback' },
   );
+});
+
+test('platform app treats repair app-shell failures as repair routing state', () => {
+  const decision = resolvePlatformEnvelopeLoadFailureDecision(
+    new PlatformSetupApiError(
+      'Auth repair is required.',
+      403,
+      PLATFORM_AUTH_ERROR_CODES.forbidden,
+    ),
+    'fallback',
+  );
+
+  assert.deepEqual(decision, { status: 'repairRequired' });
+  assert.equal(PLATFORM_REPAIR_ROUTE, '/repair');
 });
 
 test('platform app resolves the post-login entry path from the authenticated envelope', () => {

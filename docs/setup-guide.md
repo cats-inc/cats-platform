@@ -55,6 +55,9 @@ Forgotten-credential and repair behavior:
 - If setup was already completed and the auth state file is missing or corrupt,
   startup enters auth repair mode and writes a one-time token to
   `<platform-state-dir>/auth-recovery-token.local.txt`.
+- During auth repair mode, browser app loads route to `/repair` instead of
+  Chat/Code/Work product data. The repair screen recreates the first local
+  Admin account, then reloads the authenticated app shell.
 - Repair first-admin creation is accepted only from loopback or with that
   recovery token, and still requires an allowlisted browser `Origin`.
   Structured logs include the token file path, never the raw token.

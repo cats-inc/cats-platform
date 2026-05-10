@@ -59,8 +59,10 @@ import { PLATFORM_ENVELOPE_REFRESH_EVENT } from './platformEnvelopeEvents.js';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
 import { PlatformLoginScreen } from './auth/PlatformLoginScreen.js';
+import { PlatformRepairScreen } from './auth/PlatformRepairScreen.js';
 import {
   PLATFORM_LOGIN_ROUTE,
+  PLATFORM_REPAIR_ROUTE,
   resolvePlatformEnvelopeLoadFailureDecision,
   resolvePostAuthenticationEntryPath,
 } from './auth/appAuthRouting.js';
@@ -79,6 +81,7 @@ import { createLazyProductSurface } from './productSurfaceEntries.js';
 type PlatformLoadState =
   | { status: 'loading' }
   | { status: 'unauthenticated' }
+  | { status: 'repairRequired' }
   | { status: 'ready'; envelope: PlatformHostEnvelope }
   | { status: 'error'; message: string };
 
@@ -285,6 +288,10 @@ export default function PlatformApp() {
         );
         if (decision.status === 'unauthenticated') {
           startTransition(() => setState({ status: 'unauthenticated' }));
+          return;
+        }
+        if (decision.status === 'repairRequired') {
+          startTransition(() => setState({ status: 'repairRequired' }));
           return;
         }
         if (!options?.suppressErrors) {
@@ -591,6 +598,32 @@ export default function PlatformApp() {
             )}
           />
           <Route path="*" element={<Navigate to={PLATFORM_LOGIN_ROUTE} replace />} />
+        </Routes>
+      </I18nProvider>
+    );
+  }
+
+  if (state.status === 'repairRequired') {
+    return (
+      <I18nProvider
+        languagePreference={uiLanguagePreference}
+        locale={uiLocale}
+        setLanguagePreference={setOptimisticLanguagePreference}
+      >
+        <Routes>
+          <Route
+            path={PLATFORM_REPAIR_ROUTE}
+            element={(
+              <PlatformRepairScreen
+                onRepaired={(nextEnvelope) => {
+                  const nextEntryPath = resolvePostAuthenticationEntryPath(nextEnvelope);
+                  flushSync(() => setState({ status: 'ready', envelope: nextEnvelope }));
+                  navigate(nextEntryPath, { replace: true });
+                }}
+              />
+            )}
+          />
+          <Route path="*" element={<Navigate to={PLATFORM_REPAIR_ROUTE} replace />} />
         </Routes>
       </I18nProvider>
     );

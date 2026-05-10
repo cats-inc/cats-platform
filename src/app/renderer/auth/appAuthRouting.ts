@@ -1,12 +1,17 @@
 import type { PlatformHostEnvelope } from '../../../shared/platform-contract.js';
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
-import { isUnauthenticatedPlatformEnvelopeError } from '../setup/api.js';
+import {
+  isRepairRequiredPlatformEnvelopeError,
+  isUnauthenticatedPlatformEnvelopeError,
+} from '../setup/api.js';
 
 export const PLATFORM_LOGIN_ROUTE = '/login';
+export const PLATFORM_REPAIR_ROUTE = '/repair';
 export const PLATFORM_LOBBY_ROUTE = '/lobby';
 
 export type PlatformEnvelopeLoadFailureDecision =
   | { status: 'unauthenticated' }
+  | { status: 'repairRequired' }
   | { status: 'error'; message: string };
 
 export function resolvePlatformEnvelopeLoadFailureDecision(
@@ -15,6 +20,9 @@ export function resolvePlatformEnvelopeLoadFailureDecision(
 ): PlatformEnvelopeLoadFailureDecision {
   if (isUnauthenticatedPlatformEnvelopeError(error)) {
     return { status: 'unauthenticated' };
+  }
+  if (isRepairRequiredPlatformEnvelopeError(error)) {
+    return { status: 'repairRequired' };
   }
   return {
     status: 'error',

@@ -32,6 +32,25 @@ export const enCatalog: MessageCatalog = {
     'Google sign-in only works on authorized Google JavaScript origins. If this LAN/IP origin is not authorized, use local admin credentials.',
   'auth.login.googleUnavailable':
     'Google sign-in is unavailable on this origin. Use local admin credentials or open Cats from an authorized origin.',
+  'auth.repair.title': 'Repair Cats authentication',
+  'auth.repair.subtitle':
+    'Cats found setup-complete state but cannot read a usable auth state file. Recreate the first local Admin account to unlock this workspace.',
+  'auth.repair.displayNameLabel': 'Owner display name',
+  'auth.repair.displayNamePlaceholder': 'Owner',
+  'auth.repair.identifierLabel': 'Admin login email',
+  'auth.repair.identifierPlaceholder': 'you@example.com',
+  'auth.repair.passwordLabel': 'Admin password',
+  'auth.repair.passwordPlaceholder': 'Create a replacement password',
+  'auth.repair.recoveryTokenLabel': 'Recovery token',
+  'auth.repair.recoveryTokenPlaceholder': 'Optional on loopback',
+  'auth.repair.recoveryTokenHint':
+    'Required only when repairing from a non-loopback browser. Read it from the local auth-recovery-token file printed at startup.',
+  'auth.repair.submit': 'Repair and sign in',
+  'auth.repair.submitting': 'Repairing…',
+  'auth.repair.forbidden':
+    'Repair requires loopback access or the one-time recovery token.',
+  'auth.repair.failed': 'Repair failed.',
+  'auth.repair.failedWithStatus': 'Repair failed ({status}).',
   'appHost.label': 'App',
   'appHost.notInstalledTitle': 'App not installed',
   'appHost.backToLobby': 'Back to Lobby',

@@ -24,7 +24,7 @@ test('fetchPlatformEnvelope routes minimal login bootstrap to unauthenticated st
   );
 });
 
-test('fetchPlatformEnvelope routes minimal repair bootstrap to hard error state', async (t) => {
+test('fetchPlatformEnvelope routes minimal repair bootstrap to repair-required state', async (t) => {
   mockFetch(t, {
     routeTarget: 'repair',
     setup: {

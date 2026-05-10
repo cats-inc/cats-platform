@@ -33,6 +33,13 @@ export interface PlatformAuthGoogleLoginInput {
   csrfToken: string;
 }
 
+export interface PlatformAuthRepairFirstAdminInput {
+  displayName?: string;
+  identifier: string;
+  password: string;
+  recoveryToken?: string;
+}
+
 export interface PlatformAuthApiRequestOptions {
   signal?: AbortSignal;
   fallbackMessageForStatus: (status: number) => string;
@@ -162,6 +169,22 @@ export async function linkPlatformGoogle(
       Accept: 'application/json',
       'content-type': 'application/json',
       'x-cats-csrf-token': csrfToken,
+    },
+    body: JSON.stringify(input),
+    signal: options.signal,
+  });
+  return readPlatformAuthJsonResponse(response, options);
+}
+
+export async function repairPlatformFirstAdmin(
+  input: PlatformAuthRepairFirstAdminInput,
+  options: PlatformAuthApiRequestOptions,
+): Promise<PlatformAuthStatusPayload> {
+  const response = await fetch('/api/auth/repair/first-admin', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'content-type': 'application/json',
     },
     body: JSON.stringify(input),
     signal: options.signal,

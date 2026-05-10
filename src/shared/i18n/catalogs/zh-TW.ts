@@ -32,6 +32,25 @@ export const zhTWCatalog: MessageCatalog = {
     'Google 登入只會在已授權的 Google JavaScript origin 上運作。如果目前的 LAN/IP origin 未授權，請使用本機 Admin 登入資料。',
   'auth.login.googleUnavailable':
     '此 origin 無法使用 Google 登入。請使用本機 Admin 登入資料，或從已授權的 origin 開啟 Cats。',
+  'auth.repair.title': '修復 Cats 驗證',
+  'auth.repair.subtitle':
+    'Cats 偵測到設定已完成，但無法讀取可用的驗證狀態檔。請重新建立第一個本機 Admin 帳號來解鎖此工作區。',
+  'auth.repair.displayNameLabel': 'Owner 顯示名稱',
+  'auth.repair.displayNamePlaceholder': 'Owner',
+  'auth.repair.identifierLabel': 'Admin 登入 Email',
+  'auth.repair.identifierPlaceholder': 'you@example.com',
+  'auth.repair.passwordLabel': 'Admin 密碼',
+  'auth.repair.passwordPlaceholder': '建立替代密碼',
+  'auth.repair.recoveryTokenLabel': '修復權杖',
+  'auth.repair.recoveryTokenPlaceholder': 'loopback 可省略',
+  'auth.repair.recoveryTokenHint':
+    '只有從非 loopback 瀏覽器修復時才需要。請從啟動時列出的本機 auth-recovery-token 檔案讀取。',
+  'auth.repair.submit': '修復並登入',
+  'auth.repair.submitting': '修復中…',
+  'auth.repair.forbidden':
+    '修復需要 loopback 存取或一次性修復權杖。',
+  'auth.repair.failed': '修復失敗。',
+  'auth.repair.failedWithStatus': '修復失敗（{status}）。',
   'appHost.label': '應用程式',
   'appHost.notInstalledTitle': '此應用程式未安裝',
   'appHost.backToLobby': '返回大廳',

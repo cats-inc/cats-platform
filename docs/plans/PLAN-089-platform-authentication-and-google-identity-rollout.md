@@ -81,7 +81,7 @@ re-opens LAN admin bootstrap.
 - [x] Task 2.3: Extend setup completion so the local credentials path creates
       the first admin account, identity, membership, owner profile update, and
       session in one logical transaction.
-- [ ] Task 2.4: Add the repair flow for existing setup-complete workspaces that
+- [x] Task 2.4: Add the repair flow for existing setup-complete workspaces that
       have missing, unreadable, or corrupt auth state. The route gate must stay
       engaged and protected product APIs must fail closed during repair.
       Corrupt means JSON parse failure, missing required top-level fields, or a
@@ -610,6 +610,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4b mobile route-gate coverage landed: request-router tests now assert mobile product-data paths reject unauthenticated requests with `E_UNAUTHENTICATED`, valid mobile bearer sessions can read protected Core data without Cats browser CSRF, mobile/browser status principals share the same summary shape, and invalid bearer headers cannot bypass browser-cookie CSRF. Task 4b.8 is now checked. |
 | 2026-05-10 | Phase 4b mobile launch gate landed: Cats Mobile now calls `/api/mobile/auth/status` before app-shell/messages/draft-send/delete/SSE product data paths, shows a local Admin login panel when unauthenticated, saves successful local-login bearer tokens through the mobile token-storage boundary, and refetches product data only after a valid mobile session exists. Task 4b.4 is now checked; replacing the volatile default token boundary with real Expo SecureStore remains under Task 4b.5. |
 | 2026-05-10 | Phase 4b SecureStore resolver landed: the default mobile auth-token boundary now uses Expo SecureStore when that module is available, otherwise falls back only to volatile memory for development/test and never to AsyncStorage, URLs, manifests, or logs. Task 4b.5 is now checked. |
+| 2026-05-10 | Phase 2 repair UX landed: app-shell repair bootstrap now routes to `/repair` instead of the generic error panel, the renderer repair form recreates the first local Admin through `/api/auth/repair/first-admin`, and successful repair reloads the authenticated app-shell while protected product APIs remain fail-closed. Task 2.4 is now checked. |
 
 ---
 

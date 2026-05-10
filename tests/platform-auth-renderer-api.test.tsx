@@ -9,6 +9,7 @@ import {
   loginPlatformLocal,
   logoutPlatformSession,
   readPlatformAuthApiErrorMessage,
+  repairPlatformFirstAdmin,
   runPlatformAuthCsrfMutation,
   setupPlatformGoogle,
 } from '../src/app/renderer/auth/api.ts';
@@ -96,6 +97,40 @@ test('renderer auth api posts google credential and logout csrf header', async (
       (calls[3]?.init?.headers as Record<string, string>)['x-cats-csrf-token'],
       'cats-csrf',
     );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('renderer auth api posts repair first admin JSON without Cats csrf', async () => {
+  const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    calls.push({ input, init });
+    return jsonResponse({
+      authenticated: true,
+      principal: null,
+      csrfToken: 'next-csrf-token',
+      providers: { google: { enabled: false, clientId: null } },
+    });
+  };
+  try {
+    await repairPlatformFirstAdmin({
+      displayName: 'Owner',
+      identifier: 'owner@example.test',
+      password: 'replacement-password',
+      recoveryToken: 'recovery-token',
+    }, fallbackOptions());
+
+    assert.equal(calls[0]?.input, '/api/auth/repair/first-admin');
+    assert.equal(calls[0]?.init?.method, 'POST');
+    assert.equal(readHeader(calls[0]?.init, 'x-cats-csrf-token'), null);
+    assert.deepEqual(JSON.parse(String(calls[0]?.init?.body)), {
+      displayName: 'Owner',
+      identifier: 'owner@example.test',
+      password: 'replacement-password',
+      recoveryToken: 'recovery-token',
+    });
   } finally {
     globalThis.fetch = originalFetch;
   }

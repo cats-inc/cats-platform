@@ -48,6 +48,13 @@ export function isUnauthenticatedPlatformEnvelopeError(error: unknown): boolean 
     );
 }
 
+export function isRepairRequiredPlatformEnvelopeError(error: unknown): boolean {
+  return error instanceof PlatformSetupApiError
+    && error.status === 403
+    && error.code === PLATFORM_AUTH_ERROR_CODES.forbidden
+    && error.message === 'Auth repair is required.';
+}
+
 export async function readSetupApiErrorMessage(
   response: Response,
   options: SetupApiRequestOptions,
