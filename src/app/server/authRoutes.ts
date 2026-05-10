@@ -15,8 +15,8 @@ import {
   serializeAuthSessionCookie,
   summarizePlatformPrincipal,
   evaluatePreAuthOriginGate,
+  validateCatsCsrfToken as validateCatsSessionCsrfToken,
   touchSession,
-  verifySessionTokenHash,
   verifyLocalPassword,
   type PlatformAuthStore,
   type PlatformAuthState,
@@ -237,7 +237,7 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
 async function handleLogout(context: RouteContext<AuthRouteDependencies>): Promise<void> {
   const resolved = await resolveBrowserPrincipal(context);
   if (resolved) {
-    if (!validateCatsCsrfToken(context, resolved.session)) {
+    if (!enforceCatsCsrfToken(context, resolved.session)) {
       return;
     }
     await context.dependencies.authStore.updateState((state) => ({
@@ -352,18 +352,18 @@ function sendAuthError(
   });
 }
 
-function validateCatsCsrfToken(
+function enforceCatsCsrfToken(
   context: RouteContext<AuthRouteDependencies>,
   session: PlatformSessionRecord,
 ): boolean {
   const sessionSecret = context.dependencies.auth.sessionSecret;
   const csrfToken = context.request.headers['x-cats-csrf-token'];
-  if (
-    !sessionSecret
-    || typeof csrfToken !== 'string'
-    || !session.csrfTokenHash
-    || !verifySessionTokenHash(csrfToken, session.csrfTokenHash, sessionSecret)
-  ) {
+  const decision = validateCatsSessionCsrfToken({
+    session,
+    token: typeof csrfToken === 'string' ? csrfToken : undefined,
+    sessionSecret,
+  });
+  if (!decision.ok) {
     sendAuthError(context.response, 403, 'E_CSRF_MISMATCH', 'CSRF token is missing or invalid.');
     return false;
   }

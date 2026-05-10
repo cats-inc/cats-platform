@@ -544,6 +544,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2 first-admin setup slice started: platform setup completion can now accept local admin credentials, prepare the first auth account/identity/membership/session, persist auth state, and return a browser session cookie. The renderer setup form, pre-auth origin gate on setup, and making credentials mandatory are still pending before Task 2.3 can be checked off. |
 | 2026-05-10 | Phase 2 pre-auth origin helper slice landed: extracted the shared allowed-browser-origin / `Sec-Fetch-Site` decision helper and rewired `/api/auth/login` to use it. Setup, repair, and Google credential POST still need to call the helper before Task 2.12 can be checked off. |
 | 2026-05-10 | Phase 2 principal resolver slice started: extracted browser session principal resolution and stable principal summaries for reuse by auth routes and the future request gate. Mobile bearer principal resolution remains pending. |
+| 2026-05-10 | Phase 2 CSRF helper slice started: extracted Cats synchronizer CSRF token validation so logout and the future authenticated route gate share one token/hash decision path. Product mutation middleware remains pending before Task 2.2 can be checked off. |
 
 ---
 
