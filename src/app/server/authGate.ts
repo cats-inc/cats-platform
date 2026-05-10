@@ -1,4 +1,4 @@
-import type { IncomingMessage } from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import {
   AUTH_SESSION_COOKIE_NAME,
@@ -14,6 +14,7 @@ import {
   type PlatformAuthGatePhase,
   type PlatformAuthRoutePolicy,
 } from './authGatePolicy.js';
+import { sendJson } from '../../shared/http.js';
 
 export type PlatformAuthGateCredentialKind = 'browser_cookie' | 'mobile_bearer';
 
@@ -31,6 +32,11 @@ export type PlatformAuthGateDecision =
       code: 'E_UNAUTHENTICATED' | 'E_CSRF_MISMATCH';
       message: string;
     };
+
+export type PlatformAuthGateRejection = Extract<
+  PlatformAuthGateDecision,
+  { allowed: false }
+>;
 
 export interface PlatformAuthGateInput {
   request: IncomingMessage;
@@ -100,6 +106,18 @@ export async function evaluatePlatformAuthGate(
     principal: resolved.principal,
     credentialKind: resolved.credentialKind,
   };
+}
+
+export function sendPlatformAuthGateRejection(
+  response: ServerResponse,
+  decision: PlatformAuthGateRejection,
+): void {
+  sendJson(response, decision.statusCode, {
+    error: {
+      code: decision.code,
+      message: decision.message,
+    },
+  });
 }
 
 async function resolveRequestPrincipal(

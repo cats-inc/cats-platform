@@ -566,6 +566,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 6 documentation slice started: `.env.example`, API docs, setup guide, and release notes now document the auth rollout status, session secret, origin allowlist, mobile auth routes, and the fact that the global product-route gate is not installed yet. Full recovery-flow documentation remains pending. |
 | 2026-05-10 | Phase 4b secure-token boundary slice started: Cats Mobile now has an injected secure-storage token store boundary for bearer tokens, with no AsyncStorage path for auth tokens. Wiring the real Expo SecureStore module into launch/login/logout UI remains pending before Task 4b.5 can be checked off. |
 | 2026-05-10 | Phase 5 attribution prerequisite slice started: added a fail-closed helper for resolving Core actor attribution from authenticated principals, so memberships with `coreActorId: null` cannot silently fall back to `actor-owner`. Product write paths still need to adopt the helper before Tasks 5.1-5.3 can be checked off. |
+| 2026-05-10 | Auth gate response adapter slice landed: the shared gate evaluator now has a single HTTP rejection sender for pinned `E_UNAUTHENTICATED` and `E_CSRF_MISMATCH` JSON bodies. Request-router installation remains pending. |
 
 ---
 

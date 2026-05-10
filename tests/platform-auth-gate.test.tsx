@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 import type { IncomingMessage } from 'node:http';
 import test from 'node:test';
 
-import { evaluatePlatformAuthGate } from '../src/app/server/authGate.ts';
+import {
+  evaluatePlatformAuthGate,
+  sendPlatformAuthGateRejection,
+} from '../src/app/server/authGate.ts';
 import { loadConfig } from '../src/config.ts';
 import {
   createEmptyPlatformAuthState,
@@ -110,6 +114,37 @@ test('platform auth gate does not let invalid bearer bypass browser csrf', async
   assert.equal(decision.code, 'E_CSRF_MISMATCH');
 });
 
+test('platform auth gate rejection sender emits pinned structured error body', async (t) => {
+  const server = createServer((_request, response) => {
+    sendPlatformAuthGateRejection(response, {
+      allowed: false,
+      policy: {
+        access: 'protected',
+        reason: 'protected_api',
+        minimalEnvelope: false,
+      },
+      statusCode: 401,
+      code: 'E_UNAUTHENTICATED',
+      message: 'Authentication is required.',
+    });
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Server is not listening.');
+  }
+  const response = await fetch(`http://127.0.0.1:${address.port}/api/channels`);
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), {
+    error: {
+      code: 'E_UNAUTHENTICATED',
+      message: 'Authentication is required.',
+    },
+  });
+});
+
 async function createFixture(): Promise<{
   input: Omit<Parameters<typeof evaluatePlatformAuthGate>[0], 'request' | 'method' | 'pathname'>;
   browserToken: string;
@@ -156,4 +191,8 @@ async function createFixture(): Promise<{
 
 function requestWithHeaders(headers: Record<string, string>): IncomingMessage {
   return { headers } as IncomingMessage;
+}
+
+async function listen(server: ReturnType<typeof createServer>): Promise<void> {
+  await new Promise<void>((resolve) => server.listen(0, resolve));
 }
