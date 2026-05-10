@@ -2,33 +2,31 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import {
   generateSessionTokenMaterial,
-  hashSessionToken,
-  isSessionActive,
   issueBrowserSession,
   normalizeAccountIdentifier,
   createLoginThrottleSubject,
   evaluateLoginThrottle,
   recordFailedLogin,
   recordSuccessfulLogin,
+  resolveBrowserPrincipalFromToken,
   revokeSession,
   AUTH_SESSION_COOKIE_NAME,
   clearAuthSessionCookie,
   serializeAuthSessionCookie,
+  summarizePlatformPrincipal,
   evaluatePreAuthOriginGate,
   touchSession,
   verifySessionTokenHash,
   verifyLocalPassword,
   type PlatformAuthStore,
   type PlatformAuthState,
-  type PlatformMembershipRecord,
+  type PlatformPrincipal,
+  type PlatformPrincipalSummary,
   type PreAuthOriginGateRejectionReason,
   type PlatformSessionRecord,
 } from '../../platform/auth/index.js';
 import type { PlatformAuthConfig } from '../../platform/auth/config.js';
-import type {
-  PlatformAccountRecord,
-  PlatformIdentityRecord,
-} from '../../platform/auth/types.js';
+import type { PlatformIdentityRecord } from '../../platform/auth/types.js';
 import {
   readJsonBody,
   sendJson,
@@ -43,18 +41,9 @@ export interface AuthRouteDependencies {
   sleep?: (ms: number) => Promise<void>;
 }
 
-export interface AuthPrincipalSummary {
-  accountId: string;
-  displayName: string;
-  email: string | null;
-  roles: PlatformMembershipRecord['roles'];
-  coreActorId: string | null;
-  sessionId: string;
-}
-
 export interface AuthStatusPayload {
   authenticated: boolean;
-  principal: AuthPrincipalSummary | null;
+  principal: PlatformPrincipalSummary | null;
   csrfToken: string | null;
   providers: {
     google: {
@@ -62,12 +51,6 @@ export interface AuthStatusPayload {
       clientId: string | null;
     };
   };
-}
-
-interface BrowserPrincipalResolution {
-  account: PlatformAccountRecord;
-  membership: PlatformMembershipRecord;
-  session: PlatformSessionRecord;
 }
 
 export async function routePlatformAuthApi(
@@ -276,35 +259,18 @@ async function handleLogout(context: RouteContext<AuthRouteDependencies>): Promi
 
 async function resolveBrowserPrincipal(
   context: RouteContext<AuthRouteDependencies>,
-): Promise<BrowserPrincipalResolution | null> {
+): Promise<PlatformPrincipal | null> {
   const sessionSecret = context.dependencies.auth.sessionSecret;
   const token = readCookie(context.request, AUTH_SESSION_COOKIE_NAME);
   if (!sessionSecret || !token) {
     return null;
   }
-  const tokenHash = hashSessionToken(token, sessionSecret);
   const state = await context.dependencies.authStore.readState();
-  const session = state.sessions.find((candidate) =>
-    candidate.kind === 'browser'
-    && candidate.tokenHash === tokenHash
-    && isSessionActive(candidate, context.dependencies.now?.() ?? new Date()),
-  ) ?? null;
-  if (!session) {
-    return null;
-  }
-  const account = state.accounts.find((candidate) =>
-    candidate.id === session.accountId && candidate.status === 'active',
-  ) ?? null;
-  const membership = account
-    ? state.memberships.find((candidate) => candidate.accountId === account.id) ?? null
-    : null;
-  return account && membership
-    ? {
-        account: structuredClone(account),
-        membership: structuredClone(membership),
-        session: structuredClone(session),
-      }
-    : null;
+  return resolveBrowserPrincipalFromToken(state, {
+    token,
+    sessionSecret,
+    now: context.dependencies.now?.() ?? new Date(),
+  });
 }
 
 function findLocalPasswordIdentity(
@@ -322,7 +288,7 @@ function findLocalPasswordIdentity(
 
 function buildAuthStatusPayload(
   auth: PlatformAuthConfig,
-  resolved: BrowserPrincipalResolution | null,
+  resolved: PlatformPrincipal | null,
   csrfToken: string | null,
 ): AuthStatusPayload {
   return {
@@ -338,15 +304,8 @@ function buildAuthStatusPayload(
   };
 }
 
-function summarizePrincipal(resolved: BrowserPrincipalResolution): AuthPrincipalSummary {
-  return {
-    accountId: resolved.account.id,
-    displayName: resolved.account.displayName,
-    email: resolved.account.email,
-    roles: [...resolved.membership.roles],
-    coreActorId: resolved.membership.coreActorId,
-    sessionId: resolved.session.id,
-  };
+function summarizePrincipal(resolved: PlatformPrincipal): PlatformPrincipalSummary {
+  return summarizePlatformPrincipal(resolved);
 }
 
 function enforcePreAuthOriginGate(context: RouteContext<AuthRouteDependencies>): boolean {

@@ -4,6 +4,7 @@ export * from './config.js';
 export * from './cookies.js';
 export * from './originGate.js';
 export * from './password.js';
+export * from './principal.js';
 export * from './session.js';
 export * from './state.js';
 export * from './store.js';
