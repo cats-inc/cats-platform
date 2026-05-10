@@ -43,6 +43,8 @@ export function PlatformSetupWizard({
 }) {
   const [step, setStep] = useState<SetupStep>(1);
   const [ownerName, setOwnerName] = useState('');
+  const [adminIdentifier, setAdminIdentifier] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [createGuideCat, setCreateGuideCat] = useState(false);
   const [provider, setProvider] = useState('claude');
   const [instance, setInstance] = useState('');
@@ -55,6 +57,9 @@ export function PlatformSetupWizard({
 
   const busy = busyAction !== null;
   const guideCatName = resolveClientGuideCatName();
+  const canContinueOwnerStep = Boolean(
+    ownerName.trim() && adminIdentifier.trim() && adminPassword,
+  );
   const canContinueGuideCatStep = canContinueGuideCatSetupStep({
     createGuideCat,
     model,
@@ -68,6 +73,8 @@ export function PlatformSetupWizard({
       const result = await completePlatformSetup({
         attemptId,
         ownerDisplayName: ownerName.trim(),
+        adminIdentifier: adminIdentifier.trim(),
+        adminPassword,
         createGuideCat,
         guideCatProvider: createGuideCat ? provider : undefined,
         guideCatInstance: createGuideCat ? (instance || undefined) : undefined,
@@ -94,6 +101,8 @@ export function PlatformSetupWizard({
     }
   }, [
     createGuideCat,
+    adminIdentifier,
+    adminPassword,
     instance,
     model,
     modelSelection,
@@ -123,7 +132,7 @@ export function PlatformSetupWizard({
       if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
-      if (step === 1 && !ownerName.trim()) {
+      if (step === 1 && !canContinueOwnerStep) {
         return;
       }
       if (step === 2 && !canContinueGuideCatStep) {
@@ -140,7 +149,7 @@ export function PlatformSetupWizard({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [busy, canContinueGuideCatStep, finishSetup, ownerName, step]);
+  }, [busy, canContinueGuideCatStep, canContinueOwnerStep, finishSetup, step]);
 
   useEffect(() => {
     if (!shouldPrefetchGuideCatProviderRegistry({ step, createGuideCat })) {
@@ -180,10 +189,34 @@ export function PlatformSetupWizard({
                 autoFocus
               />
             </label>
+            <p className="setupRuntimeNote">
+              {t(messageKeys.setupWizardAdminCredentialsHint)}
+            </p>
+            <label className="fieldLabel">
+              <span>{t(messageKeys.setupWizardAdminIdentifierLabel)}</span>
+              <input
+                className="textInput"
+                value={adminIdentifier}
+                onChange={(e) => setAdminIdentifier(e.target.value)}
+                placeholder={t(messageKeys.setupWizardAdminIdentifierPlaceholder)}
+                autoComplete="username"
+              />
+            </label>
+            <label className="fieldLabel">
+              <span>{t(messageKeys.setupWizardAdminPasswordLabel)}</span>
+              <input
+                className="textInput"
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                placeholder={t(messageKeys.setupWizardAdminPasswordPlaceholder)}
+                autoComplete="new-password"
+              />
+            </label>
             {feedback ? <p className="feedbackText">{feedback}</p> : null}
             <button
               className="primaryButton setupPrimaryButton"
-              disabled={!ownerName.trim()}
+              disabled={!canContinueOwnerStep}
               type="button"
               onClick={() => setStep(nextSetupStep(step))}
             >

@@ -9,6 +9,12 @@ export const zhTWCatalog: MessageCatalog = {
   'app.loadErrorMessage': '載入失敗',
   'app.loadStateFailedWithStatus': '載入應用程式狀態失敗（{status}）',
   'app.title': 'Cats',
+  'setupWizard.adminCredentialsHint':
+    '這組登入資料會在設定完成後用來登入，和你的顯示個人檔案分開。',
+  'setupWizard.adminIdentifierLabel': 'Admin 登入信箱',
+  'setupWizard.adminIdentifierPlaceholder': 'you@example.com',
+  'setupWizard.adminPasswordLabel': 'Admin 密碼',
+  'setupWizard.adminPasswordPlaceholder': '建立密碼',
   'appHost.label': '應用程式',
   'appHost.notInstalledTitle': '此應用程式未安裝',
   'appHost.backToLobby': '返回大廳',

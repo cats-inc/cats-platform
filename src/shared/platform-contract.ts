@@ -246,6 +246,8 @@ export interface PlatformHostEnvelope extends PlatformOwnerContext {
 export interface PlatformSetupCompleteInput {
   attemptId?: string | null;
   ownerDisplayName: string;
+  adminIdentifier?: string;
+  adminPassword?: string;
   createGuideCat?: boolean;
   guideCatProvider?: string;
   guideCatInstance?: string;

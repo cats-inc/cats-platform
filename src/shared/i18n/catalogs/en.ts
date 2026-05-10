@@ -9,6 +9,12 @@ export const enCatalog: MessageCatalog = {
   'app.loadErrorMessage': 'Failed to load',
   'app.loadStateFailedWithStatus': 'Failed to load app state ({status})',
   'app.title': 'Cats',
+  'setupWizard.adminCredentialsHint':
+    'Use these credentials to sign in after setup. They are separate from your display profile.',
+  'setupWizard.adminIdentifierLabel': 'Admin login email',
+  'setupWizard.adminIdentifierPlaceholder': 'you@example.com',
+  'setupWizard.adminPasswordLabel': 'Admin password',
+  'setupWizard.adminPasswordPlaceholder': 'Create a password',
   'appHost.label': 'App',
   'appHost.notInstalledTitle': 'App not installed',
   'appHost.backToLobby': 'Back to Lobby',
