@@ -13,7 +13,11 @@ import {
   createFirstAdminGoogleAuthState,
   issuePlatformAuthRecoveryToken,
   MemoryPlatformAuthStore,
+  AUTH_SESSION_COOKIE_NAME,
+  createLoginThrottleSubject,
+  recordFailedLogin,
   type PlatformAuthRecoveryTokenState,
+  type PlatformLoginThrottleAlert,
   type PlatformAuthState,
   type PlatformAuthStateReadStatus,
   type PlatformAuthStore,
@@ -229,6 +233,141 @@ test('platform auth local login enforces composite failed-login lockout', async 
   assert.equal(blocked.status, 403);
   assert.equal(errorCode(blocked.payload), 'E_FORBIDDEN');
   assert.match(blocked.payload?.error?.message ?? '', /too many/i);
+});
+
+test('platform auth aggregate throttle reports secret-free daily-cap alerts', async (t) => {
+  const store = await createSeededStore();
+  const alerts: PlatformLoginThrottleAlert[] = [];
+  const server = createTestServer(store, {
+    CATS_AUTH_LOGIN_FAILURE_LIMIT: '10',
+    CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP: '2',
+  }, undefined, {
+    loginThrottleAlerts: alerts,
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const failed = await request(server, '/api/auth/login', {
+      method: 'POST',
+      origin: 'http://localhost:5173',
+      secFetchSite: 'same-origin',
+      body: { identifier: 'owner@example.test', password: 'wrong-password' },
+    });
+    assert.equal(failed.status, 401);
+  }
+
+  assert.equal(alerts.length, 1);
+  assert.deepEqual(Object.keys(alerts[0]!).sort(), [
+    'createdAt',
+    'expiresAt',
+    'provider',
+    'reason',
+  ]);
+  assert.equal(alerts[0]?.reason, 'account_daily_cap');
+  assert.equal(alerts[0]?.provider, 'local_password');
+});
+
+test('platform auth throttle clear accepts authenticated admin csrf', async (t) => {
+  const { store, cookie, csrfToken } = await createSeededLockedStore({
+    CATS_AUTH_LOGIN_FAILURE_LIMIT: '10',
+    CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP: '2',
+  });
+  const server = createTestServer(store, {
+    CATS_AUTH_LOGIN_FAILURE_LIMIT: '10',
+    CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP: '2',
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  const response = await request(server, '/api/auth/throttle/clear', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie,
+    csrfToken,
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.payload, { cleared: true, mode: 'admin' });
+  const state = await store.readState();
+  assert.equal(state.loginFailures.length, 0);
+  assert.equal(state.loginCooldowns.length, 0);
+});
+
+test('platform auth throttle clear accepts loopback recovery without auth', async (t) => {
+  const { store } = await createSeededLockedStore({
+    CATS_AUTH_LOGIN_FAILURE_LIMIT: '10',
+    CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP: '2',
+  });
+  const server = createTestServer(store, {
+    CATS_AUTH_LOGIN_FAILURE_LIMIT: '10',
+    CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP: '2',
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  const response = await request(server, '/api/auth/throttle/clear', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.payload, { cleared: true, mode: 'loopback' });
+  const state = await store.readState();
+  assert.equal(state.loginFailures.length, 0);
+  assert.equal(state.loginCooldowns.length, 0);
+});
+
+test('platform auth throttle clear consumes recovery token off loopback', async (t) => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'cats-auth-throttle-clear-'));
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+  const issued = await issuePlatformAuthRecoveryToken({
+    sessionSecret: SESSION_SECRET,
+    recoveryTokenPath: path.join(tempDir, 'auth-recovery-token.local.txt'),
+    now: NOW,
+  });
+  let recoveryTokenState: PlatformAuthRecoveryTokenState | null = issued.state;
+  const { store } = await createSeededLockedStore({
+    CATS_AUTH_LOGIN_FAILURE_LIMIT: '10',
+    CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP: '2',
+  });
+  const server = createTestServer(store, {
+    CATS_AUTH_LOGIN_FAILURE_LIMIT: '10',
+    CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP: '2',
+  }, undefined, {
+    remoteAddress: '192.168.1.20',
+    authRecoveryTokenState: () => recoveryTokenState,
+    setAuthRecoveryTokenState: (state) => {
+      recoveryTokenState = state;
+    },
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  const rejected = await request(server, '/api/auth/throttle/clear', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+  });
+  assert.equal(rejected.status, 403);
+
+  const cleared = await request(server, '/api/auth/throttle/clear', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { recoveryToken: issued.token },
+  });
+
+  assert.equal(cleared.status, 200);
+  assert.deepEqual(cleared.payload, { cleared: true, mode: 'recovery_token' });
+  assert.equal(recoveryTokenState?.consumedAt, NOW.toISOString());
+  const state = await store.readState();
+  assert.equal(state.loginFailures.length, 0);
+  assert.equal(state.loginCooldowns.length, 0);
 });
 
 test('platform auth google login issues cookie for linked account', async (t) => {
@@ -476,6 +615,54 @@ async function createSeededStore(): Promise<MemoryPlatformAuthStore> {
   }, () => NOW);
 }
 
+async function createSeededLockedStore(
+  env: NodeJS.ProcessEnv,
+): Promise<{
+  store: MemoryPlatformAuthStore;
+  cookie: string;
+  csrfToken: string;
+}> {
+  const bootstrap = await createFirstAdminLocalAuthState({
+    state: createEmptyPlatformAuthState(NOW),
+    displayName: 'Owner',
+    identifier: 'owner@example.test',
+    password: 'correct-password',
+    sessionSecret: SESSION_SECRET,
+    sessionTtlMs: 60_000,
+    now: NOW,
+  });
+  const policy = loadConfig({
+    HOME: 'C:/Users/tester',
+    CATS_AUTH_SESSION_SECRET: SESSION_SECRET,
+    ...env,
+  }).auth;
+  const firstFailed = recordFailedLogin(bootstrap.state, {
+    subject: createLoginThrottleSubject({
+      provider: 'local_password',
+      accountKey: 'owner@example.test',
+      remoteAddress: '10.0.1.1',
+    }),
+    policy,
+    now: NOW,
+  });
+  const locked = recordFailedLogin(firstFailed, {
+    subject: createLoginThrottleSubject({
+      provider: 'local_password',
+      accountKey: 'owner@example.test',
+      remoteAddress: '10.0.2.2',
+    }),
+    policy,
+    now: NOW,
+  });
+  assert.ok(locked.loginFailures.length > 0);
+  assert.ok(locked.loginCooldowns.length > 0);
+  return {
+    store: new MemoryPlatformAuthStore(locked, () => NOW),
+    cookie: `${AUTH_SESSION_COOKIE_NAME}=${bootstrap.session.token}`,
+    csrfToken: bootstrap.session.csrfToken,
+  };
+}
+
 function createTestServer(
   store: PlatformAuthStore,
   env: NodeJS.ProcessEnv = {},
@@ -485,6 +672,7 @@ function createTestServer(
     remoteAddress?: string;
     authRecoveryTokenState?: () => PlatformAuthRecoveryTokenState | null;
     setAuthRecoveryTokenState?: (state: PlatformAuthRecoveryTokenState | null) => void;
+    loginThrottleAlerts?: PlatformLoginThrottleAlert[];
   } = {},
 ) {
   const config = loadConfig({
@@ -512,6 +700,11 @@ function createTestServer(
         readSetupCompleteAt: options.readSetupCompleteAt,
         authRecoveryTokenState: options.authRecoveryTokenState?.() ?? null,
         setAuthRecoveryTokenState: options.setAuthRecoveryTokenState,
+        reportLoginThrottleAlert: options.loginThrottleAlerts
+          ? (alert) => {
+              options.loginThrottleAlerts?.push(alert);
+            }
+          : undefined,
         now: () => NOW,
         sleep: async () => {},
       },

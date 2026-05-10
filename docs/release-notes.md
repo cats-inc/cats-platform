@@ -48,6 +48,10 @@ loopback or with the one-time token written to
 file removes accounts, identities, memberships, and sessions, but leaves
 product data intact.
 
+Bounded aggregate login cooldowns no longer require auth-state deletion for
+recovery. Operators can clear throttle state through the authenticated
+admin+CSRF route, loopback-local recovery, or the one-time recovery token.
+
 Downstream tooling may key on these pinned error codes: `E_UNAUTHENTICATED`
 for `401`, `E_FORBIDDEN` for plain authorization failures, and
 `E_CSRF_MISMATCH` for Cats synchronizer CSRF failures.

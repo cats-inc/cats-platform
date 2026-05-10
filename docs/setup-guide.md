@@ -54,6 +54,9 @@ Forgotten-credential and repair behavior:
 - Repair first-admin creation is accepted only from loopback or with that
   recovery token, and still requires an allowlisted browser `Origin`.
   Structured logs include the token file path, never the raw token.
+- Bounded aggregate login cooldowns can be cleared without deleting auth
+  state by using the authenticated admin+CSRF throttle-clear route, loopback,
+  or the one-time recovery token.
 - For LAN-bound deployments, rebind Cats to loopback or use the recovery token
   before allowing LAN browsers to reach the host during repair.
 

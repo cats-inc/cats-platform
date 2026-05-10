@@ -84,6 +84,9 @@ Auth and repair constraints for LAN/tunnel access:
   recovery token. For LAN or tunnel recovery, either temporarily rebind to
   loopback or keep the recovery token local to the operator while completing
   repair.
+- Aggregate login-throttle state can be cleared through the admin+CSRF
+  browser route, loopback-local recovery, or the one-time recovery token route;
+  do not delete the auth-state file just to clear a bounded cooldown.
 
 ### Desktop Host First Slice
 

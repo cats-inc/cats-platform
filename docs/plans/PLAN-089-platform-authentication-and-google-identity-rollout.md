@@ -103,7 +103,7 @@ re-opens LAN admin bootstrap.
       logging. Per-account-only and per-IP-only hard lockout shall not be the
       primary throttle so a remote attacker cannot DoS a legitimate admin from
       arbitrary addresses.
-- [ ] Task 2.11: Add mandatory aggregate brute-force guards on top of 2.10:
+- [x] Task 2.11: Add mandatory aggregate brute-force guards on top of 2.10:
       (a) per-account progressive server-side delay that grows with recent
       failure count and resets on success; (b) per-account 24-hour failure
       budget that triggers a logged alert and bounded extended cooldown;
@@ -597,6 +597,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4b manifest safety regression started: source-level mobile route tests now assert the diagnostic manifest, Expo Go manifest, and served bundle do not append server config secrets, auth-state/recovery-token paths, session cookie names, bearer-token markers, or fake product-data identifiers. Task 4b.8 remains open until bearer-gated mobile product-data requests are installed and covered. |
 | 2026-05-10 | Phase 2 renderer CSRF retry landed: auth API errors now carry stable `status/code`, renderer mutation helper refreshes `/api/auth/status` and retries exactly once only for `E_CSRF_MISMATCH`, Settings sign-out uses the helper, and tests assert no retry on `E_FORBIDDEN` plus hard failure on a second CSRF mismatch. Task 2.14 is now checked. |
 | 2026-05-10 | Phase 2 aggregate throttle recovery helper slice landed: auth throttle now has account-scoped and full recovery clearing helpers, with tests proving account clearing does not erase subnet cooldowns and recovery clearing removes all active failure budgets. Task 2.11 remains open until admin/loopback/recovery routes call these helpers and alert logging is wired. |
+| 2026-05-10 | Phase 2 aggregate throttle route integration landed: `/api/auth/throttle/clear` now clears login throttle state through authenticated admin+CSRF, loopback-local recovery, or one-time recovery token authorization; aggregate account/subnet cooldown creation reports a secret-free alert hook; focused route tests cover admin, loopback, token, and alert behavior. Task 2.11 is now checked. |
 
 ---
 

@@ -73,6 +73,10 @@ includes:
   state is missing or corrupt. The route is pre-auth but constrained to an
   allowlisted browser origin plus either loopback source address or the
   one-time recovery token written to the state directory at repair startup;
+- `POST /api/auth/throttle/clear` for clearing aggregate login-throttle state
+  after owner recovery. The route requires an allowlisted browser origin plus
+  either an authenticated admin browser session with `X-Cats-CSRF-Token`,
+  loopback source address, or the one-time recovery token;
 - `GET /api/mobile/auth/status` for Cats Mobile bearer-session status;
 - `POST /api/mobile/auth/login` for local password mobile login, returning the
   raw bearer token exactly once;

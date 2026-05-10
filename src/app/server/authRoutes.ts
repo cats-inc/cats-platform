@@ -2,6 +2,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import {
   generateSessionTokenMaterial,
+  clearAllLoginThrottleState,
+  collectLoginThrottleAlerts,
   createEmptyPlatformAuthState,
   createFirstAdminLocalAuthState,
   issueBrowserSession,
@@ -26,6 +28,7 @@ import {
   verifyPlatformLocalPasswordCredential,
   type PlatformAuthErrorCode,
   type PlatformAuthStore,
+  type PlatformLoginThrottleAlert,
   type PlatformAuthRecoveryTokenState,
   type PlatformGoogleIdTokenVerifier,
   type PlatformPrincipal,
@@ -51,6 +54,9 @@ export interface AuthRouteDependencies {
   getAuthRecoveryTokenState?: () => PlatformAuthRecoveryTokenState | null;
   setAuthRecoveryTokenState?: (
     state: PlatformAuthRecoveryTokenState | null
+  ) => void | Promise<void>;
+  reportLoginThrottleAlert?: (
+    alert: PlatformLoginThrottleAlert
   ) => void | Promise<void>;
   readSetupCompleteAt?: () => Promise<string | null>;
   now?: () => Date;
@@ -118,6 +124,18 @@ export async function routePlatformAuthApi(
       return true;
     }
     await handleRepairFirstAdmin(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/auth/throttle/clear') {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    if (!enforcePreAuthOriginGate(context)) {
+      return true;
+    }
+    await handleClearLoginThrottle(context);
     return true;
   }
 
@@ -224,6 +242,68 @@ async function handleRepairFirstAdmin(
   );
 }
 
+async function handleClearLoginThrottle(
+  context: RouteContext<AuthRouteDependencies>,
+): Promise<void> {
+  let body: Record<string, unknown>;
+  try {
+    body = await readOptionalJsonObjectBody(context.request);
+  } catch {
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Invalid auth throttle request body.');
+    return;
+  }
+
+  const resolved = await resolveBrowserPrincipal(context);
+  if (resolved) {
+    if (!resolved.membership.roles.some((role) => role === 'owner' || role === 'admin')) {
+      sendAuthError(context.response, 403, 'E_FORBIDDEN', 'Admin role is required.');
+      return;
+    }
+    if (!enforceCatsCsrfToken(context, resolved.session)) {
+      return;
+    }
+    await clearAllLoginThrottle(context);
+    sendJson(context.response, 200, { cleared: true, mode: 'admin' });
+    return;
+  }
+
+  const sessionSecret = context.dependencies.auth.sessionSecret;
+  if (!sessionSecret) {
+    sendAuthError(context.response, 503, 'E_FORBIDDEN', 'Auth throttle recovery is not configured.');
+    return;
+  }
+  const authorization = authorizePlatformAuthRepairBootstrap({
+    remoteAddress: readRemoteAddress(context.request),
+    recoveryToken: typeof body.recoveryToken === 'string' ? body.recoveryToken : null,
+    recoveryTokenState: context.dependencies.getAuthRecoveryTokenState?.()
+      ?? context.dependencies.authRecoveryTokenState
+      ?? null,
+    sessionSecret,
+    now: context.dependencies.now?.() ?? new Date(),
+  });
+  if (!authorization.allowed) {
+    sendAuthError(context.response, 403, 'E_FORBIDDEN', repairAuthorizationMessage(
+      authorization.reason,
+    ));
+    return;
+  }
+
+  await clearAllLoginThrottle(context);
+  if (authorization.mode === 'recovery_token') {
+    await context.dependencies.setAuthRecoveryTokenState?.(authorization.consumedTokenState);
+  }
+  sendJson(context.response, 200, { cleared: true, mode: authorization.mode });
+}
+
+async function clearAllLoginThrottle(
+  context: RouteContext<AuthRouteDependencies>,
+): Promise<void> {
+  const now = context.dependencies.now?.() ?? new Date();
+  await context.dependencies.authStore.updateState((state) =>
+    clearAllLoginThrottleState(state, { now }),
+  );
+}
+
 async function handleAuthStatus(context: RouteContext<AuthRouteDependencies>): Promise<void> {
   const resolved = await resolveBrowserPrincipal(context);
   if (!resolved) {
@@ -310,13 +390,7 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
     password: body.password,
   });
   if (!credential) {
-    await context.dependencies.authStore.updateState((current) =>
-      recordFailedLogin(current, {
-        subject: throttleSubject,
-        policy: context.dependencies.auth,
-        now,
-      }),
-    );
+    await recordFailedLoginWithAlerts(context, throttleSubject, now);
     sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Invalid credentials.');
     return;
   }
@@ -428,7 +502,7 @@ async function handleGoogleLogin(context: RouteContext<AuthRouteDependencies>): 
     now,
   });
   if (!issued) {
-    await recordFailedProviderLogin(context, identity.providerSubject);
+    await recordFailedProviderLogin(context, identity.providerSubject, now);
     sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Google account is not linked.');
     return;
   }
@@ -457,20 +531,45 @@ async function handleGoogleLogin(context: RouteContext<AuthRouteDependencies>): 
 async function recordFailedProviderLogin(
   context: RouteContext<AuthRouteDependencies>,
   accountKey: string,
+  now: Date = context.dependencies.now?.() ?? new Date(),
 ): Promise<void> {
-  const now = context.dependencies.now?.() ?? new Date();
   const throttleSubject = createLoginThrottleSubject({
     provider: 'google',
     accountKey,
     remoteAddress: readRemoteAddress(context.request),
   });
-  await context.dependencies.authStore.updateState((current) =>
-    recordFailedLogin(current, {
-      subject: throttleSubject,
+  await recordFailedLoginWithAlerts(context, throttleSubject, now);
+}
+
+async function recordFailedLoginWithAlerts(
+  context: RouteContext<AuthRouteDependencies>,
+  subject: ReturnType<typeof createLoginThrottleSubject>,
+  now: Date,
+): Promise<void> {
+  let alerts: PlatformLoginThrottleAlert[] = [];
+  await context.dependencies.authStore.updateState((current) => {
+    const next = recordFailedLogin(current, {
+      subject,
       policy: context.dependencies.auth,
       now,
-    }),
-  );
+    });
+    alerts = collectLoginThrottleAlerts(current, next);
+    return next;
+  });
+  for (const alert of alerts) {
+    await reportLoginThrottleAlert(context, alert);
+  }
+}
+
+async function reportLoginThrottleAlert(
+  context: RouteContext<AuthRouteDependencies>,
+  alert: PlatformLoginThrottleAlert,
+): Promise<void> {
+  if (context.dependencies.reportLoginThrottleAlert) {
+    await context.dependencies.reportLoginThrottleAlert(alert);
+    return;
+  }
+  console.warn('[cats-platform] auth aggregate throttle alert', alert);
 }
 
 async function handleLogout(context: RouteContext<AuthRouteDependencies>): Promise<void> {
@@ -620,6 +719,22 @@ function readCookie(request: IncomingMessage, name: string): string | null {
 
 function readRemoteAddress(request: IncomingMessage): string | undefined {
   return request.socket.remoteAddress ?? undefined;
+}
+
+async function readOptionalJsonObjectBody(
+  request: IncomingMessage,
+): Promise<Record<string, unknown>> {
+  if (
+    request.headers['content-length'] === '0'
+    || (!request.headers['content-length'] && !request.headers['transfer-encoding'])
+  ) {
+    return {};
+  }
+  const body = await readJsonBody(request);
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    throw new Error('Expected JSON object body.');
+  }
+  return body as Record<string, unknown>;
 }
 
 async function sleep(

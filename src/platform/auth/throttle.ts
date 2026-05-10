@@ -26,6 +26,13 @@ export type PlatformLoginThrottleBlockReason =
   | 'account_daily_cap'
   | 'subnet_daily_cap';
 
+export interface PlatformLoginThrottleAlert {
+  reason: Extract<PlatformLoginThrottleBlockReason, 'account_daily_cap' | 'subnet_daily_cap'>;
+  provider: PlatformLoginFailureProvider;
+  createdAt: string;
+  expiresAt: string;
+}
+
 export type PlatformLoginThrottleEvaluation =
   | {
       blocked: false;
@@ -210,6 +217,28 @@ export function recordFailedLogin(
   };
 }
 
+export function collectLoginThrottleAlerts(
+  previous: PlatformAuthState,
+  next: PlatformAuthState,
+): PlatformLoginThrottleAlert[] {
+  const previousCooldownIds = new Set(previous.loginCooldowns.map((cooldown) => cooldown.id));
+  return next.loginCooldowns
+    .flatMap((cooldown) => {
+      if (
+        previousCooldownIds.has(cooldown.id)
+        || !isLoginThrottleAlertReason(cooldown.reason)
+      ) {
+        return [];
+      }
+      return [{
+        reason: cooldown.reason,
+        provider: cooldown.provider,
+        createdAt: cooldown.createdAt,
+        expiresAt: cooldown.expiresAt,
+      }];
+    });
+}
+
 export function recordSuccessfulLogin(
   state: PlatformAuthState,
   input: {
@@ -339,6 +368,12 @@ function mergeActiveCooldowns(
     }
   }
   return [...merged.values()];
+}
+
+function isLoginThrottleAlertReason(
+  reason: PlatformLoginThrottleBlockReason,
+): reason is PlatformLoginThrottleAlert['reason'] {
+  return reason === 'account_daily_cap' || reason === 'subnet_daily_cap';
 }
 
 function parseIpv4Address(address: string): [number, number, number, number] | null {
