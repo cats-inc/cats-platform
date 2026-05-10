@@ -7,7 +7,10 @@ import { routePlatformAuthApi } from '../src/app/server/authRoutes.ts';
 import {
   createEmptyPlatformAuthState,
   createFirstAdminLocalAuthState,
+  createFirstAdminGoogleAuthState,
   MemoryPlatformAuthStore,
+  type PlatformGoogleIdTokenClaims,
+  type PlatformGoogleIdTokenVerifier,
 } from '../src/platform/auth/index.ts';
 
 const NOW = new Date('2026-05-10T00:00:00.000Z');
@@ -194,6 +197,65 @@ test('platform auth local login enforces composite failed-login lockout', async 
   assert.match(blocked.payload?.error?.message ?? '', /too many/i);
 });
 
+test('platform auth google login issues cookie for linked account', async (t) => {
+  const googleIdentity = createGoogleIdentity();
+  const bootstrap = createFirstAdminGoogleAuthState({
+    state: createEmptyPlatformAuthState(NOW),
+    identity: googleIdentity,
+    sessionSecret: SESSION_SECRET,
+    sessionTtlMs: 60_000,
+    now: NOW,
+  });
+  const store = new MemoryPlatformAuthStore({
+    ...bootstrap.state,
+    sessions: [],
+  }, () => NOW);
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+  }, fakeGoogleVerifier({
+    sub: googleIdentity.providerSubject,
+    aud: 'browser-client-id',
+    iss: 'https://accounts.google.com',
+    exp: Math.floor(NOW.getTime() / 1000) + 600,
+    email: googleIdentity.email,
+    email_verified: true,
+  }));
+  await listen(server);
+  t.after(() => server.close());
+
+  const login = await request(server, '/api/auth/google/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: 'g_csrf_token=csrf-token',
+    body: { credential: 'id-token', csrfToken: 'csrf-token' },
+  });
+
+  assert.equal(login.status, 200);
+  assert.equal(login.payload?.authenticated, true);
+  assert.equal(login.payload?.principal?.accountId, bootstrap.account.id);
+  assert.equal(typeof login.payload?.csrfToken, 'string');
+  assert.match(login.setCookie ?? '', /cats_session=/u);
+});
+
+test('platform auth google login rejects missing google csrf token', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+  }, fakeGoogleVerifier({}));
+  await listen(server);
+  t.after(() => server.close());
+
+  const response = await request(server, '/api/auth/google/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { credential: 'id-token' },
+  });
+  assert.equal(response.status, 403);
+  assert.equal(errorCode(response.payload), 'E_FORBIDDEN');
+});
+
 async function createSeededStore(): Promise<MemoryPlatformAuthStore> {
   const bootstrap = await createFirstAdminLocalAuthState({
     state: createEmptyPlatformAuthState(NOW),
@@ -213,6 +275,7 @@ async function createSeededStore(): Promise<MemoryPlatformAuthStore> {
 function createTestServer(
   store: MemoryPlatformAuthStore,
   env: NodeJS.ProcessEnv = {},
+  googleVerifier?: PlatformGoogleIdTokenVerifier,
 ) {
   const config = loadConfig({
     HOME: 'C:/Users/tester',
@@ -229,6 +292,7 @@ function createTestServer(
       dependencies: {
         authStore: store,
         auth: config.auth,
+        googleVerifier,
         now: () => NOW,
         sleep: async () => {},
       },
@@ -295,4 +359,27 @@ async function request(
 
 function errorCode(payload: Record<string, any> | null): string | undefined {
   return payload?.error?.code;
+}
+
+function createGoogleIdentity() {
+  return {
+    providerSubject: 'google-subject-1',
+    email: 'owner@example.test',
+    hostedDomain: null,
+    displayName: 'Owner',
+    avatarUrl: null,
+    audience: 'browser-client-id',
+    issuer: 'https://accounts.google.com',
+    expiresAt: '2026-05-10T01:00:00.000Z',
+  };
+}
+
+function fakeGoogleVerifier(
+  claims: Partial<PlatformGoogleIdTokenClaims>,
+): PlatformGoogleIdTokenVerifier {
+  return {
+    async verifyIdToken() {
+      return claims;
+    },
+  };
 }

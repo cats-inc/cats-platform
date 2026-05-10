@@ -575,6 +575,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4 Google CSRF prerequisite slice landed: added a Google GIS `g_csrf_token` double-submit validator that is separate from Cats synchronizer CSRF. Browser Google credential POST route remains pending. |
 | 2026-05-10 | Reconciled completed checkboxes for the landed server/mobile auth foundations: Tasks 2.1, 2.3, 4b.1, 6.2, 6.3, and 6.7 are now marked complete. The global route gate, repair flow, renderer login UX, and Google HTTP routes remain open. |
 | 2026-05-10 | Phase 4 Google credential request parser slice landed: added a parser for Google GIS `application/x-www-form-urlencoded` credential posts plus JSON test clients, returning normalized credential and `g_csrf_token` values. Browser Google HTTP route remains pending. |
+| 2026-05-10 | Phase 4 browser Google linked-login route slice started: `/api/auth/google/login` now enforces the pre-auth origin gate, GIS double-submit CSRF, injected Google ID-token verifier, linked-account lookup, Google throttling records, and browser session cookie issuance for existing linked accounts. First-admin Google setup/linking and real verifier dependency remain pending. |
 
 ---
 

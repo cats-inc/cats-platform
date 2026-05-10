@@ -20,6 +20,7 @@ test('platform auth gate keeps renderer, health, mobile, and auth bootstrap rout
     ['POST', '/api/mobile/auth/logout'],
     ['GET', '/api/auth/status'],
     ['POST', '/api/auth/login'],
+    ['POST', '/api/auth/google/login'],
     ['POST', '/api/auth/logout'],
   ] as const;
 

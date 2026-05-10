@@ -104,6 +104,8 @@ function isPublicAuthRoute(pathname: string, method: string): boolean {
   ) || (
     pathname === '/api/auth/login' && method === 'POST'
   ) || (
+    pathname === '/api/auth/google/login' && method === 'POST'
+  ) || (
     pathname === '/api/auth/logout' && method === 'POST'
   );
 }

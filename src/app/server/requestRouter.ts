@@ -354,6 +354,7 @@ export async function routeRequest(
         dependencies.shared.providerCapabilityBootstrapDiagnosticSink,
       authStore: dependencies.shared.authStore,
       auth: dependencies.shared.config.auth,
+      googleVerifier: dependencies.shared.googleVerifier,
       now: dependencies.shared.now,
     },
   };

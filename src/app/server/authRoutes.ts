@@ -17,8 +17,12 @@ import {
   evaluatePreAuthOriginGate,
   validateCatsCsrfToken as validateCatsSessionCsrfToken,
   touchSession,
+  createGoogleBrowserSessionForLinkedIdentity,
+  validateGoogleGisCsrfToken,
+  verifyPlatformGoogleIdentityToken,
   verifyPlatformLocalPasswordCredential,
   type PlatformAuthStore,
+  type PlatformGoogleIdTokenVerifier,
   type PlatformPrincipal,
   type PlatformPrincipalSummary,
   type PreAuthOriginGateRejectionReason,
@@ -31,10 +35,12 @@ import {
   sendMethodNotAllowed,
   type RouteContext,
 } from '../../shared/http.js';
+import { readGoogleCredentialRequestPayload } from './googleAuthRequest.js';
 
 export interface AuthRouteDependencies {
   authStore: PlatformAuthStore;
   auth: PlatformAuthConfig;
+  googleVerifier?: PlatformGoogleIdTokenVerifier;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
 }
@@ -76,6 +82,18 @@ export async function routePlatformAuthApi(
       return true;
     }
     await handleLocalLogin(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/auth/google/login') {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    if (!enforcePreAuthOriginGate(context)) {
+      return true;
+    }
+    await handleGoogleLogin(context);
     return true;
   }
 
@@ -219,6 +237,124 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
         context.dependencies.auth.sessionTtlMs,
       ),
     },
+  );
+}
+
+async function handleGoogleLogin(context: RouteContext<AuthRouteDependencies>): Promise<void> {
+  const sessionSecret = context.dependencies.auth.sessionSecret;
+  const googleClientId = context.dependencies.auth.google.clientId;
+  const verifier = context.dependencies.googleVerifier;
+  if (!sessionSecret || !googleClientId || !verifier) {
+    sendAuthError(context.response, 503, 'E_FORBIDDEN', 'Google login is not configured.');
+    return;
+  }
+
+  let body: { credential: string | null; csrfToken: string | null };
+  try {
+    body = await readGoogleCredentialRequestPayload(context.request);
+  } catch {
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Invalid Google auth request body.');
+    return;
+  }
+
+  const googleCsrf = validateGoogleGisCsrfToken({
+    cookieHeader: context.request.headers.cookie,
+    bodyToken: body.csrfToken,
+  });
+  if (!googleCsrf.ok) {
+    sendAuthError(context.response, 403, 'E_FORBIDDEN', 'Google CSRF token is missing or invalid.');
+    return;
+  }
+  if (!body.credential) {
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Google credential is required.');
+    return;
+  }
+
+  let identity;
+  try {
+    identity = await verifyPlatformGoogleIdentityToken({
+      token: body.credential,
+      audiences: [googleClientId],
+      hostedDomains: context.dependencies.auth.google.hostedDomains,
+      verifier,
+      now: context.dependencies.now?.() ?? new Date(),
+    });
+  } catch {
+    await recordFailedProviderLogin(context, 'google:invalid');
+    sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Invalid Google credential.');
+    return;
+  }
+
+  const state = await context.dependencies.authStore.readState();
+  const now = context.dependencies.now?.() ?? new Date();
+  const throttleSubject = createLoginThrottleSubject({
+    provider: 'google',
+    accountKey: identity.providerSubject,
+    remoteAddress: readRemoteAddress(context.request),
+  });
+  const throttle = evaluateLoginThrottle(state, {
+    subject: throttleSubject,
+    policy: context.dependencies.auth,
+    now,
+  });
+  if (throttle.blocked) {
+    sendAuthError(context.response, 403, 'E_FORBIDDEN', 'Too many login attempts.');
+    return;
+  }
+  if (throttle.delayMs > 0) {
+    await sleep(throttle.delayMs, context.dependencies.sleep);
+  }
+
+  const issued = createGoogleBrowserSessionForLinkedIdentity({
+    state,
+    identity,
+    sessionSecret,
+    sessionTtlMs: context.dependencies.auth.sessionTtlMs,
+    now,
+  });
+  if (!issued) {
+    await recordFailedProviderLogin(context, identity.providerSubject);
+    sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Google account is not linked.');
+    return;
+  }
+
+  await context.dependencies.authStore.writeState(recordSuccessfulLogin(issued.state, {
+    subject: throttleSubject,
+    now,
+  }));
+  sendJson(
+    context.response,
+    200,
+    buildAuthStatusPayload(context.dependencies.auth, {
+      account: issued.account,
+      membership: issued.membership,
+      session: issued.session.session,
+    }, issued.session.csrfToken),
+    {
+      'Set-Cookie': serializeAuthSessionCookie(
+        issued.session.token,
+        context.dependencies.auth.sessionTtlMs,
+      ),
+    },
+  );
+}
+
+async function recordFailedProviderLogin(
+  context: RouteContext<AuthRouteDependencies>,
+  accountKey: string,
+): Promise<void> {
+  const now = context.dependencies.now?.() ?? new Date();
+  const throttleSubject = createLoginThrottleSubject({
+    provider: 'google',
+    accountKey,
+    remoteAddress: readRemoteAddress(context.request),
+  });
+  await context.dependencies.authStore.updateState((current) =>
+    recordFailedLogin(current, {
+      subject: throttleSubject,
+      policy: context.dependencies.auth,
+      now,
+    }),
   );
 }
 

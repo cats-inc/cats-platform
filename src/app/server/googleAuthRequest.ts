@@ -1,6 +1,25 @@
+import type { IncomingMessage } from 'node:http';
+
 export interface GoogleCredentialRequestPayload {
   credential: string | null;
   csrfToken: string | null;
+}
+
+export async function readGoogleCredentialRequestPayload(
+  request: IncomingMessage,
+): Promise<GoogleCredentialRequestPayload> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of request) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+  const rawBody = Buffer.concat(chunks).toString('utf-8').trim();
+  if (!rawBody) {
+    throw new Error('Request body is required.');
+  }
+  return parseGoogleCredentialRequestPayload({
+    contentType: request.headers['content-type'],
+    rawBody,
+  });
 }
 
 export function parseGoogleCredentialRequestPayload(input: {
