@@ -7,6 +7,8 @@ import test from 'node:test';
 import {
   consumePlatformAuthRecoveryToken,
   issuePlatformAuthRecoveryToken,
+  resolvePlatformAuthReadiness,
+  startPlatformAuthRepairMode,
   verifyPlatformAuthRecoveryToken,
 } from '../src/platform/auth/index.ts';
 
@@ -68,4 +70,45 @@ test('platform auth recovery token rejects wrong or consumed token values', asyn
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
+});
+
+test('platform auth repair startup writes token file and keeps structured log secret-free', async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'cats-auth-repair-startup-'));
+  try {
+    const recoveryTokenPath = path.join(tempDir, 'auth-recovery-token.local.txt');
+    const readiness = resolvePlatformAuthReadiness({
+      setupCompleteAt: NOW.toISOString(),
+      authStateStatus: { status: 'missing' },
+    });
+    const started = await startPlatformAuthRepairMode({
+      readiness,
+      sessionSecret: SESSION_SECRET,
+      recoveryTokenPath,
+      now: NOW,
+    });
+
+    assert.ok(started);
+    assert.equal(await readFile(recoveryTokenPath, 'utf-8'), `${started.localConsoleToken}\n`);
+    assert.equal(started.structuredLog.status, 'repair_mode_started');
+    assert.equal(started.structuredLog.repairReason, 'missing_auth_state_after_setup');
+    assert.equal(started.structuredLog.recoveryTokenPath, recoveryTokenPath);
+    assert.equal(started.structuredLog.issuedAt, NOW.toISOString());
+    assert.equal(JSON.stringify(started.structuredLog).includes(started.localConsoleToken), false);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('platform auth repair startup is inert outside repair mode', async () => {
+  const readiness = resolvePlatformAuthReadiness({
+    setupCompleteAt: null,
+    authStateStatus: { status: 'missing' },
+  });
+
+  assert.equal(await startPlatformAuthRepairMode({
+    readiness,
+    sessionSecret: SESSION_SECRET,
+    recoveryTokenPath: 'unused',
+    now: NOW,
+  }), null);
 });

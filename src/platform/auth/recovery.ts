@@ -3,6 +3,7 @@ import { chmod, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { hashSessionToken, verifySessionTokenHash } from './session.js';
+import type { PlatformAuthReadiness, PlatformAuthRepairReason } from './readiness.js';
 
 export interface PlatformAuthRecoveryTokenState {
   tokenHash: string;
@@ -14,6 +15,19 @@ export interface PlatformAuthRecoveryTokenState {
 export interface PlatformAuthRecoveryTokenIssueResult {
   state: PlatformAuthRecoveryTokenState;
   token: string;
+}
+
+export interface PlatformAuthRepairStartupLog {
+  status: 'repair_mode_started';
+  repairReason: PlatformAuthRepairReason;
+  recoveryTokenPath: string;
+  issuedAt: string;
+}
+
+export interface PlatformAuthRepairStartupResult {
+  tokenState: PlatformAuthRecoveryTokenState;
+  localConsoleToken: string;
+  structuredLog: PlatformAuthRepairStartupLog;
 }
 
 export async function issuePlatformAuthRecoveryToken(input: {
@@ -33,6 +47,35 @@ export async function issuePlatformAuthRecoveryToken(input: {
       issuedAt: now.toISOString(),
       recoveryTokenPath: input.recoveryTokenPath,
       consumedAt: null,
+    },
+  };
+}
+
+export async function startPlatformAuthRepairMode(input: {
+  readiness: PlatformAuthReadiness;
+  sessionSecret: string | null;
+  recoveryTokenPath: string;
+  now?: Date;
+}): Promise<PlatformAuthRepairStartupResult | null> {
+  if (!input.readiness.repairRequired || !input.readiness.repairReason) {
+    return null;
+  }
+  if (!input.sessionSecret) {
+    throw new Error('CATS_AUTH_SESSION_SECRET is required to issue an auth repair token.');
+  }
+  const issued = await issuePlatformAuthRecoveryToken({
+    sessionSecret: input.sessionSecret,
+    recoveryTokenPath: input.recoveryTokenPath,
+    now: input.now,
+  });
+  return {
+    tokenState: issued.state,
+    localConsoleToken: issued.token,
+    structuredLog: {
+      status: 'repair_mode_started',
+      repairReason: input.readiness.repairReason,
+      recoveryTokenPath: input.recoveryTokenPath,
+      issuedAt: issued.state.issuedAt,
     },
   };
 }
