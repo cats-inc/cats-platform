@@ -524,6 +524,136 @@ test('platform auth google login enforces composite failed-login lockout', async
   assert.match(blocked.payload?.error?.message ?? '', /too many/i);
 });
 
+test('platform auth google setup creates first admin and browser session', async (t) => {
+  const store = new MemoryPlatformAuthStore(createEmptyPlatformAuthState(NOW), () => NOW);
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+  }, fakeGoogleVerifier({
+    sub: 'google-first-admin-subject',
+    aud: 'browser-client-id',
+    iss: 'https://accounts.google.com',
+    exp: Math.floor(NOW.getTime() / 1000) + 600,
+    email: 'owner@example.test',
+    email_verified: true,
+    name: 'Owner',
+  }));
+  await listen(server);
+  t.after(() => server.close());
+
+  const setup = await request(server, '/api/auth/google/setup', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: 'g_csrf_token=csrf-token',
+    body: { credential: 'id-token', csrfToken: 'csrf-token' },
+  });
+
+  assert.equal(setup.status, 200);
+  assert.equal(setup.payload?.authenticated, true);
+  assert.equal(setup.payload?.principal?.coreActorId, 'actor-owner');
+  assert.match(setup.setCookie ?? '', /cats_session=/u);
+  const state = await store.readState();
+  assert.equal(state.accounts.length, 1);
+  assert.equal(state.identities.some((identity) =>
+    identity.provider === 'google'
+    && identity.providerSubject === 'google-first-admin-subject',
+  ), true);
+
+  const repeated = await request(server, '/api/auth/google/setup', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: 'g_csrf_token=csrf-token',
+    body: { credential: 'id-token', csrfToken: 'csrf-token' },
+  });
+  assert.equal(repeated.status, 409);
+  assert.equal(errorCode(repeated.payload), 'E_FORBIDDEN');
+});
+
+test('platform auth google link attaches identity to current browser session', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+  }, fakeGoogleVerifier({
+    sub: 'google-linked-subject',
+    aud: 'browser-client-id',
+    iss: 'https://accounts.google.com',
+    exp: Math.floor(NOW.getTime() / 1000) + 600,
+    email: 'linked-owner@example.test',
+    email_verified: true,
+    picture: 'https://example.test/avatar.png',
+  }));
+  await listen(server);
+  t.after(() => server.close());
+
+  const login = await request(server, '/api/auth/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  const sessionCookie = (login.setCookie ?? '').split(';')[0]!;
+  const csrfToken = String(login.payload?.csrfToken ?? '');
+
+  const linked = await request(server, '/api/auth/google/link', {
+    method: 'POST',
+    cookie: `${sessionCookie}; g_csrf_token=google-csrf-token`,
+    csrfToken,
+    body: { credential: 'id-token', csrfToken: 'google-csrf-token' },
+  });
+
+  assert.equal(linked.status, 200);
+  assert.equal(linked.payload?.authenticated, true);
+  assert.equal(linked.payload?.principal?.email, 'linked-owner@example.test');
+  assert.equal(typeof linked.payload?.csrfToken, 'string');
+  const state = await store.readState();
+  assert.equal(state.identities.some((identity) =>
+    identity.provider === 'google'
+    && identity.providerSubject === 'google-linked-subject',
+  ), true);
+});
+
+test('platform auth google link requires Cats csrf and GIS csrf independently', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+  }, fakeGoogleVerifier({
+    sub: 'google-linked-subject',
+    aud: 'browser-client-id',
+    iss: 'https://accounts.google.com',
+    exp: Math.floor(NOW.getTime() / 1000) + 600,
+    email: 'linked-owner@example.test',
+    email_verified: true,
+  }));
+  await listen(server);
+  t.after(() => server.close());
+
+  const login = await request(server, '/api/auth/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  const sessionCookie = (login.setCookie ?? '').split(';')[0]!;
+
+  const missingCatsCsrf = await request(server, '/api/auth/google/link', {
+    method: 'POST',
+    cookie: `${sessionCookie}; g_csrf_token=google-csrf-token`,
+    body: { credential: 'id-token', csrfToken: 'google-csrf-token' },
+  });
+  assert.equal(missingCatsCsrf.status, 403);
+  assert.equal(errorCode(missingCatsCsrf.payload), 'E_CSRF_MISMATCH');
+
+  const missingGoogleCsrf = await request(server, '/api/auth/google/link', {
+    method: 'POST',
+    cookie: sessionCookie,
+    csrfToken: String(login.payload?.csrfToken ?? ''),
+    body: { credential: 'id-token', csrfToken: null },
+  });
+  assert.equal(missingGoogleCsrf.status, 403);
+  assert.equal(errorCode(missingGoogleCsrf.payload), 'E_FORBIDDEN');
+});
+
 test('platform auth repair first-admin recreates missing auth state from loopback', async (t) => {
   const store = createRepairAuthStore({ status: 'missing' });
   const server = createTestServer(store, {}, undefined, {

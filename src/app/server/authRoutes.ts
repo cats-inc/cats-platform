@@ -9,6 +9,7 @@ import {
   issueBrowserSession,
   normalizeAccountIdentifier,
   authorizePlatformAuthRepairBootstrap,
+  createFirstAdminGoogleAuthState,
   createLoginThrottleSubject,
   evaluateLoginThrottle,
   recordFailedLogin,
@@ -23,6 +24,7 @@ import {
   validateCatsCsrfToken as validateCatsSessionCsrfToken,
   touchSession,
   createGoogleBrowserSessionForLinkedIdentity,
+  linkGoogleIdentityToAccount,
   validateGoogleGisCsrfToken,
   verifyPlatformGoogleIdentityToken,
   verifyPlatformLocalPasswordCredential,
@@ -31,6 +33,7 @@ import {
   type PlatformLoginThrottleAlert,
   type PlatformAuthRecoveryTokenState,
   type PlatformGoogleIdTokenVerifier,
+  type PlatformVerifiedGoogleIdentity,
   type PlatformPrincipal,
   type PlatformPrincipalSummary,
   type PreAuthOriginGateRejectionReason,
@@ -112,6 +115,27 @@ export async function routePlatformAuthApi(
       return true;
     }
     await handleGoogleLogin(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/auth/google/setup') {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    if (!enforcePreAuthOriginGate(context)) {
+      return true;
+    }
+    await handleGoogleSetup(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/auth/google/link') {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleGoogleLink(context);
     return true;
   }
 
@@ -431,46 +455,13 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
 
 async function handleGoogleLogin(context: RouteContext<AuthRouteDependencies>): Promise<void> {
   const sessionSecret = context.dependencies.auth.sessionSecret;
-  const googleClientId = context.dependencies.auth.google.clientId;
-  const verifier = context.dependencies.googleVerifier;
-  if (!sessionSecret || !googleClientId || !verifier) {
+  if (!sessionSecret) {
     sendAuthError(context.response, 503, 'E_FORBIDDEN', 'Google login is not configured.');
     return;
   }
 
-  let body: { credential: string | null; csrfToken: string | null };
-  try {
-    body = await readGoogleCredentialRequestPayload(context.request);
-  } catch {
-    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Invalid Google auth request body.');
-    return;
-  }
-
-  const googleCsrf = validateGoogleGisCsrfToken({
-    cookieHeader: context.request.headers.cookie,
-    bodyToken: body.csrfToken,
-  });
-  if (!googleCsrf.ok) {
-    sendAuthError(context.response, 403, 'E_FORBIDDEN', 'Google CSRF token is missing or invalid.');
-    return;
-  }
-  if (!body.credential) {
-    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Google credential is required.');
-    return;
-  }
-
-  let identity;
-  try {
-    identity = await verifyPlatformGoogleIdentityToken({
-      token: body.credential,
-      audiences: [googleClientId],
-      hostedDomains: context.dependencies.auth.google.hostedDomains,
-      verifier,
-      now: context.dependencies.now?.() ?? new Date(),
-    });
-  } catch {
-    await recordFailedProviderLogin(context, 'google:invalid');
-    sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Invalid Google credential.');
+  const identity = await readVerifiedBrowserGoogleIdentity(context);
+  if (!identity) {
     return;
   }
 
@@ -526,6 +517,187 @@ async function handleGoogleLogin(context: RouteContext<AuthRouteDependencies>): 
       ),
     },
   );
+}
+
+async function handleGoogleSetup(context: RouteContext<AuthRouteDependencies>): Promise<void> {
+  const sessionSecret = context.dependencies.auth.sessionSecret;
+  if (!sessionSecret) {
+    sendAuthError(context.response, 503, 'E_FORBIDDEN', 'Google setup is not configured.');
+    return;
+  }
+
+  const identity = await readVerifiedBrowserGoogleIdentity(context);
+  if (!identity) {
+    return;
+  }
+
+  const state = await context.dependencies.authStore.readState();
+  const now = context.dependencies.now?.() ?? new Date();
+  const throttleSubject = createLoginThrottleSubject({
+    provider: 'google',
+    accountKey: identity.providerSubject,
+    remoteAddress: readRemoteAddress(context.request),
+  });
+  const throttle = evaluateLoginThrottle(state, {
+    subject: throttleSubject,
+    policy: context.dependencies.auth,
+    now,
+  });
+  if (throttle.blocked) {
+    sendAuthError(context.response, 403, 'E_FORBIDDEN', 'Too many login attempts.');
+    return;
+  }
+  if (throttle.delayMs > 0) {
+    await sleep(throttle.delayMs, context.dependencies.sleep);
+  }
+
+  let created: ReturnType<typeof createFirstAdminGoogleAuthState>;
+  try {
+    created = createFirstAdminGoogleAuthState({
+      state,
+      identity,
+      sessionSecret,
+      sessionTtlMs: context.dependencies.auth.sessionTtlMs,
+      now,
+    });
+  } catch {
+    sendAuthError(context.response, 409, 'E_FORBIDDEN', 'First admin already exists.');
+    return;
+  }
+
+  await context.dependencies.authStore.writeState(recordSuccessfulLogin(created.state, {
+    subject: throttleSubject,
+    now,
+  }));
+  sendJson(
+    context.response,
+    200,
+    buildAuthStatusPayload(context.dependencies.auth, {
+      account: created.account,
+      membership: created.membership,
+      session: created.session.session,
+    }, created.session.csrfToken),
+    {
+      'Set-Cookie': serializeAuthSessionCookie(
+        created.session.token,
+        context.dependencies.auth.sessionTtlMs,
+      ),
+    },
+  );
+}
+
+async function handleGoogleLink(context: RouteContext<AuthRouteDependencies>): Promise<void> {
+  const sessionSecret = context.dependencies.auth.sessionSecret;
+  if (!sessionSecret) {
+    sendAuthError(context.response, 503, 'E_FORBIDDEN', 'Google link is not configured.');
+    return;
+  }
+  const resolved = await resolveBrowserPrincipal(context);
+  if (!resolved) {
+    sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Authentication is required.');
+    return;
+  }
+  if (!enforceCatsCsrfToken(context, resolved.session)) {
+    return;
+  }
+
+  const identity = await readVerifiedBrowserGoogleIdentity(context);
+  if (!identity) {
+    return;
+  }
+
+  const now = context.dependencies.now?.() ?? new Date();
+  let linked: ReturnType<typeof linkGoogleIdentityToAccount>;
+  try {
+    linked = linkGoogleIdentityToAccount({
+      state: await context.dependencies.authStore.readState(),
+      accountId: resolved.account.id,
+      identity,
+      now,
+    });
+  } catch {
+    sendAuthError(context.response, 409, 'E_FORBIDDEN', 'Google account is already linked.');
+    return;
+  }
+  if (!linked) {
+    sendAuthError(context.response, 403, 'E_FORBIDDEN', 'Google account cannot be linked.');
+    return;
+  }
+
+  const csrf = generateSessionTokenMaterial(sessionSecret);
+  const touched = touchSession(resolved.session, {
+    now,
+    remoteAddress: readRemoteAddress(context.request),
+  });
+  await context.dependencies.authStore.writeState({
+    ...linked.state,
+    sessions: linked.state.sessions.map((session) =>
+      session.id === resolved.session.id
+        ? {
+            ...touched,
+            csrfTokenHash: csrf.tokenHash,
+          }
+        : session,
+    ),
+  });
+  sendJson(
+    context.response,
+    200,
+    buildAuthStatusPayload(context.dependencies.auth, {
+      account: linked.account,
+      membership: linked.membership,
+      session: {
+        ...touched,
+        csrfTokenHash: csrf.tokenHash,
+      },
+    }, csrf.token),
+  );
+}
+
+async function readVerifiedBrowserGoogleIdentity(
+  context: RouteContext<AuthRouteDependencies>,
+): Promise<PlatformVerifiedGoogleIdentity | null> {
+  const googleClientId = context.dependencies.auth.google.clientId;
+  const verifier = context.dependencies.googleVerifier;
+  if (!googleClientId || !verifier) {
+    sendAuthError(context.response, 503, 'E_FORBIDDEN', 'Google login is not configured.');
+    return null;
+  }
+
+  let body: { credential: string | null; csrfToken: string | null };
+  try {
+    body = await readGoogleCredentialRequestPayload(context.request);
+  } catch {
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Invalid Google auth request body.');
+    return null;
+  }
+
+  const googleCsrf = validateGoogleGisCsrfToken({
+    cookieHeader: context.request.headers.cookie,
+    bodyToken: body.csrfToken,
+  });
+  if (!googleCsrf.ok) {
+    sendAuthError(context.response, 403, 'E_FORBIDDEN', 'Google CSRF token is missing or invalid.');
+    return null;
+  }
+  if (!body.credential) {
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Google credential is required.');
+    return null;
+  }
+
+  try {
+    return await verifyPlatformGoogleIdentityToken({
+      token: body.credential,
+      audiences: [googleClientId],
+      hostedDomains: context.dependencies.auth.google.hostedDomains,
+      verifier,
+      now: context.dependencies.now?.() ?? new Date(),
+    });
+  } catch {
+    await recordFailedProviderLogin(context, 'google:invalid');
+    sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Invalid Google credential.');
+    return null;
+  }
 }
 
 async function recordFailedProviderLogin(

@@ -106,6 +106,10 @@ function isPublicAuthRoute(pathname: string, method: string): boolean {
   ) || (
     pathname === '/api/auth/google/login' && method === 'POST'
   ) || (
+    pathname === '/api/auth/google/setup' && method === 'POST'
+  ) || (
+    pathname === '/api/auth/google/link' && method === 'POST'
+  ) || (
     pathname === '/api/auth/repair/first-admin' && method === 'POST'
   ) || (
     pathname === '/api/auth/throttle/clear' && method === 'POST'

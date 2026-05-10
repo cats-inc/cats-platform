@@ -4,8 +4,10 @@ import test from 'node:test';
 import {
   createEmptyPlatformAuthState,
   createFirstAdminGoogleAuthState,
+  createFirstAdminLocalAuthState,
   createGoogleBrowserSessionForLinkedIdentity,
   hashSessionToken,
+  linkGoogleIdentityToAccount,
   type PlatformVerifiedGoogleIdentity,
 } from '../src/platform/auth/index.ts';
 
@@ -63,6 +65,66 @@ test('google first-admin helper refuses to overwrite existing accounts', () => {
     sessionTtlMs: 60_000,
     now: NOW,
   }), /First admin already exists/u);
+});
+
+test('google link helper links verified identity to active local account', async () => {
+  const first = await createFirstAdminLocalAuthState({
+    state: createEmptyPlatformAuthState(NOW),
+    displayName: 'Owner',
+    identifier: 'owner@example.test',
+    password: 'correct-password',
+    sessionSecret: SESSION_SECRET,
+    sessionTtlMs: 60_000,
+    now: NOW,
+  });
+  const linked = linkGoogleIdentityToAccount({
+    state: first.state,
+    accountId: first.account.id,
+    identity: GOOGLE_IDENTITY,
+    now: new Date(NOW.getTime() + 1_000),
+  });
+
+  assert.ok(linked);
+  assert.equal(linked.account.id, first.account.id);
+  assert.equal(linked.account.email, GOOGLE_IDENTITY.email);
+  assert.equal(linked.identity.provider, 'google');
+  assert.equal(linked.identity.providerSubject, GOOGLE_IDENTITY.providerSubject);
+  assert.equal(linked.identity.passwordHash, undefined);
+  assert.equal(linked.membership.coreActorId, 'actor-owner');
+  assert.equal(linked.state.identities.length, 2);
+});
+
+test('google link helper rejects cross-account provider subject conflicts', () => {
+  const first = createFirstAdminGoogleAuthState({
+    state: createEmptyPlatformAuthState(NOW),
+    identity: GOOGLE_IDENTITY,
+    sessionSecret: SESSION_SECRET,
+    sessionTtlMs: 60_000,
+    now: NOW,
+  });
+  const secondAccount = {
+    ...first.account,
+    id: 'auth-account-second',
+    email: 'second@example.test',
+    displayName: 'Second Admin',
+  };
+  const secondMembership = {
+    ...first.membership,
+    id: 'auth-membership-second',
+    accountId: secondAccount.id,
+    coreActorId: null,
+  };
+
+  assert.throws(() => linkGoogleIdentityToAccount({
+    state: {
+      ...first.state,
+      accounts: [...first.state.accounts, secondAccount],
+      memberships: [...first.state.memberships, secondMembership],
+    },
+    accountId: secondAccount.id,
+    identity: GOOGLE_IDENTITY,
+    now: NOW,
+  }), /already linked to another account/u);
 });
 
 test('google linked-identity helper issues browser session for active account', () => {

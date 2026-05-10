@@ -135,6 +135,40 @@ export async function loginPlatformGoogle(
   return readPlatformAuthJsonResponse(response, options);
 }
 
+export async function setupPlatformGoogle(
+  input: PlatformAuthGoogleLoginInput,
+  options: PlatformAuthApiRequestOptions,
+): Promise<PlatformAuthStatusPayload> {
+  const response = await fetch('/api/auth/google/setup', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal: options.signal,
+  });
+  return readPlatformAuthJsonResponse(response, options);
+}
+
+export async function linkPlatformGoogle(
+  input: PlatformAuthGoogleLoginInput,
+  csrfToken: string,
+  options: PlatformAuthApiRequestOptions,
+): Promise<PlatformAuthStatusPayload> {
+  const response = await fetch('/api/auth/google/link', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'content-type': 'application/json',
+      'x-cats-csrf-token': csrfToken,
+    },
+    body: JSON.stringify(input),
+    signal: options.signal,
+  });
+  return readPlatformAuthJsonResponse(response, options);
+}
+
 export async function logoutPlatformSession(
   csrfToken: string,
   options: PlatformAuthApiRequestOptions,

@@ -4,11 +4,13 @@ import test from 'node:test';
 import {
   PlatformAuthApiError,
   fetchPlatformAuthStatus,
+  linkPlatformGoogle,
   loginPlatformGoogle,
   loginPlatformLocal,
   logoutPlatformSession,
   readPlatformAuthApiErrorMessage,
   runPlatformAuthCsrfMutation,
+  setupPlatformGoogle,
 } from '../src/app/renderer/auth/api.ts';
 import { PLATFORM_AUTH_ERROR_CODES } from '../src/platform/auth/errorCodes.ts';
 
@@ -62,6 +64,12 @@ test('renderer auth api posts google credential and logout csrf header', async (
   try {
     const options = fallbackOptions();
     await loginPlatformGoogle({ credential: 'id-token', csrfToken: 'gis-csrf' }, options);
+    await setupPlatformGoogle({ credential: 'setup-id-token', csrfToken: 'setup-csrf' }, options);
+    await linkPlatformGoogle(
+      { credential: 'link-id-token', csrfToken: 'link-gis-csrf' },
+      'link-cats-csrf',
+      options,
+    );
     await logoutPlatformSession('cats-csrf', options);
 
     assert.equal(calls[0]?.input, '/api/auth/google/login');
@@ -69,8 +77,25 @@ test('renderer auth api posts google credential and logout csrf header', async (
       credential: 'id-token',
       csrfToken: 'gis-csrf',
     });
-    assert.equal(calls[1]?.input, '/api/auth/logout');
-    assert.equal((calls[1]?.init?.headers as Record<string, string>)['x-cats-csrf-token'], 'cats-csrf');
+    assert.equal(calls[1]?.input, '/api/auth/google/setup');
+    assert.deepEqual(JSON.parse(String(calls[1]?.init?.body)), {
+      credential: 'setup-id-token',
+      csrfToken: 'setup-csrf',
+    });
+    assert.equal(calls[2]?.input, '/api/auth/google/link');
+    assert.equal(
+      (calls[2]?.init?.headers as Record<string, string>)['x-cats-csrf-token'],
+      'link-cats-csrf',
+    );
+    assert.deepEqual(JSON.parse(String(calls[2]?.init?.body)), {
+      credential: 'link-id-token',
+      csrfToken: 'link-gis-csrf',
+    });
+    assert.equal(calls[3]?.input, '/api/auth/logout');
+    assert.equal(
+      (calls[3]?.init?.headers as Record<string, string>)['x-cats-csrf-token'],
+      'cats-csrf',
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

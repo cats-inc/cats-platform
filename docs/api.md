@@ -67,6 +67,13 @@ includes:
 - `GET /api/auth/status` for browser session status and Cats CSRF-token
   refresh;
 - `POST /api/auth/login` for local password browser login;
+- `POST /api/auth/google/login` for Google browser login to an already linked
+  Cats account;
+- `POST /api/auth/google/setup` for creating the first owner/admin auth account
+  from a verified Google identity when no auth account exists yet;
+- `POST /api/auth/google/link` for linking a verified Google identity to the
+  current browser session. This route requires both the Cats
+  `X-Cats-CSRF-Token` header and the GIS double-submit CSRF token;
 - `POST /api/auth/logout` for browser logout, requiring
   `X-Cats-CSRF-Token` for active browser sessions;
 - `POST /api/auth/repair/first-admin` for setup-complete workspaces whose auth
@@ -82,10 +89,12 @@ includes:
   raw bearer token exactly once;
 - `POST /api/mobile/auth/logout` for mobile device session revocation.
 
-Google browser login uses GIS double-submit CSRF first, then verifies the ID
-token against Google's JWKS using RS256 signature validation plus `aud`, `iss`,
-`exp`, verified email, and optional hosted-domain checks before issuing a Cats
-browser session for an already linked identity.
+Google browser credential routes use GIS double-submit CSRF first, then verify
+the ID token against Google's JWKS using RS256 signature validation plus `aud`,
+`iss`, `exp`, verified email, and optional hosted-domain checks. Login only
+issues a Cats browser session for an already linked identity; setup creates the
+first owner/admin identity; link attaches Google to the authenticated browser
+session.
 
 The global product-route gate is not installed yet. Until the PLAN-089 atomic
 gate slice lands, existing Chat/Work/Code/Core routes still dispatch through

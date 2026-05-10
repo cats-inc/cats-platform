@@ -175,7 +175,7 @@ log out, log back in, and access Chat/Work/Code only while authenticated.
       dependency footprint and Node ESM compatibility.
 - [x] Task 4.2: Implement server-side Google token verification for signature,
       `aud`, `iss`, `exp`, optional `hd`, and verified email.
-- [ ] Task 4.3: Add Google bootstrap/login endpoints that create or link a
+- [x] Task 4.3: Add Google bootstrap/login endpoints that create or link a
       Google identity to a Cats account.
 - [ ] Task 4.4: Add Google Identity Services frontend integration gated by
       `CATS_AUTH_GOOGLE_CLIENT_ID`.
@@ -577,6 +577,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4 Google credential request parser slice landed: added a parser for Google GIS `application/x-www-form-urlencoded` credential posts plus JSON test clients, returning normalized credential and `g_csrf_token` values. Browser Google HTTP route remains pending. |
 | 2026-05-10 | Phase 4 browser Google linked-login route slice started: `/api/auth/google/login` now enforces the pre-auth origin gate, GIS double-submit CSRF, injected Google ID-token verifier, linked-account lookup, Google throttling records, and browser session cookie issuance for existing linked accounts. First-admin Google setup/linking and real verifier dependency remain pending. |
 | 2026-05-10 | Phase 4b mobile secure-client follow-up landed: Cats Mobile can now construct REST API clients by loading the bearer token from the injected secure-storage boundary, keeping tokens out of connection config and AsyncStorage. Real Expo SecureStore wiring plus launch/login UI remain pending before Tasks 4b.4/4b.5 can be checked. |
+| 2026-05-10 | Phase 4 Google HTTP routes landed: `/api/auth/google/setup` can create the first owner/admin auth account from a verified GIS credential, `/api/auth/google/link` links Google to the authenticated browser session with both Cats and GIS CSRF checks, and Task 4.3 is now checked. GIS frontend integration and LAN/IP fallback UI remain under Tasks 4.4/4.5. |
 | 2026-05-10 | Google route lockout regression added and completed task reconciliation updated: Task 2.10 is checked for local+Google composite failed-login lockout, and Task 4.6 is checked for GIS CSRF validation remaining separate from Cats synchronizer CSRF. Aggregate guard recovery/clearing work remains under Task 2.11. |
 | 2026-05-10 | Phase 6 route-gate readiness regression slice landed: focused tests now cover pre-setup product API rejection with public minimal app-shell, setup-complete unauthenticated rejection, setup-complete authenticated admin access, repair-mode fail-closed behavior, and browser-cookie mutation CSRF rejection. The evaluator is still not installed in `requestRouter`. |
 | 2026-05-10 | Phase 2 setup-reset protection landed: legacy `/api/setup/reset` now requires an authenticated admin browser session after setup completion and validates the Cats synchronizer CSRF token before clearing setup state. Full product mutation CSRF middleware remains pending under Task 2.2/6.4. |
