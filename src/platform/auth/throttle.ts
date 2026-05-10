@@ -232,6 +232,41 @@ export function recordSuccessfulLogin(
   };
 }
 
+export function clearLoginThrottleForAccount(
+  state: PlatformAuthState,
+  input: {
+    provider: PlatformLoginFailureProvider;
+    accountKey: string;
+    now?: Date;
+  },
+): PlatformAuthState {
+  const now = input.now ?? new Date();
+  const accountKey = normalizeLoginAccountKey(input.accountKey);
+  const pruned = pruneLoginThrottleState(state, now);
+  return {
+    ...pruned,
+    loginFailures: pruned.loginFailures.filter((failure) =>
+      failure.provider !== input.provider || failure.accountKey !== accountKey,
+    ),
+    loginCooldowns: pruned.loginCooldowns.filter((cooldown) =>
+      cooldown.provider !== input.provider
+      || cooldown.accountKey !== accountKey,
+    ),
+  };
+}
+
+export function clearAllLoginThrottleState(
+  state: PlatformAuthState,
+  input: { now?: Date } = {},
+): PlatformAuthState {
+  const pruned = pruneLoginThrottleState(state, input.now ?? new Date());
+  return {
+    ...pruned,
+    loginFailures: [],
+    loginCooldowns: [],
+  };
+}
+
 export function pruneLoginThrottleState(
   state: PlatformAuthState,
   now: Date = new Date(),

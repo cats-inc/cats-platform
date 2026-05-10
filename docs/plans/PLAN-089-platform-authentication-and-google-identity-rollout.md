@@ -596,6 +596,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 5 account-management boundary documented: API and setup docs now state that first-admin creation is the only v1 account UI, only that membership maps to `actor-owner`, later memberships keep `coreActorId: null`, and invitations/password reset/role editing/non-admin policy are follow-up work. Task 5.4 is now checked. |
 | 2026-05-10 | Phase 4b manifest safety regression started: source-level mobile route tests now assert the diagnostic manifest, Expo Go manifest, and served bundle do not append server config secrets, auth-state/recovery-token paths, session cookie names, bearer-token markers, or fake product-data identifiers. Task 4b.8 remains open until bearer-gated mobile product-data requests are installed and covered. |
 | 2026-05-10 | Phase 2 renderer CSRF retry landed: auth API errors now carry stable `status/code`, renderer mutation helper refreshes `/api/auth/status` and retries exactly once only for `E_CSRF_MISMATCH`, Settings sign-out uses the helper, and tests assert no retry on `E_FORBIDDEN` plus hard failure on a second CSRF mismatch. Task 2.14 is now checked. |
+| 2026-05-10 | Phase 2 aggregate throttle recovery helper slice landed: auth throttle now has account-scoped and full recovery clearing helpers, with tests proving account clearing does not erase subnet cooldowns and recovery clearing removes all active failure budgets. Task 2.11 remains open until admin/loopback/recovery routes call these helpers and alert logging is wired. |
 
 ---
 
