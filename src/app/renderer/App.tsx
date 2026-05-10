@@ -58,6 +58,7 @@ import { useGuideCatUiPrefs } from './guideCatUiPrefsStore.js';
 import { PLATFORM_ENVELOPE_REFRESH_EVENT } from './platformEnvelopeEvents.js';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
+import { PlatformLoginScreen } from './auth/PlatformLoginScreen.js';
 import { prefetchProviderCatalogsForRegistryFromClientCache } from './providerCatalogClient.js';
 import { fetchProviderRegistryFromClientCache } from './providerRegistryClient.js';
 import { recordSettingsRouteTransition } from './settings/settingsExitMemory.js';
@@ -654,6 +655,17 @@ export default function PlatformApp() {
           </Route>
           <Route path="/apps/:appId/*" element={<AppHostRoute envelope={readyEnvelope} />} />
           <Route path="/products" element={<Navigate to="/lobby" replace />} />
+          <Route
+            path="/login"
+            element={(
+              <PlatformLoginScreen
+                onAuthenticated={(nextEnvelope) => {
+                  flushSync(() => setState({ status: 'ready', envelope: nextEnvelope }));
+                  navigate(entryPath, { replace: true });
+                }}
+              />
+            )}
+          />
           <Route element={<SettingsShell envelope={readyEnvelope} />}>
             <Route path="/settings/*" element={<SettingsCanvasContent />} />
           </Route>

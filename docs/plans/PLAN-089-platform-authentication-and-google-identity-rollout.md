@@ -156,7 +156,7 @@ CSRF; repeated invalid logins are throttled.
 
 - [x] Task 3.1: Update `/setup` step 1 to collect first-admin local
       credentials without conflating login account fields with owner profile.
-- [ ] Task 3.2: Add `/login` route and login screen for existing workspaces.
+- [x] Task 3.2: Add `/login` route and login screen for existing workspaces.
 - [ ] Task 3.3: Update platform bootstrap loading so unauthenticated app loads
       redirect to `/login` instead of surfacing raw API failures.
 - [ ] Task 3.4: Add logout action in an existing account/settings surface.
@@ -588,6 +588,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 2 pinned-error-code follow-up started: auth routes, mobile auth routes, setup pre-auth origin rejection, and the future route-gate sender now share one auth error response helper and one exported `E_UNAUTHENTICATED` / `E_FORBIDDEN` / `E_CSRF_MISMATCH` code registry. Task 2.14 remains open until renderer retry/error handling keys only on those codes. |
 | 2026-05-10 | Phase 3 renderer login prerequisite slice started: added a renderer auth API client for `/api/auth/status`, local login, Google login, and logout, with pinned-code error mapping. Login route UI and stale-CSRF retry wiring remain pending. |
 | 2026-05-10 | Phase 3 setup credential UI landed: `/setup` step 1 now collects first-admin login email/password separately from owner display profile and sends those fields to setup completion. Task 3.1 is now checked. |
+| 2026-05-10 | Phase 3 local login route landed: `/login` now renders a local admin login screen backed by the renderer auth API client and refreshes the app-shell after successful login. Task 3.2 is now checked; automatic unauthenticated redirects remain under Task 3.3. |
 
 ---
 
