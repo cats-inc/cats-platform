@@ -21,6 +21,24 @@ cp .env.example .env
 The local monorepo folder is now `cats-platform/`, matching the intended
 public host repo/package target.
 
+### Platform auth configuration
+
+PLAN-089 auth is in rollout. Set a long `CATS_AUTH_SESSION_SECRET` before using
+the first-admin local login or Cats Mobile bearer-session paths:
+
+```bash
+CATS_AUTH_SESSION_SECRET=<long-random-secret>
+```
+
+`CATS_AUTH_ENABLED=false` is an unsafe dev/test escape hatch only. It is rejected
+after setup is complete and should not be used for LAN-facing workspaces.
+
+If the renderer is served from a non-default origin, add it to:
+
+```bash
+CATS_AUTH_ALLOWED_BROWSER_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+```
+
 ### 2. Install dependencies
 
 ```bash
@@ -96,6 +114,11 @@ Current implementation status:
 - Expo Go requests the desktop root manifest, downloads the bundled Cats Mobile
   export from `/api/mobile/bundle/*`, and receives the desktop LAN base URL in
   the manifest so Cats Mobile can connect without manual URL entry.
+- The QR and manifest are not authorization. Cats Mobile must call
+  `/api/mobile/auth/status` and complete local or Google mobile login before it
+  can fetch product data. The server-side mobile bearer auth routes exist, but
+  the full product-data route gate and SecureStore-backed client persistence
+  are still landing under PLAN-089.
 
 If the card reports no LAN address while the bind host is already
 LAN-visible, verify the machine has a non-loopback IPv4 address on the trusted

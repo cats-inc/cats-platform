@@ -61,7 +61,23 @@ Development: http://127.0.0.1:8181
 
 ## Authentication
 
-No general inbound auth is implemented yet.
+PLAN-089 auth is rolling out in slices. The current server-side foundation
+includes:
+
+- `GET /api/auth/status` for browser session status and Cats CSRF-token
+  refresh;
+- `POST /api/auth/login` for local password browser login;
+- `POST /api/auth/logout` for browser logout, requiring
+  `X-Cats-CSRF-Token` for active browser sessions;
+- `GET /api/mobile/auth/status` for Cats Mobile bearer-session status;
+- `POST /api/mobile/auth/login` for local password mobile login, returning the
+  raw bearer token exactly once;
+- `POST /api/mobile/auth/logout` for mobile device session revocation.
+
+The global product-route gate is not installed yet. Until the PLAN-089 atomic
+gate slice lands, existing Chat/Work/Code/Core routes still dispatch through
+their current route modules. Do not treat LAN exposure as fully closed until
+that gate is installed and the release notes say the rollout is complete.
 
 Telegram webhook ingress may optionally enforce the standard
 `x-telegram-bot-api-secret-token` header when

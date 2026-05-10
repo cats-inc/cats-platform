@@ -19,6 +19,27 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-05-10
+
+### Platform auth rollout in progress
+
+Behavior change:
+
+PLAN-089 server-side auth foundations are landing behind the not-yet-installed
+global route gate. Browser local login/logout/status and Cats Mobile bearer
+login/logout/status routes now exist, but product APIs are not fully protected
+until the dedicated gate slice lands.
+
+Migration steps:
+
+Set `CATS_AUTH_SESSION_SECRET` before testing first-admin local login or mobile
+bearer sessions. Do not rely on `CATS_AUTH_ENABLED=false`; it is an unsafe
+dev/test escape hatch and will be rejected after setup is complete.
+
+Deprecations:
+
+None in this slice.
+
 ## 2026-04-30
 
 ### Chat routing after ADR-091

@@ -561,6 +561,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Local credential verification was extracted behind `verifyPlatformLocalPasswordCredential` and both browser and mobile local-login routes now use the shared helper. This reduces route drift before adding Google and repair bootstrap routes. |
 | 2026-05-10 | Phase 2 pre-auth origin gate expanded to `/api/platform/setup/complete`, so first-admin setup mutations now require an allowlisted browser origin and reject missing/cross-site origins with pinned `E_FORBIDDEN`. Repair and Google credential POST still need the same gate before Task 2.12 can be checked off. |
 | 2026-05-10 | Phase 4b mobile client API slice started: Cats Mobile now has auth API wrappers for status/local-login/logout, and the generic mobile API client can attach a runtime bearer token without persisting it to AsyncStorage. SecureStore-backed token persistence and launch-flow login UI remain pending before Tasks 4b.4/4b.5 can be checked off. |
+| 2026-05-10 | Phase 6 documentation slice started: `.env.example`, API docs, setup guide, and release notes now document the auth rollout status, session secret, origin allowlist, mobile auth routes, and the fact that the global product-route gate is not installed yet. Full recovery-flow documentation remains pending. |
 
 ---
 
