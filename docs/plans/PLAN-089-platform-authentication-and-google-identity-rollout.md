@@ -579,6 +579,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Google route lockout regression added and completed task reconciliation updated: Task 2.10 is checked for local+Google composite failed-login lockout, and Task 4.6 is checked for GIS CSRF validation remaining separate from Cats synchronizer CSRF. Aggregate guard recovery/clearing work remains under Task 2.11. |
 | 2026-05-10 | Phase 6 route-gate readiness regression slice landed: focused tests now cover pre-setup product API rejection with public minimal app-shell, setup-complete unauthenticated rejection, setup-complete authenticated admin access, repair-mode fail-closed behavior, and browser-cookie mutation CSRF rejection. The evaluator is still not installed in `requestRouter`. |
 | 2026-05-10 | Phase 2 setup-reset protection landed: legacy `/api/setup/reset` now requires an authenticated admin browser session after setup completion and validates the Cats synchronizer CSRF token before clearing setup state. Full product mutation CSRF middleware remains pending under Task 2.2/6.4. |
+| 2026-05-10 | Phase 2 origin-preservation follow-up landed for Vite dev: renderer proxy routes now use explicit proxy objects with `changeOrigin: false` plus cookie domain/path rewrite settings so browser-origin and session-cookie behavior remain stable during auth testing. Reverse-proxy deployment audit remains pending before Task 2.15 is checked off. |
 
 ---
 
