@@ -8,6 +8,7 @@ import {
 } from "../topdown/shared";
 import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
 import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
+import { ImportExternalIssueDialog } from "./ImportExternalIssueDialog";
 import { NewWorkItemDialog } from "./NewWorkItemDialog";
 import "./work-items.css";
 
@@ -15,6 +16,7 @@ export function WorkItemsListPage(): JSX.Element {
   const workItemsQuery = useWorkItemsQuery();
   const workItems = workItemsQuery.data?.workItems ?? [];
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const { t } = useI18n();
 
   return (
@@ -30,6 +32,33 @@ export function WorkItemsListPage(): JSX.Element {
         </div>
         <div className="channelTopBarCenter workItemsListTopBar__center" />
         <div className="channelTopBarEnd workItemsListTopBar__end">
+          <button
+            type="button"
+            className={
+              "workItemsListTopBar__addBtn "
+              + "workItemsListTopBar__addBtn--secondary"
+            }
+            onClick={() => setImportDialogOpen(true)}
+            aria-label={t("workItemsListImportExternalIssueAriaLabel")}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 3h8v8H3z" />
+              <path d="M5 5h4" />
+              <path d="M5 7h4" />
+              <path d="M5 9h2" />
+            </svg>
+            <span>{t("workItemsListImportExternalIssueAction")}</span>
+          </button>
           <button
             type="button"
             className="workItemsListTopBar__addBtn"
@@ -165,6 +194,11 @@ export function WorkItemsListPage(): JSX.Element {
       </main>
       {dialogOpen ? (
         <NewWorkItemDialog onClose={() => setDialogOpen(false)} />
+      ) : null}
+      {importDialogOpen ? (
+        <ImportExternalIssueDialog
+          onClose={() => setImportDialogOpen(false)}
+        />
       ) : null}
     </div>
   );

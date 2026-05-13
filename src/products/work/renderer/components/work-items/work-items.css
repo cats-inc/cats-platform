@@ -60,6 +60,7 @@ main.canvas:has(> .workItemDetail) {
 }
 
 .workItemsListTopBar__end {
+  gap: 8px;
   justify-content: flex-end;
 }
 
@@ -82,6 +83,18 @@ main.canvas:has(> .workItemDetail) {
 .workItemsListTopBar__addBtn:hover {
   background: #b35a32;
   box-shadow: 0 1px 4px rgba(196, 101, 58, 0.25);
+}
+
+.workItemsListTopBar__addBtn--secondary {
+  border-color: var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.workItemsListTopBar__addBtn--secondary:hover {
+  border-color: rgba(196, 101, 58, 0.32);
+  background: var(--panel-hover);
+  box-shadow: none;
 }
 
 .workItemsListTopBar__addBtn:focus-visible {
