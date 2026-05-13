@@ -229,6 +229,34 @@ test('bounded observation rejects inconsistent allowed fallback surfaces', () =>
   ]);
 });
 
+test('bounded observation rejects unsupported policy dial fields', () => {
+  const input = observation();
+  input.policy = {
+    ...input.policy,
+    extraPolicy: true,
+    parentToolScope: 'dangerous' as never,
+    dials: {
+      ...input.policy.dials,
+      autonomy: 'free_run' as never,
+      toolScope: 'root' as never,
+      validation: 'trust_me' as never,
+      fallbackPolicy: 'panic' as never,
+      extraDial: true,
+    },
+  } as never;
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(input), [
+    'policy contains unsupported fields: extraPolicy',
+    'policy.parentToolScope is unsupported: dangerous',
+    'policy.dials contains unsupported fields: extraDial',
+    'policy.dials.autonomy is unsupported: free_run',
+    'policy.dials.toolScope is unsupported: root',
+    'policy.dials.validation is unsupported: trust_me',
+    'policy.dials.fallbackPolicy is unsupported: panic',
+    'policy.allowedFallbacks must include policy.dials.fallbackPolicy panic',
+  ]);
+});
+
 test('bounded observation rejects unsupported task and summary enum values', () => {
   const input = observation();
   input.task = {

@@ -10,6 +10,9 @@ import type {
 } from '../supervision/contracts.js';
 import {
   ADDRESSABLE_TARGET_KIND_VALUES,
+  SUPERVISION_APPROVAL_THRESHOLD_VALUES,
+  SUPERVISION_AUTONOMY_VALUES,
+  SUPERVISION_CHECKPOINT_CADENCE_VALUES,
   SUPERVISED_TOOL_APPROVAL_VALUES,
   SUPERVISED_TOOL_BLOCKING_VALUES,
   SUPERVISED_TOOL_CANCELLATION_VALUES,
@@ -17,6 +20,10 @@ import {
   SUPERVISED_TOOL_PREFLIGHT_VALUES,
   SUPERVISED_TOOL_SIDE_EFFECT_VALUES,
   SUPERVISION_FALLBACK_POLICY_VALUES,
+  SUPERVISION_SCAFFOLDING_VALUES,
+  SUPERVISION_TASK_GRANULARITY_VALUES,
+  SUPERVISION_TOOL_SCOPE_VALUES,
+  SUPERVISION_VALIDATION_VALUES,
 } from '../supervision/contracts.js';
 
 export const PROVIDER_AGENT_DECISION_CONTRACT_VERSION = 1;
@@ -181,6 +188,22 @@ const PROVIDER_AGENT_OBSERVATION_SUMMARY_FIELDS = [
   'value',
   'sourceRef',
 ] as const;
+const PROVIDER_AGENT_OBSERVATION_POLICY_FIELDS = [
+  'snapshotRef',
+  'dials',
+  'parentToolScope',
+  'allowedFallbacks',
+] as const;
+const PROVIDER_AGENT_SUPERVISION_POLICY_FIELDS = [
+  'autonomy',
+  'taskGranularity',
+  'toolScope',
+  'scaffolding',
+  'validation',
+  'checkpointCadence',
+  'approvalThreshold',
+  'fallbackPolicy',
+] as const;
 
 export type ProviderAgentDecisionConfidence =
   (typeof PROVIDER_AGENT_DECISION_CONFIDENCE_VALUES)[number];
@@ -322,17 +345,7 @@ export function validateProviderAgentBoundedObservation(
     );
     validateAddressableTarget(errors, 'actor.target', observation.actor.target);
   }
-  if (!isRecord(observation.policy)) {
-    errors.push('policy must be an object');
-  } else if (!isRecord(observation.policy.dials)) {
-    errors.push('policy.dials must be an object');
-  } else {
-    validateAllowedFallbacks(
-      errors,
-      observation.policy.allowedFallbacks,
-      observation.policy.dials.fallbackPolicy,
-    );
-  }
+  validateObservationPolicy(errors, observation.policy);
   validateBudgetEnvelope(errors, observation.budget);
 
   if (observation.contractVersion !== PROVIDER_AGENT_DECISION_CONTRACT_VERSION) {
@@ -378,6 +391,32 @@ export function validateProviderAgentBoundedObservation(
   }
 
   return errors;
+}
+
+function validateObservationPolicy(errors: string[], policy: unknown): void {
+  if (!isRecord(policy)) {
+    errors.push('policy must be an object');
+    return;
+  }
+
+  validateAllowedRecordFields(errors, 'policy', policy, PROVIDER_AGENT_OBSERVATION_POLICY_FIELDS);
+  validateOptionalEnumValue(
+    errors,
+    'policy.parentToolScope',
+    policy.parentToolScope,
+    SUPERVISION_TOOL_SCOPE_VALUES,
+  );
+  if (!isRecord(policy.dials)) {
+    errors.push('policy.dials must be an object');
+    return;
+  }
+
+  validateSupervisionPolicy(errors, policy.dials);
+  validateAllowedFallbacks(
+    errors,
+    policy.allowedFallbacks,
+    policy.dials.fallbackPolicy,
+  );
 }
 
 export function validateProviderAgentDecision(
@@ -978,10 +1017,65 @@ function validateBudgetEnvelope(
   }
 }
 
+function validateSupervisionPolicy(
+  errors: string[],
+  policy: Record<string, unknown>,
+): void {
+  validateAllowedRecordFields(
+    errors,
+    'policy.dials',
+    policy,
+    PROVIDER_AGENT_SUPERVISION_POLICY_FIELDS,
+  );
+  validateEnumValue(errors, 'policy.dials.autonomy', policy.autonomy, SUPERVISION_AUTONOMY_VALUES);
+  validateEnumValue(
+    errors,
+    'policy.dials.taskGranularity',
+    policy.taskGranularity,
+    SUPERVISION_TASK_GRANULARITY_VALUES,
+  );
+  validateEnumValue(
+    errors,
+    'policy.dials.toolScope',
+    policy.toolScope,
+    SUPERVISION_TOOL_SCOPE_VALUES,
+  );
+  validateEnumValue(
+    errors,
+    'policy.dials.scaffolding',
+    policy.scaffolding,
+    SUPERVISION_SCAFFOLDING_VALUES,
+  );
+  validateEnumValue(
+    errors,
+    'policy.dials.validation',
+    policy.validation,
+    SUPERVISION_VALIDATION_VALUES,
+  );
+  validateEnumValue(
+    errors,
+    'policy.dials.checkpointCadence',
+    policy.checkpointCadence,
+    SUPERVISION_CHECKPOINT_CADENCE_VALUES,
+  );
+  validateEnumValue(
+    errors,
+    'policy.dials.approvalThreshold',
+    policy.approvalThreshold,
+    SUPERVISION_APPROVAL_THRESHOLD_VALUES,
+  );
+  validateEnumValue(
+    errors,
+    'policy.dials.fallbackPolicy',
+    policy.fallbackPolicy,
+    SUPERVISION_FALLBACK_POLICY_VALUES,
+  );
+}
+
 function validateAllowedFallbacks(
   errors: string[],
   allowedFallbacks: unknown,
-  policyFallback: SupervisionFallbackPolicy,
+  policyFallback: unknown,
 ): void {
   if (!Array.isArray(allowedFallbacks)) {
     errors.push('policy.allowedFallbacks must be an array');
