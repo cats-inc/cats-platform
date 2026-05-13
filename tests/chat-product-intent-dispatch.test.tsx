@@ -1851,6 +1851,101 @@ test('routeChannelMessage records Work intake proposal tool results without dura
   );
 });
 
+test('routeChannelMessage keeps ordinary Chat Work intake proposals local until declined or confirmed', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const rawMessage = 'Refine the Work inbox; Review the project adapter contract';
+
+  const routed = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: rawMessage,
+      senderName: 'Kenneth',
+    },
+    runtimeReplyStub('I can help clarify that.'),
+    new Date('2026-05-13T09:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+      providerAgentDecisionRequester: async () => ({
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-work-propose-split-chat-1',
+        confidence: 'high',
+        toolName: WORK_ITEM_PROPOSE_SPLIT_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_ITEM_PROPOSE_SPLIT_TOOL,
+        },
+        input: {
+          source: {
+            surface: 'telegram',
+            transportBindingId: 'model-binding-should-be-ignored',
+            sourceText: 'model source should be ignored',
+          },
+          maxItems: 2,
+        },
+        rationaleSummary: 'Propose structured Work Items from the owner message.',
+      }),
+    },
+  );
+
+  const channel = requireChannel(routed.state, channelId);
+  const proposalMessage = channel.messages.find((message) =>
+    message.metadata.event === 'work_intake_proposal_created');
+  const proposal = proposalMessage?.metadata.workIntakeProposal as
+    | {
+        source?: { surface?: string; transportBindingId?: string };
+        candidates?: Array<{ title?: string }>;
+      }
+    | undefined;
+  const coreBeforeDecline = await store.readCore();
+
+  assert.equal(proposal?.source?.surface, 'chat');
+  assert.equal(proposal?.source?.transportBindingId, undefined);
+  assert.deepEqual(
+    proposal?.candidates?.map((candidate) => candidate.title),
+    ['Refine the Work inbox', 'Review the project adapter contract'],
+  );
+  assert.equal(
+    coreBeforeDecline.workItems.filter((candidate) =>
+      Boolean(candidate.metadata.workIntake)).length,
+    0,
+  );
+
+  if (!proposalMessage) {
+    throw new Error('Expected Work intake proposal message.');
+  }
+  const declined = await beginChannelMessageDispatch(
+    routed.state,
+    channelId,
+    {
+      body: 'Ignore these',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(proposalMessage, 'decline'),
+    },
+    runtimeStub(),
+    new Date('2026-05-13T09:02:00.000Z'),
+    {
+      chatStore: store,
+    },
+  );
+  const declinedChannel = requireChannel(declined.state, channelId);
+  const declinedMessage = declinedChannel.messages.find((message) =>
+    message.metadata.event === 'work_intake_proposal_declined');
+  const coreAfterDecline = await store.readCore();
+
+  assert.equal(declined.preparedTurn, null);
+  assert.equal(declinedMessage?.body, 'Work intake proposal ignored.');
+  assert.equal(
+    coreAfterDecline.workItems.filter((candidate) =>
+      Boolean(candidate.metadata.workIntake)).length,
+    0,
+  );
+});
+
 test('routeChannelMessage does not synthesize Cat proposals without a tool request', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);

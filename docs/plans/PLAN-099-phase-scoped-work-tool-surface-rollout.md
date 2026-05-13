@@ -63,7 +63,7 @@ tool path; capture writes only Work Items, not Tasks/Runs.
       messages.
 - [x] Task 3.4: Preserve existing slash-mode `/work` and `/code` behavior while
       routing new natural-language capture through the shared tool surface.
-- [ ] Task 3.5: Add tests for web Chat and Telegram parity without writing
+- [x] Task 3.5: Add tests for web Chat and Telegram parity without writing
       live dev-state records.
 
 **Deliverables**: Chat/Telegram natural-language todos can create visible Work
@@ -169,6 +169,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Phase 3.1 exposed policy-filtered `work.item.propose_split` descriptors to strong single-target Cat observations; `work.item.capture` remains hidden behind narrow-write policy. |
 | 2026-05-13 | Phase 3.2 added Chat/Telegram `work.item.propose_split` sidecars that use server-built source context, show candidate Work Items, and avoid durable Work writes. |
 | 2026-05-13 | Phase 3 capture confirmation path added: owner choice on proposal sidecars calls the `work.item.capture` delegate and writes draft Work Items without direct model mutation. |
+| 2026-05-13 | Phase 3.5 parity tests added for ordinary Chat decline and Telegram confirmed capture, all using isolated `MemoryChatStore` state. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---
