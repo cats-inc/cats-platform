@@ -933,6 +933,10 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
     runtime attachment for that participant
   - resolved runtime skill manifests
   - product-owned MCP/tool intent manifests
+    - `work-memory` Cats project phase-scoped Work tool names and descriptions
+      for matched owner turns, including Work intake proposal,
+      Project create/lookup, Work Item update/assignment, local external issue
+      binding, and Boss execution preparation
   - frozen runtime MCP tool-plane metadata aligned to `POST /api/runtime/mcp`
   - execution-loop guardrails and operator seam paths
   - a pre-dispatch `execution` skeleton with:
@@ -949,6 +953,10 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
   direct API callers confirm owner-visible proposal sidecars, including Work
   intake capture and Boss execution-preparation proposals, through the same
   choice path used by Chat and Telegram.
+- Direct dispatch Work sidecars remain product-owned. For example,
+  `work.external.link_issue` writes local Work binding metadata for GitHub,
+  Redmine, Bugzilla, Gitea, or GitLab issue URLs; it does not call the remote
+  tracker or make the external system the Cats source of truth.
 - The dispatch route reuses the
   existing `routeChannelMessage()` execution path, and returns:
   - the pre-dispatch plan
