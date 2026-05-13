@@ -425,6 +425,29 @@ test('provider-agent decisions reject non-string runtime JSON fields without thr
   ]);
 });
 
+test('provider-agent semantic plans reject non-array steps without throwing', () => {
+  const decision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 'decision-bad-steps',
+    planId: 'plan-bad-steps',
+    confidence: 'medium',
+    rationaleSummary: 'Return malformed steps.',
+    steps: {
+      stepId: 'step-not-array',
+      summary: 'This should be wrapped in an array.',
+      action: 'respond',
+    },
+  } as unknown as ProviderAgentDecision;
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision,
+  }), [
+    'semantic_plan.steps must be an array',
+  ]);
+});
+
 test('recovery decision must choose a platform-allowed fallback option', () => {
   const decision: ProviderAgentDecision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,

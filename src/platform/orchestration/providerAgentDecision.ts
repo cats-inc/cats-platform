@@ -288,6 +288,10 @@ function validateSemanticPlanDecision(
     PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
   );
 
+  if (!Array.isArray(decision.steps)) {
+    errors.push('semantic_plan.steps must be an array');
+    return;
+  }
   if (decision.steps.length === 0) {
     errors.push('semantic_plan.steps must not be empty');
   }
