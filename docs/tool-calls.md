@@ -211,7 +211,10 @@ optional `externalType`, `externalId`, optional `externalUrl`, optional
 provider set is `github`, `gitlab`, `gitea`, `redmine`, and `bugzilla`; the
 delegate writes the `externalWorkBindings` metadata key on the Work Item or
 Project and emits one Activity for material changes. It does not read from or
-write to external services.
+write to external services. The Work Graph projection exposes valid local
+bindings on Project and Work Item summaries as `externalBindings[]` so Cockpit,
+System Map, and model observations can show external issue links without
+reading raw metadata bags.
 
 Caller-visible triage lookup fields are `query`, `limit`, and
 `includeArchived`. Caller-visible triage create fields are `title`, `summary`,

@@ -208,6 +208,12 @@ interface ExternalWorkBinding {
 }
 ```
 
+The Work Graph read model shall project valid Project and Work Item bindings
+as `externalBindings[]` summaries with provider, external type/id/url, sync
+direction, sync timestamps, and linked actor metadata. Invalid or malformed
+binding metadata shall be ignored by the projection rather than failing the
+whole graph response.
+
 The binding may live in metadata for the MVP. A future ADR may promote bindings
 to a dedicated Core record if sync conflict handling requires it.
 

@@ -1,3 +1,9 @@
+import type {
+  ExternalWorkBindingExternalType,
+  ExternalWorkBindingProvider,
+  ExternalWorkBindingSyncDirection,
+} from "./externalWorkBinding.js";
+
 /**
  * Work Graph projection types for the top-down Work surfaces (System Map,
  * Cockpit, Broken Links). Mirrors the SPEC-083 §Suggested Work Graph Shape.
@@ -171,6 +177,24 @@ export interface WorkGraphLinkView {
   createdAt: string;
 }
 
+/**
+ * Project / Work Item read-side summary of locally linked external tracker
+ * records. The canonical binding remains in Core metadata; this projection
+ * exposes the stable fields UI surfaces and model observations need without
+ * making external trackers the system of record.
+ */
+export interface WorkGraphExternalBindingSummary {
+  provider: ExternalWorkBindingProvider;
+  externalType: ExternalWorkBindingExternalType;
+  externalId: string;
+  externalUrl: string | null;
+  syncDirection: ExternalWorkBindingSyncDirection;
+  lastSyncedAt: string | null;
+  externalUpdatedAt: string | null;
+  linkedAt: string;
+  linkedByActorRef: string | null;
+}
+
 export interface WorkGraphObjectSummary {
   id: string;
   kind: WorkGraphObjectKind;
@@ -217,6 +241,12 @@ export interface WorkGraphObjectSummary {
    * out at the API boundary.
    */
   productBinding?: WorkTaskProductBinding;
+  /**
+   * Project / Work Item only: locally linked external tracker records
+   * (GitHub Issues, Gitea, Redmine, Bugzilla, etc.). Undefined when the
+   * object has no valid external binding metadata.
+   */
+  externalBindings?: WorkGraphExternalBindingSummary[];
   /**
    * Run-only: lifecycle timestamps. Set on `kind === 'run'` summaries;
    * undefined elsewhere. `startedAt` is null while queued, set when

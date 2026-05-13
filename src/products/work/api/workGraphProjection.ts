@@ -5,6 +5,7 @@ import type {
   CoreApprovalBindingRecord,
   CoreArtifactRecord,
   CoreConversationRecord,
+  CoreRecordMetadata,
   CoreOrchestrationOutcomeRecord,
   CoreProjectRecord,
   CoreRunRecord,
@@ -17,8 +18,19 @@ import {
   endpointKey,
   projectLinks,
 } from '../shared/workGraphProjection.js';
+import {
+  EXTERNAL_WORK_BINDING_EXTERNAL_TYPE_VALUES,
+  EXTERNAL_WORK_BINDING_METADATA_KEY,
+  EXTERNAL_WORK_BINDING_PROVIDER_VALUES,
+  EXTERNAL_WORK_BINDING_SCHEMA_VERSION,
+  EXTERNAL_WORK_BINDING_SYNC_DIRECTION_VALUES,
+  type ExternalWorkBindingExternalType,
+  type ExternalWorkBindingProvider,
+  type ExternalWorkBindingSyncDirection,
+} from '../shared/externalWorkBinding.js';
 import type {
   WorkAttentionState,
+  WorkGraphExternalBindingSummary,
   WorkGraphDiagnostic,
   WorkGraphEvidenceAttachment,
   WorkGraphGateDecorator,
@@ -213,6 +225,7 @@ function projectToSummary(
     linkedTaskId: null,
     linkedRunId: null,
     updatedAt: p.updatedAt,
+    externalBindings: externalBindingSummaries(p.metadata),
     linkedConversationTitle: p.primaryConversationId
       ? conversationTitleById.get(p.primaryConversationId) ?? null
       : null,
@@ -242,6 +255,7 @@ function workItemToSummary(
     linkedTaskId: w.taskId,
     linkedRunId: null,
     updatedAt: w.updatedAt,
+    externalBindings: externalBindingSummaries(w.metadata),
     linkedWorkItemTitle: w.parentWorkItemId
       ? workItemTitleById.get(w.parentWorkItemId) ?? null
       : null,
@@ -541,6 +555,86 @@ function deriveAttention(status: string): WorkAttentionState {
   return ATTENTION_BY_STATUS[status] ?? 'none';
 }
 
+function externalBindingSummaries(
+  metadata: CoreRecordMetadata,
+): WorkGraphExternalBindingSummary[] | undefined {
+  const externalBindingsMetadata = metadata[EXTERNAL_WORK_BINDING_METADATA_KEY];
+  if (!isRecord(externalBindingsMetadata)) {
+    return undefined;
+  }
+  if (externalBindingsMetadata.schemaVersion !== EXTERNAL_WORK_BINDING_SCHEMA_VERSION) {
+    return undefined;
+  }
+  if (!Array.isArray(externalBindingsMetadata.bindings)) {
+    return undefined;
+  }
+
+  const summaries = externalBindingsMetadata.bindings.flatMap((binding) => {
+    const summary = externalBindingSummary(binding);
+    return summary ? [summary] : [];
+  });
+
+  return summaries.length > 0 ? summaries : undefined;
+}
+
+function externalBindingSummary(input: unknown): WorkGraphExternalBindingSummary | null {
+  if (!isRecord(input)) {
+    return null;
+  }
+  if (input.schemaVersion !== EXTERNAL_WORK_BINDING_SCHEMA_VERSION) {
+    return null;
+  }
+
+  const provider = supportedValue(
+    input.provider,
+    EXTERNAL_WORK_BINDING_PROVIDER_VALUES,
+  ) as ExternalWorkBindingProvider | null;
+  const externalType = supportedValue(
+    input.externalType,
+    EXTERNAL_WORK_BINDING_EXTERNAL_TYPE_VALUES,
+  ) as ExternalWorkBindingExternalType | null;
+  const syncDirection = supportedValue(
+    input.syncDirection,
+    EXTERNAL_WORK_BINDING_SYNC_DIRECTION_VALUES,
+  ) as ExternalWorkBindingSyncDirection | null;
+  const externalId = requiredString(input.externalId);
+  const linkedAt = requiredString(input.linkedAt);
+  if (!provider || !externalType || !syncDirection || !externalId || !linkedAt) {
+    return null;
+  }
+
+  return {
+    provider,
+    externalType,
+    externalId,
+    externalUrl: nullableString(input.externalUrl),
+    syncDirection,
+    lastSyncedAt: nullableString(input.lastSyncedAt),
+    externalUpdatedAt: nullableString(input.externalUpdatedAt),
+    linkedAt,
+    linkedByActorRef: nullableString(input.linkedByActorRef),
+  };
+}
+
+function supportedValue<T extends readonly string[]>(
+  value: unknown,
+  values: T,
+): T[number] | null {
+  return typeof value === 'string' && values.includes(value) ? value : null;
+}
+
+function requiredString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function nullableString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
 function pickAnchors(
   record: Record<string, unknown>,
   fields: readonly string[],
@@ -553,6 +647,10 @@ function pickAnchors(
     }
   }
   return anchors;
+}
+
+function isRecord(input: unknown): input is Record<string, unknown> {
+  return typeof input === 'object' && input !== null && !Array.isArray(input);
 }
 
 function deriveApprovalState(
@@ -573,4 +671,3 @@ function deriveApprovalState(
       return 'not_requested';
   }
 }
-
