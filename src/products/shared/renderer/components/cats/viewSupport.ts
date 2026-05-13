@@ -30,6 +30,16 @@ export function getCatSkillProfileLabel(profile: string | null | undefined): Mes
   return null;
 }
 
+export function getCatMcpProfileLabel(profile: string | null | undefined): MessageKey | null {
+  if (!profile || profile === 'chat-memory') {
+    return messageKeys.sharedSettingsCatsMcpProfileChatMemoryLabel;
+  }
+  if (profile === 'work-memory') {
+    return messageKeys.sharedSettingsCatsMcpProfileWorkMemoryLabel;
+  }
+  return null;
+}
+
 export function getMemoryCategoryLabel(category: string): MessageKey | null {
   const match = MEMORY_CATEGORIES.find((candidate) => candidate.value === category);
   return match ? match.label : null;

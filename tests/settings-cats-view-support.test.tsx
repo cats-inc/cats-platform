@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  getCatMcpProfileLabel,
   getCatProductSurfaceLabel,
   getCatRecordStatusLabel,
+  getCatSkillProfileLabel,
   formatTransportTimestamp,
   MEMORY_CATEGORIES,
   MCP_PROFILES,
@@ -29,6 +31,19 @@ test('settings-cats view support keeps curated profile and memory category lists
     { value: 'relationship', label: messageKeys.sharedSettingsCatsMemoryCategoryRelationshipLabel },
     { value: 'lesson', label: messageKeys.sharedSettingsCatsMemoryCategoryLessonLabel },
   ]);
+  assert.equal(
+    getCatSkillProfileLabel('companion'),
+    messageKeys.sharedSettingsCatsSkillProfileCompanionLabel,
+  );
+  assert.equal(
+    getCatMcpProfileLabel(null),
+    messageKeys.sharedSettingsCatsMcpProfileChatMemoryLabel,
+  );
+  assert.equal(
+    getCatMcpProfileLabel('work-memory'),
+    messageKeys.sharedSettingsCatsMcpProfileWorkMemoryLabel,
+  );
+  assert.equal(getCatMcpProfileLabel('custom'), null);
 });
 
 test('formatTransportTimestamp returns an em dash for empty values and delegates to Date localization otherwise', () => {

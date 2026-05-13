@@ -14,8 +14,10 @@ import { executionLabel, sortChatCatsForDisplay } from '../../workspaceChatUtils
 import type { SettingsCatsRegistryController } from './SettingsCats.js';
 import { SettingsCatsDetailPanel } from './SettingsCatsDetailPanel.js';
 import {
+  getCatMcpProfileLabel,
   getCatProductSurfaceLabel,
   getCatRecordStatusLabel,
+  getCatSkillProfileLabel,
 } from './viewSupport.js';
 
 export interface SharedSettingsCatsRegistryDetailPanelProps {
@@ -111,6 +113,10 @@ export function WorkspaceSettingsCatsRegistry({
             const isExpanded = expandedCatId === cat.id;
             const catBindings = botBindings.filter((binding) => binding.catId === cat.id);
             const catStatusLabelKey = getCatRecordStatusLabel(cat.status);
+            const catSkillProfileLabelKey = cat.skillProfile
+              ? getCatSkillProfileLabel(cat.skillProfile)
+              : messageKeys.sharedSettingsCatsRegistryDefaultSkillProfileLabel;
+            const catMcpProfileLabelKey = getCatMcpProfileLabel(cat.mcpProfile);
 
             return (
               <article key={cat.id} className="catCard">
@@ -207,7 +213,10 @@ export function WorkspaceSettingsCatsRegistry({
                 </div>
 
                 <div className="catMeta">
-                  <span>{cat.skillProfile ?? t(messageKeys.sharedSettingsCatsRegistryDefaultSkillProfileLabel)}</span>
+                  <span>
+                    {catSkillProfileLabelKey ? t(catSkillProfileLabelKey) : cat.skillProfile}
+                  </span>
+                  <span>{catMcpProfileLabelKey ? t(catMcpProfileLabelKey) : cat.mcpProfile}</span>
                   <span>
                     {cat.memory.updatedAt
                       ? t(messageKeys.sharedSettingsCatsRegistryMemorySavedLabel)
