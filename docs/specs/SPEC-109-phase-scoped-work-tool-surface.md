@@ -41,7 +41,8 @@ The MVP tool surface landed on 2026-05-13. Current implementation includes:
   runtime dispatch, including `allowedTools` and `toolDescriptions` copied from
   the supervised Work tool manifests.
 - Local external tracker bindings, manual UI link/unlink, Work Graph/list/detail
-  projections, and a GitHub Issues adapter spike without remote writes.
+  projections, external issue import route/UI, supervised import manifest, and
+  GitHub/Redmine/Bugzilla read-only adapter spikes without remote writes.
 
 Automatic bidirectional external tracker sync, credential handling, remote
 write approval, and runtime MCP execution adapters for the full Work catalog
@@ -175,6 +176,7 @@ The first implementation should start with these tool names and phases:
 | `work.item.assign_project` | `triage` | `local_state` | Boss Cat / approved strong Cat |
 | `work.item.prepare_execution` | `execution_preparation` | `none` | Boss Cat |
 | `work.task.create_from_work_item` | `execution_preparation` | `local_state` | Boss Cat / supervised Work delegate |
+| `work.external.import_issue` | `external_tracker_binding` | `local_state` | Owner-approved strong Cat / product UI |
 | `work.external.link_issue` | `external_tracker_binding` | `local_state` | Owner-approved strong Cat / product UI |
 
 ### Tool Input Shape Principles

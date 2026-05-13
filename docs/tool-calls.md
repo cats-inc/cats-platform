@@ -68,6 +68,7 @@ rather than duplicating every validation branch.
 | `work.item.assign_project` | Cats Work | Product delegate, explicit Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.prepare_execution` | Cats Work | Product delegate, Boss Cat observation descriptor, and Chat proposal sidecar implemented | `product_internal_delegate` / future `runtime_tool` | Boss Cat execution preparation with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.task.create_from_work_item` | Cats Work | Product delegate and owner-confirmed Chat sidecar task creation implemented; direct model/runtime exposure pending | `product_internal_delegate` / future `runtime_tool` | Owner-confirmed Boss Cat execution preparation with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.external.import_issue` | Cats Work | Product route/UI implemented, supervised manifest/input hints landed, and Chat/runtime execution pending; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / future Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.external.link_issue` | Cats Work | Product delegate, HTTP route, Work UI manual binding, URL inference, Chat provider-agent observation/tool-request executor, and GitHub adapter spike implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.external.unlink_issue` | Cats Work | Product delegate, HTTP route, Work detail UI, and Chat provider-agent observation/tool-request executor implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.lookup` | Cats Work | Product delegate, Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Strong Cat / Boss Cat triage with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
@@ -215,6 +216,7 @@ with capped depth, key counts, array length, and string length; recovery
 | `work.item.assign_project` | `triage` | `local_state` | `policy` | `summary` | Attaches one existing triage-editable Work Item to one existing non-archived Project while preserving source provenance. It must not create Projects, Tasks, Missions, Runs, or runtime sessions. |
 | `work.item.prepare_execution` | `execution_preparation` | `none` | `never` | `summary` | Proposes Task-ready execution payloads for selected Work Items. It returns readiness, open questions, blockers, and proposed Task title/summary without writing Core. |
 | `work.task.create_from_work_item` | `execution_preparation` | `local_state` | `policy` | `summary` | Creates one pending-approval Task from one ready Work Item and links it through `WorkItem.taskId`. It does not create Runs or runtime sessions. |
+| `work.external.import_issue` | `external_tracker_binding` | `local_state` | `policy` | `summary` | Reads one GitHub/Redmine/Bugzilla issue URL through server-owned adapters and creates one planned local Work Item with pull-mode external binding metadata. It does not write remote trackers or start execution. |
 | `work.external.link_issue` | `external_tracker_binding` | `local_state` | `policy` | `summary` | Manually links one Work Item or Project to an external issue/ticket/project by writing local metadata only. It does not call external tracker APIs. |
 | `work.external.unlink_issue` | `external_tracker_binding` | `local_state` | `policy` | `summary` | Manually removes one local external issue/ticket/project binding from a Work Item or Project. It does not call external tracker APIs. |
 | `work.project.lookup` | `triage` | `none` | `never` | `summary` | Looks up bounded Project matches for Work Item triage. It returns project ids, titles, planning status, summary/repo/conversation refs, and linked Work Item counts. |
@@ -289,9 +291,14 @@ planned Cats Work Item with provider-neutral import metadata and a pull-mode
 external binding, without creating Tasks, Runs, or remote writes. Automatic
 bidirectional sync is deferred by ADR-106, so
 `syncDirection` remains metadata intent rather than an active sync contract.
-`POST /api/work/external-issue-imports` exposes the owner-driven product route
-for this import flow; it is an HTTP route, not yet a model-callable runtime
-tool.
+Caller-visible external import fields are a required credential-free HTTP(S)
+`externalUrl`, optional provider hint bounded to `github`, `redmine`, or
+`bugzilla`, and optional `note`; Work Item ids, external ids, actor ids,
+timestamps, and project assignment remain server-resolved. `POST
+/api/work/external-issue-imports` exposes the owner-driven product route for
+this import flow, and `work.external.import_issue` now exists in the
+phase-scoped supervised manifest so Chat/runtime tool surfaces can advertise
+the same bounded capability before execution wiring lands.
 
 Caller-visible triage lookup fields are `query`, `limit`, and
 `includeArchived`. Caller-visible triage create fields are `title`, `summary`,

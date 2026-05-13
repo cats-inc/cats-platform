@@ -4,6 +4,7 @@ import type {
 import type { SupervisionToolScope } from '../../../platform/supervision/contracts.js';
 import { filterToolSurface } from '../../../platform/supervision/toolRegistry.js';
 import {
+  WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
@@ -35,6 +36,8 @@ export interface PhaseScopedWorkToolObservation {
 }
 
 const WORK_TOOL_REASON_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, string>> = {
+  [WORK_EXTERNAL_IMPORT_ISSUE_TOOL]:
+    'Actor can import one external tracker issue as a planned Cats Work Item.',
   [WORK_EXTERNAL_LINK_ISSUE_TOOL]:
     'Actor can locally link a Work Item or Project to an external tracker record.',
   [WORK_EXTERNAL_UNLINK_ISSUE_TOOL]:
@@ -58,6 +61,10 @@ const WORK_TOOL_REASON_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, string>
 };
 
 const WORK_TOOL_INPUT_HINTS_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, readonly string[]>> = {
+  [WORK_EXTERNAL_IMPORT_ISSUE_TOOL]: [
+    'Input: { externalUrl: string; provider?: "github" | "redmine" | "bugzilla"; note?: string }.',
+    'Cats reads the external issue and creates a planned local Work Item only; do not claim remote writes or active bidirectional sync.',
+  ],
   [WORK_EXTERNAL_LINK_ISSUE_TOOL]: [
     'Input: { note?: string }. Cats re-resolves local Work refs and external tracker ids from the owner message.',
     'Do not call external tracker APIs or provide actor ids, timestamps, task ids, mission ids, or run ids.',
@@ -172,8 +179,9 @@ function createPhaseScopedWorkToolInvariants(
       ];
     case 'external_tracker_binding':
       return [
+        `${WORK_EXTERNAL_IMPORT_ISSUE_TOOL} may read one external issue and create a planned local Work Item only.`,
         `${WORK_EXTERNAL_LINK_ISSUE_TOOL} and ${WORK_EXTERNAL_UNLINK_ISSUE_TOOL} write local binding metadata only.`,
-        'Do not call external tracker APIs or imply bidirectional sync from this tool surface.',
+        'Do not write external trackers or imply bidirectional sync from this tool surface.',
       ];
     default: {
       const exhaustive: never = phase;

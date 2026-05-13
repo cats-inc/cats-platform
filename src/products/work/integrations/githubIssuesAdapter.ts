@@ -286,6 +286,11 @@ export function toGitHubIssueImportDraft(
         sourceClosedAt: issue.closedAt,
       },
     },
+    bindingDefaults: {
+      ...draft.bindingDefaults,
+      provider: 'github',
+      externalType: 'issue',
+    },
   };
 }
 

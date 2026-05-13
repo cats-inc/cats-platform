@@ -39,6 +39,7 @@ import {
   createWorkflowTurn,
 } from '../build/server/products/chat/state/room-routing/workflow.js';
 import {
+  WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
@@ -586,6 +587,7 @@ test('POST /api/orchestrator/plan projects external tracker binding intent', asy
     assert.deepEqual(
       toolIntent.allowedTools,
       [
+        WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
         WORK_EXTERNAL_LINK_ISSUE_TOOL,
         WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
       ],
@@ -1038,6 +1040,7 @@ test('POST /api/orchestrator/dispatch forwards external binding tool intent to r
     const toolIntent = runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent;
     assert.ok(toolIntent);
     assert.deepEqual(toolIntent.allowedTools, [
+      WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
       WORK_EXTERNAL_LINK_ISSUE_TOOL,
       WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
     ]);

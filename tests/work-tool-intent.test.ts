@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   createPhaseScopedWorkToolManifests,
+  WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
@@ -153,6 +154,7 @@ test('Work tool intent projects external tracker binding tools under narrow writ
 
   assert.ok(writeManifest);
   assert.deepEqual(writeManifest.allowedTools, [
+    WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
     WORK_EXTERNAL_LINK_ISSUE_TOOL,
     WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   ]);

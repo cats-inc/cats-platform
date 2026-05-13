@@ -45,6 +45,7 @@ import {
   buildChannelDispatchOrchestratorSummaryFromBegun,
 } from '../src/products/chat/api/orchestratorDispatchResponse.ts';
 import {
+  WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
@@ -644,8 +645,13 @@ test('Chat provider-agent observation exposes local external tracker binding for
   const toolNames = observationToolNames(observation);
 
   assert.equal(observation?.policy.dials.toolScope, 'narrow_write');
+  assert.equal(toolNames.includes(WORK_EXTERNAL_IMPORT_ISSUE_TOOL), true);
   assert.equal(toolNames.includes(WORK_EXTERNAL_LINK_ISSUE_TOOL), true);
   assert.equal(toolNames.includes(WORK_EXTERNAL_UNLINK_ISSUE_TOOL), true);
+  assertObservationToolHints(observation, WORK_EXTERNAL_IMPORT_ISSUE_TOOL, [
+    /externalUrl: string/u,
+    /planned local Work Item/u,
+  ]);
   assertObservationToolHints(observation, WORK_EXTERNAL_LINK_ISSUE_TOOL, [
     /Cats re-resolves local Work refs/u,
     /Do not call external tracker APIs/u,

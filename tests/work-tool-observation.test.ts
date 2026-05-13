@@ -6,6 +6,7 @@ import {
   PROVIDER_AGENT_MAX_TOOL_INPUT_HINTS,
 } from '../src/platform/orchestration/index.js';
 import {
+  WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
@@ -166,10 +167,15 @@ test('Work tool observation exposes local external binding without active sync',
   });
 
   assert.deepEqual(toolNames(observation), [
+    WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
     WORK_EXTERNAL_LINK_ISSUE_TOOL,
     WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   ]);
   assertBoundedInputHints(observation);
+  assert.ok(observation.invariants.some((entry) =>
+    entry.includes(WORK_EXTERNAL_IMPORT_ISSUE_TOOL)
+    && entry.includes('planned local Work Item'),
+  ));
   assert.ok(observation.invariants.some((entry) =>
     entry.includes('local binding metadata only'),
   ));

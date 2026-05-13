@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { createSupervisedToolRegistry } from '../src/platform/supervision/toolRegistry.js';
 import {
+  WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_CAPTURE_TOOL,
@@ -18,6 +19,7 @@ import {
   isWorkToolAllowedForCapabilityProfile,
   resolveWorkToolPhase,
   validateWorkExternalLinkIssueInput,
+  validateWorkExternalImportIssueInput,
   validateWorkExternalUnlinkIssueInput,
   validateWorkItemAssignProjectInput,
   validateWorkItemCaptureInput,
@@ -36,6 +38,7 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
   assert.deepEqual(
     manifests.map((manifest) => manifest.name).sort(),
     [
+      WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
       WORK_EXTERNAL_LINK_ISSUE_TOOL,
       WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
       WORK_ITEM_ASSIGN_PROJECT_TOOL,
@@ -48,6 +51,7 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
       WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
     ],
   );
+  assert.equal(resolveWorkToolPhase(WORK_EXTERNAL_IMPORT_ISSUE_TOOL), 'external_tracker_binding');
   assert.equal(resolveWorkToolPhase(WORK_EXTERNAL_LINK_ISSUE_TOOL), 'external_tracker_binding');
   assert.equal(resolveWorkToolPhase(WORK_EXTERNAL_UNLINK_ISSUE_TOOL), 'external_tracker_binding');
   assert.equal(resolveWorkToolPhase(WORK_ITEM_PROPOSE_SPLIT_TOOL), 'intake');
@@ -74,6 +78,8 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
   assert.equal(byName.get(WORK_PROJECT_CREATE_TOOL)?.approval, 'policy');
   assert.equal(byName.get(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL)?.sideEffect, 'local_state');
   assert.equal(byName.get(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL)?.approval, 'policy');
+  assert.equal(byName.get(WORK_EXTERNAL_IMPORT_ISSUE_TOOL)?.sideEffect, 'local_state');
+  assert.equal(byName.get(WORK_EXTERNAL_IMPORT_ISSUE_TOOL)?.approval, 'policy');
   assert.equal(byName.get(WORK_EXTERNAL_LINK_ISSUE_TOOL)?.sideEffect, 'local_state');
   assert.equal(byName.get(WORK_EXTERNAL_LINK_ISSUE_TOOL)?.approval, 'policy');
   assert.equal(byName.get(WORK_EXTERNAL_UNLINK_ISSUE_TOOL)?.sideEffect, 'local_state');
@@ -88,7 +94,11 @@ test('phase and capability profile filtering hides Work tools from weak or unkno
       phase: 'external_tracker_binding',
       capabilityProfile: 'strong_agent',
     }).map((manifest) => manifest.name),
-    [WORK_EXTERNAL_LINK_ISSUE_TOOL, WORK_EXTERNAL_UNLINK_ISSUE_TOOL],
+    [
+      WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+      WORK_EXTERNAL_LINK_ISSUE_TOOL,
+      WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+    ],
   );
   assert.deepEqual(
     filterPhaseScopedWorkToolManifests(manifests, {
@@ -160,6 +170,7 @@ test('supervised tool registry policy scope keeps capture behind narrow-write gr
     registry.filter({ parentToolScope: 'narrow_write', policyToolScope: 'narrow_write' })
       .map((manifest) => manifest.name),
     [
+      WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
       WORK_EXTERNAL_LINK_ISSUE_TOOL,
       WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
       WORK_ITEM_ASSIGN_PROJECT_TOOL,
@@ -178,6 +189,31 @@ test('supervised tool registry policy scope keeps capture behind narrow-write gr
       { parentToolScope: 'read_only', policyToolScope: 'read_only' },
     ).status,
     'rejected',
+  );
+});
+
+test('Work external import validation bounds remote read fields', () => {
+  assert.deepEqual(validateWorkExternalImportIssueInput({
+    externalUrl: 'https://github.com/cats-inc/cats-platform/issues/123',
+    provider: 'github',
+    note: 'Import this into Cats Work.',
+  }), []);
+
+  assert.deepEqual(
+    validateWorkExternalImportIssueInput({
+      externalUrl: 'https://token@example.com/issues/123',
+      provider: 'gitlab',
+      workItemId: 'work-item-1',
+      externalId: '123',
+      note: 'x'.repeat(501),
+    }).map((entry) => [entry.field, entry.code]),
+    [
+      ['workItemId', 'server_resolved_field'],
+      ['externalId', 'unknown_field'],
+      ['externalUrl', 'invalid_url'],
+      ['provider', 'unsupported_value'],
+      ['note', 'too_long'],
+    ],
   );
 });
 

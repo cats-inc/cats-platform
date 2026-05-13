@@ -11,6 +11,7 @@ import {
 } from '../src/products/chat/state/model/index.js';
 import { chatDeterministicPlannerSurface } from '../src/products/chat/state/deterministicRouterAdapter.js';
 import {
+  WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
@@ -181,6 +182,7 @@ test('Chat orchestrator projects Work external tracker tool intent for explicit 
 
   assert.ok(target);
   assert.deepEqual(target.toolIntent?.allowedTools, [
+    WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
     WORK_EXTERNAL_LINK_ISSUE_TOOL,
     WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   ]);
