@@ -1279,6 +1279,29 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation',
       },
       new Date('2026-05-13T00:00:01.000Z'),
     ).core;
+    core = upsertCoreWorkItem(
+      core,
+      {
+        id: 'work-item-api-start-2',
+        title: 'Add Telegram Work intake coverage',
+        status: 'ready',
+        projectId: null,
+        conversationId: `conversation-channel-${channelId}`,
+        taskId: null,
+        parentWorkItemId: null,
+        ownerActorId: 'actor-owner',
+        assignedActorIds: [],
+        summary: 'Cover Telegram callback confirmation for Work intake.',
+        metadata: {
+          workIntake: {
+            schemaVersion: 1,
+            phase: 'intake',
+            runId: 'chat:previous-owner-visible-turn',
+          },
+        },
+      },
+      new Date('2026-05-13T00:00:02.000Z'),
+    ).core;
     await chatStore.writeCore(core);
 
     const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
@@ -1286,7 +1309,7 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         channelId,
-        body: 'Boss Cat start work-item-api-start-1.',
+        body: 'Boss Cat start work-item-api-start-1 and work-item-api-start-2.',
       }),
     });
 
@@ -1301,14 +1324,20 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation',
       message.metadata.event === 'work_execution_preparation_proposed');
     const proposal = proposalMessage?.metadata.workExecutionPreparationProposal;
     assert.equal(proposalMessage?.senderName, 'Cats Work');
-    assert.deepEqual(proposal?.workItemIds, ['work-item-api-start-1']);
+    assert.deepEqual(proposal?.workItemIds, [
+      'work-item-api-start-1',
+      'work-item-api-start-2',
+    ]);
     assert.deepEqual(
       proposal?.proposals?.map((entry) => [
         entry.workItemId,
         entry.readiness,
         entry.proposedTaskTitle,
       ]),
-      [['work-item-api-start-1', 'ready', 'Implement MCP adapter contract']],
+      [
+        ['work-item-api-start-1', 'ready', 'Implement MCP adapter contract'],
+        ['work-item-api-start-2', 'ready', 'Add Telegram Work intake coverage'],
+      ],
     );
 
     const updatedCore = await chatStore.readCore();
@@ -1347,26 +1376,53 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation',
       message.metadata.event === 'work_execution_preparation_tasks_created');
     const transition = transitionMessage?.metadata.workExecutionPreparationTransition;
     const confirmedCore = await chatStore.readCore();
-    const createdTaskId = transition?.createdTasks?.[0]?.taskId;
-    const confirmedWorkItem = confirmedCore.workItems.find((candidate) =>
-      candidate.id === 'work-item-api-start-1');
-    const task = confirmedCore.tasks.find((candidate) => candidate.id === createdTaskId);
+    const createdTasks = transition?.createdTasks ?? [];
+    const confirmedWorkItems = confirmedCore.workItems.filter((candidate) =>
+      candidate.id === 'work-item-api-start-1' || candidate.id === 'work-item-api-start-2');
+    const tasks = createdTasks.map((created) =>
+      confirmedCore.tasks.find((candidate) => candidate.id === created.taskId));
 
     assert.equal(transitionMessage?.body.includes('Created execution Tasks:'), true);
     assert.deepEqual(
-      transition?.createdTasks?.map((entry) => [
+      createdTasks.map((entry) => [
         entry.workItemId,
         entry.created,
         entry.linked,
       ]),
-      [['work-item-api-start-1', true, true]],
+      [
+        ['work-item-api-start-1', true, true],
+        ['work-item-api-start-2', true, true],
+      ],
     );
-    assert.equal(confirmedWorkItem?.taskId, createdTaskId);
-    assert.equal(task?.title, 'Implement MCP adapter contract');
-    assert.equal(task?.status, 'pending_approval');
-    assert.equal(task?.approval.status, 'pending');
-    assert.equal(task?.orchestratorActorId, `actor-cat-${catId}`);
-    assert.deepEqual(task?.assignedActorIds, [`actor-cat-${catId}`]);
+    assert.deepEqual(
+      confirmedWorkItems.map((workItem) => [workItem.id, workItem.taskId]),
+      createdTasks.map((created) => [created.workItemId, created.taskId]),
+    );
+    assert.deepEqual(
+      tasks.map((task) => [
+        task?.title,
+        task?.status,
+        task?.approval.status,
+        task?.orchestratorActorId,
+        task?.assignedActorIds,
+      ]),
+      [
+        [
+          'Implement MCP adapter contract',
+          'pending_approval',
+          'pending',
+          `actor-cat-${catId}`,
+          [`actor-cat-${catId}`],
+        ],
+        [
+          'Add Telegram Work intake coverage',
+          'pending_approval',
+          'pending',
+          `actor-cat-${catId}`,
+          [`actor-cat-${catId}`],
+        ],
+      ],
+    );
   }, chatStore, {
     providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
     providerAgentDecisionRequester: async ({ observation }) => {
