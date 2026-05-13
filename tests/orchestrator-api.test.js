@@ -47,6 +47,7 @@ import {
   WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
+  WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
 } from '../build/server/products/work/shared/workToolSurface.js';
 import { WORK_MCP_PROFILE_ID } from '../build/server/products/work/shared/workToolIntent.js';
 import { PROVIDER_AGENT_DECISION_CONTRACT_VERSION } from '../build/server/platform/orchestration/index.js';
@@ -1004,6 +1005,73 @@ test('POST /api/orchestrator/dispatch forwards external binding tool intent to r
     assert.deepEqual(toolIntent.requiredCapabilities, [
       'work.phase.external_tracker_binding',
       'work.capability.strong_agent',
+      'work.tool_scope.narrow_write',
+    ]);
+    assert.equal(toolIntent.strict, true);
+  }, chatStore);
+});
+
+test('POST /api/orchestrator/dispatch forwards Boss execution tool intent to runtime', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'gemini',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+    let chat = await chatStore.read();
+    chat = setBossCat(chat, catId);
+    chat = setChannelCatLease(
+      chat,
+      channelId,
+      catId,
+      {
+        status: 'ready',
+        sessionId: 'session-work-boss-execution-dispatch',
+        laneId: 'lane-work-boss-execution-dispatch',
+      },
+      new Date('2026-05-13T00:00:00.000Z'),
+    );
+    await chatStore.write(chat);
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Boss Cat start work-item-alpha.',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.equal(runtimeClient.sentMessages.length, 1);
+
+    const toolIntent = runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent;
+    assert.ok(toolIntent);
+    assert.deepEqual(toolIntent.allowedTools, [
+      WORK_ITEM_PREPARE_EXECUTION_TOOL,
+      WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
+    ]);
+    assert.deepEqual(
+      toolIntent.toolDescriptions.map((tool) => tool.name),
+      toolIntent.allowedTools,
+    );
+    assert.deepEqual(toolIntent.requiredCapabilities, [
+      'work.phase.execution_preparation',
+      'work.capability.boss_cat',
       'work.tool_scope.narrow_write',
     ]);
     assert.equal(toolIntent.strict, true);
