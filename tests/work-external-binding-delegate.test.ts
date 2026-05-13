@@ -15,6 +15,7 @@ import { createSupervisedToolRegistry } from '../src/platform/supervision/toolRe
 import { EXTERNAL_WORK_BINDING_METADATA_KEY } from '../src/products/work/shared/externalWorkBinding.js';
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
+  WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   createPhaseScopedWorkToolManifests,
 } from '../src/products/work/shared/workToolSurface.js';
 import {
@@ -134,11 +135,65 @@ test('Work external issue binding links Work Items through supervised boundary',
   assert.equal(second.result.linked, false);
   assert.equal(second.result.bindingCount, 1);
   assert.equal((await coreStore.readCore()).activities.length, 1);
+
+  const unlink = await boundary.invoke({
+    toolName: WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+    input: {
+      localKind: 'work_item',
+      localId: 'work-item-intake',
+      provider: 'github',
+      externalType: 'issue',
+      externalId: '123',
+      note: 'Wrong external issue.',
+    },
+    actionId: 'action-external-unlink-1',
+    runId: 'run-external-binding-1',
+    actorRef: 'cat:boss',
+    grant: { parentToolScope: 'narrow_write', policyToolScope: 'narrow_write' },
+    execute: executors[WORK_EXTERNAL_UNLINK_ISSUE_TOOL],
+  });
+
+  assert.equal(unlink.status, 'applied');
+  assert.equal(unlink.result.unlinked, true);
+  assert.equal(unlink.result.bindingCount, 0);
+  const afterUnlink = await coreStore.readCore();
+  const unlinkedWorkItem = afterUnlink.workItems.find(
+    (candidate) => candidate.id === 'work-item-intake',
+  );
+  assert.equal(unlinkedWorkItem?.metadata[EXTERNAL_WORK_BINDING_METADATA_KEY], undefined);
+  assert.equal(afterUnlink.activities.length, 2);
+  assert.equal(afterUnlink.activities[1]?.kind, 'work_item_updated');
+  const unlinkMetadata = afterUnlink.activities[1]?.metadata.workExternalBinding as
+    | { toolName?: string }
+    | undefined;
+  assert.equal(unlinkMetadata?.toolName, WORK_EXTERNAL_UNLINK_ISSUE_TOOL);
+
+  const repeatUnlink = await boundary.invoke({
+    toolName: WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+    input: {
+      localKind: 'work_item',
+      localId: 'work-item-intake',
+      provider: 'github',
+      externalType: 'issue',
+      externalId: '123',
+    },
+    actionId: 'action-external-unlink-2',
+    runId: 'run-external-binding-1',
+    actorRef: 'cat:boss',
+    grant: { parentToolScope: 'narrow_write', policyToolScope: 'narrow_write' },
+    execute: executors[WORK_EXTERNAL_UNLINK_ISSUE_TOOL],
+  });
+
+  assert.equal(repeatUnlink.status, 'applied');
+  assert.equal(repeatUnlink.result.unlinked, false);
+  assert.equal((await coreStore.readCore()).activities.length, 2);
   assert.deepEqual(
     evidenceSink.read().map((event) => [event.toolName, event.status]),
     [
       [WORK_EXTERNAL_LINK_ISSUE_TOOL, 'applied'],
       [WORK_EXTERNAL_LINK_ISSUE_TOOL, 'applied'],
+      [WORK_EXTERNAL_UNLINK_ISSUE_TOOL, 'applied'],
+      [WORK_EXTERNAL_UNLINK_ISSUE_TOOL, 'applied'],
     ],
   );
 });

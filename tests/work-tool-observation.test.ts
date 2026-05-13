@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
+  WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
   WORK_ITEM_CAPTURE_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
@@ -95,7 +96,10 @@ test('Work tool observation exposes local external binding without active sync',
     policyToolScope: 'narrow_write',
   });
 
-  assert.deepEqual(toolNames(observation), [WORK_EXTERNAL_LINK_ISSUE_TOOL]);
+  assert.deepEqual(toolNames(observation), [
+    WORK_EXTERNAL_LINK_ISSUE_TOOL,
+    WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+  ]);
   assert.ok(observation.invariants.some((entry) =>
     entry.includes('local binding metadata only'),
   ));

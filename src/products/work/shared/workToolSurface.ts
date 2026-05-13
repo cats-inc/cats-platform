@@ -44,9 +44,11 @@ export const WORK_PROJECT_LOOKUP_TOOL = 'work.project.lookup' as const;
 export const WORK_PROJECT_CREATE_TOOL = 'work.project.create' as const;
 export const WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL = 'work.task.create_from_work_item' as const;
 export const WORK_EXTERNAL_LINK_ISSUE_TOOL = 'work.external.link_issue' as const;
+export const WORK_EXTERNAL_UNLINK_ISSUE_TOOL = 'work.external.unlink_issue' as const;
 
 export type PhaseScopedWorkToolName =
   | typeof WORK_EXTERNAL_LINK_ISSUE_TOOL
+  | typeof WORK_EXTERNAL_UNLINK_ISSUE_TOOL
   | typeof WORK_ITEM_PROPOSE_SPLIT_TOOL
   | typeof WORK_ITEM_CAPTURE_TOOL
   | typeof WORK_ITEM_UPDATE_TOOL
@@ -58,6 +60,7 @@ export type PhaseScopedWorkToolName =
 
 export const WORK_TOOL_PHASE_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, WorkToolPhase>> = {
   [WORK_EXTERNAL_LINK_ISSUE_TOOL]: 'external_tracker_binding',
+  [WORK_EXTERNAL_UNLINK_ISSUE_TOOL]: 'external_tracker_binding',
   [WORK_ITEM_PROPOSE_SPLIT_TOOL]: 'intake',
   [WORK_ITEM_CAPTURE_TOOL]: 'intake',
   [WORK_ITEM_UPDATE_TOOL]: 'triage',
@@ -72,6 +75,7 @@ export const WORK_TOOL_ALLOWED_CAPABILITY_PROFILES_BY_NAME: Readonly<
   Record<PhaseScopedWorkToolName, readonly WorkToolCapabilityProfile[]>
 > = {
   [WORK_EXTERNAL_LINK_ISSUE_TOOL]: ['boss_cat', 'strong_agent'],
+  [WORK_EXTERNAL_UNLINK_ISSUE_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_ITEM_PROPOSE_SPLIT_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_ITEM_CAPTURE_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_ITEM_UPDATE_TOOL]: ['boss_cat', 'strong_agent'],
@@ -308,6 +312,25 @@ export interface WorkExternalLinkIssueResult {
   bindingCount: number;
 }
 
+export interface WorkExternalUnlinkIssueInput {
+  localKind: ExternalWorkBindingLocalKind;
+  localId: string;
+  provider: ExternalWorkBindingProvider;
+  externalType?: ExternalWorkBindingExternalType;
+  externalId: string;
+  note?: string;
+}
+
+export interface WorkExternalUnlinkIssueResult {
+  localKind: ExternalWorkBindingLocalKind;
+  localId: string;
+  provider: ExternalWorkBindingProvider;
+  externalType: ExternalWorkBindingExternalType;
+  externalId: string;
+  unlinked: boolean;
+  bindingCount: number;
+}
+
 export interface WorkProjectLookupInput {
   query?: string;
   limit?: number;
@@ -360,6 +383,17 @@ export function createPhaseScopedWorkToolManifests(): SupervisedToolManifest[] {
     createManifest({
       name: WORK_EXTERNAL_LINK_ISSUE_TOOL,
       description: 'Link one Cats Work object to an external issue tracker record.',
+      sideEffect: 'local_state',
+      preflight: 'required',
+      approval: 'policy',
+      failureCodes: [
+        WORK_TOOL_ERROR_CODES.schemaInvalid,
+        WORK_TOOL_ERROR_CODES.precheckFailed,
+      ],
+    }),
+    createManifest({
+      name: WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+      description: 'Unlink one Cats Work object from an external issue tracker record.',
       sideEffect: 'local_state',
       preflight: 'required',
       approval: 'policy',
@@ -456,6 +490,7 @@ export function createPhaseScopedWorkToolManifests(): SupervisedToolManifest[] {
 export function resolveWorkToolPhase(toolName: string): WorkToolPhase | undefined {
   if (
     toolName === WORK_EXTERNAL_LINK_ISSUE_TOOL
+    || toolName === WORK_EXTERNAL_UNLINK_ISSUE_TOOL
     || toolName === WORK_ITEM_PROPOSE_SPLIT_TOOL
     || toolName === WORK_ITEM_CAPTURE_TOOL
     || toolName === WORK_ITEM_UPDATE_TOOL
@@ -477,6 +512,7 @@ export function isWorkToolAllowedForCapabilityProfile(
 ): boolean {
   if (
     toolName !== WORK_EXTERNAL_LINK_ISSUE_TOOL
+    && toolName !== WORK_EXTERNAL_UNLINK_ISSUE_TOOL
     && toolName !== WORK_ITEM_PROPOSE_SPLIT_TOOL
     && toolName !== WORK_ITEM_CAPTURE_TOOL
     && toolName !== WORK_ITEM_UPDATE_TOOL
@@ -616,6 +652,22 @@ export function validateWorkExternalLinkIssueInput(input: unknown): WorkToolVali
     ...validateOptionalString(input, 'externalUrl', 1000),
     ...validateOptionalEnum(input, 'syncDirection', EXTERNAL_WORK_BINDING_SYNC_DIRECTION_VALUES),
     ...validateOptionalString(input, 'externalUpdatedAt', 80),
+    ...validateOptionalString(input, 'note', 500),
+  ];
+}
+
+export function validateWorkExternalUnlinkIssueInput(input: unknown): WorkToolValidationError[] {
+  if (!isRecord(input)) {
+    return [error('type', '$', 'Work external issue unlink input must be an object.')];
+  }
+
+  return [
+    ...validateServerResolvedFields(input),
+    ...validateRequiredEnum(input, 'localKind', 'localKind', EXTERNAL_WORK_BINDING_LOCAL_KIND_VALUES),
+    ...validateRequiredString(input, 'localId', 160),
+    ...validateRequiredEnum(input, 'provider', 'provider', EXTERNAL_WORK_BINDING_PROVIDER_VALUES),
+    ...validateOptionalEnum(input, 'externalType', EXTERNAL_WORK_BINDING_EXTERNAL_TYPE_VALUES),
+    ...validateRequiredString(input, 'externalId', 200),
     ...validateOptionalString(input, 'note', 500),
   ];
 }

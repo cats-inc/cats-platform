@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createSupervisedToolRegistry } from '../src/platform/supervision/toolRegistry.js';
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
+  WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_CAPTURE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
@@ -17,6 +18,7 @@ import {
   isWorkToolAllowedForCapabilityProfile,
   resolveWorkToolPhase,
   validateWorkExternalLinkIssueInput,
+  validateWorkExternalUnlinkIssueInput,
   validateWorkItemAssignProjectInput,
   validateWorkItemCaptureInput,
   validateWorkItemPrepareExecutionInput,
@@ -35,6 +37,7 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
     manifests.map((manifest) => manifest.name).sort(),
     [
       WORK_EXTERNAL_LINK_ISSUE_TOOL,
+      WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
       WORK_ITEM_ASSIGN_PROJECT_TOOL,
       WORK_ITEM_CAPTURE_TOOL,
       WORK_ITEM_PREPARE_EXECUTION_TOOL,
@@ -46,6 +49,7 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
     ],
   );
   assert.equal(resolveWorkToolPhase(WORK_EXTERNAL_LINK_ISSUE_TOOL), 'external_tracker_binding');
+  assert.equal(resolveWorkToolPhase(WORK_EXTERNAL_UNLINK_ISSUE_TOOL), 'external_tracker_binding');
   assert.equal(resolveWorkToolPhase(WORK_ITEM_PROPOSE_SPLIT_TOOL), 'intake');
   assert.equal(resolveWorkToolPhase(WORK_ITEM_CAPTURE_TOOL), 'intake');
   assert.equal(resolveWorkToolPhase(WORK_ITEM_ASSIGN_PROJECT_TOOL), 'triage');
@@ -72,6 +76,8 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
   assert.equal(byName.get(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL)?.approval, 'policy');
   assert.equal(byName.get(WORK_EXTERNAL_LINK_ISSUE_TOOL)?.sideEffect, 'local_state');
   assert.equal(byName.get(WORK_EXTERNAL_LINK_ISSUE_TOOL)?.approval, 'policy');
+  assert.equal(byName.get(WORK_EXTERNAL_UNLINK_ISSUE_TOOL)?.sideEffect, 'local_state');
+  assert.equal(byName.get(WORK_EXTERNAL_UNLINK_ISSUE_TOOL)?.approval, 'policy');
 });
 
 test('phase and capability profile filtering hides Work tools from weak or unknown callers', () => {
@@ -82,7 +88,7 @@ test('phase and capability profile filtering hides Work tools from weak or unkno
       phase: 'external_tracker_binding',
       capabilityProfile: 'strong_agent',
     }).map((manifest) => manifest.name),
-    [WORK_EXTERNAL_LINK_ISSUE_TOOL],
+    [WORK_EXTERNAL_LINK_ISSUE_TOOL, WORK_EXTERNAL_UNLINK_ISSUE_TOOL],
   );
   assert.deepEqual(
     filterPhaseScopedWorkToolManifests(manifests, {
@@ -155,6 +161,7 @@ test('supervised tool registry policy scope keeps capture behind narrow-write gr
       .map((manifest) => manifest.name),
     [
       WORK_EXTERNAL_LINK_ISSUE_TOOL,
+      WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
       WORK_ITEM_ASSIGN_PROJECT_TOOL,
       WORK_ITEM_CAPTURE_TOOL,
       WORK_ITEM_PREPARE_EXECUTION_TOOL,
@@ -208,6 +215,38 @@ test('Work external link validation bounds local and external issue fields', () 
       ['externalType', 'unsupported_value'],
       ['externalId', 'blank'],
       ['syncDirection', 'unsupported_value'],
+      ['note', 'too_long'],
+    ],
+  );
+});
+
+test('Work external unlink validation bounds local and external issue fields', () => {
+  assert.deepEqual(validateWorkExternalUnlinkIssueInput({
+    localKind: 'project',
+    localId: 'project-1',
+    provider: 'redmine',
+    externalType: 'project',
+    externalId: 'cats-platform',
+    note: 'Wrong tracker project.',
+  }), []);
+
+  assert.deepEqual(
+    validateWorkExternalUnlinkIssueInput({
+      localKind: 'run',
+      localId: '',
+      provider: 'jira',
+      externalType: 'card',
+      externalId: '',
+      runId: 'run-1',
+      note: 'x'.repeat(501),
+    }).map((entry) => [entry.field, entry.code]),
+    [
+      ['runId', 'server_resolved_field'],
+      ['localKind', 'unsupported_value'],
+      ['localId', 'blank'],
+      ['provider', 'unsupported_value'],
+      ['externalType', 'unsupported_value'],
+      ['externalId', 'blank'],
       ['note', 'too_long'],
     ],
   );

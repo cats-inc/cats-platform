@@ -69,6 +69,7 @@ rather than duplicating every validation branch.
 | `work.item.prepare_execution` | Cats Work | Product delegate, Boss Cat observation descriptor, and Chat proposal sidecar implemented | `product_internal_delegate` / future `runtime_tool` | Boss Cat execution preparation with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.task.create_from_work_item` | Cats Work | Product delegate and owner-confirmed Chat sidecar task creation implemented; direct model/runtime exposure pending | `product_internal_delegate` / future `runtime_tool` | Owner-confirmed Boss Cat execution preparation with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.external.link_issue` | Cats Work | Product delegate, HTTP route, Work UI manual binding, URL inference, and GitHub adapter spike implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / future `runtime_tool` | Owner-approved strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.external.unlink_issue` | Cats Work | Product delegate implemented; HTTP route/UI pending; automatic sync deferred by ADR-106 | `product_internal_delegate` / future `http_route` / future `runtime_tool` | Owner-approved strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.lookup` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.create` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
@@ -165,6 +166,7 @@ turns onto the shared source context.
 | `work.item.prepare_execution` | `execution_preparation` | `none` | `never` | `summary` | Proposes Task-ready execution payloads for selected Work Items. It returns readiness, open questions, blockers, and proposed Task title/summary without writing Core. |
 | `work.task.create_from_work_item` | `execution_preparation` | `local_state` | `policy` | `summary` | Creates one pending-approval Task from one ready Work Item and links it through `WorkItem.taskId`. It does not create Runs or runtime sessions. |
 | `work.external.link_issue` | `external_tracker_binding` | `local_state` | `policy` | `summary` | Manually links one Work Item or Project to an external issue/ticket/project by writing local metadata only. It does not call external tracker APIs. |
+| `work.external.unlink_issue` | `external_tracker_binding` | `local_state` | `policy` | `summary` | Manually removes one local external issue/ticket/project binding from a Work Item or Project. It does not call external tracker APIs. |
 | `work.project.lookup` | `triage` | `none` | `never` | `summary` | Looks up bounded Project matches for Work Item triage. It returns project ids, titles, planning status, summary/repo/conversation refs, and linked Work Item counts. |
 | `work.project.create` | `triage` | `local_state` | `policy` | `summary` | Creates one planned/active/paused Project during triage. It writes only a Project and one audit Activity; it must not create Work Items, Tasks, Missions, Runs, or runtime sessions. |
 
@@ -207,20 +209,22 @@ approval-gated execution steps. Work Items captured by intake in the same
 supervised run/action are rejected until a later owner-visible acknowledgement
 boundary starts a separate execution-preparation request.
 
-Caller-visible external binding fields are `localKind`, `localId`, `provider`,
+Caller-visible external link fields are `localKind`, `localId`, `provider`,
 optional `externalType`, `externalId`, optional `externalUrl`, optional
-`syncDirection`, optional `externalUpdatedAt`, and optional `note`. The MVP
-provider set is `github`, `gitlab`, `gitea`, `redmine`, and `bugzilla`; the
-delegate writes the `externalWorkBindings` metadata key on the Work Item or
-Project and emits one Activity for material changes. It does not read from or
-write to external services. The Work Graph projection exposes valid local
-bindings on Project and Work Item summaries as `externalBindings[]` so Cockpit,
-System Map, and model observations can show external issue links without
-reading raw metadata bags. The first GitHub Issues adapter spike maps a single
-issue into a Work Item import draft and builds future create-issue payloads
-through an injectable fetch boundary; it performs no remote writes. Automatic
-bidirectional sync is deferred by ADR-106, so `syncDirection` remains metadata
-intent rather than an active sync contract.
+`syncDirection`, optional `externalUpdatedAt`, and optional `note`. The unlink
+tool accepts `localKind`, `localId`, `provider`, optional `externalType`,
+`externalId`, and optional `note`. The MVP provider set is `github`, `gitlab`,
+`gitea`, `redmine`, and `bugzilla`; the delegate writes or removes the
+`externalWorkBindings` metadata key on the Work Item or Project and emits one
+Activity for material changes. It does not read from or write to external
+services. The Work Graph projection exposes valid local bindings on Project and
+Work Item summaries as `externalBindings[]` so Cockpit, System Map, and model
+observations can show external issue links without reading raw metadata bags.
+The first GitHub Issues adapter spike maps a single issue into a Work Item
+import draft and builds future create-issue payloads through an injectable fetch
+boundary; it performs no remote writes. Automatic bidirectional sync is
+deferred by ADR-106, so `syncDirection` remains metadata intent rather than an
+active sync contract.
 
 Caller-visible triage lookup fields are `query`, `limit`, and
 `includeArchived`. Caller-visible triage create fields are `title`, `summary`,

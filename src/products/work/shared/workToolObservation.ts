@@ -5,6 +5,7 @@ import type { SupervisionToolScope } from '../../../platform/supervision/contrac
 import { filterToolSurface } from '../../../platform/supervision/toolRegistry.js';
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
+  WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
   WORK_ITEM_CAPTURE_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
@@ -36,6 +37,8 @@ export interface PhaseScopedWorkToolObservation {
 const WORK_TOOL_REASON_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, string>> = {
   [WORK_EXTERNAL_LINK_ISSUE_TOOL]:
     'Actor can locally link a Work Item or Project to an external tracker record.',
+  [WORK_EXTERNAL_UNLINK_ISSUE_TOOL]:
+    'Actor can locally remove one external tracker binding from a Work Item or Project.',
   [WORK_ITEM_ASSIGN_PROJECT_TOOL]:
     'Actor can attach one existing Work Item to one existing Project during triage.',
   [WORK_ITEM_CAPTURE_TOOL]:
@@ -125,7 +128,7 @@ function createPhaseScopedWorkToolInvariants(
       ];
     case 'external_tracker_binding':
       return [
-        `${WORK_EXTERNAL_LINK_ISSUE_TOOL} writes local binding metadata only.`,
+        `${WORK_EXTERNAL_LINK_ISSUE_TOOL} and ${WORK_EXTERNAL_UNLINK_ISSUE_TOOL} write local binding metadata only.`,
         'Do not call external tracker APIs or imply bidirectional sync from this tool surface.',
       ];
     default: {

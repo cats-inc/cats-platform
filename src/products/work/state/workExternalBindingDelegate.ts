@@ -17,9 +17,13 @@ import {
 } from '../shared/externalWorkBinding.js';
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
+  WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   type WorkExternalLinkIssueInput,
   type WorkExternalLinkIssueResult,
+  type WorkExternalUnlinkIssueInput,
+  type WorkExternalUnlinkIssueResult,
   validateWorkExternalLinkIssueInput,
+  validateWorkExternalUnlinkIssueInput,
 } from '../shared/workToolSurface.js';
 
 const WORK_EXTERNAL_BINDING_METADATA_KEY = 'workExternalBinding';
@@ -41,12 +45,20 @@ export interface WorkExternalBindingDelegate {
     input: WorkExternalLinkIssueInput,
     context: WorkExternalBindingMutationContext,
   ): Promise<ToolResult<WorkExternalLinkIssueResult>>;
+  unlinkIssue(
+    input: WorkExternalUnlinkIssueInput,
+    context: WorkExternalBindingMutationContext,
+  ): Promise<ToolResult<WorkExternalUnlinkIssueResult>>;
 }
 
 export interface WorkExternalBindingToolExecutors {
   [WORK_EXTERNAL_LINK_ISSUE_TOOL]: SupervisedToolExecutor<
     WorkExternalLinkIssueInput,
     WorkExternalLinkIssueResult
+  >;
+  [WORK_EXTERNAL_UNLINK_ISSUE_TOOL]: SupervisedToolExecutor<
+    WorkExternalUnlinkIssueInput,
+    WorkExternalUnlinkIssueResult
   >;
 }
 
@@ -59,6 +71,9 @@ export function createWorkExternalBindingDelegate(
     async linkIssue(input, context) {
       return linkExternalIssue(options.coreStore, input, context, now);
     },
+    async unlinkIssue(input, context) {
+      return unlinkExternalIssue(options.coreStore, input, context, now);
+    },
   };
 }
 
@@ -67,6 +82,7 @@ export function createWorkExternalBindingToolExecutors(
 ): WorkExternalBindingToolExecutors {
   return {
     [WORK_EXTERNAL_LINK_ISSUE_TOOL]: (input, context) => delegate.linkIssue(input, context),
+    [WORK_EXTERNAL_UNLINK_ISSUE_TOOL]: (input, context) => delegate.unlinkIssue(input, context),
   };
 }
 
@@ -120,10 +136,7 @@ export async function linkExternalIssue(
       }
 
       linked = true;
-      const metadata = {
-        ...target.record.metadata,
-        [EXTERNAL_WORK_BINDING_METADATA_KEY]: createExternalWorkBindingsMetadata(nextBindings),
-      };
+      const metadata = writeExternalWorkBindingsMetadata(target.record.metadata, nextBindings);
       const nextCore = target.kind === 'work_item'
         ? upsertWorkItemExternalBinding(core, target.record, metadata, linkedAt).core
         : upsertProjectExternalBinding(core, target.record, metadata, linkedAt).core;
@@ -176,6 +189,105 @@ export async function linkExternalIssue(
   } catch (error) {
     return rejected(
       error instanceof Error ? error.message : 'External issue link failed.',
+      undefined,
+      'E_PRECHECK_FAILED',
+    );
+  }
+}
+
+export async function unlinkExternalIssue(
+  coreStore: CoreStore,
+  input: WorkExternalUnlinkIssueInput,
+  context: WorkExternalBindingMutationContext,
+  now: () => Date = () => new Date(),
+): Promise<ToolResult<WorkExternalUnlinkIssueResult>> {
+  const validationErrors = validateWorkExternalUnlinkIssueInput(input);
+  if (validationErrors.length > 0) {
+    return rejected('Invalid work.external.unlink_issue input.', validationErrors);
+  }
+
+  const unlinkedAt = now();
+  const localId = input.localId.trim();
+  const externalType = input.externalType ?? 'issue';
+  const externalId = input.externalId.trim();
+  let unlinked = false;
+  let bindingCount = 0;
+  let removedBinding: ExternalWorkBinding | null = null;
+
+  try {
+    const persisted = await coreStore.updateCore((core) => {
+      const target = resolveExternalBindingTarget(core, input.localKind, localId);
+      const existingBindings = readExternalWorkBindings(target.record.metadata);
+      const removeResult = removeExternalBinding(existingBindings, {
+        localKind: input.localKind,
+        localId,
+        provider: input.provider,
+        externalType,
+        externalId,
+      });
+      bindingCount = removeResult.bindings.length;
+      removedBinding = removeResult.removedBinding;
+      if (!removedBinding) {
+        unlinked = false;
+        return core;
+      }
+
+      unlinked = true;
+      const metadata = writeExternalWorkBindingsMetadata(
+        target.record.metadata,
+        removeResult.bindings,
+      );
+      const nextCore = target.kind === 'work_item'
+        ? upsertWorkItemExternalBinding(core, target.record, metadata, unlinkedAt).core
+        : upsertProjectExternalBinding(core, target.record, metadata, unlinkedAt).core;
+
+      return appendCoreActivity(
+        nextCore,
+        {
+          kind: target.kind === 'work_item' ? 'work_item_updated' : 'note',
+          actorId: context.actorRef,
+          projectId: target.kind === 'project' ? target.record.id : target.record.projectId,
+          workItemId: target.kind === 'work_item' ? target.record.id : null,
+          conversationId: target.kind === 'project'
+            ? target.record.primaryConversationId
+            : target.record.conversationId,
+          message: `Unlinked external ${externalType}: ${input.provider} ${externalId}`,
+          metadata: {
+            [WORK_EXTERNAL_BINDING_METADATA_KEY]: {
+              schemaVersion: WORK_EXTERNAL_BINDING_METADATA_VERSION,
+              phase: 'external_tracker_binding',
+              toolName: WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+              actionId: context.actionId ?? null,
+              runId: context.runId ?? null,
+              note: input.note?.trim() || null,
+              binding: removedBinding,
+            },
+          },
+        },
+        unlinkedAt,
+      ).core;
+    });
+
+    if (bindingCount === 0 && !unlinked) {
+      const target = resolveExternalBindingTarget(persisted, input.localKind, localId);
+      bindingCount = readExternalWorkBindings(target.record.metadata).length;
+    }
+
+    return {
+      status: 'applied',
+      result: {
+        localKind: input.localKind,
+        localId,
+        provider: input.provider,
+        externalType,
+        externalId,
+        unlinked,
+        bindingCount,
+      },
+    };
+  } catch (error) {
+    return rejected(
+      error instanceof Error ? error.message : 'External issue unlink failed.',
       undefined,
       'E_PRECHECK_FAILED',
     );
@@ -247,6 +359,50 @@ function upsertExternalBinding(
   return existingBindings.map((candidate, index) =>
     index === existingIndex ? binding : candidate,
   );
+}
+
+interface ExternalBindingIdentity {
+  localKind: WorkExternalUnlinkIssueInput['localKind'];
+  localId: string;
+  provider: WorkExternalUnlinkIssueInput['provider'];
+  externalType: NonNullable<WorkExternalUnlinkIssueInput['externalType']>;
+  externalId: string;
+}
+
+function removeExternalBinding(
+  existingBindings: ExternalWorkBinding[],
+  identity: ExternalBindingIdentity,
+): { bindings: ExternalWorkBinding[]; removedBinding: ExternalWorkBinding | null } {
+  const existingIndex = existingBindings.findIndex((candidate) =>
+    candidate.localKind === identity.localKind
+    && candidate.localId === identity.localId
+    && candidate.provider === identity.provider
+    && candidate.externalType === identity.externalType
+    && candidate.externalId === identity.externalId,
+  );
+  if (existingIndex < 0) {
+    return { bindings: existingBindings, removedBinding: null };
+  }
+
+  return {
+    bindings: existingBindings.filter((_candidate, index) => index !== existingIndex),
+    removedBinding: existingBindings[existingIndex] ?? null,
+  };
+}
+
+function writeExternalWorkBindingsMetadata(
+  existingMetadata: Record<string, unknown>,
+  bindings: ExternalWorkBinding[],
+): Record<string, unknown> {
+  const metadata = { ...existingMetadata };
+  if (bindings.length === 0) {
+    delete metadata[EXTERNAL_WORK_BINDING_METADATA_KEY];
+    return metadata;
+  }
+
+  metadata[EXTERNAL_WORK_BINDING_METADATA_KEY] =
+    createExternalWorkBindingsMetadata(bindings);
+  return metadata;
 }
 
 function upsertWorkItemExternalBinding(
