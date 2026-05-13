@@ -518,6 +518,61 @@ test('POST /api/orchestrator/plan projects Work tool intent for work-memory Cats
   });
 });
 
+test('POST /api/orchestrator/plan projects external tracker binding intent', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Work Binder',
+          provider: 'gemini',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/plan`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Boss Cat link work-item-alpha to https://redmine.example.com/issues/987',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    const toolIntent = payload.plan.routing.initialTargets[0].toolIntent;
+    assert.deepEqual(
+      toolIntent.allowedTools,
+      [
+        WORK_EXTERNAL_LINK_ISSUE_TOOL,
+        WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+      ],
+    );
+    assert.deepEqual(
+      toolIntent.toolDescriptions.map((tool) => tool.name),
+      toolIntent.allowedTools,
+    );
+    assert.ok(
+      toolIntent.toolDescriptions.some((tool) =>
+        tool.name === WORK_EXTERNAL_LINK_ISSUE_TOOL
+        && tool.description.includes('external issue tracker record')),
+    );
+    assert.deepEqual(
+      toolIntent.requiredCapabilities,
+      [
+        'work.phase.external_tracker_binding',
+        'work.capability.strong_agent',
+        'work.tool_scope.narrow_write',
+      ],
+    );
+  });
+});
+
 test('POST /api/orchestrator/plan projects read-only Work intake intent', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const created = await createChannel(baseUrl, {
