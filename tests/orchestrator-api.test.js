@@ -386,6 +386,15 @@ test('POST /api/orchestrator/plan returns machine-readable plan and tool intent'
       payload.plan.routing.initialTargets[0].toolIntent.allowedTools,
       ['runtime_summary', 'list_sessions', 'observe_session'],
     );
+    assert.deepEqual(
+      payload.plan.routing.initialTargets[0].toolIntent.toolDescriptions.map((tool) => tool.name),
+      payload.plan.routing.initialTargets[0].toolIntent.allowedTools,
+    );
+    assert.ok(
+      payload.plan.routing.initialTargets[0].toolIntent.toolDescriptions.some((tool) =>
+        tool.name === 'runtime_summary'
+        && tool.description.includes('Summarize runtime provider health')),
+    );
     assert.ok(Array.isArray(payload.plan.routing.initialTargets[0].runtimeSkills.requestedSkills));
     assert.equal(payload.plan.routing.initialTargets[0].runtimeSkills.requestedSkills[0], 'companion');
   }, chatStore);

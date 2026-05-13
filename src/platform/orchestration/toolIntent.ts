@@ -22,6 +22,14 @@ const MCP_FACADE_TOOLS = {
   auditDeliveryTarget: 'audit_delivery_target',
 } as const;
 
+const MCP_FACADE_TOOL_DESCRIPTIONS: Record<string, string> = {
+  [MCP_FACADE_TOOLS.runtimeSummary]: 'Summarize runtime provider health and session posture.',
+  [MCP_FACADE_TOOLS.listSessions]: 'List known runtime sessions for the current workspace.',
+  [MCP_FACADE_TOOLS.observeSession]: 'Observe one runtime session state without mutating it.',
+  [MCP_FACADE_TOOLS.auditWorkspace]: 'Audit workspace state exposed by the runtime facade.',
+  [MCP_FACADE_TOOLS.auditDeliveryTarget]: 'Audit delivery target readiness for transports.',
+};
+
 export const ORCHESTRATOR_RUNTIME_MCP_TOOLS = [
   MCP_FACADE_TOOLS.runtimeSummary,
   MCP_FACADE_TOOLS.listSessions,
@@ -32,6 +40,13 @@ export const ORCHESTRATOR_RUNTIME_MCP_TOOLS = [
 
 function uniqueStrings(values: string[]): string[] {
   return values.filter((value, index) => values.indexOf(value) === index);
+}
+
+function describeTools(tools: string[]): NonNullable<ToolIntentManifest['toolDescriptions']> {
+  return tools.map((name) => ({
+    name,
+    description: MCP_FACADE_TOOL_DESCRIPTIONS[name] ?? `Use ${name}.`,
+  }));
 }
 
 export function resolveToolIntentManifest(
@@ -59,6 +74,7 @@ export function resolveToolIntentManifest(
     return {
       profileId: normalizedProfile,
       allowedTools: eagerTools,
+      toolDescriptions: describeTools(eagerTools),
       requiredCapabilities: uniqueStrings(requiredCapabilities),
       lazyGroups: uniqueStrings(lazyGroups),
       context: {
@@ -75,6 +91,7 @@ export function resolveToolIntentManifest(
   return {
     profileId: normalizedProfile,
     allowedTools: eagerTools,
+    toolDescriptions: describeTools(eagerTools),
     requiredCapabilities: ['session.observe'],
     lazyGroups: [
       'workspace.audit',
