@@ -466,6 +466,25 @@ test('PATCH /api/cats/:id updates Cat MCP profile into channel projections', asy
   });
 });
 
+test('PATCH /api/cats/:id rejects unsupported Cat MCP profile ids', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const created = await createChannel(baseUrl);
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+
+    const response = await fetch(`${baseUrl}/api/cats/${encodeURIComponent(catId)}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ mcpProfile: 'unknown-profile' }),
+    });
+
+    const payload = await response.json();
+    assert.equal(response.status, 400);
+    assert.equal(payload.error.code, 'bad_request');
+    assert.equal(payload.error.message, 'Unsupported Cat MCP profile: unknown-profile');
+  });
+});
+
 test('POST /api/orchestrator/plan uses the injected planner surface seam', async () => {
   let buildCalls = 0;
   let resolveCalls = 0;

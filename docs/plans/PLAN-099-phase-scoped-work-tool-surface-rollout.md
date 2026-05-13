@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added API regression coverage proving unsupported Cat MCP profile PATCH requests return a bounded `400 bad_request` response. |
 | 2026-05-13 | Follow-up slice added a shared Cat MCP profile registry and model guards so Cat create/update accepts only supported `chat-memory` and `work-memory` profile ids. |
 | 2026-05-13 | Follow-up slice surfaced Cat tool profile labels in Chat execution side panels and Cat inspect surfaces so direct-lane Work Cats remain visible outside settings. |
 | 2026-05-13 | Follow-up slice surfaced Cat tool profile labels in the registry list so `work-memory` Cats are visible without opening the detail panel. |
