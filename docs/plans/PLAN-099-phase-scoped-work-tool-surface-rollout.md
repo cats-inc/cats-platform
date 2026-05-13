@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice expanded API Boss execution confirmation coverage to mixed ready/blocked Work Items, proving one owner confirmation creates Tasks only for ready items and records blocked items as skipped. |
 | 2026-05-13 | Follow-up slice expanded API Boss execution confirmation coverage to multiple ready Work Items, proving one owner confirmation can create multiple pending-approval execution Tasks without starting runtime work. |
 | 2026-05-13 | Follow-up slice documented direct orchestrator choice dispatch and recovery `hasChoiceResponse` indicators in the API guide. |
 | 2026-05-13 | Follow-up slice surfaced a recovery read-model `hasChoiceResponse` flag so operator tooling can identify replayed choice confirmations without exposing raw answer payloads. |
