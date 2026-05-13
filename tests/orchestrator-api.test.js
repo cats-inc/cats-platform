@@ -2349,10 +2349,9 @@ test('POST /api/orchestrator/dispatch reuses the room-entry session during a con
     });
     const channelId = created.channel.id;
 
-    const wakeResponsePromise = fetch(`${baseUrl}/api/preferences`, {
-      method: 'PATCH',
+    const wakeResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/activations`, {
+      method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ selectedChannelId: channelId }),
     });
 
     await firstCreateStarted;
