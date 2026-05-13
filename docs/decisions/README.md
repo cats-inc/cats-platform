@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [105-adopt-phase-scoped-work-tool-surface](./105-adopt-phase-scoped-work-tool-surface.md) | Adopt a Phase-Scoped Work Tool Surface | Proposed | 2026-05-13 |
 | [104-adopt-managed-live-preview-supervisor-for-artifact-canvas](./104-adopt-managed-live-preview-supervisor-for-artifact-canvas.md) | Adopt a Managed Live Preview Supervisor for Artifact Canvas | Proposed | 2026-05-09 |
 | [103-use-preset-neutral-product-intent-intake](./103-use-preset-neutral-product-intent-intake.md) | Use Preset-Neutral Product Intent Intake | Proposed | 2026-05-09 |
 | [102-use-cat-authored-product-intent-proposals](./102-use-cat-authored-product-intent-proposals.md) | Use Cat-Authored Product Intent Proposals for Natural-Language Intake | Proposed | 2026-05-06 |
@@ -146,6 +147,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-05-10 (ADR-075 clarified: artifact subscriptions use event-driven core-change notifications where available and Artifact Canvas consumes them as surface projection invalidations; ADR-104 added: Cats Code live previews require a managed supervisor before process spawning; ADR-103 added: product-intent intake is generalized from direct messages to a preset-neutral Chat/Code/Work contract; ADR-102 added: natural-language Work/Code intake uses Cat-authored proposal tools with owner confirmation instead of default platform heuristics; ADR-101 added: direct-message slash-mode work intake uses the same direct audience Cat, gates durable Work/Code creation through existing provider capability profiles, and requires a human gate for weak/unknown Cats; ADR-100 added: cats are canonical identity, Clowder and Cattery are membership associations with formal/temp/external status as a first-class field; ADR-099 added: promote cats/clowders/catteries to platform entities with canonical top-level URLs.)*
+*Last updated: 2026-05-13 (ADR-105 added: strong Cats and Boss Cat receive phase-scoped Cats-owned Work tools for intake, triage, execution preparation, and external tracker binding; broad CRUD and MCP-first Work APIs are rejected.)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

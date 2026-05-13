@@ -59,6 +59,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [ADR-105](./decisions/105-adopt-phase-scoped-work-tool-surface.md) — strong Cats and Boss Cat receive phase-scoped Cats-owned Work tools for intake, triage, execution preparation, and external tracker binding
+- [SPEC-109](./specs/SPEC-109-phase-scoped-work-tool-surface.md) — requirements for turning Chat/Telegram work talk into durable Work Items through supervised tools rather than prompt-only behavior
+- [PLAN-099](./plans/PLAN-099-phase-scoped-work-tool-surface-rollout.md) — rollout plan for Work tool registry contracts, intake capture, Chat/Telegram wiring, triage, Boss Cat execution preparation, and external tracker bindings
 - [PLAN-098](./plans/PLAN-098-polymorphic-entity-subscription-follow-up.md) — implemented follow-up proving per-entity subscriptions with `artifact`, including the Artifact Canvas projection-invalidation boundary
 - [PLAN-068](./plans/PLAN-068-per-entity-state-subscription-rollout.md) — reconciled as the channel-slice closeout for per-entity state subscriptions; this is a status reconciliation, not a newly added plan
 - [ADR-104](./decisions/104-adopt-managed-live-preview-supervisor-for-artifact-canvas.md) — Cats Code live previews require a managed supervisor before any process spawning or privileged preview-origin treatment
@@ -252,4 +255,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-05-10*
+*Last updated: 2026-05-13*

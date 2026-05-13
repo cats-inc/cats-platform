@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-109](./SPEC-109-phase-scoped-work-tool-surface.md) | Phase-Scoped Work Tool Surface | Draft | [PLAN-099](../plans/PLAN-099-phase-scoped-work-tool-surface-rollout.md), [ADR-105](../decisions/105-adopt-phase-scoped-work-tool-surface.md) |
 | [SPEC-108](./SPEC-108-cats-code-live-preview-substrate.md) | Cats Code Live Preview Substrate | Draft | [PLAN-097](../plans/PLAN-097-cats-code-live-preview-substrate-rollout.md), [ADR-104](../decisions/104-adopt-managed-live-preview-supervisor-for-artifact-canvas.md) |
 | [SPEC-107](./SPEC-107-preset-neutral-product-intent-intake.md) | Preset-Neutral Product Intent Intake | Draft | [PLAN-096](../plans/PLAN-096-preset-neutral-product-intent-intake-rollout.md), [ADR-103](../decisions/103-use-preset-neutral-product-intent-intake.md) |
 | [SPEC-106](./SPEC-106-chat-optimistic-message-identity.md) | Chat Optimistic Message Identity and Refresh-Race Resilience | Draft | [PLAN-095](../plans/PLAN-095-chat-optimistic-message-identity-rollout.md) |
@@ -163,6 +164,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-05-10 (SPEC-076 tightened: artifact entity subscriptions use event-driven core-change notifications when available, Artifact Canvas explicitly treats artifact events as surface projection invalidations, and the active-channel summary merge carve-out is documented; SPEC-108 added: Cats Code Live Preview Substrate defines supervised process, port lease, logs, and Artifact Canvas preview-origin rules; SPEC-107 added: Preset-Neutral Product Intent Intake generalizes explicit `/chat` / `/work` / `/code` commands and strong-Cat Work/Code proposals across every Chat/Code/Work preset; SPEC-106 added: Chat Optimistic Message Identity and Refresh-Race Resilience for the workspace composer flicker fix; SPEC-105 revised: no-slash Work/Code intake now uses strong-Cat proposal tools with owner confirmation instead of default platform heuristic detection; SPEC-104 added: Direct Chat Slash-Mode Work Intake, covering `/chat` / `/work` / `/code`, same-Cat clarification/follow-up, provider capability gating, and weak/unknown human gate; SPEC-103 added: Clowder/Cattery data model; SPEC-102 added: Lobby sidebar IA and entity routes.)*
+*Last updated: 2026-05-13 (SPEC-109 added: phase-scoped Work tool surface for Chat/Telegram Work Item capture, Boss Cat triage/execution preparation, and external tracker bindings.)*
 
 *See also: [plans/](../plans/) for implementation plans*
