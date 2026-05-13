@@ -580,6 +580,7 @@ GET /api/work/projects/{projectId}
 GET /api/work/work-items
 GET /api/work/work-items/{workItemId}
 GET /api/work/tasks/{taskId}
+POST /api/work/external-bindings
 ```
 
 - `GET /api/work` returns the first Work dashboard projection above shared
@@ -623,6 +624,21 @@ GET /api/work/tasks/{taskId}
   - the task-scoped `controlPlane` view
   - the task-scoped `recovery` view
   - a normalized timeline preview
+- `POST /api/work/external-bindings` links one local Project or Work Item to
+  an external tracker issue/ticket/project through the `work.external.link_issue`
+  delegate. The route accepts:
+  - `localKind`: `project` or `work_item`
+  - `localId`: existing local record id
+  - `provider`: `github`, `gitlab`, `gitea`, `redmine`, or `bugzilla`
+  - `externalType`: optional `issue`, `ticket`, or `project`; defaults to
+    `issue`
+  - `externalId`: external tracker id
+  - `externalUrl`: optional HTTP(S) URL
+  - `syncDirection`: optional `pull`, `push`, or `bidirectional`; this is
+    metadata intent only, not an active sync job
+  - `externalUpdatedAt` and `note`: optional metadata
+  The route writes local `externalWorkBindings` metadata and one Activity for a
+  material change. It does not call external tracker APIs.
 
 This first slice intentionally reuses `Cats Core v1` instead of inventing a
 separate Work schema. Broader team-operating-model surfaces and later Work
