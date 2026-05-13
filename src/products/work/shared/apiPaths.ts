@@ -27,6 +27,8 @@ export const WORK_API_SCHEDULES_PATH = `${WORK_API_PREFIX}/schedules`;
 export const WORK_API_WAR_ROOM_PATH = `${WORK_API_PREFIX}/war-room`;
 export const WORK_API_LINKS_PATH = `${WORK_API_PREFIX}/links`;
 export const WORK_API_EXTERNAL_BINDINGS_PATH = `${WORK_API_PREFIX}/external-bindings`;
+export const WORK_API_EXTERNAL_ISSUE_IMPORTS_PATH =
+  `${WORK_API_PREFIX}/external-issue-imports`;
 export const WORK_API_GRAPH_PATH = `${WORK_API_PREFIX}/graph`;
 export const WORK_API_RAW_PROJECTS_PATH = `${WORK_API_PREFIX}/raw/projects`;
 export const WORK_API_RAW_WORK_ITEMS_PATH = `${WORK_API_PREFIX}/raw/work-items`;

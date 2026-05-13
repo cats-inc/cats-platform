@@ -36,6 +36,7 @@ import {
 } from '../../../platform/supervision/index.js';
 import { startProviderAgentRunLoop } from '../../../platform/orchestration/index.js';
 import { buildWorkTaskRuntimeExecutionRequest } from '../state/taskExecutionRequest.js';
+import type { ExternalIssueImportFetchOptions } from '../integrations/externalIssueImportFetcher.js';
 import {
   buildWorkDashboardProjection,
   buildWorkMissionDetailProjection,
@@ -60,6 +61,7 @@ import {
 } from './projection.js';
 import { routeWorkLinksApi } from './linksRoutes.js';
 import { routeWorkExternalBindingApi } from './externalBindingRoutes.js';
+import { routeWorkExternalIssueImportApi } from './externalIssueImportRoutes.js';
 import { routeWorkProductCrudApi } from './productCrudRoutes.js';
 import { routeWorkRunCancellationApi } from './runCancellationRoutes.js';
 import { routeWorkScheduleApi } from './scheduleRoutes.js';
@@ -115,6 +117,7 @@ export interface WorkApiDependencies {
   scheduleStore?: ScheduleStore;
   evidenceDataDir?: string;
   readEvidenceEvents?: (conversationId: string) => EvidenceEvent[];
+  externalIssueImport?: ExternalIssueImportFetchOptions;
   now?: () => Date;
 }
 
@@ -382,6 +385,10 @@ export async function routeWorkApi(
   }
 
   if (await routeWorkExternalBindingApi(context)) {
+    return true;
+  }
+
+  if (await routeWorkExternalIssueImportApi(context)) {
     return true;
   }
 

@@ -584,6 +584,7 @@ GET /api/work/work-items/{workItemId}
 GET /api/work/tasks/{taskId}
 POST /api/work/external-bindings
 DELETE /api/work/external-bindings
+POST /api/work/external-issue-imports
 ```
 
 - `GET /api/work` returns the first Work dashboard projection above shared
@@ -647,6 +648,14 @@ DELETE /api/work/external-bindings
   `localKind`, `localId`, `provider`, optional `externalType`, `externalId`,
   and optional `note`. The route removes local metadata and emits one Activity
   for a material change. It does not call external tracker APIs.
+- `POST /api/work/external-issue-imports` imports one external issue/ticket URL
+  into a planned Cats Work Item. The route accepts `externalUrl` and optional
+  `provider` (`github`, `redmine`, or `bugzilla` are implemented for import in
+  this slice). The server parses the credential-free URL into provider-owned
+  adapter config, fetches the issue through the read-only adapter, then writes
+  one local Work Item with provider-neutral import metadata and a pull-mode
+  `externalWorkBindings` entry. It does not create Tasks, Runs, or remote
+  tracker writes.
 
 This first slice intentionally reuses `Cats Core v1` instead of inventing a
 separate Work schema. Broader team-operating-model surfaces and later Work

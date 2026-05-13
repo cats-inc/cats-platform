@@ -289,6 +289,9 @@ planned Cats Work Item with provider-neutral import metadata and a pull-mode
 external binding, without creating Tasks, Runs, or remote writes. Automatic
 bidirectional sync is deferred by ADR-106, so
 `syncDirection` remains metadata intent rather than an active sync contract.
+`POST /api/work/external-issue-imports` exposes the owner-driven product route
+for this import flow; it is an HTTP route, not yet a model-callable runtime
+tool.
 
 Caller-visible triage lookup fields are `query`, `limit`, and
 `includeArchived`. Caller-visible triage create fields are `title`, `summary`,
