@@ -400,6 +400,7 @@ function validateSemanticPlanDecision(
     if (step.input !== undefined) {
       validateBoundedToolInputObject(errors, `step ${step.stepId}.input`, step.input, false);
     }
+    validateSemanticPlanStepTarget(errors, step);
 
     if (step.action === 'call_tool') {
       validateToolName(errors, step.toolName, availableToolNames, `step ${step.stepId}`);
@@ -427,6 +428,34 @@ function validateSemanticPlanDecision(
         }
       }
     }
+  }
+}
+
+function validateSemanticPlanStepTarget(
+  errors: string[],
+  step: ProviderAgentSemanticPlanStep,
+): void {
+  if (step.target === undefined) {
+    return;
+  }
+  const target = validateAddressableTarget(errors, `step ${step.stepId}.target`, step.target);
+  if (!target) {
+    return;
+  }
+
+  if (step.action === 'call_tool') {
+    if (target.kind !== 'worker_tool') {
+      errors.push(`step ${step.stepId}.target.kind must be worker_tool for call_tool`);
+      return;
+    }
+    if (target.toolName !== step.toolName) {
+      errors.push(`step ${step.stepId}.target.toolName must match step toolName ${step.toolName}`);
+    }
+    return;
+  }
+
+  if (target.kind === 'worker_tool') {
+    errors.push(`step ${step.stepId}.target.kind must not be worker_tool unless action is call_tool`);
   }
 }
 

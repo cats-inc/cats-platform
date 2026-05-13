@@ -436,6 +436,49 @@ test('provider-agent decisions validate addressable tool and delegation targets'
     decisionId: 'decision-worker-tool-delegation',
     target: { kind: 'worker_tool', toolName: 'work.context.lookup' },
   };
+  const wrongSemanticStepToolTarget: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 'decision-wrong-step-tool-target',
+    planId: 'plan-wrong-step-tool-target',
+    confidence: 'medium',
+    rationaleSummary: 'Try to call a tool through a runtime target in a plan.',
+    steps: [
+      {
+        stepId: 'step-lookup',
+        summary: 'Read bounded context.',
+        action: 'call_tool',
+        toolName: 'work.context.lookup',
+        target: { kind: 'execution_target', provider: 'codex', model: 'gpt-5.4' },
+      },
+    ],
+  };
+  const mismatchedSemanticStepToolTarget: ProviderAgentDecision = {
+    ...wrongSemanticStepToolTarget,
+    decisionId: 'decision-mismatched-step-tool-target',
+    steps: [
+      {
+        stepId: 'step-lookup',
+        summary: 'Read bounded context.',
+        action: 'call_tool',
+        toolName: 'work.context.lookup',
+        target: { kind: 'worker_tool', toolName: 'work.local_note.apply' },
+      },
+    ],
+  };
+  const workerToolSemanticDelegateTarget: ProviderAgentDecision = {
+    ...wrongSemanticStepToolTarget,
+    decisionId: 'decision-worker-tool-step-delegation',
+    planId: 'plan-worker-tool-step-delegation',
+    steps: [
+      {
+        stepId: 'step-delegate',
+        summary: 'Delegate work elsewhere.',
+        action: 'delegate_run',
+        target: { kind: 'worker_tool', toolName: 'work.context.lookup' },
+      },
+    ],
+  };
 
   assert.deepEqual(validateProviderAgentDecision({
     observation: observation(),
@@ -461,6 +504,24 @@ test('provider-agent decisions validate addressable tool and delegation targets'
     decision: workerToolDelegationTarget,
   }), [
     'delegation_request.target.kind must not be worker_tool',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: wrongSemanticStepToolTarget,
+  }), [
+    'step step-lookup.target.kind must be worker_tool for call_tool',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: mismatchedSemanticStepToolTarget,
+  }), [
+    'step step-lookup.target.toolName must match step toolName work.context.lookup',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: workerToolSemanticDelegateTarget,
+  }), [
+    'step step-delegate.target.kind must not be worker_tool unless action is call_tool',
   ]);
 });
 
