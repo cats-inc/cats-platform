@@ -154,6 +154,7 @@ export function validateProviderAgentBoundedObservation(
     'actor.capabilityProfileRef',
     observation.actor.capabilityProfileRef,
   );
+  validateBudgetEnvelope(errors, observation.budget);
 
   if (observation.contractVersion !== PROVIDER_AGENT_DECISION_CONTRACT_VERSION) {
     errors.push(`contractVersion must be ${PROVIDER_AGENT_DECISION_CONTRACT_VERSION}`);
@@ -289,6 +290,23 @@ function validateRecoveryDecision(
   }
 }
 
+function validateBudgetEnvelope(errors: string[], budget: BudgetEnvelope): void {
+  validateOptionalPositiveNumber(errors, 'budget.maxCostUsd', budget.maxCostUsd);
+  validateOptionalPositiveInteger(errors, 'budget.maxTokens', budget.maxTokens);
+  validateOptionalPositiveInteger(errors, 'budget.maxDurationMs', budget.maxDurationMs);
+
+  if (
+    budget.maxCostUsd === undefined
+    && budget.maxTokens === undefined
+    && budget.maxDurationMs === undefined
+  ) {
+    errors.push('budget must include at least one maxCostUsd, maxTokens, or maxDurationMs limit');
+  }
+  if (budget.hardStop !== true) {
+    errors.push('budget.hardStop must be true for provider-agent observations');
+  }
+}
+
 function validateToolDescriptor(
   errors: string[],
   descriptor: ProviderAgentToolDescriptor,
@@ -390,4 +408,30 @@ function validateBoundedStringArray(
   values.forEach((value, index) => {
     validateBoundedString(errors, `${field}[${index}]`, value, maxLength);
   });
+}
+
+function validateOptionalPositiveNumber(
+  errors: string[],
+  field: string,
+  value: number | undefined,
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Number.isFinite(value) || value <= 0) {
+    errors.push(`${field} must be greater than 0`);
+  }
+}
+
+function validateOptionalPositiveInteger(
+  errors: string[],
+  field: string,
+  value: number | undefined,
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    errors.push(`${field} must be a positive integer`);
+  }
 }

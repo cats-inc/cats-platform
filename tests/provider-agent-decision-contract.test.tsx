@@ -163,6 +163,32 @@ test('bounded observation rejects oversized summary lists and keys', () => {
   ]);
 });
 
+test('bounded observation rejects invalid budget envelopes', () => {
+  const invalidLimits = observation();
+  invalidLimits.budget = {
+    maxCostUsd: 0,
+    maxTokens: -1,
+    maxDurationMs: 0,
+    hardStop: false,
+  };
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(invalidLimits), [
+    'budget.maxCostUsd must be greater than 0',
+    'budget.maxTokens must be a positive integer',
+    'budget.maxDurationMs must be a positive integer',
+    'budget.hardStop must be true for provider-agent observations',
+  ]);
+
+  const missingLimit = observation();
+  missingLimit.budget = {
+    hardStop: true,
+  };
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(missingLimit), [
+    'budget must include at least one maxCostUsd, maxTokens, or maxDurationMs limit',
+  ]);
+});
+
 test('bounded observation rejects missing and oversized tool reasons', () => {
   const input = observation();
   input.availableTools[0] = {
