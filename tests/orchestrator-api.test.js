@@ -485,6 +485,27 @@ test('PATCH /api/cats/:id rejects unsupported Cat MCP profile ids', async () => 
   });
 });
 
+test('POST /api/cats rejects unsupported Cat MCP profile ids', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Bad MCP Profile Cat',
+        provider: 'gemini',
+        roles: ['planner'],
+        skillProfile: 'companion',
+        mcpProfile: 'unknown-profile',
+      }),
+    });
+
+    const payload = await response.json();
+    assert.equal(response.status, 400);
+    assert.equal(payload.error.code, 'bad_request');
+    assert.equal(payload.error.message, 'Unsupported Cat MCP profile: unknown-profile');
+  });
+});
+
 test('POST /api/channels rejects unsupported MCP profile ids', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/channels`, {
