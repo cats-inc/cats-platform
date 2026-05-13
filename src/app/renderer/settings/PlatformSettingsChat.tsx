@@ -4,11 +4,22 @@ import type { AppShellPayload } from '../../../products/shared/api/workspaceCont
 import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import {
   updateAdvancedDraftControlsPreference,
+  updateChatOrchestrator,
 } from '../../../products/shared/renderer/api/index.js';
 import {
   isAdvancedDraftControlsEnabled,
   normalizeAdvancedDraftControlsPreferences,
 } from '../../../products/shared/advancedDraftControls.js';
+import {
+  SettingsOptionRow,
+  SettingsSection,
+  SettingsSectionHeader,
+} from '../../../design/components/settings/index.js';
+import {
+  MCP_PROFILES,
+} from '../../../products/shared/renderer/components/catRegistryViewSupport.js';
+import { CHAT_MCP_PROFILE_ID } from '../../../shared/catMcpProfiles.js';
+import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import { ProductAdvancedDraftControlsSection } from './ProductAdvancedDraftControlsSection.js';
 import { ProductConversationBehaviorSection } from './ProductConversationBehaviorSection.js';
 import { formatSettingsPreferenceMutationError } from './settingsPreferenceErrorLabels.js';
@@ -56,13 +67,77 @@ export function PlatformSettingsChat({
     }
   }
 
+  async function updateBossToolProfile(nextMcpProfile: string): Promise<void> {
+    const previous = payload;
+    const currentOrchestrator = payload.chat.globalOrchestrator;
+    onPayloadUpdate({
+      ...payload,
+      chat: {
+        ...payload.chat,
+        globalOrchestrator: {
+          ...currentOrchestrator,
+          mcpProfile: nextMcpProfile,
+        },
+      },
+    });
+    try {
+      const next = await updateChatOrchestrator({ mcpProfile: nextMcpProfile });
+      startTransition(() => onPayloadUpdate(next));
+    } catch (error) {
+      onPayloadUpdate(previous);
+      showToast(formatSettingsPreferenceMutationError(
+        error,
+        t(messageKeys.settingsChatBossToolProfileUpdateFailure),
+        t,
+      ));
+    }
+  }
+
   const advancedDraftControlsEnabled = isAdvancedDraftControlsEnabled(
     payload.chat.advancedDraftControls,
     'chat',
   );
+  const activeBossToolProfile =
+    payload.chat.globalOrchestrator.mcpProfile ?? CHAT_MCP_PROFILE_ID;
 
   return (
     <>
+      <SettingsSection
+        header={(
+          <SettingsSectionHeader title={t(messageKeys.settingsChatBossToolProfileTitle)} />
+        )}
+      >
+        <SettingsOptionRow
+          label={t(messageKeys.sharedSettingsCatsMcpProfileLabel)}
+          layout="stack"
+          control={(
+            <div
+              className="settingsSegmentedControl"
+              role="radiogroup"
+              aria-label={t(messageKeys.sharedSettingsCatsMcpProfileLabel)}
+            >
+              {MCP_PROFILES.map((profile) => (
+                <button
+                  key={profile.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={activeBossToolProfile === profile.value}
+                  className="settingsSegmentedOption"
+                  data-active={activeBossToolProfile === profile.value ? 'true' : 'false'}
+                  onClick={() => {
+                    if (activeBossToolProfile !== profile.value) {
+                      void updateBossToolProfile(profile.value);
+                    }
+                  }}
+                >
+                  {t(profile.label)}
+                </button>
+              ))}
+            </div>
+          )}
+        />
+      </SettingsSection>
+
       <ProductConversationBehaviorSection
         surface="chat"
         payload={payload}

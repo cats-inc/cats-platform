@@ -44,7 +44,7 @@ export function updateGlobalOrchestrator(
     nextState.globalOrchestrator,
   );
   const executionTarget = {
-    provider: input.provider.trim() || currentParticipant.executionTarget.provider,
+    provider: input.provider?.trim() || currentParticipant.executionTarget.provider,
     instance:
       normalizeOptionalText(input.instance)
       ?? currentParticipant.executionTarget.instance,
@@ -66,10 +66,21 @@ export function updateGlobalOrchestrator(
     executionTarget,
     executionModelSelection,
     systemPrompt:
-      input.systemPrompt?.trim() || nextState.globalOrchestrator.systemPrompt,
-    skillProfile: normalizeOptionalText(input.skillProfile),
-    mcpProfile: normalizeCatMcpProfile(input.mcpProfile),
-    telegramBotName: normalizeOptionalText(input.telegramBotName),
+      input.systemPrompt === undefined
+        ? nextState.globalOrchestrator.systemPrompt
+        : input.systemPrompt?.trim() || nextState.globalOrchestrator.systemPrompt,
+    skillProfile:
+      input.skillProfile === undefined
+        ? nextState.globalOrchestrator.skillProfile
+        : normalizeOptionalText(input.skillProfile),
+    mcpProfile:
+      input.mcpProfile === undefined
+        ? nextState.globalOrchestrator.mcpProfile
+        : normalizeCatMcpProfile(input.mcpProfile),
+    telegramBotName:
+      input.telegramBotName === undefined
+        ? nextState.globalOrchestrator.telegramBotName
+        : normalizeOptionalText(input.telegramBotName),
     updatedAt: isoAt(now),
   };
   return nextState;

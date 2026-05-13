@@ -3045,10 +3045,18 @@ Behavior:
 PATCH /api/orchestrator
 ```
 
-Persists the default execution target plus prompt metadata for the global
-orchestrator surface. Optional `mcpProfile` values share the same allow-list as
-Cat and channel writes: `chat-memory` or `work-memory`; unsupported IDs return
-`400 bad_request`.
+Persists partial updates for the global orchestrator surface, including the
+default execution target and prompt metadata. Optional `mcpProfile` values share
+the same allow-list as Cat and channel writes: `chat-memory` or `work-memory`;
+unsupported IDs return `400 bad_request`.
+
+Example:
+
+```json
+{
+  "mcpProfile": "work-memory"
+}
+```
 
 ### Export Channel
 

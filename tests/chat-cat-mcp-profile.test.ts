@@ -114,6 +114,24 @@ test('Channel creation rejects unsupported MCP profile ids', () => {
   );
 });
 
+test('Global orchestrator MCP profile updates can patch only the tool profile', () => {
+  const state = createDefaultChatState();
+  const updated = updateGlobalOrchestrator(
+    state,
+    {
+      mcpProfile: WORK_MCP_PROFILE_ID,
+    },
+    new Date('2026-05-13T00:00:00.000Z'),
+  );
+
+  assert.equal(updated.globalOrchestrator.mcpProfile, WORK_MCP_PROFILE_ID);
+  assert.equal(
+    updated.globalOrchestrator.executionTarget.provider,
+    state.globalOrchestrator.executionTarget.provider,
+  );
+  assert.equal(updated.globalOrchestrator.skillProfile, state.globalOrchestrator.skillProfile);
+});
+
 test('Global orchestrator updates reject unsupported MCP profile ids', () => {
   assert.throws(
     () => updateGlobalOrchestrator(

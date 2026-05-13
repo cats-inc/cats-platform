@@ -54,6 +54,40 @@
   font-size: var(--text-sm);
 }
 
+.settingsSegmentedControl {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px;
+  border: 1px solid var(--settings-border);
+  border-radius: var(--settings-radius-sm);
+  background: var(--settings-surface-hover);
+}
+
+.settingsSegmentedOption {
+  border: 0;
+  border-radius: var(--settings-radius-sm);
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--settings-text-muted);
+  font: inherit;
+  font-size: var(--settings-body-size);
+  cursor: pointer;
+}
+
+.settingsSegmentedOption[data-active="true"] {
+  background: var(--settings-surface);
+  color: var(--settings-text);
+  box-shadow: inset 0 0 0 1px var(--settings-border);
+}
+
+.settingsSegmentedOption:focus-visible {
+  outline: 2px solid var(--focus-ring, currentColor);
+  outline-offset: 2px;
+}
+
 /* Runtime page-local layouts. Consumed only by PlatformSettingsRuntime.
  * All spacing / radius / typography / color routes through Settings
  * tokens so the rest of the Settings page inherits one rhythm. No

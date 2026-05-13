@@ -167,6 +167,8 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.shell.sectionRuntime': '執行階段',
   'settings.shell.sectionData': '資料',
   'settings.shell.closeButtonLabel': '關閉設定',
+  'settings.chat.bossToolProfileTitle': 'Boss Cat 工具檔案',
+  'settings.chat.bossToolProfileUpdateFailure': '無法更新 Boss Cat 工具檔案',
   'settings.chat.advancedControlsFailure': '更新聊天室進階草稿控制失敗',
   'settings.conversation.productLabelChat': 'Cats Chat',
   'settings.conversation.productLabelCode': 'Cats Code',

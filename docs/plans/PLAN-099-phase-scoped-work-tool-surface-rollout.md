@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added a Chat settings Boss Cat tool-profile selector backed by partial `PATCH /api/orchestrator`, so operators can switch the visible Boss Cat onto `work-memory` without changing provider settings. |
 | 2026-05-13 | Follow-up slice treats the global orchestrator as Boss Cat for `work-memory` execution-preparation intent, so the visible Boss Cat can receive `work.item.prepare_execution` / `work.task.create_from_work_item` metadata without a separate Cat assignment. |
 | 2026-05-13 | Follow-up slice added the global orchestrator tool profile to runtime prompts so Boss Cat can see its own `work-memory` capability posture in shared context. |
 | 2026-05-13 | Follow-up slice added descriptions to the generic runtime MCP tool intent manifest so `chat-memory` and `work-memory` profiles expose the same self-describing shape. |

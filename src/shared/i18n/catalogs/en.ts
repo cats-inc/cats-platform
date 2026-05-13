@@ -170,6 +170,8 @@ export const enCatalog: MessageCatalog = {
   'settings.shell.sectionRuntime': 'Runtime',
   'settings.shell.sectionData': 'Data',
   'settings.shell.closeButtonLabel': 'Close settings',
+  'settings.chat.bossToolProfileTitle': 'Boss Cat tool profile',
+  'settings.chat.bossToolProfileUpdateFailure': 'Failed to update Boss Cat tool profile',
   'settings.chat.advancedControlsFailure': 'Failed to update chat advanced controls',
   'settings.conversation.productLabelChat': 'Cats Chat',
   'settings.conversation.productLabelCode': 'Cats Code',

@@ -159,6 +159,9 @@ export const messageKeys = {
   settingsShellSectionRuntime: 'settings.shell.sectionRuntime',
   settingsShellSectionData: 'settings.shell.sectionData',
   settingsShellCloseButtonLabel: 'settings.shell.closeButtonLabel',
+  settingsChatBossToolProfileTitle: 'settings.chat.bossToolProfileTitle',
+  settingsChatBossToolProfileUpdateFailure:
+    'settings.chat.bossToolProfileUpdateFailure',
   settingsChatAdvancedControlsFailure: 'settings.chat.advancedControlsFailure',
   settingsConversationProductLabelChat: 'settings.conversation.productLabelChat',
   settingsConversationProductLabelCode: 'settings.conversation.productLabelCode',

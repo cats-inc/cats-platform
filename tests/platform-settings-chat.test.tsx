@@ -48,6 +48,31 @@ function createPayload(): AppShellPayload {
       },
     ],
     chat: {
+      globalOrchestrator: {
+        mode: 'global',
+        status: 'ready',
+        nextFocus: '',
+        entrypoints: [],
+        referenceProjects: [],
+        notes: [],
+        executionTarget: {
+          provider: 'claude',
+          instance: null,
+          model: null,
+        },
+        executionModelSelection: null,
+        systemPrompt: '',
+        skillProfile: 'aaif-a2a-default',
+        mcpProfile: 'work-memory',
+        memory: {
+          summary: null,
+          facts: [],
+          openLoops: [],
+          updatedAt: null,
+        },
+        telegramBotName: null,
+        updatedAt: '2026-04-16T00:00:00.000Z',
+      },
       conversationBehavior: {
         chat: {
           showVerboseMessages: false,
@@ -115,6 +140,10 @@ test('PlatformSettingsChat renders conversation and draft-builder controls on th
   );
 
   assert.match(markup, /Conversation behavior/u);
+  assert.match(markup, /Boss Cat tool profile/u);
+  assert.match(markup, /Tool Profile/u);
+  assert.match(markup, /Chat memory/u);
+  assert.match(markup, /Work memory/u);
   assert.match(markup, /Concurrent response layout/u);
   assert.match(markup, /Inline stack/u);
   assert.match(markup, /Compare cards/u);

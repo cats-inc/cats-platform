@@ -619,14 +619,14 @@ export interface CreateParallelChatGroupInput {
 }
 
 export interface UpdateGlobalOrchestratorInput {
-  provider: string;
-  instance?: string;
-  model?: string;
+  provider?: string | null;
+  instance?: string | null;
+  model?: string | null;
   modelSelection?: ProviderModelSelection | null;
-  systemPrompt?: string;
-  skillProfile?: string;
-  mcpProfile?: string;
-  telegramBotName?: string;
+  systemPrompt?: string | null;
+  skillProfile?: string | null;
+  mcpProfile?: string | null;
+  telegramBotName?: string | null;
 }
 
 export interface ChannelMessageMetadata extends Record<string, unknown> {
