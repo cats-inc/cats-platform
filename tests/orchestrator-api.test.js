@@ -1217,7 +1217,7 @@ test('POST /api/orchestrator/dispatch applies provider Work Item update decision
   });
 });
 
-test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation', async () => {
+test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation and creates only ready tasks', async () => {
   const runtimeClient = createRuntimeStub();
   const chatStore = new MemoryChatStore();
   let observedToolNames = [];
@@ -1302,6 +1302,29 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation',
       },
       new Date('2026-05-13T00:00:02.000Z'),
     ).core;
+    core = upsertCoreWorkItem(
+      core,
+      {
+        id: 'work-item-api-start-3',
+        title: 'Unblock Redmine issue adapter',
+        status: 'blocked',
+        projectId: null,
+        conversationId: `conversation-channel-${channelId}`,
+        taskId: null,
+        parentWorkItemId: null,
+        ownerActorId: 'actor-owner',
+        assignedActorIds: [],
+        summary: 'Resolve upstream tracker assumptions before implementation.',
+        metadata: {
+          workIntake: {
+            schemaVersion: 1,
+            phase: 'intake',
+            runId: 'chat:previous-owner-visible-turn',
+          },
+        },
+      },
+      new Date('2026-05-13T00:00:03.000Z'),
+    ).core;
     await chatStore.writeCore(core);
 
     const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
@@ -1309,7 +1332,10 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         channelId,
-        body: 'Boss Cat start work-item-api-start-1 and work-item-api-start-2.',
+        body: [
+          'Boss Cat start work-item-api-start-1,',
+          'work-item-api-start-2, and work-item-api-start-3.',
+        ].join(' '),
       }),
     });
 
@@ -1327,6 +1353,7 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation',
     assert.deepEqual(proposal?.workItemIds, [
       'work-item-api-start-1',
       'work-item-api-start-2',
+      'work-item-api-start-3',
     ]);
     assert.deepEqual(
       proposal?.proposals?.map((entry) => [
@@ -1337,6 +1364,7 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation',
       [
         ['work-item-api-start-1', 'ready', 'Implement MCP adapter contract'],
         ['work-item-api-start-2', 'ready', 'Add Telegram Work intake coverage'],
+        ['work-item-api-start-3', 'blocked', 'Unblock Redmine issue adapter'],
       ],
     );
 
@@ -1379,6 +1407,8 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation',
     const createdTasks = transition?.createdTasks ?? [];
     const confirmedWorkItems = confirmedCore.workItems.filter((candidate) =>
       candidate.id === 'work-item-api-start-1' || candidate.id === 'work-item-api-start-2');
+    const blockedWorkItem = confirmedCore.workItems.find((candidate) =>
+      candidate.id === 'work-item-api-start-3');
     const tasks = createdTasks.map((created) =>
       confirmedCore.tasks.find((candidate) => candidate.id === created.taskId));
 
@@ -1394,10 +1424,12 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation',
         ['work-item-api-start-2', true, true],
       ],
     );
+    assert.deepEqual(transition?.skippedWorkItemIds, ['work-item-api-start-3']);
     assert.deepEqual(
       confirmedWorkItems.map((workItem) => [workItem.id, workItem.taskId]),
       createdTasks.map((created) => [created.workItemId, created.taskId]),
     );
+    assert.equal(blockedWorkItem?.taskId, null);
     assert.deepEqual(
       tasks.map((task) => [
         task?.title,
