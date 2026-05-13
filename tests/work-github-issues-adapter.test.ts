@@ -8,6 +8,9 @@ import {
   createGitHubIssuesAdapter,
   parseGitHubIssueSnapshot,
 } from '../src/products/work/integrations/githubIssuesAdapter.js';
+import {
+  EXTERNAL_ISSUE_IMPORT_METADATA_KEY,
+} from '../src/products/work/integrations/externalIssueImport.js';
 
 test('GitHub Issues adapter fetches and maps an issue into a Work import draft', async () => {
   const requests: Array<{
@@ -76,6 +79,18 @@ test('GitHub Issues adapter fetches and maps an issue into a Work import draft',
     externalUrl: 'https://github.com/cats-inc/cats-platform/issues/123',
     syncDirection: 'pull',
     externalUpdatedAt: '2026-05-13T10:10:00Z',
+  });
+  assert.deepEqual(draft.metadata[EXTERNAL_ISSUE_IMPORT_METADATA_KEY], {
+    provider: 'github',
+    externalType: 'issue',
+    externalId: '123',
+    externalUrl: 'https://github.com/cats-inc/cats-platform/issues/123',
+    sourceKey: 'cats-inc/cats-platform',
+    state: 'open',
+    labels: ['enhancement', 'work'],
+    assignees: ['boss-cat', 'kitten'],
+    sourceUpdatedAt: '2026-05-13T10:10:00Z',
+    sourceClosedAt: null,
   });
   assert.deepEqual(draft.metadata[GITHUB_ISSUE_IMPORT_METADATA_KEY], {
     provider: 'github',

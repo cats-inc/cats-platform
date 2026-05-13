@@ -3,10 +3,16 @@ import type {
   ExternalWorkBindingProvider,
   ExternalWorkBindingSyncDirection,
 } from '../shared/externalWorkBinding.js';
+import {
+  EXTERNAL_ISSUE_IMPORT_METADATA_KEY,
+  type ExternalIssueImportMetadata,
+  type ExternalIssueImportState,
+  toExternalIssueImportDraft,
+} from './externalIssueImport.js';
 
 export const GITHUB_ISSUE_IMPORT_METADATA_KEY = 'githubIssueImport' as const;
 
-export type GitHubIssueState = 'open' | 'closed';
+export type GitHubIssueState = ExternalIssueImportState;
 
 export interface GitHubIssueSnapshot {
   provider: Extract<ExternalWorkBindingProvider, 'github'>;
@@ -29,6 +35,7 @@ export interface GitHubIssueImportDraft {
   summary: string | null;
   status: 'planned';
   metadata: {
+    [EXTERNAL_ISSUE_IMPORT_METADATA_KEY]: ExternalIssueImportMetadata;
     [GITHUB_ISSUE_IMPORT_METADATA_KEY]: {
       provider: Extract<ExternalWorkBindingProvider, 'github'>;
       repository: string;
@@ -248,11 +255,25 @@ export function parseGitHubIssueSnapshot(
 export function toGitHubIssueImportDraft(
   issue: GitHubIssueSnapshot,
 ): GitHubIssueImportDraft {
-  return {
+  const draft = toExternalIssueImportDraft({
+    provider: issue.provider,
+    externalType: issue.externalType,
+    externalId: issue.externalId,
+    externalUrl: issue.externalUrl,
+    sourceKey: issue.repository,
     title: issue.title,
     summary: issue.body,
-    status: 'planned',
+    state: issue.state,
+    labels: issue.labels,
+    assignees: issue.assignees,
+    updatedAt: issue.updatedAt,
+    closedAt: issue.closedAt,
+  });
+
+  return {
+    ...draft,
     metadata: {
+      ...draft.metadata,
       [GITHUB_ISSUE_IMPORT_METADATA_KEY]: {
         provider: 'github',
         repository: issue.repository,
@@ -264,14 +285,6 @@ export function toGitHubIssueImportDraft(
         sourceUpdatedAt: issue.updatedAt,
         sourceClosedAt: issue.closedAt,
       },
-    },
-    bindingDefaults: {
-      provider: 'github',
-      externalType: 'issue',
-      externalId: issue.externalId,
-      externalUrl: issue.externalUrl,
-      syncDirection: 'pull',
-      externalUpdatedAt: issue.updatedAt,
     },
   };
 }
