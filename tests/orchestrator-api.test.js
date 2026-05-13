@@ -1319,6 +1319,54 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation',
       updatedCore.tasks.some((task) => task.id.startsWith('task-work-item-')),
       false,
     );
+
+    if (!proposalMessage) {
+      throw new Error('Expected Work execution preparation proposal message.');
+    }
+    const confirmResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Create the execution Task',
+        choiceResponse: buildSingleChoiceResponse(
+          proposalMessage,
+          'create_ready_execution_tasks',
+          '2026-05-13T00:03:00.000Z',
+        ),
+      }),
+    });
+
+    assert.equal(confirmResponse.status, 200);
+    const confirmPayload = await confirmResponse.json();
+    assert.equal(confirmPayload.dispatch.status, 'dispatched');
+
+    const confirmedChat = await chatStore.read();
+    const confirmedChannel = buildChannelView(confirmedChat, channelId);
+    const transitionMessage = confirmedChannel.messages.find((message) =>
+      message.metadata.event === 'work_execution_preparation_tasks_created');
+    const transition = transitionMessage?.metadata.workExecutionPreparationTransition;
+    const confirmedCore = await chatStore.readCore();
+    const createdTaskId = transition?.createdTasks?.[0]?.taskId;
+    const confirmedWorkItem = confirmedCore.workItems.find((candidate) =>
+      candidate.id === 'work-item-api-start-1');
+    const task = confirmedCore.tasks.find((candidate) => candidate.id === createdTaskId);
+
+    assert.equal(transitionMessage?.body.includes('Created execution Tasks:'), true);
+    assert.deepEqual(
+      transition?.createdTasks?.map((entry) => [
+        entry.workItemId,
+        entry.created,
+        entry.linked,
+      ]),
+      [['work-item-api-start-1', true, true]],
+    );
+    assert.equal(confirmedWorkItem?.taskId, createdTaskId);
+    assert.equal(task?.title, 'Implement MCP adapter contract');
+    assert.equal(task?.status, 'pending_approval');
+    assert.equal(task?.approval.status, 'pending');
+    assert.equal(task?.orchestratorActorId, `actor-cat-${catId}`);
+    assert.deepEqual(task?.assignedActorIds, [`actor-cat-${catId}`]);
   }, chatStore, {
     providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
     providerAgentDecisionRequester: async ({ observation }) => {
