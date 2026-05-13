@@ -10,6 +10,12 @@ import type {
 } from '../supervision/contracts.js';
 import {
   ADDRESSABLE_TARGET_KIND_VALUES,
+  SUPERVISED_TOOL_APPROVAL_VALUES,
+  SUPERVISED_TOOL_BLOCKING_VALUES,
+  SUPERVISED_TOOL_CANCELLATION_VALUES,
+  SUPERVISED_TOOL_EVIDENCE_VALUES,
+  SUPERVISED_TOOL_PREFLIGHT_VALUES,
+  SUPERVISED_TOOL_SIDE_EFFECT_VALUES,
   SUPERVISION_FALLBACK_POLICY_VALUES,
 } from '../supervision/contracts.js';
 
@@ -25,6 +31,11 @@ export const PROVIDER_AGENT_MAX_INVARIANT_LENGTH = 320;
 export const PROVIDER_AGENT_MAX_TOOL_REASON_LENGTH = 280;
 export const PROVIDER_AGENT_MAX_TOOL_INPUT_HINTS = 8;
 export const PROVIDER_AGENT_MAX_TOOL_INPUT_HINT_LENGTH = 400;
+export const PROVIDER_AGENT_MAX_TOOL_NAME_LENGTH = 160;
+export const PROVIDER_AGENT_MAX_TOOL_DESCRIPTION_LENGTH = 500;
+export const PROVIDER_AGENT_MAX_TOOL_MANIFEST_VERSION_LENGTH = 40;
+export const PROVIDER_AGENT_MAX_TOOL_FAILURE_CODES = 16;
+export const PROVIDER_AGENT_MAX_TOOL_FAILURE_CODE_LENGTH = 80;
 export const PROVIDER_AGENT_MAX_SEMANTIC_PLAN_STEPS = 12;
 export const PROVIDER_AGENT_MAX_STEP_DEPENDENCIES = 8;
 export const PROVIDER_AGENT_MAX_STEP_DEPENDENCY_LENGTH = 80;
@@ -206,8 +217,10 @@ export function validateProviderAgentBoundedObservation(
   if (!Array.isArray(observation.availableTools)) {
     errors.push('availableTools must be an array');
   } else {
-    if (new Set(observation.availableTools.map((tool) => tool.manifest.name)).size
-      !== observation.availableTools.length) {
+    const manifestNames = observation.availableTools
+      .map((tool) => readToolDescriptorManifestName(tool))
+      .filter((name): name is string => name !== null);
+    if (new Set(manifestNames).size !== manifestNames.length) {
       errors.push('availableTools must not contain duplicate manifest names');
     }
     observation.availableTools.forEach((tool, index) => {
@@ -731,9 +744,18 @@ function validateAllowedFallbacks(
 
 function validateToolDescriptor(
   errors: string[],
-  descriptor: ProviderAgentToolDescriptor,
+  descriptor: unknown,
   index: number,
 ): void {
+  if (!isRecord(descriptor)) {
+    errors.push(`availableTools[${index}] must be an object`);
+    return;
+  }
+  if (!isRecord(descriptor.manifest)) {
+    errors.push(`availableTools[${index}].manifest must be an object`);
+  } else {
+    validateToolManifest(errors, descriptor.manifest, index);
+  }
   validateBoundedString(
     errors,
     `availableTools[${index}].reason`,
@@ -742,6 +764,10 @@ function validateToolDescriptor(
   );
 
   if (!descriptor.inputHints) {
+    return;
+  }
+  if (!Array.isArray(descriptor.inputHints)) {
+    errors.push(`availableTools[${index}].inputHints must be an array`);
     return;
   }
 
@@ -760,6 +786,87 @@ function validateToolDescriptor(
       PROVIDER_AGENT_MAX_TOOL_INPUT_HINT_LENGTH,
     );
   });
+}
+
+function validateToolManifest(
+  errors: string[],
+  manifest: Record<string, unknown>,
+  index: number,
+): void {
+  const field = `availableTools[${index}].manifest`;
+  validateBoundedString(
+    errors,
+    `${field}.name`,
+    manifest.name,
+    PROVIDER_AGENT_MAX_TOOL_NAME_LENGTH,
+  );
+  validateBoundedString(
+    errors,
+    `${field}.manifestVersion`,
+    manifest.manifestVersion,
+    PROVIDER_AGENT_MAX_TOOL_MANIFEST_VERSION_LENGTH,
+  );
+  validateBoundedString(
+    errors,
+    `${field}.description`,
+    manifest.description,
+    PROVIDER_AGENT_MAX_TOOL_DESCRIPTION_LENGTH,
+  );
+  validateEnumValue(
+    errors,
+    `${field}.sideEffect`,
+    manifest.sideEffect,
+    SUPERVISED_TOOL_SIDE_EFFECT_VALUES,
+  );
+  validateEnumValue(
+    errors,
+    `${field}.preflight`,
+    manifest.preflight,
+    SUPERVISED_TOOL_PREFLIGHT_VALUES,
+  );
+  validateEnumValue(
+    errors,
+    `${field}.blocking`,
+    manifest.blocking,
+    SUPERVISED_TOOL_BLOCKING_VALUES,
+  );
+  validateEnumValue(
+    errors,
+    `${field}.cancellation`,
+    manifest.cancellation,
+    SUPERVISED_TOOL_CANCELLATION_VALUES,
+  );
+  validateEnumValue(
+    errors,
+    `${field}.approval`,
+    manifest.approval,
+    SUPERVISED_TOOL_APPROVAL_VALUES,
+  );
+  validateEnumValue(
+    errors,
+    `${field}.evidence`,
+    manifest.evidence,
+    SUPERVISED_TOOL_EVIDENCE_VALUES,
+  );
+  validateBoundedStringArray(
+    errors,
+    `${field}.failureCodes`,
+    manifest.failureCodes,
+    PROVIDER_AGENT_MAX_TOOL_FAILURE_CODES,
+    PROVIDER_AGENT_MAX_TOOL_FAILURE_CODE_LENGTH,
+  );
+  validateSchemaRef(errors, `${field}.inputSchema`, manifest.inputSchema);
+  validateSchemaRef(errors, `${field}.outputSchema`, manifest.outputSchema);
+}
+
+function readToolDescriptorManifestName(descriptor: unknown): string | null {
+  if (!isRecord(descriptor) || !isRecord(descriptor.manifest)) {
+    return null;
+  }
+
+  return typeof descriptor.manifest.name === 'string'
+    ? descriptor.manifest.name
+    : null;
 }
 
 function validateObservationSummary(

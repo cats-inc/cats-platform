@@ -246,6 +246,52 @@ test('bounded observation rejects malformed array fields without throwing', () =
   ]);
 });
 
+test('bounded observation rejects malformed tool descriptors without throwing', () => {
+  const input = observation();
+  input.availableTools = [
+    null as never,
+    {
+      manifest: {
+        schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,
+        name: 'work.context.lookup',
+        manifestVersion: 'v'.repeat(41),
+        description: 'd'.repeat(501),
+        sideEffect: 'secret',
+        preflight: 'maybe',
+        blocking: 'later',
+        cancellation: 'never',
+        approval: 'sometimes',
+        evidence: 'raw',
+        failureCodes: 'E_TOOL_SCOPE_DENIED',
+        inputSchema: null,
+        outputSchema: {
+          id: 'work.context.lookup.output',
+          version: '1.0',
+          format: 'json_schema',
+        },
+      },
+      reason: 42,
+      inputHints: 'Call it carefully.',
+    } as never,
+  ];
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(input), [
+    'availableTools[0] must be an object',
+    'availableTools[1].manifest.manifestVersion must be 40 characters or less',
+    'availableTools[1].manifest.description must be 500 characters or less',
+    'availableTools[1].manifest.sideEffect is unsupported: secret',
+    'availableTools[1].manifest.preflight is unsupported: maybe',
+    'availableTools[1].manifest.blocking is unsupported: later',
+    'availableTools[1].manifest.cancellation is unsupported: never',
+    'availableTools[1].manifest.approval is unsupported: sometimes',
+    'availableTools[1].manifest.evidence is unsupported: raw',
+    'availableTools[1].manifest.failureCodes must be an array',
+    'availableTools[1].manifest.inputSchema must be an object',
+    'availableTools[1].reason must be a string',
+    'availableTools[1].inputHints must be an array',
+  ]);
+});
+
 test('bounded observation rejects missing and oversized tool reasons', () => {
   const input = observation();
   input.availableTools[0] = {
