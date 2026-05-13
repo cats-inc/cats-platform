@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice blocked credential-bearing external tracker URLs from URL inference and Chat phase matching so unsafe links do not trigger model-visible binding tools. |
 | 2026-05-13 | Follow-up slice rejected credential-bearing external tracker URLs at the Work tool surface and metadata builder so bindings cannot persist user:pass URLs. |
 | 2026-05-13 | Follow-up slice validated provider-agent semantic-plan dependency graphs so `dependsOn` only references known, non-repeated, non-self steps. |
 | 2026-05-13 | Follow-up slice validated provider-agent delegation/recovery summaries and delegation budgets so model-authored control decisions stay bounded and structured. |

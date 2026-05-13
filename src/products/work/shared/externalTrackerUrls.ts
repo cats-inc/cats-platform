@@ -135,7 +135,9 @@ function parseUrl(value: string): URL | null {
       return null;
     }
     const url = new URL(trimmed);
-    return url.protocol === 'http:' || url.protocol === 'https:'
+    return (url.protocol === 'http:' || url.protocol === 'https:')
+      && url.username === ''
+      && url.password === ''
       ? url
       : null;
   } catch {

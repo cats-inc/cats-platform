@@ -78,6 +78,10 @@ test('external tracker URL parser uses selected provider for self-hosted URLs', 
 
 test('external tracker URL parser ignores non-http and unrecognized URLs', () => {
   assert.equal(inferExternalTrackerBindingFromUrl('javascript:alert(1)'), null);
+  assert.equal(
+    inferExternalTrackerBindingFromUrl('https://user:pass@github.com/cats-inc/cats-platform/issues/123'),
+    null,
+  );
   assert.equal(inferExternalTrackerBindingFromUrl('not a url'), null);
   assert.equal(inferExternalTrackerBindingFromUrl('https://example.test/nope'), null);
 });

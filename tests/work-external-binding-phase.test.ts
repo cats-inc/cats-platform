@@ -60,4 +60,14 @@ test('external binding phase resolver rejects ambiguous or slash-command request
     reasonCode: 'missing_local_work_ref',
     normalizedText: 'link https://github.com/cats-inc/cats-platform/issues/123',
   });
+
+  assert.deepEqual(resolveWorkExternalBindingPhase({
+    rawText: 'Link work-item-intake to https://user:pass@github.com/cats-inc/cats-platform/issues/123',
+  }), {
+    kind: 'none',
+    phase: null,
+    reasonCode: 'unsupported_external_tracker_url',
+    normalizedText:
+      'link work-item-intake to https://user:pass@github.com/cats-inc/cats-platform/issues/123',
+  });
 });
