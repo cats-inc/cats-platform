@@ -1619,6 +1619,17 @@ test('POST /api/orchestrator/dispatch persists approval-blocked requests and aut
 test('POST /api/core/approvals uses an injected pending-dispatch resume seam when provided', async () => {
   const runtimeClient = createRuntimeStub();
   const replayCalls = [];
+  const choiceResponse = {
+    sourceMessageId: 'message-pending-choice-source',
+    status: 'submitted',
+    submittedAt: '2026-05-13T00:04:00.000Z',
+    answers: [
+      {
+        question: 'Capture these Work Items?',
+        selectedOptionIds: ['capture_work_items'],
+      },
+    ],
+  };
   await withServer(runtimeClient, async (baseUrl) => {
     const created = await createChannel(baseUrl);
     const channelId = created.channel.id;
@@ -1640,9 +1651,24 @@ test('POST /api/core/approvals uses an injected pending-dispatch resume seam whe
       body: JSON.stringify({
         channelId,
         body: 'Please ask @Inline-Agent to review this change',
+        choiceResponse,
       }),
     });
     assert.equal(blockedDispatchResponse.status, 200);
+
+    const blockedCoreResponse = await fetch(`${baseUrl}/api/core`);
+    assert.equal(blockedCoreResponse.status, 200);
+    const blockedCorePayload = await blockedCoreResponse.json();
+    const blockedTask = blockedCorePayload.tasks.find((candidate) =>
+      candidate.id === `task-channel-${channelId}`);
+    assert.deepEqual(
+      blockedTask?.metadata?.pendingOrchestratorDispatch?.choiceResponse,
+      choiceResponse,
+    );
+    assert.deepEqual(
+      blockedTask?.metadata?.orchestratorDispatchReplay?.choiceResponse,
+      choiceResponse,
+    );
 
     const approvedResponse = await fetch(`${baseUrl}/api/core/approvals`, {
       method: 'POST',
@@ -1668,6 +1694,7 @@ test('POST /api/core/approvals uses an injected pending-dispatch resume seam whe
     assert.equal(replayCalls.length, 1);
     assert.equal(replayCalls[0].options.trigger, 'approve');
     assert.equal(replayCalls[0].request.channelId, channelId);
+    assert.deepEqual(replayCalls[0].request.choiceResponse, choiceResponse);
     const coreResponse = await fetch(`${baseUrl}/api/core`);
     assert.equal(coreResponse.status, 200);
     const corePayload = await coreResponse.json();
