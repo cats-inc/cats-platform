@@ -356,6 +356,7 @@ interface WorkTriageLookupResultMetadata {
   decisionId: string;
   sourceMessageId: string;
   query: string | null;
+  includeArchived: boolean;
   projects: WorkProjectLookupProject[];
 }
 
@@ -2206,6 +2207,7 @@ async function appendWorkTriageLookupResultSidecar(input: {
     decisionId: input.providerAgentDecision.decisionId,
     sourceMessageId: input.userMessage.id,
     query,
+    includeArchived,
     projects: result.result.projects,
   };
   const append = appendMessage(

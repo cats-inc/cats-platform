@@ -182,6 +182,105 @@ test('Chat provider-agent Work triage lookup request returns bounded Project can
   assert.equal(metadata?.projects?.[0]?.projectId, 'project-cats-platform');
 });
 
+test('Chat provider-agent Work triage lookup can include archived Projects', async () => {
+  const now = new Date('2026-05-13T12:05:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Work triage archived lookup',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const withProject = upsertCoreProject(
+    createDefaultCoreState(),
+    {
+      id: 'project-archived-cats',
+      title: 'Cats Archived Project',
+      status: 'archived',
+      ownerActorId: 'actor-owner',
+      primaryConversationId: conversationId,
+      summary: 'Archived project still relevant for triage lookup.',
+    },
+    now,
+  ).core;
+  const core = upsertCoreWorkItem(
+    withProject,
+    {
+      id: 'work-item-archived-lookup-1',
+      title: 'Find archived project candidates',
+      status: 'planned',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {},
+    },
+    now,
+  ).core;
+  const store = new MemoryChatStore(state);
+  await store.writeCore(core);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Boss Cat triage work-item-archived-lookup-1 and find archived Cats projects',
+    },
+    runtimeStub(),
+    new Date('2026-05-13T12:06:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      providerAgentDecisionRequester: async () => ({
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-work-triage-archived-lookup-1',
+        confidence: 'high',
+        toolName: WORK_PROJECT_LOOKUP_TOOL,
+        target: {
+          kind: 'execution_target',
+          provider: 'claude',
+          model: 'sonnet',
+        },
+        input: {
+          query: 'cats',
+          includeArchived: true,
+        },
+        rationaleSummary: 'The owner asked for archived project candidates.',
+      }),
+    },
+  );
+
+  const channel = requireChannel(begun.state, channelId);
+  const resultMessage = channel.messages.find((message) =>
+    message.metadata.workTriageLookupResult);
+  const metadata = resultMessage?.metadata.workTriageLookupResult as
+    | { includeArchived?: boolean; projects?: Array<{ projectId?: string; status?: string }> }
+    | undefined;
+
+  assert.equal(resultMessage?.metadata.event, 'work_triage_lookup_result');
+  assert.equal(metadata?.includeArchived, true);
+  assert.equal(metadata?.projects?.[0]?.projectId, 'project-archived-cats');
+  assert.equal(metadata?.projects?.[0]?.status, 'archived');
+});
+
 test('Chat provider-agent Work project create request writes one Project', async () => {
   const now = new Date('2026-05-13T12:10:00.000Z');
   const state = createChannel(
