@@ -9,6 +9,7 @@ import {
   appendMessage,
   buildChannelView,
   createChannel as seedChannel,
+  setBossCat,
   setChannelCatLease,
   setChannelRoomRouting,
 } from '../build/server/products/chat/state/model/index.js';
@@ -34,6 +35,7 @@ import {
 } from '../build/server/products/chat/state/room-routing/workflow.js';
 import {
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
+  WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
   WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
@@ -1141,6 +1143,131 @@ test('POST /api/orchestrator/dispatch applies provider Work Item update decision
           openQuestions: ['Confirm owner approval path.'],
         },
         rationaleSummary: 'The owner explicitly asked to update one Work Item.',
+      };
+    },
+  });
+});
+
+test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  let observedToolNames = [];
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+    let chat = await chatStore.read();
+    chat = setBossCat(chat, catId);
+    chat = setChannelCatLease(
+      chat,
+      channelId,
+      catId,
+      {
+        status: 'ready',
+        sessionId: 'session-work-execution-prepare',
+        laneId: 'lane-work-execution-prepare',
+      },
+      new Date('2026-05-13T00:00:00.000Z'),
+    );
+    await chatStore.write(chat);
+
+    let core = await chatStore.readCore();
+    core = upsertCoreWorkItem(
+      core,
+      {
+        id: 'work-item-api-start-1',
+        title: 'Implement MCP adapter contract',
+        status: 'ready',
+        projectId: null,
+        conversationId: `conversation-channel-${channelId}`,
+        taskId: null,
+        parentWorkItemId: null,
+        ownerActorId: 'actor-owner',
+        assignedActorIds: [],
+        summary: 'Turn the external tracker seam into a concrete adapter.',
+        metadata: {
+          workIntake: {
+            schemaVersion: 1,
+            phase: 'intake',
+            runId: 'chat:previous-owner-visible-turn',
+          },
+        },
+      },
+      new Date('2026-05-13T00:00:01.000Z'),
+    ).core;
+    await chatStore.writeCore(core);
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Boss Cat start work-item-api-start-1.',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.equal(observedToolNames.includes(WORK_ITEM_PREPARE_EXECUTION_TOOL), true);
+
+    const persisted = await chatStore.read();
+    const channel = buildChannelView(persisted, channelId);
+    const proposalMessage = channel.messages.find((message) =>
+      message.metadata.event === 'work_execution_preparation_proposed');
+    const proposal = proposalMessage?.metadata.workExecutionPreparationProposal;
+    assert.equal(proposalMessage?.senderName, 'Cats Work');
+    assert.deepEqual(proposal?.workItemIds, ['work-item-api-start-1']);
+    assert.deepEqual(
+      proposal?.proposals?.map((entry) => [
+        entry.workItemId,
+        entry.readiness,
+        entry.proposedTaskTitle,
+      ]),
+      [['work-item-api-start-1', 'ready', 'Implement MCP adapter contract']],
+    );
+
+    const updatedCore = await chatStore.readCore();
+    const workItem = updatedCore.workItems.find((candidate) =>
+      candidate.id === 'work-item-api-start-1');
+    assert.equal(workItem?.taskId, null);
+    assert.equal(
+      updatedCore.tasks.some((task) => task.id.startsWith('task-work-item-')),
+      false,
+    );
+  }, chatStore, {
+    providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
+    providerAgentDecisionRequester: async ({ observation }) => {
+      observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
+      return {
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-api-work-execution-prepare-1',
+        confidence: 'high',
+        toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
+        },
+        input: {
+          executionGoal: 'Open the smallest implementation slice.',
+        },
+        rationaleSummary: 'Prepare selected Work Items for Boss Cat execution.',
       };
     },
   });

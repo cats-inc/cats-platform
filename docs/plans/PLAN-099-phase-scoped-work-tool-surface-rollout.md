@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added API-level coverage that provider-agent Boss execution-preparation decisions create owner-visible Work execution proposals without creating Tasks or Runs. |
 | 2026-05-13 | Follow-up slice added API-level coverage that provider-agent `work.item.update` decisions apply bounded Work Item planning updates through orchestrator dispatch. |
 | 2026-05-13 | Follow-up slice added API-level coverage that provider-agent `work.project.create` decisions write Cats Work Projects through the orchestrator dispatch sidecar path. |
 | 2026-05-13 | Follow-up slice wired provider-agent decision options through the Telegram room bridge so Telegram-origin Work intake can produce the same proposal sidecars as Chat/API dispatch. |
