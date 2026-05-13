@@ -7,19 +7,22 @@ import { createDefaultChatState } from '../src/products/chat/state/defaults.js';
 import {
   buildChannelView,
   createChannel,
+  setBossCat,
 } from '../src/products/chat/state/model/index.js';
 import { chatDeterministicPlannerSurface } from '../src/products/chat/state/deterministicRouterAdapter.js';
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
+  WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
+  WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
 } from '../src/products/work/shared/workToolSurface.js';
 import { WORK_MCP_PROFILE_ID } from '../src/products/work/shared/workToolIntent.js';
 
-function createWorkMemoryPlan(body: string) {
+function createWorkMemoryPlan(body: string, options: { bossCat?: boolean } = {}) {
   let state = createDefaultChatState();
   state = createChannel(
     state,
@@ -42,7 +45,12 @@ function createWorkMemoryPlan(body: string) {
   );
   const channelId = state.selectedChannelId;
   assert.ok(channelId);
+  const catId = buildChannelView(state, channelId).assignedCats[0]?.catId;
+  assert.ok(catId);
   assert.equal(buildChannelView(state, channelId).assignedCats[0]?.mcpProfile, WORK_MCP_PROFILE_ID);
+  if (options.bossCat) {
+    state = setBossCat(state, catId, new Date('2026-05-13T00:00:01.000Z'));
+  }
 
   return buildOrchestratorTurnPlan(
     state,
@@ -70,6 +78,23 @@ test('Chat orchestrator projects Work triage tool intent for work-memory Cats', 
   assert.deepEqual(target.toolIntent?.requiredCapabilities, [
     'work.phase.triage',
     'work.capability.strong_agent',
+    'work.tool_scope.narrow_write',
+  ]);
+  assert.equal(target.toolIntent?.strict, true);
+});
+
+test('Chat orchestrator projects Boss Cat execution-preparation tool intent', () => {
+  const plan = createWorkMemoryPlan('Start work-item-alpha.', { bossCat: true });
+  const target = plan.routing.initialTargets[0];
+
+  assert.ok(target);
+  assert.deepEqual(target.toolIntent?.allowedTools, [
+    WORK_ITEM_PREPARE_EXECUTION_TOOL,
+    WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
+  ]);
+  assert.deepEqual(target.toolIntent?.requiredCapabilities, [
+    'work.phase.execution_preparation',
+    'work.capability.boss_cat',
     'work.tool_scope.narrow_write',
   ]);
   assert.equal(target.toolIntent?.strict, true);

@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added planner coverage for Boss Cat `work-memory` execution-preparation intent so explicit Work Item start requests surface `work.item.prepare_execution` and `work.task.create_from_work_item`. |
 | 2026-05-13 | Follow-up slice added API-level orchestrator plan coverage proving `work-memory` Cats return Work triage tool intent through `POST /api/orchestrator/plan`, not only the direct planner unit seam. |
 | 2026-05-13 | Follow-up slice wired Chat's orchestrator planner surface to project product-owned `work-memory` tool intent for explicit Work triage and external tracker binding turns, while suppressing generic runtime tools for unmatched Work-memory turns. |
 | 2026-05-13 | Follow-up slice expanded Work `work-memory` tool-intent coverage across execution-preparation and external tracker binding phases, including read-only versus narrow-write allowed-tool projections. |
