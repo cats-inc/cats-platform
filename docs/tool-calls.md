@@ -278,7 +278,11 @@ import draft metadata is provider-neutral so later Redmine, Bugzilla, GitLab,
 and Gitea adapters can map their issue or ticket snapshots into the same local
 Work seam. Redmine and Bugzilla read-only adapter spikes now map one issue or
 bug response into that same provider-neutral draft through injectable fetch
-boundaries. Automatic bidirectional sync is deferred by ADR-106, so
+boundaries. The import source resolver maps credential-free GitHub, Redmine,
+and Bugzilla issue URLs into server-owned adapter configuration hints before any
+fetch happens, so model/runtime callers do not need to parse tracker ids,
+repository names, or self-hosted base URLs. Automatic bidirectional sync is
+deferred by ADR-106, so
 `syncDirection` remains metadata intent rather than an active sync contract.
 
 Caller-visible triage lookup fields are `query`, `limit`, and
