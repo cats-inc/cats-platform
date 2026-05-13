@@ -274,6 +274,7 @@ interface WorkExecutionPreparationProposalMetadata {
 interface WorkExecutionPreparationCreatedTaskMetadata {
   workItemId: string;
   taskId: string;
+  taskPath: string;
   created: boolean;
   linked: boolean;
 }
@@ -2339,6 +2340,7 @@ function readWorkExecutionPreparationCreatedTask(
   return {
     workItemId: record.workItemId,
     taskId: record.taskId,
+    taskPath: readOptionalString(record.taskPath) ?? buildWorkTaskDetailPath(record.taskId),
     created: record.created,
     linked: record.linked,
   };
@@ -2693,6 +2695,7 @@ async function appendWorkExecutionPreparationTaskCreation(input: {
       createdTasks.push({
         workItemId: result.result.workItemId,
         taskId: result.result.taskId,
+        taskPath: buildWorkTaskDetailPath(result.result.taskId),
         created: result.result.created,
         linked: result.result.linked,
       });
@@ -2814,7 +2817,8 @@ function describeWorkExecutionPreparationTransition(
   const createdLines = transition.createdTasks.map((created, index) => {
     const proposal = resolvedChoice.proposal.proposals.find((candidate) =>
       candidate.workItemId === created.workItemId);
-    return `${index + 1}. ${proposal?.proposedTaskTitle ?? created.workItemId}`;
+    return `${index + 1}. ${proposal?.proposedTaskTitle ?? created.workItemId}`
+      + ` - Review: ${created.taskPath}`;
   });
 
   return [
@@ -2829,6 +2833,10 @@ function resolveWorkExecutionPreparationActorRef(
 ): string {
   const bossCatId = state.bossCatId?.trim();
   return bossCatId ? createCatActorId(bossCatId) : core.ownerProfile.actorId;
+}
+
+function buildWorkTaskDetailPath(taskId: string): string {
+  return `/work/tasks/${encodeURIComponent(taskId)}`;
 }
 
 function appendWorkIntakeProposalTransitionSidecar(input: {

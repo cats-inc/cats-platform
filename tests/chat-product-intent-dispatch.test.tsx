@@ -2210,6 +2210,7 @@ test('Boss execution preparation owner confirmation creates pending approval Tas
         createdTasks?: Array<{
           workItemId?: string;
           taskId?: string;
+          taskPath?: string;
           created?: boolean;
           linked?: boolean;
         }>;
@@ -2224,11 +2225,13 @@ test('Boss execution preparation owner confirmation creates pending approval Tas
 
   assert.equal(confirmed.preparedTurn, null);
   assert.equal(transitionMessage?.body.includes('Created execution Tasks:'), true);
+  assert.equal(transitionMessage?.body.includes(`/work/tasks/${createdTaskId}`), true);
   assert.deepEqual(transition?.createdTasks?.map((entry) => [
     entry.workItemId,
+    entry.taskPath,
     entry.created,
     entry.linked,
-  ]), [['work-item-boss-confirm-1', true, true]]);
+  ]), [['work-item-boss-confirm-1', `/work/tasks/${createdTaskId}`, true, true]]);
   assert.deepEqual(transition?.skippedWorkItemIds, []);
   assert.equal(workItem?.taskId, createdTaskId);
   assert.equal(task?.title, 'Implement MCP adapter contract');
