@@ -73,7 +73,7 @@ Items through the same contract.
 
 - [x] Task 4.1: Implement `work.project.lookup` as a bounded read-only tool.
 - [x] Task 4.2: Implement `work.project.create` with project-intent validation.
-- [ ] Task 4.3: Implement `work.item.update` with planning-status bounds.
+- [x] Task 4.3: Implement `work.item.update` with planning-status bounds.
 - [ ] Task 4.4: Implement `work.item.assign_project`.
 - [ ] Task 4.5: Add Work Graph projection tests for captured and triaged items.
 
@@ -172,6 +172,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Phase 3.5 parity tests added for ordinary Chat decline and Telegram confirmed capture, all using isolated `MemoryChatStore` state. |
 | 2026-05-13 | Phase 4.1 added read-only `work.project.lookup` contracts, triage delegate, and supervised boundary tests. |
 | 2026-05-13 | Phase 4.2 added narrow-write `work.project.create` contracts, idempotent Project creation, audit Activity writes, and supervised boundary tests. |
+| 2026-05-13 | Phase 4.3 added bounded `work.item.update` triage updates for title, summary, planning status, and triage metadata without execution side effects. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---

@@ -18,6 +18,7 @@ import {
   lookupWorkProjects,
 } from '../src/products/work/state/workTriageDelegate.js';
 import {
+  WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
   createPhaseScopedWorkToolManifests,
@@ -127,6 +128,163 @@ test('Work triage delegate runs lookup through supervised read-only boundary', a
     ['project-telegram'],
   );
   assert.equal(evidenceSink.read()[0]?.toolName, WORK_PROJECT_LOOKUP_TOOL);
+});
+
+test('Work triage delegate updates Work Items through supervised narrow-write boundary', async () => {
+  const coreStore = new MemoryCoreStore(coreWithProjects());
+  const delegate = createWorkTriageDelegate({
+    coreStore,
+    now: () => new Date('2026-05-13T10:00:00.000Z'),
+  });
+  const executors = createWorkTriageToolExecutors(delegate);
+  const registry = createSupervisedToolRegistry();
+  const evidenceSink = createInMemoryToolEvidenceSink();
+  const boundary = createToolBoundary({
+    registry,
+    evidenceSink,
+    now: () => '2026-05-13T10:00:00.000Z',
+  });
+
+  for (const manifest of createPhaseScopedWorkToolManifests()) {
+    registry.register(manifest);
+  }
+
+  const first = await boundary.invoke({
+    toolName: WORK_ITEM_UPDATE_TOOL,
+    input: {
+      workItemId: 'work-item-cats-1',
+      title: 'Wire Work triage tools',
+      status: 'ready',
+      kind: 'todo',
+      priority: 'high',
+      assignmentHint: 'Boss Cat should review the project grouping.',
+      openQuestions: ['Should this bind to Cats Platform or Cats Runtime?'],
+    },
+    actionId: 'action-work-item-update-1',
+    runId: 'run-triage-2',
+    actorRef: 'cat:boss',
+    grant: { parentToolScope: 'narrow_write', policyToolScope: 'narrow_write' },
+    execute: executors[WORK_ITEM_UPDATE_TOOL],
+  });
+
+  assert.equal(first.status, 'applied');
+  assert.deepEqual(first.result, {
+    workItemId: 'work-item-cats-1',
+    status: 'ready',
+    updated: true,
+  });
+
+  const afterFirst = await coreStore.readCore();
+  const workItem = afterFirst.workItems.find((candidate) => candidate.id === 'work-item-cats-1');
+  assert.equal(workItem?.title, 'Wire Work triage tools');
+  assert.equal(workItem?.status, 'ready');
+  assert.deepEqual(workItem?.metadata.workTriage, {
+    schemaVersion: 1,
+    phase: 'triage',
+    toolName: WORK_ITEM_UPDATE_TOOL,
+    idempotencyKey: [
+      WORK_ITEM_UPDATE_TOOL,
+      'work-item-cats-1',
+      'wire work triage tools',
+      '',
+      'ready',
+      'todo',
+      'high',
+      'boss cat should review the project grouping.',
+      'should this bind to cats platform or cats runtime?',
+    ].join('\n'),
+    producingActorRef: 'cat:boss',
+    actionId: 'action-work-item-update-1',
+    runId: 'run-triage-2',
+    updatedAt: '2026-05-13T10:00:00.000Z',
+    kind: 'todo',
+    priority: 'high',
+    assignmentHint: 'Boss Cat should review the project grouping.',
+    openQuestions: ['Should this bind to Cats Platform or Cats Runtime?'],
+  });
+  assert.equal(afterFirst.activities.length, 1);
+  assert.equal(afterFirst.activities[0]?.kind, 'work_item_updated');
+  assert.equal(afterFirst.activities[0]?.workItemId, 'work-item-cats-1');
+
+  const second = await boundary.invoke({
+    toolName: WORK_ITEM_UPDATE_TOOL,
+    input: {
+      workItemId: 'work-item-cats-1',
+      title: 'Wire Work triage tools',
+      status: 'ready',
+      kind: 'todo',
+      priority: 'high',
+      assignmentHint: 'Boss Cat should review the project grouping.',
+      openQuestions: ['Should this bind to Cats Platform or Cats Runtime?'],
+    },
+    actionId: 'action-work-item-update-2',
+    runId: 'run-triage-2',
+    actorRef: 'cat:boss',
+    grant: { parentToolScope: 'narrow_write', policyToolScope: 'narrow_write' },
+    execute: executors[WORK_ITEM_UPDATE_TOOL],
+  });
+
+  assert.equal(second.status, 'applied');
+  assert.deepEqual(second.result, {
+    workItemId: 'work-item-cats-1',
+    status: 'ready',
+    updated: false,
+  });
+
+  const afterSecond = await coreStore.readCore();
+  assert.equal(afterSecond.activities.length, 1);
+  assert.deepEqual(
+    evidenceSink.read().map((event) => [event.toolName, event.status]),
+    [
+      [WORK_ITEM_UPDATE_TOOL, 'applied'],
+      [WORK_ITEM_UPDATE_TOOL, 'applied'],
+    ],
+  );
+});
+
+test('Work item update rejects non-triage current statuses before writing', async () => {
+  const now = new Date('2026-05-13T10:00:00.000Z');
+  let core = createDefaultCoreState();
+  core = upsertCoreWorkItem(core, {
+    id: 'work-item-executing',
+    title: 'Already executing',
+    status: 'in_progress',
+    ownerActorId: core.ownerProfile.actorId,
+  }, now).core;
+
+  const coreStore = new MemoryCoreStore(core);
+  const delegate = createWorkTriageDelegate({ coreStore });
+  const executors = createWorkTriageToolExecutors(delegate);
+  const registry = createSupervisedToolRegistry();
+  const evidenceSink = createInMemoryToolEvidenceSink();
+  const boundary = createToolBoundary({
+    registry,
+    evidenceSink,
+    now: () => '2026-05-13T10:00:00.000Z',
+  });
+
+  for (const manifest of createPhaseScopedWorkToolManifests()) {
+    registry.register(manifest);
+  }
+
+  const result = await boundary.invoke({
+    toolName: WORK_ITEM_UPDATE_TOOL,
+    input: {
+      workItemId: 'work-item-executing',
+      title: 'Still should not change',
+    },
+    actionId: 'action-work-item-update-executing',
+    runId: 'run-triage-3',
+    actorRef: 'cat:boss',
+    grant: { parentToolScope: 'narrow_write', policyToolScope: 'narrow_write' },
+    execute: executors[WORK_ITEM_UPDATE_TOOL],
+  });
+
+  assert.equal(result.status, 'rejected');
+  assert.equal(result.error.code, 'E_PRECHECK_FAILED');
+  const after = await coreStore.readCore();
+  assert.equal(after.workItems[0]?.title, 'Already executing');
+  assert.equal(after.activities.length, 0);
 });
 
 test('Work triage delegate creates projects through supervised narrow-write boundary', async () => {

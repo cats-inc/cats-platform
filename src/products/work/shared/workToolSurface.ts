@@ -27,18 +27,21 @@ export type WorkToolCapabilityProfile = (typeof WORK_TOOL_CAPABILITY_PROFILE_VAL
 
 export const WORK_ITEM_PROPOSE_SPLIT_TOOL = 'work.item.propose_split' as const;
 export const WORK_ITEM_CAPTURE_TOOL = 'work.item.capture' as const;
+export const WORK_ITEM_UPDATE_TOOL = 'work.item.update' as const;
 export const WORK_PROJECT_LOOKUP_TOOL = 'work.project.lookup' as const;
 export const WORK_PROJECT_CREATE_TOOL = 'work.project.create' as const;
 
 export type PhaseScopedWorkToolName =
   | typeof WORK_ITEM_PROPOSE_SPLIT_TOOL
   | typeof WORK_ITEM_CAPTURE_TOOL
+  | typeof WORK_ITEM_UPDATE_TOOL
   | typeof WORK_PROJECT_LOOKUP_TOOL
   | typeof WORK_PROJECT_CREATE_TOOL;
 
 export const WORK_TOOL_PHASE_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, WorkToolPhase>> = {
   [WORK_ITEM_PROPOSE_SPLIT_TOOL]: 'intake',
   [WORK_ITEM_CAPTURE_TOOL]: 'intake',
+  [WORK_ITEM_UPDATE_TOOL]: 'triage',
   [WORK_PROJECT_LOOKUP_TOOL]: 'triage',
   [WORK_PROJECT_CREATE_TOOL]: 'triage',
 };
@@ -48,6 +51,7 @@ export const WORK_TOOL_ALLOWED_CAPABILITY_PROFILES_BY_NAME: Readonly<
 > = {
   [WORK_ITEM_PROPOSE_SPLIT_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_ITEM_CAPTURE_TOOL]: ['boss_cat', 'strong_agent'],
+  [WORK_ITEM_UPDATE_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_PROJECT_LOOKUP_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_PROJECT_CREATE_TOOL]: ['boss_cat', 'strong_agent'],
 };
@@ -61,6 +65,8 @@ export const WORK_TOOL_SERVER_RESOLVED_FIELDS = [
   'createdAt',
   'updatedAt',
   'createdByActorId',
+  'ownerActorId',
+  'assignedActorIds',
   'producerActorId',
 ] as const;
 
@@ -116,6 +122,15 @@ export const WORK_ITEM_CAPTURE_STATUS_VALUES = [
 ] as const;
 
 export type WorkItemCaptureStatus = (typeof WORK_ITEM_CAPTURE_STATUS_VALUES)[number];
+
+export const WORK_ITEM_TRIAGE_STATUS_VALUES = [
+  'draft',
+  'planned',
+  'ready',
+  'blocked',
+] as const;
+
+export type WorkItemTriageStatus = (typeof WORK_ITEM_TRIAGE_STATUS_VALUES)[number];
 
 export const WORK_TOOL_SOURCE_SURFACE_VALUES = [
   'chat',
@@ -173,6 +188,23 @@ export interface WorkItemSplitCandidate {
 export interface WorkItemProposeSplitResult {
   candidates: WorkItemSplitCandidate[];
   sourceRef: WorkItemSourceRef;
+}
+
+export interface WorkItemUpdateInput {
+  workItemId: string;
+  title?: string;
+  summary?: string;
+  status?: WorkItemTriageStatus;
+  kind?: WorkItemKind;
+  priority?: WorkItemPriorityHint;
+  assignmentHint?: string;
+  openQuestions?: string[];
+}
+
+export interface WorkItemUpdateResult {
+  workItemId: string;
+  status: WorkItemTriageStatus;
+  updated: boolean;
 }
 
 export interface WorkProjectLookupInput {
@@ -244,6 +276,17 @@ export function createPhaseScopedWorkToolManifests(): SupervisedToolManifest[] {
       ],
     }),
     createManifest({
+      name: WORK_ITEM_UPDATE_TOOL,
+      description: 'Apply bounded triage updates to one existing Cats Work Item.',
+      sideEffect: 'local_state',
+      preflight: 'required',
+      approval: 'policy',
+      failureCodes: [
+        WORK_TOOL_ERROR_CODES.schemaInvalid,
+        WORK_TOOL_ERROR_CODES.precheckFailed,
+      ],
+    }),
+    createManifest({
       name: WORK_PROJECT_LOOKUP_TOOL,
       description: 'Look up bounded Cats Work Projects for Work Item triage.',
       sideEffect: 'none',
@@ -269,6 +312,7 @@ export function resolveWorkToolPhase(toolName: string): WorkToolPhase | undefine
   if (
     toolName === WORK_ITEM_PROPOSE_SPLIT_TOOL
     || toolName === WORK_ITEM_CAPTURE_TOOL
+    || toolName === WORK_ITEM_UPDATE_TOOL
     || toolName === WORK_PROJECT_LOOKUP_TOOL
     || toolName === WORK_PROJECT_CREATE_TOOL
   ) {
@@ -285,6 +329,7 @@ export function isWorkToolAllowedForCapabilityProfile(
   if (
     toolName !== WORK_ITEM_PROPOSE_SPLIT_TOOL
     && toolName !== WORK_ITEM_CAPTURE_TOOL
+    && toolName !== WORK_ITEM_UPDATE_TOOL
     && toolName !== WORK_PROJECT_LOOKUP_TOOL
     && toolName !== WORK_PROJECT_CREATE_TOOL
   ) {
@@ -341,6 +386,25 @@ export function validateWorkItemProposeSplitInput(input: unknown): WorkToolValid
     ...validateOptionalIntegerRange(input, 'maxItems', 1, 20),
     ...validateOptionalEnum(input, 'defaultKind', WORK_ITEM_KIND_VALUES),
     ...validateOptionalEnum(input, 'defaultPriority', WORK_ITEM_PRIORITY_HINT_VALUES),
+  ];
+}
+
+export function validateWorkItemUpdateInput(input: unknown): WorkToolValidationError[] {
+  if (!isRecord(input)) {
+    return [error('type', '$', 'Work item update input must be an object.')];
+  }
+
+  return [
+    ...validateServerResolvedFields(input, '', new Set(['workItemId'])),
+    ...validateRequiredString(input, 'workItemId', 160),
+    ...validateOptionalString(input, 'title', 180),
+    ...validateOptionalString(input, 'summary', 4000),
+    ...validateOptionalEnum(input, 'status', WORK_ITEM_TRIAGE_STATUS_VALUES),
+    ...validateOptionalEnum(input, 'kind', WORK_ITEM_KIND_VALUES),
+    ...validateOptionalEnum(input, 'priority', WORK_ITEM_PRIORITY_HINT_VALUES),
+    ...validateOptionalString(input, 'assignmentHint', 500),
+    ...validateOpenQuestions(input),
+    ...validateAtLeastOneWorkItemUpdateField(input),
   ];
 }
 
@@ -423,12 +487,18 @@ function validateSourceRef(input: unknown, field: string): WorkToolValidationErr
 function validateServerResolvedFields(
   input: Record<string, unknown>,
   prefix = '',
+  allowedFields: ReadonlySet<string> = new Set(),
 ): WorkToolValidationError[] {
   const errors: WorkToolValidationError[] = [];
 
   for (const [key, value] of Object.entries(input)) {
     const field = prefix === '' ? key : `${prefix}.${key}`;
-    if (value !== undefined && value !== null && isServerResolvedField(key)) {
+    if (
+      value !== undefined
+      && value !== null
+      && isServerResolvedField(key)
+      && !allowedFields.has(key)
+    ) {
       errors.push(error(
         'server_resolved_field',
         field,
@@ -437,11 +507,11 @@ function validateServerResolvedFields(
       continue;
     }
     if (isRecord(value)) {
-      errors.push(...validateServerResolvedFields(value, field));
+      errors.push(...validateServerResolvedFields(value, field, allowedFields));
       continue;
     }
     if (Array.isArray(value)) {
-      errors.push(...validateServerResolvedArray(value, field));
+      errors.push(...validateServerResolvedArray(value, field, allowedFields));
     }
   }
 
@@ -451,12 +521,13 @@ function validateServerResolvedFields(
 function validateServerResolvedArray(
   input: unknown[],
   prefix: string,
+  allowedFields: ReadonlySet<string>,
 ): WorkToolValidationError[] {
   const errors: WorkToolValidationError[] = [];
 
   input.forEach((item, index) => {
     if (isRecord(item)) {
-      errors.push(...validateServerResolvedFields(item, `${prefix}[${index}]`));
+      errors.push(...validateServerResolvedFields(item, `${prefix}[${index}]`, allowedFields));
     }
   });
 
@@ -592,6 +663,26 @@ function validateOptionalBoolean(
   }
 
   return [];
+}
+
+function validateAtLeastOneWorkItemUpdateField(
+  input: Record<string, unknown>,
+): WorkToolValidationError[] {
+  const mutableFields = [
+    'title',
+    'summary',
+    'status',
+    'kind',
+    'priority',
+    'assignmentHint',
+    'openQuestions',
+  ];
+
+  if (mutableFields.some((field) => input[field] !== undefined && input[field] !== null)) {
+    return [];
+  }
+
+  return [error('required', '$', 'At least one Work Item update field is required.')];
 }
 
 function validateOpenQuestions(input: Record<string, unknown>): WorkToolValidationError[] {
