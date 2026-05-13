@@ -201,6 +201,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Follow-up slice added Telegram inline keyboard callback support for Boss Cat execution-preparation sidecars so owners can create pending-approval Tasks from Telegram through the existing choice-response path. |
 | 2026-05-13 | Follow-up slice surfaced Work Graph external tracker bindings on Work Item detail pages with safe external links, making GitHub/Redmine/Bugzilla-style issue seams visible outside the top-down drawer. |
 | 2026-05-13 | Follow-up slice carried external tracker binding summaries into the Work Item list projection and rendered compact tracker chips on the Work Items list. |
+| 2026-05-13 | Follow-up slice carried Project external tracker binding summaries into Project list/detail surfaces with compact list chips and safe detail links. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---

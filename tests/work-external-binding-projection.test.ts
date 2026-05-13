@@ -7,7 +7,10 @@ import {
   upsertCoreWorkItem,
 } from '../src/core/model/index.js';
 import { buildWorkGraphProjection } from '../src/products/work/api/workGraphProjection.js';
-import { buildWorkWorkItemListProjection } from '../src/products/work/api/projection.js';
+import {
+  buildWorkProjectListProjection,
+  buildWorkWorkItemListProjection,
+} from '../src/products/work/api/projection.js';
 import {
   EXTERNAL_WORK_BINDING_METADATA_KEY,
   buildExternalWorkBinding,
@@ -69,11 +72,27 @@ test('Work Graph projects external issue bindings for Projects and Work Items', 
 
   const projection = buildWorkGraphProjection(core);
   const workItemListProjection = buildWorkWorkItemListProjection(core);
+  const projectListProjection = buildWorkProjectListProjection(core);
   const byId = new Map(projection.objects.map((object) => [object.id, object]));
   const workItemListEntry = workItemListProjection.workItems.find((workItem) =>
     workItem.id === 'work-item-intake');
+  const projectListEntry = projectListProjection.projects.find((project) =>
+    project.id === 'project-cats-platform');
 
   assert.deepEqual(byId.get('project-cats-platform')?.externalBindings, [
+    {
+      provider: 'redmine',
+      externalType: 'project',
+      externalId: 'cats-platform',
+      externalUrl: 'https://redmine.example.test/projects/cats-platform',
+      syncDirection: 'pull',
+      lastSyncedAt: null,
+      externalUpdatedAt: null,
+      linkedAt: '2026-05-13T10:05:00.000Z',
+      linkedByActorRef: 'cat:boss',
+    },
+  ]);
+  assert.deepEqual(projectListEntry?.externalBindings, [
     {
       provider: 'redmine',
       externalType: 'project',

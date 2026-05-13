@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { formatRelative } from "../topdown/shared";
+import {
+  formatRelative,
+  formatWorkExternalBindingLabel,
+} from "../topdown/shared";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
@@ -108,6 +111,22 @@ export function ProjectsListPage(): JSX.Element {
                         {t("workProjectsBlockedPill", {
                           count: project.attentionBlockedCount,
                         })}
+                      </span>
+                    ) : null}
+                    {(project.externalBindings ?? []).slice(0, 2).map((binding) => (
+                      <span
+                        key={`${binding.provider}:${binding.externalType}:${binding.externalId}`}
+                        className="projectsList__externalChip"
+                        title={t("workTopdownExternalBindingTooltip", {
+                          externalBinding: formatWorkExternalBindingLabel(binding),
+                        })}
+                      >
+                        {formatWorkExternalBindingLabel(binding)}
+                      </span>
+                    ))}
+                    {(project.externalBindings?.length ?? 0) > 2 ? (
+                      <span className="projectsList__externalChip">
+                        +{(project.externalBindings?.length ?? 0) - 2}
                       </span>
                     ) : null}
                     <span className="projectsList__metric">

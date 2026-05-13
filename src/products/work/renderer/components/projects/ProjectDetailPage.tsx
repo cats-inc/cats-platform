@@ -24,6 +24,7 @@ import {
 } from "../../state/queries/workGraphQuery.js";
 import { WORK_PROJECTS_PATH } from "../../workPaths.js";
 import { formatWorkCrudMutationError } from "../workCrudErrorLabels.js";
+import { ProjectExternalBindingsSection } from "./ProjectExternalBindingsSection";
 import "./projects.css";
 
 export function ProjectDetailPage(): JSX.Element {
@@ -188,6 +189,8 @@ export function ProjectDetailPage(): JSX.Element {
             ) : null}
           </dl>
         </section>
+
+        <ProjectExternalBindingsSection bindings={project.externalBindings ?? []} />
 
         <ItemsSection
           title={t("workProjectWorkItemsTitle")}

@@ -134,6 +134,7 @@ export interface WorkProjectListItem {
   linkedActivityCount: number;
   attentionDecisionCount: number;
   attentionBlockedCount: number;
+  externalBindings?: WorkGraphExternalBindingSummary[];
   updatedAt: string;
 }
 
@@ -582,6 +583,7 @@ function buildProjectListItems(
         linkedActivityCount: linkedActivities.length,
         attentionDecisionCount,
         attentionBlockedCount,
+        externalBindings: externalBindingSummaries(project.metadata),
         updatedAt: project.updatedAt,
       };
     });
