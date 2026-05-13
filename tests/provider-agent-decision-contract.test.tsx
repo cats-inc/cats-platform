@@ -189,6 +189,25 @@ test('bounded observation rejects invalid budget envelopes', () => {
   ]);
 });
 
+test('bounded observation rejects inconsistent allowed fallback surfaces', () => {
+  const input = observation();
+  input.policy.dials = {
+    ...input.policy.dials,
+    fallbackPolicy: 'ask_human',
+  };
+  input.policy.allowedFallbacks = [
+    'retry',
+    'retry',
+    'not_supported' as never,
+  ];
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(input), [
+    'policy.allowedFallbacks must not contain duplicate values',
+    'policy.allowedFallbacks[2] is unsupported: not_supported',
+    'policy.allowedFallbacks must include policy.dials.fallbackPolicy ask_human',
+  ]);
+});
+
 test('bounded observation rejects missing and oversized tool reasons', () => {
   const input = observation();
   input.availableTools[0] = {

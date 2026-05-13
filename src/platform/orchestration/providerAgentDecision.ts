@@ -8,6 +8,7 @@ import type {
   SupervisionPolicySnapshotRef,
   SupervisionToolScope,
 } from '../supervision/contracts.js';
+import { SUPERVISION_FALLBACK_POLICY_VALUES } from '../supervision/contracts.js';
 
 export const PROVIDER_AGENT_DECISION_CONTRACT_VERSION = 1;
 export const PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH = 280;
@@ -153,6 +154,11 @@ export function validateProviderAgentBoundedObservation(
     errors,
     'actor.capabilityProfileRef',
     observation.actor.capabilityProfileRef,
+  );
+  validateAllowedFallbacks(
+    errors,
+    observation.policy.allowedFallbacks,
+    observation.policy.dials.fallbackPolicy,
   );
   validateBudgetEnvelope(errors, observation.budget);
 
@@ -304,6 +310,31 @@ function validateBudgetEnvelope(errors: string[], budget: BudgetEnvelope): void 
   }
   if (budget.hardStop !== true) {
     errors.push('budget.hardStop must be true for provider-agent observations');
+  }
+}
+
+function validateAllowedFallbacks(
+  errors: string[],
+  allowedFallbacks: SupervisionFallbackPolicy[],
+  policyFallback: SupervisionFallbackPolicy,
+): void {
+  if (allowedFallbacks.length === 0) {
+    errors.push('policy.allowedFallbacks must not be empty');
+  }
+  if (new Set(allowedFallbacks).size !== allowedFallbacks.length) {
+    errors.push('policy.allowedFallbacks must not contain duplicate values');
+  }
+
+  allowedFallbacks.forEach((fallback, index) => {
+    if (!SUPERVISION_FALLBACK_POLICY_VALUES.includes(fallback)) {
+      errors.push(`policy.allowedFallbacks[${index}] is unsupported: ${fallback}`);
+    }
+  });
+
+  if (!allowedFallbacks.includes(policyFallback)) {
+    errors.push(
+      `policy.allowedFallbacks must include policy.dials.fallbackPolicy ${policyFallback}`,
+    );
   }
 }
 
