@@ -53,6 +53,39 @@ test('Add Cat panel exposes the Cat tool profile selector while creating a Cat',
   assert.match(markup, /draftLeadPillActive/u);
 });
 
+test('Add Cat panel existing Cat list surfaces Work memory Cats', () => {
+  const markup = renderPanel({
+    addCatTab: 'existing',
+    selectableCats: [
+      {
+        id: 'cat-work',
+        name: 'Work Planner',
+        roles: ['planner'],
+        status: 'active',
+        skillProfile: 'companion',
+        mcpProfile: 'work-memory',
+        avatarColor: null,
+        avatarUrl: null,
+        products: ['chat', 'work'],
+        defaultExecutionTarget: {
+          provider: 'claude',
+          instance: null,
+          model: 'claude-sonnet',
+        },
+        defaultModelSelection: null,
+        memory: { updatedAt: null, content: null },
+        createdAt: '2026-05-13T00:00:00.000Z',
+        updatedAt: '2026-05-13T00:00:00.000Z',
+        archivedAt: null,
+      },
+    ],
+    assignableCatCount: 1,
+  });
+
+  assert.match(markup, />Work Planner</u);
+  assert.match(markup, />Work memory</u);
+});
+
 test('Add Cat panel marks work-memory active when the draft chooses it', () => {
   const markup = renderPanel({
     catForm: {

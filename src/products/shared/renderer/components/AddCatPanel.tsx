@@ -21,7 +21,10 @@ import { ProviderModelFields } from './ProviderModelFields.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { CHAT_MCP_PROFILE_ID } from '../../../../shared/catMcpProfiles.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
-import { MCP_PROFILES } from './catRegistryViewSupport.js';
+import {
+  getCatMcpProfileLabel,
+  MCP_PROFILES,
+} from './catRegistryViewSupport.js';
 
 interface ProviderModelFieldsProps {
   provider: string;
@@ -110,13 +113,16 @@ export function WorkspaceAddCatPanel({
       {addCatTab === 'existing' ? (
         <div className="addCatList">
           {selectableCats.length > 0 ? (
-            selectableCats.map((cat) => (
-              <div key={cat.id} className="addCatItem">
-                <div>
-                  <strong>{cat.name}</strong>
-                  <p>{executionLabel(cat)}</p>
-                </div>
-                {(() => {
+            selectableCats.map((cat) => {
+              const mcpProfileLabel = getCatMcpProfileLabel(cat.mcpProfile);
+              return (
+                <div key={cat.id} className="addCatItem">
+                  <div>
+                    <strong>{cat.name}</strong>
+                    <p>{executionLabel(cat)}</p>
+                    <p>{mcpProfileLabel ? t(mcpProfileLabel) : cat.mcpProfile}</p>
+                  </div>
+                  {(() => {
                   const included = showingNewChatDraft
                     ? draftCatIdSet.has(cat.id)
                     : assignedCatIds.has(cat.id);
@@ -149,8 +155,9 @@ export function WorkspaceAddCatPanel({
                     </button>
                   );
                 })()}
-              </div>
-            ))
+                </div>
+              );
+            })
           ) : (
             <div className="emptyStateCard">
               <p>

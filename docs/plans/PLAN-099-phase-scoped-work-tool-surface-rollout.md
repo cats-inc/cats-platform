@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice surfaced existing Cat tool profiles in the Chat Add Cat panel so operators can distinguish `work-memory` Cats before assigning them. |
 | 2026-05-13 | Follow-up slice exposed the Cat tool profile selector in the Chat Add Cat panel so Work-oriented Cats can be created directly from chat drafts and rooms. |
 | 2026-05-13 | Follow-up slice removed the stale `/api/orchestrator` PUT legacy alias from docs and 405 Allow headers so the resource contract matches the implemented GET/PATCH surface. |
 | 2026-05-13 | Follow-up slice added API regression coverage for unsupported `POST /api/cats` MCP profiles so create and update Cat writes share the same bounded rejection path. |
