@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added a product-owned `work-memory` tool-intent projection that maps Work phase, capability profile, and policy scope into runtime-facing Work tool names without wiring runtime MCP execution yet. |
 | 2026-05-13 | Follow-up slice validated provider-agent observation policy dials and policy object shape so strong models only see supported supervision posture values. |
 | 2026-05-13 | Follow-up slice hardened provider-agent observation summaries so malformed entries, unsupported fields, oversized source refs, and non-scalar values return validation errors without leaking prompt-visible payloads. |
 | 2026-05-13 | Follow-up slice made provider-agent observation validation robust against malformed object fields and malformed tool arrays so contract checks return errors instead of throwing. |
