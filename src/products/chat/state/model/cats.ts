@@ -336,6 +336,21 @@ export function updateCatSkillProfile(
   return nextState;
 }
 
+export function updateCatMcpProfile(
+  state: ChatState,
+  catId: string,
+  mcpProfile: string | null,
+): ChatState {
+  const nextState = cloneState(state);
+  const cat = nextState.cats.find((p) => p.id === catId);
+  if (!cat) {
+    throw new Error(`Cat not found: ${catId}`);
+  }
+  cat.mcpProfile = mcpProfile;
+  cat.updatedAt = new Date().toISOString();
+  return nextState;
+}
+
 export function setBossCat(
   state: ChatState,
   catId: string,

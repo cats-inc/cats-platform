@@ -44,12 +44,18 @@ import {
   writeWorkflowContinuationReplayMetadata,
 } from '../build/server/platform/orchestration/workflowContinuationReplay.js';
 
+const testPlatformRoot = path.join(
+  tmpdir(),
+  'cats-orchestrator-api-test',
+  `${process.pid}-${Date.now()}`,
+);
+
 const baseConfig = {
   host: '127.0.0.1',
   port: 8181,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
-  chatStatePath: 'unused-for-tests',
+  chatStatePath: path.join(testPlatformRoot, 'platform', 'state', 'chat-state.local.json'),
   auth: {
     mode: 'unsafe_disabled',
     enabled: false,
@@ -428,6 +434,34 @@ test('POST /api/orchestrator/plan projects Work tool intent for work-memory Cats
         'work.capability.strong_agent',
         'work.tool_scope.narrow_write',
       ],
+    );
+  });
+});
+
+test('PATCH /api/cats/:id updates Cat MCP profile into channel projections', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const created = await createChannel(baseUrl);
+    const channelId = created.channel.id;
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+
+    const response = await fetch(`${baseUrl}/api/cats/${encodeURIComponent(catId)}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ mcpProfile: WORK_MCP_PROFILE_ID }),
+    });
+
+    const responseBody = await response.text();
+    assert.equal(response.status, 200, responseBody);
+    const payload = JSON.parse(responseBody);
+    assert.equal(
+      payload.chat.cats.find((candidate) => candidate.id === catId)?.mcpProfile,
+      WORK_MCP_PROFILE_ID,
+    );
+    assert.equal(payload.chat.selectedChannel.id, channelId);
+    assert.equal(
+      payload.chat.selectedChannel.assignedCats[0]?.mcpProfile,
+      WORK_MCP_PROFILE_ID,
     );
   });
 });

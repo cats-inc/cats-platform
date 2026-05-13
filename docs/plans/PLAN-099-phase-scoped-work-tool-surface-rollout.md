@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added Cat MCP profile mutation support so `PATCH /api/cats/:id` and model helpers can switch Cats onto `work-memory`, with channel read-model projection coverage. |
 | 2026-05-13 | Follow-up slice synced control-surface and MCP docs with the landed `work-memory` planner/runtime-dispatch intent path while keeping Work MCP execution explicitly pending. |
 | 2026-05-13 | Follow-up slice forwarded matched Work `toolIntent` into runtime dispatch `sendMessage` context metadata so the runtime/MCP adapter can see the same product-scoped Work tool posture; unmatched Work-memory turns omit the metadata. |
 | 2026-05-13 | Follow-up slice added planner coverage for Boss Cat `work-memory` execution-preparation intent so explicit Work Item start requests surface `work.item.prepare_execution` and `work.task.create_from_work_item`. |

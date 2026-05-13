@@ -1,5 +1,14 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
-import { buildChannelView, renameCat, requireCat, setBossCat, updateCatExecutionTarget, updateCatProducts, updateCatSkillProfile } from '../state/model/index.js';
+import {
+  buildChannelView,
+  renameCat,
+  requireCat,
+  setBossCat,
+  updateCatExecutionTarget,
+  updateCatMcpProfile,
+  updateCatProducts,
+  updateCatSkillProfile,
+} from '../state/model/index.js';
 import type { AssignChannelCatInput, CreateCatInput } from './contracts.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import {
@@ -60,6 +69,7 @@ async function handleCanonicalUpdateCat(
   try {
     const body = await readJsonBody<{
       skillProfile?: string | null;
+      mcpProfile?: string | null;
       name?: string;
       makeBoss?: boolean;
       products?: string[];
@@ -78,6 +88,9 @@ async function handleCanonicalUpdateCat(
     }
     if (body.skillProfile !== undefined) {
       state = updateCatSkillProfile(state, catId, body.skillProfile);
+    }
+    if (body.mcpProfile !== undefined) {
+      state = updateCatMcpProfile(state, catId, body.mcpProfile);
     }
     if (body.makeBoss) {
       state = setBossCat(state, catId);

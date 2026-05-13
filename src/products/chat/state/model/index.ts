@@ -113,6 +113,7 @@ export {
   setBossCat,
   unarchiveCat,
   updateCatExecutionTarget,
+  updateCatMcpProfile,
   updateCatProducts,
   updateCatSkillProfile,
 } from './cats.js';

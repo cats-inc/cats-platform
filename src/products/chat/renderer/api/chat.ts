@@ -290,6 +290,7 @@ export async function updateCatProfile(
   catId: string,
   input: {
     skillProfile?: string | null;
+    mcpProfile?: string | null;
     name?: string;
     makeBoss?: boolean;
     products?: string[];
