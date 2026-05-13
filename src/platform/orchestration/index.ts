@@ -74,6 +74,8 @@ export {
   PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
   PROVIDER_AGENT_MAX_GOAL_LENGTH,
   PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
+  PROVIDER_AGENT_MAX_TOOL_INPUT_HINT_LENGTH,
+  PROVIDER_AGENT_MAX_TOOL_INPUT_HINTS,
   validateProviderAgentBoundedObservation,
   validateProviderAgentDecision,
   type ProviderAgentBoundedObservation,

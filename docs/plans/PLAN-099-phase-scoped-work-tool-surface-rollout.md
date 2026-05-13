@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added full Work observation coverage for provider-agent input hints, including intake read-only proposal versus narrow-write capture exposure. |
 | 2026-05-13 | Follow-up slice locked the provider-agent runtime prompt contract so model-visible observations preserve Work tool input hints without exposing raw conversation content. |
 | 2026-05-13 | Follow-up slice bounded provider-agent tool input hints in the observation validator so tool guidance stays compact and cannot become a raw prompt side channel. |
 | 2026-05-13 | Follow-up slice added bounded `inputHints` to provider-agent Work tool descriptors so strong models can see allowed request fields directly in observations while server-side validation remains authoritative. |
