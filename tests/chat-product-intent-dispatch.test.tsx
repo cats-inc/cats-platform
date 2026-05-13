@@ -1762,10 +1762,6 @@ test('routeChannelMessage records Work intake proposal tool results without dura
             toolName: WORK_ITEM_PROPOSE_SPLIT_TOOL,
           },
           input: {
-            source: {
-              surface: 'chat',
-              sourceText: 'model-supplied source should be ignored',
-            },
             maxItems: 2,
             defaultKind: 'todo',
             defaultPriority: 'medium',
@@ -1886,11 +1882,6 @@ test('routeChannelMessage keeps ordinary Chat Work intake proposals local until 
           toolName: WORK_ITEM_PROPOSE_SPLIT_TOOL,
         },
         input: {
-          source: {
-            surface: 'telegram',
-            transportBindingId: 'model-binding-should-be-ignored',
-            sourceText: 'model source should be ignored',
-          },
           maxItems: 2,
         },
         rationaleSummary: 'Propose structured Work Items from the owner message.',
@@ -2037,7 +2028,6 @@ test('routeChannelMessage records Boss execution preparation proposals without T
             toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
           },
           input: {
-            workItemIds: ['model-supplied-id-should-be-ignored'],
             executionGoal: 'Create the first executable step.',
           },
           rationaleSummary: 'Prepare selected Work Items for Boss Cat execution.',
@@ -2168,7 +2158,6 @@ test('Boss execution preparation owner confirmation creates pending approval Tas
           toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
         },
         input: {
-          workItemIds: ['model-supplied-id-should-be-ignored'],
           executionGoal: 'Open the smallest implementation slice.',
         },
         rationaleSummary: 'Prepare selected Work Items for Boss Cat execution.',

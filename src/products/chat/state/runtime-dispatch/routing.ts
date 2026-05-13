@@ -1763,8 +1763,23 @@ function appendWorkIntakeProposalSidecar(input: {
     transport: input.transport,
     transportBindingId: input.transportBindingId,
   });
+  const requestedInput = validateProviderToolInputRecord(input.providerAgentDecision.input, [
+    'maxItems',
+    'defaultKind',
+    'defaultPriority',
+  ]);
+  if (requestedInput.status === 'rejected') {
+    warnWorkIntakeProposalToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: requestedInput.reason,
+      details: requestedInput.details,
+    });
+    return { state: input.state, proposalMessage: null };
+  }
   const toolInput = {
-    ...readToolInputRecord(input.providerAgentDecision.input),
+    ...requestedInput.record,
     source: sourceContext.sourceRef,
   } as WorkItemProposeSplitInput;
   const result = proposeWorkItemSplit(toolInput);
@@ -1876,9 +1891,22 @@ function appendWorkExecutionPreparationProposalSidecar(input: {
     return { state: input.state, proposalMessage: null };
   }
 
-  const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
-  const executionGoal = readOptionalString(requestedInput.executionGoal);
-  const maxItems = readOptionalNumber(requestedInput.maxItems);
+  const requestedInput = validateProviderToolInputRecord(input.providerAgentDecision.input, [
+    'executionGoal',
+    'maxItems',
+  ]);
+  if (requestedInput.status === 'rejected') {
+    warnWorkExecutionPreparationProposalIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: requestedInput.reason,
+      details: requestedInput.details,
+    });
+    return { state: input.state, proposalMessage: null };
+  }
+  const executionGoal = readOptionalString(requestedInput.record.executionGoal);
+  const maxItems = readOptionalNumber(requestedInput.record.maxItems);
   const toolInput: WorkItemPrepareExecutionInput = {
     workItemIds: phase.workItemRefs,
     ...(executionGoal ? { executionGoal } : {}),
@@ -2000,8 +2028,20 @@ async function appendWorkExternalBindingResultSidecar(input: {
     coreStore: input.chatStore,
     now: () => input.now,
   });
-  const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
-  const note = readOptionalString(requestedInput.note);
+  const requestedInput = validateProviderToolInputRecord(input.providerAgentDecision.input, [
+    'note',
+  ]);
+  if (requestedInput.status === 'rejected') {
+    warnWorkExternalBindingToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: requestedInput.reason,
+      details: requestedInput.details,
+    });
+    return { state: input.state, resultMessage: null };
+  }
+  const note = readOptionalString(requestedInput.record.note);
   const actorRef = core.ownerProfile.actorId;
   const actionId = [
     input.userMessage.id,
@@ -2121,9 +2161,24 @@ async function appendWorkTriageLookupResultSidecar(input: {
     return { state: input.state, resultMessage: null };
   }
 
-  const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
-  const query = readOptionalString(requestedInput.query) ?? null;
-  const limit = readOptionalNumber(requestedInput.limit);
+  const requestedInput = validateProviderToolInputRecord(input.providerAgentDecision.input, [
+    'query',
+    'limit',
+    'includeArchived',
+  ]);
+  if (requestedInput.status === 'rejected') {
+    warnWorkTriageLookupToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: requestedInput.reason,
+      details: requestedInput.details,
+    });
+    return { state: input.state, resultMessage: null };
+  }
+  const query = readOptionalString(requestedInput.record.query) ?? null;
+  const limit = readOptionalNumber(requestedInput.record.limit);
+  const includeArchived = requestedInput.record.includeArchived === true;
   const delegate = createWorkTriageDelegate({
     coreStore: input.chatStore,
     now: () => input.now,
@@ -2131,6 +2186,7 @@ async function appendWorkTriageLookupResultSidecar(input: {
   const result = await delegate.lookupProjects({
     ...(query ? { query } : {}),
     ...(limit !== undefined ? { limit } : { limit: 5 }),
+    ...(includeArchived ? { includeArchived } : {}),
   });
   if (result.status !== 'applied') {
     warnWorkTriageLookupToolCallIgnored({
@@ -2211,8 +2267,23 @@ async function appendWorkProjectCreateResultSidecar(input: {
   }
 
   const core = await input.chatStore.readCore();
-  const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
-  const title = readOptionalString(requestedInput.title);
+  const requestedInput = validateProviderToolInputRecord(input.providerAgentDecision.input, [
+    'title',
+    'summary',
+    'status',
+    'repoPath',
+  ]);
+  if (requestedInput.status === 'rejected') {
+    warnWorkProjectCreateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: requestedInput.reason,
+      details: requestedInput.details,
+    });
+    return { state: input.state, resultMessage: null };
+  }
+  const title = readOptionalString(requestedInput.record.title);
   if (!title) {
     warnWorkProjectCreateToolCallIgnored({
       channelId: input.channelId,
@@ -2224,10 +2295,10 @@ async function appendWorkProjectCreateResultSidecar(input: {
   }
 
   const { conversationId } = resolveChannelCanonicalIdentity(input.state, input.channelId);
-  const summary = readOptionalString(requestedInput.summary);
-  const repoPath = readOptionalString(requestedInput.repoPath);
-  const status = isWorkProjectCreateStatus(requestedInput.status)
-    ? requestedInput.status
+  const summary = readOptionalString(requestedInput.record.summary);
+  const repoPath = readOptionalString(requestedInput.record.repoPath);
+  const status = isWorkProjectCreateStatus(requestedInput.record.status)
+    ? requestedInput.record.status
     : undefined;
   const delegate = createWorkTriageDelegate({
     coreStore: input.chatStore,
@@ -2329,18 +2400,36 @@ async function appendWorkItemUpdateResultSidecar(input: {
   }
 
   const core = await input.chatStore.readCore();
-  const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
-  const title = readOptionalString(requestedInput.title);
-  const summary = readOptionalString(requestedInput.summary);
-  const status = isWorkItemTriageStatus(requestedInput.status)
-    ? requestedInput.status
+  const requestedInput = validateProviderToolInputRecord(input.providerAgentDecision.input, [
+    'title',
+    'summary',
+    'status',
+    'kind',
+    'priority',
+    'assignmentHint',
+    'openQuestions',
+  ]);
+  if (requestedInput.status === 'rejected') {
+    warnWorkItemUpdateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: requestedInput.reason,
+      details: requestedInput.details,
+    });
+    return { state: input.state, resultMessage: null };
+  }
+  const title = readOptionalString(requestedInput.record.title);
+  const summary = readOptionalString(requestedInput.record.summary);
+  const status = isWorkItemTriageStatus(requestedInput.record.status)
+    ? requestedInput.record.status
     : undefined;
-  const kind = isWorkItemKind(requestedInput.kind) ? requestedInput.kind : undefined;
-  const priority = isWorkItemPriorityHint(requestedInput.priority)
-    ? requestedInput.priority
+  const kind = isWorkItemKind(requestedInput.record.kind) ? requestedInput.record.kind : undefined;
+  const priority = isWorkItemPriorityHint(requestedInput.record.priority)
+    ? requestedInput.record.priority
     : undefined;
-  const assignmentHint = readOptionalString(requestedInput.assignmentHint);
-  const openQuestions = readStringArray(requestedInput.openQuestions);
+  const assignmentHint = readOptionalString(requestedInput.record.assignmentHint);
+  const openQuestions = readStringArray(requestedInput.record.openQuestions);
   if (
     !title
     && !summary
@@ -2461,8 +2550,20 @@ async function appendWorkItemAssignProjectResultSidecar(input: {
   }
 
   const core = await input.chatStore.readCore();
-  const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
-  const note = readOptionalString(requestedInput.note);
+  const requestedInput = validateProviderToolInputRecord(input.providerAgentDecision.input, [
+    'note',
+  ]);
+  if (requestedInput.status === 'rejected') {
+    warnWorkItemAssignProjectToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: requestedInput.reason,
+      details: requestedInput.details,
+    });
+    return { state: input.state, resultMessage: null };
+  }
+  const note = readOptionalString(requestedInput.record.note);
   const delegate = createWorkTriageDelegate({
     coreStore: input.chatStore,
     now: () => input.now,
@@ -2805,6 +2906,45 @@ function readToolInputRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {};
+}
+
+type ProviderToolInputRecordValidation =
+  | { status: 'accepted'; record: Record<string, unknown> }
+  | {
+      status: 'rejected';
+      reason: 'malformed_tool_input' | 'unexpected_tool_input_fields';
+      details: { fields?: string[] };
+    };
+
+function validateProviderToolInputRecord(
+  value: unknown,
+  allowedFields: readonly string[],
+): ProviderToolInputRecordValidation {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return {
+      status: 'rejected',
+      reason: 'malformed_tool_input',
+      details: {},
+    };
+  }
+
+  const record = value as Record<string, unknown>;
+  const allowed = new Set(allowedFields);
+  const unexpectedFields = Object.keys(record)
+    .filter((field) => !allowed.has(field))
+    .sort();
+  if (unexpectedFields.length > 0) {
+    return {
+      status: 'rejected',
+      reason: 'unexpected_tool_input_fields',
+      details: { fields: unexpectedFields },
+    };
+  }
+
+  return {
+    status: 'accepted',
+    record,
+  };
 }
 
 function readOptionalString(value: unknown): string | undefined {

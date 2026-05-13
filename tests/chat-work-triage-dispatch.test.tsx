@@ -568,8 +568,6 @@ test('Chat provider-agent Work Item assign Project request writes server-resolve
             model: 'sonnet',
           },
           input: {
-            workItemId: 'work-item-model-supplied-id-is-ignored',
-            projectId: 'project-model-supplied-id-is-ignored',
             note: 'Owner asked to attach this Work Item to the Cats Platform Project.',
           },
           rationaleSummary: 'The owner explicitly asked to assign one Work Item to one Project.',
@@ -602,6 +600,125 @@ test('Chat provider-agent Work Item assign Project request writes server-resolve
     resultMessage?.body,
     'Assigned Work Item work-item-chat-assign-1 to Project project-cats-platform.',
   );
+});
+
+test('Chat provider-agent Work sidecars reject caller-supplied resolved ids', async () => {
+  const now = new Date('2026-05-13T12:35:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Work item assign project input guard',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const withProject = upsertCoreProject(
+    createDefaultCoreState(),
+    {
+      id: 'project-cats-platform',
+      title: 'Cats Platform',
+      status: 'active',
+      ownerActorId: 'actor-owner',
+      primaryConversationId: conversationId,
+      summary: 'Main Cats product work.',
+    },
+    now,
+  ).core;
+  const core = upsertCoreWorkItem(
+    withProject,
+    {
+      id: 'work-item-chat-assign-guard-1',
+      title: 'Guard server resolved ids',
+      status: 'planned',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {},
+    },
+    now,
+  ).core;
+  const store = new MemoryChatStore(state);
+  await store.writeCore(core);
+  const warnings: unknown[][] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args);
+  };
+  try {
+    const begun = await beginChannelMessageDispatch(
+      state,
+      channelId,
+      {
+        body: 'Boss Cat assign work-item-chat-assign-guard-1 to project-cats-platform',
+      },
+      runtimeStub(),
+      new Date('2026-05-13T12:36:00.000Z'),
+      {
+        chatStore: store,
+        providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+        providerAgentDecisionRequester: async ({ observation }) => {
+          assert.equal(
+            observation.availableTools.some((tool) =>
+              tool.manifest.name === WORK_ITEM_ASSIGN_PROJECT_TOOL),
+            true,
+          );
+          return {
+            contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+            kind: 'tool_request',
+            decisionId: 'decision-work-item-assign-project-guard-1',
+            confidence: 'high',
+            toolName: WORK_ITEM_ASSIGN_PROJECT_TOOL,
+            target: {
+              kind: 'execution_target',
+              provider: 'claude',
+              model: 'sonnet',
+            },
+            input: {
+              workItemId: 'work-item-model-supplied-id',
+              projectId: 'project-model-supplied-id',
+              note: 'These ids must not be accepted from the model.',
+            },
+            rationaleSummary: 'The owner explicitly asked to assign one Work Item to one Project.',
+          };
+        },
+      },
+    );
+
+    const persistedCore = await store.readCore();
+    const workItem = persistedCore.workItems.find((candidate) =>
+      candidate.id === 'work-item-chat-assign-guard-1');
+    const channel = requireChannel(begun.state, channelId);
+    const resultMessage = channel.messages.find((message) =>
+      message.metadata.workItemAssignProjectResult);
+
+    assert.equal(workItem?.projectId, null);
+    assert.equal(resultMessage, undefined);
+    assert.equal(
+      warnings.some((entry) =>
+        String(entry[0]).includes('Work item project assignment tool call ignored.')
+        && JSON.stringify(entry[1]).includes('unexpected_tool_input_fields')),
+      true,
+    );
+  } finally {
+    console.warn = originalWarn;
+  }
 });
 
 test('Telegram provider-agent Work triage update preserves transport context', async () => {

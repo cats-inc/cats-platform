@@ -182,7 +182,7 @@ Explicit Chat turns that name both a local Work Item ref and a local Project
 ref with assign/move cues can expose `work.item.assign_project` with a
 narrow-write policy. Chat handles that `tool_request` by re-resolving both ids
 from the owner message before invoking the delegate; model-supplied ids are
-ignored.
+rejected at the sidecar boundary.
 
 Provider-agent Work tool descriptors include bounded `inputHints` so strong
 models can see the allowed request fields in the observation itself. These
