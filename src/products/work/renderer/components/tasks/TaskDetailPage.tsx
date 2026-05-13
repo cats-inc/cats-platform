@@ -288,11 +288,28 @@ export function TaskDetailPage(): JSX.Element {
               </button>
             </>
           ) : null}
+          {canStartRun ? (
+            <button
+              type="button"
+              className="taskDetailTopBar__action taskDetailTopBar__action--primary"
+              onClick={handleStartRun}
+              disabled={startRunMutation.isPending}
+              aria-label={t("workTaskNoRunsActionLabel")}
+            >
+              {startRunMutation.isPending
+                ? t("workTaskStartRunBusyLabel")
+                : t("workTaskNoRunsActionLabel")}
+            </button>
+          ) : null}
           <button
             type="button"
             className="taskDetailTopBar__action taskDetailTopBar__action--destructive"
             onClick={handleDelete}
-            disabled={deleteMutation.isPending || approvalDecisionPending}
+            disabled={
+              deleteMutation.isPending
+              || approvalDecisionPending
+              || startRunMutation.isPending
+            }
             aria-label={t("workTaskDeleteLabel")}
           >
             {deleteMutation.isPending
