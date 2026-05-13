@@ -917,7 +917,6 @@ turn finishes, diagnostics record a failed delivery receipt with
 ```text
 GET   /api/orchestrator
 PATCH /api/orchestrator
-PUT   /api/orchestrator
 POST  /api/orchestrator/plan
 POST  /api/orchestrator/dispatch
 GET   /api/orchestrator/channels/{channelId}/execution-loop
@@ -926,7 +925,6 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
 - `GET` returns `{ orchestrator: { ...state } }`.
 - `PATCH` accepts `{ provider, model?, systemPrompt?, ... }` and returns
   `{ orchestrator: { ...updated } }`.
-- `PUT` is a legacy alias that returns `AppShellPayload`.
 - `POST /api/orchestrator/plan` accepts `{ channelId, body, senderName?, transport? }`
   and returns a contract-first room-turn plan:
   - room-routing resolution and unresolved mentions
@@ -3044,7 +3042,7 @@ Behavior:
 ### Update Global Orchestrator
 
 ```text
-PUT /api/orchestrator
+PATCH /api/orchestrator
 ```
 
 Persists the default execution target plus prompt metadata for the global

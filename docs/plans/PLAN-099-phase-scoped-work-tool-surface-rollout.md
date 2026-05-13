@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice removed the stale `/api/orchestrator` PUT legacy alias from docs and 405 Allow headers so the resource contract matches the implemented GET/PATCH surface. |
 | 2026-05-13 | Follow-up slice added API regression coverage for unsupported `POST /api/cats` MCP profiles so create and update Cat writes share the same bounded rejection path. |
 | 2026-05-13 | Follow-up slice consolidated Cats and settings Cats renderer profile view-support behind one shared registry so UI MCP profile labels stay aligned as profiles expand. |
 | 2026-05-13 | Follow-up slice added API regressions for unsupported channel and global orchestrator MCP profile writes so all product profile entry points return bounded `400 bad_request` responses. |

@@ -15,6 +15,26 @@ const baseConfig = {
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
+  auth: {
+    mode: 'unsafe_disabled',
+    enabled: false,
+    sessionSecret: null,
+    sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
+    mobileSessionTtlMs: 30 * 24 * 60 * 60 * 1000,
+    loginFailureLimit: 5,
+    loginLockoutMs: 30_000,
+    accountDailyFailureCap: 100,
+    accountCooldownMs: 15 * 60 * 1000,
+    subnetDailyFailureCap: 500,
+    allowedBrowserOrigins: ['http://127.0.0.1:8181'],
+    authStatePath: 'unused-auth-state.json',
+    recoveryTokenPath: 'unused-auth-recovery.json',
+    google: {
+      clientId: null,
+      hostedDomains: [],
+      mobileAudiences: [],
+    },
+  },
 };
 
 function createRuntimeStub() {
@@ -562,7 +582,11 @@ test('canonical 405 for unsupported methods', async () => {
 
     const deleteOnOrchestrator = await fetch(`${baseUrl}/api/orchestrator`, { method: 'DELETE' });
     assert.equal(deleteOnOrchestrator.status, 405);
-    assert.equal(deleteOnOrchestrator.headers.get('allow'), 'GET, PATCH, PUT');
+    assert.equal(deleteOnOrchestrator.headers.get('allow'), 'GET, PATCH');
+
+    const putOnOrchestrator = await fetch(`${baseUrl}/api/orchestrator`, { method: 'PUT' });
+    assert.equal(putOnOrchestrator.status, 405);
+    assert.equal(putOnOrchestrator.headers.get('allow'), 'GET, PATCH');
   });
 });
 

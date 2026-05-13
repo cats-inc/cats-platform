@@ -13,7 +13,7 @@ import {
   type ChatApiRouteContext,
 } from '../routeSupport.js';
 
-const ORCHESTRATOR_ALLOWED_METHODS = ['GET', 'PATCH', 'PUT'];
+const ORCHESTRATOR_ALLOWED_METHODS = ['GET', 'PATCH'];
 
 async function handleRestGetOrchestrator(
   context: ChatApiRouteContext,
