@@ -103,7 +103,7 @@ The current product registry allows only:
 - `work-memory`: Work-oriented posture that enables product-owned
   phase-scoped Work tool-intent projection for explicit owner requests.
 
-`POST /api/cats` and `PATCH /api/cats/{catId}` reject unsupported Cat profile
+Cat, channel, and global orchestrator write paths reject unsupported profile
 IDs. Future profiles should be added through `src/shared/catMcpProfiles.ts`
 and a product-owned resolver, not passed as arbitrary API strings.
 

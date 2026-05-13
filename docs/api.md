@@ -2881,6 +2881,7 @@ Request body:
   "language": "TypeScript",
   "responseLanguage": "zh-TW",
   "formationMode": "manual",
+  "mcpProfile": "work-memory",
   "cats": [
     {
       "name": "Agent-1",
@@ -2900,6 +2901,8 @@ Behavior:
 - creates a new persisted channel in the local chat store
 - promotes any draft `cats` into the chat-global cat registry
 - creates channel assignments for those cats in the new chat
+- accepts optional channel `mcpProfile` values `chat-memory` or `work-memory`;
+  unsupported IDs return `400 bad_request`
 - selects the new channel immediately
 - returns the updated app-shell payload
 
@@ -3045,7 +3048,9 @@ PUT /api/orchestrator
 ```
 
 Persists the default execution target plus prompt metadata for the global
-orchestrator surface.
+orchestrator surface. Optional `mcpProfile` values share the same allow-list as
+Cat and channel writes: `chat-memory` or `work-memory`; unsupported IDs return
+`400 bad_request`.
 
 ### Export Channel
 
