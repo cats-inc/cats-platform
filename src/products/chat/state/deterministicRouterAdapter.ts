@@ -13,6 +13,7 @@ import type { RuntimeDispatchRecoveryPolicy } from '../../../shared/runtimeRecov
 import { buildApprovalQueue } from '../../../core/model/index.js';
 import type { CompanionBoxStore } from './companion-box/index.js';
 import type { ChatState } from '../api/contracts.js';
+import type { ExternalIssueImportFetchOptions } from '../../work/integrations/externalIssueImportFetcher.js';
 import type { ChatStore } from './store.js';
 import type { ChatNaturalProductIntentMode } from '../shared/naturalProductIntentMode.js';
 import { buildChannelView, resolveOrchestratorDisplayName } from './model/index.js';
@@ -39,6 +40,7 @@ export function createChatDeterministicChannelRouter(
     providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
     providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
     naturalProductIntentMode?: ChatNaturalProductIntentMode;
+    externalIssueImport?: ExternalIssueImportFetchOptions;
   } = {},
 ): OrchestratorChannelRouter<CompanionBoxStore, ChatState> {
   return {
@@ -66,6 +68,7 @@ export function createChatDeterministicChannelRouter(
           providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
           providerCapabilityBootstrapDiagnosticSink: options.providerCapabilityBootstrapDiagnosticSink,
           naturalProductIntentMode: options.naturalProductIntentMode,
+          externalIssueImport: options.externalIssueImport,
         },
       );
     },

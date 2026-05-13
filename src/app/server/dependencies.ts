@@ -267,6 +267,7 @@ export function resolveServerDependencies(
       providerCapabilityBootstrapConfig: capabilityBootstrapLoaded.config,
       providerCapabilityBootstrapDiagnosticSink,
       naturalProductIntentMode: dependencies.shared.config.chatNaturalProductIntentMode,
+      externalIssueImport: dependencies.work?.externalIssueImport,
     });
   const orchestratorPlannerSurface = dependencies.chat.orchestratorPlannerSurface
     ?? chatDeterministicPlannerSurface;
@@ -286,6 +287,7 @@ export function resolveServerDependencies(
       providerCapabilityBootstrapConfig: capabilityBootstrapLoaded.config,
       providerCapabilityBootstrapDiagnosticSink,
       naturalProductIntentMode: dependencies.shared.config.chatNaturalProductIntentMode,
+      externalIssueImport: dependencies.work?.externalIssueImport,
     });
   const resumePendingOrchestratorDispatch =
     dependencies.shared.resumePendingOrchestratorDispatch
@@ -364,6 +366,7 @@ export function resolveServerDependencies(
       readEvidenceEvents: dependencies.work?.readEvidenceEvents
         ?? ((conversationId: string) =>
           readPersistedEvidenceEvents(dependencies.shared.config.chatStatePath, conversationId)),
+      externalIssueImport: dependencies.work?.externalIssueImport,
       now: dependencies.shared.now,
     },
     code: {

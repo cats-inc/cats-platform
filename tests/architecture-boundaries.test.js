@@ -44,7 +44,7 @@ test('app server dependency resolver wires the chat deterministic router adapter
     'utf8',
   );
 
-  assert.match(source, /chatDeterministicChannelRouter/u);
+  assert.match(source, /createChatDeterministicChannelRouter|chatDeterministicChannelRouter/u);
   assert.match(source, /orchestratorChannelRouter/u);
 });
 

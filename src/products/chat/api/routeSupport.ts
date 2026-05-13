@@ -17,6 +17,7 @@ import type { PlatformAuthConfig } from '../../../platform/auth/config.js';
 import type { PlatformAuthStore } from '../../../platform/auth/index.js';
 import type { ChatEventHub } from './chatEventHub.js';
 import type { ProviderAgentDecisionRequester } from '../state/runtime-dispatch/routing.js';
+import type { ExternalIssueImportFetchOptions } from '../../work/integrations/externalIssueImportFetcher.js';
 import type {
   OrchestratorChannelRouter,
   OrchestratorPlannerSurface,
@@ -171,6 +172,7 @@ export interface ChatApiDependencies {
   providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
+  externalIssueImport?: ExternalIssueImportFetchOptions;
   authStore?: PlatformAuthStore;
   auth?: PlatformAuthConfig;
   now?: () => Date;

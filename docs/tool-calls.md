@@ -184,9 +184,10 @@ Explicit Chat turns with an import cue and a supported GitHub/Redmine/Bugzilla
 issue URL expose only `work.external.import_issue` in Work tool intent and
 provider-agent observations. Manual link/unlink tools stay reserved for turns
 that include a local `work-item-*` or `project-*` ref plus a binding action cue.
-Chat execution of provider-agent import `tool_request` decisions is still
-pending; owner-triggered UI/API imports already use the product-owned import
-delegate.
+Chat handles provider-agent import `tool_request` decisions by re-resolving the
+external URL from the owner message, fetching a read-only import draft through
+server-owned adapter options, and invoking the same local Work import delegate
+used by owner-triggered UI/API imports.
 
 Explicit Chat turns with create/add/new Project cues can expose
 `work.project.create` with a narrow-write policy. Chat handles that

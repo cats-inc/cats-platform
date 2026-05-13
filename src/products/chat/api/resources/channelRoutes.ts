@@ -587,6 +587,7 @@ async function handleRestSendMessage(
             context.dependencies.providerCapabilityBootstrapConfig,
           providerCapabilityBootstrapDiagnosticSink:
             context.dependencies.providerCapabilityBootstrapDiagnosticSink,
+          externalIssueImport: context.dependencies.externalIssueImport,
           naturalProductIntentMode: context.dependencies.config.chatNaturalProductIntentMode,
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
@@ -733,6 +734,7 @@ async function handleRestRetryMessage(
             staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
           },
           providerAgentDecisionRequester: context.dependencies.providerAgentDecisionRequester,
+          externalIssueImport: context.dependencies.externalIssueImport,
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
         },

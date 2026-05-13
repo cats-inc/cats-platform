@@ -458,6 +458,7 @@ export async function routeRequest(
       providerCapabilityBootstrapConfig: dependencies.shared.providerCapabilityBootstrapConfig,
       providerCapabilityBootstrapDiagnosticSink:
         dependencies.shared.providerCapabilityBootstrapDiagnosticSink,
+      externalIssueImport: dependencies.work.externalIssueImport,
       authStore: dependencies.shared.authStore,
       auth: dependencies.shared.config.auth,
       googleVerifier: dependencies.shared.googleVerifier,

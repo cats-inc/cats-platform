@@ -9,6 +9,7 @@ import {
   buildTelegramBotTransportBindingId,
 } from '../../../shared/chatCoreIds.js';
 import type { ChatState } from '../api/contracts.js';
+import type { ExternalIssueImportFetchOptions } from '../../work/integrations/externalIssueImportFetcher.js';
 import type { AsyncKeyedGate } from '../shared/asyncControl.js';
 import { refreshDerivedMemoryLayers } from './memoryLayers.js';
 import {
@@ -33,6 +34,7 @@ export function createChatTelegramRoomBridge(input: {
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
   naturalProductIntentMode?: ChatNaturalProductIntentMode;
+  externalIssueImport?: ExternalIssueImportFetchOptions;
 }): TelegramRoomBridge<ChatState> {
   return {
     readState() {
@@ -134,6 +136,7 @@ export function createChatTelegramRoomBridge(input: {
           providerCapabilityBootstrapConfig: input.providerCapabilityBootstrapConfig,
           providerCapabilityBootstrapDiagnosticSink: input.providerCapabilityBootstrapDiagnosticSink,
           naturalProductIntentMode: input.naturalProductIntentMode,
+          externalIssueImport: input.externalIssueImport,
         },
       );
     },

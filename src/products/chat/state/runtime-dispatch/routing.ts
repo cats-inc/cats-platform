@@ -94,12 +94,25 @@ import {
   createWorkExternalBindingDelegate,
 } from '../../../work/state/workExternalBindingDelegate.js';
 import {
+  createWorkExternalIssueImportDelegate,
+  type WorkExternalIssueImportResult as WorkExternalIssueImportDelegateResult,
+} from '../../../work/state/workExternalIssueImportDelegate.js';
+import {
+  ExternalIssueImportFetcherError,
+  fetchExternalIssueImportDraftFromUrl,
+  type ExternalIssueImportFetchOptions,
+} from '../../../work/integrations/externalIssueImportFetcher.js';
+import {
   resolveWorkExecutionPreparationPhase,
 } from '../../../work/shared/workExecutionPreparationPhase.js';
 import {
   resolveWorkExternalBindingPhase,
 } from '../../../work/shared/workExternalBindingPhase.js';
 import {
+  resolveWorkExternalIssueImportPhase,
+} from '../../../work/shared/workExternalIssueImportPhase.js';
+import {
+  WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
@@ -109,6 +122,8 @@ import {
   WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
   WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
+  validateWorkExternalImportIssueInput,
+  type WorkExternalImportIssueProvider,
   type WorkExternalLinkIssueResult,
   type WorkExternalUnlinkIssueResult,
   type WorkItemAssignProjectResult,
@@ -235,6 +250,8 @@ const WORK_EXECUTION_PREPARATION_CREATE_TASKS_OPTION_ID = 'create_ready_executio
 const WORK_EXECUTION_PREPARATION_DECLINE_OPTION_ID = 'decline_execution_preparation';
 const WORK_EXTERNAL_BINDING_RESULT_METADATA_KEY = 'workExternalBindingResult';
 const WORK_EXTERNAL_BINDING_RESULT_METADATA_VERSION = 1;
+const WORK_EXTERNAL_ISSUE_IMPORT_RESULT_METADATA_KEY = 'workExternalIssueImportResult';
+const WORK_EXTERNAL_ISSUE_IMPORT_RESULT_METADATA_VERSION = 1;
 const WORK_TRIAGE_LOOKUP_RESULT_METADATA_KEY = 'workTriageLookupResult';
 const WORK_TRIAGE_LOOKUP_RESULT_METADATA_VERSION = 1;
 const WORK_PROJECT_CREATE_RESULT_METADATA_KEY = 'workProjectCreateResult';
@@ -352,6 +369,22 @@ interface WorkExternalBindingResultMetadata {
   bindingCount: number;
 }
 
+interface WorkExternalIssueImportResultMetadata {
+  schemaVersion: typeof WORK_EXTERNAL_ISSUE_IMPORT_RESULT_METADATA_VERSION;
+  phase: 'external_tracker_binding';
+  toolName: typeof WORK_EXTERNAL_IMPORT_ISSUE_TOOL;
+  decisionId: string;
+  sourceMessageId: string;
+  event: 'imported' | 'already_imported' | 'linked';
+  workItemId: string;
+  provider: WorkExternalImportIssueProvider;
+  externalType: 'issue' | 'ticket';
+  externalId: string;
+  created: boolean;
+  linked: boolean;
+  bindingCount: number;
+}
+
 interface WorkTriageLookupResultMetadata {
   schemaVersion: typeof WORK_TRIAGE_LOOKUP_RESULT_METADATA_VERSION;
   phase: 'triage';
@@ -424,6 +457,7 @@ interface RouteChannelMessageOptions {
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
   naturalProductIntentMode?: ChatNaturalProductIntentMode;
+  externalIssueImport?: ExternalIssueImportFetchOptions;
 }
 
 interface ClientMessageAppendPlan {
@@ -2171,6 +2205,174 @@ async function appendWorkExternalBindingResultSidecar(input: {
   };
 }
 
+async function appendWorkExternalIssueImportResultSidecar(input: {
+  state: ChatState;
+  channelId: string;
+  userMessage: ChatMessage;
+  providerAgentDecision: ProviderAgentDecision | null;
+  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>;
+  externalIssueImport?: ExternalIssueImportFetchOptions;
+  now: Date;
+}): Promise<{ state: ChatState; resultMessage: ChatMessage | null }> {
+  if (
+    input.providerAgentDecision?.kind !== 'tool_request'
+    || input.providerAgentDecision.toolName !== WORK_EXTERNAL_IMPORT_ISSUE_TOOL
+  ) {
+    return { state: input.state, resultMessage: null };
+  }
+  if (!hasMatchingWorkerToolTarget(input.providerAgentDecision, WORK_EXTERNAL_IMPORT_ISSUE_TOOL)) {
+    warnWorkExternalIssueImportToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'tool_request_target_mismatch',
+      details: { target: input.providerAgentDecision.target },
+    });
+    return { state: input.state, resultMessage: null };
+  }
+  if (!input.chatStore) {
+    warnWorkExternalIssueImportToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'missing_core_store',
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const phase = resolveWorkExternalIssueImportPhase({
+    rawText: input.userMessage.body,
+  });
+  if (phase.kind !== 'matched') {
+    warnWorkExternalIssueImportToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: phase.reasonCode,
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const validationErrors = validateWorkExternalImportIssueInput(input.providerAgentDecision.input);
+  if (validationErrors.length > 0) {
+    warnWorkExternalIssueImportToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'schema_invalid',
+      details: { errors: validationErrors },
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
+  const requestedExternalUrl = readOptionalString(requestedInput.externalUrl);
+  if (normalizeExternalIssueImportUrl(requestedExternalUrl) !== phase.externalUrl) {
+    warnWorkExternalIssueImportToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'tool_input_external_url_mismatch',
+      details: {
+        expectedProvider: phase.external.provider,
+        expectedExternalType: phase.external.externalType ?? 'issue',
+        expectedExternalId: phase.external.externalId,
+      },
+    });
+    return { state: input.state, resultMessage: null };
+  }
+  const requestedProvider = readOptionalExternalIssueImportProvider(requestedInput.provider);
+  if (requestedProvider && requestedProvider !== phase.external.provider) {
+    warnWorkExternalIssueImportToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'tool_input_provider_mismatch',
+      details: {
+        expectedProvider: phase.external.provider,
+        requestedProvider,
+      },
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  try {
+    const fetchResult = await fetchExternalIssueImportDraftFromUrl(
+      phase.externalUrl,
+      {
+        ...input.externalIssueImport,
+        selectedProvider: phase.external.provider,
+      },
+    );
+    const core = await input.chatStore.readCore();
+    const delegate = createWorkExternalIssueImportDelegate({
+      coreStore: input.chatStore,
+      now: () => input.now,
+    });
+    const result = await delegate.importDraft(
+      fetchResult.draft,
+      {
+        actorRef: core.ownerProfile.actorId,
+        actionId: [
+          input.userMessage.id,
+          input.providerAgentDecision.decisionId,
+          WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+        ].join(':'),
+        runId: `chat:${input.channelId}`,
+      },
+    );
+
+    if (result.status !== 'applied') {
+      warnWorkExternalIssueImportToolCallIgnored({
+        channelId: input.channelId,
+        messageId: input.userMessage.id,
+        decisionId: input.providerAgentDecision.decisionId,
+        reason: result.status === 'rejected' ? result.error.code : 'pending_approval',
+        details: result.status === 'rejected' ? result.error.details : result.summary,
+      });
+      return { state: input.state, resultMessage: null };
+    }
+
+    const metadata = buildWorkExternalIssueImportResultMetadata({
+      decisionId: input.providerAgentDecision.decisionId,
+      sourceMessageId: input.userMessage.id,
+      result: result.result,
+    });
+    const append = appendMessage(
+      input.state,
+      input.channelId,
+      {
+        senderKind: 'system',
+        senderName: 'Cats Work',
+        body: describeWorkExternalIssueImportResult(metadata),
+      },
+      input.now,
+      {
+        metadata: {
+          event: 'work_external_issue_import_result',
+          sourceMessageId: input.userMessage.id,
+          [WORK_EXTERNAL_ISSUE_IMPORT_RESULT_METADATA_KEY]: metadata,
+        },
+        incrementUnread: false,
+      },
+    );
+
+    return {
+      state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+      resultMessage: append.message,
+    };
+  } catch (error) {
+    warnWorkExternalIssueImportToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: readExternalIssueImportFailureReason(error),
+      details: readExternalIssueImportFailureDetails(error),
+    });
+    return { state: input.state, resultMessage: null };
+  }
+}
+
 async function appendWorkTriageLookupResultSidecar(input: {
   state: ChatState;
   channelId: string;
@@ -3033,6 +3235,62 @@ function readOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
 }
 
+function normalizeExternalIssueImportUrl(value: string | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+  return value.trim().replace(/[),.，。]+$/u, '');
+}
+
+function readOptionalExternalIssueImportProvider(
+  value: unknown,
+): WorkExternalImportIssueProvider | undefined {
+  const normalized = readOptionalString(value);
+  if (
+    normalized === 'github'
+    || normalized === 'redmine'
+    || normalized === 'bugzilla'
+  ) {
+    return normalized;
+  }
+  return undefined;
+}
+
+function readExternalIssueImportFailureReason(error: unknown): string {
+  if (error instanceof ExternalIssueImportFetcherError) {
+    return error.code;
+  }
+  if (isExternalIssueImportCodedError(error)) {
+    return error.code;
+  }
+  return 'external_issue_import_failed';
+}
+
+function readExternalIssueImportFailureDetails(error: unknown): unknown {
+  if (isExternalIssueImportCodedError(error)) {
+    return error.status === null ? undefined : { status: error.status };
+  }
+  return error instanceof Error ? { message: error.message } : undefined;
+}
+
+function isExternalIssueImportCodedError(input: unknown): input is {
+  code: string;
+  message: string;
+  status: number | null;
+} {
+  return typeof input === 'object'
+    && input !== null
+    && 'code' in input
+    && typeof (input as { code?: unknown }).code === 'string'
+    && 'message' in input
+    && typeof (input as { message?: unknown }).message === 'string'
+    && 'status' in input
+    && (
+      typeof (input as { status?: unknown }).status === 'number'
+      || (input as { status?: unknown }).status === null
+    );
+}
+
 function readOptionalNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
@@ -3152,6 +3410,23 @@ function warnWorkExternalBindingToolCallIgnored(input: {
   });
 }
 
+function warnWorkExternalIssueImportToolCallIgnored(input: {
+  channelId: string;
+  messageId: string;
+  decisionId: string;
+  reason: string;
+  details?: unknown;
+}): void {
+  console.warn('Work external issue import tool call ignored.', {
+    feature: 'work_external_issue_import',
+    channelId: input.channelId,
+    messageId: input.messageId,
+    decisionId: input.decisionId,
+    reason: input.reason,
+    ...(input.details ? { details: input.details } : {}),
+  });
+}
+
 function warnWorkTriageLookupToolCallIgnored(input: {
   channelId: string;
   messageId: string;
@@ -3248,6 +3523,30 @@ function buildWorkExternalBindingResultMetadata(input: {
   };
 }
 
+function buildWorkExternalIssueImportResultMetadata(input: {
+  decisionId: string;
+  sourceMessageId: string;
+  result: WorkExternalIssueImportDelegateResult;
+}): WorkExternalIssueImportResultMetadata {
+  return {
+    schemaVersion: WORK_EXTERNAL_ISSUE_IMPORT_RESULT_METADATA_VERSION,
+    phase: 'external_tracker_binding',
+    toolName: WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+    decisionId: input.decisionId,
+    sourceMessageId: input.sourceMessageId,
+    event: input.result.created
+      ? 'imported'
+      : input.result.linked ? 'linked' : 'already_imported',
+    workItemId: input.result.workItemId,
+    provider: input.result.provider as WorkExternalImportIssueProvider,
+    externalType: input.result.externalType as WorkExternalIssueImportResultMetadata['externalType'],
+    externalId: input.result.externalId,
+    created: input.result.created,
+    linked: input.result.linked,
+    bindingCount: input.result.bindingCount,
+  };
+}
+
 function buildWorkItemUpdateResultMetadata(input: {
   decisionId: string;
   sourceMessageId: string;
@@ -3316,6 +3615,19 @@ function describeWorkExternalBindingResult(
     return `Unlinked ${externalLabel} from ${localLabel} ${metadata.localId}.`;
   }
   return `${externalLabel} was not linked to ${localLabel} ${metadata.localId}.`;
+}
+
+function describeWorkExternalIssueImportResult(
+  metadata: WorkExternalIssueImportResultMetadata,
+): string {
+  const externalLabel = `${metadata.provider} ${metadata.externalType} ${metadata.externalId}`;
+  if (metadata.event === 'imported') {
+    return `Imported ${externalLabel} as Work Item ${metadata.workItemId}.`;
+  }
+  if (metadata.event === 'linked') {
+    return `Linked imported ${externalLabel} to Work Item ${metadata.workItemId}.`;
+  }
+  return `${externalLabel} was already imported as Work Item ${metadata.workItemId}.`;
 }
 
 function describeWorkTriageLookupResult(metadata: WorkTriageLookupResultMetadata): string {
@@ -6523,6 +6835,16 @@ export async function beginChannelMessageDispatch(
     now,
   });
   nextState = workExternalBindingSidecar.state;
+  const workExternalIssueImportSidecar = await appendWorkExternalIssueImportResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: preparedTurn.userMessage,
+    providerAgentDecision,
+    chatStore: options.chatStore,
+    externalIssueImport: options.externalIssueImport,
+    now,
+  });
+  nextState = workExternalIssueImportSidecar.state;
   const workTriageLookupSidecar = await appendWorkTriageLookupResultSidecar({
     state: nextState,
     channelId,
@@ -6564,6 +6886,7 @@ export async function beginChannelMessageDispatch(
     || workIntakeProposalSidecar.proposalMessage
     || workExecutionPreparationSidecar.proposalMessage
     || workExternalBindingSidecar.resultMessage
+    || workExternalIssueImportSidecar.resultMessage
     || workTriageLookupSidecar.resultMessage
     || workProjectCreateSidecar.resultMessage
     || workItemUpdateSidecar.resultMessage
@@ -6776,6 +7099,16 @@ export async function beginChannelMessageRetryDispatch(
     now,
   });
   nextState = workExternalBindingSidecar.state;
+  const workExternalIssueImportSidecar = await appendWorkExternalIssueImportResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: sourceMessage,
+    providerAgentDecision,
+    chatStore: options.chatStore,
+    externalIssueImport: options.externalIssueImport,
+    now,
+  });
+  nextState = workExternalIssueImportSidecar.state;
   const workTriageLookupSidecar = await appendWorkTriageLookupResultSidecar({
     state: nextState,
     channelId,
@@ -6817,6 +7150,7 @@ export async function beginChannelMessageRetryDispatch(
     || workIntakeProposalSidecar.proposalMessage
     || workExecutionPreparationSidecar.proposalMessage
     || workExternalBindingSidecar.resultMessage
+    || workExternalIssueImportSidecar.resultMessage
     || workTriageLookupSidecar.resultMessage
     || workProjectCreateSidecar.resultMessage
     || workItemUpdateSidecar.resultMessage
