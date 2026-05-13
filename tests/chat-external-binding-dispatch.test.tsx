@@ -2,9 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createDefaultCoreState, upsertCoreWorkItem } from '../src/core/model/index.ts';
-import { EXTERNAL_WORK_BINDING_METADATA_KEY } from '../src/products/work/shared/externalWorkBinding.ts';
+import {
+  EXTERNAL_WORK_BINDING_METADATA_KEY,
+  buildExternalWorkBinding,
+  createExternalWorkBindingsMetadata,
+} from '../src/products/work/shared/externalWorkBinding.ts';
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
+  WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
 } from '../src/products/work/shared/workToolSurface.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import {
@@ -181,4 +186,117 @@ test('Chat provider-agent external binding tool request writes local Work metada
     message.metadata.workExternalBindingResult);
   assert.equal(resultMessage?.metadata.event, 'work_external_binding_result');
   assert.equal(resultMessage?.body, 'Linked github issue 321 to Work Item work-item-external-chat-1.');
+});
+
+test('Chat provider-agent external unlink tool request removes local Work metadata', async () => {
+  const now = new Date('2026-05-13T11:10:00.000Z');
+  let state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'External tracker unlink',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const bossCatId = state.cats[0]?.id;
+  if (!bossCatId) {
+    throw new Error('Expected Boss Cat id.');
+  }
+  state = {
+    ...state,
+    bossCatId,
+  };
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const externalUrl = 'https://github.com/cats-inc/cats-platform/issues/654';
+  const core = upsertCoreWorkItem(
+    createDefaultCoreState(),
+    {
+      id: 'work-item-external-chat-unlink-1',
+      title: 'Unbind chat external issue',
+      status: 'planned',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {
+        [EXTERNAL_WORK_BINDING_METADATA_KEY]: createExternalWorkBindingsMetadata([
+          buildExternalWorkBinding({
+            localKind: 'work_item',
+            localId: 'work-item-external-chat-unlink-1',
+            provider: 'github',
+            externalType: 'issue',
+            externalId: '654',
+            externalUrl,
+            linkedAt: now.toISOString(),
+            linkedByActorRef: 'actor-owner',
+          }),
+        ]),
+      },
+    },
+    now,
+  ).core;
+  const store = new MemoryChatStore(state);
+  await store.writeCore(core);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: `Boss Cat unlink work-item-external-chat-unlink-1 from ${externalUrl}`,
+    },
+    runtimeStub(),
+    new Date('2026-05-13T11:11:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      providerAgentDecisionRequester: async () => ({
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-external-unlink-1',
+        confidence: 'high',
+        toolName: WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+        target: {
+          kind: 'execution_target',
+          provider: 'claude',
+          model: 'sonnet',
+        },
+        input: {},
+        rationaleSummary: 'The owner explicitly asked to unlink a local Work Item from GitHub.',
+      }),
+    },
+  );
+
+  const persistedCore = await store.readCore();
+  const workItem = persistedCore.workItems.find((item) =>
+    item.id === 'work-item-external-chat-unlink-1');
+  assert.deepEqual(readExternalBindings(workItem?.metadata), []);
+  assert.equal(
+    persistedCore.activities.some((activity) =>
+      activity.message === 'Unlinked external issue: github 654'),
+    true,
+  );
+
+  const channel = requireChannel(begun.state, channelId);
+  const resultMessage = channel.messages.find((message) =>
+    message.metadata.workExternalBindingResult);
+  assert.equal(resultMessage?.metadata.event, 'work_external_binding_result');
+  assert.equal(
+    resultMessage?.body,
+    'Unlinked github issue 654 from Work Item work-item-external-chat-unlink-1.',
+  );
 });
