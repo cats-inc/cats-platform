@@ -9,11 +9,17 @@ import {
   getWorkGraphKindLabel,
   getWorkGraphLayerLabel,
   getWorkGraphDiagnosticKindLabel,
+  formatWorkExternalBindingLabel,
   formatRelative,
+  isSafeExternalBindingUrl,
   type WorkGraphIndexes,
 } from "./shared";
 import { getWorkObjectStatusLabel } from "./WorkObjectCard";
-import type { WorkGraphObjectSummary, WorkGraphProjection } from "./types";
+import type {
+  WorkGraphExternalBindingSummary,
+  WorkGraphObjectSummary,
+  WorkGraphProjection,
+} from "./types";
 
 interface WorkObjectDrawerProps {
   graph: WorkGraphProjection;
@@ -23,7 +29,14 @@ interface WorkObjectDrawerProps {
   onSelect: (id: string) => void;
 }
 
-const SECTIONS = ["identity", "anchors", "evidence", "gates", "diagnostics"] as const;
+const SECTIONS = [
+  "identity",
+  "anchors",
+  "external",
+  "evidence",
+  "gates",
+  "diagnostics",
+] as const;
 type SectionId = (typeof SECTIONS)[number];
 
 export function WorkObjectDrawer({
@@ -65,6 +78,7 @@ export function WorkObjectDrawer({
   const evidence = indexes.evidenceByAnchor.get(object.id) ?? [];
   const gates = indexes.gatesBySubject.get(object.id) ?? [];
   const diagnostics = graph.diagnostics.filter((d) => d.objectId === object.id);
+  const externalBindings = object.externalBindings ?? [];
 
   const sections: SidePanelSection[] = [
     {
@@ -117,6 +131,18 @@ export function WorkObjectDrawer({
         <AnchorsBlock object={object} indexes={indexes} onSelect={onSelect} />
       ),
     },
+    ...(externalBindings.length > 0
+      ? [
+        {
+          id: "external",
+          title: t("workTopdownExternalTitle"),
+          badge: externalBindings.length,
+          children: (
+            <ExternalBindingsBlock bindings={externalBindings} />
+          ),
+        } satisfies SidePanelSection,
+      ]
+      : []),
     {
       id: "evidence",
       title: t("workTopdownEvidenceTitle"),
@@ -222,6 +248,53 @@ export function WorkObjectDrawer({
       className="chatPaneSidePanel chatPaneSidePanelBelowBar topDownDrawer"
       sections={sections}
     />
+  );
+}
+
+function ExternalBindingsBlock({
+  bindings,
+}: {
+  bindings: WorkGraphExternalBindingSummary[];
+}): JSX.Element {
+  const { t } = useI18n();
+  return (
+    <ul className="topDownDrawer__refs topDownDrawer__externalRefs">
+      {bindings.map((binding) => {
+        const label = formatWorkExternalBindingLabel(binding);
+        const safeUrl = isSafeExternalBindingUrl(binding.externalUrl)
+          ? binding.externalUrl
+          : null;
+        return (
+          <li key={`${binding.provider}:${binding.externalType}:${binding.externalId}`}>
+            <span className="topDownDrawer__refKind">{binding.provider}</span>
+            <span className="topDownDrawer__externalValue">
+              {safeUrl ? (
+                <a
+                  className="topDownDrawer__externalLink"
+                  href={safeUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {label}
+                </a>
+              ) : (
+                <span>{label}</span>
+              )}
+              <span className="topDownDrawer__externalMeta">
+                {t("workTopdownExternalSyncLabel", {
+                  syncDirection: binding.syncDirection,
+                })}
+                {binding.externalUpdatedAt
+                  ? ` - ${t("workTopdownExternalUpdatedLabel", {
+                    updatedAt: formatRelative(binding.externalUpdatedAt, t),
+                  })}`
+                  : ""}
+              </span>
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

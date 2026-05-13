@@ -7,6 +7,7 @@ import type {
   WorkGraphLayer,
   WorkGraphLink,
   WorkGraphLinkEndpointRef,
+  WorkGraphExternalBindingSummary,
   WorkGraphObjectKind,
   WorkGraphObjectSummary,
   WorkGraphProjection,
@@ -111,6 +112,17 @@ const WORK_ACTOR_ROLE_LABEL_KEY: Record<string, MessageKey> = {
   summarizer: "workActorRoleSummarizer",
 };
 
+const EXTERNAL_PROVIDER_LABEL: Record<
+  WorkGraphExternalBindingSummary["provider"],
+  string
+> = {
+  github: "GitHub",
+  gitlab: "GitLab",
+  gitea: "Gitea",
+  redmine: "Redmine",
+  bugzilla: "Bugzilla",
+};
+
 export function getWorkGraphKindLabel(
   kind: WorkGraphObjectKind,
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
@@ -193,6 +205,25 @@ export function getWorkGraphGateStateLabel(
         : state === "rejected"
           ? t("workObjectGateStateRejected")
           : t("workObjectGateStateUnknown", { state: stateLabel });
+}
+
+export function formatWorkExternalBindingLabel(
+  binding: WorkGraphExternalBindingSummary,
+): string {
+  const provider = EXTERNAL_PROVIDER_LABEL[binding.provider] ?? binding.provider;
+  return binding.externalType === "issue"
+    ? `${provider} #${binding.externalId}`
+    : `${provider} ${binding.externalType} ${binding.externalId}`;
+}
+
+export function isSafeExternalBindingUrl(url: string | null): url is string {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 /** Reverse-lookup indexes built from the authoritative top-level

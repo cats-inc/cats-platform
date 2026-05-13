@@ -304,6 +304,15 @@
   text-overflow: ellipsis;
 }
 
+.topDownCard__chip--external {
+  background: rgba(74, 108, 247, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(74, 108, 247, 0.24);
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Color stripe per kind family on the card's left edge */
 
 .topDownCard--conversation,
@@ -1307,6 +1316,32 @@
   color: var(--danger, #c0382b);
   font-style: italic;
   font-size: 0.74rem;
+}
+
+.topDownDrawer__externalRefs li {
+  align-items: start;
+}
+
+.topDownDrawer__externalValue {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.topDownDrawer__externalLink {
+  color: var(--accent);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
+.topDownDrawer__externalLink:hover {
+  color: var(--accent-strong, var(--accent));
+}
+
+.topDownDrawer__externalMeta {
+  font-size: 0.68rem;
+  color: var(--muted);
 }
 
 .topDownDrawer__gateState {

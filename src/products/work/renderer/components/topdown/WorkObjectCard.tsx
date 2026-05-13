@@ -6,6 +6,7 @@ import {
   getWorkGraphKindLabel,
   getWorkGraphGateStateLabel,
   getWorkTaskProductBindingLabel,
+  formatWorkExternalBindingLabel,
 } from "./shared";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import type { WorkGraphGateDecorator, WorkGraphObjectSummary } from "./types";
@@ -46,6 +47,7 @@ export function WorkObjectCard({
           parentWorkItemTitle: object.linkedWorkItemTitle,
         })
       : null;
+  const externalBindings = object.externalBindings ?? [];
   return (
     <article
       className={
@@ -94,6 +96,7 @@ export function WorkObjectCard({
       ) : null}
       {evidence.total > 0 ||
       gates.length > 0 ||
+      externalBindings.length > 0 ||
       object.ownerRole ||
       ((object.kind === "run" || object.kind === "task") &&
         object.linkedTaskTitle) ||
@@ -129,6 +132,17 @@ export function WorkObjectCard({
               {parentWorkItemTitle}
             </span>
           ) : null}
+          {externalBindings.map((binding) => (
+            <span
+              key={`${binding.provider}:${binding.externalType}:${binding.externalId}`}
+              className="topDownCard__chip topDownCard__chip--external"
+              title={t("workTopdownExternalBindingTooltip", {
+                externalBinding: formatWorkExternalBindingLabel(binding),
+              })}
+            >
+              {formatWorkExternalBindingLabel(binding)}
+            </span>
+          ))}
           {evidence.artifact > 0 ? (
             <span className="topDownCard__chip topDownCard__chip--artifact">
               📎 {evidence.artifact}
