@@ -629,6 +629,39 @@ test('provider-agent semantic plans reject malformed step dependencies', () => {
   ]);
 });
 
+test('provider-agent semantic plans reject invalid dependency graph references', () => {
+  const decision: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 'decision-bad-dependency-graph',
+    planId: 'plan-bad-dependency-graph',
+    confidence: 'medium',
+    rationaleSummary: 'Return invalid graph references.',
+    steps: [
+      {
+        stepId: 'step-one',
+        summary: 'First step.',
+        action: 'respond',
+        dependsOn: ['step-one', 'step-missing', 'step-two', 'step-two'],
+      },
+      {
+        stepId: 'step-two',
+        summary: 'Second step.',
+        action: 'respond',
+      },
+    ],
+  };
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision,
+  }), [
+    'step step-one.dependsOn must not reference itself',
+    'step step-one.dependsOn references unknown step step-missing',
+    'step step-one.dependsOn must not repeat step-two',
+  ]);
+});
+
 test('recovery decision must choose a platform-allowed fallback option', () => {
   const decision: ProviderAgentDecision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,

@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice validated provider-agent semantic-plan dependency graphs so `dependsOn` only references known, non-repeated, non-self steps. |
 | 2026-05-13 | Follow-up slice validated provider-agent delegation/recovery summaries and delegation budgets so model-authored control decisions stay bounded and structured. |
 | 2026-05-13 | Follow-up slice bounded provider-agent decision, plan, step, and rejected-action identifiers so model-authored ids cannot become oversized record payloads. |
 | 2026-05-13 | Follow-up slice bounded provider-agent semantic-plan step counts and dependency lists so model-authored plans stay compact and type-safe. |

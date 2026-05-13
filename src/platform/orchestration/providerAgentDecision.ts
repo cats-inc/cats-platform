@@ -324,6 +324,11 @@ function validateSemanticPlanDecision(
   if (new Set(decision.steps.map((step) => step.stepId)).size !== decision.steps.length) {
     errors.push('semantic_plan.steps must have unique stepId values');
   }
+  const stepIds = new Set(
+    decision.steps
+      .map((step) => step.stepId)
+      .filter((stepId): stepId is string => typeof stepId === 'string' && stepId.trim() !== ''),
+  );
 
   for (const step of decision.steps) {
     validateBoundedString(
@@ -352,6 +357,7 @@ function validateSemanticPlanDecision(
       if (!Array.isArray(step.dependsOn)) {
         errors.push(`step ${step.stepId}.dependsOn must be an array`);
       } else {
+        const dependencyShapeErrorCount = errors.length;
         validateBoundedStringArray(
           errors,
           `step ${step.stepId}.dependsOn`,
@@ -359,6 +365,9 @@ function validateSemanticPlanDecision(
           PROVIDER_AGENT_MAX_STEP_DEPENDENCIES,
           PROVIDER_AGENT_MAX_STEP_DEPENDENCY_LENGTH,
         );
+        if (errors.length === dependencyShapeErrorCount) {
+          validateStepDependencies(errors, step, stepIds);
+        }
       }
     }
   }
@@ -400,6 +409,31 @@ function validateRecoveryDecision(
     errors.push(
       `recovery selectedFallback ${decision.selectedFallback} is outside allowedFallbacks`,
     );
+  }
+}
+
+function validateStepDependencies(
+  errors: string[],
+  step: ProviderAgentSemanticPlanStep,
+  stepIds: Set<string>,
+): void {
+  if (!step.dependsOn) {
+    return;
+  }
+
+  const dependencies = new Set<string>();
+  for (const dependency of step.dependsOn) {
+    if (dependencies.has(dependency)) {
+      errors.push(`step ${step.stepId}.dependsOn must not repeat ${dependency}`);
+      continue;
+    }
+    dependencies.add(dependency);
+    if (dependency === step.stepId) {
+      errors.push(`step ${step.stepId}.dependsOn must not reference itself`);
+    }
+    if (!stepIds.has(dependency)) {
+      errors.push(`step ${step.stepId}.dependsOn references unknown step ${dependency}`);
+    }
   }
 }
 
