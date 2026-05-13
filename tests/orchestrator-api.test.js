@@ -2258,7 +2258,7 @@ test('POST /api/orchestrator/dispatch declines Boss Work execution preparation w
     assert.equal(proposalMessage?.senderName, 'Cats Work');
     assert.deepEqual(proposal?.workItemIds, ['work-item-api-decline-1']);
     const runtimeSendCountAfterProposal = runtimeClient.sentMessages.length;
-    assert.equal(runtimeSendCountAfterProposal > 0, true);
+    assert.equal(runtimeSendCountAfterProposal, 0);
 
     if (!proposalMessage) {
       throw new Error('Expected Work execution preparation proposal message.');
