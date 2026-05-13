@@ -222,6 +222,11 @@ injectable fetch boundary, read a single issue into a Work Item import draft,
 reject pull-request rows returned by the GitHub Issues API, and build create
 issue payloads for future export without performing remote writes in the spike.
 
+Automatic bidirectional sync is explicitly out of scope for this spec. The
+`syncDirection` field records intent only until ADR-106's follow-up design
+defines credential handling, remote write approval, conflict policy, and audit
+semantics.
+
 ## Non-Functional Requirements
 
 - **Safety**: Mutating tools must pass supervised policy checks before any

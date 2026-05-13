@@ -216,7 +216,9 @@ bindings on Project and Work Item summaries as `externalBindings[]` so Cockpit,
 System Map, and model observations can show external issue links without
 reading raw metadata bags. The first GitHub Issues adapter spike maps a single
 issue into a Work Item import draft and builds future create-issue payloads
-through an injectable fetch boundary; it performs no remote writes.
+through an injectable fetch boundary; it performs no remote writes. Automatic
+bidirectional sync is deferred by ADR-106, so `syncDirection` remains metadata
+intent rather than an active sync contract.
 
 Caller-visible triage lookup fields are `query`, `limit`, and
 `includeArchived`. Caller-visible triage create fields are `title`, `summary`,

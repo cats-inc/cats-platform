@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [106-defer-bidirectional-external-work-sync](./106-defer-bidirectional-external-work-sync.md) | Defer Bidirectional External Work Sync | Proposed | 2026-05-13 |
 | [105-adopt-phase-scoped-work-tool-surface](./105-adopt-phase-scoped-work-tool-surface.md) | Adopt a Phase-Scoped Work Tool Surface | Proposed | 2026-05-13 |
 | [104-adopt-managed-live-preview-supervisor-for-artifact-canvas](./104-adopt-managed-live-preview-supervisor-for-artifact-canvas.md) | Adopt a Managed Live Preview Supervisor for Artifact Canvas | Proposed | 2026-05-09 |
 | [103-use-preset-neutral-product-intent-intake](./103-use-preset-neutral-product-intent-intake.md) | Use Preset-Neutral Product Intent Intake | Proposed | 2026-05-09 |
@@ -147,6 +148,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-05-13 (ADR-105 added: strong Cats and Boss Cat receive phase-scoped Cats-owned Work tools for intake, triage, execution preparation, and external tracker binding; broad CRUD and MCP-first Work APIs are rejected.)*
+*Last updated: 2026-05-13 (ADR-106 added: automatic bidirectional external Work sync is deferred until credentials, conflict policy, external write approval, and audit behavior have a dedicated ADR/SPEC.)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

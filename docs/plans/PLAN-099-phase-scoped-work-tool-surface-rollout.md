@@ -7,7 +7,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress |
+| **Status** | Completed |
 | **Owner** | Codex |
 | **Reviewer** | TBD |
 
@@ -102,7 +102,7 @@ execution plans and Tasks without bypassing policy gates.
 - [x] Task 6.2: Implement `work.external.link_issue` for manual URL/id binding.
 - [x] Task 6.3: Add read-side projection fields for linked external issues.
 - [x] Task 6.4: Add one adapter spike for GitHub Issues or Gitea import/export.
-- [ ] Task 6.5: Defer bidirectional sync until conflict policy and credential
+- [x] Task 6.5: Defer bidirectional sync until conflict policy and credential
       handling have a dedicated follow-up ADR/SPEC.
 
 **Deliverables**: Work Items can link to external issues without making
@@ -183,6 +183,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Phase 6.2 added `work.external.link_issue` for manual Work Item/Project metadata links with supervised narrow-write gating, idempotent retries, and no external API calls. |
 | 2026-05-13 | Phase 6.3 projected valid external Work bindings onto Project and Work Item graph summaries while ignoring malformed metadata. |
 | 2026-05-13 | Phase 6.4 added a GitHub Issues adapter spike with injectable fetch, Work import draft mapping, pull-request rejection, and export payload building without remote writes. |
+| 2026-05-13 | Phase 6.5 added ADR-106, deferring automatic bidirectional external Work sync until credentials, conflict policy, remote write approval, and audit semantics have a dedicated design. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---
