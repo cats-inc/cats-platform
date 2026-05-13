@@ -100,14 +100,19 @@
 
 .settingsContent {
   /* Center the canvas content with a comfortable max-width so
-   * settings forms don't stretch edge-to-edge on wide displays. */
+   * settings forms don't stretch edge-to-edge on wide displays.
+   * align-self: start prevents the canvas grid (justify-items: center,
+   * default align-items: stretch) from stretching this wrapper to the
+   * canvas height — without it, content taller than the canvas viewport
+   * gets clipped instead of triggering the canvas's overflow-y: auto. */
   width: min(100%, 760px);
   margin: 0 auto;
   padding: 32px 0;
   min-width: 0;
   display: grid;
   align-content: start;
-  overflow: hidden;
+  align-self: start;
+  overflow-x: hidden;
   box-sizing: border-box;
 }
 
