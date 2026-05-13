@@ -20,6 +20,7 @@ import type {
   ExternalWorkBindingProvider,
   ExternalWorkBindingSyncDirection,
 } from "../../shared/externalWorkBinding.js";
+import { inferExternalTrackerBindingFromUrl } from "../../shared/externalTrackerUrls.js";
 import { formatWorkCrudMutationError } from "./workCrudErrorLabels.js";
 
 interface WorkExternalBindingDialogProps {
@@ -105,6 +106,24 @@ export function WorkExternalBindingDialog({
   function onBackdropClick(event: ReactMouseEvent<HTMLDivElement>): void {
     if (event.target === event.currentTarget) {
       onClose();
+    }
+  }
+
+  function onExternalUrlChange(value: string): void {
+    setExternalUrl(value);
+
+    const inference = inferExternalTrackerBindingFromUrl(value, provider);
+    if (!inference) {
+      return;
+    }
+    if (inference.provider) {
+      setProvider(inference.provider);
+    }
+    if (inference.externalType) {
+      setExternalType(inference.externalType);
+    }
+    if (inference.externalId && externalId.trim().length === 0) {
+      setExternalId(inference.externalId);
     }
   }
 
@@ -211,7 +230,7 @@ export function WorkExternalBindingDialog({
               type="url"
               className="newProjectDialog__input"
               value={externalUrl}
-              onChange={(event) => setExternalUrl(event.target.value)}
+              onChange={(event) => onExternalUrlChange(event.target.value)}
               placeholder={t("workExternalUrlPlaceholder")}
               maxLength={1000}
             />
