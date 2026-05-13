@@ -942,6 +942,74 @@ test('POST /api/orchestrator/dispatch forwards Work triage tool intent to runtim
   }, chatStore);
 });
 
+test('POST /api/orchestrator/dispatch forwards external binding tool intent to runtime', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      cats: [
+        {
+          name: 'Work',
+          provider: 'gemini',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+    let chat = await chatStore.read();
+    chat = setChannelCatLease(
+      chat,
+      channelId,
+      catId,
+      {
+        status: 'ready',
+        sessionId: 'session-work-external-dispatch',
+        laneId: 'lane-work-external-dispatch',
+      },
+      new Date('2026-05-13T00:00:00.000Z'),
+    );
+    await chatStore.write(chat);
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: [
+          'Please ask @Work to link work-item-alpha to',
+          'https://redmine.example.com/issues/987.',
+        ].join(' '),
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.equal(runtimeClient.sentMessages.length, 1);
+
+    const toolIntent = runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent;
+    assert.ok(toolIntent);
+    assert.deepEqual(toolIntent.allowedTools, [
+      WORK_EXTERNAL_LINK_ISSUE_TOOL,
+      WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+    ]);
+    assert.deepEqual(
+      toolIntent.toolDescriptions.map((tool) => tool.name),
+      toolIntent.allowedTools,
+    );
+    assert.deepEqual(toolIntent.requiredCapabilities, [
+      'work.phase.external_tracker_binding',
+      'work.capability.strong_agent',
+      'work.tool_scope.narrow_write',
+    ]);
+    assert.equal(toolIntent.strict, true);
+  }, chatStore);
+});
+
 test('POST /api/orchestrator/dispatch passes provider tool decisions into Work intake sidecars', async () => {
   const runtimeClient = createRuntimeStub();
   const chatStore = new MemoryChatStore();
