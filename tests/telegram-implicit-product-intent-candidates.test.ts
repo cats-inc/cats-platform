@@ -9,11 +9,15 @@ import {
   buildTelegramImplicitProductIntentChoiceResponse,
   buildTelegramImplicitProductIntentReplyMarkup,
   buildTelegramProductIntentReplyMarkup,
+  buildTelegramWorkExecutionPreparationCallbackData,
+  buildTelegramWorkExecutionPreparationChoiceResponse,
+  buildTelegramWorkExecutionPreparationReplyMarkup,
   buildTelegramWorkIntakeProposalCallbackData,
   buildTelegramWorkIntakeProposalChoiceResponse,
   buildTelegramWorkIntakeProposalReplyMarkup,
   parseTelegramCatProductIntentProposalCallbackData,
   parseTelegramImplicitProductIntentCallbackData,
+  parseTelegramWorkExecutionPreparationCallbackData,
   parseTelegramWorkIntakeProposalCallbackData,
 } from '../src/platform/transports/telegram/bridge.ts';
 import {
@@ -169,6 +173,56 @@ function createWorkIntakeProposalMessage() {
   };
 }
 
+function createWorkExecutionPreparationMessage() {
+  return {
+    id: 'work-execution-message',
+    senderKind: 'system',
+    senderName: 'Cats Work',
+    body: 'Execution preparation proposals:\n1. Draft onboarding checklist (ready)',
+    choices: [
+      {
+        question: 'Create execution Tasks?',
+        options: [
+          {
+            id: 'create_ready_execution_tasks',
+            label: 'Create Tasks',
+          },
+          {
+            id: 'decline_execution_preparation',
+            label: 'Not now',
+          },
+        ],
+      },
+    ],
+    metadata: {
+      event: 'work_execution_preparation_proposed',
+      sourceMessageId: SOURCE_MESSAGE_ID,
+      workExecutionPreparationProposal: {
+        schemaVersion: 1,
+        phase: 'execution_preparation',
+        toolName: 'work.item.prepare_execution',
+        proposalId: `work-execution-preparation-proposal:${SOURCE_MESSAGE_ID}:decision-1`,
+        decisionId: 'decision-1',
+        sourceMessageId: SOURCE_MESSAGE_ID,
+        scope: 'visible_selection',
+        workItemIds: ['work-item-1'],
+        proposals: [
+          {
+            workItemId: 'work-item-1',
+            title: 'Draft onboarding checklist',
+            status: 'ready',
+            readiness: 'ready',
+            proposedTaskTitle: 'Draft onboarding checklist',
+            proposedTaskSummary: 'Prepare the first executable checklist.',
+            openQuestions: [],
+            blockers: [],
+          },
+        ],
+      },
+    },
+  };
+}
+
 test('Telegram implicit product intent reply markup uses compact callback data', () => {
   const markup = buildTelegramImplicitProductIntentReplyMarkup(createImplicitCandidateMessage());
 
@@ -309,6 +363,54 @@ test('Telegram Work intake proposal reply markup uses proposal-message callback 
   );
 });
 
+test('Telegram Work execution preparation reply markup uses proposal-message callback data', () => {
+  const markup = buildTelegramWorkExecutionPreparationReplyMarkup(
+    createWorkExecutionPreparationMessage(),
+  );
+
+  assert.deepEqual(markup, {
+    inline_keyboard: [
+      [
+        {
+          text: 'Create Tasks',
+          callback_data: 'wep:v1:work-execution-message:create',
+        },
+        {
+          text: 'Not now',
+          callback_data: 'wep:v1:work-execution-message:decline',
+        },
+      ],
+    ],
+  });
+  assert.deepEqual(
+    buildTelegramProductIntentReplyMarkup(createWorkExecutionPreparationMessage()),
+    markup,
+  );
+  assert.ok((markup?.inline_keyboard[0]?.[0]?.callback_data.length ?? 0) <= 64);
+  assert.equal(
+    parseTelegramWorkExecutionPreparationCallbackData(
+      buildTelegramWorkExecutionPreparationCallbackData({
+        sourceMessageId: 'work-execution-message',
+        action: 'create_tasks',
+      }),
+    )?.sourceMessageId,
+    'work-execution-message',
+  );
+  assert.equal(
+    parseTelegramWorkExecutionPreparationCallbackData(
+      buildTelegramWorkExecutionPreparationCallbackData({
+        sourceMessageId: 'work-execution-message',
+        action: 'create_tasks',
+      }),
+    )?.action,
+    'create_tasks',
+  );
+  assert.equal(
+    parseTelegramWorkExecutionPreparationCallbackData('/work nope'),
+    null,
+  );
+});
+
 test('Telegram implicit product intent choice response keeps transcript body locale-neutral', () => {
   const response = buildTelegramImplicitProductIntentChoiceResponse({
     message: createImplicitCandidateMessage(),
@@ -346,6 +448,21 @@ test('Telegram Work intake proposal choice response submits capture option', () 
   assert.equal(response?.choiceResponse.answers[0]?.question, 'Capture these Work Items?');
   assert.deepEqual(response?.choiceResponse.answers[0]?.selectedOptionIds, [
     'capture_work_items',
+  ]);
+});
+
+test('Telegram Work execution preparation choice response submits create-tasks option', () => {
+  const response = buildTelegramWorkExecutionPreparationChoiceResponse({
+    message: createWorkExecutionPreparationMessage(),
+    action: 'create_tasks',
+    submittedAt: '2026-05-06T08:03:00.000Z',
+  });
+
+  assert.equal(response?.body, 'Create Tasks');
+  assert.equal(response?.choiceResponse.sourceMessageId, 'work-execution-message');
+  assert.equal(response?.choiceResponse.answers[0]?.question, 'Create execution Tasks?');
+  assert.deepEqual(response?.choiceResponse.answers[0]?.selectedOptionIds, [
+    'create_ready_execution_tasks',
   ]);
 });
 
