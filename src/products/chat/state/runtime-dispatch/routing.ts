@@ -79,6 +79,9 @@ import {
   proposeWorkItemSplit,
 } from '../../../work/state/workIntakeDelegate.js';
 import {
+  createWorkTriageDelegate,
+} from '../../../work/state/workTriageDelegate.js';
+import {
   prepareWorkItemExecution,
 } from '../../../work/state/workExecutionPreparationDelegate.js';
 import {
@@ -98,6 +101,7 @@ import {
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
+  WORK_PROJECT_LOOKUP_TOOL,
   WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
   type WorkExternalLinkIssueResult,
   type WorkExternalUnlinkIssueResult,
@@ -108,6 +112,7 @@ import {
   type WorkItemSourceRef,
   type WorkItemSplitCandidate,
   type WorkItemTriageStatus,
+  type WorkProjectLookupProject,
 } from '../../../work/shared/workToolSurface.js';
 import {
   prepareDispatchTurn,
@@ -218,6 +223,8 @@ const WORK_EXECUTION_PREPARATION_CREATE_TASKS_OPTION_ID = 'create_ready_executio
 const WORK_EXECUTION_PREPARATION_DECLINE_OPTION_ID = 'decline_execution_preparation';
 const WORK_EXTERNAL_BINDING_RESULT_METADATA_KEY = 'workExternalBindingResult';
 const WORK_EXTERNAL_BINDING_RESULT_METADATA_VERSION = 1;
+const WORK_TRIAGE_LOOKUP_RESULT_METADATA_KEY = 'workTriageLookupResult';
+const WORK_TRIAGE_LOOKUP_RESULT_METADATA_VERSION = 1;
 const WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES = new Set([
   'draft',
   'planned',
@@ -317,6 +324,16 @@ interface WorkExternalBindingResultMetadata {
   externalType: 'issue' | 'project' | 'ticket';
   externalId: string;
   bindingCount: number;
+}
+
+interface WorkTriageLookupResultMetadata {
+  schemaVersion: typeof WORK_TRIAGE_LOOKUP_RESULT_METADATA_VERSION;
+  phase: 'triage';
+  toolName: typeof WORK_PROJECT_LOOKUP_TOOL;
+  decisionId: string;
+  sourceMessageId: string;
+  query: string | null;
+  projects: WorkProjectLookupProject[];
 }
 
 export type ProviderAgentDecisionRequester = (input: {
@@ -2023,6 +2040,86 @@ async function appendWorkExternalBindingResultSidecar(input: {
   };
 }
 
+async function appendWorkTriageLookupResultSidecar(input: {
+  state: ChatState;
+  channelId: string;
+  userMessage: ChatMessage;
+  providerAgentDecision: ProviderAgentDecision | null;
+  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>;
+  now: Date;
+}): Promise<{ state: ChatState; resultMessage: ChatMessage | null }> {
+  if (
+    input.providerAgentDecision?.kind !== 'tool_request'
+    || input.providerAgentDecision.toolName !== WORK_PROJECT_LOOKUP_TOOL
+  ) {
+    return { state: input.state, resultMessage: null };
+  }
+  if (!input.chatStore) {
+    warnWorkTriageLookupToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'missing_core_store',
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
+  const query = readOptionalString(requestedInput.query) ?? null;
+  const limit = readOptionalNumber(requestedInput.limit);
+  const delegate = createWorkTriageDelegate({
+    coreStore: input.chatStore,
+    now: () => input.now,
+  });
+  const result = await delegate.lookupProjects({
+    ...(query ? { query } : {}),
+    ...(limit !== undefined ? { limit } : { limit: 5 }),
+  });
+  if (result.status !== 'applied') {
+    warnWorkTriageLookupToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: result.status === 'rejected' ? result.error.code : 'pending_approval',
+      details: result.status === 'rejected' ? result.error.details : result.summary,
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const metadata: WorkTriageLookupResultMetadata = {
+    schemaVersion: WORK_TRIAGE_LOOKUP_RESULT_METADATA_VERSION,
+    phase: 'triage',
+    toolName: WORK_PROJECT_LOOKUP_TOOL,
+    decisionId: input.providerAgentDecision.decisionId,
+    sourceMessageId: input.userMessage.id,
+    query,
+    projects: result.result.projects,
+  };
+  const append = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats Work',
+      body: describeWorkTriageLookupResult(metadata),
+    },
+    input.now,
+    {
+      metadata: {
+        event: 'work_triage_lookup_result',
+        sourceMessageId: input.userMessage.id,
+        [WORK_TRIAGE_LOOKUP_RESULT_METADATA_KEY]: metadata,
+      },
+      incrementUnread: false,
+    },
+  );
+
+  return {
+    state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+    resultMessage: append.message,
+  };
+}
+
 function buildWorkIntakeProposalId(input: {
   sourceMessageId: string;
   decisionId: string;
@@ -2429,6 +2526,23 @@ function warnWorkExternalBindingToolCallIgnored(input: {
   });
 }
 
+function warnWorkTriageLookupToolCallIgnored(input: {
+  channelId: string;
+  messageId: string;
+  decisionId: string;
+  reason: string;
+  details?: unknown;
+}): void {
+  console.warn('Work triage lookup tool call ignored.', {
+    feature: 'work_triage_lookup',
+    channelId: input.channelId,
+    messageId: input.messageId,
+    decisionId: input.decisionId,
+    reason: input.reason,
+    ...(input.details ? { details: input.details } : {}),
+  });
+}
+
 function buildWorkExternalBindingResultMetadata(input: {
   decisionId: string;
   sourceMessageId: string;
@@ -2472,6 +2586,19 @@ function describeWorkExternalBindingResult(
     return `Unlinked ${externalLabel} from ${localLabel} ${metadata.localId}.`;
   }
   return `${externalLabel} was not linked to ${localLabel} ${metadata.localId}.`;
+}
+
+function describeWorkTriageLookupResult(metadata: WorkTriageLookupResultMetadata): string {
+  if (metadata.projects.length === 0) {
+    return metadata.query
+      ? `No active Projects matched "${metadata.query}".`
+      : 'No active Projects are available for Work triage.';
+  }
+  const projectSummary = metadata.projects
+    .slice(0, 5)
+    .map((project) => `${project.title} (${project.projectId})`)
+    .join(', ');
+  return `Project candidates: ${projectSummary}.`;
 }
 
 type WorkExecutionPreparationChoiceAction = 'create_tasks' | 'decline' | 'handled';
@@ -5587,6 +5714,15 @@ export async function beginChannelMessageDispatch(
     now,
   });
   nextState = workExternalBindingSidecar.state;
+  const workTriageLookupSidecar = await appendWorkTriageLookupResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: preparedTurn.userMessage,
+    providerAgentDecision,
+    chatStore: options.chatStore,
+    now,
+  });
+  nextState = workTriageLookupSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),
@@ -5791,6 +5927,15 @@ export async function beginChannelMessageRetryDispatch(
     now,
   });
   nextState = workExternalBindingSidecar.state;
+  const workTriageLookupSidecar = await appendWorkTriageLookupResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: sourceMessage,
+    providerAgentDecision,
+    chatStore: options.chatStore,
+    now,
+  });
+  nextState = workTriageLookupSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),
