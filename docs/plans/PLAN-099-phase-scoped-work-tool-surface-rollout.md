@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added Telegram room bridge coverage for Boss execution-preparation confirmation, proving a Telegram-origin start request can create a pending-approval Task from a ready Work Item through the shared choice-response path. |
 | 2026-05-13 | Follow-up slice extended the Telegram room bridge Work intake regression so an inline Ignore callback routes back through Chat `choiceResponse`, appends a declined transition, and writes no Work Items. |
 | 2026-05-13 | Follow-up slice added Telegram Work choice decline payload coverage for intake and Boss execution-preparation inline keyboards, locking Ignore/Not now callbacks onto the shared Chat `choiceResponse` option ids. |
 | 2026-05-13 | Follow-up slice added API-level Boss execution decline coverage proving direct orchestrator choice responses can defer execution proposals without creating Tasks or issuing another runtime dispatch. |
