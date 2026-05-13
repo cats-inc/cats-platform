@@ -82,6 +82,7 @@ export interface CatFormState {
   makeBoss: boolean;
   products: string[];
   skillProfile: string;
+  mcpProfile: string;
 }
 
 export interface DraftTemporaryParticipant extends CreateTemporaryParticipantInput {

@@ -59,6 +59,14 @@ export interface WorkspaceCatFormState {
   instance: string;
   model: string;
   modelSelection: ProviderModelSelection | null;
+  mcpProfile?: string;
+}
+
+function resolveCreateCatMcpProfile(profile: string | null | undefined): string | undefined {
+  if (!profile || profile === 'chat-memory') {
+    return undefined;
+  }
+  return profile;
 }
 
 export function useWorkspaceCatAssignmentActions<
@@ -81,6 +89,7 @@ export function useWorkspaceCatAssignmentActions<
       instance?: string;
       model?: string;
       modelSelection?: ProviderModelSelection | null;
+      mcpProfile?: string;
     }) => Promise<TPayload>;
     assignCatToChannelApi?: (channelId: string, input: {
       catId: string;
@@ -108,6 +117,7 @@ export function useWorkspaceCatAssignmentActions<
       instance?: string;
       model?: string;
       modelSelection?: ProviderModelSelection | null;
+      mcpProfile?: string;
     }) => Promise<TPayload>,
     assignCatToChannelApi = assignWorkspaceCatToChannelApi as unknown as (
       channelId: string,
@@ -147,6 +157,7 @@ export function useWorkspaceCatAssignmentActions<
         instance: catForm.instance || undefined,
         model: catForm.model || undefined,
         modelSelection: catForm.modelSelection,
+        mcpProfile: resolveCreateCatMcpProfile(catForm.mcpProfile),
       });
       startTransition(() => setState({ status: 'ready', payload: created }));
 
@@ -186,6 +197,7 @@ export function useWorkspaceCatAssignmentActions<
     catForm.model,
     catForm.name,
     catForm.provider,
+    catForm.mcpProfile,
     emptyCatForm,
     setAddCatOpen,
     setBusy,
@@ -279,6 +291,7 @@ export function useWorkspaceCatAssignmentActions<
         instance: catForm.instance || undefined,
         model: catForm.model || undefined,
         modelSelection: catForm.modelSelection,
+        mcpProfile: resolveCreateCatMcpProfile(catForm.mcpProfile),
       });
       startTransition(() => setState({ status: 'ready', payload: created }));
       const newCat = created.chat.cats.find((participant) => !previousIds.has(participant.id));
@@ -303,6 +316,7 @@ export function useWorkspaceCatAssignmentActions<
     catForm.model,
     catForm.name,
     catForm.provider,
+    catForm.mcpProfile,
     emptyCatForm,
     setAddCatOpen,
     setBusy,

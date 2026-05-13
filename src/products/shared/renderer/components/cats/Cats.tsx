@@ -743,6 +743,24 @@ export function CatsCanvas({
                     ))}
                   </div>
                 </SettingsSubSection>
+
+                <SettingsSubSection
+                  className="catsSubCard"
+                  header={<SettingsSectionHeader title={t(messageKeys.sharedSettingsCatsMcpProfileLabel)} nested />}
+                >
+                  <div className="skillPills">
+                    {MCP_PROFILES.map((profile) => (
+                      <button
+                        key={profile.value}
+                        type="button"
+                        className={(catForm.mcpProfile || 'chat-memory') === profile.value ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
+                        onClick={() => setCatForm({ ...catForm, mcpProfile: profile.value })}
+                      >
+                        {t(profile.label)}
+                      </button>
+                    ))}
+                  </div>
+                </SettingsSubSection>
               </div>
 
               <div className="catsDetailColumn">

@@ -77,6 +77,10 @@ export function createSettingsCatsRegistryActions(
         makeBoss: context.catForm.makeBoss || undefined,
         products: context.catForm.products.length > 0 ? context.catForm.products : undefined,
         skillProfile: context.catForm.skillProfile || undefined,
+        mcpProfile:
+          context.catForm.mcpProfile && context.catForm.mcpProfile !== 'chat-memory'
+            ? context.catForm.mcpProfile
+            : undefined,
       });
       context.onPayloadUpdate(result);
       context.setCatForm(context.emptyCatForm());

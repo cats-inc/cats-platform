@@ -53,6 +53,7 @@ test('emptyCatForm starts from the shared default cat products and chat defaults
     makeBoss: false,
     products: defaultCatProducts(),
     skillProfile: 'chat-default',
+    mcpProfile: 'chat-memory',
   });
 });
 
