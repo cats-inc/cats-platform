@@ -114,7 +114,13 @@ function createPhaseScopedWorkToolInvariants(
     case 'execution_preparation':
       return [
         `${WORK_ITEM_PREPARE_EXECUTION_TOOL} is read-only and returns proposals only.`,
-        `${WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL} may create pending-approval Tasks but must not create Runs or start runtime checkout.`,
+        ...(names.has(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL)
+          ? [
+            `${WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL} may create pending-approval Tasks but must not create Runs or start runtime checkout.`,
+          ]
+          : [
+            `Do not request ${WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL} until policy exposes a narrow-write execution-preparation tool surface.`,
+          ]),
         'Capture and execution must remain separated by an owner-visible acknowledgement boundary.',
       ];
     case 'external_tracker_binding':

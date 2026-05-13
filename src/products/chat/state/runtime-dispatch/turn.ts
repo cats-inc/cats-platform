@@ -29,6 +29,7 @@ import {
   appendMessage,
   buildChannelView,
   requireChannel,
+  resolveChannelCanonicalIdentity,
 } from '../model/index.js';
 import { buildCanonicalChatUserMessage } from '../chatCoreInterop.js';
 import {
@@ -77,6 +78,9 @@ import {
   createPhaseScopedWorkToolObservation,
 } from '../../../work/shared/workToolObservation.js';
 import {
+  resolveWorkExecutionPreparationPhase,
+} from '../../../work/shared/workExecutionPreparationPhase.js';
+import {
   resolveEffectiveChatNaturalProductIntentMode,
   type ChatNaturalProductIntentMode,
 } from '../../shared/naturalProductIntentMode.js';
@@ -87,6 +91,14 @@ import {
 import { resolveCurrentTurnRecipientTargets } from '../mentionRouter.js';
 import { buildChatWorkIntakeSourceContext } from '../workIntakeSourceContext.js';
 import type { DeterministicChatRoutingPlan } from './deterministicPlan.js';
+
+const WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES = new Set([
+  'draft',
+  'planned',
+  'ready',
+  'blocked',
+]);
+const MAX_WORK_EXECUTION_PREPARATION_VISIBLE_ITEMS = 20;
 
 function readRequestedWorkflowShape(
   payload: SendChannelMessageInput,
@@ -546,6 +558,33 @@ function buildProviderAgentObservationForTurn(input: {
     transport: input.transport,
     transportBindingId: input.transportBindingId,
   });
+  const visibleExecutionPreparationWorkItemIds = resolveVisibleWorkItemIdsForExecutionPreparation({
+    state: input.state,
+    channelId: input.channelId,
+    core: input.core,
+  });
+  const workExecutionPreparationPhase = resolveWorkExecutionPreparationPhase({
+    rawText: input.payload.body,
+    addressedBossCat: isSingleBossCatTarget(input.state, singleCatTarget),
+    activeWorkItemIds: readActiveWorkItemIdsFromMessage(input.userMessage),
+    visibleWorkItemIds: visibleExecutionPreparationWorkItemIds,
+  });
+  const workExecutionPreparationToolObservation = createWorkExecutionPreparationToolObservation({
+    enabled: workExecutionPreparationPhase.kind === 'matched'
+      && isSingleBossCatTarget(input.state, singleCatTarget)
+      && Boolean(input.core),
+    policy: policyDecision.result.policy,
+  });
+  const workExecutionPreparationContextRefs =
+    workExecutionPreparationPhase.kind === 'matched'
+      && workExecutionPreparationToolObservation.descriptors.length > 0
+      ? [
+        `work-execution-preparation-phase:${workExecutionPreparationPhase.phase}`,
+        `work-execution-preparation-scope:${workExecutionPreparationPhase.scope}`,
+        ...workExecutionPreparationPhase.workItemRefs.map((workItemId) =>
+          `work-execution-preparation-work-item:${workItemId}`),
+      ]
+      : [];
 
   return buildChatProviderAgentObservation({
     state: input.state,
@@ -565,8 +604,12 @@ function buildProviderAgentObservationForTurn(input: {
         ]
         : []),
       ...workIntakeToolObservation.descriptors,
+      ...workExecutionPreparationToolObservation.descriptors,
     ],
-    additionalContextRefs: workIntakeSourceContext.contextRefs,
+    additionalContextRefs: [
+      ...workIntakeSourceContext.contextRefs,
+      ...workExecutionPreparationContextRefs,
+    ],
     invariants: [
       ...(exposeCatProductIntentProposalTool
         ? [
@@ -577,6 +620,7 @@ function buildProviderAgentObservationForTurn(input: {
           ]
         : []),
       ...workIntakeToolObservation.invariants,
+      ...workExecutionPreparationToolObservation.invariants,
     ],
     messageCharacterCount: input.payload.body.length,
     routing: {
@@ -605,10 +649,90 @@ function createWorkIntakeToolObservation(input: {
   });
 }
 
+function createWorkExecutionPreparationToolObservation(input: {
+  enabled: boolean;
+  policy: SupervisionPolicy;
+}): ReturnType<typeof createPhaseScopedWorkToolObservation> {
+  return createPhaseScopedWorkToolObservation({
+    enabled: input.enabled,
+    phase: 'execution_preparation',
+    capabilityProfile: 'boss_cat',
+    parentToolScope: input.policy.toolScope,
+    policyToolScope: input.policy.toolScope,
+  });
+}
+
 function resolveWorkToolCapabilityProfile(
   capabilityProfileKind: 'strong_agent' | 'weak_worker' | 'unknown',
 ): WorkToolCapabilityProfile {
   return capabilityProfileKind;
+}
+
+function isSingleBossCatTarget(
+  state: ChatState,
+  singleCatTarget: TargetResolution['targets'][number] | null,
+): boolean {
+  return Boolean(
+    state.bossCatId
+    && singleCatTarget
+    && singleCatTarget.participantKind === 'cat'
+    && singleCatTarget.participantId === state.bossCatId,
+  );
+}
+
+function resolveVisibleWorkItemIdsForExecutionPreparation(input: {
+  state: ChatState;
+  channelId: string;
+  core?: CatsCoreState;
+}): string[] {
+  if (!input.core) {
+    return [];
+  }
+
+  const { conversationId } = resolveChannelCanonicalIdentity(input.state, input.channelId);
+  return input.core.workItems
+    .filter((workItem) =>
+      workItem.conversationId === conversationId
+      && WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES.has(workItem.status)
+      && workItem.taskId === null)
+    .sort((left, right) =>
+      right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id))
+    .slice(0, MAX_WORK_EXECUTION_PREPARATION_VISIBLE_ITEMS)
+    .map((workItem) => workItem.id);
+}
+
+function readActiveWorkItemIdsFromMessage(message: ChatMessage): string[] {
+  return uniqueNonEmptyStrings([
+    readWorkItemIdFromMetadataRef(message.metadata.directSlashModeIntakeRef),
+    readWorkItemIdFromMetadataRef(message.metadata.productIntentIntakeRef),
+  ]);
+}
+
+function readWorkItemIdFromMetadataRef(value: unknown): string | null {
+  if (!isRecord(value) || typeof value.workItemId !== 'string') {
+    return null;
+  }
+
+  const normalized = value.workItemId.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function uniqueNonEmptyStrings(values: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const normalized = value?.trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    result.push(normalized);
+  }
+  return result;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 // v1 narrowing: SPEC-107 §28 allows any addressed/active strong Cat in

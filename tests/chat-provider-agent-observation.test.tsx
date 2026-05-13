@@ -17,12 +17,18 @@ import {
   type SupervisedToolManifest,
   type SupervisionPolicy,
 } from '../src/platform/supervision/index.ts';
+import {
+  createDefaultCoreState,
+  upsertCoreWorkItem,
+} from '../src/core/model/index.ts';
+import type { CatsCoreState } from '../src/core/types.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import {
   appendMessage,
   createChannel,
   createParallelChatGroup,
   requireChannel,
+  resolveChannelCanonicalIdentity,
   setChannelOrchestratorLease,
 } from '../src/products/chat/state/model/index.ts';
 import { buildChatProviderAgentObservation } from '../src/products/chat/state/providerAgentObservation.ts';
@@ -36,6 +42,10 @@ import type { RuntimeClient } from '../src/platform/runtime/client.ts';
 import {
   buildChannelDispatchOrchestratorSummaryFromBegun,
 } from '../src/products/chat/api/orchestratorDispatchResponse.ts';
+import {
+  WORK_ITEM_PREPARE_EXECUTION_TOOL,
+  WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
+} from '../src/products/work/shared/workToolSurface.ts';
 
 function policy(): SupervisionPolicy {
   return {
@@ -114,6 +124,7 @@ function appendAndPrepare(input: {
     recipientParticipantIds?: string[];
     workflowShape?: 'sequential' | 'concurrent' | 'converge' | 'parallel' | null;
   };
+  core?: CatsCoreState;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
 }): { state: ChatState; prepared: PreparedDispatchTurn } {
@@ -136,7 +147,7 @@ function appendAndPrepare(input: {
       ...(input.messageMetadata ? { messageMetadata: input.messageMetadata } : {}),
     },
     now,
-    undefined,
+    input.core,
     {
       providerCapabilityBootstrapConfig: input.providerCapabilityBootstrapConfig,
       providerCapabilityBootstrapDiagnosticSink: input.providerCapabilityBootstrapDiagnosticSink,
@@ -155,6 +166,12 @@ function summaryValue(prepared: PreparedDispatchTurn, key: string): unknown {
 function actorProvider(prepared: PreparedDispatchTurn): string | null {
   const target = prepared.providerAgentObservation?.actor.target;
   return target?.kind === 'execution_target' ? target.provider : null;
+}
+
+function observationToolNames(
+  observation: ProviderAgentBoundedObservation | null | undefined,
+): string[] {
+  return observation?.availableTools.map((descriptor) => descriptor.manifest.name) ?? [];
 }
 
 function runtimeStub(): RuntimeClient {
@@ -390,6 +407,87 @@ test('Chat direct-cat turns keep deterministic target selection before provider-
   assert.equal(summaryValue(prepared, 'routing_selection_kind'), 'default_target');
   assert.equal(
     prepared.providerAgentObservation?.contextRefs.includes(`chat-room-mode:direct_message`),
+    true,
+  );
+});
+
+test('Chat provider-agent observation exposes read-only Boss Cat execution preparation', () => {
+  const now = new Date('2026-05-13T10:00:00.000Z');
+  let state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Work execution',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const bossCatId = state.cats[0]?.id;
+  if (!bossCatId) {
+    throw new Error('Expected Boss Cat id.');
+  }
+  state = {
+    ...state,
+    bossCatId,
+  };
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const core = upsertCoreWorkItem(
+    createDefaultCoreState(),
+    {
+      id: 'work-item-intake-prepare-1',
+      title: 'Prepare the work intake backlog',
+      status: 'ready',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {},
+    },
+    now,
+  ).core;
+
+  const { prepared } = appendAndPrepare({
+    state,
+    channelId,
+    body: 'Boss Cat 幫忙逐一開工這些待辦事項',
+    now: new Date('2026-05-13T10:01:00.000Z'),
+    core,
+    providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+  });
+  const toolNames = observationToolNames(prepared.providerAgentObservation);
+
+  assert.equal(toolNames.includes(WORK_ITEM_PREPARE_EXECUTION_TOOL), true);
+  assert.equal(toolNames.includes(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL), false);
+  assert.equal(
+    prepared.providerAgentObservation?.contextRefs.includes(
+      'work-execution-preparation-scope:visible_selection',
+    ),
+    true,
+  );
+  assert.equal(
+    prepared.providerAgentObservation?.contextRefs.includes(
+      'work-execution-preparation-work-item:work-item-intake-prepare-1',
+    ),
+    true,
+  );
+  assert.equal(
+    prepared.providerAgentObservation?.invariants.some((invariant) =>
+      invariant.includes(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL)
+      && invariant.includes('Do not request')),
     true,
   );
 });

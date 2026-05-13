@@ -72,6 +72,21 @@ test('Work tool observation keeps execution preparation Boss-only and approval-s
   ));
 });
 
+test('Work tool observation keeps execution task creation hidden under read-only policy', () => {
+  const observation = createPhaseScopedWorkToolObservation({
+    phase: 'execution_preparation',
+    capabilityProfile: 'boss_cat',
+    parentToolScope: 'read_only',
+    policyToolScope: 'read_only',
+  });
+
+  assert.deepEqual(toolNames(observation), [WORK_ITEM_PREPARE_EXECUTION_TOOL]);
+  assert.ok(observation.invariants.some((entry) =>
+    entry.includes(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL)
+    && entry.includes('Do not request'),
+  ));
+});
+
 test('Work tool observation exposes local external binding without active sync', () => {
   const observation = createPhaseScopedWorkToolObservation({
     phase: 'external_tracker_binding',
