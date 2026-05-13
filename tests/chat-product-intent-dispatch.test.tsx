@@ -1718,6 +1718,94 @@ test('routeChannelMessage records Cat proposal tool requests without durable Wor
   );
 });
 
+test('routeChannelMessage records Work intake proposal tool results without durable Work writes', async () => {
+  const { state, channelId } = createDirectState();
+  const store = new MemoryChatStore(state);
+  const runtimeClient = runtimeReplyStub('I can help clarify that.');
+  let capturedObservation: ProviderAgentBoundedObservation | null = null;
+  const rawMessage = [
+    'Draft the MCP adapter contract',
+    'Add Telegram Work intake coverage',
+  ].join('\n');
+
+  const routed = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: rawMessage,
+      senderName: 'Kenneth',
+    },
+    runtimeClient,
+    new Date('2026-05-13T08:01:00.000Z'),
+    {
+      chatStore: store,
+      transport: 'telegram',
+      transportBindingId: 'telegram-binding-1',
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      naturalProductIntentMode: 'cat_tool',
+      providerAgentDecisionRequester: async ({ observation }) => {
+        capturedObservation = observation;
+        return {
+          contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+          kind: 'tool_request',
+          decisionId: 'decision-work-propose-split-1',
+          confidence: 'high',
+          toolName: WORK_ITEM_PROPOSE_SPLIT_TOOL,
+          target: {
+            kind: 'worker_tool',
+            toolName: WORK_ITEM_PROPOSE_SPLIT_TOOL,
+          },
+          input: {
+            source: {
+              surface: 'chat',
+              sourceText: 'model-supplied source should be ignored',
+            },
+            maxItems: 2,
+            defaultKind: 'todo',
+            defaultPriority: 'medium',
+          },
+          rationaleSummary: 'Propose structured Work Items from the owner message.',
+        };
+      },
+    },
+  );
+
+  const channel = requireChannel(routed.state, channelId);
+  const proposalMessage = channel.messages.find((message) =>
+    message.metadata.event === 'work_intake_proposal_created');
+  const proposal = proposalMessage?.metadata.workIntakeProposal as
+    | {
+        source?: { surface?: string; sourceText?: string; transportBindingId?: string };
+        contextRefs?: string[];
+        candidates?: Array<{ title?: string; priority?: string }>;
+      }
+    | undefined;
+  const core = await store.readCore();
+
+  assert.equal(
+    observationToolNames(capturedObservation).includes(WORK_ITEM_PROPOSE_SPLIT_TOOL),
+    true,
+  );
+  assert.equal(proposalMessage?.senderKind, 'system');
+  assert.equal(proposalMessage?.body.includes('Draft the MCP adapter contract'), true);
+  assert.equal(proposalMessage?.body.includes('model-supplied source should be ignored'), false);
+  assert.equal(proposal?.source?.surface, 'telegram');
+  assert.equal(proposal?.source?.sourceText, undefined);
+  assert.equal(proposal?.source?.transportBindingId, 'telegram-binding-1');
+  assert.equal(proposal?.contextRefs?.includes('work-intake-surface:telegram'), true);
+  assert.deepEqual(
+    proposal?.candidates?.map((candidate) => [candidate.title, candidate.priority]),
+    [
+      ['Draft the MCP adapter contract', 'medium'],
+      ['Add Telegram Work intake coverage', 'medium'],
+    ],
+  );
+  assert.equal(
+    core.workItems.filter((candidate) => Boolean(candidate.metadata.workIntake)).length,
+    0,
+  );
+});
+
 test('routeChannelMessage does not synthesize Cat proposals without a tool request', async () => {
   const { state, channelId } = createDirectState();
   const store = new MemoryChatStore(state);

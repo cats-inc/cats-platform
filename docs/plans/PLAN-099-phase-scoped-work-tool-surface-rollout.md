@@ -57,7 +57,7 @@ tool path; capture writes only Work Items, not Tasks/Runs.
 - [x] Task 3.1: Extend provider-agent observations so strong single-target Cats
       can receive policy-filtered intake tools when natural product-intent mode
       permits.
-- [ ] Task 3.2: Feed accepted tool results into the Chat message stream as
+- [x] Task 3.2: Feed accepted tool results into the Chat message stream as
       owner-visible acknowledgement sidecars.
 - [x] Task 3.3: Apply the same source-context builder to Telegram-originated
       messages.
@@ -167,6 +167,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Phase 2 Work intake delegate implemented with split proposal, supervised capture, idempotent Core writes, source metadata, and isolated tests. |
 | 2026-05-13 | Phase 3 source-context scaffolding added for Chat and Telegram observations; live runtime tool exposure and acknowledgement sidecars remain pending. |
 | 2026-05-13 | Phase 3.1 exposed policy-filtered `work.item.propose_split` descriptors to strong single-target Cat observations; `work.item.capture` remains hidden behind narrow-write policy. |
+| 2026-05-13 | Phase 3.2 added Chat/Telegram `work.item.propose_split` sidecars that use server-built source context, show candidate Work Items, and avoid durable Work writes. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---

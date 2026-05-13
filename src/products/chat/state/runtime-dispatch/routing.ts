@@ -73,6 +73,16 @@ import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
 import {
   type RuntimeTransportContext,
 } from '../runtimeTargeting.js';
+import { buildChatWorkIntakeSourceContext } from '../workIntakeSourceContext.js';
+import {
+  proposeWorkItemSplit,
+} from '../../../work/state/workIntakeDelegate.js';
+import {
+  WORK_ITEM_PROPOSE_SPLIT_TOOL,
+  type WorkItemProposeSplitInput,
+  type WorkItemSourceRef,
+  type WorkItemSplitCandidate,
+} from '../../../work/shared/workToolSurface.js';
 import {
   prepareDispatchTurn,
   prepareDispatchTurnForUserMessage,
@@ -168,6 +178,9 @@ import {
   type ClientMessageIdentityFallbackReason,
   type ClientMessageIdSource,
 } from '../../shared/clientMessageIdentity.js';
+
+const WORK_INTAKE_PROPOSAL_METADATA_KEY = 'workIntakeProposal';
+const WORK_INTAKE_PROPOSAL_METADATA_VERSION = 1;
 
 export type ProviderAgentDecisionRequester = (input: {
   state: ChatState;
@@ -1506,6 +1519,150 @@ function appendCatProductIntentProposalSidecar(input: {
     state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
     proposalMessage: append.message,
   };
+}
+
+function appendWorkIntakeProposalSidecar(input: {
+  state: ChatState;
+  channel: ChatChannelState;
+  channelId: string;
+  userMessage: ChatMessage;
+  providerAgentDecision: ProviderAgentDecision | null;
+  now: Date;
+  transport: RuntimeTransportContext | undefined;
+  transportBindingId?: string | null;
+}): { state: ChatState; proposalMessage: ChatMessage | null } {
+  if (
+    input.providerAgentDecision?.kind !== 'tool_request'
+    || input.providerAgentDecision.toolName !== WORK_ITEM_PROPOSE_SPLIT_TOOL
+  ) {
+    return { state: input.state, proposalMessage: null };
+  }
+  if (hasWorkIntakeProposalSidecar({
+    channel: input.channel,
+    sourceMessageId: input.userMessage.id,
+    decisionId: input.providerAgentDecision.decisionId,
+  })) {
+    return { state: input.state, proposalMessage: null };
+  }
+
+  const sourceContext = buildChatWorkIntakeSourceContext({
+    state: input.state,
+    channelId: input.channelId,
+    message: input.userMessage,
+    transport: input.transport,
+    transportBindingId: input.transportBindingId,
+  });
+  const toolInput = {
+    ...readToolInputRecord(input.providerAgentDecision.input),
+    source: sourceContext.sourceRef,
+  } as WorkItemProposeSplitInput;
+  const result = proposeWorkItemSplit(toolInput);
+
+  if (result.status !== 'applied') {
+    warnWorkIntakeProposalToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: result.status === 'rejected' ? result.error.code : 'pending_approval',
+      details: result.status === 'rejected' ? result.error.details : result.summary,
+    });
+    return { state: input.state, proposalMessage: null };
+  }
+
+  const append = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats Work',
+      body: describeWorkIntakeProposalCandidates(result.result.candidates),
+    },
+    input.now,
+    {
+      metadata: {
+        event: 'work_intake_proposal_created',
+        sourceMessageId: input.userMessage.id,
+        [WORK_INTAKE_PROPOSAL_METADATA_KEY]: {
+          schemaVersion: WORK_INTAKE_PROPOSAL_METADATA_VERSION,
+          phase: 'intake',
+          toolName: WORK_ITEM_PROPOSE_SPLIT_TOOL,
+          decisionId: input.providerAgentDecision.decisionId,
+          source: stripSourceText(result.result.sourceRef),
+          contextRefs: sourceContext.contextRefs,
+          candidates: result.result.candidates.map((candidate) => ({
+            tempId: candidate.tempId,
+            title: candidate.title,
+            summary: candidate.summary ?? null,
+            kind: candidate.kind ?? null,
+            priority: candidate.priority ?? null,
+            confidence: candidate.confidence,
+            suggestedProjectTitle: candidate.suggestedProjectTitle ?? null,
+            openQuestions: candidate.openQuestions ?? [],
+          })),
+        },
+      },
+      incrementUnread: false,
+    },
+  );
+
+  return {
+    state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+    proposalMessage: append.message,
+  };
+}
+
+function hasWorkIntakeProposalSidecar(input: {
+  channel: ChatChannelState;
+  sourceMessageId: string;
+  decisionId: string;
+}): boolean {
+  return input.channel.messages.some((message) => {
+    const metadata = readToolInputRecord(
+      message.metadata[WORK_INTAKE_PROPOSAL_METADATA_KEY],
+    );
+    return message.metadata.event === 'work_intake_proposal_created'
+      && message.metadata.sourceMessageId === input.sourceMessageId
+      && metadata.decisionId === input.decisionId;
+  });
+}
+
+function describeWorkIntakeProposalCandidates(candidates: WorkItemSplitCandidate[]): string {
+  if (candidates.length === 0) {
+    return 'No Work Items were proposed from this message.';
+  }
+
+  return [
+    'Proposed Work Items:',
+    ...candidates.map((candidate, index) => `${index + 1}. ${candidate.title}`),
+  ].join('\n');
+}
+
+function stripSourceText(sourceRef: WorkItemSourceRef): Omit<WorkItemSourceRef, 'sourceText'> {
+  const { sourceText: _sourceText, ...safeSourceRef } = sourceRef;
+  return safeSourceRef;
+}
+
+function readToolInputRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function warnWorkIntakeProposalToolCallIgnored(input: {
+  channelId: string;
+  messageId: string;
+  decisionId: string;
+  reason: string;
+  details?: unknown;
+}): void {
+  console.warn('Work intake proposal tool call ignored.', {
+    feature: 'work_intake_proposal',
+    channelId: input.channelId,
+    messageId: input.messageId,
+    decisionId: input.decisionId,
+    reason: input.reason,
+    ...(input.details ? { details: input.details } : {}),
+  });
 }
 
 function warnCatProductIntentProposalToolCallIgnored(input: {
@@ -3768,6 +3925,17 @@ export async function beginChannelMessageDispatch(
     transport: options.transport,
   });
   nextState = catProposalSidecar.state;
+  const workIntakeProposalSidecar = appendWorkIntakeProposalSidecar({
+    state: nextState,
+    channel: requireChannel(nextState, channelId),
+    channelId,
+    userMessage: preparedTurn.userMessage,
+    providerAgentDecision,
+    now,
+    transport: options.transport,
+    transportBindingId: options.transportBindingId,
+  });
+  nextState = workIntakeProposalSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),
@@ -3943,6 +4111,17 @@ export async function beginChannelMessageRetryDispatch(
     transport: options.transport,
   });
   nextState = catProposalSidecar.state;
+  const workIntakeProposalSidecar = appendWorkIntakeProposalSidecar({
+    state: nextState,
+    channel: requireChannel(nextState, channelId),
+    channelId,
+    userMessage: sourceMessage,
+    providerAgentDecision,
+    now,
+    transport: options.transport,
+    transportBindingId: options.transportBindingId,
+  });
+  nextState = workIntakeProposalSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),
