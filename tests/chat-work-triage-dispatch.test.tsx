@@ -813,6 +813,110 @@ test('Chat provider-agent Work sidecars reject caller-supplied resolved ids', as
   }
 });
 
+test('Chat provider-agent Work sidecars reject mismatched tool targets', async () => {
+  const now = new Date('2026-05-13T12:37:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Work item tool target guard',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const core = upsertCoreWorkItem(
+    createDefaultCoreState(),
+    {
+      id: 'work-item-target-guard-1',
+      title: 'Guard tool target',
+      status: 'planned',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {},
+    },
+    now,
+  ).core;
+  const store = new MemoryChatStore(state);
+  await store.writeCore(core);
+  const warnings: unknown[][] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args);
+  };
+  try {
+    const begun = await beginChannelMessageDispatch(
+      state,
+      channelId,
+      {
+        body: 'Boss Cat update work-item-target-guard-1 and mark it ready',
+      },
+      runtimeStub(),
+      new Date('2026-05-13T12:38:00.000Z'),
+      {
+        chatStore: store,
+        providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+        providerAgentDecisionRequester: async ({ observation }) => {
+          assert.equal(
+            observation.availableTools.some((tool) =>
+              tool.manifest.name === WORK_ITEM_UPDATE_TOOL),
+            true,
+          );
+          return {
+            contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+            kind: 'tool_request',
+            decisionId: 'decision-work-item-target-guard-1',
+            confidence: 'high',
+            toolName: WORK_ITEM_UPDATE_TOOL,
+            target: {
+              kind: 'worker_tool',
+              toolName: WORK_PROJECT_LOOKUP_TOOL,
+            },
+            input: {
+              status: 'ready',
+            },
+            rationaleSummary: 'This injected decision has the wrong worker tool target.',
+          };
+        },
+      },
+    );
+
+    const persistedCore = await store.readCore();
+    const workItem = persistedCore.workItems.find((candidate) =>
+      candidate.id === 'work-item-target-guard-1');
+    const channel = requireChannel(begun.state, channelId);
+    const resultMessage = channel.messages.find((message) =>
+      message.metadata.workItemUpdateResult);
+
+    assert.equal(workItem?.status, 'planned');
+    assert.equal(resultMessage, undefined);
+    assert.equal(
+      warnings.some((entry) =>
+        String(entry[0]).includes('Work item update tool call ignored.')
+        && JSON.stringify(entry[1]).includes('tool_request_target_mismatch')),
+      true,
+    );
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
 test('Telegram provider-agent Work triage update preserves transport context', async () => {
   const now = new Date('2026-05-13T12:40:00.000Z');
   const state = createChannel(
