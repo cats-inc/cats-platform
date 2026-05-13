@@ -99,12 +99,25 @@ test('Work Task creation creates a pending approval Task and links the Work Item
   const afterFirst = await coreStore.readCore();
   const workItem = afterFirst.workItems.find((candidate) => candidate.id === 'work-item-ready');
   const task = afterFirst.tasks.find((candidate) => candidate.id === first.result.taskId);
+  const planning = task?.metadata.planning as
+    | {
+        productHint?: string;
+        strategyHint?: string;
+        strategyContext?: { workItemId?: string; projectId?: string };
+      }
+    | undefined;
   assert.equal(workItem?.taskId, first.result.taskId);
   assert.equal(task?.title, 'Implement the Telegram intake slice');
   assert.equal(task?.status, 'pending_approval');
   assert.equal(task?.approval.status, 'pending');
   assert.equal(task?.conversationId, 'conversation-cats');
   assert.deepEqual(task?.assignedActorIds, ['cat:boss']);
+  assert.equal(planning?.productHint, 'work');
+  assert.equal(planning?.strategyHint, 'pdca');
+  assert.deepEqual(planning?.strategyContext, {
+    workItemId: 'work-item-ready',
+    projectId: 'project-cats-platform',
+  });
   assert.deepEqual(workItem?.metadata.workIntake, {
     source: {
       surface: 'telegram',

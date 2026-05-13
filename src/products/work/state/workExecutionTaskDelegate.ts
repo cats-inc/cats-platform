@@ -17,6 +17,9 @@ import {
   type WorkTaskCreateFromWorkItemResult,
   validateWorkTaskCreateFromWorkItemInput,
 } from '../shared/workToolSurface.js';
+import {
+  writeTaskPlanningMetadata,
+} from '../../../shared/taskPlanning.js';
 
 const WORK_EXECUTION_METADATA_KEY = 'workExecution';
 const WORK_EXECUTION_METADATA_VERSION = 1;
@@ -119,15 +122,16 @@ export async function createTaskFromWorkItem(
             orchestratorActorId: context.actorRef,
             assignedActorIds: resolveExecutionTaskAssignedActors(workItem, context),
             summary: input.summary?.trim() || workItem.summary,
-            metadata: {
-              [WORK_EXECUTION_METADATA_KEY]: buildWorkExecutionTaskMetadata(
+            metadata: buildWorkExecutionTaskMetadataEnvelope(
+              workItem,
+              buildWorkExecutionTaskMetadata(
                 workItem,
                 input,
                 context,
                 idempotencyKey,
                 createdAt,
               ),
-            },
+            ),
           },
           createdAt,
         )
@@ -329,6 +333,25 @@ function buildWorkExecutionTaskMetadata(
     requestedSummary: input.summary?.trim() || null,
     approvalNote: input.approvalNote?.trim() || null,
   };
+}
+
+function buildWorkExecutionTaskMetadataEnvelope(
+  workItem: CoreWorkItemRecord,
+  workExecution: Record<string, unknown>,
+): Record<string, unknown> {
+  return writeTaskPlanningMetadata(
+    {
+      [WORK_EXECUTION_METADATA_KEY]: workExecution,
+    },
+    {
+      productHint: 'work',
+      strategyHint: 'pdca',
+      strategyContext: {
+        workItemId: workItem.id,
+        ...(workItem.projectId ? { projectId: workItem.projectId } : {}),
+      },
+    },
+  );
 }
 
 function appendTaskCreationActivityIfMissing(
