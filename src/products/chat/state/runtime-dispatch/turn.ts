@@ -73,13 +73,21 @@ import {
 import {
   createCatProductIntentProposalToolManifest,
 } from '../../shared/catProductIntentProposal.js';
-import type { WorkToolCapabilityProfile } from '../../../work/shared/workToolSurface.js';
+import {
+  WORK_EXTERNAL_LINK_ISSUE_TOOL,
+  WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+  createPhaseScopedWorkToolManifests,
+  type WorkToolCapabilityProfile,
+} from '../../../work/shared/workToolSurface.js';
 import {
   createPhaseScopedWorkToolObservation,
 } from '../../../work/shared/workToolObservation.js';
 import {
   resolveWorkExecutionPreparationPhase,
 } from '../../../work/shared/workExecutionPreparationPhase.js';
+import {
+  resolveWorkExternalBindingPhase,
+} from '../../../work/shared/workExternalBindingPhase.js';
 import {
   resolveEffectiveChatNaturalProductIntentMode,
   type ChatNaturalProductIntentMode,
@@ -539,6 +547,9 @@ function buildProviderAgentObservationForTurn(input: {
   if (policyDecision.status !== 'applied') {
     return null;
   }
+  const providerAgentActorRef = singleCatTarget
+    ? `cat:${singleCatTarget.participantId}`
+    : 'orchestrator';
   const exposeCatProductIntentProposalTool = shouldExposeCatProductIntentProposalTool({
     channel,
     core: input.core,
@@ -585,13 +596,53 @@ function buildProviderAgentObservationForTurn(input: {
           `work-execution-preparation-work-item:${workItemId}`),
       ]
       : [];
+  const workExternalBindingPhase = resolveWorkExternalBindingPhase({
+    rawText: input.payload.body,
+  });
+  const workExternalBindingPolicyDecision = workExternalBindingPhase.kind === 'matched'
+    ? decideSupervisionPolicy({
+        actionId: `${input.userMessage.id}:work-external-binding-observation`,
+        runId: `chat:${input.channelId}`,
+        actorRef: providerAgentActorRef,
+        targetRef: workExternalBindingPhase.operation === 'link'
+          ? WORK_EXTERNAL_LINK_ISSUE_TOOL
+          : WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+        providerRef: capabilityProfile.profileId,
+        actionType: 'work_external_tracker_binding',
+        evaluatedAt: input.nowIso,
+        capabilityAssessment: capabilityProfile.assessment,
+        toolManifest: findWorkExternalBindingManifest(workExternalBindingPhase.operation),
+      })
+    : null;
+  const workExternalBindingToolObservation = createWorkExternalBindingToolObservation({
+    enabled: workExternalBindingPhase.kind === 'matched'
+      && Boolean(input.core)
+      && workExternalBindingPolicyDecision?.status === 'applied',
+    capabilityProfileKind: capabilityProfile.kind,
+    policy: workExternalBindingPolicyDecision?.status === 'applied'
+      ? workExternalBindingPolicyDecision.result.policy
+      : policyDecision.result.policy,
+  });
+  const workExternalBindingContextRefs =
+    workExternalBindingPhase.kind === 'matched'
+      && workExternalBindingToolObservation.descriptors.length > 0
+      ? [
+        `work-external-binding-phase:${workExternalBindingPhase.phase}`,
+        `work-external-binding-operation:${workExternalBindingPhase.operation}`,
+        `work-external-binding-local-kind:${workExternalBindingPhase.localKind}`,
+        `work-external-binding-local-id:${workExternalBindingPhase.localId}`,
+        `work-external-binding-provider:${workExternalBindingPhase.external.provider}`,
+        `work-external-binding-external-type:${
+          workExternalBindingPhase.external.externalType ?? 'issue'
+        }`,
+        `work-external-binding-external-id:${workExternalBindingPhase.external.externalId}`,
+      ]
+      : [];
 
   return buildChatProviderAgentObservation({
     state: input.state,
     channelId: input.channelId,
-    actorRef: singleCatTarget
-      ? `cat:${singleCatTarget.participantId}`
-      : 'orchestrator',
+    actorRef: providerAgentActorRef,
     capabilityProfile,
     policy: policyDecision.result.policy,
     availableTools: [
@@ -605,10 +656,12 @@ function buildProviderAgentObservationForTurn(input: {
         : []),
       ...workIntakeToolObservation.descriptors,
       ...workExecutionPreparationToolObservation.descriptors,
+      ...workExternalBindingToolObservation.descriptors,
     ],
     additionalContextRefs: [
       ...workIntakeSourceContext.contextRefs,
       ...workExecutionPreparationContextRefs,
+      ...workExternalBindingContextRefs,
     ],
     invariants: [
       ...(exposeCatProductIntentProposalTool
@@ -621,6 +674,7 @@ function buildProviderAgentObservationForTurn(input: {
         : []),
       ...workIntakeToolObservation.invariants,
       ...workExecutionPreparationToolObservation.invariants,
+      ...workExternalBindingToolObservation.invariants,
     ],
     messageCharacterCount: input.payload.body.length,
     routing: {
@@ -632,6 +686,20 @@ function buildProviderAgentObservationForTurn(input: {
     },
     now: new Date(input.nowIso),
   });
+}
+
+function findWorkExternalBindingManifest(
+  operation: 'link' | 'unlink',
+): ReturnType<typeof createPhaseScopedWorkToolManifests>[number] {
+  const toolName = operation === 'link'
+    ? WORK_EXTERNAL_LINK_ISSUE_TOOL
+    : WORK_EXTERNAL_UNLINK_ISSUE_TOOL;
+  const manifest = createPhaseScopedWorkToolManifests().find((candidate) =>
+    candidate.name === toolName);
+  if (!manifest) {
+    throw new Error(`Missing Work external binding tool manifest: ${toolName}`);
+  }
+  return manifest;
 }
 
 function createWorkIntakeToolObservation(input: {
@@ -657,6 +725,20 @@ function createWorkExecutionPreparationToolObservation(input: {
     enabled: input.enabled,
     phase: 'execution_preparation',
     capabilityProfile: 'boss_cat',
+    parentToolScope: input.policy.toolScope,
+    policyToolScope: input.policy.toolScope,
+  });
+}
+
+function createWorkExternalBindingToolObservation(input: {
+  enabled: boolean;
+  capabilityProfileKind: 'strong_agent' | 'weak_worker' | 'unknown';
+  policy: SupervisionPolicy;
+}): ReturnType<typeof createPhaseScopedWorkToolObservation> {
+  return createPhaseScopedWorkToolObservation({
+    enabled: input.enabled,
+    phase: 'external_tracker_binding',
+    capabilityProfile: resolveWorkToolCapabilityProfile(input.capabilityProfileKind),
     parentToolScope: input.policy.toolScope,
     policyToolScope: input.policy.toolScope,
   });

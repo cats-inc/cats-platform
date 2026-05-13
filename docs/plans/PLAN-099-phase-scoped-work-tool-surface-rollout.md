@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice wired explicit external tracker binding requests into Chat provider-agent observations, exposing local-only link/unlink tools to strong Cats without leaking the raw external URL into observation refs. |
 | 2026-05-13 | Follow-up slice added an explicit external tracker binding phase resolver for future Chat/Telegram tool exposure, matching only local Work refs plus supported external tracker URLs. |
 | 2026-05-13 | Follow-up slice synced the tool-call registry after Work detail unlink UI landed for `work.external.unlink_issue`. |
 | 2026-05-13 | Follow-up slice added Work Item and Project detail unlink actions for external tracker bindings, backed by the local-only unlink API and Work Graph refresh. |

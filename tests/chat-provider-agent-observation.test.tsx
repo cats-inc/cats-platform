@@ -43,6 +43,8 @@ import {
   buildChannelDispatchOrchestratorSummaryFromBegun,
 } from '../src/products/chat/api/orchestratorDispatchResponse.ts';
 import {
+  WORK_EXTERNAL_LINK_ISSUE_TOOL,
+  WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
 } from '../src/products/work/shared/workToolSurface.ts';
@@ -490,6 +492,89 @@ test('Chat provider-agent observation exposes read-only Boss Cat execution prepa
       && invariant.includes('Do not request')),
     true,
   );
+});
+
+test('Chat provider-agent observation exposes local external tracker binding for explicit requests', () => {
+  const now = new Date('2026-05-13T10:10:00.000Z');
+  let state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'External tracker binding',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const bossCatId = state.cats[0]?.id;
+  if (!bossCatId) {
+    throw new Error('Expected Boss Cat id.');
+  }
+  state = {
+    ...state,
+    bossCatId,
+  };
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const core = upsertCoreWorkItem(
+    createDefaultCoreState(),
+    {
+      id: 'work-item-external-1',
+      title: 'Bind issue tracker',
+      status: 'planned',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {},
+    },
+    now,
+  ).core;
+  const externalUrl = 'https://github.com/cats-inc/cats-platform/issues/123';
+
+  const { prepared } = appendAndPrepare({
+    state,
+    channelId,
+    body: `Boss Cat link work-item-external-1 to ${externalUrl}`,
+    now: new Date('2026-05-13T10:11:00.000Z'),
+    core,
+    providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+  });
+  const observation = prepared.providerAgentObservation;
+  const toolNames = observationToolNames(observation);
+
+  assert.equal(toolNames.includes(WORK_EXTERNAL_LINK_ISSUE_TOOL), true);
+  assert.equal(toolNames.includes(WORK_EXTERNAL_UNLINK_ISSUE_TOOL), true);
+  assert.equal(
+    observation?.contextRefs.includes('work-external-binding-operation:link'),
+    true,
+  );
+  assert.equal(
+    observation?.contextRefs.includes('work-external-binding-local-id:work-item-external-1'),
+    true,
+  );
+  assert.equal(
+    observation?.contextRefs.includes('work-external-binding-provider:github'),
+    true,
+  );
+  assert.equal(
+    observation?.contextRefs.includes('work-external-binding-external-id:123'),
+    true,
+  );
+  assert.equal(JSON.stringify(observation).includes(externalUrl), false);
+  assert.deepEqual(validateProviderAgentBoundedObservation(observation!), []);
 });
 
 test('Chat default turns bind provider-agent observation to the selected execution target', () => {
