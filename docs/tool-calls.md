@@ -190,7 +190,9 @@ hints are guidance only; server-side validators, policy gates, and Chat
 sidecar cue checks remain authoritative. The provider-agent observation
 validator also bounds tool reasons, summary counts/keys/values, context refs,
 invariants, budgets, and allowed fallback surfaces before any runtime adapter
-call receives the observation.
+call receives the observation. Provider-agent decision validation also bounds
+`tool_request.input` and semantic-plan step `input` as JSON-compatible values
+with capped depth, key counts, array length, and string length.
 
 | Tool | Phase | Side effect | Approval | Evidence | Notes |
 |------|-------|-------------|----------|----------|-------|

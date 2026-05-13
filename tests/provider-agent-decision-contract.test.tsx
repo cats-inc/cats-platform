@@ -520,6 +520,57 @@ test('provider-agent decisions validate expected output schema refs against tool
   ]);
 });
 
+test('provider-agent tool inputs stay bounded JSON values', () => {
+  const toolRequest: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'tool_request',
+    decisionId: 'decision-input-bounds',
+    confidence: 'medium',
+    toolName: 'work.context.lookup',
+    target: { kind: 'worker_tool', toolName: 'work.context.lookup' },
+    input: {
+      raw: 'x'.repeat(4001),
+      items: Array.from({ length: 33 }, (_, index) => `item-${index}`),
+      callback: (() => undefined) as unknown,
+    },
+    rationaleSummary: 'Try to pass an unbounded tool input.',
+  };
+  const semanticPlan: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 'decision-step-input-bounds',
+    planId: 'plan-step-input-bounds',
+    confidence: 'medium',
+    rationaleSummary: 'Try to pass an unbounded step input.',
+    steps: [
+      {
+        stepId: 'step-lookup',
+        summary: 'Read bounded context.',
+        action: 'call_tool',
+        toolName: 'work.context.lookup',
+        input: {
+          raw: 'x'.repeat(4001),
+        },
+      },
+    ],
+  };
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: toolRequest,
+  }), [
+    'tool_request.input.raw must be 4000 characters or less',
+    'tool_request.input.items must contain 32 entries or fewer',
+    'tool_request.input.callback must be JSON-compatible',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: semanticPlan,
+  }), [
+    'step step-lookup.input.raw must be 4000 characters or less',
+  ]);
+});
+
 test('provider-agent decisions reject unsupported enum values', () => {
   const unknownDecision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,

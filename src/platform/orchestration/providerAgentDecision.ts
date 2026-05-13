@@ -43,6 +43,11 @@ export const PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH = 120;
 export const PROVIDER_AGENT_MAX_SCHEMA_REF_ID_LENGTH = 160;
 export const PROVIDER_AGENT_MAX_SCHEMA_REF_VERSION_LENGTH = 40;
 export const PROVIDER_AGENT_MAX_SCHEMA_REF_URI_LENGTH = 1000;
+export const PROVIDER_AGENT_MAX_TOOL_INPUT_DEPTH = 6;
+export const PROVIDER_AGENT_MAX_TOOL_INPUT_OBJECT_KEYS = 32;
+export const PROVIDER_AGENT_MAX_TOOL_INPUT_ARRAY_ITEMS = 32;
+export const PROVIDER_AGENT_MAX_TOOL_INPUT_KEY_LENGTH = 80;
+export const PROVIDER_AGENT_MAX_TOOL_INPUT_STRING_LENGTH = 4000;
 export const PROVIDER_AGENT_DECISION_CONFIDENCE_VALUES = ['low', 'medium', 'high'] as const;
 export const PROVIDER_AGENT_TASK_RISK_VALUES = ['low', 'medium', 'high'] as const;
 export const PROVIDER_AGENT_TASK_KIND_VALUES = [
@@ -392,6 +397,9 @@ function validateSemanticPlanDecision(
       step.summary,
       PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
     );
+    if (step.input !== undefined) {
+      validateBoundedJsonValue(errors, `step ${step.stepId}.input`, step.input);
+    }
 
     if (step.action === 'call_tool') {
       validateToolName(errors, step.toolName, availableToolNames, `step ${step.stepId}`);
@@ -436,6 +444,7 @@ function validateToolRequestDecision(
     decision.expectedOutputSchemaRef,
     availableToolByName.get(decision.toolName),
   );
+  validateBoundedJsonValue(errors, 'tool_request.input', decision.input);
   validateBoundedString(
     errors,
     'rationaleSummary',
@@ -987,6 +996,117 @@ function validateBoundedStringArray(
   });
 }
 
+function validateBoundedJsonValue(
+  errors: string[],
+  field: string,
+  value: unknown,
+  depth = 0,
+  seen: WeakSet<object> = new WeakSet(),
+): void {
+  if (value === null || typeof value === 'boolean') {
+    return;
+  }
+  if (typeof value === 'string') {
+    if (value.length > PROVIDER_AGENT_MAX_TOOL_INPUT_STRING_LENGTH) {
+      errors.push(
+        `${field} must be ${PROVIDER_AGENT_MAX_TOOL_INPUT_STRING_LENGTH} characters or less`,
+      );
+    }
+    return;
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      errors.push(`${field} must be a finite number`);
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    validateBoundedJsonArray(errors, field, value, depth, seen);
+    return;
+  }
+  if (isRecord(value)) {
+    validateBoundedJsonObject(errors, field, value, depth, seen);
+    return;
+  }
+
+  errors.push(`${field} must be JSON-compatible`);
+}
+
+function validateBoundedJsonArray(
+  errors: string[],
+  field: string,
+  value: unknown[],
+  depth: number,
+  seen: WeakSet<object>,
+): void {
+  if (depth >= PROVIDER_AGENT_MAX_TOOL_INPUT_DEPTH) {
+    errors.push(`${field} must not exceed depth ${PROVIDER_AGENT_MAX_TOOL_INPUT_DEPTH}`);
+    return;
+  }
+  if (seen.has(value)) {
+    errors.push(`${field} must not contain circular references`);
+    return;
+  }
+
+  seen.add(value);
+  if (value.length > PROVIDER_AGENT_MAX_TOOL_INPUT_ARRAY_ITEMS) {
+    errors.push(
+      `${field} must contain ${PROVIDER_AGENT_MAX_TOOL_INPUT_ARRAY_ITEMS} entries or fewer`,
+    );
+  }
+  value
+    .slice(0, PROVIDER_AGENT_MAX_TOOL_INPUT_ARRAY_ITEMS)
+    .forEach((entry, index) =>
+      validateBoundedJsonValue(errors, `${field}[${index}]`, entry, depth + 1, seen));
+  seen.delete(value);
+}
+
+function validateBoundedJsonObject(
+  errors: string[],
+  field: string,
+  value: Record<string, unknown>,
+  depth: number,
+  seen: WeakSet<object>,
+): void {
+  if (depth >= PROVIDER_AGENT_MAX_TOOL_INPUT_DEPTH) {
+    errors.push(`${field} must not exceed depth ${PROVIDER_AGENT_MAX_TOOL_INPUT_DEPTH}`);
+    return;
+  }
+  if (!isPlainJsonObject(value)) {
+    errors.push(`${field} must be a plain JSON object`);
+    return;
+  }
+  if (seen.has(value)) {
+    errors.push(`${field} must not contain circular references`);
+    return;
+  }
+
+  seen.add(value);
+  const entries = Object.entries(value);
+  if (entries.length > PROVIDER_AGENT_MAX_TOOL_INPUT_OBJECT_KEYS) {
+    errors.push(
+      `${field} must contain ${PROVIDER_AGENT_MAX_TOOL_INPUT_OBJECT_KEYS} keys or fewer`,
+    );
+  }
+
+  entries
+    .slice(0, PROVIDER_AGENT_MAX_TOOL_INPUT_OBJECT_KEYS)
+    .forEach(([key, entry]) => {
+      if (key.trim() === '') {
+        errors.push(`${field} keys must not be blank`);
+        return;
+      }
+      if (key.length > PROVIDER_AGENT_MAX_TOOL_INPUT_KEY_LENGTH) {
+        errors.push(
+          `${field} keys must be ${PROVIDER_AGENT_MAX_TOOL_INPUT_KEY_LENGTH} characters or less`,
+        );
+        return;
+      }
+      validateBoundedJsonValue(errors, `${field}.${key}`, entry, depth + 1, seen);
+    });
+  seen.delete(value);
+}
+
 function validateOptionalPositiveNumber(
   errors: string[],
   field: string,
@@ -1015,4 +1135,9 @@ function validateOptionalPositiveInteger(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isPlainJsonObject(value: Record<string, unknown>): boolean {
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
