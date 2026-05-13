@@ -944,6 +944,96 @@ test('POST /api/orchestrator/dispatch passes provider tool decisions into Work i
   });
 });
 
+test('POST /api/orchestrator/dispatch applies provider Work project create decisions', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  let observedToolNames = [];
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Work',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+    let chat = await chatStore.read();
+    chat = setChannelCatLease(
+      chat,
+      channelId,
+      catId,
+      {
+        status: 'ready',
+        sessionId: 'session-work-project-create',
+        laneId: 'lane-work-project-create',
+      },
+      new Date('2026-05-13T00:00:00.000Z'),
+    );
+    await chatStore.write(chat);
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Boss Cat create project Cats Mobile',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.equal(observedToolNames.includes(WORK_PROJECT_CREATE_TOOL), true);
+
+    const core = await chatStore.readCore();
+    const project = core.projects.find((candidate) => candidate.title === 'Cats Mobile');
+    assert.ok(project);
+    assert.equal(project.status, 'planned');
+    assert.equal(project.summary, 'Mobile companion for Cats.');
+
+    const persisted = await chatStore.read();
+    const channel = buildChannelView(persisted, channelId);
+    const resultMessage = channel.messages.find((message) =>
+      message.metadata.event === 'work_project_create_result');
+    const metadata = resultMessage?.metadata.workProjectCreateResult;
+    assert.equal(metadata?.title, 'Cats Mobile');
+    assert.equal(metadata?.created, true);
+    assert.equal(metadata?.projectId, project.id);
+  }, chatStore, {
+    providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
+    providerAgentDecisionRequester: async ({ observation }) => {
+      observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
+      return {
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-api-work-project-create-1',
+        confidence: 'high',
+        toolName: WORK_PROJECT_CREATE_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_PROJECT_CREATE_TOOL,
+        },
+        input: {
+          title: 'Cats Mobile',
+          summary: 'Mobile companion for Cats.',
+          status: 'planned',
+        },
+        rationaleSummary: 'The owner explicitly asked to create a Project.',
+      };
+    },
+  });
+});
+
 test('POST /api/orchestrator/dispatch reuses the room-entry session during a concurrent wake', async () => {
   const runtimeClient = createRuntimeStub();
   const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
