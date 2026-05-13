@@ -401,6 +401,62 @@ test('provider-agent decisions validate addressable tool and delegation targets'
   ]);
 });
 
+test('provider-agent decisions validate expected output schema refs against tool manifests', () => {
+  const mismatchedToolRequest: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'tool_request',
+    decisionId: 'decision-mismatched-schema',
+    confidence: 'medium',
+    toolName: 'work.context.lookup',
+    target: { kind: 'worker_tool', toolName: 'work.context.lookup' },
+    input: {},
+    expectedOutputSchemaRef: {
+      id: 'work.local_note.apply.output',
+      version: '1.0',
+      format: 'json_schema',
+    },
+    rationaleSummary: 'Try a mismatched output schema ref.',
+  };
+  const malformedSchemaStep: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 'decision-bad-schema-ref',
+    planId: 'plan-bad-schema-ref',
+    confidence: 'medium',
+    rationaleSummary: 'Return malformed schema refs.',
+    steps: [
+      {
+        stepId: 'step-lookup',
+        summary: 'Read bounded context.',
+        action: 'call_tool',
+        toolName: 'work.context.lookup',
+        expectedOutputSchemaRef: {
+          id: '',
+          version: 'v'.repeat(41),
+          format: 'xml' as never,
+          uri: 'u'.repeat(1001),
+        },
+      },
+    ],
+  };
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: mismatchedToolRequest,
+  }), [
+    'tool_request.expectedOutputSchemaRef must match work.context.lookup outputSchema',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: malformedSchemaStep,
+  }), [
+    'step step-lookup.expectedOutputSchemaRef.id is required',
+    'step step-lookup.expectedOutputSchemaRef.version must be 40 characters or less',
+    'step step-lookup.expectedOutputSchemaRef.format is unsupported: xml',
+    'step step-lookup.expectedOutputSchemaRef.uri must be 1000 characters or less',
+  ]);
+});
+
 test('provider-agent decisions reject unsupported enum values', () => {
   const unknownDecision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,

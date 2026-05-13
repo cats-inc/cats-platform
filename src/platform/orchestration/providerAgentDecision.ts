@@ -29,6 +29,9 @@ export const PROVIDER_AGENT_MAX_SEMANTIC_PLAN_STEPS = 12;
 export const PROVIDER_AGENT_MAX_STEP_DEPENDENCIES = 8;
 export const PROVIDER_AGENT_MAX_STEP_DEPENDENCY_LENGTH = 80;
 export const PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH = 120;
+export const PROVIDER_AGENT_MAX_SCHEMA_REF_ID_LENGTH = 160;
+export const PROVIDER_AGENT_MAX_SCHEMA_REF_VERSION_LENGTH = 40;
+export const PROVIDER_AGENT_MAX_SCHEMA_REF_URI_LENGTH = 1000;
 export const PROVIDER_AGENT_DECISION_CONFIDENCE_VALUES = ['low', 'medium', 'high'] as const;
 export const PROVIDER_AGENT_TASK_RISK_VALUES = ['low', 'medium', 'high'] as const;
 export const PROVIDER_AGENT_TASK_KIND_VALUES = [
@@ -240,6 +243,9 @@ export function validateProviderAgentDecision(
   const availableToolNames = new Set(
     input.observation.availableTools.map((tool) => tool.manifest.name),
   );
+  const availableToolByName = new Map(
+    input.observation.availableTools.map((tool) => [tool.manifest.name, tool.manifest]),
+  );
 
   validateBoundedString(
     errors,
@@ -265,10 +271,20 @@ export function validateProviderAgentDecision(
 
   switch (input.decision.kind) {
     case 'semantic_plan':
-      validateSemanticPlanDecision(errors, input.decision, availableToolNames);
+      validateSemanticPlanDecision(
+        errors,
+        input.decision,
+        availableToolNames,
+        availableToolByName,
+      );
       break;
     case 'tool_request':
-      validateToolRequestDecision(errors, input.decision, availableToolNames);
+      validateToolRequestDecision(
+        errors,
+        input.decision,
+        availableToolNames,
+        availableToolByName,
+      );
       break;
     case 'delegation_request':
       validateDelegationTarget(errors, input.decision);
@@ -306,6 +322,7 @@ function validateSemanticPlanDecision(
   errors: string[],
   decision: ProviderAgentSemanticPlanDecision,
   availableToolNames: Set<string>,
+  availableToolByName: Map<string, SupervisedToolManifest>,
 ): void {
   validateBoundedString(errors, 'planId', decision.planId, PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH);
   validateBoundedString(
@@ -358,6 +375,12 @@ function validateSemanticPlanDecision(
 
     if (step.action === 'call_tool') {
       validateToolName(errors, step.toolName, availableToolNames, `step ${step.stepId}`);
+      validateExpectedOutputSchemaRef(
+        errors,
+        `step ${step.stepId}`,
+        step.expectedOutputSchemaRef,
+        step.toolName ? availableToolByName.get(step.toolName) : undefined,
+      );
     }
     if (step.dependsOn !== undefined) {
       if (!Array.isArray(step.dependsOn)) {
@@ -383,15 +406,83 @@ function validateToolRequestDecision(
   errors: string[],
   decision: ProviderAgentToolRequestDecision,
   availableToolNames: Set<string>,
+  availableToolByName: Map<string, SupervisedToolManifest>,
 ): void {
   validateToolName(errors, decision.toolName, availableToolNames, 'tool_request');
   validateToolRequestTarget(errors, decision);
+  validateExpectedOutputSchemaRef(
+    errors,
+    'tool_request',
+    decision.expectedOutputSchemaRef,
+    availableToolByName.get(decision.toolName),
+  );
   validateBoundedString(
     errors,
     'rationaleSummary',
     decision.rationaleSummary,
     PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
   );
+}
+
+function validateExpectedOutputSchemaRef(
+  errors: string[],
+  field: string,
+  schemaRef: unknown,
+  manifest: SupervisedToolManifest | undefined,
+): void {
+  if (schemaRef === undefined || schemaRef === null) {
+    return;
+  }
+  if (!validateSchemaRef(errors, `${field}.expectedOutputSchemaRef`, schemaRef)) {
+    return;
+  }
+  if (!manifest) {
+    return;
+  }
+
+  if (
+    schemaRef.id !== manifest.outputSchema.id
+    || schemaRef.version !== manifest.outputSchema.version
+    || schemaRef.format !== manifest.outputSchema.format
+  ) {
+    errors.push(
+      `${field}.expectedOutputSchemaRef must match ${manifest.name} outputSchema`,
+    );
+  }
+}
+
+function validateSchemaRef(
+  errors: string[],
+  field: string,
+  value: unknown,
+): value is SchemaRef {
+  if (!isRecord(value)) {
+    errors.push(`${field} must be an object`);
+    return false;
+  }
+
+  const previousErrorCount = errors.length;
+  validateBoundedString(
+    errors,
+    `${field}.id`,
+    value.id,
+    PROVIDER_AGENT_MAX_SCHEMA_REF_ID_LENGTH,
+  );
+  validateBoundedString(
+    errors,
+    `${field}.version`,
+    value.version,
+    PROVIDER_AGENT_MAX_SCHEMA_REF_VERSION_LENGTH,
+  );
+  validateEnumValue(errors, `${field}.format`, value.format, ['json_schema']);
+  validateOptionalBoundedString(
+    errors,
+    `${field}.uri`,
+    value.uri,
+    PROVIDER_AGENT_MAX_SCHEMA_REF_URI_LENGTH,
+  );
+
+  return errors.length === previousErrorCount;
 }
 
 function validateToolRequestTarget(

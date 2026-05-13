@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice validated provider-agent expected output schema refs and required them to match the selected tool manifest output schema when supplied. |
 | 2026-05-13 | Follow-up slice validated provider-agent addressable targets and required `tool_request` decisions to target the matching `worker_tool`. |
 | 2026-05-13 | Follow-up slice blocked credential-bearing external tracker URLs from URL inference and Chat phase matching so unsafe links do not trigger model-visible binding tools. |
 | 2026-05-13 | Follow-up slice rejected credential-bearing external tracker URLs at the Work tool surface and metadata builder so bindings cannot persist user:pass URLs. |
