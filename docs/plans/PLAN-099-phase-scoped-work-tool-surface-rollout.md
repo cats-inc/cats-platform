@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice wired provider-agent decision options through orchestrator dispatch's deterministic channel router so API dispatch can produce Work intake proposal sidecars. |
 | 2026-05-13 | Follow-up slice added API-level dispatch coverage proving Work triage `toolIntent` reaches runtime `sendMessage` metadata. |
 | 2026-05-13 | Follow-up slice added API-level `/api/orchestrator/plan` coverage for natural todo intake, locking the HTTP contract to read-only `work.item.propose_split` intent. |
 | 2026-05-13 | Follow-up slice projects read-only `work-memory` intake intent for natural todo capture turns, exposing `work.item.propose_split` while keeping direct `work.item.capture` behind the existing confirmation path. |

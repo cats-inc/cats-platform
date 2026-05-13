@@ -39,6 +39,7 @@ import {
   WORK_PROJECT_LOOKUP_TOOL,
 } from '../build/server/products/work/shared/workToolSurface.js';
 import { WORK_MCP_PROFILE_ID } from '../build/server/products/work/shared/workToolIntent.js';
+import { PROVIDER_AGENT_DECISION_CONTRACT_VERSION } from '../build/server/platform/orchestration/index.js';
 import { buildChatLaneId } from '../build/server/shared/chatCoreIds.js';
 import {
   buildWorkflowContinuationReplayRequest,
@@ -77,6 +78,24 @@ const baseConfig = {
       mobileAudiences: [],
     },
   },
+};
+
+const strongClaudeNativeBootstrapConfig = {
+  version: 1,
+  profiles: [
+    {
+      id: 'claude-native-sonnet-strong',
+      selector: {
+        provider: 'claude',
+        instance: 'native',
+        model: 'sonnet',
+        control: 'default',
+      },
+      initialTreatment: 'strong_agent',
+      confidenceLevel: 'catalog_only',
+      reason: 'Orchestrator API fixture treats Claude native Sonnet as a strong Cat.',
+    },
+  ],
 };
 
 function usage(content) {
@@ -253,18 +272,28 @@ async function withServer(
     startup,
     coreStore,
     resumePendingOrchestratorDispatch,
+    config,
+    providerCapabilityBootstrapConfig,
+    providerCapabilityBootstrapDiagnostics,
+    providerCapabilityBootstrapDiagnosticSink,
     work,
     code,
     ...chatOverrides
   } = overrides;
   const server = createServer({
     shared: {
-      config: baseConfig,
+      config: {
+        ...baseConfig,
+        ...(config ?? {}),
+      },
       runtimeClient,
       now: () => new Date('2026-03-23T00:00:00.000Z'),
       startup,
       coreStore,
       resumePendingOrchestratorDispatch,
+      providerCapabilityBootstrapConfig,
+      providerCapabilityBootstrapDiagnostics,
+      providerCapabilityBootstrapDiagnosticSink,
     },
     chat: {
       chatStore,
@@ -824,6 +853,95 @@ test('POST /api/orchestrator/dispatch forwards Work triage tool intent to runtim
     ]);
     assert.equal(toolIntent.strict, true);
   }, chatStore);
+});
+
+test('POST /api/orchestrator/dispatch passes provider tool decisions into Work intake sidecars', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  let observedToolNames = [];
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Work',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Draft the MCP adapter contract; Add Telegram Work intake coverage',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.deepEqual(runtimeClient.sentMessages, []);
+    assert.equal(observedToolNames.includes(WORK_ITEM_PROPOSE_SPLIT_TOOL), true);
+
+    const chat = await chatStore.read();
+    const channel = buildChannelView(chat, channelId);
+    const proposalMessage = channel.messages.find((message) =>
+      message.metadata.event === 'work_intake_proposal_created');
+    const proposal = proposalMessage?.metadata.workIntakeProposal;
+    assert.equal(proposalMessage?.senderName, 'Cats Work');
+    assert.equal(
+      proposalMessage?.choices?.[0]?.options.some((option) =>
+        option.id === 'capture_work_items' && option.style === 'primary'),
+      true,
+    );
+    assert.deepEqual(
+      proposal?.candidates?.map((candidate) => candidate.title),
+      [
+        'Draft the MCP adapter contract',
+        'Add Telegram Work intake coverage',
+      ],
+    );
+
+    const core = await chatStore.readCore();
+    assert.equal(
+      core.workItems.filter((candidate) => Boolean(candidate.metadata.workIntake)).length,
+      0,
+    );
+  }, chatStore, {
+    config: {
+      chatNaturalProductIntentMode: 'cat_tool',
+    },
+    providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
+    providerAgentDecisionRequester: async ({ observation }) => {
+      observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
+      return {
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-api-work-intake-1',
+        confidence: 'high',
+        toolName: WORK_ITEM_PROPOSE_SPLIT_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_ITEM_PROPOSE_SPLIT_TOOL,
+        },
+        input: {
+          maxItems: 2,
+          defaultKind: 'todo',
+          defaultPriority: 'medium',
+        },
+        rationaleSummary: 'Propose structured Work Items from the owner message.',
+      };
+    },
+  });
 });
 
 test('POST /api/orchestrator/dispatch reuses the room-entry session during a concurrent wake', async () => {

@@ -251,9 +251,17 @@ export function resolveServerDependencies(
   );
   const companionActivityStore = dependencies.chat.companionActivityStore
     ?? createDefaultCompanionActivityStore(dependencies.shared, dependencies.chat);
+  const providerAgentDecisionRequester = dependencies.chat.providerAgentDecisionRequester
+    ?? (
+      dependencies.shared.config.chatProviderAgentDecisionEnabled === true
+        ? createChatProviderAgentDecisionRequester({ failureMode: 'return_null' })
+        : undefined
+    );
   const orchestratorChannelRouter = dependencies.chat.orchestratorChannelRouter
     ?? (
       dependencies.shared.config.runtimeStaleSessionRetryLimit === undefined
+      && providerAgentDecisionRequester === undefined
+      && dependencies.shared.config.chatNaturalProductIntentMode === undefined
         ? chatDeterministicChannelRouter
         : createChatDeterministicChannelRouter({
           runtimeRecovery: {
@@ -261,16 +269,14 @@ export function resolveServerDependencies(
           },
           chatStatePath: dependencies.shared.config.chatStatePath,
           runtimeDataDir: dependencies.shared.config.runtimeDataDir,
+          providerAgentDecisionRequester,
+          providerCapabilityBootstrapConfig: capabilityBootstrapLoaded.config,
+          providerCapabilityBootstrapDiagnosticSink,
+          naturalProductIntentMode: dependencies.shared.config.chatNaturalProductIntentMode,
         })
     );
   const orchestratorPlannerSurface = dependencies.chat.orchestratorPlannerSurface
     ?? chatDeterministicPlannerSurface;
-  const providerAgentDecisionRequester = dependencies.chat.providerAgentDecisionRequester
-    ?? (
-      dependencies.shared.config.chatProviderAgentDecisionEnabled === true
-        ? createChatProviderAgentDecisionRequester({ failureMode: 'return_null' })
-        : undefined
-    );
   const taskExecutionLocator = dependencies.chat.taskExecutionLocator
     ?? createChatTaskExecutionLocator(dependencies.chat.chatStore);
   const telegramRoomBridge = dependencies.chat.telegramRoomBridge

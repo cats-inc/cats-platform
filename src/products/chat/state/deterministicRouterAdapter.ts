@@ -5,11 +5,16 @@ import type {
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../../platform/memory/index.js';
 import type { WorkflowContinuationReplaySnapshot } from '../../../platform/orchestration/workflowContinuationReplay.js';
+import type {
+  ProviderCapabilityBootstrapConfig,
+  ProviderCapabilityBootstrapDiagnosticSink,
+} from '../../../platform/supervision/index.js';
 import type { RuntimeDispatchRecoveryPolicy } from '../../../shared/runtimeRecovery.js';
 import { buildApprovalQueue } from '../../../core/model/index.js';
 import type { CompanionBoxStore } from './companion-box/index.js';
 import type { ChatState } from '../api/contracts.js';
 import type { ChatStore } from './store.js';
+import type { ChatNaturalProductIntentMode } from '../shared/naturalProductIntentMode.js';
 import { buildChannelView, resolveOrchestratorDisplayName } from './model/index.js';
 import { resolveMentionRoute } from './mentionRouter.js';
 import { resolveRoomRoutingState } from './room-routing/index.js';
@@ -17,6 +22,7 @@ import {
   resumeWorkflowContinuationReplay,
   routeChannelMessage,
 } from './runtimeActions.js';
+import type { ProviderAgentDecisionRequester } from './runtime-dispatch/routing.js';
 import {
   buildChatOperatorView,
   buildRunInspectorView,
@@ -29,6 +35,10 @@ export function createChatDeterministicChannelRouter(
     runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
     chatStatePath?: string;
     runtimeDataDir?: string;
+    providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
+    providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
+    providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
+    naturalProductIntentMode?: ChatNaturalProductIntentMode;
   } = {},
 ): OrchestratorChannelRouter<CompanionBoxStore, ChatState> {
   return {
@@ -51,6 +61,10 @@ export function createChatDeterministicChannelRouter(
           runtimeRecovery: options.runtimeRecovery,
           chatStatePath: options.chatStatePath,
           runtimeDataDir: options.runtimeDataDir,
+          providerAgentDecisionRequester: options.providerAgentDecisionRequester,
+          providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
+          providerCapabilityBootstrapDiagnosticSink: options.providerCapabilityBootstrapDiagnosticSink,
+          naturalProductIntentMode: options.naturalProductIntentMode,
         },
       );
     },
