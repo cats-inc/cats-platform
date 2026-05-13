@@ -20,6 +20,7 @@ import {
 import { ProgressSummaryPanel } from '../ProgressSummaryPanel.js';
 import { ProviderModelFields } from '../ProviderModelFields.js';
 import { RunInspector } from '../RunInspector.js';
+import { getCatMcpProfileLabel } from '../settings-cats/viewSupport.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
@@ -193,6 +194,7 @@ export function ChatViewSidePanel({
       }
       if (!isDefaultChatComposer && defaultRecipientCat) {
         const catRecord = payload.chat.cats.find((cat) => cat.id === defaultRecipientCat.catId);
+        const mcpProfileLabel = getCatMcpProfileLabel(catRecord?.mcpProfile);
         const executionSummary = buildExecutionTargetSummary({
           provider: defaultRecipientCat.execution.target.provider,
           instance: defaultRecipientCat.execution.target.instance ?? null,
@@ -234,6 +236,12 @@ export function ChatViewSidePanel({
             <div className="catInspectField">
               <span className="catInspectFieldLabel">{t(messageKeys.sharedCatInspectModelLabel)}</span>
               <span>{executionSummary.modelLabel}</span>
+            </div>
+            <div className="catInspectField">
+              <span className="catInspectFieldLabel">
+                {t(messageKeys.sharedSettingsCatsMcpProfileLabel)}
+              </span>
+              <span>{mcpProfileLabel ? t(mcpProfileLabel) : catRecord?.mcpProfile}</span>
             </div>
           </div>
         );

@@ -23,6 +23,7 @@ import {
 import { ProgressSummaryPanel } from '../ProgressSummaryPanel.js';
 import { ProviderModelFields } from '../ProviderModelFields.js';
 import { RunInspector } from '../RunInspector.js';
+import { getCatMcpProfileLabel } from '../settings-cats/viewSupport.js';
 import { ChatParticipantsSection } from './ChatParticipantsSection.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
@@ -142,6 +143,7 @@ export function buildChatSidePanelSections({
 
   const executionChildren = (() => {
     if (isDirectLane && directLaneCat && directLaneExecutionTarget) {
+      const mcpProfileLabel = getCatMcpProfileLabel(directLaneCat.mcpProfile);
       return (
         <>
           <div className="sidePanelSectionStack">
@@ -160,6 +162,12 @@ export function buildChatSidePanelSections({
                   <span className="catInspectBadge">{t(messageKeys.sharedCatInspectBossLabel)}</span>
                 ) : null}
               </div>
+            </div>
+            <div className="catInspectField">
+              <span className="catInspectFieldLabel">
+                {t(messageKeys.sharedSettingsCatsMcpProfileLabel)}
+              </span>
+              <span>{mcpProfileLabel ? t(mcpProfileLabel) : directLaneCat.mcpProfile}</span>
             </div>
           </div>
           <ProviderModelFields
@@ -263,6 +271,7 @@ export function buildChatSidePanelSections({
       const catRecord = defaultRecipientCatRef
         ? payload.chat.cats.find((cat) => cat.id === defaultRecipientCatRef) ?? null
         : null;
+      const mcpProfileLabel = getCatMcpProfileLabel(catRecord?.mcpProfile);
       return (
         <div className="catInspectPanelBody">
             <div className="catInspectIdentity">
@@ -294,6 +303,12 @@ export function buildChatSidePanelSections({
           <div className="catInspectField">
             <span className="catInspectFieldLabel">{t(messageKeys.sharedCatInspectModelLabel)}</span>
             <span>{executionSummary.modelLabel}</span>
+          </div>
+          <div className="catInspectField">
+            <span className="catInspectFieldLabel">
+              {t(messageKeys.sharedSettingsCatsMcpProfileLabel)}
+            </span>
+            <span>{mcpProfileLabel ? t(mcpProfileLabel) : catRecord?.mcpProfile}</span>
           </div>
         </div>
       );

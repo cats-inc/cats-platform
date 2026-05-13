@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice surfaced Cat tool profile labels in Chat execution side panels and Cat inspect surfaces so direct-lane Work Cats remain visible outside settings. |
 | 2026-05-13 | Follow-up slice surfaced Cat tool profile labels in the registry list so `work-memory` Cats are visible without opening the detail panel. |
 | 2026-05-13 | Follow-up slice added create-time Cat tool profile selection so new Work-oriented Cats can be created with `work-memory` directly while `chat-memory` remains the implicit default. |
 | 2026-05-13 | Follow-up slice exposed the Cat MCP/tool profile selector in Cats settings and entity detail panels so operators can switch Cats between `chat-memory` and `work-memory` without direct API calls. |

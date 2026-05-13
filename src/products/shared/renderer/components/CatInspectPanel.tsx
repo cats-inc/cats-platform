@@ -3,7 +3,11 @@ import { useEffect, useRef } from 'react';
 import { catInitials } from '../workspaceChatUtils.js';
 import { buildExecutionTargetSummary } from './ExecutionTarget.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
-import { getCatSkillProfileLabel } from './settings-cats/viewSupport.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import {
+  getCatMcpProfileLabel,
+  getCatSkillProfileLabel,
+} from './settings-cats/viewSupport.js';
 
 export interface CatInspectTarget {
   id: string;
@@ -14,6 +18,7 @@ export interface CatInspectTarget {
   instance: string | null;
   model: string | null;
   skillProfile: string | null;
+  mcpProfile?: string | null;
   isBoss: boolean;
 }
 
@@ -45,6 +50,7 @@ export function CatInspectPanel({ cat, onClose }: CatInspectPanelProps) {
   const skillProfileLabel = cat.skillProfile
     ? getCatSkillProfileLabel(cat.skillProfile)
     : null;
+  const mcpProfileLabel = getCatMcpProfileLabel(cat.mcpProfile);
 
   return (
     <div className="catInspectPanel" ref={panelRef}>
@@ -100,6 +106,11 @@ export function CatInspectPanel({ cat, onClose }: CatInspectPanelProps) {
             </span>
           </div>
         ) : null}
+
+        <div className="catInspectField">
+          <span className="catInspectFieldLabel">{t(messageKeys.sharedSettingsCatsMcpProfileLabel)}</span>
+          <span>{mcpProfileLabel ? t(mcpProfileLabel) : cat.mcpProfile}</span>
+        </div>
 
         <p className="catInspectNote">
           {t('sharedCatInspectSharedPresetDescription')}
