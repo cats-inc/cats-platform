@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added Telegram Work choice decline payload coverage for intake and Boss execution-preparation inline keyboards, locking Ignore/Not now callbacks onto the shared Chat `choiceResponse` option ids. |
 | 2026-05-13 | Follow-up slice added API-level Boss execution decline coverage proving direct orchestrator choice responses can defer execution proposals without creating Tasks or issuing another runtime dispatch. |
 | 2026-05-13 | Follow-up slice added API-level Work intake decline coverage proving direct orchestrator choice responses can ignore proposed Work Items without writing Core or re-querying the provider decision seam. |
 | 2026-05-13 | Follow-up slice expanded API Boss execution confirmation coverage to mixed ready/blocked Work Items, proving one owner confirmation creates Tasks only for ready items and records blocked items as skipped. |
