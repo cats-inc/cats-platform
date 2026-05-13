@@ -196,6 +196,29 @@ test('platform orchestrator execution is a thin facade over dedicated execution 
   assert.match(workflowModule, /export function buildExecutionPlanFromChannel/u);
 });
 
+test('Work tool intent stays product-owned instead of leaking into platform orchestration', async () => {
+  const platformResolver = await readFile(
+    new URL('../src/platform/orchestration/toolIntent.ts', import.meta.url),
+    'utf8',
+  );
+  const workResolver = await readFile(
+    new URL('../src/products/work/shared/workToolIntent.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(platformResolver, /export function resolveToolIntentManifest/u);
+  assert.doesNotMatch(platformResolver, /products\/work/u);
+  assert.doesNotMatch(platformResolver, /workToolIntent/u);
+  assert.doesNotMatch(platformResolver, /WORK_MCP_PROFILE_ID/u);
+  assert.doesNotMatch(platformResolver, /work-memory/u);
+
+  assert.match(workResolver, /WORK_MCP_PROFILE_ID = 'work-memory'/u);
+  assert.match(workResolver, /export function resolvePhaseScopedWorkToolIntentManifest/u);
+  assert.match(workResolver, /platform\/orchestration\/contracts\.js/u);
+  assert.match(workResolver, /\.\/workToolSurface\.js/u);
+  assert.doesNotMatch(workResolver, /platform\/orchestration\/toolIntent\.js/u);
+});
+
 test('chat operator loop composes dedicated metadata and action helper modules', async () => {
   const operatorLoopModule = await readFile(
     new URL('../src/products/chat/shared/operator-loop/index.ts', import.meta.url),
@@ -650,7 +673,7 @@ test('chat and workspace apps consume shared channel-title presentation helpers'
 
   assert.match(workspaceUtilsSource, /export function presentChannelTitle/u);
   assert.match(chatUtilsSource, /presentWorkspaceChannelTitle/u);
-  assert.match(documentTitleHookSource, /presentChannelTitle\(routeChannelTitle\)/u);
+  assert.match(documentTitleHookSource, /presentChannelTitle\(routeChannelTitle,\s*t\)/u);
   assert.doesNotMatch(documentTitleHookSource, /routeChannelTitle\.trim\(\) === 'Untitled chat'/u);
   assert.doesNotMatch(documentTitleHookSource, /routeChannelTitle\.trim\(\) === "Untitled chat"/u);
 });
