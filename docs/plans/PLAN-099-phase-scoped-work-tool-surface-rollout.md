@@ -58,7 +58,7 @@ tool path; capture writes only Work Items, not Tasks/Runs.
       can receive intake tools when natural product-intent mode permits.
 - [ ] Task 3.2: Feed accepted tool results into the Chat message stream as
       owner-visible acknowledgement sidecars.
-- [ ] Task 3.3: Apply the same source-context builder to Telegram-originated
+- [x] Task 3.3: Apply the same source-context builder to Telegram-originated
       messages.
 - [ ] Task 3.4: Preserve existing slash-mode `/work` and `/code` behavior while
       routing new natural-language capture through the shared tool surface.
@@ -164,6 +164,7 @@ external trackers the Cats system of record.
 |------|--------|
 | 2026-05-13 | Phase 1 contract manifests, validation helpers, and policy/capability filtering tests landed in `4196128e4`. |
 | 2026-05-13 | Phase 2 Work intake delegate implemented with split proposal, supervised capture, idempotent Core writes, source metadata, and isolated tests. |
+| 2026-05-13 | Phase 3 source-context scaffolding added for Chat and Telegram observations; live runtime tool exposure and acknowledgement sidecars remain pending. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---

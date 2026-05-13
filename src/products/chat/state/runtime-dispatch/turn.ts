@@ -59,6 +59,7 @@ import {
   resolveChoiceResponseTarget,
   resolveExecutionMetadataForTarget,
   resolveOrchestratorExecutionTarget,
+  type RuntimeTransportContext,
 } from '../runtimeTargeting.js';
 import {
   CHAT_PROVIDER_AGENT_DECISION_TOOL,
@@ -77,6 +78,7 @@ import {
   toParticipantRef,
 } from '../runtime-session/state.js';
 import { resolveCurrentTurnRecipientTargets } from '../mentionRouter.js';
+import { buildChatWorkIntakeSourceContext } from '../workIntakeSourceContext.js';
 import type { DeterministicChatRoutingPlan } from './deterministicPlan.js';
 
 function readRequestedWorkflowShape(
@@ -127,6 +129,8 @@ export interface PrepareDispatchTurnOptions {
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
   naturalProductIntentMode?: ChatNaturalProductIntentMode;
+  transport?: RuntimeTransportContext;
+  transportBindingId?: string | null;
 }
 
 function resolveDeterministicPlanInitialResolution(
@@ -225,6 +229,8 @@ export function prepareDispatchTurnForUserMessage(
     providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
     providerCapabilityBootstrapDiagnosticSink: options.providerCapabilityBootstrapDiagnosticSink,
     naturalProductIntentMode: options.naturalProductIntentMode,
+    transport: options.transport,
+    transportBindingId: options.transportBindingId,
   });
   const channelRouting = requireChannel(nextState, channelId).roomRouting;
   const baseRoomRouting = resolveRoomRoutingState(channelRouting);
@@ -475,6 +481,8 @@ function buildProviderAgentObservationForTurn(input: {
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
   naturalProductIntentMode?: ChatNaturalProductIntentMode;
+  transport?: RuntimeTransportContext;
+  transportBindingId?: string | null;
 }): ProviderAgentBoundedObservation | null {
   const channel = requireChannel(input.state, input.channelId);
   const singleTarget = input.initialResolution.targets.length === 1
@@ -519,6 +527,13 @@ function buildProviderAgentObservationForTurn(input: {
     naturalProductIntentMode: input.naturalProductIntentMode,
     hasSingleCatTarget: Boolean(singleCatTarget),
   });
+  const workIntakeSourceContext = buildChatWorkIntakeSourceContext({
+    state: input.state,
+    channelId: input.channelId,
+    message: input.userMessage,
+    transport: input.transport,
+    transportBindingId: input.transportBindingId,
+  });
 
   return buildChatProviderAgentObservation({
     state: input.state,
@@ -536,6 +551,7 @@ function buildProviderAgentObservationForTurn(input: {
           },
         ]
       : [],
+    additionalContextRefs: workIntakeSourceContext.contextRefs,
     invariants: exposeCatProductIntentProposalTool
       ? [
           'proposeProductIntake asks the owner to confirm Work/Code intake and must not be used for casual chat.',

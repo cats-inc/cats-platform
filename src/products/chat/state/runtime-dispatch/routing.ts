@@ -3701,6 +3701,8 @@ export async function beginChannelMessageDispatch(
       providerCapabilityBootstrapDiagnosticSink:
         options.providerCapabilityBootstrapDiagnosticSink,
       naturalProductIntentMode: options.naturalProductIntentMode,
+      transport: options.transport,
+      transportBindingId: options.transportBindingId,
     },
   );
   const effectiveDeterministicRoutingPlan =
@@ -3847,6 +3849,8 @@ export async function beginChannelMessageRetryDispatch(
       providerCapabilityBootstrapDiagnosticSink:
         options.providerCapabilityBootstrapDiagnosticSink,
       naturalProductIntentMode: options.naturalProductIntentMode,
+      transport: options.transport,
+      transportBindingId: options.transportBindingId,
     },
   );
   const effectiveDeterministicRoutingPlan =

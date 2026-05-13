@@ -275,6 +275,77 @@ test('Chat dispatch preparation builds a provider-agent observation for the user
     true,
   );
   assert.equal(JSON.stringify(prepared.providerAgentObservation).includes(rawMessage), false);
+  assert.equal(
+    prepared.providerAgentObservation?.contextRefs.includes('work-intake-surface:chat'),
+    true,
+  );
+  assert.equal(
+    prepared.providerAgentObservation?.contextRefs.some((ref) =>
+      ref.startsWith('work-intake-transport-binding:')),
+    false,
+  );
+  assert.equal(
+    prepared.providerAgentObservation?.contextRefs.includes(
+      `work-intake-source-message:${appended.message.id}`,
+    ),
+    true,
+  );
+});
+
+test('Chat dispatch preparation annotates Telegram-origin turns for Work intake', () => {
+  const rawMessage = 'telegram: capture a Work Item without exposing this raw body';
+  let state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Telegram dispatch room',
+      topic: 'Implementation',
+      originSurface: 'chat',
+      roomMode: 'chat_channel',
+    },
+    new Date('2026-05-13T00:00:00.000Z'),
+  );
+  const channel = state.channels[0]!;
+  const appended = appendMessage(
+    state,
+    channel.id,
+    {
+      senderKind: 'user',
+      senderName: 'User',
+      body: rawMessage,
+    },
+    new Date('2026-05-13T00:01:00.000Z'),
+  );
+  state = appended.state;
+
+  const prepared = prepareDispatchTurn(
+    state,
+    channel.id,
+    { body: rawMessage },
+    new Date('2026-05-13T00:01:00.000Z'),
+    undefined,
+    {
+      transport: 'telegram',
+      transportBindingId: 'telegram-binding-1',
+    },
+  );
+
+  assert.equal(JSON.stringify(prepared.providerAgentObservation).includes(rawMessage), false);
+  assert.equal(
+    prepared.providerAgentObservation?.contextRefs.includes('work-intake-surface:telegram'),
+    true,
+  );
+  assert.equal(
+    prepared.providerAgentObservation?.contextRefs.includes(
+      'work-intake-transport-binding:telegram-binding-1',
+    ),
+    true,
+  );
+  assert.equal(
+    prepared.providerAgentObservation?.contextRefs.includes(
+      `work-intake-source-message:${appended.message.id}`,
+    ),
+    true,
+  );
 });
 
 test('Chat direct-cat turns keep deterministic target selection before provider-agent observation', () => {

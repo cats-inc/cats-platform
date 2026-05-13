@@ -58,6 +58,7 @@ export interface BuildChatProviderAgentObservationInput {
   messageCharacterCount: number;
   allowedFallbacks?: SupervisionFallbackPolicy[];
   availableTools?: ProviderAgentToolDescriptor[];
+  additionalContextRefs?: string[];
   invariants?: string[];
   now?: Date;
 }
@@ -125,6 +126,7 @@ export function buildChatProviderAgentObservation(
       `chat-channel:${channel.id}`,
       `chat-room-mode:${channel.roomRouting?.mode ?? 'chat_channel'}`,
       `chat-channel-intent:${resolveChannelIntentRef(channel)}`,
+      ...uniqueStrings(input.additionalContextRefs ?? []),
     ],
     summaries: buildRoutingSummaries(input),
     budget: {
@@ -138,6 +140,10 @@ export function buildChatProviderAgentObservation(
       ...(input.invariants ?? []),
     ],
   };
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return values.filter((value, index, list) => list.indexOf(value) === index);
 }
 
 function buildRoutingSummaries(

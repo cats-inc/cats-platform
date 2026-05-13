@@ -22,6 +22,7 @@ import {
   validateWorkItemCaptureInput,
   validateWorkItemProposeSplitInput,
 } from '../shared/workToolSurface.js';
+import { buildWorkIntakeSourceContext } from '../shared/workIntakeSourceContext.js';
 
 const WORK_INTAKE_METADATA_KEY = 'workIntake';
 const WORK_INTAKE_METADATA_VERSION = 1;
@@ -74,7 +75,7 @@ export function createWorkIntakeDelegate(
       }
 
       const capturedAt = now();
-      const sourceRef = normalizeSourceRef(input.source);
+      const sourceRef = buildWorkIntakeSourceContext(input.source).sourceRef;
       const idempotencyKey = createWorkItemCaptureIdempotencyKey(input, context.actorRef);
       const workItemId = createWorkItemId(idempotencyKey);
       let created = false;
@@ -190,7 +191,7 @@ export function proposeWorkItemSplit(
     return rejected('E_SCHEMA_INVALID', 'Invalid work.item.propose_split input.', validationErrors);
   }
 
-  const sourceRef = normalizeSourceRef(input.source);
+  const sourceRef = buildWorkIntakeSourceContext(input.source).sourceRef;
   const items = splitSourceText(sourceRef.sourceText ?? '').slice(
     0,
     input.maxItems ?? DEFAULT_MAX_SPLIT_ITEMS,
@@ -224,7 +225,7 @@ export function createWorkItemCaptureIdempotencyKey(
   input: WorkItemCaptureInput,
   actorRef: string,
 ): string {
-  const sourceRef = normalizeSourceRef(input.source);
+  const sourceRef = buildWorkIntakeSourceContext(input.source).sourceRef;
   return [
     WORK_ITEM_CAPTURE_TOOL,
     actorRef.trim(),
@@ -259,17 +260,6 @@ function buildWorkIntakeMetadata(
     priority: input.priority ?? null,
     suggestedProjectTitle: input.suggestedProjectTitle ?? null,
     openQuestions: input.openQuestions ?? [],
-  };
-}
-
-function normalizeSourceRef(source: WorkItemSourceRef): WorkItemSourceRef {
-  return {
-    surface: source.surface,
-    conversationId: normalizeOptionalString(source.conversationId),
-    channelId: normalizeOptionalString(source.channelId),
-    transportBindingId: normalizeOptionalString(source.transportBindingId),
-    sourceMessageId: normalizeOptionalString(source.sourceMessageId),
-    sourceText: normalizeOptionalString(source.sourceText),
   };
 }
 
@@ -309,15 +299,6 @@ function truncateTitle(value: string): string {
 
 function stableHash(value: string): string {
   return createHash('sha256').update(value).digest('hex');
-}
-
-function normalizeOptionalString(value: string | undefined): string | undefined {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function rejected<T>(
