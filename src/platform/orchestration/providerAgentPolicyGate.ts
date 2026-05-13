@@ -71,10 +71,8 @@ export function validateProviderAgentPolicyGate(input: ProviderAgentPolicyGateIn
       break;
     case 'recovery_decision':
       break;
-    default: {
-      const exhaustive: never = input.decision;
-      return exhaustive;
-    }
+    default:
+      return errors;
   }
 
   return errors;

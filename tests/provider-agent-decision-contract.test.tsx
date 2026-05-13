@@ -208,6 +208,27 @@ test('bounded observation rejects inconsistent allowed fallback surfaces', () =>
   ]);
 });
 
+test('bounded observation rejects unsupported task and summary enum values', () => {
+  const input = observation();
+  input.task = {
+    kind: 'unknown_task' as never,
+    risk: 'certain' as never,
+  };
+  input.summaries = [
+    {
+      key: 'unsupported_kind',
+      kind: 'raw_json' as never,
+      value: null,
+    },
+  ];
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(input), [
+    'task.kind is unsupported: unknown_task',
+    'task.risk is unsupported: certain',
+    'summary.kind is unsupported: raw_json',
+  ]);
+});
+
 test('bounded observation rejects missing and oversized tool reasons', () => {
   const input = observation();
   input.availableTools[0] = {
@@ -314,6 +335,64 @@ test('tool requests and semantic-plan steps cannot use tools outside the bounded
   ]);
   assert.deepEqual(validateProviderAgentDecision({ observation: input, decision: semanticPlan }), [
     'step step-secret.toolName work.secret.write is outside the bounded tool surface',
+  ]);
+});
+
+test('provider-agent decisions reject unsupported enum values', () => {
+  const unknownDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'mystery_decision',
+    decisionId: 'decision-mystery',
+    confidence: 'certain',
+  } as unknown as ProviderAgentDecision;
+  const invalidStep: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 'decision-invalid-step',
+    planId: 'plan-invalid-step',
+    confidence: 'medium',
+    rationaleSummary: 'Try an invalid step action.',
+    steps: [
+      {
+        stepId: 'step-invent',
+        summary: 'Invent an unsupported action.',
+        action: 'invent' as never,
+      },
+    ],
+  };
+  const invalidDelegation: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'delegation_request',
+    decisionId: 'decision-invalid-delegation',
+    confidence: 'medium',
+    target: { kind: 'execution_target', provider: 'codex' },
+    goalSummary: 'Delegate later.',
+    blocking: 'later' as never,
+    budget: {
+      maxDurationMs: 10_000,
+      hardStop: true,
+    },
+    rationaleSummary: 'Try an unsupported blocking mode.',
+  };
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: unknownDecision,
+  }), [
+    'decision.kind is unsupported: mystery_decision',
+    'decision.confidence is unsupported: certain',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: invalidStep,
+  }), [
+    'step step-invent.action is unsupported: invent',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: invalidDelegation,
+  }), [
+    'delegation_request.blocking is unsupported: later',
   ]);
 });
 

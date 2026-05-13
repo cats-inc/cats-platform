@@ -22,16 +22,40 @@ export const PROVIDER_AGENT_MAX_INVARIANT_LENGTH = 320;
 export const PROVIDER_AGENT_MAX_TOOL_REASON_LENGTH = 280;
 export const PROVIDER_AGENT_MAX_TOOL_INPUT_HINTS = 8;
 export const PROVIDER_AGENT_MAX_TOOL_INPUT_HINT_LENGTH = 400;
+export const PROVIDER_AGENT_DECISION_CONFIDENCE_VALUES = ['low', 'medium', 'high'] as const;
+export const PROVIDER_AGENT_TASK_RISK_VALUES = ['low', 'medium', 'high'] as const;
+export const PROVIDER_AGENT_TASK_KIND_VALUES = [
+  'chat_turn',
+  'work_run',
+  'code_task',
+  'code_relay',
+] as const;
+export const PROVIDER_AGENT_SUMMARY_KIND_VALUES = [
+  'count',
+  'ratio',
+  'enumerated_outcome',
+  'opaque_ref',
+] as const;
+export const PROVIDER_AGENT_DECISION_KIND_VALUES = [
+  'semantic_plan',
+  'tool_request',
+  'delegation_request',
+  'recovery_decision',
+] as const;
+export const PROVIDER_AGENT_SEMANTIC_PLAN_STEP_ACTION_VALUES = [
+  'call_tool',
+  'delegate_run',
+  'request_approval',
+  'respond',
+] as const;
+export const PROVIDER_AGENT_DELEGATION_BLOCKING_VALUES = ['blocking', 'async'] as const;
 
-export type ProviderAgentDecisionConfidence = 'low' | 'medium' | 'high';
-export type ProviderAgentTaskRisk = 'low' | 'medium' | 'high';
-export type ProviderAgentTaskKind = 'chat_turn' | 'work_run' | 'code_task' | 'code_relay';
-export type ProviderAgentSummaryKind = 'count' | 'ratio' | 'enumerated_outcome' | 'opaque_ref';
-export type ProviderAgentDecisionKind =
-  | 'semantic_plan'
-  | 'tool_request'
-  | 'delegation_request'
-  | 'recovery_decision';
+export type ProviderAgentDecisionConfidence =
+  (typeof PROVIDER_AGENT_DECISION_CONFIDENCE_VALUES)[number];
+export type ProviderAgentTaskRisk = (typeof PROVIDER_AGENT_TASK_RISK_VALUES)[number];
+export type ProviderAgentTaskKind = (typeof PROVIDER_AGENT_TASK_KIND_VALUES)[number];
+export type ProviderAgentSummaryKind = (typeof PROVIDER_AGENT_SUMMARY_KIND_VALUES)[number];
+export type ProviderAgentDecisionKind = (typeof PROVIDER_AGENT_DECISION_KIND_VALUES)[number];
 
 export interface ProviderAgentObservationSummary {
   key: string;
@@ -149,6 +173,8 @@ export function validateProviderAgentBoundedObservation(
   validateRequiredString(errors, 'observationId', observation.observationId);
   validateRequiredString(errors, 'runId', observation.runId);
   validateBoundedString(errors, 'goal', observation.goal, PROVIDER_AGENT_MAX_GOAL_LENGTH);
+  validateEnumValue(errors, 'task.kind', observation.task.kind, PROVIDER_AGENT_TASK_KIND_VALUES);
+  validateEnumValue(errors, 'task.risk', observation.task.risk, PROVIDER_AGENT_TASK_RISK_VALUES);
   validateRequiredString(errors, 'actor.actorRef', observation.actor.actorRef);
   validateRequiredString(
     errors,
@@ -207,6 +233,18 @@ export function validateProviderAgentDecision(
   );
 
   validateRequiredString(errors, 'decisionId', input.decision.decisionId);
+  validateEnumValue(
+    errors,
+    'decision.kind',
+    input.decision.kind,
+    PROVIDER_AGENT_DECISION_KIND_VALUES,
+  );
+  validateEnumValue(
+    errors,
+    'decision.confidence',
+    input.decision.confidence,
+    PROVIDER_AGENT_DECISION_CONFIDENCE_VALUES,
+  );
   if (input.decision.contractVersion !== PROVIDER_AGENT_DECISION_CONTRACT_VERSION) {
     errors.push(`decision contractVersion must be ${PROVIDER_AGENT_DECISION_CONTRACT_VERSION}`);
   }
@@ -220,14 +258,18 @@ export function validateProviderAgentDecision(
       break;
     case 'delegation_request':
       validateRequiredString(errors, 'goalSummary', input.decision.goalSummary);
+      validateEnumValue(
+        errors,
+        'delegation_request.blocking',
+        input.decision.blocking,
+        PROVIDER_AGENT_DELEGATION_BLOCKING_VALUES,
+      );
       break;
     case 'recovery_decision':
       validateRecoveryDecision(errors, input.observation, input.decision);
       break;
-    default: {
-      const exhaustive: never = input.decision;
-      return exhaustive;
-    }
+    default:
+      return errors;
   }
 
   return errors;
@@ -255,6 +297,12 @@ function validateSemanticPlanDecision(
 
   for (const step of decision.steps) {
     validateRequiredString(errors, 'step.stepId', step.stepId);
+    validateEnumValue(
+      errors,
+      `step ${step.stepId}.action`,
+      step.action,
+      PROVIDER_AGENT_SEMANTIC_PLAN_STEP_ACTION_VALUES,
+    );
     validateBoundedString(
       errors,
       `step ${step.stepId} summary`,
@@ -381,6 +429,7 @@ function validateObservationSummary(
     summary.key,
     PROVIDER_AGENT_MAX_SUMMARY_KEY_LENGTH,
   );
+  validateEnumValue(errors, 'summary.kind', summary.kind, PROVIDER_AGENT_SUMMARY_KIND_VALUES);
 
   if (/(?:raw|transcript|message|prompt|body|content)/i.test(summary.key)) {
     errors.push(`summary ${summary.key} appears to describe raw conversation content`);
@@ -410,6 +459,17 @@ function validateToolName(
 function validateRequiredString(errors: string[], field: string, value: string): void {
   if (value.trim().length === 0) {
     errors.push(`${field} is required`);
+  }
+}
+
+function validateEnumValue(
+  errors: string[],
+  field: string,
+  value: unknown,
+  allowedValues: readonly string[],
+): void {
+  if (typeof value !== 'string' || !allowedValues.includes(value)) {
+    errors.push(`${field} is unsupported: ${String(value)}`);
   }
 }
 
