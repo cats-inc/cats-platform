@@ -451,6 +451,21 @@ test('Telegram Work intake proposal choice response submits capture option', () 
   ]);
 });
 
+test('Telegram Work intake proposal choice response submits decline option', () => {
+  const response = buildTelegramWorkIntakeProposalChoiceResponse({
+    message: createWorkIntakeProposalMessage(),
+    action: 'decline',
+    submittedAt: '2026-05-06T08:04:00.000Z',
+  });
+
+  assert.equal(response?.body, 'Ignore');
+  assert.equal(response?.choiceResponse.sourceMessageId, 'work-intake-message');
+  assert.equal(response?.choiceResponse.answers[0]?.question, 'Capture these Work Items?');
+  assert.deepEqual(response?.choiceResponse.answers[0]?.selectedOptionIds, [
+    'decline',
+  ]);
+});
+
 test('Telegram Work execution preparation choice response submits create-tasks option', () => {
   const response = buildTelegramWorkExecutionPreparationChoiceResponse({
     message: createWorkExecutionPreparationMessage(),
@@ -463,6 +478,21 @@ test('Telegram Work execution preparation choice response submits create-tasks o
   assert.equal(response?.choiceResponse.answers[0]?.question, 'Create execution Tasks?');
   assert.deepEqual(response?.choiceResponse.answers[0]?.selectedOptionIds, [
     'create_ready_execution_tasks',
+  ]);
+});
+
+test('Telegram Work execution preparation choice response submits decline option', () => {
+  const response = buildTelegramWorkExecutionPreparationChoiceResponse({
+    message: createWorkExecutionPreparationMessage(),
+    action: 'decline',
+    submittedAt: '2026-05-06T08:04:00.000Z',
+  });
+
+  assert.equal(response?.body, 'Not now');
+  assert.equal(response?.choiceResponse.sourceMessageId, 'work-execution-message');
+  assert.equal(response?.choiceResponse.answers[0]?.question, 'Create execution Tasks?');
+  assert.deepEqual(response?.choiceResponse.answers[0]?.selectedOptionIds, [
+    'decline_execution_preparation',
   ]);
 });
 
