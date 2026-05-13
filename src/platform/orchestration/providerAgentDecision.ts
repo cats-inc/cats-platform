@@ -22,6 +22,9 @@ export const PROVIDER_AGENT_MAX_INVARIANT_LENGTH = 320;
 export const PROVIDER_AGENT_MAX_TOOL_REASON_LENGTH = 280;
 export const PROVIDER_AGENT_MAX_TOOL_INPUT_HINTS = 8;
 export const PROVIDER_AGENT_MAX_TOOL_INPUT_HINT_LENGTH = 400;
+export const PROVIDER_AGENT_MAX_SEMANTIC_PLAN_STEPS = 12;
+export const PROVIDER_AGENT_MAX_STEP_DEPENDENCIES = 8;
+export const PROVIDER_AGENT_MAX_STEP_DEPENDENCY_LENGTH = 80;
 export const PROVIDER_AGENT_DECISION_CONFIDENCE_VALUES = ['low', 'medium', 'high'] as const;
 export const PROVIDER_AGENT_TASK_RISK_VALUES = ['low', 'medium', 'high'] as const;
 export const PROVIDER_AGENT_TASK_KIND_VALUES = [
@@ -295,6 +298,11 @@ function validateSemanticPlanDecision(
   if (decision.steps.length === 0) {
     errors.push('semantic_plan.steps must not be empty');
   }
+  if (decision.steps.length > PROVIDER_AGENT_MAX_SEMANTIC_PLAN_STEPS) {
+    errors.push(
+      `semantic_plan.steps must contain ${PROVIDER_AGENT_MAX_SEMANTIC_PLAN_STEPS} entries or fewer`,
+    );
+  }
   if (new Set(decision.steps.map((step) => step.stepId)).size !== decision.steps.length) {
     errors.push('semantic_plan.steps must have unique stepId values');
   }
@@ -316,6 +324,19 @@ function validateSemanticPlanDecision(
 
     if (step.action === 'call_tool') {
       validateToolName(errors, step.toolName, availableToolNames, `step ${step.stepId}`);
+    }
+    if (step.dependsOn !== undefined) {
+      if (!Array.isArray(step.dependsOn)) {
+        errors.push(`step ${step.stepId}.dependsOn must be an array`);
+      } else {
+        validateBoundedStringArray(
+          errors,
+          `step ${step.stepId}.dependsOn`,
+          step.dependsOn,
+          PROVIDER_AGENT_MAX_STEP_DEPENDENCIES,
+          PROVIDER_AGENT_MAX_STEP_DEPENDENCY_LENGTH,
+        );
+      }
     }
   }
 }
@@ -500,7 +521,7 @@ function validateBoundedString(
 function validateBoundedStringArray(
   errors: string[],
   field: string,
-  values: string[],
+  values: unknown[],
   maxEntries: number,
   maxLength: number,
 ): void {

@@ -448,6 +448,90 @@ test('provider-agent semantic plans reject non-array steps without throwing', ()
   ]);
 });
 
+test('provider-agent semantic plans reject oversized step lists', () => {
+  const decision: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 'decision-too-many-steps',
+    planId: 'plan-too-many-steps',
+    confidence: 'medium',
+    rationaleSummary: 'Return too many steps.',
+    steps: Array.from({ length: 13 }, (_, index) => ({
+      stepId: `step-${index}`,
+      summary: `Step ${index}`,
+      action: 'respond',
+    })),
+  };
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision,
+  }), [
+    'semantic_plan.steps must contain 12 entries or fewer',
+  ]);
+});
+
+test('provider-agent semantic plans reject malformed step dependencies', () => {
+  const nonArrayDependencies: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 'decision-bad-dependencies',
+    planId: 'plan-bad-dependencies',
+    confidence: 'medium',
+    rationaleSummary: 'Return malformed dependencies.',
+    steps: [
+      {
+        stepId: 'step-one',
+        summary: 'Malformed dependency list.',
+        action: 'respond',
+        dependsOn: 'step-zero' as never,
+      },
+    ],
+  };
+  const oversizedDependencies: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 'decision-many-dependencies',
+    planId: 'plan-many-dependencies',
+    confidence: 'medium',
+    rationaleSummary: 'Return too many dependencies.',
+    steps: [
+      {
+        stepId: 'step-one',
+        summary: 'Oversized dependency list.',
+        action: 'respond',
+        dependsOn: [
+          '',
+          'x'.repeat(81),
+          7 as never,
+          'step-3',
+          'step-4',
+          'step-5',
+          'step-6',
+          'step-7',
+          'step-8',
+        ],
+      },
+    ],
+  };
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: nonArrayDependencies,
+  }), [
+    'step step-one.dependsOn must be an array',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: oversizedDependencies,
+  }), [
+    'step step-one.dependsOn must contain 8 entries or fewer',
+    'step step-one.dependsOn[0] is required',
+    'step step-one.dependsOn[1] must be 80 characters or less',
+    'step step-one.dependsOn[2] must be a string',
+  ]);
+});
+
 test('recovery decision must choose a platform-allowed fallback option', () => {
   const decision: ProviderAgentDecision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,

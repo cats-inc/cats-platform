@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice bounded provider-agent semantic-plan step counts and dependency lists so model-authored plans stay compact and type-safe. |
 | 2026-05-13 | Follow-up slice guarded provider-agent semantic-plan steps against non-array runtime JSON, returning invalid-decision errors instead of crashing validation. |
 | 2026-05-13 | Follow-up slice made provider-agent string validation runtime-JSON safe so malformed model decisions return contract errors instead of throwing type errors. |
 | 2026-05-13 | Follow-up slice hardened provider-agent runtime JSON validation for task, summary, decision, step-action, and delegation enum values, rejecting unknown decision kinds as errors. |
