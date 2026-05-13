@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import {
   createDefaultCoreState,
+  upsertCoreProject,
   upsertCoreWorkItem,
 } from '../src/core/model/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
@@ -15,6 +16,13 @@ const NOW = new Date('2026-05-13T11:00:00.000Z');
 
 function createCoreStore() {
   let core = createDefaultCoreState();
+  core = upsertCoreProject(core, {
+    id: 'project-route-external',
+    title: 'Route external project',
+    status: 'active',
+    ownerActorId: core.ownerProfile.actorId,
+    primaryConversationId: 'conversation-route-external',
+  }, NOW).core;
   core = upsertCoreWorkItem(core, {
     id: 'work-item-route-external',
     title: 'Link route external issue',
@@ -100,6 +108,40 @@ test('POST /api/work/external-bindings links a Work Item to an external issue', 
   assert.equal(payload?.bindingCount, 1);
   assert.equal(metadata?.bindings?.[0]?.externalId, '123');
   assert.equal(metadata?.bindings?.[0]?.linkedByActorRef, core.ownerProfile.actorId);
+});
+
+test('POST /api/work/external-bindings links a Project to an external tracker project', async (t) => {
+  const store = createCoreStore();
+  const server = createTestServer(store);
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const { status, payload } = await request(server, 'POST', WORK_API_EXTERNAL_BINDINGS_PATH, {
+    localKind: 'project',
+    localId: 'project-route-external',
+    provider: 'redmine',
+    externalType: 'project',
+    externalId: 'cats-platform',
+    externalUrl: 'https://redmine.example.test/projects/cats-platform',
+    syncDirection: 'pull',
+  });
+  const core = await store.readCore();
+  const project = core.projects.find((candidate) => candidate.id === 'project-route-external');
+  const metadata = project?.metadata[EXTERNAL_WORK_BINDING_METADATA_KEY] as
+    | { bindings?: Array<{ externalId?: string; linkedByActorRef?: string }> }
+    | undefined;
+  const activity = core.activities.find((candidate) =>
+    candidate.projectId === 'project-route-external'
+    && candidate.metadata.workExternalBinding,
+  );
+
+  assert.equal(status, 200);
+  assert.equal(payload?.linked, true);
+  assert.equal(payload?.bindingCount, 1);
+  assert.equal(metadata?.bindings?.[0]?.externalId, 'cats-platform');
+  assert.equal(metadata?.bindings?.[0]?.linkedByActorRef, core.ownerProfile.actorId);
+  assert.equal(activity?.kind, 'note');
+  assert.equal(activity?.conversationId, 'conversation-route-external');
 });
 
 test('POST /api/work/external-bindings rejects missing local records', async (t) => {

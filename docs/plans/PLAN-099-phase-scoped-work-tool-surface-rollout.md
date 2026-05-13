@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added API-route coverage proving Project external tracker links persist metadata and emit project-scoped Activity evidence through `POST /api/work/external-bindings`. |
 | 2026-05-13 | Follow-up slice added local external tracker URL inference so manual binding dialogs can prefill provider/type/id from common GitHub, GitLab, Bugzilla, Redmine, and Gitea URLs without remote calls. |
 | 2026-05-13 | Follow-up slice added a Project detail manual external-tracker link dialog and factored Work Item/Project link creation through a shared Work external binding dialog. |
 | 2026-05-13 | Follow-up slice added a Work Item detail manual external-tracker link dialog backed by the Work external binding API, refreshing Work Items and Work Graph after link creation. |
