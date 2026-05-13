@@ -246,6 +246,47 @@ test('bounded observation rejects malformed array fields without throwing', () =
   ]);
 });
 
+test('bounded observation rejects malformed object fields without throwing', () => {
+  const input = observation();
+  input.task = null as never;
+  input.actor = undefined as never;
+  input.policy = {
+    dials: null,
+    allowedFallbacks: ['retry'],
+  } as never;
+  input.budget = null as never;
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(input), [
+    'task must be an object',
+    'actor must be an object',
+    'policy.dials must be an object',
+    'budget must be an object',
+  ]);
+});
+
+test('provider-agent decision validation tolerates malformed observation tools', () => {
+  const input = observation();
+  input.availableTools = null as never;
+  const decision: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'tool_request',
+    decisionId: 'decision-malformed-observation-tools',
+    confidence: 'medium',
+    toolName: 'work.context.lookup',
+    target: { kind: 'worker_tool', toolName: 'work.context.lookup' },
+    input: {},
+    rationaleSummary: 'Request a tool while observation tools are malformed.',
+  };
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: input,
+    decision,
+  }), [
+    'availableTools must be an array',
+    'tool_request.toolName work.context.lookup is outside the bounded tool surface',
+  ]);
+});
+
 test('bounded observation rejects malformed tool descriptors without throwing', () => {
   const input = observation();
   input.availableTools = [

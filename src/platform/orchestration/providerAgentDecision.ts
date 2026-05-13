@@ -299,20 +299,34 @@ export function validateProviderAgentBoundedObservation(
   validateRequiredString(errors, 'observationId', observation.observationId);
   validateRequiredString(errors, 'runId', observation.runId);
   validateBoundedString(errors, 'goal', observation.goal, PROVIDER_AGENT_MAX_GOAL_LENGTH);
-  validateEnumValue(errors, 'task.kind', observation.task.kind, PROVIDER_AGENT_TASK_KIND_VALUES);
-  validateEnumValue(errors, 'task.risk', observation.task.risk, PROVIDER_AGENT_TASK_RISK_VALUES);
-  validateRequiredString(errors, 'actor.actorRef', observation.actor.actorRef);
-  validateRequiredString(
-    errors,
-    'actor.capabilityProfileRef',
-    observation.actor.capabilityProfileRef,
-  );
-  validateAddressableTarget(errors, 'actor.target', observation.actor.target);
-  validateAllowedFallbacks(
-    errors,
-    observation.policy.allowedFallbacks,
-    observation.policy.dials.fallbackPolicy,
-  );
+  if (!isRecord(observation.task)) {
+    errors.push('task must be an object');
+  } else {
+    validateEnumValue(errors, 'task.kind', observation.task.kind, PROVIDER_AGENT_TASK_KIND_VALUES);
+    validateEnumValue(errors, 'task.risk', observation.task.risk, PROVIDER_AGENT_TASK_RISK_VALUES);
+  }
+  if (!isRecord(observation.actor)) {
+    errors.push('actor must be an object');
+  } else {
+    validateRequiredString(errors, 'actor.actorRef', observation.actor.actorRef);
+    validateRequiredString(
+      errors,
+      'actor.capabilityProfileRef',
+      observation.actor.capabilityProfileRef,
+    );
+    validateAddressableTarget(errors, 'actor.target', observation.actor.target);
+  }
+  if (!isRecord(observation.policy)) {
+    errors.push('policy must be an object');
+  } else if (!isRecord(observation.policy.dials)) {
+    errors.push('policy.dials must be an object');
+  } else {
+    validateAllowedFallbacks(
+      errors,
+      observation.policy.allowedFallbacks,
+      observation.policy.dials.fallbackPolicy,
+    );
+  }
   validateBudgetEnvelope(errors, observation.budget);
 
   if (observation.contractVersion !== PROVIDER_AGENT_DECISION_CONTRACT_VERSION) {
@@ -364,11 +378,16 @@ export function validateProviderAgentDecision(
   input: ProviderAgentDecisionValidationInput,
 ): string[] {
   const errors = validateProviderAgentBoundedObservation(input.observation);
-  const availableToolNames = new Set(
-    input.observation.availableTools.map((tool) => tool.manifest.name),
-  );
+  const availableTools = Array.isArray(input.observation.availableTools)
+    ? input.observation.availableTools
+      .filter((tool): tool is ProviderAgentToolDescriptor =>
+        isRecord(tool)
+        && isRecord(tool.manifest)
+        && typeof tool.manifest.name === 'string')
+    : [];
+  const availableToolNames = new Set(availableTools.map((tool) => tool.manifest.name));
   const availableToolByName = new Map(
-    input.observation.availableTools.map((tool) => [tool.manifest.name, tool.manifest]),
+    availableTools.map((tool) => [tool.manifest.name, tool.manifest]),
   );
 
   validateBoundedString(
