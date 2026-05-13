@@ -4,8 +4,10 @@ import test from 'node:test';
 import { PROVIDER_AGENT_DECISION_CONTRACT_VERSION } from '../src/platform/orchestration/index.js';
 import type { RuntimeClient } from '../src/platform/runtime/client.js';
 import {
+  buildTelegramWorkExecutionPreparationChoiceResponse,
   buildTelegramWorkIntakeProposalChoiceResponse,
 } from '../src/platform/transports/telegram/bridge.js';
+import { upsertCoreWorkItem } from '../src/core/model/index.js';
 import { createChatTelegramRoomBridge } from '../src/products/chat/state/telegramBridgeAdapter.js';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.js';
 import { MemoryCompanionBoxStore } from '../src/products/chat/state/companion-box/index.js';
@@ -13,8 +15,11 @@ import { MemoryChatStore } from '../src/products/chat/state/store.js';
 import {
   buildChannelView,
   createChannel,
+  setBossCat,
+  setChannelCatLease,
 } from '../src/products/chat/state/model/index.js';
 import {
+  WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
 } from '../src/products/work/shared/workToolSurface.js';
 import { WORK_MCP_PROFILE_ID } from '../src/products/work/shared/workToolIntent.js';
@@ -199,5 +204,166 @@ test('Telegram room bridge passes provider tool decisions into Work intake sidec
     declinedCore.workItems.filter((candidate) => Boolean(candidate.metadata.workIntake)).length,
     0,
   );
+  assert.equal(decisionRequests, 1);
+});
+
+test('Telegram room bridge confirms Boss Work execution preparation into pending Tasks', async () => {
+  let state = createDefaultChatState();
+  state = createChannel(
+    state,
+    {
+      title: 'Telegram Boss Work',
+      topic: 'Start ready Work Items from Telegram.',
+      originSurface: 'chat',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    },
+    new Date('2026-05-13T00:10:00.000Z'),
+  );
+  const roomId = state.selectedChannelId;
+  assert.ok(roomId);
+  const catId = buildChannelView(state, roomId).assignedCats[0]?.catId;
+  assert.ok(catId);
+  state = setBossCat(state, catId);
+  state = setChannelCatLease(
+    state,
+    roomId,
+    catId,
+    {
+      status: 'ready',
+      sessionId: 'session-telegram-work-execution',
+      laneId: 'lane-telegram-work-execution',
+    },
+    new Date('2026-05-13T00:10:01.000Z'),
+  );
+
+  const chatStore = new MemoryChatStore(state);
+  const companionStore = new MemoryCompanionBoxStore();
+  let core = await chatStore.readCore();
+  core = upsertCoreWorkItem(
+    core,
+    {
+      id: 'work-item-telegram-start-1',
+      title: 'Implement Telegram Boss execution callback',
+      status: 'ready',
+      projectId: null,
+      conversationId: `conversation-channel-${roomId}`,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: 'Turn a Telegram execution proposal confirmation into a Task.',
+      metadata: {
+        workIntake: {
+          schemaVersion: 1,
+          phase: 'intake',
+          runId: 'chat:previous-owner-visible-turn',
+        },
+      },
+    },
+    new Date('2026-05-13T00:10:02.000Z'),
+  ).core;
+  await chatStore.writeCore(core);
+
+  let decisionRequests = 0;
+  let observedToolNames: string[] = [];
+  const bridge = createChatTelegramRoomBridge({
+    chatStore,
+    companionStore,
+    naturalProductIntentMode: 'cat_tool',
+    providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
+    providerAgentDecisionRequester: async ({ observation }) => {
+      decisionRequests += 1;
+      observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
+      return {
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-telegram-work-execution-1',
+        confidence: 'high',
+        toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
+        },
+        input: {
+          executionGoal: 'Open the Telegram callback execution slice.',
+        },
+        rationaleSummary: 'Prepare selected Work Items for Boss Cat execution.',
+      };
+    },
+  });
+
+  const routed = await bridge.routeRoomMessage({
+    state,
+    roomId,
+    body: 'Boss Cat start work-item-telegram-start-1.',
+    senderName: 'Kenneth',
+    bindingId: 'bot-binding-1',
+    runtimeClient: createRuntimeStub(),
+    timestamp: new Date('2026-05-13T00:11:00.000Z'),
+  });
+
+  assert.equal(observedToolNames.includes(WORK_ITEM_PREPARE_EXECUTION_TOOL), true);
+  const channel = buildChannelView(routed.state, roomId);
+  const proposalMessage = channel.messages.find((message) =>
+    message.metadata.event === 'work_execution_preparation_proposed');
+  const proposal = proposalMessage?.metadata.workExecutionPreparationProposal;
+  assert.equal(proposalMessage?.senderName, 'Cats Work');
+  assert.deepEqual(proposal?.workItemIds, ['work-item-telegram-start-1']);
+
+  if (!proposalMessage) {
+    throw new Error('Expected Telegram Work execution proposal message.');
+  }
+  const choicePayload = buildTelegramWorkExecutionPreparationChoiceResponse({
+    message: proposalMessage,
+    action: 'create_tasks',
+    submittedAt: '2026-05-13T00:12:00.000Z',
+  });
+  assert.ok(choicePayload);
+
+  const confirmed = await bridge.routeRoomMessage({
+    state: routed.state,
+    roomId,
+    body: choicePayload.body,
+    choiceResponse: choicePayload.choiceResponse,
+    senderName: 'Kenneth',
+    bindingId: 'bot-binding-1',
+    runtimeClient: createRuntimeStub(),
+    timestamp: new Date('2026-05-13T00:12:00.000Z'),
+  });
+
+  const confirmedChannel = buildChannelView(confirmed.state, roomId);
+  const transitionMessage = confirmedChannel.messages.find((message) =>
+    message.metadata.event === 'work_execution_preparation_tasks_created');
+  const transition = transitionMessage?.metadata.workExecutionPreparationTransition;
+  const confirmedCore = await chatStore.readCore();
+  const workItem = confirmedCore.workItems.find((candidate) =>
+    candidate.id === 'work-item-telegram-start-1');
+  const task = confirmedCore.tasks.find((candidate) => candidate.id === workItem?.taskId);
+
+  assert.equal(transitionMessage?.body.includes('Created execution Tasks:'), true);
+  assert.deepEqual(
+    transition?.createdTasks?.map((created) => [
+      created.workItemId,
+      created.created,
+      created.linked,
+    ]),
+    [
+      ['work-item-telegram-start-1', true, true],
+    ],
+  );
+  assert.equal(task?.title, 'Implement Telegram Boss execution callback');
+  assert.equal(task?.status, 'pending_approval');
+  assert.equal(task?.approval.status, 'pending');
   assert.equal(decisionRequests, 1);
 });
