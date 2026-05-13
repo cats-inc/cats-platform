@@ -94,6 +94,19 @@ This spec defines that split.
 - `ToolIntentManifest`
   - resolved runtime-facing expression of desired tool access
 
+### MVP Supported Profiles
+
+The current product registry allows only:
+
+- `chat-memory`: default Chat memory posture; persisted `null` Cat values are
+  treated as this default in UI surfaces.
+- `work-memory`: Work-oriented posture that enables product-owned
+  phase-scoped Work tool-intent projection for explicit owner requests.
+
+`POST /api/cats` and `PATCH /api/cats/{catId}` reject unsupported Cat profile
+IDs. Future profiles should be added through `src/shared/catMcpProfiles.ts`
+and a product-owned resolver, not passed as arbitrary API strings.
+
 ### Runtime Layer
 
 - `ToolRegistry`

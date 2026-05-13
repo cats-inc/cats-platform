@@ -173,11 +173,13 @@ DELETE /api/platform/assistants/{assistantId}
 GET  /api/cats
 POST /api/cats
 GET  /api/cats/{catId}
+PATCH /api/cats/{catId}
 ```
 
 - `GET` collection returns `{ cats: [...] }`.
 - `POST` returns `201` with `{ cat: { ...created } }`.
 - `GET` detail returns `{ cat: { ... } }`.
+- `PATCH` returns the updated app-shell payload.
 
 ### Companion Boxes
 
@@ -2929,12 +2931,33 @@ Request body:
   "name": "Agent-2",
   "provider": "gemini",
   "model": "gemini-2.5-pro",
-  "roles": ["reviewer"]
+  "roles": ["reviewer"],
+  "mcpProfile": "work-memory"
 }
 ```
 
 Creates a reusable chat-global cat and returns the updated app-shell
-payload.
+payload. `mcpProfile` is optional; omitted or `null` behaves as the
+`chat-memory` default. Supported Cat MCP profile IDs are `chat-memory` and
+`work-memory`; unsupported IDs return `400 bad_request`.
+
+### Update Cat
+
+```text
+PATCH /api/cats/{catId}
+```
+
+Request body:
+
+```json
+{
+  "mcpProfile": "work-memory"
+}
+```
+
+Updates mutable Cat profile fields and returns the updated app-shell payload.
+Supported `mcpProfile` values are the same as Cat creation. Unknown profile IDs
+return `400 bad_request` with an `Unsupported Cat MCP profile` message.
 
 ### Assign Cat to a Channel
 

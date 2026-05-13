@@ -80,6 +80,21 @@ The runtime MCP endpoint now rejects product-owned Work `tools/call` requests
 before proxying to `cats-runtime`, so Work mutations cannot bypass the
 supervised Work boundary while the product-owned MCP adapter remains pending.
 
+## Cat MCP Profiles
+
+Cat-level `mcpProfile` is a product-owned selector, not an open provider flag.
+The current supported IDs live in `src/shared/catMcpProfiles.ts`:
+
+| Profile | Meaning |
+|---------|---------|
+| `chat-memory` | Default Chat memory posture. Persisted `null` Cat values are treated as this default by the UI. |
+| `work-memory` | Work-oriented posture that lets Chat planning project phase-scoped Work `toolIntent` for explicit intake, triage, external binding, and Boss execution-preparation turns. |
+
+`POST /api/cats` and `PATCH /api/cats/{catId}` reject unsupported Cat
+`mcpProfile` IDs with `400 bad_request`. Add new product profiles through the
+shared registry and the corresponding product-owned resolver rather than
+passing arbitrary strings through the API.
+
 ## Configuration
 
 ### Claude Desktop
