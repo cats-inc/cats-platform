@@ -50,6 +50,7 @@ export function createChatDeterministicChannelRouter(
         {
           body: input.body,
           senderName: input.senderName,
+          choiceResponse: input.choiceResponse,
         },
         input.runtimeClient,
         input.now,

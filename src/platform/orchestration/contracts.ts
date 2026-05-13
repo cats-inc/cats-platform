@@ -482,6 +482,7 @@ export interface OrchestratorChannelRouteInput<
   companionStore?: TCompanionStore;
   memoryService?: CatsMemoryService;
   orchestratorPlan?: OrchestratorTurnPlan | null;
+  choiceResponse?: OrchestratorChoiceResponse | null;
 }
 
 export interface OrchestratorChannelRouter<
@@ -540,6 +541,24 @@ export interface OrchestratorPlanRequest {
   body: string;
   senderName?: string;
   transport?: OrchestratorTransportContext;
+}
+
+export interface OrchestratorChoiceAnswer {
+  question: string;
+  selectedOptionIds: string[];
+  customText?: string;
+  skipped?: boolean;
+}
+
+export interface OrchestratorChoiceResponse {
+  sourceMessageId: string;
+  status: 'submitted' | 'skipped';
+  answers: OrchestratorChoiceAnswer[];
+  submittedAt: string;
+}
+
+export interface OrchestratorDispatchRequest extends OrchestratorPlanRequest {
+  choiceResponse?: OrchestratorChoiceResponse | null;
 }
 
 export interface OrchestratorParticipantPlan {

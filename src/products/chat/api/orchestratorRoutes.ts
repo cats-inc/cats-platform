@@ -6,7 +6,10 @@ import {
 import {
   dispatchOrchestratorTurn,
 } from './orchestratorDispatch.js';
-import type { OrchestratorPlanRequest } from '../../../platform/orchestration/contracts.js';
+import type {
+  OrchestratorDispatchRequest,
+  OrchestratorPlanRequest,
+} from '../../../platform/orchestration/contracts.js';
 import type { ChatApiRouteContext } from './routeSupport.js';
 import { handleRestError } from './routeSupport.js';
 
@@ -37,7 +40,7 @@ async function handleDispatch(
   context: ChatApiRouteContext,
 ): Promise<void> {
   try {
-    const body = await readJsonBody<OrchestratorPlanRequest>(context.request);
+    const body = await readJsonBody<OrchestratorDispatchRequest>(context.request);
     const response = await context.dependencies.mutationGate.run(
       body.channelId,
       async () => dispatchOrchestratorTurn({

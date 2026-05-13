@@ -4,9 +4,9 @@ import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import type {
   OrchestratorChannelRouter,
   OrchestratorChatStore,
+  OrchestratorDispatchRequest,
   OrchestratorDispatchResponse,
   OrchestratorPlannerSurface,
-  OrchestratorPlanRequest,
   OrchestratorStateView,
 } from '../../../platform/orchestration/contracts.js';
 import {
@@ -34,7 +34,7 @@ import {
 interface DispatchOrchestratorTurnInput<
   TCompanionStore = unknown,
   TState extends OrchestratorStateView = OrchestratorStateView,
-> extends OrchestratorPlanRequest {
+> extends OrchestratorDispatchRequest {
   chatStore: OrchestratorChatStore<TState>;
   channelRouter: OrchestratorChannelRouter<TCompanionStore, TState>;
   plannerSurface: OrchestratorPlannerSurface<TState>;
@@ -210,6 +210,7 @@ export async function dispatchOrchestratorTurn<TCompanionStore, TState extends O
     memoryService: input.memoryService,
     chatStore: input.chatStore,
     orchestratorPlan: plan,
+    choiceResponse: input.choiceResponse,
   });
   const persisted = await input.chatStore.write(routed.state);
   const persistedChannel = input.channelRouter.buildChannelView(

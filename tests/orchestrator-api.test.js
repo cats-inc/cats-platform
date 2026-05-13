@@ -346,6 +346,28 @@ async function createChannel(baseUrl, options = {}) {
   return response.json();
 }
 
+function buildSingleChoiceResponse(
+  sourceMessage,
+  selectedOptionId,
+  submittedAt = '2026-05-13T00:01:00.000Z',
+) {
+  const choice = sourceMessage.choices?.[0];
+  if (!choice) {
+    throw new Error('Expected source message choices.');
+  }
+  return {
+    sourceMessageId: sourceMessage.id,
+    status: 'submitted',
+    submittedAt,
+    answers: [
+      {
+        question: choice.question,
+        selectedOptionIds: [selectedOptionId],
+      },
+    ],
+  };
+}
+
 test('POST /api/orchestrator/plan returns machine-readable plan and tool intent', async () => {
   const chatStore = new MemoryChatStore();
   await withServer(createRuntimeStub(), async (baseUrl) => {
@@ -918,6 +940,53 @@ test('POST /api/orchestrator/dispatch passes provider tool decisions into Work i
     assert.equal(
       core.workItems.filter((candidate) => Boolean(candidate.metadata.workIntake)).length,
       0,
+    );
+
+    if (!proposalMessage) {
+      throw new Error('Expected Work intake proposal message.');
+    }
+    const confirmResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Capture these Work Items',
+        choiceResponse: buildSingleChoiceResponse(
+          proposalMessage,
+          'capture_work_items',
+          '2026-05-13T00:02:00.000Z',
+        ),
+      }),
+    });
+
+    assert.equal(confirmResponse.status, 200);
+    const confirmPayload = await confirmResponse.json();
+    assert.equal(confirmPayload.dispatch.status, 'dispatched');
+
+    const confirmedChat = await chatStore.read();
+    const confirmedChannel = buildChannelView(confirmedChat, channelId);
+    const capturedMessage = confirmedChannel.messages.find((message) =>
+      message.metadata.event === 'work_intake_proposal_captured');
+    const transition = capturedMessage?.metadata.workIntakeProposalTransition;
+    const capturedCore = await chatStore.readCore();
+    const capturedWorkItems = capturedCore.workItems.filter((candidate) =>
+      Boolean(candidate.metadata.workIntake));
+
+    assert.equal(capturedMessage?.body.includes('Captured Work Items:'), true);
+    assert.deepEqual(
+      capturedWorkItems.map((workItem) => [workItem.title, workItem.status]),
+      [
+        ['Draft the MCP adapter contract', 'draft'],
+        ['Add Telegram Work intake coverage', 'draft'],
+      ],
+    );
+    assert.deepEqual(
+      transition?.capturedWorkItemIds?.map((id) =>
+        capturedCore.workItems.find((workItem) => workItem.id === id)?.title),
+      [
+        'Draft the MCP adapter contract',
+        'Add Telegram Work intake coverage',
+      ],
     );
   }, chatStore, {
     config: {
