@@ -16,6 +16,7 @@ import {
 import { routeChannelMessage } from '../build/server/products/chat/state/runtimeActions.js';
 import { createServer } from '../build/server/app/server/index.js';
 import {
+  upsertCoreProject,
   upsertCoreRun,
   upsertCoreTask,
   upsertCoreWorkItem,
@@ -1386,6 +1387,129 @@ test('POST /api/orchestrator/dispatch applies provider Work Item update decision
           openQuestions: ['Confirm owner approval path.'],
         },
         rationaleSummary: 'The owner explicitly asked to update one Work Item.',
+      };
+    },
+  });
+});
+
+test('POST /api/orchestrator/dispatch applies provider Work Item project assignment decisions', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  let observedToolNames = [];
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Work',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+    let chat = await chatStore.read();
+    chat = setChannelCatLease(
+      chat,
+      channelId,
+      catId,
+      {
+        status: 'ready',
+        sessionId: 'session-work-item-assign-project',
+        laneId: 'lane-work-item-assign-project',
+      },
+      new Date('2026-05-13T00:00:00.000Z'),
+    );
+    await chatStore.write(chat);
+
+    let core = await chatStore.readCore();
+    core = upsertCoreProject(
+      core,
+      {
+        id: 'project-api-triage-1',
+        title: 'Cats Tracker Integration',
+        status: 'active',
+        ownerActorId: 'actor-owner',
+        primaryConversationId: `conversation-channel-${channelId}`,
+      },
+      new Date('2026-05-13T00:00:01.000Z'),
+    ).core;
+    core = upsertCoreWorkItem(
+      core,
+      {
+        id: 'work-item-api-assign-1',
+        title: 'Group external tracker work under Project',
+        status: 'planned',
+        projectId: null,
+        conversationId: `conversation-channel-${channelId}`,
+        taskId: null,
+        parentWorkItemId: null,
+        ownerActorId: 'actor-owner',
+        assignedActorIds: [],
+        summary: null,
+        metadata: {},
+      },
+      new Date('2026-05-13T00:00:02.000Z'),
+    ).core;
+    await chatStore.writeCore(core);
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Boss Cat assign work-item-api-assign-1 to project-api-triage-1',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.equal(observedToolNames.includes(WORK_ITEM_ASSIGN_PROJECT_TOOL), true);
+
+    const updatedCore = await chatStore.readCore();
+    const workItem = updatedCore.workItems.find((candidate) =>
+      candidate.id === 'work-item-api-assign-1');
+    assert.equal(workItem?.projectId, 'project-api-triage-1');
+
+    const persisted = await chatStore.read();
+    const channel = buildChannelView(persisted, channelId);
+    const resultMessage = channel.messages.find((message) =>
+      message.metadata.event === 'work_item_assign_project_result');
+    const metadata = resultMessage?.metadata.workItemAssignProjectResult;
+    assert.equal(resultMessage?.senderName, 'Cats Work');
+    assert.equal(
+      resultMessage?.body,
+      'Assigned Work Item work-item-api-assign-1 to Project project-api-triage-1.',
+    );
+    assert.equal(metadata?.workItemId, 'work-item-api-assign-1');
+    assert.equal(metadata?.projectId, 'project-api-triage-1');
+    assert.equal(metadata?.assigned, true);
+  }, chatStore, {
+    providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
+    providerAgentDecisionRequester: async ({ observation }) => {
+      observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
+      return {
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-api-work-item-assign-project-1',
+        confidence: 'high',
+        toolName: WORK_ITEM_ASSIGN_PROJECT_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_ITEM_ASSIGN_PROJECT_TOOL,
+        },
+        input: {
+          note: 'Owner asked to group this Work Item under the tracker integration Project.',
+        },
+        rationaleSummary: 'The owner explicitly asked to assign the Work Item to a Project.',
       };
     },
   });
