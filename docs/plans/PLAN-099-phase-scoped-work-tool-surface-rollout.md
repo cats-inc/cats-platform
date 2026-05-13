@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added a Project detail manual external-tracker link dialog and factored Work Item/Project link creation through a shared Work external binding dialog. |
 | 2026-05-13 | Follow-up slice added a Work Item detail manual external-tracker link dialog backed by the Work external binding API, refreshing Work Items and Work Graph after link creation. |
 | 2026-05-13 | Phase 1 contract manifests, validation helpers, and policy/capability filtering tests landed in `4196128e4`. |
 | 2026-05-13 | Phase 2 Work intake delegate implemented with split proposal, supervised capture, idempotent Core writes, source metadata, and isolated tests. |

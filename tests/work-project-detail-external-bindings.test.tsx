@@ -53,3 +53,17 @@ test('Project detail omits empty external tracker bindings section', () => {
 
   assert.equal(html, '');
 });
+
+test('Project detail can render empty external tracker binding actions', () => {
+  const html = renderToStaticMarkup(
+    <ProjectExternalBindingsSection
+      bindings={[]}
+      onAddClick={() => {
+        // Static render only verifies the action is exposed.
+      }}
+    />,
+  );
+
+  assert.match(html, /Link tracker/u);
+  assert.match(html, /No external tracker links yet\./u);
+});

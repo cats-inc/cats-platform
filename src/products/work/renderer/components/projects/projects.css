@@ -528,6 +528,23 @@ main.canvas:has(> .projectDetail) {
   font-weight: 500;
 }
 
+.projectDetail__sectionAction {
+  margin-left: auto;
+  border: 1px solid rgba(196, 101, 58, 0.32);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.projectDetail__sectionAction:hover {
+  background: rgba(196, 101, 58, 0.16);
+}
+
 .projectDetail__overview {
   /* nothing extra */
 }

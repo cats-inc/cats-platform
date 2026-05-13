@@ -33,13 +33,13 @@ export function WorkItemExternalBindingsSection({
             className="workItemDetail__sectionAction"
             onClick={onAddClick}
           >
-            {addLabel ?? t("workItemExternalLinkAction")}
+            {addLabel ?? t("workExternalLinkIssueAction")}
           </button>
         ) : null}
       </header>
       {bindings.length === 0 ? (
         <p className="workItemDetail__empty">
-          {emptyLabel ?? t("workItemExternalEmpty")}
+          {emptyLabel ?? t("workExternalEmpty")}
         </p>
       ) : (
         <ul className="workItemDetail__externalRefs">

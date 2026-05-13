@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -24,6 +24,7 @@ import {
 } from "../../state/queries/workGraphQuery.js";
 import { WORK_PROJECTS_PATH } from "../../workPaths.js";
 import { formatWorkCrudMutationError } from "../workCrudErrorLabels.js";
+import { ProjectExternalBindingDialog } from "./ProjectExternalBindingDialog";
 import { ProjectExternalBindingsSection } from "./ProjectExternalBindingsSection";
 import "./projects.css";
 
@@ -32,6 +33,7 @@ export function ProjectDetailPage(): JSX.Element {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [externalLinkDialogOpen, setExternalLinkDialogOpen] = useState(false);
   const graph = useWorkGraphQuery(t("workGraphLoadErrorFallback")).data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const projectsQuery = useProjectsQuery();
@@ -190,7 +192,10 @@ export function ProjectDetailPage(): JSX.Element {
           </dl>
         </section>
 
-        <ProjectExternalBindingsSection bindings={project.externalBindings ?? []} />
+        <ProjectExternalBindingsSection
+          bindings={project.externalBindings ?? []}
+          onAddClick={() => setExternalLinkDialogOpen(true)}
+        />
 
         <ItemsSection
           title={t("workProjectWorkItemsTitle")}
@@ -242,6 +247,12 @@ export function ProjectDetailPage(): JSX.Element {
           )}
         </section>
       </main>
+      {externalLinkDialogOpen ? (
+        <ProjectExternalBindingDialog
+          projectId={project.id}
+          onClose={() => setExternalLinkDialogOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

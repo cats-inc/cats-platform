@@ -7,12 +7,18 @@ import {
 import type { WorkGraphExternalBindingSummary } from "../topdown/types";
 
 export function ProjectExternalBindingsSection({
+  addLabel,
   bindings,
+  emptyLabel,
+  onAddClick,
 }: {
+  addLabel?: string;
   bindings: readonly WorkGraphExternalBindingSummary[];
+  emptyLabel?: string;
+  onAddClick?: () => void;
 }): JSX.Element | null {
   const { t } = useI18n();
-  if (bindings.length === 0) {
+  if (bindings.length === 0 && !onAddClick) {
     return null;
   }
 
@@ -21,51 +27,66 @@ export function ProjectExternalBindingsSection({
       <header className="projectDetail__sectionHeader">
         <h2>{t("workTopdownExternalTitle")}</h2>
         <span className="projectDetail__sectionCount">{bindings.length}</span>
+        {onAddClick ? (
+          <button
+            type="button"
+            className="projectDetail__sectionAction"
+            onClick={onAddClick}
+          >
+            {addLabel ?? t("workExternalLinkTrackerAction")}
+          </button>
+        ) : null}
       </header>
-      <ul className="projectDetail__externalRefs">
-        {bindings.map((binding) => {
-          const label = formatWorkExternalBindingLabel(binding);
-          const safeUrl = isSafeExternalBindingUrl(binding.externalUrl)
-            ? binding.externalUrl
-            : null;
-          return (
-            <li
-              key={`${binding.provider}:${binding.externalType}:${binding.externalId}`}
-              className="projectDetail__externalRef"
-            >
-              <span className="projectDetail__externalProvider">
-                {binding.provider}
-              </span>
-              <span className="projectDetail__externalMain">
-                {safeUrl ? (
-                  <a
-                    className="projectDetail__externalLink"
-                    href={safeUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {label}
-                  </a>
-                ) : (
-                  <span className="projectDetail__externalLabel">
-                    {label}
-                  </span>
-                )}
-                <span className="projectDetail__externalMeta">
-                  {t("workTopdownExternalSyncLabel", {
-                    syncDirection: binding.syncDirection,
-                  })}
-                  {binding.externalUpdatedAt
-                    ? ` - ${t("workTopdownExternalUpdatedLabel", {
-                      updatedAt: formatRelative(binding.externalUpdatedAt, t),
-                    })}`
-                    : ""}
+      {bindings.length === 0 ? (
+        <p className="projectDetail__empty">
+          {emptyLabel ?? t("workExternalEmpty")}
+        </p>
+      ) : (
+        <ul className="projectDetail__externalRefs">
+          {bindings.map((binding) => {
+            const label = formatWorkExternalBindingLabel(binding);
+            const safeUrl = isSafeExternalBindingUrl(binding.externalUrl)
+              ? binding.externalUrl
+              : null;
+            return (
+              <li
+                key={`${binding.provider}:${binding.externalType}:${binding.externalId}`}
+                className="projectDetail__externalRef"
+              >
+                <span className="projectDetail__externalProvider">
+                  {binding.provider}
                 </span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+                <span className="projectDetail__externalMain">
+                  {safeUrl ? (
+                    <a
+                      className="projectDetail__externalLink"
+                      href={safeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {label}
+                    </a>
+                  ) : (
+                    <span className="projectDetail__externalLabel">
+                      {label}
+                    </span>
+                  )}
+                  <span className="projectDetail__externalMeta">
+                    {t("workTopdownExternalSyncLabel", {
+                      syncDirection: binding.syncDirection,
+                    })}
+                    {binding.externalUpdatedAt
+                      ? ` - ${t("workTopdownExternalUpdatedLabel", {
+                        updatedAt: formatRelative(binding.externalUpdatedAt, t),
+                      })}`
+                      : ""}
+                  </span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }
