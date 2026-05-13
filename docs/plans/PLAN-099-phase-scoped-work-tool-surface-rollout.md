@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice hardened provider-agent observation array validation so malformed tool catalogs, refs, summaries, invariants, or fallback lists return contract errors instead of throwing. |
 | 2026-05-13 | Follow-up slice validated provider-agent expected output schema refs and required them to match the selected tool manifest output schema when supplied. |
 | 2026-05-13 | Follow-up slice validated provider-agent addressable targets and required `tool_request` decisions to target the matching `worker_tool`. |
 | 2026-05-13 | Follow-up slice blocked credential-bearing external tracker URLs from URL inference and Chat phase matching so unsafe links do not trigger model-visible binding tools. |

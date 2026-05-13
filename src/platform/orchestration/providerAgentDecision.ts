@@ -203,13 +203,17 @@ export function validateProviderAgentBoundedObservation(
   if (observation.contractVersion !== PROVIDER_AGENT_DECISION_CONTRACT_VERSION) {
     errors.push(`contractVersion must be ${PROVIDER_AGENT_DECISION_CONTRACT_VERSION}`);
   }
-  if (new Set(observation.availableTools.map((tool) => tool.manifest.name)).size
-    !== observation.availableTools.length) {
-    errors.push('availableTools must not contain duplicate manifest names');
+  if (!Array.isArray(observation.availableTools)) {
+    errors.push('availableTools must be an array');
+  } else {
+    if (new Set(observation.availableTools.map((tool) => tool.manifest.name)).size
+      !== observation.availableTools.length) {
+      errors.push('availableTools must not contain duplicate manifest names');
+    }
+    observation.availableTools.forEach((tool, index) => {
+      validateToolDescriptor(errors, tool, index);
+    });
   }
-  observation.availableTools.forEach((tool, index) => {
-    validateToolDescriptor(errors, tool, index);
-  });
   validateBoundedStringArray(
     errors,
     'contextRefs',
@@ -225,12 +229,15 @@ export function validateProviderAgentBoundedObservation(
     PROVIDER_AGENT_MAX_INVARIANT_LENGTH,
   );
 
-  if (observation.summaries.length > PROVIDER_AGENT_MAX_SUMMARIES) {
-    errors.push(`summaries must contain ${PROVIDER_AGENT_MAX_SUMMARIES} entries or fewer`);
-  }
-
-  for (const summary of observation.summaries) {
-    validateObservationSummary(errors, summary);
+  if (!Array.isArray(observation.summaries)) {
+    errors.push('summaries must be an array');
+  } else {
+    if (observation.summaries.length > PROVIDER_AGENT_MAX_SUMMARIES) {
+      errors.push(`summaries must contain ${PROVIDER_AGENT_MAX_SUMMARIES} entries or fewer`);
+    }
+    for (const summary of observation.summaries) {
+      validateObservationSummary(errors, summary);
+    }
   }
 
   return errors;
@@ -695,9 +702,13 @@ function validateBudgetEnvelope(
 
 function validateAllowedFallbacks(
   errors: string[],
-  allowedFallbacks: SupervisionFallbackPolicy[],
+  allowedFallbacks: unknown,
   policyFallback: SupervisionFallbackPolicy,
 ): void {
+  if (!Array.isArray(allowedFallbacks)) {
+    errors.push('policy.allowedFallbacks must be an array');
+    return;
+  }
   if (allowedFallbacks.length === 0) {
     errors.push('policy.allowedFallbacks must not be empty');
   }
@@ -852,10 +863,14 @@ function validateOptionalBoundedString(
 function validateBoundedStringArray(
   errors: string[],
   field: string,
-  values: unknown[],
+  values: unknown,
   maxEntries: number,
   maxLength: number,
 ): void {
+  if (!Array.isArray(values)) {
+    errors.push(`${field} must be an array`);
+    return;
+  }
   if (values.length > maxEntries) {
     errors.push(`${field} must contain ${maxEntries} entries or fewer`);
   }

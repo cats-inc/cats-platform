@@ -229,6 +229,23 @@ test('bounded observation rejects unsupported task and summary enum values', () 
   ]);
 });
 
+test('bounded observation rejects malformed array fields without throwing', () => {
+  const input = observation();
+  input.policy.allowedFallbacks = 'retry' as never;
+  input.availableTools = { manifest: manifest('work.context.lookup') } as never;
+  input.contextRefs = 'work-item:1' as never;
+  input.invariants = null as never;
+  input.summaries = { key: 'summary', kind: 'count', value: 1 } as never;
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(input), [
+    'policy.allowedFallbacks must be an array',
+    'availableTools must be an array',
+    'contextRefs must be an array',
+    'invariants must be an array',
+    'summaries must be an array',
+  ]);
+});
+
 test('bounded observation rejects missing and oversized tool reasons', () => {
   const input = observation();
   input.availableTools[0] = {
