@@ -89,6 +89,16 @@ export function MessageBody({
                     {segment.value}
                   </a>
                 );
+              case 'route':
+                return (
+                  <a
+                    key={index}
+                    className="messageBodyLink"
+                    href={segment.href}
+                  >
+                    {segment.value}
+                  </a>
+                );
               case 'mention':
                 return (
                   <span

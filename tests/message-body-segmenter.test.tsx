@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server.browser';
 
+import { MessageBody } from '../src/products/chat/renderer/components/MessageBody.tsx';
 import {
   extractAttachments,
   segmentMessageBody,
@@ -46,6 +49,42 @@ test('segmentMessageBody preserves URLs that intentionally end with a question m
     },
     { kind: 'text', value: ' for the landing page' },
   ]);
+});
+
+test('segmentMessageBody linkifies internal product routes without prose punctuation', () => {
+  const segments = segmentMessageBody(
+    'Review /work/tasks/task-work-1, then open /code/chats/channel-1.',
+    [...cats],
+  );
+
+  assert.deepEqual(segments, [
+    { kind: 'text', value: 'Review ' },
+    {
+      kind: 'route',
+      value: '/work/tasks/task-work-1',
+      href: '/work/tasks/task-work-1',
+    },
+    { kind: 'text', value: ', then open ' },
+    {
+      kind: 'route',
+      value: '/code/chats/channel-1',
+      href: '/code/chats/channel-1',
+    },
+    { kind: 'text', value: '.' },
+  ]);
+});
+
+test('MessageBody renders internal product routes as same-window links', () => {
+  const markup = renderToStaticMarkup(
+    <MessageBody
+      body="Review /work/tasks/task-work-1"
+      cats={[]}
+      channelId="channel-1"
+    />,
+  );
+
+  assert.match(markup, /href="\/work\/tasks\/task-work-1"/u);
+  assert.doesNotMatch(markup, /target="_blank"/u);
 });
 
 test('segmentMessageBody trims prose punctuation and unmatched closing parens', () => {

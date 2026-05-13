@@ -195,6 +195,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Follow-up slice added Work Task detail paths to Boss execution-preparation transition metadata and Chat system messages so the owner can find the approval/start screen after Task creation. |
 | 2026-05-13 | Follow-up slice added War Room approve/reject buttons for dashboard-projected task action envelopes, refreshing Work dashboard/task/graph data after decisions. |
 | 2026-05-13 | Follow-up slice promoted the approved Work Task start action into the Task detail top bar so Chat-linked Tasks can be started without hunting through the Runs section. |
+| 2026-05-13 | Follow-up slice made internal `/work`, `/chat`, and `/code` paths clickable in web message bodies so Boss-created Task paths in Chat system messages route back into the product. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---

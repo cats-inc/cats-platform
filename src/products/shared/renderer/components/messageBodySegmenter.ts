@@ -58,7 +58,7 @@ export function extractAttachments(body: string): {
   return { attachments, textBody };
 }
 
-export type MessageBodySegmentKind = 'text' | 'url' | 'mention';
+export type MessageBodySegmentKind = 'text' | 'url' | 'route' | 'mention';
 
 export interface MessageBodySegment {
   kind: MessageBodySegmentKind;
@@ -68,7 +68,7 @@ export interface MessageBodySegment {
 }
 
 interface TokenSpan {
-  kind: 'url' | 'mention';
+  kind: 'url' | 'route' | 'mention';
   start: number;
   end: number;
   value: string;
@@ -77,6 +77,7 @@ interface TokenSpan {
 }
 
 const URL_REGEX = /https?:\/\/[^\s<>"'\]]+/gi;
+const INTERNAL_ROUTE_REGEX = /\/(?:work|chat|code)\/[^\s<>"'\]]+/g;
 const TRAILING_TRIM_CHARS = new Set(['.', ',', ';']);
 
 function hasUnmatchedTrailingParen(value: string): boolean {
@@ -145,6 +146,21 @@ export function segmentMessageBody(
     });
   }
 
+  const routeTokens: TokenSpan[] = [];
+  const routeRegex = new RegExp(INTERNAL_ROUTE_REGEX.source, INTERNAL_ROUTE_REGEX.flags);
+  let routeMatch: RegExpExecArray | null;
+  while ((routeMatch = routeRegex.exec(body)) !== null) {
+    const raw = routeMatch[0];
+    const cleaned = normalizeMatchedUrl(raw);
+    routeTokens.push({
+      kind: 'route',
+      start: routeMatch.index,
+      end: routeMatch.index + cleaned.length,
+      value: cleaned,
+      href: cleaned,
+    });
+  }
+
   const mentionResult = parseMentionsWithPositions(body, {
     excludedNames: disabledMentionNames,
   });
@@ -168,7 +184,13 @@ export function segmentMessageBody(
         rangesOverlap(mention.start, mention.end, url.start, url.end),
       ),
   );
-  const tokens: TokenSpan[] = [...urlTokens, ...filtered].sort(
+  const filteredRoutes = routeTokens.filter(
+    (route) =>
+      !urlTokens.some((url) =>
+        rangesOverlap(route.start, route.end, url.start, url.end),
+      ),
+  );
+  const tokens: TokenSpan[] = [...urlTokens, ...filteredRoutes, ...filtered].sort(
     (a, b) => a.start - b.start,
   );
 
@@ -179,8 +201,8 @@ export function segmentMessageBody(
     if (token.start > cursor) {
       segments.push({ kind: 'text', value: body.slice(cursor, token.start) });
     }
-    if (token.kind === 'url') {
-      segments.push({ kind: 'url', value: token.value, href: token.href });
+    if (token.kind === 'url' || token.kind === 'route') {
+      segments.push({ kind: token.kind, value: token.value, href: token.href });
     } else {
       segments.push({
         kind: 'mention',
