@@ -125,7 +125,10 @@ function semanticPlanDecision(): ProviderAgentDecision {
   };
 }
 
-function createRuntimeStub(decision: ProviderAgentDecision): RuntimeClient & {
+function createRuntimeStub(
+  decision: ProviderAgentDecision,
+  options: { responseText?: string } = {},
+): RuntimeClient & {
   createdSessions: unknown[];
   sentMessages: Array<{ sessionId: string; content: string; input: unknown }>;
 } {
@@ -200,7 +203,7 @@ function createRuntimeStub(decision: ProviderAgentDecision): RuntimeClient & {
         segments: [
           {
             kind: 'text',
-            text: JSON.stringify(decision),
+            text: options.responseText ?? JSON.stringify(decision),
             toolName: null,
             toolId: null,
           },
@@ -472,6 +475,46 @@ test('provider-agent adapter rejects malformed runtime decision JSON without cra
     (error) => error instanceof ProviderAgentAdapterError
       && error.code === 'INVALID_DECISION',
   );
+});
+
+test('provider-agent adapter rejects markdown or prose wrapped decision JSON', async () => {
+  const decision = semanticPlanDecision();
+  const responses = [
+    [
+      '```json',
+      JSON.stringify(decision),
+      '```',
+    ].join('\n'),
+    [
+      'Here is the decision:',
+      JSON.stringify(decision),
+    ].join('\n'),
+  ];
+
+  for (const responseText of responses) {
+    const runtimeClient = createRuntimeStub(decision, { responseText });
+
+    await assert.rejects(
+      () => requestProviderAgentDecision({
+        runtimeClient,
+        target: {
+          provider: 'codex',
+          model: 'gpt-5.4',
+        },
+        observation: observation(),
+        supervision: {
+          product: 'cats-work',
+          surface: 'provider-agent',
+          runId: 'run-1',
+          actionId: 'action-1',
+          actorRef: 'agent:codex',
+          reason: 'semantic_decision',
+        },
+      }),
+      (error) => error instanceof ProviderAgentAdapterError
+        && error.code === 'INVALID_RUNTIME_RESPONSE',
+    );
+  }
 });
 
 test('provider-agent adapter rejects non-array semantic-plan steps without crashing', async () => {

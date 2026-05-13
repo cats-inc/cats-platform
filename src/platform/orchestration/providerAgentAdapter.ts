@@ -220,35 +220,14 @@ function parseProviderAgentDecision(runtimeMessage: RuntimeMessageResult): Provi
 }
 
 function parseDecisionJson(responseText: string): unknown {
-  const candidates = [
-    responseText,
-    extractJsonFence(responseText),
-    extractOuterJsonObject(responseText),
-  ].filter((candidate): candidate is string => Boolean(candidate));
-
-  for (const candidate of candidates) {
-    try {
-      return JSON.parse(candidate) as unknown;
-    } catch {
-      // Try the next structured candidate.
-    }
+  try {
+    return JSON.parse(responseText) as unknown;
+  } catch {
+    throw new ProviderAgentAdapterError(
+      'INVALID_RUNTIME_RESPONSE',
+      'Provider-agent runtime response was not valid JSON',
+    );
   }
-
-  throw new ProviderAgentAdapterError(
-    'INVALID_RUNTIME_RESPONSE',
-    'Provider-agent runtime response was not valid JSON',
-  );
-}
-
-function extractJsonFence(responseText: string): string | null {
-  const match = /```(?:json)?\s*([\s\S]*?)\s*```/i.exec(responseText);
-  return match?.[1]?.trim() ?? null;
-}
-
-function extractOuterJsonObject(responseText: string): string | null {
-  const start = responseText.indexOf('{');
-  const end = responseText.lastIndexOf('}');
-  return start >= 0 && end > start ? responseText.slice(start, end + 1) : null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
