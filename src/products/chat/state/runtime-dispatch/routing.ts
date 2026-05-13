@@ -85,12 +85,22 @@ import {
   createWorkExecutionTaskDelegate,
 } from '../../../work/state/workExecutionTaskDelegate.js';
 import {
+  createWorkExternalBindingDelegate,
+} from '../../../work/state/workExternalBindingDelegate.js';
+import {
   resolveWorkExecutionPreparationPhase,
 } from '../../../work/shared/workExecutionPreparationPhase.js';
 import {
+  resolveWorkExternalBindingPhase,
+} from '../../../work/shared/workExternalBindingPhase.js';
+import {
+  WORK_EXTERNAL_LINK_ISSUE_TOOL,
+  WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
   WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
+  type WorkExternalLinkIssueResult,
+  type WorkExternalUnlinkIssueResult,
   type WorkItemExecutionPreparationProposal,
   type WorkItemCaptureInput,
   type WorkItemPrepareExecutionInput,
@@ -206,6 +216,8 @@ const WORK_EXECUTION_PREPARATION_TRANSITION_METADATA_KEY =
 const WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_VERSION = 1;
 const WORK_EXECUTION_PREPARATION_CREATE_TASKS_OPTION_ID = 'create_ready_execution_tasks';
 const WORK_EXECUTION_PREPARATION_DECLINE_OPTION_ID = 'decline_execution_preparation';
+const WORK_EXTERNAL_BINDING_RESULT_METADATA_KEY = 'workExternalBindingResult';
+const WORK_EXTERNAL_BINDING_RESULT_METADATA_VERSION = 1;
 const WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES = new Set([
   'draft',
   'planned',
@@ -289,6 +301,22 @@ interface WorkExecutionPreparationTransitionMetadata {
   idempotencyKey: string;
   createdTasks: WorkExecutionPreparationCreatedTaskMetadata[];
   skippedWorkItemIds: string[];
+}
+
+interface WorkExternalBindingResultMetadata {
+  schemaVersion: typeof WORK_EXTERNAL_BINDING_RESULT_METADATA_VERSION;
+  phase: 'external_tracker_binding';
+  toolName: typeof WORK_EXTERNAL_LINK_ISSUE_TOOL | typeof WORK_EXTERNAL_UNLINK_ISSUE_TOOL;
+  decisionId: string;
+  sourceMessageId: string;
+  operation: 'link' | 'unlink';
+  event: 'linked' | 'already_linked' | 'unlinked' | 'not_linked';
+  localKind: 'project' | 'work_item';
+  localId: string;
+  provider: 'github' | 'gitlab' | 'gitea' | 'redmine' | 'bugzilla';
+  externalType: 'issue' | 'project' | 'ticket';
+  externalId: string;
+  bindingCount: number;
 }
 
 export type ProviderAgentDecisionRequester = (input: {
@@ -1836,6 +1864,165 @@ function appendWorkExecutionPreparationProposalSidecar(input: {
   };
 }
 
+async function appendWorkExternalBindingResultSidecar(input: {
+  state: ChatState;
+  channelId: string;
+  userMessage: ChatMessage;
+  providerAgentDecision: ProviderAgentDecision | null;
+  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>;
+  now: Date;
+}): Promise<{ state: ChatState; resultMessage: ChatMessage | null }> {
+  if (
+    input.providerAgentDecision?.kind !== 'tool_request'
+    || (
+      input.providerAgentDecision.toolName !== WORK_EXTERNAL_LINK_ISSUE_TOOL
+      && input.providerAgentDecision.toolName !== WORK_EXTERNAL_UNLINK_ISSUE_TOOL
+    )
+  ) {
+    return { state: input.state, resultMessage: null };
+  }
+  if (!input.chatStore) {
+    warnWorkExternalBindingToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'missing_core_store',
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const phase = resolveWorkExternalBindingPhase({
+    rawText: input.userMessage.body,
+  });
+  if (phase.kind !== 'matched') {
+    warnWorkExternalBindingToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: phase.reasonCode,
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const expectedToolName = phase.operation === 'link'
+    ? WORK_EXTERNAL_LINK_ISSUE_TOOL
+    : WORK_EXTERNAL_UNLINK_ISSUE_TOOL;
+  if (input.providerAgentDecision.toolName !== expectedToolName) {
+    warnWorkExternalBindingToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'tool_request_operation_mismatch',
+      details: {
+        expectedToolName,
+        requestedToolName: input.providerAgentDecision.toolName,
+      },
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const core = await input.chatStore.readCore();
+  const delegate = createWorkExternalBindingDelegate({
+    coreStore: input.chatStore,
+    now: () => input.now,
+  });
+  const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
+  const note = readOptionalString(requestedInput.note);
+  const actorRef = core.ownerProfile.actorId;
+  const actionId = [
+    input.userMessage.id,
+    input.providerAgentDecision.decisionId,
+    input.providerAgentDecision.toolName,
+  ].join(':');
+  const runId = `chat:${input.channelId}`;
+  const provider = phase.external.provider;
+  const externalId = phase.external.externalId;
+  if (!provider || !externalId) {
+    warnWorkExternalBindingToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'unsupported_external_tracker_url',
+    });
+    return { state: input.state, resultMessage: null };
+  }
+  const externalType = phase.external.externalType ?? 'issue';
+  const result = phase.operation === 'link'
+    ? await delegate.linkIssue(
+        {
+          localKind: phase.localKind,
+          localId: phase.localId,
+          provider,
+          externalType,
+          externalId,
+          externalUrl: phase.externalUrl,
+          ...(note ? { note } : {}),
+        },
+        {
+          actorRef,
+          actionId,
+          runId,
+        },
+      )
+    : await delegate.unlinkIssue(
+        {
+          localKind: phase.localKind,
+          localId: phase.localId,
+          provider,
+          externalType,
+          externalId,
+          ...(note ? { note } : {}),
+        },
+        {
+          actorRef,
+          actionId,
+          runId,
+        },
+      );
+
+  if (result.status !== 'applied') {
+    warnWorkExternalBindingToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: result.status === 'rejected' ? result.error.code : 'pending_approval',
+      details: result.status === 'rejected' ? result.error.details : result.summary,
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const metadata = buildWorkExternalBindingResultMetadata({
+    decisionId: input.providerAgentDecision.decisionId,
+    sourceMessageId: input.userMessage.id,
+    toolName: input.providerAgentDecision.toolName,
+    operation: phase.operation,
+    result: result.result,
+  });
+  const append = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats Work',
+      body: describeWorkExternalBindingResult(metadata),
+    },
+    input.now,
+    {
+      metadata: {
+        event: 'work_external_binding_result',
+        sourceMessageId: input.userMessage.id,
+        [WORK_EXTERNAL_BINDING_RESULT_METADATA_KEY]: metadata,
+      },
+      incrementUnread: false,
+    },
+  );
+
+  return {
+    state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+    resultMessage: append.message,
+  };
+}
+
 function buildWorkIntakeProposalId(input: {
   sourceMessageId: string;
   decisionId: string;
@@ -2223,6 +2410,68 @@ function warnWorkExecutionPreparationProposalIgnored(input: {
     reason: input.reason,
     ...(input.details ? { details: input.details } : {}),
   });
+}
+
+function warnWorkExternalBindingToolCallIgnored(input: {
+  channelId: string;
+  messageId: string;
+  decisionId: string;
+  reason: string;
+  details?: unknown;
+}): void {
+  console.warn('Work external binding tool call ignored.', {
+    feature: 'work_external_binding',
+    channelId: input.channelId,
+    messageId: input.messageId,
+    decisionId: input.decisionId,
+    reason: input.reason,
+    ...(input.details ? { details: input.details } : {}),
+  });
+}
+
+function buildWorkExternalBindingResultMetadata(input: {
+  decisionId: string;
+  sourceMessageId: string;
+  toolName: typeof WORK_EXTERNAL_LINK_ISSUE_TOOL | typeof WORK_EXTERNAL_UNLINK_ISSUE_TOOL;
+  operation: 'link' | 'unlink';
+  result: WorkExternalLinkIssueResult | WorkExternalUnlinkIssueResult;
+}): WorkExternalBindingResultMetadata {
+  const linked = 'linked' in input.result ? input.result.linked : undefined;
+  const unlinked = 'unlinked' in input.result ? input.result.unlinked : undefined;
+  return {
+    schemaVersion: WORK_EXTERNAL_BINDING_RESULT_METADATA_VERSION,
+    phase: 'external_tracker_binding',
+    toolName: input.toolName,
+    decisionId: input.decisionId,
+    sourceMessageId: input.sourceMessageId,
+    operation: input.operation,
+    event: input.operation === 'link'
+      ? linked ? 'linked' : 'already_linked'
+      : unlinked ? 'unlinked' : 'not_linked',
+    localKind: input.result.localKind,
+    localId: input.result.localId,
+    provider: input.result.provider,
+    externalType: input.result.externalType,
+    externalId: input.result.externalId,
+    bindingCount: input.result.bindingCount,
+  };
+}
+
+function describeWorkExternalBindingResult(
+  metadata: WorkExternalBindingResultMetadata,
+): string {
+  const localLabel = metadata.localKind === 'work_item' ? 'Work Item' : 'Project';
+  const externalLabel = `${metadata.provider} ${metadata.externalType} ${metadata.externalId}`;
+  if (metadata.event === 'linked') {
+    return `Linked ${externalLabel} to ${localLabel} ${metadata.localId}.`;
+  }
+  if (metadata.event === 'already_linked') {
+    return `${externalLabel} was already linked to ${localLabel} ${metadata.localId}.`;
+  }
+  if (metadata.event === 'unlinked') {
+    return `Unlinked ${externalLabel} from ${localLabel} ${metadata.localId}.`;
+  }
+  return `${externalLabel} was not linked to ${localLabel} ${metadata.localId}.`;
 }
 
 type WorkExecutionPreparationChoiceAction = 'create_tasks' | 'decline' | 'handled';
@@ -5329,6 +5578,15 @@ export async function beginChannelMessageDispatch(
     now,
   });
   nextState = workExecutionPreparationSidecar.state;
+  const workExternalBindingSidecar = await appendWorkExternalBindingResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: preparedTurn.userMessage,
+    providerAgentDecision,
+    chatStore: options.chatStore,
+    now,
+  });
+  nextState = workExternalBindingSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),
@@ -5524,6 +5782,15 @@ export async function beginChannelMessageRetryDispatch(
     now,
   });
   nextState = workExecutionPreparationSidecar.state;
+  const workExternalBindingSidecar = await appendWorkExternalBindingResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: sourceMessage,
+    providerAgentDecision,
+    chatStore: options.chatStore,
+    now,
+  });
+  nextState = workExternalBindingSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),
