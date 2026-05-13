@@ -27,14 +27,17 @@ export type WorkToolCapabilityProfile = (typeof WORK_TOOL_CAPABILITY_PROFILE_VAL
 
 export const WORK_ITEM_PROPOSE_SPLIT_TOOL = 'work.item.propose_split' as const;
 export const WORK_ITEM_CAPTURE_TOOL = 'work.item.capture' as const;
+export const WORK_PROJECT_LOOKUP_TOOL = 'work.project.lookup' as const;
 
 export type PhaseScopedWorkToolName =
   | typeof WORK_ITEM_PROPOSE_SPLIT_TOOL
-  | typeof WORK_ITEM_CAPTURE_TOOL;
+  | typeof WORK_ITEM_CAPTURE_TOOL
+  | typeof WORK_PROJECT_LOOKUP_TOOL;
 
 export const WORK_TOOL_PHASE_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, WorkToolPhase>> = {
   [WORK_ITEM_PROPOSE_SPLIT_TOOL]: 'intake',
   [WORK_ITEM_CAPTURE_TOOL]: 'intake',
+  [WORK_PROJECT_LOOKUP_TOOL]: 'triage',
 };
 
 export const WORK_TOOL_ALLOWED_CAPABILITY_PROFILES_BY_NAME: Readonly<
@@ -42,6 +45,7 @@ export const WORK_TOOL_ALLOWED_CAPABILITY_PROFILES_BY_NAME: Readonly<
 > = {
   [WORK_ITEM_PROPOSE_SPLIT_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_ITEM_CAPTURE_TOOL]: ['boss_cat', 'strong_agent'],
+  [WORK_PROJECT_LOOKUP_TOOL]: ['boss_cat', 'strong_agent'],
 };
 
 export const WORK_TOOL_SERVER_RESOLVED_FIELDS = [
@@ -167,6 +171,26 @@ export interface WorkItemProposeSplitResult {
   sourceRef: WorkItemSourceRef;
 }
 
+export interface WorkProjectLookupInput {
+  query?: string;
+  limit?: number;
+  includeArchived?: boolean;
+}
+
+export interface WorkProjectLookupProject {
+  projectId: string;
+  title: string;
+  status: 'planned' | 'active' | 'paused' | 'archived';
+  summary?: string;
+  repoPath?: string;
+  primaryConversationId?: string;
+  workItemCount: number;
+}
+
+export interface WorkProjectLookupResult {
+  projects: WorkProjectLookupProject[];
+}
+
 export interface PhaseScopedWorkToolFilterInput {
   phase: WorkToolPhase;
   capabilityProfile?: WorkToolCapabilityProfile;
@@ -193,11 +217,23 @@ export function createPhaseScopedWorkToolManifests(): SupervisedToolManifest[] {
         WORK_TOOL_ERROR_CODES.precheckFailed,
       ],
     }),
+    createManifest({
+      name: WORK_PROJECT_LOOKUP_TOOL,
+      description: 'Look up bounded Cats Work Projects for Work Item triage.',
+      sideEffect: 'none',
+      preflight: 'available',
+      approval: 'never',
+      failureCodes: [WORK_TOOL_ERROR_CODES.schemaInvalid],
+    }),
   ];
 }
 
 export function resolveWorkToolPhase(toolName: string): WorkToolPhase | undefined {
-  if (toolName === WORK_ITEM_PROPOSE_SPLIT_TOOL || toolName === WORK_ITEM_CAPTURE_TOOL) {
+  if (
+    toolName === WORK_ITEM_PROPOSE_SPLIT_TOOL
+    || toolName === WORK_ITEM_CAPTURE_TOOL
+    || toolName === WORK_PROJECT_LOOKUP_TOOL
+  ) {
     return WORK_TOOL_PHASE_BY_NAME[toolName];
   }
 
@@ -208,7 +244,11 @@ export function isWorkToolAllowedForCapabilityProfile(
   toolName: string,
   capabilityProfile: WorkToolCapabilityProfile,
 ): boolean {
-  if (toolName !== WORK_ITEM_PROPOSE_SPLIT_TOOL && toolName !== WORK_ITEM_CAPTURE_TOOL) {
+  if (
+    toolName !== WORK_ITEM_PROPOSE_SPLIT_TOOL
+    && toolName !== WORK_ITEM_CAPTURE_TOOL
+    && toolName !== WORK_PROJECT_LOOKUP_TOOL
+  ) {
     return false;
   }
 
@@ -262,6 +302,19 @@ export function validateWorkItemProposeSplitInput(input: unknown): WorkToolValid
     ...validateOptionalIntegerRange(input, 'maxItems', 1, 20),
     ...validateOptionalEnum(input, 'defaultKind', WORK_ITEM_KIND_VALUES),
     ...validateOptionalEnum(input, 'defaultPriority', WORK_ITEM_PRIORITY_HINT_VALUES),
+  ];
+}
+
+export function validateWorkProjectLookupInput(input: unknown): WorkToolValidationError[] {
+  if (!isRecord(input)) {
+    return [error('type', '$', 'Work project lookup input must be an object.')];
+  }
+
+  return [
+    ...validateServerResolvedFields(input),
+    ...validateOptionalString(input, 'query', 160),
+    ...validateOptionalIntegerRange(input, 'limit', 1, 20),
+    ...validateOptionalBoolean(input, 'includeArchived'),
   ];
 }
 
@@ -467,6 +520,21 @@ function validateOptionalIntegerRange(
   }
   if (value < min || value > max) {
     return [error('bounds', key, `${key} must be between ${min} and ${max}.`)];
+  }
+
+  return [];
+}
+
+function validateOptionalBoolean(
+  input: Record<string, unknown>,
+  key: string,
+): WorkToolValidationError[] {
+  const value = input[key];
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (typeof value !== 'boolean') {
+    return [error('type', key, `${key} must be a boolean.`)];
   }
 
   return [];

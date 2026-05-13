@@ -64,6 +64,7 @@ rather than duplicating every validation branch.
 | `work.sop.ask_weak` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `work.item.propose_split` | Cats Work | Product delegate, strong-Cat observation descriptor, and Chat sidecar executor implemented; runtime adapter tool loop pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.capture` | Cats Work | Product delegate and owner-confirmed Chat sidecar capture implemented; direct model/runtime exposure pending | `product_internal_delegate` / future `runtime_tool` | Owner-confirmed intake / future Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.project.lookup` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
 | `show_in_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request canvas navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
 | `clear_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request parent-surface navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
@@ -144,6 +145,7 @@ and Telegram turns onto the shared source context.
 |------|-------|-------------|----------|----------|-------|
 | `work.item.propose_split` | `intake` | `none` | `never` | `summary` | Proposes candidate Work Items from one owner Chat or Telegram source. It does not write Core. |
 | `work.item.capture` | `intake` | `local_state` | `policy` | `summary` | Captures one draft or planned Work Item from owner-provided source text. It must not create Tasks, Missions, Runs, or runtime sessions. |
+| `work.project.lookup` | `triage` | `none` | `never` | `summary` | Looks up bounded Project matches for Work Item triage. It returns project ids, titles, planning status, summary/repo/conversation refs, and linked Work Item counts. |
 
 Caller-visible intake fields are intentionally bounded: title, summary,
 source reference, Work Item kind, priority hint, draft/planned status,
@@ -152,6 +154,9 @@ server-resolved fields such as `workItemId`, `projectId`, `taskId`,
 `missionId`, `runId`, actor ids, or timestamps. Current validation helpers
 reject execution statuses such as `in_progress`, `completed`, `cancelled`, and
 `archived` for intake capture.
+
+Caller-visible triage lookup fields are `query`, `limit`, and
+`includeArchived`. Project ids and counts are always server-resolved.
 
 ## `declare_artifact`
 

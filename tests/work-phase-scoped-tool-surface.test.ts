@@ -5,12 +5,14 @@ import { createSupervisedToolRegistry } from '../src/platform/supervision/toolRe
 import {
   WORK_ITEM_CAPTURE_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
+  WORK_PROJECT_LOOKUP_TOOL,
   createPhaseScopedWorkToolManifests,
   filterPhaseScopedWorkToolManifests,
   isWorkToolAllowedForCapabilityProfile,
   resolveWorkToolPhase,
   validateWorkItemCaptureInput,
   validateWorkItemProposeSplitInput,
+  validateWorkProjectLookupInput,
 } from '../src/products/work/shared/workToolSurface.js';
 
 test('phase-scoped Work manifests define intake proposal and capture tools', () => {
@@ -19,14 +21,17 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
 
   assert.deepEqual(
     manifests.map((manifest) => manifest.name).sort(),
-    [WORK_ITEM_CAPTURE_TOOL, WORK_ITEM_PROPOSE_SPLIT_TOOL],
+    [WORK_ITEM_CAPTURE_TOOL, WORK_ITEM_PROPOSE_SPLIT_TOOL, WORK_PROJECT_LOOKUP_TOOL],
   );
   assert.equal(resolveWorkToolPhase(WORK_ITEM_PROPOSE_SPLIT_TOOL), 'intake');
   assert.equal(resolveWorkToolPhase(WORK_ITEM_CAPTURE_TOOL), 'intake');
+  assert.equal(resolveWorkToolPhase(WORK_PROJECT_LOOKUP_TOOL), 'triage');
   assert.equal(byName.get(WORK_ITEM_PROPOSE_SPLIT_TOOL)?.sideEffect, 'none');
   assert.equal(byName.get(WORK_ITEM_PROPOSE_SPLIT_TOOL)?.approval, 'never');
   assert.equal(byName.get(WORK_ITEM_CAPTURE_TOOL)?.sideEffect, 'local_state');
   assert.equal(byName.get(WORK_ITEM_CAPTURE_TOOL)?.approval, 'policy');
+  assert.equal(byName.get(WORK_PROJECT_LOOKUP_TOOL)?.sideEffect, 'none');
+  assert.equal(byName.get(WORK_PROJECT_LOOKUP_TOOL)?.approval, 'never');
 });
 
 test('phase and capability profile filtering hides Work tools from weak or unknown callers', () => {
@@ -43,8 +48,8 @@ test('phase and capability profile filtering hides Work tools from weak or unkno
     filterPhaseScopedWorkToolManifests(manifests, {
       phase: 'triage',
       capabilityProfile: 'strong_agent',
-    }),
-    [],
+    }).map((manifest) => manifest.name),
+    [WORK_PROJECT_LOOKUP_TOOL],
   );
   assert.deepEqual(
     filterPhaseScopedWorkToolManifests(manifests, {
@@ -66,12 +71,12 @@ test('supervised tool registry policy scope keeps capture behind narrow-write gr
   assert.deepEqual(
     registry.filter({ parentToolScope: 'read_only', policyToolScope: 'read_only' })
       .map((manifest) => manifest.name),
-    [WORK_ITEM_PROPOSE_SPLIT_TOOL],
+    [WORK_ITEM_PROPOSE_SPLIT_TOOL, WORK_PROJECT_LOOKUP_TOOL],
   );
   assert.deepEqual(
     registry.filter({ parentToolScope: 'narrow_write', policyToolScope: 'narrow_write' })
       .map((manifest) => manifest.name),
-    [WORK_ITEM_CAPTURE_TOOL, WORK_ITEM_PROPOSE_SPLIT_TOOL],
+    [WORK_ITEM_CAPTURE_TOOL, WORK_ITEM_PROPOSE_SPLIT_TOOL, WORK_PROJECT_LOOKUP_TOOL],
   );
   assert.equal(
     registry.authorize(
@@ -138,6 +143,29 @@ test('Work item split proposal validation bounds source and candidate count inpu
       ['runId', 'server_resolved_field'],
       ['source.surface', 'unsupported_value'],
       ['maxItems', 'bounds'],
+    ],
+  );
+});
+
+test('Work project lookup validation bounds query, limit, and server fields', () => {
+  assert.deepEqual(validateWorkProjectLookupInput({
+    query: 'Cats Platform',
+    limit: 5,
+    includeArchived: false,
+  }), []);
+
+  assert.deepEqual(
+    validateWorkProjectLookupInput({
+      projectId: 'project-1',
+      query: 'x'.repeat(161),
+      limit: 0,
+      includeArchived: 'yes',
+    }).map((entry) => [entry.field, entry.code]),
+    [
+      ['projectId', 'server_resolved_field'],
+      ['query', 'too_long'],
+      ['limit', 'bounds'],
+      ['includeArchived', 'type'],
     ],
   );
 });

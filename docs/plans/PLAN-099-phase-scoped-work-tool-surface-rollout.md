@@ -71,7 +71,7 @@ Items through the same contract.
 
 ### Phase 4: Triage Tools
 
-- [ ] Task 4.1: Implement `work.project.lookup` as a bounded read-only tool.
+- [x] Task 4.1: Implement `work.project.lookup` as a bounded read-only tool.
 - [ ] Task 4.2: Implement `work.project.create` with project-intent validation.
 - [ ] Task 4.3: Implement `work.item.update` with planning-status bounds.
 - [ ] Task 4.4: Implement `work.item.assign_project`.
@@ -170,6 +170,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Phase 3.2 added Chat/Telegram `work.item.propose_split` sidecars that use server-built source context, show candidate Work Items, and avoid durable Work writes. |
 | 2026-05-13 | Phase 3 capture confirmation path added: owner choice on proposal sidecars calls the `work.item.capture` delegate and writes draft Work Items without direct model mutation. |
 | 2026-05-13 | Phase 3.5 parity tests added for ordinary Chat decline and Telegram confirmed capture, all using isolated `MemoryChatStore` state. |
+| 2026-05-13 | Phase 4.1 added read-only `work.project.lookup` contracts, triage delegate, and supervised boundary tests. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---
