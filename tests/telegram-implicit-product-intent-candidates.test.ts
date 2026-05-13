@@ -9,8 +9,12 @@ import {
   buildTelegramImplicitProductIntentChoiceResponse,
   buildTelegramImplicitProductIntentReplyMarkup,
   buildTelegramProductIntentReplyMarkup,
+  buildTelegramWorkIntakeProposalCallbackData,
+  buildTelegramWorkIntakeProposalChoiceResponse,
+  buildTelegramWorkIntakeProposalReplyMarkup,
   parseTelegramCatProductIntentProposalCallbackData,
   parseTelegramImplicitProductIntentCallbackData,
+  parseTelegramWorkIntakeProposalCallbackData,
 } from '../src/platform/transports/telegram/bridge.ts';
 import {
   createTelegramBotApiDeliveryClient,
@@ -107,6 +111,59 @@ function createCatProposalMessage() {
         },
         createdAt: '2026-05-06T08:00:00.000Z',
         expiresAt: '2026-05-06T08:15:00.000Z',
+      },
+    },
+  };
+}
+
+function createWorkIntakeProposalMessage() {
+  return {
+    id: 'work-intake-message',
+    senderKind: 'system',
+    senderName: 'Cats Work',
+    body: 'Proposed Work Items:\n1. Draft onboarding checklist',
+    choices: [
+      {
+        question: 'Capture these Work Items?',
+        options: [
+          {
+            id: 'capture_work_items',
+            label: 'Capture Work Items',
+          },
+          {
+            id: 'decline',
+            label: 'Ignore',
+          },
+        ],
+      },
+    ],
+    metadata: {
+      event: 'work_intake_proposal_created',
+      sourceMessageId: SOURCE_MESSAGE_ID,
+      workIntakeProposal: {
+        schemaVersion: 1,
+        phase: 'intake',
+        toolName: 'work.item.propose_split',
+        proposalId: `work-intake-proposal:${SOURCE_MESSAGE_ID}:decision-1`,
+        decisionId: 'decision-1',
+        sourceMessageId: SOURCE_MESSAGE_ID,
+        source: {
+          surface: 'telegram',
+          transportBindingId: 'telegram-binding-1',
+        },
+        contextRefs: [],
+        candidates: [
+          {
+            tempId: 'item-1',
+            title: 'Draft onboarding checklist',
+            summary: 'Prepare onboarding todos.',
+            kind: 'todo',
+            priority: 'normal',
+            confidence: 'high',
+            suggestedProjectTitle: null,
+            openQuestions: [],
+          },
+        ],
       },
     },
   };
@@ -209,6 +266,49 @@ test('Telegram Cat product intent proposal reply markup uses v2 callback data', 
   );
 });
 
+test('Telegram Work intake proposal reply markup uses proposal-message callback data', () => {
+  const markup = buildTelegramWorkIntakeProposalReplyMarkup(createWorkIntakeProposalMessage());
+
+  assert.deepEqual(markup, {
+    inline_keyboard: [
+      [
+        {
+          text: 'Capture Work Items',
+          callback_data: 'wip:v1:work-intake-message:capture',
+        },
+        {
+          text: 'Ignore',
+          callback_data: 'wip:v1:work-intake-message:decline',
+        },
+      ],
+    ],
+  });
+  assert.deepEqual(buildTelegramProductIntentReplyMarkup(createWorkIntakeProposalMessage()), markup);
+  assert.ok((markup?.inline_keyboard[0]?.[0]?.callback_data.length ?? 0) <= 64);
+  assert.equal(
+    parseTelegramWorkIntakeProposalCallbackData(
+      buildTelegramWorkIntakeProposalCallbackData({
+        sourceMessageId: 'work-intake-message',
+        action: 'capture',
+      }),
+    )?.sourceMessageId,
+    'work-intake-message',
+  );
+  assert.equal(
+    parseTelegramWorkIntakeProposalCallbackData(
+      buildTelegramWorkIntakeProposalCallbackData({
+        sourceMessageId: 'work-intake-message',
+        action: 'capture',
+      }),
+    )?.action,
+    'capture',
+  );
+  assert.equal(
+    parseTelegramWorkIntakeProposalCallbackData('/work nope'),
+    null,
+  );
+});
+
 test('Telegram implicit product intent choice response keeps transcript body locale-neutral', () => {
   const response = buildTelegramImplicitProductIntentChoiceResponse({
     message: createImplicitCandidateMessage(),
@@ -232,6 +332,21 @@ test('Telegram Cat product intent proposal choice response keeps proposal source
   assert.equal(response?.choiceResponse.sourceMessageId, 'proposal-message');
   assert.equal(response?.choiceResponse.answers[0]?.question, '要把這則訊息轉成 Work intake 嗎？');
   assert.deepEqual(response?.choiceResponse.answers[0]?.selectedOptionIds, ['confirm_work']);
+});
+
+test('Telegram Work intake proposal choice response submits capture option', () => {
+  const response = buildTelegramWorkIntakeProposalChoiceResponse({
+    message: createWorkIntakeProposalMessage(),
+    action: 'capture',
+    submittedAt: '2026-05-06T08:03:00.000Z',
+  });
+
+  assert.equal(response?.body, 'Capture Work Items');
+  assert.equal(response?.choiceResponse.sourceMessageId, 'work-intake-message');
+  assert.equal(response?.choiceResponse.answers[0]?.question, 'Capture these Work Items?');
+  assert.deepEqual(response?.choiceResponse.answers[0]?.selectedOptionIds, [
+    'capture_work_items',
+  ]);
 });
 
 test('Telegram delivery client serializes inline reply markup', async () => {

@@ -188,11 +188,17 @@ function truncateLabel(value: string, limit: number): string {
 
 const TELEGRAM_IMPLICIT_PRODUCT_INTENT_CALLBACK_PREFIX = 'ipi:v1';
 const TELEGRAM_CAT_PRODUCT_INTENT_CALLBACK_PREFIX = 'cpi:v2';
+const TELEGRAM_WORK_INTAKE_PROPOSAL_CALLBACK_PREFIX = 'wip:v1';
+const WORK_INTAKE_PROPOSAL_CAPTURE_OPTION_ID = 'capture_work_items';
+const WORK_INTAKE_PROPOSAL_DECLINE_OPTION_ID = 'decline';
+const WORK_INTAKE_PROPOSAL_METADATA_KEY = 'workIntakeProposal';
+const WORK_ITEM_PROPOSE_SPLIT_TOOL = 'work.item.propose_split';
 
 type TelegramImplicitProductIntentCallbackAction = 'confirm' | 'decline';
 type TelegramImplicitProductIntentTarget = 'work' | 'code';
 type TelegramProductIntentCallbackAction = 'confirm' | 'decline';
 type TelegramProductIntentTarget = 'work' | 'code';
+type TelegramWorkIntakeProposalCallbackAction = 'capture' | 'decline';
 
 interface TelegramImplicitProductIntentCandidate {
   candidateId: string;
@@ -206,13 +212,21 @@ interface TelegramCatProductIntentProposal {
   targetProduct: TelegramProductIntentTarget;
 }
 
+interface TelegramWorkIntakeProposal {
+  proposalId: string;
+  sourceMessageId: string;
+}
+
 type TelegramProductIntentCallback =
   | ({
       kind: 'implicit_candidate';
     } & NonNullable<ReturnType<typeof parseTelegramImplicitProductIntentCallbackData>>)
   | ({
       kind: 'cat_proposal';
-    } & NonNullable<ReturnType<typeof parseTelegramCatProductIntentProposalCallbackData>>);
+    } & NonNullable<ReturnType<typeof parseTelegramCatProductIntentProposalCallbackData>>)
+  | ({
+      kind: 'work_intake_proposal';
+    } & NonNullable<ReturnType<typeof parseTelegramWorkIntakeProposalCallbackData>>);
 
 function readTelegramImplicitProductIntentCandidate(
   message: TelegramRoomBridgeMessage,
@@ -283,6 +297,30 @@ function readTelegramCatProductIntentProposal(
     proposalId: record.proposalId,
     sourceMessageId: (source as Record<string, string>).messageId,
     targetProduct: (proposal as Record<string, TelegramProductIntentTarget>).targetProduct,
+  };
+}
+
+function readTelegramWorkIntakeProposal(
+  message: TelegramRoomBridgeMessage,
+): TelegramWorkIntakeProposal | null {
+  const metadata = message.metadata?.[WORK_INTAKE_PROPOSAL_METADATA_KEY];
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return null;
+  }
+  const record = metadata as Record<string, unknown>;
+  if (
+    record.schemaVersion !== 1
+    || record.phase !== 'intake'
+    || record.toolName !== WORK_ITEM_PROPOSE_SPLIT_TOOL
+    || typeof record.proposalId !== 'string'
+    || typeof record.sourceMessageId !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    proposalId: record.proposalId,
+    sourceMessageId: record.sourceMessageId,
   };
 }
 
@@ -362,9 +400,46 @@ export function parseTelegramCatProductIntentProposalCallbackData(
   };
 }
 
+export function buildTelegramWorkIntakeProposalCallbackData(input: {
+  sourceMessageId: string;
+  action: TelegramWorkIntakeProposalCallbackAction;
+}): string {
+  return `${TELEGRAM_WORK_INTAKE_PROPOSAL_CALLBACK_PREFIX}:${
+    input.sourceMessageId
+  }:${input.action}`;
+}
+
+export function parseTelegramWorkIntakeProposalCallbackData(
+  value: string | null | undefined,
+): {
+  sourceMessageId: string;
+  action: TelegramWorkIntakeProposalCallbackAction;
+} | null {
+  const normalized = readTelegramString(value);
+  if (!normalized?.startsWith(`${TELEGRAM_WORK_INTAKE_PROPOSAL_CALLBACK_PREFIX}:`)) {
+    return null;
+  }
+  const [, , sourceMessageId, action] = normalized.split(':');
+  if (
+    !sourceMessageId
+    || (action !== 'capture' && action !== 'decline')
+  ) {
+    return null;
+  }
+
+  return {
+    sourceMessageId,
+    action,
+  };
+}
+
 function parseTelegramProductIntentCallbackData(
   value: string | null | undefined,
 ): TelegramProductIntentCallback | null {
+  const workIntakeProposal = parseTelegramWorkIntakeProposalCallbackData(value);
+  if (workIntakeProposal) {
+    return { kind: 'work_intake_proposal', ...workIntakeProposal };
+  }
   const catProposal = parseTelegramCatProductIntentProposalCallbackData(value);
   if (catProposal) {
     return { kind: 'cat_proposal', ...catProposal };
@@ -426,6 +501,26 @@ function resolveTelegramCatProductIntentProposalButtonCallbackData(input: {
   });
 }
 
+function resolveTelegramWorkIntakeProposalButtonCallbackData(input: {
+  sourceMessageId: string;
+  optionId: string;
+}): string | null {
+  if (input.optionId === WORK_INTAKE_PROPOSAL_CAPTURE_OPTION_ID) {
+    return buildTelegramWorkIntakeProposalCallbackData({
+      sourceMessageId: input.sourceMessageId,
+      action: 'capture',
+    });
+  }
+  if (input.optionId === WORK_INTAKE_PROPOSAL_DECLINE_OPTION_ID) {
+    return buildTelegramWorkIntakeProposalCallbackData({
+      sourceMessageId: input.sourceMessageId,
+      action: 'decline',
+    });
+  }
+
+  return null;
+}
+
 export function buildTelegramImplicitProductIntentReplyMarkup(
   message: TelegramRoomBridgeMessage,
 ): TelegramInlineKeyboardMarkup | null {
@@ -479,10 +574,37 @@ export function buildTelegramCatProductIntentProposalReplyMarkup(
   };
 }
 
+export function buildTelegramWorkIntakeProposalReplyMarkup(
+  message: TelegramRoomBridgeMessage,
+): TelegramInlineKeyboardMarkup | null {
+  const proposal = readTelegramWorkIntakeProposal(message);
+  const choice = message.choices?.[0] ?? null;
+  if (!proposal || !choice || !message.id) {
+    return null;
+  }
+  const buttons = choice.options.flatMap((option) => {
+    const callbackData = resolveTelegramWorkIntakeProposalButtonCallbackData({
+      sourceMessageId: message.id!,
+      optionId: option.id,
+    });
+    return callbackData
+      ? [{ text: option.label, callback_data: callbackData }]
+      : [];
+  });
+  if (buttons.length === 0) {
+    return null;
+  }
+
+  return {
+    inline_keyboard: [buttons],
+  };
+}
+
 export function buildTelegramProductIntentReplyMarkup(
   message: TelegramRoomBridgeMessage,
 ): TelegramInlineKeyboardMarkup | null {
-  return buildTelegramCatProductIntentProposalReplyMarkup(message)
+  return buildTelegramWorkIntakeProposalReplyMarkup(message)
+    ?? buildTelegramCatProductIntentProposalReplyMarkup(message)
     ?? buildTelegramImplicitProductIntentReplyMarkup(message);
 }
 
@@ -509,6 +631,18 @@ function resolveTelegramCatProposalForCallback(input: {
     }
     const proposal = readTelegramCatProductIntentProposal(message);
     return proposal?.targetProduct === input.targetProduct;
+  }) ?? null;
+}
+
+function resolveTelegramWorkIntakeProposalForCallback(input: {
+  channel: TelegramRoomBridgeView;
+  sourceMessageId: string;
+}): TelegramRoomBridgeMessage | null {
+  return input.channel.messages.find((message) => {
+    if (message.id !== input.sourceMessageId) {
+      return false;
+    }
+    return readTelegramWorkIntakeProposal(message) !== null;
   }) ?? null;
 }
 
@@ -594,11 +728,61 @@ export function buildTelegramCatProductIntentProposalChoiceResponse(input: {
   };
 }
 
+export function buildTelegramWorkIntakeProposalChoiceResponse(input: {
+  message: TelegramRoomBridgeMessage;
+  action: TelegramWorkIntakeProposalCallbackAction;
+  submittedAt: string;
+}): { body: string; choiceResponse: TelegramRoomBridgeChoiceResponse } | null {
+  const proposal = readTelegramWorkIntakeProposal(input.message);
+  const choice = input.message.choices?.[0] ?? null;
+  if (!proposal || !choice) {
+    return null;
+  }
+  const optionId = input.action === 'capture'
+    ? WORK_INTAKE_PROPOSAL_CAPTURE_OPTION_ID
+    : WORK_INTAKE_PROPOSAL_DECLINE_OPTION_ID;
+  const option = choice.options.find((candidateOption) => candidateOption.id === optionId) ?? null;
+  if (!option || !input.message.id) {
+    return null;
+  }
+
+  return {
+    body: buildChoiceResponseBody({
+      label: option.label,
+    }),
+    choiceResponse: {
+      sourceMessageId: input.message.id,
+      status: 'submitted',
+      submittedAt: input.submittedAt,
+      answers: [
+        {
+          question: choice.question,
+          selectedOptionIds: [optionId],
+        },
+      ],
+    },
+  };
+}
+
 function resolveTelegramProductIntentChoicePayload(input: {
   channel: TelegramRoomBridgeView;
   callback: TelegramProductIntentCallback;
   submittedAt: string;
 }): { body: string; choiceResponse: TelegramRoomBridgeChoiceResponse } | null {
+  if (input.callback.kind === 'work_intake_proposal') {
+    const proposalMessage = resolveTelegramWorkIntakeProposalForCallback({
+      channel: input.channel,
+      sourceMessageId: input.callback.sourceMessageId,
+    });
+    return proposalMessage
+      ? buildTelegramWorkIntakeProposalChoiceResponse({
+          message: proposalMessage,
+          action: input.callback.action,
+          submittedAt: input.submittedAt,
+        })
+      : null;
+  }
+
   if (input.callback.kind === 'cat_proposal') {
     const proposalMessage = resolveTelegramCatProposalForCallback({
       channel: input.channel,
