@@ -61,7 +61,7 @@ tool path; capture writes only Work Items, not Tasks/Runs.
       owner-visible acknowledgement sidecars.
 - [x] Task 3.3: Apply the same source-context builder to Telegram-originated
       messages.
-- [ ] Task 3.4: Preserve existing slash-mode `/work` and `/code` behavior while
+- [x] Task 3.4: Preserve existing slash-mode `/work` and `/code` behavior while
       routing new natural-language capture through the shared tool surface.
 - [ ] Task 3.5: Add tests for web Chat and Telegram parity without writing
       live dev-state records.
@@ -168,6 +168,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Phase 3 source-context scaffolding added for Chat and Telegram observations; live runtime tool exposure and acknowledgement sidecars remain pending. |
 | 2026-05-13 | Phase 3.1 exposed policy-filtered `work.item.propose_split` descriptors to strong single-target Cat observations; `work.item.capture` remains hidden behind narrow-write policy. |
 | 2026-05-13 | Phase 3.2 added Chat/Telegram `work.item.propose_split` sidecars that use server-built source context, show candidate Work Items, and avoid durable Work writes. |
+| 2026-05-13 | Phase 3 capture confirmation path added: owner choice on proposal sidecars calls the `work.item.capture` delegate and writes draft Work Items without direct model mutation. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---

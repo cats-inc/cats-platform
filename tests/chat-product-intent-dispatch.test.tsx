@@ -1789,6 +1789,11 @@ test('routeChannelMessage records Work intake proposal tool results without dura
   assert.equal(proposalMessage?.senderKind, 'system');
   assert.equal(proposalMessage?.body.includes('Draft the MCP adapter contract'), true);
   assert.equal(proposalMessage?.body.includes('model-supplied source should be ignored'), false);
+  assert.equal(
+    proposalMessage?.choices?.[0]?.options.some((option) =>
+      option.id === 'capture_work_items' && option.style === 'primary'),
+    true,
+  );
   assert.equal(proposal?.source?.surface, 'telegram');
   assert.equal(proposal?.source?.sourceText, undefined);
   assert.equal(proposal?.source?.transportBindingId, 'telegram-binding-1');
@@ -1803,6 +1808,46 @@ test('routeChannelMessage records Work intake proposal tool results without dura
   assert.equal(
     core.workItems.filter((candidate) => Boolean(candidate.metadata.workIntake)).length,
     0,
+  );
+
+  if (!proposalMessage) {
+    throw new Error('Expected Work intake proposal message.');
+  }
+  const captured = await beginChannelMessageDispatch(
+    routed.state,
+    channelId,
+    {
+      body: 'Capture these Work Items',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(proposalMessage, 'capture_work_items'),
+    },
+    runtimeStub(),
+    new Date('2026-05-13T08:02:00.000Z'),
+    {
+      chatStore: store,
+      transport: 'telegram',
+      transportBindingId: 'telegram-binding-1',
+    },
+  );
+  const capturedChannel = requireChannel(captured.state, channelId);
+  const capturedMessage = capturedChannel.messages.find((message) =>
+    message.metadata.event === 'work_intake_proposal_captured');
+  const transition = capturedMessage?.metadata.workIntakeProposalTransition as
+    | { capturedWorkItemIds?: string[] }
+    | undefined;
+  const capturedCore = await store.readCore();
+  const capturedWorkItems = capturedCore.workItems.filter((candidate) =>
+    Boolean(candidate.metadata.workIntake));
+
+  assert.equal(captured.preparedTurn, null);
+  assert.equal(capturedMessage?.body.includes('Captured Work Items:'), true);
+  assert.equal(transition?.capturedWorkItemIds?.length, 2);
+  assert.deepEqual(
+    capturedWorkItems.map((workItem) => [workItem.title, workItem.status]),
+    [
+      ['Draft the MCP adapter contract', 'draft'],
+      ['Add Telegram Work intake coverage', 'draft'],
+    ],
   );
 });
 

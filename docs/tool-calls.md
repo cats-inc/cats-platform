@@ -63,7 +63,7 @@ rather than duplicating every validation branch.
 | `work.sop.classify_text_batch` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `work.sop.ask_weak` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `work.item.propose_split` | Cats Work | Product delegate, strong-Cat observation descriptor, and Chat sidecar executor implemented; runtime adapter tool loop pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
-| `work.item.capture` | Cats Work | Product delegate and Chat/Telegram source-context scaffolding implemented; live runtime exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.item.capture` | Cats Work | Product delegate and owner-confirmed Chat sidecar capture implemented; direct model/runtime exposure pending | `product_internal_delegate` / future `runtime_tool` | Owner-confirmed intake / future Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
 | `show_in_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request canvas navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
 | `clear_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request parent-surface navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
@@ -128,8 +128,10 @@ product delegate and bounded Chat/Telegram source-context refs exist.
 strong single-target Cat observations when natural product-intent mode permits.
 Provider-agent `tool_request` decisions for that tool are handled by the Chat
 dispatch sidecar executor, which rebuilds source context server-side before
-running the product delegate. Runtime adapter tool-result loops, MCP exposure,
-and `work.item.capture` observation exposure are still pending.
+running the product delegate. Proposal sidecars expose an owner confirmation
+choice; confirmed choices call the `work.item.capture` delegate server-side and
+write draft Work Items. Runtime adapter tool-result loops, MCP exposure, and
+direct `work.item.capture` observation exposure are still pending.
 
 Implementation entry point:
 `src/products/work/shared/workToolSurface.ts` for contracts and
