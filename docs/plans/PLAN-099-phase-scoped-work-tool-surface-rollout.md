@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice locked Chat `cat_tool` intake observations to expose read-only `work.item.propose_split` hints while keeping direct capture hidden from model decisions. |
 | 2026-05-13 | Follow-up slice locked Chat provider-agent Work observations to carry tool input hints for execution preparation, external binding, and triage actions. |
 | 2026-05-13 | Follow-up slice added full Work observation coverage for provider-agent input hints, including intake read-only proposal versus narrow-write capture exposure. |
 | 2026-05-13 | Follow-up slice locked the provider-agent runtime prompt contract so model-visible observations preserve Work tool input hints without exposing raw conversation content. |

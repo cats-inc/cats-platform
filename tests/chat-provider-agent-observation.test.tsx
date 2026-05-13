@@ -33,6 +33,7 @@ import {
   setChannelOrchestratorLease,
 } from '../src/products/chat/state/model/index.ts';
 import { buildChatProviderAgentObservation } from '../src/products/chat/state/providerAgentObservation.ts';
+import type { ChatNaturalProductIntentMode } from '../src/products/chat/shared/naturalProductIntentMode.ts';
 import {
   prepareDispatchTurn,
   type PreparedDispatchTurn,
@@ -47,8 +48,10 @@ import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
+  WORK_ITEM_CAPTURE_TOOL,
   WORK_ITEM_UPDATE_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
+  WORK_ITEM_PROPOSE_SPLIT_TOOL,
   WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
   WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
@@ -134,6 +137,7 @@ function appendAndPrepare(input: {
   core?: CatsCoreState;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
+  naturalProductIntentMode?: ChatNaturalProductIntentMode;
 }): { state: ChatState; prepared: PreparedDispatchTurn } {
   const now = input.now ?? new Date('2026-04-28T00:01:00.000Z');
   const appended = appendMessage(
@@ -158,6 +162,7 @@ function appendAndPrepare(input: {
     {
       providerCapabilityBootstrapConfig: input.providerCapabilityBootstrapConfig,
       providerCapabilityBootstrapDiagnosticSink: input.providerCapabilityBootstrapDiagnosticSink,
+      naturalProductIntentMode: input.naturalProductIntentMode,
     },
   );
   return {
@@ -396,6 +401,54 @@ test('Chat dispatch preparation annotates Telegram-origin turns for Work intake'
     ),
     true,
   );
+});
+
+test('Chat provider-agent observation exposes read-only Work intake proposal hints', () => {
+  const now = new Date('2026-05-13T09:30:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Work intake',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+
+  const { prepared } = appendAndPrepare({
+    state,
+    channelId: state.selectedChannelId,
+    body: 'Boss Cat 幫我記一個待辦：整理 Telegram 匯入的 work items',
+    now: new Date('2026-05-13T09:31:00.000Z'),
+    core: createDefaultCoreState(),
+    providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    naturalProductIntentMode: 'cat_tool',
+  });
+  const observation = prepared.providerAgentObservation;
+  const toolNames = observationToolNames(observation);
+
+  assert.equal(toolNames.includes(WORK_ITEM_PROPOSE_SPLIT_TOOL), true);
+  assert.equal(toolNames.includes(WORK_ITEM_CAPTURE_TOOL), false);
+  assertObservationToolHints(observation, WORK_ITEM_PROPOSE_SPLIT_TOOL, [
+    /maxItems\?: number/u,
+    /Read-only: propose candidate Work Items only/u,
+  ]);
+  assert.equal(
+    observation?.contextRefs.includes('work-intake-surface:chat'),
+    true,
+  );
+  assert.equal(JSON.stringify(observation).includes('整理 Telegram 匯入的 work items'), false);
+  assert.deepEqual(validateProviderAgentBoundedObservation(observation!), []);
 });
 
 test('Chat direct-cat turns keep deterministic target selection before provider-agent observation', () => {
