@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice exposed and executed explicit Chat provider-agent `work.item.assign_project` requests for local Work Item and Project refs, re-resolving both ids from owner text before writing Core. |
 | 2026-05-13 | Follow-up slice exposed and executed explicit Chat provider-agent `work.item.update` requests for local Work Item refs, using server-resolved Work Item ids and bounded planning fields only. |
 | 2026-05-13 | Follow-up slice exposed and executed explicit Chat provider-agent `work.project.create` requests through the Work triage delegate, with server-resolved conversation scope and bounded Project fields. |
 | 2026-05-13 | Follow-up slice wired Chat provider-agent `work.project.lookup` tool requests into the Work triage delegate, returning bounded Project candidates without writing Core. |

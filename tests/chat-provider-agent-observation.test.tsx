@@ -19,6 +19,7 @@ import {
 } from '../src/platform/supervision/index.ts';
 import {
   createDefaultCoreState,
+  upsertCoreProject,
   upsertCoreWorkItem,
 } from '../src/core/model/index.ts';
 import type { CatsCoreState } from '../src/core/types.ts';
@@ -45,6 +46,7 @@ import {
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+  WORK_ITEM_ASSIGN_PROJECT_TOOL,
   WORK_ITEM_UPDATE_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_PROJECT_CREATE_TOOL,
@@ -756,6 +758,88 @@ test('Chat provider-agent observation exposes narrow-write Work Item update for 
   );
   assert.equal(
     observation?.contextRefs.includes('work-triage-work-item:work-item-update-1'),
+    true,
+  );
+  assert.deepEqual(validateProviderAgentBoundedObservation(observation!), []);
+});
+
+test('Chat provider-agent observation exposes narrow-write Work Item Project assignment for explicit refs', () => {
+  const now = new Date('2026-05-13T10:50:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Work Item assign Project',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const withProject = upsertCoreProject(
+    createDefaultCoreState(),
+    {
+      id: 'project-assign-1',
+      title: 'Assign Project',
+      status: 'active',
+      ownerActorId: 'actor-owner',
+      primaryConversationId: conversationId,
+      summary: 'Project used by assignment observation tests.',
+    },
+    now,
+  ).core;
+  const core = upsertCoreWorkItem(
+    withProject,
+    {
+      id: 'work-item-assign-1',
+      title: 'Needs a Project',
+      status: 'planned',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {},
+    },
+    now,
+  ).core;
+
+  const { prepared } = appendAndPrepare({
+    state,
+    channelId,
+    body: 'Boss Cat assign work-item-assign-1 to project-assign-1',
+    now: new Date('2026-05-13T10:51:00.000Z'),
+    core,
+    providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+  });
+  const observation = prepared.providerAgentObservation;
+  const toolNames = observationToolNames(observation);
+
+  assert.equal(observation?.policy.dials.toolScope, 'narrow_write');
+  assert.equal(toolNames.includes(WORK_ITEM_ASSIGN_PROJECT_TOOL), true);
+  assert.equal(toolNames.includes(WORK_PROJECT_CREATE_TOOL), false);
+  assert.equal(
+    observation?.contextRefs.includes('work-triage-action:assign_project'),
+    true,
+  );
+  assert.equal(
+    observation?.contextRefs.includes('work-triage-work-item:work-item-assign-1'),
+    true,
+  );
+  assert.equal(
+    observation?.contextRefs.includes('work-triage-project:project-assign-1'),
     true,
   );
   assert.deepEqual(validateProviderAgentBoundedObservation(observation!), []);

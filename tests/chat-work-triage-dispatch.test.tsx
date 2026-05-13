@@ -7,6 +7,7 @@ import {
   upsertCoreWorkItem,
 } from '../src/core/model/index.ts';
 import {
+  WORK_ITEM_ASSIGN_PROJECT_TOOL,
   WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
@@ -375,4 +376,124 @@ test('Chat provider-agent Work Item update request writes bounded planning field
   assert.equal(metadata?.status, 'ready');
   assert.equal(metadata?.updated, true);
   assert.equal(resultMessage?.body, 'Updated Work Item work-item-chat-update-1 (ready).');
+});
+
+test('Chat provider-agent Work Item assign Project request writes server-resolved ids', async () => {
+  const now = new Date('2026-05-13T12:30:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Work item assign project',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const withProject = upsertCoreProject(
+    createDefaultCoreState(),
+    {
+      id: 'project-cats-platform',
+      title: 'Cats Platform',
+      status: 'active',
+      ownerActorId: 'actor-owner',
+      primaryConversationId: conversationId,
+      summary: 'Main Cats product work.',
+    },
+    now,
+  ).core;
+  const core = upsertCoreWorkItem(
+    withProject,
+    {
+      id: 'work-item-chat-assign-1',
+      title: 'Route item into project',
+      status: 'planned',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {},
+    },
+    now,
+  ).core;
+  const store = new MemoryChatStore(state);
+  await store.writeCore(core);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Boss Cat assign work-item-chat-assign-1 to project-cats-platform',
+    },
+    runtimeStub(),
+    new Date('2026-05-13T12:31:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      providerAgentDecisionRequester: async ({ observation }) => {
+        assert.equal(
+          observation.availableTools.some((tool) =>
+            tool.manifest.name === WORK_ITEM_ASSIGN_PROJECT_TOOL),
+          true,
+        );
+        return {
+          contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+          kind: 'tool_request',
+          decisionId: 'decision-work-item-assign-project-1',
+          confidence: 'high',
+          toolName: WORK_ITEM_ASSIGN_PROJECT_TOOL,
+          target: {
+            kind: 'execution_target',
+            provider: 'claude',
+            model: 'sonnet',
+          },
+          input: {
+            workItemId: 'work-item-model-supplied-id-is-ignored',
+            projectId: 'project-model-supplied-id-is-ignored',
+            note: 'Owner asked to attach this Work Item to the Cats Platform Project.',
+          },
+          rationaleSummary: 'The owner explicitly asked to assign one Work Item to one Project.',
+        };
+      },
+    },
+  );
+
+  const persistedCore = await store.readCore();
+  const workItem = persistedCore.workItems.find((candidate) =>
+    candidate.id === 'work-item-chat-assign-1');
+  assert.equal(workItem?.projectId, 'project-cats-platform');
+  assert.equal(
+    persistedCore.activities.some((activity) =>
+      activity.message === 'Assigned Work Item to Project: Route item into project'),
+    true,
+  );
+
+  const channel = requireChannel(begun.state, channelId);
+  const resultMessage = channel.messages.find((message) =>
+    message.metadata.workItemAssignProjectResult);
+  const metadata = resultMessage?.metadata.workItemAssignProjectResult as
+    | { workItemId?: string; projectId?: string; assigned?: boolean }
+    | undefined;
+  assert.equal(resultMessage?.metadata.event, 'work_item_assign_project_result');
+  assert.equal(metadata?.workItemId, 'work-item-chat-assign-1');
+  assert.equal(metadata?.projectId, 'project-cats-platform');
+  assert.equal(metadata?.assigned, true);
+  assert.equal(
+    resultMessage?.body,
+    'Assigned Work Item work-item-chat-assign-1 to Project project-cats-platform.',
+  );
 });

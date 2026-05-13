@@ -99,6 +99,7 @@ import {
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+  WORK_ITEM_ASSIGN_PROJECT_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
   WORK_ITEM_UPDATE_TOOL,
@@ -107,6 +108,7 @@ import {
   WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
   type WorkExternalLinkIssueResult,
   type WorkExternalUnlinkIssueResult,
+  type WorkItemAssignProjectResult,
   type WorkItemExecutionPreparationProposal,
   type WorkItemCaptureInput,
   type WorkItemPrepareExecutionInput,
@@ -236,7 +238,10 @@ const WORK_PROJECT_CREATE_RESULT_METADATA_KEY = 'workProjectCreateResult';
 const WORK_PROJECT_CREATE_RESULT_METADATA_VERSION = 1;
 const WORK_ITEM_UPDATE_RESULT_METADATA_KEY = 'workItemUpdateResult';
 const WORK_ITEM_UPDATE_RESULT_METADATA_VERSION = 1;
+const WORK_ITEM_ASSIGN_PROJECT_RESULT_METADATA_KEY = 'workItemAssignProjectResult';
+const WORK_ITEM_ASSIGN_PROJECT_RESULT_METADATA_VERSION = 1;
 const CHAT_WORK_ITEM_ID_PATTERN = /\bwork-item-[a-z0-9][a-z0-9_-]*\b/iu;
+const CHAT_PROJECT_ID_PATTERN = /\bproject-[a-z0-9][a-z0-9_-]*\b/iu;
 const WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES = new Set([
   'draft',
   'planned',
@@ -369,6 +374,17 @@ interface WorkItemUpdateResultMetadata {
   workItemId: string;
   status: WorkItemTriageStatus;
   updated: boolean;
+}
+
+interface WorkItemAssignProjectResultMetadata {
+  schemaVersion: typeof WORK_ITEM_ASSIGN_PROJECT_RESULT_METADATA_VERSION;
+  phase: 'triage';
+  toolName: typeof WORK_ITEM_ASSIGN_PROJECT_TOOL;
+  decisionId: string;
+  sourceMessageId: string;
+  workItemId: string;
+  projectId: string;
+  assigned: boolean;
 }
 
 export type ProviderAgentDecisionRequester = (input: {
@@ -2394,6 +2410,106 @@ async function appendWorkItemUpdateResultSidecar(input: {
   };
 }
 
+async function appendWorkItemAssignProjectResultSidecar(input: {
+  state: ChatState;
+  channelId: string;
+  userMessage: ChatMessage;
+  providerAgentDecision: ProviderAgentDecision | null;
+  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>;
+  now: Date;
+}): Promise<{ state: ChatState; resultMessage: ChatMessage | null }> {
+  if (
+    input.providerAgentDecision?.kind !== 'tool_request'
+    || input.providerAgentDecision.toolName !== WORK_ITEM_ASSIGN_PROJECT_TOOL
+  ) {
+    return { state: input.state, resultMessage: null };
+  }
+  if (!input.chatStore) {
+    warnWorkItemAssignProjectToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'missing_core_store',
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const workItemId = extractWorkItemIdFromText(input.userMessage.body);
+  const projectId = extractProjectIdFromText(input.userMessage.body);
+  if (!workItemId || !projectId) {
+    warnWorkItemAssignProjectToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'missing_local_work_or_project_ref',
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const core = await input.chatStore.readCore();
+  const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
+  const note = readOptionalString(requestedInput.note);
+  const delegate = createWorkTriageDelegate({
+    coreStore: input.chatStore,
+    now: () => input.now,
+  });
+  const result = await delegate.assignWorkItemProject(
+    {
+      workItemId,
+      projectId,
+      ...(note ? { note } : {}),
+    },
+    {
+      actorRef: core.ownerProfile.actorId,
+      actionId: [
+        input.userMessage.id,
+        input.providerAgentDecision.decisionId,
+        WORK_ITEM_ASSIGN_PROJECT_TOOL,
+      ].join(':'),
+      runId: `chat:${input.channelId}`,
+    },
+  );
+  if (result.status !== 'applied') {
+    warnWorkItemAssignProjectToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: result.status === 'rejected' ? result.error.code : 'pending_approval',
+      details: result.status === 'rejected' ? result.error.details : result.summary,
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const metadata = buildWorkItemAssignProjectResultMetadata({
+    decisionId: input.providerAgentDecision.decisionId,
+    sourceMessageId: input.userMessage.id,
+    result: result.result,
+  });
+  const append = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats Work',
+      body: describeWorkItemAssignProjectResult(metadata),
+    },
+    input.now,
+    {
+      metadata: {
+        event: 'work_item_assign_project_result',
+        sourceMessageId: input.userMessage.id,
+        [WORK_ITEM_ASSIGN_PROJECT_RESULT_METADATA_KEY]: metadata,
+      },
+      incrementUnread: false,
+    },
+  );
+
+  return {
+    state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+    resultMessage: append.message,
+  };
+}
+
 function buildWorkIntakeProposalId(input: {
   sourceMessageId: string;
   decisionId: string;
@@ -2851,6 +2967,23 @@ function warnWorkItemUpdateToolCallIgnored(input: {
   });
 }
 
+function warnWorkItemAssignProjectToolCallIgnored(input: {
+  channelId: string;
+  messageId: string;
+  decisionId: string;
+  reason: string;
+  details?: unknown;
+}): void {
+  console.warn('Work item project assignment tool call ignored.', {
+    feature: 'work_item_assign_project',
+    channelId: input.channelId,
+    messageId: input.messageId,
+    decisionId: input.decisionId,
+    reason: input.reason,
+    ...(input.details ? { details: input.details } : {}),
+  });
+}
+
 function buildWorkExternalBindingResultMetadata(input: {
   decisionId: string;
   sourceMessageId: string;
@@ -2893,6 +3026,23 @@ function buildWorkItemUpdateResultMetadata(input: {
     workItemId: input.result.workItemId,
     status: input.result.status,
     updated: input.result.updated,
+  };
+}
+
+function buildWorkItemAssignProjectResultMetadata(input: {
+  decisionId: string;
+  sourceMessageId: string;
+  result: WorkItemAssignProjectResult;
+}): WorkItemAssignProjectResultMetadata {
+  return {
+    schemaVersion: WORK_ITEM_ASSIGN_PROJECT_RESULT_METADATA_VERSION,
+    phase: 'triage',
+    toolName: WORK_ITEM_ASSIGN_PROJECT_TOOL,
+    decisionId: input.decisionId,
+    sourceMessageId: input.sourceMessageId,
+    workItemId: input.result.workItemId,
+    projectId: input.result.projectId,
+    assigned: input.result.assigned,
   };
 }
 
@@ -2955,8 +3105,21 @@ function describeWorkItemUpdateResult(metadata: WorkItemUpdateResultMetadata): s
   return `${action} Work Item ${metadata.workItemId} (${metadata.status}).`;
 }
 
+function describeWorkItemAssignProjectResult(
+  metadata: WorkItemAssignProjectResultMetadata,
+): string {
+  if (!metadata.assigned) {
+    return `Work Item ${metadata.workItemId} was already assigned to Project ${metadata.projectId}.`;
+  }
+  return `Assigned Work Item ${metadata.workItemId} to Project ${metadata.projectId}.`;
+}
+
 function extractWorkItemIdFromText(rawText: string): string | null {
   return CHAT_WORK_ITEM_ID_PATTERN.exec(rawText.toLowerCase())?.[0] ?? null;
+}
+
+function extractProjectIdFromText(rawText: string): string | null {
+  return CHAT_PROJECT_ID_PATTERN.exec(rawText.toLowerCase())?.[0] ?? null;
 }
 
 function isWorkItemKind(value: unknown): value is WorkItemKind {
@@ -6122,6 +6285,15 @@ export async function beginChannelMessageDispatch(
     now,
   });
   nextState = workItemUpdateSidecar.state;
+  const workItemAssignProjectSidecar = await appendWorkItemAssignProjectResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: preparedTurn.userMessage,
+    providerAgentDecision,
+    chatStore: options.chatStore,
+    now,
+  });
+  nextState = workItemAssignProjectSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),
@@ -6353,6 +6525,15 @@ export async function beginChannelMessageRetryDispatch(
     now,
   });
   nextState = workItemUpdateSidecar.state;
+  const workItemAssignProjectSidecar = await appendWorkItemAssignProjectResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: sourceMessage,
+    providerAgentDecision,
+    chatStore: options.chatStore,
+    now,
+  });
+  nextState = workItemAssignProjectSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),

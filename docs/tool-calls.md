@@ -64,8 +64,8 @@ rather than duplicating every validation branch.
 | `work.sop.ask_weak` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `work.item.propose_split` | Cats Work | Product delegate, strong-Cat observation descriptor, and Chat sidecar executor implemented; runtime adapter tool loop pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.capture` | Cats Work | Product delegate and owner-confirmed Chat sidecar capture implemented; direct model/runtime exposure pending | `product_internal_delegate` / future `runtime_tool` | Owner-confirmed intake / future Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
-| `work.item.update` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
-| `work.item.assign_project` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.item.update` | Cats Work | Product delegate, explicit Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.item.assign_project` | Cats Work | Product delegate, explicit Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.prepare_execution` | Cats Work | Product delegate, Boss Cat observation descriptor, and Chat proposal sidecar implemented | `product_internal_delegate` / future `runtime_tool` | Boss Cat execution preparation with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.task.create_from_work_item` | Cats Work | Product delegate and owner-confirmed Chat sidecar task creation implemented; direct model/runtime exposure pending | `product_internal_delegate` / future `runtime_tool` | Owner-confirmed Boss Cat execution preparation with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.external.link_issue` | Cats Work | Product delegate, HTTP route, Work UI manual binding, URL inference, Chat provider-agent observation/tool-request executor, and GitHub adapter spike implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
@@ -172,6 +172,17 @@ Explicit Chat turns with create/add/new Project cues can expose
 `tool_request` by calling the Work triage delegate with bounded caller fields
 and a server-resolved conversation id; model-supplied Project ids, actor ids,
 and timestamps remain rejected by the tool contract.
+
+Explicit Chat turns that name local Work Item refs with update cues can expose
+`work.item.update` with a narrow-write policy. Chat handles that
+`tool_request` by re-resolving the Work Item id from the owner message and
+passing only bounded planning fields from the model to the triage delegate.
+
+Explicit Chat turns that name both a local Work Item ref and a local Project
+ref with assign/move cues can expose `work.item.assign_project` with a
+narrow-write policy. Chat handles that `tool_request` by re-resolving both ids
+from the owner message before invoking the delegate; model-supplied ids are
+ignored.
 
 | Tool | Phase | Side effect | Approval | Evidence | Notes |
 |------|-------|-------------|----------|----------|-------|
