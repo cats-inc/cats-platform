@@ -25,6 +25,7 @@ export const PROVIDER_AGENT_MAX_TOOL_INPUT_HINT_LENGTH = 400;
 export const PROVIDER_AGENT_MAX_SEMANTIC_PLAN_STEPS = 12;
 export const PROVIDER_AGENT_MAX_STEP_DEPENDENCIES = 8;
 export const PROVIDER_AGENT_MAX_STEP_DEPENDENCY_LENGTH = 80;
+export const PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH = 120;
 export const PROVIDER_AGENT_DECISION_CONFIDENCE_VALUES = ['low', 'medium', 'high'] as const;
 export const PROVIDER_AGENT_TASK_RISK_VALUES = ['low', 'medium', 'high'] as const;
 export const PROVIDER_AGENT_TASK_KIND_VALUES = [
@@ -235,7 +236,12 @@ export function validateProviderAgentDecision(
     input.observation.availableTools.map((tool) => tool.manifest.name),
   );
 
-  validateRequiredString(errors, 'decisionId', input.decision.decisionId);
+  validateBoundedString(
+    errors,
+    'decisionId',
+    input.decision.decisionId,
+    PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH,
+  );
   validateEnumValue(
     errors,
     'decision.kind',
@@ -283,7 +289,7 @@ function validateSemanticPlanDecision(
   decision: ProviderAgentSemanticPlanDecision,
   availableToolNames: Set<string>,
 ): void {
-  validateRequiredString(errors, 'planId', decision.planId);
+  validateBoundedString(errors, 'planId', decision.planId, PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH);
   validateBoundedString(
     errors,
     'rationaleSummary',
@@ -308,7 +314,12 @@ function validateSemanticPlanDecision(
   }
 
   for (const step of decision.steps) {
-    validateRequiredString(errors, 'step.stepId', step.stepId);
+    validateBoundedString(
+      errors,
+      'step.stepId',
+      step.stepId,
+      PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH,
+    );
     validateEnumValue(
       errors,
       `step ${step.stepId}.action`,
@@ -360,7 +371,12 @@ function validateRecoveryDecision(
   observation: ProviderAgentBoundedObservation,
   decision: ProviderAgentRecoveryDecision,
 ): void {
-  validateRequiredString(errors, 'rejectedActionId', decision.rejectedActionId);
+  validateBoundedString(
+    errors,
+    'rejectedActionId',
+    decision.rejectedActionId,
+    PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH,
+  );
 
   if (!observation.policy.allowedFallbacks.includes(decision.selectedFallback)) {
     errors.push(

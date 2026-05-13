@@ -425,6 +425,48 @@ test('provider-agent decisions reject non-string runtime JSON fields without thr
   ]);
 });
 
+test('provider-agent decisions reject oversized model-authored identifiers', () => {
+  const decision: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 'd'.repeat(121),
+    planId: 'p'.repeat(121),
+    confidence: 'medium',
+    rationaleSummary: 'Return oversized ids.',
+    steps: [
+      {
+        stepId: 's'.repeat(121),
+        summary: 'Oversized step id.',
+        action: 'respond',
+      },
+    ],
+  };
+  const recoveryDecision: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'recovery_decision',
+    decisionId: 'decision-recover',
+    confidence: 'low',
+    rejectedActionId: 'a'.repeat(121),
+    selectedFallback: 'retry',
+    rationaleSummary: 'Retry with bounded input.',
+  };
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision,
+  }), [
+    'decisionId must be 120 characters or less',
+    'planId must be 120 characters or less',
+    'step.stepId must be 120 characters or less',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: recoveryDecision,
+  }), [
+    'rejectedActionId must be 120 characters or less',
+  ]);
+});
+
 test('provider-agent semantic plans reject non-array steps without throwing', () => {
   const decision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
