@@ -57,6 +57,49 @@ const WORK_TOOL_REASON_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, string>
     'Boss Cat can create a pending-approval Task from one ready Work Item.',
 };
 
+const WORK_TOOL_INPUT_HINTS_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, readonly string[]>> = {
+  [WORK_EXTERNAL_LINK_ISSUE_TOOL]: [
+    'Input: { note?: string }. Cats re-resolves local Work refs and external tracker ids from the owner message.',
+    'Do not call external tracker APIs or provide actor ids, timestamps, task ids, mission ids, or run ids.',
+  ],
+  [WORK_EXTERNAL_UNLINK_ISSUE_TOOL]: [
+    'Input: {}. Cats re-resolves the local Work ref and external tracker id from the owner message.',
+    'Do not call external tracker APIs or provide actor ids, timestamps, task ids, mission ids, or run ids.',
+  ],
+  [WORK_ITEM_ASSIGN_PROJECT_TOOL]: [
+    'Input: { note?: string }. Cats re-resolves workItemId and projectId from the owner message.',
+    'Do not create Projects, Tasks, Runs, runtime sessions, or provide actor ids or timestamps.',
+  ],
+  [WORK_ITEM_CAPTURE_TOOL]: [
+    'Input: { title: string; summary?: string; kind?: string; priority?: string; status?: "draft" | "planned"; openQuestions?: string[] }.',
+    'Do not create Projects, Tasks, Runs, runtime sessions, or provide server-resolved ids or timestamps.',
+  ],
+  [WORK_ITEM_PREPARE_EXECUTION_TOOL]: [
+    'Input: { executionGoal?: string; maxItems?: number }. Cats selects Work Item ids from the owner-visible scope.',
+    'Read-only: return proposals only and do not create Tasks, Runs, or runtime sessions.',
+  ],
+  [WORK_ITEM_PROPOSE_SPLIT_TOOL]: [
+    'Input: { maxItems?: number; defaultKind?: string; defaultPriority?: string }. Cats supplies the owner source text.',
+    'Read-only: propose candidate Work Items only; do not claim persistence.',
+  ],
+  [WORK_ITEM_UPDATE_TOOL]: [
+    'Input: { title?: string; summary?: string; status?: "draft" | "planned" | "ready" | "blocked"; kind?: string; priority?: string; assignmentHint?: string; openQuestions?: string[] }.',
+    'Cats re-resolves workItemId from the owner message. Do not create Projects, Tasks, Runs, runtime sessions, or provide actor ids or timestamps.',
+  ],
+  [WORK_PROJECT_CREATE_TOOL]: [
+    'Input: { title: string; summary?: string; status?: "planned" | "active" | "paused"; repoPath?: string }.',
+    'Cats supplies primaryConversationId. Do not create Work Items, Tasks, Runs, runtime sessions, or provide project ids, actor ids, or timestamps.',
+  ],
+  [WORK_PROJECT_LOOKUP_TOOL]: [
+    'Input: { query?: string; limit?: number; includeArchived?: boolean }.',
+    'Read-only: return bounded Project candidates only; do not write Core.',
+  ],
+  [WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL]: [
+    'Input: { title?: string; summary?: string; approvalNote?: string }. Cats selects the ready Work Item id from the confirmed execution proposal.',
+    'Creates pending-approval Tasks only; do not create Runs or start runtime checkout.',
+  ],
+};
+
 export function createPhaseScopedWorkToolObservation(
   input: PhaseScopedWorkToolObservationInput,
 ): PhaseScopedWorkToolObservation {
@@ -80,6 +123,7 @@ export function createPhaseScopedWorkToolObservation(
   const descriptors = manifests.map((manifest) => ({
     manifest,
     reason: WORK_TOOL_REASON_BY_NAME[manifest.name as PhaseScopedWorkToolName],
+    inputHints: [...WORK_TOOL_INPUT_HINTS_BY_NAME[manifest.name as PhaseScopedWorkToolName]],
   }));
 
   return {

@@ -33,6 +33,7 @@ export interface ProviderAgentObservationSummary {
 export interface ProviderAgentToolDescriptor {
   manifest: SupervisedToolManifest;
   reason: string;
+  inputHints?: string[];
 }
 
 export interface ProviderAgentBoundedObservation {

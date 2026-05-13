@@ -184,6 +184,11 @@ narrow-write policy. Chat handles that `tool_request` by re-resolving both ids
 from the owner message before invoking the delegate; model-supplied ids are
 ignored.
 
+Provider-agent Work tool descriptors include bounded `inputHints` so strong
+models can see the allowed request fields in the observation itself. These
+hints are guidance only; server-side validators, policy gates, and Chat
+sidecar cue checks remain authoritative.
+
 | Tool | Phase | Side effect | Approval | Evidence | Notes |
 |------|-------|-------------|----------|----------|-------|
 | `work.item.propose_split` | `intake` | `none` | `never` | `summary` | Proposes candidate Work Items from one owner Chat or Telegram source. It does not write Core. |

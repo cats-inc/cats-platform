@@ -47,6 +47,19 @@ test('Work tool observation exposes bounded triage writes when policy grants nar
     WORK_PROJECT_CREATE_TOOL,
     WORK_PROJECT_LOOKUP_TOOL,
   ]);
+  const updateDescriptor = observation.descriptors.find((descriptor) =>
+    descriptor.manifest.name === WORK_ITEM_UPDATE_TOOL);
+  const assignDescriptor = observation.descriptors.find((descriptor) =>
+    descriptor.manifest.name === WORK_ITEM_ASSIGN_PROJECT_TOOL);
+  assert.ok(updateDescriptor?.inputHints?.some((entry) =>
+    entry.includes('status?: "draft" | "planned" | "ready" | "blocked"'),
+  ));
+  assert.ok(updateDescriptor?.inputHints?.some((entry) =>
+    entry.includes('re-resolves workItemId'),
+  ));
+  assert.ok(assignDescriptor?.inputHints?.some((entry) =>
+    entry.includes('note?: string') && entry.includes('workItemId and projectId'),
+  ));
 });
 
 test('Work tool observation keeps execution preparation Boss-only and approval-safe', () => {
