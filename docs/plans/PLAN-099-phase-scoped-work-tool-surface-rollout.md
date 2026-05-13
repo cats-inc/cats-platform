@@ -90,7 +90,7 @@ without starting execution.
       supervision and approval gates.
 - [x] Task 5.4: Ensure Task creation links through `WorkItem.taskId` and keeps
       WorkItem source provenance intact.
-- [ ] Task 5.5: Add tests proving capture and execution cannot occur in the
+- [x] Task 5.5: Add tests proving capture and execution cannot occur in the
       same assistant turn without an owner-visible acknowledgement boundary.
 
 **Deliverables**: Boss Cat can convert selected Work Items into supervised
@@ -178,6 +178,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Phase 5.1 added a pure execution-preparation phase resolver for Boss Cat requests over explicit, active, or visible Work Item refs without creating Tasks or Runs. |
 | 2026-05-13 | Phase 5.2 added read-only `work.item.prepare_execution` proposals for selected Work Items with readiness, open questions, blockers, and no Core writes. |
 | 2026-05-13 | Phase 5.3/5.4 added `work.task.create_from_work_item` to create pending-approval Tasks from ready Work Items, link `WorkItem.taskId`, preserve source metadata, and avoid Run/runtime start. |
+| 2026-05-13 | Phase 5.5 added a same-run/action intake boundary guard so newly captured Work Items cannot become execution Tasks until a later owner-visible acknowledgement request. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---

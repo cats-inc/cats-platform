@@ -16,6 +16,7 @@ import {
   WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
   createPhaseScopedWorkToolManifests,
 } from '../src/products/work/shared/workToolSurface.js';
+import { createWorkIntakeDelegate } from '../src/products/work/state/workIntakeDelegate.js';
 import {
   createTaskFromWorkItem,
   createWorkExecutionTaskDelegate,
@@ -171,6 +172,84 @@ test('Work Task creation rejects non-ready Work Items without writing', async ()
   const after = await coreStore.readCore();
   assert.equal(after.tasks.length, 0);
   assert.equal(after.workItems[0]?.taskId, null);
+});
+
+test('Work Task creation requires an acknowledgement boundary after intake capture', async () => {
+  const coreStore = new MemoryCoreStore(createDefaultCoreState());
+  const intakeDelegate = createWorkIntakeDelegate({
+    coreStore,
+    now: () => new Date('2026-05-13T10:00:00.000Z'),
+  });
+  const capture = await intakeDelegate.capture(
+    {
+      title: 'Same-turn captured work',
+      status: 'planned',
+      source: {
+        surface: 'chat',
+        conversationId: 'conversation-cats',
+        sourceMessageId: 'message-same-turn',
+        sourceText: 'Track this and start it right away.',
+      },
+    },
+    {
+      actorRef: 'cat:boss',
+      actionId: 'action-intake-capture',
+      runId: 'run-same-turn',
+    },
+  );
+
+  assert.equal(capture.status, 'applied');
+  const workItemId = capture.result.workItemId;
+  await coreStore.updateCore((core) => {
+    const workItem = core.workItems.find((candidate) => candidate.id === workItemId);
+    assert.ok(workItem);
+
+    return upsertCoreWorkItem(core, {
+      id: workItem.id,
+      title: workItem.title,
+      status: 'ready',
+      projectId: workItem.projectId,
+      conversationId: workItem.conversationId,
+      taskId: workItem.taskId,
+      parentWorkItemId: workItem.parentWorkItemId,
+      ownerActorId: workItem.ownerActorId,
+      assignedActorIds: workItem.assignedActorIds,
+      summary: workItem.summary,
+      createdAt: workItem.createdAt,
+      metadata: workItem.metadata,
+    }, new Date('2026-05-13T10:01:00.000Z')).core;
+  });
+
+  const sameRun = await createTaskFromWorkItem(
+    coreStore,
+    { workItemId },
+    {
+      actorRef: 'cat:boss',
+      actionId: 'action-task-create',
+      runId: 'run-same-turn',
+    },
+    () => new Date('2026-05-13T10:02:00.000Z'),
+  );
+
+  assert.equal(sameRun.status, 'rejected');
+  assert.equal(sameRun.error.code, 'E_PRECHECK_FAILED');
+  assert.match(sameRun.error.message, /owner-visible acknowledgement boundary/u);
+  assert.equal((await coreStore.readCore()).tasks.length, 0);
+
+  const nextRun = await createTaskFromWorkItem(
+    coreStore,
+    { workItemId },
+    {
+      actorRef: 'cat:boss',
+      actionId: 'action-task-create-next',
+      runId: 'run-after-acknowledgement',
+    },
+    () => new Date('2026-05-13T10:03:00.000Z'),
+  );
+
+  assert.equal(nextRun.status, 'applied');
+  assert.equal(nextRun.result.created, true);
+  assert.equal((await coreStore.readCore()).runs.length, 0);
 });
 
 test('Work Task creation is rejected by read-only grants before executor writes', async () => {

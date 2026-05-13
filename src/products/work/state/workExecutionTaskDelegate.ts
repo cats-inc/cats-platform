@@ -92,6 +92,7 @@ export async function createTaskFromWorkItem(
       if (workItem === null) {
         throw new WorkExecutionTaskPrecheckError(`No Work Item found for id ${workItemId}.`);
       }
+      assertWorkItemExitedIntakeBoundary(workItem, context);
       if (workItem.status !== 'ready') {
         throw new WorkExecutionTaskPrecheckError(
           `Work Item ${workItemId} must be ready before Task creation; current status is `
@@ -251,6 +252,45 @@ function readLinkedPendingTask(
   return existingTask;
 }
 
+function assertWorkItemExitedIntakeBoundary(
+  workItem: CoreWorkItemRecord,
+  context: WorkExecutionTaskMutationContext,
+): void {
+  const intakeBoundary = readWorkIntakeBoundary(workItem.metadata);
+  if (intakeBoundary === null) {
+    return;
+  }
+  if (context.runId && intakeBoundary.runId === context.runId) {
+    throw new WorkExecutionTaskPrecheckError(
+      `Work Item ${workItem.id} was captured in the same supervised run; wait for an `
+      + 'owner-visible acknowledgement boundary before creating an execution Task.',
+    );
+  }
+  if (context.actionId && intakeBoundary.actionId === context.actionId) {
+    throw new WorkExecutionTaskPrecheckError(
+      `Work Item ${workItem.id} was captured in the same supervised action; wait for an `
+      + 'owner-visible acknowledgement boundary before creating an execution Task.',
+    );
+  }
+}
+
+function readWorkIntakeBoundary(metadata: unknown): {
+  actionId: string | null;
+  runId: string | null;
+} | null {
+  const workIntake = isRecord(metadata) && isRecord(metadata.workIntake)
+    ? metadata.workIntake
+    : null;
+  if (workIntake === null) {
+    return null;
+  }
+
+  return {
+    actionId: readMetadataString(workIntake.actionId),
+    runId: readMetadataString(workIntake.runId),
+  };
+}
+
 function buildWorkExecutionTaskMetadata(
   workItem: CoreWorkItemRecord,
   input: WorkTaskCreateFromWorkItemInput,
@@ -345,6 +385,14 @@ function createTaskCreationActivityId(taskId: string): string {
 
 function stableHash(value: string): string {
   return createHash('sha256').update(value).digest('hex');
+}
+
+function readMetadataString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() !== '' ? value : null;
+}
+
+function isRecord(input: unknown): input is Record<string, unknown> {
+  return typeof input === 'object' && input !== null && !Array.isArray(input);
 }
 
 class WorkExecutionTaskPrecheckError extends Error {

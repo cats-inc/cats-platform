@@ -198,7 +198,9 @@ timestamps remain server-resolved. The delegate creates a deterministic
 pending-approval Task, writes an approval binding against the Work Item, links
 `WorkItem.taskId`, preserves the Work Item's source metadata, and emits an
 approval-requested Activity. Runtime checkout and Run creation remain separate
-approval-gated execution steps.
+approval-gated execution steps. Work Items captured by intake in the same
+supervised run/action are rejected until a later owner-visible acknowledgement
+boundary starts a separate execution-preparation request.
 
 Caller-visible triage lookup fields are `query`, `limit`, and
 `includeArchived`. Caller-visible triage create fields are `title`, `summary`,
