@@ -771,6 +771,68 @@ test('provider-agent decisions reject unsupported enum values', () => {
   ]);
 });
 
+test('provider-agent decisions reject unsupported model-authored fields', () => {
+  const semanticPlan = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 'decision-extra-plan-field',
+    planId: 'plan-extra-field',
+    confidence: 'medium',
+    rationaleSummary: 'Try to smuggle extra model-authored fields.',
+    scratchpad: 'hidden reasoning must not be retained',
+    steps: [
+      {
+        stepId: 'respond',
+        summary: 'Respond.',
+        action: 'respond',
+        notes: 'extra step field',
+      },
+    ],
+  } as unknown as ProviderAgentDecision;
+  const toolRequest = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'tool_request',
+    decisionId: 'decision-extra-tool-field',
+    confidence: 'medium',
+    toolName: 'work.context.lookup',
+    target: { kind: 'worker_tool', toolName: 'work.context.lookup' },
+    input: {},
+    workItemId: 'work-item-model-supplied-id',
+    rationaleSummary: 'Try to supply server-resolved ids outside input.',
+  } as unknown as ProviderAgentDecision;
+  const recoveryDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'recovery_decision',
+    decisionId: 'decision-extra-recovery-field',
+    confidence: 'low',
+    rejectedActionId: 'step-denied',
+    selectedFallback: 'retry',
+    correctedInput: {},
+    chainOfThought: 'hidden reasoning must not be retained',
+    rationaleSummary: 'Retry with a bounded input.',
+  } as unknown as ProviderAgentDecision;
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: semanticPlan,
+  }), [
+    'semantic_plan contains unsupported fields: scratchpad',
+    'step respond contains unsupported fields: notes',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: toolRequest,
+  }), [
+    'tool_request contains unsupported fields: workItemId',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: recoveryDecision,
+  }), [
+    'recovery_decision contains unsupported fields: chainOfThought',
+  ]);
+});
+
 test('provider-agent delegation and recovery decisions reject malformed bounded fields', () => {
   const invalidDelegation: ProviderAgentDecision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,

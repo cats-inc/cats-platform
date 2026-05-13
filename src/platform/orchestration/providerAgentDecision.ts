@@ -77,6 +77,58 @@ export const PROVIDER_AGENT_SEMANTIC_PLAN_STEP_ACTION_VALUES = [
 export const PROVIDER_AGENT_DELEGATION_BLOCKING_VALUES = ['blocking', 'async'] as const;
 export const PROVIDER_AGENT_TARGET_PROJECTION_VALUES = ['chat', 'work', 'code'] as const;
 
+const PROVIDER_AGENT_SEMANTIC_PLAN_DECISION_FIELDS = [
+  'contractVersion',
+  'kind',
+  'decisionId',
+  'planId',
+  'confidence',
+  'rationaleSummary',
+  'steps',
+] as const;
+const PROVIDER_AGENT_TOOL_REQUEST_DECISION_FIELDS = [
+  'contractVersion',
+  'kind',
+  'decisionId',
+  'confidence',
+  'toolName',
+  'target',
+  'input',
+  'expectedOutputSchemaRef',
+  'rationaleSummary',
+] as const;
+const PROVIDER_AGENT_DELEGATION_REQUEST_DECISION_FIELDS = [
+  'contractVersion',
+  'kind',
+  'decisionId',
+  'confidence',
+  'target',
+  'goalSummary',
+  'blocking',
+  'budget',
+  'rationaleSummary',
+] as const;
+const PROVIDER_AGENT_RECOVERY_DECISION_FIELDS = [
+  'contractVersion',
+  'kind',
+  'decisionId',
+  'confidence',
+  'rejectedActionId',
+  'selectedFallback',
+  'correctedInput',
+  'rationaleSummary',
+] as const;
+const PROVIDER_AGENT_SEMANTIC_PLAN_STEP_FIELDS = [
+  'stepId',
+  'summary',
+  'action',
+  'toolName',
+  'target',
+  'input',
+  'expectedOutputSchemaRef',
+  'dependsOn',
+] as const;
+
 export type ProviderAgentDecisionConfidence =
   (typeof PROVIDER_AGENT_DECISION_CONFIDENCE_VALUES)[number];
 export type ProviderAgentTaskRisk = (typeof PROVIDER_AGENT_TASK_RISK_VALUES)[number];
@@ -293,6 +345,9 @@ export function validateProviderAgentDecision(
   if (input.decision.contractVersion !== PROVIDER_AGENT_DECISION_CONTRACT_VERSION) {
     errors.push(`decision contractVersion must be ${PROVIDER_AGENT_DECISION_CONTRACT_VERSION}`);
   }
+  if (isRecord(input.decision)) {
+    validateDecisionAllowedFields(errors, input.decision);
+  }
 
   switch (input.decision.kind) {
     case 'semantic_plan':
@@ -387,6 +442,12 @@ function validateSemanticPlanDecision(
   const stepIds = new Set(validStepIds);
 
   for (const step of stepRecords) {
+    validateAllowedRecordFields(
+      errors,
+      `step ${step.stepId}`,
+      step,
+      PROVIDER_AGENT_SEMANTIC_PLAN_STEP_FIELDS,
+    );
     validateBoundedString(
       errors,
       'step.stepId',
@@ -439,6 +500,48 @@ function validateSemanticPlanDecision(
   }
 }
 
+function validateDecisionAllowedFields(
+  errors: string[],
+  decision: Record<string, unknown>,
+): void {
+  switch (decision.kind) {
+    case 'semantic_plan':
+      validateAllowedRecordFields(
+        errors,
+        'semantic_plan',
+        decision,
+        PROVIDER_AGENT_SEMANTIC_PLAN_DECISION_FIELDS,
+      );
+      break;
+    case 'tool_request':
+      validateAllowedRecordFields(
+        errors,
+        'tool_request',
+        decision,
+        PROVIDER_AGENT_TOOL_REQUEST_DECISION_FIELDS,
+      );
+      break;
+    case 'delegation_request':
+      validateAllowedRecordFields(
+        errors,
+        'delegation_request',
+        decision,
+        PROVIDER_AGENT_DELEGATION_REQUEST_DECISION_FIELDS,
+      );
+      break;
+    case 'recovery_decision':
+      validateAllowedRecordFields(
+        errors,
+        'recovery_decision',
+        decision,
+        PROVIDER_AGENT_RECOVERY_DECISION_FIELDS,
+      );
+      break;
+    default:
+      return;
+  }
+}
+
 function validateSemanticPlanStepTarget(
   errors: string[],
   step: ProviderAgentSemanticPlanStep,
@@ -464,6 +567,21 @@ function validateSemanticPlanStepTarget(
 
   if (target.kind === 'worker_tool') {
     errors.push(`step ${step.stepId}.target.kind must not be worker_tool unless action is call_tool`);
+  }
+}
+
+function validateAllowedRecordFields(
+  errors: string[],
+  field: string,
+  value: object,
+  allowedFields: readonly string[],
+): void {
+  const allowed = new Set(allowedFields);
+  const unsupportedFields = Object.keys(value)
+    .filter((key) => !allowed.has(key))
+    .sort();
+  if (unsupportedFields.length > 0) {
+    errors.push(`${field} contains unsupported fields: ${unsupportedFields.join(', ')}`);
   }
 }
 
