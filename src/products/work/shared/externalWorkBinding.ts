@@ -233,9 +233,9 @@ function validateOptionalUrl(
     return stringErrors;
   }
 
-  return isHttpUrl(value)
+  return isCredentialFreeHttpUrl(value)
     ? []
-    : [error('invalid_url', key, `${key} must be an http or https URL.`)];
+    : [error('invalid_url', key, `${key} must be an http or https URL without credentials.`)];
 }
 
 function validateRequiredTimestamp(
@@ -279,13 +279,15 @@ function validateTimestampValue(
   return [];
 }
 
-function isHttpUrl(value: unknown): value is string {
+function isCredentialFreeHttpUrl(value: unknown): value is string {
   if (typeof value !== 'string') {
     return false;
   }
   try {
     const url = new URL(value.trim());
-    return url.protocol === 'http:' || url.protocol === 'https:';
+    return (url.protocol === 'http:' || url.protocol === 'https:')
+      && url.username === ''
+      && url.password === '';
   } catch {
     return false;
   }

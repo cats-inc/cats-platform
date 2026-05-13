@@ -232,6 +232,25 @@ test('Work external issue binding rejects missing or read-only targets before wr
   assert.equal(readOnly.status, 'rejected');
   assert.equal(readOnly.error.code, 'E_TOOL_SCOPE_DENIED');
 
+  const credentialUrl = await boundary.invoke({
+    toolName: WORK_EXTERNAL_LINK_ISSUE_TOOL,
+    input: {
+      localKind: 'work_item',
+      localId: 'work-item-intake',
+      provider: 'github',
+      externalId: '123',
+      externalUrl: 'https://user:pass@example.com/issues/123',
+    },
+    actionId: 'action-external-link-credential-url',
+    runId: 'run-external-binding-2',
+    actorRef: 'cat:boss',
+    grant: { parentToolScope: 'narrow_write', policyToolScope: 'narrow_write' },
+    execute: executors[WORK_EXTERNAL_LINK_ISSUE_TOOL],
+  });
+
+  assert.equal(credentialUrl.status, 'rejected');
+  assert.equal(credentialUrl.error.code, 'E_SCHEMA_INVALID');
+
   const missing = await boundary.invoke({
     toolName: WORK_EXTERNAL_LINK_ISSUE_TOOL,
     input: {

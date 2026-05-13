@@ -70,4 +70,19 @@ test('external Work binding validation rejects unsupported providers and unsafe 
       ['linkedByActorRef', 'too_long'],
     ],
   );
+
+  assert.deepEqual(
+    validateExternalWorkBinding({
+      localKind: 'work_item',
+      localId: 'work-item-1',
+      provider: 'github',
+      externalType: 'issue',
+      externalId: '123',
+      externalUrl: 'https://user:pass@example.com/issues/123',
+      linkedAt: '2026-05-13T10:00:00.000Z',
+    }).map((entry) => [entry.field, entry.code]),
+    [
+      ['externalUrl', 'invalid_url'],
+    ],
+  );
 });

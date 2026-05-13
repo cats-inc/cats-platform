@@ -114,6 +114,7 @@ export const WORK_TOOL_VALIDATION_ERROR_CODES = [
   'unsupported_value',
   'server_resolved_field',
   'bounds',
+  'invalid_url',
 ] as const;
 
 export type WorkToolValidationErrorCode = (typeof WORK_TOOL_VALIDATION_ERROR_CODES)[number];
@@ -649,7 +650,7 @@ export function validateWorkExternalLinkIssueInput(input: unknown): WorkToolVali
     ...validateRequiredEnum(input, 'provider', 'provider', EXTERNAL_WORK_BINDING_PROVIDER_VALUES),
     ...validateOptionalEnum(input, 'externalType', EXTERNAL_WORK_BINDING_EXTERNAL_TYPE_VALUES),
     ...validateRequiredString(input, 'externalId', 200),
-    ...validateOptionalString(input, 'externalUrl', 1000),
+    ...validateOptionalExternalUrl(input, 'externalUrl', 1000),
     ...validateOptionalEnum(input, 'syncDirection', EXTERNAL_WORK_BINDING_SYNC_DIRECTION_VALUES),
     ...validateOptionalString(input, 'externalUpdatedAt', 80),
     ...validateOptionalString(input, 'note', 500),
@@ -929,6 +930,25 @@ function validateOptionalBoolean(
   return [];
 }
 
+function validateOptionalExternalUrl(
+  input: Record<string, unknown>,
+  key: string,
+  maxLength: number,
+): WorkToolValidationError[] {
+  const value = input[key];
+  if (value === undefined || value === null || value === '') {
+    return [];
+  }
+  const stringErrors = validateStringValue(value, key, maxLength, false);
+  if (stringErrors.length > 0) {
+    return stringErrors;
+  }
+
+  return isCredentialFreeHttpUrl(value)
+    ? []
+    : [error('invalid_url', key, `${key} must be an http or https URL without credentials.`)];
+}
+
 function validateRequiredStringArray(
   input: Record<string, unknown>,
   key: string,
@@ -1004,4 +1024,18 @@ function error(
 
 function isRecord(input: unknown): input is Record<string, unknown> {
   return typeof input === 'object' && input !== null && !Array.isArray(input);
+}
+
+function isCredentialFreeHttpUrl(value: unknown): value is string {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  try {
+    const url = new URL(value.trim());
+    return (url.protocol === 'http:' || url.protocol === 'https:')
+      && url.username === ''
+      && url.password === '';
+  } catch {
+    return false;
+  }
 }

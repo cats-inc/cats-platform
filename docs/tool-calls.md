@@ -245,8 +245,9 @@ supervised run/action are rejected until a later owner-visible acknowledgement
 boundary starts a separate execution-preparation request.
 
 Caller-visible external link fields are `localKind`, `localId`, `provider`,
-optional `externalType`, `externalId`, optional `externalUrl`, optional
-`syncDirection`, optional `externalUpdatedAt`, and optional `note`. The unlink
+optional `externalType`, `externalId`, optional credential-free HTTP(S)
+`externalUrl`, optional `syncDirection`, optional `externalUpdatedAt`, and
+optional `note`. The unlink
 tool accepts `localKind`, `localId`, `provider`, optional `externalType`,
 `externalId`, and optional `note`. The MVP provider set is `github`, `gitlab`,
 `gitea`, `redmine`, and `bugzilla`; the delegate writes or removes the
