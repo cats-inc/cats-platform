@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice wired Chat's orchestrator planner surface to project product-owned `work-memory` tool intent for explicit Work triage and external tracker binding turns, while suppressing generic runtime tools for unmatched Work-memory turns. |
 | 2026-05-13 | Follow-up slice expanded Work `work-memory` tool-intent coverage across execution-preparation and external tracker binding phases, including read-only versus narrow-write allowed-tool projections. |
 | 2026-05-13 | Follow-up slice added an architecture boundary regression so Work's `work-memory` tool-intent projection remains product-owned and platform orchestration does not import Work product internals. |
 | 2026-05-13 | Follow-up slice added a product-owned `work-memory` tool-intent projection that maps Work phase, capability profile, and policy scope into runtime-facing Work tool names without wiring runtime MCP execution yet. |

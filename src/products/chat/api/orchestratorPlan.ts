@@ -22,6 +22,7 @@ import type {
   OrchestratorStateView,
   OrchestratorPlannerChannelContext,
   OrchestratorPlannerSurface,
+  ToolIntentManifest,
 } from '../../../platform/orchestration/contracts.js';
 import { ORCHESTRATOR_CONTRACT_VERSION } from '../../../platform/orchestration/contracts.js';
 import {
@@ -114,7 +115,9 @@ function buildExecutionLoopContract<TState extends OrchestratorStateView>(
 
 function buildOrchestratorParticipantPlan<TState extends OrchestratorStateView>(
   state: TState,
+  core: CatsCoreState,
   channelContext: OrchestratorPlannerChannelContext,
+  body: string,
   plannerSurface: OrchestratorPlannerSurface<TState>,
 ): OrchestratorParticipantPlan {
   return {
@@ -136,9 +139,15 @@ function buildOrchestratorParticipantPlan<TState extends OrchestratorStateView>(
         channelId: channelContext.channel.id,
       },
     }) ?? null,
-    toolIntent: resolveToolIntentManifest({
+    toolIntent: resolvePlannerToolIntent({
+      state,
+      core,
+      channelContext,
+      body,
+      plannerSurface,
       profileId: state.globalOrchestrator.mcpProfile,
       participantKind: 'orchestrator',
+      participantId: 'orchestrator',
       channelId: channelContext.channel.id,
       roomMode: channelContext.channel.roomRouting?.mode ?? 'chat_channel',
       transport: channelContext.transport,
@@ -147,8 +156,12 @@ function buildOrchestratorParticipantPlan<TState extends OrchestratorStateView>(
 }
 
 function buildCatParticipantPlan(
+  state: OrchestratorStateView,
+  core: CatsCoreState,
   channelContext: OrchestratorPlannerChannelContext,
   cat: OrchestratorChannelCat,
+  body: string,
+  plannerSurface: OrchestratorPlannerSurface,
 ): OrchestratorParticipantPlan {
   return {
     participantKind: 'cat',
@@ -171,15 +184,61 @@ function buildCatParticipantPlan(
         catName: cat.name,
       },
     }) ?? null,
-    toolIntent: resolveToolIntentManifest({
+    toolIntent: resolvePlannerToolIntent({
+      state,
+      core,
+      channelContext,
+      body,
+      plannerSurface,
       profileId: cat.mcpProfile,
       participantKind: 'cat',
+      participantId: cat.catId,
       channelId: channelContext.channel.id,
       catId: cat.catId,
       roomMode: channelContext.channel.roomRouting?.mode ?? 'chat_channel',
       transport: channelContext.transport,
     }) ?? null,
   };
+}
+
+function resolvePlannerToolIntent<TState extends OrchestratorStateView>(input: {
+  state: TState;
+  core: CatsCoreState;
+  channelContext: OrchestratorPlannerChannelContext;
+  body: string;
+  plannerSurface: OrchestratorPlannerSurface<TState>;
+  profileId: string | null;
+  participantKind: 'orchestrator' | 'cat';
+  participantId: string;
+  catId?: string | null;
+  channelId: string;
+  roomMode: 'chat_channel' | 'direct_message';
+  transport: OrchestratorTransportContext;
+}): ToolIntentManifest | null {
+  const productIntent = input.plannerSurface.resolveToolIntentManifest?.({
+    state: input.state,
+    core: input.core,
+    channel: input.channelContext.channel,
+    body: input.body,
+    profileId: input.profileId,
+    participantKind: input.participantKind,
+    participantId: input.participantId,
+    catId: input.catId,
+    roomMode: input.roomMode,
+    transport: input.transport,
+  });
+  if (productIntent !== undefined) {
+    return productIntent;
+  }
+
+  return resolveToolIntentManifest({
+    profileId: input.profileId,
+    participantKind: input.participantKind,
+    channelId: input.channelId,
+    catId: input.catId,
+    roomMode: input.roomMode,
+    transport: input.transport,
+  }) ?? null;
 }
 
 function buildInitialTargetPlan(
@@ -236,8 +295,9 @@ export function buildOrchestratorTurnPlan<TState extends OrchestratorStateView>(
     transport,
   };
   const participants: OrchestratorParticipantPlan[] = [
-    buildOrchestratorParticipantPlan(state, channelContext, plannerSurface),
-    ...channel.assignedCats.map((cat) => buildCatParticipantPlan(channelContext, cat)),
+    buildOrchestratorParticipantPlan(state, core, channelContext, input.body, plannerSurface),
+    ...channel.assignedCats.map((cat) =>
+      buildCatParticipantPlan(state, core, channelContext, cat, input.body, plannerSurface)),
   ];
   const planId = `orch-plan-${randomUUID()}`;
   const operatorSeams = resolveOrchestratorOperatorSeams(core, channel.id, plannerSurface);

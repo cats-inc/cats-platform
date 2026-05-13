@@ -22,6 +22,7 @@ import {
   buildRunInspectorView,
   resolveChatConversationId,
 } from '../shared/operator-loop/index.js';
+import { resolveChatWorkToolIntentManifest } from './workToolIntentResolver.js';
 
 export function createChatDeterministicChannelRouter(
   options: {
@@ -74,6 +75,7 @@ export const chatDeterministicPlannerSurface: OrchestratorPlannerSurface<ChatSta
   },
   buildRunInspectorView,
   resolveConversationId: resolveChatConversationId,
+  resolveToolIntentManifest: resolveChatWorkToolIntentManifest,
 };
 
 export async function resumeStoredWorkflowContinuationDispatch(input: {

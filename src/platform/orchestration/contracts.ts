@@ -163,6 +163,21 @@ export interface ToolIntentManifest {
   strict?: boolean;
 }
 
+export interface OrchestratorToolIntentResolveInput<
+  TState extends OrchestratorStateView = OrchestratorStateView,
+> {
+  state: TState;
+  core: CatsCoreState;
+  channel: OrchestratorChannelView;
+  body: string;
+  profileId: string | null;
+  participantKind: 'orchestrator' | 'cat';
+  participantId: string;
+  catId?: string | null;
+  roomMode: 'chat_channel' | 'direct_message';
+  transport: OrchestratorTransportContext;
+}
+
 export type OrchestratorOperatorSeverity =
   | 'muted'
   | 'progress'
@@ -511,6 +526,9 @@ export interface OrchestratorPlannerSurface<TState extends OrchestratorStateView
     runId: string | null | undefined,
   ): OrchestratorRunInspectorView | null;
   resolveConversationId(channelId: string): string;
+  resolveToolIntentManifest?(
+    input: OrchestratorToolIntentResolveInput<TState>,
+  ): ToolIntentManifest | null | undefined;
 }
 
 export interface OrchestratorPlanRequest {
