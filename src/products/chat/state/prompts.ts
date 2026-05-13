@@ -10,6 +10,7 @@ import {
   buildAssistantResponseLanguageInstruction,
   parseAssistantResponseLanguage,
 } from '../../../shared/assistantResponseLanguage.js';
+import { WORK_MCP_PROFILE_ID } from '../../../shared/catMcpProfiles.js';
 import { buildChoiceResponseBody } from '../shared/messageChoices.js';
 import { ORCHESTRATOR_NAME } from './model/index.js';
 
@@ -401,12 +402,26 @@ function formatParticipantRoster(channel: ChatChannelView): string {
       const roleLabel = participant.roles.length > 0
         ? participant.roles.join(', ')
         : participant.roleHint?.trim() || (participant.sourceKind === 'cat' ? 'general' : 'temporary');
-      const mcpProfileLabel = participant.mcpProfile
-        ? `; tool profile: ${participant.mcpProfile}`
-        : '';
+      const mcpProfileLabel = formatParticipantToolProfile(participant.mcpProfile);
       return `- ${participant.name} (${participant.execution.target.provider}${participant.execution.target.model ? ` / ${participant.execution.target.model}` : ''}; roles: ${roleLabel}${mcpProfileLabel})`;
     })
     .join('\n');
+}
+
+function formatParticipantToolProfile(profile: string | null): string {
+  if (!profile) {
+    return '';
+  }
+  if (profile !== WORK_MCP_PROFILE_ID) {
+    return `; tool profile: ${profile}`;
+  }
+
+  return [
+    `; tool profile: ${profile}`,
+    'work capabilities: capture/propose Work Items',
+    'look up/create Projects',
+    'update/assign Work Items when phase policy allows',
+  ].join('; ');
 }
 
 function formatMemoryCheckpoint(memory: MemoryCheckpointSummary): string {

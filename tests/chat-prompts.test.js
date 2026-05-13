@@ -118,10 +118,11 @@ test('orchestrator prompt includes Cat tool profiles in the participant roster',
     },
   );
 
-  assert.match(
-    prompt,
-    /Work Planner \(claude \/ sonnet; roles: planner; tool profile: work-memory\)/u,
-  );
+  assert.match(prompt, /Work Planner \(claude \/ sonnet; roles: planner/u);
+  assert.match(prompt, /tool profile: work-memory/u);
+  assert.match(prompt, /work capabilities: capture\/propose Work Items/u);
+  assert.match(prompt, /look up\/create Projects/u);
+  assert.match(prompt, /update\/assign Work Items when phase policy allows/u);
 });
 
 test('cat prompt omits blank transport sections when no transport context is provided', () => {

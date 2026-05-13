@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice expanded `work-memory` prompt roster text with explicit Work Item and Project capabilities so strong-model context states what the profile can do. |
 | 2026-05-13 | Follow-up slice added Cat tool profiles to orchestrator prompt rosters so strong-model routing context can see which Cats are carrying `work-memory` capability posture. |
 | 2026-05-13 | Follow-up slice surfaced existing Cat tool profiles in the Chat Add Cat panel so operators can distinguish `work-memory` Cats before assigning them. |
 | 2026-05-13 | Follow-up slice exposed the Cat tool profile selector in the Chat Add Cat panel so Work-oriented Cats can be created directly from chat drafts and rooms. |
