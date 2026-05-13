@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   CATS_VITE_PROXY_PATHS,
   createCatsViteProxyOptions,
-} from '../vite.config.ts';
+} from '../src/platform/auth/viteProxy.ts';
 import {
   clearAuthSessionCookie,
   serializeAuthSessionCookie,

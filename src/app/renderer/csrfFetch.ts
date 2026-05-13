@@ -92,7 +92,11 @@ function collectHeaderEntries(
     return [];
   }
   if (source instanceof Headers) {
-    return Array.from(source.entries());
+    const entries: Array<[string, string]> = [];
+    source.forEach((value, key) => {
+      entries.push([key, value]);
+    });
+    return entries;
   }
   if (Array.isArray(source)) {
     return source.map(([k, v]) => [k, v]);
@@ -105,7 +109,7 @@ function readEffectiveHeaders(
   init: RequestInit | undefined,
 ): Array<[string, string]> {
   if (input instanceof Request) {
-    return Array.from(input.headers.entries());
+    return collectHeaderEntries(input.headers);
   }
   return collectHeaderEntries(init?.headers);
 }

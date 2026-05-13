@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import mobileClientModule from '../mobile/src/api/client.ts';
-import mobileAuthModule from '../mobile/src/api/auth.ts';
-import mobileAuthSessionModule from '../mobile/src/api/authSession.ts';
-import mobileAuthTokenStoreModule from '../mobile/src/api/authTokenStore.ts';
+import * as mobileClientModule from '../mobile/src/api/client.ts';
+import * as mobileAuthModule from '../mobile/src/api/auth.ts';
+import * as mobileAuthSessionModule from '../mobile/src/api/authSession.ts';
+import * as mobileAuthTokenStoreModule from '../mobile/src/api/authTokenStore.ts';
 
 const { createMobileApiClient, createMobileApiClientWithStoredAuth } =
   mobileClientModule as typeof import('../mobile/src/api/client.ts');

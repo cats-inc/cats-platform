@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 export const GUIDE_CAT_ASSIST_SCHEMA_VERSION = 1 as const;
 export const GUIDE_CAT_ASSIST_REFRESH_CONTEXT_HASH_PREFIX = 'gca:v1';
 
@@ -244,11 +242,21 @@ export function buildGuideCatAssistRefreshContextHash(
     },
     assistTemplateRevision: input.assistTemplateRevision ?? null,
   });
-  const digest = createHash('sha256')
-    .update(JSON.stringify(payload))
-    .digest('hex')
-    .slice(0, 16);
+  const digest = stableHashHex(JSON.stringify(payload));
   return `${GUIDE_CAT_ASSIST_REFRESH_CONTEXT_HASH_PREFIX}:${digest}`;
+}
+
+function stableHashHex(value: string): string {
+  let left = 0x811c9dc5;
+  let right = 0x9e3779b9;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    left ^= code;
+    left = Math.imul(left, 0x01000193) >>> 0;
+    right ^= code + (left >>> 16);
+    right = Math.imul(right, 0x01000193) >>> 0;
+  }
+  return `${left.toString(16).padStart(8, '0')}${right.toString(16).padStart(8, '0')}`;
 }
 
 export function isGuideCatAssistBundleStale(

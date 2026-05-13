@@ -1,5 +1,5 @@
 import type { PlatformAuthErrorCode } from '../../../platform/auth/errorCodes.js';
-import { seedCsrfToken } from '../csrfFetch';
+import { seedCsrfToken } from '../csrfFetch.js';
 
 export interface PlatformAuthPrincipalSummary {
   accountId: string;

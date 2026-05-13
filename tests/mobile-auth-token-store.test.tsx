@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import expoSecureStoreModule from '../mobile/src/api/expoSecureStore.ts';
-import tokenStoreModule from '../mobile/src/api/authTokenStore.ts';
+import * as expoSecureStoreModule from '../mobile/src/api/expoSecureStore.ts';
+import * as tokenStoreModule from '../mobile/src/api/authTokenStore.ts';
 
 const {
   resolveExpoSecureStoreAuthTokenStorage,

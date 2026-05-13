@@ -1,8 +1,10 @@
 import { defineConfig, loadEnv, type ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
-
-export const CATS_VITE_PROXY_PATHS = ['/api', '/health', '/runtime'] as const;
+import {
+  CATS_VITE_PROXY_PATHS,
+  createCatsViteProxyOptions,
+} from './src/platform/auth/viteProxy';
 
 function readFirstDefined(
   env: Record<string, string | undefined>,
@@ -36,15 +38,6 @@ function normalizeProxyHost(host: string): string {
   return host;
 }
 
-export function createCatsViteProxyOptions(target: string): ProxyOptions {
-  return {
-    target,
-    changeOrigin: false,
-    cookieDomainRewrite: '',
-    cookiePathRewrite: '/',
-  };
-}
-
 export default defineConfig(({ mode }) => {
   const env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
   const appHost = readFirstDefined(env, ['CATS_HOST', 'CATS_INC_HOST']) || '127.0.0.1';
@@ -54,7 +47,7 @@ export default defineConfig(({ mode }) => {
   const previewPort = parsePort(readFirstDefined(env, ['CATS_WEB_PREVIEW_PORT']), 4173);
   const proxyTarget = readFirstDefined(env, ['CATS_WEB_PROXY_TARGET'])
     || `http://${normalizeProxyHost(appHost)}:${appPort}`;
-  const proxyOptions = createCatsViteProxyOptions(proxyTarget);
+  const proxyOptions: ProxyOptions = createCatsViteProxyOptions(proxyTarget);
 
   return {
     plugins: [react()],
