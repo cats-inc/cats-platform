@@ -286,6 +286,34 @@ test('Work item capture validation rejects execution fields and non-planning sta
   }), []);
 });
 
+test('Work tool validation rejects unknown caller fields', () => {
+  assert.deepEqual(
+    validateWorkItemCaptureInput({
+      title: 'Capture this Work Item',
+      remoteWrite: true,
+      source: {
+        surface: 'chat',
+        sourceText: 'Capture this Work Item',
+        rawBody: 'unbounded caller payload',
+      },
+    }).map((entry) => [entry.field, entry.code]),
+    [
+      ['remoteWrite', 'unknown_field'],
+      ['source.rawBody', 'unknown_field'],
+    ],
+  );
+
+  assert.deepEqual(
+    validateWorkProjectLookupInput({
+      query: 'Cats Platform',
+      remoteWrite: true,
+    }).map((entry) => [entry.field, entry.code]),
+    [
+      ['remoteWrite', 'unknown_field'],
+    ],
+  );
+});
+
 test('Work item split proposal validation bounds source and candidate count inputs', () => {
   assert.deepEqual(validateWorkItemProposeSplitInput({
     source: {

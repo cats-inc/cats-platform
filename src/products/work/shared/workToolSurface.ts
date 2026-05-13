@@ -115,6 +115,7 @@ export const WORK_TOOL_VALIDATION_ERROR_CODES = [
   'server_resolved_field',
   'bounds',
   'invalid_url',
+  'unknown_field',
 ] as const;
 
 export type WorkToolValidationErrorCode = (typeof WORK_TOOL_VALIDATION_ERROR_CODES)[number];
@@ -554,6 +555,16 @@ export function validateWorkItemCaptureInput(input: unknown): WorkToolValidation
 
   return [
     ...validateServerResolvedFields(input),
+    ...validateAllowedFields(input, [
+      'title',
+      'source',
+      'summary',
+      'kind',
+      'priority',
+      'status',
+      'suggestedProjectTitle',
+      'openQuestions',
+    ]),
     ...validateRequiredString(input, 'title', 180),
     ...validateOptionalString(input, 'summary', 4000),
     ...validateOptionalString(input, 'suggestedProjectTitle', 160),
@@ -572,6 +583,12 @@ export function validateWorkItemProposeSplitInput(input: unknown): WorkToolValid
 
   return [
     ...validateServerResolvedFields(input),
+    ...validateAllowedFields(input, [
+      'source',
+      'maxItems',
+      'defaultKind',
+      'defaultPriority',
+    ]),
     ...validateSourceRef(input.source, 'source'),
     ...validateOptionalIntegerRange(input, 'maxItems', 1, 20),
     ...validateOptionalEnum(input, 'defaultKind', WORK_ITEM_KIND_VALUES),
@@ -586,6 +603,16 @@ export function validateWorkItemUpdateInput(input: unknown): WorkToolValidationE
 
   return [
     ...validateServerResolvedFields(input, '', new Set(['workItemId'])),
+    ...validateAllowedFields(input, [
+      'workItemId',
+      'title',
+      'summary',
+      'status',
+      'kind',
+      'priority',
+      'assignmentHint',
+      'openQuestions',
+    ]),
     ...validateRequiredString(input, 'workItemId', 160),
     ...validateOptionalString(input, 'title', 180),
     ...validateOptionalString(input, 'summary', 4000),
@@ -605,6 +632,11 @@ export function validateWorkItemAssignProjectInput(input: unknown): WorkToolVali
 
   return [
     ...validateServerResolvedFields(input, '', new Set(['workItemId', 'projectId'])),
+    ...validateAllowedFields(input, [
+      'workItemId',
+      'projectId',
+      'note',
+    ]),
     ...validateRequiredString(input, 'workItemId', 160),
     ...validateRequiredString(input, 'projectId', 160),
     ...validateOptionalString(input, 'note', 500),
@@ -618,6 +650,11 @@ export function validateWorkItemPrepareExecutionInput(input: unknown): WorkToolV
 
   return [
     ...validateServerResolvedFields(input),
+    ...validateAllowedFields(input, [
+      'workItemIds',
+      'executionGoal',
+      'maxItems',
+    ]),
     ...validateRequiredStringArray(input, 'workItemIds', 1, 20, 160),
     ...validateOptionalString(input, 'executionGoal', 1000),
     ...validateOptionalIntegerRange(input, 'maxItems', 1, 20),
@@ -631,6 +668,12 @@ export function validateWorkTaskCreateFromWorkItemInput(input: unknown): WorkToo
 
   return [
     ...validateServerResolvedFields(input, '', new Set(['workItemId'])),
+    ...validateAllowedFields(input, [
+      'workItemId',
+      'title',
+      'summary',
+      'approvalNote',
+    ]),
     ...validateRequiredString(input, 'workItemId', 160),
     ...validateOptionalString(input, 'title', 180),
     ...validateOptionalString(input, 'summary', 4000),
@@ -645,6 +688,17 @@ export function validateWorkExternalLinkIssueInput(input: unknown): WorkToolVali
 
   return [
     ...validateServerResolvedFields(input),
+    ...validateAllowedFields(input, [
+      'localKind',
+      'localId',
+      'provider',
+      'externalType',
+      'externalId',
+      'externalUrl',
+      'syncDirection',
+      'externalUpdatedAt',
+      'note',
+    ]),
     ...validateRequiredEnum(input, 'localKind', 'localKind', EXTERNAL_WORK_BINDING_LOCAL_KIND_VALUES),
     ...validateRequiredString(input, 'localId', 160),
     ...validateRequiredEnum(input, 'provider', 'provider', EXTERNAL_WORK_BINDING_PROVIDER_VALUES),
@@ -664,6 +718,14 @@ export function validateWorkExternalUnlinkIssueInput(input: unknown): WorkToolVa
 
   return [
     ...validateServerResolvedFields(input),
+    ...validateAllowedFields(input, [
+      'localKind',
+      'localId',
+      'provider',
+      'externalType',
+      'externalId',
+      'note',
+    ]),
     ...validateRequiredEnum(input, 'localKind', 'localKind', EXTERNAL_WORK_BINDING_LOCAL_KIND_VALUES),
     ...validateRequiredString(input, 'localId', 160),
     ...validateRequiredEnum(input, 'provider', 'provider', EXTERNAL_WORK_BINDING_PROVIDER_VALUES),
@@ -680,6 +742,11 @@ export function validateWorkProjectLookupInput(input: unknown): WorkToolValidati
 
   return [
     ...validateServerResolvedFields(input),
+    ...validateAllowedFields(input, [
+      'query',
+      'limit',
+      'includeArchived',
+    ]),
     ...validateOptionalString(input, 'query', 160),
     ...validateOptionalIntegerRange(input, 'limit', 1, 20),
     ...validateOptionalBoolean(input, 'includeArchived'),
@@ -693,6 +760,13 @@ export function validateWorkProjectCreateInput(input: unknown): WorkToolValidati
 
   return [
     ...validateServerResolvedFields(input),
+    ...validateAllowedFields(input, [
+      'title',
+      'summary',
+      'status',
+      'repoPath',
+      'primaryConversationId',
+    ]),
     ...validateRequiredString(input, 'title', 160),
     ...validateOptionalString(input, 'summary', 4000),
     ...validateOptionalEnum(input, 'status', WORK_PROJECT_CREATE_STATUS_VALUES),
@@ -740,6 +814,14 @@ function validateSourceRef(input: unknown, field: string): WorkToolValidationErr
   }
 
   return [
+    ...validateAllowedFields(input, [
+      'surface',
+      'conversationId',
+      'channelId',
+      'transportBindingId',
+      'sourceMessageId',
+      'sourceText',
+    ], field),
     ...validateRequiredEnum(input, `${field}.surface`, 'surface', WORK_TOOL_SOURCE_SURFACE_VALUES),
     ...validateOptionalString(input, 'conversationId', 160, field),
     ...validateOptionalString(input, 'channelId', 160, field),
@@ -778,6 +860,25 @@ function validateServerResolvedFields(
     if (Array.isArray(value)) {
       errors.push(...validateServerResolvedArray(value, field, allowedFields));
     }
+  }
+
+  return errors;
+}
+
+function validateAllowedFields(
+  input: Record<string, unknown>,
+  allowedFields: readonly string[],
+  prefix = '',
+): WorkToolValidationError[] {
+  const allowed = new Set(allowedFields);
+  const errors: WorkToolValidationError[] = [];
+
+  for (const key of Object.keys(input)) {
+    if (allowed.has(key) || isServerResolvedField(key)) {
+      continue;
+    }
+    const field = prefix === '' ? key : `${prefix}.${key}`;
+    errors.push(error('unknown_field', field, `${field} is not accepted by this tool.`));
   }
 
   return errors;
