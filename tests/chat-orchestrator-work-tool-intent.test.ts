@@ -14,6 +14,7 @@ import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
+  WORK_ITEM_PROPOSE_SPLIT_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
@@ -133,6 +134,22 @@ test('Chat orchestrator projects Boss Cat execution-preparation tool intent', ()
     'work.phase.execution_preparation',
     'work.capability.boss_cat',
     'work.tool_scope.narrow_write',
+  ]);
+  assert.equal(target.toolIntent?.strict, true);
+});
+
+test('Chat orchestrator projects read-only Work intake intent for work-memory Cats', () => {
+  const plan = createWorkMemoryPlan('Boss Cat 幫我記一個待辦：整理 Telegram 匯入');
+  const target = plan.routing.initialTargets[0];
+
+  assert.ok(target);
+  assert.deepEqual(target.toolIntent?.allowedTools, [
+    WORK_ITEM_PROPOSE_SPLIT_TOOL,
+  ]);
+  assert.deepEqual(target.toolIntent?.requiredCapabilities, [
+    'work.phase.intake',
+    'work.capability.strong_agent',
+    'work.tool_scope.read_only',
   ]);
   assert.equal(target.toolIntent?.strict, true);
 });

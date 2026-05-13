@@ -15,6 +15,7 @@ import type { DispatchRequest } from '../src/products/chat/state/room-routing/ru
 import type { RuntimeClient } from '../src/platform/runtime/client.js';
 import {
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
+  WORK_ITEM_PROPOSE_SPLIT_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
@@ -239,6 +240,41 @@ test('runtime dispatch forwards Work tool intent metadata for explicit Work turn
     'work.phase.triage',
     'work.capability.strong_agent',
     'work.tool_scope.narrow_write',
+  ]);
+  assert.equal(toolIntent.strict, true);
+});
+
+test('runtime dispatch forwards read-only Work intake intent for todo capture turns', async () => {
+  const harness = createDispatchHarness('Boss Cat 幫我記一個待辦：整理 Telegram 匯入');
+  const runtimeClient = createRuntimeStub();
+
+  await executeDispatch(
+    harness.state,
+    harness.channelId,
+    harness.request,
+    runtimeClient,
+    new Date('2026-05-13T00:00:03.000Z'),
+    'web',
+    null,
+    undefined,
+    createDefaultCoreState(),
+  );
+
+  const toolIntent = runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent as
+    | {
+        allowedTools?: string[];
+        requiredCapabilities?: string[];
+        strict?: boolean;
+      }
+    | undefined;
+  assert.ok(toolIntent);
+  assert.deepEqual(toolIntent.allowedTools, [
+    WORK_ITEM_PROPOSE_SPLIT_TOOL,
+  ]);
+  assert.deepEqual(toolIntent.requiredCapabilities, [
+    'work.phase.intake',
+    'work.capability.strong_agent',
+    'work.tool_scope.read_only',
   ]);
   assert.equal(toolIntent.strict, true);
 });

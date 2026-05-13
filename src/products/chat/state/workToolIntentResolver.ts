@@ -26,6 +26,22 @@ const TRIAGE_CUE_PATTERNS = [
   /指派.*專案/u,
 ] as const;
 
+const INTAKE_CUE_PATTERNS = [
+  /\btodos?\b/u,
+  /\bto-do\b/u,
+  /\bwork\s*items?\b/u,
+  /\badd\s+(?:a\s+)?task\b/u,
+  /\bcapture\b/u,
+  /\bremember\b/u,
+  /\btrack\b/u,
+  /待辦/u,
+  /記一/u,
+  /記下/u,
+  /新增.*任務/u,
+  /加入.*任務/u,
+  /收進.*任務/u,
+] as const;
+
 export function resolveChatWorkToolIntentManifest(
   input: OrchestratorToolIntentResolveInput<ChatState>,
 ): ToolIntentManifest | null | undefined {
@@ -43,12 +59,13 @@ export function resolveChatWorkToolIntentManifest(
     return null;
   }
 
+  const toolScope = phase === 'intake' ? 'read_only' : 'narrow_write';
   return resolvePhaseScopedWorkToolIntentManifest({
     profileId: WORK_MCP_PROFILE_ID,
     phase,
     capabilityProfile,
-    parentToolScope: 'narrow_write',
-    policyToolScope: 'narrow_write',
+    parentToolScope: toolScope,
+    policyToolScope: toolScope,
     channelId: input.channel.id,
     catId: input.catId,
     participantKind: input.participantKind,
@@ -75,6 +92,9 @@ function resolveWorkToolIntentPhase(
 
   if (matchesTriageIntent(input.body)) {
     return 'triage';
+  }
+  if (matchesIntakeIntent(input.body)) {
+    return 'intake';
   }
 
   return null;
@@ -103,4 +123,13 @@ function matchesTriageIntent(rawText: string): boolean {
   }
 
   return TRIAGE_CUE_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+function matchesIntakeIntent(rawText: string): boolean {
+  const normalized = rawText.trim().replace(/\s+/gu, ' ').toLowerCase();
+  if (!normalized || normalized.startsWith('/')) {
+    return false;
+  }
+
+  return INTAKE_CUE_PATTERNS.some((pattern) => pattern.test(normalized));
 }
