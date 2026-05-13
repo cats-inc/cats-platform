@@ -153,9 +153,8 @@ test('Chat provider-agent Work triage lookup request returns bounded Project can
           confidence: 'high',
           toolName: WORK_PROJECT_LOOKUP_TOOL,
           target: {
-            kind: 'execution_target',
-            provider: 'claude',
-            model: 'sonnet',
+            kind: 'worker_tool',
+            toolName: WORK_PROJECT_LOOKUP_TOOL,
           },
           input: {
             query: 'cats',
@@ -255,9 +254,8 @@ test('Chat provider-agent Work triage lookup can include archived Projects', asy
         confidence: 'high',
         toolName: WORK_PROJECT_LOOKUP_TOOL,
         target: {
-          kind: 'execution_target',
-          provider: 'claude',
-          model: 'sonnet',
+          kind: 'worker_tool',
+          toolName: WORK_PROJECT_LOOKUP_TOOL,
         },
         input: {
           query: 'cats',
@@ -331,9 +329,8 @@ test('Chat provider-agent Work project create request writes one Project', async
           confidence: 'high',
           toolName: WORK_PROJECT_CREATE_TOOL,
           target: {
-            kind: 'execution_target',
-            provider: 'claude',
-            model: 'sonnet',
+            kind: 'worker_tool',
+            toolName: WORK_PROJECT_CREATE_TOOL,
           },
           input: {
             title: 'Cats Mobile',
@@ -439,9 +436,8 @@ test('Chat provider-agent Work Item update request writes bounded planning field
           confidence: 'high',
           toolName: WORK_ITEM_UPDATE_TOOL,
           target: {
-            kind: 'execution_target',
-            provider: 'claude',
-            model: 'sonnet',
+            kind: 'worker_tool',
+            toolName: WORK_ITEM_UPDATE_TOOL,
           },
           input: {
             title: 'Ready project setup',
@@ -551,9 +547,8 @@ test('Chat Work triage mutating sidecars require matching owner cues', async () 
             confidence: 'high',
             toolName: WORK_ITEM_UPDATE_TOOL,
             target: {
-              kind: 'execution_target',
-              provider: 'claude',
-              model: 'sonnet',
+              kind: 'worker_tool',
+              toolName: WORK_ITEM_UPDATE_TOOL,
             },
             input: {
               status: 'ready',
@@ -662,9 +657,8 @@ test('Chat provider-agent Work Item assign Project request writes server-resolve
           confidence: 'high',
           toolName: WORK_ITEM_ASSIGN_PROJECT_TOOL,
           target: {
-            kind: 'execution_target',
-            provider: 'claude',
-            model: 'sonnet',
+            kind: 'worker_tool',
+            toolName: WORK_ITEM_ASSIGN_PROJECT_TOOL,
           },
           input: {
             note: 'Owner asked to attach this Work Item to the Cats Platform Project.',
@@ -785,9 +779,8 @@ test('Chat provider-agent Work sidecars reject caller-supplied resolved ids', as
             confidence: 'high',
             toolName: WORK_ITEM_ASSIGN_PROJECT_TOOL,
             target: {
-              kind: 'execution_target',
-              provider: 'claude',
-              model: 'sonnet',
+              kind: 'worker_tool',
+              toolName: WORK_ITEM_ASSIGN_PROJECT_TOOL,
             },
             input: {
               workItemId: 'work-item-model-supplied-id',
@@ -891,9 +884,8 @@ test('Telegram provider-agent Work triage update preserves transport context', a
           confidence: 'high',
           toolName: WORK_ITEM_UPDATE_TOOL,
           target: {
-            kind: 'execution_target',
-            provider: 'claude',
-            model: 'sonnet',
+            kind: 'worker_tool',
+            toolName: WORK_ITEM_UPDATE_TOOL,
           },
           input: {
             status: 'ready',
@@ -995,9 +987,8 @@ test('Retry dispatch applies provider-agent Work triage update sidecars', async 
           confidence: 'high',
           toolName: WORK_ITEM_UPDATE_TOOL,
           target: {
-            kind: 'execution_target',
-            provider: 'claude',
-            model: 'sonnet',
+            kind: 'worker_tool',
+            toolName: WORK_ITEM_UPDATE_TOOL,
           },
           input: {
             status: 'ready',

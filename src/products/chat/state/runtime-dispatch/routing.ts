@@ -22,7 +22,10 @@ import {
   upsertCoreTurn,
   upsertCoreWorkItem,
 } from '../../../../core/model/index.js';
-import type { ProviderAgentDecision } from '../../../../platform/orchestration/index.js';
+import type {
+  ProviderAgentDecision,
+  ProviderAgentToolRequestDecision,
+} from '../../../../platform/orchestration/index.js';
 import {
   resolveProviderCapabilityProfile,
   type ProviderCapabilityBootstrapConfig,
@@ -1749,6 +1752,16 @@ function appendWorkIntakeProposalSidecar(input: {
   ) {
     return { state: input.state, proposalMessage: null };
   }
+  if (!hasMatchingWorkerToolTarget(input.providerAgentDecision, WORK_ITEM_PROPOSE_SPLIT_TOOL)) {
+    warnWorkIntakeProposalToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'tool_request_target_mismatch',
+      details: { target: input.providerAgentDecision.target },
+    });
+    return { state: input.state, proposalMessage: null };
+  }
   if (hasWorkIntakeProposalSidecar({
     channel: input.channel,
     sourceMessageId: input.userMessage.id,
@@ -1860,6 +1873,16 @@ function appendWorkExecutionPreparationProposalSidecar(input: {
     input.providerAgentDecision?.kind !== 'tool_request'
     || input.providerAgentDecision.toolName !== WORK_ITEM_PREPARE_EXECUTION_TOOL
   ) {
+    return { state: input.state, proposalMessage: null };
+  }
+  if (!hasMatchingWorkerToolTarget(input.providerAgentDecision, WORK_ITEM_PREPARE_EXECUTION_TOOL)) {
+    warnWorkExecutionPreparationProposalIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'tool_request_target_mismatch',
+      details: { target: input.providerAgentDecision.target },
+    });
     return { state: input.state, proposalMessage: null };
   }
   if (!input.core) {
@@ -1982,6 +2005,16 @@ async function appendWorkExternalBindingResultSidecar(input: {
       && input.providerAgentDecision.toolName !== WORK_EXTERNAL_UNLINK_ISSUE_TOOL
     )
   ) {
+    return { state: input.state, resultMessage: null };
+  }
+  if (!hasMatchingWorkerToolTarget(input.providerAgentDecision, input.providerAgentDecision.toolName)) {
+    warnWorkExternalBindingToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'tool_request_target_mismatch',
+      details: { target: input.providerAgentDecision.target },
+    });
     return { state: input.state, resultMessage: null };
   }
   if (!input.chatStore) {
@@ -2152,6 +2185,16 @@ async function appendWorkTriageLookupResultSidecar(input: {
   ) {
     return { state: input.state, resultMessage: null };
   }
+  if (!hasMatchingWorkerToolTarget(input.providerAgentDecision, WORK_PROJECT_LOOKUP_TOOL)) {
+    warnWorkTriageLookupToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'tool_request_target_mismatch',
+      details: { target: input.providerAgentDecision.target },
+    });
+    return { state: input.state, resultMessage: null };
+  }
   if (!input.chatStore) {
     warnWorkTriageLookupToolCallIgnored({
       channelId: input.channelId,
@@ -2247,6 +2290,16 @@ async function appendWorkProjectCreateResultSidecar(input: {
     input.providerAgentDecision?.kind !== 'tool_request'
     || input.providerAgentDecision.toolName !== WORK_PROJECT_CREATE_TOOL
   ) {
+    return { state: input.state, resultMessage: null };
+  }
+  if (!hasMatchingWorkerToolTarget(input.providerAgentDecision, WORK_PROJECT_CREATE_TOOL)) {
+    warnWorkProjectCreateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'tool_request_target_mismatch',
+      details: { target: input.providerAgentDecision.target },
+    });
     return { state: input.state, resultMessage: null };
   }
   if (!input.chatStore) {
@@ -2378,6 +2431,16 @@ async function appendWorkItemUpdateResultSidecar(input: {
     input.providerAgentDecision?.kind !== 'tool_request'
     || input.providerAgentDecision.toolName !== WORK_ITEM_UPDATE_TOOL
   ) {
+    return { state: input.state, resultMessage: null };
+  }
+  if (!hasMatchingWorkerToolTarget(input.providerAgentDecision, WORK_ITEM_UPDATE_TOOL)) {
+    warnWorkItemUpdateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'tool_request_target_mismatch',
+      details: { target: input.providerAgentDecision.target },
+    });
     return { state: input.state, resultMessage: null };
   }
   if (!input.chatStore) {
@@ -2528,6 +2591,16 @@ async function appendWorkItemAssignProjectResultSidecar(input: {
     input.providerAgentDecision?.kind !== 'tool_request'
     || input.providerAgentDecision.toolName !== WORK_ITEM_ASSIGN_PROJECT_TOOL
   ) {
+    return { state: input.state, resultMessage: null };
+  }
+  if (!hasMatchingWorkerToolTarget(input.providerAgentDecision, WORK_ITEM_ASSIGN_PROJECT_TOOL)) {
+    warnWorkItemAssignProjectToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'tool_request_target_mismatch',
+      details: { target: input.providerAgentDecision.target },
+    });
     return { state: input.state, resultMessage: null };
   }
   if (!input.chatStore) {
@@ -2947,6 +3020,13 @@ function validateProviderToolInputRecord(
     status: 'accepted',
     record,
   };
+}
+
+function hasMatchingWorkerToolTarget(
+  decision: ProviderAgentToolRequestDecision,
+  toolName: string,
+): boolean {
+  return decision.target.kind === 'worker_tool' && decision.target.toolName === toolName;
 }
 
 function readOptionalString(value: unknown): string | undefined {

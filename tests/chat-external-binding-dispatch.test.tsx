@@ -156,9 +156,8 @@ test('Chat provider-agent external binding tool request writes local Work metada
           confidence: 'high',
           toolName: WORK_EXTERNAL_LINK_ISSUE_TOOL,
           target: {
-            kind: 'execution_target',
-            provider: 'claude',
-            model: 'sonnet',
+            kind: 'worker_tool',
+            toolName: WORK_EXTERNAL_LINK_ISSUE_TOOL,
           },
           input: {},
           rationaleSummary: 'The owner explicitly asked to link a local Work Item to GitHub.',
@@ -271,9 +270,8 @@ test('Chat provider-agent external unlink tool request removes local Work metada
         confidence: 'high',
         toolName: WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
         target: {
-          kind: 'execution_target',
-          provider: 'claude',
-          model: 'sonnet',
+          kind: 'worker_tool',
+          toolName: WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
         },
         input: {},
         rationaleSummary: 'The owner explicitly asked to unlink a local Work Item from GitHub.',
