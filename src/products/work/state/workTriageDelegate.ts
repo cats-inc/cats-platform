@@ -10,10 +10,13 @@ import type { CatsCoreState, CoreProjectRecord, CoreWorkItemRecord } from '../..
 import type { ToolResult } from '../../../platform/supervision/contracts.js';
 import type { SupervisedToolExecutor } from '../../../platform/supervision/toolBoundary.js';
 import {
+  WORK_ITEM_ASSIGN_PROJECT_TOOL,
   WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
   WORK_ITEM_TRIAGE_STATUS_VALUES,
+  type WorkItemAssignProjectInput,
+  type WorkItemAssignProjectResult,
   type WorkItemTriageStatus,
   type WorkItemUpdateInput,
   type WorkItemUpdateResult,
@@ -22,6 +25,7 @@ import {
   type WorkProjectLookupInput,
   type WorkProjectLookupProject,
   type WorkProjectLookupResult,
+  validateWorkItemAssignProjectInput,
   validateWorkItemUpdateInput,
   validateWorkProjectCreateInput,
   validateWorkProjectLookupInput,
@@ -48,6 +52,10 @@ export interface WorkTriageDelegate {
     input: WorkItemUpdateInput,
     context: WorkTriageMutationContext,
   ): Promise<ToolResult<WorkItemUpdateResult>>;
+  assignWorkItemProject(
+    input: WorkItemAssignProjectInput,
+    context: WorkTriageMutationContext,
+  ): Promise<ToolResult<WorkItemAssignProjectResult>>;
   createProject(
     input: WorkProjectCreateInput,
     context: WorkTriageMutationContext,
@@ -55,6 +63,10 @@ export interface WorkTriageDelegate {
 }
 
 export interface WorkTriageToolExecutors {
+  [WORK_ITEM_ASSIGN_PROJECT_TOOL]: SupervisedToolExecutor<
+    WorkItemAssignProjectInput,
+    WorkItemAssignProjectResult
+  >;
   [WORK_ITEM_UPDATE_TOOL]: SupervisedToolExecutor<
     WorkItemUpdateInput,
     WorkItemUpdateResult
@@ -87,6 +99,9 @@ export function createWorkTriageDelegate(
     async updateWorkItem(input, context) {
       return updateWorkItem(options.coreStore, input, context, now);
     },
+    async assignWorkItemProject(input, context) {
+      return assignWorkItemProject(options.coreStore, input, context, now);
+    },
     async createProject(input, context) {
       return createWorkProject(options.coreStore, input, context, now);
     },
@@ -97,6 +112,8 @@ export function createWorkTriageToolExecutors(
   delegate: WorkTriageDelegate,
 ): WorkTriageToolExecutors {
   return {
+    [WORK_ITEM_ASSIGN_PROJECT_TOOL]: (input, context) =>
+      delegate.assignWorkItemProject(input, context),
     [WORK_ITEM_UPDATE_TOOL]: (input, context) => delegate.updateWorkItem(input, context),
     [WORK_PROJECT_LOOKUP_TOOL]: (input) => delegate.lookupProjects(input),
     [WORK_PROJECT_CREATE_TOOL]: (input, context) => delegate.createProject(input, context),
@@ -141,26 +158,27 @@ export async function updateWorkItem(
   }
 
   const updatedAt = now();
+  const workItemId = input.workItemId.trim();
   const idempotencyKey = createWorkItemUpdateIdempotencyKey(input);
   let workItem: CoreWorkItemRecord | null = null;
   let updated = false;
 
   try {
     const persisted = await coreStore.updateCore((core) => {
-      const existing = core.workItems.find((candidate) => candidate.id === input.workItemId) ?? null;
+      const existing = core.workItems.find((candidate) => candidate.id === workItemId) ?? null;
       if (existing === null) {
-        throw new WorkTriagePrecheckError(`No Work Item found for id ${input.workItemId}.`);
+        throw new WorkTriagePrecheckError(`No Work Item found for id ${workItemId}.`);
       }
       if (!isWorkItemTriageStatus(existing.status)) {
         throw new WorkTriagePrecheckError(
-          `Work Item ${input.workItemId} is not in a triage-editable status: ${existing.status}.`,
+          `Work Item ${workItemId} is not in a triage-editable status: ${existing.status}.`,
         );
       }
 
       const nextStatus = input.status ?? existing.status;
       if (!isWorkItemTriageStatus(nextStatus)) {
         throw new WorkTriagePrecheckError(
-          `Work Item ${input.workItemId} cannot be moved to status: ${nextStatus}.`,
+          `Work Item ${workItemId} cannot be moved to status: ${nextStatus}.`,
         );
       }
 
@@ -225,11 +243,11 @@ export async function updateWorkItem(
 
     workItem =
       workItem
-      ?? persisted.workItems.find((candidate) => candidate.id === input.workItemId)
+      ?? persisted.workItems.find((candidate) => candidate.id === workItemId)
       ?? null;
     if (workItem === null) {
       return rejected(
-        `Updated Work Item was not found after write: ${input.workItemId}`,
+        `Updated Work Item was not found after write: ${workItemId}`,
         undefined,
         'E_PRECHECK_FAILED',
       );
@@ -253,6 +271,136 @@ export async function updateWorkItem(
   } catch (error) {
     return rejected(
       error instanceof Error ? error.message : 'Work item update failed.',
+      undefined,
+      'E_PRECHECK_FAILED',
+    );
+  }
+}
+
+export async function assignWorkItemProject(
+  coreStore: CoreStore,
+  input: WorkItemAssignProjectInput,
+  context: WorkTriageMutationContext,
+  now: () => Date = () => new Date(),
+): Promise<ToolResult<WorkItemAssignProjectResult>> {
+  const validationErrors = validateWorkItemAssignProjectInput(input);
+  if (validationErrors.length > 0) {
+    return rejected('Invalid work.item.assign_project input.', validationErrors);
+  }
+
+  const assignedAt = now();
+  const workItemId = input.workItemId.trim();
+  const projectId = input.projectId.trim();
+  const idempotencyKey = createWorkItemAssignProjectIdempotencyKey(input);
+  let workItem: CoreWorkItemRecord | null = null;
+  let assigned = false;
+
+  try {
+    const persisted = await coreStore.updateCore((core) => {
+      const existingWorkItem =
+        core.workItems.find((candidate) => candidate.id === workItemId) ?? null;
+      if (existingWorkItem === null) {
+        throw new WorkTriagePrecheckError(`No Work Item found for id ${workItemId}.`);
+      }
+      if (!isWorkItemTriageStatus(existingWorkItem.status)) {
+        throw new WorkTriagePrecheckError(
+          `Work Item ${workItemId} is not in a triage-editable status: `
+          + `${existingWorkItem.status}.`,
+        );
+      }
+
+      const project = core.projects.find((candidate) => candidate.id === projectId) ?? null;
+      if (project === null) {
+        throw new WorkTriagePrecheckError(`No Project found for id ${projectId}.`);
+      }
+      if (project.status === 'archived') {
+        throw new WorkTriagePrecheckError(
+          `Project ${projectId} is archived and cannot receive Work Items.`,
+        );
+      }
+
+      if (existingWorkItem.projectId === project.id) {
+        workItem = existingWorkItem;
+        assigned = false;
+        return core;
+      }
+
+      const workItemWrite = upsertCoreWorkItem(
+        core,
+        {
+          id: existingWorkItem.id,
+          title: existingWorkItem.title,
+          status: existingWorkItem.status,
+          ownerActorId: existingWorkItem.ownerActorId,
+          projectId: project.id,
+          conversationId: existingWorkItem.conversationId,
+          taskId: existingWorkItem.taskId,
+          parentWorkItemId: existingWorkItem.parentWorkItemId,
+          assignedActorIds: existingWorkItem.assignedActorIds,
+          summary: existingWorkItem.summary,
+          createdAt: existingWorkItem.createdAt,
+          metadata: buildWorkItemAssignProjectMetadata(
+            existingWorkItem,
+            input,
+            context,
+            idempotencyKey,
+            assignedAt,
+          ),
+        },
+        assignedAt,
+      );
+      const activityWrite = appendCoreActivity(
+        workItemWrite.core,
+        {
+          kind: 'work_item_updated',
+          actorId: context.actorRef,
+          projectId: project.id,
+          workItemId: workItemWrite.workItem.id,
+          conversationId: workItemWrite.workItem.conversationId,
+          message: `Assigned Work Item to Project: ${workItemWrite.workItem.title}`,
+          metadata: {
+            [WORK_TRIAGE_METADATA_KEY]: {
+              schemaVersion: WORK_TRIAGE_METADATA_VERSION,
+              phase: 'triage',
+              toolName: WORK_ITEM_ASSIGN_PROJECT_TOOL,
+              idempotencyKey,
+              projectId: project.id,
+              actionId: context.actionId ?? null,
+              runId: context.runId ?? null,
+            },
+          },
+        },
+        assignedAt,
+      );
+
+      workItem = workItemWrite.workItem;
+      assigned = true;
+      return activityWrite.core;
+    });
+
+    workItem =
+      workItem
+      ?? persisted.workItems.find((candidate) => candidate.id === workItemId)
+      ?? null;
+    if (workItem === null) {
+      return rejected(
+        `Assigned Work Item was not found after write: ${workItemId}`,
+        undefined,
+        'E_PRECHECK_FAILED',
+      );
+    }
+
+    return {
+      status: 'applied',
+      result: {
+        workItemId: workItem.id,
+        projectId,
+        assigned,
+      },
+    };
+  } catch (error) {
+    return rejected(
+      error instanceof Error ? error.message : 'Work item project assignment failed.',
       undefined,
       'E_PRECHECK_FAILED',
     );
@@ -513,6 +661,35 @@ function buildWorkItemUpdateMetadata(
   };
 }
 
+function buildWorkItemAssignProjectMetadata(
+  existing: CoreWorkItemRecord,
+  input: WorkItemAssignProjectInput,
+  context: WorkTriageMutationContext,
+  idempotencyKey: string,
+  assignedAt: Date,
+): Record<string, unknown> {
+  const existingWorkTriage = isRecord(existing.metadata.workTriage)
+    ? existing.metadata.workTriage
+    : {};
+
+  return {
+    ...existing.metadata,
+    [WORK_TRIAGE_METADATA_KEY]: {
+      ...existingWorkTriage,
+      schemaVersion: WORK_TRIAGE_METADATA_VERSION,
+      phase: 'triage',
+      toolName: WORK_ITEM_ASSIGN_PROJECT_TOOL,
+      idempotencyKey,
+      producingActorRef: context.actorRef,
+      actionId: context.actionId ?? null,
+      runId: context.runId ?? null,
+      assignedAt: assignedAt.toISOString(),
+      assignedProjectId: input.projectId.trim(),
+      assignmentNote: input.note?.trim() || null,
+    },
+  };
+}
+
 function readExistingWorkItemTriageMetadata(workItem: CoreWorkItemRecord): {
   kind: string | null;
   priority: string | null;
@@ -584,6 +761,15 @@ function createWorkItemUpdateIdempotencyKey(input: WorkItemUpdateInput): string 
     input.priority ?? '',
     input.assignmentHint?.trim().toLowerCase() ?? '',
     ...(input.openQuestions ?? []).map((question) => question.trim().toLowerCase()),
+  ].join('\n');
+}
+
+function createWorkItemAssignProjectIdempotencyKey(input: WorkItemAssignProjectInput): string {
+  return [
+    WORK_ITEM_ASSIGN_PROJECT_TOOL,
+    input.workItemId.trim(),
+    input.projectId.trim(),
+    input.note?.trim().toLowerCase() ?? '',
   ].join('\n');
 }
 

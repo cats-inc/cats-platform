@@ -65,6 +65,7 @@ rather than duplicating every validation branch.
 | `work.item.propose_split` | Cats Work | Product delegate, strong-Cat observation descriptor, and Chat sidecar executor implemented; runtime adapter tool loop pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.capture` | Cats Work | Product delegate and owner-confirmed Chat sidecar capture implemented; direct model/runtime exposure pending | `product_internal_delegate` / future `runtime_tool` | Owner-confirmed intake / future Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.update` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.item.assign_project` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.lookup` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.create` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
@@ -150,6 +151,7 @@ turns onto the shared source context.
 | `work.item.propose_split` | `intake` | `none` | `never` | `summary` | Proposes candidate Work Items from one owner Chat or Telegram source. It does not write Core. |
 | `work.item.capture` | `intake` | `local_state` | `policy` | `summary` | Captures one draft or planned Work Item from owner-provided source text. It must not create Tasks, Missions, Runs, or runtime sessions. |
 | `work.item.update` | `triage` | `local_state` | `policy` | `summary` | Applies bounded updates to one existing Work Item in a triage-editable status. It may update title, summary, planning status, and triage metadata only; it must not create Tasks, Missions, Runs, runtime sessions, or Project links. |
+| `work.item.assign_project` | `triage` | `local_state` | `policy` | `summary` | Attaches one existing triage-editable Work Item to one existing non-archived Project while preserving source provenance. It must not create Projects, Tasks, Missions, Runs, or runtime sessions. |
 | `work.project.lookup` | `triage` | `none` | `never` | `summary` | Looks up bounded Project matches for Work Item triage. It returns project ids, titles, planning status, summary/repo/conversation refs, and linked Work Item counts. |
 | `work.project.create` | `triage` | `local_state` | `policy` | `summary` | Creates one planned/active/paused Project during triage. It writes only a Project and one audit Activity; it must not create Work Items, Tasks, Missions, Runs, or runtime sessions. |
 
@@ -168,6 +170,10 @@ ids, Task ids, Mission ids, Run ids, owner actor ids, assigned actor ids, and
 timestamps remain server-resolved. Triage status changes are bounded to
 `draft`, `planned`, `ready`, and `blocked`; `in_progress`, `completed`,
 `cancelled`, and `archived` remain outside this phase.
+
+Caller-visible Project assignment fields are `workItemId`, `projectId`, and an
+optional note. Both ids must come from bounded Cats Work context. The delegate
+rejects archived Projects and Work Items outside triage-editable statuses.
 
 Caller-visible triage lookup fields are `query`, `limit`, and
 `includeArchived`. Caller-visible triage create fields are `title`, `summary`,

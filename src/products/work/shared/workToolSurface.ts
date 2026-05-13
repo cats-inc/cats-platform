@@ -28,6 +28,7 @@ export type WorkToolCapabilityProfile = (typeof WORK_TOOL_CAPABILITY_PROFILE_VAL
 export const WORK_ITEM_PROPOSE_SPLIT_TOOL = 'work.item.propose_split' as const;
 export const WORK_ITEM_CAPTURE_TOOL = 'work.item.capture' as const;
 export const WORK_ITEM_UPDATE_TOOL = 'work.item.update' as const;
+export const WORK_ITEM_ASSIGN_PROJECT_TOOL = 'work.item.assign_project' as const;
 export const WORK_PROJECT_LOOKUP_TOOL = 'work.project.lookup' as const;
 export const WORK_PROJECT_CREATE_TOOL = 'work.project.create' as const;
 
@@ -35,6 +36,7 @@ export type PhaseScopedWorkToolName =
   | typeof WORK_ITEM_PROPOSE_SPLIT_TOOL
   | typeof WORK_ITEM_CAPTURE_TOOL
   | typeof WORK_ITEM_UPDATE_TOOL
+  | typeof WORK_ITEM_ASSIGN_PROJECT_TOOL
   | typeof WORK_PROJECT_LOOKUP_TOOL
   | typeof WORK_PROJECT_CREATE_TOOL;
 
@@ -42,6 +44,7 @@ export const WORK_TOOL_PHASE_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, W
   [WORK_ITEM_PROPOSE_SPLIT_TOOL]: 'intake',
   [WORK_ITEM_CAPTURE_TOOL]: 'intake',
   [WORK_ITEM_UPDATE_TOOL]: 'triage',
+  [WORK_ITEM_ASSIGN_PROJECT_TOOL]: 'triage',
   [WORK_PROJECT_LOOKUP_TOOL]: 'triage',
   [WORK_PROJECT_CREATE_TOOL]: 'triage',
 };
@@ -52,6 +55,7 @@ export const WORK_TOOL_ALLOWED_CAPABILITY_PROFILES_BY_NAME: Readonly<
   [WORK_ITEM_PROPOSE_SPLIT_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_ITEM_CAPTURE_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_ITEM_UPDATE_TOOL]: ['boss_cat', 'strong_agent'],
+  [WORK_ITEM_ASSIGN_PROJECT_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_PROJECT_LOOKUP_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_PROJECT_CREATE_TOOL]: ['boss_cat', 'strong_agent'],
 };
@@ -207,6 +211,18 @@ export interface WorkItemUpdateResult {
   updated: boolean;
 }
 
+export interface WorkItemAssignProjectInput {
+  workItemId: string;
+  projectId: string;
+  note?: string;
+}
+
+export interface WorkItemAssignProjectResult {
+  workItemId: string;
+  projectId: string;
+  assigned: boolean;
+}
+
 export interface WorkProjectLookupInput {
   query?: string;
   limit?: number;
@@ -287,6 +303,17 @@ export function createPhaseScopedWorkToolManifests(): SupervisedToolManifest[] {
       ],
     }),
     createManifest({
+      name: WORK_ITEM_ASSIGN_PROJECT_TOOL,
+      description: 'Attach one existing Cats Work Item to one existing Cats Work Project.',
+      sideEffect: 'local_state',
+      preflight: 'required',
+      approval: 'policy',
+      failureCodes: [
+        WORK_TOOL_ERROR_CODES.schemaInvalid,
+        WORK_TOOL_ERROR_CODES.precheckFailed,
+      ],
+    }),
+    createManifest({
       name: WORK_PROJECT_LOOKUP_TOOL,
       description: 'Look up bounded Cats Work Projects for Work Item triage.',
       sideEffect: 'none',
@@ -313,6 +340,7 @@ export function resolveWorkToolPhase(toolName: string): WorkToolPhase | undefine
     toolName === WORK_ITEM_PROPOSE_SPLIT_TOOL
     || toolName === WORK_ITEM_CAPTURE_TOOL
     || toolName === WORK_ITEM_UPDATE_TOOL
+    || toolName === WORK_ITEM_ASSIGN_PROJECT_TOOL
     || toolName === WORK_PROJECT_LOOKUP_TOOL
     || toolName === WORK_PROJECT_CREATE_TOOL
   ) {
@@ -330,6 +358,7 @@ export function isWorkToolAllowedForCapabilityProfile(
     toolName !== WORK_ITEM_PROPOSE_SPLIT_TOOL
     && toolName !== WORK_ITEM_CAPTURE_TOOL
     && toolName !== WORK_ITEM_UPDATE_TOOL
+    && toolName !== WORK_ITEM_ASSIGN_PROJECT_TOOL
     && toolName !== WORK_PROJECT_LOOKUP_TOOL
     && toolName !== WORK_PROJECT_CREATE_TOOL
   ) {
@@ -405,6 +434,19 @@ export function validateWorkItemUpdateInput(input: unknown): WorkToolValidationE
     ...validateOptionalString(input, 'assignmentHint', 500),
     ...validateOpenQuestions(input),
     ...validateAtLeastOneWorkItemUpdateField(input),
+  ];
+}
+
+export function validateWorkItemAssignProjectInput(input: unknown): WorkToolValidationError[] {
+  if (!isRecord(input)) {
+    return [error('type', '$', 'Work item project assignment input must be an object.')];
+  }
+
+  return [
+    ...validateServerResolvedFields(input, '', new Set(['workItemId', 'projectId'])),
+    ...validateRequiredString(input, 'workItemId', 160),
+    ...validateRequiredString(input, 'projectId', 160),
+    ...validateOptionalString(input, 'note', 500),
   ];
 }
 
