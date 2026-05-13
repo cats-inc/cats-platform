@@ -199,6 +199,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Follow-up slice changed internal message-body route links to React Router links so Chat-to-Work navigation stays inside the app shell. |
 | 2026-05-13 | Follow-up slice added Telegram inline keyboard callback support for Work intake proposal sidecars so Telegram owners can confirm or ignore captured todos through the same Chat choice-response path. |
 | 2026-05-13 | Follow-up slice added Telegram inline keyboard callback support for Boss Cat execution-preparation sidecars so owners can create pending-approval Tasks from Telegram through the existing choice-response path. |
+| 2026-05-13 | Follow-up slice surfaced Work Graph external tracker bindings on Work Item detail pages with safe external links, making GitHub/Redmine/Bugzilla-style issue seams visible outside the top-down drawer. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---

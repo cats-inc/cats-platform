@@ -31,6 +31,7 @@ import {
   buildWorkWorkItemPath,
 } from "../../workPaths.js";
 import { formatWorkCrudMutationError } from "../workCrudErrorLabels.js";
+import { WorkItemExternalBindingsSection } from "./WorkItemExternalBindingsSection";
 import "./work-items.css";
 
 export function WorkItemDetailPage(): JSX.Element {
@@ -95,6 +96,12 @@ export function WorkItemDetailPage(): JSX.Element {
   const subWorkItems = allWorkItems.filter(
     (wi) => wi.parentWorkItemId === workItem.id,
   );
+  const workItemGraphObject = graph.objects.find(
+    (object) =>
+      object.kind === "work_item" &&
+      object.sourceRecordId === workItem.id,
+  );
+  const externalBindings = workItemGraphObject?.externalBindings ?? [];
   const tasks = graph.objects.filter(
     (o) => o.kind === "task" && o.linkedWorkItemId === workItem.id,
   );
@@ -233,6 +240,8 @@ export function WorkItemDetailPage(): JSX.Element {
         </section>
 
         <SubWorkItemsSection items={subWorkItems} />
+
+        <WorkItemExternalBindingsSection bindings={externalBindings} />
 
         <ItemsSection
           title={t("workItemTasksTitle")}
