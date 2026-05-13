@@ -369,16 +369,24 @@ function validateSemanticPlanDecision(
       `semantic_plan.steps must contain ${PROVIDER_AGENT_MAX_SEMANTIC_PLAN_STEPS} entries or fewer`,
     );
   }
-  if (new Set(decision.steps.map((step) => step.stepId)).size !== decision.steps.length) {
+  const stepRecords = decision.steps.filter(
+    (step, index): step is ProviderAgentSemanticPlanStep => {
+      if (!isRecord(step)) {
+        errors.push(`semantic_plan.steps[${index}] must be an object`);
+        return false;
+      }
+      return true;
+    },
+  );
+  const validStepIds = stepRecords
+    .map((step) => step.stepId)
+    .filter((stepId): stepId is string => typeof stepId === 'string' && stepId.trim() !== '');
+  if (new Set(validStepIds).size !== validStepIds.length) {
     errors.push('semantic_plan.steps must have unique stepId values');
   }
-  const stepIds = new Set(
-    decision.steps
-      .map((step) => step.stepId)
-      .filter((stepId): stepId is string => typeof stepId === 'string' && stepId.trim() !== ''),
-  );
+  const stepIds = new Set(validStepIds);
 
-  for (const step of decision.steps) {
+  for (const step of stepRecords) {
     validateBoundedString(
       errors,
       'step.stepId',

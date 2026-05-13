@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice guarded provider-agent semantic-plan step entries so malformed runtime JSON returns validation errors instead of throwing inside the validator. |
 | 2026-05-13 | Follow-up slice validated provider-agent semantic-plan step targets so model-authored plan steps cannot carry unchecked runtime or worker-tool targets. |
 | 2026-05-13 | Follow-up slice tightened provider-agent runtime decision parsing so strong-model responses must be exactly one JSON object, rejecting markdown or prose-wrapped decisions before policy gating. |
 | 2026-05-13 | Follow-up slice hardened provider-agent tool descriptor and manifest validation so malformed model-visible tool catalog entries return bounded observation errors instead of entering prompts unchecked. |

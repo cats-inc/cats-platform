@@ -920,6 +920,34 @@ test('provider-agent semantic plans reject non-array steps without throwing', ()
   ]);
 });
 
+test('provider-agent semantic plans reject malformed step entries without throwing', () => {
+  const decision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 'decision-bad-step-entry',
+    planId: 'plan-bad-step-entry',
+    confidence: 'medium',
+    rationaleSummary: 'Return malformed step entries.',
+    steps: [
+      null,
+      7,
+      {
+        stepId: 'respond',
+        summary: 'Respond after malformed entries are ignored.',
+        action: 'respond',
+      },
+    ],
+  } as unknown as ProviderAgentDecision;
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision,
+  }), [
+    'semantic_plan.steps[0] must be an object',
+    'semantic_plan.steps[1] must be an object',
+  ]);
+});
+
 test('provider-agent semantic plans reject oversized step lists', () => {
   const decision: ProviderAgentDecision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
