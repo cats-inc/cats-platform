@@ -117,6 +117,7 @@ export async function createTaskFromWorkItem(
             conversationId: workItem.conversationId,
             ownerActorId: workItem.ownerActorId,
             orchestratorActorId: context.actorRef,
+            assignedActorIds: resolveExecutionTaskAssignedActors(workItem, context),
             summary: input.summary?.trim() || workItem.summary,
             metadata: {
               [WORK_EXECUTION_METADATA_KEY]: buildWorkExecutionTaskMetadata(
@@ -250,6 +251,15 @@ function readLinkedPendingTask(
   }
 
   return existingTask;
+}
+
+function resolveExecutionTaskAssignedActors(
+  workItem: CoreWorkItemRecord,
+  context: WorkExecutionTaskMutationContext,
+): string[] {
+  return workItem.assignedActorIds.length > 0
+    ? workItem.assignedActorIds
+    : [context.actorRef];
 }
 
 function assertWorkItemExitedIntakeBoundary(

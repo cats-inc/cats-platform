@@ -104,6 +104,7 @@ test('Work Task creation creates a pending approval Task and links the Work Item
   assert.equal(task?.status, 'pending_approval');
   assert.equal(task?.approval.status, 'pending');
   assert.equal(task?.conversationId, 'conversation-cats');
+  assert.deepEqual(task?.assignedActorIds, ['cat:boss']);
   assert.deepEqual(workItem?.metadata.workIntake, {
     source: {
       surface: 'telegram',
@@ -147,6 +148,37 @@ test('Work Task creation creates a pending approval Task and links the Work Item
       [WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL, 'applied'],
     ],
   );
+});
+
+test('Work Task creation preserves Work Item assignees for approved dispatch wakeups', async () => {
+  const now = new Date('2026-05-13T10:00:00.000Z');
+  let core = createDefaultCoreState();
+  core = upsertCoreWorkItem(core, {
+    id: 'work-item-assigned',
+    title: 'Implement assigned Work Item',
+    status: 'ready',
+    conversationId: 'conversation-cats',
+    ownerActorId: core.ownerProfile.actorId,
+    assignedActorIds: ['actor-cat-worker'],
+  }, now).core;
+  const coreStore = new MemoryCoreStore(core);
+
+  const result = await createTaskFromWorkItem(
+    coreStore,
+    { workItemId: 'work-item-assigned' },
+    {
+      actorRef: 'cat:boss',
+      actionId: 'action-work-task-create-assigned',
+      runId: 'run-execution-preparation-assigned',
+    },
+    () => new Date('2026-05-13T10:05:00.000Z'),
+  );
+
+  assert.equal(result.status, 'applied');
+  const after = await coreStore.readCore();
+  const task = after.tasks.find((candidate) => candidate.id === result.result.taskId);
+  assert.deepEqual(task?.assignedActorIds, ['actor-cat-worker']);
+  assert.equal(task?.orchestratorActorId, 'cat:boss');
 });
 
 test('Work Task creation rejects non-ready Work Items without writing', async () => {

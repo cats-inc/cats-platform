@@ -2235,6 +2235,7 @@ test('Boss execution preparation owner confirmation creates pending approval Tas
   assert.equal(task?.status, 'pending_approval');
   assert.equal(task?.approval.status, 'pending');
   assert.equal(task?.orchestratorActorId, `actor-cat-${bossCatId}`);
+  assert.deepEqual(task?.assignedActorIds, [`actor-cat-${bossCatId}`]);
   assert.deepEqual(core.runs.map((run) => run.id), runIdsBeforeConfirm);
 });
 

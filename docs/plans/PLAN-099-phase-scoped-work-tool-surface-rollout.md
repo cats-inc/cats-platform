@@ -188,6 +188,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Follow-up slice wired `work.item.prepare_execution` requests into Chat sidecars that use server-resolved visible Work Item refs and produce owner-visible proposals without creating Tasks or Work runs. |
 | 2026-05-13 | Follow-up slice added owner-confirmed execution-preparation choices: confirming a Boss Cat proposal creates pending-approval Tasks from ready Work Items through `work.task.create_from_work_item` without starting new runtime runs. |
 | 2026-05-13 | Follow-up slice hardened the Work supervised-run route so pending-approval Tasks cannot start queued or runtime-backed Work runs before owner approval. |
+| 2026-05-13 | Follow-up slice made execution Tasks inherit Work Item assignees, or fall back to the Boss actor, so owner-approved Tasks have an actor for dispatch wakeups. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---
