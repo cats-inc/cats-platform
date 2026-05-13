@@ -83,6 +83,10 @@ function observation(): ProviderAgentBoundedObservation {
       {
         manifest: manifest('work.context.lookup'),
         reason: 'Read scoped work context.',
+        inputHints: [
+          'input.key must be one of the lookup keys exposed by the product.',
+          'Return a compact tool_request; do not invent Work ids.',
+        ],
       },
     ],
     contextRefs: ['work-item:1', 'run:1'],
@@ -265,11 +269,22 @@ test('provider-agent adapter creates a supervised runtime session and validates 
   };
   const prompt = JSON.parse(runtimeClient.sentMessages[0]?.content ?? '{}') as {
     schema?: string;
-    observation?: { observationId?: string };
+    observation?: {
+      observationId?: string;
+      availableTools?: Array<{
+        inputHints?: string[];
+        manifest?: { name?: string };
+      }>;
+    };
   };
 
   assert.equal(prompt.schema, PROVIDER_AGENT_DECISION_PROMPT_SCHEMA);
   assert.equal(prompt.observation?.observationId, 'observation-1');
+  assert.equal(prompt.observation?.availableTools?.[0]?.manifest?.name, 'work.context.lookup');
+  assert.deepEqual(prompt.observation?.availableTools?.[0]?.inputHints, [
+    'input.key must be one of the lookup keys exposed by the product.',
+    'Return a compact tool_request; do not invent Work ids.',
+  ]);
   assert.equal(createInput.context?.metadata?.supervisionBoundary, RUNTIME_SUPERVISION_BOUNDARY);
   assert.equal(sendInput.context?.metadata?.supervisionBoundary, RUNTIME_SUPERVISION_BOUNDARY);
   assert.equal(sendInput.context?.metadata?.providerAgentPromptSchema, PROVIDER_AGENT_DECISION_PROMPT_SCHEMA);
