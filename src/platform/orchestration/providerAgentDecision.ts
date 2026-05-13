@@ -8,7 +8,10 @@ import type {
   SupervisionPolicySnapshotRef,
   SupervisionToolScope,
 } from '../supervision/contracts.js';
-import { SUPERVISION_FALLBACK_POLICY_VALUES } from '../supervision/contracts.js';
+import {
+  ADDRESSABLE_TARGET_KIND_VALUES,
+  SUPERVISION_FALLBACK_POLICY_VALUES,
+} from '../supervision/contracts.js';
 
 export const PROVIDER_AGENT_DECISION_CONTRACT_VERSION = 1;
 export const PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH = 280;
@@ -53,6 +56,7 @@ export const PROVIDER_AGENT_SEMANTIC_PLAN_STEP_ACTION_VALUES = [
   'respond',
 ] as const;
 export const PROVIDER_AGENT_DELEGATION_BLOCKING_VALUES = ['blocking', 'async'] as const;
+export const PROVIDER_AGENT_TARGET_PROJECTION_VALUES = ['chat', 'work', 'code'] as const;
 
 export type ProviderAgentDecisionConfidence =
   (typeof PROVIDER_AGENT_DECISION_CONFIDENCE_VALUES)[number];
@@ -185,6 +189,7 @@ export function validateProviderAgentBoundedObservation(
     'actor.capabilityProfileRef',
     observation.actor.capabilityProfileRef,
   );
+  validateAddressableTarget(errors, 'actor.target', observation.actor.target);
   validateAllowedFallbacks(
     errors,
     observation.policy.allowedFallbacks,
@@ -266,6 +271,7 @@ export function validateProviderAgentDecision(
       validateToolRequestDecision(errors, input.decision, availableToolNames);
       break;
     case 'delegation_request':
+      validateDelegationTarget(errors, input.decision);
       validateBoundedString(
         errors,
         'goalSummary',
@@ -379,12 +385,44 @@ function validateToolRequestDecision(
   availableToolNames: Set<string>,
 ): void {
   validateToolName(errors, decision.toolName, availableToolNames, 'tool_request');
+  validateToolRequestTarget(errors, decision);
   validateBoundedString(
     errors,
     'rationaleSummary',
     decision.rationaleSummary,
     PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
   );
+}
+
+function validateToolRequestTarget(
+  errors: string[],
+  decision: ProviderAgentToolRequestDecision,
+): void {
+  const target = validateAddressableTarget(errors, 'tool_request.target', decision.target);
+  if (!target) {
+    return;
+  }
+  if (target.kind !== 'worker_tool') {
+    errors.push('tool_request.target.kind must be worker_tool');
+    return;
+  }
+  if (target.toolName !== decision.toolName) {
+    errors.push(`tool_request.target.toolName must match tool_request.toolName ${decision.toolName}`);
+  }
+}
+
+function validateDelegationTarget(
+  errors: string[],
+  decision: ProviderAgentDelegationRequestDecision,
+): void {
+  const target = validateAddressableTarget(
+    errors,
+    'delegation_request.target',
+    decision.target,
+  );
+  if (target?.kind === 'worker_tool') {
+    errors.push('delegation_request.target.kind must not be worker_tool');
+  }
 }
 
 function validateRecoveryDecision(
@@ -435,6 +473,107 @@ function validateStepDependencies(
       errors.push(`step ${step.stepId}.dependsOn references unknown step ${dependency}`);
     }
   }
+}
+
+function validateAddressableTarget(
+  errors: string[],
+  field: string,
+  value: unknown,
+): AddressableTarget | null {
+  if (!isRecord(value)) {
+    errors.push(`${field} must be an object`);
+    return null;
+  }
+
+  const kind = value.kind;
+  validateEnumValue(errors, `${field}.kind`, kind, ADDRESSABLE_TARGET_KIND_VALUES);
+  if (
+    typeof kind !== 'string'
+    || !(ADDRESSABLE_TARGET_KIND_VALUES as readonly string[]).includes(kind)
+  ) {
+    return null;
+  }
+
+  switch (kind) {
+    case 'durable_agent':
+      validateBoundedString(
+        errors,
+        `${field}.agentId`,
+        value.agentId,
+        PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH,
+      );
+      validateOptionalEnumValue(
+        errors,
+        `${field}.projection`,
+        value.projection,
+        PROVIDER_AGENT_TARGET_PROJECTION_VALUES,
+      );
+      break;
+    case 'execution_target':
+      validateBoundedString(
+        errors,
+        `${field}.provider`,
+        value.provider,
+        PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH,
+      );
+      validateBoundedString(
+        errors,
+        `${field}.model`,
+        value.model,
+        PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH,
+      );
+      validateOptionalBoundedString(
+        errors,
+        `${field}.control`,
+        value.control,
+        PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH,
+      );
+      break;
+    case 'temporary_participant':
+      validateBoundedString(
+        errors,
+        `${field}.participantId`,
+        value.participantId,
+        PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH,
+      );
+      validateOptionalBoundedString(
+        errors,
+        `${field}.roleHint`,
+        value.roleHint,
+        PROVIDER_AGENT_MAX_SUMMARY_KEY_LENGTH,
+      );
+      validateOptionalBoundedString(
+        errors,
+        `${field}.displayName`,
+        value.displayName,
+        PROVIDER_AGENT_MAX_SUMMARY_KEY_LENGTH,
+      );
+      validateOptionalBoundedString(
+        errors,
+        `${field}.avatarHint`,
+        value.avatarHint,
+        PROVIDER_AGENT_MAX_SUMMARY_KEY_LENGTH,
+      );
+      break;
+    case 'worker_tool':
+      validateBoundedString(
+        errors,
+        `${field}.toolName`,
+        value.toolName,
+        PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH,
+      );
+      validateOptionalBoundedString(
+        errors,
+        `${field}.workerProfileId`,
+        value.workerProfileId,
+        PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH,
+      );
+      break;
+    default:
+      return null;
+  }
+
+  return value as AddressableTarget;
 }
 
 function validateBudgetEnvelope(
@@ -581,6 +720,18 @@ function validateEnumValue(
   }
 }
 
+function validateOptionalEnumValue(
+  errors: string[],
+  field: string,
+  value: unknown,
+  allowedValues: readonly string[],
+): void {
+  if (value === undefined || value === null) {
+    return;
+  }
+  validateEnumValue(errors, field, value, allowedValues);
+}
+
 function validateBoundedString(
   errors: string[],
   field: string,
@@ -593,6 +744,18 @@ function validateBoundedString(
   if (value.length > maxLength) {
     errors.push(`${field} must be ${maxLength} characters or less`);
   }
+}
+
+function validateOptionalBoundedString(
+  errors: string[],
+  field: string,
+  value: unknown,
+  maxLength: number,
+): void {
+  if (value === undefined || value === null) {
+    return;
+  }
+  validateBoundedString(errors, field, value, maxLength);
 }
 
 function validateBoundedStringArray(

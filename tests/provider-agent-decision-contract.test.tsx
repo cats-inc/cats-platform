@@ -338,6 +338,69 @@ test('tool requests and semantic-plan steps cannot use tools outside the bounded
   ]);
 });
 
+test('provider-agent decisions validate addressable tool and delegation targets', () => {
+  const wrongToolTarget: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'tool_request',
+    decisionId: 'decision-wrong-tool-target',
+    confidence: 'medium',
+    toolName: 'work.context.lookup',
+    target: { kind: 'execution_target', provider: 'codex', model: 'gpt-5.4' },
+    input: {},
+    rationaleSummary: 'Try to call a tool through a runtime target.',
+  };
+  const mismatchedToolTarget: ProviderAgentDecision = {
+    ...wrongToolTarget,
+    decisionId: 'decision-mismatched-tool-target',
+    target: { kind: 'worker_tool', toolName: 'work.local_note.apply' },
+  };
+  const invalidDelegationTarget: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'delegation_request',
+    decisionId: 'decision-invalid-target',
+    confidence: 'medium',
+    target: { kind: 'execution_target', provider: '', model: 'm'.repeat(121) },
+    goalSummary: 'Delegate with malformed target fields.',
+    blocking: 'async',
+    budget: {
+      maxDurationMs: 30_000,
+      hardStop: true,
+    },
+    rationaleSummary: 'Malformed target should be rejected.',
+  };
+  const workerToolDelegationTarget: ProviderAgentDecision = {
+    ...invalidDelegationTarget,
+    decisionId: 'decision-worker-tool-delegation',
+    target: { kind: 'worker_tool', toolName: 'work.context.lookup' },
+  };
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: wrongToolTarget,
+  }), [
+    'tool_request.target.kind must be worker_tool',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: mismatchedToolTarget,
+  }), [
+    'tool_request.target.toolName must match tool_request.toolName work.context.lookup',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: invalidDelegationTarget,
+  }), [
+    'delegation_request.target.provider is required',
+    'delegation_request.target.model must be 120 characters or less',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: workerToolDelegationTarget,
+  }), [
+    'delegation_request.target.kind must not be worker_tool',
+  ]);
+});
+
 test('provider-agent decisions reject unsupported enum values', () => {
   const unknownDecision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
@@ -365,7 +428,7 @@ test('provider-agent decisions reject unsupported enum values', () => {
     kind: 'delegation_request',
     decisionId: 'decision-invalid-delegation',
     confidence: 'medium',
-    target: { kind: 'execution_target', provider: 'codex' },
+    target: { kind: 'execution_target', provider: 'codex', model: 'gpt-5.4' },
     goalSummary: 'Delegate later.',
     blocking: 'later' as never,
     budget: {
@@ -402,7 +465,7 @@ test('provider-agent delegation and recovery decisions reject malformed bounded 
     kind: 'delegation_request',
     decisionId: 'decision-invalid-delegation-bounds',
     confidence: 'medium',
-    target: { kind: 'execution_target', provider: 'codex' },
+    target: { kind: 'execution_target', provider: 'codex', model: 'gpt-5.4' },
     goalSummary: 'g'.repeat(281),
     blocking: 'blocking',
     budget: {
