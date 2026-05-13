@@ -5,6 +5,7 @@ import { createDefaultChatState } from '../src/products/chat/state/defaults.js';
 import {
   buildChannelView,
   createChannel,
+  updateGlobalOrchestrator,
   updateCatMcpProfile,
 } from '../src/products/chat/state/model/index.js';
 import { CHAT_MCP_PROFILE_ID } from '../src/shared/catMcpProfiles.js';
@@ -89,6 +90,37 @@ test('Cat creation rejects unsupported MCP profile ids', () => {
             mcpProfile: 'unknown-profile',
           },
         ],
+      },
+      new Date('2026-05-13T00:00:00.000Z'),
+    ),
+    /Unsupported Cat MCP profile: unknown-profile/u,
+  );
+});
+
+test('Channel creation rejects unsupported MCP profile ids', () => {
+  assert.throws(
+    () => createChannel(
+      createDefaultChatState(),
+      {
+        title: 'Channel MCP Profile Guard',
+        topic: 'Reject unsupported channel MCP profile ids.',
+        originSurface: 'chat',
+        roomMode: 'direct_message',
+        mcpProfile: 'unknown-profile',
+      },
+      new Date('2026-05-13T00:00:00.000Z'),
+    ),
+    /Unsupported Cat MCP profile: unknown-profile/u,
+  );
+});
+
+test('Global orchestrator updates reject unsupported MCP profile ids', () => {
+  assert.throws(
+    () => updateGlobalOrchestrator(
+      createDefaultChatState(),
+      {
+        provider: 'claude',
+        mcpProfile: 'unknown-profile',
       },
       new Date('2026-05-13T00:00:00.000Z'),
     ),

@@ -16,6 +16,10 @@ import type {
   ChatMessageSenderKind,
 } from '../../../../shared/roomRouting.js';
 import {
+  CHAT_MCP_PROFILE_ID,
+  normalizeCatMcpProfile,
+} from '../../../../shared/catMcpProfiles.js';
+import {
   cloneProviderModelSelection,
   type ProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
@@ -486,7 +490,7 @@ export function createChannel(
     responseLanguage: normalizeOptionalText(input.responseLanguage) ?? 'unspecified',
     formationMode: input.formationMode ?? 'manual',
     skillProfile: normalizeOptionalText(input.skillProfile) ?? 'chat-default',
-    mcpProfile: normalizeOptionalText(input.mcpProfile) ?? 'chat-memory',
+    mcpProfile: normalizeCatMcpProfile(input.mcpProfile) ?? CHAT_MCP_PROFILE_ID,
     orchestratorRoles: normalizeList(input.orchestratorRoles),
     pendingProvider: normalizeOptionalText(input.pendingProvider),
     pendingModel: normalizeOptionalText(input.pendingModel),

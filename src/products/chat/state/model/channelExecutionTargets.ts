@@ -10,6 +10,7 @@ import {
   cloneProviderModelSelection,
   type ProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
+import { normalizeCatMcpProfile } from '../../../../shared/catMcpProfiles.js';
 import { isDefaultChatChannel } from '../../shared/channelTopology.js';
 import {
   resolveChannelParticipantAssignments,
@@ -67,7 +68,7 @@ export function updateGlobalOrchestrator(
     systemPrompt:
       input.systemPrompt?.trim() || nextState.globalOrchestrator.systemPrompt,
     skillProfile: normalizeOptionalText(input.skillProfile),
-    mcpProfile: normalizeOptionalText(input.mcpProfile),
+    mcpProfile: normalizeCatMcpProfile(input.mcpProfile),
     telegramBotName: normalizeOptionalText(input.telegramBotName),
     updatedAt: isoAt(now),
   };
