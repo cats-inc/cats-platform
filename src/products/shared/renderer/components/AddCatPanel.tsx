@@ -19,6 +19,9 @@ import {
 } from '../workspaceChatUtils.js';
 import { ProviderModelFields } from './ProviderModelFields.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { CHAT_MCP_PROFILE_ID } from '../../../../shared/catMcpProfiles.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+import { MCP_PROFILES } from './catRegistryViewSupport.js';
 
 interface ProviderModelFieldsProps {
   provider: string;
@@ -187,6 +190,27 @@ export function WorkspaceAddCatPanel({
                   modelSelection: target.modelSelection ?? null,
                 })}
             />
+            <div className="fieldLabel">
+              <span>{t(messageKeys.sharedSettingsCatsMcpProfileLabel)}</span>
+              <div
+                className="draftLeadPills"
+                role="group"
+                aria-label={t(messageKeys.sharedSettingsCatsMcpProfileLabel)}
+              >
+                {MCP_PROFILES.map((profile) => (
+                  <button
+                    key={profile.value}
+                    type="button"
+                    className={(catForm.mcpProfile || CHAT_MCP_PROFILE_ID) === profile.value
+                      ? 'draftLeadPill draftLeadPillActive'
+                      : 'draftLeadPill'}
+                    onClick={() => onCatFormChange({ ...catForm, mcpProfile: profile.value })}
+                  >
+                    {t(profile.label)}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button
               className="primaryButton"
               disabled={!catForm.name.trim() || !catForm.provider.trim() || !catForm.model.trim()}
