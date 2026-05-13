@@ -266,13 +266,25 @@ export function validateProviderAgentDecision(
       validateToolRequestDecision(errors, input.decision, availableToolNames);
       break;
     case 'delegation_request':
-      validateRequiredString(errors, 'goalSummary', input.decision.goalSummary);
+      validateBoundedString(
+        errors,
+        'goalSummary',
+        input.decision.goalSummary,
+        PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
+      );
+      validateBoundedString(
+        errors,
+        'rationaleSummary',
+        input.decision.rationaleSummary,
+        PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
+      );
       validateEnumValue(
         errors,
         'delegation_request.blocking',
         input.decision.blocking,
         PROVIDER_AGENT_DELEGATION_BLOCKING_VALUES,
       );
+      validateBudgetEnvelope(errors, input.decision.budget, 'delegation_request.budget');
       break;
     case 'recovery_decision':
       validateRecoveryDecision(errors, input.observation, input.decision);
@@ -377,6 +389,12 @@ function validateRecoveryDecision(
     decision.rejectedActionId,
     PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH,
   );
+  validateBoundedString(
+    errors,
+    'rationaleSummary',
+    decision.rationaleSummary,
+    PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
+  );
 
   if (!observation.policy.allowedFallbacks.includes(decision.selectedFallback)) {
     errors.push(
@@ -385,20 +403,29 @@ function validateRecoveryDecision(
   }
 }
 
-function validateBudgetEnvelope(errors: string[], budget: BudgetEnvelope): void {
-  validateOptionalPositiveNumber(errors, 'budget.maxCostUsd', budget.maxCostUsd);
-  validateOptionalPositiveInteger(errors, 'budget.maxTokens', budget.maxTokens);
-  validateOptionalPositiveInteger(errors, 'budget.maxDurationMs', budget.maxDurationMs);
+function validateBudgetEnvelope(
+  errors: string[],
+  budget: unknown,
+  field = 'budget',
+): void {
+  if (!isRecord(budget)) {
+    errors.push(`${field} must be an object`);
+    return;
+  }
+
+  validateOptionalPositiveNumber(errors, `${field}.maxCostUsd`, budget.maxCostUsd);
+  validateOptionalPositiveInteger(errors, `${field}.maxTokens`, budget.maxTokens);
+  validateOptionalPositiveInteger(errors, `${field}.maxDurationMs`, budget.maxDurationMs);
 
   if (
     budget.maxCostUsd === undefined
     && budget.maxTokens === undefined
     && budget.maxDurationMs === undefined
   ) {
-    errors.push('budget must include at least one maxCostUsd, maxTokens, or maxDurationMs limit');
+    errors.push(`${field} must include at least one maxCostUsd, maxTokens, or maxDurationMs limit`);
   }
   if (budget.hardStop !== true) {
-    errors.push('budget.hardStop must be true for provider-agent observations');
+    errors.push(`${field}.hardStop must be true for provider-agent observations`);
   }
 }
 
@@ -553,12 +580,12 @@ function validateBoundedStringArray(
 function validateOptionalPositiveNumber(
   errors: string[],
   field: string,
-  value: number | undefined,
+  value: unknown,
 ): void {
   if (value === undefined) {
     return;
   }
-  if (!Number.isFinite(value) || value <= 0) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     errors.push(`${field} must be greater than 0`);
   }
 }
@@ -566,12 +593,16 @@ function validateOptionalPositiveNumber(
 function validateOptionalPositiveInteger(
   errors: string[],
   field: string,
-  value: number | undefined,
+  value: unknown,
 ): void {
   if (value === undefined) {
     return;
   }
-  if (!Number.isSafeInteger(value) || value <= 0) {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
     errors.push(`${field} must be a positive integer`);
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }

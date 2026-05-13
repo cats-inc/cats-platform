@@ -396,6 +396,61 @@ test('provider-agent decisions reject unsupported enum values', () => {
   ]);
 });
 
+test('provider-agent delegation and recovery decisions reject malformed bounded fields', () => {
+  const invalidDelegation: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'delegation_request',
+    decisionId: 'decision-invalid-delegation-bounds',
+    confidence: 'medium',
+    target: { kind: 'execution_target', provider: 'codex' },
+    goalSummary: 'g'.repeat(281),
+    blocking: 'blocking',
+    budget: {
+      maxTokens: 'many' as never,
+      hardStop: false,
+    },
+    rationaleSummary: 'r'.repeat(281),
+  };
+  const nonObjectBudget: ProviderAgentDecision = {
+    ...invalidDelegation,
+    decisionId: 'decision-invalid-budget-object',
+    goalSummary: 'Delegate with a malformed budget.',
+    budget: null as never,
+    rationaleSummary: 'Budget must stay structured.',
+  };
+  const invalidRecovery: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'recovery_decision',
+    decisionId: 'decision-invalid-recovery-bounds',
+    confidence: 'low',
+    rejectedActionId: 'step-denied',
+    selectedFallback: 'retry',
+    rationaleSummary: 'r'.repeat(281),
+  };
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: invalidDelegation,
+  }), [
+    'goalSummary must be 280 characters or less',
+    'rationaleSummary must be 280 characters or less',
+    'delegation_request.budget.maxTokens must be a positive integer',
+    'delegation_request.budget.hardStop must be true for provider-agent observations',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: nonObjectBudget,
+  }), [
+    'delegation_request.budget must be an object',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: invalidRecovery,
+  }), [
+    'rationaleSummary must be 280 characters or less',
+  ]);
+});
+
 test('provider-agent decisions reject non-string runtime JSON fields without throwing', () => {
   const decision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
