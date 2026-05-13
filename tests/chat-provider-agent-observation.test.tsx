@@ -652,6 +652,49 @@ test('Chat provider-agent observation exposes read-only Work triage lookup for e
   assert.deepEqual(validateProviderAgentBoundedObservation(observation!), []);
 });
 
+test('Chat provider-agent observation exposes narrow-write Project create for explicit requests', () => {
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Project create',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    new Date('2026-05-13T10:30:00.000Z'),
+  );
+  const channelId = state.selectedChannelId;
+
+  const { prepared } = appendAndPrepare({
+    state,
+    channelId,
+    body: 'Boss Cat create project Cats Mobile',
+    now: new Date('2026-05-13T10:31:00.000Z'),
+    core: createDefaultCoreState(),
+    providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+  });
+  const observation = prepared.providerAgentObservation;
+  const toolNames = observationToolNames(observation);
+
+  assert.equal(observation?.policy.dials.toolScope, 'narrow_write');
+  assert.equal(toolNames.includes(WORK_PROJECT_CREATE_TOOL), true);
+  assert.equal(toolNames.includes(WORK_ITEM_UPDATE_TOOL), false);
+  assert.equal(
+    observation?.contextRefs.includes('work-triage-action:create_project'),
+    true,
+  );
+  assert.deepEqual(validateProviderAgentBoundedObservation(observation!), []);
+});
+
 test('Chat default turns bind provider-agent observation to the selected execution target', () => {
   const state = createChannel(
     createDefaultChatState(),

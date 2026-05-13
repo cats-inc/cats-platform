@@ -101,6 +101,7 @@ import {
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
+  WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
   WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
   type WorkExternalLinkIssueResult,
@@ -112,6 +113,8 @@ import {
   type WorkItemSourceRef,
   type WorkItemSplitCandidate,
   type WorkItemTriageStatus,
+  type WorkProjectCreateResult,
+  type WorkProjectCreateStatus,
   type WorkProjectLookupProject,
 } from '../../../work/shared/workToolSurface.js';
 import {
@@ -225,6 +228,8 @@ const WORK_EXTERNAL_BINDING_RESULT_METADATA_KEY = 'workExternalBindingResult';
 const WORK_EXTERNAL_BINDING_RESULT_METADATA_VERSION = 1;
 const WORK_TRIAGE_LOOKUP_RESULT_METADATA_KEY = 'workTriageLookupResult';
 const WORK_TRIAGE_LOOKUP_RESULT_METADATA_VERSION = 1;
+const WORK_PROJECT_CREATE_RESULT_METADATA_KEY = 'workProjectCreateResult';
+const WORK_PROJECT_CREATE_RESULT_METADATA_VERSION = 1;
 const WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES = new Set([
   'draft',
   'planned',
@@ -334,6 +339,18 @@ interface WorkTriageLookupResultMetadata {
   sourceMessageId: string;
   query: string | null;
   projects: WorkProjectLookupProject[];
+}
+
+interface WorkProjectCreateResultMetadata {
+  schemaVersion: typeof WORK_PROJECT_CREATE_RESULT_METADATA_VERSION;
+  phase: 'triage';
+  toolName: typeof WORK_PROJECT_CREATE_TOOL;
+  decisionId: string;
+  sourceMessageId: string;
+  projectId: string;
+  title: string;
+  status: WorkProjectCreateStatus;
+  created: boolean;
 }
 
 export type ProviderAgentDecisionRequester = (input: {
@@ -2120,6 +2137,113 @@ async function appendWorkTriageLookupResultSidecar(input: {
   };
 }
 
+async function appendWorkProjectCreateResultSidecar(input: {
+  state: ChatState;
+  channelId: string;
+  userMessage: ChatMessage;
+  providerAgentDecision: ProviderAgentDecision | null;
+  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>;
+  now: Date;
+}): Promise<{ state: ChatState; resultMessage: ChatMessage | null }> {
+  if (
+    input.providerAgentDecision?.kind !== 'tool_request'
+    || input.providerAgentDecision.toolName !== WORK_PROJECT_CREATE_TOOL
+  ) {
+    return { state: input.state, resultMessage: null };
+  }
+  if (!input.chatStore) {
+    warnWorkProjectCreateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'missing_core_store',
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const core = await input.chatStore.readCore();
+  const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
+  const title = readOptionalString(requestedInput.title);
+  if (!title) {
+    warnWorkProjectCreateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'missing_project_title',
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const { conversationId } = resolveChannelCanonicalIdentity(input.state, input.channelId);
+  const summary = readOptionalString(requestedInput.summary);
+  const repoPath = readOptionalString(requestedInput.repoPath);
+  const status = isWorkProjectCreateStatus(requestedInput.status)
+    ? requestedInput.status
+    : undefined;
+  const delegate = createWorkTriageDelegate({
+    coreStore: input.chatStore,
+    now: () => input.now,
+  });
+  const result = await delegate.createProject(
+    {
+      title,
+      primaryConversationId: conversationId,
+      ...(summary ? { summary } : {}),
+      ...(status ? { status } : {}),
+      ...(repoPath ? { repoPath } : {}),
+    },
+    {
+      actorRef: core.ownerProfile.actorId,
+      actionId: [
+        input.userMessage.id,
+        input.providerAgentDecision.decisionId,
+        WORK_PROJECT_CREATE_TOOL,
+      ].join(':'),
+      runId: `chat:${input.channelId}`,
+    },
+  );
+  if (result.status !== 'applied') {
+    warnWorkProjectCreateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: result.status === 'rejected' ? result.error.code : 'pending_approval',
+      details: result.status === 'rejected' ? result.error.details : result.summary,
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const metadata = buildWorkProjectCreateResultMetadata({
+    decisionId: input.providerAgentDecision.decisionId,
+    sourceMessageId: input.userMessage.id,
+    title,
+    result: result.result,
+  });
+  const append = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats Work',
+      body: describeWorkProjectCreateResult(metadata),
+    },
+    input.now,
+    {
+      metadata: {
+        event: 'work_project_create_result',
+        sourceMessageId: input.userMessage.id,
+        [WORK_PROJECT_CREATE_RESULT_METADATA_KEY]: metadata,
+      },
+      incrementUnread: false,
+    },
+  );
+
+  return {
+    state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+    resultMessage: append.message,
+  };
+}
+
 function buildWorkIntakeProposalId(input: {
   sourceMessageId: string;
   decisionId: string;
@@ -2543,6 +2667,23 @@ function warnWorkTriageLookupToolCallIgnored(input: {
   });
 }
 
+function warnWorkProjectCreateToolCallIgnored(input: {
+  channelId: string;
+  messageId: string;
+  decisionId: string;
+  reason: string;
+  details?: unknown;
+}): void {
+  console.warn('Work project create tool call ignored.', {
+    feature: 'work_project_create',
+    channelId: input.channelId,
+    messageId: input.messageId,
+    decisionId: input.decisionId,
+    reason: input.reason,
+    ...(input.details ? { details: input.details } : {}),
+  });
+}
+
 function buildWorkExternalBindingResultMetadata(input: {
   decisionId: string;
   sourceMessageId: string;
@@ -2568,6 +2709,25 @@ function buildWorkExternalBindingResultMetadata(input: {
     externalType: input.result.externalType,
     externalId: input.result.externalId,
     bindingCount: input.result.bindingCount,
+  };
+}
+
+function buildWorkProjectCreateResultMetadata(input: {
+  decisionId: string;
+  sourceMessageId: string;
+  title: string;
+  result: WorkProjectCreateResult;
+}): WorkProjectCreateResultMetadata {
+  return {
+    schemaVersion: WORK_PROJECT_CREATE_RESULT_METADATA_VERSION,
+    phase: 'triage',
+    toolName: WORK_PROJECT_CREATE_TOOL,
+    decisionId: input.decisionId,
+    sourceMessageId: input.sourceMessageId,
+    projectId: input.result.projectId,
+    title: input.title,
+    status: input.result.status,
+    created: input.result.created,
   };
 }
 
@@ -2599,6 +2759,15 @@ function describeWorkTriageLookupResult(metadata: WorkTriageLookupResultMetadata
     .map((project) => `${project.title} (${project.projectId})`)
     .join(', ');
   return `Project candidates: ${projectSummary}.`;
+}
+
+function describeWorkProjectCreateResult(metadata: WorkProjectCreateResultMetadata): string {
+  const action = metadata.created ? 'Created' : 'Found existing';
+  return `${action} Project ${metadata.title} (${metadata.projectId}).`;
+}
+
+function isWorkProjectCreateStatus(value: unknown): value is WorkProjectCreateStatus {
+  return value === 'planned' || value === 'active' || value === 'paused';
 }
 
 type WorkExecutionPreparationChoiceAction = 'create_tasks' | 'decline' | 'handled';
@@ -5723,6 +5892,15 @@ export async function beginChannelMessageDispatch(
     now,
   });
   nextState = workTriageLookupSidecar.state;
+  const workProjectCreateSidecar = await appendWorkProjectCreateResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: preparedTurn.userMessage,
+    providerAgentDecision,
+    chatStore: options.chatStore,
+    now,
+  });
+  nextState = workProjectCreateSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),
@@ -5936,6 +6114,15 @@ export async function beginChannelMessageRetryDispatch(
     now,
   });
   nextState = workTriageLookupSidecar.state;
+  const workProjectCreateSidecar = await appendWorkProjectCreateResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: sourceMessage,
+    providerAgentDecision,
+    chatStore: options.chatStore,
+    now,
+  });
+  nextState = workProjectCreateSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),

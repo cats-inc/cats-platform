@@ -7,6 +7,7 @@ import {
   upsertCoreWorkItem,
 } from '../src/core/model/index.ts';
 import {
+  WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
 } from '../src/products/work/shared/workToolSurface.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
@@ -175,4 +176,95 @@ test('Chat provider-agent Work triage lookup request returns bounded Project can
   assert.equal(resultMessage?.metadata.event, 'work_triage_lookup_result');
   assert.equal(resultMessage?.body, 'Project candidates: Cats Platform (project-cats-platform).');
   assert.equal(metadata?.projects?.[0]?.projectId, 'project-cats-platform');
+});
+
+test('Chat provider-agent Work project create request writes one Project', async () => {
+  const now = new Date('2026-05-13T12:10:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Work project create',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const store = new MemoryChatStore(state);
+  await store.writeCore(createDefaultCoreState());
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Boss Cat create project Cats Mobile',
+    },
+    runtimeStub(),
+    new Date('2026-05-13T12:11:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      providerAgentDecisionRequester: async ({ observation }) => {
+        assert.equal(
+          observation.availableTools.some((tool) =>
+            tool.manifest.name === WORK_PROJECT_CREATE_TOOL),
+          true,
+        );
+        return {
+          contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+          kind: 'tool_request',
+          decisionId: 'decision-work-project-create-1',
+          confidence: 'high',
+          toolName: WORK_PROJECT_CREATE_TOOL,
+          target: {
+            kind: 'execution_target',
+            provider: 'claude',
+            model: 'sonnet',
+          },
+          input: {
+            title: 'Cats Mobile',
+            summary: 'Mobile companion for Cats.',
+            status: 'planned',
+          },
+          rationaleSummary: 'The owner explicitly asked to create a Project.',
+        };
+      },
+    },
+  );
+
+  const persistedCore = await store.readCore();
+  const project = persistedCore.projects.find((candidate) =>
+    candidate.title === 'Cats Mobile');
+  assert.ok(project);
+  assert.equal(project.status, 'planned');
+  assert.equal(project.summary, 'Mobile companion for Cats.');
+  assert.equal(project.primaryConversationId, conversationId);
+  assert.equal(
+    persistedCore.activities.some((activity) =>
+      activity.message === 'Created Project: Cats Mobile'),
+    true,
+  );
+
+  const channel = requireChannel(begun.state, channelId);
+  const resultMessage = channel.messages.find((message) =>
+    message.metadata.workProjectCreateResult);
+  const metadata = resultMessage?.metadata.workProjectCreateResult as
+    | { projectId?: string; title?: string; created?: boolean }
+    | undefined;
+  assert.equal(resultMessage?.metadata.event, 'work_project_create_result');
+  assert.equal(metadata?.title, 'Cats Mobile');
+  assert.equal(metadata?.created, true);
+  assert.equal(metadata?.projectId, project.id);
+  assert.match(resultMessage?.body ?? '', /^Created Project Cats Mobile \(project-/u);
 });

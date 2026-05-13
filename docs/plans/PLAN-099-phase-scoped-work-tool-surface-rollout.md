@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice exposed and executed explicit Chat provider-agent `work.project.create` requests through the Work triage delegate, with server-resolved conversation scope and bounded Project fields. |
 | 2026-05-13 | Follow-up slice wired Chat provider-agent `work.project.lookup` tool requests into the Work triage delegate, returning bounded Project candidates without writing Core. |
 | 2026-05-13 | Follow-up slice exposed read-only Work triage lookup in Chat provider-agent observations when owner text names explicit local Work refs, while keeping triage writes hidden under read-only policy. |
 | 2026-05-13 | Follow-up slice aligned Chat provider-agent observation policy with explicit external binding tool exposure so local-state link/unlink turns carry a narrow-write policy instead of read-only dials. |

@@ -76,7 +76,9 @@ import {
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+  WORK_PROJECT_CREATE_TOOL,
   createPhaseScopedWorkToolManifests,
+  type PhaseScopedWorkToolName,
   type WorkToolCapabilityProfile,
 } from '../../../work/shared/workToolSurface.js';
 import {
@@ -109,6 +111,8 @@ const WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES = new Set([
 const MAX_WORK_EXECUTION_PREPARATION_VISIBLE_ITEMS = 20;
 const WORK_TRIAGE_WORK_ITEM_ID_PATTERN = /\bwork-item-[a-z0-9][a-z0-9_-]*\b/gu;
 const WORK_TRIAGE_PROJECT_ID_PATTERN = /\bproject-[a-z0-9][a-z0-9_-]*\b/gu;
+const WORK_PROJECT_CREATE_CUE_PATTERN =
+  /\b(create|add|new)\s+(a\s+)?project\b|\bproject\s+(create|add|new)\b|建立專案|新增專案/iu;
 
 function readRequestedWorkflowShape(
   payload: SendChannelMessageInput,
@@ -655,10 +659,45 @@ function buildProviderAgentObservationForTurn(input: {
         ...workTriageContextRefs,
       ]
       : [];
+  const workProjectCreateMatched = resolveWorkProjectCreateCue(input.payload.body);
+  const workProjectCreatePolicyDecision = workProjectCreateMatched
+    ? decideSupervisionPolicy({
+        actionId: `${input.userMessage.id}:work-project-create-observation`,
+        runId: `chat:${input.channelId}`,
+        actorRef: providerAgentActorRef,
+        targetRef: WORK_PROJECT_CREATE_TOOL,
+        providerRef: capabilityProfile.profileId,
+        actionType: 'work_project_create',
+        evaluatedAt: input.nowIso,
+        capabilityAssessment: capabilityProfile.assessment,
+        toolManifest: findPhaseScopedWorkToolManifest(WORK_PROJECT_CREATE_TOOL),
+      })
+    : null;
+  const workProjectCreateToolObservation = createFilteredWorkToolObservation({
+    enabled: workProjectCreateMatched
+      && Boolean(input.core)
+      && workProjectCreatePolicyDecision?.status === 'applied',
+    phase: 'triage',
+    capabilityProfileKind: capabilityProfile.kind,
+    policy: workProjectCreatePolicyDecision?.status === 'applied'
+      ? workProjectCreatePolicyDecision.result.policy
+      : policyDecision.result.policy,
+    toolNames: [WORK_PROJECT_CREATE_TOOL],
+  });
+  const workProjectCreateContextRefs =
+    workProjectCreateToolObservation.descriptors.length > 0
+      ? [
+        'work-triage-phase:triage',
+        'work-triage-action:create_project',
+      ]
+      : [];
   const observationPolicy = workExternalBindingPolicyDecision?.status === 'applied'
     && workExternalBindingToolObservation.descriptors.length > 0
     ? workExternalBindingPolicyDecision.result.policy
-    : policyDecision.result.policy;
+    : workProjectCreatePolicyDecision?.status === 'applied'
+      && workProjectCreateToolObservation.descriptors.length > 0
+        ? workProjectCreatePolicyDecision.result.policy
+        : policyDecision.result.policy;
 
   return buildChatProviderAgentObservation({
     state: input.state,
@@ -679,12 +718,14 @@ function buildProviderAgentObservationForTurn(input: {
       ...workExecutionPreparationToolObservation.descriptors,
       ...workExternalBindingToolObservation.descriptors,
       ...workTriageToolObservation.descriptors,
+      ...workProjectCreateToolObservation.descriptors,
     ],
     additionalContextRefs: [
       ...workIntakeSourceContext.contextRefs,
       ...workExecutionPreparationContextRefs,
       ...workExternalBindingContextRefs,
       ...workTriageObservationContextRefs,
+      ...workProjectCreateContextRefs,
     ],
     invariants: [
       ...(exposeCatProductIntentProposalTool
@@ -699,6 +740,7 @@ function buildProviderAgentObservationForTurn(input: {
       ...workExecutionPreparationToolObservation.invariants,
       ...workExternalBindingToolObservation.invariants,
       ...workTriageToolObservation.invariants,
+      ...workProjectCreateToolObservation.invariants,
     ],
     messageCharacterCount: input.payload.body.length,
     routing: {
@@ -728,16 +770,29 @@ function resolveWorkTriageContextRefs(rawText: string): string[] {
   ];
 }
 
+function resolveWorkProjectCreateCue(rawText: string): boolean {
+  const normalizedText = rawText.trim().replace(/\s+/gu, ' ');
+  return Boolean(normalizedText)
+    && !normalizedText.startsWith('/')
+    && WORK_PROJECT_CREATE_CUE_PATTERN.test(normalizedText);
+}
+
 function findWorkExternalBindingManifest(
   operation: 'link' | 'unlink',
 ): ReturnType<typeof createPhaseScopedWorkToolManifests>[number] {
   const toolName = operation === 'link'
     ? WORK_EXTERNAL_LINK_ISSUE_TOOL
     : WORK_EXTERNAL_UNLINK_ISSUE_TOOL;
+  return findPhaseScopedWorkToolManifest(toolName);
+}
+
+function findPhaseScopedWorkToolManifest(
+  toolName: PhaseScopedWorkToolName,
+): ReturnType<typeof createPhaseScopedWorkToolManifests>[number] {
   const manifest = createPhaseScopedWorkToolManifests().find((candidate) =>
     candidate.name === toolName);
   if (!manifest) {
-    throw new Error(`Missing Work external binding tool manifest: ${toolName}`);
+    throw new Error(`Missing Work tool manifest: ${toolName}`);
   }
   return manifest;
 }
@@ -782,6 +837,28 @@ function createWorkTriageToolObservation(input: {
     parentToolScope: input.policy.toolScope,
     policyToolScope: input.policy.toolScope,
   });
+}
+
+function createFilteredWorkToolObservation(input: {
+  enabled: boolean;
+  phase: 'triage';
+  capabilityProfileKind: 'strong_agent' | 'weak_worker' | 'unknown';
+  policy: SupervisionPolicy;
+  toolNames: PhaseScopedWorkToolName[];
+}): ReturnType<typeof createPhaseScopedWorkToolObservation> {
+  const observation = createPhaseScopedWorkToolObservation({
+    enabled: input.enabled,
+    phase: input.phase,
+    capabilityProfile: resolveWorkToolCapabilityProfile(input.capabilityProfileKind),
+    parentToolScope: input.policy.toolScope,
+    policyToolScope: input.policy.toolScope,
+  });
+  const allowedToolNames = new Set(input.toolNames);
+  return {
+    descriptors: observation.descriptors.filter((descriptor) =>
+      allowedToolNames.has(descriptor.manifest.name as PhaseScopedWorkToolName)),
+    invariants: observation.invariants,
+  };
 }
 
 function createWorkExternalBindingToolObservation(input: {
