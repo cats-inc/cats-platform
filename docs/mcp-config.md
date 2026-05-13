@@ -67,12 +67,18 @@ MCP should not become a back door around product-owned permissions,
 conversations, or approval state. Those remain inside `cats` and
 `Cats Core v1`.
 
-Cats Work now defines a product-owned phase-scoped tool observation helper for
-intake, triage, execution preparation, and external tracker binding. Strong
-Cats and Boss Cat can be shown the allowed manifests and invariants through
-bounded observations, but those Work tools are not part of the runtime MCP
-facade until a product-owned MCP adapter preserves the same supervision,
-approval, and evidence gates.
+Cats Work now defines a product-owned phase-scoped tool observation and
+`work-memory` intent helper for intake, triage, execution preparation, and
+external tracker binding. Strong Cats and Boss Cat can be shown the allowed
+manifests and invariants through bounded observations. Chat's orchestrator
+planner also projects explicit Work triage / external binding / Boss execution
+requests into `toolIntent`, and runtime dispatch forwards the matched
+`toolIntent` in `sendMessage.context.metadata.toolIntent`.
+
+Those Work tools are still not executable through `POST /api/runtime/mcp`.
+The runtime MCP endpoint remains a proxy to `cats-runtime` until a
+product-owned MCP adapter preserves the same supervision, approval, and
+evidence gates used by the direct Work delegates.
 
 ## Configuration
 

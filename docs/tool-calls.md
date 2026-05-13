@@ -139,14 +139,20 @@ dispatch sidecar executor, which rebuilds source context server-side before
 running the product delegate. Proposal sidecars expose an owner confirmation
 choice; confirmed choices call the `work.item.capture` delegate server-side and
 write draft Work Items. A product-owned `work-memory` tool-intent projection
-now maps phase/capability/policy context into runtime-facing Work tool names;
-runtime adapter tool-result loops, MCP facade execution, and direct
-`work.item.capture` observation exposure are still pending.
+now maps phase/capability/policy context into runtime-facing Work tool names.
+Chat's orchestrator plan projects explicit Work triage, external tracker
+binding, and Boss Cat execution-preparation requests into target `toolIntent`,
+and runtime dispatch forwards the matched intent in
+`sendMessage.context.metadata.toolIntent`. Runtime adapter tool-result loops,
+MCP facade execution, and direct `work.item.capture` observation exposure are
+still pending.
 
 Implementation entry point:
 `src/products/work/shared/workToolSurface.ts` for contracts and
 `src/products/work/shared/workToolIntent.ts` for the product-owned
 `work-memory` runtime-facing intent projection.
+`src/products/chat/state/workToolIntentResolver.ts` owns the Chat planner and
+runtime-dispatch projection from owner text to Work tool intent.
 `src/products/work/shared/workIntakeSourceContext.ts` for bounded source refs.
 `src/products/work/state/workIntakeDelegate.ts` owns the product intake
 delegate. `src/products/work/state/workTriageDelegate.ts` owns the bounded
