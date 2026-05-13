@@ -12,6 +12,7 @@ import type {
 export const PROVIDER_AGENT_DECISION_CONTRACT_VERSION = 1;
 export const PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH = 280;
 export const PROVIDER_AGENT_MAX_GOAL_LENGTH = 2000;
+export const PROVIDER_AGENT_MAX_TOOL_REASON_LENGTH = 280;
 export const PROVIDER_AGENT_MAX_TOOL_INPUT_HINTS = 8;
 export const PROVIDER_AGENT_MAX_TOOL_INPUT_HINT_LENGTH = 400;
 
@@ -269,6 +270,13 @@ function validateToolDescriptor(
   descriptor: ProviderAgentToolDescriptor,
   index: number,
 ): void {
+  validateBoundedString(
+    errors,
+    `availableTools[${index}].reason`,
+    descriptor.reason,
+    PROVIDER_AGENT_MAX_TOOL_REASON_LENGTH,
+  );
+
   if (!descriptor.inputHints) {
     return;
   }

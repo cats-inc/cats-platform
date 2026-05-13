@@ -76,6 +76,7 @@ export {
   PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
   PROVIDER_AGENT_MAX_TOOL_INPUT_HINT_LENGTH,
   PROVIDER_AGENT_MAX_TOOL_INPUT_HINTS,
+  PROVIDER_AGENT_MAX_TOOL_REASON_LENGTH,
   validateProviderAgentBoundedObservation,
   validateProviderAgentDecision,
   type ProviderAgentBoundedObservation,

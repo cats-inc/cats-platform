@@ -149,6 +149,23 @@ test('bounded observation rejects raw-content summaries and oversized text', () 
   ]);
 });
 
+test('bounded observation rejects missing and oversized tool reasons', () => {
+  const input = observation();
+  input.availableTools[0] = {
+    ...input.availableTools[0]!,
+    reason: '',
+  };
+  input.availableTools[1] = {
+    ...input.availableTools[1]!,
+    reason: 'x'.repeat(281),
+  };
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(input), [
+    'availableTools[0].reason is required',
+    'availableTools[1].reason must be 280 characters or less',
+  ]);
+});
+
 test('bounded observation rejects oversized tool input hints', () => {
   const input = observation();
   input.availableTools[0] = {
