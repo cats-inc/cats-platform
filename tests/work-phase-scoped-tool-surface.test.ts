@@ -5,6 +5,7 @@ import { createSupervisedToolRegistry } from '../src/platform/supervision/toolRe
 import {
   WORK_ITEM_CAPTURE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
+  WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
   WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
@@ -15,6 +16,7 @@ import {
   resolveWorkToolPhase,
   validateWorkItemAssignProjectInput,
   validateWorkItemCaptureInput,
+  validateWorkItemPrepareExecutionInput,
   validateWorkItemProposeSplitInput,
   validateWorkItemUpdateInput,
   validateWorkProjectCreateInput,
@@ -30,6 +32,7 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
     [
       WORK_ITEM_ASSIGN_PROJECT_TOOL,
       WORK_ITEM_CAPTURE_TOOL,
+      WORK_ITEM_PREPARE_EXECUTION_TOOL,
       WORK_ITEM_PROPOSE_SPLIT_TOOL,
       WORK_ITEM_UPDATE_TOOL,
       WORK_PROJECT_CREATE_TOOL,
@@ -40,6 +43,7 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
   assert.equal(resolveWorkToolPhase(WORK_ITEM_CAPTURE_TOOL), 'intake');
   assert.equal(resolveWorkToolPhase(WORK_ITEM_ASSIGN_PROJECT_TOOL), 'triage');
   assert.equal(resolveWorkToolPhase(WORK_ITEM_UPDATE_TOOL), 'triage');
+  assert.equal(resolveWorkToolPhase(WORK_ITEM_PREPARE_EXECUTION_TOOL), 'execution_preparation');
   assert.equal(resolveWorkToolPhase(WORK_PROJECT_LOOKUP_TOOL), 'triage');
   assert.equal(resolveWorkToolPhase(WORK_PROJECT_CREATE_TOOL), 'triage');
   assert.equal(byName.get(WORK_ITEM_PROPOSE_SPLIT_TOOL)?.sideEffect, 'none');
@@ -50,6 +54,8 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
   assert.equal(byName.get(WORK_ITEM_ASSIGN_PROJECT_TOOL)?.approval, 'policy');
   assert.equal(byName.get(WORK_ITEM_UPDATE_TOOL)?.sideEffect, 'local_state');
   assert.equal(byName.get(WORK_ITEM_UPDATE_TOOL)?.approval, 'policy');
+  assert.equal(byName.get(WORK_ITEM_PREPARE_EXECUTION_TOOL)?.sideEffect, 'none');
+  assert.equal(byName.get(WORK_ITEM_PREPARE_EXECUTION_TOOL)?.approval, 'never');
   assert.equal(byName.get(WORK_PROJECT_LOOKUP_TOOL)?.sideEffect, 'none');
   assert.equal(byName.get(WORK_PROJECT_LOOKUP_TOOL)?.approval, 'never');
   assert.equal(byName.get(WORK_PROJECT_CREATE_TOOL)?.sideEffect, 'local_state');
@@ -80,6 +86,20 @@ test('phase and capability profile filtering hides Work tools from weak or unkno
   );
   assert.deepEqual(
     filterPhaseScopedWorkToolManifests(manifests, {
+      phase: 'execution_preparation',
+      capabilityProfile: 'boss_cat',
+    }).map((manifest) => manifest.name),
+    [WORK_ITEM_PREPARE_EXECUTION_TOOL],
+  );
+  assert.deepEqual(
+    filterPhaseScopedWorkToolManifests(manifests, {
+      phase: 'execution_preparation',
+      capabilityProfile: 'strong_agent',
+    }),
+    [],
+  );
+  assert.deepEqual(
+    filterPhaseScopedWorkToolManifests(manifests, {
       phase: 'intake',
       capabilityProfile: 'weak_worker',
     }),
@@ -98,7 +118,11 @@ test('supervised tool registry policy scope keeps capture behind narrow-write gr
   assert.deepEqual(
     registry.filter({ parentToolScope: 'read_only', policyToolScope: 'read_only' })
       .map((manifest) => manifest.name),
-    [WORK_ITEM_PROPOSE_SPLIT_TOOL, WORK_PROJECT_LOOKUP_TOOL],
+    [
+      WORK_ITEM_PREPARE_EXECUTION_TOOL,
+      WORK_ITEM_PROPOSE_SPLIT_TOOL,
+      WORK_PROJECT_LOOKUP_TOOL,
+    ],
   );
   assert.deepEqual(
     registry.filter({ parentToolScope: 'narrow_write', policyToolScope: 'narrow_write' })
@@ -106,6 +130,7 @@ test('supervised tool registry policy scope keeps capture behind narrow-write gr
     [
       WORK_ITEM_ASSIGN_PROJECT_TOOL,
       WORK_ITEM_CAPTURE_TOOL,
+      WORK_ITEM_PREPARE_EXECUTION_TOOL,
       WORK_ITEM_PROPOSE_SPLIT_TOOL,
       WORK_ITEM_UPDATE_TOOL,
       WORK_PROJECT_CREATE_TOOL,
@@ -203,6 +228,31 @@ test('Work item project assignment validation allows bounded ids only', () => {
       ['assignedActorIds', 'server_resolved_field'],
       ['workItemId', 'blank'],
       ['note', 'too_long'],
+    ],
+  );
+});
+
+test('Work item execution preparation validation rejects execution-owned fields', () => {
+  assert.deepEqual(validateWorkItemPrepareExecutionInput({
+    workItemIds: ['work-item-1'],
+    executionGoal: 'Ship the smallest useful Telegram intake slice.',
+    maxItems: 1,
+  }), []);
+
+  assert.deepEqual(
+    validateWorkItemPrepareExecutionInput({
+      workItemIds: [],
+      taskId: 'task-1',
+      runId: 'run-1',
+      executionGoal: 'x'.repeat(1001),
+      maxItems: 0,
+    }).map((entry) => [entry.field, entry.code]),
+    [
+      ['taskId', 'server_resolved_field'],
+      ['runId', 'server_resolved_field'],
+      ['workItemIds', 'bounds'],
+      ['executionGoal', 'too_long'],
+      ['maxItems', 'bounds'],
     ],
   );
 });

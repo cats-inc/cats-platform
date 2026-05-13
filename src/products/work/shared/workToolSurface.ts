@@ -29,6 +29,7 @@ export const WORK_ITEM_PROPOSE_SPLIT_TOOL = 'work.item.propose_split' as const;
 export const WORK_ITEM_CAPTURE_TOOL = 'work.item.capture' as const;
 export const WORK_ITEM_UPDATE_TOOL = 'work.item.update' as const;
 export const WORK_ITEM_ASSIGN_PROJECT_TOOL = 'work.item.assign_project' as const;
+export const WORK_ITEM_PREPARE_EXECUTION_TOOL = 'work.item.prepare_execution' as const;
 export const WORK_PROJECT_LOOKUP_TOOL = 'work.project.lookup' as const;
 export const WORK_PROJECT_CREATE_TOOL = 'work.project.create' as const;
 
@@ -37,6 +38,7 @@ export type PhaseScopedWorkToolName =
   | typeof WORK_ITEM_CAPTURE_TOOL
   | typeof WORK_ITEM_UPDATE_TOOL
   | typeof WORK_ITEM_ASSIGN_PROJECT_TOOL
+  | typeof WORK_ITEM_PREPARE_EXECUTION_TOOL
   | typeof WORK_PROJECT_LOOKUP_TOOL
   | typeof WORK_PROJECT_CREATE_TOOL;
 
@@ -45,6 +47,7 @@ export const WORK_TOOL_PHASE_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, W
   [WORK_ITEM_CAPTURE_TOOL]: 'intake',
   [WORK_ITEM_UPDATE_TOOL]: 'triage',
   [WORK_ITEM_ASSIGN_PROJECT_TOOL]: 'triage',
+  [WORK_ITEM_PREPARE_EXECUTION_TOOL]: 'execution_preparation',
   [WORK_PROJECT_LOOKUP_TOOL]: 'triage',
   [WORK_PROJECT_CREATE_TOOL]: 'triage',
 };
@@ -56,6 +59,7 @@ export const WORK_TOOL_ALLOWED_CAPABILITY_PROFILES_BY_NAME: Readonly<
   [WORK_ITEM_CAPTURE_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_ITEM_UPDATE_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_ITEM_ASSIGN_PROJECT_TOOL]: ['boss_cat', 'strong_agent'],
+  [WORK_ITEM_PREPARE_EXECUTION_TOOL]: ['boss_cat'],
   [WORK_PROJECT_LOOKUP_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_PROJECT_CREATE_TOOL]: ['boss_cat', 'strong_agent'],
 };
@@ -223,6 +227,30 @@ export interface WorkItemAssignProjectResult {
   assigned: boolean;
 }
 
+export interface WorkItemPrepareExecutionInput {
+  workItemIds: string[];
+  executionGoal?: string;
+  maxItems?: number;
+}
+
+export type WorkItemExecutionReadiness = 'ready' | 'needs_triage' | 'blocked';
+
+export interface WorkItemExecutionPreparationProposal {
+  workItemId: string;
+  title: string;
+  status: WorkItemTriageStatus;
+  projectId?: string;
+  readiness: WorkItemExecutionReadiness;
+  proposedTaskTitle: string;
+  proposedTaskSummary: string;
+  openQuestions: string[];
+  blockers: string[];
+}
+
+export interface WorkItemPrepareExecutionResult {
+  proposals: WorkItemExecutionPreparationProposal[];
+}
+
 export interface WorkProjectLookupInput {
   query?: string;
   limit?: number;
@@ -314,6 +342,17 @@ export function createPhaseScopedWorkToolManifests(): SupervisedToolManifest[] {
       ],
     }),
     createManifest({
+      name: WORK_ITEM_PREPARE_EXECUTION_TOOL,
+      description: 'Propose execution preparation for selected Cats Work Items without writing Core.',
+      sideEffect: 'none',
+      preflight: 'available',
+      approval: 'never',
+      failureCodes: [
+        WORK_TOOL_ERROR_CODES.schemaInvalid,
+        WORK_TOOL_ERROR_CODES.precheckFailed,
+      ],
+    }),
+    createManifest({
       name: WORK_PROJECT_LOOKUP_TOOL,
       description: 'Look up bounded Cats Work Projects for Work Item triage.',
       sideEffect: 'none',
@@ -341,6 +380,7 @@ export function resolveWorkToolPhase(toolName: string): WorkToolPhase | undefine
     || toolName === WORK_ITEM_CAPTURE_TOOL
     || toolName === WORK_ITEM_UPDATE_TOOL
     || toolName === WORK_ITEM_ASSIGN_PROJECT_TOOL
+    || toolName === WORK_ITEM_PREPARE_EXECUTION_TOOL
     || toolName === WORK_PROJECT_LOOKUP_TOOL
     || toolName === WORK_PROJECT_CREATE_TOOL
   ) {
@@ -359,6 +399,7 @@ export function isWorkToolAllowedForCapabilityProfile(
     && toolName !== WORK_ITEM_CAPTURE_TOOL
     && toolName !== WORK_ITEM_UPDATE_TOOL
     && toolName !== WORK_ITEM_ASSIGN_PROJECT_TOOL
+    && toolName !== WORK_ITEM_PREPARE_EXECUTION_TOOL
     && toolName !== WORK_PROJECT_LOOKUP_TOOL
     && toolName !== WORK_PROJECT_CREATE_TOOL
   ) {
@@ -447,6 +488,19 @@ export function validateWorkItemAssignProjectInput(input: unknown): WorkToolVali
     ...validateRequiredString(input, 'workItemId', 160),
     ...validateRequiredString(input, 'projectId', 160),
     ...validateOptionalString(input, 'note', 500),
+  ];
+}
+
+export function validateWorkItemPrepareExecutionInput(input: unknown): WorkToolValidationError[] {
+  if (!isRecord(input)) {
+    return [error('type', '$', 'Work item execution preparation input must be an object.')];
+  }
+
+  return [
+    ...validateServerResolvedFields(input),
+    ...validateRequiredStringArray(input, 'workItemIds', 1, 20, 160),
+    ...validateOptionalString(input, 'executionGoal', 1000),
+    ...validateOptionalIntegerRange(input, 'maxItems', 1, 20),
   ];
 }
 
@@ -705,6 +759,30 @@ function validateOptionalBoolean(
   }
 
   return [];
+}
+
+function validateRequiredStringArray(
+  input: Record<string, unknown>,
+  key: string,
+  minItems: number,
+  maxItems: number,
+  maxStringLength: number,
+): WorkToolValidationError[] {
+  const value = input[key];
+  if (!Array.isArray(value)) {
+    return [error('required', key, `${key} must be an array of strings.`)];
+  }
+  if (value.length < minItems || value.length > maxItems) {
+    return [error(
+      'bounds',
+      key,
+      `${key} must contain between ${minItems} and ${maxItems} items.`,
+    )];
+  }
+
+  return value.flatMap((item, index) =>
+    validateStringValue(item, `${key}[${index}]`, maxStringLength, true),
+  );
 }
 
 function validateAtLeastOneWorkItemUpdateField(
