@@ -11,6 +11,8 @@ import type {
 
 export const PROVIDER_AGENT_DECISION_CONTRACT_VERSION = 1;
 export const PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH = 280;
+export const PROVIDER_AGENT_MAX_SUMMARIES = 24;
+export const PROVIDER_AGENT_MAX_SUMMARY_KEY_LENGTH = 80;
 export const PROVIDER_AGENT_MAX_GOAL_LENGTH = 2000;
 export const PROVIDER_AGENT_MAX_CONTEXT_REFS = 64;
 export const PROVIDER_AGENT_MAX_CONTEXT_REF_LENGTH = 240;
@@ -178,6 +180,10 @@ export function validateProviderAgentBoundedObservation(
     PROVIDER_AGENT_MAX_INVARIANT_LENGTH,
   );
 
+  if (observation.summaries.length > PROVIDER_AGENT_MAX_SUMMARIES) {
+    errors.push(`summaries must contain ${PROVIDER_AGENT_MAX_SUMMARIES} entries or fewer`);
+  }
+
   for (const summary of observation.summaries) {
     validateObservationSummary(errors, summary);
   }
@@ -320,7 +326,12 @@ function validateObservationSummary(
   errors: string[],
   summary: ProviderAgentObservationSummary,
 ): void {
-  validateRequiredString(errors, 'summary.key', summary.key);
+  validateBoundedString(
+    errors,
+    'summary.key',
+    summary.key,
+    PROVIDER_AGENT_MAX_SUMMARY_KEY_LENGTH,
+  );
 
   if (/(?:raw|transcript|message|prompt|body|content)/i.test(summary.key)) {
     errors.push(`summary ${summary.key} appears to describe raw conversation content`);

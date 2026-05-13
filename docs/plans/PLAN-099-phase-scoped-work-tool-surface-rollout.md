@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice bounded provider-agent observation summary counts and keys, closing another model-visible prompt expansion path. |
 | 2026-05-13 | Follow-up slice bounded provider-agent observation `contextRefs` and `invariants` arrays so metadata-only prompt inputs stay compact. |
 | 2026-05-13 | Follow-up slice bounded provider-agent tool descriptor reasons so model-visible tool metadata cannot become an unbounded prompt side channel. |
 | 2026-05-13 | Follow-up slice locked Chat `cat_tool` intake observations to expose read-only `work.item.propose_split` hints while keeping direct capture hidden from model decisions. |

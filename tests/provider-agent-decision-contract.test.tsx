@@ -149,6 +149,20 @@ test('bounded observation rejects raw-content summaries and oversized text', () 
   ]);
 });
 
+test('bounded observation rejects oversized summary lists and keys', () => {
+  const input = observation();
+  input.summaries = Array.from({ length: 25 }, (_, index) => ({
+    key: index === 0 ? 'x'.repeat(81) : `summary_${index}`,
+    kind: 'count',
+    value: index,
+  }));
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(input), [
+    'summaries must contain 24 entries or fewer',
+    'summary.key must be 80 characters or less',
+  ]);
+});
+
 test('bounded observation rejects missing and oversized tool reasons', () => {
   const input = observation();
   input.availableTools[0] = {
