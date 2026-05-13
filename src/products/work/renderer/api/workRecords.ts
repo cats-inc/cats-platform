@@ -20,6 +20,7 @@ import type {
   CoreWorkItemRecord,
   CoreWorkItemStatus,
 } from '../../../../core/types.js';
+import type { WorkSupervisedRunLaunchProjection } from '../../api/projection.js';
 
 export type {
   CoreProjectRecord,
@@ -230,4 +231,19 @@ export async function decideWorkTaskApproval(
     signal,
   });
   return expectJson<WorkTaskApprovalDecisionResponse>(response, errorMessage);
+}
+
+export async function startWorkTaskSupervisedRun(
+  taskId: string,
+  errorMessage: string,
+  signal?: AbortSignal,
+): Promise<WorkSupervisedRunLaunchProjection> {
+  const response = await fetch(`${buildWorkApiTaskPath(taskId)}/supervised-run`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
+  });
+  return expectJson<WorkSupervisedRunLaunchProjection>(response, errorMessage);
 }

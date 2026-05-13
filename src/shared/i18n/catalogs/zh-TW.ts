@@ -864,6 +864,8 @@ export const zhTWCatalog: MessageCatalog = {
   'work.task.noRunsIntro': '尚未派發執行。使用',
   'work.task.noRunsActionLabel': '啟動監督執行',
   'work.task.noRunsSuffix': '來派發。',
+  'work.task.startRunBusyLabel': '啟動中…',
+  'work.task.startRunError': '無法啟動監督執行。',
   'work.task.loadingLabel': '載入任務中…',
   'work.task.notFoundTitle': '找不到',
   'work.task.notFoundText':

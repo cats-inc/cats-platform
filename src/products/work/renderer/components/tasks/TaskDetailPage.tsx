@@ -11,10 +11,17 @@ import {
   getWorkGraphAttentionLabel,
   getWorkTaskProductBindingLabel,
 } from "../topdown/shared";
-import { removeWorkTask } from "../../api/workRecords.js";
-import { decideWorkTaskApproval } from "../../api/workRecords.js";
+import {
+  decideWorkTaskApproval,
+  removeWorkTask,
+  startWorkTaskSupervisedRun,
+} from "../../api/workRecords.js";
 import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
-import { useRunsQuery, type WorkRunListItem } from "../../state/queries/runsQuery.js";
+import {
+  RUNS_QUERY_KEY,
+  useRunsQuery,
+  type WorkRunListItem,
+} from "../../state/queries/runsQuery.js";
 import {
   TASKS_QUERY_KEY,
   useTasksQuery,
@@ -85,6 +92,22 @@ export function TaskDetailPage(): JSX.Element {
     },
   });
 
+  const startRunMutation = useMutation({
+    mutationFn: async (id: string) => startWorkTaskSupervisedRun(
+      id,
+      t("workTaskStartRunError"),
+    ),
+    onSuccess: async (result) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: RUNS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: WORK_DASHBOARD_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY }),
+      ]);
+      navigate(buildWorkRunPath(result.run.taskId ?? result.task.id, result.run.id));
+    },
+  });
+
   const handleDelete = () => {
     if (!task) return;
     if (
@@ -106,6 +129,11 @@ export function TaskDetailPage(): JSX.Element {
     });
   };
 
+  const handleStartRun = () => {
+    if (!task || task.status !== "approved") return;
+    startRunMutation.mutate(task.id);
+  };
+
   if (tasksQuery.isPending) {
     return <TaskDetailLoading />;
   }
@@ -124,6 +152,13 @@ export function TaskDetailPage(): JSX.Element {
     ? formatWorkCrudMutationError(
       approvalDecisionMutation.error,
       t("workTaskApprovalDecisionError"),
+      t,
+    )
+    : null;
+  const startRunError = startRunMutation.error
+    ? formatWorkCrudMutationError(
+      startRunMutation.error,
+      t("workTaskStartRunError"),
       t,
     )
     : null;
@@ -152,6 +187,7 @@ export function TaskDetailPage(): JSX.Element {
   const assignedNames = task.assignedActors.map((actor) => actor.displayName);
   const showApprovalActions = task.status === "pending_approval";
   const approvalDecisionPending = approvalDecisionMutation.isPending;
+  const canStartRun = task.status === "approved";
 
   return (
     <div className="taskDetail">
@@ -266,9 +302,9 @@ export function TaskDetailPage(): JSX.Element {
         </div>
       </header>
       <main className="taskDetail__main">
-        {deleteError || approvalDecisionError ? (
+        {deleteError || approvalDecisionError || startRunError ? (
           <p className="taskDetail__error" role="alert">
-            {deleteError ?? approvalDecisionError}
+            {deleteError ?? approvalDecisionError ?? startRunError}
           </p>
         ) : null}
         <section className="taskDetail__section taskDetail__overview">
@@ -360,7 +396,13 @@ export function TaskDetailPage(): JSX.Element {
 
         <SubTasksSection subTasks={subTasks} />
 
-        <RunsSection taskId={task.id} runs={taskRuns} />
+        <RunsSection
+          taskId={task.id}
+          runs={taskRuns}
+          canStartRun={canStartRun}
+          isStartingRun={startRunMutation.isPending}
+          onStartRun={handleStartRun}
+        />
 
         <LinkageSection
           selfRef={{ recordFamily: "task", recordId: task.id }}
@@ -445,9 +487,18 @@ function SubTasksSection({
 interface RunsSectionProps {
   taskId: string;
   runs: readonly WorkRunListItem[];
+  canStartRun: boolean;
+  isStartingRun: boolean;
+  onStartRun: () => void;
 }
 
-function RunsSection({ taskId, runs }: RunsSectionProps): JSX.Element {
+function RunsSection({
+  taskId,
+  runs,
+  canStartRun,
+  isStartingRun,
+  onStartRun,
+}: RunsSectionProps): JSX.Element {
   const { t } = useI18n();
 
   return (
@@ -457,11 +508,23 @@ function RunsSection({ taskId, runs }: RunsSectionProps): JSX.Element {
         <span className="taskDetail__sectionCount">{runs.length}</span>
       </header>
       {runs.length === 0 ? (
-        <p className="taskDetail__empty">
-          {t("workTaskNoRunsIntro")}{" "}
-          <strong>{t("workTaskNoRunsActionLabel")}</strong>{" "}
-          {t("workTaskNoRunsSuffix")}
-        </p>
+        <div className="taskDetail__emptyAction">
+          <p className="taskDetail__empty">
+            {t("workTaskNoRunsIntro")}{" "}
+            <strong>{t("workTaskNoRunsActionLabel")}</strong>{" "}
+            {t("workTaskNoRunsSuffix")}
+          </p>
+          <button
+            type="button"
+            className="taskDetail__inlineAction"
+            onClick={onStartRun}
+            disabled={!canStartRun || isStartingRun}
+          >
+            {isStartingRun
+              ? t("workTaskStartRunBusyLabel")
+              : t("workTaskNoRunsActionLabel")}
+          </button>
+        </div>
       ) : (
         <ul className="taskDetail__subTasks">
           {runs.map((run) => (

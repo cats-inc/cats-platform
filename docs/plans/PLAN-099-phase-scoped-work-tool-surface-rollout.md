@@ -191,6 +191,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Follow-up slice made execution Tasks inherit Work Item assignees, or fall back to the Boss actor, so owner-approved Tasks have an actor for dispatch wakeups. |
 | 2026-05-13 | Follow-up slice stamps execution Tasks with Work planning metadata (`productHint: work`, `strategyHint: pdca`) so downstream dispatch treats them as Work execution instead of generic chat. |
 | 2026-05-13 | Follow-up slice added Work Task detail approval actions so pending Boss-created execution Tasks can be approved or rejected through the existing Core approval route before supervised runs start. |
+| 2026-05-13 | Follow-up slice added a Work Task detail action that starts a supervised Work run for approved Boss-created execution Tasks and routes the owner into the run detail. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---

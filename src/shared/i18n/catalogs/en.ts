@@ -891,6 +891,8 @@ export const enCatalog: MessageCatalog = {
   'work.task.noRunsIntro': 'No runs dispatched. Use',
   'work.task.noRunsActionLabel': 'Start supervised run',
   'work.task.noRunsSuffix': 'to dispatch.',
+  'work.task.startRunBusyLabel': 'Starting…',
+  'work.task.startRunError': 'Failed to start supervised run.',
   'work.task.loadingLabel': 'Loading task…',
   'work.task.notFoundTitle': 'Not found',
   'work.task.notFoundText':
