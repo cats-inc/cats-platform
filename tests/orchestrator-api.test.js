@@ -33,6 +33,7 @@ import {
 } from '../build/server/products/chat/state/room-routing/workflow.js';
 import {
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
+  WORK_ITEM_PROPOSE_SPLIT_TOOL,
   WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
@@ -451,6 +452,59 @@ test('POST /api/orchestrator/plan projects Work tool intent for work-memory Cats
         'work.phase.triage',
         'work.capability.strong_agent',
         'work.tool_scope.narrow_write',
+      ],
+    );
+  });
+});
+
+test('POST /api/orchestrator/plan projects read-only Work intake intent', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Work Intake',
+          provider: 'gemini',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/plan`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Boss Cat 幫我記一個待辦：整理 Telegram 匯入',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.deepEqual(
+      payload.plan.routing.initialTargets[0].toolIntent.allowedTools,
+      [
+        WORK_ITEM_PROPOSE_SPLIT_TOOL,
+      ],
+    );
+    assert.deepEqual(
+      payload.plan.routing.initialTargets[0].toolIntent.toolDescriptions.map((tool) => tool.name),
+      payload.plan.routing.initialTargets[0].toolIntent.allowedTools,
+    );
+    assert.ok(
+      payload.plan.routing.initialTargets[0].toolIntent.toolDescriptions.some((tool) =>
+        tool.name === WORK_ITEM_PROPOSE_SPLIT_TOOL
+        && tool.description.includes('Propose candidate Work Items')),
+    );
+    assert.deepEqual(
+      payload.plan.routing.initialTargets[0].toolIntent.requiredCapabilities,
+      [
+        'work.phase.intake',
+        'work.capability.strong_agent',
+        'work.tool_scope.read_only',
       ],
     );
   });
