@@ -205,6 +205,7 @@ test('Work external link validation bounds local and external issue fields', () 
       workItemId: 'work-item-1',
       taskId: 'task-1',
       syncDirection: 'mirror',
+      externalUpdatedAt: 'not-a-date',
       note: 'x'.repeat(501),
     }).map((entry) => [entry.field, entry.code]),
     [
@@ -217,6 +218,7 @@ test('Work external link validation bounds local and external issue fields', () 
       ['externalId', 'blank'],
       ['externalUrl', 'invalid_url'],
       ['syncDirection', 'unsupported_value'],
+      ['externalUpdatedAt', 'invalid_timestamp'],
       ['note', 'too_long'],
     ],
   );

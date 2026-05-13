@@ -115,6 +115,7 @@ export const WORK_TOOL_VALIDATION_ERROR_CODES = [
   'server_resolved_field',
   'bounds',
   'invalid_url',
+  'invalid_timestamp',
   'unknown_field',
 ] as const;
 
@@ -706,7 +707,7 @@ export function validateWorkExternalLinkIssueInput(input: unknown): WorkToolVali
     ...validateRequiredString(input, 'externalId', 200),
     ...validateOptionalExternalUrl(input, 'externalUrl', 1000),
     ...validateOptionalEnum(input, 'syncDirection', EXTERNAL_WORK_BINDING_SYNC_DIRECTION_VALUES),
-    ...validateOptionalString(input, 'externalUpdatedAt', 80),
+    ...validateOptionalTimestamp(input, 'externalUpdatedAt'),
     ...validateOptionalString(input, 'note', 500),
   ];
 }
@@ -1048,6 +1049,27 @@ function validateOptionalExternalUrl(
   return isCredentialFreeHttpUrl(value)
     ? []
     : [error('invalid_url', key, `${key} must be an http or https URL without credentials.`)];
+}
+
+function validateOptionalTimestamp(
+  input: Record<string, unknown>,
+  key: string,
+): WorkToolValidationError[] {
+  const value = input[key];
+  if (value === undefined || value === null || value === '') {
+    return [];
+  }
+  if (typeof value !== 'string') {
+    return [error('type', key, `${key} must be a timestamp string.`)];
+  }
+  if (value.trim() === '') {
+    return [error('blank', key, `${key} must not be blank.`)];
+  }
+  if (Number.isNaN(Date.parse(value))) {
+    return [error('invalid_timestamp', key, `${key} must be a valid timestamp.`)];
+  }
+
+  return [];
 }
 
 function validateRequiredStringArray(
