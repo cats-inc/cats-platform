@@ -11,11 +11,15 @@ export function WorkItemExternalBindingsSection({
   bindings,
   emptyLabel,
   onAddClick,
+  onRemoveBinding,
+  removeDisabled,
 }: {
   addLabel?: string;
   bindings: readonly WorkGraphExternalBindingSummary[];
   emptyLabel?: string;
   onAddClick?: () => void;
+  onRemoveBinding?: (binding: WorkGraphExternalBindingSummary) => void;
+  removeDisabled?: boolean;
 }): JSX.Element | null {
   const { t } = useI18n();
   if (bindings.length === 0 && !onAddClick) {
@@ -81,6 +85,17 @@ export function WorkItemExternalBindingsSection({
                       })}`
                       : ""}
                   </span>
+                  {onRemoveBinding ? (
+                    <button
+                      type="button"
+                      className="workItemDetail__externalRemove"
+                      onClick={() => onRemoveBinding(binding)}
+                      disabled={removeDisabled}
+                      aria-label={t("workExternalUnlinkAriaLabel", { label })}
+                    >
+                      {t("workExternalUnlinkAction")}
+                    </button>
+                  ) : null}
                 </span>
               </li>
             );

@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { LinkageSection } from "../topdown/LinkageSection";
 import {
   buildIndexes,
+  formatWorkExternalBindingLabel,
   formatRelative,
   getWorkActorRoleLabel,
   getWorkGraphAttentionLabel,
@@ -12,14 +13,21 @@ import {
 } from "../topdown/shared";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
-import type { WorkGraphObjectSummary } from "../topdown/types";
-import { removeWorkProject } from "../../api/workRecords.js";
+import type {
+  WorkGraphExternalBindingSummary,
+  WorkGraphObjectSummary,
+} from "../topdown/types";
+import {
+  removeWorkProject,
+  unlinkWorkExternalIssue,
+} from "../../api/workRecords.js";
 import {
   PROJECTS_QUERY_KEY,
   useProjectsQuery,
 } from "../../state/queries/projectsQuery.js";
 import {
   EMPTY_WORK_GRAPH,
+  WORK_GRAPH_QUERY_KEY,
   useWorkGraphQuery,
 } from "../../state/queries/workGraphQuery.js";
 import { WORK_PROJECTS_PATH } from "../../workPaths.js";
@@ -51,6 +59,29 @@ export function ProjectDetailPage(): JSX.Element {
       navigate(WORK_PROJECTS_PATH);
     },
   });
+  const unlinkExternalMutation = useMutation({
+    mutationFn: async (input: {
+      binding: WorkGraphExternalBindingSummary;
+      projectId: string;
+    }) => {
+      await unlinkWorkExternalIssue(
+        {
+          localKind: "project",
+          localId: input.projectId,
+          provider: input.binding.provider,
+          externalType: input.binding.externalType,
+          externalId: input.binding.externalId,
+        },
+        t("workExternalUnlinkError"),
+      );
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY }),
+      ]);
+    },
+  });
 
   const handleDelete = () => {
     if (!project) return;
@@ -66,6 +97,15 @@ export function ProjectDetailPage(): JSX.Element {
     deleteMutation.mutate(project.id);
   };
 
+  const handleUnlinkExternalBinding = (binding: WorkGraphExternalBindingSummary) => {
+    if (!project) return;
+    const label = formatWorkExternalBindingLabel(binding);
+    if (!window.confirm(t("workExternalUnlinkConfirmation", { label }))) {
+      return;
+    }
+    unlinkExternalMutation.mutate({ binding, projectId: project.id });
+  };
+
   if (projectsQuery.isPending) {
     return <ProjectDetailLoading />;
   }
@@ -77,6 +117,13 @@ export function ProjectDetailPage(): JSX.Element {
     ? formatWorkCrudMutationError(
       deleteMutation.error,
       t("workProjectDeleteError"),
+      t,
+    )
+    : null;
+  const externalUnlinkError = unlinkExternalMutation.error
+    ? formatWorkCrudMutationError(
+      unlinkExternalMutation.error,
+      t("workExternalUnlinkError"),
       t,
     )
     : null;
@@ -165,6 +212,11 @@ export function ProjectDetailPage(): JSX.Element {
             {deleteError}
           </p>
         ) : null}
+        {externalUnlinkError ? (
+          <p className="projectDetail__error" role="alert">
+            {externalUnlinkError}
+          </p>
+        ) : null}
         <section className="projectDetail__section projectDetail__overview">
           <header className="projectDetail__sectionHeader">
             <h2>{t("workProjectOverviewTitle")}</h2>
@@ -195,6 +247,8 @@ export function ProjectDetailPage(): JSX.Element {
         <ProjectExternalBindingsSection
           bindings={project.externalBindings ?? []}
           onAddClick={() => setExternalLinkDialogOpen(true)}
+          onRemoveBinding={handleUnlinkExternalBinding}
+          removeDisabled={unlinkExternalMutation.isPending}
         />
 
         <ItemsSection

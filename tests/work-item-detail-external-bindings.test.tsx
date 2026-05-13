@@ -67,3 +67,17 @@ test('Work Item detail can render empty external tracker binding actions', () =>
   assert.match(html, /Link issue/u);
   assert.match(html, /No external tracker links yet\./u);
 });
+
+test('Work Item detail can render external tracker unlink actions', () => {
+  const html = renderToStaticMarkup(
+    <WorkItemExternalBindingsSection
+      bindings={[githubBinding]}
+      onRemoveBinding={() => {
+        // Static render only verifies the action is exposed.
+      }}
+    />,
+  );
+
+  assert.match(html, /Unlink/u);
+  assert.match(html, /aria-label="Unlink GitHub #123"/u);
+});

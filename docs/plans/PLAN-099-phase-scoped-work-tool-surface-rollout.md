@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added Work Item and Project detail unlink actions for external tracker bindings, backed by the local-only unlink API and Work Graph refresh. |
 | 2026-05-13 | Follow-up slice exposed `work.external.unlink_issue` through `DELETE /api/work/external-bindings` plus a renderer client, keeping unlink local-only and activity-audited. |
 | 2026-05-13 | Follow-up slice added the supervised `work.external.unlink_issue` contract/delegate so incorrect external tracker bindings can be removed locally without contacting remote trackers. |
 | 2026-05-13 | Follow-up slice synced API/tool-call docs for `POST /api/work/external-bindings`, manual UI binding, URL inference, GitHub adapter spike, and ADR-106's deferred automatic sync boundary. |

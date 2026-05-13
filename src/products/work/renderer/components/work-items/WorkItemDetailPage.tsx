@@ -6,14 +6,21 @@ import { LinkageSection } from "../topdown/LinkageSection";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import {
   buildIndexes,
+  formatWorkExternalBindingLabel,
   formatRelative,
   getWorkActorRoleLabel,
   getWorkGraphAttentionLabel,
   getWorkGraphKindLabel,
 } from "../topdown/shared";
 import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
-import type { WorkGraphObjectSummary } from "../topdown/types";
-import { removeWorkItem } from "../../api/workRecords.js";
+import type {
+  WorkGraphExternalBindingSummary,
+  WorkGraphObjectSummary,
+} from "../topdown/types";
+import {
+  removeWorkItem,
+  unlinkWorkExternalIssue,
+} from "../../api/workRecords.js";
 import { useMissionsQuery, type WorkMissionListItem } from "../../state/queries/missionsQuery.js";
 import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
 import {
@@ -22,6 +29,7 @@ import {
 } from "../../state/queries/workItemsQuery.js";
 import {
   EMPTY_WORK_GRAPH,
+  WORK_GRAPH_QUERY_KEY,
   useWorkGraphQuery,
 } from "../../state/queries/workGraphQuery.js";
 import {
@@ -61,6 +69,29 @@ export function WorkItemDetailPage(): JSX.Element {
       navigate(WORK_WORK_ITEMS_PATH);
     },
   });
+  const unlinkExternalMutation = useMutation({
+    mutationFn: async (input: {
+      binding: WorkGraphExternalBindingSummary;
+      workItemId: string;
+    }) => {
+      await unlinkWorkExternalIssue(
+        {
+          localKind: "work_item",
+          localId: input.workItemId,
+          provider: input.binding.provider,
+          externalType: input.binding.externalType,
+          externalId: input.binding.externalId,
+        },
+        t("workExternalUnlinkError"),
+      );
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: WORK_ITEMS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY }),
+      ]);
+    },
+  });
 
   const handleDelete = () => {
     if (!workItem) return;
@@ -74,6 +105,15 @@ export function WorkItemDetailPage(): JSX.Element {
     deleteMutation.mutate(workItem.id);
   };
 
+  const handleUnlinkExternalBinding = (binding: WorkGraphExternalBindingSummary) => {
+    if (!workItem) return;
+    const label = formatWorkExternalBindingLabel(binding);
+    if (!window.confirm(t("workExternalUnlinkConfirmation", { label }))) {
+      return;
+    }
+    unlinkExternalMutation.mutate({ binding, workItemId: workItem.id });
+  };
+
   if (workItemsQuery.isPending) {
     return <WorkItemDetailLoading />;
   }
@@ -85,6 +125,13 @@ export function WorkItemDetailPage(): JSX.Element {
     ? formatWorkCrudMutationError(
       deleteMutation.error,
       t("workItemDeleteError"),
+      t,
+    )
+    : null;
+  const externalUnlinkError = unlinkExternalMutation.error
+    ? formatWorkCrudMutationError(
+      unlinkExternalMutation.error,
+      t("workExternalUnlinkError"),
       t,
     )
     : null;
@@ -188,6 +235,11 @@ export function WorkItemDetailPage(): JSX.Element {
             {deleteError}
           </p>
         ) : null}
+        {externalUnlinkError ? (
+          <p className="workItemDetail__error" role="alert">
+            {externalUnlinkError}
+          </p>
+        ) : null}
         <section className="workItemDetail__section workItemDetail__overview">
           <header className="workItemDetail__sectionHeader">
             <h2>{t("workItemOverviewTitle")}</h2>
@@ -246,6 +298,8 @@ export function WorkItemDetailPage(): JSX.Element {
         <WorkItemExternalBindingsSection
           bindings={externalBindings}
           onAddClick={() => setExternalLinkDialogOpen(true)}
+          onRemoveBinding={handleUnlinkExternalBinding}
+          removeDisabled={unlinkExternalMutation.isPending}
         />
 
         <ItemsSection

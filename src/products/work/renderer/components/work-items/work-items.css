@@ -674,6 +674,27 @@ main.canvas:has(> .workItemDetail) {
   font-size: 0.72rem;
 }
 
+.workItemDetail__externalRemove {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.workItemDetail__externalRemove:hover:not(:disabled) {
+  color: var(--danger);
+}
+
+.workItemDetail__externalRemove:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .workItemDetail__activity {
   list-style: none;
   margin: 0;
