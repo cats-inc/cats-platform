@@ -181,6 +181,32 @@ function observationToolNames(
   return observation?.availableTools.map((descriptor) => descriptor.manifest.name) ?? [];
 }
 
+function observationToolDescriptor(
+  observation: ProviderAgentBoundedObservation | null | undefined,
+  toolName: string,
+): ProviderAgentToolDescriptor | undefined {
+  return observation?.availableTools.find((descriptor) =>
+    descriptor.manifest.name === toolName);
+}
+
+function assertObservationToolHints(
+  observation: ProviderAgentBoundedObservation | null | undefined,
+  toolName: string,
+  expectedPatterns: RegExp[],
+): void {
+  const descriptor = observationToolDescriptor(observation, toolName);
+  assert.ok(descriptor, `${toolName} should be exposed in the observation`);
+  assert.ok(
+    descriptor.inputHints && descriptor.inputHints.length > 0,
+    `${toolName} should carry input hints`,
+  );
+
+  const joinedHints = descriptor.inputHints.join('\n');
+  for (const pattern of expectedPatterns) {
+    assert.match(joinedHints, pattern);
+  }
+}
+
 function runtimeStub(): RuntimeClient {
   return {
     async closeSession() {},
@@ -479,6 +505,10 @@ test('Chat provider-agent observation exposes read-only Boss Cat execution prepa
 
   assert.equal(toolNames.includes(WORK_ITEM_PREPARE_EXECUTION_TOOL), true);
   assert.equal(toolNames.includes(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL), false);
+  assertObservationToolHints(prepared.providerAgentObservation, WORK_ITEM_PREPARE_EXECUTION_TOOL, [
+    /executionGoal\?: string/u,
+    /do not create Tasks, Runs, or runtime sessions/u,
+  ]);
   assert.equal(
     prepared.providerAgentObservation?.contextRefs.includes(
       'work-execution-preparation-scope:visible_selection',
@@ -563,6 +593,10 @@ test('Chat provider-agent observation exposes local external tracker binding for
   assert.equal(observation?.policy.dials.toolScope, 'narrow_write');
   assert.equal(toolNames.includes(WORK_EXTERNAL_LINK_ISSUE_TOOL), true);
   assert.equal(toolNames.includes(WORK_EXTERNAL_UNLINK_ISSUE_TOOL), true);
+  assertObservationToolHints(observation, WORK_EXTERNAL_LINK_ISSUE_TOOL, [
+    /Cats re-resolves local Work refs/u,
+    /Do not call external tracker APIs/u,
+  ]);
   assert.equal(
     observation?.contextRefs.includes('work-external-binding-operation:link'),
     true,
@@ -647,6 +681,10 @@ test('Chat provider-agent observation exposes read-only Work triage lookup for e
   assert.equal(toolNames.includes(WORK_PROJECT_LOOKUP_TOOL), true);
   assert.equal(toolNames.includes(WORK_ITEM_UPDATE_TOOL), false);
   assert.equal(toolNames.includes(WORK_PROJECT_CREATE_TOOL), false);
+  assertObservationToolHints(observation, WORK_PROJECT_LOOKUP_TOOL, [
+    /query\?: string/u,
+    /Read-only/u,
+  ]);
   assert.equal(
     observation?.contextRefs.includes('work-triage-work-item:work-item-triage-1'),
     true,
@@ -690,6 +728,10 @@ test('Chat provider-agent observation exposes narrow-write Project create for ex
   assert.equal(observation?.policy.dials.toolScope, 'narrow_write');
   assert.equal(toolNames.includes(WORK_PROJECT_CREATE_TOOL), true);
   assert.equal(toolNames.includes(WORK_ITEM_UPDATE_TOOL), false);
+  assertObservationToolHints(observation, WORK_PROJECT_CREATE_TOOL, [
+    /title: string/u,
+    /primaryConversationId/u,
+  ]);
   assert.equal(
     observation?.contextRefs.includes('work-triage-action:create_project'),
     true,
@@ -752,6 +794,10 @@ test('Chat provider-agent observation exposes narrow-write Work Item update for 
   assert.equal(observation?.policy.dials.toolScope, 'narrow_write');
   assert.equal(toolNames.includes(WORK_ITEM_UPDATE_TOOL), true);
   assert.equal(toolNames.includes(WORK_PROJECT_CREATE_TOOL), false);
+  assertObservationToolHints(observation, WORK_ITEM_UPDATE_TOOL, [
+    /status\?: "draft" \| "planned" \| "ready" \| "blocked"/u,
+    /re-resolves workItemId/u,
+  ]);
   assert.equal(
     observation?.contextRefs.includes('work-triage-action:update_work_item'),
     true,
@@ -830,6 +876,10 @@ test('Chat provider-agent observation exposes narrow-write Work Item Project ass
   assert.equal(observation?.policy.dials.toolScope, 'narrow_write');
   assert.equal(toolNames.includes(WORK_ITEM_ASSIGN_PROJECT_TOOL), true);
   assert.equal(toolNames.includes(WORK_PROJECT_CREATE_TOOL), false);
+  assertObservationToolHints(observation, WORK_ITEM_ASSIGN_PROJECT_TOOL, [
+    /note\?: string/u,
+    /workItemId and projectId/u,
+  ]);
   assert.equal(
     observation?.contextRefs.includes('work-triage-action:assign_project'),
     true,
