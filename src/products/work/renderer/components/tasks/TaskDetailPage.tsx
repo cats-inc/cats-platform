@@ -12,6 +12,7 @@ import {
   getWorkTaskProductBindingLabel,
 } from "../topdown/shared";
 import { removeWorkTask } from "../../api/workRecords.js";
+import { decideWorkTaskApproval } from "../../api/workRecords.js";
 import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
 import { useRunsQuery, type WorkRunListItem } from "../../state/queries/runsQuery.js";
 import {
@@ -23,7 +24,9 @@ import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
 import {
   EMPTY_WORK_GRAPH,
   useWorkGraphQuery,
+  WORK_GRAPH_QUERY_KEY,
 } from "../../state/queries/workGraphQuery.js";
+import { WORK_DASHBOARD_QUERY_KEY } from "../../state/queries/workDashboardQuery.js";
 import {
   WORK_PROJECTS_PATH,
   WORK_TASKS_PATH,
@@ -58,6 +61,30 @@ export function TaskDetailPage(): JSX.Element {
     },
   });
 
+  const approvalDecisionMutation = useMutation({
+    mutationFn: async (input: {
+      taskId: string;
+      action: "approve" | "reject";
+      decidedByActorId: string;
+    }) => {
+      await decideWorkTaskApproval(
+        input.taskId,
+        {
+          action: input.action,
+          decidedByActorId: input.decidedByActorId,
+        },
+        t("workTaskApprovalDecisionError"),
+      );
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: WORK_DASHBOARD_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY }),
+      ]);
+    },
+  });
+
   const handleDelete = () => {
     if (!task) return;
     if (
@@ -68,6 +95,15 @@ export function TaskDetailPage(): JSX.Element {
       return;
     }
     deleteMutation.mutate(task.id);
+  };
+
+  const handleApprovalDecision = (action: "approve" | "reject") => {
+    if (!task) return;
+    approvalDecisionMutation.mutate({
+      taskId: task.id,
+      action,
+      decidedByActorId: task.ownerActorId,
+    });
   };
 
   if (tasksQuery.isPending) {
@@ -81,6 +117,13 @@ export function TaskDetailPage(): JSX.Element {
     ? formatWorkCrudMutationError(
       deleteMutation.error,
       t("workTaskDeleteError"),
+      t,
+    )
+    : null;
+  const approvalDecisionError = approvalDecisionMutation.error
+    ? formatWorkCrudMutationError(
+      approvalDecisionMutation.error,
+      t("workTaskApprovalDecisionError"),
       t,
     )
     : null;
@@ -107,6 +150,8 @@ export function TaskDetailPage(): JSX.Element {
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
   const assignedNames = task.assignedActors.map((actor) => actor.displayName);
+  const showApprovalActions = task.status === "pending_approval";
+  const approvalDecisionPending = approvalDecisionMutation.isPending;
 
   return (
     <div className="taskDetail">
@@ -181,11 +226,37 @@ export function TaskDetailPage(): JSX.Element {
               updatedAt: formatRelative(task.updatedAt, t),
             })}
           </span>
+          {showApprovalActions ? (
+            <>
+              <button
+                type="button"
+                className="taskDetailTopBar__action taskDetailTopBar__action--primary"
+                onClick={() => handleApprovalDecision("approve")}
+                disabled={approvalDecisionPending}
+                aria-label={t("workTaskApproveLabel")}
+              >
+                {approvalDecisionPending
+                  ? t("workTaskApproveBusyLabel")
+                  : t("workTaskApproveLabel")}
+              </button>
+              <button
+                type="button"
+                className="taskDetailTopBar__action"
+                onClick={() => handleApprovalDecision("reject")}
+                disabled={approvalDecisionPending}
+                aria-label={t("workTaskRejectLabel")}
+              >
+                {approvalDecisionPending
+                  ? t("workTaskRejectBusyLabel")
+                  : t("workTaskRejectLabel")}
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             className="taskDetailTopBar__action taskDetailTopBar__action--destructive"
             onClick={handleDelete}
-            disabled={deleteMutation.isPending}
+            disabled={deleteMutation.isPending || approvalDecisionPending}
             aria-label={t("workTaskDeleteLabel")}
           >
             {deleteMutation.isPending
@@ -195,9 +266,9 @@ export function TaskDetailPage(): JSX.Element {
         </div>
       </header>
       <main className="taskDetail__main">
-        {deleteError ? (
+        {deleteError || approvalDecisionError ? (
           <p className="taskDetail__error" role="alert">
-            {deleteError}
+            {deleteError ?? approvalDecisionError}
           </p>
         ) : null}
         <section className="taskDetail__section taskDetail__overview">

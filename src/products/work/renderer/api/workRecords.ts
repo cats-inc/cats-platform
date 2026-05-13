@@ -11,6 +11,8 @@ import {
   WORK_API_WORK_ITEMS_PATH,
 } from '../../shared/apiPaths.js';
 import type {
+  CoreApprovalDecisionAction,
+  CoreApprovalRecord,
   CoreProjectRecord,
   CoreProjectStatus,
   CoreTaskRecord,
@@ -60,6 +62,17 @@ export interface CreateTaskInput {
   summary?: string | null;
   metadata?: Record<string, unknown>;
   workItemId?: string | null;
+}
+
+export interface DecideWorkTaskApprovalInput {
+  action: Extract<CoreApprovalDecisionAction, 'approve' | 'reject'>;
+  decidedByActorId?: string | null;
+  notes?: string | null;
+}
+
+export interface WorkTaskApprovalDecisionResponse {
+  task: CoreTaskRecord;
+  approval: CoreApprovalRecord;
 }
 
 export async function listWorkProjects(
@@ -192,4 +205,29 @@ export async function removeWorkTask(
     response,
     errorMessage,
   );
+}
+
+export async function decideWorkTaskApproval(
+  taskId: string,
+  input: DecideWorkTaskApprovalInput,
+  errorMessage: string,
+  signal?: AbortSignal,
+): Promise<WorkTaskApprovalDecisionResponse> {
+  const response = await fetch('/api/core/approvals', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      taskId,
+      status: input.action === 'approve' ? 'approved' : 'rejected',
+      action: input.action,
+      decidedByActorId: input.decidedByActorId ?? null,
+      notes: input.notes ?? null,
+      taskStatus: input.action === 'approve' ? 'approved' : 'cancelled',
+    }),
+    signal,
+  });
+  return expectJson<WorkTaskApprovalDecisionResponse>(response, errorMessage);
 }

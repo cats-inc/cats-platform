@@ -453,11 +453,20 @@ main.canvas:has(> .taskDetail) {
   border-color: rgba(192, 56, 43, 0.3);
 }
 
+.taskDetailTopBar__action--primary {
+  color: var(--accent);
+  border-color: rgba(196, 101, 58, 0.35);
+}
+
+.taskDetailTopBar__action--primary:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
 .taskDetailTopBar__action--destructive:hover:not(:disabled) {
   background: rgba(192, 56, 43, 0.08);
 }
 
-.taskDetailTopBar__action--destructive:disabled {
+.taskDetailTopBar__action:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

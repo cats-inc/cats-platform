@@ -836,6 +836,11 @@ export const zhTWCatalog: MessageCatalog = {
   'work.task.deleteConfirmation':
     '要刪除任務「{taskTitle}」嗎？\n\n此操作無法復原。已連結的執行不會被移除。',
   'work.task.deleteError': '無法刪除任務。',
+  'work.task.approveLabel': '核准',
+  'work.task.approveBusyLabel': '核准中…',
+  'work.task.rejectLabel': '拒絕',
+  'work.task.rejectBusyLabel': '拒絕中…',
+  'work.task.approvalDecisionError': '無法更新任務核准狀態。',
   'work.task.priorityTooltip': '優先順序：{priorityLabel}',
   'work.task.overviewTitle': '概覽',
   'work.task.summaryLabel': '摘要',

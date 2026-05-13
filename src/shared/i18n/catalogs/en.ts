@@ -863,6 +863,11 @@ export const enCatalog: MessageCatalog = {
   'work.task.deleteConfirmation':
     'Delete task "{taskTitle}"?\n\nThis cannot be undone. Linked runs are not removed.',
   'work.task.deleteError': 'Failed to delete task.',
+  'work.task.approveLabel': 'Approve',
+  'work.task.approveBusyLabel': 'Approving…',
+  'work.task.rejectLabel': 'Reject',
+  'work.task.rejectBusyLabel': 'Rejecting…',
+  'work.task.approvalDecisionError': 'Failed to update task approval.',
   'work.task.priorityTooltip': 'Priority: {priorityLabel}',
   'work.task.overviewTitle': 'Overview',
   'work.task.summaryLabel': 'Summary',
