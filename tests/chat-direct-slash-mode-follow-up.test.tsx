@@ -262,7 +262,7 @@ test('direct slash-mode follow-up prompt carries Concierge protocol instructions
   const prompt = buildPromptForTarget(state, channelId, request, undefined, core);
 
   assert.match(prompt.instructions ?? '', /Reply in Traditional Chinese/u);
-  assert.match(prompt.instructions ?? '', /Direct slash-mode Code intake is active/u);
+  assert.match(prompt.instructions ?? '', /Product-intent Code intake is active/u);
   assert.match(prompt.instructions ?? '', /work-item-direct-intake-message-1/u);
   assert.match(prompt.instructions ?? '', /ask one focal clarifying question/u);
   assert.match(prompt.instructions ?? '', /After three assistant clarification turns/u);
@@ -288,7 +288,7 @@ test('direct slash-mode follow-up prompt accepts canonical product intent metada
 
   const prompt = buildPromptForTarget(state, channelId, canonicalRequest, undefined, canonicalCore);
 
-  assert.match(prompt.instructions ?? '', /Direct slash-mode Code intake is active/u);
+  assert.match(prompt.instructions ?? '', /Product-intent Code intake is active/u);
   assert.match(prompt.instructions ?? '', /work-item-direct-intake-message-1/u);
 });
 
@@ -304,7 +304,7 @@ test('direct slash-mode follow-up prompt ignores stale anchors from another conv
 
   const prompt = buildPromptForTarget(state, channelId, request, undefined, staleCore);
 
-  assert.doesNotMatch(prompt.instructions ?? '', /Direct slash-mode Code intake is active/u);
+  assert.doesNotMatch(prompt.instructions ?? '', /Product-intent Code intake is active/u);
   assert.doesNotMatch(prompt.instructions ?? '', /work-item-direct-intake-message-1/u);
 });
 

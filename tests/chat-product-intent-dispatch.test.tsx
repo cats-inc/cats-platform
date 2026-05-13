@@ -664,7 +664,7 @@ test('routeChannelMessage sends the first strong product-intent command to the s
   assert.match(runtimeClient.sentMessages[0]?.content ?? '', /clarify the MVP/u);
   assert.match(
     runtimeClient.sentMessages[0]?.input?.instructions ?? '',
-    /Direct slash-mode Work intake is active/u,
+    /Product-intent Work intake is active/u,
   );
   assert.equal(ackMessage?.senderKind, 'system');
   assert.equal(assistantMessage?.senderKind, 'agent');

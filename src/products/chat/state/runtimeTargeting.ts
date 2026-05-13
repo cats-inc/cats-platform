@@ -732,7 +732,7 @@ function readProductIntentFollowUpIntakeRef(
     ?? readProductIntentFollowUpIntakeRefValue(message.metadata.directSlashModeIntakeRef);
 }
 
-function resolveDirectSlashModeFollowUpIntakeRef(
+function resolveProductIntentFollowUpIntakeRef(
   sourceMessage: ChatMessage,
   input: {
     state: ChatState;
@@ -792,7 +792,7 @@ function resolveDirectSlashModeFollowUpIntakeRef(
   return intakeRef;
 }
 
-function resolveDirectSlashModePromptLocale(
+function resolveProductIntentPromptLocale(
   sourceMessage: ChatMessage,
   input: {
     state: ChatState;
@@ -818,7 +818,7 @@ function didProductIntentCommandOmitArgument(sourceMessage: ChatMessage): boolea
   return sourceMessage.metadata.productIntentArgumentProvided === false;
 }
 
-function buildDirectSlashModeFollowUpInstructions(
+function buildProductIntentFollowUpInstructions(
   sourceMessage: ChatMessage,
   input: {
     state: ChatState;
@@ -826,13 +826,13 @@ function buildDirectSlashModeFollowUpInstructions(
     core?: CatsCoreState;
   },
 ): string | null {
-  const intakeRef = resolveDirectSlashModeFollowUpIntakeRef(sourceMessage, input);
+  const intakeRef = resolveProductIntentFollowUpIntakeRef(sourceMessage, input);
   if (!intakeRef) {
     return null;
   }
 
   const productLabel = intakeRef.targetProduct === 'code' ? 'Code' : 'Work';
-  const locale = resolveDirectSlashModePromptLocale(sourceMessage, input);
+  const locale = resolveProductIntentPromptLocale(sourceMessage, input);
   const responseLanguageInstruction = locale === 'zh-TW'
     ? [
         'Reply in Traditional Chinese unless the owner explicitly asks otherwise.',
@@ -846,9 +846,9 @@ function buildDirectSlashModeFollowUpInstructions(
     : null;
   return [
     responseLanguageInstruction,
-    `Direct slash-mode ${productLabel} intake is active.`,
+    `Product-intent ${productLabel} intake is active.`,
     emptyArgumentInstruction,
-    `Use existing draft Work Item ${intakeRef.workItemId} as the durable anchor for this direct lane.`,
+    `Use existing draft Work Item ${intakeRef.workItemId} as the durable anchor for this source context.`,
     `The source posture command segment is ${intakeRef.commandSegmentId}.`,
     'Concierge protocol: ask one focal clarifying question per assistant turn.',
     'Prioritize goal, then success criteria, then out-of-scope boundaries, then remaining open questions.',
@@ -951,7 +951,7 @@ export function buildPromptForTarget(
   const instructions = sameChatContinuityPackage?.instructions
     ?? targetedHandoffPackage?.instructions
     ?? null;
-  const slashModeInstructions = buildDirectSlashModeFollowUpInstructions(
+  const slashModeInstructions = buildProductIntentFollowUpInstructions(
     request.sourceMessage,
     {
       state,
