@@ -79,8 +79,17 @@ import {
   proposeWorkItemSplit,
 } from '../../../work/state/workIntakeDelegate.js';
 import {
+  prepareWorkItemExecution,
+} from '../../../work/state/workExecutionPreparationDelegate.js';
+import {
+  resolveWorkExecutionPreparationPhase,
+} from '../../../work/shared/workExecutionPreparationPhase.js';
+import {
+  WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
+  type WorkItemExecutionPreparationProposal,
   type WorkItemCaptureInput,
+  type WorkItemPrepareExecutionInput,
   type WorkItemProposeSplitInput,
   type WorkItemSourceRef,
   type WorkItemSplitCandidate,
@@ -186,6 +195,15 @@ const WORK_INTAKE_PROPOSAL_TRANSITION_METADATA_KEY = 'workIntakeProposalTransiti
 const WORK_INTAKE_PROPOSAL_METADATA_VERSION = 1;
 const WORK_INTAKE_PROPOSAL_CAPTURE_OPTION_ID = 'capture_work_items';
 const WORK_INTAKE_PROPOSAL_DECLINE_OPTION_ID = 'decline';
+const WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_KEY = 'workExecutionPreparationProposal';
+const WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_VERSION = 1;
+const WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES = new Set([
+  'draft',
+  'planned',
+  'ready',
+  'blocked',
+]);
+const MAX_WORK_EXECUTION_PREPARATION_VISIBLE_ITEMS = 20;
 
 interface WorkIntakeProposalCandidateMetadata {
   tempId: string;
@@ -219,6 +237,18 @@ interface WorkIntakeProposalTransitionMetadata {
   proposalMessageId: string;
   idempotencyKey: string;
   capturedWorkItemIds: string[];
+}
+
+interface WorkExecutionPreparationProposalMetadata {
+  schemaVersion: typeof WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_VERSION;
+  phase: 'execution_preparation';
+  toolName: typeof WORK_ITEM_PREPARE_EXECUTION_TOOL;
+  proposalId: string;
+  decisionId: string;
+  sourceMessageId: string;
+  scope: 'explicit_work_items' | 'visible_selection' | 'active_context';
+  workItemIds: string[];
+  proposals: WorkItemExecutionPreparationProposal[];
 }
 
 export type ProviderAgentDecisionRequester = (input: {
@@ -1660,6 +1690,111 @@ function appendWorkIntakeProposalSidecar(input: {
   };
 }
 
+function appendWorkExecutionPreparationProposalSidecar(input: {
+  state: ChatState;
+  channelId: string;
+  userMessage: ChatMessage;
+  providerAgentDecision: ProviderAgentDecision | null;
+  core: CatsCoreState | null | undefined;
+  now: Date;
+}): { state: ChatState; proposalMessage: ChatMessage | null } {
+  if (
+    input.providerAgentDecision?.kind !== 'tool_request'
+    || input.providerAgentDecision.toolName !== WORK_ITEM_PREPARE_EXECUTION_TOOL
+  ) {
+    return { state: input.state, proposalMessage: null };
+  }
+  if (!input.core) {
+    warnWorkExecutionPreparationProposalIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'missing_core_state',
+    });
+    return { state: input.state, proposalMessage: null };
+  }
+
+  const phase = resolveWorkExecutionPreparationPhase({
+    rawText: input.userMessage.body,
+    addressedBossCat: isBossCatAddressedByChannel(input.state, input.channelId),
+    activeWorkItemIds: readActiveWorkItemIdsFromMessage(input.userMessage),
+    visibleWorkItemIds: resolveVisibleWorkItemIdsForExecutionPreparation({
+      state: input.state,
+      channelId: input.channelId,
+      core: input.core,
+    }),
+  });
+  if (phase.kind !== 'matched' || phase.workItemRefs.length === 0) {
+    warnWorkExecutionPreparationProposalIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: phase.reasonCode,
+    });
+    return { state: input.state, proposalMessage: null };
+  }
+
+  const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
+  const executionGoal = readOptionalString(requestedInput.executionGoal);
+  const maxItems = readOptionalNumber(requestedInput.maxItems);
+  const toolInput: WorkItemPrepareExecutionInput = {
+    workItemIds: phase.workItemRefs,
+    ...(executionGoal ? { executionGoal } : {}),
+    ...(maxItems !== undefined ? { maxItems } : {}),
+  };
+  const result = prepareWorkItemExecution(input.core, toolInput);
+  if (result.status !== 'applied') {
+    warnWorkExecutionPreparationProposalIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: result.status === 'rejected' ? result.error.code : 'pending_approval',
+      details: result.status === 'rejected' ? result.error.details : result.summary,
+    });
+    return { state: input.state, proposalMessage: null };
+  }
+
+  const proposalId = [
+    'work-execution-preparation-proposal',
+    input.userMessage.id,
+    input.providerAgentDecision.decisionId,
+  ].join(':');
+  const metadata: WorkExecutionPreparationProposalMetadata = {
+    schemaVersion: WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_VERSION,
+    phase: 'execution_preparation',
+    toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
+    proposalId,
+    decisionId: input.providerAgentDecision.decisionId,
+    sourceMessageId: input.userMessage.id,
+    scope: phase.scope,
+    workItemIds: phase.workItemRefs,
+    proposals: result.result.proposals,
+  };
+  const append = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats Work',
+      body: describeWorkExecutionPreparationProposals(result.result.proposals),
+    },
+    input.now,
+    {
+      metadata: {
+        event: 'work_execution_preparation_proposed',
+        sourceMessageId: input.userMessage.id,
+        [WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_KEY]: metadata,
+      },
+      incrementUnread: false,
+    },
+  );
+
+  return {
+    state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+    proposalMessage: append.message,
+  };
+}
+
 function buildWorkIntakeProposalId(input: {
   sourceMessageId: string;
   decisionId: string;
@@ -1787,6 +1922,31 @@ function describeWorkIntakeProposalCandidates(candidates: WorkItemSplitCandidate
   ].join('\n');
 }
 
+function describeWorkExecutionPreparationProposals(
+  proposals: WorkItemExecutionPreparationProposal[],
+): string {
+  if (proposals.length === 0) {
+    return 'No execution preparation proposals were created.';
+  }
+
+  return [
+    'Execution preparation proposals:',
+    ...proposals.map((proposal, index) => {
+      const details = [
+        `${index + 1}. ${proposal.title} (${proposal.readiness})`,
+        `   Task: ${proposal.proposedTaskTitle}`,
+        proposal.blockers.length > 0
+          ? `   Blockers: ${proposal.blockers.join('; ')}`
+          : null,
+        proposal.openQuestions.length > 0
+          ? `   Questions: ${proposal.openQuestions.join('; ')}`
+          : null,
+      ].filter((line): line is string => Boolean(line));
+      return details.join('\n');
+    }),
+  ].join('\n');
+}
+
 function stripSourceText(sourceRef: WorkItemSourceRef): Omit<WorkItemSourceRef, 'sourceText'> {
   const { sourceText: _sourceText, ...safeSourceRef } = sourceRef;
   return safeSourceRef;
@@ -1802,8 +1962,98 @@ function readOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
 }
 
+function readOptionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
 function readNullableString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function resolveVisibleWorkItemIdsForExecutionPreparation(input: {
+  state: ChatState;
+  channelId: string;
+  core: CatsCoreState;
+}): string[] {
+  const { conversationId } = resolveChannelCanonicalIdentity(input.state, input.channelId);
+  return input.core.workItems
+    .filter((workItem) =>
+      workItem.conversationId === conversationId
+      && WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES.has(workItem.status)
+      && workItem.taskId === null)
+    .sort((left, right) =>
+      right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id))
+    .slice(0, MAX_WORK_EXECUTION_PREPARATION_VISIBLE_ITEMS)
+    .map((workItem) => workItem.id);
+}
+
+function isBossCatAddressedByChannel(state: ChatState, channelId: string): boolean {
+  const bossCatId = state.bossCatId?.trim();
+  if (!bossCatId) {
+    return false;
+  }
+
+  const channel = requireChannel(state, channelId);
+  const defaultRecipientId = channel.roomRouting?.defaultRecipientId?.trim()
+    || channel.recoverableDirectLaneCatId?.trim()
+    || null;
+  if (defaultRecipientId === bossCatId) {
+    return true;
+  }
+
+  return channel.catAssignments.some((assignment) =>
+    assignment.status === 'active'
+    && assignment.catId === bossCatId
+    && assignment.participantId === defaultRecipientId);
+}
+
+function readActiveWorkItemIdsFromMessage(message: ChatMessage): string[] {
+  return uniqueNonEmptyStrings([
+    readWorkItemIdFromMetadataRef(message.metadata.directSlashModeIntakeRef),
+    readWorkItemIdFromMetadataRef(message.metadata.productIntentIntakeRef),
+  ]);
+}
+
+function readWorkItemIdFromMetadataRef(value: unknown): string | null {
+  const record = readToolInputRecord(value);
+  const workItemId = record.workItemId;
+  if (typeof workItemId !== 'string') {
+    return null;
+  }
+
+  const normalized = workItemId.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function uniqueNonEmptyStrings(values: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const normalized = value?.trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    result.push(normalized);
+  }
+  return result;
+}
+
+function warnWorkExecutionPreparationProposalIgnored(input: {
+  channelId: string;
+  messageId: string;
+  decisionId: string;
+  reason: string;
+  details?: unknown;
+}): void {
+  console.warn('Work execution preparation proposal tool call ignored.', {
+    feature: 'work_execution_preparation_proposal',
+    channelId: input.channelId,
+    messageId: input.messageId,
+    decisionId: input.decisionId,
+    reason: input.reason,
+    ...(input.details ? { details: input.details } : {}),
+  });
 }
 
 function warnWorkIntakeProposalToolCallIgnored(input: {
@@ -4485,6 +4735,15 @@ export async function beginChannelMessageDispatch(
     transportBindingId: options.transportBindingId,
   });
   nextState = workIntakeProposalSidecar.state;
+  const workExecutionPreparationSidecar = appendWorkExecutionPreparationProposalSidecar({
+    state: nextState,
+    channelId,
+    userMessage: preparedTurn.userMessage,
+    providerAgentDecision,
+    core: choiceResponseCore ?? coreBeforeUserMessage,
+    now,
+  });
+  nextState = workExecutionPreparationSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),
@@ -4671,6 +4930,15 @@ export async function beginChannelMessageRetryDispatch(
     transportBindingId: options.transportBindingId,
   });
   nextState = workIntakeProposalSidecar.state;
+  const workExecutionPreparationSidecar = appendWorkExecutionPreparationProposalSidecar({
+    state: nextState,
+    channelId,
+    userMessage: sourceMessage,
+    providerAgentDecision,
+    core: retryCoreForNaturalIntent,
+    now,
+  });
+  nextState = workExecutionPreparationSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),

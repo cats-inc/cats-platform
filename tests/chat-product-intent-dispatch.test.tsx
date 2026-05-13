@@ -8,6 +8,7 @@ import {
   createChannel,
   createParallelChatGroup,
   requireChannel,
+  resolveChannelCanonicalIdentity,
 } from '../src/products/chat/state/model/index.ts';
 import {
   beginChannelMessageDispatch,
@@ -44,8 +45,13 @@ import {
 } from '../src/products/chat/shared/catProductIntentProposal.ts';
 import {
   WORK_ITEM_CAPTURE_TOOL,
+  WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
+  WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
 } from '../src/products/work/shared/workToolSurface.ts';
+import {
+  upsertCoreWorkItem,
+} from '../src/core/model/index.ts';
 import { buildWorkWorkItemListProjection } from '../src/products/work/api/projection.ts';
 import { buildTelegramImplicitProductIntentReplyMarkup } from '../src/platform/transports/telegram/bridge.ts';
 
@@ -1944,6 +1950,136 @@ test('routeChannelMessage keeps ordinary Chat Work intake proposals local until 
       Boolean(candidate.metadata.workIntake)).length,
     0,
   );
+});
+
+test('routeChannelMessage records Boss execution preparation proposals without Task writes', async () => {
+  const now = new Date('2026-05-13T10:00:00.000Z');
+  let state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Boss execution prep',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const bossCatId = state.cats[0]?.id;
+  if (!bossCatId) {
+    throw new Error('Expected Boss Cat id.');
+  }
+  state = {
+    ...state,
+    bossCatId,
+  };
+  const channelId = state.selectedChannelId;
+  const store = new MemoryChatStore(state);
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  await store.updateCore((core) =>
+    upsertCoreWorkItem(
+      core,
+      {
+        id: 'work-item-boss-prepare-1',
+        title: 'Prepare MCP adapter contract',
+        status: 'ready',
+        projectId: null,
+        conversationId,
+        taskId: null,
+        parentWorkItemId: null,
+        ownerActorId: core.ownerProfile.actorId,
+        assignedActorIds: [],
+        summary: 'Turn the captured todo into an executable work task.',
+        metadata: {
+          workIntake: {
+            schemaVersion: 1,
+            phase: 'intake',
+          },
+        },
+      },
+      now,
+    ).core,
+  );
+  const coreBeforeRoute = await store.readCore();
+  const taskIdsBeforeRoute = coreBeforeRoute.tasks.map((task) => task.id);
+  let capturedObservation: ProviderAgentBoundedObservation | null = null;
+
+  const routed = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Boss Cat 幫忙逐一開工這些待辦事項',
+      senderName: 'Kenneth',
+    },
+    runtimeReplyStub('I will prepare the execution plan.'),
+    new Date('2026-05-13T10:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      providerAgentDecisionRequester: async ({ observation }) => {
+        capturedObservation = observation;
+        return {
+          contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+          kind: 'tool_request',
+          decisionId: 'decision-work-prepare-execution-1',
+          confidence: 'high',
+          toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
+          target: {
+            kind: 'worker_tool',
+            toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
+          },
+          input: {
+            workItemIds: ['model-supplied-id-should-be-ignored'],
+            executionGoal: 'Create the first executable step.',
+          },
+          rationaleSummary: 'Prepare selected Work Items for Boss Cat execution.',
+        };
+      },
+    },
+  );
+
+  const channel = requireChannel(routed.state, channelId);
+  const proposalMessage = channel.messages.find((message) =>
+    message.metadata.event === 'work_execution_preparation_proposed');
+  const proposal = proposalMessage?.metadata.workExecutionPreparationProposal as
+    | {
+        workItemIds?: string[];
+        proposals?: Array<{
+          workItemId?: string;
+          readiness?: string;
+          proposedTaskTitle?: string;
+        }>;
+      }
+    | undefined;
+  const core = await store.readCore();
+  const toolNames = observationToolNames(capturedObservation);
+
+  assert.equal(toolNames.includes(WORK_ITEM_PREPARE_EXECUTION_TOOL), true);
+  assert.equal(toolNames.includes(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL), false);
+  assert.equal(proposalMessage?.senderKind, 'system');
+  assert.equal(proposalMessage?.body.includes('Execution preparation proposals:'), true);
+  assert.deepEqual(proposal?.workItemIds, ['work-item-boss-prepare-1']);
+  assert.deepEqual(
+    proposal?.proposals?.map((entry) => [
+      entry.workItemId,
+      entry.readiness,
+      entry.proposedTaskTitle,
+    ]),
+    [['work-item-boss-prepare-1', 'ready', 'Prepare MCP adapter contract']],
+  );
+  assert.equal(
+    core.workItems.find((workItem) => workItem.id === 'work-item-boss-prepare-1')?.taskId,
+    null,
+  );
+  assert.deepEqual(core.tasks.map((task) => task.id), taskIdsBeforeRoute);
 });
 
 test('routeChannelMessage does not synthesize Cat proposals without a tool request', async () => {
