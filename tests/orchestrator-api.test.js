@@ -34,6 +34,7 @@ import {
   createWorkflowTurn,
 } from '../build/server/products/chat/state/room-routing/workflow.js';
 import {
+  WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
@@ -1325,6 +1326,128 @@ test('POST /api/orchestrator/dispatch applies provider Work Item update decision
           openQuestions: ['Confirm owner approval path.'],
         },
         rationaleSummary: 'The owner explicitly asked to update one Work Item.',
+      };
+    },
+  });
+});
+
+test('POST /api/orchestrator/dispatch applies provider external issue binding decisions', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  const externalUrl = 'https://redmine.example.com/issues/987';
+  let observedToolNames = [];
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Work',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+    let chat = await chatStore.read();
+    chat = setChannelCatLease(
+      chat,
+      channelId,
+      catId,
+      {
+        status: 'ready',
+        sessionId: 'session-work-external-link',
+        laneId: 'lane-work-external-link',
+      },
+      new Date('2026-05-13T00:00:00.000Z'),
+    );
+    await chatStore.write(chat);
+
+    let core = await chatStore.readCore();
+    core = upsertCoreWorkItem(
+      core,
+      {
+        id: 'work-item-api-external-1',
+        title: 'Wire Redmine external tracker seam',
+        status: 'planned',
+        projectId: null,
+        conversationId: `conversation-channel-${channelId}`,
+        taskId: null,
+        parentWorkItemId: null,
+        ownerActorId: 'actor-owner',
+        assignedActorIds: [],
+        summary: null,
+        metadata: {},
+      },
+      new Date('2026-05-13T00:00:01.000Z'),
+    ).core;
+    await chatStore.writeCore(core);
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: `Boss Cat link work-item-api-external-1 to ${externalUrl}`,
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.equal(observedToolNames.includes(WORK_EXTERNAL_LINK_ISSUE_TOOL), true);
+
+    const updatedCore = await chatStore.readCore();
+    const workItem = updatedCore.workItems.find((candidate) =>
+      candidate.id === 'work-item-api-external-1');
+    const bindings = Array.isArray(workItem?.metadata.externalWorkBindings?.bindings)
+      ? workItem.metadata.externalWorkBindings.bindings
+      : [];
+    assert.equal(bindings.length, 1);
+    assert.equal(bindings[0]?.provider, 'redmine');
+    assert.equal(bindings[0]?.externalType, 'ticket');
+    assert.equal(bindings[0]?.externalId, '987');
+    assert.equal(bindings[0]?.externalUrl, externalUrl);
+
+    const persisted = await chatStore.read();
+    const channel = buildChannelView(persisted, channelId);
+    const resultMessage = channel.messages.find((message) =>
+      message.metadata.event === 'work_external_binding_result');
+    const metadata = resultMessage?.metadata.workExternalBindingResult;
+    assert.equal(resultMessage?.senderName, 'Cats Work');
+    assert.equal(
+      resultMessage?.body,
+      'Linked redmine ticket 987 to Work Item work-item-api-external-1.',
+    );
+    assert.equal(metadata?.operation, 'link');
+    assert.equal(metadata?.event, 'linked');
+    assert.equal(metadata?.localKind, 'work_item');
+    assert.equal(metadata?.localId, 'work-item-api-external-1');
+    assert.equal(metadata?.provider, 'redmine');
+    assert.equal(metadata?.externalType, 'ticket');
+    assert.equal(metadata?.externalId, '987');
+  }, chatStore, {
+    providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
+    providerAgentDecisionRequester: async ({ observation }) => {
+      observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
+      return {
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-api-work-external-link-1',
+        confidence: 'high',
+        toolName: WORK_EXTERNAL_LINK_ISSUE_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_EXTERNAL_LINK_ISSUE_TOOL,
+        },
+        input: {},
+        rationaleSummary: 'The owner explicitly asked to link a Work Item to Redmine.',
       };
     },
   });
