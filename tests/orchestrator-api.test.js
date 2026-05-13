@@ -1016,6 +1016,119 @@ test('POST /api/orchestrator/dispatch passes provider tool decisions into Work i
   });
 });
 
+test('POST /api/orchestrator/dispatch declines Work intake proposals without writing Work Items', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  let decisionRequests = 0;
+  let observedToolNames = [];
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Work',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Capture a todo to harden the Telegram callback path.',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.equal(observedToolNames.includes(WORK_ITEM_PROPOSE_SPLIT_TOOL), true);
+
+    const chat = await chatStore.read();
+    const channel = buildChannelView(chat, channelId);
+    const proposalMessage = channel.messages.find((message) =>
+      message.metadata.event === 'work_intake_proposal_created');
+    assert.equal(proposalMessage?.senderName, 'Cats Work');
+    assert.equal(
+      proposalMessage?.choices?.[0]?.options.some((option) => option.id === 'decline'),
+      true,
+    );
+
+    if (!proposalMessage) {
+      throw new Error('Expected Work intake proposal message.');
+    }
+    const declineResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Ignore that Work Item proposal',
+        choiceResponse: buildSingleChoiceResponse(
+          proposalMessage,
+          'decline',
+          '2026-05-13T00:04:00.000Z',
+        ),
+      }),
+    });
+
+    assert.equal(declineResponse.status, 200);
+    const declinePayload = await declineResponse.json();
+    assert.equal(declinePayload.dispatch.status, 'dispatched');
+
+    const declinedChat = await chatStore.read();
+    const declinedChannel = buildChannelView(declinedChat, channelId);
+    const declinedMessage = declinedChannel.messages.find((message) =>
+      message.metadata.event === 'work_intake_proposal_declined');
+    const transition = declinedMessage?.metadata.workIntakeProposalTransition;
+    const core = await chatStore.readCore();
+
+    assert.equal(declinedMessage?.body, 'Work intake proposal ignored.');
+    assert.equal(transition?.event, 'declined');
+    assert.deepEqual(transition?.capturedWorkItemIds, []);
+    assert.equal(
+      core.workItems.filter((candidate) => Boolean(candidate.metadata.workIntake)).length,
+      0,
+    );
+    assert.equal(decisionRequests, 1);
+    assert.deepEqual(runtimeClient.sentMessages, []);
+  }, chatStore, {
+    config: {
+      chatNaturalProductIntentMode: 'cat_tool',
+    },
+    providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
+    providerAgentDecisionRequester: async ({ observation }) => {
+      decisionRequests += 1;
+      observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
+      return {
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-api-work-intake-decline-1',
+        confidence: 'high',
+        toolName: WORK_ITEM_PROPOSE_SPLIT_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_ITEM_PROPOSE_SPLIT_TOOL,
+        },
+        input: {
+          maxItems: 1,
+          defaultKind: 'todo',
+          defaultPriority: 'medium',
+        },
+        rationaleSummary: 'Propose a structured Work Item from the owner message.',
+      };
+    },
+  });
+});
+
 test('POST /api/orchestrator/dispatch applies provider Work project create decisions', async () => {
   const runtimeClient = createRuntimeStub();
   const chatStore = new MemoryChatStore();
