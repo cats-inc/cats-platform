@@ -2345,10 +2345,12 @@ for one task:
       "pendingDispatch": {
         "channelId": "channel-123",
         "blockedReason": "approval_pending",
+        "hasChoiceResponse": true,
       "replayState": "failed"
     },
     "dispatchReplay": {
       "sourceMessageId": "message-123",
+      "hasChoiceResponse": true,
       "replayState": "ready"
     },
     "workflowContinuationReplay": {
@@ -2395,6 +2397,10 @@ Semantics:
   identity so recovery consumers can trace replay candidates back to the
   canonical turn/lane/assistant-turn records that seeded the retryable
   handoff,
+- `pendingDispatch.hasChoiceResponse` and
+  `dispatchReplay.hasChoiceResponse` indicate that the replayed dispatch is a
+  Chat/Telegram/direct-API choice confirmation without exposing the raw answer
+  payload in recovery lists
 - `GET /api/core/recovery/tasks` supports additive filters for:
   - `conversationId`
   - `taskStatus`
