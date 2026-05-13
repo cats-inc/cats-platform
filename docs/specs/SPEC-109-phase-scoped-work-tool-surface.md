@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Active / MVP Implemented |
 | **Owner** | Codex |
 | **Reviewer** | TBD |
 
@@ -20,6 +20,29 @@ speaks todos in Cats Chat or Telegram, Cats captures them as Work Items, and
 Boss Cat later works through the backlog. This specification defines the
 bounded tools, phase separation, permission rules, persistence rules, and
 external tracker boundary for that flow.
+
+## Implementation Status
+
+The MVP tool surface landed on 2026-05-13. Current implementation includes:
+
+- Cats-owned supervised manifests and delegates for intake, triage, execution
+  preparation, and external tracker binding phases.
+- Chat and Telegram intake proposal/capture paths with owner-visible
+  confirmation before durable writes.
+- Chat provider-agent observations and tool-request executors for explicit
+  Project create, Project lookup, Work Item update, Project assignment, and
+  external tracker link/unlink requests.
+- Boss Cat execution-preparation proposals that can create pending-approval
+  Tasks without starting Runs or runtime sessions.
+- Provider-agent bounded-observation validation for tool descriptors, input
+  hints, context refs, invariants, summaries, budgets, and recovery fallback
+  surfaces.
+- Local external tracker bindings, manual UI link/unlink, Work Graph/list/detail
+  projections, and a GitHub Issues adapter spike without remote writes.
+
+Automatic bidirectional external tracker sync, credential handling, remote
+write approval, and runtime/MCP projection of the full tool catalog remain
+follow-up work under ADR-106 and future rollout slices.
 
 ## Goals
 

@@ -48,7 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
-| [SPEC-109](./SPEC-109-phase-scoped-work-tool-surface.md) | Phase-Scoped Work Tool Surface | Draft | [PLAN-099](../plans/PLAN-099-phase-scoped-work-tool-surface-rollout.md), [ADR-105](../decisions/105-adopt-phase-scoped-work-tool-surface.md) |
+| [SPEC-109](./SPEC-109-phase-scoped-work-tool-surface.md) | Phase-Scoped Work Tool Surface | Active / MVP Implemented | [PLAN-099](../plans/PLAN-099-phase-scoped-work-tool-surface-rollout.md), [ADR-105](../decisions/105-adopt-phase-scoped-work-tool-surface.md) |
 | [SPEC-108](./SPEC-108-cats-code-live-preview-substrate.md) | Cats Code Live Preview Substrate | Draft | [PLAN-097](../plans/PLAN-097-cats-code-live-preview-substrate-rollout.md), [ADR-104](../decisions/104-adopt-managed-live-preview-supervisor-for-artifact-canvas.md) |
 | [SPEC-107](./SPEC-107-preset-neutral-product-intent-intake.md) | Preset-Neutral Product Intent Intake | Draft | [PLAN-096](../plans/PLAN-096-preset-neutral-product-intent-intake-rollout.md), [ADR-103](../decisions/103-use-preset-neutral-product-intent-intake.md) |
 | [SPEC-106](./SPEC-106-chat-optimistic-message-identity.md) | Chat Optimistic Message Identity and Refresh-Race Resilience | Draft | [PLAN-095](../plans/PLAN-095-chat-optimistic-message-identity-rollout.md) |

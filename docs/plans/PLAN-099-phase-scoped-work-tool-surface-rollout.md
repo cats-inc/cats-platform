@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice synced ADR-105/SPEC-109 status to accepted and active/MVP implemented, documenting landed tool surfaces and remaining runtime/MCP/external-sync follow-ups. |
 | 2026-05-13 | Follow-up slice validated provider-agent allowed fallback surfaces so recovery decisions only see supported, unique fallbacks that include the active policy fallback. |
 | 2026-05-13 | Follow-up slice validated provider-agent observation budgets so strong-model seams always carry a positive hard-stop execution envelope. |
 | 2026-05-13 | Follow-up slice bounded provider-agent observation summary counts and keys, closing another model-visible prompt expansion path. |
