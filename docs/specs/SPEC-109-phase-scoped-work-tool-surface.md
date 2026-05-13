@@ -217,6 +217,11 @@ whole graph response.
 The binding may live in metadata for the MVP. A future ADR may promote bindings
 to a dedicated Core record if sync conflict handling requires it.
 
+The first external adapter spike shall be GitHub Issues. It shall use an
+injectable fetch boundary, read a single issue into a Work Item import draft,
+reject pull-request rows returned by the GitHub Issues API, and build create
+issue payloads for future export without performing remote writes in the spike.
+
 ## Non-Functional Requirements
 
 - **Safety**: Mutating tools must pass supervised policy checks before any
