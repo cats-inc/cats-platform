@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added runtime-dispatch coverage proving Boss execution-preparation turns forward `work.item.prepare_execution` / `work.task.create_from_work_item` tool intent metadata to the Boss Cat runtime context. |
 | 2026-05-13 | Follow-up slice added runtime-dispatch coverage proving external tracker binding turns forward `work.external.link_issue` / `work.external.unlink_issue` tool intent metadata to the strong model runtime context. |
 | 2026-05-13 | Follow-up slice added API-level Work Item Project assignment coverage proving provider-agent `work.item.assign_project` decisions can group planned Work Items under active Projects through the supervised triage path. |
 | 2026-05-13 | Follow-up slice added API planner coverage for external tracker binding intent, proving `work-memory` turns expose `work.external.link_issue` / `work.external.unlink_issue` names and descriptions before dispatch. |
