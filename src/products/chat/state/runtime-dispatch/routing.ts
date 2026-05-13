@@ -242,6 +242,12 @@ const WORK_ITEM_ASSIGN_PROJECT_RESULT_METADATA_KEY = 'workItemAssignProjectResul
 const WORK_ITEM_ASSIGN_PROJECT_RESULT_METADATA_VERSION = 1;
 const CHAT_WORK_ITEM_ID_PATTERN = /\bwork-item-[a-z0-9][a-z0-9_-]*\b/iu;
 const CHAT_PROJECT_ID_PATTERN = /\bproject-[a-z0-9][a-z0-9_-]*\b/iu;
+const CHAT_WORK_PROJECT_CREATE_CUE_PATTERN =
+  /\b(create|add|new)\s+(a\s+)?project\b|\bproject\s+(create|add|new)\b|建立專案|新增專案/iu;
+const CHAT_WORK_ITEM_UPDATE_CUE_PATTERN =
+  /\b(update|change|edit|rename|mark|set)\b|修改|更新|改成|標記/iu;
+const CHAT_WORK_ITEM_ASSIGN_PROJECT_CUE_PATTERN =
+  /\b(assign|attach|move|add|put|link)\b|指派|分配|掛到|掛上|歸到|加入|移到/iu;
 const WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES = new Set([
   'draft',
   'planned',
@@ -2194,6 +2200,15 @@ async function appendWorkProjectCreateResultSidecar(input: {
     });
     return { state: input.state, resultMessage: null };
   }
+  if (!hasProjectCreateCue(input.userMessage.body)) {
+    warnWorkProjectCreateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'missing_project_create_cue',
+    });
+    return { state: input.state, resultMessage: null };
+  }
 
   const core = await input.chatStore.readCore();
   const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
@@ -2302,13 +2317,13 @@ async function appendWorkItemUpdateResultSidecar(input: {
     return { state: input.state, resultMessage: null };
   }
 
-  const workItemId = extractWorkItemIdFromText(input.userMessage.body);
+  const workItemId = extractWorkItemIdFromUpdateText(input.userMessage.body);
   if (!workItemId) {
     warnWorkItemUpdateToolCallIgnored({
       channelId: input.channelId,
       messageId: input.userMessage.id,
       decisionId: input.providerAgentDecision.decisionId,
-      reason: 'missing_local_work_ref',
+      reason: 'missing_local_work_ref_or_update_cue',
     });
     return { state: input.state, resultMessage: null };
   }
@@ -2434,14 +2449,13 @@ async function appendWorkItemAssignProjectResultSidecar(input: {
     return { state: input.state, resultMessage: null };
   }
 
-  const workItemId = extractWorkItemIdFromText(input.userMessage.body);
-  const projectId = extractProjectIdFromText(input.userMessage.body);
-  if (!workItemId || !projectId) {
+  const assignmentRefs = extractWorkItemAssignProjectRefsFromText(input.userMessage.body);
+  if (!assignmentRefs) {
     warnWorkItemAssignProjectToolCallIgnored({
       channelId: input.channelId,
       messageId: input.userMessage.id,
       decisionId: input.providerAgentDecision.decisionId,
-      reason: 'missing_local_work_or_project_ref',
+      reason: 'missing_local_work_or_project_ref_or_assign_cue',
     });
     return { state: input.state, resultMessage: null };
   }
@@ -2455,8 +2469,8 @@ async function appendWorkItemAssignProjectResultSidecar(input: {
   });
   const result = await delegate.assignWorkItemProject(
     {
-      workItemId,
-      projectId,
+      workItemId: assignmentRefs.workItemId,
+      projectId: assignmentRefs.projectId,
       ...(note ? { note } : {}),
     },
     {
@@ -3112,6 +3126,43 @@ function describeWorkItemAssignProjectResult(
     return `Work Item ${metadata.workItemId} was already assigned to Project ${metadata.projectId}.`;
   }
   return `Assigned Work Item ${metadata.workItemId} to Project ${metadata.projectId}.`;
+}
+
+function hasProjectCreateCue(rawText: string): boolean {
+  const normalizedText = rawText.trim().replace(/\s+/gu, ' ');
+  return Boolean(normalizedText)
+    && !normalizedText.startsWith('/')
+    && CHAT_WORK_PROJECT_CREATE_CUE_PATTERN.test(normalizedText);
+}
+
+function extractWorkItemIdFromUpdateText(rawText: string): string | null {
+  const normalizedText = rawText.trim().replace(/\s+/gu, ' ').toLowerCase();
+  if (
+    !normalizedText
+    || normalizedText.startsWith('/')
+    || !CHAT_WORK_ITEM_UPDATE_CUE_PATTERN.test(normalizedText)
+  ) {
+    return null;
+  }
+
+  return extractWorkItemIdFromText(normalizedText);
+}
+
+function extractWorkItemAssignProjectRefsFromText(
+  rawText: string,
+): { workItemId: string; projectId: string } | null {
+  const normalizedText = rawText.trim().replace(/\s+/gu, ' ').toLowerCase();
+  if (
+    !normalizedText
+    || normalizedText.startsWith('/')
+    || !CHAT_WORK_ITEM_ASSIGN_PROJECT_CUE_PATTERN.test(normalizedText)
+  ) {
+    return null;
+  }
+
+  const workItemId = extractWorkItemIdFromText(normalizedText);
+  const projectId = extractProjectIdFromText(normalizedText);
+  return workItemId && projectId ? { workItemId, projectId } : null;
 }
 
 function extractWorkItemIdFromText(rawText: string): string | null {

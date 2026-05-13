@@ -380,6 +380,110 @@ test('Chat provider-agent Work Item update request writes bounded planning field
   assert.equal(resultMessage?.body, 'Updated Work Item work-item-chat-update-1 (ready).');
 });
 
+test('Chat Work triage mutating sidecars require matching owner cues', async () => {
+  const now = new Date('2026-05-13T12:25:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Work item mutation guard',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const core = upsertCoreWorkItem(
+    createDefaultCoreState(),
+    {
+      id: 'work-item-sidecar-guard-1',
+      title: 'Guarded Work Item',
+      status: 'planned',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {},
+    },
+    now,
+  ).core;
+  const store = new MemoryChatStore(state);
+  await store.writeCore(core);
+  const warnings: unknown[][] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args);
+  };
+  try {
+    const begun = await beginChannelMessageDispatch(
+      state,
+      channelId,
+      {
+        body: 'Boss Cat summarize work-item-sidecar-guard-1',
+      },
+      runtimeStub(),
+      new Date('2026-05-13T12:26:00.000Z'),
+      {
+        chatStore: store,
+        providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+        providerAgentDecisionRequester: async ({ observation }) => {
+          assert.equal(
+            observation.availableTools.some((tool) =>
+              tool.manifest.name === WORK_ITEM_UPDATE_TOOL),
+            false,
+          );
+          return {
+            contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+            kind: 'tool_request',
+            decisionId: 'decision-work-item-sidecar-guard-1',
+            confidence: 'high',
+            toolName: WORK_ITEM_UPDATE_TOOL,
+            target: {
+              kind: 'execution_target',
+              provider: 'claude',
+              model: 'sonnet',
+            },
+            input: {
+              status: 'ready',
+            },
+            rationaleSummary: 'This injected decision should be ignored by the sidecar guard.',
+          };
+        },
+      },
+    );
+
+    const persistedCore = await store.readCore();
+    const workItem = persistedCore.workItems.find((candidate) =>
+      candidate.id === 'work-item-sidecar-guard-1');
+    const channel = requireChannel(begun.state, channelId);
+    const resultMessage = channel.messages.find((message) =>
+      message.metadata.workItemUpdateResult);
+
+    assert.equal(workItem?.status, 'planned');
+    assert.equal(resultMessage, undefined);
+    assert.equal(
+      warnings.some((entry) =>
+        String(entry[0]).includes('Work item update tool call ignored.')),
+      true,
+    );
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
 test('Chat provider-agent Work Item assign Project request writes server-resolved ids', async () => {
   const now = new Date('2026-05-13T12:30:00.000Z');
   const state = createChannel(

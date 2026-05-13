@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice hardened Chat Work triage mutating sidecars to re-check owner intent cues before applying provider-agent `work.project.create`, `work.item.update`, or `work.item.assign_project` decisions. |
 | 2026-05-13 | Follow-up slice added retry-dispatch coverage for provider-agent Work triage update sidecars, so rerunning an owner message preserves the same supervised Work write path. |
 | 2026-05-13 | Follow-up slice added Telegram parity coverage for Chat provider-agent Work triage tool requests, preserving Telegram transport binding metadata while updating local Work Items. |
 | 2026-05-13 | Follow-up slice exposed and executed explicit Chat provider-agent `work.item.assign_project` requests for local Work Item and Project refs, re-resolving both ids from owner text before writing Core. |
