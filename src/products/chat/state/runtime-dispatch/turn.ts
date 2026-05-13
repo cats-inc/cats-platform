@@ -7,12 +7,17 @@ import type {
   ChatState,
 } from '../../api/contracts.js';
 import type { CatsCoreState } from '../../../../core/types.js';
-import type { ProviderAgentBoundedObservation } from '../../../../platform/orchestration/index.js';
+import type {
+  ProviderAgentBoundedObservation,
+  ProviderAgentToolDescriptor,
+} from '../../../../platform/orchestration/index.js';
 import {
   decideSupervisionPolicy,
+  filterToolSurface,
   resolveProviderCapabilityProfile,
   type ProviderCapabilityBootstrapConfig,
   type ProviderCapabilityBootstrapDiagnosticSink,
+  type SupervisionPolicy,
 } from '../../../../platform/supervision/index.js';
 import type {
   RoomRoutingCheckpoint,
@@ -69,6 +74,12 @@ import {
 import {
   createCatProductIntentProposalToolManifest,
 } from '../../shared/catProductIntentProposal.js';
+import {
+  WORK_ITEM_PROPOSE_SPLIT_TOOL,
+  createPhaseScopedWorkToolManifests,
+  filterPhaseScopedWorkToolManifests,
+  type WorkToolCapabilityProfile,
+} from '../../../work/shared/workToolSurface.js';
 import {
   resolveEffectiveChatNaturalProductIntentMode,
   type ChatNaturalProductIntentMode,
@@ -527,6 +538,11 @@ function buildProviderAgentObservationForTurn(input: {
     naturalProductIntentMode: input.naturalProductIntentMode,
     hasSingleCatTarget: Boolean(singleCatTarget),
   });
+  const workIntakeToolDescriptors = createWorkIntakeToolDescriptors({
+    enabled: exposeCatProductIntentProposalTool,
+    capabilityProfileKind: capabilityProfile.kind,
+    policy: policyDecision.result.policy,
+  });
   const workIntakeSourceContext = buildChatWorkIntakeSourceContext({
     state: input.state,
     channelId: input.channelId,
@@ -543,23 +559,34 @@ function buildProviderAgentObservationForTurn(input: {
       : 'orchestrator',
     capabilityProfile,
     policy: policyDecision.result.policy,
-    availableTools: exposeCatProductIntentProposalTool
-      ? [
+    availableTools: [
+      ...(exposeCatProductIntentProposalTool
+        ? [
           {
             manifest: createCatProductIntentProposalToolManifest(),
             reason: 'Strong Cat can ask the owner to confirm Work/Code intake.',
           },
         ]
-      : [],
+        : []),
+      ...workIntakeToolDescriptors,
+    ],
     additionalContextRefs: workIntakeSourceContext.contextRefs,
-    invariants: exposeCatProductIntentProposalTool
-      ? [
-          'proposeProductIntake asks the owner to confirm Work/Code intake and must not be used for casual chat.',
-          'If a proposal tool request is rejected or ignored by platform policy, continue ordinary chat without exposing internal rejection details to the owner.',
-          'Do not request createWorkItem, createTask, or createRun in the same provider-agent decision as proposeProductIntake.',
-          'At most one proposeProductIntake request can be accepted per assistant turn.',
-        ]
-      : [],
+    invariants: [
+      ...(exposeCatProductIntentProposalTool
+        ? [
+            'proposeProductIntake asks the owner to confirm Work/Code intake and must not be used for casual chat.',
+            'If a proposal tool request is rejected or ignored by platform policy, continue ordinary chat without exposing internal rejection details to the owner.',
+            'Do not request createWorkItem, createTask, or createRun in the same provider-agent decision as proposeProductIntake.',
+            'At most one proposeProductIntake request can be accepted per assistant turn.',
+          ]
+        : []),
+      ...(workIntakeToolDescriptors.length > 0
+        ? [
+            `${WORK_ITEM_PROPOSE_SPLIT_TOOL} can propose candidate Work Items only; it must not claim capture or persistence.`,
+            'Do not request work.item.capture until platform policy exposes a narrow-write intake tool surface.',
+          ]
+        : []),
+    ],
     messageCharacterCount: input.payload.body.length,
     routing: {
       trigger: input.initialResolution.trigger,
@@ -570,6 +597,41 @@ function buildProviderAgentObservationForTurn(input: {
     },
     now: new Date(input.nowIso),
   });
+}
+
+function createWorkIntakeToolDescriptors(input: {
+  enabled: boolean;
+  capabilityProfileKind: 'strong_agent' | 'weak_worker' | 'unknown';
+  policy: SupervisionPolicy;
+}): ProviderAgentToolDescriptor[] {
+  if (!input.enabled) {
+    return [];
+  }
+
+  const capabilityProfile = resolveWorkToolCapabilityProfile(input.capabilityProfileKind);
+  const manifests = filterToolSurface(
+    filterPhaseScopedWorkToolManifests(createPhaseScopedWorkToolManifests(), {
+      phase: 'intake',
+      capabilityProfile,
+    }),
+    {
+      parentToolScope: input.policy.toolScope,
+      policyToolScope: input.policy.toolScope,
+    },
+  );
+
+  return manifests.map((manifest) => ({
+    manifest,
+    reason: manifest.name === WORK_ITEM_PROPOSE_SPLIT_TOOL
+      ? 'Strong Cat can propose candidate Work Items from this owner message without writing Core.'
+      : 'Strong Cat can request Work Item capture only when policy grants narrow-write intake.',
+  }));
+}
+
+function resolveWorkToolCapabilityProfile(
+  capabilityProfileKind: 'strong_agent' | 'weak_worker' | 'unknown',
+): WorkToolCapabilityProfile {
+  return capabilityProfileKind;
 }
 
 // v1 narrowing: SPEC-107 §28 allows any addressed/active strong Cat in

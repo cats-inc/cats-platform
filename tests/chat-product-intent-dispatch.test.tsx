@@ -42,6 +42,10 @@ import {
   type CatProductIntentProposalMetadata,
   type CatProductIntentProposalTransitionMetadata,
 } from '../src/products/chat/shared/catProductIntentProposal.ts';
+import {
+  WORK_ITEM_CAPTURE_TOOL,
+  WORK_ITEM_PROPOSE_SPLIT_TOOL,
+} from '../src/products/work/shared/workToolSurface.ts';
 import { buildWorkWorkItemListProjection } from '../src/products/work/api/projection.ts';
 import { buildTelegramImplicitProductIntentReplyMarkup } from '../src/platform/transports/telegram/bridge.ts';
 
@@ -190,6 +194,12 @@ function observationExposesProposalTool(
 ): boolean {
   return observation?.availableTools.some((tool) =>
     tool.manifest.name === CAT_PRODUCT_INTENT_PROPOSAL_TOOL_NAME) ?? false;
+}
+
+function observationToolNames(
+  observation: ProviderAgentBoundedObservation | null,
+): string[] {
+  return observation?.availableTools.map((tool) => tool.manifest.name) ?? [];
 }
 
 async function captureConsoleWarns<T>(callback: () => Promise<T>): Promise<{
@@ -1674,11 +1684,19 @@ test('routeChannelMessage records Cat proposal tool requests without durable Wor
     | CatProductIntentProposalMetadata
     | undefined;
   const core = await store.readCore();
+  const toolNames = observationToolNames(capturedObservation);
 
   assert.equal(observationExposesProposalTool(capturedObservation), true);
+  assert.equal(toolNames.includes(WORK_ITEM_PROPOSE_SPLIT_TOOL), true);
+  assert.equal(toolNames.includes(WORK_ITEM_CAPTURE_TOOL), false);
   assert.equal(
     capturedObservation?.invariants.some((invariant) =>
       invariant.includes('must not be used for casual chat')),
+    true,
+  );
+  assert.equal(
+    capturedObservation?.invariants.some((invariant) =>
+      invariant.includes(WORK_ITEM_PROPOSE_SPLIT_TOOL)),
     true,
   );
   assert.equal(
