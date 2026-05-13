@@ -9,11 +9,9 @@ import type {
 import type { CatsCoreState } from '../../../../core/types.js';
 import type {
   ProviderAgentBoundedObservation,
-  ProviderAgentToolDescriptor,
 } from '../../../../platform/orchestration/index.js';
 import {
   decideSupervisionPolicy,
-  filterToolSurface,
   resolveProviderCapabilityProfile,
   type ProviderCapabilityBootstrapConfig,
   type ProviderCapabilityBootstrapDiagnosticSink,
@@ -74,12 +72,10 @@ import {
 import {
   createCatProductIntentProposalToolManifest,
 } from '../../shared/catProductIntentProposal.js';
+import type { WorkToolCapabilityProfile } from '../../../work/shared/workToolSurface.js';
 import {
-  WORK_ITEM_PROPOSE_SPLIT_TOOL,
-  createPhaseScopedWorkToolManifests,
-  filterPhaseScopedWorkToolManifests,
-  type WorkToolCapabilityProfile,
-} from '../../../work/shared/workToolSurface.js';
+  createPhaseScopedWorkToolObservation,
+} from '../../../work/shared/workToolObservation.js';
 import {
   resolveEffectiveChatNaturalProductIntentMode,
   type ChatNaturalProductIntentMode,
@@ -538,7 +534,7 @@ function buildProviderAgentObservationForTurn(input: {
     naturalProductIntentMode: input.naturalProductIntentMode,
     hasSingleCatTarget: Boolean(singleCatTarget),
   });
-  const workIntakeToolDescriptors = createWorkIntakeToolDescriptors({
+  const workIntakeToolObservation = createWorkIntakeToolObservation({
     enabled: exposeCatProductIntentProposalTool,
     capabilityProfileKind: capabilityProfile.kind,
     policy: policyDecision.result.policy,
@@ -568,7 +564,7 @@ function buildProviderAgentObservationForTurn(input: {
           },
         ]
         : []),
-      ...workIntakeToolDescriptors,
+      ...workIntakeToolObservation.descriptors,
     ],
     additionalContextRefs: workIntakeSourceContext.contextRefs,
     invariants: [
@@ -580,12 +576,7 @@ function buildProviderAgentObservationForTurn(input: {
             'At most one proposeProductIntake request can be accepted per assistant turn.',
           ]
         : []),
-      ...(workIntakeToolDescriptors.length > 0
-        ? [
-            `${WORK_ITEM_PROPOSE_SPLIT_TOOL} can propose candidate Work Items only; it must not claim capture or persistence.`,
-            'Do not request work.item.capture until platform policy exposes a narrow-write intake tool surface.',
-          ]
-        : []),
+      ...workIntakeToolObservation.invariants,
     ],
     messageCharacterCount: input.payload.body.length,
     routing: {
@@ -599,33 +590,19 @@ function buildProviderAgentObservationForTurn(input: {
   });
 }
 
-function createWorkIntakeToolDescriptors(input: {
+function createWorkIntakeToolObservation(input: {
   enabled: boolean;
   capabilityProfileKind: 'strong_agent' | 'weak_worker' | 'unknown';
   policy: SupervisionPolicy;
-}): ProviderAgentToolDescriptor[] {
-  if (!input.enabled) {
-    return [];
-  }
-
+}): ReturnType<typeof createPhaseScopedWorkToolObservation> {
   const capabilityProfile = resolveWorkToolCapabilityProfile(input.capabilityProfileKind);
-  const manifests = filterToolSurface(
-    filterPhaseScopedWorkToolManifests(createPhaseScopedWorkToolManifests(), {
-      phase: 'intake',
-      capabilityProfile,
-    }),
-    {
-      parentToolScope: input.policy.toolScope,
-      policyToolScope: input.policy.toolScope,
-    },
-  );
-
-  return manifests.map((manifest) => ({
-    manifest,
-    reason: manifest.name === WORK_ITEM_PROPOSE_SPLIT_TOOL
-      ? 'Strong Cat can propose candidate Work Items from this owner message without writing Core.'
-      : 'Strong Cat can request Work Item capture only when policy grants narrow-write intake.',
-  }));
+  return createPhaseScopedWorkToolObservation({
+    enabled: input.enabled,
+    phase: 'intake',
+    capabilityProfile,
+    parentToolScope: input.policy.toolScope,
+    policyToolScope: input.policy.toolScope,
+  });
 }
 
 function resolveWorkToolCapabilityProfile(

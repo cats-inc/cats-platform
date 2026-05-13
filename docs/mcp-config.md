@@ -67,6 +67,13 @@ MCP should not become a back door around product-owned permissions,
 conversations, or approval state. Those remain inside `cats` and
 `Cats Core v1`.
 
+Cats Work now defines a product-owned phase-scoped tool observation helper for
+intake, triage, execution preparation, and external tracker binding. Strong
+Cats and Boss Cat can be shown the allowed manifests and invariants through
+bounded observations, but those Work tools are not part of the runtime MCP
+facade until a product-owned MCP adapter preserves the same supervision,
+approval, and evidence gates.
+
 ## Configuration
 
 ### Claude Desktop
