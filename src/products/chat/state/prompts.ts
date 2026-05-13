@@ -401,7 +401,10 @@ function formatParticipantRoster(channel: ChatChannelView): string {
       const roleLabel = participant.roles.length > 0
         ? participant.roles.join(', ')
         : participant.roleHint?.trim() || (participant.sourceKind === 'cat' ? 'general' : 'temporary');
-      return `- ${participant.name} (${participant.execution.target.provider}${participant.execution.target.model ? ` / ${participant.execution.target.model}` : ''}; roles: ${roleLabel})`;
+      const mcpProfileLabel = participant.mcpProfile
+        ? `; tool profile: ${participant.mcpProfile}`
+        : '';
+      return `- ${participant.name} (${participant.execution.target.provider}${participant.execution.target.model ? ` / ${participant.execution.target.model}` : ''}; roles: ${roleLabel}${mcpProfileLabel})`;
     })
     .join('\n');
 }

@@ -40,6 +40,7 @@ function createChannel() {
         status: 'active',
         roles: ['support'],
         skillProfile: null,
+        mcpProfile: null,
         memory: {
           summary: null,
           facts: [],
@@ -98,6 +99,29 @@ test('orchestrator prompt omits blank transport sections for non-telegram turns'
   );
 
   assert.ok(!prompt.includes('\n\n\n'));
+});
+
+test('orchestrator prompt includes Cat tool profiles in the participant roster', () => {
+  const channel = createChannel();
+  channel.assignedCats[0].name = 'Work Planner';
+  channel.assignedCats[0].roles = ['planner'];
+  channel.assignedCats[0].mcpProfile = 'work-memory';
+  const prompt = buildOrchestratorPrompt(
+    channel,
+    createOrchestrator(),
+    createSourceMessage(),
+    'Boss Cat',
+    {
+      reason: 'System routing selected you as the current turn owner.',
+      recentMessages: [],
+      transport: 'web',
+    },
+  );
+
+  assert.match(
+    prompt,
+    /Work Planner \(claude \/ sonnet; roles: planner; tool profile: work-memory\)/u,
+  );
 });
 
 test('cat prompt omits blank transport sections when no transport context is provided', () => {
@@ -317,6 +341,7 @@ test('default chat does not re-bootstrap when the same runtime session is reused
   state = createChatChannel(state, {
     title: 'Default bootstrap lane test',
     topic: 'Keep bootstrap gated by lane identity.',
+    originSurface: 'chat',
     entryKind: 'default',
     roomMode: 'chat_channel',
   }, now);
@@ -413,6 +438,7 @@ test('multi-participant cat routing emits a targeted handoff package for first-t
   state = createChatChannel(state, {
     title: 'Group handoff test',
     topic: 'Ensure a newly engaged participant receives bounded room context.',
+    originSurface: 'chat',
     temporaryParticipants: [
       {
         name: 'Agent-1',
@@ -529,6 +555,7 @@ test('multi-participant cat routing keeps continuity metadata null when no hando
   state = createChatChannel(state, {
     title: 'Fresh group handoff test',
     topic: 'No prior conversational context should not force continuity metadata.',
+    originSurface: 'chat',
     temporaryParticipants: [
       {
         name: 'Agent-1',
