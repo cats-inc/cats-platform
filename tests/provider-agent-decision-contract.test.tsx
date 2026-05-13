@@ -166,6 +166,37 @@ test('bounded observation rejects missing and oversized tool reasons', () => {
   ]);
 });
 
+test('bounded observation rejects oversized context refs and invariants', () => {
+  const input = observation();
+  input.contextRefs = Array.from({ length: 65 }, (_, index) => {
+    if (index === 0) {
+      return '';
+    }
+    if (index === 1) {
+      return 'x'.repeat(241);
+    }
+    return `context-ref:${index}`;
+  });
+  input.invariants = Array.from({ length: 25 }, (_, index) => {
+    if (index === 0) {
+      return '';
+    }
+    if (index === 1) {
+      return 'x'.repeat(321);
+    }
+    return `Invariant ${index}`;
+  });
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(input), [
+    'contextRefs must contain 64 entries or fewer',
+    'contextRefs[0] is required',
+    'contextRefs[1] must be 240 characters or less',
+    'invariants must contain 24 entries or fewer',
+    'invariants[0] is required',
+    'invariants[1] must be 320 characters or less',
+  ]);
+});
+
 test('bounded observation rejects oversized tool input hints', () => {
   const input = observation();
   input.availableTools[0] = {

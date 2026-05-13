@@ -12,6 +12,10 @@ import type {
 export const PROVIDER_AGENT_DECISION_CONTRACT_VERSION = 1;
 export const PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH = 280;
 export const PROVIDER_AGENT_MAX_GOAL_LENGTH = 2000;
+export const PROVIDER_AGENT_MAX_CONTEXT_REFS = 64;
+export const PROVIDER_AGENT_MAX_CONTEXT_REF_LENGTH = 240;
+export const PROVIDER_AGENT_MAX_INVARIANTS = 24;
+export const PROVIDER_AGENT_MAX_INVARIANT_LENGTH = 320;
 export const PROVIDER_AGENT_MAX_TOOL_REASON_LENGTH = 280;
 export const PROVIDER_AGENT_MAX_TOOL_INPUT_HINTS = 8;
 export const PROVIDER_AGENT_MAX_TOOL_INPUT_HINT_LENGTH = 400;
@@ -159,6 +163,20 @@ export function validateProviderAgentBoundedObservation(
   observation.availableTools.forEach((tool, index) => {
     validateToolDescriptor(errors, tool, index);
   });
+  validateBoundedStringArray(
+    errors,
+    'contextRefs',
+    observation.contextRefs,
+    PROVIDER_AGENT_MAX_CONTEXT_REFS,
+    PROVIDER_AGENT_MAX_CONTEXT_REF_LENGTH,
+  );
+  validateBoundedStringArray(
+    errors,
+    'invariants',
+    observation.invariants,
+    PROVIDER_AGENT_MAX_INVARIANTS,
+    PROVIDER_AGENT_MAX_INVARIANT_LENGTH,
+  );
 
   for (const summary of observation.summaries) {
     validateObservationSummary(errors, summary);
@@ -345,4 +363,20 @@ function validateBoundedString(
   if (value.length > maxLength) {
     errors.push(`${field} must be ${maxLength} characters or less`);
   }
+}
+
+function validateBoundedStringArray(
+  errors: string[],
+  field: string,
+  values: string[],
+  maxEntries: number,
+  maxLength: number,
+): void {
+  if (values.length > maxEntries) {
+    errors.push(`${field} must contain ${maxEntries} entries or fewer`);
+  }
+
+  values.forEach((value, index) => {
+    validateBoundedString(errors, `${field}[${index}]`, value, maxLength);
+  });
 }
