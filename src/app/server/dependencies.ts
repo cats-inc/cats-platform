@@ -52,7 +52,6 @@ import { resolveCompanionActivityPathFromChatState } from '../../shared/platform
 import { createChatMemorySurface } from '../../products/chat/state/memoryAdapter.js';
 import {
   createChatDeterministicChannelRouter,
-  chatDeterministicChannelRouter,
   chatDeterministicPlannerSurface,
   resumeStoredWorkflowContinuationDispatch,
 } from '../../products/chat/state/deterministicRouterAdapter.js';
@@ -258,23 +257,17 @@ export function resolveServerDependencies(
         : undefined
     );
   const orchestratorChannelRouter = dependencies.chat.orchestratorChannelRouter
-    ?? (
-      dependencies.shared.config.runtimeStaleSessionRetryLimit === undefined
-      && providerAgentDecisionRequester === undefined
-      && dependencies.shared.config.chatNaturalProductIntentMode === undefined
-        ? chatDeterministicChannelRouter
-        : createChatDeterministicChannelRouter({
-          runtimeRecovery: {
-            staleSessionRetryLimit: dependencies.shared.config.runtimeStaleSessionRetryLimit,
-          },
-          chatStatePath: dependencies.shared.config.chatStatePath,
-          runtimeDataDir: dependencies.shared.config.runtimeDataDir,
-          providerAgentDecisionRequester,
-          providerCapabilityBootstrapConfig: capabilityBootstrapLoaded.config,
-          providerCapabilityBootstrapDiagnosticSink,
-          naturalProductIntentMode: dependencies.shared.config.chatNaturalProductIntentMode,
-        })
-    );
+    ?? createChatDeterministicChannelRouter({
+      runtimeRecovery: {
+        staleSessionRetryLimit: dependencies.shared.config.runtimeStaleSessionRetryLimit,
+      },
+      chatStatePath: dependencies.shared.config.chatStatePath,
+      runtimeDataDir: dependencies.shared.config.runtimeDataDir,
+      providerAgentDecisionRequester,
+      providerCapabilityBootstrapConfig: capabilityBootstrapLoaded.config,
+      providerCapabilityBootstrapDiagnosticSink,
+      naturalProductIntentMode: dependencies.shared.config.chatNaturalProductIntentMode,
+    });
   const orchestratorPlannerSurface = dependencies.chat.orchestratorPlannerSurface
     ?? chatDeterministicPlannerSurface;
   const taskExecutionLocator = dependencies.chat.taskExecutionLocator

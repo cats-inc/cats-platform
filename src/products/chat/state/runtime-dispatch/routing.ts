@@ -6463,15 +6463,7 @@ export async function beginChannelMessageDispatch(
         now,
       })
     : null;
-  nextState = materializeInFlightDispatchState(
-    preparedTurn.state,
-    channelId,
-    preparedTurn.baseRoomRouting,
-    preparedTurn.workflow,
-    preparedTurn.outcome,
-    preparedTurn.latestCheckpoint,
-    now,
-  );
+  nextState = preparedTurn.state;
   const ordinaryProductIntentLocale = resolveProductIntentMessageLocale(
     channelBeforeMessage,
     options.transportLocale,
@@ -6567,6 +6559,16 @@ export async function beginChannelMessageDispatch(
     now,
   });
   nextState = workItemAssignProjectSidecar.state;
+  const providerToolSidecarHandled = Boolean(
+    catProposalSidecar.proposalMessage
+    || workIntakeProposalSidecar.proposalMessage
+    || workExecutionPreparationSidecar.proposalMessage
+    || workExternalBindingSidecar.resultMessage
+    || workTriageLookupSidecar.resultMessage
+    || workProjectCreateSidecar.resultMessage
+    || workItemUpdateSidecar.resultMessage
+    || workItemAssignProjectSidecar.resultMessage,
+  );
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),
@@ -6580,13 +6582,24 @@ export async function beginChannelMessageDispatch(
     choiceResponse: payload.choiceResponse,
   });
   nextState = implicitCandidateSidecar.state;
+  if (!providerToolSidecarHandled) {
+    nextState = materializeInFlightDispatchState(
+      nextState,
+      channelId,
+      preparedTurn.baseRoomRouting,
+      preparedTurn.workflow,
+      preparedTurn.outcome,
+      preparedTurn.latestCheckpoint,
+      now,
+    );
+  }
   nextState = await persistInFlightDispatchState(options.chatStore, nextState);
   options.onStateWritten?.(channelId);
 
   return {
     state: nextState,
     results: preparedTurn.results,
-    preparedTurn: preparedTurn.terminalResult ? null : preparedTurn,
+    preparedTurn: providerToolSidecarHandled || preparedTurn.terminalResult ? null : preparedTurn,
     userMessage: preparedTurn.userMessage,
     providerAgentDecision,
     ...(messageIdentity ? { messageIdentity } : {}),
@@ -6677,15 +6690,7 @@ export async function beginChannelMessageRetryDispatch(
         now,
       })
     : null;
-  nextState = materializeInFlightDispatchState(
-    preparedTurn.state,
-    channelId,
-    preparedTurn.baseRoomRouting,
-    preparedTurn.workflow,
-    preparedTurn.outcome,
-    preparedTurn.latestCheckpoint,
-    now,
-  );
+  nextState = preparedTurn.state;
   const retryCoreForNaturalIntent = options.chatStore
     ? (core ?? await options.chatStore.readCore())
     : null;
@@ -6807,6 +6812,16 @@ export async function beginChannelMessageRetryDispatch(
     now,
   });
   nextState = workItemAssignProjectSidecar.state;
+  const providerToolSidecarHandled = Boolean(
+    catProposalSidecar.proposalMessage
+    || workIntakeProposalSidecar.proposalMessage
+    || workExecutionPreparationSidecar.proposalMessage
+    || workExternalBindingSidecar.resultMessage
+    || workTriageLookupSidecar.resultMessage
+    || workProjectCreateSidecar.resultMessage
+    || workItemUpdateSidecar.resultMessage
+    || workItemAssignProjectSidecar.resultMessage,
+  );
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),
@@ -6820,13 +6835,24 @@ export async function beginChannelMessageRetryDispatch(
     choiceResponse: sourceMessage.choiceResponse,
   });
   nextState = implicitCandidateSidecar.state;
+  if (!providerToolSidecarHandled) {
+    nextState = materializeInFlightDispatchState(
+      nextState,
+      channelId,
+      preparedTurn.baseRoomRouting,
+      preparedTurn.workflow,
+      preparedTurn.outcome,
+      preparedTurn.latestCheckpoint,
+      now,
+    );
+  }
   nextState = await persistInFlightDispatchState(options.chatStore, nextState);
   options.onStateWritten?.(channelId);
 
   return {
     state: nextState,
     results: preparedTurn.results,
-    preparedTurn: preparedTurn.terminalResult ? null : preparedTurn,
+    preparedTurn: providerToolSidecarHandled || preparedTurn.terminalResult ? null : preparedTurn,
     userMessage: sourceMessage,
     providerAgentDecision,
   };

@@ -68,6 +68,7 @@ const baseConfig = {
   port: 8181,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
+  runtimeDataDir: path.join(testPlatformRoot, 'runtime', 'data'),
   chatStatePath: path.join(testPlatformRoot, 'platform', 'state', 'chat-state.local.json'),
   auth: {
     mode: 'unsafe_disabled',
@@ -801,12 +802,15 @@ test('POST /api/orchestrator/plan uses the injected planner surface seam', async
 });
 
 test('POST /api/orchestrator/dispatch returns executed continuation steps from the room workflow loop', async () => {
+  const targetNamesById = new Map();
   const runtimeClient = createRuntimeStub({
-    sendMessage: ({ content }) => {
-      if (content.includes('You are Inline-Agent')) {
+    sendMessage: ({ messageInput }) => {
+      const targetId = messageInput?.context?.metadata?.targetId;
+      const targetName = typeof targetId === 'string' ? targetNamesById.get(targetId) : null;
+      if (targetName === 'Inline-Agent') {
         return usage('@Followup-Agent please continue with the regression audit.');
       }
-      if (content.includes('You are Followup-Agent')) {
+      if (targetName === 'Followup-Agent') {
         return usage('Followup-Agent finished the audit.');
       }
       return usage('Boss Cat acknowledged the turn.');
@@ -832,6 +836,11 @@ test('POST /api/orchestrator/dispatch returns executed continuation steps from t
       ],
     });
     const channelId = created.channel.id;
+    targetNamesById.clear();
+    for (const cat of created.channel.assignedCats) {
+      targetNamesById.set(cat.participantId, cat.name);
+      targetNamesById.set(cat.catId, cat.name);
+    }
 
     const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
       method: 'POST',
