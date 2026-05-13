@@ -7,7 +7,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress |
 | **Owner** | Codex |
 | **Reviewer** | TBD |
 
@@ -26,12 +26,12 @@ Boss Cat execution preparation, and external issue tracker bindings.
 
 ### Phase 1: Registry and Contract Skeleton
 
-- [ ] Task 1.1: Add Work tool entries to `docs/tool-calls.md`.
-- [ ] Task 1.2: Define TypeScript contract types for phase-scoped Work tools.
-- [ ] Task 1.3: Add supervised tool manifests for read-only proposal and
+- [x] Task 1.1: Add Work tool entries to `docs/tool-calls.md`.
+- [x] Task 1.2: Define TypeScript contract types for phase-scoped Work tools.
+- [x] Task 1.3: Add supervised tool manifests for read-only proposal and
       local-state capture tools.
-- [ ] Task 1.4: Add schema validation helpers and error code constants.
-- [ ] Task 1.5: Add tests proving tools are filtered by phase, policy, and
+- [x] Task 1.4: Add schema validation helpers and error code constants.
+- [x] Task 1.5: Add tests proving tools are filtered by phase, policy, and
       capability profile.
 
 **Deliverables**: Registered tool names, manifests, validation scaffolding, and
@@ -39,14 +39,14 @@ policy-surface tests. No runtime model is using the tools yet.
 
 ### Phase 2: Intake Capture Delegate
 
-- [ ] Task 2.1: Implement a product-owned `work.item.propose_split` delegate
+- [x] Task 2.1: Implement a product-owned `work.item.propose_split` delegate
       that returns structured candidate Work Items without writing Core.
-- [ ] Task 2.2: Implement `work.item.capture` through the supervised boundary.
-- [ ] Task 2.3: Persist captured Work Items with source provenance metadata and
+- [x] Task 2.2: Implement `work.item.capture` through the supervised boundary.
+- [x] Task 2.3: Persist captured Work Items with source provenance metadata and
       idempotency keys.
-- [ ] Task 2.4: Emit tool-boundary evidence and Work Activity records for
+- [x] Task 2.4: Emit tool-boundary evidence and Work Activity records for
       accepted/rejected capture attempts.
-- [ ] Task 2.5: Add tests for single capture, multi-item split proposal,
+- [x] Task 2.5: Add tests for single capture, multi-item split proposal,
       idempotent retry, weak/unknown rejection, and source metadata.
 
 **Deliverables**: Strong Cats can request intake capture through a supervised
@@ -162,6 +162,8 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Phase 1 contract manifests, validation helpers, and policy/capability filtering tests landed in `4196128e4`. |
+| 2026-05-13 | Phase 2 Work intake delegate implemented with split proposal, supervised capture, idempotent Core writes, source metadata, and isolated tests. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---

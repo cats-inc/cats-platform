@@ -66,6 +66,7 @@ corresponding tool, route, delegate, or lifecycle request through its boundary.
 | `ProviderAgentBoundedObservation` | `bounded_observation` | Implemented contract | Platform orchestration / supervision | Driving provider agent | `src/platform/orchestration/providerAgentDecision.ts` | [Provider-Agent Observation](#provider-agent-observation) |
 | `ProviderAgentDecision` | `decision_envelope` | Implemented contract | Driving provider agent | Platform policy gate | `src/platform/orchestration/providerAgentDecision.ts`, `providerAgentPolicyGate.ts` | [Provider-Agent Decision](#provider-agent-decision) |
 | `SupervisedToolInvocation` / `ToolResult<T>` | `tool_call` | Implemented contract | Agent, runtime bridge, or product delegate | Supervised tool boundary | `src/platform/supervision/contracts.ts`, `toolBoundary.ts`, `toolRegistry.ts` | [tool-calls.md](./tool-calls.md) |
+| `PhaseScopedWorkToolSurface` | `tool_call` | Product delegate implemented; live runtime exposure pending | Strong Cat / Boss Cat intake delegate | Cats Work supervised tool boundary | `src/products/work/shared/workToolSurface.ts`, `src/products/work/state/workIntakeDelegate.ts` | [tool-calls.md](./tool-calls.md#phase-scoped-work-tools) |
 | `CodeAssistantFinalization` | `finalization_envelope` | Scaffolded, not wired | Code assistant / runtime adapter | Cats Code finalization gate | `src/products/code/state/sessionFinalization.ts` | [Code Assistant Finalization](#code-assistant-finalization) |
 | `ToolBoundaryEvidenceEvent` | `evidence_event` | Implemented contract | Tool boundary | Evidence sink / Work projections | `src/platform/supervision/toolBoundary.ts`, `evidenceSink.ts` | [Tool Boundary Evidence](#tool-boundary-evidence) |
 | `RuntimeSupervisionContext` | `lifecycle_event` / boundary context | Implemented contract | Platform supervision wrapper | cats-runtime call path | `src/platform/supervision/runtimeBoundary.ts` | [Runtime Supervision Boundary](#runtime-supervision-boundary) |
@@ -246,4 +247,4 @@ Then update:
 ---
 
 *Created: 2026-04-29*
-*Last updated: 2026-04-29*
+*Last updated: 2026-05-13*
