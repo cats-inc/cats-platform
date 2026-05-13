@@ -497,3 +497,103 @@ test('Chat provider-agent Work Item assign Project request writes server-resolve
     'Assigned Work Item work-item-chat-assign-1 to Project project-cats-platform.',
   );
 });
+
+test('Telegram provider-agent Work triage update preserves transport context', async () => {
+  const now = new Date('2026-05-13T12:40:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Telegram Work item update',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const core = upsertCoreWorkItem(
+    createDefaultCoreState(),
+    {
+      id: 'work-item-telegram-update-1',
+      title: 'Telegram captured follow-up',
+      status: 'planned',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {},
+    },
+    now,
+  ).core;
+  const store = new MemoryChatStore(state);
+  await store.writeCore(core);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Boss Cat 更新 work-item-telegram-update-1 改成 ready',
+      senderName: 'Kenneth',
+    },
+    runtimeStub(),
+    new Date('2026-05-13T12:41:00.000Z'),
+    {
+      chatStore: store,
+      transport: 'telegram',
+      transportBindingId: 'telegram-binding-work-1',
+      transportLocale: 'zh-Hant',
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      providerAgentDecisionRequester: async ({ observation }) => {
+        assert.equal(
+          observation.availableTools.some((tool) =>
+            tool.manifest.name === WORK_ITEM_UPDATE_TOOL),
+          true,
+        );
+        return {
+          contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+          kind: 'tool_request',
+          decisionId: 'decision-work-item-telegram-update-1',
+          confidence: 'high',
+          toolName: WORK_ITEM_UPDATE_TOOL,
+          target: {
+            kind: 'execution_target',
+            provider: 'claude',
+            model: 'sonnet',
+          },
+          input: {
+            status: 'ready',
+          },
+          rationaleSummary: 'The Telegram owner explicitly asked to update one Work Item.',
+        };
+      },
+    },
+  );
+
+  const persistedCore = await store.readCore();
+  const workItem = persistedCore.workItems.find((candidate) =>
+    candidate.id === 'work-item-telegram-update-1');
+  assert.equal(workItem?.status, 'ready');
+
+  const channel = requireChannel(begun.state, channelId);
+  const userMessage = channel.messages.find((message) =>
+    message.senderKind === 'user'
+    && message.body === 'Boss Cat 更新 work-item-telegram-update-1 改成 ready');
+  const resultMessage = channel.messages.find((message) =>
+    message.metadata.workItemUpdateResult);
+  assert.equal(userMessage?.metadata.transportBindingId, 'telegram-binding-work-1');
+  assert.equal(resultMessage?.metadata.event, 'work_item_update_result');
+  assert.equal(resultMessage?.body, 'Updated Work Item work-item-telegram-update-1 (ready).');
+});
