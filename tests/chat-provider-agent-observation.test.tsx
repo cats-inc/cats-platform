@@ -643,15 +643,13 @@ test('Chat provider-agent observation exposes local external tracker binding for
   });
   const observation = prepared.providerAgentObservation;
   const toolNames = observationToolNames(observation);
+  const serializedObservation = JSON.stringify(observation);
 
   assert.equal(observation?.policy.dials.toolScope, 'narrow_write');
-  assert.equal(toolNames.includes(WORK_EXTERNAL_IMPORT_ISSUE_TOOL), true);
+  assert.equal(toolNames.includes(WORK_EXTERNAL_IMPORT_ISSUE_TOOL), false);
+  assert.equal(serializedObservation.includes(WORK_EXTERNAL_IMPORT_ISSUE_TOOL), false);
   assert.equal(toolNames.includes(WORK_EXTERNAL_LINK_ISSUE_TOOL), true);
   assert.equal(toolNames.includes(WORK_EXTERNAL_UNLINK_ISSUE_TOOL), true);
-  assertObservationToolHints(observation, WORK_EXTERNAL_IMPORT_ISSUE_TOOL, [
-    /externalUrl: string/u,
-    /planned local Work Item/u,
-  ]);
   assertObservationToolHints(observation, WORK_EXTERNAL_LINK_ISSUE_TOOL, [
     /Cats re-resolves local Work refs/u,
     /Do not call external tracker APIs/u,
@@ -672,7 +670,79 @@ test('Chat provider-agent observation exposes local external tracker binding for
     observation?.contextRefs.includes('work-external-binding-external-id:123'),
     true,
   );
-  assert.equal(JSON.stringify(observation).includes(externalUrl), false);
+  assert.equal(serializedObservation.includes(externalUrl), false);
+  assert.deepEqual(validateProviderAgentBoundedObservation(observation!), []);
+});
+
+test('Chat provider-agent observation exposes external issue import for explicit imports', () => {
+  const now = new Date('2026-05-13T10:15:00.000Z');
+  let state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Work external issue import',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const bossCatId = state.cats[0]?.id;
+  if (!bossCatId) {
+    throw new Error('Expected Boss Cat id.');
+  }
+  state = {
+    ...state,
+    bossCatId,
+  };
+  const channelId = state.selectedChannelId;
+  const core = createDefaultCoreState();
+
+  const externalUrl = 'https://github.com/cats-inc/cats-platform/issues/321';
+  const { prepared } = appendAndPrepare({
+    state,
+    channelId,
+    body: `Boss Cat import ${externalUrl} into Cats Work`,
+    now: new Date('2026-05-13T10:16:00.000Z'),
+    core,
+    providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+  });
+  const observation = prepared.providerAgentObservation;
+  const toolNames = observationToolNames(observation);
+  const serializedObservation = JSON.stringify(observation);
+
+  assert.equal(observation?.policy.dials.toolScope, 'narrow_write');
+  assert.deepEqual(
+    toolNames.filter((toolName) => toolName.startsWith('work.external.')),
+    [WORK_EXTERNAL_IMPORT_ISSUE_TOOL],
+  );
+  assert.equal(serializedObservation.includes(WORK_EXTERNAL_LINK_ISSUE_TOOL), false);
+  assert.equal(serializedObservation.includes(WORK_EXTERNAL_UNLINK_ISSUE_TOOL), false);
+  assertObservationToolHints(observation, WORK_EXTERNAL_IMPORT_ISSUE_TOOL, [
+    /externalUrl: string/u,
+    /planned local Work Item/u,
+  ]);
+  assert.equal(
+    observation?.contextRefs.includes('work-external-import-operation:import'),
+    true,
+  );
+  assert.equal(
+    observation?.contextRefs.includes('work-external-import-provider:github'),
+    true,
+  );
+  assert.equal(
+    observation?.contextRefs.includes('work-external-import-external-id:321'),
+    true,
+  );
+  assert.equal(serializedObservation.includes(externalUrl), false);
   assert.deepEqual(validateProviderAgentBoundedObservation(observation!), []);
 });
 

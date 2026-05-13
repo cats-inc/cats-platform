@@ -74,6 +74,7 @@ import {
   createCatProductIntentProposalToolManifest,
 } from '../../shared/catProductIntentProposal.js';
 import {
+  WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
@@ -82,6 +83,7 @@ import {
   createPhaseScopedWorkToolManifests,
   type PhaseScopedWorkToolName,
   type WorkToolCapabilityProfile,
+  type WorkToolPhase,
 } from '../../../work/shared/workToolSurface.js';
 import {
   createPhaseScopedWorkToolObservation,
@@ -92,6 +94,9 @@ import {
 import {
   resolveWorkExternalBindingPhase,
 } from '../../../work/shared/workExternalBindingPhase.js';
+import {
+  resolveWorkExternalIssueImportPhase,
+} from '../../../work/shared/workExternalIssueImportPhase.js';
 import {
   resolveEffectiveChatNaturalProductIntentMode,
   type ChatNaturalProductIntentMode,
@@ -611,6 +616,48 @@ function buildProviderAgentObservationForTurn(input: {
   const workExternalBindingPhase = resolveWorkExternalBindingPhase({
     rawText: input.payload.body,
   });
+  const workExternalIssueImportPhase = workExternalBindingPhase.kind === 'matched'
+    ? { kind: 'none' as const }
+    : resolveWorkExternalIssueImportPhase({
+        rawText: input.payload.body,
+      });
+  const workExternalIssueImportPolicyDecision = workExternalIssueImportPhase.kind === 'matched'
+    ? decideSupervisionPolicy({
+        actionId: `${input.userMessage.id}:work-external-issue-import-observation`,
+        runId: `chat:${input.channelId}`,
+        actorRef: providerAgentActorRef,
+        targetRef: WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+        providerRef: capabilityProfile.profileId,
+        actionType: 'work_external_issue_import',
+        evaluatedAt: input.nowIso,
+        capabilityAssessment: capabilityProfile.assessment,
+        toolManifest: findPhaseScopedWorkToolManifest(WORK_EXTERNAL_IMPORT_ISSUE_TOOL),
+      })
+    : null;
+  const workExternalIssueImportToolObservation = createFilteredWorkToolObservation({
+    enabled: workExternalIssueImportPhase.kind === 'matched'
+      && Boolean(input.core)
+      && workExternalIssueImportPolicyDecision?.status === 'applied',
+    phase: 'external_tracker_binding',
+    capabilityProfileKind: capabilityProfile.kind,
+    policy: workExternalIssueImportPolicyDecision?.status === 'applied'
+      ? workExternalIssueImportPolicyDecision.result.policy
+      : policyDecision.result.policy,
+    toolNames: [WORK_EXTERNAL_IMPORT_ISSUE_TOOL],
+  });
+  const workExternalIssueImportContextRefs =
+    workExternalIssueImportPhase.kind === 'matched'
+      && workExternalIssueImportToolObservation.descriptors.length > 0
+      ? [
+        `work-external-import-phase:${workExternalIssueImportPhase.phase}`,
+        'work-external-import-operation:import',
+        `work-external-import-provider:${workExternalIssueImportPhase.external.provider}`,
+        `work-external-import-external-type:${
+          workExternalIssueImportPhase.external.externalType ?? 'issue'
+        }`,
+        `work-external-import-external-id:${workExternalIssueImportPhase.external.externalId}`,
+      ]
+      : [];
   const workExternalBindingPolicyDecision = workExternalBindingPhase.kind === 'matched'
     ? decideSupervisionPolicy({
         actionId: `${input.userMessage.id}:work-external-binding-observation`,
@@ -765,19 +812,37 @@ function buildProviderAgentObservationForTurn(input: {
         ...workItemAssignProjectContextRefs,
       ]
       : [];
-  const observationPolicy = workExternalBindingPolicyDecision?.status === 'applied'
+  let observationPolicy = policyDecision.result.policy;
+  if (
+    workItemAssignProjectPolicyDecision?.status === 'applied'
+    && workItemAssignProjectToolObservation.descriptors.length > 0
+  ) {
+    observationPolicy = workItemAssignProjectPolicyDecision.result.policy;
+  }
+  if (
+    workItemUpdatePolicyDecision?.status === 'applied'
+    && workItemUpdateToolObservation.descriptors.length > 0
+  ) {
+    observationPolicy = workItemUpdatePolicyDecision.result.policy;
+  }
+  if (
+    workProjectCreatePolicyDecision?.status === 'applied'
+    && workProjectCreateToolObservation.descriptors.length > 0
+  ) {
+    observationPolicy = workProjectCreatePolicyDecision.result.policy;
+  }
+  if (
+    workExternalIssueImportPolicyDecision?.status === 'applied'
+    && workExternalIssueImportToolObservation.descriptors.length > 0
+  ) {
+    observationPolicy = workExternalIssueImportPolicyDecision.result.policy;
+  }
+  if (
+    workExternalBindingPolicyDecision?.status === 'applied'
     && workExternalBindingToolObservation.descriptors.length > 0
-    ? workExternalBindingPolicyDecision.result.policy
-    : workProjectCreatePolicyDecision?.status === 'applied'
-      && workProjectCreateToolObservation.descriptors.length > 0
-        ? workProjectCreatePolicyDecision.result.policy
-        : workItemUpdatePolicyDecision?.status === 'applied'
-          && workItemUpdateToolObservation.descriptors.length > 0
-            ? workItemUpdatePolicyDecision.result.policy
-            : workItemAssignProjectPolicyDecision?.status === 'applied'
-              && workItemAssignProjectToolObservation.descriptors.length > 0
-                ? workItemAssignProjectPolicyDecision.result.policy
-                : policyDecision.result.policy;
+  ) {
+    observationPolicy = workExternalBindingPolicyDecision.result.policy;
+  }
 
   return buildChatProviderAgentObservation({
     state: input.state,
@@ -796,6 +861,7 @@ function buildProviderAgentObservationForTurn(input: {
         : []),
       ...workIntakeToolObservation.descriptors,
       ...workExecutionPreparationToolObservation.descriptors,
+      ...workExternalIssueImportToolObservation.descriptors,
       ...workExternalBindingToolObservation.descriptors,
       ...workTriageToolObservation.descriptors,
       ...workProjectCreateToolObservation.descriptors,
@@ -805,6 +871,7 @@ function buildProviderAgentObservationForTurn(input: {
     additionalContextRefs: [
       ...workIntakeSourceContext.contextRefs,
       ...workExecutionPreparationContextRefs,
+      ...workExternalIssueImportContextRefs,
       ...workExternalBindingContextRefs,
       ...workTriageObservationContextRefs,
       ...workProjectCreateContextRefs,
@@ -822,6 +889,7 @@ function buildProviderAgentObservationForTurn(input: {
         : []),
       ...workIntakeToolObservation.invariants,
       ...workExecutionPreparationToolObservation.invariants,
+      ...workExternalIssueImportToolObservation.invariants,
       ...workExternalBindingToolObservation.invariants,
       ...workTriageToolObservation.invariants,
       ...workProjectCreateToolObservation.invariants,
@@ -965,7 +1033,7 @@ function createWorkTriageToolObservation(input: {
 
 function createFilteredWorkToolObservation(input: {
   enabled: boolean;
-  phase: 'triage';
+  phase: WorkToolPhase;
   capabilityProfileKind: 'strong_agent' | 'weak_worker' | 'unknown';
   policy: SupervisionPolicy;
   toolNames: PhaseScopedWorkToolName[];
@@ -978,11 +1046,49 @@ function createFilteredWorkToolObservation(input: {
     policyToolScope: input.policy.toolScope,
   });
   const allowedToolNames = new Set(input.toolNames);
+  const descriptors = observation.descriptors.filter((descriptor) =>
+    allowedToolNames.has(descriptor.manifest.name as PhaseScopedWorkToolName));
+  const visibleToolNames = new Set(descriptors.map((descriptor) =>
+    descriptor.manifest.name as PhaseScopedWorkToolName));
   return {
-    descriptors: observation.descriptors.filter((descriptor) =>
-      allowedToolNames.has(descriptor.manifest.name as PhaseScopedWorkToolName)),
-    invariants: observation.invariants,
+    descriptors,
+    invariants: createFilteredWorkToolInvariants({
+      phase: input.phase,
+      visibleToolNames,
+      fallbackInvariants: observation.invariants,
+    }),
   };
+}
+
+function createFilteredWorkToolInvariants(input: {
+  phase: WorkToolPhase;
+  visibleToolNames: ReadonlySet<PhaseScopedWorkToolName>;
+  fallbackInvariants: string[];
+}): string[] {
+  if (input.phase !== 'external_tracker_binding') {
+    return input.fallbackInvariants;
+  }
+
+  const invariants: string[] = [];
+  if (input.visibleToolNames.has(WORK_EXTERNAL_IMPORT_ISSUE_TOOL)) {
+    invariants.push(
+      `${WORK_EXTERNAL_IMPORT_ISSUE_TOOL} may read one external issue and create a planned local Work Item only.`,
+    );
+  }
+  if (
+    input.visibleToolNames.has(WORK_EXTERNAL_LINK_ISSUE_TOOL)
+    || input.visibleToolNames.has(WORK_EXTERNAL_UNLINK_ISSUE_TOOL)
+  ) {
+    invariants.push(
+      `${WORK_EXTERNAL_LINK_ISSUE_TOOL} and ${WORK_EXTERNAL_UNLINK_ISSUE_TOOL} write local binding metadata only.`,
+    );
+  }
+  if (invariants.length > 0) {
+    invariants.push(
+      'Do not write external trackers or imply bidirectional sync from this tool surface.',
+    );
+  }
+  return invariants;
 }
 
 function createWorkExternalBindingToolObservation(input: {
@@ -990,12 +1096,15 @@ function createWorkExternalBindingToolObservation(input: {
   capabilityProfileKind: 'strong_agent' | 'weak_worker' | 'unknown';
   policy: SupervisionPolicy;
 }): ReturnType<typeof createPhaseScopedWorkToolObservation> {
-  return createPhaseScopedWorkToolObservation({
+  return createFilteredWorkToolObservation({
     enabled: input.enabled,
     phase: 'external_tracker_binding',
-    capabilityProfile: resolveWorkToolCapabilityProfile(input.capabilityProfileKind),
-    parentToolScope: input.policy.toolScope,
-    policyToolScope: input.policy.toolScope,
+    capabilityProfileKind: input.capabilityProfileKind,
+    policy: input.policy,
+    toolNames: [
+      WORK_EXTERNAL_LINK_ISSUE_TOOL,
+      WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+    ],
   });
 }
 

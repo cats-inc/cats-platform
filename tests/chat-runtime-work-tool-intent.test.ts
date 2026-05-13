@@ -14,6 +14,7 @@ import {
 import type { DispatchRequest } from '../src/products/chat/state/room-routing/runtime.js';
 import type { RuntimeClient } from '../src/platform/runtime/client.js';
 import {
+  WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
@@ -275,6 +276,53 @@ test('runtime dispatch forwards read-only Work intake intent for todo capture tu
     'work.phase.intake',
     'work.capability.strong_agent',
     'work.tool_scope.read_only',
+  ]);
+  assert.equal(toolIntent.strict, true);
+});
+
+test('runtime dispatch forwards Work external issue import intent metadata', async () => {
+  const harness = createDispatchHarness(
+    'Boss Cat import https://github.com/cats-inc/platform/issues/42 into Cats Work.',
+  );
+  const runtimeClient = createRuntimeStub();
+
+  await executeDispatch(
+    harness.state,
+    harness.channelId,
+    harness.request,
+    runtimeClient,
+    new Date('2026-05-13T00:00:03.000Z'),
+    'web',
+    null,
+    undefined,
+    createDefaultCoreState(),
+  );
+
+  const toolIntent = runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent as
+    | {
+        allowedTools?: string[];
+        requiredCapabilities?: string[];
+        strict?: boolean;
+        toolDescriptions?: Array<{ name: string; description: string }>;
+      }
+    | undefined;
+  assert.ok(toolIntent);
+  assert.deepEqual(toolIntent.allowedTools, [
+    WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+  ]);
+  assert.deepEqual(
+    toolIntent.toolDescriptions?.map((tool) => tool.name),
+    toolIntent.allowedTools,
+  );
+  assert.ok(
+    toolIntent.toolDescriptions?.some((tool) =>
+      tool.name === WORK_EXTERNAL_IMPORT_ISSUE_TOOL
+      && tool.description.includes('Import one external issue tracker record')),
+  );
+  assert.deepEqual(toolIntent.requiredCapabilities, [
+    'work.phase.external_tracker_binding',
+    'work.capability.strong_agent',
+    'work.tool_scope.narrow_write',
   ]);
   assert.equal(toolIntent.strict, true);
 });

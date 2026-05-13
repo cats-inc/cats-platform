@@ -2,14 +2,26 @@ import type {
   OrchestratorToolIntentResolveInput,
   ToolIntentManifest,
 } from '../../../platform/orchestration/contracts.js';
-import type { WorkToolCapabilityProfile, WorkToolPhase } from '../../work/shared/workToolSurface.js';
+import {
+  WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+  WORK_EXTERNAL_LINK_ISSUE_TOOL,
+  WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+  type WorkToolCapabilityProfile,
+  type WorkToolPhase,
+} from '../../work/shared/workToolSurface.js';
 import {
   WORK_MCP_PROFILE_ID,
   resolvePhaseScopedWorkToolIntentManifest,
 } from '../../work/shared/workToolIntent.js';
 import { resolveWorkExecutionPreparationPhase } from '../../work/shared/workExecutionPreparationPhase.js';
 import { resolveWorkExternalBindingPhase } from '../../work/shared/workExternalBindingPhase.js';
+import { resolveWorkExternalIssueImportPhase } from '../../work/shared/workExternalIssueImportPhase.js';
 import type { ChatState } from '../api/contracts.js';
+
+interface WorkToolIntentPhaseResolution {
+  phase: WorkToolPhase;
+  toolNames?: string[];
+}
 
 const TRIAGE_CUE_PATTERNS = [
   /\bcreate\s+(?:a\s+)?project\b/u,
@@ -49,37 +61,54 @@ export function resolveChatWorkToolIntentManifest(
     return undefined;
   }
 
-  const phase = resolveWorkToolIntentPhase(input);
-  if (!phase) {
+  const resolution = resolveWorkToolIntentPhase(input);
+  if (!resolution) {
     return null;
   }
 
   const capabilityProfile = resolveWorkCapabilityProfile(input);
-  if (phase === 'execution_preparation' && capabilityProfile !== 'boss_cat') {
+  if (resolution.phase === 'execution_preparation' && capabilityProfile !== 'boss_cat') {
     return null;
   }
 
-  const toolScope = phase === 'intake' ? 'read_only' : 'narrow_write';
-  return resolvePhaseScopedWorkToolIntentManifest({
-    profileId: WORK_MCP_PROFILE_ID,
-    phase,
-    capabilityProfile,
-    parentToolScope: toolScope,
-    policyToolScope: toolScope,
-    channelId: input.channel.id,
-    catId: input.catId,
-    participantKind: input.participantKind,
-    roomMode: input.roomMode,
-    transport: input.transport,
-  });
+  const toolScope = resolution.phase === 'intake' ? 'read_only' : 'narrow_write';
+  return restrictToolIntentManifest(
+    resolvePhaseScopedWorkToolIntentManifest({
+      profileId: WORK_MCP_PROFILE_ID,
+      phase: resolution.phase,
+      capabilityProfile,
+      parentToolScope: toolScope,
+      policyToolScope: toolScope,
+      channelId: input.channel.id,
+      catId: input.catId,
+      participantKind: input.participantKind,
+      roomMode: input.roomMode,
+      transport: input.transport,
+    }),
+    resolution.toolNames,
+  );
 }
 
 function resolveWorkToolIntentPhase(
   input: OrchestratorToolIntentResolveInput<ChatState>,
-): WorkToolPhase | null {
+): WorkToolIntentPhaseResolution | null {
+  const externalImport = resolveWorkExternalIssueImportPhase({ rawText: input.body });
+  if (externalImport.kind === 'matched') {
+    return {
+      phase: externalImport.phase,
+      toolNames: [WORK_EXTERNAL_IMPORT_ISSUE_TOOL],
+    };
+  }
+
   const externalBinding = resolveWorkExternalBindingPhase({ rawText: input.body });
   if (externalBinding.kind === 'matched') {
-    return externalBinding.phase;
+    return {
+      phase: externalBinding.phase,
+      toolNames: [
+        WORK_EXTERNAL_LINK_ISSUE_TOOL,
+        WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+      ],
+    };
   }
 
   const executionPreparation = resolveWorkExecutionPreparationPhase({
@@ -87,17 +116,35 @@ function resolveWorkToolIntentPhase(
     addressedBossCat: isBossCatTarget(input),
   });
   if (executionPreparation.kind === 'matched') {
-    return executionPreparation.phase;
+    return { phase: executionPreparation.phase };
   }
 
   if (matchesTriageIntent(input.body)) {
-    return 'triage';
+    return { phase: 'triage' };
   }
   if (matchesIntakeIntent(input.body)) {
-    return 'intake';
+    return { phase: 'intake' };
   }
 
   return null;
+}
+
+function restrictToolIntentManifest(
+  manifest: ToolIntentManifest | null,
+  toolNames: string[] | undefined,
+): ToolIntentManifest | null {
+  if (!manifest || !toolNames) {
+    return manifest;
+  }
+
+  const allowedToolNames = new Set(toolNames);
+  return {
+    ...manifest,
+    allowedTools: (manifest.allowedTools ?? [])
+      .filter((toolName) => allowedToolNames.has(toolName)),
+    toolDescriptions: (manifest.toolDescriptions ?? [])
+      .filter((description) => allowedToolNames.has(description.name)),
+  };
 }
 
 function resolveWorkCapabilityProfile(

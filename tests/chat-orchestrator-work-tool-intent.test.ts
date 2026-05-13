@@ -182,10 +182,32 @@ test('Chat orchestrator projects Work external tracker tool intent for explicit 
 
   assert.ok(target);
   assert.deepEqual(target.toolIntent?.allowedTools, [
-    WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
     WORK_EXTERNAL_LINK_ISSUE_TOOL,
     WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   ]);
+  assert.deepEqual(target.toolIntent?.requiredCapabilities, [
+    'work.phase.external_tracker_binding',
+    'work.capability.strong_agent',
+    'work.tool_scope.narrow_write',
+  ]);
+  assert.equal(target.toolIntent?.context?.participantKind, 'cat');
+  assert.equal(target.toolIntent?.context?.transport, 'web');
+});
+
+test('Chat orchestrator projects Work external import tool intent for issue import turns', () => {
+  const plan = createWorkMemoryPlan(
+    'Import https://github.com/cats-inc/platform/issues/42 into Cats Work.',
+  );
+  const target = plan.routing.initialTargets[0];
+
+  assert.ok(target);
+  assert.deepEqual(target.toolIntent?.allowedTools, [
+    WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+  ]);
+  assert.deepEqual(
+    target.toolIntent?.toolDescriptions?.map((tool) => tool.name),
+    target.toolIntent?.allowedTools,
+  );
   assert.deepEqual(target.toolIntent?.requiredCapabilities, [
     'work.phase.external_tracker_binding',
     'work.capability.strong_agent',

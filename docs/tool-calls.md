@@ -142,8 +142,8 @@ choice; confirmed choices call the `work.item.capture` delegate server-side and
 write draft Work Items. A product-owned `work-memory` tool-intent projection
 now maps phase/capability/policy context into runtime-facing Work tool names.
 Chat's orchestrator plan projects explicit Work triage, external tracker
-binding, and Boss Cat execution-preparation requests into target `toolIntent`,
-and runtime dispatch forwards the matched intent in
+binding, external issue import, and Boss Cat execution-preparation requests
+into target `toolIntent`, and runtime dispatch forwards the matched intent in
 `sendMessage.context.metadata.toolIntent`. The manifest carries both
 `allowedTools` and `toolDescriptions` for runtime adapters. `POST /api/runtime/mcp` rejects
 product-owned Work `tools/call` requests before proxying to `cats-runtime`.
@@ -179,6 +179,14 @@ Explicit Chat turns that name local `work-item-*` or `project-*` refs can expose
 read-only `work.project.lookup` in the provider-agent observation. Chat handles
 the resulting `tool_request` by calling the Work triage delegate and appending
 bounded Project candidates; this lookup path does not write Core.
+
+Explicit Chat turns with an import cue and a supported GitHub/Redmine/Bugzilla
+issue URL expose only `work.external.import_issue` in Work tool intent and
+provider-agent observations. Manual link/unlink tools stay reserved for turns
+that include a local `work-item-*` or `project-*` ref plus a binding action cue.
+Chat execution of provider-agent import `tool_request` decisions is still
+pending; owner-triggered UI/API imports already use the product-owned import
+delegate.
 
 Explicit Chat turns with create/add/new Project cues can expose
 `work.project.create` with a narrow-write policy. Chat handles that
