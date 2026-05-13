@@ -555,6 +555,7 @@ test('Chat provider-agent observation exposes local external tracker binding for
   const observation = prepared.providerAgentObservation;
   const toolNames = observationToolNames(observation);
 
+  assert.equal(observation?.policy.dials.toolScope, 'narrow_write');
   assert.equal(toolNames.includes(WORK_EXTERNAL_LINK_ISSUE_TOOL), true);
   assert.equal(toolNames.includes(WORK_EXTERNAL_UNLINK_ISSUE_TOOL), true);
   assert.equal(

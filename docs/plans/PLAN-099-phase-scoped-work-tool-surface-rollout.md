@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice aligned Chat provider-agent observation policy with explicit external binding tool exposure so local-state link/unlink turns carry a narrow-write policy instead of read-only dials. |
 | 2026-05-13 | Follow-up slice wired Chat provider-agent `work.external.link_issue` / `work.external.unlink_issue` tool requests into the local Work binding delegate, re-resolving ids from owner text before writing Core metadata. |
 | 2026-05-13 | Follow-up slice wired explicit external tracker binding requests into Chat provider-agent observations, exposing local-only link/unlink tools to strong Cats without leaking the raw external URL into observation refs. |
 | 2026-05-13 | Follow-up slice added an explicit external tracker binding phase resolver for future Chat/Telegram tool exposure, matching only local Work refs plus supported external tracker URLs. |

@@ -638,13 +638,17 @@ function buildProviderAgentObservationForTurn(input: {
         `work-external-binding-external-id:${workExternalBindingPhase.external.externalId}`,
       ]
       : [];
+  const observationPolicy = workExternalBindingPolicyDecision?.status === 'applied'
+    && workExternalBindingToolObservation.descriptors.length > 0
+    ? workExternalBindingPolicyDecision.result.policy
+    : policyDecision.result.policy;
 
   return buildChatProviderAgentObservation({
     state: input.state,
     channelId: input.channelId,
     actorRef: providerAgentActorRef,
     capabilityProfile,
-    policy: policyDecision.result.policy,
+    policy: observationPolicy,
     availableTools: [
       ...(exposeCatProductIntentProposalTool
         ? [
