@@ -434,6 +434,46 @@ test('provider-agent adapter rejects runtime decisions outside the bounded tool 
   );
 });
 
+test('provider-agent adapter rejects malformed runtime decision JSON without crashing', async () => {
+  const malformedDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 42,
+    planId: null,
+    confidence: 'medium',
+    rationaleSummary: false,
+    steps: [
+      {
+        stepId: 7,
+        summary: null,
+        action: 'respond',
+      },
+    ],
+  } as unknown as ProviderAgentDecision;
+  const runtimeClient = createRuntimeStub(malformedDecision);
+
+  await assert.rejects(
+    () => requestProviderAgentDecision({
+      runtimeClient,
+      target: {
+        provider: 'codex',
+        model: 'gpt-5.4',
+      },
+      observation: observation(),
+      supervision: {
+        product: 'cats-work',
+        surface: 'provider-agent',
+        runId: 'run-1',
+        actionId: 'action-1',
+        actorRef: 'agent:codex',
+        reason: 'semantic_decision',
+      },
+    }),
+    (error) => error instanceof ProviderAgentAdapterError
+      && error.code === 'INVALID_DECISION',
+  );
+});
+
 test('provider-agent adapter keeps direct runtime calls inside the supervision boundary', () => {
   const source = readFileSync(
     path.join(process.cwd(), 'src/platform/orchestration/providerAgentAdapter.ts'),

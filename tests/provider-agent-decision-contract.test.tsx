@@ -396,6 +396,35 @@ test('provider-agent decisions reject unsupported enum values', () => {
   ]);
 });
 
+test('provider-agent decisions reject non-string runtime JSON fields without throwing', () => {
+  const decision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 42,
+    planId: 101,
+    confidence: 'medium',
+    rationaleSummary: null,
+    steps: [
+      {
+        stepId: 7,
+        summary: false,
+        action: 'respond',
+      },
+    ],
+  } as unknown as ProviderAgentDecision;
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision,
+  }), [
+    'decisionId must be a string',
+    'planId must be a string',
+    'rationaleSummary must be a string',
+    'step.stepId must be a string',
+    'step 7 summary must be a string',
+  ]);
+});
+
 test('recovery decision must choose a platform-allowed fallback option', () => {
   const decision: ProviderAgentDecision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,

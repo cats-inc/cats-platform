@@ -456,10 +456,16 @@ function validateToolName(
   }
 }
 
-function validateRequiredString(errors: string[], field: string, value: string): void {
+function validateRequiredString(errors: string[], field: string, value: unknown): value is string {
+  if (typeof value !== 'string') {
+    errors.push(`${field} must be a string`);
+    return false;
+  }
   if (value.trim().length === 0) {
     errors.push(`${field} is required`);
+    return false;
   }
+  return true;
 }
 
 function validateEnumValue(
@@ -476,10 +482,12 @@ function validateEnumValue(
 function validateBoundedString(
   errors: string[],
   field: string,
-  value: string,
+  value: unknown,
   maxLength: number,
 ): void {
-  validateRequiredString(errors, field, value);
+  if (!validateRequiredString(errors, field, value)) {
+    return;
+  }
   if (value.length > maxLength) {
     errors.push(`${field} must be ${maxLength} characters or less`);
   }
