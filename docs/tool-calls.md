@@ -68,8 +68,8 @@ rather than duplicating every validation branch.
 | `work.item.assign_project` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.prepare_execution` | Cats Work | Product delegate, Boss Cat observation descriptor, and Chat proposal sidecar implemented | `product_internal_delegate` / future `runtime_tool` | Boss Cat execution preparation with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.task.create_from_work_item` | Cats Work | Product delegate and owner-confirmed Chat sidecar task creation implemented; direct model/runtime exposure pending | `product_internal_delegate` / future `runtime_tool` | Owner-confirmed Boss Cat execution preparation with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
-| `work.external.link_issue` | Cats Work | Product delegate, HTTP route, Work UI manual binding, URL inference, and GitHub adapter spike implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / future `runtime_tool` | Owner-approved strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
-| `work.external.unlink_issue` | Cats Work | Product delegate, HTTP route, and Work detail UI implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / future `runtime_tool` | Owner-approved strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.external.link_issue` | Cats Work | Product delegate, HTTP route, Work UI manual binding, URL inference, Chat provider-agent observation/tool-request executor, and GitHub adapter spike implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.external.unlink_issue` | Cats Work | Product delegate, HTTP route, Work detail UI, and Chat provider-agent observation/tool-request executor implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.lookup` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.create` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
@@ -153,7 +153,12 @@ proposals into owner-visible sidecars with a confirmation choice.
 `src/products/work/state/workExecutionTaskDelegate.ts` owns the pending-approval
 Task creation delegate, and Chat only calls it from an owner-confirmed
 execution-preparation sidecar choice. `src/products/work/state/workExternalBindingDelegate.ts`
-owns manual external issue binding writes, and
+owns manual external issue binding writes. Explicit Chat requests that include
+a local Work ref, supported external tracker URL, and link/unlink action cue
+are advertised to strong provider-agent observations with a narrow-write
+policy; Chat handles the resulting `tool_request` by re-resolving ids from the
+owner message before invoking the delegate. The executor writes local metadata
+only and never calls remote tracker APIs.
 `src/products/chat/state/workIntakeSourceContext.ts` maps Chat and Telegram
 turns onto the shared source context.
 
