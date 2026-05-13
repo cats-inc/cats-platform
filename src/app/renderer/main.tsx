@@ -5,9 +5,11 @@ import { QueryClientProvider } from '@tanstack/react-query';
 
 import '../../design/index.css';
 import App from './App';
+import { installCsrfFetch } from './csrfFetch';
 import { initTooltipPortal } from '../../products/chat/renderer/tooltipPortal';
 import { sharedQueryClient } from '../../products/shared/renderer/queryClient.js';
 
+installCsrfFetch();
 initTooltipPortal();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

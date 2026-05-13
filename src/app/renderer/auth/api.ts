@@ -1,4 +1,5 @@
 import type { PlatformAuthErrorCode } from '../../../platform/auth/errorCodes.js';
+import { seedCsrfToken } from '../csrfFetch';
 
 export interface PlatformAuthPrincipalSummary {
   accountId: string;
@@ -235,7 +236,9 @@ async function readPlatformAuthJsonResponse(
     const details = await readPlatformAuthApiErrorDetails(response, options);
     throw new PlatformAuthApiError(details.message, response.status, details.code);
   }
-  return (await response.json()) as PlatformAuthStatusPayload;
+  const payload = (await response.json()) as PlatformAuthStatusPayload;
+  seedCsrfToken(payload.csrfToken);
+  return payload;
 }
 
 function readRequiredCsrfToken(status: PlatformAuthStatusPayload): string {
