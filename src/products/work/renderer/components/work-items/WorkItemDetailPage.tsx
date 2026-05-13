@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -31,6 +31,7 @@ import {
   buildWorkWorkItemPath,
 } from "../../workPaths.js";
 import { formatWorkCrudMutationError } from "../workCrudErrorLabels.js";
+import { WorkItemExternalBindingDialog } from "./WorkItemExternalBindingDialog";
 import { WorkItemExternalBindingsSection } from "./WorkItemExternalBindingsSection";
 import "./work-items.css";
 
@@ -38,6 +39,7 @@ export function WorkItemDetailPage(): JSX.Element {
   const { workItemId } = useParams<{ workItemId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [externalLinkDialogOpen, setExternalLinkDialogOpen] = useState(false);
   const workItemsQuery = useWorkItemsQuery();
   const projectsQuery = useProjectsQuery();
   const missionsQuery = useMissionsQuery();
@@ -241,7 +243,10 @@ export function WorkItemDetailPage(): JSX.Element {
 
         <SubWorkItemsSection items={subWorkItems} />
 
-        <WorkItemExternalBindingsSection bindings={externalBindings} />
+        <WorkItemExternalBindingsSection
+          bindings={externalBindings}
+          onAddClick={() => setExternalLinkDialogOpen(true)}
+        />
 
         <ItemsSection
           title={t("workItemTasksTitle")}
@@ -289,6 +294,12 @@ export function WorkItemDetailPage(): JSX.Element {
           )}
         </section>
       </main>
+      {externalLinkDialogOpen ? (
+        <WorkItemExternalBindingDialog
+          workItemId={workItem.id}
+          onClose={() => setExternalLinkDialogOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

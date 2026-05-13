@@ -53,3 +53,17 @@ test('Work Item detail omits empty external tracker bindings section', () => {
 
   assert.equal(html, '');
 });
+
+test('Work Item detail can render empty external tracker binding actions', () => {
+  const html = renderToStaticMarkup(
+    <WorkItemExternalBindingsSection
+      bindings={[]}
+      onAddClick={() => {
+        // Static render only verifies the action is exposed.
+      }}
+    />,
+  );
+
+  assert.match(html, /Link issue/u);
+  assert.match(html, /No external tracker links yet\./u);
+});
