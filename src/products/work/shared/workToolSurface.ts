@@ -28,16 +28,19 @@ export type WorkToolCapabilityProfile = (typeof WORK_TOOL_CAPABILITY_PROFILE_VAL
 export const WORK_ITEM_PROPOSE_SPLIT_TOOL = 'work.item.propose_split' as const;
 export const WORK_ITEM_CAPTURE_TOOL = 'work.item.capture' as const;
 export const WORK_PROJECT_LOOKUP_TOOL = 'work.project.lookup' as const;
+export const WORK_PROJECT_CREATE_TOOL = 'work.project.create' as const;
 
 export type PhaseScopedWorkToolName =
   | typeof WORK_ITEM_PROPOSE_SPLIT_TOOL
   | typeof WORK_ITEM_CAPTURE_TOOL
-  | typeof WORK_PROJECT_LOOKUP_TOOL;
+  | typeof WORK_PROJECT_LOOKUP_TOOL
+  | typeof WORK_PROJECT_CREATE_TOOL;
 
 export const WORK_TOOL_PHASE_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, WorkToolPhase>> = {
   [WORK_ITEM_PROPOSE_SPLIT_TOOL]: 'intake',
   [WORK_ITEM_CAPTURE_TOOL]: 'intake',
   [WORK_PROJECT_LOOKUP_TOOL]: 'triage',
+  [WORK_PROJECT_CREATE_TOOL]: 'triage',
 };
 
 export const WORK_TOOL_ALLOWED_CAPABILITY_PROFILES_BY_NAME: Readonly<
@@ -46,6 +49,7 @@ export const WORK_TOOL_ALLOWED_CAPABILITY_PROFILES_BY_NAME: Readonly<
   [WORK_ITEM_PROPOSE_SPLIT_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_ITEM_CAPTURE_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_PROJECT_LOOKUP_TOOL]: ['boss_cat', 'strong_agent'],
+  [WORK_PROJECT_CREATE_TOOL]: ['boss_cat', 'strong_agent'],
 };
 
 export const WORK_TOOL_SERVER_RESOLVED_FIELDS = [
@@ -191,6 +195,28 @@ export interface WorkProjectLookupResult {
   projects: WorkProjectLookupProject[];
 }
 
+export const WORK_PROJECT_CREATE_STATUS_VALUES = [
+  'planned',
+  'active',
+  'paused',
+] as const;
+
+export type WorkProjectCreateStatus = (typeof WORK_PROJECT_CREATE_STATUS_VALUES)[number];
+
+export interface WorkProjectCreateInput {
+  title: string;
+  summary?: string;
+  status?: WorkProjectCreateStatus;
+  repoPath?: string;
+  primaryConversationId?: string;
+}
+
+export interface WorkProjectCreateResult {
+  projectId: string;
+  status: WorkProjectCreateStatus;
+  created: boolean;
+}
+
 export interface PhaseScopedWorkToolFilterInput {
   phase: WorkToolPhase;
   capabilityProfile?: WorkToolCapabilityProfile;
@@ -225,6 +251,17 @@ export function createPhaseScopedWorkToolManifests(): SupervisedToolManifest[] {
       approval: 'never',
       failureCodes: [WORK_TOOL_ERROR_CODES.schemaInvalid],
     }),
+    createManifest({
+      name: WORK_PROJECT_CREATE_TOOL,
+      description: 'Create one Cats Work Project during triage.',
+      sideEffect: 'local_state',
+      preflight: 'required',
+      approval: 'policy',
+      failureCodes: [
+        WORK_TOOL_ERROR_CODES.schemaInvalid,
+        WORK_TOOL_ERROR_CODES.precheckFailed,
+      ],
+    }),
   ];
 }
 
@@ -233,6 +270,7 @@ export function resolveWorkToolPhase(toolName: string): WorkToolPhase | undefine
     toolName === WORK_ITEM_PROPOSE_SPLIT_TOOL
     || toolName === WORK_ITEM_CAPTURE_TOOL
     || toolName === WORK_PROJECT_LOOKUP_TOOL
+    || toolName === WORK_PROJECT_CREATE_TOOL
   ) {
     return WORK_TOOL_PHASE_BY_NAME[toolName];
   }
@@ -248,6 +286,7 @@ export function isWorkToolAllowedForCapabilityProfile(
     toolName !== WORK_ITEM_PROPOSE_SPLIT_TOOL
     && toolName !== WORK_ITEM_CAPTURE_TOOL
     && toolName !== WORK_PROJECT_LOOKUP_TOOL
+    && toolName !== WORK_PROJECT_CREATE_TOOL
   ) {
     return false;
   }
@@ -315,6 +354,21 @@ export function validateWorkProjectLookupInput(input: unknown): WorkToolValidati
     ...validateOptionalString(input, 'query', 160),
     ...validateOptionalIntegerRange(input, 'limit', 1, 20),
     ...validateOptionalBoolean(input, 'includeArchived'),
+  ];
+}
+
+export function validateWorkProjectCreateInput(input: unknown): WorkToolValidationError[] {
+  if (!isRecord(input)) {
+    return [error('type', '$', 'Work project create input must be an object.')];
+  }
+
+  return [
+    ...validateServerResolvedFields(input),
+    ...validateRequiredString(input, 'title', 160),
+    ...validateOptionalString(input, 'summary', 4000),
+    ...validateOptionalEnum(input, 'status', WORK_PROJECT_CREATE_STATUS_VALUES),
+    ...validateOptionalString(input, 'repoPath', 500),
+    ...validateOptionalString(input, 'primaryConversationId', 160),
   ];
 }
 

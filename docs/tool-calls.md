@@ -65,6 +65,7 @@ rather than duplicating every validation branch.
 | `work.item.propose_split` | Cats Work | Product delegate, strong-Cat observation descriptor, and Chat sidecar executor implemented; runtime adapter tool loop pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.capture` | Cats Work | Product delegate and owner-confirmed Chat sidecar capture implemented; direct model/runtime exposure pending | `product_internal_delegate` / future `runtime_tool` | Owner-confirmed intake / future Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.lookup` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.project.create` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
 | `show_in_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request canvas navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
 | `clear_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request parent-surface navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
@@ -138,14 +139,17 @@ Implementation entry point:
 `src/products/work/shared/workToolSurface.ts` for contracts and
 `src/products/work/shared/workIntakeSourceContext.ts` for bounded source refs.
 `src/products/work/state/workIntakeDelegate.ts` owns the product intake
-delegate, and `src/products/chat/state/workIntakeSourceContext.ts` maps Chat
-and Telegram turns onto the shared source context.
+delegate. `src/products/work/state/workTriageDelegate.ts` owns the bounded
+Project lookup/create triage delegates, and
+`src/products/chat/state/workIntakeSourceContext.ts` maps Chat and Telegram
+turns onto the shared source context.
 
 | Tool | Phase | Side effect | Approval | Evidence | Notes |
 |------|-------|-------------|----------|----------|-------|
 | `work.item.propose_split` | `intake` | `none` | `never` | `summary` | Proposes candidate Work Items from one owner Chat or Telegram source. It does not write Core. |
 | `work.item.capture` | `intake` | `local_state` | `policy` | `summary` | Captures one draft or planned Work Item from owner-provided source text. It must not create Tasks, Missions, Runs, or runtime sessions. |
 | `work.project.lookup` | `triage` | `none` | `never` | `summary` | Looks up bounded Project matches for Work Item triage. It returns project ids, titles, planning status, summary/repo/conversation refs, and linked Work Item counts. |
+| `work.project.create` | `triage` | `local_state` | `policy` | `summary` | Creates one planned/active/paused Project during triage. It writes only a Project and one audit Activity; it must not create Work Items, Tasks, Missions, Runs, or runtime sessions. |
 
 Caller-visible intake fields are intentionally bounded: title, summary,
 source reference, Work Item kind, priority hint, draft/planned status,
@@ -156,7 +160,10 @@ reject execution statuses such as `in_progress`, `completed`, `cancelled`, and
 `archived` for intake capture.
 
 Caller-visible triage lookup fields are `query`, `limit`, and
-`includeArchived`. Project ids and counts are always server-resolved.
+`includeArchived`. Caller-visible triage create fields are `title`, `summary`,
+`status`, `repoPath`, and `primaryConversationId`; create status is bounded to
+`planned`, `active`, or `paused`. Project ids and counts are always
+server-resolved.
 
 ## `declare_artifact`
 
