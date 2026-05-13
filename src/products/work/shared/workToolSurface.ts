@@ -1,0 +1,506 @@
+import {
+  DEFAULT_SUPERVISION_SCHEMA_VERSION,
+  type SupervisedToolManifest,
+  type SupervisedToolSideEffect,
+  type SupervisedToolApproval,
+  type SupervisedToolPreflight,
+} from '../../../platform/supervision/contracts.js';
+import type { SupervisionRejectionCode } from '../../../platform/supervision/errors.js';
+
+export const WORK_TOOL_PHASE_VALUES = [
+  'intake',
+  'triage',
+  'execution_preparation',
+  'external_tracker_binding',
+] as const;
+
+export type WorkToolPhase = (typeof WORK_TOOL_PHASE_VALUES)[number];
+
+export const WORK_TOOL_CAPABILITY_PROFILE_VALUES = [
+  'boss_cat',
+  'strong_agent',
+  'weak_worker',
+  'unknown',
+] as const;
+
+export type WorkToolCapabilityProfile = (typeof WORK_TOOL_CAPABILITY_PROFILE_VALUES)[number];
+
+export const WORK_ITEM_PROPOSE_SPLIT_TOOL = 'work.item.propose_split' as const;
+export const WORK_ITEM_CAPTURE_TOOL = 'work.item.capture' as const;
+
+export type PhaseScopedWorkToolName =
+  | typeof WORK_ITEM_PROPOSE_SPLIT_TOOL
+  | typeof WORK_ITEM_CAPTURE_TOOL;
+
+export const WORK_TOOL_PHASE_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, WorkToolPhase>> = {
+  [WORK_ITEM_PROPOSE_SPLIT_TOOL]: 'intake',
+  [WORK_ITEM_CAPTURE_TOOL]: 'intake',
+};
+
+export const WORK_TOOL_ALLOWED_CAPABILITY_PROFILES_BY_NAME: Readonly<
+  Record<PhaseScopedWorkToolName, readonly WorkToolCapabilityProfile[]>
+> = {
+  [WORK_ITEM_PROPOSE_SPLIT_TOOL]: ['boss_cat', 'strong_agent'],
+  [WORK_ITEM_CAPTURE_TOOL]: ['boss_cat', 'strong_agent'],
+};
+
+export const WORK_TOOL_SERVER_RESOLVED_FIELDS = [
+  'workItemId',
+  'projectId',
+  'taskId',
+  'missionId',
+  'runId',
+  'createdAt',
+  'updatedAt',
+  'createdByActorId',
+  'producerActorId',
+] as const;
+
+export const WORK_TOOL_ERROR_CODES = {
+  schemaInvalid: 'E_SCHEMA_INVALID',
+  precheckFailed: 'E_PRECHECK_FAILED',
+  toolScopeDenied: 'E_TOOL_SCOPE_DENIED',
+} as const satisfies Record<string, SupervisionRejectionCode>;
+
+export const WORK_TOOL_VALIDATION_ERROR_CODES = [
+  'required',
+  'type',
+  'blank',
+  'too_long',
+  'unsupported_value',
+  'server_resolved_field',
+  'bounds',
+] as const;
+
+export type WorkToolValidationErrorCode = (typeof WORK_TOOL_VALIDATION_ERROR_CODES)[number];
+
+export interface WorkToolValidationError {
+  code: WorkToolValidationErrorCode;
+  field: string;
+  message: string;
+}
+
+export const WORK_ITEM_KIND_VALUES = [
+  'todo',
+  'bug',
+  'issue',
+  'story',
+  'requirement',
+  'epic',
+  'defect',
+  'note',
+] as const;
+
+export type WorkItemKind = (typeof WORK_ITEM_KIND_VALUES)[number];
+
+export const WORK_ITEM_PRIORITY_HINT_VALUES = [
+  'urgent',
+  'high',
+  'medium',
+  'low',
+] as const;
+
+export type WorkItemPriorityHint = (typeof WORK_ITEM_PRIORITY_HINT_VALUES)[number];
+
+export const WORK_ITEM_CAPTURE_STATUS_VALUES = [
+  'draft',
+  'planned',
+] as const;
+
+export type WorkItemCaptureStatus = (typeof WORK_ITEM_CAPTURE_STATUS_VALUES)[number];
+
+export const WORK_TOOL_SOURCE_SURFACE_VALUES = [
+  'chat',
+  'telegram',
+] as const;
+
+export type WorkToolSourceSurface = (typeof WORK_TOOL_SOURCE_SURFACE_VALUES)[number];
+
+export interface WorkItemSourceRef {
+  surface: WorkToolSourceSurface;
+  conversationId?: string;
+  channelId?: string;
+  transportBindingId?: string;
+  sourceMessageId?: string;
+  sourceText?: string;
+}
+
+export interface WorkItemCaptureInput {
+  title: string;
+  source: WorkItemSourceRef;
+  summary?: string;
+  kind?: WorkItemKind;
+  priority?: WorkItemPriorityHint;
+  status?: WorkItemCaptureStatus;
+  suggestedProjectTitle?: string;
+  openQuestions?: string[];
+}
+
+export interface WorkItemCaptureResult {
+  workItemId: string;
+  status: WorkItemCaptureStatus;
+  created: boolean;
+  sourceRef: WorkItemSourceRef;
+}
+
+export interface WorkItemProposeSplitInput {
+  source: WorkItemSourceRef;
+  maxItems?: number;
+  defaultKind?: WorkItemKind;
+  defaultPriority?: WorkItemPriorityHint;
+}
+
+export interface WorkItemSplitCandidate {
+  tempId: string;
+  title: string;
+  summary?: string;
+  kind?: WorkItemKind;
+  priority?: WorkItemPriorityHint;
+  confidence: number;
+  sourceExcerpt?: string;
+  suggestedProjectTitle?: string;
+  openQuestions?: string[];
+}
+
+export interface WorkItemProposeSplitResult {
+  candidates: WorkItemSplitCandidate[];
+  sourceRef: WorkItemSourceRef;
+}
+
+export interface PhaseScopedWorkToolFilterInput {
+  phase: WorkToolPhase;
+  capabilityProfile?: WorkToolCapabilityProfile;
+}
+
+export function createPhaseScopedWorkToolManifests(): SupervisedToolManifest[] {
+  return [
+    createManifest({
+      name: WORK_ITEM_PROPOSE_SPLIT_TOOL,
+      description: 'Propose candidate Work Items from one owner Chat or Telegram source.',
+      sideEffect: 'none',
+      preflight: 'available',
+      approval: 'never',
+      failureCodes: [WORK_TOOL_ERROR_CODES.schemaInvalid],
+    }),
+    createManifest({
+      name: WORK_ITEM_CAPTURE_TOOL,
+      description: 'Capture one draft or planned Work Item from owner-provided source text.',
+      sideEffect: 'local_state',
+      preflight: 'required',
+      approval: 'policy',
+      failureCodes: [
+        WORK_TOOL_ERROR_CODES.schemaInvalid,
+        WORK_TOOL_ERROR_CODES.precheckFailed,
+      ],
+    }),
+  ];
+}
+
+export function resolveWorkToolPhase(toolName: string): WorkToolPhase | undefined {
+  if (toolName === WORK_ITEM_PROPOSE_SPLIT_TOOL || toolName === WORK_ITEM_CAPTURE_TOOL) {
+    return WORK_TOOL_PHASE_BY_NAME[toolName];
+  }
+
+  return undefined;
+}
+
+export function isWorkToolAllowedForCapabilityProfile(
+  toolName: string,
+  capabilityProfile: WorkToolCapabilityProfile,
+): boolean {
+  if (toolName !== WORK_ITEM_PROPOSE_SPLIT_TOOL && toolName !== WORK_ITEM_CAPTURE_TOOL) {
+    return false;
+  }
+
+  return WORK_TOOL_ALLOWED_CAPABILITY_PROFILES_BY_NAME[toolName].includes(capabilityProfile);
+}
+
+export function filterPhaseScopedWorkToolManifests(
+  manifests: SupervisedToolManifest[],
+  input: PhaseScopedWorkToolFilterInput,
+): SupervisedToolManifest[] {
+  return manifests
+    .filter((manifest) => {
+      if (resolveWorkToolPhase(manifest.name) !== input.phase) {
+        return false;
+      }
+      if (input.capabilityProfile === undefined) {
+        return true;
+      }
+
+      return isWorkToolAllowedForCapabilityProfile(manifest.name, input.capabilityProfile);
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+export function validateWorkItemCaptureInput(input: unknown): WorkToolValidationError[] {
+  if (!isRecord(input)) {
+    return [error('type', '$', 'Work item capture input must be an object.')];
+  }
+
+  return [
+    ...validateServerResolvedFields(input),
+    ...validateRequiredString(input, 'title', 180),
+    ...validateOptionalString(input, 'summary', 4000),
+    ...validateOptionalString(input, 'suggestedProjectTitle', 160),
+    ...validateOptionalEnum(input, 'kind', WORK_ITEM_KIND_VALUES),
+    ...validateOptionalEnum(input, 'priority', WORK_ITEM_PRIORITY_HINT_VALUES),
+    ...validateOptionalEnum(input, 'status', WORK_ITEM_CAPTURE_STATUS_VALUES),
+    ...validateOpenQuestions(input),
+    ...validateSourceRef(input.source, 'source'),
+  ];
+}
+
+export function validateWorkItemProposeSplitInput(input: unknown): WorkToolValidationError[] {
+  if (!isRecord(input)) {
+    return [error('type', '$', 'Work item split proposal input must be an object.')];
+  }
+
+  return [
+    ...validateServerResolvedFields(input),
+    ...validateSourceRef(input.source, 'source'),
+    ...validateOptionalIntegerRange(input, 'maxItems', 1, 20),
+    ...validateOptionalEnum(input, 'defaultKind', WORK_ITEM_KIND_VALUES),
+    ...validateOptionalEnum(input, 'defaultPriority', WORK_ITEM_PRIORITY_HINT_VALUES),
+  ];
+}
+
+function createManifest(input: {
+  name: PhaseScopedWorkToolName;
+  description: string;
+  sideEffect: SupervisedToolSideEffect;
+  preflight: SupervisedToolPreflight;
+  approval: SupervisedToolApproval;
+  failureCodes: SupervisionRejectionCode[];
+}): SupervisedToolManifest {
+  return {
+    schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,
+    name: input.name,
+    manifestVersion: '1.0',
+    description: input.description,
+    sideEffect: input.sideEffect,
+    preflight: input.preflight,
+    blocking: 'blocking',
+    cancellation: 'cooperative',
+    approval: input.approval,
+    evidence: 'summary',
+    failureCodes: input.failureCodes,
+    inputSchema: {
+      id: `${input.name}.input`,
+      version: '1.0',
+      format: 'json_schema',
+    },
+    outputSchema: {
+      id: `${input.name}.output`,
+      version: '1.0',
+      format: 'json_schema',
+    },
+  };
+}
+
+function validateSourceRef(input: unknown, field: string): WorkToolValidationError[] {
+  if (!isRecord(input)) {
+    return [error('required', field, 'Source reference is required.')];
+  }
+
+  return [
+    ...validateRequiredEnum(input, `${field}.surface`, 'surface', WORK_TOOL_SOURCE_SURFACE_VALUES),
+    ...validateOptionalString(input, 'conversationId', 160, field),
+    ...validateOptionalString(input, 'channelId', 160, field),
+    ...validateOptionalString(input, 'transportBindingId', 160, field),
+    ...validateOptionalString(input, 'sourceMessageId', 160, field),
+    ...validateOptionalString(input, 'sourceText', 4000, field),
+  ];
+}
+
+function validateServerResolvedFields(
+  input: Record<string, unknown>,
+  prefix = '',
+): WorkToolValidationError[] {
+  const errors: WorkToolValidationError[] = [];
+
+  for (const [key, value] of Object.entries(input)) {
+    const field = prefix === '' ? key : `${prefix}.${key}`;
+    if (value !== undefined && value !== null && isServerResolvedField(key)) {
+      errors.push(error(
+        'server_resolved_field',
+        field,
+        `${field} is server-resolved and must not be supplied by the caller.`,
+      ));
+      continue;
+    }
+    if (isRecord(value)) {
+      errors.push(...validateServerResolvedFields(value, field));
+      continue;
+    }
+    if (Array.isArray(value)) {
+      errors.push(...validateServerResolvedArray(value, field));
+    }
+  }
+
+  return errors;
+}
+
+function validateServerResolvedArray(
+  input: unknown[],
+  prefix: string,
+): WorkToolValidationError[] {
+  const errors: WorkToolValidationError[] = [];
+
+  input.forEach((item, index) => {
+    if (isRecord(item)) {
+      errors.push(...validateServerResolvedFields(item, `${prefix}[${index}]`));
+    }
+  });
+
+  return errors;
+}
+
+function isServerResolvedField(field: string): boolean {
+  return (WORK_TOOL_SERVER_RESOLVED_FIELDS as readonly string[]).includes(field);
+}
+
+function validateRequiredString(
+  input: Record<string, unknown>,
+  key: string,
+  maxLength: number,
+  prefix = '',
+): WorkToolValidationError[] {
+  const value = input[key];
+  const field = prefix === '' ? key : `${prefix}.${key}`;
+
+  if (value === undefined || value === null) {
+    return [error('required', field, `${field} is required.`)];
+  }
+
+  return validateStringValue(value, field, maxLength, true);
+}
+
+function validateOptionalString(
+  input: Record<string, unknown>,
+  key: string,
+  maxLength: number,
+  prefix = '',
+): WorkToolValidationError[] {
+  const value = input[key];
+  const field = prefix === '' ? key : `${prefix}.${key}`;
+
+  if (value === undefined || value === null) {
+    return [];
+  }
+
+  return validateStringValue(value, field, maxLength, false);
+}
+
+function validateStringValue(
+  value: unknown,
+  field: string,
+  maxLength: number,
+  rejectBlank: boolean,
+): WorkToolValidationError[] {
+  if (typeof value !== 'string') {
+    return [error('type', field, `${field} must be a string.`)];
+  }
+  if (rejectBlank && value.trim() === '') {
+    return [error('blank', field, `${field} must not be blank.`)];
+  }
+  if (value.length > maxLength) {
+    return [error('too_long', field, `${field} must be ${maxLength} characters or fewer.`)];
+  }
+
+  return [];
+}
+
+function validateRequiredEnum<T extends readonly string[]>(
+  input: Record<string, unknown>,
+  field: string,
+  key: string,
+  values: T,
+): WorkToolValidationError[] {
+  const value = input[key];
+  if (value === undefined || value === null) {
+    return [error('required', field, `${field} is required.`)];
+  }
+  if (typeof value !== 'string' || !values.includes(value)) {
+    return [error(
+      'unsupported_value',
+      field,
+      `${field} must be one of: ${values.join(', ')}.`,
+    )];
+  }
+
+  return [];
+}
+
+function validateOptionalEnum<T extends readonly string[]>(
+  input: Record<string, unknown>,
+  key: string,
+  values: T,
+): WorkToolValidationError[] {
+  const value = input[key];
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (typeof value !== 'string' || !values.includes(value)) {
+    return [error(
+      'unsupported_value',
+      key,
+      `${key} must be one of: ${values.join(', ')}.`,
+    )];
+  }
+
+  return [];
+}
+
+function validateOptionalIntegerRange(
+  input: Record<string, unknown>,
+  key: string,
+  min: number,
+  max: number,
+): WorkToolValidationError[] {
+  const value = input[key];
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    return [error('type', key, `${key} must be an integer.`)];
+  }
+  if (value < min || value > max) {
+    return [error('bounds', key, `${key} must be between ${min} and ${max}.`)];
+  }
+
+  return [];
+}
+
+function validateOpenQuestions(input: Record<string, unknown>): WorkToolValidationError[] {
+  const value = input.openQuestions;
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    return [error('type', 'openQuestions', 'openQuestions must be an array of strings.')];
+  }
+  if (value.length > 10) {
+    return [error('bounds', 'openQuestions', 'openQuestions must contain 10 items or fewer.')];
+  }
+
+  return value.flatMap((item, index) =>
+    validateStringValue(item, `openQuestions[${index}]`, 300, true),
+  );
+}
+
+function error(
+  code: WorkToolValidationErrorCode,
+  field: string,
+  message: string,
+): WorkToolValidationError {
+  return {
+    code,
+    field,
+    message,
+  };
+}
+
+function isRecord(input: unknown): input is Record<string, unknown> {
+  return typeof input === 'object' && input !== null && !Array.isArray(input);
+}

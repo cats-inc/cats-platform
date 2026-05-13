@@ -62,6 +62,8 @@ rather than duplicating every validation branch.
 | `work.approval_gated.apply` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / future `runtime_tool` | Work supervised agent | [Work Supervised Tools](#work-supervised-tools) |
 | `work.sop.classify_text_batch` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `work.sop.ask_weak` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
+| `work.item.propose_split` | Cats Work | Contract skeleton | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.item.capture` | Cats Work | Contract skeleton | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
 | `show_in_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request canvas navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
 | `clear_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request parent-surface navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
@@ -113,6 +115,31 @@ approval, cancellation, and weak-worker boundaries.
 | `work.approval_gated.apply` | `src/platform/supervision/workSupervisedTools.ts` | `external_visible` | `always` | `summary` | Applies a mutation only after operator approval. |
 | `work.sop.classify_text_batch` | `src/platform/supervision/workSupervisedTools.ts` | `none` | `never` | `summary` | Classifies a small text batch through a strict SOP worker shell. |
 | `work.sop.ask_weak` | `src/platform/supervision/workSupervisedTools.ts` | `none` | `never` | `summary` | Asks a weak worker through a schema-required SOP shell and bounded budget. |
+
+## Phase-Scoped Work Tools
+
+These Work tools are the first contract slice from
+[ADR-105](./decisions/105-adopt-phase-scoped-work-tool-surface.md),
+[SPEC-109](./specs/SPEC-109-phase-scoped-work-tool-surface.md), and
+[PLAN-099](./plans/PLAN-099-phase-scoped-work-tool-surface-rollout.md). They
+are product-owned supervised tool contracts for Chat/Telegram Work intake; they
+are not yet exposed in live runtime tool catalogs or MCP.
+
+Implementation entry point:
+`src/products/work/shared/workToolSurface.ts`.
+
+| Tool | Phase | Side effect | Approval | Evidence | Notes |
+|------|-------|-------------|----------|----------|-------|
+| `work.item.propose_split` | `intake` | `none` | `never` | `summary` | Proposes candidate Work Items from one owner Chat or Telegram source. It does not write Core. |
+| `work.item.capture` | `intake` | `local_state` | `policy` | `summary` | Captures one draft or planned Work Item from owner-provided source text. It must not create Tasks, Missions, Runs, or runtime sessions. |
+
+Caller-visible intake fields are intentionally bounded: title, summary,
+source reference, Work Item kind, priority hint, draft/planned status,
+suggested Project title, and open questions. Callers must not supply
+server-resolved fields such as `workItemId`, `projectId`, `taskId`,
+`missionId`, `runId`, actor ids, or timestamps. Current validation helpers
+reject execution statuses such as `in_progress`, `completed`, `cancelled`, and
+`archived` for intake capture.
 
 ## `declare_artifact`
 
@@ -614,4 +641,4 @@ for the close-vs-collapse semantics.
 ---
 
 *Created: 2026-04-29*
-*Last updated: 2026-04-30*
+*Last updated: 2026-05-13*
