@@ -3,6 +3,7 @@ import {
   buildWorkApiProjectPath,
   buildWorkApiTaskPath,
   buildWorkApiWorkItemPath,
+  WORK_API_EXTERNAL_BINDINGS_PATH,
   WORK_API_PROJECTS_PATH,
   WORK_API_RAW_PROJECTS_PATH,
   WORK_API_RAW_TASKS_PATH,
@@ -22,6 +23,10 @@ import type {
 } from '../../../../core/types.js';
 import type { CoreTaskActionEnvelope } from '../../../../core/taskActionEnvelopes.js';
 import type { WorkSupervisedRunLaunchProjection } from '../../api/projection.js';
+import type {
+  WorkExternalLinkIssueInput,
+  WorkExternalLinkIssueResult,
+} from '../../shared/workToolSurface.js';
 
 export type {
   CoreProjectRecord,
@@ -160,6 +165,23 @@ export async function removeWorkItem(
     signal,
   });
   return expectJson<{ removed: boolean; workItemId: string }>(
+    response,
+    errorMessage,
+  );
+}
+
+export async function linkWorkExternalIssue(
+  input: WorkExternalLinkIssueInput,
+  errorMessage: string,
+  signal?: AbortSignal,
+): Promise<WorkExternalLinkIssueResult> {
+  const response = await fetch(WORK_API_EXTERNAL_BINDINGS_PATH, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+    signal,
+  });
+  return expectJson<WorkExternalLinkIssueResult>(
     response,
     errorMessage,
   );

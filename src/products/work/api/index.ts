@@ -59,6 +59,7 @@ import {
   type WorkWorkItemDetailProjection,
 } from './projection.js';
 import { routeWorkLinksApi } from './linksRoutes.js';
+import { routeWorkExternalBindingApi } from './externalBindingRoutes.js';
 import { routeWorkProductCrudApi } from './productCrudRoutes.js';
 import { routeWorkRunCancellationApi } from './runCancellationRoutes.js';
 import { routeWorkScheduleApi } from './scheduleRoutes.js';
@@ -377,6 +378,10 @@ export async function routeWorkApi(
 ): Promise<boolean> {
   // SPEC-090 link routes (createLink / removeLink / listLinks)
   if (await routeWorkLinksApi(context)) {
+    return true;
+  }
+
+  if (await routeWorkExternalBindingApi(context)) {
     return true;
   }
 
