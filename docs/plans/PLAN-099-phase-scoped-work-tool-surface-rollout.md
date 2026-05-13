@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice bounded provider-agent tool input hints in the observation validator so tool guidance stays compact and cannot become a raw prompt side channel. |
 | 2026-05-13 | Follow-up slice added bounded `inputHints` to provider-agent Work tool descriptors so strong models can see allowed request fields directly in observations while server-side validation remains authoritative. |
 | 2026-05-13 | Follow-up slice hardened Chat Work triage mutating sidecars to re-check owner intent cues before applying provider-agent `work.project.create`, `work.item.update`, or `work.item.assign_project` decisions. |
 | 2026-05-13 | Follow-up slice added retry-dispatch coverage for provider-agent Work triage update sidecars, so rerunning an owner message preserves the same supervised Work write path. |

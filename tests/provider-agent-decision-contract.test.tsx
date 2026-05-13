@@ -149,6 +149,30 @@ test('bounded observation rejects raw-content summaries and oversized text', () 
   ]);
 });
 
+test('bounded observation rejects oversized tool input hints', () => {
+  const input = observation();
+  input.availableTools[0] = {
+    ...input.availableTools[0]!,
+    inputHints: [
+      'x'.repeat(401),
+      '',
+      'Use only server-resolved ids.',
+      'Keep writes bounded.',
+      'Preserve source context.',
+      'Do not execute work.',
+      'Return compact summaries.',
+      'Respect policy dials.',
+      'Extra hint past the contract.',
+    ],
+  };
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(input), [
+    'availableTools[0].inputHints must contain 8 entries or fewer',
+    'availableTools[0].inputHints[0] must be 400 characters or less',
+    'availableTools[0].inputHints[1] is required',
+  ]);
+});
+
 test('tool requests and semantic-plan steps cannot use tools outside the bounded surface', () => {
   const input = observation();
   const toolRequest: ProviderAgentDecision = {

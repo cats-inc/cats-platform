@@ -12,6 +12,8 @@ import type {
 export const PROVIDER_AGENT_DECISION_CONTRACT_VERSION = 1;
 export const PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH = 280;
 export const PROVIDER_AGENT_MAX_GOAL_LENGTH = 2000;
+export const PROVIDER_AGENT_MAX_TOOL_INPUT_HINTS = 8;
+export const PROVIDER_AGENT_MAX_TOOL_INPUT_HINT_LENGTH = 400;
 
 export type ProviderAgentDecisionConfidence = 'low' | 'medium' | 'high';
 export type ProviderAgentTaskRisk = 'low' | 'medium' | 'high';
@@ -153,6 +155,9 @@ export function validateProviderAgentBoundedObservation(
     !== observation.availableTools.length) {
     errors.push('availableTools must not contain duplicate manifest names');
   }
+  observation.availableTools.forEach((tool, index) => {
+    validateToolDescriptor(errors, tool, index);
+  });
 
   for (const summary of observation.summaries) {
     validateObservationSummary(errors, summary);
@@ -257,6 +262,32 @@ function validateRecoveryDecision(
       `recovery selectedFallback ${decision.selectedFallback} is outside allowedFallbacks`,
     );
   }
+}
+
+function validateToolDescriptor(
+  errors: string[],
+  descriptor: ProviderAgentToolDescriptor,
+  index: number,
+): void {
+  if (!descriptor.inputHints) {
+    return;
+  }
+
+  if (descriptor.inputHints.length > PROVIDER_AGENT_MAX_TOOL_INPUT_HINTS) {
+    errors.push(
+      `availableTools[${index}].inputHints must contain `
+      + `${PROVIDER_AGENT_MAX_TOOL_INPUT_HINTS} entries or fewer`,
+    );
+  }
+
+  descriptor.inputHints.forEach((hint, hintIndex) => {
+    validateBoundedString(
+      errors,
+      `availableTools[${index}].inputHints[${hintIndex}]`,
+      hint,
+      PROVIDER_AGENT_MAX_TOOL_INPUT_HINT_LENGTH,
+    );
+  });
 }
 
 function validateObservationSummary(
