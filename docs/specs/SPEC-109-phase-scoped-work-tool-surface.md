@@ -187,10 +187,13 @@ The status surface shall remain deliberately narrow:
 
 ### External Tracker Binding Shape
 
-External tracker integration shall use binding metadata equivalent to:
+External tracker integration shall use the metadata key
+`externalWorkBindings` with `schemaVersion: 1` and binding metadata equivalent
+to:
 
 ```ts
 interface ExternalWorkBinding {
+  schemaVersion: 1;
   localKind: 'project' | 'work_item';
   localId: string;
   provider: 'github' | 'gitlab' | 'gitea' | 'redmine' | 'bugzilla';
@@ -200,6 +203,8 @@ interface ExternalWorkBinding {
   syncDirection: 'pull' | 'push' | 'bidirectional';
   lastSyncedAt: string | null;
   externalUpdatedAt: string | null;
+  linkedAt: string;
+  linkedByActorRef: string | null;
 }
 ```
 
