@@ -4,6 +4,7 @@ import {
   buildWorkApiTaskPath,
   buildWorkApiWorkItemPath,
   WORK_API_EXTERNAL_BINDINGS_PATH,
+  WORK_API_EXTERNAL_ISSUE_IMPORTS_PATH,
   WORK_API_PROJECTS_PATH,
   WORK_API_RAW_PROJECTS_PATH,
   WORK_API_RAW_TASKS_PATH,
@@ -29,6 +30,10 @@ import type {
   WorkExternalUnlinkIssueInput,
   WorkExternalUnlinkIssueResult,
 } from '../../shared/workToolSurface.js';
+import type {
+  ExternalWorkBindingExternalType,
+  ExternalWorkBindingProvider,
+} from '../../shared/externalWorkBinding.js';
 
 export type {
   CoreProjectRecord,
@@ -82,6 +87,27 @@ export interface DecideWorkTaskApprovalInput {
 export interface WorkTaskApprovalDecisionResponse {
   task: CoreTaskRecord;
   approval: CoreApprovalRecord;
+}
+
+export interface ImportWorkExternalIssueInput {
+  externalUrl: string;
+  provider?: ExternalWorkBindingProvider;
+}
+
+export interface ImportWorkExternalIssueResult {
+  workItemId: string;
+  provider: ExternalWorkBindingProvider;
+  externalType: ExternalWorkBindingExternalType;
+  externalId: string;
+  created: boolean;
+  linked: boolean;
+  bindingCount: number;
+  source: {
+    provider: ExternalWorkBindingProvider;
+    externalType: ExternalWorkBindingExternalType;
+    externalId: string;
+    externalUrl: string;
+  };
 }
 
 export async function listWorkProjects(
@@ -201,6 +227,23 @@ export async function unlinkWorkExternalIssue(
     signal,
   });
   return expectJson<WorkExternalUnlinkIssueResult>(
+    response,
+    errorMessage,
+  );
+}
+
+export async function importWorkExternalIssue(
+  input: ImportWorkExternalIssueInput,
+  errorMessage: string,
+  signal?: AbortSignal,
+): Promise<ImportWorkExternalIssueResult> {
+  const response = await fetch(WORK_API_EXTERNAL_ISSUE_IMPORTS_PATH, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+    signal,
+  });
+  return expectJson<ImportWorkExternalIssueResult>(
     response,
     errorMessage,
   );
