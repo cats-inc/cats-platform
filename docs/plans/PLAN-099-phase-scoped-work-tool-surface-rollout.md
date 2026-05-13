@@ -99,7 +99,7 @@ execution plans and Tasks without bypassing policy gates.
 ### Phase 6: External Tracker Binding
 
 - [x] Task 6.1: Define the MVP external Work binding metadata shape.
-- [ ] Task 6.2: Implement `work.external.link_issue` for manual URL/id binding.
+- [x] Task 6.2: Implement `work.external.link_issue` for manual URL/id binding.
 - [ ] Task 6.3: Add read-side projection fields for linked external issues.
 - [ ] Task 6.4: Add one adapter spike for GitHub Issues or Gitea import/export.
 - [ ] Task 6.5: Defer bidirectional sync until conflict policy and credential
@@ -180,6 +180,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Phase 5.3/5.4 added `work.task.create_from_work_item` to create pending-approval Tasks from ready Work Items, link `WorkItem.taskId`, preserve source metadata, and avoid Run/runtime start. |
 | 2026-05-13 | Phase 5.5 added a same-run/action intake boundary guard so newly captured Work Items cannot become execution Tasks until a later owner-visible acknowledgement request. |
 | 2026-05-13 | Phase 6.1 added the `externalWorkBindings` metadata shape, provider/type/sync enums, normalization, validation, and contract tests without external network calls. |
+| 2026-05-13 | Phase 6.2 added `work.external.link_issue` for manual Work Item/Project metadata links with supervised narrow-write gating, idempotent retries, and no external API calls. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---

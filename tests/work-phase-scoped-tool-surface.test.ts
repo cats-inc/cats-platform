@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { createSupervisedToolRegistry } from '../src/platform/supervision/toolRegistry.js';
 import {
+  WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_ITEM_CAPTURE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
@@ -15,6 +16,7 @@ import {
   filterPhaseScopedWorkToolManifests,
   isWorkToolAllowedForCapabilityProfile,
   resolveWorkToolPhase,
+  validateWorkExternalLinkIssueInput,
   validateWorkItemAssignProjectInput,
   validateWorkItemCaptureInput,
   validateWorkItemPrepareExecutionInput,
@@ -32,6 +34,7 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
   assert.deepEqual(
     manifests.map((manifest) => manifest.name).sort(),
     [
+      WORK_EXTERNAL_LINK_ISSUE_TOOL,
       WORK_ITEM_ASSIGN_PROJECT_TOOL,
       WORK_ITEM_CAPTURE_TOOL,
       WORK_ITEM_PREPARE_EXECUTION_TOOL,
@@ -42,6 +45,7 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
       WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
     ],
   );
+  assert.equal(resolveWorkToolPhase(WORK_EXTERNAL_LINK_ISSUE_TOOL), 'external_tracker_binding');
   assert.equal(resolveWorkToolPhase(WORK_ITEM_PROPOSE_SPLIT_TOOL), 'intake');
   assert.equal(resolveWorkToolPhase(WORK_ITEM_CAPTURE_TOOL), 'intake');
   assert.equal(resolveWorkToolPhase(WORK_ITEM_ASSIGN_PROJECT_TOOL), 'triage');
@@ -66,11 +70,27 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
   assert.equal(byName.get(WORK_PROJECT_CREATE_TOOL)?.approval, 'policy');
   assert.equal(byName.get(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL)?.sideEffect, 'local_state');
   assert.equal(byName.get(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL)?.approval, 'policy');
+  assert.equal(byName.get(WORK_EXTERNAL_LINK_ISSUE_TOOL)?.sideEffect, 'local_state');
+  assert.equal(byName.get(WORK_EXTERNAL_LINK_ISSUE_TOOL)?.approval, 'policy');
 });
 
 test('phase and capability profile filtering hides Work tools from weak or unknown callers', () => {
   const manifests = createPhaseScopedWorkToolManifests();
 
+  assert.deepEqual(
+    filterPhaseScopedWorkToolManifests(manifests, {
+      phase: 'external_tracker_binding',
+      capabilityProfile: 'strong_agent',
+    }).map((manifest) => manifest.name),
+    [WORK_EXTERNAL_LINK_ISSUE_TOOL],
+  );
+  assert.deepEqual(
+    filterPhaseScopedWorkToolManifests(manifests, {
+      phase: 'external_tracker_binding',
+      capabilityProfile: 'weak_worker',
+    }),
+    [],
+  );
   assert.deepEqual(
     filterPhaseScopedWorkToolManifests(manifests, {
       phase: 'intake',
@@ -134,6 +154,7 @@ test('supervised tool registry policy scope keeps capture behind narrow-write gr
     registry.filter({ parentToolScope: 'narrow_write', policyToolScope: 'narrow_write' })
       .map((manifest) => manifest.name),
     [
+      WORK_EXTERNAL_LINK_ISSUE_TOOL,
       WORK_ITEM_ASSIGN_PROJECT_TOOL,
       WORK_ITEM_CAPTURE_TOOL,
       WORK_ITEM_PREPARE_EXECUTION_TOOL,
@@ -150,6 +171,45 @@ test('supervised tool registry policy scope keeps capture behind narrow-write gr
       { parentToolScope: 'read_only', policyToolScope: 'read_only' },
     ).status,
     'rejected',
+  );
+});
+
+test('Work external link validation bounds local and external issue fields', () => {
+  assert.deepEqual(validateWorkExternalLinkIssueInput({
+    localKind: 'work_item',
+    localId: 'work-item-1',
+    provider: 'github',
+    externalType: 'issue',
+    externalId: '123',
+    externalUrl: 'https://github.com/cats-inc/cats-platform/issues/123',
+    syncDirection: 'pull',
+    externalUpdatedAt: '2026-05-13T10:00:00.000Z',
+    note: 'Imported from GitHub triage.',
+  }), []);
+
+  assert.deepEqual(
+    validateWorkExternalLinkIssueInput({
+      localKind: 'task',
+      localId: '',
+      provider: 'jira',
+      externalType: 'card',
+      externalId: '',
+      workItemId: 'work-item-1',
+      taskId: 'task-1',
+      syncDirection: 'mirror',
+      note: 'x'.repeat(501),
+    }).map((entry) => [entry.field, entry.code]),
+    [
+      ['workItemId', 'server_resolved_field'],
+      ['taskId', 'server_resolved_field'],
+      ['localKind', 'unsupported_value'],
+      ['localId', 'blank'],
+      ['provider', 'unsupported_value'],
+      ['externalType', 'unsupported_value'],
+      ['externalId', 'blank'],
+      ['syncDirection', 'unsupported_value'],
+      ['note', 'too_long'],
+    ],
   );
 });
 

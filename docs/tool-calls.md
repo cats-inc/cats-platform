@@ -68,6 +68,7 @@ rather than duplicating every validation branch.
 | `work.item.assign_project` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.prepare_execution` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Boss Cat execution preparation with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.task.create_from_work_item` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Boss Cat execution preparation with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.external.link_issue` | Cats Work | Product delegate implemented; external API sync/import pending | `product_internal_delegate` / future `runtime_tool` | Owner-approved strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.lookup` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.create` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
@@ -148,7 +149,8 @@ Project lookup/create triage delegates.
 `src/products/work/state/workExecutionPreparationDelegate.ts` owns the
 read-only Boss Cat execution-preparation proposal delegate.
 `src/products/work/state/workExecutionTaskDelegate.ts` owns the pending-approval
-Task creation delegate, and
+Task creation delegate. `src/products/work/state/workExternalBindingDelegate.ts`
+owns manual external issue binding writes, and
 `src/products/chat/state/workIntakeSourceContext.ts` maps Chat and Telegram
 turns onto the shared source context.
 
@@ -160,6 +162,7 @@ turns onto the shared source context.
 | `work.item.assign_project` | `triage` | `local_state` | `policy` | `summary` | Attaches one existing triage-editable Work Item to one existing non-archived Project while preserving source provenance. It must not create Projects, Tasks, Missions, Runs, or runtime sessions. |
 | `work.item.prepare_execution` | `execution_preparation` | `none` | `never` | `summary` | Proposes Task-ready execution payloads for selected Work Items. It returns readiness, open questions, blockers, and proposed Task title/summary without writing Core. |
 | `work.task.create_from_work_item` | `execution_preparation` | `local_state` | `policy` | `summary` | Creates one pending-approval Task from one ready Work Item and links it through `WorkItem.taskId`. It does not create Runs or runtime sessions. |
+| `work.external.link_issue` | `external_tracker_binding` | `local_state` | `policy` | `summary` | Manually links one Work Item or Project to an external issue/ticket/project by writing local metadata only. It does not call external tracker APIs. |
 | `work.project.lookup` | `triage` | `none` | `never` | `summary` | Looks up bounded Project matches for Work Item triage. It returns project ids, titles, planning status, summary/repo/conversation refs, and linked Work Item counts. |
 | `work.project.create` | `triage` | `local_state` | `policy` | `summary` | Creates one planned/active/paused Project during triage. It writes only a Project and one audit Activity; it must not create Work Items, Tasks, Missions, Runs, or runtime sessions. |
 
@@ -201,6 +204,14 @@ approval-requested Activity. Runtime checkout and Run creation remain separate
 approval-gated execution steps. Work Items captured by intake in the same
 supervised run/action are rejected until a later owner-visible acknowledgement
 boundary starts a separate execution-preparation request.
+
+Caller-visible external binding fields are `localKind`, `localId`, `provider`,
+optional `externalType`, `externalId`, optional `externalUrl`, optional
+`syncDirection`, optional `externalUpdatedAt`, and optional `note`. The MVP
+provider set is `github`, `gitlab`, `gitea`, `redmine`, and `bugzilla`; the
+delegate writes the `externalWorkBindings` metadata key on the Work Item or
+Project and emits one Activity for material changes. It does not read from or
+write to external services.
 
 Caller-visible triage lookup fields are `query`, `limit`, and
 `includeArchived`. Caller-visible triage create fields are `title`, `summary`,
