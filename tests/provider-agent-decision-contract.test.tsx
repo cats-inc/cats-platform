@@ -833,6 +833,73 @@ test('provider-agent decisions reject unsupported model-authored fields', () => 
   ]);
 });
 
+test('provider-agent decisions reject unsupported nested model-authored fields', () => {
+  const extraTargetField = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'tool_request',
+    decisionId: 'decision-extra-target-field',
+    confidence: 'medium',
+    toolName: 'work.context.lookup',
+    target: {
+      kind: 'worker_tool',
+      toolName: 'work.context.lookup',
+      credential: 'hidden target credential',
+    },
+    input: {},
+    rationaleSummary: 'Try to smuggle target fields.',
+  } as unknown as ProviderAgentDecision;
+  const extraSchemaField = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'tool_request',
+    decisionId: 'decision-extra-schema-field',
+    confidence: 'medium',
+    toolName: 'work.context.lookup',
+    target: { kind: 'worker_tool', toolName: 'work.context.lookup' },
+    input: {},
+    expectedOutputSchemaRef: {
+      id: 'work.context.lookup.output',
+      version: '1.0',
+      format: 'json_schema',
+      secret: 'hidden schema hint',
+    },
+    rationaleSummary: 'Try to smuggle schema fields.',
+  } as unknown as ProviderAgentDecision;
+  const extraBudgetField = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'delegation_request',
+    decisionId: 'decision-extra-budget-field',
+    confidence: 'medium',
+    target: { kind: 'execution_target', provider: 'codex', model: 'gpt-5.4' },
+    goalSummary: 'Delegate with an extra budget field.',
+    blocking: 'async',
+    budget: {
+      maxDurationMs: 30_000,
+      hardStop: true,
+      softLimit: true,
+    },
+    rationaleSummary: 'Try to smuggle budget fields.',
+  } as unknown as ProviderAgentDecision;
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: extraTargetField,
+  }), [
+    'tool_request.target contains unsupported fields: credential',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: extraSchemaField,
+  }), [
+    'tool_request.expectedOutputSchemaRef contains unsupported fields: secret',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: extraBudgetField,
+  }), [
+    'delegation_request.budget contains unsupported fields: softLimit',
+  ]);
+});
+
 test('provider-agent delegation and recovery decisions reject malformed bounded fields', () => {
   const invalidDelegation: ProviderAgentDecision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,

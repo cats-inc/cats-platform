@@ -128,6 +128,36 @@ const PROVIDER_AGENT_SEMANTIC_PLAN_STEP_FIELDS = [
   'expectedOutputSchemaRef',
   'dependsOn',
 ] as const;
+const PROVIDER_AGENT_SCHEMA_REF_FIELDS = ['id', 'version', 'format', 'uri'] as const;
+const PROVIDER_AGENT_BUDGET_FIELDS = [
+  'maxCostUsd',
+  'maxTokens',
+  'maxDurationMs',
+  'hardStop',
+] as const;
+const PROVIDER_AGENT_DURABLE_AGENT_TARGET_FIELDS = [
+  'kind',
+  'agentId',
+  'projection',
+] as const;
+const PROVIDER_AGENT_EXECUTION_TARGET_FIELDS = [
+  'kind',
+  'provider',
+  'model',
+  'control',
+] as const;
+const PROVIDER_AGENT_TEMPORARY_PARTICIPANT_TARGET_FIELDS = [
+  'kind',
+  'participantId',
+  'roleHint',
+  'displayName',
+  'avatarHint',
+] as const;
+const PROVIDER_AGENT_WORKER_TOOL_TARGET_FIELDS = [
+  'kind',
+  'toolName',
+  'workerProfileId',
+] as const;
 
 export type ProviderAgentDecisionConfidence =
   (typeof PROVIDER_AGENT_DECISION_CONFIDENCE_VALUES)[number];
@@ -644,6 +674,7 @@ function validateSchemaRef(
     errors.push(`${field} must be an object`);
     return false;
   }
+  validateAllowedRecordFields(errors, field, value, PROVIDER_AGENT_SCHEMA_REF_FIELDS);
 
   const previousErrorCount = errors.length;
   validateBoundedString(
@@ -774,6 +805,12 @@ function validateAddressableTarget(
 
   switch (kind) {
     case 'durable_agent':
+      validateAllowedRecordFields(
+        errors,
+        field,
+        value,
+        PROVIDER_AGENT_DURABLE_AGENT_TARGET_FIELDS,
+      );
       validateBoundedString(
         errors,
         `${field}.agentId`,
@@ -788,6 +825,12 @@ function validateAddressableTarget(
       );
       break;
     case 'execution_target':
+      validateAllowedRecordFields(
+        errors,
+        field,
+        value,
+        PROVIDER_AGENT_EXECUTION_TARGET_FIELDS,
+      );
       validateBoundedString(
         errors,
         `${field}.provider`,
@@ -808,6 +851,12 @@ function validateAddressableTarget(
       );
       break;
     case 'temporary_participant':
+      validateAllowedRecordFields(
+        errors,
+        field,
+        value,
+        PROVIDER_AGENT_TEMPORARY_PARTICIPANT_TARGET_FIELDS,
+      );
       validateBoundedString(
         errors,
         `${field}.participantId`,
@@ -834,6 +883,12 @@ function validateAddressableTarget(
       );
       break;
     case 'worker_tool':
+      validateAllowedRecordFields(
+        errors,
+        field,
+        value,
+        PROVIDER_AGENT_WORKER_TOOL_TARGET_FIELDS,
+      );
       validateBoundedString(
         errors,
         `${field}.toolName`,
@@ -863,6 +918,7 @@ function validateBudgetEnvelope(
     errors.push(`${field} must be an object`);
     return;
   }
+  validateAllowedRecordFields(errors, field, budget, PROVIDER_AGENT_BUDGET_FIELDS);
 
   validateOptionalPositiveNumber(errors, `${field}.maxCostUsd`, budget.maxCostUsd);
   validateOptionalPositiveInteger(errors, `${field}.maxTokens`, budget.maxTokens);
