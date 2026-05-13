@@ -31,6 +31,13 @@ import {
   createWorkflowEvent,
   createWorkflowTurn,
 } from '../build/server/products/chat/state/room-routing/workflow.js';
+import {
+  WORK_ITEM_ASSIGN_PROJECT_TOOL,
+  WORK_ITEM_UPDATE_TOOL,
+  WORK_PROJECT_CREATE_TOOL,
+  WORK_PROJECT_LOOKUP_TOOL,
+} from '../build/server/products/work/shared/workToolSurface.js';
+import { WORK_MCP_PROFILE_ID } from '../build/server/products/work/shared/workToolIntent.js';
 import { buildChatLaneId } from '../build/server/shared/chatCoreIds.js';
 import {
   buildWorkflowContinuationReplayRequest,
@@ -43,6 +50,26 @@ const baseConfig = {
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
+  auth: {
+    mode: 'unsafe_disabled',
+    enabled: false,
+    sessionSecret: null,
+    sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
+    mobileSessionTtlMs: 30 * 24 * 60 * 60 * 1000,
+    loginFailureLimit: 5,
+    loginLockoutMs: 30_000,
+    accountDailyFailureCap: 100,
+    accountCooldownMs: 15 * 60 * 1000,
+    subnetDailyFailureCap: 500,
+    allowedBrowserOrigins: ['http://127.0.0.1:8181'],
+    authStatePath: 'unused-auth-state.json',
+    recoveryTokenPath: 'unused-auth-recovery.json',
+    google: {
+      clientId: null,
+      hostedDomains: [],
+      mobileAudiences: [],
+    },
+  },
 };
 
 function usage(content) {
@@ -356,6 +383,53 @@ test('POST /api/orchestrator/plan returns machine-readable plan and tool intent'
     assert.ok(Array.isArray(payload.plan.routing.initialTargets[0].runtimeSkills.requestedSkills));
     assert.equal(payload.plan.routing.initialTargets[0].runtimeSkills.requestedSkills[0], 'companion');
   }, chatStore);
+});
+
+test('POST /api/orchestrator/plan projects Work tool intent for work-memory Cats', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Work Planner',
+          provider: 'gemini',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/plan`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Create project Cat Ops and update work-item-alpha.',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.deepEqual(
+      payload.plan.routing.initialTargets[0].toolIntent.allowedTools,
+      [
+        WORK_ITEM_ASSIGN_PROJECT_TOOL,
+        WORK_ITEM_UPDATE_TOOL,
+        WORK_PROJECT_CREATE_TOOL,
+        WORK_PROJECT_LOOKUP_TOOL,
+      ],
+    );
+    assert.deepEqual(
+      payload.plan.routing.initialTargets[0].toolIntent.requiredCapabilities,
+      [
+        'work.phase.triage',
+        'work.capability.strong_agent',
+        'work.tool_scope.narrow_write',
+      ],
+    );
+  });
 });
 
 test('POST /api/orchestrator/plan uses the injected planner surface seam', async () => {
