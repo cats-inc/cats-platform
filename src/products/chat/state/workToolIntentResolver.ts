@@ -87,6 +87,10 @@ function resolveWorkCapabilityProfile(
 }
 
 function isBossCatTarget(input: OrchestratorToolIntentResolveInput<ChatState>): boolean {
+  if (input.participantKind === 'orchestrator') {
+    return true;
+  }
+
   return input.participantKind === 'cat'
     && typeof input.state.bossCatId === 'string'
     && input.state.bossCatId === input.participantId;
