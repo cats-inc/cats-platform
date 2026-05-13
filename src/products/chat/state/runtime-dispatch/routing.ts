@@ -6344,9 +6344,9 @@ export async function beginChannelMessageRetryDispatch(
     throw new Error(`Only user messages can be retried: ${sourceMessageId}`);
   }
 
-  const choiceResponseCore = sourceMessage.choiceResponse && options.chatStore
-    ? (core ?? await options.chatStore.readCore())
-    : core;
+  if (!core && options.chatStore) {
+    core = await options.chatStore.readCore();
+  }
   if (sourceWasMissingFromTranscript) {
     nextState = restoreMissingTranscriptMessage(nextState, channelId, sourceMessage, now);
   }
@@ -6368,7 +6368,7 @@ export async function beginChannelMessageRetryDispatch(
     buildRetrySendPayload(sourceMessage),
     sourceMessageId,
     now,
-    choiceResponseCore,
+    core,
     {
       deterministicRoutingPlan,
       providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,

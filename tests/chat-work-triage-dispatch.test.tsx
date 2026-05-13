@@ -14,6 +14,7 @@ import {
 } from '../src/products/work/shared/workToolSurface.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import {
+  appendMessage,
   createChannel,
   requireChannel,
   resolveChannelCanonicalIdentity,
@@ -21,6 +22,7 @@ import {
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import {
   beginChannelMessageDispatch,
+  beginChannelMessageRetryDispatch,
 } from '../src/products/chat/state/runtime-dispatch/routing.ts';
 import type { RuntimeClient } from '../src/platform/runtime/client.ts';
 import {
@@ -596,4 +598,105 @@ test('Telegram provider-agent Work triage update preserves transport context', a
   assert.equal(userMessage?.metadata.transportBindingId, 'telegram-binding-work-1');
   assert.equal(resultMessage?.metadata.event, 'work_item_update_result');
   assert.equal(resultMessage?.body, 'Updated Work Item work-item-telegram-update-1 (ready).');
+});
+
+test('Retry dispatch applies provider-agent Work triage update sidecars', async () => {
+  const now = new Date('2026-05-13T12:50:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Retry Work item update',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const core = upsertCoreWorkItem(
+    createDefaultCoreState(),
+    {
+      id: 'work-item-retry-update-1',
+      title: 'Retry update candidate',
+      status: 'planned',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {},
+    },
+    now,
+  ).core;
+  const appended = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'user',
+      senderName: 'Kenneth',
+      body: 'Boss Cat update work-item-retry-update-1 and mark it ready',
+    },
+    new Date('2026-05-13T12:51:00.000Z'),
+  );
+  const store = new MemoryChatStore(appended.state);
+  await store.writeCore(core);
+
+  const retried = await beginChannelMessageRetryDispatch(
+    appended.state,
+    channelId,
+    appended.message.id,
+    runtimeStub(),
+    new Date('2026-05-13T12:52:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      providerAgentDecisionRequester: async ({ observation }) => {
+        assert.equal(
+          observation.availableTools.some((tool) =>
+            tool.manifest.name === WORK_ITEM_UPDATE_TOOL),
+          true,
+        );
+        return {
+          contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+          kind: 'tool_request',
+          decisionId: 'decision-work-item-retry-update-1',
+          confidence: 'high',
+          toolName: WORK_ITEM_UPDATE_TOOL,
+          target: {
+            kind: 'execution_target',
+            provider: 'claude',
+            model: 'sonnet',
+          },
+          input: {
+            status: 'ready',
+          },
+          rationaleSummary: 'Retrying the owner request should still apply the Work update.',
+        };
+      },
+    },
+  );
+
+  const persistedCore = await store.readCore();
+  const workItem = persistedCore.workItems.find((candidate) =>
+    candidate.id === 'work-item-retry-update-1');
+  const channel = requireChannel(retried.state, channelId);
+  const resultMessage = channel.messages.find((message) =>
+    message.metadata.workItemUpdateResult);
+
+  assert.equal(retried.userMessage.id, appended.message.id);
+  assert.equal(workItem?.status, 'ready');
+  assert.equal(resultMessage?.metadata.event, 'work_item_update_result');
+  assert.equal(resultMessage?.body, 'Updated Work Item work-item-retry-update-1 (ready).');
 });
