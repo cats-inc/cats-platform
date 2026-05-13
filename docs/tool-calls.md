@@ -187,7 +187,10 @@ ignored.
 Provider-agent Work tool descriptors include bounded `inputHints` so strong
 models can see the allowed request fields in the observation itself. These
 hints are guidance only; server-side validators, policy gates, and Chat
-sidecar cue checks remain authoritative.
+sidecar cue checks remain authoritative. The provider-agent observation
+validator also bounds tool reasons, summary counts/keys/values, context refs,
+invariants, budgets, and allowed fallback surfaces before any runtime adapter
+call receives the observation.
 
 | Tool | Phase | Side effect | Approval | Evidence | Notes |
 |------|-------|-------------|----------|----------|-------|
