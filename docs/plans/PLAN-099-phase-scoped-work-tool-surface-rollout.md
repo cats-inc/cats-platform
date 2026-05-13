@@ -82,7 +82,7 @@ without starting execution.
 
 ### Phase 5: Boss Cat Execution Preparation
 
-- [ ] Task 5.1: Add an execution-preparation phase resolver for owner requests
+- [x] Task 5.1: Add an execution-preparation phase resolver for owner requests
       such as "Boss Cat, start working through these".
 - [ ] Task 5.2: Implement `work.item.prepare_execution` as a no-side-effect
       proposal tool.
@@ -175,6 +175,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Phase 4.3 added bounded `work.item.update` triage updates for title, summary, planning status, and triage metadata without execution side effects. |
 | 2026-05-13 | Phase 4.4 added `work.item.assign_project` with non-archived Project prechecks, triage-status bounds, source-preserving Work Item updates, and supervised boundary tests. |
 | 2026-05-13 | Phase 4.5 added Work Graph projection tests for newly captured orphan Work Items and triaged Work Items linked to Projects with Activity evidence anchors. |
+| 2026-05-13 | Phase 5.1 added a pure execution-preparation phase resolver for Boss Cat requests over explicit, active, or visible Work Item refs without creating Tasks or Runs. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---
