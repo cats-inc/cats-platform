@@ -71,6 +71,7 @@ async function persistDispatchReplayMetadata<TCompanionStore, TState extends Orc
       senderName: input.senderName,
       transport: input.transport,
       recordedAt: now.toISOString(),
+      choiceResponse: input.choiceResponse,
     });
     let metadata = writeOrchestratorDispatchReplayMetadata(
       task.metadata,
@@ -93,6 +94,7 @@ async function persistDispatchReplayMetadata<TCompanionStore, TState extends Orc
           senderName: input.senderName,
           transport: input.transport,
           blockedAt: now.toISOString(),
+          choiceResponse: input.choiceResponse,
         }),
       );
     }

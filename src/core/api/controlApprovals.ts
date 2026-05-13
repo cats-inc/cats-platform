@@ -133,6 +133,7 @@ async function maybeAutoResumePendingDispatch(
           senderName: pendingDispatch.senderName,
           transport: pendingDispatch.transport,
           recordedAt: task.updatedAt,
+          choiceResponse: pendingDispatch.choiceResponse,
         },
         {
           replayState: 'in_progress',
@@ -196,6 +197,7 @@ async function maybeAutoResumePendingDispatch(
               senderName: pendingDispatch.senderName,
               transport: pendingDispatch.transport,
               recordedAt: latestTask?.updatedAt ?? task.updatedAt,
+              choiceResponse: pendingDispatch.choiceResponse,
             },
             {
               replayState: 'failed',
@@ -264,6 +266,7 @@ async function maybeAutoResumePendingDispatch(
             senderName: pendingDispatch.senderName,
             transport: pendingDispatch.transport,
             recordedAt: latestTask?.updatedAt ?? task.updatedAt,
+            choiceResponse: pendingDispatch.choiceResponse,
           },
           {
             replayState: 'ready',
@@ -340,6 +343,7 @@ async function maybeAutoResumePendingDispatch(
             senderName: pendingDispatch.senderName,
             transport: pendingDispatch.transport,
             recordedAt: latestTask?.updatedAt ?? task.updatedAt,
+            choiceResponse: pendingDispatch.choiceResponse,
           },
           {
             replayState: 'failed',

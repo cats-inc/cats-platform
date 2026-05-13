@@ -1,5 +1,9 @@
 import type { CoreRecordMetadata } from '../../core/types.js';
-import type { OrchestratorTransportContext } from './contracts.js';
+import type {
+  OrchestratorChoiceResponse,
+  OrchestratorTransportContext,
+} from './contracts.js';
+import { normalizeOrchestratorChoiceResponse } from './choiceResponseMetadata.js';
 
 const PENDING_ORCHESTRATOR_DISPATCH_METADATA_KEY = 'pendingOrchestratorDispatch';
 const PENDING_ORCHESTRATOR_DISPATCH_REASON = 'approval_pending';
@@ -14,6 +18,7 @@ export interface PendingOrchestratorDispatchRequest {
   transport: OrchestratorTransportContext;
   blockedAt: string;
   blockedReason: 'approval_pending';
+  choiceResponse?: OrchestratorChoiceResponse | null;
 }
 
 export interface PendingOrchestratorDispatchMetadataOptions {
@@ -73,7 +78,9 @@ export function buildPendingOrchestratorDispatchRequest(input: {
   senderName?: string;
   transport?: OrchestratorTransportContext;
   blockedAt: string;
+  choiceResponse?: OrchestratorChoiceResponse | null;
 }): PendingOrchestratorDispatchRequest {
+  const choiceResponse = normalizeOrchestratorChoiceResponse(input.choiceResponse);
   return {
     channelId: input.channelId,
     body: input.body,
@@ -81,6 +88,7 @@ export function buildPendingOrchestratorDispatchRequest(input: {
     transport: input.transport ?? 'web',
     blockedAt: input.blockedAt,
     blockedReason: PENDING_ORCHESTRATOR_DISPATCH_REASON,
+    ...(choiceResponse ? { choiceResponse } : {}),
   };
 }
 
@@ -96,6 +104,7 @@ export function readPendingOrchestratorDispatch(
         transport: snapshot.transport,
         blockedAt: snapshot.blockedAt,
         blockedReason: snapshot.blockedReason,
+        choiceResponse: snapshot.choiceResponse,
       }
     : null;
 }
@@ -139,6 +148,7 @@ export function readPendingOrchestratorDispatchSnapshot(
       : null,
     replayAttemptAt: readNullableString(record.replayAttemptAt),
     replayError: readNullableString(record.replayError),
+    choiceResponse: normalizeOrchestratorChoiceResponse(record.choiceResponse),
   };
 }
 
@@ -168,6 +178,10 @@ export function writePendingOrchestratorDispatchMetadata(
     replayAttemptAt: options.replayAttemptAt ?? null,
     replayError: options.replayError ?? null,
   };
+  const choiceResponse = normalizeOrchestratorChoiceResponse(request.choiceResponse);
+  if (choiceResponse) {
+    nextRequest.choiceResponse = choiceResponse;
+  }
   nextMetadata[PENDING_ORCHESTRATOR_DISPATCH_METADATA_KEY] = nextRequest;
   return nextMetadata;
 }

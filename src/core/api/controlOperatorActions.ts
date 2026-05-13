@@ -129,6 +129,7 @@ function writeRetryReplayMetadata(
         senderName: input.dispatchReplay.senderName,
         transport: input.dispatchReplay.transport,
         recordedAt: input.dispatchReplay.recordedAt,
+        choiceResponse: input.dispatchReplay.choiceResponse,
       },
       {
         replayState: options.replayState,
@@ -261,6 +262,7 @@ async function maybeAutoResumeRetryDispatch(
               transport: dispatchReplay!.transport,
               blockedAt: dispatchReplay!.recordedAt,
               blockedReason: 'approval_pending',
+              choiceResponse: dispatchReplay!.choiceResponse,
             },
             { trigger: 'retry' },
           ),

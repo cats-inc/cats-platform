@@ -1,5 +1,9 @@
 import type { CoreRecordMetadata } from '../../core/types.js';
-import type { OrchestratorTransportContext } from './contracts.js';
+import type {
+  OrchestratorChoiceResponse,
+  OrchestratorTransportContext,
+} from './contracts.js';
+import { normalizeOrchestratorChoiceResponse } from './choiceResponseMetadata.js';
 
 const ORCHESTRATOR_DISPATCH_REPLAY_METADATA_KEY = 'orchestratorDispatchReplay';
 
@@ -16,6 +20,7 @@ export interface OrchestratorDispatchReplayRequest {
   senderName: string | null;
   transport: OrchestratorTransportContext;
   recordedAt: string;
+  choiceResponse?: OrchestratorChoiceResponse | null;
 }
 
 export interface OrchestratorDispatchReplayMetadataOptions {
@@ -86,13 +91,16 @@ export function buildOrchestratorDispatchReplayRequest(input: {
   senderName?: string;
   transport?: OrchestratorTransportContext;
   recordedAt: string;
+  choiceResponse?: OrchestratorChoiceResponse | null;
 }): OrchestratorDispatchReplayRequest {
+  const choiceResponse = normalizeOrchestratorChoiceResponse(input.choiceResponse);
   return {
     channelId: input.channelId,
     body: input.body,
     senderName: input.senderName?.trim() || null,
     transport: input.transport ?? 'web',
     recordedAt: input.recordedAt,
+    ...(choiceResponse ? { choiceResponse } : {}),
   };
 }
 
@@ -138,6 +146,7 @@ export function readOrchestratorDispatchReplay(
     replayAttemptAt: readNullableString(record.replayAttemptAt),
     replayError: readNullableString(record.replayError),
     sourceMessageId: readNullableString(record.sourceMessageId),
+    choiceResponse: normalizeOrchestratorChoiceResponse(record.choiceResponse),
   };
 }
 
@@ -155,7 +164,7 @@ export function writeOrchestratorDispatchReplayMetadata(
     return nextMetadata;
   }
 
-  nextMetadata[ORCHESTRATOR_DISPATCH_REPLAY_METADATA_KEY] = {
+  const replayMetadata: Record<string, unknown> = {
     channelId: request.channelId,
     body: request.body,
     senderName: request.senderName,
@@ -167,5 +176,10 @@ export function writeOrchestratorDispatchReplayMetadata(
     replayError: options.replayError ?? null,
     sourceMessageId: options.sourceMessageId ?? null,
   };
+  const choiceResponse = normalizeOrchestratorChoiceResponse(request.choiceResponse);
+  if (choiceResponse) {
+    replayMetadata.choiceResponse = choiceResponse;
+  }
+  nextMetadata[ORCHESTRATOR_DISPATCH_REPLAY_METADATA_KEY] = replayMetadata;
   return nextMetadata;
 }

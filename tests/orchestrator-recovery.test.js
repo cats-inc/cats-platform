@@ -49,6 +49,61 @@ function buildChannelTaskId(channelId) {
   return `task-channel-${channelId}`;
 }
 
+const submittedChoiceResponse = {
+  sourceMessageId: 'message-choice-source',
+  status: 'submitted',
+  submittedAt: '2026-05-13T08:03:00.000Z',
+  answers: [
+    {
+      question: 'Create execution Tasks?',
+      selectedOptionIds: ['create_ready_execution_tasks'],
+    },
+  ],
+};
+
+test('orchestrator dispatch replay metadata preserves choice responses', () => {
+  const metadata = writeOrchestratorDispatchReplayMetadata(
+    {},
+    buildOrchestratorDispatchReplayRequest({
+      channelId: 'channel-choice-replay',
+      body: 'Create the execution Task',
+      senderName: 'Owner',
+      recordedAt: '2026-05-13T08:02:00.000Z',
+      choiceResponse: submittedChoiceResponse,
+    }),
+    {
+      replayState: 'ready',
+      replayTrigger: 'retry',
+      sourceMessageId: 'message-choice-response',
+    },
+  );
+
+  const replay = readOrchestratorDispatchReplay(metadata);
+
+  assert.deepEqual(replay?.choiceResponse, submittedChoiceResponse);
+});
+
+test('pending orchestrator dispatch metadata preserves choice responses', () => {
+  const metadata = writePendingOrchestratorDispatchMetadata(
+    {},
+    buildPendingOrchestratorDispatchRequest({
+      channelId: 'channel-choice-pending',
+      body: 'Capture these Work Items',
+      senderName: 'Owner',
+      blockedAt: '2026-05-13T08:02:00.000Z',
+      choiceResponse: submittedChoiceResponse,
+    }),
+    {
+      replayState: 'pending',
+      replayTrigger: 'approve',
+    },
+  );
+
+  const pendingDispatch = readPendingOrchestratorDispatchSnapshot(metadata);
+
+  assert.deepEqual(pendingDispatch?.choiceResponse, submittedChoiceResponse);
+});
+
 test('startup recovery turns stranded orchestrator replay metadata into retryable failed state', async () => {
   const now = new Date('2026-03-26T06:00:00.000Z');
   const taskWrite = upsertCoreTask(
