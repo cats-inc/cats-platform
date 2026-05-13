@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added API regressions for unsupported channel and global orchestrator MCP profile writes so all product profile entry points return bounded `400 bad_request` responses. |
 | 2026-05-13 | Follow-up slice centralized remaining source MCP profile literals on `src/shared/catMcpProfiles.ts` and updated the Work tool-intent architecture boundary test for the shared registry. |
 | 2026-05-13 | Follow-up slice synced MCP/API docs after channel and global orchestrator writes were moved onto the same MCP profile allow-list as Cats. |
 | 2026-05-13 | Follow-up slice extended MCP profile validation to channel creation and global orchestrator updates so Cat, channel, and orchestrator product entries share the same profile allow-list. |
