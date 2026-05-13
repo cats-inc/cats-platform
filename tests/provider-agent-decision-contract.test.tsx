@@ -614,6 +614,44 @@ test('provider-agent tool inputs must be JSON argument objects', () => {
   ]);
 });
 
+test('provider-agent recovery corrected input stays bounded when present', () => {
+  const scalarCorrection = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'recovery_decision',
+    decisionId: 'decision-recover-scalar-correction',
+    confidence: 'low',
+    rejectedActionId: 'tool-call-1',
+    selectedFallback: 'retry',
+    correctedInput: 'retry with this raw string',
+    rationaleSummary: 'Retry with a malformed correction.',
+  } as unknown as ProviderAgentDecision;
+  const oversizedCorrection: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'recovery_decision',
+    decisionId: 'decision-recover-oversized-correction',
+    confidence: 'low',
+    rejectedActionId: 'tool-call-1',
+    selectedFallback: 'retry',
+    correctedInput: {
+      raw: 'x'.repeat(4001),
+    },
+    rationaleSummary: 'Retry with an oversized correction.',
+  };
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: scalarCorrection,
+  }), [
+    'correctedInput must be an object',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: oversizedCorrection,
+  }), [
+    'correctedInput.raw must be 4000 characters or less',
+  ]);
+});
+
 test('provider-agent decisions reject unsupported enum values', () => {
   const unknownDecision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,

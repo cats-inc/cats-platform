@@ -568,6 +568,9 @@ function validateRecoveryDecision(
       `recovery selectedFallback ${decision.selectedFallback} is outside allowedFallbacks`,
     );
   }
+  if (decision.correctedInput !== undefined) {
+    validateBoundedToolInputObject(errors, 'correctedInput', decision.correctedInput, false);
+  }
 }
 
 function validateStepDependencies(
@@ -1038,10 +1041,14 @@ function validateBoundedToolInputObject(
   value: unknown,
   required: boolean,
 ): void {
-  if (value === undefined || value === null) {
+  if (value === undefined) {
     if (required) {
       errors.push(`${field} must be an object`);
     }
+    return;
+  }
+  if (value === null) {
+    errors.push(`${field} must be an object`);
     return;
   }
   if (!isRecord(value) || !isPlainJsonObject(value)) {

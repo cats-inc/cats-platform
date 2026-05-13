@@ -176,6 +176,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Follow-up slice guarded provider-agent semantic-plan steps against non-array runtime JSON, returning invalid-decision errors instead of crashing validation. |
 | 2026-05-13 | Follow-up slice made provider-agent string validation runtime-JSON safe so malformed model decisions return contract errors instead of throwing type errors. |
 | 2026-05-13 | Follow-up slice hardened provider-agent runtime JSON validation for task, summary, decision, step-action, and delegation enum values, rejecting unknown decision kinds as errors. |
+| 2026-05-13 | Follow-up slice bounded provider-agent recovery `correctedInput` with the same JSON argument-object limits used for tool inputs. |
 | 2026-05-13 | Follow-up slice required provider-agent tool inputs to be JSON argument objects before applying bounded JSON limits. |
 | 2026-05-13 | Follow-up slice made Chat Work provider-agent sidecars reject unexpected model-supplied input fields instead of silently ignoring server-resolved ids. |
 | 2026-05-13 | Follow-up slice bounded provider-agent `tool_request.input` and semantic-plan step `input` as JSON-compatible values before tool routing. |

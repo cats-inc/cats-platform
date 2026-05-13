@@ -192,7 +192,8 @@ validator also bounds tool reasons, summary counts/keys/values, context refs,
 invariants, budgets, and allowed fallback surfaces before any runtime adapter
 call receives the observation. Provider-agent decision validation also requires
 `tool_request.input` and semantic-plan step `input` to be JSON argument objects
-with capped depth, key counts, array length, and string length.
+with capped depth, key counts, array length, and string length; recovery
+`correctedInput` uses the same bounded object rules when present.
 
 | Tool | Phase | Side effect | Approval | Evidence | Notes |
 |------|-------|-------------|----------|----------|-------|
