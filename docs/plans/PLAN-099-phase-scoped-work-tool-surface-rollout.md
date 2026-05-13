@@ -75,7 +75,7 @@ Items through the same contract.
 - [x] Task 4.2: Implement `work.project.create` with project-intent validation.
 - [x] Task 4.3: Implement `work.item.update` with planning-status bounds.
 - [x] Task 4.4: Implement `work.item.assign_project`.
-- [ ] Task 4.5: Add Work Graph projection tests for captured and triaged items.
+- [x] Task 4.5: Add Work Graph projection tests for captured and triaged items.
 
 **Deliverables**: Boss Cat and approved strong Cats can organize captured Work
 without starting execution.
@@ -174,6 +174,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Phase 4.2 added narrow-write `work.project.create` contracts, idempotent Project creation, audit Activity writes, and supervised boundary tests. |
 | 2026-05-13 | Phase 4.3 added bounded `work.item.update` triage updates for title, summary, planning status, and triage metadata without execution side effects. |
 | 2026-05-13 | Phase 4.4 added `work.item.assign_project` with non-archived Project prechecks, triage-status bounds, source-preserving Work Item updates, and supervised boundary tests. |
+| 2026-05-13 | Phase 4.5 added Work Graph projection tests for newly captured orphan Work Items and triaged Work Items linked to Projects with Activity evidence anchors. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---
