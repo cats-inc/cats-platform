@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  WORK_EXTERNAL_LINK_ISSUE_TOOL,
+  WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
+  WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
+  WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
 } from '../src/products/work/shared/workToolSurface.js';
 import {
   WORK_MCP_PROFILE_ID,
@@ -66,6 +70,80 @@ test('Work tool intent preserves read-only policy bounds', () => {
     'work.phase.triage',
     'work.capability.strong_agent',
     'work.tool_scope.read_only',
+  ]);
+});
+
+test('Work tool intent projects execution-preparation tools for Boss Cat scope', () => {
+  const readOnlyManifest = resolvePhaseScopedWorkToolIntentManifest({
+    profileId: WORK_MCP_PROFILE_ID,
+    phase: 'execution_preparation',
+    capabilityProfile: 'boss_cat',
+    parentToolScope: 'read_only',
+    policyToolScope: 'read_only',
+  });
+  const writeManifest = resolvePhaseScopedWorkToolIntentManifest({
+    profileId: WORK_MCP_PROFILE_ID,
+    phase: 'execution_preparation',
+    capabilityProfile: 'boss_cat',
+    parentToolScope: 'narrow_write',
+    policyToolScope: 'narrow_write',
+  });
+  const strongAgentManifest = resolvePhaseScopedWorkToolIntentManifest({
+    profileId: WORK_MCP_PROFILE_ID,
+    phase: 'execution_preparation',
+    capabilityProfile: 'strong_agent',
+    parentToolScope: 'narrow_write',
+    policyToolScope: 'narrow_write',
+  });
+
+  assert.ok(readOnlyManifest);
+  assert.deepEqual(readOnlyManifest.allowedTools, [WORK_ITEM_PREPARE_EXECUTION_TOOL]);
+  assert.deepEqual(readOnlyManifest.lazyGroups, ['work.execution_preparation']);
+
+  assert.ok(writeManifest);
+  assert.deepEqual(writeManifest.allowedTools, [
+    WORK_ITEM_PREPARE_EXECUTION_TOOL,
+    WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
+  ]);
+  assert.deepEqual(writeManifest.lazyGroups, ['work.execution_preparation', 'work.write']);
+
+  assert.ok(strongAgentManifest);
+  assert.deepEqual(strongAgentManifest.allowedTools, []);
+});
+
+test('Work tool intent projects external tracker binding tools under narrow write scope', () => {
+  const readOnlyManifest = resolvePhaseScopedWorkToolIntentManifest({
+    profileId: WORK_MCP_PROFILE_ID,
+    phase: 'external_tracker_binding',
+    capabilityProfile: 'strong_agent',
+    parentToolScope: 'read_only',
+    policyToolScope: 'read_only',
+  });
+  const writeManifest = resolvePhaseScopedWorkToolIntentManifest({
+    profileId: WORK_MCP_PROFILE_ID,
+    phase: 'external_tracker_binding',
+    capabilityProfile: 'strong_agent',
+    parentToolScope: 'narrow_write',
+    policyToolScope: 'narrow_write',
+  });
+
+  assert.ok(readOnlyManifest);
+  assert.deepEqual(readOnlyManifest.allowedTools, []);
+  assert.deepEqual(readOnlyManifest.lazyGroups, ['work.external_tracker_binding']);
+
+  assert.ok(writeManifest);
+  assert.deepEqual(writeManifest.allowedTools, [
+    WORK_EXTERNAL_LINK_ISSUE_TOOL,
+    WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+  ]);
+  assert.deepEqual(writeManifest.requiredCapabilities, [
+    'work.phase.external_tracker_binding',
+    'work.capability.strong_agent',
+    'work.tool_scope.narrow_write',
+  ]);
+  assert.deepEqual(writeManifest.lazyGroups, [
+    'work.external_tracker_binding',
+    'work.write',
   ]);
 });
 
