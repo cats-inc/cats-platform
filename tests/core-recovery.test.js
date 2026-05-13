@@ -24,6 +24,18 @@ import {
   writeWorkflowContinuationReplayMetadata,
 } from '../build/server/platform/orchestration/workflowContinuationReplay.js';
 
+const choiceResponse = {
+  sourceMessageId: 'message-choice-source',
+  status: 'submitted',
+  submittedAt: '2026-05-13T00:05:00.000Z',
+  answers: [
+    {
+      question: 'Capture these Work Items?',
+      selectedOptionIds: ['capture_work_items'],
+    },
+  ],
+};
+
 test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recovery view', () => {
   const now = new Date('2026-03-26T12:00:00.000Z');
   let core = createDefaultCoreState();
@@ -57,6 +69,7 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
               body: 'Please continue the blocked workflow with a narrower plan.',
               senderName: 'Owner',
               blockedAt: '2026-03-26T11:56:00.000Z',
+              choiceResponse,
             }),
             {
               replayState: 'failed',
@@ -70,6 +83,7 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
             body: 'Please continue the blocked workflow with a narrower plan.',
             senderName: 'Owner',
             recordedAt: '2026-03-26T11:56:00.000Z',
+            choiceResponse,
           }),
           {
             replayState: 'ready',
@@ -158,8 +172,10 @@ test('buildCoreTaskRecoveryView normalizes stored replay metadata into one recov
   assert.equal(recovery.approval.status, 'pending');
   assert.equal(recovery.pendingDispatch?.blockedReason, 'approval_pending');
   assert.equal(recovery.pendingDispatch?.replayState, 'failed');
+  assert.equal(recovery.pendingDispatch?.hasChoiceResponse, true);
   assert.equal(recovery.dispatchReplay?.sourceMessageId, 'message-recovery');
   assert.equal(recovery.dispatchReplay?.replayState, 'ready');
+  assert.equal(recovery.dispatchReplay?.hasChoiceResponse, true);
   assert.equal(recovery.workflowContinuationReplay?.checkpointId, 'checkpoint-recovery');
   assert.equal(recovery.workflowContinuationReplay?.sourceMessageId, 'message-recovery');
   assert.equal(recovery.workflowContinuationReplay?.sourceTurnId, 'turn-recovery');

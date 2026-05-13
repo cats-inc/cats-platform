@@ -159,6 +159,7 @@ export interface CoreTaskRecoveryMessageReplayView {
   senderName: string | null;
   bodyPreview: string;
   bodyLength: number;
+  hasChoiceResponse: boolean;
   replayState: string;
   replayTrigger: string | null;
   replayAttemptAt: string | null;
