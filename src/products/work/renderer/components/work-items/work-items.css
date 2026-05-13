@@ -216,6 +216,13 @@ main.canvas:has(> .workItemDetail) {
   font-style: italic;
 }
 
+.workItemsList__projectChip--external {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: rgba(196, 101, 58, 0.28);
+  font-style: normal;
+}
+
 .workItemsList__pip {
   font-size: 0.66rem;
   font-weight: 600;

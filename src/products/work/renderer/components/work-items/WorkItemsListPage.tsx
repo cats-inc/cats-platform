@@ -2,7 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
-import { formatRelative } from "../topdown/shared";
+import {
+  formatRelative,
+  formatWorkExternalBindingLabel,
+} from "../topdown/shared";
 import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
 import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import { NewWorkItemDialog } from "./NewWorkItemDialog";
@@ -113,6 +116,22 @@ export function WorkItemsListPage(): JSX.Element {
                         })}
                       >
                         ↳ {wi.parentWorkItemTitle}
+                      </span>
+                    ) : null}
+                    {(wi.externalBindings ?? []).slice(0, 2).map((binding) => (
+                      <span
+                        key={`${binding.provider}:${binding.externalType}:${binding.externalId}`}
+                        className="workItemsList__projectChip workItemsList__projectChip--external"
+                        title={t("workTopdownExternalBindingTooltip", {
+                          externalBinding: formatWorkExternalBindingLabel(binding),
+                        })}
+                      >
+                        {formatWorkExternalBindingLabel(binding)}
+                      </span>
+                    ))}
+                    {(wi.externalBindings?.length ?? 0) > 2 ? (
+                      <span className="workItemsList__projectChip workItemsList__projectChip--external">
+                        +{(wi.externalBindings?.length ?? 0) - 2}
                       </span>
                     ) : null}
                     {wi.attention === "decision_needed" ? (

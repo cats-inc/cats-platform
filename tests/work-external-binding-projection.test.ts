@@ -7,6 +7,7 @@ import {
   upsertCoreWorkItem,
 } from '../src/core/model/index.js';
 import { buildWorkGraphProjection } from '../src/products/work/api/workGraphProjection.js';
+import { buildWorkWorkItemListProjection } from '../src/products/work/api/projection.js';
 import {
   EXTERNAL_WORK_BINDING_METADATA_KEY,
   buildExternalWorkBinding,
@@ -67,7 +68,10 @@ test('Work Graph projects external issue bindings for Projects and Work Items', 
   }, now).core;
 
   const projection = buildWorkGraphProjection(core);
+  const workItemListProjection = buildWorkWorkItemListProjection(core);
   const byId = new Map(projection.objects.map((object) => [object.id, object]));
+  const workItemListEntry = workItemListProjection.workItems.find((workItem) =>
+    workItem.id === 'work-item-intake');
 
   assert.deepEqual(byId.get('project-cats-platform')?.externalBindings, [
     {
@@ -83,6 +87,19 @@ test('Work Graph projects external issue bindings for Projects and Work Items', 
     },
   ]);
   assert.deepEqual(byId.get('work-item-intake')?.externalBindings, [
+    {
+      provider: 'github',
+      externalType: 'issue',
+      externalId: '123',
+      externalUrl: 'https://github.com/cats-inc/cats-platform/issues/123',
+      syncDirection: 'bidirectional',
+      lastSyncedAt: '2026-05-13T10:10:00.000Z',
+      externalUpdatedAt: '2026-05-13T10:09:00.000Z',
+      linkedAt: '2026-05-13T10:06:00.000Z',
+      linkedByActorRef: 'cat:boss',
+    },
+  ]);
+  assert.deepEqual(workItemListEntry?.externalBindings, [
     {
       provider: 'github',
       externalType: 'issue',

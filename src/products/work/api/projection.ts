@@ -66,9 +66,11 @@ import {
   resolveActorName,
   resolveTaskProductBinding,
 } from './projectionSupport.js';
+import { externalBindingSummaries } from './workGraphProjection.js';
 import type {
   TaskPriority,
   WorkAttentionState,
+  WorkGraphExternalBindingSummary,
   WorkTaskProductBinding,
 } from '../shared/workGraphTypes.js';
 import {
@@ -207,6 +209,7 @@ export interface WorkWorkItemListItem {
   }>;
   attention: WorkAttentionState;
   linkedTaskCount: number;
+  externalBindings?: WorkGraphExternalBindingSummary[];
   updatedAt: string;
 }
 
@@ -628,6 +631,7 @@ function buildWorkItemListItems(
         })),
         attention: deriveAttentionFromStatus(workItem.status),
         linkedTaskCount: workItem.taskId ? 1 : 0,
+        externalBindings: externalBindingSummaries(workItem.metadata),
         updatedAt: workItem.updatedAt,
       };
     });

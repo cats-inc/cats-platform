@@ -555,7 +555,7 @@ function deriveAttention(status: string): WorkAttentionState {
   return ATTENTION_BY_STATUS[status] ?? 'none';
 }
 
-function externalBindingSummaries(
+export function externalBindingSummaries(
   metadata: CoreRecordMetadata,
 ): WorkGraphExternalBindingSummary[] | undefined {
   const externalBindingsMetadata = metadata[EXTERNAL_WORK_BINDING_METADATA_KEY];
