@@ -7,7 +7,9 @@ import {
 import { createWorkExternalBindingDelegate } from '../state/workExternalBindingDelegate.js';
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
+  WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   type WorkExternalLinkIssueInput,
+  type WorkExternalUnlinkIssueInput,
 } from '../shared/workToolSurface.js';
 import { WORK_API_EXTERNAL_BINDINGS_PATH } from '../shared/apiPaths.js';
 import type { WorkApiDependencies } from './index.js';
@@ -18,8 +20,8 @@ export async function routeWorkExternalBindingApi(
   if (context.url.pathname !== WORK_API_EXTERNAL_BINDINGS_PATH) {
     return false;
   }
-  if (context.method !== 'POST') {
-    sendMethodNotAllowed(context.response, ['POST']);
+  if (context.method !== 'POST' && context.method !== 'DELETE') {
+    sendMethodNotAllowed(context.response, ['POST', 'DELETE']);
     return true;
   }
 
@@ -29,14 +31,23 @@ export async function routeWorkExternalBindingApi(
     coreStore: context.dependencies.coreStore,
     now: context.dependencies.now,
   });
-  const result = await delegate.linkIssue(
-    body as unknown as WorkExternalLinkIssueInput,
-    {
-      actorRef: core.ownerProfile.actorId,
-      actionId: buildExternalBindingActionId(body),
-      runId: 'work-api:external-bindings',
-    },
-  );
+  const toolName = context.method === 'POST'
+    ? WORK_EXTERNAL_LINK_ISSUE_TOOL
+    : WORK_EXTERNAL_UNLINK_ISSUE_TOOL;
+  const mutationContext = {
+    actorRef: core.ownerProfile.actorId,
+    actionId: buildExternalBindingActionId(body, toolName),
+    runId: 'work-api:external-bindings',
+  };
+  const result = context.method === 'POST'
+    ? await delegate.linkIssue(
+      body as unknown as WorkExternalLinkIssueInput,
+      mutationContext,
+    )
+    : await delegate.unlinkIssue(
+      body as unknown as WorkExternalUnlinkIssueInput,
+      mutationContext,
+    );
 
   if (result.status === 'applied') {
     sendJson(context.response, 200, result.result);
@@ -57,10 +68,13 @@ export async function routeWorkExternalBindingApi(
   return true;
 }
 
-function buildExternalBindingActionId(input: Record<string, unknown>): string {
+function buildExternalBindingActionId(
+  input: Record<string, unknown>,
+  toolName: string,
+): string {
   return [
     'work-api',
-    WORK_EXTERNAL_LINK_ISSUE_TOOL,
+    toolName,
     readActionIdPart(input.localKind),
     readActionIdPart(input.localId),
     readActionIdPart(input.provider),

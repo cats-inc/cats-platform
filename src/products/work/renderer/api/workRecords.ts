@@ -26,6 +26,8 @@ import type { WorkSupervisedRunLaunchProjection } from '../../api/projection.js'
 import type {
   WorkExternalLinkIssueInput,
   WorkExternalLinkIssueResult,
+  WorkExternalUnlinkIssueInput,
+  WorkExternalUnlinkIssueResult,
 } from '../../shared/workToolSurface.js';
 
 export type {
@@ -182,6 +184,23 @@ export async function linkWorkExternalIssue(
     signal,
   });
   return expectJson<WorkExternalLinkIssueResult>(
+    response,
+    errorMessage,
+  );
+}
+
+export async function unlinkWorkExternalIssue(
+  input: WorkExternalUnlinkIssueInput,
+  errorMessage: string,
+  signal?: AbortSignal,
+): Promise<WorkExternalUnlinkIssueResult> {
+  const response = await fetch(WORK_API_EXTERNAL_BINDINGS_PATH, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+    signal,
+  });
+  return expectJson<WorkExternalUnlinkIssueResult>(
     response,
     errorMessage,
   );

@@ -581,6 +581,7 @@ GET /api/work/work-items
 GET /api/work/work-items/{workItemId}
 GET /api/work/tasks/{taskId}
 POST /api/work/external-bindings
+DELETE /api/work/external-bindings
 ```
 
 - `GET /api/work` returns the first Work dashboard projection above shared
@@ -639,6 +640,11 @@ POST /api/work/external-bindings
   - `externalUpdatedAt` and `note`: optional metadata
   The route writes local `externalWorkBindings` metadata and one Activity for a
   material change. It does not call external tracker APIs.
+- `DELETE /api/work/external-bindings` removes one local external tracker
+  binding through the `work.external.unlink_issue` delegate. It accepts
+  `localKind`, `localId`, `provider`, optional `externalType`, `externalId`,
+  and optional `note`. The route removes local metadata and emits one Activity
+  for a material change. It does not call external tracker APIs.
 
 This first slice intentionally reuses `Cats Core v1` instead of inventing a
 separate Work schema. Broader team-operating-model surfaces and later Work

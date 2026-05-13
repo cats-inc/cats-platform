@@ -108,6 +108,23 @@ test('POST /api/work/external-bindings links a Work Item to an external issue', 
   assert.equal(payload?.bindingCount, 1);
   assert.equal(metadata?.bindings?.[0]?.externalId, '123');
   assert.equal(metadata?.bindings?.[0]?.linkedByActorRef, core.ownerProfile.actorId);
+
+  const unlink = await request(server, 'DELETE', WORK_API_EXTERNAL_BINDINGS_PATH, {
+    localKind: 'work_item',
+    localId: 'work-item-route-external',
+    provider: 'github',
+    externalType: 'issue',
+    externalId: '123',
+  });
+  const afterUnlink = await store.readCore();
+  const unlinkedWorkItem = afterUnlink.workItems.find(
+    (candidate) => candidate.id === 'work-item-route-external',
+  );
+
+  assert.equal(unlink.status, 200);
+  assert.equal(unlink.payload?.unlinked, true);
+  assert.equal(unlink.payload?.bindingCount, 0);
+  assert.equal(unlinkedWorkItem?.metadata[EXTERNAL_WORK_BINDING_METADATA_KEY], undefined);
 });
 
 test('POST /api/work/external-bindings links a Project to an external tracker project', async (t) => {
