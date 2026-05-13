@@ -71,7 +71,7 @@ rather than duplicating every validation branch.
 | `work.external.link_issue` | Cats Work | Product delegate, HTTP route, Work UI manual binding, URL inference, Chat provider-agent observation/tool-request executor, and GitHub adapter spike implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.external.unlink_issue` | Cats Work | Product delegate, HTTP route, Work detail UI, and Chat provider-agent observation/tool-request executor implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.lookup` | Cats Work | Product delegate, Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Strong Cat / Boss Cat triage with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
-| `work.project.create` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.project.create` | Cats Work | Product delegate, explicit Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
 | `show_in_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request canvas navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
 | `clear_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request parent-surface navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
@@ -166,6 +166,12 @@ Explicit Chat turns that name local `work-item-*` or `project-*` refs can expose
 read-only `work.project.lookup` in the provider-agent observation. Chat handles
 the resulting `tool_request` by calling the Work triage delegate and appending
 bounded Project candidates; this lookup path does not write Core.
+
+Explicit Chat turns with create/add/new Project cues can expose
+`work.project.create` with a narrow-write policy. Chat handles that
+`tool_request` by calling the Work triage delegate with bounded caller fields
+and a server-resolved conversation id; model-supplied Project ids, actor ids,
+and timestamps remain rejected by the tool contract.
 
 | Tool | Phase | Side effect | Approval | Evidence | Notes |
 |------|-------|-------------|----------|----------|-------|
