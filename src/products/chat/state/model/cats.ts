@@ -8,6 +8,7 @@ import {
   hasPlatformSurface,
   normalizePlatformSurfaceList,
 } from '../../../../shared/platformSurfaces.js';
+import { normalizeCatMcpProfile } from '../../../../shared/catMcpProfiles.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
 import { createCatRecord } from './recordBuilders.js';
 import {
@@ -346,7 +347,7 @@ export function updateCatMcpProfile(
   if (!cat) {
     throw new Error(`Cat not found: ${catId}`);
   }
-  cat.mcpProfile = mcpProfile;
+  cat.mcpProfile = normalizeCatMcpProfile(mcpProfile);
   cat.updatedAt = new Date().toISOString();
   return nextState;
 }

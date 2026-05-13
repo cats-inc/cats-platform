@@ -24,6 +24,7 @@ import {
   resolveVisibleOrchestratorLabel,
 } from '../../../shared/orchestratorLabel.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../../shared/platformSurfaces.js';
+import { CHAT_MCP_PROFILE_ID } from '../../../shared/catMcpProfiles.js';
 import {
   normalizeSelectedChannelView,
   type SelectedChannelView,
@@ -67,7 +68,7 @@ export function emptyCatForm(): CatFormState {
     makeBoss: false,
     products: defaultCatProducts(),
     skillProfile: 'chat-default',
-    mcpProfile: 'chat-memory',
+    mcpProfile: CHAT_MCP_PROFILE_ID,
   };
 }
 

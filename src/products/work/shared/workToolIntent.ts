@@ -3,6 +3,7 @@ import type {
 } from '../../../platform/orchestration/contracts.js';
 import type { SupervisionToolScope } from '../../../platform/supervision/contracts.js';
 import { filterToolSurface } from '../../../platform/supervision/toolRegistry.js';
+import { WORK_MCP_PROFILE_ID } from '../../../shared/catMcpProfiles.js';
 import {
   createPhaseScopedWorkToolManifests,
   filterPhaseScopedWorkToolManifests,
@@ -10,7 +11,7 @@ import {
   type WorkToolPhase,
 } from './workToolSurface.js';
 
-export const WORK_MCP_PROFILE_ID = 'work-memory' as const;
+export { WORK_MCP_PROFILE_ID };
 
 type ToolIntentContext = NonNullable<ToolIntentManifest['context']>;
 

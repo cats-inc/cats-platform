@@ -18,6 +18,7 @@ import {
   createGlobalCat as createWorkspaceGlobalCat,
   removeCatFromChannelApi as removeWorkspaceCatFromChannelApi,
 } from '../api/index.js';
+import { CHAT_MCP_PROFILE_ID } from '../../../../shared/catMcpProfiles.js';
 import { emptyCatForm, type CatFormState } from '../workspaceChatUtils.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
@@ -63,7 +64,7 @@ export interface WorkspaceCatFormState {
 }
 
 function resolveCreateCatMcpProfile(profile: string | null | undefined): string | undefined {
-  if (!profile || profile === 'chat-memory') {
+  if (!profile || profile === CHAT_MCP_PROFILE_ID) {
     return undefined;
   }
   return profile;

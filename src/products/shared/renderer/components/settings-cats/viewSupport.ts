@@ -1,5 +1,9 @@
 import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
 import type { MessageKey } from '../../../../../shared/i18n/index.js';
+import {
+  CHAT_MCP_PROFILE_ID,
+  WORK_MCP_PROFILE_ID,
+} from '../../../../../shared/catMcpProfiles.js';
 
 export const SKILL_PROFILES = [
   { value: 'chat-default', label: messageKeys.sharedSettingsCatsSkillProfileDefaultLabel },
@@ -7,8 +11,8 @@ export const SKILL_PROFILES = [
 ] as const;
 
 export const MCP_PROFILES = [
-  { value: 'chat-memory', label: messageKeys.sharedSettingsCatsMcpProfileChatMemoryLabel },
-  { value: 'work-memory', label: messageKeys.sharedSettingsCatsMcpProfileWorkMemoryLabel },
+  { value: CHAT_MCP_PROFILE_ID, label: messageKeys.sharedSettingsCatsMcpProfileChatMemoryLabel },
+  { value: WORK_MCP_PROFILE_ID, label: messageKeys.sharedSettingsCatsMcpProfileWorkMemoryLabel },
 ] as const;
 
 export const MEMORY_CATEGORIES = [
@@ -31,10 +35,10 @@ export function getCatSkillProfileLabel(profile: string | null | undefined): Mes
 }
 
 export function getCatMcpProfileLabel(profile: string | null | undefined): MessageKey | null {
-  if (!profile || profile === 'chat-memory') {
+  if (!profile || profile === CHAT_MCP_PROFILE_ID) {
     return messageKeys.sharedSettingsCatsMcpProfileChatMemoryLabel;
   }
-  if (profile === 'work-memory') {
+  if (profile === WORK_MCP_PROFILE_ID) {
     return messageKeys.sharedSettingsCatsMcpProfileWorkMemoryLabel;
   }
   return null;

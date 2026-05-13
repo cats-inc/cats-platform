@@ -19,6 +19,7 @@ import {
   stripClientMessageAuditMetadata,
   type ClientMessageAuditMetadata,
 } from '../../shared/clientMessageIdentity.js';
+import { normalizeCatMcpProfile } from '../../../../shared/catMcpProfiles.js';
 import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { defaultCatProducts, normalizePlatformSurfaceList } from '../../../../shared/platformSurfaces.js';
 import { buildExecutionLabel } from '../../../../shared/executionLabel.js';
@@ -113,7 +114,7 @@ export function createCatRecord(input: CreateCatInput, nowIso: string): ChatCat 
     name,
     roles: normalizeList(input.roles),
     skillProfile: normalizeOptionalText(input.skillProfile),
-    mcpProfile: normalizeOptionalText(input.mcpProfile),
+    mcpProfile: normalizeCatMcpProfile(input.mcpProfile),
     status: 'active',
     createdAt: nowIso,
     updatedAt: nowIso,

@@ -20,6 +20,7 @@ import {
   deleteGlobalCat,
   updateCatProfile,
 } from '../api/index.js';
+import { CHAT_MCP_PROFILE_ID } from '../../../../shared/catMcpProfiles.js';
 import type { CatFormState } from '../workspaceChatUtils.js';
 import { formatSettingsCatsRegistryMutationError } from './settingsCatsRegistryErrorLabels.js';
 
@@ -78,7 +79,7 @@ export function createSettingsCatsRegistryActions(
         products: context.catForm.products.length > 0 ? context.catForm.products : undefined,
         skillProfile: context.catForm.skillProfile || undefined,
         mcpProfile:
-          context.catForm.mcpProfile && context.catForm.mcpProfile !== 'chat-memory'
+          context.catForm.mcpProfile && context.catForm.mcpProfile !== CHAT_MCP_PROFILE_ID
             ? context.catForm.mcpProfile
             : undefined,
       });
