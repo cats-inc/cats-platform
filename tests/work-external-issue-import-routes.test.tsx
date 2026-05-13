@@ -202,6 +202,73 @@ test('POST /api/work/external-issue-imports imports selected Redmine issue URLs'
   );
 });
 
+test('POST /api/work/external-issue-imports imports Bugzilla bug URLs', async (t) => {
+  const store = new MemoryCoreStore(createDefaultCoreState());
+  const requests: string[] = [];
+  const server = createTestServer(store, {
+    bugzilla: {
+      fetchImpl: async (url) => {
+        requests.push(url);
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return {
+              bugs: [
+                {
+                  id: 1888,
+                  product: 'Cats Platform',
+                  component: 'Work',
+                  summary: 'Import route Bugzilla bug',
+                  description: 'Imported from Bugzilla route.',
+                  resolution: '',
+                  is_open: true,
+                  last_change_time: '2026-05-13T14:40:00Z',
+                },
+              ],
+            };
+          },
+        };
+      },
+    },
+  });
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const { status, payload } = await request(
+    server,
+    'POST',
+    WORK_API_EXTERNAL_ISSUE_IMPORTS_PATH,
+    {
+      externalUrl: 'https://bugs.example.test/bugzilla/show_bug.cgi?id=1888',
+      provider: 'bugzilla',
+    },
+  );
+
+  assert.equal(status, 200);
+  assert.equal(payload?.provider, 'bugzilla');
+  assert.deepEqual(requests, [
+    'https://bugs.example.test/bugzilla/rest/bug/1888',
+  ]);
+  const core = await store.readCore();
+  assert.equal(core.workItems[0]?.title, 'Import route Bugzilla bug');
+  assert.deepEqual(
+    core.workItems[0]?.metadata[EXTERNAL_ISSUE_IMPORT_METADATA_KEY],
+    {
+      provider: 'bugzilla',
+      externalType: 'ticket',
+      externalId: '1888',
+      externalUrl: 'https://bugs.example.test/bugzilla/show_bug.cgi?id=1888',
+      sourceKey: 'Cats Platform',
+      state: 'open',
+      labels: ['Work'],
+      assignees: [],
+      sourceUpdatedAt: '2026-05-13T14:40:00Z',
+      sourceClosedAt: null,
+    },
+  );
+});
+
 test('POST /api/work/external-issue-imports rejects unsupported URLs before fetching', async (t) => {
   const store = new MemoryCoreStore(createDefaultCoreState());
   let fetchCount = 0;
