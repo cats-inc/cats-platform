@@ -163,6 +163,8 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added API-level Boss execution confirmation coverage proving direct orchestrator choice responses create pending-approval Tasks from Work execution proposals and link them back through `WorkItem.taskId`. |
+| 2026-05-13 | Follow-up slice added `choiceResponse` to the direct orchestrator dispatch contract so `/api/orchestrator/dispatch` can confirm owner-visible Work intake and execution proposals through the same Chat choice path. |
 | 2026-05-13 | Follow-up slice added API-level coverage that provider-agent Boss execution-preparation decisions create owner-visible Work execution proposals without creating Tasks or Runs. |
 | 2026-05-13 | Follow-up slice added API-level coverage that provider-agent `work.item.update` decisions apply bounded Work Item planning updates through orchestrator dispatch. |
 | 2026-05-13 | Follow-up slice added API-level coverage that provider-agent `work.project.create` decisions write Cats Work Projects through the orchestrator dispatch sidecar path. |
