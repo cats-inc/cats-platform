@@ -158,6 +158,23 @@ const PROVIDER_AGENT_WORKER_TOOL_TARGET_FIELDS = [
   'toolName',
   'workerProfileId',
 ] as const;
+const PROVIDER_AGENT_TOOL_DESCRIPTOR_FIELDS = ['manifest', 'reason', 'inputHints'] as const;
+const PROVIDER_AGENT_TOOL_MANIFEST_FIELDS = [
+  'schemaVersion',
+  'name',
+  'manifestVersion',
+  'description',
+  'sideEffect',
+  'preflight',
+  'blocking',
+  'cancellation',
+  'approval',
+  'evidence',
+  'failureCodes',
+  'maxBudgetHint',
+  'inputSchema',
+  'outputSchema',
+] as const;
 
 export type ProviderAgentDecisionConfidence =
   (typeof PROVIDER_AGENT_DECISION_CONFIDENCE_VALUES)[number];
@@ -974,6 +991,12 @@ function validateToolDescriptor(
     errors.push(`availableTools[${index}] must be an object`);
     return;
   }
+  validateAllowedRecordFields(
+    errors,
+    `availableTools[${index}]`,
+    descriptor,
+    PROVIDER_AGENT_TOOL_DESCRIPTOR_FIELDS,
+  );
   if (!isRecord(descriptor.manifest)) {
     errors.push(`availableTools[${index}].manifest must be an object`);
   } else {
@@ -1017,6 +1040,7 @@ function validateToolManifest(
   index: number,
 ): void {
   const field = `availableTools[${index}].manifest`;
+  validateAllowedRecordFields(errors, field, manifest, PROVIDER_AGENT_TOOL_MANIFEST_FIELDS);
   validateBoundedString(
     errors,
     `${field}.name`,
@@ -1080,6 +1104,9 @@ function validateToolManifest(
   );
   validateSchemaRef(errors, `${field}.inputSchema`, manifest.inputSchema);
   validateSchemaRef(errors, `${field}.outputSchema`, manifest.outputSchema);
+  if (manifest.maxBudgetHint !== undefined) {
+    validateBudgetEnvelope(errors, manifest.maxBudgetHint, `${field}.maxBudgetHint`);
+  }
 }
 
 function readToolDescriptorManifestName(descriptor: unknown): string | null {

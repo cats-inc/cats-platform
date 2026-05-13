@@ -292,6 +292,34 @@ test('bounded observation rejects malformed tool descriptors without throwing', 
   ]);
 });
 
+test('bounded observation rejects unsupported tool descriptor and manifest fields', () => {
+  const input = observation();
+  input.availableTools[0] = {
+    ...input.availableTools[0]!,
+    debug: 'hidden descriptor field',
+    manifest: {
+      ...input.availableTools[0]!.manifest,
+      secret: 'hidden manifest field',
+      maxBudgetHint: {
+        maxDurationMs: 1000,
+        hardStop: true,
+        softLimit: true,
+      },
+      inputSchema: {
+        ...input.availableTools[0]!.manifest.inputSchema,
+        extra: 'hidden schema field',
+      },
+    },
+  } as never;
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(input), [
+    'availableTools[0] contains unsupported fields: debug',
+    'availableTools[0].manifest contains unsupported fields: secret',
+    'availableTools[0].manifest.inputSchema contains unsupported fields: extra',
+    'availableTools[0].manifest.maxBudgetHint contains unsupported fields: softLimit',
+  ]);
+});
+
 test('bounded observation rejects missing and oversized tool reasons', () => {
   const input = observation();
   input.availableTools[0] = {
