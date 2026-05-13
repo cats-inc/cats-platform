@@ -398,7 +398,7 @@ function validateSemanticPlanDecision(
       PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
     );
     if (step.input !== undefined) {
-      validateBoundedJsonValue(errors, `step ${step.stepId}.input`, step.input);
+      validateBoundedToolInputObject(errors, `step ${step.stepId}.input`, step.input, false);
     }
 
     if (step.action === 'call_tool') {
@@ -444,7 +444,7 @@ function validateToolRequestDecision(
     decision.expectedOutputSchemaRef,
     availableToolByName.get(decision.toolName),
   );
-  validateBoundedJsonValue(errors, 'tool_request.input', decision.input);
+  validateBoundedToolInputObject(errors, 'tool_request.input', decision.input, true);
   validateBoundedString(
     errors,
     'rationaleSummary',
@@ -1030,6 +1030,26 @@ function validateBoundedJsonValue(
   }
 
   errors.push(`${field} must be JSON-compatible`);
+}
+
+function validateBoundedToolInputObject(
+  errors: string[],
+  field: string,
+  value: unknown,
+  required: boolean,
+): void {
+  if (value === undefined || value === null) {
+    if (required) {
+      errors.push(`${field} must be an object`);
+    }
+    return;
+  }
+  if (!isRecord(value) || !isPlainJsonObject(value)) {
+    errors.push(`${field} must be an object`);
+    return;
+  }
+
+  validateBoundedJsonValue(errors, field, value);
 }
 
 function validateBoundedJsonArray(

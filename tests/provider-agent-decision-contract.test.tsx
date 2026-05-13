@@ -571,6 +571,49 @@ test('provider-agent tool inputs stay bounded JSON values', () => {
   ]);
 });
 
+test('provider-agent tool inputs must be JSON argument objects', () => {
+  const toolRequest = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'tool_request',
+    decisionId: 'decision-input-object',
+    confidence: 'medium',
+    toolName: 'work.context.lookup',
+    target: { kind: 'worker_tool', toolName: 'work.context.lookup' },
+    input: 'raw scalar input',
+    rationaleSummary: 'Try to pass a scalar tool input.',
+  } as unknown as ProviderAgentDecision;
+  const semanticPlan: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'semantic_plan',
+    decisionId: 'decision-step-input-object',
+    planId: 'plan-step-input-object',
+    confidence: 'medium',
+    rationaleSummary: 'Try to pass a scalar step input.',
+    steps: [
+      {
+        stepId: 'step-lookup',
+        summary: 'Read bounded context.',
+        action: 'call_tool',
+        toolName: 'work.context.lookup',
+        input: 'raw scalar input',
+      } as never,
+    ],
+  };
+
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: toolRequest,
+  }), [
+    'tool_request.input must be an object',
+  ]);
+  assert.deepEqual(validateProviderAgentDecision({
+    observation: observation(),
+    decision: semanticPlan,
+  }), [
+    'step step-lookup.input must be an object',
+  ]);
+});
+
 test('provider-agent decisions reject unsupported enum values', () => {
   const unknownDecision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
