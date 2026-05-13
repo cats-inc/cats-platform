@@ -163,6 +163,8 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice documented direct orchestrator choice dispatch and recovery `hasChoiceResponse` indicators in the API guide. |
+| 2026-05-13 | Follow-up slice surfaced a recovery read-model `hasChoiceResponse` flag so operator tooling can identify replayed choice confirmations without exposing raw answer payloads. |
 | 2026-05-13 | Follow-up slice added pending-dispatch API regression coverage proving approval-blocked direct dispatches preserve `choiceResponse` in both pending and replay metadata and pass it to the resume seam. |
 | 2026-05-13 | Follow-up slice preserved direct orchestrator `choiceResponse` payloads through pending/retry replay metadata so owner confirmations survive approval gates and interrupted auto-resume flows. |
 | 2026-05-13 | Follow-up slice added API-level Boss execution confirmation coverage proving direct orchestrator choice responses create pending-approval Tasks from Work execution proposals and link them back through `WorkItem.taskId`. |
