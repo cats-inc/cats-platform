@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { decideWorkTaskApproval } from '../src/products/work/renderer/api/workRecords.ts';
+import {
+  decideWorkTaskApproval,
+  performWorkTaskActionEnvelope,
+} from '../src/products/work/renderer/api/workRecords.ts';
 
 test('decideWorkTaskApproval approves pending Work Tasks through core approvals', async (t) => {
   const calls: Array<{ url: string; init?: RequestInit }> = [];
@@ -71,6 +74,44 @@ test('decideWorkTaskApproval rejects pending Work Tasks as cancelled execution',
     decidedByActorId: 'actor-owner',
     notes: 'Not ready.',
     taskStatus: 'cancelled',
+  });
+});
+
+test('performWorkTaskActionEnvelope posts typed War Room task actions', async (t) => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(input), init });
+    return jsonResponse({
+      task: { id: 'task-work-approval', status: 'approved' },
+      approval: { status: 'approved', decisionAction: 'approve' },
+    });
+  }) as typeof fetch;
+
+  await performWorkTaskActionEnvelope(
+    {
+      method: 'POST',
+      path: '/api/core/approvals',
+      body: {
+        taskId: 'task-work-approval',
+        status: 'approved',
+        action: 'approve',
+      },
+    },
+    'approval failed',
+  );
+
+  assert.equal(calls[0]?.url, '/api/core/approvals');
+  assert.equal(calls[0]?.init?.method, 'POST');
+  assert.equal(readHeader(calls[0]?.init, 'Accept'), 'application/json');
+  assert.equal(readHeader(calls[0]?.init, 'Content-Type'), 'application/json');
+  assert.deepEqual(JSON.parse(String(calls[0]?.init?.body)), {
+    taskId: 'task-work-approval',
+    status: 'approved',
+    action: 'approve',
   });
 });
 

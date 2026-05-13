@@ -20,6 +20,7 @@ import type {
   CoreWorkItemRecord,
   CoreWorkItemStatus,
 } from '../../../../core/types.js';
+import type { CoreTaskActionEnvelope } from '../../../../core/taskActionEnvelopes.js';
 import type { WorkSupervisedRunLaunchProjection } from '../../api/projection.js';
 
 export type {
@@ -246,4 +247,21 @@ export async function startWorkTaskSupervisedRun(
     signal,
   });
   return expectJson<WorkSupervisedRunLaunchProjection>(response, errorMessage);
+}
+
+export async function performWorkTaskActionEnvelope(
+  action: CoreTaskActionEnvelope,
+  errorMessage: string,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  const response = await fetch(action.path, {
+    method: action.method,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(action.body),
+    signal,
+  });
+  return expectJson<unknown>(response, errorMessage);
 }

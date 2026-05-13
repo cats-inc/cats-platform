@@ -1,10 +1,18 @@
 import { startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import type { WorkDashboardProjection } from '../../api/projection.js';
 import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
+import type { CoreTaskActionEnvelope } from '../../../../core/taskActionEnvelopes.js';
+import { performWorkTaskActionEnvelope } from '../api/workRecords.js';
 import { listCatActorLinks } from '../actorLinks.js';
-import { useWorkDashboardQuery } from '../state/queries/workDashboardQuery.js';
+import {
+  useWorkDashboardQuery,
+  WORK_DASHBOARD_QUERY_KEY,
+} from '../state/queries/workDashboardQuery.js';
+import { TASKS_QUERY_KEY } from '../state/queries/tasksQuery.js';
+import { WORK_GRAPH_QUERY_KEY } from '../state/queries/workGraphQuery.js';
 import {
   formatWorkDeliveryMode,
   formatWorkApprovalStatus,
@@ -17,6 +25,7 @@ import {
   getWorkObjectStatusLabel,
 } from './topdown/WorkObjectCard';
 import { presentWorkTimelineTitle } from './workTimelineLabels.js';
+import { formatWorkCrudMutationError } from './workCrudErrorLabels.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 type WorkOperatorInboxItem = WorkDashboardProjection['sections']['operatorInbox']['items'][number];
@@ -25,6 +34,7 @@ type WorkProjectItem = WorkDashboardProjection['sections']['projects']['items'][
 type WorkRecoveryItem = WorkDashboardProjection['sections']['recovery']['items'][number];
 type WorkWorkItemItem = WorkDashboardProjection['sections']['workItems']['items'][number];
 type WorkTaskActionContext = WorkOperatorInboxItem['taskContext'];
+type WorkTaskNextAction = WorkOperatorInboxItem['nextActions'][number];
 type I18nTranslate = ReturnType<typeof useI18n>['t'];
 
 function formatTimestamp(
@@ -180,16 +190,37 @@ function WorkWarRoomOpenTaskButton({
 function WorkWarRoomTaskContextActions({
   taskId,
   taskContext,
+  nextActions = [],
+  isTaskActionPending = false,
+  onTaskAction,
   t,
 }: {
   taskId: string;
   taskContext: WorkTaskActionContext;
+  nextActions?: WorkTaskNextAction[];
+  isTaskActionPending?: boolean;
+  onTaskAction?: (action: CoreTaskActionEnvelope) => void;
   t: I18nTranslate;
 }) {
   const navigate = useNavigate();
+  const handleTaskAction = onTaskAction;
+  const approvalActions = handleTaskAction ? nextActions.filter(isActionableApprovalAction) : [];
 
   return (
     <div className="workWarRoomHeaderActions">
+      {approvalActions.map((nextAction) => (
+        <button
+          key={`${taskId}:${nextAction.kind}`}
+          type="button"
+          className="operatorActionButton"
+          onClick={() => handleTaskAction?.(nextAction.action)}
+          disabled={isTaskActionPending}
+        >
+          {isTaskActionPending
+            ? t('workWarRoomActionBusy')
+            : formatWorkTokenValue(nextAction.kind, t)}
+        </button>
+      ))}
       <WorkWarRoomOpenTaskButton taskId={taskId} t={t} />
       {taskContext.projectId ? (
         <button
@@ -248,13 +279,24 @@ function WorkWarRoomTaskContextActions({
   );
 }
 
+function isActionableApprovalAction(
+  nextAction: WorkTaskNextAction,
+): nextAction is WorkTaskNextAction & { action: CoreTaskActionEnvelope } {
+  return (nextAction.kind === 'approve' || nextAction.kind === 'reject')
+    && nextAction.action !== null;
+}
+
 function OperatorInboxSection({
   items,
   totalAvailable,
+  isTaskActionPending,
+  onTaskAction,
   t,
 }: {
   items: WorkOperatorInboxItem[];
   totalAvailable: number;
+  isTaskActionPending: boolean;
+  onTaskAction: (action: CoreTaskActionEnvelope) => void;
   t: I18nTranslate;
 }) {
   return (
@@ -361,6 +403,9 @@ function OperatorInboxSection({
               <WorkWarRoomTaskContextActions
                 taskId={item.taskId}
                 taskContext={item.taskContext}
+                nextActions={item.nextActions}
+                isTaskActionPending={isTaskActionPending}
+                onTaskAction={onTaskAction}
                 t={t}
               />
             </article>
@@ -374,10 +419,14 @@ function OperatorInboxSection({
 function ControlPlaneSection({
   items,
   totalAvailable,
+  isTaskActionPending,
+  onTaskAction,
   t,
 }: {
   items: WorkControlPlaneItem[];
   totalAvailable: number;
+  isTaskActionPending: boolean;
+  onTaskAction: (action: CoreTaskActionEnvelope) => void;
   t: I18nTranslate;
 }) {
   return (
@@ -491,6 +540,9 @@ function ControlPlaneSection({
               <WorkWarRoomTaskContextActions
                 taskId={item.taskId}
                 taskContext={item.taskContext}
+                nextActions={item.nextActions}
+                isTaskActionPending={isTaskActionPending}
+                onTaskAction={onTaskAction}
                 t={t}
               />
             </article>
@@ -863,12 +915,31 @@ function WorkWarRoomOpenWorkItemButton({
 
 export function WarRoomView() {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const dashboardQuery = useWorkDashboardQuery(t('workWarRoomLoadError'));
+  const taskActionMutation = useMutation({
+    mutationFn: async (action: CoreTaskActionEnvelope) =>
+      performWorkTaskActionEnvelope(action, t('workWarRoomActionError')),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: WORK_DASHBOARD_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY }),
+      ]);
+    },
+  });
   const payload = dashboardQuery.data ?? null;
   const error = dashboardQuery.error
     ? dashboardQuery.error instanceof Error
       ? dashboardQuery.error.message
       : t('workWarRoomLoadError')
+    : '';
+  const actionError = taskActionMutation.error
+    ? formatWorkCrudMutationError(
+      taskActionMutation.error,
+      t('workWarRoomActionError'),
+      t,
+    )
     : '';
 
   return (
@@ -880,8 +951,8 @@ export function WarRoomView() {
         </div>
       </div>
 
-      {error ? (
-        <div className="codeBuilderFeedback">{error}</div>
+      {error || actionError ? (
+        <div className="codeBuilderFeedback">{error || actionError}</div>
       ) : null}
 
       {dashboardQuery.isPending && !payload ? (
@@ -958,11 +1029,15 @@ export function WarRoomView() {
           <OperatorInboxSection
             items={payload.sections.operatorInbox.items}
             totalAvailable={payload.sections.operatorInbox.summary.totalAvailable}
+            isTaskActionPending={taskActionMutation.isPending}
+            onTaskAction={(action) => taskActionMutation.mutate(action)}
             t={t}
           />
           <ControlPlaneSection
             items={payload.sections.controlPlane.items}
             totalAvailable={payload.sections.controlPlane.summary.totalAvailable}
+            isTaskActionPending={taskActionMutation.isPending}
+            onTaskAction={(action) => taskActionMutation.mutate(action)}
             t={t}
           />
           <RecoverySection

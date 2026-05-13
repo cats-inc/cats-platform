@@ -1112,6 +1112,8 @@ export const zhTWCatalog: MessageCatalog = {
   'work.warRoom.controlPlaneTargets': '目標：{targets}',
   'work.warRoom.countSummary': '顯示 {count}/{total}',
   'work.warRoom.governanceEyebrow': '治理',
+  'work.warRoom.actionBusy': '套用中...',
+  'work.warRoom.actionError': '無法套用工作動作。',
   'work.warRoom.loadError': '讀取工作儀表板失敗',
   'work.warRoom.loadingBadge': '載入中',
   'work.warRoom.loadingBody': '正在更新最新戰情室快照。',

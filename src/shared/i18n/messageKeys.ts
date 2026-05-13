@@ -1137,6 +1137,8 @@ export const messageKeys = {
   workWarRoomControlPlaneTargets: 'work.warRoom.controlPlaneTargets',
   workWarRoomCountSummary: 'work.warRoom.countSummary',
   workWarRoomGovernanceEyebrow: 'work.warRoom.governanceEyebrow',
+  workWarRoomActionBusy: 'work.warRoom.actionBusy',
+  workWarRoomActionError: 'work.warRoom.actionError',
   workWarRoomLoadError: 'work.warRoom.loadError',
   workWarRoomLoadingBadge: 'work.warRoom.loadingBadge',
   workWarRoomLoadingBody: 'work.warRoom.loadingBody',

@@ -1144,6 +1144,8 @@ export const enCatalog: MessageCatalog = {
   'work.warRoom.controlPlaneTargets': 'Targets: {targets}',
   'work.warRoom.countSummary': 'Showing {count}/{total}',
   'work.warRoom.governanceEyebrow': 'Governance',
+  'work.warRoom.actionBusy': 'Applying...',
+  'work.warRoom.actionError': 'Unable to apply Work action.',
   'work.warRoom.loadError': 'Failed to load work dashboard',
   'work.warRoom.loadingBadge': 'Loading',
   'work.warRoom.loadingBody': 'Building the latest War Room snapshot.',
