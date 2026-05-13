@@ -943,7 +943,13 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
     - lane-aware `participant` / `targets` execution refs so downstream
       operator consumers do not have to infer canonical lane identity from
       `sessionId` alone
-- `POST /api/orchestrator/dispatch` accepts the same request body, reuses the
+- `POST /api/orchestrator/dispatch` accepts the same base request body plus an
+  optional `choiceResponse` matching Chat message choices
+  (`sourceMessageId`, `status`, `submittedAt`, and `answers[]`). This lets
+  direct API callers confirm owner-visible proposal sidecars, including Work
+  intake capture and Boss execution-preparation proposals, through the same
+  choice path used by Chat and Telegram.
+- The dispatch route reuses the
   existing `routeChannelMessage()` execution path, and returns:
   - the pre-dispatch plan
     - `plan.snapshot` is always `"pre_dispatch"` so consumers do not treat it as post-dispatch truth
@@ -960,6 +966,9 @@ GET   /api/orchestrator/channels/{channelId}/execution-loop
     - when approval blocks dispatch, Cats also persists that pending request on
       the channel task metadata so a later owner decision can replay it without
       requiring the caller to post the same dispatch body a second time
+    - persisted pending/replay dispatch metadata preserves `choiceResponse`
+      when present, so confirmation turns survive approval gates, retries, and
+      interrupted auto-resume cleanup
   - `sourceMessageId`
   - a post-dispatch execution-loop snapshot that includes:
     - `runtimeToolPlane`
