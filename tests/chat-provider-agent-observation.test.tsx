@@ -695,6 +695,72 @@ test('Chat provider-agent observation exposes narrow-write Project create for ex
   assert.deepEqual(validateProviderAgentBoundedObservation(observation!), []);
 });
 
+test('Chat provider-agent observation exposes narrow-write Work Item update for explicit refs', () => {
+  const now = new Date('2026-05-13T10:40:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Work Item update',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const core = upsertCoreWorkItem(
+    createDefaultCoreState(),
+    {
+      id: 'work-item-update-1',
+      title: 'Needs update',
+      status: 'planned',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {},
+    },
+    now,
+  ).core;
+
+  const { prepared } = appendAndPrepare({
+    state,
+    channelId,
+    body: 'Boss Cat update work-item-update-1 and mark it ready',
+    now: new Date('2026-05-13T10:41:00.000Z'),
+    core,
+    providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+  });
+  const observation = prepared.providerAgentObservation;
+  const toolNames = observationToolNames(observation);
+
+  assert.equal(observation?.policy.dials.toolScope, 'narrow_write');
+  assert.equal(toolNames.includes(WORK_ITEM_UPDATE_TOOL), true);
+  assert.equal(toolNames.includes(WORK_PROJECT_CREATE_TOOL), false);
+  assert.equal(
+    observation?.contextRefs.includes('work-triage-action:update_work_item'),
+    true,
+  );
+  assert.equal(
+    observation?.contextRefs.includes('work-triage-work-item:work-item-update-1'),
+    true,
+  );
+  assert.deepEqual(validateProviderAgentBoundedObservation(observation!), []);
+});
+
 test('Chat default turns bind provider-agent observation to the selected execution target', () => {
   const state = createChannel(
     createDefaultChatState(),

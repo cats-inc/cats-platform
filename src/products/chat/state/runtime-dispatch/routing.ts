@@ -101,6 +101,7 @@ import {
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
+  WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
   WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
@@ -112,7 +113,10 @@ import {
   type WorkItemProposeSplitInput,
   type WorkItemSourceRef,
   type WorkItemSplitCandidate,
+  type WorkItemKind,
+  type WorkItemPriorityHint,
   type WorkItemTriageStatus,
+  type WorkItemUpdateResult,
   type WorkProjectCreateResult,
   type WorkProjectCreateStatus,
   type WorkProjectLookupProject,
@@ -230,6 +234,9 @@ const WORK_TRIAGE_LOOKUP_RESULT_METADATA_KEY = 'workTriageLookupResult';
 const WORK_TRIAGE_LOOKUP_RESULT_METADATA_VERSION = 1;
 const WORK_PROJECT_CREATE_RESULT_METADATA_KEY = 'workProjectCreateResult';
 const WORK_PROJECT_CREATE_RESULT_METADATA_VERSION = 1;
+const WORK_ITEM_UPDATE_RESULT_METADATA_KEY = 'workItemUpdateResult';
+const WORK_ITEM_UPDATE_RESULT_METADATA_VERSION = 1;
+const CHAT_WORK_ITEM_ID_PATTERN = /\bwork-item-[a-z0-9][a-z0-9_-]*\b/iu;
 const WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES = new Set([
   'draft',
   'planned',
@@ -351,6 +358,17 @@ interface WorkProjectCreateResultMetadata {
   title: string;
   status: WorkProjectCreateStatus;
   created: boolean;
+}
+
+interface WorkItemUpdateResultMetadata {
+  schemaVersion: typeof WORK_ITEM_UPDATE_RESULT_METADATA_VERSION;
+  phase: 'triage';
+  toolName: typeof WORK_ITEM_UPDATE_TOOL;
+  decisionId: string;
+  sourceMessageId: string;
+  workItemId: string;
+  status: WorkItemTriageStatus;
+  updated: boolean;
 }
 
 export type ProviderAgentDecisionRequester = (input: {
@@ -2244,6 +2262,138 @@ async function appendWorkProjectCreateResultSidecar(input: {
   };
 }
 
+async function appendWorkItemUpdateResultSidecar(input: {
+  state: ChatState;
+  channelId: string;
+  userMessage: ChatMessage;
+  providerAgentDecision: ProviderAgentDecision | null;
+  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>;
+  now: Date;
+}): Promise<{ state: ChatState; resultMessage: ChatMessage | null }> {
+  if (
+    input.providerAgentDecision?.kind !== 'tool_request'
+    || input.providerAgentDecision.toolName !== WORK_ITEM_UPDATE_TOOL
+  ) {
+    return { state: input.state, resultMessage: null };
+  }
+  if (!input.chatStore) {
+    warnWorkItemUpdateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'missing_core_store',
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const workItemId = extractWorkItemIdFromText(input.userMessage.body);
+  if (!workItemId) {
+    warnWorkItemUpdateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'missing_local_work_ref',
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const core = await input.chatStore.readCore();
+  const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
+  const title = readOptionalString(requestedInput.title);
+  const summary = readOptionalString(requestedInput.summary);
+  const status = isWorkItemTriageStatus(requestedInput.status)
+    ? requestedInput.status
+    : undefined;
+  const kind = isWorkItemKind(requestedInput.kind) ? requestedInput.kind : undefined;
+  const priority = isWorkItemPriorityHint(requestedInput.priority)
+    ? requestedInput.priority
+    : undefined;
+  const assignmentHint = readOptionalString(requestedInput.assignmentHint);
+  const openQuestions = readStringArray(requestedInput.openQuestions);
+  if (
+    !title
+    && !summary
+    && !status
+    && !kind
+    && !priority
+    && !assignmentHint
+    && openQuestions.length === 0
+  ) {
+    warnWorkItemUpdateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: 'missing_update_fields',
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const delegate = createWorkTriageDelegate({
+    coreStore: input.chatStore,
+    now: () => input.now,
+  });
+  const result = await delegate.updateWorkItem(
+    {
+      workItemId,
+      ...(title ? { title } : {}),
+      ...(summary ? { summary } : {}),
+      ...(status ? { status } : {}),
+      ...(kind ? { kind } : {}),
+      ...(priority ? { priority } : {}),
+      ...(assignmentHint ? { assignmentHint } : {}),
+      ...(openQuestions.length > 0 ? { openQuestions } : {}),
+    },
+    {
+      actorRef: core.ownerProfile.actorId,
+      actionId: [
+        input.userMessage.id,
+        input.providerAgentDecision.decisionId,
+        WORK_ITEM_UPDATE_TOOL,
+      ].join(':'),
+      runId: `chat:${input.channelId}`,
+    },
+  );
+  if (result.status !== 'applied') {
+    warnWorkItemUpdateToolCallIgnored({
+      channelId: input.channelId,
+      messageId: input.userMessage.id,
+      decisionId: input.providerAgentDecision.decisionId,
+      reason: result.status === 'rejected' ? result.error.code : 'pending_approval',
+      details: result.status === 'rejected' ? result.error.details : result.summary,
+    });
+    return { state: input.state, resultMessage: null };
+  }
+
+  const metadata = buildWorkItemUpdateResultMetadata({
+    decisionId: input.providerAgentDecision.decisionId,
+    sourceMessageId: input.userMessage.id,
+    result: result.result,
+  });
+  const append = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats Work',
+      body: describeWorkItemUpdateResult(metadata),
+    },
+    input.now,
+    {
+      metadata: {
+        event: 'work_item_update_result',
+        sourceMessageId: input.userMessage.id,
+        [WORK_ITEM_UPDATE_RESULT_METADATA_KEY]: metadata,
+      },
+      incrementUnread: false,
+    },
+  );
+
+  return {
+    state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+    resultMessage: append.message,
+  };
+}
+
 function buildWorkIntakeProposalId(input: {
   sourceMessageId: string;
   decisionId: string;
@@ -2684,6 +2834,23 @@ function warnWorkProjectCreateToolCallIgnored(input: {
   });
 }
 
+function warnWorkItemUpdateToolCallIgnored(input: {
+  channelId: string;
+  messageId: string;
+  decisionId: string;
+  reason: string;
+  details?: unknown;
+}): void {
+  console.warn('Work item update tool call ignored.', {
+    feature: 'work_item_update',
+    channelId: input.channelId,
+    messageId: input.messageId,
+    decisionId: input.decisionId,
+    reason: input.reason,
+    ...(input.details ? { details: input.details } : {}),
+  });
+}
+
 function buildWorkExternalBindingResultMetadata(input: {
   decisionId: string;
   sourceMessageId: string;
@@ -2709,6 +2876,23 @@ function buildWorkExternalBindingResultMetadata(input: {
     externalType: input.result.externalType,
     externalId: input.result.externalId,
     bindingCount: input.result.bindingCount,
+  };
+}
+
+function buildWorkItemUpdateResultMetadata(input: {
+  decisionId: string;
+  sourceMessageId: string;
+  result: WorkItemUpdateResult;
+}): WorkItemUpdateResultMetadata {
+  return {
+    schemaVersion: WORK_ITEM_UPDATE_RESULT_METADATA_VERSION,
+    phase: 'triage',
+    toolName: WORK_ITEM_UPDATE_TOOL,
+    decisionId: input.decisionId,
+    sourceMessageId: input.sourceMessageId,
+    workItemId: input.result.workItemId,
+    status: input.result.status,
+    updated: input.result.updated,
   };
 }
 
@@ -2764,6 +2948,34 @@ function describeWorkTriageLookupResult(metadata: WorkTriageLookupResultMetadata
 function describeWorkProjectCreateResult(metadata: WorkProjectCreateResultMetadata): string {
   const action = metadata.created ? 'Created' : 'Found existing';
   return `${action} Project ${metadata.title} (${metadata.projectId}).`;
+}
+
+function describeWorkItemUpdateResult(metadata: WorkItemUpdateResultMetadata): string {
+  const action = metadata.updated ? 'Updated' : 'No changes for';
+  return `${action} Work Item ${metadata.workItemId} (${metadata.status}).`;
+}
+
+function extractWorkItemIdFromText(rawText: string): string | null {
+  return CHAT_WORK_ITEM_ID_PATTERN.exec(rawText.toLowerCase())?.[0] ?? null;
+}
+
+function isWorkItemKind(value: unknown): value is WorkItemKind {
+  return value === 'todo'
+    || value === 'bug'
+    || value === 'issue'
+    || value === 'story'
+    || value === 'requirement'
+    || value === 'epic'
+    || value === 'defect'
+    || value === 'note';
+}
+
+function isWorkItemPriorityHint(value: unknown): value is WorkItemPriorityHint {
+  return value === 'urgent' || value === 'high' || value === 'medium' || value === 'low';
+}
+
+function isWorkItemTriageStatus(value: unknown): value is WorkItemTriageStatus {
+  return value === 'draft' || value === 'planned' || value === 'ready' || value === 'blocked';
 }
 
 function isWorkProjectCreateStatus(value: unknown): value is WorkProjectCreateStatus {
@@ -5901,6 +6113,15 @@ export async function beginChannelMessageDispatch(
     now,
   });
   nextState = workProjectCreateSidecar.state;
+  const workItemUpdateSidecar = await appendWorkItemUpdateResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: preparedTurn.userMessage,
+    providerAgentDecision,
+    chatStore: options.chatStore,
+    now,
+  });
+  nextState = workItemUpdateSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),
@@ -6123,6 +6344,15 @@ export async function beginChannelMessageRetryDispatch(
     now,
   });
   nextState = workProjectCreateSidecar.state;
+  const workItemUpdateSidecar = await appendWorkItemUpdateResultSidecar({
+    state: nextState,
+    channelId,
+    userMessage: sourceMessage,
+    providerAgentDecision,
+    chatStore: options.chatStore,
+    now,
+  });
+  nextState = workItemUpdateSidecar.state;
   const implicitCandidateSidecar = appendImplicitProductIntentCandidateSidecar({
     state: nextState,
     channel: requireChannel(nextState, channelId),

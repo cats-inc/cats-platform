@@ -76,6 +76,7 @@ import {
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+  WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
   createPhaseScopedWorkToolManifests,
   type PhaseScopedWorkToolName,
@@ -113,6 +114,8 @@ const WORK_TRIAGE_WORK_ITEM_ID_PATTERN = /\bwork-item-[a-z0-9][a-z0-9_-]*\b/gu;
 const WORK_TRIAGE_PROJECT_ID_PATTERN = /\bproject-[a-z0-9][a-z0-9_-]*\b/gu;
 const WORK_PROJECT_CREATE_CUE_PATTERN =
   /\b(create|add|new)\s+(a\s+)?project\b|\bproject\s+(create|add|new)\b|建立專案|新增專案/iu;
+const WORK_ITEM_UPDATE_CUE_PATTERN =
+  /\b(update|change|edit|rename|mark|set)\b|修改|更新|改成|標記/iu;
 
 function readRequestedWorkflowShape(
   payload: SendChannelMessageInput,
@@ -691,13 +694,49 @@ function buildProviderAgentObservationForTurn(input: {
         'work-triage-action:create_project',
       ]
       : [];
+  const workItemUpdateContextRefs = resolveWorkItemUpdateContextRefs(input.payload.body);
+  const workItemUpdatePolicyDecision = workItemUpdateContextRefs.length > 0
+    ? decideSupervisionPolicy({
+        actionId: `${input.userMessage.id}:work-item-update-observation`,
+        runId: `chat:${input.channelId}`,
+        actorRef: providerAgentActorRef,
+        targetRef: WORK_ITEM_UPDATE_TOOL,
+        providerRef: capabilityProfile.profileId,
+        actionType: 'work_item_update',
+        evaluatedAt: input.nowIso,
+        capabilityAssessment: capabilityProfile.assessment,
+        toolManifest: findPhaseScopedWorkToolManifest(WORK_ITEM_UPDATE_TOOL),
+      })
+    : null;
+  const workItemUpdateToolObservation = createFilteredWorkToolObservation({
+    enabled: workItemUpdateContextRefs.length > 0
+      && Boolean(input.core)
+      && workItemUpdatePolicyDecision?.status === 'applied',
+    phase: 'triage',
+    capabilityProfileKind: capabilityProfile.kind,
+    policy: workItemUpdatePolicyDecision?.status === 'applied'
+      ? workItemUpdatePolicyDecision.result.policy
+      : policyDecision.result.policy,
+    toolNames: [WORK_ITEM_UPDATE_TOOL],
+  });
+  const workItemUpdateObservationContextRefs =
+    workItemUpdateToolObservation.descriptors.length > 0
+      ? [
+        'work-triage-phase:triage',
+        'work-triage-action:update_work_item',
+        ...workItemUpdateContextRefs,
+      ]
+      : [];
   const observationPolicy = workExternalBindingPolicyDecision?.status === 'applied'
     && workExternalBindingToolObservation.descriptors.length > 0
     ? workExternalBindingPolicyDecision.result.policy
     : workProjectCreatePolicyDecision?.status === 'applied'
       && workProjectCreateToolObservation.descriptors.length > 0
         ? workProjectCreatePolicyDecision.result.policy
-        : policyDecision.result.policy;
+        : workItemUpdatePolicyDecision?.status === 'applied'
+          && workItemUpdateToolObservation.descriptors.length > 0
+            ? workItemUpdatePolicyDecision.result.policy
+            : policyDecision.result.policy;
 
   return buildChatProviderAgentObservation({
     state: input.state,
@@ -719,6 +758,7 @@ function buildProviderAgentObservationForTurn(input: {
       ...workExternalBindingToolObservation.descriptors,
       ...workTriageToolObservation.descriptors,
       ...workProjectCreateToolObservation.descriptors,
+      ...workItemUpdateToolObservation.descriptors,
     ],
     additionalContextRefs: [
       ...workIntakeSourceContext.contextRefs,
@@ -726,6 +766,7 @@ function buildProviderAgentObservationForTurn(input: {
       ...workExternalBindingContextRefs,
       ...workTriageObservationContextRefs,
       ...workProjectCreateContextRefs,
+      ...workItemUpdateObservationContextRefs,
     ],
     invariants: [
       ...(exposeCatProductIntentProposalTool
@@ -741,6 +782,7 @@ function buildProviderAgentObservationForTurn(input: {
       ...workExternalBindingToolObservation.invariants,
       ...workTriageToolObservation.invariants,
       ...workProjectCreateToolObservation.invariants,
+      ...workItemUpdateToolObservation.invariants,
     ],
     messageCharacterCount: input.payload.body.length,
     routing: {
@@ -775,6 +817,21 @@ function resolveWorkProjectCreateCue(rawText: string): boolean {
   return Boolean(normalizedText)
     && !normalizedText.startsWith('/')
     && WORK_PROJECT_CREATE_CUE_PATTERN.test(normalizedText);
+}
+
+function resolveWorkItemUpdateContextRefs(rawText: string): string[] {
+  const normalizedText = rawText.trim().replace(/\s+/gu, ' ').toLowerCase();
+  if (
+    !normalizedText
+    || normalizedText.startsWith('/')
+    || !WORK_ITEM_UPDATE_CUE_PATTERN.test(normalizedText)
+  ) {
+    return [];
+  }
+
+  return uniqueNonEmptyStrings([...normalizedText.matchAll(WORK_TRIAGE_WORK_ITEM_ID_PATTERN)]
+    .map((match) => match[0]))
+    .map((workItemId) => `work-triage-work-item:${workItemId}`);
 }
 
 function findWorkExternalBindingManifest(

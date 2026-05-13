@@ -7,6 +7,7 @@ import {
   upsertCoreWorkItem,
 } from '../src/core/model/index.ts';
 import {
+  WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
 } from '../src/products/work/shared/workToolSurface.ts';
@@ -267,4 +268,111 @@ test('Chat provider-agent Work project create request writes one Project', async
   assert.equal(metadata?.created, true);
   assert.equal(metadata?.projectId, project.id);
   assert.match(resultMessage?.body ?? '', /^Created Project Cats Mobile \(project-/u);
+});
+
+test('Chat provider-agent Work Item update request writes bounded planning fields', async () => {
+  const now = new Date('2026-05-13T12:20:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Work item update',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const core = upsertCoreWorkItem(
+    createDefaultCoreState(),
+    {
+      id: 'work-item-chat-update-1',
+      title: 'Draft project setup',
+      status: 'planned',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {},
+    },
+    now,
+  ).core;
+  const store = new MemoryChatStore(state);
+  await store.writeCore(core);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Boss Cat update work-item-chat-update-1 and mark it ready',
+    },
+    runtimeStub(),
+    new Date('2026-05-13T12:21:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      providerAgentDecisionRequester: async ({ observation }) => {
+        assert.equal(
+          observation.availableTools.some((tool) =>
+            tool.manifest.name === WORK_ITEM_UPDATE_TOOL),
+          true,
+        );
+        return {
+          contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+          kind: 'tool_request',
+          decisionId: 'decision-work-item-update-1',
+          confidence: 'high',
+          toolName: WORK_ITEM_UPDATE_TOOL,
+          target: {
+            kind: 'execution_target',
+            provider: 'claude',
+            model: 'sonnet',
+          },
+          input: {
+            title: 'Ready project setup',
+            status: 'ready',
+            priority: 'high',
+            openQuestions: ['Confirm owner approval path.'],
+          },
+          rationaleSummary: 'The owner explicitly asked to update one Work Item.',
+        };
+      },
+    },
+  );
+
+  const persistedCore = await store.readCore();
+  const workItem = persistedCore.workItems.find((candidate) =>
+    candidate.id === 'work-item-chat-update-1');
+  assert.equal(workItem?.title, 'Ready project setup');
+  assert.equal(workItem?.status, 'ready');
+  assert.equal(
+    persistedCore.activities.some((activity) =>
+      activity.message === 'Updated Work Item: Ready project setup'),
+    true,
+  );
+
+  const channel = requireChannel(begun.state, channelId);
+  const resultMessage = channel.messages.find((message) =>
+    message.metadata.workItemUpdateResult);
+  const metadata = resultMessage?.metadata.workItemUpdateResult as
+    | { workItemId?: string; status?: string; updated?: boolean }
+    | undefined;
+  assert.equal(resultMessage?.metadata.event, 'work_item_update_result');
+  assert.equal(metadata?.workItemId, 'work-item-chat-update-1');
+  assert.equal(metadata?.status, 'ready');
+  assert.equal(metadata?.updated, true);
+  assert.equal(resultMessage?.body, 'Updated Work Item work-item-chat-update-1 (ready).');
 });
