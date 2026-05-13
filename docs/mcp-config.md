@@ -73,7 +73,9 @@ external tracker binding. Strong Cats and Boss Cat can be shown the allowed
 manifests and invariants through bounded observations. Chat's orchestrator
 planner also projects explicit Work triage / external binding / Boss execution
 requests into `toolIntent`, and runtime dispatch forwards the matched
-`toolIntent` in `sendMessage.context.metadata.toolIntent`.
+`toolIntent` in `sendMessage.context.metadata.toolIntent`. The manifest includes
+both `allowedTools` names and `toolDescriptions` so runtime adapters can present
+the capability list without importing Work internals.
 
 Those Work tools are still not executable through `POST /api/runtime/mcp`.
 The runtime MCP endpoint now rejects product-owned Work `tools/call` requests

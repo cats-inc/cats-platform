@@ -151,6 +151,10 @@ export interface OrchestratorRuntimeToolPlane {
 export interface ToolIntentManifest {
   profileId?: string;
   allowedTools?: string[];
+  toolDescriptions?: Array<{
+    name: string;
+    description: string;
+  }>;
   requiredCapabilities?: string[];
   lazyGroups?: string[];
   context?: {

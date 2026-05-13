@@ -75,6 +75,15 @@ test('Chat orchestrator projects Work triage tool intent for work-memory Cats', 
     WORK_PROJECT_CREATE_TOOL,
     WORK_PROJECT_LOOKUP_TOOL,
   ]);
+  assert.deepEqual(
+    target.toolIntent?.toolDescriptions?.map((tool) => tool.name),
+    target.toolIntent?.allowedTools,
+  );
+  assert.ok(
+    target.toolIntent?.toolDescriptions?.some((tool) =>
+      tool.name === WORK_ITEM_UPDATE_TOOL
+      && tool.description.includes('Apply bounded triage updates')),
+  );
   assert.deepEqual(target.toolIntent?.requiredCapabilities, [
     'work.phase.triage',
     'work.capability.strong_agent',

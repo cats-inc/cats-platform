@@ -143,7 +143,8 @@ now maps phase/capability/policy context into runtime-facing Work tool names.
 Chat's orchestrator plan projects explicit Work triage, external tracker
 binding, and Boss Cat execution-preparation requests into target `toolIntent`,
 and runtime dispatch forwards the matched intent in
-`sendMessage.context.metadata.toolIntent`. `POST /api/runtime/mcp` rejects
+`sendMessage.context.metadata.toolIntent`. The manifest carries both
+`allowedTools` and `toolDescriptions` for runtime adapters. `POST /api/runtime/mcp` rejects
 product-owned Work `tools/call` requests before proxying to `cats-runtime`.
 Runtime adapter tool-result loops, product-owned MCP facade execution, and
 direct `work.item.capture` observation exposure are still pending.

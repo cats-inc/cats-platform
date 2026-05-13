@@ -51,6 +51,10 @@ export function resolvePhaseScopedWorkToolIntentManifest(
   return {
     profileId,
     allowedTools: manifests.map((manifest) => manifest.name),
+    toolDescriptions: manifests.map((manifest) => ({
+      name: manifest.name,
+      description: manifest.description,
+    })),
     requiredCapabilities: uniqueStrings([
       `work.phase.${input.phase}`,
       `work.capability.${input.capabilityProfile}`,

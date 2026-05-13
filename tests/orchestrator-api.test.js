@@ -428,6 +428,15 @@ test('POST /api/orchestrator/plan projects Work tool intent for work-memory Cats
       ],
     );
     assert.deepEqual(
+      payload.plan.routing.initialTargets[0].toolIntent.toolDescriptions.map((tool) => tool.name),
+      payload.plan.routing.initialTargets[0].toolIntent.allowedTools,
+    );
+    assert.ok(
+      payload.plan.routing.initialTargets[0].toolIntent.toolDescriptions.some((tool) =>
+        tool.name === WORK_PROJECT_CREATE_TOOL
+        && tool.description.includes('Create one Cats Work Project')),
+    );
+    assert.deepEqual(
       payload.plan.routing.initialTargets[0].toolIntent.requiredCapabilities,
       [
         'work.phase.triage',

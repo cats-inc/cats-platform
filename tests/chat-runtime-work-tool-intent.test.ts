@@ -143,7 +143,12 @@ test('runtime dispatch forwards Work tool intent metadata for explicit Work turn
   );
 
   const toolIntent = runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent as
-    | { allowedTools?: string[]; requiredCapabilities?: string[]; strict?: boolean }
+    | {
+        allowedTools?: string[];
+        requiredCapabilities?: string[];
+        strict?: boolean;
+        toolDescriptions?: Array<{ name: string; description: string }>;
+      }
     | undefined;
   assert.ok(toolIntent);
   assert.deepEqual(toolIntent.allowedTools, [
@@ -152,6 +157,15 @@ test('runtime dispatch forwards Work tool intent metadata for explicit Work turn
     WORK_PROJECT_CREATE_TOOL,
     WORK_PROJECT_LOOKUP_TOOL,
   ]);
+  assert.deepEqual(
+    toolIntent.toolDescriptions?.map((tool) => tool.name),
+    toolIntent.allowedTools,
+  );
+  assert.ok(
+    toolIntent.toolDescriptions?.some((tool) =>
+      tool.name === WORK_PROJECT_CREATE_TOOL
+      && tool.description.includes('Create one Cats Work Project')),
+  );
   assert.deepEqual(toolIntent.requiredCapabilities, [
     'work.phase.triage',
     'work.capability.strong_agent',
