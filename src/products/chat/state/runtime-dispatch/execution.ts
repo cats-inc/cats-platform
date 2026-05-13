@@ -28,6 +28,7 @@ import {
   buildPromptForTarget,
   resolveRuntimeEnvelopeForTarget,
 } from '../runtimeTargeting.js';
+import { resolveChatWorkToolIntentManifest } from '../workToolIntentResolver.js';
 import {
   participantKey,
   resolveActorIdForTarget,
@@ -99,6 +100,52 @@ function mergeRuntimeAssistantMetadata(
   }
 }
 
+function resolveDispatchToolIntent(input: {
+  state: ChatState;
+  core?: CatsCoreState;
+  channel: ReturnType<typeof buildChannelView>;
+  request: DispatchRequest;
+  transport?: RuntimeTransportContext;
+}) {
+  if (!input.core) {
+    return null;
+  }
+
+  const roomMode = input.channel.roomRouting?.mode ?? 'chat_channel';
+  const resolvedTransport = input.transport === 'telegram' ? 'telegram' : 'web';
+  const target = input.request.target;
+  const sourceBody = input.request.promptSourceMessage?.body ?? input.request.sourceMessage.body;
+
+  if (target.participantKind === 'orchestrator') {
+    return resolveChatWorkToolIntentManifest({
+      state: input.state,
+      core: input.core,
+      channel: input.channel,
+      body: sourceBody,
+      profileId: input.state.globalOrchestrator.mcpProfile,
+      participantKind: 'orchestrator',
+      participantId: 'orchestrator',
+      roomMode,
+      transport: resolvedTransport,
+    }) ?? null;
+  }
+
+  const assignedCat = input.channel.assignedCats.find((cat) =>
+    cat.participantId === target.participantId || cat.catId === target.participantId);
+  return resolveChatWorkToolIntentManifest({
+    state: input.state,
+    core: input.core,
+    channel: input.channel,
+    body: sourceBody,
+    profileId: assignedCat?.mcpProfile ?? null,
+    participantKind: 'cat',
+    participantId: target.participantId,
+    catId: assignedCat?.catId ?? target.participantId,
+    roomMode,
+    transport: resolvedTransport,
+  }) ?? null;
+}
+
 export async function executeDispatch(
   state: ChatState,
   channelId: string,
@@ -147,11 +194,21 @@ export async function executeDispatch(
       continuityDeliveryMode: dispatchPrompt.continuityDeliveryMode ?? null,
       continuityResetAt: dispatchPrompt.continuityResetAt ?? null,
     });
+    const toolIntent = resolveDispatchToolIntent({
+      state,
+      core,
+      channel,
+      request,
+      transport,
+    });
     const runtimeInvocationInput = enrichRuntimeInvocation(channel, {
       instructions: dispatchPrompt.instructions?.trim() || undefined,
       context: mergeRuntimeInvocationContextMetadata(
         runtimeEnvelope.context,
-        dispatchContextMetadata,
+        {
+          ...dispatchContextMetadata,
+          ...(toolIntent ? { toolIntent } : {}),
+        },
       ),
       skills: runtimeEnvelope.skills,
     }, { phase: 'message_send' });
