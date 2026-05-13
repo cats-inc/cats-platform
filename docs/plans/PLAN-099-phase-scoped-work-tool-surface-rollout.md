@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice hardened provider-agent observation summaries so malformed entries, unsupported fields, oversized source refs, and non-scalar values return validation errors without leaking prompt-visible payloads. |
 | 2026-05-13 | Follow-up slice made provider-agent observation validation robust against malformed object fields and malformed tool arrays so contract checks return errors instead of throwing. |
 | 2026-05-13 | Follow-up slice rejected unsupported provider-agent observation tool descriptor and manifest fields so product-built tool catalogs cannot leak extra prompt-visible metadata. |
 | 2026-05-13 | Follow-up slice rejected unsupported nested provider-agent fields on targets, schema refs, and delegation budgets so model-authored object shapes stay exact through validation. |

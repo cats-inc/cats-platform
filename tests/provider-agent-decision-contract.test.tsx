@@ -163,6 +163,27 @@ test('bounded observation rejects oversized summary lists and keys', () => {
   ]);
 });
 
+test('bounded observation rejects malformed summary entries without throwing', () => {
+  const input = observation();
+  input.summaries = [
+    null as never,
+    {
+      key: 'recent_outcome',
+      kind: 'enumerated_outcome',
+      value: { nested: 'not allowed' },
+      sourceRef: 'x'.repeat(241),
+      rawNote: 'hidden summary field',
+    } as never,
+  ];
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(input), [
+    'summaries[0] must be an object',
+    'summary recent_outcome contains unsupported fields: rawNote',
+    'summary recent_outcome.sourceRef must be 240 characters or less',
+    'summary recent_outcome.value must be number, string, boolean, or null',
+  ]);
+});
+
 test('bounded observation rejects invalid budget envelopes', () => {
   const invalidLimits = observation();
   invalidLimits.budget = {

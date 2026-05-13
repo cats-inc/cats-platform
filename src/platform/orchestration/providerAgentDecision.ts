@@ -175,6 +175,12 @@ const PROVIDER_AGENT_TOOL_MANIFEST_FIELDS = [
   'inputSchema',
   'outputSchema',
 ] as const;
+const PROVIDER_AGENT_OBSERVATION_SUMMARY_FIELDS = [
+  'key',
+  'kind',
+  'value',
+  'sourceRef',
+] as const;
 
 export type ProviderAgentDecisionConfidence =
   (typeof PROVIDER_AGENT_DECISION_CONFIDENCE_VALUES)[number];
@@ -366,9 +372,9 @@ export function validateProviderAgentBoundedObservation(
     if (observation.summaries.length > PROVIDER_AGENT_MAX_SUMMARIES) {
       errors.push(`summaries must contain ${PROVIDER_AGENT_MAX_SUMMARIES} entries or fewer`);
     }
-    for (const summary of observation.summaries) {
-      validateObservationSummary(errors, summary);
-    }
+    observation.summaries.forEach((summary, index) => {
+      validateObservationSummary(errors, summary, index);
+    });
   }
 
   return errors;
@@ -1140,8 +1146,20 @@ function readToolDescriptorManifestName(descriptor: unknown): string | null {
 
 function validateObservationSummary(
   errors: string[],
-  summary: ProviderAgentObservationSummary,
+  summary: unknown,
+  index: number,
 ): void {
+  if (!isRecord(summary)) {
+    errors.push(`summaries[${index}] must be an object`);
+    return;
+  }
+  const summaryKey = typeof summary.key === 'string' ? summary.key : String(summary.key);
+  validateAllowedRecordFields(
+    errors,
+    `summary ${summaryKey}`,
+    summary,
+    PROVIDER_AGENT_OBSERVATION_SUMMARY_FIELDS,
+  );
   validateBoundedString(
     errors,
     'summary.key',
@@ -1150,16 +1168,31 @@ function validateObservationSummary(
   );
   validateEnumValue(errors, 'summary.kind', summary.kind, PROVIDER_AGENT_SUMMARY_KIND_VALUES);
 
-  if (/(?:raw|transcript|message|prompt|body|content)/i.test(summary.key)) {
-    errors.push(`summary ${summary.key} appears to describe raw conversation content`);
+  if (typeof summary.key === 'string'
+    && /(?:raw|transcript|message|prompt|body|content)/i.test(summary.key)) {
+    errors.push(`summary ${summaryKey} appears to describe raw conversation content`);
   }
+  validateOptionalBoundedString(
+    errors,
+    `summary ${summaryKey}.sourceRef`,
+    summary.sourceRef,
+    PROVIDER_AGENT_MAX_CONTEXT_REF_LENGTH,
+  );
   if (typeof summary.value === 'string') {
     validateBoundedString(
       errors,
-      `summary ${summary.key}`,
+      `summary ${summaryKey}`,
       summary.value,
       PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
     );
+    return;
+  }
+  if (
+    typeof summary.value !== 'number'
+    && typeof summary.value !== 'boolean'
+    && summary.value !== null
+  ) {
+    errors.push(`summary ${summaryKey}.value must be number, string, boolean, or null`);
   }
 }
 
