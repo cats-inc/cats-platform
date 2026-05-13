@@ -127,6 +127,8 @@ async function maybeAutoResumeRecoveredContinuationForParticipant(
       now,
       companionStore: context.dependencies.companionStore,
       memoryService: context.dependencies.memoryService,
+      chatStatePath: context.dependencies.config.chatStatePath,
+      runtimeDataDir: context.dependencies.config.runtimeDataDir,
       onStateWritten: notifyStreamTargetChanged,
     });
     try {

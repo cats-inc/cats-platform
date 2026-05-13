@@ -317,6 +317,8 @@ export function resolveServerDependencies(
       now: dependencies.shared.now?.() ?? new Date(),
       companionStore,
       memoryService,
+      chatStatePath: dependencies.shared.config.chatStatePath,
+      runtimeDataDir: dependencies.shared.config.runtimeDataDir,
     }));
 
   return {

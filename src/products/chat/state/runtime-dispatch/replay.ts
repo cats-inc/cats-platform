@@ -463,6 +463,8 @@ export async function resumeWorkflowContinuationReplay(input: {
   now: Date;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
+  chatStatePath?: string;
+  runtimeDataDir?: string;
   transport?: RuntimeTransportContext;
   onStateWritten?: (channelId: string) => void;
 }): Promise<WorkflowContinuationReplayResult & { results: ChannelDispatchResult[] }> {
@@ -639,6 +641,8 @@ export async function resumeWorkflowContinuationReplay(input: {
     companionStore: input.companionStore,
     memoryService: input.memoryService,
     chatStore: input.chatStore,
+    chatStatePath: input.chatStatePath,
+    runtimeDataDir: input.runtimeDataDir,
     runtimeRecovery,
     onStateWritten: input.onStateWritten,
   });

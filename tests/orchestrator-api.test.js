@@ -119,6 +119,40 @@ function usage(content) {
   };
 }
 
+function readRuntimeStubString(value) {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function resolveRuntimeStubTargetName({ messageInput, input }) {
+  return readRuntimeStubString(messageInput?.skills?.context?.metadata?.catName)
+    ?? readRuntimeStubString(input?.skills?.context?.metadata?.catName)
+    ?? readRuntimeStubString(messageInput?.context?.metadata?.targetName)
+    ?? readRuntimeStubString(input?.context?.metadata?.targetName)
+    ?? null;
+}
+
+function createPreSetupCoreOverrides(chatStore) {
+  const withPreSetupCore = (core) => ({ ...core, setupCompleteAt: null });
+  return {
+    coreStore: {
+      async readCore() {
+        return withPreSetupCore(await chatStore.readCore());
+      },
+      async writeCore(state) {
+        return chatStore.writeCore(withPreSetupCore(state));
+      },
+      async updateCore(mutator) {
+        return chatStore.updateCore(async (core) => withPreSetupCore(
+          await mutator(withPreSetupCore(core)),
+        ));
+      },
+      subscribeCore(listener) {
+        return chatStore.subscribeCore?.((state) => listener(withPreSetupCore(state))) ?? (() => {});
+      },
+    },
+  };
+}
+
 async function waitFor(assertion, timeoutMs = 1000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -3337,12 +3371,17 @@ test('POST /api/core/operator-actions auto-resumes stored dispatch replay on ret
 });
 
 test('POST /api/core/operator-actions auto-resumes stored workflow continuation replay on retry', async () => {
+  const targetNamesById = new Map();
   const runtimeClient = createRuntimeStub({
-    sendMessage: ({ content }) => {
-      if (content.includes('You are Inline-Agent')) {
+    sendMessage: (invocation) => {
+      const targetId = invocation.messageInput?.context?.metadata?.targetId
+        ?? invocation.input?.context?.metadata?.targetId;
+      const targetName = resolveRuntimeStubTargetName(invocation)
+        ?? (typeof targetId === 'string' ? targetNamesById.get(targetId) : null);
+      if (targetName === 'Inline-Agent') {
         return usage('@Followup-Agent please continue with the resumed audit.');
       }
-      if (content.includes('You are Followup-Agent')) {
+      if (targetName === 'Followup-Agent') {
         return usage('Followup-Agent finished the resumed audit.');
       }
       return usage('Boss Cat acknowledged the turn.');
@@ -3370,6 +3409,11 @@ test('POST /api/core/operator-actions auto-resumes stored workflow continuation 
       ],
     });
     const channelId = created.channel.id;
+    targetNamesById.clear();
+    for (const cat of created.channel.assignedCats) {
+      targetNamesById.set(cat.participantId, cat.name);
+      targetNamesById.set(cat.catId, cat.name);
+    }
     const currentState = await chatStore.read();
     const currentChannel = currentState.channels.find((candidate) => candidate.id === channelId);
     assert.ok(currentChannel);
@@ -3441,12 +3485,17 @@ test('POST /api/core/operator-actions auto-resumes stored workflow continuation 
 });
 
 test('POST /api/core/operator-actions auto-resumes stored workflow continuation replay on retry after max-dispatch blocks', async () => {
+  const targetNamesById = new Map();
   const runtimeClient = createRuntimeStub({
-    sendMessage: ({ content }) => {
-      if (content.includes('You are Inline-Agent')) {
+    sendMessage: (invocation) => {
+      const targetId = invocation.messageInput?.context?.metadata?.targetId
+        ?? invocation.input?.context?.metadata?.targetId;
+      const targetName = resolveRuntimeStubTargetName(invocation)
+        ?? (typeof targetId === 'string' ? targetNamesById.get(targetId) : null);
+      if (targetName === 'Inline-Agent') {
         return usage('@Followup-Agent please continue with the resumed audit.');
       }
-      if (content.includes('You are Followup-Agent')) {
+      if (targetName === 'Followup-Agent') {
         return usage('Followup-Agent finished the resumed audit.');
       }
       return usage('Boss Cat acknowledged the turn.');
@@ -3474,6 +3523,11 @@ test('POST /api/core/operator-actions auto-resumes stored workflow continuation 
       ],
     });
     const channelId = created.channel.id;
+    targetNamesById.clear();
+    for (const cat of created.channel.assignedCats) {
+      targetNamesById.set(cat.participantId, cat.name);
+      targetNamesById.set(cat.catId, cat.name);
+    }
     const currentState = await chatStore.read();
     const currentChannel = currentState.channels.find((candidate) => candidate.id === channelId);
     assert.ok(currentChannel);
@@ -4225,7 +4279,7 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
         && activity.metadata?.resumeReason === null
         && activity.metadata?.resultCount === 1),
     );
-  }, chatStore);
+  }, chatStore, createPreSetupCoreOverrides(chatStore));
 });
 
 test('startup-recovered continuation replay auto-resumes on server startup when an active target needs a fresh session', async () => {
@@ -4454,7 +4508,7 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
           && activity.metadata?.resultCount === 1),
       );
     });
-  }, chatStore);
+  }, chatStore, createPreSetupCoreOverrides(chatStore));
 });
 
 test('startup-recovered initial sequential latest handoff auto-resumes on server startup with source identity intact', async () => {
@@ -4749,7 +4803,7 @@ test('startup-recovered initial sequential latest handoff auto-resumes on server
         && activity.metadata?.resumeReason === null
         && activity.metadata?.resultCount === 2),
     );
-  }, chatStore);
+  }, chatStore, createPreSetupCoreOverrides(chatStore));
 });
 
 test('startup-recovered initial sequential latest handoff keeps source identity when a cat session recovers', async () => {
@@ -4806,6 +4860,8 @@ test('startup-recovered initial sequential latest handoff keeps source identity 
   assert.ok(firstAssignment);
   assert.ok(secondAssignment);
   assert.ok(thirdAssignment);
+  secondAssignment.status = 'removed';
+  secondAssignment.leftAt = '2026-03-26T16:40:30.000Z';
   chat = setChannelCatLease(
     chat,
     channelId,
@@ -5072,10 +5128,10 @@ test('startup-recovered initial sequential latest handoff keeps source identity 
         && activity.metadata?.resumeReason === 'target_recovered'
         && activity.metadata?.resultCount === 2),
     );
-  }, chatStore);
+  }, chatStore, createPreSetupCoreOverrides(chatStore));
 });
 
-test('startup-recovered continuation replay auto-resumes when channel activation restores the orchestrator session', async () => {
+test('startup-recovered continuation replay auto-resumes through orchestrator on server startup', async () => {
   const runtimeClient = createRuntimeStub({
     sendMessage: ({ sessionId }) => usage(`Orchestrator recovered the stored continuation on ${sessionId}.`),
   });
@@ -5085,7 +5141,7 @@ test('startup-recovered continuation replay auto-resumes when channel activation
     chat,
     {
       title: 'Recovered orchestrator continuation',
-      topic: 'Resume a startup-recovered continuation once channel activation restores Boss Cat.',
+      topic: 'Resume a startup-recovered continuation through Boss Cat on server startup.',
       originSurface: 'chat',
       cats: [
         {
@@ -5126,7 +5182,7 @@ test('startup-recovered continuation replay auto-resumes when channel activation
     {
       senderKind: 'agent',
       senderName: 'Inline-Agent',
-      body: 'Please bounce this back to Boss Cat once activation restores the session.',
+      body: 'Please bounce this back to Boss Cat when startup recovery resumes.',
     },
     now,
   ).state;
@@ -5212,7 +5268,7 @@ test('startup-recovered continuation replay auto-resumes when channel activation
               },
             ],
             branchStrategy: 'transplant_context',
-            rationale: 'Replay this converge review through Boss Cat once channel activation restores the session.',
+            rationale: 'Replay this converge review through Boss Cat during startup recovery.',
           },
         },
       },
@@ -5234,7 +5290,7 @@ test('startup-recovered continuation replay auto-resumes when channel activation
       defaultTargetReason: null,
       fallbackTarget: null,
       blockedReason: null,
-      note: 'Converge review is waiting for Boss Cat session recovery.',
+      note: 'Converge review is waiting for Boss Cat startup recovery.',
     },
     resolvedTargets: [orchestratorParticipant],
     unresolvedMentions: [],
@@ -5266,43 +5322,32 @@ test('startup-recovered continuation replay auto-resumes when channel activation
   const taskId = `task-channel-${channelId}`;
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const initialCoreResponse = await fetch(`${baseUrl}/api/core`);
-    assert.equal(initialCoreResponse.status, 200);
-    const initialCorePayload = await initialCoreResponse.json();
-    const initialTask = initialCorePayload.tasks.find((candidate) => candidate.id === taskId);
-    assert.ok(initialTask);
-    assert.ok(initialTask.metadata.workflowContinuationReplay);
-    assert.equal(runtimeClient.sentMessages.length, 0);
-    assert.ok(
-      initialCorePayload.activities.some((activity) =>
-        activity.taskId === taskId
-        && activity.metadata?.source === 'workflow-continuation-replay'
-        && activity.metadata?.replayPhase === 'startup_recovered'),
-    );
-
-    const activationResponse = await fetch(`${baseUrl}/api/channels/${channelId}/activations`, {
-      method: 'POST',
+    await waitFor(async () => {
+      const initialCoreResponse = await fetch(`${baseUrl}/api/core`);
+      assert.equal(initialCoreResponse.status, 200);
+      const initialCorePayload = await initialCoreResponse.json();
+      const initialTask = initialCorePayload.tasks.find((candidate) => candidate.id === taskId);
+      assert.ok(initialTask);
+      assert.equal(initialTask.metadata.workflowContinuationReplay, undefined);
+      assert.equal(runtimeClient.createdSessions.length, 1);
+      assert.equal(runtimeClient.sentMessages.length, 1);
+      assert.equal(runtimeClient.sentMessages[0]?.sessionId, runtimeClient.createdSessions[0]?.id);
+      assert.ok(
+        initialCorePayload.activities.some((activity) =>
+          activity.taskId === taskId
+          && activity.metadata?.source === 'workflow-continuation-replay'
+          && activity.metadata?.replayPhase === 'startup_recovered'),
+      );
+      assert.ok(
+        initialCorePayload.activities.some((activity) =>
+          activity.taskId === taskId
+          && activity.metadata?.source === 'workflow-continuation-replay'
+          && activity.metadata?.replayPhase === 'replay_dispatched'
+          && activity.metadata?.resumeReason === null
+          && activity.metadata?.resultCount === 1),
+      );
     });
-    assert.equal(activationResponse.status, 200);
-    assert.equal(runtimeClient.createdSessions.length, 1);
-    assert.equal(runtimeClient.sentMessages.length, 1);
-    assert.equal(runtimeClient.sentMessages[0]?.sessionId, runtimeClient.createdSessions[0]?.id);
-
-    const finalCoreResponse = await fetch(`${baseUrl}/api/core`);
-    assert.equal(finalCoreResponse.status, 200);
-    const finalCorePayload = await finalCoreResponse.json();
-    const finalTask = finalCorePayload.tasks.find((candidate) => candidate.id === taskId);
-    assert.ok(finalTask);
-    assert.equal(finalTask.metadata.workflowContinuationReplay, undefined);
-    assert.ok(
-      finalCorePayload.activities.some((activity) =>
-        activity.taskId === taskId
-        && activity.metadata?.source === 'workflow-continuation-replay'
-        && activity.metadata?.replayPhase === 'replay_dispatched'
-        && activity.metadata?.resumeReason === 'target_recovered'
-        && activity.metadata?.resultCount === 1),
-    );
-  }, chatStore);
+  }, chatStore, createPreSetupCoreOverrides(chatStore));
 });
 
 test('startup-recovered parallel continuation replay waits for every concrete target to recover before auto-resuming', async () => {
@@ -5628,7 +5673,7 @@ test('startup-recovered parallel continuation replay waits for every concrete ta
         && activity.metadata?.resumeReason === 'target_recovered'
         && activity.metadata?.resultCount === 2),
     );
-  }, chatStore);
+  }, chatStore, createPreSetupCoreOverrides(chatStore));
 });
 
 test('GET /api/orchestrator/channels/:id/execution-loop accepts a projected room-workflow runId', async () => {
