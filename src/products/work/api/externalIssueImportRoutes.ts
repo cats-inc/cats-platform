@@ -38,6 +38,15 @@ export async function routeWorkExternalIssueImportApi(
 
   try {
     const selectedProvider = readProvider(body.provider);
+    if (body.provider !== undefined && body.provider !== null && !selectedProvider) {
+      sendJson(context.response, 400, {
+        error: {
+          code: 'external_issue_import_provider_unsupported',
+          message: 'provider must be github, redmine, or bugzilla for issue imports.',
+        },
+      });
+      return true;
+    }
     const fetchResult = await fetchExternalIssueImportDraftFromUrl(
       externalUrl,
       {
@@ -131,8 +140,6 @@ function readProvider(value: unknown): ExternalIssueImportProvider | undefined {
   const normalized = readNonBlankString(value);
   if (
     normalized === 'github'
-    || normalized === 'gitlab'
-    || normalized === 'gitea'
     || normalized === 'redmine'
     || normalized === 'bugzilla'
   ) {

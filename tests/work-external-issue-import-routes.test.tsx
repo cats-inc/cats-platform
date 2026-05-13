@@ -306,3 +306,42 @@ test('POST /api/work/external-issue-imports rejects unsupported URLs before fetc
   assert.equal(fetchCount, 0);
   assert.equal((await store.readCore()).workItems.length, 0);
 });
+
+test('POST /api/work/external-issue-imports rejects unsupported provider fields', async (t) => {
+  const store = new MemoryCoreStore(createDefaultCoreState());
+  let fetchCount = 0;
+  const server = createTestServer(store, {
+    github: {
+      fetchImpl: async () => {
+        fetchCount += 1;
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return {};
+          },
+        };
+      },
+    },
+  });
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const { status, payload } = await request(
+    server,
+    'POST',
+    WORK_API_EXTERNAL_ISSUE_IMPORTS_PATH,
+    {
+      externalUrl: 'https://github.com/cats-inc/cats-platform/issues/123',
+      provider: 'jira',
+    },
+  );
+
+  assert.equal(status, 400);
+  assert.equal(
+    (payload?.error as { code?: string } | undefined)?.code,
+    'external_issue_import_provider_unsupported',
+  );
+  assert.equal(fetchCount, 0);
+  assert.equal((await store.readCore()).workItems.length, 0);
+});

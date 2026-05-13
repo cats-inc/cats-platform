@@ -291,6 +291,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Follow-up slice added a local external issue import delegate that turns one provider-neutral draft into a planned Cats Work Item with pull-mode external binding metadata and no execution side effects. |
 | 2026-05-13 | Follow-up slice exposed `POST /api/work/external-issue-imports` so product surfaces can owner-trigger one read-only external issue import into a local Work Item without remote writes or execution side effects. |
 | 2026-05-13 | Follow-up slice added a renderer Work API client for `POST /api/work/external-issue-imports`, keeping future UI import controls off raw fetch wiring. |
+| 2026-05-13 | Follow-up slice hardened the external issue import route so unsupported `provider` fields fail before any remote fetch or local Work write. |
 | 2026-05-13 | Follow-up slice added API-route coverage proving Project external tracker links persist metadata and emit project-scoped Activity evidence through `POST /api/work/external-bindings`. |
 | 2026-05-13 | Follow-up slice added local external tracker URL inference so manual binding dialogs can prefill provider/type/id from common GitHub, GitLab, Bugzilla, Redmine, and Gitea URLs without remote calls. |
 | 2026-05-13 | Follow-up slice added a Project detail manual external-tracker link dialog and factored Work Item/Project link creation through a shared Work external binding dialog. |
