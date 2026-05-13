@@ -17,6 +17,7 @@ import { createServer } from '../build/server/app/server/index.js';
 import {
   upsertCoreRun,
   upsertCoreTask,
+  upsertCoreWorkItem,
   writeApprovalDecision,
 } from '../build/server/core/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
@@ -1029,6 +1030,117 @@ test('POST /api/orchestrator/dispatch applies provider Work project create decis
           status: 'planned',
         },
         rationaleSummary: 'The owner explicitly asked to create a Project.',
+      };
+    },
+  });
+});
+
+test('POST /api/orchestrator/dispatch applies provider Work Item update decisions', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  let observedToolNames = [];
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Work',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+    let chat = await chatStore.read();
+    chat = setChannelCatLease(
+      chat,
+      channelId,
+      catId,
+      {
+        status: 'ready',
+        sessionId: 'session-work-item-update',
+        laneId: 'lane-work-item-update',
+      },
+      new Date('2026-05-13T00:00:00.000Z'),
+    );
+    await chatStore.write(chat);
+
+    let core = await chatStore.readCore();
+    core = upsertCoreWorkItem(
+      core,
+      {
+        id: 'work-item-api-update-1',
+        title: 'Draft project setup',
+        status: 'planned',
+        projectId: null,
+        conversationId: `conversation-channel-${channelId}`,
+        taskId: null,
+        parentWorkItemId: null,
+        ownerActorId: 'actor-owner',
+        assignedActorIds: [],
+        summary: null,
+        metadata: {},
+      },
+      new Date('2026-05-13T00:00:01.000Z'),
+    ).core;
+    await chatStore.writeCore(core);
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Boss Cat update work-item-api-update-1 and mark it ready',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.equal(observedToolNames.includes(WORK_ITEM_UPDATE_TOOL), true);
+
+    const updatedCore = await chatStore.readCore();
+    const workItem = updatedCore.workItems.find((candidate) =>
+      candidate.id === 'work-item-api-update-1');
+    assert.equal(workItem?.title, 'Ready project setup');
+    assert.equal(workItem?.status, 'ready');
+
+    const persisted = await chatStore.read();
+    const channel = buildChannelView(persisted, channelId);
+    const resultMessage = channel.messages.find((message) =>
+      message.metadata.event === 'work_item_update_result');
+    const metadata = resultMessage?.metadata.workItemUpdateResult;
+    assert.equal(metadata?.workItemId, 'work-item-api-update-1');
+    assert.equal(metadata?.status, 'ready');
+    assert.equal(metadata?.updated, true);
+  }, chatStore, {
+    providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
+    providerAgentDecisionRequester: async ({ observation }) => {
+      observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
+      return {
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-api-work-item-update-1',
+        confidence: 'high',
+        toolName: WORK_ITEM_UPDATE_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_ITEM_UPDATE_TOOL,
+        },
+        input: {
+          title: 'Ready project setup',
+          status: 'ready',
+          priority: 'high',
+          openQuestions: ['Confirm owner approval path.'],
+        },
+        rationaleSummary: 'The owner explicitly asked to update one Work Item.',
       };
     },
   });
