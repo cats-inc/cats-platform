@@ -63,7 +63,8 @@ The follow-on execution-loop and recovery slice now continues in
 
 ## Follow-up Watchpoints
 
-- richer `mcpProfile -> toolIntent` registries once more product profiles land
+- richer `mcpProfile -> toolIntent` registries once more product profiles land;
+  current manifests already carry `allowedTools` plus `toolDescriptions`
 - session-control MCP tools once downstream orchestrators need mutation paths
 - possible future export of the orchestrator plan/dispatch contract to a shared
   platform package when another product surface consumes it

@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice synced SPEC-021 and PLAN-022 with the runtime-facing `toolDescriptions` field now carried on tool-intent manifests. |
 | 2026-05-13 | Follow-up slice added Work tool descriptions to `toolIntent` manifests so plan responses and runtime metadata expose what each allowed Work tool does, not only its name. |
 | 2026-05-13 | Follow-up slice expanded `work-memory` prompt roster text with explicit Work Item and Project capabilities so strong-model context states what the profile can do. |
 | 2026-05-13 | Follow-up slice added Cat tool profiles to orchestrator prompt rosters so strong-model routing context can see which Cats are carrying `work-memory` capability posture. |

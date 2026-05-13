@@ -147,6 +147,10 @@ Illustrative product-to-runtime request:
 interface ToolIntentManifest {
   profileId?: string;
   allowedTools?: string[];
+  toolDescriptions?: Array<{
+    name: string;
+    description: string;
+  }>;
   requiredCapabilities?: string[];
   lazyGroups?: string[];
   context?: {
@@ -161,6 +165,8 @@ interface ToolIntentManifest {
 Notes:
 
 - `allowedTools` should remain stable logical names, not provider flags
+- `toolDescriptions` should describe the allowed logical tools so runtime
+  adapters can present capability intent without importing product internals
 - `requiredCapabilities` and `lazyGroups` leave room for MCP-backed tool bundles
 - runtime may ignore unsupported fields but should surface warnings
 
