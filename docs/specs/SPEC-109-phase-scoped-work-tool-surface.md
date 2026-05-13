@@ -37,12 +37,15 @@ The MVP tool surface landed on 2026-05-13. Current implementation includes:
 - Provider-agent bounded-observation validation for tool descriptors, input
   hints, context refs, invariants, summaries, budgets, and recovery fallback
   surfaces.
+- Product-owned `work-memory` tool-intent projection through Chat planning and
+  runtime dispatch, including `allowedTools` and `toolDescriptions` copied from
+  the supervised Work tool manifests.
 - Local external tracker bindings, manual UI link/unlink, Work Graph/list/detail
   projections, and a GitHub Issues adapter spike without remote writes.
 
 Automatic bidirectional external tracker sync, credential handling, remote
-write approval, and runtime/MCP projection of the full tool catalog remain
-follow-up work under ADR-106 and future rollout slices.
+write approval, and runtime MCP execution adapters for the full Work catalog
+remain follow-up work under ADR-106 and future rollout slices.
 
 ## Goals
 
@@ -153,6 +156,10 @@ follow-up work under ADR-106 and future rollout slices.
 24. **FR-24 (No Core field expansion for MVP).** The MVP shall not require new
     Core Project or WorkItem fields. New data shall live in metadata and
     Activity records unless a follow-up ADR approves schema changes.
+25. **FR-25 (Runtime intent metadata).** Runtime-facing `work-memory`
+    tool-intent manifests shall include both the granted tool names and
+    model-readable descriptions sourced from the product-owned supervised Work
+    tool manifests.
 
 ### Candidate Tool Contracts
 

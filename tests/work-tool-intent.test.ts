@@ -2,10 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  createPhaseScopedWorkToolManifests,
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
+  WORK_ITEM_CAPTURE_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
+  WORK_ITEM_PROPOSE_SPLIT_TOOL,
   WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
@@ -52,6 +55,23 @@ test('Work tool intent projects the work-memory profile into phase-scoped tools'
     roomMode: 'direct_message',
     transport: 'web',
   });
+});
+
+test('Work tool intent describes allowed tools from the product-owned surface', () => {
+  const manifest = resolvePhaseScopedWorkToolIntentManifest({
+    profileId: WORK_MCP_PROFILE_ID,
+    phase: 'intake',
+    capabilityProfile: 'strong_agent',
+    parentToolScope: 'narrow_write',
+    policyToolScope: 'narrow_write',
+  });
+
+  assert.ok(manifest);
+  assert.deepEqual(manifest.allowedTools, [
+    WORK_ITEM_CAPTURE_TOOL,
+    WORK_ITEM_PROPOSE_SPLIT_TOOL,
+  ]);
+  assert.deepEqual(manifest.toolDescriptions, buildExpectedToolDescriptions(manifest.allowedTools));
 });
 
 test('Work tool intent preserves read-only policy bounds', () => {
@@ -159,3 +179,23 @@ test('Work tool intent ignores non-Work MCP profiles', () => {
     null,
   );
 });
+
+function buildExpectedToolDescriptions(
+  toolNames: readonly string[],
+): Array<{ name: string; description: string }> {
+  const descriptions = new Map(
+    createPhaseScopedWorkToolManifests().map((manifest) => [
+      manifest.name,
+      manifest.description,
+    ]),
+  );
+
+  return toolNames.map((name) => {
+    const description = descriptions.get(name);
+    assert.ok(description, `Expected product-owned description for ${name}`);
+    return {
+      name,
+      description,
+    };
+  });
+}
