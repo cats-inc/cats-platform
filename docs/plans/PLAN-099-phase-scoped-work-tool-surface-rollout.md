@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added API planner coverage for external tracker binding intent, proving `work-memory` turns expose `work.external.link_issue` / `work.external.unlink_issue` names and descriptions before dispatch. |
 | 2026-05-13 | Follow-up slice added API-level external tracker unlink coverage proving provider-agent `work.external.unlink_issue` decisions remove local Bugzilla binding metadata without contacting the remote tracker. |
 | 2026-05-13 | Follow-up slice added API-level external tracker binding coverage proving provider-agent `work.external.link_issue` decisions can link a Work Item to a Redmine issue URL through local metadata only. |
 | 2026-05-13 | Follow-up slice added Telegram room bridge coverage for Boss execution-preparation confirmation, proving a Telegram-origin start request can create a pending-approval Task from a ready Work Item through the shared choice-response path. |
