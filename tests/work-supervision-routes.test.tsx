@@ -45,6 +45,27 @@ function createCoreStore() {
   return new MemoryCoreStore(core);
 }
 
+function createPendingApprovalCoreStore() {
+  let core = createDefaultCoreState();
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-pending-supervision-route',
+      title: 'Pending supervised task',
+      status: 'pending_approval',
+      conversationId: 'conversation-supervision-route',
+      approval: {
+        status: 'pending',
+        requestedAt: '2026-04-25T12:00:00.000Z',
+      },
+      createdAt: '2026-04-25T12:00:00.000Z',
+    },
+    new Date('2026-04-25T12:00:00.000Z'),
+  ).core;
+
+  return new MemoryCoreStore(core);
+}
+
 function evidenceEvent(): EvidenceEvent {
   return {
     id: 'evidence-supervision-route',
@@ -323,6 +344,44 @@ test('POST /api/work/tasks/:taskId/supervised-run creates a queued supervised ru
   assert.equal(secondPayload.created, false);
   assert.equal(secondPayload.run.id, payload.run.id);
   assert.equal(supervisedRuns.length, 1);
+});
+
+test('POST /api/work/tasks/:taskId/supervised-run rejects pending approval tasks', async (t) => {
+  const coreStore = createPendingApprovalCoreStore();
+  const server = createServer(async (request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost');
+    const handled = await routeWorkApi({
+      request,
+      response,
+      url,
+      method: request.method ?? 'GET',
+      dependencies: {
+        coreStore,
+        now: () => new Date('2026-04-25T12:05:00.000Z'),
+      },
+    });
+
+    if (!handled) {
+      response.writeHead(404, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ error: 'not found' }));
+    }
+  });
+
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  const response = await fetch(
+    `http://127.0.0.1:${address.port}/api/work/tasks/task-pending-supervision-route/supervised-run`,
+    { method: 'POST' },
+  );
+  const payload = await response.json();
+  const core = await coreStore.readCore();
+
+  assert.equal(response.status, 409);
+  assert.equal(payload.error.code, 'task_approval_pending');
+  assert.equal(core.runs.length, 0);
 });
 
 test('POST /api/work/tasks/:taskId/supervised-run starts supervised runtime session when available', async (t) => {

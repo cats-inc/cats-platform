@@ -147,6 +147,12 @@ export async function createWorkSupervisedRunPayload(
   if (!task) {
     throw new CoreNotFoundError(`No task found for id ${taskId}.`, 'task_not_found');
   }
+  if (task.status === 'pending_approval') {
+    throw new CoreConflictError(
+      `Task ${task.id} is pending owner approval and cannot start a supervised Work run.`,
+      'task_approval_pending',
+    );
+  }
 
   const existingRun = findActiveWorkSupervisedRun(core.runs, task.id);
   if (existingRun) {
