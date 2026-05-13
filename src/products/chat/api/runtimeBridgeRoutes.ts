@@ -4,8 +4,11 @@ import {
   resolveRuntimeMaintenancePhase,
 } from '../../../platform/memory/runtimeMaintenance.js';
 import { appendMemoryMaintenanceActivity } from '../../../platform/memory/maintenance.js';
+import { resolveWorkToolPhase } from '../../work/shared/workToolSurface.js';
 import type { ChatApiRouteContext } from './routeSupport.js';
 import { handleRestError, sendRestError } from './routeSupport.js';
+
+const PRODUCT_WORK_MCP_PROXY_REJECTION_CODE = 'product_work_tool_not_executable_via_runtime_mcp';
 
 async function handleObserveRuntimeSession(
   context: ChatApiRouteContext,
@@ -100,6 +103,11 @@ async function handleFlushRuntimeSessionMemory(
 async function handleRuntimeMcpProxy(context: ChatApiRouteContext): Promise<void> {
   try {
     const body = await readJsonBody<unknown>(context.request);
+    const productToolRejection = buildProductWorkToolMcpProxyRejection(body);
+    if (productToolRejection) {
+      sendJson(context.response, 200, productToolRejection);
+      return;
+    }
     const payload = await context.dependencies.runtimeClient.callMcp(body);
     if (payload === null) {
       context.response.statusCode = 204;
@@ -110,6 +118,49 @@ async function handleRuntimeMcpProxy(context: ChatApiRouteContext): Promise<void
   } catch (error) {
     handleRestError(context, error);
   }
+}
+
+function buildProductWorkToolMcpProxyRejection(request: unknown): Record<string, unknown> | null {
+  if (!isRecord(request) || request.method !== 'tools/call') {
+    return null;
+  }
+  const params = isRecord(request.params) ? request.params : null;
+  const toolName = typeof params?.name === 'string' ? params.name : null;
+  if (!toolName) {
+    return null;
+  }
+  const phase = resolveWorkToolPhase(toolName);
+  if (!phase) {
+    return null;
+  }
+
+  return {
+    jsonrpc: '2.0',
+    id: normalizeJsonRpcId(request.id),
+    error: {
+      code: -32601,
+      message:
+        `${toolName} is a Cats Work product tool and is not executable through the runtime MCP proxy.`,
+      data: {
+        code: PRODUCT_WORK_MCP_PROXY_REJECTION_CODE,
+        toolName,
+        product: 'work',
+        phase,
+        boundary: 'cats_work_supervised_tool_boundary',
+      },
+    },
+  };
+}
+
+function normalizeJsonRpcId(value: unknown): string | number | null {
+  if (typeof value === 'string' || typeof value === 'number' || value === null) {
+    return value;
+  }
+  return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export async function routeRuntimeBridgeApi(

@@ -76,9 +76,9 @@ requests into `toolIntent`, and runtime dispatch forwards the matched
 `toolIntent` in `sendMessage.context.metadata.toolIntent`.
 
 Those Work tools are still not executable through `POST /api/runtime/mcp`.
-The runtime MCP endpoint remains a proxy to `cats-runtime` until a
-product-owned MCP adapter preserves the same supervision, approval, and
-evidence gates used by the direct Work delegates.
+The runtime MCP endpoint now rejects product-owned Work `tools/call` requests
+before proxying to `cats-runtime`, so Work mutations cannot bypass the
+supervised Work boundary while the product-owned MCP adapter remains pending.
 
 ## Configuration
 

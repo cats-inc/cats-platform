@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { WORK_PROJECT_CREATE_TOOL } from '../build/server/products/work/shared/workToolSurface.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -13,6 +14,26 @@ const baseConfig = {
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
+  auth: {
+    mode: 'unsafe_disabled',
+    enabled: false,
+    sessionSecret: null,
+    sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
+    mobileSessionTtlMs: 30 * 24 * 60 * 60 * 1000,
+    loginFailureLimit: 5,
+    loginLockoutMs: 30_000,
+    accountDailyFailureCap: 100,
+    accountCooldownMs: 15 * 60 * 1000,
+    subnetDailyFailureCap: 500,
+    allowedBrowserOrigins: ['http://127.0.0.1:8181'],
+    authStatePath: 'unused-auth-state.json',
+    recoveryTokenPath: 'unused-auth-recovery.json',
+    google: {
+      clientId: null,
+      hostedDomains: [],
+      mobileAudiences: [],
+    },
+  },
 };
 
 function createRuntimeStub() {
@@ -262,5 +283,42 @@ test('runtime bridge proxies MCP JSON-RPC calls to cats-runtime', async () => {
     assert.equal(payload.id, 'mcp-1');
     assert.equal(payload.result.echoed, 'tools/list');
     assert.deepEqual(runtimeClient.mcpCalls, [request]);
+  });
+});
+
+test('runtime bridge blocks product-owned Work MCP tool calls before runtime proxy', async () => {
+  const runtimeClient = createRuntimeStub();
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const request = {
+      jsonrpc: '2.0',
+      id: 'work-mcp-1',
+      method: 'tools/call',
+      params: {
+        name: WORK_PROJECT_CREATE_TOOL,
+        arguments: {
+          title: 'Blocked Runtime MCP Project',
+        },
+      },
+    };
+
+    const response = await fetch(`${baseUrl}/api/runtime/mcp`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.jsonrpc, '2.0');
+    assert.equal(payload.id, 'work-mcp-1');
+    assert.equal(payload.error.code, -32601);
+    assert.equal(
+      payload.error.data.code,
+      'product_work_tool_not_executable_via_runtime_mcp',
+    );
+    assert.equal(payload.error.data.toolName, WORK_PROJECT_CREATE_TOOL);
+    assert.equal(payload.error.data.boundary, 'cats_work_supervised_tool_boundary');
+    assert.deepEqual(runtimeClient.mcpCalls, []);
   });
 });
