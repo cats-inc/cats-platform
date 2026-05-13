@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 
 import type { ChatCat } from '../../api/workspaceContracts.js';
 import { extractAttachments, segmentMessageBody } from './messageBodySegmenter.js';
@@ -91,13 +92,13 @@ export function MessageBody({
                 );
               case 'route':
                 return (
-                  <a
+                  <Link
                     key={index}
                     className="messageBodyLink"
-                    href={segment.href}
+                    to={segment.href ?? segment.value}
                   >
                     {segment.value}
-                  </a>
+                  </Link>
                 );
               case 'mention':
                 return (

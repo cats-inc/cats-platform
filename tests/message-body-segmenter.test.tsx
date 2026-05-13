@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
+import { MemoryRouter } from 'react-router-dom';
 
 import { MessageBody } from '../src/products/chat/renderer/components/MessageBody.tsx';
 import {
@@ -75,17 +76,35 @@ test('segmentMessageBody linkifies internal product routes without prose punctua
 });
 
 test('MessageBody renders internal product routes as same-window links', () => {
-  const markup = renderToStaticMarkup(
-    <MessageBody
-      body="Review /work/tasks/task-work-1"
-      cats={[]}
-      channelId="channel-1"
-    />,
+  const markup = renderWithoutRouterServerWarnings(
+    <MemoryRouter>
+      <MessageBody
+        body="Review /work/tasks/task-work-1"
+        cats={[]}
+        channelId="channel-1"
+      />
+    </MemoryRouter>,
   );
 
   assert.match(markup, /href="\/work\/tasks\/task-work-1"/u);
   assert.doesNotMatch(markup, /target="_blank"/u);
 });
+
+function renderWithoutRouterServerWarnings(element: React.ReactElement): string {
+  const originalError = console.error;
+  console.error = (...args: unknown[]) => {
+    const message = String(args[0] ?? '');
+    if (message.includes('useLayoutEffect does nothing on the server')) {
+      return;
+    }
+    originalError(...args);
+  };
+  try {
+    return renderToStaticMarkup(element);
+  } finally {
+    console.error = originalError;
+  }
+}
 
 test('segmentMessageBody trims prose punctuation and unmatched closing parens', () => {
   const segments = segmentMessageBody(
