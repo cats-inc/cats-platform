@@ -48,6 +48,7 @@ export function useSettingsCatsRegistryActions(options: {
     onDeleteBinding,
     onDeleteCat: onDeleteCatBase,
     onMakeBossCat,
+    onMcpProfileChange,
     onRenameCat,
     onSkillChange,
   } = createSettingsCatsRegistryActions({
@@ -162,6 +163,7 @@ export function useSettingsCatsRegistryActions(options: {
     onDeleteBinding,
     onDeleteCat,
     onMakeBossCat,
+    onMcpProfileChange,
     onRenameCat,
     onSkillChange,
     onUnarchiveCat,

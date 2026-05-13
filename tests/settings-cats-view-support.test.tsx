@@ -6,15 +6,20 @@ import {
   getCatRecordStatusLabel,
   formatTransportTimestamp,
   MEMORY_CATEGORIES,
+  MCP_PROFILES,
   SKILL_PROFILES,
 } from '../src/products/shared/renderer/components/settings-cats/viewSupport.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 import { messageKeys } from '../src/shared/i18n/messageKeys.ts';
 
-test('settings-cats view support keeps the curated skill profile and memory category lists', () => {
+test('settings-cats view support keeps curated profile and memory category lists', () => {
   assert.deepEqual(SKILL_PROFILES, [
     { value: 'chat-default', label: messageKeys.sharedSettingsCatsSkillProfileDefaultLabel },
     { value: 'companion', label: messageKeys.sharedSettingsCatsSkillProfileCompanionLabel },
+  ]);
+  assert.deepEqual(MCP_PROFILES, [
+    { value: 'chat-memory', label: messageKeys.sharedSettingsCatsMcpProfileChatMemoryLabel },
+    { value: 'work-memory', label: messageKeys.sharedSettingsCatsMcpProfileWorkMemoryLabel },
   ]);
   assert.deepEqual(MEMORY_CATEGORIES, [
     { value: 'preference', label: messageKeys.sharedSettingsCatsMemoryCategoryPreferenceLabel },

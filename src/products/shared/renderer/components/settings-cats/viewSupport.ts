@@ -6,6 +6,11 @@ export const SKILL_PROFILES = [
   { value: 'companion', label: messageKeys.sharedSettingsCatsSkillProfileCompanionLabel },
 ] as const;
 
+export const MCP_PROFILES = [
+  { value: 'chat-memory', label: messageKeys.sharedSettingsCatsMcpProfileChatMemoryLabel },
+  { value: 'work-memory', label: messageKeys.sharedSettingsCatsMcpProfileWorkMemoryLabel },
+] as const;
+
 export const MEMORY_CATEGORIES = [
   { value: 'preference', label: messageKeys.sharedSettingsCatsMemoryCategoryPreferenceLabel },
   { value: 'fact', label: messageKeys.sharedSettingsCatsMemoryCategoryFactLabel },

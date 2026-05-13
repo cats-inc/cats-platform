@@ -2423,6 +2423,12 @@ export const messageKeys = {
   sharedSettingsCatsSetBossCatError: 'shared.settingsCats.setBossCatError',
   sharedSettingsCatsSkillUpdateError: 'shared.settingsCats.skillUpdateError',
   sharedSettingsCatsSkillProfileLabel: 'shared.settingsCats.skillProfileLabel',
+  sharedSettingsCatsMcpProfileLabel: 'shared.settingsCats.mcpProfileLabel',
+  sharedSettingsCatsMcpProfileChatMemoryLabel:
+    'shared.settingsCats.mcpProfileChatMemoryLabel',
+  sharedSettingsCatsMcpProfileWorkMemoryLabel:
+    'shared.settingsCats.mcpProfileWorkMemoryLabel',
+  sharedSettingsCatsChangeMcpProfileError: 'shared.settingsCats.changeMcpProfileError',
   sharedSettingsCatsDisconnectTelegramAria: 'shared.settingsCats.disconnectTelegramAria',
   sharedSettingsCatsDisconnectTelegram: 'shared.settingsCats.disconnectTelegram',
   sharedSettingsCatsBindingActive: 'shared.settingsCats.bindingActive',

@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice exposed the Cat MCP/tool profile selector in Cats settings and entity detail panels so operators can switch Cats between `chat-memory` and `work-memory` without direct API calls. |
 | 2026-05-13 | Follow-up slice blocked product-owned Work `tools/call` requests at `POST /api/runtime/mcp` before the runtime proxy, preserving the supervised Work boundary while MCP execution remains pending. |
 | 2026-05-13 | Follow-up slice added Cat MCP profile mutation support so `PATCH /api/cats/:id` and model helpers can switch Cats onto `work-memory`, with channel read-model projection coverage. |
 | 2026-05-13 | Follow-up slice synced control-surface and MCP docs with the landed `work-memory` planner/runtime-dispatch intent path while keeping Work MCP execution explicitly pending. |

@@ -178,6 +178,22 @@ export function createSettingsCatsRegistryActions(
     }
   }
 
+  async function onMcpProfileChange(catId: string, mcpProfile: string): Promise<void> {
+    context.onBusy(createCatBusyState('skill', catId));
+    try {
+      const result = await updateCatProfile(catId, { mcpProfile });
+      context.onPayloadUpdate(result);
+    } catch (error) {
+      context.onFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsChangeMcpProfileError),
+        t,
+      ));
+    } finally {
+      context.onBusy(clearBusyState());
+    }
+  }
+
   async function onCreateBinding(catId: string): Promise<void> {
     if (!context.botForm.botName.trim()) {
       return;
@@ -233,6 +249,7 @@ export function createSettingsCatsRegistryActions(
     onDeleteBinding,
     onDeleteCat,
     onMakeBossCat,
+    onMcpProfileChange,
     onRenameCat,
     onSkillChange,
   };

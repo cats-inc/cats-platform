@@ -20,6 +20,7 @@ import { MemoryEditorDialog } from './MemoryEditorDialog.js';
 import { TelegramConnectDialog } from './TelegramConnectDialog.js';
 import {
   getMemoryCategoryLabel,
+  MCP_PROFILES,
   SKILL_PROFILES,
   formatTransportTimestamp,
 } from './viewSupport.js';
@@ -32,6 +33,7 @@ export interface SettingsCatsDetailPanelRegistryController {
   onCreateBinding: (catId: string) => Promise<void>;
   onDeleteBinding: (bindingId: string) => Promise<void>;
   onMakeBossCat: (catId: string) => Promise<void>;
+  onMcpProfileChange: (catId: string, mcpProfile: string) => Promise<void>;
   onRenameCat: (catId: string) => Promise<void>;
   onSkillChange: (catId: string, skillProfile: string) => Promise<void>;
 }
@@ -40,6 +42,7 @@ export type SettingsCatsDetailSectionKey =
   | 'rename'
   | 'makeBoss'
   | 'skill'
+  | 'mcp'
   | 'telegram'
   | 'memory';
 
@@ -78,6 +81,7 @@ export function SettingsCatsDetailPanelContent({
     onCreateBinding,
     onDeleteBinding,
     onMakeBossCat,
+    onMcpProfileChange,
     onRenameCat,
     onSkillChange,
   } = registryController;
@@ -198,6 +202,29 @@ export function SettingsCatsDetailPanelContent({
                 type="button"
                 disabled={isCatBusy(busy, 'skill', cat.id)}
                 onClick={() => void onSkillChange(cat.id, profile.value)}
+              >
+                {t(profile.label)}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {shouldRender('mcp') ? (
+        <div className="catDetailSection">
+          <p className="sectionLabel">{t(messageKeys.sharedSettingsCatsMcpProfileLabel)}</p>
+          <div className="skillPills">
+            {MCP_PROFILES.map((profile) => (
+              <button
+                key={profile.value}
+                className={
+                  (cat.mcpProfile ?? 'chat-memory') === profile.value
+                    ? 'draftLeadPill draftLeadPillActive'
+                    : 'draftLeadPill'
+                }
+                type="button"
+                disabled={isCatBusy(busy, 'skill', cat.id)}
+                onClick={() => void onMcpProfileChange(cat.id, profile.value)}
               >
                 {t(profile.label)}
               </button>

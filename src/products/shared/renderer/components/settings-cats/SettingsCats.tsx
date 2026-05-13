@@ -39,7 +39,7 @@ import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { SettingsCatsDetailPanelContent } from './SettingsCatsDetailPanelContent.js';
 import { SettingsCatsRegistry } from './SettingsCatsRegistry.js';
 import { findNewlyCreatedActiveCat } from './settingsCatsSupport.js';
-import { SKILL_PROFILES } from './viewSupport.js';
+import { MCP_PROFILES, SKILL_PROFILES } from './viewSupport.js';
 
 export interface SettingsCatsRegistryController<TBotForm> {
   botForm: TBotForm;
@@ -52,6 +52,7 @@ export interface SettingsCatsRegistryController<TBotForm> {
   onUnarchiveCat: (catId: string, catName: string) => Promise<void>;
   onDeleteCat: (catId: string, catName: string) => Promise<void>;
   onMakeBossCat: (catId: string) => Promise<void>;
+  onMcpProfileChange: (catId: string, mcpProfile: string) => Promise<void>;
   onRenameCat: (catId: string) => Promise<void>;
   onSkillChange: (catId: string, skillProfile: string) => Promise<void>;
 }
@@ -146,6 +147,7 @@ export function SettingsCatsCanvas({
     onDeleteBinding,
     onDeleteCat,
     onMakeBossCat,
+    onMcpProfileChange,
     onArchiveCat,
     onUnarchiveCat,
     onRenameCat,
@@ -959,6 +961,34 @@ export function SettingsCatsCanvas({
 
                 <SettingsSubSection
                   className="catsSubCard"
+                  header={<SettingsSectionHeader title={t(messageKeys.sharedSettingsCatsMcpProfileLabel)} nested />}
+                >
+                  <div className="skillPills">
+                    {MCP_PROFILES.map((profile) => {
+                      const active = (selectedCat.mcpProfile ?? 'chat-memory') === profile.value;
+                      return (
+                        <button
+                          key={profile.value}
+                          type="button"
+                          className={active ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
+                          disabled={isArchived || active}
+                          onClick={() => {
+                            void commitCatProfile(
+                              selectedCat.id,
+                              { mcpProfile: profile.value },
+                              t(messageKeys.sharedSettingsCatsChangeMcpProfileError),
+                            );
+                          }}
+                        >
+                          {t(profile.label)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </SettingsSubSection>
+
+                <SettingsSubSection
+                  className="catsSubCard"
                   header={<SettingsSectionHeader title={t(messageKeys.sharedSettingsCatsChannelLabel)} nested />}
                 >
                   <SettingsCatsDetailPanelContent
@@ -975,6 +1005,7 @@ export function SettingsCatsCanvas({
                       onCreateBinding,
                       onDeleteBinding,
                       onMakeBossCat,
+                      onMcpProfileChange,
                       onRenameCat,
                       onSkillChange,
                     }}
@@ -1002,6 +1033,7 @@ export function SettingsCatsCanvas({
                       onCreateBinding,
                       onDeleteBinding,
                       onMakeBossCat,
+                      onMcpProfileChange,
                       onRenameCat,
                       onSkillChange,
                     }}
