@@ -5,16 +5,19 @@ import test from 'node:test';
 import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import { routeWorkApi } from '../src/products/work/api/index.ts';
+import type { WorkApiDependencies } from '../src/products/work/api/index.ts';
 import {
   EXTERNAL_ISSUE_IMPORT_METADATA_KEY,
 } from '../src/products/work/integrations/externalIssueImport.ts';
-import type { GitHubIssueFetch } from '../src/products/work/integrations/githubIssuesAdapter.ts';
 import { WORK_API_EXTERNAL_ISSUE_IMPORTS_PATH } from '../src/products/work/shared/apiPaths.ts';
 import { EXTERNAL_WORK_BINDING_METADATA_KEY } from '../src/products/work/shared/externalWorkBinding.ts';
 
 const NOW = new Date('2026-05-13T14:30:00.000Z');
 
-function createTestServer(store: MemoryCoreStore, fetchImpl: GitHubIssueFetch) {
+function createTestServer(
+  store: MemoryCoreStore,
+  externalIssueImport: WorkApiDependencies['externalIssueImport'],
+) {
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? '/', 'http://localhost');
@@ -26,11 +29,7 @@ function createTestServer(store: MemoryCoreStore, fetchImpl: GitHubIssueFetch) {
         dependencies: {
           coreStore: store,
           now: () => NOW,
-          externalIssueImport: {
-            github: {
-              fetchImpl,
-            },
-          },
+          externalIssueImport,
         },
       });
       if (!handled) {
@@ -71,25 +70,29 @@ async function request(
 test('POST /api/work/external-issue-imports imports a GitHub issue as a Work Item', async (t) => {
   const store = new MemoryCoreStore(createDefaultCoreState());
   const requests: string[] = [];
-  const server = createTestServer(store, async (url) => {
-    requests.push(url);
-    return {
-      ok: true,
-      status: 200,
-      async json() {
+  const server = createTestServer(store, {
+    github: {
+      fetchImpl: async (url) => {
+        requests.push(url);
         return {
-          number: 123,
-          html_url: 'https://github.com/cats-inc/cats-platform/issues/123',
-          title: 'Import route GitHub issue',
-          body: 'Imported by Work API route.',
-          state: 'open',
-          labels: [{ name: 'work' }],
-          assignees: [{ login: 'boss-cat' }],
-          updated_at: '2026-05-13T14:25:00Z',
-          closed_at: null,
+          ok: true,
+          status: 200,
+          async json() {
+            return {
+              number: 123,
+              html_url: 'https://github.com/cats-inc/cats-platform/issues/123',
+              title: 'Import route GitHub issue',
+              body: 'Imported by Work API route.',
+              state: 'open',
+              labels: [{ name: 'work' }],
+              assignees: [{ login: 'boss-cat' }],
+              updated_at: '2026-05-13T14:25:00Z',
+              closed_at: null,
+            };
+          },
         };
       },
-    };
+    },
   });
   await new Promise<void>((resolve) => server.listen(0, resolve));
   t.after(() => server.close());
@@ -136,18 +139,85 @@ test('POST /api/work/external-issue-imports imports a GitHub issue as a Work Ite
   assert.equal(core.activities.length, 1);
 });
 
+test('POST /api/work/external-issue-imports imports selected Redmine issue URLs', async (t) => {
+  const store = new MemoryCoreStore(createDefaultCoreState());
+  const requests: string[] = [];
+  const server = createTestServer(store, {
+    redmine: {
+      fetchImpl: async (url) => {
+        requests.push(url);
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return {
+              issue: {
+                id: 77,
+                project: { name: 'Cats Platform' },
+                subject: 'Import route Redmine issue',
+                description: 'Imported from nested Redmine.',
+                updated_on: '2026-05-13T14:35:00Z',
+                closed_on: null,
+              },
+            };
+          },
+        };
+      },
+    },
+  });
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const { status, payload } = await request(
+    server,
+    'POST',
+    WORK_API_EXTERNAL_ISSUE_IMPORTS_PATH,
+    {
+      externalUrl: 'https://tracker.example.test/redmine/issues/77',
+      provider: 'redmine',
+    },
+  );
+
+  assert.equal(status, 200);
+  assert.equal(payload?.provider, 'redmine');
+  assert.deepEqual(requests, [
+    'https://tracker.example.test/redmine/issues/77.json',
+  ]);
+  const core = await store.readCore();
+  assert.equal(core.workItems[0]?.title, 'Import route Redmine issue');
+  assert.deepEqual(
+    core.workItems[0]?.metadata[EXTERNAL_ISSUE_IMPORT_METADATA_KEY],
+    {
+      provider: 'redmine',
+      externalType: 'ticket',
+      externalId: '77',
+      externalUrl: 'https://tracker.example.test/redmine/issues/77',
+      sourceKey: 'Cats Platform',
+      state: 'open',
+      labels: [],
+      assignees: [],
+      sourceUpdatedAt: '2026-05-13T14:35:00Z',
+      sourceClosedAt: null,
+    },
+  );
+});
+
 test('POST /api/work/external-issue-imports rejects unsupported URLs before fetching', async (t) => {
   const store = new MemoryCoreStore(createDefaultCoreState());
   let fetchCount = 0;
-  const server = createTestServer(store, async () => {
-    fetchCount += 1;
-    return {
-      ok: true,
-      status: 200,
-      async json() {
-        return {};
+  const server = createTestServer(store, {
+    github: {
+      fetchImpl: async () => {
+        fetchCount += 1;
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return {};
+          },
+        };
       },
-    };
+    },
   });
   await new Promise<void>((resolve) => server.listen(0, resolve));
   t.after(() => server.close());
