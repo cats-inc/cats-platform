@@ -80,6 +80,7 @@ export function CodeTaskDetailPage(): JSX.Element {
   const artifacts = detail.linkedArtifacts
     .map(readLinkedArtifactSummary)
     .filter((artifact): artifact is LinkedArtifactSummary => artifact !== null);
+  const livePreviewTaskId = detail.taskId ?? taskId ?? null;
 
   return (
     <div className="codeBuilderView">
@@ -103,7 +104,9 @@ export function CodeTaskDetailPage(): JSX.Element {
         provider={null}
         model={null}
       />
-      <LivePreviewPanel surfaceKind="code_task" surfaceId={detail.taskId} />
+      {livePreviewTaskId ? (
+        <LivePreviewPanel surfaceKind="code_task" surfaceId={livePreviewTaskId} />
+      ) : null}
       {detail.summary ? (
         <section className="operatorPanel">
           <div className="operatorPanelHeader">

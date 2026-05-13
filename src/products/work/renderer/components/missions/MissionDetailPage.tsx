@@ -11,7 +11,11 @@ import {
   useMissionDetailQuery,
   useMissionsQuery,
 } from "../../state/queries/missionsQuery.js";
-import { RUNS_QUERY_KEY, useRunsQuery } from "../../state/queries/runsQuery.js";
+import {
+  RUNS_QUERY_KEY,
+  useRunsQuery,
+  type WorkRunListItem,
+} from "../../state/queries/runsQuery.js";
 import { useTasksQuery } from "../../state/queries/tasksQuery.js";
 import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
 import { formatMissionCancelBlockedMessage } from "../runCancellationLabels.js";
@@ -113,7 +117,7 @@ export function MissionDetailPage(): JSX.Element {
   // runs — previously these missions silently rendered "no linked
   // work item / no run" because the detail page only walked
   // managedWorkId -> taskId -> runs.
-  const directMissionRuns = useMemo(() => {
+  const directMissionRuns = useMemo<WorkRunListItem[]>(() => {
     const detailRuns = missionDetailQuery.data?.runs ?? [];
     if (detailRuns.length === 0) return [];
     const allRuns = runsQuery.data?.runs ?? [];
@@ -132,8 +136,15 @@ export function MissionDetailPage(): JSX.Element {
           id: detailRun.id,
           title: detailRun.title,
           status: detailRun.status,
+          summary: null,
           taskId: detailRun.taskId,
           taskTitle: null,
+          conversationId: detailRun.conversationId,
+          conversationTitle: null,
+          parentRunId: null,
+          parentRunTitle: null,
+          startedAt: detailRun.startedAt,
+          completedAt: detailRun.completedAt,
           updatedAt: detailRun.updatedAt,
         };
       })
