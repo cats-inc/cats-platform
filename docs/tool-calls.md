@@ -276,7 +276,9 @@ provider-neutral Work Item import draft and builds future create-issue payloads
 through an injectable fetch boundary; it performs no remote writes. The shared
 import draft metadata is provider-neutral so later Redmine, Bugzilla, GitLab,
 and Gitea adapters can map their issue or ticket snapshots into the same local
-Work seam. Automatic bidirectional sync is deferred by ADR-106, so
+Work seam. Redmine and Bugzilla read-only adapter spikes now map one issue or
+bug response into that same provider-neutral draft through injectable fetch
+boundaries. Automatic bidirectional sync is deferred by ADR-106, so
 `syncDirection` remains metadata intent rather than an active sync contract.
 
 Caller-visible triage lookup fields are `query`, `limit`, and

@@ -285,6 +285,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Follow-up slice exposed `work.external.unlink_issue` through `DELETE /api/work/external-bindings` plus a renderer client, keeping unlink local-only and activity-audited. |
 | 2026-05-13 | Follow-up slice added the supervised `work.external.unlink_issue` contract/delegate so incorrect external tracker bindings can be removed locally without contacting remote trackers. |
 | 2026-05-13 | Follow-up slice synced API/tool-call docs for `POST /api/work/external-bindings`, manual UI binding, URL inference, GitHub adapter spike, and ADR-106's deferred automatic sync boundary. |
+| 2026-05-13 | Follow-up slice added a provider-neutral external issue import draft seam plus read-only Redmine and Bugzilla adapter spikes with injectable fetch boundaries and no remote writes. |
 | 2026-05-13 | Follow-up slice added API-route coverage proving Project external tracker links persist metadata and emit project-scoped Activity evidence through `POST /api/work/external-bindings`. |
 | 2026-05-13 | Follow-up slice added local external tracker URL inference so manual binding dialogs can prefill provider/type/id from common GitHub, GitLab, Bugzilla, Redmine, and Gitea URLs without remote calls. |
 | 2026-05-13 | Follow-up slice added a Project detail manual external-tracker link dialog and factored Work Item/Project link creation through a shared Work external binding dialog. |
