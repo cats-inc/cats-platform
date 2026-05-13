@@ -21,6 +21,10 @@ import {
   upsertCoreWorkItem,
   writeApprovalDecision,
 } from '../build/server/core/model/index.js';
+import {
+  buildExternalWorkBinding,
+  createExternalWorkBindingsMetadata,
+} from '../build/server/products/work/shared/externalWorkBinding.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { resolveMentionRoute } from '../build/server/products/chat/state/mentionRouter.js';
 import {
@@ -35,6 +39,7 @@ import {
 } from '../build/server/products/chat/state/room-routing/workflow.js';
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
+  WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
   WORK_ITEM_ASSIGN_PROJECT_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
@@ -1448,6 +1453,134 @@ test('POST /api/orchestrator/dispatch applies provider external issue binding de
         },
         input: {},
         rationaleSummary: 'The owner explicitly asked to link a Work Item to Redmine.',
+      };
+    },
+  });
+});
+
+test('POST /api/orchestrator/dispatch applies provider external issue unlink decisions', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  const externalUrl = 'https://bugzilla.example.com/show_bug.cgi?id=4321';
+  let observedToolNames = [];
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Work',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+    let chat = await chatStore.read();
+    chat = setChannelCatLease(
+      chat,
+      channelId,
+      catId,
+      {
+        status: 'ready',
+        sessionId: 'session-work-external-unlink',
+        laneId: 'lane-work-external-unlink',
+      },
+      new Date('2026-05-13T00:00:00.000Z'),
+    );
+    await chatStore.write(chat);
+
+    let core = await chatStore.readCore();
+    core = upsertCoreWorkItem(
+      core,
+      {
+        id: 'work-item-api-external-unlink-1',
+        title: 'Remove stale Bugzilla external tracker seam',
+        status: 'planned',
+        projectId: null,
+        conversationId: `conversation-channel-${channelId}`,
+        taskId: null,
+        parentWorkItemId: null,
+        ownerActorId: 'actor-owner',
+        assignedActorIds: [],
+        summary: null,
+        metadata: {
+          externalWorkBindings: createExternalWorkBindingsMetadata([
+            buildExternalWorkBinding({
+              localKind: 'work_item',
+              localId: 'work-item-api-external-unlink-1',
+              provider: 'bugzilla',
+              externalType: 'ticket',
+              externalId: '4321',
+              externalUrl,
+              linkedAt: '2026-05-13T00:00:00.000Z',
+              linkedByActorRef: 'actor-owner',
+            }),
+          ]),
+        },
+      },
+      new Date('2026-05-13T00:00:01.000Z'),
+    ).core;
+    await chatStore.writeCore(core);
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: `Boss Cat unlink work-item-api-external-unlink-1 from ${externalUrl}`,
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.equal(observedToolNames.includes(WORK_EXTERNAL_UNLINK_ISSUE_TOOL), true);
+
+    const updatedCore = await chatStore.readCore();
+    const workItem = updatedCore.workItems.find((candidate) =>
+      candidate.id === 'work-item-api-external-unlink-1');
+    assert.equal(workItem?.metadata.externalWorkBindings, undefined);
+
+    const persisted = await chatStore.read();
+    const channel = buildChannelView(persisted, channelId);
+    const resultMessage = channel.messages.find((message) =>
+      message.metadata.event === 'work_external_binding_result');
+    const metadata = resultMessage?.metadata.workExternalBindingResult;
+    assert.equal(resultMessage?.senderName, 'Cats Work');
+    assert.equal(
+      resultMessage?.body,
+      'Unlinked bugzilla ticket 4321 from Work Item work-item-api-external-unlink-1.',
+    );
+    assert.equal(metadata?.operation, 'unlink');
+    assert.equal(metadata?.event, 'unlinked');
+    assert.equal(metadata?.localKind, 'work_item');
+    assert.equal(metadata?.localId, 'work-item-api-external-unlink-1');
+    assert.equal(metadata?.provider, 'bugzilla');
+    assert.equal(metadata?.externalType, 'ticket');
+    assert.equal(metadata?.externalId, '4321');
+  }, chatStore, {
+    providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
+    providerAgentDecisionRequester: async ({ observation }) => {
+      observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
+      return {
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-api-work-external-unlink-1',
+        confidence: 'high',
+        toolName: WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+        },
+        input: {},
+        rationaleSummary: 'The owner explicitly asked to unlink a Work Item from Bugzilla.',
       };
     },
   });
