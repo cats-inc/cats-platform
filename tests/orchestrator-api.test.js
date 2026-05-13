@@ -148,13 +148,14 @@ function createRuntimeStub(options = {}) {
       this.createdSessions.push({ ...input, id: session.id });
       return session;
     },
-    async sendMessage(sessionId, content) {
-      this.sentMessages.push({ sessionId, content });
+    async sendMessage(sessionId, content, input) {
+      this.sentMessages.push({ sessionId, content, input });
       const resolver = options.sendMessage;
       if (typeof resolver === 'function') {
         const resolved = await resolver({
           sessionId,
           content,
+          messageInput: input ?? null,
           session: sessions.get(sessionId)?.session ?? null,
           input: sessions.get(sessionId)?.input ?? null,
           sentMessages: this.sentMessages,
@@ -756,6 +757,73 @@ test('POST /api/orchestrator/dispatch returns executed continuation steps from t
     );
     assert.ok(runtimeClient.sentMessages.length >= 1);
   });
+});
+
+test('POST /api/orchestrator/dispatch forwards Work triage tool intent to runtime', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      cats: [
+        {
+          name: 'Work',
+          provider: 'gemini',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+    let chat = await chatStore.read();
+    chat = setChannelCatLease(
+      chat,
+      channelId,
+      catId,
+      {
+        status: 'ready',
+        sessionId: 'session-work-dispatch',
+        laneId: 'lane-work-dispatch',
+      },
+      new Date('2026-05-13T00:00:00.000Z'),
+    );
+    await chatStore.write(chat);
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Please ask @Work to create project Cat Ops and update work-item-alpha.',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.equal(runtimeClient.sentMessages.length, 1);
+
+    const toolIntent = runtimeClient.sentMessages[0]?.input?.context?.metadata?.toolIntent;
+    assert.ok(toolIntent);
+    assert.deepEqual(toolIntent.allowedTools, [
+      WORK_ITEM_ASSIGN_PROJECT_TOOL,
+      WORK_ITEM_UPDATE_TOOL,
+      WORK_PROJECT_CREATE_TOOL,
+      WORK_PROJECT_LOOKUP_TOOL,
+    ]);
+    assert.deepEqual(
+      toolIntent.toolDescriptions.map((tool) => tool.name),
+      toolIntent.allowedTools,
+    );
+    assert.deepEqual(toolIntent.requiredCapabilities, [
+      'work.phase.triage',
+      'work.capability.strong_agent',
+      'work.tool_scope.narrow_write',
+    ]);
+    assert.equal(toolIntent.strict, true);
+  }, chatStore);
 });
 
 test('POST /api/orchestrator/dispatch reuses the room-entry session during a concurrent wake', async () => {
