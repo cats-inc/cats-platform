@@ -1591,6 +1591,160 @@ test('POST /api/orchestrator/dispatch proposes Boss Work execution preparation a
   });
 });
 
+test('POST /api/orchestrator/dispatch declines Boss Work execution preparation without creating Tasks', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  let decisionRequests = 0;
+  let observedToolNames = [];
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+    let chat = await chatStore.read();
+    chat = setBossCat(chat, catId);
+    chat = setChannelCatLease(
+      chat,
+      channelId,
+      catId,
+      {
+        status: 'ready',
+        sessionId: 'session-work-execution-decline',
+        laneId: 'lane-work-execution-decline',
+      },
+      new Date('2026-05-13T00:05:00.000Z'),
+    );
+    await chatStore.write(chat);
+
+    let core = await chatStore.readCore();
+    core = upsertCoreWorkItem(
+      core,
+      {
+        id: 'work-item-api-decline-1',
+        title: 'Prepare Bugzilla tracker binding',
+        status: 'ready',
+        projectId: null,
+        conversationId: `conversation-channel-${channelId}`,
+        taskId: null,
+        parentWorkItemId: null,
+        ownerActorId: 'actor-owner',
+        assignedActorIds: [],
+        summary: 'Draft the adapter constraints before implementation.',
+        metadata: {
+          workIntake: {
+            schemaVersion: 1,
+            phase: 'intake',
+            runId: 'chat:previous-owner-visible-turn',
+          },
+        },
+      },
+      new Date('2026-05-13T00:05:01.000Z'),
+    ).core;
+    await chatStore.writeCore(core);
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Boss Cat start work-item-api-decline-1.',
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.equal(observedToolNames.includes(WORK_ITEM_PREPARE_EXECUTION_TOOL), true);
+
+    const persisted = await chatStore.read();
+    const channel = buildChannelView(persisted, channelId);
+    const proposalMessage = channel.messages.find((message) =>
+      message.metadata.event === 'work_execution_preparation_proposed');
+    const proposal = proposalMessage?.metadata.workExecutionPreparationProposal;
+    assert.equal(proposalMessage?.senderName, 'Cats Work');
+    assert.deepEqual(proposal?.workItemIds, ['work-item-api-decline-1']);
+    const runtimeSendCountAfterProposal = runtimeClient.sentMessages.length;
+    assert.equal(runtimeSendCountAfterProposal > 0, true);
+
+    if (!proposalMessage) {
+      throw new Error('Expected Work execution preparation proposal message.');
+    }
+    const declineResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: 'Do not create the execution Task yet',
+        choiceResponse: buildSingleChoiceResponse(
+          proposalMessage,
+          'decline_execution_preparation',
+          '2026-05-13T00:06:00.000Z',
+        ),
+      }),
+    });
+
+    assert.equal(declineResponse.status, 200);
+    const declinePayload = await declineResponse.json();
+    assert.equal(declinePayload.dispatch.status, 'dispatched');
+
+    const declinedChat = await chatStore.read();
+    const declinedChannel = buildChannelView(declinedChat, channelId);
+    const declinedMessage = declinedChannel.messages.find((message) =>
+      message.metadata.event === 'work_execution_preparation_declined');
+    const transition = declinedMessage?.metadata.workExecutionPreparationTransition;
+    const declinedCore = await chatStore.readCore();
+    const workItem = declinedCore.workItems.find((candidate) =>
+      candidate.id === 'work-item-api-decline-1');
+
+    assert.equal(declinedMessage?.body, 'Execution preparation proposal deferred.');
+    assert.equal(transition?.event, 'declined');
+    assert.deepEqual(transition?.createdTasks, []);
+    assert.deepEqual(transition?.skippedWorkItemIds, ['work-item-api-decline-1']);
+    assert.equal(workItem?.taskId, null);
+    assert.equal(
+      declinedCore.tasks.some((task) => task.id.startsWith('task-work-item-')),
+      false,
+    );
+    assert.equal(decisionRequests, 1);
+    assert.equal(runtimeClient.sentMessages.length, runtimeSendCountAfterProposal);
+  }, chatStore, {
+    providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
+    providerAgentDecisionRequester: async ({ observation }) => {
+      decisionRequests += 1;
+      observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
+      return {
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-api-work-execution-decline-1',
+        confidence: 'high',
+        toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
+        },
+        input: {
+          executionGoal: 'Hold until owner confirms.',
+        },
+        rationaleSummary: 'Prepare the selected Work Item for Boss Cat execution.',
+      };
+    },
+  });
+});
+
 test('POST /api/orchestrator/dispatch reuses the room-entry session during a concurrent wake', async () => {
   const runtimeClient = createRuntimeStub();
   const originalCreateSession = runtimeClient.createSession.bind(runtimeClient);
