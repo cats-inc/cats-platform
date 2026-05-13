@@ -32,6 +32,7 @@ export const WORK_ITEM_ASSIGN_PROJECT_TOOL = 'work.item.assign_project' as const
 export const WORK_ITEM_PREPARE_EXECUTION_TOOL = 'work.item.prepare_execution' as const;
 export const WORK_PROJECT_LOOKUP_TOOL = 'work.project.lookup' as const;
 export const WORK_PROJECT_CREATE_TOOL = 'work.project.create' as const;
+export const WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL = 'work.task.create_from_work_item' as const;
 
 export type PhaseScopedWorkToolName =
   | typeof WORK_ITEM_PROPOSE_SPLIT_TOOL
@@ -40,7 +41,8 @@ export type PhaseScopedWorkToolName =
   | typeof WORK_ITEM_ASSIGN_PROJECT_TOOL
   | typeof WORK_ITEM_PREPARE_EXECUTION_TOOL
   | typeof WORK_PROJECT_LOOKUP_TOOL
-  | typeof WORK_PROJECT_CREATE_TOOL;
+  | typeof WORK_PROJECT_CREATE_TOOL
+  | typeof WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL;
 
 export const WORK_TOOL_PHASE_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, WorkToolPhase>> = {
   [WORK_ITEM_PROPOSE_SPLIT_TOOL]: 'intake',
@@ -50,6 +52,7 @@ export const WORK_TOOL_PHASE_BY_NAME: Readonly<Record<PhaseScopedWorkToolName, W
   [WORK_ITEM_PREPARE_EXECUTION_TOOL]: 'execution_preparation',
   [WORK_PROJECT_LOOKUP_TOOL]: 'triage',
   [WORK_PROJECT_CREATE_TOOL]: 'triage',
+  [WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL]: 'execution_preparation',
 };
 
 export const WORK_TOOL_ALLOWED_CAPABILITY_PROFILES_BY_NAME: Readonly<
@@ -62,6 +65,7 @@ export const WORK_TOOL_ALLOWED_CAPABILITY_PROFILES_BY_NAME: Readonly<
   [WORK_ITEM_PREPARE_EXECUTION_TOOL]: ['boss_cat'],
   [WORK_PROJECT_LOOKUP_TOOL]: ['boss_cat', 'strong_agent'],
   [WORK_PROJECT_CREATE_TOOL]: ['boss_cat', 'strong_agent'],
+  [WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL]: ['boss_cat'],
 };
 
 export const WORK_TOOL_SERVER_RESOLVED_FIELDS = [
@@ -251,6 +255,22 @@ export interface WorkItemPrepareExecutionResult {
   proposals: WorkItemExecutionPreparationProposal[];
 }
 
+export interface WorkTaskCreateFromWorkItemInput {
+  workItemId: string;
+  title?: string;
+  summary?: string;
+  approvalNote?: string;
+}
+
+export interface WorkTaskCreateFromWorkItemResult {
+  workItemId: string;
+  taskId: string;
+  created: boolean;
+  linked: boolean;
+  taskStatus: 'pending_approval';
+  approvalStatus: 'pending';
+}
+
 export interface WorkProjectLookupInput {
   query?: string;
   limit?: number;
@@ -371,6 +391,17 @@ export function createPhaseScopedWorkToolManifests(): SupervisedToolManifest[] {
         WORK_TOOL_ERROR_CODES.precheckFailed,
       ],
     }),
+    createManifest({
+      name: WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
+      description: 'Create a pending-approval Task from one Cats Work Item.',
+      sideEffect: 'local_state',
+      preflight: 'required',
+      approval: 'policy',
+      failureCodes: [
+        WORK_TOOL_ERROR_CODES.schemaInvalid,
+        WORK_TOOL_ERROR_CODES.precheckFailed,
+      ],
+    }),
   ];
 }
 
@@ -383,6 +414,7 @@ export function resolveWorkToolPhase(toolName: string): WorkToolPhase | undefine
     || toolName === WORK_ITEM_PREPARE_EXECUTION_TOOL
     || toolName === WORK_PROJECT_LOOKUP_TOOL
     || toolName === WORK_PROJECT_CREATE_TOOL
+    || toolName === WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL
   ) {
     return WORK_TOOL_PHASE_BY_NAME[toolName];
   }
@@ -402,6 +434,7 @@ export function isWorkToolAllowedForCapabilityProfile(
     && toolName !== WORK_ITEM_PREPARE_EXECUTION_TOOL
     && toolName !== WORK_PROJECT_LOOKUP_TOOL
     && toolName !== WORK_PROJECT_CREATE_TOOL
+    && toolName !== WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL
   ) {
     return false;
   }
@@ -501,6 +534,20 @@ export function validateWorkItemPrepareExecutionInput(input: unknown): WorkToolV
     ...validateRequiredStringArray(input, 'workItemIds', 1, 20, 160),
     ...validateOptionalString(input, 'executionGoal', 1000),
     ...validateOptionalIntegerRange(input, 'maxItems', 1, 20),
+  ];
+}
+
+export function validateWorkTaskCreateFromWorkItemInput(input: unknown): WorkToolValidationError[] {
+  if (!isRecord(input)) {
+    return [error('type', '$', 'Work task creation input must be an object.')];
+  }
+
+  return [
+    ...validateServerResolvedFields(input, '', new Set(['workItemId'])),
+    ...validateRequiredString(input, 'workItemId', 160),
+    ...validateOptionalString(input, 'title', 180),
+    ...validateOptionalString(input, 'summary', 4000),
+    ...validateOptionalString(input, 'approvalNote', 500),
   ];
 }
 

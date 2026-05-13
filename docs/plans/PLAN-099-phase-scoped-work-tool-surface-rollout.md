@@ -86,9 +86,9 @@ without starting execution.
       such as "Boss Cat, start working through these".
 - [x] Task 5.2: Implement `work.item.prepare_execution` as a no-side-effect
       proposal tool.
-- [ ] Task 5.3: Implement `work.task.create_from_work_item` behind existing
+- [x] Task 5.3: Implement `work.task.create_from_work_item` behind existing
       supervision and approval gates.
-- [ ] Task 5.4: Ensure Task creation links through `WorkItem.taskId` and keeps
+- [x] Task 5.4: Ensure Task creation links through `WorkItem.taskId` and keeps
       WorkItem source provenance intact.
 - [ ] Task 5.5: Add tests proving capture and execution cannot occur in the
       same assistant turn without an owner-visible acknowledgement boundary.
@@ -177,6 +177,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Phase 4.5 added Work Graph projection tests for newly captured orphan Work Items and triaged Work Items linked to Projects with Activity evidence anchors. |
 | 2026-05-13 | Phase 5.1 added a pure execution-preparation phase resolver for Boss Cat requests over explicit, active, or visible Work Item refs without creating Tasks or Runs. |
 | 2026-05-13 | Phase 5.2 added read-only `work.item.prepare_execution` proposals for selected Work Items with readiness, open questions, blockers, and no Core writes. |
+| 2026-05-13 | Phase 5.3/5.4 added `work.task.create_from_work_item` to create pending-approval Tasks from ready Work Items, link `WorkItem.taskId`, preserve source metadata, and avoid Run/runtime start. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---

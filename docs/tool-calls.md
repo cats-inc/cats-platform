@@ -67,6 +67,7 @@ rather than duplicating every validation branch.
 | `work.item.update` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.assign_project` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.prepare_execution` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Boss Cat execution preparation with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.task.create_from_work_item` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Boss Cat execution preparation with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.lookup` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.create` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
@@ -145,7 +146,9 @@ Implementation entry point:
 delegate. `src/products/work/state/workTriageDelegate.ts` owns the bounded
 Project lookup/create triage delegates.
 `src/products/work/state/workExecutionPreparationDelegate.ts` owns the
-read-only Boss Cat execution-preparation proposal delegate, and
+read-only Boss Cat execution-preparation proposal delegate.
+`src/products/work/state/workExecutionTaskDelegate.ts` owns the pending-approval
+Task creation delegate, and
 `src/products/chat/state/workIntakeSourceContext.ts` maps Chat and Telegram
 turns onto the shared source context.
 
@@ -156,6 +159,7 @@ turns onto the shared source context.
 | `work.item.update` | `triage` | `local_state` | `policy` | `summary` | Applies bounded updates to one existing Work Item in a triage-editable status. It may update title, summary, planning status, and triage metadata only; it must not create Tasks, Missions, Runs, runtime sessions, or Project links. |
 | `work.item.assign_project` | `triage` | `local_state` | `policy` | `summary` | Attaches one existing triage-editable Work Item to one existing non-archived Project while preserving source provenance. It must not create Projects, Tasks, Missions, Runs, or runtime sessions. |
 | `work.item.prepare_execution` | `execution_preparation` | `none` | `never` | `summary` | Proposes Task-ready execution payloads for selected Work Items. It returns readiness, open questions, blockers, and proposed Task title/summary without writing Core. |
+| `work.task.create_from_work_item` | `execution_preparation` | `local_state` | `policy` | `summary` | Creates one pending-approval Task from one ready Work Item and links it through `WorkItem.taskId`. It does not create Runs or runtime sessions. |
 | `work.project.lookup` | `triage` | `none` | `never` | `summary` | Looks up bounded Project matches for Work Item triage. It returns project ids, titles, planning status, summary/repo/conversation refs, and linked Work Item counts. |
 | `work.project.create` | `triage` | `local_state` | `policy` | `summary` | Creates one planned/active/paused Project during triage. It writes only a Project and one audit Activity; it must not create Work Items, Tasks, Missions, Runs, or runtime sessions. |
 
@@ -186,6 +190,15 @@ with readiness (`ready`, `needs_triage`, or `blocked`), proposed Task
 title/summary, open questions, blockers, and Project anchor when present.
 It does not create Tasks, Missions, Runs, Activities, runtime sessions, or
 Work Item links.
+
+Caller-visible Task creation fields are `workItemId`, optional `title`,
+optional `summary`, and optional `approvalNote`. The Work Item must already be
+`ready`. Task ids, Run ids, actor ids, assignment ids, approval state, and
+timestamps remain server-resolved. The delegate creates a deterministic
+pending-approval Task, writes an approval binding against the Work Item, links
+`WorkItem.taskId`, preserves the Work Item's source metadata, and emits an
+approval-requested Activity. Runtime checkout and Run creation remain separate
+approval-gated execution steps.
 
 Caller-visible triage lookup fields are `query`, `limit`, and
 `includeArchived`. Caller-visible triage create fields are `title`, `summary`,

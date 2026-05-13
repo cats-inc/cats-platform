@@ -10,6 +10,7 @@ import {
   WORK_ITEM_UPDATE_TOOL,
   WORK_PROJECT_CREATE_TOOL,
   WORK_PROJECT_LOOKUP_TOOL,
+  WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
   createPhaseScopedWorkToolManifests,
   filterPhaseScopedWorkToolManifests,
   isWorkToolAllowedForCapabilityProfile,
@@ -21,6 +22,7 @@ import {
   validateWorkItemUpdateInput,
   validateWorkProjectCreateInput,
   validateWorkProjectLookupInput,
+  validateWorkTaskCreateFromWorkItemInput,
 } from '../src/products/work/shared/workToolSurface.js';
 
 test('phase-scoped Work manifests define intake proposal and capture tools', () => {
@@ -37,6 +39,7 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
       WORK_ITEM_UPDATE_TOOL,
       WORK_PROJECT_CREATE_TOOL,
       WORK_PROJECT_LOOKUP_TOOL,
+      WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
     ],
   );
   assert.equal(resolveWorkToolPhase(WORK_ITEM_PROPOSE_SPLIT_TOOL), 'intake');
@@ -46,6 +49,7 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
   assert.equal(resolveWorkToolPhase(WORK_ITEM_PREPARE_EXECUTION_TOOL), 'execution_preparation');
   assert.equal(resolveWorkToolPhase(WORK_PROJECT_LOOKUP_TOOL), 'triage');
   assert.equal(resolveWorkToolPhase(WORK_PROJECT_CREATE_TOOL), 'triage');
+  assert.equal(resolveWorkToolPhase(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL), 'execution_preparation');
   assert.equal(byName.get(WORK_ITEM_PROPOSE_SPLIT_TOOL)?.sideEffect, 'none');
   assert.equal(byName.get(WORK_ITEM_PROPOSE_SPLIT_TOOL)?.approval, 'never');
   assert.equal(byName.get(WORK_ITEM_CAPTURE_TOOL)?.sideEffect, 'local_state');
@@ -60,6 +64,8 @@ test('phase-scoped Work manifests define intake proposal and capture tools', () 
   assert.equal(byName.get(WORK_PROJECT_LOOKUP_TOOL)?.approval, 'never');
   assert.equal(byName.get(WORK_PROJECT_CREATE_TOOL)?.sideEffect, 'local_state');
   assert.equal(byName.get(WORK_PROJECT_CREATE_TOOL)?.approval, 'policy');
+  assert.equal(byName.get(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL)?.sideEffect, 'local_state');
+  assert.equal(byName.get(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL)?.approval, 'policy');
 });
 
 test('phase and capability profile filtering hides Work tools from weak or unknown callers', () => {
@@ -89,7 +95,7 @@ test('phase and capability profile filtering hides Work tools from weak or unkno
       phase: 'execution_preparation',
       capabilityProfile: 'boss_cat',
     }).map((manifest) => manifest.name),
-    [WORK_ITEM_PREPARE_EXECUTION_TOOL],
+    [WORK_ITEM_PREPARE_EXECUTION_TOOL, WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL],
   );
   assert.deepEqual(
     filterPhaseScopedWorkToolManifests(manifests, {
@@ -135,6 +141,7 @@ test('supervised tool registry policy scope keeps capture behind narrow-write gr
       WORK_ITEM_UPDATE_TOOL,
       WORK_PROJECT_CREATE_TOOL,
       WORK_PROJECT_LOOKUP_TOOL,
+      WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
     ],
   );
   assert.equal(
@@ -253,6 +260,36 @@ test('Work item execution preparation validation rejects execution-owned fields'
       ['workItemIds', 'bounds'],
       ['executionGoal', 'too_long'],
       ['maxItems', 'bounds'],
+    ],
+  );
+});
+
+test('Work Task creation validation allows a Work Item handle only', () => {
+  assert.deepEqual(validateWorkTaskCreateFromWorkItemInput({
+    workItemId: 'work-item-1',
+    title: 'Implement the first execution slice',
+    summary: 'Create a pending approval Task from the selected Work Item.',
+    approvalNote: 'Owner should approve before runtime checkout.',
+  }), []);
+
+  assert.deepEqual(
+    validateWorkTaskCreateFromWorkItemInput({
+      workItemId: '',
+      taskId: 'task-1',
+      runId: 'run-1',
+      assignedActorIds: ['actor-worker'],
+      title: 'x'.repeat(181),
+      summary: 'x'.repeat(4001),
+      approvalNote: 'x'.repeat(501),
+    }).map((entry) => [entry.field, entry.code]),
+    [
+      ['taskId', 'server_resolved_field'],
+      ['runId', 'server_resolved_field'],
+      ['assignedActorIds', 'server_resolved_field'],
+      ['workItemId', 'blank'],
+      ['title', 'too_long'],
+      ['summary', 'too_long'],
+      ['approvalNote', 'too_long'],
     ],
   );
 });
