@@ -82,17 +82,22 @@ import {
   prepareWorkItemExecution,
 } from '../../../work/state/workExecutionPreparationDelegate.js';
 import {
+  createWorkExecutionTaskDelegate,
+} from '../../../work/state/workExecutionTaskDelegate.js';
+import {
   resolveWorkExecutionPreparationPhase,
 } from '../../../work/shared/workExecutionPreparationPhase.js';
 import {
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
+  WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
   type WorkItemExecutionPreparationProposal,
   type WorkItemCaptureInput,
   type WorkItemPrepareExecutionInput,
   type WorkItemProposeSplitInput,
   type WorkItemSourceRef,
   type WorkItemSplitCandidate,
+  type WorkItemTriageStatus,
 } from '../../../work/shared/workToolSurface.js';
 import {
   prepareDispatchTurn,
@@ -196,11 +201,26 @@ const WORK_INTAKE_PROPOSAL_METADATA_VERSION = 1;
 const WORK_INTAKE_PROPOSAL_CAPTURE_OPTION_ID = 'capture_work_items';
 const WORK_INTAKE_PROPOSAL_DECLINE_OPTION_ID = 'decline';
 const WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_KEY = 'workExecutionPreparationProposal';
+const WORK_EXECUTION_PREPARATION_TRANSITION_METADATA_KEY =
+  'workExecutionPreparationTransition';
 const WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_VERSION = 1;
+const WORK_EXECUTION_PREPARATION_CREATE_TASKS_OPTION_ID = 'create_ready_execution_tasks';
+const WORK_EXECUTION_PREPARATION_DECLINE_OPTION_ID = 'decline_execution_preparation';
 const WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES = new Set([
   'draft',
   'planned',
   'ready',
+  'blocked',
+]);
+const WORK_EXECUTION_PREPARATION_PROPOSAL_STATUSES = new Set([
+  'draft',
+  'planned',
+  'ready',
+  'blocked',
+]);
+const WORK_EXECUTION_PREPARATION_READINESS_VALUES = new Set([
+  'ready',
+  'needs_triage',
   'blocked',
 ]);
 const MAX_WORK_EXECUTION_PREPARATION_VISIBLE_ITEMS = 20;
@@ -249,6 +269,25 @@ interface WorkExecutionPreparationProposalMetadata {
   scope: 'explicit_work_items' | 'visible_selection' | 'active_context';
   workItemIds: string[];
   proposals: WorkItemExecutionPreparationProposal[];
+}
+
+interface WorkExecutionPreparationCreatedTaskMetadata {
+  workItemId: string;
+  taskId: string;
+  created: boolean;
+  linked: boolean;
+}
+
+interface WorkExecutionPreparationTransitionMetadata {
+  schemaVersion: typeof WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_VERSION;
+  phase: 'execution_preparation';
+  proposalId: string;
+  event: 'tasks_created' | 'declined';
+  sourceMessageId: string;
+  proposalMessageId: string;
+  idempotencyKey: string;
+  createdTasks: WorkExecutionPreparationCreatedTaskMetadata[];
+  skippedWorkItemIds: string[];
 }
 
 export type ProviderAgentDecisionRequester = (input: {
@@ -1780,6 +1819,7 @@ function appendWorkExecutionPreparationProposalSidecar(input: {
     },
     input.now,
     {
+      choices: buildWorkExecutionPreparationProposalChoices(result.result.proposals),
       metadata: {
         event: 'work_execution_preparation_proposed',
         sourceMessageId: input.userMessage.id,
@@ -1947,6 +1987,126 @@ function describeWorkExecutionPreparationProposals(
   ].join('\n');
 }
 
+function buildWorkExecutionPreparationProposalChoices(
+  proposals: WorkItemExecutionPreparationProposal[],
+): ChatMessage['choices'] {
+  if (proposals.length === 0) {
+    return undefined;
+  }
+
+  const readyCount = proposals.filter((proposal) => proposal.readiness === 'ready').length;
+  return [
+    {
+      question: 'Create execution Tasks?',
+      allowSkip: true,
+      options: [
+        {
+          id: WORK_EXECUTION_PREPARATION_CREATE_TASKS_OPTION_ID,
+          label: readyCount === proposals.length ? 'Create Tasks' : 'Create Ready Tasks',
+          description: readyCount > 0
+            ? `${readyCount} ready Work Item${readyCount === 1 ? '' : 's'} will become `
+              + 'pending approval Tasks.'
+            : 'No ready Work Items will be converted yet.',
+          style: 'primary',
+        },
+        {
+          id: WORK_EXECUTION_PREPARATION_DECLINE_OPTION_ID,
+          label: 'Not now',
+          style: 'secondary',
+        },
+      ],
+    },
+  ];
+}
+
+function readWorkExecutionPreparationProposalMetadata(
+  value: unknown,
+): WorkExecutionPreparationProposalMetadata | null {
+  const record = readToolInputRecord(value);
+  const proposals = Array.isArray(record.proposals)
+    ? record.proposals.map(readWorkExecutionPreparationProposal)
+    : [];
+  const workItemIds = Array.isArray(record.workItemIds)
+    ? record.workItemIds.filter((workItemId): workItemId is string =>
+      typeof workItemId === 'string' && workItemId.trim().length > 0)
+    : [];
+
+  if (
+    record.schemaVersion !== WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_VERSION
+    || record.phase !== 'execution_preparation'
+    || record.toolName !== WORK_ITEM_PREPARE_EXECUTION_TOOL
+    || typeof record.proposalId !== 'string'
+    || typeof record.decisionId !== 'string'
+    || typeof record.sourceMessageId !== 'string'
+    || !isWorkExecutionPreparationScope(record.scope)
+    || workItemIds.length === 0
+    || proposals.some((proposal) => proposal === null)
+  ) {
+    return null;
+  }
+
+  return {
+    schemaVersion: WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_VERSION,
+    phase: 'execution_preparation',
+    toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
+    proposalId: record.proposalId,
+    decisionId: record.decisionId,
+    sourceMessageId: record.sourceMessageId,
+    scope: record.scope,
+    workItemIds,
+    proposals: proposals.filter((proposal): proposal is WorkItemExecutionPreparationProposal =>
+      proposal !== null),
+  };
+}
+
+function readWorkExecutionPreparationProposal(
+  value: unknown,
+): WorkItemExecutionPreparationProposal | null {
+  const record = readToolInputRecord(value);
+  if (
+    typeof record.workItemId !== 'string'
+    || typeof record.title !== 'string'
+    || !isWorkExecutionPreparationProposalStatus(record.status)
+    || !isWorkExecutionPreparationReadiness(record.readiness)
+    || typeof record.proposedTaskTitle !== 'string'
+    || typeof record.proposedTaskSummary !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    workItemId: record.workItemId,
+    title: record.title,
+    status: record.status,
+    ...(typeof record.projectId === 'string' && record.projectId.trim().length > 0
+      ? { projectId: record.projectId }
+      : {}),
+    readiness: record.readiness,
+    proposedTaskTitle: record.proposedTaskTitle,
+    proposedTaskSummary: record.proposedTaskSummary,
+    openQuestions: readStringArray(record.openQuestions),
+    blockers: readStringArray(record.blockers),
+  };
+}
+
+function isWorkExecutionPreparationScope(
+  value: unknown,
+): value is WorkExecutionPreparationProposalMetadata['scope'] {
+  return value === 'explicit_work_items'
+    || value === 'visible_selection'
+    || value === 'active_context';
+}
+
+function isWorkExecutionPreparationProposalStatus(value: unknown): value is WorkItemTriageStatus {
+  return typeof value === 'string' && WORK_EXECUTION_PREPARATION_PROPOSAL_STATUSES.has(value);
+}
+
+function isWorkExecutionPreparationReadiness(
+  value: unknown,
+): value is WorkItemExecutionPreparationProposal['readiness'] {
+  return typeof value === 'string' && WORK_EXECUTION_PREPARATION_READINESS_VALUES.has(value);
+}
+
 function stripSourceText(sourceRef: WorkItemSourceRef): Omit<WorkItemSourceRef, 'sourceText'> {
   const { sourceText: _sourceText, ...safeSourceRef } = sourceRef;
   return safeSourceRef;
@@ -1968,6 +2128,14 @@ function readOptionalNumber(value: unknown): number | undefined {
 
 function readNullableString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function readStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+    : [];
 }
 
 function resolveVisibleWorkItemIdsForExecutionPreparation(input: {
@@ -2054,6 +2222,142 @@ function warnWorkExecutionPreparationProposalIgnored(input: {
     reason: input.reason,
     ...(input.details ? { details: input.details } : {}),
   });
+}
+
+type WorkExecutionPreparationChoiceAction = 'create_tasks' | 'decline' | 'handled';
+
+interface ResolvedWorkExecutionPreparationChoice {
+  action: WorkExecutionPreparationChoiceAction;
+  proposalMessage: ChatMessage;
+  originalMessage: ChatMessage;
+  proposal: WorkExecutionPreparationProposalMetadata;
+}
+
+function resolveWorkExecutionPreparationChoice(input: {
+  channel: ChatChannelState;
+  choiceResponse?: SendChannelMessageInput['choiceResponse'];
+}): ResolvedWorkExecutionPreparationChoice | null {
+  if (!input.choiceResponse || input.choiceResponse.status !== 'submitted') {
+    return null;
+  }
+  const proposalMessage = input.channel.messages.find((message) =>
+    message.id === input.choiceResponse?.sourceMessageId);
+  const proposal = readWorkExecutionPreparationProposalMetadata(
+    proposalMessage?.metadata[WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_KEY],
+  );
+  if (!proposalMessage || !proposal) {
+    return null;
+  }
+  const originalMessage = input.channel.messages.find((message) =>
+    message.id === proposal.sourceMessageId);
+  if (!originalMessage || originalMessage.senderKind !== 'user') {
+    return null;
+  }
+  if (findWorkExecutionPreparationTransition({
+    channel: input.channel,
+    proposalId: proposal.proposalId,
+  })) {
+    return {
+      action: 'handled',
+      proposalMessage,
+      originalMessage,
+      proposal,
+    };
+  }
+
+  const selectedOptionIds = new Set(
+    input.choiceResponse.answers.flatMap((answer) => answer.selectedOptionIds),
+  );
+  const action = selectedOptionIds.has(WORK_EXECUTION_PREPARATION_CREATE_TASKS_OPTION_ID)
+    ? 'create_tasks'
+    : selectedOptionIds.has(WORK_EXECUTION_PREPARATION_DECLINE_OPTION_ID)
+      ? 'decline'
+      : null;
+  if (!action) {
+    return null;
+  }
+
+  return {
+    action,
+    proposalMessage,
+    originalMessage,
+    proposal,
+  };
+}
+
+function readWorkExecutionPreparationTransitionMetadata(
+  value: unknown,
+): WorkExecutionPreparationTransitionMetadata | null {
+  const record = readToolInputRecord(value);
+  const createdTasks = Array.isArray(record.createdTasks)
+    ? record.createdTasks.map(readWorkExecutionPreparationCreatedTask)
+    : [];
+  if (
+    record.schemaVersion !== WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_VERSION
+    || record.phase !== 'execution_preparation'
+    || (record.event !== 'tasks_created' && record.event !== 'declined')
+    || typeof record.proposalId !== 'string'
+    || typeof record.sourceMessageId !== 'string'
+    || typeof record.proposalMessageId !== 'string'
+    || typeof record.idempotencyKey !== 'string'
+    || createdTasks.some((task) => task === null)
+    || !Array.isArray(record.skippedWorkItemIds)
+  ) {
+    return null;
+  }
+
+  return {
+    schemaVersion: WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_VERSION,
+    phase: 'execution_preparation',
+    proposalId: record.proposalId,
+    event: record.event,
+    sourceMessageId: record.sourceMessageId,
+    proposalMessageId: record.proposalMessageId,
+    idempotencyKey: record.idempotencyKey,
+    createdTasks: createdTasks.filter(
+      (task): task is WorkExecutionPreparationCreatedTaskMetadata => task !== null,
+    ),
+    skippedWorkItemIds: record.skippedWorkItemIds.filter(
+      (workItemId): workItemId is string => typeof workItemId === 'string',
+    ),
+  };
+}
+
+function readWorkExecutionPreparationCreatedTask(
+  value: unknown,
+): WorkExecutionPreparationCreatedTaskMetadata | null {
+  const record = readToolInputRecord(value);
+  if (
+    typeof record.workItemId !== 'string'
+    || typeof record.taskId !== 'string'
+    || typeof record.created !== 'boolean'
+    || typeof record.linked !== 'boolean'
+  ) {
+    return null;
+  }
+
+  return {
+    workItemId: record.workItemId,
+    taskId: record.taskId,
+    created: record.created,
+    linked: record.linked,
+  };
+}
+
+function findWorkExecutionPreparationTransition(input: {
+  channel: ChatChannelState;
+  proposalId: string;
+}): WorkExecutionPreparationTransitionMetadata | null {
+  for (const message of input.channel.messages) {
+    const transition = readWorkExecutionPreparationTransitionMetadata(
+      message.metadata[WORK_EXECUTION_PREPARATION_TRANSITION_METADATA_KEY],
+    );
+    if (transition?.proposalId === input.proposalId) {
+      return transition;
+    }
+  }
+
+  return null;
 }
 
 function warnWorkIntakeProposalToolCallIgnored(input: {
@@ -2192,7 +2496,7 @@ async function appendWorkIntakeProposalCapture(input: {
   resolvedChoice: ResolvedWorkIntakeProposalChoice;
   now: Date;
 }): Promise<{ state: ChatState; userMessage: ChatMessage }> {
-  const userAppend = appendWorkIntakeProposalChoiceUserMessage(input);
+  const userAppend = appendWorkProposalChoiceUserMessage(input);
   if (!input.chatStore) {
     warnWorkIntakeProposalCaptureIgnored({
       channelId: input.channelId,
@@ -2270,7 +2574,7 @@ function appendWorkIntakeProposalDecline(input: {
   resolvedChoice: ResolvedWorkIntakeProposalChoice;
   now: Date;
 }): { state: ChatState; userMessage: ChatMessage } {
-  const userAppend = appendWorkIntakeProposalChoiceUserMessage(input);
+  const userAppend = appendWorkProposalChoiceUserMessage(input);
   const transition = appendWorkIntakeProposalTransitionSidecar({
     state: userAppend.state,
     channelId: input.channelId,
@@ -2286,7 +2590,7 @@ function appendWorkIntakeProposalDecline(input: {
   };
 }
 
-function appendWorkIntakeProposalChoiceUserMessage(input: {
+function appendWorkProposalChoiceUserMessage(input: {
   state: ChatState;
   channelId: string;
   payload: SendChannelMessageInput;
@@ -2323,6 +2627,208 @@ function appendWorkIntakeProposalChoiceUserMessage(input: {
     state: append.state,
     userMessage: append.message,
   };
+}
+
+async function appendWorkExecutionPreparationTaskCreation(input: {
+  state: ChatState;
+  channelId: string;
+  payload: SendChannelMessageInput;
+  deterministicRoutingPlan: DeterministicChatRoutingPlan | null;
+  transportBindingId?: string | null;
+  transport: RuntimeTransportContext | undefined;
+  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>;
+  resolvedChoice: ResolvedWorkExecutionPreparationChoice;
+  now: Date;
+}): Promise<{ state: ChatState; userMessage: ChatMessage }> {
+  const userAppend = appendWorkProposalChoiceUserMessage(input);
+  if (!input.chatStore) {
+    warnWorkExecutionPreparationTaskCreationIgnored({
+      channelId: input.channelId,
+      proposalId: input.resolvedChoice.proposal.proposalId,
+      reason: 'missing_core_store',
+    });
+    return {
+      state: userAppend.state,
+      userMessage: userAppend.userMessage,
+    };
+  }
+
+  const core = await input.chatStore.readCore();
+  const delegate = createWorkExecutionTaskDelegate({
+    coreStore: input.chatStore,
+    now: () => input.now,
+  });
+  const actorRef = resolveWorkExecutionPreparationActorRef(input.state, core);
+  const createdTasks: WorkExecutionPreparationCreatedTaskMetadata[] = [];
+  const skippedWorkItemIds: string[] = [];
+
+  for (const proposal of input.resolvedChoice.proposal.proposals) {
+    if (proposal.readiness !== 'ready') {
+      skippedWorkItemIds.push(proposal.workItemId);
+      continue;
+    }
+
+    const result = await delegate.createTaskFromWorkItem(
+      {
+        workItemId: proposal.workItemId,
+        title: proposal.proposedTaskTitle,
+        summary: proposal.proposedTaskSummary,
+        approvalNote: `Approve Boss Cat execution Task for Work Item ${proposal.workItemId}.`,
+      },
+      {
+        actorRef,
+        actionId: [
+          input.resolvedChoice.proposal.proposalId,
+          WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
+          proposal.workItemId,
+        ].join(':'),
+        runId: [
+          'chat-choice',
+          input.channelId,
+          input.resolvedChoice.proposalMessage.id,
+        ].join(':'),
+      },
+    );
+    if (result.status === 'applied') {
+      createdTasks.push({
+        workItemId: result.result.workItemId,
+        taskId: result.result.taskId,
+        created: result.result.created,
+        linked: result.result.linked,
+      });
+      continue;
+    }
+
+    skippedWorkItemIds.push(proposal.workItemId);
+    warnWorkExecutionPreparationTaskCreationIgnored({
+      channelId: input.channelId,
+      proposalId: input.resolvedChoice.proposal.proposalId,
+      reason: result.status === 'rejected' ? result.error.code : 'pending_approval',
+    });
+  }
+
+  const transition = appendWorkExecutionPreparationTransitionSidecar({
+    state: userAppend.state,
+    channelId: input.channelId,
+    resolvedChoice: input.resolvedChoice,
+    event: 'tasks_created',
+    createdTasks,
+    skippedWorkItemIds,
+    now: input.now,
+  });
+
+  return {
+    state: transition.state,
+    userMessage: userAppend.userMessage,
+  };
+}
+
+function appendWorkExecutionPreparationDecline(input: {
+  state: ChatState;
+  channelId: string;
+  payload: SendChannelMessageInput;
+  deterministicRoutingPlan: DeterministicChatRoutingPlan | null;
+  transportBindingId?: string | null;
+  transport: RuntimeTransportContext | undefined;
+  resolvedChoice: ResolvedWorkExecutionPreparationChoice;
+  now: Date;
+}): { state: ChatState; userMessage: ChatMessage } {
+  const userAppend = appendWorkProposalChoiceUserMessage(input);
+  const transition = appendWorkExecutionPreparationTransitionSidecar({
+    state: userAppend.state,
+    channelId: input.channelId,
+    resolvedChoice: input.resolvedChoice,
+    event: 'declined',
+    createdTasks: [],
+    skippedWorkItemIds: input.resolvedChoice.proposal.workItemIds,
+    now: input.now,
+  });
+
+  return {
+    state: transition.state,
+    userMessage: userAppend.userMessage,
+  };
+}
+
+function appendWorkExecutionPreparationTransitionSidecar(input: {
+  state: ChatState;
+  channelId: string;
+  resolvedChoice: ResolvedWorkExecutionPreparationChoice;
+  event: 'tasks_created' | 'declined';
+  createdTasks: WorkExecutionPreparationCreatedTaskMetadata[];
+  skippedWorkItemIds: string[];
+  now: Date;
+}): { state: ChatState; transitionMessage: ChatMessage } {
+  const transition: WorkExecutionPreparationTransitionMetadata = {
+    schemaVersion: WORK_EXECUTION_PREPARATION_PROPOSAL_METADATA_VERSION,
+    phase: 'execution_preparation',
+    proposalId: input.resolvedChoice.proposal.proposalId,
+    event: input.event,
+    sourceMessageId: input.resolvedChoice.originalMessage.id,
+    proposalMessageId: input.resolvedChoice.proposalMessage.id,
+    idempotencyKey: [
+      'work-execution-preparation-transition',
+      input.resolvedChoice.proposal.proposalId,
+      input.event,
+    ].join(':'),
+    createdTasks: input.createdTasks,
+    skippedWorkItemIds: uniqueNonEmptyStrings(input.skippedWorkItemIds),
+  };
+  const append = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats Work',
+      body: describeWorkExecutionPreparationTransition(input.resolvedChoice, transition),
+    },
+    input.now,
+    {
+      metadata: {
+        event: `work_execution_preparation_${input.event}`,
+        sourceMessageId: input.resolvedChoice.originalMessage.id,
+        sourceProposalMessageId: input.resolvedChoice.proposalMessage.id,
+        [WORK_EXECUTION_PREPARATION_TRANSITION_METADATA_KEY]: transition,
+      },
+      incrementUnread: false,
+    },
+  );
+
+  return {
+    state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+    transitionMessage: append.message,
+  };
+}
+
+function describeWorkExecutionPreparationTransition(
+  resolvedChoice: ResolvedWorkExecutionPreparationChoice,
+  transition: WorkExecutionPreparationTransitionMetadata,
+): string {
+  if (transition.event === 'declined') {
+    return 'Execution preparation proposal deferred.';
+  }
+  if (transition.createdTasks.length === 0) {
+    return 'No ready execution Tasks were created.';
+  }
+
+  const createdLines = transition.createdTasks.map((created, index) => {
+    const proposal = resolvedChoice.proposal.proposals.find((candidate) =>
+      candidate.workItemId === created.workItemId);
+    return `${index + 1}. ${proposal?.proposedTaskTitle ?? created.workItemId}`;
+  });
+
+  return [
+    'Created execution Tasks:',
+    ...createdLines,
+  ].join('\n');
+}
+
+function resolveWorkExecutionPreparationActorRef(
+  state: ChatState,
+  core: CatsCoreState,
+): string {
+  const bossCatId = state.bossCatId?.trim();
+  return bossCatId ? createCatActorId(bossCatId) : core.ownerProfile.actorId;
 }
 
 function appendWorkIntakeProposalTransitionSidecar(input: {
@@ -2400,6 +2906,19 @@ function warnWorkIntakeProposalCaptureIgnored(input: {
 }): void {
   console.warn('Work intake proposal capture ignored.', {
     feature: 'work_intake_proposal',
+    channelId: input.channelId,
+    proposalId: input.proposalId,
+    reason: input.reason,
+  });
+}
+
+function warnWorkExecutionPreparationTaskCreationIgnored(input: {
+  channelId: string;
+  proposalId: string;
+  reason: string;
+}): void {
+  console.warn('Work execution preparation Task creation ignored.', {
+    feature: 'work_execution_preparation',
     channelId: input.channelId,
     proposalId: input.proposalId,
     reason: input.reason,
@@ -3917,6 +4436,10 @@ export async function beginChannelMessageDispatch(
     channel: channelBeforeMessage,
     choiceResponse: payload.choiceResponse,
   });
+  const workExecutionPreparationChoice = resolveWorkExecutionPreparationChoice({
+    channel: channelBeforeMessage,
+    choiceResponse: payload.choiceResponse,
+  });
   const productIntentCommand = resolveProductIntentCommandMetadata(
     payload.body,
     productIntentSource,
@@ -3948,6 +4471,15 @@ export async function beginChannelMessageDispatch(
       results: [],
       preparedTurn: null,
       userMessage: workIntakeProposalChoice.originalMessage,
+      providerAgentDecision: null,
+    };
+  }
+  if (workExecutionPreparationChoice?.action === 'handled') {
+    return {
+      state: nextState,
+      results: [],
+      preparedTurn: null,
+      userMessage: workExecutionPreparationChoice.originalMessage,
       providerAgentDecision: null,
     };
   }
@@ -4027,6 +4559,28 @@ export async function beginChannelMessageDispatch(
       providerAgentDecision: null,
     };
   }
+  if (workExecutionPreparationChoice?.action === 'decline') {
+    const declined = appendWorkExecutionPreparationDecline({
+      state: nextState,
+      channelId,
+      payload,
+      deterministicRoutingPlan,
+      transportBindingId: options.transportBindingId,
+      transport: options.transport,
+      resolvedChoice: workExecutionPreparationChoice,
+      now,
+    });
+    nextState = declined.state;
+    nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+    options.onStateWritten?.(channelId);
+    return {
+      state: nextState,
+      results: [],
+      preparedTurn: null,
+      userMessage: declined.userMessage,
+      providerAgentDecision: null,
+    };
+  }
   if (workIntakeProposalChoice?.action === 'capture') {
     const captured = await appendWorkIntakeProposalCapture({
       state: nextState,
@@ -4047,6 +4601,29 @@ export async function beginChannelMessageDispatch(
       results: [],
       preparedTurn: null,
       userMessage: captured.userMessage,
+      providerAgentDecision: null,
+    };
+  }
+  if (workExecutionPreparationChoice?.action === 'create_tasks') {
+    const created = await appendWorkExecutionPreparationTaskCreation({
+      state: nextState,
+      channelId,
+      payload,
+      deterministicRoutingPlan,
+      transportBindingId: options.transportBindingId,
+      transport: options.transport,
+      chatStore: options.chatStore,
+      resolvedChoice: workExecutionPreparationChoice,
+      now,
+    });
+    nextState = created.state;
+    nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+    options.onStateWritten?.(channelId);
+    return {
+      state: nextState,
+      results: [],
+      preparedTurn: null,
+      userMessage: created.userMessage,
       providerAgentDecision: null,
     };
   }

@@ -2066,6 +2066,11 @@ test('routeChannelMessage records Boss execution preparation proposals without T
   assert.equal(toolNames.includes(WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL), false);
   assert.equal(proposalMessage?.senderKind, 'system');
   assert.equal(proposalMessage?.body.includes('Execution preparation proposals:'), true);
+  assert.equal(
+    proposalMessage?.choices?.[0]?.options.some((option) =>
+      option.id === 'create_ready_execution_tasks' && option.style === 'primary'),
+    true,
+  );
   assert.deepEqual(proposal?.workItemIds, ['work-item-boss-prepare-1']);
   assert.deepEqual(
     proposal?.proposals?.map((entry) => [
@@ -2080,6 +2085,157 @@ test('routeChannelMessage records Boss execution preparation proposals without T
     null,
   );
   assert.deepEqual(core.tasks.map((task) => task.id), taskIdsBeforeRoute);
+});
+
+test('Boss execution preparation owner confirmation creates pending approval Tasks', async () => {
+  const now = new Date('2026-05-13T10:00:00.000Z');
+  let state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Boss execution prep',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const bossCatId = state.cats[0]?.id;
+  if (!bossCatId) {
+    throw new Error('Expected Boss Cat id.');
+  }
+  state = {
+    ...state,
+    bossCatId,
+  };
+  const channelId = state.selectedChannelId;
+  const store = new MemoryChatStore(state);
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  await store.updateCore((core) =>
+    upsertCoreWorkItem(
+      core,
+      {
+        id: 'work-item-boss-confirm-1',
+        title: 'Implement MCP adapter contract',
+        status: 'ready',
+        projectId: null,
+        conversationId,
+        taskId: null,
+        parentWorkItemId: null,
+        ownerActorId: core.ownerProfile.actorId,
+        assignedActorIds: [],
+        summary: 'Turn the external tracker seam into a concrete adapter.',
+        metadata: {
+          workIntake: {
+            schemaVersion: 1,
+            phase: 'intake',
+            runId: 'chat:previous-owner-visible-turn',
+          },
+        },
+      },
+      now,
+    ).core,
+  );
+
+  const routed = await routeChannelMessage(
+    state,
+    channelId,
+    {
+      body: 'Boss Cat 幫這些待辦開工',
+      senderName: 'Kenneth',
+    },
+    runtimeReplyStub('I will prepare the first execution task.'),
+    new Date('2026-05-13T10:01:00.000Z'),
+    {
+      chatStore: store,
+      providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+      providerAgentDecisionRequester: async () => ({
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-work-prepare-execution-confirm-1',
+        confidence: 'high',
+        toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_ITEM_PREPARE_EXECUTION_TOOL,
+        },
+        input: {
+          workItemIds: ['model-supplied-id-should-be-ignored'],
+          executionGoal: 'Open the smallest implementation slice.',
+        },
+        rationaleSummary: 'Prepare selected Work Items for Boss Cat execution.',
+      }),
+    },
+  );
+  const proposalMessage = requireChannel(routed.state, channelId).messages.find((message) =>
+    message.metadata.event === 'work_execution_preparation_proposed');
+  if (!proposalMessage) {
+    throw new Error('Expected Work execution preparation proposal message.');
+  }
+  const coreBeforeConfirm = await store.readCore();
+  const runIdsBeforeConfirm = coreBeforeConfirm.runs.map((run) => run.id);
+
+  const confirmed = await beginChannelMessageDispatch(
+    routed.state,
+    channelId,
+    {
+      body: 'Create the execution Task',
+      senderName: 'Kenneth',
+      choiceResponse: buildSingleChoiceResponse(
+        proposalMessage,
+        'create_ready_execution_tasks',
+        '2026-05-13T10:02:00.000Z',
+      ),
+    },
+    runtimeStub(),
+    new Date('2026-05-13T10:02:00.000Z'),
+    {
+      chatStore: store,
+    },
+  );
+
+  const confirmedChannel = requireChannel(confirmed.state, channelId);
+  const transitionMessage = confirmedChannel.messages.find((message) =>
+    message.metadata.event === 'work_execution_preparation_tasks_created');
+  const transition = transitionMessage?.metadata.workExecutionPreparationTransition as
+    | {
+        createdTasks?: Array<{
+          workItemId?: string;
+          taskId?: string;
+          created?: boolean;
+          linked?: boolean;
+        }>;
+        skippedWorkItemIds?: string[];
+      }
+    | undefined;
+  const core = await store.readCore();
+  const createdTaskId = transition?.createdTasks?.[0]?.taskId;
+  const workItem = core.workItems.find((candidate) =>
+    candidate.id === 'work-item-boss-confirm-1');
+  const task = core.tasks.find((candidate) => candidate.id === createdTaskId);
+
+  assert.equal(confirmed.preparedTurn, null);
+  assert.equal(transitionMessage?.body.includes('Created execution Tasks:'), true);
+  assert.deepEqual(transition?.createdTasks?.map((entry) => [
+    entry.workItemId,
+    entry.created,
+    entry.linked,
+  ]), [['work-item-boss-confirm-1', true, true]]);
+  assert.deepEqual(transition?.skippedWorkItemIds, []);
+  assert.equal(workItem?.taskId, createdTaskId);
+  assert.equal(task?.title, 'Implement MCP adapter contract');
+  assert.equal(task?.status, 'pending_approval');
+  assert.equal(task?.approval.status, 'pending');
+  assert.equal(task?.orchestratorActorId, `actor-cat-${bossCatId}`);
+  assert.deepEqual(core.runs.map((run) => run.id), runIdsBeforeConfirm);
 });
 
 test('routeChannelMessage does not synthesize Cat proposals without a tool request', async () => {

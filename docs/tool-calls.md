@@ -66,8 +66,8 @@ rather than duplicating every validation branch.
 | `work.item.capture` | Cats Work | Product delegate and owner-confirmed Chat sidecar capture implemented; direct model/runtime exposure pending | `product_internal_delegate` / future `runtime_tool` | Owner-confirmed intake / future Strong Cat / Boss Cat intake | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.update` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.assign_project` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
-| `work.item.prepare_execution` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Boss Cat execution preparation with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
-| `work.task.create_from_work_item` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Boss Cat execution preparation with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.item.prepare_execution` | Cats Work | Product delegate, Boss Cat observation descriptor, and Chat proposal sidecar implemented | `product_internal_delegate` / future `runtime_tool` | Boss Cat execution preparation with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.task.create_from_work_item` | Cats Work | Product delegate and owner-confirmed Chat sidecar task creation implemented; direct model/runtime exposure pending | `product_internal_delegate` / future `runtime_tool` | Owner-confirmed Boss Cat execution preparation with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.external.link_issue` | Cats Work | Product delegate implemented; external API sync/import pending | `product_internal_delegate` / future `runtime_tool` | Owner-approved strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.lookup` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.create` | Cats Work | Product delegate implemented; live observation exposure pending | `product_internal_delegate` / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
@@ -147,9 +147,11 @@ Implementation entry point:
 delegate. `src/products/work/state/workTriageDelegate.ts` owns the bounded
 Project lookup/create triage delegates.
 `src/products/work/state/workExecutionPreparationDelegate.ts` owns the
-read-only Boss Cat execution-preparation proposal delegate.
+read-only Boss Cat execution-preparation proposal delegate; Chat converts those
+proposals into owner-visible sidecars with a confirmation choice.
 `src/products/work/state/workExecutionTaskDelegate.ts` owns the pending-approval
-Task creation delegate. `src/products/work/state/workExternalBindingDelegate.ts`
+Task creation delegate, and Chat only calls it from an owner-confirmed
+execution-preparation sidecar choice. `src/products/work/state/workExternalBindingDelegate.ts`
 owns manual external issue binding writes, and
 `src/products/chat/state/workIntakeSourceContext.ts` maps Chat and Telegram
 turns onto the shared source context.

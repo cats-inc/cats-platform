@@ -186,6 +186,7 @@ external trackers the Cats system of record.
 | 2026-05-13 | Phase 6.5 added ADR-106, deferring automatic bidirectional external Work sync until credentials, conflict policy, remote write approval, and audit semantics have a dedicated design. |
 | 2026-05-13 | Follow-up slice exposed read-only Boss Cat execution-preparation tools in Chat bounded observations when an explicit start/work-through request matches visible Work Items, while keeping Task creation hidden under read-only policy. |
 | 2026-05-13 | Follow-up slice wired `work.item.prepare_execution` requests into Chat sidecars that use server-resolved visible Work Item refs and produce owner-visible proposals without creating Tasks or Work runs. |
+| 2026-05-13 | Follow-up slice added owner-confirmed execution-preparation choices: confirming a Boss Cat proposal creates pending-approval Tasks from ready Work Items through `work.task.create_from_work_item` without starting new runtime runs. |
 | 2026-05-13 | Plan created with ADR-105 and SPEC-109 as the governing docs. |
 
 ---
