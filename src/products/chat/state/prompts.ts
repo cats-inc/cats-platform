@@ -418,10 +418,30 @@ function formatParticipantToolProfile(profile: string | null): string {
 
   return [
     `; tool profile: ${profile}`,
+    ...workMemoryCapabilityDescriptions(),
+  ].join('; ');
+}
+
+function formatToolProfileContextLine(label: string, profile: string | null): string | null {
+  if (!profile) {
+    return null;
+  }
+  if (profile !== WORK_MCP_PROFILE_ID) {
+    return `${label}: ${profile}`;
+  }
+
+  return [
+    `${label}: ${profile}`,
+    ...workMemoryCapabilityDescriptions(),
+  ].join('; ');
+}
+
+function workMemoryCapabilityDescriptions(): string[] {
+  return [
     'work capabilities: capture/propose Work Items',
     'look up/create Projects',
     'update/assign Work Items when phase policy allows',
-  ].join('; ');
+  ];
 }
 
 function formatMemoryCheckpoint(memory: MemoryCheckpointSummary): string {
@@ -476,6 +496,17 @@ function formatSharedContext(
   }
   if (orchestrator.executionTarget.model) {
     lines.push(`Global orchestrator model: ${orchestrator.executionTarget.model}`);
+  }
+  const orchestratorSkillProfile = orchestrator.skillProfile?.trim() || null;
+  if (orchestratorSkillProfile) {
+    lines.push(`Global orchestrator skill profile: ${orchestratorSkillProfile}`);
+  }
+  const orchestratorToolProfileLine = formatToolProfileContextLine(
+    'Global orchestrator tool profile',
+    orchestrator.mcpProfile,
+  );
+  if (orchestratorToolProfileLine) {
+    lines.push(orchestratorToolProfileLine);
   }
 
   return lines.join('\n');

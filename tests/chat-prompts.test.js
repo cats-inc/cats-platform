@@ -68,6 +68,8 @@ function createOrchestrator() {
       instance: null,
       model: 'sonnet',
     },
+    skillProfile: null,
+    mcpProfile: null,
     memory: {
       summary: null,
       facts: [],
@@ -120,6 +122,27 @@ test('orchestrator prompt includes Cat tool profiles in the participant roster',
 
   assert.match(prompt, /Work Planner \(claude \/ sonnet; roles: planner/u);
   assert.match(prompt, /tool profile: work-memory/u);
+  assert.match(prompt, /work capabilities: capture\/propose Work Items/u);
+  assert.match(prompt, /look up\/create Projects/u);
+  assert.match(prompt, /update\/assign Work Items when phase policy allows/u);
+});
+
+test('orchestrator prompt includes the global orchestrator tool profile', () => {
+  const orchestrator = createOrchestrator();
+  orchestrator.mcpProfile = 'work-memory';
+  const prompt = buildOrchestratorPrompt(
+    createChannel(),
+    orchestrator,
+    createSourceMessage(),
+    'Boss Cat',
+    {
+      reason: 'System routing selected you as the current turn owner.',
+      recentMessages: [],
+      transport: 'web',
+    },
+  );
+
+  assert.match(prompt, /Global orchestrator tool profile: work-memory/u);
   assert.match(prompt, /work capabilities: capture\/propose Work Items/u);
   assert.match(prompt, /look up\/create Projects/u);
   assert.match(prompt, /update\/assign Work Items when phase policy allows/u);
