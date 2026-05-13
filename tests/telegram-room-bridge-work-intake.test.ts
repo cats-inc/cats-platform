@@ -3,6 +3,9 @@ import test from 'node:test';
 
 import { PROVIDER_AGENT_DECISION_CONTRACT_VERSION } from '../src/platform/orchestration/index.js';
 import type { RuntimeClient } from '../src/platform/runtime/client.js';
+import {
+  buildTelegramWorkIntakeProposalChoiceResponse,
+} from '../src/platform/transports/telegram/bridge.js';
 import { createChatTelegramRoomBridge } from '../src/products/chat/state/telegramBridgeAdapter.js';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.js';
 import { MemoryCompanionBoxStore } from '../src/products/chat/state/companion-box/index.js';
@@ -89,6 +92,7 @@ test('Telegram room bridge passes provider tool decisions into Work intake sidec
 
   const chatStore = new MemoryChatStore(state);
   const companionStore = new MemoryCompanionBoxStore();
+  let decisionRequests = 0;
   let observedToolNames: string[] = [];
   const bridge = createChatTelegramRoomBridge({
     chatStore,
@@ -96,6 +100,7 @@ test('Telegram room bridge passes provider tool decisions into Work intake sidec
     naturalProductIntentMode: 'cat_tool',
     providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
     providerAgentDecisionRequester: async ({ observation }) => {
+      decisionRequests += 1;
       observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
       return {
         contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
@@ -159,4 +164,40 @@ test('Telegram room bridge passes provider tool decisions into Work intake sidec
     core.workItems.filter((candidate) => Boolean(candidate.metadata.workIntake)).length,
     0,
   );
+
+  if (!proposalMessage) {
+    throw new Error('Expected Telegram Work intake proposal message.');
+  }
+  const choicePayload = buildTelegramWorkIntakeProposalChoiceResponse({
+    message: proposalMessage,
+    action: 'decline',
+    submittedAt: '2026-05-13T00:02:00.000Z',
+  });
+  assert.ok(choicePayload);
+
+  const declined = await bridge.routeRoomMessage({
+    state: routed.state,
+    roomId,
+    body: choicePayload.body,
+    choiceResponse: choicePayload.choiceResponse,
+    senderName: 'Kenneth',
+    bindingId: 'bot-binding-1',
+    runtimeClient: createRuntimeStub(),
+    timestamp: new Date('2026-05-13T00:02:00.000Z'),
+  });
+
+  const declinedChannel = buildChannelView(declined.state, roomId);
+  const declinedMessage = declinedChannel.messages.find((message) =>
+    message.metadata.event === 'work_intake_proposal_declined');
+  const transition = declinedMessage?.metadata.workIntakeProposalTransition;
+  const declinedCore = await chatStore.readCore();
+
+  assert.equal(declinedMessage?.body, 'Work intake proposal ignored.');
+  assert.equal(transition?.event, 'declined');
+  assert.deepEqual(transition?.capturedWorkItemIds, []);
+  assert.equal(
+    declinedCore.workItems.filter((candidate) => Boolean(candidate.metadata.workIntake)).length,
+    0,
+  );
+  assert.equal(decisionRequests, 1);
 });
