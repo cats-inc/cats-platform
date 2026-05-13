@@ -45,7 +45,10 @@ import {
 import {
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
+  WORK_ITEM_UPDATE_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
+  WORK_PROJECT_CREATE_TOOL,
+  WORK_PROJECT_LOOKUP_TOOL,
   WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
 } from '../src/products/work/shared/workToolSurface.ts';
 
@@ -575,6 +578,77 @@ test('Chat provider-agent observation exposes local external tracker binding for
     true,
   );
   assert.equal(JSON.stringify(observation).includes(externalUrl), false);
+  assert.deepEqual(validateProviderAgentBoundedObservation(observation!), []);
+});
+
+test('Chat provider-agent observation exposes read-only Work triage lookup for explicit refs', () => {
+  const now = new Date('2026-05-13T10:20:00.000Z');
+  let state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Work triage',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Boss Cat',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const bossCatId = state.cats[0]?.id;
+  if (!bossCatId) {
+    throw new Error('Expected Boss Cat id.');
+  }
+  state = {
+    ...state,
+    bossCatId,
+  };
+  const channelId = state.selectedChannelId;
+  const { conversationId } = resolveChannelCanonicalIdentity(state, channelId);
+  const core = upsertCoreWorkItem(
+    createDefaultCoreState(),
+    {
+      id: 'work-item-triage-1',
+      title: 'Find a project home',
+      status: 'planned',
+      projectId: null,
+      conversationId,
+      taskId: null,
+      parentWorkItemId: null,
+      ownerActorId: 'actor-owner',
+      assignedActorIds: [],
+      summary: null,
+      metadata: {},
+    },
+    now,
+  ).core;
+
+  const { prepared } = appendAndPrepare({
+    state,
+    channelId,
+    body: 'Boss Cat triage work-item-triage-1 and find a project for it',
+    now: new Date('2026-05-13T10:21:00.000Z'),
+    core,
+    providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+  });
+  const observation = prepared.providerAgentObservation;
+  const toolNames = observationToolNames(observation);
+
+  assert.equal(observation?.policy.dials.toolScope, 'read_only');
+  assert.equal(toolNames.includes(WORK_PROJECT_LOOKUP_TOOL), true);
+  assert.equal(toolNames.includes(WORK_ITEM_UPDATE_TOOL), false);
+  assert.equal(toolNames.includes(WORK_PROJECT_CREATE_TOOL), false);
+  assert.equal(
+    observation?.contextRefs.includes('work-triage-work-item:work-item-triage-1'),
+    true,
+  );
   assert.deepEqual(validateProviderAgentBoundedObservation(observation!), []);
 });
 

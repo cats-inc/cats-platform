@@ -107,6 +107,8 @@ const WORK_EXECUTION_PREPARATION_VISIBLE_STATUSES = new Set([
   'blocked',
 ]);
 const MAX_WORK_EXECUTION_PREPARATION_VISIBLE_ITEMS = 20;
+const WORK_TRIAGE_WORK_ITEM_ID_PATTERN = /\bwork-item-[a-z0-9][a-z0-9_-]*\b/gu;
+const WORK_TRIAGE_PROJECT_ID_PATTERN = /\bproject-[a-z0-9][a-z0-9_-]*\b/gu;
 
 function readRequestedWorkflowShape(
   payload: SendChannelMessageInput,
@@ -638,6 +640,21 @@ function buildProviderAgentObservationForTurn(input: {
         `work-external-binding-external-id:${workExternalBindingPhase.external.externalId}`,
       ]
       : [];
+  const workTriageContextRefs = workExternalBindingPhase.kind === 'matched'
+    ? []
+    : resolveWorkTriageContextRefs(input.payload.body);
+  const workTriageToolObservation = createWorkTriageToolObservation({
+    enabled: workTriageContextRefs.length > 0 && Boolean(input.core),
+    capabilityProfileKind: capabilityProfile.kind,
+    policy: policyDecision.result.policy,
+  });
+  const workTriageObservationContextRefs =
+    workTriageToolObservation.descriptors.length > 0
+      ? [
+        'work-triage-phase:triage',
+        ...workTriageContextRefs,
+      ]
+      : [];
   const observationPolicy = workExternalBindingPolicyDecision?.status === 'applied'
     && workExternalBindingToolObservation.descriptors.length > 0
     ? workExternalBindingPolicyDecision.result.policy
@@ -661,11 +678,13 @@ function buildProviderAgentObservationForTurn(input: {
       ...workIntakeToolObservation.descriptors,
       ...workExecutionPreparationToolObservation.descriptors,
       ...workExternalBindingToolObservation.descriptors,
+      ...workTriageToolObservation.descriptors,
     ],
     additionalContextRefs: [
       ...workIntakeSourceContext.contextRefs,
       ...workExecutionPreparationContextRefs,
       ...workExternalBindingContextRefs,
+      ...workTriageObservationContextRefs,
     ],
     invariants: [
       ...(exposeCatProductIntentProposalTool
@@ -679,6 +698,7 @@ function buildProviderAgentObservationForTurn(input: {
       ...workIntakeToolObservation.invariants,
       ...workExecutionPreparationToolObservation.invariants,
       ...workExternalBindingToolObservation.invariants,
+      ...workTriageToolObservation.invariants,
     ],
     messageCharacterCount: input.payload.body.length,
     routing: {
@@ -690,6 +710,22 @@ function buildProviderAgentObservationForTurn(input: {
     },
     now: new Date(input.nowIso),
   });
+}
+
+function resolveWorkTriageContextRefs(rawText: string): string[] {
+  const normalizedText = rawText.trim().replace(/\s+/gu, ' ').toLowerCase();
+  if (!normalizedText || normalizedText.startsWith('/')) {
+    return [];
+  }
+
+  return [
+    ...uniqueNonEmptyStrings([...normalizedText.matchAll(WORK_TRIAGE_WORK_ITEM_ID_PATTERN)]
+      .map((match) => match[0]))
+      .map((workItemId) => `work-triage-work-item:${workItemId}`),
+    ...uniqueNonEmptyStrings([...normalizedText.matchAll(WORK_TRIAGE_PROJECT_ID_PATTERN)]
+      .map((match) => match[0]))
+      .map((projectId) => `work-triage-project:${projectId}`),
+  ];
 }
 
 function findWorkExternalBindingManifest(
@@ -729,6 +765,20 @@ function createWorkExecutionPreparationToolObservation(input: {
     enabled: input.enabled,
     phase: 'execution_preparation',
     capabilityProfile: 'boss_cat',
+    parentToolScope: input.policy.toolScope,
+    policyToolScope: input.policy.toolScope,
+  });
+}
+
+function createWorkTriageToolObservation(input: {
+  enabled: boolean;
+  capabilityProfileKind: 'strong_agent' | 'weak_worker' | 'unknown';
+  policy: SupervisionPolicy;
+}): ReturnType<typeof createPhaseScopedWorkToolObservation> {
+  return createPhaseScopedWorkToolObservation({
+    enabled: input.enabled,
+    phase: 'triage',
+    capabilityProfile: resolveWorkToolCapabilityProfile(input.capabilityProfileKind),
     parentToolScope: input.policy.toolScope,
     policyToolScope: input.policy.toolScope,
   });

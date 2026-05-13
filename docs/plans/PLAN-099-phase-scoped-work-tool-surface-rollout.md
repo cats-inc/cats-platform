@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice exposed read-only Work triage lookup in Chat provider-agent observations when owner text names explicit local Work refs, while keeping triage writes hidden under read-only policy. |
 | 2026-05-13 | Follow-up slice aligned Chat provider-agent observation policy with explicit external binding tool exposure so local-state link/unlink turns carry a narrow-write policy instead of read-only dials. |
 | 2026-05-13 | Follow-up slice wired Chat provider-agent `work.external.link_issue` / `work.external.unlink_issue` tool requests into the local Work binding delegate, re-resolving ids from owner text before writing Core metadata. |
 | 2026-05-13 | Follow-up slice wired explicit external tracker binding requests into Chat provider-agent observations, exposing local-only link/unlink tools to strong Cats without leaking the raw external URL into observation refs. |
