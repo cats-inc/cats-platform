@@ -281,8 +281,10 @@ bug response into that same provider-neutral draft through injectable fetch
 boundaries. The import source resolver maps credential-free GitHub, Redmine,
 and Bugzilla issue URLs into server-owned adapter configuration hints before any
 fetch happens, so model/runtime callers do not need to parse tracker ids,
-repository names, or self-hosted base URLs. Automatic bidirectional sync is
-deferred by ADR-106, so
+repository names, or self-hosted base URLs. A provider-neutral import fetcher
+then routes those server-resolved sources through the GitHub, Redmine, or
+Bugzilla read adapter and returns an import draft; it still uses read-only
+provider APIs only. Automatic bidirectional sync is deferred by ADR-106, so
 `syncDirection` remains metadata intent rather than an active sync contract.
 
 Caller-visible triage lookup fields are `query`, `limit`, and
