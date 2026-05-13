@@ -1,4 +1,8 @@
 import type { TelegramRoomBridge } from '../../../platform/transports/telegram/bridge.js';
+import type {
+  ProviderCapabilityBootstrapConfig,
+  ProviderCapabilityBootstrapDiagnosticSink,
+} from '../../../platform/supervision/index.js';
 import type { RuntimeDispatchRecoveryPolicy } from '../../../shared/runtimeRecovery.js';
 import type { ChatNaturalProductIntentMode } from '../shared/naturalProductIntentMode.js';
 import {
@@ -16,6 +20,7 @@ import {
 import { routeChannelMessage } from './runtimeActions.js';
 import type { CompanionBoxStore } from './companion-box/index.js';
 import type { ChatStore } from './store.js';
+import type { ProviderAgentDecisionRequester } from './runtime-dispatch/routing.js';
 
 export function createChatTelegramRoomBridge(input: {
   chatStore: ChatStore;
@@ -24,6 +29,9 @@ export function createChatTelegramRoomBridge(input: {
   runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
   chatStatePath?: string;
   runtimeDataDir?: string;
+  providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
+  providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
+  providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
   naturalProductIntentMode?: ChatNaturalProductIntentMode;
 }): TelegramRoomBridge<ChatState> {
   return {
@@ -122,6 +130,9 @@ export function createChatTelegramRoomBridge(input: {
           runtimeRecovery: input.runtimeRecovery,
           chatStatePath: input.chatStatePath,
           runtimeDataDir: input.runtimeDataDir,
+          providerAgentDecisionRequester: input.providerAgentDecisionRequester,
+          providerCapabilityBootstrapConfig: input.providerCapabilityBootstrapConfig,
+          providerCapabilityBootstrapDiagnosticSink: input.providerCapabilityBootstrapDiagnosticSink,
           naturalProductIntentMode: input.naturalProductIntentMode,
         },
       );

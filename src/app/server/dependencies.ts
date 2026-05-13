@@ -289,6 +289,9 @@ export function resolveServerDependencies(
       runtimeRecovery: {
         staleSessionRetryLimit: dependencies.shared.config.runtimeStaleSessionRetryLimit,
       },
+      providerAgentDecisionRequester,
+      providerCapabilityBootstrapConfig: capabilityBootstrapLoaded.config,
+      providerCapabilityBootstrapDiagnosticSink,
       naturalProductIntentMode: dependencies.shared.config.chatNaturalProductIntentMode,
     });
   const resumePendingOrchestratorDispatch =
