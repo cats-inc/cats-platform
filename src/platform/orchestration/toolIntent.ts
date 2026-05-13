@@ -1,4 +1,5 @@
 import type { RoomRoutingMode } from '../../shared/roomRouting.js';
+import { CHAT_MCP_PROFILE_ID } from '../../shared/catMcpProfiles.js';
 import type {
   OrchestratorTransportContext,
   ToolIntentManifest,
@@ -54,7 +55,7 @@ export function resolveToolIntentManifest(
     ? ['workspace.audit']
     : ['session.observe'];
 
-  if (normalizedProfile === 'chat-memory') {
+  if (normalizedProfile === CHAT_MCP_PROFILE_ID) {
     return {
       profileId: normalizedProfile,
       allowedTools: eagerTools,

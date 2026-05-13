@@ -35,6 +35,7 @@ import {
   writeCatCover,
 } from '../../catCoverStorage.js';
 import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
+import { CHAT_MCP_PROFILE_ID } from '../../../../../shared/catMcpProfiles.js';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { CatsDetailPanelContent } from './CatsDetailPanelContent.js';
 import { CatsRegistry } from './CatsRegistry.js';
@@ -753,7 +754,7 @@ export function CatsCanvas({
                       <button
                         key={profile.value}
                         type="button"
-                        className={(catForm.mcpProfile || 'chat-memory') === profile.value ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
+                        className={(catForm.mcpProfile || CHAT_MCP_PROFILE_ID) === profile.value ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
                         onClick={() => setCatForm({ ...catForm, mcpProfile: profile.value })}
                       >
                         {t(profile.label)}
@@ -983,7 +984,7 @@ export function CatsCanvas({
                 >
                   <div className="skillPills">
                     {MCP_PROFILES.map((profile) => {
-                      const active = (selectedCat.mcpProfile ?? 'chat-memory') === profile.value;
+                      const active = (selectedCat.mcpProfile ?? CHAT_MCP_PROFILE_ID) === profile.value;
                       return (
                         <button
                           key={profile.value}

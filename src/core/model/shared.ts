@@ -12,6 +12,7 @@ import type {
   OwnerProfileRecord,
 } from '../types.js';
 import { CATS_CORE_STATE_VERSION } from '../types.js';
+import { CHAT_MCP_PROFILE_ID } from '../../shared/catMcpProfiles.js';
 
 export function createDefaultExecutionTarget(): ExecutionTargetSummary {
   return {
@@ -58,7 +59,7 @@ export function createDefaultOrchestratorActor(updatedAt: string): CoreActorReco
     status: 'active',
     roles: ['orchestrator', 'coordinator'],
     skillProfile: 'aaif-a2a-default',
-    mcpProfile: 'chat-memory',
+    mcpProfile: CHAT_MCP_PROFILE_ID,
     defaultExecutionTarget: createDefaultExecutionTarget(),
     memory: createEmptyMemoryCheckpoint(),
     source: 'global_orchestrator',

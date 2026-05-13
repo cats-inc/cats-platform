@@ -15,6 +15,7 @@ import {
   type WorkspaceBusyState,
 } from '../../../../../shared/workspaceBusy.js';
 import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
+import { CHAT_MCP_PROFILE_ID } from '../../../../../shared/catMcpProfiles.js';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { MemoryEditorDialog } from './MemoryEditorDialog.js';
 import { TelegramConnectDialog } from './TelegramConnectDialog.js';
@@ -218,7 +219,7 @@ export function SettingsCatsDetailPanelContent({
               <button
                 key={profile.value}
                 className={
-                  (cat.mcpProfile ?? 'chat-memory') === profile.value
+                  (cat.mcpProfile ?? CHAT_MCP_PROFILE_ID) === profile.value
                     ? 'draftLeadPill draftLeadPillActive'
                     : 'draftLeadPill'
                 }

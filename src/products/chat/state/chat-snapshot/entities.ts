@@ -16,6 +16,7 @@ import type {
   CoreRecordMetadata,
   ExecutionTargetSummary,
 } from '../../../../core/types.js';
+import { CHAT_MCP_PROFILE_ID } from '../../../../shared/catMcpProfiles.js';
 import { createDefaultChatState, createEmptyExecutionLease, createEmptyMemoryCheckpoint } from '../defaults.js';
 import {
   resolveChannelKind,
@@ -353,7 +354,7 @@ export function normalizeChannel(
     responseLanguage: readString(channelRecord.responseLanguage, 'en'),
     formationMode,
     skillProfile: readNullableString(channelRecord.skillProfile) ?? 'chat-default',
-    mcpProfile: readNullableString(channelRecord.mcpProfile) ?? 'chat-memory',
+    mcpProfile: readNullableString(channelRecord.mcpProfile) ?? CHAT_MCP_PROFILE_ID,
     orchestratorRoles: readStringArray(channelRecord.orchestratorRoles),
     pendingProvider: readNullableString(channelRecord.pendingProvider),
     pendingModel: readNullableString(channelRecord.pendingModel),

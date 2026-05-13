@@ -11,6 +11,7 @@ import {
   getDefaultModel,
   getDefaultProviderInstance,
 } from '../../../shared/providerCatalog.js';
+import { CHAT_MCP_PROFILE_ID } from '../../../shared/catMcpProfiles.js';
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
 import { createDefaultAdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
 import { createDefaultConversationBehaviorPreferences } from '../../shared/conversationBehavior.js';
@@ -70,7 +71,7 @@ function createDefaultOrchestrator(updatedAt: string): GlobalOrchestratorSummary
       'module. Keep team chats clear, respect explicit @mentions, and tell the user who ' +
       'should act next.',
     skillProfile: 'aaif-a2a-default',
-    mcpProfile: 'chat-memory',
+    mcpProfile: CHAT_MCP_PROFILE_ID,
     memory: createEmptyMemoryCheckpoint(),
     telegramBotName: null,
     updatedAt,

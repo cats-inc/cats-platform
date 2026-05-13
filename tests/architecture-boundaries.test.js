@@ -205,6 +205,10 @@ test('Work tool intent stays product-owned instead of leaking into platform orch
     new URL('../src/products/work/shared/workToolIntent.ts', import.meta.url),
     'utf8',
   );
+  const mcpProfiles = await readFile(
+    new URL('../src/shared/catMcpProfiles.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(platformResolver, /export function resolveToolIntentManifest/u);
   assert.doesNotMatch(platformResolver, /products\/work/u);
@@ -212,7 +216,9 @@ test('Work tool intent stays product-owned instead of leaking into platform orch
   assert.doesNotMatch(platformResolver, /WORK_MCP_PROFILE_ID/u);
   assert.doesNotMatch(platformResolver, /work-memory/u);
 
-  assert.match(workResolver, /WORK_MCP_PROFILE_ID = 'work-memory'/u);
+  assert.match(mcpProfiles, /WORK_MCP_PROFILE_ID = 'work-memory'/u);
+  assert.match(workResolver, /shared\/catMcpProfiles\.js/u);
+  assert.match(workResolver, /export \{ WORK_MCP_PROFILE_ID \}/u);
   assert.match(workResolver, /export function resolvePhaseScopedWorkToolIntentManifest/u);
   assert.match(workResolver, /platform\/orchestration\/contracts\.js/u);
   assert.match(workResolver, /\.\/workToolSurface\.js/u);
