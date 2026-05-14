@@ -58,8 +58,13 @@ import {
   createTranslator,
   messageKeys,
   parseMessageLocale,
+  type MessageKey,
   type MessageLocale,
 } from '../../../../shared/i18n/index.js';
+import {
+  CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY,
+  type ChatMessageLocalizedBodyMetadata,
+} from '../../../../shared/chatMessageLocalization.js';
 import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
 import {
   buildDirectLaneTransportBindingId,
@@ -2238,6 +2243,15 @@ async function appendWorkExternalIssueImportResultSidecar(input: {
   ) {
     return { state: input.state, resultMessage: null };
   }
+  const existingSidecar = findExistingWorkExternalIssueImportSidecar({
+    state: input.state,
+    channelId: input.channelId,
+    decisionId: input.providerAgentDecision.decisionId,
+  });
+  if (existingSidecar) {
+    return { state: input.state, resultMessage: existingSidecar };
+  }
+
   const fail = (
     reason: string,
     details?: unknown,
@@ -2357,6 +2371,8 @@ async function appendWorkExternalIssueImportResultSidecar(input: {
           event: 'work_external_issue_import_result',
           sourceMessageId: input.userMessage.id,
           [WORK_EXTERNAL_ISSUE_IMPORT_RESULT_METADATA_KEY]: metadata,
+          [CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY]:
+            buildWorkExternalIssueImportResultLocalizedBody(metadata),
         },
         incrementUnread: false,
       },
@@ -3283,6 +3299,27 @@ function readOptionalExternalIssueImportProvider(
   return undefined;
 }
 
+function findExistingWorkExternalIssueImportSidecar(input: {
+  state: ChatState;
+  channelId: string;
+  decisionId: string;
+}): ChatMessage | null {
+  const channel = requireChannel(input.state, input.channelId);
+  return channel.messages.find((message) => {
+    const resultMetadata = readToolInputRecord(
+      message.metadata[WORK_EXTERNAL_ISSUE_IMPORT_RESULT_METADATA_KEY],
+    );
+    if (resultMetadata.decisionId === input.decisionId) {
+      return true;
+    }
+
+    const failureMetadata = readToolInputRecord(
+      message.metadata[WORK_EXTERNAL_ISSUE_IMPORT_FAILURE_METADATA_KEY],
+    );
+    return failureMetadata.decisionId === input.decisionId;
+  }) ?? null;
+}
+
 function readExternalIssueImportFailureReason(error: unknown): string {
   if (error instanceof ExternalIssueImportFetcherError) {
     return error.code;
@@ -3492,8 +3529,10 @@ function appendWorkExternalIssueImportFailureSidecar(input: {
         event: 'work_external_issue_import_failed',
         sourceMessageId: input.userMessage.id,
         [WORK_EXTERNAL_ISSUE_IMPORT_FAILURE_METADATA_KEY]: metadata,
+        [CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY]:
+          buildWorkExternalIssueImportFailureLocalizedBody(metadata),
       },
-      incrementUnread: false,
+      incrementUnread: true,
     },
   );
 
@@ -3720,56 +3759,102 @@ function describeWorkExternalBindingResult(
 function describeWorkExternalIssueImportResult(
   metadata: WorkExternalIssueImportResultMetadata,
 ): string {
-  const externalLabel = `${metadata.provider} ${metadata.externalType} ${metadata.externalId}`;
-  if (metadata.event === 'imported') {
-    return `Imported ${externalLabel} as Work Item ${metadata.workItemId}.`;
-  }
-  if (metadata.event === 'linked') {
-    return `Linked imported ${externalLabel} to Work Item ${metadata.workItemId}.`;
-  }
-  return `${externalLabel} was already imported as Work Item ${metadata.workItemId}.`;
+  const localizedBody = buildWorkExternalIssueImportResultLocalizedBody(metadata);
+  return createTranslator('en')(localizedBody.key, localizedBody.values);
 }
 
 function describeWorkExternalIssueImportFailure(
   metadata: WorkExternalIssueImportFailureMetadata,
 ): string {
-  const externalLabel = metadata.provider && metadata.externalType && metadata.externalId
-    ? `${metadata.provider} ${metadata.externalType} ${metadata.externalId}`
-    : 'external issue';
-  return `Unable to import ${externalLabel}: ${
-    describeWorkExternalIssueImportFailureReason(metadata.reason)
-  }.`;
+  const localizedBody = buildWorkExternalIssueImportFailureLocalizedBody(metadata);
+  return createTranslator('en')(localizedBody.key, {
+    ...(localizedBody.values ?? {}),
+    reason: createTranslator('en')(resolveWorkExternalIssueImportFailureReasonKey(metadata.reason)),
+  });
 }
 
-function describeWorkExternalIssueImportFailureReason(reason: string): string {
+function buildWorkExternalIssueImportResultLocalizedBody(
+  metadata: WorkExternalIssueImportResultMetadata,
+): ChatMessageLocalizedBodyMetadata {
+  return {
+    key: resolveWorkExternalIssueImportResultBodyKey(metadata.event),
+    values: {
+      externalLabel: describeWorkExternalIssueImportExternalLabel(metadata),
+      workItemId: metadata.workItemId,
+    },
+  };
+}
+
+function buildWorkExternalIssueImportFailureLocalizedBody(
+  metadata: WorkExternalIssueImportFailureMetadata,
+): ChatMessageLocalizedBodyMetadata {
+  const externalLabel = describeWorkExternalIssueImportExternalLabel(metadata);
+  const localizedBody: ChatMessageLocalizedBodyMetadata = {
+    key: messageKeys.workExternalImportFailureBody,
+    valueKeys: {
+      ...(externalLabel ? {} : {
+        externalLabel: messageKeys.workExternalImportExternalIssueLabel,
+      }),
+      reason: resolveWorkExternalIssueImportFailureReasonKey(metadata.reason),
+    },
+  };
+  if (externalLabel) {
+    localizedBody.values = { externalLabel };
+  }
+  return localizedBody;
+}
+
+function resolveWorkExternalIssueImportResultBodyKey(
+  event: WorkExternalIssueImportResultMetadata['event'],
+): MessageKey {
+  if (event === 'imported') {
+    return messageKeys.workExternalImportResultImported;
+  }
+  if (event === 'linked') {
+    return messageKeys.workExternalImportResultLinked;
+  }
+  return messageKeys.workExternalImportResultAlreadyImported;
+}
+
+function resolveWorkExternalIssueImportFailureReasonKey(reason: string): MessageKey {
   switch (reason) {
     case 'tool_request_target_mismatch':
-      return 'the model requested an invalid Work tool target';
+      return messageKeys.workExternalImportFailureReasonInvalidTarget;
     case 'missing_core_store':
-      return 'the Work store is unavailable';
+      return messageKeys.workExternalImportFailureReasonStoreUnavailable;
     case 'missing_external_issue_import_action_cue':
     case 'missing_external_tracker_url':
     case 'unsupported_external_issue_import_url':
-      return 'the owner message did not contain a supported importable issue URL';
+      return messageKeys.workExternalImportFailureReasonUnsupportedOwnerMessage;
     case 'schema_invalid':
-      return 'the requested tool input did not match the Work import schema';
+      return messageKeys.workExternalImportFailureReasonSchemaInvalid;
     case 'tool_input_external_url_mismatch':
-      return 'the requested issue did not match the owner message';
+      return messageKeys.workExternalImportFailureReasonIssueMismatch;
     case 'tool_input_provider_mismatch':
-      return 'the requested provider did not match the owner message';
+      return messageKeys.workExternalImportFailureReasonProviderMismatch;
     case 'pending_approval':
-      return 'the import is waiting for approval';
+      return messageKeys.workExternalImportFailureReasonPendingApproval;
     case 'external_issue_import_source_unsupported':
-      return 'the issue tracker URL is unsupported';
+      return messageKeys.workExternalImportFailureReasonUnsupportedSource;
     case 'github_issue_fetch_failed':
     case 'redmine_issue_fetch_failed':
     case 'bugzilla_bug_fetch_failed':
-      return 'the issue tracker fetch failed';
+      return messageKeys.workExternalImportFailureReasonFetchFailed;
     case 'github_pull_request_not_supported':
-      return 'GitHub pull request rows are not supported by this import path';
+      return messageKeys.workExternalImportFailureReasonPullRequestUnsupported;
     default:
-      return reason.replace(/_/gu, ' ');
+      return messageKeys.workExternalImportFailureReasonUnexpected;
   }
+}
+
+function describeWorkExternalIssueImportExternalLabel(input: {
+  provider: WorkExternalImportIssueProvider | null;
+  externalType: 'issue' | 'ticket' | null;
+  externalId: string | null;
+}): string | null {
+  return input.provider && input.externalType && input.externalId
+    ? `${input.provider} ${input.externalType} ${input.externalId}`
+    : null;
 }
 
 function describeWorkTriageLookupResult(metadata: WorkTriageLookupResultMetadata): string {

@@ -619,6 +619,32 @@ export const enCatalog: MessageCatalog = {
   'work.external.import.submitLabel': 'Import issue',
   'work.external.import.submitBusyLabel': 'Importing…',
   'work.external.import.error': 'Failed to import external issue.',
+  'work.external.import.externalIssueLabel': 'external issue',
+  'work.external.import.result.imported':
+    'Imported {externalLabel} as Work Item {workItemId}.',
+  'work.external.import.result.linked':
+    'Linked imported {externalLabel} to Work Item {workItemId}.',
+  'work.external.import.result.alreadyImported':
+    '{externalLabel} was already imported as Work Item {workItemId}.',
+  'work.external.import.failure.body': 'Unable to import {externalLabel}: {reason}.',
+  'work.external.import.failure.reason.invalidTarget':
+    'the model requested an invalid Work tool target',
+  'work.external.import.failure.reason.storeUnavailable': 'the Work store is unavailable',
+  'work.external.import.failure.reason.unsupportedOwnerMessage':
+    'the owner message did not contain a supported importable issue URL',
+  'work.external.import.failure.reason.schemaInvalid':
+    'the requested tool input did not match the Work import schema',
+  'work.external.import.failure.reason.issueMismatch':
+    'the requested issue did not match the owner message',
+  'work.external.import.failure.reason.providerMismatch':
+    'the requested provider did not match the owner message',
+  'work.external.import.failure.reason.pendingApproval': 'the import is waiting for approval',
+  'work.external.import.failure.reason.unsupportedSource':
+    'the issue tracker URL is unsupported',
+  'work.external.import.failure.reason.fetchFailed': 'the issue tracker fetch failed',
+  'work.external.import.failure.reason.pullRequestUnsupported':
+    'GitHub pull request rows are not supported by this import path',
+  'work.external.import.failure.reason.unexpected': 'the import failed unexpectedly',
   'work.sidebar.newWorkLabel': 'New Work',
   'work.sidebar.teamWorkLabel': 'Team Work',
   'work.sidebar.parallelWorkLabel': 'Parallel Work',

@@ -852,6 +852,33 @@ export const messageKeys = {
   workExternalImportSubmitLabel: 'work.external.import.submitLabel',
   workExternalImportSubmitBusyLabel: 'work.external.import.submitBusyLabel',
   workExternalImportError: 'work.external.import.error',
+  workExternalImportExternalIssueLabel: 'work.external.import.externalIssueLabel',
+  workExternalImportResultImported: 'work.external.import.result.imported',
+  workExternalImportResultLinked: 'work.external.import.result.linked',
+  workExternalImportResultAlreadyImported: 'work.external.import.result.alreadyImported',
+  workExternalImportFailureBody: 'work.external.import.failure.body',
+  workExternalImportFailureReasonInvalidTarget:
+    'work.external.import.failure.reason.invalidTarget',
+  workExternalImportFailureReasonStoreUnavailable:
+    'work.external.import.failure.reason.storeUnavailable',
+  workExternalImportFailureReasonUnsupportedOwnerMessage:
+    'work.external.import.failure.reason.unsupportedOwnerMessage',
+  workExternalImportFailureReasonSchemaInvalid:
+    'work.external.import.failure.reason.schemaInvalid',
+  workExternalImportFailureReasonIssueMismatch:
+    'work.external.import.failure.reason.issueMismatch',
+  workExternalImportFailureReasonProviderMismatch:
+    'work.external.import.failure.reason.providerMismatch',
+  workExternalImportFailureReasonPendingApproval:
+    'work.external.import.failure.reason.pendingApproval',
+  workExternalImportFailureReasonUnsupportedSource:
+    'work.external.import.failure.reason.unsupportedSource',
+  workExternalImportFailureReasonFetchFailed:
+    'work.external.import.failure.reason.fetchFailed',
+  workExternalImportFailureReasonPullRequestUnsupported:
+    'work.external.import.failure.reason.pullRequestUnsupported',
+  workExternalImportFailureReasonUnexpected:
+    'work.external.import.failure.reason.unexpected',
   workTasksListTitle: 'work.tasks.listTitle',
   workTasksListNewAction: 'work.tasks.newAction',
   workTasksListCreateNewTaskAriaLabel: 'work.tasks.createNewTaskAriaLabel',

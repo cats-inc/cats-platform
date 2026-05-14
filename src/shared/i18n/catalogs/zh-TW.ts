@@ -598,6 +598,32 @@ export const zhTWCatalog: MessageCatalog = {
   'work.external.import.submitLabel': '匯入 issue',
   'work.external.import.submitBusyLabel': '匯入中…',
   'work.external.import.error': '無法匯入外部 issue。',
+  'work.external.import.externalIssueLabel': '外部 issue',
+  'work.external.import.result.imported':
+    '已將 {externalLabel} 匯入為 Work Item {workItemId}。',
+  'work.external.import.result.linked':
+    '已將 {externalLabel} 連結到 Work Item {workItemId}。',
+  'work.external.import.result.alreadyImported':
+    '{externalLabel} 已匯入為 Work Item {workItemId}。',
+  'work.external.import.failure.body': '無法匯入 {externalLabel}：{reason}。',
+  'work.external.import.failure.reason.invalidTarget':
+    '模型要求了無效的 Work tool 目標',
+  'work.external.import.failure.reason.storeUnavailable': 'Work 儲存目前無法使用',
+  'work.external.import.failure.reason.unsupportedOwnerMessage':
+    '你的訊息沒有包含支援匯入的 issue 網址',
+  'work.external.import.failure.reason.schemaInvalid':
+    '模型提供的 tool input 不符合 Work 匯入格式',
+  'work.external.import.failure.reason.issueMismatch':
+    '模型要求的 issue 和你的訊息不一致',
+  'work.external.import.failure.reason.providerMismatch':
+    '模型要求的提供者和你的訊息不一致',
+  'work.external.import.failure.reason.pendingApproval': '匯入仍在等待核准',
+  'work.external.import.failure.reason.unsupportedSource':
+    '不支援這個 issue tracker 網址',
+  'work.external.import.failure.reason.fetchFailed': '無法讀取 issue tracker',
+  'work.external.import.failure.reason.pullRequestUnsupported':
+    '這個匯入路徑不支援 GitHub pull request',
+  'work.external.import.failure.reason.unexpected': '匯入發生未預期錯誤',
   'work.sidebar.newWorkLabel': '新增工作',
   'work.sidebar.teamWorkLabel': '團隊工作',
   'work.sidebar.parallelWorkLabel': '平行工作',

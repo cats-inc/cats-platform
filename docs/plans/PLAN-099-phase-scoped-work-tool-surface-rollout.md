@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-14 | Review follow-up added localized Chat sidecar body metadata for external issue import success/failure messages, hid unknown import failure codes behind generic owner copy, marked failed imports unread, and deduped repeated provider-agent import sidecars by decision id. |
 | 2026-05-14 | Review follow-up made provider-agent external issue import failures owner-visible, matched model-requested import URLs by provider/type/id instead of raw string equality, and expanded import URL/cue parsing for common Chinese phrasing and closing punctuation. |
 | 2026-05-13 | Follow-up slice added Telegram room bridge coverage proving provider-agent `work.external.import_issue` decisions use the same server-resolved external issue import path as Chat and remain sidecar-terminal. |
 | 2026-05-13 | Follow-up slice wired Chat provider-agent `work.external.import_issue` tool requests into the existing read-only external issue fetcher and local Work import delegate, appending a Cats Work result sidecar without sending the turn to runtime again. |

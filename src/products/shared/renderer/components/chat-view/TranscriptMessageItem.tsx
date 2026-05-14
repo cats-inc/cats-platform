@@ -13,6 +13,7 @@ import {
 } from '../../workspaceChatUtils.js';
 import { MessageBody } from '../MessageBody.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { resolveLocalizedChatMessageBody } from '../../../../../shared/chatMessageLocalization.js';
 import { CompanionMessageReferencePreviews } from './CompanionMessageReferencePreviews.js';
 import {
   MessageChoices,
@@ -118,6 +119,7 @@ export function TranscriptMessageItem({
 }: TranscriptMessageItemProps) {
   const { t } = useI18n();
   const speaker = resolveTranscriptMessageSpeaker(message, cats, t);
+  const displayBody = resolveLocalizedChatMessageBody(message, t);
   const transcriptParticipant = resolveMessageParticipant(message);
   const transcriptParticipantCat = resolveParticipantCatRecord(transcriptParticipant);
   const resolvedExtraActions: TranscriptMessageActionDescriptor[] = [...extraActions];
@@ -212,16 +214,16 @@ export function TranscriptMessageItem({
             </div>
           ) : null
         ) : null}
-        {message.body ? (
+        {displayBody ? (
           <MessageBody
-            body={message.body}
+            body={displayBody}
             cats={cats}
             channelId={selectedChannelId}
             disabledMentionNames={disabledMentionNames}
           />
         ) : null}
         <CompanionMessageReferencePreviews
-          body={message.body}
+          body={displayBody}
           metadata={message.metadata}
         />
         {message.senderKind === 'user' && userTurnStatus === 'failed' ? (
@@ -232,10 +234,10 @@ export function TranscriptMessageItem({
       </div>
       <TranscriptMessageActions
         senderKind={message.senderKind}
-        showDefaultCopyAction={message.body.trim().length > 0}
+        showDefaultCopyAction={displayBody.trim().length > 0}
         copyActionLabel={t(messageKeys.chatTranscriptMessageCopyLabel)}
         onCopyMessage={() => {
-          void onCopyMessage(message.body);
+          void onCopyMessage(displayBody);
         }}
         extraActions={resolvedExtraActions}
       />

@@ -189,8 +189,12 @@ external issue identity from the owner message, comparing it to the requested
 provider/type/id rather than raw URL string equality, fetching a read-only
 import draft through server-owned adapter options, and invoking the same local
 Work import delegate used by owner-triggered UI/API imports. Failed imports
-append an owner-visible Cats Work sidecar with bounded failure metadata instead
-of silently swallowing the tool request.
+append an unread owner-visible Cats Work sidecar with bounded failure metadata
+and localized body metadata instead of silently swallowing the tool request.
+Unknown internal failure codes stay in metadata/logs and render as generic
+owner-facing failure copy. Repeated provider-agent decisions with the same
+decision id reuse the existing import result/failure sidecar rather than
+appending duplicates.
 
 Explicit Chat turns with create/add/new Project cues can expose
 `work.project.create` with a narrow-write policy. Chat handles that

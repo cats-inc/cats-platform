@@ -57,6 +57,11 @@ import {
   buildWorkflowContinuationReplayRequest,
   writeWorkflowContinuationReplayMetadata,
 } from '../build/server/platform/orchestration/workflowContinuationReplay.js';
+import {
+  CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY,
+  resolveLocalizedChatMessageBody,
+} from '../build/server/shared/chatMessageLocalization.js';
+import { createTranslator, messageKeys } from '../build/server/shared/i18n/index.js';
 
 const testPlatformRoot = path.join(
   tmpdir(),
@@ -2018,6 +2023,7 @@ test('POST /api/orchestrator/dispatch reports provider external issue import fai
   const chatStore = new MemoryChatStore();
   const externalUrl = 'https://github.com/cats-inc/platform/issues/99';
   let observedToolNames = [];
+  let fetchCount = 0;
 
   await withServer(runtimeClient, async (baseUrl) => {
     const created = await createChannel(baseUrl, {
@@ -2049,6 +2055,7 @@ test('POST /api/orchestrator/dispatch reports provider external issue import fai
       },
       new Date('2026-05-13T00:00:00.000Z'),
     );
+    chat.selectedChannelId = null;
     await chatStore.write(chat);
 
     const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
@@ -2080,6 +2087,7 @@ test('POST /api/orchestrator/dispatch reports provider external issue import fai
     const channel = buildChannelView(persisted, channelId);
     const failureMessage = channel.messages.find((message) =>
       message.metadata.event === 'work_external_issue_import_failed');
+    assert.ok(failureMessage);
     const metadata = failureMessage?.metadata.workExternalIssueImportFailure;
     assert.equal(failureMessage?.senderName, 'Cats Work');
     assert.equal(
@@ -2090,17 +2098,48 @@ test('POST /api/orchestrator/dispatch reports provider external issue import fai
     assert.equal(metadata?.provider, 'github');
     assert.equal(metadata?.externalType, 'issue');
     assert.equal(metadata?.externalId, '99');
+    assert.equal(channel.unreadCount, 1);
+    assert.equal(
+      failureMessage?.metadata[CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY]?.key,
+      messageKeys.workExternalImportFailureBody,
+    );
+    assert.equal(
+      resolveLocalizedChatMessageBody(failureMessage, createTranslator('zh-TW')),
+      '無法匯入 github issue 99：無法讀取 issue tracker。',
+    );
+
+    const duplicateResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: `Boss Cat import ${externalUrl} into Cats Work`,
+      }),
+    });
+    assert.equal(duplicateResponse.status, 200);
+    const duplicatePersisted = await chatStore.read();
+    const duplicateChannel = buildChannelView(duplicatePersisted, channelId);
+    assert.equal(
+      duplicateChannel.messages.filter((message) =>
+        message.metadata.event === 'work_external_issue_import_failed').length,
+      1,
+    );
+    assert.equal(duplicateChannel.unreadCount, 1);
+    assert.equal(fetchCount, 1);
   }, chatStore, {
     work: {
       externalIssueImport: {
         github: {
-          fetchImpl: async () => ({
-            ok: false,
-            status: 500,
-            async json() {
-              return {};
-            },
-          }),
+          fetchImpl: async () => {
+            fetchCount += 1;
+            return {
+              ok: false,
+              status: 500,
+              async json() {
+                return {};
+              },
+            };
+          },
         },
       },
     },
@@ -2124,6 +2163,103 @@ test('POST /api/orchestrator/dispatch reports provider external issue import fai
         rationaleSummary: 'The owner explicitly asked to import one GitHub issue.',
       };
     },
+  });
+});
+
+test('POST /api/orchestrator/dispatch hides unknown external issue import failure codes from UI copy', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  const externalUrl = 'https://github.com/cats-inc/platform/issues/100';
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Work',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+    let chat = await chatStore.read();
+    chat = setChannelCatLease(
+      chat,
+      channelId,
+      catId,
+      {
+        status: 'ready',
+        sessionId: 'session-work-external-import-unknown-failure',
+        laneId: 'lane-work-external-import-unknown-failure',
+      },
+      new Date('2026-05-13T00:00:00.000Z'),
+    );
+    await chatStore.write(chat);
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: `Boss Cat import ${externalUrl} into Cats Work`,
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const persisted = await chatStore.read();
+    const channel = buildChannelView(persisted, channelId);
+    const failureMessage = channel.messages.find((message) =>
+      message.metadata.event === 'work_external_issue_import_failed');
+    assert.ok(failureMessage);
+    const metadata = failureMessage?.metadata.workExternalIssueImportFailure;
+    assert.equal(metadata?.reason, 'internal_db_timeout');
+    assert.equal(
+      failureMessage?.body,
+      'Unable to import github issue 100: the import failed unexpectedly.',
+    );
+    assert.equal(failureMessage?.body.includes('internal db timeout'), false);
+    assert.equal(
+      resolveLocalizedChatMessageBody(failureMessage, createTranslator('zh-TW')),
+      '無法匯入 github issue 100：匯入發生未預期錯誤。',
+    );
+  }, chatStore, {
+    work: {
+      externalIssueImport: {
+        github: {
+          fetchImpl: async () => {
+            throw {
+              code: 'internal_db_timeout',
+              message: 'Internal database timeout details',
+              status: null,
+            };
+          },
+        },
+      },
+    },
+    providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
+    providerAgentDecisionRequester: async () => ({
+      contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+      kind: 'tool_request',
+      decisionId: 'decision-api-work-external-import-unknown-failure-1',
+      confidence: 'high',
+      toolName: WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+      target: {
+        kind: 'worker_tool',
+        toolName: WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+      },
+      input: {
+        externalUrl,
+        provider: 'github',
+      },
+      rationaleSummary: 'The owner explicitly asked to import one GitHub issue.',
+    }),
   });
 });
 
