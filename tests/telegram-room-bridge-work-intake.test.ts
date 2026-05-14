@@ -19,6 +19,7 @@ import {
   setChannelCatLease,
 } from '../src/products/chat/state/model/index.js';
 import {
+  WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
   WORK_ITEM_PREPARE_EXECUTION_TOOL,
   WORK_ITEM_PROPOSE_SPLIT_TOOL,
 } from '../src/products/work/shared/workToolSurface.js';
@@ -138,7 +139,7 @@ test('Telegram room bridge passes provider tool decisions into Work intake sidec
   });
 
   assert.equal(observedToolNames.includes(WORK_ITEM_PROPOSE_SPLIT_TOOL), true);
-  assert.equal(routed.results[0]?.status, 'sent');
+  assert.equal(routed.results.length, 0);
 
   const channel = buildChannelView(routed.state, roomId);
   const proposalMessage = channel.messages.find((message) =>
@@ -205,6 +206,142 @@ test('Telegram room bridge passes provider tool decisions into Work intake sidec
     0,
   );
   assert.equal(decisionRequests, 1);
+});
+
+test('Telegram room bridge applies provider external issue import decisions', async () => {
+  let state = createDefaultChatState();
+  state = createChannel(
+    state,
+    {
+      title: 'Telegram Work Import',
+      topic: 'Import external tracker issues from Telegram.',
+      originSurface: 'chat',
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Work',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    },
+    new Date('2026-05-13T00:05:00.000Z'),
+  );
+  const roomId = state.selectedChannelId;
+  assert.ok(roomId);
+  const catId = buildChannelView(state, roomId).assignedCats[0]?.catId;
+  assert.ok(catId);
+  state = setChannelCatLease(
+    state,
+    roomId,
+    catId,
+    {
+      status: 'ready',
+      sessionId: 'session-telegram-work-import',
+      laneId: 'lane-telegram-work-import',
+    },
+    new Date('2026-05-13T00:05:01.000Z'),
+  );
+
+  const externalUrl = 'https://github.com/cats-inc/platform/issues/42';
+  const chatStore = new MemoryChatStore(state);
+  const companionStore = new MemoryCompanionBoxStore();
+  let observedToolNames: string[] = [];
+  let fetchedUrl: string | null = null;
+  const bridge = createChatTelegramRoomBridge({
+    chatStore,
+    companionStore,
+    naturalProductIntentMode: 'cat_tool',
+    providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
+    externalIssueImport: {
+      github: {
+        fetchImpl: async (url) => {
+          fetchedUrl = url;
+          assert.match(url, /\/repos\/cats-inc\/platform\/issues\/42$/u);
+          return {
+            ok: true,
+            status: 200,
+            async json() {
+              return {
+                number: 42,
+                title: 'Import Telegram GitHub issue',
+                body: 'Issue body captured from Telegram.',
+                state: 'open',
+                html_url: externalUrl,
+                labels: [],
+                assignees: [],
+                updated_at: '2026-05-13T00:05:00.000Z',
+                closed_at: null,
+              };
+            },
+          };
+        },
+      },
+    },
+    providerAgentDecisionRequester: async ({ observation }) => {
+      assert.equal(JSON.stringify(observation).includes(externalUrl), false);
+      observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
+      return {
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-telegram-work-import-1',
+        confidence: 'high',
+        toolName: WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+        },
+        input: {
+          externalUrl,
+          provider: 'github',
+        },
+        rationaleSummary: 'Import the GitHub issue mentioned by the Telegram owner.',
+      };
+    },
+  });
+
+  const routed = await bridge.routeRoomMessage({
+    state,
+    roomId,
+    body: `Boss Cat import ${externalUrl} into Cats Work`,
+    senderName: 'Kenneth',
+    bindingId: 'bot-binding-1',
+    runtimeClient: createRuntimeStub(),
+    timestamp: new Date('2026-05-13T00:06:00.000Z'),
+  });
+
+  assert.deepEqual(
+    observedToolNames.filter((toolName) => toolName.startsWith('work.external.')),
+    [WORK_EXTERNAL_IMPORT_ISSUE_TOOL],
+  );
+  assert.ok(fetchedUrl);
+
+  const core = await chatStore.readCore();
+  const workItem = core.workItems.find((candidate) =>
+    candidate.title === 'Import Telegram GitHub issue');
+  assert.ok(workItem);
+  assert.equal(workItem.summary, 'Issue body captured from Telegram.');
+  const bindings = Array.isArray(workItem.metadata.externalWorkBindings?.bindings)
+    ? workItem.metadata.externalWorkBindings.bindings
+    : [];
+  assert.equal(bindings[0]?.provider, 'github');
+  assert.equal(bindings[0]?.externalType, 'issue');
+  assert.equal(bindings[0]?.externalId, '42');
+  assert.equal(bindings[0]?.externalUrl, externalUrl);
+
+  const channel = buildChannelView(routed.state, roomId);
+  const resultMessage = channel.messages.find((message) =>
+    message.metadata.event === 'work_external_issue_import_result');
+  const metadata = resultMessage?.metadata.workExternalIssueImportResult;
+  assert.equal(resultMessage?.senderName, 'Cats Work');
+  assert.equal(metadata?.event, 'imported');
+  assert.equal(metadata?.workItemId, workItem.id);
+  assert.equal(metadata?.provider, 'github');
+  assert.equal(metadata?.externalId, '42');
 });
 
 test('Telegram room bridge confirms Boss Work execution preparation into pending Tasks', async () => {

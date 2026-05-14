@@ -163,6 +163,7 @@ external trackers the Cats system of record.
 
 | Date | Update |
 |------|--------|
+| 2026-05-13 | Follow-up slice added Telegram room bridge coverage proving provider-agent `work.external.import_issue` decisions use the same server-resolved external issue import path as Chat and remain sidecar-terminal. |
 | 2026-05-13 | Follow-up slice wired Chat provider-agent `work.external.import_issue` tool requests into the existing read-only external issue fetcher and local Work import delegate, appending a Cats Work result sidecar without sending the turn to runtime again. |
 | 2026-05-13 | Follow-up slice split external issue import intent from manual link/unlink intent so Chat/provider-agent observations and runtime/API tool intent expose only `work.external.import_issue` for explicit import URLs while preserving local link/unlink tools for local Work refs. |
 | 2026-05-13 | Follow-up slice made provider-agent Cats/Work sidecars terminal for the current turn and routed the default deterministic Chat router through configured runtime data paths, preserving sidecar-only Work intake without an extra runtime send. |
