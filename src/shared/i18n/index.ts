@@ -53,18 +53,59 @@ const ZH_SIMPLIFIED_LOCALE_HINT_VALUES = [
   '简体',
 ] as const;
 
+const ZH_TW_LOCALE_PREFIX_VALUES = [
+  'zh-tw-',
+  'zh-hant-',
+  'zh-hk-',
+  'zh-mo-',
+] as const;
+
+const ZH_SIMPLIFIED_LOCALE_PREFIX_VALUES = [
+  'zh-cn-',
+  'zh-hans-',
+  'zh-sg-',
+  'zh-my-',
+] as const;
+
 const ZH_TW_LOCALE_HINTS = new Set<string>(ZH_TW_LOCALE_HINT_VALUES);
 const ZH_SIMPLIFIED_LOCALE_HINTS = new Set<string>(ZH_SIMPLIFIED_LOCALE_HINT_VALUES);
 
 export function assertMessageLocaleHintInvariants(): void {
-  const duplicateHints = ZH_TW_LOCALE_HINT_VALUES.filter((hint) =>
-    ZH_SIMPLIFIED_LOCALE_HINTS.has(hint));
-  if (duplicateHints.length > 0) {
-    throw new Error(`Message locale hints overlap: ${duplicateHints.join(', ')}`);
+  const conflicts: string[] = [];
+
+  for (const hint of ZH_TW_LOCALE_HINT_VALUES) {
+    if (ZH_SIMPLIFIED_LOCALE_HINTS.has(hint)) {
+      conflicts.push(`exact hint '${hint}' is claimed by both Traditional and Simplified`);
+    }
+    for (const prefix of ZH_SIMPLIFIED_LOCALE_PREFIX_VALUES) {
+      if (hint.startsWith(prefix)) {
+        conflicts.push(`Traditional hint '${hint}' is shadowed by Simplified prefix '${prefix}'`);
+      }
+    }
+  }
+
+  for (const hint of ZH_SIMPLIFIED_LOCALE_HINT_VALUES) {
+    for (const prefix of ZH_TW_LOCALE_PREFIX_VALUES) {
+      if (hint.startsWith(prefix)) {
+        conflicts.push(`Simplified hint '${hint}' is shadowed by Traditional prefix '${prefix}'`);
+      }
+    }
+  }
+
+  for (const tradPrefix of ZH_TW_LOCALE_PREFIX_VALUES) {
+    for (const simpPrefix of ZH_SIMPLIFIED_LOCALE_PREFIX_VALUES) {
+      if (tradPrefix.startsWith(simpPrefix) || simpPrefix.startsWith(tradPrefix)) {
+        conflicts.push(
+          `prefix conflict: Traditional '${tradPrefix}' overlaps Simplified '${simpPrefix}'`,
+        );
+      }
+    }
+  }
+
+  if (conflicts.length > 0) {
+    throw new Error(`Message locale hints overlap:\n  - ${conflicts.join('\n  - ')}`);
   }
 }
-
-assertMessageLocaleHintInvariants();
 
 export function parseMessageLocale(locale: string | undefined | null): MessageLocale | null {
   if (!locale) {
@@ -110,41 +151,50 @@ function readAcceptLanguageQuality(parameters: string[]): number {
     return 1;
   }
 
-  const qualityMatch = /^q\s*=\s*(?<quality>[^;]*)$/iu.exec(qualityParameter.trim());
+  const qualityMatch = /^q\s*=\s*(?<quality>.*)$/iu.exec(qualityParameter.trim());
   if (!qualityMatch?.groups) {
     return 1;
   }
 
-  const rawQuality = Number.parseFloat(qualityMatch.groups.quality.trim());
-  // Malformed q-values are ignored as if the parameter was absent, keeping the locale usable.
-  return Number.isFinite(rawQuality) ? Math.min(Math.max(rawQuality, 0), 1) : 1;
+  // RFC 7231 qvalue is `0(.0..0)? | 1(.0..0)?`; we reject anything outside a
+  // plain unsigned decimal (no sign, no exponent, no trailing garbage) so
+  // sloppy parseFloat coercions like `q=0.5abc` → 0.5 cannot slip through.
+  // Malformed q-values are ignored as if the parameter was absent, keeping
+  // the locale usable.
+  const rawQualityText = qualityMatch.groups.quality.trim();
+  if (!/^\d+(?:\.\d+)?$/u.test(rawQualityText)) {
+    return 1;
+  }
+  const rawQuality = Number.parseFloat(rawQualityText);
+  return Math.min(Math.max(rawQuality, 0), 1);
 }
 
 function parseSingleMessageLocale(normalized: string): MessageLocale | null {
   if (normalized === 'en' || normalized.startsWith('en-')) {
     return 'en';
   }
-  if (
-    ZH_TW_LOCALE_HINTS.has(normalized)
-    || normalized.startsWith('zh-tw-')
-    || normalized.startsWith('zh-hant-')
-    || normalized.startsWith('zh-hk-')
-    || normalized.startsWith('zh-mo-')
-  ) {
+  if (matchesLocaleHint(normalized, ZH_TW_LOCALE_HINTS, ZH_TW_LOCALE_PREFIX_VALUES)) {
     return 'zh-TW';
   }
   if (
-    ZH_SIMPLIFIED_LOCALE_HINTS.has(normalized)
-    || normalized.startsWith('zh-cn-')
-    || normalized.startsWith('zh-hans-')
-    || normalized.startsWith('zh-sg-')
-    || normalized.startsWith('zh-my-')
+    matchesLocaleHint(normalized, ZH_SIMPLIFIED_LOCALE_HINTS, ZH_SIMPLIFIED_LOCALE_PREFIX_VALUES)
   ) {
     // Recognized, but unsupported until a Simplified Chinese catalog exists.
     return null;
   }
 
   return null;
+}
+
+function matchesLocaleHint(
+  normalized: string,
+  exactHints: ReadonlySet<string>,
+  prefixes: readonly string[],
+): boolean {
+  if (exactHints.has(normalized)) {
+    return true;
+  }
+  return prefixes.some((prefix) => normalized.startsWith(prefix));
 }
 
 export function normalizeMessageLocale(locale: string | undefined | null): MessageLocale {
