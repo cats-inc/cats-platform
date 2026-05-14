@@ -112,6 +112,10 @@ import {
   resolveWorkExternalIssueImportPhase,
 } from '../../../work/shared/workExternalIssueImportPhase.js';
 import {
+  inferExternalTrackerBindingFromUrl,
+  type ExternalTrackerUrlInference,
+} from '../../../work/shared/externalTrackerUrls.js';
+import {
   WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
   WORK_EXTERNAL_LINK_ISSUE_TOOL,
   WORK_EXTERNAL_UNLINK_ISSUE_TOOL,
@@ -252,6 +256,8 @@ const WORK_EXTERNAL_BINDING_RESULT_METADATA_KEY = 'workExternalBindingResult';
 const WORK_EXTERNAL_BINDING_RESULT_METADATA_VERSION = 1;
 const WORK_EXTERNAL_ISSUE_IMPORT_RESULT_METADATA_KEY = 'workExternalIssueImportResult';
 const WORK_EXTERNAL_ISSUE_IMPORT_RESULT_METADATA_VERSION = 1;
+const WORK_EXTERNAL_ISSUE_IMPORT_FAILURE_METADATA_KEY = 'workExternalIssueImportFailure';
+const WORK_EXTERNAL_ISSUE_IMPORT_FAILURE_METADATA_VERSION = 1;
 const WORK_TRIAGE_LOOKUP_RESULT_METADATA_KEY = 'workTriageLookupResult';
 const WORK_TRIAGE_LOOKUP_RESULT_METADATA_VERSION = 1;
 const WORK_PROJECT_CREATE_RESULT_METADATA_KEY = 'workProjectCreateResult';
@@ -383,6 +389,18 @@ interface WorkExternalIssueImportResultMetadata {
   created: boolean;
   linked: boolean;
   bindingCount: number;
+}
+
+interface WorkExternalIssueImportFailureMetadata {
+  schemaVersion: typeof WORK_EXTERNAL_ISSUE_IMPORT_FAILURE_METADATA_VERSION;
+  phase: 'external_tracker_binding';
+  toolName: typeof WORK_EXTERNAL_IMPORT_ISSUE_TOOL;
+  decisionId: string;
+  sourceMessageId: string;
+  reason: string;
+  provider: WorkExternalImportIssueProvider | null;
+  externalType: 'issue' | 'ticket' | null;
+  externalId: string | null;
 }
 
 interface WorkTriageLookupResultMetadata {
@@ -2220,80 +2238,70 @@ async function appendWorkExternalIssueImportResultSidecar(input: {
   ) {
     return { state: input.state, resultMessage: null };
   }
+  const fail = (
+    reason: string,
+    details?: unknown,
+    identity?: ExternalTrackerUrlInference | null,
+  ) => appendWorkExternalIssueImportFailureSidecar({
+    state: input.state,
+    channelId: input.channelId,
+    userMessage: input.userMessage,
+    providerAgentDecision: input.providerAgentDecision as ProviderAgentToolRequestDecision,
+    reason,
+    details,
+    identity,
+    now: input.now,
+  });
+
   if (!hasMatchingWorkerToolTarget(input.providerAgentDecision, WORK_EXTERNAL_IMPORT_ISSUE_TOOL)) {
-    warnWorkExternalIssueImportToolCallIgnored({
-      channelId: input.channelId,
-      messageId: input.userMessage.id,
-      decisionId: input.providerAgentDecision.decisionId,
-      reason: 'tool_request_target_mismatch',
-      details: { target: input.providerAgentDecision.target },
-    });
-    return { state: input.state, resultMessage: null };
+    return fail(
+      'tool_request_target_mismatch',
+      { target: input.providerAgentDecision.target },
+    );
   }
   if (!input.chatStore) {
-    warnWorkExternalIssueImportToolCallIgnored({
-      channelId: input.channelId,
-      messageId: input.userMessage.id,
-      decisionId: input.providerAgentDecision.decisionId,
-      reason: 'missing_core_store',
-    });
-    return { state: input.state, resultMessage: null };
+    return fail('missing_core_store');
   }
 
   const phase = resolveWorkExternalIssueImportPhase({
     rawText: input.userMessage.body,
   });
   if (phase.kind !== 'matched') {
-    warnWorkExternalIssueImportToolCallIgnored({
-      channelId: input.channelId,
-      messageId: input.userMessage.id,
-      decisionId: input.providerAgentDecision.decisionId,
-      reason: phase.reasonCode,
-    });
-    return { state: input.state, resultMessage: null };
+    return fail(phase.reasonCode);
   }
 
   const validationErrors = validateWorkExternalImportIssueInput(input.providerAgentDecision.input);
   if (validationErrors.length > 0) {
-    warnWorkExternalIssueImportToolCallIgnored({
-      channelId: input.channelId,
-      messageId: input.userMessage.id,
-      decisionId: input.providerAgentDecision.decisionId,
-      reason: 'schema_invalid',
-      details: { errors: validationErrors },
-    });
-    return { state: input.state, resultMessage: null };
+    return fail('schema_invalid', { errors: validationErrors }, phase.external);
   }
 
   const requestedInput = readToolInputRecord(input.providerAgentDecision.input);
   const requestedExternalUrl = readOptionalString(requestedInput.externalUrl);
-  if (normalizeExternalIssueImportUrl(requestedExternalUrl) !== phase.externalUrl) {
-    warnWorkExternalIssueImportToolCallIgnored({
-      channelId: input.channelId,
-      messageId: input.userMessage.id,
-      decisionId: input.providerAgentDecision.decisionId,
-      reason: 'tool_input_external_url_mismatch',
-      details: {
+  const requestedProvider = readOptionalExternalIssueImportProvider(requestedInput.provider);
+  if (requestedProvider && requestedProvider !== phase.external.provider) {
+    return fail(
+      'tool_input_provider_mismatch',
+      {
+        expectedProvider: phase.external.provider,
+        requestedProvider,
+      },
+      phase.external,
+    );
+  }
+  const requestedIdentity = resolveExternalIssueImportIdentityFromUrl(
+    requestedExternalUrl,
+    requestedProvider ?? phase.external.provider,
+  );
+  if (!requestedIdentity || !isSameExternalIssueImportIdentity(requestedIdentity, phase.external)) {
+    return fail(
+      'tool_input_external_url_mismatch',
+      {
         expectedProvider: phase.external.provider,
         expectedExternalType: phase.external.externalType ?? 'issue',
         expectedExternalId: phase.external.externalId,
       },
-    });
-    return { state: input.state, resultMessage: null };
-  }
-  const requestedProvider = readOptionalExternalIssueImportProvider(requestedInput.provider);
-  if (requestedProvider && requestedProvider !== phase.external.provider) {
-    warnWorkExternalIssueImportToolCallIgnored({
-      channelId: input.channelId,
-      messageId: input.userMessage.id,
-      decisionId: input.providerAgentDecision.decisionId,
-      reason: 'tool_input_provider_mismatch',
-      details: {
-        expectedProvider: phase.external.provider,
-        requestedProvider,
-      },
-    });
-    return { state: input.state, resultMessage: null };
+      phase.external,
+    );
   }
 
   try {
@@ -2323,14 +2331,11 @@ async function appendWorkExternalIssueImportResultSidecar(input: {
     );
 
     if (result.status !== 'applied') {
-      warnWorkExternalIssueImportToolCallIgnored({
-        channelId: input.channelId,
-        messageId: input.userMessage.id,
-        decisionId: input.providerAgentDecision.decisionId,
-        reason: result.status === 'rejected' ? result.error.code : 'pending_approval',
-        details: result.status === 'rejected' ? result.error.details : result.summary,
-      });
-      return { state: input.state, resultMessage: null };
+      return fail(
+        result.status === 'rejected' ? result.error.code : 'pending_approval',
+        result.status === 'rejected' ? result.error.details : result.summary,
+        phase.external,
+      );
     }
 
     const metadata = buildWorkExternalIssueImportResultMetadata({
@@ -2362,14 +2367,11 @@ async function appendWorkExternalIssueImportResultSidecar(input: {
       resultMessage: append.message,
     };
   } catch (error) {
-    warnWorkExternalIssueImportToolCallIgnored({
-      channelId: input.channelId,
-      messageId: input.userMessage.id,
-      decisionId: input.providerAgentDecision.decisionId,
-      reason: readExternalIssueImportFailureReason(error),
-      details: readExternalIssueImportFailureDetails(error),
-    });
-    return { state: input.state, resultMessage: null };
+    return fail(
+      readExternalIssueImportFailureReason(error),
+      readExternalIssueImportFailureDetails(error),
+      phase.external,
+    );
   }
 }
 
@@ -3235,22 +3237,47 @@ function readOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
 }
 
-function normalizeExternalIssueImportUrl(value: string | undefined): string | null {
+function resolveExternalIssueImportIdentityFromUrl(
+  value: string | undefined,
+  selectedProvider?: WorkExternalImportIssueProvider,
+): ExternalTrackerUrlInference | null {
   if (!value) {
     return null;
   }
-  return value.trim().replace(/[),.，。]+$/u, '');
+  const identity = inferExternalTrackerBindingFromUrl(value, selectedProvider);
+  if (
+    !identity
+    || !isWorkExternalImportIssueProvider(identity.provider)
+    || !identity.externalId
+    || (identity.externalType !== undefined
+      && identity.externalType !== 'issue'
+      && identity.externalType !== 'ticket')
+  ) {
+    return null;
+  }
+  return identity;
+}
+
+function isSameExternalIssueImportIdentity(
+  left: ExternalTrackerUrlInference,
+  right: ExternalTrackerUrlInference,
+): boolean {
+  return left.provider === right.provider
+    && (left.externalType ?? 'issue') === (right.externalType ?? 'issue')
+    && left.externalId === right.externalId;
+}
+
+function isWorkExternalImportIssueProvider(
+  value: unknown,
+): value is WorkExternalImportIssueProvider {
+  return value === 'github' || value === 'redmine' || value === 'bugzilla';
 }
 
 function readOptionalExternalIssueImportProvider(
   value: unknown,
 ): WorkExternalImportIssueProvider | undefined {
   const normalized = readOptionalString(value);
-  if (
-    normalized === 'github'
-    || normalized === 'redmine'
-    || normalized === 'bugzilla'
-  ) {
+  if (isWorkExternalImportIssueProvider(normalized)) {
     return normalized;
   }
   return undefined;
@@ -3427,6 +3454,55 @@ function warnWorkExternalIssueImportToolCallIgnored(input: {
   });
 }
 
+function appendWorkExternalIssueImportFailureSidecar(input: {
+  state: ChatState;
+  channelId: string;
+  userMessage: ChatMessage;
+  providerAgentDecision: ProviderAgentToolRequestDecision;
+  reason: string;
+  details?: unknown;
+  identity?: ExternalTrackerUrlInference | null;
+  now: Date;
+}): { state: ChatState; resultMessage: ChatMessage } {
+  warnWorkExternalIssueImportToolCallIgnored({
+    channelId: input.channelId,
+    messageId: input.userMessage.id,
+    decisionId: input.providerAgentDecision.decisionId,
+    reason: input.reason,
+    details: input.details,
+  });
+
+  const metadata = buildWorkExternalIssueImportFailureMetadata({
+    decisionId: input.providerAgentDecision.decisionId,
+    sourceMessageId: input.userMessage.id,
+    reason: input.reason,
+    identity: input.identity ?? null,
+  });
+  const append = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Cats Work',
+      body: describeWorkExternalIssueImportFailure(metadata),
+    },
+    input.now,
+    {
+      metadata: {
+        event: 'work_external_issue_import_failed',
+        sourceMessageId: input.userMessage.id,
+        [WORK_EXTERNAL_ISSUE_IMPORT_FAILURE_METADATA_KEY]: metadata,
+      },
+      incrementUnread: false,
+    },
+  );
+
+  return {
+    state: refreshDerivedMemoryLayers(append.state, input.channelId, input.now),
+    resultMessage: append.message,
+  };
+}
+
 function warnWorkTriageLookupToolCallIgnored(input: {
   channelId: string;
   messageId: string;
@@ -3547,6 +3623,30 @@ function buildWorkExternalIssueImportResultMetadata(input: {
   };
 }
 
+function buildWorkExternalIssueImportFailureMetadata(input: {
+  decisionId: string;
+  sourceMessageId: string;
+  reason: string;
+  identity: ExternalTrackerUrlInference | null;
+}): WorkExternalIssueImportFailureMetadata {
+  return {
+    schemaVersion: WORK_EXTERNAL_ISSUE_IMPORT_FAILURE_METADATA_VERSION,
+    phase: 'external_tracker_binding',
+    toolName: WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+    decisionId: input.decisionId,
+    sourceMessageId: input.sourceMessageId,
+    reason: input.reason,
+    provider: isWorkExternalImportIssueProvider(input.identity?.provider)
+      ? input.identity.provider
+      : null,
+    externalType:
+      input.identity?.externalType === 'issue' || input.identity?.externalType === 'ticket'
+        ? input.identity.externalType
+        : null,
+    externalId: input.identity?.externalId ?? null,
+  };
+}
+
 function buildWorkItemUpdateResultMetadata(input: {
   decisionId: string;
   sourceMessageId: string;
@@ -3628,6 +3728,48 @@ function describeWorkExternalIssueImportResult(
     return `Linked imported ${externalLabel} to Work Item ${metadata.workItemId}.`;
   }
   return `${externalLabel} was already imported as Work Item ${metadata.workItemId}.`;
+}
+
+function describeWorkExternalIssueImportFailure(
+  metadata: WorkExternalIssueImportFailureMetadata,
+): string {
+  const externalLabel = metadata.provider && metadata.externalType && metadata.externalId
+    ? `${metadata.provider} ${metadata.externalType} ${metadata.externalId}`
+    : 'external issue';
+  return `Unable to import ${externalLabel}: ${
+    describeWorkExternalIssueImportFailureReason(metadata.reason)
+  }.`;
+}
+
+function describeWorkExternalIssueImportFailureReason(reason: string): string {
+  switch (reason) {
+    case 'tool_request_target_mismatch':
+      return 'the model requested an invalid Work tool target';
+    case 'missing_core_store':
+      return 'the Work store is unavailable';
+    case 'missing_external_issue_import_action_cue':
+    case 'missing_external_tracker_url':
+    case 'unsupported_external_issue_import_url':
+      return 'the owner message did not contain a supported importable issue URL';
+    case 'schema_invalid':
+      return 'the requested tool input did not match the Work import schema';
+    case 'tool_input_external_url_mismatch':
+      return 'the requested issue did not match the owner message';
+    case 'tool_input_provider_mismatch':
+      return 'the requested provider did not match the owner message';
+    case 'pending_approval':
+      return 'the import is waiting for approval';
+    case 'external_issue_import_source_unsupported':
+      return 'the issue tracker URL is unsupported';
+    case 'github_issue_fetch_failed':
+    case 'redmine_issue_fetch_failed':
+    case 'bugzilla_bug_fetch_failed':
+      return 'the issue tracker fetch failed';
+    case 'github_pull_request_not_supported':
+      return 'GitHub pull request rows are not supported by this import path';
+    default:
+      return reason.replace(/_/gu, ' ');
+  }
 }
 
 function describeWorkTriageLookupResult(metadata: WorkTriageLookupResultMetadata): string {

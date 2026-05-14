@@ -68,7 +68,7 @@ rather than duplicating every validation branch.
 | `work.item.assign_project` | Cats Work | Product delegate, explicit Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Strong Cat / Boss Cat triage with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.item.prepare_execution` | Cats Work | Product delegate, Boss Cat observation descriptor, and Chat proposal sidecar implemented | `product_internal_delegate` / future `runtime_tool` | Boss Cat execution preparation with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.task.create_from_work_item` | Cats Work | Product delegate and owner-confirmed Chat sidecar task creation implemented; direct model/runtime exposure pending | `product_internal_delegate` / future `runtime_tool` | Owner-confirmed Boss Cat execution preparation with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
-| `work.external.import_issue` | Cats Work | Product route/UI implemented, supervised manifest/input hints landed, and Chat/runtime execution pending; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / future Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
+| `work.external.import_issue` | Cats Work | Product route/UI, supervised manifest/input hints, and Chat/Telegram provider-agent tool-request executor implemented; runtime adapter tool loop pending and automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.external.link_issue` | Cats Work | Product delegate, HTTP route, Work UI manual binding, URL inference, Chat provider-agent observation/tool-request executor, and GitHub adapter spike implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.external.unlink_issue` | Cats Work | Product delegate, HTTP route, Work detail UI, and Chat provider-agent observation/tool-request executor implemented; automatic sync deferred by ADR-106 | `product_internal_delegate` / `http_route` / Chat provider-agent tool request / future `runtime_tool` | Explicit owner request via strong Cat / Boss Cat / product UI with narrow-write grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
 | `work.project.lookup` | Cats Work | Product delegate, Chat provider-agent observation descriptor, and Chat tool-request executor implemented | `product_internal_delegate` / Chat provider-agent tool request / future `runtime_tool` | Strong Cat / Boss Cat triage with read-only grant | [Phase-Scoped Work Tools](#phase-scoped-work-tools) |
@@ -185,9 +185,12 @@ issue URL expose only `work.external.import_issue` in Work tool intent and
 provider-agent observations. Manual link/unlink tools stay reserved for turns
 that include a local `work-item-*` or `project-*` ref plus a binding action cue.
 Chat handles provider-agent import `tool_request` decisions by re-resolving the
-external URL from the owner message, fetching a read-only import draft through
-server-owned adapter options, and invoking the same local Work import delegate
-used by owner-triggered UI/API imports.
+external issue identity from the owner message, comparing it to the requested
+provider/type/id rather than raw URL string equality, fetching a read-only
+import draft through server-owned adapter options, and invoking the same local
+Work import delegate used by owner-triggered UI/API imports. Failed imports
+append an owner-visible Cats Work sidecar with bounded failure metadata instead
+of silently swallowing the tool request.
 
 Explicit Chat turns with create/add/new Project cues can expose
 `work.project.create` with a narrow-write policy. Chat handles that
@@ -307,7 +310,9 @@ timestamps, and project assignment remain server-resolved. `POST
 /api/work/external-issue-imports` exposes the owner-driven product route for
 this import flow, and `work.external.import_issue` now exists in the
 phase-scoped supervised manifest so Chat/runtime tool surfaces can advertise
-the same bounded capability before execution wiring lands.
+the same bounded capability. Chat and Telegram provider-agent import tool
+requests use the same server-resolved fetch/delegate path as the product route;
+runtime adapter tool-result loops remain pending.
 
 Caller-visible triage lookup fields are `query`, `limit`, and
 `includeArchived`. Caller-visible triage create fields are `title`, `summary`,

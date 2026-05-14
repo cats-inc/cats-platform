@@ -46,10 +46,11 @@ const IMPORT_ACTION_CUE_PATTERNS = [
   /匯入/u,
   /導入/u,
   /拉進/u,
+  /[匯導拉加收撈][進入]/u,
   /掛上來/u,
 ] as const;
 
-const HTTP_URL_PATTERN = /https?:\/\/[^\s<>"']+/iu;
+const HTTP_URL_PATTERN = /https?:\/\/[^\s<>"'\])]+/iu;
 
 export function resolveWorkExternalIssueImportPhase(
   input: ResolveWorkExternalIssueImportPhaseInput,
@@ -106,7 +107,7 @@ function isImportProvider(
 
 function extractHttpUrl(rawText: string): string | null {
   const match = HTTP_URL_PATTERN.exec(rawText);
-  return match?.[0]?.replace(/[),.，。]+$/u, '') ?? null;
+  return match?.[0]?.replace(/[\]),.，。]+$/u, '') ?? null;
 }
 
 function normalizeText(rawText: string | null | undefined): string {

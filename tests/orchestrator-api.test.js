@@ -1871,7 +1871,9 @@ test('POST /api/orchestrator/dispatch applies provider external issue binding de
 test('POST /api/orchestrator/dispatch applies provider external issue import decisions', async () => {
   const runtimeClient = createRuntimeStub();
   const chatStore = new MemoryChatStore();
-  const externalUrl = 'https://github.com/cats-inc/platform/issues/42';
+  const ownerExternalUrl = 'HTTPS://WWW.GITHUB.COM/cats-inc/platform/issues/42/?ref=chat';
+  const requestedExternalUrl = 'https://github.com/cats-inc/platform/issues/42?utm_source=chat';
+  const canonicalExternalUrl = 'https://github.com/cats-inc/platform/issues/42';
   let observedToolNames = [];
   let observedUrl = null;
 
@@ -1912,7 +1914,7 @@ test('POST /api/orchestrator/dispatch applies provider external issue import dec
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         channelId,
-        body: `Boss Cat import ${externalUrl} into Cats Work`,
+        body: `Boss Cat import ${ownerExternalUrl} into Cats Work`,
       }),
     });
 
@@ -1938,7 +1940,7 @@ test('POST /api/orchestrator/dispatch applies provider external issue import dec
     assert.equal(bindings[0]?.provider, 'github');
     assert.equal(bindings[0]?.externalType, 'issue');
     assert.equal(bindings[0]?.externalId, '42');
-    assert.equal(bindings[0]?.externalUrl, externalUrl);
+    assert.equal(bindings[0]?.externalUrl, canonicalExternalUrl);
 
     const persisted = await chatStore.read();
     const channel = buildChannelView(persisted, channelId);
@@ -1973,7 +1975,7 @@ test('POST /api/orchestrator/dispatch applies provider external issue import dec
                   title: 'Import GitHub issue into Cats Work',
                   body: 'Issue body from GitHub.',
                   state: 'open',
-                  html_url: externalUrl,
+                  html_url: canonicalExternalUrl,
                   labels: [{ name: 'integration' }],
                   assignees: [{ login: 'boss-cat' }],
                   updated_at: '2026-05-13T00:00:00.000Z',
@@ -1987,12 +1989,128 @@ test('POST /api/orchestrator/dispatch applies provider external issue import dec
     },
     providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
     providerAgentDecisionRequester: async ({ observation }) => {
-      assert.equal(JSON.stringify(observation).includes(externalUrl), false);
+      assert.equal(JSON.stringify(observation).includes(ownerExternalUrl), false);
       observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
       return {
         contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
         kind: 'tool_request',
         decisionId: 'decision-api-work-external-import-1',
+        confidence: 'high',
+        toolName: WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+        target: {
+          kind: 'worker_tool',
+          toolName: WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
+        },
+        input: {
+          externalUrl: requestedExternalUrl,
+          provider: 'github',
+        },
+        rationaleSummary: 'The owner explicitly asked to import one GitHub issue.',
+      };
+    },
+  });
+
+  assert.ok(observedUrl);
+});
+
+test('POST /api/orchestrator/dispatch reports provider external issue import failures', async () => {
+  const runtimeClient = createRuntimeStub();
+  const chatStore = new MemoryChatStore();
+  const externalUrl = 'https://github.com/cats-inc/platform/issues/99';
+  let observedToolNames = [];
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const created = await createChannel(baseUrl, {
+      roomMode: 'direct_message',
+      cats: [
+        {
+          name: 'Work',
+          provider: 'claude',
+          instance: 'native',
+          model: 'sonnet',
+          roles: ['planner'],
+          skillProfile: 'companion',
+          mcpProfile: WORK_MCP_PROFILE_ID,
+        },
+      ],
+    });
+    const channelId = created.channel.id;
+    const catId = created.channel.assignedCats[0]?.catId;
+    assert.ok(catId);
+    let chat = await chatStore.read();
+    chat = setChannelCatLease(
+      chat,
+      channelId,
+      catId,
+      {
+        status: 'ready',
+        sessionId: 'session-work-external-import-failure',
+        laneId: 'lane-work-external-import-failure',
+      },
+      new Date('2026-05-13T00:00:00.000Z'),
+    );
+    await chatStore.write(chat);
+
+    const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channelId,
+        body: `Boss Cat import ${externalUrl} into Cats Work`,
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.dispatch.status, 'dispatched');
+    assert.deepEqual(
+      observedToolNames.filter((toolName) => toolName.startsWith('work.external.')),
+      [WORK_EXTERNAL_IMPORT_ISSUE_TOOL],
+    );
+    assert.equal(runtimeClient.sentMessages.length, 0);
+
+    const updatedCore = await chatStore.readCore();
+    assert.equal(
+      updatedCore.workItems.some((candidate) =>
+        candidate.metadata.workExternalIssueImport),
+      false,
+    );
+
+    const persisted = await chatStore.read();
+    const channel = buildChannelView(persisted, channelId);
+    const failureMessage = channel.messages.find((message) =>
+      message.metadata.event === 'work_external_issue_import_failed');
+    const metadata = failureMessage?.metadata.workExternalIssueImportFailure;
+    assert.equal(failureMessage?.senderName, 'Cats Work');
+    assert.equal(
+      failureMessage?.body,
+      'Unable to import github issue 99: the issue tracker fetch failed.',
+    );
+    assert.equal(metadata?.reason, 'github_issue_fetch_failed');
+    assert.equal(metadata?.provider, 'github');
+    assert.equal(metadata?.externalType, 'issue');
+    assert.equal(metadata?.externalId, '99');
+  }, chatStore, {
+    work: {
+      externalIssueImport: {
+        github: {
+          fetchImpl: async () => ({
+            ok: false,
+            status: 500,
+            async json() {
+              return {};
+            },
+          }),
+        },
+      },
+    },
+    providerCapabilityBootstrapConfig: strongClaudeNativeBootstrapConfig,
+    providerAgentDecisionRequester: async ({ observation }) => {
+      observedToolNames = observation.availableTools.map((tool) => tool.manifest.name);
+      return {
+        contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+        kind: 'tool_request',
+        decisionId: 'decision-api-work-external-import-failure-1',
         confidence: 'high',
         toolName: WORK_EXTERNAL_IMPORT_ISSUE_TOOL,
         target: {
@@ -2007,8 +2125,6 @@ test('POST /api/orchestrator/dispatch applies provider external issue import dec
       };
     },
   });
-
-  assert.ok(observedUrl);
 });
 
 test('POST /api/orchestrator/dispatch applies provider external issue unlink decisions', async () => {
