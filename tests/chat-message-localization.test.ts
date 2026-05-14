@@ -5,7 +5,11 @@ import {
   CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY,
   resolveLocalizedChatMessageBody,
 } from '../src/shared/chatMessageLocalization.ts';
-import { createTranslator, messageKeys } from '../src/shared/i18n/index.ts';
+import {
+  createTranslator,
+  messageKeys,
+  parseMessageLocale,
+} from '../src/shared/i18n/index.ts';
 
 test('localized chat message bodies resolve through the active UI catalog', () => {
   const message = {
@@ -73,4 +77,24 @@ test('localized chat message bodies reject message key property names', () => {
     resolveLocalizedChatMessageBody(message, createTranslator('zh-TW')),
     'Persisted fallback',
   );
+});
+
+test('message locale parsing recognizes common Chinese owner hints centrally', () => {
+  for (const locale of [
+    'zh',
+    'zh-CN',
+    'zh-Hans-CN',
+    'zh-HK',
+    '中文',
+    '繁體中文',
+    'mandarin',
+    '國語',
+    '華語',
+    'zh-TW,zh;q=0.9,en;q=0.8',
+  ]) {
+    assert.equal(parseMessageLocale(locale), 'zh-TW');
+  }
+
+  assert.equal(parseMessageLocale('en-US,en;q=0.9'), 'en');
+  assert.equal(parseMessageLocale('klingon'), null);
 });

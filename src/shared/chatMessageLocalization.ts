@@ -24,6 +24,9 @@ export type ChatMessageTranslator = (
 
 const knownMessageCatalogIds = new Set<string>(Object.values(messageKeys));
 
+// Server-rendered surfaces persist `message.body` as the transport/channel-locale
+// fallback. UI surfaces with their own owner locale should resolve this metadata
+// at render/read time so the active UI locale can override that stored fallback.
 export function resolveLocalizedChatMessageBody(
   message: LocalizableChatMessage,
   translate: ChatMessageTranslator,
@@ -35,6 +38,13 @@ export function resolveLocalizedChatMessageBody(
     return message.body;
   }
 
+  return resolveChatMessageLocalizedBodyMetadata(localizedBody, translate);
+}
+
+export function resolveChatMessageLocalizedBodyMetadata(
+  localizedBody: ChatMessageLocalizedBodyMetadata,
+  translate: ChatMessageTranslator,
+): string {
   const values: MessageInterpolationValues = {
     ...(localizedBody.values ?? {}),
   };

@@ -59,11 +59,11 @@ import {
   messageKeys,
   parseMessageLocale,
   type MessageCatalogId,
-  type MessageInterpolationValues,
   type MessageLocale,
 } from '../../../../shared/i18n/index.js';
 import {
   CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY,
+  resolveChatMessageLocalizedBodyMetadata,
   type ChatMessageLocalizedBodyMetadata,
 } from '../../../../shared/chatMessageLocalization.js';
 import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
@@ -1045,30 +1045,14 @@ function buildProductIntentUserMessageMetadata(input: {
   };
 }
 
-function resolveProductIntentMessageLocale(
+function resolveOwnerVisibleMessageLocale(
   channel: ChatChannelState,
   transportLocale?: string | null,
 ): MessageLocale {
-  const explicitLocale = parseMessageLocale(transportLocale)
+  return parseMessageLocale(transportLocale)
     ?? parseMessageLocale(channel.language)
-    ?? parseMessageLocale(channel.responseLanguage);
-  if (explicitLocale) {
-    return explicitLocale;
-  }
-
-  const languageHint = [
-    transportLocale,
-    channel.language,
-    channel.responseLanguage,
-  ].filter((candidate): candidate is string =>
-    typeof candidate === 'string' && candidate.trim().length > 0)
-    .join(' ')
-    .toLowerCase();
-  return languageHint.includes('zh')
-    || languageHint.includes('chinese')
-    || languageHint.includes('traditional')
-    ? 'zh-TW'
-    : 'en';
+    ?? parseMessageLocale(channel.responseLanguage)
+    ?? 'en';
 }
 
 function resolveProductIntentTargetLabel(targetProduct: 'work' | 'code'): string {
@@ -3892,14 +3876,7 @@ function describeLocalizedChatMessageBody(
   metadata: ChatMessageLocalizedBodyMetadata,
   locale: MessageLocale,
 ): string {
-  const translate = createTranslator(locale);
-  const values: MessageInterpolationValues = {
-    ...(metadata.values ?? {}),
-  };
-  for (const [name, key] of Object.entries(metadata.valueKeys ?? {})) {
-    values[name] = translate(key);
-  }
-  return translate(metadata.key, values);
+  return resolveChatMessageLocalizedBodyMetadata(metadata, createTranslator(locale));
 }
 
 function describeWorkTriageLookupResult(metadata: WorkTriageLookupResultMetadata): string {
@@ -6269,7 +6246,7 @@ export async function beginChannelMessageDispatch(
     };
   }
   if (implicitProductIntentChoice?.action === 'decline') {
-    const locale = resolveProductIntentMessageLocale(
+    const locale = resolveOwnerVisibleMessageLocale(
       channelBeforeMessage,
       options.transportLocale,
     );
@@ -6296,7 +6273,7 @@ export async function beginChannelMessageDispatch(
     };
   }
   if (catProductIntentProposalChoice?.action === 'decline') {
-    const locale = resolveProductIntentMessageLocale(
+    const locale = resolveOwnerVisibleMessageLocale(
       channelBeforeMessage,
       options.transportLocale,
     );
@@ -6413,7 +6390,7 @@ export async function beginChannelMessageDispatch(
     };
   }
   if (implicitProductIntentChoice?.action === 'expired') {
-    const locale = resolveProductIntentMessageLocale(
+    const locale = resolveOwnerVisibleMessageLocale(
       channelBeforeMessage,
       options.transportLocale,
     );
@@ -6436,7 +6413,7 @@ export async function beginChannelMessageDispatch(
     };
   }
   if (catProductIntentProposalChoice?.action === 'expired') {
-    const locale = resolveProductIntentMessageLocale(
+    const locale = resolveOwnerVisibleMessageLocale(
       channelBeforeMessage,
       options.transportLocale,
     );
@@ -6461,7 +6438,7 @@ export async function beginChannelMessageDispatch(
     };
   }
   if (productIntentCommand) {
-    const locale = resolveProductIntentMessageLocale(
+    const locale = resolveOwnerVisibleMessageLocale(
       channelBeforeMessage,
       options.transportLocale,
     );
@@ -7048,20 +7025,20 @@ export async function beginChannelMessageDispatch(
       })
     : null;
   nextState = preparedTurn.state;
-  const ordinaryProductIntentLocale = resolveProductIntentMessageLocale(
+  const ordinaryOwnerVisibleLocale = resolveOwnerVisibleMessageLocale(
     channelBeforeMessage,
     options.transportLocale,
   );
   nextState = expireTtlImplicitProductIntentCandidates({
     state: nextState,
     channelId,
-    locale: ordinaryProductIntentLocale,
+    locale: ordinaryOwnerVisibleLocale,
     now,
   });
   nextState = expireCatProductIntentProposalSidecars({
     state: nextState,
     channelId,
-    locale: ordinaryProductIntentLocale,
+    locale: ordinaryOwnerVisibleLocale,
     now,
   });
   const catProposalSidecar = appendCatProductIntentProposalSidecar({
@@ -7073,7 +7050,7 @@ export async function beginChannelMessageDispatch(
     effectiveMode: naturalProductIntentEffectiveMode,
     capabilityProfileKind: naturalProductIntentCapabilityProfileKind,
     audienceCatId: naturalProductIntentAudience.audienceCatId,
-    locale: ordinaryProductIntentLocale,
+    locale: ordinaryOwnerVisibleLocale,
     now,
     transport: options.transport,
   });
@@ -7114,7 +7091,7 @@ export async function beginChannelMessageDispatch(
     providerAgentDecision,
     chatStore: options.chatStore,
     externalIssueImport: options.externalIssueImport,
-    locale: ordinaryProductIntentLocale,
+    locale: ordinaryOwnerVisibleLocale,
     now,
   });
   nextState = workExternalIssueImportSidecar.state;
@@ -7173,7 +7150,7 @@ export async function beginChannelMessageDispatch(
     body: payload.body,
     transport: options.transport,
     effectiveMode: naturalProductIntentEffectiveMode,
-    locale: ordinaryProductIntentLocale,
+    locale: ordinaryOwnerVisibleLocale,
     now,
     choiceResponse: payload.choiceResponse,
   });
@@ -7313,20 +7290,20 @@ export async function beginChannelMessageRetryDispatch(
       providerCapabilityBootstrapDiagnosticSink:
         options.providerCapabilityBootstrapDiagnosticSink,
     });
-  const retryProductIntentLocale = resolveProductIntentMessageLocale(
+  const retryOwnerVisibleLocale = resolveOwnerVisibleMessageLocale(
     retryChannelForNaturalIntent,
     options.transportLocale,
   );
   nextState = expireTtlImplicitProductIntentCandidates({
     state: nextState,
     channelId,
-    locale: retryProductIntentLocale,
+    locale: retryOwnerVisibleLocale,
     now,
   });
   nextState = expireCatProductIntentProposalSidecars({
     state: nextState,
     channelId,
-    locale: retryProductIntentLocale,
+    locale: retryOwnerVisibleLocale,
     now,
   });
   const catProposalSidecar = appendCatProductIntentProposalSidecar({
@@ -7338,7 +7315,7 @@ export async function beginChannelMessageRetryDispatch(
     effectiveMode: retryNaturalProductIntentEffectiveMode,
     capabilityProfileKind: retryNaturalProductIntentCapabilityProfileKind,
     audienceCatId: retryNaturalProductIntentAudience.audienceCatId,
-    locale: retryProductIntentLocale,
+    locale: retryOwnerVisibleLocale,
     now,
     transport: options.transport,
   });
@@ -7379,7 +7356,7 @@ export async function beginChannelMessageRetryDispatch(
     providerAgentDecision,
     chatStore: options.chatStore,
     externalIssueImport: options.externalIssueImport,
-    locale: retryProductIntentLocale,
+    locale: retryOwnerVisibleLocale,
     now,
   });
   nextState = workExternalIssueImportSidecar.state;
@@ -7438,7 +7415,7 @@ export async function beginChannelMessageRetryDispatch(
     body: sourceMessage.body,
     transport: options.transport,
     effectiveMode: retryNaturalProductIntentEffectiveMode,
-    locale: retryProductIntentLocale,
+    locale: retryOwnerVisibleLocale,
     now,
     choiceResponse: sourceMessage.choiceResponse,
   });
