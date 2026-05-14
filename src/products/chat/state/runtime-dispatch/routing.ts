@@ -58,7 +58,8 @@ import {
   createTranslator,
   messageKeys,
   parseMessageLocale,
-  type MessageKey,
+  type MessageCatalogId,
+  type MessageInterpolationValues,
   type MessageLocale,
 } from '../../../../shared/i18n/index.js';
 import {
@@ -2235,6 +2236,7 @@ async function appendWorkExternalIssueImportResultSidecar(input: {
   providerAgentDecision: ProviderAgentDecision | null;
   chatStore?: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>;
   externalIssueImport?: ExternalIssueImportFetchOptions;
+  locale: MessageLocale;
   now: Date;
 }): Promise<{ state: ChatState; resultMessage: ChatMessage | null }> {
   if (
@@ -2264,6 +2266,7 @@ async function appendWorkExternalIssueImportResultSidecar(input: {
     reason,
     details,
     identity,
+    locale: input.locale,
     now: input.now,
   });
 
@@ -2363,7 +2366,7 @@ async function appendWorkExternalIssueImportResultSidecar(input: {
       {
         senderKind: 'system',
         senderName: 'Cats Work',
-        body: describeWorkExternalIssueImportResult(metadata),
+        body: describeWorkExternalIssueImportResult(metadata, input.locale),
       },
       input.now,
       {
@@ -3305,19 +3308,26 @@ function findExistingWorkExternalIssueImportSidecar(input: {
   decisionId: string;
 }): ChatMessage | null {
   const channel = requireChannel(input.state, input.channelId);
-  return channel.messages.find((message) => {
+  for (let index = channel.messages.length - 1; index >= 0; index -= 1) {
+    const message = channel.messages[index];
+    if (!message) {
+      continue;
+    }
     const resultMetadata = readToolInputRecord(
       message.metadata[WORK_EXTERNAL_ISSUE_IMPORT_RESULT_METADATA_KEY],
     );
     if (resultMetadata.decisionId === input.decisionId) {
-      return true;
+      return message;
     }
 
     const failureMetadata = readToolInputRecord(
       message.metadata[WORK_EXTERNAL_ISSUE_IMPORT_FAILURE_METADATA_KEY],
     );
-    return failureMetadata.decisionId === input.decisionId;
-  }) ?? null;
+    if (failureMetadata.decisionId === input.decisionId) {
+      return message;
+    }
+  }
+  return null;
 }
 
 function readExternalIssueImportFailureReason(error: unknown): string {
@@ -3499,6 +3509,7 @@ function appendWorkExternalIssueImportFailureSidecar(input: {
   reason: string;
   details?: unknown;
   identity?: ExternalTrackerUrlInference | null;
+  locale: MessageLocale;
   now: Date;
 }): { state: ChatState; resultMessage: ChatMessage } {
   warnWorkExternalIssueImportToolCallIgnored({
@@ -3521,7 +3532,7 @@ function appendWorkExternalIssueImportFailureSidecar(input: {
     {
       senderKind: 'system',
       senderName: 'Cats Work',
-      body: describeWorkExternalIssueImportFailure(metadata),
+      body: describeWorkExternalIssueImportFailure(metadata, input.locale),
     },
     input.now,
     {
@@ -3758,19 +3769,18 @@ function describeWorkExternalBindingResult(
 
 function describeWorkExternalIssueImportResult(
   metadata: WorkExternalIssueImportResultMetadata,
+  locale: MessageLocale,
 ): string {
   const localizedBody = buildWorkExternalIssueImportResultLocalizedBody(metadata);
-  return createTranslator('en')(localizedBody.key, localizedBody.values);
+  return describeLocalizedChatMessageBody(localizedBody, locale);
 }
 
 function describeWorkExternalIssueImportFailure(
   metadata: WorkExternalIssueImportFailureMetadata,
+  locale: MessageLocale,
 ): string {
   const localizedBody = buildWorkExternalIssueImportFailureLocalizedBody(metadata);
-  return createTranslator('en')(localizedBody.key, {
-    ...(localizedBody.values ?? {}),
-    reason: createTranslator('en')(resolveWorkExternalIssueImportFailureReasonKey(metadata.reason)),
-  });
+  return describeLocalizedChatMessageBody(localizedBody, locale);
 }
 
 function buildWorkExternalIssueImportResultLocalizedBody(
@@ -3779,8 +3789,12 @@ function buildWorkExternalIssueImportResultLocalizedBody(
   return {
     key: resolveWorkExternalIssueImportResultBodyKey(metadata.event),
     values: {
-      externalLabel: describeWorkExternalIssueImportExternalLabel(metadata),
+      externalId: metadata.externalId,
       workItemId: metadata.workItemId,
+    },
+    valueKeys: {
+      providerLabel: resolveWorkExternalIssueImportProviderLabelKey(metadata.provider),
+      typeLabel: resolveWorkExternalIssueImportTypeLabelKey(metadata.externalType),
     },
   };
 }
@@ -3788,25 +3802,32 @@ function buildWorkExternalIssueImportResultLocalizedBody(
 function buildWorkExternalIssueImportFailureLocalizedBody(
   metadata: WorkExternalIssueImportFailureMetadata,
 ): ChatMessageLocalizedBodyMetadata {
-  const externalLabel = describeWorkExternalIssueImportExternalLabel(metadata);
-  const localizedBody: ChatMessageLocalizedBodyMetadata = {
-    key: messageKeys.workExternalImportFailureBody,
+  if (metadata.provider && metadata.externalType && metadata.externalId) {
+    return {
+      key: messageKeys.workExternalImportFailureBody,
+      values: {
+        externalId: metadata.externalId,
+      },
+      valueKeys: {
+        providerLabel: resolveWorkExternalIssueImportProviderLabelKey(metadata.provider),
+        typeLabel: resolveWorkExternalIssueImportTypeLabelKey(metadata.externalType),
+        reason: resolveWorkExternalIssueImportFailureReasonKey(metadata.reason),
+      },
+    };
+  }
+
+  return {
+    key: messageKeys.workExternalImportFailureBodyUnknown,
     valueKeys: {
-      ...(externalLabel ? {} : {
-        externalLabel: messageKeys.workExternalImportExternalIssueLabel,
-      }),
+      externalLabel: messageKeys.workExternalImportExternalIssueLabel,
       reason: resolveWorkExternalIssueImportFailureReasonKey(metadata.reason),
     },
   };
-  if (externalLabel) {
-    localizedBody.values = { externalLabel };
-  }
-  return localizedBody;
 }
 
 function resolveWorkExternalIssueImportResultBodyKey(
   event: WorkExternalIssueImportResultMetadata['event'],
-): MessageKey {
+): MessageCatalogId {
   if (event === 'imported') {
     return messageKeys.workExternalImportResultImported;
   }
@@ -3816,7 +3837,7 @@ function resolveWorkExternalIssueImportResultBodyKey(
   return messageKeys.workExternalImportResultAlreadyImported;
 }
 
-function resolveWorkExternalIssueImportFailureReasonKey(reason: string): MessageKey {
+function resolveWorkExternalIssueImportFailureReasonKey(reason: string): MessageCatalogId {
   switch (reason) {
     case 'tool_request_target_mismatch':
       return messageKeys.workExternalImportFailureReasonInvalidTarget;
@@ -3847,14 +3868,38 @@ function resolveWorkExternalIssueImportFailureReasonKey(reason: string): Message
   }
 }
 
-function describeWorkExternalIssueImportExternalLabel(input: {
-  provider: WorkExternalImportIssueProvider | null;
-  externalType: 'issue' | 'ticket' | null;
-  externalId: string | null;
-}): string | null {
-  return input.provider && input.externalType && input.externalId
-    ? `${input.provider} ${input.externalType} ${input.externalId}`
-    : null;
+function resolveWorkExternalIssueImportProviderLabelKey(
+  provider: WorkExternalImportIssueProvider,
+): MessageCatalogId {
+  if (provider === 'redmine') {
+    return messageKeys.workExternalImportProviderRedmine;
+  }
+  if (provider === 'bugzilla') {
+    return messageKeys.workExternalImportProviderBugzilla;
+  }
+  return messageKeys.workExternalImportProviderGithub;
+}
+
+function resolveWorkExternalIssueImportTypeLabelKey(
+  externalType: 'issue' | 'ticket',
+): MessageCatalogId {
+  return externalType === 'ticket'
+    ? messageKeys.workExternalImportTypeTicket
+    : messageKeys.workExternalImportTypeIssue;
+}
+
+function describeLocalizedChatMessageBody(
+  metadata: ChatMessageLocalizedBodyMetadata,
+  locale: MessageLocale,
+): string {
+  const translate = createTranslator(locale);
+  const values: MessageInterpolationValues = {
+    ...(metadata.values ?? {}),
+  };
+  for (const [name, key] of Object.entries(metadata.valueKeys ?? {})) {
+    values[name] = translate(key);
+  }
+  return translate(metadata.key, values);
 }
 
 function describeWorkTriageLookupResult(metadata: WorkTriageLookupResultMetadata): string {
@@ -7069,6 +7114,7 @@ export async function beginChannelMessageDispatch(
     providerAgentDecision,
     chatStore: options.chatStore,
     externalIssueImport: options.externalIssueImport,
+    locale: ordinaryProductIntentLocale,
     now,
   });
   nextState = workExternalIssueImportSidecar.state;
@@ -7333,6 +7379,7 @@ export async function beginChannelMessageRetryDispatch(
     providerAgentDecision,
     chatStore: options.chatStore,
     externalIssueImport: options.externalIssueImport,
+    locale: retryProductIntentLocale,
     now,
   });
   nextState = workExternalIssueImportSidecar.state;

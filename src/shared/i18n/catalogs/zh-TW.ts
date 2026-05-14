@@ -599,13 +599,20 @@ export const zhTWCatalog: MessageCatalog = {
   'work.external.import.submitBusyLabel': '匯入中…',
   'work.external.import.error': '無法匯入外部 issue。',
   'work.external.import.externalIssueLabel': '外部 issue',
+  'work.external.import.provider.github': 'GitHub',
+  'work.external.import.provider.redmine': 'Redmine',
+  'work.external.import.provider.bugzilla': 'Bugzilla',
+  'work.external.import.type.issue': '議題',
+  'work.external.import.type.ticket': '工單',
   'work.external.import.result.imported':
-    '已將 {externalLabel} 匯入為 Work Item {workItemId}。',
+    '已將 {providerLabel} {typeLabel} {externalId} 匯入為 Work Item {workItemId}。',
   'work.external.import.result.linked':
-    '已將 {externalLabel} 連結到 Work Item {workItemId}。',
+    '已將 {providerLabel} {typeLabel} {externalId} 連結到 Work Item {workItemId}。',
   'work.external.import.result.alreadyImported':
-    '{externalLabel} 已匯入為 Work Item {workItemId}。',
-  'work.external.import.failure.body': '無法匯入 {externalLabel}：{reason}。',
+    '{providerLabel} {typeLabel} {externalId} 已匯入為 Work Item {workItemId}。',
+  'work.external.import.failure.body':
+    '無法匯入 {providerLabel} {typeLabel} {externalId}：{reason}。',
+  'work.external.import.failure.bodyUnknown': '無法匯入 {externalLabel}：{reason}。',
   'work.external.import.failure.reason.invalidTarget':
     '模型要求了無效的 Work tool 目標',
   'work.external.import.failure.reason.storeUnavailable': 'Work 儲存目前無法使用',

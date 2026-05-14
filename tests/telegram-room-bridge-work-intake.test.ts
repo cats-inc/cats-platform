@@ -310,6 +310,7 @@ test('Telegram room bridge applies provider external issue import decisions', as
     body: `Boss Cat import ${externalUrl} into Cats Work`,
     senderName: 'Kenneth',
     bindingId: 'bot-binding-1',
+    transportLocale: 'zh-Hant',
     runtimeClient: createRuntimeStub(),
     timestamp: new Date('2026-05-13T00:06:00.000Z'),
   });
@@ -338,10 +339,18 @@ test('Telegram room bridge applies provider external issue import decisions', as
     message.metadata.event === 'work_external_issue_import_result');
   const metadata = resultMessage?.metadata.workExternalIssueImportResult;
   assert.equal(resultMessage?.senderName, 'Cats Work');
+  assert.equal(
+    resultMessage?.body,
+    `已將 GitHub 議題 42 匯入為 Work Item ${workItem.id}。`,
+  );
   assert.equal(metadata?.event, 'imported');
   assert.equal(metadata?.workItemId, workItem.id);
   assert.equal(metadata?.provider, 'github');
   assert.equal(metadata?.externalId, '42');
+  const readableRoom = bridge.readRoom(routed.state, roomId);
+  const readableResult = readableRoom.messages.find((message) =>
+    message.metadata.event === 'work_external_issue_import_result');
+  assert.equal(readableResult?.body, resultMessage?.body);
 });
 
 test('Telegram room bridge confirms Boss Work execution preparation into pending Tasks', async () => {

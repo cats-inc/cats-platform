@@ -1,15 +1,15 @@
 import {
   messageKeys,
+  type MessageCatalogId,
   type MessageInterpolationValues,
-  type MessageKey,
 } from './i18n/index.js';
 
 export const CHAT_MESSAGE_LOCALIZED_BODY_METADATA_KEY = 'localizedBody' as const;
 
 export interface ChatMessageLocalizedBodyMetadata {
-  key: MessageKey;
+  key: MessageCatalogId;
   values?: MessageInterpolationValues;
-  valueKeys?: Record<string, MessageKey>;
+  valueKeys?: Record<string, MessageCatalogId>;
 }
 
 export interface LocalizableChatMessage {
@@ -18,14 +18,11 @@ export interface LocalizableChatMessage {
 }
 
 export type ChatMessageTranslator = (
-  key: MessageKey,
+  key: MessageCatalogId,
   values?: MessageInterpolationValues,
 ) => string;
 
-const knownMessageKeys = new Set<string>([
-  ...Object.keys(messageKeys),
-  ...Object.values(messageKeys),
-]);
+const knownMessageCatalogIds = new Set<string>(Object.values(messageKeys));
 
 export function resolveLocalizedChatMessageBody(
   message: LocalizableChatMessage,
@@ -51,7 +48,7 @@ export function resolveLocalizedChatMessageBody(
 function readChatMessageLocalizedBodyMetadata(
   value: unknown,
 ): ChatMessageLocalizedBodyMetadata | null {
-  if (!isRecord(value) || !isMessageKey(value.key)) {
+  if (!isRecord(value) || !isMessageCatalogId(value.key)) {
     return null;
   }
 
@@ -79,14 +76,14 @@ function readInterpolationValues(value: unknown): MessageInterpolationValues | n
   return Object.keys(values).length > 0 ? values : null;
 }
 
-function readValueKeys(value: unknown): Record<string, MessageKey> | null {
+function readValueKeys(value: unknown): Record<string, MessageCatalogId> | null {
   if (!isRecord(value)) {
     return null;
   }
 
-  const keys: Record<string, MessageKey> = {};
+  const keys: Record<string, MessageCatalogId> = {};
   for (const [name, candidate] of Object.entries(value)) {
-    if (isMessageKey(candidate)) {
+    if (isMessageCatalogId(candidate)) {
       keys[name] = candidate;
     }
   }
@@ -100,8 +97,8 @@ function isInterpolationValue(value: unknown): value is string | number | boolea
     || typeof value === 'boolean';
 }
 
-function isMessageKey(value: unknown): value is MessageKey {
-  return typeof value === 'string' && knownMessageKeys.has(value);
+function isMessageCatalogId(value: unknown): value is MessageCatalogId {
+  return typeof value === 'string' && knownMessageCatalogIds.has(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

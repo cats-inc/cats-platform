@@ -853,10 +853,16 @@ export const messageKeys = {
   workExternalImportSubmitBusyLabel: 'work.external.import.submitBusyLabel',
   workExternalImportError: 'work.external.import.error',
   workExternalImportExternalIssueLabel: 'work.external.import.externalIssueLabel',
+  workExternalImportProviderGithub: 'work.external.import.provider.github',
+  workExternalImportProviderRedmine: 'work.external.import.provider.redmine',
+  workExternalImportProviderBugzilla: 'work.external.import.provider.bugzilla',
+  workExternalImportTypeIssue: 'work.external.import.type.issue',
+  workExternalImportTypeTicket: 'work.external.import.type.ticket',
   workExternalImportResultImported: 'work.external.import.result.imported',
   workExternalImportResultLinked: 'work.external.import.result.linked',
   workExternalImportResultAlreadyImported: 'work.external.import.result.alreadyImported',
   workExternalImportFailureBody: 'work.external.import.failure.body',
+  workExternalImportFailureBodyUnknown: 'work.external.import.failure.bodyUnknown',
   workExternalImportFailureReasonInvalidTarget:
     'work.external.import.failure.reason.invalidTarget',
   workExternalImportFailureReasonStoreUnavailable:

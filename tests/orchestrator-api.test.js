@@ -1955,7 +1955,11 @@ test('POST /api/orchestrator/dispatch applies provider external issue import dec
     assert.equal(resultMessage?.senderName, 'Cats Work');
     assert.equal(
       resultMessage?.body,
-      `Imported github issue 42 as Work Item ${workItem.id}.`,
+      `Imported GitHub issue 42 as Work Item ${workItem.id}.`,
+    );
+    assert.equal(
+      resolveLocalizedChatMessageBody(resultMessage, createTranslator('zh-TW')),
+      `已將 GitHub 議題 42 匯入為 Work Item ${workItem.id}。`,
     );
     assert.equal(metadata?.event, 'imported');
     assert.equal(metadata?.workItemId, workItem.id);
@@ -2055,6 +2059,10 @@ test('POST /api/orchestrator/dispatch reports provider external issue import fai
       },
       new Date('2026-05-13T00:00:00.000Z'),
     );
+    const seededChannel = chat.channels.find((candidate) => candidate.id === channelId);
+    assert.ok(seededChannel);
+    seededChannel.language = 'zh-TW';
+    seededChannel.responseLanguage = 'zh-TW';
     chat.selectedChannelId = null;
     await chatStore.write(chat);
 
@@ -2092,7 +2100,7 @@ test('POST /api/orchestrator/dispatch reports provider external issue import fai
     assert.equal(failureMessage?.senderName, 'Cats Work');
     assert.equal(
       failureMessage?.body,
-      'Unable to import github issue 99: the issue tracker fetch failed.',
+      '無法匯入 GitHub 議題 99：無法讀取 issue tracker。',
     );
     assert.equal(metadata?.reason, 'github_issue_fetch_failed');
     assert.equal(metadata?.provider, 'github');
@@ -2105,7 +2113,11 @@ test('POST /api/orchestrator/dispatch reports provider external issue import fai
     );
     assert.equal(
       resolveLocalizedChatMessageBody(failureMessage, createTranslator('zh-TW')),
-      '無法匯入 github issue 99：無法讀取 issue tracker。',
+      '無法匯入 GitHub 議題 99：無法讀取 issue tracker。',
+    );
+    assert.equal(
+      resolveLocalizedChatMessageBody(failureMessage, createTranslator('en')),
+      'Unable to import GitHub issue 99: the issue tracker fetch failed.',
     );
 
     const duplicateResponse = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
@@ -2201,6 +2213,11 @@ test('POST /api/orchestrator/dispatch hides unknown external issue import failur
       },
       new Date('2026-05-13T00:00:00.000Z'),
     );
+    const seededChannelUnknownFailure = chat.channels.find((candidate) =>
+      candidate.id === channelId);
+    assert.ok(seededChannelUnknownFailure);
+    seededChannelUnknownFailure.language = 'zh-TW';
+    seededChannelUnknownFailure.responseLanguage = 'zh-TW';
     await chatStore.write(chat);
 
     const response = await fetch(`${baseUrl}/api/orchestrator/dispatch`, {
@@ -2222,12 +2239,16 @@ test('POST /api/orchestrator/dispatch hides unknown external issue import failur
     assert.equal(metadata?.reason, 'internal_db_timeout');
     assert.equal(
       failureMessage?.body,
-      'Unable to import github issue 100: the import failed unexpectedly.',
+      '無法匯入 GitHub 議題 100：匯入發生未預期錯誤。',
     );
     assert.equal(failureMessage?.body.includes('internal db timeout'), false);
     assert.equal(
       resolveLocalizedChatMessageBody(failureMessage, createTranslator('zh-TW')),
-      '無法匯入 github issue 100：匯入發生未預期錯誤。',
+      '無法匯入 GitHub 議題 100：匯入發生未預期錯誤。',
+    );
+    assert.equal(
+      resolveLocalizedChatMessageBody(failureMessage, createTranslator('en')),
+      'Unable to import GitHub issue 100: the import failed unexpectedly.',
     );
   }, chatStore, {
     work: {

@@ -620,13 +620,20 @@ export const enCatalog: MessageCatalog = {
   'work.external.import.submitBusyLabel': 'Importing…',
   'work.external.import.error': 'Failed to import external issue.',
   'work.external.import.externalIssueLabel': 'external issue',
+  'work.external.import.provider.github': 'GitHub',
+  'work.external.import.provider.redmine': 'Redmine',
+  'work.external.import.provider.bugzilla': 'Bugzilla',
+  'work.external.import.type.issue': 'issue',
+  'work.external.import.type.ticket': 'ticket',
   'work.external.import.result.imported':
-    'Imported {externalLabel} as Work Item {workItemId}.',
+    'Imported {providerLabel} {typeLabel} {externalId} as Work Item {workItemId}.',
   'work.external.import.result.linked':
-    'Linked imported {externalLabel} to Work Item {workItemId}.',
+    'Linked imported {providerLabel} {typeLabel} {externalId} to Work Item {workItemId}.',
   'work.external.import.result.alreadyImported':
-    '{externalLabel} was already imported as Work Item {workItemId}.',
-  'work.external.import.failure.body': 'Unable to import {externalLabel}: {reason}.',
+    '{providerLabel} {typeLabel} {externalId} was already imported as Work Item {workItemId}.',
+  'work.external.import.failure.body':
+    'Unable to import {providerLabel} {typeLabel} {externalId}: {reason}.',
+  'work.external.import.failure.bodyUnknown': 'Unable to import {externalLabel}: {reason}.',
   'work.external.import.failure.reason.invalidTarget':
     'the model requested an invalid Work tool target',
   'work.external.import.failure.reason.storeUnavailable': 'the Work store is unavailable',
