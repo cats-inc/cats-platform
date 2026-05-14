@@ -82,19 +82,22 @@ test('localized chat message bodies reject message key property names', () => {
 test('message locale parsing recognizes common Chinese owner hints centrally', () => {
   for (const locale of [
     'zh',
-    'zh-CN',
-    'zh-Hans-CN',
     'zh-HK',
     '中文',
     '繁體中文',
     'mandarin',
     '國語',
     '華語',
-    'zh-TW,zh;q=0.9,en;q=0.8',
   ]) {
     assert.equal(parseMessageLocale(locale), 'zh-TW');
   }
 
   assert.equal(parseMessageLocale('en-US,en;q=0.9'), 'en');
+  assert.equal(parseMessageLocale('en-US;q=0.5,zh-TW;q=0.9'), 'zh-TW');
+  assert.equal(parseMessageLocale('zh-TW;q=0.1,en-US;q=0.9'), 'en');
+  assert.equal(parseMessageLocale('zh-CN;q=0.9,en-US;q=0.8'), 'en');
+  assert.equal(parseMessageLocale('zh-CN'), null);
+  assert.equal(parseMessageLocale('zh-Hans-CN'), null);
+  assert.equal(parseMessageLocale('简体中文'), null);
   assert.equal(parseMessageLocale('klingon'), null);
 });
