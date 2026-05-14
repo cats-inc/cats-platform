@@ -6,6 +6,7 @@ import {
   resolveLocalizedChatMessageBody,
 } from '../src/shared/chatMessageLocalization.ts';
 import {
+  assertMessageLocaleHintInvariants,
   createTranslator,
   messageKeys,
   parseMessageLocale,
@@ -80,6 +81,8 @@ test('localized chat message bodies reject message key property names', () => {
 });
 
 test('message locale parsing recognizes common Chinese owner hints centrally', () => {
+  assert.doesNotThrow(() => assertMessageLocaleHintInvariants());
+
   for (const locale of [
     'zh',
     'zh-HK',
@@ -95,6 +98,8 @@ test('message locale parsing recognizes common Chinese owner hints centrally', (
   assert.equal(parseMessageLocale('en-US,en;q=0.9'), 'en');
   assert.equal(parseMessageLocale('en-US;q=0.5,zh-TW;q=0.9'), 'zh-TW');
   assert.equal(parseMessageLocale('zh-TW;q=0.1,en-US;q=0.9'), 'en');
+  assert.equal(parseMessageLocale('en-US; q = 0.5, zh-TW;q=0.9'), 'zh-TW');
+  assert.equal(parseMessageLocale('en-US;q=abc,zh-TW;q=0.9'), 'en');
   assert.equal(parseMessageLocale('zh-CN;q=0.9,en-US;q=0.8'), 'en');
   assert.equal(parseMessageLocale('zh-CN'), null);
   assert.equal(parseMessageLocale('zh-Hans-CN'), null);

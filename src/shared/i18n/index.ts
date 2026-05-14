@@ -19,7 +19,7 @@ const catalogs: Record<MessageLocale, MessageCatalog> = {
   'zh-TW': zhTWCatalog,
 };
 
-const ZH_TW_LOCALE_HINTS = new Set<string>([
+const ZH_TW_LOCALE_HINT_VALUES = [
   'zh',
   'zh-tw',
   'zh-hant',
@@ -38,9 +38,9 @@ const ZH_TW_LOCALE_HINTS = new Set<string>([
   '国语',
   '華語',
   '华语',
-]);
+] as const;
 
-const ZH_SIMPLIFIED_LOCALE_HINTS = new Set<string>([
+const ZH_SIMPLIFIED_LOCALE_HINT_VALUES = [
   'zh-cn',
   'zh-hans',
   'zh-sg',
@@ -51,7 +51,20 @@ const ZH_SIMPLIFIED_LOCALE_HINTS = new Set<string>([
   '简体中文',
   '簡體',
   '简体',
-]);
+] as const;
+
+const ZH_TW_LOCALE_HINTS = new Set<string>(ZH_TW_LOCALE_HINT_VALUES);
+const ZH_SIMPLIFIED_LOCALE_HINTS = new Set<string>(ZH_SIMPLIFIED_LOCALE_HINT_VALUES);
+
+export function assertMessageLocaleHintInvariants(): void {
+  const duplicateHints = ZH_TW_LOCALE_HINT_VALUES.filter((hint) =>
+    ZH_SIMPLIFIED_LOCALE_HINTS.has(hint));
+  if (duplicateHints.length > 0) {
+    throw new Error(`Message locale hints overlap: ${duplicateHints.join(', ')}`);
+  }
+}
+
+assertMessageLocaleHintInvariants();
 
 export function parseMessageLocale(locale: string | undefined | null): MessageLocale | null {
   if (!locale) {
@@ -92,13 +105,19 @@ function normalizeLocaleToken(locale: string | undefined): string {
 
 function readAcceptLanguageQuality(parameters: string[]): number {
   const qualityParameter = parameters.find((parameter) =>
-    parameter.trim().toLowerCase().startsWith('q='));
+    /^q\s*=/iu.test(parameter.trim()));
   if (!qualityParameter) {
     return 1;
   }
 
-  const rawQuality = Number.parseFloat(qualityParameter.split('=')[1]?.trim() ?? '');
-  return Number.isFinite(rawQuality) ? Math.min(Math.max(rawQuality, 0), 1) : 0;
+  const qualityMatch = /^q\s*=\s*(?<quality>[^;]*)$/iu.exec(qualityParameter.trim());
+  if (!qualityMatch?.groups) {
+    return 1;
+  }
+
+  const rawQuality = Number.parseFloat(qualityMatch.groups.quality.trim());
+  // Malformed q-values are ignored as if the parameter was absent, keeping the locale usable.
+  return Number.isFinite(rawQuality) ? Math.min(Math.max(rawQuality, 0), 1) : 1;
 }
 
 function parseSingleMessageLocale(normalized: string): MessageLocale | null {
@@ -121,6 +140,7 @@ function parseSingleMessageLocale(normalized: string): MessageLocale | null {
     || normalized.startsWith('zh-sg-')
     || normalized.startsWith('zh-my-')
   ) {
+    // Recognized, but unsupported until a Simplified Chinese catalog exists.
     return null;
   }
 
