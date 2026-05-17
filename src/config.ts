@@ -146,10 +146,21 @@ function parseBoolean(raw: string | undefined, fallback: boolean): boolean {
 
 function parseDotEnvValue(raw: string): string {
   const trimmed = raw.trim();
-  if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"'))
-    || (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    return trimmed.slice(1, -1).replace(/\\([nrt"\\])/gu, (_match, escaped: string) => {
+      switch (escaped) {
+        case 'n':
+          return '\n';
+        case 'r':
+          return '\r';
+        case 't':
+          return '\t';
+        default:
+          return escaped;
+      }
+    });
+  }
+  if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
     return trimmed.slice(1, -1);
   }
   return trimmed;
@@ -191,8 +202,11 @@ function resolveRuntimeApiKey(env: NodeJS.ProcessEnv): string {
     return explicit;
   }
 
-  const runtimeEnvFile = env.CATS_RUNTIME_ENV_FILE?.trim()
-    || path.resolve(process.cwd(), '..', 'cats-runtime', '.env');
+  const runtimeEnvFile = env.CATS_RUNTIME_ENV_FILE?.trim();
+  if (!runtimeEnvFile) {
+    return '';
+  }
+
   return readDotEnvValue(runtimeEnvFile, 'CATS_RUNTIME_API_KEY')?.trim() || '';
 }
 

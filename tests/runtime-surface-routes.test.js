@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createServer as createHttpServer } from 'node:http';
 import test from 'node:test';
+import { JSDOM } from 'jsdom';
 
 import { createServer as createPlatformServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
@@ -250,6 +251,38 @@ function delay(ms) {
   });
 }
 
+function readFetchCall(input, init) {
+  const headers = new Headers();
+  if (input instanceof Request) {
+    input.headers.forEach((value, key) => {
+      headers.set(key, value);
+    });
+  }
+  new Headers(init?.headers).forEach((value, key) => {
+    headers.set(key, value);
+  });
+
+  return {
+    url: input instanceof Request ? input.url : String(input),
+    method: init?.method ?? (input instanceof Request ? input.method : 'GET'),
+    headers,
+  };
+}
+
+function createRuntimeSurfaceDom(html, url, nativeFetch) {
+  return new JSDOM(html, {
+    url,
+    runScripts: 'dangerously',
+    beforeParse(window) {
+      window.fetch = nativeFetch;
+      window.Headers = Headers;
+      window.Request = Request;
+      window.Response = Response;
+      window.URL = URL;
+    },
+  });
+}
+
 test('GET /runtime/setup serves a platform-hosted runtime surface', async () => {
   await withRuntimeStub(async (runtimeBaseUrl) => {
     await withPlatformServer(runtimeBaseUrl, '', async (platformBaseUrl) => {
@@ -273,6 +306,124 @@ test('GET /runtime/setup serves a platform-hosted runtime surface', async () => 
       );
       assert.match(html, /id="home" href="\/"/u);
       assert.doesNotMatch(html, /id="home" href="\/runtime"/u);
+    });
+  });
+});
+
+test('runtime surface injected fetch keeps init headers when adding CSRF to Request input', async () => {
+  await withRuntimeStub(async (runtimeBaseUrl) => {
+    await withPlatformServer(runtimeBaseUrl, '', async (platformBaseUrl) => {
+      const response = await fetch(`${platformBaseUrl}/runtime/setup`);
+      assert.equal(response.status, 200);
+
+      const calls = [];
+      const dom = createRuntimeSurfaceDom(
+        await response.text(),
+        `${platformBaseUrl}/runtime/setup`,
+        async (input, init) => {
+          const call = readFetchCall(input, init);
+          calls.push(call);
+          const url = new URL(call.url, platformBaseUrl);
+          if (url.pathname === '/api/auth/status') {
+            return new Response(JSON.stringify({ csrfToken: 'csrf-token-1' }), {
+              status: 200,
+              headers: {
+                'content-type': 'application/json',
+              },
+            });
+          }
+
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: {
+              'content-type': 'application/json',
+            },
+          });
+        },
+      );
+
+      try {
+        const request = new dom.window.Request(`${platformBaseUrl}/sessions/session-1`, {
+          method: 'DELETE',
+          headers: {
+            'x-request-header': 'from-request',
+          },
+        });
+        const deleteResponse = await dom.window.fetch(request, {
+          headers: {
+            'content-type': 'application/json',
+          },
+        });
+
+        assert.equal(deleteResponse.status, 200);
+        const runtimeCall = calls.find((call) => (
+          new URL(call.url, platformBaseUrl).pathname === '/runtime/api/sessions/session-1'
+        ));
+        assert.ok(runtimeCall);
+        assert.equal(runtimeCall.headers.get('x-cats-csrf-token'), 'csrf-token-1');
+        assert.equal(runtimeCall.headers.get('x-request-header'), 'from-request');
+        assert.equal(runtimeCall.headers.get('content-type'), 'application/json');
+      } finally {
+        dom.window.close();
+      }
+    });
+  });
+});
+
+test('runtime surface injected fetch refreshes stale CSRF token after a 403', async () => {
+  await withRuntimeStub(async (runtimeBaseUrl) => {
+    await withPlatformServer(runtimeBaseUrl, '', async (platformBaseUrl) => {
+      const response = await fetch(`${platformBaseUrl}/runtime/setup`);
+      assert.equal(response.status, 200);
+
+      let authStatusCalls = 0;
+      const runtimeTokens = [];
+      const dom = createRuntimeSurfaceDom(
+        await response.text(),
+        `${platformBaseUrl}/runtime/setup`,
+        async (input, init) => {
+          const call = readFetchCall(input, init);
+          const url = new URL(call.url, platformBaseUrl);
+          if (url.pathname === '/api/auth/status') {
+            authStatusCalls += 1;
+            return new Response(JSON.stringify({ csrfToken: `csrf-token-${authStatusCalls}` }), {
+              status: 200,
+              headers: {
+                'content-type': 'application/json',
+              },
+            });
+          }
+
+          if (url.pathname === '/runtime/api/sessions/session-1') {
+            runtimeTokens.push(call.headers.get('x-cats-csrf-token'));
+            return new Response(JSON.stringify({ ok: true }), {
+              status: runtimeTokens.length === 1 ? 403 : 200,
+              headers: {
+                'content-type': 'application/json',
+              },
+            });
+          }
+
+          return new Response(JSON.stringify({ ok: false }), {
+            status: 404,
+            headers: {
+              'content-type': 'application/json',
+            },
+          });
+        },
+      );
+
+      try {
+        const deleteResponse = await dom.window.fetch('/sessions/session-1', {
+          method: 'DELETE',
+        });
+
+        assert.equal(deleteResponse.status, 200);
+        assert.equal(authStatusCalls, 2);
+        assert.deepEqual(runtimeTokens, ['csrf-token-1', 'csrf-token-2']);
+      } finally {
+        dom.window.close();
+      }
     });
   });
 });

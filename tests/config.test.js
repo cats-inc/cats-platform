@@ -80,14 +80,41 @@ test('loadConfig reads mobile pairing gate and bundle root', () => {
 test('loadConfig falls back to the runtime env file for the runtime API key', () => {
   const tempDir = mkdtempSync(path.join(tmpdir(), 'cats-platform-runtime-env-'));
   const envFile = path.join(tempDir, '.env');
-  writeFileSync(envFile, 'CATS_RUNTIME_API_KEY=runtime-token\n', 'utf-8');
+  writeFileSync(envFile, 'CATS_RUNTIME_API_KEY="runtime\\\"token\\\\suffix"\n', 'utf-8');
 
   try {
     const config = loadConfig({
       CATS_RUNTIME_ENV_FILE: envFile,
     });
 
-    assert.equal(config.runtimeApiKey, 'runtime-token');
+    assert.equal(config.runtimeApiKey, 'runtime"token\\suffix');
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('loadConfig does not infer a sibling runtime env file without an explicit path', () => {
+  const config = loadConfig({});
+
+  assert.equal(config.runtimeApiKey, '');
+});
+
+test('loadConfig ignores missing and keyless runtime env files', () => {
+  const tempDir = mkdtempSync(path.join(tmpdir(), 'cats-platform-runtime-env-empty-'));
+  const envFile = path.join(tempDir, '.env');
+  writeFileSync(envFile, [
+    'MALFORMED_RUNTIME_ENV_LINE',
+    'OTHER_KEY=other-token',
+    '',
+  ].join('\n'), 'utf-8');
+
+  try {
+    assert.equal(loadConfig({
+      CATS_RUNTIME_ENV_FILE: path.join(tempDir, 'missing.env'),
+    }).runtimeApiKey, '');
+    assert.equal(loadConfig({
+      CATS_RUNTIME_ENV_FILE: envFile,
+    }).runtimeApiKey, '');
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
