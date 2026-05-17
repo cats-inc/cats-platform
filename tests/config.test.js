@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import path from 'node:path';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 
 import { loadConfig } from '../build/server/config.js';
 import {
@@ -73,6 +75,22 @@ test('loadConfig reads mobile pairing gate and bundle root', () => {
 
   assert.equal(config.mobilePairingEnabled, true);
   assert.equal(config.mobileBundleRoot, 'C:/Users/test/cats-mobile-build');
+});
+
+test('loadConfig falls back to the runtime env file for the runtime API key', () => {
+  const tempDir = mkdtempSync(path.join(tmpdir(), 'cats-platform-runtime-env-'));
+  const envFile = path.join(tempDir, '.env');
+  writeFileSync(envFile, 'CATS_RUNTIME_API_KEY=runtime-token\n', 'utf-8');
+
+  try {
+    const config = loadConfig({
+      CATS_RUNTIME_ENV_FILE: envFile,
+    });
+
+    assert.equal(config.runtimeApiKey, 'runtime-token');
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 });
 
 test('loadConfig falls back to CATS_INC_* compatibility aliases for host and port', () => {

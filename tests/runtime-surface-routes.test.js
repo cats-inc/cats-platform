@@ -192,6 +192,26 @@ async function withPlatformServer(runtimeBaseUrl, runtimeApiKey, callback, confi
         runtimeBaseUrl,
         runtimeApiKey,
         chatStatePath: 'unused-for-tests',
+        auth: {
+          mode: 'unsafe_disabled',
+          enabled: false,
+          sessionSecret: null,
+          sessionTtlMs: 1,
+          mobileSessionTtlMs: 1,
+          loginFailureLimit: 1,
+          loginLockoutMs: 1,
+          accountDailyFailureCap: 1,
+          accountCooldownMs: 1,
+          subnetDailyFailureCap: 1,
+          allowedBrowserOrigins: [],
+          authStatePath: 'unused-for-tests-auth-state',
+          recoveryTokenPath: 'unused-for-tests-auth-recovery',
+          google: {
+            clientId: null,
+            hostedDomains: [],
+            mobileAudiences: [],
+          },
+        },
         ...configOverrides,
       },
       runtimeClient: createRuntimeClientStub(runtimeBaseUrl),
@@ -239,6 +259,8 @@ test('GET /runtime/setup serves a platform-hosted runtime surface', async () => 
 
       const html = await response.text();
       assert.match(html, /data-cats-runtime-platform-proxy/u);
+      assert.match(html, /x-cats-csrf-token/u);
+      assert.match(html, /\/api\/auth\/status/u);
       assert.match(html, /id="surface-dashboard" href="\/runtime\/dashboard"/u);
       assert.match(html, /"href":"\/runtime\/setup"/u);
       assert.match(
@@ -395,9 +417,30 @@ test('POST /runtime/api/setup-scan uses its route-specific timeout over the lega
   });
 });
 
-test('GET /runtime/api/setup-state preserves caller auth when present', async () => {
+test('GET /runtime/api/setup-state uses runtime proxy auth over caller auth when configured', async () => {
   await withRuntimeStub(async (runtimeBaseUrl) => {
     await withPlatformServer(runtimeBaseUrl, 'platform-secret', async (platformBaseUrl) => {
+      const response = await fetch(`${platformBaseUrl}/runtime/api/setup-state`, {
+        headers: {
+          authorization: 'Bearer caller-secret',
+        },
+      });
+      assert.equal(response.status, 200);
+
+      const payload = await response.json();
+      assert.deepEqual(payload, {
+        upstream: {
+          path: '/setup-state',
+          authorization: 'Bearer platform-secret',
+        },
+      });
+    });
+  });
+});
+
+test('GET /runtime/api/setup-state preserves caller auth when runtime proxy auth is absent', async () => {
+  await withRuntimeStub(async (runtimeBaseUrl) => {
+    await withPlatformServer(runtimeBaseUrl, '', async (platformBaseUrl) => {
       const response = await fetch(`${platformBaseUrl}/runtime/api/setup-state`, {
         headers: {
           authorization: 'Bearer caller-secret',

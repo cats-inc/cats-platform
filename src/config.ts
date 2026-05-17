@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS,
@@ -143,6 +144,58 @@ function parseBoolean(raw: string | undefined, fallback: boolean): boolean {
   return fallback;
 }
 
+function parseDotEnvValue(raw: string): string {
+  const trimmed = raw.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"'))
+    || (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function readDotEnvValue(filePath: string, key: string): string | undefined {
+  let raw: string;
+  try {
+    raw = readFileSync(filePath, 'utf-8');
+  } catch {
+    return undefined;
+  }
+
+  for (const line of raw.split(/\r?\n/u)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    const separatorIndex = trimmed.indexOf('=');
+    if (separatorIndex < 0) {
+      continue;
+    }
+
+    const name = trimmed.slice(0, separatorIndex).trim();
+    if (name !== key) {
+      continue;
+    }
+
+    return parseDotEnvValue(trimmed.slice(separatorIndex + 1));
+  }
+
+  return undefined;
+}
+
+function resolveRuntimeApiKey(env: NodeJS.ProcessEnv): string {
+  const explicit = env.CATS_RUNTIME_API_KEY?.trim();
+  if (explicit) {
+    return explicit;
+  }
+
+  const runtimeEnvFile = env.CATS_RUNTIME_ENV_FILE?.trim()
+    || path.resolve(process.cwd(), '..', 'cats-runtime', '.env');
+  return readDotEnvValue(runtimeEnvFile, 'CATS_RUNTIME_API_KEY')?.trim() || '';
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const catsHomeDir = env.HOME || env.USERPROFILE || undefined;
   const platformDir = env.CATS_PLATFORM_DIR?.trim()
@@ -177,7 +230,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     host,
     port,
     runtimeBaseUrl: (env.CATS_RUNTIME_BASE_URL || DEFAULT_RUNTIME_BASE_URL).replace(/\/+$/, ''),
-    runtimeApiKey: env.CATS_RUNTIME_API_KEY?.trim() || '',
+    runtimeApiKey: resolveRuntimeApiKey(env),
     runtimeSessionCreateTimeoutMs,
     runtimeSessionCreateSlowWarningMs: parsePositiveInt(
       env.CATS_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS,
