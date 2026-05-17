@@ -294,6 +294,8 @@ test('GET /runtime/setup serves a platform-hosted runtime surface', async () => 
       assert.match(html, /data-cats-runtime-platform-proxy/u);
       assert.match(html, /x-cats-csrf-token/u);
       assert.match(html, /\/api\/auth\/status/u);
+      assert.match(html, /__CATS_RUNTIME_PROXY_MODE__/u);
+      assert.match(html, /E_CSRF_MISMATCH/u);
       assert.match(html, /id="surface-dashboard" href="\/runtime\/dashboard"/u);
       assert.match(html, /"href":"\/runtime\/setup"/u);
       assert.match(
@@ -396,11 +398,18 @@ test('runtime surface injected fetch refreshes stale CSRF token after a 403', as
 
           if (url.pathname === '/runtime/api/sessions/session-1') {
             runtimeTokens.push(call.headers.get('x-cats-csrf-token'));
+            if (runtimeTokens.length === 1) {
+              return new Response(
+                JSON.stringify({ error: { code: 'E_CSRF_MISMATCH' } }),
+                {
+                  status: 403,
+                  headers: { 'content-type': 'application/json' },
+                },
+              );
+            }
             return new Response(JSON.stringify({ ok: true }), {
-              status: runtimeTokens.length === 1 ? 403 : 200,
-              headers: {
-                'content-type': 'application/json',
-              },
+              status: 200,
+              headers: { 'content-type': 'application/json' },
             });
           }
 
@@ -421,6 +430,58 @@ test('runtime surface injected fetch refreshes stale CSRF token after a 403', as
         assert.equal(deleteResponse.status, 200);
         assert.equal(authStatusCalls, 2);
         assert.deepEqual(runtimeTokens, ['csrf-token-1', 'csrf-token-2']);
+      } finally {
+        dom.window.close();
+      }
+    });
+  });
+});
+
+test('runtime surface injected fetch does not retry non-CSRF 403 responses', async () => {
+  await withRuntimeStub(async (runtimeBaseUrl) => {
+    await withPlatformServer(runtimeBaseUrl, '', async (platformBaseUrl) => {
+      const response = await fetch(`${platformBaseUrl}/runtime/setup`);
+      assert.equal(response.status, 200);
+
+      let authStatusCalls = 0;
+      const runtimeAttempts = [];
+      const dom = createRuntimeSurfaceDom(
+        await response.text(),
+        `${platformBaseUrl}/runtime/setup`,
+        async (input, init) => {
+          const call = readFetchCall(input, init);
+          const url = new URL(call.url, platformBaseUrl);
+          if (url.pathname === '/api/auth/status') {
+            authStatusCalls += 1;
+            return new Response(JSON.stringify({ csrfToken: `csrf-token-${authStatusCalls}` }), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            });
+          }
+
+          if (url.pathname === '/runtime/api/sessions/session-1') {
+            runtimeAttempts.push(call.headers.get('x-cats-csrf-token'));
+            return new Response(JSON.stringify({ error: { code: 'E_FORBIDDEN' } }), {
+              status: 403,
+              headers: { 'content-type': 'application/json' },
+            });
+          }
+
+          return new Response(JSON.stringify({ ok: false }), {
+            status: 404,
+            headers: { 'content-type': 'application/json' },
+          });
+        },
+      );
+
+      try {
+        const deleteResponse = await dom.window.fetch('/sessions/session-1', {
+          method: 'DELETE',
+        });
+
+        assert.equal(deleteResponse.status, 403);
+        assert.equal(authStatusCalls, 1);
+        assert.deepEqual(runtimeAttempts, ['csrf-token-1']);
       } finally {
         dom.window.close();
       }

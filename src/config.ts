@@ -144,7 +144,12 @@ function parseBoolean(raw: string | undefined, fallback: boolean): boolean {
   return fallback;
 }
 
-function parseDotEnvValue(raw: string): string {
+// Minimal dotenv-style value parser, used only to recover CATS_RUNTIME_API_KEY
+// from a sibling cats-runtime .env file. Double-quoted values support only
+// `\n \r \t \" \\` escapes — not the full dotenv set (no `\b \f \v \0 \xhh
+// \uhhhh`). Single-quoted values are literal. Do not use as a general dotenv
+// parser.
+function parseRuntimeApiKeyDotEnvValue(raw: string): string {
   const trimmed = raw.trim();
   if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
     return trimmed.slice(1, -1).replace(/\\([nrt"\\])/gu, (_match, escaped: string) => {
@@ -166,7 +171,7 @@ function parseDotEnvValue(raw: string): string {
   return trimmed;
 }
 
-function readDotEnvValue(filePath: string, key: string): string | undefined {
+function readRuntimeApiKeyFromDotEnv(filePath: string, key: string): string | undefined {
   let raw: string;
   try {
     raw = readFileSync(filePath, 'utf-8');
@@ -190,7 +195,7 @@ function readDotEnvValue(filePath: string, key: string): string | undefined {
       continue;
     }
 
-    return parseDotEnvValue(trimmed.slice(separatorIndex + 1));
+    return parseRuntimeApiKeyDotEnvValue(trimmed.slice(separatorIndex + 1));
   }
 
   return undefined;
@@ -207,7 +212,7 @@ function resolveRuntimeApiKey(env: NodeJS.ProcessEnv): string {
     return '';
   }
 
-  return readDotEnvValue(runtimeEnvFile, 'CATS_RUNTIME_API_KEY')?.trim() || '';
+  return readRuntimeApiKeyFromDotEnv(runtimeEnvFile, 'CATS_RUNTIME_API_KEY')?.trim() || '';
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
