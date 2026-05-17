@@ -54,6 +54,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: webHost,
       port: devPort,
+      strictPort: true,
       proxy: Object.fromEntries(
         CATS_VITE_PROXY_PATHS.map((proxyPath) => [proxyPath, proxyOptions]),
       ),
