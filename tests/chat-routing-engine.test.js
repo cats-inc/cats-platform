@@ -204,7 +204,7 @@ async function createChannelState() {
     state,
     {
       name: 'Agent-2',
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['implementer'],
     },
     now,
@@ -237,7 +237,7 @@ async function createChannelState() {
     channelId,
     {
       catId: agent2Id,
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['implementer'],
     },
     now,
@@ -1392,7 +1392,7 @@ test('provider default chat restarts orchestrator sessions when the pending mode
 
   const channelId = state.selectedChannelId;
   const runtimeClient = createRuntimeStub(async ({ sessionId }) =>
-    usage(`response from ${sessionId}: ${sessionId === 'session-1' ? 'claude' : 'gemini'}`));
+    usage(`response from ${sessionId}: ${sessionId === 'session-1' ? 'claude' : 'antigravity'}`));
 
   const stableTurns = [
     'First turn',
@@ -1421,8 +1421,8 @@ test('provider default chat restarts orchestrator sessions when the pending mode
     channelId,
     {
       body: 'Switch turn',
-      pendingProvider: 'gemini',
-      pendingModel: 'gemini-default',
+      pendingProvider: 'antigravity',
+      pendingModel: 'Gemini 3.1 Pro (high)',
     },
     runtimeClient,
     new Date('2026-03-23T00:09:00.000Z'),
@@ -1442,7 +1442,7 @@ test('provider default chat restarts orchestrator sessions when the pending mode
     runtimeClient.createdSessions[0]?.context?.metadata?.continuityDeliveryMode,
     'none',
   );
-  assert.equal(runtimeClient.createdSessions[1].provider, 'gemini');
+  assert.equal(runtimeClient.createdSessions[1].provider, 'antigravity');
   assert.equal(runtimeClient.createdSessions[1]?.instructions, undefined);
   assert.equal(
     runtimeClient.createdSessions[1]?.context?.metadata?.continuityMode,
@@ -1453,14 +1453,14 @@ test('provider default chat restarts orchestrator sessions when the pending mode
     'turn_instructions',
   );
   assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
-  assert.equal(channel.pendingProvider, 'gemini');
-  assert.equal(channel.pendingModel, 'gemini-default');
+  assert.equal(channel.pendingProvider, 'antigravity');
+  assert.equal(channel.pendingModel, 'Gemini 3.1 Pro (high)');
   assert.equal(defaultChatReplies[0]?.senderKind, 'agent');
   assert.equal(defaultChatReplies[0]?.executionProvider, 'claude');
   assert.equal(defaultChatReplies[0]?.executionModel, 'claude-default');
   assert.equal(defaultChatReplies.at(-1)?.senderKind, 'agent');
-  assert.equal(defaultChatReplies.at(-1)?.executionProvider, 'gemini');
-  assert.equal(defaultChatReplies.at(-1)?.executionModel, 'gemini-default');
+  assert.equal(defaultChatReplies.at(-1)?.executionProvider, 'antigravity');
+  assert.equal(defaultChatReplies.at(-1)?.executionModel, 'Gemini 3.1 Pro (high)');
   assert.equal(runtimeClient.sentMessages[0]?.content, 'First turn');
   assert.equal(runtimeClient.sentMessages[0]?.input?.instructions, undefined);
   assert.equal(
@@ -1546,8 +1546,8 @@ test('provider default chat full-transplants earlier user-only context on replac
     channelId,
     {
       body: 'Switch turn',
-      pendingProvider: 'gemini',
-      pendingModel: 'gemini-default',
+      pendingProvider: 'antigravity',
+      pendingModel: 'Gemini 3.1 Pro (high)',
     },
     runtimeClient,
     new Date('2026-03-23T00:11:00.000Z'),
@@ -1637,8 +1637,8 @@ test('default-chat replacement-session transplants preserve prior assistant tool
     channelId,
     {
       body: 'Now switch providers and continue.',
-      pendingProvider: 'gemini',
-      pendingModel: 'gemini-default',
+      pendingProvider: 'antigravity',
+      pendingModel: 'Gemini 3.1 Pro (high)',
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),
@@ -1715,8 +1715,8 @@ test('default-chat replacement-session transplants fold segmented assistant turn
     channelId,
     {
       body: 'Switch providers and continue.',
-      pendingProvider: 'gemini',
-      pendingModel: 'gemini-default',
+      pendingProvider: 'antigravity',
+      pendingModel: 'Gemini 3.1 Pro (high)',
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),
@@ -1771,8 +1771,8 @@ test('explicit default-chat start-fresh resets continuity before the next replac
     channelId,
     {
       body: 'Fresh branch turn',
-      pendingProvider: 'gemini',
-      pendingModel: 'gemini-default',
+      pendingProvider: 'antigravity',
+      pendingModel: 'Gemini 3.1 Pro (high)',
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),
@@ -1854,8 +1854,8 @@ test('default-chat retarget after start-fresh only transplants the new continuit
     channelId,
     {
       body: 'Retarget after reset',
-      pendingProvider: 'gemini',
-      pendingModel: 'gemini-default',
+      pendingProvider: 'antigravity',
+      pendingModel: 'Gemini 3.1 Pro (high)',
     },
     runtimeClient,
     new Date('2026-03-23T00:02:00.000Z'),
@@ -2812,8 +2812,8 @@ test('provider default chat honors pending runtime memory flush hooks before res
     channelId,
     {
       body: 'Second turn',
-      pendingProvider: 'gemini',
-      pendingModel: 'gemini-default',
+      pendingProvider: 'antigravity',
+      pendingModel: 'Gemini 3.1 Pro (high)',
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),
@@ -2987,9 +2987,9 @@ test('parallel member channels inherit default continuity transplant rules on re
     activeChannelId,
     {
       body: 'Switch turn',
-      pendingProvider: 'gemini',
+      pendingProvider: 'antigravity',
       pendingInstance: 'native',
-      pendingModel: 'gemini-default',
+      pendingModel: 'Gemini 3.1 Pro (high)',
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),
@@ -2999,7 +2999,7 @@ test('parallel member channels inherit default continuity transplant rules on re
 
   assert.equal(runtimeClient.createdSessions.length, 2);
   assert.equal(runtimeClient.createdSessions[0]?.provider, 'claude');
-  assert.equal(runtimeClient.createdSessions[1]?.provider, 'gemini');
+  assert.equal(runtimeClient.createdSessions[1]?.provider, 'antigravity');
   assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
   assert.match(
     runtimeClient.sentMessages[1]?.input?.instructions ?? '',
@@ -3009,7 +3009,7 @@ test('parallel member channels inherit default continuity transplant rules on re
     runtimeClient.sentMessages[1]?.input?.instructions ?? '',
     /\[user:User\] First turn/u,
   );
-  assert.equal(activeChannel.pendingProvider, 'gemini');
+  assert.equal(activeChannel.pendingProvider, 'antigravity');
   assert.equal(passiveChannel.pendingProvider, 'codex');
   assert.equal(passiveChannel.orchestratorLease.sessionId, null);
   assertProviderAgentDispatchMetadata(activeChannel, 'Switch turn');
