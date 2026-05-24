@@ -490,7 +490,7 @@ Linux:
 ./scripts/linux/install-node.sh
 ./scripts/linux/setup-node-global-prefix.sh
 ./scripts/linux/install-codex.sh
-./scripts/linux/install-gemini.sh
+./scripts/linux/install-antigravity.sh
 ./scripts/linux/install-copilot.sh
 ./scripts/linux/install-opencode.sh
 ./scripts/linux/install-kilo.sh
@@ -511,7 +511,7 @@ macOS:
 ./scripts/macos/install-node.sh
 ./scripts/macos/setup-node-global-prefix.sh
 ./scripts/macos/install-codex.sh
-./scripts/macos/install-gemini.sh
+./scripts/macos/install-antigravity.sh
 ./scripts/macos/install-copilot.sh
 ./scripts/macos/install-opencode.sh
 ./scripts/macos/install-kilo.sh
@@ -530,10 +530,10 @@ Coverage in this slice:
 
 - host substrate install and upgrade for Node.js LTS (via nvm) and GitHub
   CLI (via Homebrew or a user-local tarball)
-- native CLI install and upgrade for Claude Code, Cursor Agent, Goose, Junie,
-  and Kiro
+- native CLI install and upgrade for Claude Code, Antigravity, Cursor Agent,
+  Goose, Junie, and Kiro
 - npm global-prefix/PATH repair for user-scoped installs
-- per-CLI npm-global install and upgrade for Codex, Gemini, Copilot,
+- per-CLI npm-global install and upgrade for Codex, Copilot,
   OpenCode, Kilo, Auggie, and Pi (one script per CLI, no bulk install)
 - self-hosted audit output for the same provider baseline, plus optional
   Ollama coverage when you pass `--include-local-models`, or serial collection
@@ -564,6 +564,7 @@ non-wizard operational use:
 .\scripts\windows\Install-GitHubCli.ps1 -Apply   # self-elevates through UAC
 .\scripts\windows\Install-Codex.ps1 -Apply
 .\scripts\windows\Install-Codex.ps1 -Upgrade
+.\scripts\windows\Install-Antigravity.ps1 -Apply
 .\scripts\windows\Install-ClaudeCode.ps1 -Apply
 .\scripts\windows\Check-WindowsSetupReadiness.ps1 -Json
 ```
@@ -571,7 +572,7 @@ non-wizard operational use:
 Coverage in this slice:
 
 - Node.js LTS and GitHub CLI host installers (winget primary, MSI fallback)
-- per-CLI npm-global helpers for Codex, Gemini, Copilot, OpenCode, Kilo,
+- per-CLI npm-global helpers for Codex, Copilot, OpenCode, Kilo,
   Auggie, and Pi (one script per CLI, no bulk install/uninstall)
 - aggregate readiness audit composing the host installer, prefix helper,
   per-CLI helpers, and native provider helpers
@@ -582,15 +583,15 @@ yet wired into the packaged setup wizard/bootstrap flow.
 ### Manual Operator Matrix
 
 - **Linux host**
-  - Install: `./scripts/linux/install-node.sh` (when Node is missing) followed by per-CLI helpers like `./scripts/linux/install-codex.sh`, `./scripts/linux/install-claude-code.sh`, etc.
+  - Install: `./scripts/linux/install-node.sh` (when Node is missing) followed by per-CLI helpers like `./scripts/linux/install-codex.sh`, `./scripts/linux/install-antigravity.sh`, `./scripts/linux/install-claude-code.sh`, etc.
   - Check: `./scripts/linux/check-installation.sh --json`
   - Upgrade: `./scripts/linux/upgrade-cli-tools.sh`
 - **macOS host**
-  - Install: `./scripts/macos/install-node.sh` (when Node is missing) followed by per-CLI helpers like `./scripts/macos/install-codex.sh`, `./scripts/macos/install-claude-code.sh`, etc.
+  - Install: `./scripts/macos/install-node.sh` (when Node is missing) followed by per-CLI helpers like `./scripts/macos/install-codex.sh`, `./scripts/macos/install-antigravity.sh`, `./scripts/macos/install-claude-code.sh`, etc.
   - Check: `./scripts/macos/check-installation.sh --json`
   - Upgrade: `./scripts/macos/upgrade-cli-tools.sh`
 - **Windows native host**
-  - Install: `.\scripts\windows\Install-Node.ps1 -Apply` (when Node is missing) followed by per-CLI helpers like `.\scripts\windows\Install-Codex.ps1 -Apply`, `.\scripts\windows\Install-ClaudeCode.ps1 -Apply`, etc.
+  - Install: `.\scripts\windows\Install-Node.ps1 -Apply` (when Node is missing) followed by per-CLI helpers like `.\scripts\windows\Install-Codex.ps1 -Apply`, `.\scripts\windows\Install-Antigravity.ps1 -Apply`, `.\scripts\windows\Install-ClaudeCode.ps1 -Apply`, etc.
   - Check: `.\scripts\windows\Check-WindowsSetupReadiness.ps1 -Json`
   - Upgrade: invoke each per-CLI helper with `-Upgrade`
 
@@ -620,22 +621,22 @@ The current substrate writes:
 - `build/desktop-packaging/shared/setup-assets/windows/*`
   - Node.js LTS host installer (`Install-Node.ps1`), GitHub CLI host
     installer (`Install-GitHubCli.ps1`), npm prefix helper, the shared
-    `_NpmCliInstaller.ps1` and per-CLI npm installers (Codex, Gemini,
-    Copilot, OpenCode, Kilo, Auggie, Pi), the native provider installers
-    (Claude Code, Cursor Agent, Goose, Junie, Kiro), the Ollama
+    `_NpmCliInstaller.ps1` and per-CLI npm installers (Codex, Copilot,
+    OpenCode, Kilo, Auggie, Pi), the native provider installers
+    (Claude Code, Antigravity, Cursor Agent, Goose, Junie, Kiro), the Ollama
     local-model installer, the Windows readiness audit, and the shared
     `_HiddenProcess.ps1` / `_PackagedUninstall.ps1` support scripts
 - `build/desktop-packaging/shared/setup-assets/linux/*`
   - Node.js LTS host installer (`install-node.sh`), GitHub CLI host
     installer (`install-github-cli.sh`), npm prefix helper, per-CLI npm
-    installers (Codex, Gemini, Copilot, OpenCode, Kilo, Auggie, Pi),
-    Claude/Cursor/Goose/Junie/Kiro native installers, and the Linux
+    installers (Codex, Copilot, OpenCode, Kilo, Auggie, Pi),
+    Claude/Antigravity/Cursor/Goose/Junie/Kiro native installers, and the Linux
     readiness audit
 - `build/desktop-packaging/shared/setup-assets/macos/*`
   - Node.js LTS host installer (`install-node.sh`), GitHub CLI host
     installer (`install-github-cli.sh`), npm prefix helper, per-CLI npm
-    installers (Codex, Gemini, Copilot, OpenCode, Kilo, Auggie, Pi),
-    Claude/Cursor/Goose/Junie/Kiro native installers, and the macOS
+    installers (Codex, Copilot, OpenCode, Kilo, Auggie, Pi),
+    Claude/Antigravity/Cursor/Goose/Junie/Kiro native installers, and the macOS
     readiness audit
 - `build/desktop-packaging/shared/setup-assets/linux/provider-cli-common.sh`
 - `build/desktop-packaging/shared/setup-assets/linux/node-cli-common.sh`
@@ -655,8 +656,8 @@ The same staged contract now also carries
 `installer.providerSetup.localProviders`, which freezes the current packaged
 local-provider rollout:
 
-- current packaged path: Claude Code, Cursor Agent, Goose, Junie, and the
-  repo-owned Kiro path across Windows/macOS/Linux
+- current packaged path: Claude Code, Antigravity, Cursor Agent, Goose, Junie,
+  and the repo-owned Kiro path across Windows/macOS/Linux
 - Windows keeps the bundled Ollama local-model runtime helper
 
 This is intentionally a staging layer, not the final signed-installer

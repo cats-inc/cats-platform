@@ -1,11 +1,12 @@
 ; --- Per-user-only install: skip multi-user choice page ---
 ;
 ; Cats packaged setup helpers (Install-ClaudeCode.ps1, the per-CLI
-; Install-Codex.ps1 / Install-Gemini.ps1 / ... wrappers around
-; _NpmCliInstaller.ps1, etc.) refuse to run under an elevated shell because
-; every CLI provider we install (Claude / Cursor / Goose / Junie / npm-global
-; CLIs / Ollama) is user-scoped: binaries land in $env:USERPROFILE\.local\bin
-; or %LOCALAPPDATA%, auth files live under the user's profile, and the npm
+; Install-Codex.ps1 / Install-Copilot.ps1 / ... wrappers around
+; _NpmCliInstaller.ps1, native Antigravity setup, etc.) refuse to run under an
+; elevated shell because every CLI provider we install (Claude / Antigravity /
+; Cursor / Goose / Junie / npm-global CLIs / Ollama) is user-scoped:
+; binaries land in $env:USERPROFILE\.local\bin or %LOCALAPPDATA%, auth files
+; live under the user's profile, and the npm
 ; prefix is per-user. An all-users install would put Cats.exe under
 ; Program Files but every spawned helper would either reject elevation or
 ; write into the wrong profile, so the choice is a footgun.
