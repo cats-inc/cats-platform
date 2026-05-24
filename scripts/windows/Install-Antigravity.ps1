@@ -128,10 +128,6 @@ function Add-AntigravityToUserPath {
 }
 
 function Invoke-AntigravityInstaller {
-  param(
-    [string[]]$ArgumentList = @()
-  )
-
   if ($SkipInstaller) {
     return [pscustomobject]@{
       skipped = $true
@@ -152,7 +148,6 @@ function Invoke-AntigravityInstaller {
 
     $powerShellExe = if (Get-Command pwsh.exe -ErrorAction SilentlyContinue) { 'pwsh.exe' } else { 'powershell.exe' }
     $installerArguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tempScript)
-    $installerArguments += $ArgumentList
     $process = Start-Process -FilePath $powerShellExe `
       -ArgumentList $installerArguments `
       -Wait -PassThru -NoNewWindow `
@@ -287,15 +282,15 @@ if ($shouldInstall) {
     $warnings.Add('Dry-run requested; Antigravity installer invocation was skipped.')
     $installSkipped = $true
   } else {
-    $upstreamArgs = @('-NonInteractive')
-    if ($Upgrade) {
-      $upstreamArgs += '-Upgrade'
-    }
-    if ($Force) {
-      $upstreamArgs += '-Force'
+    if (($Force -or $Upgrade) -and (Test-Path -LiteralPath (Resolve-AntigravityExecutablePath) -PathType Leaf)) {
+      try {
+        Remove-Item -LiteralPath (Resolve-AntigravityExecutablePath) -Force -ErrorAction Stop
+      } catch {
+        $warnings.Add("Unable to remove existing agy.exe before refresh: $($_.Exception.Message)")
+      }
     }
 
-    $installResult = Invoke-AntigravityInstaller -ArgumentList $upstreamArgs
+    $installResult = Invoke-AntigravityInstaller
     $installSkipped = [bool]$installResult.skipped
     $installFailed = (-not $installSkipped) -and (-not $installResult.success)
 

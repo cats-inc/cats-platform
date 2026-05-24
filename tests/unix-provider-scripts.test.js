@@ -181,7 +181,7 @@ test('Unix Antigravity helpers dry-run mutation modes without invoking installer
   }
 });
 
-test('Unix Antigravity helpers translate refresh modes to upstream installer flags', async () => {
+test('Unix Antigravity helpers own refresh before invoking the official installer', async () => {
   for (const platform of ['linux', 'macos']) {
     const commonScript = await readFile(
       join(rootDir, 'scripts', platform, 'provider-cli-common.sh'),
@@ -190,16 +190,14 @@ test('Unix Antigravity helpers translate refresh modes to upstream installer fla
 
     assert.match(
       commonScript,
-      /curl -fsSL "\$url" \| bash -s -- "\$@"/u,
+      /curl -fsSL "\$url" \| bash/u,
     );
     assert.match(
       commonScript,
-      /run_remote_pipe_installer "\$provider" '-upgrade'/u,
+      /rm -f "\$HOME\/\.local\/bin\/agy" \|\| true/u,
     );
-    assert.match(
-      commonScript,
-      /run_remote_pipe_installer "\$provider" '-force'/u,
-    );
+    assert.doesNotMatch(commonScript, /run_remote_pipe_installer "\$provider" '-upgrade'/u);
+    assert.doesNotMatch(commonScript, /run_remote_pipe_installer "\$provider" '-force'/u);
   }
 });
 

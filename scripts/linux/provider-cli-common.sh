@@ -271,7 +271,7 @@ run_remote_pipe_installer() {
 
   case "$provider" in
     antigravity)
-      curl -fsSL "$url" | bash -s -- "$@"
+      curl -fsSL "$url" | bash
       ;;
     goose)
       curl -fsSL "$url" | env CONFIGURE=false bash
@@ -340,9 +340,11 @@ run_provider_install_action() {
   case "$provider" in
     antigravity)
       if [ "$action" = 'upgrade' ]; then
-        run_remote_pipe_installer "$provider" '-upgrade'
+        rm -f "$HOME/.local/bin/agy" || true
+        run_remote_pipe_installer "$provider"
       elif [ "$action" = 'force' ]; then
-        run_remote_pipe_installer "$provider" '-force'
+        rm -f "$HOME/.local/bin/agy" || true
+        run_remote_pipe_installer "$provider"
       else
         run_remote_pipe_installer "$provider"
       fi
