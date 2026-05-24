@@ -20,6 +20,12 @@ import {
 
 async function withSeededServer(runtimeClient, snapshotPath, callback) {
   await seedProviderSelectorFromSnapshot(runtimeClient, snapshotPath);
+  const chatStatePath = path.join(
+    path.dirname(snapshotPath),
+    'platform',
+    'state',
+    'chat-state.local.json',
+  );
   const server = createServer({
     shared: {
       config: {
@@ -27,7 +33,7 @@ async function withSeededServer(runtimeClient, snapshotPath, callback) {
         port: 0,
         runtimeBaseUrl: 'http://127.0.0.1:3110',
         runtimeApiKey: '',
-        chatStatePath: 'unused-for-tests',
+        chatStatePath,
       },
       runtimeClient,
       now: () => new Date('2026-04-28T00:00:00.000Z'),
