@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { isValidElement, type ReactNode, type RefObject } from 'react';
 
-import { PlatformSurfaceSwitcher } from '../src/design/components/PlatformSurfaceSwitcher.tsx';
-import { ConversationSidebar } from '../src/app/renderer/productShell/ConversationSidebar.tsx';
+import { ConversationSidebarContent } from '../src/app/renderer/productShell/ConversationSidebar.tsx';
 import { ConversationSidebarFooter } from '../src/app/renderer/productShell/ConversationSidebarFooter.tsx';
 import { ConversationSidebarMyCatsSection } from '../src/app/renderer/productShell/ConversationSidebarMyCats.tsx';
 import { ConversationSidebarNavigation } from '../src/app/renderer/productShell/ConversationSidebarNavigation.tsx';
@@ -16,18 +15,26 @@ import type { PlatformSurfaceId } from '../src/shared/platform-contract.ts';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 
+const testTranslator = createTranslator('en');
+
 function createWorkSidebarElement(
   props: Parameters<typeof createWorkSidebarConversationProps>[0],
   options?: Parameters<typeof createWorkSidebarConversationProps>[1],
 ): ReactNode {
-  return ConversationSidebar(createWorkSidebarConversationProps(props, options));
+  return ConversationSidebarContent({
+    ...createWorkSidebarConversationProps(props, options, testTranslator),
+    t: testTranslator,
+  });
 }
 
 function createCodeSidebarElement(
   props: Parameters<typeof createCodeSidebarConversationProps>[0],
   options?: Parameters<typeof createCodeSidebarConversationProps>[1],
 ): ReactNode {
-  return ConversationSidebar(createCodeSidebarConversationProps(props, options));
+  return ConversationSidebarContent({
+    ...createCodeSidebarConversationProps(props, options),
+    t: testTranslator,
+  });
 }
 
 function matchesComponent(
@@ -191,15 +198,7 @@ function findSurfaceSwitcherActiveSurface(node: ReactNode): PlatformSurfaceId {
     throw new Error('ConversationSidebarNavigation not found.');
   }
 
-  const navigationTree = ConversationSidebarNavigation(
-    navigation.props as Parameters<typeof ConversationSidebarNavigation>[0],
-  );
-  const switcher = findElementByComponent(navigationTree, PlatformSurfaceSwitcher);
-  if (!switcher) {
-    throw new Error('PlatformSurfaceSwitcher not found.');
-  }
-
-  return switcher.props.activeSurface as PlatformSurfaceId;
+  return navigation.props.activeSurface as PlatformSurfaceId;
 }
 
 function flattenText(node: ReactNode): string {

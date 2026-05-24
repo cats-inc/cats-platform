@@ -198,7 +198,9 @@ export interface ConversationSidebarProps<
   onDirectChatCat: (catId: string) => void;
 }
 
-export function ConversationSidebar<
+type ConversationSidebarTranslator = ReturnType<typeof useI18n>['t'];
+
+export function ConversationSidebarContent<
   TCat extends ConversationSidebarCat,
   TChannel extends ConversationSidebarChannel,
   TPayload extends ConversationSidebarPayload<TCat, TChannel>,
@@ -238,8 +240,10 @@ export function ConversationSidebar<
   onSwitchProduct,
   activeMyCatId,
   onDirectChatCat,
-}: ConversationSidebarProps<TCat, TChannel, TPayload, TDot>) {
-  const { t } = useI18n();
+  t,
+}: ConversationSidebarProps<TCat, TChannel, TPayload, TDot> & {
+  t: ConversationSidebarTranslator;
+}) {
   const currentPath = globalThis.location?.pathname ?? '/';
   const {
     activeSurface,
@@ -389,4 +393,14 @@ export function ConversationSidebar<
       />
     </aside>
   );
+}
+
+export function ConversationSidebar<
+  TCat extends ConversationSidebarCat,
+  TChannel extends ConversationSidebarChannel,
+  TPayload extends ConversationSidebarPayload<TCat, TChannel>,
+  TDot extends string = string,
+>(props: ConversationSidebarProps<TCat, TChannel, TPayload, TDot>) {
+  const { t } = useI18n();
+  return <ConversationSidebarContent {...props} t={t} />;
 }
