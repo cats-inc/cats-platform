@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { resolveCatStatusIndicator } from '../build/server/products/chat/shared/catStatusResolution.js';
+import { messageKeys } from '../build/server/shared/i18n/index.js';
 
 function buildCat(id = 'cat-1', name = 'TestCat') {
   return { id, name, avatarColor: '#abc', status: 'active', roles: [], createdAt: '', updatedAt: '' };
@@ -53,7 +54,7 @@ test('resolves error status when lease is error', () => {
 test('resolves waking status when lease is initializing', () => {
   const indicator = resolveCatStatusIndicator(buildCat(), buildChannel('initializing'), null);
   assert.equal(indicator.status, 'active');
-  assert.equal(indicator.statusLabel, 'Waking up');
+  assert.equal(indicator.statusLabelKey, messageKeys.chatCatStatusWakingUpLabel);
   assert.equal(indicator.busy, true);
 });
 
@@ -95,4 +96,3 @@ test('includes cat name and avatar color', () => {
   assert.equal(indicator.catName, 'MyCat');
   assert.equal(indicator.avatarColor, '#abc');
 });
-
