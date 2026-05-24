@@ -34,7 +34,7 @@ test('buildParallelChatDraftCreateInput preserves non-chat originSurface and bra
       {
         participantId: 'participant-inline',
         name: 'Inline Reviewer',
-        provider: 'antigravity',
+        provider: 'antigravity-cli',
         instance: 'native',
         model: 'antigravity-default',
         modelSelection: null,
@@ -89,7 +89,7 @@ test('buildParallelChatDraftCreateInput normalizes nullable fields for code-owne
         modelSelection: null,
       },
       {
-        provider: 'antigravity',
+        provider: 'antigravity-cli',
         instance: 'native',
         model: null,
         modelSelection: null,

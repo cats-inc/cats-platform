@@ -27,10 +27,15 @@ import {
   createTranslator,
   messageKeys,
 } from '../../../shared/i18n/index.js';
+import { resolveProductProviderId } from '../../../shared/providerCatalog.js';
 
 type ParallelDispatchTarget = ExecutionTargetValue & DraftParallelTargetBranchFields;
 
 const defaultParallelDispatchTranslator = createTranslator('en');
+
+function normalizeParallelDraftProvider(provider: string): string {
+  return resolveProductProviderId(provider) ?? provider.trim();
+}
 
 export interface ParallelDispatchRequestState {
   kind: 'parallel';
@@ -119,7 +124,7 @@ export async function submitNewParallelChatDraft({
     targets: draftParallelChatTargets.map((target, index) => {
       const resolvedBranch = resolvedBranches[index]!;
       return {
-        provider: target.provider,
+        provider: normalizeParallelDraftProvider(target.provider),
         instance: target.instance ?? null,
         model: target.model ?? null,
         modelSelection: target.modelSelection ?? null,
@@ -134,7 +139,7 @@ export async function submitNewParallelChatDraft({
     temporaryParticipants: draftTemporaryParticipants.map((participant) => ({
       participantId: participant.participantId,
       name: participant.name,
-      provider: participant.provider,
+      provider: normalizeParallelDraftProvider(participant.provider),
       instance: participant.instance ?? undefined,
       model: participant.model ?? undefined,
       modelSelection: participant.modelSelection ?? null,
