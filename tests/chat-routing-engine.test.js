@@ -1291,10 +1291,11 @@ test('routeChannelMessage auto-checks out an approved channel task for the assig
 
   assert.ok(task);
   assert.ok(run);
-  // One read primes the task-aware session request, while the watcher performs
-  // its initial and terminal reconciliation reads. Dispatch prompt construction
-  // reuses the checked-out core snapshot instead of rereading Cats Core.
-  assert.equal(routeReadCoreCount, 3);
+  // One begin-stage read prepares user-message metadata, one read primes the
+  // task-aware session request, and the watcher performs its initial and
+  // terminal reconciliation reads. Dispatch prompt construction reuses the
+  // checked-out core snapshot instead of rereading Cats Core.
+  assert.equal(routeReadCoreCount, 4);
   assert.equal(runtimeClient.createdSessions[0]?.requestedStrategy, 'react');
   assert.deepEqual(runtimeClient.createdSessions[0]?.correlation, {
     taskId,
@@ -3811,11 +3812,10 @@ test('ensureTargetSession only resolves channel task execution context once acro
   state = createChannel(
     state,
     {
-      title: 'Companion retry lane',
+      title: 'Companion retry room',
       topic: 'Retry stale sessions without rereading core task execution context.',
-      roomMode: 'direct_message',
+      roomMode: 'chat_channel',
       participantCatIds: [companionId],
-      defaultRecipientId: companionId,
       skipBossCatGreeting: true,
     },
     now,
