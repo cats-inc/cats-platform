@@ -407,13 +407,13 @@ test('resolveChannelStreamTarget uses target-local queue time for workflow sessi
           startedAt: '2026-04-14T12:00:01.000Z',
           targetStatuses: [
             {
-              id: 'target-gemini',
+              id: 'target-antigravity',
               status: 'running',
               queuedAt: '2026-04-14T12:05:00.000Z',
               startedAt: null,
               participant: {
-                participantId: 'participant-gemini',
-                participantName: 'Gemini-CLI',
+                participantId: 'participant-antigravity',
+                participantName: 'Antigravity-CLI',
               },
             },
           ],
@@ -423,25 +423,25 @@ test('resolveChannelStreamTarget uses target-local queue time for workflow sessi
     catAssignments: [],
     participantAssignments: [
       buildParticipantAssignment(
-        'participant-gemini',
-        'session-gemini',
+        'participant-antigravity',
+        'session-antigravity',
         'ready',
-        'Gemini-CLI',
+        'Antigravity-CLI',
         '2026-04-14T12:03:00.000Z',
-        'lane-turn-target-local-floor-target-gemini',
+        'lane-turn-target-local-floor-target-antigravity',
       ),
     ],
   };
 
   assert.deepEqual(resolveChannelStreamTarget(channel), {
-    sessionId: 'session-gemini',
-    laneId: 'lane-turn-target-local-floor-target-gemini',
-    participantId: 'participant-gemini',
+    sessionId: 'session-antigravity',
+    laneId: 'lane-turn-target-local-floor-target-antigravity',
+    participantId: 'participant-antigravity',
     catId: null,
-    speakerLabel: 'Gemini-CLI',
+    speakerLabel: 'Antigravity-CLI',
     sessionStartedAt: '2026-04-14T12:03:00.000Z',
     requiresSessionStartConfirmation: false,
-    targetStateId: 'target-gemini',
+    targetStateId: 'target-antigravity',
   });
 });
 
@@ -668,14 +668,14 @@ test('resolveChannelStreamTarget does not leak the internal Chat placeholder for
 
 test('resolveChannelStreamTarget does not leak the internal Orchestrator placeholder for default orchestrator turns', () => {
   const channel = {
-    pendingProvider: 'gemini',
+    pendingProvider: 'antigravity',
     pendingInstance: 'cli/native',
     orchestratorLease: {
       status: 'ready',
       sessionId: 'session-orchestrator',
       laneId: 'lane-turn-default-orchestrator-target-orchestrator',
-      provider: 'gemini',
-      model: 'gemini-3.1-pro-preview',
+      provider: 'antigravity',
+      model: 'Gemini 3.1 Pro (high)',
     },
     roomRouting: {
       defaultRecipientId: null,
@@ -706,7 +706,7 @@ test('resolveChannelStreamTarget does not leak the internal Orchestrator placeho
     laneId: 'lane-turn-default-orchestrator-target-orchestrator',
     participantId: 'orchestrator',
     catId: null,
-    speakerLabel: 'Gemini-CLI',
+    speakerLabel: 'Antigravity-CLI',
     sessionStartedAt: null,
     requiresSessionStartConfirmation: false,
     targetStateId: 'target-orchestrator',
@@ -770,8 +770,8 @@ test('resolveChannelStreamTarget keeps the orchestrator label from lease attachm
       status: 'closed',
       sessionId: 'session-orchestrator-closed',
       laneId: 'lane-turn-old-target-orchestrator',
-      provider: 'gemini',
-      model: 'gemini-3.1-pro-preview',
+      provider: 'antigravity',
+      model: 'Gemini 3.1 Pro (high)',
       startedAt: '2026-04-15T12:00:00.000Z',
       lastUsedAt: '2026-04-15T12:00:00.000Z',
       cwd: null,
@@ -806,7 +806,7 @@ test('resolveChannelStreamTarget keeps the orchestrator label from lease attachm
     laneId: 'lane-turn-current-target-orchestrator',
     participantId: 'orchestrator',
     catId: null,
-    speakerLabel: 'Gemini-CLI',
+    speakerLabel: 'Antigravity-CLI',
     sessionStartedAt: null,
     requiresSessionStartConfirmation: false,
     targetStateId: 'target-orchestrator',
