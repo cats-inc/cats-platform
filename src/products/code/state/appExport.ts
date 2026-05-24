@@ -62,6 +62,16 @@ function defaultBuildCommand(): string {
   return process.platform === 'win32' ? 'npm.cmd' : 'npm';
 }
 
+function quoteWindowsCommandArgument(value: string): string {
+  if (value.length === 0) {
+    return '""';
+  }
+  if (!/[\s"&()<>^|]/u.test(value)) {
+    return value;
+  }
+  return `"${value.replace(/(["^])/gu, '^$1')}"`;
+}
+
 async function writeJsonFile(targetPath: string, value: unknown): Promise<void> {
   await writeFile(targetPath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
@@ -72,10 +82,17 @@ async function runPackageBuild(
 ): Promise<CatsCodeUserAppPackageBuildResult> {
   const command = input.buildCommand ?? defaultBuildCommand();
   const args = input.buildArgs ?? ['run', 'build'];
-  const result = await execFile(command, args, {
+  const execCommand = process.platform === 'win32'
+    ? process.env.ComSpec ?? 'cmd.exe'
+    : command;
+  const execArgs = process.platform === 'win32'
+    ? ['/d', '/s', '/c', [command, ...args].map(quoteWindowsCommandArgument).join(' ')]
+    : args;
+  const result = await execFile(execCommand, execArgs, {
     cwd: packagePath,
     encoding: 'utf8',
     timeout: input.buildTimeoutMs ?? 120_000,
+    windowsHide: true,
   });
 
   return {
