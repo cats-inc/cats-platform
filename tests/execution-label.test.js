@@ -42,6 +42,13 @@ test('buildExecutionLabel falls back to the product default instance when state 
   );
 });
 
+test('buildExecutionLabel normalizes target-level CLI provider ids', () => {
+  assert.equal(
+    buildExecutionLabel('antigravity-cli', null, 'antigravity-default'),
+    'Antigravity-CLI · antigravity-default',
+  );
+});
+
 test('buildExecutionLabel treats runtime canonical default instances as backend aliases', () => {
   assert.equal(
     buildExecutionLabel('claude', 'default', 'claude-opus-4-6'),

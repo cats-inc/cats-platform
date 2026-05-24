@@ -4,6 +4,7 @@ import {
   getProviderDisplayName,
   getProviderInstances,
   getProviderModels,
+  isKnownProvider,
   normalizeProductProviderModelId,
 } from './providerCatalog.js';
 
@@ -11,6 +12,29 @@ type ExecutionControlValue = string | number | boolean;
 type ExecutionControlMap = Record<string, ExecutionControlValue>;
 
 const executionLabelMemory = new Map<string, string>();
+
+interface ProviderBackendAlias {
+  provider: string;
+  backendSuffix: string | null;
+}
+
+function resolveProviderBackendAlias(provider: string): ProviderBackendAlias {
+  const normalizedProvider = provider.trim().toLowerCase();
+  if (normalizedProvider.endsWith('-cli')) {
+    const baseProvider = normalizedProvider.slice(0, -'-cli'.length);
+    if (isKnownProvider(baseProvider)) {
+      return {
+        provider: baseProvider,
+        backendSuffix: '-CLI',
+      };
+    }
+  }
+
+  return {
+    provider: provider.trim(),
+    backendSuffix: null,
+  };
+}
 
 function stripExecutionLabelDecorations(
   label: string,
@@ -226,11 +250,13 @@ export function buildExecutionLabel(
   controlLabels?: readonly string[] | null,
   modelLabelOverride?: string | null,
 ): string {
-  const providerName = providerLabel?.trim() || getProviderDisplayName(provider);
-  const effectiveInstance = instance?.trim() || getDefaultProviderInstance(provider);
-  const suffix = resolveBackendSuffix(provider, effectiveInstance);
+  const providerAlias = resolveProviderBackendAlias(provider);
+  const providerName = providerLabel?.trim() || getProviderDisplayName(providerAlias.provider);
+  const effectiveInstance = instance?.trim() || getDefaultProviderInstance(providerAlias.provider);
+  const suffix = providerAlias.backendSuffix
+    ?? resolveBackendSuffix(providerAlias.provider, effectiveInstance);
   const modelLabel = normalizeExecutionModelLabel(modelLabelOverride)
-    ?? resolveModelLabel(provider, model);
+    ?? resolveModelLabel(providerAlias.provider, model);
   const controlsSuffix = controlLabels && controlLabels.length > 0
     ? ` \u00b7 ${controlLabels.join(' \u00b7 ')}`
     : '';

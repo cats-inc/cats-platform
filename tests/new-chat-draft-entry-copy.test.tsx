@@ -1536,7 +1536,7 @@ test('synthetic orchestrator-authored parallel draft renders landed branch field
   assert.match(markup, /class="draftCompareCarousel"/u);
   assert.match(markup, /C:\/repo\/worktrees\/review/u);
   assert.match(markup, /Worktree \/ Read only/u);
-  assert.match(markup, /Antigravity-cli · antigravity-default/u);
+  assert.match(markup, /Antigravity-CLI · antigravity-default/u);
   // Per the 2026-05-01 retirement, no shadow branch may surface its
   // own prompt — the lead's `composerDraft` shows verbatim.
   assert.doesNotMatch(markup, /Prompt detached/u);
