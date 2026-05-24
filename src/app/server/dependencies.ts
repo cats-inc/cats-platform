@@ -24,7 +24,9 @@ import {
 import {
   createFileBackedPlatformAuthStore,
   createGoogleJwksIdTokenVerifier,
+  loadPlatformAuthConfig,
   MemoryPlatformAuthStore,
+  type PlatformAuthConfig,
   type PlatformAuthRecoveryTokenState,
   type PlatformAuthStore,
 } from '../../platform/auth/index.js';
@@ -74,6 +76,37 @@ import {
 import {
   registerCodeArtifactRuntimeFinalizationGate,
 } from '../../products/code/state/sessionFinalization.js';
+import type { AppConfig } from '../../config.js';
+
+type InjectedAppConfig = AppConfig & {
+  auth?: Partial<PlatformAuthConfig>;
+};
+
+function normalizeInjectedAppConfig(config: AppConfig): AppConfig {
+  const injectedConfig = config as InjectedAppConfig;
+  const fallbackAuth = loadPlatformAuthConfig({
+    env: { CATS_AUTH_ENABLED: 'false' },
+    host: config.host,
+    port: config.port,
+    chatStatePath: config.chatStatePath,
+  });
+  const injectedAuth = injectedConfig.auth;
+  const auth: PlatformAuthConfig = injectedAuth
+    ? {
+        ...fallbackAuth,
+        ...injectedAuth,
+        google: {
+          ...fallbackAuth.google,
+          ...injectedAuth.google,
+        },
+      }
+    : fallbackAuth;
+
+  return {
+    ...config,
+    auth,
+  };
+}
 
 function createDefaultCompanionStore(
   shared: SharedServerDependencies,
@@ -158,6 +191,14 @@ function createDefaultTelegramRelay(
 export function resolveServerDependencies(
   dependencies: ServerDependencies,
 ): ResolvedServerDependencies {
+  dependencies = {
+    ...dependencies,
+    shared: {
+      ...dependencies.shared,
+      config: normalizeInjectedAppConfig(dependencies.shared.config),
+    },
+  };
+
   registerCodeArtifactRuntimeInvocationEnrichers();
   registerCodeArtifactRuntimeAssistantEffectProcessor();
   registerCodeArtifactRuntimeFinalizationGate();
