@@ -604,7 +604,10 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   assert.equal(packageJson.scripts['build:server-bundle'], 'node scripts/bundle-server.mjs');
   assert.equal(packageJson.scripts['build:mobile'], 'npm run mobile:install && npm run mobile:export && node scripts/check-mobile-build.mjs');
   assert.equal(packageJson.scripts['build:mobile:check'], 'npm run mobile:install && npm run mobile:typecheck && npm run mobile:export && node scripts/check-mobile-build.mjs');
-  assert.equal(packageJson.scripts['mobile:install'], 'npm ci --prefix mobile');
+  assert.equal(
+    packageJson.scripts['mobile:install'],
+    'npm ci --prefix mobile && node scripts/patch-mobile-hermesc.mjs',
+  );
   assert.equal(packageJson.scripts['mobile:export'], 'cd mobile && npx expo export --platform all --output-dir ../build/mobile');
   assert.equal(packageJson.scripts['desktop:package:linux'], 'node scripts/build-desktop-installer.mjs --target linux');
   assert.equal(packageJson.scripts['desktop:package:macos'], 'node scripts/build-desktop-installer.mjs --target macos');
