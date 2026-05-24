@@ -389,6 +389,10 @@ async function handlePlatformSetupComplete(
 }
 
 function enforceSetupPreAuthOriginGate(context: PlatformSetupContext): boolean {
+  if (!context.dependencies.auth.enabled) {
+    return true;
+  }
+
   const decision = evaluatePreAuthOriginGate({
     origin: context.request.headers.origin,
     fetchSite: context.request.headers['sec-fetch-site'],
