@@ -34,16 +34,8 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'gpt-5.1-codex-max', label: 'gpt-5.1-codex-max' },
     { value: 'gpt-5.1-codex-mini', label: 'gpt-5.1-codex-mini' },
   ],
-  // Official Antigravity docs expose these as selectable reasoning-model display
-  // names. They are not proven raw `agy` model ids; keep runtime dynamic model-id
-  // claims gated on a live CLI/config/smoke probe.
   antigravity: [
-    { value: 'Gemini 3.1 Pro (high)', label: 'Gemini 3.1 Pro (high) (default)', default: true },
-    { value: 'Gemini 3.1 Pro (low)', label: 'Gemini 3.1 Pro (low)' },
-    { value: 'Gemini 3 Flash', label: 'Gemini 3 Flash' },
-    { value: 'Claude Sonnet 4.6 (thinking)', label: 'Claude Sonnet 4.6 (thinking)' },
-    { value: 'Claude Opus 4.6 (thinking)', label: 'Claude Opus 4.6 (thinking)' },
-    { value: 'GPT-OSS-120b', label: 'GPT-OSS-120b' },
+    { value: 'antigravity-default', label: 'Antigravity default', default: true },
   ],
   copilot: [
     { value: 'gpt-5.4', label: 'gpt-5.4 (default)', default: true },

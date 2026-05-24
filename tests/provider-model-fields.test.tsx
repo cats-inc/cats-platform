@@ -208,20 +208,13 @@ function reconcileReopenedTarget(input: {
   };
 }
 
-test('createStaticProviderModelCatalog preserves the curated Antigravity reasoning model order', () => {
+test('createStaticProviderModelCatalog keeps Antigravity on a provider-default sentinel', () => {
   const catalog = createStaticProviderModelCatalog('antigravity', { instance: 'native' });
 
-  assert.equal(catalog.defaultModel, 'Gemini 3.1 Pro (high)');
+  assert.equal(catalog.defaultModel, 'antigravity-default');
   assert.deepEqual(
     catalog.models.map((model) => model.id),
-    [
-      'Gemini 3.1 Pro (high)',
-      'Gemini 3.1 Pro (low)',
-      'Gemini 3 Flash',
-      'Claude Sonnet 4.6 (thinking)',
-      'Claude Opus 4.6 (thinking)',
-      'GPT-OSS-120b',
-    ],
+    ['antigravity-default'],
   );
 });
 

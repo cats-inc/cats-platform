@@ -42,7 +42,7 @@ The shared provider catalog (`src/shared/providerCatalogData.ts`) is consumed by
 5. Replace `gemini` in `desktop/host/contracts.ts` provider-id list with `antigravity`.
 6. Replace `gemini` in `scripts/windows/Check-WindowsSetupReadiness.ps1` with `antigravity`.
 7. Update all three packaged-setup smoke tests to assert Antigravity installer assets instead of Gemini.
-8. Replace the `gemini` provider family in `src/shared/providerCatalogData.ts` and `src/shared/providerCatalogInstances.ts` with `antigravity`; populate the Antigravity model list only from explicit Phase 0 evidence. `agy --help` is not sufficient by itself. Official product documentation may populate platform display-name values; raw `agy` model-id strings require a real CLI model-list command, a documented config surface, or a smoke run proving the id is accepted.
+8. Replace the `gemini` provider family in `src/shared/providerCatalogData.ts` and `src/shared/providerCatalogInstances.ts` with `antigravity`; expose only `antigravity-default` as a provider-default sentinel until explicit Phase 0 evidence proves raw `agy` model ids. `agy --help` is not sufficient by itself. Official product documentation may be recorded as display-name evidence, but display names must not become executable model values without a real CLI model-list command, a documented config surface, or a smoke run proving the id is accepted.
 9. Update skills sync tooling: drop `gemini` from the `--agent` validation list; add `antigravity` only if `agy` actually discovers a `.antigravity/skills/` directory (probed before flipping).
 10. Update shell helpers and READMEs to drop Gemini references and add Antigravity equivalents where structurally needed.
 11. Define the shared provider catalog as the canonical platform-side source; explicitly call out the duplicate model list in `cats-runtime/src/http/ui/pages/playground.html` as something cats-runtime PLAN-033 Phase 4 must mirror in this slice.
@@ -72,7 +72,7 @@ The shared provider catalog (`src/shared/providerCatalogData.ts`) is consumed by
 - Installer wrappers point at `@google/gemini-cli`, which is being abandoned upstream.
 - Desktop host enumerates `gemini` in onboarding cards, packaging assets, and CLI inventory probes; these claims power the bootstrap UI and the Settings Runtime list.
 - Smoke tests assert that the Gemini installer scripts are bundled — these would falsely pass after the upstream removal because the local copies still exist.
-- The shared provider catalog declares Gemini-3.x models under family `gemini`, and runtime playground duplicates this list in its own hardcoded array.
+- The shared provider catalog declares Gemini-3.x models under family `gemini`, and runtime playground duplicates this list in its own hardcoded array. The Antigravity replacement uses a provider-default sentinel until model ids are proven.
 - Skills sync writes to `.gemini/skills/` for an `--agent gemini` value.
 
 If left in place, every Desktop surface lies about installable providers: bootstrap shows a Gemini card that installs a non-functional npm package, Settings shows a Gemini row with no working repair path, the catalog ships Gemini models that no local CLI can drive, and smoke tests pass on the wrong artifact.
@@ -95,7 +95,7 @@ The fix is not additive. The Gemini-named seams must be replaced, not extended.
 10. `scripts/windows/Test-WindowsInstallerSmoke.ps1:147,184` shall assert the bundled Antigravity installer helper and the `windows-antigravity-native-installer-script` artifact.
 11. `scripts/macos/test-macos-package-smoke.sh:52` shall assert the bundled macOS Antigravity installer helper.
 12. `scripts/linux/test-linux-package-smoke.sh:52` shall assert the bundled Linux Antigravity installer helper.
-13. `src/shared/providerCatalogData.ts:4,37-43,89` shall replace the `gemini` family with `antigravity`. The Antigravity model list shall use values backed by PLAN-100 Phase 0 evidence. If the evidence is official product documentation rather than a live CLI/config/smoke result, those catalog values are display names only and must not be treated as raw `agy` model ids.
+13. `src/shared/providerCatalogData.ts:4,37-43,89` shall replace the `gemini` family with `antigravity`. The bundled Antigravity model list shall use `antigravity-default` as a provider-default sentinel until PLAN-100 Phase 0 evidence proves executable `agy` model values. If the evidence is official product documentation rather than a live CLI/config/smoke result, those values are display names only and must not be treated as raw `agy` model ids.
 14. `src/shared/providerCatalogData.ts:48,60,72,76,77` — submodel references to `gemini-*` inside the `copilot` / `cursor` / `openrouter` model lists are vendor-named submodels and shall be reviewed individually: kept if the vendor still routes them, removed if the vendor has dropped them.
 15. `src/shared/providerCatalogInstances.ts:16` shall replace the `gemini` default-instance template with an `antigravity` template.
 16. `scripts/windows/Sync-AgentSkills.ps1:16,35,67` shall remove `gemini` from the `--agent` `ValidateSet` and the agent-target map. `antigravity` shall be added only if PLAN-100 Phase 0 confirms `agy` discovers a `.antigravity/skills/` directory.
@@ -106,7 +106,7 @@ The fix is not additive. The Gemini-named seams must be replaced, not extended.
 21. `scripts/windows/_NpmCliInstaller.ps1:7,526` shall update its comments to remove Gemini. Antigravity shall not be added to npm-helper package lists or comments because it uses the standalone native-installer path.
 22. `scripts/README.md:147,150,183,213,247,264,285` shall replace all Gemini references with Antigravity equivalents, and add a one-paragraph note in the appropriate section explaining the upstream swap.
 23. Repo-root and subproject `GEMINI.md` files shall not be read, renamed, or deleted by this migration. Remaining references to Gemini in `AGENTS.md`, `CODEX.md`, or agent-specific instruction files are governance references, not stale CLI provider wiring.
-24. `cats-runtime/src/http/ui/pages/playground.html` shall - as part of cats-runtime PLAN-033 Phase 4 - mirror the updated `src/shared/providerCatalogData.ts` model values. This spec does not implement that runtime change but defines the platform catalog as the product-side contract.
+24. `cats-runtime/src/http/ui/pages/playground.html` shall - as part of cats-runtime PLAN-033 Phase 4 - mirror the updated `src/shared/providerCatalogData.ts` sentinel or later probe-backed model values. This spec does not implement that runtime change but defines the platform catalog as the product-side contract.
 
 ### Non-Functional Requirements
 

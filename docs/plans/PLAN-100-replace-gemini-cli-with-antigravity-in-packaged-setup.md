@@ -15,7 +15,7 @@
 
 ## Overview
 
-This plan executes the platform side of the Gemini-to-Antigravity provider swap. It pairs with cats-runtime PLAN-033 and shares one cross-repo handoff point: the shared provider catalog (`src/shared/providerCatalogData.ts`) must land before cats-runtime UI changes mirror those values.
+This plan executes the platform side of the Gemini-to-Antigravity provider swap. It pairs with cats-runtime PLAN-033 and shares one cross-repo handoff point: the shared provider catalog (`src/shared/providerCatalogData.ts`) must land before cats-runtime UI changes mirror the same sentinel or later probe-backed values.
 
 The work moves from the shared catalog outward through installer wrappers, desktop host wiring, readiness/smoke tests, skills sync, shell helpers, and finally docs.
 
@@ -63,7 +63,7 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
 **Cross-repo unblock point**: completing this phase gives cats-runtime PLAN-033 Phase 4 the canonical platform values to mirror.
 
 - [ ] In `src/shared/providerCatalogData.ts:4`, replace `'gemini'` in the provider-id array with `'antigravity'`, preserving the same array position.
-- [ ] In `src/shared/providerCatalogData.ts:37-43`, replace the `gemini:` model-list key with `antigravity:` only after Phase 0 records a concrete evidence source. If the evidence is official product documentation rather than a live CLI/config/smoke result, catalog `value:` strings may use the documented display names, but code and docs must not claim they are raw `agy` model ids.
+- [ ] In `src/shared/providerCatalogData.ts:37-43`, replace the `gemini:` model-list key with `antigravity:` and use `antigravity-default` as the provider-default sentinel until Phase 0 records executable model-id evidence. If the evidence is official product documentation rather than a live CLI/config/smoke result, keep those values as docs-only display names and do not use them as catalog `value:` strings.
 - [ ] In `src/shared/providerCatalogData.ts:89`, update the trailing single-entry block that references `gemini 3.1 pro`.
 - [ ] In `src/shared/providerCatalogData.ts:48,60,72,76,77`, audit the `copilot` / `cursor` / `openrouter` submodel lists that reference `gemini-*` identifiers. These are vendor-routed submodels (e.g. Copilot's `gemini-3-pro-preview` is Copilot's own routing label, not the CLI provider). Keep entries that the vendor still routes; remove entries the vendor has dropped per latest vendor docs.
 - [ ] In `src/shared/providerCatalogInstances.ts:16`, replace the `gemini:` default-instance template with `antigravity:` using the new family id and any new default config keys.
