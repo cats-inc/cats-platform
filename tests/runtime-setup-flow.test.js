@@ -7,6 +7,11 @@ import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import {
+  createAuthenticatedTestSession,
+  createTestAuthConfig,
+  installAuthenticatedFetch,
+} from './testUtils.js';
 
 let tempDir;
 
@@ -29,6 +34,7 @@ async function createConfig() {
     runtimeApiKey: '',
     desktopHostStatePath: path.join(rootDir, 'desktop', 'state.json'),
     chatStatePath: path.join(rootDir, 'platform', 'state', 'chat-state.local.json'),
+    auth: createTestAuthConfig(),
   };
 }
 
@@ -120,11 +126,18 @@ function createRuntimeSetupStub({
 
 async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
   const config = await createConfig();
+  const now = new Date('2026-03-30T11:15:00.000Z');
+  const auth = await createAuthenticatedTestSession({
+    now,
+    sessionSecret: config.auth.sessionSecret,
+    sessionTtlMs: config.auth.sessionTtlMs,
+  });
   const server = createServer({
     shared: {
       config,
       runtimeClient,
-      now: () => new Date('2026-03-30T11:15:00.000Z'),
+      authStore: auth.authStore,
+      now: () => now,
     },
     chat: {
       chatStore,
@@ -139,9 +152,14 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
     throw new Error('Failed to resolve test server address');
   }
 
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const restoreFetch = installAuthenticatedFetch(baseUrl, auth, {
+    origin: 'http://127.0.0.1:8181',
+  });
   try {
-    await callback(`http://127.0.0.1:${address.port}`, config);
+    await callback(baseUrl, config);
   } finally {
+    restoreFetch();
     server.close();
     await once(server, 'close');
   }
