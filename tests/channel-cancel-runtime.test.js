@@ -16,6 +16,26 @@ const baseConfig = {
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
+  auth: {
+    mode: 'unsafe_disabled',
+    enabled: false,
+    sessionSecret: null,
+    sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
+    mobileSessionTtlMs: 30 * 24 * 60 * 60 * 1000,
+    loginFailureLimit: 5,
+    loginLockoutMs: 30_000,
+    accountDailyFailureCap: 100,
+    accountCooldownMs: 15 * 60 * 1000,
+    subnetDailyFailureCap: 500,
+    allowedBrowserOrigins: ['http://127.0.0.1:8181'],
+    authStatePath: 'unused-auth-state.json',
+    recoveryTokenPath: 'unused-auth-recovery.json',
+    google: {
+      clientId: null,
+      hostedDomains: [],
+      mobileAudiences: [],
+    },
+  },
 };
 
 function createBlockingRuntimeStub() {
@@ -140,6 +160,7 @@ test('POST /api/channels/:id/cancel stops an in-flight group room dispatch', asy
     {
       title: 'Stop group room',
       topic: 'Verify stop during an active group dispatch.',
+      originSurface: 'chat',
       entryKind: 'group',
       skipBossCatGreeting: true,
       defaultRecipientId: 'participant-inline',
@@ -156,9 +177,9 @@ test('POST /api/channels/:id/cancel stops an in-flight group room dispatch', asy
         {
           participantId: 'participant-counter',
           name: 'Counterpoint',
-          provider: 'gemini',
+          provider: 'antigravity',
           instance: 'native',
-          model: 'gemini-3.1-pro',
+          model: 'Gemini 3.1 Pro (high)',
           modelSelection: null,
           roleHint: 'Secondary challenge.',
         },

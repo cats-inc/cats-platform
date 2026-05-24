@@ -22,6 +22,7 @@ test('createChannel keeps channel-only temporary participants outside cat assign
     {
       title: 'Ad hoc review room',
       topic: 'Compare two model specialists without creating Cats first.',
+      originSurface: 'chat',
       temporaryParticipants: [
         {
           participantId: 'participant-lead',
@@ -34,9 +35,9 @@ test('createChannel keeps channel-only temporary participants outside cat assign
         {
           participantId: 'participant-counter',
           name: 'Counter Reviewer',
-          provider: 'gemini',
+          provider: 'antigravity',
           instance: 'native',
-          model: 'gemini-3.1-pro',
+          model: 'Gemini 3.1 Pro (high)',
           roleHint: 'Counterpoint',
         },
       ],
@@ -84,6 +85,7 @@ test('FileChatStore round-trips temporary participants through persisted snapsho
     {
       title: 'Ad hoc room',
       topic: 'Persist channel-only participants.',
+      originSurface: 'chat',
       temporaryParticipants: [
         {
           participantId: 'participant-inline',
@@ -117,6 +119,7 @@ test('createChannel auto-names temporary participants when the draft omits names
     {
       title: 'Auto-named room',
       topic: 'Auto-name ad hoc participants from provider labels.',
+      originSurface: 'chat',
       temporaryParticipants: [
         {
           participantId: 'participant-claude-1',
@@ -147,6 +150,7 @@ test('createChannel enforces max chat participants independently from cat count'
       {
         title: 'Crowded room',
         topic: 'Too many participants for this chat.',
+        originSurface: 'chat',
         participantCatIds: ['cat-a', 'cat-b'],
         temporaryParticipants: [
           {
