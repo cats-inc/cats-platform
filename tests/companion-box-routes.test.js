@@ -14,6 +14,26 @@ const baseConfig = {
   port: 8181,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
+  auth: {
+    mode: 'unsafe_disabled',
+    enabled: false,
+    sessionSecret: null,
+    sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
+    mobileSessionTtlMs: 30 * 24 * 60 * 60 * 1000,
+    loginFailureLimit: 5,
+    loginLockoutMs: 30_000,
+    accountDailyFailureCap: 100,
+    accountCooldownMs: 15 * 60 * 1000,
+    subnetDailyFailureCap: 500,
+    allowedBrowserOrigins: ['http://127.0.0.1:8181'],
+    authStatePath: 'unused-auth-state.json',
+    recoveryTokenPath: 'unused-auth-recovery.json',
+    google: {
+      clientId: null,
+      hostedDomains: [],
+      mobileAudiences: [],
+    },
+  },
 };
 
 function createRuntimeStub() {
@@ -506,8 +526,8 @@ test('mentioning a companion in a Recents thread hydrates the participant runtim
         topic: 'Start default, then bring a companion into the Recents chat.',
         originSurface: 'chat',
         skipBossCatGreeting: true,
-        pendingProvider: 'gemini',
-        pendingModel: 'gemini-default',
+        pendingProvider: 'antigravity',
+        pendingModel: 'Gemini 3.1 Pro (high)',
       }),
     });
     assert.equal(createChannelResponse.status, 201);

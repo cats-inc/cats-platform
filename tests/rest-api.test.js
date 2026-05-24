@@ -14,7 +14,14 @@ const baseConfig = {
   port: 8181,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
-  chatStatePath: 'unused-for-tests',
+  chatStatePath: path.join(
+    tmpdir(),
+    'cats-rest-api-test',
+    `${process.pid}-${Date.now()}`,
+    'platform',
+    'state',
+    'chat-state.local.json',
+  ),
   auth: {
     mode: 'unsafe_disabled',
     enabled: false,
@@ -409,10 +416,11 @@ test('canonical routes full lifecycle: create cat, channel, activate, message, a
       body: JSON.stringify({
         title: 'Ops Radar',
         topic: 'Track regressions.',
+        originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
         language: 'TypeScript',
         cats: [
-          { name: 'Inline-Agent', provider: 'gemini', roles: ['reviewer'] },
+          { name: 'Inline-Agent', provider: 'antigravity', roles: ['reviewer'] },
         ],
       }),
     });
@@ -824,6 +832,7 @@ test('PATCH /api/channels/:channelId/participants/:participantId renames tempora
       body: JSON.stringify({
         title: 'Group',
         topic: 'Shared chat',
+        originSurface: 'chat',
         entryKind: 'group',
         temporaryParticipants: [
           {
@@ -879,6 +888,8 @@ test('POST /api/channels supports direct Cat chat with existingCatIds and initia
       body: JSON.stringify({
         title: '',
         topic: 'Private companion lane',
+        originSurface: 'chat',
+        entryKind: 'direct',
         roomMode: 'direct_message',
         participantCatIds: [companionCatId],
       }),
@@ -904,18 +915,18 @@ test('POST /api/channels supports direct Cat chat with existingCatIds and initia
 
 test('bot binding routes support multiple Telegram bots across Cats', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const createBossResponse = await fetch(`${baseUrl}/api/cats`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        ownerDisplayName: 'Kenny',
-        bossCatName: 'Boss Cat',
-        bossCatProvider: 'claude',
+        name: 'Boss Cat',
+        provider: 'claude',
+        makeBoss: true,
       }),
     });
-    assert.equal(setupResponse.status, 200);
-    const setupPayload = await setupResponse.json();
-    const bossCatId = setupPayload.chat.bossCatId;
+    assert.equal(createBossResponse.status, 201);
+    const createBossPayload = await createBossResponse.json();
+    const bossCatId = createBossPayload.cat.id;
 
     const createCompanionResponse = await fetch(`${baseUrl}/api/cats`, {
       method: 'POST',
