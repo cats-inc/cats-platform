@@ -19,6 +19,7 @@ const COMPONENTS_DIR = path.join(
   'renderer',
   'components',
 );
+const I18N_DIR = path.join(process.cwd(), 'src', 'shared', 'i18n');
 
 test('useVoiceInputComposer cancels recognition when disabled flips true', async () => {
   const source = await readFile(
@@ -115,15 +116,20 @@ test('useVoiceInputComposer surfaces recognition errors via toast', async () => 
     path.join(HOOKS_DIR, 'useVoiceInputComposer.ts'),
     'utf8',
   );
+  const enCatalog = await readFile(path.join(I18N_DIR, 'catalogs', 'en.ts'), 'utf8');
 
   assert.match(source, /useToast/u);
-  assert.match(source, /showToast\(resolveVoiceErrorMessage\(kind\)\)/u);
+  assert.match(source, /showToast\(resolveVoiceErrorMessage\(kind, t\)\)/u);
   assert.match(source, /permission_denied/u);
   assert.match(source, /permission_not_determined/u);
   assert.match(source, /mic_unavailable/u);
   assert.match(source, /language_not_supported/u);
   assert.match(source, /engine_unavailable/u);
   assert.match(source, /helper_crashed/u);
+  assert.match(source, /messageKeys\.sharedVoiceInputErrorPermissionDenied/u);
+  assert.match(source, /messageKeys\.sharedVoiceInputFailedWithKind/u);
+  assert.match(enCatalog, /Microphone access was denied/u);
+  assert.match(enCatalog, /Voice input failed \(\{kind\}\)/u);
   assert.match(source, /return \{\s*supported,\s*listening,\s*toggle,\s*textareaRef,\s*toasts,/u);
 });
 
@@ -181,14 +187,17 @@ test('useVoiceInputComposer prefers native bridge and routes privacy mode warnin
     path.join(HOOKS_DIR, 'useVoiceInputComposer.ts'),
     'utf8',
   );
+  const enCatalog = await readFile(path.join(I18N_DIR, 'catalogs', 'en.ts'), 'utf8');
 
   assert.match(source, /nativeVoiceInput\.supported \? nativeVoiceInput : webSpeechInput/u);
   assert.match(source, /resolveVoicePrivacyMessage/u);
   assert.match(source, /mode === 'unknown'/u);
-  assert.match(source, /may use Microsoft online speech/u);
+  assert.match(source, /messageKeys\.sharedVoiceInputPrivacyUnknown/u);
+  assert.match(enCatalog, /may use Microsoft online speech/u);
   assert.match(source, /mode === 'cloud'/u);
+  assert.match(source, /messageKeys\.sharedVoiceInputPrivacyCloud/u);
   assert.match(source, /privacyMode = nativeVoiceInput\.supported \? nativeVoiceInput\.privacyMode : null/u);
-  assert.match(source, /privacyMessage = resolveVoicePrivacyMessage\(privacyMode\)/u);
+  assert.match(source, /privacyMessage = resolveVoicePrivacyMessage\(privacyMode, t\)/u);
 });
 
 test('useVoiceInputComposer cancels active voice input on Escape', async () => {
