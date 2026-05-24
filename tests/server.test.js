@@ -52,6 +52,26 @@ const baseConfig = {
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
+  auth: {
+    mode: 'unsafe_disabled',
+    enabled: false,
+    sessionSecret: null,
+    sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
+    mobileSessionTtlMs: 30 * 24 * 60 * 60 * 1000,
+    loginFailureLimit: 5,
+    loginLockoutMs: 30_000,
+    accountDailyFailureCap: 100,
+    accountCooldownMs: 15 * 60 * 1000,
+    subnetDailyFailureCap: 500,
+    allowedBrowserOrigins: ['http://127.0.0.1:8181'],
+    authStatePath: 'unused-auth-state.json',
+    recoveryTokenPath: 'unused-auth-recovery.json',
+    google: {
+      clientId: null,
+      hostedDomains: [],
+      mobileAudiences: [],
+    },
+  },
 };
 
 function createRuntimeStub() {
@@ -10603,9 +10623,9 @@ test('PATCH /api/channels/:channelId can start a fresh default continuity branch
       },
       body: JSON.stringify({
         body: 'Continue from the fresh branch only.',
-        pendingProvider: 'gemini',
+        pendingProvider: 'antigravity',
         pendingInstance: 'native',
-        pendingModel: 'gemini-default',
+        pendingModel: 'Gemini 3.1 Pro (high)',
       }),
     });
     assert.equal(followUpResponse.status, 200);
@@ -10818,17 +10838,6 @@ test('POST /api/channels keeps direct lanes scoped to the direct recipient only'
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
-        bossCatProvider: 'claude',
-      }),
-    });
-    assert.equal(setupResponse.status, 200);
-
     const firstCatResponse = await fetch(`${baseUrl}/api/cats`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -10836,6 +10845,7 @@ test('POST /api/channels keeps direct lanes scoped to the direct recipient only'
         name: 'Lead Companion',
         provider: 'claude',
         model: 'claude-opus-4-6',
+        makeBoss: true,
       }),
     });
     assert.equal(firstCatResponse.status, 201);
@@ -10847,8 +10857,8 @@ test('POST /api/channels keeps direct lanes scoped to the direct recipient only'
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         name: 'Extra Cat',
-        provider: 'gemini',
-        model: 'gemini-3-flash',
+        provider: 'antigravity',
+        model: 'Gemini 3 Flash',
       }),
     });
     assert.equal(secondCatResponse.status, 201);
@@ -10861,6 +10871,7 @@ test('POST /api/channels keeps direct lanes scoped to the direct recipient only'
       body: JSON.stringify({
         title: 'Scoped direct lane',
         topic: 'A direct message should only keep its direct recipient Cat.',
+        originSurface: 'chat',
         roomMode: 'direct_message',
         defaultRecipientId: defaultRecipientCatId,
         participantCatIds: [defaultRecipientCatId, extraCatId],
@@ -10879,17 +10890,6 @@ test('POST /api/channels keeps direct lanes scoped to the direct recipient only'
 
 test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-recipient cat to a direct message', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
-        bossCatProvider: 'claude',
-      }),
-    });
-    assert.equal(setupResponse.status, 200);
-
     const leadCatResponse = await fetch(`${baseUrl}/api/cats`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -10897,6 +10897,7 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-recipient ca
         name: 'Lead Companion',
         provider: 'claude',
         model: 'claude-opus-4-6',
+        makeBoss: true,
       }),
     });
     assert.equal(leadCatResponse.status, 201);
@@ -10908,8 +10909,8 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-recipient ca
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         name: 'Extra Companion',
-        provider: 'gemini',
-        model: 'gemini-3-flash',
+        provider: 'antigravity',
+        model: 'Gemini 3 Flash',
       }),
     });
     assert.equal(extraCatResponse.status, 201);
@@ -10922,6 +10923,7 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-recipient ca
       body: JSON.stringify({
         title: 'Strict direct lane',
         topic: 'Reject adding any non-recipient Cats.',
+        originSurface: 'chat',
         roomMode: 'direct_message',
         participantCatIds: [defaultRecipientCatId],
         defaultRecipientId: defaultRecipientCatId,
@@ -10936,8 +10938,8 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-recipient ca
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        provider: 'gemini',
-        model: 'gemini-3-flash',
+        provider: 'antigravity',
+        model: 'Gemini 3 Flash',
       }),
     });
     assert.equal(assignResponse.status, 400);
