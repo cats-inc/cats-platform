@@ -103,6 +103,7 @@ test('lead-scoped public new chat draft keeps fresh copy with a selected audienc
   assert.match(markup, /class="audienceChip"/u);
   assert.match(markup, /data-tooltip="Milo · Claude-CLI · claude-sonnet"/u);
   assert.doesNotMatch(markup, /draftHeaderProfile/u);
+  assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /Participant Chat|Private Chat/u);
 });
 
@@ -118,7 +119,9 @@ test('generic new chat draft with one selected cat keeps fresh copy with a selec
   assert.match(markup, /Meow\. Ready when you are\./u);
   assert.match(markup, /class="audienceChip"/u);
   assert.match(markup, /data-tooltip="Milo · Claude-CLI · claude-sonnet"/u);
-  assert.doesNotMatch(markup, /Group Chat|Participant Chat/u);
+  assert.doesNotMatch(markup, /draftHeaderProfile/u);
+  assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
+  assert.doesNotMatch(markup, /Group Chat|Participant Chat|Private Chat/u);
 });
 
 test('generic new chat draft keeps only the product-owned starter chip out of the box', () => {
