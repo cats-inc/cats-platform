@@ -49,7 +49,7 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
 - [ ] Install `agy` locally via environment-bootstrap `Install-AntigravityCLI.ps1` (Windows) or `install-antigravity-cli.sh` (macOS/Linux).
 - [ ] Confirm install paths: PATH, `LOCALAPPDATA`, `~/.local/bin`.
 - [ ] Capture `agy --version` and `agy --help` output.
-- [ ] Identify whether `agy` creates a `.antigravity/skills/` directory or any equivalent skills mechanism.
+- [x] Identify whether `agy` creates a `.antigravity/skills/` directory or any equivalent skills mechanism. Official docs show plugin-backed skills under `~/.gemini/antigravity-cli/plugins`, but no terminal-managed `gemini skills` equivalent; Cats skills sync therefore drops Gemini without adding an Antigravity row in this migration.
 - [x] Identify whether Antigravity exposes the same Gemini-3.x model identifiers (`gemini-3.1-pro-preview`, `gemini-3-flash-preview`, etc.) or renames them. The shared research note records official product documentation for selectable reasoning-model display names, but no live CLI/config/smoke evidence for raw `agy` model ids. Do not treat `agy --help` as sufficient model-id evidence.
 - [x] Record the host-facing wrapper flags and the environment-bootstrap installer semantics separately. Cats Desktop emits `-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-Json`, and `-DryRun` on every platform; environment-bootstrap implements refresh by removing the existing `agy` binary before invoking the official Google installer. The shared research note records the split, and the Cats Desktop wrappers port that behavior instead of delegating host action flags verbatim.
 - [x] Define default uninstall scope: binary-only and user-scoped removal of `agy` executable/path target, with no auth-token/session/config purge unless a separate explicit purge design is approved.
@@ -62,19 +62,19 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
 
 **Cross-repo unblock point**: completing this phase gives cats-runtime PLAN-033 Phase 4 the canonical platform values to mirror.
 
-- [ ] In `src/shared/providerCatalogData.ts:4`, replace `'gemini'` in the provider-id array with `'antigravity'`, preserving the same array position.
-- [ ] In `src/shared/providerCatalogData.ts:37-43`, replace the `gemini:` model-list key with `antigravity:` and use `antigravity-default` as the provider-default sentinel until Phase 0 records executable model-id evidence. If the evidence is official product documentation rather than a live CLI/config/smoke result, keep those values as docs-only display names and do not use them as catalog `value:` strings.
-- [ ] In `src/shared/providerCatalogData.ts:89`, update the trailing single-entry block that references `gemini 3.1 pro`.
+- [x] In `src/shared/providerCatalogData.ts:4`, replace `'gemini'` in the provider-id array with `'antigravity'`, preserving the same array position.
+- [x] In `src/shared/providerCatalogData.ts:37-43`, replace the `gemini:` model-list key with `antigravity:` and use `antigravity-default` as the provider-default sentinel until Phase 0 records executable model-id evidence. If the evidence is official product documentation rather than a live CLI/config/smoke result, keep those values as docs-only display names and do not use them as catalog `value:` strings.
+- [x] In `src/shared/providerCatalogData.ts:89`, update the trailing single-entry block that references `gemini 3.1 pro`.
 - [ ] In `src/shared/providerCatalogData.ts:48,60,72,76,77`, audit the `copilot` / `cursor` / `openrouter` submodel lists that reference `gemini-*` identifiers. These are vendor-routed submodels (e.g. Copilot's `gemini-3-pro-preview` is Copilot's own routing label, not the CLI provider). Keep entries that the vendor still routes; remove entries the vendor has dropped per latest vendor docs.
-- [ ] In `src/shared/providerCatalogInstances.ts:16`, replace the `gemini:` default-instance template with `antigravity:` using the new family id and any new default config keys.
-- [ ] Decide the new `antigravity` badge color. Apply downstream in Phase 3 (desktop bootstrap) and signal to runtime PLAN-033 Phase 4 via the shared catalog if a color field is exposed there.
+- [x] In `src/shared/providerCatalogInstances.ts:16`, replace the `gemini:` default-instance template with `antigravity:` using the new family id and any new default config keys.
+- [x] Decide the new `antigravity` badge color. Apply downstream in Phase 3 (desktop bootstrap) and signal to runtime PLAN-033 Phase 4 via the shared catalog if a color field is exposed there.
 
 **Deliverables**: Shared catalog ships `antigravity` as a first-class provider with a working model list; no `gemini` family key remains as a primary provider.
 
 ### Phase 2: Installer Wrappers
 
-- [ ] Create `scripts/windows/Install-Antigravity.ps1`. Implementation: preserve the packaged helper action surface (`-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-DryRun`, `-Json`, state hints) and use `-HelperId 'windows-antigravity-native-installer' -CommandName 'agy' -DisplayName 'Antigravity CLI'`.
-- [ ] Apply the same wrapper-to-upstream mapping on all OSes:
+- [x] Create `scripts/windows/Install-Antigravity.ps1`. Implementation: preserve the packaged helper action surface (`-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-DryRun`, `-Json`, state hints) and use `-HelperId 'windows-antigravity-native-installer' -CommandName 'agy' -DisplayName 'Antigravity CLI'`.
+- [x] Apply the same wrapper-to-upstream mapping on all OSes:
   - `-CheckOnly`: wrapper-only probe of `agy` / expected install path; do not invoke the installer.
   - `-Apply`: invoke the official Google installer with no install-mode flag.
   - `-Upgrade`: remove the expected `agy` binary first, then invoke the official installer with no install-mode flag.
@@ -82,31 +82,31 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
   - `-DryRun`: wrapper-only planned-action output; do not mutate the host.
   - `-Uninstall`: wrapper-owned binary-only uninstall; do not invoke the installer.
   - `-Json`: wrapper-owned output shaping; normalize upstream output into the packaged helper JSON contract.
-- [ ] Create `scripts/macos/install-antigravity.sh`. Implementation: preserve the same canonical host-facing flag surface emitted by `setupBridge.ts` (`-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-DryRun`, `-Json`) and do not publish a separate bash-style lifecycle contract. Parse flags with a custom `while [ $# -gt 0 ]; do case "$1" in ... esac; shift; done` loop, matching the existing `run_npm_cli_provider` style; do not use `getopts`, because it does not handle this single-dash long-flag contract cleanly. Invoke the official Google installer for install / refresh actions and port environment-bootstrap's refresh behavior by deleting `~/.local/bin/agy` before upgrade / force.
-- [ ] Create `scripts/linux/install-antigravity.sh`. Implementation: mirror macOS with the same official-installer invocation and refresh behavior.
-- [ ] Implement `-Uninstall` inside the Cats wrappers. Default scope is binary-only: remove `%LOCALAPPDATA%\agy\bin\agy.exe` on Windows and `~/.local/bin/agy` on Unix, clean empty wrapper-owned directories where safe, emit structured warnings for residual auth/session/config data, and do not delete auth tokens or sessions.
-- [ ] Verify each wrapper's exit-code surface matches the desktop host's expected `runSetupHelper(...)` result shape (structured JSON or stdout convention, per the existing Gemini wrapper).
-- [ ] Delete `scripts/windows/Install-Gemini.ps1`, `scripts/macos/install-gemini.sh`, `scripts/linux/install-gemini.sh`.
+- [x] Create `scripts/macos/install-antigravity.sh`. Implementation: preserve the same canonical host-facing flag surface emitted by `setupBridge.ts` (`-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-DryRun`, `-Json`) and do not publish a separate bash-style lifecycle contract. Parse flags with a custom `while [ $# -gt 0 ]; do case "$1" in ... esac; shift; done` loop, matching the existing `run_npm_cli_provider` style; do not use `getopts`, because it does not handle this single-dash long-flag contract cleanly. Invoke the official Google installer for install / refresh actions and port environment-bootstrap's refresh behavior by deleting `~/.local/bin/agy` before upgrade / force.
+- [x] Create `scripts/linux/install-antigravity.sh`. Implementation: mirror macOS with the same official-installer invocation and refresh behavior.
+- [x] Implement `-Uninstall` inside the Cats wrappers. Default scope is binary-only: remove `%LOCALAPPDATA%\agy\bin\agy.exe` on Windows and `~/.local/bin/agy` on Unix, clean empty wrapper-owned directories where safe, emit structured warnings for residual auth/session/config data, and do not delete auth tokens or sessions.
+- [x] Verify each wrapper's exit-code surface matches the desktop host's expected `runSetupHelper(...)` result shape (structured JSON or stdout convention, per the existing Gemini wrapper).
+- [x] Delete `scripts/windows/Install-Gemini.ps1`, `scripts/macos/install-gemini.sh`, `scripts/linux/install-gemini.sh`.
 
 **Deliverables**: Three Antigravity installer wrappers exist; three Gemini installer wrappers are gone.
 
 ### Phase 3: Desktop Host
 
-- [ ] In `desktop/host/cliInventoryProbe.ts:29,48,67`, replace `gemini` with `antigravity`. Binary name `agy`. Display label `Antigravity`. Native-installer suffix matches the renamed wrapper.
-- [ ] In `desktop/host/contracts.ts:95`, replace `gemini` with `antigravity` in the provider-id list.
-- [ ] In `desktop/host/packaging.ts:540-548`:
+- [x] In `desktop/host/cliInventoryProbe.ts:29,48,67`, replace `gemini` with `antigravity`. Binary name `agy`. Display label `Antigravity`. Native-installer suffix matches the renamed wrapper.
+- [x] In `desktop/host/contracts.ts:95`, replace `gemini` with `antigravity` in the provider-id list.
+- [x] In `desktop/host/packaging.ts:540-548`:
   - Replace `id: 'gemini'` with `id: 'antigravity'`.
   - Replace `label: 'Gemini CLI'` with `label: 'Antigravity CLI'`.
   - Replace the three asset ids (`windows-gemini-native-installer` → `windows-antigravity-native-installer`, etc.).
   - Replace `currentHome` paths with the new wrapper paths.
-- [ ] In `desktop/host/setupAssets.ts`, do not insert Antigravity into the shared npm-provider tuples:
+- [x] In `desktop/host/setupAssets.ts`, do not insert Antigravity into the shared npm-provider tuples:
   - Remove `['gemini', 'gemini.sh', 'Gemini CLI']` from the macOS/Linux tuple around line 121.
   - Remove `['gemini', 'Install-Gemini.ps1', 'Gemini CLI']` from the Windows npm tuple around line 326.
   - Add explicit standalone Antigravity `provider_installer` registrations for Windows, macOS, and Linux with `sourceRelativePath` / `stageRelativePath` / `packagedRelativePath` pointing at the new wrapper scripts.
   - Use Antigravity-specific notes such as "Installs or upgrades Antigravity CLI as a user-scoped native binary"; do not inherit the tuple notes that mention repo-owned Unix npm helpers or Windows npm-global installs.
   - Set `requiresElevation` and `resumable` from the Phase 0 evidence instead of inheriting tuple defaults.
   - Update the helper-description string at line 543 to remove the Gemini mention. Antigravity does not flow through the shared npm-helper, so it does not belong in that comment list.
-- [ ] In `desktop/host/bootstrapPage.ts:1651,1665,1837`:
+- [x] In `desktop/host/bootstrapPage.ts:1651,1665,1837`:
   - Replace `'gemini'` in the provider list with `'antigravity'`. Position it between `claude_code` and `cursor_agent` per the upstream ordering.
   - Replace `gemini: 'Gemini'` with `antigravity: 'Antigravity'` in the display-label map.
   - Replace `'gemini'` in `ONBOARDING_COLLAPSED_PROVIDER_IDS` with `'antigravity'`.
@@ -115,40 +115,40 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
 
 ### Phase 4: Readiness Check and Smoke Tests
 
-- [ ] In `scripts/windows/Check-WindowsSetupReadiness.ps1:356`, replace the npm-only `gemini` entry with a native `antigravity` entry. Extend the readiness entry schema instead of inventing an npm package value: add `InstallSource = 'npm' | 'native'` (or split npm/native rows), make `PackageName` optional, and add `CommandName` / binary path candidates for native CLIs. Antigravity should probe `agy` and `%LOCALAPPDATA%\agy\bin\agy.exe`; npm installed/outdated checks must not run for it.
-- [ ] In `scripts/windows/Test-WindowsInstallerSmoke.ps1:147`, replace the `Install-Gemini.ps1` assertion with an `Install-Antigravity.ps1` assertion.
-- [ ] In `scripts/windows/Test-WindowsInstallerSmoke.ps1:184`, replace the `windows-gemini-native-installer-script` artifact id with `windows-antigravity-native-installer-script`.
-- [ ] In `scripts/macos/test-macos-package-smoke.sh:52`, replace the `install-gemini.sh` assertion with `install-antigravity.sh`.
-- [ ] In `scripts/linux/test-linux-package-smoke.sh:52`, replace the `install-gemini.sh` assertion with `install-antigravity.sh`.
+- [x] In `scripts/windows/Check-WindowsSetupReadiness.ps1:356`, replace the npm-only `gemini` entry with a native `antigravity` entry. Extend the readiness entry schema instead of inventing an npm package value: add `InstallSource = 'npm' | 'native'` (or split npm/native rows), make `PackageName` optional, and add `CommandName` / binary path candidates for native CLIs. Antigravity should probe `agy` and `%LOCALAPPDATA%\agy\bin\agy.exe`; npm installed/outdated checks must not run for it.
+- [x] In `scripts/windows/Test-WindowsInstallerSmoke.ps1:147`, replace the `Install-Gemini.ps1` assertion with an `Install-Antigravity.ps1` assertion.
+- [x] In `scripts/windows/Test-WindowsInstallerSmoke.ps1:184`, replace the `windows-gemini-native-installer-script` artifact id with `windows-antigravity-native-installer-script`.
+- [x] In `scripts/macos/test-macos-package-smoke.sh:52`, replace the `install-gemini.sh` assertion with `install-antigravity.sh`.
+- [x] In `scripts/linux/test-linux-package-smoke.sh:52`, replace the `install-gemini.sh` assertion with `install-antigravity.sh`.
 - [ ] Run all three smoke tests against a freshly packaged build to confirm they pass.
 
 **Deliverables**: Readiness check and three packaged-setup smoke tests verify Antigravity bundling.
 
 ### Phase 5: Skills Sync and Shell Helpers
 
-- [ ] In `scripts/windows/Sync-AgentSkills.ps1:16,35,67`:
+- [x] In `scripts/windows/Sync-AgentSkills.ps1:16,35,67`:
   - Remove `gemini` from the `--agent` `ValidateSet`.
   - Remove the `gemini` entry from the agent-target map.
   - If Phase 0 confirmed `agy` discovers a `.antigravity/skills/` directory, add an `antigravity` entry. Otherwise leave the agent list without an Antigravity row.
   - Update the function's docstring at line 7 to remove the `.gemini/skills/` mention.
-- [ ] In `scripts/macos/sync-agent-skills.sh:9,26,69,74`, mirror the Windows changes.
-- [ ] In `scripts/linux/sync-agent-skills.sh:9,26,69,74`, mirror the Windows changes.
-- [ ] In `scripts/macos/node-cli-common.sh:322`, remove the `gemini|gemini|@google/gemini-cli|Gemini CLI` catalog row.
-- [ ] In `scripts/macos/node-cli-common.sh:337`, update the help-text line that enumerates `Codex, Gemini, Copilot, OpenCode, Kilo, Auggie, and Pi` — drop `Gemini`.
-- [ ] In `scripts/macos/node-cli-common.sh:1080`, update the wrapper-pattern comment to remove `install-gemini.sh`.
-- [ ] In `scripts/linux/node-cli-common.sh:322,337,1080`, mirror macOS.
-- [ ] In `scripts/macos/upgrade-cli-tools.sh:43`, remove `install-gemini.sh` from the upgrade-loop script list.
-- [ ] In `scripts/linux/upgrade-cli-tools.sh:43`, mirror macOS.
-- [ ] In `scripts/windows/_NpmCliInstaller.ps1:7`, update the comment that enumerates `Codex, Gemini, Copilot, OpenCode, Kilo, Auggie, Pi` — drop `Gemini`.
-- [ ] In `scripts/windows/_NpmCliInstaller.ps1:526`, update the comment line that mentions `gemini, copilot` as pure-JS CLIs — drop `gemini` (Antigravity is native, not pure-JS).
+- [x] In `scripts/macos/sync-agent-skills.sh:9,26,69,74`, mirror the Windows changes.
+- [x] In `scripts/linux/sync-agent-skills.sh:9,26,69,74`, mirror the Windows changes.
+- [x] In `scripts/macos/node-cli-common.sh:322`, remove the `gemini|gemini|@google/gemini-cli|Gemini CLI` catalog row.
+- [x] In `scripts/macos/node-cli-common.sh:337`, update the help-text line that enumerates `Codex, Gemini, Copilot, OpenCode, Kilo, Auggie, and Pi` — drop `Gemini`.
+- [x] In `scripts/macos/node-cli-common.sh:1080`, update the wrapper-pattern comment to remove `install-gemini.sh`.
+- [x] In `scripts/linux/node-cli-common.sh:322,337,1080`, mirror macOS.
+- [x] In `scripts/macos/upgrade-cli-tools.sh:43`, remove `install-gemini.sh` from the upgrade-loop script list.
+- [x] In `scripts/linux/upgrade-cli-tools.sh:43`, mirror macOS.
+- [x] In `scripts/windows/_NpmCliInstaller.ps1:7`, update the comment that enumerates `Codex, Gemini, Copilot, OpenCode, Kilo, Auggie, Pi` — drop `Gemini`.
+- [x] In `scripts/windows/_NpmCliInstaller.ps1:526`, update the comment line that mentions `gemini, copilot` as pure-JS CLIs — drop `gemini` (Antigravity is native, not pure-JS).
 
 **Deliverables**: Skills sync and shell helpers no longer reference Gemini; Antigravity is wired only where Phase 0 evidence supports it.
 
 ### Phase 6: Docs and Repo Hygiene
 
-- [ ] Update `scripts/README.md:147,150,183,213,247,264,285`: replace each Gemini reference with Antigravity equivalent. Add a one-paragraph note in the appropriate section explaining the upstream swap (link to environment-bootstrap commits `b273f63a` and `5725e637`).
-- [ ] Leave repo-root and subproject `GEMINI.md` files untouched. They are agent-specific instruction files, not Gemini CLI setup files.
-- [ ] Do not edit `AGENTS.md` / `CODEX.md` for this CLI swap; Gemini mentions in agent-governance sections are justified unless they also describe packaged CLI setup.
+- [x] Update `scripts/README.md:147,150,183,213,247,264,285`: replace each Gemini reference with Antigravity equivalent. Add a one-paragraph note in the appropriate section explaining the upstream swap (link to environment-bootstrap commits `b273f63a` and `5725e637`).
+- [x] Leave repo-root and subproject `GEMINI.md` files untouched. They are agent-specific instruction files, not Gemini CLI setup files.
+- [x] Do not edit `AGENTS.md` / `CODEX.md` for this CLI swap; Gemini mentions in agent-governance sections are justified unless they also describe packaged CLI setup.
 - [ ] Final grep sweep: `git grep -i gemini` across `cats-platform/` — every remaining hit must be justified (e.g. vendor-routed submodel labels in `providerCatalogData.ts`, `.gemini/skills` references removed from skills sync, or agent-governance references outside setup code) or removed.
 
 **Deliverables**: No accidental Gemini references; docs reflect the swap.
@@ -223,6 +223,7 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
 | Date | Update |
 |------|--------|
 | 2026-05-24 | Plan created alongside ADR-107 and SPEC-110. |
+| 2026-05-24 | Implementation progress synced: shared catalog, packaged wrappers, desktop host wiring, readiness/smoke assertions, skills sync, native helper loops, and script docs now use Antigravity. Live `agy --help` / `agy --version` and freshly packaged three-OS smoke runs remain open. |
 
 ---
 
