@@ -265,12 +265,13 @@ provider_version_line() {
 
 run_remote_pipe_installer() {
   local provider="$1"
+  shift
   local url
   url="$(provider_install_url "$provider")"
 
   case "$provider" in
     antigravity)
-      curl -fsSL "$url" | bash
+      curl -fsSL "$url" | bash -s -- "$@"
       ;;
     goose)
       curl -fsSL "$url" | env CONFIGURE=false bash
@@ -338,10 +339,13 @@ run_provider_install_action() {
 
   case "$provider" in
     antigravity)
-      if [ "$action" = 'upgrade' ] || [ "$action" = 'force' ]; then
-        rm -f "$HOME/.local/bin/agy" 2>/dev/null || true
+      if [ "$action" = 'upgrade' ]; then
+        run_remote_pipe_installer "$provider" '-upgrade'
+      elif [ "$action" = 'force' ]; then
+        run_remote_pipe_installer "$provider" '-force'
+      else
+        run_remote_pipe_installer "$provider"
       fi
-      run_remote_pipe_installer "$provider"
       ;;
     claude)
       if [ "$action" = 'upgrade' ] && current_command="$(detect_provider_command "$platform" "$provider")"; then

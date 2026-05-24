@@ -156,6 +156,28 @@ test('Unix Antigravity helpers dry-run mutation modes without invoking installer
   }
 });
 
+test('Unix Antigravity helpers translate refresh modes to upstream installer flags', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const commonScript = await readFile(
+      join(rootDir, 'scripts', platform, 'provider-cli-common.sh'),
+      'utf8',
+    );
+
+    assert.match(
+      commonScript,
+      /curl -fsSL "\$url" \| bash -s -- "\$@"/u,
+    );
+    assert.match(
+      commonScript,
+      /run_remote_pipe_installer "\$provider" '-upgrade'/u,
+    );
+    assert.match(
+      commonScript,
+      /run_remote_pipe_installer "\$provider" '-force'/u,
+    );
+  }
+});
+
 test('Unix self-hosted provider audits expose the shared JSON audit core', async () => {
   for (const platform of ['linux', 'macos']) {
     const summary = await readJsonSummary(
