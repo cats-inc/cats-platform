@@ -151,10 +151,10 @@ test('resolveWaitingSessionState skips session-start confirmation when the targe
     {
       assignedParticipants: [
         {
-          participantId: 'participant-gemini',
+          participantId: 'participant-antigravity',
           execution: {
             lease: {
-              sessionId: 'session-gemini',
+              sessionId: 'session-antigravity',
               startedAt: '2026-04-14T11:59:00.000Z',
             },
           },
@@ -172,7 +172,7 @@ test('resolveWaitingSessionState skips session-start confirmation when the targe
       pendingProvider: null,
       pendingInstance: null,
     },
-    'participant-gemini',
+    'participant-antigravity',
   );
 
   assert.deepEqual(waitingSessionState, {
@@ -186,7 +186,7 @@ test('resolveWaitingSessionState uses the active target queue time as the confir
     {
       assignedParticipants: [
         {
-          participantId: 'participant-gemini',
+          participantId: 'participant-antigravity',
           execution: {
             lease: {
               sessionId: null,
@@ -203,12 +203,12 @@ test('resolveWaitingSessionState uses the active target queue time as the confir
             startedAt: '2026-04-14T12:00:01.000Z',
             targetStatuses: [
               {
-                id: 'target-gemini',
+                id: 'target-antigravity',
                 status: 'pending',
                 queuedAt: '2026-04-14T12:05:00.000Z',
                 startedAt: null,
                 participant: {
-                  participantId: 'participant-gemini',
+                  participantId: 'participant-antigravity',
                 },
               },
             ],
@@ -218,8 +218,8 @@ test('resolveWaitingSessionState uses the active target queue time as the confir
       pendingProvider: null,
       pendingInstance: null,
     },
-    'participant-gemini',
-    'target-gemini',
+    'participant-antigravity',
+    'target-antigravity',
   );
 
   assert.deepEqual(waitingSessionState, {
@@ -229,12 +229,12 @@ test('resolveWaitingSessionState uses the active target queue time as the confir
 });
 
 test('resolveWaitingSessionState matches the active target by laneId when the targetStateId drifted', () => {
-  const laneId = buildChatLaneId('turn-1', 'target-gemini-canonical', 'participant-gemini');
+  const laneId = buildChatLaneId('turn-1', 'target-antigravity-canonical', 'participant-antigravity');
   const waitingSessionState = resolveWaitingSessionState(
     {
       assignedParticipants: [
         {
-          participantId: 'participant-gemini',
+          participantId: 'participant-antigravity',
           execution: {
             lease: {
               sessionId: null,
@@ -252,12 +252,12 @@ test('resolveWaitingSessionState matches the active target by laneId when the ta
             startedAt: '2026-04-14T12:00:01.000Z',
             targetStatuses: [
               {
-                id: 'target-gemini-canonical',
+                id: 'target-antigravity-canonical',
                 status: 'pending',
                 queuedAt: '2026-04-14T12:05:00.000Z',
                 startedAt: null,
                 participant: {
-                  participantId: 'participant-gemini',
+                  participantId: 'participant-antigravity',
                 },
               },
             ],
@@ -267,8 +267,8 @@ test('resolveWaitingSessionState matches the active target by laneId when the ta
       pendingProvider: null,
       pendingInstance: null,
     },
-    'participant-gemini',
-    'target-gemini-drifted',
+    'participant-antigravity',
+    'target-antigravity-drifted',
     laneId,
   );
 
@@ -279,12 +279,12 @@ test('resolveWaitingSessionState matches the active target by laneId when the ta
 });
 
 test('resolveWaitingSessionState prefers the persisted target laneId over a recomputed workflow lane id', () => {
-  const laneId = 'lane-gemini-persisted';
+  const laneId = 'lane-antigravity-persisted';
   const waitingSessionState = resolveWaitingSessionState(
     {
       assignedParticipants: [
         {
-          participantId: 'participant-gemini',
+          participantId: 'participant-antigravity',
           execution: {
             lease: {
               sessionId: null,
@@ -302,13 +302,13 @@ test('resolveWaitingSessionState prefers the persisted target laneId over a reco
             startedAt: '2026-04-14T12:00:01.000Z',
             targetStatuses: [
               {
-                id: 'target-gemini-canonical',
+                id: 'target-antigravity-canonical',
                 laneId,
                 status: 'pending',
                 queuedAt: '2026-04-14T12:05:00.000Z',
                 startedAt: null,
                 participant: {
-                  participantId: 'participant-gemini',
+                  participantId: 'participant-antigravity',
                 },
               },
             ],
@@ -318,8 +318,8 @@ test('resolveWaitingSessionState prefers the persisted target laneId over a reco
       pendingProvider: null,
       pendingInstance: null,
     },
-    'participant-gemini',
-    'target-gemini-drifted',
+    'participant-antigravity',
+    'target-antigravity-drifted',
     laneId,
   );
 
@@ -334,10 +334,10 @@ test('resolveWaitingSessionState does not require a new session start for a warm
     {
       assignedParticipants: [
         {
-          participantId: 'participant-gemini',
+          participantId: 'participant-antigravity',
           execution: {
             lease: {
-              sessionId: 'session-gemini',
+              sessionId: 'session-antigravity',
               startedAt: '2026-04-14T12:03:00.000Z',
             },
           },
@@ -351,12 +351,12 @@ test('resolveWaitingSessionState does not require a new session start for a warm
             startedAt: '2026-04-14T12:00:01.000Z',
             targetStatuses: [
               {
-                id: 'target-gemini',
+                id: 'target-antigravity',
                 status: 'pending',
                 queuedAt: '2026-04-14T12:05:00.000Z',
                 startedAt: null,
                 participant: {
-                  participantId: 'participant-gemini',
+                  participantId: 'participant-antigravity',
                 },
               },
             ],
@@ -366,8 +366,8 @@ test('resolveWaitingSessionState does not require a new session start for a warm
       pendingProvider: null,
       pendingInstance: null,
     },
-    'participant-gemini',
-    'target-gemini',
+    'participant-antigravity',
+    'target-antigravity',
   );
 
   assert.deepEqual(waitingSessionState, {
@@ -399,10 +399,10 @@ test('resolveWaitingSessionState ignores a closed participant lease while a new 
     {
       assignedParticipants: [
         {
-          participantId: 'participant-gemini',
+          participantId: 'participant-antigravity',
           execution: {
             lease: {
-              sessionId: 'session-gemini-old',
+              sessionId: 'session-antigravity-old',
               status: 'closed',
               startedAt: '2026-04-14T12:03:00.000Z',
             },
@@ -417,12 +417,12 @@ test('resolveWaitingSessionState ignores a closed participant lease while a new 
             startedAt: '2026-04-14T12:00:01.000Z',
             targetStatuses: [
               {
-                id: 'target-gemini',
+                id: 'target-antigravity',
                 status: 'pending',
                 queuedAt: '2026-04-14T12:05:00.000Z',
                 startedAt: null,
                 participant: {
-                  participantId: 'participant-gemini',
+                  participantId: 'participant-antigravity',
                 },
               },
             ],
@@ -432,8 +432,8 @@ test('resolveWaitingSessionState ignores a closed participant lease while a new 
       pendingProvider: null,
       pendingInstance: null,
     },
-    'participant-gemini',
-    'target-gemini',
+    'participant-antigravity',
+    'target-antigravity',
   );
 
   assert.deepEqual(waitingSessionState, {
@@ -443,16 +443,16 @@ test('resolveWaitingSessionState ignores a closed participant lease while a new 
 });
 
 test('resolveWaitingSessionState ignores a live participant lease from a different lane while the current target is pending', () => {
-  const activeLaneId = buildChatLaneId('turn-1', 'target-gemini-current', 'participant-gemini');
+  const activeLaneId = buildChatLaneId('turn-1', 'target-antigravity-current', 'participant-antigravity');
   const waitingSessionState = resolveWaitingSessionState(
     {
       assignedParticipants: [
         {
-          participantId: 'participant-gemini',
+          participantId: 'participant-antigravity',
           execution: {
             lease: {
-              sessionId: 'session-gemini-old',
-              laneId: 'lane-turn-older-target-gemini',
+              sessionId: 'session-antigravity-old',
+              laneId: 'lane-turn-older-target-antigravity',
               status: 'ready',
               startedAt: '2026-04-14T12:03:00.000Z',
             },
@@ -468,12 +468,12 @@ test('resolveWaitingSessionState ignores a live participant lease from a differe
             startedAt: '2026-04-14T12:00:01.000Z',
             targetStatuses: [
               {
-                id: 'target-gemini-current',
+                id: 'target-antigravity-current',
                 status: 'pending',
                 queuedAt: '2026-04-14T12:05:00.000Z',
                 startedAt: null,
                 participant: {
-                  participantId: 'participant-gemini',
+                  participantId: 'participant-antigravity',
                 },
               },
             ],
@@ -483,8 +483,8 @@ test('resolveWaitingSessionState ignores a live participant lease from a differe
       pendingProvider: null,
       pendingInstance: null,
     },
-    'participant-gemini',
-    'target-gemini-drifted',
+    'participant-antigravity',
+    'target-antigravity-drifted',
     activeLaneId,
   );
 
@@ -2065,21 +2065,21 @@ test('resolveWaitingIndicatorStateTransition does not reopen a sealed sequential
     active: true,
     phase: 'sealed' as const,
     sourceMessageId: 'message-user-current',
-    targetStateId: 'target-gemini',
-    participantId: 'participant-gemini',
-    speakerLabel: 'Gemini-CLI',
+    targetStateId: 'target-antigravity',
+    participantId: 'participant-antigravity',
+    speakerLabel: 'Antigravity-CLI',
     segments: [
       {
-        id: 'message-user-current:target-gemini:segment:2',
+        id: 'message-user-current:target-antigravity:segment:2',
         phase: 'sealed' as const,
         sourceMessageId: 'message-user-current',
-        targetStateId: 'target-gemini',
+        targetStateId: 'target-antigravity',
         segmentIndex: 2,
-        participantId: 'participant-gemini',
+        participantId: 'participant-antigravity',
         catId: null,
         activeCatIds: [],
         catName: null,
-        speakerLabel: 'Gemini-CLI',
+        speakerLabel: 'Antigravity-CLI',
         sessionStartedAt: null,
         requiresSessionStartConfirmation: false,
         progressText: '',
@@ -2092,7 +2092,7 @@ test('resolveWaitingIndicatorStateTransition does not reopen a sealed sequential
             kind: 'text' as const,
             status: 'complete' as const,
             title: null,
-            text: 'Gemini reply',
+            text: 'Antigravity reply',
             toolName: null,
             toolId: null,
             metadata: null,
@@ -2104,10 +2104,10 @@ test('resolveWaitingIndicatorStateTransition does not reopen a sealed sequential
   };
   const waitingState = createWaitingLiveIndicatorState({
     sourceMessageId: 'message-user-current',
-    targetStateId: 'target-gemini',
-    participantId: 'participant-gemini',
+    targetStateId: 'target-antigravity',
+    participantId: 'participant-antigravity',
     catId: null,
-    speakerLabel: 'Gemini-CLI',
+    speakerLabel: 'Antigravity-CLI',
     revealIdentity: true,
   });
 
@@ -2121,7 +2121,7 @@ test('resolveWaitingIndicatorStateTransition does not reopen a sealed sequential
           senderKind: 'user',
         },
         {
-          id: 'message-gemini',
+          id: 'message-antigravity',
           senderKind: 'agent',
         },
       ],
@@ -2134,11 +2134,11 @@ test('resolveWaitingIndicatorStateTransition does not reopen a sealed sequential
             workflowShape: 'sequential',
             targetStatuses: [
               {
-                id: 'target-gemini',
+                id: 'target-antigravity',
                 status: 'running',
                 participant: {
-                  participantId: 'participant-gemini',
-                  participantName: 'Gemini-CLI',
+                  participantId: 'participant-antigravity',
+                  participantName: 'Antigravity-CLI',
                 },
               },
             ],
@@ -2721,24 +2721,24 @@ test('resolveWaitingIndicatorStateTransition keeps the same waiting segment when
     active: true,
     phase: 'waiting' as const,
     sourceMessageId: 'message-user-current',
-    laneId: 'lane-gemini',
-    targetStateId: 'target-gemini',
-    participantId: 'participant-gemini',
-    speakerLabel: 'Gemini-CLI',
+    laneId: 'lane-antigravity',
+    targetStateId: 'target-antigravity',
+    participantId: 'participant-antigravity',
+    speakerLabel: 'Antigravity-CLI',
     segmentIndex: 3,
     segments: [
       {
-        id: 'message-user-current:target-gemini:segment:3',
+        id: 'message-user-current:target-antigravity:segment:3',
         phase: 'waiting' as const,
         sourceMessageId: 'message-user-current',
-        laneId: 'lane-gemini',
-        targetStateId: 'target-gemini',
+        laneId: 'lane-antigravity',
+        targetStateId: 'target-antigravity',
         segmentIndex: 3,
-        participantId: 'participant-gemini',
+        participantId: 'participant-antigravity',
         catId: null,
         activeCatIds: [],
         catName: null,
-        speakerLabel: 'Gemini-CLI',
+        speakerLabel: 'Antigravity-CLI',
         sessionStartedAt: null,
         requiresSessionStartConfirmation: false,
         progressText: '',
@@ -2751,11 +2751,11 @@ test('resolveWaitingIndicatorStateTransition keeps the same waiting segment when
   };
   const waitingState = createWaitingLiveIndicatorState({
     sourceMessageId: 'message-codex-reply',
-    laneId: 'lane-gemini',
-    targetStateId: 'target-gemini',
-    participantId: 'participant-gemini',
+    laneId: 'lane-antigravity',
+    targetStateId: 'target-antigravity',
+    participantId: 'participant-antigravity',
     catId: null,
-    speakerLabel: 'Gemini-CLI',
+    speakerLabel: 'Antigravity-CLI',
     revealIdentity: true,
   });
 
@@ -2782,11 +2782,11 @@ test('resolveWaitingIndicatorStateTransition keeps the same waiting segment when
             workflowShape: 'sequential',
             targetStatuses: [
               {
-                id: 'target-gemini',
+                id: 'target-antigravity',
                 status: 'pending',
                 participant: {
-                  participantId: 'participant-gemini',
-                  participantName: 'Gemini-CLI',
+                  participantId: 'participant-antigravity',
+                  participantName: 'Antigravity-CLI',
                 },
               },
             ],
@@ -2803,7 +2803,7 @@ test('resolveWaitingIndicatorStateTransition keeps the same waiting segment when
   assert.equal(next.phase, 'waiting');
   assert.equal(next.segments.length, 1);
   assert.equal(next.segments[0]?.segmentIndex, 3);
-  assert.equal(next.segments[0]?.id, 'message-user-current:target-gemini:segment:3');
+  assert.equal(next.segments[0]?.id, 'message-user-current:target-antigravity:segment:3');
 });
 
 test('shouldPromoteStreamingBubbleToWaitingSpeaker hands off to a named follow-up speaker after the prior reply persists', () => {
@@ -3079,10 +3079,10 @@ test('shouldPromoteSealedBubbleToWaitingSpeaker waits for the current lane reply
 test('shouldPromoteSealedBubbleToWaitingSpeaker stays off for the same logical speaker in a sequential room', () => {
   const waitingState = createWaitingLiveIndicatorState({
     sourceMessageId: 'message-user',
-    targetStateId: 'target-gemini',
-    participantId: 'participant-gemini',
+    targetStateId: 'target-antigravity',
+    participantId: 'participant-antigravity',
     catId: null,
-    speakerLabel: 'Gemini-CLI',
+    speakerLabel: 'Antigravity-CLI',
     revealIdentity: true,
   });
 
@@ -3093,9 +3093,9 @@ test('shouldPromoteSealedBubbleToWaitingSpeaker stays off for the same logical s
         active: true,
         phase: 'sealed',
         sourceMessageId: 'message-user',
-        targetStateId: 'target-gemini',
-        participantId: 'participant-gemini',
-        speakerLabel: 'Gemini-CLI',
+        targetStateId: 'target-antigravity',
+        participantId: 'participant-antigravity',
+        speakerLabel: 'Antigravity-CLI',
         segmentIndex: 2,
         contentBlocks: [
           {
@@ -3104,7 +3104,7 @@ test('shouldPromoteSealedBubbleToWaitingSpeaker stays off for the same logical s
             kind: 'text',
             status: 'complete',
             title: null,
-            text: 'Gemini reply.',
+            text: 'Antigravity reply.',
             toolName: null,
             toolId: null,
             metadata: null,
@@ -3122,14 +3122,14 @@ test('shouldPromoteSealedBubbleToWaitingSpeaker stays off for the same logical s
             createdAt: '2026-04-14T01:00:00.000Z',
           },
           {
-            id: 'message-gemini',
+            id: 'message-antigravity',
             senderKind: 'agent',
-            senderName: 'Gemini-CLI',
+            senderName: 'Antigravity-CLI',
             metadata: {
               event: 'assistant_turn_segment',
               sourceMessageId: 'message-user',
-              targetStateId: 'target-gemini',
-              targetId: 'participant-gemini',
+              targetStateId: 'target-antigravity',
+              targetId: 'participant-antigravity',
               segmentIndex: 2,
             },
             createdAt: '2026-04-14T01:00:03.000Z',
@@ -3144,11 +3144,11 @@ test('shouldPromoteSealedBubbleToWaitingSpeaker stays off for the same logical s
               workflowShape: 'sequential',
               targetStatuses: [
                 {
-                  id: 'target-gemini',
+                  id: 'target-antigravity',
                   status: 'running',
                   participant: {
-                    participantId: 'participant-gemini',
-                    participantName: 'Gemini-CLI',
+                    participantId: 'participant-antigravity',
+                    participantName: 'Antigravity-CLI',
                   },
                 },
               ],
@@ -3165,22 +3165,22 @@ test('shouldPromoteSealedBubbleToWaitingSpeaker stays off for the same logical s
 
 test('resolveLiveIndicatorSpeakerLabel uses the default execution target label', () => {
   const label = resolveLiveIndicatorSpeakerLabel({
-    pendingProvider: 'gemini',
+    pendingProvider: 'antigravity',
     pendingInstance: 'cli/native',
-    pendingModel: 'gemini-3.1-pro',
+    pendingModel: 'Gemini 3.1 Pro (high)',
     roomRouting: {
       defaultRecipientId: null,
     },
   } as never);
 
-  assert.equal(label, 'Gemini-CLI');
+  assert.equal(label, 'Antigravity-CLI');
 });
 
 test('resolveLiveIndicatorSpeakerLabel stays silent for participant chats', () => {
   assert.equal(resolveLiveIndicatorSpeakerLabel({
-    pendingProvider: 'gemini',
+    pendingProvider: 'antigravity',
     pendingInstance: 'cli/native',
-    pendingModel: 'gemini-3.1-pro',
+    pendingModel: 'Gemini 3.1 Pro (high)',
     assignedCats: [{ catId: 'cat-1', status: 'active' }],
     roomRouting: {
       defaultRecipientId: null,
@@ -3188,9 +3188,9 @@ test('resolveLiveIndicatorSpeakerLabel stays silent for participant chats', () =
   } as never), null);
 
   assert.equal(resolveLiveIndicatorSpeakerLabel({
-    pendingProvider: 'gemini',
+    pendingProvider: 'antigravity',
     pendingInstance: 'cli/native',
-    pendingModel: 'gemini-3.1-pro',
+    pendingModel: 'Gemini 3.1 Pro (high)',
     roomRouting: {
       defaultRecipientId: 'cat-1',
     },
@@ -3783,12 +3783,12 @@ test('resolveVisibleLiveIndicator drops a persisted sealed sequential speaker be
       createLiveIndicatorSegmentState({
         phase: 'waiting',
         sourceMessageId: 'message-user-sequential',
-        laneId: 'lane-gemini',
-        targetStateId: 'target-state-gemini',
+        laneId: 'lane-antigravity',
+        targetStateId: 'target-state-antigravity',
         segmentIndex: 2,
-        sessionId: 'session-gemini',
-        participantId: 'participant-gemini',
-        speakerLabel: 'Gemini-CLI',
+        sessionId: 'session-antigravity',
+        participantId: 'participant-antigravity',
+        speakerLabel: 'Antigravity-CLI',
       }),
     ],
   };
@@ -3825,8 +3825,8 @@ test('resolveVisibleLiveIndicator drops a persisted sealed sequential speaker be
   assert.ok(visible);
   assert.equal(visible.segments.length, 1);
   assert.equal(visible.segments[0]?.phase, 'waiting');
-  assert.equal(visible.segments[0]?.targetStateId, 'target-state-gemini');
-  assert.equal(visible.segments[0]?.speakerLabel, 'Gemini-CLI');
+  assert.equal(visible.segments[0]?.targetStateId, 'target-state-antigravity');
+  assert.equal(visible.segments[0]?.speakerLabel, 'Antigravity-CLI');
 });
 
 test('resolveVisibleLiveIndicator downgrades pre-session assistant progress into an anonymous waiting bubble', () => {
@@ -4462,7 +4462,6 @@ test('shared live indicator effect reconnects on EventSource termination without
     path.join(
       testDirectory,
       '..',
-      '..',
       'src/products/shared/renderer/hooks/useLiveIndicator.ts',
     ),
     'utf8',
@@ -4562,9 +4561,9 @@ test('live indicator event payload updates the active speaker metadata even with
     'progress',
     {
       text: '',
-      participantId: 'participant-gemini',
+      participantId: 'participant-antigravity',
       catId: null,
-      speakerLabel: 'Gemini-CLI',
+      speakerLabel: 'Antigravity-CLI',
       sessionStartedAt: '2026-04-09T12:00:02.500Z',
       requiresSessionStartConfirmation: true,
       metadata: {
@@ -4574,10 +4573,10 @@ test('live indicator event payload updates the active speaker metadata even with
   );
 
   assert.equal(nextState.phase, 'streaming');
-  assert.equal(nextState.participantId, 'participant-gemini');
+  assert.equal(nextState.participantId, 'participant-antigravity');
   assert.equal(nextState.catId, null);
   assert.deepEqual(nextState.activeCatIds, []);
-  assert.equal(nextState.speakerLabel, 'Gemini-CLI');
+  assert.equal(nextState.speakerLabel, 'Antigravity-CLI');
   assert.equal(nextState.sessionStartedAt, '2026-04-09T12:00:02.500Z');
   assert.equal(nextState.requiresSessionStartConfirmation, true);
 });
@@ -4955,7 +4954,7 @@ test('live indicator normalizes tool_use alias fields into pending tool entries'
 test('live indicator merges consecutive text chunks into one tape entry', () => {
   let state = createWaitingLiveIndicatorState({
     catId: null,
-    speakerLabel: 'Gemini-CLI',
+    speakerLabel: 'Antigravity-CLI',
   });
 
   state = applyLiveIndicatorEvent(state, 'text', {
@@ -5698,16 +5697,16 @@ test('resolveVisibleLiveIndicator hides a later targeted speaker bubble using ta
         events: [],
       },
       {
-        id: 'segment-gemini',
+        id: 'segment-antigravity',
         phase: 'sealed' as const,
         sourceMessageId: 'message-user-3',
-        targetStateId: 'target-state-gemini',
+        targetStateId: 'target-state-antigravity',
         segmentIndex: 3,
-        participantId: 'participant-gemini',
+        participantId: 'participant-antigravity',
         catId: null,
         activeCatIds: [],
         catName: null,
-        speakerLabel: 'Gemini-CLI',
+        speakerLabel: 'Antigravity-CLI',
         sessionStartedAt: null,
         requiresSessionStartConfirmation: false,
         progressText: '',
@@ -5720,7 +5719,7 @@ test('resolveVisibleLiveIndicator hides a later targeted speaker bubble using ta
             kind: 'text' as const,
             status: 'complete' as const,
             title: null,
-            text: 'Gemini reply',
+            text: 'Antigravity reply',
             toolName: null,
             toolId: null,
             metadata: null,
@@ -5735,16 +5734,16 @@ test('resolveVisibleLiveIndicator hides a later targeted speaker bubble using ta
     liveIndicator,
     [
       {
-        id: 'message-agent-gemini',
+        id: 'message-agent-antigravity',
         senderKind: 'agent',
-        senderName: 'Gemini-CLI',
+        senderName: 'Antigravity-CLI',
         metadata: {
           event: 'assistant_turn_segment',
           sourceMessageId: 'message-user-3',
-          targetStateId: 'target-state-gemini',
+          targetStateId: 'target-state-antigravity',
           segmentIndex: 0,
           targetKind: 'participant',
-          targetId: 'participant-gemini',
+          targetId: 'participant-antigravity',
         },
         createdAt: '2026-04-14T12:00:03.000Z',
       },
