@@ -65,7 +65,7 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
 - [x] In `src/shared/providerCatalogData.ts:4`, replace `'gemini'` in the provider-id array with `'antigravity'`, preserving the same array position.
 - [x] In `src/shared/providerCatalogData.ts:37-43`, replace the `gemini:` model-list key with `antigravity:` and use `antigravity-default` as the provider-default sentinel until Phase 0 records executable model-id evidence. If the evidence is official product documentation rather than a live CLI/config/smoke result, keep those values as docs-only display names and do not use them as catalog `value:` strings.
 - [x] In `src/shared/providerCatalogData.ts:89`, update the trailing single-entry block that references `gemini 3.1 pro`.
-- [ ] In `src/shared/providerCatalogData.ts:48,60,72,76,77`, audit the `copilot` / `cursor` / `openrouter` submodel lists that reference `gemini-*` identifiers. These are vendor-routed submodels (e.g. Copilot's `gemini-3-pro-preview` is Copilot's own routing label, not the CLI provider). Keep entries that the vendor still routes; remove entries the vendor has dropped per latest vendor docs.
+- [x] In `src/shared/providerCatalogData.ts:48,60,72,76,77`, audit the `copilot` / `cursor` / `junie` / `kilo` submodel lists that reference `gemini-*` identifiers or Gemini display names. These are vendor-routed submodels, not the local CLI provider. They remain in their vendor-owned rows and do not move under `antigravity`; the Antigravity row exposes only `antigravity-default` until executable `agy` model values are proven.
 - [x] In `src/shared/providerCatalogInstances.ts:16`, replace the `gemini:` default-instance template with `antigravity:` using the new family id and any new default config keys.
 - [x] Decide the new `antigravity` badge color. Apply downstream in Phase 3 (desktop bootstrap) and signal to runtime PLAN-033 Phase 4 via the shared catalog if a color field is exposed there.
 
@@ -149,7 +149,7 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
 - [x] Update `scripts/README.md:147,150,183,213,247,264,285`: replace each Gemini reference with Antigravity equivalent. Add a one-paragraph note in the appropriate section explaining the upstream swap (link to environment-bootstrap commits `b273f63a` and `5725e637`).
 - [x] Leave repo-root and subproject `GEMINI.md` files untouched. They are agent-specific instruction files, not Gemini CLI setup files.
 - [x] Do not edit `AGENTS.md` / `CODEX.md` for this CLI swap; Gemini mentions in agent-governance sections are justified unless they also describe packaged CLI setup.
-- [ ] Final grep sweep: `git grep -i gemini` across `cats-platform/` — every remaining hit must be justified (e.g. vendor-routed submodel labels in `providerCatalogData.ts`, `.gemini/skills` references removed from skills sync, or agent-governance references outside setup code) or removed.
+- [x] Final grep sweep: `git grep -i gemini` across `cats-platform/` — remaining hits are justified as agent-governance files (`AGENTS.md`, `CODEX.md`, `GEMINI.md` ownership text), historical migration docs/ADRs/specs, vendor-routed submodel labels in `providerCatalogData.ts`, research notes about other providers, or tests that assert `.gemini/skills` no longer appears in skills-sync scripts.
 
 **Deliverables**: No accidental Gemini references; docs reflect the swap.
 
