@@ -38,6 +38,7 @@ test('FileChatStore persists configured channels, cats, assignments, and message
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Ops Radar',
       topic: 'Track runtime regressions before shipping the desktop shell.',
       cats: [
@@ -56,7 +57,7 @@ test('FileChatStore persists configured channels, cats, assignments, and message
     state,
     {
       name: 'Agent-2',
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['reviewer'],
     },
     new Date('2026-03-11T00:00:00.000Z'),
@@ -67,7 +68,7 @@ test('FileChatStore persists configured channels, cats, assignments, and message
     channelId,
     {
       catId: state.cats[0].id,
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['reviewer'],
     },
     new Date('2026-03-11T00:00:00.000Z'),
@@ -267,6 +268,7 @@ test('channel topology infers direct lanes and participant chat rooms independen
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Companion lane',
       topic: 'Direct lanes expose their own channel kind.',
       roomMode: 'direct_message',
@@ -283,7 +285,7 @@ test('channel topology infers direct lanes and participant chat rooms independen
     state,
     {
       name: 'Reviewer',
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['reviewer'],
     },
     now,
@@ -293,6 +295,7 @@ test('channel topology infers direct lanes and participant chat rooms independen
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Team room',
       topic: 'Multi-cat rooms are distinguished from boss threads.',
       skipBossCatGreeting: true,
@@ -301,7 +304,7 @@ test('channel topology infers direct lanes and participant chat rooms independen
   );
   const roomId = state.selectedChannelId;
   state = assignCatToChannel(state, roomId, { catId: companionId, provider: 'claude' }, now);
-  state = assignCatToChannel(state, roomId, { catId: reviewerId, provider: 'gemini' }, now);
+  state = assignCatToChannel(state, roomId, { catId: reviewerId, provider: 'antigravity' }, now);
 
   assert.equal(state.channels[0].channelKind, 'chat_channel');
   assert.equal(toChannelSummary(state.channels[0]).channelKind, 'chat_channel');
@@ -581,7 +584,7 @@ test('direct lanes reject assigning a second cat beyond the lead', () => {
     state,
     {
       name: 'Extra Companion',
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['fallback'],
     },
     now,
@@ -591,6 +594,7 @@ test('direct lanes reject assigning a second cat beyond the lead', () => {
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Strict direct lane',
       topic: 'Only the direct recipient Cat should remain assignable.',
       roomMode: 'direct_message',
@@ -607,7 +611,7 @@ test('direct lanes reject assigning a second cat beyond the lead', () => {
       state.selectedChannelId,
       {
         catId: extraCatId,
-        provider: 'gemini',
+        provider: 'antigravity',
       },
       now,
     ),
@@ -637,7 +641,7 @@ test('FileChatStore normalizes contaminated direct lanes back to the direct-reci
     state,
     {
       name: 'Legacy Extra',
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['extra'],
     },
     now,
@@ -647,6 +651,7 @@ test('FileChatStore normalizes contaminated direct lanes back to the direct-reci
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Legacy Direct',
       topic: 'Normalize stale topology on read.',
       roomMode: 'direct_message',
@@ -680,17 +685,17 @@ test('FileChatStore normalizes contaminated direct lanes back to the direct-reci
     leftAt: null,
     execution: {
       target: {
-        provider: 'gemini',
+        provider: 'antigravity',
         instance: null,
-        model: 'gemini-3-flash',
+        model: 'Gemini 3 Flash',
       },
       lease: {
         sessionId: 'session-extra',
         status: 'ready',
         cwd: 'C:\\legacy\\extra',
         lastError: null,
-        provider: 'gemini',
-        model: 'gemini-3-flash',
+        provider: 'antigravity',
+        model: 'Gemini 3 Flash',
         startedAt: now.toISOString(),
         lastUsedAt: now.toISOString(),
       },
@@ -720,6 +725,7 @@ test('FileChatStore round-trips per-message execution provenance', async () => {
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Execution Provenance',
       topic: 'Remember which provider answered.',
       skipBossCatGreeting: true,
@@ -738,8 +744,8 @@ test('FileChatStore round-trips per-message execution provenance', async () => {
     now,
     {
       execution: {
-        provider: 'gemini',
-        model: 'gemini-default',
+        provider: 'antigravity',
+        model: 'Gemini 3.1 Pro (high)',
         instance: 'default',
       },
     },
@@ -749,10 +755,10 @@ test('FileChatStore round-trips per-message execution provenance', async () => {
   const reloaded = await store.read();
   const lastMessage = reloaded.channels[0]?.messages.at(-1);
 
-  assert.equal(lastMessage?.executionProvider, 'gemini');
-  assert.equal(lastMessage?.executionModel, 'gemini-default');
+  assert.equal(lastMessage?.executionProvider, 'antigravity');
+  assert.equal(lastMessage?.executionModel, 'Gemini 3.1 Pro (high)');
   assert.equal(lastMessage?.executionInstance, 'default');
-  assert.equal(lastMessage?.metadata.executionLabelSnapshot, 'Gemini-CLI');
+  assert.equal(lastMessage?.metadata.executionLabelSnapshot, 'Antigravity-CLI');
 });
 
 test('FileChatStore preserves first-class choices, embedded-json extraction, and choice responses', async () => {
@@ -832,6 +838,7 @@ test('exportChannel returns assigned cats with the selected transcript', async (
   const state = createChannel(
     initialState,
     {
+      originSurface: 'chat',
       title: 'Ops Radar',
       topic: 'Track runtime regressions before shipping the desktop shell.',
     },
@@ -852,6 +859,7 @@ test('ChatStore exposes a derived Cats Core view that stays in sync with chat st
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Owner Loop',
       topic: 'Validate owner approvals before dispatch.',
       cats: [
@@ -910,6 +918,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Workflow Projection',
       topic: 'Project system workflow into core.',
       skipBossCatGreeting: true,
@@ -1103,7 +1112,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
     state,
     {
       name: 'Followup-Agent',
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['auditor'],
     },
     now,
@@ -1113,6 +1122,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Continuation Replay Projection',
       topic: 'Persist blocked continuation replay metadata into core.',
       skipBossCatGreeting: true,
@@ -1135,7 +1145,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
     channelId,
     {
       catId: followupAgentId,
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['auditor'],
     },
     now,
@@ -1259,7 +1269,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
     state,
     {
       name: 'Followup-Agent',
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['auditor'],
     },
     now,
@@ -1269,6 +1279,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Dispatch Guard Replay Projection',
       topic: 'Persist blocked continuation replay metadata when dispatch limits stop a handoff.',
       skipBossCatGreeting: true,
@@ -1291,7 +1302,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
     channelId,
     {
       catId: followupAgentId,
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['auditor'],
     },
     now,
@@ -1415,7 +1426,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for ant
     state,
     {
       name: 'Followup-Agent',
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['auditor'],
     },
     now,
@@ -1425,6 +1436,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for ant
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Anti Ping Pong Replay Projection',
       topic: 'Persist blocked continuation replay metadata when anti-ping-pong stops a loop.',
       skipBossCatGreeting: true,
@@ -1447,7 +1459,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for ant
     channelId,
     {
       catId: followupAgentId,
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['auditor'],
     },
     now,
@@ -1584,7 +1596,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
     state,
     {
       name: 'Followup-Agent',
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['auditor'],
     },
     now,
@@ -1594,6 +1606,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Target Visit Replay Projection',
       topic: 'Persist blocked continuation replay metadata when revisit limits stop a handoff.',
       skipBossCatGreeting: true,
@@ -1616,7 +1629,7 @@ test('ChatStore projects retryable workflow-continuation replay metadata for max
     channelId,
     {
       catId: followupAgentId,
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['auditor'],
     },
     now,
@@ -1753,6 +1766,7 @@ test('routeChannelMessage sends choice responses back to the originating cat ses
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Choice Routing',
       topic: 'Route structured answers back to the originating cat.',
       skipBossCatGreeting: true,
@@ -1895,6 +1909,7 @@ test('FileChatStore preserves null room route targets when reloading persisted r
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Blocked room',
       topic: 'Keep blocked route targets nullable on reload.',
       skipBossCatGreeting: true,
@@ -1955,6 +1970,7 @@ test('FileChatStore drops malformed assistant turn deliveries when reloading per
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Malformed segment delivery',
       topic: 'Reject incomplete persisted assistant turn delivery records.',
       skipBossCatGreeting: true,
@@ -2262,6 +2278,7 @@ test('FileChatStore preserves core-owned shared records across reloads and chat 
   chatState = createChannel(
     chatState,
     {
+      originSurface: 'chat',
       title: 'Chat Channel',
       topic: 'Ensure chat writes preserve core-owned records.',
     },
@@ -2366,7 +2383,7 @@ test('ChatStore rebinds Telegram bot bindings when the Boss Cat changes', async 
     state,
     {
       name: 'Bossy',
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['reviewer'],
     },
     new Date('2026-03-19T00:02:00.000Z'),
@@ -2396,6 +2413,7 @@ test('deleteChannel removes the selected chat and falls back to the next recent 
       path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'),
     ).read(),
     {
+      originSurface: 'chat',
       title: 'First Chat',
       topic: 'Keep this one after deleting the second.',
     },
@@ -2405,6 +2423,7 @@ test('deleteChannel removes the selected chat and falls back to the next recent 
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Second Chat',
       topic: 'Delete this one from recents.',
     },
@@ -2432,6 +2451,7 @@ test('createChannel defaults empty draft fields to a neutral new-chat label', as
   const state = createChannel(
     initialState,
     {
+      originSurface: 'chat',
       title: '',
       topic: '',
     },
