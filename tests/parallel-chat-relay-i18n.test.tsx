@@ -21,10 +21,10 @@ test('parallel chat relay command copy and notes localize to Traditional Chinese
     buildParallelChatRelayOutgoingNote({
       command: 'check_this',
       sourceMessageId: 'message-abcdef123456',
-      targetMemberLabels: ['Claude Code', 'Codex', 'Gemini'],
+      targetMemberLabels: ['Claude Code', 'Codex', 'Antigravity'],
       locale: 'zh-TW',
     }),
-    '已透過「檢查這則」將回覆 #message- 分享給 Claude Code、Codex 和 Gemini。',
+    '已透過「檢查這則」將回覆 #message- 分享給 Claude Code、Codex 和 Antigravity。',
   );
   assert.equal(
     buildParallelChatRelayIncomingNote({
@@ -56,9 +56,9 @@ test('parallel chat relay localization falls back to English for unknown locales
     buildParallelChatRelayOutgoingNote({
       command: 'synthesize_this',
       sourceMessageId: 'reply-1234567890',
-      targetMemberLabels: ['Claude Code', 'Codex', 'Gemini'],
+      targetMemberLabels: ['Claude Code', 'Codex', 'Antigravity'],
       locale: 'fr-FR',
     }),
-    'Shared reply #reply-12 via Synthesize this to Claude Code, Codex, and Gemini.',
+    'Shared reply #reply-12 via Synthesize this to Claude Code, Codex, and Antigravity.',
   );
 });
