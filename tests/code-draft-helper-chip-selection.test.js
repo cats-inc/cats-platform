@@ -17,11 +17,19 @@ test('code draft helper chip selection keeps chips visible across default, team,
   assert.match(codeDraftSource, /starterChips=\{\{[\s\S]*helperChips\.map/u);
   assert.match(
     codeDraftSource,
-    /onSelectHelperChip: \(prompt\) => \{\s*props\.onComposerChange\(prompt\);\s*\}/u,
+    /onClick:\s*buildCodeChipOnClick\(chip,\s*props\)/u,
+  );
+  assert.match(
+    codeDraftSource,
+    /onSelectHelperChip:\s*\(chip\)\s*=>\s*buildCodeChipOnClick\(chip,\s*props\)\(\)/u,
+  );
+  assert.match(
+    codeDraftSource,
+    /props\.onComposerChange\(chip\.prompt\);[\s\S]*props\.onDraftSurfaceChange\(target\);/u,
   );
   assert.doesNotMatch(
     codeDraftSource,
-    /onSelectHelperChip: \(prompt\) => \{[\s\S]*dismissDraftHelperChips/u,
+    /buildCodeChipOnClick[\s\S]*dismissDraftHelperChips/u,
   );
 
   assert.match(sharedDraftSource, /preserveOnSelect \?\? false/u);

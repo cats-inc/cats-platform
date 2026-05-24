@@ -41,19 +41,19 @@ test('parallel composer offset matches the footer stack height', async () => {
   );
 
   const parallelComposerRule = chatThreadStyles.match(
-    /\.composerCardDocked\.composerCardDockedParallel\s*\{[^}]+\}/u,
+    /\.composerAreaStack\.composerAreaStackDocked\.composerAreaStackDockedParallel\s*\{[^}]+\}/u,
   )?.[0] ?? '';
   const parallelFooterRule = chatThreadStyles.match(/\.parallelFooterBar\s*\{[^}]+\}/u)?.[0] ?? '';
   const sidebarFooterRule = chatShellStyles.match(
     /\.sidebarFooter\s*\{\s*position:\s*relative;[^}]+\}/u,
   )?.[0] ?? '';
-  const sidebarFooterButtonRule = sidebarChromeStyles.match(
-    /\.sidebarFooterButton\s*\{[^}]+\}/u,
+  const sidebarFooterMainButtonRule = sidebarChromeStyles.match(
+    /\.sidebarFooterMainButton\s*\{[^}]+\}/u,
   )?.[0] ?? '';
 
   assert.match(parallelComposerRule, /bottom:\s*78px/u);
   assert.match(parallelFooterRule, /height:\s*60px/u);
   assert.match(parallelFooterRule, /padding:\s*0 28px/u);
   assert.match(sidebarFooterRule, /height:\s*60px/u);
-  assert.match(sidebarFooterButtonRule, /height:\s*100%/u);
+  assert.match(sidebarFooterMainButtonRule, /align-self:\s*stretch/u);
 });
