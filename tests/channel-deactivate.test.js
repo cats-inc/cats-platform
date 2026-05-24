@@ -116,7 +116,7 @@ test('POST /api/channels/:id/deactivate on idle channel returns 0 closed session
   let state = await chatStore.read();
   state = createCat(state, { name: 'TestCat', provider: 'claude' }, now);
   const catId = state.cats[0].id;
-  state = createChannel(state, { title: 'Test', topic: 'test' }, now);
+  state = createChannel(state, { title: 'Test', topic: 'test', originSurface: 'chat' }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, { catId, provider: 'claude' }, now);
   await chatStore.write(state);
@@ -141,7 +141,7 @@ test('POST /api/channels/:id/deactivate closes runtime sessions for active lease
   let state = await chatStore.read();
   state = createCat(state, { name: 'TestCat', provider: 'claude' }, now);
   const catId = state.cats[0].id;
-  state = createChannel(state, { title: 'Test', topic: 'test' }, now);
+  state = createChannel(state, { title: 'Test', topic: 'test', originSurface: 'chat' }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, { catId, provider: 'claude' }, now);
   // Simulate an active session by setting lease to ready with a sessionId
@@ -181,6 +181,7 @@ test('POST /api/channels/:id/deactivate closes runtime sessions for temporary pa
   state = createChannel(state, {
     title: 'Temporary participant chat',
     topic: 'deactivate temporary participant sessions',
+    originSurface: 'chat',
     temporaryParticipants: [
       {
         participantId: 'participant-inline',
