@@ -16,11 +16,18 @@ import {
   upsertGuideCatAssistBundle,
 } from '../build/server/shared/guideCatAssistStore.js';
 import { waitForGuideCatAssistRefreshIdle } from '../build/server/products/chat/api/guideCatAssist.js';
+import { refreshGuideCatAssistEligibleScopes } from '../build/server/products/chat/api/guideCatAssist.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { createCat } from '../build/server/products/chat/state/model/index.js';
+import {
+  createAuthenticatedTestSession,
+  createTestAuthConfig,
+  installAuthenticatedFetch,
+} from './testUtils.js';
 
 let tempDir;
 let configId = 0;
+const TEST_NOW = new Date('2026-03-25T00:00:00.000Z');
 
 test.before(async () => {
   tempDir = await mkdtemp(path.join(tmpdir(), 'cats-platform-test-'));
@@ -107,11 +114,23 @@ function createRuntimeStub(options = {}) {
 
 async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
   const config = getBaseConfig();
+  const auth = await createAuthenticatedTestSession({ now: TEST_NOW });
   const server = createServer({
     shared: {
-      config,
+      config: {
+        ...config,
+        auth: createTestAuthConfig({
+          allowedBrowserOrigins: [`http://${config.host}:${config.port}`],
+          authStatePath: path.join(path.dirname(config.chatStatePath), 'auth-state.local.json'),
+          recoveryTokenPath: path.join(
+            path.dirname(config.chatStatePath),
+            'auth-recovery-token.local.txt',
+          ),
+        }),
+      },
       runtimeClient,
-      now: () => new Date('2026-03-25T00:00:00.000Z'),
+      authStore: auth.authStore,
+      now: () => TEST_NOW,
     },
     chat: {
       chatStore,
@@ -126,9 +145,15 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
     throw new Error('Failed to resolve test server address');
   }
 
+  let restoreFetch = () => {};
   try {
+    restoreFetch = installAuthenticatedFetch(`http://127.0.0.1:${address.port}`, auth, {
+      origin: `http://${config.host}:${config.port}`,
+      defaultOriginSurface: 'chat',
+    });
     await callback(`http://127.0.0.1:${address.port}`, config);
   } finally {
+    restoreFetch();
     server.close();
     await once(server, 'close');
   }
@@ -162,11 +187,17 @@ test('GET /api/app-shell returns lastProductSurface: null before setup', async (
     assert.equal(payload.guideCat, null);
     assert.deepEqual(payload.assistantPresets, []);
     assert.equal(payload.lastProductSurface, null);
-    assert.deepEqual(payload.desktop, {
+    assert.deepEqual({
+      startAtLogin: payload.desktop.startAtLogin,
+      openWindowOnStartup: payload.desktop.openWindowOnStartup,
+      systemTrayEnabled: payload.desktop.systemTrayEnabled,
+    }, {
       startAtLogin: true,
       openWindowOnStartup: false,
       systemTrayEnabled: true,
     });
+    assert.equal(payload.desktop.mobilePairing?.bindReachability, 'loopback');
+    assert.equal(payload.desktop.mobilePairing?.pairingUrlStatus, 'phase1_pending');
     assert.deepEqual(
       payload.products.map((product) => ({
         id: product.id,
@@ -572,11 +603,17 @@ test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', asyn
     assert.equal(payload.setupCompleteAt, null, 'setupCompleteAt should be cleared');
     assert.equal(payload.lastProductSurface, null, 'lastProductSurface should be cleared');
     assert.equal(payload.chat.bossCatId, null, 'bossCatId should be cleared');
-    assert.deepEqual(payload.desktop, {
+    assert.deepEqual({
+      startAtLogin: payload.desktop.startAtLogin,
+      openWindowOnStartup: payload.desktop.openWindowOnStartup,
+      systemTrayEnabled: payload.desktop.systemTrayEnabled,
+    }, {
       startAtLogin: true,
       openWindowOnStartup: false,
       systemTrayEnabled: true,
     });
+    assert.equal(payload.desktop.mobilePairing?.bindReachability, 'loopback');
+    assert.equal(payload.desktop.mobilePairing?.pairingUrlStatus, 'phase1_pending');
 
     const diagnosticsAfterReset = await fetch(`${baseUrl}/api/platform/bootstrap-diagnostics`);
     assert.equal(diagnosticsAfterReset.status, 200);
@@ -615,6 +652,8 @@ test('POST /api/platform/preferences updates lastProductSurface', async () => {
       openWindowOnStartup: false,
       systemTrayEnabled: true,
       lobbyAnimationMode: 'reduced',
+      assistantResponseLanguage: 'unspecified',
+      uiLanguagePreference: 'auto',
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
@@ -642,6 +681,8 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       openWindowOnStartup: false,
       systemTrayEnabled: true,
       lobbyAnimationMode: 'reduced',
+      assistantResponseLanguage: 'unspecified',
+      uiLanguagePreference: 'auto',
     });
 
     const secondResponse = await fetch(`${baseUrl}/api/platform/preferences`, {
@@ -659,16 +700,24 @@ test('POST /api/platform/preferences updates desktop startup preferences without
       openWindowOnStartup: false,
       systemTrayEnabled: true,
       lobbyAnimationMode: 'reduced',
+      assistantResponseLanguage: 'unspecified',
+      uiLanguagePreference: 'auto',
     });
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
     const shell = await shellResponse.json();
     assert.equal(shell.lastProductSurface, 'code');
-    assert.deepEqual(shell.desktop, {
+    assert.deepEqual({
+      startAtLogin: shell.desktop.startAtLogin,
+      openWindowOnStartup: shell.desktop.openWindowOnStartup,
+      systemTrayEnabled: shell.desktop.systemTrayEnabled,
+    }, {
       startAtLogin: false,
       openWindowOnStartup: false,
       systemTrayEnabled: true,
     });
+    assert.equal(shell.desktop.mobilePairing?.bindReachability, 'loopback');
+    assert.equal(shell.desktop.mobilePairing?.pairingUrlStatus, 'phase1_pending');
   });
 });
 
@@ -770,21 +819,35 @@ test('GET /api/app-shell uses last-good assist cache when runtime is offline', a
       }),
     });
     assert.equal(setupResponse.status, 200);
+    const setupPayload = await setupResponse.json();
+
+    await refreshGuideCatAssistEligibleScopes({
+      chatStatePath: config.chatStatePath,
+      guideCat: setupPayload.guideCat,
+      ownerDisplayName: 'Kenny',
+      runtimeReachable: true,
+      now: TEST_NOW,
+    });
+
+    const currentLobbyBundle = await waitForGuideCatAssistBundle(
+      config.chatStatePath,
+      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
+    );
+    const currentChatNewBundle = await waitForGuideCatAssistBundle(
+      config.chatStatePath,
+      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault,
+    );
 
     await upsertGuideCatAssistBundle(config.chatStatePath, {
+      ...currentLobbyBundle,
       bundleId: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
-      scope: {
-        surfaceId: 'lobby',
-        surfaceMode: 'default',
-        audienceState: 'default',
-      },
       content: {
         greeting: 'Cached offline lobby greeting',
         entryChips: [],
       },
       provenance: {
+        ...currentLobbyBundle.provenance,
         originMode: 'runtime',
-        refreshContextHash: 'gca:v1:offline-lobby',
         missionId: 'mission-offline-lobby',
         runId: 'run-offline-lobby',
       },
@@ -795,12 +858,8 @@ test('GET /api/app-shell uses last-good assist cache when runtime is offline', a
       },
     });
     await upsertGuideCatAssistBundle(config.chatStatePath, {
+      ...currentChatNewBundle,
       bundleId: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.chatNewDefault,
-      scope: {
-        surfaceId: 'chat:new',
-        surfaceMode: 'default',
-        audienceState: 'default',
-      },
       content: {
         greeting: 'Cached offline new-chat greeting',
         entryChips: [
@@ -811,8 +870,8 @@ test('GET /api/app-shell uses last-good assist cache when runtime is offline', a
         ],
       },
       provenance: {
+        ...currentChatNewBundle.provenance,
         originMode: 'runtime',
-        refreshContextHash: 'gca:v1:offline-new-chat',
         missionId: 'mission-offline-new-chat',
         runId: 'run-offline-new-chat',
       },
@@ -855,21 +914,31 @@ test('GET /api/app-shell serves stale assist cache first and lazily rehydrates i
       }),
     });
     assert.equal(setupResponse.status, 200);
+    const setupPayload = await setupResponse.json();
+
+    await refreshGuideCatAssistEligibleScopes({
+      chatStatePath: config.chatStatePath,
+      guideCat: setupPayload.guideCat,
+      ownerDisplayName: 'Kenny',
+      runtimeReachable: true,
+      now: TEST_NOW,
+    });
+
+    const currentLobbyBundle = await waitForGuideCatAssistBundle(
+      config.chatStatePath,
+      GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
+    );
 
     await upsertGuideCatAssistBundle(config.chatStatePath, {
+      ...currentLobbyBundle,
       bundleId: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
-      scope: {
-        surfaceId: 'lobby',
-        surfaceMode: 'default',
-        audienceState: 'default',
-      },
       content: {
         greeting: 'Stale cached lobby greeting',
         entryChips: [],
       },
       provenance: {
+        ...currentLobbyBundle.provenance,
         originMode: 'runtime',
-        refreshContextHash: 'gca:v1:stale-lobby',
         missionId: 'mission-stale-lobby',
         runId: 'run-stale-lobby',
       },
