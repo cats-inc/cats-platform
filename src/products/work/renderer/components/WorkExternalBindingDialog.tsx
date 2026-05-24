@@ -173,11 +173,11 @@ export function WorkExternalBindingDialog({
                 setProvider(event.target.value as ExternalWorkBindingProvider)
               }
             >
-              <option value="github">GitHub</option>
-              <option value="gitlab">GitLab</option>
-              <option value="gitea">Gitea</option>
-              <option value="redmine">Redmine</option>
-              <option value="bugzilla">Bugzilla</option>
+              <option value="github">{t("workExternalProviderGithub")}</option>
+              <option value="gitlab">{t("workExternalProviderGitlab")}</option>
+              <option value="gitea">{t("workExternalProviderGitea")}</option>
+              <option value="redmine">{t("workExternalProviderRedmine")}</option>
+              <option value="bugzilla">{t("workExternalProviderBugzilla")}</option>
             </select>
           </label>
 

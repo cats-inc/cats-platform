@@ -197,7 +197,7 @@ export function LivePreviewPanel({
     <section className="operatorPanel codeLivePreviewPanel" aria-label={t(messageKeys.codeLivePreviewTitle)}>
       <div className="operatorPanelHeader">
         <div>
-          <p className="operatorEyebrow">Cats Code</p>
+          <p className="operatorEyebrow">{t(messageKeys.platformProductCodeName)}</p>
           <h2>{t(messageKeys.codeLivePreviewTitle)}</h2>
           <p className="codeLivePreviewDescription">
             {t(messageKeys.codeLivePreviewDescription)}
