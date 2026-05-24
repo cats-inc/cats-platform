@@ -714,6 +714,40 @@ run_native_provider_installer() {
       ;;
   esac
 
+  if [ "$dry_run" = 'true' ]; then
+    if [ "$emit_json" = 'true' ]; then
+      local dry_run_command_path='null'
+      local dry_run_detected_version='null'
+      if [ -n "$command_path" ]; then
+        dry_run_command_path="\"$(json_escape "$command_path")\""
+      fi
+      if [ -n "$detected_version" ]; then
+        dry_run_detected_version="\"$(json_escape "$detected_version")\""
+      fi
+
+      printf '{'
+      printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
+      printf '"mode":"%s",' "$execution_mode"
+      printf '"status":"preview",'
+      printf '"installed":%s,' "$(json_bool "$initial_installed")"
+      printf '"commandPath":%s,' "$dry_run_command_path"
+      printf '"detectedVersion":%s,' "$dry_run_detected_version"
+      printf '"plannedActions":'
+      json_string_array "${planned_actions[@]}"
+      printf ','
+      printf '"appliedChanges":[],'
+      printf '"warnings":'
+      json_string_array 'Dry-run requested; installer invocation was skipped.'
+      printf ','
+      printf '"manualSteps":[],'
+      printf '"interruptions":[]'
+      printf '}\n'
+    else
+      printf '%s preview: %s\n' "$display_name" "${planned_actions[*]}"
+    fi
+    return 0
+  fi
+
   printf 'Installing %s...\n' "$display_name"
   if [ "$force" = 'true' ]; then
     run_provider_install_action "$platform" "$provider" 'force'

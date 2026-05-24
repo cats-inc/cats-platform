@@ -99,6 +99,23 @@ test('Unix self-hosted provider helpers expose help text without mutating the ho
   }
 });
 
+test('Unix Antigravity helpers dry-run mutation modes without invoking installers', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const summary = await readJsonSummary(
+      join(rootDir, 'scripts', platform, 'install-antigravity.sh'),
+      ['-DryRun', '-Force'],
+    );
+
+    assert.equal(summary.helper, `${platform}-antigravity-native-installer`);
+    assert.equal(summary.mode, 'force');
+    assert.equal(summary.status, 'preview');
+    assert.deepEqual(summary.plannedActions, ['reinstall_antigravity_cli']);
+    assert.deepEqual(summary.appliedChanges, []);
+    assert.deepEqual(summary.interruptions, []);
+    assert.match(summary.warnings.join('\n'), /Dry-run requested/u);
+  }
+});
+
 test('Unix self-hosted provider audits expose the shared JSON audit core', async () => {
   for (const platform of ['linux', 'macos']) {
     const summary = await readJsonSummary(
