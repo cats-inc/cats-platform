@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
 import { createServer } from '../build/server/app/server/index.js';
+import { createCat } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
 function createRuntimeStub() {
@@ -11,7 +15,25 @@ function createRuntimeStub() {
   };
 }
 
-function createTestServer() {
+function createNoopPollingSupervisor() {
+  return {
+    startPolling: async () => {},
+    stopPolling: () => {},
+    stopAll: () => {},
+    reconnect: async () => {},
+    reconcilePolling: async () => {},
+    getPollingStatus: () => null,
+    getAllPollingStatuses: () => [],
+  };
+}
+
+function createNoopCommandSurfaceSync() {
+  return {
+    reconcile: async () => {},
+  };
+}
+
+function createTestServer(chatStatePath) {
   const chatStore = new MemoryChatStore();
   const runtimeClient = createRuntimeStub();
   const server = createServer({
@@ -19,7 +41,7 @@ function createTestServer() {
       config: {
         host: '127.0.0.1',
         port: 0,
-        chatStatePath: ':memory:',
+        chatStatePath,
         platformId: 'cats-test',
         publicUrl: null,
       },
@@ -27,41 +49,44 @@ function createTestServer() {
     },
     chat: {
       chatStore,
+      pollingSupervisor: createNoopPollingSupervisor(),
+      telegramCommandSurfaceSync: createNoopCommandSurfaceSync(),
     },
   });
   return { server, chatStore };
 }
 
 async function withServer(fn) {
-  const { server } = createTestServer();
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-telegram-token-uniqueness-'));
+  const chatStatePath = path.join(tempDir, 'platform', 'state', 'chat-state.local.json');
+  const { server, chatStore } = createTestServer(chatStatePath);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   const baseUrl = `http://127.0.0.1:${address.port}`;
   try {
-    await fn(baseUrl);
+    await fn(baseUrl, chatStore);
   } finally {
-    server.close();
+    await new Promise((resolve) => server.close(resolve));
+    await rm(tempDir, { recursive: true, force: true });
   }
 }
 
-async function setupBossCat(baseUrl) {
-  const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      ownerDisplayName: 'Owner',
-      bossCatName: 'BossBot',
-      bossCatProvider: 'claude',
-    }),
-  });
-  assert.equal(setupResponse.status, 200);
-  const payload = await setupResponse.json();
-  return payload.chat.bossCatId;
+async function seedBossCat(chatStore) {
+  const state = await chatStore.read();
+  const nextState = createCat(state, {
+    name: 'BossBot',
+    provider: 'claude',
+    makeBoss: true,
+  }, new Date('2026-05-24T12:00:00.000Z'));
+  await chatStore.write(nextState);
+  const bossCatId = nextState.bossCatId;
+  assert.ok(bossCatId, 'seeded Boss Cat should be available');
+  return bossCatId;
 }
 
 test('duplicate bot token is rejected on create', async () => {
-  await withServer(async (baseUrl) => {
-    const bossCatId = await setupBossCat(baseUrl);
+  await withServer(async (baseUrl, chatStore) => {
+    const bossCatId = await seedBossCat(chatStore);
 
     // First binding with a token
     const first = await fetch(`${baseUrl}/api/bot-bindings`, {
@@ -94,8 +119,8 @@ test('duplicate bot token is rejected on create', async () => {
 });
 
 test('null tokens do not conflict', async () => {
-  await withServer(async (baseUrl) => {
-    const bossCatId = await setupBossCat(baseUrl);
+  await withServer(async (baseUrl, chatStore) => {
+    const bossCatId = await seedBossCat(chatStore);
 
     // Two bindings without tokens
     const first = await fetch(`${baseUrl}/api/bot-bindings`, {
@@ -123,8 +148,8 @@ test('null tokens do not conflict', async () => {
 });
 
 test('duplicate bot token is rejected on update', async () => {
-  await withServer(async (baseUrl) => {
-    const bossCatId = await setupBossCat(baseUrl);
+  await withServer(async (baseUrl, chatStore) => {
+    const bossCatId = await seedBossCat(chatStore);
 
     // Create two bindings with different tokens
     const first = await fetch(`${baseUrl}/api/bot-bindings`, {
@@ -164,8 +189,8 @@ test('duplicate bot token is rejected on update', async () => {
 });
 
 test('same token on same binding does not conflict on update', async () => {
-  await withServer(async (baseUrl) => {
-    const bossCatId = await setupBossCat(baseUrl);
+  await withServer(async (baseUrl, chatStore) => {
+    const bossCatId = await seedBossCat(chatStore);
 
     const first = await fetch(`${baseUrl}/api/bot-bindings`, {
       method: 'POST',
@@ -190,8 +215,8 @@ test('same token on same binding does not conflict on update', async () => {
 });
 
 test('new binding defaults to polling mode', async () => {
-  await withServer(async (baseUrl) => {
-    const bossCatId = await setupBossCat(baseUrl);
+  await withServer(async (baseUrl, chatStore) => {
+    const bossCatId = await seedBossCat(chatStore);
 
     const result = await fetch(`${baseUrl}/api/bot-bindings`, {
       method: 'POST',
@@ -210,8 +235,8 @@ test('new binding defaults to polling mode', async () => {
 });
 
 test('binding can be created in webhook mode', async () => {
-  await withServer(async (baseUrl) => {
-    const bossCatId = await setupBossCat(baseUrl);
+  await withServer(async (baseUrl, chatStore) => {
+    const bossCatId = await seedBossCat(chatStore);
 
     const result = await fetch(`${baseUrl}/api/bot-bindings`, {
       method: 'POST',
@@ -230,4 +255,3 @@ test('binding can be created in webhook mode', async () => {
     assert.equal(body.botBinding.inboundMode, 'webhook');
   });
 });
-
