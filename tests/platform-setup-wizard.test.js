@@ -149,7 +149,6 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
   try {
     restoreFetch = installAuthenticatedFetch(`http://127.0.0.1:${address.port}`, auth, {
       origin: `http://${config.host}:${config.port}`,
-      defaultOriginSurface: 'chat',
     });
     await callback(`http://127.0.0.1:${address.port}`, config);
   } finally {

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -18,7 +19,6 @@ const baseConfig = {
   port: 8181,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
-  chatStatePath: 'unused-for-tests',
   auth: createTestAuthConfig(),
 };
 
@@ -92,6 +92,7 @@ function createRuntimeStub() {
 
 async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
   const now = new Date('2026-03-23T18:00:00.000Z');
+  const tempStateDir = await mkdtemp(path.join(tmpdir(), 'cats-runtime-bridge-'));
   const auth = await createAuthenticatedTestSession({
     now,
     sessionSecret: baseConfig.auth.sessionSecret,
@@ -99,7 +100,10 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
   });
   const server = createServer({
     shared: {
-      config: baseConfig,
+      config: {
+        ...baseConfig,
+        chatStatePath: path.join(tempStateDir, 'platform', 'state', 'chat-state.local.json'),
+      },
       runtimeClient,
       authStore: auth.authStore,
       now: () => now,
@@ -119,7 +123,6 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
 
   const baseUrl = `http://127.0.0.1:${address.port}`;
   const restoreFetch = installAuthenticatedFetch(baseUrl, auth, {
-    defaultOriginSurface: 'chat',
     origin: 'http://127.0.0.1:8181',
   });
   try {
@@ -128,6 +131,7 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
     restoreFetch();
     server.close();
     await once(server, 'close');
+    await rm(tempStateDir, { recursive: true, force: true });
   }
 }
 
@@ -167,6 +171,7 @@ test('runtime bridge flushes cats-owned memory when runtime inspection advertise
       body: JSON.stringify({
         title: 'Bridge Thread',
         topic: 'Exercise runtime maintenance bridges.',
+        originSurface: 'chat',
         roomMode: 'chat_channel',
       }),
     });

@@ -81,28 +81,6 @@ export function installAuthenticatedFetch(baseUrl, auth, options = {}) {
     }
 
     const nextInit = { ...init, headers };
-    if (
-      method === 'POST'
-      && options.defaultOriginSurface
-      && ['/api/channels', '/api/concurrent-groups'].includes(new URL(requestUrl).pathname)
-      && typeof init.body === 'string'
-    ) {
-      try {
-        const parsed = JSON.parse(init.body);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && !parsed.originSurface) {
-          nextInit.body = JSON.stringify({
-            originSurface: options.defaultOriginSurface,
-            ...parsed,
-          });
-          if (!headers.has('content-type')) {
-            headers.set('content-type', 'application/json');
-          }
-        }
-      } catch {
-        // Keep non-JSON test requests untouched.
-      }
-    }
-
     return originalFetch(input, nextInit);
   };
   return () => {

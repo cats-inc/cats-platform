@@ -8,7 +8,12 @@ import test from 'node:test';
 import { createServer } from '../build/server/app/server/index.js';
 import { requireChannel } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
-import { waitForCondition } from './testUtils.js';
+import {
+  createAuthenticatedTestSession,
+  createTestAuthConfig,
+  installAuthenticatedFetch,
+  waitForCondition,
+} from './testUtils.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -16,6 +21,7 @@ const baseConfig = {
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
+  auth: createTestAuthConfig(),
 };
 
 function createRuntimeStub() {
@@ -104,6 +110,12 @@ function createRuntimeStub() {
 async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
   const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-parallel-relay-'));
   const runtimeDataDir = path.join(tempStateDir, 'runtime-data');
+  const now = new Date('2026-04-14T00:00:00.000Z');
+  const auth = await createAuthenticatedTestSession({
+    now,
+    sessionSecret: baseConfig.auth.sessionSecret,
+    sessionTtlMs: baseConfig.auth.sessionTtlMs,
+  });
   const server = createServer({
     shared: {
       config: {
@@ -112,7 +124,8 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
         runtimeDataDir,
       },
       runtimeClient,
-      now: () => new Date('2026-04-14T00:00:00.000Z'),
+      authStore: auth.authStore,
+      now: () => now,
     },
     chat: {
       chatStore,
@@ -127,9 +140,14 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
     throw new Error('Failed to resolve test server address');
   }
 
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const restoreFetch = installAuthenticatedFetch(baseUrl, auth, {
+    origin: 'http://127.0.0.1:8181',
+  });
   try {
-    await callback(`http://127.0.0.1:${address.port}`, chatStore);
+    await callback(baseUrl, chatStore);
   } finally {
+    restoreFetch();
     server.close();
     await once(server, 'close');
     await rm(tempStateDir, { recursive: true, force: true });
@@ -154,6 +172,7 @@ test('parallel chat relay rebuilds a missing source reply from canonical history
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         title: 'Parallel Relay Canonical',
+        originSurface: 'chat',
         targets: [
           { provider: 'claude', instance: 'native' },
           { provider: 'codex', instance: 'native' },
@@ -270,6 +289,7 @@ test('parallel chat relay prefers full canonical assistant turns over surviving 
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         title: 'Parallel Relay Canonical Surviving Segment',
+        originSurface: 'chat',
         targets: [
           { provider: 'claude', instance: 'native' },
           { provider: 'codex', instance: 'native' },

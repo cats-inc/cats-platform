@@ -295,7 +295,6 @@ async function withServer(
 
   const baseUrl = `http://127.0.0.1:${address.port}`;
   const restoreFetch = installAuthenticatedFetch(baseUrl, auth, {
-    defaultOriginSurface: 'chat',
     origin: 'http://127.0.0.1:8181',
   });
   try {
@@ -1115,6 +1114,7 @@ test('POST /api/channels/:id/messages publishes room updates while background se
       body: JSON.stringify({
         title: 'Sequential background refresh',
         topic: 'Broadcast intermediate sequential dispatch persistence.',
+        originSurface: 'chat',
         entryKind: 'group',
         skipBossCatGreeting: true,
         temporaryParticipants: [
@@ -9210,6 +9210,7 @@ test('assigning a cat to a channel immediately creates a runtime session in the 
       body: JSON.stringify({
         title: 'Session Spawn',
         topic: 'Verify assignment spawns a session.',
+        originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
         skipBossCatGreeting: true,
       }),
@@ -9281,6 +9282,7 @@ test('assigning a cat forwards structured modelSelection to cats-runtime session
       body: JSON.stringify({
         title: 'Advanced Session Spawn',
         topic: 'Verify model selection reaches cats-runtime.',
+        originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
         skipBossCatGreeting: true,
       }),
@@ -9353,6 +9355,7 @@ test('assigning a cat without a channel cwd defers session creation until Boss C
       body: JSON.stringify({
         title: 'Deferred Session Spawn',
         topic: 'Wait for Boss Cat to anchor the chat first.',
+        originSurface: 'chat',
         skipBossCatGreeting: true,
       }),
     });
@@ -9430,6 +9433,7 @@ test('PATCH /api/preferences only selects the requested Boss Chat without waking
       body: JSON.stringify({
         title: 'Wake Boss Chat',
         topic: 'Wake the entry participant on room entry.',
+        originSurface: 'chat',
         skipBossCatGreeting: true,
       }),
     });
@@ -9645,6 +9649,7 @@ test('parallel chat first send accepts the user turn before starting member sess
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         title: 'Parallel Race',
+        originSurface: 'chat',
         targets: [
           { provider: 'claude', instance: 'native' },
           { provider: 'codex', instance: 'native' },
@@ -9968,6 +9973,7 @@ test('parallel chat first send fans out the selected folder and attachments to e
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           title: 'Parallel Attachments',
+          originSurface: 'chat',
           repoPath: tempWorkingDir,
           targets: [
             { provider: 'claude', instance: 'native' },
@@ -10083,6 +10089,7 @@ test('parallel chat member selection stays responsive while the first send is st
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         title: 'Parallel Switching',
+        originSurface: 'chat',
         targets: [
           { provider: 'claude', instance: 'native' },
           { provider: 'codex', instance: 'native' },
@@ -10184,6 +10191,7 @@ test('single chat background finalize preserves a newer acknowledged user turn',
       body: JSON.stringify({
         title: 'Stale Merge Guard',
         topic: 'Keep newer user turns while earlier dispatches finish.',
+        originSurface: 'chat',
         skipBossCatGreeting: true,
       }),
     });
@@ -10292,6 +10300,7 @@ test('single chat failure settlement preserves a newer acknowledged user turn', 
       body: JSON.stringify({
         title: 'Failure Merge Guard',
         topic: 'Do not overwrite later ACKed turns on failure.',
+        originSurface: 'chat',
         skipBossCatGreeting: true,
       }),
     });
@@ -10376,6 +10385,7 @@ test('parallel chat finalize preserves member mutations acknowledged after send 
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         title: 'Parallel Merge Guard',
+        originSurface: 'chat',
         targets: [
           { provider: 'claude', instance: 'native' },
           { provider: 'codex', instance: 'native' },
@@ -10448,6 +10458,7 @@ test('parallel chat relay returns a validation error without relying on magic-st
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         title: 'Parallel Relay Validation',
+        originSurface: 'chat',
         targets: [
           { provider: 'claude', instance: 'native' },
           { provider: 'codex', instance: 'native' },
@@ -10494,6 +10505,7 @@ test('ungrouping a parallel chat materializes member chats as standalone recents
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         title: 'Parallel Race',
+        originSurface: 'chat',
         targets: [
           { provider: 'claude', instance: 'native' },
           { provider: 'codex', instance: 'native', model: 'gpt-5.4' },
@@ -11030,6 +11042,7 @@ test('PATCH /api/preferences does not overwrite the last wake request because se
       body: JSON.stringify({
         title: 'Wake Boss Chat',
         topic: 'Do not rewrite wake history on re-entry.',
+        originSurface: 'chat',
         skipBossCatGreeting: true,
       }),
     });
@@ -11115,6 +11128,7 @@ test('PATCH /api/preferences only selects the requested direct message recipient
       body: JSON.stringify({
         title: 'Companion Direct',
         topic: 'Wake the direct recipient Cat on persisted room entry.',
+        originSurface: 'chat',
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
@@ -11639,6 +11653,7 @@ test('GET /api/app-shell stays read-only when booting a persisted room route', a
       body: JSON.stringify({
         title: 'Companion Direct',
         topic: 'App shell reads should not wake runtime sessions.',
+        originSurface: 'chat',
         roomMode: 'direct_message',
         participantCatIds: [catId],
         defaultRecipientId: catId,
@@ -11679,6 +11694,7 @@ test('re-adding a removed cat to an active chat wakes it again instead of leavin
       body: JSON.stringify({
         title: 'Rejoin Wake',
         topic: 'Wake cats when they rejoin a live room.',
+        originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
         skipBossCatGreeting: true,
       }),
@@ -11760,6 +11776,7 @@ test('attachment uploads sanitize names and avoid overwriting earlier files', as
         body: JSON.stringify({
           title: 'Attachment Uploads',
           topic: 'Verify unique attachment names.',
+          originSurface: 'chat',
           repoPath: tempWorkingDir,
           skipBossCatGreeting: true,
         }),
@@ -11820,6 +11837,7 @@ test('attachment serving only inlines raster images and forces download for acti
         body: JSON.stringify({
           title: 'Attachment Serving',
           topic: 'Verify attachment response headers.',
+          originSurface: 'chat',
           repoPath: tempWorkingDir,
           skipBossCatGreeting: true,
         }),

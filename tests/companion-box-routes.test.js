@@ -110,7 +110,6 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
 
   const baseUrl = `http://127.0.0.1:${address.port}`;
   const restoreFetch = installAuthenticatedFetch(baseUrl, auth, {
-    defaultOriginSurface: 'chat',
     origin: 'http://127.0.0.1:8181',
   });
   try {

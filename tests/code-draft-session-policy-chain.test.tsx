@@ -197,7 +197,11 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
     const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...createInput, skipBossCatGreeting: true }),
+      body: JSON.stringify({
+        ...createInput,
+        originSurface: 'code',
+        skipBossCatGreeting: true,
+      }),
     });
     assert.equal(createChannelResponse.status, 201);
     const createChannelPayload = await createChannelResponse.json();
@@ -322,7 +326,11 @@ test('code-origin runtime declare_artifact calls persist artifacts during dispat
     const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...createInput, skipBossCatGreeting: true }),
+      body: JSON.stringify({
+        ...createInput,
+        originSurface: 'code',
+        skipBossCatGreeting: true,
+      }),
     });
     assert.equal(createChannelResponse.status, 201);
     const createChannelPayload = await createChannelResponse.json();
@@ -440,7 +448,11 @@ test('code-origin finalization claims without accepted declarations are blocked'
     const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...createInput, skipBossCatGreeting: true }),
+      body: JSON.stringify({
+        ...createInput,
+        originSurface: 'code',
+        skipBossCatGreeting: true,
+      }),
     });
     assert.equal(createChannelResponse.status, 201);
     const createChannelPayload = await createChannelResponse.json();
