@@ -7,12 +7,18 @@ import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import {
+  createAuthenticatedTestSession,
+  createTestAuthConfig,
+  installAuthenticatedFetch,
+} from './testUtils.js';
 
 const baseConfig = {
   host: '127.0.0.1',
   port: 0,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
+  auth: createTestAuthConfig(),
 };
 
 function createRuntimeStub() {
@@ -59,6 +65,12 @@ function createRuntimeStub() {
 async function withServer(callback) {
   const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-origin-surface-compat-'));
   const chatStore = new MemoryChatStore();
+  const now = new Date('2026-04-17T12:00:00.000Z');
+  const auth = await createAuthenticatedTestSession({
+    now,
+    sessionSecret: baseConfig.auth.sessionSecret,
+    sessionTtlMs: baseConfig.auth.sessionTtlMs,
+  });
   const server = createServer({
     shared: {
       config: {
@@ -67,7 +79,8 @@ async function withServer(callback) {
         runtimeDataDir: path.join(tempStateDir, 'runtime-data'),
       },
       runtimeClient: createRuntimeStub(),
-      now: () => new Date('2026-04-17T12:00:00.000Z'),
+      authStore: auth.authStore,
+      now: () => now,
     },
     chat: { chatStore },
   });
@@ -80,9 +93,14 @@ async function withServer(callback) {
     throw new Error('Failed to resolve test server address');
   }
 
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const restoreFetch = installAuthenticatedFetch(baseUrl, auth, {
+    origin: 'http://127.0.0.1:8181',
+  });
   try {
-    await callback(`http://127.0.0.1:${address.port}`, chatStore);
+    await callback(baseUrl, chatStore);
   } finally {
+    restoreFetch();
     server.close();
     await once(server, 'close');
     await rm(tempStateDir, { recursive: true, force: true });
