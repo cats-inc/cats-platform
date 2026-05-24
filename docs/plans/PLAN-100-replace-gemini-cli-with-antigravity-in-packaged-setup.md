@@ -53,6 +53,7 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
 - [ ] Identify whether Antigravity exposes the same Gemini-3.x model identifiers (`gemini-3.1-pro-preview`, `gemini-3-flash-preview`, etc.) or renames them. Check candidate model-list commands (`agy models`, `agy models list`, or equivalent), documented config files, official product documentation, and smoke-run acceptance. Do not treat `agy --help` as sufficient model-id evidence.
 - [ ] Record the host-facing wrapper flags and the environment-bootstrap installer flags separately. Cats Desktop emits `-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-Json`, and `-DryRun` on every platform; environment-bootstrap Windows accepts `-Upgrade`, `-Force`, `-NonInteractive`; environment-bootstrap shell installers accept `-upgrade`, `-force`. Confirm the Cats Desktop wrappers translate the broader packaged helper contract instead of delegating host action flags verbatim.
 - [ ] Define default uninstall scope: binary-only and user-scoped removal of `agy` executable/path target, with no auth-token/session/config purge unless a separate explicit purge design is approved.
+- [ ] Confirm packaged helper metadata values for Antigravity: `requiresElevation` is `false` only if the installer remains user-scoped on all supported OSes; `resumable` is `true` only if interrupted native-binary downloads can be retried idempotently from the packaged setup flow. If resumability is not proven, set `resumable: false` and document the retry path.
 - [ ] Document findings in `cats-runtime/docs/research/2026-05-24-antigravity-cli-probe.md` (single shared note across both repos).
 
 **Deliverables**: Research note answering SPEC-110's Open Questions about skills directory, model identifiers, and installer flag translation.
@@ -72,8 +73,16 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
 
 ### Phase 2: Installer Wrappers
 
-- [ ] Create `scripts/windows/Install-Antigravity.ps1`. Implementation: preserve the packaged helper action surface (`-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-DryRun`, `-Json`, state hints) and call `environment-bootstrap/platform/windows/Install-AntigravityCLI.ps1` only for install / refresh actions. Use `-HelperId 'windows-antigravity-native-installer' -CommandName 'agy' -DisplayName 'Antigravity CLI'`.
-- [ ] Create `scripts/macos/install-antigravity.sh`. Implementation: preserve the same canonical host-facing flag surface emitted by `setupBridge.ts` (`-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-DryRun`, `-Json`) and do not publish a separate bash-style lifecycle contract. Call `environment-bootstrap/platform/macos/install-antigravity-cli.sh` only for install / refresh actions, translating to its child-script `-upgrade` / `-force` flags.
+- [ ] Create `scripts/windows/Install-Antigravity.ps1`. Implementation: preserve the packaged helper action surface (`-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-DryRun`, `-Json`, state hints) and use `-HelperId 'windows-antigravity-native-installer' -CommandName 'agy' -DisplayName 'Antigravity CLI'`.
+- [ ] Apply the same wrapper-to-upstream mapping on all OSes:
+  - `-CheckOnly`: wrapper-only probe of `agy` / expected install path; do not call environment-bootstrap.
+  - `-Apply`: call environment-bootstrap install with no install-mode flag; Windows always adds upstream `-NonInteractive` from packaged setup.
+  - `-Upgrade`: call upstream `-Upgrade` on Windows and `-upgrade` on macOS/Linux; Windows also adds `-NonInteractive`.
+  - `-Force`: call upstream `-Force` on Windows and `-force` on macOS/Linux; Windows also adds `-NonInteractive`.
+  - `-DryRun`: wrapper-only planned-action output; do not mutate the host.
+  - `-Uninstall`: wrapper-owned binary-only uninstall; do not delegate to environment-bootstrap.
+  - `-Json`: wrapper-owned output shaping; normalize upstream output into the packaged helper JSON contract.
+- [ ] Create `scripts/macos/install-antigravity.sh`. Implementation: preserve the same canonical host-facing flag surface emitted by `setupBridge.ts` (`-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-DryRun`, `-Json`) and do not publish a separate bash-style lifecycle contract. Parse flags with a custom `while [ $# -gt 0 ]; do case "$1" in ... esac; shift; done` loop, matching the existing `run_npm_cli_provider` style; do not use `getopts`, because it does not handle this single-dash long-flag contract cleanly. Call `environment-bootstrap/platform/macos/install-antigravity-cli.sh` only for install / refresh actions, translating per the mapping above.
 - [ ] Create `scripts/linux/install-antigravity.sh`. Implementation: mirror macOS but call `environment-bootstrap/platform/linux/install-antigravity-cli.sh`.
 - [ ] Implement `-Uninstall` inside the Cats wrappers. Default scope is binary-only: remove `%LOCALAPPDATA%\agy\bin\agy.exe` on Windows and `~/.local/bin/agy` on Unix, clean empty wrapper-owned directories where safe, emit structured warnings for residual auth/session/config data, and do not delete auth tokens or sessions.
 - [ ] Verify each wrapper's exit-code surface matches the desktop host's expected `runSetupHelper(...)` result shape (structured JSON or stdout convention, per the existing Gemini wrapper).
@@ -90,9 +99,12 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
   - Replace `label: 'Gemini CLI'` with `label: 'Antigravity CLI'`.
   - Replace the three asset ids (`windows-gemini-native-installer` → `windows-antigravity-native-installer`, etc.).
   - Replace `currentHome` paths with the new wrapper paths.
-- [ ] In `desktop/host/setupAssets.ts:121,326,543`:
-  - Replace `['gemini', 'gemini.sh', 'Gemini CLI']` with `['antigravity', 'antigravity.sh', 'Antigravity CLI']`.
-  - Replace `['gemini', 'Install-Gemini.ps1', 'Gemini CLI']` with `['antigravity', 'Install-Antigravity.ps1', 'Antigravity CLI']`.
+- [ ] In `desktop/host/setupAssets.ts`, do not insert Antigravity into the shared npm-provider tuples:
+  - Remove `['gemini', 'gemini.sh', 'Gemini CLI']` from the macOS/Linux tuple around line 121.
+  - Remove `['gemini', 'Install-Gemini.ps1', 'Gemini CLI']` from the Windows npm tuple around line 326.
+  - Add explicit standalone Antigravity `provider_installer` registrations for Windows, macOS, and Linux with `sourceRelativePath` / `stageRelativePath` / `packagedRelativePath` pointing at the new wrapper scripts.
+  - Use Antigravity-specific notes such as "Installs or upgrades Antigravity CLI as a user-scoped native binary via environment-bootstrap"; do not inherit the tuple notes that mention repo-owned Unix npm helpers or Windows npm-global installs.
+  - Set `requiresElevation` and `resumable` from the Phase 0 evidence instead of inheriting tuple defaults.
   - Update the helper-description string at line 543 to remove the Gemini mention. Antigravity does not flow through the shared npm-helper, so it does not belong in that comment list.
 - [ ] In `desktop/host/bootstrapPage.ts:1651,1665,1837`:
   - Replace `'gemini'` in the provider list with `'antigravity'`. Position it between `claude_code` and `cursor_agent` per the upstream ordering.
@@ -181,7 +193,7 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
 ## Technical Decisions
 
 - **New provider id is `antigravity` (lowercase) and display label is `Antigravity`**: matches environment-bootstrap installer naming and cats-runtime ADR-032.
-- **Wrappers delegate install work to environment-bootstrap**: Cats Desktop wrappers still own the packaged helper lifecycle and JSON/check/dry-run/uninstall surface; environment-bootstrap remains the source of truth for the actual `agy` install / refresh flow.
+- **Wrappers delegate install work to environment-bootstrap**: Cats Desktop wrappers still own the packaged helper lifecycle and JSON/check/dry-run/uninstall surface; environment-bootstrap remains the source of truth for the actual `agy` install / refresh flow. `-Apply` maps to default upstream install, `-Upgrade` maps to upstream upgrade, `-Force` maps to upstream force, and packaged Windows calls always add upstream `-NonInteractive`.
 - **Antigravity does not flow through `_NpmCliInstaller.ps1` / `node-cli-common.sh`**: it is a native installer, not npm-based. Helpers stay in place for other npm CLIs; only the Gemini-specific rows and comments come out.
 - **Phase 0 probe blocks Phases 1-5**: skills directory, model identifiers, and installer flag translation must be known before code lands.
 - **Shared catalog is the cross-repo handoff**: runtime PLAN-033 Phase 4 mirrors the finalized values after Phase 1 lands here.
