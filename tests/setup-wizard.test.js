@@ -8,32 +8,18 @@ import test from 'node:test';
 import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { resolveOrchestratorDisplayName } from '../build/server/products/chat/state/model/index.js';
+import {
+  createAuthenticatedTestSession,
+  createTestAuthConfig,
+  installAuthenticatedFetch,
+} from './testUtils.js';
 
 const baseConfig = {
   host: '127.0.0.1',
   port: 8181,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
-  auth: {
-    mode: 'unsafe_disabled',
-    enabled: false,
-    sessionSecret: null,
-    sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
-    mobileSessionTtlMs: 30 * 24 * 60 * 60 * 1000,
-    loginFailureLimit: 5,
-    loginLockoutMs: 30_000,
-    accountDailyFailureCap: 100,
-    accountCooldownMs: 15 * 60 * 1000,
-    subnetDailyFailureCap: 500,
-    allowedBrowserOrigins: ['http://127.0.0.1:8181'],
-    authStatePath: 'unused-auth-state.json',
-    recoveryTokenPath: 'unused-auth-recovery.json',
-    google: {
-      clientId: null,
-      hostedDomains: [],
-      mobileAudiences: [],
-    },
-  },
+  auth: createTestAuthConfig(),
 };
 
 function createRuntimeStub() {
@@ -98,6 +84,12 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
   const tempRoot = await mkdtemp(path.join(tmpdir(), 'cats-platform-setup-wizard-'));
   const chatStatePath = path.join(tempRoot, 'state', 'chat-state.local.json');
   await mkdir(path.dirname(chatStatePath), { recursive: true });
+  const now = new Date('2026-03-19T00:00:00.000Z');
+  const auth = await createAuthenticatedTestSession({
+    now,
+    sessionSecret: baseConfig.auth.sessionSecret,
+    sessionTtlMs: baseConfig.auth.sessionTtlMs,
+  });
 
   const server = createServer({
     shared: {
@@ -106,7 +98,8 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
         chatStatePath,
       },
       runtimeClient,
-      now: () => new Date('2026-03-19T00:00:00.000Z'),
+      authStore: auth.authStore,
+      now: () => now,
     },
     chat: {
       chatStore,
@@ -121,9 +114,15 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
     throw new Error('Failed to resolve test server address');
   }
 
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const restoreFetch = installAuthenticatedFetch(baseUrl, auth, {
+    defaultOriginSurface: 'chat',
+    origin: 'http://127.0.0.1:8181',
+  });
   try {
-    await callback(`http://127.0.0.1:${address.port}`);
+    await callback(baseUrl);
   } finally {
+    restoreFetch();
     server.close();
     await once(server, 'close');
     await rm(tempRoot, { recursive: true, force: true });

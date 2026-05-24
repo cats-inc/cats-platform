@@ -1422,7 +1422,7 @@ test('provider default chat restarts orchestrator sessions when the pending mode
     {
       body: 'Switch turn',
       pendingProvider: 'antigravity',
-      pendingModel: 'Gemini 3.1 Pro (high)',
+      pendingModel: 'antigravity-default',
     },
     runtimeClient,
     new Date('2026-03-23T00:09:00.000Z'),
@@ -1454,13 +1454,13 @@ test('provider default chat restarts orchestrator sessions when the pending mode
   );
   assert.deepEqual(runtimeClient.closedSessions, ['session-1']);
   assert.equal(channel.pendingProvider, 'antigravity');
-  assert.equal(channel.pendingModel, 'Gemini 3.1 Pro (high)');
+  assert.equal(channel.pendingModel, 'antigravity-default');
   assert.equal(defaultChatReplies[0]?.senderKind, 'agent');
   assert.equal(defaultChatReplies[0]?.executionProvider, 'claude');
   assert.equal(defaultChatReplies[0]?.executionModel, 'claude-default');
   assert.equal(defaultChatReplies.at(-1)?.senderKind, 'agent');
   assert.equal(defaultChatReplies.at(-1)?.executionProvider, 'antigravity');
-  assert.equal(defaultChatReplies.at(-1)?.executionModel, 'Gemini 3.1 Pro (high)');
+  assert.equal(defaultChatReplies.at(-1)?.executionModel, 'antigravity-default');
   assert.equal(runtimeClient.sentMessages[0]?.content, 'First turn');
   assert.equal(runtimeClient.sentMessages[0]?.input?.instructions, undefined);
   assert.equal(
@@ -1547,7 +1547,7 @@ test('provider default chat full-transplants earlier user-only context on replac
     {
       body: 'Switch turn',
       pendingProvider: 'antigravity',
-      pendingModel: 'Gemini 3.1 Pro (high)',
+      pendingModel: 'antigravity-default',
     },
     runtimeClient,
     new Date('2026-03-23T00:11:00.000Z'),
@@ -1638,7 +1638,7 @@ test('default-chat replacement-session transplants preserve prior assistant tool
     {
       body: 'Now switch providers and continue.',
       pendingProvider: 'antigravity',
-      pendingModel: 'Gemini 3.1 Pro (high)',
+      pendingModel: 'antigravity-default',
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),
@@ -1716,7 +1716,7 @@ test('default-chat replacement-session transplants fold segmented assistant turn
     {
       body: 'Switch providers and continue.',
       pendingProvider: 'antigravity',
-      pendingModel: 'Gemini 3.1 Pro (high)',
+      pendingModel: 'antigravity-default',
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),
@@ -1772,7 +1772,7 @@ test('explicit default-chat start-fresh resets continuity before the next replac
     {
       body: 'Fresh branch turn',
       pendingProvider: 'antigravity',
-      pendingModel: 'Gemini 3.1 Pro (high)',
+      pendingModel: 'antigravity-default',
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),
@@ -1855,7 +1855,7 @@ test('default-chat retarget after start-fresh only transplants the new continuit
     {
       body: 'Retarget after reset',
       pendingProvider: 'antigravity',
-      pendingModel: 'Gemini 3.1 Pro (high)',
+      pendingModel: 'antigravity-default',
     },
     runtimeClient,
     new Date('2026-03-23T00:02:00.000Z'),
@@ -2813,7 +2813,7 @@ test('provider default chat honors pending runtime memory flush hooks before res
     {
       body: 'Second turn',
       pendingProvider: 'antigravity',
-      pendingModel: 'Gemini 3.1 Pro (high)',
+      pendingModel: 'antigravity-default',
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),
@@ -2989,7 +2989,7 @@ test('parallel member channels inherit default continuity transplant rules on re
       body: 'Switch turn',
       pendingProvider: 'antigravity',
       pendingInstance: 'native',
-      pendingModel: 'Gemini 3.1 Pro (high)',
+      pendingModel: 'antigravity-default',
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),

@@ -13,7 +13,7 @@ import {
   appendMessage,
   assignCatToChannel,
   createCat,
-  createChannel,
+  createChannel as createModelChannel,
   requireChannel,
   setChannelCatLease,
   setChannelOrchestratorLease,
@@ -44,7 +44,12 @@ import {
   buildDirectLaneTransportBindingId,
   CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
-import { waitForCondition } from './testUtils.js';
+import {
+  createAuthenticatedTestSession,
+  createTestAuthConfig,
+  installAuthenticatedFetch,
+  waitForCondition,
+} from './testUtils.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -52,26 +57,7 @@ const baseConfig = {
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
-  auth: {
-    mode: 'unsafe_disabled',
-    enabled: false,
-    sessionSecret: null,
-    sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
-    mobileSessionTtlMs: 30 * 24 * 60 * 60 * 1000,
-    loginFailureLimit: 5,
-    loginLockoutMs: 30_000,
-    accountDailyFailureCap: 100,
-    accountCooldownMs: 15 * 60 * 1000,
-    subnetDailyFailureCap: 500,
-    allowedBrowserOrigins: ['http://127.0.0.1:8181'],
-    authStatePath: 'unused-auth-state.json',
-    recoveryTokenPath: 'unused-auth-recovery.json',
-    google: {
-      clientId: null,
-      hostedDomains: [],
-      mobileAudiences: [],
-    },
-  },
+  auth: createTestAuthConfig(),
 };
 
 function createRuntimeStub() {
@@ -242,6 +228,17 @@ function createRuntimeStub() {
   };
 }
 
+function createChannel(state, input, now) {
+  return createModelChannel(
+    state,
+    {
+      originSurface: 'chat',
+      ...input,
+    },
+    now,
+  );
+}
+
 async function withServer(
   runtimeClient,
   callback,
@@ -250,6 +247,12 @@ async function withServer(
 ) {
   const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-server-state-'));
   const runtimeDataDir = path.join(tempStateDir, 'runtime-data');
+  const now = new Date('2026-03-11T00:00:00.000Z');
+  const auth = await createAuthenticatedTestSession({
+    now,
+    sessionSecret: baseConfig.auth.sessionSecret,
+    sessionTtlMs: baseConfig.auth.sessionTtlMs,
+  });
   const {
     startup,
     coreStore,
@@ -267,7 +270,8 @@ async function withServer(
         runtimeDataDir,
       },
       runtimeClient,
-      now: () => new Date('2026-03-11T00:00:00.000Z'),
+      authStore: auth.authStore,
+      now: () => now,
       startup,
       coreStore,
       resumePendingOrchestratorDispatch,
@@ -289,9 +293,15 @@ async function withServer(
     throw new Error('Failed to resolve test server address');
   }
 
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const restoreFetch = installAuthenticatedFetch(baseUrl, auth, {
+    defaultOriginSurface: 'chat',
+    origin: 'http://127.0.0.1:8181',
+  });
   try {
-    await callback(`http://127.0.0.1:${address.port}`, { tempStateDir, runtimeDataDir });
+    await callback(baseUrl, { tempStateDir, runtimeDataDir });
   } finally {
+    restoreFetch();
     server.close();
     await once(server, 'close');
     await rm(tempStateDir, { recursive: true, force: true });
@@ -10625,7 +10635,7 @@ test('PATCH /api/channels/:channelId can start a fresh default continuity branch
         body: 'Continue from the fresh branch only.',
         pendingProvider: 'antigravity',
         pendingInstance: 'native',
-        pendingModel: 'Gemini 3.1 Pro (high)',
+        pendingModel: 'antigravity-default',
       }),
     });
     assert.equal(followUpResponse.status, 200);
@@ -10858,7 +10868,6 @@ test('POST /api/channels keeps direct lanes scoped to the direct recipient only'
       body: JSON.stringify({
         name: 'Extra Cat',
         provider: 'antigravity',
-        model: 'Gemini 3 Flash',
       }),
     });
     assert.equal(secondCatResponse.status, 201);
@@ -10910,7 +10919,6 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-recipient ca
       body: JSON.stringify({
         name: 'Extra Companion',
         provider: 'antigravity',
-        model: 'Gemini 3 Flash',
       }),
     });
     assert.equal(extraCatResponse.status, 201);
@@ -10939,7 +10947,6 @@ test('PUT /api/channels/:channelId/cats/:catId rejects adding a non-recipient ca
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         provider: 'antigravity',
-        model: 'Gemini 3 Flash',
       }),
     });
     assert.equal(assignResponse.status, 400);
