@@ -99,6 +99,46 @@ test('Unix self-hosted provider helpers expose help text without mutating the ho
   }
 });
 
+test('Unix Antigravity helpers publish the packaged setup flag contract', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const bashPath = relative(
+      rootDir,
+      join(rootDir, 'scripts', platform, 'install-antigravity.sh'),
+    ).replace(/\\/gu, '/');
+    const { stdout } = await execFile('bash', [bashPath, '--help'], {
+      cwd: rootDir,
+      encoding: 'utf8',
+    });
+
+    assert.match(stdout, /-CheckOnly/u);
+    assert.match(stdout, /-Apply/u);
+    assert.match(stdout, /-Upgrade/u);
+    assert.match(stdout, /-Force/u);
+    assert.match(stdout, /-Uninstall/u);
+    assert.match(stdout, /-DryRun/u);
+    assert.match(stdout, /-Json/u);
+    assert.doesNotMatch(stdout, /--check/u);
+    assert.doesNotMatch(stdout, /-upgrade/u);
+  }
+});
+
+test('Unix Antigravity helpers reject conflicting mutation flags', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const bashPath = relative(
+      rootDir,
+      join(rootDir, 'scripts', platform, 'install-antigravity.sh'),
+    ).replace(/\\/gu, '/');
+
+    await assert.rejects(
+      execFile('bash', [bashPath, '-Apply', '-Upgrade'], {
+        cwd: rootDir,
+        encoding: 'utf8',
+      }),
+      /at most one of -Apply \/ -Upgrade \/ -Force/u,
+    );
+  }
+});
+
 test('Unix Antigravity helpers dry-run mutation modes without invoking installers', async () => {
   for (const platform of ['linux', 'macos']) {
     const summary = await readJsonSummary(

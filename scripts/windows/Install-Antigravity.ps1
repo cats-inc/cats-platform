@@ -184,16 +184,18 @@ if (-not $CheckOnly -and -not $Apply -and -not $Upgrade -and -not $Force -and -n
   $CheckOnly = $true
 }
 
-if ($Uninstall -and ($CheckOnly -or $Apply -or $Upgrade -or $Force)) {
+$mutationCount = @($Apply, $Upgrade, $Force | Where-Object { $_ }).Count
+
+if ($Uninstall -and ($CheckOnly -or $mutationCount -gt 0)) {
   throw 'Install-Antigravity.ps1 -Uninstall is mutually exclusive with other modes.'
 }
 
-if ($CheckOnly -and ($Apply -or $Upgrade -or $Force)) {
+if ($CheckOnly -and $mutationCount -gt 0) {
   throw 'Install-Antigravity.ps1 accepts either -CheckOnly or one mutation mode.'
 }
 
-if ($Force -and $Upgrade) {
-  $Upgrade = $false
+if ($mutationCount -gt 1) {
+  throw 'Install-Antigravity.ps1 accepts at most one of -Apply / -Upgrade / -Force.'
 }
 
 $executionMode = if ($Uninstall) {

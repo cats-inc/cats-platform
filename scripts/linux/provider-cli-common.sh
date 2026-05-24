@@ -370,16 +370,19 @@ provider_help() {
   local script_name="$1"
   local provider="$2"
   cat <<EOF
-Usage: $script_name [--check] [-upgrade] [-force] [--uninstall] [--help]
+Usage: $script_name [-CheckOnly] [-Apply] [-Upgrade] [-Force] [-Uninstall] [-DryRun] [-Json] [--help]
 
 Repo-owned self-hosted helper for $(provider_display_name "$provider").
 
 Options:
-  --check     Verify whether the provider CLI is reachable on this host.
-  -upgrade    Upgrade the provider CLI if already installed, otherwise install it.
-  -force      Reinstall the provider CLI even when already present.
-  --uninstall Remove the provider CLI binaries from user-owned install paths.
-  --help      Show this help text.
+  -CheckOnly Verify whether the provider CLI is reachable on this host.
+  -Apply     Install the provider CLI if it is missing.
+  -Upgrade   Upgrade the provider CLI if already installed, otherwise install it.
+  -Force     Reinstall the provider CLI even when already present.
+  -Uninstall Remove the provider CLI binaries from user-owned install paths.
+  -DryRun    Show the planned mutation without changing the host.
+  -Json      Emit structured JSON output for the packaged setup bridge.
+  --help     Show this help text.
 EOF
 }
 
@@ -523,6 +526,26 @@ run_native_provider_installer() {
     esac
     shift
   done
+
+  local mutation_count=0
+  [ "$apply" = 'true' ] && mutation_count=$((mutation_count + 1))
+  [ "$upgrade" = 'true' ] && mutation_count=$((mutation_count + 1))
+  [ "$force" = 'true' ] && mutation_count=$((mutation_count + 1))
+
+  if [ "$uninstall" = 'true' ] && { [ "$check_only" = 'true' ] || [ "$mutation_count" -gt 0 ]; }; then
+    printf '%s accepts -Uninstall as a mutually exclusive mode.\n' "$(basename "$0")" >&2
+    return 1
+  fi
+
+  if [ "$check_only" = 'true' ] && [ "$mutation_count" -gt 0 ]; then
+    printf '%s accepts either -CheckOnly or one mutation mode.\n' "$(basename "$0")" >&2
+    return 1
+  fi
+
+  if [ "$mutation_count" -gt 1 ]; then
+    printf '%s accepts at most one of -Apply / -Upgrade / -Force.\n' "$(basename "$0")" >&2
+    return 1
+  fi
 
   if [ "$force" = 'true' ]; then
     upgrade='false'
