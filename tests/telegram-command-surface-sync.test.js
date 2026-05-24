@@ -116,24 +116,36 @@ test('telegram command surface sync applies commands and menu button for active 
 
   await sync.reconcile();
 
-  assert.equal(calls.length, 5);
+  assert.equal(calls.length, 8);
   assert.deepEqual(
     calls.map((call) => `${call.botToken}:${call.operation}`),
     [
       'default-token:setMyCommands',
+      'default-token:setMyCommands',
       'default-token:setChatMenuButton',
       'explicit-token:setMyCommands',
+      'explicit-token:setMyCommands',
       'explicit-token:setChatMenuButton',
+      'ignored-token:deleteMyCommands',
       'ignored-token:deleteMyCommands',
     ],
   );
   assert.equal(calls[0].request.scope.type, 'default');
+  assert.equal(calls[0].request.languageCode, null);
+  assert.equal(calls[1].request.languageCode, 'zh');
   assert.ok(calls[0].request.commands.some((command) => command.command === 'mode'));
-  assert.deepEqual(calls[1].request, {
+  assert.ok(calls[0].request.commands.some((command) => command.command === 'work'));
+  assert.ok(calls[0].request.commands.some((command) => command.command === 'code'));
+  assert.deepEqual(calls[2].request, {
     menuButton: { type: 'commands' },
   });
-  assert.deepEqual(calls[4].request, {
+  assert.deepEqual(calls[6].request, {
     scope: { type: 'default' },
+    languageCode: null,
+  });
+  assert.deepEqual(calls[7].request, {
+    scope: { type: 'default' },
+    languageCode: 'zh',
   });
 });
 
@@ -215,8 +227,12 @@ test('telegram command surface sync clears stale bot tokens that disappeared fro
     {
       botToken: 'stale-token',
       operation: 'deleteMyCommands',
-      request: { scope: { type: 'default' } },
+      request: { scope: { type: 'default' }, languageCode: null },
+    },
+    {
+      botToken: 'stale-token',
+      operation: 'deleteMyCommands',
+      request: { scope: { type: 'default' }, languageCode: 'zh' },
     },
   ]);
 });
-
