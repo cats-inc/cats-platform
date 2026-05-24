@@ -121,6 +121,10 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
 - [x] In `scripts/macos/test-macos-package-smoke.sh:52`, replace the `install-gemini.sh` assertion with `install-antigravity.sh`.
 - [x] In `scripts/linux/test-linux-package-smoke.sh:52`, replace the `install-gemini.sh` assertion with `install-antigravity.sh`.
 - [ ] Run all three smoke tests against a freshly packaged build to confirm they pass.
+  - [x] Windows package build passed with `CATS_SKIP_MOBILE=1 npm run desktop:package:windows`.
+  - [x] Windows unpacked-package smoke passed with `Test-WindowsInstallerSmoke.ps1 -InstallRoot release\win-unpacked -SkipLaunch`, including bundled `Install-Antigravity.ps1` and `windows-antigravity-native-installer-script` checks.
+  - [ ] macOS packaged smoke remains pending on a macOS host.
+  - [ ] Linux packaged smoke remains pending on a Linux host.
 
 **Deliverables**: Readiness check and three packaged-setup smoke tests verify Antigravity bundling.
 
@@ -224,6 +228,7 @@ Goal: replace guesses with facts before touching code. This phase is the same wo
 |------|--------|
 | 2026-05-24 | Plan created alongside ADR-107 and SPEC-110. |
 | 2026-05-24 | Implementation progress synced: shared catalog, packaged wrappers, desktop host wiring, readiness/smoke assertions, skills sync, native helper loops, and script docs now use Antigravity. Live `agy --help` / `agy --version` and freshly packaged three-OS smoke runs remain open. |
+| 2026-05-24 | Windows package verification passed on this host: `CATS_SKIP_MOBILE=1 npm run desktop:package:windows` produced the NSIS/unpacked package, and `Test-WindowsInstallerSmoke.ps1 -InstallRoot release\win-unpacked -SkipLaunch` validated the bundled Antigravity helper asset and package manifest. macOS/Linux package smokes remain platform-pending. |
 
 ---
 
