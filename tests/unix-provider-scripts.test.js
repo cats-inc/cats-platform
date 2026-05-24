@@ -201,6 +201,20 @@ test('Unix Antigravity helpers own refresh before invoking the official installe
   }
 });
 
+test('Unix Antigravity helpers keep uninstall scoped to the agy binary path', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const commonScript = await readFile(
+      join(rootDir, 'scripts', platform, 'provider-cli-common.sh'),
+      'utf8',
+    );
+
+    assert.match(commonScript, /\$HOME\/\.local\/bin\/agy/u);
+    assert.match(commonScript, /uninstall_provider_native_paths\(\)/u);
+    assert.doesNotMatch(commonScript, /\.gemini\/antigravity-cli/u);
+    assert.doesNotMatch(commonScript, /plugins\/|settings\.json/u);
+  }
+});
+
 test('Unix bulk upgrade keeps Antigravity in the native provider pass', async () => {
   for (const platform of ['linux', 'macos']) {
     const script = await readFile(
