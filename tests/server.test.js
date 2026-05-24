@@ -1169,9 +1169,14 @@ test('POST /api/channels/:id/messages publishes room updates while background se
       );
       assert.match(roomUpdateEvents, /event: room_updated/u);
 
-      const messagesResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`);
-      assert.equal(messagesResponse.status, 200);
-      const messagesPayload = await messagesResponse.json();
+      const messagesPayload = await waitForCondition(async () => {
+        const messagesResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`);
+        assert.equal(messagesResponse.status, 200);
+        const payload = await messagesResponse.json();
+        return payload.messages.some((message) => message.metadata?.event === 'session_started')
+          ? payload
+          : null;
+      });
       const sessionStartedCount = messagesPayload.messages.filter((message) =>
         message.metadata?.event === 'session_started').length;
       assert.ok(
@@ -1340,61 +1345,61 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
       runtime,
       seededAt,
     );
-    await chatStore.write(begun.state);
-    const begunTurn = requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn;
+    let begunState = begun.state;
+    const begunTurn = requireChannel(begunState, channelId).roomRouting.workflow.activeTurn;
     const begunSourceMessageId = begunTurn?.sourceMessageId;
     const firstTargetStateId = begunTurn?.targetStatuses[0]?.id ?? null;
     const secondTargetStateId = begunTurn?.targetStatuses[1]?.id ?? null;
     assert.ok(firstTargetStateId);
     assert.ok(secondTargetStateId);
+    const firstLaneId = buildChatLaneId(begunTurn.id, firstTargetStateId, firstParticipantId);
+    const secondLaneId = buildChatLaneId(begunTurn.id, secondTargetStateId, secondParticipantId);
+    begunState = setChannelCatLease(
+      begunState,
+      channelId,
+      firstCatId,
+      {
+        sessionId: 'session-live-sequential-1',
+        status: 'ready',
+        laneId: firstLaneId,
+        cwd: 'C:/repo/cats-platform',
+        lastError: null,
+        provider: 'claude',
+        model: 'claude-sonnet-4',
+        startedAt: seededAt.toISOString(),
+        lastUsedAt: seededAt.toISOString(),
+      },
+      seededAt,
+    );
+    begunState = setChannelCatLease(
+      begunState,
+      channelId,
+      secondCatId,
+      {
+        sessionId: 'session-live-sequential-2',
+        status: 'ready',
+        laneId: secondLaneId,
+        cwd: 'C:/repo/cats-platform',
+        lastError: null,
+        provider: 'codex',
+        model: 'gpt-5.4',
+        startedAt: secondLeaseStartedAt.toISOString(),
+        lastUsedAt: secondLeaseStartedAt.toISOString(),
+      },
+      secondLeaseStartedAt,
+    );
+    await chatStore.write(begunState);
 
     const streamResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/stream`);
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    let nextState = await chatStore.read();
-    let nextChannel = requireChannel(nextState, channelId);
-    let nextTurn = nextChannel.roomRouting.workflow.activeTurn;
-    assert.ok(nextTurn);
-    nextTurn.targetStatuses = [
-      {
-        id: firstTargetStateId,
-        dispatchId: 'dispatch-sequential-1',
-        participant: {
-          participantKind: 'cat',
-          participantId: firstParticipantId,
-          participantName: 'First Cat',
-        },
-        source: null,
-        sourceMessageId: nextTurn.sourceMessageId,
-        trigger: 'room_default',
-        mentionNames: [],
-        depth: 0,
-        parentCheckpointId: nextTurn.lastCheckpointId,
-        branchStrategy: 'fresh_no_parent',
-        handoffReason: 'room_default',
-        wakeRequestId: null,
-        status: 'running',
-        queuedAt: seededAt.toISOString(),
-        startedAt: seededAt.toISOString(),
-        completedAt: null,
-        response: null,
-        error: null,
-      },
-    ];
-    nextTurn.updatedAt = seededAt.toISOString();
-    await chatStore.write(nextState);
-    notifyStreamTargetChanged(channelId);
-
     const streamResponse = await streamResponsePromise;
     assert.equal(streamResponse.status, 200);
     const streamBodyPromise = streamResponse.text();
 
     await firstResultSeen;
 
-    nextState = await chatStore.read();
-    nextChannel = requireChannel(nextState, channelId);
-    nextTurn = nextChannel.roomRouting.workflow.activeTurn;
+    let nextState = await chatStore.read();
+    let nextChannel = requireChannel(nextState, channelId);
+    let nextTurn = nextChannel.roomRouting.workflow.activeTurn;
     assert.ok(nextTurn);
     nextTurn.targetStatuses = [
       {
@@ -1411,14 +1416,16 @@ test('GET /api/channels/:id/stream hands off to the next sequential speaker afte
           participantName: 'Second Cat',
         },
         source: null,
-        sourceMessageId: nextTurn.sourceMessageId,
+        sourceMessageId: begunTurn.sourceMessageId,
         trigger: 'room_default',
         mentionNames: [],
         depth: 0,
-        parentCheckpointId: nextTurn.lastCheckpointId,
+        parentCheckpointId: begunTurn.lastCheckpointId,
         branchStrategy: 'fresh_no_parent',
         handoffReason: 'room_default',
         wakeRequestId: null,
+        laneId: secondLaneId,
+        sessionId: 'session-live-sequential-2',
         status: 'running',
         queuedAt: secondStartAt.toISOString(),
         startedAt: secondStartAt.toISOString(),
@@ -2874,8 +2881,15 @@ test('GET /api/channels/:id/stream gates concurrent text until all live targets 
     const nextChannel = requireChannel(nextState, channelId);
     const nextTurn = nextChannel.roomRouting.workflow.activeTurn;
     assert.ok(nextTurn);
-    nextTurn.targetStatuses = nextTurn.targetStatuses.map((target) =>
-      target.id === 'target-state-barrier-2'
+    nextTurn.targetStatuses = nextTurn.targetStatuses.map((target) => {
+      if (target.id === 'target-state-barrier-1') {
+        return {
+          ...target,
+          status: 'completed',
+          completedAt: secondReadyAt.toISOString(),
+        };
+      }
+      return target.id === 'target-state-barrier-2'
         ? {
             ...target,
             status: 'running',
@@ -2883,7 +2897,8 @@ test('GET /api/channels/:id/stream gates concurrent text until all live targets 
             sessionId: 'session-live-barrier-2',
             startedAt: secondReadyAt.toISOString(),
           }
-        : target);
+        : target;
+    });
     nextState = appendMessage(
       nextState,
       channelId,
@@ -3428,23 +3443,49 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
       runtime,
       seededAt,
     );
-    await chatStore.write(begun.state);
-    const begunTurn = requireChannel(begun.state, channelId).roomRouting.workflow.activeTurn;
+    let begunState = begun.state;
+    const begunTurn = requireChannel(begunState, channelId).roomRouting.workflow.activeTurn;
     const firstTargetStateId = begunTurn?.targetStatuses[0]?.id ?? null;
     const secondTargetStateId = begunTurn?.targetStatuses[1]?.id ?? null;
     assert.ok(firstTargetStateId);
     assert.ok(secondTargetStateId);
-
-    const streamResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/stream`);
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    let nextState = await chatStore.read();
-    let nextChannel = requireChannel(nextState, channelId);
-    let nextTurn = nextChannel.roomRouting.workflow.activeTurn;
-    assert.ok(nextTurn);
-    const firstLaneId = `lane-${nextTurn.id}-${firstTargetStateId}`;
-    const secondLaneId = `lane-${nextTurn.id}-${secondTargetStateId}`;
-    nextTurn.targetStatuses = [
+    const firstLaneId = buildChatLaneId(begunTurn.id, firstTargetStateId, firstParticipantId);
+    const secondLaneId = buildChatLaneId(begunTurn.id, secondTargetStateId, secondParticipantId);
+    begunState = setChannelCatLease(
+      begunState,
+      channelId,
+      firstCatId,
+      {
+        sessionId: 'session-live-gap-1',
+        status: 'ready',
+        laneId: firstLaneId,
+        cwd: 'C:/repo/cats-platform',
+        lastError: null,
+        provider: 'claude',
+        model: 'claude-sonnet-4',
+        startedAt: seededAt.toISOString(),
+        lastUsedAt: seededAt.toISOString(),
+      },
+      seededAt,
+    );
+    begunState = setChannelCatLease(
+      begunState,
+      channelId,
+      secondCatId,
+      {
+        sessionId: 'session-live-gap-2',
+        status: 'ready',
+        laneId: secondLaneId,
+        cwd: 'C:/repo/cats-platform',
+        lastError: null,
+        provider: 'codex',
+        model: 'gpt-5.4',
+        startedAt: secondStartAt.toISOString(),
+        lastUsedAt: secondStartAt.toISOString(),
+      },
+      secondStartAt,
+    );
+    begunTurn.targetStatuses = [
       {
         id: firstTargetStateId,
         dispatchId: 'dispatch-gap-1',
@@ -3454,14 +3495,16 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
           participantName: 'First Cat',
         },
         source: null,
-        sourceMessageId: nextTurn.sourceMessageId,
+        sourceMessageId: begunTurn.sourceMessageId,
         trigger: 'room_default',
         mentionNames: [],
         depth: 0,
-        parentCheckpointId: nextTurn.lastCheckpointId,
+        parentCheckpointId: begunTurn.lastCheckpointId,
         branchStrategy: 'fresh_no_parent',
         handoffReason: 'room_default',
         wakeRequestId: null,
+        laneId: firstLaneId,
+        sessionId: 'session-live-gap-1',
         status: 'running',
         queuedAt: seededAt.toISOString(),
         startedAt: seededAt.toISOString(),
@@ -3470,9 +3513,10 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
         error: null,
       },
     ];
-    nextTurn.updatedAt = seededAt.toISOString();
-    await chatStore.write(nextState);
-    notifyStreamTargetChanged(channelId);
+    begunTurn.updatedAt = seededAt.toISOString();
+    await chatStore.write(begunState);
+
+    const streamResponsePromise = fetch(`${baseUrl}/api/channels/${channelId}/stream`);
 
     const streamResponse = await streamResponsePromise;
     assert.equal(streamResponse.status, 200);
@@ -3481,9 +3525,9 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
     await firstResultSeen;
     await new Promise((resolve) => setTimeout(resolve, 75));
 
-    nextState = await chatStore.read();
-    nextChannel = requireChannel(nextState, channelId);
-    nextTurn = nextChannel.roomRouting.workflow.activeTurn;
+    let nextState = await chatStore.read();
+    let nextChannel = requireChannel(nextState, channelId);
+    let nextTurn = nextChannel.roomRouting.workflow.activeTurn;
     assert.ok(nextTurn);
     nextTurn.targetStatuses = [
       {
@@ -3508,6 +3552,8 @@ test('GET /api/channels/:id/stream waits through the sequential handoff gap befo
         branchStrategy: 'fresh_no_parent',
         handoffReason: 'room_default',
         wakeRequestId: null,
+        laneId: secondLaneId,
+        sessionId: 'session-live-gap-2',
         status: 'running',
         queuedAt: secondStartAt.toISOString(),
         startedAt: secondStartAt.toISOString(),
