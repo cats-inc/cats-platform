@@ -58,9 +58,9 @@ async function assertHelp(scriptPath) {
   assert.match(stdout, /Usage:/u);
 }
 
-async function readJsonSummary(scriptPath, extraArgs = []) {
+async function readJsonSummary(scriptPath, extraArgs = [], jsonFlag = '--json') {
   const bashPath = relative(rootDir, scriptPath).replace(/\\/gu, '/');
-  const { stdout } = await execFile('bash', [bashPath, '--json', ...extraArgs], {
+  const { stdout } = await execFile('bash', [bashPath, jsonFlag, ...extraArgs], {
     cwd: rootDir,
     encoding: 'utf8',
   });
@@ -122,6 +122,30 @@ test('Unix Antigravity helpers publish the packaged setup flag contract', async 
   }
 });
 
+test('Unix Antigravity helpers reject unpublished bash-style aliases', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const bashPath = relative(
+      rootDir,
+      join(rootDir, 'scripts', platform, 'install-antigravity.sh'),
+    ).replace(/\\/gu, '/');
+
+    await assert.rejects(
+      execFile('bash', [bashPath, '--check'], {
+        cwd: rootDir,
+        encoding: 'utf8',
+      }),
+      /Unknown option: --check/u,
+    );
+    await assert.rejects(
+      execFile('bash', [bashPath, '-upgrade', '-DryRun'], {
+        cwd: rootDir,
+        encoding: 'utf8',
+      }),
+      /Unknown option: -upgrade/u,
+    );
+  }
+});
+
 test('Unix Antigravity helpers reject conflicting mutation flags', async () => {
   for (const platform of ['linux', 'macos']) {
     const bashPath = relative(
@@ -144,6 +168,7 @@ test('Unix Antigravity helpers dry-run mutation modes without invoking installer
     const summary = await readJsonSummary(
       join(rootDir, 'scripts', platform, 'install-antigravity.sh'),
       ['-DryRun', '-Force'],
+      '-Json',
     );
 
     assert.equal(summary.helper, `${platform}-antigravity-native-installer`);

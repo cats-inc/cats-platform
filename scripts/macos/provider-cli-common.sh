@@ -497,25 +497,25 @@ run_native_provider_installer() {
 
   while [ $# -gt 0 ]; do
     case "$1" in
-      --check|-CheckOnly)
+      -CheckOnly)
         check_only='true'
         ;;
       -Apply)
         apply='true'
         ;;
-      -upgrade|-Upgrade)
+      -Upgrade)
         upgrade='true'
         ;;
-      -force|-Force)
+      -Force)
         force='true'
         ;;
-      --uninstall|-Uninstall)
+      -Uninstall)
         uninstall='true'
         ;;
-      --dry-run|-DryRun)
+      -DryRun)
         dry_run='true'
         ;;
-      --json|-Json)
+      -Json)
         emit_json='true'
         ;;
       -h|--help)

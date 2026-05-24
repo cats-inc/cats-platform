@@ -36,7 +36,7 @@ while [ $# -gt 0 ]; do
 done
 
 for script_name in install-claude-code.sh install-antigravity.sh install-cursor-agent.sh install-goose.sh install-junie.sh install-kiro-cli.sh; do
-  "$SCRIPT_DIR/$script_name" -upgrade
+  "$SCRIPT_DIR/$script_name" -Upgrade
 done
 
 if [ "$skip_node" = 'false' ]; then
