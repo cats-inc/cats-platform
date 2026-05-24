@@ -14,6 +14,26 @@ const baseConfig = {
   port: 8181,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
+  auth: {
+    mode: 'unsafe_disabled',
+    enabled: false,
+    sessionSecret: null,
+    sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
+    mobileSessionTtlMs: 30 * 24 * 60 * 60 * 1000,
+    loginFailureLimit: 5,
+    loginLockoutMs: 30_000,
+    accountDailyFailureCap: 100,
+    accountCooldownMs: 15 * 60 * 1000,
+    subnetDailyFailureCap: 500,
+    allowedBrowserOrigins: ['http://127.0.0.1:8181'],
+    authStatePath: 'unused-auth-state.json',
+    recoveryTokenPath: 'unused-auth-recovery.json',
+    google: {
+      clientId: null,
+      hostedDomains: [],
+      mobileAudiences: [],
+    },
+  },
 };
 
 function createRuntimeStub() {
@@ -537,16 +557,16 @@ test('POST /api/channels keeps the room_created system message when skipBossCatG
 
 test('POST /api/channels treats explicit default entry as default even with participants', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const createBossResponse = await fetch(`${baseUrl}/api/cats`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
-        bossCatProvider: 'claude',
+        name: 'Smelly',
+        provider: 'claude',
+        makeBoss: true,
       }),
     });
-    assert.equal(setupResponse.status, 200);
+    assert.equal(createBossResponse.status, 201);
 
     const createResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
@@ -556,7 +576,7 @@ test('POST /api/channels treats explicit default entry as default even with part
         topic: 'Contradictory creation input should stay default for greetings.',
         originSurface: 'chat',
         entryKind: 'default',
-        cats: [{ name: 'Custom-Agent', provider: 'gemini', roles: ['coder'] }],
+        cats: [{ name: 'Custom-Agent', provider: 'antigravity', roles: ['coder'] }],
       }),
     });
     assert.equal(createResponse.status, 201);
@@ -576,19 +596,18 @@ test('POST /api/channels treats explicit default entry as default even with part
 
 test('POST /api/channels does NOT auto-assign when cats are explicitly provided', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    // Complete setup first
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const createBossResponse = await fetch(`${baseUrl}/api/cats`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
-        bossCatProvider: 'claude',
+        name: 'Smelly',
+        provider: 'claude',
+        makeBoss: true,
       }),
     });
-    assert.equal(setupResponse.status, 200);
-    const setupPayload = await setupResponse.json();
-    const bossCatId = setupPayload.chat.bossCatId;
+    assert.equal(createBossResponse.status, 201);
+    const createBossPayload = await createBossResponse.json();
+    const bossCatId = createBossPayload.cat.id;
 
     // Create a new channel with explicit cats
     const createResponse = await fetch(`${baseUrl}/api/channels`, {
@@ -598,7 +617,7 @@ test('POST /api/channels does NOT auto-assign when cats are explicitly provided'
         title: 'Custom Chat',
         topic: 'Testing explicit cats',
         originSurface: 'chat',
-        cats: [{ name: 'Custom-Agent', provider: 'gemini', roles: ['coder'] }],
+        cats: [{ name: 'Custom-Agent', provider: 'antigravity', roles: ['coder'] }],
       }),
     });
     assert.equal(createResponse.status, 201);
