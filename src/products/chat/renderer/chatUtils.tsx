@@ -20,6 +20,7 @@ import {
   getDefaultModel,
   getDefaultProviderInstance,
   getDefaultProviderBackend,
+  resolveProductProviderId,
 } from '../../../shared/providerCatalog.js';
 import {
   normalizeSelectedChannelView,
@@ -92,6 +93,10 @@ export interface DraftTemporaryParticipant extends CreateTemporaryParticipantInp
 
 export const DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT = 2;
 
+function normalizeDraftProvider(provider: string): string {
+  return resolveProductProviderId(provider) ?? provider.trim();
+}
+
 function toDraftTemporaryParticipantTarget(input: {
   provider: string;
   model?: string | null;
@@ -103,7 +108,7 @@ function toDraftTemporaryParticipantTarget(input: {
   instance: string | undefined;
   modelSelection: ProviderModelSelection | null;
 } {
-  const provider = input.provider.trim();
+  const provider = normalizeDraftProvider(input.provider);
   return {
     provider,
     model: input.model === undefined
@@ -228,7 +233,7 @@ export function createNextGroupTemporaryParticipant(options: {
   randomUUID?: () => string;
 }): DraftTemporaryParticipant {
   const normalizedBaseProvider =
-    options.baseProvider.trim() || PRODUCT_PROVIDER_ORDER[0] || 'claude';
+    normalizeDraftProvider(options.baseProvider) || PRODUCT_PROVIDER_ORDER[0] || 'claude';
   const providerPriority = [
     normalizedBaseProvider,
     ...PRODUCT_PROVIDER_ORDER.filter((provider) => provider !== normalizedBaseProvider),
@@ -236,7 +241,7 @@ export function createNextGroupTemporaryParticipant(options: {
   const providerCounts = new Map(providerPriority.map((provider) => [provider, 0]));
 
   options.existingParticipants.forEach((participant) => {
-    const provider = participant.provider.trim();
+    const provider = normalizeDraftProvider(participant.provider);
     providerCounts.set(provider, (providerCounts.get(provider) ?? 0) + 1);
   });
 
@@ -568,7 +573,7 @@ export function createDraftTemporaryParticipant(options: {
       },
       options.takenNames,
     ),
-    provider: options.provider.trim(),
+    provider: normalizeDraftProvider(options.provider),
     instance: options.instance?.trim() || undefined,
     model: options.model?.trim() || undefined,
     modelSelection: options.modelSelection ?? null,

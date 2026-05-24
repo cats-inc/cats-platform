@@ -16,6 +16,7 @@ import {
   PRODUCT_PROVIDER_ORDER,
   getDefaultModel,
   getDefaultProviderInstance,
+  resolveProductProviderId,
 } from '../../../../shared/providerCatalog.js';
 import {
   clearBusyState,
@@ -45,11 +46,16 @@ type LoadStateLike =
   | { status: 'ready'; payload: AppShellPayload }
   | { status: 'error'; message: string };
 
+function normalizeCompareProvider(provider: string): string {
+  return resolveProductProviderId(provider) ?? provider.trim();
+}
+
 export function createDefaultTargetForProvider(provider: string): ExecutionTargetValue {
+  const normalizedProvider = normalizeCompareProvider(provider);
   return {
-    provider,
-    model: getDefaultModel(provider) || null,
-    instance: getDefaultProviderInstance(provider),
+    provider: normalizedProvider,
+    model: getDefaultModel(normalizedProvider) || null,
+    instance: getDefaultProviderInstance(normalizedProvider),
     modelSelection: null,
   };
 }
@@ -68,7 +74,8 @@ function createInitialCompareTargetsWithOptions(
     return [baseTarget];
   }
 
-  const fallbackProvider = PRODUCT_PROVIDER_ORDER.find((provider) => provider !== baseTarget.provider)
+  const baseProvider = normalizeCompareProvider(baseTarget.provider);
+  const fallbackProvider = PRODUCT_PROVIDER_ORDER.find((provider) => provider !== baseProvider)
     ?? 'codex';
 
   return [
@@ -111,14 +118,17 @@ export function createNextCompareTarget(
   currentTargets: ExecutionTargetValue[],
   fallbackTarget: ExecutionTargetValue,
 ): ExecutionTargetValue {
-  const nextProvider = PRODUCT_PROVIDER_ORDER.find((provider) =>
-    !currentTargets.some((target) => target.provider === provider),
-  ) ?? PRODUCT_PROVIDER_ORDER.find((provider) => provider !== fallbackTarget.provider)
-    ?? fallbackTarget.provider;
+  const occupiedProviders = new Set(currentTargets.map((target) =>
+    normalizeCompareProvider(target.provider),
+  ));
+  const fallbackProvider = normalizeCompareProvider(fallbackTarget.provider);
+  const nextProvider = PRODUCT_PROVIDER_ORDER.find((provider) => !occupiedProviders.has(provider))
+    ?? PRODUCT_PROVIDER_ORDER.find((provider) => provider !== fallbackProvider)
+    ?? fallbackProvider;
 
-  if (nextProvider === fallbackTarget.provider) {
+  if (nextProvider === fallbackProvider) {
     return {
-      provider: fallbackTarget.provider,
+      provider: fallbackProvider,
       model: fallbackTarget.model,
       instance: fallbackTarget.instance,
       modelSelection: fallbackTarget.modelSelection,

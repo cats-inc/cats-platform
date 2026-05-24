@@ -42,6 +42,29 @@ test('parallel draft adds later targets with provider defaults instead of blank 
   assert.equal(nextTarget.instance, getDefaultProviderInstance('antigravity'));
 });
 
+test('parallel draft treats target-level CLI provider ids as occupied provider aliases', () => {
+  const currentTargets = [
+    {
+      provider: 'claude-cli',
+      model: 'opus',
+      instance: null,
+      modelSelection: null,
+    },
+    {
+      provider: 'codex-cli',
+      model: 'gpt-5.4',
+      instance: null,
+      modelSelection: null,
+    },
+  ];
+
+  const nextTarget = createNextCompareTarget(currentTargets, currentTargets[0]!);
+
+  assert.equal(nextTarget.provider, 'antigravity');
+  assert.equal(nextTarget.model, getDefaultModel('antigravity'));
+  assert.equal(nextTarget.instance, getDefaultProviderInstance('antigravity'));
+});
+
 test('parallel draft keeps the first target synchronized with the shared draft default', () => {
   const syncedTargets = syncLeadCompareTarget(
     [

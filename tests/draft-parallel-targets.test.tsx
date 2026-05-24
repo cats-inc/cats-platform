@@ -122,6 +122,23 @@ test('createNextParallelTarget picks the first provider not already present in t
   });
 });
 
+test('createNextParallelTarget treats target-level CLI provider ids as occupied provider aliases', () => {
+  const fallbackTarget = createTarget('claude-cli', { model: 'fallback-model' });
+  const currentTargets = [
+    createTarget('claude-cli'),
+    createTarget('codex-cli'),
+  ];
+
+  const nextTarget = createNextParallelTarget(currentTargets, fallbackTarget);
+
+  assert.deepEqual(nextTarget, {
+    provider: 'antigravity',
+    model: getDefaultModel('antigravity') || null,
+    instance: getDefaultProviderInstance('antigravity'),
+    modelSelection: null,
+  });
+});
+
 test('createNextParallelTarget falls back to the supplied target shape when the fallback provider is first in line', () => {
   const fallbackProvider = PRODUCT_PROVIDER_ORDER[0] ?? 'claude';
   const fallbackTarget = createTarget(fallbackProvider, {

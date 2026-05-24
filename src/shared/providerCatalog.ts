@@ -418,15 +418,39 @@ export function isKnownProvider(provider: string): provider is ProductProviderId
   return (PRODUCT_PROVIDER_ORDER as readonly string[]).includes(provider);
 }
 
+export function resolveProductProviderId(
+  provider: string | null | undefined,
+): ProductProviderId | null {
+  const normalized = provider?.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
+  if ((PRODUCT_PROVIDER_ORDER as readonly string[]).includes(normalized)) {
+    return normalized as ProductProviderId;
+  }
+
+  if (normalized.endsWith('-cli')) {
+    const baseProvider = normalized.slice(0, -'-cli'.length);
+    if ((PRODUCT_PROVIDER_ORDER as readonly string[]).includes(baseProvider)) {
+      return baseProvider as ProductProviderId;
+    }
+  }
+
+  return null;
+}
+
 export function getProviderDisplayName(provider: string): string {
-  if (provider === 'openclaw') {
+  const resolvedProvider = resolveProductProviderId(provider) ?? provider.trim();
+  if (resolvedProvider === 'openclaw') {
     return 'OpenClaw';
   }
-  return provider.charAt(0).toUpperCase() + provider.slice(1);
+  return resolvedProvider.charAt(0).toUpperCase() + resolvedProvider.slice(1);
 }
 
 export function getProviderModels(provider: string): ProviderModelOption[] {
-  return PRODUCT_PROVIDER_MODELS[provider as ProductProviderId] ?? [];
+  const resolvedProvider = resolveProductProviderId(provider);
+  return resolvedProvider ? PRODUCT_PROVIDER_MODELS[resolvedProvider] ?? [] : [];
 }
 
 export function normalizeProductProviderModelId(
@@ -438,7 +462,8 @@ export function normalizeProductProviderModelId(
     return null;
   }
 
-  if (provider === 'claude') {
+  const resolvedProvider = resolveProductProviderId(provider) ?? provider;
+  if (resolvedProvider === 'claude') {
     const lower = normalized.toLowerCase();
     if (lower === 'claude-opus-4-6' || lower === 'claude-opus-4.6' || lower === 'opus') {
       return 'opus';
@@ -462,7 +487,8 @@ export function getDefaultModel(provider: string): string {
 export function getProviderInstances(
   provider: string,
 ): ProductProviderInstanceDescriptor[] {
-  return PRODUCT_PROVIDER_INSTANCES[provider as ProductProviderId] ?? [];
+  const resolvedProvider = resolveProductProviderId(provider);
+  return resolvedProvider ? PRODUCT_PROVIDER_INSTANCES[resolvedProvider] ?? [] : [];
 }
 
 export function getDefaultProviderInstance(provider: string): string | null {

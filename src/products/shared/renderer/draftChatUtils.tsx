@@ -9,6 +9,7 @@ import {
   PRODUCT_PROVIDER_ORDER,
   getDefaultModel,
   getDefaultProviderInstance,
+  resolveProductProviderId,
 } from '../../../shared/providerCatalog.js';
 import type { AppShellPayload } from '../api/workspaceContracts.js';
 import {
@@ -59,6 +60,10 @@ type ResolvedDraftParticipantPolicyDials = Required<
 
 export const DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT = 2;
 
+function normalizeDraftProvider(provider: string): string {
+  return resolveProductProviderId(provider) ?? provider.trim();
+}
+
 type DraftParticipantTarget = {
   provider: string;
   model?: string | null;
@@ -72,7 +77,7 @@ function toDraftTemporaryParticipantTarget(input: DraftParticipantTarget): {
   instance: string | undefined;
   modelSelection: ProviderModelSelection | null;
 } {
-  const provider = input.provider.trim();
+  const provider = normalizeDraftProvider(input.provider);
   return {
     provider,
     model: input.model === undefined
@@ -287,7 +292,7 @@ export function createDraftTemporaryParticipant(options: {
       },
       options.takenNames,
     ),
-    provider: options.provider.trim(),
+    provider: normalizeDraftProvider(options.provider),
     instance: options.instance?.trim() || undefined,
     model: options.model?.trim() || undefined,
     modelSelection: options.modelSelection ?? null,
@@ -403,7 +408,7 @@ export function createNextGroupTemporaryParticipant(options: {
   randomUUID?: () => string;
 }): DraftTemporaryParticipant {
   const normalizedBaseProvider =
-    options.baseProvider.trim() || PRODUCT_PROVIDER_ORDER[0] || 'claude';
+    normalizeDraftProvider(options.baseProvider) || PRODUCT_PROVIDER_ORDER[0] || 'claude';
   const providerPriority = [
     normalizedBaseProvider,
     ...PRODUCT_PROVIDER_ORDER.filter((provider) => provider !== normalizedBaseProvider),
@@ -411,7 +416,7 @@ export function createNextGroupTemporaryParticipant(options: {
   const providerCounts = new Map(providerPriority.map((provider) => [provider, 0]));
 
   options.existingParticipants.forEach((participant) => {
-    const provider = participant.provider.trim();
+    const provider = normalizeDraftProvider(participant.provider);
     providerCounts.set(provider, (providerCounts.get(provider) ?? 0) + 1);
   });
 
@@ -557,10 +562,11 @@ export interface DraftAttachmentRef {
 }
 
 export function createDefaultParallelTargetForProvider(provider: string): DraftParallelTarget {
+  const normalizedProvider = normalizeDraftProvider(provider);
   return {
-    provider,
-    model: getDefaultModel(provider) || null,
-    instance: getDefaultProviderInstance(provider),
+    provider: normalizedProvider,
+    model: getDefaultModel(normalizedProvider) || null,
+    instance: getDefaultProviderInstance(normalizedProvider),
     modelSelection: null,
   };
 }
@@ -575,7 +581,8 @@ export function createInitialParallelTargets(
     return [baseTarget];
   }
 
-  const fallbackProvider = PRODUCT_PROVIDER_ORDER.find((provider) => provider !== baseTarget.provider)
+  const baseProvider = normalizeDraftProvider(baseTarget.provider);
+  const fallbackProvider = PRODUCT_PROVIDER_ORDER.find((provider) => provider !== baseProvider)
     ?? 'codex';
 
   return [
@@ -618,14 +625,17 @@ export function createNextParallelTarget(
   currentTargets: DraftParallelTarget[],
   fallbackTarget: DraftParallelTarget,
 ): DraftParallelTarget {
-  const nextProvider = PRODUCT_PROVIDER_ORDER.find((provider) =>
-    !currentTargets.some((target) => target.provider === provider),
-  ) ?? PRODUCT_PROVIDER_ORDER.find((provider) => provider !== fallbackTarget.provider)
-    ?? fallbackTarget.provider;
+  const occupiedProviders = new Set(currentTargets.map((target) =>
+    normalizeDraftProvider(target.provider),
+  ));
+  const fallbackProvider = normalizeDraftProvider(fallbackTarget.provider);
+  const nextProvider = PRODUCT_PROVIDER_ORDER.find((provider) => !occupiedProviders.has(provider))
+    ?? PRODUCT_PROVIDER_ORDER.find((provider) => provider !== fallbackProvider)
+    ?? fallbackProvider;
 
-  if (nextProvider === fallbackTarget.provider) {
+  if (nextProvider === fallbackProvider) {
     return {
-      provider: fallbackTarget.provider,
+      provider: fallbackProvider,
       model: fallbackTarget.model,
       instance: fallbackTarget.instance,
       modelSelection: fallbackTarget.modelSelection,

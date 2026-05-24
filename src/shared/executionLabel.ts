@@ -6,6 +6,7 @@ import {
   getProviderModels,
   isKnownProvider,
   normalizeProductProviderModelId,
+  resolveProductProviderId,
 } from './providerCatalog.js';
 
 type ExecutionControlValue = string | number | boolean;
@@ -30,8 +31,9 @@ function resolveProviderBackendAlias(provider: string): ProviderBackendAlias {
     }
   }
 
+  const resolvedProvider = resolveProductProviderId(normalizedProvider);
   return {
-    provider: provider.trim(),
+    provider: resolvedProvider ?? provider.trim(),
     backendSuffix: null,
   };
 }
@@ -136,7 +138,8 @@ function buildExecutionLabelMemoryKey(input: {
   model: string | null | undefined;
   controls?: ExecutionControlMap | null;
 }): string {
-  const normalizedProvider = input.provider.trim().toLowerCase();
+  const normalizedProvider =
+    resolveProductProviderId(input.provider) ?? input.provider.trim().toLowerCase();
   const normalizedInstance = (
     input.instance?.trim()
     || getDefaultProviderInstance(input.provider)

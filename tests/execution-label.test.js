@@ -18,8 +18,8 @@ test('buildExecutionLabel derives backend suffixes from instance instead of rend
     'OpenClaw-AGENT · openclaw-coder',
   );
   assert.equal(
-    buildExecutionLabel('antigravity', 'api/flash', 'Gemini 3 Flash'),
-    'Antigravity-API · Gemini 3 Flash',
+    buildExecutionLabel('codex', 'api/main', 'gpt-5.4'),
+    'Codex-API · gpt-5.4',
   );
   assert.equal(
     buildExecutionLabel('ollama', 'local/local', 'qwen2.5-coder:7b'),
@@ -37,15 +37,15 @@ test('buildExecutionLabel falls back to the product default instance when state 
     'OpenClaw-AGENT · openclaw-coder',
   );
   assert.equal(
-    buildExecutionLabel('antigravity', '', 'Gemini 3 Flash'),
-    'Antigravity-CLI · Gemini 3 Flash',
+    buildExecutionLabel('antigravity', '', 'antigravity-default'),
+    'Antigravity-CLI · Antigravity default',
   );
 });
 
 test('buildExecutionLabel normalizes target-level CLI provider ids', () => {
   assert.equal(
     buildExecutionLabel('antigravity-cli', null, 'antigravity-default'),
-    'Antigravity-CLI · antigravity-default',
+    'Antigravity-CLI · Antigravity default',
   );
 });
 
