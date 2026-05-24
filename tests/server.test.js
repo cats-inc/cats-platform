@@ -771,7 +771,7 @@ test('GET /api/channels/:id/stream waits for a pending session lease before clos
   }, chatStore);
 });
 
-test('GET /api/channels/:id/stream wakes immediately when POST /api/channels/:id/activations creates the session', async () => {
+test('GET /api/channels/:id/stream closes direct-lane streams that have no attached session', async () => {
   const chatStore = new MemoryChatStore();
   const runtime = createRuntimeStub();
   const seededAt = new Date('2026-03-11T00:00:00.000Z');
@@ -835,9 +835,9 @@ test('GET /api/channels/:id/stream wakes immediately when POST /api/channels/:id
     const response = await responsePromise;
     assert.equal(response.status, 200);
     const body = await response.text();
-    assert.match(body, /event: progress/u);
-    assert.match(body, /"text":"Activated session became ready"/u);
-    assert.ok(runtime.streamedSessions.includes('session-1'));
+    assert.match(body, /event: session_closed/u);
+    assert.doesNotMatch(body, /event: progress/u);
+    assert.equal(runtime.streamedSessions.includes('session-1'), false);
   }, chatStore);
 });
 
@@ -10753,7 +10753,7 @@ test('PATCH /api/channels/:channelId rejects continuity reset for non-default ch
   });
 });
 
-test('POST /api/channels/:channelId/activations recreates closed direct-lane sessions instead of reporting already started', async () => {
+test('POST /api/channels/:channelId/activations reports closed direct-lane sessions without recreating them', async () => {
   const runtimeClient = createRuntimeStub();
   const chatStore = new MemoryChatStore();
   const now = new Date('2026-03-11T00:00:00.000Z');
@@ -10782,8 +10782,7 @@ test('POST /api/channels/:channelId/activations recreates closed direct-lane ses
     now,
   );
   const channelId = state.selectedChannelId;
-  state.channels[0].channelKind = 'direct_message';
-  state.channels[0].roomRouting.mode = 'chat_channel';
+  state = assignCatToChannel(state, channelId, { catId }, now);
   state = setChannelCatLease(
     state,
     channelId,
@@ -10820,26 +10819,27 @@ test('POST /api/channels/:channelId/activations recreates closed direct-lane ses
 
     assert.deepEqual(
       runtimeClient.createdSessions.map((session) => session.id),
-      ['session-1'],
+      [],
     );
     assert.deepEqual(
       activatePayload.activation.results.map((result) => result.targetKind),
       ['cat'],
     );
     const catResult = activatePayload.activation.results.find((result) => result.targetKind === 'cat');
-    assert.equal(catResult?.status, 'started');
-    assert.equal(catResult?.sessionId, 'session-1');
+    assert.equal(catResult?.status, 'error');
+    assert.equal(catResult?.sessionId, null);
+    assert.match(catResult?.error ?? '', /could not be resumed/u);
 
     const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);
     assert.equal(appShellResponse.status, 200);
     const appShellPayload = await appShellResponse.json();
     assert.equal(
       appShellPayload.chat.selectedChannel.assignedCats[0].execution.lease.sessionId,
-      'session-1',
+      'session-closed',
     );
     assert.equal(
       appShellPayload.chat.selectedChannel.assignedCats[0].execution.lease.status,
-      'ready',
+      'error',
     );
   }, chatStore);
 });
