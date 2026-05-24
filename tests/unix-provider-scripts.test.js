@@ -178,6 +178,22 @@ test('Unix Antigravity helpers translate refresh modes to upstream installer fla
   }
 });
 
+test('Unix bulk upgrade keeps Antigravity in the native provider pass', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const script = await readFile(
+      join(rootDir, 'scripts', platform, 'upgrade-cli-tools.sh'),
+      'utf8',
+    );
+    const [nativePass, nodePass = ''] = script.split("if [ \"$skip_node\" = 'false' ]; then");
+
+    assert.match(
+      nativePass,
+      /install-claude-code\.sh install-antigravity\.sh install-cursor-agent\.sh/u,
+    );
+    assert.doesNotMatch(nodePass, /install-antigravity\.sh/u);
+  }
+});
+
 test('Unix self-hosted provider audits expose the shared JSON audit core', async () => {
   for (const platform of ['linux', 'macos']) {
     const summary = await readJsonSummary(
