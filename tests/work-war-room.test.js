@@ -8,15 +8,32 @@ test('work renderer dashboard api keeps war-room payloads typed', async () => {
     path.join(process.cwd(), 'src/products/work/renderer/api/dashboard.ts'),
     'utf8',
   );
+  const workRecordsApiSource = await readFile(
+    path.join(process.cwd(), 'src/products/work/renderer/api/workRecords.ts'),
+    'utf8',
+  );
+  const projectQuerySource = await readFile(
+    path.join(process.cwd(), 'src/products/work/renderer/state/queries/projectsQuery.ts'),
+    'utf8',
+  );
+  const taskQuerySource = await readFile(
+    path.join(process.cwd(), 'src/products/work/renderer/state/queries/tasksQuery.ts'),
+    'utf8',
+  );
+  const workItemQuerySource = await readFile(
+    path.join(process.cwd(), 'src/products/work/renderer/state/queries/workItemsQuery.ts'),
+    'utf8',
+  );
 
   assert.match(dashboardApiSource, /expectJson<WorkDashboardProjection>/u);
-  assert.match(dashboardApiSource, /expectJson<WorkSupervisedRunLaunchProjection>/u);
-  assert.match(dashboardApiSource, /expectJson<WorkProjectListProjection>/u);
-  assert.match(dashboardApiSource, /expectJson<WorkTaskListProjection>/u);
-  assert.match(dashboardApiSource, /expectJson<WorkTaskDetailProjection>/u);
-  assert.match(dashboardApiSource, /expectJson<WorkProjectDetailProjection>/u);
-  assert.match(dashboardApiSource, /expectJson<WorkWorkItemListProjection>/u);
-  assert.match(dashboardApiSource, /expectJson<WorkWorkItemDetailProjection>/u);
+  assert.match(workRecordsApiSource, /Promise<WorkSupervisedRunLaunchProjection>/u);
+  assert.match(workRecordsApiSource, /expectJson<WorkSupervisedRunLaunchProjection>/u);
+  assert.match(projectQuerySource, /Promise<WorkProjectListProjection>/u);
+  assert.match(projectQuerySource, /as WorkProjectListProjection/u);
+  assert.match(taskQuerySource, /Promise<WorkTaskListProjection>/u);
+  assert.match(taskQuerySource, /as WorkTaskListProjection/u);
+  assert.match(workItemQuerySource, /Promise<WorkWorkItemListProjection>/u);
+  assert.match(workItemQuerySource, /as WorkWorkItemListProjection/u);
 });
 
 test('work war-room surfaces consume typed dashboard contracts without local unknown casts', async () => {
@@ -25,31 +42,32 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
     'utf8',
   );
   const projectDetailSource = await readFile(
-    path.join(process.cwd(), 'src/products/work/renderer/components/ProjectDetailView.tsx'),
+    path.join(process.cwd(), 'src/products/work/renderer/components/projects/ProjectDetailPage.tsx'),
     'utf8',
   );
   const projectListSource = await readFile(
-    path.join(process.cwd(), 'src/products/work/renderer/components/ProjectListView.tsx'),
+    path.join(process.cwd(), 'src/products/work/renderer/components/projects/ProjectsListPage.tsx'),
     'utf8',
   );
   const taskDetailSource = await readFile(
-    path.join(process.cwd(), 'src/products/work/renderer/components/TaskDetailView.tsx'),
+    path.join(process.cwd(), 'src/products/work/renderer/components/tasks/TaskDetailPage.tsx'),
     'utf8',
   );
   const workTaskListSource = await readFile(
-    path.join(process.cwd(), 'src/products/work/renderer/components/WorkTaskListView.tsx'),
+    path.join(process.cwd(), 'src/products/work/renderer/components/tasks/TasksListPage.tsx'),
     'utf8',
   );
   const workItemListSource = await readFile(
-    path.join(process.cwd(), 'src/products/work/renderer/components/WorkItemListView.tsx'),
+    path.join(process.cwd(), 'src/products/work/renderer/components/work-items/WorkItemsListPage.tsx'),
     'utf8',
   );
   const workItemDetailSource = await readFile(
-    path.join(process.cwd(), 'src/products/work/renderer/components/WorkItemDetailView.tsx'),
+    path.join(process.cwd(), 'src/products/work/renderer/components/work-items/WorkItemDetailPage.tsx'),
     'utf8',
   );
 
-  assert.match(warRoomSource, /fetchWorkDashboard/u);
+  assert.match(warRoomSource, /useWorkDashboardQuery/u);
+  assert.match(warRoomSource, /performWorkTaskActionEnvelope/u);
   assert.match(warRoomSource, /buildChannelPath/u);
   assert.match(warRoomSource, /buildMyCatPath/u);
   assert.match(warRoomSource, /taskContext\.conversationSourceChannelId/u);
@@ -57,9 +75,7 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
   assert.match(warRoomSource, /taskContext\.workItemId/u);
   assert.match(warRoomSource, /listCatActorLinks\(taskContext\.assignedActors\)/u);
   assert.equal(
-    warRoomSource.match(
-      /<WorkWarRoomTaskContextActions taskId=\{item\.taskId\} taskContext=\{item\.taskContext\} \/>/gu,
-    )?.length,
+    warRoomSource.match(/<WorkWarRoomTaskContextActions/gu)?.length,
     3,
   );
   assert.match(warRoomSource, /navigate\(`\/work\/projects\/\$\{encodeURIComponent\(projectId\)\}`\)/u);
@@ -67,57 +83,41 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
   assert.match(warRoomSource, /navigate\(`\/work\/tasks\/\$\{encodeURIComponent\(taskId\)\}`\)/u);
   assert.doesNotMatch(warRoomSource, /as unknown as/u);
 
-  assert.match(projectDetailSource, /fetchWorkProjectDetail/u);
-  assert.match(projectDetailSource, /buildChannelPath/u);
-  assert.match(projectDetailSource, /buildMyCatPath/u);
-  assert.match(projectDetailSource, /navigate\(buildWorkProjectPath\(\)\)/u);
-  assert.match(projectDetailSource, /task\.conversationSourceChannelId/u);
-  assert.match(projectDetailSource, /listCatActorLinks\(task\.assignedActors\)/u);
-  assert.match(projectDetailSource, /navigate\(buildWorkWorkItemPath\(workItem\.id\)\)/u);
-  assert.match(projectDetailSource, /navigate\(buildWorkTaskPath\(task\.id\)\)/u);
+  assert.match(projectDetailSource, /useProjectsQuery/u);
+  assert.match(projectDetailSource, /useWorkGraphQuery/u);
+  assert.match(projectDetailSource, /removeWorkProject/u);
+  assert.match(projectDetailSource, /unlinkWorkExternalIssue/u);
+  assert.match(projectDetailSource, /navigate\(WORK_PROJECTS_PATH\)/u);
   assert.doesNotMatch(projectDetailSource, /as unknown as/u);
 
-  assert.match(projectListSource, /fetchWorkProjectList/u);
-  assert.match(projectListSource, /buildChannelPath/u);
-  assert.match(projectListSource, /navigate\(buildWorkProjectPath\(project\.id\)\)/u);
+  assert.match(projectListSource, /useProjectsQuery/u);
+  assert.match(projectListSource, /to=\{project\.id\}/u);
   assert.doesNotMatch(projectListSource, /as unknown as/u);
 
-  assert.match(taskDetailSource, /fetchWorkTaskDetail/u);
-  assert.match(taskDetailSource, /startWorkSupervisedRun/u);
-  assert.match(taskDetailSource, /buildChannelPath/u);
-  assert.match(taskDetailSource, /buildMyCatPath/u);
-  assert.match(taskDetailSource, /navigate\('\/work\/tasks'\)/u);
-  assert.match(taskDetailSource, /handleStartSupervisedRun/u);
-  assert.match(taskDetailSource, /payload\.supervision/u);
-  assert.match(taskDetailSource, /formatSupervisionBlockers/u);
-  assert.match(taskDetailSource, /formatSupervisionApprovals/u);
-  assert.match(taskDetailSource, /navigate\(`\/work\/projects\/\$\{encodeURIComponent\(payload\.project!\.id\)\}`\)/u);
-  assert.match(taskDetailSource, /navigate\(`\/work\/work-items\/\$\{encodeURIComponent\(payload\.workItem!\.id\)\}`\)/u);
+  assert.match(taskDetailSource, /useTasksQuery/u);
+  assert.match(taskDetailSource, /useProjectsQuery/u);
+  assert.match(taskDetailSource, /useWorkItemsQuery/u);
+  assert.match(taskDetailSource, /useWorkGraphQuery/u);
+  assert.match(taskDetailSource, /startWorkTaskSupervisedRun/u);
+  assert.match(taskDetailSource, /navigate\(WORK_TASKS_PATH\)/u);
+  assert.match(taskDetailSource, /navigate\(buildWorkRunPath\(result\.run\.taskId \?\? result\.task\.id, result\.run\.id\)\)/u);
   assert.doesNotMatch(taskDetailSource, /as unknown as/u);
 
-  assert.match(workTaskListSource, /fetchWorkTaskList/u);
-  assert.match(workTaskListSource, /buildChannelPath/u);
-  assert.match(workTaskListSource, /buildMyCatPath/u);
-  assert.match(workTaskListSource, /navigate\(`\/work\/tasks\/\$\{encodeURIComponent\(task\.id\)\}`\)/u);
-  assert.match(workTaskListSource, /navigate\(`\/work\/projects\/\$\{encodeURIComponent\(task\.projectId!\)\}`\)/u);
-  assert.match(workTaskListSource, /navigate\(`\/work\/work-items\/\$\{encodeURIComponent\(task\.workItemId!\)\}`\)/u);
+  assert.match(workTaskListSource, /useTasksQuery/u);
+  assert.match(workTaskListSource, /to=\{task\.id\}/u);
   assert.doesNotMatch(workTaskListSource, /as unknown as/u);
 
-  assert.match(workItemListSource, /fetchWorkItemList/u);
-  assert.match(workItemListSource, /buildChannelPath/u);
-  assert.match(workItemListSource, /buildMyCatPath/u);
-  assert.match(workItemListSource, /navigate\(`\/work\/work-items\/\$\{encodeURIComponent\(workItem\.id\)\}`\)/u);
-  assert.match(workItemListSource, /navigate\(`\/work\/tasks\/\$\{encodeURIComponent\(workItem\.taskId!\)\}`\)/u);
+  assert.match(workItemListSource, /useWorkItemsQuery/u);
+  assert.match(workItemListSource, /to=\{wi\.id\}/u);
   assert.doesNotMatch(workItemListSource, /as unknown as/u);
 
-  assert.match(workItemDetailSource, /fetchWorkItemDetail/u);
-  assert.match(workItemDetailSource, /buildChannelPath/u);
-  assert.match(workItemDetailSource, /buildMyCatPath/u);
-  assert.match(workItemDetailSource, /navigate\('\/work\/work-items'\)/u);
-  assert.match(workItemDetailSource, /payload\.linkedTask\.conversation\?\.sourceChannelId/u);
-  assert.match(workItemDetailSource, /listCatActorLinks\(payload\.linkedTask\.assignedActors\)/u);
-  assert.match(workItemDetailSource, /navigate\(`\/work\/projects\/\$\{encodeURIComponent\(payload\.project!\.id\)\}`\)/u);
-  assert.match(workItemDetailSource, /navigate\(`\/work\/tasks\/\$\{encodeURIComponent\(payload\.linkedTask!\.task\.id\)\}`\)/u);
+  assert.match(workItemDetailSource, /useWorkItemsQuery/u);
+  assert.match(workItemDetailSource, /useProjectsQuery/u);
+  assert.match(workItemDetailSource, /useMissionsQuery/u);
+  assert.match(workItemDetailSource, /useWorkGraphQuery/u);
+  assert.match(workItemDetailSource, /removeWorkItem/u);
+  assert.match(workItemDetailSource, /unlinkWorkExternalIssue/u);
+  assert.match(workItemDetailSource, /navigate\(WORK_WORK_ITEMS_PATH\)/u);
   assert.doesNotMatch(workItemDetailSource, /as unknown as/u);
 });
 
