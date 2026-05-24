@@ -846,6 +846,49 @@ test('macOS and Linux unpacked smoke-check scripts validate bundled sidecars and
   assert.match(macosScript, /macos-install-readiness-audit/);
 });
 
+test('setup asset registry keeps Antigravity on standalone native metadata', async () => {
+  const source = await readFile(
+    join(process.cwd(), 'desktop', 'host', 'setupAssets.ts'),
+    'utf8',
+  );
+  const unixTupleStart = source.indexOf("['claude', 'claude-code.sh', 'Claude Code']");
+  const unixTupleEnd = source.indexOf(
+    '] as const).map(([providerId, scriptSuffix, providerLabel])',
+    unixTupleStart,
+  );
+  const windowsTupleStart = source.indexOf("['codex', 'Install-Codex.ps1', 'OpenAI Codex CLI']");
+  const windowsTupleEnd = source.indexOf(
+    '] as const).map(([providerId, scriptName, providerLabel])',
+    windowsTupleStart,
+  );
+  const unixMarker = 'id: `${platform}-antigravity-native-installer-script`';
+  const unixNextMarker = 'id: `${platform}-setup-readiness-audit-script`';
+  const windowsMarker = "id: 'windows-antigravity-native-installer-script'";
+  const windowsNextMarker = "id: 'windows-claude-native-installer-script'";
+  const unixStart = source.indexOf(unixMarker);
+  const windowsStart = source.indexOf(windowsMarker);
+  assert.notEqual(unixTupleStart, -1);
+  assert.notEqual(unixTupleEnd, -1);
+  assert.notEqual(windowsTupleStart, -1);
+  assert.notEqual(windowsTupleEnd, -1);
+  assert.notEqual(unixStart, -1);
+  assert.notEqual(windowsStart, -1);
+  const unixTuple = source.slice(unixTupleStart, unixTupleEnd);
+  const windowsTuple = source.slice(windowsTupleStart, windowsTupleEnd);
+  const unixAntigravityBlock = source.slice(unixStart, source.indexOf(unixNextMarker, unixStart));
+  const windowsAntigravityBlock = source.slice(
+    windowsStart,
+    source.indexOf(windowsNextMarker, windowsStart),
+  );
+
+  assert.doesNotMatch(unixTuple, /antigravity|install-antigravity/u);
+  assert.doesNotMatch(windowsTuple, /antigravity|Install-Antigravity/u);
+  assert.match(unixAntigravityBlock, /user-scoped native binary/u);
+  assert.match(windowsAntigravityBlock, /user-scoped native binary/u);
+  assert.doesNotMatch(unixAntigravityBlock, /npm-global|repo-owned Unix helper contract/u);
+  assert.doesNotMatch(windowsAntigravityBlock, /npm-global|repo-owned Unix helper contract/u);
+});
+
 test('build-desktop-installer script avoids shell execution on Windows', async () => {
   const script = await readFile(
     join(process.cwd(), 'scripts', 'build-desktop-installer.mjs'),
