@@ -47,9 +47,9 @@ test('buildParallelChatRelayOutgoingNote records which reply, command, and targe
     buildParallelChatRelayOutgoingNote({
       command: 'improve_this',
       sourceMessageId: '1234567890abcdef',
-      targetMemberLabels: ['Gemini-CLI', 'Codex-CLI'],
+      targetMemberLabels: ['Antigravity-CLI', 'Codex-CLI'],
     }),
-    'Shared reply #12345678 via Improve this to Gemini-CLI and Codex-CLI.',
+    'Shared reply #12345678 via Improve this to Antigravity-CLI and Codex-CLI.',
   );
 });
 

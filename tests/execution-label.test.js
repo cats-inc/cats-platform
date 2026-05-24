@@ -18,8 +18,8 @@ test('buildExecutionLabel derives backend suffixes from instance instead of rend
     'OpenClaw-AGENT · openclaw-coder',
   );
   assert.equal(
-    buildExecutionLabel('gemini', 'api/flash', 'gemini-3-flash-preview'),
-    'Gemini-API · gemini-3-flash-preview',
+    buildExecutionLabel('antigravity', 'api/flash', 'Gemini 3 Flash'),
+    'Antigravity-API · Gemini 3 Flash',
   );
   assert.equal(
     buildExecutionLabel('ollama', 'local/local', 'qwen2.5-coder:7b'),
@@ -37,8 +37,8 @@ test('buildExecutionLabel falls back to the product default instance when state 
     'OpenClaw-AGENT · openclaw-coder',
   );
   assert.equal(
-    buildExecutionLabel('gemini', '', 'gemini-3-flash-preview'),
-    'Gemini-CLI · gemini-3-flash-preview',
+    buildExecutionLabel('antigravity', '', 'Gemini 3 Flash'),
+    'Antigravity-CLI · Gemini 3 Flash',
   );
 });
 

@@ -14,11 +14,11 @@ test('default orchestrator replies use the stored execution label snapshot inste
       mentions: [],
       metadata: {
         targetKind: 'orchestrator',
-        executionLabelSnapshot: 'Gemini-CLI',
+        executionLabelSnapshot: 'Antigravity-CLI',
       },
       usage: null,
-      executionProvider: 'gemini',
-      executionModel: 'gemini-3-flash-preview',
+      executionProvider: 'antigravity',
+      executionModel: 'Gemini 3 Flash',
       executionInstance: 'flash',
       createdAt: '2026-03-27T00:00:00.000Z',
     },
@@ -27,7 +27,7 @@ test('default orchestrator replies use the stored execution label snapshot inste
 
   assert.deepEqual(speaker, {
     kind: 'provider',
-    label: 'Gemini-CLI',
+    label: 'Antigravity-CLI',
     cat: null,
   });
 });
@@ -72,10 +72,10 @@ test('default orchestrator replies do not surface the internal Orchestrator plac
       mentions: [],
       metadata: {
         targetKind: 'orchestrator',
-        executionLabelSnapshot: 'Gemini-CLI',
+        executionLabelSnapshot: 'Antigravity-CLI',
       },
       usage: null,
-      executionProvider: 'gemini',
+      executionProvider: 'antigravity',
       executionModel: null,
       executionInstance: 'native',
       createdAt: '2026-04-11T00:00:00.000Z',
@@ -85,7 +85,7 @@ test('default orchestrator replies do not surface the internal Orchestrator plac
 
   assert.deepEqual(speaker, {
     kind: 'provider',
-    label: 'Gemini-CLI',
+    label: 'Antigravity-CLI',
     cat: null,
   });
 });

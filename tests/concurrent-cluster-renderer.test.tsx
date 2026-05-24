@@ -308,7 +308,7 @@ test('inline_stack exposes copy actions as soon as sealed concurrent bubbles hav
       laneId: 'lane-3',
       targetStateId: 'target-3',
       segmentIndex: 2,
-      speakerLabel: 'Gemini-CLI',
+      speakerLabel: 'Antigravity-CLI',
     }),
   ]);
 
@@ -318,7 +318,7 @@ test('inline_stack exposes copy actions as soon as sealed concurrent bubbles hav
   );
   assert.match(markup, /aria-label="Copy message from Claude-CLI"/u);
   assert.match(markup, /aria-label="Copy message from Codex-CLI"/u);
-  assert.doesNotMatch(markup, /aria-label="Copy message from Gemini-CLI"/u);
+  assert.doesNotMatch(markup, /aria-label="Copy message from Antigravity-CLI"/u);
 });
 
 test('inline_stack localizes Cats-owned live progress fallback text', () => {
@@ -545,7 +545,7 @@ test('compare_cards exposes nav controls and per-card dots when carousel mode is
       laneId: 'lane-3',
       targetStateId: 'target-3',
       segmentIndex: 2,
-      speakerLabel: 'Gemini-CLI',
+      speakerLabel: 'Antigravity-CLI',
       contentBlocks: [
         {
           id: 'text-gemini',

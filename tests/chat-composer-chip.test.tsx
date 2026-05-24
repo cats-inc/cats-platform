@@ -306,8 +306,8 @@ test('chat composer renders a multi-audience chip for group chats', () => {
           useNeutralAvatar: true,
         },
         {
-          participantId: 'gemini',
-          label: 'Gemini-CLI',
+          participantId: 'antigravity',
+          label: 'Antigravity-CLI',
           avatarColor: null,
           avatarUrl: null,
           isBoss: false,
