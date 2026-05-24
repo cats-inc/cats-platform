@@ -1,7 +1,7 @@
 export const PRODUCT_PROVIDER_ORDER = [
   'claude',
   'codex',
-  'gemini',
+  'antigravity',
   'cursor',
   'copilot',
   'opencode',
@@ -34,13 +34,13 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'gpt-5.1-codex-max', label: 'gpt-5.1-codex-max' },
     { value: 'gpt-5.1-codex-mini', label: 'gpt-5.1-codex-mini' },
   ],
-  gemini: [
-    { value: 'gemini-3.1-pro-preview', label: 'gemini-3.1-pro-preview (default)', default: true },
-    { value: 'gemini-3-flash-preview', label: 'gemini-3-flash-preview' },
-    { value: 'gemini-3.1-flash-lite-preview', label: 'gemini-3.1-flash-lite-preview' },
-    { value: 'gemini-2.5-pro', label: 'gemini-2.5-pro' },
-    { value: 'gemini-2.5-flash', label: 'gemini-2.5-flash' },
-    { value: 'gemini-2.5-flash-lite', label: 'gemini-2.5-flash-lite' },
+  antigravity: [
+    { value: 'Gemini 3.1 Pro (high)', label: 'Gemini 3.1 Pro (high) (default)', default: true },
+    { value: 'Gemini 3.1 Pro (low)', label: 'Gemini 3.1 Pro (low)' },
+    { value: 'Gemini 3 Flash', label: 'Gemini 3 Flash' },
+    { value: 'Claude Sonnet 4.6 (thinking)', label: 'Claude Sonnet 4.6 (thinking)' },
+    { value: 'Claude Opus 4.6 (thinking)', label: 'Claude Opus 4.6 (thinking)' },
+    { value: 'GPT-OSS-120b', label: 'GPT-OSS-120b' },
   ],
   copilot: [
     { value: 'gpt-5.4', label: 'gpt-5.4 (default)', default: true },

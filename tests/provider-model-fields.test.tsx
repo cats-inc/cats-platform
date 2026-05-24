@@ -208,19 +208,19 @@ function reconcileReopenedTarget(input: {
   };
 }
 
-test('createStaticProviderModelCatalog preserves the curated Gemini CLI order', () => {
-  const catalog = createStaticProviderModelCatalog('gemini', { instance: 'native' });
+test('createStaticProviderModelCatalog preserves the curated Antigravity reasoning model order', () => {
+  const catalog = createStaticProviderModelCatalog('antigravity', { instance: 'native' });
 
-  assert.equal(catalog.defaultModel, 'gemini-3.1-pro-preview');
+  assert.equal(catalog.defaultModel, 'Gemini 3.1 Pro (high)');
   assert.deepEqual(
     catalog.models.map((model) => model.id),
     [
-      'gemini-3.1-pro-preview',
-      'gemini-3-flash-preview',
-      'gemini-3.1-flash-lite-preview',
-      'gemini-2.5-pro',
-      'gemini-2.5-flash',
-      'gemini-2.5-flash-lite',
+      'Gemini 3.1 Pro (high)',
+      'Gemini 3.1 Pro (low)',
+      'Gemini 3 Flash',
+      'Claude Sonnet 4.6 (thinking)',
+      'Claude Opus 4.6 (thinking)',
+      'GPT-OSS-120b',
     ],
   );
 });

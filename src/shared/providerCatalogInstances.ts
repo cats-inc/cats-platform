@@ -13,9 +13,8 @@ export const PRODUCT_PROVIDER_INSTANCES: Record<ProductProviderId, ProductProvid
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
     { id: 'main', label: 'api/main', target: 'api/main', backend: 'api' },
   ],
-  gemini: [
+  antigravity: [
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
-    { id: 'flash', label: 'api/flash', target: 'api/flash', backend: 'api' },
   ],
   cursor: [
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
