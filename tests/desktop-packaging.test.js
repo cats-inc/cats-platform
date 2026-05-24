@@ -127,7 +127,7 @@ async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Junie.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiroCli.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Codex.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Gemini.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Antigravity.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Copilot.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-OpenCode.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiloCli.ps1'), '# helper');
@@ -150,7 +150,7 @@ async function seedUnixSetupAssets(packageRoot, platform) {
   await seedFile(join(packageRoot, 'scripts', platform, 'install-junie.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-kiro-cli.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-codex.sh'), '#!/usr/bin/env bash\n');
-  await seedFile(join(packageRoot, 'scripts', platform, 'install-gemini.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-antigravity.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-copilot.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-opencode.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-kilo.sh'), '#!/usr/bin/env bash\n');
@@ -792,7 +792,7 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /desktop\\setup-assets\\windows\\Setup-NodeGlobalPrefix\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\_NpmCliInstaller\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Codex\.ps1/);
-  assert.match(script, /desktop\\setup-assets\\windows\\Install-Gemini\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-Antigravity\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Copilot\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-OpenCode\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-KiloCli\.ps1/);
@@ -1119,7 +1119,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Setup-NodeGlobalPrefix.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', '_NpmCliInstaller.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Codex.ps1'));
-  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Gemini.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Antigravity.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Copilot.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-OpenCode.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-KiloCli.ps1'));
@@ -1137,7 +1137,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-github-cli.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'setup-node-global-prefix.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-codex.sh'));
-  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-gemini.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-antigravity.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-copilot.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-opencode.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-kilo.sh'));

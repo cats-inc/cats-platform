@@ -1644,11 +1644,11 @@ export function buildDesktopBootstrapPage(): string {
        collapsed until Show more is pressed, then npm prerequisites appear
        before npm-based CLIs. */
     var ONBOARDING_NATIVE_PROVIDER_ORDER = [
-      'claude_code', 'cursor_agent', 'kiro', 'junie',
+      'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',
       'goose', 'ollama'
     ];
     var ONBOARDING_NPM_PROVIDER_ORDER = [
-      'codex', 'gemini', 'copilot', 'opencode',
+      'codex', 'copilot', 'opencode',
       'kilo', 'auggie', 'pi'
     ];
     var ONBOARDING_NODE_HELPER_SUFFIX = '-node-host-installer';
@@ -1660,9 +1660,9 @@ export function buildDesktopBootstrapPage(): string {
     };
     var ONBOARDING_PROVIDER_LABELS = {
       claude_code: 'Claude',
+      antigravity: 'Antigravity',
       cursor_agent: 'Cursor',
       codex: 'Codex',
-      gemini: 'Gemini',
       copilot: 'Copilot',
       opencode: 'OpenCode',
       kilo: 'Kilo',
@@ -1834,7 +1834,7 @@ export function buildDesktopBootstrapPage(): string {
        see ONBOARDING_COLLAPSED_INCLUDES_NODE below. CSS grid auto-flow does
        the visual reordering: hidden cards drop out and the visible cards
        collapse into row 1 in entry order. */
-    var ONBOARDING_COLLAPSED_PROVIDER_IDS = ['claude_code', 'codex', 'gemini'];
+    var ONBOARDING_COLLAPSED_PROVIDER_IDS = ['claude_code', 'antigravity', 'codex'];
     var ONBOARDING_COLLAPSED_INCLUDES_NODE = true;
 
     function appendProviderCards(cards, snapshot, providerOrder, options) {

@@ -18,7 +18,6 @@ function skipUnlessWindows() {
 
 const nativeCliPackages = JSON.stringify([
   '@openai/codex',
-  '@google/gemini-cli',
   '@github/copilot',
   'opencode-ai',
   '@kilocode/cli',
@@ -55,6 +54,8 @@ test('Check-WindowsSetupReadiness reports ready when prefix substrate and per-CL
     'installed',
     '-CursorAuthState',
     'authenticated',
+    '-AntigravityInstallState',
+    'installed',
     '-GooseInstallState',
     'installed',
     '-GooseAuthState',
@@ -78,6 +79,7 @@ test('Check-WindowsSetupReadiness reports ready when prefix substrate and per-CL
   assert.equal(result.nativeCliPack.status, 'ready');
   assert.equal(result.nativeProviders.claude.status, 'ready');
   assert.equal(result.nativeProviders.cursor.status, 'ready');
+  assert.equal(result.nativeProviders.antigravity.status, 'ready');
   assert.equal(result.nativeProviders.goose.status, 'ready');
   assert.equal(result.nativeProviders.junie.status, 'ready');
   assert.equal(result.nativeProviders.kiro.status, 'ready');
@@ -180,6 +182,8 @@ test('Check-WindowsSetupReadiness reports auth-required when native providers ar
     'installed',
     '-CursorAuthState',
     'authenticated',
+    '-AntigravityInstallState',
+    'installed',
     '-GooseInstallState',
     'installed',
     '-GooseAuthState',
@@ -232,6 +236,8 @@ test('Check-WindowsSetupReadiness reports install follow-through when Kiro is mi
     'installed',
     '-CursorAuthState',
     'authenticated',
+    '-AntigravityInstallState',
+    'installed',
     '-GooseInstallState',
     'installed',
     '-GooseAuthState',
@@ -283,6 +289,8 @@ test('Check-WindowsSetupReadiness reports Ollama follow-through when local-model
     'installed',
     '-CursorAuthState',
     'authenticated',
+    '-AntigravityInstallState',
+    'installed',
     '-GooseInstallState',
     'installed',
     '-GooseAuthState',
@@ -340,6 +348,8 @@ test('Check-WindowsSetupReadiness can force serial collection for deterministic 
     'installed',
     '-CursorAuthState',
     'authenticated',
+    '-AntigravityInstallState',
+    'installed',
     '-GooseInstallState',
     'installed',
     '-GooseAuthState',

@@ -92,7 +92,7 @@ export const DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS = [
   'claude_code',
   'cursor_agent',
   'codex',
-  'gemini',
+  'antigravity',
   'copilot',
   'opencode',
   'kilo',

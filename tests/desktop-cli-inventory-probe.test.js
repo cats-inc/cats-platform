@@ -30,7 +30,7 @@ test('buildDesktopCliInventoryFromRuntime maps runtime providers to platform-spe
       providers: [
         { provider: 'claude', available: true },
         { provider: 'codex', available: true },
-        { provider: 'gemini', available: false },
+        { provider: 'antigravity', available: false },
         { provider: 'cursor', available: true },
         { provider: 'kiro', available: false },
       ],
@@ -58,8 +58,8 @@ test('buildDesktopCliInventoryFromRuntime maps runtime providers to platform-spe
   assert.equal(cursorEntry?.installed, true);
   assert.equal(cursorEntry?.helperId, 'windows-cursor-native-installer');
 
-  const geminiEntry = inventory.candidates.find((c) => c.providerId === 'gemini');
-  assert.equal(geminiEntry?.installed, false);
+  const antigravityEntry = inventory.candidates.find((c) => c.providerId === 'antigravity');
+  assert.equal(antigravityEntry?.installed, false);
 });
 
 test('buildDesktopCliInventoryFromRuntime never marks ollama as installed (not in runtime KNOWN_PROVIDERS)', () => {

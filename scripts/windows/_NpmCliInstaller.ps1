@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Each `Install-<Provider>.ps1` thin wrapper for an npm-global CLI
-    (Codex, Gemini, Copilot, OpenCode, Kilo, Auggie, Pi, ...) calls
+    (Codex, Copilot, OpenCode, Kilo, Auggie, Pi, ...) calls
     `Invoke-PackagedNpmCliInstall` with its npm package id, primary
     command name on PATH, and helper id. The function honours the same
     packaged-host helper contract as the native installers
@@ -523,7 +523,7 @@ function Invoke-PackagedNpmCliInstall {
   # --include=optional defends against user-level `omit=optional` in npmrc.
   # Without it, packages like @openai/codex skip their platform-specific
   # binaries (codex-win32-x64, codex-darwin-arm64, ...), leaving a shim that
-  # silently exits when invoked. Pure-JS CLIs (gemini, copilot) don't notice.
+  # silently exits when invoked. Pure-JS CLIs such as copilot don't notice.
   $arguments = @('install', '-g', '--include=optional')
   if ($plannedAction -eq 'upgrade') {
     $arguments += "$PackageName@latest"

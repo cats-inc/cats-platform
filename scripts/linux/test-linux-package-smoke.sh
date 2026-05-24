@@ -49,7 +49,7 @@ assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-node.sh" 'bund
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-github-cli.sh" 'bundled Linux GitHub CLI host installer'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/setup-node-global-prefix.sh" 'bundled Linux npm prefix helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-codex.sh" 'bundled Linux OpenAI Codex installer helper'
-assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-gemini.sh" 'bundled Linux Gemini installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-antigravity.sh" 'bundled Linux Antigravity installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-copilot.sh" 'bundled Linux GitHub Copilot installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-opencode.sh" 'bundled Linux OpenCode installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-kilo.sh" 'bundled Linux Kilo Code installer helper'
@@ -88,6 +88,7 @@ assert(linuxTarget.installerFormats.includes('appimage'), 'Linux target includes
 assert(linuxTarget.installerFormats.includes('deb'), 'Linux target includes deb packaging');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-opencode-native-installer-script'), 'Linux target includes the bundled OpenCode installer asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-codex-native-installer-script'), 'Linux target includes the bundled OpenAI Codex installer asset');
+assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-antigravity-native-installer-script'), 'Linux target includes the bundled Antigravity installer asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-setup-readiness-audit-script'), 'Linux target includes the bundled readiness audit asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-provider-cli-common-support-script'), 'Linux target includes the Linux provider helper asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-node-cli-common-support-script'), 'Linux target includes the Linux npm helper asset');

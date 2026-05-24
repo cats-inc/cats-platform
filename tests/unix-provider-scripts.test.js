@@ -13,7 +13,7 @@ const linuxScripts = [
   'install-node.sh',
   'install-github-cli.sh',
   'install-codex.sh',
-  'install-gemini.sh',
+  'install-antigravity.sh',
   'install-copilot.sh',
   'install-opencode.sh',
   'install-kilo.sh',
@@ -33,7 +33,7 @@ const macosScripts = [
   'install-node.sh',
   'install-github-cli.sh',
   'install-codex.sh',
-  'install-gemini.sh',
+  'install-antigravity.sh',
   'install-copilot.sh',
   'install-opencode.sh',
   'install-kilo.sh',
@@ -121,19 +121,19 @@ test('Unix self-hosted provider audits expose the shared JSON audit core', async
   }
 });
 
-test('Unix self-hosted provider audits can include 5 native providers, 7 npm tools, and Ollama', async () => {
+test('Unix self-hosted provider audits can include 6 native providers, 6 npm tools, and Ollama', async () => {
   const expectedCheckIds = [
     'node',
     'npm',
     'docker',
     'node_prefix',
     'claude',
+    'antigravity',
     'cursor',
     'goose',
     'junie',
     'kiro',
     'codex',
-    'gemini',
     'copilot',
     'opencode',
     'kilo',

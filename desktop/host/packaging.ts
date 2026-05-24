@@ -537,18 +537,18 @@ const LOCAL_PROVIDER_BASELINES: DesktopLocalProviderBaseline[] = [
     ],
   },
   {
-    id: 'gemini',
-    label: 'Gemini CLI',
+    id: 'antigravity',
+    label: 'Antigravity CLI',
     pack: 'native_cli_pack',
     helperIds: [
-      'windows-gemini-native-installer',
-      'linux-gemini-native-installer',
-      'macos-gemini-native-installer',
+      'windows-antigravity-native-installer',
+      'linux-antigravity-native-installer',
+      'macos-antigravity-native-installer',
     ],
-    currentHome: 'cats-platform/scripts/{windows,linux,macos}/Install-Gemini.{ps1,sh}',
+    currentHome: 'cats-platform/scripts/{windows,linux,macos}/Install-Antigravity.{ps1,sh}',
     targetHome: 'cats-platform packaged-host provider assets',
     notes: [
-      'Bundled through the repo-owned per-CLI npm-global helper on each supported host platform.',
+      'Bundled through the repo-owned native Antigravity installer wrapper on each supported host platform.',
     ],
   },
   {

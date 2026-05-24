@@ -180,7 +180,7 @@ packaging and installer flows.
 - `scripts/windows/Setup-NodeGlobalPrefix.ps1`
 - `scripts/windows/_NpmCliInstaller.ps1`
 - `scripts/windows/Install-Codex.ps1`
-- `scripts/windows/Install-Gemini.ps1`
+- `scripts/windows/Install-Antigravity.ps1`
 - `scripts/windows/Install-Copilot.ps1`
 - `scripts/windows/Install-OpenCode.ps1`
 - `scripts/windows/Install-KiloCli.ps1`
@@ -210,13 +210,17 @@ the actual install (Node and gh both land in Program Files) while keeping
 They intentionally omit `-Uninstall`: removing Node would break the bundled
 `cats-runtime` sidecar and every npm-global CLI helper.
 
-The per-CLI npm-global installers (`Install-Codex.ps1`, `Install-Gemini.ps1`,
-`Install-Copilot.ps1`, `Install-OpenCode.ps1`, `Install-KiloCli.ps1`,
+The per-CLI npm-global installers (`Install-Codex.ps1`, `Install-Copilot.ps1`,
+`Install-OpenCode.ps1`, `Install-KiloCli.ps1`,
 `Install-Auggie.ps1`, `Install-Pi.ps1`) are thin wrappers around the shared
 `_NpmCliInstaller.ps1` helper that owns the install/upgrade/uninstall flow.
 Each one accepts `-CheckOnly / -Apply / -Upgrade / -Force / -Uninstall /
 -DryRun / -Json` so Settings>Runtime can drive a single CLI without touching
 the others.
+
+`Install-Antigravity.ps1` is a native-binary wrapper around Google's
+Antigravity `agy` installer. It accepts the same Desktop setup bridge flags but
+does not use the npm-global helper.
 
 `Check-WindowsSetupReadiness.ps1` composes the repo-owned packaged setup
 helpers into one host-readable audit for the npm prefix substrate, the
@@ -244,7 +248,7 @@ runtime:
 - `scripts/linux/install-github-cli.sh`
 - `scripts/linux/setup-node-global-prefix.sh`
 - `scripts/linux/install-codex.sh`
-- `scripts/linux/install-gemini.sh`
+- `scripts/linux/install-antigravity.sh`
 - `scripts/linux/install-copilot.sh`
 - `scripts/linux/install-opencode.sh`
 - `scripts/linux/install-kilo.sh`
@@ -261,7 +265,7 @@ runtime:
 - `scripts/macos/install-github-cli.sh`
 - `scripts/macos/setup-node-global-prefix.sh`
 - `scripts/macos/install-codex.sh`
-- `scripts/macos/install-gemini.sh`
+- `scripts/macos/install-antigravity.sh`
 - `scripts/macos/install-copilot.sh`
 - `scripts/macos/install-opencode.sh`
 - `scripts/macos/install-kilo.sh`
@@ -280,9 +284,9 @@ These helpers cover the same first-pass self-hosted provider baseline that
 
 - host substrate installers for Node.js LTS (via nvm) and GitHub CLI (via
   Homebrew or a user-local tarball)
-- native installers for Claude Code, Cursor Agent, Goose, Junie, and Kiro
+- native installers for Claude Code, Antigravity, Cursor Agent, Goose, Junie, and Kiro
 - npm global-prefix setup for user-scoped installs
-- per-CLI npm-global installers for Codex, Gemini, Copilot, OpenCode, Kilo,
+- per-CLI npm-global installers for Codex, Copilot, OpenCode, Kilo,
   Auggie, and Pi
 - one-shot audit and bulk-upgrade wrappers
 

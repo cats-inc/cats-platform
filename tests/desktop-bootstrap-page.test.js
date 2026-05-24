@@ -164,8 +164,8 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /resolvePageMode/);
   assert.match(html, /snapshot\.app\.onboardingMode === 'setup_status'/);
   assert.match(html, /continueDisabled = legacyCliGate && installedCount === 0/);
-  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'cursor_agent', 'kiro', 'junie',\s*'goose', 'ollama'\s*\]/);
-  assert.match(html, /ONBOARDING_NPM_PROVIDER_ORDER = \[\s*'codex', 'gemini', 'copilot', 'opencode',\s*'kilo', 'auggie', 'pi'\s*\]/);
+  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',\s*'goose', 'ollama'\s*\]/);
+  assert.match(html, /ONBOARDING_NPM_PROVIDER_ORDER = \[\s*'codex', 'copilot', 'opencode',\s*'kilo', 'auggie', 'pi'\s*\]/);
   assert.match(html, /Node\.js \/ npm/);
   assert.match(html, /Required by npm CLIs/);
   assert.match(html, /Install Node first/);
@@ -179,7 +179,7 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.doesNotMatch(html, /node-prerequisite-loading/);
   assert.match(html, /ONBOARDING_NODE_HELPER_SUFFIX = '-node-host-installer'/);
   assert.match(html, /cli-row-break/);
-  assert.match(html, /ONBOARDING_COLLAPSED_PROVIDER_IDS = \['claude_code', 'codex', 'gemini'\]/);
+  assert.match(html, /ONBOARDING_COLLAPSED_PROVIDER_IDS = \['claude_code', 'antigravity', 'codex'\]/);
   assert.match(html, /ONBOARDING_COLLAPSED_INCLUDES_NODE = true/);
   assert.match(html, /hidden = !expanded && !entry\.collapsedSlot/);
   assert.doesNotMatch(html, /elements\.hasHiddenCards/);

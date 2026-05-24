@@ -49,6 +49,7 @@ platform_label() {
 
 provider_display_name() {
   case "$1" in
+    antigravity) printf '%s\n' 'Antigravity CLI' ;;
     claude) printf '%s\n' 'Claude Code CLI' ;;
     cursor) printf '%s\n' 'Cursor Agent CLI' ;;
     goose) printf '%s\n' 'Goose CLI' ;;
@@ -60,6 +61,7 @@ provider_display_name() {
 
 provider_primary_command() {
   case "$1" in
+    antigravity) printf '%s\n' 'agy' ;;
     claude) printf '%s\n' 'claude' ;;
     cursor) printf '%s\n' 'cursor-agent' ;;
     goose) printf '%s\n' 'goose' ;;
@@ -87,6 +89,7 @@ provider_alias_target() {
 
 provider_install_url() {
   case "$1" in
+    antigravity) printf '%s\n' 'https://antigravity.google/cli/install.sh' ;;
     claude) printf '%s\n' 'https://claude.ai/install.sh' ;;
     cursor) printf '%s\n' 'https://cursor.com/install' ;;
     goose) printf '%s\n' 'https://github.com/block/goose/releases/download/stable/download_cli.sh' ;;
@@ -101,6 +104,9 @@ provider_binary_candidates() {
   local provider="$2"
 
   case "$provider" in
+    antigravity)
+      printf '%s\n' "$HOME/.local/bin/agy"
+      ;;
     claude)
       printf '%s\n' "$HOME/.local/bin/claude"
       ;;
@@ -263,6 +269,9 @@ run_remote_pipe_installer() {
   url="$(provider_install_url "$provider")"
 
   case "$provider" in
+    antigravity)
+      curl -fsSL "$url" | bash
+      ;;
     goose)
       curl -fsSL "$url" | env CONFIGURE=false bash
       ;;
@@ -328,6 +337,12 @@ run_provider_install_action() {
   local current_command=''
 
   case "$provider" in
+    antigravity)
+      if [ "$action" = 'upgrade' ] || [ "$action" = 'force' ]; then
+        rm -f "$HOME/.local/bin/agy" 2>/dev/null || true
+      fi
+      run_remote_pipe_installer "$provider"
+      ;;
     claude)
       if [ "$action" = 'upgrade' ] && current_command="$(detect_provider_command "$platform" "$provider")"; then
         "$current_command" update || true

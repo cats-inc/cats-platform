@@ -69,6 +69,9 @@
 .PARAMETER CursorAuthState
     Override Cursor Agent authentication detection for deterministic tests.
 
+.PARAMETER AntigravityInstallState
+    Override Antigravity CLI installation detection for deterministic tests.
+
 .PARAMETER GooseInstallState
     Override Goose installation detection for deterministic tests.
 
@@ -109,6 +112,8 @@ param(
   [string]$CursorInstallState = 'auto',
   [ValidateSet('auto', 'authenticated', 'auth_required')]
   [string]$CursorAuthState = 'auto',
+  [ValidateSet('auto', 'installed', 'missing')]
+  [string]$AntigravityInstallState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$GooseInstallState = 'auto',
   [ValidateSet('auto', 'authenticated', 'auth_required')]
@@ -346,6 +351,7 @@ $githubCliHelperPath = Join-Path $PSScriptRoot 'Install-GitHubCli.ps1'
 $prefixHelperPath = Join-Path $PSScriptRoot 'Setup-NodeGlobalPrefix.ps1'
 $claudeHelperPath = Join-Path $PSScriptRoot 'Install-ClaudeCode.ps1'
 $cursorHelperPath = Join-Path $PSScriptRoot 'Install-CursorAgent.ps1'
+$antigravityHelperPath = Join-Path $PSScriptRoot 'Install-Antigravity.ps1'
 $gooseHelperPath = Join-Path $PSScriptRoot 'Install-Goose.ps1'
 $junieHelperPath = Join-Path $PSScriptRoot 'Install-Junie.ps1'
 $kiroHelperPath = Join-Path $PSScriptRoot 'Install-KiroCli.ps1'
@@ -353,7 +359,6 @@ $ollamaHelperPath = Join-Path $PSScriptRoot 'Install-Ollama.ps1'
 
 $NpmCliCatalog = @(
   [pscustomobject]@{ Key = 'codex'; ScriptName = 'Install-Codex.ps1'; PackageName = '@openai/codex' },
-  [pscustomobject]@{ Key = 'gemini'; ScriptName = 'Install-Gemini.ps1'; PackageName = '@google/gemini-cli' },
   [pscustomobject]@{ Key = 'copilot'; ScriptName = 'Install-Copilot.ps1'; PackageName = '@github/copilot' },
   [pscustomobject]@{ Key = 'opencode'; ScriptName = 'Install-OpenCode.ps1'; PackageName = 'opencode-ai' },
   [pscustomobject]@{ Key = 'kilo'; ScriptName = 'Install-KiloCli.ps1'; PackageName = '@kilocode/cli' },
@@ -455,6 +460,16 @@ if ($includeNativeProvidersEnabled) {
       Arguments = $cursorArguments
     })
 
+  $antigravityArguments = @('-CheckOnly', '-Json')
+  if ($AntigravityInstallState -ne 'auto') {
+    $antigravityArguments += @('-InstallState', $AntigravityInstallState)
+  }
+  $helperInvocations.Add([pscustomobject]@{
+      Key = 'antigravity'
+      ScriptPath = $antigravityHelperPath
+      Arguments = $antigravityArguments
+    })
+
   $gooseArguments = @('-CheckOnly', '-Json')
   if ($GooseInstallState -ne 'auto') {
     $gooseArguments += @('-InstallState', $GooseInstallState)
@@ -516,6 +531,7 @@ $githubCliResult = $helperResults['githubCli']
 $prefixHelper = $helperResults['prefixHelper']
 $claudeResult = if ($helperResults.ContainsKey('claude')) { $helperResults['claude'] } else { $null }
 $cursorResult = if ($helperResults.ContainsKey('cursor')) { $helperResults['cursor'] } else { $null }
+$antigravityResult = if ($helperResults.ContainsKey('antigravity')) { $helperResults['antigravity'] } else { $null }
 $gooseResult = if ($helperResults.ContainsKey('goose')) { $helperResults['goose'] } else { $null }
 $junieResult = if ($helperResults.ContainsKey('junie')) { $helperResults['junie'] } else { $null }
 $kiroResult = if ($helperResults.ContainsKey('kiro')) { $helperResults['kiro'] } else { $null }
@@ -598,6 +614,9 @@ if ($null -ne $claudeResult) {
 if ($null -ne $cursorResult) {
   $statuses += $cursorResult.status
 }
+if ($null -ne $antigravityResult) {
+  $statuses += $antigravityResult.status
+}
 if ($null -ne $gooseResult) {
   $statuses += $gooseResult.status
 }
@@ -644,6 +663,9 @@ if ($null -ne $cursorResult) {
     $plannedActions.Add('provider:authenticate_cursor_agent')
   }
 }
+if ($null -ne $antigravityResult -and $antigravityResult.status -eq 'not_installed') {
+  $plannedActions.Add('provider:install_antigravity_native')
+}
 if ($null -ne $gooseResult) {
   if ($gooseResult.status -eq 'not_installed') {
     $plannedActions.Add('provider:install_goose_native')
@@ -686,6 +708,11 @@ if ($null -ne $claudeResult) {
 }
 if ($null -ne $cursorResult) {
   foreach ($warning in $cursorResult.warnings) {
+    $warnings.Add([string]$warning)
+  }
+}
+if ($null -ne $antigravityResult) {
+  foreach ($warning in $antigravityResult.warnings) {
     $warnings.Add([string]$warning)
   }
 }
@@ -739,6 +766,7 @@ Add-InterruptionsFromResult -HelperResult $githubCliResult
 Add-InterruptionsFromResult -HelperResult $nativeCliPack
 Add-InterruptionsFromResult -HelperResult $claudeResult
 Add-InterruptionsFromResult -HelperResult $cursorResult
+Add-InterruptionsFromResult -HelperResult $antigravityResult
 Add-InterruptionsFromResult -HelperResult $gooseResult
 Add-InterruptionsFromResult -HelperResult $junieResult
 Add-InterruptionsFromResult -HelperResult $kiroResult
@@ -786,6 +814,7 @@ $result = [pscustomobject]@{
   nativeProviders = [pscustomobject]@{
     claude = $claudeResult
     cursor = $cursorResult
+    antigravity = $antigravityResult
     goose = $gooseResult
     junie = $junieResult
     kiro = $kiroResult

@@ -49,7 +49,7 @@ assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-node.sh" 'bund
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-github-cli.sh" 'bundled macOS GitHub CLI host installer'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/setup-node-global-prefix.sh" 'bundled macOS npm prefix helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-codex.sh" 'bundled macOS OpenAI Codex installer helper'
-assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-gemini.sh" 'bundled macOS Gemini installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-antigravity.sh" 'bundled macOS Antigravity installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-copilot.sh" 'bundled macOS GitHub Copilot installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-opencode.sh" 'bundled macOS OpenCode installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-kilo.sh" 'bundled macOS Kilo Code installer helper'
@@ -88,6 +88,7 @@ assert(macTarget.installerFormats.includes('dmg'), 'macOS target includes dmg pa
 assert(macTarget.installerFormats.includes('pkg'), 'macOS target includes pkg packaging');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-opencode-native-installer-script'), 'macOS target includes the bundled OpenCode installer asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-codex-native-installer-script'), 'macOS target includes the bundled OpenAI Codex installer asset');
+assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-antigravity-native-installer-script'), 'macOS target includes the bundled Antigravity installer asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-setup-readiness-audit-script'), 'macOS target includes the bundled readiness audit asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-provider-cli-common-support-script'), 'macOS target includes the macOS provider helper asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-node-cli-common-support-script'), 'macOS target includes the macOS npm helper asset');

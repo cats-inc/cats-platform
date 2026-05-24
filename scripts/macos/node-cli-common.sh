@@ -319,7 +319,6 @@ run_node_prefix_setup() {
 node_cli_package_rows() {
   cat <<'EOF'
 codex|codex|@openai/codex|OpenAI Codex
-gemini|gemini|@google/gemini-cli|Gemini CLI
 copilot|copilot|@github/copilot|GitHub Copilot CLI
 opencode|opencode|opencode-ai|OpenCode
 kilo|kilo|@kilocode/cli|Kilo Code CLI
@@ -334,7 +333,7 @@ node_cli_pack_help() {
 Usage: $script_name [--check] [-upgrade] [-force] [--uninstall] [--skip-prefix-setup] [--help]
 
 Repo-owned self-hosted helper for the shared npm-based CLI provider pack:
-Codex, Gemini, Copilot, OpenCode, Kilo, Auggie, and Pi.
+Codex, Copilot, OpenCode, Kilo, Auggie, and Pi.
 
 Options:
   --check             Verify whether the npm CLI pack is reachable on this host.
@@ -919,7 +918,7 @@ EOF
   fi
 
   if [ "$collection_mode" = 'serial' ]; then
-    for provider in claude cursor goose junie kiro; do
+    for provider in claude antigravity cursor goose junie kiro; do
       if command_path="$(detect_provider_command "$platform" "$provider")"; then
         handle_audited_check_result "$provider" "$(provider_display_name "$provider")" 'true' 'native' 'host' 'ready'
         unset command_path
@@ -952,7 +951,7 @@ EOF
       fi
     fi
   else
-    for provider in claude cursor goose junie kiro; do
+    for provider in claude antigravity cursor goose junie kiro; do
       async_file="$(mktemp)"
       async_files+=("$async_file")
       (
@@ -1077,7 +1076,7 @@ EOF
 # run_npm_cli_provider <platform> <package> <command_name> <display_name>
 #
 # Single-package counterpart to run_node_cli_pack. Each thin per-provider
-# wrapper (install-codex.sh, install-gemini.sh, ...) calls this function
+# wrapper (install-codex.sh, install-copilot.sh, ...) calls this function
 # with its npm package id, command name on PATH, and display label so the
 # packaged-host helper bridge sees the same JSON shape as the native
 # installers.

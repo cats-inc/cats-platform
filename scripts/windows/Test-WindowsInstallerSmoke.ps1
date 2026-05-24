@@ -144,7 +144,7 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Setup-NodeGlobalPrefix.ps1'); Label = 'bundled Windows npm prefix helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\_NpmCliInstaller.ps1'); Label = 'bundled Windows shared npm CLI installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Codex.ps1'); Label = 'bundled Windows native OpenAI Codex installer helper' },
-  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Gemini.ps1'); Label = 'bundled Windows native Gemini installer helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Antigravity.ps1'); Label = 'bundled Windows native Antigravity installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Copilot.ps1'); Label = 'bundled Windows native GitHub Copilot installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-OpenCode.ps1'); Label = 'bundled Windows native OpenCode installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-KiloCli.ps1'); Label = 'bundled Windows native Kilo Code installer helper' },
@@ -181,7 +181,7 @@ Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-node-
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-github-cli-installer-script' }).Count -ge 1) 'Windows target includes the bundled GitHub CLI host installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-npm-prefix-helper-script' }).Count -ge 1) 'Windows target includes the bundled npm prefix setup asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-codex-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native OpenAI Codex installer asset'
-Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-gemini-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Gemini installer asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-antigravity-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Antigravity installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-copilot-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native GitHub Copilot installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-opencode-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native OpenCode installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-kilo-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Kilo installer asset'
