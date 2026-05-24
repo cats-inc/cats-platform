@@ -44,13 +44,15 @@ test('useComposerSubmit keeps pre-ACK abort separate from post-ACK stop', async 
   assert.match(sharedLifecycleSource, /activeAckRequestRef = useRef<ActiveAckRequest \| null>\(null\)/u);
   assert.match(sharedLifecycleSource, /controller: new AbortController\(\)/u);
   assert.match(source, /const \{ id: submitId, controller: ackController \} = beginAckRequest\(\);/u);
-  assert.match(source, /prepareWorkspaceSendContext\(\{[\s\S]+originSurface: 'chat'/u);
+  assert.match(source, /resolveCrossSurfaceDraftDispatchState/u);
+  assert.match(source, /prepareWorkspaceSendContext\(\{[\s\S]+originSurface: targetSurface/u);
   assert.match(source, /prepareWorkspaceSendContext\(\{[\s\S]+signal: ackController\.signal/u);
   assert.match(sharedDispatchSource, /export async function prepareWorkspaceSendContext/u);
   assert.match(sharedDispatchSource, /createChatChannel\(buildNewChatChannelInput\([\s\S]+\), signal\)/u);
   assert.match(source, /sendChatMessage\([\s\S]+ackController\.signal\)/u);
   assert.match(source, /submitNewParallelChatDraft\(/u);
-  assert.match(source, /submitNewParallelChatDraft\(\{[\s\S]+originSurface: 'chat'/u);
+  assert.match(source, /submitNewParallelChatDraft\(\{[\s\S]+originSurface: targetSurface/u);
+  assert.match(source, /stageCrossSurfaceDraftNavigationHandoff\(\{[\s\S]+sourceSurface: 'chat'/u);
   assert.match(source, /submitParallelCompareMessage\(/u);
   assert.match(source, /useComposerRequestControls\(/u);
   assert.match(source, /navigateWithinManagedComposerFlow/u);
@@ -83,9 +85,9 @@ test('chat composer surfaces cancel-send during ACK and stop during dispatch', a
   assert.match(chatViewSupportSource, /isComposerDispatchBusyForChannel/u);
   assert.match(chatViewSource, /onCancelPendingSend\?: \(\) => void;/u);
   assert.match(chatViewSupportSource, /showCancelComposerAction = composerAckBusy && input\.onCancelPendingSend != null/u);
-  assert.match(chatViewSource, /aria-label="Cancel send"/u);
+  assert.match(chatViewSource, /aria-label=\{t\(messageKeys\.chatNewChatDraftCancelSendAria\)\}/u);
   assert.match(chatViewSource, /composerCancelButton/u);
-  assert.match(chatViewSource, /aria-label="Stop"/u);
+  assert.match(chatViewSource, /aria-label=\{composerStopLabel\}/u);
 });
 
 test('new-chat draft keeps cancel-send available before the first ACK', async () => {
@@ -101,6 +103,6 @@ test('new-chat draft keeps cancel-send available before the first ACK', async ()
   assert.match(draftSupportSource, /isComposerAckBusy/u);
   assert.match(draftSource, /onCancelPendingSend\?: \(\) => void;/u);
   assert.match(draftSource, /showCancelPendingSend = isAckPending && onCancelPendingSend != null/u);
-  assert.match(draftSource, /aria-label="Cancel send"/u);
+  assert.match(draftSource, /aria-label=\{t\(messageKeys\.chatNewChatDraftCancelSendAria\)\}/u);
   assert.match(draftSource, /composerCancelButton/u);
 });
