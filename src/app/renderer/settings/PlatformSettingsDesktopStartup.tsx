@@ -244,7 +244,6 @@ export function PlatformSettingsDesktopStartup({
 
   return (
     <>
-      {mobilePairing.enabled ? (
       <SettingsSection
         className="settingsMobilePairing"
         header={(
@@ -259,78 +258,79 @@ export function PlatformSettingsDesktopStartup({
           />
         )}
       >
-        <div className="settingsMobilePairingGrid">
-          <div className="settingsMobilePairingDetails">
-            <dl className="settingsMobilePairingFacts">
-                  <div>
-                    <dt>{t('settingsDesktopMobilePairingBindLabel')}</dt>
-                    <dd>{mobilePairing.bindHost}:{mobilePairing.bindPort}</dd>
-                  </div>
-                  <div>
-                    <dt>{t('settingsDesktopMobilePairingReachabilityLabel')}</dt>
-                    <dd>{resolveDesktopPairingReachabilityLabel(mobilePairing, t)}</dd>
-                  </div>
-                  <div>
-                    <dt>{t('settingsDesktopMobilePairingLanAddressLabel')}</dt>
-                    <dd>{mobilePairing.selectedLanIp ?? t('settingsDesktopMobilePairingNoneLabel')}</dd>
-                  </div>
-                </dl>
+        {mobilePairing.enabled ? (
+          <div className="settingsMobilePairingGrid">
+            <div className="settingsMobilePairingDetails">
+              <dl className="settingsMobilePairingFacts">
+                <div>
+                  <dt>{t('settingsDesktopMobilePairingBindLabel')}</dt>
+                  <dd>{mobilePairing.bindHost}:{mobilePairing.bindPort}</dd>
+                </div>
+                <div>
+                  <dt>{t('settingsDesktopMobilePairingReachabilityLabel')}</dt>
+                  <dd>{resolveDesktopPairingReachabilityLabel(mobilePairing, t)}</dd>
+                </div>
+                <div>
+                  <dt>{t('settingsDesktopMobilePairingLanAddressLabel')}</dt>
+                  <dd>{mobilePairing.selectedLanIp ?? t('settingsDesktopMobilePairingNoneLabel')}</dd>
+                </div>
+              </dl>
 
-                {mobilePairing.noLanCandidateReason === 'loopback_bound'
-                  && mobilePairing.bindOverrideEnv ? (
-                  <SettingsOptionRow
-                    label={t('settingsDesktopMobilePairingAllowLanLabel')}
-                    description={t('settingsDesktopMobilePairingAllowLanDescription', {
-                      bindOverrideEnv: mobilePairing.bindOverrideEnv,
-                    })}
-                    control={(
-                      <button
-                        type="button"
-                        className="secondaryButton"
-                        disabled={applyingMobilePairingEnv}
-                        onClick={() => void enableMobilePairingEnv()}
-                      >
-                        {applyingMobilePairingEnv
-                          ? t('settingsDesktopMobilePairingApplyingButton')
-                          : t('settingsDesktopMobilePairingApplyAndRestartButton')}
-                      </button>
-                    )}
-                  />
-                ) : null}
+              {mobilePairing.noLanCandidateReason === 'loopback_bound'
+                && mobilePairing.bindOverrideEnv ? (
+                <SettingsOptionRow
+                  label={t('settingsDesktopMobilePairingAllowLanLabel')}
+                  description={t('settingsDesktopMobilePairingAllowLanDescription', {
+                    bindOverrideEnv: mobilePairing.bindOverrideEnv,
+                  })}
+                  control={(
+                    <button
+                      type="button"
+                      className="secondaryButton"
+                      disabled={applyingMobilePairingEnv}
+                      onClick={() => void enableMobilePairingEnv()}
+                    >
+                      {applyingMobilePairingEnv
+                        ? t('settingsDesktopMobilePairingApplyingButton')
+                        : t('settingsDesktopMobilePairingApplyAndRestartButton')}
+                    </button>
+                  )}
+                />
+              ) : null}
 
-                {mobilePairing.noLanCandidateReason === 'no_lan_candidate' ? (
-                  <p className="settingsMobilePairingNote">
-                    {t('settingsDesktopMobilePairingNoLanAddressNote')}
-                  </p>
-                ) : null}
+              {mobilePairing.noLanCandidateReason === 'no_lan_candidate' ? (
+                <p className="settingsMobilePairingNote">
+                  {t('settingsDesktopMobilePairingNoLanAddressNote')}
+                </p>
+              ) : null}
 
-                {mobilePairing.noLanCandidateReason === 'bind_host_not_lan_candidate' ? (
-                  <p className="settingsMobilePairingNote">
-                    {t('settingsDesktopMobilePairingHostMismatchNote')}
-                  </p>
-                ) : null}
+              {mobilePairing.noLanCandidateReason === 'bind_host_not_lan_candidate' ? (
+                <p className="settingsMobilePairingNote">
+                  {t('settingsDesktopMobilePairingHostMismatchNote')}
+                </p>
+              ) : null}
 
-                {mobilePairing.diagnosticManifestUrl ? (
-                  <SettingsOptionRow
-                    label={t('settingsDesktopMobilePairingDiagnosticLabel')}
-                    description={mobilePairing.diagnosticManifestUrl}
-                    control={(
-                      <button
-                        type="button"
-                        className="secondaryButton"
-                        onClick={() => void copyToClipboard(
-                          mobilePairing.diagnosticManifestUrl ?? '',
-                          t('settingsDesktopMobilePairingDiagnosticCopiedMessage'),
-                        )}
-                      >
-                        {t('settingsDesktopMobilePairingDiagnosticCopyButton')}
-                      </button>
-                    )}
-                    layout="stack"
-                  />
-                ) : null}
+              {mobilePairing.diagnosticManifestUrl ? (
+                <SettingsOptionRow
+                  label={t('settingsDesktopMobilePairingDiagnosticLabel')}
+                  description={mobilePairing.diagnosticManifestUrl}
+                  control={(
+                    <button
+                      type="button"
+                      className="secondaryButton"
+                      onClick={() => void copyToClipboard(
+                        mobilePairing.diagnosticManifestUrl ?? '',
+                        t('settingsDesktopMobilePairingDiagnosticCopiedMessage'),
+                      )}
+                    >
+                      {t('settingsDesktopMobilePairingDiagnosticCopyButton')}
+                    </button>
+                  )}
+                  layout="stack"
+                />
+              ) : null}
 
-                {mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl ? (
+              {mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl ? (
                 <SettingsOptionRow
                   label={t('settingsDesktopMobilePairingExpoUrlLabel')}
                   description={mobilePairing.pairingUrl}
@@ -348,22 +348,40 @@ export function PlatformSettingsDesktopStartup({
                   )}
                   layout="stack"
                 />
-                ) : null}
-          </div>
+              ) : null}
+            </div>
 
-          <div className="settingsMobilePairingQr" data-state={mobilePairing.pairingUrlStatus}>
-            {mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl ? (
-              <div className="settingsMobilePairingQrContent">
-                <MobilePairingQrCode t={t} url={mobilePairing.pairingUrl} />
-                <code className="settingsMobilePairingQrUrl">{mobilePairing.pairingUrl}</code>
-              </div>
-            ) : (
-              <span>{t('settingsDesktopMobilePairingNoPairingUrlStatus')}</span>
-            )}
+            <div className="settingsMobilePairingQr" data-state={mobilePairing.pairingUrlStatus}>
+              {mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl ? (
+                <div className="settingsMobilePairingQrContent">
+                  <MobilePairingQrCode t={t} url={mobilePairing.pairingUrl} />
+                  <code className="settingsMobilePairingQrUrl">{mobilePairing.pairingUrl}</code>
+                </div>
+              ) : (
+                <span>{t('settingsDesktopMobilePairingNoPairingUrlStatus')}</span>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <SettingsOptionRow
+            label={t('settingsDesktopMobilePairingEnableLabel')}
+            description={t('settingsDesktopMobilePairingEnableDescription')}
+            control={(
+              <button
+                type="button"
+                className="secondaryButton"
+                disabled={applyingMobilePairingEnv}
+                onClick={() => void enableMobilePairingEnv()}
+              >
+                {applyingMobilePairingEnv
+                  ? t('settingsDesktopMobilePairingApplyingButton')
+                  : t('settingsDesktopMobilePairingEnableButton')}
+              </button>
+            )}
+            layout="stack"
+          />
+        )}
       </SettingsSection>
-      ) : null}
 
       <SettingsSection
         header={(
