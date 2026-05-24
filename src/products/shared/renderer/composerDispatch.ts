@@ -15,8 +15,13 @@ import {
   createTranslator,
   messageKeys,
 } from '../../../shared/i18n/index.js';
+import { resolveProductProviderId } from '../../../shared/providerCatalog.js';
 
 const defaultComposerDispatchTranslator = createTranslator('en');
+
+function normalizeComposerProvider(provider: string): string {
+  return resolveProductProviderId(provider) ?? provider.trim();
+}
 
 export interface ComposerModelValue {
   provider: string;
@@ -126,7 +131,7 @@ export function buildDefaultChatDispatchTarget<
   }
 
   return {
-    pendingProvider: defaultChannelExecutionTarget.provider,
+    pendingProvider: normalizeComposerProvider(defaultChannelExecutionTarget.provider),
     pendingModel: defaultChannelExecutionTarget.model,
     pendingInstance: defaultChannelExecutionTarget.instance,
     pendingModelSelection: defaultChannelExecutionTarget.modelSelection,

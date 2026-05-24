@@ -87,9 +87,19 @@ test('prepareComposerChannelDispatch keeps code-owned default drafts stamped as 
     originSurface: 'code',
     draftDefaultRecipientCatId: null,
     participantCatIds: [],
+    temporaryParticipants: [
+      {
+        participantId: 'participant-code',
+        name: 'Code Reviewer',
+        provider: 'antigravity-cli',
+        instance: 'native',
+        model: 'antigravity-default',
+        modelSelection: null,
+      },
+    ],
     draftEntryKind: 'default',
     draftExecutionTarget: {
-      provider: 'claude',
+      provider: 'claude-cli',
       model: 'claude-opus-4-6',
       instance: 'native',
       modelSelection: null,
@@ -122,4 +132,15 @@ test('prepareComposerChannelDispatch keeps code-owned default drafts stamped as 
   assert.equal(createdInputs[0]?.pendingProvider, 'claude');
   assert.equal(createdInputs[0]?.pendingModel, 'claude-opus-4-6');
   assert.equal(createdInputs[0]?.pendingInstance, 'native');
+  assert.deepEqual(createdInputs[0]?.temporaryParticipants, [
+    {
+      participantId: 'participant-code',
+      name: 'Code Reviewer',
+      provider: 'antigravity',
+      instance: 'native',
+      model: 'antigravity-default',
+      modelSelection: null,
+      roleHint: undefined,
+    },
+  ]);
 });

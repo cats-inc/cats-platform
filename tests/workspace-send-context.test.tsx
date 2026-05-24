@@ -44,7 +44,7 @@ test('prepareWorkspaceSendContext composes default dispatch target with attachme
       id: 'channel-1',
     },
     defaultChannelExecutionTarget: {
-      provider: 'codex',
+      provider: 'codex-cli',
       model: 'gpt-5.4',
       instance: 'native',
       modelSelection: {

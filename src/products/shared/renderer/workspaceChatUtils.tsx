@@ -35,6 +35,7 @@ import {
   type MessageInterpolationValues,
   type MessageKey,
 } from '../../../shared/i18n/index.js';
+import { resolveProductProviderId } from '../../../shared/providerCatalog.js';
 import { clearPendingOptimisticSend } from './pendingOptimisticSends.js';
 
 export type WorkspaceChatTranslator = (
@@ -43,6 +44,10 @@ export type WorkspaceChatTranslator = (
 ) => string;
 
 const defaultWorkspaceChatTranslator = createTranslator('en');
+
+function normalizeWorkspaceDraftProvider(provider: string): string {
+  return resolveProductProviderId(provider) ?? provider.trim();
+}
 
 export type Surface = 'chats' | 'settings';
 
@@ -318,7 +323,7 @@ export function buildNewChatChannelInput(options: {
       ? temporaryParticipants.map((participant) => ({
           participantId: participant.participantId,
           name: participant.name,
-          provider: participant.provider,
+          provider: normalizeWorkspaceDraftProvider(participant.provider),
           instance: participant.instance ?? undefined,
           model: participant.model ?? undefined,
           modelSelection: participant.modelSelection ?? null,
@@ -353,7 +358,9 @@ export function buildNewChatChannelInput(options: {
 
   return {
     ...baseInput,
-    pendingProvider: draftExecutionTarget?.provider,
+    pendingProvider: draftExecutionTarget
+      ? normalizeWorkspaceDraftProvider(draftExecutionTarget.provider)
+      : undefined,
     pendingModel: draftExecutionTarget?.model ?? undefined,
     pendingInstance: draftExecutionTarget?.instance ?? undefined,
     pendingModelSelection: draftExecutionTarget?.modelSelection ?? undefined,
