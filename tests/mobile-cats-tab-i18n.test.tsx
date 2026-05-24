@@ -22,11 +22,13 @@ import {
   setMobileLocaleOverride,
   sortChatCatsByRecency,
 } from '../src/mobile/index.ts';
-import {
+import productSidebarFixtures from '../mobile/src/api/fixtures/productSidebar.ts';
+
+const {
   getMobileDesktopOnlyAlertCopy,
   getMobileNewEntityDesktopOnlyAlertCopy,
   resolveMobileDraftApiEntryKind,
-} from '../mobile/src/api/fixtures/productSidebar.ts';
+} = productSidebarFixtures;
 
 function createPayload(): MobileAppShellPayload {
   return {

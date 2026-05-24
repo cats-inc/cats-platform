@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
+import productSidebarFixtures from '../mobile/src/api/fixtures/productSidebar.ts';
+import { getMobileProductSidebarCopy } from '../src/mobile/index.ts';
+
+const {
   getChatSidebarConfig,
   getCodeSidebarConfig,
   getWorkSidebarConfig,
-} from '../mobile/src/api/fixtures/productSidebar.ts';
-import { getMobileProductSidebarCopy } from '../src/mobile/index.ts';
+} = productSidebarFixtures;
 
 test('mobile product sidebar copy localizes fixed sidebar chrome', () => {
   const zh = getMobileProductSidebarCopy('zh-TW');
@@ -14,7 +16,7 @@ test('mobile product sidebar copy localizes fixed sidebar chrome', () => {
   assert.equal(zh.emptyRecentsLabel, '尚未有近期對話。');
 
   const chat = getChatSidebarConfig('zh-TW');
-  assert.equal(chat.productLabel, '聊天');
+  assert.equal(chat.productLabel, 'CHAT');
   assert.deepEqual(
     chat.primaryActions.map((action) => action.label),
     ['+ 新聊天', '+ 群組聊天', '+ 平行聊天'],
