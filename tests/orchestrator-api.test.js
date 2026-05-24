@@ -383,7 +383,7 @@ async function createChannel(baseUrl, options = {}) {
       cats: options.cats ?? [
         {
           name: 'Inline-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['reviewer'],
           skillProfile: 'companion',
           mcpProfile: 'chat-memory',
@@ -512,7 +512,7 @@ test('POST /api/orchestrator/plan projects Work tool intent for work-memory Cats
       cats: [
         {
           name: 'Work Planner',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['planner'],
           skillProfile: 'companion',
           mcpProfile: WORK_MCP_PROFILE_ID,
@@ -568,7 +568,7 @@ test('POST /api/orchestrator/plan projects external tracker binding intent', asy
       cats: [
         {
           name: 'Work Binder',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['planner'],
           skillProfile: 'companion',
           mcpProfile: WORK_MCP_PROFILE_ID,
@@ -623,7 +623,7 @@ test('POST /api/orchestrator/plan projects external issue import intent', async 
       cats: [
         {
           name: 'Work Importer',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['planner'],
           skillProfile: 'companion',
           mcpProfile: WORK_MCP_PROFILE_ID,
@@ -674,7 +674,7 @@ test('POST /api/orchestrator/plan projects read-only Work intake intent', async 
       cats: [
         {
           name: 'Work Intake',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['planner'],
           skillProfile: 'companion',
           mcpProfile: WORK_MCP_PROFILE_ID,
@@ -774,7 +774,7 @@ test('POST /api/cats rejects unsupported Cat MCP profile ids', async () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         name: 'Bad MCP Profile Cat',
-        provider: 'gemini',
+        provider: 'antigravity',
         roles: ['planner'],
         skillProfile: 'companion',
         mcpProfile: 'unknown-profile',
@@ -912,7 +912,7 @@ test('POST /api/orchestrator/dispatch returns executed continuation steps from t
       cats: [
         {
           name: 'Inline-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['reviewer'],
           skillProfile: 'companion',
           mcpProfile: 'chat-memory',
@@ -984,7 +984,7 @@ test('POST /api/orchestrator/dispatch forwards Work triage tool intent to runtim
       cats: [
         {
           name: 'Work',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['planner'],
           skillProfile: 'companion',
           mcpProfile: WORK_MCP_PROFILE_ID,
@@ -1051,7 +1051,7 @@ test('POST /api/orchestrator/dispatch forwards external binding tool intent to r
       cats: [
         {
           name: 'Work',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['planner'],
           skillProfile: 'companion',
           mcpProfile: WORK_MCP_PROFILE_ID,
@@ -1120,7 +1120,7 @@ test('POST /api/orchestrator/dispatch forwards Boss execution tool intent to run
       cats: [
         {
           name: 'Boss Cat',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['planner'],
           skillProfile: 'companion',
           mcpProfile: WORK_MCP_PROFILE_ID,
@@ -3869,7 +3869,7 @@ test('POST /api/core/operator-actions auto-resumes stored workflow continuation 
         },
         {
           name: 'Followup-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['auditor'],
           skillProfile: 'companion',
           mcpProfile: 'chat-memory',
@@ -3983,7 +3983,7 @@ test('POST /api/core/operator-actions auto-resumes stored workflow continuation 
         },
         {
           name: 'Followup-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['auditor'],
           skillProfile: 'companion',
           mcpProfile: 'chat-memory',
@@ -4099,7 +4099,7 @@ test('POST /api/core/operator-actions re-resolves stale workflow continuation ta
         },
         {
           name: 'Followup-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['auditor'],
           skillProfile: 'companion',
           mcpProfile: 'chat-memory',
@@ -4220,7 +4220,7 @@ test('recommendation-only continuation replay stays blocked on retry and auto-re
         },
         {
           name: 'Followup-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['auditor'],
           skillProfile: 'companion',
           mcpProfile: 'chat-memory',
@@ -4380,14 +4380,14 @@ test('recommendation-only parallel continuation replay waits for all recovered t
         },
         {
           name: 'Followup-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['auditor'],
           skillProfile: 'companion',
           mcpProfile: 'chat-memory',
         },
         {
           name: 'Verifier-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['verifier'],
           skillProfile: 'companion',
           mcpProfile: 'chat-memory',
@@ -4526,7 +4526,7 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
         },
         {
           name: 'Reviewer-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['reviewer'],
         },
       ],
@@ -4571,8 +4571,8 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
       status: 'ready',
       cwd: 'C:/repo/cats-platform',
       lastError: null,
-      provider: 'gemini',
-      model: 'gemini-2.5-pro',
+      provider: 'antigravity',
+      model: 'Gemini 3.1 Pro (high)',
       startedAt: now.toISOString(),
       lastUsedAt: now.toISOString(),
     },
@@ -4776,7 +4776,7 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
         },
         {
           name: 'Reviewer-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['reviewer'],
         },
       ],
@@ -4964,7 +4964,7 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
       assert.ok(task);
       assert.equal(task.metadata.workflowContinuationReplay, undefined);
       assert.equal(runtimeClient.createdSessions.length, 1);
-      assert.equal(runtimeClient.createdSessions[0]?.provider, 'gemini');
+      assert.equal(runtimeClient.createdSessions[0]?.provider, 'antigravity');
       assert.equal(runtimeClient.sentMessages.length, 1);
       assert.match(runtimeClient.sentMessages[0]?.content ?? '', /You are Reviewer-Agent/u);
       assert.ok(
@@ -5009,7 +5009,7 @@ test('startup-recovered initial sequential latest handoff auto-resumes on server
         },
         {
           name: 'Agent-2',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['implementer'],
         },
         {
@@ -5058,8 +5058,8 @@ test('startup-recovered initial sequential latest handoff auto-resumes on server
       status: 'ready',
       cwd: 'C:/repo/cats-platform',
       lastError: null,
-      provider: 'gemini',
-      model: 'gemini-2.5-pro',
+      provider: 'antigravity',
+      model: 'Gemini 3.1 Pro (high)',
       startedAt: now.toISOString(),
       lastUsedAt: now.toISOString(),
     },
@@ -5304,7 +5304,7 @@ test('startup-recovered initial sequential latest handoff keeps source identity 
         },
         {
           name: 'Agent-2',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['implementer'],
         },
         {
@@ -5846,12 +5846,12 @@ test('startup-recovered parallel continuation replay waits for every concrete ta
         },
         {
           name: 'Followup-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['auditor'],
         },
         {
           name: 'Verifier-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['verifier'],
         },
       ],
