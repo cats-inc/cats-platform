@@ -12,7 +12,7 @@ test('platform product copy localizes known surface ids and preserves unknown pr
   const t = createTranslator('zh-TW');
 
   assert.equal(resolvePlatformProductDisplayNameById('code', 'Cats Code', t), 'Cats Code');
-  assert.equal(resolvePlatformProductShortLabelById('code', 'Code', t), 'Code');
+  assert.equal(resolvePlatformProductShortLabelById('code', 'Code', t), '程式碼');
   assert.equal(
     resolvePlatformProductSubtitleById('code', 'Repos, runs, and codespaces', t),
     '程式碼庫、執行與程式工作區',
