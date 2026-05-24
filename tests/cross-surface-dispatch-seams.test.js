@@ -66,7 +66,7 @@ test('initial warm navigation payload is consumed once per mounted route', () =>
       entityId: 'channel-42',
       route: match,
     },
-    createdAt: '2026-04-20T11:00:00.000Z',
+    createdAt: new Date().toISOString(),
     snapshot: {
       appShellPayload: snapshotPayload,
     },
