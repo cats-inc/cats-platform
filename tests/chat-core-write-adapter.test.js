@@ -153,7 +153,7 @@ async function createGroupChannelState() {
     state,
     {
       name: 'Agent-2',
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['implementer'],
     },
     now,
@@ -163,6 +163,7 @@ async function createGroupChannelState() {
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Core write adapter',
       topic: 'Exercise canonical turn and lane writes.',
       skipBossCatGreeting: true,
@@ -186,7 +187,7 @@ async function createGroupChannelState() {
     channelId,
     {
       catId: agent2Id,
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['implementer'],
     },
     now,
@@ -608,6 +609,7 @@ test('chatStore.write projects a single-target reply even when transcript target
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Single-target reply drift',
       topic: 'Project canonical reply records when transcript target ids drift.',
       skipBossCatGreeting: true,
@@ -1696,6 +1698,8 @@ test('buildCanonicalChatMessage preserves direct-lane transport bindings on cano
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
+      entryKind: 'direct',
       title: 'Direct canonical rebuild',
       topic: 'Preserve direct-lane transport bindings when rebuilding from canonical segments.',
       roomMode: 'direct_message',
@@ -1706,6 +1710,7 @@ test('buildCanonicalChatMessage preserves direct-lane transport bindings on cano
     now,
   );
   const channelId = state.selectedChannelId;
+  await store.write(state);
   const runtimeClient = createRuntimeStub(async ({ content }) => {
     if (content.includes('You are Companion')) {
       return usage('Companion preserved the direct-lane canonical metadata.');
@@ -2054,6 +2059,8 @@ test('beginChannelMessageRetryDispatch preserves direct-lane transport bindings 
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
+      entryKind: 'direct',
       title: 'Direct retry canonical source',
       topic: 'Preserve direct-lane transport binding metadata on retry source rebuild.',
       roomMode: 'direct_message',
@@ -2064,6 +2071,7 @@ test('beginChannelMessageRetryDispatch preserves direct-lane transport bindings 
     now,
   );
   const channelId = state.selectedChannelId;
+  await store.write(state);
   const runtimeClient = createRuntimeStub(async ({ content }) => {
     if (content.includes('You are Companion')) {
       return usage('Companion completed the retryable direct-lane turn.');
@@ -2184,6 +2192,7 @@ test('repairOrphanedCompletedDispatchTurn syncs repaired turns back into canonic
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Repair canonical interaction',
       topic: 'Persist repaired dispatch turns into the canonical core records.',
       skipBossCatGreeting: true,
@@ -2353,6 +2362,7 @@ test('repairOrphanedCompletedDispatchTurn can recover a blocked turn from canoni
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Repair canonical fallback',
       topic: 'Recover a completed turn from canonical interaction segments.',
       skipBossCatGreeting: true,
@@ -2536,6 +2546,7 @@ test('applyChannelReadRepairs restores canonical reply and session metadata afte
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Repair chain canonical fallback',
       topic: 'Restore canonical reply and session metadata during read repair.',
       skipBossCatGreeting: true,
@@ -2896,6 +2907,7 @@ test('applyChannelReadRepairs restores canonical assistant metadata when rebuild
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Repair canonical metadata fallback',
       topic: 'Recover assistant metadata from canonical interaction segments.',
       skipBossCatGreeting: true,
