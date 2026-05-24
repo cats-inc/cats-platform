@@ -165,6 +165,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-05-13 (SPEC-109 added: phase-scoped Work tool surface for Chat/Telegram Work Item capture, Boss Cat triage/execution preparation, and external tracker bindings.)*
+*Last updated: 2026-05-24 (SPEC-110 added: Antigravity CLI in packaged setup and provider catalog.)*
 
 *See also: [plans/](../plans/) for implementation plans*

@@ -154,6 +154,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-05-13 (PLAN-099 added: rollout for phase-scoped Work tools covering registry contracts, intake capture, Chat/Telegram wiring, triage, Boss Cat execution preparation, and external tracker bindings.)*
+*Last updated: 2026-05-24 (PLAN-100 added: Gemini CLI to Antigravity CLI packaged setup rollout.)*
 
 *See also: [specs/](../specs/) for feature specifications*

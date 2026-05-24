@@ -149,6 +149,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-05-13 (ADR-106 added: automatic bidirectional external Work sync is deferred until credentials, conflict policy, external write approval, and audit behavior have a dedicated ADR/SPEC.)*
+*Last updated: 2026-05-24 (ADR-107 added: Gemini CLI to Antigravity CLI packaged setup and shared provider catalog migration.)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

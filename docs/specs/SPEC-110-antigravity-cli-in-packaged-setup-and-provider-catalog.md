@@ -14,7 +14,7 @@ The `environment-bootstrap` installer suite has retired `@google/gemini-cli` and
 
 This spec defines how `cats-platform` performs the full swap: installer scripts, desktop host CLI inventory and onboarding metadata, packaging asset registration, shared catalog data, skills sync, smoke tests, and supporting shell helpers. It is the platform counterpart to cats-runtime SPEC-026. ADR-107 captures the underlying decision.
 
-The shared provider catalog (`src/shared/providerCatalogData.ts`) is consumed by both platform UI and `cats-runtime`'s playground page; this spec defines that catalog as the single source of truth that runtime UI reads, and explicitly resolves the current duplication between the platform catalog and the runtime playground's hardcoded model list.
+The shared provider catalog (`src/shared/providerCatalogData.ts`) is consumed by platform UI. `cats-runtime` currently keeps its own hardcoded dashboard/playground provider and model lists, so this spec defines the platform catalog as the product-side source of truth and requires runtime PLAN-033 to either mirror those values deliberately or add an explicit generated import.
 
 ## Current Baseline
 
@@ -29,24 +29,24 @@ The shared provider catalog (`src/shared/providerCatalogData.ts`) is consumed by
 - The shared provider catalog (`src/shared/providerCatalogData.ts`) lists `gemini` as a provider with Gemini-3.x model entries; `src/shared/providerCatalogInstances.ts` registers a default Gemini instance template.
 - Shell helpers (`scripts/{macos,linux}/node-cli-common.sh`, `scripts/windows/_NpmCliInstaller.ps1`, `scripts/{macos,linux}/upgrade-cli-tools.sh`) include Gemini in their CLI catalogs, help text, and upgrade loops.
 - `scripts/README.md` documents the Gemini installer story across multiple sections.
-- A repo-root `GEMINI.md` exists as a cross-agent instruction file.
+- Repo-root and subproject `GEMINI.md` files exist as cross-agent instruction files. They are not packaged setup assets and are out of scope for this CLI migration.
 
 `cats-platform` has no existing references to `antigravity` or `agy`.
 
 ## Goals
 
-1. Replace the three Gemini native installer wrappers with Antigravity wrappers that delegate to `environment-bootstrap`'s `Install-AntigravityCLI.{ps1,sh}` for the actual install, preserving the desktop host's allowlisted-helper contract.
+1. Replace the three Gemini native installer wrappers with Antigravity wrappers that preserve the desktop host's allowlisted-helper contract and delegate only install / refresh actions to `environment-bootstrap`'s `Install-AntigravityCLI.ps1` or `install-antigravity-cli.sh`.
 2. Replace the `gemini` entry in `desktop/host/cliInventoryProbe.ts` with `antigravity` across binary name, display label, and native-installer suffix.
 3. Replace `windows/linux/macos-gemini-native-installer` asset registrations in `desktop/host/packaging.ts` and `desktop/host/setupAssets.ts` with Antigravity equivalents.
 4. Replace `gemini` in `desktop/host/bootstrapPage.ts` provider list, label map, and `ONBOARDING_COLLAPSED_PROVIDER_IDS` with `antigravity`, positioned per the upstream `Claude Code → Antigravity → Cursor Agent` ordering.
 5. Replace `gemini` in `desktop/host/contracts.ts` provider-id list with `antigravity`.
 6. Replace `gemini` in `scripts/windows/Check-WindowsSetupReadiness.ps1` with `antigravity`.
 7. Update all three packaged-setup smoke tests to assert Antigravity installer assets instead of Gemini.
-8. Replace the `gemini` provider family in `src/shared/providerCatalogData.ts` and `src/shared/providerCatalogInstances.ts` with `antigravity`; preserve the Gemini-3.x model list under the new family id (Antigravity CLI exposes the same underlying Gemini-3 models, per Google's product positioning, but as `antigravity-*` model labels if the CLI uses different identifiers).
+8. Replace the `gemini` provider family in `src/shared/providerCatalogData.ts` and `src/shared/providerCatalogInstances.ts` with `antigravity`; populate the Antigravity model list from the Phase 0 `agy` probe. Preserve existing Gemini model ids only if the CLI exposes those identifiers verbatim.
 9. Update skills sync tooling: drop `gemini` from the `--agent` validation list; add `antigravity` only if `agy` actually discovers a `.antigravity/skills/` directory (probed before flipping).
 10. Update shell helpers and READMEs to drop Gemini references and add Antigravity equivalents where structurally needed.
-11. Define the shared provider catalog as the canonical source for both platform UI and cats-runtime playground; explicitly call out the duplicate model list in `cats-runtime/src/http/ui/pages/playground.html` as something cats-runtime PLAN-033 Phase 4 must consume from the shared catalog.
-12. Delete `GEMINI.md` from the repo root.
+11. Define the shared provider catalog as the canonical platform-side source; explicitly call out the duplicate model list in `cats-runtime/src/http/ui/pages/playground.html` as something cats-runtime PLAN-033 Phase 4 must mirror or replace with a generated import.
+12. Leave repo-root and subproject `GEMINI.md` files untouched because they are agent-governance files, not Gemini CLI setup files.
 
 ## Non-Goals
 
@@ -82,9 +82,9 @@ The fix is not additive. The Gemini-named seams must be replaced, not extended.
 
 ### Functional Requirements
 
-1. `scripts/windows/Install-Gemini.ps1` shall be replaced by `scripts/windows/Install-Antigravity.ps1`, calling environment-bootstrap's `Install-AntigravityCLI.ps1` with the same `-Upgrade` / `-Force` / `-NonInteractive` contract the previous wrapper exposed.
-2. `scripts/macos/install-gemini.sh` shall be replaced by `scripts/macos/install-antigravity.sh`, delegating to environment-bootstrap's `install-antigravity-cli.sh` with `--upgrade` / `--force` / `--non-interactive` flag parity.
-3. `scripts/linux/install-gemini.sh` shall be replaced by `scripts/linux/install-antigravity.sh`, with the same delegation contract as macOS.
+1. `scripts/windows/Install-Gemini.ps1` shall be replaced by `scripts/windows/Install-Antigravity.ps1`. The new wrapper shall keep the packaged helper action surface (`-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-DryRun`, `-Json`, state hints) and translate install / refresh actions to environment-bootstrap's `Install-AntigravityCLI.ps1` (`-Upgrade`, `-Force`, `-NonInteractive`) where applicable.
+2. `scripts/macos/install-gemini.sh` shall be replaced by `scripts/macos/install-antigravity.sh`. The new wrapper shall keep the packaged helper action surface (`--check` / `-CheckOnly`, `-Apply`, `-upgrade`, `-force`, `--uninstall`, `--dry-run`, `--json`) and translate install / refresh actions to environment-bootstrap's `install-antigravity-cli.sh` (`-upgrade`, `-force`) where applicable.
+3. `scripts/linux/install-gemini.sh` shall be replaced by `scripts/linux/install-antigravity.sh`, with the same host-facing contract and environment-bootstrap flag translation as macOS.
 4. `desktop/host/cliInventoryProbe.ts:29,48,67` shall list `antigravity` instead of `gemini`, with binary name `agy`, display label `Antigravity`, and the appropriate native-installer suffix.
 5. `desktop/host/contracts.ts:95` shall include `antigravity` instead of `gemini` in the provider-id list.
 6. `desktop/host/packaging.ts:540-548` shall register `antigravity` with asset ids `windows-antigravity-native-installer`, `linux-antigravity-native-installer`, `macos-antigravity-native-installer`, pointing at the new wrapper paths.
@@ -104,8 +104,8 @@ The fix is not additive. The Gemini-named seams must be replaced, not extended.
 20. `scripts/macos/upgrade-cli-tools.sh:43` and `scripts/linux/upgrade-cli-tools.sh:43` shall drop `install-gemini.sh` from the upgrade-loop script list. Antigravity is not in this list because it uses a separate native installer (not the shared npm-helper flow).
 21. `scripts/windows/_NpmCliInstaller.ps1:7,526` shall update its comments to remove Gemini and add Antigravity context where applicable.
 22. `scripts/README.md:147,150,183,213,247,264,285` shall replace all Gemini references with Antigravity equivalents, and add a one-paragraph note in the appropriate section explaining the upstream swap.
-23. `GEMINI.md` at the repo root shall be deleted.
-24. `cats-runtime/src/http/ui/pages/playground.html` shall — as part of cats-runtime PLAN-033 Phase 4 — read its model list from the updated `src/shared/providerCatalogData.ts` rather than duplicating the model list inline. This spec does not implement that change but defines the platform catalog as the contract.
+23. Repo-root and subproject `GEMINI.md` files shall not be read, renamed, or deleted by this migration. Remaining references to Gemini in `AGENTS.md`, `CODEX.md`, or agent-specific instruction files are governance references, not stale CLI provider wiring.
+24. `cats-runtime/src/http/ui/pages/playground.html` shall - as part of cats-runtime PLAN-033 Phase 4 - either mirror the updated `src/shared/providerCatalogData.ts` model values or be changed to consume a real generated catalog export. This spec does not implement that runtime change but defines the platform catalog as the product-side contract.
 
 ### Non-Functional Requirements
 
@@ -127,7 +127,7 @@ The migration moves through six layers that must land in order:
 4. Readiness + smoke     → Check-WindowsSetupReadiness, smoke tests (3 OS)
 5. Skills + shell helpers → Sync-AgentSkills, sync-agent-skills, node-cli-common,
                            _NpmCliInstaller, upgrade-cli-tools
-6. Docs + repo hygiene   → scripts/README.md, GEMINI.md, AGENTS.md if needed
+6. Docs + repo hygiene   → scripts/README.md and CLI/setup docs only
 ```
 
 Layer 1 is the cross-repo handoff point — once the shared catalog is on `antigravity`, cats-runtime PLAN-033 Phase 4 is unblocked.
@@ -145,7 +145,7 @@ The desktop host wiring (layer 3) depends on layer 2 wrappers existing first bec
 - [ ] What is the new asset-id naming convention if `Install-Antigravity.{ps1,sh}` wrappers delegate to environment-bootstrap helpers? Options: `windows-antigravity-native-installer` (mirrors current Gemini naming) or `windows-antigravity-bootstrap-installer` (signals the delegation). Default: keep the `native-installer` suffix for consistency with sibling assets.
 - [ ] Does `agy` expose a `.antigravity/skills/` directory or an equivalent skills mechanism? Resolves whether Sync-AgentSkills gets an `antigravity` value or just drops `gemini`.
 - [ ] Do Antigravity's CLI session storage and model identifiers reuse the Gemini-3.x names verbatim, or does the CLI rename them? Resolves whether the shared catalog model strings stay as-is.
-- [ ] Should `Install-Antigravity.{ps1,sh}` wrappers be thin delegators (call environment-bootstrap directly) or full installers (download `agy` themselves)? Default: thin delegators, since environment-bootstrap is already a submodule of this monorepo and its installer code is the source of truth.
+- [ ] Which host-facing actions should the Antigravity wrappers implement directly versus delegating? Default: wrappers implement check / JSON / dry-run / uninstall semantics themselves, and call environment-bootstrap only for install / upgrade / force.
 - [ ] Should the `--antigravity` provider badge color in the shared catalog (and downstream UIs) match Gemini's previous blue (`#60a5fa`) or pick a distinct Antigravity color? Decision: pre-work for PLAN-100 Phase 1.
 
 ## References
