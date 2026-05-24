@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server.browser';
+import { renderToStaticMarkup as renderReactToStaticMarkup } from 'react-dom/server.browser';
+import { MemoryRouter } from 'react-router';
 
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import type { AppShellPayload } from '../src/products/code/api/contracts.ts';
@@ -14,6 +15,14 @@ import {
   type NewChatDraftProps,
 } from '../src/products/code/renderer/components/NewChatDraft.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
+
+function renderToStaticMarkup(element: React.ReactElement): string {
+  return renderReactToStaticMarkup(
+    <MemoryRouter>
+      {element}
+    </MemoryRouter>,
+  );
+}
 
 function createPayload(overrides: Partial<AppShellPayload['chat']> = {}): AppShellPayload {
   return {
@@ -522,9 +531,9 @@ test('team code and peer code drafts render through code-owned shared primitives
           {
             participantId: 'participant-inline',
             name: 'Inline Reviewer',
-            provider: 'gemini',
+            provider: 'antigravity',
             instance: 'native',
-            model: 'gemini-3.1-pro',
+            model: 'Gemini 3.1 Pro (high)',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },

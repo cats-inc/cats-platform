@@ -1,13 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server.browser';
+import { renderToStaticMarkup as renderReactToStaticMarkup } from 'react-dom/server.browser';
+import { MemoryRouter } from 'react-router';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import { pickDraftGreeting } from '../src/products/chat/renderer/chatUtils.tsx';
 import { NewChatDraft, type NewChatDraftProps } from '../src/products/chat/renderer/components/NewChatDraft.tsx';
 import { createDraftCompareShadowCardId } from '../src/products/shared/renderer/components/draftCompareShadowCardId.ts';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
+
+function renderToStaticMarkup(element: React.ReactElement): string {
+  return renderReactToStaticMarkup(
+    <MemoryRouter>
+      {element}
+    </MemoryRouter>,
+  );
+}
 
 function createPayload(): AppShellPayload {
   return {
@@ -81,7 +90,7 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
   };
 }
 
-test('lead-scoped new chat draft renders participant copy instead of private chat copy', () => {
+test('lead-scoped public new chat draft keeps fresh copy with a selected audience chip', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -90,13 +99,14 @@ test('lead-scoped new chat draft renders participant copy instead of private cha
     />,
   );
 
-  assert.match(markup, /Participant Chat/u);
-  assert.match(markup, /Start with Milo/u);
-  assert.match(markup, /Ask Milo to take the first pass/u);
-  assert.doesNotMatch(markup, /Private Chat/u);
+  assert.match(markup, /Meow\. Ready when you are\./u);
+  assert.match(markup, /class="audienceChip"/u);
+  assert.match(markup, /data-tooltip="Milo · Claude-CLI · claude-sonnet"/u);
+  assert.doesNotMatch(markup, /draftHeaderProfile/u);
+  assert.doesNotMatch(markup, /Participant Chat|Private Chat/u);
 });
 
-test('generic new chat draft with one selected cat renders participant copy', () => {
+test('generic new chat draft with one selected cat keeps fresh copy with a selected audience chip', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -105,9 +115,10 @@ test('generic new chat draft with one selected cat renders participant copy', ()
     />,
   );
 
-  assert.match(markup, /Participant Chat/u);
-  assert.match(markup, /Start with Milo/u);
-  assert.doesNotMatch(markup, /Group Chat/u);
+  assert.match(markup, /Meow\. Ready when you are\./u);
+  assert.match(markup, /class="audienceChip"/u);
+  assert.match(markup, /data-tooltip="Milo · Claude-CLI · claude-sonnet"/u);
+  assert.doesNotMatch(markup, /Group Chat|Participant Chat/u);
 });
 
 test('generic new chat draft keeps only the product-owned starter chip out of the box', () => {
@@ -258,9 +269,9 @@ test('default chat draft expanded to a group with runtime assist hides the chat-
           {
             participantId: 'participant-a',
             name: 'Reviewer A',
-            provider: 'gemini',
+            provider: 'antigravity',
             instance: 'native',
-            model: 'gemini-3.1-pro',
+            model: 'Gemini 3.1 Pro (high)',
             modelSelection: null,
             roleHint: null,
           },
@@ -334,9 +345,9 @@ test('group route shows add-participant hint inside the composer', () => {
           {
             participantId: 'participant-inline',
             name: 'Inline Reviewer',
-            provider: 'gemini',
+            provider: 'antigravity',
             instance: 'native',
-            model: 'gemini-3.1-pro',
+            model: 'Gemini 3.1 Pro (high)',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },
@@ -393,9 +404,9 @@ test('group route hides add-participant hint and button when max participants is
           {
             participantId: 'participant-inline',
             name: 'Inline Reviewer',
-            provider: 'gemini',
+            provider: 'antigravity',
             instance: 'native',
-            model: 'gemini-3.1-pro',
+            model: 'Gemini 3.1 Pro (high)',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },
@@ -423,9 +434,9 @@ test('group route keeps the current audience chip and inline avatar row for part
           {
             participantId: 'participant-inline',
             name: 'Inline Reviewer',
-            provider: 'gemini',
+            provider: 'antigravity',
             instance: 'native',
-            model: 'gemini-3.1-pro',
+            model: 'Gemini 3.1 Pro (high)',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },
@@ -440,7 +451,7 @@ test('group route keeps the current audience chip and inline avatar row for part
   assert.equal(avatarSlotMatches.length, 2);
   assert.match(markup, /class="audienceChip"/u);
   assert.match(markup, /Milo \+1/u);
-  assert.match(markup, /data-tooltip="Gemini-CLI · gemini-3.1-pro"/u);
+  assert.match(markup, /data-tooltip="Antigravity-CLI · Gemini 3.1 Pro \(high\)"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /aria-label="Remove Inline Reviewer"/u);
 });
@@ -490,9 +501,9 @@ test('group route caps the audience chip selection to the configured max audienc
           {
             participantId: 'participant-inline',
             name: 'Inline Reviewer',
-            provider: 'gemini',
+            provider: 'antigravity',
             instance: 'native',
-            model: 'gemini-3.1-pro',
+            model: 'Gemini 3.1 Pro (high)',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },
@@ -527,9 +538,9 @@ test('group route keeps remove controls hidden when only two participants remain
           {
             participantId: 'participant-inline',
             name: 'Inline Reviewer',
-            provider: 'gemini',
+            provider: 'antigravity',
             instance: 'native',
-            model: 'gemini-3.1-pro',
+            model: 'Gemini 3.1 Pro (high)',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },
@@ -571,9 +582,9 @@ test('group route restores remove controls once the draft has three participants
           {
             participantId: 'participant-inline',
             name: 'Inline Reviewer',
-            provider: 'gemini',
+            provider: 'antigravity',
             instance: 'native',
-            model: 'gemini-3.1-pro',
+            model: 'Gemini 3.1 Pro (high)',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },
