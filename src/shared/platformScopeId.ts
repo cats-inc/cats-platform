@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 import {
   resolvePlatformStorageLayout,
@@ -69,11 +70,27 @@ export async function ensurePlatformScopeId(input: {
   };
   const directory = path.dirname(input.filePath);
   await mkdir(directory, { recursive: true });
-  const tempPath = `${input.filePath}.tmp`;
-  await writeFile(tempPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
-  const { rename } = await import('node:fs/promises');
-  await rename(tempPath, input.filePath);
-  return scopeId;
+  try {
+    await writeFile(input.filePath, `${JSON.stringify(payload, null, 2)}\n`, {
+      encoding: 'utf8',
+      flag: 'wx',
+    });
+    return scopeId;
+  } catch (error) {
+    if (!isFileExistsError(error)) {
+      throw error;
+    }
+  }
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const racedExisting = await readPlatformScopeId(input.filePath);
+    if (racedExisting) return racedExisting;
+    await sleep(5);
+  }
+
+  const recovered = await readPlatformScopeId(input.filePath);
+  if (recovered) return recovered;
+  throw new Error(`Platform scope id file exists but could not be read: ${input.filePath}`);
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -81,5 +98,14 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
     typeof value === 'object'
     && value !== null
     && !Array.isArray(value)
+  );
+}
+
+function isFileExistsError(error: unknown): boolean {
+  return (
+    typeof error === 'object'
+    && error !== null
+    && 'code' in error
+    && (error as { code?: unknown }).code === 'EEXIST'
   );
 }

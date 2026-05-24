@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -94,9 +95,15 @@ function createRuntimeStub() {
 }
 
 async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
+  const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-channel-cat-assignment-'));
+  const runtimeDataDir = path.join(tempStateDir, 'runtime-data');
   const server = createServer({
     shared: {
-      config: baseConfig,
+      config: {
+        ...baseConfig,
+        chatStatePath: path.join(tempStateDir, 'platform', 'state', 'chat-state.local.json'),
+        runtimeDataDir,
+      },
       runtimeClient,
       now: () => new Date('2026-04-15T00:00:00.000Z'),
     },
@@ -118,6 +125,7 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
   } finally {
     server.close();
     await once(server, 'close');
+    await rm(tempStateDir, { recursive: true, force: true });
   }
 }
 
