@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [107-replace-gemini-cli-with-antigravity-in-packaged-setup](./107-replace-gemini-cli-with-antigravity-in-packaged-setup.md) | Replace Gemini CLI with Antigravity CLI in packaged setup and shared provider catalog | Proposed | 2026-05-24 |
 | [106-defer-bidirectional-external-work-sync](./106-defer-bidirectional-external-work-sync.md) | Defer Bidirectional External Work Sync | Proposed | 2026-05-13 |
 | [105-adopt-phase-scoped-work-tool-surface](./105-adopt-phase-scoped-work-tool-surface.md) | Adopt a Phase-Scoped Work Tool Surface | Proposed | 2026-05-13 |
 | [104-adopt-managed-live-preview-supervisor-for-artifact-canvas](./104-adopt-managed-live-preview-supervisor-for-artifact-canvas.md) | Adopt a Managed Live Preview Supervisor for Artifact Canvas | Proposed | 2026-05-09 |

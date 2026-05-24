@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-100](./PLAN-100-replace-gemini-cli-with-antigravity-in-packaged-setup.md) | Replace Gemini CLI with Antigravity CLI in Packaged Setup | Draft | [SPEC-110](../specs/SPEC-110-antigravity-cli-in-packaged-setup-and-provider-catalog.md), [ADR-107](../decisions/107-replace-gemini-cli-with-antigravity-in-packaged-setup.md) |
 | [PLAN-099](./PLAN-099-phase-scoped-work-tool-surface-rollout.md) | Phase-Scoped Work Tool Surface Rollout | Draft | [SPEC-109](../specs/SPEC-109-phase-scoped-work-tool-surface.md), [ADR-105](../decisions/105-adopt-phase-scoped-work-tool-surface.md) |
 | [PLAN-098](./PLAN-098-polymorphic-entity-subscription-follow-up.md) | Polymorphic Entity Subscription Follow-up | Implemented | [SPEC-076](../specs/SPEC-076-per-entity-state-subscription-protocol.md), [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md), [PLAN-068](./PLAN-068-per-entity-state-subscription-rollout.md) |
 | [PLAN-097](./PLAN-097-cats-code-live-preview-substrate-rollout.md) | Cats Code Live Preview Substrate Rollout | Draft | [SPEC-108](../specs/SPEC-108-cats-code-live-preview-substrate.md), [ADR-104](../decisions/104-adopt-managed-live-preview-supervisor-for-artifact-canvas.md) |
