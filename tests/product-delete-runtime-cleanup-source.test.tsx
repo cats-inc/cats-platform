@@ -286,10 +286,39 @@ test('renderer delete channel feedback surfaces retained runtime cleanup', async
     ),
     'utf8',
   );
+  const messageKeysSource = await readFile(
+    path.join(process.cwd(), 'src', 'shared', 'i18n', 'messageKeys.ts'),
+    'utf8',
+  );
+  const enCatalogSource = await readFile(
+    path.join(process.cwd(), 'src', 'shared', 'i18n', 'catalogs', 'en.ts'),
+    'utf8',
+  );
+  const zhCatalogSource = await readFile(
+    path.join(process.cwd(), 'src', 'shared', 'i18n', 'catalogs', 'zh-TW.ts'),
+    'utf8',
+  );
 
   assert.match(apiSource, /runtimeCleanup: normalizeDeleteRuntimeCleanup/u);
   assert.match(hookSource, /resolveDeleteChannelFeedback/u);
-  assert.match(hookSource, /retained by Cats Runtime/u);
+  assert.match(
+    hookSource,
+    /messageKeys\.sharedWorkspaceNavigationDeleteChannelRuntimeCleanupFeedbackOne/u,
+  );
+  assert.match(
+    hookSource,
+    /messageKeys\.sharedWorkspaceNavigationDeleteChannelRuntimeCleanupFeedbackMany/u,
+  );
+  assert.match(
+    messageKeysSource,
+    /sharedWorkspaceNavigationDeleteChannelRuntimeCleanupFeedbackOne:\s*'shared\.workspaceNavigation\.deleteChannelRuntimeCleanupFeedbackOne'/u,
+  );
+  assert.match(
+    messageKeysSource,
+    /sharedWorkspaceNavigationDeleteChannelRuntimeCleanupFeedbackMany:\s*'shared\.workspaceNavigation\.deleteChannelRuntimeCleanupFeedbackMany'/u,
+  );
+  assert.match(enCatalogSource, /Cats Runtime retained \{count\} linked runtime session/u);
+  assert.match(zhCatalogSource, /Cats 執行階段保留了 \{count\} 個連結的執行階段工作階段/u);
   assert.match(hookSource, /setFeedback\(feedback\)/u);
 });
 
