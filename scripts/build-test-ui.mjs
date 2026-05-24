@@ -17,6 +17,7 @@ if (entryPoints.length === 0) {
 await build({
   entryPoints,
   bundle: true,
+  external: ['jsdom'],
   platform: 'node',
   format: 'esm',
   outbase: testsDir,
