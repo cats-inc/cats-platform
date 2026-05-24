@@ -411,9 +411,9 @@ teaching the renderer or the user about the underlying script topology.
   `desktop/setup-assets/windows/`.
 - The second repo-owned packaged setup helper slice is also landed:
   `scripts/windows/Install-NodeCliPack.ps1` rewrites the Windows npm-global AI
-  CLI pack installer for Codex, Gemini CLI, Copilot, OpenCode, Auggie, and Pi,
-  and it is staged/bundled alongside the npm prefix helper as a host-owned
-  setup asset.
+  CLI pack installer for Codex, Copilot, OpenCode, Auggie, and Pi, while
+  Antigravity is handled by the native provider installer path instead of the
+  npm-global pack.
 - The third repo-owned packaged setup helper slice is now landed:
   `scripts/windows/Check-WslPrerequisites.ps1` establishes a structured WSL
   prerequisite preflight contract so the host can detect Windows build, WSL,
