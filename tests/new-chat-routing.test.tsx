@@ -320,7 +320,7 @@ test('buildNewChatChannelInput forwards channel-only temporary participants for 
         name: 'Inline Reviewer',
         provider: 'antigravity',
         instance: 'native',
-        model: 'Gemini 3.1 Pro (high)',
+        model: 'antigravity-default',
         modelSelection: null,
         roleHint: 'Counterpoint',
       },
@@ -474,7 +474,7 @@ test('generic group draft route seeds default temporary participants when none e
     [],
     () => createInitialGroupParticipants({
       provider: 'antigravity',
-      model: 'Gemini 3.1 Pro (high)',
+      model: 'antigravity-default',
       instance: 'cli/native',
       modelSelection: null,
     }, 8),
@@ -482,7 +482,7 @@ test('generic group draft route seeds default temporary participants when none e
 
   assert.equal(participants.length, 2);
   assert.equal(participants[0]?.provider, 'antigravity');
-  assert.equal(participants[0]?.model, 'Gemini 3.1 Pro (high)');
+  assert.equal(participants[0]?.model, 'antigravity-default');
   assert.equal(participants[0]?.instance, 'cli/native');
   assert.notEqual(participants[1]?.provider, 'antigravity');
 });
@@ -522,7 +522,7 @@ test('initial group participants keep the default seed at two and still honor lo
 test('initial group participants keep the shared lead provider first even when it is not product-order first', () => {
   const seed = createInitialGroupParticipants({
     provider: 'antigravity',
-    model: 'Gemini 3.1 Pro (high)',
+    model: 'antigravity-default',
     instance: 'cli/native',
     modelSelection: null,
   }, 2);
@@ -554,7 +554,7 @@ test('syncLeadDraftTemporaryParticipantWithTarget keeps the group lead aligned w
     ],
     target: {
       provider: 'antigravity',
-      model: 'Gemini 3.1 Pro (high)',
+      model: 'antigravity-default',
       instance: 'cli/native',
       modelSelection: {
         mode: 'preset',
@@ -566,7 +566,7 @@ test('syncLeadDraftTemporaryParticipantWithTarget keeps the group lead aligned w
 
   assert.equal(syncedParticipants[0]?.name, 'Antigravity-CLI');
   assert.equal(syncedParticipants[0]?.provider, 'antigravity');
-  assert.equal(syncedParticipants[0]?.model, 'Gemini 3.1 Pro (high)');
+  assert.equal(syncedParticipants[0]?.model, 'antigravity-default');
   assert.equal(syncedParticipants[0]?.instance, 'cli/native');
   assert.deepEqual(syncedParticipants[0]?.modelSelection, {
     mode: 'preset',
@@ -590,7 +590,7 @@ test('syncLeadDraftTemporaryParticipantWithTarget preserves explicit lead names'
     ],
     target: {
       provider: 'antigravity',
-      model: 'Gemini 3.1 Pro (high)',
+      model: 'antigravity-default',
       instance: 'cli/native',
       modelSelection: null,
     },
@@ -609,7 +609,7 @@ test('generic group draft route preserves existing temporary participants during
         name: 'Existing Reviewer',
         provider: 'antigravity',
         instance: 'native',
-        model: 'Gemini 3.1 Pro (high)',
+        model: 'antigravity-default',
         modelSelection: null,
       },
     ],
@@ -907,17 +907,17 @@ test('applyPendingExecutionTargetPreview updates the local default target before
     channel.id,
     {
       pendingProvider: 'antigravity',
-      pendingModel: 'Gemini 3.1 Pro (high)',
+      pendingModel: 'antigravity-default',
       pendingInstance: 'cli/native',
       pendingModelSelection: null,
     },
   );
 
   assert.equal(next.chat.selectedChannel?.pendingProvider, 'antigravity');
-  assert.equal(next.chat.selectedChannel?.pendingModel, 'Gemini 3.1 Pro (high)');
+  assert.equal(next.chat.selectedChannel?.pendingModel, 'antigravity-default');
   assert.equal(next.chat.selectedChannel?.pendingInstance, 'cli/native');
   assert.equal(next.chat.channels[0]?.pendingProvider, 'antigravity');
-  assert.equal(next.chat.channels[0]?.pendingModel, 'Gemini 3.1 Pro (high)');
+  assert.equal(next.chat.channels[0]?.pendingModel, 'antigravity-default');
 });
 
 test('insertCreatedChannelIntoPayload promotes a real created channel without a draft route', () => {

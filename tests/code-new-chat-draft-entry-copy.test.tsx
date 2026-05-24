@@ -533,7 +533,7 @@ test('team code and peer code drafts render through code-owned shared primitives
             name: 'Inline Reviewer',
             provider: 'antigravity',
             instance: 'native',
-            model: 'Gemini 3.1 Pro (high)',
+            model: 'antigravity-default',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },

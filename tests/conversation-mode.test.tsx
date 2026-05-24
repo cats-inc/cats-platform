@@ -195,7 +195,7 @@ test('resolveConversationMode treats temporary participants as participant chats
           target: {
             provider: 'antigravity',
             instance: 'native',
-            model: 'Gemini 3.1 Pro (high)',
+            model: 'antigravity-default',
           },
           modelSelection: null,
           lease: {

@@ -745,7 +745,7 @@ test('FileChatStore round-trips per-message execution provenance', async () => {
     {
       execution: {
         provider: 'antigravity',
-        model: 'Gemini 3.1 Pro (high)',
+        model: 'antigravity-default',
         instance: 'default',
       },
     },
@@ -756,7 +756,7 @@ test('FileChatStore round-trips per-message execution provenance', async () => {
   const lastMessage = reloaded.channels[0]?.messages.at(-1);
 
   assert.equal(lastMessage?.executionProvider, 'antigravity');
-  assert.equal(lastMessage?.executionModel, 'Gemini 3.1 Pro (high)');
+  assert.equal(lastMessage?.executionModel, 'antigravity-default');
   assert.equal(lastMessage?.executionInstance, 'default');
   assert.equal(lastMessage?.metadata.executionLabelSnapshot, 'Antigravity-CLI');
 });

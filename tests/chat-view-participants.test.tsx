@@ -118,7 +118,7 @@ function createTemporaryParticipant(
       target: {
         provider: 'antigravity',
         instance: 'native',
-        model: 'Gemini 3.1 Pro (high)',
+        model: 'antigravity-default',
       },
       modelSelection: null,
       lease: {
@@ -317,7 +317,7 @@ test('ChatView shows temporary participants in the top bar and composer avatar s
     <ChatView {...createProps()} />,
   );
 
-  assert.match(markup, /data-tooltip="Antigravity-CLI · Gemini 3\.1 Pro \(high\)"/u);
+  assert.match(markup, /data-tooltip="Antigravity-CLI · Antigravity default"/u);
   assert.match(markup, /data-tooltip="Claude-CLI · claude-sonnet"/u);
   assert.match(markup, /audienceChip/u);
   assert.doesNotMatch(markup, /data-tooltip="2 participants"/u);
@@ -432,7 +432,7 @@ test('ChatView keeps Cat visuals in room stacks while the composer stack preserv
   );
   assert.match(
     markup,
-    /class="catAvatar channelParticipantAvatar" data-tooltip="Antigravity-CLI · Gemini 3\.1 Pro \(high\)"/u,
+    /class="catAvatar channelParticipantAvatar" data-tooltip="Antigravity-CLI · Antigravity default"/u,
   );
   assert.match(
     markup,

@@ -3167,7 +3167,7 @@ test('resolveLiveIndicatorSpeakerLabel uses the default execution target label',
   const label = resolveLiveIndicatorSpeakerLabel({
     pendingProvider: 'antigravity',
     pendingInstance: 'cli/native',
-    pendingModel: 'Gemini 3.1 Pro (high)',
+    pendingModel: 'antigravity-default',
     roomRouting: {
       defaultRecipientId: null,
     },
@@ -3180,7 +3180,7 @@ test('resolveLiveIndicatorSpeakerLabel stays silent for participant chats', () =
   assert.equal(resolveLiveIndicatorSpeakerLabel({
     pendingProvider: 'antigravity',
     pendingInstance: 'cli/native',
-    pendingModel: 'Gemini 3.1 Pro (high)',
+    pendingModel: 'antigravity-default',
     assignedCats: [{ catId: 'cat-1', status: 'active' }],
     roomRouting: {
       defaultRecipientId: null,
@@ -3190,7 +3190,7 @@ test('resolveLiveIndicatorSpeakerLabel stays silent for participant chats', () =
   assert.equal(resolveLiveIndicatorSpeakerLabel({
     pendingProvider: 'antigravity',
     pendingInstance: 'cli/native',
-    pendingModel: 'Gemini 3.1 Pro (high)',
+    pendingModel: 'antigravity-default',
     roomRouting: {
       defaultRecipientId: 'cat-1',
     },

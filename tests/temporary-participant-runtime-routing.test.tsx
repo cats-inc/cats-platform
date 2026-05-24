@@ -38,7 +38,7 @@ function createTemporaryParticipantState() {
           name: 'RuntimeReviewer',
           provider: 'antigravity',
           instance: 'native',
-          model: 'Gemini 3.1 Pro (high)',
+          model: 'antigravity-default',
           modelSelection: null,
           roleHint: 'Counterpoint',
         },
@@ -138,7 +138,7 @@ test('temporary participants build prompts, choice routing, and suppress default
 
   const execution = resolveExecutionMetadataForTarget(state, channelId, reviewerTarget);
   assert.equal(execution.provider, 'antigravity');
-  assert.equal(execution.model, 'Gemini 3.1 Pro (high)');
+  assert.equal(execution.model, 'antigravity-default');
 
   const reviewerReply = appendMessage(
     state,

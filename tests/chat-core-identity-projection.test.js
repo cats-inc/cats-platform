@@ -82,7 +82,7 @@ test('ChatStore projects direct-lane participants, temporary participant actors,
       originSurface: 'chat',
       targets: [
         { provider: 'claude', instance: null, model: 'claude-default' },
-        { provider: 'antigravity', instance: null, model: 'Gemini 3.1 Pro (high)' },
+        { provider: 'antigravity', instance: null, model: 'antigravity-default' },
       ],
     },
     now,

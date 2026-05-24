@@ -526,7 +526,7 @@ test('mentioning a companion in a Recents thread hydrates the participant runtim
         originSurface: 'chat',
         skipBossCatGreeting: true,
         pendingProvider: 'antigravity',
-        pendingModel: 'Gemini 3.1 Pro (high)',
+        pendingModel: 'antigravity-default',
       }),
     });
     assert.equal(createChannelResponse.status, 201);

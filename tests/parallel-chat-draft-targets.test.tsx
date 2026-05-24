@@ -60,7 +60,7 @@ test('parallel draft keeps the first target synchronized with the shared draft d
     ],
     {
       provider: 'antigravity',
-      model: 'Gemini 3.1 Pro (high)',
+      model: 'antigravity-default',
       instance: 'cli/native',
       modelSelection: {
         mode: 'preset',
@@ -72,7 +72,7 @@ test('parallel draft keeps the first target synchronized with the shared draft d
 
   assert.deepEqual(syncedTargets[0], {
     provider: 'antigravity',
-    model: 'Gemini 3.1 Pro (high)',
+    model: 'antigravity-default',
     instance: 'cli/native',
     modelSelection: {
       mode: 'preset',

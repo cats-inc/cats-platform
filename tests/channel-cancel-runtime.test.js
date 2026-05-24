@@ -178,7 +178,7 @@ test('POST /api/channels/:id/cancel stops an in-flight group room dispatch', asy
           name: 'Counterpoint',
           provider: 'antigravity',
           instance: 'native',
-          model: 'Gemini 3.1 Pro (high)',
+          model: 'antigravity-default',
           modelSelection: null,
           roleHint: 'Secondary challenge.',
         },

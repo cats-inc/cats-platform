@@ -675,7 +675,7 @@ test('resolveChannelStreamTarget does not leak the internal Orchestrator placeho
       sessionId: 'session-orchestrator',
       laneId: 'lane-turn-default-orchestrator-target-orchestrator',
       provider: 'antigravity',
-      model: 'Gemini 3.1 Pro (high)',
+      model: 'antigravity-default',
     },
     roomRouting: {
       defaultRecipientId: null,
@@ -771,7 +771,7 @@ test('resolveChannelStreamTarget keeps the orchestrator label from lease attachm
       sessionId: 'session-orchestrator-closed',
       laneId: 'lane-turn-old-target-orchestrator',
       provider: 'antigravity',
-      model: 'Gemini 3.1 Pro (high)',
+      model: 'antigravity-default',
       startedAt: '2026-04-15T12:00:00.000Z',
       lastUsedAt: '2026-04-15T12:00:00.000Z',
       cwd: null,

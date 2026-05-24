@@ -37,7 +37,7 @@ test('createChannel keeps channel-only temporary participants outside cat assign
           name: 'Counter Reviewer',
           provider: 'antigravity',
           instance: 'native',
-          model: 'Gemini 3.1 Pro (high)',
+          model: 'antigravity-default',
           roleHint: 'Counterpoint',
         },
       ],
