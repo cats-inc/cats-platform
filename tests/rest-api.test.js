@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -95,6 +96,7 @@ function createRuntimeStub() {
 
 async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
   const now = new Date('2026-03-18T00:00:00.000Z');
+  await mkdir(path.dirname(baseConfig.chatStatePath), { recursive: true });
   const auth = await createAuthenticatedTestSession({
     now,
     sessionSecret: baseConfig.auth.sessionSecret,

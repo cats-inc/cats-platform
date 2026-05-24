@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createServer as createHttpServer } from 'node:http';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
 
@@ -191,12 +194,13 @@ async function withSlowSetupScanRuntimeStub(callback) {
 
 async function withPlatformServer(runtimeBaseUrl, runtimeApiKey, callback, configOverrides = {}) {
   const now = new Date('2026-04-20T00:00:00.000Z');
+  const tempStateDir = await mkdtemp(path.join(tmpdir(), 'cats-runtime-surface-'));
   const config = {
     host: '127.0.0.1',
     port: 8181,
     runtimeBaseUrl,
     runtimeApiKey,
-    chatStatePath: 'unused-for-tests',
+    chatStatePath: path.join(tempStateDir, 'platform', 'state', 'chat-state.local.json'),
     auth: createTestAuthConfig(),
     ...configOverrides,
   };
@@ -235,6 +239,7 @@ async function withPlatformServer(runtimeBaseUrl, runtimeApiKey, callback, confi
     restoreFetch();
     server.close();
     await once(server, 'close');
+    await rm(tempStateDir, { recursive: true, force: true });
   }
 }
 
