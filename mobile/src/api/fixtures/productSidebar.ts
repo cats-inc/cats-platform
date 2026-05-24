@@ -195,3 +195,15 @@ export function getMobileNewEntityDesktopOnlyAlertCopy(
   }
   return null;
 }
+
+export default {
+  chatSidebarConfig,
+  codeSidebarConfig,
+  getChatSidebarConfig,
+  getCodeSidebarConfig,
+  getMobileDesktopOnlyAlertCopy,
+  getMobileNewEntityDesktopOnlyAlertCopy,
+  getWorkSidebarConfig,
+  resolveMobileDraftApiEntryKind,
+  workSidebarConfig,
+};
