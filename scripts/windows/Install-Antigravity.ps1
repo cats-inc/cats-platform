@@ -253,7 +253,11 @@ $appliedChanges = [System.Collections.Generic.List[string]]::new()
 $warnings = [System.Collections.Generic.List[string]]::new()
 $manualSteps = [System.Collections.Generic.List[string]]::new()
 
-if (-not $detected.installed) {
+if ($Force) {
+  $plannedActions.Add('reinstall_antigravity_native')
+} elseif ($Upgrade -and $detected.installed) {
+  $plannedActions.Add('upgrade_antigravity_native')
+} elseif (-not $detected.installed) {
   $plannedActions.Add('install_antigravity_native')
 }
 
