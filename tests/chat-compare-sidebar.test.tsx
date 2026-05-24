@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isValidElement, type ComponentProps, type ReactNode, type RefObject } from 'react';
+import { cleanup, fireEvent, render } from '@testing-library/react';
+import { JSDOM } from 'jsdom';
+import React, { type ComponentProps, type RefObject } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 
-import { ConversationSidebarFooter } from '../src/app/renderer/productShell/ConversationSidebarFooter.tsx';
-import { ConversationSidebarNavigation } from '../src/app/renderer/productShell/ConversationSidebarNavigation.tsx';
-import { ConversationSidebarRecentsSection } from '../src/app/renderer/productShell/ConversationSidebarRecents.tsx';
+import { GuideCatPlacementProvider } from '../src/app/renderer/GuideCatPlacementProvider.tsx';
+import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import type { AppShellPayload, ChatChannelSummary } from '../src/products/chat/api/contracts.ts';
 import {
   buildNewGroupChatPath,
@@ -14,90 +16,7 @@ import {
 import { Sidebar } from '../src/products/chat/renderer/components/Sidebar.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
-function findElementByType<TProps>(
-  node: ReactNode,
-  componentType: unknown,
-): { props: TProps } {
-  if (Array.isArray(node)) {
-    for (const child of node) {
-      try {
-        return findElementByType<TProps>(child, componentType);
-      } catch {
-        continue;
-      }
-    }
-    throw new Error('Component not found.');
-  }
-
-  if (!isValidElement(node)) {
-    throw new Error('Component not found.');
-  }
-
-  if (node.type === componentType) {
-    return node as { props: TProps };
-  }
-
-  const children = node.props.children;
-  if (!children) {
-    throw new Error('Component not found.');
-  }
-
-  if (Array.isArray(children)) {
-    for (const child of children) {
-      try {
-        return findElementByType<TProps>(child, componentType);
-      } catch {
-        continue;
-      }
-    }
-    throw new Error('Component not found.');
-  }
-
-  return findElementByType<TProps>(children, componentType);
-}
-
-function findDescendantByClassName<TProps>(
-  node: ReactNode,
-  className: string,
-): { type: unknown; props: TProps } {
-  if (Array.isArray(node)) {
-    for (const child of node) {
-      try {
-        return findDescendantByClassName<TProps>(child, className);
-      } catch {
-        continue;
-      }
-    }
-    throw new Error(`Element with class "${className}" not found.`);
-  }
-
-  if (!isValidElement(node)) {
-    throw new Error(`Element with class "${className}" not found.`);
-  }
-
-  const cls = (node.props as { className?: string })?.className;
-  if (typeof cls === 'string' && cls.split(/\s+/).includes(className)) {
-    return node as { type: unknown; props: TProps };
-  }
-
-  const children = (node.props as { children?: ReactNode })?.children;
-  if (children == null || children === false) {
-    throw new Error(`Element with class "${className}" not found.`);
-  }
-
-  if (Array.isArray(children)) {
-    for (const child of children) {
-      try {
-        return findDescendantByClassName<TProps>(child, className);
-      } catch {
-        continue;
-      }
-    }
-    throw new Error(`Element with class "${className}" not found.`);
-  }
-
-  return findDescendantByClassName<TProps>(children, className);
-}
+type SidebarProps = ComponentProps<typeof Sidebar>;
 
 function createChannel(
   overrides: Partial<ChatChannelSummary> & { id: string; title: string },
@@ -246,8 +165,8 @@ function createPayload(): AppShellPayload {
   };
 }
 
-test('Sidebar groups parallel chats and shows member labels in Recents', () => {
-  const tree = Sidebar({
+function createSidebarProps(overrides: Partial<SidebarProps> = {}): SidebarProps {
+  return {
     payload: createPayload(),
     sidebarOpen: true,
     accountMenuOpen: false,
@@ -273,59 +192,114 @@ test('Sidebar groups parallel chats and shows member labels in Recents', () => {
     onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {},
     onNavigateRuntime: () => {},
+    onCreateNewCat: () => {},
     onSwitchProduct: () => {},
     activeMyCatId: null,
     onDirectChatCat: () => {},
-  });
+    onClearDirectLane: () => {},
+    confirmDialog: async () => true,
+    ...overrides,
+  };
+}
 
-  const navigation = findElementByType<{
-    primaryActions: Array<{ label: string }>;
-  }>(tree, ConversationSidebarNavigation);
-  const recents = findElementByType<{
-    entries: Array<
-      | {
-          kind: 'channel';
-          channel: ChatChannelSummary;
-          titleOverride?: string;
-        }
-      | {
-          kind: 'group';
-          title: string;
-          channels: Array<{ channel: ChatChannelSummary; titleOverride?: string }>;
-        }
-    >;
-  }>(tree, ConversationSidebarRecentsSection);
-  const labels = recents.props.entries.flatMap((entry) =>
-    entry.kind === 'group'
-      ? entry.channels.map((channel) => channel.titleOverride ?? channel.channel.title)
-      : [entry.titleOverride ?? entry.channel.title],
+function renderSidebar(overrides: Partial<SidebarProps> = {}) {
+  return render(
+    <MemoryRouter initialEntries={['/chat/chats/compare-1']}>
+      <I18nProvider locale="en">
+        <GuideCatPlacementProvider
+          guideCat={null}
+          placement="floating"
+          floatingAnchor={null}
+          sidecarMode="auto"
+          onPersistSeen={() => {}}
+          onCommit={() => {}}
+        >
+          <Sidebar {...createSidebarProps(overrides)} />
+        </GuideCatPlacementProvider>
+      </I18nProvider>
+    </MemoryRouter>,
   );
-  const groupTitles = recents.props.entries
-    .filter((entry): entry is Extract<typeof entry, { kind: 'group' }> => entry.kind === 'group')
-    .map((entry) => entry.title);
+}
+
+function installDom(): () => void {
+  const dom = new JSDOM('<!doctype html><html><head></head><body></body></html>', {
+    url: 'http://localhost/chat/chats/compare-1',
+  });
+  Object.defineProperty(dom.window.HTMLElement.prototype, 'attachEvent', {
+    configurable: true,
+    value: () => {},
+  });
+  Object.defineProperty(dom.window.HTMLElement.prototype, 'detachEvent', {
+    configurable: true,
+    value: () => {},
+  });
+  const previousDescriptors = new Map<PropertyKey, PropertyDescriptor | undefined>();
+  const globals: Array<[PropertyKey, unknown]> = [
+    ['React', React],
+    ['window', dom.window],
+    ['document', dom.window.document],
+    ['location', dom.window.location],
+    ['HTMLElement', dom.window.HTMLElement],
+    ['HTMLButtonElement', dom.window.HTMLButtonElement],
+    ['SVGElement', dom.window.SVGElement],
+    ['DocumentFragment', dom.window.DocumentFragment],
+    ['Node', dom.window.Node],
+    ['Event', dom.window.Event],
+    ['MouseEvent', dom.window.MouseEvent],
+    ['MutationObserver', dom.window.MutationObserver],
+    ['navigator', dom.window.navigator],
+    ['getComputedStyle', dom.window.getComputedStyle.bind(dom.window)],
+  ];
+  for (const [key, value] of globals) {
+    previousDescriptors.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+    Object.defineProperty(globalThis, key, {
+      configurable: true,
+      value,
+      writable: true,
+    });
+  }
+  return () => {
+    for (const [key, descriptor] of previousDescriptors) {
+      if (descriptor) {
+        Object.defineProperty(globalThis, key, descriptor);
+      } else {
+        delete (globalThis as Record<PropertyKey, unknown>)[key];
+      }
+    }
+    dom.window.close();
+  };
+}
+
+function readPrimaryActionLabels(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll('.sidebarInner > .navGroup .navLabel'))
+    .map((node) => node.textContent ?? '');
+}
+
+test('Sidebar groups parallel chats and shows member labels in Recents', (t) => {
+  const restoreDom = installDom();
+  t.after(() => {
+    cleanup();
+    restoreDom();
+  });
+  const view = renderSidebar();
 
   assert.deepEqual(
-    navigation.props.primaryActions.map((action) => action.label),
-    ['New chat', 'Group chat', 'Parallel chat'],
+    readPrimaryActionLabels(view.container),
+    ['New Chat', 'Group Chat', 'Parallel Chat'],
   );
-  assert.deepEqual(groupTitles, ['Parallel chat 1']);
-  assert.deepEqual(labels, ['Claude Sonnet 4', 'GPT-5']);
+  assert.ok(view.getByText('Parallel chat 1'));
+  assert.ok(view.getByText('Claude Sonnet 4'));
+  assert.ok(view.getByText('GPT-5'));
 });
 
-test('Sidebar exposes a dedicated Group chat primary action', () => {
+test('Sidebar exposes a dedicated Group chat primary action', (t) => {
+  const restoreDom = installDom();
+  t.after(() => {
+    cleanup();
+    restoreDom();
+  });
   const actions: string[] = [];
-  const tree = Sidebar({
-    payload: createPayload(),
-    sidebarOpen: true,
-    accountMenuOpen: false,
-    overflowMenuOpenId: null,
-    busy: clearBusyState(),
-    surface: 'chats',
-    routeChannelId: 'compare-1',
-    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
-    onToggleSidebar: () => {},
-    onCollapsedSidebarClick: () => {},
-    onOpenChatsOverview: () => {},
+  const view = renderSidebar({
     onStartNewChat: () => {
       actions.push('default');
     },
@@ -335,30 +309,18 @@ test('Sidebar exposes a dedicated Group chat primary action', () => {
     onStartNewParallelChat: () => {
       actions.push('parallel');
     },
-    onSelect: () => {},
-    onDeleteChannel: () => {},
-    onRenameChannel: () => {},
-    onRenameParallelChatGroup: () => {},
-    onUngroupParallelChatGroup: () => {},
-    onDeleteParallelChatGroup: () => {},
-    onArchiveCat: () => {},
-    onAccountMenuToggle: () => {},
-    onOverflowMenuToggle: () => {},
-    onNavigateSettings: () => {},
-    onNavigateRuntime: () => {},
-    onSwitchProduct: () => {},
-    activeMyCatId: null,
-    onDirectChatCat: () => {},
   });
 
-  const navigation = findElementByType<{
-    primaryActions: Array<{ label: string; onClick: () => void }>;
-  }>(tree, ConversationSidebarNavigation);
-  navigation.props.primaryActions.find((action) => action.label === 'Group chat')?.onClick();
+  fireEvent.click(view.getByRole('button', { name: 'Group Chat' }));
   assert.deepEqual(actions, ['group']);
 });
 
-test('Sidebar excludes non-chat recents and compare groups by origin surface', () => {
+test('Sidebar excludes non-chat recents and compare groups by origin surface', (t) => {
+  const restoreDom = installDom();
+  t.after(() => {
+    cleanup();
+    restoreDom();
+  });
   const payload = createPayload();
   payload.chat.channels = [
     createChannel({ id: 'chat-1', title: 'Chat recent' }),
@@ -397,51 +359,25 @@ test('Sidebar excludes non-chat recents and compare groups by origin surface', (
     },
   ];
 
-  const tree = Sidebar({
+  const view = renderSidebar({
     payload,
-    sidebarOpen: true,
-    accountMenuOpen: false,
-    overflowMenuOpenId: null,
-    busy: clearBusyState(),
-    surface: 'chats',
     routeChannelId: 'chat-1',
-    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
-    onToggleSidebar: () => {},
-    onCollapsedSidebarClick: () => {},
-    onOpenChatsOverview: () => {},
-    onStartNewChat: () => {},
-    onStartNewGroupChat: () => {},
-    onStartNewParallelChat: () => {},
-    onSelect: () => {},
-    onDeleteChannel: () => {},
-    onRenameChannel: () => {},
-    onRenameParallelChatGroup: () => {},
-    onUngroupParallelChatGroup: () => {},
-    onDeleteParallelChatGroup: () => {},
-    onArchiveCat: () => {},
-    onAccountMenuToggle: () => {},
-    onOverflowMenuToggle: () => {},
-    onNavigateSettings: () => {},
-    onNavigateRuntime: () => {},
-    onSwitchProduct: () => {},
-    activeMyCatId: null,
-    onDirectChatCat: () => {},
   });
 
-  const recents = findElementByType<{
-    entries: Array<
-      | { kind: 'channel'; channel: ChatChannelSummary; titleOverride?: string }
-      | { kind: 'group'; title: string; channels: Array<{ channel: ChatChannelSummary; titleOverride?: string }> }
-    >;
-  }>(tree, ConversationSidebarRecentsSection);
-
-  assert.deepEqual(
-    recents.props.entries.map((entry) => entry.kind === 'group' ? entry.title : entry.channel.title),
-    ['Chat recent', 'Chat compare'],
-  );
+  assert.ok(view.getByText('Chat recent'));
+  assert.ok(view.getByText('Chat compare'));
+  assert.equal(view.queryByText('Code recent'), null);
+  assert.equal(view.queryByText('Code compare'), null);
+  assert.equal(view.queryByText('Compare code A'), null);
+  assert.equal(view.queryByText('Compare code B'), null);
 });
 
-test('Sidebar footer exposes two sibling buttons for settings and runtime navigation', () => {
+test('Sidebar footer exposes two sibling buttons for settings and runtime navigation', (t) => {
+  const restoreDom = installDom();
+  t.after(() => {
+    cleanup();
+    restoreDom();
+  });
   // Temporary variant of the account-menu test while the popup menu is
   // disabled. Two real <button> siblings (main + trailing) so keyboard
   // users Tab to the runtime entry independently and Enter/Space
@@ -452,74 +388,37 @@ test('Sidebar footer exposes two sibling buttons for settings and runtime naviga
   let navigateSettingsCount = 0;
   let navigateRuntimeCount = 0;
 
-  const tree = Sidebar({
-    payload: createPayload(),
-    sidebarOpen: true,
+  const view = renderSidebar({
     accountMenuOpen: true,
-    overflowMenuOpenId: null,
-    busy: clearBusyState(),
-    surface: 'chats',
-    routeChannelId: 'compare-1',
-    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
-    onToggleSidebar: () => {},
-    onCollapsedSidebarClick: () => {},
-    onOpenChatsOverview: () => {},
-    onStartNewChat: () => {},
-    onStartNewGroupChat: () => {},
-    onStartNewParallelChat: () => {},
-    onSelect: () => {},
-    onDeleteChannel: () => {},
-    onRenameChannel: () => {},
-    onRenameParallelChatGroup: () => {},
-    onUngroupParallelChatGroup: () => {},
-    onDeleteParallelChatGroup: () => {},
-    onArchiveCat: () => {},
-    onAccountMenuToggle: () => {},
-    onOverflowMenuToggle: () => {},
     onNavigateSettings: () => {
       navigateSettingsCount += 1;
     },
     onNavigateRuntime: () => {
       navigateRuntimeCount += 1;
     },
-    onSwitchProduct: () => {},
-    activeMyCatId: null,
-    onDirectChatCat: () => {},
   });
-
-  const footer = findElementByType<ComponentProps<typeof ConversationSidebarFooter>>(
-    tree,
-    ConversationSidebarFooter,
-  );
-  assert.equal(typeof footer.props.onNavigateSettings, 'function');
-  assert.equal(typeof footer.props.onNavigateRuntime, 'function');
-
-  const footerTree = ConversationSidebarFooter(footer.props);
 
   // Both halves must be real <button>s so they participate in the
   // browser's native focus/activation chain (no role="button" <span>s,
   // no `tabIndex={0}` workarounds).
-  const mainButton = findDescendantByClassName<{
-    onClick: () => void;
-  }>(footerTree, 'sidebarFooterMainButton');
-  const trailingButton = findDescendantByClassName<{
-    onClick: () => void;
-    'aria-label': string;
-  }>(footerTree, 'sidebarFooterTrailing');
-  assert.equal(mainButton.type, 'button');
-  assert.equal(trailingButton.type, 'button');
-  assert.match(trailingButton.props['aria-label'], /Runtime status/);
+  const mainButton = view.container.querySelector<HTMLButtonElement>('.sidebarFooterMainButton');
+  const trailingButton = view.container.querySelector<HTMLButtonElement>('.sidebarFooterTrailing');
+  assert.ok(mainButton);
+  assert.ok(trailingButton);
+  assert.equal(mainButton.tagName, 'BUTTON');
+  assert.equal(trailingButton.tagName, 'BUTTON');
+  assert.match(trailingButton.getAttribute('aria-label') ?? '', /Runtime status/);
 
   // Activating the main button (keyboard Enter/Space or mouse click —
   // the browser funnels both into `onClick`) navigates to general
   // settings.
-  mainButton.props.onClick();
+  fireEvent.click(mainButton);
   assert.equal(navigateSettingsCount, 1);
   assert.equal(navigateRuntimeCount, 0);
 
   // Activating the trailing button (independent Tab stop) navigates
   // to runtime settings.
-  trailingButton.props.onClick();
+  fireEvent.click(trailingButton);
   assert.equal(navigateSettingsCount, 1);
   assert.equal(navigateRuntimeCount, 1);
 });

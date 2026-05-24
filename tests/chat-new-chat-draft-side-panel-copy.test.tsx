@@ -8,24 +8,29 @@ import {
   buildChatNewChatDraftSidePanelSections,
   resolveChatNewChatDraftSidePanelCopy,
 } from '../src/products/shared/renderer/components/chatNewChatDraftSidePanel.tsx';
+import { createTranslator } from '../src/shared/i18n/index.ts';
 
 test('chat new draft side panel copy can be product-owned by callers', () => {
-  const copy = resolveChatNewChatDraftSidePanelCopy({
-    title: 'New Code Setup',
-    participants: {
-      catsSectionTitle: 'Participants',
-      groupSectionTitle: 'Participants',
-      emptyState: 'No participants available yet.',
+  const t = createTranslator('en');
+  const copy = resolveChatNewChatDraftSidePanelCopy(
+    {
+      title: 'New Code Setup',
+      participants: {
+        catsSectionTitle: 'Participants',
+        groupSectionTitle: 'Participants',
+        emptyState: 'No participants available yet.',
+      },
+      execution: {
+        sectionTitle: 'Execution',
+        emptyState: 'No execution target set yet.',
+      },
+      folder: {
+        sectionTitle: 'Workspace',
+        emptyState: 'No workspace selected yet.',
+      },
     },
-    execution: {
-      sectionTitle: 'Execution',
-      emptyState: 'No execution target set yet.',
-    },
-    folder: {
-      sectionTitle: 'Workspace',
-      emptyState: 'No workspace selected yet.',
-    },
-  });
+    t,
+  );
   const sections = buildChatNewChatDraftSidePanelSections({
     payload: { chat: { bossCatId: null, cats: [] }, assistantPresets: [] } as unknown as AppShellPayload,
     chatCats: [],
@@ -74,6 +79,7 @@ test('chat new draft side panel copy can be product-owned by callers', () => {
     draftRuntimeSessionPolicy: null,
     onCloseSidePanel: () => {},
     sidePanelCopy: copy,
+    t,
   });
 
   assert.equal(copy.title, 'New Code Setup');

@@ -135,7 +135,7 @@ function createChannel(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test('deriveAppViewState does not auto-insert Boss Cat for participant chats', () => {
+test('deriveAppViewState shows Boss Cat avatar without auto-inserting Boss Cat into participant assignments', () => {
   const payload = createPayload();
   const selectedChannel = createChannel({
     assignedParticipants: [
@@ -276,7 +276,12 @@ test('deriveAppViewState does not auto-insert Boss Cat for participant chats', (
     draftCatIds: [],
   });
 
-  assert.equal(viewState.showBossCatAvatar, false);
+  assert.equal(viewState.showBossCatAvatar, true);
+  assert.equal(viewState.assignedCatIds.has('boss-cat'), false);
+  assert.equal(
+    viewState.activeAssignedCats.some((cat) => cat.catId === 'boss-cat'),
+    false,
+  );
 });
 
 test('deriveAppViewState still shows Boss Cat avatar for participant chats without Boss assigned', () => {
