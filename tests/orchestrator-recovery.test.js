@@ -262,6 +262,7 @@ test('startup recovery auto-resumes recovered continuation replays and syncs sha
   chat = createChannel(
     chat,
     {
+      originSurface: 'chat',
       title: 'Recovered continuation replay',
       topic: 'Resume the stored recommendation after restart.',
       cats: [
@@ -272,7 +273,7 @@ test('startup recovery auto-resumes recovered continuation replays and syncs sha
         },
         {
           name: 'Followup-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['auditor'],
         },
       ],
@@ -440,6 +441,7 @@ test('startup recovery skips ready continuation replays until targets actually r
   chat = createChannel(
     chat,
     {
+      originSurface: 'chat',
       title: 'Still blocked continuation replay',
       topic: 'Do not replay until a target comes back.',
       cats: [
@@ -565,6 +567,7 @@ test('startup recovery skips startup-recovered parallel continuation replays unt
   chat = createChannel(
     chat,
     {
+      originSurface: 'chat',
       title: 'Recovered parallel continuation replay',
       topic: 'Wait for every preserved target to come back after restart.',
       cats: [
@@ -575,12 +578,12 @@ test('startup recovery skips startup-recovered parallel continuation replays unt
         },
         {
           name: 'Followup-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['auditor'],
         },
         {
           name: 'Verifier-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['verifier'],
         },
       ],
@@ -738,6 +741,7 @@ test('startup recovery skips startup-recovered sequential continuation replays u
   chat = createChannel(
     chat,
     {
+      originSurface: 'chat',
       title: 'Recovered sequential continuation replay',
       topic: 'Wait for the full preserved sequential audience after restart.',
       cats: [
@@ -748,7 +752,7 @@ test('startup recovery skips startup-recovered sequential continuation replays u
         },
         {
           name: 'Followup-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['auditor'],
         },
         {
@@ -892,6 +896,7 @@ test('startup recovery finalizes stranded room workflow turns into blocked histo
   chat = createChannel(
     chat,
     {
+      originSurface: 'chat',
       title: 'Workflow Recovery',
       topic: 'Recover interrupted room workflow turns after restart.',
       cats: [
@@ -1081,6 +1086,7 @@ test('startup recovery preserves retryable continuation replay metadata for inte
   chat = createChannel(
     chat,
     {
+      originSurface: 'chat',
       title: 'Recovered continuation turn',
       topic: 'Preserve retryable continuation replay after startup recovery.',
       cats: [
@@ -1091,7 +1097,7 @@ test('startup recovery preserves retryable continuation replay metadata for inte
         },
         {
           name: 'Reviewer-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['reviewer'],
         },
       ],
@@ -1289,6 +1295,7 @@ test('startup recovery preserves later sequential continuation audiences beyond 
   chat = createChannel(
     chat,
     {
+      originSurface: 'chat',
       title: 'Recovered later sequential continuation',
       topic: 'Keep the full later sequential queue after startup recovery.',
       cats: [
@@ -1299,7 +1306,7 @@ test('startup recovery preserves later sequential continuation audiences beyond 
         },
         {
           name: 'Reviewer-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['reviewer'],
         },
         {
@@ -1484,6 +1491,7 @@ test('startup recovery auto-resumes later sequential continuation audiences afte
   chat = createChannel(
     chat,
     {
+      originSurface: 'chat',
       title: 'Recovered later sequential auto-resume',
       topic: 'Resume the full later sequential queue after startup recovery.',
       cats: [
@@ -1494,7 +1502,7 @@ test('startup recovery auto-resumes later sequential continuation audiences afte
         },
         {
           name: 'Reviewer-Agent',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['reviewer'],
         },
         {
@@ -1712,6 +1720,7 @@ test('startup recovery preserves the full initial sequential audience for interr
   chat = createChannel(
     chat,
     {
+      originSurface: 'chat',
       title: 'Recovered initial sequential turn',
       topic: 'Preserve the whole planned audience after startup recovery.',
       cats: [
@@ -1722,7 +1731,7 @@ test('startup recovery preserves the full initial sequential audience for interr
         },
         {
           name: 'Agent-2',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['implementer'],
         },
         {
@@ -1909,6 +1918,7 @@ test('startup recovery advances initial sequential replays to the latest complet
   chat = createChannel(
     chat,
     {
+      originSurface: 'chat',
       title: 'Recovered initial sequential handoff',
       topic: 'Preserve the latest assistant handoff before the next sequential target materializes.',
       cats: [
@@ -1919,7 +1929,7 @@ test('startup recovery advances initial sequential replays to the latest complet
         },
         {
           name: 'Agent-2',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['implementer'],
         },
         {
@@ -2147,6 +2157,7 @@ test('startup recovery auto-resumes initial sequential replays from the latest c
   chat = createChannel(
     chat,
     {
+      originSurface: 'chat',
       title: 'Recovered initial sequential latest handoff auto-resume',
       topic: 'Resume the remaining audience from the newest assistant handoff after restart.',
       cats: [
@@ -2157,7 +2168,7 @@ test('startup recovery auto-resumes initial sequential replays from the latest c
         },
         {
           name: 'Agent-2',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['implementer'],
         },
         {
@@ -2442,6 +2453,7 @@ test('startup recovery auto-resumes preserved initial sequential user-origin rep
   chat = createChannel(
     chat,
     {
+      originSurface: 'chat',
       title: 'Recovered initial sequential auto-resume',
       topic: 'Resume the full user-origin sequential audience after restart.',
       cats: [
@@ -2452,7 +2464,7 @@ test('startup recovery auto-resumes preserved initial sequential user-origin rep
         },
         {
           name: 'Agent-2',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['implementer'],
         },
         {
