@@ -6,6 +6,11 @@ import { JSDOM } from 'jsdom';
 
 import { createServer as createPlatformServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import {
+  createAuthenticatedTestSession,
+  createTestAuthConfig,
+  installAuthenticatedFetch,
+} from './testUtils.js';
 
 function createRuntimeClientStub(runtimeBaseUrl) {
   return {
@@ -185,38 +190,27 @@ async function withSlowSetupScanRuntimeStub(callback) {
 }
 
 async function withPlatformServer(runtimeBaseUrl, runtimeApiKey, callback, configOverrides = {}) {
+  const now = new Date('2026-04-20T00:00:00.000Z');
+  const config = {
+    host: '127.0.0.1',
+    port: 8181,
+    runtimeBaseUrl,
+    runtimeApiKey,
+    chatStatePath: 'unused-for-tests',
+    auth: createTestAuthConfig(),
+    ...configOverrides,
+  };
+  const auth = await createAuthenticatedTestSession({
+    now,
+    sessionSecret: config.auth.sessionSecret,
+    sessionTtlMs: config.auth.sessionTtlMs,
+  });
   const server = createPlatformServer({
     shared: {
-      config: {
-        host: '127.0.0.1',
-        port: 8181,
-        runtimeBaseUrl,
-        runtimeApiKey,
-        chatStatePath: 'unused-for-tests',
-        auth: {
-          mode: 'unsafe_disabled',
-          enabled: false,
-          sessionSecret: null,
-          sessionTtlMs: 1,
-          mobileSessionTtlMs: 1,
-          loginFailureLimit: 1,
-          loginLockoutMs: 1,
-          accountDailyFailureCap: 1,
-          accountCooldownMs: 1,
-          subnetDailyFailureCap: 1,
-          allowedBrowserOrigins: [],
-          authStatePath: 'unused-for-tests-auth-state',
-          recoveryTokenPath: 'unused-for-tests-auth-recovery',
-          google: {
-            clientId: null,
-            hostedDomains: [],
-            mobileAudiences: [],
-          },
-        },
-        ...configOverrides,
-      },
+      config,
       runtimeClient: createRuntimeClientStub(runtimeBaseUrl),
-      now: () => new Date('2026-04-20T00:00:00.000Z'),
+      authStore: auth.authStore,
+      now: () => now,
     },
     chat: {
       chatStore: new MemoryChatStore(),
@@ -231,9 +225,14 @@ async function withPlatformServer(runtimeBaseUrl, runtimeApiKey, callback, confi
     throw new Error('Failed to resolve platform test server address');
   }
 
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const restoreFetch = installAuthenticatedFetch(baseUrl, auth, {
+    origin: 'http://127.0.0.1:8181',
+  });
   try {
-    await callback(`http://127.0.0.1:${address.port}`);
+    await callback(baseUrl);
   } finally {
+    restoreFetch();
     server.close();
     await once(server, 'close');
   }

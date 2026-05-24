@@ -62,6 +62,11 @@ import {
   resolveLocalizedChatMessageBody,
 } from '../build/server/shared/chatMessageLocalization.js';
 import { createTranslator, messageKeys } from '../build/server/shared/i18n/index.js';
+import {
+  createAuthenticatedTestSession,
+  createTestAuthConfig,
+  installAuthenticatedFetch,
+} from './testUtils.js';
 
 const testPlatformRoot = path.join(
   tmpdir(),
@@ -76,26 +81,7 @@ const baseConfig = {
   runtimeApiKey: '',
   runtimeDataDir: path.join(testPlatformRoot, 'runtime', 'data'),
   chatStatePath: path.join(testPlatformRoot, 'platform', 'state', 'chat-state.local.json'),
-  auth: {
-    mode: 'unsafe_disabled',
-    enabled: false,
-    sessionSecret: null,
-    sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
-    mobileSessionTtlMs: 30 * 24 * 60 * 60 * 1000,
-    loginFailureLimit: 5,
-    loginLockoutMs: 30_000,
-    accountDailyFailureCap: 100,
-    accountCooldownMs: 15 * 60 * 1000,
-    subnetDailyFailureCap: 500,
-    allowedBrowserOrigins: ['http://127.0.0.1:8181'],
-    authStatePath: 'unused-auth-state.json',
-    recoveryTokenPath: 'unused-auth-recovery.json',
-    google: {
-      clientId: null,
-      hostedDomains: [],
-      mobileAudiences: [],
-    },
-  },
+  auth: createTestAuthConfig(),
 };
 
 const strongClaudeNativeBootstrapConfig = {
@@ -332,14 +318,22 @@ async function withServer(
     code,
     ...chatOverrides
   } = overrides;
+  const now = new Date('2026-03-23T00:00:00.000Z');
+  const effectiveConfig = {
+    ...baseConfig,
+    ...(config ?? {}),
+  };
+  const auth = await createAuthenticatedTestSession({
+    now,
+    sessionSecret: effectiveConfig.auth.sessionSecret,
+    sessionTtlMs: effectiveConfig.auth.sessionTtlMs,
+  });
   const server = createServer({
     shared: {
-      config: {
-        ...baseConfig,
-        ...(config ?? {}),
-      },
+      config: effectiveConfig,
       runtimeClient,
-      now: () => new Date('2026-03-23T00:00:00.000Z'),
+      authStore: auth.authStore,
+      now: () => now,
       startup,
       coreStore,
       resumePendingOrchestratorDispatch,
@@ -363,9 +357,15 @@ async function withServer(
     throw new Error('Failed to resolve test server address');
   }
 
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const restoreFetch = installAuthenticatedFetch(baseUrl, auth, {
+    defaultOriginSurface: 'chat',
+    origin: 'http://127.0.0.1:8181',
+  });
   try {
-    await callback(`http://127.0.0.1:${address.port}`);
+    await callback(baseUrl);
   } finally {
+    restoreFetch();
     server.close();
     await once(server, 'close');
   }
