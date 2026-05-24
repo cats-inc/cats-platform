@@ -34,9 +34,9 @@ test('buildParallelChatDraftCreateInput preserves non-chat originSurface and bra
       {
         participantId: 'participant-inline',
         name: 'Inline Reviewer',
-        provider: 'gemini',
+        provider: 'antigravity',
         instance: 'native',
-        model: 'gemini-3.1-pro',
+        model: 'Gemini 3.1 Pro (high)',
         modelSelection: null,
         roleHint: 'Counterpoint',
       },
@@ -66,9 +66,9 @@ test('buildParallelChatDraftCreateInput preserves non-chat originSurface and bra
     {
       participantId: 'participant-inline',
       name: 'Inline Reviewer',
-      provider: 'gemini',
+      provider: 'antigravity',
       instance: 'native',
-      model: 'gemini-3.1-pro',
+      model: 'Gemini 3.1 Pro (high)',
       modelSelection: null,
       roleHint: 'Counterpoint',
     },
@@ -89,7 +89,7 @@ test('buildParallelChatDraftCreateInput normalizes nullable fields for code-owne
         modelSelection: null,
       },
       {
-        provider: 'gemini',
+        provider: 'antigravity',
         instance: 'native',
         model: null,
         modelSelection: null,
@@ -110,7 +110,7 @@ test('buildParallelChatDraftCreateInput normalizes nullable fields for code-owne
       audienceKeys: [],
     },
     {
-      provider: 'gemini',
+      provider: 'antigravity',
       instance: 'native',
       model: null,
       modelSelection: null,

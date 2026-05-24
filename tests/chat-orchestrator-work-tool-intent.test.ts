@@ -36,7 +36,7 @@ function createWorkMemoryPlan(body: string, options: { bossCat?: boolean } = {})
       cats: [
         {
           name: 'Planner Cat',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['planner'],
           skillProfile: 'companion',
           mcpProfile: WORK_MCP_PROFILE_ID,

@@ -23,7 +23,7 @@ test('Cat MCP profile updates flow into assigned channel views', () => {
       cats: [
         {
           name: 'Planner Cat',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['planner'],
           skillProfile: 'companion',
           mcpProfile: CHAT_MCP_PROFILE_ID,
@@ -56,7 +56,7 @@ test('Cat MCP profile updates reject unsupported product profile ids', () => {
       cats: [
         {
           name: 'Guarded Cat',
-          provider: 'gemini',
+          provider: 'antigravity',
           roles: ['planner'],
         },
       ],
@@ -86,7 +86,7 @@ test('Cat creation rejects unsupported MCP profile ids', () => {
         cats: [
           {
             name: 'Bad Profile Cat',
-            provider: 'gemini',
+            provider: 'antigravity',
             mcpProfile: 'unknown-profile',
           },
         ],

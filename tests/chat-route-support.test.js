@@ -340,7 +340,7 @@ test('persistCatAssignmentUpdate keeps direct-lane transport binding on session_
     channelId,
     {
       catId,
-      provider: 'gemini',
+      provider: 'antigravity',
       roles: ['helper'],
     },
   );

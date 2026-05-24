@@ -471,8 +471,8 @@ test('multi-participant cat routing emits a targeted handoff package for first-t
       },
       {
         name: 'Agent-2',
-        provider: 'gemini',
-        model: 'gemini-default',
+        provider: 'antigravity',
+        model: 'Gemini 3.1 Pro (high)',
       },
     ],
     skipBossCatGreeting: true,
@@ -588,8 +588,8 @@ test('multi-participant cat routing keeps continuity metadata null when no hando
       },
       {
         name: 'Agent-2',
-        provider: 'gemini',
-        model: 'gemini-default',
+        provider: 'antigravity',
+        model: 'Gemini 3.1 Pro (high)',
       },
     ],
     skipBossCatGreeting: true,
