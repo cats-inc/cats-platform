@@ -20,12 +20,14 @@ test('cats ships cross-platform skill sync helpers as repo-owned collaboration s
 
   assert.match(windowsScript, /Join-Path \$ProjectRoot "\.claude" "skills"/);
   assert.match(windowsScript, /Join-Path \$ProjectRoot "\.agents" "skills"/);
-  assert.match(windowsScript, /Join-Path \$ProjectRoot "\.gemini" "skills"/);
+  assert.doesNotMatch(windowsScript, /\.gemini/);
   assert.match(linuxScript, /\.claude\/skills/);
   assert.match(linuxScript, /\.agents\/skills/);
-  assert.match(linuxScript, /\.gemini\/skills/);
+  assert.doesNotMatch(linuxScript, /\.gemini/);
+  assert.doesNotMatch(macosScript, /\.gemini/);
   assert.match(macosScript, /Usage: sync-agent-skills\.sh/);
   assert.match(readme, /Sync-AgentSkills\.ps1/);
   assert.match(readme, /scripts\/linux\/sync-agent-skills\.sh/);
   assert.match(readme, /scripts\/macos\/sync-agent-skills\.sh/);
+  assert.doesNotMatch(readme, /\.gemini\/skills/);
 });

@@ -24,7 +24,9 @@ Skill directories may include supporting files (for example `scripts/`, `referen
 |-------|---------------|
 | Claude Code | `.claude/skills/<name>/SKILL.md` |
 | Codex | `.agents/skills/<name>/SKILL.md` |
-| Gemini CLI | `.gemini/skills/<name>/SKILL.md` |
+Antigravity CLI is intentionally not listed here yet. Its repo/project skill
+discovery path has not been verified, so the sync helpers do not create an
+`.antigravity/skills` convention.
 
 ### Syncing Skills
 

@@ -143,11 +143,15 @@ discovery paths do not depend on bootstrap submodules:
 - `scripts/linux/sync-agent-skills.sh`
 - `scripts/macos/sync-agent-skills.sh`
 
-These scripts sync `skills/` into `.claude/skills`, `.agents/skills`, and
-`.gemini/skills`, and support:
+These scripts sync `skills/` into `.claude/skills` and `.agents/skills`, and
+support:
 
 - `--clean` / `-Clean`
-- `--agent <claude|codex|gemini>` / `-Agent <...>`
+- `--agent <claude|codex>` / `-Agent <...>`
+
+Antigravity CLI is intentionally not a skill sync target yet. Its repo/project
+skill discovery path has not been verified, so these helpers do not create an
+`.antigravity/skills` convention.
 
 ## Self-Hosted npm Package Helpers
 
