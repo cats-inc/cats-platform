@@ -21,7 +21,7 @@ The `environment-bootstrap` installer suite (the upstream this project bundles i
 - Desktop host orchestration: `desktop/host/cliInventoryProbe.ts`, `desktop/host/bootstrapPage.ts`, `desktop/host/contracts.ts`, `desktop/host/packaging.ts`, `desktop/host/setupAssets.ts` all enumerate `gemini` as a known CLI with display label, native-installer suffix, packaged asset id, and bundled-script registration.
 - Packaged-setup smoke tests on all three OSes (`Test-WindowsInstallerSmoke.ps1`, `test-macos-package-smoke.sh`, `test-linux-package-smoke.sh`) assert that the Gemini installer assets are bundled into the packaged app.
 - Skills-sync tooling (`Sync-AgentSkills.ps1`, `sync-agent-skills.sh`) treats `gemini` as a valid `--agent` value and syncs to `.gemini/skills/`.
-- Shared provider catalog data (`src/shared/providerCatalogData.ts`, `src/shared/providerCatalogInstances.ts`) registers `gemini` as a provider family with a Gemini-3.x model list. The runtime dashboard and playground currently duplicate comparable provider/model data in `cats-runtime`, so this migration must either mirror the platform catalog values explicitly or add a real generated handoff before claiming shared consumption.
+- Shared provider catalog data (`src/shared/providerCatalogData.ts`, `src/shared/providerCatalogInstances.ts`) registers `gemini` as a provider family with a Gemini-3.x model list. The runtime dashboard and playground currently duplicate comparable provider/model data in `cats-runtime`, so this migration requires runtime to mirror the platform catalog values explicitly. Automated cross-package catalog handoff is outside this slice.
 - Companion shell helpers (`scripts/{macos,linux}/node-cli-common.sh`, `scripts/windows/_NpmCliInstaller.ps1`, `scripts/{macos,linux}/upgrade-cli-tools.sh`) mention Gemini in CLI catalogs and upgrade loops.
 - `scripts/README.md` and skills-sync helper docs reference the Gemini installer / `.gemini/skills` story. Repo-root and subproject `GEMINI.md` files are agent-governance files, not packaged-setup assets.
 
@@ -39,18 +39,18 @@ The question is whether `cats-platform` should:
 
 Concretely:
 
-1. The three native installer wrappers (`Install-Gemini.{ps1,sh}`) are replaced by `Install-Antigravity.{ps1,sh}` wrappers. The wrappers keep Cats Desktop's host-facing helper lifecycle (`CheckOnly` / `Apply` / `Upgrade` / `Force` / `Uninstall` / `DryRun` / `Json` where supported) and delegate only the actual install / refresh operation to the environment-bootstrap-shipped `Install-AntigravityCLI.ps1` or `install-antigravity-cli.sh`. The wrapper exists so the desktop host's allowlisted-helper contract still has a stable per-CLI entry point.
+1. The three native installer wrappers (`Install-Gemini.{ps1,sh}`) are replaced by `Install-Antigravity.{ps1,sh}` wrappers. The wrappers keep Cats Desktop's host-facing helper lifecycle (`-CheckOnly` / `-Apply` / `-Upgrade` / `-Force` / `-Uninstall` / `-DryRun` / `-Json`) because `desktop/host/setupBridge.ts` emits those flags for every platform. macOS/Linux wrappers shall not publish a separate bash-style lifecycle contract; they translate the same host-facing flags before delegating install / refresh work to environment-bootstrap's `install-antigravity-cli.sh`.
 2. The desktop host CLI inventory (`cliInventoryProbe.ts`) replaces the `gemini` entry with `antigravity` across binary name, display label, and native-installer suffix.
 3. The desktop host packaging metadata (`packaging.ts`, `setupAssets.ts`) replaces the `windows/linux/macos-gemini-native-installer` asset ids and `Install-Gemini.{ps1,sh}` paths with `antigravity` equivalents.
 4. The desktop bootstrap onboarding page (`bootstrapPage.ts`) replaces `gemini` in its provider list, display label map, and `ONBOARDING_COLLAPSED_PROVIDER_IDS` with `antigravity`. The position in the provider list matches the upstream `Claude Code → Antigravity → Cursor Agent` ordering.
 5. The Windows setup readiness check (`Check-WindowsSetupReadiness.ps1`) replaces the `gemini` entry with `antigravity`.
 6. The packaged-setup smoke tests on all three OSes replace their Gemini-asset assertions with Antigravity-asset assertions.
-7. The shared provider catalog (`src/shared/providerCatalogData.ts`, `src/shared/providerCatalogInstances.ts`) replaces the `gemini` provider family with `antigravity`. Antigravity model identifiers are populated from the Phase 0 `agy` probe; existing Gemini model ids may move under `antigravity` only if the CLI exposes them verbatim.
+7. The shared provider catalog (`src/shared/providerCatalogData.ts`, `src/shared/providerCatalogInstances.ts`) replaces the `gemini` provider family with `antigravity`. Antigravity model identifiers are populated only from explicit Phase 0 evidence: a CLI model-list command, a documented config surface, official product documentation, or a smoke run that proves the id is accepted. Existing Gemini model ids may move under `antigravity` only with that evidence.
 8. Skills sync (`Sync-AgentSkills.ps1`, `sync-agent-skills.sh` on macOS and Linux) drops the `gemini` `--agent` value and `.gemini/skills/` target. Whether `antigravity` is added depends on whether the `agy` binary discovers a `.antigravity/skills/` directory — to be probed before flipping; default is to drop the row and not invent one.
 9. Shell helpers and READMEs (`node-cli-common.sh`, `_NpmCliInstaller.ps1`, `upgrade-cli-tools.sh`, `scripts/README.md`) lose their Gemini references.
 10. `GEMINI.md` files are not read, renamed, or deleted by this migration. They are agent-specific instruction files governed by `AGENTS.md` / `CODEX.md`, and they are independent of the Gemini CLI packaged-setup path.
 
-Coordination with cats-runtime ADR-032 / SPEC-026 / PLAN-033 is required: the platform catalog defines the product-side provider/model values, while the runtime currently has separate hardcoded dashboard/playground data. Platform Phase 1 must land before runtime UI Phase 4 so runtime can mirror the same values or wire an explicit generated import.
+Coordination with cats-runtime ADR-032 / SPEC-026 / PLAN-033 is required: the platform catalog defines the product-side provider/model values, while the runtime currently has separate hardcoded dashboard/playground data. Platform Phase 1 must land before runtime UI Phase 4 so runtime can mirror the same values.
 
 ## Consequences
 
@@ -58,7 +58,7 @@ Coordination with cats-runtime ADR-032 / SPEC-026 / PLAN-033 is required: the pl
 
 - One Google-family CLI in the packaged setup, one install path, one diagnostics surface, one smoke test fixture.
 - Eliminates the `@google/gemini-cli` npm dependency from the bundled installer matrix.
-- Platform catalog becomes the product-side source of truth, and runtime PLAN-033 is forced to either mirror it consciously or add a generated import. This avoids an accidental stale runtime playground list.
+- Platform catalog becomes the product-side source of truth, and runtime PLAN-033 is forced to mirror it consciously. This avoids an accidental stale runtime playground list without inventing an undefined cross-package catalog handoff.
 - Desktop bootstrap onboarding ordering matches environment-bootstrap's `Claude Code → Antigravity → Cursor Agent` orchestration.
 
 ### Negative

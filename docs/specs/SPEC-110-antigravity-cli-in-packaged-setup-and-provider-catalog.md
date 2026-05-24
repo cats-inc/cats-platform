@@ -14,7 +14,7 @@ The `environment-bootstrap` installer suite has retired `@google/gemini-cli` and
 
 This spec defines how `cats-platform` performs the full swap: installer scripts, desktop host CLI inventory and onboarding metadata, packaging asset registration, shared catalog data, skills sync, smoke tests, and supporting shell helpers. It is the platform counterpart to cats-runtime SPEC-026. ADR-107 captures the underlying decision.
 
-The shared provider catalog (`src/shared/providerCatalogData.ts`) is consumed by platform UI. `cats-runtime` currently keeps its own hardcoded dashboard/playground provider and model lists, so this spec defines the platform catalog as the product-side source of truth and requires runtime PLAN-033 to either mirror those values deliberately or add an explicit generated import.
+The shared provider catalog (`src/shared/providerCatalogData.ts`) is consumed by platform UI. `cats-runtime` currently keeps its own hardcoded dashboard/playground provider and model lists, so this spec defines the platform catalog as the product-side source of truth and requires runtime PLAN-033 to mirror those values deliberately. Automated cross-package catalog handoff is a separate design problem and is not part of this slice.
 
 ## Current Baseline
 
@@ -42,16 +42,17 @@ The shared provider catalog (`src/shared/providerCatalogData.ts`) is consumed by
 5. Replace `gemini` in `desktop/host/contracts.ts` provider-id list with `antigravity`.
 6. Replace `gemini` in `scripts/windows/Check-WindowsSetupReadiness.ps1` with `antigravity`.
 7. Update all three packaged-setup smoke tests to assert Antigravity installer assets instead of Gemini.
-8. Replace the `gemini` provider family in `src/shared/providerCatalogData.ts` and `src/shared/providerCatalogInstances.ts` with `antigravity`; populate the Antigravity model list from the Phase 0 `agy` probe. Preserve existing Gemini model ids only if the CLI exposes those identifiers verbatim.
+8. Replace the `gemini` provider family in `src/shared/providerCatalogData.ts` and `src/shared/providerCatalogInstances.ts` with `antigravity`; populate the Antigravity model list only from explicit Phase 0 evidence. `agy --help` is not sufficient by itself. Acceptable evidence includes a real CLI model-list command, a documented config surface, official product documentation, or a smoke run proving the id is accepted.
 9. Update skills sync tooling: drop `gemini` from the `--agent` validation list; add `antigravity` only if `agy` actually discovers a `.antigravity/skills/` directory (probed before flipping).
 10. Update shell helpers and READMEs to drop Gemini references and add Antigravity equivalents where structurally needed.
-11. Define the shared provider catalog as the canonical platform-side source; explicitly call out the duplicate model list in `cats-runtime/src/http/ui/pages/playground.html` as something cats-runtime PLAN-033 Phase 4 must mirror or replace with a generated import.
+11. Define the shared provider catalog as the canonical platform-side source; explicitly call out the duplicate model list in `cats-runtime/src/http/ui/pages/playground.html` as something cats-runtime PLAN-033 Phase 4 must mirror in this slice.
 12. Leave repo-root and subproject `GEMINI.md` files untouched because they are agent-governance files, not Gemini CLI setup files.
 
 ## Non-Goals
 
 - Implementing the runtime-side provider knowledge, ACP profile, session scanner, or HTTP routes — owned by cats-runtime SPEC-026.
 - Adding an Antigravity API HTTP backend (Google API completion path is owned by `cats-runtime`'s `api` backend family separately).
+- Designing automated codegen or cross-package handoff from `cats-platform` provider catalog data into `cats-runtime`; this slice uses an explicit runtime mirror.
 - Designing first-time onboarding UX changes beyond the provider-id rename.
 - Renaming or restructuring the `_NpmCliInstaller.ps1` / `node-cli-common.sh` helpers — they remain in use for other npm CLIs (Codex, Copilot, OpenCode, Kilo, Auggie, Pi); only their Gemini-specific catalog rows and comments are changed.
 - Solving the `.antigravity/skills/` directory question if `agy` does not implement one — that becomes a follow-up if Antigravity adds skills support later.
@@ -60,7 +61,7 @@ The shared provider catalog (`src/shared/providerCatalogData.ts`) is consumed by
 
 - As a desktop user, I want the packaged Cats Desktop to install Antigravity CLI via the same one-click flow that previously installed Gemini CLI.
 - As a developer running `Settings > Runtime`, I want Antigravity to appear in the provider list with install / upgrade / repair actions wired to the bundled installer, matching the SPEC-093 lifecycle.
-- As a playground user, I want the provider dropdown to show `antigravity` with the correct model list, sourced from the shared catalog rather than a duplicate hardcoded copy.
+- As a playground user, I want the provider dropdown to show `antigravity` with the correct model list, kept aligned by the explicit runtime mirror in this slice.
 - As a packager running smoke tests, I want assertions to check Antigravity asset presence so a missing installer is caught in CI.
 - As a developer running skills sync, I do not want `gemini` to be a valid `--agent` value after the swap, because the corresponding `.gemini/skills/` target is no longer wired to a usable agent.
 
@@ -83,18 +84,18 @@ The fix is not additive. The Gemini-named seams must be replaced, not extended.
 ### Functional Requirements
 
 1. `scripts/windows/Install-Gemini.ps1` shall be replaced by `scripts/windows/Install-Antigravity.ps1`. The new wrapper shall keep the packaged helper action surface (`-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-DryRun`, `-Json`, state hints) and translate install / refresh actions to environment-bootstrap's `Install-AntigravityCLI.ps1` (`-Upgrade`, `-Force`, `-NonInteractive`) where applicable.
-2. `scripts/macos/install-gemini.sh` shall be replaced by `scripts/macos/install-antigravity.sh`. The new wrapper shall keep the packaged helper action surface (`--check` / `-CheckOnly`, `-Apply`, `-upgrade`, `-force`, `--uninstall`, `--dry-run`, `--json`) and translate install / refresh actions to environment-bootstrap's `install-antigravity-cli.sh` (`-upgrade`, `-force`) where applicable.
-3. `scripts/linux/install-gemini.sh` shall be replaced by `scripts/linux/install-antigravity.sh`, with the same host-facing contract and environment-bootstrap flag translation as macOS.
+2. `scripts/macos/install-gemini.sh` shall be replaced by `scripts/macos/install-antigravity.sh`. The canonical host-facing contract is the same PowerShell-style flag set emitted by `desktop/host/setupBridge.ts`: `-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-DryRun`, `-Json`. The shell wrapper shall not publish a separate bash-style lifecycle contract. Install / refresh actions translate to environment-bootstrap's child-script flags (`-upgrade`, `-force`) where applicable.
+3. `scripts/linux/install-gemini.sh` shall be replaced by `scripts/linux/install-antigravity.sh`, with the same canonical host-facing contract and environment-bootstrap flag translation as macOS.
 4. `desktop/host/cliInventoryProbe.ts:29,48,67` shall list `antigravity` instead of `gemini`, with binary name `agy`, display label `Antigravity`, and the appropriate native-installer suffix.
 5. `desktop/host/contracts.ts:95` shall include `antigravity` instead of `gemini` in the provider-id list.
 6. `desktop/host/packaging.ts:540-548` shall register `antigravity` with asset ids `windows-antigravity-native-installer`, `linux-antigravity-native-installer`, `macos-antigravity-native-installer`, pointing at the new wrapper paths.
 7. `desktop/host/setupAssets.ts:121,326,543` shall register the new wrapper scripts in the helper allowlist with appropriate per-OS metadata.
 8. `desktop/host/bootstrapPage.ts:1651,1665,1837` shall list `antigravity` instead of `gemini` in the provider list, label map (`Antigravity`), and `ONBOARDING_COLLAPSED_PROVIDER_IDS`. The provider-list position shall match the upstream `Claude Code → Antigravity → Cursor Agent` ordering.
-9. `scripts/windows/Check-WindowsSetupReadiness.ps1:356` shall reference `antigravity` with appropriate package name (no npm package; native installer source).
+9. `scripts/windows/Check-WindowsSetupReadiness.ps1:356` shall replace the npm-only Gemini row with a native Antigravity row. The readiness schema shall stop treating `PackageName` as mandatory for every row: add an `InstallSource` discriminator (for example `npm` / `native`) plus optional `PackageName`, `CommandName`, and binary path candidates, or an equivalent split between npm and native rows. Antigravity uses `InstallSource = 'native'`, command `agy`, and `%LOCALAPPDATA%\agy\bin\agy.exe`; do not use a placeholder npm package string.
 10. `scripts/windows/Test-WindowsInstallerSmoke.ps1:147,184` shall assert the bundled Antigravity installer helper and the `windows-antigravity-native-installer-script` artifact.
 11. `scripts/macos/test-macos-package-smoke.sh:52` shall assert the bundled macOS Antigravity installer helper.
 12. `scripts/linux/test-linux-package-smoke.sh:52` shall assert the bundled Linux Antigravity installer helper.
-13. `src/shared/providerCatalogData.ts:4,37-43,89` shall replace the `gemini` family with `antigravity`. The Gemini-3.x model list shall be remapped to whatever model identifiers the `agy` CLI actually exposes (probed during PLAN-100 Phase 0; default-fallback if Antigravity reuses the same Gemini-3.x ids verbatim is to keep the value strings and rename only the family key).
+13. `src/shared/providerCatalogData.ts:4,37-43,89` shall replace the `gemini` family with `antigravity`. The Gemini-3.x model list shall be remapped only after PLAN-100 Phase 0 records the evidence source for accepted `agy` model identifiers. If the probe cannot discover or validate model ids, Phase 1 remains blocked rather than shipping speculative ids.
 14. `src/shared/providerCatalogData.ts:48,60,72,76,77` — submodel references to `gemini-*` inside the `copilot` / `cursor` / `openrouter` model lists are vendor-named submodels and shall be reviewed individually: kept if the vendor still routes them, removed if the vendor has dropped them.
 15. `src/shared/providerCatalogInstances.ts:16` shall replace the `gemini` default-instance template with an `antigravity` template.
 16. `scripts/windows/Sync-AgentSkills.ps1:16,35,67` shall remove `gemini` from the `--agent` `ValidateSet` and the agent-target map. `antigravity` shall be added only if PLAN-100 Phase 0 confirms `agy` discovers a `.antigravity/skills/` directory.
@@ -105,7 +106,7 @@ The fix is not additive. The Gemini-named seams must be replaced, not extended.
 21. `scripts/windows/_NpmCliInstaller.ps1:7,526` shall update its comments to remove Gemini and add Antigravity context where applicable.
 22. `scripts/README.md:147,150,183,213,247,264,285` shall replace all Gemini references with Antigravity equivalents, and add a one-paragraph note in the appropriate section explaining the upstream swap.
 23. Repo-root and subproject `GEMINI.md` files shall not be read, renamed, or deleted by this migration. Remaining references to Gemini in `AGENTS.md`, `CODEX.md`, or agent-specific instruction files are governance references, not stale CLI provider wiring.
-24. `cats-runtime/src/http/ui/pages/playground.html` shall - as part of cats-runtime PLAN-033 Phase 4 - either mirror the updated `src/shared/providerCatalogData.ts` model values or be changed to consume a real generated catalog export. This spec does not implement that runtime change but defines the platform catalog as the product-side contract.
+24. `cats-runtime/src/http/ui/pages/playground.html` shall - as part of cats-runtime PLAN-033 Phase 4 - mirror the updated `src/shared/providerCatalogData.ts` model values. This spec does not implement that runtime change but defines the platform catalog as the product-side contract.
 
 ### Non-Functional Requirements
 
@@ -144,8 +145,9 @@ The desktop host wiring (layer 3) depends on layer 2 wrappers existing first bec
 
 - [ ] What is the new asset-id naming convention if `Install-Antigravity.{ps1,sh}` wrappers delegate to environment-bootstrap helpers? Options: `windows-antigravity-native-installer` (mirrors current Gemini naming) or `windows-antigravity-bootstrap-installer` (signals the delegation). Default: keep the `native-installer` suffix for consistency with sibling assets.
 - [ ] Does `agy` expose a `.antigravity/skills/` directory or an equivalent skills mechanism? Resolves whether Sync-AgentSkills gets an `antigravity` value or just drops `gemini`.
-- [ ] Do Antigravity's CLI session storage and model identifiers reuse the Gemini-3.x names verbatim, or does the CLI rename them? Resolves whether the shared catalog model strings stay as-is.
-- [ ] Which host-facing actions should the Antigravity wrappers implement directly versus delegating? Default: wrappers implement check / JSON / dry-run / uninstall semantics themselves, and call environment-bootstrap only for install / upgrade / force.
+- [ ] What evidence source authoritatively lists or validates Antigravity model identifiers? Probe candidate CLI subcommands (`agy models`, `agy models list`, or equivalent), config files, official product documentation, and smoke-run acceptance. `agy --help` alone does not answer this.
+- [ ] What are full-purge semantics beyond default uninstall? Default packaged uninstall is binary-only and user-scoped: remove the wrapper-installed `agy` executable/path target (`%LOCALAPPDATA%\agy\bin\agy.exe` on Windows, `~/.local/bin/agy` on Unix) and clean empty wrapper-owned directories/metadata where safe. It must not delete auth tokens, session history, or unrelated Antigravity config without a separate explicit purge design.
+- [ ] Which host-facing actions should the Antigravity wrappers implement directly versus delegating? Default: wrappers implement check / JSON / dry-run / binary-only uninstall semantics themselves, and call environment-bootstrap only for install / upgrade / force.
 - [ ] Should the `--antigravity` provider badge color in the shared catalog (and downstream UIs) match Gemini's previous blue (`#60a5fa`) or pick a distinct Antigravity color? Decision: pre-work for PLAN-100 Phase 1.
 
 ## References

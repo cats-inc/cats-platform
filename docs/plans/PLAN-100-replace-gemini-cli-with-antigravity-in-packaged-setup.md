@@ -15,7 +15,7 @@
 
 ## Overview
 
-This plan executes the platform side of the Gemini-to-Antigravity provider swap. It pairs with cats-runtime PLAN-033 and shares one cross-repo handoff point: the shared provider catalog (`src/shared/providerCatalogData.ts`) must land before cats-runtime UI changes mirror those values or add an explicit generated import.
+This plan executes the platform side of the Gemini-to-Antigravity provider swap. It pairs with cats-runtime PLAN-033 and shares one cross-repo handoff point: the shared provider catalog (`src/shared/providerCatalogData.ts`) must land before cats-runtime UI changes mirror those values.
 
 The work moves from the shared catalog outward through installer wrappers, desktop host wiring, readiness/smoke tests, skills sync, shell helpers, and finally docs.
 
@@ -28,8 +28,8 @@ This plan and cats-runtime PLAN-033 land together as a single coordinated change
 
 Cross-repo blocking points:
 
-- **Platform Phase 1 must land before runtime Phase 4** (runtime UI currently duplicates provider/model data and must mirror the updated catalog values or wire an explicit import).
-- **Probe phase (Phase 0) is shared**: both plans depend on the same probe of `agy` behavior. Only one team needs to do the probe; the research note lands in `cats-runtime/docs/research/2026-05-24-antigravity-cli-probe.md` and is referenced here.
+- **Platform Phase 1 must land before runtime Phase 4** (runtime UI currently duplicates provider/model data and must mirror the updated catalog values).
+- **Probe phase mapping**: PLAN-100 Phase 0 and cats-runtime PLAN-033 Phase 1 are the same shared `agy` probe. Only one team needs to do the probe; the research note lands in `cats-runtime/docs/research/2026-05-24-antigravity-cli-probe.md` and is referenced here.
 
 ## Architecture Guardrails
 
@@ -37,31 +37,32 @@ Cross-repo blocking points:
 2. Do not add an Antigravity API HTTP path — Google API completion is a separate concern owned by runtime.
 3. Do not invent `.antigravity/skills/` behavior. If `agy` does not implement a skills directory, drop the Gemini row from skills sync without adding an Antigravity row.
 4. Do not extend `_NpmCliInstaller.ps1` / `node-cli-common.sh` with Antigravity-specific paths — Antigravity uses the native-installer flow, not the shared npm-helper flow.
-5. Do not edit `cats-runtime/src/http/ui/pages/playground.html` from this plan — runtime PLAN-033 owns that file and must either mirror the shared catalog values from here or add an explicit generated import.
+5. Do not edit `cats-runtime/src/http/ui/pages/playground.html` from this plan — runtime PLAN-033 owns that file and must mirror the shared catalog values from here.
 6. Preserve the `Claude Code → Antigravity → Cursor Agent` ordering across bootstrap, cliInventoryProbe, packaging, and onboarding lists, matching environment-bootstrap commit `5725e637`.
 
 ## Implementation Phases
 
 ### Phase 0: Probe `agy` Reality
 
-Goal: replace guesses with facts before touching code. This phase is shared with cats-runtime PLAN-033 Phase 1; only one team performs the probe.
+Goal: replace guesses with facts before touching code. This phase is the same work as cats-runtime PLAN-033 Phase 1; only one team performs the probe.
 
 - [ ] Install `agy` locally via environment-bootstrap `Install-AntigravityCLI.ps1` (Windows) or `install-antigravity-cli.sh` (macOS/Linux).
 - [ ] Confirm install paths: PATH, `LOCALAPPDATA`, `~/.local/bin`.
 - [ ] Capture `agy --version` and `agy --help` output.
 - [ ] Identify whether `agy` creates a `.antigravity/skills/` directory or any equivalent skills mechanism.
-- [ ] Identify whether Antigravity exposes the same Gemini-3.x model identifiers (`gemini-3.1-pro-preview`, `gemini-3-flash-preview`, etc.) or renames them.
-- [ ] Record the environment-bootstrap installer flags: Windows accepts `-Upgrade`, `-Force`, `-NonInteractive`; shell installers accept `-upgrade`, `-force`. Confirm the Cats Desktop wrappers will translate the broader packaged helper contract instead of delegating host action flags verbatim.
+- [ ] Identify whether Antigravity exposes the same Gemini-3.x model identifiers (`gemini-3.1-pro-preview`, `gemini-3-flash-preview`, etc.) or renames them. Check candidate model-list commands (`agy models`, `agy models list`, or equivalent), documented config files, official product documentation, and smoke-run acceptance. Do not treat `agy --help` as sufficient model-id evidence.
+- [ ] Record the host-facing wrapper flags and the environment-bootstrap installer flags separately. Cats Desktop emits `-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-Json`, and `-DryRun` on every platform; environment-bootstrap Windows accepts `-Upgrade`, `-Force`, `-NonInteractive`; environment-bootstrap shell installers accept `-upgrade`, `-force`. Confirm the Cats Desktop wrappers translate the broader packaged helper contract instead of delegating host action flags verbatim.
+- [ ] Define default uninstall scope: binary-only and user-scoped removal of `agy` executable/path target, with no auth-token/session/config purge unless a separate explicit purge design is approved.
 - [ ] Document findings in `cats-runtime/docs/research/2026-05-24-antigravity-cli-probe.md` (single shared note across both repos).
 
 **Deliverables**: Research note answering SPEC-110's Open Questions about skills directory, model identifiers, and installer flag translation.
 
 ### Phase 1: Shared Provider Catalog
 
-**Cross-repo unblock point**: completing this phase gives cats-runtime PLAN-033 Phase 4 the canonical platform values to mirror or import.
+**Cross-repo unblock point**: completing this phase gives cats-runtime PLAN-033 Phase 4 the canonical platform values to mirror.
 
 - [ ] In `src/shared/providerCatalogData.ts:4`, replace `'gemini'` in the provider-id array with `'antigravity'`, preserving the same array position.
-- [ ] In `src/shared/providerCatalogData.ts:37-43`, replace the `gemini:` model-list key with `antigravity:`. If Phase 0 confirmed Antigravity reuses the same Gemini-3.x model identifiers, keep the `value:` strings unchanged and only update labels if Phase 0 surfaced new ones; if Antigravity uses different ids, replace the value strings per the probe.
+- [ ] In `src/shared/providerCatalogData.ts:37-43`, replace the `gemini:` model-list key with `antigravity:` only after Phase 0 records a concrete model-id evidence source. If Phase 0 confirms Antigravity accepts the same Gemini-3.x model identifiers, keep the `value:` strings unchanged and only update labels if Phase 0 surfaced new ones; if Antigravity uses different ids, replace the value strings per the probe. If the probe cannot validate model ids, keep Phase 1 blocked rather than guessing.
 - [ ] In `src/shared/providerCatalogData.ts:89`, update the trailing single-entry block that references `gemini 3.1 pro`.
 - [ ] In `src/shared/providerCatalogData.ts:48,60,72,76,77`, audit the `copilot` / `cursor` / `openrouter` submodel lists that reference `gemini-*` identifiers. These are vendor-routed submodels (e.g. Copilot's `gemini-3-pro-preview` is Copilot's own routing label, not the CLI provider). Keep entries that the vendor still routes; remove entries the vendor has dropped per latest vendor docs.
 - [ ] In `src/shared/providerCatalogInstances.ts:16`, replace the `gemini:` default-instance template with `antigravity:` using the new family id and any new default config keys.
@@ -72,8 +73,9 @@ Goal: replace guesses with facts before touching code. This phase is shared with
 ### Phase 2: Installer Wrappers
 
 - [ ] Create `scripts/windows/Install-Antigravity.ps1`. Implementation: preserve the packaged helper action surface (`-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-DryRun`, `-Json`, state hints) and call `environment-bootstrap/platform/windows/Install-AntigravityCLI.ps1` only for install / refresh actions. Use `-HelperId 'windows-antigravity-native-installer' -CommandName 'agy' -DisplayName 'Antigravity CLI'`.
-- [ ] Create `scripts/macos/install-antigravity.sh`. Implementation: preserve the packaged helper action surface (`--check` / `-CheckOnly`, `-Apply`, `-upgrade`, `-force`, `--uninstall`, `--dry-run`, `--json`) and call `environment-bootstrap/platform/macos/install-antigravity-cli.sh` only for install / refresh actions, translating to its supported `-upgrade` / `-force` flags.
+- [ ] Create `scripts/macos/install-antigravity.sh`. Implementation: preserve the same canonical host-facing flag surface emitted by `setupBridge.ts` (`-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-DryRun`, `-Json`) and do not publish a separate bash-style lifecycle contract. Call `environment-bootstrap/platform/macos/install-antigravity-cli.sh` only for install / refresh actions, translating to its child-script `-upgrade` / `-force` flags.
 - [ ] Create `scripts/linux/install-antigravity.sh`. Implementation: mirror macOS but call `environment-bootstrap/platform/linux/install-antigravity-cli.sh`.
+- [ ] Implement `-Uninstall` inside the Cats wrappers. Default scope is binary-only: remove `%LOCALAPPDATA%\agy\bin\agy.exe` on Windows and `~/.local/bin/agy` on Unix, clean empty wrapper-owned directories where safe, emit structured warnings for residual auth/session/config data, and do not delete auth tokens or sessions.
 - [ ] Verify each wrapper's exit-code surface matches the desktop host's expected `runSetupHelper(...)` result shape (structured JSON or stdout convention, per the existing Gemini wrapper).
 - [ ] Delete `scripts/windows/Install-Gemini.ps1`, `scripts/macos/install-gemini.sh`, `scripts/linux/install-gemini.sh`.
 
@@ -101,7 +103,7 @@ Goal: replace guesses with facts before touching code. This phase is shared with
 
 ### Phase 4: Readiness Check and Smoke Tests
 
-- [ ] In `scripts/windows/Check-WindowsSetupReadiness.ps1:356`, replace the `gemini` entry with an `antigravity` entry. Package name is no longer `@google/gemini-cli` (Antigravity is a native binary); use a placeholder string that indicates native-installer source per Phase 0 findings.
+- [ ] In `scripts/windows/Check-WindowsSetupReadiness.ps1:356`, replace the npm-only `gemini` entry with a native `antigravity` entry. Extend the readiness entry schema instead of inventing an npm package value: add `InstallSource = 'npm' | 'native'` (or split npm/native rows), make `PackageName` optional, and add `CommandName` / binary path candidates for native CLIs. Antigravity should probe `agy` and `%LOCALAPPDATA%\agy\bin\agy.exe`; npm installed/outdated checks must not run for it.
 - [ ] In `scripts/windows/Test-WindowsInstallerSmoke.ps1:147`, replace the `Install-Gemini.ps1` assertion with an `Install-Antigravity.ps1` assertion.
 - [ ] In `scripts/windows/Test-WindowsInstallerSmoke.ps1:184`, replace the `windows-gemini-native-installer-script` artifact id with `windows-antigravity-native-installer-script`.
 - [ ] In `scripts/macos/test-macos-package-smoke.sh:52`, replace the `install-gemini.sh` assertion with `install-antigravity.sh`.
@@ -182,7 +184,7 @@ Goal: replace guesses with facts before touching code. This phase is shared with
 - **Wrappers delegate install work to environment-bootstrap**: Cats Desktop wrappers still own the packaged helper lifecycle and JSON/check/dry-run/uninstall surface; environment-bootstrap remains the source of truth for the actual `agy` install / refresh flow.
 - **Antigravity does not flow through `_NpmCliInstaller.ps1` / `node-cli-common.sh`**: it is a native installer, not npm-based. Helpers stay in place for other npm CLIs; only the Gemini-specific rows and comments come out.
 - **Phase 0 probe blocks Phases 1-5**: skills directory, model identifiers, and installer flag translation must be known before code lands.
-- **Shared catalog is the cross-repo handoff**: runtime PLAN-033 Phase 4 starts after Phase 1 lands here.
+- **Shared catalog is the cross-repo handoff**: runtime PLAN-033 Phase 4 mirrors the finalized values after Phase 1 lands here.
 
 ## Testing Strategy
 
@@ -197,7 +199,8 @@ Goal: replace guesses with facts before touching code. This phase is shared with
 
 ## Risks & Mitigations
 
-- **Wrapper flag mismatch**: environment-bootstrap installers accept a narrower flag surface than Cats Desktop packaged helpers. Mitigation: Phase 0 records the real flags and Phase 2 wrappers translate the host lifecycle instead of passing unsupported flags through.
+- **Wrapper flag mismatch**: environment-bootstrap installers accept a narrower flag surface than Cats Desktop packaged helpers, and the host emits PowerShell-style flags even for shell helpers. Mitigation: Phase 0 records the real flags and Phase 2 wrappers translate the host lifecycle instead of passing unsupported flags through.
+- **Readiness schema mismatch**: `Check-WindowsSetupReadiness.ps1` is currently npm-package oriented. Mitigation: Phase 4 extends the row schema with install source/native command fields instead of hiding Antigravity behind a fake package name.
 - **Asset id rename breaks bundled-app build pipeline**: packaging metadata is consumed by the Electron builder. Mitigation: smoke tests catch missing assets immediately after Phase 4.
 - **Shared catalog mid-flip drifts from runtime UI**: if cats-runtime UI mirrors values before the platform catalog lands, runtime playground can keep a stale `gemini` list. Mitigation: cross-repo coordination point is called out explicitly in both plans; runtime PLAN-033 Phase 4 has a precondition check.
 - **`.antigravity/skills/` assumption is wrong**: if PLAN-100 Phase 5 adds an `antigravity` row to Sync-AgentSkills based on a misread of Phase 0, skills sync writes to a non-existent directory. Mitigation: default to dropping the Gemini row without adding Antigravity unless Phase 0 explicitly confirms a skills directory.
