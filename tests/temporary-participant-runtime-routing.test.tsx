@@ -36,9 +36,9 @@ function createTemporaryParticipantState() {
         {
           participantId: 'participant-reviewer',
           name: 'RuntimeReviewer',
-          provider: 'gemini',
+          provider: 'antigravity',
           instance: 'native',
-          model: 'gemini-3.1-pro',
+          model: 'Gemini 3.1 Pro (high)',
           modelSelection: null,
           roleHint: 'Counterpoint',
         },
@@ -134,11 +134,11 @@ test('temporary participants build prompts, choice routing, and suppress default
   );
   assert.match(prompt.message, /temporary chat participant/i);
   assert.match(prompt.message, /RuntimeReviewer/);
-  assert.match(prompt.message, /gemini/i);
+  assert.match(prompt.message, /antigravity/i);
 
   const execution = resolveExecutionMetadataForTarget(state, channelId, reviewerTarget);
-  assert.equal(execution.provider, 'gemini');
-  assert.equal(execution.model, 'gemini-3.1-pro');
+  assert.equal(execution.provider, 'antigravity');
+  assert.equal(execution.model, 'Gemini 3.1 Pro (high)');
 
   const reviewerReply = appendMessage(
     state,

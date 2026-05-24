@@ -58,7 +58,7 @@ test('summarizeRuntimeSetupReadModel promotes ready repair state to ready_to_app
         { provider: 'codex', family: 'openai' },
       ],
       providersNeedingAttention: [
-        { provider: 'gemini', family: 'google', remediationCount: 2 },
+        { provider: 'antigravity', family: 'google', remediationCount: 2 },
       ],
     },
   });
@@ -71,7 +71,7 @@ test('summarizeRuntimeSetupReadModel promotes ready repair state to ready_to_app
   assert.equal(summary.canRunManualScan, true);
   assert.equal(summary.canApply, true);
   assert.deepEqual(summary.providersNeedingAttention, [
-    { provider: 'gemini', family: 'google', remediationCount: 2 },
+    { provider: 'antigravity', family: 'google', remediationCount: 2 },
   ]);
 });
 

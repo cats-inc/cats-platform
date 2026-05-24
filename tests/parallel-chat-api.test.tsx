@@ -63,9 +63,9 @@ test('parallel chat client uses canonical parallel-chat-groups endpoints', async
         {
           participantId: 'temp-analyst',
           name: 'Analyst',
-          provider: 'gemini',
+          provider: 'antigravity',
           instance: 'native',
-          model: 'gemini-3.1-pro',
+          model: 'Gemini 3.1 Pro (high)',
           modelSelection: null,
           roleHint: 'Counterpoint',
         },
@@ -95,9 +95,9 @@ test('parallel chat client uses canonical parallel-chat-groups endpoints', async
           {
             participantId: 'temp-analyst',
             name: 'Analyst',
-            provider: 'gemini',
+            provider: 'antigravity',
             instance: 'native',
-            model: 'gemini-3.1-pro',
+            model: 'Gemini 3.1 Pro (high)',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },

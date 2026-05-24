@@ -37,9 +37,9 @@ test('parallel draft adds later targets with provider defaults instead of blank 
 
   const nextTarget = createNextCompareTarget(targets, targets[0]!);
 
-  assert.equal(nextTarget.provider, 'gemini');
-  assert.equal(nextTarget.model, getDefaultModel('gemini'));
-  assert.equal(nextTarget.instance, getDefaultProviderInstance('gemini'));
+  assert.equal(nextTarget.provider, 'antigravity');
+  assert.equal(nextTarget.model, getDefaultModel('antigravity'));
+  assert.equal(nextTarget.instance, getDefaultProviderInstance('antigravity'));
 });
 
 test('parallel draft keeps the first target synchronized with the shared draft default', () => {
@@ -59,8 +59,8 @@ test('parallel draft keeps the first target synchronized with the shared draft d
       },
     ],
     {
-      provider: 'gemini',
-      model: 'gemini-3.1-pro',
+      provider: 'antigravity',
+      model: 'Gemini 3.1 Pro (high)',
       instance: 'cli/native',
       modelSelection: {
         mode: 'preset',
@@ -71,8 +71,8 @@ test('parallel draft keeps the first target synchronized with the shared draft d
   );
 
   assert.deepEqual(syncedTargets[0], {
-    provider: 'gemini',
-    model: 'gemini-3.1-pro',
+    provider: 'antigravity',
+    model: 'Gemini 3.1 Pro (high)',
     instance: 'cli/native',
     modelSelection: {
       mode: 'preset',
