@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
@@ -25,7 +28,7 @@ function createRuntimeStub() {
       defaultBackend: 'cli',
       instances: [{ id: 'native', target: 'cli/native', backend: 'cli' }],
     },
-    gemini: {
+    antigravity: {
       defaultInstance: 'native',
       defaultBackend: 'cli',
       instances: [{ id: 'native', target: 'cli/native', backend: 'cli' }],
@@ -80,9 +83,13 @@ function createRuntimeStub() {
 }
 
 async function withServer(callback) {
+  const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-code-relay-'));
   const server = createServer({
     shared: {
-      config: baseConfig,
+      config: {
+        ...baseConfig,
+        chatStatePath: path.join(tempStateDir, 'platform', 'state', 'chat-state.local.json'),
+      },
       runtimeClient: createRuntimeStub(),
       now: () => new Date('2026-03-30T12:00:00.000Z'),
     },
@@ -103,6 +110,7 @@ async function withServer(callback) {
   } finally {
     server.close();
     await once(server, 'close');
+    await rm(tempStateDir, { recursive: true, force: true });
   }
 }
 
@@ -209,6 +217,6 @@ test('Code relay routes create threads, update roster, and fan out prompts', asy
     assert.equal(settledPayload.threads[0].thread.status, 'waiting_for_user');
     assert.equal(settledRound.dispatches[0].status, 'completed');
     assert.equal(settledRound.messages[0].kind, 'prompt');
-    assert.match(settledRound.messages[1].content, /\[(codex|gemini)\]/u);
+    assert.match(settledRound.messages[1].content, /\[(codex|antigravity)\]/u);
   });
 });

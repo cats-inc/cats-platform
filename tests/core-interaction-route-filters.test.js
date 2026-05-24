@@ -218,7 +218,7 @@ function createInteractionCoreState() {
       participantId: 'participant-2',
       agentId: 'actor-agent-2',
       transportBindingId: 'transport-binding-2',
-      runtimeKey: 'gemini:cli',
+      runtimeKey: 'antigravity:cli',
       status: 'failed',
       createdAt: '2026-04-15T03:25:00.000Z',
       startedAt: '2026-04-15T03:25:00.000Z',

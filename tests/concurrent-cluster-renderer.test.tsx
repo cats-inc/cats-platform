@@ -548,11 +548,11 @@ test('compare_cards exposes nav controls and per-card dots when carousel mode is
       speakerLabel: 'Antigravity-CLI',
       contentBlocks: [
         {
-          id: 'text-gemini',
+          id: 'text-antigravity',
           kind: 'text',
           index: 0,
           status: 'complete',
-          text: 'Gemini answer',
+          text: 'Antigravity answer',
         },
       ],
     }),

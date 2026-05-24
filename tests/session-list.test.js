@@ -38,7 +38,7 @@ test('listSessions filters sessions by canonical relationship ids and runtime fi
       participantId: 'participant-2',
       agentId: 'actor-agent-2',
       transportBindingId: 'transport-binding-2',
-      runtimeKey: 'gemini:cli',
+      runtimeKey: 'antigravity:cli',
       status: 'failed',
       createdAt: '2026-04-15T03:31:00.000Z',
       startedAt: '2026-04-15T03:31:00.000Z',

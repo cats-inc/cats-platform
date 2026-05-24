@@ -18,7 +18,7 @@ test('default orchestrator replies use the stored execution label snapshot inste
       },
       usage: null,
       executionProvider: 'antigravity',
-      executionModel: 'Gemini 3 Flash',
+      executionModel: 'antigravity-default',
       executionInstance: 'flash',
       createdAt: '2026-03-27T00:00:00.000Z',
     },

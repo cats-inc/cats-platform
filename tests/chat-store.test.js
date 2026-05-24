@@ -687,7 +687,7 @@ test('FileChatStore normalizes contaminated direct lanes back to the direct-reci
       target: {
         provider: 'antigravity',
         instance: null,
-        model: 'Gemini 3 Flash',
+        model: 'antigravity-default',
       },
       lease: {
         sessionId: 'session-extra',
@@ -695,7 +695,7 @@ test('FileChatStore normalizes contaminated direct lanes back to the direct-reci
         cwd: 'C:\\legacy\\extra',
         lastError: null,
         provider: 'antigravity',
-        model: 'Gemini 3 Flash',
+        model: 'antigravity-default',
         startedAt: now.toISOString(),
         lastUsedAt: now.toISOString(),
       },

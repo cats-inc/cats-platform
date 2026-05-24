@@ -26,7 +26,7 @@ test('createCodeRelayThread seeds a persistent thread-wide roster', () => {
   assert.equal(created.thread.roster.length, 3);
   assert.deepEqual(
     created.thread.roster.map((entry) => entry.provider),
-    ['claude', 'codex', 'gemini'],
+    ['claude', 'codex', 'antigravity'],
   );
   assert.ok(created.thread.roster.every((entry) => entry.modelSelection === null));
 });
@@ -173,4 +173,3 @@ test('readCodeRelayThread derives deterministic fallback ids for malformed metad
   assert.equal(firstRead.rounds[0].dispatches[0].id, secondRead.rounds[0].dispatches[0].id);
   assert.equal(firstRead.rounds[0].messages[0].id, secondRead.rounds[0].messages[0].id);
 });
-

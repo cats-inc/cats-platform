@@ -26,7 +26,7 @@ function createRuntimeStub(): RuntimeClient & {
       defaultBackend: 'cli',
       instances: [{ id: 'native', target: 'cli/native', backend: 'cli' }],
     },
-    gemini: {
+    antigravity: {
       defaultInstance: 'native',
       defaultBackend: 'cli',
       instances: [{ id: 'native', target: 'cli/native', backend: 'cli' }],
