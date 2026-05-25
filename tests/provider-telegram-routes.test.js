@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -18,6 +18,11 @@ import {
 } from '../build/server/products/chat/state/store.js';
 import { MemoryCompanionBoxStore } from '../build/server/products/chat/state/companion-box/index.js';
 import { createChatTelegramRoomBridge } from '../build/server/products/chat/state/telegramBridgeAdapter.js';
+import {
+  createAuthenticatedTestSession,
+  createTestAuthConfig,
+  installAuthenticatedFetch,
+} from './testUtils.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -25,7 +30,19 @@ const baseConfig = {
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
+  auth: createTestAuthConfig(),
 };
+
+function createTempPlatformConfig(prefix = 'cats-telegram-routes-') {
+  const tempRoot = mkdtempSync(path.join(tmpdir(), prefix));
+  return {
+    tempRoot,
+    config: {
+      ...baseConfig,
+      chatStatePath: path.join(tempRoot, 'platform', 'state', 'chat-state.local.json'),
+    },
+  };
+}
 
 function createRuntimeStub() {
   let sessionCounter = 0;
@@ -288,54 +305,13 @@ async function withServer(
   chatStore = new MemoryChatStore(),
   extraDependencies = {},
 ) {
-  const {
-    startup,
-    coreStore,
-    resumePendingOrchestratorDispatch,
-    work,
-    code,
-    ...chatOverrides
-  } = extraDependencies;
-  const server = createServer({
-    shared: {
-      config: baseConfig,
-      runtimeClient,
-      now: () => new Date('2026-03-19T00:00:00.000Z'),
-      startup,
-      coreStore,
-      resumePendingOrchestratorDispatch,
-    },
-    chat: {
-      chatStore,
-      ...chatOverrides,
-    },
-    work,
-    code,
+  const { tempRoot, config } = createTempPlatformConfig();
+  const now = new Date('2026-03-19T00:00:00.000Z');
+  const auth = await createAuthenticatedTestSession({
+    now,
+    sessionSecret: config.auth.sessionSecret,
+    sessionTtlMs: config.auth.sessionTtlMs,
   });
-
-  server.listen(0, '127.0.0.1');
-  await once(server, 'listening');
-
-  const address = server.address();
-  if (!address || typeof address === 'string') {
-    throw new Error('Failed to resolve test server address');
-  }
-
-  try {
-    await callback(`http://127.0.0.1:${address.port}`);
-  } finally {
-    server.close();
-    await once(server, 'close');
-  }
-}
-
-async function withServerConfig(
-  runtimeClient,
-  config,
-  chatStore,
-  callback,
-  extraDependencies = {},
-) {
   const {
     startup,
     coreStore,
@@ -348,7 +324,8 @@ async function withServerConfig(
     shared: {
       config,
       runtimeClient,
-      now: () => new Date('2026-03-19T00:00:00.000Z'),
+      authStore: auth.authStore,
+      now: () => now,
       startup,
       coreStore,
       resumePendingOrchestratorDispatch,
@@ -369,11 +346,85 @@ async function withServerConfig(
     throw new Error('Failed to resolve test server address');
   }
 
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const restoreFetch = installAuthenticatedFetch(baseUrl, auth, {
+    origin: 'http://127.0.0.1:8181',
+  });
+
   try {
-    await callback(`http://127.0.0.1:${address.port}`);
+    await callback(baseUrl);
   } finally {
+    restoreFetch();
     server.close();
     await once(server, 'close');
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
+}
+
+async function withServerConfig(
+  runtimeClient,
+  config,
+  chatStore,
+  callback,
+  extraDependencies = {},
+) {
+  const needsTempConfig = config.chatStatePath === baseConfig.chatStatePath;
+  const tempConfig = needsTempConfig ? createTempPlatformConfig() : null;
+  const serverConfig = tempConfig?.config ?? config;
+  const now = new Date('2026-03-19T00:00:00.000Z');
+  const auth = await createAuthenticatedTestSession({
+    now,
+    sessionSecret: serverConfig.auth.sessionSecret,
+    sessionTtlMs: serverConfig.auth.sessionTtlMs,
+  });
+  const {
+    startup,
+    coreStore,
+    resumePendingOrchestratorDispatch,
+    work,
+    code,
+    ...chatOverrides
+  } = extraDependencies;
+  const server = createServer({
+    shared: {
+      config: serverConfig,
+      runtimeClient,
+      authStore: auth.authStore,
+      now: () => now,
+      startup,
+      coreStore,
+      resumePendingOrchestratorDispatch,
+    },
+    chat: {
+      chatStore,
+      ...chatOverrides,
+    },
+    work,
+    code,
+  });
+
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Failed to resolve test server address');
+  }
+
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const restoreFetch = installAuthenticatedFetch(baseUrl, auth, {
+    origin: 'http://127.0.0.1:8181',
+  });
+
+  try {
+    await callback(baseUrl);
+  } finally {
+    restoreFetch();
+    server.close();
+    await once(server, 'close');
+    if (tempConfig) {
+      rmSync(tempConfig.tempRoot, { recursive: true, force: true });
+    }
   }
 }
 
@@ -400,7 +451,11 @@ async function configureTelegramBossCat(baseUrl) {
       bossCatProvider: 'claude',
     }),
   });
-  assert.equal(setupResponse.status, 200);
+  assert.equal(
+    setupResponse.status,
+    200,
+    `setup complete failed: ${setupResponse.status} ${await setupResponse.text()}`,
+  );
 
   const orchestratorResponse = await fetch(`${baseUrl}/api/orchestrator`, {
     method: 'PATCH',
@@ -410,7 +465,11 @@ async function configureTelegramBossCat(baseUrl) {
       telegramBotName: 'smelly_bot',
     }),
   });
-  assert.equal(orchestratorResponse.status, 200);
+  assert.equal(
+    orchestratorResponse.status,
+    200,
+    `orchestrator update failed: ${orchestratorResponse.status} ${await orchestratorResponse.text()}`,
+  );
 }
 
 function createCoreState(overrides = {}) {
@@ -648,7 +707,7 @@ test('GET /api/providers serves stale truthful selector cache while refreshing i
       const first = await fetch(`${baseUrl}/api/providers`);
       assert.equal(first.status, 200);
 
-      nowMs += 6_000;
+      nowMs += 31_000;
       const secondPromise = fetch(`${baseUrl}/api/providers`);
       const second = await Promise.race([
         secondPromise,
@@ -759,12 +818,12 @@ test('GET /api/providers exposes runtime setup recovery when no usable targets r
   });
 });
 
-test('GET /runtime/setup serves a platform-hosted runtime setup page', async () => {
+test('GET /runtime/setup reports unavailable runtime surface without a runtime server', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(new URL('/runtime/setup', baseUrl));
-    assert.equal(response.status, 200);
-    const html = await response.text();
-    assert.match(html, /data-cats-runtime-platform-proxy/);
+    assert.equal(response.status, 502);
+    const payload = await response.json();
+    assert.equal(payload.error.code, 'runtime_surface_unavailable');
   });
 });
 
@@ -951,11 +1010,19 @@ test('telegram status ignores orphaned Telegram bindings when Boss Cat is missin
       });
     },
   };
+  const { tempRoot, config } = createTempPlatformConfig();
+  const now = new Date('2026-03-19T00:00:00.000Z');
+  const auth = await createAuthenticatedTestSession({
+    now,
+    sessionSecret: config.auth.sessionSecret,
+    sessionTtlMs: config.auth.sessionTtlMs,
+  });
   const server = createServer({
     shared: {
-      config: baseConfig,
+      config,
       runtimeClient: createRuntimeStub(),
-      now: () => new Date('2026-03-19T00:00:00.000Z'),
+      authStore: auth.authStore,
+      now: () => now,
     },
     chat: {
       chatStore,
@@ -971,8 +1038,13 @@ test('telegram status ignores orphaned Telegram bindings when Boss Cat is missin
     throw new Error('Failed to resolve test server address');
   }
 
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const restoreFetch = installAuthenticatedFetch(baseUrl, auth, {
+    origin: 'http://127.0.0.1:8181',
+  });
+
   try {
-    const response = await fetch(`http://127.0.0.1:${address.port}/api/transports/telegram`);
+    const response = await fetch(`${baseUrl}/api/transports/telegram`);
     assert.equal(response.status, 200);
 
     const payload = await response.json();
@@ -981,8 +1053,10 @@ test('telegram status ignores orphaned Telegram bindings when Boss Cat is missin
     assert.equal(payload.telegram.availableBindings.length, 0);
     assert.equal(payload.telegram.publicIdentityMode, 'multi_cat_bindings_single_boss');
   } finally {
+    restoreFetch();
     server.close();
     await once(server, 'close');
+    rmSync(tempRoot, { recursive: true, force: true });
   }
 });
 
@@ -1935,74 +2009,78 @@ test('telegram webhook normalizes legacy boss room mode for cat-bound bots into 
 
 test('telegram relay state survives restart with file-backed chat storage', async () => {
   const stateDir = mkdtempSync(path.join(tmpdir(), 'cats-telegram-routes-'));
-  const chatStatePath = path.join(stateDir, 'chat.json');
+  const chatStatePath = path.join(stateDir, 'platform', 'state', 'chat-state.local.json');
   const config = {
     ...baseConfig,
     chatStatePath,
   };
 
-  await withServerConfig(
-    createRuntimeStub(),
-    config,
-    new FileChatStore(chatStatePath),
-    async (baseUrl) => {
-      await configureTelegramBossCat(baseUrl);
+  try {
+    await withServerConfig(
+      createRuntimeStub(),
+      config,
+      new FileChatStore(chatStatePath),
+      async (baseUrl) => {
+        await configureTelegramBossCat(baseUrl);
 
-      const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          update_id: 101,
-          message: {
-            message_id: 88,
-            text: 'hello from telegram',
-            chat: { id: 12345, type: 'private' },
-          },
-        }),
-      });
-      assert.equal(webhookResponse.status, 202);
-    },
-  );
+        const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            update_id: 101,
+            message: {
+              message_id: 88,
+              text: 'hello from telegram',
+              chat: { id: 12345, type: 'private' },
+            },
+          }),
+        });
+        assert.equal(webhookResponse.status, 202);
+      },
+    );
 
-  await withServerConfig(
-    createRuntimeStub(),
-    config,
-    new FileChatStore(chatStatePath),
-    async (baseUrl) => {
-      const statusResponse = await fetch(`${baseUrl}/api/transports/telegram`);
-      assert.equal(statusResponse.status, 200);
+    await withServerConfig(
+      createRuntimeStub(),
+      config,
+      new FileChatStore(chatStatePath),
+      async (baseUrl) => {
+        const statusResponse = await fetch(`${baseUrl}/api/transports/telegram`);
+        assert.equal(statusResponse.status, 200);
 
-      const statusPayload = await statusResponse.json();
-      assert.equal(statusPayload.telegram.status, 'bound');
-      assert.equal(statusPayload.telegram.mappedConversationCount, 1);
-      assert.equal(statusPayload.telegram.lastProcessedUpdateId, 101);
-      assert.equal(statusPayload.telegram.roomRouting.roomRoutingStatus, 'linked_room');
-      assert.equal(statusPayload.telegram.ingress.acceptedUpdates, 1);
+        const statusPayload = await statusResponse.json();
+        assert.equal(statusPayload.telegram.status, 'bound');
+        assert.equal(statusPayload.telegram.mappedConversationCount, 1);
+        assert.equal(statusPayload.telegram.lastProcessedUpdateId, 101);
+        assert.equal(statusPayload.telegram.roomRouting.roomRoutingStatus, 'linked_room');
+        assert.equal(statusPayload.telegram.ingress.acceptedUpdates, 1);
 
-      const duplicateResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          update_id: 101,
-          message: {
-            message_id: 89,
-            text: 'retry after restart',
-            chat: { id: 12345, type: 'private' },
-          },
-        }),
-      });
-      assert.equal(duplicateResponse.status, 202);
+        const duplicateResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            update_id: 101,
+            message: {
+              message_id: 89,
+              text: 'retry after restart',
+              chat: { id: 12345, type: 'private' },
+            },
+          }),
+        });
+        assert.equal(duplicateResponse.status, 202);
 
-      const duplicatePayload = await duplicateResponse.json();
-      assert.equal(duplicatePayload.receipt.status, 'ignored');
-      assert.equal(duplicatePayload.receipt.reason, 'duplicate_update');
-      assert.equal(duplicatePayload.receipt.mappedConversationId, 'telegram:12345');
+        const duplicatePayload = await duplicateResponse.json();
+        assert.equal(duplicatePayload.receipt.status, 'ignored');
+        assert.equal(duplicatePayload.receipt.reason, 'duplicate_update');
+        assert.equal(duplicatePayload.receipt.mappedConversationId, 'telegram:12345');
 
-      const diagnosticsResponse = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
-      const diagnosticsPayload = await diagnosticsResponse.json();
-      assert.equal(diagnosticsPayload.telegram.bindings[0].conversationId, 'telegram:12345');
-      assert.ok(diagnosticsPayload.telegram.bindings[0].linkedRoomId);
-      assert.equal(diagnosticsPayload.telegram.ingress.ignoredUpdates, 1);
-    },
-  );
+        const diagnosticsResponse = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
+        const diagnosticsPayload = await diagnosticsResponse.json();
+        assert.equal(diagnosticsPayload.telegram.bindings[0].conversationId, 'telegram:12345');
+        assert.ok(diagnosticsPayload.telegram.bindings[0].linkedRoomId);
+        assert.equal(diagnosticsPayload.telegram.ingress.ignoredUpdates, 1);
+      },
+    );
+  } finally {
+    rmSync(stateDir, { recursive: true, force: true });
+  }
 });

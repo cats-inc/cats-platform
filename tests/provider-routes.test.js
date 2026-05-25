@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
@@ -110,9 +113,14 @@ function createRuntimeStub() {
 }
 
 async function withServer(runtimeClient, callback) {
+  const tempRoot = await mkdtemp(path.join(tmpdir(), 'cats-provider-routes-'));
+  const chatStatePath = path.join(tempRoot, 'platform', 'state', 'chat-state.local.json');
   const server = createServer({
     shared: {
-      config: baseConfig,
+      config: {
+        ...baseConfig,
+        chatStatePath,
+      },
       runtimeClient,
       now: () => new Date('2026-04-21T00:00:00.000Z'),
     },
@@ -134,6 +142,7 @@ async function withServer(runtimeClient, callback) {
   } finally {
     server.close();
     await once(server, 'close');
+    await rm(tempRoot, { recursive: true, force: true });
   }
 }
 
@@ -509,7 +518,7 @@ test('GET /api/providers/:provider/models serves stale immediately while revalid
   });
 });
 
-test('GET /api/providers caches a first-time failure briefly so back-to-back probes share one timeout', {
+test('GET /api/providers re-probes cold failures instead of caching first-time failure', {
   concurrency: false,
 }, async (t) => {
   const runtimeClient = createRuntimeStub();
@@ -533,12 +542,12 @@ test('GET /api/providers caches a first-time failure briefly so back-to-back pro
       assert.equal(second.status, 200);
       const secondPayload = await second.json();
       assert.equal(secondPayload.state, 'runtime_unreachable');
-      assert.equal(diagnosticsCalls, 1, 'cached failure must be served without re-probing within the backoff window');
+      assert.equal(diagnosticsCalls, 2, 'cold failures must not pin the selector behind local backoff');
 
       clock.advance(30_001);
       const third = await fetch(`${baseUrl}/api/providers`);
       assert.equal(third.status, 200);
-      assert.equal(diagnosticsCalls, 2, 'after the backoff expires we re-probe');
+      assert.equal(diagnosticsCalls, 3, 'each cold failure request probes runtime again');
     });
   });
 });
