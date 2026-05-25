@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
@@ -28,6 +31,8 @@ function createRuntimeStub() {
 }
 
 async function withServer(callback) {
+  const tempRoot = await mkdtemp(path.join(tmpdir(), 'cats-platform-ingress-route-'));
+  const chatStatePath = path.join(tempRoot, 'platform', 'state', 'chat-state.local.json');
   const server = createServer({
     shared: {
       config: {
@@ -35,7 +40,7 @@ async function withServer(callback) {
         port: 8181,
         runtimeBaseUrl: 'http://127.0.0.1:3110',
         runtimeApiKey: '',
-        chatStatePath: 'unused-for-tests',
+        chatStatePath,
       },
       runtimeClient: createRuntimeStub(),
       now: () => new Date('2026-04-20T00:00:00.000Z'),
@@ -58,6 +63,7 @@ async function withServer(callback) {
   } finally {
     server.close();
     await once(server, 'close');
+    await rm(tempRoot, { recursive: true, force: true });
   }
 }
 
