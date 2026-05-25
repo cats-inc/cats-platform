@@ -47,7 +47,7 @@ test('an available lookup populates the envelope from preview fields', async () 
   assert.equal(preview.resolvedAt, '2026-04-28T01:00:00.000Z');
 });
 
-test('a scope mismatch resolves as inaccessible and never invokes lookup', async () => {
+test('a scope mismatch resolves as inaccessible with a localizable fallback marker and never invokes lookup', async () => {
   let lookupCalls = 0;
   const preview = await resolveCompanionContentReference({
     reference: REFERENCE,
@@ -59,18 +59,20 @@ test('a scope mismatch resolves as inaccessible and never invokes lookup', async
   });
   assert.equal(lookupCalls, 0);
   assert.equal(preview.availability, 'inaccessible');
-  assert.equal(preview.title, 'Companion content from another workspace');
+  assert.equal(preview.fallbackReason, 'inaccessible');
+  assert.equal(preview.title, '');
   assert.equal(preview.openRoute, null);
 });
 
-test('a missing lookup resolves with the missing-fallback title and no snapshot', async () => {
+test('a missing lookup resolves with a localizable fallback marker and no snapshot', async () => {
   const preview = await resolveCompanionContentReference({
     reference: REFERENCE,
     currentScopeId: 'scope-A',
     lookup: () => ({ status: 'missing' }),
   });
   assert.equal(preview.availability, 'missing');
-  assert.equal(preview.title, 'Companion content unavailable');
+  assert.equal(preview.fallbackReason, 'missing');
+  assert.equal(preview.title, '');
   assert.equal(preview.snapshot, null);
 });
 
@@ -92,14 +94,15 @@ test('a missing lookup with a fallback preview keeps the prior title visible', a
   assert.deepEqual(preview.snapshot, { title: 'Beach snap (cached)' });
 });
 
-test('a deleted lookup resolves with the deleted-fallback title', async () => {
+test('a deleted lookup resolves with a localizable fallback marker', async () => {
   const preview = await resolveCompanionContentReference({
     reference: REFERENCE,
     currentScopeId: 'scope-A',
     lookup: () => ({ status: 'deleted' }),
   });
   assert.equal(preview.availability, 'deleted');
-  assert.equal(preview.title, 'Companion content deleted');
+  assert.equal(preview.fallbackReason, 'deleted');
+  assert.equal(preview.title, '');
 });
 
 test('the resolver passes the original reference through to lookup unchanged', async () => {
