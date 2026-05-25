@@ -81,6 +81,17 @@ test('chat guide cat assist read model prefers cache, respects overrides, and ex
     },
   });
 
+  await refreshGuideCatAssistEligibleScopes({
+    chatStatePath,
+    guideCat: TEST_GUIDE_CAT,
+    ownerDisplayName: 'Owner',
+    runtimeReachable: true,
+    now: new Date('2026-04-17T12:00:00.000Z'),
+  });
+  const hydratedCache = await readGuideCatAssistCache(chatStatePath);
+  const hydratedLobbyBundle = hydratedCache.bundles[GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault];
+  assert.ok(hydratedLobbyBundle);
+
   await upsertGuideCatAssistBundle(chatStatePath, {
     bundleId: GUIDE_CAT_ASSIST_V1_SCOPE_KEYS.lobbyDefault,
     scope: {
@@ -94,7 +105,7 @@ test('chat guide cat assist read model prefers cache, respects overrides, and ex
     },
     provenance: {
       originMode: 'runtime',
-      refreshContextHash: 'gca:v1:cached-lobby',
+      refreshContextHash: hydratedLobbyBundle.provenance.refreshContextHash,
       missionId: 'mission-123',
       runId: 'run-456',
     },
@@ -164,7 +175,7 @@ test('createAppShell carries guide cat assist read models into lobby and chat pa
   );
 });
 
-test('chat guide cat assist treats refreshContextHash mismatches as stale even before TTL expiry', async () => {
+test('chat guide cat assist falls back to deterministic baseline when refreshContextHash drifts', async () => {
   const workingDir = await mkdtemp(path.join(tmpdir(), 'cats-guide-cat-assist-context-hash-'));
   const chatStatePath = path.join(workingDir, 'platform', 'state', 'chat-state.local.json');
 
@@ -202,10 +213,14 @@ test('chat guide cat assist treats refreshContextHash mismatches as stale even b
     runtimeReachable: true,
   });
 
-  assert.equal(readModel.lobby.renderSource, 'cache');
+  assert.equal(readModel.lobby.renderSource, 'deterministic');
   assert.equal(readModel.lobby.cacheHit, true);
   assert.equal(readModel.lobby.stale, true);
   assert.equal(readModel.lobby.refreshEligible, true);
+  assert.notEqual(
+    readModel.lobby.bundle.content.greeting,
+    'Fresh cached lobby greeting',
+  );
 });
 
 test('chat guide cat assist ignores cached bundles when no Guide Cat is configured', async () => {
