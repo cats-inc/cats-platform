@@ -72,7 +72,11 @@ function runNodeCommand(args, options = {}) {
 }
 
 function runBuild() {
-  runNpmCommand(['run', 'build']);
+  // Package contract tests only need the package-shipped server, renderer, and
+  // desktop outputs. The manifest assertion below still pins prepack to the
+  // full build, but avoiding mobile export keeps this test deterministic in CI
+  // and offline developer shells.
+  runNpmCommand(['run', 'build:no-mobile']);
   buildReady = true;
 }
 
