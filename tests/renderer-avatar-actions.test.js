@@ -18,9 +18,11 @@ test('platform general settings can remove the owner avatar', async () => {
 
   assert.match(source, /async function updateOwnerAvatar\(/u);
   assert.match(source, /ownerAvatarUrl: nextAvatarUrl/u);
-  assert.match(source, /onClick=\{\(\) => void updateOwnerAvatar\(null, 'Failed to remove avatar'\)\}/u);
-  assert.match(source, /className="secondaryButton"/u);
-  assert.match(source, />\s*Remove avatar\s*</u);
+  assert.match(source, /className="settingsOwnerAvatarRemove"/u);
+  assert.match(source, /event\.stopPropagation\(\);/u);
+  assert.match(source, /updateOwnerAvatar\(null, t\('settingsGeneralRemoveAvatarError'\)\)/u);
+  assert.match(source, /aria-label=\{t\('settingsGeneralAvatarRemoveLabel'\)\}/u);
+  assert.match(source, /data-tooltip=\{t\('settingsGeneralAvatarRemoveLabel'\)\}/u);
 });
 
 test('product renderer settings wrappers for general and data pages were removed', async () => {
@@ -90,6 +92,6 @@ for (const product of ['chat', 'work', 'code']) {
     assert.match(implementationSource, /async function handleCatAvatarRemove\(\): Promise<void> \{/u);
     assert.match(implementationSource, /updateCatProfile\(cat\.id, \{ avatarUrl: null \}\)/u);
     assert.match(implementationSource, /className="secondaryButton"/u);
-    assert.match(implementationSource, />\s*Remove avatar\s*</u);
+    assert.match(implementationSource, /\{t\(messageKeys\.settingsGeneralAvatarRemoveLabel\)\}/u);
   });
 }

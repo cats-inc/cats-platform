@@ -5,7 +5,7 @@ import { readStylesheetSync } from './helpers/readStylesheet.js';
 
 test('chat group draft composer keeps the dedicated add-participant row styling', () => {
   const stylesheet = readStylesheetSync(
-    new URL('../src/products/chat/renderer/styles/chat.css', import.meta.url),
+    new URL('../src/products/shared/renderer/styles/chat-composer-base.css', import.meta.url),
   );
 
   const addRowRule = stylesheet.match(/\.composerGroupAddRow\s*\{[^}]+\}/u)?.[0] ?? '';

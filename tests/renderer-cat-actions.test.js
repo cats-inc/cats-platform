@@ -27,8 +27,8 @@ for (const product of ['chat', 'work', 'code']) {
     );
 
     assert.match(source, /const onArchiveCat = useCallback\(async \(catId: string\): Promise<void> => \{/u);
-    assert.match(source, /title: 'Archive cat'/u);
-    assert.match(source, /confirmLabel: 'Archive'/u);
+    assert.match(source, /title: t\(messageKeys\.sharedSettingsCatsArchiveConfirmTitle\)/u);
+    assert.match(source, /confirmLabel: t\(messageKeys\.sharedSettingsCatsArchiveLabel\)/u);
     assert.match(source, /if \(!confirmed\) return;/u);
     assert.match(source, /updateCatProfile\(catId, \{ archive: true \}\)/u);
   });
@@ -47,13 +47,13 @@ for (const product of ['chat', 'work', 'code']) {
     );
 
     assert.match(source, /async function onArchiveCat\(catId: string, catName: string\): Promise<void> \{/u);
-    assert.match(source, /title: 'Archive cat'/u);
-    assert.match(source, /confirmLabel: 'Archive'/u);
+    assert.match(source, /title: t\(messageKeys\.sharedSettingsCatsArchiveConfirmTitle\)/u);
+    assert.match(source, /confirmLabel: t\(messageKeys\.sharedSettingsCatsArchiveLabel\)/u);
     assert.match(source, /if \(!confirmed\) return;/u);
     assert.match(source, /updateCatProfile\(catId, \{ archive: true \}\)/u);
     assert.match(source, /async function onUnarchiveCat\(catId: string, catName: string\): Promise<void> \{/u);
-    assert.match(source, /title: 'Recover cat'/u);
-    assert.match(source, /confirmLabel: 'Recover'/u);
+    assert.match(source, /title: t\(messageKeys\.sharedSettingsCatsRecoverConfirmTitle\)/u);
+    assert.match(source, /confirmLabel: t\(messageKeys\.sharedSettingsCatsRecoverConfirmLabel\)/u);
     assert.match(source, /updateCatProfile\(catId, \{ unarchive: true \}\)/u);
   });
 
@@ -71,6 +71,7 @@ for (const product of ['chat', 'work', 'code']) {
     );
 
     assert.match(source, /registryController\.onUnarchiveCat\(cat\.id, cat\.name\)/u);
-    assert.match(source, />\s*Recover\s*</u);
+    assert.match(source, /messageKeys\.sharedSettingsCatsRegistryRecoverLabel/u);
+    assert.match(source, /messageKeys\.sharedSettingsCatsRegistryRecoverTooltip/u);
   });
 }

@@ -10,7 +10,8 @@ test('platform lobby keeps refreshing runtime status while the lobby stays open'
   );
 
   assert.match(source, /PLATFORM_ENVELOPE_BACKGROUND_REFRESH_MS/u);
-  assert.match(source, /location\.pathname === '\/lobby'/u);
+  assert.match(source, /const isLobbyRoute = isLobbyPath\(location\.pathname\)/u);
+  assert.match(source, /!isLobbyRoute/u);
   assert.match(
     source,
     /setInterval\(\s*refreshEnvelopeInBackground,\s*PLATFORM_ENVELOPE_BACKGROUND_REFRESH_MS/u,
@@ -31,7 +32,8 @@ test('workspace products refresh runtime status without replacing the whole app 
     source,
     /setInterval\(\s*refreshRuntimeStatusInBackground,\s*APP_SHELL_BACKGROUND_REFRESH_MS/u,
   );
-  assert.match(source, /payload:\s*\{\s*\.\.\.current\.payload/u);
+  assert.match(source, /payload: mergeWorkspaceBackgroundRefreshPayload\(current\.payload, nextPayload\)/u);
+  assert.match(source, /\.\.\.currentPayload/u);
   assert.match(source, /runtime:\s*nextPayload\.runtime/u);
   assert.match(source, /runtimeSetup:\s*nextPayload\.runtimeSetup/u);
   assert.match(source, /addEventListener\('focus', handleFocus\)/u);

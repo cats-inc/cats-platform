@@ -10,11 +10,22 @@ test('persisted chat view wires the default audience chip and suppresses visible
     path.join(process.cwd(), 'src/products/chat/renderer/App.tsx'),
     'utf8',
   );
+  const workspaceAppSource = await readFile(
+    path.join(process.cwd(), 'src/products/shared/renderer/WorkspaceProductApp.tsx'),
+    'utf8',
+  );
   const viewStateSource = await readFile(
     path.join(process.cwd(), 'src/products/chat/renderer/appViewState.ts'),
     'utf8',
   );
   const chatViewSource = await readProductChatViewSource('chat');
+  const composerTargetSlotSource = await readFile(
+    path.join(
+      process.cwd(),
+      'src/products/shared/renderer/components/chat-view/ChatComposerTargetSlot.tsx',
+    ),
+    'utf8',
+  );
 
   assert.match(
     viewStateSource,
@@ -23,17 +34,32 @@ test('persisted chat view wires the default audience chip and suppresses visible
   );
   assert.match(
     appSource,
-    /isDefaultChatChannel\(selectedChannel\)/,
-    'App should pass default execution-target state into the persisted chat view',
+    /createWorkspaceProductApp\(\{/u,
+    'Chat App should stay a thin product wrapper over the shared workspace app',
+  );
+  assert.match(
+    workspaceAppSource,
+    /isDefaultChatChannel\(visibleChannel\)/,
+    'WorkspaceProductApp should derive default execution-target state from default chat channels',
   );
   assert.match(
     chatViewSource,
-    /WorkspaceComposerTargetSlot/,
-    'ChatView should render the shared audience-chip slot for default persisted chats',
+    /ChatComposerTargetSlot/,
+    'ChatView should render the shared audience-chip slot for persisted chats',
   );
   assert.match(
     chatViewSource,
     /const conversationMode = resolveConversationMode\(selectedChannel\)/u,
     'ChatView should branch on the shared conversation-mode helper when rendering chat modes',
+  );
+  assert.match(
+    composerTargetSlotSource,
+    /isDefaultChatComposer/u,
+    'The target slot should preserve the default-chat branch as a separate composer mode',
+  );
+  assert.match(
+    composerTargetSlotSource,
+    /buildAudienceParticipantFromExecutionTarget/u,
+    'Default persisted chats should render a model/provider audience chip, not visible boss chrome',
   );
 });
