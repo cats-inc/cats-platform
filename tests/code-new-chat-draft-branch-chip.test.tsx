@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server.browser';
+import { renderToStaticMarkup as renderReactToStaticMarkup } from 'react-dom/server.browser';
+import { MemoryRouter } from 'react-router';
 
 import type { AppShellPayload } from '../src/products/code/api/contracts.ts';
 import {
@@ -10,6 +11,14 @@ import {
 } from '../src/products/code/renderer/components/NewChatDraft.tsx';
 import { NewChatDraft as WorkspaceNewChatDraft } from '../src/products/shared/renderer/components/NewChatDraft.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
+
+function renderToStaticMarkup(element: React.ReactElement): string {
+  return renderReactToStaticMarkup(
+    <MemoryRouter>
+      {element}
+    </MemoryRouter>,
+  );
+}
 
 function createPayload(): AppShellPayload {
   return {
@@ -56,6 +65,8 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     onRemoveDraftTemporaryParticipant: () => {},
     onUpdateDraftTemporaryParticipant: () => {},
     autoResize: () => {},
+    draftSurface: 'code',
+    onDraftSurfaceChange: () => {},
     draftDefaultRecipientCatId: null,
     onDraftDefaultRecipientChange: () => {},
     draftHighlightedCatId: null,
