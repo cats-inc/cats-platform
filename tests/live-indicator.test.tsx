@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
 
 import {
   advanceSequencedLiveIndicatorStreamCursor,
@@ -4457,11 +4456,9 @@ test('resolveTranscriptFollowState derives scroll keys from transcript content i
 });
 
 test('shared live indicator effect reconnects on EventSource termination without tearing down on speaker handoff', async () => {
-  const testDirectory = path.dirname(fileURLToPath(import.meta.url));
   const source = await readFile(
     path.join(
-      testDirectory,
-      '..',
+      process.cwd(),
       'src/products/shared/renderer/hooks/useLiveIndicator.ts',
     ),
     'utf8',
