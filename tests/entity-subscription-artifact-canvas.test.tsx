@@ -51,16 +51,11 @@ class FakeEventSource {
   }
 }
 
-test('Artifact Canvas refreshes a mounted projection after two artifact subscription patches', async (t) => {
+test('Artifact Canvas refreshes a mounted projection after two artifact subscription patches', async () => {
   const eventSources: FakeEventSource[] = [];
   const restoreDom = installDom(eventSources);
   const originalFetch = globalThis.fetch;
   const projectionFetches: string[] = [];
-  t.after(() => {
-    cleanup();
-    globalThis.fetch = originalFetch;
-    restoreDom();
-  });
 
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
@@ -73,52 +68,58 @@ test('Artifact Canvas refreshes a mounted projection after two artifact subscrip
     '../src/products/shared/renderer/withSharedViewerRoutes.tsx'
   );
 
-  const view = render(
-    <I18nProvider locale="en">
-      <MemoryRouter initialEntries={['/code/tasks/task-canvas/canvas/artifact-1']}>
-        <Routes>
-          {withSharedViewerRoutes({
-            key: 'task-detail',
-            path: '/code/tasks/:taskId',
-            surfaceKind: 'code_task',
-            surfaceIdParam: 'taskId',
-            element: <div>Parent task surface</div>,
-          })}
-        </Routes>
-      </MemoryRouter>
-    </I18nProvider>,
-  );
+  try {
+    const view = render(
+      <I18nProvider locale="en">
+        <MemoryRouter initialEntries={['/code/tasks/task-canvas/canvas/artifact-1']}>
+          <Routes>
+            {withSharedViewerRoutes({
+              key: 'task-detail',
+              path: '/code/tasks/:taskId',
+              surfaceKind: 'code_task',
+              surfaceIdParam: 'taskId',
+              element: <div>Parent task surface</div>,
+            })}
+          </Routes>
+        </MemoryRouter>
+      </I18nProvider>,
+    );
 
-  assert.equal(await view.findByText('Artifact version 1'), view.getByText('Artifact version 1'));
-  await waitFor(() => {
-    assert.ok(eventSources.some((source) =>
-      source.url === '/api/subscribe?kind=artifact&id=artifact-1'));
-  });
-  const artifactSource = eventSources.find((source) =>
-    source.url === '/api/subscribe?kind=artifact&id=artifact-1');
-  assert.ok(artifactSource);
+    assert.equal(await view.findByText('Artifact version 1'), view.getByText('Artifact version 1'));
+    await waitFor(() => {
+      assert.ok(eventSources.some((source) =>
+        source.url === '/api/subscribe?kind=artifact&id=artifact-1'));
+    });
+    const artifactSource = eventSources.find((source) =>
+      source.url === '/api/subscribe?kind=artifact&id=artifact-1');
+    assert.ok(artifactSource);
 
-  await act(async () => {
-    artifactSource.emit('snapshot', createArtifactSnapshot('artifact-1'));
-  });
-  assert.deepEqual(projectionFetches, [
-    '/api/canvas/code_task/task-canvas/artifacts/artifact-1',
-  ]);
+    act(() => {
+      artifactSource.emit('snapshot', createArtifactSnapshot('artifact-1'));
+    });
+    assert.deepEqual(projectionFetches, [
+      '/api/canvas/code_task/task-canvas/artifacts/artifact-1',
+    ]);
 
-  await act(async () => {
-    artifactSource.emit('patch', createArtifactUpdatedPatch('artifact-1'));
-  });
-  assert.equal(await view.findByText('Artifact version 2'), view.getByText('Artifact version 2'));
+    act(() => {
+      artifactSource.emit('patch', createArtifactUpdatedPatch('artifact-1'));
+    });
+    assert.equal(await view.findByText('Artifact version 2'), view.getByText('Artifact version 2'));
 
-  await act(async () => {
-    artifactSource.emit('patch', createArtifactUpdatedPatch('artifact-1'));
-  });
-  assert.equal(await view.findByText('Artifact version 3'), view.getByText('Artifact version 3'));
-  assert.deepEqual(projectionFetches, [
-    '/api/canvas/code_task/task-canvas/artifacts/artifact-1',
-    '/api/canvas/code_task/task-canvas/artifacts/artifact-1',
-    '/api/canvas/code_task/task-canvas/artifacts/artifact-1',
-  ]);
+    act(() => {
+      artifactSource.emit('patch', createArtifactUpdatedPatch('artifact-1'));
+    });
+    assert.equal(await view.findByText('Artifact version 3'), view.getByText('Artifact version 3'));
+    assert.deepEqual(projectionFetches, [
+      '/api/canvas/code_task/task-canvas/artifacts/artifact-1',
+      '/api/canvas/code_task/task-canvas/artifacts/artifact-1',
+      '/api/canvas/code_task/task-canvas/artifacts/artifact-1',
+    ]);
+  } finally {
+    cleanup();
+    globalThis.fetch = originalFetch;
+    restoreDom();
+  }
 });
 
 function installDom(eventSources: FakeEventSource[]): () => void {
