@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
+import { MemoryRouter } from 'react-router';
 
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import type { AppShellPayload } from '../src/products/work/api/contracts.ts';
@@ -84,12 +85,23 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
   };
 }
 
-test('work starter chips localize in zh-TW', () => {
-  const markup = renderToStaticMarkup(
-    <I18nProvider locale="zh-TW">
-      <NewChatDraft {...createProps()} />
-    </I18nProvider>,
+function renderDraft(props: NewChatDraftProps, locale?: 'zh-TW'): string {
+  const draft = (
+    <MemoryRouter>
+      <NewChatDraft {...props} />
+    </MemoryRouter>
   );
+  return renderToStaticMarkup(
+    locale ? (
+      <I18nProvider locale={locale}>
+        {draft}
+      </I18nProvider>
+    ) : draft,
+  );
+}
+
+test('work starter chips localize in zh-TW', () => {
+  const markup = renderDraft(createProps(), 'zh-TW');
 
   assert.match(markup, /開始專案/u);
   assert.match(markup, /新增任務/u);
@@ -107,22 +119,18 @@ test('advanced draft controls expose collaborator and compare buttons on the def
     model: 'claude-sonnet',
     modelSelection: null,
   } as const;
-  const markup = renderToStaticMarkup(
-    <NewChatDraft
-      {...createProps({
-        payload: createPayload({
-          advancedDraftControls: {
-            chat: false,
-            code: false,
-            work: true,
-          },
-        }),
-        selectedExecutionTarget: target,
-        onQuickAddDraftTemporaryParticipant: () => {},
-        onAddParallelTarget: () => {},
-      })}
-    />,
-  );
+  const markup = renderDraft(createProps({
+    payload: createPayload({
+      advancedDraftControls: {
+        chat: false,
+        code: false,
+        work: true,
+      },
+    }),
+    selectedExecutionTarget: target,
+    onQuickAddDraftTemporaryParticipant: () => {},
+    onAddParallelTarget: () => {},
+  }));
 
   const collaborateMatches = markup.match(/class="parallelAddButton"/gu) ?? [];
   const compareSlotMatches = markup.match(/draftCompareCarouselAddBranch/gu) ?? [];
@@ -141,24 +149,20 @@ test('advanced draft controls keep +Group work drafts empty and expose compare s
     model: 'claude-sonnet',
     modelSelection: null,
   } as const;
-  const markup = renderToStaticMarkup(
-    <NewChatDraft
-      {...createProps({
-        entryPreset: 'group',
-        payload: createPayload({
-          advancedDraftControls: {
-            chat: false,
-            code: false,
-            work: true,
-          },
-        }),
-        selectedExecutionTarget: target,
-        parallelTargets: [target],
-        onQuickAddDraftTemporaryParticipant: () => {},
-        onAddParallelTarget: () => {},
-      })}
-    />,
-  );
+  const markup = renderDraft(createProps({
+    entryPreset: 'group',
+    payload: createPayload({
+      advancedDraftControls: {
+        chat: false,
+        code: false,
+        work: true,
+      },
+    }),
+    selectedExecutionTarget: target,
+    parallelTargets: [target],
+    onQuickAddDraftTemporaryParticipant: () => {},
+    onAddParallelTarget: () => {},
+  }));
 
   assert.match(markup, /aria-label="Add another model to collaborate"/u);
   assert.match(markup, /aria-label="Add parallel chat"/u);
@@ -173,24 +177,20 @@ test('advanced draft controls keep +Parallel work drafts on one lead target, exp
     model: 'claude-sonnet',
     modelSelection: null,
   } as const;
-  const markup = renderToStaticMarkup(
-    <NewChatDraft
-      {...createProps({
-        entryPreset: 'parallel',
-        payload: createPayload({
-          advancedDraftControls: {
-            chat: false,
-            code: false,
-            work: true,
-          },
-        }),
-        selectedExecutionTarget: target,
-        parallelTargets: [target],
-        onQuickAddDraftTemporaryParticipant: () => {},
-        onAddParallelTarget: () => {},
-      })}
-    />,
-  );
+  const markup = renderDraft(createProps({
+    entryPreset: 'parallel',
+    payload: createPayload({
+      advancedDraftControls: {
+        chat: false,
+        code: false,
+        work: true,
+      },
+    }),
+    selectedExecutionTarget: target,
+    parallelTargets: [target],
+    onQuickAddDraftTemporaryParticipant: () => {},
+    onAddParallelTarget: () => {},
+  }));
 
   assert.match(markup, /aria-label="Add another model to collaborate"/u);
   assert.match(markup, /aria-label="Add parallel chat"/u);
@@ -206,46 +206,30 @@ test('work draft presets expose the screenshot attachment action when wired', ()
     modelSelection: null,
   } as const;
   const markups = [
-    renderToStaticMarkup(
-      <NewChatDraft
-        {...createProps({
-          plusMenuOpen: true,
-          onTakeScreenshot: () => {},
-        })}
-      />,
-    ),
-    renderToStaticMarkup(
-      <NewChatDraft
-        {...createProps({
-          entryPreset: 'group',
-          plusMenuOpen: true,
-          selectedExecutionTarget: target,
-          onTakeScreenshot: () => {},
-        })}
-      />,
-    ),
-    renderToStaticMarkup(
-      <NewChatDraft
-        {...createProps({
-          entryPreset: 'parallel',
-          parallelTargets: [target],
-          plusMenuOpen: true,
-          selectedExecutionTarget: target,
-          onTakeScreenshot: () => {},
-        })}
-      />,
-    ),
-    renderToStaticMarkup(
-      <NewChatDraft
-        {...createProps({
-          allowAddCat: false,
-          draftCatIds: ['cat-lead'],
-          draftDefaultRecipientCatId: 'cat-lead',
-          plusMenuOpen: true,
-          onTakeScreenshot: () => {},
-        })}
-      />,
-    ),
+    renderDraft(createProps({
+      plusMenuOpen: true,
+      onTakeScreenshot: () => {},
+    })),
+    renderDraft(createProps({
+      entryPreset: 'group',
+      plusMenuOpen: true,
+      selectedExecutionTarget: target,
+      onTakeScreenshot: () => {},
+    })),
+    renderDraft(createProps({
+      entryPreset: 'parallel',
+      parallelTargets: [target],
+      plusMenuOpen: true,
+      selectedExecutionTarget: target,
+      onTakeScreenshot: () => {},
+    })),
+    renderDraft(createProps({
+      allowAddCat: false,
+      draftCatIds: ['cat-lead'],
+      draftDefaultRecipientCatId: 'cat-lead',
+      plusMenuOpen: true,
+      onTakeScreenshot: () => {},
+    })),
   ];
 
   for (const markup of markups) {

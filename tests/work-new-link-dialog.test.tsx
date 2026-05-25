@@ -3,6 +3,7 @@ import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { StaticRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { LinkageSection } from '../src/products/work/renderer/components/topdown/LinkageSection.tsx';
 import { NewLinkDialog } from '../src/products/work/renderer/components/topdown/NewLinkDialog.tsx';
@@ -10,6 +11,20 @@ import { buildIndexes } from '../src/products/work/renderer/components/topdown/s
 import { SAMPLE_WORK_GRAPH as MOCK_WORK_GRAPH } from './fixtures/sampleWorkGraph.ts';
 
 const indexes = buildIndexes(MOCK_WORK_GRAPH);
+
+function renderWithQueryClient(element: JSX.Element): string {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  return renderToStaticMarkup(
+    <QueryClientProvider client={queryClient}>
+      {element}
+    </QueryClientProvider>,
+  );
+}
 
 test('LinkageSection renders an Add link button alongside the count', () => {
   const markup = renderToStaticMarkup(
@@ -25,7 +40,7 @@ test('LinkageSection renders an Add link button alongside the count', () => {
 });
 
 test('NewLinkDialog seeds the source line from selfRef and lists PWT candidates only', () => {
-  const markup = renderToStaticMarkup(
+  const markup = renderWithQueryClient(
     <NewLinkDialog
       selfRef={{ recordFamily: 'project', recordId: 'proj-bf' }}
       graph={MOCK_WORK_GRAPH}
@@ -42,7 +57,7 @@ test('NewLinkDialog seeds the source line from selfRef and lists PWT candidates 
 });
 
 test('NewLinkDialog excludes the source endpoint itself from the candidate list', () => {
-  const markup = renderToStaticMarkup(
+  const markup = renderWithQueryClient(
     <NewLinkDialog
       selfRef={{ recordFamily: 'project', recordId: 'proj-bf' }}
       graph={MOCK_WORK_GRAPH}
@@ -58,7 +73,7 @@ test('NewLinkDialog excludes the source endpoint itself from the candidate list'
 });
 
 test('NewLinkDialog renders all five SPEC-090 v1 relation kinds in the relation picker', () => {
-  const markup = renderToStaticMarkup(
+  const markup = renderWithQueryClient(
     <NewLinkDialog
       selfRef={{ recordFamily: 'task', recordId: 'task-deploy' }}
       graph={MOCK_WORK_GRAPH}
@@ -71,7 +86,7 @@ test('NewLinkDialog renders all five SPEC-090 v1 relation kinds in the relation 
 });
 
 test('NewLinkDialog renders the 280-char note count indicator', () => {
-  const markup = renderToStaticMarkup(
+  const markup = renderWithQueryClient(
     <NewLinkDialog
       selfRef={{ recordFamily: 'task', recordId: 'task-deploy' }}
       graph={MOCK_WORK_GRAPH}
