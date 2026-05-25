@@ -28,7 +28,7 @@ test('desktop host keeps tray locked while shutdown drains services', async () =
   assert.match(source, /let exitingAfterShutdown = false;/u);
   // Snapshot the tray before any disposable subsystem can throw; the whole
   // shutdown sequence then lives inside try/catch/finally so app.exit always runs.
-  assert.match(source, /const activeTrayController = trayController;[\s\S]*try \{[\s\S]*voiceCaptureController\?\.dispose\(\);[\s\S]*activeTrayController\?\.updateMenu\(buildDesktopTrayQuittingMenuState\(\)\);[\s\S]*supervisor\?\.stopAll\(\)[\s\S]*\} catch \(error\) \{[\s\S]*\} finally \{[\s\S]*activeTrayController\?\.dispose\(\);[\s\S]*exitingAfterShutdown = true;[\s\S]*app\.exit\(shutdownExitCode\);/u);
+  assert.match(source, /const activeTrayController = trayController;[\s\S]*try \{[\s\S]*voiceCaptureController\?\.dispose\(\);[\s\S]*activeTrayController\?\.updateMenu\(buildDesktopTrayQuittingMenuState\(app\.getLocale\(\)\)\);[\s\S]*supervisor\?\.stopAll\(\)[\s\S]*\} catch \(error\) \{[\s\S]*\} finally \{[\s\S]*activeTrayController\?\.dispose\(\);[\s\S]*exitingAfterShutdown = true;[\s\S]*app\.exit\(shutdownExitCode\);/u);
   // Watchdog derives from gracefulShutdownMs and managed service count; a
   // timeout force-stops children before letting the Electron host exit.
   assert.match(source, /SHUTDOWN_GRACE_WINDOWS_PER_SERVICE = 2;/u);
