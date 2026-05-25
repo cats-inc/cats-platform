@@ -1,59 +1,45 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildPlatformLobbySections } from '../build/server/app/renderer/lobbyModel.js';
+import { buildPlatformLobbyEntries } from '../build/server/app/renderer/lobbyModel.js';
 import { listPlatformProductDescriptors } from '../build/server/shared/platformProducts.js';
 
-test('buildPlatformLobbySections groups platform products into Home and Office', () => {
-  const sections = buildPlatformLobbySections({
+test('buildPlatformLobbyEntries projects platform products into lobby cards', () => {
+  const entries = buildPlatformLobbyEntries({
     products: listPlatformProductDescriptors(),
     lastUsedSurface: 'work',
   });
 
   assert.deepEqual(
-    sections.map((section) => ({
-      id: section.id,
-      entries: section.entries.map((entry) => ({
-        surface: entry.surface,
-        installPolicy: entry.installPolicy,
-        installState: entry.installState,
-        maturity: entry.maturity,
-        lastUsed: entry.lastUsed,
-      })),
+    entries.map((entry) => ({
+      productId: entry.productId,
+      surface: entry.surface,
+      routePrefix: entry.routePrefix,
+      lastUsed: entry.lastUsed,
+      available: entry.available,
     })),
     [
       {
-        id: 'home',
-        entries: [
-          {
-            surface: 'chat',
-            installPolicy: 'required',
-            installState: 'installed',
-            maturity: 'active',
-            lastUsed: false,
-          },
-        ],
+        productId: 'chat',
+        surface: 'chat',
+        routePrefix: '/chat',
+        lastUsed: false,
+        available: false,
       },
       {
-        id: 'office',
-        entries: [
-          {
-            surface: 'work',
-            installPolicy: 'required',
-            installState: 'installed',
-            maturity: 'preview',
-            lastUsed: true,
-          },
-          {
-            surface: 'code',
-            installPolicy: 'required',
-            installState: 'installed',
-            maturity: 'preview',
-            lastUsed: false,
-          },
-        ],
+        productId: 'code',
+        surface: 'code',
+        routePrefix: '/code',
+        lastUsed: false,
+        available: false,
+      },
+      {
+        productId: 'work',
+        surface: 'work',
+        routePrefix: '/work',
+        lastUsed: true,
+        available: false,
       },
     ],
   );
 });
-

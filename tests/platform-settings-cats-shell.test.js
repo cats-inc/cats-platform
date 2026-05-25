@@ -20,5 +20,5 @@ test('platform My Cats no longer renders a nested shared settings shell', async 
 
   assert.doesNotMatch(source, /import \{ SettingsShell \} from '\.\.\/SettingsShell\.js';/u);
   assert.doesNotMatch(source, /<SettingsShell/u);
-  assert.match(source, /<div className="catsLayout">/u);
+  assert.match(source, /<div className="catsLayout catsLayoutSidePanel">/u);
 });
