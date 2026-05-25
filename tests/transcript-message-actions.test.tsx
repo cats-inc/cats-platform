@@ -13,6 +13,7 @@ test('chat transcript message actions keep copy and relay controls available for
     <TranscriptMessageActions
       senderKind="agent"
       showDefaultCopyAction
+      copyActionLabel="Copy message"
       onCopyMessage={() => {}}
       extraActions={[{
         key: 'relay:message-agent',
