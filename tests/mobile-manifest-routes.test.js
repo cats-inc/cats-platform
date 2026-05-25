@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { createTestAuthConfig } from './testUtils.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -14,6 +15,7 @@ const baseConfig = {
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
+  auth: createTestAuthConfig(),
   mobilePairingEnabled: true,
   mobileBundleRoot: 'unused-for-tests',
 };
@@ -70,11 +72,13 @@ async function seedMobileBundle(root) {
 async function withServer(configOverrides, callback) {
   const tempRoot = await mkdtemp(path.join(tmpdir(), 'cats-mobile-routes-'));
   const mobileBundleRoot = path.join(tempRoot, 'mobile');
+  const chatStatePath = path.join(tempRoot, 'platform', 'state', 'chat-state.local.json');
   const server = createServer({
     shared: {
       config: {
         ...baseConfig,
         ...configOverrides,
+        chatStatePath: configOverrides.chatStatePath ?? chatStatePath,
         mobileBundleRoot: configOverrides.mobileBundleRoot ?? mobileBundleRoot,
       },
       runtimeClient: createRuntimeStub(),
