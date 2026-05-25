@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
@@ -16,7 +17,10 @@ import {
 
 function fixtureBootstrapConfig(): ProviderCapabilityBootstrapConfig {
   const result = parseProviderCapabilityBootstrapConfigYaml(
-    readFileSync(new URL('./fixtures/provider-capability-bootstrap.yaml', import.meta.url), 'utf8'),
+    readFileSync(
+      path.join(process.cwd(), 'tests', 'fixtures', 'provider-capability-bootstrap.yaml'),
+      'utf8',
+    ),
     {
       observedAt: '2026-04-28T00:00:00.000Z',
       configPath: 'tests/fixtures/provider-capability-bootstrap.yaml',

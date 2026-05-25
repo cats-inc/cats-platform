@@ -5,7 +5,6 @@ import { createServer } from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
 
 import { loadConfig } from '../src/config.ts';
 import { createDefaultCoreState } from '../src/core/model/index.ts';
@@ -26,9 +25,12 @@ const LIVE_TARGETS: Record<string, { instance: string | null; model: string | nu
   claude: { instance: 'native', model: 'sonnet' },
   codex: { instance: 'native', model: 'gpt-5.4' },
 };
-const PLAN_080_BOOTSTRAP_FIXTURE_URL =
-  new URL('./fixtures/provider-capability-bootstrap.yaml', import.meta.url);
-const PLAN_080_BOOTSTRAP_FIXTURE_PATH = fileURLToPath(PLAN_080_BOOTSTRAP_FIXTURE_URL);
+const PLAN_080_BOOTSTRAP_FIXTURE_PATH = path.join(
+  process.cwd(),
+  'tests',
+  'fixtures',
+  'provider-capability-bootstrap.yaml',
+);
 
 test(
   'live Claude/Codex Code paths run through supervision',
