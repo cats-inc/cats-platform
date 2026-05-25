@@ -461,6 +461,18 @@ if ($CheckOnly) {
   } else {
     'not_installed'
   }
+  $checkManualSteps = [System.Collections.Generic.List[string]]::new()
+  $checkInterruptions = [System.Collections.Generic.List[object]]::new()
+  if ($status -eq 'auth_required') {
+    $checkManualSteps.Add('Run claude to complete the browser sign-in flow, or configure ANTHROPIC_API_KEY before first use.')
+    $checkInterruptions.Add([pscustomobject]@{
+        kind = 'auth_required'
+        summary = 'Complete the Claude Code sign-in flow or configure ANTHROPIC_API_KEY, then rerun the packaged setup check.'
+        resumable = $true
+        requiresRestart = $false
+        requiresElevation = $false
+      })
+  }
 
   $result = [pscustomobject]@{
     helper = 'windows-claude-native-installer'
@@ -473,22 +485,8 @@ if ($CheckOnly) {
     plannedActions = $plannedActions.ToArray()
     warnings = @()
     appliedChanges = @()
-    manualSteps = if ($status -eq 'auth_required') {
-      @('Run claude to complete the browser sign-in flow, or configure ANTHROPIC_API_KEY before first use.')
-    } else {
-      @()
-    }
-    interruptions = if ($status -eq 'auth_required') {
-      @([pscustomobject]@{
-          kind = 'auth_required'
-          summary = 'Complete the Claude Code sign-in flow or configure ANTHROPIC_API_KEY, then rerun the packaged setup check.'
-          resumable = $true
-          requiresRestart = $false
-          requiresElevation = $false
-        })
-    } else {
-      @()
-    }
+    manualSteps = $checkManualSteps.ToArray()
+    interruptions = $checkInterruptions.ToArray()
     cleanedNpmShim = $false
     usedWingetFallback = $false
   }

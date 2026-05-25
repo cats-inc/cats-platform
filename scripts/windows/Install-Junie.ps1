@@ -248,6 +248,18 @@ if ($CheckOnly) {
   } else {
     'not_installed'
   }
+  $checkManualSteps = [System.Collections.Generic.List[string]]::new()
+  $checkInterruptions = [System.Collections.Generic.List[object]]::new()
+  if ($status -eq 'auth_required') {
+    $checkManualSteps.Add('Sign in with a JetBrains account, or set JUNIE_API_KEY before first use.')
+    $checkInterruptions.Add([pscustomobject]@{
+        kind = 'auth_required'
+        summary = 'Complete the Junie sign-in flow or set JUNIE_API_KEY, then rerun the packaged setup check.'
+        resumable = $true
+        requiresRestart = $false
+        requiresElevation = $false
+      })
+  }
 
   $result = [pscustomobject]@{
     helper = 'windows-junie-native-installer'
@@ -260,22 +272,8 @@ if ($CheckOnly) {
     plannedActions = $plannedActions.ToArray()
     warnings = @()
     appliedChanges = @()
-    manualSteps = if ($status -eq 'auth_required') {
-      @('Sign in with a JetBrains account, or set JUNIE_API_KEY before first use.')
-    } else {
-      @()
-    }
-    interruptions = if ($status -eq 'auth_required') {
-      @([pscustomobject]@{
-          kind = 'auth_required'
-          summary = 'Complete the Junie sign-in flow or set JUNIE_API_KEY, then rerun the packaged setup check.'
-          resumable = $true
-          requiresRestart = $false
-          requiresElevation = $false
-        })
-    } else {
-      @()
-    }
+    manualSteps = $checkManualSteps.ToArray()
+    interruptions = $checkInterruptions.ToArray()
   }
   Write-StructuredResult -Result $result -ExitCode 0
 }

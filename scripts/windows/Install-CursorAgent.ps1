@@ -257,6 +257,16 @@ if ($CheckOnly) {
   if (-not $detected.installed) {
     $plannedActions.Add('install_cursor_agent_native')
   }
+  $checkInterruptions = [System.Collections.Generic.List[object]]::new()
+  if ($detected.installed -and -not $authSatisfied) {
+    $checkInterruptions.Add([pscustomobject]@{
+        kind = 'auth_required'
+        summary = 'Complete the Cursor sign-in flow or configure CURSOR_API_KEY, then rerun the packaged setup check.'
+        resumable = $true
+        requiresRestart = $false
+        requiresElevation = $false
+      })
+  }
 
   $result = [pscustomobject]@{
     helper = 'windows-cursor-native-installer'
@@ -273,17 +283,7 @@ if ($CheckOnly) {
     plannedActions = $plannedActions.ToArray()
     warnings = @()
     appliedChanges = @()
-    interruptions = if ($detected.installed -and -not $authSatisfied) {
-      @([pscustomobject]@{
-          kind = 'auth_required'
-          summary = 'Complete the Cursor sign-in flow or configure CURSOR_API_KEY, then rerun the packaged setup check.'
-          resumable = $true
-          requiresRestart = $false
-          requiresElevation = $false
-        })
-    } else {
-      @()
-    }
+    interruptions = $checkInterruptions.ToArray()
     usedPowerShell51Fallback = $false
   }
   Write-StructuredResult -Result $result -ExitCode 0
