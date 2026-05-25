@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
@@ -7,7 +8,6 @@ import {
   cleanup,
   fireEvent,
   render,
-  waitFor,
 } from '@testing-library/react';
 import { JSDOM } from 'jsdom';
 import React from 'react';
@@ -19,19 +19,22 @@ import { LivePreviewPanel } from '../src/products/code/renderer/components/LiveP
 
 test('Code task and codespace surfaces mount the live-preview affordance panel', () => {
   const taskPage = readFileSync(
-    new URL('../src/products/code/renderer/components/CodeTaskDetailPage.tsx', import.meta.url),
+    path.join(
+      process.cwd(),
+      'src/products/code/renderer/components/CodeTaskDetailPage.tsx',
+    ),
     'utf8',
   );
   const workspacePage = readFileSync(
-    new URL(
-      '../src/products/code/renderer/components/workspaces/WorkspaceDetailPage.tsx',
-      import.meta.url,
+    path.join(
+      process.cwd(),
+      'src/products/code/renderer/components/workspaces/WorkspaceDetailPage.tsx',
     ),
     'utf8',
   );
 
   assert.match(taskPage, /import \{ LivePreviewPanel \} from '\.\/LivePreviewPanel\.js';/u);
-  assert.match(taskPage, /<LivePreviewPanel surfaceKind="code_task" surfaceId=\{detail\.taskId\} \/>/u);
+  assert.match(taskPage, /<LivePreviewPanel surfaceKind="code_task" surfaceId=\{livePreviewTaskId\} \/>/u);
   assert.match(workspacePage, /import \{ LivePreviewPanel \} from '\.\.\/LivePreviewPanel\.js';/u);
   assert.match(
     workspacePage,
@@ -104,16 +107,11 @@ test('LivePreviewPanel labels each preview status and disables Stop when not rea
   assert.equal(disabledStops.length, 3);
 });
 
-test('LivePreviewPanel ignores stale stop refreshes after switching surfaces', async (t) => {
+test('LivePreviewPanel ignores stale stop refreshes after switching surfaces', async () => {
   const restoreDom = installDom();
   const originalFetch = globalThis.fetch;
   const requests: Array<{ method: string; url: string }> = [];
   let resolveStop: (() => void) | null = null;
-  t.after(() => {
-    cleanup();
-    globalThis.fetch = originalFetch;
-    restoreDom();
-  });
 
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
@@ -139,34 +137,39 @@ test('LivePreviewPanel ignores stale stop refreshes after switching surfaces', a
     return jsonResponse({ error: { code: 'not_found' } }, { status: 404 });
   }) as typeof fetch;
 
-  const view = renderLivePreviewPanel({ surfaceKind: 'code_task', surfaceId: 'task-a' });
-  assert.equal(await view.findByText('preview-a'), view.getByText('preview-a'));
+  try {
+    const view = renderLivePreviewPanel({ surfaceKind: 'code_task', surfaceId: 'task-a' });
+    assert.equal(await view.findByText('preview-a'), view.getByText('preview-a'));
 
-  await act(async () => {
-    fireEvent.click(view.getByRole('button', { name: 'Stop' }));
-  });
-  await waitFor(() => assert.ok(resolveStop));
+    act(() => {
+      fireEvent.click(view.getByRole('button', { name: 'Stop' }));
+    });
+    assert.ok(resolveStop);
 
-  view.rerender(
-    <I18nProvider locale="en">
-      <LivePreviewPanel surfaceKind="code_task" surfaceId="task-b" />
-    </I18nProvider>,
-  );
-  assert.equal(await view.findByText('preview-b'), view.getByText('preview-b'));
+    view.rerender(
+      <I18nProvider locale="en">
+        <LivePreviewPanel surfaceKind="code_task" surfaceId="task-b" />
+      </I18nProvider>,
+    );
+    assert.equal(await view.findByText('preview-b'), view.getByText('preview-b'));
 
-  await act(async () => {
     resolveStop?.();
-  });
-  await waitFor(() =>
+    await Promise.resolve();
+    await Promise.resolve();
     assert.equal(
       requests.filter((request) =>
         request.method === 'GET'
         && request.url.includes('surfaceId=task-a')).length,
       1,
-    ));
+    );
+  } finally {
+    cleanup();
+    globalThis.fetch = originalFetch;
+    restoreDom();
+  }
 });
 
-test('LivePreviewPanel ignores stale stop refreshes after switching code_codespace surfaces', async (t) => {
+test('LivePreviewPanel ignores stale stop refreshes after switching code_codespace surfaces', async () => {
   // Symmetric race regression for the codespace surface — the surface
   // identity hash is the only thing that differs from the code_task
   // path, but it is computed via `createLivePreviewSurfaceIdentity`
@@ -175,11 +178,6 @@ test('LivePreviewPanel ignores stale stop refreshes after switching code_codespa
   const originalFetch = globalThis.fetch;
   const requests: Array<{ method: string; url: string }> = [];
   let resolveStop: (() => void) | null = null;
-  t.after(() => {
-    cleanup();
-    globalThis.fetch = originalFetch;
-    restoreDom();
-  });
 
   const codespaceA = 'codespace-a';
   const codespaceB = 'codespace-b';
@@ -216,34 +214,39 @@ test('LivePreviewPanel ignores stale stop refreshes after switching code_codespa
     return jsonResponse({ error: { code: 'not_found' } }, { status: 404 });
   }) as typeof fetch;
 
-  const view = renderLivePreviewPanel({
-    surfaceKind: 'code_codespace',
-    surfaceId: codespaceA,
-  });
-  await view.findByText('preview-codespace-a');
+  try {
+    const view = renderLivePreviewPanel({
+      surfaceKind: 'code_codespace',
+      surfaceId: codespaceA,
+    });
+    await view.findByText('preview-codespace-a');
 
-  await act(async () => {
-    fireEvent.click(view.getByRole('button', { name: 'Stop' }));
-  });
-  await waitFor(() => assert.ok(resolveStop));
+    act(() => {
+      fireEvent.click(view.getByRole('button', { name: 'Stop' }));
+    });
+    assert.ok(resolveStop);
 
-  view.rerender(
-    <I18nProvider locale="en">
-      <LivePreviewPanel surfaceKind="code_codespace" surfaceId={codespaceB} />
-    </I18nProvider>,
-  );
-  await view.findByText('preview-codespace-b');
+    view.rerender(
+      <I18nProvider locale="en">
+        <LivePreviewPanel surfaceKind="code_codespace" surfaceId={codespaceB} />
+      </I18nProvider>,
+    );
+    await view.findByText('preview-codespace-b');
 
-  await act(async () => {
     resolveStop?.();
-  });
-  await waitFor(() =>
+    await Promise.resolve();
+    await Promise.resolve();
     assert.equal(
       requests.filter((request) =>
         request.method === 'GET'
         && request.url.includes(`surfaceId=${codespaceA}`)).length,
       1,
-    ));
+    );
+  } finally {
+    cleanup();
+    globalThis.fetch = originalFetch;
+    restoreDom();
+  }
 });
 
 test('live-preview renderer API treats unavailable supervisor as empty previews', async (t) => {
