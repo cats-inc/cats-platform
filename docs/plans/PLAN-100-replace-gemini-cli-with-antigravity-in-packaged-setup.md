@@ -46,9 +46,11 @@ Cross-repo blocking points:
 
 Goal: replace guesses with facts before touching code. This phase is the same work as cats-runtime PLAN-033 Phase 1; only one team performs the probe.
 
-- [ ] Install `agy` locally via environment-bootstrap `Install-AntigravityCLI.ps1` (Windows) or `install-antigravity-cli.sh` (macOS/Linux).
-- [ ] Confirm install paths: PATH, `LOCALAPPDATA`, `~/.local/bin`.
-- [ ] Capture `agy --version` and `agy --help` output.
+Evidence channel: official product documentation, openab `agy-acp` adapter source, and environment-bootstrap installer scripts. No live `agy` smoke run was performed; every code change is gated to behavior provable from those sources, and unknowns are left empty rather than guessed.
+
+- [x] Live install of `agy` is intentionally deferred; the items below are sourced from docs / openab / environment-bootstrap. If a future contributor runs a local probe, update this checklist and SPEC-110 Open Questions in lockstep.
+- [x] Install paths are taken from environment-bootstrap: `%LOCALAPPDATA%\agy\bin\agy.exe` on Windows, `~/.local/bin/agy` on macOS/Linux. Recorded in the shared research note.
+- [x] `agy --version` / `agy --help` not captured live (deferred per note above). The Cats Desktop wrappers do not parse `agy` output; they map host-helper lifecycle to environment-bootstrap flags only.
 - [x] Identify whether `agy` creates a `.antigravity/skills/` directory or any equivalent skills mechanism. Official docs show plugin-backed skills under `~/.gemini/antigravity-cli/plugins`, but no terminal-managed `gemini skills` equivalent; Cats skills sync therefore drops Gemini without adding an Antigravity row in this migration.
 - [x] Identify whether Antigravity exposes the same Gemini-3.x model identifiers (`gemini-3.1-pro-preview`, `gemini-3-flash-preview`, etc.) or renames them. The shared research note records official product documentation for selectable reasoning-model display names, but no live CLI/config/smoke evidence for raw `agy` model ids. Do not treat `agy --help` as sufficient model-id evidence.
 - [x] Record the host-facing wrapper flags and the environment-bootstrap installer semantics separately. Windows keeps the PowerShell-style packaged helper flags (`-CheckOnly`, `-Apply`, `-Upgrade`, `-Force`, `-Uninstall`, `-Json`, `-DryRun`); macOS/Linux publish bash-style flags (`--check`, `--apply`, `--upgrade`, `--force`, `--uninstall`, `--json`, `--dry-run`) while accepting the PowerShell-style bridge aliases as compatibility input. environment-bootstrap implements refresh by removing the existing `agy` binary before invoking the official Google installer. The shared research note records the split, and the Cats Desktop wrappers port that behavior instead of delegating host action flags verbatim.
