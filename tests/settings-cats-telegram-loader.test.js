@@ -5,8 +5,9 @@ import {
   beginSettingsCatsTelegramScopeLoad,
   createSettingsCatsTelegramAutoLoader,
   createSettingsCatsTelegramScopeKey,
-  SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE,
 } from '../build/server/core/settingsCatsTelegramDiagnostics.js';
+
+const TELEGRAM_LOAD_ERROR_MESSAGE = 'Failed to load Telegram diagnostics.';
 
 function deferred() {
   let resolve;
@@ -76,15 +77,27 @@ test('settings cats telegram auto loader does not re-fetch when the scope key is
     },
   });
 
-  const firstRun = loader.loadForScope('scope-a', createHandlers(events));
+  const firstRun = loader.loadForScope(
+    'scope-a',
+    TELEGRAM_LOAD_ERROR_MESSAGE,
+    createHandlers(events),
+  );
   assert.equal(firstRun.started, true);
   await firstRun.promise;
 
-  const secondRun = loader.loadForScope('scope-a', createHandlers(events));
+  const secondRun = loader.loadForScope(
+    'scope-a',
+    TELEGRAM_LOAD_ERROR_MESSAGE,
+    createHandlers(events),
+  );
   assert.equal(secondRun.started, false);
   await secondRun.promise;
 
-  const thirdRun = loader.loadForScope('scope-b', createHandlers(events));
+  const thirdRun = loader.loadForScope(
+    'scope-b',
+    TELEGRAM_LOAD_ERROR_MESSAGE,
+    createHandlers(events),
+  );
   assert.equal(thirdRun.started, true);
   await thirdRun.promise;
 
@@ -117,10 +130,18 @@ test('settings cats telegram auto loader drops cancelled results during rapid sc
     },
   });
 
-  const firstRun = loader.loadForScope('scope-a', createHandlers(events));
+  const firstRun = loader.loadForScope(
+    'scope-a',
+    TELEGRAM_LOAD_ERROR_MESSAGE,
+    createHandlers(events),
+  );
   firstRun.cancel();
 
-  const secondRun = loader.loadForScope('scope-b', createHandlers(events));
+  const secondRun = loader.loadForScope(
+    'scope-b',
+    TELEGRAM_LOAD_ERROR_MESSAGE,
+    createHandlers(events),
+  );
   firstStatus.resolve({ id: 'status-a' });
   firstDiagnostics.resolve({ id: 'diagnostics-a' });
   secondStatus.resolve({ id: 'status-b' });
@@ -147,12 +168,16 @@ test('settings cats telegram auto loader normalizes unknown load failures to the
     },
   });
 
-  const run = loader.loadForScope('scope-a', createHandlers(events));
+  const run = loader.loadForScope(
+    'scope-a',
+    TELEGRAM_LOAD_ERROR_MESSAGE,
+    createHandlers(events),
+  );
   await run.promise;
 
   assert.deepEqual(events, [
     'start',
-    `error:${SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE}`,
+    `error:${TELEGRAM_LOAD_ERROR_MESSAGE}`,
     'finish',
   ]);
 });
@@ -171,11 +196,21 @@ test('settings cats telegram scope load resets loader scope during strict-mode s
     },
   });
 
-  const firstRun = beginSettingsCatsTelegramScopeLoad(loader, 'scope-a', createHandlers(events));
+  const firstRun = beginSettingsCatsTelegramScopeLoad(
+    loader,
+    'scope-a',
+    TELEGRAM_LOAD_ERROR_MESSAGE,
+    createHandlers(events),
+  );
   firstRun.cancel();
   await firstRun.promise;
 
-  const secondRun = beginSettingsCatsTelegramScopeLoad(loader, 'scope-a', createHandlers(events));
+  const secondRun = beginSettingsCatsTelegramScopeLoad(
+    loader,
+    'scope-a',
+    TELEGRAM_LOAD_ERROR_MESSAGE,
+    createHandlers(events),
+  );
   assert.equal(secondRun.started, true);
   await secondRun.promise;
 
@@ -187,4 +222,3 @@ test('settings cats telegram scope load resets loader scope during strict-mode s
     'finish',
   ]);
 });
-
