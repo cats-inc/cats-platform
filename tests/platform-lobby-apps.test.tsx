@@ -257,7 +257,7 @@ test('PlatformLobby renders installed Apps from the envelope and removes the Pom
   assert.doesNotMatch(markup, /platformLobbyCard--mock[^"]*"[^>]*>[\s\S]*Pomodoro/u);
 });
 
-test('PlatformLobby renders a quiet Apps empty state when no app has a Lobby entry', () => {
+test('PlatformLobby omits the Apps section when no app has a Lobby entry', () => {
   const markup = renderLobby(createEnvelope({
     installedApps: [
       {
@@ -277,7 +277,8 @@ test('PlatformLobby renders a quiet Apps empty state when no app has a Lobby ent
     ],
   }));
 
-  assert.match(markup, />No apps yet</u);
+  assert.doesNotMatch(markup, />Apps</u);
+  assert.doesNotMatch(markup, />No apps yet</u);
   assert.doesNotMatch(markup, />Pomodoro</u);
 });
 
