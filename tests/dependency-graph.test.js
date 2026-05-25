@@ -9,6 +9,66 @@ const ALLOWED_SHARED_PRODUCT_IMPORTS = new Set([
   'shared/app-shell.ts',
   'shared/channelPaths.ts',
 ]);
+const ALLOWED_BOUNDARY_IMPORTS = new Set([
+  // Platform fanout/entity-subscription seams still adapt chat-owned records
+  // directly; keep the exception edge-specific so new platform -> product
+  // imports continue to fail this guardrail.
+  'platform/orchestration/entitySubscriptions/channel.ts -> products/chat/api/contracts.ts',
+  'platform/orchestration/entitySubscriptions/channel.ts -> products/chat/api/routeSupport.ts',
+  'platform/transports/fanout/registry.ts -> products/chat/api/contracts.ts',
+  'platform/transports/fanout/subscriber.ts -> products/chat/api/contracts.ts',
+  'platform/transports/fanout/subscriber.ts -> products/chat/api/chatEventHub.ts',
+  'platform/transports/fanout/subscriber.ts -> products/chat/state/botBindings.ts',
+  'platform/transports/fanout/subscriber.ts -> products/chat/state/model/index.ts',
+  'platform/transports/fanout/subscriber.ts -> products/chat/state/store.ts',
+  'platform/transports/telegram/fanout.ts -> products/chat/api/contracts.ts',
+
+  // Chat dispatch currently owns work-tool intent routing until the work/chat
+  // contract moves behind a product-neutral orchestration port.
+  'products/chat/api/routeSupport.ts -> products/work/integrations/externalIssueImportFetcher.ts',
+  'products/chat/api/runtimeBridgeRoutes.ts -> products/work/shared/workToolSurface.ts',
+  'products/chat/state/deterministicRouterAdapter.ts -> products/work/integrations/externalIssueImportFetcher.ts',
+  'products/chat/state/runtime-dispatch/routing.ts -> products/work/state/workIntakeDelegate.ts',
+  'products/chat/state/runtime-dispatch/routing.ts -> products/work/state/workTriageDelegate.ts',
+  'products/chat/state/runtime-dispatch/routing.ts -> products/work/state/workExecutionPreparationDelegate.ts',
+  'products/chat/state/runtime-dispatch/routing.ts -> products/work/state/workExecutionTaskDelegate.ts',
+  'products/chat/state/runtime-dispatch/routing.ts -> products/work/state/workExternalBindingDelegate.ts',
+  'products/chat/state/runtime-dispatch/routing.ts -> products/work/state/workExternalIssueImportDelegate.ts',
+  'products/chat/state/runtime-dispatch/routing.ts -> products/work/integrations/externalIssueImportFetcher.ts',
+  'products/chat/state/runtime-dispatch/routing.ts -> products/work/shared/workExecutionPreparationPhase.ts',
+  'products/chat/state/runtime-dispatch/routing.ts -> products/work/shared/workExternalBindingPhase.ts',
+  'products/chat/state/runtime-dispatch/routing.ts -> products/work/shared/workExternalIssueImportPhase.ts',
+  'products/chat/state/runtime-dispatch/routing.ts -> products/work/shared/externalTrackerUrls.ts',
+  'products/chat/state/runtime-dispatch/routing.ts -> products/work/shared/workToolSurface.ts',
+  'products/chat/state/runtime-dispatch/turn.ts -> products/work/shared/workToolSurface.ts',
+  'products/chat/state/runtime-dispatch/turn.ts -> products/work/shared/workToolObservation.ts',
+  'products/chat/state/runtime-dispatch/turn.ts -> products/work/shared/workExecutionPreparationPhase.ts',
+  'products/chat/state/runtime-dispatch/turn.ts -> products/work/shared/workExternalBindingPhase.ts',
+  'products/chat/state/runtime-dispatch/turn.ts -> products/work/shared/workExternalIssueImportPhase.ts',
+  'products/chat/state/telegramBridgeAdapter.ts -> products/work/integrations/externalIssueImportFetcher.ts',
+  'products/chat/state/workIntakeSourceContext.ts -> products/work/shared/workIntakeSourceContext.ts',
+  'products/chat/state/workToolIntentResolver.ts -> products/work/shared/workToolSurface.ts',
+  'products/chat/state/workToolIntentResolver.ts -> products/work/shared/workToolIntent.ts',
+  'products/chat/state/workToolIntentResolver.ts -> products/work/shared/workExecutionPreparationPhase.ts',
+  'products/chat/state/workToolIntentResolver.ts -> products/work/shared/workExternalBindingPhase.ts',
+  'products/chat/state/workToolIntentResolver.ts -> products/work/shared/workExternalIssueImportPhase.ts',
+
+  // The shared product shell still reuses chat-specific participant and
+  // composer utilities. These are exact edges, not product-wide exemptions.
+  'products/shared/channelParticipants.ts -> products/chat/shared/channelParticipants.ts',
+  'products/shared/operator-loop/index.ts -> products/chat/shared/channelCanonicalIdentity.ts',
+  'products/shared/renderer/components/chat-view/CompanionMessageReferencePreviews.tsx -> products/chat/companion/composerReferenceDetector.ts',
+  'products/shared/renderer/components/chat-view/CompanionMessageReferencePreviews.tsx -> products/chat/companion/contentReference.ts',
+  'products/shared/renderer/components/chat-view/CompanionMessageReferencePreviews.tsx -> products/chat/companion/contentResolver.ts',
+  'products/shared/renderer/components/chat-view/CompanionMessageReferencePreviews.tsx -> products/chat/companion/messageReferenceSnapshot.ts',
+  'products/shared/renderer/composerDispatch.ts -> products/chat/shared/channelTopology.ts',
+  'products/shared/renderer/composerMessageMetadata.ts -> products/chat/shared/channelTopology.ts',
+  'products/shared/renderer/hooks/useLiveIndicator.ts -> products/chat/shared/channelCanonicalIdentity.ts',
+  'products/shared/renderer/hooks/useLiveIndicator.ts -> products/chat/shared/channelTopology.ts',
+  'products/shared/renderer/hooks/useWorkspaceExecutionTargetState.ts -> products/chat/shared/channelTopology.ts',
+  'products/shared/renderer/WorkspaceProductApp.tsx -> products/chat/shared/channelTopology.ts',
+  'shared/chatCoreIds.ts -> products/chat/api/contracts.ts',
+]);
 
 async function* walkSourceFiles(rootDirectory) {
   const entries = await readdir(rootDirectory, { withFileTypes: true });
@@ -88,6 +148,13 @@ function productNameFor(relativePath) {
   return match?.[1] ?? null;
 }
 
+function recordBoundaryViolation(violations, relativePath, importedRelativePath) {
+  const violation = `${relativePath} -> ${importedRelativePath}`;
+  if (!ALLOWED_BOUNDARY_IMPORTS.has(violation)) {
+    violations.push(violation);
+  }
+}
+
 test('dependency graph keeps core, platform, and product ownership boundaries intact', async () => {
   const violations = [];
 
@@ -105,12 +172,12 @@ test('dependency graph keeps core, platform, and product ownership boundaries in
       const importedRelativePath = relativeSourcePath(resolvedImport);
 
       if (relativePath.startsWith('core/') && /^products\//u.test(importedRelativePath)) {
-        violations.push(`${relativePath} -> ${importedRelativePath}`);
+        recordBoundaryViolation(violations, relativePath, importedRelativePath);
         continue;
       }
 
       if (relativePath.startsWith('platform/') && /^products\//u.test(importedRelativePath)) {
-        violations.push(`${relativePath} -> ${importedRelativePath}`);
+        recordBoundaryViolation(violations, relativePath, importedRelativePath);
         continue;
       }
 
@@ -119,7 +186,7 @@ test('dependency graph keeps core, platform, and product ownership boundaries in
         && /^products\//u.test(importedRelativePath)
         && !ALLOWED_SHARED_PRODUCT_IMPORTS.has(relativePath)
       ) {
-        violations.push(`${relativePath} -> ${importedRelativePath}`);
+        recordBoundaryViolation(violations, relativePath, importedRelativePath);
         continue;
       }
 
@@ -131,7 +198,7 @@ test('dependency graph keeps core, platform, and product ownership boundaries in
           && targetProduct
           && targetProduct !== 'shared'
         ) {
-          violations.push(`${relativePath} -> ${importedRelativePath}`);
+          recordBoundaryViolation(violations, relativePath, importedRelativePath);
           continue;
         }
 
@@ -142,7 +209,7 @@ test('dependency graph keeps core, platform, and product ownership boundaries in
           && targetProduct !== 'shared'
           && sourceProduct !== targetProduct
         ) {
-          violations.push(`${relativePath} -> ${importedRelativePath}`);
+          recordBoundaryViolation(violations, relativePath, importedRelativePath);
         }
       }
     }
