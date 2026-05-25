@@ -58,6 +58,7 @@ test('applyDispatchExecutions advances sequential queued frames by canonical sou
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Sequential frontier identity',
       topic: 'Advance the correct queued frame when the same participant owns multiple frontiers.',
       skipBossCatGreeting: true,
@@ -274,6 +275,7 @@ test('applyDispatchExecutions keeps replayed depth-0 continuation targets isolat
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Sequential replay frontier isolation',
       topic: 'Do not dedupe a later replayed frontier against another frontier that only shares the source message.',
       skipBossCatGreeting: true,
@@ -466,6 +468,7 @@ test('mergeCompletedDispatchState preserves newer room-routing config while appl
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Room routing merge',
       topic: 'Preserve config while keeping workflow progress.',
       skipBossCatGreeting: true,
@@ -530,6 +533,7 @@ test('settleBegunChannelMessageDispatchFailure preserves a newer room-routing wo
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Room routing failure merge',
       topic: 'Do not overwrite newer workflow state on failure.',
       skipBossCatGreeting: true,
@@ -608,6 +612,7 @@ test('settleBegunChannelMessageDispatchFailure keeps direct-lane transport bindi
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Direct lane settle failure',
       topic: 'Keep implicit direct-lane bindings on outer runtime_error notices.',
       roomMode: 'direct_message',
@@ -654,6 +659,7 @@ test('mergeCompletedDispatchState treats overlapping workflow mutations as lates
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Workflow latest wins',
       topic: 'Keep the newer workflow snapshot when both sides changed.',
       skipBossCatGreeting: true,
@@ -696,6 +702,7 @@ test('mergeCompletedDispatchState preserves temporary participant execution leas
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Temporary participant merge',
       topic: 'Keep adhoc participant session leases while dispatch state merges.',
       entryKind: 'group',
@@ -757,6 +764,7 @@ test('createMergedDispatchChatStore serializes cross-channel writes so parallel 
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Parallel member A',
       topic: 'First parallel member.',
       skipBossCatGreeting: true,
@@ -767,6 +775,7 @@ test('createMergedDispatchChatStore serializes cross-channel writes so parallel 
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Parallel member B',
       topic: 'Second parallel member.',
       skipBossCatGreeting: true,
@@ -808,6 +817,9 @@ test('createMergedDispatchChatStore serializes cross-channel writes so parallel 
     },
     async writeCore(nextCore) {
       return nextCore;
+    },
+    async updateCore(mutator) {
+      return mutator({});
     },
   };
   const mutationGate = createAsyncKeyedGate();
@@ -852,6 +864,7 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Recovered stale participant session',
       topic: 'Retry a room dispatch after a stale participant session.',
       entryKind: 'group',
@@ -960,8 +973,8 @@ test('continueBegunChannelMessageDispatch preserves recovered session_started me
     settledChannel.messages[recoveredSessionStartedIndex]?.metadata?.laneId,
     buildChatLaneId(recoveredTurn.id, recoveredTargetStateId, 'participant-inline'),
   );
-  assert.deepEqual(sentSessionIds, ['session-stale', 'session-recovered']);
-  assert.deepEqual(closedSessionIds, ['session-stale']);
+  assert.deepEqual(sentSessionIds, ['session-recovered']);
+  assert.deepEqual(closedSessionIds, []);
 });
 
 test('repairOrphanedCompletedDispatchTurn restores a startup-blocked turn when the reply already exists', async () => {
@@ -973,6 +986,7 @@ test('repairOrphanedCompletedDispatchTurn restores a startup-blocked turn when t
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Blocked after reply',
       topic: 'Restore a completed turn after startup recovery.',
       skipBossCatGreeting: true,
@@ -1131,6 +1145,7 @@ test('repairOrphanedCompletedDispatchTurn ignores non-terminal segmented replies
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Segment fragment only',
       topic: 'Do not repair a turn from a partial segment.',
       skipBossCatGreeting: true,
@@ -1195,6 +1210,7 @@ test('repairOrphanedCompletedDispatchTurn keeps an active sequential turn alive 
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Sequential handoff still active',
       topic: 'Do not finalize the room turn while a follow-up speaker remains active.',
       skipBossCatGreeting: true,
@@ -1316,6 +1332,7 @@ test('repairOrphanedCompletedDispatchTurn keeps a sequential turn alive while la
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Sequential target gap still active',
       topic: 'Do not finalize the room turn before the next sequential target is written.',
       skipBossCatGreeting: true,
@@ -1428,6 +1445,7 @@ test('repairOrphanedCompletedDispatchTurn keeps later same-speaker re-entry targ
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Same speaker re-entry still active',
       topic: 'Do not treat a later mention of the same speaker as the same target state.',
       skipBossCatGreeting: true,
@@ -1581,6 +1599,7 @@ test('repairOrphanedCompletedDispatchTurn restores a drifted same-speaker re-ent
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Same speaker re-entry drifted target',
       topic: 'Recover the later same-speaker target when transcript targetStateId drifts.',
       skipBossCatGreeting: true,
@@ -1812,6 +1831,7 @@ test('repairMissingSessionStartedMessages restores missing runtime metadata befo
     state = createChannel(
       state,
       {
+        originSurface: 'chat',
         title: 'Missing session metadata',
         topic: 'Restore missing session_started from runtime responses.',
         skipBossCatGreeting: true,
@@ -1895,6 +1915,7 @@ test('repairMissingSessionStartedMessages falls back to canonical session metada
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Canonical session metadata fallback',
       topic: 'Restore missing session metadata from canonical records.',
       skipBossCatGreeting: true,
@@ -2001,6 +2022,7 @@ test('repairMissingSessionStartedMessages restores a missing cat targetId from c
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Canonical session target fallback',
       topic: 'Restore missing session target ids from canonical records.',
       skipBossCatGreeting: true,
@@ -2111,6 +2133,7 @@ test('repairMissingSessionStartedMessages restores missing cat session identity 
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Canonical lane target fallback',
       topic: 'Restore missing session target ids directly from canonical lane records.',
       skipBossCatGreeting: true,
@@ -2198,6 +2221,7 @@ test('repairMissingStartupRecoveryNotice inserts an interrupted-turn note before
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Interrupted startup recovery',
       topic: 'Show a visible note when startup recovery blocked the prior turn.',
       skipBossCatGreeting: true,
@@ -2346,6 +2370,7 @@ test('repairMissingStartupRecoveryNotice falls back to canonical turn timing whe
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Interrupted startup recovery with drift',
       topic: 'Restore startup notice even when the source user message is missing.',
       skipBossCatGreeting: true,
@@ -2503,6 +2528,7 @@ test('repairMissingStartupRecoveryNotice uses canonical assistant source timing 
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Interrupted later sequential startup recovery',
       topic: 'Place startup recovery notice after the missing assistant handoff frontier.',
       skipBossCatGreeting: true,
@@ -2672,6 +2698,7 @@ test('repairMissingStartupRecoveryNotice prefers source identity when startup re
   state = createChannel(
     state,
     {
+      originSurface: 'chat',
       title: 'Interrupted later sequential startup recovery with drifted source ids',
       topic: 'Use canonical source identity instead of drifted source message ids when inserting recovery notices.',
       skipBossCatGreeting: true,
