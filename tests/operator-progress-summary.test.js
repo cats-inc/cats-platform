@@ -7,8 +7,12 @@ function resolveRepoPath(relativePath) {
   return fileURLToPath(new URL(relativePath, import.meta.url));
 }
 
-test('progress summary implementation lives in design and product wrappers point at it', () => {
+test('progress summary implementation lives in design and product wrappers share it', () => {
   const sharedPath = resolveRepoPath('../src/design/components/operator/ProgressSummaryPanel.tsx');
+  const productSharedWrapper = readFileSync(
+    resolveRepoPath('../src/products/shared/renderer/components/ProgressSummaryPanel.tsx'),
+    'utf8',
+  );
   const chatWrapper = readFileSync(
     resolveRepoPath('../src/products/chat/renderer/components/ProgressSummaryPanel.tsx'),
     'utf8',
@@ -22,8 +26,9 @@ test('progress summary implementation lives in design and product wrappers point
     'utf8',
   );
 
-  assert.match(readFileSync(sharedPath, 'utf8'), /Run status/u);
-  assert.match(chatWrapper, /design\/components\/operator\/ProgressSummaryPanel/u);
-  assert.match(workWrapper, /design\/components\/operator\/ProgressSummaryPanel/u);
-  assert.match(codeWrapper, /design\/components\/operator\/ProgressSummaryPanel/u);
+  assert.match(readFileSync(sharedPath, 'utf8'), /sharedOperatorRunStatusTitle/u);
+  assert.match(productSharedWrapper, /design\/components\/operator\/ProgressSummaryPanel/u);
+  assert.match(chatWrapper, /shared\/renderer\/components\/ProgressSummaryPanel/u);
+  assert.match(workWrapper, /shared\/renderer\/components\/ProgressSummaryPanel/u);
+  assert.match(codeWrapper, /shared\/renderer\/components\/ProgressSummaryPanel/u);
 });
