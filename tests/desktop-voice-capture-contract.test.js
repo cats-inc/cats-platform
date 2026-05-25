@@ -87,7 +87,7 @@ test('desktop voice capture helper path honors platform and env overrides', () =
       platform: 'darwin',
       env: {},
     }),
-    '/repo/cats-platform/desktop/native/macos-stt/.build/release/cats-stt-macos',
+    join('/repo/cats-platform', 'desktop', 'native', 'macos-stt', '.build', 'release', 'cats-stt-macos'),
   );
   assert.equal(
     resolveVoiceCaptureHelperPath({
