@@ -7,6 +7,7 @@
 
 import { spawn } from 'node:child_process';
 import { watch } from 'node:fs';
+import { homedir } from 'node:os';
 import path from 'node:path';
 
 const entry = 'src/index.ts';
@@ -14,11 +15,14 @@ const srcDir = path.resolve('src');
 const restartDelayMs = 1_000;
 const debounceMs = 150;
 const forceKillGraceMs = 3_000;
+const crashLogPath = path.join(homedir(), '.cats', 'platform', 'state', 'dev-crash.log');
+const banner = '='.repeat(64);
 
 let child = null;
 let intentionalRestart = false;
 let debounceTimer = null;
 let shuttingDown = false;
+let crashCount = 0;
 
 function spawnServer() {
   intentionalRestart = false;
@@ -35,8 +39,14 @@ function spawnServer() {
       spawnServer();
       return;
     }
+    crashCount += 1;
     process.stderr.write(
-      `\n[dev-server] server exited (code=${code ?? 'null'}, signal=${signal ?? 'null'}) — restarting in ${restartDelayMs}ms\n`,
+      `\n${banner}\n`
+      + `[dev-server] *** SERVER CRASHED (#${crashCount}) at ${new Date().toISOString()}\n`
+      + `[dev-server] exit code=${code ?? 'null'}, signal=${signal ?? 'null'}\n`
+      + `[dev-server] stack trace -> ${crashLogPath}\n`
+      + `[dev-server] restarting in ${restartDelayMs}ms...\n`
+      + `${banner}\n`,
     );
     setTimeout(spawnServer, restartDelayMs);
   });
