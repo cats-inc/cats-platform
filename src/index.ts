@@ -19,6 +19,7 @@ import {
   type AppShutdownReason,
 } from './app/server/startup.js';
 import { closeAppServerGracefully } from './app/server/shutdown.js';
+import { installGlobalCrashHandlers } from './app/server/crashLog.js';
 import { CatsRuntimeClient } from './platform/runtime/client.js';
 import {
   createRuntimeClientDiagnosticRecord,
@@ -199,6 +200,7 @@ async function main(): Promise<void> {
 }
 
 if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {
+  installGlobalCrashHandlers();
   main().catch((error) => {
     createAppStartupTrace().trace('main.error', {
       message: error instanceof Error ? error.message : String(error),
