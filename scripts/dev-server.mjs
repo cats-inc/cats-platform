@@ -67,15 +67,26 @@ function triggerRestart() {
   }, forceKillGraceMs);
 }
 
-watch(srcDir, { recursive: true }, (_event, filename) => {
-  if (!filename) {
-    return;
+function isWatchableSource(filename) {
+  const name = String(filename);
+  // Runtime-written state/cache files use the `*.local.*` convention (e.g.
+  // providerCapabilityCache.local.json, *.local.json snapshots). The server
+  // rewrites these while running; watching them would cause a restart loop.
+  if (/\.local\.[^/\\]+$/.test(name)) {
+    return false;
   }
-  if (!/\.(ts|tsx|js|mjs|cjs|json)$/.test(String(filename))) {
+  return /\.(ts|tsx|js|mjs|cjs|json)$/.test(name);
+}
+
+watch(srcDir, { recursive: true }, (_event, filename) => {
+  if (!filename || !isWatchableSource(filename)) {
     return;
   }
   clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(triggerRestart, debounceMs);
+  debounceTimer = setTimeout(() => {
+    process.stderr.write(`[dev-server] file change -> restarting (${filename})\n`);
+    triggerRestart();
+  }, debounceMs);
 });
 
 function shutdown(signal) {
