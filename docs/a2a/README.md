@@ -90,7 +90,7 @@ Legacy `agent-card.json.example`, `agent-card.yaml.example`,
 
 ## References
 
-- [cats-runtime pilot reference](../../../cats-runtime/docs/a2a/README.md)
-- [cats-runtime PLAN-023](../../../cats-runtime/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)
+- [cats-runtime pilot reference](https://github.com/cats-inc/cats-runtime/blob/main/docs/a2a/README.md)
+- [cats-runtime PLAN-023](https://github.com/cats-inc/cats-runtime/blob/main/docs/plans/PLAN-023-a2a-layering-and-collaboration-artifact-alignment.md)
 - A2A Protocol specification: https://a2a-protocol.org/latest/specification/
 - A2A Protocol definitions: https://a2a-protocol.org/latest/definitions/

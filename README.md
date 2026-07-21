@@ -4,16 +4,16 @@
 
 ## Overview
 
-`Cats` is the flagship product brand for the platform. This repo currently hosts
-the technical platform host targeted for public packaging as
-`@cats-inc/cats-platform` inside the local monorepo folder `cats-platform/`.
+`Cats` is the flagship product brand for the platform. This standalone repo hosts
+the technical platform host packaged as `@cats-inc/cats-platform`
+(extracted from the original monorepo in 2026-07 with full history).
 It talks to `cats-runtime` as its execution boundary and keeps the product
 model in this repo rather than inheriting it from earlier prototypes.
 
 `Cats Inc` remains the umbrella brand. `Cats` remains the public product name,
 `cats-platform` is the host repo/package target, `cats-runtime` remains the
 runtime boundary, and `cats-one` is reserved for the one-shot bootstrap
-installer path. The persistent host executable is `cats`.
+installer path. The persistent host executable is `cats-platform`.
 
 The current slices are:
 
@@ -43,7 +43,7 @@ The current slices are:
   execution-loop routes that now expose checkpoint-driven multi-step execution
   plans, recovery actions, and Team 6 MCP tool-plane metadata while staying
   above the existing direct `cats-runtime` API path
-- an Electron desktop host that now supervises local `cats-runtime` + `cats`,
+- an Electron desktop host that now supervises local `cats-runtime` + `cats-platform`,
   can produce a real Windows NSIS installer, stages cross-platform packaging
   outputs, persists host-readable bootstrap state, keeps the bootstrap bridge
   sandboxed, supports tray/background lifecycle, and owns the packaged
@@ -189,11 +189,11 @@ npm run desktop:start
 ```
 
 That command builds `build/server/`, `build/renderer/`, and `build/desktop/`, then starts
-the Electron host that supervises local `cats-runtime` and `cats` sidecars.
+the Electron host that supervises local `cats-runtime` and `cats-platform` sidecars.
 
 For host-package smoke validation, the local tarball path now mirrors the
 future `@cats-inc/cats-platform` host package while using the installed
-command `cats`. The separate one-shot bootstrap publication target is
+command `cats-platform`. The separate one-shot bootstrap publication target is
 reserved as `cats-one`.
 
 For staged packaging outputs:
@@ -213,7 +213,7 @@ npm run desktop:package:windows -- --sidecar-layout bundle
 npm run desktop:package:windows -- --sidecar-layout split
 ```
 
-Those commands build `cats-runtime`, build `cats`, and produce an NSIS installer
+Those commands build `cats-runtime`, build `cats-platform`, and produce an NSIS installer
 under `release/`. `--sidecar-layout bundle` forces both sidecars into single-file
 bundles for the packaged app, while `--sidecar-layout split` keeps the original
 multi-file layout.
