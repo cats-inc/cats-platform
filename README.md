@@ -12,7 +12,7 @@ model in this repo rather than inheriting it from earlier prototypes.
 
 `Cats Inc` remains the umbrella brand. `Cats` remains the public product name,
 `cats-platform` is the host repo/package target, `cats-runtime` remains the
-runtime boundary, and `cats-can` is reserved for the one-shot bootstrap
+runtime boundary, and `cats-one` is reserved for the one-shot bootstrap
 installer path. The persistent host executable is `cats`.
 
 The current slices are:
@@ -194,7 +194,7 @@ the Electron host that supervises local `cats-runtime` and `cats` sidecars.
 For host-package smoke validation, the local tarball path now mirrors the
 future `@cats-inc/cats-platform` host package while using the installed
 command `cats`. The separate one-shot bootstrap publication target is
-reserved as `cats-can`.
+reserved as `cats-one`.
 
 For staged packaging outputs:
 

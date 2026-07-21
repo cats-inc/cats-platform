@@ -346,7 +346,7 @@ contracts.
       Progress: the host recovery page now frames failures as a quick fix,
       keeps runtime diagnostics behind advanced detail labels, and uses
       user-facing setup-fix copy while preserving the existing recovery bridge.
-- [ ] Ship the real `cats-can` bootstrap/install entrypoint so npm/npx and
+- [ ] Ship the real `cats-one` bootstrap/install entrypoint so npm/npx and
       desktop-first users converge on one installer-owned handoff into the
       existing product setup flow instead of learning the current
       `cats-runtime` / `cats-platform` / Electron layering by accident

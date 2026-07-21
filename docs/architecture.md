@@ -342,7 +342,7 @@ Packaging and repo naming now follow this split:
 - `Cats`: flagship product brand
 - `cats-platform`: host repo/package target
 - `cats-runtime`: runtime boundary
-- `cats-can`: one-shot bootstrap installer target
+- `cats-one`: one-shot bootstrap installer target
 - `cats`: persistent installed executable name for the host package
 
 ### Packaged Setup Boundary
