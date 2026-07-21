@@ -9,6 +9,13 @@
 
 Accepted
 
+> **Amendment (2026-07-21)**: the installer entrypoint named `cats-can` in this
+> decision is now `cats-one` (its original name). npm's name-similarity rule
+> blocks the unscoped `cats-can` name (it normalizes identically to the existing
+> `cat-scan` package), so the installer was renamed at repo split time; see
+> https://github.com/cats-inc/cats-one. The core decision — `cats-platform` as
+> the main platform host under the Cats brand — is unchanged.
+
 ## Date
 
 2026-03-30
