@@ -367,7 +367,7 @@ test('after setup + activate, system messages stay generic and keep verbosity me
     assert.ok(!orchMessage.body.includes('Orchestrator'), 'Should not expose the internal orchestrator placeholder in default rooms');
     assert.ok(!orchMessage.body.includes('將將'), 'Should not expose boss cat name in default session messages');
     assert.ok(
-      /\n\(cwd: .*\\.cats[\\/]runtime[\\/]sessions[\\/].+\)/u.test(orchMessage.body),
+      /\n\(cwd: .*[\\/]\.cats[\\/]runtime[\\/]sessions[\\/].+\)/u.test(orchMessage.body),
       'Should include runtime cwd in the session message',
     );
 

@@ -13,9 +13,11 @@ import {
   DEFAULT_AUTH_SUBNET_DAILY_FAILURE_CAP,
 } from '../src/platform/auth/index.ts';
 
+const TEST_HOME = process.platform === 'win32' ? 'C:/Users/tester' : '/home/tester';
+
 function baseEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return {
-    HOME: 'C:/Users/tester',
+    HOME: TEST_HOME,
     ...overrides,
   };
 }
@@ -42,11 +44,11 @@ test('loadConfig exposes default platform auth config and state paths', () => {
   assert.ok(config.auth.allowedBrowserOrigins.includes('http://localhost:5173'));
   assert.equal(
     config.auth.authStatePath,
-    path.join('C:/Users/tester', '.cats', 'platform', 'state', 'auth-state.local.json'),
+    path.join(TEST_HOME, '.cats', 'platform', 'state', 'auth-state.local.json'),
   );
   assert.equal(
     config.auth.recoveryTokenPath,
-    path.join('C:/Users/tester', '.cats', 'platform', 'state', 'auth-recovery-token.local.txt'),
+    path.join(TEST_HOME, '.cats', 'platform', 'state', 'auth-recovery-token.local.txt'),
   );
 });
 

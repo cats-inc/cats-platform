@@ -165,19 +165,26 @@ test('loadConfig derives the default chat-state path from CATS_PLATFORM_DIR', ()
 });
 
 test('loadConfig defaults chat-state path under ~/.cats/platform', () => {
-  const originalHome = process.env.USERPROFILE;
-  process.env.USERPROFILE = 'C:/Users/tester';
+  // os.homedir() reads USERPROFILE on Windows and HOME on POSIX.
+  const homeKey = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
+  const testHome = process.platform === 'win32' ? 'C:/Users/tester' : '/home/tester';
+  const originalHome = process.env[homeKey];
+  process.env[homeKey] = testHome;
 
   try {
     const config = loadConfig({});
     assert.equal(
       config.chatStatePath,
-      'C:\\Users\\tester\\.cats\\platform\\state\\chat-state.local.json',
+      path.join(testHome, '.cats', 'platform', 'state', 'chat-state.local.json'),
     );
     assert.equal(config.maxAudienceParticipants, 3);
     assert.equal(config.maxParallelChats, 3);
   } finally {
-    process.env.USERPROFILE = originalHome;
+    if (originalHome === undefined) {
+      delete process.env[homeKey];
+    } else {
+      process.env[homeKey] = originalHome;
+    }
   }
 });
 
