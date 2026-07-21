@@ -255,19 +255,24 @@ function findButtonClassByLabel(node: ReactNode, label: string): string {
 }
 
 function withLocationPathname(pathname: string, run: () => void): void {
-  const originalLocation = globalThis.location;
+  // defineProperty without writable:true leaves a read-only location behind,
+  // which breaks later test files that plainly assign globalThis.location
+  // when the suite runs with --test-isolation=none.
+  const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'location');
   Object.defineProperty(globalThis, 'location', {
     configurable: true,
+    writable: true,
     value: { pathname },
   });
 
   try {
     run();
   } finally {
-    Object.defineProperty(globalThis, 'location', {
-      configurable: true,
-      value: originalLocation,
-    });
+    if (originalDescriptor) {
+      Object.defineProperty(globalThis, 'location', originalDescriptor);
+    } else {
+      delete (globalThis as { location?: unknown }).location;
+    }
   }
 }
 
