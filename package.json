@@ -278,5 +278,8 @@
   },
   "bugs": {
     "url": "https://github.com/cats-inc/cats-platform/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
