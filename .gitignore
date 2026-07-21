@@ -69,3 +69,15 @@ tmp/
 temp/
 *.tmp
 *-diagnostics.local.json
+
+# === Runtime Data (ported from monorepo root .gitignore at repo split) ===
+data/
+output/
+media/
+datasets/
+workspace/
+!src/workspace/
+!src/workspace/**
+!src/products/chat/workspace/
+!src/products/chat/workspace/**
+knowledge/

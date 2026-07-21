@@ -271,5 +271,12 @@
       "uninstallerIcon": "uninstallerIcon.ico",
       "installerHeaderIcon": "installerHeaderIcon.ico"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cats-inc/cats-platform.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cats-inc/cats-platform/issues"
   }
 }
