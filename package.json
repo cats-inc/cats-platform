@@ -6,7 +6,7 @@
   "homepage": "https://github.com/cats-inc/cats-platform",
   "type": "module",
   "bin": {
-    "cats-platform": "./build/server/index.js"
+    "cats-platform": "build/server/index.js"
   },
   "main": "build/desktop/main.js",
   "files": [

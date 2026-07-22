@@ -119,7 +119,7 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   const packedPaths = new Set(packed.files.map((entry) => entry.path));
 
   assert.deepEqual(manifest.bin, {
-    'cats-platform': './build/server/index.js',
+    'cats-platform': 'build/server/index.js',
   });
   assert.deepEqual(manifest.files, [
     'build/renderer',
