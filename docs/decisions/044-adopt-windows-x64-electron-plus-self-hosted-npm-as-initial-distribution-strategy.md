@@ -131,8 +131,8 @@ Priority
 - [ADR-021](./021-keep-packaged-setup-and-provider-installation-in-the-host.md)
 - [Deployment Guide](../deployment.md)
 - [Setup Guide](../setup-guide.md)
-- [cats-platform/package.json](/home/sammykenny2/Source/SK2/one-man-digital-company/cats-platform/package.json)
-- [cats-platform/electron/packaging.ts](/home/sammykenny2/Source/SK2/one-man-digital-company/cats-platform/electron/packaging.ts)
+- [cats-platform/package.json](../../package.json)
+- [cats-platform/electron/packaging.ts](../../desktop/host/packaging.ts) (since moved to `desktop/host/packaging.ts`)
 
 ---
 
