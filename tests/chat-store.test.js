@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -2461,4 +2461,67 @@ test('createChannel defaults empty draft fields to a neutral new-chat label', as
   assert.equal(state.channels[0].title, 'New chat');
   assert.equal(state.channels[0].topic, '');
   assert.match(state.channels[0].id, UUID_PATTERN);
+});
+
+test('snapshot rewrites never leave the primary file missing for concurrent readers', async () => {
+  const filePath = path.join(
+    await mkdtemp(path.join(os.tmpdir(), 'cats-store-atomic-')),
+    'chat-state.json',
+  );
+  const store = new FileChatStore(filePath);
+  const state = await store.read();
+
+  let missingObservations = 0;
+  let done = false;
+  const reader = (async () => {
+    while (!done) {
+      try {
+        await access(filePath);
+      } catch {
+        missingObservations += 1;
+      }
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+  })();
+
+  try {
+    for (let index = 0; index < 40; index += 1) {
+      await store.write(state);
+    }
+  } finally {
+    done = true;
+    await reader;
+  }
+
+  assert.equal(
+    missingObservations,
+    0,
+    'a reader observed a missing primary snapshot during rewrites',
+  );
+});
+
+test('recovers from the backup snapshot when the primary file goes missing', async () => {
+  const filePath = path.join(
+    await mkdtemp(path.join(os.tmpdir(), 'cats-store-recover-')),
+    'chat-state.json',
+  );
+  const seedStore = new FileChatStore(filePath);
+  const seeded = createChannel(
+    await seedStore.read(),
+    {
+      originSurface: 'chat',
+      title: 'Survives restart',
+      topic: '',
+    },
+    new Date('2026-03-11T00:00:00.000Z'),
+  );
+  // Write twice so the .bak generation contains the marker channel too.
+  await seedStore.write(seeded);
+  await seedStore.write(seeded);
+
+  await rm(filePath, { force: true });
+
+  const recoveredState = await new FileChatStore(filePath).read();
+  assert.equal(recoveredState.channels.length, 1);
+  assert.equal(recoveredState.channels[0].title, 'Survives restart');
 });

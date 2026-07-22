@@ -65,8 +65,29 @@ async function writePersistedChatSnapshot(
         throw error;
       }
     }
-    await rm(filePath, { force: true });
-    await rename(tempPath, filePath);
+    // rename() replaces the destination atomically on POSIX and Windows, so
+    // readers never observe a missing primary snapshot. Windows can transiently
+    // refuse the replace while another handle touches the destination, so retry
+    // instead of falling back to delete-then-rename, which would reopen the
+    // missing-file window this function exists to prevent.
+    let lastReplaceError: unknown;
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      try {
+        await rename(tempPath, filePath);
+        lastReplaceError = null;
+        break;
+      } catch (error) {
+        if (!(isErrnoException(error)
+          && (error.code === 'EPERM' || error.code === 'EACCES' || error.code === 'EEXIST'))) {
+          throw error;
+        }
+        lastReplaceError = error;
+        await new Promise((resolve) => setTimeout(resolve, 5 * (attempt + 1)));
+      }
+    }
+    if (lastReplaceError) {
+      throw lastReplaceError;
+    }
   } finally {
     await rm(tempPath, { force: true }).catch(() => {});
   }
@@ -207,6 +228,21 @@ export class FileChatStore implements ChatStore {
       return this.cacheSnapshot(await this.tryReadSnapshotFile(this.filePath));
     } catch (error) {
       if (isErrnoException(error) && error.code === 'ENOENT') {
+        if (this.lastKnownSnapshot) {
+          reportStoreDiagnostic('snapshot_missing_primary_using_memory_cache', {
+            filePath: this.filePath,
+            setupCompleteAt: this.lastKnownSnapshot.setupCompleteAt,
+          });
+          return structuredClone(this.lastKnownSnapshot);
+        }
+        const recoveredFromBackup = await this.recoverFromBackup();
+        if (recoveredFromBackup) {
+          reportStoreDiagnostic('snapshot_missing_primary_recovered_from_backup', {
+            filePath: this.filePath,
+            setupCompleteAt: recoveredFromBackup.setupCompleteAt,
+          });
+          return structuredClone(recoveredFromBackup);
+        }
         reportStoreDiagnostic('snapshot_missing_primary_creating_default', {
           filePath: this.filePath,
         });
