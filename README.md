@@ -191,8 +191,8 @@ npm run desktop:start
 That command builds `build/server/`, `build/renderer/`, and `build/desktop/`, then starts
 the Electron host that supervises local `cats-runtime` and `cats-platform` sidecars.
 
-For host-package smoke validation, the local tarball path now mirrors the
-future `@cats-inc/cats-platform` host package while using the installed
+For host-package smoke validation, the local tarball path mirrors the
+published `@cats-inc/cats-platform` host package while using the installed
 command `cats-platform`. The separate one-shot bootstrap publication target is
 reserved as `cats-one`.
 
