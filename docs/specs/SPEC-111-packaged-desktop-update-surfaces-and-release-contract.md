@@ -338,9 +338,9 @@ When later enabled:
 9. The release shall be published only after all required platform jobs and
    metadata checks succeed.
 10. A failed platform job shall leave no partially published latest stable
-   release.
+    release.
 11. Release artifacts shall be immutable for a published version. A correction
-   requires a higher version.
+    requires a higher version.
 12. npm publishing shall remain an independent workflow and shall not cause
     Electron clients to self-update unless the matching desktop release is
     intentionally published.
