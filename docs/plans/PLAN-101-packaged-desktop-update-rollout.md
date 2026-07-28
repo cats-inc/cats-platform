@@ -384,6 +384,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 | 2026-07-29 | Phase 2 complete: `desktop/host/update.ts` and the custom manifest protocol are deleted. The host now builds the manager from the embedded descriptor at launch, registers the update IPC, persists only durable facts, and retires the manifest environment variables from config and docs. |
 | 2026-07-29 | Phase 4 partial: capability-gated tray update entry with truthful, localized labels and disabled in-flight states. |
 | 2026-07-29 | Phase 1 complete except the first tag: added the tag-gated `desktop-release.yml` with a guard-first job order, three native runners, draft-first collection, `scripts/validate-release-assets.mjs`, and an explicit draft GitHub publish provider. |
+| 2026-07-29 | Phase 4 partial: localized update copy (33 keys, en + zh-TW) and the status/error/action presentation mapping. The `App updates` section component itself is the next step. |
 
 ---
 
