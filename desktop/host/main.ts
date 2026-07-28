@@ -1577,7 +1577,7 @@ async function refreshUpdateState(): Promise<DesktopUpdateState> {
   }
   updateState = {
     ...(updateState ?? createDefaultDesktopUpdateState(hostConfig.update)),
-    status: hostConfig.update.manifestUrl ? 'checking' : 'disabled',
+    status: hostConfig.update.manifestUrl ? 'checking' : 'unavailable',
     summary: hostConfig.update.manifestUrl
       ? 'Checking for desktop updates.'
       : 'Update checks are disabled until a manifest URL is configured.',

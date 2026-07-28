@@ -2,7 +2,12 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { DesktopUpdateChannel } from './contracts.js';
+import type {
+  DesktopDistributionMode,
+  DesktopUpdateChannel,
+  DesktopUpdateProvider,
+  DesktopUpdateUnavailableReason,
+} from './contracts.js';
 
 /**
  * Provenance emitted by the tag-gated release workflow
@@ -25,21 +30,12 @@ export const DESKTOP_RELEASE_PLATFORMS = ['windows', 'macos', 'linux'] as const;
 
 export type DesktopReleasePlatform = typeof DESKTOP_RELEASE_PLATFORMS[number];
 
-export type DesktopDistributionMode =
-  | 'official_packaged'
-  | 'development'
-  | 'unofficial_packaged';
-
-export type DesktopUpdateProvider = 'github_release' | 'none';
-
-export type DesktopDistributionUnavailableReason =
-  | 'development_build'
-  | 'descriptor_missing'
-  | 'descriptor_unreadable'
-  | 'descriptor_malformed'
-  | 'descriptor_schema_unsupported'
-  | 'descriptor_version_mismatch'
-  | 'descriptor_platform_mismatch';
+/**
+ * The distribution vocabulary lives in contracts.ts because Tray, Settings, and
+ * the preload bridge all consume it. This module owns only how the values are
+ * derived from the packaged descriptor.
+ */
+export type DesktopDistributionUnavailableReason = DesktopUpdateUnavailableReason;
 
 export interface DesktopReleaseDescriptor {
   schemaVersion: number;

@@ -29,7 +29,7 @@ test('resolveDesktopUpdateConfig rejects insecure manifest URLs', () => {
   }), /Unsupported desktop URL protocol/);
 });
 
-test('createDefaultDesktopUpdateState disables checks when no manifest is configured', () => {
+test('createDefaultDesktopUpdateState marks checks unavailable when no manifest is configured', () => {
   const state = createDefaultDesktopUpdateState({
     channel: 'stable',
     manifestUrl: null,
@@ -38,8 +38,8 @@ test('createDefaultDesktopUpdateState disables checks when no manifest is config
     autoDownload: false,
   });
 
-  assert.equal(state.status, 'disabled');
-  assert.equal(state.summary.includes('disabled'), true);
+  assert.equal(state.status, 'unavailable');
+  assert.equal(state.summary.includes('unavailable'), true);
 });
 
 test('checkForDesktopUpdates reports update_available when manifest version is newer', async () => {

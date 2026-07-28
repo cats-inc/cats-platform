@@ -137,12 +137,12 @@ export function createDefaultDesktopUpdateState(
 ): DesktopUpdateState {
   return {
     channel: config.channel,
-    status: config.manifestUrl ? 'idle' : 'disabled',
+    status: config.manifestUrl ? 'idle' : 'unavailable',
     currentVersion: DESKTOP_HOST_VERSION,
     latestVersion: null,
     summary: config.manifestUrl
       ? 'Update checks are idle until the host performs a manifest probe.'
-      : 'Update checks are disabled until a manifest URL is configured.',
+      : 'Update checks are unavailable until a manifest URL is configured.',
     lastCheckedAt: null,
     manifestUrl: config.manifestUrl,
     downloadUrl: null,

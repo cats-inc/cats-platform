@@ -36,12 +36,53 @@ export const DESKTOP_PROGRESS_STEP_STATUSES = [
   'skipped',
 ] as const;
 export const DESKTOP_UPDATE_STATUSES = [
-  'disabled',
+  'unavailable',
   'idle',
   'checking',
   'up_to_date',
   'update_available',
+  'downloading',
+  'downloaded',
+  'installing',
   'failed',
+] as const;
+
+export const DESKTOP_UPDATE_NEXT_ACTIONS = [
+  'none',
+  'check',
+  'download',
+  'restart_install',
+] as const;
+
+export const DESKTOP_UPDATE_ERROR_CODES = [
+  'offline',
+  'timeout',
+  'provider_rejected',
+  'metadata_invalid',
+  'checksum_mismatch',
+  'signature_rejected',
+  'unsupported_package',
+  'download_cancelled',
+  'install_handoff_failed',
+  'unknown',
+] as const;
+
+export const DESKTOP_DISTRIBUTION_MODES = [
+  'official_packaged',
+  'development',
+  'unofficial_packaged',
+] as const;
+
+export const DESKTOP_UPDATE_PROVIDERS = ['github_release', 'none'] as const;
+
+export const DESKTOP_UPDATE_UNAVAILABLE_REASONS = [
+  'development_build',
+  'descriptor_missing',
+  'descriptor_unreadable',
+  'descriptor_malformed',
+  'descriptor_schema_unsupported',
+  'descriptor_version_mismatch',
+  'descriptor_platform_mismatch',
 ] as const;
 export const DESKTOP_UPDATE_CHANNELS = [
   'stable',
@@ -205,6 +246,12 @@ export type DesktopBackgroundCloseBehavior = typeof DESKTOP_BACKGROUND_CLOSE_BEH
 export type DesktopBootstrapOnboardingMode = typeof DESKTOP_BOOTSTRAP_ONBOARDING_MODES[number];
 export type DesktopProgressStepStatus = typeof DESKTOP_PROGRESS_STEP_STATUSES[number];
 export type DesktopUpdateStatus = typeof DESKTOP_UPDATE_STATUSES[number];
+export type DesktopUpdateNextAction = typeof DESKTOP_UPDATE_NEXT_ACTIONS[number];
+export type DesktopUpdateErrorCode = typeof DESKTOP_UPDATE_ERROR_CODES[number];
+export type DesktopDistributionMode = typeof DESKTOP_DISTRIBUTION_MODES[number];
+export type DesktopUpdateProvider = typeof DESKTOP_UPDATE_PROVIDERS[number];
+export type DesktopUpdateUnavailableReason =
+  typeof DESKTOP_UPDATE_UNAVAILABLE_REASONS[number];
 export type DesktopUpdateChannel = typeof DESKTOP_UPDATE_CHANNELS[number];
 export type DesktopPackagingPlatform = typeof DESKTOP_PACKAGING_PLATFORMS[number];
 export type DesktopPackagingArchitecture = typeof DESKTOP_PACKAGING_ARCHITECTURES[number];
@@ -450,6 +497,57 @@ export interface DesktopUpdateState {
   downloadUrl: string | null;
   sha256: string | null;
   error: string | null;
+}
+
+/**
+ * Update capability is published by the desktop host and consumed by Tray and
+ * Settings. SPEC-111 requires it to be derived from packaging plus release
+ * provenance, never from preload-bridge presence, user agent, hostname, or the
+ * environment.
+ */
+export interface DesktopUpdateCapability {
+  distribution: DesktopDistributionMode;
+  provider: DesktopUpdateProvider;
+  channel: DesktopUpdateChannel;
+  currentVersion: string;
+  canCheck: boolean;
+  canDownload: boolean;
+  canInstall: boolean;
+  unavailableReason: DesktopUpdateUnavailableReason | null;
+}
+
+export interface DesktopUpdateProgress {
+  percent: number;
+  transferredBytes: number;
+  totalBytes: number;
+  bytesPerSecond: number;
+}
+
+/**
+ * Failures cross the bridge as a stable code plus copy that is safe to render.
+ * Raw provider messages and stack traces stay in the desktop host log.
+ */
+export interface DesktopUpdateError {
+  code: DesktopUpdateErrorCode;
+  summary: string;
+}
+
+/**
+ * The single serializable update snapshot shared by Tray and Settings.
+ *
+ * It intentionally carries no feed URL, download URL, installer path, or
+ * credential. The renderer requests bounded actions; it never chooses a target.
+ */
+export interface DesktopUpdateSnapshot {
+  capability: DesktopUpdateCapability;
+  status: DesktopUpdateStatus;
+  currentVersion: string;
+  availableVersion: string | null;
+  releaseSummary: string | null;
+  lastCheckedAt: string | null;
+  progress: DesktopUpdateProgress | null;
+  error: DesktopUpdateError | null;
+  nextAction: DesktopUpdateNextAction;
 }
 
 export interface DesktopPackagingArtifact {

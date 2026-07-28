@@ -126,7 +126,7 @@ not create versions or releases for ordinary commits.
       than live GitHub requests.
 - [ ] Replace custom JSON-manifest comparison with electron-updater events and
       generated release metadata.
-- [ ] Extend update contracts with explicit capability, progress, safe error,
+- [x] Extend update contracts with explicit capability, progress, safe error,
       and next-action fields.
 - [ ] Resolve official capability from `app.isPackaged`, updater
       configuration, and a matching embedded release descriptor; do not trust
@@ -377,6 +377,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 | 2026-07-28 | Corrected the Windows install-mode contract after reading `assets/build/installer.nsh`: the repository forces per-user install and never elevates, and an upgrade preserves user state. |
 | 2026-07-28 | Phase 1: added the official release descriptor generator and wired the wrapper to emit it only in release mode and delete stale copies otherwise. |
 | 2026-07-28 | Phase 2 started: added `desktop/host/releaseDescriptor.ts`, which validates the embedded descriptor and resolves official/development/unofficial distribution identity without reading the environment. |
+| 2026-07-29 | Phase 2: extended the update contract vocabulary with the full status lifecycle, next actions, stable error codes, distribution modes, and the capability/progress/error/snapshot shapes. Retired the `disabled` status in favour of `unavailable`. |
 
 ---
 
