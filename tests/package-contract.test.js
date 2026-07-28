@@ -86,30 +86,62 @@ function ensureBuild() {
   }
 }
 
-function runPackDryRun() {
-  const stdout = runNpmCommand(['pack', '--json', '--dry-run', '--ignore-scripts']);
-  const payload = JSON.parse(stdout.trim());
+/**
+ * npm 11 prints `npm pack --json` as an array of packed-package records; npm 12
+ * prints an object keyed by package name. Which one a run sees depends on the
+ * npm that set `npm_execpath`, so accept both rather than pinning the contract
+ * test to whichever npm happened to launch it.
+ */
+export function normalizeNpmPackPayload(payload) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (payload !== null && typeof payload === 'object') {
+    return Object.values(payload);
+  }
+  return [];
+}
 
-  if (!Array.isArray(payload) || payload.length !== 1) {
+function readSinglePackedEntry(stdout) {
+  const entries = normalizeNpmPackPayload(JSON.parse(stdout.trim()));
+
+  if (entries.length !== 1) {
     throw new Error(`Unexpected npm pack payload: ${stdout}`);
   }
 
-  return payload[0];
+  return entries[0];
+}
+
+function runPackDryRun() {
+  return readSinglePackedEntry(
+    runNpmCommand(['pack', '--json', '--dry-run', '--ignore-scripts']),
+  );
 }
 
 function runPack() {
   const stdout = runNpmCommand(['pack', '--json', '--ignore-scripts']);
-  const payload = JSON.parse(stdout.trim());
+  const packed = readSinglePackedEntry(stdout);
 
-  if (!Array.isArray(payload) || payload.length !== 1 || !payload[0]?.filename) {
+  if (!packed?.filename) {
     throw new Error(`Unexpected npm pack payload: ${stdout}`);
   }
 
   return {
-    packed: payload[0],
-    tarballPath: join(projectRoot, payload[0].filename),
+    packed,
+    tarballPath: join(projectRoot, packed.filename),
   };
 }
+
+test('npm pack payloads are read the same way under npm 11 and npm 12', () => {
+  const record = { name: '@cats-inc/cats-platform', filename: 'x.tgz', files: [] };
+
+  // npm 11 shape.
+  assert.deepEqual(normalizeNpmPackPayload([record]), [record]);
+  // npm 12 shape.
+  assert.deepEqual(normalizeNpmPackPayload({ '@cats-inc/cats-platform': record }), [record]);
+  assert.deepEqual(normalizeNpmPackPayload(null), []);
+  assert.deepEqual(normalizeNpmPackPayload('nonsense'), []);
+});
 
 test('package.json keeps the self-hosted npm executable contract aligned with packed contents', () => {
   ensureBuild();
