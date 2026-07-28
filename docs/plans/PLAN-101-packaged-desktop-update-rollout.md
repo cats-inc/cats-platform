@@ -178,7 +178,7 @@ capability gating.
 - [ ] Implement the status chip, version/channel facts, last-check time,
       available release summary, progress, and one primary next-action button.
 - [ ] Use the shared toast system for manual up-to-date results and failures.
-- [ ] Add English and Traditional Chinese strings through shared i18n catalogs.
+- [x] Add English and Traditional Chinese strings through shared i18n catalogs.
 - [x] Add `Check for Updates…` to the tray before Settings and Quit.
 - [x] Disable or relabel the tray item during active update operations.
 - [ ] Add native up-to-date, available, and failed notifications.
