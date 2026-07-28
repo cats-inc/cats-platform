@@ -83,6 +83,9 @@ export const DESKTOP_UPDATE_UNAVAILABLE_REASONS = [
   'descriptor_schema_unsupported',
   'descriptor_version_mismatch',
   'descriptor_platform_mismatch',
+  // An official package whose platform has not yet passed the signed
+  // old-to-new upgrade gate. PLAN-101 G3 adds platforms one at a time.
+  'platform_not_release_ready',
 ] as const;
 export const DESKTOP_UPDATE_CHANNELS = [
   'stable',

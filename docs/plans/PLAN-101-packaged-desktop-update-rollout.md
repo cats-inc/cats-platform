@@ -122,27 +122,27 @@ not create versions or releases for ordinary commits.
 ### Phase 2: Replace the Manifest Prototype with a Host-Owned Update Manager
 
 - [ ] Add `electron-updater` as an application dependency.
-- [ ] Introduce a small updater adapter so tests can use a fake provider rather
+- [x] Introduce a small updater adapter so tests can use a fake provider rather
       than live GitHub requests.
 - [ ] Replace custom JSON-manifest comparison with electron-updater events and
       generated release metadata.
 - [x] Extend update contracts with explicit capability, progress, safe error,
       and next-action fields.
-- [ ] Resolve official capability from `app.isPackaged`, updater
+- [x] Resolve official capability from `app.isPackaged`, updater
       configuration, and a matching embedded release descriptor; do not trust
       generic bridge presence.
-- [ ] Keep the production channel pinned to the embedded descriptor rather
+- [x] Keep the production channel pinned to the embedded descriptor rather
       than environment overrides.
-- [ ] Reject any environment override that attempts to turn a development or
+- [x] Reject any environment override that attempts to turn a development or
       unofficial package into an official update client.
-- [ ] Implement the required state machine and concurrency guard.
-- [ ] Keep automatic download disabled.
+- [x] Implement the required state machine and concurrency guard.
+- [x] Keep automatic download disabled.
 - [ ] Set electron-updater's install-on-normal-quit behavior to false so a
       downloaded update waits for the explicit restart/install action.
 - [ ] Persist only durable, useful update facts; do not restore an in-progress
       download/install state after process restart.
-- [ ] Map provider errors to stable error codes and safe localized summaries.
-- [ ] Send technical diagnostics to desktop logs with secret redaction.
+- [x] Map provider errors to stable error codes and safe localized summaries.
+- [x] Send technical diagnostics to desktop logs with secret redaction.
 - [ ] Remove obsolete custom manifest environment variables, docs, and tests
       once the replacement is complete.
 
@@ -378,6 +378,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 | 2026-07-28 | Phase 1: added the official release descriptor generator and wired the wrapper to emit it only in release mode and delete stale copies otherwise. |
 | 2026-07-28 | Phase 2 started: added `desktop/host/releaseDescriptor.ts`, which validates the embedded descriptor and resolves official/development/unofficial distribution identity without reading the environment. |
 | 2026-07-29 | Phase 2: extended the update contract vocabulary with the full status lifecycle, next actions, stable error codes, distribution modes, and the capability/progress/error/snapshot shapes. Retired the `disabled` status in favour of `unavailable`. |
+| 2026-07-29 | Phase 2: added `desktop/host/updateManager.ts` with capability gating, the lifecycle state machine, the single-operation concurrency guard, stable error mapping, and redacted diagnostics over an injectable adapter. `DESKTOP_RELEASE_READY_PLATFORMS` is empty until G3 passes, so no build advertises self-update yet. |
 
 ---
 
