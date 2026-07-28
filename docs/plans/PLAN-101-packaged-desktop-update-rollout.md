@@ -64,7 +64,8 @@ package-manager-owned and receives no desktop update action.
       release layout for both managed sidecars; retain the switch for
       controlled A/B diagnostics.
 - [ ] Confirm that Phase 1 preserves the current assisted Windows installer
-      UX, including install-mode and directory confirmation.
+      UX, including directory confirmation and the forced per-user install
+      mode from `assets/build/installer.nsh`.
 - [ ] Decide whether GitHub immutable releases will be enabled; in either case,
       require draft-first asset collection.
 - [ ] Record secret names and protected GitHub Environment policy without
@@ -199,8 +200,11 @@ official packaged builds only.
 - [ ] Validate the current Windows installer choices:
       - `oneClick: false` opens the assisted wizard
       - installation-directory changes remain available
-      - `perMachine: false` shows an install-mode choice that defaults to
-        per-user but may still elevate for per-machine
+      - `customInstallMode` in `assets/build/installer.nsh` still forces
+        per-user install, so no install-mode page and no elevation prompt
+        appear during an update
+      - the silent pre-upgrade uninstall leaves `%APPDATA%\Cats` and
+        `%USERPROFILE%\.cats` intact
 - [ ] Guard against duplicate checks, duplicate downloads, and install requests
       in invalid states.
 - [ ] Confirm closing/hiding-to-tray behavior does not interrupt a download
@@ -327,8 +331,9 @@ ownership boundaries in ADR-108 and SPEC-111.
 ### Real-Machine Tests
 
 - signed installed Windows N to N+1
-- Windows assisted NSIS handoff, install-directory retention, install-mode
-  choice, and expected elevation behavior
+- Windows assisted NSIS handoff, install-directory retention, absence of an
+  install-mode page, absence of an elevation prompt, and user-data survival
+  across the silent pre-upgrade uninstall
 - signed/notarized macOS N to N+1
 - Linux AppImage N to N+1
 - Tray and Settings checks on current and outdated versions
@@ -369,6 +374,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 | 2026-07-28 | Review follow-up added the installer-wrapper publish/signing interlocks, first-tag bootstrap, assisted NSIS UX, strict development capability policy, unsigned-install classification gate, and explicit bundled Windows sidecars. |
 | 2026-07-28 | Phase 1 started: added `scripts/validate-release-version.mjs` and its tests. |
 | 2026-07-28 | Phase 1: desktop installer wrapper gained a guarded release mode covering publish arguments, signing environment split, and the Windows executable-signing override. |
+| 2026-07-28 | Corrected the Windows install-mode contract after reading `assets/build/installer.nsh`: the repository forces per-user install and never elevates, and an upgrade preserves user state. |
 
 ---
 

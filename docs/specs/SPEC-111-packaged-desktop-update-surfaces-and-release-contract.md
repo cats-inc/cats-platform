@@ -53,7 +53,9 @@ sequencing.
   loose-file `split` layout. Existing Windows measurements found a substantial
   cold-start improvement when the platform sidecar was bundled.
 - Windows currently uses an assisted NSIS installer with installation-directory
-  changes enabled and an install-mode choice that defaults to per-user.
+  changes enabled. `assets/build/installer.nsh` forces per-user installation
+  through `customInstallMode`, so the install-mode page never appears and the
+  installer never requests elevation.
 - Desktop packaging currently produces more formats and architectures than
   the minimum public update matrix. The release contract needs one primary
   user-facing artifact per OS.
@@ -268,12 +270,19 @@ Button/state mapping:
 On Windows, the current package is an assisted NSIS installer. Before invoking
 restart/install, Settings shall explain that Cats will close and a Windows
 installer will open. The host shall use the non-silent install path. The
-installer may ask the user to confirm the install mode and directory:
+installer may ask the user to confirm the installation directory:
 
 - `oneClick: false` selects assisted installer behavior
 - `allowToChangeInstallationDirectory: true` permits directory changes
-- `perMachine: false` shows an install-mode choice; it defaults to per-user but
-  does not prohibit per-machine installation or elevation
+- `perMachine: false` plus the `customInstallMode` hook in
+  `assets/build/installer.nsh` forces per-user installation. The install-mode
+  page is aborted before it draws, so no all-users option is presented and the
+  update never requests elevation. Packaged provider setup helpers refuse to
+  run elevated, so this behavior shall be preserved rather than relaxed for
+  updates.
+
+Because updates stay per-user, restart/install shall not be designed around an
+elevation prompt or an admin-install branch.
 
 A manual up-to-date result and mutation failures shall use the shared toast
 system. Persistent state may remain visible in the status chip and update
@@ -395,6 +404,12 @@ selection applies to both `cats-platform` and `cats-runtime`.
 - On Windows, restart/install shall hand off to the visible assisted NSIS
   wizard. App exit does not mean installation succeeded; success is confirmed
   by the installer and by the next launch reporting the new version.
+- A Windows upgrade runs the previous uninstaller silently before installing.
+  `assets/build/installer.nsh` only removes `%APPDATA%\Cats` and
+  `%USERPROFILE%\.cats` when the user explicitly opts in on the uninstall page,
+  so an update shall preserve Electron UI state and Cats runtime/platform
+  state. Any change to that macro shall be treated as an update-path
+  regression.
 - If restart/install fails before process exit, the app shall return to a
   recoverable failed or downloaded state.
 - If the platform installer fails after Cats exits, it shall leave the
@@ -424,7 +439,8 @@ be translated.
    restart/install states are covered by automated tests.
 7. An old signed Windows install upgrades to the tagged Windows release.
    The test shall cover the visible assisted installer, retained install
-   location, and the expected elevation behavior for the selected install mode.
+   location, the absence of an install-mode page, and that no elevation prompt
+   appears.
 8. An old signed macOS install upgrades to the tagged macOS release.
 9. An old Linux AppImage upgrades to the tagged Linux release.
 10. A normal commit runs CI without changing the package version or creating a

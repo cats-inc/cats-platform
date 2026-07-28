@@ -202,9 +202,10 @@ On Windows, Phase 1 keeps the existing assisted NSIS behavior:
 - `oneClick: false` presents an installer wizard
 - `allowToChangeInstallationDirectory: true` allows installation-directory
   confirmation or changes
-- `perMachine: false` presents an install-mode choice rather than forcing
-  per-user installation; per-user is the default selection, while a
-  per-machine choice may still require elevation
+- `perMachine: false` combined with the repository's `assets/build/installer.nsh`
+  `customInstallMode` hook forces per-user installation. The hook sets
+  `$isForceCurrentInstall` so the install-mode page aborts before it draws, so
+  no all-users option is offered and no elevation is requested
 
 `Restart and Install` therefore hands off to a visible Windows installer; it is
 not a promise of a silent replacement. The update manager must call the

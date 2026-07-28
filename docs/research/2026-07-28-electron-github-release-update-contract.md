@@ -26,6 +26,15 @@ Desktop update architecture.
   the exact Windows security-scanning component.
 - Windows uses assisted NSIS (`oneClick: false`) with installation-directory
   changes enabled and `perMachine: false`.
+- `assets/build/installer.nsh` overrides the stock install-mode behavior. Its
+  `customInstallMode` macro sets `$isForceCurrentInstall`, which aborts the
+  install-mode page before it draws, so this repository always installs
+  per-user and never prompts for elevation. The macro documents why: the
+  packaged provider setup helpers refuse to run elevated because every CLI
+  provider Cats installs is user-scoped.
+- The same file only deletes `%APPDATA%\Cats` and `%USERPROFILE%\.cats` when
+  the user opts in on the uninstall page, and notes that a Windows upgrade runs
+  the previous uninstaller silently. User state therefore survives an update.
 - The repository currently has no Git tags. The package version is `0.1.1`;
   release preparation must query the registry again rather than assume the
   first available desktop version.
@@ -65,6 +74,8 @@ The official NSIS configuration reference states:
 - with an assisted installer, `perMachine: false` shows an install-mode choice;
   it does not force per-user installation. Per-user is the default selection
   unless configured otherwise, while per-machine may require elevation.
+- that stock behavior is what a project gets without an installer include.
+  Cats does include one, so the repository baseline above governs instead.
 
 Source:
 [electron-builder NSIS](https://www.electron.build/nsis/)
