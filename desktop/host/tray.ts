@@ -29,6 +29,9 @@ interface CreateDesktopTrayControllerOptions {
   onRunAction: (actionId: DesktopHostActionId) => Promise<void>;
   onQuit: () => void;
   canInteract?: () => boolean;
+  // Delegates to the same host-owned manager Settings uses, so a tray check
+  // never creates a second provider request path.
+  onCheckForUpdates?: () => Promise<void>;
 }
 
 function createBundledTrayImage(name: string): Electron.NativeImage | null {
@@ -124,7 +127,7 @@ function buildDesktopTrayMenuTemplate(
   state: DesktopTrayMenuState,
   options: Pick<
     CreateDesktopTrayControllerOptions,
-    'onNavigate' | 'onRunAction' | 'onQuit' | 'canInteract'
+    'onNavigate' | 'onRunAction' | 'onQuit' | 'canInteract' | 'onCheckForUpdates'
   >,
   showWindow: () => void,
 ): MenuItemConstructorOptions[] {
@@ -174,6 +177,33 @@ function buildDesktopTrayMenuTemplate(
         },
       });
     }
+  }
+
+  // SPEC-111 section 5: the update entry sits before Settings and Quit, and is
+  // absent entirely when the build has no update capability.
+  if (state.updateItem) {
+    pushSeparator();
+    template.push({
+      label: state.updateItem.label,
+      enabled: state.updateItem.enabled,
+      click: () => {
+        const item = state.updateItem;
+        if (!item?.enabled) {
+          return;
+        }
+        runTrayAction(async () => {
+          if (options.canInteract?.() === false) {
+            return;
+          }
+          if (item.intent === 'check') {
+            await options.onCheckForUpdates?.();
+            return;
+          }
+          await options.onNavigate('/settings/desktop');
+          showWindow();
+        });
+      },
+    });
   }
 
   if (state.setupCompleteAt) {

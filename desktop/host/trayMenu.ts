@@ -2,6 +2,7 @@ import type {
   DesktopBootstrapPhase,
   DesktopHostAction,
   DesktopHostActionId,
+  DesktopUpdateSnapshot,
 } from './contracts.js';
 
 export interface DesktopTrayProductDescriptor {
@@ -13,6 +14,18 @@ export interface DesktopTrayProductDescriptor {
     selectable?: boolean;
     disabledReason?: string;
   } | null;
+}
+
+/**
+ * Tray update entry. Absent entirely when the build has no update capability,
+ * so an unofficial or development package never shows a command it cannot
+ * honour.
+ */
+export interface DesktopTrayUpdateItem {
+  label: string;
+  enabled: boolean;
+  /** What activating the item should do. */
+  intent: 'check' | 'open_settings';
 }
 
 export interface DesktopTrayMenuState {
@@ -38,6 +51,9 @@ export interface DesktopTrayMenuState {
   // when omitted so callers do not have to repeat themselves; setting it
   // explicitly lets the tooltip carry richer status (e.g. service count).
   lockedTooltip?: string;
+  // Present only for builds whose capability allows update checks. Rendered
+  // before Settings and Quit.
+  updateItem?: DesktopTrayUpdateItem | null;
 }
 
 export type DesktopTrayLocale = 'en' | 'zh-TW';
@@ -50,6 +66,7 @@ interface BuildDesktopTrayMenuStateOptions {
   actions: ReadonlyArray<Pick<DesktopHostAction, 'id' | 'label' | 'primary'>>;
   products: ReadonlyArray<DesktopTrayProductDescriptor> | null | undefined;
   locale?: string | null;
+  updates?: DesktopUpdateSnapshot | null;
 }
 
 const TRAY_PRIMARY_ACTION_IDS = new Set<DesktopHostActionId>([
@@ -168,6 +185,60 @@ function toTrayProductLabel(productName: string, locale: DesktopTrayLocale): str
     : `Open ${trimmed}`;
 }
 
+const TRAY_UPDATE_LABELS: Record<DesktopTrayLocale, Record<string, string>> = {
+  en: {
+    check: 'Check for Updates…',
+    checking: 'Checking for Updates…',
+    available: 'Update Available…',
+    downloading: 'Downloading Update…',
+    downloaded: 'Restart to Update…',
+    installing: 'Installing Update…',
+  },
+  'zh-TW': {
+    check: '檢查更新…',
+    checking: '正在檢查更新…',
+    available: '有可用更新…',
+    downloading: '正在下載更新…',
+    downloaded: '重新啟動以更新…',
+    installing: '正在安裝更新…',
+  },
+};
+
+/**
+ * Derives the tray update entry from the host-owned snapshot.
+ *
+ * Labels stay truthful about what the host is doing, and every state that has
+ * an operation in flight is disabled so a second request cannot be started
+ * from the tray.
+ */
+export function buildDesktopTrayUpdateItem(
+  snapshot: DesktopUpdateSnapshot | null | undefined,
+  localeInput?: string | null,
+): DesktopTrayUpdateItem | null {
+  if (!snapshot?.capability.canCheck) {
+    return null;
+  }
+
+  const labels = TRAY_UPDATE_LABELS[normalizeDesktopTrayLocale(localeInput)];
+
+  switch (snapshot.status) {
+    case 'checking':
+      return { label: labels.checking, enabled: false, intent: 'check' };
+    case 'update_available':
+      return { label: labels.available, enabled: true, intent: 'open_settings' };
+    case 'downloading': {
+      const percent = Math.round(snapshot.progress?.percent ?? 0);
+      return { label: `${labels.downloading} ${percent}%`, enabled: false, intent: 'check' };
+    }
+    case 'downloaded':
+      return { label: labels.downloaded, enabled: true, intent: 'open_settings' };
+    case 'installing':
+      return { label: labels.installing, enabled: false, intent: 'check' };
+    default:
+      return { label: labels.check, enabled: true, intent: 'check' };
+  }
+}
+
 export function buildDesktopTrayMenuState(
   options: BuildDesktopTrayMenuStateOptions,
 ): DesktopTrayMenuState {
@@ -194,6 +265,7 @@ export function buildDesktopTrayMenuState(
         label: localizeTrayActionLabel(action, locale),
       })),
     products,
+    updateItem: buildDesktopTrayUpdateItem(options.updates, options.locale),
   };
 }
 

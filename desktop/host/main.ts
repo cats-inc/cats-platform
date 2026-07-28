@@ -852,6 +852,7 @@ function resolveDesktopTrayMenuState(snapshot: DesktopBootstrapSnapshot) {
     actions: snapshot.actions,
     products: latestAppShellPayload?.products,
     locale: app.getLocale(),
+    updates: updateState,
   });
 }
 
@@ -993,6 +994,12 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
       void shutdownHost();
     },
     canInteract: () => !shuttingDown,
+    onCheckForUpdates: async () => {
+      if (shuttingDown) {
+        return;
+      }
+      await refreshUpdateState();
+    },
   };
 }
 
