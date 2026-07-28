@@ -11,15 +11,15 @@ function read(relativePath) {
 
 test('platform app disables BrowserRouter transition wrapping', () => {
   const source = read('src/app/renderer/main.tsx');
-  assert.match(source, /<BrowserRouter unstable_useTransitions=\{false\}>/);
+  assert.match(source, /<BrowserRouter useTransitions=\{false\}>/);
 });
 
 test('workspace app mount disables BrowserRouter transition wrapping', () => {
   const source = read('src/products/shared/renderer/mountWorkspaceApp.tsx');
-  assert.match(source, /<BrowserRouter unstable_useTransitions=\{false\}>/);
+  assert.match(source, /<BrowserRouter useTransitions=\{false\}>/);
 });
 
 test('standalone chat app disables BrowserRouter transition wrapping', () => {
   const source = read('src/products/chat/renderer/main.tsx');
-  assert.match(source, /<BrowserRouter unstable_useTransitions=\{false\}>/);
+  assert.match(source, /<BrowserRouter useTransitions=\{false\}>/);
 });
