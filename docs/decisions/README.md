@@ -101,7 +101,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [047-separate-bootstrap-diagnostics-by-layer-and-aggregate-in-the-host](./047-separate-bootstrap-diagnostics-by-layer-and-aggregate-in-the-host.md) | Separate bootstrap diagnostics by layer and aggregate in the host | Accepted | 2026-03-30 |
 | [046-drive-packaged-setup-through-runtime-bootstrap-apis](./046-drive-packaged-setup-through-runtime-bootstrap-apis.md) | Drive packaged setup through runtime bootstrap APIs | Accepted | 2026-03-30 |
 | [045-use-cats-platform-as-the-main-platform-host-under-cats-brand](./045-use-cats-platform-as-the-main-platform-host-under-cats-brand.md) | Use cats-platform as the main platform host under Cats brand | Accepted | 2026-03-30 |
-| [044-adopt-windows-x64-electron-plus-self-hosted-npm-as-initial-distribution-strategy](./044-adopt-windows-x64-electron-plus-self-hosted-npm-as-initial-distribution-strategy.md) | Adopt Windows x64 Electron plus self-hosted npm as the initial distribution strategy | Accepted | 2026-03-30 |
+| [044-adopt-windows-x64-electron-plus-self-hosted-npm-as-initial-distribution-strategy](./044-adopt-windows-x64-electron-plus-self-hosted-npm-as-initial-distribution-strategy.md) | Adopt Windows x64 Electron plus self-hosted npm as the initial distribution strategy | Accepted (proposed amendment: ADR-108) | 2026-03-30 |
 | [043-keep-platform-renderer-entry-bounded-with-route-level-lazy-loading](./043-keep-platform-renderer-entry-bounded-with-route-level-lazy-loading.md) | Keep platform renderer entry bounded with route-level lazy loading | Proposed | 2026-03-30 |
 | [042-separate-channel-topology-from-routing-mode](./042-separate-channel-topology-from-routing-mode.md) | Separate channel topology from routing mode | Accepted | 2026-03-28 |
 | [041-push-transport-and-chat-invalidations-over-sse](./041-push-transport-and-chat-invalidations-over-sse.md) | Push transport and chat invalidations over SSE | Proposed | 2026-03-27 |
@@ -152,4 +152,4 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 *Last updated: 2026-07-28 (ADR-108 added: host-owned GitHub Release updates for official desktop builds.)*
 
-*See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*
+*See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*

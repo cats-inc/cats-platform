@@ -27,6 +27,24 @@ section in Settings, and cannot download or install a platform-native update.
 The current GitHub Actions workflows run CI and manually publish npm packages;
 they do not produce a tag-gated desktop release.
 
+The current desktop packaging entrypoint is intentionally test-oriented. It:
+
+- always invokes electron-builder with `--publish never`
+- forces code-signing identity auto-discovery off
+- discards empty signing credential variables
+
+The Windows builder configuration also sets `signAndEditExecutable: false`.
+A release workflow cannot become functional by adding a publish provider
+alone; it needs an explicit release mode that removes those test-build
+interlocks while leaving local packaging safe by default.
+
+The same packaging entrypoint defaults both managed sidecars to the `split`
+layout. Existing Windows cold-start evidence shows that the loose-file layout
+can impose a very large pre-JavaScript startup cost and that bundling
+`cats-platform` nearly eliminated the measured platform delay. The exact
+Windows scanning component is not yet proven, but an official Windows release
+must not silently inherit the test-oriented `split` default.
+
 The renderer currently hides the complete `Settings > Desktop` route when the
 Electron preload bridge is absent. This correctly keeps desktop-only controls
 out of the npm/browser product, but bridge presence alone is not sufficient:
@@ -102,9 +120,11 @@ not generate it.
 The renderer must not infer this capability from user agent, hostname,
 operating system, or generic preload-bridge presence.
 
-The production channel comes from the embedded release descriptor. Environment
-overrides may support explicit development tests, but may not change the update
-channel of an official production package.
+The production channel comes from the embedded release descriptor.
+Environment overrides may not enable self-update or change the update channel
+of an official production package. Development testing uses injected adapter
+fixtures or a deliberately packaged prerelease; it does not add a fourth
+runtime distribution mode.
 
 The npm/browser path has no Electron update capability and therefore renders no
 `Check for Updates` button or desktop update section. npm users update through
@@ -143,6 +163,12 @@ The workflow must reject a tag whose version does not exactly match the package
 version. Stable releases use `vMAJOR.MINOR.PATCH`. Prerelease channel publishing
 is deferred until its promotion and downgrade rules are specified.
 
+The repository currently has no Git tags. The first desktop release must
+therefore establish, rather than assume, the tag baseline. Release preparation
+will re-check npm registry versions, choose a new unused version, and create
+the first tag only from the reviewed release commit. It must not retroactively
+attach an old npm version tag to the current repository head.
+
 ### 6. Each OS has one primary user-facing desktop artifact
 
 The target public desktop release set is:
@@ -153,17 +179,38 @@ The target public desktop release set is:
 | macOS | universal DMG | universal ZIP plus generated macOS update metadata |
 | Linux | x64 AppImage | generated Linux update metadata |
 
+The official Windows release job will explicitly pass
+`--sidecar-layout bundle`, which applies to both `cats-platform` and
+`cats-runtime`. The `split|bundle` switch remains available for controlled
+cold-start comparisons and for platform-specific packaging decisions outside
+the Windows release job.
+
 The macOS ZIP is an updater support artifact, not a second installer choice the
 release page needs to advertise prominently.
 
-This amends ADR-044 for the GitHub desktop release target: Windows remains the
-first validation platform, but a complete cross-platform public desktop release
-contains the three primary artifacts above.
+If accepted, this amends ADR-044 for the GitHub desktop release target:
+Windows remains the first validation platform, but a complete cross-platform
+public desktop release contains the three primary artifacts above.
 
 ### 7. Download and installation remain user-controlled
 
 Manual checks are required. Automatic download and automatic installation are
 disabled by default.
+
+On Windows, Phase 1 keeps the existing assisted NSIS behavior:
+
+- `oneClick: false` presents an installer wizard
+- `allowToChangeInstallationDirectory: true` allows installation-directory
+  confirmation or changes
+- `perMachine: false` presents an install-mode choice rather than forcing
+  per-user installation; per-user is the default selection, while a
+  per-machine choice may still require elevation
+
+`Restart and Install` therefore hands off to a visible Windows installer; it is
+not a promise of a silent replacement. The update manager must call the
+non-silent install path and must disable electron-updater's default
+install-on-normal-quit behavior so only the explicit action installs the
+downloaded update.
 
 Startup checks may be enabled later through the same update manager after
 signed old-version-to-new-version upgrades have passed on all supported
@@ -247,6 +294,7 @@ and must never imply automatic installation.
 - [SPEC-111: Packaged Desktop Update Surfaces and Release Contract](../specs/SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md)
 - [PLAN-101: Packaged Desktop Update Rollout](../plans/PLAN-101-packaged-desktop-update-rollout.md)
 - [Electron/GitHub release update research](../research/2026-07-28-electron-github-release-update-contract.md)
+- [Packaged desktop cold-start investigation](../research/2026-04-16-packaged-desktop-cold-start-investigation.md)
 
 ---
 

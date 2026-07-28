@@ -8,6 +8,11 @@
 
 Accepted
 
+> Proposed amendment: [ADR-108](./108-use-host-owned-github-release-updates-for-official-desktop-builds.md)
+> expands the complete public desktop release target to one primary
+> Windows, macOS, and Linux artifact plus updater support metadata. Until
+> ADR-108 is accepted, this ADR's Windows-first priority remains in force.
+
 ## Context
 
 The local `cats-platform/` workspace now has two viable distribution directions in the
@@ -129,6 +134,7 @@ Priority
 - [ADR-003](./003-electron-host-manages-local-services.md)
 - [ADR-013](./013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md)
 - [ADR-021](./021-keep-packaged-setup-and-provider-installation-in-the-host.md)
+- [ADR-108](./108-use-host-owned-github-release-updates-for-official-desktop-builds.md)
 - [Deployment Guide](../deployment.md)
 - [Setup Guide](../setup-guide.md)
 - [cats-platform/package.json](../../package.json)

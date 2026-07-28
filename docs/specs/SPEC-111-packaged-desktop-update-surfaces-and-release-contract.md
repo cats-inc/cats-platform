@@ -44,6 +44,16 @@ sequencing.
 - CI runs for pushes and pull requests. npm publishing is a separate manual
   workflow. No desktop release workflow currently creates GitHub Release
   assets.
+- The installer wrapper always passes `--publish never`, disables signing
+  identity auto-discovery, and removes empty signing credential variables.
+  Windows packaging separately sets `signAndEditExecutable: false`.
+- The repository currently has no Git tags, so the first desktop release must
+  establish a new version/tag baseline rather than assume one exists.
+- The installer wrapper currently defaults both managed sidecars to the
+  loose-file `split` layout. Existing Windows measurements found a substantial
+  cold-start improvement when the platform sidecar was bundled.
+- Windows currently uses an assisted NSIS installer with installation-directory
+  changes enabled and an install-mode choice that defaults to per-user.
 - Desktop packaging currently produces more formats and architectures than
   the minimum public update matrix. The release contract needs one primary
   user-facing artifact per OS.
@@ -54,9 +64,7 @@ sequencing.
 2. Add an `App updates` section to `Settings > Desktop` in official packaged
    builds.
 3. Keep desktop update controls absent from npm/browser execution.
-4. Keep update controls absent from development and unofficial Electron builds
-   unless an explicit test-only update capability is enabled outside
-   production.
+4. Keep update controls absent from development and unofficial Electron builds.
 5. Use one main-process update manager for all checks, downloads, progress, and
    install handoff.
 6. Publish intentional, tag-versioned GitHub Releases instead of creating a
@@ -147,6 +155,10 @@ Requirements:
    Environment overrides shall not change an official package's channel.
 8. Capability reasons may be logged or shown in development diagnostics but
    shall not expose signing secrets, tokens, or raw local paths.
+9. No production or development environment variable shall turn
+   `development` or `unofficial_packaged` into `official_packaged`.
+   Automated UI tests shall inject capability fixtures, while real updater
+   tests shall use a deliberately packaged prerelease.
 
 ### 2. Update Snapshot and State Machine
 
@@ -188,12 +200,19 @@ snapshot; they shall not start parallel provider requests.
 Required high-level transitions:
 
 ```text
+capability unavailable ──resolve──> unavailable
+capability valid ────────resolve──> idle
 idle ──check──> checking ──current──> up_to_date
                          └─newer────> update_available
 update_available ──download──> downloading ──complete──> downloaded
-downloaded ──restart/install──> installing ──app exits──> new version
+downloaded ──restart/install──> installing ──handoff/exit──> platform installer
+platform installer ──success/next launch──> new version
 any active state ──error──> failed ──check──> checking
 ```
+
+`unavailable` is terminal for the current process because official
+distribution identity is embedded at build time. It can become `idle` only
+after launching a different package whose capability resolves as official.
 
 ### 3. Preload Bridge
 
@@ -219,8 +238,11 @@ In an official packaged build, `Settings > Desktop` shall render sections in
 this order:
 
 1. `App updates`
-2. `Startup behavior`
-3. `Mobile pairing`
+2. `Mobile pairing`
+3. `Startup behavior`
+
+The existing relative order of Mobile pairing and Startup behavior is
+preserved; adding updates shall not introduce an unrelated section reorder.
 
 The `App updates` section shall show:
 
@@ -242,6 +264,16 @@ Button/state mapping:
 | `downloading` | disabled progress state |
 | `downloaded` | `Restart and Install` |
 | `installing` | disabled `Installing…` |
+
+On Windows, the current package is an assisted NSIS installer. Before invoking
+restart/install, Settings shall explain that Cats will close and a Windows
+installer will open. The host shall use the non-silent install path. The
+installer may ask the user to confirm the install mode and directory:
+
+- `oneClick: false` selects assisted installer behavior
+- `allowToChangeInstallationDirectory: true` permits directory changes
+- `perMachine: false` shows an install-mode choice; it defaults to per-user but
+  does not prohibit per-machine installation or elevation
 
 A manual up-to-date result and mutation failures shall use the shared toast
 system. Persistent state may remain visible in the status chip and update
@@ -274,6 +306,8 @@ Requirements:
 ### 6. Startup Check Policy
 
 Phase 1 shall ship manual checks with automatic download disabled.
+The updater shall also set automatic install-on-normal-quit to false. A
+downloaded update shall install only after the explicit restart/install action.
 
 The existing startup-check capability may remain configurable for test and
 staged rollout, but it shall default off for public builds until signed
@@ -292,19 +326,25 @@ When later enabled:
 1. Push and pull-request CI shall not modify versions or publish releases.
 2. A release change shall update both `package.json` and `package-lock.json`.
 3. A stable release tag shall use `vMAJOR.MINOR.PATCH`.
-4. The tag version shall exactly equal the package version.
-5. A tag mismatch shall fail before expensive platform builds begin.
-6. The GitHub Release shall be created as a draft while assets are collected.
-7. The release shall be published only after all required platform jobs and
+4. Before the first desktop release, release preparation shall verify that the
+   repository has no conflicting tag, re-query published npm versions, and
+   select a new unused version.
+5. The first desktop release shall create its tag from the reviewed release
+   commit. It shall not retroactively apply an older npm version tag to the
+   current head.
+6. The tag version shall exactly equal the package version.
+7. A tag mismatch shall fail before expensive platform builds begin.
+8. The GitHub Release shall be created as a draft while assets are collected.
+9. The release shall be published only after all required platform jobs and
    metadata checks succeed.
-8. A failed platform job shall leave no partially published latest stable
+10. A failed platform job shall leave no partially published latest stable
    release.
-9. Release artifacts shall be immutable for a published version. A correction
+11. Release artifacts shall be immutable for a published version. A correction
    requires a higher version.
-10. npm publishing shall remain an independent workflow and shall not cause
+12. npm publishing shall remain an independent workflow and shall not cause
     Electron clients to self-update unless the matching desktop release is
     intentionally published.
-11. The release workflow shall embed a non-secret official release descriptor
+13. The release workflow shall embed a non-secret official release descriptor
     in each platform package. The descriptor shall identify the tag version,
     source commit, platform, stable channel, and GitHub provider.
 
@@ -312,7 +352,7 @@ When later enabled:
 
 One public release shall contain:
 
-- Windows x64 NSIS installer
+- Windows x64 NSIS installer built with `--sidecar-layout bundle`
 - macOS universal DMG
 - macOS universal ZIP required by the updater
 - Linux x64 AppImage
@@ -323,6 +363,10 @@ One public release shall contain:
 The release UI shall identify NSIS, DMG, and AppImage as the primary choices.
 Updater-only metadata and the macOS ZIP may remain attached without being
 presented as additional user installation choices.
+
+The official Windows release workflow shall pass the sidecar layout explicitly;
+it shall not depend on the installer's current `split` default. The bundle
+selection applies to both `cats-platform` and `cats-runtime`.
 
 ### 9. Security and Trust
 
@@ -348,8 +392,14 @@ presented as additional user installation choices.
   retry.
 - The app shall not quit for install until the updater reports the download as
   complete and the user explicitly chooses restart/install.
+- On Windows, restart/install shall hand off to the visible assisted NSIS
+  wizard. App exit does not mean installation succeeded; success is confirmed
+  by the installer and by the next launch reporting the new version.
 - If restart/install fails before process exit, the app shall return to a
   recoverable failed or downloaded state.
+- If the platform installer fails after Cats exits, it shall leave the
+  previously installed version recoverable and shall not report the new
+  version on the next launch.
 - The updater shall log technical diagnostics to the desktop host log without
   placing secrets or tokens in the log.
 
@@ -373,6 +423,8 @@ be translated.
 6. Up-to-date, available, download-progress, downloaded, failed, and
    restart/install states are covered by automated tests.
 7. An old signed Windows install upgrades to the tagged Windows release.
+   The test shall cover the visible assisted installer, retained install
+   location, and the expected elevation behavior for the selected install mode.
 8. An old signed macOS install upgrades to the tagged macOS release.
 9. An old Linux AppImage upgrades to the tagged Linux release.
 10. A normal commit runs CI without changing the package version or creating a
@@ -380,6 +432,9 @@ be translated.
 11. A mismatched `vX.Y.Z` tag fails the release workflow.
 12. A release is not published if any required artifact or metadata file is
     missing.
+13. The first desktop release uses a new registry-safe version and establishes
+    the repository's first matching version tag without retroactively tagging
+    an older npm release.
 
 ## Dependencies
 
@@ -391,6 +446,8 @@ be translated.
 - GitHub Actions runners for Windows, macOS, and Linux
 - existing desktop host, preload, tray, Settings, notification, toast, and
   localization foundations
+- a release-capable path through the current desktop installer wrapper and
+  Windows signing configuration
 
 ## Open Questions
 
@@ -400,6 +457,12 @@ be translated.
       upgrade gate passes, or wait for a later release?
 - [ ] When prerelease channels are enabled, should users choose a channel in
       Settings or should channels remain build-specific?
+- [ ] Is the existing unsigned `0.1.1` Windows installer strictly an internal
+      test artifact, or is there a supported installed user base? If it is
+      internal only, the first signed prerelease becomes upgrade baseline N.
+      If it was distributed, decide and validate whether unsigned-to-signed
+      automatic upgrade is supported or require one documented manual
+      reinstall.
 
 ## References
 
@@ -408,6 +471,7 @@ be translated.
 - [SPEC-023: Packaged Setup Wizard and Provider Installation](./SPEC-023-packaged-setup-wizard-and-provider-installation.md)
 - [SPEC-073: Settings Composition Layer](./SPEC-073-settings-composition-layer.md)
 - [Electron/GitHub release update research](../research/2026-07-28-electron-github-release-update-contract.md)
+- [Packaged desktop cold-start investigation](../research/2026-04-16-packaged-desktop-cold-start-investigation.md)
 
 ---
 
