@@ -376,6 +376,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 | 2026-07-28 | Phase 1: desktop installer wrapper gained a guarded release mode covering publish arguments, signing environment split, and the Windows executable-signing override. |
 | 2026-07-28 | Corrected the Windows install-mode contract after reading `assets/build/installer.nsh`: the repository forces per-user install and never elevates, and an upgrade preserves user state. |
 | 2026-07-28 | Phase 1: added the official release descriptor generator and wired the wrapper to emit it only in release mode and delete stale copies otherwise. |
+| 2026-07-28 | Phase 2 started: added `desktop/host/releaseDescriptor.ts`, which validates the embedded descriptor and resolves official/development/unofficial distribution identity without reading the environment. |
 
 ---
 
