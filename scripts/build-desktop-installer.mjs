@@ -6,6 +6,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 
+import { parseStableReleaseTag } from './validate-release-version.mjs';
+
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
 const RUNTIME_ROOT = resolve(PROJECT_ROOT, '..', 'cats-runtime');
@@ -31,13 +33,20 @@ Options:
   --sidecar-layout <split|bundle>         Choose loose-file or bundled sidecars for both app/runtime.
   --skip-mobile                           Skip the mobile bundle (\`expo export\`). Also honored via
                                           CATS_SKIP_MOBILE=1 in the environment or .env.
+  --release                               Build in release mode: publish to the configured GitHub
+                                          provider and allow signing identity discovery. Requires a
+                                          stable vX.Y.Z tag and a GitHub token. Also honored via
+                                          CATS_DESKTOP_RELEASE_MODE=1.
   --help                                  Show this help text.
 
 Without --arch/--format, the electron-builder target matrix from package.json is preserved.
+
+Local packaging never publishes and never discovers signing identities. Release mode is intended
+for the tag-gated desktop release workflow only.
 `);
 }
 
-function parseSkipMobileFlag(value) {
+function parseBooleanFlag(value) {
   if (typeof value !== 'string') {
     return false;
   }
@@ -60,12 +69,21 @@ export function parseArgs(argv, env = process.env) {
   let arch = null;
   let format = null;
   let sidecarLayout = resolveSidecarLayout(env.CATS_DESKTOP_SIDECAR_LAYOUT);
-  let skipMobile = parseSkipMobileFlag(env.CATS_SKIP_MOBILE);
+  let skipMobile = parseBooleanFlag(env.CATS_SKIP_MOBILE);
+  let releaseMode = parseBooleanFlag(env.CATS_DESKTOP_RELEASE_MODE);
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') {
-      return { help: true, target, arch, format, sidecarLayout, skipMobile };
+      return { help: true, target, arch, format, sidecarLayout, skipMobile, releaseMode };
+    }
+    if (value === '--release') {
+      releaseMode = true;
+      continue;
+    }
+    if (value === '--no-release') {
+      releaseMode = false;
+      continue;
     }
     if (value === '--target') {
       target = argv[index + 1] ?? 'current';
@@ -98,7 +116,7 @@ export function parseArgs(argv, env = process.env) {
     throw new Error(`Unknown option: ${value}`);
   }
 
-  return { help: false, target, arch, format, sidecarLayout, skipMobile };
+  return { help: false, target, arch, format, sidecarLayout, skipMobile, releaseMode };
 }
 
 async function resolveNodeCliScript(command) {
@@ -142,13 +160,32 @@ async function resolveCommandInvocation(command, args) {
   };
 }
 
-export function buildInstallerEnvironment(baseEnv = process.env) {
-  const env = {
-    ...baseEnv,
-    CSC_IDENTITY_AUTO_DISCOVERY: 'false',
-  };
+const SIGNING_CREDENTIAL_KEYS = [
+  'WIN_CSC_LINK',
+  'CSC_LINK',
+  'WIN_CSC_KEY_PASSWORD',
+  'CSC_KEY_PASSWORD',
+];
 
-  for (const key of ['WIN_CSC_LINK', 'CSC_LINK', 'WIN_CSC_KEY_PASSWORD', 'CSC_KEY_PASSWORD']) {
+/**
+ * Local and test packaging must never reach for a signing identity, because an
+ * unconfigured machine would otherwise pick up an unrelated certificate from
+ * the OS keychain. Release mode leaves identity discovery to the workflow so a
+ * configured certificate can actually be used.
+ *
+ * Empty credential variables are dropped in both modes: electron-builder treats
+ * an empty CSC_LINK as a relative path and resolves it against the project
+ * root.
+ */
+export function buildInstallerEnvironment(baseEnv = process.env, options = {}) {
+  const releaseMode = options.releaseMode === true;
+  const env = { ...baseEnv };
+
+  if (!releaseMode) {
+    env.CSC_IDENTITY_AUTO_DISCOVERY = 'false';
+  }
+
+  for (const key of SIGNING_CREDENTIAL_KEYS) {
     const value = env[key];
     if (typeof value !== 'string' || value.trim() === '') {
       delete env[key];
@@ -158,7 +195,42 @@ export function buildInstallerEnvironment(baseEnv = process.env) {
   return env;
 }
 
-async function runCommand(command, args, cwd, envOverrides = {}) {
+export function hasWindowsSigningCredentials(env = process.env) {
+  const link = env.WIN_CSC_LINK ?? env.CSC_LINK;
+  return typeof link === 'string' && link.trim() !== '';
+}
+
+/**
+ * Release mode is only meaningful inside the tag-gated workflow. Anything else
+ * would publish artifacts from an unreviewed tree, so the inputs are checked
+ * before any platform build work starts.
+ */
+export function resolveReleaseModeProblems({ env = process.env, tag = null } = {}) {
+  const problems = [];
+
+  const candidateTag = typeof tag === 'string' && tag.trim() !== ''
+    ? tag
+    : env.GITHUB_REF_NAME ?? '';
+  const parsedTag = parseStableReleaseTag(candidateTag);
+  if (!parsedTag.ok) {
+    problems.push({
+      code: `release_${parsedTag.code}`,
+      message: `Release mode requires a stable vX.Y.Z tag. ${parsedTag.message}`,
+    });
+  }
+
+  const token = env.GH_TOKEN ?? env.GITHUB_TOKEN;
+  if (typeof token !== 'string' || token.trim() === '') {
+    problems.push({
+      code: 'release_token_missing',
+      message: 'Release mode requires GH_TOKEN or GITHUB_TOKEN for the GitHub publish provider.',
+    });
+  }
+
+  return problems;
+}
+
+async function runCommand(command, args, cwd, envOverrides = {}, envOptions = {}) {
   const invocation = await resolveCommandInvocation(command, args);
   return new Promise((resolvePromise, reject) => {
     const child = spawn(invocation.command, invocation.args, {
@@ -166,7 +238,7 @@ async function runCommand(command, args, cwd, envOverrides = {}) {
       env: buildInstallerEnvironment({
         ...process.env,
         ...envOverrides,
-      }),
+      }, envOptions),
       stdio: 'inherit',
       shell: false,
     });
@@ -312,13 +384,15 @@ function normalizeFormat(target, formatOverride) {
   return canonicalFormat;
 }
 
-function electronBuilderArgs(target, archOverride, formatOverride) {
+export function electronBuilderArgs(target, archOverride, formatOverride, options = {}) {
   if (archOverride !== null && !VALID_ARCHES[target].includes(archOverride)) {
     throw new Error(
       `Unsupported arch '${archOverride}' for ${target}. Valid: ${VALID_ARCHES[target].join(', ')}`,
     );
   }
 
+  const releaseMode = options.releaseMode === true;
+  const signWindowsExecutable = options.signWindowsExecutable === true;
   const format = normalizeFormat(target, formatOverride);
   const platformFlag = target === 'windows' ? '--win' : target === 'macos' ? '--mac' : '--linux';
   const args = ['electron-builder', platformFlag];
@@ -333,7 +407,14 @@ function electronBuilderArgs(target, archOverride, formatOverride) {
     args.push(`--${archOverride}`);
   }
 
-  args.push('--publish', 'never');
+  // package.json pins signAndEditExecutable to false so unsigned local builds
+  // avoid the winCodeSign download. A release build with real credentials has
+  // to opt back in, and only then.
+  if (releaseMode && target === 'windows' && signWindowsExecutable) {
+    args.push('-c.win.signAndEditExecutable=true');
+  }
+
+  args.push('--publish', releaseMode ? 'always' : 'never');
   return args;
 }
 
@@ -345,17 +426,33 @@ async function main() {
   }
 
   const resolvedTarget = resolveBuilderTarget(parsed.target);
+  const envOptions = { releaseMode: parsed.releaseMode };
+
+  if (parsed.releaseMode) {
+    const problems = resolveReleaseModeProblems({ env: process.env });
+    if (problems.length > 0) {
+      throw new Error(
+        `Release mode inputs are not valid:\n${problems
+          .map((problem) => `  ${problem.code}: ${problem.message}`)
+          .join('\n')}`,
+      );
+    }
+    process.stdout.write(
+      `[build-desktop-installer] release mode active for ${process.env.GITHUB_REF_NAME}.\n`,
+    );
+  }
+
   const sidecarBuildEnv = {
     CATS_DESKTOP_SIDECAR_LAYOUT: parsed.sidecarLayout,
   };
-  await runCommand('npm', ['run', 'build'], RUNTIME_ROOT, sidecarBuildEnv);
+  await runCommand('npm', ['run', 'build'], RUNTIME_ROOT, sidecarBuildEnv, envOptions);
   const platformBuildScript = parsed.skipMobile ? 'build:no-mobile' : 'build';
   if (parsed.skipMobile) {
     process.stdout.write(
       '[build-desktop-installer] CATS_SKIP_MOBILE active — running build:no-mobile and seeding build/mobile/.skip-marker after build.\n',
     );
   }
-  await runCommand('npm', ['run', platformBuildScript], PROJECT_ROOT, sidecarBuildEnv);
+  await runCommand('npm', ['run', platformBuildScript], PROJECT_ROOT, sidecarBuildEnv, envOptions);
   if (parsed.skipMobile) {
     await ensureMobileSkipPlaceholder();
   }
@@ -371,11 +468,17 @@ async function main() {
     ],
     PROJECT_ROOT,
     sidecarBuildEnv,
+    envOptions,
   );
   await runCommand(
     'npx',
-    electronBuilderArgs(resolvedTarget, parsed.arch, parsed.format),
+    electronBuilderArgs(resolvedTarget, parsed.arch, parsed.format, {
+      releaseMode: parsed.releaseMode,
+      signWindowsExecutable: hasWindowsSigningCredentials(process.env),
+    }),
     PROJECT_ROOT,
+    {},
+    envOptions,
   );
 }
 

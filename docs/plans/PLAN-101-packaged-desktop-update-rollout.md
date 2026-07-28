@@ -78,17 +78,17 @@ protected release environment.
 
 - [x] Add a tag/version validation script that requires `vX.Y.Z` to match both
       package files.
-- [ ] Add an explicit release mode to the desktop installer wrapper. Keep its
+- [x] Add an explicit release mode to the desktop installer wrapper. Keep its
       local default at `--publish never`, but allow the tag-gated workflow to
       select the bounded electron-builder publish mode required for a draft
       GitHub Release.
-- [ ] Split signing environment behavior by build mode:
+- [x] Split signing environment behavior by build mode:
       - local/test mode keeps signing identity auto-discovery disabled
       - release mode preserves validated Windows/macOS signing variables and
         permits signing identity discovery as required by the selected setup
-- [ ] Replace or override `signAndEditExecutable: false` for signed Windows
+- [x] Replace or override `signAndEditExecutable: false` for signed Windows
       release builds without weakening the unsigned local/test path.
-- [ ] Add tests for installer-wrapper publish arguments, signing environment
+- [x] Add tests for installer-wrapper publish arguments, signing environment
       preservation, and rejection of release mode outside the expected
       tag-gated inputs.
 - [ ] Generate a non-secret official release descriptor containing version,
@@ -368,6 +368,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 | 2026-07-28 | Plan created with ADR-108, SPEC-111, and the official-tooling research note. No implementation has started. |
 | 2026-07-28 | Review follow-up added the installer-wrapper publish/signing interlocks, first-tag bootstrap, assisted NSIS UX, strict development capability policy, unsigned-install classification gate, and explicit bundled Windows sidecars. |
 | 2026-07-28 | Phase 1 started: added `scripts/validate-release-version.mjs` and its tests. |
+| 2026-07-28 | Phase 1: desktop installer wrapper gained a guarded release mode covering publish arguments, signing environment split, and the Windows executable-signing override. |
 
 ---
 

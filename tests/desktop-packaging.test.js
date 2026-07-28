@@ -918,8 +918,12 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /npm-cli\.js/);
   assert.match(script, /npx-cli\.js/);
   assert.match(script, /process\.execPath/);
-  assert.match(script, /CSC_IDENTITY_AUTO_DISCOVERY:\s*'false'/);
-  assert.match(script, /for \(const key of \['WIN_CSC_LINK', 'CSC_LINK', 'WIN_CSC_KEY_PASSWORD', 'CSC_KEY_PASSWORD'\]\)/);
+  assert.match(script, /env\.CSC_IDENTITY_AUTO_DISCOVERY = 'false'/);
+  assert.match(
+    script,
+    /const SIGNING_CREDENTIAL_KEYS = \[\s*'WIN_CSC_LINK',\s*'CSC_LINK',\s*'WIN_CSC_KEY_PASSWORD',\s*'CSC_KEY_PASSWORD',\s*\]/,
+  );
+  assert.match(script, /for \(const key of SIGNING_CREDENTIAL_KEYS\)/);
   assert.match(script, /typeof value !== 'string' \|\| value\.trim\(\) === ''/);
   assert.match(script, /delete env\[key\]/);
   assert.match(script, /shell: false/);
@@ -996,6 +1000,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
     format: null,
     sidecarLayout: 'split',
     skipMobile: false,
+    releaseMode: false,
   });
   assert.deepEqual(
     parseBuildDesktopInstallerArgs(['--target', 'linux', '--arch', 'arm64', '--format', 'deb', '--sidecar-layout', 'bundle'], {}),
@@ -1006,6 +1011,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       format: 'deb',
       sidecarLayout: 'bundle',
       skipMobile: false,
+      releaseMode: false,
     },
   );
   assert.deepEqual(
@@ -1017,6 +1023,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       format: null,
       sidecarLayout: 'bundle',
       skipMobile: false,
+      releaseMode: false,
     },
   );
   assert.deepEqual(
@@ -1028,6 +1035,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       format: null,
       sidecarLayout: 'split',
       skipMobile: true,
+      releaseMode: false,
     },
   );
   assert.deepEqual(
@@ -1039,6 +1047,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       format: null,
       sidecarLayout: 'split',
       skipMobile: true,
+      releaseMode: false,
     },
   );
   assert.deepEqual(
@@ -1050,6 +1059,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       format: null,
       sidecarLayout: 'split',
       skipMobile: false,
+      releaseMode: false,
     },
   );
 });
