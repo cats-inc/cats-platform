@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-101](./PLAN-101-packaged-desktop-update-rollout.md) | Packaged Desktop Update Rollout | Draft | [SPEC-111](../specs/SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md), [ADR-108](../decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md) |
 | [PLAN-100](./PLAN-100-replace-gemini-cli-with-antigravity-in-packaged-setup.md) | Replace Gemini CLI with Antigravity CLI in Packaged Setup | Draft | [SPEC-110](../specs/SPEC-110-antigravity-cli-in-packaged-setup-and-provider-catalog.md), [ADR-107](../decisions/107-replace-gemini-cli-with-antigravity-in-packaged-setup.md) |
 | [PLAN-099](./PLAN-099-phase-scoped-work-tool-surface-rollout.md) | Phase-Scoped Work Tool Surface Rollout | Draft | [SPEC-109](../specs/SPEC-109-phase-scoped-work-tool-surface.md), [ADR-105](../decisions/105-adopt-phase-scoped-work-tool-surface.md) |
 | [PLAN-098](./PLAN-098-polymorphic-entity-subscription-follow-up.md) | Polymorphic Entity Subscription Follow-up | Implemented | [SPEC-076](../specs/SPEC-076-per-entity-state-subscription-protocol.md), [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md), [PLAN-068](./PLAN-068-per-entity-state-subscription-rollout.md) |
@@ -154,6 +155,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-05-24 (PLAN-100 added: Gemini CLI to Antigravity CLI packaged setup rollout.)*
+*Last updated: 2026-07-28 (PLAN-101 added: packaged desktop update rollout.)*
 
 *See also: [specs/](../specs/) for feature specifications*

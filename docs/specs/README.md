@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-111](./SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md) | Packaged Desktop Update Surfaces and Release Contract | Draft | [PLAN-101](../plans/PLAN-101-packaged-desktop-update-rollout.md), [ADR-108](../decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md) |
 | [SPEC-110](./SPEC-110-antigravity-cli-in-packaged-setup-and-provider-catalog.md) | Antigravity CLI in Packaged Setup and Provider Catalog | Draft | [PLAN-100](../plans/PLAN-100-replace-gemini-cli-with-antigravity-in-packaged-setup.md), [ADR-107](../decisions/107-replace-gemini-cli-with-antigravity-in-packaged-setup.md) |
 | [SPEC-109](./SPEC-109-phase-scoped-work-tool-surface.md) | Phase-Scoped Work Tool Surface | Active / MVP Implemented | [PLAN-099](../plans/PLAN-099-phase-scoped-work-tool-surface-rollout.md), [ADR-105](../decisions/105-adopt-phase-scoped-work-tool-surface.md) |
 | [SPEC-108](./SPEC-108-cats-code-live-preview-substrate.md) | Cats Code Live Preview Substrate | Draft | [PLAN-097](../plans/PLAN-097-cats-code-live-preview-substrate-rollout.md), [ADR-104](../decisions/104-adopt-managed-live-preview-supervisor-for-artifact-canvas.md) |
@@ -165,6 +166,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-05-24 (SPEC-110 added: Antigravity CLI in packaged setup and provider catalog.)*
+*Last updated: 2026-07-28 (SPEC-111 added: packaged desktop update surfaces and release contract.)*
 
 *See also: [plans/](../plans/) for implementation plans*

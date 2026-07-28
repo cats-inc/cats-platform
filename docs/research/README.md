@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-07-28-electron-github-release-update-contract](./2026-07-28-electron-github-release-update-contract.md) | 2026-07-28 | Electron and GitHub Release update contract | Official Electron, electron-builder, and GitHub findings for a host-owned updater: NSIS/DMG+ZIP/AppImage targets, generated metadata, signing gates, tag-based draft-first releases, and npm/browser exclusion |
 | [2026-04-30-cats-code-split-canvas-artifact-panel](./2026-04-30-cats-code-split-canvas-artifact-panel.md) | 2026-04-30 | Assistant-driven split-canvas artifact panel for Cats Code | Feasibility study confirming the Code shell is single-pane today and that the existing `declare_artifact` / `RuntimeInvocationAssistantEffectProcessor` seam can carry a new `show_in_canvas` / `clear_canvas` tool pair; recommends an artifact-bound, task-scoped canvas stored under Code task metadata, a Phase 1 split layout with `IframeViewer` only, deferred image / PDF / code viewers to Phase 2, and an explicitly out-of-scope Phase 3 for live `npm start`-style preview servers behind a separate security review |
 | [2026-04-25-deep-research-report](./2026-04-25-deep-research-report.md) | 2026-04-25 | AOS reference system deep-research update | Follow-up to the 2026-04-01 AOS evaluation with a scored ten-dimension ranking (Airtable 75 / ClickUp 71 / monday.com 70 as reference for a God-mode one-person / zero-person digital company) and a concrete recommended architecture: Role-framed UI × Capability-powered execution × State-orchestrated backbone, supplementing all three native tools with external orchestrator / queue / observability to cover reliable retries, long-running flows, and visibility |
 | [2026-04-23-claude-orchestrator-as-capability-shell](./2026-04-23-claude-orchestrator-as-capability-shell.md) | 2026-04-23 | Claude view of orchestrator as capability shell | Conversation synthesis recasting the Cats orchestrator from a rule-based planner into a capability shell with four irreducible responsibilities (UI / tools / invariants / lifecycle); covers the five-Cat-types runtime-vs-registry split, the strong-agent / weak-worker management analogy, the hybrid cost economics that make Cats Work viable, and the single-orchestrator policy-dial design that replaces the earlier dual-class framing |
@@ -50,4 +51,4 @@ Action Items:
 
 ---
 
-*Last updated: 2026-04-30 (Cats Code split-canvas artifact panel feasibility added)*
+*Last updated: 2026-07-28 (Electron and GitHub Release update contract added)*

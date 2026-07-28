@@ -59,6 +59,10 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [ADR-108](./decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md) — official packaged Electron builds use one main-process GitHub Release updater while npm/browser installs remain package-manager-owned
+- [SPEC-111](./specs/SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md) — capability, Tray, Settings, state-machine, release-version, signing, and three-platform artifact requirements for desktop updates
+- [PLAN-101](./plans/PLAN-101-packaged-desktop-update-rollout.md) — rollout plan for tag-gated releases, updater replacement, bounded preload IPC, synchronized update surfaces, and real old-to-new platform validation
+- [2026-07-28 Electron and GitHub Release Update Contract](./research/2026-07-28-electron-github-release-update-contract.md) — official tooling evidence for NSIS, macOS DMG+ZIP, Linux AppImage, generated metadata, signing, and draft-first tagged releases
 - [ADR-105](./decisions/105-adopt-phase-scoped-work-tool-surface.md) — strong Cats and Boss Cat receive phase-scoped Cats-owned Work tools for intake, triage, execution preparation, and external tracker binding
 - [SPEC-109](./specs/SPEC-109-phase-scoped-work-tool-surface.md) — requirements for turning Chat/Telegram work talk into durable Work Items through supervised tools rather than prompt-only behavior
 - [PLAN-099](./plans/PLAN-099-phase-scoped-work-tool-surface-rollout.md) — rollout plan for Work tool registry contracts, intake capture, Chat/Telegram wiring, triage, Boss Cat execution preparation, and external tracker bindings
@@ -255,4 +259,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-05-13*
+*Last updated: 2026-07-28*
