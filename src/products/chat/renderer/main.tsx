@@ -7,7 +7,7 @@ import App from './App';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <BrowserRouter unstable_useTransitions={false}>
+    <BrowserRouter useTransitions={false}>
       <App />
     </BrowserRouter>
   </React.StrictMode>,

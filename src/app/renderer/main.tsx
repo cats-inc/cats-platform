@@ -15,7 +15,7 @@ initTooltipPortal();
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <QueryClientProvider client={sharedQueryClient}>
-      <BrowserRouter unstable_useTransitions={false}>
+      <BrowserRouter useTransitions={false}>
         <App />
       </BrowserRouter>
     </QueryClientProvider>
