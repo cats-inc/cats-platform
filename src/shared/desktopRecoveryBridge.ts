@@ -104,6 +104,66 @@ export type DesktopScreenshotCaptureResult =
       message?: string;
     };
 
+export type DesktopDistributionMode =
+  | 'official_packaged'
+  | 'development'
+  | 'unofficial_packaged';
+
+export type DesktopUpdateStatus =
+  | 'unavailable'
+  | 'idle'
+  | 'checking'
+  | 'up_to_date'
+  | 'update_available'
+  | 'downloading'
+  | 'downloaded'
+  | 'installing'
+  | 'failed';
+
+export type DesktopUpdateNextAction = 'none' | 'check' | 'download' | 'restart_install';
+
+export type DesktopUpdateErrorCode =
+  | 'offline'
+  | 'timeout'
+  | 'provider_rejected'
+  | 'metadata_invalid'
+  | 'checksum_mismatch'
+  | 'signature_rejected'
+  | 'unsupported_package'
+  | 'download_cancelled'
+  | 'install_handoff_failed'
+  | 'unknown';
+
+export interface DesktopUpdateCapability {
+  distribution: DesktopDistributionMode;
+  provider: 'github_release' | 'none';
+  channel: 'stable' | 'beta' | 'alpha';
+  currentVersion: string;
+  canCheck: boolean;
+  canDownload: boolean;
+  canInstall: boolean;
+  unavailableReason: string | null;
+}
+
+export interface DesktopUpdateProgress {
+  percent: number;
+  transferredBytes: number;
+  totalBytes: number;
+  bytesPerSecond: number;
+}
+
+export interface DesktopUpdateSnapshot {
+  capability: DesktopUpdateCapability;
+  status: DesktopUpdateStatus;
+  currentVersion: string;
+  availableVersion: string | null;
+  releaseSummary: string | null;
+  lastCheckedAt: string | null;
+  progress: DesktopUpdateProgress | null;
+  error: { code: DesktopUpdateErrorCode; summary: string } | null;
+  nextAction: DesktopUpdateNextAction;
+}
+
 export interface DesktopHostBridge {
   getSetupSnapshot?: () => Promise<DesktopSetupSnapshot>;
   runAction?: (actionId: string) => Promise<DesktopBootstrapSnapshot>;
@@ -120,6 +180,39 @@ export interface DesktopHostBridge {
   stopVoiceCapture?: VoiceCaptureBridge['stopVoiceCapture'];
   cancelVoiceCapture?: VoiceCaptureBridge['cancelVoiceCapture'];
   onVoiceCaptureEvent?: VoiceCaptureBridge['onVoiceCaptureEvent'];
+  // Update commands take no arguments: the renderer asks the host to act and
+  // never chooses a feed, URL, path, or installer flag.
+  getUpdateSnapshot?: () => Promise<DesktopUpdateSnapshot>;
+  checkForUpdates?: () => Promise<DesktopUpdateSnapshot>;
+  downloadUpdate?: () => Promise<DesktopUpdateSnapshot>;
+  restartAndInstall?: () => Promise<void>;
+  onUpdateSnapshot?: (
+    listener: (snapshot: DesktopUpdateSnapshot) => void,
+  ) => () => void;
+}
+
+/**
+ * Update controls render only when the host says so. Bridge presence alone is
+ * not evidence: the bridge also exists in Electron development runs and in
+ * unofficial packages.
+ */
+export function canRenderDesktopUpdateControls(
+  snapshot: DesktopUpdateSnapshot | null,
+): boolean {
+  return snapshot?.capability.canCheck === true;
+}
+
+export async function getDesktopUpdateSnapshot(): Promise<DesktopUpdateSnapshot | null> {
+  const bridge = resolveDesktopHostBridge();
+  if (!bridge?.getUpdateSnapshot) {
+    return null;
+  }
+
+  try {
+    return await bridge.getUpdateSnapshot();
+  } catch {
+    return null;
+  }
 }
 
 export function resolveDesktopHostBridge(): DesktopHostBridge | null {

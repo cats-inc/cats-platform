@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 import type {
   DesktopScreenshotCaptureResult,
+  DesktopUpdateSnapshot,
   VoiceCaptureEvent,
   VoiceCaptureStartOptions,
 } from './contracts.js';
@@ -16,6 +17,11 @@ const DESKTOP_VOICE_CAPTURE_START_CHANNEL = 'cats-host:voice-start';
 const DESKTOP_VOICE_CAPTURE_STOP_CHANNEL = 'cats-host:voice-stop';
 const DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL = 'cats-host:voice-cancel';
 const DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL = 'cats-host:voice-event';
+const DESKTOP_UPDATE_SNAPSHOT_CHANNEL = 'cats-host:update-get-snapshot';
+const DESKTOP_UPDATE_CHECK_CHANNEL = 'cats-host:update-check';
+const DESKTOP_UPDATE_DOWNLOAD_CHANNEL = 'cats-host:update-download';
+const DESKTOP_UPDATE_INSTALL_CHANNEL = 'cats-host:update-install';
+const DESKTOP_UPDATE_EVENT_CHANNEL = 'cats-host:update-event';
 
 type DesktopHostActionId =
   | 'retry'
@@ -242,6 +248,30 @@ const bridge = {
     ipcRenderer.on('cats-host:snapshot', handler);
     return () => {
       ipcRenderer.off('cats-host:snapshot', handler);
+    };
+  },
+  // Update commands take no arguments on purpose. The renderer may ask the
+  // host to act; it may never choose a feed, a URL, a path, or an installer
+  // flag. See SPEC-111 section 3.
+  getUpdateSnapshot(): Promise<DesktopUpdateSnapshot> {
+    return ipcRenderer.invoke(DESKTOP_UPDATE_SNAPSHOT_CHANNEL);
+  },
+  checkForUpdates(): Promise<DesktopUpdateSnapshot> {
+    return ipcRenderer.invoke(DESKTOP_UPDATE_CHECK_CHANNEL);
+  },
+  downloadUpdate(): Promise<DesktopUpdateSnapshot> {
+    return ipcRenderer.invoke(DESKTOP_UPDATE_DOWNLOAD_CHANNEL);
+  },
+  restartAndInstall(): Promise<void> {
+    return ipcRenderer.invoke(DESKTOP_UPDATE_INSTALL_CHANNEL);
+  },
+  onUpdateSnapshot(listener: (snapshot: DesktopUpdateSnapshot) => void): () => void {
+    const handler = (_event: Electron.IpcRendererEvent, snapshot: DesktopUpdateSnapshot) => {
+      listener(snapshot);
+    };
+    ipcRenderer.on(DESKTOP_UPDATE_EVENT_CHANNEL, handler);
+    return () => {
+      ipcRenderer.off(DESKTOP_UPDATE_EVENT_CHANNEL, handler);
     };
   },
 };

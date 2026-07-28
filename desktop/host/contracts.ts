@@ -209,6 +209,12 @@ export const DESKTOP_VOICE_CAPTURE_START_CHANNEL = 'cats-host:voice-start';
 export const DESKTOP_VOICE_CAPTURE_STOP_CHANNEL = 'cats-host:voice-stop';
 export const DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL = 'cats-host:voice-cancel';
 export const DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL = 'cats-host:voice-event';
+
+export const DESKTOP_UPDATE_SNAPSHOT_CHANNEL = 'cats-host:update-get-snapshot';
+export const DESKTOP_UPDATE_CHECK_CHANNEL = 'cats-host:update-check';
+export const DESKTOP_UPDATE_DOWNLOAD_CHANNEL = 'cats-host:update-download';
+export const DESKTOP_UPDATE_INSTALL_CHANNEL = 'cats-host:update-install';
+export const DESKTOP_UPDATE_EVENT_CHANNEL = 'cats-host:update-event';
 export const DESKTOP_SCREENSHOT_CAPTURE_OUTCOMES = [
   'ok',
   'cancelled',

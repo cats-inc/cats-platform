@@ -151,17 +151,17 @@ network or installer authority.
 
 ### Phase 3: Add Bounded IPC and Preload Capabilities
 
-- [ ] Add IPC channel constants for snapshot, check, download, install, and
+- [x] Add IPC channel constants for snapshot, check, download, install, and
       update events.
-- [ ] Validate that every update IPC call originates from the current main
+- [x] Validate that every update IPC call originates from the current main
       window.
-- [ ] Expose only bounded no-argument update commands in the preload bridge.
-- [ ] Add the update capability and snapshot types to the browser-safe desktop
+- [x] Expose only bounded no-argument update commands in the preload bridge.
+- [x] Add the update capability and snapshot types to the browser-safe desktop
       bridge module.
-- [ ] Ensure no bridge method accepts provider URLs, paths, commands, or
+- [x] Ensure no bridge method accepts provider URLs, paths, commands, or
       installer flags.
-- [ ] Make event unsubscription deterministic when the renderer unmounts.
-- [ ] Preserve preload sandbox safety and keep channel literals covered by
+- [x] Make event unsubscription deterministic when the renderer unmounts.
+- [x] Preserve preload sandbox safety and keep channel literals covered by
       drift tests.
 
 **Deliverables**: sandbox-safe host/renderer update contract with explicit
@@ -380,6 +380,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 | 2026-07-29 | Phase 2: extended the update contract vocabulary with the full status lifecycle, next actions, stable error codes, distribution modes, and the capability/progress/error/snapshot shapes. Retired the `disabled` status in favour of `unavailable`. |
 | 2026-07-29 | Phase 2: added `desktop/host/updateManager.ts` with capability gating, the lifecycle state machine, the single-operation concurrency guard, stable error mapping, and redacted diagnostics over an injectable adapter. `DESKTOP_RELEASE_READY_PLATFORMS` is empty until G3 passes, so no build advertises self-update yet. |
 | 2026-07-29 | Phase 2: added `electron-updater` and `desktop/host/updaterAdapter.ts`. The lockfile change added only the electron-updater subtree with no version drift elsewhere. |
+| 2026-07-29 | Phase 3 complete: bounded update IPC with main-window sender validation, no-argument preload commands, snapshot broadcast, and renderer-side capability/snapshot types with a drift test against the host vocabulary. |
 
 ---
 

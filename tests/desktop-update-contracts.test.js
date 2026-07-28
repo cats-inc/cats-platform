@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import {
   DESKTOP_DISTRIBUTION_MODES,
@@ -111,6 +113,45 @@ test('every distribution identity reason is part of the shared unavailable vocab
   }
   assert.equal(observed.has('development_build'), true);
   assert.equal(observed.has('descriptor_missing'), true);
+});
+
+test('the renderer bridge union stays aligned with the host update vocabulary', async () => {
+  // src/shared/desktopRecoveryBridge.ts is browser-safe and cannot import the
+  // desktop host contracts, so its unions are hand-copied. This catches drift.
+  const bridgeSource = await readFile(
+    join(process.cwd(), 'src', 'shared', 'desktopRecoveryBridge.ts'),
+    'utf8',
+  );
+
+  const groups = [
+    ['DesktopUpdateStatus', DESKTOP_UPDATE_STATUSES],
+    ['DesktopUpdateNextAction', DESKTOP_UPDATE_NEXT_ACTIONS],
+    ['DesktopUpdateErrorCode', DESKTOP_UPDATE_ERROR_CODES],
+    ['DesktopDistributionMode', DESKTOP_DISTRIBUTION_MODES],
+  ];
+
+  for (const [typeName, values] of groups) {
+    const declaration = bridgeSource.slice(bridgeSource.indexOf(`export type ${typeName}`));
+    const union = declaration.slice(0, declaration.indexOf(';'));
+    assert.ok(union.length > 0, `${typeName} must be declared in the renderer bridge`);
+
+    for (const value of values) {
+      assert.match(
+        union,
+        new RegExp(`'${value}'`, 'u'),
+        `${typeName} in desktopRecoveryBridge.ts is missing '${value}'`,
+      );
+    }
+
+    const declared = [...union.matchAll(/'([a-z_]+)'/gu)].map((match) => match[1]);
+    for (const value of declared) {
+      assert.equal(
+        values.includes(value),
+        true,
+        `${typeName} in desktopRecoveryBridge.ts declares unknown value '${value}'`,
+      );
+    }
+  }
 });
 
 test('an official identity reports no unavailable reason', () => {

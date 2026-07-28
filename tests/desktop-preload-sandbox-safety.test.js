@@ -43,7 +43,7 @@ test('contracts module stays sandbox-safe — no node:* imports allowed', () => 
   );
 });
 
-test('voice capture channel names stay aligned between preload and contracts', () => {
+test('voice capture and update channel names stay aligned between preload and contracts', () => {
   const preloadSource = readFileSync(PRELOAD_SOURCE, 'utf8');
   const contractsSource = readFileSync(CONTRACTS_SOURCE, 'utf8');
 
@@ -52,6 +52,11 @@ test('voice capture channel names stay aligned between preload and contracts', (
     'DESKTOP_VOICE_CAPTURE_STOP_CHANNEL',
     'DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL',
     'DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL',
+    'DESKTOP_UPDATE_SNAPSHOT_CHANNEL',
+    'DESKTOP_UPDATE_CHECK_CHANNEL',
+    'DESKTOP_UPDATE_DOWNLOAD_CHANNEL',
+    'DESKTOP_UPDATE_INSTALL_CHANNEL',
+    'DESKTOP_UPDATE_EVENT_CHANNEL',
   ];
 
   for (const name of channelNames) {
