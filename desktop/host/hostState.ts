@@ -18,19 +18,18 @@ import type {
   DesktopSetupActionRecord,
   DesktopSetupInterruption,
   DesktopSetupState,
-  DesktopUpdateChannel,
+  DesktopUpdateSnapshot,
   DesktopUpdateStatus,
-  DesktopUpdateState,
 } from './contracts.js';
 import {
   DESKTOP_BOOTSTRAP_PHASES,
   DESKTOP_HOST_NAME,
-  DESKTOP_UPDATE_CHANNELS,
   DESKTOP_UPDATE_STATUSES,
 } from './contracts.js';
 import { DESKTOP_HOST_VERSION } from './hostVersion.js';
 import type { DesktopHostConfig } from './config.js';
 import { createEmptyDesktopDiagnosticsState } from './bootstrapDiagnostics.js';
+import { resolveDesktopUpdateNextAction } from './updateManager.js';
 
 interface DesktopHostStateStoreDependencies {
   now?: () => Date;
@@ -81,16 +80,6 @@ function normalizeHealthStatus(value: unknown): DesktopHealthStatus {
     : 'degraded';
 }
 
-function normalizeUpdateChannel(
-  value: unknown,
-  fallback: DesktopUpdateChannel,
-): DesktopUpdateChannel {
-  return typeof value === 'string'
-    && DESKTOP_UPDATE_CHANNELS.includes(value as DesktopUpdateChannel)
-    ? value as DesktopUpdateChannel
-    : fallback;
-}
-
 function normalizeUpdateStatus(
   value: unknown,
   fallback: DesktopUpdateStatus,
@@ -99,11 +88,6 @@ function normalizeUpdateStatus(
     && DESKTOP_UPDATE_STATUSES.includes(value as DesktopUpdateStatus)
     ? value as DesktopUpdateStatus
     : fallback;
-}
-
-function normalizeSha256(value: unknown): string | null {
-  const digest = readString(value);
-  return digest && /^[a-f0-9]{64}$/iu.test(digest) ? digest.toLowerCase() : null;
 }
 
 function normalizeBackgroundState(
@@ -126,27 +110,49 @@ function normalizeBackgroundState(
   };
 }
 
-function normalizeUpdateState(
+/**
+ * Only durable update facts survive a restart.
+ *
+ * Capability is recomputed from the running package on every launch, and an
+ * in-progress download or install is meaningless in a new process: the
+ * downloaded payload is owned by electron-updater's cache, not by this state
+ * file. Restoring `downloading` or `installing` would strand the UI in a state
+ * no operation is driving.
+ */
+function normalizeUpdateSnapshot(
   value: unknown,
-  fallback: DesktopUpdateState,
-): DesktopUpdateState {
+  fallback: DesktopUpdateSnapshot,
+): DesktopUpdateSnapshot {
   if (!isObjectRecord(value)) {
     return fallback;
   }
 
+  const restoredStatus = normalizeUpdateStatus(value.status, fallback.status);
+  const durableStatus = DURABLE_UPDATE_STATUSES.has(restoredStatus)
+    ? restoredStatus
+    : fallback.status;
+
   return {
-    channel: normalizeUpdateChannel(value.channel, fallback.channel),
-    status: normalizeUpdateStatus(value.status, fallback.status),
-    currentVersion: readString(value.currentVersion) ?? fallback.currentVersion,
-    latestVersion: readString(value.latestVersion),
-    summary: readString(value.summary) ?? fallback.summary,
+    ...fallback,
+    status: durableStatus,
+    availableVersion: durableStatus === 'update_available'
+      ? readString(value.availableVersion)
+      : null,
+    releaseSummary: durableStatus === 'update_available'
+      ? readString(value.releaseSummary)
+      : null,
     lastCheckedAt: readTimestamp(value.lastCheckedAt),
-    manifestUrl: readString(value.manifestUrl),
-    downloadUrl: readString(value.downloadUrl),
-    sha256: normalizeSha256(value.sha256),
-    error: readString(value.error),
+    progress: null,
+    error: null,
+    nextAction: resolveDesktopUpdateNextAction(durableStatus, fallback.capability),
   };
 }
+
+const DURABLE_UPDATE_STATUSES = new Set<DesktopUpdateStatus>([
+  'idle',
+  'up_to_date',
+  'update_available',
+]);
 
 function readStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
@@ -510,7 +516,7 @@ export class DesktopHostStateStore {
     config: DesktopHostConfig,
     defaults: {
       background: DesktopBackgroundState;
-      updates: DesktopUpdateState;
+      updates: DesktopUpdateSnapshot;
       packaging: DesktopPackagingPlan;
       setup: DesktopSetupState;
     },
@@ -532,7 +538,7 @@ export class DesktopHostStateStore {
         snapshot: {
           ...snapshot,
           background: normalizeBackgroundState(snapshot.background, defaults.background),
-          updates: normalizeUpdateState(snapshot.updates, defaults.updates),
+          updates: normalizeUpdateSnapshot(snapshot.updates, defaults.updates),
           packaging: isObjectRecord(snapshot.packaging)
             ? snapshot.packaging as unknown as DesktopPackagingPlan
             : defaults.packaging,
@@ -541,7 +547,7 @@ export class DesktopHostStateStore {
           hostStatePath: this.statePath,
         },
         background: normalizeBackgroundState(parsed.background, defaults.background),
-        updates: normalizeUpdateState(parsed.updates, defaults.updates),
+        updates: normalizeUpdateSnapshot(parsed.updates, defaults.updates),
         packaging: isObjectRecord(parsed.packaging)
           ? parsed.packaging as unknown as DesktopPackagingPlan
           : defaults.packaging,
@@ -557,7 +563,7 @@ export class DesktopHostStateStore {
   async save(input: {
     snapshot: DesktopBootstrapSnapshot;
     background: DesktopBackgroundState;
-    updates: DesktopUpdateState;
+    updates: DesktopUpdateSnapshot;
     packaging: DesktopPackagingPlan;
     setup: DesktopSetupState;
     diagnostics: DesktopHostDiagnosticsState | null;

@@ -99,6 +99,37 @@ export function createDesktopUpdateCapability(
   };
 }
 
+/**
+ * The snapshot a build without update capability publishes.
+ *
+ * Used as the fallback wherever a snapshot is required before the manager
+ * exists, so those code paths cannot accidentally imply an update is possible.
+ */
+export function createUnavailableDesktopUpdateSnapshot(
+  currentVersion: string,
+): DesktopUpdateSnapshot {
+  return {
+    capability: {
+      distribution: 'unofficial_packaged',
+      provider: 'none',
+      channel: 'stable',
+      currentVersion,
+      canCheck: false,
+      canDownload: false,
+      canInstall: false,
+      unavailableReason: 'descriptor_missing',
+    },
+    status: 'unavailable',
+    currentVersion,
+    availableVersion: null,
+    releaseSummary: null,
+    lastCheckedAt: null,
+    progress: null,
+    error: null,
+    nextAction: 'none',
+  };
+}
+
 export function resolveDesktopUpdateNextAction(
   status: DesktopUpdateStatus,
   capability: DesktopUpdateCapability,

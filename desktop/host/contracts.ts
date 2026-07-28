@@ -495,19 +495,6 @@ export interface DesktopBackgroundState {
   lastHiddenAt: string | null;
 }
 
-export interface DesktopUpdateState {
-  channel: DesktopUpdateChannel;
-  status: DesktopUpdateStatus;
-  currentVersion: string;
-  latestVersion: string | null;
-  summary: string;
-  lastCheckedAt: string | null;
-  manifestUrl: string | null;
-  downloadUrl: string | null;
-  sha256: string | null;
-  error: string | null;
-}
-
 /**
  * Update capability is published by the desktop host and consumed by Tray and
  * Settings. SPEC-111 requires it to be derived from packaging plus release
@@ -663,10 +650,15 @@ export interface DesktopInstallerContract {
 }
 
 export interface DesktopUpdateContract {
+  provider: DesktopUpdateProvider;
   channel: DesktopUpdateChannel;
   autoCheckOnStartup: boolean;
   autoDownload: boolean;
-  manifestUrl: string | null;
+  /**
+   * Packaged builds only advertise self-update when the tag-gated release
+   * workflow embedded a matching release descriptor.
+   */
+  requiresReleaseDescriptor: boolean;
 }
 
 export interface DesktopPackagingPlan {
@@ -787,7 +779,7 @@ export interface DesktopBootstrapSnapshot {
   lastError: string | null;
   progress: DesktopBootstrapProgress;
   background: DesktopBackgroundState;
-  updates: DesktopUpdateState;
+  updates: DesktopUpdateSnapshot;
   packaging: DesktopPackagingPlan;
   setup: DesktopSetupState;
   diagnostics: DesktopHostDiagnosticsState | null;
@@ -825,7 +817,7 @@ export interface DesktopBootstrapPrerequisites {
 export interface DesktopHostPersistedState {
   snapshot: DesktopBootstrapSnapshot;
   background: DesktopBackgroundState;
-  updates: DesktopUpdateState;
+  updates: DesktopUpdateSnapshot;
   packaging: DesktopPackagingPlan;
   setup: DesktopSetupState;
   diagnostics: DesktopHostDiagnosticsState | null;

@@ -354,11 +354,7 @@ Desktop-host specific overrides:
 | `CATS_DESKTOP_RUNTIME_PORT` | No | Override host-managed `cats-runtime` port |
 | `CATS_DESKTOP_PACKAGING_OUTPUT_ROOT` | No | Override staged packaging output root |
 | `CATS_DESKTOP_FORCE_QUIT_ON_CLOSE` | No | Escape hatch that forces quit-on-close and disables tray/background hiding |
-| `CATS_DESKTOP_UPDATE_CHANNEL` | No | `stable`, `beta`, or `alpha` |
-| `CATS_DESKTOP_UPDATE_MANIFEST_URL` | No | Optional HTTPS update-manifest URL for manual checks |
-| `CATS_DESKTOP_UPDATE_ALLOWED_HOSTS` | No | Optional comma-separated host allow-list for update download URLs beyond the manifest host |
-| `CATS_DESKTOP_UPDATE_CHECK_ON_STARTUP` | No | Run the manual-check skeleton during startup |
-| `CATS_DESKTOP_UPDATE_AUTO_DOWNLOAD` | No | Reserved toggle; remains `false` in this slice |
+| `CATS_DESKTOP_UPDATE_CHECK_ON_STARTUP` | No | Run one silent update check per launch. Defaults off, and has no effect unless the build already has update capability |
 
 Finder- or LaunchServices-started packaged apps on macOS do not source your
 interactive shell profile before the desktop host launches managed child
@@ -454,12 +450,16 @@ installer, but Windows still treats it as unsigned.
 and testable, but signing/editing is still disabled so the build can run
 without the `winCodeSign` symlink issue and without release certificates.
 
-### Issue 5: Desktop update checks fail even though the manifest URL exists
+### Issue 5: Desktop update controls are missing from Tray and Settings
 
-**Symptoms**: The host reports update-check failure after fetching the manifest.
-**Solution**: The current desktop host only accepts HTTPS update manifests, and
-any `downloadUrl` returned by that manifest must stay on the manifest host or a
-host listed in `CATS_DESKTOP_UPDATE_ALLOWED_HOSTS`.
+**Symptoms**: A packaged build shows no `Check for Updates` action.
+**Solution**: This is the expected state for anything other than an official
+release build whose platform has passed its upgrade gate. The host resolves
+update capability from the release descriptor embedded by the tag-gated
+release workflow, and no environment variable can grant it. Development runs,
+locally packaged builds, and npm/browser execution never show the controls.
+Platforms are admitted to `DESKTOP_RELEASE_READY_PLATFORMS` one at a time as
+their signed old-to-new upgrade test passes.
 
 ### Issue 5: The installer finishes, but you need a quick post-install verification
 

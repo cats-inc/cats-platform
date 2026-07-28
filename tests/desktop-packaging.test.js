@@ -1248,7 +1248,11 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     runtime: 'split',
   });
   assert.equal(linuxTargetManifest.target.platform, 'linux');
-  assert.equal(targetManifest.updates.channel, config.update.channel);
+  assert.equal(targetManifest.updates.provider, 'github_release');
+  assert.equal(targetManifest.updates.channel, 'stable');
+  assert.equal(targetManifest.updates.autoDownload, false);
+  assert.equal(targetManifest.updates.requiresReleaseDescriptor, true);
+  assert.equal(targetManifest.updates.autoCheckOnStartup, config.update.checkOnStartup);
   assert.equal(targetManifest.target.artifactBaseName, 'cats-windows-x64');
   assert.equal(targetManifest.installer.providerSetup.capabilityPacks[0].id, 'api_baseline');
   assert.equal(

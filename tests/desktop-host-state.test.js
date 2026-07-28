@@ -17,7 +17,7 @@ import { createDesktopBackgroundState, DesktopHostStateStore } from '../build/de
 import { buildDesktopBootstrapSnapshot } from '../build/desktop/readiness.js';
 import { createDesktopPackagingPlan } from '../build/desktop/packaging.js';
 import { createEmptyDesktopSetupState } from '../build/desktop/setupBridge.js';
-import { createDefaultDesktopUpdateState } from '../build/desktop/update.js';
+import { createUnavailableDesktopUpdateSnapshot } from '../build/desktop/updateManager.js';
 
 function readyService(name, healthUrl) {
   return {
@@ -51,7 +51,7 @@ test('DesktopHostStateStore persists bootstrap snapshot with background and upda
     windowVisible: false,
     lastHiddenAt: '2026-03-24T10:01:00.000Z',
   });
-  const updates = createDefaultDesktopUpdateState(config.update);
+  const updates = createUnavailableDesktopUpdateSnapshot(DESKTOP_HOST_VERSION);
   const packaging = createDesktopPackagingPlan(config, {
     generatedAt: new Date('2026-03-24T10:02:00.000Z'),
   });
@@ -263,7 +263,7 @@ test('DesktopHostStateStore normalizes legacy quit-on-close background flags bac
 
   const loaded = await store.load(config, {
     background: createDesktopBackgroundState(config),
-    updates: createDefaultDesktopUpdateState(config.update),
+    updates: createUnavailableDesktopUpdateSnapshot(DESKTOP_HOST_VERSION),
     packaging: createDesktopPackagingPlan(config),
     setup: createEmptyDesktopSetupState(),
   });
@@ -287,7 +287,7 @@ test('DesktopHostStateStore loads legacy setup state without optional follow-thr
     catsHomeDir: join(workingDir, '.cats'),
   });
   const background = createDesktopBackgroundState(config);
-  const updates = createDefaultDesktopUpdateState(config.update);
+  const updates = createUnavailableDesktopUpdateSnapshot(DESKTOP_HOST_VERSION);
   const packaging = createDesktopPackagingPlan(config, {
     generatedAt: new Date('2026-03-30T18:00:00.000Z'),
   });
@@ -386,7 +386,7 @@ test('DesktopHostStateStore clamps corrupted snapshot metadata during load', asy
     catsHomeDir: join(workingDir, '.cats'),
   });
   const background = createDesktopBackgroundState(config);
-  const updates = createDefaultDesktopUpdateState(config.update);
+  const updates = createUnavailableDesktopUpdateSnapshot(DESKTOP_HOST_VERSION);
   const packaging = createDesktopPackagingPlan(config);
   const setup = createEmptyDesktopSetupState();
   const store = new DesktopHostStateStore(config.paths.hostStatePath, {
@@ -440,27 +440,25 @@ test('DesktopHostStateStore normalizes corrupted persisted update state during l
       CATS_DESKTOP_APP_ENTRY: join(workingDir, 'build', 'server', 'index.js'),
       CATS_DESKTOP_RUNTIME_ENTRY: join(workingDir, 'cats-runtime', 'build', 'runtime', 'index.js'),
       CATS_DESKTOP_RUNTIME_ROOT: join(workingDir, 'cats-runtime'),
-      CATS_DESKTOP_UPDATE_MANIFEST_URL: 'https://updates.example.com/cats/stable.json',
     },
     userDataDir: join(workingDir, 'user-data'),
     catsHomeDir: join(workingDir, '.cats'),
   });
   const background = createDesktopBackgroundState(config);
-  const updates = createDefaultDesktopUpdateState(config.update);
+  const updates = createUnavailableDesktopUpdateSnapshot(DESKTOP_HOST_VERSION);
   const packaging = createDesktopPackagingPlan(config);
   const setup = createEmptyDesktopSetupState();
   const store = new DesktopHostStateStore(config.paths.hostStatePath);
   const corruptedUpdates = {
-    channel: 'nightly',
+    capability: 'not-a-capability',
     status: 'exploded',
     currentVersion: '',
-    latestVersion: 42,
-    summary: '',
+    availableVersion: 42,
+    releaseSummary: '',
     lastCheckedAt: 'not-a-date',
-    manifestUrl: 'https://updates.example.com/cats/stable.json',
-    downloadUrl: 7,
-    sha256: 'not-a-digest',
-    error: '',
+    progress: { percent: 55 },
+    error: { code: 'boom' },
+    nextAction: 'launch-missiles',
   };
 
   await mkdir(join(config.paths.hostStatePath, '..'), { recursive: true });
@@ -493,15 +491,60 @@ test('DesktopHostStateStore normalizes corrupted persisted update state during l
   });
 
   assert.ok(loaded);
-  assert.equal(loaded?.updates.channel, updates.channel);
+  // Capability is always recomputed from the running package, never restored.
+  assert.deepEqual(loaded?.updates.capability, updates.capability);
   assert.equal(loaded?.updates.status, updates.status);
   assert.equal(loaded?.updates.currentVersion, updates.currentVersion);
-  assert.equal(loaded?.updates.latestVersion, null);
-  assert.equal(loaded?.updates.summary, updates.summary);
+  assert.equal(loaded?.updates.availableVersion, null);
+  assert.equal(loaded?.updates.releaseSummary, null);
   assert.equal(loaded?.updates.lastCheckedAt, null);
-  assert.equal(loaded?.updates.manifestUrl, 'https://updates.example.com/cats/stable.json');
-  assert.equal(loaded?.updates.downloadUrl, null);
-  assert.equal(loaded?.updates.sha256, null);
+  assert.equal(loaded?.updates.progress, null);
   assert.equal(loaded?.updates.error, null);
+  assert.equal(loaded?.updates.nextAction, 'none');
   assert.deepEqual(loaded?.snapshot.updates, loaded?.updates);
+});
+
+test('DesktopHostStateStore never restores an in-progress download or install', async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-host-state-transient-'));
+  const config = resolveDesktopHostConfig({
+    env: {},
+    packageRoot: workingDir,
+    userDataDir: join(workingDir, 'user-data'),
+    catsHomeDir: join(workingDir, '.cats'),
+  });
+  const background = createDesktopBackgroundState(config);
+  const updates = createUnavailableDesktopUpdateSnapshot(DESKTOP_HOST_VERSION);
+  const packaging = createDesktopPackagingPlan(config);
+  const setup = createEmptyDesktopSetupState();
+  const store = new DesktopHostStateStore(config.paths.hostStatePath);
+
+  for (const transientStatus of ['checking', 'downloading', 'installing', 'failed']) {
+    await mkdir(join(config.paths.hostStatePath, '..'), { recursive: true });
+    await writeFile(config.paths.hostStatePath, JSON.stringify({
+      snapshot: {
+        service: DESKTOP_HOST_NAME,
+        version: DESKTOP_HOST_VERSION,
+        timestamp: '2026-07-29T09:10:00.000Z',
+        phase: 'checking_prerequisites',
+        status: 'degraded',
+        summary: 'Restored snapshot.',
+        background,
+        updates: { ...updates, status: transientStatus },
+        packaging,
+        setup,
+        hostStatePath: config.paths.hostStatePath,
+      },
+      background,
+      updates: { ...updates, status: transientStatus },
+      packaging,
+      setup,
+      savedAt: '2026-07-29T09:12:00.000Z',
+    }, null, 2));
+
+    const loaded = await store.load(config, { background, updates, packaging, setup });
+
+    assert.ok(loaded, transientStatus);
+    assert.equal(loaded?.updates.status, updates.status, transientStatus);
+    assert.equal(loaded?.updates.progress, null, transientStatus);
+  }
 });

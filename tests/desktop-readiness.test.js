@@ -179,7 +179,11 @@ test('desktop bootstrap stays in ready_for_setup until setup is completed', () =
   assert.ok(snapshot.actions.some((action) => action.id === 'open_setup'));
   assert.equal(snapshot.progress.currentStepId, 'enter-chat');
   assert.equal(snapshot.background.trayEnabled, true);
-  assert.equal(snapshot.updates.status, 'idle');
+  // A snapshot built without an update manager must not imply an update is
+  // possible, so the fallback is the unavailable capability.
+  assert.equal(snapshot.updates.status, 'unavailable');
+  assert.equal(snapshot.updates.capability.canCheck, false);
+  assert.equal(snapshot.updates.nextAction, 'none');
   assert.equal(snapshot.setup.lastAction, null);
   assert.equal(snapshot.hostStatePath, 'cats-platform/.desktop/state.json');
 });

@@ -74,6 +74,10 @@ interface DesktopLocalProviderBaseline {
   notes: string[];
 }
 
+// SPEC-111 section 7 defers prerelease publishing, so a packaged plan always
+// describes the stable channel.
+const PACKAGED_UPDATE_CHANNEL: DesktopUpdateChannel = 'stable';
+
 const PACKAGING_TARGETS: Array<{
   id: string;
   platform: DesktopPackagingTarget['platform'];
@@ -984,12 +988,15 @@ export function createDesktopPackagingPlan(
     targets: PACKAGING_TARGETS
       .filter((target) => allowedPlatforms === null || allowedPlatforms.has(target.platform))
       .map((target) => buildPackagingTarget(config, outputRoot, target, sidecarLayout)),
-    installer: buildInstallerContract(config.update.channel, allowedPlatforms),
+    installer: buildInstallerContract(PACKAGED_UPDATE_CHANNEL, allowedPlatforms),
     updates: {
-      channel: config.update.channel,
+      provider: 'github_release',
+      // Phase 1 publishes stable only; the running package takes its channel
+      // from the embedded release descriptor rather than this plan.
+      channel: PACKAGED_UPDATE_CHANNEL,
       autoCheckOnStartup: config.update.checkOnStartup,
-      autoDownload: config.update.autoDownload,
-      manifestUrl: config.update.manifestUrl,
+      autoDownload: false,
+      requiresReleaseDescriptor: true,
     },
   };
 }

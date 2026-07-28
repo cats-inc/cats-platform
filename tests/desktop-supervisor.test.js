@@ -92,8 +92,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
       CATS_DESKTOP_APP_ENTRY: 'C:/repo/cats-platform/build/server/index.js',
       CATS_DESKTOP_RUNTIME_ENTRY: 'C:/repo/cats-runtime/build/runtime/index.js',
       CATS_DESKTOP_RUNTIME_ROOT: 'C:/repo/cats-runtime',
-      CATS_DESKTOP_UPDATE_CHANNEL: 'beta',
-      CATS_DESKTOP_UPDATE_MANIFEST_URL: 'https://updates.example.com/cats/beta.json',
+      CATS_DESKTOP_UPDATE_CHECK_ON_STARTUP: 'true',
     },
     userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
     catsHomeDir: 'C:/Users/test/.cats',
@@ -131,8 +130,10 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   assert.equal(config.background.trayEnabled, true);
   assert.equal(config.background.keepServicesRunning, true);
   assert.equal(config.background.closeBehavior, 'minimize_to_tray');
-  assert.equal(config.update.channel, 'beta');
-  assert.equal(config.update.manifestUrl, 'https://updates.example.com/cats/beta.json');
+  // The only remaining update setting. Feed, channel, and provider come from
+  // the embedded release descriptor, never from the environment.
+  assert.equal(config.update.checkOnStartup, true);
+  assert.deepEqual(Object.keys(config.update), ['checkOnStartup']);
   assert.equal(
     config.paths.hostStatePath,
     'C:\\Users\\test\\.cats\\desktop\\state.json',

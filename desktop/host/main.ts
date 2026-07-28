@@ -32,7 +32,7 @@ import type {
   DesktopSetupState,
   DesktopScreenshotCaptureRequest,
   DesktopScreenshotCaptureResult,
-  DesktopUpdateState,
+  DesktopUpdateSnapshot,
 } from './contracts.js';
 import {
   appendHostEvent,
@@ -92,7 +92,24 @@ import {
   parseDesktopHostPlatformShellUpdate,
 } from './platformShellUpdate.js';
 import { enableDesktopMobilePairingEnv } from './mobilePairingEnv.js';
-import { checkForDesktopUpdates, createDefaultDesktopUpdateState } from './update.js';
+import { DESKTOP_HOST_VERSION } from './hostVersion.js';
+import {
+  loadDesktopReleaseDescriptor,
+  resolveDesktopDistributionIdentity,
+} from './releaseDescriptor.js';
+import {
+  createDesktopUpdateCapability,
+  createDesktopUpdateManager,
+  type DesktopUpdateManager,
+} from './updateManager.js';
+import {
+  configureElectronUpdater,
+  createElectronUpdaterAdapter,
+} from './updaterAdapter.js';
+import {
+  createDesktopUpdateIpcHandlers,
+  createDesktopUpdateSnapshotBroadcast,
+} from './updateIpc.js';
 import {
   applyDesktopWindowChrome,
   resolveDesktopWindowChromeOptions,
@@ -197,7 +214,9 @@ let exitingAfterShutdown = false;
 let trayController: DesktopTrayController | null = null;
 let stateStore: DesktopHostStateStore | null = null;
 let backgroundState: DesktopBackgroundState | null = null;
-let updateState: DesktopUpdateState | null = null;
+let updateState: DesktopUpdateSnapshot | null = null;
+let updateManager: DesktopUpdateManager | null = null;
+let detachUpdateBroadcast: (() => void) | null = null;
 let packagingState: DesktopPackagingPlan | null = null;
 let setupState: DesktopSetupState | null = null;
 let diagnosticsState: DesktopHostDiagnosticsState | null = null;
@@ -1571,24 +1590,52 @@ async function maybeRecoverFromLateReadyStateChange(): Promise<void> {
   await lateReadyRecoveryPromise;
 }
 
-async function refreshUpdateState(): Promise<DesktopUpdateState> {
-  if (!hostConfig) {
-    throw new Error('Desktop host is not initialized.');
+/**
+ * Builds the update manager for this launch.
+ *
+ * Capability is derived from the embedded release descriptor plus the running
+ * package, never from the environment. When the build is not an official
+ * release the adapter is omitted entirely, so no provider is ever configured.
+ */
+async function createUpdateManagerForLaunch(
+  config: DesktopHostConfig,
+): Promise<DesktopUpdateManager> {
+  const descriptor = await loadDesktopReleaseDescriptor();
+  const identity = resolveDesktopDistributionIdentity({
+    isPackaged: config.packaged,
+    currentVersion: DESKTOP_HOST_VERSION,
+    nodePlatform: process.platform,
+    descriptor,
+  });
+  const capability = createDesktopUpdateCapability({
+    identity,
+    nodePlatform: process.platform,
+  });
+
+  let adapter = null;
+  if (capability.canCheck && identity.repository !== null) {
+    const { autoUpdater } = await import('electron-updater');
+    configureElectronUpdater(autoUpdater, {
+      repository: identity.repository,
+      channel: capability.channel,
+    });
+    adapter = createElectronUpdaterAdapter(autoUpdater);
   }
-  updateState = {
-    ...(updateState ?? createDefaultDesktopUpdateState(hostConfig.update)),
-    status: hostConfig.update.manifestUrl ? 'checking' : 'unavailable',
-    summary: hostConfig.update.manifestUrl
-      ? 'Checking for desktop updates.'
-      : 'Update checks are disabled until a manifest URL is configured.',
-  };
-  if (latestSnapshot) {
-    publishSnapshot(latestSnapshot);
+
+  return createDesktopUpdateManager({
+    capability,
+    adapter,
+    logger: (message) => {
+      process.stdout.write(`${message}\n`);
+    },
+  });
+}
+
+async function refreshUpdateState(): Promise<DesktopUpdateSnapshot | null> {
+  if (!updateManager) {
+    return null;
   }
-  updateState = await checkForDesktopUpdates(hostConfig.update);
-  if (latestSnapshot) {
-    publishSnapshot(latestSnapshot);
-  }
+  updateState = await updateManager.checkForUpdates();
   return updateState;
 }
 
@@ -2015,7 +2062,8 @@ async function main(): Promise<void> {
     const defaultBackground = applyEffectiveBackgroundPreferences(
       createDesktopBackgroundState(hostConfig),
     );
-    const defaultUpdates = createDefaultDesktopUpdateState(hostConfig.update);
+    updateManager = await createUpdateManagerForLaunch(hostConfig);
+    const defaultUpdates = updateManager.getSnapshot();
     const defaultPackaging = buildHostPackagingPlan(hostConfig);
     const defaultSetup = createEmptyDesktopSetupState();
     const restoredState = await stateStore.load(hostConfig, {
@@ -2036,6 +2084,16 @@ async function main(): Promise<void> {
       };
     }
     updateState = restoredState?.updates ?? defaultUpdates;
+    detachUpdateBroadcast = createDesktopUpdateSnapshotBroadcast({
+      manager: updateManager,
+      resolveMainWindowWebContents: () => mainWindow?.webContents ?? null,
+    });
+    updateManager.subscribe((snapshot) => {
+      updateState = snapshot;
+      if (latestSnapshot) {
+        publishSnapshot(latestSnapshot);
+      }
+    });
     packagingState = defaultPackaging;
     setupState = normalizePlatformShellSetupState(
       restoredState?.setup ?? defaultSetup,
@@ -2069,6 +2127,18 @@ async function main(): Promise<void> {
   ipcMain.handle('cats-host:get-snapshot', async () => {
     return latestSnapshot ?? buildSnapshot(null);
   });
+  if (updateManager) {
+    const updateHandlers = createDesktopUpdateIpcHandlers({
+      manager: updateManager,
+      resolveMainWindowWebContents: () => mainWindow?.webContents ?? null,
+      logger: (message) => {
+        process.stdout.write(`${message}\n`);
+      },
+    });
+    for (const [channel, handler] of Object.entries(updateHandlers)) {
+      ipcMain.handle(channel, async (event) => handler(event));
+    }
+  }
   ipcMain.handle('cats-host:get-setup-snapshot', async () => {
     return await getSetupSnapshot();
   });
@@ -2279,7 +2349,9 @@ async function main(): Promise<void> {
   });
 
   await bootstrapDesktopHost(false);
-  if (hostConfig.update.checkOnStartup && hostConfig.update.manifestUrl) {
+  // SPEC-111 section 6: at most one silent check per launch, and only when the
+  // build actually has update capability.
+  if (hostConfig.update.checkOnStartup && updateManager?.getSnapshot().capability.canCheck) {
     void refreshUpdateState();
   }
 }

@@ -863,8 +863,10 @@ Current limitations of the first real installer slice:
 - unsigned build
 - icon set is generated from `assets/app-icon-silhouette.svg`; refresh it with `npm run desktop:icons` for the default circular avatar-style outputs, or use `npm run desktop:icons -- --shape square` to switch back to square outputs. Packaging consumes whatever files are already present and does not regenerate icons during build.
 - update install/apply remains manual
-- update manifests must be HTTPS, and any `downloadUrl` must stay on the
-  manifest host or a host listed in `CATS_DESKTOP_UPDATE_ALLOWED_HOSTS`
+- self-update is only advertised by an official release build whose platform
+  has passed its signed old-to-new upgrade gate. Local packaging never embeds
+  the release descriptor the host requires, so packaged local builds show no
+  update controls
 - full elevation/relaunch resume across installer interruptions is still a
   follow-on beyond the current bounded host bridge
 

@@ -124,7 +124,7 @@ not create versions or releases for ordinary commits.
 - [x] Add `electron-updater` as an application dependency.
 - [x] Introduce a small updater adapter so tests can use a fake provider rather
       than live GitHub requests.
-- [ ] Replace custom JSON-manifest comparison with electron-updater events and
+- [x] Replace custom JSON-manifest comparison with electron-updater events and
       generated release metadata.
 - [x] Extend update contracts with explicit capability, progress, safe error,
       and next-action fields.
@@ -139,11 +139,11 @@ not create versions or releases for ordinary commits.
 - [x] Keep automatic download disabled.
 - [x] Set electron-updater's install-on-normal-quit behavior to false so a
       downloaded update waits for the explicit restart/install action.
-- [ ] Persist only durable, useful update facts; do not restore an in-progress
+- [x] Persist only durable, useful update facts; do not restore an in-progress
       download/install state after process restart.
 - [x] Map provider errors to stable error codes and safe localized summaries.
 - [x] Send technical diagnostics to desktop logs with secret redaction.
-- [ ] Remove obsolete custom manifest environment variables, docs, and tests
+- [x] Remove obsolete custom manifest environment variables, docs, and tests
       once the replacement is complete.
 
 **Deliverables**: one testable main-process update manager with no renderer
@@ -381,6 +381,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 | 2026-07-29 | Phase 2: added `desktop/host/updateManager.ts` with capability gating, the lifecycle state machine, the single-operation concurrency guard, stable error mapping, and redacted diagnostics over an injectable adapter. `DESKTOP_RELEASE_READY_PLATFORMS` is empty until G3 passes, so no build advertises self-update yet. |
 | 2026-07-29 | Phase 2: added `electron-updater` and `desktop/host/updaterAdapter.ts`. The lockfile change added only the electron-updater subtree with no version drift elsewhere. |
 | 2026-07-29 | Phase 3 complete: bounded update IPC with main-window sender validation, no-argument preload commands, snapshot broadcast, and renderer-side capability/snapshot types with a drift test against the host vocabulary. |
+| 2026-07-29 | Phase 2 complete: `desktop/host/update.ts` and the custom manifest protocol are deleted. The host now builds the manager from the embedded descriptor at launch, registers the update IPC, persists only durable facts, and retires the manifest environment variables from config and docs. |
 
 ---
 

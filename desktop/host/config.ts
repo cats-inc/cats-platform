@@ -2,10 +2,6 @@ import { dirname, isAbsolute, join, resolve, win32 } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-import {
-  resolveDesktopUpdateConfig,
-  type DesktopUpdateConfig,
-} from './update.js';
 import { parseDesktopBoolean } from './env.js';
 import { normalizeDesktopHost } from './security.js';
 import {
@@ -72,6 +68,18 @@ export interface DesktopHostConfig {
   setupAudit: DesktopHostSetupAuditConfig;
   update: DesktopUpdateConfig;
   paths: DesktopHostPaths;
+}
+
+/**
+ * The only update setting that remains configurable.
+ *
+ * Feed, channel, and provider come from the embedded release descriptor, and
+ * SPEC-111 requirement 1.9 forbids any environment variable from promoting a
+ * build into an official update client. This flag can only suppress or allow an
+ * automatic check on a build that already has the capability.
+ */
+export interface DesktopUpdateConfig {
+  checkOnStartup: boolean;
 }
 
 interface ResolveDesktopHostConfigOptions {
@@ -293,7 +301,11 @@ export function resolveDesktopHostConfig(
       DEFAULT_SETUP_AUDIT_PARALLEL,
     ),
   };
-  const update = resolveDesktopUpdateConfig(env);
+  const update: DesktopUpdateConfig = {
+    // SPEC-111 section 6: startup checks stay off for public builds until the
+    // signed old-to-new upgrade gate passes on every supported platform.
+    checkOnStartup: parseDesktopBoolean(env.CATS_DESKTOP_UPDATE_CHECK_ON_STARTUP, false),
+  };
 
   return {
     packaged: options.packaged === true,

@@ -12,7 +12,7 @@ import type {
   DesktopProviderIssue,
   DesktopProviderSummary,
   DesktopSetupState,
-  DesktopUpdateState,
+  DesktopUpdateSnapshot,
   ManagedServiceSnapshot,
 } from './contracts.js';
 import { DESKTOP_HOST_NAME } from './contracts.js';
@@ -22,7 +22,7 @@ import type { DesktopHostConfig } from './config.js';
 import { createDesktopBackgroundState } from './hostState.js';
 import { createDesktopPackagingPlan } from './packaging.js';
 import { describeSetupPack, isOptionalCapabilityPackSetupAction } from './setupBridge.js';
-import { createDefaultDesktopUpdateState } from './update.js';
+import { createUnavailableDesktopUpdateSnapshot } from './updateManager.js';
 
 export interface ReadinessPayload {
   readiness?: {
@@ -102,7 +102,7 @@ interface BuildDesktopBootstrapSnapshotInput {
   lastError?: string | null;
   now?: () => Date;
   background?: DesktopBackgroundState;
-  updates?: DesktopUpdateState;
+  updates?: DesktopUpdateSnapshot;
   packaging?: DesktopPackagingPlan;
   setup?: DesktopSetupState;
   hostStatePath?: string | null;
@@ -786,7 +786,7 @@ export function buildDesktopBootstrapSnapshot(
   }
 
   const background = input.background ?? createDesktopBackgroundState(input.config);
-  const updates = input.updates ?? createDefaultDesktopUpdateState(input.config.update);
+  const updates = input.updates ?? createUnavailableDesktopUpdateSnapshot(DESKTOP_HOST_VERSION);
   const packaging = input.packaging ?? createDesktopPackagingPlan(input.config, {
     generatedAt: now,
     outputRoot: input.config.paths.packagingOutputRoot,
