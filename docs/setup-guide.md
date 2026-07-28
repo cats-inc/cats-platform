@@ -6,7 +6,8 @@
 ## Prerequisites
 
 - Node.js 22+
-- npm 11+
+- npm 11+ (npm 12 blocks dependency install scripts by default; see
+  `Dependency install warnings` below)
 - `cats-runtime` running on `http://127.0.0.1:3110`
 
 ## Installation
@@ -86,6 +87,72 @@ Account and role boundary:
 ```bash
 npm install
 ```
+
+### Dependency install warnings
+
+`npm install` reports two classes of warning in this workspace. Neither one
+means the install failed, and most of them should be left alone.
+
+**Blocked install scripts (npm 12+)**
+
+npm 12 blocks dependency lifecycle scripts unless the package is listed in the
+`allowScripts` field of `package.json`. That field is repo-owned, so an approval
+is committed once and then applies to every developer machine and CI runner. It
+is not per-machine state and does not belong in `.npmrc`.
+
+- `electron` **must** be approved. Without its `postinstall`,
+  `node_modules/electron/dist/` and `path.txt` are never created,
+  `require('electron')` throws `Electron failed to install correctly`, and both
+  `npm run desktop:host` and `npm run desktop:start` fail.
+- `esbuild` does not need approval. It resolves its binary from the
+  `@esbuild/<platform>` optional dependency.
+- `sharp` does not need approval from 0.35 onward, which no longer ships an
+  install script. On 0.34 it still worked unapproved via the `@img/sharp-*`
+  prebuilt optional dependency.
+- `electron-winstaller` does not need approval. Its script selects a 7z
+  architecture for the Squirrel target, and `build.win.target` is `nsis`.
+
+Review and approve with:
+
+```bash
+npm install-scripts ls
+npm install-scripts approve electron
+npm rebuild electron
+```
+
+Two behaviors are easy to trip over:
+
+- `npm install` alone does not repair an already-installed package. npm skips
+  lifecycle scripts for dependencies it considers up to date, so it reports
+  `up to date` while the package stays broken. `npm rebuild <pkg>` is the step
+  that actually runs the newly approved script.
+- Approvals are written pinned as `<pkg>@<version>`, so approval is requested
+  again when the dependency version changes. Use `--no-allow-scripts-pin` to
+  write an unpinned entry instead.
+- On npm 12.0.1, `npm install-scripts approve --dry-run` still writes the
+  `allowScripts` entry. Do not use it to preview the change.
+
+**Audit findings**
+
+Do not run `npm audit fix --force` in this workspace. It downgrades
+`electron-builder` from 26.x to 22.14.13 and `react-router-dom` below the
+declared range.
+
+Most reported advisories do not apply to the way this repo uses the dependency:
+
+- the `brace-expansion` / `minimatch` / `@electron/asar` chain reaches the tree
+  only through the `electron-builder` devDependency, so it runs at build time
+  and is never shipped inside the installer
+- the `react-router` advisory covers RSC mode, which this repo does not use
+- the `esbuild` advisory covers the `esbuild --serve` dev server; this repo only
+  uses the build API
+- the `@hono/node-server` advisory covers `serve-static`, which `cats-runtime`
+  does not use
+
+`cats-one` reports advisories inherited from the published
+`@cats-inc/cats-runtime` and `@cats-inc/cats-platform` packages, which is why
+npm shows `No fix available`. They clear when those packages are republished,
+not through any local change.
 
 ### 3. Verify installation
 
@@ -867,6 +934,14 @@ still expose an explicit `Quit Cats` action when tray mode is enabled. For CI
 or managed deployments that must always quit on close, set
 `CATS_DESKTOP_FORCE_QUIT_ON_CLOSE=true`.
 
+### Issue 9: `Electron failed to install correctly`
+
+**Solution**: npm 12 blocked the `electron` postinstall, so
+`node_modules/electron/dist/` was never populated. Confirm `electron` is listed
+under `allowScripts` in `package.json`, then run `npm rebuild electron`.
+Re-running `npm install` is not enough once the package is already installed.
+See `Dependency install warnings` under `Installation`.
+
 ---
 
-*Last updated: 2026-04-30*
+*Last updated: 2026-07-28*
