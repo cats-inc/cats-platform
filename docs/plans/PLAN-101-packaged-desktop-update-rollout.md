@@ -76,7 +76,7 @@ protected release environment.
 
 ### Phase 1: Establish Intentional Versioned Desktop Releases
 
-- [ ] Add a tag/version validation script that requires `vX.Y.Z` to match both
+- [x] Add a tag/version validation script that requires `vX.Y.Z` to match both
       package files.
 - [ ] Add an explicit release mode to the desktop installer wrapper. Keep its
       local default at `--publish never`, but allow the tag-gated workflow to
@@ -367,6 +367,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 |------|--------|
 | 2026-07-28 | Plan created with ADR-108, SPEC-111, and the official-tooling research note. No implementation has started. |
 | 2026-07-28 | Review follow-up added the installer-wrapper publish/signing interlocks, first-tag bootstrap, assisted NSIS UX, strict development capability policy, unsigned-install classification gate, and explicit bundled Windows sidecars. |
+| 2026-07-28 | Phase 1 started: added `scripts/validate-release-version.mjs` and its tests. |
 
 ---
 
