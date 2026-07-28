@@ -92,10 +92,10 @@ protected release environment.
 - [x] Add tests for installer-wrapper publish arguments, signing environment
       preservation, and rejection of release mode outside the expected
       tag-gated inputs.
-- [ ] Generate a non-secret official release descriptor containing version,
+- [x] Generate a non-secret official release descriptor containing version,
       source commit, platform, channel, and provider identity only in the
       tag-gated workflow.
-- [ ] Keep the descriptor absent from local package commands and normal CI.
+- [x] Keep the descriptor absent from local package commands and normal CI.
 - [ ] Add a desktop release workflow triggered by stable version tags and a
       bounded manual dry-run mode.
 - [ ] Keep normal push/pull-request CI non-publishing.
@@ -375,6 +375,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 | 2026-07-28 | Phase 1 started: added `scripts/validate-release-version.mjs` and its tests. |
 | 2026-07-28 | Phase 1: desktop installer wrapper gained a guarded release mode covering publish arguments, signing environment split, and the Windows executable-signing override. |
 | 2026-07-28 | Corrected the Windows install-mode contract after reading `assets/build/installer.nsh`: the repository forces per-user install and never elevates, and an upgrade preserves user state. |
+| 2026-07-28 | Phase 1: added the official release descriptor generator and wired the wrapper to emit it only in release mode and delete stale copies otherwise. |
 
 ---
 

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 
 import { parseStableReleaseTag } from './validate-release-version.mjs';
+import { DESCRIPTOR_RELATIVE_PATH } from './generate-desktop-release-descriptor.mjs';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
@@ -265,6 +266,15 @@ async function prepareNativeBuildRoot() {
   );
 }
 
+/**
+ * Local packaging must never ship an official release descriptor. Removing it
+ * rather than merely not writing it also clears a stale descriptor left behind
+ * by an earlier release build in the same working tree.
+ */
+async function ensureReleaseDescriptorAbsent() {
+  await rm(resolve(PROJECT_ROOT, DESCRIPTOR_RELATIVE_PATH), { force: true });
+}
+
 async function ensureMobileSkipPlaceholder() {
   await mkdir(MOBILE_BUILD_ROOT, { recursive: true });
   await writeFile(
@@ -456,6 +466,21 @@ async function main() {
   if (parsed.skipMobile) {
     await ensureMobileSkipPlaceholder();
   }
+
+  // npm run build wipes build/, so the descriptor has to be written after the
+  // platform build and before packaging collects build/desktop.
+  if (parsed.releaseMode) {
+    await runCommand(
+      'node',
+      ['scripts/generate-desktop-release-descriptor.mjs', '--platform', resolvedTarget],
+      PROJECT_ROOT,
+      {},
+      envOptions,
+    );
+  } else {
+    await ensureReleaseDescriptorAbsent();
+  }
+
   await buildNativeVoiceHelpers(resolvedTarget, parsed.arch);
   await runCommand(
     'node',
