@@ -121,7 +121,7 @@ not create versions or releases for ordinary commits.
 
 ### Phase 2: Replace the Manifest Prototype with a Host-Owned Update Manager
 
-- [ ] Add `electron-updater` as an application dependency.
+- [x] Add `electron-updater` as an application dependency.
 - [x] Introduce a small updater adapter so tests can use a fake provider rather
       than live GitHub requests.
 - [ ] Replace custom JSON-manifest comparison with electron-updater events and
@@ -137,7 +137,7 @@ not create versions or releases for ordinary commits.
       unofficial package into an official update client.
 - [x] Implement the required state machine and concurrency guard.
 - [x] Keep automatic download disabled.
-- [ ] Set electron-updater's install-on-normal-quit behavior to false so a
+- [x] Set electron-updater's install-on-normal-quit behavior to false so a
       downloaded update waits for the explicit restart/install action.
 - [ ] Persist only durable, useful update facts; do not restore an in-progress
       download/install state after process restart.
@@ -379,6 +379,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 | 2026-07-28 | Phase 2 started: added `desktop/host/releaseDescriptor.ts`, which validates the embedded descriptor and resolves official/development/unofficial distribution identity without reading the environment. |
 | 2026-07-29 | Phase 2: extended the update contract vocabulary with the full status lifecycle, next actions, stable error codes, distribution modes, and the capability/progress/error/snapshot shapes. Retired the `disabled` status in favour of `unavailable`. |
 | 2026-07-29 | Phase 2: added `desktop/host/updateManager.ts` with capability gating, the lifecycle state machine, the single-operation concurrency guard, stable error mapping, and redacted diagnostics over an injectable adapter. `DESKTOP_RELEASE_READY_PLATFORMS` is empty until G3 passes, so no build advertises self-update yet. |
+| 2026-07-29 | Phase 2: added `electron-updater` and `desktop/host/updaterAdapter.ts`. The lockfile change added only the electron-updater subtree with no version drift elsewhere. |
 
 ---
 
