@@ -1,0 +1,211 @@
+name: cats-platform desktop release
+
+# Tag-gated desktop release. Ordinary pushes and pull requests never reach this
+# workflow, so CI cannot create a product version or publish a GitHub Release.
+#
+# The draft is created first, every platform uploads into it, a validation job
+# checks the update metadata references real assets, and only then is the
+# release published. A failed platform job therefore leaves no partially
+# published latest stable release.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing vX.Y.Z tag to dry-run against. Never publishes.'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  CATS_SKIP_MOBILE: '1'
+
+jobs:
+  guard:
+    name: Validate release identity
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+      dry_run: ${{ steps.resolve.outputs.dry_run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Resolve release identity
+        id: resolve
+        env:
+          RESOLVED_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          echo "tag=$RESOLVED_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${RESOLVED_TAG#v}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Runs before any expensive platform build so a mismatched tag fails fast.
+      - name: Check tag matches both package files
+        run: node scripts/validate-release-version.mjs --tag "${{ steps.resolve.outputs.tag }}"
+
+  draft:
+    name: Create draft release
+    needs: guard
+    if: needs.guard.outputs.dry_run == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.tag }}
+
+      - name: Create or reuse the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.guard.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Draft release for $TAG already exists."
+          else
+            gh release create "$TAG" --draft --title "Cats $TAG" --generate-notes
+          fi
+
+  build:
+    name: Build ${{ matrix.platform }}
+    needs: [guard, draft]
+    if: always() && needs.guard.result == 'success' && (needs.draft.result == 'success' || needs.guard.outputs.dry_run == 'true')
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+    strategy:
+      # One platform failure must not cancel the others: the draft stays
+      # unpublished either way, and partial results make triage easier.
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            runner: windows-latest
+            # SPEC-111 section 8: the official Windows artifact is built with
+            # bundled sidecars rather than the wrapper's split default.
+            extra_args: --sidecar-layout bundle
+          - platform: macos
+            runner: macos-latest
+            extra_args: ''
+          - platform: linux
+            runner: ubuntu-latest
+            extra_args: ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.tag }}
+
+      - name: Checkout cats-runtime
+        uses: actions/checkout@v4
+        with:
+          repository: cats-inc/cats-runtime
+          path: ../cats-runtime
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Approve packaged install scripts
+        run: npm rebuild electron
+
+      - name: Build installer
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REF_NAME: ${{ needs.guard.outputs.tag }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          CATS_DESKTOP_RELEASE_PLATFORM: ${{ matrix.platform }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: >
+          node scripts/build-desktop-installer.mjs
+          --target ${{ matrix.platform }}
+          ${{ needs.guard.outputs.dry_run == 'false' && '--release' || '' }}
+          ${{ matrix.extra_args }}
+
+      - name: Upload artifacts for validation
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.zip
+            release/*.AppImage
+            release/*.yml
+            release/*.blockmap
+          if-no-files-found: error
+          retention-days: 7
+
+  validate-assets:
+    name: Validate release assets
+    needs: [guard, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Download every platform's artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: collected
+
+      - name: Check update metadata references real files
+        run: node scripts/validate-release-assets.mjs --root collected
+
+  publish:
+    name: Publish release
+    needs: [guard, build, validate-assets]
+    if: needs.guard.outputs.dry_run == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.tag }}
+
+      - name: Publish the draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.guard.outputs.tag }}
+        run: gh release edit "$TAG" --draft=false --latest

@@ -110,6 +110,14 @@
     "asar": true,
     "npmRebuild": false,
     "afterPack": "./scripts/shared/edit-windows-exe-icon.mjs",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "cats-inc",
+        "repo": "cats-platform",
+        "releaseType": "draft"
+      }
+    ],
     "directories": {
       "output": "release",
       "buildResources": "assets/build"

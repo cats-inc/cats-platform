@@ -96,25 +96,25 @@ protected release environment.
       source commit, platform, channel, and provider identity only in the
       tag-gated workflow.
 - [x] Keep the descriptor absent from local package commands and normal CI.
-- [ ] Add a desktop release workflow triggered by stable version tags and a
+- [x] Add a desktop release workflow triggered by stable version tags and a
       bounded manual dry-run mode.
-- [ ] Keep normal push/pull-request CI non-publishing.
-- [ ] Build on native Windows, macOS, and Linux runners.
-- [ ] Make the Windows release job pass `--sidecar-layout bundle` explicitly
+- [x] Keep normal push/pull-request CI non-publishing.
+- [x] Build on native Windows, macOS, and Linux runners.
+- [x] Make the Windows release job pass `--sidecar-layout bundle` explicitly
       instead of inheriting the wrapper's `split` default.
-- [ ] Configure electron-builder's GitHub publish provider.
-- [ ] Limit the release matrix to the primary artifacts and builder-required
+- [x] Configure electron-builder's GitHub publish provider.
+- [x] Limit the release matrix to the primary artifacts and builder-required
       update support files.
-- [ ] Generate Windows, macOS, and Linux update metadata in the same build run
+- [x] Generate Windows, macOS, and Linux update metadata in the same build run
       as their artifacts.
-- [ ] Upload artifacts into a draft GitHub Release.
-- [ ] Add a release-asset validation job that verifies every referenced file
+- [x] Upload artifacts into a draft GitHub Release.
+- [x] Add a release-asset validation job that verifies every referenced file
       exists before publication.
-- [ ] Publish the release only after all required jobs succeed.
+- [x] Publish the release only after all required jobs succeed.
 - [ ] Create the repository's first version tag only after the reviewed release
       commit and all pre-tag validation are ready; confirm GitHub will select
       the intended release as latest.
-- [ ] Keep the existing npm publish workflow independent.
+- [x] Keep the existing npm publish workflow independent.
 
 **Deliverables**: a tag-gated draft-first desktop release pipeline that does
 not create versions or releases for ordinary commits.
@@ -382,6 +382,8 @@ ownership boundaries in ADR-108 and SPEC-111.
 | 2026-07-29 | Phase 2: added `electron-updater` and `desktop/host/updaterAdapter.ts`. The lockfile change added only the electron-updater subtree with no version drift elsewhere. |
 | 2026-07-29 | Phase 3 complete: bounded update IPC with main-window sender validation, no-argument preload commands, snapshot broadcast, and renderer-side capability/snapshot types with a drift test against the host vocabulary. |
 | 2026-07-29 | Phase 2 complete: `desktop/host/update.ts` and the custom manifest protocol are deleted. The host now builds the manager from the embedded descriptor at launch, registers the update IPC, persists only durable facts, and retires the manifest environment variables from config and docs. |
+| 2026-07-29 | Phase 4 partial: capability-gated tray update entry with truthful, localized labels and disabled in-flight states. |
+| 2026-07-29 | Phase 1 complete except the first tag: added the tag-gated `desktop-release.yml` with a guard-first job order, three native runners, draft-first collection, `scripts/validate-release-assets.mjs`, and an explicit draft GitHub publish provider. |
 
 ---
 
