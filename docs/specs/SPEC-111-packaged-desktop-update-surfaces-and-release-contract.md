@@ -29,7 +29,11 @@ This specification defines:
 ADR-108 owns the architectural decision. PLAN-101 owns implementation
 sequencing.
 
-## Current Baseline
+## Baseline When Proposed
+
+This section records the state of the repository when this specification was
+written. It is deliberately not updated as implementation lands; see
+`Implementation Status` below for what is true now.
 
 - The Electron main process can check a custom HTTPS JSON manifest and stores
   the result in the desktop host snapshot.
@@ -59,6 +63,36 @@ sequencing.
 - Desktop packaging currently produces more formats and architectures than
   the minimum public update matrix. The release contract needs one primary
   user-facing artifact per OS.
+
+## Implementation Status
+
+Current as of 2026-07-29. PLAN-101 holds the per-task detail.
+
+Landed:
+
+- The custom JSON manifest protocol is deleted. `desktop/host/updateManager.ts`
+  owns the lifecycle over an injected adapter, and
+  `desktop/host/updaterAdapter.ts` wraps `electron-updater`.
+- Capability comes from the embedded release descriptor
+  (`desktop/host/releaseDescriptor.ts`), never from the environment.
+- The preload bridge exposes five bounded no-argument update commands, and
+  every IPC handler validates the main-window sender.
+- The tray shows a capability-gated update entry with localized labels.
+- `desktop-release.yml` is tag-gated, builds on three native runners, collects
+  into a draft, and publishes only after asset validation.
+- Update copy ships in English and Traditional Chinese.
+
+Not yet landed:
+
+- The `App updates` section component in `Settings > Desktop`. Its copy and
+  presentation mapping exist; the component does not.
+- Native up-to-date, available, and failed notifications.
+- Phase 5 hardening and the Phase 6 real-machine upgrade matrix.
+
+Gated off deliberately:
+
+- `DESKTOP_RELEASE_READY_PLATFORMS` is empty, so no build advertises
+  self-update yet. A platform is added only after its G3 upgrade test passes.
 
 ## Goals
 
