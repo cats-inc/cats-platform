@@ -1004,6 +1004,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
     sidecarLayout: 'split',
     skipMobile: false,
     releaseMode: false,
+    previewMode: false,
     publish: 'never',
   });
   assert.deepEqual(
@@ -1016,6 +1017,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       sidecarLayout: 'bundle',
       skipMobile: false,
       releaseMode: false,
+      previewMode: false,
       publish: 'never',
     },
   );
@@ -1029,6 +1031,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       sidecarLayout: 'bundle',
       skipMobile: false,
       releaseMode: false,
+      previewMode: false,
       publish: 'never',
     },
   );
@@ -1042,6 +1045,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       sidecarLayout: 'split',
       skipMobile: true,
       releaseMode: false,
+      previewMode: false,
       publish: 'never',
     },
   );
@@ -1055,6 +1059,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       sidecarLayout: 'split',
       skipMobile: true,
       releaseMode: false,
+      previewMode: false,
       publish: 'never',
     },
   );
@@ -1068,6 +1073,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       sidecarLayout: 'split',
       skipMobile: false,
       releaseMode: false,
+      previewMode: false,
       publish: 'never',
     },
   );

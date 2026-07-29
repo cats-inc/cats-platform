@@ -36,7 +36,7 @@ test('local packaging keeps the non-publishing electron-builder invocation', () 
 });
 
 test('publish policy is independent of official release mode', () => {
-  // Official build that does not publish: the workflow dry run.
+  // The wrapper can validate official inputs without publishing.
   assert.deepEqual(
     electronBuilderArgs('windows', null, null, { releaseMode: true }),
     ['electron-builder', '--win', '--publish', 'never'],
@@ -135,13 +135,27 @@ test('installer args expose release mode and publish policy independently', () =
   );
   assert.equal(parseArgs(['--release'], {}).releaseMode, true);
   assert.equal(parseArgs(['--release'], {}).publish, 'never');
+  assert.equal(parseArgs(['--preview'], {}).previewMode, true);
   assert.equal(parseArgs(['--publish', 'always'], {}).publish, 'always');
   assert.equal(parseArgs([], { CATS_DESKTOP_RELEASE_MODE: '1' }).releaseMode, true);
+  assert.equal(parseArgs([], { CATS_DESKTOP_PREVIEW_MODE: '1' }).previewMode, true);
   assert.equal(parseArgs([], { CATS_DESKTOP_PUBLISH: 'always' }).publish, 'always');
   assert.equal(
     parseArgs(['--no-release'], { CATS_DESKTOP_RELEASE_MODE: 'true' }).releaseMode,
     false,
   );
+});
+
+test('an unsigned preview keeps tag and token gates but does not require signing', () => {
+  const problems = resolveReleaseModeProblems({
+    env: workflowEnv({ WIN_CSC_LINK: undefined, CSC_LINK: undefined }),
+    target: 'windows',
+    packageVersion: '0.2.0',
+    publish: 'always',
+    requireSigning: false,
+  });
+
+  assert.deepEqual(problems, []);
 });
 
 test('a complete workflow tag run passes every release precondition', () => {

@@ -39,15 +39,21 @@ Options:
                                           allow signing identity discovery. Requires a GitHub
                                           Actions tag run whose tag matches the package version.
                                           Also honored via CATS_DESKTOP_RELEASE_MODE=1.
-  --publish <never|always>                Publish policy, default never. Requires --release and a
-                                          GitHub token. Also honored via CATS_DESKTOP_PUBLISH.
+  --preview                               Build an unsupported unsigned GitHub prerelease preview.
+                                          Requires the same tag/version provenance as --release,
+                                          omits the official descriptor, and disables signing
+                                          identity discovery. Also honored via
+                                          CATS_DESKTOP_PREVIEW_MODE=1.
+  --publish <never|always>                Publish policy, default never. Publishing requires
+                                          --release or --preview plus a GitHub token. Also honored
+                                          via CATS_DESKTOP_PUBLISH.
   --help                                  Show this help text.
 
 Without --arch/--format, the electron-builder target matrix from package.json is preserved.
 
-Release mode and publishing are orthogonal: a tag build is official and publishes, the workflow
-dry run is official and does not, and local packaging is neither. Local packaging never publishes
-and never discovers signing identities.
+Release mode and publishing are orthogonal. Stable releases are official and signed. Preview mode
+may publish an unsigned prerelease but never embeds official update identity or discovers signing
+identities. Local packaging is unofficial and never publishes.
 `);
 }
 
@@ -60,8 +66,8 @@ function parseBooleanFlag(value) {
 }
 
 /**
- * Publishing is orthogonal to building an official package. A tag build is
- * official and publishes; the workflow dry run is official and does not.
+ * Publishing is orthogonal to building an official package. Stable tag builds
+ * publish; an explicit official validation may still select `never`.
  */
 export function resolvePublishPolicy(value) {
   if (value === undefined || value === null || value === '') {
@@ -90,12 +96,23 @@ export function parseArgs(argv, env = process.env) {
   let sidecarLayout = resolveSidecarLayout(env.CATS_DESKTOP_SIDECAR_LAYOUT);
   let skipMobile = parseBooleanFlag(env.CATS_SKIP_MOBILE);
   let releaseMode = parseBooleanFlag(env.CATS_DESKTOP_RELEASE_MODE);
+  let previewMode = parseBooleanFlag(env.CATS_DESKTOP_PREVIEW_MODE);
   let publish = resolvePublishPolicy(env.CATS_DESKTOP_PUBLISH);
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') {
-      return { help: true, target, arch, format, sidecarLayout, skipMobile, releaseMode, publish };
+      return {
+        help: true,
+        target,
+        arch,
+        format,
+        sidecarLayout,
+        skipMobile,
+        releaseMode,
+        previewMode,
+        publish,
+      };
     }
     if (value === '--release') {
       releaseMode = true;
@@ -103,6 +120,14 @@ export function parseArgs(argv, env = process.env) {
     }
     if (value === '--no-release') {
       releaseMode = false;
+      continue;
+    }
+    if (value === '--preview') {
+      previewMode = true;
+      continue;
+    }
+    if (value === '--no-preview') {
+      previewMode = false;
       continue;
     }
     if (value === '--publish') {
@@ -141,7 +166,17 @@ export function parseArgs(argv, env = process.env) {
     throw new Error(`Unknown option: ${value}`);
   }
 
-  return { help: false, target, arch, format, sidecarLayout, skipMobile, releaseMode, publish };
+  return {
+    help: false,
+    target,
+    arch,
+    format,
+    sidecarLayout,
+    skipMobile,
+    releaseMode,
+    previewMode,
+    publish,
+  };
 }
 
 async function resolveNodeCliScript(command) {
@@ -257,14 +292,14 @@ export function resolveSigningProblems({ env = process.env, target } = {}) {
 }
 
 /**
- * Release mode is only meaningful inside the tag-gated workflow. Anything else
- * would build an official-looking package from an unreviewed tree, so the
- * inputs are checked before any platform build work starts.
+ * Release and preview publication are only meaningful inside the guarded
+ * workflow. Anything else could publish from an unreviewed tree, so the
+ * provenance inputs are checked before any platform build work starts.
  *
  * `.env` is loaded at module scope for developer convenience, which means
- * CATS_DESKTOP_RELEASE_MODE alone must never be enough. The checks below
- * require the surrounding workflow to be real: a GitHub Actions run, on a tag
- * ref, whose tag matches the package version.
+ * A mode environment variable alone must never be enough. The checks below
+ * require the surrounding workflow to be real and the selected tag to match
+ * the package version.
  */
 export function resolveReleaseModeProblems({
   env = process.env,
@@ -272,20 +307,21 @@ export function resolveReleaseModeProblems({
   target = null,
   packageVersion = null,
   publish = 'never',
+  requireSigning = true,
 } = {}) {
   const problems = [];
 
   if (env.GITHUB_ACTIONS !== 'true') {
     problems.push({
       code: 'release_not_in_workflow',
-      message: 'Release mode only runs inside GitHub Actions (GITHUB_ACTIONS=true).',
+      message: 'Release and preview modes only run inside GitHub Actions (GITHUB_ACTIONS=true).',
     });
   }
 
   if (env.GITHUB_REF_TYPE !== undefined && env.GITHUB_REF_TYPE !== 'tag') {
     problems.push({
       code: 'release_ref_not_tag',
-      message: `Release mode requires a tag ref, but GITHUB_REF_TYPE is '${env.GITHUB_REF_TYPE}'.`,
+      message: `Release and preview modes require a guarded tag identity, but GITHUB_REF_TYPE is '${env.GITHUB_REF_TYPE}'.`,
     });
   }
 
@@ -296,7 +332,7 @@ export function resolveReleaseModeProblems({
   if (!parsedTag.ok) {
     problems.push({
       code: `release_${parsedTag.code}`,
-      message: `Release mode requires a stable vX.Y.Z tag. ${parsedTag.message}`,
+      message: `Release and preview modes require a vX.Y.Z tag. ${parsedTag.message}`,
     });
   } else if (typeof packageVersion === 'string' && packageVersion !== parsedTag.version) {
     problems.push({
@@ -305,10 +341,11 @@ export function resolveReleaseModeProblems({
     });
   }
 
-  problems.push(...resolveSigningProblems({ env, target }));
+  if (requireSigning) {
+    problems.push(...resolveSigningProblems({ env, target }));
+  }
 
-  // Only publishing needs a token; an official build that stays local (the
-  // workflow dry run) does not.
+  // Only publishing needs a token; non-publishing validation does not.
   if (publish !== 'never') {
     const token = env.GH_TOKEN ?? env.GITHUB_TOKEN;
     if (typeof token !== 'string' || token.trim() === '') {
@@ -542,11 +579,15 @@ async function main() {
   const resolvedTarget = resolveBuilderTarget(parsed.target);
   const envOptions = { releaseMode: parsed.releaseMode };
 
-  if (parsed.publish !== 'never' && !parsed.releaseMode) {
-    throw new Error('Publishing requires --release; an unofficial build must never publish.');
+  if (parsed.releaseMode && parsed.previewMode) {
+    throw new Error('--release and --preview are mutually exclusive build modes.');
   }
 
-  if (parsed.releaseMode) {
+  if (parsed.publish !== 'never' && !parsed.releaseMode && !parsed.previewMode) {
+    throw new Error('Publishing requires --release or --preview.');
+  }
+
+  if (parsed.releaseMode || parsed.previewMode) {
     const { version: packageVersion } = JSON.parse(
       await readFile(resolve(PROJECT_ROOT, 'package.json'), 'utf8'),
     );
@@ -555,16 +596,18 @@ async function main() {
       target: resolvedTarget,
       packageVersion,
       publish: parsed.publish,
+      requireSigning: parsed.releaseMode,
     });
     if (problems.length > 0) {
       throw new Error(
-        `Release mode inputs are not valid:\n${problems
+        `Release/preview inputs are not valid:\n${problems
           .map((problem) => `  ${problem.code}: ${problem.message}`)
           .join('\n')}`,
       );
     }
+    const buildKind = parsed.releaseMode ? 'official' : 'unsigned preview';
     process.stdout.write(
-      `[build-desktop-installer] official ${resolvedTarget} build for `
+      `[build-desktop-installer] ${buildKind} ${resolvedTarget} build for `
         + `${process.env.GITHUB_REF_NAME} (publish=${parsed.publish}).\n`,
     );
   }

@@ -296,7 +296,7 @@ test('the release workflow only triggers on stable version tags', async () => {
   assert.equal(/on:\s*\n\s*push:\s*\n\s*branches:/u.test(workflow), false);
 });
 
-test('the release workflow publishes only after builds and asset validation', async () => {
+test('the release workflow publishes stable or preview releases only after validation', async () => {
   const workflow = await readFile(
     join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
     'utf8',
@@ -305,7 +305,43 @@ test('the release workflow publishes only after builds and asset validation', as
   const publishBlock = workflow.slice(workflow.indexOf('  publish:'));
   assert.match(publishBlock, /needs: \[guard, build, validate-assets\]/u);
   assert.match(publishBlock, /--draft=false/u);
-  assert.match(publishBlock, /dry_run == 'false'/u);
+  assert.match(publishBlock, /--prerelease/u);
+  assert.match(publishBlock, /--latest/u);
+});
+
+test('manual release workflow publishes an unsigned prerelease preview', async () => {
+  const workflow = await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
+    'utf8',
+  );
+
+  assert.match(
+    workflow,
+    /\$\{\{ needs\.guard\.outputs\.preview == 'true' && '--preview' \|\| '--release' \}\}/u,
+  );
+  assert.match(workflow, /--publish always/u);
+  assert.match(workflow, /gh release create "\$TAG" --target "\$COMMIT" --draft --prerelease/u);
+  assert.match(workflow, /ref: \$\{\{ needs\.guard\.outputs\.source_commit \}\}/u);
+  assert.match(
+    workflow,
+    /if: matrix\.platform == 'windows' && needs\.guard\.outputs\.preview == 'false'/u,
+  );
+  assert.match(
+    workflow,
+    /if: matrix\.platform == 'macos' && needs\.guard\.outputs\.preview == 'false'/u,
+  );
+  assert.match(
+    workflow,
+    /'unsigned-preview' \|\| 'release'/u,
+  );
+  assert.match(
+    workflow,
+    /preview == 'false' && secrets\.WIN_CSC_LINK \|\| ''/u,
+  );
+  assert.match(
+    workflow,
+    /preview == 'false' && secrets\.CSC_LINK \|\| ''/u,
+  );
 });
 
 test('electron-builder publishes drafts to the public GitHub repository', async () => {
@@ -356,17 +392,6 @@ test('both repositories are checked out inside the workspace', async () => {
   assert.match(workflow, /path: cats-runtime/u);
   assert.match(workflow, /working-directory: cats-runtime\s+run: npm ci/u);
   assert.match(workflow, /repository: cats-inc\/cats-runtime\s+ref: /u);
-});
-
-test('the dry run builds officially but never publishes', async () => {
-  const workflow = await readFile(
-    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
-    'utf8',
-  );
-
-  // --release is unconditional so the dry run exercises the descriptor and the
-  // signing path; only the publish policy depends on whether this is a tag run.
-  assert.match(workflow, /--release\s*\n\s*--publish \$\{\{ needs\.guard\.outputs\.dry_run/u);
 });
 
 test('signatures are verified on the signing platforms before publication', async () => {

@@ -80,6 +80,14 @@ Landed:
 - The tray shows a capability-gated update entry with localized labels.
 - `desktop-release.yml` is tag-gated, builds on three native runners, collects
   into a draft, and publishes only after asset validation.
+- Manual workflow dispatch builds a clearly named unsigned preview on the same
+  three runners. It does not embed the official release descriptor, read
+  signing secrets, or verify signatures. It exercises the full
+  draft/build/validate/publish sequence, but the result is explicitly an
+  unsigned GitHub prerelease and never `latest`. The operator supplies an
+  unused `vX.Y.Z`; the workflow creates that preview tag from the selected
+  branch commit instead of requiring a tag push that would trigger the stable
+  path.
 - Update copy ships in English and Traditional Chinese.
 
 Not yet landed:
@@ -390,6 +398,17 @@ When later enabled:
 13. The release workflow shall embed a non-secret official release descriptor
     in each platform package. The descriptor shall identify the tag version,
     source commit, platform, stable channel, and GitHub provider.
+14. Manual workflow-dispatch validation shall use an unsigned, unofficial
+    preview path until signing is configured. It shall run the three-platform
+    draft, packaging, asset-validation, and publication stages, but shall not
+    embed the official descriptor, access signing secrets, become `latest`, or
+    advertise desktop update capability. The preview shall be published as a
+    GitHub prerelease. The workflow shall create its unused preview tag from
+    the selected workflow branch commit so testing does not first trigger the
+    signed stable tag path.
+15. Publishing an unsigned preview consumes that version/tag for test purposes.
+    A later signed stable release shall use a higher version rather than
+    replacing the preview artifacts in place.
 
 ### 8. Required Release Assets
 
@@ -425,6 +444,9 @@ selection applies to both `cats-platform` and `cats-runtime`.
 7. Release notes rendered in Settings shall be treated as untrusted text and
    shall not execute HTML or open arbitrary links without the existing safe
    external-navigation policy.
+8. Unsigned preview artifacts shall use `unsigned-preview` Actions artifact
+   names and publish only in a GitHub prerelease. They shall not be promoted
+   into the stable GitHub Release update feed.
 
 ### 10. Failure and Recovery
 
@@ -485,6 +507,10 @@ be translated.
 13. The first desktop release uses a new registry-safe version and establishes
     the repository's first matching version tag without retroactively tagging
     an older npm release.
+14. A manual unsigned preview completes Windows, macOS, and Linux packaging
+    plus asset validation without Windows or Apple signing credentials, while
+    producing no official release descriptor and publishing only a GitHub
+    prerelease that is not `latest`.
 
 ## Dependencies
 

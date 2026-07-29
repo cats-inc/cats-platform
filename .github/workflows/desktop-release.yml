@@ -6,7 +6,9 @@ name: cats-platform desktop release
 # The draft is created first, every platform uploads into it, a validation job
 # checks the update metadata references real assets, and only then is the
 # release published. A failed platform job therefore leaves no partially
-# published latest stable release.
+# published latest stable release. Manual dispatch is a separate unsigned
+# preview: it exercises the same draft/build/validate/publish sequence but
+# publishes only as a GitHub prerelease and never becomes latest.
 
 on:
   push:
@@ -15,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing vX.Y.Z tag to dry-run against. Never publishes.'
+        description: 'Unused vX.Y.Z tag to create from the selected branch as an unsigned preview.'
         required: true
         type: string
       runtime_ref:
@@ -37,12 +39,13 @@ jobs:
     outputs:
       tag: ${{ steps.resolve.outputs.tag }}
       version: ${{ steps.resolve.outputs.version }}
-      dry_run: ${{ steps.resolve.outputs.dry_run }}
+      preview: ${{ steps.resolve.outputs.preview }}
+      source_commit: ${{ steps.source.outputs.commit }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -57,10 +60,14 @@ jobs:
           echo "tag=$RESOLVED_TAG" >> "$GITHUB_OUTPUT"
           echo "version=${RESOLVED_TAG#v}" >> "$GITHUB_OUTPUT"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            echo "preview=true" >> "$GITHUB_OUTPUT"
           else
-            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+            echo "preview=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Record source commit
+        id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       # Runs before any expensive platform build so a mismatched tag fails fast.
       - name: Check tag matches both package files
@@ -69,7 +76,6 @@ jobs:
   draft:
     name: Create draft release
     needs: guard
-    if: needs.guard.outputs.dry_run == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -77,23 +83,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.guard.outputs.tag }}
+          ref: ${{ needs.guard.outputs.source_commit }}
 
       - name: Create or reuse the draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.guard.outputs.tag }}
+          PREVIEW: ${{ needs.guard.outputs.preview }}
+          COMMIT: ${{ needs.guard.outputs.source_commit }}
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Draft release for $TAG already exists."
+            if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" != "true" ]; then
+              echo "Release $TAG is already published; refusing to replace its artifacts."
+              exit 1
+            fi
+            echo "Draft release for $TAG already exists; reusing it."
+          elif [ "$PREVIEW" = "true" ]; then
+            gh release create "$TAG" --target "$COMMIT" --draft --prerelease --title "Cats $TAG (unsigned preview)" --generate-notes
           else
-            gh release create "$TAG" --draft --title "Cats $TAG" --generate-notes
+            gh release create "$TAG" --verify-tag --draft --title "Cats $TAG" --generate-notes
           fi
 
   build:
     name: Build ${{ matrix.platform }}
     needs: [guard, draft]
-    if: always() && needs.guard.result == 'success' && (needs.draft.result == 'success' || needs.guard.outputs.dry_run == 'true')
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: write
@@ -127,7 +140,7 @@ jobs:
       - name: Checkout cats-platform
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.guard.outputs.tag }}
+          ref: ${{ needs.guard.outputs.source_commit }}
           path: cats-platform
 
       - name: Checkout cats-runtime
@@ -165,28 +178,31 @@ jobs:
           GITHUB_ACTIONS: 'true'
           GITHUB_REF_TYPE: tag
           GITHUB_REF_NAME: ${{ needs.guard.outputs.tag }}
-          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_SHA: ${{ needs.guard.outputs.source_commit }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           CATS_DESKTOP_RELEASE_PLATFORM: ${{ matrix.platform }}
           CATS_DESKTOP_RUNTIME_COMMIT: ${{ steps.runtime.outputs.sha }}
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        # Always an official build so the dry run exercises the descriptor and
-        # the signing path; only a real tag run publishes.
+          # Unsigned previews must not read signing secrets even after those
+          # secrets are configured for stable tag releases.
+          WIN_CSC_LINK: ${{ needs.guard.outputs.preview == 'false' && secrets.WIN_CSC_LINK || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ needs.guard.outputs.preview == 'false' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+          CSC_LINK: ${{ needs.guard.outputs.preview == 'false' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ needs.guard.outputs.preview == 'false' && secrets.CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_TEAM_ID || '' }}
+        # Manual dispatch exercises packaging, metadata generation, artifact
+        # upload, and validation without claiming official update capability.
+        # A real tag run keeps the signed release and publish gates.
         run: >
           node scripts/build-desktop-installer.mjs
           --target ${{ matrix.platform }}
-          --release
-          --publish ${{ needs.guard.outputs.dry_run == 'false' && 'always' || 'never' }}
+          ${{ needs.guard.outputs.preview == 'true' && '--preview' || '--release' }}
+          --publish always
           ${{ matrix.extra_args }}
 
       - name: Verify Windows signature
-        if: matrix.platform == 'windows'
+        if: matrix.platform == 'windows' && needs.guard.outputs.preview == 'false'
         shell: pwsh
         run: |
           $installer = Get-ChildItem release -Filter *.exe | Select-Object -First 1
@@ -198,7 +214,7 @@ jobs:
           }
 
       - name: Verify macOS signature and notarization
-        if: matrix.platform == 'macos'
+        if: matrix.platform == 'macos' && needs.guard.outputs.preview == 'false'
         run: |
           app=$(find release -maxdepth 3 -name '*.app' | head -1)
           if [ -z "$app" ]; then echo 'No macOS app bundle was produced.'; exit 1; fi
@@ -208,7 +224,7 @@ jobs:
       - name: Upload artifacts for validation
         uses: actions/upload-artifact@v4
         with:
-          name: release-${{ matrix.platform }}
+          name: ${{ needs.guard.outputs.preview == 'true' && 'unsigned-preview' || 'release' }}-${{ matrix.platform }}
           path: |
             cats-platform/release/*.exe
             cats-platform/release/*.dmg
@@ -227,7 +243,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.guard.outputs.tag }}
+          ref: ${{ needs.guard.outputs.source_commit }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -245,7 +261,6 @@ jobs:
   publish:
     name: Publish release
     needs: [guard, build, validate-assets]
-    if: needs.guard.outputs.dry_run == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -253,10 +268,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.guard.outputs.tag }}
+          ref: ${{ needs.guard.outputs.source_commit }}
 
       - name: Publish the draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.guard.outputs.tag }}
-        run: gh release edit "$TAG" --draft=false --latest
+          PREVIEW: ${{ needs.guard.outputs.preview }}
+        run: |
+          if [ "$PREVIEW" = "true" ]; then
+            gh release edit "$TAG" --draft=false --prerelease
+          else
+            gh release edit "$TAG" --draft=false --latest
+          fi

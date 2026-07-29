@@ -97,7 +97,15 @@ protected release environment.
       tag-gated workflow.
 - [x] Keep the descriptor absent from local package commands and normal CI.
 - [x] Add a desktop release workflow triggered by stable version tags and a
-      bounded manual dry-run mode.
+      bounded manual preview mode.
+- [x] Make the manual run an explicitly unsigned, unofficial preview that
+      does not read signing secrets, verify signatures, embed the official
+      descriptor, or become `latest`. Publish it as a GitHub prerelease so the
+      draft/build/validate/publish sequence can be tested end to end. Retain
+      signed fail-fast behavior for stable tag releases.
+- [x] Let manual preview input name an unused version tag and create it from
+      the selected workflow branch commit, avoiding a preliminary tag push
+      that would incorrectly trigger the signed stable path.
 - [x] Keep normal push/pull-request CI non-publishing.
 - [x] Build on native Windows, macOS, and Linux runners.
 - [x] Make the Windows release job pass `--sidecar-layout bundle` explicitly
@@ -324,6 +332,9 @@ ownership boundaries in ADR-108 and SPEC-111.
 - first release version does not collide with existing tags or npm versions
 - all required metadata references resolve to uploaded assets
 - partial platform failure does not publish the draft
+- manual dispatch completes three-platform unsigned packaging, asset
+  validation, and GitHub prerelease publication without accessing signing
+  secrets or becoming `latest`
 - packaged builds contain the correct provider configuration
 - the Windows release package records or otherwise verifies the bundled
   platform/runtime sidecar layout
@@ -385,6 +396,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 | 2026-07-29 | Phase 4 partial: capability-gated tray update entry with truthful, localized labels and disabled in-flight states. |
 | 2026-07-29 | Phase 1 complete except the first tag: added the tag-gated `desktop-release.yml` with a guard-first job order, three native runners, draft-first collection, `scripts/validate-release-assets.mjs`, and an explicit draft GitHub publish provider. |
 | 2026-07-29 | Phase 4 partial: localized update copy (33 keys, en + zh-TW) and the status/error/action presentation mapping. The `App updates` section component itself is the next step. |
+| 2026-07-29 | Phase 1 follow-up: manual workflow dispatch now exercises the full draft/build/validate/publish sequence as an unsigned GitHub prerelease without requiring Windows or Apple signing; it omits official update identity and never becomes `latest`, while stable tag publication remains signed and fail-fast. |
 
 ---
 
