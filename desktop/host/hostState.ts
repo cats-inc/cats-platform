@@ -19,17 +19,14 @@ import type {
   DesktopSetupInterruption,
   DesktopSetupState,
   DesktopUpdateSnapshot,
-  DesktopUpdateStatus,
 } from './contracts.js';
 import {
   DESKTOP_BOOTSTRAP_PHASES,
   DESKTOP_HOST_NAME,
-  DESKTOP_UPDATE_STATUSES,
 } from './contracts.js';
 import { DESKTOP_HOST_VERSION } from './hostVersion.js';
 import type { DesktopHostConfig } from './config.js';
 import { createEmptyDesktopDiagnosticsState } from './bootstrapDiagnostics.js';
-import { resolveDesktopUpdateNextAction } from './updateManager.js';
 
 interface DesktopHostStateStoreDependencies {
   now?: () => Date;
@@ -80,16 +77,6 @@ function normalizeHealthStatus(value: unknown): DesktopHealthStatus {
     : 'degraded';
 }
 
-function normalizeUpdateStatus(
-  value: unknown,
-  fallback: DesktopUpdateStatus,
-): DesktopUpdateStatus {
-  return typeof value === 'string'
-    && DESKTOP_UPDATE_STATUSES.includes(value as DesktopUpdateStatus)
-    ? value as DesktopUpdateStatus
-    : fallback;
-}
-
 function normalizeBackgroundState(
   value: unknown,
   fallback: DesktopBackgroundState,
@@ -111,13 +98,17 @@ function normalizeBackgroundState(
 }
 
 /**
- * Only durable update facts survive a restart.
+ * The last check time is the only update fact that survives a restart.
  *
- * Capability is recomputed from the running package on every launch, and an
- * in-progress download or install is meaningless in a new process: the
- * downloaded payload is owned by electron-updater's cache, not by this state
- * file. Restoring `downloading` or `installing` would strand the UI in a state
- * no operation is driving.
+ * Capability is recomputed from the running package on every launch, and every
+ * status is provider-dependent: a restored `update_available` cannot be acted
+ * on without checking again, and a restored `downloading` or `installing`
+ * describes work no operation in the new process is driving. Restoring any of
+ * them would put the host snapshot and the update manager into different
+ * states, which is exactly the divergence this avoids.
+ *
+ * The restored timestamp is fed to the manager at construction, so the manager
+ * stays the single owner of update state.
  */
 function normalizeUpdateSnapshot(
   value: unknown,
@@ -127,32 +118,15 @@ function normalizeUpdateSnapshot(
     return fallback;
   }
 
-  const restoredStatus = normalizeUpdateStatus(value.status, fallback.status);
-  const durableStatus = DURABLE_UPDATE_STATUSES.has(restoredStatus)
-    ? restoredStatus
-    : fallback.status;
-
   return {
     ...fallback,
-    status: durableStatus,
-    availableVersion: durableStatus === 'update_available'
-      ? readString(value.availableVersion)
-      : null,
-    releaseSummary: durableStatus === 'update_available'
-      ? readString(value.releaseSummary)
-      : null,
-    lastCheckedAt: readTimestamp(value.lastCheckedAt),
-    progress: null,
-    error: null,
-    nextAction: resolveDesktopUpdateNextAction(durableStatus, fallback.capability),
+    lastCheckedAt: readTimestamp(value.lastCheckedAt) ?? fallback.lastCheckedAt,
   };
 }
 
-const DURABLE_UPDATE_STATUSES = new Set<DesktopUpdateStatus>([
-  'idle',
-  'up_to_date',
-  'update_available',
-]);
+export function readPersistedUpdateLastCheckedAt(value: unknown): string | null {
+  return isObjectRecord(value) ? readTimestamp(value.lastCheckedAt) : null;
+}
 
 function readStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {

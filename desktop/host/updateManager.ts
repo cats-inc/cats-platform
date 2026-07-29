@@ -221,6 +221,13 @@ export interface CreateDesktopUpdateManagerInput {
   adapter: DesktopUpdaterAdapter | null;
   now?: () => Date;
   logger?: (message: string) => void;
+  /**
+   * Restored from the host state file. It is the only update fact worth
+   * carrying across a restart: a provider-dependent status such as
+   * update_available cannot be acted on in a new process without checking
+   * again, so restoring it would offer a download the manager cannot perform.
+   */
+  initialLastCheckedAt?: string | null;
 }
 
 export interface DesktopUpdateManager {
@@ -243,7 +250,7 @@ export function createDesktopUpdateManager(
   let status: DesktopUpdateStatus = usable ? 'idle' : 'unavailable';
   let availableVersion: string | null = null;
   let releaseSummary: string | null = null;
-  let lastCheckedAt: string | null = null;
+  let lastCheckedAt: string | null = input.initialLastCheckedAt ?? null;
   let progress: DesktopUpdateProgress | null = null;
   let error: DesktopUpdateError | null = null;
 

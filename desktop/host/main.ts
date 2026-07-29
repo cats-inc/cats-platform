@@ -45,7 +45,11 @@ import {
   toDesktopBootstrapStatus,
   updateServiceLogs,
 } from './bootstrapDiagnostics.js';
-import { createDesktopBackgroundState, DesktopHostStateStore } from './hostState.js';
+import {
+  createDesktopBackgroundState,
+  DesktopHostStateStore,
+  readPersistedUpdateLastCheckedAt,
+} from './hostState.js';
 import { createDesktopPackagingPlan } from './packaging.js';
 import { ManagedServiceSupervisor } from './processSupervisor.js';
 import {
@@ -100,6 +104,7 @@ import {
 import {
   createDesktopUpdateCapability,
   createDesktopUpdateManager,
+  createUnavailableDesktopUpdateSnapshot,
   type DesktopUpdateManager,
 } from './updateManager.js';
 import {
@@ -1606,6 +1611,7 @@ async function maybeRecoverFromLateReadyStateChange(): Promise<void> {
  */
 async function createUpdateManagerForLaunch(
   config: DesktopHostConfig,
+  initialLastCheckedAt: string | null = null,
 ): Promise<DesktopUpdateManager> {
   const descriptor = await loadDesktopReleaseDescriptor();
   const identity = resolveDesktopDistributionIdentity({
@@ -1632,6 +1638,7 @@ async function createUpdateManagerForLaunch(
   return createDesktopUpdateManager({
     capability,
     adapter,
+    initialLastCheckedAt,
     logger: (message) => {
       process.stdout.write(`${message}\n`);
     },
@@ -2069,13 +2076,14 @@ async function main(): Promise<void> {
     const defaultBackground = applyEffectiveBackgroundPreferences(
       createDesktopBackgroundState(hostConfig),
     );
-    updateManager = await createUpdateManagerForLaunch(hostConfig);
-    const defaultUpdates = updateManager.getSnapshot();
+    // Built once with no restored history so the state file can be read; the
+    // manager is rebuilt below with the restored last-check time.
+    const provisionalUpdates = createUnavailableDesktopUpdateSnapshot(DESKTOP_HOST_VERSION);
     const defaultPackaging = buildHostPackagingPlan(hostConfig);
     const defaultSetup = createEmptyDesktopSetupState();
     const restoredState = await stateStore.load(hostConfig, {
       background: defaultBackground,
-      updates: defaultUpdates,
+      updates: provisionalUpdates,
       packaging: defaultPackaging,
       setup: defaultSetup,
     });
@@ -2090,7 +2098,14 @@ async function main(): Promise<void> {
         lastHiddenAt: new Date().toISOString(),
       };
     }
-    updateState = restoredState?.updates ?? defaultUpdates;
+    // One owner: the manager holds update state and the host snapshot mirrors
+    // it. Only the last-check time crosses a restart, because every status is
+    // provider-dependent and cannot be acted on without checking again.
+    updateManager = await createUpdateManagerForLaunch(
+      hostConfig,
+      readPersistedUpdateLastCheckedAt(restoredState?.updates),
+    );
+    updateState = updateManager.getSnapshot();
     detachUpdateBroadcast = createDesktopUpdateSnapshotBroadcast({
       manager: updateManager,
       resolveMainWindowWebContents: () => mainWindow?.webContents ?? null,

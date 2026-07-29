@@ -13,11 +13,18 @@ import {
 } from '../build/desktop/bootstrapDiagnostics.js';
 import { DESKTOP_HOST_NAME } from '../build/desktop/contracts.js';
 import { DESKTOP_HOST_VERSION } from '../build/desktop/hostVersion.js';
-import { createDesktopBackgroundState, DesktopHostStateStore } from '../build/desktop/hostState.js';
+import {
+  createDesktopBackgroundState,
+  DesktopHostStateStore,
+  readPersistedUpdateLastCheckedAt,
+} from '../build/desktop/hostState.js';
 import { buildDesktopBootstrapSnapshot } from '../build/desktop/readiness.js';
 import { createDesktopPackagingPlan } from '../build/desktop/packaging.js';
 import { createEmptyDesktopSetupState } from '../build/desktop/setupBridge.js';
-import { createUnavailableDesktopUpdateSnapshot } from '../build/desktop/updateManager.js';
+import {
+  createDesktopUpdateManager,
+  createUnavailableDesktopUpdateSnapshot,
+} from '../build/desktop/updateManager.js';
 
 function readyService(name, healthUrl) {
   return {
@@ -518,7 +525,17 @@ test('DesktopHostStateStore never restores an in-progress download or install', 
   const setup = createEmptyDesktopSetupState();
   const store = new DesktopHostStateStore(config.paths.hostStatePath);
 
-  for (const transientStatus of ['checking', 'downloading', 'installing', 'failed']) {
+  // Every status is provider-dependent, so none of them is restored — not the
+  // in-flight ones and not update_available either, which cannot be downloaded
+  // in a new process without checking again.
+  for (const transientStatus of [
+    'checking',
+    'downloading',
+    'installing',
+    'failed',
+    'update_available',
+    'up_to_date',
+  ]) {
     await mkdir(join(config.paths.hostStatePath, '..'), { recursive: true });
     await writeFile(config.paths.hostStatePath, JSON.stringify({
       snapshot: {
@@ -546,5 +563,77 @@ test('DesktopHostStateStore never restores an in-progress download or install', 
     assert.ok(loaded, transientStatus);
     assert.equal(loaded?.updates.status, updates.status, transientStatus);
     assert.equal(loaded?.updates.progress, null, transientStatus);
+    assert.equal(loaded?.updates.availableVersion, null, transientStatus);
   }
+});
+
+test('DesktopHostStateStore restores only the last update check time', async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-host-state-lastchecked-'));
+  const config = resolveDesktopHostConfig({
+    env: {},
+    packageRoot: workingDir,
+    userDataDir: join(workingDir, 'user-data'),
+    catsHomeDir: join(workingDir, '.cats'),
+  });
+  const background = createDesktopBackgroundState(config);
+  const updates = createUnavailableDesktopUpdateSnapshot(DESKTOP_HOST_VERSION);
+  const packaging = createDesktopPackagingPlan(config);
+  const setup = createEmptyDesktopSetupState();
+  const store = new DesktopHostStateStore(config.paths.hostStatePath);
+
+  const persistedUpdates = {
+    ...updates,
+    status: 'update_available',
+    availableVersion: '9.9.9',
+    releaseSummary: 'Should not survive',
+    lastCheckedAt: '2026-07-29T08:00:00.000Z',
+  };
+
+  await mkdir(join(config.paths.hostStatePath, '..'), { recursive: true });
+  await writeFile(config.paths.hostStatePath, JSON.stringify({
+    snapshot: {
+      service: DESKTOP_HOST_NAME,
+      version: DESKTOP_HOST_VERSION,
+      timestamp: '2026-07-29T09:10:00.000Z',
+      phase: 'checking_prerequisites',
+      status: 'degraded',
+      summary: 'Restored snapshot.',
+      background,
+      updates: persistedUpdates,
+      packaging,
+      setup,
+      hostStatePath: config.paths.hostStatePath,
+    },
+    background,
+    updates: persistedUpdates,
+    packaging,
+    setup,
+    savedAt: '2026-07-29T09:12:00.000Z',
+  }, null, 2));
+
+  const loaded = await store.load(config, { background, updates, packaging, setup });
+
+  assert.ok(loaded);
+  assert.equal(loaded?.updates.lastCheckedAt, '2026-07-29T08:00:00.000Z');
+  assert.equal(loaded?.updates.availableVersion, null);
+  assert.equal(loaded?.updates.releaseSummary, null);
+  assert.equal(loaded?.updates.status, updates.status);
+
+  assert.equal(
+    readPersistedUpdateLastCheckedAt(loaded?.updates),
+    '2026-07-29T08:00:00.000Z',
+  );
+  assert.equal(readPersistedUpdateLastCheckedAt(null), null);
+  assert.equal(readPersistedUpdateLastCheckedAt({ lastCheckedAt: 'nope' }), null);
+});
+
+test('the update manager seeds its last check time from restored state', () => {
+  const manager = createDesktopUpdateManager({
+    capability: createUnavailableDesktopUpdateSnapshot('0.2.0').capability,
+    adapter: null,
+    initialLastCheckedAt: '2026-07-29T08:00:00.000Z',
+  });
+
+  assert.equal(manager.getSnapshot().lastCheckedAt, '2026-07-29T08:00:00.000Z');
+  assert.equal(manager.getSnapshot().status, 'unavailable');
 });
