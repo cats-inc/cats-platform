@@ -912,7 +912,10 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /case 'linux':/);
   assert.match(script, /macos:\s*\['dmg', 'pkg', 'zip'\]/);
   assert.match(script, /linux:\s*\['AppImage', 'deb', 'tar\.gz'\]/);
-  assert.match(script, /candidate\.toLowerCase\(\) === formatOverride\.toLowerCase\(\)/);
+  assert.match(script, /candidate\.toLowerCase\(\) === value\.toLowerCase\(\)/);
+  // Multiple formats per platform: macOS ships the DMG users install plus the
+  // ZIP electron-updater reads.
+  assert.match(script, /export function normalizeFormats\(target, formatOverride\)/);
   assert.match(script, /--mac/);
   assert.match(script, /--linux/);
   assert.match(script, /npm-cli\.js/);
@@ -1001,6 +1004,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
     sidecarLayout: 'split',
     skipMobile: false,
     releaseMode: false,
+    publish: 'never',
   });
   assert.deepEqual(
     parseBuildDesktopInstallerArgs(['--target', 'linux', '--arch', 'arm64', '--format', 'deb', '--sidecar-layout', 'bundle'], {}),
@@ -1012,6 +1016,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       sidecarLayout: 'bundle',
       skipMobile: false,
       releaseMode: false,
+      publish: 'never',
     },
   );
   assert.deepEqual(
@@ -1024,6 +1029,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       sidecarLayout: 'bundle',
       skipMobile: false,
       releaseMode: false,
+      publish: 'never',
     },
   );
   assert.deepEqual(
@@ -1036,6 +1042,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       sidecarLayout: 'split',
       skipMobile: true,
       releaseMode: false,
+      publish: 'never',
     },
   );
   assert.deepEqual(
@@ -1048,6 +1055,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       sidecarLayout: 'split',
       skipMobile: true,
       releaseMode: false,
+      publish: 'never',
     },
   );
   assert.deepEqual(
@@ -1060,6 +1068,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       sidecarLayout: 'split',
       skipMobile: false,
       releaseMode: false,
+      publish: 'never',
     },
   );
 });

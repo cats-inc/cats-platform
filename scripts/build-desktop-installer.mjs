@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import process from 'node:process';
-import { access, copyFile, mkdir, rm, writeFile } from 'node:fs/promises';
+import { access, copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
@@ -34,16 +34,20 @@ Options:
   --sidecar-layout <split|bundle>         Choose loose-file or bundled sidecars for both app/runtime.
   --skip-mobile                           Skip the mobile bundle (\`expo export\`). Also honored via
                                           CATS_SKIP_MOBILE=1 in the environment or .env.
-  --release                               Build in release mode: publish to the configured GitHub
-                                          provider and allow signing identity discovery. Requires a
-                                          stable vX.Y.Z tag and a GitHub token. Also honored via
-                                          CATS_DESKTOP_RELEASE_MODE=1.
+  --release                               Build an official release package: embed the release
+                                          descriptor, require platform signing credentials, and
+                                          allow signing identity discovery. Requires a GitHub
+                                          Actions tag run whose tag matches the package version.
+                                          Also honored via CATS_DESKTOP_RELEASE_MODE=1.
+  --publish <never|always>                Publish policy, default never. Requires --release and a
+                                          GitHub token. Also honored via CATS_DESKTOP_PUBLISH.
   --help                                  Show this help text.
 
 Without --arch/--format, the electron-builder target matrix from package.json is preserved.
 
-Local packaging never publishes and never discovers signing identities. Release mode is intended
-for the tag-gated desktop release workflow only.
+Release mode and publishing are orthogonal: a tag build is official and publishes, the workflow
+dry run is official and does not, and local packaging is neither. Local packaging never publishes
+and never discovers signing identities.
 `);
 }
 
@@ -53,6 +57,20 @@ function parseBooleanFlag(value) {
   }
   const normalized = value.trim().toLowerCase();
   return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+}
+
+/**
+ * Publishing is orthogonal to building an official package. A tag build is
+ * official and publishes; the workflow dry run is official and does not.
+ */
+export function resolvePublishPolicy(value) {
+  if (value === undefined || value === null || value === '') {
+    return 'never';
+  }
+  if (value === 'never' || value === 'always') {
+    return value;
+  }
+  throw new Error(`Unsupported publish policy: ${value}`);
 }
 
 function resolveSidecarLayout(value) {
@@ -72,11 +90,12 @@ export function parseArgs(argv, env = process.env) {
   let sidecarLayout = resolveSidecarLayout(env.CATS_DESKTOP_SIDECAR_LAYOUT);
   let skipMobile = parseBooleanFlag(env.CATS_SKIP_MOBILE);
   let releaseMode = parseBooleanFlag(env.CATS_DESKTOP_RELEASE_MODE);
+  let publish = resolvePublishPolicy(env.CATS_DESKTOP_PUBLISH);
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') {
-      return { help: true, target, arch, format, sidecarLayout, skipMobile, releaseMode };
+      return { help: true, target, arch, format, sidecarLayout, skipMobile, releaseMode, publish };
     }
     if (value === '--release') {
       releaseMode = true;
@@ -84,6 +103,11 @@ export function parseArgs(argv, env = process.env) {
     }
     if (value === '--no-release') {
       releaseMode = false;
+      continue;
+    }
+    if (value === '--publish') {
+      publish = resolvePublishPolicy(argv[index + 1] ?? '');
+      index += 1;
       continue;
     }
     if (value === '--target') {
@@ -117,7 +141,7 @@ export function parseArgs(argv, env = process.env) {
     throw new Error(`Unknown option: ${value}`);
   }
 
-  return { help: false, target, arch, format, sidecarLayout, skipMobile, releaseMode };
+  return { help: false, target, arch, format, sidecarLayout, skipMobile, releaseMode, publish };
 }
 
 async function resolveNodeCliScript(command) {
@@ -201,13 +225,69 @@ export function hasWindowsSigningCredentials(env = process.env) {
   return typeof link === 'string' && link.trim() !== '';
 }
 
+export function hasMacosSigningCredentials(env = process.env) {
+  const link = env.CSC_LINK;
+  return typeof link === 'string' && link.trim() !== '';
+}
+
+/**
+ * Signing is a release gate, not a nice-to-have.
+ *
+ * SPEC-111 section 9 forbids advertising stable self-update on Windows or
+ * macOS before signing is available and validated, and the workflow publishes
+ * whatever the platform job produced. Without this check a missing secret would
+ * quietly ship unsigned stable binaries.
+ */
+export function resolveSigningProblems({ env = process.env, target } = {}) {
+  if (target === 'windows' && !hasWindowsSigningCredentials(env)) {
+    return [{
+      code: 'release_windows_signing_missing',
+      message: 'An official Windows release requires WIN_CSC_LINK or CSC_LINK.',
+    }];
+  }
+
+  if (target === 'macos' && !hasMacosSigningCredentials(env)) {
+    return [{
+      code: 'release_macos_signing_missing',
+      message: 'An official macOS release requires CSC_LINK.',
+    }];
+  }
+
+  return [];
+}
+
 /**
  * Release mode is only meaningful inside the tag-gated workflow. Anything else
- * would publish artifacts from an unreviewed tree, so the inputs are checked
- * before any platform build work starts.
+ * would build an official-looking package from an unreviewed tree, so the
+ * inputs are checked before any platform build work starts.
+ *
+ * `.env` is loaded at module scope for developer convenience, which means
+ * CATS_DESKTOP_RELEASE_MODE alone must never be enough. The checks below
+ * require the surrounding workflow to be real: a GitHub Actions run, on a tag
+ * ref, whose tag matches the package version.
  */
-export function resolveReleaseModeProblems({ env = process.env, tag = null } = {}) {
+export function resolveReleaseModeProblems({
+  env = process.env,
+  tag = null,
+  target = null,
+  packageVersion = null,
+  publish = 'never',
+} = {}) {
   const problems = [];
+
+  if (env.GITHUB_ACTIONS !== 'true') {
+    problems.push({
+      code: 'release_not_in_workflow',
+      message: 'Release mode only runs inside GitHub Actions (GITHUB_ACTIONS=true).',
+    });
+  }
+
+  if (env.GITHUB_REF_TYPE !== undefined && env.GITHUB_REF_TYPE !== 'tag') {
+    problems.push({
+      code: 'release_ref_not_tag',
+      message: `Release mode requires a tag ref, but GITHUB_REF_TYPE is '${env.GITHUB_REF_TYPE}'.`,
+    });
+  }
 
   const candidateTag = typeof tag === 'string' && tag.trim() !== ''
     ? tag
@@ -218,14 +298,25 @@ export function resolveReleaseModeProblems({ env = process.env, tag = null } = {
       code: `release_${parsedTag.code}`,
       message: `Release mode requires a stable vX.Y.Z tag. ${parsedTag.message}`,
     });
+  } else if (typeof packageVersion === 'string' && packageVersion !== parsedTag.version) {
+    problems.push({
+      code: 'release_version_mismatch',
+      message: `Tag ${parsedTag.tag} does not match package version ${packageVersion}.`,
+    });
   }
 
-  const token = env.GH_TOKEN ?? env.GITHUB_TOKEN;
-  if (typeof token !== 'string' || token.trim() === '') {
-    problems.push({
-      code: 'release_token_missing',
-      message: 'Release mode requires GH_TOKEN or GITHUB_TOKEN for the GitHub publish provider.',
-    });
+  problems.push(...resolveSigningProblems({ env, target }));
+
+  // Only publishing needs a token; an official build that stays local (the
+  // workflow dry run) does not.
+  if (publish !== 'never') {
+    const token = env.GH_TOKEN ?? env.GITHUB_TOKEN;
+    if (typeof token !== 'string' || token.trim() === '') {
+      problems.push({
+        code: 'release_token_missing',
+        message: 'Publishing requires GH_TOKEN or GITHUB_TOKEN for the GitHub provider.',
+      });
+    }
   }
 
   return problems;
@@ -376,22 +467,34 @@ const VALID_ARCHES = {
   linux: ['x64', 'arm64'],
 };
 
-function normalizeFormat(target, formatOverride) {
-  if (formatOverride === null) {
+/**
+ * Accepts a single format or a comma-separated list. macOS needs both the DMG
+ * users install and the ZIP electron-updater reads, so the release matrix
+ * cannot be expressed with one format per platform.
+ */
+export function normalizeFormats(target, formatOverride) {
+  if (formatOverride === null || formatOverride === undefined || formatOverride === '') {
     return null;
   }
 
-  const canonicalFormat = PLATFORM_FORMATS[target].find(
-    (candidate) => candidate.toLowerCase() === formatOverride.toLowerCase(),
-  );
-
-  if (!canonicalFormat) {
-    throw new Error(
-      `Unsupported format '${formatOverride}' for ${target}. Valid: ${PLATFORM_FORMATS[target].join(', ')}`,
-    );
+  const requested = String(formatOverride).split(',').map((value) => value.trim()).filter(Boolean);
+  if (requested.length === 0) {
+    return null;
   }
 
-  return canonicalFormat;
+  return requested.map((value) => {
+    const canonicalFormat = PLATFORM_FORMATS[target].find(
+      (candidate) => candidate.toLowerCase() === value.toLowerCase(),
+    );
+
+    if (!canonicalFormat) {
+      throw new Error(
+        `Unsupported format '${value}' for ${target}. Valid: ${PLATFORM_FORMATS[target].join(', ')}`,
+      );
+    }
+
+    return canonicalFormat;
+  });
 }
 
 export function electronBuilderArgs(target, archOverride, formatOverride, options = {}) {
@@ -402,18 +505,19 @@ export function electronBuilderArgs(target, archOverride, formatOverride, option
   }
 
   const releaseMode = options.releaseMode === true;
+  const publish = resolvePublishPolicy(options.publish ?? 'never');
   const signWindowsExecutable = options.signWindowsExecutable === true;
-  const format = normalizeFormat(target, formatOverride);
+  const formats = normalizeFormats(target, formatOverride);
   const platformFlag = target === 'windows' ? '--win' : target === 'macos' ? '--mac' : '--linux';
   const args = ['electron-builder', platformFlag];
 
-  if (format !== null) {
-    args.push(format);
+  if (formats !== null) {
+    args.push(...formats);
   } else if (archOverride !== null) {
     args.push(...PLATFORM_FORMATS[target], `--${archOverride}`);
   }
 
-  if (format !== null && archOverride !== null) {
+  if (formats !== null && archOverride !== null) {
     args.push(`--${archOverride}`);
   }
 
@@ -424,7 +528,7 @@ export function electronBuilderArgs(target, archOverride, formatOverride, option
     args.push('-c.win.signAndEditExecutable=true');
   }
 
-  args.push('--publish', releaseMode ? 'always' : 'never');
+  args.push('--publish', publish);
   return args;
 }
 
@@ -438,8 +542,20 @@ async function main() {
   const resolvedTarget = resolveBuilderTarget(parsed.target);
   const envOptions = { releaseMode: parsed.releaseMode };
 
+  if (parsed.publish !== 'never' && !parsed.releaseMode) {
+    throw new Error('Publishing requires --release; an unofficial build must never publish.');
+  }
+
   if (parsed.releaseMode) {
-    const problems = resolveReleaseModeProblems({ env: process.env });
+    const { version: packageVersion } = JSON.parse(
+      await readFile(resolve(PROJECT_ROOT, 'package.json'), 'utf8'),
+    );
+    const problems = resolveReleaseModeProblems({
+      env: process.env,
+      target: resolvedTarget,
+      packageVersion,
+      publish: parsed.publish,
+    });
     if (problems.length > 0) {
       throw new Error(
         `Release mode inputs are not valid:\n${problems
@@ -448,7 +564,8 @@ async function main() {
       );
     }
     process.stdout.write(
-      `[build-desktop-installer] release mode active for ${process.env.GITHUB_REF_NAME}.\n`,
+      `[build-desktop-installer] official ${resolvedTarget} build for `
+        + `${process.env.GITHUB_REF_NAME} (publish=${parsed.publish}).\n`,
     );
   }
 
@@ -499,6 +616,7 @@ async function main() {
     'npx',
     electronBuilderArgs(resolvedTarget, parsed.arch, parsed.format, {
       releaseMode: parsed.releaseMode,
+      publish: parsed.publish,
       signWindowsExecutable: hasWindowsSigningCredentials(process.env),
     }),
     PROJECT_ROOT,
