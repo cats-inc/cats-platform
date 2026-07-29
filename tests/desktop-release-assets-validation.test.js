@@ -4,13 +4,14 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import {
+  DESKTOP_RELEASE_MATRIX,
   PRIMARY_ARTIFACT_PATTERNS,
   UPDATE_METADATA_FILES,
   collectReferencedFiles,
   parseArgs,
   resolveMissingMetadataFiles,
   resolveDisallowedArtifacts,
-  resolveForbiddenArchitectureArtifacts,
+  resolveUnreleasedArchitectureArtifacts,
   resolveMissingPrimaryArtifacts,
   validateReleaseAssets,
 } from '../scripts/validate-release-assets.mjs';
@@ -89,7 +90,7 @@ test('artifacts outside the release contract fail validation', () => {
   }
 });
 
-test('artifacts for an unreleased architecture fail validation', () => {
+test('an architecture the declared set omits fails validation', () => {
   const result = validateReleaseAssets({
     files: [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-arm64.AppImage'],
     metadataDocuments: completeDocuments(),
@@ -99,15 +100,73 @@ test('artifacts for an unreleased architecture fail validation', () => {
   assert.equal(problemCodes(result).includes('artifact_architecture_not_released'), true);
 });
 
+test('widening the declared set is all it takes to ship another architecture', () => {
+  // The rule is "what we declared", not "arm64 is forbidden". Declaring it
+  // makes the same artifact valid without touching the validator.
+  const widened = DESKTOP_RELEASE_MATRIX.map((entry) => (entry.platform === 'linux'
+    ? { ...entry, arches: [...entry.arches, 'arm64'] }
+    : entry));
+
+  const names = [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-arm64.AppImage']
+    .map((path) => path.split('/').pop());
+
+  assert.deepEqual(resolveUnreleasedArchitectureArtifacts(names, widened), []);
+  assert.deepEqual(resolveDisallowedArtifacts(names, widened), []);
+  // Still rejected under the current declaration.
+  assert.deepEqual(
+    resolveUnreleasedArchitectureArtifacts(names),
+    ['Cats-0.2.0-arm64.AppImage'],
+  );
+});
+
+test('widening the declared set is all it takes to ship another format', () => {
+  const widened = DESKTOP_RELEASE_MATRIX.map((entry) => (entry.platform === 'linux'
+    ? { ...entry, formats: [...entry.formats, 'deb'] }
+    : entry));
+  const names = [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-amd64.deb']
+    .map((path) => path.split('/').pop());
+
+  assert.deepEqual(resolveDisallowedArtifacts(names, widened), []);
+  assert.deepEqual(resolveDisallowedArtifacts(names), ['Cats-0.2.0-amd64.deb']);
+});
+
 test('the declared release set is fully allowed', () => {
+  const names = COMPLETE_FILES.map((path) => path.split('/').pop());
+
+  assert.deepEqual(resolveDisallowedArtifacts(names), []);
+  assert.deepEqual(resolveUnreleasedArchitectureArtifacts(names), []);
+});
+
+test('an artifact with no recognizable architecture token is not guessed at', () => {
   assert.deepEqual(
-    resolveDisallowedArtifacts(COMPLETE_FILES.map((path) => path.split('/').pop())),
+    resolveUnreleasedArchitectureArtifacts(['Cats-0.2.0-setup.exe', 'Cats.AppImage']),
     [],
   );
-  assert.deepEqual(
-    resolveForbiddenArchitectureArtifacts(COMPLETE_FILES.map((path) => path.split('/').pop())),
-    [],
+});
+
+test('the workflow matrix matches the declared release set', async () => {
+  const workflow = await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
+    'utf8',
   );
+
+  for (const entry of DESKTOP_RELEASE_MATRIX) {
+    const block = workflow.slice(workflow.indexOf(`platform: ${entry.platform}`));
+    const extraArgs = block.slice(0, block.indexOf('\n          - platform') + 1 || undefined);
+
+    assert.match(
+      extraArgs,
+      new RegExp(`--format ${entry.formats.join(',')}\\b`, 'u'),
+      `${entry.platform} formats drifted from DESKTOP_RELEASE_MATRIX`,
+    );
+    for (const arch of entry.arches) {
+      assert.match(
+        extraArgs,
+        new RegExp(`--arch ${arch}\\b`, 'u'),
+        `${entry.platform} arch ${arch} drifted from DESKTOP_RELEASE_MATRIX`,
+      );
+    }
+  }
 });
 
 test('a missing primary artifact fails validation per platform', () => {

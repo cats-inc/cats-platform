@@ -105,23 +105,63 @@ export function collectReferencedFiles(document) {
 }
 
 /**
- * Anything an official release may contain. Everything else is a contract
- * violation: electron-builder happily produces PKG, DEB, tar.gz, and arm64
- * builds from the package.json matrix, and `--publish always` would upload
- * them to the draft before this validator ever runs.
+ * The declared release set.
+ *
+ * This is the single source of truth for what an official release may contain.
+ * It is not a statement that other formats or architectures are undesirable —
+ * it is a statement of what this release publishes, so `--publish always`
+ * cannot quietly upload something the release page never promised.
+ *
+ * Widening the release set is one edit here plus the matching workflow matrix
+ * entry. A drift test keeps the two aligned, so adding, say, a Linux arm64
+ * AppImage is a deliberate two-line change rather than something the validator
+ * refuses on principle.
  */
-export const ALLOWED_ARTIFACT_PATTERNS = [
-  /\.exe$/iu,
-  /\.exe\.blockmap$/iu,
-  /\.dmg$/iu,
-  /\.dmg\.blockmap$/iu,
-  /-mac\.zip$/iu,
-  /-mac\.zip\.blockmap$/iu,
-  /\.AppImage$/iu,
-  /^latest(-mac|-linux)?\.yml$/iu,
+export const DESKTOP_RELEASE_MATRIX = [
+  { platform: 'windows', formats: ['nsis'], arches: ['x64'] },
+  { platform: 'macos', formats: ['dmg', 'zip'], arches: ['universal'] },
+  { platform: 'linux', formats: ['AppImage'], arches: ['x64'] },
 ];
 
-export const FORBIDDEN_ARCHITECTURE = /(^|[-_.])(arm64|aarch64|ia32|armv7l)([-_.]|$)/iu;
+const FORMAT_EXTENSIONS = {
+  nsis: ['.exe'],
+  dmg: ['.dmg'],
+  // electron-builder names the macOS updater archive with a -mac suffix.
+  zip: ['-mac.zip'],
+  AppImage: ['.AppImage'],
+  deb: ['.deb'],
+  'tar.gz': ['.tar.gz'],
+  pkg: ['.pkg'],
+};
+
+// electron-builder spells the same architecture differently per target.
+const ARCH_TOKENS = {
+  x64: ['x64', 'x86_64', 'amd64'],
+  arm64: ['arm64', 'aarch64'],
+  ia32: ['ia32', 'i386'],
+  armv7l: ['armv7l'],
+  universal: ['universal'],
+};
+
+const ALL_ARCH_TOKENS = Object.values(ARCH_TOKENS).flat();
+
+function releasedExtensions(matrix = DESKTOP_RELEASE_MATRIX) {
+  return matrix.flatMap((entry) => entry.formats.flatMap(
+    (format) => FORMAT_EXTENSIONS[format] ?? [],
+  ));
+}
+
+function releasedArchTokens(matrix = DESKTOP_RELEASE_MATRIX) {
+  return matrix.flatMap((entry) => entry.arches.flatMap((arch) => ARCH_TOKENS[arch] ?? [arch]));
+}
+
+function isUpdateMetadata(name) {
+  return UPDATE_METADATA_FILES.includes(name);
+}
+
+function stripBlockmap(name) {
+  return name.endsWith('.blockmap') ? name.slice(0, -'.blockmap'.length) : name;
+}
 
 export function resolveMissingPrimaryArtifacts(fileNames) {
   return PRIMARY_ARTIFACT_PATTERNS
@@ -129,14 +169,47 @@ export function resolveMissingPrimaryArtifacts(fileNames) {
     .map(({ platform }) => platform);
 }
 
-export function resolveDisallowedArtifacts(fileNames) {
-  return fileNames.filter((name) => !ALLOWED_ARTIFACT_PATTERNS.some(
-    (pattern) => pattern.test(name),
-  ));
+/**
+ * Flags artifacts whose format is not part of the declared release set.
+ * Update metadata and the blockmaps that accompany a released artifact are
+ * always allowed.
+ */
+export function resolveDisallowedArtifacts(fileNames, matrix = DESKTOP_RELEASE_MATRIX) {
+  const extensions = releasedExtensions(matrix);
+
+  return fileNames.filter((name) => {
+    if (isUpdateMetadata(name)) {
+      return false;
+    }
+    const base = stripBlockmap(name);
+    return !extensions.some((extension) => base.toLowerCase().endsWith(extension.toLowerCase()));
+  });
 }
 
-export function resolveForbiddenArchitectureArtifacts(fileNames) {
-  return fileNames.filter((name) => FORBIDDEN_ARCHITECTURE.test(name));
+/**
+ * Flags artifacts built for an architecture the declared release set does not
+ * include. An artifact whose name carries no recognizable architecture token is
+ * left alone rather than guessed at.
+ */
+export function resolveUnreleasedArchitectureArtifacts(
+  fileNames,
+  matrix = DESKTOP_RELEASE_MATRIX,
+) {
+  const released = releasedArchTokens(matrix).map((token) => token.toLowerCase());
+
+  return fileNames.filter((name) => {
+    if (isUpdateMetadata(name)) {
+      return false;
+    }
+    const lowered = name.toLowerCase();
+    const present = ALL_ARCH_TOKENS.filter(
+      (token) => new RegExp(`(^|[-_.])${token}([-_.]|$)`, 'iu').test(lowered),
+    );
+    if (present.length === 0) {
+      return false;
+    }
+    return !present.some((token) => released.includes(token.toLowerCase()));
+  });
 }
 
 export function resolveMissingMetadataFiles(fileNames) {
@@ -193,14 +266,16 @@ export function validateReleaseAssets({ files, metadataDocuments }) {
   for (const name of resolveDisallowedArtifacts(fileNames)) {
     problems.push({
       code: 'artifact_outside_release_contract',
-      message: `${name} is not one of the declared release artifacts.`,
+      message: `${name} is not one of the declared release artifacts. `
+        + 'Add its format to DESKTOP_RELEASE_MATRIX if it should ship.',
     });
   }
 
-  for (const name of resolveForbiddenArchitectureArtifacts(fileNames)) {
+  for (const name of resolveUnreleasedArchitectureArtifacts(fileNames)) {
     problems.push({
       code: 'artifact_architecture_not_released',
-      message: `${name} targets an architecture outside the Phase 1 release matrix.`,
+      message: `${name} targets an architecture the declared release set does not include. `
+        + 'Add it to DESKTOP_RELEASE_MATRIX if it should ship.',
     });
   }
 
