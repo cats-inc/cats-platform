@@ -126,8 +126,10 @@ export const DESKTOP_RELEASE_MATRIX = [
 const FORMAT_EXTENSIONS = {
   nsis: ['.exe'],
   dmg: ['.dmg'],
-  // electron-builder names the macOS updater archive with a -mac suffix.
-  zip: ['-mac.zip'],
+  // The updater archive is named from this repository's artifactName template,
+  // which produces Cats-<version>-universal.zip rather than the -mac.zip
+  // default some electron-builder setups emit.
+  zip: ['.zip'],
   AppImage: ['.AppImage'],
   deb: ['.deb'],
   'tar.gz': ['.tar.gz'],

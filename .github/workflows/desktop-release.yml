@@ -260,6 +260,11 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      # The validator parses the generated YAML with js-yaml, which is a
+      # production dependency, so the job needs an install of its own.
+      - name: Install dependencies
+        run: npm ci --omit=dev
+
       - name: Download every platform's artifacts
         uses: actions/download-artifact@v4
         with:

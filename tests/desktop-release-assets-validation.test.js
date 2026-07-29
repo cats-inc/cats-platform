@@ -16,15 +16,20 @@ import {
   validateReleaseAssets,
 } from '../scripts/validate-release-assets.mjs';
 
+// Taken from a real preview run rather than invented. An earlier fixture
+// guessed the macOS archive was named -mac.zip, which let the validator pass
+// its tests while rejecting the artifact the workflow actually produces.
 const COMPLETE_FILES = [
-  'collected/release-windows/Cats-0.2.0-setup-x64.exe',
-  'collected/release-windows/Cats-0.2.0-setup-x64.exe.blockmap',
-  'collected/release-windows/latest.yml',
-  'collected/release-macos/Cats-0.2.0-universal.dmg',
-  'collected/release-macos/Cats-0.2.0-universal-mac.zip',
-  'collected/release-macos/latest-mac.yml',
-  'collected/release-linux/Cats-0.2.0-x86_64.AppImage',
-  'collected/release-linux/latest-linux.yml',
+  'collected/unsigned-preview-windows/Cats-0.2.0-setup-x64.exe',
+  'collected/unsigned-preview-windows/Cats-0.2.0-setup-x64.exe.blockmap',
+  'collected/unsigned-preview-windows/latest.yml',
+  'collected/unsigned-preview-macos/Cats-0.2.0-universal.dmg',
+  'collected/unsigned-preview-macos/Cats-0.2.0-universal.dmg.blockmap',
+  'collected/unsigned-preview-macos/Cats-0.2.0-universal.zip',
+  'collected/unsigned-preview-macos/Cats-0.2.0-universal.zip.blockmap',
+  'collected/unsigned-preview-macos/latest-mac.yml',
+  'collected/unsigned-preview-linux/Cats-0.2.0-x86_64.AppImage',
+  'collected/unsigned-preview-linux/latest-linux.yml',
 ];
 
 function withExtraFile(name) {
@@ -40,8 +45,12 @@ function metadata(name, overrides = {}) {
     },
     'latest-mac.yml': {
       version: '0.2.0',
-      path: 'Cats-0.2.0-universal-mac.zip',
-      files: [{ url: 'Cats-0.2.0-universal-mac.zip' }],
+      // The real feed lists both the updater archive and the DMG.
+      path: 'Cats-0.2.0-universal.zip',
+      files: [
+        { url: 'Cats-0.2.0-universal.zip' },
+        { url: 'Cats-0.2.0-universal.dmg' },
+      ],
     },
     'latest-linux.yml': {
       version: '0.2.0',
