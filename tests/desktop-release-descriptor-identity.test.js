@@ -18,6 +18,7 @@ import {
 } from '../scripts/generate-desktop-release-descriptor.mjs';
 
 const COMMIT = 'a'.repeat(40);
+const RUNTIME_COMMIT = 'b'.repeat(40);
 
 function validDescriptor(overrides = {}) {
   return {
@@ -29,6 +30,7 @@ function validDescriptor(overrides = {}) {
     channel: 'stable',
     provider: 'github_release',
     repository: 'cats-inc/cats-platform',
+    runtimeCommit: RUNTIME_COMMIT,
     generatedAt: '2026-07-28T00:00:00.000Z',
     ...overrides,
   };
@@ -81,6 +83,8 @@ test('release descriptor parsing rejects malformed commit, platform, and reposit
     { platform: 'freebsd' },
     { repository: 'cats-platform' },
     { version: 'not-a-version' },
+    { runtimeCommit: 'abc' },
+    { runtimeCommit: undefined },
   ]) {
     const result = parseDesktopReleaseDescriptor(validDescriptor(overrides));
     assert.equal(result.ok, false, JSON.stringify(overrides));
@@ -209,6 +213,7 @@ test('the release workflow generator emits exactly what the host validator accep
     commit: COMMIT,
     repository: 'cats-inc/cats-platform',
     platform: 'windows',
+    runtimeCommit: RUNTIME_COMMIT,
     generatedAt: '2026-07-28T00:00:00.000Z',
   });
   assert.equal(generated.ok, true);

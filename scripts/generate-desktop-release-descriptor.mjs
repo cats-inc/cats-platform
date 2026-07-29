@@ -66,6 +66,17 @@ update capability check. Local packaging must not run this script.
 `);
 }
 
+// Explicit rather than derived from the flag name, because --runtime-commit
+// does not slice into a valid camelCase key.
+const VALUE_FLAGS = {
+  '--tag': 'tag',
+  '--commit': 'commit',
+  '--repository': 'repository',
+  '--platform': 'platform',
+  '--runtime-commit': 'runtimeCommit',
+  '--output': 'output',
+};
+
 export function resolveDescriptorPlatform(value) {
   const candidate = typeof value === 'string' ? value.trim().toLowerCase() : '';
   return PLATFORM_ALIASES[candidate] ?? null;
@@ -78,6 +89,7 @@ export function parseArgs(argv, env = process.env) {
     commit: (env.GITHUB_SHA ?? '').trim(),
     repository: (env.GITHUB_REPOSITORY ?? '').trim(),
     platform: env.CATS_DESKTOP_RELEASE_PLATFORM ?? process.platform,
+    runtimeCommit: (env.CATS_DESKTOP_RUNTIME_COMMIT ?? '').trim(),
     output: DESCRIPTOR_RELATIVE_PATH,
   };
 
@@ -86,9 +98,8 @@ export function parseArgs(argv, env = process.env) {
     if (value === '--help' || value === '-h') {
       return { ...options, help: true };
     }
-    if (value === '--tag' || value === '--commit' || value === '--repository'
-      || value === '--platform' || value === '--output') {
-      const key = value.slice(2);
+    const key = VALUE_FLAGS[value];
+    if (key !== undefined) {
       options[key] = (argv[index + 1] ?? '').trim();
       index += 1;
       continue;
@@ -109,6 +120,7 @@ export function buildReleaseDescriptor({
   commit,
   repository,
   platform,
+  runtimeCommit,
   generatedAt = null,
 } = {}) {
   const problems = [];
@@ -142,6 +154,19 @@ export function buildReleaseDescriptor({
     });
   }
 
+  // The packaged runtime is a separate repository, so the platform commit
+  // alone does not identify what shipped. Recording it makes a re-run of the
+  // same Cats tag verifiable rather than merely hopeful.
+  const normalizedRuntimeCommit = typeof runtimeCommit === 'string'
+    ? runtimeCommit.trim().toLowerCase()
+    : '';
+  if (!COMMIT_SHA.test(normalizedRuntimeCommit)) {
+    problems.push({
+      code: 'descriptor_runtime_commit_invalid',
+      message: `Runtime commit '${runtimeCommit ?? ''}' is not a full 40-character sha.`,
+    });
+  }
+
   if (problems.length > 0) {
     return { ok: false, descriptor: null, problems };
   }
@@ -160,6 +185,7 @@ export function buildReleaseDescriptor({
       channel: 'stable',
       provider: 'github_release',
       repository: normalizedRepository,
+      runtimeCommit: normalizedRuntimeCommit,
       generatedAt,
     },
   };
@@ -188,6 +214,7 @@ async function main() {
     commit: parsed.commit,
     repository: parsed.repository,
     platform: parsed.platform,
+    runtimeCommit: parsed.runtimeCommit,
     generatedAt: new Date().toISOString(),
   });
 

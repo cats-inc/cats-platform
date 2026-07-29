@@ -15,6 +15,7 @@ import {
 } from '../scripts/generate-desktop-release-descriptor.mjs';
 
 const COMMIT = 'a'.repeat(40);
+const RUNTIME_COMMIT = 'b'.repeat(40);
 
 function validInputs(overrides = {}) {
   return {
@@ -22,6 +23,7 @@ function validInputs(overrides = {}) {
     commit: COMMIT,
     repository: 'cats-inc/cats-platform',
     platform: 'windows',
+    runtimeCommit: RUNTIME_COMMIT,
     ...overrides,
   };
 }
@@ -43,6 +45,7 @@ test('release descriptor records tag, commit, platform, channel, and provider id
     channel: 'stable',
     provider: 'github_release',
     repository: 'cats-inc/cats-platform',
+    runtimeCommit: RUNTIME_COMMIT,
     generatedAt: '2026-07-28T00:00:00.000Z',
   });
 });
@@ -107,12 +110,31 @@ test('release descriptor rejects an unsupported platform', () => {
   );
 });
 
+test('release descriptor requires the packaged runtime commit', () => {
+  for (const runtimeCommit of ['', 'abc1234', RUNTIME_COMMIT.slice(0, 39), 'z'.repeat(40)]) {
+    assert.deepEqual(
+      problemCodes(buildReleaseDescriptor(validInputs({ runtimeCommit }))),
+      ['descriptor_runtime_commit_invalid'],
+      `expected ${runtimeCommit} to be rejected`,
+    );
+  }
+});
+
+test('release descriptor records which runtime checkout was packaged', () => {
+  const result = buildReleaseDescriptor(validInputs({ runtimeCommit: 'B'.repeat(40) }));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.descriptor.runtimeCommit, RUNTIME_COMMIT);
+  assert.notEqual(result.descriptor.runtimeCommit, result.descriptor.commit);
+});
+
 test('release descriptor reports every invalid input at once', () => {
   const result = buildReleaseDescriptor({
     tag: 'main',
     commit: 'nope',
     repository: 'nope',
     platform: 'nope',
+    runtimeCommit: 'nope',
   });
 
   assert.equal(result.ok, false);
@@ -122,6 +144,7 @@ test('release descriptor reports every invalid input at once', () => {
     'descriptor_commit_invalid',
     'descriptor_repository_invalid',
     'descriptor_platform_invalid',
+    'descriptor_runtime_commit_invalid',
   ]);
 });
 
@@ -131,19 +154,21 @@ test('release descriptor args read the workflow environment by default', () => {
     GITHUB_SHA: COMMIT,
     GITHUB_REPOSITORY: 'cats-inc/cats-platform',
     CATS_DESKTOP_RELEASE_PLATFORM: 'linux',
+    CATS_DESKTOP_RUNTIME_COMMIT: RUNTIME_COMMIT,
   });
 
   assert.equal(parsed.tag, 'v0.2.0');
   assert.equal(parsed.commit, COMMIT);
   assert.equal(parsed.repository, 'cats-inc/cats-platform');
   assert.equal(parsed.platform, 'linux');
+  assert.equal(parsed.runtimeCommit, RUNTIME_COMMIT);
   assert.equal(parsed.output, DESCRIPTOR_RELATIVE_PATH);
 });
 
 test('release descriptor args let the release job override every field', () => {
   const parsed = parseArgs(
     ['--tag', 'v1.2.3', '--commit', COMMIT, '--repository', 'o/r', '--platform', 'macos',
-      '--output', 'build/desktop/other.json'],
+      '--runtime-commit', RUNTIME_COMMIT, '--output', 'build/desktop/other.json'],
     {},
   );
 
@@ -153,6 +178,7 @@ test('release descriptor args let the release job override every field', () => {
     commit: COMMIT,
     repository: 'o/r',
     platform: 'macos',
+    runtimeCommit: RUNTIME_COMMIT,
     output: 'build/desktop/other.json',
   });
   assert.throws(() => parseArgs(['--publish'], {}), /Unknown option: --publish/);

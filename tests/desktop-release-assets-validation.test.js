@@ -9,6 +9,8 @@ import {
   collectReferencedFiles,
   parseArgs,
   resolveMissingMetadataFiles,
+  resolveDisallowedArtifacts,
+  resolveForbiddenArchitectureArtifacts,
   resolveMissingPrimaryArtifacts,
   validateReleaseAssets,
 } from '../scripts/validate-release-assets.mjs';
@@ -23,6 +25,10 @@ const COMPLETE_FILES = [
   'collected/release-linux/Cats-0.2.0-x86_64.AppImage',
   'collected/release-linux/latest-linux.yml',
 ];
+
+function withExtraFile(name) {
+  return [...COMPLETE_FILES, `collected/release-macos/${name}`];
+}
 
 function metadata(name, overrides = {}) {
   const byName = {
@@ -61,6 +67,47 @@ test('a complete release passes validation', () => {
 
   assert.equal(result.ok, true, JSON.stringify(result.problems));
   assert.deepEqual(result.problems, []);
+});
+
+test('artifacts outside the release contract fail validation', () => {
+  for (const forbidden of [
+    'Cats-0.2.0-universal.pkg',
+    'Cats-0.2.0-amd64.deb',
+    'Cats-0.2.0-x86_64.tar.gz',
+  ]) {
+    const result = validateReleaseAssets({
+      files: withExtraFile(forbidden),
+      metadataDocuments: completeDocuments(),
+    });
+
+    assert.equal(result.ok, false, forbidden);
+    assert.equal(
+      problemCodes(result).includes('artifact_outside_release_contract'),
+      true,
+      forbidden,
+    );
+  }
+});
+
+test('artifacts for an unreleased architecture fail validation', () => {
+  const result = validateReleaseAssets({
+    files: [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-arm64.AppImage'],
+    metadataDocuments: completeDocuments(),
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(problemCodes(result).includes('artifact_architecture_not_released'), true);
+});
+
+test('the declared release set is fully allowed', () => {
+  assert.deepEqual(
+    resolveDisallowedArtifacts(COMPLETE_FILES.map((path) => path.split('/').pop())),
+    [],
+  );
+  assert.deepEqual(
+    resolveForbiddenArchitectureArtifacts(COMPLETE_FILES.map((path) => path.split('/').pop())),
+    [],
+  );
 });
 
 test('a missing primary artifact fails validation per platform', () => {
@@ -224,4 +271,52 @@ test('the Windows release job passes the bundled sidecar layout explicitly', asy
   );
 
   assert.match(workflow, /platform: windows[\s\S]*?--sidecar-layout bundle/u);
+});
+
+test('the release matrix pins every platform to its contracted formats and arch', async () => {
+  const workflow = await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
+    'utf8',
+  );
+
+  assert.match(workflow, /platform: windows[\s\S]*?--format nsis --arch x64/u);
+  assert.match(workflow, /platform: macos[\s\S]*?--format dmg,zip --arch universal/u);
+  assert.match(workflow, /platform: linux[\s\S]*?--format AppImage --arch x64/u);
+});
+
+test('both repositories are checked out inside the workspace', async () => {
+  const workflow = await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
+    'utf8',
+  );
+
+  // actions/checkout rejects a path outside $GITHUB_WORKSPACE, and the
+  // installer wrapper resolves cats-runtime as a sibling of the platform root.
+  assert.equal(workflow.includes('path: ../cats-runtime'), false);
+  assert.match(workflow, /path: cats-platform/u);
+  assert.match(workflow, /path: cats-runtime/u);
+  assert.match(workflow, /working-directory: cats-runtime\s+run: npm ci/u);
+  assert.match(workflow, /repository: cats-inc\/cats-runtime\s+ref: /u);
+});
+
+test('the dry run builds officially but never publishes', async () => {
+  const workflow = await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
+    'utf8',
+  );
+
+  // --release is unconditional so the dry run exercises the descriptor and the
+  // signing path; only the publish policy depends on whether this is a tag run.
+  assert.match(workflow, /--release\s*\n\s*--publish \$\{\{ needs\.guard\.outputs\.dry_run/u);
+});
+
+test('signatures are verified on the signing platforms before publication', async () => {
+  const workflow = await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
+    'utf8',
+  );
+
+  assert.match(workflow, /Get-AuthenticodeSignature/u);
+  assert.match(workflow, /codesign --verify/u);
+  assert.match(workflow, /spctl --assess/u);
 });

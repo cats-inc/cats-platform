@@ -18,6 +18,11 @@ on:
         description: 'Existing vX.Y.Z tag to dry-run against. Never publishes.'
         required: true
         type: string
+      runtime_ref:
+        description: 'cats-runtime ref to package against.'
+        required: false
+        default: main
+        type: string
 
 permissions:
   contents: read
@@ -97,38 +102,58 @@ jobs:
       # unpublished either way, and partial results make triage easier.
       fail-fast: false
       matrix:
+        # SPEC-111 section 8 names exactly one primary artifact per OS plus the
+        # macOS updater ZIP. Formats and architectures are pinned here so
+        # --publish never uploads PKG, DEB, tar.gz, or arm64 builds that are
+        # outside the release contract.
         include:
           - platform: windows
             runner: windows-latest
-            # SPEC-111 section 8: the official Windows artifact is built with
-            # bundled sidecars rather than the wrapper's split default.
-            extra_args: --sidecar-layout bundle
+            # Bundled sidecars rather than the wrapper's split default.
+            extra_args: --sidecar-layout bundle --format nsis --arch x64
           - platform: macos
             runner: macos-latest
-            extra_args: ''
+            extra_args: --format dmg,zip --arch universal
           - platform: linux
             runner: ubuntu-latest
-            extra_args: ''
+            extra_args: --format AppImage --arch x64
+    defaults:
+      run:
+        working-directory: cats-platform
     steps:
-      - name: Checkout
+      # The installer wrapper resolves cats-runtime as a sibling of the
+      # platform checkout, and actions/checkout refuses any path outside the
+      # workspace. Both repositories therefore live side by side inside it.
+      - name: Checkout cats-platform
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.guard.outputs.tag }}
+          path: cats-platform
 
       - name: Checkout cats-runtime
         uses: actions/checkout@v4
         with:
           repository: cats-inc/cats-runtime
-          path: ../cats-runtime
+          ref: ${{ inputs.runtime_ref || 'main' }}
+          path: cats-runtime
+
+      - name: Record the packaged runtime commit
+        id: runtime
+        working-directory: cats-runtime
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
+          node-version-file: cats-platform/.nvmrc
 
-      - name: Install dependencies
+      - name: Install platform dependencies
+        run: npm ci
+
+      # The wrapper runs `npm run build` inside cats-runtime, which needs its
+      # own dependencies on a clean runner.
+      - name: Install runtime dependencies
+        working-directory: cats-runtime
         run: npm ci
 
       - name: Approve packaged install scripts
@@ -137,10 +162,13 @@ jobs:
       - name: Build installer
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTIONS: 'true'
+          GITHUB_REF_TYPE: tag
           GITHUB_REF_NAME: ${{ needs.guard.outputs.tag }}
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           CATS_DESKTOP_RELEASE_PLATFORM: ${{ matrix.platform }}
+          CATS_DESKTOP_RUNTIME_COMMIT: ${{ steps.runtime.outputs.sha }}
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
@@ -148,23 +176,46 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        # Always an official build so the dry run exercises the descriptor and
+        # the signing path; only a real tag run publishes.
         run: >
           node scripts/build-desktop-installer.mjs
           --target ${{ matrix.platform }}
-          ${{ needs.guard.outputs.dry_run == 'false' && '--release' || '' }}
+          --release
+          --publish ${{ needs.guard.outputs.dry_run == 'false' && 'always' || 'never' }}
           ${{ matrix.extra_args }}
+
+      - name: Verify Windows signature
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem release -Filter *.exe | Select-Object -First 1
+          if (-not $installer) { throw 'No Windows installer was produced.' }
+          $signature = Get-AuthenticodeSignature $installer.FullName
+          Write-Host "status=$($signature.Status) signer=$($signature.SignerCertificate.Subject)"
+          if ($signature.Status -ne 'Valid') {
+            throw "Installer signature is $($signature.Status); refusing to release."
+          }
+
+      - name: Verify macOS signature and notarization
+        if: matrix.platform == 'macos'
+        run: |
+          app=$(find release -maxdepth 3 -name '*.app' | head -1)
+          if [ -z "$app" ]; then echo 'No macOS app bundle was produced.'; exit 1; fi
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type execute --verbose "$app"
 
       - name: Upload artifacts for validation
         uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.platform }}
           path: |
-            release/*.exe
-            release/*.dmg
-            release/*.zip
-            release/*.AppImage
-            release/*.yml
-            release/*.blockmap
+            cats-platform/release/*.exe
+            cats-platform/release/*.dmg
+            cats-platform/release/*.zip
+            cats-platform/release/*.AppImage
+            cats-platform/release/*.yml
+            cats-platform/release/*.blockmap
           if-no-files-found: error
           retention-days: 7
 

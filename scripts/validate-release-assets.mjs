@@ -104,10 +104,39 @@ export function collectReferencedFiles(document) {
   return [...referenced];
 }
 
+/**
+ * Anything an official release may contain. Everything else is a contract
+ * violation: electron-builder happily produces PKG, DEB, tar.gz, and arm64
+ * builds from the package.json matrix, and `--publish always` would upload
+ * them to the draft before this validator ever runs.
+ */
+export const ALLOWED_ARTIFACT_PATTERNS = [
+  /\.exe$/iu,
+  /\.exe\.blockmap$/iu,
+  /\.dmg$/iu,
+  /\.dmg\.blockmap$/iu,
+  /-mac\.zip$/iu,
+  /-mac\.zip\.blockmap$/iu,
+  /\.AppImage$/iu,
+  /^latest(-mac|-linux)?\.yml$/iu,
+];
+
+export const FORBIDDEN_ARCHITECTURE = /(^|[-_.])(arm64|aarch64|ia32|armv7l)([-_.]|$)/iu;
+
 export function resolveMissingPrimaryArtifacts(fileNames) {
   return PRIMARY_ARTIFACT_PATTERNS
     .filter(({ pattern }) => !fileNames.some((name) => pattern.test(name)))
     .map(({ platform }) => platform);
+}
+
+export function resolveDisallowedArtifacts(fileNames) {
+  return fileNames.filter((name) => !ALLOWED_ARTIFACT_PATTERNS.some(
+    (pattern) => pattern.test(name),
+  ));
+}
+
+export function resolveForbiddenArchitectureArtifacts(fileNames) {
+  return fileNames.filter((name) => FORBIDDEN_ARCHITECTURE.test(name));
 }
 
 export function resolveMissingMetadataFiles(fileNames) {
@@ -158,6 +187,20 @@ export function validateReleaseAssets({ files, metadataDocuments }) {
     problems.push({
       code: 'update_metadata_missing',
       message: `Update metadata ${name} was not produced.`,
+    });
+  }
+
+  for (const name of resolveDisallowedArtifacts(fileNames)) {
+    problems.push({
+      code: 'artifact_outside_release_contract',
+      message: `${name} is not one of the declared release artifacts.`,
+    });
+  }
+
+  for (const name of resolveForbiddenArchitectureArtifacts(fileNames)) {
+    problems.push({
+      code: 'artifact_architecture_not_released',
+      message: `${name} targets an architecture outside the Phase 1 release matrix.`,
     });
   }
 

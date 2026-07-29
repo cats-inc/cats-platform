@@ -46,6 +46,8 @@ export interface DesktopReleaseDescriptor {
   channel: 'stable';
   provider: 'github_release';
   repository: string;
+  /** Commit of the cats-runtime checkout packaged alongside this build. */
+  runtimeCommit: string;
   generatedAt: string | null;
 }
 
@@ -179,6 +181,15 @@ export function parseDesktopReleaseDescriptor(raw: unknown): ParseReleaseDescrip
     };
   }
 
+  const runtimeCommit = readString(raw, 'runtimeCommit');
+  if (runtimeCommit === null || !COMMIT_SHA.test(runtimeCommit)) {
+    return {
+      ok: false,
+      reason: 'descriptor_malformed',
+      detail: 'Descriptor runtimeCommit is not a full 40-character sha.',
+    };
+  }
+
   return {
     ok: true,
     descriptor: {
@@ -190,6 +201,7 @@ export function parseDesktopReleaseDescriptor(raw: unknown): ParseReleaseDescrip
       channel: 'stable',
       provider: 'github_release',
       repository,
+      runtimeCommit: runtimeCommit.toLowerCase(),
       generatedAt: readString(raw, 'generatedAt'),
     },
   };
