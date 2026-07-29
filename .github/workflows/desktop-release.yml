@@ -235,12 +235,16 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ needs.guard.outputs.preview == 'true' && 'unsigned-preview' || 'release' }}-${{ matrix.platform }}
+          # latest*.yml rather than *.yml: electron-builder also writes
+          # builder-debug.yml and builder-effective-config.yaml into release/,
+          # and those are build diagnostics, not release artifacts. Collecting
+          # them would make the contract validator reject its own inputs.
           path: |
             cats-platform/release/*.exe
             cats-platform/release/*.dmg
             cats-platform/release/*.zip
             cats-platform/release/*.AppImage
-            cats-platform/release/*.yml
+            cats-platform/release/latest*.yml
             cats-platform/release/*.blockmap
           if-no-files-found: error
           retention-days: 7

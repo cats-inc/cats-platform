@@ -456,6 +456,29 @@ test('every cross-platform shell step pins bash', async () => {
   assert.match(runtimeStep, /GITHUB_OUTPUT/u);
 });
 
+test('artifact collection excludes electron-builder diagnostics', async () => {
+  const workflow = await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
+    'utf8',
+  );
+
+  // release/ also holds builder-debug.yml and builder-effective-config.yaml.
+  // A broad *.yml sweep collects them and the contract validator then rejects
+  // its own inputs.
+  assert.match(workflow, /release\/latest\*\.yml/u);
+  assert.equal(/release\/\*\.yml/u.test(workflow), false);
+});
+
+test('build diagnostics are rejected if they ever reach the validator', () => {
+  const result = validateReleaseAssets({
+    files: [...COMPLETE_FILES, 'collected/unsigned-preview-linux/builder-debug.yml'],
+    metadataDocuments: completeDocuments(),
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(problemCodes(result).includes('artifact_outside_release_contract'), true);
+});
+
 test('the release tag reaches the installer as an explicit argument', async () => {
   const workflow = await readFile(
     join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
