@@ -156,9 +156,13 @@ export function configureElectronUpdater(
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.allowPrerelease = false;
-  autoUpdater.allowDowngrade = false;
   autoUpdater.channel = resolveElectronUpdaterChannel(input.channel);
   autoUpdater.setFeedURL(resolveGithubFeedOptions(input.repository));
+  // Order matters. electron-updater's channel setter assigns
+  // allowDowngrade = true as a side effect and its own documentation says to
+  // set the flag again afterwards. Downgrade is a SPEC-111 non-goal, so this
+  // assignment has to come last.
+  autoUpdater.allowDowngrade = false;
 }
 
 interface OneShotOutcome<T> {

@@ -21,8 +21,17 @@ function createFakeAutoUpdater() {
     autoDownload: true,
     autoInstallOnAppQuit: true,
     allowPrerelease: true,
+    // Mirrors the real electron-updater setter, which assigns
+    // allowDowngrade = true whenever the channel changes.
     allowDowngrade: true,
-    channel: null,
+    _channel: null,
+    get channel() {
+      return this._channel;
+    },
+    set channel(value) {
+      this._channel = value;
+      this.allowDowngrade = true;
+    },
     feedUrl: null,
     calls,
     listenerCount() {
@@ -89,13 +98,30 @@ test('configuration disables automatic download and install-on-quit', () => {
   assert.equal(autoUpdater.autoDownload, false);
   assert.equal(autoUpdater.autoInstallOnAppQuit, false);
   assert.equal(autoUpdater.allowPrerelease, false);
-  assert.equal(autoUpdater.allowDowngrade, false);
   assert.equal(autoUpdater.channel, 'latest');
   assert.deepEqual(autoUpdater.feedUrl, {
     provider: 'github',
     owner: 'cats-inc',
     repo: 'cats-platform',
   });
+});
+
+test('downgrade stays disabled even though the channel setter re-enables it', () => {
+  const autoUpdater = createFakeAutoUpdater();
+
+  // Sanity-check the fake reproduces the real setter side effect first, so
+  // this regression test cannot pass for the wrong reason.
+  autoUpdater.allowDowngrade = false;
+  autoUpdater.channel = 'latest';
+  assert.equal(autoUpdater.allowDowngrade, true);
+
+  configureElectronUpdater(autoUpdater, {
+    repository: 'cats-inc/cats-platform',
+    channel: 'stable',
+  });
+
+  assert.equal(autoUpdater.allowDowngrade, false);
+  assert.equal(autoUpdater.channel, 'latest');
 });
 
 test('progress translation normalizes missing and out-of-range provider fields', () => {
