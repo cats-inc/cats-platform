@@ -110,6 +110,7 @@ import {
 import {
   configureElectronUpdater,
   createElectronUpdaterAdapter,
+  resolveAutoUpdaterExport,
 } from './updaterAdapter.js';
 import {
   createDesktopUpdateIpcHandlers,
@@ -1627,12 +1628,23 @@ async function createUpdateManagerForLaunch(
 
   let adapter = null;
   if (capability.canCheck && identity.repository !== null) {
-    const { autoUpdater } = await import('electron-updater');
-    configureElectronUpdater(autoUpdater, {
-      repository: identity.repository,
-      channel: capability.channel,
-    });
-    adapter = createElectronUpdaterAdapter(autoUpdater);
+    // Self-update is a feature, not a startup requirement. If the provider
+    // cannot be constructed the app must still open with update capability
+    // switched off, rather than failing to launch at all.
+    try {
+      const autoUpdater = resolveAutoUpdaterExport(await import('electron-updater'));
+      configureElectronUpdater(autoUpdater, {
+        repository: identity.repository,
+        channel: capability.channel,
+      });
+      adapter = createElectronUpdaterAdapter(autoUpdater);
+    } catch (error) {
+      process.stderr.write(
+        '[desktop-update] updater unavailable, continuing without self-update: '
+          + `${error instanceof Error ? error.message : String(error)}\n`,
+      );
+      adapter = null;
+    }
   }
 
   return createDesktopUpdateManager({

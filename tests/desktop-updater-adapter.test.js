@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import {
   configureElectronUpdater,
   createElectronUpdaterAdapter,
+  resolveAutoUpdaterExport,
   resolveElectronUpdaterChannel,
   resolveGithubFeedOptions,
   resolveReleaseSummary,
@@ -71,6 +72,28 @@ function createFakeAutoUpdater() {
     },
   };
 }
+
+test('the autoUpdater export is read from either interop shape', () => {
+  const instance = { autoDownload: true };
+
+  // electron-updater is CommonJS and defines autoUpdater with a getter, which
+  // Node's named-export detection misses, so the value arrives under default.
+  assert.equal(resolveAutoUpdaterExport({ default: { autoUpdater: instance } }), instance);
+  // Accepted too, in case a future Node or bundler does detect the name.
+  assert.equal(resolveAutoUpdaterExport({ autoUpdater: instance }), instance);
+});
+
+test('a missing autoUpdater export fails loudly instead of undefined property writes', () => {
+  // The original bug wrote to undefined and surfaced as
+  // "Cannot set properties of undefined (setting 'autoDownload')".
+  for (const namespace of [null, undefined, {}, { default: {} }, { autoUpdater: null }]) {
+    assert.throws(
+      () => resolveAutoUpdaterExport(namespace),
+      /did not expose an autoUpdater instance/u,
+      JSON.stringify(namespace ?? null),
+    );
+  }
+});
 
 test('github feed options are derived from the descriptor repository', () => {
   assert.deepEqual(resolveGithubFeedOptions('cats-inc/cats-platform'), {

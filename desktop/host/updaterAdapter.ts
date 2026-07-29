@@ -54,6 +54,33 @@ type ElectronUpdaterShapeIsSatisfied =
 const AUTO_UPDATER_SHAPE_CHECK: ElectronUpdaterShapeIsSatisfied = true;
 void AUTO_UPDATER_SHAPE_CHECK;
 
+/**
+ * Pulls `autoUpdater` out of the imported `electron-updater` namespace.
+ *
+ * electron-updater is CommonJS and exposes `autoUpdater` through an
+ * `Object.defineProperty` getter. Node's CJS named-export detection cannot see
+ * getters, so `import { autoUpdater }` is undefined and the value is only
+ * reachable through the default export. Both shapes are accepted because the
+ * detection result is a Node implementation detail, not a stable contract.
+ */
+export function resolveAutoUpdaterExport(moduleNamespace: unknown): ElectronAutoUpdaterLike {
+  const namespace = moduleNamespace as {
+    autoUpdater?: unknown;
+    default?: { autoUpdater?: unknown };
+  } | null;
+
+  const candidate = namespace?.autoUpdater ?? namespace?.default?.autoUpdater;
+
+  if (candidate === null || typeof candidate !== 'object') {
+    throw new Error(
+      'electron-updater did not expose an autoUpdater instance through either '
+        + 'the named or the default export.',
+    );
+  }
+
+  return candidate as ElectronAutoUpdaterLike;
+}
+
 export function resolveGithubFeedOptions(repository: string): ElectronUpdaterFeedOptions {
   const [owner, repo] = repository.split('/');
   if (!owner || !repo) {
