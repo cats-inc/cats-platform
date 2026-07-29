@@ -17,7 +17,10 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Unused vX.Y.Z tag to create from the selected branch as an unsigned preview.'
+        description: >-
+          Preview tag to create from the selected branch. Must equal the current
+          package.json version as vX.Y.Z, and must not already exist. Bump the
+          package version first to run another preview.
         required: true
         type: string
       runtime_ref:
@@ -192,7 +195,9 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_TEAM_ID || '' }}
         # Manual dispatch exercises packaging, metadata generation, artifact
-        # upload, and validation without claiming official update capability.
+        # upload, validation, and the update client itself. The preview embeds
+        # a descriptor marked `preview`, so it can self-update while resolving
+        # to its own distribution mode rather than claiming official identity.
         # A real tag run keeps the signed release and publish gates.
         run: >
           node scripts/build-desktop-installer.mjs

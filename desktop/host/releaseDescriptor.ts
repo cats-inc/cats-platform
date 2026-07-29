@@ -31,6 +31,18 @@ export const DESKTOP_RELEASE_PLATFORMS = ['windows', 'macos', 'linux'] as const;
 export type DesktopReleasePlatform = typeof DESKTOP_RELEASE_PLATFORMS[number];
 
 /**
+ * What kind of build the workflow produced.
+ *
+ * `official` is a signed stable release. `preview` is an unsigned prerelease
+ * from the same guarded workflow: it may self-update so the upgrade path is
+ * testable before signing exists, but it resolves to its own distribution mode
+ * and is never presented as official.
+ */
+export const DESKTOP_RELEASE_KINDS = ['official', 'preview'] as const;
+
+export type DesktopReleaseKind = typeof DESKTOP_RELEASE_KINDS[number];
+
+/**
  * The distribution vocabulary lives in contracts.ts because Tray, Settings, and
  * the preload bridge all consume it. This module owns only how the values are
  * derived from the packaged descriptor.
@@ -39,6 +51,7 @@ export type DesktopDistributionUnavailableReason = DesktopUpdateUnavailableReaso
 
 export interface DesktopReleaseDescriptor {
   schemaVersion: number;
+  kind: DesktopReleaseKind;
   tag: string;
   version: string;
   commit: string;
@@ -111,6 +124,17 @@ export function parseDesktopReleaseDescriptor(raw: unknown): ParseReleaseDescrip
       ok: false,
       reason: 'descriptor_schema_unsupported',
       detail: `Unsupported descriptor schemaVersion: ${String(raw.schemaVersion)}`,
+    };
+  }
+
+  // Required. A descriptor without a kind is not something this workflow
+  // produced, so it fails closed rather than defaulting to official.
+  const kind = readString(raw, 'kind');
+  if (kind === null || !(DESKTOP_RELEASE_KINDS as readonly string[]).includes(kind)) {
+    return {
+      ok: false,
+      reason: 'descriptor_malformed',
+      detail: `Descriptor kind is not official or preview: ${String(raw.kind)}`,
     };
   }
 
@@ -194,6 +218,7 @@ export function parseDesktopReleaseDescriptor(raw: unknown): ParseReleaseDescrip
     ok: true,
     descriptor: {
       schemaVersion: DESKTOP_RELEASE_DESCRIPTOR_SCHEMA_VERSION,
+      kind: kind as DesktopReleaseKind,
       tag,
       version,
       commit: commit.toLowerCase(),
@@ -263,7 +288,9 @@ export function resolveDesktopDistributionIdentity(
   }
 
   return {
-    distribution: 'official_packaged',
+    distribution: descriptor.descriptor.kind === 'preview'
+      ? 'preview_packaged'
+      : 'official_packaged',
     provider: 'github_release',
     channel: descriptor.descriptor.channel,
     currentVersion,

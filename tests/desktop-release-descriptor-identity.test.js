@@ -23,6 +23,7 @@ const RUNTIME_COMMIT = 'b'.repeat(40);
 function validDescriptor(overrides = {}) {
   return {
     schemaVersion: DESKTOP_RELEASE_DESCRIPTOR_SCHEMA_VERSION,
+    kind: 'official',
     tag: 'v0.2.0',
     version: '0.2.0',
     commit: COMMIT,
@@ -144,6 +145,27 @@ test('distribution identity propagates a parse failure reason', () => {
 
   assert.equal(identity.distribution, 'unofficial_packaged');
   assert.equal(identity.unavailableReason, 'descriptor_schema_unsupported');
+});
+
+test('distribution identity keeps an unsigned preview in its own mode', () => {
+  const identity = resolveDesktopDistributionIdentity(officialInput({
+    descriptor: parseDesktopReleaseDescriptor(validDescriptor({ kind: 'preview' })),
+  }));
+
+  // A preview carries real provenance and may self-update, but it must never
+  // be reported as an official build.
+  assert.equal(identity.distribution, 'preview_packaged');
+  assert.notEqual(identity.distribution, 'official_packaged');
+  assert.equal(identity.provider, 'github_release');
+  assert.equal(identity.unavailableReason, null);
+});
+
+test('a descriptor without a recognizable kind fails closed', () => {
+  for (const kind of [undefined, '', 'nightly', 'OFFICIAL_BUILD']) {
+    const result = parseDesktopReleaseDescriptor(validDescriptor({ kind }));
+    assert.equal(result.ok, false, String(kind));
+    assert.equal(result.reason, 'descriptor_malformed', String(kind));
+  }
 });
 
 test('distribution identity resolves an official packaged build', () => {

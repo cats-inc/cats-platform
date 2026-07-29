@@ -69,6 +69,11 @@ export const DESKTOP_UPDATE_ERROR_CODES = [
 
 export const DESKTOP_DISTRIBUTION_MODES = [
   'official_packaged',
+  // An unsigned prerelease produced by the same guarded workflow. It carries
+  // real provenance and may self-update so the upgrade path can be exercised
+  // before signing exists, but it is never presented as an official build and
+  // never claims official update identity.
+  'preview_packaged',
   'development',
   'unofficial_packaged',
 ] as const;

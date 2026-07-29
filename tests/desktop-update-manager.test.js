@@ -113,6 +113,50 @@ test('capability stays closed for development and unofficial packages', () => {
   }
 });
 
+test('an unsigned preview can self-update before any platform passes its gate', () => {
+  // This is how the signed upgrade test gets run at all: the preview build is
+  // the vehicle for exercising check, download, and install.
+  const capability = createDesktopUpdateCapability({
+    identity: { ...OFFICIAL_IDENTITY, distribution: 'preview_packaged' },
+    nodePlatform: 'win32',
+    releaseReadyPlatforms: [],
+  });
+
+  assert.equal(capability.distribution, 'preview_packaged');
+  assert.equal(capability.canCheck, true);
+  assert.equal(capability.canDownload, true);
+  assert.equal(capability.canInstall, true);
+  assert.equal(capability.unavailableReason, null);
+});
+
+test('an official build is still gated even where a preview is not', () => {
+  const preview = createDesktopUpdateCapability({
+    identity: { ...OFFICIAL_IDENTITY, distribution: 'preview_packaged' },
+    nodePlatform: 'win32',
+    releaseReadyPlatforms: [],
+  });
+  const official = createDesktopUpdateCapability({
+    identity: OFFICIAL_IDENTITY,
+    nodePlatform: 'win32',
+    releaseReadyPlatforms: [],
+  });
+
+  assert.equal(preview.canCheck, true);
+  assert.equal(official.canCheck, false);
+  assert.equal(official.unavailableReason, 'platform_not_release_ready');
+});
+
+test('a preview still refuses an unsupported host platform', () => {
+  const capability = createDesktopUpdateCapability({
+    identity: { ...OFFICIAL_IDENTITY, distribution: 'preview_packaged' },
+    nodePlatform: 'freebsd',
+    releaseReadyPlatforms: [],
+  });
+
+  assert.equal(capability.canCheck, false);
+  assert.equal(capability.unavailableReason, 'platform_not_release_ready');
+});
+
 test('capability refuses a platform that has not passed its own gate', () => {
   const capability = createDesktopUpdateCapability({
     identity: OFFICIAL_IDENTITY,

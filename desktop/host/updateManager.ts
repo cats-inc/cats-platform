@@ -66,7 +66,10 @@ export function createDesktopUpdateCapability(
     currentVersion: identity.currentVersion,
   };
 
-  if (identity.distribution !== 'official_packaged' || identity.provider !== 'github_release') {
+  const packagedFromWorkflow = identity.distribution === 'official_packaged'
+    || identity.distribution === 'preview_packaged';
+
+  if (!packagedFromWorkflow || identity.provider !== 'github_release') {
     return {
       ...base,
       provider: 'none',
@@ -78,7 +81,21 @@ export function createDesktopUpdateCapability(
   }
 
   const platform = resolveDesktopReleasePlatform(nodePlatform);
-  if (platform === null || !releaseReadyPlatforms.includes(platform)) {
+  if (platform === null) {
+    return {
+      ...base,
+      provider: 'github_release',
+      canCheck: false,
+      canDownload: false,
+      canInstall: false,
+      unavailableReason: 'platform_not_release_ready',
+    };
+  }
+
+  // The release-ready gate exists so a stable build cannot advertise
+  // self-update before its signed upgrade test passes. A preview build is how
+  // that test is run, so the gate does not apply to it.
+  if (identity.distribution === 'official_packaged' && !releaseReadyPlatforms.includes(platform)) {
     return {
       ...base,
       provider: 'github_release',

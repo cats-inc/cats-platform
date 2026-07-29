@@ -19,6 +19,7 @@ const RUNTIME_COMMIT = 'b'.repeat(40);
 
 function validInputs(overrides = {}) {
   return {
+    kind: 'official',
     tag: 'v0.2.0',
     commit: COMMIT,
     repository: 'cats-inc/cats-platform',
@@ -38,6 +39,7 @@ test('release descriptor records tag, commit, platform, channel, and provider id
   assert.equal(result.ok, true);
   assert.deepEqual(result.descriptor, {
     schemaVersion: DESCRIPTOR_SCHEMA_VERSION,
+    kind: 'official',
     tag: 'v0.2.0',
     version: '0.2.0',
     commit: COMMIT,
@@ -128,8 +130,36 @@ test('release descriptor records which runtime checkout was packaged', () => {
   assert.notEqual(result.descriptor.runtimeCommit, result.descriptor.commit);
 });
 
+test('release descriptor marks an unsigned preview as its own kind', () => {
+  const result = buildReleaseDescriptor(validInputs({ kind: 'preview' }));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.descriptor.kind, 'preview');
+});
+
+test('release descriptor defaults to official so a missing flag cannot downgrade a release', () => {
+  const inputs = validInputs();
+  delete inputs.kind;
+
+  assert.equal(buildReleaseDescriptor(inputs).descriptor.kind, 'official');
+  assert.equal(parseArgs([], {}).kind, 'official');
+});
+
+test('release descriptor rejects an unknown build kind', () => {
+  for (const kind of ['', 'nightly', 'internal', 'Official ']) {
+    const result = buildReleaseDescriptor(validInputs({ kind }));
+    if (kind === 'Official ') {
+      // Trimmed and lowercased rather than rejected.
+      assert.equal(result.ok, true, kind);
+      continue;
+    }
+    assert.equal(problemCodes(result).includes('descriptor_kind_invalid'), true, kind);
+  }
+});
+
 test('release descriptor reports every invalid input at once', () => {
   const result = buildReleaseDescriptor({
+    kind: 'nope',
     tag: 'main',
     commit: 'nope',
     repository: 'nope',
@@ -140,6 +170,7 @@ test('release descriptor reports every invalid input at once', () => {
   assert.equal(result.ok, false);
   assert.equal(result.descriptor, null);
   assert.deepEqual(problemCodes(result), [
+    'descriptor_kind_invalid',
     'descriptor_tag_malformed',
     'descriptor_commit_invalid',
     'descriptor_repository_invalid',
@@ -162,13 +193,15 @@ test('release descriptor args read the workflow environment by default', () => {
   assert.equal(parsed.repository, 'cats-inc/cats-platform');
   assert.equal(parsed.platform, 'linux');
   assert.equal(parsed.runtimeCommit, RUNTIME_COMMIT);
+  assert.equal(parsed.kind, 'official');
   assert.equal(parsed.output, DESCRIPTOR_RELATIVE_PATH);
 });
 
 test('release descriptor args let the release job override every field', () => {
   const parsed = parseArgs(
     ['--tag', 'v1.2.3', '--commit', COMMIT, '--repository', 'o/r', '--platform', 'macos',
-      '--runtime-commit', RUNTIME_COMMIT, '--output', 'build/desktop/other.json'],
+      '--runtime-commit', RUNTIME_COMMIT, '--kind', 'preview',
+      '--output', 'build/desktop/other.json'],
     {},
   );
 
@@ -179,6 +212,7 @@ test('release descriptor args let the release job override every field', () => {
     repository: 'o/r',
     platform: 'macos',
     runtimeCommit: RUNTIME_COMMIT,
+    kind: 'preview',
     output: 'build/desktop/other.json',
   });
   assert.throws(() => parseArgs(['--publish'], {}), /Unknown option: --publish/);

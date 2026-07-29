@@ -131,3 +131,12 @@ export function shouldWarnAboutVisibleInstaller(
 ): boolean {
   return snapshot.status === 'downloaded' && platform.toLowerCase().startsWith('win');
 }
+
+/**
+ * A preview build self-updates so the upgrade path can be exercised before
+ * signing exists. It must say so, or a tester cannot tell it apart from a
+ * supported release.
+ */
+export function isDesktopPreviewBuild(snapshot: DesktopUpdateSnapshot): boolean {
+  return snapshot.capability.distribution === 'preview_packaged';
+}

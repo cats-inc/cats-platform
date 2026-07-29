@@ -74,8 +74,11 @@ const VALUE_FLAGS = {
   '--repository': 'repository',
   '--platform': 'platform',
   '--runtime-commit': 'runtimeCommit',
+  '--kind': 'kind',
   '--output': 'output',
 };
+
+export const RELEASE_KINDS = ['official', 'preview'];
 
 export function resolveDescriptorPlatform(value) {
   const candidate = typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -90,6 +93,9 @@ export function parseArgs(argv, env = process.env) {
     repository: (env.GITHUB_REPOSITORY ?? '').trim(),
     platform: env.CATS_DESKTOP_RELEASE_PLATFORM ?? process.platform,
     runtimeCommit: (env.CATS_DESKTOP_RUNTIME_COMMIT ?? '').trim(),
+    // Official unless the caller says otherwise, so a missing flag can never
+    // silently downgrade a stable release into an unsigned preview.
+    kind: (env.CATS_DESKTOP_RELEASE_KIND ?? 'official').trim(),
     output: DESCRIPTOR_RELATIVE_PATH,
   };
 
@@ -121,9 +127,18 @@ export function buildReleaseDescriptor({
   repository,
   platform,
   runtimeCommit,
+  kind = 'official',
   generatedAt = null,
 } = {}) {
   const problems = [];
+
+  const normalizedKind = typeof kind === 'string' ? kind.trim().toLowerCase() : '';
+  if (!RELEASE_KINDS.includes(normalizedKind)) {
+    problems.push({
+      code: 'descriptor_kind_invalid',
+      message: `Release kind '${kind ?? ''}' is not official or preview.`,
+    });
+  }
 
   const parsedTag = parseStableReleaseTag(tag);
   if (!parsedTag.ok) {
@@ -176,6 +191,7 @@ export function buildReleaseDescriptor({
     problems: [],
     descriptor: {
       schemaVersion: DESCRIPTOR_SCHEMA_VERSION,
+      kind: normalizedKind,
       tag: parsedTag.tag,
       version: parsedTag.version,
       commit: normalizedCommit,
@@ -215,6 +231,7 @@ async function main() {
     repository: parsed.repository,
     platform: parsed.platform,
     runtimeCommit: parsed.runtimeCommit,
+    kind: parsed.kind,
     generatedAt: new Date().toISOString(),
   });
 

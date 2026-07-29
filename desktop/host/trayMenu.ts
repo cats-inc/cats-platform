@@ -219,8 +219,26 @@ export function buildDesktopTrayUpdateItem(
     return null;
   }
 
-  const labels = TRAY_UPDATE_LABELS[normalizeDesktopTrayLocale(localeInput)];
+  const locale = normalizeDesktopTrayLocale(localeInput);
+  const labels = TRAY_UPDATE_LABELS[locale];
+  // A preview build self-updates, so the tray has to say what it is or a
+  // tester cannot tell it apart from a supported release.
+  const suffix = snapshot.capability.distribution === 'preview_packaged'
+    ? (locale === 'zh-TW' ? '（預覽）' : ' (preview)')
+    : '';
 
+  const withSuffix = (item: DesktopTrayUpdateItem): DesktopTrayUpdateItem => ({
+    ...item,
+    label: `${item.label}${suffix}`,
+  });
+
+  return withSuffix(resolveTrayUpdateItem(snapshot, labels));
+}
+
+function resolveTrayUpdateItem(
+  snapshot: DesktopUpdateSnapshot,
+  labels: Record<string, string>,
+): DesktopTrayUpdateItem {
   switch (snapshot.status) {
     case 'checking':
       return { label: labels.checking, enabled: false, intent: 'check' };

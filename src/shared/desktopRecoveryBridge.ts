@@ -106,6 +106,7 @@ export type DesktopScreenshotCaptureResult =
 
 export type DesktopDistributionMode =
   | 'official_packaged'
+  | 'preview_packaged'
   | 'development'
   | 'unofficial_packaged';
 

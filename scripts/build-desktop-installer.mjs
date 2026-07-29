@@ -629,10 +629,20 @@ async function main() {
 
   // npm run build wipes build/, so the descriptor has to be written after the
   // platform build and before packaging collects build/desktop.
-  if (parsed.releaseMode) {
+  //
+  // A preview gets a descriptor too, marked `preview`, so the upgrade path can
+  // be exercised before signing exists. It resolves to its own distribution
+  // mode, so it never claims official update identity.
+  if (parsed.releaseMode || parsed.previewMode) {
     await runCommand(
       'node',
-      ['scripts/generate-desktop-release-descriptor.mjs', '--platform', resolvedTarget],
+      [
+        'scripts/generate-desktop-release-descriptor.mjs',
+        '--platform',
+        resolvedTarget,
+        '--kind',
+        parsed.releaseMode ? 'official' : 'preview',
+      ],
       PROJECT_ROOT,
       {},
       envOptions,

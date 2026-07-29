@@ -511,6 +511,8 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.desktop.updatesToastUpToDate': 'Cats 已是最新版本。',
   'settings.desktop.updatesWindowsInstallerNotice':
     'Cats 將會關閉並開啟 Windows 安裝程式。過程中可能需要你確認安裝資料夾。',
+  'settings.desktop.updatesPreviewNotice':
+    '這是未簽章的預覽組建。更新功能僅供測試發布流程，並非受支援的安裝方式。',
   'settings.desktop.updatesErrorOffline': 'Cats 無法連線到更新服務。',
   'settings.desktop.updatesErrorTimeout': '更新服務未在時限內回應。',
   'settings.desktop.updatesErrorProviderRejected': '更新服務拒絕了這次請求。',

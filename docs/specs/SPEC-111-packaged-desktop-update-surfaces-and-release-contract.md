@@ -81,13 +81,23 @@ Landed:
 - `desktop-release.yml` is tag-gated, builds on three native runners, collects
   into a draft, and publishes only after asset validation.
 - Manual workflow dispatch builds a clearly named unsigned preview on the same
-  three runners. It does not embed the official release descriptor, read
-  signing secrets, or verify signatures. It exercises the full
-  draft/build/validate/publish sequence, but the result is explicitly an
-  unsigned GitHub prerelease and never `latest`. The operator supplies an
-  unused `vX.Y.Z`; the workflow creates that preview tag from the selected
-  branch commit instead of requiring a tag push that would trigger the stable
-  path.
+  three runners. It never reads signing secrets and its signatures are not
+  verified, and the result is explicitly an unsigned GitHub prerelease that
+  never becomes `latest`.
+
+  The preview does embed a release descriptor, marked `kind: preview`, so the
+  update client itself can be exercised before signing exists. That descriptor
+  resolves to the `preview_packaged` distribution mode rather than
+  `official_packaged`, and the tray and Settings label the build as a preview.
+  The release-ready platform gate does not apply to a preview, because a
+  preview is how that gate is earned. Requirement 1.9 still holds: the mode
+  comes from build provenance the guarded workflow embeds, never from
+  configuration.
+
+  The operator supplies a `vX.Y.Z` equal to the current package version that
+  does not already exist; the workflow creates that preview tag from the
+  selected branch commit instead of requiring a tag push that would trigger
+  the stable path.
 - Update copy ships in English and Traditional Chinese.
 
 Not yet landed:
@@ -138,6 +148,7 @@ Gated off deliberately:
 | Execution mode | Desktop route | App updates section | Tray update command | Update owner |
 |----------------|---------------|---------------------|---------------------|--------------|
 | Official packaged Electron | Visible | Visible | Visible | Electron main process |
+| Unsigned preview from the release workflow | Visible | Visible, marked preview | Visible, marked preview | Electron main process |
 | Electron development | Visible | Hidden | Hidden | None |
 | Unofficial/unsigned packaged Electron | Visible where otherwise supported | Hidden | Hidden | Distributor/manual |
 | npm, `npx`, or `cats-one` self-hosted execution | Hidden under current route policy | Hidden | Not applicable | npm/deployment owner |

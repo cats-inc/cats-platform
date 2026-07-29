@@ -58,19 +58,45 @@ test('update error codes cover every failure class the spec requires copy for', 
   assert.equal(DESKTOP_UPDATE_ERROR_CODES.includes('unknown'), true);
 });
 
-test('distribution modes match the three execution modes the capability distinguishes', () => {
+test('distribution modes match the execution modes the capability distinguishes', () => {
   assert.deepEqual([...DESKTOP_DISTRIBUTION_MODES], [
     'official_packaged',
+    'preview_packaged',
     'development',
     'unofficial_packaged',
   ]);
 });
 
-test('no fourth runtime distribution mode exists for test-only self-update', () => {
-  assert.equal(DESKTOP_DISTRIBUTION_MODES.length, 3);
-  for (const forbidden of ['test', 'testing', 'staging', 'internal', 'official_development']) {
+test('a preview is a build-provenance mode, not an environment escape hatch', () => {
+  // Requirement 1.9 forbids promoting a build through configuration. The
+  // preview mode is decided by the descriptor the guarded workflow embeds, so
+  // the invariant to hold is that nothing here is settable at runtime and that
+  // a preview is never spelled as a variant of official.
+  assert.equal(DESKTOP_DISTRIBUTION_MODES.includes('preview_packaged'), true);
+  assert.equal(DESKTOP_DISTRIBUTION_MODES.includes('official_packaged'), true);
+  assert.notEqual('preview_packaged', 'official_packaged');
+
+  for (const forbidden of [
+    'test',
+    'testing',
+    'staging',
+    'internal',
+    'official_development',
+    'official_preview',
+    'official_unsigned',
+  ]) {
     assert.equal(DESKTOP_DISTRIBUTION_MODES.includes(forbidden), false, forbidden);
   }
+});
+
+test('preview capability comes from the descriptor, never from the environment', async () => {
+  const source = await readFile(
+    join(process.cwd(), 'desktop', 'host', 'releaseDescriptor.ts'),
+    'utf8',
+  );
+
+  assert.equal(/process\.env/u.test(source), false);
+  assert.match(source, /kind === 'preview'/u);
 });
 
 test('update providers are limited to the GitHub feed or nothing', () => {
@@ -163,6 +189,7 @@ test('an official identity reports no unavailable reason', () => {
       ok: true,
       descriptor: {
         schemaVersion: 1,
+        kind: 'official',
         tag: 'v0.2.0',
         version: '0.2.0',
         commit: 'b'.repeat(40),

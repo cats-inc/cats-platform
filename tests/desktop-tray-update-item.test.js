@@ -11,7 +11,13 @@ function snapshot(overrides = {}) {
   const base = createUnavailableDesktopUpdateSnapshot('0.2.0');
   return {
     ...base,
-    capability: { ...base.capability, canCheck: true, canDownload: true, canInstall: true },
+    capability: {
+      ...base.capability,
+      distribution: 'official_packaged',
+      canCheck: true,
+      canDownload: true,
+      canInstall: true,
+    },
     status: 'idle',
     nextAction: 'check',
     ...overrides,
@@ -94,6 +100,27 @@ test('tray update labels are localized for Traditional Chinese', () => {
     buildDesktopTrayUpdateItem(snapshot({ status: 'installing' }), 'zh-TW').label,
     '正在安裝更新…',
   );
+});
+
+test('a preview build labels its tray entry as a preview', () => {
+  const preview = snapshot({
+    capability: {
+      ...snapshot().capability,
+      distribution: 'preview_packaged',
+    },
+  });
+
+  assert.equal(buildDesktopTrayUpdateItem(preview).label, 'Check for Updates… (preview)');
+  assert.equal(buildDesktopTrayUpdateItem(preview, 'zh-TW').label, '檢查更新…（預覽）');
+  assert.equal(
+    buildDesktopTrayUpdateItem(preview, 'zh-TW').label.includes('預覽'),
+    true,
+  );
+});
+
+test('an official build carries no preview marker', () => {
+  assert.equal(buildDesktopTrayUpdateItem(snapshot()).label, 'Check for Updates…');
+  assert.equal(buildDesktopTrayUpdateItem(snapshot()).label.includes('preview'), false);
 });
 
 test('the tray menu state carries the update item alongside existing entries', () => {

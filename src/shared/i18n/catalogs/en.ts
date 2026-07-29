@@ -530,6 +530,9 @@ export const enCatalog: MessageCatalog = {
   'settings.desktop.updatesWindowsInstallerNotice':
     'Cats will close and the Windows installer will open. You may be asked to confirm the '
     + 'installation folder.',
+  'settings.desktop.updatesPreviewNotice':
+    'This is an unsigned preview build. Updates are for testing the release flow and are not '
+    + 'a supported installation.',
   'settings.desktop.updatesErrorOffline': 'Cats could not reach the update service.',
   'settings.desktop.updatesErrorTimeout': 'The update service did not respond in time.',
   'settings.desktop.updatesErrorProviderRejected': 'The update service rejected the request.',
