@@ -935,7 +935,11 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /resolvedTarget/);
   assert.match(script, /'--sidecar-layout',\s*parsed\.sidecarLayout/);
   assert.match(script, /buildNativeVoiceHelpers\(resolvedTarget, parsed\.arch\)/);
-  assert.match(script, /swift', \['build', '-c', 'release'/);
+  assert.match(script, /'build',\s*'-c',\s*'release',/);
+  // A universal DMG merges x64 and arm64 bundles, so the Swift helper has to
+  // be universal too or electron-builder refuses the identical binary.
+  assert.match(script, /'--arch',\s*'x86_64',\s*'--arch',\s*'arm64',/);
+  assert.match(script, /'\.build', 'apple', 'Products', 'Release', 'cats-stt-macos'/);
   assert.match(script, /dotnet',\s*\[\s*'publish'/);
   assert.match(script, /'--self-contained',\s*'true'/);
   assert.match(linuxWrapper, /build-desktop-installer\.mjs --target linux/);

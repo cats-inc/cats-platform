@@ -430,6 +430,23 @@ test('the workflow never tries to override runner-provided GITHUB_ variables', a
   }
 });
 
+test('every cross-platform shell step pins bash', async () => {
+  const workflow = await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
+    'utf8',
+  );
+
+  // windows-latest defaults to PowerShell, where "$GITHUB_OUTPUT" is an
+  // undefined variable rather than the env var. A step that writes a job
+  // output has to pin its shell or it silently records nothing on Windows.
+  const stepStart = workflow.indexOf('Record the packaged runtime commit');
+  assert.ok(stepStart > 0, 'the runtime commit step must exist');
+  const runtimeStep = workflow.slice(stepStart, stepStart + 400);
+
+  assert.match(runtimeStep, /shell: bash/u);
+  assert.match(runtimeStep, /GITHUB_OUTPUT/u);
+});
+
 test('the release tag reaches the installer as an explicit argument', async () => {
   const workflow = await readFile(
     join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),

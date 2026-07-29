@@ -153,9 +153,14 @@ jobs:
           ref: ${{ inputs.runtime_ref || 'main' }}
           path: cats-runtime
 
+      # shell: bash is required. The default shell on windows-latest is
+      # PowerShell, where "$GITHUB_OUTPUT" resolves to an undefined variable
+      # rather than the env var, so the step would appear to succeed while
+      # recording nothing.
       - name: Record the packaged runtime commit
         id: runtime
         working-directory: cats-runtime
+        shell: bash
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js

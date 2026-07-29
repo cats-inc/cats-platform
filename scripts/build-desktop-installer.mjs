@@ -433,16 +433,44 @@ async function ensureMobileSkipPlaceholder() {
   );
 }
 
-async function buildMacosVoiceHelper() {
+async function buildMacosVoiceHelper(archOverride) {
   if (process.platform !== 'darwin') {
     throw new Error('The macOS voice helper must be built on macOS.');
   }
 
   const packageRoot = resolve(PROJECT_ROOT, 'desktop', 'native', 'macos-stt');
-  await runCommand('swift', ['build', '-c', 'release', '--package-path', packageRoot], PROJECT_ROOT);
-
   const outputDir = resolve(NATIVE_BUILD_ROOT, 'macos-stt');
   await mkdir(outputDir, { recursive: true });
+
+  if (archOverride === 'universal') {
+    // A universal DMG merges an x64 and an arm64 app bundle. electron-builder
+    // refuses when a binary is byte-identical in both, because it cannot tell
+    // whether that is a resource to share or a single-arch executable that
+    // should have been lipo'd. Building the helper universal removes the
+    // ambiguity instead of suppressing the check.
+    await runCommand(
+      'swift',
+      [
+        'build',
+        '-c',
+        'release',
+        '--package-path',
+        packageRoot,
+        '--arch',
+        'x86_64',
+        '--arch',
+        'arm64',
+      ],
+      PROJECT_ROOT,
+    );
+    await copyFile(
+      resolve(packageRoot, '.build', 'apple', 'Products', 'Release', 'cats-stt-macos'),
+      resolve(outputDir, 'cats-stt-macos'),
+    );
+    return;
+  }
+
+  await runCommand('swift', ['build', '-c', 'release', '--package-path', packageRoot], PROJECT_ROOT);
   await copyFile(
     resolve(packageRoot, '.build', 'release', 'cats-stt-macos'),
     resolve(outputDir, 'cats-stt-macos'),
@@ -478,7 +506,7 @@ async function buildWindowsVoiceHelper(archOverride) {
 async function buildNativeVoiceHelpers(target, archOverride) {
   await prepareNativeBuildRoot();
   if (target === 'macos') {
-    await buildMacosVoiceHelper();
+    await buildMacosVoiceHelper(archOverride);
     return;
   }
   if (target === 'windows') {
