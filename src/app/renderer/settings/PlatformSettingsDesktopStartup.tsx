@@ -14,6 +14,7 @@ import type { DesktopMobilePairingEnvUpdateResult } from '../../../shared/deskto
 import { type MessageKey } from '../../../shared/i18n/index.js';
 import { useI18n } from '../i18n/index.js';
 import { createQrCodeMatrix } from './qrCode.js';
+import { PlatformSettingsDesktopUpdates } from './PlatformSettingsDesktopUpdates.js';
 import { formatSettingsDesktopStartupMutationError } from './settingsDesktopStartupErrorLabels.js';
 
 export interface PlatformSettingsDesktopStartupProps {
@@ -244,6 +245,10 @@ export function PlatformSettingsDesktopStartup({
 
   return (
     <>
+      {/* SPEC-111 section 4: App updates comes first, and the existing
+          relative order of Mobile pairing and Startup behavior is preserved. */}
+      <PlatformSettingsDesktopUpdates showToast={showToast} />
+
       <SettingsSection
         className="settingsMobilePairing"
         header={(

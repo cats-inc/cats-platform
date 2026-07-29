@@ -66,7 +66,7 @@ written. It is deliberately not updated as implementation lands; see
 
 ## Implementation Status
 
-Current as of 2026-07-29. PLAN-101 holds the per-task detail.
+Current as of 2026-07-30. PLAN-101 holds the per-task detail.
 
 Landed:
 
@@ -99,11 +99,13 @@ Landed:
   selected branch commit instead of requiring a tag push that would trigger
   the stable path.
 - Update copy ships in English and Traditional Chinese.
+- The `App updates` section component in `Settings > Desktop`
+  (`src/app/renderer/settings/PlatformSettingsDesktopUpdates.tsx`), mounted
+  first in the Desktop settings route. It shows version and channel for every
+  desktop build and gates the update controls on `canCheck`, per section 4.
 
 Not yet landed:
 
-- The `App updates` section component in `Settings > Desktop`. Its copy and
-  presentation mapping exist; the component does not.
 - Native up-to-date, available, and failed notifications.
 - Phase 5 hardening and the Phase 6 real-machine upgrade matrix.
 
@@ -145,17 +147,29 @@ Gated off deliberately:
 
 ## Distribution and Visibility Matrix
 
-| Execution mode | Desktop route | App updates section | Tray update command | Update owner |
-|----------------|---------------|---------------------|---------------------|--------------|
-| Official packaged Electron | Visible | Visible | Visible | Electron main process |
-| Unsigned preview from the release workflow | Visible | Visible, marked preview | Visible, marked preview | Electron main process |
-| Electron development | Visible | Hidden | Hidden | None |
-| Unofficial/unsigned packaged Electron | Visible where otherwise supported | Hidden | Hidden | Distributor/manual |
-| npm, `npx`, or `cats-one` self-hosted execution | Hidden under current route policy | Hidden | Not applicable | npm/deployment owner |
-| Browser-only client | Hidden | Hidden | Not applicable | Deployment owner |
+| Execution mode | Desktop route | App updates section | Update controls | Tray update command | Update owner |
+|----------------|---------------|---------------------|-----------------|---------------------|--------------|
+| Official packaged Electron | Visible | Visible | Visible | Visible | Electron main process |
+| Unsigned preview from the release workflow | Visible | Visible, marked preview | Visible | Visible, marked preview | Electron main process |
+| Electron development | Visible | Visible, version only | Hidden | Hidden | None |
+| Unofficial/unsigned packaged Electron | Visible where otherwise supported | Visible, version only | Hidden | Hidden | Distributor/manual |
+| npm, `npx`, or `cats-one` self-hosted execution | Hidden under current route policy | Hidden | Hidden | Not applicable | npm/deployment owner |
+| Browser-only client | Hidden | Hidden | Hidden | Not applicable | Deployment owner |
 
-If the Desktop route later becomes visible in a non-Electron environment, the
-`App updates` section must still remain gated by the explicit update capability.
+The section and its controls are two separate decisions. Cats ships no About
+box, so `Settings > Desktop` is the only surface where a user can read the
+installed version, and withholding it from a build that merely cannot self-update
+would leave that user unable to report which build they are running. The section
+therefore appears for every desktop host that reports a snapshot, and shows the
+installed version and channel unconditionally.
+
+The **update controls** — status chip, last-checked time, available version,
+download progress, and the action button — remain gated by the explicit update
+capability (`canCheck`). A development or unofficial build therefore reads its
+own version but is never offered an action it cannot perform.
+
+If the Desktop route later becomes visible in a non-Electron environment, no
+snapshot is reported, and the whole section stays absent.
 
 ## User Stories
 
@@ -289,8 +303,7 @@ command, executable path, or installer flags from the renderer.
 
 ### 4. Settings Surface
 
-In an official packaged build, `Settings > Desktop` shall render sections in
-this order:
+In any desktop build, `Settings > Desktop` shall render sections in this order:
 
 1. `App updates`
 2. `Mobile pairing`
@@ -299,15 +312,25 @@ this order:
 The existing relative order of Mobile pairing and Startup behavior is
 preserved; adding updates shall not introduce an unrelated section reorder.
 
-The `App updates` section shall show:
+The `App updates` section shall always show, for every desktop build:
 
 - current version
 - current release channel
+
+Cats has no About box, so these two facts have no other home; see the
+Distribution and Visibility Matrix.
+
+Where the capability contract reports `canCheck`, the section shall additionally
+show:
+
 - a persistent status chip
 - last checked time when available
 - available version and bounded release summary when available
 - download progress while downloading
 - exactly one primary next-action button
+
+An unsigned preview build shall additionally carry a notice identifying it as
+an unsigned preview.
 
 Button/state mapping:
 
@@ -342,8 +365,10 @@ system. Persistent state may remain visible in the status chip and update
 facts; settings mutation feedback shall not be implemented as ad hoc inline
 success/error text.
 
-The update section and its button shall be absent—not disabled—from npm,
-browser, development, and unofficial packaged modes.
+The update controls and the primary button shall be absent—not disabled—from
+development and unofficial packaged modes, which still read their own version.
+The whole section shall be absent from npm and browser modes, where no desktop
+host reports a snapshot.
 
 ### 5. Tray Surface
 
@@ -497,8 +522,9 @@ be translated.
 
 1. A packaged official build shows update controls in Tray and
    `Settings > Desktop`.
-2. An npm/browser run shows no desktop update control.
-3. An Electron development run shows no desktop update control.
+2. An npm/browser run shows no `App updates` section at all.
+3. An Electron development run shows its installed version and channel but no
+   update control.
 4. Triggering a check from Tray updates an already-open Settings surface
    without a second request.
 5. Triggering a check from Settings updates the tray state.
