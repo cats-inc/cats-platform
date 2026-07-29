@@ -1006,6 +1006,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
     releaseMode: false,
     previewMode: false,
     publish: 'never',
+    tag: '',
   });
   assert.deepEqual(
     parseBuildDesktopInstallerArgs(['--target', 'linux', '--arch', 'arm64', '--format', 'deb', '--sidecar-layout', 'bundle'], {}),
@@ -1019,6 +1020,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       releaseMode: false,
       previewMode: false,
       publish: 'never',
+      tag: '',
     },
   );
   assert.deepEqual(
@@ -1033,6 +1035,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       releaseMode: false,
       previewMode: false,
       publish: 'never',
+      tag: '',
     },
   );
   assert.deepEqual(
@@ -1047,6 +1050,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       releaseMode: false,
       previewMode: false,
       publish: 'never',
+      tag: '',
     },
   );
   assert.deepEqual(
@@ -1061,6 +1065,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       releaseMode: false,
       previewMode: false,
       publish: 'never',
+      tag: '',
     },
   );
   assert.deepEqual(
@@ -1075,6 +1080,7 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       releaseMode: false,
       previewMode: false,
       publish: 'never',
+      tag: '',
     },
   );
 });

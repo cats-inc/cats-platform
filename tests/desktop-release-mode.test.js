@@ -179,7 +179,7 @@ test('release mode refuses to run outside GitHub Actions', () => {
   assert.equal(problemCodes(problems).includes('release_not_in_workflow'), true);
 });
 
-test('release mode refuses a branch ref even inside GitHub Actions', () => {
+test('a stable release refuses a branch ref even inside GitHub Actions', () => {
   const problems = resolveReleaseModeProblems({
     env: workflowEnv({ GITHUB_REF_TYPE: 'branch', GITHUB_REF_NAME: 'main' }),
     target: 'windows',
@@ -188,6 +188,31 @@ test('release mode refuses a branch ref even inside GitHub Actions', () => {
 
   assert.equal(problemCodes(problems).includes('release_ref_not_tag'), true);
   assert.equal(problemCodes(problems).includes('release_tag_malformed'), true);
+});
+
+test('a preview accepts a branch ref because it creates its tag during the run', () => {
+  // workflow_dispatch always runs on a branch. Requiring a tag ref here would
+  // reject every preview.
+  const problems = resolveReleaseModeProblems({
+    env: workflowEnv({ GITHUB_REF_TYPE: 'branch', GITHUB_REF_NAME: 'main' }),
+    tag: 'v0.2.0',
+    target: 'windows',
+    packageVersion: '0.2.0',
+    publish: 'always',
+    requireSigning: false,
+    requireTagRef: false,
+  });
+
+  assert.deepEqual(problems, []);
+});
+
+test('an explicit tag input wins over the runner-provided ref name', () => {
+  // GITHUB_REF_NAME cannot be overridden from a workflow env block, so the
+  // wrapper must accept the tag as a real argument.
+  assert.equal(parseArgs(['--tag', 'v1.2.3'], { GITHUB_REF_NAME: 'main' }).tag, 'v1.2.3');
+  assert.equal(parseArgs([], { CATS_DESKTOP_RELEASE_TAG: 'v1.2.3' }).tag, 'v1.2.3');
+  assert.equal(parseArgs([], { GITHUB_REF_NAME: 'v0.9.0' }).tag, 'v0.9.0');
+  assert.equal(parseArgs([], {}).tag, '');
 });
 
 test('release mode refuses a tag that disagrees with the package version', () => {

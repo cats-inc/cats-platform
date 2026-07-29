@@ -404,3 +404,38 @@ test('signatures are verified on the signing platforms before publication', asyn
   assert.match(workflow, /codesign --verify/u);
   assert.match(workflow, /spctl --assess/u);
 });
+
+test('the workflow never tries to override runner-provided GITHUB_ variables', async () => {
+  const workflow = await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
+    'utf8',
+  );
+
+  // Everything in the GITHUB_ namespace except GITHUB_TOKEN is set by the
+  // runner and silently ignored when assigned in an `env:` block. Assigning one
+  // reads like configuration but does nothing, which is exactly how the first
+  // preview run failed.
+  for (const reserved of [
+    'GITHUB_REF_TYPE',
+    'GITHUB_REF_NAME',
+    'GITHUB_SHA',
+    'GITHUB_REPOSITORY',
+    'GITHUB_ACTIONS',
+  ]) {
+    assert.equal(
+      new RegExp(`^\\s+${reserved}:`, 'mu').test(workflow),
+      false,
+      `${reserved} is runner-provided and cannot be set from an env block`,
+    );
+  }
+});
+
+test('the release tag reaches the installer as an explicit argument', async () => {
+  const workflow = await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
+    'utf8',
+  );
+
+  assert.match(workflow, /--tag \$\{\{ needs\.guard\.outputs\.tag \}\}/u);
+  assert.match(workflow, /CATS_DESKTOP_RELEASE_TAG: \$\{\{ needs\.guard\.outputs\.tag \}\}/u);
+});

@@ -98,6 +98,10 @@ export function parseArgs(argv, env = process.env) {
   let releaseMode = parseBooleanFlag(env.CATS_DESKTOP_RELEASE_MODE);
   let previewMode = parseBooleanFlag(env.CATS_DESKTOP_PREVIEW_MODE);
   let publish = resolvePublishPolicy(env.CATS_DESKTOP_PUBLISH);
+  // GITHUB_REF_NAME is a runner-provided default. A workflow `env:` block
+  // cannot override anything in the GITHUB_ namespace, and a preview run is
+  // dispatched from a branch, so the tag has to arrive as an explicit input.
+  let tag = (env.CATS_DESKTOP_RELEASE_TAG ?? env.GITHUB_REF_NAME ?? '').trim();
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
@@ -112,6 +116,7 @@ export function parseArgs(argv, env = process.env) {
         releaseMode,
         previewMode,
         publish,
+        tag,
       };
     }
     if (value === '--release') {
@@ -132,6 +137,11 @@ export function parseArgs(argv, env = process.env) {
     }
     if (value === '--publish') {
       publish = resolvePublishPolicy(argv[index + 1] ?? '');
+      index += 1;
+      continue;
+    }
+    if (value === '--tag') {
+      tag = (argv[index + 1] ?? '').trim();
       index += 1;
       continue;
     }
@@ -176,6 +186,7 @@ export function parseArgs(argv, env = process.env) {
     releaseMode,
     previewMode,
     publish,
+    tag,
   };
 }
 
@@ -308,6 +319,7 @@ export function resolveReleaseModeProblems({
   packageVersion = null,
   publish = 'never',
   requireSigning = true,
+  requireTagRef = true,
 } = {}) {
   const problems = [];
 
@@ -318,10 +330,17 @@ export function resolveReleaseModeProblems({
     });
   }
 
-  if (env.GITHUB_REF_TYPE !== undefined && env.GITHUB_REF_TYPE !== 'tag') {
+  // Only a stable release is triggered by a tag push, so only it can assert a
+  // tag ref. A preview is dispatched from a branch and creates its tag as part
+  // of the run, so requiring one here would reject every preview.
+  //
+  // GITHUB_REF_TYPE is runner-provided and cannot be overridden from a
+  // workflow `env:` block, so this reads the real trigger rather than
+  // something the workflow claimed.
+  if (requireTagRef && env.GITHUB_REF_TYPE !== undefined && env.GITHUB_REF_TYPE !== 'tag') {
     problems.push({
       code: 'release_ref_not_tag',
-      message: `Release and preview modes require a guarded tag identity, but GITHUB_REF_TYPE is '${env.GITHUB_REF_TYPE}'.`,
+      message: `A stable release requires a tag ref, but GITHUB_REF_TYPE is '${env.GITHUB_REF_TYPE}'.`,
     });
   }
 
@@ -593,10 +612,12 @@ async function main() {
     );
     const problems = resolveReleaseModeProblems({
       env: process.env,
+      tag: parsed.tag,
       target: resolvedTarget,
       packageVersion,
       publish: parsed.publish,
       requireSigning: parsed.releaseMode,
+      requireTagRef: parsed.releaseMode,
     });
     if (problems.length > 0) {
       throw new Error(
@@ -642,6 +663,10 @@ async function main() {
         resolvedTarget,
         '--kind',
         parsed.releaseMode ? 'official' : 'preview',
+        // Forwarded rather than left to GITHUB_REF_NAME, which is the branch
+        // name on a preview dispatch.
+        '--tag',
+        parsed.tag,
       ],
       PROJECT_ROOT,
       {},

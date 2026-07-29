@@ -177,12 +177,11 @@ jobs:
 
       - name: Build installer
         env:
+          # Anything in the GITHUB_ namespace is runner-provided and cannot be
+          # overridden here, so the release tag travels as an explicit input.
+          # GITHUB_TOKEN is not one of those defaults, so setting it works.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_ACTIONS: 'true'
-          GITHUB_REF_TYPE: tag
-          GITHUB_REF_NAME: ${{ needs.guard.outputs.tag }}
-          GITHUB_SHA: ${{ needs.guard.outputs.source_commit }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          CATS_DESKTOP_RELEASE_TAG: ${{ needs.guard.outputs.tag }}
           CATS_DESKTOP_RELEASE_PLATFORM: ${{ matrix.platform }}
           CATS_DESKTOP_RUNTIME_COMMIT: ${{ steps.runtime.outputs.sha }}
           # Unsigned previews must not read signing secrets even after those
@@ -202,6 +201,7 @@ jobs:
         run: >
           node scripts/build-desktop-installer.mjs
           --target ${{ matrix.platform }}
+          --tag ${{ needs.guard.outputs.tag }}
           ${{ needs.guard.outputs.preview == 'true' && '--preview' || '--release' }}
           --publish always
           ${{ matrix.extra_args }}
