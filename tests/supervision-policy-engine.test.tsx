@@ -109,10 +109,22 @@ function baseContext(input: {
   };
 }
 
+/**
+ * `ToolResult` is a discriminated union, and `assert.equal` is not an assertion
+ * signature, so checking `status` at runtime does not narrow the type. This does
+ * both: it fails the test if the decision was not a rejection, and it tells the
+ * compiler which branch it is.
+ */
+function assertRejected(
+  result: SupervisionPolicyDecisionResult,
+): asserts result is Extract<SupervisionPolicyDecisionResult, { status: 'rejected' }> {
+  assert.equal(result.status, 'rejected');
+}
+
 function rejectionDetails(
   result: SupervisionPolicyDecisionResult,
 ): SupervisionPolicyRejectionDetails {
-  assert.equal(result.status, 'rejected');
+  assertRejected(result);
   return result.error.details as SupervisionPolicyRejectionDetails;
 }
 
@@ -187,6 +199,7 @@ test('weak_worker explicitly rejects requested milestone_plan with E_TOOL_SCOPE_
   });
   const details = rejectionDetails(result);
 
+  assertRejected(result);
   assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
   assert.equal(
     details.snapshot.reasons.some((reason) =>
@@ -214,6 +227,7 @@ test('weak_worker rejects every dial loosening attempt across the policy surface
   });
   const details = rejectionDetails(result);
 
+  assertRejected(result);
   assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
   for (const dial of [
     'autonomy=milestone_plan',
@@ -262,6 +276,7 @@ test('weak_worker rejects validation override to semantic_check until semantic v
   });
   const details = rejectionDetails(result);
 
+  assertRejected(result);
   assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
   assert.equal(
     details.snapshot.reasons.some((reason) =>
@@ -304,6 +319,7 @@ test('weak_worker + evaluated evidence still rejects override to broad_write via
   });
   const details = rejectionDetails(result);
 
+  assertRejected(result);
   assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
   assert.equal(
     details.snapshot.reasons.some((reason) =>
@@ -356,6 +372,7 @@ test('operator override cannot lift the FR-19 broad_write floor', () => {
   });
   const details = rejectionDetails(result);
 
+  assertRejected(result);
   assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
   assert.equal(details.snapshot.policy.toolScope, 'broad_write');
   assert.equal(
@@ -387,6 +404,7 @@ test('operator override cannot lift the FR-19 outcome_delegation floor', () => {
   });
   const details = rejectionDetails(result);
 
+  assertRejected(result);
   assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
   assert.equal(details.snapshot.policy.autonomy, 'outcome_delegation');
   assert.equal(
@@ -427,6 +445,7 @@ test('broad_write on side-effect tools is rejected without high approval', () =>
   });
   const details = rejectionDetails(result);
 
+  assertRejected(result);
   assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
   assert.equal(
     details.snapshot.reasons.some((reason) => reason.includes('without high approval threshold')),

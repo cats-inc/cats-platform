@@ -28,6 +28,7 @@ import {
   resolveMissingDraftDefaultRecipientPath,
 } from '../src/products/chat/renderer/draftParticipants.ts';
 import { createDefaultRoomRoutingState } from '../src/core/roomRoutingState.ts';
+import type { RuntimeSessionPolicy } from '../src/shared/runtimeSessionPolicy.ts';
 import {
   NEW_CHAT_PATH,
   buildChannelPath,
@@ -283,8 +284,10 @@ test('buildNewChatChannelInput forces read-only sessions onto the default permis
     draftSessionPolicy: {
       workspaceKind: 'sandbox',
       workspaceAccess: 'read_only',
+      // Forbidden by the contract on purpose: the assertions below check
+      // that the builder overrides it instead of trusting the caller.
       permissionMode: 'whitelist',
-    },
+    } as unknown as RuntimeSessionPolicy,
   });
 
   assert.equal(input.runtimeWorkspaceKind, 'sandbox');
@@ -493,9 +496,9 @@ test('initial group participants keep the default seed at two and still honor lo
     model: 'claude-opus-4-6',
     instance: 'native',
     modelSelection: {
-      mode: 'preset',
+      entryMode: 'explicit',
       presetId: 'deep_reasoning',
-      controls: [],
+      controls: {},
     },
   }, 8);
   const limitedSeed = createInitialGroupParticipants({
@@ -510,9 +513,9 @@ test('initial group participants keep the default seed at two and still honor lo
   assert.equal(defaultSeed[0]?.model, 'claude-opus-4-6');
   assert.equal(defaultSeed[0]?.instance, 'native');
   assert.deepEqual(defaultSeed[0]?.modelSelection, {
-    mode: 'preset',
+    entryMode: 'explicit',
     presetId: 'deep_reasoning',
-    controls: [],
+    controls: {},
   });
   assert.notEqual(defaultSeed[1]?.provider, 'claude');
   assert.equal(limitedSeed.length, 1);
@@ -571,9 +574,9 @@ test('syncLeadDraftTemporaryParticipantWithTarget keeps the group lead aligned w
       model: 'antigravity-default',
       instance: 'cli/native',
       modelSelection: {
-        mode: 'preset',
+        entryMode: 'explicit',
         presetId: 'balanced',
-        controls: [],
+        controls: {},
       },
     },
   });
@@ -583,9 +586,9 @@ test('syncLeadDraftTemporaryParticipantWithTarget keeps the group lead aligned w
   assert.equal(syncedParticipants[0]?.model, 'antigravity-default');
   assert.equal(syncedParticipants[0]?.instance, 'cli/native');
   assert.deepEqual(syncedParticipants[0]?.modelSelection, {
-    mode: 'preset',
+    entryMode: 'explicit',
     presetId: 'balanced',
-    controls: [],
+    controls: {},
   });
   assert.equal(syncedParticipants[1]?.provider, 'codex');
 });
@@ -944,5 +947,5 @@ test('insertCreatedChannelIntoPayload promotes a real created channel without a 
   assert.equal(next.chat.selectedChannel?.id, channel.id);
   assert.equal(next.chat.channels[0]?.id, channel.id);
   assert.equal(next.chat.channels[0]?.roomMode, 'chat_channel');
-  assert.equal(next.chat.selectedChannel?.roomRouting.mode, 'chat_channel');
+  assert.equal(next.chat.selectedChannel?.roomRouting?.mode, 'chat_channel');
 });

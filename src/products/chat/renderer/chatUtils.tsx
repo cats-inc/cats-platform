@@ -135,7 +135,11 @@ function isAutoNamedDraftTemporaryParticipant(input: {
 }
 
 export function createInitialGroupParticipants(
-  baseTarget: Pick<ExecutionTargetValue, 'provider' | 'model' | 'instance' | 'modelSelection'>,
+  // model/instance are optional because absent and null mean different things
+  // downstream: absent derives the provider default, null clears it. Requiring
+  // them made that distinction unreachable for callers.
+  baseTarget: Pick<ExecutionTargetValue, 'provider'>
+    & Partial<Pick<ExecutionTargetValue, 'model' | 'instance' | 'modelSelection'>>,
   maxParticipants: number = DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT,
 ): DraftTemporaryParticipant[] {
   const normalizedBaseTarget = toDraftTemporaryParticipantTarget(baseTarget);
@@ -359,22 +363,17 @@ export function buildAttachedFilesMessageBody(
   return buildWorkspaceAttachedFilesMessageBody(body, attachments);
 }
 
-export function buildNewChatChannelInput(options: {
-  body: string;
-  existingCount: number;
-  originSurface: PlatformSurfaceId;
-  entryKind?: NewChatEntryKind;
-  repoPath?: string | null;
-  defaultRecipientCatId?: string | null;
-  participantCatIds?: string[];
-  temporaryParticipants?: DraftTemporaryParticipant[];
-  draftExecutionTarget?: {
-    provider: string;
-    model: string | null;
-    instance: string | null;
-    modelSelection?: ProviderModelSelection | null;
-  };
-}): CreateChatChannelInput {
+/**
+ * Thin pass-through to the workspace builder.
+ *
+ * The options type is taken from the function it forwards to rather than
+ * restated: a hand-copied list silently omitted draftSessionPolicy,
+ * assistantResponseLanguage, and t, so callers could not pass options this
+ * wrapper already forwarded.
+ */
+export function buildNewChatChannelInput(
+  options: Parameters<typeof buildWorkspaceNewChatChannelInput>[0],
+): CreateChatChannelInput {
   return buildWorkspaceNewChatChannelInput(options);
 }
 

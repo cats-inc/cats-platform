@@ -30,6 +30,17 @@ class ThrowingStorage extends MemoryStorage {
   }
 }
 
+type StorageEventListenerStub = (event: {
+  key: string | null;
+  newValue: string | null;
+}) => void;
+
+interface BrowserStorageGlobalStub {
+  addEventListener?: (type: 'storage', listener: StorageEventListenerStub) => void;
+  removeEventListener?: (type: 'storage', listener: StorageEventListenerStub) => void;
+  localStorage?: MemoryStorage;
+}
+
 async function withBrowserStorageHarness(
   run: (harness: {
     storage: MemoryStorage;
@@ -39,17 +50,11 @@ async function withBrowserStorageHarness(
     }) => void;
   }) => Promise<void> | void,
 ): Promise<void> {
-  const browserGlobal = globalThis as typeof globalThis & {
-    addEventListener?: (type: 'storage', listener: (event: {
-      key: string | null;
-      newValue: string | null;
-    }) => void) => void;
-    removeEventListener?: (type: 'storage', listener: (event: {
-      key: string | null;
-      newValue: string | null;
-    }) => void) => void;
-    localStorage?: MemoryStorage;
-  };
+  // Intersecting with `typeof globalThis` inherits the DOM's own
+  // addEventListener/localStorage, which are neither optional nor
+  // single-signature: `delete` is then rejected and the stub's parameters lose
+  // their contextual types. A standalone shape describes only what is swapped.
+  const browserGlobal = globalThis as unknown as BrowserStorageGlobalStub;
   const originalAddEventListener = browserGlobal.addEventListener;
   const originalRemoveEventListener = browserGlobal.removeEventListener;
   const originalLocalStorage = browserGlobal.localStorage;

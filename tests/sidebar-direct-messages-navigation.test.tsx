@@ -13,6 +13,10 @@ import {
 } from '../src/products/chat/renderer/myCatNavigation.ts';
 import { isDirectLaneSummary } from '../src/products/chat/shared/channelTopology.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
+import {
+  buildChatConversationId,
+  CHAT_ROOT_CONTAINER_ID,
+} from '../src/shared/chatCoreIds.ts';
 
 // This file verifies the DIRECT MESSAGES resolver/view-model route
 // contract only. DOM row-click wiring is intentionally outside this
@@ -23,8 +27,8 @@ function createChannel(
   overrides: Partial<ChatChannelSummary> & { id: string; title: string },
 ): ChatChannelSummary {
   return {
-    id: overrides.id,
-    title: overrides.title,
+    containerId: CHAT_ROOT_CONTAINER_ID,
+    conversationId: buildChatConversationId(overrides.id),
     topic: '',
     originSurface: 'chat',
     status: 'active',
@@ -155,7 +159,7 @@ function createPayload(channels: ChatChannelSummary[], runtime?: { baseUrl: stri
       showVerboseMessages: false,
       botBindings: [],
     },
-  } as AppShellPayload;
+  } as unknown as AppShellPayload;
 }
 
 const t = createTranslator('en');
@@ -167,7 +171,8 @@ function createSidebarViewModel(payload: AppShellPayload) {
     shellSurface: 'chat',
     helpers: {
       isVisibleCat: isChatCat,
-      isDirectLaneSummary,
+      isDirectLaneSummary: (channel) =>
+        isDirectLaneSummary(channel as Parameters<typeof isDirectLaneSummary>[0]),
     },
     t,
   });
@@ -264,7 +269,7 @@ test('Cat with no existing direct lane shows no dot', () => {
   const channels: ChatChannelSummary[] = [];
   const lane = findDirectLaneForCat(channels, 'companion-cat');
   assert.equal(lane, null);
-  assert.equal(resolveMyCatStatusDot(lane?.defaultRecipientLeaseStatus), 'no_dot');
+  assert.equal(resolveMyCatStatusDot(undefined), 'no_dot');
 });
 
 test('Cat with direct lane + ready shows awake (green)', () => {
@@ -309,7 +314,7 @@ test('Cat active in non-direct room only does not affect Direct Messages dot', (
   ];
   const lane = findDirectLaneForCat(channels, 'companion-cat');
   assert.equal(lane, null, 'chat_channel room should not be found as direct lane');
-  assert.equal(resolveMyCatStatusDot(lane?.defaultRecipientLeaseStatus), 'no_dot');
+  assert.equal(resolveMyCatStatusDot(undefined), 'no_dot');
 });
 
 test('clicking Direct Messages row still preserves existing navigation behavior with status dots', () => {
