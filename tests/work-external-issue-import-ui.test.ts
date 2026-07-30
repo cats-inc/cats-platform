@@ -2,19 +2,26 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-function readSource(relativePath: string): string {
-  return readFileSync(new URL(relativePath, import.meta.url), 'utf8');
+import { resolveProjectPath } from './helpers/projectRoot.js';
+
+/**
+ * Anchored at the project root rather than at `import.meta.url`: this file is
+ * bundled into `build/test/`, where a module-relative `../src/...` resolves to
+ * a `build/src` directory that does not exist.
+ */
+function readSource(projectRelativePath: string): string {
+  return readFileSync(resolveProjectPath(import.meta.url, projectRelativePath), 'utf8');
 }
 
 test('Work Items list exposes the external issue import dialog entrypoint', () => {
   const listPage = readSource(
-    '../src/products/work/renderer/components/work-items/WorkItemsListPage.tsx',
+    'src/products/work/renderer/components/work-items/WorkItemsListPage.tsx',
   );
   const dialog = readSource(
-    '../src/products/work/renderer/components/work-items/ImportExternalIssueDialog.tsx',
+    'src/products/work/renderer/components/work-items/ImportExternalIssueDialog.tsx',
   );
   const css = readSource(
-    '../src/products/work/renderer/components/work-items/work-items.css',
+    'src/products/work/renderer/components/work-items/work-items.css',
   );
 
   assert.match(listPage, /ImportExternalIssueDialog/u);
@@ -32,9 +39,9 @@ test('Work Items list exposes the external issue import dialog entrypoint', () =
 });
 
 test('external issue import UI strings are localized', () => {
-  const keys = readSource('../src/shared/i18n/messageKeys.ts');
-  const english = readSource('../src/shared/i18n/catalogs/en.ts');
-  const traditionalChinese = readSource('../src/shared/i18n/catalogs/zh-TW.ts');
+  const keys = readSource('src/shared/i18n/messageKeys.ts');
+  const english = readSource('src/shared/i18n/catalogs/en.ts');
+  const traditionalChinese = readSource('src/shared/i18n/catalogs/zh-TW.ts');
 
   for (const key of [
     'work.items.importExternalIssueAction',
