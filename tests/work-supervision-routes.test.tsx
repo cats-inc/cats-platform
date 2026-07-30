@@ -13,7 +13,11 @@ import {
 import { MemoryCoreStore } from '../src/core/store.ts';
 import type { EvidenceEvent } from '../src/core/types.ts';
 import { readEvidenceEvents } from '../src/platform/persistence/evidence.ts';
-import type { RuntimeClient } from '../src/platform/runtime/client.ts';
+import type {
+  RuntimeClient,
+  RuntimeSendMessageInput,
+  RuntimeSessionCreateInput,
+} from '../src/platform/runtime/client.ts';
 import { routeWorkApi } from '../src/products/work/api/index.ts';
 
 function createCoreStore() {
@@ -148,7 +152,7 @@ function createRuntimeStub(): RuntimeClient & {
         warnings: [],
       };
     },
-    async createSession(input) {
+    async createSession(input: RuntimeSessionCreateInput) {
       this.createdSessions.push(input);
       return {
         id: 'runtime-session-work-1',
@@ -158,7 +162,7 @@ function createRuntimeStub(): RuntimeClient & {
         cwd: input.cwd ?? null,
       };
     },
-    async sendMessage(sessionId, content, input) {
+    async sendMessage(sessionId: string, content: string, input?: RuntimeSendMessageInput) {
       this.sentMessages.push({ sessionId, content, input });
       return {
         segments: [{ kind: 'text', text: 'work runtime ok', toolName: null, toolId: null }],
@@ -171,7 +175,7 @@ function createRuntimeStub(): RuntimeClient & {
       return { session: {} };
     },
     async streamSession() {},
-    async resumeSession(sessionId) {
+    async resumeSession(sessionId: string) {
       this.resumedSessions.push(sessionId);
       return {
         id: sessionId,
@@ -190,11 +194,11 @@ function createRuntimeStub(): RuntimeClient & {
     async callMcp() {
       return null;
     },
-    async cancelSession(sessionId) {
+    async cancelSession(sessionId: string) {
       this.canceledSessions.push(sessionId);
     },
     async closeSession() {},
-    async deleteSession(sessionId) {
+    async deleteSession(sessionId: string) {
       return {
         sessionId,
         status: 'deleted',

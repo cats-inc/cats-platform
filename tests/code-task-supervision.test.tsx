@@ -76,7 +76,7 @@ function createRuntimeStub(): RuntimeClient & {
         warnings: [],
       };
     },
-    async createSession(input) {
+    async createSession(input: RuntimeSessionCreateInput) {
       this.createdSessions.push(input);
       return {
         id: 'runtime-session-code-1',
@@ -98,7 +98,7 @@ function createRuntimeStub(): RuntimeClient & {
       return { session: {} };
     },
     async streamSession() {},
-    async resumeSession(sessionId) {
+    async resumeSession(sessionId: string) {
       return {
         id: sessionId,
         provider: 'codex',
@@ -118,7 +118,7 @@ function createRuntimeStub(): RuntimeClient & {
     },
     async cancelSession() {},
     async closeSession() {},
-    async deleteSession(sessionId) {
+    async deleteSession(sessionId: string) {
       return {
         sessionId,
         status: 'deleted',

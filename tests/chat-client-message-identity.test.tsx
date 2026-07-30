@@ -68,7 +68,7 @@ function createRuntimeStub(): RuntimeClient & {
         cwd: `C:\\tmp\\identity-session-${createCalls}`,
       };
     },
-    async sendMessage(sessionId, content) {
+    async sendMessage(sessionId: string, content: string) {
       sentMessages.push({ sessionId, content });
       return {
         segments: [{ kind: 'text', text: `reply:${content}`, toolName: null, toolId: null }],
@@ -77,7 +77,7 @@ function createRuntimeStub(): RuntimeClient & {
         tokensUsed: 2,
       };
     },
-    async resumeSession(sessionId) {
+    async resumeSession(sessionId: string) {
       return {
         id: sessionId,
         provider: 'claude',
@@ -90,11 +90,11 @@ function createRuntimeStub(): RuntimeClient & {
     },
     async closeSession() {},
     async cancelSession() {},
-    async observeSession(sessionId) {
+    async observeSession(sessionId: string) {
       return { session: { id: sessionId, status: 'ready' } };
     },
     async streamSession() {},
-  } as RuntimeClient & {
+  } as unknown as RuntimeClient & {
     createCalls: number;
     sentMessages: Array<{ sessionId: string; content: string }>;
   };

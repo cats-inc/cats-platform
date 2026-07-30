@@ -19,7 +19,7 @@ import { buildWorkWorkItemListProjection } from '../src/products/work/api/projec
 function runtimeStub(): RuntimeClient {
   return {
     async closeSession() {},
-  } as RuntimeClient;
+  } as unknown as RuntimeClient;
 }
 
 function strongBootstrapConfig() {

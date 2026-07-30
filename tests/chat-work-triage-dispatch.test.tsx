@@ -36,7 +36,7 @@ import {
 function runtimeStub(): RuntimeClient {
   return {
     async closeSession() {},
-  } as RuntimeClient;
+  } as unknown as RuntimeClient;
 }
 
 function fixtureBootstrapConfig(): ProviderCapabilityBootstrapConfig {

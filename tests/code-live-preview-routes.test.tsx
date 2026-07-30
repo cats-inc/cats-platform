@@ -51,7 +51,7 @@ test('Code live-preview API stops previews through product-owned dependency', as
   const store = createStore();
   const server = createTestServer({
     livePreviewStore: store,
-    stopLivePreview: async (previewId, reason) => {
+    stopLivePreview: async (previewId: string, reason: string) => {
       const stoppedAt = '2026-05-09T00:00:10.000Z';
       store.updateLease(previewId, (lease) => ({
         ...lease,

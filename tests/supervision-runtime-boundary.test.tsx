@@ -11,7 +11,11 @@ import {
   createSupervisedRuntimeSession,
   sendSupervisedRuntimeMessage,
 } from '../src/platform/supervision/index.ts';
-import type { RuntimeClient } from '../src/platform/runtime/client.ts';
+import type {
+  RuntimeClient,
+  RuntimeSendMessageInput,
+  RuntimeSessionCreateInput,
+} from '../src/platform/runtime/client.ts';
 
 function createRuntimeStub(): RuntimeClient & {
   createdSessions: unknown[];
@@ -72,7 +76,7 @@ function createRuntimeStub(): RuntimeClient & {
         warnings: [],
       };
     },
-    async createSession(input) {
+    async createSession(input: RuntimeSessionCreateInput) {
       this.createdSessions.push(input);
       return {
         id: 'runtime-session-1',
@@ -82,7 +86,7 @@ function createRuntimeStub(): RuntimeClient & {
         cwd: input.cwd ?? null,
       };
     },
-    async sendMessage(sessionId, content, input) {
+    async sendMessage(sessionId: string, content: string, input?: RuntimeSendMessageInput) {
       this.sentMessages.push({ sessionId, content, input });
       return {
         segments: [{ kind: 'text', text: 'ok', toolName: null, toolId: null }],
@@ -106,7 +110,7 @@ function createRuntimeStub(): RuntimeClient & {
     },
     async cancelSession() {},
     async closeSession() {},
-    async deleteSession(sessionId) {
+    async deleteSession(sessionId: string) {
       return {
         sessionId,
         status: 'deleted',

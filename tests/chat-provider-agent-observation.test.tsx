@@ -216,7 +216,7 @@ function assertObservationToolHints(
 function runtimeStub(): RuntimeClient {
   return {
     async closeSession() {},
-  } as RuntimeClient;
+  } as unknown as RuntimeClient;
 }
 
 test('Chat provider-agent observation carries routing metadata without raw message content', () => {
@@ -1222,7 +1222,7 @@ test('Chat dispatch can hand bounded observations to a provider-agent decision r
     {
       body: rawMessage,
     },
-    {} as RuntimeClient,
+    {} as unknown as RuntimeClient,
     new Date('2026-04-28T00:01:00.000Z'),
     {
       providerAgentDecisionRequester: async ({ observation }) => {

@@ -6,7 +6,11 @@ import {
   type ProviderAgentBoundedObservation,
   type ProviderAgentDecision,
 } from '../src/platform/orchestration/index.ts';
-import type { RuntimeClient } from '../src/platform/runtime/client.ts';
+import type {
+  RuntimeClient,
+  RuntimeSendMessageInput,
+  RuntimeSessionCreateInput,
+} from '../src/platform/runtime/client.ts';
 import { createChatProviderAgentDecisionRequester } from '../src/products/chat/state/providerAgentDecisionRequester.ts';
 
 function policy() {
@@ -100,7 +104,7 @@ function createRuntimeStub(options: { responseText?: string } = {}): RuntimeClie
     async getProviderConfig() {
       return {};
     },
-    async getProviderModels(provider) {
+    async getProviderModels(provider: string) {
       return {
         provider,
         backend: 'cli',
@@ -112,7 +116,7 @@ function createRuntimeStub(options: { responseText?: string } = {}): RuntimeClie
         warnings: [],
       };
     },
-    async createSession(input) {
+    async createSession(input: RuntimeSessionCreateInput) {
       this.createdSessions.push(input);
       return {
         id: 'provider-agent-session-1',
@@ -122,7 +126,7 @@ function createRuntimeStub(options: { responseText?: string } = {}): RuntimeClie
         cwd: input.cwd ?? null,
       };
     },
-    async sendMessage(sessionId, content, input) {
+    async sendMessage(sessionId: string, content: string, input?: RuntimeSendMessageInput) {
       this.sentMessages.push({ sessionId, content, input });
       return {
         segments: [
@@ -139,7 +143,7 @@ function createRuntimeStub(options: { responseText?: string } = {}): RuntimeClie
       };
     },
     async closeSession() {},
-  } as RuntimeClient & {
+  } as unknown as RuntimeClient & {
     createdSessions: unknown[];
     sentMessages: Array<{ sessionId: string; content: string; input: unknown }>;
   };

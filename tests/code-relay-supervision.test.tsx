@@ -9,12 +9,16 @@ import { loadConfig } from '../src/config.ts';
 import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import { readEvidenceEvents } from '../src/platform/persistence/evidence.ts';
-import type { RuntimeClient } from '../src/platform/runtime/client.ts';
+import type {
+  RuntimeClient,
+  RuntimeSessionCreateInput,
+} from '../src/platform/runtime/client.ts';
 import { routeCodeApi } from '../src/products/code/api/index.ts';
 
 function createRuntimeStub(): RuntimeClient & {
   sentMessages: Array<{ sessionId: string; content: string }>;
 } {
+  const sentMessages: Array<{ sessionId: string; content: string }> = [];
   const providerConfig = {
     claude: {
       defaultInstance: 'native',
@@ -34,7 +38,7 @@ function createRuntimeStub(): RuntimeClient & {
   };
 
   return {
-    sentMessages: [],
+    sentMessages,
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -61,7 +65,7 @@ function createRuntimeStub(): RuntimeClient & {
         providers: [],
       };
     },
-    async getProviderModels(provider) {
+    async getProviderModels(provider: string) {
       return {
         provider,
         backend: 'cli',
@@ -73,7 +77,7 @@ function createRuntimeStub(): RuntimeClient & {
         warnings: [],
       };
     },
-    async getAdvancedProviderModels(provider) {
+    async getAdvancedProviderModels(provider: string) {
       return {
         provider,
         backend: 'cli',
@@ -87,7 +91,7 @@ function createRuntimeStub(): RuntimeClient & {
         warnings: [],
       };
     },
-    async createSession(input) {
+    async createSession(input: RuntimeSessionCreateInput) {
       return {
         id: `session-${input.provider}-${input.instance ?? 'default'}`,
         provider: input.provider,
@@ -96,8 +100,8 @@ function createRuntimeStub(): RuntimeClient & {
         cwd: input.cwd ?? null,
       };
     },
-    async sendMessage(sessionId, content) {
-      this.sentMessages.push({ sessionId, content });
+    async sendMessage(sessionId: string, content: string) {
+      sentMessages.push({ sessionId, content });
       const provider = sessionId.replace(/^session-([^-]+).*/u, '$1');
       return {
         segments: [{ kind: 'text', text: `[${provider}] ${content}`, toolName: null, toolId: null }],
@@ -110,7 +114,7 @@ function createRuntimeStub(): RuntimeClient & {
       return { session: {} };
     },
     async streamSession() {},
-    async resumeSession(sessionId) {
+    async resumeSession(sessionId: string) {
       return {
         id: sessionId,
         provider: 'codex',
@@ -130,13 +134,34 @@ function createRuntimeStub(): RuntimeClient & {
     },
     async cancelSession() {},
     async closeSession() {},
-    async deleteSession(sessionId) {
+    async deleteSession(sessionId: string) {
       return {
         sessionId,
         status: 'deleted',
       };
     },
+  } as unknown as RuntimeClient & {
+    sentMessages: Array<{ sessionId: string; content: string }>;
   };
+}
+
+/**
+ * Relay payloads come back from HTTP, so `json()` yields `any`. Declaring the
+ * fields these assertions read keeps them checked.
+ */
+interface RelayDispatchLike {
+  agentId: string;
+  status: string;
+  runId?: unknown;
+  error?: unknown;
+}
+
+interface RelayPayloadLike {
+  threads: Array<{
+    thread: { id: string; status: string };
+    roster: Array<{ id: string }>;
+    rounds: Array<{ dispatches: RelayDispatchLike[] }>;
+  }>;
 }
 
 test('Code relay fan-out creates sibling supervised runs and durable evidence', async (t) => {
@@ -188,7 +213,7 @@ test('Code relay fan-out creates sibling supervised runs and durable evidence', 
     }),
   });
   assert.equal(createResponse.status, 201);
-  const createPayload = await createResponse.json();
+  const createPayload = await createResponse.json() as RelayPayloadLike;
   const thread = createPayload.threads[0];
 
   const fanOutResponse = await fetch(
@@ -205,7 +230,7 @@ test('Code relay fan-out creates sibling supervised runs and durable evidence', 
     },
   );
   assert.equal(fanOutResponse.status, 202);
-  const fanOutPayload = await fanOutResponse.json();
+  const fanOutPayload = await fanOutResponse.json() as RelayPayloadLike;
   const round = fanOutPayload.threads[0].rounds[0];
   assert.equal(round.dispatches.length, 2);
   assert.ok(round.dispatches.every((dispatch) => typeof dispatch.runId === 'string'));
@@ -218,7 +243,7 @@ test('Code relay fan-out creates sibling supervised runs and durable evidence', 
     await new Promise((resolve) => setTimeout(resolve, 20));
     const refreshResponse = await fetch(`${baseUrl}/api/code/relay/threads`);
     assert.equal(refreshResponse.status, 200);
-    settledPayload = await refreshResponse.json();
+    settledPayload = await refreshResponse.json() as RelayPayloadLike;
   }
 
   const core = await coreStore.readCore();

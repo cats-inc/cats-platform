@@ -8,7 +8,11 @@ import {
   upsertCoreActor,
 } from '../src/core/model/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
-import type { RuntimeClient } from '../src/platform/runtime/client.ts';
+import type {
+  RuntimeClient,
+  RuntimeSendMessageInput,
+  RuntimeSessionCreateInput,
+} from '../src/platform/runtime/client.ts';
 import {
   MemoryScheduleStore,
   type ScheduleTriggerMetadata,
@@ -150,7 +154,7 @@ function createRuntimeStub(): RuntimeClient & {
         warnings: [],
       };
     },
-    async createSession(input) {
+    async createSession(input: RuntimeSessionCreateInput) {
       this.createdSessions.push(input);
       return {
         id: 'runtime-session-schedule-route',
@@ -160,7 +164,7 @@ function createRuntimeStub(): RuntimeClient & {
         cwd: input.cwd ?? null,
       };
     },
-    async sendMessage(sessionId, content, input) {
+    async sendMessage(sessionId: string, content: string, input?: RuntimeSendMessageInput) {
       this.sentMessages.push({ sessionId, content, input });
       return {
         segments: [{ kind: 'text', text: 'scheduled runtime ok', toolName: null, toolId: null }],
@@ -182,11 +186,11 @@ function createRuntimeStub(): RuntimeClient & {
     async callMcp() {
       return null;
     },
-    async cancelSession(sessionId) {
+    async cancelSession(sessionId: string) {
       this.canceledSessions.push(sessionId);
     },
     async closeSession() {},
-    async deleteSession(sessionId) {
+    async deleteSession(sessionId: string) {
       return {
         sessionId,
         status: 'deleted',

@@ -32,6 +32,26 @@ const PLAN_080_BOOTSTRAP_FIXTURE_PATH = path.join(
   'provider-capability-bootstrap.yaml',
 );
 
+/**
+ * The relay payload arrives from a live HTTP response, so `json()` yields `any`.
+ * Declaring the fields this smoke test reads keeps its assertions checked rather
+ * than silently operating on `any`.
+ */
+interface LiveRelayDispatch {
+  agentId: string;
+  runId: unknown;
+  status: string;
+  error: unknown;
+}
+
+interface LiveRelayPayload {
+  threads: Array<{
+    thread: { id: string; status: string };
+    roster: Array<{ id: string }>;
+    rounds: Array<{ dispatches: LiveRelayDispatch[] }>;
+  }>;
+}
+
 test(
   'live Claude/Codex Code paths run through supervision',
   {
@@ -154,7 +174,7 @@ test(
       }),
     });
     assert.equal(createRelayResponse.status, 201);
-    let relayPayload = await createRelayResponse.json();
+    let relayPayload = await createRelayResponse.json() as LiveRelayPayload;
     const thread = relayPayload.threads[0];
     const targetRoster = thread.roster.slice(0, LIVE_PROVIDER_IDS.length);
 
@@ -175,7 +195,7 @@ test(
         },
       );
       assert.equal(patchResponse.status, 200);
-      relayPayload = await patchResponse.json();
+      relayPayload = await patchResponse.json() as LiveRelayPayload;
     }
 
     const selectedThread = relayPayload.threads[0];

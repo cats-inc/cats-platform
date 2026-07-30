@@ -12,7 +12,7 @@ import type { RuntimeClient } from '../src/platform/runtime/client.ts';
 import { buildTelegramBotTransportBindingId } from '../src/shared/chatCoreIds.ts';
 
 function runtimeStub(): RuntimeClient {
-  return { async closeSession() {} } as RuntimeClient;
+  return { async closeSession() {} } as unknown as RuntimeClient;
 }
 
 function createDirectState() {

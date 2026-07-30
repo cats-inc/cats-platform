@@ -18,7 +18,11 @@ import {
   createInMemoryToolEvidenceSink,
   type SupervisedToolManifest,
 } from '../src/platform/supervision/index.ts';
-import type { RuntimeClient, RuntimeMessageResult } from '../src/platform/runtime/client.ts';
+import type {
+  RuntimeClient,
+  RuntimeMessageResult,
+  RuntimeSessionCreateInput,
+} from '../src/platform/runtime/client.ts';
 
 function manifest(name: string): SupervisedToolManifest {
   return {
@@ -187,7 +191,7 @@ function createRuntimeStub(
         warnings: [],
       };
     },
-    async createSession(input) {
+    async createSession(input: RuntimeSessionCreateInput) {
       this.createdSessions.push(input);
       return {
         id: 'runtime-session-1',
@@ -228,7 +232,7 @@ function createRuntimeStub(
     },
     async cancelSession() {},
     async closeSession() {},
-    async deleteSession(sessionId) {
+    async deleteSession(sessionId: string) {
       return {
         sessionId,
         status: 'deleted',
