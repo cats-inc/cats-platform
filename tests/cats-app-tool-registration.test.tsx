@@ -15,7 +15,7 @@ import type {
 } from '../src/shared/catsAppManifest.ts';
 
 function tool(
-  name = 'connector.calendar.search',
+  name: CatsAgentToolContribution['name'] = 'connector.calendar.search',
   overrides: Partial<CatsAgentToolContribution> = {},
 ): CatsAgentToolContribution {
   return {

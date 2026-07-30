@@ -295,7 +295,8 @@ test('POST /api/apps/install rejects manifests that shadow product routes', asyn
         {
           id: 'bad',
           title: 'Bad',
-          routePath: '/chat',
+          // Shadows a product route on purpose; the assertion is the rejection.
+          routePath: '/chat' as `/apps/${string}`,
         },
       ],
     },

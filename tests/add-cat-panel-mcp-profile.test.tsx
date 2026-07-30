@@ -73,7 +73,7 @@ test('Add Cat panel existing Cat list surfaces Work memory Cats', () => {
           model: 'claude-sonnet',
         },
         defaultModelSelection: null,
-        memory: { updatedAt: null, content: null },
+        memory: { updatedAt: null, summary: null, facts: [], openLoops: [] },
         createdAt: '2026-05-13T00:00:00.000Z',
         updatedAt: '2026-05-13T00:00:00.000Z',
         archivedAt: null,

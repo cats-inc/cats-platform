@@ -20,6 +20,14 @@ async function waitForCondition(
   throw new Error('Timed out waiting for condition.');
 }
 
+/**
+ * The refresher is generic over its payload; these tests only exercise the
+ * generatedAt stamp it compares, so that is the shape the fake fetch resolves.
+ */
+interface RefreshPayloadStub {
+  metadata: { generatedAt: string };
+}
+
 test('shouldApplyRefreshedAppShell ignores stale event refresh payloads', () => {
   assert.equal(
     shouldApplyRefreshedAppShell(
@@ -63,7 +71,7 @@ test('createEventDrivenAppShellRefresher coalesces burst refresh requests instea
   };
   const starts: string[] = [];
   const applied: string[] = [];
-  const pendingResolvers = new Map<string, (payload: { metadata: { generatedAt: string } }) => void>();
+  const pendingResolvers = new Map<string, (payload: RefreshPayloadStub) => void>();
   let notifyNextApply: (() => void) | null = null;
   const waitForApply = () => new Promise<void>((resolve) => {
     notifyNextApply = resolve;
@@ -74,7 +82,7 @@ test('createEventDrivenAppShellRefresher coalesces burst refresh requests instea
     async () => {
       const label = `fetch-${starts.length + 1}`;
       starts.push(label);
-      return new Promise((resolve) => {
+      return new Promise<RefreshPayloadStub>((resolve) => {
         pendingResolvers.set(label, resolve);
       });
     },
@@ -141,7 +149,7 @@ test('createEventDrivenAppShellRefresher ignores stale queued payloads', {
 
   const requestRefresh = createEventDrivenAppShellRefresher(
     refreshState,
-    async () => new Promise((resolve) => {
+    async () => new Promise<RefreshPayloadStub>((resolve) => {
       pendingResolvers.push(resolve);
     }),
     () => currentGeneratedAt,

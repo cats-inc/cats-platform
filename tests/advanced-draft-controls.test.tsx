@@ -52,8 +52,9 @@ test('advanced draft controls clone and patch preserve unsupported keys and igno
       code: true,
       work: false,
       chat: 'yes' as never,
-      lobby: true as never,
-    }),
+      // Not a real surface: the assertion below checks unknown keys are ignored.
+      lobby: true,
+    } as never),
     {
       chat: true,
       code: true,

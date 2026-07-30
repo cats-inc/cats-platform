@@ -51,7 +51,7 @@ function createWorkMemoryPlan(body: string, options: { bossCat?: boolean } = {})
   assert.ok(catId);
   assert.equal(buildChannelView(state, channelId).assignedCats[0]?.mcpProfile, WORK_MCP_PROFILE_ID);
   if (options.bossCat) {
-    state = setBossCat(state, catId, new Date('2026-05-13T00:00:01.000Z'));
+    state = setBossCat(state, catId);
   }
 
   return buildOrchestratorTurnPlan(
