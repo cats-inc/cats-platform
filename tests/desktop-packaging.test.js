@@ -947,7 +947,13 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   // A universal DMG merges x64 and arm64 bundles, so the Swift helper has to
   // be universal too or electron-builder refuses the identical binary.
   assert.match(script, /'--arch',\s*'x86_64',\s*'--arch',\s*'arm64',/);
-  assert.match(script, /'\.build', 'apple', 'Products', 'Release', 'cats-stt-macos'/);
+  // The output directory is asked of SwiftPM rather than reconstructed: a plain
+  // build, a single --arch cross-build, and a multi-arch build each land
+  // somewhere different, and guessing wrong fails after the compile succeeds,
+  // which reads like a build error when it is really a copy error.
+  assert.match(script, /--show-bin-path/);
+  assert.match(script, /resolve\(await resolveSwiftBinPath\(packageRoot, swiftArgs\), 'cats-stt-macos'\)/);
+  assert.equal(script.includes("'.build', 'apple', 'Products', 'Release'"), false);
   assert.match(script, /dotnet',\s*\[\s*'publish'/);
   assert.match(script, /'--self-contained',\s*'true'/);
   assert.match(linuxWrapper, /build-desktop-installer\.mjs --target linux/);

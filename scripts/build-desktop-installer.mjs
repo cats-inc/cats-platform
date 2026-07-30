@@ -433,6 +433,44 @@ async function ensureMobileSkipPlaceholder() {
   );
 }
 
+/**
+ * Asks SwiftPM where it put the binary instead of reconstructing the path.
+ *
+ * The layout differs per invocation: a plain build lands in `.build/release`,
+ * a single `--arch` cross-build in a triple-specific directory, and a
+ * multi-arch build in an Xcode-style `.build/apple/Products/Release`. Guessing
+ * wrong fails only after the compile succeeds, which reads like a build error
+ * when it is really a copy error.
+ */
+async function resolveSwiftBinPath(packageRoot, swiftArgs) {
+  const invocation = await resolveCommandInvocation('swift', [...swiftArgs, '--show-bin-path']);
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(invocation.command, invocation.args, {
+      cwd: PROJECT_ROOT,
+      env: buildInstallerEnvironment({ ...process.env }, {}),
+      stdio: ['ignore', 'pipe', 'inherit'],
+      shell: false,
+    });
+    let out = '';
+    child.stdout.on('data', (chunk) => {
+      out += String(chunk);
+    });
+    child.once('exit', (code) => {
+      if (code !== 0) {
+        reject(new Error(`swift --show-bin-path exited with code ${code ?? 'null'}`));
+        return;
+      }
+      const binPath = out.trim().split(/\r?\n/u).filter(Boolean).at(-1);
+      if (!binPath) {
+        reject(new Error('swift --show-bin-path produced no path.'));
+        return;
+      }
+      resolvePromise(binPath);
+    });
+    child.once('error', reject);
+  });
+}
+
 async function buildMacosVoiceHelper(archOverride) {
   if (process.platform !== 'darwin') {
     throw new Error('The macOS voice helper must be built on macOS.');
@@ -448,23 +486,20 @@ async function buildMacosVoiceHelper(archOverride) {
     // whether that is a resource to share or a single-arch executable that
     // should have been lipo'd. Building the helper universal removes the
     // ambiguity instead of suppressing the check.
-    await runCommand(
-      'swift',
-      [
-        'build',
-        '-c',
-        'release',
-        '--package-path',
-        packageRoot,
-        '--arch',
-        'x86_64',
-        '--arch',
-        'arm64',
-      ],
-      PROJECT_ROOT,
-    );
+    const universalArgs = [
+      'build',
+      '-c',
+      'release',
+      '--package-path',
+      packageRoot,
+      '--arch',
+      'x86_64',
+      '--arch',
+      'arm64',
+    ];
+    await runCommand('swift', universalArgs, PROJECT_ROOT);
     await copyFile(
-      resolve(packageRoot, '.build', 'apple', 'Products', 'Release', 'cats-stt-macos'),
+      resolve(await resolveSwiftBinPath(packageRoot, universalArgs), 'cats-stt-macos'),
       resolve(outputDir, 'cats-stt-macos'),
     );
     return;
@@ -475,13 +510,18 @@ async function buildMacosVoiceHelper(archOverride) {
   // That would quietly bundle an arm64 helper inside an x64 app, which only
   // fails when a user tries to dictate.
   const swiftArch = archOverride === 'arm64' ? 'arm64' : 'x86_64';
-  await runCommand(
-    'swift',
-    ['build', '-c', 'release', '--package-path', packageRoot, '--arch', swiftArch],
-    PROJECT_ROOT,
-  );
+  const swiftArgs = [
+    'build',
+    '-c',
+    'release',
+    '--package-path',
+    packageRoot,
+    '--arch',
+    swiftArch,
+  ];
+  await runCommand('swift', swiftArgs, PROJECT_ROOT);
   await copyFile(
-    resolve(packageRoot, '.build', 'apple', 'Products', 'Release', 'cats-stt-macos'),
+    resolve(await resolveSwiftBinPath(packageRoot, swiftArgs), 'cats-stt-macos'),
     resolve(outputDir, 'cats-stt-macos'),
   );
 }
