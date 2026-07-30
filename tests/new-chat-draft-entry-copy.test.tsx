@@ -276,7 +276,6 @@ test('default chat draft expanded to a group with runtime assist hides the chat-
             instance: 'native',
             model: 'antigravity-default',
             modelSelection: null,
-            roleHint: null,
           },
           {
             participantId: 'participant-b',
@@ -285,7 +284,6 @@ test('default chat draft expanded to a group with runtime assist hides the chat-
             instance: 'native',
             model: 'claude-sonnet',
             modelSelection: null,
-            roleHint: null,
           },
         ],
       })}
@@ -1235,9 +1233,9 @@ test('+Group + +compare keeps the lead roster scoped to branch-0 audience and ex
           },
         ],
         draftTemporaryParticipants: [
-          { participantId: 'lead-a', name: 'Aria', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
-          { participantId: 'lead-b', name: 'Bram', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
-          { participantId: 'shadow-c', name: 'Cleo', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
+          { participantId: 'lead-a', name: 'Aria', provider: 'claude-cli', model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'lead-b', name: 'Bram', provider: 'claude-cli', model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'shadow-c', name: 'Cleo', provider: 'codex-cli', model: 'codex-max', modelSelection: null, roleHint: null },
         ],
         parallelBranchActions: {
           onQuickAddTemporaryParticipant: () => {},
@@ -1279,9 +1277,9 @@ test('+Group + +compare hides lead remove buttons while lead branch sits at the 
           },
         ],
         draftTemporaryParticipants: [
-          { participantId: 'lead-a', name: 'Aria', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
-          { participantId: 'lead-b', name: 'Bram', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
-          { participantId: 'shadow-c', name: 'Cleo', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
+          { participantId: 'lead-a', name: 'Aria', provider: 'claude-cli', model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'lead-b', name: 'Bram', provider: 'claude-cli', model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'shadow-c', name: 'Cleo', provider: 'codex-cli', model: 'codex-max', modelSelection: null, roleHint: null },
         ],
         parallelBranchActions: { onSetAudienceKeys: () => {} },
         onAddParallelTarget: () => {},
@@ -1317,7 +1315,7 @@ test('parallel shadow branch with a single audience member renders as a target-s
           },
         ],
         draftTemporaryParticipants: [
-          { participantId: 'shadow-c', name: 'Cleo', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
+          { participantId: 'shadow-c', name: 'Cleo', provider: 'codex-cli', model: 'codex-max', modelSelection: null, roleHint: null },
         ],
         parallelBranchActions: { onSetAudienceKeys: () => {} },
         onAddParallelTarget: () => {},
@@ -1522,9 +1520,9 @@ test('synthetic orchestrator-authored parallel draft renders landed branch field
           },
         ],
         draftTemporaryParticipants: [
-          { participantId: 'lead', name: 'Lead Cat', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
-          { participantId: 'reviewer', name: 'Reviewer Cat', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
-          { participantId: 'critic', name: 'Critic Cat', provider: 'antigravity-cli', instance: null, model: 'antigravity-default', modelSelection: null, roleHint: null },
+          { participantId: 'lead', name: 'Lead Cat', provider: 'claude-cli', model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'reviewer', name: 'Reviewer Cat', provider: 'codex-cli', model: 'codex-max', modelSelection: null, roleHint: null },
+          { participantId: 'critic', name: 'Critic Cat', provider: 'antigravity-cli', model: 'antigravity-default', modelSelection: null, roleHint: null },
         ],
         parallelBranchActions: {
           onSetAudienceKeys: () => {},
@@ -1620,11 +1618,11 @@ test('+Group + many +compares keeps every branch collaborator button visible whi
           },
         ],
         draftTemporaryParticipants: [
-          { participantId: 'a', name: 'Aria', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
-          { participantId: 'b', name: 'Bram', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
-          { participantId: 'c', name: 'Cleo', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
-          { participantId: 'd', name: 'Dot', provider: 'antigravity-cli', instance: null, model: 'antigravity-default', modelSelection: null, roleHint: null },
-          { participantId: 'e', name: 'Echo', provider: 'cursor-cli', instance: null, model: 'composer-max', modelSelection: null, roleHint: null },
+          { participantId: 'a', name: 'Aria', provider: 'claude-cli', model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'b', name: 'Bram', provider: 'claude-cli', model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'c', name: 'Cleo', provider: 'codex-cli', model: 'codex-max', modelSelection: null, roleHint: null },
+          { participantId: 'd', name: 'Dot', provider: 'antigravity-cli', model: 'antigravity-default', modelSelection: null, roleHint: null },
+          { participantId: 'e', name: 'Echo', provider: 'cursor-cli', model: 'composer-max', modelSelection: null, roleHint: null },
         ],
         onQuickAddDraftTemporaryParticipant: () => {},
         parallelBranchActions: {

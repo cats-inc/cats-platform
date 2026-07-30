@@ -52,7 +52,6 @@ function createChannel(
       wakeHistory: [],
       workflow: {
         activeTurn: null,
-        pendingContinuations: [],
         lastOutcomeEvent: null,
       },
     },
@@ -93,6 +92,7 @@ test('resolveConversationMode keeps direct lanes topology-first even when room m
         },
         modelSelection: null,
         lease: {
+          laneId: null,
           sessionId: null,
           status: 'not_started',
           cwd: null,
@@ -136,6 +136,7 @@ test('resolveConversationMode distinguishes default and participant chat semanti
         },
         modelSelection: null,
         lease: {
+          laneId: null,
           sessionId: null,
           status: 'ready',
           cwd: null,
@@ -199,6 +200,7 @@ test('resolveConversationMode treats temporary participants as participant chats
           },
           modelSelection: null,
           lease: {
+            laneId: null,
             sessionId: null,
             status: 'ready',
             cwd: null,
@@ -238,6 +240,7 @@ test('resolveConversationMode treats temporary participants as participant chats
           },
           modelSelection: null,
           lease: {
+            laneId: null,
             sessionId: null,
             status: 'ready',
             cwd: null,

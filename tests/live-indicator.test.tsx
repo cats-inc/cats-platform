@@ -32,6 +32,7 @@ import {
   resolveTranscriptFollowState,
   resolveLiveIndicatorSpeakerState,
   resolveVisibleLiveIndicator,
+  type LiveIndicatorState,
 } from '../src/shared/liveIndicator.ts';
 import {
   resolveChatViewTopBarPresenceState,
@@ -500,6 +501,7 @@ test('resolveConcurrentWaitingSegments materializes every active concurrent targ
       workflow: {
         activeTurn: {
           id: 'turn-concurrent',
+          status: 'running',
           sourceMessageId: 'message-user-concurrent',
           workflowShape: 'concurrent',
           targetStatuses: [
@@ -683,6 +685,7 @@ test('shouldReconnectLiveIndicatorAfterSourceError stays off while waiting for t
       {
         messages: [
           {
+            createdAt: '2026-04-09T12:00:00.000Z',
             id: 'message-user',
             senderKind: 'user',
           },
@@ -744,6 +747,9 @@ test('shouldReconnectLiveIndicatorAfterSessionClose stays off for the same targe
         segmentIndex: 1,
         segments: [
           {
+            laneId: null,
+            sessionId: null,
+            identityParticipantId: null,
             id: 'message-user:target-state-codex:segment:1',
             phase: 'sealed',
             sourceMessageId: 'message-user',
@@ -841,6 +847,9 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for a sealed spe
         speakerLabel: 'Agent-1',
         segments: [
           {
+            laneId: null,
+            sessionId: null,
+            identityParticipantId: null,
             id: 'segment-0',
             phase: 'sealed',
             sourceMessageId: 'message-user',
@@ -876,10 +885,12 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for a sealed spe
       {
         messages: [
           {
+            createdAt: '2026-04-09T12:00:00.000Z',
             id: 'message-user',
             senderKind: 'user',
           },
           {
+            createdAt: '2026-04-09T12:00:00.000Z',
             id: 'message-agent-1',
             senderKind: 'agent',
           },
@@ -917,6 +928,9 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for an earlier s
         segmentIndex: 0,
         segments: [
           {
+            laneId: null,
+            sessionId: null,
+            identityParticipantId: null,
             id: 'message-user:target-claude:segment:0',
             phase: 'sealed',
             sourceMessageId: 'message-user',
@@ -940,6 +954,7 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for an earlier s
       {
         messages: [
           {
+            createdAt: '2026-04-09T12:00:00.000Z',
             id: 'message-user',
             senderKind: 'user',
           },
@@ -993,6 +1008,10 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on when a later seq
         segmentIndex: 0,
         segments: [
           {
+            laneId: null,
+            targetStateId: null,
+            sessionId: null,
+            identityParticipantId: null,
             id: 'message-user:participant-claude:segment:0',
             phase: 'sealed',
             sourceMessageId: 'message-user',
@@ -1015,6 +1034,7 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on when a later seq
       {
         messages: [
           {
+            createdAt: '2026-04-09T12:00:00.000Z',
             id: 'message-user',
             senderKind: 'user',
           },
@@ -1061,6 +1081,10 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for an anonymous
         segmentIndex: 0,
         segments: [
           {
+            laneId: null,
+            targetStateId: null,
+            sessionId: null,
+            identityParticipantId: null,
             id: 'message-user:shared-cli:segment:0',
             phase: 'sealed',
             sourceMessageId: 'message-user',
@@ -1083,6 +1107,7 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays on for an anonymous
       {
         messages: [
           {
+            createdAt: '2026-04-09T12:00:00.000Z',
             id: 'message-user',
             senderKind: 'user',
           },
@@ -1142,6 +1167,7 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off when the sealed
         segmentIndex: 0,
         segments: [
           {
+            identityParticipantId: null,
             id: 'message-user:lane-claude:segment:0',
             phase: 'sealed',
             sourceMessageId: 'message-user',
@@ -1167,6 +1193,7 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off when the sealed
       {
         messages: [
           {
+            createdAt: '2026-04-09T12:00:00.000Z',
             id: 'message-user',
             senderKind: 'user',
           },
@@ -1218,6 +1245,7 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off when the active
         segmentIndex: 0,
         segments: [
           {
+            identityParticipantId: null,
             id: 'message-user:lane-claude-persisted:segment:0',
             phase: 'sealed',
             sourceMessageId: 'message-user',
@@ -1243,6 +1271,7 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off when the active
       {
         messages: [
           {
+            createdAt: '2026-04-09T12:00:00.000Z',
             id: 'message-user',
             senderKind: 'user',
           },
@@ -1293,6 +1322,9 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off for the last se
         segmentIndex: 1,
         segments: [
           {
+            laneId: null,
+            sessionId: null,
+            identityParticipantId: null,
             id: 'message-user:target-codex:segment:1',
             phase: 'sealed',
             sourceMessageId: 'message-user',
@@ -1316,6 +1348,7 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off for the last se
       {
         messages: [
           {
+            createdAt: '2026-04-09T12:00:00.000Z',
             id: 'message-user',
             senderKind: 'user',
           },
@@ -1370,6 +1403,9 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off for the final s
         segmentIndex: 1,
         segments: [
           {
+            laneId: null,
+            sessionId: null,
+            identityParticipantId: null,
             id: 'message-user:target-codex:segment:1',
             phase: 'sealed',
             sourceMessageId: 'message-user',
@@ -1393,10 +1429,12 @@ test('shouldReconnectLiveIndicatorAfterOngoingWorkflow stays off for the final s
       {
         messages: [
           {
+            createdAt: '2026-04-09T12:00:00.000Z',
             id: 'message-user',
             senderKind: 'user',
           },
           {
+            createdAt: '2026-04-09T12:00:00.000Z',
             id: 'message-agent-1',
             senderKind: 'agent',
           },
@@ -1494,7 +1532,7 @@ test('shouldIgnoreSealedSessionClose stays on when no distinct follow-up target 
 });
 
 test('shouldPinLiveIndicatorUntilPersistedReply keeps a completed streaming bubble visible until the reply is durable', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming' as const,
@@ -1519,6 +1557,7 @@ test('shouldPinLiveIndicatorUntilPersistedReply keeps a completed streaming bubb
     shouldPinLiveIndicatorUntilPersistedReply(previous, {
       messages: [
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-user',
           senderKind: 'user',
         },
@@ -1542,7 +1581,7 @@ test('shouldPinLiveIndicatorUntilPersistedReply keeps a completed streaming bubb
 });
 
 test('shouldPinLiveIndicatorUntilPersistedReply keeps a sealed bubble visible until the reply is durable', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'sealed' as const,
@@ -1567,6 +1606,7 @@ test('shouldPinLiveIndicatorUntilPersistedReply keeps a sealed bubble visible un
     shouldPinLiveIndicatorUntilPersistedReply(previous, {
       messages: [
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-user',
           senderKind: 'user',
         },
@@ -1590,7 +1630,7 @@ test('shouldPinLiveIndicatorUntilPersistedReply keeps a sealed bubble visible un
 });
 
 test('shouldPinLiveIndicatorUntilPersistedReply stays pinned when another lane replies before the current lane persists', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'sealed' as const,
@@ -1674,7 +1714,7 @@ test('shouldPinLiveIndicatorUntilPersistedReply stays pinned when another lane r
 });
 
 test('shouldPinLiveIndicatorUntilPersistedReply releases a sealed bubble when the persisted reply keeps the session but the targetStateId drifted', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'sealed' as const,
@@ -1752,7 +1792,7 @@ test('shouldPinLiveIndicatorUntilPersistedReply releases a sealed bubble when th
 });
 
 test('shouldPinLiveIndicatorUntilPersistedReply keeps a lane-scoped bubble pinned even when another lane already replied', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'sealed' as const,
@@ -1815,7 +1855,7 @@ test('shouldPinLiveIndicatorUntilPersistedReply keeps a lane-scoped bubble pinne
 });
 
 test('resolveWaitingIndicatorStateTransition keeps the current speaker bubble pinned until the persisted reply lands', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming' as const,
@@ -1848,6 +1888,7 @@ test('resolveWaitingIndicatorStateTransition keeps the current speaker bubble pi
     selectedChannel: {
       messages: [
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-user',
           senderKind: 'user',
         },
@@ -1882,7 +1923,7 @@ test('resolveWaitingIndicatorStateTransition keeps the current speaker bubble pi
 });
 
 test('resolveWaitingIndicatorStateTransition hands off once the persisted assistant reply is visible', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming' as const,
@@ -1917,10 +1958,12 @@ test('resolveWaitingIndicatorStateTransition hands off once the persisted assist
     selectedChannel: {
       messages: [
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-user',
           senderKind: 'user',
         },
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-agent-1',
           senderKind: 'agent',
           metadata: {
@@ -1971,7 +2014,7 @@ test('resolveWaitingIndicatorStateTransition hands off once the persisted assist
 });
 
 test('resolveWaitingIndicatorStateTransition increments the segment index for same-speaker follow-up bubbles', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'sealed' as const,
@@ -1980,6 +2023,9 @@ test('resolveWaitingIndicatorStateTransition increments the segment index for sa
     speakerLabel: 'Claude-CLI',
     segments: [
       {
+        laneId: null,
+        sessionId: null,
+        identityParticipantId: null,
         id: 'message-user-current:participant-claude:segment:0',
         phase: 'sealed' as const,
         sourceMessageId: 'message-user-current',
@@ -2026,10 +2072,12 @@ test('resolveWaitingIndicatorStateTransition increments the segment index for sa
     selectedChannel: {
       messages: [
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-user-current',
           senderKind: 'user',
         },
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-agent-current-0',
           senderKind: 'agent',
         },
@@ -2059,7 +2107,7 @@ test('resolveWaitingIndicatorStateTransition increments the segment index for sa
 });
 
 test('resolveWaitingIndicatorStateTransition does not reopen a sealed sequential speaker as a waiting bubble', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'sealed' as const,
@@ -2069,6 +2117,9 @@ test('resolveWaitingIndicatorStateTransition does not reopen a sealed sequential
     speakerLabel: 'Antigravity-CLI',
     segments: [
       {
+        laneId: null,
+        sessionId: null,
+        identityParticipantId: null,
         id: 'message-user-current:target-antigravity:segment:2',
         phase: 'sealed' as const,
         sourceMessageId: 'message-user-current',
@@ -2116,10 +2167,12 @@ test('resolveWaitingIndicatorStateTransition does not reopen a sealed sequential
     selectedChannel: {
       messages: [
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-user-current',
           senderKind: 'user',
         },
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-antigravity',
           senderKind: 'agent',
         },
@@ -2155,7 +2208,7 @@ test('resolveWaitingIndicatorStateTransition does not reopen a sealed sequential
 });
 
 test('resolveWaitingIndicatorStateTransition preserves an existing waiting segment index for the same logical follow-up speaker', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'waiting' as const,
@@ -2166,6 +2219,9 @@ test('resolveWaitingIndicatorStateTransition preserves an existing waiting segme
     segmentIndex: 3,
     segments: [
       {
+        laneId: null,
+        sessionId: null,
+        identityParticipantId: null,
         id: 'message-user-current:participant-claude:segment:0',
         phase: 'sealed' as const,
         sourceMessageId: 'message-user-current',
@@ -2197,6 +2253,9 @@ test('resolveWaitingIndicatorStateTransition preserves an existing waiting segme
         events: [],
       },
       {
+        laneId: null,
+        sessionId: null,
+        identityParticipantId: null,
         id: 'message-user-current:participant-codex:segment:3',
         phase: 'waiting' as const,
         sourceMessageId: 'message-user-current',
@@ -2232,10 +2291,12 @@ test('resolveWaitingIndicatorStateTransition preserves an existing waiting segme
     selectedChannel: {
       messages: [
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-user-current',
           senderKind: 'user',
         },
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-agent-current-0',
           senderKind: 'agent',
         },
@@ -2274,7 +2335,7 @@ test('resolveWaitingIndicatorStateTransition preserves an existing waiting segme
 });
 
 test('resolveWaitingIndicatorStateTransition increments an anonymous follow-up segment for the same hidden participant', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'sealed' as const,
@@ -2284,6 +2345,7 @@ test('resolveWaitingIndicatorStateTransition increments an anonymous follow-up s
     speakerLabel: null,
     segments: [
       {
+        laneId: null,
         id: 'message-user-current:participant-claude:segment:0',
         phase: 'sealed' as const,
         sourceMessageId: 'message-user-current',
@@ -2332,10 +2394,12 @@ test('resolveWaitingIndicatorStateTransition increments an anonymous follow-up s
     selectedChannel: {
       messages: [
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-user-current',
           senderKind: 'user',
         },
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-agent-current-0',
           senderKind: 'agent',
         },
@@ -2365,7 +2429,7 @@ test('resolveWaitingIndicatorStateTransition increments an anonymous follow-up s
 });
 
 test('resolveWaitingIndicatorStateTransition does not preserve a waiting segment index for a different participant with the same label', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'waiting' as const,
@@ -2375,6 +2439,9 @@ test('resolveWaitingIndicatorStateTransition does not preserve a waiting segment
     segmentIndex: 3,
     segments: [
       {
+        laneId: null,
+        sessionId: null,
+        identityParticipantId: null,
         id: 'message-user-current:participant-claude:segment:3',
         phase: 'waiting' as const,
         sourceMessageId: 'message-user-current',
@@ -2409,6 +2476,7 @@ test('resolveWaitingIndicatorStateTransition does not preserve a waiting segment
     selectedChannel: {
       messages: [
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-user-current',
           senderKind: 'user',
         },
@@ -2448,7 +2516,7 @@ test('resolveWaitingIndicatorStateTransition does not preserve a waiting segment
 });
 
 test('resolveWaitingIndicatorStateTransition does not preserve an anonymous waiting segment index for a different hidden participant', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'waiting' as const,
@@ -2459,6 +2527,7 @@ test('resolveWaitingIndicatorStateTransition does not preserve an anonymous wait
     segmentIndex: 3,
     segments: [
       {
+        laneId: null,
         id: 'message-user-current:participant-claude:segment:3',
         phase: 'waiting' as const,
         sourceMessageId: 'message-user-current',
@@ -2495,6 +2564,7 @@ test('resolveWaitingIndicatorStateTransition does not preserve an anonymous wait
     selectedChannel: {
       messages: [
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-user-current',
           senderKind: 'user',
         },
@@ -2715,7 +2785,7 @@ test('hasVisibleLiveIndicatorSpeakerReplyAfterMessage ignores label-only replies
 });
 
 test('resolveWaitingIndicatorStateTransition keeps the same waiting segment when the lane stays fixed but the source drifts', () => {
-  const previous = {
+  const previous: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'waiting' as const,
@@ -2727,6 +2797,8 @@ test('resolveWaitingIndicatorStateTransition keeps the same waiting segment when
     segmentIndex: 3,
     segments: [
       {
+        sessionId: null,
+        identityParticipantId: null,
         id: 'message-user-current:target-antigravity:segment:3',
         phase: 'waiting' as const,
         sourceMessageId: 'message-user-current',
@@ -2764,10 +2836,12 @@ test('resolveWaitingIndicatorStateTransition keeps the same waiting segment when
     selectedChannel: {
       messages: [
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-user-current',
           senderKind: 'user',
         },
         {
+          createdAt: '2026-04-09T12:00:00.000Z',
           id: 'message-codex-reply',
           senderKind: 'agent',
         },
@@ -3197,7 +3271,7 @@ test('resolveLiveIndicatorSpeakerLabel stays silent for participant chats', () =
 });
 
 test('resolveVisibleLiveIndicator hides stale progress once a reply newer than the active turn is visible', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'waiting',
@@ -3207,10 +3281,12 @@ test('resolveVisibleLiveIndicator hides stale progress once a reply newer than t
     liveIndicator,
     [
       {
+        id: 'msg-1',
         senderKind: 'user',
         createdAt: '2026-04-09T12:00:00.000Z',
       },
       {
+        id: 'message-agent',
         senderKind: 'agent',
         createdAt: '2026-04-09T12:00:03.000Z',
       },
@@ -3222,7 +3298,7 @@ test('resolveVisibleLiveIndicator hides stale progress once a reply newer than t
 });
 
 test('resolveVisibleLiveIndicator keeps active progress while only the user turn is visible', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'waiting',
@@ -3232,6 +3308,7 @@ test('resolveVisibleLiveIndicator keeps active progress while only the user turn
     liveIndicator,
     [
       {
+        id: 'msg-1',
         senderKind: 'user',
         createdAt: '2026-04-09T12:00:00.000Z',
       },
@@ -3342,7 +3419,7 @@ test('collapsed live transcript keeps error blocks visible and surfaces trailing
 });
 
 test('resolveVisibleLiveIndicator keeps a sequential follow-up speaker visible after an earlier reply', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
@@ -3389,7 +3466,7 @@ test('resolveVisibleLiveIndicator keeps a sequential follow-up speaker visible a
 });
 
 test('resolveVisibleLiveIndicator keeps a named waiting follow-up speaker visible after an earlier reply', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'waiting',
@@ -3425,7 +3502,7 @@ test('resolveVisibleLiveIndicator keeps a named waiting follow-up speaker visibl
 });
 
 test('resolveVisibleLiveIndicator keeps a named concurrent waiting speaker visible before the first reply lands', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'waiting',
@@ -3451,7 +3528,7 @@ test('resolveVisibleLiveIndicator keeps a named concurrent waiting speaker visib
 });
 
 test('resolveVisibleLiveIndicator hides stale streaming progress once the same speaker reply is visible', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
@@ -3498,7 +3575,7 @@ test('resolveVisibleLiveIndicator hides stale streaming progress once the same s
 });
 
 test('resolveVisibleLiveIndicator keeps a lane-scoped bubble visible even when another lane already replied', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
@@ -3537,7 +3614,7 @@ test('resolveVisibleLiveIndicator keeps a lane-scoped bubble visible even when a
 });
 
 test('resolveVisibleLiveIndicator hides a sealed targeted segment once the same speaker persisted reply is visible', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'sealed' as const,
@@ -3590,7 +3667,7 @@ test('resolveVisibleLiveIndicator hides a sealed targeted segment once the same 
 });
 
 test('resolveVisibleLiveIndicator hides a sealed targeted segment when the persisted reply keeps the session but the targetStateId drifted', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'sealed' as const,
@@ -3647,7 +3724,7 @@ test('resolveVisibleLiveIndicator hides a sealed targeted segment when the persi
 });
 
 test('resolveVisibleLiveIndicator hides a sealed targeted segment when the persisted reply keeps the lane but the targetStateId drifted', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'sealed' as const,
@@ -3706,7 +3783,7 @@ test('resolveVisibleLiveIndicator hides a sealed targeted segment when the persi
 });
 
 test('resolveVisibleLiveIndicator drops a persisted sealed sequential speaker before the next waiting target', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'waiting' as const,
@@ -3829,7 +3906,7 @@ test('resolveVisibleLiveIndicator drops a persisted sealed sequential speaker be
 });
 
 test('resolveVisibleLiveIndicator downgrades pre-session assistant progress into an anonymous waiting bubble', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
@@ -3867,7 +3944,7 @@ test('resolveVisibleLiveIndicator downgrades pre-session assistant progress into
 });
 
 test('resolveVisibleLiveIndicator keeps a pre-session waiting speaker visible as an anonymous bubble', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'waiting',
@@ -3903,7 +3980,7 @@ test('resolveVisibleLiveIndicator keeps a pre-session waiting speaker visible as
 });
 
 test('resolveVisibleLiveIndicator shows assistant progress once the matching session_started message is visible even if the turn timestamp moved later', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
@@ -3945,7 +4022,7 @@ test('resolveVisibleLiveIndicator shows assistant progress once the matching ses
 });
 
 test('resolveVisibleLiveIndicator accepts a matching targetStateId for session startup confirmation even when the sessionId changed', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
@@ -3989,7 +4066,7 @@ test('resolveVisibleLiveIndicator accepts a matching targetStateId for session s
 });
 
 test('resolveVisibleLiveIndicator accepts a matching sessionId for session startup confirmation even when the targetStateId drifted', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
@@ -4033,7 +4110,7 @@ test('resolveVisibleLiveIndicator accepts a matching sessionId for session start
 });
 
 test('resolveVisibleLiveIndicator accepts a matching laneId for session startup confirmation even when the targetStateId drifted', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
@@ -4079,7 +4156,7 @@ test('resolveVisibleLiveIndicator accepts a matching laneId for session startup 
 });
 
 test('resolveVisibleLiveIndicator keeps a targeted bubble anonymous when session startup omits the active targetStateId', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
@@ -4123,7 +4200,7 @@ test('resolveVisibleLiveIndicator keeps a targeted bubble anonymous when session
 });
 
 test('resolveVisibleLiveIndicator accepts orchestrator session_started messages that only declare targetKind', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
@@ -4164,7 +4241,7 @@ test('resolveVisibleLiveIndicator accepts orchestrator session_started messages 
 });
 
 test('resolveVisibleLiveIndicator does not wait for a new session_started message when the stream reuses an older session', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
@@ -4194,7 +4271,7 @@ test('resolveVisibleLiveIndicator does not wait for a new session_started messag
 });
 
 test('resolveVisibleLiveIndicator does not unlock a reconnect bubble from an older same-speaker session_started message', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
@@ -4284,7 +4361,7 @@ test('createLiveIndicatorSegmentState prefers laneId over drifted targetStateId 
 
 test('projectLiveIndicatorStateFromSegments drops duplicate segment ids and keeps the last copy', () => {
   const duplicateId = 'message-user:lane-claude:segment:0';
-  const state = {
+  const state: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'waiting' as const,
@@ -4371,7 +4448,7 @@ test('applyLiveIndicatorEvent updates a matching concurrent lane in place instea
 });
 
 test('applyLiveIndicatorEvent synthesizes text content blocks from text events', () => {
-  let state = { ...EMPTY_LIVE_INDICATOR, active: true, phase: 'streaming' as const };
+  let state: LiveIndicatorState = { ...EMPTY_LIVE_INDICATOR, active: true, phase: 'streaming' as const };
   state = applyLiveIndicatorEvent(state, 'text', { text: 'Hello' });
   assert.equal(state.contentBlocks.length, 1);
   assert.equal(state.contentBlocks[0].kind, 'text');
@@ -4383,7 +4460,7 @@ test('applyLiveIndicatorEvent synthesizes text content blocks from text events',
 });
 
 test('applyLiveIndicatorEvent creates a new text block after tool_use via structured content blocks', () => {
-  let state = { ...EMPTY_LIVE_INDICATOR, active: true, phase: 'streaming' as const };
+  let state: LiveIndicatorState = { ...EMPTY_LIVE_INDICATOR, active: true, phase: 'streaming' as const };
   state = applyLiveIndicatorEvent(state, 'text', { text: 'First' });
   state = applyLiveIndicatorEvent(state, 'content_block', {
     block: { id: 'tool:1', index: 1, kind: 'tool', status: 'streaming', text: '', toolName: 'search' },
@@ -4403,7 +4480,7 @@ test('applyLiveIndicatorEvent creates a new text block after tool_use via struct
 });
 
 test('resolveTranscriptFollowState derives scroll keys from transcript content instead of channel timestamps', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming',
@@ -5458,7 +5535,7 @@ test('text block completion after a follow-up tool phase updates the original te
 });
 
 test('resolveVisibleLiveIndicator projects a single raw segment into text-segment bubbles', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming' as const,
@@ -5525,7 +5602,7 @@ test('resolveVisibleLiveIndicator projects a single raw segment into text-segmen
 });
 
 test('resolveVisibleLiveIndicator splits a follow-up non-text phase into its own live bubble before later text arrives', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming' as const,
@@ -5581,7 +5658,7 @@ test('resolveVisibleLiveIndicator splits a follow-up non-text phase into its own
 });
 
 test('resolveVisibleLiveIndicator keeps a later live text segment visible after the first persisted segment lands', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming' as const,
@@ -5657,12 +5734,15 @@ test('resolveVisibleLiveIndicator keeps a later live text segment visible after 
 });
 
 test('resolveVisibleLiveIndicator hides a later targeted speaker bubble using target-local segment ordinals', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'sealed' as const,
     segments: [
       {
+        laneId: null,
+        sessionId: null,
+        identityParticipantId: null,
         id: 'segment-codex',
         phase: 'sealed' as const,
         sourceMessageId: 'message-user-3',
@@ -5694,6 +5774,9 @@ test('resolveVisibleLiveIndicator hides a later targeted speaker bubble using ta
         events: [],
       },
       {
+        laneId: null,
+        sessionId: null,
+        identityParticipantId: null,
         id: 'segment-antigravity',
         phase: 'sealed' as const,
         sourceMessageId: 'message-user-3',
@@ -5755,7 +5838,7 @@ test('resolveVisibleLiveIndicator hides a later targeted speaker bubble using ta
 });
 
 test('resolveVisibleLiveIndicator does not hide a new default segment because an older turn by the same speaker already has segment 0', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming' as const,
@@ -5764,6 +5847,9 @@ test('resolveVisibleLiveIndicator does not hide a new default segment because an
     speakerLabel: 'Claude-CLI',
     segments: [
       {
+        laneId: null,
+        sessionId: null,
+        identityParticipantId: null,
         id: 'segment-current-0',
         phase: 'sealed' as const,
         sourceMessageId: 'message-user-current',
@@ -5795,6 +5881,9 @@ test('resolveVisibleLiveIndicator does not hide a new default segment because an
         events: [],
       },
       {
+        laneId: null,
+        sessionId: null,
+        identityParticipantId: null,
         id: 'segment-current-1',
         phase: 'streaming' as const,
         sourceMessageId: 'message-user-current',
@@ -5858,7 +5947,7 @@ test('resolveVisibleLiveIndicator does not hide a new default segment because an
 });
 
 test('resolveVisibleLiveIndicator does not hide a targeted live bubble because the same speaker already replied on another target state', () => {
-  const liveIndicator = {
+  const liveIndicator: LiveIndicatorState = {
     ...EMPTY_LIVE_INDICATOR,
     active: true,
     phase: 'streaming' as const,

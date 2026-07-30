@@ -92,7 +92,6 @@ function createPayload(): AppShellPayload {
           wakeHistory: [],
           workflow: {
             activeTurn: null,
-            pendingContinuations: [],
             lastOutcomeEvent: null,
           },
         },

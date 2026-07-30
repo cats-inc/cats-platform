@@ -121,7 +121,6 @@ function createChannel(overrides: Record<string, unknown> = {}) {
       wakeHistory: [],
       workflow: {
         activeTurn: null,
-        pendingContinuations: [],
         lastOutcomeEvent: null,
       },
     },

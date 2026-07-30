@@ -1,0 +1,32 @@
+{
+  // Typechecks the test suite. `tests/` is excluded from every other project,
+  // so without this the suite is only ever type-stripped by esbuild and never
+  // checked -- a test can drift out of sync with the code it covers and still
+  // compile and pass.
+  //
+  // Options mirror how `scripts/build-test-ui.mjs` actually bundles these files
+  // (bundler resolution, both .ts and .tsx entry points) so the check sees what
+  // the runner sees.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "tests/**/*.js"
+  ],
+  "exclude": ["node_modules", "build"]
+}
