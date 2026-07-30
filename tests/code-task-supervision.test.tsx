@@ -22,8 +22,9 @@ import { readEvidenceEvents } from '../src/platform/persistence/evidence.ts';
 function createRuntimeStub(): RuntimeClient & {
   createdSessions: RuntimeSessionCreateInput[];
 } {
+  const createdSessions: unknown[] = [];
   return {
-    createdSessions: [],
+    createdSessions,
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -50,7 +51,7 @@ function createRuntimeStub(): RuntimeClient & {
         providers: [],
       };
     },
-    async getProviderModels(provider) {
+    async getProviderModels(provider: string) {
       return {
         provider,
         backend: 'cli',
@@ -62,7 +63,7 @@ function createRuntimeStub(): RuntimeClient & {
         warnings: [],
       };
     },
-    async getAdvancedProviderModels(provider) {
+    async getAdvancedProviderModels(provider: string) {
       return {
         provider,
         backend: 'cli',
@@ -77,7 +78,7 @@ function createRuntimeStub(): RuntimeClient & {
       };
     },
     async createSession(input: RuntimeSessionCreateInput) {
-      this.createdSessions.push(input);
+      createdSessions.push(input);
       return {
         id: 'runtime-session-code-1',
         provider: input.provider,
@@ -124,7 +125,7 @@ function createRuntimeStub(): RuntimeClient & {
         status: 'deleted',
       };
     },
-  };
+  } as unknown as RuntimeClient & { createdSessions: RuntimeSessionCreateInput[]; };
 }
 
 test('bridgeCodeTaskToRuntime creates a supervised run for Code task execution', async (t) => {

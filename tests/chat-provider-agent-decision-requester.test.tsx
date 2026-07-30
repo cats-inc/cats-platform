@@ -91,9 +91,11 @@ function createRuntimeStub(options: { responseText?: string } = {}): RuntimeClie
   createdSessions: unknown[];
   sentMessages: Array<{ sessionId: string; content: string; input: unknown }>;
 } {
+  const createdSessions: unknown[] = [];
+  const sentMessages: Array<{ sessionId: string; content: string; input?: unknown }> = [];
   return {
-    createdSessions: [],
-    sentMessages: [],
+    createdSessions,
+    sentMessages,
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -117,7 +119,7 @@ function createRuntimeStub(options: { responseText?: string } = {}): RuntimeClie
       };
     },
     async createSession(input: RuntimeSessionCreateInput) {
-      this.createdSessions.push(input);
+      createdSessions.push(input);
       return {
         id: 'provider-agent-session-1',
         provider: input.provider,
@@ -127,7 +129,7 @@ function createRuntimeStub(options: { responseText?: string } = {}): RuntimeClie
       };
     },
     async sendMessage(sessionId: string, content: string, input?: RuntimeSendMessageInput) {
-      this.sentMessages.push({ sessionId, content, input });
+      sentMessages.push({ sessionId, content, input });
       return {
         segments: [
           {
@@ -146,7 +148,7 @@ function createRuntimeStub(options: { responseText?: string } = {}): RuntimeClie
   } as unknown as RuntimeClient & {
     createdSessions: unknown[];
     sentMessages: Array<{ sessionId: string; content: string; input: unknown }>;
-  };
+  } as unknown as RuntimeClient & { createdSessions: unknown[]; sentMessages: Array<{ sessionId: string; content: string; input: unknown }>; };
 }
 
 test('Chat provider-agent decision requester calls the runtime adapter for execution targets', async () => {

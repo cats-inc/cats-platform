@@ -98,9 +98,11 @@ function createRuntimeStub(): RuntimeClient & {
   sentMessages: Array<{ sessionId: string; content: string; input?: unknown }>;
   canceledSessions: string[];
 } {
+  const createdSessions: unknown[] = [];
+  const sentMessages: Array<{ sessionId: string; content: string; input?: unknown }> = [];
   return {
-    createdSessions: [],
-    sentMessages: [],
+    createdSessions,
+    sentMessages,
     canceledSessions: [],
     async getHealth() {
       return {
@@ -128,7 +130,7 @@ function createRuntimeStub(): RuntimeClient & {
         providers: [],
       };
     },
-    async getProviderModels(provider) {
+    async getProviderModels(provider: string) {
       return {
         provider,
         backend: 'cli',
@@ -140,7 +142,7 @@ function createRuntimeStub(): RuntimeClient & {
         warnings: [],
       };
     },
-    async getAdvancedProviderModels(provider) {
+    async getAdvancedProviderModels(provider: string) {
       return {
         provider,
         backend: 'cli',
@@ -155,7 +157,7 @@ function createRuntimeStub(): RuntimeClient & {
       };
     },
     async createSession(input: RuntimeSessionCreateInput) {
-      this.createdSessions.push(input);
+      createdSessions.push(input);
       return {
         id: 'runtime-session-schedule-route',
         provider: input.provider,
@@ -165,7 +167,7 @@ function createRuntimeStub(): RuntimeClient & {
       };
     },
     async sendMessage(sessionId: string, content: string, input?: RuntimeSendMessageInput) {
-      this.sentMessages.push({ sessionId, content, input });
+      sentMessages.push({ sessionId, content, input });
       return {
         segments: [{ kind: 'text', text: 'scheduled runtime ok', toolName: null, toolId: null }],
         inputTokens: 10,
@@ -196,7 +198,7 @@ function createRuntimeStub(): RuntimeClient & {
         status: 'deleted',
       };
     },
-  };
+  } as unknown as RuntimeClient & { createdSessions: unknown[]; sentMessages: Array<{ sessionId: string; content: string; input?: unknown }>; canceledSessions: string[]; };
 }
 
 async function request(

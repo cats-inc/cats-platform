@@ -136,9 +136,11 @@ function createRuntimeStub(
   createdSessions: unknown[];
   sentMessages: Array<{ sessionId: string; content: string; input: unknown }>;
 } {
+  const createdSessions: unknown[] = [];
+  const sentMessages: Array<{ sessionId: string; content: string; input?: unknown }> = [];
   return {
-    createdSessions: [],
-    sentMessages: [],
+    createdSessions,
+    sentMessages,
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -165,7 +167,7 @@ function createRuntimeStub(
         providers: [],
       };
     },
-    async getProviderModels(provider) {
+    async getProviderModels(provider: string) {
       return {
         provider,
         backend: 'cli',
@@ -177,7 +179,7 @@ function createRuntimeStub(
         warnings: [],
       };
     },
-    async getAdvancedProviderModels(provider) {
+    async getAdvancedProviderModels(provider: string) {
       return {
         provider,
         backend: 'cli',
@@ -192,7 +194,7 @@ function createRuntimeStub(
       };
     },
     async createSession(input: RuntimeSessionCreateInput) {
-      this.createdSessions.push(input);
+      createdSessions.push(input);
       return {
         id: 'runtime-session-1',
         provider: input.provider,
@@ -202,7 +204,7 @@ function createRuntimeStub(
       };
     },
     async sendMessage(sessionId, content, input): Promise<RuntimeMessageResult> {
-      this.sentMessages.push({ sessionId, content, input });
+      sentMessages.push({ sessionId, content, input });
       return {
         segments: [
           {
@@ -238,7 +240,7 @@ function createRuntimeStub(
         status: 'deleted',
       };
     },
-  };
+  } as unknown as RuntimeClient & { createdSessions: unknown[]; sentMessages: Array<{ sessionId: string; content: string; input: unknown }>; };
 }
 
 test('provider-agent adapter creates a supervised runtime session and validates the decision', async () => {

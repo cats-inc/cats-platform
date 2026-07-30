@@ -21,9 +21,11 @@ function createRuntimeStub(): RuntimeClient & {
   createdSessions: unknown[];
   sentMessages: unknown[];
 } {
+  const createdSessions: unknown[] = [];
+  const sentMessages: Array<{ sessionId: string; content: string; input?: unknown }> = [];
   return {
-    createdSessions: [],
-    sentMessages: [],
+    createdSessions,
+    sentMessages,
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -50,7 +52,7 @@ function createRuntimeStub(): RuntimeClient & {
         providers: [],
       };
     },
-    async getProviderModels(provider) {
+    async getProviderModels(provider: string) {
       return {
         provider,
         backend: 'cli',
@@ -62,7 +64,7 @@ function createRuntimeStub(): RuntimeClient & {
         warnings: [],
       };
     },
-    async getAdvancedProviderModels(provider) {
+    async getAdvancedProviderModels(provider: string) {
       return {
         provider,
         backend: 'cli',
@@ -77,7 +79,7 @@ function createRuntimeStub(): RuntimeClient & {
       };
     },
     async createSession(input: RuntimeSessionCreateInput) {
-      this.createdSessions.push(input);
+      createdSessions.push(input);
       return {
         id: 'runtime-session-1',
         provider: input.provider,
@@ -87,7 +89,7 @@ function createRuntimeStub(): RuntimeClient & {
       };
     },
     async sendMessage(sessionId: string, content: string, input?: RuntimeSendMessageInput) {
-      this.sentMessages.push({ sessionId, content, input });
+      sentMessages.push({ sessionId, content, input });
       return {
         segments: [{ kind: 'text', text: 'ok', toolName: null, toolId: null }],
         inputTokens: 1,
@@ -116,7 +118,7 @@ function createRuntimeStub(): RuntimeClient & {
         status: 'deleted',
       };
     },
-  };
+  } as unknown as RuntimeClient & { createdSessions: unknown[]; sentMessages: unknown[]; };
 }
 
 test('runtime supervision adapter wraps createSession and sendMessage calls', async () => {

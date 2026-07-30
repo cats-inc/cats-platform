@@ -95,10 +95,13 @@ function createRuntimeStub(): RuntimeClient & {
   resumedSessions: string[];
   canceledSessions: string[];
 } {
+  const createdSessions: unknown[] = [];
+  const sentMessages: Array<{ sessionId: string; content: string; input?: unknown }> = [];
+  const resumedSessions: string[] = [];
   return {
-    createdSessions: [],
-    sentMessages: [],
-    resumedSessions: [],
+    createdSessions,
+    sentMessages,
+    resumedSessions,
     canceledSessions: [],
     async getHealth() {
       return {
@@ -126,7 +129,7 @@ function createRuntimeStub(): RuntimeClient & {
         providers: [],
       };
     },
-    async getProviderModels(provider) {
+    async getProviderModels(provider: string) {
       return {
         provider,
         backend: 'cli',
@@ -138,7 +141,7 @@ function createRuntimeStub(): RuntimeClient & {
         warnings: [],
       };
     },
-    async getAdvancedProviderModels(provider) {
+    async getAdvancedProviderModels(provider: string) {
       return {
         provider,
         backend: 'cli',
@@ -153,7 +156,7 @@ function createRuntimeStub(): RuntimeClient & {
       };
     },
     async createSession(input: RuntimeSessionCreateInput) {
-      this.createdSessions.push(input);
+      createdSessions.push(input);
       return {
         id: 'runtime-session-work-1',
         provider: input.provider,
@@ -163,7 +166,7 @@ function createRuntimeStub(): RuntimeClient & {
       };
     },
     async sendMessage(sessionId: string, content: string, input?: RuntimeSendMessageInput) {
-      this.sentMessages.push({ sessionId, content, input });
+      sentMessages.push({ sessionId, content, input });
       return {
         segments: [{ kind: 'text', text: 'work runtime ok', toolName: null, toolId: null }],
         inputTokens: 10,
@@ -176,7 +179,7 @@ function createRuntimeStub(): RuntimeClient & {
     },
     async streamSession() {},
     async resumeSession(sessionId: string) {
-      this.resumedSessions.push(sessionId);
+      resumedSessions.push(sessionId);
       return {
         id: sessionId,
         provider: 'codex',
@@ -204,7 +207,7 @@ function createRuntimeStub(): RuntimeClient & {
         status: 'deleted',
       };
     },
-  };
+  } as unknown as RuntimeClient & { createdSessions: unknown[]; sentMessages: Array<{ sessionId: string; content: string; input?: unknown }>; resumedSessions: string[]; canceledSessions: string[]; };
 }
 
 async function writeBlockedSupervisedRun(coreStore: MemoryCoreStore): Promise<void> {
