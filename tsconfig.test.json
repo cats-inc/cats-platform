@@ -7,6 +7,9 @@
   // Options mirror how `scripts/build-test-ui.mjs` actually bundles these files
   // (bundler resolution, both .ts and .tsx entry points) so the check sees what
   // the runner sees.
+  //
+  // Wired into `npm run typecheck`, so a fixture that drifts from a contract now
+  // fails the build instead of compiling by accident.
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",

@@ -333,6 +333,7 @@ test('policy gate preserves recovery proposals without synthesizing corrected in
   );
   assert.deepEqual(
     withCorrection.status === 'applied'
+      && withCorrection.result.kind === 'recovery_decision'
       ? withCorrection.result.correctedInput
       : null,
     {

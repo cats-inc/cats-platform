@@ -152,7 +152,8 @@ test('companion content list and read stay inside declared source ids', async ()
   assert.equal(read.result.status, 'applied');
   assert.equal(read.result.result.sourceId, note.id);
   assert.equal(read.result.result.sourceText, 'A calm morning note.');
-  assert.equal(read.result.result.metadata.tags[0], 'morning');
+  const readMetadata = read.result.result.metadata as { tags?: string[] };
+  assert.equal(readMetadata.tags?.[0], 'morning');
 
   const blocked = await invokeCompanionContentTool<
     CompanionContentReadInput,

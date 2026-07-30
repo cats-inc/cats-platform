@@ -86,9 +86,9 @@ test('parallel draft keeps the first target synchronized with the shared draft d
       model: 'antigravity-default',
       instance: 'cli/native',
       modelSelection: {
-        mode: 'preset',
+        entryMode: 'explicit',
         presetId: 'balanced',
-        controls: [],
+        controls: {},
       },
     },
   );
@@ -98,9 +98,9 @@ test('parallel draft keeps the first target synchronized with the shared draft d
     model: 'antigravity-default',
     instance: 'cli/native',
     modelSelection: {
-      mode: 'preset',
+      entryMode: 'explicit',
       presetId: 'balanced',
-      controls: [],
+      controls: {},
     },
   });
   assert.deepEqual(syncedTargets[1], {

@@ -11,6 +11,7 @@ import {
   requestProviderAgentDecision,
   type ProviderAgentBoundedObservation,
   type ProviderAgentDecision,
+  type ProviderAgentSemanticPlanDecision,
 } from '../src/platform/orchestration/index.ts';
 import {
   DEFAULT_SUPERVISION_SCHEMA_VERSION,
@@ -109,7 +110,7 @@ function observation(): ProviderAgentBoundedObservation {
   };
 }
 
-function semanticPlanDecision(): ProviderAgentDecision {
+function semanticPlanDecision(): ProviderAgentSemanticPlanDecision {
   return {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
     kind: 'semantic_plan',
@@ -329,7 +330,7 @@ test('provider-agent adapter can use an existing runtime session', async () => {
 });
 
 test('provider-agent adapter preserves the provider-authored semantic plan', async () => {
-  const providerAuthoredDecision: ProviderAgentDecision = {
+  const providerAuthoredDecision: ProviderAgentSemanticPlanDecision = {
     ...semanticPlanDecision(),
     decisionId: 'decision-provider-authored',
     planId: 'plan-provider-authored',
@@ -412,7 +413,7 @@ test('provider-agent adapter rejects invalid bounded observations before runtime
 });
 
 test('provider-agent adapter rejects runtime decisions outside the bounded tool surface', async () => {
-  const invalidDecision: ProviderAgentDecision = {
+  const invalidDecision: ProviderAgentSemanticPlanDecision = {
     ...semanticPlanDecision(),
     steps: [
       {

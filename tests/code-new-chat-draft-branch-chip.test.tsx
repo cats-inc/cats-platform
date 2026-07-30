@@ -77,6 +77,16 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
   };
 }
 
+/**
+ * The shared draft declares `greeting?: string` while the code draft allows null,
+ * and this file renders both from one props factory. Coercing here keeps the
+ * single factory rather than widening the shared component's prop.
+ */
+function createWorkspaceProps(overrides: Partial<NewChatDraftProps> = {}) {
+  const { greeting, ...rest } = createProps(overrides);
+  return { ...rest, greeting: greeting ?? undefined };
+}
+
 test('new code default draft initial render does not show the branch or workspace mode chip before the repo probe resolves', () => {
   const markup = renderToStaticMarkup(<NewChatDraft {...createProps({ draftCwd: '/tmp/my-repo' })} />);
 
@@ -117,7 +127,7 @@ test('new code default draft renders the permission chip in the header when a cw
 test('shared workspace draft renders composerFooterAccessory below the composer card when provided', () => {
   const markup = renderToStaticMarkup(
     <WorkspaceNewChatDraft
-      {...createProps({ draftCwd: '/tmp/my-repo' })}
+      {...createWorkspaceProps({ draftCwd: '/tmp/my-repo' })}
       composerFooterAccessory={
         <>
           <span className="composerBranchChip">

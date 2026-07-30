@@ -19,6 +19,12 @@ import {
   setChannelCatLease,
 } from '../src/products/chat/state/model/index.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
+import type { AppConfig } from '../src/config.ts';
+import type { RuntimeObservedSessionPayload } from '../src/platform/runtime/client.ts';
+
+// Only the fields these route tests read. AppConfig carries two dozen
+
+// more that none of them touch.
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -27,7 +33,7 @@ const baseConfig = {
   runtimeApiKey: '',
   debugLiveTrace: false,
   debugKeepRuntimeSessionsOnProductDelete: false,
-};
+} as unknown as AppConfig;
 
 function createRuntimeStub(options: {
   deleteResults?: Map<string, RuntimeDeleteSessionResult>;
@@ -115,7 +121,11 @@ function createRuntimeStub(options: {
     async sendMessage() {
       throw new Error('sendMessage should not be called in product delete tests');
     },
-    async observeSession() { return null; },
+    async observeSession() {
+      // Nothing observed: the delete path treats an absent payload as no
+      // lingering runtime session.
+      return null as unknown as RuntimeObservedSessionPayload;
+    },
     async streamSession() {},
     async createWakeup() {
       throw new Error('createWakeup should not be called in product delete tests');

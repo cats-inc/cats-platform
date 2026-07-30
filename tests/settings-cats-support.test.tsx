@@ -10,11 +10,13 @@ test('hasModelSelectionChanged treats advanced-control changes as dirty', () => 
   assert.equal(
     hasModelSelectionChanged(
       {
+        entryMode: 'explicit',
         controls: {
           'claude.reasoning_effort': 'medium',
         },
       },
       {
+        entryMode: 'explicit',
         controls: {
           'claude.reasoning_effort': 'xhigh',
         },

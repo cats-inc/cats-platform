@@ -1279,7 +1279,7 @@ test('Chat dispatch clears stale explicit model selections with the pending mode
   const channelId = state.selectedChannelId;
   state = setChannelOrchestratorLease(state, channelId, {
     sessionId: 'session-dispatch-old-selection',
-    status: 'running',
+    status: 'ready',
     provider: 'openai',
     model: 'gpt-5.4',
     modelSelection: { entryId: 'gpt-5.4', entryMode: 'explicit' },

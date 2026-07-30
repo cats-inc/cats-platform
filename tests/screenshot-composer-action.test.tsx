@@ -177,8 +177,8 @@ test('screenshot web fallback can stop media tracks before PNG encoding', () => 
   stopMediaStreamTracks({
     getTracks() {
       return [
-        { stop: () => stops.push('video') },
-        { stop: () => stops.push('audio') },
+        { stop: () => { stops.push('video'); } },
+        { stop: () => { stops.push('audio'); } },
       ] as MediaStreamTrack[];
     },
   });

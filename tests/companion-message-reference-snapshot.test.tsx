@@ -26,6 +26,8 @@ function fixturePreview(): CompanionContentPreview {
   return {
     reference: REFERENCE,
     availability: 'available',
+    fallbackReason: null,
+    generatedTitleKind: null,
     title: 'Beach snap',
     subtitle: 'Captured 2026-04-26',
     description: 'A summer photo',

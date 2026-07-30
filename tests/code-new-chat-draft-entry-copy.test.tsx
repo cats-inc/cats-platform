@@ -5,6 +5,7 @@ import { renderToStaticMarkup as renderReactToStaticMarkup } from 'react-dom/ser
 import { MemoryRouter } from 'react-router';
 
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
+import { createTranslator } from '../src/shared/i18n/index.ts';
 import type { AppShellPayload } from '../src/products/code/api/contracts.ts';
 import {
   buildCodeNewChatDraftSidePanelSections,
@@ -288,6 +289,7 @@ test('new code draft owns shared side panel sections through its product builder
         emptyState: 'Chat workspace fallback should not render.',
       },
     },
+    t: createTranslator('en'),
   });
   const markup = renderToStaticMarkup(
     <>
@@ -506,9 +508,8 @@ test('new code direct-lane drafts keep the same profile header when the particip
               platform: 'telegram',
               status: 'active',
               catId: 'cat-lead',
-              label: 'Telegram',
             },
-          ],
+          ] as unknown as AppShellPayload['chat']['botBindings'],
         }),
         draftCatIds: ['cat-lead'],
         draftDefaultRecipientCatId: 'cat-lead',

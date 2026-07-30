@@ -12,6 +12,11 @@ import { buildChatConversationId } from '../src/shared/chatCoreIds.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import { buildNewChatChannelInput } from '../src/products/shared/renderer/workspaceChatUtils.tsx';
 import { waitForCondition } from './testUtils.js';
+import type { AppConfig } from '../src/config.ts';
+
+// Only the fields these route tests read. AppConfig carries two dozen
+
+// more that none of them touch.
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -19,7 +24,7 @@ const baseConfig = {
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
-};
+} as unknown as AppConfig;
 
 interface RecordedSession {
   provider: string;
@@ -102,7 +107,7 @@ function createRuntimeStub(options: {
     },
     async createSession(input: Record<string, unknown>) {
       const sessionId = `session-${nextSession++}`;
-      createdSessions.push({ ...(input as RecordedSession), id: sessionId });
+      createdSessions.push({ ...(input as unknown as RecordedSession), id: sessionId });
       return {
         id: sessionId,
         provider: String(input.provider),
@@ -318,7 +323,7 @@ test('code-origin runtime declare_artifact calls persist artifacts during dispat
     draftSessionPolicy: {
       workspaceKind: 'source',
       workspaceAccess: 'read_write',
-      permissionMode: 'default',
+      permissionMode: 'whitelist',
     },
   });
 
@@ -440,7 +445,7 @@ test('code-origin finalization claims without accepted declarations are blocked'
     draftSessionPolicy: {
       workspaceKind: 'source',
       workspaceAccess: 'read_write',
-      permissionMode: 'default',
+      permissionMode: 'whitelist',
     },
   });
 

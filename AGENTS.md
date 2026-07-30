@@ -536,9 +536,19 @@ tests/
 
 1. **Before Commit**: All unit tests must pass (`npm test` / `pytest` / `dotnet test`)
 2. **Coverage Target**: Minimum 80% for stable domain modules
-3. **Naming Convention**: `*.test.js` with clear scenario-oriented test names
+3. **Naming Convention**: `*.test.js`, `*.test.ts`, or `*.test.tsx` with clear
+   scenario-oriented test names. All three are collected: `.ts`/`.tsx` are bundled
+   into `build/test/` by `scripts/build-test-ui.mjs`, and
+   `tests/test-suite-collection.test.js` fails if a test file would reach neither
+   the bundler nor a run glob -- a test that never runs looks exactly like a
+   passing one.
 4. **Mocking**: Prefer lightweight in-process stubs over heavy mocking frameworks
 5. **CI Requirement**: All tests must pass before merge
+6. **Fixtures Are Typechecked**: `tsconfig.test.json` is part of
+   `npm run typecheck`, so a fixture that drifts from the contract it stands in
+   for fails the build. Prefer completing a fixture, or reaching for the
+   production factory or id builder, over casting past the error; when a fixture
+   is a deliberate partial or deliberately invalid, say so at the cast.
 
 ### Cross-Platform Path Hygiene
 
