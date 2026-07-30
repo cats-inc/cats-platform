@@ -18,16 +18,26 @@ import {
 } from '../build/server/products/chat/state/store.js';
 import { MemoryCompanionBoxStore } from '../build/server/products/chat/state/companion-box/index.js';
 import { createChatTelegramRoomBridge } from '../build/server/products/chat/state/telegramBridgeAdapter.js';
+import { reserveClosedBaseUrl } from './helpers/closedPort.js';
 import {
   createAuthenticatedTestSession,
   createTestAuthConfig,
   installAuthenticatedFetch,
 } from './testUtils.js';
 
+/**
+ * These tests reach the runtime through an injected stub, except for
+ * `/runtime/setup`, which asserts the 502 the platform reports when the runtime
+ * is genuinely absent. That assertion needs a port nothing answers on, so it
+ * cannot use the real runtime port 3110: a developer machine running Cats
+ * answers there, and the test then fails locally while passing in CI.
+ */
+const RUNTIME_BASE_URL = await reserveClosedBaseUrl();
+
 const baseConfig = {
   host: '127.0.0.1',
   port: 8181,
-  runtimeBaseUrl: 'http://127.0.0.1:3110',
+  runtimeBaseUrl: RUNTIME_BASE_URL,
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
   auth: createTestAuthConfig(),
@@ -49,7 +59,7 @@ function createRuntimeStub() {
   return {
     async getHealth() {
       return {
-        baseUrl: 'http://127.0.0.1:3110',
+        baseUrl: RUNTIME_BASE_URL,
         reachable: true,
         status: 'ok',
         service: 'cats-runtime',
