@@ -618,12 +618,20 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   assert.equal(packageJson.build.extraMetadata?.name, 'Cats');
   assert.equal(packageJson.build.afterPack, './scripts/shared/edit-windows-exe-icon.mjs');
   assert.equal(packageJson.build.win.target[0].target, 'nsis');
-  assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'dmg'), true);
-  assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'pkg'), true);
-  assert.equal(packageJson.build.mac.target.some((entry) => entry.target === 'zip'), true);
-  assert.equal(packageJson.build.linux.target.some((entry) => entry.target === 'AppImage'), true);
-  assert.equal(packageJson.build.linux.target.some((entry) => entry.target === 'deb'), true);
-  assert.equal(packageJson.build.linux.target.some((entry) => entry.target === 'tar.gz'), true);
+  // The build targets are exactly the declared release set: anything extra ends
+  // up rejected by validate-release-assets, so producing it only wastes a build.
+  assert.deepEqual(
+    packageJson.build.win.target,
+    [{ target: 'nsis', arch: ['x64'] }],
+  );
+  assert.deepEqual(
+    packageJson.build.mac.target,
+    [{ target: 'dmg', arch: ['x64'] }, { target: 'zip', arch: ['x64'] }],
+  );
+  assert.deepEqual(
+    packageJson.build.linux.target,
+    [{ target: 'deb', arch: ['arm64'] }],
+  );
   assert.equal(packageJson.build.nsis.oneClick, false);
   assert.equal(packageJson.build.win.icon, 'icon.ico');
   assert.equal(packageJson.build.win.signAndEditExecutable, false);

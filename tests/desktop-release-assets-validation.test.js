@@ -23,12 +23,12 @@ const COMPLETE_FILES = [
   'collected/unsigned-preview-windows/Cats-0.2.0-setup-x64.exe',
   'collected/unsigned-preview-windows/Cats-0.2.0-setup-x64.exe.blockmap',
   'collected/unsigned-preview-windows/latest.yml',
-  'collected/unsigned-preview-macos/Cats-0.2.0-universal.dmg',
-  'collected/unsigned-preview-macos/Cats-0.2.0-universal.dmg.blockmap',
-  'collected/unsigned-preview-macos/Cats-0.2.0-universal.zip',
-  'collected/unsigned-preview-macos/Cats-0.2.0-universal.zip.blockmap',
+  'collected/unsigned-preview-macos/Cats-0.2.0-x64.dmg',
+  'collected/unsigned-preview-macos/Cats-0.2.0-x64.dmg.blockmap',
+  'collected/unsigned-preview-macos/Cats-0.2.0-x64.zip',
+  'collected/unsigned-preview-macos/Cats-0.2.0-x64.zip.blockmap',
   'collected/unsigned-preview-macos/latest-mac.yml',
-  'collected/unsigned-preview-linux/Cats-0.2.0-x86_64.AppImage',
+  'collected/unsigned-preview-linux/Cats-0.2.0-arm64.deb',
   'collected/unsigned-preview-linux/latest-linux.yml',
 ];
 
@@ -46,16 +46,16 @@ function metadata(name, overrides = {}) {
     'latest-mac.yml': {
       version: '0.2.0',
       // The real feed lists both the updater archive and the DMG.
-      path: 'Cats-0.2.0-universal.zip',
+      path: 'Cats-0.2.0-x64.zip',
       files: [
-        { url: 'Cats-0.2.0-universal.zip' },
-        { url: 'Cats-0.2.0-universal.dmg' },
+        { url: 'Cats-0.2.0-x64.zip' },
+        { url: 'Cats-0.2.0-x64.dmg' },
       ],
     },
     'latest-linux.yml': {
       version: '0.2.0',
-      path: 'Cats-0.2.0-x86_64.AppImage',
-      files: [{ url: 'Cats-0.2.0-x86_64.AppImage' }],
+      path: 'Cats-0.2.0-arm64.deb',
+      files: [{ url: 'Cats-0.2.0-arm64.deb' }],
     },
   };
   return { name, document: { ...byName[name], ...overrides }, error: null };
@@ -81,8 +81,8 @@ test('a complete release passes validation', () => {
 
 test('artifacts outside the release contract fail validation', () => {
   for (const forbidden of [
-    'Cats-0.2.0-universal.pkg',
-    'Cats-0.2.0-amd64.deb',
+    'Cats-0.2.0-x64.pkg',
+    'Cats-0.2.0-arm64.AppImage',
     'Cats-0.2.0-x86_64.tar.gz',
   ]) {
     const result = validateReleaseAssets({
@@ -101,7 +101,7 @@ test('artifacts outside the release contract fail validation', () => {
 
 test('an architecture the declared set omits fails validation', () => {
   const result = validateReleaseAssets({
-    files: [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-arm64.AppImage'],
+    files: [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-amd64.deb'],
     metadataDocuments: completeDocuments(),
   });
 
@@ -110,13 +110,13 @@ test('an architecture the declared set omits fails validation', () => {
 });
 
 test('widening the declared set is all it takes to ship another architecture', () => {
-  // The rule is "what we declared", not "arm64 is forbidden". Declaring it
+  // The rule is "what we declared", not "x64 Linux is forbidden". Declaring it
   // makes the same artifact valid without touching the validator.
   const widened = DESKTOP_RELEASE_MATRIX.map((entry) => (entry.platform === 'linux'
-    ? { ...entry, arches: [...entry.arches, 'arm64'] }
+    ? { ...entry, arches: [...entry.arches, 'x64'] }
     : entry));
 
-  const names = [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-arm64.AppImage']
+  const names = [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-amd64.deb']
     .map((path) => path.split('/').pop());
 
   assert.deepEqual(resolveUnreleasedArchitectureArtifacts(names, widened), []);
@@ -124,19 +124,19 @@ test('widening the declared set is all it takes to ship another architecture', (
   // Still rejected under the current declaration.
   assert.deepEqual(
     resolveUnreleasedArchitectureArtifacts(names),
-    ['Cats-0.2.0-arm64.AppImage'],
+    ['Cats-0.2.0-amd64.deb'],
   );
 });
 
 test('widening the declared set is all it takes to ship another format', () => {
   const widened = DESKTOP_RELEASE_MATRIX.map((entry) => (entry.platform === 'linux'
-    ? { ...entry, formats: [...entry.formats, 'deb'] }
+    ? { ...entry, formats: [...entry.formats, 'AppImage'] }
     : entry));
-  const names = [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-amd64.deb']
+  const names = [...COMPLETE_FILES, 'collected/release-linux/Cats-0.2.0-arm64.AppImage']
     .map((path) => path.split('/').pop());
 
   assert.deepEqual(resolveDisallowedArtifacts(names, widened), []);
-  assert.deepEqual(resolveDisallowedArtifacts(names), ['Cats-0.2.0-amd64.deb']);
+  assert.deepEqual(resolveDisallowedArtifacts(names), ['Cats-0.2.0-arm64.AppImage']);
 });
 
 test('the declared release set is fully allowed', () => {
@@ -144,6 +144,29 @@ test('the declared release set is fully allowed', () => {
 
   assert.deepEqual(resolveDisallowedArtifacts(names), []);
   assert.deepEqual(resolveUnreleasedArchitectureArtifacts(names), []);
+});
+
+test('architecture is judged per platform, not across the whole matrix', () => {
+  // Windows ships x64 and Linux ships arm64, so a flattened token list would
+  // accept both an x64 .deb and an arm64 .exe -- each is released somewhere,
+  // just not on the platform that built it.
+  assert.deepEqual(
+    resolveUnreleasedArchitectureArtifacts(['Cats-0.2.0-amd64.deb']),
+    ['Cats-0.2.0-amd64.deb'],
+  );
+  assert.deepEqual(
+    resolveUnreleasedArchitectureArtifacts(['Cats-0.2.0-setup-arm64.exe']),
+    ['Cats-0.2.0-setup-arm64.exe'],
+  );
+  // The declared pairings still pass.
+  assert.deepEqual(
+    resolveUnreleasedArchitectureArtifacts([
+      'Cats-0.2.0-setup-x64.exe',
+      'Cats-0.2.0-x64.dmg',
+      'Cats-0.2.0-arm64.deb',
+    ]),
+    [],
+  );
 });
 
 test('an artifact with no recognizable architecture token is not guessed at', () => {
@@ -265,7 +288,7 @@ test('primary artifact detection covers the three declared release targets', () 
     PRIMARY_ARTIFACT_PATTERNS.map((entry) => entry.platform),
     ['windows', 'macos', 'linux'],
   );
-  assert.deepEqual(resolveMissingPrimaryArtifacts(['a.exe', 'b.dmg', 'c.AppImage']), []);
+  assert.deepEqual(resolveMissingPrimaryArtifacts(['a.exe', 'b.dmg', 'c.deb']), []);
   assert.deepEqual(resolveMissingPrimaryArtifacts([]), ['windows', 'macos', 'linux']);
   assert.deepEqual(resolveMissingPrimaryArtifacts(['a.exe']), ['macos', 'linux']);
 });
@@ -384,8 +407,8 @@ test('the release matrix pins every platform to its contracted formats and arch'
   );
 
   assert.match(workflow, /platform: windows[\s\S]*?--format nsis --arch x64/u);
-  assert.match(workflow, /platform: macos[\s\S]*?--format dmg,zip --arch universal/u);
-  assert.match(workflow, /platform: linux[\s\S]*?--format AppImage --arch x64/u);
+  assert.match(workflow, /platform: macos[\s\S]*?--format dmg,zip --arch x64/u);
+  assert.match(workflow, /platform: linux[\s\S]*?--format deb --arch arm64/u);
 });
 
 test('both repositories are checked out inside the workspace', async () => {

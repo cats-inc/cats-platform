@@ -491,16 +491,33 @@ When later enabled:
 One public release shall contain:
 
 - Windows x64 NSIS installer built with `--sidecar-layout bundle`
-- macOS universal DMG
-- macOS universal ZIP required by the updater
-- Linux x64 AppImage
+- macOS x64 DMG
+- macOS x64 ZIP required by the updater
+- Linux arm64 `.deb`
 - generated Windows, macOS, and Linux update metadata
 - any differential-update files generated and referenced by that metadata
 - checksums or provenance output required by the release workflow
 
-The release UI shall identify NSIS, DMG, and AppImage as the primary choices.
+The release UI shall identify NSIS, DMG, and `.deb` as the primary choices.
 Updater-only metadata and the macOS ZIP may remain attached without being
 presented as additional user installation choices.
+
+Two consequences of this target set are deliberate and shall not be treated as
+defects:
+
+- macOS ships x64 only, so Apple Silicon runs it under Rosetta 2. The macOS
+  runner is arm64, which makes every macOS build a cross-compile: the Swift
+  voice helper shall be built for the target architecture explicitly, because an
+  unqualified `swift build` follows the host and would bundle an arm64 helper
+  inside an x64 app.
+- Installing a `.deb` update runs `dpkg`, which requires elevation. Section 4's
+  "no elevation prompt" guarantee is specific to the per-user Windows installer
+  and does not extend to Linux.
+
+Architecture shall be validated per platform rather than across the whole target
+set. With Windows on x64 and Linux on arm64, a flattened list of released
+architecture tokens accepts an x64 `.deb` and an arm64 `.exe` -- each is released
+somewhere, just not on the platform that produced it.
 
 The official Windows release workflow shall pass the sidecar layout explicitly;
 it shall not depend on the installer's current `split` default. The bundle
@@ -523,6 +540,11 @@ selection applies to both `cats-platform` and `cats-runtime`.
 8. Unsigned preview artifacts shall use `unsigned-preview` Actions artifact
    names and publish only in a GitHub prerelease. They shall not be promoted
    into the stable GitHub Release update feed.
+9. A preview build shall resolve updates from the prerelease feed it publishes
+   to, and an official build shall not. GitHub's `latest` release excludes
+   prereleases, so an updater configured for stable only can never find a
+   preview's successor -- which would defeat the reason previews embed a
+   descriptor at all.
 
 ### 10. Failure and Recovery
 
@@ -582,7 +604,9 @@ be translated.
    location, the absence of an install-mode page, and that no elevation prompt
    appears.
 8. An old signed macOS install upgrades to the tagged macOS release.
-9. An old Linux AppImage upgrades to the tagged Linux release.
+9. An old Linux `.deb` install upgrades to the tagged Linux release. The
+   install step runs `dpkg` and therefore prompts for elevation, unlike the
+   per-user Windows path.
 10. A normal commit runs CI without changing the package version or creating a
     GitHub Release.
 11. A mismatched `vX.Y.Z` tag fails the release workflow.

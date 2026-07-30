@@ -1,4 +1,8 @@
-import type { DesktopUpdateChannel, DesktopUpdateProgress } from './contracts.js';
+import type {
+  DesktopDistributionMode,
+  DesktopUpdateChannel,
+  DesktopUpdateProgress,
+} from './contracts.js';
 import type { DesktopUpdaterAdapter, DesktopUpdaterCheckResult } from './updateManager.js';
 
 /**
@@ -171,6 +175,7 @@ function clampPercent(value: number): number {
 export interface ConfigureElectronUpdaterInput {
   repository: string;
   channel: DesktopUpdateChannel;
+  distribution: DesktopDistributionMode;
 }
 
 export function configureElectronUpdater(
@@ -182,8 +187,20 @@ export function configureElectronUpdater(
   // it has to be turned off or a normal quit would install silently.
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
-  autoUpdater.allowPrerelease = false;
-  autoUpdater.channel = resolveElectronUpdaterChannel(input.channel);
+
+  // A preview ships as a GitHub prerelease that never becomes `latest`, and with
+  // allowPrerelease off the provider resolves updates through /releases/latest,
+  // which excludes prereleases -- so a preview could never find its successor.
+  //
+  // Leaving the channel unset matters just as much: with a channel set, the
+  // provider only accepts a release whose tag carries that channel as a semver
+  // prerelease component, and these tags are plain versions. Unset, it takes the
+  // newest entry from the releases feed, which is the preview we just published.
+  // The metadata file is unchanged either way -- electron-updater defaults to
+  // `latest.yml`, which is what the workflow uploads.
+  const preview = input.distribution === 'preview_packaged';
+  autoUpdater.allowPrerelease = preview;
+  autoUpdater.channel = preview ? null : resolveElectronUpdaterChannel(input.channel);
   autoUpdater.setFeedURL(resolveGithubFeedOptions(input.repository));
   // Order matters. electron-updater's channel setter assigns
   // allowDowngrade = true as a side effect and its own documentation says to

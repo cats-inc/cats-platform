@@ -1653,6 +1653,7 @@ async function createUpdateManagerForLaunch(
       configureElectronUpdater(autoUpdater, {
         repository: identity.repository,
         channel: capability.channel,
+        distribution: capability.distribution,
       });
       adapter = withDesktopInstallHandoff(createElectronUpdaterAdapter(autoUpdater), {
         drainManagedServices: async () => {

@@ -129,10 +129,10 @@ jobs:
             extra_args: --sidecar-layout bundle --format nsis --arch x64
           - platform: macos
             runner: macos-latest
-            extra_args: --format dmg,zip --arch universal
+            extra_args: --format dmg,zip --arch x64
           - platform: linux
             runner: ubuntu-latest
-            extra_args: --format AppImage --arch x64
+            extra_args: --format deb --arch arm64
     defaults:
       run:
         working-directory: cats-platform

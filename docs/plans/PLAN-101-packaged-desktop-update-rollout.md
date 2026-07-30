@@ -58,8 +58,8 @@ package-manager-owned and receives no desktop update action.
 - [ ] Configure Apple Developer ID signing and notarization ownership.
 - [ ] Confirm the primary release targets:
       - Windows x64 NSIS
-      - macOS universal DMG plus updater ZIP
-      - Linux x64 AppImage
+      - macOS x64 DMG plus updater ZIP
+      - Linux arm64 `.deb`
 - [ ] Confirm `--sidecar-layout bundle` as the explicit official Windows
       release layout for both managed sidecars; retain the switch for
       controlled A/B diagnostics.
@@ -273,8 +273,9 @@ that cooperates with desktop sidecar shutdown.
       - verify DMG plus ZIP metadata pairing
       - update to N+1 and verify signature/notarization
 - [ ] Linux:
-      - launch N as AppImage with the expected AppImage environment
-      - update to N+1 and verify the resulting executable
+      - install N from the arm64 `.deb` on an arm64 host
+      - update to N+1 and verify the resulting install; the `dpkg` step prompts
+        for elevation, unlike the per-user Windows path
 - [ ] Verify Settings and Tray stay synchronized on all platforms.
 - [ ] Verify npm, `npx`, `cats-one`, browser, and Electron development runs
       contain no desktop update action.
@@ -387,7 +388,7 @@ ownership boundaries in ADR-108 and SPEC-111.
   install-mode page, absence of an elevation prompt, and user-data survival
   across the silent pre-upgrade uninstall
 - signed/notarized macOS N to N+1
-- Linux AppImage N to N+1
+- Linux `.deb` N to N+1, including the elevation prompt `dpkg` requires
 - Tray and Settings checks on current and outdated versions
 - offline and interrupted-download recovery
 
@@ -404,8 +405,9 @@ ownership boundaries in ADR-108 and SPEC-111.
 | Restart/install terminates sidecars unsafely | High | reuse orderly desktop shutdown before updater handoff; add integration coverage |
 | npm users see an Electron updater | High | capability gating plus renderer visibility tests for every execution mode |
 | macOS appears to have two user installers | Low | advertise DMG; label ZIP as updater support asset |
-| GitHub latest/prerelease semantics select the wrong channel | High | stable-only Phase 1; define promotion rules before enabling alpha/beta |
-| AppImage update is tested from an unpacked Linux build | High | require a real AppImage old-to-new test with expected runtime environment |
+| GitHub latest/prerelease semantics select the wrong channel | High | stable-only Phase 1; define promotion rules before enabling alpha/beta. Previews resolve from the prerelease feed they publish to, because `latest` excludes prereleases |
+| deb update needs root while Windows is per-user | Medium | document the elevation prompt as expected on Linux; do not weaken the Windows per-user guarantee to match |
+| arm64 deb is cross-built on an x64 runner | Medium | verify the first arm64 build actually starts on an arm64 host before counting it as evidence |
 | Existing unsigned Windows installs cannot cross into the signed update chain | Medium until install base is known | classify the `0.1.1` artifact; validate unsigned-to-signed upgrade or document one manual reinstall |
 
 ## Rollback Strategy

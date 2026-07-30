@@ -470,9 +470,18 @@ async function buildMacosVoiceHelper(archOverride) {
     return;
   }
 
-  await runCommand('swift', ['build', '-c', 'release', '--package-path', packageRoot], PROJECT_ROOT);
+  // Cross-compilation is the normal case now: the macOS runner is arm64 while
+  // the release targets x64, and an unqualified `swift build` follows the host.
+  // That would quietly bundle an arm64 helper inside an x64 app, which only
+  // fails when a user tries to dictate.
+  const swiftArch = archOverride === 'arm64' ? 'arm64' : 'x86_64';
+  await runCommand(
+    'swift',
+    ['build', '-c', 'release', '--package-path', packageRoot, '--arch', swiftArch],
+    PROJECT_ROOT,
+  );
   await copyFile(
-    resolve(packageRoot, '.build', 'release', 'cats-stt-macos'),
+    resolve(packageRoot, '.build', 'apple', 'Products', 'Release', 'cats-stt-macos'),
     resolve(outputDir, 'cats-stt-macos'),
   );
 }

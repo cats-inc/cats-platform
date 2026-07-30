@@ -116,6 +116,7 @@ test('configuration disables automatic download and install-on-quit', () => {
   configureElectronUpdater(autoUpdater, {
     repository: 'cats-inc/cats-platform',
     channel: 'stable',
+    distribution: 'official_packaged',
   });
 
   assert.equal(autoUpdater.autoDownload, false);
@@ -127,6 +128,43 @@ test('configuration disables automatic download and install-on-quit', () => {
     owner: 'cats-inc',
     repo: 'cats-platform',
   });
+});
+
+test('a preview resolves updates through the prerelease feed it publishes to', () => {
+  // A preview ships as a GitHub prerelease that never becomes `latest`. With
+  // allowPrerelease off, the provider resolves through /releases/latest, which
+  // excludes prereleases -- so a preview could never find its successor and the
+  // whole point of the preview path (exercising the update client before signing
+  // exists) would be lost.
+  const autoUpdater = createFakeAutoUpdater();
+
+  configureElectronUpdater(autoUpdater, {
+    repository: 'cats-inc/cats-platform',
+    channel: 'stable',
+    distribution: 'preview_packaged',
+  });
+
+  assert.equal(autoUpdater.allowPrerelease, true);
+  // Unset on purpose: a channel makes the provider require it as a semver
+  // prerelease component of the tag, and preview tags are plain versions.
+  assert.equal(autoUpdater.channel, null);
+  // The safety rails do not relax for a preview.
+  assert.equal(autoUpdater.autoDownload, false);
+  assert.equal(autoUpdater.autoInstallOnAppQuit, false);
+  assert.equal(autoUpdater.allowDowngrade, false);
+});
+
+test('an official build stays on the stable feed and refuses prereleases', () => {
+  const autoUpdater = createFakeAutoUpdater();
+
+  configureElectronUpdater(autoUpdater, {
+    repository: 'cats-inc/cats-platform',
+    channel: 'stable',
+    distribution: 'official_packaged',
+  });
+
+  assert.equal(autoUpdater.allowPrerelease, false);
+  assert.equal(autoUpdater.channel, 'latest');
 });
 
 test('downgrade stays disabled even though the channel setter re-enables it', () => {
@@ -141,6 +179,7 @@ test('downgrade stays disabled even though the channel setter re-enables it', ()
   configureElectronUpdater(autoUpdater, {
     repository: 'cats-inc/cats-platform',
     channel: 'stable',
+    distribution: 'official_packaged',
   });
 
   assert.equal(autoUpdater.allowDowngrade, false);

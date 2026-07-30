@@ -37,7 +37,7 @@ export const UPDATE_METADATA_FILES = ['latest.yml', 'latest-mac.yml', 'latest-li
 export const PRIMARY_ARTIFACT_PATTERNS = [
   { platform: 'windows', pattern: /\.exe$/iu },
   { platform: 'macos', pattern: /\.dmg$/iu },
-  { platform: 'linux', pattern: /\.AppImage$/iu },
+  { platform: 'linux', pattern: /\.deb$/iu },
 ];
 
 function printHelp() {
@@ -119,8 +119,11 @@ export function collectReferencedFiles(document) {
  */
 export const DESKTOP_RELEASE_MATRIX = [
   { platform: 'windows', formats: ['nsis'], arches: ['x64'] },
-  { platform: 'macos', formats: ['dmg', 'zip'], arches: ['universal'] },
-  { platform: 'linux', formats: ['AppImage'], arches: ['x64'] },
+  // macOS ships x64 only; Apple Silicon runs it under Rosetta 2.
+  { platform: 'macos', formats: ['dmg', 'zip'], arches: ['x64'] },
+  // Linux ships an arm64 .deb. electron-updater installs it with dpkg, which
+  // needs elevation -- unlike the per-user Windows path.
+  { platform: 'linux', formats: ['deb'], arches: ['arm64'] },
 ];
 
 const FORMAT_EXTENSIONS = {
@@ -153,8 +156,29 @@ function releasedExtensions(matrix = DESKTOP_RELEASE_MATRIX) {
   ));
 }
 
-function releasedArchTokens(matrix = DESKTOP_RELEASE_MATRIX) {
-  return matrix.flatMap((entry) => entry.arches.flatMap((arch) => ARCH_TOKENS[arch] ?? [arch]));
+/**
+ * Resolves which platform an artifact belongs to from its extension.
+ *
+ * Architecture has to be judged per platform, not across the whole matrix. With
+ * Windows on x64 and Linux on arm64, a flattened token list accepts an x64 .deb
+ * and an arm64 .exe -- each is released *somewhere*, just not where it was built.
+ */
+function platformForArtifact(name, matrix = DESKTOP_RELEASE_MATRIX) {
+  const lowered = stripBlockmap(name).toLowerCase();
+  for (const entry of matrix) {
+    for (const format of entry.formats) {
+      for (const extension of FORMAT_EXTENSIONS[format] ?? []) {
+        if (lowered.endsWith(extension.toLowerCase())) {
+          return entry;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function archTokensFor(entry) {
+  return entry.arches.flatMap((arch) => ARCH_TOKENS[arch] ?? [arch]);
 }
 
 function isUpdateMetadata(name) {
@@ -197,12 +221,16 @@ export function resolveUnreleasedArchitectureArtifacts(
   fileNames,
   matrix = DESKTOP_RELEASE_MATRIX,
 ) {
-  const released = releasedArchTokens(matrix).map((token) => token.toLowerCase());
-
   return fileNames.filter((name) => {
     if (isUpdateMetadata(name)) {
       return false;
     }
+    const entry = platformForArtifact(name, matrix);
+    if (entry === null) {
+      // Its format is not released at all; resolveDisallowedArtifacts owns that.
+      return false;
+    }
+    const released = archTokensFor(entry).map((token) => token.toLowerCase());
     const lowered = name.toLowerCase();
     const present = ALL_ARCH_TOKENS.filter(
       (token) => new RegExp(`(^|[-_.])${token}([-_.]|$)`, 'iu').test(lowered),
