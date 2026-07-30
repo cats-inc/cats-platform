@@ -177,8 +177,14 @@ capability gating.
 
 ### Phase 4: Add Settings and Tray Update Surfaces
 
-- [ ] Rename or broaden the current Desktop Settings component so its ownership
-      is not limited to startup preferences.
+- [x] Rename or broaden the current Desktop Settings component so its ownership
+      is not limited to startup preferences. Split into one file per section
+      (`PlatformSettingsDesktopUpdates`, `…MobilePairing`,
+      `…StartupBehavior`) behind a `PlatformSettingsDesktop` route composer that
+      owns only ordering and the shared toast surface, so adding a section no
+      longer grows a single component. `settingsDesktopStartupErrorLabels.ts`
+      became `settingsDesktopErrorLabels.ts` for the same reason: it was already
+      formatting mobile pairing failures too.
 - [x] Add the `App updates` section before Mobile pairing and Startup behavior.
 - [x] Preserve the existing relative order of Mobile pairing before Startup
       behavior.
@@ -304,7 +310,12 @@ startup-check policy.
 | `desktop/host/hostVersion.ts` | Modify | expose the electron-builder `appId` for the Windows notification identity |
 | `src/shared/desktopRecoveryBridge.ts` | Modify | browser-safe update bridge types/helpers |
 | `src/app/renderer/settings/PlatformSettingsDesktopUpdates.tsx` | Create | `App updates` section container over the host snapshot |
-| `src/app/renderer/settings/PlatformSettingsDesktopStartup.tsx` | Rename/refactor | broaden Desktop Settings and mount the App updates section |
+| `src/app/renderer/settings/PlatformSettingsDesktop.tsx` | Create | Desktop route composer: section order plus the shared toast surface |
+| `src/app/renderer/settings/PlatformSettingsDesktopMobilePairing.tsx` | Create | `Mobile pairing` section split out of the old startup component |
+| `src/app/renderer/settings/PlatformSettingsDesktopStartupBehavior.tsx` | Create | `Startup behavior` section split out of the old startup component |
+| `src/app/renderer/settings/settingsDesktopPreferences.ts` | Create | desktop preference defaults shared by the sections |
+| `src/app/renderer/settings/settingsDesktopStartupErrorLabels.ts` | Rename | `settingsDesktopErrorLabels.ts`, now used by more than startup |
+| `src/app/renderer/settings/PlatformSettingsDesktopStartup.tsx` | Delete | replaced by the composer plus one file per section |
 | `src/app/renderer/settings/PlatformSettingsRoutes.tsx` | Modify | updated Desktop Settings component |
 | shared i18n catalogs | Modify | English and Traditional Chinese update copy |
 | desktop update/tray/preload/Settings tests | Modify/expand | state, security, visibility, synchronization |

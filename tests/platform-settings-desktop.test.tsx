@@ -4,8 +4,8 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { StaticRouter } from 'react-router-dom';
 
-import { PlatformSettingsDesktopStartup } from '../src/app/renderer/settings/PlatformSettingsDesktopStartup.tsx';
-import { formatSettingsDesktopStartupMutationError } from '../src/app/renderer/settings/settingsDesktopStartupErrorLabels.ts';
+import { PlatformSettingsDesktop } from '../src/app/renderer/settings/PlatformSettingsDesktop.tsx';
+import { formatSettingsDesktopMutationError } from '../src/app/renderer/settings/settingsDesktopErrorLabels.ts';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 
@@ -116,11 +116,11 @@ function createPayload(
   } as unknown as AppShellPayload;
 }
 
-test('PlatformSettingsDesktopStartup localizes deterministic desktop host mutation errors', () => {
+test('Settings > Desktop localizes deterministic desktop host mutation errors', () => {
   const t = createTranslator('zh-TW');
 
   assert.equal(
-    formatSettingsDesktopStartupMutationError(
+    formatSettingsDesktopMutationError(
       new Error('Desktop host is not initialized.'),
       t('settingsDesktopMobilePairingDesktopUpdateFailure'),
       t,
@@ -128,7 +128,7 @@ test('PlatformSettingsDesktopStartup localizes deterministic desktop host mutati
     '更新桌面環境設定失敗。',
   );
   assert.equal(
-    formatSettingsDesktopStartupMutationError(
+    formatSettingsDesktopMutationError(
       new Error('Invalid desktop startup preferences payload.'),
       t('settingsConversationPreferenceUpdateFailure'),
       t,
@@ -136,7 +136,7 @@ test('PlatformSettingsDesktopStartup localizes deterministic desktop host mutati
     '更新偏好失敗。',
   );
   assert.equal(
-    formatSettingsDesktopStartupMutationError(
+    formatSettingsDesktopMutationError(
       new Error('EACCES: permission denied'),
       t('settingsDesktopMobilePairingDesktopUpdateFailure'),
       t,
@@ -145,7 +145,7 @@ test('PlatformSettingsDesktopStartup localizes deterministic desktop host mutati
   );
 });
 
-test('PlatformSettingsDesktopStartup renders desktop controls with system tray before window opening', () => {
+test('Settings > Desktop renders desktop controls with system tray before window opening', () => {
   const previousBridge = (globalThis as typeof globalThis & {
     catsDesktopHost?: object;
   }).catsDesktopHost;
@@ -155,7 +155,7 @@ test('PlatformSettingsDesktopStartup renders desktop controls with system tray b
 
   const markup = renderToStaticMarkup(
     <StaticRouter location="/settings/desktop">
-      <PlatformSettingsDesktopStartup
+      <PlatformSettingsDesktop
         payload={createPayload()}
         onPayloadUpdate={() => {}}
       />
@@ -183,10 +183,10 @@ test('PlatformSettingsDesktopStartup renders desktop controls with system tray b
   }
 });
 
-test('PlatformSettingsDesktopStartup can enable mobile pairing when the payload gate is disabled', () => {
+test('Settings > Desktop can enable mobile pairing when the payload gate is disabled', () => {
   const markup = renderToStaticMarkup(
     <StaticRouter location="/settings/desktop">
-      <PlatformSettingsDesktopStartup
+      <PlatformSettingsDesktop
         payload={createPayload()}
         onPayloadUpdate={() => {}}
       />
@@ -199,10 +199,10 @@ test('PlatformSettingsDesktopStartup can enable mobile pairing when the payload 
   assert.match(markup, /Restart Cats Desktop after applying/u);
 });
 
-test('PlatformSettingsDesktopStartup shows loopback-only mobile pairing recovery', () => {
+test('Settings > Desktop shows loopback-only mobile pairing recovery', () => {
   const markup = renderToStaticMarkup(
     <StaticRouter location="/settings/desktop">
-      <PlatformSettingsDesktopStartup
+      <PlatformSettingsDesktop
         payload={createPayload({
           mobilePairing: createMobilePairing({
             enabled: true,
@@ -222,10 +222,10 @@ test('PlatformSettingsDesktopStartup shows loopback-only mobile pairing recovery
   assert.doesNotMatch(markup, /Diagnostic manifest/u);
 });
 
-test('PlatformSettingsDesktopStartup shows diagnostic manifest when LAN-ready', () => {
+test('Settings > Desktop shows diagnostic manifest when LAN-ready', () => {
   const markup = renderToStaticMarkup(
     <StaticRouter location="/settings/desktop">
-      <PlatformSettingsDesktopStartup
+      <PlatformSettingsDesktop
         payload={createPayload({
           mobilePairing: createMobilePairing({
             enabled: true,

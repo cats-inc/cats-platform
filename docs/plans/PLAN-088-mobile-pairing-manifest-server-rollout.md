@@ -170,7 +170,9 @@ same flag, with a working QR.
 
 - [x] Add the card component under
       `cats-platform/src/app/renderer/settings/PlatformSettingsDesktopStartup.tsx`
-      (the current Desktop settings tab component).
+      (the Desktop settings tab component at the time). PLAN-101 later split that
+      file per section; the card now lives in
+      `PlatformSettingsDesktopMobilePairing.tsx`.
 - [x] Pull the gate value through the existing `AppShellPayload`
       desktop-feature plumbing so the renderer knows whether to
       show the card without an extra fetch.

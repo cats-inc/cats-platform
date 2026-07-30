@@ -10,7 +10,7 @@ import { PlatformSettingsApps } from './PlatformSettingsApps.js';
 import { PlatformSettingsChat } from './PlatformSettingsChat.js';
 import { PlatformSettingsCode } from './PlatformSettingsCode.js';
 import { PlatformSettingsData } from './PlatformSettingsData.js';
-import { PlatformSettingsDesktopStartup } from './PlatformSettingsDesktopStartup.js';
+import { PlatformSettingsDesktop } from './PlatformSettingsDesktop.js';
 import { PlatformSettingsGeneral } from './PlatformSettingsGeneral.js';
 import { PlatformSettingsNotFound } from './PlatformSettingsNotFound.js';
 import { PlatformSettingsRuntime } from './PlatformSettingsRuntime.js';
@@ -178,7 +178,7 @@ export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShel
         <Route
           path="desktop"
           element={(
-            <PlatformSettingsDesktopStartup
+            <PlatformSettingsDesktop
               payload={payload}
               onPayloadUpdate={onWorkspacePayloadUpdate}
             />
