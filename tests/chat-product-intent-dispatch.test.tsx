@@ -16,7 +16,11 @@ import {
   routeChannelMessage,
 } from '../src/products/chat/state/runtime-dispatch/routing.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
-import type { RuntimeClient } from '../src/platform/runtime/client.ts';
+import type {
+  RuntimeClient,
+  RuntimeSendMessageInput,
+  RuntimeSessionCreateInput,
+} from '../src/platform/runtime/client.ts';
 import {
   parseProviderCapabilityBootstrapConfigDocument,
   type ProviderCapabilityBootstrapConfig,
@@ -60,7 +64,7 @@ function runtimeStub(onClose?: () => void): RuntimeClient {
     async closeSession() {
       onClose?.();
     },
-  } as RuntimeClient;
+  } as unknown as RuntimeClient;
 }
 
 function runtimeReplyStub(reply: string): RuntimeClient & {
@@ -78,7 +82,7 @@ function runtimeReplyStub(reply: string): RuntimeClient & {
   }> = [];
   return {
     sentMessages,
-    async createSession(input) {
+    async createSession(input: RuntimeSessionCreateInput) {
       const sessionId = `session-${nextSession}`;
       nextSession += 1;
       return {
@@ -91,7 +95,7 @@ function runtimeReplyStub(reply: string): RuntimeClient & {
         cwd: input.cwd ?? null,
       };
     },
-    async sendMessage(sessionId, content, input) {
+    async sendMessage(sessionId: string, content: string, input?: RuntimeSendMessageInput) {
       sentMessages.push({ sessionId, content, input });
       return {
         segments: [{ kind: 'text', text: reply, toolName: null, toolId: null }],
@@ -101,11 +105,11 @@ function runtimeReplyStub(reply: string): RuntimeClient & {
       };
     },
     async closeSession() {},
-    async observeSession(sessionId) {
+    async observeSession(sessionId: string) {
       return { session: { id: sessionId, status: 'ready' } };
     },
     async streamSession() {},
-  } as RuntimeClient & {
+  } as unknown as RuntimeClient & {
     sentMessages: Array<{
       sessionId: string;
       content: string;
@@ -193,6 +197,18 @@ function buildSingleChoiceResponse(
       },
     ],
   };
+}
+
+/**
+ * `capturedObservation` is only ever assigned inside a decision callback, so
+ * control-flow analysis narrows it to null at every later read and property
+ * access collapses to `never`. Reading it through a parameter restores the
+ * declared type, the same way the observation* helpers below already do.
+ */
+function capturedObservationDetail(
+  observation: ProviderAgentBoundedObservation | null,
+): ProviderAgentBoundedObservation | null {
+  return observation;
 }
 
 function observationExposesProposalTool(
@@ -1696,17 +1712,17 @@ test('routeChannelMessage records Cat proposal tool requests without durable Wor
   assert.equal(toolNames.includes(WORK_ITEM_PROPOSE_SPLIT_TOOL), true);
   assert.equal(toolNames.includes(WORK_ITEM_CAPTURE_TOOL), false);
   assert.equal(
-    capturedObservation?.invariants.some((invariant) =>
+    capturedObservationDetail(capturedObservation)?.invariants.some((invariant) =>
       invariant.includes('must not be used for casual chat')),
     true,
   );
   assert.equal(
-    capturedObservation?.invariants.some((invariant) =>
+    capturedObservationDetail(capturedObservation)?.invariants.some((invariant) =>
       invariant.includes(WORK_ITEM_PROPOSE_SPLIT_TOOL)),
     true,
   );
   assert.equal(
-    capturedObservation?.invariants.some((invariant) =>
+    capturedObservationDetail(capturedObservation)?.invariants.some((invariant) =>
       invariant.includes('At most one proposeProductIntake')),
     true,
   );
@@ -2456,7 +2472,7 @@ test('routeChannelMessage exposes proposal tools in single-target group channels
     | CatProductIntentProposalMetadata
     | undefined;
 
-  assert.equal(capturedObservation?.actor.actorRef, `cat:${participantId}`);
+  assert.equal(capturedObservationDetail(capturedObservation)?.actor.actorRef, `cat:${participantId}`);
   assert.equal(observationExposesProposalTool(capturedObservation), true);
   assert.equal(proposalMessage?.senderKind, 'system');
   assert.equal(proposal?.proposal.targetProduct, 'work');

@@ -5,6 +5,7 @@ import {
   mergeAppShellPreservingActiveEntityState,
 } from '../src/products/shared/renderer/mergeAppShellPreservingActiveEntityState.js';
 import { createDefaultRoomRoutingState } from '../src/core/roomRoutingState.js';
+import type { AppShellPayload } from '../src/products/shared/api/workspaceContracts.ts';
 
 function group(input: {
   id: string;
@@ -112,7 +113,7 @@ function selectedChannel(input: {
     pendingModelSelection: null,
     roomRouting,
     assignedCats: [],
-    messages: [],
+    messages: [] as Array<{ id: string }>,
   };
 }
 
@@ -142,7 +143,7 @@ function payload(input: {
       channels: input.channels ?? [],
       bossCatId: null,
     },
-  };
+  } as unknown as AppShellPayload;
 }
 
 test('no active subscription keeps full-replace behavior', () => {

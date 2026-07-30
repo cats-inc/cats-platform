@@ -15,6 +15,10 @@ import {
 } from '../src/products/chat/shared/channelPaths.ts';
 import { Sidebar } from '../src/products/chat/renderer/components/Sidebar.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
+import {
+  buildChatConversationId,
+  CHAT_ROOT_CONTAINER_ID,
+} from '../src/shared/chatCoreIds.ts';
 
 type SidebarProps = ComponentProps<typeof Sidebar>;
 
@@ -22,8 +26,8 @@ function createChannel(
   overrides: Partial<ChatChannelSummary> & { id: string; title: string },
 ): ChatChannelSummary {
   return {
-    id: overrides.id,
-    title: overrides.title,
+    containerId: CHAT_ROOT_CONTAINER_ID,
+    conversationId: buildChatConversationId(overrides.id),
     topic: '',
     originSurface: 'chat',
     status: 'active',
@@ -52,8 +56,8 @@ function createPayload(): AppShellPayload {
     },
     metadata: {
       generatedAt: '2026-04-01T00:00:00.000Z',
-      requestId: 'test-request',
-      version: 'test',
+      host: '127.0.0.1',
+      port: 8181,
     },
     chat: {
       id: 'chat',
@@ -63,9 +67,7 @@ function createPayload(): AppShellPayload {
         {
           id: 'boss-cat',
           name: 'Boss Cat',
-          provider: 'claude',
-          instance: null,
-          model: 'claude-sonnet-4',
+          roles: [],
           status: 'active',
           createdAt: '2026-04-01T00:00:00.000Z',
           updatedAt: '2026-04-01T00:00:00.000Z',
@@ -75,7 +77,7 @@ function createPayload(): AppShellPayload {
           products: ['chat'],
           defaultExecutionTarget: { provider: 'claude', instance: null, model: 'claude-sonnet-4' },
           defaultModelSelection: null,
-          memory: { summary: null, updatedAt: null },
+          memory: { summary: null, updatedAt: null, facts: [], openLoops: [] },
           skillProfile: null,
           mcpProfile: null,
         },
@@ -91,7 +93,7 @@ function createPayload(): AppShellPayload {
           id: 'compare-group-1',
           title: 'Parallel chat 1',
           originSurface: 'chat',
-          mode: 'compare',
+          mode: 'parallel',
           status: 'active',
           memberCount: 2,
           memberChannelIds: ['compare-1', 'compare-2'],
@@ -134,7 +136,7 @@ function createPayload(): AppShellPayload {
         systemPrompt: 'You are Boss Cat.',
         skillProfile: null,
         mcpProfile: null,
-        memory: { summary: null, updatedAt: null },
+        memory: { summary: null, updatedAt: null, facts: [], openLoops: [] },
         telegramBotName: null,
         updatedAt: '2026-04-01T00:00:00.000Z',
       },
@@ -159,10 +161,9 @@ function createPayload(): AppShellPayload {
         model: 'claude-sonnet-4',
         modelSelection: null,
       },
-      showVerboseMessages: false,
       botBindings: [],
     },
-  };
+  } as unknown as AppShellPayload;
 }
 
 function createSidebarProps(overrides: Partial<SidebarProps> = {}): SidebarProps {
@@ -335,7 +336,7 @@ test('Sidebar excludes non-chat recents and compare groups by origin surface', (
       id: 'chat-group',
       title: 'Chat compare',
       originSurface: 'chat',
-      mode: 'compare',
+      mode: 'parallel',
       status: 'active',
       memberCount: 2,
       memberChannelIds: ['compare-chat-1', 'compare-chat-2'],
@@ -348,7 +349,7 @@ test('Sidebar excludes non-chat recents and compare groups by origin surface', (
       id: 'code-group',
       title: 'Code compare',
       originSurface: 'code',
-      mode: 'compare',
+      mode: 'parallel',
       status: 'active',
       memberCount: 2,
       memberChannelIds: ['compare-code-1', 'compare-code-2'],

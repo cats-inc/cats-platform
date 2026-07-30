@@ -16,6 +16,19 @@ import {
   DESKTOP_UPDATE_NOTIFICATION_ERROR_COPY,
 } from '../desktop/host/updateNotifications.ts';
 
+/**
+ * `MessageKey` is deliberately broad -- it accepts both an alias name and a
+ * dotted catalog id, because call sites use either. These resolvers return alias
+ * names, and the catalogs are typed with their exact dotted keys, so this drift
+ * check narrows on the way in and reads the catalogs through a string index on
+ * the way out.
+ */
+type MessageAlias = keyof typeof messageKeys;
+const catalogs: Record<'en' | 'zh-TW', Record<string, string>> = {
+  en: enCatalog,
+  'zh-TW': zhTWCatalog,
+};
+
 const STATUSES = [
   'unavailable',
   'idle',
@@ -67,21 +80,21 @@ function snapshot(overrides: Record<string, unknown> = {}) {
 
 test('every update status resolves to a catalogued message in both locales', () => {
   for (const status of STATUSES) {
-    const alias = resolveDesktopUpdateStatusMessageKey(status);
+    const alias = resolveDesktopUpdateStatusMessageKey(status) as MessageAlias;
     const dotted = messageKeys[alias];
     assert.ok(dotted, `${status} has no message key`);
-    assert.equal(typeof enCatalog[dotted], 'string', `${dotted} missing from en`);
-    assert.equal(typeof zhTWCatalog[dotted], 'string', `${dotted} missing from zh-TW`);
+    assert.equal(typeof catalogs.en[dotted], 'string', `${dotted} missing from en`);
+    assert.equal(typeof catalogs['zh-TW'][dotted], 'string', `${dotted} missing from zh-TW`);
   }
 });
 
 test('every update error code resolves to a catalogued message in both locales', () => {
   for (const code of ERROR_CODES) {
-    const alias = resolveDesktopUpdateErrorMessageKey(code);
+    const alias = resolveDesktopUpdateErrorMessageKey(code) as MessageAlias;
     const dotted = messageKeys[alias];
     assert.ok(dotted, `${code} has no message key`);
-    assert.equal(typeof enCatalog[dotted], 'string', `${dotted} missing from en`);
-    assert.equal(typeof zhTWCatalog[dotted], 'string', `${dotted} missing from zh-TW`);
+    assert.equal(typeof catalogs.en[dotted], 'string', `${dotted} missing from en`);
+    assert.equal(typeof catalogs['zh-TW'][dotted], 'string', `${dotted} missing from zh-TW`);
   }
 });
 
@@ -90,15 +103,15 @@ test('native notification error copy matches the renderer catalogs word for word
   // copy. The same failure must not read differently depending on whether the
   // user saw it in Settings or in a notification.
   for (const code of ERROR_CODES) {
-    const dotted = messageKeys[resolveDesktopUpdateErrorMessageKey(code)];
+    const dotted = messageKeys[resolveDesktopUpdateErrorMessageKey(code) as MessageAlias];
     assert.equal(
       DESKTOP_UPDATE_NOTIFICATION_ERROR_COPY.en[code],
-      enCatalog[dotted],
+      catalogs.en[dotted],
       `en/${code} drifted from ${dotted}`,
     );
     assert.equal(
       DESKTOP_UPDATE_NOTIFICATION_ERROR_COPY['zh-TW'][code],
-      zhTWCatalog[dotted],
+      catalogs['zh-TW'][dotted],
       `zh-TW/${code} drifted from ${dotted}`,
     );
   }
@@ -205,8 +218,8 @@ test('every new update message key exists in both catalogs', () => {
   assert.ok(updateAliases.length >= 30, `expected the full update copy set, saw ${updateAliases.length}`);
   for (const alias of updateAliases) {
     const dotted = messageKeys[alias as keyof typeof messageKeys];
-    assert.equal(typeof enCatalog[dotted], 'string', `${dotted} missing from en`);
-    assert.equal(typeof zhTWCatalog[dotted], 'string', `${dotted} missing from zh-TW`);
-    assert.notEqual(enCatalog[dotted], zhTWCatalog[dotted], `${dotted} is not translated`);
+    assert.equal(typeof catalogs.en[dotted], 'string', `${dotted} missing from en`);
+    assert.equal(typeof catalogs['zh-TW'][dotted], 'string', `${dotted} missing from zh-TW`);
+    assert.notEqual(catalogs.en[dotted], catalogs['zh-TW'][dotted], `${dotted} is not translated`);
   }
 });
