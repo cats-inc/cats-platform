@@ -8,7 +8,7 @@ import {
 function createInitialPayload() {
   return {
     chat: {
-      selectedChannel: null,
+      selectedChannel: null as { id: string } | null,
     },
   };
 }
@@ -33,7 +33,7 @@ test('prepareComposerChannelDispatch keeps work-owned drafts stamped as work', a
     participantCatIds: ['cat-planner'],
     draftEntryKind: 'group',
     createChatChannel: async (input) => {
-      createdInputs.push(input as Record<string, unknown>);
+      createdInputs.push(input as unknown as Record<string, unknown>);
       return { id: 'channel-work-1' };
     },
     insertCreatedChannelIntoPayload: (payload, createdChannel) => ({
@@ -105,7 +105,7 @@ test('prepareComposerChannelDispatch keeps code-owned default drafts stamped as 
       modelSelection: null,
     },
     createChatChannel: async (input) => {
-      createdInputs.push(input as Record<string, unknown>);
+      createdInputs.push(input as unknown as Record<string, unknown>);
       return { id: 'channel-code-1' };
     },
     insertCreatedChannelIntoPayload: (payload, createdChannel) => ({

@@ -5,6 +5,7 @@ import type { AppShellPayload } from '../src/products/shared/api/workspaceContra
 import { deriveAppRouteState as deriveChatAppRouteState } from '../src/products/chat/renderer/appViewState.ts';
 import { deriveAppRouteState as deriveCodeAppRouteState } from '../src/products/code/renderer/appViewState.ts';
 import { deriveAppViewState as deriveWorkAppViewState } from '../src/products/work/renderer/appViewState.ts';
+import { normalizeSelectedChannelView } from '../src/products/chat/shared/channelEntry.ts';
 
 function createPayload(): AppShellPayload {
   return {
@@ -266,7 +267,7 @@ test('Chat app route state reuses the shared direct-lane selection semantics', (
 
 test('Work app view state keeps shared settings and direct-lane derivation semantics', () => {
   const payload = createPayload();
-  const selectedDirectLane = payload.chat.selectedChannel;
+  const selectedDirectLane = normalizeSelectedChannelView(payload.chat.selectedChannel);
 
   const viewState = deriveWorkAppViewState({
     pathname: '/settings/cats',
@@ -308,7 +309,7 @@ test('Work app view state keeps the direct-lane boot surface only until the lane
     payload,
     draftDefaultRecipientCatId: 'companion-cat',
     selectedChannel: null,
-    selectedDirectLane: payload.chat.selectedChannel,
+    selectedDirectLane: normalizeSelectedChannelView(payload.chat.selectedChannel),
     routeDirectLaneSummary,
     showingMyCatDirectLane: true,
     addCatOpen: false,
@@ -327,7 +328,7 @@ test('Work app view state only opens Add Cat for existing rooms or generic draft
     pathname: '/work/chats/direct-lane-1',
     payload,
     draftDefaultRecipientCatId: null,
-    selectedChannel: payload.chat.selectedChannel,
+    selectedChannel: normalizeSelectedChannelView(payload.chat.selectedChannel),
     selectedDirectLane: null,
     routeDirectLaneSummary: null,
     showingMyCatDirectLane: false,

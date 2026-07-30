@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { prepareWorkspaceSendContext } from '../src/products/shared/renderer/composerDispatch.ts';
+import type { ComposerSelectedChannelLike } from '../src/products/shared/renderer/composerDispatch.ts';
 
 function createPayload(overrides: Record<string, unknown> = {}) {
   return {
@@ -14,6 +15,9 @@ function createPayload(overrides: Record<string, unknown> = {}) {
         },
         repoPath: null,
         chatCwd: null,
+      } as ComposerSelectedChannelLike & {
+        repoPath: string | null;
+        chatCwd: string | null;
       },
       ...overrides.chat as object,
     },
@@ -76,7 +80,7 @@ test('prepareWorkspaceSendContext composes default dispatch target with attachme
         chat: {
           selectedChannel: {
             id: 'channel-1',
-            channelKind: 'chat_channel',
+            channelKind: 'chat_channel' as const,
             roomRouting: {
               defaultRecipientId: null,
             },
@@ -148,7 +152,7 @@ test('prepareWorkspaceSendContext creates missing direct lanes, uses draft files
     draftFiles,
     channelFiles: [],
     createChatChannel: async (input) => {
-      createdInputs.push(input as Record<string, unknown>);
+      createdInputs.push(input as unknown as Record<string, unknown>);
       return { id: 'channel-direct-1' };
     },
     insertCreatedChannelIntoPayload: (payload, createdChannel) => ({

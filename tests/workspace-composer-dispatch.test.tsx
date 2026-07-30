@@ -13,7 +13,7 @@ function createPayload(overrides: Record<string, unknown> = {}) {
     chat: {
       selectedChannel: {
         id: 'channel-1',
-        channelKind: 'chat_channel',
+        channelKind: 'chat_channel' as const,
         roomRouting: {
           defaultRecipientId: null,
         },
@@ -29,7 +29,7 @@ test('isDirectLaneSelectedForCat only accepts matching direct-lane recipients', 
   assert.equal(
     isDirectLaneSelectedForCat({
       id: 'channel-direct',
-      channelKind: 'direct_message',
+      channelKind: 'direct_message' as const,
       roomRouting: {
         defaultRecipientId: 'cat-1',
       },
@@ -39,7 +39,7 @@ test('isDirectLaneSelectedForCat only accepts matching direct-lane recipients', 
   assert.equal(
     isDirectLaneSelectedForCat({
       id: 'channel-direct',
-      channelKind: 'direct_message',
+      channelKind: 'direct_message' as const,
       roomRouting: {
         defaultRecipientId: 'cat-2',
       },
@@ -49,7 +49,7 @@ test('isDirectLaneSelectedForCat only accepts matching direct-lane recipients', 
   assert.equal(
     isDirectLaneSelectedForCat({
       id: 'channel-thread',
-      channelKind: 'chat_channel',
+      channelKind: 'chat_channel' as const,
       roomRouting: {
         defaultRecipientId: 'cat-1',
       },

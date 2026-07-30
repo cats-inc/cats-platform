@@ -10,7 +10,10 @@ export type RuntimeConnectionChipTone = 'ready' | 'warm' | 'muted';
 export type RuntimeConnectionChipTranslator = (key: MessageKey) => string;
 
 export function resolveRuntimeConnectionChip(
-  runtime: RuntimeStatusSummary,
+  // Only reachability and status are read, and status only matters once the
+  // runtime is reachable. A full summary still satisfies this.
+  runtime: Pick<RuntimeStatusSummary, 'reachable'>
+    & Partial<Pick<RuntimeStatusSummary, 'status'>>,
   translate: RuntimeConnectionChipTranslator = defaultTranslate,
 ): { tone: RuntimeConnectionChipTone; label: string } {
   if (!runtime.reachable) {
