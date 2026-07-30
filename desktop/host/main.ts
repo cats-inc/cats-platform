@@ -124,6 +124,7 @@ import {
   createDesktopUpdateIpcHandlers,
   createDesktopUpdateSnapshotBroadcast,
 } from './updateIpc.js';
+import { withDesktopInstallHandoff } from './updateInstallHandoff.js';
 import {
   DESKTOP_UPDATE_SETTINGS_PATH,
   resolveDesktopUpdateAnnouncement,
@@ -1653,7 +1654,33 @@ async function createUpdateManagerForLaunch(
         repository: identity.repository,
         channel: capability.channel,
       });
-      adapter = createElectronUpdaterAdapter(autoUpdater);
+      adapter = withDesktopInstallHandoff(createElectronUpdaterAdapter(autoUpdater), {
+        drainManagedServices: async () => {
+          // The tray says "Quitting" for the same reason shutdown does: from
+          // here the app is on its way out, and a menu offering to open Cats
+          // would be a lie while the sidecars are stopping. This also locks the
+          // menu against repeated interaction without touching `shuttingDown`,
+          // which gates far more behaviour and is never designed to be reset.
+          trayController?.updateMenu(buildDesktopTrayQuittingMenuState(app.getLocale()));
+          await drainManagedServices();
+          // electron-updater quits the app itself. Without this the before-quit
+          // handler would cancel that quit and run a second drain, delaying the
+          // exit the installer is waiting on. The drain above already satisfied
+          // the contract that flag stands for.
+          exitingAfterShutdown = true;
+        },
+        restartManagedServices: async () => {
+          // The handoff failed but the process survived, so the exit is no
+          // longer prepared, the sidecars have to come back, and the tray has to
+          // stop claiming we are quitting.
+          exitingAfterShutdown = false;
+          await supervisor?.startAll();
+          await syncTrayController();
+        },
+        logger: (message) => {
+          process.stdout.write(`${message}\n`);
+        },
+      });
     } catch (error) {
       process.stderr.write(
         '[desktop-update] updater unavailable, continuing without self-update: '
@@ -2074,6 +2101,40 @@ function waitForShutdownDeadline(ms: number): Promise<'timed_out'> {
   });
 }
 
+/**
+ * Stops managed services, forcing them down if the graceful path overruns.
+ *
+ * Shared by host shutdown and the update installer handoff, because both need
+ * the sidecars actually gone — the installer for the same reason the exit path
+ * does, plus the Windows upgrade running the old uninstaller over files a
+ * surviving sidecar may still hold.
+ */
+async function drainManagedServices(): Promise<{ timedOut: boolean }> {
+  const drain = supervisor?.stopAll() ?? Promise.resolve();
+  const shutdownWatchdogMs = hostConfig
+    ? resolveShutdownWatchdogMs(hostConfig, supervisor?.getManagedServiceCount() ?? 0)
+    : SHUTDOWN_WATCHDOG_BUFFER_MS;
+  const result = await Promise.race([
+    drain.then(() => 'drained' as const),
+    waitForShutdownDeadline(shutdownWatchdogMs),
+  ]);
+
+  if (result !== 'timed_out') {
+    return { timedOut: false };
+  }
+
+  process.stderr.write(
+    `Desktop host shutdown watchdog tripped after ${shutdownWatchdogMs}ms; forcing managed services down.\n`,
+  );
+  await supervisor?.forceStopAll();
+  void drain.catch((error) => {
+    process.stderr.write(
+      `Desktop host graceful shutdown failed after watchdog: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
+    );
+  });
+  return { timedOut: true };
+}
+
 async function shutdownHost(): Promise<void> {
   if (shutdownPromise) {
     return shutdownPromise;
@@ -2088,26 +2149,10 @@ async function shutdownHost(): Promise<void> {
       voiceCaptureController?.dispose();
       voiceCaptureController = null;
       activeTrayController?.updateMenu(buildDesktopTrayQuittingMenuState(app.getLocale()));
-      const drain = supervisor?.stopAll() ?? Promise.resolve();
-      const shutdownWatchdogMs = hostConfig
-        ? resolveShutdownWatchdogMs(hostConfig, supervisor?.getManagedServiceCount() ?? 0)
-        : SHUTDOWN_WATCHDOG_BUFFER_MS;
-      const result = await Promise.race([
-        drain.then(() => 'drained' as const),
-        waitForShutdownDeadline(shutdownWatchdogMs),
-      ]);
-      if (result === 'timed_out') {
+      const { timedOut } = await drainManagedServices();
+      if (timedOut) {
         shutdownExitCode = 1;
-        process.stderr.write(
-          `Desktop host shutdown watchdog tripped after ${shutdownWatchdogMs}ms; forcing managed services down.\n`,
-        );
         forcedStopAttempted = true;
-        await supervisor?.forceStopAll();
-        void drain.catch((error) => {
-          process.stderr.write(
-            `Desktop host graceful shutdown failed after watchdog: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
-          );
-        });
       }
     } catch (error) {
       shutdownExitCode = 1;

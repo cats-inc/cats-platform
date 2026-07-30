@@ -217,29 +217,45 @@ readable from any desktop build.
 
 ### Phase 5: Harden Download, Restart, and Failure Recovery
 
-- [ ] Wire explicit user-controlled download.
-- [ ] Wire restart-and-install only after the updater reports `downloaded`.
-- [ ] On Windows, call the non-silent install path and explain before exit that
+- [x] Wire explicit user-controlled download. `autoDownload` is off and
+      `downloadUpdate` only acts from `update_available`.
+- [x] Wire restart-and-install only after the updater reports `downloaded`.
+- [x] On Windows, call the non-silent install path and explain before exit that
       the assisted NSIS installer will open.
-- [ ] Validate the current Windows installer choices:
+- [x] Validate the current Windows installer choices, now asserted by
+      `tests/desktop-windows-update-installer-contract.test.js`:
       - `oneClick: false` opens the assisted wizard
       - installation-directory changes remain available
       - `customInstallMode` in `assets/build/installer.nsh` still forces
         per-user install, so no install-mode page and no elevation prompt
         appear during an update
       - the silent pre-upgrade uninstall leaves `%APPDATA%\Cats` and
-        `%USERPROFILE%\.cats` intact
-- [ ] Guard against duplicate checks, duplicate downloads, and install requests
+        `%USERPROFILE%\.cats` intact, and the opt-in checkbox starts unchecked
+
+      None of these is exercised by a normal test run, so the guard exists
+      because the failure would only appear on a real machine after shipping.
+- [x] Guard against duplicate checks, duplicate downloads, and install requests
       in invalid states.
-- [ ] Confirm closing/hiding-to-tray behavior does not interrupt a download
-      without truthful state.
-- [ ] Confirm Quit remains explicit and does not silently install an update.
-- [ ] Confirm restart-and-install shuts down managed sidecars cleanly before
-      updater handoff.
-- [ ] Preserve the existing shutdown/tray lock against repeated interaction.
-- [ ] Test offline, timeout, missing metadata, checksum, signature, unsupported
+- [x] Confirm closing/hiding-to-tray behavior does not interrupt a download
+      without truthful state. Closing only hides the window; the download runs in
+      the main process, and a returning surface reads the live snapshot rather
+      than the one it left.
+- [x] Confirm Quit remains explicit and does not silently install an update
+      (`autoInstallOnAppQuit = false`).
+- [x] Confirm restart-and-install shuts down managed sidecars cleanly before
+      updater handoff. `desktop/host/updateInstallHandoff.ts` drains them first,
+      because on Windows the upgrade runs the previous uninstaller and a sidecar
+      still holding files in the install directory can break the install. A
+      drain failure abandons the handoff instead of racing the installer, and a
+      handoff that fails while the process is alive restarts the sidecars rather
+      than leaving a running app with dead services.
+- [x] Preserve the existing shutdown/tray lock against repeated interaction. The
+      handoff swaps in the quitting menu and marks the exit prepared, so
+      `before-quit` does not cancel the updater's own quit and start a second
+      drain; both are reverted if the handoff fails.
+- [x] Test offline, timeout, missing metadata, checksum, signature, unsupported
       package, cancelled download, and install-handoff failures.
-- [ ] Keep the current application usable after check/download failure.
+- [x] Keep the current application usable after check/download failure.
 
 **Deliverables**: recoverable user-controlled download and install lifecycle
 that cooperates with desktop sidecar shutdown.
@@ -307,6 +323,7 @@ startup-check policy.
 | `desktop/host/tray.ts` | Modify | update command rendering and interaction |
 | `desktop/host/trayMenu.ts` | Modify | localized tray update state |
 | `desktop/host/updateNotifications.ts` | Create | per-origin native announcement policy and localized notification copy |
+| `desktop/host/updateInstallHandoff.ts` | Create | drain managed sidecars before the installer, and recover when the handoff fails |
 | `desktop/host/hostVersion.ts` | Modify | expose the electron-builder `appId` for the Windows notification identity |
 | `src/shared/desktopRecoveryBridge.ts` | Modify | browser-safe update bridge types/helpers |
 | `src/app/renderer/settings/PlatformSettingsDesktopUpdates.tsx` | Create | `App updates` section container over the host snapshot |

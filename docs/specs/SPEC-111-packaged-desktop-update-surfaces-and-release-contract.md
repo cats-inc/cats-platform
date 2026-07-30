@@ -113,9 +113,19 @@ Landed:
   been confirmed on a real machine yet. It is covered by the Phase 6 upgrade
   matrix rather than assumed working.
 
+- Phase 5 hardening. The download/restart lifecycle is user-controlled and
+  duplicate-guarded, every failure code has a test, and
+  `desktop/host/updateInstallHandoff.ts` drains managed sidecars before the
+  installer and restores them if the handoff fails. The Windows installer choices
+  that only matter during a silent upgrade are asserted by
+  `tests/desktop-windows-update-installer-contract.test.js`.
+
 Not yet landed:
 
-- Phase 5 hardening and the Phase 6 real-machine upgrade matrix.
+- The Phase 6 real-machine upgrade matrix. Everything above is verified by
+  automated tests only; no signed old-version-to-new-version upgrade has been
+  run on Windows, macOS, or Linux, which is why the release-ready gate below is
+  still empty.
 
 Gated off deliberately:
 
@@ -532,8 +542,15 @@ selection applies to both `cats-platform` and `cats-runtime`.
   so an update shall preserve Electron UI state and Cats runtime/platform
   state. Any change to that macro shall be treated as an update-path
   regression.
+- Managed sidecars shall be drained before the installer is handed control. The
+  Windows upgrade runs the previous uninstaller, and a sidecar still holding
+  files in the install directory can make that uninstall or the install that
+  follows fail. If the drain itself fails, the handoff shall be abandoned rather
+  than raced against surviving processes.
 - If restart/install fails before process exit, the app shall return to a
-  recoverable failed or downloaded state.
+  recoverable failed or downloaded state, and the drained sidecars shall be
+  restarted. A running app with dead services is worse than the state the user
+  started from.
 - If the platform installer fails after Cats exits, it shall leave the
   previously installed version recoverable and shall not report the new
   version on the next launch.

@@ -511,3 +511,53 @@ test('failure diagnostics reach the injected logger with secrets removed', async
   assert.equal(logs[0].includes('ghp_abcdefghijklmnopqrstuvwxyz012345'), false);
   assert.match(logs[0], /provider_rejected/u);
 });
+
+test('a download survives the window hiding to tray and reports truthful state', async () => {
+  // Closing the window only hides it to tray, so the renderer detaches while the
+  // main-process download continues. The state a returning surface reads has to
+  // be the live one, not a stale snapshot from before it left.
+  let releaseDownload = () => {};
+  let reportProgress = () => {};
+  const manager = createDesktopUpdateManager({
+    capability: readyCapability(),
+    adapter: {
+      calls: {},
+      async checkForUpdates() {
+        return { updateAvailable: true, version: '0.3.0', releaseSummary: null };
+      },
+      async downloadUpdate(onProgress) {
+        reportProgress = onProgress;
+        await new Promise((resolve) => {
+          releaseDownload = resolve;
+        });
+      },
+      async quitAndInstall() {},
+    },
+  });
+
+  await manager.checkForUpdates();
+  const seen = [];
+  const unsubscribe = manager.subscribe((snapshot) => seen.push(snapshot.status));
+
+  const download = manager.downloadUpdate();
+  await Promise.resolve();
+  reportProgress(progressEvent(25));
+
+  // The renderer goes away, exactly as it does when the window hides.
+  unsubscribe();
+  const seenCount = seen.length;
+  reportProgress(progressEvent(75));
+
+  assert.equal(seen.length, seenCount, 'a detached subscriber still received events');
+  assert.equal(manager.getSnapshot().status, 'downloading');
+  assert.equal(manager.getSnapshot().progress?.percent, 75);
+  assert.equal(manager.getSnapshot().nextAction, 'none');
+
+  releaseDownload();
+  await download;
+
+  // A surface that comes back reads the finished state, not the one it left.
+  assert.equal(manager.getSnapshot().status, 'downloaded');
+  assert.equal(manager.getSnapshot().progress, null);
+  assert.equal(manager.getSnapshot().nextAction, 'restart_install');
+});
