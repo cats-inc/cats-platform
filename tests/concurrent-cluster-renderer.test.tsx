@@ -126,6 +126,10 @@ test('focus_rail treats the first segment as primary and keeps secondary headers
       speakerLabel: 'Earlier Speaker',
       contentBlocks: [
         {
+          title: null,
+          toolName: null,
+          toolId: null,
+          metadata: null,
           id: 'text-earlier',
           kind: 'text',
           index: 0,
@@ -143,6 +147,10 @@ test('focus_rail treats the first segment as primary and keeps secondary headers
       speakerLabel: 'Later Speaker',
       contentBlocks: [
         {
+          title: null,
+          toolName: null,
+          toolId: null,
+          metadata: null,
           id: 'text-later',
           kind: 'text',
           index: 0,
@@ -175,6 +183,10 @@ test('focus_rail keeps anonymous sealed secondaries visible and labels controls 
       speakerLabel: 'Claude-CLI',
       contentBlocks: [
         {
+          title: null,
+          toolName: null,
+          toolId: null,
+          metadata: null,
           id: 'text-primary',
           kind: 'text',
           index: 0,
@@ -191,6 +203,10 @@ test('focus_rail keeps anonymous sealed secondaries visible and labels controls 
       segmentIndex: 1,
       contentBlocks: [
         {
+          title: null,
+          toolName: null,
+          toolId: null,
+          metadata: null,
           id: 'text-anonymous',
           kind: 'text',
           index: 0,
@@ -218,6 +234,10 @@ test('focus_rail hides anonymous secondary indicator while header dots are visib
       speakerLabel: 'Claude-CLI',
       contentBlocks: [
         {
+          title: null,
+          toolName: null,
+          toolId: null,
+          metadata: null,
           id: 'text-primary',
           kind: 'text',
           index: 0,
@@ -277,6 +297,10 @@ test('inline_stack exposes copy actions as soon as sealed concurrent bubbles hav
       speakerLabel: 'Claude-CLI',
       contentBlocks: [
         {
+          title: null,
+          toolName: null,
+          toolId: null,
+          metadata: null,
           id: 'text-claude',
           kind: 'text',
           index: 0,
@@ -294,6 +318,10 @@ test('inline_stack exposes copy actions as soon as sealed concurrent bubbles hav
       speakerLabel: 'Codex-CLI',
       contentBlocks: [
         {
+          title: null,
+          toolName: null,
+          toolId: null,
+          metadata: null,
           id: 'text-codex',
           kind: 'text',
           index: 0,
@@ -383,6 +411,10 @@ test('inline_stack localizes Cats-owned live runtime status block text', () => {
         segmentIndex: 0,
         contentBlocks: [
           {
+            title: null,
+            toolName: null,
+            toolId: null,
+            metadata: null,
             id: 'status-proxy-error',
             kind: 'status',
             index: 0,
@@ -415,6 +447,10 @@ test('ConcurrentClusterRenderer renders cluster actions independently from mode-
         speakerLabel: 'Claude-CLI',
         contentBlocks: [
           {
+            title: null,
+            toolName: null,
+            toolId: null,
+            metadata: null,
             id: 'text-claude',
             kind: 'text',
             index: 0,
@@ -432,6 +468,10 @@ test('ConcurrentClusterRenderer renders cluster actions independently from mode-
         speakerLabel: 'Codex-CLI',
         contentBlocks: [
           {
+            title: null,
+            toolName: null,
+            toolId: null,
+            metadata: null,
             id: 'text-codex',
             kind: 'text',
             index: 0,
@@ -479,6 +519,10 @@ test('compare_cards promotes a single renderable card to a full-width grid', () 
       speakerLabel: 'Claude-CLI',
       contentBlocks: [
         {
+          title: null,
+          toolName: null,
+          toolId: null,
+          metadata: null,
           id: 'text-claude',
           kind: 'text',
           index: 0,
@@ -514,6 +558,10 @@ test('compare_cards exposes nav controls and per-card dots when carousel mode is
       speakerLabel: 'Claude-CLI',
       contentBlocks: [
         {
+          title: null,
+          toolName: null,
+          toolId: null,
+          metadata: null,
           id: 'text-claude',
           kind: 'text',
           index: 0,
@@ -531,6 +579,10 @@ test('compare_cards exposes nav controls and per-card dots when carousel mode is
       speakerLabel: 'Codex-CLI',
       contentBlocks: [
         {
+          title: null,
+          toolName: null,
+          toolId: null,
+          metadata: null,
           id: 'text-codex',
           kind: 'text',
           index: 0,
@@ -548,6 +600,10 @@ test('compare_cards exposes nav controls and per-card dots when carousel mode is
       speakerLabel: 'Antigravity-CLI',
       contentBlocks: [
         {
+          title: null,
+          toolName: null,
+          toolId: null,
+          metadata: null,
           id: 'text-antigravity',
           kind: 'text',
           index: 0,

@@ -1354,6 +1354,9 @@ test('execution labels do not infer default control values from decorated option
 
 test('provider model field view state derives instance, entry, and catalog warnings from the resolved target', () => {
   const selectedProvider = {
+    defaultModel: null,
+    defaultInstance: null,
+    defaultBackend: null,
     id: 'codex',
     label: 'Codex',
     backend: 'cli',

@@ -198,6 +198,8 @@ test('temporary participants remain resumable through workflow continuation repl
     },
     targets: [
       {
+        laneId: null,
+        sessionId: null,
         participantKind: 'cat',
         participantId: 'participant-verifier',
         participantName: 'RuntimeVerifier',

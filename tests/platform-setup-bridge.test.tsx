@@ -155,6 +155,7 @@ test('platform setup bridge can forward reset shell state to desktop host', asyn
       setupCompleteAt: null,
       products: [
         {
+          surface: 'chat',
           id: 'chat',
           productName: 'Cats Chat',
           routePrefix: '/chat',
@@ -175,6 +176,7 @@ test('platform setup bridge can forward reset shell state to desktop host', asyn
     setupCompleteAt: null,
     products: [
       {
+        surface: 'chat',
         id: 'chat',
         productName: 'Cats Chat',
         routePrefix: '/chat',
