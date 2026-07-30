@@ -221,15 +221,19 @@ test('DELETE /api/channels/:id no longer fails on retained runtime deletes', asy
   const channelId = await seedChannelWithSession(chatStore, 'session-retained-channel');
   const originalWrite = process.stderr.write;
   const stderrWrites: string[] = [];
-  process.stderr.write = (chunk, encoding, callback) => {
+  process.stderr.write = ((
+    chunk: string | Uint8Array,
+    encoding?: unknown,
+    callback?: unknown,
+  ) => {
     stderrWrites.push(String(chunk));
     if (typeof encoding === 'function') {
-      encoding();
+      (encoding as () => void)();
     } else if (typeof callback === 'function') {
-      callback();
+      (callback as () => void)();
     }
     return true;
-  };
+  }) as typeof process.stderr.write;
 
   try {
     await withServer(runtime, async (baseUrl, store) => {

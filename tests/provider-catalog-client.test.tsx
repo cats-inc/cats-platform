@@ -8,6 +8,7 @@ import {
   prefetchProviderCatalogsForRegistryFromClientCache,
   PROVIDER_CATALOG_CLIENT_CACHE_TTL_MS,
 } from '../src/app/renderer/providerCatalogClient.ts';
+import { captured } from './helpers/capturedValue.ts';
 
 function createModelCatalogResponse(modelId: string): Response {
   return new Response(JSON.stringify({
@@ -85,7 +86,7 @@ test('client provider catalog cache dedupes in-flight model reads and reuses the
     instance: 'native',
     fetchImpl,
   });
-  releaseFetch?.();
+  captured<() => void>(releaseFetch)?.();
 
   const [firstCatalog, secondCatalog] = await Promise.all([firstRead, secondRead]);
   assert.equal(calls, 1);

@@ -16,6 +16,7 @@ import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import type { CodeLivePreviewSummary } from '../src/products/code/renderer/api/codeTask.ts';
 import { fetchCodeLivePreviews } from '../src/products/code/renderer/api/codeTask.ts';
 import { LivePreviewPanel } from '../src/products/code/renderer/components/LivePreviewPanel.tsx';
+import { captured } from './helpers/capturedValue.ts';
 
 test('Code task and codespace surfaces mount the live-preview affordance panel', () => {
   const taskPage = readFileSync(
@@ -153,7 +154,7 @@ test('LivePreviewPanel ignores stale stop refreshes after switching surfaces', a
     );
     assert.equal(await view.findByText('preview-b'), view.getByText('preview-b'));
 
-    resolveStop?.();
+    captured<() => void>(resolveStop)?.();
     await Promise.resolve();
     await Promise.resolve();
     assert.equal(
@@ -233,7 +234,7 @@ test('LivePreviewPanel ignores stale stop refreshes after switching code_codespa
     );
     await view.findByText('preview-codespace-b');
 
-    resolveStop?.();
+    captured<() => void>(resolveStop)?.();
     await Promise.resolve();
     await Promise.resolve();
     assert.equal(

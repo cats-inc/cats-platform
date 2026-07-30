@@ -12,6 +12,7 @@ import {
   PROVIDER_REGISTRY_CLIENT_CACHE_TTL_MS,
   PROVIDER_REGISTRY_CLIENT_STALE_IF_ERROR_MS,
 } from '../src/app/renderer/providerRegistryClient.ts';
+import { captured } from './helpers/capturedValue.ts';
 
 test('client provider registry cache dedupes in-flight reads and reuses the warmed result', async () => {
   clearProviderRegistryClientCache();
@@ -49,7 +50,7 @@ test('client provider registry cache dedupes in-flight reads and reuses the warm
 
   const prefetchPromise = prefetchProviderRegistryFromClientCache({ fetchImpl });
   const fetchPromise = fetchProviderRegistryFromClientCache({ fetchImpl });
-  releaseFetch?.();
+  captured<() => void>(releaseFetch)?.();
 
   await prefetchPromise;
   const registry = await fetchPromise;

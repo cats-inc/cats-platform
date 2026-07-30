@@ -87,8 +87,6 @@ test('createCatsCodeUserAppTemplateManifest creates a valid local user app manif
   const parsed = parseCatsAppManifestV1(manifest, {
     productRoutePrefixes: ['/chat', '/work', '/code'],
   });
-
-  assert.equal(parsed.ok, true);
   if (!parsed.ok) {
     assert.fail(JSON.stringify(parsed.issues));
   }

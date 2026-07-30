@@ -23,6 +23,7 @@ import {
   upsertCoreWorkItem,
 } from '../src/core/model/index.ts';
 import type { CatsCoreState } from '../src/core/types.ts';
+import { captured } from './helpers/capturedValue.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import {
   appendMessage,
@@ -1253,7 +1254,7 @@ test('Chat dispatch can hand bounded observations to a provider-agent decision r
   );
   assert.equal(dispatchSummary.planId, 'provider-plan-chat-1');
   assert.equal(dispatchSummary.planner, 'provider_agent_decision');
-  assert.equal(capturedObservation?.task.kind, 'chat_turn');
+  assert.equal(captured<ProviderAgentBoundedObservation>(capturedObservation)?.task.kind, 'chat_turn');
   assert.equal(JSON.stringify(capturedObservation).includes(rawMessage), false);
   assert.equal(begun.userMessage.metadata.orchestratorPlanner, 'provider_agent_observation');
   assert.equal(begun.preparedTurn?.initialResolution.targets[0]?.participantKind, 'orchestrator');

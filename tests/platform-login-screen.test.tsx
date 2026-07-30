@@ -14,6 +14,7 @@ import {
   type GoogleIdentityServicesApi,
 } from '../src/app/renderer/auth/googleIdentityServices.ts';
 import { PlatformLoginScreen } from '../src/app/renderer/auth/PlatformLoginScreen.tsx';
+import { captured } from './helpers/capturedValue.ts';
 
 test('PlatformLoginScreen renders local admin login form', () => {
   const markup = renderToStaticMarkup(
@@ -76,10 +77,10 @@ test('GoogleIdentityServicesButton loads GIS, writes csrf cookie, and returns cr
     assert.equal(document.body.textContent?.includes('Google rendered'), true);
     assert.ok(callback);
   });
-  callback?.({ credential: 'id-token' });
+  captured<(response: GoogleCredentialResponse) => void>(callback)?.({ credential: 'id-token' });
 
-  assert.equal(received?.credential, 'id-token');
-  assert.equal(typeof received?.csrfToken, 'string');
+  assert.equal(captured<{ credential: string; csrfToken: string }>(received)?.credential, 'id-token');
+  assert.equal(typeof captured<{ credential: string; csrfToken: string }>(received)?.csrfToken, 'string');
   assert.match(document.cookie, /g_csrf_token=/u);
 });
 
