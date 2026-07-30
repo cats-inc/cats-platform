@@ -20,6 +20,16 @@ import {
   type WorkItemCaptureInput,
 } from '../src/products/work/shared/workToolSurface.js';
 
+/**
+ * Work item metadata is `Record<string, unknown>` by design, so the intake
+ * payload this file asserts on is declared here rather than reached into.
+ */
+interface WorkIntakeMetadata {
+  phase?: string;
+  priority?: string;
+  source?: { surface?: string };
+}
+
 test('Work intake split proposal returns candidates without writing Core', () => {
   const result = proposeWorkItemSplit({
     source: {
@@ -103,9 +113,9 @@ test('Work intake capture writes only WorkItem and Activity through supervised b
   assert.equal(workItem?.conversationId, 'conversation-work-intake');
   assert.equal(workItem?.projectId, null);
   assert.equal(workItem?.taskId, null);
-  assert.equal(workItem?.metadata.workIntake?.phase, 'intake');
-  assert.equal(workItem?.metadata.workIntake?.source?.surface, 'chat');
-  assert.equal(workItem?.metadata.workIntake?.priority, 'high');
+  assert.equal((workItem?.metadata.workIntake as WorkIntakeMetadata | undefined)?.phase, 'intake');
+  assert.equal((workItem?.metadata.workIntake as WorkIntakeMetadata | undefined)?.source?.surface, 'chat');
+  assert.equal((workItem?.metadata.workIntake as WorkIntakeMetadata | undefined)?.priority, 'high');
   assert.equal(core.activities[0]?.kind, 'work_item_updated');
   assert.equal(core.activities[0]?.workItemId, workItem?.id);
   assert.equal(evidenceSink.read()[0]?.toolName, WORK_ITEM_CAPTURE_TOOL);

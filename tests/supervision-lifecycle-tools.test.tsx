@@ -83,7 +83,9 @@ test('supervised lifecycle spawn creates a bounded queued child run', async () =
   assert.equal(applied.result.parentRunId, 'run-parent-lifecycle');
 
   const core = await coreStore.readCore();
-  const childRun = core.runs.find((candidate) => candidate.id === applied.result.runId);
+  assert.equal(applied.result.kind, 'run');
+  const spawnedRun = applied.result as Extract<typeof applied.result, { kind: 'run' }>;
+  const childRun = core.runs.find((candidate) => candidate.id === spawnedRun.runId);
   const supervision = childRun?.metadata.supervision as Record<string, unknown> | undefined;
   const runState = supervision?.runState as Record<string, unknown> | undefined;
 

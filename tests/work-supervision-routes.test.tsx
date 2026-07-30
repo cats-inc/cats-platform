@@ -98,11 +98,12 @@ function createRuntimeStub(): RuntimeClient & {
   const createdSessions: unknown[] = [];
   const sentMessages: Array<{ sessionId: string; content: string; input?: unknown }> = [];
   const resumedSessions: string[] = [];
+  const canceledSessions: string[] = [];
   return {
     createdSessions,
     sentMessages,
     resumedSessions,
-    canceledSessions: [],
+    canceledSessions,
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -198,7 +199,7 @@ function createRuntimeStub(): RuntimeClient & {
       return null;
     },
     async cancelSession(sessionId: string) {
-      this.canceledSessions.push(sessionId);
+      canceledSessions.push(sessionId);
     },
     async closeSession() {},
     async deleteSession(sessionId: string) {
