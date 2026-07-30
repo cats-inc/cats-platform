@@ -5,27 +5,34 @@ import {
   buildConversationSidebarViewModel,
 } from '../src/app/renderer/productShell/conversationSidebarViewModel.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
+import type { PlatformSurfaceId } from '../src/shared/platform-contract.ts';
+
+interface SidebarChannelStub {
+  id: string;
+  title: string;
+  originSurface: PlatformSurfaceId;
+}
 
 test('shared sidebar view model filters grouped recents by active product surface', () => {
-  const workChannel = {
+  const workChannel: SidebarChannelStub = {
     id: 'work-1',
     title: 'Work recent',
-    originSurface: 'work' as const,
+    originSurface: 'work',
   };
-  const workPeerChannel = {
+  const workPeerChannel: SidebarChannelStub = {
     id: 'work-2',
     title: 'Work compare peer',
-    originSurface: 'work' as const,
+    originSurface: 'work',
   };
-  const chatChannel = {
+  const chatChannel: SidebarChannelStub = {
     id: 'chat-1',
     title: 'Chat recent',
-    originSurface: 'chat' as const,
+    originSurface: 'chat',
   };
-  const chatPeerChannel = {
+  const chatPeerChannel: SidebarChannelStub = {
     id: 'chat-2',
     title: 'Chat compare peer',
-    originSurface: 'chat' as const,
+    originSurface: 'chat',
   };
 
   const viewModel = buildConversationSidebarViewModel({

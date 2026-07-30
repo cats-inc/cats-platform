@@ -52,7 +52,7 @@ function createEnvelope(): PlatformHostEnvelope {
     },
     language: {
       uiLanguagePreference: 'en',
-      assistantLanguagePreference: 'unspecified',
+      assistantResponseLanguage: 'unspecified',
     },
     lobby: {
       animationMode: 'reduced',
@@ -73,8 +73,8 @@ function createEnvelope(): PlatformHostEnvelope {
     runtimeSetup: {
       source: 'runtime',
       bootstrapRequired: true,
-      status: 'attention',
-      stateStatus: 'unknown',
+      status: 'attention_required',
+      stateStatus: 'pending',
       summary: 'Runtime not configured',
       scannedAt: null,
       lastManualScanAt: null,

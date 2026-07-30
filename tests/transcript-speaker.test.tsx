@@ -131,7 +131,9 @@ test('cat-authored transcript messages resolve through the live cat id even afte
         products: ['chat'],
         memory: {
           updatedAt: null,
-          content: null,
+          summary: null,
+          facts: [],
+          openLoops: [],
         },
       },
     ],

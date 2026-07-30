@@ -82,9 +82,7 @@ test('PlatformSettingsGeneral renders lobby motion controls without desktop star
     <StaticRouter location="/settings/general">
       <PlatformSettingsGeneral
         payload={createPayload()}
-        feedback=""
         onPayloadUpdate={() => {}}
-        onFeedback={() => {}}
       />
     </StaticRouter>,
   );
@@ -110,9 +108,7 @@ test('PlatformSettingsGeneral localizes display language options', () => {
       <StaticRouter location="/settings/general">
         <PlatformSettingsGeneral
           payload={createPayload()}
-          feedback=""
           onPayloadUpdate={() => {}}
-          onFeedback={() => {}}
         />
       </StaticRouter>
     </I18nProvider>,
@@ -144,9 +140,7 @@ test('PlatformSettingsGeneral points disabled guide cat users to Assistants', ()
     <StaticRouter location="/settings/general">
       <PlatformSettingsGeneral
         payload={payload}
-        feedback=""
         onPayloadUpdate={() => {}}
-        onFeedback={() => {}}
       />
     </StaticRouter>,
   );

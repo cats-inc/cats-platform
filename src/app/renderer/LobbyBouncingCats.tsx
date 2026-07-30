@@ -62,7 +62,12 @@ function initCats(
 
 export function shouldRebuildBouncingCats(
   currentCats: readonly Pick<BouncingCat, 'id' | 'color' | 'isBoss' | 'avatarUrl'>[] | null,
-  nextCats: readonly PlatformLobbyCatSummary[],
+  // Only identity, colour, avatar, and boss flag are compared -- the same
+  // fields the current list is narrowed to. A full summary still satisfies it.
+  nextCats: readonly Pick<
+    PlatformLobbyCatSummary,
+    'id' | 'avatarColor' | 'avatarUrl' | 'isBoss'
+  >[],
 ): boolean {
   if (!currentCats || currentCats.length !== nextCats.length) {
     return true;
