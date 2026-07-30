@@ -117,7 +117,7 @@ test('execution target equality compares normalized nullable fields and model se
     sameExecutionTargetValue(
       {
         provider: 'claude',
-        instance: undefined,
+        instance: null,
         model: 'opus',
         modelSelection: {
           entryId: 'opus',

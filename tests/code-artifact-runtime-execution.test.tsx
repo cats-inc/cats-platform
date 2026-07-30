@@ -347,7 +347,9 @@ test('Code runtime canvas declaration lookup prefers caller producer and scope',
 
   assert.equal(result.canvas[0].result.status, 'accepted');
   assert.equal(
-    result.canvas[0].result.status === 'accepted' ? result.canvas[0].result.artifactId : null,
+    result.canvas[0].result.toolName === 'show_in_canvas'
+      ? result.canvas[0].result.artifactId
+      : null,
     'artifact-agent-preview',
   );
   assert.equal(result.core.activities.length, 1);
@@ -455,7 +457,9 @@ test('Code runtime canvas declaration lookup accepts idempotent duplicate declar
 
   assert.equal(result.canvas[0].result.status, 'accepted');
   assert.equal(
-    result.canvas[0].result.status === 'accepted' ? result.canvas[0].result.artifactId : null,
+    result.canvas[0].result.toolName === 'show_in_canvas'
+      ? result.canvas[0].result.artifactId
+      : null,
     'artifact-agent-preview',
   );
   assert.equal(result.core.activities.length, 1);

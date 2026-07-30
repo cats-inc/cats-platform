@@ -8,10 +8,15 @@ import {
   resolveVisibleChatChannelId,
 } from '../src/products/shared/renderer/appShellPresentation.ts';
 import { resolveProjectPath } from './helpers/projectRoot.js';
+import type { AppShellPayload } from '../src/products/shared/api/workspaceContracts.ts';
 
-type MutablePayload = ReturnType<typeof createLegacyPayload>;
+/**
+ * The normalizer takes a legacy payload and returns a current one; these tests
+ * read fields off both, so they name the current shape and reach into it.
+ */
+type MutablePayload = AppShellPayload;
 
-function createLegacyPayload() {
+function createLegacyPayload(): MutablePayload {
   return {
     setupCompleteAt: '2026-03-25T00:00:00.000Z',
     chat: {
@@ -97,6 +102,7 @@ function createLegacyPayload() {
 
 test('shared normalizer backfills participantAssignments with cat-backed names instead of "Participant"', () => {
   const payload = normalizeAppShellPayload(createLegacyPayload() as never) as MutablePayload;
+  assert.ok(payload.chat.selectedChannel);
   const participantAssignments = payload.chat.selectedChannel.participantAssignments as Array<{
     participantId: string;
     sourceKind: string;
@@ -116,6 +122,7 @@ test('shared normalizer backfills participantAssignments with cat-backed names i
 
 test('shared normalizer fills assignedCats and assignedParticipants from catAssignments in legacy payloads', () => {
   const payload = normalizeAppShellPayload(createLegacyPayload() as never) as MutablePayload;
+  assert.ok(payload.chat.selectedChannel);
   const assignedCats = payload.chat.selectedChannel.assignedCats as Array<{
     participantId: string;
     sourceKind: string;

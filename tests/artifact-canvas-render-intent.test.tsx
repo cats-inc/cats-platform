@@ -174,7 +174,6 @@ function createIntent(intentId: string): ArtifactCanvasNavigateIntent {
     presentationRequested: 'auto',
     policyVersion: 'policy-v1',
     triggeredAt: NOW.toISOString(),
-    expiresAt: EXPIRES_AT,
   });
 }
 

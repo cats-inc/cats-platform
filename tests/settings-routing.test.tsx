@@ -41,6 +41,7 @@ function createProps(): AppRoutesProps {
 
   return {
     payload,
+    routeChannelId: null,
     selectedChannel: null,
     directLaneChannel: null,
     showDirectLaneBoot: false,
