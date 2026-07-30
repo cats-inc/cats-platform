@@ -52,7 +52,6 @@ test('resolveChatNewChatDraftViewState keeps unrelated active-channel busy state
     greetingPool: null,
     draftHighlightedCatId: null,
     draftCatExecutionTargetOverrides: new Map(),
-    selectedExecutionTarget: null,
     busy: createComposerBusyState('send', createChannelComposerBusyScope('channel-1')),
     t,
   });
@@ -74,7 +73,6 @@ test('resolveChatNewChatDraftViewState keeps draft send busy local to the active
     greetingPool: null,
     draftHighlightedCatId: null,
     draftCatExecutionTargetOverrides: new Map(),
-    selectedExecutionTarget: null,
     busy: createComposerBusyState('ack', createDraftComposerBusyScope()),
     t,
   });

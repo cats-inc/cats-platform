@@ -114,10 +114,10 @@ function createMixedArtifactCore() {
     },
   }).core;
   core = upsertCoreArtifact(core, {
-    id: 'artifact-build-failed',
+    id: 'artifact-build-archived',
     title: 'Build attempt',
     kind: 'build',
-    status: 'failed',
+    status: 'archived',
     conversationId: 'conversation-1',
     taskId: 'task-1',
     runId: 'run-2',
@@ -157,8 +157,8 @@ test('buildCodeArtifactListProjection filters by producer label', () => {
 
 test('buildCodeArtifactListProjection filters by status', () => {
   const core = createMixedArtifactCore();
-  const projection = buildCodeArtifactListProjection(core, { status: 'failed' });
-  assert.deepEqual(projection.artifacts.map((entry) => entry.id), ['artifact-build-failed']);
+  const projection = buildCodeArtifactListProjection(core, { status: 'archived' });
+  assert.deepEqual(projection.artifacts.map((entry) => entry.id), ['artifact-build-archived']);
 });
 
 test('buildCodeArtifactListProjection filters by run id', () => {
@@ -199,7 +199,7 @@ test('buildCodeArtifactListProjection hides undeclared local-path artifacts when
   core = upsertCoreArtifact(core, {
     id: 'artifact-declared-patch',
     title: 'Declared patch bundle',
-    kind: 'patch',
+    kind: 'attachment',
     status: 'ready',
     conversationId: 'conversation-1',
     taskId: 'task-1',

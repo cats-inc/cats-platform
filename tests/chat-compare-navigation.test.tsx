@@ -10,7 +10,7 @@ const compareMembers = [
   { channelId: 'channel-a', title: 'A' },
   { channelId: 'channel-b', title: 'B' },
   { channelId: 'channel-c', title: 'C' },
-] as const;
+];
 
 test('compare navigation prefers the route channel while selected state is stale', () => {
   assert.equal(

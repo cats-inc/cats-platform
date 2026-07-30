@@ -4,19 +4,26 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import { useAppNavigationActions } from '../src/products/chat/renderer/hooks/useAppNavigationActions.ts';
+import type { NavigateFunction } from 'react-router-dom';
+
+type NavigationActions = ReturnType<typeof useAppNavigationActions>;
+
+function capturedActions(actions: NavigationActions | null): NavigationActions | null {
+  return actions;
+}
 
 test('chat +New chat resets a previously switched code draft surface back to chat', async () => {
   const navigateCalls: Array<{ path: string; options?: unknown }> = [];
   const draftSurfaceCalls: string[] = [];
-  let actions: ReturnType<typeof useAppNavigationActions> | null = null;
+  let actions: NavigationActions | null = null;
 
   function Probe() {
     actions = useAppNavigationActions({
       state: { status: 'loading' },
       setState: () => {},
-      navigate: (path: string, options?: unknown) => {
+      navigate: ((path: string, options?: unknown) => {
         navigateCalls.push({ path, options });
-      },
+      }) as unknown as NavigateFunction,
       setBusy: () => {},
       setFeedback: () => {},
       setComposerDraft: () => {},
@@ -44,7 +51,7 @@ test('chat +New chat resets a previously switched code draft surface back to cha
   }
 
   renderToStaticMarkup(<Probe />);
-  await actions?.onStartNewChat();
+  await capturedActions(actions)?.onStartNewChat();
 
   assert.deepEqual(navigateCalls, [{ path: '/chat/new', options: undefined }]);
   assert.deepEqual(draftSurfaceCalls, ['chat']);

@@ -1,6 +1,11 @@
 import type { ParallelChatGroupSummary } from '../../../api/workspaceContracts.js';
 
-type CompareMember = ParallelChatGroupSummary['members'][number];
+/**
+ * Only the channel id is read, so that is all the parameter asks for. Any full
+ * member summary still satisfies it, and a caller with just ids does not have to
+ * fabricate the rest.
+ */
+type CompareMember = Pick<ParallelChatGroupSummary['members'][number], 'channelId'>;
 
 export function resolveActiveCompareChannelId(
   compareMembers: readonly CompareMember[],

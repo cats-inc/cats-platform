@@ -221,6 +221,7 @@ test('chat composer renders a cat-backed audience chip for direct lanes', () => 
         {
           participantId: 'cat-jiang',
           label: '將將',
+          executionLabel: null,
           avatarColor: '#7A5B3A',
           avatarUrl: null,
           isBoss: true,
@@ -292,6 +293,7 @@ test('chat composer renders a multi-audience chip for group chats', () => {
         {
           participantId: 'claude',
           label: 'Claude-CLI',
+          executionLabel: null,
           avatarColor: null,
           avatarUrl: null,
           isBoss: false,
@@ -300,6 +302,7 @@ test('chat composer renders a multi-audience chip for group chats', () => {
         {
           participantId: 'codex',
           label: 'Codex-CLI',
+          executionLabel: null,
           avatarColor: null,
           avatarUrl: null,
           isBoss: false,
@@ -308,6 +311,7 @@ test('chat composer renders a multi-audience chip for group chats', () => {
         {
           participantId: 'antigravity',
           label: 'Antigravity-CLI',
+          executionLabel: null,
           avatarColor: null,
           avatarUrl: null,
           isBoss: false,

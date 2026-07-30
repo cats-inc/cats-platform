@@ -123,7 +123,6 @@ test('cat execution side panel surfaces the Cat tool profile', () => {
       },
     } as never,
     isDefaultChatComposer: false,
-    selectedExecutionTarget: null,
   }));
 
   assert.match(markup, />Tool Profile</u);
