@@ -13,12 +13,23 @@ import {
   resolveDisallowedArtifacts,
   resolveUnreleasedArchitectureArtifacts,
   resolveMissingPrimaryArtifacts,
+  expectedMetadataFiles,
   validateReleaseAssets,
 } from '../scripts/validate-release-assets.mjs';
 
 // Taken from a real preview run rather than invented. An earlier fixture
 // guessed the macOS archive was named -mac.zip, which let the validator pass
 // its tests while rejecting the artifact the workflow actually produces.
+// Mirrors the validator's own table; the test needs the extensions to check the
+// upload glob covers them.
+const FORMAT_EXTENSIONS_FOR_TEST = {
+  nsis: ['.exe'],
+  dmg: ['.dmg'],
+  zip: ['.zip'],
+  deb: ['.deb'],
+  AppImage: ['.AppImage'],
+};
+
 const COMPLETE_FILES = [
   'collected/unsigned-preview-windows/Cats-0.2.0-setup-x64.exe',
   'collected/unsigned-preview-windows/Cats-0.2.0-setup-x64.exe.blockmap',
@@ -29,7 +40,7 @@ const COMPLETE_FILES = [
   'collected/unsigned-preview-macos/Cats-0.2.0-x64.zip.blockmap',
   'collected/unsigned-preview-macos/latest-mac.yml',
   'collected/unsigned-preview-linux/Cats-0.2.0-arm64.deb',
-  'collected/unsigned-preview-linux/latest-linux.yml',
+  'collected/unsigned-preview-linux/latest-linux-arm64.yml',
 ];
 
 function withExtraFile(name) {
@@ -52,7 +63,7 @@ function metadata(name, overrides = {}) {
         { url: 'Cats-0.2.0-x64.dmg' },
       ],
     },
-    'latest-linux.yml': {
+    'latest-linux-arm64.yml': {
       version: '0.2.0',
       path: 'Cats-0.2.0-arm64.deb',
       files: [{ url: 'Cats-0.2.0-arm64.deb' }],
@@ -176,6 +187,42 @@ test('an artifact with no recognizable architecture token is not guessed at', ()
   );
 });
 
+test('the upload glob collects every declared format', async () => {
+  // The deb built and published fine while the glob still said AppImage, so the
+  // validator judged a set of files the build never handed it: linux looked
+  // both empty and, via its metadata, unknown.
+  const workflow = await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
+    'utf8',
+  );
+  const uploaded = workflow.slice(workflow.indexOf('Upload artifacts for validation'));
+
+  for (const entry of DESKTOP_RELEASE_MATRIX) {
+    for (const format of entry.formats) {
+      for (const extension of FORMAT_EXTENSIONS_FOR_TEST[format]) {
+        assert.equal(
+          uploaded.includes(`release/*${extension}`),
+          true,
+          `${entry.platform} ships ${format} but the upload glob omits *${extension}`,
+        );
+      }
+    }
+  }
+});
+
+test('metadata names follow electron-builder architecture suffixing', () => {
+  assert.deepEqual(
+    expectedMetadataFiles([
+      { platform: 'windows', formats: ['nsis'], arches: ['x64'] },
+      { platform: 'macos', formats: ['dmg'], arches: ['universal'] },
+      { platform: 'linux', formats: ['deb'], arches: ['arm64'] },
+    ]),
+    ['latest.yml', 'latest-mac.yml', 'latest-linux-arm64.yml'],
+  );
+  // The declared set resolves to what this repository actually publishes.
+  assert.deepEqual(UPDATE_METADATA_FILES, ['latest.yml', 'latest-mac.yml', 'latest-linux-arm64.yml']);
+});
+
 test('the workflow matrix matches the declared release set', async () => {
   const workflow = await readFile(
     join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
@@ -222,7 +269,7 @@ test('metadata that references an unbuilt file fails validation', () => {
         files: [{ url: 'Cats-0.2.0-setup-arm64.exe' }],
       }),
       metadata('latest-mac.yml'),
-      metadata('latest-linux.yml'),
+      metadata('latest-linux-arm64.yml'),
     ],
   });
 
@@ -249,7 +296,7 @@ test('unreadable metadata is reported rather than silently skipped', () => {
     metadataDocuments: [
       { name: 'latest.yml', document: null, error: 'bad indentation' },
       metadata('latest-mac.yml'),
-      metadata('latest-linux.yml'),
+      metadata('latest-linux-arm64.yml'),
     ],
   });
 
@@ -263,7 +310,7 @@ test('metadata that references nothing fails validation', () => {
     metadataDocuments: [
       { name: 'latest.yml', document: { version: '0.2.0' }, error: null },
       metadata('latest-mac.yml'),
-      metadata('latest-linux.yml'),
+      metadata('latest-linux-arm64.yml'),
     ],
   });
 

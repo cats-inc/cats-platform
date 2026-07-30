@@ -32,7 +32,39 @@ const PROJECT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
  * primary artifact the updater will download, so a missing metadata file means
  * that platform cannot self-update even if its installer uploaded fine.
  */
-export const UPDATE_METADATA_FILES = ['latest.yml', 'latest-mac.yml', 'latest-linux.yml'];
+export const DESKTOP_RELEASE_MATRIX = [
+  { platform: 'windows', formats: ['nsis'], arches: ['x64'] },
+  // macOS ships x64 only; Apple Silicon runs it under Rosetta 2.
+  { platform: 'macos', formats: ['dmg', 'zip'], arches: ['x64'] },
+  // Linux ships an arm64 .deb. electron-updater installs it with dpkg, which
+  // needs elevation -- unlike the per-user Windows path.
+  { platform: 'linux', formats: ['deb'], arches: ['arm64'] },
+];
+
+const METADATA_BASENAMES = {
+  windows: 'latest',
+  macos: 'latest-mac',
+  linux: 'latest-linux',
+};
+
+/**
+ * Derives the channel file each platform will emit.
+ *
+ * electron-builder suffixes the name with the architecture for anything other
+ * than x64, so an arm64 Linux target writes `latest-linux-arm64.yml`. Hardcoding
+ * the three unsuffixed names meant a retarget reported the real file as an
+ * unknown artifact *and* the expected file as missing -- two errors for one
+ * naming rule.
+ */
+export function expectedMetadataFiles(matrix = DESKTOP_RELEASE_MATRIX) {
+  return matrix.map((entry) => {
+    const base = METADATA_BASENAMES[entry.platform];
+    const [arch] = entry.arches;
+    return arch === 'x64' || arch === 'universal' ? `${base}.yml` : `${base}-${arch}.yml`;
+  });
+}
+
+export const UPDATE_METADATA_FILES = expectedMetadataFiles();
 
 export const PRIMARY_ARTIFACT_PATTERNS = [
   { platform: 'windows', pattern: /\.exe$/iu },
@@ -117,15 +149,6 @@ export function collectReferencedFiles(document) {
  * AppImage is a deliberate two-line change rather than something the validator
  * refuses on principle.
  */
-export const DESKTOP_RELEASE_MATRIX = [
-  { platform: 'windows', formats: ['nsis'], arches: ['x64'] },
-  // macOS ships x64 only; Apple Silicon runs it under Rosetta 2.
-  { platform: 'macos', formats: ['dmg', 'zip'], arches: ['x64'] },
-  // Linux ships an arm64 .deb. electron-updater installs it with dpkg, which
-  // needs elevation -- unlike the per-user Windows path.
-  { platform: 'linux', formats: ['deb'], arches: ['arm64'] },
-];
-
 const FORMAT_EXTENSIONS = {
   nsis: ['.exe'],
   dmg: ['.dmg'],

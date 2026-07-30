@@ -243,7 +243,7 @@ jobs:
             cats-platform/release/*.exe
             cats-platform/release/*.dmg
             cats-platform/release/*.zip
-            cats-platform/release/*.AppImage
+            cats-platform/release/*.deb
             cats-platform/release/latest*.yml
             cats-platform/release/*.blockmap
           if-no-files-found: error
