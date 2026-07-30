@@ -9,6 +9,7 @@ import {
   resolveCompanionContentReference,
   type CompanionContentLookupResult,
 } from '../src/products/chat/companion/contentResolver.ts';
+import type { CompanionContentPreview } from '../src/products/chat/companion/contentResolver.ts';
 
 const REFERENCE: CompanionContentReference = {
   version: COMPANION_CONTENT_REFERENCE_VERSION,
@@ -19,6 +20,34 @@ const REFERENCE: CompanionContentReference = {
   surface: 'companion',
 };
 
+/**
+ * A complete minimal preview.
+ *
+ * These tests are about resolver lifecycle -- whether a lookup is awaited, which
+ * reference it receives, what gets frozen into the envelope -- not about preview
+ * content. Spelling the untested fields out once here keeps each case short and
+ * gives the contract a single place to reach when it grows.
+ */
+type LookupPreview = Omit<
+  CompanionContentPreview,
+  'reference' | 'availability' | 'snapshot' | 'resolvedAt'
+>;
+
+function lookupPreview(overrides: Partial<LookupPreview> = {}): LookupPreview {
+  return {
+    fallbackReason: null,
+    title: 'Beach snap',
+    generatedTitleKind: null,
+    subtitle: null,
+    description: null,
+    thumbnailUrl: null,
+    icon: null,
+    catName: 'Mochi',
+    openRoute: null,
+    ...overrides,
+  };
+}
+
 test('an available lookup populates the envelope from preview fields', async () => {
   const preview = await resolveCompanionContentReference({
     reference: REFERENCE,
@@ -27,6 +56,8 @@ test('an available lookup populates the envelope from preview fields', async () 
     lookup: () => ({
       status: 'available',
       preview: {
+        fallbackReason: null,
+        generatedTitleKind: null,
         title: 'Beach snap',
         subtitle: 'Captured 2026-04-26',
         description: 'A summer photo',
@@ -83,8 +114,7 @@ test('a missing lookup with a fallback preview keeps the prior title visible', a
     lookup: () => ({
       status: 'missing',
       fallback: {
-        title: 'Beach snap (cached)',
-        catName: 'Mochi',
+        ...lookupPreview({ title: 'Beach snap (cached)' }),
         snapshot: { title: 'Beach snap (cached)' },
       },
     }),
@@ -112,7 +142,10 @@ test('the resolver passes the original reference through to lookup unchanged', a
     currentScopeId: 'scope-A',
     lookup: (reference) => {
       capturedReference = reference;
-      return { status: 'available', preview: { title: 't', catName: 'c' } };
+      return {
+        status: 'available',
+        preview: lookupPreview({ title: 't', catName: 'c' }),
+      };
     },
   });
   assert.deepEqual(capturedReference, REFERENCE);
@@ -124,7 +157,7 @@ test('an async lookup is awaited', async () => {
     currentScopeId: 'scope-A',
     lookup: async () => ({
       status: 'available',
-      preview: { title: 'async', catName: 'c' },
+      preview: lookupPreview({ title: 'async', catName: 'c' }),
     }),
   });
   assert.equal(preview.title, 'async');

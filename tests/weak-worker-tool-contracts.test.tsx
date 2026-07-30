@@ -9,6 +9,7 @@ import {
   createSupervisedToolRegistry,
   createToolBoundary,
   decideSupervisionPolicy,
+  type WorkSopAskWeakInput,
 } from '../src/platform/supervision/index.ts';
 import {
   PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
@@ -121,7 +122,7 @@ function providerAgentObservation(input: {
   };
 }
 
-function askWeakInput(overrides: Record<string, unknown> = {}) {
+function askWeakInput(overrides: Partial<WorkSopAskWeakInput> = {}): WorkSopAskWeakInput {
   return {
     question: 'Classify the operator request into the expected schema.',
     expectedOutputSchemaRef: EXPECTED_OUTPUT_SCHEMA,
@@ -362,5 +363,5 @@ test('weak-worker evidence is attributed to the parent run and driver actor', as
   assert.equal(events[0]?.actorRef, 'agent:strong-driver');
   assert.equal(events[0]?.toolName, 'work.sop.ask_weak');
   assert.equal(events[0]?.status, 'applied');
-  assert.equal('workerRunId' in (events[0] as Record<string, unknown>), false);
+  assert.equal('workerRunId' in (events[0] as unknown as Record<string, unknown>), false);
 });

@@ -18,6 +18,17 @@ import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 const NOW = new Date('2026-05-10T00:00:00.000Z');
 const SESSION_SECRET = 'test-session-secret-at-least-sixteen-chars';
 
+/**
+ * `tokenState` is only assigned inside a callback, so control-flow analysis
+ * narrows it to null at every later read and `assert.ok` then narrows to `never`.
+ * Reading it through a parameter restores the declared type.
+ */
+function capturedTokenState(
+  state: PlatformAuthRecoveryTokenState | null,
+): PlatformAuthRecoveryTokenState | null {
+  return state;
+}
+
 test('auth startup repair issues recovery token when setup is complete and auth state is missing', async () => {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'cats-auth-startup-repair-'));
   try {
@@ -38,19 +49,20 @@ test('auth startup repair issues recovery token when setup is complete and auth 
         config,
         coreStore,
         authStore: createStatusAuthStore({ status: 'missing' }),
-        setAuthRecoveryTokenState: (state) => {
+        setAuthRecoveryTokenState: (state: PlatformAuthRecoveryTokenState) => {
           tokenState = state;
         },
         now: () => NOW,
       } as never,
     });
 
-    assert.ok(tokenState);
-    assert.equal(tokenState.issuedAt, NOW.toISOString());
-    assert.equal(tokenState.recoveryTokenPath, config.auth.recoveryTokenPath);
+    const capturedState = capturedTokenState(tokenState);
+    assert.ok(capturedState);
+    assert.equal(capturedState.issuedAt, NOW.toISOString());
+    assert.equal(capturedState.recoveryTokenPath, config.auth.recoveryTokenPath);
     const rawToken = await readFile(config.auth.recoveryTokenPath, 'utf-8');
     assert.notEqual(rawToken.trim(), '');
-    assert.equal(tokenState.tokenHash.includes(rawToken.trim()), false);
+    assert.equal(capturedState.tokenHash.includes(rawToken.trim()), false);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
@@ -71,7 +83,7 @@ test('auth startup repair is inert before setup is complete', async () => {
         config,
         coreStore: new MemoryChatStore(),
         authStore: createStatusAuthStore({ status: 'missing' }),
-        setAuthRecoveryTokenState: (state) => {
+        setAuthRecoveryTokenState: (state: PlatformAuthRecoveryTokenState) => {
           tokenState = state;
         },
         now: () => NOW,

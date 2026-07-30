@@ -5,6 +5,7 @@ import {
   syncDesktopHostPlatformShell,
   syncDesktopHostPlatformShellState,
 } from '../src/app/renderer/setup/desktopHostBridge.ts';
+import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
 
 function createEnvelope() {
   return {
@@ -72,7 +73,7 @@ function createEnvelope() {
     ownerAvatarUrl: null,
     lastProductSurface: 'chat',
     guideCat: null,
-  } as const;
+  } as unknown as PlatformHostEnvelope;
 }
 
 test('platform setup bridge is a no-op outside desktop host', async () => {
@@ -99,7 +100,7 @@ test('platform setup bridge forwards committed shell state to desktop host', asy
     configurable: true,
     value: {
       catsDesktopHost: {
-        async updatePlatformShell(payload) {
+        async updatePlatformShell(payload: PlatformHostEnvelope) {
           received = payload;
         },
       },
@@ -142,7 +143,7 @@ test('platform setup bridge can forward reset shell state to desktop host', asyn
     configurable: true,
     value: {
       catsDesktopHost: {
-        async updatePlatformShell(payload) {
+        async updatePlatformShell(payload: PlatformHostEnvelope) {
           received = payload;
         },
       },
@@ -163,7 +164,7 @@ test('platform setup bridge can forward reset shell state to desktop host', asyn
           setup: { selectable: true },
         },
       ],
-    });
+    } as unknown as Parameters<typeof syncDesktopHostPlatformShellState>[0]);
   } finally {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,

@@ -11,6 +11,18 @@ import {
   resolveDurableConcurrentClusterMaxSegmentCount,
 } from '../src/products/shared/renderer/components/chat-view/concurrentTranscriptProjection.ts';
 import type { ResolvedChannelParticipant } from '../src/products/chat/shared/channelParticipants.js';
+import type { ChatMessage } from '../src/products/chat/api/contracts.ts';
+import type { SelectedChannelView } from '../src/products/chat/shared/channelEntry.ts';
+
+/**
+ * The panel requires a selected channel. These tests exercise transcript
+ * projection rather than channel state, so this is a deliberate partial.
+ */
+const SELECTED_CHANNEL = {
+  id: 'channel-1',
+  title: 'Compare run',
+  messages: [],
+} as unknown as SelectedChannelView;
 
 function createParticipant(
   participantId: string,
@@ -58,7 +70,7 @@ function createParticipant(
 }
 
 function createCompletedConcurrentTurnFixture() {
-  const visibleMessages = [
+  const visibleMessages: ChatMessage[] = [
     {
       id: 'message-user',
       channelId: 'channel-1',
@@ -108,7 +120,7 @@ function createCompletedConcurrentTurnFixture() {
       usage: null,
       createdAt: '2026-04-16T12:00:02.000Z',
     },
-  ] as const;
+  ];
 
   const workflow = {
     activeTurn: null,
@@ -246,6 +258,7 @@ test('ChatTranscriptPanel keeps compare_cards layout for completed concurrent tu
       workflow={workflow}
       cats={[]}
       bossCatId={null}
+      selectedChannel={SELECTED_CHANNEL}
       selectedChannelId="channel-1"
       disabledMentionNames={[]}
       busy={IDLE_BUSY_STATE}
@@ -297,6 +310,7 @@ test('ChatTranscriptPanel falls back to raw transcript bubbles when a durable cl
       workflow={workflow}
       cats={[]}
       bossCatId={null}
+      selectedChannel={SELECTED_CHANNEL}
       selectedChannelId="channel-1"
       disabledMentionNames={[]}
       busy={IDLE_BUSY_STATE}
@@ -348,6 +362,7 @@ test('ChatTranscriptPanel keeps compare_cards layout when driven with stub parti
       workflow={workflow}
       cats={[]}
       bossCatId={null}
+      selectedChannel={SELECTED_CHANNEL}
       selectedChannelId="channel-1"
       disabledMentionNames={[]}
       busy={IDLE_BUSY_STATE}
@@ -421,6 +436,7 @@ test('ChatTranscriptPanel renders copy actions for completed assistant bubbles a
       } as never}
       cats={[]}
       bossCatId={null}
+      selectedChannel={SELECTED_CHANNEL}
       selectedChannelId="channel-1"
       disabledMentionNames={[]}
       busy={IDLE_BUSY_STATE}
@@ -510,6 +526,7 @@ test('ChatTranscriptPanel shows typing dots for a streaming segment that has ide
       } as never}
       cats={[]}
       bossCatId={null}
+      selectedChannel={SELECTED_CHANNEL}
       selectedChannelId="channel-1"
       disabledMentionNames={[]}
       busy={IDLE_BUSY_STATE}

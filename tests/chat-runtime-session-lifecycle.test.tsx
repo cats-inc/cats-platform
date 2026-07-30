@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import type { RuntimeClient, RuntimeSessionInfo } from '../src/platform/runtime/client.ts';
+import type {
+  RuntimeClient,
+  RuntimeSendMessageInput,
+  RuntimeSessionInfo,
+} from '../src/platform/runtime/client.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import {
   appendMessage,
@@ -67,17 +71,19 @@ function resumableRuntimeStub(): RuntimeClient & {
   const closeCalls: string[] = [];
   const resumeCalls: string[] = [];
   const sentSessionIds: string[] = [];
-
+  let createCallCount = 0;
   return {
     closeCalls,
-    createCalls: 0,
+    get createCalls() {
+      return createCallCount;
+    },
     resumeCalls,
     sentSessionIds,
     async createSession() {
-      this.createCalls += 1;
+      createCallCount += 1;
       return session;
     },
-    async sendMessage(sessionId) {
+    async sendMessage(sessionId: string) {
       sendCount += 1;
       if (sendCount === 2 && !resumed) {
         throw new Error('Session is closed. Resume it first.');
@@ -90,20 +96,20 @@ function resumableRuntimeStub(): RuntimeClient & {
         tokensUsed: 2,
       };
     },
-    async resumeSession(sessionId) {
+    async resumeSession(sessionId: string) {
       resumeCalls.push(sessionId);
       resumed = true;
       return session;
     },
-    async closeSession(sessionId) {
+    async closeSession(sessionId: string) {
       closeCalls.push(sessionId);
     },
     async cancelSession() {},
-    async observeSession(sessionId) {
+    async observeSession(sessionId: string) {
       return { session: { id: sessionId, status: 'ready' } };
     },
     async streamSession() {},
-  } as RuntimeClient & {
+  } as unknown as RuntimeClient & {
     closeCalls: string[];
     createCalls: number;
     resumeCalls: string[];
@@ -137,7 +143,7 @@ test('runtime session resume failures emit a diagnostic warning', async () => {
     async resumeSession() {
       throw new Error('runtime gateway unavailable');
     },
-  } as RuntimeClient;
+  } as unknown as RuntimeClient;
 
   const captured = await captureConsoleWarnings(() =>
     resumeRuntimeSession({
@@ -209,11 +215,14 @@ test('direct-message dispatch surfaces resume failure without creating a replace
   const store = new MemoryChatStore(state);
   let sendCount = 0;
   const closeCalls: string[] = [];
+  let createCallCount = 0;
   const runtimeClient = {
-    createCalls: 0,
+    get createCalls() {
+      return createCallCount;
+    },
     closeCalls,
     async createSession() {
-      this.createCalls += 1;
+      createCallCount += 1;
       return {
         id: 'session-direct-1',
         provider: 'claude',
@@ -247,7 +256,7 @@ test('direct-message dispatch surfaces resume failure without creating a replace
       return { session: { id: sessionId, status: 'closed' } };
     },
     async streamSession() {},
-  } as RuntimeClient & {
+  } as unknown as RuntimeClient & {
     closeCalls: string[];
     createCalls: number;
   };
@@ -301,6 +310,7 @@ test('direct-message dispatch can replace a stale lease after explicit retarget 
   let createCalls = 0;
   const resumeCalls: string[] = [];
   const sentSessionIds: string[] = [];
+  let createCallCount = 0;
   const closeCalls: string[] = [];
   const runtimeClient = {
     async createSession() {
@@ -343,7 +353,7 @@ test('direct-message dispatch can replace a stale lease after explicit retarget 
       return { session: { id: sessionId, status: 'closed' } };
     },
     async streamSession() {},
-  } as RuntimeClient;
+  } as unknown as RuntimeClient;
 
   const first = await routeChannelMessage(
     state,
@@ -663,10 +673,13 @@ test('direct-message room-entry wake reports resume failure without creating a r
     new Date('2026-05-07T03:00:30.000Z'),
   );
   const closeCalls: string[] = [];
+  let createCallCount = 0;
   const runtimeClient = {
-    createCalls: 0,
+    get createCalls() {
+      return createCallCount;
+    },
     async createSession() {
-      this.createCalls += 1;
+      createCallCount += 1;
       throw new Error('createSession should not be called');
     },
     async sendMessage() {
@@ -683,7 +696,7 @@ test('direct-message room-entry wake reports resume failure without creating a r
       return { session: { id: sessionId, status: 'closed' } };
     },
     async streamSession() {},
-  } as RuntimeClient & { createCalls: number };
+  } as unknown as RuntimeClient & { createCalls: number };
 
   const captured = await captureConsoleWarnings(() =>
     wakeChannelEntryParticipant(
@@ -736,10 +749,13 @@ test('direct-message room-entry wake can replace a stale lease after explicit re
     new Date('2026-05-07T03:02:00.000Z'),
   );
   const resumeCalls: string[] = [];
+  let createCallCount = 0;
   const runtimeClient = {
-    createCalls: 0,
+    get createCalls() {
+      return createCallCount;
+    },
     async createSession() {
-      this.createCalls += 1;
+      createCallCount += 1;
       return {
         id: 'session-direct-2',
         provider: 'codex',
@@ -763,7 +779,7 @@ test('direct-message room-entry wake can replace a stale lease after explicit re
       return { session: { id: sessionId, status: 'closed' } };
     },
     async streamSession() {},
-  } as RuntimeClient & { createCalls: number };
+  } as unknown as RuntimeClient & { createCalls: number };
 
   const captured = await captureConsoleWarnings(() =>
     wakeChannelEntryParticipant(
