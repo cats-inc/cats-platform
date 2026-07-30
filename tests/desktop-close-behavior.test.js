@@ -28,7 +28,10 @@ test('desktop host keeps tray locked while shutdown drains services', async () =
   assert.match(source, /let exitingAfterShutdown = false;/u);
   // Snapshot the tray before any disposable subsystem can throw; the whole
   // shutdown sequence then lives inside try/catch/finally so app.exit always runs.
-  assert.match(source, /const activeTrayController = trayController;[\s\S]*try \{[\s\S]*voiceCaptureController\?\.dispose\(\);[\s\S]*activeTrayController\?\.updateMenu\(buildDesktopTrayQuittingMenuState\(app\.getLocale\(\)\)\);[\s\S]*supervisor\?\.stopAll\(\)[\s\S]*\} catch \(error\) \{[\s\S]*\} finally \{[\s\S]*activeTrayController\?\.dispose\(\);[\s\S]*exitingAfterShutdown = true;[\s\S]*app\.exit\(shutdownExitCode\);/u);
+  // The drain itself lives in drainManagedServices because the update installer
+  // handoff needs the identical stop-then-force-stop behaviour.
+  assert.match(source, /const activeTrayController = trayController;[\s\S]*try \{[\s\S]*voiceCaptureController\?\.dispose\(\);[\s\S]*activeTrayController\?\.updateMenu\(buildDesktopTrayQuittingMenuState\(app\.getLocale\(\)\)\);[\s\S]*await drainManagedServices\(\);[\s\S]*\} catch \(error\) \{[\s\S]*\} finally \{[\s\S]*activeTrayController\?\.dispose\(\);[\s\S]*exitingAfterShutdown = true;[\s\S]*app\.exit\(shutdownExitCode\);/u);
+  assert.match(source, /async function drainManagedServices\(\): Promise<\{ timedOut: boolean \}> \{[\s\S]*supervisor\?\.stopAll\(\)/u);
   // Watchdog derives from gracefulShutdownMs and managed service count; a
   // timeout force-stops children before letting the Electron host exit.
   assert.match(source, /SHUTDOWN_GRACE_WINDOWS_PER_SERVICE = 2;/u);
@@ -47,4 +50,26 @@ test('desktop host keeps tray locked while shutdown drains services', async () =
   // Tray tooltip falls back through lockedTooltip → lockedLabel → 'Cats'
   // so a richer locked state can override the menu label without lying.
   assert.match(traySource, /tray\.setToolTip\(state\.lockedTooltip \?\? state\.lockedLabel \?\? 'Cats'\);/u);
+});
+
+test('the update installer handoff locks the tray, drains, and prepares the exit', async () => {
+  const source = await readFile(
+    new URL('../desktop/host/main.ts', import.meta.url),
+    'utf8',
+  );
+
+  // Ordering is the whole point: the tray must stop offering to open Cats
+  // before the sidecars go down, the sidecars must be down before the installer
+  // is handed control, and the exit must be marked prepared so before-quit does
+  // not cancel electron-updater's own quit and run a second drain.
+  assert.match(
+    source,
+    /drainManagedServices: async \(\) => \{[\s\S]*buildDesktopTrayQuittingMenuState\(app\.getLocale\(\)\)[\s\S]*await drainManagedServices\(\);[\s\S]*exitingAfterShutdown = true;/u,
+  );
+  // A handoff that failed while the process is alive has to undo both, or the
+  // app is left running with dead services and a tray that claims it is quitting.
+  assert.match(
+    source,
+    /restartManagedServices: async \(\) => \{[\s\S]*exitingAfterShutdown = false;[\s\S]*await supervisor\?\.startAll\(\);[\s\S]*await syncTrayController\(\);/u,
+  );
 });
