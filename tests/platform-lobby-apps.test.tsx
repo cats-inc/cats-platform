@@ -12,6 +12,7 @@ import {
 } from '../src/app/renderer/lobbyModel.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
+import { DEFAULT_MOBILE_PAIRING } from '../src/app/renderer/settings/settingsDesktopPreferences.ts';
 
 function createEnvelope(
   overrides: Partial<PlatformHostEnvelope> = {},
@@ -29,6 +30,7 @@ function createEnvelope(
       startAtLogin: false,
       openWindowOnStartup: true,
       systemTrayEnabled: true,
+      mobilePairing: DEFAULT_MOBILE_PAIRING,
     },
     lobby: {
       animationMode: 'reduced',

@@ -22,6 +22,7 @@ import { EntitiesShell } from '../src/app/renderer/entities-shell/EntitiesShell.
 import { PlatformLobby } from '../src/app/renderer/PlatformLobby.tsx';
 import { GuideCatPlacementProvider } from '../src/app/renderer/GuideCatPlacementProvider.tsx';
 import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
+import { DEFAULT_MOBILE_PAIRING } from '../src/app/renderer/settings/settingsDesktopPreferences.ts';
 
 function createEnvelope(
   overrides: Partial<PlatformHostEnvelope> = {},
@@ -38,6 +39,7 @@ function createEnvelope(
       startAtLogin: false,
       openWindowOnStartup: true,
       systemTrayEnabled: true,
+      mobilePairing: DEFAULT_MOBILE_PAIRING,
     },
     lobby: {
       animationMode: 'reduced',

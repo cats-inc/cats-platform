@@ -14,6 +14,7 @@ import type { AppShellPayload as CodeAppShellPayload } from '../src/products/cod
 import type { PlatformSurfaceId } from '../src/shared/platform-contract.ts';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
+import { DEFAULT_MOBILE_PAIRING } from '../src/app/renderer/settings/settingsDesktopPreferences.ts';
 
 const testTranslator = createTranslator('en');
 
@@ -66,6 +67,7 @@ function createPayload(
       startAtLogin: false,
       openWindowOnStartup: true,
       systemTrayEnabled: true,
+      mobilePairing: DEFAULT_MOBILE_PAIRING,
     },
     lobby: {
       animationMode: 'reduced',

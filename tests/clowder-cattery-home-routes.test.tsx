@@ -8,6 +8,7 @@ import { CatteryHome } from '../src/app/renderer/entities/CatteryHome.tsx';
 import { ClowderHome } from '../src/app/renderer/entities/ClowderHome.tsx';
 import { I18nProvider } from '../src/app/renderer/i18n/I18nProvider.tsx';
 import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
+import { DEFAULT_MOBILE_PAIRING } from '../src/app/renderer/settings/settingsDesktopPreferences.ts';
 
 function createEnvelope(
   overrides: Partial<PlatformHostEnvelope> = {},
@@ -24,6 +25,7 @@ function createEnvelope(
       startAtLogin: false,
       openWindowOnStartup: true,
       systemTrayEnabled: true,
+      mobilePairing: DEFAULT_MOBILE_PAIRING,
     },
     lobby: {
       animationMode: 'reduced',
