@@ -203,7 +203,11 @@ function createRuntimeStub(
         cwd: input.cwd ?? null,
       };
     },
-    async sendMessage(sessionId, content, input): Promise<RuntimeMessageResult> {
+    async sendMessage(
+      sessionId: string,
+      content: string,
+      input?: unknown,
+    ): Promise<RuntimeMessageResult> {
       sentMessages.push({ sessionId, content, input });
       return {
         segments: [

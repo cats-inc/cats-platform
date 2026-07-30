@@ -38,7 +38,9 @@ interface RangedFragment {
 
 export function buildComposerHighlightFragments(
   text: string,
-  cats: ChatCat[],
+  // Only the display name and avatar colour are read, so that is all the
+  // parameter asks for. A full ChatCat still satisfies it.
+  cats: Array<Pick<ChatCat, 'name' | 'avatarColor'>>,
   excludedMentionNames: string[] = [],
 ): ComposerHighlightFragment[] {
   const catLookup = new Map(

@@ -3,12 +3,18 @@ import test from 'node:test';
 
 import { resolveConversationMode } from '../src/products/chat/renderer/conversationMode.ts';
 import type { ChatChannelView } from '../src/products/chat/api/contracts.ts';
+import {
+  buildChatConversationId,
+  CHAT_ROOT_CONTAINER_ID,
+} from '../src/shared/chatCoreIds.ts';
 
 function createChannel(
   overrides: Partial<ChatChannelView> = {},
 ): ChatChannelView {
   return {
     id: 'channel-1',
+    containerId: CHAT_ROOT_CONTAINER_ID,
+    conversationId: buildChatConversationId('channel-1'),
     title: 'Chat',
     topic: 'Testing conversation modes.',
     channelKind: 'chat_channel',
@@ -31,6 +37,7 @@ function createChannel(
     lastMessageAt: null,
     lastActivatedAt: null,
     orchestratorLease: {
+      laneId: null,
       sessionId: null,
       status: 'not_started',
       cwd: null,
@@ -46,12 +53,18 @@ function createChannel(
     roomRouting: {
       mode: 'chat_channel',
       defaultRecipientId: null,
+      maxContinuations: 3,
+      maxDispatchesPerTurn: 4,
+      maxTargetVisitsPerTurn: 2,
       lastOutcome: null,
       lastCheckpoint: null,
       lastWakeRequest: null,
       wakeHistory: [],
       workflow: {
         activeTurn: null,
+        turnHistory: [],
+        eventHistory: [],
+        lastCheckpointEvent: null,
         lastOutcomeEvent: null,
       },
     },
@@ -76,6 +89,11 @@ test('resolveConversationMode keeps direct lanes topology-first even when room m
     },
     assignedCats: [{
       catId: 'cat-1',
+      sourceKind: 'cat',
+      sourceRefId: 'cat-1',
+      participantId: 'cat-1',
+      roleHint: null,
+      avatarUrl: null,
       name: 'Companion',
       roles: [],
       skillProfile: null,
@@ -120,6 +138,11 @@ test('resolveConversationMode distinguishes default and participant chat semanti
   const singleParticipantChat = createChannel({
     assignedCats: [{
       catId: 'cat-1',
+      sourceKind: 'cat',
+      sourceRefId: 'cat-1',
+      participantId: 'cat-1',
+      roleHint: null,
+      avatarUrl: null,
       name: 'Companion',
       roles: [],
       skillProfile: null,
@@ -165,6 +188,11 @@ test('resolveConversationMode distinguishes default and participant chat semanti
       {
         ...singleParticipantChat.assignedCats[0],
         catId: 'cat-2',
+        sourceKind: 'cat',
+        sourceRefId: 'cat-2',
+        participantId: 'cat-2',
+        roleHint: null,
+        avatarUrl: null,
         name: 'Reviewer',
       },
     ],
