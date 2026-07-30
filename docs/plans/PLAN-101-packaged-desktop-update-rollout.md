@@ -179,25 +179,35 @@ capability gating.
 
 - [ ] Rename or broaden the current Desktop Settings component so its ownership
       is not limited to startup preferences.
-- [ ] Add the `App updates` section before Mobile pairing and Startup behavior.
-- [ ] Preserve the existing relative order of Mobile pairing before Startup
+- [x] Add the `App updates` section before Mobile pairing and Startup behavior.
+- [x] Preserve the existing relative order of Mobile pairing before Startup
       behavior.
-- [ ] Render the section only when `capability.canCheck` is true.
-- [ ] Implement the status chip, version/channel facts, last-check time,
+- [x] Show version and channel for every desktop build, and gate only the update
+      controls on `capability.canCheck`. Supersedes the original
+      "render the section only when `canCheck`" task: Cats ships no About box, so
+      that rule left a development or unofficial build with no way to read its
+      own version. Recorded in SPEC-111 section 4 and the visibility matrix.
+- [x] Implement the status chip, version/channel facts, last-check time,
       available release summary, progress, and one primary next-action button.
-- [ ] Use the shared toast system for manual up-to-date results and failures.
+- [x] Use the shared toast system for manual up-to-date results and failures.
 - [x] Add English and Traditional Chinese strings through shared i18n catalogs.
 - [x] Add `Check for Updates…` to the tray before Settings and Quit.
 - [x] Disable or relabel the tray item during active update operations.
-- [ ] Add native up-to-date, available, and failed notifications.
-- [ ] Route available-update notification activation to `Settings > Desktop`.
-- [ ] Fall back to opening `Settings > Desktop` when native notifications are
-      unavailable.
-- [ ] Confirm npm/browser and Electron development renders contain no update
+- [x] Add native up-to-date, available, and failed notifications.
+- [x] Route available-update notification activation to `Settings > Desktop`.
+- [x] Fall back to opening `Settings > Desktop` when native notifications are
+      unavailable, or when showing one fails.
+- [x] Decide announcement policy per origin in one place, so a Settings check is
+      not reported twice and a silent startup check does not nag.
+- [x] Claim the electron-builder `appId` as the Windows Application User Model
+      ID, which is what makes a packaged Windows notification deliverable.
+      Delivery itself stays unverified until the Phase 6 real-machine pass.
+- [x] Confirm npm/browser and Electron development renders contain no update
       button.
 
-**Deliverables**: synchronized, localized Tray and Settings update UX for
-official packaged builds only.
+**Deliverables**: synchronized, localized Tray and Settings update UX. Update
+controls stay limited to builds with the capability; version and channel are
+readable from any desktop build.
 
 ### Phase 5: Harden Download, Restart, and Failure Recovery
 
@@ -290,8 +300,11 @@ startup-check policy.
 | `desktop/host/preload.cts` | Modify | bounded update bridge |
 | `desktop/host/tray.ts` | Modify | update command rendering and interaction |
 | `desktop/host/trayMenu.ts` | Modify | localized tray update state |
+| `desktop/host/updateNotifications.ts` | Create | per-origin native announcement policy and localized notification copy |
+| `desktop/host/hostVersion.ts` | Modify | expose the electron-builder `appId` for the Windows notification identity |
 | `src/shared/desktopRecoveryBridge.ts` | Modify | browser-safe update bridge types/helpers |
-| `src/app/renderer/settings/PlatformSettingsDesktopStartup.tsx` | Rename/refactor | broaden Desktop Settings and add App updates section |
+| `src/app/renderer/settings/PlatformSettingsDesktopUpdates.tsx` | Create | `App updates` section container over the host snapshot |
+| `src/app/renderer/settings/PlatformSettingsDesktopStartup.tsx` | Rename/refactor | broaden Desktop Settings and mount the App updates section |
 | `src/app/renderer/settings/PlatformSettingsRoutes.tsx` | Modify | updated Desktop Settings component |
 | shared i18n catalogs | Modify | English and Traditional Chinese update copy |
 | desktop update/tray/preload/Settings tests | Modify/expand | state, security, visibility, synchronization |

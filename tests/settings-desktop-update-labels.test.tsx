@@ -12,6 +12,9 @@ import {
 import { enCatalog } from '../src/shared/i18n/catalogs/en.js';
 import { zhTWCatalog } from '../src/shared/i18n/catalogs/zh-TW.js';
 import { messageKeys } from '../src/shared/i18n/messageKeys.js';
+import {
+  DESKTOP_UPDATE_NOTIFICATION_ERROR_COPY,
+} from '../desktop/host/updateNotifications.ts';
 
 const STATUSES = [
   'unavailable',
@@ -79,6 +82,25 @@ test('every update error code resolves to a catalogued message in both locales',
     assert.ok(dotted, `${code} has no message key`);
     assert.equal(typeof enCatalog[dotted], 'string', `${dotted} missing from en`);
     assert.equal(typeof zhTWCatalog[dotted], 'string', `${dotted} missing from zh-TW`);
+  }
+});
+
+test('native notification error copy matches the renderer catalogs word for word', () => {
+  // The main process has no translator, so the host keeps its own copy of this
+  // copy. The same failure must not read differently depending on whether the
+  // user saw it in Settings or in a notification.
+  for (const code of ERROR_CODES) {
+    const dotted = messageKeys[resolveDesktopUpdateErrorMessageKey(code)];
+    assert.equal(
+      DESKTOP_UPDATE_NOTIFICATION_ERROR_COPY.en[code],
+      enCatalog[dotted],
+      `en/${code} drifted from ${dotted}`,
+    );
+    assert.equal(
+      DESKTOP_UPDATE_NOTIFICATION_ERROR_COPY['zh-TW'][code],
+      zhTWCatalog[dotted],
+      `zh-TW/${code} drifted from ${dotted}`,
+    );
   }
 });
 

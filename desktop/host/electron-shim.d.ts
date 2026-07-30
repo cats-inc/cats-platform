@@ -146,6 +146,18 @@ declare module 'electron' {
     }): Promise<DesktopCapturerSource[]>;
   };
 
+  export class Notification {
+    static isSupported(): boolean;
+    constructor(options: {
+      title?: string;
+      body?: string;
+      silent?: boolean;
+    });
+    on(event: string, listener: (...args: any[]) => void): this;
+    show(): void;
+    close(): void;
+  }
+
   export class Tray {
     constructor(image: unknown);
     setToolTip(tooltip: string): void;

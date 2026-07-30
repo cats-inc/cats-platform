@@ -1,6 +1,14 @@
 import { dirname, join } from 'node:path';
 
-import { app, BrowserWindow, ipcMain, session, shell, systemPreferences } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  Notification,
+  session,
+  shell,
+  systemPreferences,
+} from 'electron';
 
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
 import {
@@ -96,7 +104,7 @@ import {
   parseDesktopHostPlatformShellUpdate,
 } from './platformShellUpdate.js';
 import { enableDesktopMobilePairingEnv } from './mobilePairingEnv.js';
-import { DESKTOP_HOST_VERSION } from './hostVersion.js';
+import { DESKTOP_APP_USER_MODEL_ID, DESKTOP_HOST_VERSION } from './hostVersion.js';
 import {
   loadDesktopReleaseDescriptor,
   resolveDesktopDistributionIdentity,
@@ -116,6 +124,12 @@ import {
   createDesktopUpdateIpcHandlers,
   createDesktopUpdateSnapshotBroadcast,
 } from './updateIpc.js';
+import {
+  DESKTOP_UPDATE_SETTINGS_PATH,
+  resolveDesktopUpdateAnnouncement,
+  type DesktopUpdateNotification,
+  type DesktopUpdateNotificationOrigin,
+} from './updateNotifications.js';
 import {
   applyDesktopWindowChrome,
   resolveDesktopWindowChromeOptions,
@@ -1004,7 +1018,9 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
       if (shuttingDown) {
         return;
       }
-      await refreshUpdateState();
+      // The menu closes on click, so this result has to reach the user through
+      // a notification or by opening Settings.
+      await refreshUpdateState('tray');
     },
   };
 }
@@ -1657,11 +1673,86 @@ async function createUpdateManagerForLaunch(
   });
 }
 
-async function refreshUpdateState(): Promise<DesktopUpdateSnapshot | null> {
+async function openDesktopUpdateSettings(): Promise<void> {
+  if (shuttingDown || !hostConfig) {
+    return;
+  }
+  await showMainWindow(`${hostConfig.appBaseUrl}${DESKTOP_UPDATE_SETTINGS_PATH}`);
+}
+
+/**
+ * Shows a native notification, reporting whether the user will actually see it.
+ *
+ * A false return sends the caller to the navigation fallback. Notifying is not
+ * worth failing a check over, so a throwing platform is treated the same as one
+ * without notification support.
+ */
+function showDesktopUpdateNotification(notification: DesktopUpdateNotification): boolean {
+  try {
+    const native = new Notification({
+      title: notification.title,
+      body: notification.body,
+    });
+    native.on('click', () => {
+      void openDesktopUpdateSettings();
+    });
+    native.show();
+    return true;
+  } catch (error) {
+    process.stderr.write(
+      '[desktop-update] native notification unavailable: '
+        + `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    return false;
+  }
+}
+
+function areNativeNotificationsSupported(): boolean {
+  try {
+    return Notification.isSupported();
+  } catch {
+    return false;
+  }
+}
+
+async function announceDesktopUpdateResult(
+  origin: DesktopUpdateNotificationOrigin,
+  snapshot: DesktopUpdateSnapshot | null,
+): Promise<void> {
+  if (!snapshot || shuttingDown) {
+    return;
+  }
+
+  const announcement = resolveDesktopUpdateAnnouncement({
+    origin,
+    snapshot,
+    locale: app.getLocale(),
+    notificationsSupported: areNativeNotificationsSupported(),
+  });
+
+  if (announcement.notification && showDesktopUpdateNotification(announcement.notification)) {
+    return;
+  }
+  if (announcement.fallbackNavigatePath) {
+    await openDesktopUpdateSettings();
+  }
+}
+
+/**
+ * Runs a check and reports its result to whoever asked for it.
+ *
+ * The origin is required rather than defaulted: it decides whether the result
+ * is announced at all, and a new caller silently inheriting another surface's
+ * policy is the failure this signature exists to prevent.
+ */
+async function refreshUpdateState(
+  origin: DesktopUpdateNotificationOrigin,
+): Promise<DesktopUpdateSnapshot | null> {
   if (!updateManager) {
     return null;
   }
   updateState = await updateManager.checkForUpdates();
+  await announceDesktopUpdateResult(origin, updateState);
   return updateState;
 }
 
@@ -2056,6 +2147,14 @@ async function main(): Promise<void> {
   }
 
   app.setPath('userData', resolveDesktopUserDataDir(app.getPath('appData')));
+  // Windows routes a notification through the Start Menu shortcut whose
+  // Application User Model ID matches the running process. The installer writes
+  // that shortcut with the electron-builder appId, so claiming it here is what
+  // makes update notifications visible at all. Unpackaged runs have no such
+  // shortcut, so the claim would buy nothing.
+  if (process.platform === 'win32' && app.isPackaged && DESKTOP_APP_USER_MODEL_ID) {
+    app.setAppUserModelId(DESKTOP_APP_USER_MODEL_ID);
+  }
   await app.whenReady();
   const nodeProcess = process as NodeJS.Process & { resourcesPath?: string };
 
@@ -2386,7 +2485,7 @@ async function main(): Promise<void> {
   // SPEC-111 section 6: at most one silent check per launch, and only when the
   // build actually has update capability.
   if (hostConfig.update.checkOnStartup && updateManager?.getSnapshot().capability.canCheck) {
-    void refreshUpdateState();
+    void refreshUpdateState('startup');
   }
 }
 

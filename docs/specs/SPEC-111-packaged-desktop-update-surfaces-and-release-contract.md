@@ -103,10 +103,18 @@ Landed:
   (`src/app/renderer/settings/PlatformSettingsDesktopUpdates.tsx`), mounted
   first in the Desktop settings route. It shows version and channel for every
   desktop build and gates the update controls on `canCheck`, per section 4.
+- Native up-to-date, available, and failed notifications, with the
+  origin-dependent policy in section 5 owned by
+  `desktop/host/updateNotifications.ts`. Notification error copy is duplicated
+  into the host because the main process has no translator; a drift test asserts
+  it stays identical to the renderer catalogs.
+
+  Windows toast delivery depends on the packaged Start Menu shortcut and has not
+  been confirmed on a real machine yet. It is covered by the Phase 6 upgrade
+  matrix rather than assumed working.
 
 Not yet landed:
 
-- Native up-to-date, available, and failed notifications.
 - Phase 5 hardening and the Phase 6 real-machine upgrade matrix.
 
 Gated off deliberately:
@@ -386,9 +394,31 @@ Requirements:
    it shall open the main window at `Settings > Desktop`.
 5. If native notifications are unavailable, a tray-originated result shall
    open the main window at `Settings > Desktop` so the action always has
-   visible feedback.
+   visible feedback. Failing to show a notification shall take the same
+   fallback, because from the user's side the two are the same outcome.
 6. A tray check shall not create a second update manager or a second provider
    request path.
+7. A tray-originated failure shall also produce a native notification. It shall
+   read from the stable error code, not the provider message, so the copy is
+   the same text Settings would show.
+
+Announcement policy applies to every origin, not only the tray, and is decided
+in one place (`desktop/host/updateNotifications.ts`) rather than at each call
+site:
+
+- A **Settings**-originated result is never announced natively. The section
+  shows the state directly and routes manual results through the shared toast
+  system, so a notification would report the same check twice.
+- A **tray**-originated result announces up-to-date, available, and failed.
+- A **startup**-originated result announces only an available update. The user
+  did not request that check, so an up-to-date or offline result has nothing to
+  report and would otherwise nag on every launch. A startup result shall never
+  pull a window forward.
+
+On Windows a notification is delivered through the Start Menu shortcut whose
+Application User Model ID matches the running process, so a packaged Windows
+build shall claim the electron-builder `appId` at startup. Reading that ID from
+the build configuration keeps it from becoming a second source of truth.
 
 ### 6. Startup Check Policy
 
