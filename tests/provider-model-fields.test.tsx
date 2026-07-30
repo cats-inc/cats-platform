@@ -34,6 +34,8 @@ import {
 import {
   createStaticProviderModelCatalog,
   normalizeProviderAdvancedModelCatalog,
+  type ProductProviderDescriptor,
+  type ProviderAdvancedCatalogControl,
 } from '../src/shared/providerCatalog.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 import { formatProviderEventCapabilitiesSummary } from '../src/shared/providerEventCapabilities.ts';
@@ -739,7 +741,7 @@ test('static fallback catalogs do not classify unknown persisted models as legac
 });
 
 test('persistent selector controls exclude request-only overrides for the chosen entry', () => {
-  const controls = [
+  const controls: ProviderAdvancedCatalogControl[] = [
     {
       key: 'openai.reasoning_effort',
       label: 'Reasoning effort',
@@ -778,7 +780,7 @@ test('persistent selector controls exclude request-only overrides for the chosen
 });
 
 test('persistent selector sanitization keeps request controls out of modelSelection but preserves modelResolution', () => {
-  const controls = [
+  const controls: ProviderAdvancedCatalogControl[] = [
     {
       key: 'openai.reasoning_effort',
       label: 'Reasoning effort',
@@ -840,7 +842,7 @@ test('persistent selector sanitization keeps request controls out of modelSelect
 });
 
 test('persistent selector only exposes Codex effort values supported by the selected entry', () => {
-  const controls = [
+  const controls: ProviderAdvancedCatalogControl[] = [
     {
       key: 'codex.reasoning_effort',
       label: 'Reasoning effort',
@@ -877,7 +879,7 @@ test('persistent selector only exposes Codex effort values supported by the sele
 });
 
 test('persistent selector hides Claude effort controls for Haiku', () => {
-  const controls = [
+  const controls: ProviderAdvancedCatalogControl[] = [
     {
       key: 'claude.reasoning_effort',
       label: 'Reasoning effort',
@@ -981,7 +983,7 @@ test('unsupported persistent controls surface a warning before runtime reconcili
 
 test('provider model field view state exposes unsupported persistent control warnings', () => {
   const { catalog, advancedCatalog } = buildCurrentAdvancedCatalog('codex');
-  const provider = {
+  const provider: ProductProviderDescriptor = {
     id: 'codex',
     label: 'Codex',
     defaultModel: 'gpt-5.4',
@@ -1353,13 +1355,13 @@ test('execution labels do not infer default control values from decorated option
 });
 
 test('provider model field view state derives instance, entry, and catalog warnings from the resolved target', () => {
-  const selectedProvider = {
+  const selectedProvider: ProductProviderDescriptor = {
     defaultModel: null,
     defaultInstance: null,
-    defaultBackend: null,
+    defaultBackend: 'cli',
     id: 'codex',
     label: 'Codex',
-    backend: 'cli',
+    modelsPath: '/api/providers/codex/models',
     instances: [
       {
         id: 'native',
@@ -1437,7 +1439,7 @@ test('provider model field view state derives instance, entry, and catalog warni
 });
 
 test('model placeholder asks user to pick a provider first when runtime is unreachable but providers were preserved', () => {
-  const preservedProvider = {
+  const preservedProvider: ProductProviderDescriptor = {
     id: 'claude',
     label: 'Claude',
     defaultModel: 'claude-sonnet-4-6',
@@ -1500,7 +1502,7 @@ test('model placeholder asks user to pick a provider first when runtime is unrea
 });
 
 test('updating persistent control values adds, updates, and removes keyed control state', () => {
-  const control = {
+  const control: ProviderAdvancedCatalogControl = {
     key: 'codex.reasoning_effort',
     label: 'Reasoning effort',
     kind: 'enum',
@@ -1510,7 +1512,7 @@ test('updating persistent control values adds, updates, and removes keyed contro
       { value: 'medium', label: 'Medium' },
       { value: 'high', label: 'High' },
     ],
-  } as const;
+  };
 
   assert.deepEqual(
     updatePersistentControlValues({

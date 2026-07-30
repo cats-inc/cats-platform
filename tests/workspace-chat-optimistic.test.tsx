@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import type { AppShellPayload } from '../src/products/shared/api/workspaceContracts.ts';
 import {
   appendOptimisticUserMessage,
   applyOptimisticPendingExecutionTarget,
@@ -16,7 +17,7 @@ import {
   preservePendingOptimisticSendsAfterWorkspaceRefresh,
 } from '../src/products/shared/renderer/optimisticRefresh.ts';
 
-function createPayload(overrides: Record<string, unknown> = {}) {
+function createPayload(overrides: Record<string, unknown> = {}): AppShellPayload {
   return {
     ownerDisplayName: 'Kenny',
     metadata: {
@@ -53,7 +54,7 @@ function createPayload(overrides: Record<string, unknown> = {}) {
       ],
     },
     ...overrides,
-  } as never;
+  } as unknown as AppShellPayload;
 }
 
 test('appendOptimisticUserMessage stamps the selected room and summary with one optimistic user turn', () => {

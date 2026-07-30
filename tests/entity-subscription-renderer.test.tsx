@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import type { AppShellPayload } from '../src/products/shared/api/workspaceContracts.ts';
 import {
   applyChannelSubscriptionStateToPayload,
   type ChannelSubscriptionState,
@@ -39,7 +40,7 @@ class FakeEventSource {
   }
 }
 
-function createPayload() {
+function createPayload(): AppShellPayload {
   return {
     metadata: { generatedAt: '2026-04-21T00:00:00.000Z' },
     chat: {
@@ -97,7 +98,7 @@ function createPayload() {
         },
       ],
     },
-  };
+  } as unknown as AppShellPayload;
 }
 
 test('channel subscription state updates selectedChannel without replacing group metadata', () => {
@@ -120,7 +121,7 @@ test('channel subscription state updates selectedChannel without replacing group
           createdAt: '2026-04-21T00:00:01.000Z',
         },
       ],
-    } as ChannelSubscriptionState['selectedChannel'],
+    } as unknown as ChannelSubscriptionState['selectedChannel'],
     parallelChatGroups: [
       {
         id: 'group-1',
@@ -172,7 +173,7 @@ test('channel subscription state ignores stale selection snapshots', () => {
       id: 'channel-1',
       title: 'Stale channel',
       messages: [],
-    } as ChannelSubscriptionState['selectedChannel'],
+    } as unknown as ChannelSubscriptionState['selectedChannel'],
     parallelChatGroups: [],
   };
   const currentPayload = {
@@ -203,7 +204,7 @@ test('channel subscription state removes stale compare membership for mounted ch
       id: 'channel-1',
       title: 'Live channel',
       messages: [],
-    } as ChannelSubscriptionState['selectedChannel'],
+    } as unknown as ChannelSubscriptionState['selectedChannel'],
     parallelChatGroups: [],
   };
 
@@ -233,7 +234,7 @@ test('channel subscription state does not synthesize missing sidebar summaries',
       id: 'channel-1',
       title: 'Live channel',
       messages: [],
-    } as ChannelSubscriptionState['selectedChannel'],
+    } as unknown as ChannelSubscriptionState['selectedChannel'],
     parallelChatGroups: [],
   };
 
@@ -290,7 +291,7 @@ test('channel subscription state keeps selected channel summary routing in sync'
       ],
       parallelChatGroups: [],
     },
-  };
+  } as unknown as AppShellPayload;
   const subscriptionState: ChannelSubscriptionState = {
     selectedChannelId: 'channel-1',
     selectedChannel: {
@@ -324,7 +325,7 @@ test('channel subscription state keeps selected channel summary routing in sync'
         },
       ],
       messages: [],
-    } as ChannelSubscriptionState['selectedChannel'],
+    } as unknown as ChannelSubscriptionState['selectedChannel'],
     parallelChatGroups: [],
   };
 

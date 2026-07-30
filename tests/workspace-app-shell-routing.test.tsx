@@ -11,9 +11,13 @@ import {
   resolveInitialWorkspaceWarmNavigationPayload,
   runWorkspaceInitialAppShellLoad,
   shouldApplyWorkspaceBackgroundRefresh,
+  type BackgroundRefreshPayloadLike,
 } from '../src/products/shared/renderer/hooks/useWorkspaceAppShellRouting.ts';
+import { createAssumedReadyRuntimeSetupSummary } from '../src/runtime/setup.ts';
 
-function createPayload(overrides: Record<string, unknown> = {}) {
+function createPayload(
+  overrides: Record<string, unknown> = {},
+): BackgroundRefreshPayloadLike {
   return {
     runtime: {
       reachable: true,
@@ -21,14 +25,11 @@ function createPayload(overrides: Record<string, unknown> = {}) {
       status: 'ok',
       service: 'cats-runtime',
     },
-    runtimeSetup: {
-      required: false,
-      guideCat: null,
-    },
+    runtimeSetup: createAssumedReadyRuntimeSetupSummary(),
     metadata: {
       generatedAt: '2026-04-20T10:00:00.000Z',
-      requestId: 'request-current',
-      version: 'test',
+      host: '127.0.0.1',
+      port: 8181,
     },
     bootstrapAttemptId: 'bootstrap-current',
     chat: {
@@ -340,7 +341,16 @@ test('runWorkspaceInitialAppShellLoad ignores aborted fetch completions and fail
   const controller = new AbortController();
   const readyPayloads: Array<ReturnType<typeof createPayload>> = [];
   const errors: string[] = [];
-  const deferred = Promise.withResolvers<ReturnType<typeof createPayload>>();
+  let resolveDeferred!: (value: ReturnType<typeof createPayload>) => void;
+  let rejectDeferred!: (reason?: unknown) => void;
+  const deferred = {
+    promise: new Promise<ReturnType<typeof createPayload>>((resolve, reject) => {
+      resolveDeferred = resolve;
+      rejectDeferred = reject;
+    }),
+    resolve: (value: ReturnType<typeof createPayload>) => resolveDeferred(value),
+    reject: (reason?: unknown) => rejectDeferred(reason),
+  };
   const loadPromise = runWorkspaceInitialAppShellLoad({
     initialHadReadyState: false,
     match: {
