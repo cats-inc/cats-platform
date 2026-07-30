@@ -15,6 +15,11 @@ import type { PlatformSurfaceId } from '../src/shared/platform-contract.ts';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 import { DEFAULT_MOBILE_PAIRING } from '../src/app/renderer/settings/settingsDesktopPreferences.ts';
+import { createAssumedReadyRuntimeSetupSummary } from '../src/runtime/setup.ts';
+import {
+  buildChatConversationId,
+  CHAT_ROOT_CONTAINER_ID,
+} from '../src/shared/chatCoreIds.ts';
 
 const testTranslator = createTranslator('en');
 
@@ -40,7 +45,7 @@ function createCodeSidebarElement(
 
 function matchesComponent(
   node: ReactNode,
-  component: (props: Record<string, unknown>) => ReactNode,
+  component: (...args: never[]) => unknown,
 ): boolean {
   if (!isValidElement(node)) {
     return false;
@@ -63,6 +68,8 @@ function createPayload(
       runtimeBoundary: 'cats-runtime',
     },
     products: [],
+    installedApps: [],
+    scopeId: 'scope-fixture',
     desktop: {
       startAtLogin: false,
       openWindowOnStartup: true,
@@ -79,13 +86,7 @@ function createPayload(
       status: 'ok',
       service: 'cats-runtime',
     },
-    runtimeSetup: {
-      state: 'ready',
-      runtimePath: null,
-      configuredAt: null,
-      detectedAt: null,
-      notes: [],
-    },
+    runtimeSetup: createAssumedReadyRuntimeSetupSummary(),
     metadata: {
       generatedAt: '2026-04-07T00:00:00.000Z',
       host: 'localhost',
@@ -120,7 +121,7 @@ function createPayload(
           defaultExecutionTarget: { provider: 'claude', instance: null, model: 'claude-sonnet-4' },
           defaultModelSelection: null,
           products: ['chat'],
-          memory: { summary: null, updatedAt: null },
+          memory: { summary: null, updatedAt: null, facts: [], openLoops: [] },
         },
       ],
       channels,
@@ -138,7 +139,7 @@ function createPayload(
         systemPrompt: 'You are Boss Cat.',
         skillProfile: null,
         mcpProfile: null,
-        memory: { summary: null, updatedAt: null },
+        memory: { summary: null, updatedAt: null, facts: [], openLoops: [] },
         telegramBotName: null,
         updatedAt: '2026-04-07T00:00:00.000Z',
       },
@@ -163,7 +164,6 @@ function createPayload(
         maxParallelChats: 5,
         availableSurfaces: ['chat', 'work', 'code'],
       },
-      showVerboseMessages: false,
       botBindings: [],
     },
   };
@@ -171,8 +171,8 @@ function createPayload(
 
 function findElementByComponent(
   node: ReactNode,
-  component: (props: Record<string, unknown>) => ReactNode,
-) {
+  component: (...args: never[]) => unknown,
+): { props: Record<string, unknown> } | null {
   if (Array.isArray(node)) {
     for (const child of node) {
       const match = findElementByComponent(child, component);
@@ -592,7 +592,7 @@ test('Code sidebar exposes New Code, Team Code, and Peer Code actions', () => {
     throw new Error('ConversationSidebarNavigation not found.');
   }
   const primaryActions = (
-    navigation.props as Parameters<typeof ConversationSidebarNavigation>[0]
+    navigation.props as unknown as Parameters<typeof ConversationSidebarNavigation>[0]
   ).primaryActions;
   const labels = primaryActions.map((action) => action.label);
   assert.deepEqual(labels.slice(0, 3), ['New Code', 'Team Code', 'Peer Code']);
@@ -808,6 +808,8 @@ test('Work sidebar surfaces work-origin recents while filtering out chat recents
     payload: createPayload([
       {
         id: 'work-1',
+        containerId: CHAT_ROOT_CONTAINER_ID,
+        conversationId: buildChatConversationId('work-1'),
         title: 'Work recent',
         topic: '',
         originSurface: 'work',
@@ -822,6 +824,8 @@ test('Work sidebar surfaces work-origin recents while filtering out chat recents
       },
       {
         id: 'chat-1',
+        containerId: CHAT_ROOT_CONTAINER_ID,
+        conversationId: buildChatConversationId('chat-1'),
         title: 'Chat recent',
         topic: '',
         originSurface: 'chat',
@@ -883,6 +887,8 @@ test('Code sidebar surfaces code-origin recents once a +New code channel lands',
     payload: createPayload([
       {
         id: 'code-1',
+        containerId: CHAT_ROOT_CONTAINER_ID,
+        conversationId: buildChatConversationId('code-1'),
         title: 'Pomodoro timer',
         topic: '',
         originSurface: 'code',
@@ -897,6 +903,8 @@ test('Code sidebar surfaces code-origin recents once a +New code channel lands',
       },
       {
         id: 'chat-1',
+        containerId: CHAT_ROOT_CONTAINER_ID,
+        conversationId: buildChatConversationId('chat-1'),
         title: 'Chat recent',
         topic: '',
         originSurface: 'chat',
@@ -956,6 +964,8 @@ test('Code sidebar groups code-origin compare recents while filtering chat group
   const payload = createPayload([
     {
       id: 'code-compare-1',
+      containerId: CHAT_ROOT_CONTAINER_ID,
+      conversationId: buildChatConversationId('code-compare-1'),
       title: 'Code branch A',
       topic: '',
       originSurface: 'code',
@@ -970,6 +980,8 @@ test('Code sidebar groups code-origin compare recents while filtering chat group
     },
     {
       id: 'code-compare-2',
+      containerId: CHAT_ROOT_CONTAINER_ID,
+      conversationId: buildChatConversationId('code-compare-2'),
       title: 'Code branch B',
       topic: '',
       originSurface: 'code',
@@ -984,6 +996,8 @@ test('Code sidebar groups code-origin compare recents while filtering chat group
     },
     {
       id: 'chat-compare-1',
+      containerId: CHAT_ROOT_CONTAINER_ID,
+      conversationId: buildChatConversationId('chat-compare-1'),
       title: 'Chat branch A',
       topic: '',
       originSurface: 'chat',
@@ -998,6 +1012,8 @@ test('Code sidebar groups code-origin compare recents while filtering chat group
     },
     {
       id: 'chat-compare-2',
+      containerId: CHAT_ROOT_CONTAINER_ID,
+      conversationId: buildChatConversationId('chat-compare-2'),
       title: 'Chat branch B',
       topic: '',
       originSurface: 'chat',
@@ -1016,7 +1032,7 @@ test('Code sidebar groups code-origin compare recents while filtering chat group
       id: 'code-group',
       title: 'Code compare',
       originSurface: 'code',
-      mode: 'compare',
+      mode: 'parallel',
       status: 'active',
       memberCount: 2,
       memberChannelIds: ['code-compare-1', 'code-compare-2'],
@@ -1050,7 +1066,7 @@ test('Code sidebar groups code-origin compare recents while filtering chat group
       id: 'chat-group',
       title: 'Chat compare',
       originSurface: 'chat',
-      mode: 'compare',
+      mode: 'parallel',
       status: 'active',
       memberCount: 2,
       memberChannelIds: ['chat-compare-1', 'chat-compare-2'],
