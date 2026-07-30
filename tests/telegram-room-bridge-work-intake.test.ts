@@ -2,7 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { PROVIDER_AGENT_DECISION_CONTRACT_VERSION } from '../src/platform/orchestration/index.js';
-import type { RuntimeClient } from '../src/platform/runtime/client.js';
+import type { CatsMemoryService } from '../src/platform/memory/service.js';
+import type {
+  RuntimeClient,
+  RuntimeSessionCreateInput,
+} from '../src/platform/runtime/client.js';
+import type {
+  ChannelDispatchResult,
+  ChatState,
+} from '../src/products/chat/api/contracts.js';
 import {
   buildTelegramWorkExecutionPreparationChoiceResponse,
   buildTelegramWorkIntakeProposalChoiceResponse,
@@ -44,10 +52,58 @@ const strongClaudeNativeBootstrapConfig = {
   ],
 };
 
+/**
+ * The bridge requires a memory service, but this file only exercises Work
+ * intake and never flushes memory. An empty stub keeps the requirement honest
+ * without pretending to implement the whole surface -- if something here ever
+ * does reach it, the failure is loud rather than silently skipped.
+ */
+const memoryService = {} as unknown as CatsMemoryService;
+
+/**
+ * `TelegramRoomBridge` narrows routeRoomMessage to `{ state }` deliberately:
+ * `platform/` must not depend on product types, so it cannot name the chat
+ * dispatch results the adapter actually returns. This is a chat test asserting
+ * on those results, so it reads them through the product shape rather than
+ * widening the platform contract to suit a test.
+ */
+/**
+ * Chat message metadata is `Record<string, unknown>` by design -- it is an open
+ * channel for product payloads, so the contract cannot name them. These are the
+ * shapes this file asserts on, declared here so the assertions are checked
+ * rather than reaching into `unknown`.
+ */
+interface WorkIntakeProposalMetadata {
+  candidates?: Array<{ title: string }>;
+  source?: { surface: string; transportBindingId: string | null };
+  event?: string;
+  capturedWorkItemIds?: string[];
+  workItemIds?: string[];
+  createdTasks?: Array<{ workItemId: string; created: boolean; linked: boolean }>;
+  bindings?: Array<{
+    provider: string;
+    externalId: string;
+    externalType: string;
+    externalUrl: string;
+  }>;
+}
+
+interface WorkExternalIssueImportResultMetadata {
+  event?: string;
+  workItemId?: string;
+  provider?: string;
+  externalId?: string;
+}
+
+interface RoutedRoomMessage {
+  state: ChatState;
+  results: ChannelDispatchResult[];
+}
+
 function createRuntimeStub(): RuntimeClient {
   let nextSession = 1;
   return {
-    async createSession(input) {
+    async createSession(input: RuntimeSessionCreateInput) {
       const sessionId = `session-telegram-work-${nextSession++}`;
       return {
         id: sessionId,
@@ -135,8 +191,9 @@ test('Telegram room bridge passes provider tool decisions into Work intake sidec
     senderName: 'Kenneth',
     bindingId: 'bot-binding-1',
     runtimeClient: createRuntimeStub(),
+    memoryService,
     timestamp: new Date('2026-05-13T00:01:00.000Z'),
-  });
+  }) as RoutedRoomMessage;
 
   assert.equal(observedToolNames.includes(WORK_ITEM_PROPOSE_SPLIT_TOOL), true);
   assert.equal(routed.results.length, 0);
@@ -144,7 +201,8 @@ test('Telegram room bridge passes provider tool decisions into Work intake sidec
   const channel = buildChannelView(routed.state, roomId);
   const proposalMessage = channel.messages.find((message) =>
     message.metadata.event === 'work_intake_proposal_created');
-  const proposal = proposalMessage?.metadata.workIntakeProposal;
+  const proposal = proposalMessage?.metadata.workIntakeProposal as
+    WorkIntakeProposalMetadata | undefined;
 
   assert.equal(proposalMessage?.senderName, 'Cats Work');
   assert.equal(
@@ -189,13 +247,15 @@ test('Telegram room bridge passes provider tool decisions into Work intake sidec
     senderName: 'Kenneth',
     bindingId: 'bot-binding-1',
     runtimeClient: createRuntimeStub(),
+    memoryService,
     timestamp: new Date('2026-05-13T00:02:00.000Z'),
-  });
+  }) as RoutedRoomMessage;
 
   const declinedChannel = buildChannelView(declined.state, roomId);
   const declinedMessage = declinedChannel.messages.find((message) =>
     message.metadata.event === 'work_intake_proposal_declined');
-  const transition = declinedMessage?.metadata.workIntakeProposalTransition;
+  const transition = declinedMessage?.metadata.workIntakeProposalTransition as
+    WorkIntakeProposalMetadata | undefined;
   const declinedCore = await chatStore.readCore();
 
   assert.equal(declinedMessage?.body, 'Work intake proposal ignored.');
@@ -312,8 +372,9 @@ test('Telegram room bridge applies provider external issue import decisions', as
     bindingId: 'bot-binding-1',
     transportLocale: 'zh-Hant',
     runtimeClient: createRuntimeStub(),
+    memoryService,
     timestamp: new Date('2026-05-13T00:06:00.000Z'),
-  });
+  }) as RoutedRoomMessage;
 
   assert.deepEqual(
     observedToolNames.filter((toolName) => toolName.startsWith('work.external.')),
@@ -326,8 +387,10 @@ test('Telegram room bridge applies provider external issue import decisions', as
     candidate.title === 'Import Telegram GitHub issue');
   assert.ok(workItem);
   assert.equal(workItem.summary, 'Issue body captured from Telegram.');
-  const bindings = Array.isArray(workItem.metadata.externalWorkBindings?.bindings)
-    ? workItem.metadata.externalWorkBindings.bindings
+  const externalWorkBindings = workItem.metadata.externalWorkBindings as
+    WorkIntakeProposalMetadata | undefined;
+  const bindings = Array.isArray(externalWorkBindings?.bindings)
+    ? externalWorkBindings.bindings
     : [];
   assert.equal(bindings[0]?.provider, 'github');
   assert.equal(bindings[0]?.externalType, 'issue');
@@ -336,8 +399,9 @@ test('Telegram room bridge applies provider external issue import decisions', as
 
   const channel = buildChannelView(routed.state, roomId);
   const resultMessage = channel.messages.find((message) =>
-    message.metadata.event === 'work_external_issue_import_result');
-  const metadata = resultMessage?.metadata.workExternalIssueImportResult;
+    message.metadata?.event === 'work_external_issue_import_result');
+  const metadata = resultMessage?.metadata.workExternalIssueImportResult as
+    WorkExternalIssueImportResultMetadata | undefined;
   assert.equal(resultMessage?.senderName, 'Cats Work');
   assert.equal(
     resultMessage?.body,
@@ -349,7 +413,7 @@ test('Telegram room bridge applies provider external issue import decisions', as
   assert.equal(metadata?.externalId, '42');
   const readableRoom = bridge.readRoom(routed.state, roomId);
   const readableResult = readableRoom.messages.find((message) =>
-    message.metadata.event === 'work_external_issue_import_result');
+    message.metadata?.event === 'work_external_issue_import_result');
   assert.equal(readableResult?.body, resultMessage?.body);
 });
 
@@ -456,14 +520,16 @@ test('Telegram room bridge confirms Boss Work execution preparation into pending
     senderName: 'Kenneth',
     bindingId: 'bot-binding-1',
     runtimeClient: createRuntimeStub(),
+    memoryService,
     timestamp: new Date('2026-05-13T00:11:00.000Z'),
-  });
+  }) as RoutedRoomMessage;
 
   assert.equal(observedToolNames.includes(WORK_ITEM_PREPARE_EXECUTION_TOOL), true);
   const channel = buildChannelView(routed.state, roomId);
   const proposalMessage = channel.messages.find((message) =>
     message.metadata.event === 'work_execution_preparation_proposed');
-  const proposal = proposalMessage?.metadata.workExecutionPreparationProposal;
+  const proposal = proposalMessage?.metadata.workExecutionPreparationProposal as
+    WorkIntakeProposalMetadata | undefined;
   assert.equal(proposalMessage?.senderName, 'Cats Work');
   assert.deepEqual(proposal?.workItemIds, ['work-item-telegram-start-1']);
 
@@ -485,13 +551,15 @@ test('Telegram room bridge confirms Boss Work execution preparation into pending
     senderName: 'Kenneth',
     bindingId: 'bot-binding-1',
     runtimeClient: createRuntimeStub(),
+    memoryService,
     timestamp: new Date('2026-05-13T00:12:00.000Z'),
-  });
+  }) as RoutedRoomMessage;
 
   const confirmedChannel = buildChannelView(confirmed.state, roomId);
   const transitionMessage = confirmedChannel.messages.find((message) =>
     message.metadata.event === 'work_execution_preparation_tasks_created');
-  const transition = transitionMessage?.metadata.workExecutionPreparationTransition;
+  const transition = transitionMessage?.metadata.workExecutionPreparationTransition as
+    WorkIntakeProposalMetadata | undefined;
   const confirmedCore = await chatStore.readCore();
   const workItem = confirmedCore.workItems.find((candidate) =>
     candidate.id === 'work-item-telegram-start-1');
