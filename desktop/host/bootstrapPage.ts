@@ -644,6 +644,9 @@ export function buildDesktopBootstrapPage(): string {
         'onboarding.installNodeFirst': 'Install Node first',
         'onboarding.nodeLabel': 'Node.js / npm',
         'onboarding.nodeStatus': 'Required by npm CLIs',
+        'onboarding.rescanClis': 'Detect again',
+        'onboarding.scanClis': 'Detect installed CLIs',
+        'onboarding.scanningClis': 'Detecting…',
         'recovery.summary.details': 'See details below.',
         'recovery.summary.failedHelper': 'A local helper did not start. Try again first; use advanced details only if it keeps failing.',
         'recovery.summary.failedService': '{service} did not start. Try again first; use advanced details only if it keeps failing.',
@@ -753,6 +756,7 @@ export function buildDesktopBootstrapPage(): string {
         'slowHint.wantToPlay': 'Want to play? Hang in there, almost ready~',
         'status.checking': 'checking',
         'status.degraded': 'degraded',
+        'status.detect': 'Detect',
         'status.error': 'error',
         'status.failed': 'failed',
         'status.info': 'info',
@@ -760,6 +764,7 @@ export function buildDesktopBootstrapPage(): string {
         'status.installed': 'Installed',
         'status.installedWithCheck': '\u2713 Installed',
         'status.installing': 'Installing\u2026',
+        'status.notDetected': 'Not detected yet',
         'status.ok': 'ok',
         'status.pending': 'pending',
         'status.ready': 'ready',
@@ -892,6 +897,9 @@ export function buildDesktopBootstrapPage(): string {
         'onboarding.installNodeFirst': '請先安裝 Node',
         'onboarding.nodeLabel': 'Node.js / npm',
         'onboarding.nodeStatus': 'npm CLI 需要此項',
+        'onboarding.rescanClis': '重新偵測',
+        'onboarding.scanClis': '偵測已安裝的 CLI',
+        'onboarding.scanningClis': '偵測中…',
         'recovery.summary.details': '請查看下方詳細資料。',
         'recovery.summary.failedHelper': '本機輔助程式未啟動。請先重試；只有持續失敗時才需要使用進階詳細資料。',
         'recovery.summary.failedService': '{service} 未啟動。請先重試；只有持續失敗時才需要使用進階詳細資料。',
@@ -1001,6 +1009,7 @@ export function buildDesktopBootstrapPage(): string {
         'slowHint.wantToPlay': '快好了，請再稍等一下~',
         'status.checking': '檢查中',
         'status.degraded': '降級',
+        'status.detect': '偵測',
         'status.error': '錯誤',
         'status.failed': '失敗',
         'status.info': '資訊',
@@ -1008,6 +1017,7 @@ export function buildDesktopBootstrapPage(): string {
         'status.installed': '已安裝',
         'status.installedWithCheck': '\u2713 已安裝',
         'status.installing': '安裝中…',
+        'status.notDetected': '尚未偵測',
         'status.ok': '正常',
         'status.pending': '待處理',
         'status.ready': '就緒',
@@ -1674,7 +1684,20 @@ export function buildDesktopBootstrapPage(): string {
       ollama: 'Ollama'
     };
     var cliInstallingState = Object.create(null);
+    var cliScanInFlight = false;
     var onboardingExpanded = false;
+
+    /* The runtime only fills in cliInventory after a setup scan has actually
+       run, and that scan is deliberately NOT part of the boot path — it spawns
+       one where/which lookup per provider and would add seconds to startup.
+       Until then every candidate arrives as installed:false, which is
+       indistinguishable from "we checked and it is missing". Render that as
+       unknown instead of claiming the CLI is absent; the inventory's source
+       field is the flag that tells the two apart. */
+    function isCliInventoryScanned(snapshot) {
+      var inv = snapshot && snapshot.prerequisites && snapshot.prerequisites.cliInventory;
+      return Boolean(inv && inv.source === 'runtime');
+    }
 
     function pickInventoryCandidate(snapshot, providerId) {
       var inv = snapshot && snapshot.prerequisites && snapshot.prerequisites.cliInventory;
@@ -1758,23 +1781,53 @@ export function buildDesktopBootstrapPage(): string {
       };
     }
 
-    function toProviderInstallCard(candidate) {
+    function toProviderInstallCard(candidate, scanned) {
       return {
         helperId: candidate.helperId,
         label: ONBOARDING_PROVIDER_LABELS[candidate.providerId] || candidate.label,
-        installed: candidate.installed,
+        installed: scanned ? candidate.installed : false,
+        inventoryUnknown: !scanned,
         available: candidate.available,
         supported: candidate.supported,
         supportsApply: true
       };
     }
 
+    function handleCliScanClick() {
+      if (cliScanInFlight) return;
+      cliScanInFlight = true;
+      doRender();
+      bridge.runAction('retry_cli_scan')
+        .catch(function (err) {
+          try { console.error('CLI scan failed', err); } catch (e) {}
+        })
+        .finally(function () {
+          cliScanInFlight = false;
+          doRender();
+        });
+    }
+
     function handleCliInstallClick(card) {
       if (!card.helperId) return;
+      /* An unknown card has never been probed, so "install" would be a guess.
+         Probe first; the scan is global and cached, so one click resolves the
+         whole grid and the user can then decide what actually needs installing. */
+      if (card.inventoryUnknown) {
+        handleCliScanClick();
+        return;
+      }
       if (cliInstallingState[card.helperId]) return;
       cliInstallingState[card.helperId] = true;
       doRender();
       bridge.runSetupHelper(card.helperId, 'apply')
+        .then(function () {
+          /* The inventory we just rendered is now stale for this provider —
+             force a rescan so a successful install shows up as installed
+             instead of silently keeping the pre-install state. */
+          return bridge.runAction('retry_cli_scan').catch(function (err) {
+            try { console.error('CLI rescan after install failed', card.helperId, err); } catch (e) {}
+          });
+        })
         .catch(function (err) {
           try { console.error('CLI install failed', card.helperId, err); } catch (e) {}
         })
@@ -1801,6 +1854,11 @@ export function buildDesktopBootstrapPage(): string {
         statusClass = 'c-ok';
         statusContent = tx('status.installedWithCheck');
         btnContent = btnLabel;
+      } else if (card.inventoryUnknown) {
+        btnLabel = tx('status.detect');
+        statusClass = '';
+        statusContent = cliScanInFlight ? spinnerEl() : tx('status.notDetected');
+        btnContent = cliScanInFlight ? spinnerEl() : btnLabel;
       } else {
         btnLabel = tx('status.install');
         statusClass = '';
@@ -1814,7 +1872,14 @@ export function buildDesktopBootstrapPage(): string {
       }
       var btn = el('button', {
         class: 'btn cli-card-btn',
-        disabled: installing || !card.available || !card.supported || card.supportsApply === false,
+        /* supportsApply gates installing, not detecting. An npm-group card
+           still parked behind the Node prerequisite must stay clickable while
+           unknown — the CLI may well already be installed. */
+        disabled: installing
+          || cliScanInFlight
+          || !card.available
+          || !card.supported
+          || (!card.inventoryUnknown && card.supportsApply === false),
         onclick: function () { handleCliInstallClick(card); }
       }, btnContent);
       var className = 'cli-card' + (hidden ? ' cli-card-hidden' : '');
@@ -1838,11 +1903,12 @@ export function buildDesktopBootstrapPage(): string {
     var ONBOARDING_COLLAPSED_INCLUDES_NODE = true;
 
     function appendProviderCards(cards, snapshot, providerOrder, options) {
+      var scanned = isCliInventoryScanned(snapshot);
       for (var i = 0; i < providerOrder.length; i++) {
         var providerId = providerOrder[i];
         var candidate = pickInventoryCandidate(snapshot, providerId);
         if (!candidate || !candidate.available) continue;
-        var card = toProviderInstallCard(candidate);
+        var card = toProviderInstallCard(candidate, scanned);
         if (options && options.waitForNodePrerequisite) {
           card.statusText = options.nodePrerequisiteStatusText || tx('onboarding.installNodeFirst');
           card.supportsApply = false;
@@ -2485,6 +2551,17 @@ export function buildDesktopBootstrapPage(): string {
 
       var cardSet = buildCliCards(snap, currentSetupSnapshot, { alwaysExpanded: false });
       var actions = [continueBtn];
+      /* Offered even once the inventory is known: a CLI installed outside Cats
+         since the last scan is otherwise invisible until something else forces
+         a rescan. */
+      var scanLabel = cliScanInFlight
+        ? tx('onboarding.scanningClis')
+        : (isCliInventoryScanned(snap) ? tx('onboarding.rescanClis') : tx('onboarding.scanClis'));
+      actions.push(el('button', {
+        class: 'btn',
+        disabled: cliScanInFlight,
+        onclick: handleCliScanClick
+      }, scanLabel));
       if (cardSet.hasHiddenCards) {
         var moreLabel = onboardingExpanded ? tx('action.showFewer') : tx('action.showMore');
         actions.push(el('button', {
