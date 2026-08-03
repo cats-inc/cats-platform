@@ -158,10 +158,18 @@ Gated off deliberately:
 - Automatically downloading an update in Phase 1.
 - Supporting downgrade or rollback through the updater.
 - Supporting private GitHub repositories that require end-user GitHub tokens.
-- Making DEB, PKG, tarball, Windows arm64, or Linux arm64 part of the Phase 1
-  self-update matrix.
+- Making PKG, tarball, AppImage, RPM, Windows arm64, or Linux x64 part of the
+  Phase 1 self-update matrix.
 - Finalizing alpha/beta promotion and downgrade behavior.
 - Treating unsigned development packages as official update clients.
+
+The Linux arm64 `.deb` is deliberately **in** scope and is not covered by the
+exclusion above. It is the only Linux artifact section 8 requires, acceptance
+criterion 9 covers its old-to-new upgrade, and PLAN-101 Phase 6 validates it on
+a real arm64 host. An earlier revision of this list excluded both `DEB` and
+`Linux arm64`, which together removed the entire Linux self-update path that the
+rest of this specification requires; that wording is corrected here rather than
+preserved.
 
 ## Distribution and Visibility Matrix
 

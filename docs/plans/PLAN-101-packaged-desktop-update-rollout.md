@@ -440,6 +440,8 @@ ownership boundaries in ADR-108 and SPEC-111.
 | 2026-07-29 | Phase 1 complete except the first tag: added the tag-gated `desktop-release.yml` with a guard-first job order, three native runners, draft-first collection, `scripts/validate-release-assets.mjs`, and an explicit draft GitHub publish provider. |
 | 2026-07-29 | Phase 4 partial: localized update copy (33 keys, en + zh-TW) and the status/error/action presentation mapping. The `App updates` section component itself is the next step. |
 | 2026-07-29 | Phase 1 follow-up: manual workflow dispatch now exercises the full draft/build/validate/publish sequence as an unsigned GitHub prerelease without requiring Windows or Apple signing; it omits official update identity and never becomes `latest`, while stable tag publication remains signed and fail-fast. |
+| 2026-08-03 | Corrected the SPEC-111 Non-Goals list, which excluded both `DEB` and `Linux arm64` from the Phase 1 self-update matrix and so contradicted section 8, acceptance criterion 9, and this plan's Phase 6 Linux tasks. The Linux arm64 `.deb` is in scope; the exclusion now names only the formats and architectures that are genuinely out. |
+| 2026-08-03 | Investigated and dismissed a suspected defect in the shipped updater feed configuration. `build.publish.releaseType` is `draft`, and electron-builder copies it into the packaged `app-update.yml`, which looks like it would point release clients at draft releases that are invisible without a token. It does not: electron-updater's `GitHubProvider` never reads `releaseType`, feed selection comes from `allowPrerelease`/`channel`, and `configureElectronUpdater` overrides the feed at runtime through `setFeedURL`. No change made. Recorded so the same false positive is not re-raised. |
 
 ---
 

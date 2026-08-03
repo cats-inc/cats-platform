@@ -153,8 +153,9 @@ const FORMAT_EXTENSIONS = {
   nsis: ['.exe'],
   dmg: ['.dmg'],
   // The updater archive is named from this repository's artifactName template,
-  // which produces Cats-<version>-universal.zip rather than the -mac.zip
-  // default some electron-builder setups emit.
+  // which produces Cats-<version>-x64.zip rather than the -mac.zip default some
+  // electron-builder setups emit. The name carries no platform marker, so match
+  // it by extension and rely on the per-platform format list above.
   zip: ['.zip'],
   AppImage: ['.AppImage'],
   deb: ['.deb'],
