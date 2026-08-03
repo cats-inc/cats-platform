@@ -32,6 +32,7 @@ interface ProcessSupervisorDependencies {
   spawn?: typeof spawn;
   now?: () => Date;
   platform?: NodeJS.Platform;
+  env?: NodeJS.ProcessEnv;
   waitForServiceReadiness?: typeof waitForServiceReadiness;
   onStateChange?: (snapshot: ManagedServiceSnapshot) => void;
 }
@@ -554,6 +555,8 @@ export function buildManagedServiceSpecs(
   platform: NodeJS.Platform = process.platform,
 ): ManagedServiceSpec[] {
   const managedEnv = createManagedServiceEnv(env, platform);
+  const runtimeManagedEnv = { ...managedEnv };
+  delete runtimeManagedEnv.CATS_AUTH_SESSION_SECRET;
   const pathModule = platform === 'win32' ? win32 : posix;
 
   return [
@@ -568,7 +571,7 @@ export function buildManagedServiceSpecs(
       ],
       cwd: config.runtimePackageRoot,
       env: {
-        ...managedEnv,
+        ...runtimeManagedEnv,
         ELECTRON_RUN_AS_NODE: '1',
         CATS_RUNTIME_DIR: config.paths.runtimeRootDir,
         CATS_RUNTIME_PACKAGE_ROOT: config.runtimePackageRoot,
@@ -621,6 +624,8 @@ export class ManagedServiceSupervisor {
 
   private readonly platform: NodeJS.Platform;
 
+  private readonly managedEnv: NodeJS.ProcessEnv;
+
   private readonly logQueues = new Map<ManagedServiceName, Promise<void>>();
 
   constructor(
@@ -628,7 +633,8 @@ export class ManagedServiceSupervisor {
     private readonly dependencies: ProcessSupervisorDependencies = {},
   ) {
     this.platform = dependencies.platform ?? process.platform;
-    const specs = buildManagedServiceSpecs(config, process.env, this.platform);
+    this.managedEnv = { ...(dependencies.env ?? process.env) };
+    const specs = buildManagedServiceSpecs(config, this.managedEnv, this.platform);
     this.spawnImpl = dependencies.spawn ?? spawn;
     this.now = dependencies.now ?? (() => new Date());
     this.waitForReadiness = dependencies.waitForServiceReadiness ?? waitForServiceReadiness;
@@ -655,7 +661,7 @@ export class ManagedServiceSupervisor {
 
   async startAll(): Promise<void> {
     await ensureLaunchAssets(this.config);
-    const specs = buildManagedServiceSpecs(this.config, process.env, this.platform);
+    const specs = buildManagedServiceSpecs(this.config, this.managedEnv, this.platform);
     for (const spec of specs) {
       await this.startService(spec);
     }

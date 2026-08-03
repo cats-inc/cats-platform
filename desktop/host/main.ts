@@ -146,6 +146,7 @@ import {
   type DesktopStartupPreferences,
 } from './desktopStartup.js';
 import { loadDesktopEnvFiles } from './env.js';
+import { ensureDesktopAuthSessionSecret } from './authSessionSecret.js';
 import {
   assertMainWindowScreenshotIpcSender,
   captureScreenshotRegion,
@@ -2210,6 +2211,7 @@ async function main(): Promise<void> {
     packaged: app.isPackaged,
     resourcesPath: nodeProcess.resourcesPath,
   });
+  const authSessionSecret = await ensureDesktopAuthSessionSecret(hostConfig);
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     if (!mainWindow || webContents !== mainWindow.webContents) {
       callback(false);
@@ -2287,6 +2289,10 @@ async function main(): Promise<void> {
     ]);
   }
   supervisor = new ManagedServiceSupervisor(hostConfig, {
+    env: {
+      ...process.env,
+      CATS_AUTH_SESSION_SECRET: authSessionSecret.secret,
+    },
     onStateChange: () => {
       if (hostConfig && supervisor) {
         publishSnapshot(buildSnapshot());

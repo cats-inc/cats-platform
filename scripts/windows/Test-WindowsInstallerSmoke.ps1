@@ -6,7 +6,8 @@
     Checks that the installed Electron host, bundled Cats sidecar, bundled
     cats-runtime sidecar, and packaged installer manifest are all present. By
     default it then launches the installed app, waits for the desktop-host
-    state file to be refreshed, and validates the persisted readiness snapshot.
+    state file to be refreshed, and validates the persisted readiness snapshot
+    plus first-run authentication-secret provisioning.
 
 .PARAMETER InstallRoot
     The installed Cats directory. Defaults to the NSIS per-user install path.
@@ -59,6 +60,27 @@ function Resolve-DefaultInstallRoot {
 
 function Resolve-DefaultHostStatePath {
   return Join-Path $env:USERPROFILE '.cats\desktop\state.json'
+}
+
+function Test-AuthSessionSecretProvisioned {
+  $generatedSecretPath = Join-Path $env:USERPROFILE '.cats\platform\config\auth-session-secret.local'
+  if (Test-Path -LiteralPath $generatedSecretPath -PathType Leaf) {
+    $generatedSecret = (Get-Content -LiteralPath $generatedSecretPath -Raw).Trim()
+    if ($generatedSecret.Length -ge 32 -and $generatedSecret -notmatch '\s') {
+      return $true
+    }
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($env:CATS_AUTH_SESSION_SECRET)) {
+    return $true
+  }
+
+  $desktopEnvPath = Join-Path $env:USERPROFILE '.cats\desktop\.env'
+  if (-not (Test-Path -LiteralPath $desktopEnvPath -PathType Leaf)) {
+    return $false
+  }
+  return [bool](Select-String -LiteralPath $desktopEnvPath `
+    -Pattern '^\s*CATS_AUTH_SESSION_SECRET\s*=\s*\S+' -Quiet)
 }
 
 function Assert-FileExists([string]$Path, [string]$Label) {
@@ -227,6 +249,7 @@ try {
   $appService = $persisted.snapshot.services | Where-Object { $_.name -eq 'cats-platform' } | Select-Object -First 1
   Assert-True ($null -ne $runtimeService -and $runtimeService.ready -eq $true) 'cats-runtime sidecar reached ready status'
   Assert-True ($null -ne $appService -and $appService.ready -eq $true) 'cats app sidecar reached ready status'
+  Assert-True (Test-AuthSessionSecretProvisioned) 'desktop auth session secret is provisioned for first-admin setup'
   Assert-True (($persisted.snapshot.progress.steps | Measure-Object).Count -ge 3) 'host snapshot includes bootstrap progress steps'
   Assert-True ($persisted.snapshot.background.trayEnabled -is [bool]) 'host snapshot includes background lifecycle state'
   Assert-True ($persisted.snapshot.packaging.strategy -eq 'electron-sidecar-bundle') 'host snapshot includes packaging metadata'

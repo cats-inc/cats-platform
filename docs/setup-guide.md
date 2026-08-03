@@ -24,12 +24,21 @@ public host repo/package target.
 
 ### Platform auth configuration
 
-PLAN-089 auth is in rollout. Set a long `CATS_AUTH_SESSION_SECRET` before using
-the first-admin local login or Cats Mobile bearer-session paths:
+PLAN-089 auth is in rollout. Self-hosted/dev servers must set a long
+`CATS_AUTH_SESSION_SECRET` before using the first-admin local login or Cats
+Mobile bearer-session paths:
 
 ```bash
 CATS_AUTH_SESSION_SECRET=<long-random-secret>
 ```
+
+Packaged Cats Desktop does not require the operator to create a `.env` file for
+this value. When no explicit secret is configured, the Desktop host generates a
+256-bit secret before it starts the platform sidecar, persists it at
+`~/.cats/platform/config/auth-session-secret.local`, and reuses it on later
+launches. The file is created with user-only permissions where the filesystem
+supports POSIX modes. An explicit `CATS_AUTH_SESSION_SECRET` from the process or
+Desktop `.env` remains the operator override and is never overwritten.
 
 `CATS_AUTH_ENABLED=false` is an unsafe dev/test escape hatch only. It is rejected
 after setup is complete and should not be used for LAN-facing workspaces.
@@ -848,6 +857,8 @@ What the smoke-check confirms:
   target
 - launching the installed app refreshes the persisted desktop-host state file
   and reaches a stable bootstrap phase
+- clean-install launch provisions a reusable platform auth session secret before
+  the first-admin setup form is submitted
 
 If startup still fails after install, capture these artifacts before retrying:
 
@@ -946,4 +957,4 @@ See `Dependency install warnings` under `Installation`.
 
 ---
 
-*Last updated: 2026-07-28*
+*Last updated: 2026-08-04*

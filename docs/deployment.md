@@ -68,8 +68,11 @@ Current decision:
 
 Auth and repair constraints for LAN/tunnel access:
 
-- Set `CATS_AUTH_SESSION_SECRET` before testing or exposing browser/mobile
-  auth routes.
+- Self-hosted hosts must set `CATS_AUTH_SESSION_SECRET` before testing or
+  exposing browser/mobile auth routes. Packaged Desktop generates and persists
+  a 256-bit secret automatically at
+  `~/.cats/platform/config/auth-session-secret.local` when no explicit value is
+  configured; the same secret is reused across launches.
 - `CATS_AUTH_ENABLED=false` is not a LAN deployment option and is rejected
   after setup completion.
 - Keep `CATS_AUTH_ALLOWED_BROWSER_ORIGINS` explicit for every browser-facing
@@ -472,4 +475,4 @@ per-user path.
 
 ---
 
-*Last updated: 2026-04-20*
+*Last updated: 2026-08-04*

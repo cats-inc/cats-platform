@@ -279,6 +279,11 @@ product write path.
 - [x] Task 6.7: Update mobile pairing docs to state that the Expo Go QR loads
       only the mobile bundle; Cats Mobile must complete local or Google mobile
       login before any product data is fetched.
+- [x] Task 6.8: Provision a stable 256-bit auth session secret on packaged
+      Desktop clean installs when no explicit secret is configured. Persist it
+      with restrictive local-file permissions, reuse it across launches, keep
+      explicit operator configuration authoritative, and inject it only into
+      the platform sidecar.
 
 **Deliverables**: auth behavior is documented, tested, and visible to
 operators before implementation is marked complete.
@@ -312,6 +317,8 @@ operators before implementation is marked complete.
 | `mobile/src/api/authTokenStore.ts` | Create | Secure-storage-only bearer token persistence boundary for Cats Mobile |
 | `src/mobile/**` | Modify | Keep shared mobile contracts aligned with mobile auth status and bearer-session requirements |
 | `src/app/server/platformSetupRoutes.ts` | Modify | Canonical platform setup route; create first admin during platform setup |
+| `desktop/host/authSessionSecret.ts` | Create | Generate or reload the packaged Desktop auth session secret before sidecars start |
+| `desktop/host/processSupervisor.ts` | Modify | Inject the secret into the platform sidecar without exposing it to the runtime sidecar |
 | `src/products/chat/api/setupRoutes.ts` | Audit/Delete or Modify | Legacy setup/reset route; remove if unused, otherwise align with the canonical auth gate and require admin auth after setup |
 | `tests/*auth*.test.*` | Create | Store, route gate, setup/login/logout, and Google verifier coverage |
 | `.env.example` | Modify | Document auth and Google config |
@@ -615,6 +622,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4b mobile Google server/API slice landed: `/api/mobile/auth/google/login` is a public mobile-auth route that verifies ID tokens only against `CATS_AUTH_GOOGLE_MOBILE_AUDIENCES`, issues one-time-returned mobile bearer sessions for already linked Google identities, and exposes typed Cats Mobile API/session helpers. Mobile AuthSession/native UI wiring remains pending before Task 4b.7 can be checked. |
 | 2026-05-10 | Phase 4b mobile Google UI landed: `/api/mobile/auth/status` now advertises configured public mobile Google client ids, Cats Mobile starts a mobile OIDC ID-token flow from the login panel, posts the verified result to `/api/mobile/auth/google/login`, persists the returned bearer through the existing secure-token boundary, and leaves browser GIS/CSRF/cookies out of the mobile path. Task 4b.7 is now checked. |
 | 2026-05-10 | Repair/mobile Google security follow-up landed: repair first-admin and throttle recovery now require the one-time recovery token even when the socket source address is loopback, closing reverse-proxy/tunnel repair-mode bypass risk; Cats Mobile now sends the per-attempt OIDC nonce to `/api/mobile/auth/google/login`, server verification checks the nonce claim, invalid mobile Google attempts are throttled before verifier calls, and the mobile OIDC helper uses secure randomness plus exact redirect matching. |
+| 2026-08-04 | Closed the packaged Desktop clean-install auth gap required by SPEC-100 requirement 24: the host now generates and persists a 256-bit session secret when no explicit configuration exists, reuses it across launches, and passes it only to the platform sidecar. Added clean-install, override, invalid-file, and sidecar-boundary regressions plus installer smoke coverage. |
 
 ---
 

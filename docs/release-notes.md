@@ -19,6 +19,28 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-08-04
+
+### Packaged Desktop provisions its first-run auth secret
+
+Behavior change:
+
+Clean Cats Desktop installs no longer require an operator-created `.env` before
+the first-admin setup form can complete. When no explicit
+`CATS_AUTH_SESSION_SECRET` is configured, Desktop generates a 256-bit secret,
+persists it in the user-local platform config directory, reuses it across
+launches, and injects it only into the `cats-platform` sidecar.
+
+Migration steps:
+
+None for packaged Desktop. Existing explicit secrets remain authoritative and
+are not overwritten. Self-hosted/dev deployments must continue to configure
+their own `CATS_AUTH_SESSION_SECRET`.
+
+Deprecations:
+
+None.
+
 ## 2026-05-10
 
 ### Platform auth rollout in progress
