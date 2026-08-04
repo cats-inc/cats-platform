@@ -134,6 +134,27 @@ ephemeral deployments set an explicit shared value. Persistence failures remain
 fail-closed and are surfaced through CLI stderr or Desktop's retryable sidecar
 startup diagnostics.
 
+### 1c. Desktop uses a single-use handoff for system-browser Runtime surfaces
+
+Desktop Runtime setup, dashboard, and playground links remain system-browser
+surfaces. They must not replace the current Electron page because those
+standalone Runtime pages do not own the Desktop shell's back navigation.
+
+An authenticated Desktop renderer may request a browser handoff through a
+session-and-CSRF-protected mutation. The platform stores only a keyed hash of
+the random handoff token in process memory, expires it after 30 seconds, and
+allows it to target only the three platform-owned `/runtime/*` ingress paths.
+The system browser exchanges the token exactly once for a new Cats-owned
+HttpOnly browser session cookie and receives a `303` redirect to the stored
+Runtime path. The exchange response is non-cacheable and uses a no-referrer
+policy. The final Runtime URL contains no handoff token, and neither a Cats
+session token nor `CATS_AUTH_SESSION_SECRET` is transferred through the URL.
+
+The handoff exchange is a narrow public capability endpoint because the
+system browser has no Cats cookie before exchange. Possession is bounded by
+the short TTL and single-use deletion; minting remains protected by the full
+browser session and synchronizer-CSRF policy.
+
 ### 2. First-run setup creates the first admin account
 
 `/setup` remains the first-run route, but it becomes an admin bootstrap flow.
@@ -387,6 +408,7 @@ that need Core actor attribution until an explicit mapping exists.
 *Amended: 2026-04-30 — closed pre-auth bootstrap CSRF gap with same-origin gate on `/setup`/`/api/auth/login`/repair; constrained repair first-admin creation to a one-time recovery token so the escape hatch does not re-open LAN admin bootstrap through reverse proxies or tunnels; pinned `E_CSRF_MISMATCH` error code so renderer retry cannot collide with `E_FORBIDDEN`; promoted per-account aggregate guards (progressive delay, daily failure budget, per-/24 subnet budget) from optional to required.*
 
 *Amended: 2026-08-04 — moved default session-secret provisioning into the platform process so local dev, npm/npx, cats-one, and Desktop share one secure first-run contract; rejected fixed public fallback secrets.*
+*Amended: 2026-08-05 — kept standalone Runtime surfaces in the system browser and added a 30-second, single-use Desktop browser-session handoff with allow-listed return paths.*
 *Amended: 2026-04-30 — aligned the pre-auth gate with Vite/reverse-proxy topologies by using an explicit allowed browser-origin set; clarified that `same-site` does not pass without an allowlisted `Origin`; kept raw recovery tokens out of structured logs; made aggregate account cooldown bounded and recoverable without deleting auth state.*
 *Amended: 2026-04-30 — added Expo Go / Cats Mobile as a first-party non-browser client: QR pairing only bootstraps the bundle, product data requires a mobile device bearer session, and mobile Google login is separate from browser GIS credential POST.*
 *Decision makers: user + Codex*

@@ -43,11 +43,12 @@ test('contracts module stays sandbox-safe — no node:* imports allowed', () => 
   );
 });
 
-test('voice capture and update channel names stay aligned between preload and contracts', () => {
+test('browser handoff, voice capture, and update channels stay aligned', () => {
   const preloadSource = readFileSync(PRELOAD_SOURCE, 'utf8');
   const contractsSource = readFileSync(CONTRACTS_SOURCE, 'utf8');
 
   const channelNames = [
+    'DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL',
     'DESKTOP_VOICE_CAPTURE_START_CHANNEL',
     'DESKTOP_VOICE_CAPTURE_STOP_CHANNEL',
     'DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL',

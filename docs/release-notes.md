@@ -19,6 +19,30 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-08-05
+
+### Desktop runtime setup opens in an authenticated system browser
+
+Behavior change:
+
+Desktop links to Cats Runtime setup, dashboard, and playground surfaces once
+again open in the user's system browser instead of replacing the current
+Electron page. Before opening the browser, the authenticated Desktop renderer
+requests a 30-second, single-use handoff. The platform stores only its hash,
+consumes it before issuing a separate HttpOnly browser session cookie, and
+redirects to the allow-listed Runtime surface. Replays, expired handoffs,
+non-Runtime return paths, and open redirects are rejected. The final Runtime
+URL contains no handoff credential.
+
+Migration steps:
+
+None. The system browser receives its own Cats session the first time a
+Desktop Runtime link is opened.
+
+Deprecations:
+
+None.
+
 ## 2026-08-04
 
 ### Every platform entrypoint provisions its first-run auth secret

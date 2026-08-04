@@ -8,10 +8,13 @@ import { loadConfig } from '../src/config.ts';
 import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import {
+  AUTH_SESSION_COOKIE_NAME,
   createEmptyPlatformAuthState,
   createFirstAdminLocalAuthState,
   issueMobileDeviceSession,
+  MemoryPlatformBrowserHandoffStore,
   MemoryPlatformAuthStore,
+  revokeSession,
   type PlatformAuthState,
   type PlatformAuthStateReadStatus,
   type PlatformAuthStore,
@@ -147,6 +150,136 @@ test('request router does not let invalid bearer bypass browser csrf', async (t)
   });
 });
 
+test('request router exchanges a one-time desktop handoff for a browser session', async (t) => {
+  const fixture = await createSeededAuthFixture();
+  const server = createTestServer({
+    setupCompleteAt: NOW.toISOString(),
+    authStore: fixture.authStore,
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  const created = await fetch(serverUrl(server, '/api/auth/browser-handoff'), {
+    method: 'POST',
+    headers: {
+      cookie: `${AUTH_SESSION_COOKIE_NAME}=${encodeURIComponent(fixture.browserToken)}`,
+      'content-type': 'application/json',
+      'x-cats-csrf-token': fixture.browserCsrfToken,
+    },
+    body: JSON.stringify({ returnTo: '/runtime/setup' }),
+  });
+  const createdPayload = await created.json() as Record<string, unknown>;
+
+  assert.equal(created.status, 200);
+  assert.match(String(createdPayload.launchPath), /^\/api\/auth\/browser-handoff\/exchange\?token=/u);
+  assert.equal(created.headers.get('cache-control'), 'no-store');
+
+  const exchangePath = String(createdPayload.launchPath);
+  const exchanged = await fetch(serverUrl(server, exchangePath), {
+    redirect: 'manual',
+  });
+  const setCookie = exchanged.headers.get('set-cookie') ?? '';
+
+  assert.equal(exchanged.status, 303);
+  assert.equal(exchanged.headers.get('location'), '/runtime/setup');
+  assert.equal(exchanged.headers.get('cache-control'), 'no-store');
+  assert.equal(exchanged.headers.get('referrer-policy'), 'no-referrer');
+  assert.match(setCookie, new RegExp(`^${AUTH_SESSION_COOKIE_NAME}=`, 'u'));
+
+  const browserCookie = setCookie.split(';', 1)[0] ?? '';
+  const protectedResponse = await fetch(serverUrl(server, '/api/core'), {
+    headers: { cookie: browserCookie },
+  });
+  assert.equal(protectedResponse.status, 200);
+
+  const sessionsBeforeReuse = (await fixture.authStore.readState()).sessions.length;
+  const secondHandoff = await fetch(serverUrl(server, '/api/auth/browser-handoff'), {
+    method: 'POST',
+    headers: {
+      cookie: `${AUTH_SESSION_COOKIE_NAME}=${encodeURIComponent(fixture.browserToken)}`,
+      'content-type': 'application/json',
+      'x-cats-csrf-token': fixture.browserCsrfToken,
+    },
+    body: JSON.stringify({ returnTo: '/runtime/setup' }),
+  });
+  const secondPayload = await secondHandoff.json() as { launchPath: string };
+  const reused = await fetch(serverUrl(server, secondPayload.launchPath), {
+    redirect: 'manual',
+    headers: { cookie: browserCookie },
+  });
+  assert.equal(reused.status, 303);
+  assert.equal(reused.headers.get('set-cookie'), null);
+  assert.equal((await fixture.authStore.readState()).sessions.length, sessionsBeforeReuse);
+
+  const replay = await fetch(serverUrl(server, exchangePath), {
+    redirect: 'manual',
+  });
+  assert.equal(replay.status, 401);
+});
+
+test('request router keeps handoff minting behind browser csrf and rejects open redirects', async (t) => {
+  const fixture = await createSeededAuthFixture();
+  const server = createTestServer({
+    setupCompleteAt: NOW.toISOString(),
+    authStore: fixture.authStore,
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  const headers = {
+    cookie: `${AUTH_SESSION_COOKIE_NAME}=${encodeURIComponent(fixture.browserToken)}`,
+    'content-type': 'application/json',
+  };
+  const withoutCsrf = await fetch(serverUrl(server, '/api/auth/browser-handoff'), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ returnTo: '/runtime/setup' }),
+  });
+  assert.equal(withoutCsrf.status, 403);
+
+  const openRedirect = await fetch(serverUrl(server, '/api/auth/browser-handoff'), {
+    method: 'POST',
+    headers: {
+      ...headers,
+      'x-cats-csrf-token': fixture.browserCsrfToken,
+    },
+    body: JSON.stringify({ returnTo: 'https://evil.example/runtime/setup' }),
+  });
+  assert.equal(openRedirect.status, 400);
+});
+
+test('request router rejects a handoff after its Desktop source session is revoked', async (t) => {
+  const fixture = await createSeededAuthFixture();
+  const server = createTestServer({
+    setupCompleteAt: NOW.toISOString(),
+    authStore: fixture.authStore,
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  const created = await fetch(serverUrl(server, '/api/auth/browser-handoff'), {
+    method: 'POST',
+    headers: {
+      cookie: `${AUTH_SESSION_COOKIE_NAME}=${encodeURIComponent(fixture.browserToken)}`,
+      'content-type': 'application/json',
+      'x-cats-csrf-token': fixture.browserCsrfToken,
+    },
+    body: JSON.stringify({ returnTo: '/runtime/setup' }),
+  });
+  const payload = await created.json() as { launchPath: string };
+  await fixture.authStore.updateState((state) => ({
+    ...state,
+    sessions: state.sessions.map((session) => (
+      session.kind === 'browser' ? revokeSession(session, NOW) : session
+    )),
+  }));
+
+  const exchanged = await fetch(serverUrl(server, payload.launchPath), {
+    redirect: 'manual',
+  });
+  assert.equal(exchanged.status, 401);
+});
+
 test('request router returns repair bootstrap envelope when auth state is corrupt', async (t) => {
   const server = createTestServer({
     setupCompleteAt: NOW.toISOString(),
@@ -217,6 +350,7 @@ function createDependencies(
       coreStore: new MemoryCoreStore(core),
       authStore: input.authStore
         ?? new MemoryPlatformAuthStore(createEmptyPlatformAuthState(NOW), () => NOW),
+      browserHandoffStore: new MemoryPlatformBrowserHandoffStore(),
       now: () => NOW,
     },
     chat: {},
@@ -228,6 +362,7 @@ function createDependencies(
 async function createSeededAuthFixture(): Promise<{
   authStore: MemoryPlatformAuthStore;
   browserToken: string;
+  browserCsrfToken: string;
   mobileToken: string;
 }> {
   const bootstrap = await createFirstAdminLocalAuthState({
@@ -253,6 +388,7 @@ async function createSeededAuthFixture(): Promise<{
       sessions: [bootstrap.session.session, mobile.session],
     }, () => NOW),
     browserToken: bootstrap.session.token,
+    browserCsrfToken: bootstrap.session.csrfToken,
     mobileToken: mobile.token,
   };
 }

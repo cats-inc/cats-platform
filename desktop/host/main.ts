@@ -42,6 +42,7 @@ import type {
   DesktopScreenshotCaptureResult,
   DesktopUpdateSnapshot,
 } from './contracts.js';
+import { DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL } from './contracts.js';
 import {
   appendHostEvent,
   appendRuntimeEvent,
@@ -71,7 +72,7 @@ import {
 } from './readiness.js';
 import {
   isDesktopHostActionId,
-  resolveDesktopWindowTarget,
+  resolveDesktopBrowserHandoffUrl,
   validateDesktopUrl,
 } from './security.js';
 import {
@@ -476,14 +477,19 @@ function resolveAllowedAppHosts(config: DesktopHostConfig): string[] {
   return Array.from(new Set([config.appHost, appBaseHost]));
 }
 
-function resolveDesktopNavigationTarget(
+function shouldAllowInAppNavigation(
   rawUrl: string,
   config: DesktopHostConfig,
-): ReturnType<typeof resolveDesktopWindowTarget> {
-  return resolveDesktopWindowTarget(rawUrl, {
-    appBaseUrl: config.appBaseUrl,
-    allowedHosts: resolveAllowedAppHosts(config),
-  });
+): boolean {
+  try {
+    const currentAppUrl = new URL(config.appBaseUrl);
+    const nextUrl = new URL(validateDesktopUrl(rawUrl, {
+      allowedHosts: resolveAllowedAppHosts(config),
+    }));
+    return nextUrl.origin === currentAppUrl.origin;
+  } catch {
+    return false;
+  }
 }
 
 async function ensureBootstrapPageVisible(): Promise<void> {
@@ -2056,25 +2062,15 @@ async function createMainWindow(
   });
 
   window.webContents.setWindowOpenHandler(({ url }) => {
-    const target = resolveDesktopNavigationTarget(url, config);
-    if (target.kind === 'in_app') {
-      void window.loadURL(target.url).catch((error: unknown) => {
-        process.stderr.write(
-          `Failed to open in-app desktop URL: ${error instanceof Error ? error.message : String(error)}\n`,
-        );
-      });
-    } else {
-      void openExternalDesktopUrl(target.url).catch(reportExternalUrlOpenFailure);
-    }
+    void openExternalDesktopUrl(url).catch(reportExternalUrlOpenFailure);
     return { action: 'deny' };
   });
   window.webContents.on('will-navigate', (event, url) => {
-    const target = resolveDesktopNavigationTarget(url, config);
-    if (target.kind === 'in_app') {
+    if (shouldAllowInAppNavigation(url, config)) {
       return;
     }
     event.preventDefault();
-    void openExternalDesktopUrl(target.url).catch(reportExternalUrlOpenFailure);
+    void openExternalDesktopUrl(url).catch(reportExternalUrlOpenFailure);
   });
 
   applyDesktopWindowChrome(window);
@@ -2367,6 +2363,19 @@ async function main(): Promise<void> {
   });
   ipcMain.handle('cats-host:resume-setup', async () => {
     return await resumeSetupAction();
+  });
+  ipcMain.handle(DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL, async (event, launchPath: unknown) => {
+    if (!mainWindow || (event as { sender?: unknown }).sender !== mainWindow.webContents) {
+      throw new Error('Browser handoff is only available to the main Cats window.');
+    }
+    if (!hostConfig || typeof launchPath !== 'string') {
+      throw new Error('Desktop browser handoff is not initialized.');
+    }
+    const url = resolveDesktopBrowserHandoffUrl(launchPath, {
+      appBaseUrl: hostConfig.appBaseUrl,
+      allowedHosts: resolveAllowedAppHosts(hostConfig),
+    });
+    await openExternalDesktopUrl(url);
   });
   ipcMain.handle(DESKTOP_SCREENSHOT_IPC_CHANNEL, async (event, payload: unknown) => {
     assertMainWindowScreenshotIpcSender(event, mainWindow);

@@ -17,6 +17,7 @@ const DESKTOP_VOICE_CAPTURE_START_CHANNEL = 'cats-host:voice-start';
 const DESKTOP_VOICE_CAPTURE_STOP_CHANNEL = 'cats-host:voice-stop';
 const DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL = 'cats-host:voice-cancel';
 const DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL = 'cats-host:voice-event';
+const DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL = 'cats-host:browser-handoff-open';
 const DESKTOP_UPDATE_SNAPSHOT_CHANNEL = 'cats-host:update-get-snapshot';
 const DESKTOP_UPDATE_CHECK_CHANNEL = 'cats-host:update-check';
 const DESKTOP_UPDATE_DOWNLOAD_CHANNEL = 'cats-host:update-download';
@@ -166,6 +167,13 @@ function assertVoiceCaptureSessionId(value: unknown): string {
   return value.trim();
 }
 
+function assertBrowserHandoffLaunchPath(value: unknown): string {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error('Invalid browser handoff launch path.');
+  }
+  return value.trim();
+}
+
 const bridge = {
   screenshotRegionCaptureAvailable: true,
   getSnapshot(): Promise<DesktopBootstrapSnapshot> {
@@ -210,6 +218,12 @@ const bridge = {
   },
   resumeSetup(): Promise<DesktopSetupSnapshot> {
     return ipcRenderer.invoke('cats-host:resume-setup');
+  },
+  openBrowserHandoff(launchPath: string): Promise<void> {
+    return ipcRenderer.invoke(
+      DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL,
+      assertBrowserHandoffLaunchPath(launchPath),
+    );
   },
   captureScreenshotRegion(): Promise<DesktopScreenshotCaptureResult> {
     return ipcRenderer.invoke('cats-host:capture-screenshot-region', {

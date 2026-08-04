@@ -1,6 +1,7 @@
 export * from './actorAttribution.js';
 export * from './bootstrap.js';
 export * from './bootstrapEnvelope.js';
+export * from './browserHandoff.js';
 export * from './config.js';
 export * from './cookies.js';
 export * from './csrf.js';

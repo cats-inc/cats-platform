@@ -19,9 +19,11 @@ test('browser-facing runtime setup links stay on platform-owned ingress paths', 
   ]);
 
   assert.match(settingsSource, /PLATFORM_RUNTIME_SETUP_PATH/u);
+  assert.match(settingsSource, /AuthenticatedBrowserLink/u);
   assert.doesNotMatch(settingsSource, /payload\.runtime\.baseUrl\.replace/u);
 
   assert.match(setupSource, /PLATFORM_RUNTIME_SETUP_PATH/u);
+  assert.match(setupSource, /AuthenticatedBrowserLink/u);
   assert.doesNotMatch(setupSource, /runtimeBaseUrl\.replace/u);
 
   assert.doesNotMatch(wizardSource, /runtimeBaseUrl=\{envelope\.runtime\.baseUrl\}/u);

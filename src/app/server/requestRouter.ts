@@ -508,6 +508,7 @@ export async function routeRequest(
     ...context,
     dependencies: {
       authStore: dependencies.shared.authStore,
+      browserHandoffStore: dependencies.shared.browserHandoffStore,
       auth: dependencies.shared.config.auth,
       now: dependencies.shared.now,
       googleVerifier: dependencies.shared.googleVerifier,

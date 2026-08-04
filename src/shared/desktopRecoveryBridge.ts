@@ -174,6 +174,7 @@ export interface DesktopHostBridge {
     options?: { dryRun?: boolean },
   ) => Promise<DesktopSetupSnapshot>;
   resumeSetup?: () => Promise<DesktopSetupSnapshot>;
+  openBrowserHandoff?: (launchPath: string) => Promise<void>;
   screenshotRegionCaptureAvailable?: boolean;
   captureScreenshotRegion?: () => Promise<DesktopScreenshotCaptureResult>;
   enableMobilePairing?: () => Promise<DesktopMobilePairingEnvUpdateResult>;

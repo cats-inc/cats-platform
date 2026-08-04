@@ -7,6 +7,9 @@ import {
   createEmptyPlatformAuthState,
   createFirstAdminLocalAuthState,
   issueBrowserSession,
+  isSessionActive,
+  PLATFORM_BROWSER_HANDOFF_EXCHANGE_PATH,
+  PLATFORM_BROWSER_HANDOFF_TTL_MS,
   normalizeAccountIdentifier,
   authorizePlatformAuthRepairBootstrap,
   createFirstAdminGoogleAuthState,
@@ -32,6 +35,7 @@ import {
   type PlatformAuthStore,
   type PlatformLoginThrottleAlert,
   type PlatformAuthRecoveryTokenState,
+  type PlatformBrowserHandoffStore,
   type PlatformGoogleIdTokenVerifier,
   type PlatformVerifiedGoogleIdentity,
   type PlatformPrincipal,
@@ -51,6 +55,7 @@ import { sendPlatformAuthError } from './authErrorResponses.js';
 
 export interface AuthRouteDependencies {
   authStore: PlatformAuthStore;
+  browserHandoffStore?: PlatformBrowserHandoffStore;
   auth: PlatformAuthConfig;
   googleVerifier?: PlatformGoogleIdTokenVerifier;
   authRecoveryTokenState?: PlatformAuthRecoveryTokenState | null;
@@ -91,6 +96,24 @@ export async function routePlatformAuthApi(
       return true;
     }
     await handleAuthStatus(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/auth/browser-handoff') {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleCreateBrowserHandoff(context);
+    return true;
+  }
+
+  if (context.url.pathname === PLATFORM_BROWSER_HANDOFF_EXCHANGE_PATH) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    await handleExchangeBrowserHandoff(context);
     return true;
   }
 
@@ -173,6 +196,135 @@ export async function routePlatformAuthApi(
   }
 
   return false;
+}
+
+async function handleCreateBrowserHandoff(
+  context: RouteContext<AuthRouteDependencies>,
+): Promise<void> {
+  const sessionSecret = context.dependencies.auth.sessionSecret;
+  const browserHandoffStore = context.dependencies.browserHandoffStore;
+  if (!sessionSecret || !browserHandoffStore) {
+    sendAuthError(context.response, 503, 'E_FORBIDDEN', 'Browser handoff is not configured.');
+    return;
+  }
+  if (
+    context.auth?.credentialKind !== 'browser_cookie'
+    || !context.auth.principal
+  ) {
+    sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Authentication is required.');
+    return;
+  }
+
+  let body: { returnTo?: unknown };
+  try {
+    body = await readJsonBody(context.request);
+  } catch {
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Invalid browser handoff request body.');
+    return;
+  }
+  if (typeof body.returnTo !== 'string') {
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Browser handoff return path is required.');
+    return;
+  }
+
+  try {
+    const issued = browserHandoffStore.issue({
+      accountId: context.auth.principal.account.id,
+      sourceSessionId: context.auth.principal.session.id,
+      returnTo: body.returnTo,
+      sessionSecret,
+      ttlMs: PLATFORM_BROWSER_HANDOFF_TTL_MS,
+      now: context.dependencies.now?.() ?? new Date(),
+    });
+    const params = new URLSearchParams({ token: issued.token });
+    sendJson(context.response, 200, {
+      launchPath: `${PLATFORM_BROWSER_HANDOFF_EXCHANGE_PATH}?${params.toString()}`,
+      expiresAt: issued.expiresAt,
+    }, {
+      'Cache-Control': 'no-store',
+    });
+  } catch {
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Browser handoff return path is invalid.');
+  }
+}
+
+async function handleExchangeBrowserHandoff(
+  context: RouteContext<AuthRouteDependencies>,
+): Promise<void> {
+  const sessionSecret = context.dependencies.auth.sessionSecret;
+  const browserHandoffStore = context.dependencies.browserHandoffStore;
+  const tokenValues = context.url.searchParams.getAll('token');
+  if (!sessionSecret || !browserHandoffStore || tokenValues.length !== 1) {
+    sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Browser handoff is invalid.');
+    return;
+  }
+  const handoff = browserHandoffStore.consume({
+    token: tokenValues[0] ?? '',
+    sessionSecret,
+    now: context.dependencies.now?.() ?? new Date(),
+  });
+  if (!handoff) {
+    sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Browser handoff is invalid.');
+    return;
+  }
+
+  const state = await context.dependencies.authStore.readState();
+  const account = state.accounts.find((candidate) => (
+    candidate.id === handoff.accountId && candidate.status === 'active'
+  ));
+  const membership = state.memberships.find((candidate) => (
+    candidate.accountId === handoff.accountId
+  ));
+  const sourceSession = state.sessions.find((candidate) => (
+    candidate.id === handoff.sourceSessionId
+    && candidate.accountId === handoff.accountId
+    && candidate.kind === 'browser'
+    && isSessionActive(candidate, context.dependencies.now?.() ?? new Date())
+  ));
+  if (!account || !membership || !sourceSession) {
+    sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Browser handoff is invalid.');
+    return;
+  }
+
+  const existingBrowserPrincipal = await resolveBrowserPrincipal(context);
+  if (existingBrowserPrincipal?.account.id === handoff.accountId) {
+    sendBrowserHandoffRedirect(context, handoff.returnTo);
+    return;
+  }
+
+  const issued = issueBrowserSession({
+    accountId: handoff.accountId,
+    sessionSecret,
+    ttlMs: context.dependencies.auth.sessionTtlMs,
+    now: context.dependencies.now?.() ?? new Date(),
+  });
+  await context.dependencies.authStore.updateState((current) => ({
+    ...current,
+    sessions: [...current.sessions, issued.session],
+  }));
+  sendBrowserHandoffRedirect(context, handoff.returnTo, issued.token);
+}
+
+function sendBrowserHandoffRedirect(
+  context: RouteContext<AuthRouteDependencies>,
+  returnTo: string,
+  sessionToken?: string,
+): void {
+  context.response.writeHead(303, {
+    Location: returnTo,
+    ...(sessionToken
+      ? {
+          'Set-Cookie': serializeAuthSessionCookie(
+            sessionToken,
+            context.dependencies.auth.sessionTtlMs,
+          ),
+        }
+      : {}),
+    'Cache-Control': 'no-store',
+    'Referrer-Policy': 'no-referrer',
+    'Content-Length': '0',
+  });
+  context.response.end();
 }
 
 async function handleRepairFirstAdmin(

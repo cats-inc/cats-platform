@@ -25,6 +25,7 @@ import {
   createFileBackedPlatformAuthStore,
   createGoogleJwksIdTokenVerifier,
   loadPlatformAuthConfig,
+  MemoryPlatformBrowserHandoffStore,
   MemoryPlatformAuthStore,
   type PlatformAuthConfig,
   type PlatformAuthRecoveryTokenState,
@@ -206,6 +207,8 @@ export function resolveServerDependencies(
   const sharedCoreStore = dependencies.shared.coreStore ?? dependencies.chat.chatStore;
   const authStore = dependencies.shared.authStore
     ?? createDefaultAuthStore(dependencies.shared, dependencies.chat);
+  const browserHandoffStore = dependencies.shared.browserHandoffStore
+    ?? new MemoryPlatformBrowserHandoffStore();
   const googleVerifier = dependencies.shared.googleVerifier
     ?? (
       dependencies.shared.config.auth.google.clientId
@@ -370,6 +373,7 @@ export function resolveServerDependencies(
       coreStore: sharedCoreStore,
       startup,
       authStore,
+      browserHandoffStore,
       googleVerifier,
       authRecoveryTokenState: getAuthRecoveryTokenState(),
       getAuthRecoveryTokenState,

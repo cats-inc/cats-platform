@@ -223,6 +223,7 @@ export const messageKeys = {
   settingsRuntimeStandaloneSetupDescription:
     'settings.runtime.standaloneSetupDescription',
   settingsRuntimeOpenStandaloneSetup: 'settings.runtime.openStandaloneSetup',
+  settingsRuntimeBrowserHandoffError: 'settings.runtime.browserHandoffError',
   settingsRuntimeCancelActionLabel: 'settings.runtime.cancelActionLabel',
   settingsRuntimeCancelActionFallbackLabel: 'settings.runtime.cancelActionFallbackLabel',
   settingsRuntimeRefreshFailure: 'settings.runtime.refreshFailure',

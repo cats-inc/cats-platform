@@ -5,7 +5,7 @@ import test from 'node:test';
 
 import {
   isDesktopHostActionId,
-  resolveDesktopWindowTarget,
+  resolveDesktopBrowserHandoffUrl,
   validateDesktopUrl,
 } from '../build/desktop/security.js';
 
@@ -45,32 +45,37 @@ test('isDesktopHostActionId rejects unknown IPC action ids', () => {
   assert.equal(isDesktopHostActionId(42), false);
 });
 
-test('desktop window targets keep same-origin auth surfaces in the Electron session', () => {
+test('desktop browser handoff only opens the single-use exchange route on the app origin', () => {
   const options = {
     appBaseUrl: 'http://127.0.0.1:8181',
     allowedHosts: ['127.0.0.1'],
   };
+  const token = 'a'.repeat(43);
 
-  assert.deepEqual(
-    resolveDesktopWindowTarget('http://127.0.0.1:8181/runtime/setup', options),
-    {
-      kind: 'in_app',
-      url: 'http://127.0.0.1:8181/runtime/setup',
-    },
+  assert.equal(
+    resolveDesktopBrowserHandoffUrl(
+      `/api/auth/browser-handoff/exchange?token=${token}`,
+      options,
+    ),
+    `http://127.0.0.1:8181/api/auth/browser-handoff/exchange?token=${token}`,
   );
-  assert.deepEqual(
-    resolveDesktopWindowTarget('http://127.0.0.1:3110/setup', options),
-    {
-      kind: 'external',
-      url: 'http://127.0.0.1:3110/setup',
-    },
+  assert.throws(
+    () => resolveDesktopBrowserHandoffUrl(
+      `https://evil.example/api/auth/browser-handoff/exchange?token=${token}`,
+      options,
+    ),
+    /root-relative/u,
   );
-  assert.deepEqual(
-    resolveDesktopWindowTarget('https://docs.example.test/runtime', options),
-    {
-      kind: 'external',
-      url: 'https://docs.example.test/runtime',
-    },
+  assert.throws(
+    () => resolveDesktopBrowserHandoffUrl(`/runtime/setup?token=${token}`, options),
+    /path is invalid/u,
+  );
+  assert.throws(
+    () => resolveDesktopBrowserHandoffUrl(
+      `/api/auth/browser-handoff/exchange?token=${token}&next=/runtime/setup`,
+      options,
+    ),
+    /token is invalid/u,
   );
 });
 
@@ -82,9 +87,25 @@ test('desktop main process keeps Electron sandboxing enabled and validates IPC a
   assert.match(source, /validateDesktopUrl/);
   assert.match(source, /setWindowOpenHandler/);
   assert.match(source, /will-navigate/);
-  assert.match(source, /target\.kind === 'in_app'/);
-  assert.match(source, /window\.loadURL\(target\.url\)/);
+  assert.doesNotMatch(source, /window\.loadURL\(target\.url\)/);
+  assert.match(source, /DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL/);
+  assert.match(source, /resolveDesktopBrowserHandoffUrl/);
   assert.match(source, /openExternalDesktopUrl/);
+});
+
+test('desktop and platform handoff contracts keep the same exchange path', async () => {
+  const desktopContracts = await readFile(
+    join(process.cwd(), 'desktop', 'host', 'contracts.ts'),
+    'utf8',
+  );
+  const platformContracts = await readFile(
+    join(process.cwd(), 'src', 'shared', 'browserHandoff.ts'),
+    'utf8',
+  );
+  const exchangePath = '/api/auth/browser-handoff/exchange';
+
+  assert.match(desktopContracts, new RegExp(exchangePath.replaceAll('/', '\\/'), 'u'));
+  assert.match(platformContracts, new RegExp(exchangePath.replaceAll('/', '\\/'), 'u'));
 });
 
 test('preload and contracts keep the same desktop host action ids', async () => {

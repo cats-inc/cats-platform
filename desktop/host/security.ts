@@ -1,4 +1,5 @@
 import {
+  DESKTOP_BROWSER_HANDOFF_EXCHANGE_PATH,
   DESKTOP_HOST_ACTION_IDS,
   type DesktopHostActionId,
 } from './contracts.js';
@@ -7,15 +8,6 @@ interface ValidateDesktopUrlOptions {
   httpsOnly?: boolean;
   allowedHosts?: Iterable<string> | null;
 }
-
-export interface ResolveDesktopWindowTargetOptions {
-  appBaseUrl: string;
-  allowedHosts: Iterable<string>;
-}
-
-export type DesktopWindowTarget =
-  | { kind: 'in_app'; url: string }
-  | { kind: 'external'; url: string };
 
 const DESKTOP_HOST_ACTION_ID_SET = new Set<string>(DESKTOP_HOST_ACTION_IDS);
 const HOSTNAME_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*$/iu;
@@ -98,27 +90,6 @@ export function validateDesktopUrl(
   return url.toString();
 }
 
-export function resolveDesktopWindowTarget(
-  rawValue: string,
-  options: ResolveDesktopWindowTargetOptions,
-): DesktopWindowTarget {
-  try {
-    const appUrl = new URL(validateDesktopUrl(options.appBaseUrl, {
-      allowedHosts: options.allowedHosts,
-    }));
-    const targetUrl = validateDesktopUrl(rawValue, {
-      allowedHosts: options.allowedHosts,
-    });
-    if (new URL(targetUrl).origin === appUrl.origin) {
-      return { kind: 'in_app', url: targetUrl };
-    }
-  } catch {
-    // External navigation keeps its existing validation and error-reporting path.
-  }
-
-  return { kind: 'external', url: rawValue };
-}
-
 export function parseDesktopAllowedHosts(rawValue: string | undefined): string[] {
   const entries = (rawValue ?? '')
     .split(',')
@@ -130,6 +101,40 @@ export function parseDesktopAllowedHosts(rawValue: string | undefined): string[]
     }
   }
   return entries.map((entry) => entry.toLowerCase());
+}
+
+export function resolveDesktopBrowserHandoffUrl(
+  rawLaunchPath: string,
+  options: {
+    appBaseUrl: string;
+    allowedHosts: Iterable<string>;
+  },
+): string {
+  const launchPath = rawLaunchPath.trim();
+  if (!launchPath.startsWith('/')) {
+    throw new Error('Desktop browser handoff path must be root-relative.');
+  }
+  const appUrl = new URL(validateDesktopUrl(options.appBaseUrl, {
+    allowedHosts: options.allowedHosts,
+  }));
+  const targetUrl = new URL(launchPath, appUrl);
+  if (targetUrl.origin !== appUrl.origin) {
+    throw new Error('Desktop browser handoff must use the Cats app origin.');
+  }
+  if (targetUrl.pathname !== DESKTOP_BROWSER_HANDOFF_EXCHANGE_PATH || targetUrl.hash) {
+    throw new Error('Desktop browser handoff path is invalid.');
+  }
+  const tokenValues = targetUrl.searchParams.getAll('token');
+  if (
+    tokenValues.length !== 1
+    || !/^[a-z0-9_-]{40,}$/iu.test(tokenValues[0] ?? '')
+    || Array.from(targetUrl.searchParams.keys()).some((key) => key !== 'token')
+  ) {
+    throw new Error('Desktop browser handoff token is invalid.');
+  }
+  return validateDesktopUrl(targetUrl.toString(), {
+    allowedHosts: options.allowedHosts,
+  });
 }
 
 export function isDesktopHostActionId(value: unknown): value is DesktopHostActionId {

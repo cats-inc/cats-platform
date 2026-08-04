@@ -26,6 +26,7 @@ import type {
   CatsMemoryService,
 } from '../../platform/memory/index.js';
 import type {
+  PlatformBrowserHandoffStore,
   PlatformAuthRecoveryTokenState,
   PlatformAuthStore,
   PlatformGoogleIdTokenVerifier,
@@ -63,6 +64,7 @@ export interface SharedServerDependencies {
   coreStore?: CoreStore;
   startup?: AppStartupState;
   authStore?: PlatformAuthStore;
+  browserHandoffStore?: PlatformBrowserHandoffStore;
   googleVerifier?: PlatformGoogleIdTokenVerifier;
   authRecoveryTokenState?: PlatformAuthRecoveryTokenState | null;
   getAuthRecoveryTokenState?: () => PlatformAuthRecoveryTokenState | null;
@@ -110,6 +112,7 @@ export interface ResolvedSharedServerDependencies extends SharedServerDependenci
   coreStore: CoreStore;
   startup: AppStartupState;
   authStore: PlatformAuthStore;
+  browserHandoffStore: PlatformBrowserHandoffStore;
   googleVerifier?: PlatformGoogleIdTokenVerifier;
   resumePendingOrchestratorDispatch: ResumePendingOrchestratorDispatch;
   resumeWorkflowContinuationDispatch: ResumeWorkflowContinuationDispatch;

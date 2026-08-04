@@ -236,6 +236,8 @@ export const enCatalog: MessageCatalog = {
   'settings.runtime.standaloneSetupDescription':
     'Open the standalone runtime setup when you need provider remediation or a deeper scan.',
   'settings.runtime.openStandaloneSetup': 'Open Cats Runtime setup',
+  'settings.runtime.browserHandoffError':
+    'Cats could not open Runtime setup in your browser. Please try again.',
   'settings.runtime.cancelActionLabel': 'Cancel',
   'settings.runtime.cancelActionFallbackLabel': 'Close',
   'settings.runtime.refreshFailure': 'Refresh failed.',

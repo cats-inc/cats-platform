@@ -231,6 +231,8 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.runtime.standaloneSetupDescription':
     '當需要供應器修復或進行更深入掃描時，請開啟獨立執行階段設定頁。',
   'settings.runtime.openStandaloneSetup': '開啟 Cats 執行階段設定',
+  'settings.runtime.browserHandoffError':
+    'Cats 無法在瀏覽器中開啟執行階段設定，請再試一次。',
   'settings.runtime.cancelActionLabel': '取消',
   'settings.runtime.cancelActionFallbackLabel': '關閉',
   'settings.runtime.refreshFailure': '重新整理失敗。',

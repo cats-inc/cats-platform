@@ -1,5 +1,6 @@
 import React from 'react';
 import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import { AuthenticatedBrowserLink } from '../../app/renderer/auth/AuthenticatedBrowserLink.js';
 import { messageKeys } from '../../shared/i18n/index.js';
 
 export function ProviderRegistryRecovery(input: {
@@ -36,26 +37,26 @@ export function ProviderRegistryRecovery(input: {
             {t(messageKeys.sharedCommonRetry)}
           </button>
           {providerRegistrySetupHref ? (
-            <a
+            <AuthenticatedBrowserLink
               className="secondaryButton"
               href={providerRegistrySetupHref}
               target="_blank"
               rel="noreferrer"
             >
               {t(messageKeys.sharedProviderModelFieldOpenRuntimeSetupLabel)}
-            </a>
+            </AuthenticatedBrowserLink>
           ) : null}
         </div>
       ) : providerRegistrySetupHref ? (
         <div className="providerCatalogRecoveryActions">
-          <a
+          <AuthenticatedBrowserLink
             className="secondaryButton"
             href={providerRegistrySetupHref}
             target="_blank"
             rel="noreferrer"
-            >
-              {t(messageKeys.sharedProviderModelFieldOpenRuntimeSetupLabel)}
-            </a>
+          >
+            {t(messageKeys.sharedProviderModelFieldOpenRuntimeSetupLabel)}
+          </AuthenticatedBrowserLink>
         </div>
       ) : null}
     </>

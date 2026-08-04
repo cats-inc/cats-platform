@@ -214,6 +214,9 @@ export const DESKTOP_VOICE_CAPTURE_START_CHANNEL = 'cats-host:voice-start';
 export const DESKTOP_VOICE_CAPTURE_STOP_CHANNEL = 'cats-host:voice-stop';
 export const DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL = 'cats-host:voice-cancel';
 export const DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL = 'cats-host:voice-event';
+export const DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL = 'cats-host:browser-handoff-open';
+export const DESKTOP_BROWSER_HANDOFF_EXCHANGE_PATH =
+  '/api/auth/browser-handoff/exchange';
 
 export const DESKTOP_UPDATE_SNAPSHOT_CHANNEL = 'cats-host:update-get-snapshot';
 export const DESKTOP_UPDATE_CHECK_CHANNEL = 'cats-host:update-check';

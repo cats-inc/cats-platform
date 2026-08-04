@@ -104,6 +104,8 @@ function isPublicAuthRoute(pathname: string, method: string): boolean {
   return (
     pathname === '/api/auth/status' && method === 'GET'
   ) || (
+    pathname === '/api/auth/browser-handoff/exchange' && method === 'GET'
+  ) || (
     pathname === '/api/auth/login' && method === 'POST'
   ) || (
     pathname === '/api/auth/google/login' && method === 'POST'

@@ -6,6 +6,7 @@ import type { ProviderModelSelection } from '../../../shared/providerSelection.j
 import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
 import { useI18n } from '../i18n/index.js';
+import { AuthenticatedBrowserLink } from '../auth/AuthenticatedBrowserLink.js';
 import { resolveProviderRegistrySetupHref } from '../../../design/components/ProviderModelFields.js';
 import {
   resolveClientGuideCatName,
@@ -82,9 +83,14 @@ export function GuideCatSetupFields({
             <span className="setupRuntimeNote">
               {t(messageKeys.setupGuideCatUnavailableNote)}
             </span>
-            <a className="secondaryButton setupInlineLink" href={runtimeSetupHref} target="_blank" rel="noreferrer">
+            <AuthenticatedBrowserLink
+              className="secondaryButton setupInlineLink"
+              href={runtimeSetupHref}
+              target="_blank"
+              rel="noreferrer"
+            >
               {t(messageKeys.setupGuideCatOpenRuntimeSetup)}
-            </a>
+            </AuthenticatedBrowserLink>
           </>
         ) : null}
         {providerRegistry.state === 'no_usable_targets' ? (
@@ -92,9 +98,14 @@ export function GuideCatSetupFields({
             <span className="setupRuntimeNote">
               {t(messageKeys.setupGuideCatNoUsableTargetsNote)}
             </span>
-            <a className="secondaryButton setupInlineLink" href={runtimeSetupHref} target="_blank" rel="noreferrer">
+            <AuthenticatedBrowserLink
+              className="secondaryButton setupInlineLink"
+              href={runtimeSetupHref}
+              target="_blank"
+              rel="noreferrer"
+            >
               {t(messageKeys.setupGuideCatOpenRuntimeSetup)}
-            </a>
+            </AuthenticatedBrowserLink>
           </>
         ) : null}
       </div>

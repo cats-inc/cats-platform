@@ -9,6 +9,7 @@ import {
   type SettingsStatusChipTone,
 } from '../../../design/components/settings/index.js';
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
+import { AuthenticatedBrowserLink } from '../auth/AuthenticatedBrowserLink.js';
 import {
   getProviderCatalogRefreshSnapshot,
   readProviderCatalogRefreshFailedStatus,
@@ -358,14 +359,15 @@ export function PlatformSettingsRuntime({
           />
         }
       >
-        <a
+        <AuthenticatedBrowserLink
           className="secondaryButton settingsInlineLink"
           href={PLATFORM_RUNTIME_SETUP_PATH}
           target="_blank"
           rel="noreferrer"
+          onOpenError={() => showToast(t('settingsRuntimeBrowserHandoffError'))}
         >
           {t('settingsRuntimeOpenStandaloneSetup')}
-        </a>
+        </AuthenticatedBrowserLink>
       </SettingsSection>
 
       {confirmation ? (() => {
