@@ -3,6 +3,7 @@ import type { IncomingMessage } from 'node:http';
 import { access, readFile, readdir, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { createPlatformChildProcessEnv } from '../../shared/platformChildProcessEnv.js';
 import type { ResolvedServerDependencies } from './contracts.js';
 import { routeAppPackageApi } from './appPackageRoutes.js';
 import { routeMobileAuthApi } from './mobileAuthRoutes.js';
@@ -308,6 +309,7 @@ async function handleShellOpenFolder(
         : ['xdg-open', [folderPath]];
     const child = spawn(command, args, {
       detached: true,
+      env: createPlatformChildProcessEnv(),
       stdio: 'ignore',
     });
     child.unref();

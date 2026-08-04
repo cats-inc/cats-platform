@@ -282,8 +282,9 @@ product write path.
 - [x] Task 6.8: Provision a stable 256-bit auth session secret on packaged
       Desktop clean installs when no explicit secret is configured. Persist it
       with restrictive local-file permissions, reuse it across launches, keep
-      explicit operator configuration authoritative, and inject it only into
-      the platform sidecar.
+      explicit operator configuration authoritative, inject it only into the
+      platform sidecar, recover invalid persisted values, surface I/O failures
+      through bootstrap Retry, and remove it from project child processes.
 
 **Deliverables**: auth behavior is documented, tested, and visible to
 operators before implementation is marked complete.
@@ -319,6 +320,9 @@ operators before implementation is marked complete.
 | `src/app/server/platformSetupRoutes.ts` | Modify | Canonical platform setup route; create first admin during platform setup |
 | `desktop/host/authSessionSecret.ts` | Create | Generate or reload the packaged Desktop auth session secret before sidecars start |
 | `desktop/host/processSupervisor.ts` | Modify | Inject the secret into the platform sidecar without exposing it to the runtime sidecar |
+| `src/shared/platformChildProcessEnv.ts` | Create | Strip the platform auth session secret from project and shell child-process environments |
+| `src/products/code/livePreview/realProcessAdapter.ts` | Modify | Launch live-preview projects without the platform auth session secret |
+| `src/products/code/state/appExport.ts` | Modify | Build exported Cats Code apps without the platform auth session secret |
 | `src/products/chat/api/setupRoutes.ts` | Audit/Delete or Modify | Legacy setup/reset route; remove if unused, otherwise align with the canonical auth gate and require admin auth after setup |
 | `tests/*auth*.test.*` | Create | Store, route gate, setup/login/logout, and Google verifier coverage |
 | `.env.example` | Modify | Document auth and Google config |
@@ -623,6 +627,7 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4b mobile Google UI landed: `/api/mobile/auth/status` now advertises configured public mobile Google client ids, Cats Mobile starts a mobile OIDC ID-token flow from the login panel, posts the verified result to `/api/mobile/auth/google/login`, persists the returned bearer through the existing secure-token boundary, and leaves browser GIS/CSRF/cookies out of the mobile path. Task 4b.7 is now checked. |
 | 2026-05-10 | Repair/mobile Google security follow-up landed: repair first-admin and throttle recovery now require the one-time recovery token even when the socket source address is loopback, closing reverse-proxy/tunnel repair-mode bypass risk; Cats Mobile now sends the per-attempt OIDC nonce to `/api/mobile/auth/google/login`, server verification checks the nonce claim, invalid mobile Google attempts are throttled before verifier calls, and the mobile OIDC helper uses secure randomness plus exact redirect matching. |
 | 2026-08-04 | Closed the packaged Desktop clean-install auth gap required by SPEC-100 requirement 24: the host now generates and persists a 256-bit session secret when no explicit configuration exists, reuses it across launches, and passes it only to the platform sidecar. Added clean-install, override, invalid-file, and sidecar-boundary regressions plus installer smoke coverage. |
+| 2026-08-04 | Hardened the Desktop auth-secret follow-up: writes now use a same-directory temporary file and atomic rename, invalid persisted values are quarantined and regenerated, real provisioning failures stay on the existing bootstrap recovery page for Retry, weak explicit overrides warn, platform-spawned project processes strip the secret, and installer smoke resolution honors custom Desktop/platform roots. |
 
 ---
 

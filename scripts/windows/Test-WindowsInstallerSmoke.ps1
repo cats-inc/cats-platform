@@ -15,6 +15,10 @@
 .PARAMETER HostStatePath
     The persisted desktop-host state file written by the installed app.
 
+.PARAMETER PlatformDir
+    The platform state/config root. Defaults to CATS_PLATFORM_DIR when set,
+    otherwise to the platform sibling inferred from HostStatePath.
+
 .PARAMETER TimeoutSeconds
     Maximum time to wait for the installed app to refresh the host-state file.
 
@@ -37,6 +41,7 @@
 param(
   [string]$InstallRoot = '',
   [string]$HostStatePath = '',
+  [string]$PlatformDir = '',
   [ValidateRange(5, 300)]
   [int]$TimeoutSeconds = 60,
   [switch]$SkipLaunch,
@@ -59,11 +64,28 @@ function Resolve-DefaultInstallRoot {
 }
 
 function Resolve-DefaultHostStatePath {
+  if (-not [string]::IsNullOrWhiteSpace($env:CATS_DESKTOP_DIR)) {
+    return Join-Path $env:CATS_DESKTOP_DIR 'state.json'
+  }
   return Join-Path $env:USERPROFILE '.cats\desktop\state.json'
 }
 
+function Resolve-DefaultPlatformDir([string]$StatePath) {
+  if (-not [string]::IsNullOrWhiteSpace($env:CATS_PLATFORM_DIR)) {
+    return $env:CATS_PLATFORM_DIR
+  }
+  $desktopDir = Split-Path -Parent $StatePath
+  $catsRoot = Split-Path -Parent $desktopDir
+  return Join-Path $catsRoot 'platform'
+}
+
 function Test-AuthSessionSecretProvisioned {
-  $generatedSecretPath = Join-Path $env:USERPROFILE '.cats\platform\config\auth-session-secret.local'
+  param(
+    [string]$ResolvedPlatformDir,
+    [string]$ResolvedDesktopDir
+  )
+
+  $generatedSecretPath = Join-Path $ResolvedPlatformDir 'config\auth-session-secret.local'
   if (Test-Path -LiteralPath $generatedSecretPath -PathType Leaf) {
     $generatedSecret = (Get-Content -LiteralPath $generatedSecretPath -Raw).Trim()
     if ($generatedSecret.Length -ge 32 -and $generatedSecret -notmatch '\s') {
@@ -75,7 +97,7 @@ function Test-AuthSessionSecretProvisioned {
     return $true
   }
 
-  $desktopEnvPath = Join-Path $env:USERPROFILE '.cats\desktop\.env'
+  $desktopEnvPath = Join-Path $ResolvedDesktopDir '.env'
   if (-not (Test-Path -LiteralPath $desktopEnvPath -PathType Leaf)) {
     return $false
   }
@@ -143,6 +165,12 @@ function Assert-True([bool]$Condition, [string]$Message) {
 
 $resolvedInstallRoot = if ($InstallRoot) { $InstallRoot } else { Resolve-DefaultInstallRoot }
 $resolvedHostStatePath = if ($HostStatePath) { $HostStatePath } else { Resolve-DefaultHostStatePath }
+$resolvedPlatformDir = if ($PlatformDir) {
+  $PlatformDir
+} else {
+  Resolve-DefaultPlatformDir -StatePath $resolvedHostStatePath
+}
+$resolvedDesktopDir = Split-Path -Parent $resolvedHostStatePath
 $exePath = Join-Path $resolvedInstallRoot 'Cats.exe'
 $resourcesRoot = Join-Path $resolvedInstallRoot 'resources'
 $packagingPlanPath = Join-Path $resourcesRoot 'desktop-package-plan.json'
@@ -249,7 +277,10 @@ try {
   $appService = $persisted.snapshot.services | Where-Object { $_.name -eq 'cats-platform' } | Select-Object -First 1
   Assert-True ($null -ne $runtimeService -and $runtimeService.ready -eq $true) 'cats-runtime sidecar reached ready status'
   Assert-True ($null -ne $appService -and $appService.ready -eq $true) 'cats app sidecar reached ready status'
-  Assert-True (Test-AuthSessionSecretProvisioned) 'desktop auth session secret is provisioned for first-admin setup'
+  Assert-True (Test-AuthSessionSecretProvisioned `
+    -ResolvedPlatformDir $resolvedPlatformDir `
+    -ResolvedDesktopDir $resolvedDesktopDir) `
+    'desktop auth session secret is provisioned for first-admin setup'
   Assert-True (($persisted.snapshot.progress.steps | Measure-Object).Count -ge 3) 'host snapshot includes bootstrap progress steps'
   Assert-True ($persisted.snapshot.background.trayEnabled -is [bool]) 'host snapshot includes background lifecycle state'
   Assert-True ($persisted.snapshot.packaging.strategy -eq 'electron-sidecar-bundle') 'host snapshot includes packaging metadata'

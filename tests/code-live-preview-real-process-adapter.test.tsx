@@ -31,6 +31,36 @@ test('Real live preview adapter spawn rejects when executable is missing', async
   );
 });
 
+test('Real live preview adapter strips the platform auth secret from child env', async () => {
+  let capturedEnv: NodeJS.ProcessEnv | undefined;
+  const child = new EventEmitter() as ChildProcess;
+  Object.defineProperty(child, 'pid', { value: 1234 });
+  const spawnProcess = ((
+    _command: string,
+    _args: readonly string[] = [],
+    options?: { env?: NodeJS.ProcessEnv },
+  ): ChildProcess => {
+    capturedEnv = options?.env;
+    process.nextTick(() => child.emit('spawn'));
+    return child;
+  }) as typeof spawnChildProcess;
+  const adapter = createRealLivePreviewProcessAdapter({ spawnProcess });
+
+  await adapter.spawn({
+    ...SPAWN_INPUT_TEMPLATE,
+    executable: process.execPath,
+    env: {
+      CATS_AUTH_SESSION_SECRET: 'must-not-reach-user-project',
+      CATS_LIVE_PREVIEW_SAFE_TEST_VALUE: 'preserved',
+    },
+  });
+
+  assert.ok(capturedEnv);
+  assert.equal(capturedEnv.CATS_AUTH_SESSION_SECRET, undefined);
+  assert.equal(capturedEnv.CATS_LIVE_PREVIEW_SAFE_TEST_VALUE, 'preserved');
+  assert.equal(capturedEnv.PORT, String(SPAWN_INPUT_TEMPLATE.port));
+});
+
 test('Real live preview adapter spawn resolves and onExit fires for the child', async (t) => {
   const adapter = createRealLivePreviewProcessAdapter();
   const nodeExecutable = process.execPath;

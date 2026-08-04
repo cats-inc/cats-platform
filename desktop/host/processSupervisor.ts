@@ -624,7 +624,7 @@ export class ManagedServiceSupervisor {
 
   private readonly platform: NodeJS.Platform;
 
-  private readonly managedEnv: NodeJS.ProcessEnv;
+  private managedEnv: NodeJS.ProcessEnv;
 
   private readonly logQueues = new Map<ManagedServiceName, Promise<void>>();
 
@@ -633,6 +633,9 @@ export class ManagedServiceSupervisor {
     private readonly dependencies: ProcessSupervisorDependencies = {},
   ) {
     this.platform = dependencies.platform ?? process.platform;
+    // Keep one launch-environment snapshot for the supervisor lifetime so a
+    // service restart cannot silently drift from the environment used for the
+    // first launch. Host-owned values can be set explicitly before startAll().
     this.managedEnv = { ...(dependencies.env ?? process.env) };
     const specs = buildManagedServiceSpecs(config, this.managedEnv, this.platform);
     this.spawnImpl = dependencies.spawn ?? spawn;
@@ -657,6 +660,24 @@ export class ManagedServiceSupervisor {
 
   getManagedServiceCount(): number {
     return this.handles.size;
+  }
+
+  setPlatformAuthSessionSecret(secret: string): void {
+    if (!secret.trim()) {
+      throw new Error('Desktop platform auth session secret must not be empty.');
+    }
+    const runningService = Array.from(this.handles.values()).find((handle) => (
+      handle.child
+      && handle.child.exitCode === null
+      && handle.child.signalCode === null
+    ));
+    if (runningService) {
+      throw new Error('Desktop platform auth session secret must be set before services start.');
+    }
+    this.managedEnv = {
+      ...this.managedEnv,
+      CATS_AUTH_SESSION_SECRET: secret,
+    };
   }
 
   async startAll(): Promise<void> {

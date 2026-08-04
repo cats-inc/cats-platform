@@ -72,7 +72,10 @@ Auth and repair constraints for LAN/tunnel access:
   exposing browser/mobile auth routes. Packaged Desktop generates and persists
   a 256-bit secret automatically at
   `~/.cats/platform/config/auth-session-secret.local` when no explicit value is
-  configured; the same secret is reused across launches.
+  configured; the same secret is reused across launches. Desktop writes the
+  value atomically, quarantines invalid contents before regenerating, and shows
+  provisioning I/O failures on its retryable bootstrap recovery page. The
+  secret is removed from platform-launched project child processes.
 - `CATS_AUTH_ENABLED=false` is not a LAN deployment option and is rejected
   after setup completion.
 - Keep `CATS_AUTH_ALLOWED_BROWSER_ORIGINS` explicit for every browser-facing
@@ -234,6 +237,10 @@ npm run desktop:icons -- --shape square
 - smoke-check defaults:
   - install root: `%LOCALAPPDATA%\Programs\Cats`
   - host state path: `%USERPROFILE%\.cats\desktop\state.json`
+  - platform data path: `%USERPROFILE%\.cats\platform`
+  - `CATS_DESKTOP_DIR` and `CATS_PLATFORM_DIR` override the corresponding data
+    paths; `-HostStatePath` and `-PlatformDir` provide explicit smoke-test
+    overrides
 - smoke-check contract:
   - verify installed `Cats.exe`
   - verify bundled `cats` and `cats-runtime` sidecar assets

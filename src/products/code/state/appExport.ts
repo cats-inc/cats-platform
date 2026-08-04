@@ -3,6 +3,8 @@ import { cp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
+import { createPlatformChildProcessEnv } from '../../../shared/platformChildProcessEnv.js';
+
 import {
   CATS_CODE_APP_EXPORT_METADATA_FILE,
   CATS_CODE_USER_APP_TEMPLATE_PACKAGE_PATH,
@@ -90,6 +92,7 @@ async function runPackageBuild(
     : args;
   const result = await execFile(execCommand, execArgs, {
     cwd: packagePath,
+    env: createPlatformChildProcessEnv(),
     encoding: 'utf8',
     timeout: input.buildTimeoutMs ?? 120_000,
     windowsHide: true,

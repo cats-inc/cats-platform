@@ -57,3 +57,23 @@ test('desktop host keeps setup audit as background enrichment only', async () =>
     /const shouldPublish = options\.publishMode !== 'bootstrap-only' \|\| bootstrapPageVisible;/u,
   );
 });
+
+test('desktop host provisions auth inside the retryable bootstrap lifecycle', async () => {
+  const source = await readDesktopHostMain();
+  const bootstrapStart = source.indexOf('async function bootstrapDesktopHost(');
+  const actionStart = source.indexOf('async function runHostAction(', bootstrapStart);
+  assert.notEqual(bootstrapStart, -1);
+  assert.notEqual(actionStart, -1);
+
+  const bootstrapSource = source.slice(bootstrapStart, actionStart);
+  const showPageIndex = bootstrapSource.indexOf('await ensureBootstrapPageVisible();');
+  const provisionIndex = bootstrapSource.indexOf(
+    'await ensureDesktopAuthSessionSecret(hostConfig)',
+  );
+  const startServicesIndex = bootstrapSource.indexOf('await supervisor.startAll();');
+
+  assert.ok(showPageIndex >= 0 && showPageIndex < provisionIndex);
+  assert.ok(provisionIndex < startServicesIndex);
+  assert.match(bootstrapSource, /latestBootstrapError = message;/u);
+  assert.match(bootstrapSource, /return maybeOpenApp\(snapshot\)\.then\(\(\) => snapshot\);/u);
+});

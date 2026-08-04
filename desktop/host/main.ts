@@ -1807,6 +1807,9 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
       await supervisor.stopAll();
     }
 
+    const authSessionSecret = await ensureDesktopAuthSessionSecret(hostConfig);
+    supervisor.setPlatformAuthSessionSecret(authSessionSecret.secret);
+
     const attemptTimestamp = new Date();
     diagnosticsState = {
       ...(diagnosticsState ?? createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats-platform'])),
@@ -2211,7 +2214,6 @@ async function main(): Promise<void> {
     packaged: app.isPackaged,
     resourcesPath: nodeProcess.resourcesPath,
   });
-  const authSessionSecret = await ensureDesktopAuthSessionSecret(hostConfig);
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     if (!mainWindow || webContents !== mainWindow.webContents) {
       callback(false);
@@ -2289,10 +2291,6 @@ async function main(): Promise<void> {
     ]);
   }
   supervisor = new ManagedServiceSupervisor(hostConfig, {
-    env: {
-      ...process.env,
-      CATS_AUTH_SESSION_SECRET: authSessionSecret.secret,
-    },
     onStateChange: () => {
       if (hostConfig && supervisor) {
         publishSnapshot(buildSnapshot());

@@ -40,6 +40,14 @@ launches. The file is created with user-only permissions where the filesystem
 supports POSIX modes. An explicit `CATS_AUTH_SESSION_SECRET` from the process or
 Desktop `.env` remains the operator override and is never overwritten.
 
+The persisted file is replaced with an atomic same-directory rename. If its
+contents are invalid, Desktop moves it aside with an `.invalid-*` suffix and
+generates a replacement. A genuine filesystem error is shown on the Desktop
+bootstrap recovery page, where Retry attempts provisioning again instead of
+silently exiting. Platform-launched project processes do not inherit this
+host-only secret. Explicit values shorter than 32 characters or containing
+whitespace remain compatible but emit a startup warning.
+
 `CATS_AUTH_ENABLED=false` is an unsafe dev/test escape hatch only. It is rejected
 after setup is complete and should not be used for LAN-facing workspaces.
 
@@ -833,12 +841,16 @@ Default assumptions:
 
 - install root: `%LOCALAPPDATA%\Programs\Cats`
 - host state path: `%USERPROFILE%\.cats\desktop\state.json`
+- platform data path: `%USERPROFILE%\.cats\platform`
 
 If you installed to a different directory, pass overrides:
 
 ```powershell
 .\scripts\windows\Test-WindowsInstallerSmoke.ps1 -InstallRoot 'C:\Program Files\Cats'
 ```
+
+For custom state roots, pass `-HostStatePath` and `-PlatformDir`; the defaults
+also honor `CATS_DESKTOP_DIR` and `CATS_PLATFORM_DIR`.
 
 What the smoke-check confirms:
 

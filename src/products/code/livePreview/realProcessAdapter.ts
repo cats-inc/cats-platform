@@ -1,5 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 
+import { createPlatformChildProcessEnv } from '../../../shared/platformChildProcessEnv.js';
+
 import type {
   LivePreviewProcessAdapter,
   LivePreviewProcessExit,
@@ -60,9 +62,13 @@ export function createRealLivePreviewProcessAdapter(
   };
   return {
     spawn(input: LivePreviewProcessSpawnInput): Promise<LivePreviewProcessHandle> {
+      const childEnv = createPlatformChildProcessEnv({
+        ...input.env,
+        PORT: String(input.port),
+      });
       const child = runtime.spawnProcess(input.executable, input.args, {
         cwd: input.cwd,
-        env: { ...process.env, ...input.env, PORT: String(input.port) },
+        env: childEnv,
         shell: false,
         windowsHide: true,
         detached: runtime.platform !== 'win32',
