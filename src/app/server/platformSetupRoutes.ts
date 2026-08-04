@@ -66,6 +66,13 @@ interface LegacyPlatformSetupCompleteInput extends PlatformSetupCompleteInput {
   adminPassword?: string;
 }
 
+class PlatformSetupConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PlatformSetupConfigurationError';
+  }
+}
+
 function reportSyncFailure(scope: string, error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error);
   process.stderr.write(`[cats-platform-setup] ${scope}: ${message}\n`);
@@ -379,13 +386,33 @@ async function handlePlatformSetupComplete(
       }),
       error: toBootstrapEventError(error),
     });
-    sendJson(context.response, 500, {
+    const responseError = resolveSetupCompleteResponseError(error);
+    sendJson(context.response, responseError.status, {
       error: {
-        code: 'internal_error',
-        message: error instanceof Error ? error.message : 'Unexpected server error',
+        code: responseError.code,
+        message: responseError.message,
       },
     });
   }
+}
+
+function resolveSetupCompleteResponseError(error: unknown): {
+  status: number;
+  code: 'configuration_error' | 'internal_error';
+  message: string;
+} {
+  if (error instanceof PlatformSetupConfigurationError) {
+    return {
+      status: 503,
+      code: 'configuration_error',
+      message: 'Authentication is not configured for first-admin setup.',
+    };
+  }
+  return {
+    status: 500,
+    code: 'internal_error',
+    message: 'Setup could not be completed.',
+  };
 }
 
 function enforceSetupPreAuthOriginGate(context: PlatformSetupContext): boolean {
@@ -451,7 +478,9 @@ async function prepareFirstAdminDuringSetup(
 ): Promise<{ state: PlatformAuthState; token: string } | null> {
   const sessionSecret = context.dependencies.auth.sessionSecret;
   if (!sessionSecret) {
-    throw new Error('CATS_AUTH_SESSION_SECRET is required to create the first admin session.');
+    throw new PlatformSetupConfigurationError(
+      'CATS_AUTH_SESSION_SECRET is required to create the first admin session.',
+    );
   }
   const created = await createFirstAdminLocalAuthState({
     state: await context.dependencies.authStore.readState(),
@@ -480,7 +509,22 @@ export async function routePlatformSetupApi(
       sendMethodNotAllowed(context.response, ['POST']);
       return true;
     }
-    await handlePlatformSetupComplete(context);
+    try {
+      await handlePlatformSetupComplete(context);
+    } catch (error) {
+      // State reads happen before the transactional setup block has enough
+      // context to record a detailed onboarding event. Keep those diagnostics
+      // server-side too instead of falling through to the global error handler,
+      // which includes raw exception messages in its response.
+      reportSyncFailure('setup_complete_route', error);
+      const responseError = resolveSetupCompleteResponseError(error);
+      sendJson(context.response, responseError.status, {
+        error: {
+          code: responseError.code,
+          message: responseError.message,
+        },
+      });
+    }
     return true;
   }
 

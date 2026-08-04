@@ -13,6 +13,7 @@ function createSetupApiI18nOptions() {
     errorMessagesByCode: {
       already_complete: t(messageKeys.setupWizardAlreadyCompleteError),
       bad_request: t(messageKeys.setupWizardInvalidRequestError),
+      configuration_error: t(messageKeys.setupWizardServerError),
       internal_error: t(messageKeys.setupWizardServerError),
     },
   };
@@ -27,6 +28,19 @@ function jsonResponse(payload: unknown, status: number): Response {
 
 test('platform setup API maps coded server errors to localized onboarding copy', async () => {
   const options = createSetupApiI18nOptions();
+
+  assert.equal(
+    await readSetupApiErrorMessage(
+      jsonResponse({
+        error: {
+          code: 'configuration_error',
+          message: 'Authentication is not configured for first-admin setup.',
+        },
+      }, 503),
+      options,
+    ),
+    '無法完成設定，請稍後再試。',
+  );
 
   assert.equal(
     await readSetupApiErrorMessage(

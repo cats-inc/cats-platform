@@ -54,12 +54,11 @@ test('platform setup can create first local admin and browser session', async (t
   assert.ok(core.setupCompleteAt);
 });
 
-// The other half of the contract above. The packaged clean-install regression
-// lived exactly here: the wizard always submits admin credentials, so a host
-// that starts the platform sidecar without CATS_AUTH_SESSION_SECRET turns every
-// first setup into the 500 the renderer shows as "setup could not be
-// completed". Desktop provisions the secret before startAll(); this pins what
-// happens when something upstream stops doing that.
+// The packaged clean-install regression lived exactly here: the wizard always
+// submits admin credentials, so a host that starts the platform sidecar without
+// its session secret cannot finish first-admin setup. Desktop provisions the
+// secret before startAll(); this pins the safe server-side failure seam if an
+// upstream host stops doing that.
 test('platform setup cannot create the first admin without a session secret', async (t) => {
   const fixture = await createSetupFixture(t, { sessionSecret: null });
   const response = await request(fixture.server, '/api/platform/setup/complete', {
@@ -74,12 +73,104 @@ test('platform setup cannot create the first admin without a session secret', as
     },
   });
 
-  assert.equal(response.status, 500);
-  assert.equal(response.payload?.error?.code, 'internal_error');
-  assert.match(response.payload?.error?.message ?? '', /CATS_AUTH_SESSION_SECRET/u);
+  assert.equal(response.status, 503);
+  assert.equal(response.payload?.error?.code, 'configuration_error');
+  assert.equal(
+    response.payload?.error?.message,
+    'Authentication is not configured for first-admin setup.',
+  );
+  assert.doesNotMatch(response.payload?.error?.message ?? '', /CATS_/u);
   assert.equal(response.setCookie, null);
   assert.equal((await fixture.authStore.readState()).accounts.length, 0);
   assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
+});
+
+test('platform setup keeps unexpected pre-auth failures out of the response', async (t) => {
+  const fixture = await createSetupFixture(t);
+  Object.defineProperty(fixture.chatStore, 'writeSnapshot', {
+    value: async () => {
+      throw new Error('sensitive store failure at C:\\Users\\owner\\private-state.json');
+    },
+  });
+  const response = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'correct-password',
+    },
+  });
+
+  assert.equal(response.status, 500);
+  assert.equal(response.payload?.error?.code, 'internal_error');
+  assert.equal(response.payload?.error?.message, 'Setup could not be completed.');
+  assert.doesNotMatch(response.payload?.error?.message ?? '', /private-state/u);
+  assert.equal(response.setCookie, null);
+  assert.equal((await fixture.authStore.readState()).accounts.length, 0);
+  assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
+});
+
+test('platform setup also hides failures before the transactional setup block', async (t) => {
+  const fixture = await createSetupFixture(t);
+  const initialCore = await fixture.chatStore.readCore();
+  let readCount = 0;
+  Object.defineProperty(fixture.chatStore, 'readCore', {
+    value: async () => {
+      readCount += 1;
+      if (readCount === 1) {
+        return initialCore;
+      }
+      throw new Error('sensitive early read failure at C:\\Users\\owner\\chat-state.json');
+    },
+  });
+  const response = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'correct-password',
+    },
+  });
+
+  assert.equal(response.status, 500);
+  assert.equal(response.payload?.error?.code, 'internal_error');
+  assert.equal(response.payload?.error?.message, 'Setup could not be completed.');
+  assert.doesNotMatch(response.payload?.error?.message ?? '', /chat-state/u);
+  assert.equal(response.setCookie, null);
+  assert.equal((await fixture.authStore.readState()).accounts.length, 0);
+});
+
+test('server-level failures do not expose raw auth-gate errors', async (t) => {
+  const fixture = await createSetupFixture(t);
+  Object.defineProperty(fixture.chatStore, 'readCore', {
+    value: async () => {
+      throw new Error('sensitive auth gate failure at C:\\Users\\owner\\auth-state.json');
+    },
+  });
+  const response = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'correct-password',
+    },
+  });
+
+  assert.equal(response.status, 500);
+  assert.equal(response.payload?.error?.code, 'internal_error');
+  assert.equal(response.payload?.error?.message, 'Unexpected server error');
+  assert.doesNotMatch(response.payload?.error?.message ?? '', /auth-state/u);
+  assert.equal(response.setCookie, null);
+  assert.equal((await fixture.authStore.readState()).accounts.length, 0);
 });
 
 test('platform setup rejects partial first-admin credentials before completion', async (t) => {

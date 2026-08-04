@@ -385,6 +385,12 @@ GET  /api/platform/ingress
   - preserving `Boss Cat` assignment as a Chat concern instead of forcing one
     during setup
   - returning the refreshed `PlatformHostEnvelope` / `AppShellPayload`
+  - returning `503 configuration_error` with safe operator-facing text when
+    first-admin auth is not configured
+  - returning a fixed `500 internal_error` envelope for unexpected failures;
+    raw exception messages are retained only in server diagnostics
+- Unhandled request failures across the server also return a fixed
+  `500 internal_error` message; raw exception details are log-only.
 - `POST /api/platform/preferences` persists owner-level platform preferences
   such as `lastProductSurface` and desktop startup toggles.
 - `GET /api/platform/bootstrap-diagnostics` returns the retained packaged-setup

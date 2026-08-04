@@ -41,13 +41,22 @@ supports POSIX modes. An explicit `CATS_AUTH_SESSION_SECRET` from the process or
 Desktop `.env` remains the operator override and is never overwritten.
 
 Desktop publishes the fully flushed file with an atomic same-directory,
-no-clobber operation, so concurrent hosts adopt one canonical value. If its
-contents are invalid, Desktop moves it aside with an `.invalid-*` suffix and
-generates a replacement. Temporary artifacts older than one hour and invalid
-backups older than 30 days are removed during provisioning. A genuine
-filesystem error is shown on the Desktop bootstrap recovery page, where Retry
-attempts provisioning again instead of silently exiting. Provisioning warnings
-are persisted in `~/.cats/desktop/logs/desktop-host.log` for packaged GUI apps.
+no-clobber operation, so concurrent hosts adopt one canonical value. Filesystems
+without hard-link support use an exclusive-copy fallback that preserves the
+no-clobber guarantee; later hosts wait for an in-progress fallback publish and
+adopt its canonical value. The fallback's reduced crash-atomicity is recorded in
+the Desktop host log. Permission failures remain fail-closed. If the canonical contents are
+invalid, Desktop moves them aside with an `.invalid-*` suffix and generates a
+replacement. Temporary artifacts older than one hour and invalid backups older
+than 30 days are removed during provisioning. A genuine filesystem error is
+shown on the Desktop bootstrap recovery page, where Retry attempts provisioning
+again instead of silently exiting. Provisioning warnings are persisted in
+`~/.cats/desktop/logs/desktop-host.log` for packaged GUI apps.
+
+If a first-admin setup request reaches the platform without a configured
+session secret, the API returns a safe `503 configuration_error`; unexpected
+pre-auth setup failures return a fixed `500 internal_error`. Detailed exception
+messages stay in server diagnostics rather than the browser response.
 
 Platform-launched project processes do not inherit Cats-owned credentials:
 the auth session secret, runtime API key, Telegram bot/webhook secrets, and

@@ -247,9 +247,110 @@ test('desktop auth provisioning warns when it falls back from hard-link publishi
     assert.equal(await readFile(secretPath, 'utf8'), `${GENERATED_SECRET}\n`);
     assert.equal(warnings.length, 1);
     assert.match(warnings[0], /Hard links are unavailable/u);
-    assert.match(warnings[0], /cannot detect a concurrent Desktop host/u);
+    assert.match(warnings[0], /exclusive-copy fallback/u);
     assert.doesNotMatch(warnings[0], new RegExp(GENERATED_SECRET, 'u'));
 
+    const configEntries = await readdir(config.paths.platformConfigDir);
+    assert.equal(configEntries.some((entry) => entry.includes('.tmp-')), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('concurrent fallback publishing converges on one canonical secret', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-fallback-concurrent-'));
+  const config = createConfig(root);
+  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const warnings = [];
+  let arrivals = 0;
+  let releaseBarrier;
+  const barrier = new Promise((resolve) => {
+    releaseBarrier = resolve;
+  });
+  const unsupportedLink = async () => {
+    arrivals += 1;
+    if (arrivals === 2) {
+      releaseBarrier();
+    }
+    await barrier;
+    throw Object.assign(new Error('operation not supported'), { code: 'ENOTSUP' });
+  };
+
+  try {
+    const results = await Promise.all([
+      ensureDesktopAuthSessionSecret(config, {}, {
+        generateSecret: () => GENERATED_SECRET,
+        linkFile: unsupportedLink,
+        warn: (message) => warnings.push(message),
+      }),
+      ensureDesktopAuthSessionSecret(config, {}, {
+        generateSecret: () => ALTERNATE_GENERATED_SECRET,
+        linkFile: unsupportedLink,
+        warn: (message) => warnings.push(message),
+      }),
+    ]);
+    const persisted = (await readFile(secretPath, 'utf8')).trim();
+
+    assert.equal(results[0].secret, persisted);
+    assert.equal(results[1].secret, persisted);
+    assert.deepEqual(
+      results.map((result) => result.source).sort(),
+      ['generated', 'persisted'],
+    );
+    assert.equal(warnings.length, 2);
+    const configEntries = await readdir(config.paths.platformConfigDir);
+    assert.equal(configEntries.some((entry) => entry.includes('.tmp-')), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('desktop auth provisioning adopts an in-progress fallback publish', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-fallback-in-progress-'));
+  const config = createConfig(root);
+  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const temporaryPath = `${secretPath}.tmp-other-host-test`;
+
+  try {
+    await mkdir(config.paths.platformConfigDir, { recursive: true });
+    await writeFile(secretPath, 'partial', 'utf8');
+    await writeFile(temporaryPath, `${GENERATED_SECRET}\n`, 'utf8');
+
+    const provisioning = ensureDesktopAuthSessionSecret(config, {});
+    await new Promise((resolve) => setTimeout(resolve, 75));
+    await writeFile(secretPath, `${GENERATED_SECRET}\n`, 'utf8');
+    await rm(temporaryPath, { force: true });
+    const result = await provisioning;
+
+    assert.equal(result.secret, GENERATED_SECRET);
+    assert.equal(result.source, 'persisted');
+    assert.equal(await readFile(secretPath, 'utf8'), `${GENERATED_SECRET}\n`);
+    const configEntries = await readdir(config.paths.platformConfigDir);
+    assert.equal(configEntries.some((entry) => entry.includes('.invalid-')), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('desktop auth provisioning fails closed when hard linking is denied', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-link-denied-'));
+  const config = createConfig(root);
+  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const warnings = [];
+
+  try {
+    await assert.rejects(
+      ensureDesktopAuthSessionSecret(config, {}, {
+        generateSecret: () => GENERATED_SECRET,
+        linkFile: async () => {
+          throw Object.assign(new Error('permission denied'), { code: 'EPERM' });
+        },
+        warn: (message) => warnings.push(message),
+      }),
+      (error) => error?.code === 'EPERM',
+    );
+    await assert.rejects(access(secretPath, constants.F_OK));
+    assert.equal(warnings.length, 0);
     const configEntries = await readdir(config.paths.platformConfigDir);
     assert.equal(configEntries.some((entry) => entry.includes('.tmp-')), false);
   } finally {

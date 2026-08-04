@@ -74,7 +74,7 @@ export function createServer(dependencies: ServerDependencies) {
       sendJson(response, 500, {
         error: {
           code: 'internal_error',
-          message: error instanceof Error ? error.message : 'Unexpected server error',
+          message: 'Unexpected server error',
         },
       });
     });

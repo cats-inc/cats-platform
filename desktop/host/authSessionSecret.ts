@@ -1,7 +1,9 @@
 import { randomBytes } from 'node:crypto';
+import { constants as fsConstants } from 'node:fs';
 import {
   appendFile,
   chmod,
+  copyFile,
   link,
   lstat,
   mkdir,
@@ -22,6 +24,8 @@ const MIN_PERSISTED_SECRET_LENGTH = 32;
 const DESKTOP_HOST_LOG_FILE_NAME = 'desktop-host.log';
 const STALE_TEMP_SECRET_MAX_AGE_MS = 60 * 60 * 1_000;
 const INVALID_SECRET_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1_000;
+const FALLBACK_PUBLISH_RETRY_MS = 25;
+const FALLBACK_PUBLISH_TIMEOUT_MS = 10_000;
 
 export interface DesktopAuthSessionSecretResult {
   secret: string;
@@ -80,7 +84,20 @@ export async function ensureDesktopAuthSessionSecret(
   const secretPath = resolveDesktopAuthSessionSecretPath(config);
   await mkdir(config.paths.platformConfigDir, { recursive: true, mode: 0o700 });
   await cleanupStaleSecretArtifacts(config, dependencies);
-  const persistedSecret = await readPersistedSecret(secretPath);
+  let persistedSecret = await readPersistedSecret(secretPath);
+  if (
+    persistedSecret.status === 'invalid'
+    && await hasTemporarySecretArtifact(config.paths.platformConfigDir)
+  ) {
+    // The exclusive-copy fallback exposes its destination while a tiny copy is
+    // in progress. A later host must not quarantine that transient partial file;
+    // wait for the publishing host and adopt the value it finishes instead.
+    const concurrentWinner = await waitForConcurrentWinner(secretPath);
+    persistedSecret = {
+      status: 'valid',
+      secret: concurrentWinner.secret,
+    };
+  }
   if (persistedSecret.status === 'valid') {
     await restrictSecretFilePermissions(secretPath);
     return {
@@ -180,24 +197,19 @@ async function writeSecretAtomically(
       }
 
       // Hard links can be unavailable on some removable/network filesystems.
-      // Atomic replacement still publishes a fully flushed file there, but
-      // rename always replaces, so this path cannot detect a concurrent winner.
-      // Say so: a silently downgraded guarantee is the kind of thing nobody can
-      // reconstruct from the symptoms later.
+      // Publish with exclusive-copy semantics there: this gives up atomic
+      // replacement on a host crash, but never overwrites a concurrent winner.
       await reportWarning(
         config,
         dependencies,
         `Hard links are unavailable for '${secretPath}' (${formatError(error)}); `
-          + 'publishing by replacement instead, which cannot detect a concurrent Desktop host.',
+          + 'publishing with an exclusive-copy fallback.',
       );
-      await rename(temporaryPath, secretPath);
-      temporaryCreated = false;
-      // Re-read anyway so the caller adopts whatever actually landed on disk.
-      const persisted = await requireValidPersistedSecret(secretPath);
-      return {
-        created: persisted === secret,
-        secret: persisted,
-      };
+      return await publishSecretWithExclusiveCopyFallback(
+        secretPath,
+        temporaryPath,
+        secret,
+      );
     }
 
     const persisted = await requireValidPersistedSecret(secretPath);
@@ -210,6 +222,51 @@ async function writeSecretAtomically(
       await rm(temporaryPath, { force: true }).catch(() => undefined);
     }
   }
+}
+
+async function publishSecretWithExclusiveCopyFallback(
+  secretPath: string,
+  temporaryPath: string,
+  secret: string,
+): Promise<SecretPublishResult> {
+  try {
+    await copyFile(temporaryPath, secretPath, fsConstants.COPYFILE_EXCL);
+  } catch (error) {
+    if (hasErrorCode(error, 'EEXIST')) {
+      return await waitForConcurrentWinner(secretPath);
+    }
+    throw error;
+  }
+  const canonicalHandle = await open(secretPath, 'r+');
+  try {
+    await canonicalHandle.sync();
+  } finally {
+    await canonicalHandle.close();
+  }
+  const persisted = await requireValidPersistedSecret(secretPath);
+  return {
+    created: persisted === secret,
+    secret: persisted,
+  };
+}
+
+async function waitForConcurrentWinner(secretPath: string): Promise<SecretPublishResult> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < FALLBACK_PUBLISH_TIMEOUT_MS) {
+    const persisted = await readPersistedSecret(secretPath);
+    if (persisted.status === 'valid') {
+      return {
+        created: false,
+        secret: persisted.secret,
+      };
+    }
+    await waitFor(FALLBACK_PUBLISH_RETRY_MS);
+  }
+  throw new Error(`Timed out waiting for Desktop auth session secret at '${secretPath}'.`);
+}
+
+async function waitFor(delayMs: number): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
 }
 
 async function readConcurrentWinner(secretPath: string): Promise<SecretPublishResult> {
@@ -270,6 +327,20 @@ async function cleanupStaleSecretArtifacts(
   }
 }
 
+async function hasTemporarySecretArtifact(platformConfigDir: string): Promise<boolean> {
+  try {
+    const entries = await readdir(platformConfigDir);
+    return entries.some((entry) => (
+      entry.startsWith(`${AUTH_SESSION_SECRET_FILE_NAME}.tmp-`)
+    ));
+  } catch (error) {
+    if (hasErrorCode(error, 'ENOENT')) {
+      return false;
+    }
+    throw error;
+  }
+}
+
 function resolveArtifactMaxAgeMs(fileName: string): number | null {
   if (fileName.startsWith(`${AUTH_SESSION_SECRET_FILE_NAME}.tmp-`)) {
     return STALE_TEMP_SECRET_MAX_AGE_MS;
@@ -302,7 +373,7 @@ async function reportWarning(
 }
 
 function isHardLinkUnsupported(error: unknown): boolean {
-  return ['ENOSYS', 'ENOTSUP', 'EOPNOTSUPP', 'EPERM'].some((code) => hasErrorCode(error, code));
+  return ['ENOSYS', 'ENOTSUP', 'EOPNOTSUPP'].some((code) => hasErrorCode(error, code));
 }
 
 function formatError(error: unknown): string {

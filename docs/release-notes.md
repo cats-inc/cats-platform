@@ -30,14 +30,19 @@ the first-admin setup form can complete. When no explicit
 `CATS_AUTH_SESSION_SECRET` is configured, Desktop generates a 256-bit secret,
 persists it in the user-local platform config directory, reuses it across
 launches, and injects it only into the `cats-platform` sidecar. Persistence uses
-an atomic no-clobber publish so concurrent hosts converge on one value; invalid
-files are quarantined and regenerated, and stale temporary/invalid artifacts
-are cleaned during provisioning. Real I/O failures now open the existing
-retryable bootstrap recovery page instead of terminating before a window
-appears, while warnings persist in the Desktop host log. Platform-launched
-project processes and shell helpers strip the auth secret, runtime API key,
-Telegram credentials, and ngrok auth tokens from their environments. The
-Windows installer smoke check honors custom Desktop/platform data roots.
+an atomic no-clobber publish so concurrent hosts converge on one value;
+filesystems without hard-link support use an exclusive-copy fallback, while
+permission errors remain fail-closed. Invalid files are quarantined and
+regenerated, and stale temporary/invalid artifacts are cleaned during
+provisioning. Real I/O failures now open the existing retryable bootstrap
+recovery page instead of terminating before a window appears, while warnings
+persist in the Desktop host log. First-admin configuration failures use a safe
+`503 configuration_error`, and unexpected pre-auth setup failures no longer
+return raw exception messages, including failures caught by the server-level
+request handler. Platform-launched project processes and shell helpers strip the
+auth secret, runtime API key, Telegram credentials, and ngrok auth tokens from
+their environments. The Windows installer smoke check honors custom
+Desktop/platform data roots.
 
 Migration steps:
 

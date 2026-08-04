@@ -3,14 +3,25 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
-import {
-  createPlatformChildProcessEnv,
-  PLATFORM_OWNED_CREDENTIAL_ENV_KEYS,
-} from '../src/shared/platformChildProcessEnv.ts';
+import { createPlatformChildProcessEnv } from '../src/shared/platformChildProcessEnv.ts';
 
-// Anything named like a credential is one. The strip list is a denylist, so
-// without this the only thing keeping it current is a code comment.
-const CREDENTIAL_ENV_KEY_PATTERN = /(?:SECRET|TOKEN|AUTHTOKEN|API_KEY|PASSWORD)$/u;
+const CREDENTIAL_ENV_KEY_SUFFIXES = [
+  'SECRET',
+  'TOKEN',
+  'AUTHTOKEN',
+  'API_KEY',
+  'PRIVATE_KEY',
+  'ACCESS_KEY',
+  'PASSWORD',
+  'PASSPHRASE',
+  'CREDENTIAL',
+  'CREDENTIALS',
+  'COOKIE',
+];
+const CREDENTIAL_ENV_KEY_PATTERN = new RegExp(
+  `(?:${CREDENTIAL_ENV_KEY_SUFFIXES.join('|')})$`,
+  'u',
+);
 
 test('platform child process env strips every host-owned credential after applying overrides', () => {
   const childEnv = createPlatformChildProcessEnv({
@@ -52,12 +63,15 @@ test('every credential documented in .env.example is stripped from platform chil
     '.env.example should document at least one credential entry',
   );
 
-  const strippedKeys = new Set<string>(PLATFORM_OWNED_CREDENTIAL_ENV_KEYS);
-  const unstripped = documentedCredentialKeys.filter((key) => !strippedKeys.has(key));
+  const credentialEnv = Object.fromEntries(
+    documentedCredentialKeys.map((key) => [key, `must-strip-${key}`]),
+  );
+  const sanitized = createPlatformChildProcessEnv({}, credentialEnv);
+  const unstripped = documentedCredentialKeys.filter((key) => sanitized[key] !== undefined);
   assert.deepEqual(
     unstripped,
     [],
-    'Add these .env.example credentials to PLATFORM_OWNED_CREDENTIAL_ENV_KEYS so Cats Code '
-      + `child processes cannot read them: ${unstripped.join(', ')}`,
+    'Update createPlatformChildProcessEnv so Cats Code child processes cannot read these '
+      + `.env.example credentials: ${unstripped.join(', ')}`,
   );
 });

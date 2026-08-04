@@ -85,6 +85,7 @@ export function PlatformSetupWizard({
         errorMessagesByCode: {
           already_complete: t(messageKeys.setupWizardAlreadyCompleteError),
           bad_request: t(messageKeys.setupWizardInvalidRequestError),
+          configuration_error: t(messageKeys.setupWizardServerError),
           internal_error: t(messageKeys.setupWizardServerError),
         },
       });
