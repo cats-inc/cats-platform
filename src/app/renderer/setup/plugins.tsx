@@ -40,6 +40,7 @@ export function GuideCatSetupFields({
     state: 'ready',
     providers: [],
   });
+  const [runtimeBrowserOpenFailed, setRuntimeBrowserOpenFailed] = useState(false);
   const runtimeSetupHref = resolveProviderRegistrySetupHref(providerRegistry)
     ?? PLATFORM_RUNTIME_SETUP_PATH;
   const runtimeStatusChip = providerRegistry.state === 'runtime_unreachable'
@@ -88,6 +89,8 @@ export function GuideCatSetupFields({
               href={runtimeSetupHref}
               target="_blank"
               rel="noreferrer"
+              onClick={() => setRuntimeBrowserOpenFailed(false)}
+              onOpenError={() => setRuntimeBrowserOpenFailed(true)}
             >
               {t(messageKeys.setupGuideCatOpenRuntimeSetup)}
             </AuthenticatedBrowserLink>
@@ -103,10 +106,17 @@ export function GuideCatSetupFields({
               href={runtimeSetupHref}
               target="_blank"
               rel="noreferrer"
+              onClick={() => setRuntimeBrowserOpenFailed(false)}
+              onOpenError={() => setRuntimeBrowserOpenFailed(true)}
             >
               {t(messageKeys.setupGuideCatOpenRuntimeSetup)}
             </AuthenticatedBrowserLink>
           </>
+        ) : null}
+        {runtimeBrowserOpenFailed ? (
+          <span className="setupRuntimeNote" role="alert">
+            {t(messageKeys.settingsRuntimeBrowserHandoffError)}
+          </span>
         ) : null}
       </div>
     </>

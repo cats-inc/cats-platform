@@ -28,6 +28,7 @@ export interface CreateBrowserSessionInput {
   accountId: string;
   sessionSecret: string;
   ttlMs: number;
+  sourceSessionId?: string;
   now?: Date;
 }
 
@@ -67,6 +68,7 @@ export function verifySessionTokenHash(
 
 export function issueBrowserSession(input: CreateBrowserSessionInput): BrowserSessionIssueResult {
   const now = input.now ?? new Date();
+  const sourceSessionId = input.sourceSessionId?.trim();
   const issued = issueSessionRecord({
     accountId: input.accountId,
     kind: 'browser',
@@ -79,6 +81,9 @@ export function issueBrowserSession(input: CreateBrowserSessionInput): BrowserSe
     session: {
       ...issued.session,
       csrfTokenHash: csrf.tokenHash,
+      ...(sourceSessionId
+        ? { sourceSessionId }
+        : {}),
     },
     token: issued.token,
     csrfToken: csrf.token,
@@ -113,6 +118,62 @@ export function isSessionActive(
   now: Date = new Date(),
 ): boolean {
   return session.revokedAt === null && Date.parse(session.expiresAt) > now.getTime();
+}
+
+export function isSessionChainActive(
+  sessions: PlatformSessionRecord[],
+  session: PlatformSessionRecord,
+  now: Date = new Date(),
+): boolean {
+  const visited = new Set<string>();
+  let candidate: PlatformSessionRecord | undefined = session;
+
+  while (candidate) {
+    if (visited.has(candidate.id) || !isSessionActive(candidate, now)) {
+      return false;
+    }
+    visited.add(candidate.id);
+    if (!candidate.sourceSessionId) {
+      return true;
+    }
+    const sourceSessionId: string = candidate.sourceSessionId;
+    const accountId: string = candidate.accountId;
+    candidate = sessions.find((source): boolean => (
+      source.id === sourceSessionId
+      && source.accountId === accountId
+      && source.kind === 'browser'
+    ));
+  }
+
+  return false;
+}
+
+export function revokeSessionFamily(
+  sessions: PlatformSessionRecord[],
+  sourceSessionId: string,
+  now: Date = new Date(),
+): PlatformSessionRecord[] {
+  const sourceAccountId = sessions.find((session) => session.id === sourceSessionId)?.accountId;
+  const revokedIds = new Set<string>([sourceSessionId]);
+  let addedDescendant = true;
+  while (addedDescendant) {
+    addedDescendant = false;
+    for (const session of sessions) {
+      if (
+        session.sourceSessionId
+        && session.accountId === sourceAccountId
+        && revokedIds.has(session.sourceSessionId)
+        && !revokedIds.has(session.id)
+      ) {
+        revokedIds.add(session.id);
+        addedDescendant = true;
+      }
+    }
+  }
+
+  return sessions.map((session) => (
+    revokedIds.has(session.id) ? revokeSession(session, now) : session
+  ));
 }
 
 export function revokeSession(

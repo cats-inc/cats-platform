@@ -136,6 +136,10 @@ function readSessionRecord(input: unknown): PlatformSessionRecord {
   if (csrfTokenHash !== undefined) {
     session.csrfTokenHash = csrfTokenHash;
   }
+  const sourceSessionId = readOptionalString(record.sourceSessionId, 'session.sourceSessionId');
+  if (sourceSessionId !== undefined) {
+    session.sourceSessionId = sourceSessionId;
+  }
   const deviceLabel = readOptionalString(record.deviceLabel, 'session.deviceLabel');
   if (deviceLabel !== undefined) {
     session.deviceLabel = deviceLabel;

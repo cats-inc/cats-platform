@@ -104,7 +104,7 @@ function isPublicAuthRoute(pathname: string, method: string): boolean {
   return (
     pathname === '/api/auth/status' && method === 'GET'
   ) || (
-    pathname === '/api/auth/browser-handoff/exchange' && method === 'GET'
+    pathname === '/api/auth/browser-handoff/exchange' && ['GET', 'POST'].includes(method)
   ) || (
     pathname === '/api/auth/login' && method === 'POST'
   ) || (
@@ -132,6 +132,20 @@ function isPublicPreSetupRoute(pathname: string, method: string): boolean {
     || (pathname === '/api/platform/preferences' && method === 'POST')
     || (pathname === '/api/platform/guide-cat' && ['PUT', 'PATCH', 'DELETE'].includes(method))
     || (pathname === '/api/platform/assistants' && ['GET', 'POST'].includes(method))
+    || (pathname === '/api/auth/browser-handoff' && method === 'POST')
+    || (pathname === '/runtime/setup' && method === 'GET')
+    || (pathname === '/runtime/api/setup-state' && method === 'GET')
+    || (pathname === '/runtime/api/setup-scan' && method === 'POST')
+    || (pathname === '/runtime/api/setup-apply' && method === 'POST')
+    || (pathname === '/runtime/api/providers/config' && method === 'GET')
+    || (pathname === '/runtime/api/diagnostics/providers' && method === 'GET')
+    || (pathname === '/runtime/api/diagnostics/providers/reprobe' && method === 'POST')
+  ) {
+    return true;
+  }
+  if (
+    method === 'GET'
+    && /^\/runtime\/api\/providers\/[^/]+\/(?:tools|models)$/u.test(pathname)
   ) {
     return true;
   }

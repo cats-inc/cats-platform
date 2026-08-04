@@ -65,12 +65,15 @@ export async function openAuthenticatedDesktopBrowserPath(returnTo: string): Pro
     throw new Error(`Browser handoff request failed with HTTP ${response.status}.`);
   }
   const payload = await response.json() as Partial<PlatformBrowserHandoffLaunchPayload>;
-  if (
-    typeof payload.launchPath !== 'string'
-    || !payload.launchPath.trim()
-    || typeof payload.expiresAt !== 'string'
-    || !payload.expiresAt.trim()
-  ) {
+  if (typeof payload.launchPath !== 'string' || !payload.launchPath.trim()) {
+    throw new Error('Browser handoff response is invalid.');
+  }
+  const validHandoff = payload.launchMode === 'handoff'
+    && typeof payload.expiresAt === 'string'
+    && Boolean(payload.expiresAt.trim());
+  const validDirectLaunch = payload.launchMode === 'direct'
+    && payload.expiresAt === null;
+  if (!validHandoff && !validDirectLaunch) {
     throw new Error('Browser handoff response is invalid.');
   }
   await bridge.openBrowserHandoff(payload.launchPath);

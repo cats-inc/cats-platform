@@ -1,4 +1,4 @@
-import { hashSessionToken, isSessionActive } from './session.js';
+import { hashSessionToken, isSessionChainActive } from './session.js';
 import type {
   PlatformAccountRecord,
   PlatformAuthState,
@@ -58,7 +58,7 @@ function resolvePrincipalFromToken(
   const session = state.sessions.find((candidate) =>
     candidate.kind === input.kind
     && candidate.tokenHash === tokenHash
-    && isSessionActive(candidate, input.now ?? new Date()),
+    && isSessionChainActive(state.sessions, candidate, input.now ?? new Date()),
   ) ?? null;
   if (!session) {
     return null;

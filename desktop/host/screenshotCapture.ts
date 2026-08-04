@@ -5,6 +5,10 @@ import {
   type DesktopScreenshotCaptureRequest,
   type DesktopScreenshotCaptureResult,
 } from './contracts.js';
+import {
+  assertMainWindowIpcSender,
+  isMainWindowIpcSender,
+} from './ipcSecurity.js';
 
 export const DESKTOP_SCREENSHOT_IPC_CHANNEL = 'cats-host:capture-screenshot-region';
 const DESKTOP_SCREENSHOT_UNSUPPORTED_MESSAGE =
@@ -64,20 +68,18 @@ export function isMainWindowScreenshotIpcSender(
   event: unknown,
   mainWindow: Pick<DesktopScreenshotMainWindow, 'webContents'> | null,
 ): boolean {
-  if (!mainWindow) {
-    return false;
-  }
-
-  return (event as { sender?: unknown }).sender === mainWindow.webContents;
+  return isMainWindowIpcSender(event, mainWindow);
 }
 
 export function assertMainWindowScreenshotIpcSender(
   event: unknown,
   mainWindow: DesktopScreenshotMainWindow | null,
 ): asserts mainWindow is DesktopScreenshotMainWindow {
-  if (!isMainWindowScreenshotIpcSender(event, mainWindow)) {
-    throw new Error('Desktop screenshot capture is only available to the main Cats window.');
-  }
+  assertMainWindowIpcSender(
+    event,
+    mainWindow,
+    'Desktop screenshot capture is only available to the main Cats window.',
+  );
 }
 
 export function captureDesktopScreenshotWindowState(

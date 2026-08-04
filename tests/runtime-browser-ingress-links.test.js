@@ -3,13 +3,17 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 
 test('browser-facing runtime setup links stay on platform-owned ingress paths', async () => {
-  const [settingsSource, setupSource, wizardSource] = await Promise.all([
+  const [settingsSource, setupSource, recoverySource, wizardSource] = await Promise.all([
     readFile(
       new URL('../src/app/renderer/settings/PlatformSettingsRuntime.tsx', import.meta.url),
       'utf8',
     ),
     readFile(
       new URL('../src/app/renderer/setup/plugins.tsx', import.meta.url),
+      'utf8',
+    ),
+    readFile(
+      new URL('../src/design/components/ProviderRegistryRecovery.tsx', import.meta.url),
       'utf8',
     ),
     readFile(
@@ -24,7 +28,11 @@ test('browser-facing runtime setup links stay on platform-owned ingress paths', 
 
   assert.match(setupSource, /PLATFORM_RUNTIME_SETUP_PATH/u);
   assert.match(setupSource, /AuthenticatedBrowserLink/u);
+  assert.match(setupSource, /onOpenError=/u);
   assert.doesNotMatch(setupSource, /runtimeBaseUrl\.replace/u);
+
+  assert.match(recoverySource, /AuthenticatedBrowserLink/u);
+  assert.match(recoverySource, /onOpenError=/u);
 
   assert.doesNotMatch(wizardSource, /runtimeBaseUrl=\{envelope\.runtime\.baseUrl\}/u);
 });

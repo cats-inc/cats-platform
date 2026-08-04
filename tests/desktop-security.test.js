@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import {
+  isDesktopAppOriginUrl,
   isDesktopHostActionId,
   resolveDesktopBrowserHandoffUrl,
   validateDesktopUrl,
@@ -54,10 +55,10 @@ test('desktop browser handoff only opens the single-use exchange route on the ap
 
   assert.equal(
     resolveDesktopBrowserHandoffUrl(
-      `/api/auth/browser-handoff/exchange?token=${token}`,
+      `/api/auth/browser-handoff/exchange#token=${token}`,
       options,
     ),
-    `http://127.0.0.1:8181/api/auth/browser-handoff/exchange?token=${token}`,
+    `http://127.0.0.1:8181/api/auth/browser-handoff/exchange#token=${token}`,
   );
   assert.throws(
     () => resolveDesktopBrowserHandoffUrl(
@@ -68,15 +69,29 @@ test('desktop browser handoff only opens the single-use exchange route on the ap
   );
   assert.throws(
     () => resolveDesktopBrowserHandoffUrl(`/runtime/setup?token=${token}`, options),
-    /path is invalid/u,
+    /direct browser path is invalid/u,
   );
   assert.throws(
     () => resolveDesktopBrowserHandoffUrl(
-      `/api/auth/browser-handoff/exchange?token=${token}&next=/runtime/setup`,
+      `/api/auth/browser-handoff/exchange#token=${token}&next=/runtime/setup`,
       options,
     ),
     /token is invalid/u,
   );
+  assert.equal(
+    resolveDesktopBrowserHandoffUrl('/runtime/setup', options),
+    'http://127.0.0.1:8181/runtime/setup',
+  );
+});
+
+test('desktop window routing keeps same-origin targets in Electron', () => {
+  const options = {
+    appBaseUrl: 'http://127.0.0.1:8181',
+    allowedHosts: ['127.0.0.1'],
+  };
+
+  assert.equal(isDesktopAppOriginUrl('http://127.0.0.1:8181/artifacts/1', options), true);
+  assert.equal(isDesktopAppOriginUrl('https://example.com/artifacts/1', options), false);
 });
 
 test('desktop main process keeps Electron sandboxing enabled and validates IPC actions', async () => {
@@ -86,6 +101,7 @@ test('desktop main process keeps Electron sandboxing enabled and validates IPC a
   assert.match(source, /isDesktopHostActionId/);
   assert.match(source, /validateDesktopUrl/);
   assert.match(source, /setWindowOpenHandler/);
+  assert.match(source, /shouldAllowInAppNavigation\(url, config\)/);
   assert.match(source, /will-navigate/);
   assert.doesNotMatch(source, /window\.loadURL\(target\.url\)/);
   assert.match(source, /DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL/);

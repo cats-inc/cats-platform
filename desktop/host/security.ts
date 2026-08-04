@@ -10,6 +10,11 @@ interface ValidateDesktopUrlOptions {
 }
 
 const DESKTOP_HOST_ACTION_ID_SET = new Set<string>(DESKTOP_HOST_ACTION_IDS);
+const DESKTOP_DIRECT_BROWSER_PATHS = new Set<string>([
+  '/runtime/setup',
+  '/runtime/dashboard',
+  '/runtime/playground',
+]);
 const HOSTNAME_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*$/iu;
 const BRACKETED_IPV6_PATTERN = /^\[[0-9a-f:.]+\]$/iu;
 
@@ -121,20 +126,49 @@ export function resolveDesktopBrowserHandoffUrl(
   if (targetUrl.origin !== appUrl.origin) {
     throw new Error('Desktop browser handoff must use the Cats app origin.');
   }
-  if (targetUrl.pathname !== DESKTOP_BROWSER_HANDOFF_EXCHANGE_PATH || targetUrl.hash) {
+  if (DESKTOP_DIRECT_BROWSER_PATHS.has(targetUrl.pathname)) {
+    if (targetUrl.search || targetUrl.hash) {
+      throw new Error('Desktop direct browser path is invalid.');
+    }
+    return validateDesktopUrl(targetUrl.toString(), {
+      allowedHosts: options.allowedHosts,
+    });
+  }
+  if (targetUrl.pathname !== DESKTOP_BROWSER_HANDOFF_EXCHANGE_PATH || targetUrl.search) {
     throw new Error('Desktop browser handoff path is invalid.');
   }
-  const tokenValues = targetUrl.searchParams.getAll('token');
+  const fragmentParams = new URLSearchParams(targetUrl.hash.slice(1));
+  const tokenValues = fragmentParams.getAll('token');
   if (
     tokenValues.length !== 1
     || !/^[a-z0-9_-]{40,}$/iu.test(tokenValues[0] ?? '')
-    || Array.from(targetUrl.searchParams.keys()).some((key) => key !== 'token')
+    || Array.from(fragmentParams.keys()).some((key) => key !== 'token')
   ) {
     throw new Error('Desktop browser handoff token is invalid.');
   }
   return validateDesktopUrl(targetUrl.toString(), {
     allowedHosts: options.allowedHosts,
   });
+}
+
+export function isDesktopAppOriginUrl(
+  rawUrl: string,
+  options: {
+    appBaseUrl: string;
+    allowedHosts: Iterable<string>;
+  },
+): boolean {
+  try {
+    const appUrl = new URL(validateDesktopUrl(options.appBaseUrl, {
+      allowedHosts: options.allowedHosts,
+    }));
+    const targetUrl = new URL(validateDesktopUrl(rawUrl, {
+      allowedHosts: options.allowedHosts,
+    }));
+    return targetUrl.origin === appUrl.origin;
+  } catch {
+    return false;
+  }
 }
 
 export function isDesktopHostActionId(value: unknown): value is DesktopHostActionId {

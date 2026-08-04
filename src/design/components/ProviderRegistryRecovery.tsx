@@ -11,6 +11,7 @@ export function ProviderRegistryRecovery(input: {
   hideRetry?: boolean;
 }) {
   const { t } = useI18n();
+  const [runtimeBrowserOpenFailed, setRuntimeBrowserOpenFailed] = React.useState(false);
 
   const {
     providerRegistryHint,
@@ -42,6 +43,8 @@ export function ProviderRegistryRecovery(input: {
               href={providerRegistrySetupHref}
               target="_blank"
               rel="noreferrer"
+              onClick={() => setRuntimeBrowserOpenFailed(false)}
+              onOpenError={() => setRuntimeBrowserOpenFailed(true)}
             >
               {t(messageKeys.sharedProviderModelFieldOpenRuntimeSetupLabel)}
             </AuthenticatedBrowserLink>
@@ -54,10 +57,17 @@ export function ProviderRegistryRecovery(input: {
             href={providerRegistrySetupHref}
             target="_blank"
             rel="noreferrer"
+            onClick={() => setRuntimeBrowserOpenFailed(false)}
+            onOpenError={() => setRuntimeBrowserOpenFailed(true)}
           >
             {t(messageKeys.sharedProviderModelFieldOpenRuntimeSetupLabel)}
           </AuthenticatedBrowserLink>
         </div>
+      ) : null}
+      {runtimeBrowserOpenFailed ? (
+        <span className="fieldHint" role="alert">
+          {t(messageKeys.settingsRuntimeBrowserHandoffError)}
+        </span>
       ) : null}
     </>
   );

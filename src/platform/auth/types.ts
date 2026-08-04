@@ -39,6 +39,7 @@ export interface PlatformSessionRecord {
   kind: PlatformSessionKind;
   tokenHash: string;
   csrfTokenHash?: string;
+  sourceSessionId?: string;
   deviceLabel?: string;
   devicePlatform?: PlatformDevicePlatform;
   appVersion?: string;

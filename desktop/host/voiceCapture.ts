@@ -17,6 +17,10 @@ import {
   type VoiceCaptureMode,
   type VoiceCaptureStartOptions,
 } from './contracts.js';
+import {
+  assertMainWindowIpcSender,
+  isMainWindowIpcSender,
+} from './ipcSecurity.js';
 
 export {
   DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL,
@@ -100,19 +104,18 @@ export function isMainWindowVoiceCaptureIpcSender(
   event: unknown,
   mainWindow: Pick<VoiceCaptureMainWindow, 'webContents'> | null,
 ): boolean {
-  if (!mainWindow) {
-    return false;
-  }
-  return (event as { sender?: unknown }).sender === mainWindow.webContents;
+  return isMainWindowIpcSender(event, mainWindow);
 }
 
 export function assertMainWindowVoiceCaptureIpcSender(
   event: unknown,
   mainWindow: VoiceCaptureMainWindow | null,
 ): asserts mainWindow is VoiceCaptureMainWindow {
-  if (!isMainWindowVoiceCaptureIpcSender(event, mainWindow)) {
-    throw new Error('Desktop voice capture is only available to the main Cats window.');
-  }
+  assertMainWindowIpcSender(
+    event,
+    mainWindow,
+    'Desktop voice capture is only available to the main Cats window.',
+  );
 }
 
 export function shouldAllowDesktopRendererPermission(permission: string): boolean {

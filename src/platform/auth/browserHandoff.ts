@@ -10,7 +10,7 @@ import {
 } from './session.js';
 
 export const PLATFORM_BROWSER_HANDOFF_TTL_MS = 30_000;
-const MAX_PENDING_BROWSER_HANDOFFS = 32;
+export const MAX_PENDING_BROWSER_HANDOFFS = 32;
 const RETURN_TO_BASE_URL = 'http://cats.local';
 const ALLOWED_RETURN_PATHS = new Set<string>([
   PLATFORM_RUNTIME_SETUP_PATH,
@@ -46,6 +46,13 @@ export interface PlatformBrowserHandoffStore {
   }): PlatformBrowserHandoffRecord | null;
 }
 
+export class PlatformBrowserHandoffCapacityError extends Error {
+  constructor() {
+    super('Too many browser handoffs are pending.');
+    this.name = 'PlatformBrowserHandoffCapacityError';
+  }
+}
+
 interface StoredPlatformBrowserHandoff extends PlatformBrowserHandoffRecord {
   tokenHash: string;
 }
@@ -68,15 +75,10 @@ export class MemoryPlatformBrowserHandoffStore implements PlatformBrowserHandoff
     }
     const now = input.now ?? new Date();
     this.prune(now);
-    while (this.handoffs.size >= MAX_PENDING_BROWSER_HANDOFFS) {
-      const oldestTokenHash = this.handoffs.keys().next().value as string | undefined;
-      if (!oldestTokenHash) {
-        break;
-      }
-      this.handoffs.delete(oldestTokenHash);
-    }
-
     const returnTo = normalizePlatformBrowserHandoffReturnTo(input.returnTo);
+    if (this.handoffs.size >= MAX_PENDING_BROWSER_HANDOFFS) {
+      throw new PlatformBrowserHandoffCapacityError();
+    }
     const material = generateSessionTokenMaterial(input.sessionSecret);
     const ttlMs = input.ttlMs ?? PLATFORM_BROWSER_HANDOFF_TTL_MS;
     const expiresAt = new Date(now.getTime() + ttlMs).toISOString();
@@ -145,5 +147,5 @@ export function normalizePlatformBrowserHandoffReturnTo(rawValue: string): strin
   if (!ALLOWED_RETURN_PATHS.has(parsed.pathname)) {
     throw new Error('Browser handoff return path is not allowed.');
   }
-  return `${parsed.pathname}${parsed.search}`;
+  return parsed.pathname;
 }

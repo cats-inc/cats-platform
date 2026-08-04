@@ -21,6 +21,7 @@ test('platform auth gate keeps renderer, health, mobile, and auth bootstrap rout
     ['POST', '/api/mobile/auth/logout'],
     ['GET', '/api/auth/status'],
     ['GET', '/api/auth/browser-handoff/exchange'],
+    ['POST', '/api/auth/browser-handoff/exchange'],
     ['POST', '/api/auth/login'],
     ['POST', '/api/auth/google/login'],
     ['POST', '/api/auth/google/setup'],
@@ -66,6 +67,16 @@ test('platform auth gate exposes setup bootstrap routes only before setup', () =
     ['POST', '/api/platform/assistants'],
     ['PUT', '/api/platform/assistants/assistant-1'],
     ['DELETE', '/api/platform/assistants/assistant-1'],
+    ['POST', '/api/auth/browser-handoff'],
+    ['GET', '/runtime/setup'],
+    ['GET', '/runtime/api/setup-state'],
+    ['POST', '/runtime/api/setup-scan'],
+    ['POST', '/runtime/api/setup-apply'],
+    ['GET', '/runtime/api/providers/config'],
+    ['GET', '/runtime/api/providers/codex/tools'],
+    ['GET', '/runtime/api/providers/codex/models'],
+    ['GET', '/runtime/api/diagnostics/providers'],
+    ['POST', '/runtime/api/diagnostics/providers/reprobe'],
   ] as const;
 
   for (const [method, pathname] of setupRoutes) {
