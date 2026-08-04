@@ -227,6 +227,36 @@ test('concurrent desktop auth provisioning adopts one canonical persisted secret
   }
 });
 
+test('desktop auth provisioning warns when it falls back from hard-link publishing', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-no-hardlink-'));
+  const config = createConfig(root);
+  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const warnings = [];
+
+  try {
+    const result = await ensureDesktopAuthSessionSecret(config, {}, {
+      generateSecret: () => GENERATED_SECRET,
+      warn: (message) => warnings.push(message),
+      linkFile: async () => {
+        throw Object.assign(new Error('operation not supported'), { code: 'ENOTSUP' });
+      },
+    });
+
+    assert.equal(result.secret, GENERATED_SECRET);
+    assert.equal(result.source, 'generated');
+    assert.equal(await readFile(secretPath, 'utf8'), `${GENERATED_SECRET}\n`);
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /Hard links are unavailable/u);
+    assert.match(warnings[0], /cannot detect a concurrent Desktop host/u);
+    assert.doesNotMatch(warnings[0], new RegExp(GENERATED_SECRET, 'u'));
+
+    const configEntries = await readdir(config.paths.platformConfigDir);
+    assert.equal(configEntries.some((entry) => entry.includes('.tmp-')), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('managed services inject the auth session secret only into cats-platform', () => {
   const config = resolveDesktopHostConfig({
     env: {},

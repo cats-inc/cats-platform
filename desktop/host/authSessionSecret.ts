@@ -33,6 +33,11 @@ interface DesktopAuthSessionSecretDependencies {
   generateSecret?: () => string;
   now?: () => Date;
   warn?: (message: string) => void | Promise<void>;
+  /**
+   * Test seam for the filesystems that cannot hard link. Production callers use
+   * `node:fs/promises` `link`.
+   */
+  linkFile?: (existingPath: string, newPath: string) => Promise<void>;
 }
 
 type PersistedSecretReadResult =
@@ -96,7 +101,12 @@ export async function ensureDesktopAuthSessionSecret(
   const generatedSecret = dependencies.generateSecret?.()
     ?? randomBytes(AUTH_SESSION_SECRET_BYTES).toString('base64url');
   assertValidGeneratedSecret(generatedSecret, secretPath);
-  const published = await writeSecretAtomically(secretPath, generatedSecret);
+  const published = await writeSecretAtomically(
+    config,
+    dependencies,
+    secretPath,
+    generatedSecret,
+  );
   await restrictSecretFilePermissions(secretPath);
   return {
     secret: published.secret,
@@ -140,6 +150,8 @@ async function quarantineInvalidSecret(secretPath: string): Promise<string> {
 }
 
 async function writeSecretAtomically(
+  config: DesktopHostConfig,
+  dependencies: DesktopAuthSessionSecretDependencies,
   secretPath: string,
   secret: string,
 ): Promise<SecretPublishResult> {
@@ -158,7 +170,7 @@ async function writeSecretAtomically(
     try {
       // A same-directory hard link publishes the fully flushed file without
       // replacing a value another Desktop host may have won concurrently.
-      await link(temporaryPath, secretPath);
+      await (dependencies.linkFile ?? link)(temporaryPath, secretPath);
     } catch (error) {
       if (hasErrorCode(error, 'EEXIST')) {
         return await readConcurrentWinner(secretPath);
@@ -168,17 +180,19 @@ async function writeSecretAtomically(
       }
 
       // Hard links can be unavailable on some removable/network filesystems.
-      // Retain atomic replacement there and re-read the canonical value so the
-      // caller adopts the value that actually ended up on disk.
-      try {
-        await rename(temporaryPath, secretPath);
-        temporaryCreated = false;
-      } catch (renameError) {
-        if (hasErrorCode(renameError, 'EEXIST')) {
-          return await readConcurrentWinner(secretPath);
-        }
-        throw renameError;
-      }
+      // Atomic replacement still publishes a fully flushed file there, but
+      // rename always replaces, so this path cannot detect a concurrent winner.
+      // Say so: a silently downgraded guarantee is the kind of thing nobody can
+      // reconstruct from the symptoms later.
+      await reportWarning(
+        config,
+        dependencies,
+        `Hard links are unavailable for '${secretPath}' (${formatError(error)}); `
+          + 'publishing by replacement instead, which cannot detect a concurrent Desktop host.',
+      );
+      await rename(temporaryPath, secretPath);
+      temporaryCreated = false;
+      // Re-read anyway so the caller adopts whatever actually landed on disk.
       const persisted = await requireValidPersistedSecret(secretPath);
       return {
         created: persisted === secret,

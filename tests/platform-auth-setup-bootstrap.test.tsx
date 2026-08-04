@@ -54,6 +54,34 @@ test('platform setup can create first local admin and browser session', async (t
   assert.ok(core.setupCompleteAt);
 });
 
+// The other half of the contract above. The packaged clean-install regression
+// lived exactly here: the wizard always submits admin credentials, so a host
+// that starts the platform sidecar without CATS_AUTH_SESSION_SECRET turns every
+// first setup into the 500 the renderer shows as "setup could not be
+// completed". Desktop provisions the secret before startAll(); this pins what
+// happens when something upstream stops doing that.
+test('platform setup cannot create the first admin without a session secret', async (t) => {
+  const fixture = await createSetupFixture(t, { sessionSecret: null });
+  const response = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'correct-password',
+    },
+  });
+
+  assert.equal(response.status, 500);
+  assert.equal(response.payload?.error?.code, 'internal_error');
+  assert.match(response.payload?.error?.message ?? '', /CATS_AUTH_SESSION_SECRET/u);
+  assert.equal(response.setCookie, null);
+  assert.equal((await fixture.authStore.readState()).accounts.length, 0);
+  assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
+});
+
 test('platform setup rejects partial first-admin credentials before completion', async (t) => {
   const fixture = await createSetupFixture(t);
   const response = await request(fixture.server, '/api/platform/setup/complete', {
@@ -144,16 +172,22 @@ test('setup reset requires authenticated admin csrf after setup is complete', as
   assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
 });
 
-async function createSetupFixture(t: TestContext): Promise<{
+async function createSetupFixture(
+  t: TestContext,
+  options: { sessionSecret?: string | null } = {},
+): Promise<{
   server: ReturnType<typeof createServer>;
   authStore: MemoryPlatformAuthStore;
   chatStore: MemoryChatStore;
 }> {
+  const sessionSecret = options.sessionSecret === undefined
+    ? SESSION_SECRET
+    : options.sessionSecret;
   const tempDir = await mkdtemp(path.join(tmpdir(), 'cats-auth-setup-'));
   const config = loadConfig({
     HOME: tempDir,
     CATS_PLATFORM_DIR: path.join(tempDir, 'platform'),
-    CATS_AUTH_SESSION_SECRET: SESSION_SECRET,
+    ...(sessionSecret === null ? {} : { CATS_AUTH_SESSION_SECRET: sessionSecret }),
   });
   const authStore = new MemoryPlatformAuthStore(undefined, () => NOW);
   const chatStore = new MemoryChatStore();
