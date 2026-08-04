@@ -40,13 +40,20 @@ launches. The file is created with user-only permissions where the filesystem
 supports POSIX modes. An explicit `CATS_AUTH_SESSION_SECRET` from the process or
 Desktop `.env` remains the operator override and is never overwritten.
 
-The persisted file is replaced with an atomic same-directory rename. If its
+Desktop publishes the fully flushed file with an atomic same-directory,
+no-clobber operation, so concurrent hosts adopt one canonical value. If its
 contents are invalid, Desktop moves it aside with an `.invalid-*` suffix and
-generates a replacement. A genuine filesystem error is shown on the Desktop
-bootstrap recovery page, where Retry attempts provisioning again instead of
-silently exiting. Platform-launched project processes do not inherit this
-host-only secret. Explicit values shorter than 32 characters or containing
-whitespace remain compatible but emit a startup warning.
+generates a replacement. Temporary artifacts older than one hour and invalid
+backups older than 30 days are removed during provisioning. A genuine
+filesystem error is shown on the Desktop bootstrap recovery page, where Retry
+attempts provisioning again instead of silently exiting. Provisioning warnings
+are persisted in `~/.cats/desktop/logs/desktop-host.log` for packaged GUI apps.
+
+Platform-launched project processes do not inherit Cats-owned credentials:
+the auth session secret, runtime API key, Telegram bot/webhook secrets, and
+ngrok auth tokens are removed before live preview, export builds, or shell
+helpers spawn. Explicit session-secret values shorter than 32 characters or
+containing whitespace remain compatible but emit a startup warning.
 
 `CATS_AUTH_ENABLED=false` is an unsafe dev/test escape hatch only. It is rejected
 after setup is complete and should not be used for LAN-facing workspaces.
@@ -483,6 +490,7 @@ The desktop host now also keeps a host-readable state file at
 For packaged bootstrap or onboarding failures, collect these files first:
 
 - `%USERPROFILE%\\.cats\\desktop\\state.json`
+- `%USERPROFILE%\\.cats\\desktop\\logs\\desktop-host.log`
 - `%USERPROFILE%\\.cats\\desktop\\logs\\cats-runtime.log`
 - `%USERPROFILE%\\.cats\\desktop\\logs\\cats.log`
 - `%USERPROFILE%\\.cats\\platform\\state\\platform-onboarding-history.json`

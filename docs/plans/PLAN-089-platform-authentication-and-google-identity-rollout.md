@@ -284,7 +284,9 @@ product write path.
       with restrictive local-file permissions, reuse it across launches, keep
       explicit operator configuration authoritative, inject it only into the
       platform sidecar, recover invalid persisted values, surface I/O failures
-      through bootstrap Retry, and remove it from project child processes.
+      through bootstrap Retry, persist provisioning warnings, converge safely
+      under concurrent hosts, clean stale artifacts, and remove platform-owned
+      credentials from project child processes.
 
 **Deliverables**: auth behavior is documented, tested, and visible to
 operators before implementation is marked complete.
@@ -627,7 +629,8 @@ operators before implementation is marked complete.
 | 2026-05-10 | Phase 4b mobile Google UI landed: `/api/mobile/auth/status` now advertises configured public mobile Google client ids, Cats Mobile starts a mobile OIDC ID-token flow from the login panel, posts the verified result to `/api/mobile/auth/google/login`, persists the returned bearer through the existing secure-token boundary, and leaves browser GIS/CSRF/cookies out of the mobile path. Task 4b.7 is now checked. |
 | 2026-05-10 | Repair/mobile Google security follow-up landed: repair first-admin and throttle recovery now require the one-time recovery token even when the socket source address is loopback, closing reverse-proxy/tunnel repair-mode bypass risk; Cats Mobile now sends the per-attempt OIDC nonce to `/api/mobile/auth/google/login`, server verification checks the nonce claim, invalid mobile Google attempts are throttled before verifier calls, and the mobile OIDC helper uses secure randomness plus exact redirect matching. |
 | 2026-08-04 | Closed the packaged Desktop clean-install auth gap required by SPEC-100 requirement 24: the host now generates and persists a 256-bit session secret when no explicit configuration exists, reuses it across launches, and passes it only to the platform sidecar. Added clean-install, override, invalid-file, and sidecar-boundary regressions plus installer smoke coverage. |
-| 2026-08-04 | Hardened the Desktop auth-secret follow-up: writes now use a same-directory temporary file and atomic rename, invalid persisted values are quarantined and regenerated, real provisioning failures stay on the existing bootstrap recovery page for Retry, weak explicit overrides warn, platform-spawned project processes strip the secret, and installer smoke resolution honors custom Desktop/platform roots. |
+| 2026-08-04 | Hardened the Desktop auth-secret follow-up: writes now use a same-directory temporary file and atomic publish, invalid persisted values are quarantined and regenerated, real provisioning failures stay on the existing bootstrap recovery page for Retry, weak explicit overrides warn, platform-spawned project processes strip the secret, and installer smoke resolution honors custom Desktop/platform roots. |
+| 2026-08-04 | Completed the second Desktop auth-secret hardening review: canonical publication is now atomic and no-clobber under shared-directory races, stale temporary/invalid artifacts are retired, warnings persist to the Desktop host log, the child-process sanitizer removes all documented Cats-owned runtime/Telegram/ngrok credentials, taskkill uses the same sanitized environment, and updater rollback explicitly documents its dependency on the supervisor-lifetime environment snapshot. |
 
 ---
 

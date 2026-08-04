@@ -1674,7 +1674,9 @@ async function createUpdateManagerForLaunch(
         restartManagedServices: async () => {
           // The handoff failed but the process survived, so the exit is no
           // longer prepared, the sidecars have to come back, and the tray has to
-          // stop claiming we are quitting.
+          // stop claiming we are quitting. startAll() intentionally reuses the
+          // supervisor-lifetime environment snapshot populated during the first
+          // bootstrap, including the Desktop-provisioned platform auth secret.
           exitingAfterShutdown = false;
           await supervisor?.startAll();
           await syncTrayController();

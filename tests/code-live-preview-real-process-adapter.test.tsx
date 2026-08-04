@@ -31,7 +31,7 @@ test('Real live preview adapter spawn rejects when executable is missing', async
   );
 });
 
-test('Real live preview adapter strips the platform auth secret from child env', async () => {
+test('Real live preview adapter strips platform credentials from child env', async () => {
   let capturedEnv: NodeJS.ProcessEnv | undefined;
   const child = new EventEmitter() as ChildProcess;
   Object.defineProperty(child, 'pid', { value: 1234 });
@@ -51,12 +51,20 @@ test('Real live preview adapter strips the platform auth secret from child env',
     executable: process.execPath,
     env: {
       CATS_AUTH_SESSION_SECRET: 'must-not-reach-user-project',
+      CATS_RUNTIME_API_KEY: 'runtime-key-must-not-reach-user-project',
+      CATS_TELEGRAM_BOT_TOKEN: 'telegram-token-must-not-reach-user-project',
+      CATS_TELEGRAM_WEBHOOK_SECRET: 'webhook-secret-must-not-reach-user-project',
+      CATS_NGROK_AUTHTOKEN: 'ngrok-token-must-not-reach-user-project',
       CATS_LIVE_PREVIEW_SAFE_TEST_VALUE: 'preserved',
     },
   });
 
   assert.ok(capturedEnv);
   assert.equal(capturedEnv.CATS_AUTH_SESSION_SECRET, undefined);
+  assert.equal(capturedEnv.CATS_RUNTIME_API_KEY, undefined);
+  assert.equal(capturedEnv.CATS_TELEGRAM_BOT_TOKEN, undefined);
+  assert.equal(capturedEnv.CATS_TELEGRAM_WEBHOOK_SECRET, undefined);
+  assert.equal(capturedEnv.CATS_NGROK_AUTHTOKEN, undefined);
   assert.equal(capturedEnv.CATS_LIVE_PREVIEW_SAFE_TEST_VALUE, 'preserved');
   assert.equal(capturedEnv.PORT, String(SPAWN_INPUT_TEMPLATE.port));
 });
@@ -169,6 +177,7 @@ test('Real live preview adapter stop with killProcessTree exercises platform tre
 
 test('Real live preview adapter keeps graceful taskkill failure inside the grace window', async (t) => {
   const taskkillCalls: string[][] = [];
+  const taskkillEnvironments: Array<NodeJS.ProcessEnv | undefined> = [];
   const directSignals: string[] = [];
   const spawnProcess = ((
     command: string,
@@ -177,6 +186,7 @@ test('Real live preview adapter keeps graceful taskkill failure inside the grace
   ): ChildProcess => {
     if (command === 'taskkill') {
       taskkillCalls.push([...args]);
+      taskkillEnvironments.push((options as { env?: NodeJS.ProcessEnv } | undefined)?.env);
       const fakeTaskkill = new EventEmitter() as ChildProcess;
       process.nextTick(() => fakeTaskkill.emit('exit', 1, null));
       return fakeTaskkill;
@@ -195,6 +205,15 @@ test('Real live preview adapter keeps graceful taskkill failure inside the grace
   const adapter = createRealLivePreviewProcessAdapter({
     platform: 'win32',
     spawnProcess,
+  });
+  const previousRuntimeApiKey = process.env.CATS_RUNTIME_API_KEY;
+  process.env.CATS_RUNTIME_API_KEY = 'must-not-reach-taskkill';
+  t.after(() => {
+    if (previousRuntimeApiKey === undefined) {
+      delete process.env.CATS_RUNTIME_API_KEY;
+    } else {
+      process.env.CATS_RUNTIME_API_KEY = previousRuntimeApiKey;
+    }
   });
   const handle = await adapter.spawn({
     ...SPAWN_INPUT_TEMPLATE,
@@ -225,5 +244,10 @@ test('Real live preview adapter keeps graceful taskkill failure inside the grace
   assert.equal(taskkillCalls.length, 2);
   assert.equal(taskkillCalls[0]?.includes('/F'), false);
   assert.equal(taskkillCalls[1]?.includes('/F'), true);
+  assert.equal(taskkillEnvironments.length, 2);
+  assert.equal(
+    taskkillEnvironments.every((env) => env?.CATS_RUNTIME_API_KEY === undefined),
+    true,
+  );
   assert.deepEqual(directSignals, ['SIGKILL']);
 });

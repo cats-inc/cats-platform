@@ -250,6 +250,7 @@ function tryTaskkill(
     : ['/pid', String(child.pid), '/T'];
   try {
     const tree = runtime.spawnProcess('taskkill', args, {
+      env: createPlatformChildProcessEnv(),
       windowsHide: true,
       stdio: 'ignore',
     });

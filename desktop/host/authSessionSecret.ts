@@ -1,5 +1,16 @@
 import { randomBytes } from 'node:crypto';
-import { chmod, mkdir, open, readFile, rename, rm } from 'node:fs/promises';
+import {
+  appendFile,
+  chmod,
+  link,
+  lstat,
+  mkdir,
+  open,
+  readFile,
+  readdir,
+  rename,
+  rm,
+} from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { DesktopHostConfig } from './config.js';
@@ -8,6 +19,9 @@ const AUTH_SESSION_SECRET_ENV_KEY = 'CATS_AUTH_SESSION_SECRET';
 const AUTH_SESSION_SECRET_FILE_NAME = 'auth-session-secret.local';
 const AUTH_SESSION_SECRET_BYTES = 32;
 const MIN_PERSISTED_SECRET_LENGTH = 32;
+const DESKTOP_HOST_LOG_FILE_NAME = 'desktop-host.log';
+const STALE_TEMP_SECRET_MAX_AGE_MS = 60 * 60 * 1_000;
+const INVALID_SECRET_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1_000;
 
 export interface DesktopAuthSessionSecretResult {
   secret: string;
@@ -17,13 +31,19 @@ export interface DesktopAuthSessionSecretResult {
 
 interface DesktopAuthSessionSecretDependencies {
   generateSecret?: () => string;
-  warn?: (message: string) => void;
+  now?: () => Date;
+  warn?: (message: string) => void | Promise<void>;
 }
 
 type PersistedSecretReadResult =
   | { status: 'missing' }
   | { status: 'invalid' }
   | { status: 'valid'; secret: string };
+
+interface SecretPublishResult {
+  created: boolean;
+  secret: string;
+}
 
 export function resolveDesktopAuthSessionSecretPath(config: DesktopHostConfig): string {
   return join(config.paths.platformConfigDir, AUTH_SESSION_SECRET_FILE_NAME);
@@ -36,8 +56,10 @@ export async function ensureDesktopAuthSessionSecret(
 ): Promise<DesktopAuthSessionSecretResult> {
   const configuredSecret = env[AUTH_SESSION_SECRET_ENV_KEY]?.trim();
   if (configuredSecret) {
+    await cleanupStaleSecretArtifacts(config, dependencies);
     if (!isValidPersistedSecret(configuredSecret)) {
-      reportWarning(
+      await reportWarning(
+        config,
         dependencies,
         'CATS_AUTH_SESSION_SECRET is shorter than 32 characters or contains whitespace; '
           + 'use a 256-bit random value for production auth sessions.',
@@ -51,6 +73,8 @@ export async function ensureDesktopAuthSessionSecret(
   }
 
   const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  await mkdir(config.paths.platformConfigDir, { recursive: true, mode: 0o700 });
+  await cleanupStaleSecretArtifacts(config, dependencies);
   const persistedSecret = await readPersistedSecret(secretPath);
   if (persistedSecret.status === 'valid') {
     await restrictSecretFilePermissions(secretPath);
@@ -62,7 +86,8 @@ export async function ensureDesktopAuthSessionSecret(
   }
   if (persistedSecret.status === 'invalid') {
     const quarantinedPath = await quarantineInvalidSecret(secretPath);
-    reportWarning(
+    await reportWarning(
+      config,
       dependencies,
       `Invalid Desktop auth session secret was moved to '${quarantinedPath}'; generating a replacement.`,
     );
@@ -71,12 +96,11 @@ export async function ensureDesktopAuthSessionSecret(
   const generatedSecret = dependencies.generateSecret?.()
     ?? randomBytes(AUTH_SESSION_SECRET_BYTES).toString('base64url');
   assertValidGeneratedSecret(generatedSecret, secretPath);
-  await mkdir(config.paths.platformConfigDir, { recursive: true, mode: 0o700 });
-  await writeSecretAtomically(secretPath, generatedSecret);
+  const published = await writeSecretAtomically(secretPath, generatedSecret);
   await restrictSecretFilePermissions(secretPath);
   return {
-    secret: generatedSecret,
-    source: 'generated',
+    secret: published.secret,
+    source: published.created ? 'generated' : 'persisted',
     secretPath,
   };
 }
@@ -115,7 +139,10 @@ async function quarantineInvalidSecret(secretPath: string): Promise<string> {
   return quarantinedPath;
 }
 
-async function writeSecretAtomically(secretPath: string, secret: string): Promise<void> {
+async function writeSecretAtomically(
+  secretPath: string,
+  secret: string,
+): Promise<SecretPublishResult> {
   const temporaryPath = `${secretPath}.tmp-${process.pid}-${randomBytes(6).toString('hex')}`;
   let temporaryCreated = false;
   try {
@@ -127,8 +154,43 @@ async function writeSecretAtomically(secretPath: string, secret: string): Promis
     } finally {
       await handle.close();
     }
-    await rename(temporaryPath, secretPath);
-    temporaryCreated = false;
+
+    try {
+      // A same-directory hard link publishes the fully flushed file without
+      // replacing a value another Desktop host may have won concurrently.
+      await link(temporaryPath, secretPath);
+    } catch (error) {
+      if (hasErrorCode(error, 'EEXIST')) {
+        return await readConcurrentWinner(secretPath);
+      }
+      if (!isHardLinkUnsupported(error)) {
+        throw error;
+      }
+
+      // Hard links can be unavailable on some removable/network filesystems.
+      // Retain atomic replacement there and re-read the canonical value so the
+      // caller adopts the value that actually ended up on disk.
+      try {
+        await rename(temporaryPath, secretPath);
+        temporaryCreated = false;
+      } catch (renameError) {
+        if (hasErrorCode(renameError, 'EEXIST')) {
+          return await readConcurrentWinner(secretPath);
+        }
+        throw renameError;
+      }
+      const persisted = await requireValidPersistedSecret(secretPath);
+      return {
+        created: persisted === secret,
+        secret: persisted,
+      };
+    }
+
+    const persisted = await requireValidPersistedSecret(secretPath);
+    return {
+      created: persisted === secret,
+      secret: persisted,
+    };
   } finally {
     if (temporaryCreated) {
       await rm(temporaryPath, { force: true }).catch(() => undefined);
@@ -136,15 +198,101 @@ async function writeSecretAtomically(secretPath: string, secret: string): Promis
   }
 }
 
-function reportWarning(
+async function readConcurrentWinner(secretPath: string): Promise<SecretPublishResult> {
+  return {
+    created: false,
+    secret: await requireValidPersistedSecret(secretPath),
+  };
+}
+
+async function requireValidPersistedSecret(secretPath: string): Promise<string> {
+  const persisted = await readPersistedSecret(secretPath);
+  if (persisted.status !== 'valid') {
+    throw new Error(`Desktop auth session secret was not readable at '${secretPath}'.`);
+  }
+  return persisted.secret;
+}
+
+async function cleanupStaleSecretArtifacts(
+  config: DesktopHostConfig,
   dependencies: DesktopAuthSessionSecretDependencies,
-  message: string,
-): void {
-  if (dependencies.warn) {
-    dependencies.warn(message);
+): Promise<void> {
+  const nowMs = (dependencies.now?.() ?? new Date()).getTime();
+  let entries: string[];
+  try {
+    entries = await readdir(config.paths.platformConfigDir);
+  } catch (error) {
+    if (!hasErrorCode(error, 'ENOENT')) {
+      await reportWarning(
+        config,
+        dependencies,
+        `Could not scan stale Desktop auth secret artifacts: ${formatError(error)}`,
+      );
+    }
     return;
   }
-  process.stderr.write(`[desktop-auth] ${message}\n`);
+
+  for (const entry of entries) {
+    const maxAgeMs = resolveArtifactMaxAgeMs(entry);
+    if (maxAgeMs === null) {
+      continue;
+    }
+    const artifactPath = join(config.paths.platformConfigDir, entry);
+    try {
+      const artifact = await lstat(artifactPath);
+      if (!artifact.isFile() || nowMs - artifact.mtimeMs < maxAgeMs) {
+        continue;
+      }
+      await rm(artifactPath, { force: true });
+    } catch (error) {
+      if (!hasErrorCode(error, 'ENOENT')) {
+        await reportWarning(
+          config,
+          dependencies,
+          `Could not remove stale Desktop auth secret artifact '${artifactPath}': ${formatError(error)}`,
+        );
+      }
+    }
+  }
+}
+
+function resolveArtifactMaxAgeMs(fileName: string): number | null {
+  if (fileName.startsWith(`${AUTH_SESSION_SECRET_FILE_NAME}.tmp-`)) {
+    return STALE_TEMP_SECRET_MAX_AGE_MS;
+  }
+  if (fileName.startsWith(`${AUTH_SESSION_SECRET_FILE_NAME}.invalid-`)) {
+    return INVALID_SECRET_MAX_AGE_MS;
+  }
+  return null;
+}
+
+async function reportWarning(
+  config: DesktopHostConfig,
+  dependencies: DesktopAuthSessionSecretDependencies,
+  message: string,
+): Promise<void> {
+  if (dependencies.warn) {
+    await dependencies.warn(message);
+    return;
+  }
+  const line = `[desktop-auth] ${message}\n`;
+  process.stderr.write(line);
+  try {
+    await mkdir(config.paths.hostLogsDir, { recursive: true });
+    await appendFile(join(config.paths.hostLogsDir, DESKTOP_HOST_LOG_FILE_NAME), line, 'utf8');
+  } catch (error) {
+    process.stderr.write(
+      `[desktop-auth] Could not persist warning to the Desktop host log: ${formatError(error)}\n`,
+    );
+  }
+}
+
+function isHardLinkUnsupported(error: unknown): boolean {
+  return ['ENOSYS', 'ENOTSUP', 'EOPNOTSUPP', 'EPERM'].some((code) => hasErrorCode(error, code));
+}
+
+function formatError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 async function restrictSecretFilePermissions(secretPath: string): Promise<void> {

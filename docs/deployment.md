@@ -73,9 +73,12 @@ Auth and repair constraints for LAN/tunnel access:
   a 256-bit secret automatically at
   `~/.cats/platform/config/auth-session-secret.local` when no explicit value is
   configured; the same secret is reused across launches. Desktop writes the
-  value atomically, quarantines invalid contents before regenerating, and shows
-  provisioning I/O failures on its retryable bootstrap recovery page. The
-  secret is removed from platform-launched project child processes.
+  value with an atomic no-clobber publish, quarantines invalid contents before
+  regenerating, removes stale temporary/invalid artifacts, and shows
+  provisioning I/O failures on its retryable bootstrap recovery page. Warnings
+  persist to `~/.cats/desktop/logs/desktop-host.log`. Platform-launched project
+  child processes remove the session secret, runtime API key, Telegram
+  credentials, and ngrok auth tokens from their environments.
 - `CATS_AUTH_ENABLED=false` is not a LAN deployment option and is rejected
   after setup completion.
 - Keep `CATS_AUTH_ALLOWED_BROWSER_ORIGINS` explicit for every browser-facing

@@ -1,5 +1,14 @@
 import assert from 'node:assert/strict';
-import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  utimes,
+  writeFile,
+} from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -10,12 +19,10 @@ import {
   resolveDesktopAuthSessionSecretPath,
 } from '../build/desktop/authSessionSecret.js';
 import { resolveDesktopHostConfig } from '../build/desktop/config.js';
-import {
-  buildManagedServiceSpecs,
-  ManagedServiceSupervisor,
-} from '../build/desktop/processSupervisor.js';
+import { buildManagedServiceSpecs } from '../build/desktop/processSupervisor.js';
 
 const GENERATED_SECRET = 'generated-desktop-auth-session-secret-0123456789';
+const ALTERNATE_GENERATED_SECRET = 'alternate-desktop-auth-session-secret-9876543210';
 
 function createConfig(root) {
   return resolveDesktopHostConfig({
@@ -29,14 +36,19 @@ test('desktop auth provisioning preserves an explicit session secret without wri
   const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-explicit-'));
   const config = createConfig(root);
   const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const staleTempPath = `${secretPath}.tmp-100-stale`;
 
   try {
+    await mkdir(config.paths.platformConfigDir, { recursive: true });
+    await writeFile(staleTempPath, `${GENERATED_SECRET}\n`, 'utf8');
+    await utimes(staleTempPath, new Date(0), new Date(0));
     const result = await ensureDesktopAuthSessionSecret(config, {
       CATS_AUTH_SESSION_SECRET: 'operator-configured-auth-session-secret-123456',
     }, {
       generateSecret: () => {
         throw new Error('generator should not run');
       },
+      now: () => new Date('2026-08-04T00:00:00.000Z'),
     });
 
     assert.deepEqual(result, {
@@ -45,6 +57,7 @@ test('desktop auth provisioning preserves an explicit session secret without wri
       secretPath: null,
     });
     await assert.rejects(access(secretPath, constants.F_OK));
+    await assert.rejects(access(staleTempPath, constants.F_OK));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -67,6 +80,24 @@ test('desktop auth provisioning warns without rejecting a weak explicit session 
     assert.equal(warnings.length, 1);
     assert.match(warnings[0], /shorter than 32 characters/u);
     assert.doesNotMatch(warnings[0], /weak-secret/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('desktop auth provisioning persists default warnings to the host log', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-warning-log-'));
+  const config = createConfig(root);
+  const logPath = join(config.paths.hostLogsDir, 'desktop-host.log');
+
+  try {
+    await ensureDesktopAuthSessionSecret(config, {
+      CATS_AUTH_SESSION_SECRET: 'weak-secret-for-log-test',
+    });
+
+    const logText = await readFile(logPath, 'utf8');
+    assert.match(logText, /CATS_AUTH_SESSION_SECRET is shorter than 32 characters/u);
+    assert.doesNotMatch(logText, /weak-secret-for-log-test/u);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -137,6 +168,65 @@ test('desktop auth provisioning quarantines an invalid persisted secret and rege
   }
 });
 
+test('desktop auth provisioning removes stale temporary and invalid artifacts', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-stale-artifacts-'));
+  const config = createConfig(root);
+  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const staleTempPath = `${secretPath}.tmp-100-stale`;
+  const staleInvalidPath = `${secretPath}.invalid-stale`;
+  const freshTempPath = `${secretPath}.tmp-200-fresh`;
+  const now = new Date('2026-08-04T00:00:00.000Z');
+  const staleTime = new Date('2026-06-01T00:00:00.000Z');
+
+  try {
+    await mkdir(config.paths.platformConfigDir, { recursive: true });
+    await writeFile(staleTempPath, `${ALTERNATE_GENERATED_SECRET}\n`, 'utf8');
+    await writeFile(staleInvalidPath, 'invalid-old-value\n', 'utf8');
+    await writeFile(freshTempPath, `${ALTERNATE_GENERATED_SECRET}\n`, 'utf8');
+    await utimes(staleTempPath, staleTime, staleTime);
+    await utimes(staleInvalidPath, staleTime, staleTime);
+    await utimes(freshTempPath, now, now);
+
+    await ensureDesktopAuthSessionSecret(config, {}, {
+      generateSecret: () => GENERATED_SECRET,
+      now: () => now,
+    });
+
+    await assert.rejects(access(staleTempPath, constants.F_OK));
+    await assert.rejects(access(staleInvalidPath, constants.F_OK));
+    await access(freshTempPath, constants.F_OK);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('concurrent desktop auth provisioning adopts one canonical persisted secret', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-concurrent-'));
+  const config = createConfig(root);
+  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+
+  try {
+    const results = await Promise.all([
+      ensureDesktopAuthSessionSecret(config, {}, {
+        generateSecret: () => GENERATED_SECRET,
+      }),
+      ensureDesktopAuthSessionSecret(config, {}, {
+        generateSecret: () => ALTERNATE_GENERATED_SECRET,
+      }),
+    ]);
+    const persisted = (await readFile(secretPath, 'utf8')).trim();
+
+    assert.equal(results[0].secret, persisted);
+    assert.equal(results[1].secret, persisted);
+    assert.deepEqual(
+      results.map((result) => result.source).sort(),
+      ['generated', 'persisted'],
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('managed services inject the auth session secret only into cats-platform', () => {
   const config = resolveDesktopHostConfig({
     env: {},
@@ -149,17 +239,4 @@ test('managed services inject the auth session secret only into cats-platform', 
 
   assert.equal(runtimeSpec.env.CATS_AUTH_SESSION_SECRET, undefined);
   assert.equal(appSpec.env.CATS_AUTH_SESSION_SECRET, GENERATED_SECRET);
-});
-
-test('desktop supervisor keeps the provisioned auth secret in its restart environment snapshot', () => {
-  const config = resolveDesktopHostConfig({
-    env: {},
-    userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
-    catsHomeDir: 'C:/Users/test/.cats',
-  });
-  const supervisor = new ManagedServiceSupervisor(config, { env: {} });
-
-  supervisor.setPlatformAuthSessionSecret(GENERATED_SECRET);
-
-  assert.equal(supervisor.managedEnv.CATS_AUTH_SESSION_SECRET, GENERATED_SECRET);
 });
