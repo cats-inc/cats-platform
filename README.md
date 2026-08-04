@@ -172,6 +172,12 @@ global cats, channel cat assignments, execution targets, execution
 lease metadata, memory checkpoints, and transcripts, to
 `~/.cats/platform/state/chat-state.local.json`.
 Override the platform storage root with `CATS_PLATFORM_DIR` when needed.
+When no explicit `CATS_AUTH_SESSION_SECRET` is configured, every executable
+platform entrypoint—including `cats-platform`, `cats-one`, local dev, and
+Desktop—generates a 256-bit secret at
+`~/.cats/platform/config/auth-session-secret.local` and reuses it on restart.
+Set an explicit value only when multiple instances must share one secret or the
+platform config directory is ephemeral.
 
 For a built run:
 

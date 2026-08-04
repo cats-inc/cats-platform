@@ -22,6 +22,10 @@ import { closeAppServerGracefully } from './app/server/shutdown.js';
 import { installGlobalCrashHandlers } from './app/server/crashLog.js';
 import { CatsRuntimeClient } from './platform/runtime/client.js';
 import {
+  ensurePlatformAuthSessionSecret,
+  resolvePlatformAuthSessionSecretConfigDir,
+} from './platform/auth/sessionSecretProvisioning.js';
+import {
   createRuntimeClientDiagnosticRecord,
   createRuntimeClientDiagnosticSink,
   resolveRuntimeClientDiagnosticsPath,
@@ -56,7 +60,17 @@ async function main(): Promise<void> {
     readyOutput: startup.readyOutput,
   });
 
-  const config = loadConfig();
+  const authSessionSecret = await ensurePlatformAuthSessionSecret({
+    platformConfigDir: resolvePlatformAuthSessionSecretConfigDir(process.env),
+  });
+  startupTrace.trace('auth.session_secret.resolved', {
+    source: authSessionSecret.source,
+    secretPath: authSessionSecret.secretPath,
+  });
+  const config = loadConfig({
+    ...process.env,
+    CATS_AUTH_SESSION_SECRET: authSessionSecret.secret,
+  });
   startupTrace.trace('config.loaded', {
     host: config.host,
     port: config.port,

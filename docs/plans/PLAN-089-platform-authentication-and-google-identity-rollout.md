@@ -279,8 +279,9 @@ product write path.
 - [x] Task 6.7: Update mobile pairing docs to state that the Expo Go QR loads
       only the mobile bundle; Cats Mobile must complete local or Google mobile
       login before any product data is fetched.
-- [x] Task 6.8: Provision a stable 256-bit auth session secret on packaged
-      Desktop clean installs when no explicit secret is configured. Persist it
+- [x] Task 6.8: Provision a stable 256-bit auth session secret on every
+      executable platform entrypoint when no explicit secret is configured.
+      Cover local dev, npm/global installs, `cats-one`, and Desktop. Persist it
       with restrictive local-file permissions, reuse it across launches, keep
       explicit operator configuration authoritative, inject it only into the
       platform sidecar, recover invalid persisted values, surface I/O failures
@@ -320,8 +321,8 @@ operators before implementation is marked complete.
 | `mobile/src/api/authTokenStore.ts` | Create | Secure-storage-only bearer token persistence boundary for Cats Mobile |
 | `src/mobile/**` | Modify | Keep shared mobile contracts aligned with mobile auth status and bearer-session requirements |
 | `src/app/server/platformSetupRoutes.ts` | Modify | Canonical platform setup route; create first admin during platform setup |
-| `desktop/host/authSessionSecret.ts` | Create | Generate or reload the packaged Desktop auth session secret before sidecars start |
-| `desktop/host/processSupervisor.ts` | Modify | Inject the secret into the platform sidecar without exposing it to the runtime sidecar |
+| `src/platform/auth/sessionSecretProvisioning.ts` | Create | Generate or reload the platform-owned auth session secret before server config resolves |
+| `desktop/host/processSupervisor.ts` | Modify | Surface platform-side provisioning failures through Desktop bootstrap diagnostics |
 | `src/shared/platformChildProcessEnv.ts` | Create | Strip the platform auth session secret from project and shell child-process environments |
 | `src/products/code/livePreview/realProcessAdapter.ts` | Modify | Launch live-preview projects without the platform auth session secret |
 | `src/products/code/state/appExport.ts` | Modify | Build exported Cats Code apps without the platform auth session secret |
@@ -632,6 +633,7 @@ operators before implementation is marked complete.
 | 2026-08-04 | Hardened the Desktop auth-secret follow-up: writes now use a same-directory temporary file and atomic publish, invalid persisted values are quarantined and regenerated, real provisioning failures stay on the existing bootstrap recovery page for Retry, weak explicit overrides warn, platform-spawned project processes strip the secret, and installer smoke resolution honors custom Desktop/platform roots. |
 | 2026-08-04 | Completed the second Desktop auth-secret hardening review: canonical publication is now atomic and no-clobber under shared-directory races, stale temporary/invalid artifacts are retired, warnings persist to the Desktop host log, the child-process sanitizer removes all documented Cats-owned runtime/Telegram/ngrok credentials, taskkill uses the same sanitized environment, and updater rollback explicitly documents its dependency on the supervisor-lifetime environment snapshot. |
 | 2026-08-04 | Closed the follow-up review findings for the clean-install secret boundary: unsupported-hardlink filesystems now use an exclusive-copy no-clobber fallback with concurrent-winner adoption, permission errors fail closed, pre-auth setup responses use safe configuration/internal error envelopes, and credential documentation coverage now exercises the sanitizer rather than exporting its denylist. |
+| 2026-08-04 | Generalized SPEC-100 requirement 24 from packaged Desktop to the platform process: local dev, npm/global installs, `npx cats-one`, and Desktop now share secure first-run generation and persistence; explicit configuration remains authoritative, fixed public defaults are rejected, project `.env` can redirect the subsequently loaded platform config `.env`, and Desktop surfaces sidecar provisioning errors through Retry. |
 
 ---
 

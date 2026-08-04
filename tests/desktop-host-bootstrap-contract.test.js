@@ -7,6 +7,10 @@ async function readDesktopHostMain() {
   return await readFile(path.join(process.cwd(), 'desktop', 'host', 'main.ts'), 'utf8');
 }
 
+async function readPlatformServerEntry() {
+  return await readFile(path.join(process.cwd(), 'src', 'index.ts'), 'utf8');
+}
+
 test('desktop host bounds fresh-start CLI inventory scans without failing pending bootstrap', async () => {
   const source = await readDesktopHostMain();
 
@@ -58,8 +62,9 @@ test('desktop host keeps setup audit as background enrichment only', async () =>
   );
 });
 
-test('desktop host provisions auth inside the retryable bootstrap lifecycle', async () => {
+test('platform server provisions auth while desktop keeps failures retryable', async () => {
   const source = await readDesktopHostMain();
+  const serverSource = await readPlatformServerEntry();
   const bootstrapStart = source.indexOf('async function bootstrapDesktopHost(');
   const actionStart = source.indexOf('async function runHostAction(', bootstrapStart);
   assert.notEqual(bootstrapStart, -1);
@@ -67,13 +72,13 @@ test('desktop host provisions auth inside the retryable bootstrap lifecycle', as
 
   const bootstrapSource = source.slice(bootstrapStart, actionStart);
   const showPageIndex = bootstrapSource.indexOf('await ensureBootstrapPageVisible();');
-  const provisionIndex = bootstrapSource.indexOf(
-    'await ensureDesktopAuthSessionSecret(hostConfig)',
-  );
   const startServicesIndex = bootstrapSource.indexOf('await supervisor.startAll();');
+  const provisionIndex = serverSource.indexOf('await ensurePlatformAuthSessionSecret({');
+  const configIndex = serverSource.indexOf('const config = loadConfig({');
 
-  assert.ok(showPageIndex >= 0 && showPageIndex < provisionIndex);
-  assert.ok(provisionIndex < startServicesIndex);
+  assert.ok(showPageIndex >= 0 && showPageIndex < startServicesIndex);
+  assert.ok(provisionIndex >= 0 && provisionIndex < configIndex);
+  assert.doesNotMatch(bootstrapSource, /ensureDesktopAuthSessionSecret/u);
   assert.match(bootstrapSource, /latestBootstrapError = message;/u);
   assert.match(bootstrapSource, /return maybeOpenApp\(snapshot\)\.then\(\(\) => snapshot\);/u);
 });

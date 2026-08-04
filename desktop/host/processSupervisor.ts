@@ -662,24 +662,6 @@ export class ManagedServiceSupervisor {
     return this.handles.size;
   }
 
-  setPlatformAuthSessionSecret(secret: string): void {
-    if (!secret.trim()) {
-      throw new Error('Desktop platform auth session secret must not be empty.');
-    }
-    const runningService = Array.from(this.handles.values()).find((handle) => (
-      handle.child
-      && handle.child.exitCode === null
-      && handle.child.signalCode === null
-    ));
-    if (runningService) {
-      throw new Error('Desktop platform auth session secret must be set before services start.');
-    }
-    this.managedEnv = {
-      ...this.managedEnv,
-      CATS_AUTH_SESSION_SECRET: secret,
-    };
-  }
-
   async startAll(): Promise<void> {
     await ensureLaunchAssets(this.config);
     const specs = buildManagedServiceSpecs(this.config, this.managedEnv, this.platform);
@@ -835,10 +817,12 @@ export class ManagedServiceSupervisor {
     }) as ChildProcessWithoutNullStreams;
 
     let resolveLifecycleReady: (() => void) | null = null;
-    let rejectLifecycleReady: ((error: Error) => void) | null = null;
-    const lifecycleReady = new Promise<void>((resolve, reject) => {
+    const lifecycleReady = new Promise<void>((resolve) => {
       resolveLifecycleReady = resolve;
-      rejectLifecycleReady = reject;
+    });
+    let rejectLifecycleFailure: ((error: Error) => void) | null = null;
+    const lifecycleFailure = new Promise<never>((_resolve, reject) => {
+      rejectLifecycleFailure = reject;
     });
 
     handle.child = child;
@@ -873,12 +857,7 @@ export class ManagedServiceSupervisor {
       );
     };
 
-    child.stdout.on('data', (chunk) => {
-      recordFirstStream('stdout');
-      const text = (chunk as Buffer).toString('utf8');
-      writeTaggedOutput(process.stdout, spec.name, chunk as Buffer);
-      this.recordServiceOutput(spec.name, spec.logPath, text, 'stdout');
-
+    const observeLifecycleOutput = (text: string) => {
       for (const line of text.split(/\r?\n/u)) {
         const lifecycle = parseManagedServiceLifecycleLine(spec.name, line);
         if (!lifecycle) {
@@ -894,14 +873,24 @@ export class ManagedServiceSupervisor {
           continue;
         }
         if (typeof lifecycle.error === 'string' && lifecycle.error.trim().length > 0) {
-          rejectLifecycleReady?.(new Error(lifecycle.error));
+          rejectLifecycleFailure?.(new Error(lifecycle.error));
         }
       }
+    };
+
+    child.stdout.on('data', (chunk) => {
+      recordFirstStream('stdout');
+      const text = (chunk as Buffer).toString('utf8');
+      writeTaggedOutput(process.stdout, spec.name, chunk as Buffer);
+      this.recordServiceOutput(spec.name, spec.logPath, text, 'stdout');
+      observeLifecycleOutput(text);
     });
     child.stderr.on('data', (chunk) => {
       recordFirstStream('stderr');
+      const text = (chunk as Buffer).toString('utf8');
       writeTaggedOutput(process.stderr, spec.name, chunk as Buffer);
-      this.recordServiceOutput(spec.name, spec.logPath, (chunk as Buffer).toString('utf8'), 'stderr');
+      this.recordServiceOutput(spec.name, spec.logPath, text, 'stderr');
+      observeLifecycleOutput(text);
     });
     child.on('exit', (code, signal) => {
       const exitMessage = handle.expectedExit
@@ -956,6 +945,7 @@ export class ManagedServiceSupervisor {
     try {
       const readinessSource = await Promise.race([
         readinessOutcomePromise,
+        lifecycleFailure,
         exitBeforeReady,
         startupDeadline.promise,
       ]);

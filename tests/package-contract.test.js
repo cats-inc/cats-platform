@@ -292,12 +292,21 @@ test('local tarball install exposes the cats-platform executable entrypoint', ()
     assert.equal(existsSync(linkedBinPath), true);
     assert.equal(existsSync(installedBinTargetPath), true);
 
+    const helpPlatformDir = join(installRoot, 'help-platform');
     const helpResult = runNodeCommand([installedBinTargetPath, '--help'], {
       cwd: consumerDir,
+      env: {
+        CATS_PLATFORM_DIR: helpPlatformDir,
+        CATS_AUTH_SESSION_SECRET: '',
+      },
     });
 
     assert.equal(helpResult.status, 0);
     assert.match(helpResult.stdout, /Usage: cats-platform \[options\]/u);
+    assert.equal(
+      existsSync(join(helpPlatformDir, 'config', 'auth-session-secret.local')),
+      false,
+    );
   } finally {
     if (tarballPath) {
       rmSync(tarballPath, { force: true });

@@ -21,22 +21,22 @@ Deprecations:
 
 ## 2026-08-04
 
-### Packaged Desktop provisions its first-run auth secret
+### Every platform entrypoint provisions its first-run auth secret
 
 Behavior change:
 
-Clean Cats Desktop installs no longer require an operator-created `.env` before
-the first-admin setup form can complete. When no explicit
-`CATS_AUTH_SESSION_SECRET` is configured, Desktop generates a 256-bit secret,
-persists it in the user-local platform config directory, reuses it across
-launches, and injects it only into the `cats-platform` sidecar. Persistence uses
-an atomic no-clobber publish so concurrent hosts converge on one value;
+Clean `cats-platform`, `cats-one`, local dev, and packaged Desktop starts no
+longer require an operator-created `.env` before the first-admin setup form can
+complete. When no explicit `CATS_AUTH_SESSION_SECRET` is configured, the
+platform server generates a 256-bit secret, persists it in the user-local
+platform config directory, and reuses it across launches. Persistence uses an
+atomic no-clobber publish so concurrent hosts converge on one value;
 filesystems without hard-link support use an exclusive-copy fallback, while
 permission errors remain fail-closed. Invalid files are quarantined and
 regenerated, and stale temporary/invalid artifacts are cleaned during
-provisioning. Real I/O failures now open the existing retryable bootstrap
-recovery page instead of terminating before a window appears, while warnings
-persist in the Desktop host log. First-admin configuration failures use a safe
+provisioning. Direct CLI users receive an actionable path on stderr; Desktop
+captures the same sidecar diagnostics and keeps real I/O failures on the
+retryable bootstrap page. First-admin configuration failures use a safe
 `503 configuration_error`, and unexpected pre-auth setup failures no longer
 return raw exception messages, including failures caught by the server-level
 request handler. Platform-launched project processes and shell helpers strip the
@@ -46,9 +46,9 @@ Desktop/platform data roots.
 
 Migration steps:
 
-None for packaged Desktop. Existing explicit secrets remain authoritative and
-are not overwritten. Self-hosted/dev deployments must continue to configure
-their own `CATS_AUTH_SESSION_SECRET`.
+None. Existing explicit secrets remain authoritative and are not overwritten.
+Clustered or ephemeral deployments should configure their own shared
+`CATS_AUTH_SESSION_SECRET`; single-host installs can keep the generated value.
 
 Deprecations:
 

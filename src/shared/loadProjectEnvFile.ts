@@ -1,6 +1,10 @@
 import fs from 'node:fs';
-import { homedir } from 'node:os';
 import path from 'node:path';
+
+import {
+  resolveDefaultPlatformDir,
+  resolvePlatformConfigDir,
+} from './platformPaths.js';
 
 type ProcessWithLoadEnvFile = NodeJS.Process & {
   loadEnvFile?: (path?: string) => void;
@@ -64,38 +68,32 @@ export function loadProjectEnvFile(
   return envFilePath;
 }
 
-function resolveProjectEnvFilePaths(
+export function loadProjectEnvFiles(
   options: ProjectEnvLoadOptions = {},
 ): string[] {
   const cwd = options.cwd ?? process.cwd();
   const env = options.env ?? process.env;
-  const platformConfigDir = options.platformConfigDir
-    ?? path.join(
-      env.CATS_PLATFORM_DIR?.trim() || path.join(homedir(), '.cats', 'platform'),
-      'config',
-    );
-
-  return [
-    path.join(cwd, '.env'),
-    path.join(platformConfigDir, '.env'),
-  ];
-}
-
-export function loadProjectEnvFiles(
-  options: ProjectEnvLoadOptions = {},
-): string[] {
-  const env = options.env ?? process.env;
   const loaded: string[] = [];
+  const projectEnvPath = loadProjectEnvFile(cwd, env);
+  if (projectEnvPath) {
+    loaded.push(projectEnvPath);
+  }
 
-  for (const envFilePath of resolveProjectEnvFilePaths(options)) {
-    if (!fs.existsSync(envFilePath)) {
-      continue;
-    }
+  // Resolve this only after loading the project .env: a self-hosted checkout
+  // may define CATS_PLATFORM_DIR there, and its platform config .env must then
+  // come from the same storage root used by the server and secret provisioner.
+  const homeDir = env.HOME?.trim() || env.USERPROFILE?.trim() || undefined;
+  const platformConfigDir = options.platformConfigDir
+    ?? resolvePlatformConfigDir(
+      env.CATS_PLATFORM_DIR?.trim() || resolveDefaultPlatformDir(homeDir),
+    );
+  if (path.resolve(platformConfigDir) === path.resolve(cwd)) {
+    return loaded;
+  }
 
-    const loadedPath = loadProjectEnvFile(path.dirname(envFilePath), env);
-    if (loadedPath) {
-      loaded.push(loadedPath);
-    }
+  const platformEnvPath = loadProjectEnvFile(platformConfigDir, env);
+  if (platformEnvPath) {
+    loaded.push(platformEnvPath);
   }
 
   return loaded;

@@ -638,6 +638,48 @@ test('startService accepts app-managed ready lifecycle events before health poll
   }
 });
 
+test('startService surfaces app-managed startup errors written to stderr', async () => {
+  const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-supervisor-startup-error-'));
+  const config = resolveDesktopHostConfig({
+    env: {
+      CATS_DESKTOP_READINESS_TIMEOUT_MS: '5',
+    },
+    userDataDir,
+    catsHomeDir: join(userDataDir, '..', 'cats-home'),
+  });
+  const child = new FakeChildProcess();
+  const supervisor = new ManagedServiceSupervisor(config, {
+    spawn: () => child,
+    waitForServiceReadiness: async () => {
+      throw new Error('fetch failed');
+    },
+  });
+  const [, appSpec] = buildManagedServiceSpecs(config);
+
+  try {
+    const startPromise = supervisor.startService(appSpec);
+    setTimeout(() => {
+      child.stderr.write(
+        `${JSON.stringify({
+          event: 'app.startup_error',
+          service: 'cats-platform',
+          phase: 'failed',
+          ready: false,
+          error: 'Could not persist auth session secret: permission denied',
+        })}\n`,
+      );
+    }, 10);
+
+    await assert.rejects(
+      startPromise,
+      /Could not persist auth session secret: permission denied/u,
+    );
+    child.kill('SIGTERM');
+  } finally {
+    await rm(userDataDir, { recursive: true, force: true });
+  }
+});
+
 test('startService logs spawn timing and first output milestones for managed services', async () => {
   const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-supervisor-trace-'));
   const config = resolveDesktopHostConfig({

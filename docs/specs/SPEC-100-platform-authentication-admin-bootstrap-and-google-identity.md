@@ -136,8 +136,12 @@ the ADR-095 pairing QR.
 21. Sessions shall have an expiration timestamp.
 22. Session cookies shall be HttpOnly and `SameSite=Lax` by default.
 23. Session cookies shall use Secure when Cats is served over HTTPS.
-24. The platform shall support a session secret loaded from configuration or
-    generated/persisted locally on first run.
+24. Every executable platform entrypoint shall support a session secret loaded
+    from configuration or generated and persisted locally on first run. The
+    generated value shall have at least 256 bits of entropy, remain stable
+    across restarts, converge safely across concurrent hosts, and never use a
+    fixed publicly known default. Explicit operator configuration remains
+    authoritative for clustered or ephemeral deployments.
 25. Failed local and Google login attempts shall be throttled by the composite
     key `(account_or_provider_subject, remote_address)`. The default policy
     shall lock that composite key for at least 30 seconds after 5 failed

@@ -146,7 +146,6 @@ import {
   type DesktopStartupPreferences,
 } from './desktopStartup.js';
 import { loadDesktopEnvFiles } from './env.js';
-import { ensureDesktopAuthSessionSecret } from './authSessionSecret.js';
 import {
   assertMainWindowScreenshotIpcSender,
   captureScreenshotRegion,
@@ -1808,9 +1807,6 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
     if (restartServices) {
       await supervisor.stopAll();
     }
-
-    const authSessionSecret = await ensureDesktopAuthSessionSecret(hostConfig);
-    supervisor.setPlatformAuthSessionSecret(authSessionSecret.secret);
 
     const attemptTimestamp = new Date();
     diagnosticsState = {

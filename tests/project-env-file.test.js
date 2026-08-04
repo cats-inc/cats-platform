@@ -76,3 +76,33 @@ test('loadProjectEnvFiles also loads packaged platform config env values', async
     await fs.rm(tempDir, { recursive: true, force: true });
   }
 });
+
+test('project env can redirect the platform config env loaded afterward', async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cats-platform-directed-env-'));
+  const platformDir = path.join(tempDir, 'isolated-platform');
+  const platformConfigDir = path.join(platformDir, 'config');
+  const projectEnvPath = path.join(tempDir, '.env');
+  const platformEnvPath = path.join(platformConfigDir, '.env');
+
+  try {
+    await fs.mkdir(platformConfigDir, { recursive: true });
+    await fs.writeFile(projectEnvPath, `CATS_PLATFORM_DIR=${platformDir}\n`, 'utf8');
+    await fs.writeFile(
+      platformEnvPath,
+      'CATS_AUTH_SESSION_SECRET=operator-configured-auth-session-secret-123456\n',
+      'utf8',
+    );
+
+    const env = {};
+    const loadedPaths = loadProjectEnvFiles({ cwd: tempDir, env });
+
+    assert.deepEqual(loadedPaths, [projectEnvPath, platformEnvPath]);
+    assert.equal(env.CATS_PLATFORM_DIR, platformDir);
+    assert.equal(
+      env.CATS_AUTH_SESSION_SECRET,
+      'operator-configured-auth-session-secret-123456',
+    );
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});

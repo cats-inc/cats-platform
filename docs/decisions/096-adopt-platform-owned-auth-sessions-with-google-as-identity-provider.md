@@ -116,6 +116,24 @@ mobile device bearer session. The QR/manifest/bundle routes remain limited to
 static bootstrap artifacts and must never embed product data, session tokens,
 Google tokens, or other secrets.
 
+### 1b. The platform process owns default session-secret provisioning
+
+Every executable path ultimately starts `cats-platform`, so the platform
+process—not Desktop or the one-shot launcher—owns the default auth-session
+secret. After loading process, project, and platform-config environment files,
+the server uses an explicit `CATS_AUTH_SESSION_SECRET` when present. Otherwise
+it generates a 256-bit random value, publishes it without clobbering a
+concurrent winner, and persists it under the active platform config directory.
+
+This makes local dev, npm/global installs, `npx cats-one`, and packaged Desktop
+share one first-run contract without duplicating secret logic in each launcher.
+A fixed all-zero or other publicly known default is rejected: it would erase
+per-install key isolation and encourage deployments to remain on a shared key.
+Single-host users do not need to rotate the generated value. Clustered or
+ephemeral deployments set an explicit shared value. Persistence failures remain
+fail-closed and are surfaced through CLI stderr or Desktop's retryable sidecar
+startup diagnostics.
+
 ### 2. First-run setup creates the first admin account
 
 `/setup` remains the first-run route, but it becomes an admin bootstrap flow.
@@ -367,6 +385,8 @@ that need Core actor attribution until an explicit mapping exists.
 *Decision made: 2026-04-30*
 *Amended: 2026-04-30 — composite `(account, address)` throttle key; uniform `CATS_AUTH_ENABLED=false` rejection after `setupCompleteAt`; pre-auth CSRF token explicitly absent; renderer stale-CSRF retry contract; rotation on privilege changes marked forward-looking; auth-state-file escape hatch for forgotten credentials documented.*
 *Amended: 2026-04-30 — closed pre-auth bootstrap CSRF gap with same-origin gate on `/setup`/`/api/auth/login`/repair; constrained repair first-admin creation to a one-time recovery token so the escape hatch does not re-open LAN admin bootstrap through reverse proxies or tunnels; pinned `E_CSRF_MISMATCH` error code so renderer retry cannot collide with `E_FORBIDDEN`; promoted per-account aggregate guards (progressive delay, daily failure budget, per-/24 subnet budget) from optional to required.*
+
+*Amended: 2026-08-04 — moved default session-secret provisioning into the platform process so local dev, npm/npx, cats-one, and Desktop share one secure first-run contract; rejected fixed public fallback secrets.*
 *Amended: 2026-04-30 — aligned the pre-auth gate with Vite/reverse-proxy topologies by using an explicit allowed browser-origin set; clarified that `same-site` does not pass without an allowlisted `Origin`; kept raw recovery tokens out of structured logs; made aggregate account cooldown bounded and recoverable without deleting auth state.*
 *Amended: 2026-04-30 — added Expo Go / Cats Mobile as a first-party non-browser client: QR pairing only bootstraps the bundle, product data requires a mobile device bearer session, and mobile Google login is separate from browser GIS credential POST.*
 *Decision makers: user + Codex*

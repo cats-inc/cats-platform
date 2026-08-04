@@ -15,9 +15,10 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import {
-  ensureDesktopAuthSessionSecret,
-  resolveDesktopAuthSessionSecretPath,
-} from '../build/desktop/authSessionSecret.js';
+  ensurePlatformAuthSessionSecret,
+  resolvePlatformAuthSessionSecretConfigDir,
+  resolvePlatformAuthSessionSecretPath,
+} from '../build/server/platform/auth/sessionSecretProvisioning.js';
 import { resolveDesktopHostConfig } from '../build/desktop/config.js';
 import { buildManagedServiceSpecs } from '../build/desktop/processSupervisor.js';
 
@@ -25,24 +26,36 @@ const GENERATED_SECRET = 'generated-desktop-auth-session-secret-0123456789';
 const ALTERNATE_GENERATED_SECRET = 'alternate-desktop-auth-session-secret-9876543210';
 
 function createConfig(root) {
-  return resolveDesktopHostConfig({
-    env: {},
-    userDataDir: join(root, 'user-data'),
-    catsHomeDir: join(root, 'cats-home'),
-  });
+  return {
+    platformConfigDir: join(root, 'cats-home', 'platform', 'config'),
+  };
 }
 
-test('desktop auth provisioning preserves an explicit session secret without writing a file', async () => {
+test('platform auth provisioning follows home and platform directory overrides', () => {
+  assert.equal(
+    resolvePlatformAuthSessionSecretConfigDir({ HOME: 'C:/cats-home' }),
+    join('C:/cats-home', '.cats', 'platform', 'config'),
+  );
+  assert.equal(
+    resolvePlatformAuthSessionSecretConfigDir({
+      HOME: 'C:/cats-home',
+      CATS_PLATFORM_DIR: 'D:/isolated-cats-platform',
+    }),
+    join('D:/isolated-cats-platform', 'config'),
+  );
+});
+
+test('platform auth provisioning preserves an explicit session secret without writing a file', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-explicit-'));
   const config = createConfig(root);
-  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const secretPath = resolvePlatformAuthSessionSecretPath(config);
   const staleTempPath = `${secretPath}.tmp-100-stale`;
 
   try {
-    await mkdir(config.paths.platformConfigDir, { recursive: true });
+    await mkdir(config.platformConfigDir, { recursive: true });
     await writeFile(staleTempPath, `${GENERATED_SECRET}\n`, 'utf8');
     await utimes(staleTempPath, new Date(0), new Date(0));
-    const result = await ensureDesktopAuthSessionSecret(config, {
+    const result = await ensurePlatformAuthSessionSecret(config, {
       CATS_AUTH_SESSION_SECRET: 'operator-configured-auth-session-secret-123456',
     }, {
       generateSecret: () => {
@@ -63,13 +76,13 @@ test('desktop auth provisioning preserves an explicit session secret without wri
   }
 });
 
-test('desktop auth provisioning warns without rejecting a weak explicit session secret', async () => {
+test('platform auth provisioning warns without rejecting a weak explicit session secret', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-weak-explicit-'));
   const config = createConfig(root);
   const warnings = [];
 
   try {
-    const result = await ensureDesktopAuthSessionSecret(config, {
+    const result = await ensurePlatformAuthSessionSecret(config, {
       CATS_AUTH_SESSION_SECRET: 'weak-secret',
     }, {
       warn: (message) => warnings.push(message),
@@ -85,34 +98,36 @@ test('desktop auth provisioning warns without rejecting a weak explicit session 
   }
 });
 
-test('desktop auth provisioning persists default warnings to the host log', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-warning-log-'));
+test('platform auth provisioning reports generated paths without exposing the secret', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-platform-auth-generated-info-'));
   const config = createConfig(root);
-  const logPath = join(config.paths.hostLogsDir, 'desktop-host.log');
+  const messages = [];
 
   try {
-    await ensureDesktopAuthSessionSecret(config, {
-      CATS_AUTH_SESSION_SECRET: 'weak-secret-for-log-test',
+    await ensurePlatformAuthSessionSecret(config, {}, {
+      generateSecret: () => GENERATED_SECRET,
+      info: (message) => messages.push(message),
     });
 
-    const logText = await readFile(logPath, 'utf8');
-    assert.match(logText, /CATS_AUTH_SESSION_SECRET is shorter than 32 characters/u);
-    assert.doesNotMatch(logText, /weak-secret-for-log-test/u);
+    assert.equal(messages.length, 1);
+    assert.match(messages[0], /Generated a local auth session secret at/u);
+    assert.match(messages[0], /clustered or ephemeral deployments/u);
+    assert.doesNotMatch(messages[0], new RegExp(GENERATED_SECRET, 'u'));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test('clean desktop install generates and reuses one persisted auth session secret', async () => {
+test('clean platform start generates and reuses one persisted auth session secret', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-generated-'));
   const config = createConfig(root);
-  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const secretPath = resolvePlatformAuthSessionSecretPath(config);
 
   try {
-    const first = await ensureDesktopAuthSessionSecret(config, {}, {
+    const first = await ensurePlatformAuthSessionSecret(config, {}, {
       generateSecret: () => GENERATED_SECRET,
     });
-    const second = await ensureDesktopAuthSessionSecret(config, {}, {
+    const second = await ensurePlatformAuthSessionSecret(config, {}, {
       generateSecret: () => {
         throw new Error('persisted secret should be reused');
       },
@@ -134,16 +149,16 @@ test('clean desktop install generates and reuses one persisted auth session secr
   }
 });
 
-test('desktop auth provisioning quarantines an invalid persisted secret and regenerates', async () => {
+test('platform auth provisioning quarantines an invalid persisted secret and regenerates', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-invalid-'));
   const config = createConfig(root);
-  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const secretPath = resolvePlatformAuthSessionSecretPath(config);
   const warnings = [];
 
   try {
-    await mkdir(config.paths.platformConfigDir, { recursive: true });
+    await mkdir(config.platformConfigDir, { recursive: true });
     await writeFile(secretPath, 'truncated\n', 'utf8');
-    const result = await ensureDesktopAuthSessionSecret(config, {}, {
+    const result = await ensurePlatformAuthSessionSecret(config, {}, {
       generateSecret: () => GENERATED_SECRET,
       warn: (message) => warnings.push(message),
     });
@@ -151,13 +166,13 @@ test('desktop auth provisioning quarantines an invalid persisted secret and rege
     assert.equal(result.secret, GENERATED_SECRET);
     assert.equal(result.source, 'generated');
     assert.equal(await readFile(secretPath, 'utf8'), `${GENERATED_SECRET}\n`);
-    const configEntries = await readdir(config.paths.platformConfigDir);
+    const configEntries = await readdir(config.platformConfigDir);
     const quarantined = configEntries.find((entry) => (
       entry.startsWith('auth-session-secret.local.invalid-')
     ));
     assert.ok(quarantined);
     assert.equal(
-      await readFile(join(config.paths.platformConfigDir, quarantined), 'utf8'),
+      await readFile(join(config.platformConfigDir, quarantined), 'utf8'),
       'truncated\n',
     );
     assert.equal(configEntries.some((entry) => entry.includes('.tmp-')), false);
@@ -168,10 +183,10 @@ test('desktop auth provisioning quarantines an invalid persisted secret and rege
   }
 });
 
-test('desktop auth provisioning removes stale temporary and invalid artifacts', async () => {
+test('platform auth provisioning removes stale temporary and invalid artifacts', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-stale-artifacts-'));
   const config = createConfig(root);
-  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const secretPath = resolvePlatformAuthSessionSecretPath(config);
   const staleTempPath = `${secretPath}.tmp-100-stale`;
   const staleInvalidPath = `${secretPath}.invalid-stale`;
   const freshTempPath = `${secretPath}.tmp-200-fresh`;
@@ -179,7 +194,7 @@ test('desktop auth provisioning removes stale temporary and invalid artifacts', 
   const staleTime = new Date('2026-06-01T00:00:00.000Z');
 
   try {
-    await mkdir(config.paths.platformConfigDir, { recursive: true });
+    await mkdir(config.platformConfigDir, { recursive: true });
     await writeFile(staleTempPath, `${ALTERNATE_GENERATED_SECRET}\n`, 'utf8');
     await writeFile(staleInvalidPath, 'invalid-old-value\n', 'utf8');
     await writeFile(freshTempPath, `${ALTERNATE_GENERATED_SECRET}\n`, 'utf8');
@@ -187,7 +202,7 @@ test('desktop auth provisioning removes stale temporary and invalid artifacts', 
     await utimes(staleInvalidPath, staleTime, staleTime);
     await utimes(freshTempPath, now, now);
 
-    await ensureDesktopAuthSessionSecret(config, {}, {
+    await ensurePlatformAuthSessionSecret(config, {}, {
       generateSecret: () => GENERATED_SECRET,
       now: () => now,
     });
@@ -200,17 +215,17 @@ test('desktop auth provisioning removes stale temporary and invalid artifacts', 
   }
 });
 
-test('concurrent desktop auth provisioning adopts one canonical persisted secret', async () => {
+test('concurrent platform auth provisioning adopts one canonical persisted secret', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-concurrent-'));
   const config = createConfig(root);
-  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const secretPath = resolvePlatformAuthSessionSecretPath(config);
 
   try {
     const results = await Promise.all([
-      ensureDesktopAuthSessionSecret(config, {}, {
+      ensurePlatformAuthSessionSecret(config, {}, {
         generateSecret: () => GENERATED_SECRET,
       }),
-      ensureDesktopAuthSessionSecret(config, {}, {
+      ensurePlatformAuthSessionSecret(config, {}, {
         generateSecret: () => ALTERNATE_GENERATED_SECRET,
       }),
     ]);
@@ -227,14 +242,14 @@ test('concurrent desktop auth provisioning adopts one canonical persisted secret
   }
 });
 
-test('desktop auth provisioning warns when it falls back from hard-link publishing', async () => {
+test('platform auth provisioning warns when it falls back from hard-link publishing', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-no-hardlink-'));
   const config = createConfig(root);
-  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const secretPath = resolvePlatformAuthSessionSecretPath(config);
   const warnings = [];
 
   try {
-    const result = await ensureDesktopAuthSessionSecret(config, {}, {
+    const result = await ensurePlatformAuthSessionSecret(config, {}, {
       generateSecret: () => GENERATED_SECRET,
       warn: (message) => warnings.push(message),
       linkFile: async () => {
@@ -250,7 +265,7 @@ test('desktop auth provisioning warns when it falls back from hard-link publishi
     assert.match(warnings[0], /exclusive-copy fallback/u);
     assert.doesNotMatch(warnings[0], new RegExp(GENERATED_SECRET, 'u'));
 
-    const configEntries = await readdir(config.paths.platformConfigDir);
+    const configEntries = await readdir(config.platformConfigDir);
     assert.equal(configEntries.some((entry) => entry.includes('.tmp-')), false);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -260,7 +275,7 @@ test('desktop auth provisioning warns when it falls back from hard-link publishi
 test('concurrent fallback publishing converges on one canonical secret', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-fallback-concurrent-'));
   const config = createConfig(root);
-  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const secretPath = resolvePlatformAuthSessionSecretPath(config);
   const warnings = [];
   let arrivals = 0;
   let releaseBarrier;
@@ -278,12 +293,12 @@ test('concurrent fallback publishing converges on one canonical secret', async (
 
   try {
     const results = await Promise.all([
-      ensureDesktopAuthSessionSecret(config, {}, {
+      ensurePlatformAuthSessionSecret(config, {}, {
         generateSecret: () => GENERATED_SECRET,
         linkFile: unsupportedLink,
         warn: (message) => warnings.push(message),
       }),
-      ensureDesktopAuthSessionSecret(config, {}, {
+      ensurePlatformAuthSessionSecret(config, {}, {
         generateSecret: () => ALTERNATE_GENERATED_SECRET,
         linkFile: unsupportedLink,
         warn: (message) => warnings.push(message),
@@ -298,25 +313,25 @@ test('concurrent fallback publishing converges on one canonical secret', async (
       ['generated', 'persisted'],
     );
     assert.equal(warnings.length, 2);
-    const configEntries = await readdir(config.paths.platformConfigDir);
+    const configEntries = await readdir(config.platformConfigDir);
     assert.equal(configEntries.some((entry) => entry.includes('.tmp-')), false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test('desktop auth provisioning adopts an in-progress fallback publish', async () => {
+test('platform auth provisioning adopts an in-progress fallback publish', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-fallback-in-progress-'));
   const config = createConfig(root);
-  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const secretPath = resolvePlatformAuthSessionSecretPath(config);
   const temporaryPath = `${secretPath}.tmp-other-host-test`;
 
   try {
-    await mkdir(config.paths.platformConfigDir, { recursive: true });
+    await mkdir(config.platformConfigDir, { recursive: true });
     await writeFile(secretPath, 'partial', 'utf8');
     await writeFile(temporaryPath, `${GENERATED_SECRET}\n`, 'utf8');
 
-    const provisioning = ensureDesktopAuthSessionSecret(config, {});
+    const provisioning = ensurePlatformAuthSessionSecret(config, {});
     await new Promise((resolve) => setTimeout(resolve, 75));
     await writeFile(secretPath, `${GENERATED_SECRET}\n`, 'utf8');
     await rm(temporaryPath, { force: true });
@@ -325,22 +340,22 @@ test('desktop auth provisioning adopts an in-progress fallback publish', async (
     assert.equal(result.secret, GENERATED_SECRET);
     assert.equal(result.source, 'persisted');
     assert.equal(await readFile(secretPath, 'utf8'), `${GENERATED_SECRET}\n`);
-    const configEntries = await readdir(config.paths.platformConfigDir);
+    const configEntries = await readdir(config.platformConfigDir);
     assert.equal(configEntries.some((entry) => entry.includes('.invalid-')), false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test('desktop auth provisioning fails closed when hard linking is denied', async () => {
+test('platform auth provisioning fails closed when hard linking is denied', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cats-desktop-auth-link-denied-'));
   const config = createConfig(root);
-  const secretPath = resolveDesktopAuthSessionSecretPath(config);
+  const secretPath = resolvePlatformAuthSessionSecretPath(config);
   const warnings = [];
 
   try {
     await assert.rejects(
-      ensureDesktopAuthSessionSecret(config, {}, {
+      ensurePlatformAuthSessionSecret(config, {}, {
         generateSecret: () => GENERATED_SECRET,
         linkFile: async () => {
           throw Object.assign(new Error('permission denied'), { code: 'EPERM' });
@@ -351,7 +366,7 @@ test('desktop auth provisioning fails closed when hard linking is denied', async
     );
     await assert.rejects(access(secretPath, constants.F_OK));
     assert.equal(warnings.length, 0);
-    const configEntries = await readdir(config.paths.platformConfigDir);
+    const configEntries = await readdir(config.platformConfigDir);
     assert.equal(configEntries.some((entry) => entry.includes('.tmp-')), false);
   } finally {
     await rm(root, { recursive: true, force: true });

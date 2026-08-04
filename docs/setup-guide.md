@@ -24,34 +24,32 @@ public host repo/package target.
 
 ### Platform auth configuration
 
-PLAN-089 auth is in rollout. Self-hosted/dev servers must set a long
-`CATS_AUTH_SESSION_SECRET` before using the first-admin local login or Cats
-Mobile bearer-session paths:
+PLAN-089 auth is in rollout. Every executable `cats-platform` entrypoint,
+including local dev, npm/global installs, `npx cats-one`, and packaged Desktop,
+automatically provisions a 256-bit session secret when no explicit value is
+configured. The generated value is persisted at
+`~/.cats/platform/config/auth-session-secret.local` and reused on later
+launches. The file is created with user-only permissions where the filesystem
+supports POSIX modes.
+
+An explicit value remains authoritative and is recommended when multiple Cats
+instances must share sessions or the platform config directory is ephemeral:
 
 ```bash
 CATS_AUTH_SESSION_SECRET=<long-random-secret>
 ```
 
-Packaged Cats Desktop does not require the operator to create a `.env` file for
-this value. When no explicit secret is configured, the Desktop host generates a
-256-bit secret before it starts the platform sidecar, persists it at
-`~/.cats/platform/config/auth-session-secret.local`, and reuses it on later
-launches. The file is created with user-only permissions where the filesystem
-supports POSIX modes. An explicit `CATS_AUTH_SESSION_SECRET` from the process or
-Desktop `.env` remains the operator override and is never overwritten.
-
-Desktop publishes the fully flushed file with an atomic same-directory,
+The platform server publishes the fully flushed file with an atomic same-directory,
 no-clobber operation, so concurrent hosts adopt one canonical value. Filesystems
 without hard-link support use an exclusive-copy fallback that preserves the
 no-clobber guarantee; later hosts wait for an in-progress fallback publish and
-adopt its canonical value. The fallback's reduced crash-atomicity is recorded in
-the Desktop host log. Permission failures remain fail-closed. If the canonical contents are
-invalid, Desktop moves them aside with an `.invalid-*` suffix and generates a
-replacement. Temporary artifacts older than one hour and invalid backups older
-than 30 days are removed during provisioning. A genuine filesystem error is
-shown on the Desktop bootstrap recovery page, where Retry attempts provisioning
-again instead of silently exiting. Provisioning warnings are persisted in
-`~/.cats/desktop/logs/desktop-host.log` for packaged GUI apps.
+adopt its canonical value. Permission failures remain fail-closed. If the
+canonical contents are invalid, the platform moves them aside with an
+`.invalid-*` suffix and generates a replacement. Temporary artifacts older than
+one hour and invalid backups older than 30 days are removed during provisioning.
+Direct CLI users see generation, warning, and failure details on stderr;
+packaged Desktop captures the same sidecar output in its platform service log
+and keeps failures on the bootstrap Retry page.
 
 If a first-admin setup request reaches the platform without a configured
 session secret, the API returns a safe `503 configuration_error`; unexpected

@@ -68,19 +68,19 @@ Current decision:
 
 Auth and repair constraints for LAN/tunnel access:
 
-- Self-hosted hosts must set `CATS_AUTH_SESSION_SECRET` before testing or
-  exposing browser/mobile auth routes. Packaged Desktop generates and persists
-  a 256-bit secret automatically at
+- Every executable platform entrypoint generates and persists a 256-bit secret
+  automatically at
   `~/.cats/platform/config/auth-session-secret.local` when no explicit value is
-  configured; the same secret is reused across launches. Desktop writes the
-  value with an atomic no-clobber publish, using exclusive-copy semantics when
-  hard links are unavailable. Permission failures remain fail-closed. Desktop
-  quarantines invalid contents before regenerating, removes stale
-  temporary/invalid artifacts, and shows provisioning I/O failures on its
-  retryable bootstrap recovery page. Warnings persist to
-  `~/.cats/desktop/logs/desktop-host.log`. Platform-launched project child
-  processes remove the session secret, runtime API key, Telegram credentials,
-  and ngrok auth tokens from their environments.
+  configured; the same secret is reused across launches. This applies to
+  `cats-platform`, `cats-one`, local dev, and packaged Desktop. Set an explicit
+  value for clustered or ephemeral deployments. The platform uses an atomic
+  no-clobber publish, with exclusive-copy semantics when hard links are
+  unavailable. Permission failures remain fail-closed; invalid contents are
+  quarantined and stale temporary/invalid artifacts are retired. Direct CLI
+  diagnostics go to stderr, while Desktop captures sidecar diagnostics and
+  keeps provisioning failures on its retryable bootstrap page.
+- Platform-launched project child processes remove the session secret, runtime
+  API key, Telegram credentials, and ngrok auth tokens from their environments.
 - `CATS_AUTH_ENABLED=false` is not a LAN deployment option and is rejected
   after setup completion.
 - Keep `CATS_AUTH_ALLOWED_BROWSER_ORIGINS` explicit for every browser-facing
