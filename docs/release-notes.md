@@ -54,6 +54,24 @@ Deprecations:
 
 None.
 
+### Desktop runtime setup links retain the authenticated app session
+
+Behavior change:
+
+Desktop links that open same-origin Cats surfaces in a new window, including
+`/runtime/setup`, now navigate inside the authenticated Electron window. They
+no longer open the system browser without the Desktop session cookie and fail
+with `E_UNAUTHENTICATED`. Different-origin HTTP(S) links continue to use the
+system browser, and unsupported URL schemes remain blocked.
+
+Migration steps:
+
+None.
+
+Deprecations:
+
+None.
+
 ## 2026-05-10
 
 ### Platform auth rollout in progress

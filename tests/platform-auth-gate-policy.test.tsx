@@ -98,6 +98,7 @@ test('platform auth gate protects product, core, runtime, shell, transport, and 
     ['POST', '/api/transports/telegram/webhook'],
     ['GET', '/api/shell/browse'],
     ['POST', '/api/shell/open-folder'],
+    ['GET', '/runtime/setup'],
     ['GET', '/runtime/setup-state'],
     ['POST', '/api/runtime/setup-apply'],
   ] as const;

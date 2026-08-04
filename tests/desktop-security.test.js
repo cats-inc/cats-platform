@@ -5,6 +5,7 @@ import test from 'node:test';
 
 import {
   isDesktopHostActionId,
+  resolveDesktopWindowTarget,
   validateDesktopUrl,
 } from '../build/desktop/security.js';
 
@@ -44,6 +45,35 @@ test('isDesktopHostActionId rejects unknown IPC action ids', () => {
   assert.equal(isDesktopHostActionId(42), false);
 });
 
+test('desktop window targets keep same-origin auth surfaces in the Electron session', () => {
+  const options = {
+    appBaseUrl: 'http://127.0.0.1:8181',
+    allowedHosts: ['127.0.0.1'],
+  };
+
+  assert.deepEqual(
+    resolveDesktopWindowTarget('http://127.0.0.1:8181/runtime/setup', options),
+    {
+      kind: 'in_app',
+      url: 'http://127.0.0.1:8181/runtime/setup',
+    },
+  );
+  assert.deepEqual(
+    resolveDesktopWindowTarget('http://127.0.0.1:3110/setup', options),
+    {
+      kind: 'external',
+      url: 'http://127.0.0.1:3110/setup',
+    },
+  );
+  assert.deepEqual(
+    resolveDesktopWindowTarget('https://docs.example.test/runtime', options),
+    {
+      kind: 'external',
+      url: 'https://docs.example.test/runtime',
+    },
+  );
+});
+
 test('desktop main process keeps Electron sandboxing enabled and validates IPC actions', async () => {
   const source = await readFile(join(process.cwd(), 'desktop', 'host', 'main.ts'), 'utf8');
 
@@ -52,6 +82,8 @@ test('desktop main process keeps Electron sandboxing enabled and validates IPC a
   assert.match(source, /validateDesktopUrl/);
   assert.match(source, /setWindowOpenHandler/);
   assert.match(source, /will-navigate/);
+  assert.match(source, /target\.kind === 'in_app'/);
+  assert.match(source, /window\.loadURL\(target\.url\)/);
   assert.match(source, /openExternalDesktopUrl/);
 });
 

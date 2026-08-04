@@ -69,7 +69,11 @@ import {
   type RuntimeDiagnosticsHealthPayload,
   type RuntimeProviderDiagnosticsPayload,
 } from './readiness.js';
-import { isDesktopHostActionId, validateDesktopUrl } from './security.js';
+import {
+  isDesktopHostActionId,
+  resolveDesktopWindowTarget,
+  validateDesktopUrl,
+} from './security.js';
 import {
   readPersistedSetupCompletionState,
   type PersistedSetupCompletionState,
@@ -472,19 +476,14 @@ function resolveAllowedAppHosts(config: DesktopHostConfig): string[] {
   return Array.from(new Set([config.appHost, appBaseHost]));
 }
 
-function shouldAllowInAppNavigation(
+function resolveDesktopNavigationTarget(
   rawUrl: string,
   config: DesktopHostConfig,
-): boolean {
-  try {
-    const currentAppUrl = new URL(config.appBaseUrl);
-    const nextUrl = new URL(validateDesktopUrl(rawUrl, {
-      allowedHosts: resolveAllowedAppHosts(config),
-    }));
-    return nextUrl.origin === currentAppUrl.origin;
-  } catch {
-    return false;
-  }
+): ReturnType<typeof resolveDesktopWindowTarget> {
+  return resolveDesktopWindowTarget(rawUrl, {
+    appBaseUrl: config.appBaseUrl,
+    allowedHosts: resolveAllowedAppHosts(config),
+  });
 }
 
 async function ensureBootstrapPageVisible(): Promise<void> {
@@ -2057,15 +2056,25 @@ async function createMainWindow(
   });
 
   window.webContents.setWindowOpenHandler(({ url }) => {
-    void openExternalDesktopUrl(url).catch(reportExternalUrlOpenFailure);
+    const target = resolveDesktopNavigationTarget(url, config);
+    if (target.kind === 'in_app') {
+      void window.loadURL(target.url).catch((error: unknown) => {
+        process.stderr.write(
+          `Failed to open in-app desktop URL: ${error instanceof Error ? error.message : String(error)}\n`,
+        );
+      });
+    } else {
+      void openExternalDesktopUrl(target.url).catch(reportExternalUrlOpenFailure);
+    }
     return { action: 'deny' };
   });
   window.webContents.on('will-navigate', (event, url) => {
-    if (shouldAllowInAppNavigation(url, config)) {
+    const target = resolveDesktopNavigationTarget(url, config);
+    if (target.kind === 'in_app') {
       return;
     }
     event.preventDefault();
-    void openExternalDesktopUrl(url).catch(reportExternalUrlOpenFailure);
+    void openExternalDesktopUrl(target.url).catch(reportExternalUrlOpenFailure);
   });
 
   applyDesktopWindowChrome(window);
