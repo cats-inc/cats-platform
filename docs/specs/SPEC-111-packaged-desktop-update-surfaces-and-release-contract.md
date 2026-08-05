@@ -566,6 +566,21 @@ selection applies to both `cats-platform` and `cats-runtime`.
 - On Windows, restart/install shall hand off to the visible assisted NSIS
   wizard. App exit does not mean installation succeeded; success is confirmed
   by the installer and by the next launch reporting the new version.
+- On Linux the handoff depends on the app being able to quit itself, and the
+  platforms differ in a way that hides regressions. The NSIS installer
+  terminates the running app on its own, so a vetoed quit still ends in a
+  successful upgrade on Windows. `dpkg -i` only replaces the files under the
+  install prefix and leaves the running process alone, so on Linux
+  `electron-updater` installs the package, calls `app.relaunch()`, and then
+  calls `app.quit()` — and the spawned relauncher blocks until the current
+  process actually exits. Any handler that vetoes that quit shall be treated as
+  an update-path regression. The reachable case is a tray build whose window
+  `close` handler hides to tray instead of closing: it strands the user with the
+  old build running, the new build already unpacked, sidecars drained, and a
+  relauncher waiting on a parent that never exits. The desktop host therefore
+  gates that handler on `exitingAfterShutdown` as well as `shuttingDown`,
+  because the installer handoff drains services without ever entering
+  `shutdownHost`.
 - A Windows upgrade runs the previous uninstaller silently before installing.
   `assets/build/installer.nsh` only removes `%APPDATA%\Cats` and
   `%USERPROFILE%\.cats` when the user explicitly opts in on the uninstall page,
@@ -614,7 +629,10 @@ be translated.
 8. An old signed macOS install upgrades to the tagged macOS release.
 9. An old Linux `.deb` install upgrades to the tagged Linux release. The
    install step runs `dpkg` and therefore prompts for elevation, unlike the
-   per-user Windows path.
+   per-user Windows path. The test shall run against a build with the system
+   tray enabled and shall assert that the old process exits and the relauncher
+   brings up the new version, because no Linux installer will terminate the app
+   on the host's behalf.
 10. A normal commit runs CI without changing the package version or creating a
     GitHub Release.
 11. A mismatched `vX.Y.Z` tag fails the release workflow.

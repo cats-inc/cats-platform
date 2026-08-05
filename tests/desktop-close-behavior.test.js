@@ -11,7 +11,27 @@ test('desktop host routes window close through the tray only when the system tra
   assert.match(source, /systemTrayEnabled: true/u);
   assert.match(source, /function isSystemTrayEnabled\(\)/u);
   assert.match(source, /latestDesktopStartupPreferences\.systemTrayEnabled/u);
-  assert.match(source, /mainWindow\.on\('close', \(event\) => \{[\s\S]*!shuttingDown && isSystemTrayEnabled\(\) && trayController[\s\S]*hideMainWindowToTray\(\);/u);
+  assert.match(source, /mainWindow\.on\('close', \(event\) => \{[\s\S]*!shuttingDown && !exitingAfterShutdown && isSystemTrayEnabled\(\) && trayController[\s\S]*hideMainWindowToTray\(\);/u);
+});
+
+test('a tray build lets the installer handoff quit instead of hiding the window', async () => {
+  const source = await readFile(
+    new URL('../desktop/host/main.ts', import.meta.url),
+    'utf8',
+  );
+
+  // The handoff drain never enters shutdownHost, so shuttingDown stays false
+  // while electron-updater calls app.quit(). If the close handler stopped
+  // checking exitingAfterShutdown it would veto that quit and strand the
+  // process between the old and the new build.
+  assert.match(
+    source,
+    /drainManagedServices: async \(\) => \{[\s\S]*exitingAfterShutdown = true;/u,
+  );
+  assert.match(
+    source,
+    /mainWindow\.on\('close', \(event\) => \{[\s\S]*!exitingAfterShutdown[\s\S]*hideMainWindowToTray\(\);/u,
+  );
 });
 
 test('desktop host keeps tray locked while shutdown drains services', async () => {

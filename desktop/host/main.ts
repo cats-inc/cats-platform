@@ -2524,14 +2524,23 @@ async function main(): Promise<void> {
     }
   });
   mainWindow.on('close', (event) => {
-    // We gate on shuttingDown (not exitingAfterShutdown) on purpose: once
-    // shutdownHost has flipped shuttingDown to true the user has explicitly
-    // asked to quit, so any subsequent window close should fall through to
-    // the real close path. Hiding to tray here would leak the window past
-    // the shutdown drain. exitingAfterShutdown is reserved for the
-    // before-quit handler where we explicitly want to allow the final
-    // app.exit() to complete.
-    if (!shuttingDown && isSystemTrayEnabled() && trayController) {
+    // Two separate reasons to stop hiding to tray, and both are needed.
+    //
+    // shuttingDown: once shutdownHost has flipped it the user has explicitly
+    // asked to quit, so any subsequent window close should fall through to the
+    // real close path. Hiding to tray here would leak the window past the
+    // shutdown drain.
+    //
+    // exitingAfterShutdown: the installer handoff drains services and sets this
+    // without ever entering shutdownHost, and electron-updater then calls
+    // app.quit() itself. app.quit() routes through this close handler, so
+    // gating on shuttingDown alone would veto that quit, hide the window, and
+    // strand the process — old build still running, new one already unpacked,
+    // relauncher waiting on a parent that never exits. Windows hid the bug
+    // because its NSIS installer kills the app regardless; dpkg does not.
+    // Nothing is lost on the shutdown path, which reaches app.exit() and never
+    // emits close at all.
+    if (!shuttingDown && !exitingAfterShutdown && isSystemTrayEnabled() && trayController) {
       event.preventDefault();
       hideMainWindowToTray();
     }
