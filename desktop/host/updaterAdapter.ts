@@ -49,6 +49,20 @@ export interface ElectronAutoUpdaterLike {
 }
 
 /**
+ * Observable slice of Electron's app lifecycle used by the installer handoff.
+ *
+ * `electron-updater` exposes `quitAndInstall` as a void method. A successful
+ * call is therefore not proof that the app is quitting; Linux package-manager
+ * failures and macOS native-updater failures are reported later through the
+ * updater's `error` event. The host supplies this observer so the adapter can
+ * resolve only once Electron has actually entered its quit sequence, without
+ * importing `electron` into this otherwise plain-Node-safe module.
+ */
+export interface ElectronAppQuitObserver {
+  onBeforeQuit(listener: () => void): () => void;
+}
+
+/**
  * Compile-time proof that the real updater satisfies the narrow shape above.
  * The import is type-only, so nothing pulls `electron-updater` (and therefore
  * `electron`) into a plain node test process.
@@ -270,6 +284,7 @@ function waitForTerminalEvent<T>(
 
 export function createElectronUpdaterAdapter(
   autoUpdater: ElectronAutoUpdaterLike,
+  appQuitObserver: ElectronAppQuitObserver,
 ): DesktopUpdaterAdapter {
   return {
     async checkForUpdates() {
@@ -311,7 +326,47 @@ export function createElectronUpdaterAdapter(
     async quitAndInstall() {
       // Non-silent: the Windows package is an assisted NSIS installer, so the
       // user sees the wizard. isForceRunAfter relaunches Cats when it finishes.
-      autoUpdater.quitAndInstall(false, true);
+      // Do not resolve merely because this void API returned. On Linux a
+      // cancelled elevation prompt or failed dpkg run emits `error` and never
+      // calls app.quit(); on macOS the native updater can also fail after this
+      // method returns. Waiting for the app's actual before-quit event keeps
+      // the handoff wrapper able to restore drained services on either path.
+      await new Promise<void>((resolve, reject) => {
+        let settled = false;
+        let detachBeforeQuit = (): void => {};
+
+        const detach = (): void => {
+          autoUpdater.removeListener('error', onError);
+          detachBeforeQuit();
+        };
+        const resolveOnQuit = (): void => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          detach();
+          resolve();
+        };
+        const rejectOnError = (error: unknown): void => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          detach();
+          reject(error instanceof Error ? error : new Error(String(error)));
+        };
+        const onError = (error: never): void => {
+          rejectOnError(error);
+        };
+
+        autoUpdater.on('error', onError);
+        try {
+          detachBeforeQuit = appQuitObserver.onBeforeQuit(resolveOnQuit);
+          autoUpdater.quitAndInstall(false, true);
+        } catch (error) {
+          rejectOnError(error);
+        }
+      });
     },
   };
 }

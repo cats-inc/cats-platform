@@ -1680,7 +1680,13 @@ async function createUpdateManagerForLaunch(
         channel: capability.channel,
         distribution: capability.distribution,
       });
-      adapter = withDesktopInstallHandoff(createElectronUpdaterAdapter(autoUpdater), {
+      adapter = withDesktopInstallHandoff(createElectronUpdaterAdapter(autoUpdater, {
+        onBeforeQuit: (listener) => {
+          const handleBeforeQuit = (): void => listener();
+          app.once('before-quit', handleBeforeQuit);
+          return () => app.removeListener('before-quit', handleBeforeQuit);
+        },
+      }), {
         drainManagedServices: async () => {
           // The tray says "Quitting" for the same reason shutdown does: from
           // here the app is on its way out, and a menu offering to open Cats

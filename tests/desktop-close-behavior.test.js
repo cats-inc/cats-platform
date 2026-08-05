@@ -92,4 +92,11 @@ test('the update installer handoff locks the tray, drains, and prepares the exit
     source,
     /restartManagedServices: async \(\) => \{[\s\S]*exitingAfterShutdown = false;[\s\S]*await supervisor\?\.startAll\(\);[\s\S]*await syncTrayController\(\);/u,
   );
+  // A void return from electron-updater is not proof that app.quit will run.
+  // The adapter waits for Electron's actual before-quit event and observes
+  // updater errors so the recovery hook above runs after a failed handoff.
+  assert.match(
+    source,
+    /createElectronUpdaterAdapter\(autoUpdater, \{[\s\S]*onBeforeQuit: \(listener\) => \{[\s\S]*app\.once\('before-quit', handleBeforeQuit\);[\s\S]*app\.removeListener\('before-quit', handleBeforeQuit\);/u,
+  );
 });

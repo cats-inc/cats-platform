@@ -13,6 +13,7 @@ import {
   toDesktopUpdateProgress,
   toDesktopUpdaterCheckResult,
 } from '../build/desktop/updaterAdapter.js';
+import { withDesktopInstallHandoff } from '../build/desktop/updateInstallHandoff.js';
 
 function createFakeAutoUpdater() {
   const listeners = new Map();
@@ -69,6 +70,29 @@ function createFakeAutoUpdater() {
     removeListener(event, listener) {
       listeners.get(event)?.delete(listener);
       return this;
+    },
+  };
+}
+
+function createAdapterHarness(autoUpdater = createFakeAutoUpdater()) {
+  const beforeQuitListeners = new Set();
+  const appQuitObserver = {
+    onBeforeQuit(listener) {
+      beforeQuitListeners.add(listener);
+      return () => beforeQuitListeners.delete(listener);
+    },
+  };
+
+  return {
+    adapter: createElectronUpdaterAdapter(autoUpdater, appQuitObserver),
+    autoUpdater,
+    emitBeforeQuit() {
+      for (const listener of [...beforeQuitListeners]) {
+        listener();
+      }
+    },
+    beforeQuitListenerCount() {
+      return beforeQuitListeners.size;
     },
   };
 }
@@ -238,8 +262,7 @@ test('release name wins over release notes', () => {
 });
 
 test('adapter check resolves from the update-available event', async () => {
-  const autoUpdater = createFakeAutoUpdater();
-  const adapter = createElectronUpdaterAdapter(autoUpdater);
+  const { adapter, autoUpdater } = createAdapterHarness();
 
   const pending = adapter.checkForUpdates();
   autoUpdater.emit('update-available', { version: '0.3.0', releaseName: 'Cats 0.3.0' });
@@ -255,8 +278,7 @@ test('adapter check resolves from the update-available event', async () => {
 });
 
 test('adapter check resolves from the update-not-available event', async () => {
-  const autoUpdater = createFakeAutoUpdater();
-  const adapter = createElectronUpdaterAdapter(autoUpdater);
+  const { adapter, autoUpdater } = createAdapterHarness();
 
   const pending = adapter.checkForUpdates();
   autoUpdater.emit('update-not-available', { version: '0.2.0' });
@@ -270,8 +292,7 @@ test('adapter check resolves from the update-not-available event', async () => {
 });
 
 test('adapter check rejects on the provider error event and detaches listeners', async () => {
-  const autoUpdater = createFakeAutoUpdater();
-  const adapter = createElectronUpdaterAdapter(autoUpdater);
+  const { adapter, autoUpdater } = createAdapterHarness();
 
   const pending = adapter.checkForUpdates();
   autoUpdater.emit('error', new Error('HTTP 403'));
@@ -285,15 +306,14 @@ test('adapter check rejects when the provider call itself throws', async () => {
   autoUpdater.checkForUpdates = async () => {
     throw new Error('ENOTFOUND api.github.com');
   };
-  const adapter = createElectronUpdaterAdapter(autoUpdater);
+  const { adapter } = createAdapterHarness(autoUpdater);
 
   await assert.rejects(adapter.checkForUpdates(), /ENOTFOUND/u);
   assert.equal(autoUpdater.listenerCount(), 0);
 });
 
 test('adapter download streams progress and resolves on update-downloaded', async () => {
-  const autoUpdater = createFakeAutoUpdater();
-  const adapter = createElectronUpdaterAdapter(autoUpdater);
+  const { adapter, autoUpdater } = createAdapterHarness();
   const seen = [];
 
   const pending = adapter.downloadUpdate((progress) => seen.push(progress.percent));
@@ -308,8 +328,7 @@ test('adapter download streams progress and resolves on update-downloaded', asyn
 });
 
 test('adapter download rejects on the provider error event', async () => {
-  const autoUpdater = createFakeAutoUpdater();
-  const adapter = createElectronUpdaterAdapter(autoUpdater);
+  const { adapter, autoUpdater } = createAdapterHarness();
 
   const pending = adapter.downloadUpdate(() => {});
   autoUpdater.emit('error', new Error('sha512 mismatch'));
@@ -319,8 +338,7 @@ test('adapter download rejects on the provider error event', async () => {
 });
 
 test('a late event after settlement does not resolve the operation twice', async () => {
-  const autoUpdater = createFakeAutoUpdater();
-  const adapter = createElectronUpdaterAdapter(autoUpdater);
+  const { adapter, autoUpdater } = createAdapterHarness();
 
   const pending = adapter.checkForUpdates();
   autoUpdater.emit('update-not-available', {});
@@ -347,10 +365,73 @@ test('the compiled adapter never imports electron-updater at runtime', async () 
 });
 
 test('adapter install uses the visible installer path and relaunches afterwards', async () => {
-  const autoUpdater = createFakeAutoUpdater();
-  const adapter = createElectronUpdaterAdapter(autoUpdater);
+  const {
+    adapter,
+    autoUpdater,
+    beforeQuitListenerCount,
+    emitBeforeQuit,
+  } = createAdapterHarness();
 
-  await adapter.quitAndInstall();
+  const pending = adapter.quitAndInstall();
+  let settled = false;
+  void pending.finally(() => {
+    settled = true;
+  });
+  await Promise.resolve();
 
   assert.deepEqual(autoUpdater.calls.install, [[false, true]]);
+  assert.equal(beforeQuitListenerCount(), 1);
+  assert.equal(autoUpdater.listenerCount(), 1);
+  assert.equal(settled, false);
+
+  emitBeforeQuit();
+  await pending;
+
+  assert.equal(beforeQuitListenerCount(), 0);
+  assert.equal(autoUpdater.listenerCount(), 0);
+});
+
+test('adapter install rejects an updater error before the app starts quitting', async () => {
+  const {
+    adapter,
+    autoUpdater,
+    beforeQuitListenerCount,
+  } = createAdapterHarness();
+
+  const pending = adapter.quitAndInstall();
+  autoUpdater.emit('error', new Error('dpkg cancelled'));
+
+  await assert.rejects(pending, /dpkg cancelled/u);
+  assert.equal(beforeQuitListenerCount(), 0);
+  assert.equal(autoUpdater.listenerCount(), 0);
+});
+
+test('an updater install error restores services before reporting a failed handoff', async () => {
+  const {
+    adapter,
+    autoUpdater,
+  } = createAdapterHarness();
+  const state = {
+    exitingAfterShutdown: false,
+    restarted: false,
+  };
+  const wrapped = withDesktopInstallHandoff(adapter, {
+    async drainManagedServices() {
+      state.exitingAfterShutdown = true;
+    },
+    async restartManagedServices() {
+      state.exitingAfterShutdown = false;
+      state.restarted = true;
+    },
+  });
+
+  const pending = wrapped.quitAndInstall();
+  await Promise.resolve();
+  autoUpdater.emit('error', new Error('elevation cancelled'));
+
+  await assert.rejects(pending, /elevation cancelled/u);
+  assert.deepEqual(state, {
+    exitingAfterShutdown: false,
+    restarted: true,
+  });
 });
