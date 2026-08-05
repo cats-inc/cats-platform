@@ -596,6 +596,13 @@ selection applies to both `cats-platform` and `cats-runtime`.
   recoverable failed or downloaded state, and the drained sidecars shall be
   restarted. A running app with dead services is worse than the state the user
   started from.
+- Installer handoff shall be bounded by a host-owned watchdog. Success is the
+  Electron `quit` event, not the earlier cancellable `before-quit` or
+  `will-quit` events. If neither quit nor an updater error arrives before the
+  watchdog expires, installer ownership is uncertain: the old host shall keep
+  managed services drained and exit immediately rather than restarting
+  sidecars that could race an active installer or load files already replaced
+  on disk.
 - If the platform installer fails after Cats exits, it shall leave the
   previously installed version recoverable and shall not report the new
   version on the next launch.

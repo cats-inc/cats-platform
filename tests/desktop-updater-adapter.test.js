@@ -13,7 +13,10 @@ import {
   toDesktopUpdateProgress,
   toDesktopUpdaterCheckResult,
 } from '../build/desktop/updaterAdapter.js';
-import { withDesktopInstallHandoff } from '../build/desktop/updateInstallHandoff.js';
+import {
+  DesktopInstallHandoffTimeoutError,
+  withDesktopInstallHandoff,
+} from '../build/desktop/updateInstallHandoff.js';
 
 function createFakeAutoUpdater() {
   const listeners = new Map();
@@ -75,24 +78,37 @@ function createFakeAutoUpdater() {
 }
 
 function createAdapterHarness(autoUpdater = createFakeAutoUpdater()) {
-  const beforeQuitListeners = new Set();
-  const appQuitObserver = {
-    onBeforeQuit(listener) {
-      beforeQuitListeners.add(listener);
-      return () => beforeQuitListeners.delete(listener);
+  const quitListeners = new Set();
+  const timeoutListeners = new Set();
+  const installHandoffObserver = {
+    onQuit(listener) {
+      quitListeners.add(listener);
+      return () => quitListeners.delete(listener);
+    },
+    onTimeout(listener) {
+      timeoutListeners.add(listener);
+      return () => timeoutListeners.delete(listener);
     },
   };
 
   return {
-    adapter: createElectronUpdaterAdapter(autoUpdater, appQuitObserver),
+    adapter: createElectronUpdaterAdapter(autoUpdater, installHandoffObserver),
     autoUpdater,
-    emitBeforeQuit() {
-      for (const listener of [...beforeQuitListeners]) {
+    emitQuit() {
+      for (const listener of [...quitListeners]) {
         listener();
       }
     },
-    beforeQuitListenerCount() {
-      return beforeQuitListeners.size;
+    emitTimeout() {
+      for (const listener of [...timeoutListeners]) {
+        listener();
+      }
+    },
+    quitListenerCount() {
+      return quitListeners.size;
+    },
+    timeoutListenerCount() {
+      return timeoutListeners.size;
     },
   };
 }
@@ -368,8 +384,9 @@ test('adapter install uses the visible installer path and relaunches afterwards'
   const {
     adapter,
     autoUpdater,
-    beforeQuitListenerCount,
-    emitBeforeQuit,
+    emitQuit,
+    quitListenerCount,
+    timeoutListenerCount,
   } = createAdapterHarness();
 
   const pending = adapter.quitAndInstall();
@@ -380,14 +397,16 @@ test('adapter install uses the visible installer path and relaunches afterwards'
   await Promise.resolve();
 
   assert.deepEqual(autoUpdater.calls.install, [[false, true]]);
-  assert.equal(beforeQuitListenerCount(), 1);
+  assert.equal(quitListenerCount(), 1);
+  assert.equal(timeoutListenerCount(), 1);
   assert.equal(autoUpdater.listenerCount(), 1);
   assert.equal(settled, false);
 
-  emitBeforeQuit();
+  emitQuit();
   await pending;
 
-  assert.equal(beforeQuitListenerCount(), 0);
+  assert.equal(quitListenerCount(), 0);
+  assert.equal(timeoutListenerCount(), 0);
   assert.equal(autoUpdater.listenerCount(), 0);
 });
 
@@ -395,14 +414,37 @@ test('adapter install rejects an updater error before the app starts quitting', 
   const {
     adapter,
     autoUpdater,
-    beforeQuitListenerCount,
+    quitListenerCount,
+    timeoutListenerCount,
   } = createAdapterHarness();
 
   const pending = adapter.quitAndInstall();
   autoUpdater.emit('error', new Error('dpkg cancelled'));
 
   await assert.rejects(pending, /dpkg cancelled/u);
-  assert.equal(beforeQuitListenerCount(), 0);
+  assert.equal(quitListenerCount(), 0);
+  assert.equal(timeoutListenerCount(), 0);
+  assert.equal(autoUpdater.listenerCount(), 0);
+});
+
+test('adapter install rejects a stalled handoff when the host watchdog expires', async () => {
+  const {
+    adapter,
+    autoUpdater,
+    emitTimeout,
+    quitListenerCount,
+    timeoutListenerCount,
+  } = createAdapterHarness();
+
+  const pending = adapter.quitAndInstall();
+  emitTimeout();
+
+  await assert.rejects(
+    pending,
+    (error) => error instanceof DesktopInstallHandoffTimeoutError,
+  );
+  assert.equal(quitListenerCount(), 0);
+  assert.equal(timeoutListenerCount(), 0);
   assert.equal(autoUpdater.listenerCount(), 0);
 });
 
@@ -422,6 +464,9 @@ test('an updater install error restores services before reporting a failed hando
     async restartManagedServices() {
       state.exitingAfterShutdown = false;
       state.restarted = true;
+    },
+    async exitAfterUncertainHandoff() {
+      throw new Error('unexpected uncertain handoff');
     },
   });
 

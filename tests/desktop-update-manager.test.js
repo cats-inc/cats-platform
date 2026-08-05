@@ -377,6 +377,31 @@ test('a check requested during a download joins the download instead of racing i
   assert.equal(joinedResult.status, 'downloaded');
 });
 
+test('a check requested during an installer handoff returns the installing snapshot', async () => {
+  let releaseInstall = () => {};
+  const installGate = new Promise((resolve) => {
+    releaseInstall = resolve;
+  });
+  const adapter = createFakeAdapter();
+  adapter.quitAndInstall = async () => {
+    adapter.calls.install += 1;
+    await installGate;
+  };
+  const manager = createDesktopUpdateManager({ capability: readyCapability(), adapter });
+
+  await manager.checkForUpdates();
+  await manager.downloadUpdate();
+  const install = manager.restartAndInstall();
+  const snapshot = await manager.checkForUpdates();
+
+  assert.equal(snapshot.status, 'installing');
+  assert.equal(manager.getSnapshot().status, 'installing');
+  assert.deepEqual(adapter.calls, { check: 1, download: 1, install: 1 });
+
+  releaseInstall();
+  await install;
+});
+
 test('a failed check leaves the app usable and offers another check', async () => {
   const manager = createDesktopUpdateManager({
     capability: readyCapability(),

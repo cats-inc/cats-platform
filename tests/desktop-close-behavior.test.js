@@ -93,10 +93,16 @@ test('the update installer handoff locks the tray, drains, and prepares the exit
     /restartManagedServices: async \(\) => \{[\s\S]*exitingAfterShutdown = false;[\s\S]*await supervisor\?\.startAll\(\);[\s\S]*await syncTrayController\(\);/u,
   );
   // A void return from electron-updater is not proof that app.quit will run.
-  // The adapter waits for Electron's actual before-quit event and observes
-  // updater errors so the recovery hook above runs after a failed handoff.
+  // The adapter waits for Electron's non-cancellable quit event, observes
+  // updater errors, and bounds a missing terminal event with a watchdog.
   assert.match(
     source,
-    /createElectronUpdaterAdapter\(autoUpdater, \{[\s\S]*onBeforeQuit: \(listener\) => \{[\s\S]*app\.once\('before-quit', handleBeforeQuit\);[\s\S]*app\.removeListener\('before-quit', handleBeforeQuit\);/u,
+    /createElectronUpdaterAdapter\(autoUpdater, \{[\s\S]*onQuit: \(listener\) => \{[\s\S]*app\.once\('quit', handleQuit\);[\s\S]*app\.removeListener\('quit', handleQuit\);[\s\S]*onTimeout: \(listener\) => \{[\s\S]*setTimeout\(listener, DESKTOP_INSTALL_HANDOFF_WATCHDOG_MS\);/u,
+  );
+  // A timeout is ambiguous: the installer may already own the install tree,
+  // so the old host exits with sidecars still drained instead of restarting.
+  assert.match(
+    source,
+    /exitAfterUncertainHandoff: async \(\) => \{[\s\S]*app\.exit\(1\);/u,
   );
 });

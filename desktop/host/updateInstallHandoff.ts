@@ -1,6 +1,18 @@
 import type { DesktopUpdaterAdapter } from './updateManager.js';
 
 /**
+ * A timeout cannot prove whether the platform installer started. Callers must
+ * therefore distinguish it from a definite updater error and avoid restarting
+ * managed services into a possibly active installer.
+ */
+export class DesktopInstallHandoffTimeoutError extends Error {
+  constructor() {
+    super('Timed out waiting for the desktop update handoff to quit Cats.');
+    this.name = 'DesktopInstallHandoffTimeoutError';
+  }
+}
+
+/**
  * Managed-service drain around the installer handoff.
  *
  * `quitAndInstall` ends the process, so without this the Cats runtime and
@@ -26,6 +38,12 @@ export interface DesktopInstallHandoffHooks {
    * sidecars, which is a worse state than the one the user started in.
    */
   restartManagedServices: () => Promise<void>;
+  /**
+   * Ends the old host after a bounded handoff produced no terminal signal.
+   * At that point the platform installer may or may not have started, so
+   * restarting sidecars could race an installer or launch mismatched files.
+   */
+  exitAfterUncertainHandoff: () => Promise<void>;
   logger?: (message: string) => void;
 }
 
@@ -69,6 +87,21 @@ export function withDesktopInstallHandoff(
       try {
         await adapter.quitAndInstall();
       } catch (handoffError) {
+        if (handoffError instanceof DesktopInstallHandoffTimeoutError) {
+          log(
+            '[desktop-update] installer handoff timed out in an uncertain state; '
+              + 'exiting without restarting managed services.',
+          );
+          try {
+            await hooks.exitAfterUncertainHandoff();
+          } catch (exitError) {
+            log(
+              '[desktop-update] desktop host did not exit after an uncertain installer handoff: '
+                + `${exitError instanceof Error ? exitError.message : String(exitError)}`,
+            );
+          }
+          throw handoffError;
+        }
         await restoreAfterFailedHandoff('handoff');
         throw handoffError;
       }

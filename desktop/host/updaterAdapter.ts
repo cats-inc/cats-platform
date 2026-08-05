@@ -3,6 +3,7 @@ import type {
   DesktopUpdateChannel,
   DesktopUpdateProgress,
 } from './contracts.js';
+import { DesktopInstallHandoffTimeoutError } from './updateInstallHandoff.js';
 import type { DesktopUpdaterAdapter, DesktopUpdaterCheckResult } from './updateManager.js';
 
 /**
@@ -49,17 +50,19 @@ export interface ElectronAutoUpdaterLike {
 }
 
 /**
- * Observable slice of Electron's app lifecycle used by the installer handoff.
+ * Observable lifecycle slice used by the installer handoff.
  *
  * `electron-updater` exposes `quitAndInstall` as a void method. A successful
  * call is therefore not proof that the app is quitting; Linux package-manager
  * failures and macOS native-updater failures are reported later through the
- * updater's `error` event. The host supplies this observer so the adapter can
- * resolve only once Electron has actually entered its quit sequence, without
- * importing `electron` into this otherwise plain-Node-safe module.
+ * updater's `error` event, while a stalled native handoff may report nothing.
+ * The host supplies the definitive app-quit signal and watchdog scheduler so
+ * the adapter stays deterministic in tests and does not import `electron` into
+ * this otherwise plain-Node-safe module.
  */
-export interface ElectronAppQuitObserver {
-  onBeforeQuit(listener: () => void): () => void;
+export interface ElectronInstallHandoffObserver {
+  onQuit(listener: () => void): () => void;
+  onTimeout(listener: () => void): () => void;
 }
 
 /**
@@ -284,7 +287,7 @@ function waitForTerminalEvent<T>(
 
 export function createElectronUpdaterAdapter(
   autoUpdater: ElectronAutoUpdaterLike,
-  appQuitObserver: ElectronAppQuitObserver,
+  installHandoffObserver: ElectronInstallHandoffObserver,
 ): DesktopUpdaterAdapter {
   return {
     async checkForUpdates() {
@@ -328,16 +331,19 @@ export function createElectronUpdaterAdapter(
       // user sees the wizard. isForceRunAfter relaunches Cats when it finishes.
       // Do not resolve merely because this void API returned. On Linux a
       // cancelled elevation prompt or failed dpkg run emits `error` and never
-      // calls app.quit(); on macOS the native updater can also fail after this
-      // method returns. Waiting for the app's actual before-quit event keeps
-      // the handoff wrapper able to restore drained services on either path.
+      // calls app.quit(); on macOS the native updater can also fail or stall
+      // after this method returns. `quit` is the first non-cancellable app
+      // signal; before-quit and will-quit can both be vetoed. The host-owned
+      // watchdog bounds paths where neither quit nor an updater error arrives.
       await new Promise<void>((resolve, reject) => {
         let settled = false;
-        let detachBeforeQuit = (): void => {};
+        let detachQuit = (): void => {};
+        let detachTimeout = (): void => {};
 
         const detach = (): void => {
           autoUpdater.removeListener('error', onError);
-          detachBeforeQuit();
+          detachQuit();
+          detachTimeout();
         };
         const resolveOnQuit = (): void => {
           if (settled) {
@@ -358,10 +364,14 @@ export function createElectronUpdaterAdapter(
         const onError = (error: never): void => {
           rejectOnError(error);
         };
+        const rejectOnTimeout = (): void => {
+          rejectOnError(new DesktopInstallHandoffTimeoutError());
+        };
 
         autoUpdater.on('error', onError);
         try {
-          detachBeforeQuit = appQuitObserver.onBeforeQuit(resolveOnQuit);
+          detachQuit = installHandoffObserver.onQuit(resolveOnQuit);
+          detachTimeout = installHandoffObserver.onTimeout(rejectOnTimeout);
           autoUpdater.quitAndInstall(false, true);
         } catch (error) {
           rejectOnError(error);

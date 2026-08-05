@@ -216,6 +216,12 @@ import {
   shouldAllowDesktopRendererPermission,
 } from './voiceCapture.js';
 
+// A native updater is expected to enter Electron's quit path promptly after
+// the user confirms restart/install. macOS can perform another native fetch at
+// this stage, so keep the ceiling generous while still bounding a missing
+// update/error event that would otherwise strand a drained tray process.
+const DESKTOP_INSTALL_HANDOFF_WATCHDOG_MS = 5 * 60_000;
+
 let mainWindow: BrowserWindow | null = null;
 let hostConfig: DesktopHostConfig | null = null;
 let supervisor: ManagedServiceSupervisor | null = null;
@@ -1681,10 +1687,14 @@ async function createUpdateManagerForLaunch(
         distribution: capability.distribution,
       });
       adapter = withDesktopInstallHandoff(createElectronUpdaterAdapter(autoUpdater, {
-        onBeforeQuit: (listener) => {
-          const handleBeforeQuit = (): void => listener();
-          app.once('before-quit', handleBeforeQuit);
-          return () => app.removeListener('before-quit', handleBeforeQuit);
+        onQuit: (listener) => {
+          const handleQuit = (): void => listener();
+          app.once('quit', handleQuit);
+          return () => app.removeListener('quit', handleQuit);
+        },
+        onTimeout: (listener) => {
+          const timer = setTimeout(listener, DESKTOP_INSTALL_HANDOFF_WATCHDOG_MS);
+          return () => clearTimeout(timer);
         },
       }), {
         drainManagedServices: async () => {
@@ -1710,6 +1720,14 @@ async function createUpdateManagerForLaunch(
           exitingAfterShutdown = false;
           await supervisor?.startAll();
           await syncTrayController();
+        },
+        exitAfterUncertainHandoff: async () => {
+          // A timeout cannot tell whether the platform installer started. Keep
+          // the already-drained sidecars down and end the old host immediately;
+          // restarting them could race an installer or load replaced files into
+          // the old process. The user explicitly requested restart/install, so
+          // exiting is safer than preserving a degraded, indeterminate process.
+          app.exit(1);
         },
         logger: (message) => {
           process.stdout.write(`${message}\n`);

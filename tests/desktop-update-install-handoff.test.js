@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createDesktopUpdateManager } from '../build/desktop/updateManager.js';
-import { withDesktopInstallHandoff } from '../build/desktop/updateInstallHandoff.js';
+import {
+  DesktopInstallHandoffTimeoutError,
+  withDesktopInstallHandoff,
+} from '../build/desktop/updateInstallHandoff.js';
 
 function createCapability(overrides = {}) {
   return {
@@ -55,6 +58,12 @@ function createHooks(options = {}) {
         calls.push('restart');
         if (options.restartError) {
           throw options.restartError;
+        }
+      },
+      exitAfterUncertainHandoff: async () => {
+        calls.push('exit');
+        if (options.exitError) {
+          throw options.exitError;
         }
       },
       logger: (message) => calls.push(`log:${message.split(';')[0]}`),
@@ -143,6 +152,24 @@ test('a failed handoff brings the managed services back', async () => {
   // The process survived, so leaving the sidecars down would be worse than the
   // state the user started in.
   assert.deepEqual(hookCalls.filter((c) => !c.startsWith('log:')), ['drain', 'restart']);
+  assert.equal(snapshot.status, 'downloaded');
+  assert.equal(snapshot.error?.code, 'install_handoff_failed');
+});
+
+test('an uncertain handoff timeout exits without restarting managed services', async () => {
+  const { adapter } = createAdapter({
+    installError: new DesktopInstallHandoffTimeoutError(),
+  });
+  const { hooks, calls: hookCalls } = createHooks();
+  const wrapped = withDesktopInstallHandoff(adapter, hooks);
+
+  const manager = await driveToDownloaded(wrapped);
+  const snapshot = await manager.restartAndInstall();
+
+  assert.deepEqual(
+    hookCalls.filter((call) => !call.startsWith('log:')),
+    ['drain', 'exit'],
+  );
   assert.equal(snapshot.status, 'downloaded');
   assert.equal(snapshot.error?.code, 'install_handoff_failed');
 });

@@ -390,6 +390,14 @@ export function createDesktopUpdateManager(
       if (pendingCheck !== null) {
         return pendingCheck;
       }
+      // Keep the manager, rather than its renderer/tray callers, responsible
+      // for legal transitions. In particular, a check started while an
+      // installer handoff is pending would share electron-updater's global
+      // error channel with that handoff and could make a provider failure look
+      // like an installer failure after managed services have already drained.
+      if (resolveDesktopUpdateNextAction(status, capability) !== 'check') {
+        return snapshot();
+      }
 
       pendingCheck = runCheck(adapter).finally(() => {
         pendingCheck = null;
