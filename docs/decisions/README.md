@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [109-port-grok-devin-cline-aider-installers-into-packaged-setup](./109-port-grok-devin-cline-aider-installers-into-packaged-setup.md) | Port the Grok, Devin, Cline, and Aider installers into packaged setup | Proposed | 2026-08-07 |
 | [108-use-host-owned-github-release-updates-for-official-desktop-builds](./108-use-host-owned-github-release-updates-for-official-desktop-builds.md) | Use Host-Owned GitHub Release Updates for Official Desktop Builds | Proposed | 2026-07-28 |
 | [107-replace-gemini-cli-with-antigravity-in-packaged-setup](./107-replace-gemini-cli-with-antigravity-in-packaged-setup.md) | Replace Gemini CLI with Antigravity CLI in packaged setup and shared provider catalog | Proposed | 2026-05-24 |
 | [106-defer-bidirectional-external-work-sync](./106-defer-bidirectional-external-work-sync.md) | Defer Bidirectional External Work Sync | Proposed | 2026-05-13 |
@@ -150,6 +151,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-07-28 (ADR-108 added: host-owned GitHub Release updates for official desktop builds.)*
+*Last updated: 2026-08-07 (ADR-109 added: port the Grok, Devin, Cline, and Aider installers into packaged setup.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*

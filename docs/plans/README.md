@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-102](./PLAN-102-grok-devin-cline-aider-packaged-setup-rollout.md) | Grok, Devin, Cline, and Aider Packaged Setup Rollout | Draft | [SPEC-112](../specs/SPEC-112-grok-devin-cline-aider-in-packaged-setup-and-provider-catalog.md), [ADR-109](../decisions/109-port-grok-devin-cline-aider-installers-into-packaged-setup.md) |
 | [PLAN-101](./PLAN-101-packaged-desktop-update-rollout.md) | Packaged Desktop Update Rollout | Draft | [SPEC-111](../specs/SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md), [ADR-108](../decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md) |
 | [PLAN-100](./PLAN-100-replace-gemini-cli-with-antigravity-in-packaged-setup.md) | Replace Gemini CLI with Antigravity CLI in Packaged Setup | Draft | [SPEC-110](../specs/SPEC-110-antigravity-cli-in-packaged-setup-and-provider-catalog.md), [ADR-107](../decisions/107-replace-gemini-cli-with-antigravity-in-packaged-setup.md) |
 | [PLAN-099](./PLAN-099-phase-scoped-work-tool-surface-rollout.md) | Phase-Scoped Work Tool Surface Rollout | Draft | [SPEC-109](../specs/SPEC-109-phase-scoped-work-tool-surface.md), [ADR-105](../decisions/105-adopt-phase-scoped-work-tool-surface.md) |
@@ -155,6 +156,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-07-28 (PLAN-101 added: packaged desktop update rollout.)*
+*Last updated: 2026-08-07 (PLAN-102 added: Grok, Devin, Cline, and Aider packaged setup rollout.)*
 
 *See also: [specs/](../specs/) for feature specifications*
