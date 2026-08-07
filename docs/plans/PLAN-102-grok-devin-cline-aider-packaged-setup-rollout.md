@@ -56,9 +56,10 @@ Same probe as `cats-runtime` PLAN-034 Phase 1; do not duplicate the work, share 
 - [ ] Confirm install URLs, install directories, PATH entries, and uninstall semantics for all four against the `environment-bootstrap` scripts.
 - [ ] Confirm the exact trailing line each Devin installer uses to invoke `setup`, on both Windows and Unix, so the strip can be precise.
 - [ ] Confirm whether Aider's Windows installer places `aider.exe` in `%USERPROFILE%\.local\bin` and whether it also drops `uv.exe` there.
-- [ ] Confirm whether Cline needs `--allow-scripts` handling under `npm 12+`, mirroring `Install-NodeCLITools.ps1`.
-- [ ] Confirm the Windows helper file-naming convention to use (SPEC-112 open question).
+- [ ] Confirm whether Cline needs `--allow-scripts` handling under `npm 12+`, mirroring `Install-NodeCLITools.ps1`. Documentation only — `cats-runtime` SPEC-027 D5 applies it unconditionally either way.
 - [ ] Record findings in the shared research note.
+
+Windows helper file naming is no longer a probe item — SPEC-112 PD5 fixes it as `Install-Grok.ps1`, `Install-Devin.ps1`, `Install-Aider.ps1`, `Install-Cline.ps1`.
 
 **Deliverables**: Facts, not recollections, behind every helper table entry.
 
@@ -112,8 +113,8 @@ Behavior-preserving refactor, landed separately so a regression is attributable.
 
 ### Phase 5: Windows Helpers
 
-- [ ] Add `scripts/windows/Install-GrokCli.ps1` implementing the full JSON mode contract against `%USERPROFILE%\.grok\bin\grok.exe`, invoking the upstream installer as a scriptblock, and ensuring `%USERPROFILE%\.grok\bin` is on the User PATH.
-- [ ] Add `scripts/windows/Install-DevinCli.ps1` against `%LOCALAPPDATA%\devin\cli\bin\devin.exe`, stripping the trailing `& $EntryExe setup` line and reporting `devin setup` in `manualSteps`. Document the PowerShell-only installer constraint in the help block.
+- [ ] Add `scripts/windows/Install-Grok.ps1` implementing the full JSON mode contract against `%USERPROFILE%\.grok\bin\grok.exe`, invoking the upstream installer as a scriptblock, and ensuring `%USERPROFILE%\.grok\bin` is on the User PATH.
+- [ ] Add `scripts/windows/Install-Devin.ps1` against `%LOCALAPPDATA%\devin\cli\bin\devin.exe`, stripping the trailing `& $EntryExe setup` line and reporting `devin setup` in `manualSteps`. Document the PowerShell-only installer constraint in the help block.
 - [ ] Add `scripts/windows/Install-Aider.ps1` against `%USERPROFILE%\.local\bin\aider.exe`, with `uv tool uninstall aider-chat` for uninstall and the `uv` provenance warning.
 - [ ] Add `scripts/windows/Install-Cline.ps1` delegating to `_NpmCliInstaller.ps1`.
 - [ ] Update `scripts/windows/Install-Pi.ps1` to `@earendil-works/pi-coding-agent`, uninstalling the old package first.
@@ -126,7 +127,7 @@ Behavior-preserving refactor, landed separately so a regression is attributable.
 - [ ] Add the four to `DESKTOP_TO_RUNTIME_PROVIDER`, `PROVIDER_LABEL`, and `PROVIDER_TO_HELPER_SUFFIX` in `desktop/host/cliInventoryProbe.ts`, all using `-native-installer` suffixes.
 - [ ] Register Unix and Windows setup assets in `desktop/host/setupAssets.ts`: Cline joins the generic Unix npm-provider list; Grok, Devin, and Aider follow the Antigravity descriptor shape. All four `requiresElevation: false`, `resumable: true`, five modes supported.
 - [ ] Add packaging inventory entries in `desktop/host/packaging.ts` naming the three-platform helper ids and `currentHome` paths.
-- [ ] Add the four to `desktop/host/bootstrapPage.ts` provider id and label maps; leave the collapsed set unchanged pending the SPEC-112 open question.
+- [ ] Add the four to `desktop/host/bootstrapPage.ts` provider id and label maps. Per SPEC-112 PD1, `ONBOARDING_COLLAPSED_PROVIDER_IDS` stays `['claude_code', 'antigravity', 'codex']` — none of the four is featured in the collapsed first-run view while execution is refusal-tier.
 
 **Deliverables**: Packaged Desktop can drive the new helpers end to end.
 
@@ -156,7 +157,7 @@ Behavior-preserving refactor, landed separately so a regression is attributable.
 
 - `scripts/linux/install-{grok,devin,aider,cline}.sh`
 - `scripts/macos/install-{grok,devin,aider,cline}.sh`
-- `scripts/windows/Install-GrokCli.ps1`, `Install-DevinCli.ps1`, `Install-Aider.ps1`, `Install-Cline.ps1`
+- `scripts/windows/Install-Grok.ps1`, `Install-Devin.ps1`, `Install-Aider.ps1`, `Install-Cline.ps1`
 
 ### Modify
 
@@ -211,6 +212,7 @@ Behavior-preserving refactor, landed separately so a regression is attributable.
 | Date | Update |
 |------|--------|
 | 2026-08-07 | Plan created alongside ADR-109 and SPEC-112, after auditing `environment-bootstrap` commits `cb5efc7`, `d131535`, `216ef96`, `54992d6`, `0d1831d`, `cfe7785`. Pi npm package drift found in four platform locations during the same audit and folded into Phases 4 and 5. |
+| 2026-08-07 | SPEC-112 open questions resolved as Decisions PD1–PD5 (decided by Claude, pending human review). Phase 0 drops the naming probe; Phase 5 and the file list adopt the `Install-Grok.ps1` / `Install-Devin.ps1` naming from PD5; Phase 6 records that the onboarding collapsed set stays unchanged per PD1. |
 
 ---
 

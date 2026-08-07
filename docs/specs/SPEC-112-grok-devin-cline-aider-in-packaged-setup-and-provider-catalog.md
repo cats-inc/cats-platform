@@ -84,8 +84,8 @@ Separately, four platform locations install Pi from a package name upstream aban
 
 #### Windows helpers
 
-17. `scripts/windows/Install-GrokCli.ps1` shall implement the full JSON mode contract against `%USERPROFILE%\.grok\bin\grok.exe`, using `irm https://x.ai/cli/install.ps1 | iex` invoked as a scriptblock so the upstream script's `$ErrorActionPreference` does not leak, and shall ensure `%USERPROFILE%\.grok\bin` is on the User PATH.
-18. `scripts/windows/Install-DevinCli.ps1` shall implement the same contract against `%LOCALAPPDATA%\devin\cli\bin\devin.exe`, fetch `https://static.devin.ai/cli/setup.ps1`, remove its trailing `& $EntryExe setup` line before execution, and report `devin setup` in `manualSteps`. It shall record in its help text that the upstream installer is PowerShell-only.
+17. `scripts/windows/Install-Grok.ps1` shall implement the full JSON mode contract against `%USERPROFILE%\.grok\bin\grok.exe`, using `irm https://x.ai/cli/install.ps1 | iex` invoked as a scriptblock so the upstream script's `$ErrorActionPreference` does not leak, and shall ensure `%USERPROFILE%\.grok\bin` is on the User PATH.
+18. `scripts/windows/Install-Devin.ps1` shall implement the same contract against `%LOCALAPPDATA%\devin\cli\bin\devin.exe`, fetch `https://static.devin.ai/cli/setup.ps1`, remove its trailing `& $EntryExe setup` line before execution, and report `devin setup` in `manualSteps`. It shall record in its help text that the upstream installer is PowerShell-only.
 19. `scripts/windows/Install-Aider.ps1` shall implement the same contract against `%USERPROFILE%\.local\bin\aider.exe` using `irm https://aider.chat/install.ps1 | iex` as a scriptblock, and shall use `uv tool uninstall aider-chat` for uninstall with a file-removal fallback.
 20. `scripts/windows/Install-Cline.ps1` shall delegate to `_NpmCliInstaller.ps1` with package `cline` and command `cline`.
 21. `scripts/windows/Install-Pi.ps1` shall use `@earendil-works/pi-coding-agent` and uninstall `@mariozechner/pi-coding-agent` first.
@@ -125,7 +125,7 @@ Separately, four platform locations install Pi from a package name upstream aban
 
 - [ ] `install-grok.sh --check --json` on a host with Grok in `~/.grok/bin` reports `installed: true` with a version line.
 - [ ] The same helper on a host with only an unrelated `agent` binary reports `installed: false`.
-- [ ] `Install-DevinCli.ps1 -Apply -Json` completes without hanging under `_HiddenProcess.ps1` and returns `devin setup` in `manualSteps`.
+- [ ] `Install-Devin.ps1 -Apply -Json` completes without hanging under `_HiddenProcess.ps1` and returns `devin setup` in `manualSteps`.
 - [ ] `install-aider.sh --uninstall` removes Aider such that `aider --version` fails afterward, and emits the `uv` provenance warning.
 - [ ] Cline installs, upgrades, and uninstalls through the npm pack on all three OSes.
 - [ ] `buildDesktopCliInventoryFromRuntime` reports all four when the runtime setup scan marks them available.
@@ -164,13 +164,47 @@ Both `DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS` and `PRODUCT_PROVIDER_ORDER` appen
 - **Eighteen providers widen renderer test assertions.** Mitigation: append-only ordering.
 - **Grok and Devin need accounts to verify end to end.** Mitigation: acceptance criteria are written against install/detect/uninstall, not against a successful session.
 
-## Open Questions
+## Resolved Decisions
 
-- [ ] Should any of the four join the onboarding collapsed set in `bootstrapPage.ts`, given Grok is a Quick-mode CLI upstream?
-- [ ] Should packaged setup expose upstream's Quick/Full distinction at all, or keep treating `native_cli_pack` as flat?
-- [ ] Should Aider's readiness check inspect model API-key env vars, or stay presence-only and defer readiness to the runtime?
-- [ ] Should the helper offer to remove Aider's bundled `uv` behind an explicit flag rather than only warning?
-- [ ] Do Windows helper file names follow `Install-GrokCli.ps1` or `Install-GrokCLI.ps1`? Existing files are inconsistent (`Install-KiloCli.ps1` vs `Install-OpenCode.ps1`).
+> **Decided by Claude on 2026-08-07, pending human review.** These were open questions in the first draft. Each is resolved below so implementation is not blocked; a reviewer should confirm or overturn any of them. PD1 is the one most worth a second opinion — it is a product-judgment call about the first-run surface, not a technical constraint.
+
+### PD1 — Onboarding collapsed set
+
+**Decision**: None of the four joins `ONBOARDING_COLLAPSED_PROVIDER_IDS`. It stays `['claude_code', 'antigravity', 'codex']`.
+
+**Why**: Reading `bootstrapPage.ts` confirms the collapsed set is the list of providers that **stay visible** in the collapsed first-run view — a curated three-card recommendation, not a completeness list. Per `cats-runtime` ADR-033, all four ship at the install/check tier with refusal-stub execution, so featuring one in the very first surface a new user sees would recommend a provider that installs cleanly and then cannot run a session.
+
+Grok's upstream **Quick** mode membership was the argument for including it, but Quick mode is about which batch a bootstrap script installs unattended, not about which provider a GUI should recommend first. The two surfaces answer different questions.
+
+Revisit when Grok gains a working execution adapter — at that point it is a reasonable candidate for the featured set.
+
+### PD2 — Quick/Full distinction in packaged setup
+
+**Decision**: No. `native_cli_pack` stays flat; upstream's Quick/Full split is not surfaced.
+
+**Why**: The packaged pack taxonomy (`api_baseline`, `native_cli_pack`, `local_model_pack`, `wsl_power_user_pack`) is a *delivery* concept the platform owns. Quick/Full is a *bootstrap script batching* concept that exists because those scripts install unattended in one shot. Packaged setup installs per provider, on demand, from a UI — there is no batch for Quick/Full to describe. Adding the axis would give users a second taxonomy to learn that never changes what any button does.
+
+### PD3 — Aider readiness in the platform helper
+
+**Decision**: Presence-only. The shell and PowerShell helpers detect the binary and report version; they do not inspect model API-key env vars. Readiness stays in the runtime, per `cats-runtime` SPEC-027 D3.
+
+**Why**: Layering. Every other provider's auth state is owned by the runtime's `knowledge.ts` `auth` block and the setup-state scan; the packaged helper's contract is install and detect. Duplicating env inspection in four shell scripts and three PowerShell scripts creates seven implementations that can disagree with the runtime's one, and the helper has no access to the user's `.aider.conf.yml` anyway — so its answer would be less correct, not just redundant.
+
+### PD4 — Removing Aider's bundled `uv`
+
+**Decision**: No flag. Warn only, as ADR-109 specifies.
+
+**Why**: Two reasons compound. Destructive operations need explicit opt-in *and* a well-understood blast radius; here the blast radius is exactly what cannot be determined — the helper has no way to tell whether the `uv` in `~/.local/bin` came from Aider's installer or from the user's own install, which is the whole reason the warning exists. A flag would let a user opt into a deletion neither they nor the helper can scope. Nobody has reported the shadowing actually biting; a warning is the proportionate response until someone does.
+
+### PD5 — Windows helper file naming
+
+**Decision**: `Install-Grok.ps1`, `Install-Devin.ps1`, `Install-Aider.ps1`, `Install-Cline.ps1`. The rule: PowerShell approved verb, then the provider id in PascalCase, with no `Cli` suffix.
+
+**Why**: The existing directory looks inconsistent but resolves cleanly once the two conventions in it are separated. Acronym casing is settled — `Install-GitHubCli.ps1`, `Install-KiloCli.ps1`, `Install-KiroCli.ps1` all use `Cli`, never `CLI`, so `Install-GrokCLI.ps1` was never a live option. What actually varies is whether a `Cli` suffix appears at all, and the newest addition answers it: `Install-Antigravity.ps1` drops it even though the tool is named "Antigravity CLI". That is the closest precedent — a native CLI installer added by the most recent provider slice — and it matches the Unix wrappers, which are pure provider ids (`install-antigravity.sh`).
+
+Keeping the filename stem equal to the provider id also keeps `setupAssets.ts` mechanical, since it derives asset and helper ids from that id.
+
+**Not in scope**: this does not retroactively rename `Install-KiloCli.ps1` / `Install-KiroCli.ps1` (whose Unix counterparts are already inconsistent — `install-kilo.sh` vs `install-kiro-cli.sh`). Worth a separate tidy-up if a reviewer wants the convention applied uniformly.
 
 ## Related
 
