@@ -14,7 +14,7 @@ import {
 import { PRODUCT_PROVIDER_INSTANCES } from '../build/server/shared/providerCatalogInstances.js';
 
 test('verified Grok adapter is available in the product execution catalog', () => {
-  assert.equal(PRODUCT_PROVIDER_ORDER.length, 15);
+  assert.equal(PRODUCT_PROVIDER_ORDER.length, 16);
   assert.equal(PRODUCT_PROVIDER_ORDER.includes('grok'), true);
   assert.equal(
     PRODUCT_PROVIDER_ORDER.indexOf('grok'),
@@ -28,11 +28,32 @@ test('verified Grok adapter is available in the product execution catalog', () =
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ]);
 
-  for (const refusalOnlyProvider of ['devin', 'cline', 'aider']) {
+  // Devin executes only through the agent/acp backend and Aider not at all, so
+  // neither belongs in a catalog that offers a selectable execution target.
+  for (const refusalOnlyProvider of ['devin', 'aider']) {
     assert.equal(PRODUCT_PROVIDER_ORDER.includes(refusalOnlyProvider), false);
     assert.equal(Object.hasOwn(PRODUCT_PROVIDER_MODELS, refusalOnlyProvider), false);
     assert.equal(Object.hasOwn(PRODUCT_PROVIDER_INSTANCES, refusalOnlyProvider), false);
   }
+});
+
+test('verified Cline adapter joins the product execution catalog', () => {
+  // cats-runtime db63f74 enabled Cline execution behind the exact-version
+  // cline-cli-json-3.0.51 compatibility profile.
+  assert.equal(PRODUCT_PROVIDER_ORDER.includes('cline'), true);
+  assert.equal(
+    PRODUCT_PROVIDER_ORDER.indexOf('cline'),
+    PRODUCT_PROVIDER_ORDER.indexOf('grok') + 1,
+  );
+  // Cline exposes no model-enumeration command, so only the default sentinel
+  // is offered rather than a fabricated list.
+  assert.equal(getDefaultModel('cline'), 'cline-default');
+  assert.deepEqual(getProviderModels('cline'), [
+    { value: 'cline-default', label: 'Cline default', default: true },
+  ]);
+  assert.deepEqual(PRODUCT_PROVIDER_INSTANCES.cline, [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+  ]);
 });
 
 test('Junie static fallback matches the curated picker snapshot', () => {

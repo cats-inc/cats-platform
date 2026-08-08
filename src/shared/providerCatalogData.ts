@@ -3,6 +3,7 @@ export const PRODUCT_PROVIDER_ORDER = [
   'codex',
   'antigravity',
   'grok',
+  'cline',
   'cursor',
   'copilot',
   'opencode',
@@ -40,6 +41,9 @@ export const PRODUCT_PROVIDER_MODELS = {
   ],
   grok: [
     { value: 'grok-4.5', label: 'grok-4.5 (default)', default: true },
+  ],
+  cline: [
+    { value: 'cline-default', label: 'Cline default', default: true },
   ],
   copilot: [
     { value: 'gpt-5.4', label: 'gpt-5.4 (default)', default: true },

@@ -23,6 +23,7 @@ const nativeCliPackages = JSON.stringify([
   '@kilocode/cli',
   '@augmentcode/auggie',
   '@earendil-works/pi-coding-agent',
+  'cline',
 ]);
 
 test('Check-WindowsSetupReadiness reports ready when prefix substrate and per-CLI helpers are already ready', skipUnlessWindows(), async () => {

@@ -51,6 +51,7 @@ assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/setup-node-global-pref
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-codex.sh" 'bundled macOS OpenAI Codex installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-antigravity.sh" 'bundled macOS Antigravity installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-grok.sh" 'bundled macOS Grok installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-cline.sh" 'bundled macOS Cline installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-copilot.sh" 'bundled macOS GitHub Copilot installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-opencode.sh" 'bundled macOS OpenCode installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-kilo.sh" 'bundled macOS Kilo Code installer helper'
@@ -97,10 +98,12 @@ assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-opencode-na
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-codex-native-installer-script'), 'macOS target includes the bundled OpenAI Codex installer asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-antigravity-native-installer-script'), 'macOS target includes the bundled Antigravity installer asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-grok-native-installer-script'), 'macOS target includes the bundled Grok installer asset');
+assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-cline-native-installer-script'), 'macOS target includes the bundled Cline installer asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-setup-readiness-audit-script'), 'macOS target includes the bundled readiness audit asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-provider-cli-common-support-script'), 'macOS target includes the macOS provider helper asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-node-cli-common-support-script'), 'macOS target includes the macOS npm helper asset');
 assert(plan.installer.providerSetup.localProviders.some((provider) => provider.id === 'kiro' && provider.platform === 'macos'), 'installer contract keeps Kiro in the macOS bundled local-provider rollout');
+assert(plan.installer.providerSetup.localProviders.some((provider) => provider.id === 'cline' && provider.platform === 'macos'), 'installer contract keeps Cline in the macOS bundled local-provider rollout');
 assert(plan.installer.providerSetup.helperCatalog.some((helper) => helper.id === 'macos-install-readiness-audit'), 'installer contract includes macOS readiness helper metadata');
 assert(!plan.installer.providerSetup.helperCatalog.some((helper) => helper.id === 'windows-install-readiness-audit'), 'installer contract omits Windows-only helper metadata from the macOS package');
 NODE

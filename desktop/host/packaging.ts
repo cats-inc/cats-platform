@@ -617,6 +617,21 @@ const LOCAL_PROVIDER_BASELINES: DesktopLocalProviderBaseline[] = [
     ],
   },
   {
+    id: 'cline',
+    label: 'Cline CLI',
+    pack: 'native_cli_pack',
+    helperIds: [
+      'windows-cline-native-installer',
+      'linux-cline-native-installer',
+      'macos-cline-native-installer',
+    ],
+    currentHome: 'cats-platform/scripts/{windows/Install-Cline.ps1,linux/install-cline.sh,macos/install-cline.sh}',
+    targetHome: 'cats-platform packaged-host provider assets',
+    notes: [
+      'Bundled through the repo-owned per-CLI npm-global helper on each supported host platform.',
+    ],
+  },
+  {
     id: 'pi',
     label: 'Pi Coding Agent',
     pack: 'native_cli_pack',

@@ -10,7 +10,7 @@ test('buildDesktopCliInventoryFromRuntime returns unknown source when runtime pr
   assert.equal(inventory.total, 0);
   assert.deepEqual(inventory.installed, []);
   assert.equal(inventory.scannedAt, null);
-  assert.equal(inventory.candidates.length, 14);
+  assert.equal(inventory.candidates.length, 15);
   for (const candidate of inventory.candidates) {
     assert.equal(candidate.installed, false);
   }

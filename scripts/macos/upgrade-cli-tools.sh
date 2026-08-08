@@ -40,7 +40,7 @@ for script_name in install-claude-code.sh install-antigravity.sh install-cursor-
 done
 
 if [ "$skip_node" = 'false' ]; then
-  for script_name in install-codex.sh install-copilot.sh install-opencode.sh install-kilo.sh install-auggie.sh install-pi.sh; do
+  for script_name in install-codex.sh install-copilot.sh install-opencode.sh install-kilo.sh install-auggie.sh install-pi.sh install-cline.sh; do
     "$SCRIPT_DIR/$script_name" -upgrade
   done
 fi

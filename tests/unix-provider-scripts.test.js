@@ -400,7 +400,7 @@ test('Unix self-hosted provider audits expose the shared JSON audit core', async
   }
 });
 
-test('Unix self-hosted provider audits can include 7 native providers, 6 npm tools, and Ollama', async () => {
+test('Unix self-hosted provider audits can include 7 native providers, 7 npm tools, and Ollama', async () => {
   const expectedCheckIds = [
     'node',
     'npm',
@@ -419,6 +419,7 @@ test('Unix self-hosted provider audits can include 7 native providers, 6 npm too
     'kilo',
     'auggie',
     'pi',
+    'cline',
     'ollama',
   ];
 

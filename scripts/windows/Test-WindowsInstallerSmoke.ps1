@@ -227,6 +227,16 @@ $grokPreview = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $grokHe
 Assert-True ($grokPreview.status -eq 'preview') `
   'bundled Windows Grok helper dry-run mode completed'
 
+$clineHelperPath = Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Cline.ps1'
+$clineCheck = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $clineHelperPath `
+  -CheckOnly -Json -AllowAdmin | ConvertFrom-Json
+Assert-True ($clineCheck.helper -eq 'windows-cline-native-installer') `
+  'bundled Windows Cline helper check mode completed'
+$clinePreview = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $clineHelperPath `
+  -Force -DryRun -Json -AllowAdmin -SkipNpmInvocation | ConvertFrom-Json
+Assert-True ($clinePreview.status -eq 'preview') `
+  'bundled Windows Cline helper dry-run mode completed'
+
 $packagingPlan = Read-JsonFile -Path $packagingPlanPath
 Assert-True ($packagingPlan.strategy -eq 'electron-sidecar-bundle') 'installer packaging strategy is electron-sidecar-bundle'
 Assert-True ($packagingPlan.selfHostedNpmCompatible -eq $true) 'installer keeps self-hosted npm compatibility'

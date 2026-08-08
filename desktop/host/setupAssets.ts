@@ -123,6 +123,7 @@ function createUnixSetupAssets(platform: UnixAssetPlatform): DesktopSetupAsset[]
       ['kilo', 'kilo.sh', 'Kilo Code CLI'],
       ['auggie', 'auggie.sh', 'Auggie CLI'],
       ['pi', 'pi.sh', 'Pi Coding Agent'],
+      ['cline', 'cline.sh', 'Cline CLI'],
     ] as const).map(([providerId, scriptSuffix, providerLabel]) => ({
       id: `${platform}-${providerId}-native-installer-script`,
       helperId: `${platform}-${providerId}-native-installer`,
@@ -371,6 +372,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     ['kilo', 'Install-KiloCli.ps1', 'Kilo Code CLI'],
     ['auggie', 'Install-Auggie.ps1', 'Auggie CLI'],
     ['pi', 'Install-Pi.ps1', 'Pi Coding Agent'],
+    ['cline', 'Install-Cline.ps1', 'Cline CLI'],
   ] as const).map(([providerId, scriptName, providerLabel]) => ({
     id: `windows-${providerId}-native-installer-script`,
     helperId: `windows-${providerId}-native-installer`,

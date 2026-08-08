@@ -355,6 +355,7 @@ opencode|opencode|opencode-ai|OpenCode
 kilo|kilo|@kilocode/cli|Kilo Code CLI
 auggie|auggie|@augmentcode/auggie|Auggie CLI
 pi|pi|@earendil-works/pi-coding-agent|Pi CLI
+cline|cline|cline|Cline CLI
 EOF
 }
 

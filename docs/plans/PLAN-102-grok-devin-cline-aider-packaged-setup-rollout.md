@@ -71,9 +71,9 @@ Windows helper file naming is no longer a technical probe item: SPEC-112 PD5 pro
 Land this after `cats-runtime` widens its provider taxonomy; the runtime ids must exist before desktop setup maps to them.
 
 - [ ] Append `grok`, `devin`, `cline`, `aider` to the CLI setup segment of `DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS` in `desktop/host/contracts.ts`, after `pi` and before `ollama`.
-- [ ] Add the platform-support metadata needed to represent Cline as macOS/Linux-only and explicitly unsupported on Windows.
+- [x] ~~Add the platform-support metadata needed to represent Cline as macOS/Linux-only and explicitly unsupported on Windows.~~ **Superseded 2026-08-09.** Guardrail 11 allowed this to lift on "a reviewed live Windows execution probe", and `cats-runtime` 03f01a1 recorded one: `cline@3.0.51` installs from npm and runs `--version`, `--help`, `--json` execution, tool calls, and `history --json` on Windows 11. Cline therefore ships on all three platforms like every other npm-pack provider, with no platform-support carve-out.
 - [x] Add Grok to `PRODUCT_PROVIDER_ORDER`, `PRODUCT_PROVIDER_MODELS`, and `PRODUCT_PROVIDER_INSTANCES` with `grok-4.5` and `cli/native`; assert the remaining refusal-only providers stay absent.
-- [ ] Run setup renderer tests and update setup-list assertions from thirteen to seventeen entries while preserving existing relative order.
+- [ ] Run setup renderer tests and update setup-list assertions while preserving existing relative order. Grok took the count to fourteen and Cline to fifteen; Devin and Aider remain.
 
 **Deliverables**: Desktop setup can name all four; product execution selects only verified Grok from this group.
 

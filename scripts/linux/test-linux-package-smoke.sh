@@ -51,6 +51,7 @@ assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/setup-node-global-pref
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-codex.sh" 'bundled Linux OpenAI Codex installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-antigravity.sh" 'bundled Linux Antigravity installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-grok.sh" 'bundled Linux Grok installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-cline.sh" 'bundled Linux Cline installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-copilot.sh" 'bundled Linux GitHub Copilot installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-opencode.sh" 'bundled Linux OpenCode installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-kilo.sh" 'bundled Linux Kilo Code installer helper'
@@ -97,11 +98,13 @@ assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-opencode-
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-codex-native-installer-script'), 'Linux target includes the bundled OpenAI Codex installer asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-antigravity-native-installer-script'), 'Linux target includes the bundled Antigravity installer asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-grok-native-installer-script'), 'Linux target includes the bundled Grok installer asset');
+assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-cline-native-installer-script'), 'Linux target includes the bundled Cline installer asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-setup-readiness-audit-script'), 'Linux target includes the bundled readiness audit asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-provider-cli-common-support-script'), 'Linux target includes the Linux provider helper asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-node-cli-common-support-script'), 'Linux target includes the Linux npm helper asset');
 assert(plan.installer.providerSetup.localProviders.some((provider) => provider.id === 'kiro' && provider.platform === 'linux'), 'installer contract keeps Kiro in the Linux bundled local-provider rollout');
 assert(plan.installer.providerSetup.localProviders.some((provider) => provider.id === 'grok' && provider.platform === 'linux'), 'installer contract keeps Grok in the Linux bundled local-provider rollout');
+assert(plan.installer.providerSetup.localProviders.some((provider) => provider.id === 'cline' && provider.platform === 'linux'), 'installer contract keeps Cline in the Linux bundled local-provider rollout');
 assert(plan.installer.providerSetup.helperCatalog.some((helper) => helper.id === 'linux-install-readiness-audit'), 'installer contract includes Linux readiness helper metadata');
 assert(!plan.installer.providerSetup.helperCatalog.some((helper) => helper.id === 'windows-install-readiness-audit'), 'installer contract omits Windows-only helper metadata from the Linux package');
 NODE

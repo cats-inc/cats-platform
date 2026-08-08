@@ -19,6 +19,9 @@ export const PRODUCT_PROVIDER_INSTANCES: Record<ProductProviderId, ProductProvid
   grok: [
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ],
+  cline: [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+  ],
   cursor: [
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ],
