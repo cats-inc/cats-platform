@@ -2,6 +2,7 @@ export const PRODUCT_PROVIDER_ORDER = [
   'claude',
   'codex',
   'antigravity',
+  'grok',
   'cursor',
   'copilot',
   'opencode',
@@ -36,6 +37,9 @@ export const PRODUCT_PROVIDER_MODELS = {
   ],
   antigravity: [
     { value: 'antigravity-default', label: 'Antigravity default', default: true },
+  ],
+  grok: [
+    { value: 'grok-4.5', label: 'grok-4.5 (default)', default: true },
   ],
   copilot: [
     { value: 'gpt-5.4', label: 'gpt-5.4 (default)', default: true },

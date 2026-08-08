@@ -4,7 +4,9 @@ Date: 2026-08-07
 Status: Proposed
 
 Implementation note: the User approved the Grok-only subset on 2026-08-08.
-The broader Devin, Cline, and Aider decision remains proposed.
+Grok setup is shipped and its subsequently verified runtime adapter is now in
+the product execution catalog. The broader Devin, Cline, and Aider decision
+remains proposed.
 
 ## Context
 
@@ -39,7 +41,7 @@ This ADR proposes that `cats-platform` port the four CLIs into packaged setup on
 5. **The packaged Devin installers strip exactly one expected trailing interactive `setup` call**, mirroring upstream, and report `devin setup` as a `manualSteps` entry in their JSON result. If the expected line is missing or ambiguous, the helper fails closed before executing the downloaded installer and returns a structured error. A successful packaged install proves binary presence only; authentication remains unverified, and later checks do not guess whether the user completed the manual step.
 6. **Grok's `agent` alias is not registered** as a binary candidate or alias target, matching ADR-033. Uninstall does remove the fixed, installer-owned `agent` / `agent.exe` path next to `grok`, so packaged setup does not leave a known artifact behind; it never searches PATH for a generic `agent` command.
 7. **Setup-asset metadata marks supported provider/platform pairs `requiresElevation: false` and `resumable: true`.** Grok, Devin, and Aider have assets on all three OSes; Cline has assets on macOS and Linux only.
-8. **The shared product execution catalog does not gain these four while their runtime adapters are refusal-only.** `PRODUCT_PROVIDER_ORDER`, `PRODUCT_PROVIDER_MODELS`, and `PRODUCT_PROVIDER_INSTANCES` remain unchanged. Setup visibility is supplied by the desktop setup inventory and runtime setup-state mapping, without making an unusable provider selectable for execution.
+8. **The shared product execution catalog gains providers only when their runtime adapters work.** Grok now joins `PRODUCT_PROVIDER_ORDER`, `PRODUCT_PROVIDER_MODELS`, and `PRODUCT_PROVIDER_INSTANCES` with verified `grok-4.5` and `cli/native`. Devin, Cline, and Aider remain absent while refusal-only.
 9. **Cline follows npm's versioned `--allow-scripts` behavior.** When npm exposes the global-install policy, the helper applies the exact upstream package allowlist recorded by the shared probe. Older npm versions retain their existing lifecycle-script behavior rather than receiving an unsupported option.
 10. **The Pi npm package rename is corrected in the same slice**, in all four platform locations, with the old package removed before the new one is installed.
 
@@ -69,7 +71,7 @@ Kiro on Windows already forced one non-`~/.local/bin` exception, handled inline.
 
 ### Why setup visibility is separate from execution selection
 
-An installer can be useful before an execution adapter exists, but a product catalog entry promises that selecting the provider can start a session. ADR-033 deliberately ships refusal stubs until live probes establish stream contracts. Adding these four to the execution catalog now would expose controls that can only fail, so the setup inventory expands independently and the product catalog waits for each adapter.
+An installer can be useful before an execution adapter exists, but a product catalog entry promises that selecting the provider can start a session. ADR-033 deliberately starts with refusals until live probes establish stream contracts. Setup inventory therefore expands independently; Grok enters the product catalog after its probe and adapter, while the remaining providers wait.
 
 ## Consequences
 
@@ -83,16 +85,16 @@ An installer can be useful before an execution adapter exists, but a product cat
 
 ### Negative
 
-- Four providers appear in packaged provider setup that cannot yet run sessions (per ADR-033, execution is probe-gated). Onboarding copy must make "installed" versus "usable" legible, and Windows must make Cline's unsupported state explicit.
+- Three providers appear in packaged provider setup that cannot yet run sessions; Grok is usable through its verified adapter. Onboarding copy must keep "installed" versus "usable" legible, and Windows must make Cline's unsupported state explicit.
 - `provider-cli-common.sh` grows a third and fourth install shape, increasing the surface the Unix smoke tests must cover.
 - Windows gains three new per-provider `Install-*.ps1` wrappers, each of which must implement the full JSON mode contract.
-- Setup inventory assertions grow from thirteen to seventeen entries, while product execution catalog assertions must prove the existing fourteen entries remain unchanged.
+- Setup inventory assertions grow from thirteen to seventeen entries, while product execution catalog assertions prove the fifteen-entry catalog includes only verified Grok from this group.
 
 ### Neutral
 
 - Aider's bundled `uv` may shadow a user's newer `uv` depending on PATH order. Reported as a warning, not managed.
 - Upstream's Quick/Full mode split is not adopted; all four join `native_cli_pack` alongside the existing providers.
-- The product execution catalog carries no entries or model sentinels for the four until their runtime adapters can execute.
+- The product execution catalog carries Grok with `grok-4.5`; it carries no entries or sentinels for Devin, Cline, or Aider until their adapters can execute.
 
 ## Alternatives Considered
 
@@ -124,7 +126,7 @@ An installer can be useful before an execution adapter exists, but a product cat
 
 - If a third non-`~/.local/bin` provider appears, `provider_binary_candidates` should move from a `case` table to a single provider-metadata block shared with `provider_install_url` and `provider_primary_command`.
 - The Pi rename revealed that nothing detects drift between `environment-bootstrap` and the packaged helper tables. A reconciliation check comparing package names, install URLs, and binary paths across the two repos would catch the next one.
-- Once a runtime probe and implementation land a working execution adapter, that provider may join the product execution catalog with evidence-backed model ids or an explicitly justified default sentinel in the same slice.
+- Once a runtime probe and implementation land a working execution adapter, that provider joins the product execution catalog with evidence-backed model ids or an explicitly justified default sentinel in the same slice. Grok is the first completed case.
 
 ## Related
 

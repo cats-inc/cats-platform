@@ -151,6 +151,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-08-07 (ADR-109 added: port the Grok, Devin, Cline, and Aider installers into packaged setup.)*
+*Last updated: 2026-08-08 (ADR-109 Grok product execution catalog follow-up recorded.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*

@@ -4,15 +4,15 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress — Grok slice implemented; Devin, Cline, and Aider pending User approval |
+| **Status** | In Progress — Grok setup and execution catalog complete; Devin, Cline, and Aider pending User approval |
 | **Owner** | User |
 | **Reviewer** | User |
 
 ## Summary
 
-This spec defines the packaged-setup side of adopting four upstream AI coding CLIs — Grok CLI (xAI), Devin CLI (Cognition), Cline, and Aider — as Cats provider families. It covers repo-owned installer helpers on supported platforms, desktop host wiring, the setup-provider inventory, and the smoke-test surface. It intentionally leaves the product execution catalog unchanged while the corresponding runtime adapters are refusal-only.
+This spec defines the packaged-setup side of adopting four upstream AI coding CLIs — Grok CLI (xAI), Devin CLI (Cognition), Cline, and Aider — as Cats provider families. It covers repo-owned installer helpers on supported platforms, desktop host wiring, the setup-provider inventory, smoke tests, and evidence-gated promotion into the product execution catalog. Grok now has a working exact-version runtime adapter; the remaining three are refusal-only.
 
-It is the counterpart to `cats-runtime` SPEC-027, which owns the runtime provider taxonomy, install/check knowledge, and refusal-tier execution adapters. ADR-109 captures the underlying decision.
+It is the counterpart to `cats-runtime` SPEC-027, which owns the runtime provider taxonomy, install/check knowledge, and execution adapters. ADR-109 captures the underlying decision.
 
 ## Goals
 
@@ -21,15 +21,15 @@ It is the counterpart to `cats-runtime` SPEC-027, which owns the runtime provide
 - Strip the interactive `devin setup` call from both packaged Devin installers and surface it as a `manualSteps` entry instead.
 - Register the four in `DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS`, the runtime-id mapping, provider labels, and helper-suffix maps.
 - Register setup assets and packaging inventory entries for the new helpers.
-- Keep `PRODUCT_PROVIDER_ORDER`, `PRODUCT_PROVIDER_MODELS`, and `PRODUCT_PROVIDER_INSTANCES` unchanged until working execution adapters land.
+- Promote each provider into `PRODUCT_PROVIDER_ORDER`, `PRODUCT_PROVIDER_MODELS`, and `PRODUCT_PROVIDER_INSTANCES` only when its execution adapter works; Grok joins with verified model `grok-4.5`.
 - Extend the Windows, macOS, and Linux smoke tests to cover supported helpers and Cline's explicit Windows-unsupported state.
 - Correct the Pi npm package name to `@earendil-works/pi-coding-agent` across all four platform locations.
 
 ## Non-Goals
 
 - Runtime provider taxonomy, install knowledge, refusal adapters, or `providers.yaml` bootstrap — owned by `cats-runtime` SPEC-027.
-- Any session-execution capability for the four. Packaged setup installs and reports them; it does not make them runnable.
-- Adding any of the four refusal-only providers, including default sentinels, to the product execution catalog.
+- Runtime session-execution implementation, which remains owned by `cats-runtime`.
+- Adding Devin, Cline, or Aider, including default sentinels, to the product execution catalog while they remain refusal-only.
 - Managing the `uv` binary that Aider's installer brings with it.
 - Registering Grok's generic `agent` alias as a detection candidate or alias target. Removing the known installer-owned alias path during uninstall remains in scope.
 - Adopting upstream's Quick/Full mode split.
@@ -56,7 +56,7 @@ Three of the four also violate assumptions currently baked into the helpers:
 - `run_remote_pipe_installer` supports only `curl … | bash` shapes. Aider needs `curl -LsSf … | sh`, and its uninstall is a `uv tool` operation.
 - Nothing in the helper contract models "installed, interactive setup skipped, authentication unverified". Devin needs exactly that, because the packaged installer must skip the interactive setup step to avoid hanging the non-interactive setup bridge and cannot later infer whether the user completed it elsewhere.
 
-Cline's official CLI preview supports macOS and Linux, with Windows support still listed as forthcoming. In addition, the product execution catalog represents selectable session providers, not every tool setup can install. The four runtime adapters are deliberately refusal-only, so setup visibility and execution selection must remain separate.
+Cline's official CLI preview supports macOS and Linux, with Windows support still listed as forthcoming. In addition, the product execution catalog represents selectable session providers, not every tool setup can install. Grok has crossed the execution evidence gate; Devin, Cline, and Aider have not, so setup visibility and execution selection remain separate.
 
 Separately, four platform locations install Pi from a package name upstream abandoned; npm resolves the old name to its final version and reports it as current, so Pi upgrades silently no-op.
 
@@ -110,9 +110,9 @@ Separately, four platform locations install Pi from a package name upstream aban
 
 #### Product execution catalog boundary
 
-30. `src/shared/providerCatalogData.ts` `PRODUCT_PROVIDER_ORDER` shall remain unchanged while the four runtime adapters are refusal-only.
-31. `PRODUCT_PROVIDER_MODELS` shall not gain default sentinels or model ids for the four at this tier.
-32. `src/shared/providerCatalogInstances.ts` shall not gain executable instances for the four at this tier. Each provider may enter these three structures only in the same reviewed slice that lands a working runtime execution adapter.
+30. `src/shared/providerCatalogData.ts` `PRODUCT_PROVIDER_ORDER` shall add `grok` after `antigravity`; Devin, Cline, and Aider remain absent while refusal-only.
+31. `PRODUCT_PROVIDER_MODELS.grok` shall contain only the live-enumerated default `grok-4.5`; the remaining three gain no sentinels or model ids.
+32. `src/shared/providerCatalogInstances.ts` shall add Grok `cli/native`. Each remaining provider may enter these structures only in the reviewed slice that lands its working runtime adapter.
 
 #### Smoke tests
 
@@ -137,7 +137,7 @@ Separately, four platform locations install Pi from a package name upstream aban
 - [ ] Cline installs, upgrades, and uninstalls through the npm pack on macOS and Linux; Windows setup reports it as unsupported and exposes no install action.
 - [ ] `buildDesktopCliInventoryFromRuntime` reports all four when the runtime setup scan marks them available.
 - [ ] Provider setup in packaged Desktop lists seventeen setup candidates in the agreed relative order, with the four new ids before `ollama`.
-- [ ] The product execution catalog remains at its existing fourteen providers and contains no Grok, Devin, Cline, or Aider model or instance entries.
+- [ ] The product execution catalog contains fifteen providers, including Grok with `grok-4.5` and `cli/native`, and contains no Devin, Cline, or Aider entries.
 - [ ] Pi's package name is `@earendil-works/pi-coding-agent` in all four platform locations, and the old package is removed before install.
 - [ ] Windows, macOS, and Linux smoke tests pass.
 
@@ -157,11 +157,11 @@ Both official Devin installers end with an invocation of the freshly installed b
 
 ### Setup-provider ordering
 
-`DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS` appends the four to its CLI setup segment immediately before `ollama`. Existing providers keep their relative order, while `ollama` moves four absolute positions later. The product execution catalog is deliberately unchanged.
+`DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS` appends the four to its CLI setup segment immediately before `ollama`. Existing providers keep their relative order, while `ollama` moves four absolute positions later. The independent product execution catalog adds only verified Grok after `antigravity`.
 
 ## Dependencies
 
-- `cats-runtime` SPEC-027 must land its taxonomy before the platform setup inventory: `cliInventoryProbe` maps desktop ids onto runtime `KNOWN_PROVIDERS` ids, so a desktop entry with no runtime counterpart can never report installed. This dependency does not authorize product execution catalog entries.
+- `cats-runtime` SPEC-027 must land taxonomy before setup inventory and a working adapter before product-catalog promotion. Grok satisfies both dependencies.
 - `environment-bootstrap` remains the upstream source of truth for install URLs, directories, and auth flows.
 
 ## Risks
@@ -169,8 +169,8 @@ Both official Devin installers end with an invocation of the freshly installed b
 - **Upstream Devin installer changes shape**, breaking the strip. Mitigation: fail closed before execution and require the exact-match fixture to be reviewed and updated.
 - **Aider's installer changes its shell or bundled-`uv` behavior.** Mitigation: the helper cites the upstream script it mirrors, so reconciliation is a diff.
 - **`provider_install_dir` refactor regresses an existing provider.** Mitigation: the default preserves current behavior and smoke tests cover all providers.
-- **Seventeen setup candidates widen setup renderer assertions.** Mitigation: preserve relative order and separately assert that the fourteen-provider execution catalog is unchanged.
-- **Grok and Devin need accounts to verify end to end.** Mitigation: acceptance criteria are written against install/detect/uninstall, not against a successful session.
+- **Seventeen setup candidates widen setup renderer assertions.** Mitigation: preserve relative order and separately assert the fifteen-provider execution catalog, including only verified Grok from this group.
+- **Devin needs an account to verify end to end.** Mitigation: its current acceptance criteria remain install/detect/uninstall only. Grok execution was verified with an authenticated isolated probe.
 
 ## Proposed Decisions
 
@@ -180,11 +180,11 @@ Both official Devin installers end with an invocation of the freshly installed b
 
 **Proposal**: None of the four joins `ONBOARDING_COLLAPSED_PROVIDER_IDS`. It stays `['claude_code', 'antigravity', 'codex']`.
 
-**Why**: Reading `bootstrapPage.ts` confirms the collapsed set is the list of providers that **stay visible** in the collapsed first-run view — a curated three-card recommendation, not a completeness list. Per `cats-runtime` ADR-033, all four ship at the install/check tier with refusal-stub execution, so featuring one in the very first surface a new user sees would recommend a provider that installs cleanly and then cannot run a session.
+**Why**: Reading `bootstrapPage.ts` confirms the collapsed set is the list of providers that **stay visible** in the collapsed first-run view — a curated three-card recommendation, not a completeness list. Devin, Cline, and Aider still cannot run sessions. Grok is now executable, but catalog eligibility does not automatically change the separately curated first-run recommendation set.
 
 Grok's upstream **Quick** mode membership was the argument for including it, but Quick mode is about which batch a bootstrap script installs unattended, not about which provider a GUI should recommend first. The two surfaces answer different questions.
 
-Revisit when Grok gains a working execution adapter — at that point it is a reasonable candidate for the featured set.
+Grok is now a reasonable future candidate for the featured set, but this execution slice does not expand that product recommendation surface.
 
 ### PD2 — Quick/Full distinction in packaged setup
 
@@ -216,7 +216,7 @@ Keeping the filename stem equal to the provider id also keeps `setupAssets.ts` m
 
 ### PD6 — Product execution catalog boundary
 
-**Proposal**: Add the four to the desktop setup inventory but not to `PRODUCT_PROVIDER_ORDER`, `PRODUCT_PROVIDER_MODELS`, or `PRODUCT_PROVIDER_INSTANCES` until each has a working runtime execution adapter.
+**Decision**: Add all four to desktop setup, and add each to `PRODUCT_PROVIDER_ORDER`, `PRODUCT_PROVIDER_MODELS`, and `PRODUCT_PROVIDER_INSTANCES` only when its runtime adapter works. Grok now enters with `grok-4.5` and `cli/native`; the remaining three stay out.
 
 **Why**: Setup inventory answers whether Cats can install and inspect a tool. The product catalog answers what users can select to run a session. Refusal-only adapters satisfy the former contract but not the latter; combining them would advertise guaranteed failures in execution selectors.
 

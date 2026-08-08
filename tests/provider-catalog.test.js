@@ -13,11 +13,26 @@ import {
 } from '../build/server/shared/providerCatalogData.js';
 import { PRODUCT_PROVIDER_INSTANCES } from '../build/server/shared/providerCatalogInstances.js';
 
-test('refusal-only Grok stays outside the product execution catalog', () => {
-  assert.equal(PRODUCT_PROVIDER_ORDER.length, 14);
-  assert.equal(PRODUCT_PROVIDER_ORDER.includes('grok'), false);
-  assert.equal(Object.hasOwn(PRODUCT_PROVIDER_MODELS, 'grok'), false);
-  assert.equal(Object.hasOwn(PRODUCT_PROVIDER_INSTANCES, 'grok'), false);
+test('verified Grok adapter is available in the product execution catalog', () => {
+  assert.equal(PRODUCT_PROVIDER_ORDER.length, 15);
+  assert.equal(PRODUCT_PROVIDER_ORDER.includes('grok'), true);
+  assert.equal(
+    PRODUCT_PROVIDER_ORDER.indexOf('grok'),
+    PRODUCT_PROVIDER_ORDER.indexOf('antigravity') + 1,
+  );
+  assert.equal(getDefaultModel('grok'), 'grok-4.5');
+  assert.deepEqual(getProviderModels('grok'), [
+    { value: 'grok-4.5', label: 'grok-4.5 (default)', default: true },
+  ]);
+  assert.deepEqual(PRODUCT_PROVIDER_INSTANCES.grok, [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+  ]);
+
+  for (const refusalOnlyProvider of ['devin', 'cline', 'aider']) {
+    assert.equal(PRODUCT_PROVIDER_ORDER.includes(refusalOnlyProvider), false);
+    assert.equal(Object.hasOwn(PRODUCT_PROVIDER_MODELS, refusalOnlyProvider), false);
+    assert.equal(Object.hasOwn(PRODUCT_PROVIDER_INSTANCES, refusalOnlyProvider), false);
+  }
 });
 
 test('Junie static fallback matches the curated picker snapshot', () => {
