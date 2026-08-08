@@ -617,6 +617,22 @@ const LOCAL_PROVIDER_BASELINES: DesktopLocalProviderBaseline[] = [
     ],
   },
   {
+    id: 'devin',
+    label: 'Devin CLI',
+    pack: 'native_cli_pack',
+    helperIds: [
+      'windows-devin-native-installer',
+      'linux-devin-native-installer',
+      'macos-devin-native-installer',
+    ],
+    currentHome: 'cats-platform/scripts/{windows/Install-Devin.ps1,linux/install-devin.sh,macos/install-devin.sh}',
+    targetHome: 'cats-platform packaged-host provider assets',
+    notes: [
+      "Bundled through the repo-owned native Devin installer wrapper, which strips the installer's interactive setup wizard.",
+      'A successful install still owes devin auth login; the helper reports it as a manual step.',
+    ],
+  },
+  {
     id: 'cline',
     label: 'Cline CLI',
     pack: 'native_cli_pack',

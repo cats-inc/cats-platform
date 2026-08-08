@@ -152,6 +152,7 @@ export const DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS = [
   'pi',
   'grok',
   'cline',
+  'devin',
   'ollama',
 ] as const;
 export const DESKTOP_PROVIDER_SETUP_DELIVERY_PHASES = [

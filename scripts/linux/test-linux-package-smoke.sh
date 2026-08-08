@@ -52,6 +52,7 @@ assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-codex.sh" 'bun
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-antigravity.sh" 'bundled Linux Antigravity installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-grok.sh" 'bundled Linux Grok installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-cline.sh" 'bundled Linux Cline installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-devin.sh" 'bundled Linux Devin installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-copilot.sh" 'bundled Linux GitHub Copilot installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-opencode.sh" 'bundled Linux OpenCode installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-kilo.sh" 'bundled Linux Kilo Code installer helper'
@@ -99,6 +100,7 @@ assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-codex-nat
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-antigravity-native-installer-script'), 'Linux target includes the bundled Antigravity installer asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-grok-native-installer-script'), 'Linux target includes the bundled Grok installer asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-cline-native-installer-script'), 'Linux target includes the bundled Cline installer asset');
+assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-devin-native-installer-script'), 'Linux target includes the bundled Devin installer asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-setup-readiness-audit-script'), 'Linux target includes the bundled readiness audit asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-provider-cli-common-support-script'), 'Linux target includes the Linux provider helper asset');
 assert(linuxTarget.artifacts.some((artifact) => artifact.id === 'linux-node-cli-common-support-script'), 'Linux target includes the Linux npm helper asset');

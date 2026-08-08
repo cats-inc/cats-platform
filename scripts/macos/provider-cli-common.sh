@@ -51,6 +51,7 @@ provider_display_name() {
   case "$1" in
     antigravity) printf '%s\n' 'Antigravity CLI' ;;
     grok) printf '%s\n' 'Grok CLI' ;;
+    devin) printf '%s\n' 'Devin CLI' ;;
     claude) printf '%s\n' 'Claude Code CLI' ;;
     cursor) printf '%s\n' 'Cursor Agent CLI' ;;
     goose) printf '%s\n' 'Goose CLI' ;;
@@ -64,6 +65,7 @@ provider_primary_command() {
   case "$1" in
     antigravity) printf '%s\n' 'agy' ;;
     grok) printf '%s\n' 'grok' ;;
+    devin) printf '%s\n' 'devin' ;;
     claude) printf '%s\n' 'claude' ;;
     cursor) printf '%s\n' 'cursor-agent' ;;
     goose) printf '%s\n' 'goose' ;;
@@ -93,6 +95,7 @@ provider_install_url() {
   case "$1" in
     antigravity) printf '%s\n' 'https://antigravity.google/cli/install.sh' ;;
     grok) printf '%s\n' 'https://x.ai/cli/install.sh' ;;
+    devin) printf '%s\n' 'https://cli.devin.ai/install.sh' ;;
     claude) printf '%s\n' 'https://claude.ai/install.sh' ;;
     cursor) printf '%s\n' 'https://cursor.com/install' ;;
     goose) printf '%s\n' 'https://github.com/block/goose/releases/download/stable/download_cli.sh' ;;
@@ -273,6 +276,56 @@ provider_version_line() {
   "$command_path" --version 2>&1 | head -1 || true
 }
 
+# Devin's official install.sh ends by launching the interactive `devin setup`
+# wizard. Packaged setup runs non-interactively with no console a prompt can
+# reach, so an unstripped installer would stall the step rather than fail.
+#
+# Verified against https://cli.devin.ai/install.sh on 2026-08-09: the file is
+# 286 lines and its final line is
+#   "$VERSION_DIR/bin/$COMPILED_BIN_NAME" setup
+# which is also the only line in the file ending in " setup".
+#
+# The helper neutralises exactly that line and refuses to run the script when
+# the shape does not match, rather than executing an unrecognised installer on
+# a guess. stdin from /dev/null stays as insurance for any prompt added earlier
+# in the script.
+run_devin_installer() {
+  local installer_path=''
+  local patched_path=''
+  local trailing_matches=0
+  local status=0
+
+  installer_path="$(mktemp)"
+  patched_path="$(mktemp)"
+
+  if ! curl -fsSL "$(provider_install_url devin)" -o "$installer_path"; then
+    rm -f "$installer_path" "$patched_path"
+    printf 'Failed to download the Devin installer.\n' >&2
+    return 1
+  fi
+
+  trailing_matches="$(grep -cE ' setup$' "$installer_path" || true)"
+  if [ "$trailing_matches" != '1' ]; then
+    rm -f "$installer_path" "$patched_path"
+    printf 'Refusing to run the Devin installer: expected exactly one interactive setup invocation, found %s. Install Devin with the upstream installer and report this.\n' \
+      "$trailing_matches" >&2
+    return 1
+  fi
+
+  # Restrict the edit to the final line so an unrelated match elsewhere can
+  # never be silently rewritten.
+  sed -e '$ s|^.* setup$|: skipped interactive devin setup|' "$installer_path" > "$patched_path"
+  if cmp -s "$installer_path" "$patched_path"; then
+    rm -f "$installer_path" "$patched_path"
+    printf 'Refusing to run the Devin installer: the interactive setup invocation is no longer the final line.\n' >&2
+    return 1
+  fi
+
+  bash "$patched_path" < /dev/null || status=$?
+  rm -f "$installer_path" "$patched_path"
+  return "$status"
+}
+
 run_remote_pipe_installer() {
   local provider="$1"
   shift
@@ -362,6 +415,9 @@ run_provider_install_action() {
     grok)
       run_remote_pipe_installer "$provider"
       ;;
+    devin)
+      run_devin_installer
+      ;;
     claude)
       if [ "$action" = 'upgrade' ] && current_command="$(detect_provider_command "$platform" "$provider")"; then
         "$current_command" update || true
@@ -411,6 +467,20 @@ __CATS_UNINSTALL_PLANNED=()
 __CATS_UNINSTALL_APPLIED=()
 __CATS_UNINSTALL_WARNINGS=()
 __CATS_UNINSTALL_REMAINING=''
+
+# Steps the helper cannot perform for the user. Packaged Devin installs strip
+# the installer's trailing interactive wizard, so authentication is always still
+# owed after a successful install; a "ready" result must not imply otherwise.
+provider_manual_steps() {
+  case "$1" in
+    devin)
+      printf '%s\n' 'Run devin auth login once to authenticate; packaged setup skips the interactive wizard. Check with devin auth status.'
+      ;;
+    *)
+      :
+      ;;
+  esac
+}
 
 uninstall_provider_native_paths() {
   local platform="$1"
@@ -465,6 +535,19 @@ UPNP_EOF
     if [ -e "$extra" ] || [ -L "$extra" ]; then
       planned_paths+=("$extra")
     fi
+  fi
+
+  # Devin's shim in ~/.local/bin points at a versioned tree; removing only the
+  # shim would leave every installed version behind.
+  if [ "$provider" = 'devin' ]; then
+    extra="${XDG_DATA_HOME:-$HOME/.local/share}/devin/cli"
+    case "$extra" in
+      "$HOME"/*)
+        if [ -d "$extra" ]; then
+          planned_paths+=("$extra")
+        fi
+        ;;
+    esac
   fi
 
   for path in "${planned_paths[@]}"; do
@@ -831,7 +914,9 @@ run_native_provider_installer() {
         printf '"warnings":'
         json_string_array "${warnings[@]}"
         printf ','
-        printf '"manualSteps":[],'
+        printf '"manualSteps":'
+        json_string_array "$(provider_manual_steps "$provider")"
+        printf ','
         printf '"interruptions":[]'
         printf '}\n'
       else

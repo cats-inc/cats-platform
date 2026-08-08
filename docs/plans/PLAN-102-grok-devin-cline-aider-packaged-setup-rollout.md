@@ -95,7 +95,7 @@ Behavior-preserving refactor, landed separately so a regression is attributable.
 - [ ] Leave `provider_alias_name` / `provider_alias_target` empty for all three.
 - [ ] Add a `grok` case to `run_remote_pipe_installer` (`curl -fsSL "$url" | bash`).
 - [ ] Add an `aider` case (`curl -LsSf "$url" | sh`).
-- [ ] Add a `devin` case that downloads to a temp file, requires exactly one expected trailing `setup` invocation, strips it, and executes with stdin from `/dev/null`. Return a structured failure without execution when the marker is absent or ambiguous.
+- [x] Add a `devin` case that downloads to a temp file, requires exactly one expected trailing `setup` invocation, strips it, and executes with stdin from `/dev/null`. Return a structured failure without execution when the marker is absent or ambiguous. **Verified against the live installers on 2026-08-09**: `https://cli.devin.ai/install.sh` is 286 lines whose final line is `"$VERSION_DIR/bin/$COMPILED_BIN_NAME" setup`, and `https://static.devin.ai/cli/setup.ps1` is 234 lines whose final line is `& $EntryExe setup`. Each is the only such line in its file, and the patched output still parses on both platforms.
 - [ ] Extend `run_provider_install_action` so `upgrade` and `force` re-run the official installer for all three.
 - [ ] Implement uninstall: Grok removes `$HOME/.grok/bin/grok` and the adjacent installer-owned `agent` alias without searching PATH; Devin removes the `~/.local/bin/devin` shim and the version tree under `${XDG_DATA_HOME:-$HOME/.local/share}/devin/cli`; Aider runs `uv tool uninstall aider-chat` with a file-removal fallback and emits the `uv` provenance warning.
 - [ ] Make Devin's result carry `devin setup` in `manualSteps` for `apply`, `upgrade`, and `force`.
