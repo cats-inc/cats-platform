@@ -48,7 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
-| [SPEC-112](./SPEC-112-grok-devin-cline-aider-in-packaged-setup-and-provider-catalog.md) | Grok, Devin, Cline, and Aider in Packaged Setup and the Provider Catalog | Draft | [PLAN-102](../plans/PLAN-102-grok-devin-cline-aider-packaged-setup-rollout.md), [ADR-109](../decisions/109-port-grok-devin-cline-aider-installers-into-packaged-setup.md) |
+| [SPEC-112](./SPEC-112-grok-devin-cline-aider-in-packaged-setup-and-provider-catalog.md) | Grok, Devin, Cline, and Aider in Packaged Setup and the Setup Provider Inventory | Draft — User approval pending | [PLAN-102](../plans/PLAN-102-grok-devin-cline-aider-packaged-setup-rollout.md), [ADR-109](../decisions/109-port-grok-devin-cline-aider-installers-into-packaged-setup.md) |
 | [SPEC-111](./SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md) | Packaged Desktop Update Surfaces and Release Contract | Draft | [PLAN-101](../plans/PLAN-101-packaged-desktop-update-rollout.md), [ADR-108](../decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md) |
 | [SPEC-110](./SPEC-110-antigravity-cli-in-packaged-setup-and-provider-catalog.md) | Antigravity CLI in Packaged Setup and Provider Catalog | Draft | [PLAN-100](../plans/PLAN-100-replace-gemini-cli-with-antigravity-in-packaged-setup.md), [ADR-107](../decisions/107-replace-gemini-cli-with-antigravity-in-packaged-setup.md) |
 | [SPEC-109](./SPEC-109-phase-scoped-work-tool-surface.md) | Phase-Scoped Work Tool Surface | Active / MVP Implemented | [PLAN-099](../plans/PLAN-099-phase-scoped-work-tool-surface-rollout.md), [ADR-105](../decisions/105-adopt-phase-scoped-work-tool-surface.md) |
@@ -167,6 +167,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-08-07 (SPEC-112 added: Grok, Devin, Cline, and Aider in packaged setup and the provider catalog.)*
+*Last updated: 2026-08-07 (SPEC-112 added: Grok, Devin, Cline, and Aider in packaged setup and the setup provider inventory.)*
 
 *See also: [plans/](../plans/) for implementation plans*
