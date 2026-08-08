@@ -617,6 +617,22 @@ const LOCAL_PROVIDER_BASELINES: DesktopLocalProviderBaseline[] = [
     ],
   },
   {
+    id: 'aider',
+    label: 'Aider',
+    pack: 'native_cli_pack',
+    helperIds: [
+      'windows-aider-native-installer',
+      'linux-aider-native-installer',
+      'macos-aider-native-installer',
+    ],
+    currentHome: 'cats-platform/scripts/{windows/Install-Aider.ps1,linux/install-aider.sh,macos/install-aider.sh}',
+    targetHome: 'cats-platform packaged-host provider assets',
+    notes: [
+      'Bundled through the repo-owned native Aider installer wrapper on each supported host platform.',
+      'Uninstall runs uv tool uninstall aider-chat; the entry point is a uv tool shim, and the bundled uv is left in place.',
+    ],
+  },
+  {
     id: 'devin',
     label: 'Devin CLI',
     pack: 'native_cli_pack',

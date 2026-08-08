@@ -136,6 +136,7 @@ async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Pi.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Cline.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Devin.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Aider.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Ollama.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'), '# helper');
   await seedFile(join(packageRoot, 'config', 'provider-capability-bootstrap.yaml.example'), '# example\n');
@@ -162,6 +163,7 @@ async function seedUnixSetupAssets(packageRoot, platform) {
   await seedFile(join(packageRoot, 'scripts', platform, 'install-pi.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-cline.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-devin.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-aider.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'check-installation.sh'), '#!/usr/bin/env bash\n');
 }
 

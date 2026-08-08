@@ -164,7 +164,7 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /resolvePageMode/);
   assert.match(html, /snapshot\.app\.onboardingMode === 'setup_status'/);
   assert.match(html, /continueDisabled = legacyCliGate && installedCount === 0/);
-  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',\s*'goose', 'grok', 'cline', 'devin', 'ollama'\s*\]/);
+  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',\s*'goose', 'grok', 'cline', 'devin', 'aider', 'ollama'\s*\]/);
   assert.match(html, /ONBOARDING_NPM_PROVIDER_ORDER = \[\s*'codex', 'copilot', 'opencode',\s*'kilo', 'auggie', 'pi'\s*\]/);
   assert.match(html, /Node\.js \/ npm/);
   assert.match(html, /Required by npm CLIs/);

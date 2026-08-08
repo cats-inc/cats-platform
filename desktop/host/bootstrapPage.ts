@@ -1655,7 +1655,7 @@ export function buildDesktopBootstrapPage(): string {
        before npm-based CLIs. */
     var ONBOARDING_NATIVE_PROVIDER_ORDER = [
       'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',
-      'goose', 'grok', 'cline', 'devin', 'ollama'
+      'goose', 'grok', 'cline', 'devin', 'aider', 'ollama'
     ];
     var ONBOARDING_NPM_PROVIDER_ORDER = [
       'codex', 'copilot', 'opencode',
@@ -1684,6 +1684,7 @@ export function buildDesktopBootstrapPage(): string {
       grok: 'Grok',
       cline: 'Cline',
       devin: 'Devin',
+      aider: 'Aider',
       ollama: 'Ollama'
     };
     var cliInstallingState = Object.create(null);

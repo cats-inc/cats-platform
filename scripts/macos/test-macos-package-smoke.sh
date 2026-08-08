@@ -53,6 +53,7 @@ assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-antigravity.sh
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-grok.sh" 'bundled macOS Grok installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-cline.sh" 'bundled macOS Cline installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-devin.sh" 'bundled macOS Devin installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-aider.sh" 'bundled macOS Aider installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-copilot.sh" 'bundled macOS GitHub Copilot installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-opencode.sh" 'bundled macOS OpenCode installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-kilo.sh" 'bundled macOS Kilo Code installer helper'
@@ -101,6 +102,7 @@ assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-antigravity
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-grok-native-installer-script'), 'macOS target includes the bundled Grok installer asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-cline-native-installer-script'), 'macOS target includes the bundled Cline installer asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-devin-native-installer-script'), 'macOS target includes the bundled Devin installer asset');
+assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-aider-native-installer-script'), 'macOS target includes the bundled Aider installer asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-setup-readiness-audit-script'), 'macOS target includes the bundled readiness audit asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-provider-cli-common-support-script'), 'macOS target includes the macOS provider helper asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-node-cli-common-support-script'), 'macOS target includes the macOS npm helper asset');

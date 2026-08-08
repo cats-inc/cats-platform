@@ -52,6 +52,7 @@ provider_display_name() {
     antigravity) printf '%s\n' 'Antigravity CLI' ;;
     grok) printf '%s\n' 'Grok CLI' ;;
     devin) printf '%s\n' 'Devin CLI' ;;
+    aider) printf '%s\n' 'Aider' ;;
     claude) printf '%s\n' 'Claude Code CLI' ;;
     cursor) printf '%s\n' 'Cursor Agent CLI' ;;
     goose) printf '%s\n' 'Goose CLI' ;;
@@ -66,6 +67,7 @@ provider_primary_command() {
     antigravity) printf '%s\n' 'agy' ;;
     grok) printf '%s\n' 'grok' ;;
     devin) printf '%s\n' 'devin' ;;
+    aider) printf '%s\n' 'aider' ;;
     claude) printf '%s\n' 'claude' ;;
     cursor) printf '%s\n' 'cursor-agent' ;;
     goose) printf '%s\n' 'goose' ;;
@@ -96,6 +98,7 @@ provider_install_url() {
     antigravity) printf '%s\n' 'https://antigravity.google/cli/install.sh' ;;
     grok) printf '%s\n' 'https://x.ai/cli/install.sh' ;;
     devin) printf '%s\n' 'https://cli.devin.ai/install.sh' ;;
+    aider) printf '%s\n' 'https://aider.chat/install.sh' ;;
     claude) printf '%s\n' 'https://claude.ai/install.sh' ;;
     cursor) printf '%s\n' 'https://cursor.com/install' ;;
     goose) printf '%s\n' 'https://github.com/block/goose/releases/download/stable/download_cli.sh' ;;
@@ -339,6 +342,9 @@ run_remote_pipe_installer() {
     goose)
       curl -fsSL "$url" | env CONFIGURE=false bash
       ;;
+    aider)
+      curl -LsSf "$url" | sh
+      ;;
     cursor)
       curl "$url" -fsSL | bash
       ;;
@@ -417,6 +423,9 @@ run_provider_install_action() {
       ;;
     devin)
       run_devin_installer
+      ;;
+    aider)
+      run_remote_pipe_installer "$provider"
       ;;
     claude)
       if [ "$action" = 'upgrade' ] && current_command="$(detect_provider_command "$platform" "$provider")"; then
@@ -548,6 +557,30 @@ UPNP_EOF
         fi
         ;;
     esac
+  fi
+
+  # ~/.local/bin/aider is a uv tool shim, not the tool. Removing only the shim
+  # leaves aider-chat installed in the uv tool environment and the shim
+  # regenerable by any later `uv tool` command, so the tool is uninstalled
+  # through uv first and path removal only mops up what uv left behind.
+  #
+  # The uv binary itself is deliberately left in place: Aider's installer drops
+  # its own uv into ~/.local/bin, users commonly have another, and the helper
+  # cannot tell them apart. Removing a uv the user installed separately is a
+  # destructive false positive, so this warns instead (SPEC-112 PD4).
+  if [ "$provider" = 'aider' ]; then
+    if command -v uv >/dev/null 2>&1; then
+      if [ "$dry_run" = 'true' ]; then
+        __CATS_UNINSTALL_PLANNED+=("uv_tool_uninstall:aider-chat")
+      elif uv tool uninstall aider-chat >/dev/null 2>&1; then
+        __CATS_UNINSTALL_APPLIED+=("uv_tool_uninstalled:aider-chat")
+      else
+        __CATS_UNINSTALL_WARNINGS+=("uv_tool_uninstall_failed:aider-chat")
+      fi
+    else
+      __CATS_UNINSTALL_WARNINGS+=("uv_missing_aider_chat_may_remain")
+    fi
+    __CATS_UNINSTALL_WARNINGS+=("bundled_uv_left_in_place_provenance_unknown")
   fi
 
   for path in "${planned_paths[@]}"; do
