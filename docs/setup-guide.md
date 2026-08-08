@@ -590,6 +590,7 @@ Linux:
 ./scripts/linux/setup-node-global-prefix.sh
 ./scripts/linux/install-codex.sh
 ./scripts/linux/install-antigravity.sh
+./scripts/linux/install-grok.sh
 ./scripts/linux/install-copilot.sh
 ./scripts/linux/install-opencode.sh
 ./scripts/linux/install-kilo.sh
@@ -611,6 +612,7 @@ macOS:
 ./scripts/macos/setup-node-global-prefix.sh
 ./scripts/macos/install-codex.sh
 ./scripts/macos/install-antigravity.sh
+./scripts/macos/install-grok.sh
 ./scripts/macos/install-copilot.sh
 ./scripts/macos/install-opencode.sh
 ./scripts/macos/install-kilo.sh
@@ -629,8 +631,8 @@ Coverage in this slice:
 
 - host substrate install and upgrade for Node.js LTS (via nvm) and GitHub
   CLI (via Homebrew or a user-local tarball)
-- native CLI install and upgrade for Claude Code, Antigravity, Cursor Agent,
-  Goose, Junie, and Kiro
+- native CLI install and upgrade for Claude Code, Antigravity, Grok, Cursor
+  Agent, Goose, Junie, and Kiro
 - npm global-prefix/PATH repair for user-scoped installs
 - per-CLI npm-global install and upgrade for Codex, Copilot,
   OpenCode, Kilo, Auggie, and Pi (one script per CLI, no bulk install)
@@ -640,9 +642,16 @@ Coverage in this slice:
 - OpenClaw is not part of this local host audit because the catalog treats it
   as an `agent/gateway` backend rather than a host-local CLI/local-model target
 
+Grok installs under `~/.grok/bin`, not `~/.local/bin`. Its helper persists the
+correct PATH entry, detects only the `grok` command, and never treats a generic
+`agent` command as Grok. After installation, run `grok login` or set
+`XAI_API_KEY`. Uninstall removes only the fixed `grok` binary and adjacent
+installer-owned `agent` alias; it preserves `~/.grok/auth.json`, sessions, and
+configuration.
+
 These helpers are shipped as part of the npm package so self-hosted operators
-can use them after `npm install` or `npx`. They are not yet consumed by the
-desktop bootstrap/setup wizard.
+can use them after `npm install` or `npx`. Supported helpers are also staged as
+packaged Desktop setup assets.
 
 Cross-platform JSON audit core:
 
@@ -664,6 +673,8 @@ non-wizard operational use:
 .\scripts\windows\Install-Codex.ps1 -Apply
 .\scripts\windows\Install-Codex.ps1 -Upgrade
 .\scripts\windows\Install-Antigravity.ps1 -Apply
+.\scripts\windows\Install-Grok.ps1 -Apply
+.\scripts\windows\Install-Grok.ps1 -CheckOnly -Json
 .\scripts\windows\Install-ClaudeCode.ps1 -Apply
 .\scripts\windows\Check-WindowsSetupReadiness.ps1 -Json
 ```
@@ -675,22 +686,25 @@ Coverage in this slice:
   Auggie, and Pi (one script per CLI, no bulk install/uninstall)
 - aggregate readiness audit composing the host installer, prefix helper,
   per-CLI helpers, and native provider helpers
+- user-scoped Grok install/check/upgrade/force/uninstall against
+  `%USERPROFILE%\.grok\bin\grok.exe`, with the same fixed-path alias safety as
+  the Unix helpers
 
-These helpers are intentionally repo-owned script surfaces only. They are not
-yet wired into the packaged setup wizard/bootstrap flow.
+These helpers are repo-owned script surfaces and supported entries are staged
+for the packaged setup wizard/bootstrap flow.
 
 ### Manual Operator Matrix
 
 - **Linux host**
-  - Install: `./scripts/linux/install-node.sh` (when Node is missing) followed by per-CLI helpers like `./scripts/linux/install-codex.sh`, `./scripts/linux/install-antigravity.sh`, `./scripts/linux/install-claude-code.sh`, etc.
+  - Install: `./scripts/linux/install-node.sh` (when Node is missing) followed by per-CLI helpers like `./scripts/linux/install-codex.sh`, `./scripts/linux/install-antigravity.sh`, `./scripts/linux/install-grok.sh`, `./scripts/linux/install-claude-code.sh`, etc.
   - Check: `./scripts/linux/check-installation.sh --json`
   - Upgrade: `./scripts/linux/upgrade-cli-tools.sh`
 - **macOS host**
-  - Install: `./scripts/macos/install-node.sh` (when Node is missing) followed by per-CLI helpers like `./scripts/macos/install-codex.sh`, `./scripts/macos/install-antigravity.sh`, `./scripts/macos/install-claude-code.sh`, etc.
+  - Install: `./scripts/macos/install-node.sh` (when Node is missing) followed by per-CLI helpers like `./scripts/macos/install-codex.sh`, `./scripts/macos/install-antigravity.sh`, `./scripts/macos/install-grok.sh`, `./scripts/macos/install-claude-code.sh`, etc.
   - Check: `./scripts/macos/check-installation.sh --json`
   - Upgrade: `./scripts/macos/upgrade-cli-tools.sh`
 - **Windows native host**
-  - Install: `.\scripts\windows\Install-Node.ps1 -Apply` (when Node is missing) followed by per-CLI helpers like `.\scripts\windows\Install-Codex.ps1 -Apply`, `.\scripts\windows\Install-Antigravity.ps1 -Apply`, `.\scripts\windows\Install-ClaudeCode.ps1 -Apply`, etc.
+  - Install: `.\scripts\windows\Install-Node.ps1 -Apply` (when Node is missing) followed by per-CLI helpers like `.\scripts\windows\Install-Codex.ps1 -Apply`, `.\scripts\windows\Install-Antigravity.ps1 -Apply`, `.\scripts\windows\Install-Grok.ps1 -Apply`, `.\scripts\windows\Install-ClaudeCode.ps1 -Apply`, etc.
   - Check: `.\scripts\windows\Check-WindowsSetupReadiness.ps1 -Json`
   - Upgrade: invoke each per-CLI helper with `-Upgrade`
 

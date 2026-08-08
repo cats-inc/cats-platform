@@ -150,6 +150,7 @@ export const DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS = [
   'junie',
   'auggie',
   'pi',
+  'grok',
   'ollama',
 ] as const;
 export const DESKTOP_PROVIDER_SETUP_DELIVERY_PHASES = [

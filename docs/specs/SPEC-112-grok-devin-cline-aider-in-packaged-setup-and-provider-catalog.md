@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft — implementation blocked pending User approval |
+| **Status** | In Progress — Grok slice implemented; Devin, Cline, and Aider pending User approval |
 | **Owner** | User |
 | **Reviewer** | User |
 
@@ -174,7 +174,7 @@ Both official Devin installers end with an invocation of the freshly installed b
 
 ## Proposed Decisions
 
-> These proposals turn the first draft's open questions into reviewable choices. They are not approved decisions: implementation remains blocked until the User confirms or changes them. PD1 is the most product-sensitive choice because it controls the first-run surface.
+> These proposals turn the first draft's open questions into reviewable choices. The User approved the Grok-only implementation slice on 2026-08-08, including the Grok-specific effects of these proposals. Devin, Cline, and Aider remain approval-gated. PD1 is the most product-sensitive choice because it controls the first-run surface.
 
 ### PD1 — Onboarding collapsed set
 

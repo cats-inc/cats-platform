@@ -918,7 +918,7 @@ EOF
   fi
 
   if [ "$collection_mode" = 'serial' ]; then
-    for provider in claude antigravity cursor goose junie kiro; do
+    for provider in claude antigravity cursor goose junie kiro grok; do
       if command_path="$(detect_provider_command "$platform" "$provider")"; then
         handle_audited_check_result "$provider" "$(provider_display_name "$provider")" 'true' 'native' 'host' 'ready'
         unset command_path
@@ -951,7 +951,7 @@ EOF
       fi
     fi
   else
-    for provider in claude antigravity cursor goose junie kiro; do
+    for provider in claude antigravity cursor goose junie kiro grok; do
       async_file="$(mktemp)"
       async_files+=("$async_file")
       (

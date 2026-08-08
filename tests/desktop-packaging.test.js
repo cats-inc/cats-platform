@@ -128,6 +128,7 @@ async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiroCli.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Codex.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Antigravity.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Grok.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Copilot.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-OpenCode.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiloCli.ps1'), '# helper');
@@ -151,6 +152,7 @@ async function seedUnixSetupAssets(packageRoot, platform) {
   await seedFile(join(packageRoot, 'scripts', platform, 'install-kiro-cli.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-codex.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-antigravity.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-grok.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-copilot.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-opencode.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-kilo.sh'), '#!/usr/bin/env bash\n');
@@ -804,6 +806,9 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /desktop\\setup-assets\\windows\\_NpmCliInstaller\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Codex\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Antigravity\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-Grok\.ps1/);
+  assert.match(script, /-CheckOnly -Json -AllowAdmin/);
+  assert.match(script, /-Force -DryRun -Json -AllowAdmin/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Copilot\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-OpenCode\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-KiloCli\.ps1/);
@@ -845,16 +850,22 @@ test('macOS and Linux unpacked smoke-check scripts validate bundled sidecars and
   assert.match(linuxScript, /release\/linux-unpacked/);
   assert.match(linuxScript, /desktop\/setup-assets\/linux\/setup-node-global-prefix\.sh/);
   assert.match(linuxScript, /desktop\/setup-assets\/linux\/provider-cli-common\.sh/);
+  assert.match(linuxScript, /desktop\/setup-assets\/linux\/install-grok\.sh/);
+  assert.match(linuxScript, /--check --json/);
+  assert.match(linuxScript, /--force --dry-run --json/);
   assert.match(linuxScript, /linux-opencode-native-installer-script/);
   assert.match(linuxScript, /linux-install-readiness-audit/);
   assert.match(macosScript, /release\/mac-universal\/Cats\.app/);
   assert.match(macosScript, /desktop\/setup-assets\/macos\/setup-node-global-prefix\.sh/);
   assert.match(macosScript, /desktop\/setup-assets\/macos\/node-cli-common\.sh/);
+  assert.match(macosScript, /desktop\/setup-assets\/macos\/install-grok\.sh/);
+  assert.match(macosScript, /--check --json/);
+  assert.match(macosScript, /--force --dry-run --json/);
   assert.match(macosScript, /macos-opencode-native-installer-script/);
   assert.match(macosScript, /macos-install-readiness-audit/);
 });
 
-test('setup asset registry keeps Antigravity on standalone native metadata', async () => {
+test('setup asset registry keeps Antigravity and Grok on standalone native metadata', async () => {
   const source = await readFile(
     join(process.cwd(), 'desktop', 'host', 'setupAssets.ts'),
     'utf8',
@@ -870,31 +881,51 @@ test('setup asset registry keeps Antigravity on standalone native metadata', asy
     windowsTupleStart,
   );
   const unixMarker = 'id: `${platform}-antigravity-native-installer-script`';
+  const unixGrokMarker = 'id: `${platform}-grok-native-installer-script`';
   const unixNextMarker = 'id: `${platform}-setup-readiness-audit-script`';
   const windowsMarker = "id: 'windows-antigravity-native-installer-script'";
+  const windowsGrokMarker = "id: 'windows-grok-native-installer-script'";
   const windowsNextMarker = "id: 'windows-claude-native-installer-script'";
   const unixStart = source.indexOf(unixMarker);
+  const unixGrokStart = source.indexOf(unixGrokMarker);
   const windowsStart = source.indexOf(windowsMarker);
+  const windowsGrokStart = source.indexOf(windowsGrokMarker);
   assert.notEqual(unixTupleStart, -1);
   assert.notEqual(unixTupleEnd, -1);
   assert.notEqual(windowsTupleStart, -1);
   assert.notEqual(windowsTupleEnd, -1);
   assert.notEqual(unixStart, -1);
+  assert.notEqual(unixGrokStart, -1);
   assert.notEqual(windowsStart, -1);
+  assert.notEqual(windowsGrokStart, -1);
   const unixTuple = source.slice(unixTupleStart, unixTupleEnd);
   const windowsTuple = source.slice(windowsTupleStart, windowsTupleEnd);
-  const unixAntigravityBlock = source.slice(unixStart, source.indexOf(unixNextMarker, unixStart));
+  const unixAntigravityBlock = source.slice(unixStart, unixGrokStart);
+  const unixGrokBlock = source.slice(
+    unixGrokStart,
+    source.indexOf(unixNextMarker, unixGrokStart),
+  );
   const windowsAntigravityBlock = source.slice(
     windowsStart,
-    source.indexOf(windowsNextMarker, windowsStart),
+    windowsGrokStart,
+  );
+  const windowsGrokBlock = source.slice(
+    windowsGrokStart,
+    source.indexOf(windowsNextMarker, windowsGrokStart),
   );
 
   assert.doesNotMatch(unixTuple, /antigravity|install-antigravity/u);
+  assert.doesNotMatch(unixTuple, /grok|install-grok/u);
   assert.doesNotMatch(windowsTuple, /antigravity|Install-Antigravity/u);
+  assert.doesNotMatch(windowsTuple, /grok|Install-Grok/u);
   assert.match(unixAntigravityBlock, /user-scoped native binary/u);
+  assert.match(unixGrokBlock, /user-scoped native binary under ~\/\.grok\/bin/u);
   assert.match(windowsAntigravityBlock, /user-scoped native binary/u);
+  assert.match(windowsGrokBlock, /user-scoped native binary/u);
   assert.doesNotMatch(unixAntigravityBlock, /npm-global|repo-owned Unix helper contract/u);
+  assert.doesNotMatch(unixGrokBlock, /npm-global|repo-owned Unix helper contract/u);
   assert.doesNotMatch(windowsAntigravityBlock, /npm-global|repo-owned Unix helper contract/u);
+  assert.doesNotMatch(windowsGrokBlock, /npm-global|repo-owned Unix helper contract/u);
 });
 
 test('build-desktop-installer script avoids shell execution on Windows', async () => {
@@ -1215,6 +1246,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', '_NpmCliInstaller.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Codex.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Antigravity.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Grok.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Copilot.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-OpenCode.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-KiloCli.ps1'));
@@ -1233,6 +1265,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'setup-node-global-prefix.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-codex.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-antigravity.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-grok.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-copilot.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-opencode.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-kilo.sh'));

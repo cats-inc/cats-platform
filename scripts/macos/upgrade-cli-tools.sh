@@ -35,7 +35,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-for script_name in install-claude-code.sh install-antigravity.sh install-cursor-agent.sh install-goose.sh install-junie.sh install-kiro-cli.sh; do
+for script_name in install-claude-code.sh install-antigravity.sh install-cursor-agent.sh install-goose.sh install-junie.sh install-kiro-cli.sh install-grok.sh; do
   "$SCRIPT_DIR/$script_name" -Upgrade
 done
 

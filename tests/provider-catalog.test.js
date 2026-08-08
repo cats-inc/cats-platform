@@ -7,6 +7,18 @@ import {
   normalizeProviderAdvancedModelCatalog,
   normalizeProviderModelCatalog,
 } from '../build/server/shared/providerCatalog.js';
+import {
+  PRODUCT_PROVIDER_MODELS,
+  PRODUCT_PROVIDER_ORDER,
+} from '../build/server/shared/providerCatalogData.js';
+import { PRODUCT_PROVIDER_INSTANCES } from '../build/server/shared/providerCatalogInstances.js';
+
+test('refusal-only Grok stays outside the product execution catalog', () => {
+  assert.equal(PRODUCT_PROVIDER_ORDER.length, 14);
+  assert.equal(PRODUCT_PROVIDER_ORDER.includes('grok'), false);
+  assert.equal(Object.hasOwn(PRODUCT_PROVIDER_MODELS, 'grok'), false);
+  assert.equal(Object.hasOwn(PRODUCT_PROVIDER_INSTANCES, 'grok'), false);
+});
 
 test('Junie static fallback matches the curated picker snapshot', () => {
   assert.equal(getDefaultModel('junie'), 'Gemini 3 Flash');

@@ -3,6 +3,9 @@
 Date: 2026-08-07
 Status: Proposed
 
+Implementation note: the User approved the Grok-only subset on 2026-08-08.
+The broader Devin, Cline, and Aider decision remains proposed.
+
 ## Context
 
 `environment-bootstrap` added four AI coding CLIs to the upstream installer suite between 2026-08-04 and 2026-08-05: Grok CLI (xAI, `cb5efc7`), Cline (`d131535`), Devin CLI (`216ef96`), and Aider (`54992d6`). `cats-runtime` ADR-033 proposes adopting all four as CLI provider families at the install/check tier.
@@ -136,4 +139,4 @@ An installer can be useful before an execution adapter exists, but a product cat
 ---
 
 *Proposal prepared: 2026-08-07*
-*Decision status: Pending User approval*
+*Decision status: Grok subset approved 2026-08-08; remaining providers pending User approval*

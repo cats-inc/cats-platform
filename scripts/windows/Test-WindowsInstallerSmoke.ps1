@@ -195,6 +195,7 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\_NpmCliInstaller.ps1'); Label = 'bundled Windows shared npm CLI installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Codex.ps1'); Label = 'bundled Windows native OpenAI Codex installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Antigravity.ps1'); Label = 'bundled Windows native Antigravity installer helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Grok.ps1'); Label = 'bundled Windows native Grok installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Copilot.ps1'); Label = 'bundled Windows native GitHub Copilot installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-OpenCode.ps1'); Label = 'bundled Windows native OpenCode installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-KiloCli.ps1'); Label = 'bundled Windows native Kilo Code installer helper' },
@@ -216,6 +217,16 @@ foreach ($requiredFile in $requiredFiles) {
   Assert-FileExists -Path $requiredFile.Path -Label $requiredFile.Label
 }
 
+$grokHelperPath = Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Grok.ps1'
+$grokCheck = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $grokHelperPath `
+  -CheckOnly -Json -AllowAdmin | ConvertFrom-Json
+Assert-True ($grokCheck.helper -eq 'windows-grok-native-installer') `
+  'bundled Windows Grok helper check mode completed'
+$grokPreview = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $grokHelperPath `
+  -Force -DryRun -Json -AllowAdmin | ConvertFrom-Json
+Assert-True ($grokPreview.status -eq 'preview') `
+  'bundled Windows Grok helper dry-run mode completed'
+
 $packagingPlan = Read-JsonFile -Path $packagingPlanPath
 Assert-True ($packagingPlan.strategy -eq 'electron-sidecar-bundle') 'installer packaging strategy is electron-sidecar-bundle'
 Assert-True ($packagingPlan.selfHostedNpmCompatible -eq $true) 'installer keeps self-hosted npm compatibility'
@@ -232,6 +243,7 @@ Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-githu
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-npm-prefix-helper-script' }).Count -ge 1) 'Windows target includes the bundled npm prefix setup asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-codex-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native OpenAI Codex installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-antigravity-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Antigravity installer asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-grok-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Grok installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-copilot-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native GitHub Copilot installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-opencode-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native OpenCode installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-kilo-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Kilo installer asset'
@@ -246,6 +258,7 @@ Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-ollam
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-setup-readiness-audit-script' }).Count -ge 1) 'Windows target includes the bundled setup readiness audit asset'
 Assert-True (($packagingPlan.installer.providerSetup.localProviders | Where-Object { $_.id -eq 'opencode' -and $_.bundledInCurrentInstaller -eq $true }).Count -ge 1) 'installer contract keeps OpenCode in the bundled local-provider rollout'
 Assert-True (($packagingPlan.installer.providerSetup.localProviders | Where-Object { $_.id -eq 'kilo' -and $_.bundledInCurrentInstaller -eq $true }).Count -ge 1) 'installer contract keeps Kilo in the bundled local-provider rollout'
+Assert-True (($packagingPlan.installer.providerSetup.localProviders | Where-Object { $_.id -eq 'grok' -and $_.bundledInCurrentInstaller -eq $true }).Count -ge 1) 'installer contract keeps Grok in the bundled local-provider rollout'
 Assert-True (($packagingPlan.installer.providerSetup.localProviders | Where-Object { $_.id -eq 'ollama' -and $_.bundledInCurrentInstaller -eq $true }).Count -ge 1) 'installer contract keeps Ollama in the bundled local-provider rollout'
 Assert-True (($packagingPlan.installer.providerSetup.helperCatalog | Where-Object { $_.id -eq 'windows-ollama-local-model-installer' }).Count -ge 1) 'installer contract includes the bundled Ollama helper metadata'
 

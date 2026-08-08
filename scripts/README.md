@@ -185,6 +185,7 @@ packaging and installer flows.
 - `scripts/windows/_NpmCliInstaller.ps1`
 - `scripts/windows/Install-Codex.ps1`
 - `scripts/windows/Install-Antigravity.ps1`
+- `scripts/windows/Install-Grok.ps1`
 - `scripts/windows/Install-Copilot.ps1`
 - `scripts/windows/Install-OpenCode.ps1`
 - `scripts/windows/Install-KiloCli.ps1`
@@ -226,6 +227,11 @@ the others.
 Antigravity `agy` installer. It accepts the same Desktop setup bridge flags but
 does not use the npm-global helper.
 
+`Install-Grok.ps1` wraps xAI's native installer and owns the same check/apply/
+upgrade/force/uninstall JSON contract. It detects only `grok.exe`; uninstall
+removes the fixed adjacent `grok.exe` and installer-owned `agent.exe` paths
+without resolving a generic `agent` command from PATH.
+
 `Check-WindowsSetupReadiness.ps1` composes the repo-owned packaged setup
 helpers into one host-readable audit for the npm prefix substrate, the
 per-CLI npm-global helpers, the native Windows provider helpers including
@@ -253,6 +259,7 @@ runtime:
 - `scripts/linux/setup-node-global-prefix.sh`
 - `scripts/linux/install-codex.sh`
 - `scripts/linux/install-antigravity.sh`
+- `scripts/linux/install-grok.sh`
 - `scripts/linux/install-copilot.sh`
 - `scripts/linux/install-opencode.sh`
 - `scripts/linux/install-kilo.sh`
@@ -270,6 +277,7 @@ runtime:
 - `scripts/macos/setup-node-global-prefix.sh`
 - `scripts/macos/install-codex.sh`
 - `scripts/macos/install-antigravity.sh`
+- `scripts/macos/install-grok.sh`
 - `scripts/macos/install-copilot.sh`
 - `scripts/macos/install-opencode.sh`
 - `scripts/macos/install-kilo.sh`
@@ -288,7 +296,7 @@ These helpers cover the same first-pass self-hosted provider baseline that
 
 - host substrate installers for Node.js LTS (via nvm) and GitHub CLI (via
   Homebrew or a user-local tarball)
-- native installers for Claude Code, Antigravity, Cursor Agent, Goose, Junie, and Kiro
+- native installers for Claude Code, Antigravity, Grok, Cursor Agent, Goose, Junie, and Kiro
 - npm global-prefix setup for user-scoped installs
 - per-CLI npm-global installers for Codex, Copilot, OpenCode, Kilo,
   Auggie, and Pi

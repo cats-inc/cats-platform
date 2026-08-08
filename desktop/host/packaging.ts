@@ -647,6 +647,22 @@ const LOCAL_PROVIDER_BASELINES: DesktopLocalProviderBaseline[] = [
     ],
   },
   {
+    id: 'grok',
+    label: 'Grok CLI',
+    pack: 'native_cli_pack',
+    helperIds: [
+      'windows-grok-native-installer',
+      'linux-grok-native-installer',
+      'macos-grok-native-installer',
+    ],
+    currentHome:
+      'cats-platform/scripts/{windows/Install-Grok.ps1,linux/install-grok.sh,macos/install-grok.sh}',
+    targetHome: 'cats-platform packaged-host provider assets',
+    notes: [
+      'Bundled through the repo-owned native Grok installer wrapper on each supported host platform.',
+    ],
+  },
+  {
     id: 'goose',
     label: 'Goose CLI',
     pack: 'native_cli_pack',

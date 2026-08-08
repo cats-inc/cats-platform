@@ -72,6 +72,9 @@
 .PARAMETER AntigravityInstallState
     Override Antigravity CLI installation detection for deterministic tests.
 
+.PARAMETER GrokInstallState
+    Override Grok CLI installation detection for deterministic tests.
+
 .PARAMETER GooseInstallState
     Override Goose installation detection for deterministic tests.
 
@@ -114,6 +117,8 @@ param(
   [string]$CursorAuthState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$AntigravityInstallState = 'auto',
+  [ValidateSet('auto', 'installed', 'missing')]
+  [string]$GrokInstallState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$GooseInstallState = 'auto',
   [ValidateSet('auto', 'authenticated', 'auth_required')]
@@ -352,6 +357,7 @@ $prefixHelperPath = Join-Path $PSScriptRoot 'Setup-NodeGlobalPrefix.ps1'
 $claudeHelperPath = Join-Path $PSScriptRoot 'Install-ClaudeCode.ps1'
 $cursorHelperPath = Join-Path $PSScriptRoot 'Install-CursorAgent.ps1'
 $antigravityHelperPath = Join-Path $PSScriptRoot 'Install-Antigravity.ps1'
+$grokHelperPath = Join-Path $PSScriptRoot 'Install-Grok.ps1'
 $gooseHelperPath = Join-Path $PSScriptRoot 'Install-Goose.ps1'
 $junieHelperPath = Join-Path $PSScriptRoot 'Install-Junie.ps1'
 $kiroHelperPath = Join-Path $PSScriptRoot 'Install-KiroCli.ps1'
@@ -470,6 +476,16 @@ if ($includeNativeProvidersEnabled) {
       Arguments = $antigravityArguments
     })
 
+  $grokArguments = @('-CheckOnly', '-Json')
+  if ($GrokInstallState -ne 'auto') {
+    $grokArguments += @('-InstallState', $GrokInstallState)
+  }
+  $helperInvocations.Add([pscustomobject]@{
+      Key = 'grok'
+      ScriptPath = $grokHelperPath
+      Arguments = $grokArguments
+    })
+
   $gooseArguments = @('-CheckOnly', '-Json')
   if ($GooseInstallState -ne 'auto') {
     $gooseArguments += @('-InstallState', $GooseInstallState)
@@ -532,6 +548,7 @@ $prefixHelper = $helperResults['prefixHelper']
 $claudeResult = if ($helperResults.ContainsKey('claude')) { $helperResults['claude'] } else { $null }
 $cursorResult = if ($helperResults.ContainsKey('cursor')) { $helperResults['cursor'] } else { $null }
 $antigravityResult = if ($helperResults.ContainsKey('antigravity')) { $helperResults['antigravity'] } else { $null }
+$grokResult = if ($helperResults.ContainsKey('grok')) { $helperResults['grok'] } else { $null }
 $gooseResult = if ($helperResults.ContainsKey('goose')) { $helperResults['goose'] } else { $null }
 $junieResult = if ($helperResults.ContainsKey('junie')) { $helperResults['junie'] } else { $null }
 $kiroResult = if ($helperResults.ContainsKey('kiro')) { $helperResults['kiro'] } else { $null }
@@ -617,6 +634,9 @@ if ($null -ne $cursorResult) {
 if ($null -ne $antigravityResult) {
   $statuses += $antigravityResult.status
 }
+if ($null -ne $grokResult) {
+  $statuses += $grokResult.status
+}
 if ($null -ne $gooseResult) {
   $statuses += $gooseResult.status
 }
@@ -666,6 +686,9 @@ if ($null -ne $cursorResult) {
 if ($null -ne $antigravityResult -and $antigravityResult.status -eq 'not_installed') {
   $plannedActions.Add('provider:install_antigravity_native')
 }
+if ($null -ne $grokResult -and $grokResult.status -eq 'not_installed') {
+  $plannedActions.Add('provider:install_grok_native')
+}
 if ($null -ne $gooseResult) {
   if ($gooseResult.status -eq 'not_installed') {
     $plannedActions.Add('provider:install_goose_native')
@@ -713,6 +736,11 @@ if ($null -ne $cursorResult) {
 }
 if ($null -ne $antigravityResult) {
   foreach ($warning in $antigravityResult.warnings) {
+    $warnings.Add([string]$warning)
+  }
+}
+if ($null -ne $grokResult) {
+  foreach ($warning in $grokResult.warnings) {
     $warnings.Add([string]$warning)
   }
 }
@@ -767,6 +795,7 @@ Add-InterruptionsFromResult -HelperResult $nativeCliPack
 Add-InterruptionsFromResult -HelperResult $claudeResult
 Add-InterruptionsFromResult -HelperResult $cursorResult
 Add-InterruptionsFromResult -HelperResult $antigravityResult
+Add-InterruptionsFromResult -HelperResult $grokResult
 Add-InterruptionsFromResult -HelperResult $gooseResult
 Add-InterruptionsFromResult -HelperResult $junieResult
 Add-InterruptionsFromResult -HelperResult $kiroResult
@@ -815,6 +844,7 @@ $result = [pscustomobject]@{
     claude = $claudeResult
     cursor = $cursorResult
     antigravity = $antigravityResult
+    grok = $grokResult
     goose = $gooseResult
     junie = $junieResult
     kiro = $kiroResult

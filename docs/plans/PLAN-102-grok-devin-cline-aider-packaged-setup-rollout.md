@@ -4,9 +4,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft — implementation blocked pending User approval |
+| **Status** | In Progress — Grok slice implemented; Devin, Cline, and Aider pending User approval |
 | **Owner** | User |
-| **Assigned To** | Unassigned |
+| **Assigned To** | Codex |
 | **Reviewer** | User |
 
 ## Related Spec
@@ -62,7 +62,7 @@ Same probe as `cats-runtime` PLAN-034 Phase 1; do not duplicate the work, share 
 - [ ] Record the official macOS/Linux-only Cline support boundary. A Windows helper remains out of scope unless a later reviewed live execution probe supersedes it.
 - [ ] Record findings in the shared research note.
 
-Windows helper file naming is no longer a technical probe item: SPEC-112 PD5 proposes `Install-Grok.ps1`, `Install-Devin.ps1`, and `Install-Aider.ps1`. The plan remains blocked pending User approval; no `Install-Cline.ps1` is proposed.
+Windows helper file naming is no longer a technical probe item: SPEC-112 PD5 proposes `Install-Grok.ps1`, `Install-Devin.ps1`, and `Install-Aider.ps1`. The User approved `Install-Grok.ps1` with the Grok-only slice on 2026-08-08; the remaining helper names stay approval-gated, and no `Install-Cline.ps1` is proposed.
 
 **Deliverables**: Facts, not recollections, behind every helper table entry.
 
@@ -216,6 +216,7 @@ Behavior-preserving refactor, landed separately so a regression is attributable.
 |------|--------|
 | 2026-08-07 | Plan created alongside ADR-109 and SPEC-112, after auditing `environment-bootstrap` commits `cb5efc7`, `d131535`, `216ef96`, `54992d6`, `0d1831d`, `cfe7785`. Pi npm package drift found in four platform locations during the same audit and folded into Phases 4 and 5. |
 | 2026-08-07 | SPEC-112 open questions rewritten as Proposed Decisions PD1–PD6 pending User approval, so implementation remains blocked. Review corrections keep refusal-only providers out of the product execution catalog, limit Cline to official macOS/Linux support, make Devin installer stripping fail closed, remove Grok's known alias during uninstall, and align npm `--allow-scripts` behavior with the exact upstream allowlist when supported. |
+| 2026-08-08 | User approved implementation starting with Grok. Cross-platform Grok helpers, fixed-path alias-safe uninstall, install-directory abstraction, readiness and upgrade wiring, setup inventory/assets, packaging metadata, product-catalog guardrails, smoke coverage, and docs landed as the first slice. Devin, Cline, Aider, and the Pi rename remain pending. |
 
 ---
 

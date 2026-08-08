@@ -10,7 +10,7 @@ test('buildDesktopCliInventoryFromRuntime returns unknown source when runtime pr
   assert.equal(inventory.total, 0);
   assert.deepEqual(inventory.installed, []);
   assert.equal(inventory.scannedAt, null);
-  assert.equal(inventory.candidates.length, 13);
+  assert.equal(inventory.candidates.length, 14);
   for (const candidate of inventory.candidates) {
     assert.equal(candidate.installed, false);
   }
@@ -33,19 +33,21 @@ test('buildDesktopCliInventoryFromRuntime maps runtime providers to platform-spe
         { provider: 'antigravity', available: false },
         { provider: 'cursor', available: true },
         { provider: 'kiro', available: false },
+        { provider: 'grok', available: true },
       ],
     },
   }, 'win32');
 
   assert.equal(inventory.source, 'runtime');
   assert.equal(inventory.scannedAt, '2026-04-30T10:00:00.000Z');
-  assert.equal(inventory.total, 3);
+  assert.equal(inventory.total, 4);
   assert.deepEqual(
     inventory.installed.sort(),
     [
       'windows-claude-native-installer',
       'windows-codex-native-installer',
       'windows-cursor-native-installer',
+      'windows-grok-native-installer',
     ].sort(),
   );
 
@@ -60,6 +62,10 @@ test('buildDesktopCliInventoryFromRuntime maps runtime providers to platform-spe
 
   const antigravityEntry = inventory.candidates.find((c) => c.providerId === 'antigravity');
   assert.equal(antigravityEntry?.installed, false);
+
+  const grokEntry = inventory.candidates.find((c) => c.providerId === 'grok');
+  assert.equal(grokEntry?.installed, true);
+  assert.equal(grokEntry?.helperId, 'windows-grok-native-installer');
 });
 
 test('buildDesktopCliInventoryFromRuntime never marks ollama as installed (not in runtime KNOWN_PROVIDERS)', () => {

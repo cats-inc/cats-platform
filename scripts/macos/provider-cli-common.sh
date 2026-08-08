@@ -50,6 +50,7 @@ platform_label() {
 provider_display_name() {
   case "$1" in
     antigravity) printf '%s\n' 'Antigravity CLI' ;;
+    grok) printf '%s\n' 'Grok CLI' ;;
     claude) printf '%s\n' 'Claude Code CLI' ;;
     cursor) printf '%s\n' 'Cursor Agent CLI' ;;
     goose) printf '%s\n' 'Goose CLI' ;;
@@ -62,6 +63,7 @@ provider_display_name() {
 provider_primary_command() {
   case "$1" in
     antigravity) printf '%s\n' 'agy' ;;
+    grok) printf '%s\n' 'grok' ;;
     claude) printf '%s\n' 'claude' ;;
     cursor) printf '%s\n' 'cursor-agent' ;;
     goose) printf '%s\n' 'goose' ;;
@@ -90,6 +92,7 @@ provider_alias_target() {
 provider_install_url() {
   case "$1" in
     antigravity) printf '%s\n' 'https://antigravity.google/cli/install.sh' ;;
+    grok) printf '%s\n' 'https://x.ai/cli/install.sh' ;;
     claude) printf '%s\n' 'https://claude.ai/install.sh' ;;
     cursor) printf '%s\n' 'https://cursor.com/install' ;;
     goose) printf '%s\n' 'https://github.com/block/goose/releases/download/stable/download_cli.sh' ;;
@@ -99,28 +102,25 @@ provider_install_url() {
   esac
 }
 
+provider_install_dir() {
+  case "$1" in
+    grok) printf '%s\n' "$HOME/.grok/bin" ;;
+    *) printf '%s\n' "$HOME/.local/bin" ;;
+  esac
+}
+
 provider_binary_candidates() {
   local platform="$1"
   local provider="$2"
+  local install_dir
+  local primary_command
+
+  install_dir="$(provider_install_dir "$provider")"
+  primary_command="$(provider_primary_command "$provider")"
+  printf '%s\n' "$install_dir/$primary_command"
 
   case "$provider" in
-    antigravity)
-      printf '%s\n' "$HOME/.local/bin/agy"
-      ;;
-    claude)
-      printf '%s\n' "$HOME/.local/bin/claude"
-      ;;
-    cursor)
-      printf '%s\n' "$HOME/.local/bin/cursor-agent"
-      ;;
-    goose)
-      printf '%s\n' "$HOME/.local/bin/goose"
-      ;;
-    junie)
-      printf '%s\n' "$HOME/.local/bin/junie"
-      ;;
     kiro)
-      printf '%s\n' "$HOME/.local/bin/kiro-cli"
       printf '%s\n' '/usr/local/bin/kiro-cli'
       printf '%s\n' '/opt/homebrew/bin/kiro-cli'
       if [ "$platform" = 'macos' ]; then
@@ -169,11 +169,21 @@ prepend_path_if_missing() {
   fi
 }
 
-ensure_local_bin_path_export() {
+ensure_provider_bin_path_export() {
   local shell_rc="$1"
+  local provider="$2"
+  local install_dir
+  local path_export
+
+  install_dir="$(provider_install_dir "$provider")"
+  if [ "$provider" = 'grok' ]; then
+    path_export='export PATH="$HOME/.grok/bin:$PATH"'
+  else
+    path_export='export PATH="$HOME/.local/bin:$PATH"'
+  fi
   append_line_if_missing "$shell_rc" '# Added by cats-platform self-hosted provider helpers' '# Added by cats-platform self-hosted provider helpers'
-  append_line_if_missing "$shell_rc" 'export PATH="$HOME/.local/bin:$PATH"' 'export PATH="$HOME/.local/bin:$PATH"'
-  prepend_path_if_missing "$HOME/.local/bin"
+  append_line_if_missing "$shell_rc" "$path_export" "$path_export"
+  prepend_path_if_missing "$install_dir"
 }
 
 rewrite_alias_line() {
@@ -270,7 +280,7 @@ run_remote_pipe_installer() {
   url="$(provider_install_url "$provider")"
 
   case "$provider" in
-    antigravity)
+    antigravity|grok)
       curl -fsSL "$url" | bash
       ;;
     goose)
@@ -349,6 +359,9 @@ run_provider_install_action() {
         run_remote_pipe_installer "$provider"
       fi
       ;;
+    grok)
+      run_remote_pipe_installer "$provider"
+      ;;
     claude)
       if [ "$action" = 'upgrade' ] && current_command="$(detect_provider_command "$platform" "$provider")"; then
         "$current_command" update || true
@@ -413,7 +426,7 @@ uninstall_provider_native_paths() {
   local planned_paths=()
 
   primary_command="$(provider_primary_command "$provider")"
-  if primary_path="$(command -v "$primary_command" 2>/dev/null)"; then
+  if [ "$provider" != 'grok' ] && primary_path="$(command -v "$primary_command" 2>/dev/null)"; then
     case "$primary_path" in
       "$HOME"/*) planned_paths+=("$primary_path") ;;
     esac
@@ -444,6 +457,13 @@ UPNP_EOF
     done
     if [ "$platform" = 'macos' ] && [ -d '/Applications/Kiro CLI.app' ]; then
       planned_paths+=('/Applications/Kiro CLI.app')
+    fi
+  fi
+
+  if [ "$provider" = 'grok' ]; then
+    extra="$(provider_install_dir "$provider")/agent"
+    if [ -e "$extra" ] || [ -L "$extra" ]; then
+      planned_paths+=("$extra")
     fi
   fi
 
@@ -683,7 +703,7 @@ run_native_provider_installer() {
     fi
 
     if [ "$force" = 'false' ] && [ "$upgrade" = 'false' ]; then
-      ensure_local_bin_path_export "$shell_rc"
+      ensure_provider_bin_path_export "$shell_rc" "$provider"
       ensure_provider_alias "$shell_rc" "$provider"
       if [ "$emit_json" = 'true' ]; then
         printf '{'
@@ -787,7 +807,7 @@ run_native_provider_installer() {
   fi
   applied_changes=("${planned_actions[@]}")
 
-  ensure_local_bin_path_export "$shell_rc"
+  ensure_provider_bin_path_export "$shell_rc" "$provider"
   ensure_provider_alias "$shell_rc" "$provider"
 
   while [ $attempt -le 3 ]; do

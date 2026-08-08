@@ -14,7 +14,7 @@ import { buildDesktopBootstrapPage } from '../build/desktop/bootstrapPage.js';
  */
 
 const NATIVE_PROVIDERS = [
-  'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie', 'goose', 'ollama',
+  'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie', 'goose', 'grok', 'ollama',
 ];
 const NPM_PROVIDERS = ['codex', 'copilot', 'opencode', 'kilo', 'auggie', 'pi'];
 

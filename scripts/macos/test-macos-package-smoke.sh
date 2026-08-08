@@ -50,6 +50,7 @@ assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-github-cli.sh"
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/setup-node-global-prefix.sh" 'bundled macOS npm prefix helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-codex.sh" 'bundled macOS OpenAI Codex installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-antigravity.sh" 'bundled macOS Antigravity installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-grok.sh" 'bundled macOS Grok installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-copilot.sh" 'bundled macOS GitHub Copilot installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-opencode.sh" 'bundled macOS OpenCode installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-kilo.sh" 'bundled macOS Kilo Code installer helper'
@@ -65,6 +66,12 @@ assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/provider-cli-common.sh
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/node-cli-common.sh" 'bundled macOS npm helper library'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/manifest.json" 'bundled setup-assets manifest'
 assert_file "${PLAN_PATH}" 'bundled desktop packaging plan'
+
+GROK_HELPER="${RESOURCES_ROOT}/desktop/setup-assets/macos/install-grok.sh"
+bash "${GROK_HELPER}" --check --json >/dev/null
+pass 'bundled macOS Grok helper check mode completed'
+bash "${GROK_HELPER}" --force --dry-run --json >/dev/null
+pass 'bundled macOS Grok helper dry-run mode completed'
 
 node - <<'NODE' "${PLAN_PATH}"
 const fs = require('node:fs');
@@ -89,6 +96,7 @@ assert(macTarget.installerFormats.includes('pkg'), 'macOS target includes pkg pa
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-opencode-native-installer-script'), 'macOS target includes the bundled OpenCode installer asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-codex-native-installer-script'), 'macOS target includes the bundled OpenAI Codex installer asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-antigravity-native-installer-script'), 'macOS target includes the bundled Antigravity installer asset');
+assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-grok-native-installer-script'), 'macOS target includes the bundled Grok installer asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-setup-readiness-audit-script'), 'macOS target includes the bundled readiness audit asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-provider-cli-common-support-script'), 'macOS target includes the macOS provider helper asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-node-cli-common-support-script'), 'macOS target includes the macOS npm helper asset');

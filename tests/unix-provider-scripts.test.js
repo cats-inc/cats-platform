@@ -1,12 +1,25 @@
 import assert from 'node:assert/strict';
 import { execFile as execFileCallback } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { access, chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import test from 'node:test';
 import { promisify } from 'node:util';
 
 const execFile = promisify(execFileCallback);
 const rootDir = process.cwd();
+const bashExecutable = process.platform === 'win32'
+  ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'bash.exe')
+  : 'bash';
+
+function toBashPath(value) {
+  const normalized = value.replace(/\\/gu, '/');
+  if (process.platform !== 'win32') {
+    return normalized;
+  }
+
+  return normalized.replace(/^([A-Za-z]):\//u, (_match, drive) => `/mnt/${drive.toLowerCase()}/`);
+}
 
 const linuxScripts = [
   'setup-node-global-prefix.sh',
@@ -14,6 +27,7 @@ const linuxScripts = [
   'install-github-cli.sh',
   'install-codex.sh',
   'install-antigravity.sh',
+  'install-grok.sh',
   'install-copilot.sh',
   'install-opencode.sh',
   'install-kilo.sh',
@@ -34,6 +48,7 @@ const macosScripts = [
   'install-github-cli.sh',
   'install-codex.sh',
   'install-antigravity.sh',
+  'install-grok.sh',
   'install-copilot.sh',
   'install-opencode.sh',
   'install-kilo.sh',
@@ -94,8 +109,82 @@ test('Unix self-hosted provider helpers expose help text without mutating the ho
     await assertHelp(join(rootDir, 'scripts', platform, 'install-goose.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-junie.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-kiro-cli.sh'));
+    await assertHelp(join(rootDir, 'scripts', platform, 'install-grok.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'upgrade-cli-tools.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'check-installation.sh'));
+  }
+});
+
+test('Unix Grok helpers detect only grok and uninstall only fixed installer-owned paths', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const home = await mkdtemp(join(tmpdir(), `cats-${platform}-grok-home-`));
+    const unrelatedBin = await mkdtemp(join(tmpdir(), `cats-${platform}-agent-bin-`));
+    const grokBin = join(home, '.grok', 'bin');
+    const grokPath = join(grokBin, 'grok');
+    const installerAliasPath = join(grokBin, 'agent');
+    const unrelatedAgentPath = join(unrelatedBin, 'agent');
+    const helperPath = join(rootDir, 'scripts', platform, 'install-grok.sh');
+    const bashPath = relative(rootDir, helperPath).replace(/\\/gu, '/');
+    const fixturePath = `${toBashPath(unrelatedBin)}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`;
+    const env = {
+      ...process.env,
+      HOME: toBashPath(home),
+      PATH: fixturePath,
+    };
+    const runHelper = (args) => process.platform === 'win32'
+      ? execFile(bashExecutable, [
+          '-c',
+          'export HOME="$CATS_GROK_TEST_HOME" PATH="$CATS_GROK_TEST_PATH"; exec /bin/bash "$CATS_GROK_TEST_SCRIPT" "$CATS_GROK_TEST_ARG1" "$CATS_GROK_TEST_ARG2"',
+        ], {
+          cwd: rootDir,
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            CATS_GROK_TEST_HOME: toBashPath(home),
+            CATS_GROK_TEST_PATH: fixturePath,
+            CATS_GROK_TEST_SCRIPT: bashPath,
+            CATS_GROK_TEST_ARG1: args[0],
+            CATS_GROK_TEST_ARG2: args[1],
+            WSLENV: [
+              process.env.WSLENV,
+              'CATS_GROK_TEST_HOME',
+              'CATS_GROK_TEST_PATH',
+              'CATS_GROK_TEST_SCRIPT',
+              'CATS_GROK_TEST_ARG1',
+              'CATS_GROK_TEST_ARG2',
+            ].filter(Boolean).join(':'),
+          },
+        })
+      : execFile(bashExecutable, [bashPath, ...args], { cwd: rootDir, encoding: 'utf8', env });
+
+    try {
+      await mkdir(grokBin, { recursive: true });
+      await writeFile(unrelatedAgentPath, '#!/usr/bin/env bash\nprintf "unrelated agent\\n"\n');
+      await chmod(unrelatedAgentPath, 0o755);
+
+      const missing = JSON.parse((await runHelper(['--check', '--json'])).stdout);
+      assert.equal(missing.installed, false);
+
+      await writeFile(grokPath, '#!/usr/bin/env bash\nprintf "grok 1.2.3\\n"\n');
+      await writeFile(installerAliasPath, '#!/usr/bin/env bash\nprintf "installer alias\\n"\n');
+      await chmod(grokPath, 0o755);
+      await chmod(installerAliasPath, 0o755);
+
+      const installed = JSON.parse((await runHelper(['--check', '--json'])).stdout);
+      assert.equal(installed.installed, true, JSON.stringify(installed));
+      assert.equal(installed.commandPath, toBashPath(grokPath));
+      assert.match(installed.detectedVersion, /grok 1\.2\.3/u);
+
+      const removed = JSON.parse((await runHelper(['--uninstall', '--json'])).stdout);
+      assert.equal(removed.status, 'uninstalled');
+      await assert.rejects(access(grokPath));
+      await assert.rejects(access(installerAliasPath));
+      await access(unrelatedAgentPath);
+      assert.doesNotMatch(JSON.stringify(removed), new RegExp(toBashPath(unrelatedAgentPath).replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'));
+    } finally {
+      await rm(home, { recursive: true, force: true });
+      await rm(unrelatedBin, { recursive: true, force: true });
+    }
   }
 });
 
@@ -265,7 +354,7 @@ test('Unix self-hosted provider audits expose the shared JSON audit core', async
   }
 });
 
-test('Unix self-hosted provider audits can include 6 native providers, 6 npm tools, and Ollama', async () => {
+test('Unix self-hosted provider audits can include 7 native providers, 6 npm tools, and Ollama', async () => {
   const expectedCheckIds = [
     'node',
     'npm',
@@ -277,6 +366,7 @@ test('Unix self-hosted provider audits can include 6 native providers, 6 npm too
     'goose',
     'junie',
     'kiro',
+    'grok',
     'codex',
     'copilot',
     'opencode',

@@ -35,6 +35,7 @@ const DESKTOP_TO_RUNTIME_PROVIDER: Record<DesktopProviderSetupLocalProviderId, s
   junie: 'junie',
   auggie: 'auggie',
   pi: 'pi',
+  grok: 'grok',
   // Ollama is a local model, not in runtime KNOWN_PROVIDERS — runtime never
   // reports it via setup-state. Desktop tracks it separately via the local
   // model installer helper, but the bootstrap CLI gate doesn't depend on it.
@@ -54,6 +55,7 @@ const PROVIDER_LABEL: Record<DesktopProviderSetupLocalProviderId, string> = {
   junie: 'Junie',
   auggie: 'Auggie',
   pi: 'Pi',
+  grok: 'Grok',
   ollama: 'Ollama',
 };
 
@@ -73,6 +75,7 @@ const PROVIDER_TO_HELPER_SUFFIX: Record<DesktopProviderSetupLocalProviderId, str
   junie: 'junie' + NATIVE_INSTALLER_SUFFIX,
   auggie: 'auggie' + NATIVE_INSTALLER_SUFFIX,
   pi: 'pi' + NATIVE_INSTALLER_SUFFIX,
+  grok: 'grok' + NATIVE_INSTALLER_SUFFIX,
   ollama: 'ollama' + LOCAL_MODEL_INSTALLER_SUFFIX,
 };
 

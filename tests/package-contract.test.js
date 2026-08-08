@@ -178,6 +178,7 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal(packedPaths.has('scripts/linux/install-github-cli.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-codex.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-antigravity.sh'), true);
+  assert.equal(packedPaths.has('scripts/linux/install-grok.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-copilot.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-opencode.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-kilo.sh'), true);
@@ -189,6 +190,7 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal(packedPaths.has('scripts/macos/install-github-cli.sh'), true);
   assert.equal(packedPaths.has('scripts/macos/install-codex.sh'), true);
   assert.equal(packedPaths.has('scripts/macos/install-antigravity.sh'), true);
+  assert.equal(packedPaths.has('scripts/macos/install-grok.sh'), true);
   assert.equal(packedPaths.has('scripts/macos/install-copilot.sh'), true);
   assert.equal(packedPaths.has('scripts/macos/install-opencode.sh'), true);
   assert.equal(packedPaths.has('scripts/macos/install-kilo.sh'), true);
@@ -201,6 +203,7 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal(packedPaths.has('scripts/windows/Install-GitHubCli.ps1'), true);
   assert.equal(packedPaths.has('scripts/windows/Install-Codex.ps1'), true);
   assert.equal(packedPaths.has('scripts/windows/Install-Antigravity.ps1'), true);
+  assert.equal(packedPaths.has('scripts/windows/Install-Grok.ps1'), true);
   assert.equal(packedPaths.has('scripts/windows/Install-Copilot.ps1'), true);
   assert.equal(packedPaths.has('scripts/windows/Install-OpenCode.ps1'), true);
   assert.equal(packedPaths.has('scripts/windows/Install-KiloCli.ps1'), true);
