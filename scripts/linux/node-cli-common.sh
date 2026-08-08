@@ -316,6 +316,37 @@ run_node_prefix_setup() {
   printf 'Reload your shell if PATH is stale: source %s\n' "$shell_rc"
 }
 
+# Packages whose npm name changed upstream. npm resolves an abandoned name to its
+# final published version and reports it as current forever, so `npm outdated -g`
+# never flags it and every upgrade path silently skips it. Two packages shipping
+# the same bin also fight over the shim, which resolves to whichever installed
+# last. The superseded package is therefore removed before its replacement is
+# installed, matching environment-bootstrap cfe7785.
+node_cli_superseded_packages() {
+  case "$1" in
+    '@earendil-works/pi-coding-agent')
+      printf '%s\n' '@mariozechner/pi-coding-agent'
+      ;;
+    *)
+      :
+      ;;
+  esac
+}
+
+remove_superseded_npm_packages() {
+  local package_name="$1"
+  local legacy=''
+
+  while IFS= read -r legacy; do
+    [ -n "$legacy" ] || continue
+    npm list -g "$legacy" --depth=0 >/dev/null 2>&1 || continue
+    printf 'Removing superseded package %s (replaced by %s).\n' "$legacy" "$package_name"
+    npm uninstall -g "$legacy" >/dev/null 2>&1 || true
+  done <<EOF
+$(node_cli_superseded_packages "$package_name")
+EOF
+}
+
 node_cli_package_rows() {
   cat <<'EOF'
 codex|codex|@openai/codex|OpenAI Codex
@@ -323,7 +354,7 @@ copilot|copilot|@github/copilot|GitHub Copilot CLI
 opencode|opencode|opencode-ai|OpenCode
 kilo|kilo|@kilocode/cli|Kilo Code CLI
 auggie|auggie|@augmentcode/auggie|Auggie CLI
-pi|pi|@mariozechner/pi-coding-agent|Pi CLI
+pi|pi|@earendil-works/pi-coding-agent|Pi CLI
 EOF
 }
 
@@ -567,6 +598,10 @@ EOF
     fi
     if [ "$upgrade" = 'true' ] && printf '%s' "$outdated_packages" | grep -qF "\"$package_name\""; then
       is_outdated='true'
+    fi
+
+    if [ "$check_only" != 'true' ]; then
+      remove_superseded_npm_packages "$package_name"
     fi
 
     if [ "$check_only" = 'true' ]; then
@@ -1117,6 +1152,10 @@ run_npm_cli_provider() {
     esac
     shift
   done
+
+  if [ "$check_only" != 'true' ] && [ "$uninstall" != 'true' ]; then
+    remove_superseded_npm_packages "$package_name"
+  fi
 
   if [ "$force" = 'true' ]; then
     upgrade='false'

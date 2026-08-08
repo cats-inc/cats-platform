@@ -369,7 +369,7 @@ $NpmCliCatalog = @(
   [pscustomobject]@{ Key = 'opencode'; ScriptName = 'Install-OpenCode.ps1'; PackageName = 'opencode-ai' },
   [pscustomobject]@{ Key = 'kilo'; ScriptName = 'Install-KiloCli.ps1'; PackageName = '@kilocode/cli' },
   [pscustomobject]@{ Key = 'auggie'; ScriptName = 'Install-Auggie.ps1'; PackageName = '@augmentcode/auggie' },
-  [pscustomobject]@{ Key = 'pi'; ScriptName = 'Install-Pi.ps1'; PackageName = '@mariozechner/pi-coding-agent' }
+  [pscustomobject]@{ Key = 'pi'; ScriptName = 'Install-Pi.ps1'; PackageName = '@earendil-works/pi-coding-agent' }
 )
 
 $prefixHelperArguments = @('-CheckOnly', '-Json')

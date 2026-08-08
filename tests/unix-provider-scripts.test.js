@@ -332,6 +332,52 @@ test('Unix bulk upgrade keeps Antigravity in the native provider pass', async ()
   }
 });
 
+test('Unix npm pack installs Pi from the renamed package and drops the superseded one', async () => {
+  // npm resolves the abandoned name to its final published version and reports
+  // it as current forever, so pointing at it silently disables every Pi upgrade.
+  for (const platform of ['linux', 'macos']) {
+    const common = await readFile(
+      join(rootDir, 'scripts', platform, 'node-cli-common.sh'),
+      'utf8',
+    );
+
+    assert.match(common, /pi\|pi\|@earendil-works\/pi-coding-agent\|Pi CLI/u);
+    assert.doesNotMatch(common, /pi\|pi\|@mariozechner\/pi-coding-agent/u);
+
+    // The superseded package must be removed, not merely unreferenced: two
+    // packages shipping the same bin resolve the shim by install order.
+    assert.match(
+      common,
+      /node_cli_superseded_packages[\s\S]*@earendil-works\/pi-coding-agent[\s\S]*@mariozechner\/pi-coding-agent/u,
+    );
+    assert.match(common, /remove_superseded_npm_packages "\$package_name"/u);
+
+    const solo = await readFile(join(rootDir, 'scripts', platform, 'install-pi.sh'), 'utf8');
+    assert.match(solo, /@earendil-works\/pi-coding-agent/u);
+    assert.doesNotMatch(solo, /@mariozechner/u);
+  }
+});
+
+test('Unix npm pack never removes superseded packages during a check', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const common = await readFile(
+      join(rootDir, 'scripts', platform, 'node-cli-common.sh'),
+      'utf8',
+    );
+
+    // --check must stay read-only; every removal *call* sits behind a non-check
+    // guard. The function definition itself is skipped by matching the argument.
+    for (const match of common.matchAll(/remove_superseded_npm_packages "\$package_name"/gu)) {
+      const preceding = common.slice(Math.max(0, match.index - 220), match.index);
+      assert.match(
+        preceding,
+        /check_only" != 'true'/u,
+        `unguarded superseded removal in ${platform}/node-cli-common.sh`,
+      );
+    }
+  }
+});
+
 test('Unix self-hosted provider audits expose the shared JSON audit core', async () => {
   for (const platform of ['linux', 'macos']) {
     const summary = await readJsonSummary(

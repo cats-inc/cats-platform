@@ -22,7 +22,7 @@ $ErrorActionPreference = 'Stop'
 
 Invoke-PackagedNpmCliInstall `
   -HelperId 'windows-pi-native-installer' `
-  -PackageName '@mariozechner/pi-coding-agent' `
+  -PackageName '@earendil-works/pi-coding-agent' `
   -CommandName 'pi' `
   -DisplayName 'Pi Coding Agent' `
   -CheckOnly:$CheckOnly `

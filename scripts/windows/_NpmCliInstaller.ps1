@@ -183,6 +183,45 @@ function Resolve-NpmCliCommandPath {
   return $null
 }
 
+function Get-SupersededNpmPackages {
+  <#
+    Packages whose npm name changed upstream. npm resolves an abandoned name to
+    its final published version and reports it as current forever, so
+    `npm outdated -g` never flags it and every upgrade path silently skips it.
+    Two packages shipping the same bin also fight over the shim, which resolves
+    to whichever installed last. The superseded package is therefore removed
+    before its replacement is installed, matching environment-bootstrap cfe7785.
+  #>
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$PackageName
+  )
+
+  switch ($PackageName) {
+    '@earendil-works/pi-coding-agent' { @('@mariozechner/pi-coding-agent') }
+    default { @() }
+  }
+}
+
+function Remove-SupersededNpmPackages {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$PackageName,
+    [System.Collections.ArrayList]$AppliedChanges
+  )
+
+  foreach ($legacy in (Get-SupersededNpmPackages -PackageName $PackageName)) {
+    & npm list -g --depth=0 $legacy 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) { continue }
+
+    Write-Host "Removing superseded package $legacy (replaced by $PackageName)."
+    & npm uninstall -g $legacy 2>$null | Out-Null
+    if ($AppliedChanges) {
+      $AppliedChanges.Add("${legacy}:removed-superseded") | Out-Null
+    }
+  }
+}
+
 function Invoke-PackagedNpmCliInstall {
   param(
     [Parameter(Mandatory = $true)]
@@ -519,6 +558,8 @@ function Invoke-PackagedNpmCliInstall {
     }
     exit 0
   }
+
+  Remove-SupersededNpmPackages -PackageName $PackageName -AppliedChanges $appliedChanges
 
   # --include=optional defends against user-level `omit=optional` in npmrc.
   # Without it, packages like @openai/codex skip their platform-specific
