@@ -9,6 +9,12 @@
 | **Assigned To** | Codex |
 | **Reviewer** | User |
 
+## Follow-up
+
+Running the smoke suites against a built package with real installers is deferred to
+[PLAN-103](./PLAN-103-packaged-provider-helper-smoke-verification.md), which is blocked on
+a desktop package build. Everything else in this plan has landed.
+
 ## Related Spec
 
 [SPEC-112: Grok, Devin, Cline, and Aider in Packaged Setup and the Setup Provider Inventory](../specs/SPEC-112-grok-devin-cline-aider-in-packaged-setup-and-provider-catalog.md)
