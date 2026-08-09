@@ -106,7 +106,7 @@ Behavior-preserving refactor, landed separately so a regression is attributable.
 ### Phase 4: Unix npm Pack — Cline, plus the Pi rename
 
 - [ ] Add `cline|cline|cline|Cline CLI` to `node_cli_package_rows` in `scripts/{linux,macos}/node-cli-common.sh`.
-- [ ] Change the Pi row to `@earendil-works/pi-coding-agent` and uninstall `@mariozechner/pi-coding-agent` before installing.
+- [x] Change the Pi row to `@earendil-works/pi-coding-agent` and uninstall `@mariozechner/pi-coding-agent` before installing. Expressed as a superseded-package lookup on both platforms rather than a Pi special case.
 - [ ] Update `scripts/{linux,macos}/install-pi.sh` to the new package name.
 - [ ] Add `scripts/{linux,macos}/install-cline.sh`.
 - [ ] Feature-detect npm's global-install `--allow-scripts` policy and apply the exact upstream Cline allowlist when available; preserve existing lifecycle-script behavior on older npm versions.
@@ -146,10 +146,10 @@ Behavior-preserving refactor, landed separately so a regression is attributable.
 
 ### Phase 8: Docs and Hygiene
 
-- [ ] Update `docs/setup-guide.md` with the four, calling out `devin setup`, Aider's non-secret credential evidence and unknown auth state, and Cline's macOS/Linux-only support.
-- [ ] Update `docs/product-integration-guide.md` if it enumerates providers.
+- [x] ~~Update `docs/setup-guide.md`~~ **Redirected.** The platform `docs/setup-guide.md` and `docs/product-integration-guide.md` do not enumerate CLI providers, so there was nothing to extend there. The equivalent content now lives in `scripts/README.md`: all four helpers, the Devin installer strip and its outstanding `devin auth login`, Aider's uv-shim uninstall and left-in-place uv, the superseded-package mechanism, and why Devin and Aider stay out of the product execution catalog. Provider-facing user docs are in `cats-runtime/docs/setup-guide.md`, updated with each runtime slice. Cline's macOS/Linux-only note is obsolete — see the Phase 1 entry.
+- [x] Checked `docs/product-integration-guide.md`; it does not enumerate providers, so no change was needed.
 - [ ] Update `docs/decisions/README.md`, `docs/specs/README.md`, `docs/plans/README.md` indexes.
-- [ ] Sweep for remaining `@mariozechner/pi-coding-agent` references and confirm none survive.
+- [x] Sweep for remaining `@mariozechner/pi-coding-agent` references. The surviving hits are all intentional: the migration ADR/SPEC/PLAN prose, tests asserting the old name is absent and the mapping present, and the superseded-package tables themselves. No install path names it.
 
 **Deliverables**: Docs and indexes match the shipped reality.
 

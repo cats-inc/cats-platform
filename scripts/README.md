@@ -186,11 +186,14 @@ packaging and installer flows.
 - `scripts/windows/Install-Codex.ps1`
 - `scripts/windows/Install-Antigravity.ps1`
 - `scripts/windows/Install-Grok.ps1`
+- `scripts/windows/Install-Devin.ps1`
+- `scripts/windows/Install-Aider.ps1`
 - `scripts/windows/Install-Copilot.ps1`
 - `scripts/windows/Install-OpenCode.ps1`
 - `scripts/windows/Install-KiloCli.ps1`
 - `scripts/windows/Install-Auggie.ps1`
 - `scripts/windows/Install-Pi.ps1`
+- `scripts/windows/Install-Cline.ps1`
 - `scripts/windows/Install-ClaudeCode.ps1`
 - `scripts/windows/Install-CursorAgent.ps1`
 - `scripts/windows/Install-Goose.ps1`
@@ -217,7 +220,7 @@ They intentionally omit `-Uninstall`: removing Node would break the bundled
 
 The per-CLI npm-global installers (`Install-Codex.ps1`, `Install-Copilot.ps1`,
 `Install-OpenCode.ps1`, `Install-KiloCli.ps1`,
-`Install-Auggie.ps1`, `Install-Pi.ps1`) are thin wrappers around the shared
+`Install-Auggie.ps1`, `Install-Pi.ps1`, `Install-Cline.ps1`) are thin wrappers around the shared
 `_NpmCliInstaller.ps1` helper that owns the install/upgrade/uninstall flow.
 Each one accepts `-CheckOnly / -Apply / -Upgrade / -Force / -Uninstall /
 -DryRun / -Json` so Settings>Runtime can drive a single CLI without touching
@@ -231,6 +234,38 @@ does not use the npm-global helper.
 upgrade/force/uninstall JSON contract. It detects only `grok.exe`; uninstall
 removes the fixed adjacent `grok.exe` and installer-owned `agent.exe` paths
 without resolving a generic `agent` command from PATH.
+
+The npm-global pack removes a package whose upstream name changed before
+installing its replacement. npm resolves an abandoned name to its final
+published version and reports it as current forever, so `npm outdated -g` never
+flags it, and two packages shipping the same bin resolve the shim by install
+order. `Get-SupersededNpmPackages` (Windows) and `node_cli_superseded_packages`
+(Unix) hold that mapping; Pi's move to `@earendil-works/pi-coding-agent` is the
+first entry. Removal is skipped in check and uninstall modes.
+
+`Install-Devin.ps1` wraps Cognition's native installer. Devin's official
+`setup.ps1` ends by launching the interactive `devin setup` wizard, which would
+stall a packaged setup step that has no console a prompt can reach, so the
+wrapper strips that final line before executing. It requires exactly one such
+invocation and refuses to run the script otherwise rather than executing an
+unrecognised installer. Because the wizard is skipped, authentication is always
+still owed after a successful install: run `devin auth login` once and check
+with `devin auth status`. Uninstall removes the versioned tree under
+`%LOCALAPPDATA%\devin\cli` as well as the entry point.
+
+`Install-Aider.ps1` wraps Aider's installer, which is the uv installer plus
+`uv tool install --force --python python3.12 --with pip aider-chat@latest`. The
+entry point is a uv tool shim rather than the tool, so uninstall runs
+`uv tool uninstall aider-chat` before removing paths — deleting the shim alone
+leaves `aider-chat` installed and the shim regenerable. The uv binary Aider
+installs alongside it is deliberately left in place: users commonly have their
+own, and the helper cannot tell them apart.
+
+Cats installs and detects Devin and Aider but does not run sessions through
+either from the CLI backend. Devin has no machine-readable CLI output and
+executes through the `agent/acp` backend instead; Aider has no machine-readable
+output, no ACP or server mode, and exits 0 even when its model call fails.
+Neither appears in the product execution catalog.
 
 `Check-WindowsSetupReadiness.ps1` composes the repo-owned packaged setup
 helpers into one host-readable audit for the npm prefix substrate, the
@@ -260,11 +295,14 @@ runtime:
 - `scripts/linux/install-codex.sh`
 - `scripts/linux/install-antigravity.sh`
 - `scripts/linux/install-grok.sh`
+- `scripts/linux/install-devin.sh`
+- `scripts/linux/install-aider.sh`
 - `scripts/linux/install-copilot.sh`
 - `scripts/linux/install-opencode.sh`
 - `scripts/linux/install-kilo.sh`
 - `scripts/linux/install-auggie.sh`
 - `scripts/linux/install-pi.sh`
+- `scripts/linux/install-cline.sh`
 - `scripts/linux/install-claude-code.sh`
 - `scripts/linux/install-cursor-agent.sh`
 - `scripts/linux/install-goose.sh`
@@ -278,11 +316,14 @@ runtime:
 - `scripts/macos/install-codex.sh`
 - `scripts/macos/install-antigravity.sh`
 - `scripts/macos/install-grok.sh`
+- `scripts/macos/install-devin.sh`
+- `scripts/macos/install-aider.sh`
 - `scripts/macos/install-copilot.sh`
 - `scripts/macos/install-opencode.sh`
 - `scripts/macos/install-kilo.sh`
 - `scripts/macos/install-auggie.sh`
 - `scripts/macos/install-pi.sh`
+- `scripts/macos/install-cline.sh`
 - `scripts/macos/install-claude-code.sh`
 - `scripts/macos/install-cursor-agent.sh`
 - `scripts/macos/install-goose.sh`
