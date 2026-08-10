@@ -1,19 +1,19 @@
 # Cats
 
-> The flagship platform app from Cats Inc.
+> The multi-agent collaboration layer of the
+> [Cats Inc](https://github.com/cats-inc) project, running on `cats-runtime`.
 
 ## Overview
 
-`Cats` is the flagship product brand for the platform. This standalone repo hosts
-the technical platform host packaged as `@cats-inc/cats-platform`
+This standalone repo hosts the platform host, packaged as `@cats-inc/cats-platform`
 (extracted from the original monorepo in 2026-07 with full history).
-It talks to `cats-runtime` as its execution boundary and keeps the product
+It talks to `cats-runtime` as its execution boundary and keeps its application
 model in this repo rather than inheriting it from earlier prototypes.
 
-`Cats Inc` remains the umbrella brand. `Cats` remains the public product name,
-`cats-platform` is the host repo/package target, `cats-runtime` remains the
-runtime boundary, and `cats-one` is reserved for the one-shot bootstrap
-installer path. The persistent host executable is `cats-platform`.
+Naming across the project: `Cats` is the name of this application,
+`cats-platform` is the repo/package target, `cats-runtime` is the runtime
+boundary, and `cats-one` is the one-shot bootstrap installer path. The
+persistent host executable is `cats-platform`.
 
 The current slices are:
 
