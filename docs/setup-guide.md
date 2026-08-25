@@ -6,7 +6,7 @@
 ## Prerequisites
 
 - Node.js 22+
-- npm 11+ (npm 12 blocks dependency install scripts by default; see
+- npm 12+ (dependency install scripts are blocked by default; see
   `Dependency install warnings` below)
 - `cats-runtime` running on `http://127.0.0.1:3110`
 
@@ -135,20 +135,21 @@ is not per-machine state and does not belong in `.npmrc`.
   `node_modules/electron/dist/` and `path.txt` are never created,
   `require('electron')` throws `Electron failed to install correctly`, and both
   `npm run desktop:host` and `npm run desktop:start` fail.
-- `esbuild` does not need approval. It resolves its binary from the
-  `@esbuild/<platform>` optional dependency.
+- `esbuild` is approved so its postinstall can validate the platform binary and
+  use its documented fallback when the optional binary is unavailable.
 - `sharp` does not need approval from 0.35 onward, which no longer ships an
   install script. On 0.34 it still worked unapproved via the `@img/sharp-*`
   prebuilt optional dependency.
-- `electron-winstaller` does not need approval. Its script selects a 7z
-  architecture for the Squirrel target, and `build.win.target` is `nsis`.
+- `electron-winstaller` is approved so its installed transitive package is
+  complete across development machines. Its script selects the host 7z
+  architecture; the current Windows release target remains NSIS.
 
 Review and approve with:
 
 ```bash
 npm install-scripts ls
-npm install-scripts approve electron
-npm rebuild electron
+npm install-scripts approve electron esbuild electron-winstaller
+npm rebuild electron esbuild electron-winstaller
 ```
 
 Two behaviors are easy to trip over:
