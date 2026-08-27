@@ -291,7 +291,7 @@ pattern needs a code-level guardrail (e.g. dev-server seal mode).
 4. Test     → Run tests (see Testing Protocols)
 5. Commit   → Use Conventional Commits format
 6. PR       → Submit PR (see PR Guidelines)
-7. Review   → Peer review + CI checks
+7. Review   → Self-review + CI checks
 8. Merge    → Squash and merge
 ```
 
@@ -582,6 +582,19 @@ absolute Windows paths, and filesystem calls can create stray directories like
 
 ## Pull Request Guidelines
 
+### Branching Policy
+
+- Non-trivial changes go through a branch and a PR: `git checkout -b <type>/<slug>`,
+  push, open the PR, then `gh pr merge <n> --auto --squash`. The head branch is
+  deleted on merge.
+- `main` requires a pull request and zero approvals. A direct push to `main`
+  succeeds only because `enforce_admins` is off; reserve that for trivial
+  changes such as a docs typo or a version bump.
+- This project is developed from several machines at once. The required checks
+  run with "branch must be up to date", so a PR opened before another machine's
+  merge has to be updated before it can land. Catching that is the reason to use
+  a PR here — not review, which a single account cannot provide.
+
 ### PR Title Format
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/):
@@ -609,9 +622,17 @@ Before submitting a PR, ensure:
 ### Review Process
 
 1. **Self-review**: Author reviews their own changes first
-2. **Peer review**: At least one approval required
-3. **CI checks**: All automated checks must pass
-4. **Merge**: Squash and merge (or your preferred strategy)
+2. **CI checks**: `validate` and `nodejs (24)` must pass. Both are required
+   status checks on `main`, with "branch must be up to date" on, so a PR opened
+   before someone else's merge has to be updated before it can land
+3. **Merge**: Squash and merge. `gh pr merge --auto --squash` arms the merge so
+   it fires once CI is green; the head branch is deleted automatically
+
+`main` requires a pull request but **zero approvals**. This project is
+maintained from a single account, so there is no second reviewer to ask and CI
+is the gate, not peer review. Note that `gh pr merge --auto` returns success
+once auto-merge is *armed*, not once the PR is *merged* — check
+`gh pr view <n> --json state,mergeStateStatus` rather than assuming it landed.
 
 ### PR Size Guidelines
 
