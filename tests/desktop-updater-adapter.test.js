@@ -25,6 +25,9 @@ function createFakeAutoUpdater() {
   return {
     autoDownload: true,
     autoInstallOnAppQuit: true,
+    // electron-updater's own default. Started from false so a configuration
+    // that stopped pinning it would fail rather than inherit the right answer.
+    autoRunAppAfterInstall: false,
     allowPrerelease: true,
     // Mirrors the real electron-updater setter, which assigns
     // allowDowngrade = true whenever the channel changes.
@@ -162,12 +165,33 @@ test('configuration disables automatic download and install-on-quit', () => {
   assert.equal(autoUpdater.autoDownload, false);
   assert.equal(autoUpdater.autoInstallOnAppQuit, false);
   assert.equal(autoUpdater.allowPrerelease, false);
+  assert.equal(autoUpdater.autoRunAppAfterInstall, true);
   assert.equal(autoUpdater.channel, 'latest');
   assert.deepEqual(autoUpdater.feedUrl, {
     provider: 'github',
     owner: 'cats-inc',
     repo: 'cats-platform',
   });
+});
+
+/**
+ * Coming back up after an install is the contract, and quitAndInstall's
+ * isForceRunAfter argument cannot carry it: electron-updater's BaseUpdater
+ * reads that argument only in silent mode and substitutes
+ * autoRunAppAfterInstall otherwise. This host installs non-silently so the
+ * user can see the platform installer, so the field is the only thing that
+ * decides whether Cats comes back.
+ */
+test('the relaunch after install is pinned rather than inherited', () => {
+  const autoUpdater = createFakeAutoUpdater();
+
+  configureElectronUpdater(autoUpdater, {
+    repository: 'cats-inc/cats-platform',
+    channel: 'stable',
+    distribution: 'preview_packaged',
+  });
+
+  assert.equal(autoUpdater.autoRunAppAfterInstall, true);
 });
 
 test('a preview resolves updates through the prerelease feed it publishes to', () => {

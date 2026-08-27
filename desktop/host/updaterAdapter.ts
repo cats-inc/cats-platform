@@ -38,6 +38,7 @@ export interface ElectronUpdaterFeedOptions {
 export interface ElectronAutoUpdaterLike {
   autoDownload: boolean;
   autoInstallOnAppQuit: boolean;
+  autoRunAppAfterInstall: boolean;
   allowPrerelease: boolean;
   allowDowngrade: boolean;
   channel: string | null;
@@ -205,6 +206,15 @@ export function configureElectronUpdater(
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
 
+  // Coming back up after an install is part of the contract, so it is pinned
+  // here rather than inherited. quitAndInstall's isForceRunAfter argument
+  // cannot express it: BaseUpdater reads that argument only in silent mode and
+  // substitutes autoRunAppAfterInstall otherwise, and this host installs
+  // non-silently so the user can see the platform installer. The upstream
+  // default happens to be true today; relying on that would make the app
+  // silently stop relaunching if it ever changed.
+  autoUpdater.autoRunAppAfterInstall = true;
+
   // A preview ships as a GitHub prerelease that never becomes `latest`, and with
   // allowPrerelease off the provider resolves updates through /releases/latest,
   // which excludes prereleases -- so a preview could never find its successor.
@@ -328,7 +338,11 @@ export function createElectronUpdaterAdapter(
 
     async quitAndInstall() {
       // Non-silent: the Windows package is an assisted NSIS installer, so the
-      // user sees the wizard. isForceRunAfter relaunches Cats when it finishes.
+      // user sees the wizard. The relaunch afterwards comes from
+      // autoRunAppAfterInstall, which configureElectronUpdater pins — in
+      // non-silent mode electron-updater ignores the isForceRunAfter argument
+      // passed here and reads that field instead. The argument is still passed
+      // so the call stays correct if the mode ever changes.
       // Do not resolve merely because this void API returned. On Linux a
       // cancelled elevation prompt or failed dpkg run emits `error` and never
       // calls app.quit(); on macOS the native updater can also fail or stall
