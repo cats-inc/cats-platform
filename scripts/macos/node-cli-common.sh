@@ -766,10 +766,6 @@ run_self_hosted_installation_check() {
   local prefix_status='missing'
   local core_present=0
   local core_missing=0
-  local native_present=0
-  local native_missing=0
-  local node_pack_present=0
-  local node_pack_missing=0
   local local_model_present=0
   local local_model_missing=0
   local node_host_missing='false'
@@ -881,16 +877,12 @@ EOF
       total_present=$((total_present + 1))
       case "$check_kind" in
         core) core_present=$((core_present + 1)) ;;
-        native) native_present=$((native_present + 1)) ;;
-        node) node_pack_present=$((node_pack_present + 1)) ;;
         local_model) local_model_present=$((local_model_present + 1)) ;;
       esac
     else
       total_missing=$((total_missing + 1))
       case "$check_kind" in
         core) core_missing=$((core_missing + 1)) ;;
-        native) native_missing=$((native_missing + 1)) ;;
-        node) node_pack_missing=$((node_pack_missing + 1)) ;;
         local_model) local_model_missing=$((local_model_missing + 1)) ;;
       esac
     fi
@@ -909,9 +901,6 @@ EOF
 
     append_check_row "$check_id" "$check_label" "$check_present" "$check_kind" "$check_scope" "$check_status"
     case "$check_kind:$check_status" in
-      native:changes_required)
-        planned_actions+=("provider:install_${check_id}_native")
-        ;;
       local_model:not_installed)
         planned_actions+=('local_model:install_ollama_local_model')
         manual_steps+=('Install Ollama when you want local models on this host, then rerun the packaged setup check.')
@@ -954,26 +943,6 @@ EOF
   fi
 
   if [ "$collection_mode" = 'serial' ]; then
-    for provider in claude antigravity cursor goose junie kiro grok; do
-      if command_path="$(detect_provider_command "$platform" "$provider")"; then
-        handle_audited_check_result "$provider" "$(provider_display_name "$provider")" 'true' 'native' 'host' 'ready'
-        unset command_path
-      else
-        handle_audited_check_result "$provider" "$(provider_display_name "$provider")" 'false' 'native' 'host' 'changes_required'
-      fi
-    done
-
-    while IFS='|' read -r id command_name package_name display_name; do
-      [ -n "$id" ] || continue
-      if command -v "$command_name" >/dev/null 2>&1; then
-        handle_audited_check_result "$id" "$display_name" 'true' 'node' 'host' 'ready'
-      else
-        handle_audited_check_result "$id" "$display_name" 'false' 'node' 'host' 'changes_required'
-      fi
-    done <<EOF
-$(node_cli_package_rows)
-EOF
-
     if [ "$include_local_models" = 'true' ]; then
       if ollama_command="$(detect_ollama_command "$platform")"; then
         if ollama_api_ready; then
@@ -987,36 +956,6 @@ EOF
       fi
     fi
   else
-    for provider in claude antigravity cursor goose junie kiro grok; do
-      async_file="$(mktemp)"
-      async_files+=("$async_file")
-      (
-        if command_path="$(detect_provider_command "$platform" "$provider")"; then
-          printf '%s|%s|true|native|host|ready\n' "$provider" "$(provider_display_name "$provider")"
-          unset command_path
-        else
-          printf '%s|%s|false|native|host|changes_required\n' "$provider" "$(provider_display_name "$provider")"
-        fi
-      ) >"$async_file" 2>/dev/null &
-      async_pids+=($!)
-    done
-
-    while IFS='|' read -r id command_name package_name display_name; do
-      [ -n "$id" ] || continue
-      async_file="$(mktemp)"
-      async_files+=("$async_file")
-      (
-        if command -v "$command_name" >/dev/null 2>&1; then
-          printf '%s|%s|true|node|host|ready\n' "$id" "$display_name"
-        else
-          printf '%s|%s|false|node|host|changes_required\n' "$id" "$display_name"
-        fi
-      ) >"$async_file" 2>/dev/null &
-      async_pids+=($!)
-    done <<EOF
-$(node_cli_package_rows)
-EOF
-
     if [ "$include_local_models" = 'true' ]; then
       async_file="$(mktemp)"
       async_files+=("$async_file")
@@ -1052,10 +991,6 @@ EOF
     done
   fi
 
-  if [ $node_pack_missing -gt 0 ] && [ "$node_host_missing" = 'false' ] && [ "$npm_host_missing" = 'false' ]; then
-    planned_actions+=('repair_native_cli_pack')
-  fi
-
   if [ "$total_missing" -gt 0 ]; then
     overall_status='changes_required'
   fi
@@ -1071,17 +1006,11 @@ EOF
     json_string_array "${planned_actions[@]}"
     printf ',"manualSteps":'
     json_string_array "${manual_steps[@]}"
-    printf ',"interruptions":[],"checks":[%s],"phases":[{"id":"core","label":"Core prerequisites","status":"%s","present":%s,"missing":%s},{"id":"native_provider_pack","label":"Native provider pack","status":"%s","present":%s,"missing":%s},{"id":"node_cli_pack","label":"Node CLI pack","status":"%s","present":%s,"missing":%s}' \
+    printf ',"interruptions":[],"checks":[%s],"phases":[{"id":"core","label":"Core prerequisites","status":"%s","present":%s,"missing":%s}' \
       "$checks_json" \
       "$(phase_status "$core_missing")" \
       "$core_present" \
-      "$core_missing" \
-      "$(phase_status "$native_missing")" \
-      "$native_present" \
-      "$native_missing" \
-      "$(phase_status "$node_pack_missing")" \
-      "$node_pack_present" \
-      "$node_pack_missing"
+      "$core_missing"
     if [ "$include_local_models" = 'true' ]; then
       printf ',{"id":"local_model_pack","label":"Local model pack","status":"%s","present":%s,"missing":%s}' \
         "$(phase_status "$local_model_missing")" \
@@ -1093,8 +1022,6 @@ EOF
     printf 'Status: %s\n' "$overall_status"
     printf 'Collection mode: %s\n' "$collection_mode"
     printf 'Core prerequisites: %s (present=%s missing=%s)\n' "$(phase_status "$core_missing")" "$core_present" "$core_missing"
-    printf 'Native provider pack: %s (present=%s missing=%s)\n' "$(phase_status "$native_missing")" "$native_present" "$native_missing"
-    printf 'Node CLI pack: %s (present=%s missing=%s)\n' "$(phase_status "$node_pack_missing")" "$node_pack_present" "$node_pack_missing"
     if [ "$include_local_models" = 'true' ]; then
       printf 'Local model pack: %s (present=%s missing=%s)\n' "$(phase_status "$local_model_missing")" "$local_model_present" "$local_model_missing"
     fi
