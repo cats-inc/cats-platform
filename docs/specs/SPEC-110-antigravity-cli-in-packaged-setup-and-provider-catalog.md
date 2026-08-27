@@ -43,7 +43,7 @@ The shared provider catalog (`src/shared/providerCatalogData.ts`) is consumed by
 6. Replace `gemini` in `scripts/windows/Check-WindowsSetupReadiness.ps1` with `antigravity`.
 7. Update all three packaged-setup smoke tests to assert Antigravity installer assets instead of Gemini.
 8. Replace the `gemini` provider family in `src/shared/providerCatalogData.ts` and `src/shared/providerCatalogInstances.ts` with `antigravity`; expose only `antigravity-default` as a provider-default sentinel until explicit Phase 0 evidence proves raw `agy` model ids. `agy --help` is not sufficient by itself. Official product documentation may be recorded as display-name evidence, but display names must not become executable model values without a real CLI model-list command, a documented config surface, or a smoke run proving the id is accepted.
-9. Update skills sync tooling: drop `gemini` from the `--agent` validation list, and add no `antigravity` replacement — the probe called for here was run on 2026-08-28 and found `agy` discovers no project-level skills directory.
+9. Update skills sync tooling: drop `gemini` from the `--agent` validation list, and add no `antigravity` replacement — the probe called for here was run on 2026-08-28 and found `agy` reads project-level skills from `.agents/skills/`, the directory Codex already targets, so no new sync destination exists to add.
 10. Update shell helpers and READMEs to drop Gemini references and add Antigravity equivalents where structurally needed.
 11. Define the shared provider catalog as the canonical platform-side source; explicitly call out the duplicate model list in `cats-runtime/src/http/ui/pages/playground.html` as something cats-runtime PLAN-033 Phase 4 must mirror in this slice.
 12. Leave repo-root and subproject `GEMINI.md` files untouched because they are agent-governance files, not Gemini CLI setup files.
@@ -55,7 +55,7 @@ The shared provider catalog (`src/shared/providerCatalogData.ts`) is consumed by
 - Designing automated codegen or cross-package handoff from `cats-platform` provider catalog data into `cats-runtime`; this slice uses an explicit runtime mirror.
 - Designing first-time onboarding UX changes beyond the provider-id rename.
 - Renaming or restructuring the `_NpmCliInstaller.ps1` / `node-cli-common.sh` helpers — they remain in use for other npm CLIs (Codex, Copilot, OpenCode, Kilo, Auggie, Pi); only their Gemini-specific catalog rows and comments are changed.
-- Solving the `.antigravity/skills/` directory question if `agy` does not implement one — that becomes a follow-up if Antigravity adds skills support later.
+- Adding an `--agent antigravity` alias. `agy` reads project-level skills from `.agents/skills/`, which the existing `codex` target already writes, so an alias would be a naming convenience rather than a new delivery path. It can be a follow-up if the shared destination proves confusing.
 
 ## User Stories
 
@@ -73,7 +73,7 @@ The shared provider catalog (`src/shared/providerCatalogData.ts`) is consumed by
 - Desktop host enumerates `gemini` in onboarding cards, packaging assets, and CLI inventory probes; these claims power the bootstrap UI and the Settings Runtime list.
 - Smoke tests assert that the Gemini installer scripts are bundled — these would falsely pass after the upstream removal because the local copies still exist.
 - The shared provider catalog declares Gemini-3.x models under family `gemini`, and runtime playground duplicates this list in its own hardcoded array. The Antigravity replacement uses a provider-default sentinel until model ids are proven.
-- Skills sync wrote to `.gemini/skills/` for an `--agent gemini` value; that target is now removed, and no Antigravity replacement exists because `agy` reads no project-level skills directory.
+- Skills sync wrote to `.gemini/skills/` for an `--agent gemini` value; that target is now removed. No Antigravity replacement is needed: `agy` reads project-level skills from `.agents/skills/`, which the `codex` target already writes.
 
 If left in place, every Desktop surface lies about installable providers: bootstrap shows a Gemini card that installs a non-functional npm package, Settings shows a Gemini row with no working repair path, the catalog ships Gemini models that no local CLI can drive, and smoke tests pass on the wrong artifact.
 
@@ -98,7 +98,7 @@ The fix is not additive. The Gemini-named seams must be replaced, not extended.
 13. `src/shared/providerCatalogData.ts:4,37-43,89` shall replace the `gemini` family with `antigravity`. The bundled Antigravity model list shall use `antigravity-default` as a provider-default sentinel until PLAN-100 Phase 0 evidence proves executable `agy` model values. If the evidence is official product documentation rather than a live CLI/config/smoke result, those values are display names only and must not be treated as raw `agy` model ids.
 14. `src/shared/providerCatalogData.ts:48,60,72,76,77` — submodel references to `gemini-*` or Gemini display names inside the `copilot` / `cursor` / `junie` / `kilo` model lists are vendor-named submodels and shall be reviewed individually. They remain vendor-owned entries and must not be treated as Antigravity CLI model-id evidence.
 15. `src/shared/providerCatalogInstances.ts:16` shall replace the `gemini` default-instance template with an `antigravity` template.
-16. `scripts/windows/Sync-AgentSkills.ps1` shall remove `gemini` from the `--agent` `ValidateSet` and the agent-target map — done in `cc2d38de`. `antigravity` shall not be added: PLAN-100 Phase 0, now confirmed by direct probe, found that `agy` discovers no project-level skills directory.
+16. `scripts/windows/Sync-AgentSkills.ps1` shall remove `gemini` from the `--agent` `ValidateSet` and the agent-target map — done in `cc2d38de`. `antigravity` shall not be added as a distinct destination: PLAN-100 Phase 0, corrected by a second probe pass, found `agy` reads `.agents/skills/`, which the existing `codex` target already writes. An alias for the same directory is optional and cosmetic.
 17. `scripts/macos/sync-agent-skills.sh` and `scripts/linux/sync-agent-skills.sh` shall mirror the Windows change — also done in `cc2d38de`.
 18. `scripts/macos/node-cli-common.sh:322,337,1080` shall remove the `gemini|gemini|@google/gemini-cli|Gemini CLI` catalog row and update the helper-text and wrapper-comment lines.
 19. `scripts/linux/node-cli-common.sh:322,337,1080` shall mirror macOS.
