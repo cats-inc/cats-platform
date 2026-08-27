@@ -202,10 +202,18 @@ function buildIssues(
   providerIssues: DesktopProviderIssue[],
   setup: DesktopSetupState | null | undefined,
   lastError: string | null | undefined,
+  cliInventory: DesktopCliInventory | null | undefined,
 ): DesktopPrerequisiteIssue[] {
   const issues: DesktopPrerequisiteIssue[] = [];
   const setupComplete = Boolean(appShell?.setupCompleteAt);
   const lastSetupAction = setup?.lastAction ?? null;
+  // Once cats-runtime has scanned, it owns the auth signal: it reports
+  // `missing` only after reading an auth or login requirement out of the CLI's
+  // own probe output. The packaged audit only checks whether an API-key env
+  // var is set, so it calls anyone signed in through a browser flow
+  // unauthenticated. Until the first scan lands the audit is still the only
+  // thing that looked, so keep it as the fallback rather than going silent.
+  const cliAuthKnown = cliInventory?.source === 'runtime';
   const providerRecoveryRemediation = setupComplete
     ? {
         kind: 'open_runtime_diagnostics' as const,
@@ -298,6 +306,29 @@ function buildIssues(
     });
   }
 
+  // One issue per provider the scan actually caught unauthenticated, rather
+  // than the audit's single collapsed setup-auth-required entry. No
+  // remediation: no host action can complete a third-party sign-in, and
+  // offering "Resume setup" would only re-run a check that reports the same
+  // thing. The next scan clears it.
+  if (cliAuthKnown) {
+    for (const entry of cliInventory?.candidates ?? []) {
+      if (!entry.installed || entry.authStatus !== 'missing') {
+        continue;
+      }
+      issues.push({
+        id: `cli-auth-required-${entry.providerId}`,
+        severity: setupComplete ? 'error' : 'warning',
+        title: 'Installed provider still needs authentication',
+        detail: `${entry.label} is installed, but it reported an authentication requirement when Cats probed it. Run it once and complete its sign-in, then detect again.`,
+        target: entry.helperId,
+        category: 'install',
+        resumeKey: `cli_auth_${entry.providerId}`,
+        remediation: null,
+      });
+    }
+  }
+
   if (lastSetupAction) {
     const optionalCapabilityPackFollowThrough = isOptionalCapabilityPackSetupAction(lastSetupAction);
     if (optionalCapabilityPackFollowThrough) {
@@ -319,6 +350,10 @@ function buildIssues(
         ? lastSetupAction.interruptions
         : [];
       for (const interruption of interruptions) {
+        // The scan already answered this one, and answered it better.
+        if (interruption.kind === 'auth_required' && cliAuthKnown) {
+          continue;
+        }
         let title = 'Packaged setup still needs follow-through';
         let severity: DesktopPrerequisiteIssue['severity'] = setupComplete ? 'error' : 'warning';
         let issueId = `setup-${interruption.kind}`;
@@ -695,6 +730,7 @@ export function buildDesktopBootstrapSnapshot(
     providerIssues,
     input.setup,
     input.lastError,
+    input.cliInventory,
   );
   const setupCompleteAt = input.appShell?.setupCompleteAt
     ?? input.persistedSetupCompleteAt

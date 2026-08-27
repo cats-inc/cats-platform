@@ -105,3 +105,39 @@ test('buildDesktopCliInventoryFromRuntime emits macos helper ids on darwin', () 
 
   assert.deepEqual(inventory.installed, ['macos-codex-native-installer']);
 });
+
+test('buildDesktopCliInventoryFromRuntime carries the runtime auth signal for installed CLIs', () => {
+  const inventory = buildDesktopCliInventoryFromRuntime({
+    scan: {
+      scannedAt: '2026-08-28T10:00:00.000Z',
+      providers: [
+        { provider: 'claude', available: true, authStatus: 'missing' },
+        { provider: 'codex', available: true, authStatus: 'not_required' },
+        { provider: 'goose', available: true, authStatus: 'unknown' },
+        // Reported unauthenticated but not installed: nothing to sign in to.
+        { provider: 'junie', available: false, authStatus: 'missing' },
+        // Older runtime, or a value we do not recognize.
+        { provider: 'grok', available: true },
+        { provider: 'cline', available: true, authStatus: 'sort_of' },
+      ],
+    },
+  }, 'win32');
+
+  const authOf = (providerId) => inventory.candidates
+    .find((candidate) => candidate.providerId === providerId)?.authStatus;
+
+  assert.equal(authOf('claude_code'), 'missing');
+  assert.equal(authOf('codex'), 'not_required');
+  assert.equal(authOf('goose'), 'unknown');
+  assert.equal(authOf('junie'), 'unknown', 'a missing CLI cannot be unauthenticated');
+  assert.equal(authOf('grok'), 'unknown', 'an absent authStatus is not a claim');
+  assert.equal(authOf('cline'), 'unknown', 'an unrecognized authStatus is not a claim');
+});
+
+test('buildDesktopCliInventoryFromRuntime reports unknown auth before any scan', () => {
+  const inventory = buildDesktopCliInventoryFromRuntime(null, 'win32');
+
+  for (const candidate of inventory.candidates) {
+    assert.equal(candidate.authStatus, 'unknown');
+  }
+});
