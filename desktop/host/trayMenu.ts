@@ -25,14 +25,12 @@ export interface DesktopTrayUpdateItem {
   label: string;
   enabled: boolean;
   /**
-   * What activating the item should do. `open_settings` is only ever emitted
-   * once setup is complete: before that the tray deliberately withholds its
-   * Settings entry, so handing out an intent whose destination is a Settings
-   * sub-page would walk the user into the setup gate instead of an update.
-   * `download` and `install` drive the host-owned update manager directly and
-   * need no window at all.
+   * What activating the item should do. Every intent is served by the host's
+   * own update manager without a window: the tray is a complete update path,
+   * not a shortcut into Settings. Settings remains the detail surface (channel,
+   * last check, progress, error text) and drives the same manager.
    */
-  intent: 'check' | 'open_settings' | 'download' | 'install';
+  intent: 'check' | 'download' | 'install';
 }
 
 export interface DesktopTrayMenuState {
@@ -196,7 +194,6 @@ const TRAY_UPDATE_LABELS: Record<DesktopTrayLocale, Record<string, string>> = {
   en: {
     check: 'Check for Updates…',
     checking: 'Checking for Updates…',
-    available: 'Update Available…',
     download: 'Download Update…',
     downloading: 'Downloading Update…',
     downloaded: 'Restart to Update…',
@@ -205,7 +202,6 @@ const TRAY_UPDATE_LABELS: Record<DesktopTrayLocale, Record<string, string>> = {
   'zh-TW': {
     check: '檢查更新…',
     checking: '正在檢查更新…',
-    available: '有可用更新…',
     download: '下載更新…',
     downloading: '正在下載更新…',
     downloaded: '重新啟動以更新…',
@@ -223,10 +219,6 @@ const TRAY_UPDATE_LABELS: Record<DesktopTrayLocale, Record<string, string>> = {
 export function buildDesktopTrayUpdateItem(
   snapshot: DesktopUpdateSnapshot | null | undefined,
   localeInput?: string | null,
-  // Defaults to the self-contained flow on purpose: downloading and installing
-  // never depend on setup, so a caller that forgets to say where setup stands
-  // gets the path that works in both states rather than one that can dead-end.
-  options: { setupComplete?: boolean } = {},
 ): DesktopTrayUpdateItem | null {
   if (!snapshot?.capability.canCheck) {
     return null;
@@ -245,31 +237,25 @@ export function buildDesktopTrayUpdateItem(
     label: `${item.label}${suffix}`,
   });
 
-  return withSuffix(resolveTrayUpdateItem(snapshot, labels, options.setupComplete === true));
+  return withSuffix(resolveTrayUpdateItem(snapshot, labels));
 }
 
 function resolveTrayUpdateItem(
   snapshot: DesktopUpdateSnapshot,
   labels: Record<string, string>,
-  setupComplete: boolean,
 ): DesktopTrayUpdateItem {
   switch (snapshot.status) {
     case 'checking':
       return { label: labels.checking, enabled: false, intent: 'check' };
     case 'update_available':
-      // Before setup the item does the download itself, so the label has to
-      // promise the click rather than a page the user cannot reach yet.
-      return setupComplete
-        ? { label: labels.available, enabled: true, intent: 'open_settings' }
-        : { label: labels.download, enabled: true, intent: 'download' };
+      // The click downloads, so the label promises that rather than a page.
+      return { label: labels.download, enabled: true, intent: 'download' };
     case 'downloading': {
       const percent = Math.round(snapshot.progress?.percent ?? 0);
       return { label: `${labels.downloading} ${percent}%`, enabled: false, intent: 'check' };
     }
     case 'downloaded':
-      return setupComplete
-        ? { label: labels.downloaded, enabled: true, intent: 'open_settings' }
-        : { label: labels.downloaded, enabled: true, intent: 'install' };
+      return { label: labels.downloaded, enabled: true, intent: 'install' };
     case 'installing':
       return { label: labels.installing, enabled: false, intent: 'check' };
     default:
@@ -303,9 +289,7 @@ export function buildDesktopTrayMenuState(
         label: localizeTrayActionLabel(action, locale),
       })),
     products,
-    updateItem: buildDesktopTrayUpdateItem(options.updates, options.locale, {
-      setupComplete: Boolean(effectiveSetupCompleteAt),
-    }),
+    updateItem: buildDesktopTrayUpdateItem(options.updates, options.locale),
   };
 }
 

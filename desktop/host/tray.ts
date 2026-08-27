@@ -201,10 +201,6 @@ function buildDesktopTrayMenuTemplate(
           if (options.canInteract?.() === false) {
             return;
           }
-          if (item.intent === 'check') {
-            await options.onCheckForUpdates?.();
-            return;
-          }
           if (item.intent === 'download') {
             await options.onDownloadUpdate?.();
             return;
@@ -213,8 +209,7 @@ function buildDesktopTrayMenuTemplate(
             await options.onInstallUpdate?.();
             return;
           }
-          await options.onNavigate('/settings/desktop');
-          showWindow();
+          await options.onCheckForUpdates?.();
         });
       },
     });
