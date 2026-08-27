@@ -74,22 +74,14 @@ test('the tray shows zero percent before the first progress event', () => {
   assert.equal(item.label, 'Downloading Update… 0%');
 });
 
-test('actionable update states route a set-up host to Settings', () => {
-  for (const status of ['update_available', 'downloaded']) {
-    const item = buildDesktopTrayUpdateItem(snapshot({ status }), null, { setupComplete: true });
-    assert.equal(item.enabled, true, status);
-    assert.equal(item.intent, 'open_settings', status);
-  }
-});
-
 /**
- * The tray withholds its Settings entry until setup completes, so an update
- * item that hands out a Settings sub-page before then walks the user into the
- * setup gate instead of an update -- and someone parked on the bootstrap
- * screen is exactly who most needs the build that fixes it. Downloading and
- * installing do not depend on setup, so the tray drives them itself.
+ * The tray is a complete update path, not a shortcut into Settings. Routing an
+ * actionable state to /settings/desktop used to strand anyone whose setup was
+ * unfinished -- the tray withholds its own Settings entry until setup completes
+ * -- and offered nothing to a set-up user that the tray could not do itself.
+ * Settings stays as the detail surface and drives the same manager.
  */
-test('before setup the tray drives the update itself instead of pointing at Settings', () => {
+test('actionable update states are driven from the tray, never handed to Settings', () => {
   const available = buildDesktopTrayUpdateItem(snapshot({ status: 'update_available' }));
   assert.equal(available.enabled, true);
   assert.equal(available.intent, 'download');
@@ -102,47 +94,29 @@ test('before setup the tray drives the update itself instead of pointing at Sett
   assert.equal(downloaded.label, 'Restart to Update…');
 });
 
-test('an unspecified setup state falls back to the flow that works in both', () => {
-  for (const status of ['update_available', 'downloaded']) {
-    const item = buildDesktopTrayUpdateItem(snapshot({ status }));
-    assert.notEqual(
-      item.intent,
-      'open_settings',
-      `${status} must not assume a Settings surface the caller never vouched for`,
-    );
-  }
-});
-
-test('the menu state derives the update intent from its own setup state', () => {
+test('no update state depends on how far setup got', () => {
   const base = {
     phase: 'ready_for_setup',
     summary: 'Desktop services are ready. Continue into setup.',
     actions: [],
     products: [],
-    updates: snapshot({ status: 'update_available' }),
   };
 
-  assert.equal(
-    buildDesktopTrayMenuState({ ...base, setupCompleteAt: null }).updateItem.intent,
-    'download',
-  );
-  assert.equal(
-    buildDesktopTrayMenuState({
-      ...base,
-      setupCompleteAt: '2026-07-29T10:00:00.000Z',
-    }).updateItem.intent,
-    'open_settings',
-  );
-  // fallbackSetupCompleteAt counts as setup being done, same as it does for
-  // the product entries.
-  assert.equal(
-    buildDesktopTrayMenuState({
+  for (const status of ['update_available', 'downloaded', 'idle']) {
+    const unfinished = buildDesktopTrayMenuState({
       ...base,
       setupCompleteAt: null,
-      fallbackSetupCompleteAt: '2026-07-29T10:00:00.000Z',
-    }).updateItem.intent,
-    'open_settings',
-  );
+      updates: snapshot({ status }),
+    });
+    const complete = buildDesktopTrayMenuState({
+      ...base,
+      setupCompleteAt: '2026-07-29T10:00:00.000Z',
+      updates: snapshot({ status }),
+    });
+
+    assert.deepEqual(unfinished.updateItem, complete.updateItem, status);
+    assert.notEqual(unfinished.updateItem.intent, 'open_settings', status);
+  }
 });
 
 test('tray update labels are localized for Traditional Chinese', () => {
@@ -150,14 +124,6 @@ test('tray update labels are localized for Traditional Chinese', () => {
   assert.equal(
     buildDesktopTrayUpdateItem(snapshot({ status: 'checking' }), 'zh-TW').label,
     '正在檢查更新…',
-  );
-  assert.equal(
-    buildDesktopTrayUpdateItem(
-      snapshot({ status: 'update_available' }),
-      'zh_tw',
-      { setupComplete: true },
-    ).label,
-    '有可用更新…',
   );
   assert.equal(
     buildDesktopTrayUpdateItem(snapshot({ status: 'update_available' }), 'zh_tw').label,
