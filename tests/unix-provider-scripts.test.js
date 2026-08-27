@@ -452,3 +452,56 @@ test('Unix self-hosted provider audits can switch to serial collection mode', as
     assert.equal(summary.checks.length > 0, true);
   }
 });
+
+/**
+ * These five helpers exist as byte-identical copies under scripts/linux and
+ * scripts/macos rather than as one shared file: the packaged setup asset list
+ * stages each platform's tree separately, so both have to be on disk. Nothing
+ * else checks that they still match, which makes "edit one, forget the other"
+ * a silent divergence that only surfaces on the platform nobody tested.
+ *
+ * The 24 other shared filenames (install-node.sh, install-claude-code.sh, and
+ * the rest of the installers) are deliberately platform-specific and must not
+ * be listed here.
+ */
+const IDENTICAL_UNIX_HELPER_COPIES = [
+  'node-cli-common.sh',
+  'provider-cli-common.sh',
+  'start-desktop-host.sh',
+  'sync-agent-skills.sh',
+  'upgrade-cli-tools.sh',
+];
+
+test('the unix helpers kept as two copies stay identical', async () => {
+  for (const name of IDENTICAL_UNIX_HELPER_COPIES) {
+    const [linuxSource, macosSource] = await Promise.all([
+      readFile(join(rootDir, 'scripts', 'linux', name), 'utf8'),
+      readFile(join(rootDir, 'scripts', 'macos', name), 'utf8'),
+    ]);
+
+    if (linuxSource === macosSource) {
+      continue;
+    }
+
+    // Point at the divergence rather than just reporting inequality: the
+    // largest of these is ~1400 lines, and a bare "not equal" sends the reader
+    // off to diff by hand.
+    const linuxLines = linuxSource.split(/\r?\n/u);
+    const macosLines = macosSource.split(/\r?\n/u);
+    const limit = Math.max(linuxLines.length, macosLines.length);
+    let divergedAt = limit;
+    for (let index = 0; index < limit; index += 1) {
+      if (linuxLines[index] !== macosLines[index]) {
+        divergedAt = index + 1;
+        break;
+      }
+    }
+
+    assert.fail([
+      `scripts/linux/${name} and scripts/macos/${name} diverged at line ${divergedAt}.`,
+      `  linux: ${JSON.stringify(linuxLines[divergedAt - 1] ?? '<end of file>')}`,
+      `  macos: ${JSON.stringify(macosLines[divergedAt - 1] ?? '<end of file>')}`,
+      'These two are maintained as copies; every change has to be applied to both.',
+    ].join('\n'));
+  }
+});
