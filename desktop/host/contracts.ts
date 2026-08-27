@@ -799,6 +799,15 @@ export interface DesktopBootstrapSnapshot {
   prerequisites: DesktopBootstrapPrerequisites | null;
 }
 
+/**
+ * Mirrors cats-runtime's ProviderAuthStatus. There is deliberately no
+ * "satisfied" value: the runtime reports `missing` only when a probe actually
+ * read an auth or login requirement out of the CLI's own output, and `unknown`
+ * covers both "signed in" and "needs auth but we could not verify it". Only
+ * `missing` is a claim strong enough to act on.
+ */
+export type DesktopCliAuthStatus = 'not_required' | 'missing' | 'unknown';
+
 export interface DesktopCliInventoryEntry {
   helperId: string;
   providerId: DesktopProviderSetupLocalProviderId;
@@ -806,6 +815,7 @@ export interface DesktopCliInventoryEntry {
   installed: boolean;
   available: boolean;
   supported: boolean;
+  authStatus: DesktopCliAuthStatus;
 }
 
 export interface DesktopCliInventory {

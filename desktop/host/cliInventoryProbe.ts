@@ -1,5 +1,6 @@
 import {
   DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS,
+  type DesktopCliAuthStatus,
   type DesktopCliInventory,
   type DesktopCliInventoryEntry,
   type DesktopProviderSetupLocalProviderId,
@@ -15,8 +16,23 @@ export interface RuntimeCliInventoryProbe {
   } | null;
   scan: {
     scannedAt?: string | null;
-    providers: Array<{ provider: string; available: boolean }>;
+    providers: Array<{ provider: string; available: boolean; authStatus?: string }>;
   } | null;
+}
+
+const DESKTOP_CLI_AUTH_STATUSES: readonly DesktopCliAuthStatus[] = [
+  'not_required',
+  'missing',
+  'unknown',
+];
+
+// The runtime types authStatus as a plain string on the wire, and an older
+// runtime does not send it at all. Anything we do not recognize is "we do not
+// know", never a claim about the user's credentials.
+function normalizeCliAuthStatus(value: unknown): DesktopCliAuthStatus {
+  return (DESKTOP_CLI_AUTH_STATUSES as readonly string[]).includes(value as string)
+    ? value as DesktopCliAuthStatus
+    : 'unknown';
 }
 
 // Mapping: desktop's local-provider id -> the runtime KNOWN_PROVIDERS id.
@@ -102,11 +118,13 @@ export function buildDesktopCliInventoryFromRuntime(
   const helperPrefix = platformToHelperPrefix(platform);
   // Runtime provider id -> installed command detected by the runtime setup scan.
   const runtimeAvailability = new Map<string, boolean>();
+  const runtimeAuthStatus = new Map<string, DesktopCliAuthStatus>();
   let scannedAt: string | null = null;
   if (probe?.scan) {
     scannedAt = probe.scan.scannedAt ?? null;
     for (const provider of probe.scan.providers) {
       runtimeAvailability.set(provider.provider, provider.available === true);
+      runtimeAuthStatus.set(provider.provider, normalizeCliAuthStatus(provider.authStatus));
     }
   }
 
@@ -117,6 +135,11 @@ export function buildDesktopCliInventoryFromRuntime(
     const installed = runtimeProvider !== null
       ? runtimeAvailability.get(runtimeProvider) === true
       : false;
+    // Auth only means something for a CLI we found. A provider that is not
+    // installed has nothing to be signed in to.
+    const authStatus: DesktopCliAuthStatus = installed && runtimeProvider !== null
+      ? runtimeAuthStatus.get(runtimeProvider) ?? 'unknown'
+      : 'unknown';
     return {
       helperId,
       providerId,
@@ -124,6 +147,7 @@ export function buildDesktopCliInventoryFromRuntime(
       installed,
       available: helperId !== '',
       supported: helperPrefix !== null,
+      authStatus,
     };
   });
   const installed = candidates
