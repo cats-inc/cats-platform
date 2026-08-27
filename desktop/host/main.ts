@@ -1054,6 +1054,23 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
       // a notification or by opening Settings.
       await refreshUpdateState('tray');
     },
+    // Before setup completes the tray owns the whole update flow, because the
+    // Settings surface it would otherwise hand off to is gated behind setup —
+    // and a user parked on the bootstrap screen is exactly who most needs the
+    // build that fixes it. The manager is the same one Settings drives, so
+    // there is still only one update path.
+    onDownloadUpdate: async () => {
+      if (shuttingDown || !updateManager) {
+        return;
+      }
+      await updateManager.downloadUpdate();
+    },
+    onInstallUpdate: async () => {
+      if (shuttingDown || !updateManager) {
+        return;
+      }
+      await updateManager.restartAndInstall();
+    },
   };
 }
 
