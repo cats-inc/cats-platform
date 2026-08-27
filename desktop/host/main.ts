@@ -1561,18 +1561,23 @@ function scheduleBackgroundBootstrapWork(
   // surface install_node_lts before they fail an Install action.
   scheduleBackgroundSetupAudit(snapshot, persistedSetup);
 
-  // CLI inventory is not part of the default first-run gate. We only probe it
-  // before setup when the legacy env policy explicitly asks for that gate.
-  if (setupCompleted || hostConfig?.bootstrap.onboardingMode === 'cli_inventory_gate') {
-    void retryCliInventoryScanInBackground({
-      forceRescan: setupCompleted,
-      setupCompleted,
-    }).catch((error) => {
-      process.stderr.write(
-        `Background CLI inventory rescan failed: ${error instanceof Error ? error.message : String(error)}\n`,
-      );
-    });
-  }
+  // CLI inventory is the only source the onboarding cards can read, so it has
+  // to be probed before setup as well — otherwise a machine with every CLI
+  // already installed shows a grid of "not detected yet" until the user clicks
+  // Detect. This is background work on its own pre-setup timeout budget
+  // (RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS) and, outside the legacy
+  // cli_inventory_gate policy, is display-only: buildDesktopBootstrapSnapshot
+  // gates every phase decision that reads cliInventory on that mode, so a scan
+  // landing here can never move the phase or navigate the window away from
+  // onboarding.
+  void retryCliInventoryScanInBackground({
+    forceRescan: setupCompleted,
+    setupCompleted,
+  }).catch((error) => {
+    process.stderr.write(
+      `Background CLI inventory rescan failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+  });
 
   // Provider diagnostics — only meaningful after setup is applied. Best
   // effort, single-shot; failures fall back to "Cats can still open".
