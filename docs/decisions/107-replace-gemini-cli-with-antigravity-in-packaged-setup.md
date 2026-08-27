@@ -20,7 +20,7 @@ The `environment-bootstrap` installer suite (the upstream this project bundles i
 - Three native installer wrappers: `scripts/{windows,linux,macos}/Install-Gemini.{ps1,sh}` that call the npm-helper to install `@google/gemini-cli`.
 - Desktop host orchestration: `desktop/host/cliInventoryProbe.ts`, `desktop/host/bootstrapPage.ts`, `desktop/host/contracts.ts`, `desktop/host/packaging.ts`, `desktop/host/setupAssets.ts` all enumerate `gemini` as a known CLI with display label, native-installer suffix, packaged asset id, and bundled-script registration.
 - Packaged-setup smoke tests on all three OSes (`Test-WindowsInstallerSmoke.ps1`, `test-macos-package-smoke.sh`, `test-linux-package-smoke.sh`) assert that the Gemini installer assets are bundled into the packaged app.
-- Skills-sync tooling (`Sync-AgentSkills.ps1`, `sync-agent-skills.sh`) treats `gemini` as a valid `--agent` value and syncs to `.gemini/skills/`.
+- Skills-sync tooling (`Sync-AgentSkills.ps1`, `sync-agent-skills.sh`) treated `gemini` as a valid `--agent` value and synced to `.gemini/skills/` when this was written. That row has since been removed by `cc2d38de` ("remove unverified platform skill sync target") under PLAN-100; all three helpers now accept only `claude` and `codex` (`[ValidateSet("claude", "codex")]`, `agents=(claude codex)`) and target only `.claude/skills` and `.agents/skills`. Verified 2026-08-28. The helpers are separately inert as written — each iterates only the direct children of `skills/` and requires a `SKILL.md` in that child, while this repository's library is family-organized one level deeper (`skills/orchestration/a2a-handoff/SKILL.md`), so every run reports `No skills found` and returns without writing a mirror.
 - Shared provider catalog data (`src/shared/providerCatalogData.ts`, `src/shared/providerCatalogInstances.ts`) registers `gemini` as a provider family with a Gemini-3.x model list. The Antigravity replacement keeps only a provider-default sentinel until raw `agy` model ids are proven. The runtime dashboard and playground currently duplicate comparable provider/model data in `cats-runtime`, so this migration requires runtime to mirror the platform catalog values explicitly. Automated cross-package catalog handoff is outside this slice.
 - Companion shell helpers (`scripts/{macos,linux}/node-cli-common.sh`, `scripts/windows/_NpmCliInstaller.ps1`, `scripts/{macos,linux}/upgrade-cli-tools.sh`) mention Gemini in CLI catalogs and upgrade loops.
 - `scripts/README.md` and skills-sync helper docs reference the Gemini installer / `.gemini/skills` story. Repo-root and subproject `GEMINI.md` files are agent-governance files, not packaged-setup assets.
@@ -46,9 +46,9 @@ Concretely:
 5. The Windows setup readiness check (`Check-WindowsSetupReadiness.ps1`) replaces the `gemini` entry with `antigravity`.
 6. The packaged-setup smoke tests on all three OSes replace their Gemini-asset assertions with Antigravity-asset assertions.
 7. The shared provider catalog (`src/shared/providerCatalogData.ts`, `src/shared/providerCatalogInstances.ts`) replaces the `gemini` provider family with `antigravity`. Until explicit Phase 0 evidence proves raw `agy` model ids, the bundled catalog exposes only `antigravity-default` as a provider-default sentinel. Official product documentation may be recorded as display-name evidence, but those display names must not become executable model values without a CLI model-list command, a documented config surface, or a smoke run proving the id is accepted. Existing Gemini model ids may move under `antigravity` only with that evidence.
-8. Skills sync (`Sync-AgentSkills.ps1`, `sync-agent-skills.sh` on macOS and Linux) drops the `gemini` `--agent` value and `.gemini/skills/` target. Whether `antigravity` is added depends on whether the `agy` binary discovers a `.antigravity/skills/` directory — to be probed before flipping; default is to drop the row and not invent one.
+8. Skills sync (`Sync-AgentSkills.ps1`, `sync-agent-skills.sh` on macOS and Linux) gains no `antigravity` `--agent` value and no skills target. The probe this point made a precondition was run on 2026-08-28 against agy 1.1.20 and the default action it named is correct. A scratch workspace was seeded with both candidate paths — `<workspace>/.gemini/skills/probe-gemini/SKILL.md` and `<workspace>/.antigravity/skills/probe-antigravity/SKILL.md`, each holding a unique codeword — and a single print-mode turn asked agy to enumerate the skills in its context. It returned 38 skills with absolute paths, drawn from exactly two user-level roots, `~/.gemini/antigravity-cli/builtin/skills/` and `~/.gemini/config/plugins/<plugin>/skills/`, both since verified on disk. Neither probe skill appeared at its alphabetical position. Agy discovers no project-level skill directory on either candidate path, so there is nothing for a repository-level sync helper to write. Delivering a repository-owned skill to agy would require the plugin route under `~/.gemini/config/plugins/`, which this decision does not adopt. The `gemini` row this point proposed removing does not exist in this repository's helpers (see Context).
 9. Shell helpers and READMEs (`node-cli-common.sh`, `_NpmCliInstaller.ps1`, `upgrade-cli-tools.sh`, `scripts/README.md`) lose their Gemini references.
-10. `GEMINI.md` files are not read, renamed, or deleted by this migration. They are agent-specific instruction files governed by `AGENTS.md` / `CODEX.md`, and they are independent of the Gemini CLI packaged-setup path.
+10. `GEMINI.md` files are not renamed or deleted by this migration, but the reason recorded here was incomplete. They are not merely governance files left over from a retired CLI: `agy` reads `GEMINI.md` and `AGENTS.md` as context files, which a string probe of the agy executable confirms — the two names sit adjacent in its table at several offsets. The filename cannot change because it is the name agy looks for. What each `GEMINI.md` must not keep is its skills paragraph, which claims discovery from `.gemini/skills/<name>/SKILL.md` and is false per point 8. Those corrections are owned by agy under the same agent-file rule that governs `CLAUDE.md` and `CODEX.md`, and are out of scope for this migration.
 
 Coordination with cats-runtime ADR-032 / SPEC-026 / PLAN-033 is required: the platform catalog defines the product-side provider/model values, while the runtime currently has separate hardcoded dashboard/playground data. Platform Phase 1 must land before runtime UI Phase 4 so runtime can mirror the same sentinel or later probe-backed values.
 
@@ -65,7 +65,7 @@ Coordination with cats-runtime ADR-032 / SPEC-026 / PLAN-033 is required: the pl
 
 - Touches packaging, host code, shared catalog, smoke tests, skills tooling, shell helpers, and docs in one slice.
 - Cross-repo coordination with cats-runtime is unavoidable — the shared catalog handoff is on the critical path for both repos.
-- Skills tooling has an open question on `.antigravity/skills/` that cannot be resolved without probing `agy` behavior.
+- ~~Skills tooling has an open question on `.antigravity/skills/` that cannot be resolved without probing `agy` behavior.~~ Resolved 2026-08-28 by the probe recorded in decision point 8: agy has no project-level skill discovery, so the skills-tooling slice reduces to a documentation correction and this is no longer on the critical path.
 
 ### Neutral
 
@@ -100,7 +100,12 @@ Coordination with cats-runtime ADR-032 / SPEC-026 / PLAN-033 is required: the pl
 - [ADR-046: Drive packaged setup through runtime bootstrap APIs](./046-drive-packaged-setup-through-runtime-bootstrap-apis.md)
 - [SPEC-110: Antigravity CLI in packaged setup and provider catalog](../specs/SPEC-110-antigravity-cli-in-packaged-setup-and-provider-catalog.md)
 - [PLAN-100: Replace Gemini CLI with Antigravity CLI in packaged setup](../plans/PLAN-100-replace-gemini-cli-with-antigravity-in-packaged-setup.md)
-- cats-runtime ADR-032 (runtime side of the same migration)
+- cats-runtime ADR-032 (runtime side of the same migration) — its open item on a
+  `.antigravity/skills/` directory deferred to point 8 above, now closed
+- cats-runtime ADR-036 (separate repository-maintenance skills from
+  runtime-delivered skills) — ran the point 8 probe and reaches the same
+  conclusion. That ADR owns the canonical developer-skill source; this one owns
+  the `--agent` enum and the packaged-setup surface.
 - environment-bootstrap commits `b273f63a` and `5725e637`
 
 ---
