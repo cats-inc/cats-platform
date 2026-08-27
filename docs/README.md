@@ -59,6 +59,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [ADR-110](./decisions/110-keep-platform-clients-in-one-repository-with-explicit-package-boundaries.md) — keep Web, Desktop, Mobile, and the platform host in one repository while preserving explicit deployable and shared-package boundaries
 - [ADR-108](./decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md) — official packaged Electron builds use one main-process GitHub Release updater while npm/browser installs remain package-manager-owned
 - [SPEC-111](./specs/SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md) — capability, Tray, Settings, state-machine, release-version, signing, and three-platform artifact requirements for desktop updates
 - [PLAN-101](./plans/PLAN-101-packaged-desktop-update-rollout.md) — rollout plan for tag-gated releases, updater replacement, bounded preload IPC, synchronized update surfaces, and real old-to-new platform validation
@@ -259,4 +260,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-07-28*
+*Last updated: 2026-08-28*
