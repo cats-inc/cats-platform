@@ -532,6 +532,9 @@ export const enCatalog: MessageCatalog = {
   'settings.desktop.updatesWindowsInstallerNotice':
     'Cats will close and the Windows installer will open. You may be asked to confirm the '
     + 'installation folder.',
+  'settings.desktop.updatesLinuxInstallerNotice':
+    'Cats will close and the update will be installed with dpkg, which asks for your '
+    + 'password.',
   'settings.desktop.updatesPreviewNotice':
     'This is an unsigned preview build. Updates are for testing the release flow and are not '
     + 'a supported installation.',

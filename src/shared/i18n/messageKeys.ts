@@ -535,6 +535,7 @@ export const messageKeys = {
   settingsDesktopUpdatesActionInstalling: 'settings.desktop.updatesActionInstalling',
   settingsDesktopUpdatesToastUpToDate: 'settings.desktop.updatesToastUpToDate',
   settingsDesktopUpdatesWindowsInstallerNotice: 'settings.desktop.updatesWindowsInstallerNotice',
+  settingsDesktopUpdatesLinuxInstallerNotice: 'settings.desktop.updatesLinuxInstallerNotice',
   settingsDesktopUpdatesPreviewNotice: 'settings.desktop.updatesPreviewNotice',
   settingsDesktopUpdatesErrorOffline: 'settings.desktop.updatesErrorOffline',
   settingsDesktopUpdatesErrorTimeout: 'settings.desktop.updatesErrorTimeout',

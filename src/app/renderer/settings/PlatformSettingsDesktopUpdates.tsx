@@ -18,7 +18,7 @@ import {
   resolveDesktopUpdatePrimaryAction,
   resolveDesktopUpdateStatusMessageKey,
   resolveDesktopUpdateStatusTone,
-  shouldWarnAboutVisibleInstaller,
+  resolveDesktopUpdateInstallNoticeKey,
 } from './settingsDesktopUpdateLabels.js';
 
 export interface PlatformSettingsDesktopUpdatesProps {
@@ -118,6 +118,7 @@ export function PlatformSettingsDesktopUpdates({
 
   const { capability } = snapshot;
   const primaryAction = resolveDesktopUpdatePrimaryAction(snapshot);
+  const installNoticeKey = resolveDesktopUpdateInstallNoticeKey(snapshot, platform);
   const progressPercent = formatDesktopUpdateProgressPercent(snapshot);
 
   return (
@@ -189,10 +190,10 @@ export function PlatformSettingsDesktopUpdates({
             />
           )}
 
-          {shouldWarnAboutVisibleInstaller(snapshot, platform) && (
+          {installNoticeKey !== null && (
             <SettingsOptionRow
               layout="stack"
-              label={t('settingsDesktopUpdatesWindowsInstallerNotice')}
+              label={t(installNoticeKey)}
               control={null}
             />
           )}

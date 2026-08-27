@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   Notification,
   session,
@@ -92,6 +93,7 @@ import {
   resolveDesktopBootstrapError,
   shouldAttemptDesktopLateReadyRecovery,
 } from './startupRecovery.js';
+import { resolveDesktopInstallConfirmation } from './updateInstallPrompt.js';
 import { resolveDefaultSetupAuditAction } from './setupAudit.js';
 import {
   buildDesktopCliInventoryFromRuntime,
@@ -1067,6 +1069,27 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
     },
     onInstallUpdate: async () => {
       if (shuttingDown || !updateManager) {
+        return;
+      }
+      // The tray finishes the update without ever opening a window, so this is
+      // the last point at which the user can be told that the app is about to
+      // exit and what the platform installer will do. Settings says it inline;
+      // the tray has nowhere to put it but a dialog.
+      const confirmation = resolveDesktopInstallConfirmation({
+        platform: process.platform,
+        locale: app.getLocale(),
+      });
+      const choice = await dialog.showMessageBox({
+        type: 'question',
+        title: confirmation.title,
+        message: confirmation.message,
+        detail: confirmation.detail,
+        buttons: [confirmation.confirmLabel, confirmation.cancelLabel],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true,
+      });
+      if (choice.response !== 0) {
         return;
       }
       await updateManager.restartAndInstall();

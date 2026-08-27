@@ -513,6 +513,8 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.desktop.updatesToastUpToDate': 'Cats 已是最新版本。',
   'settings.desktop.updatesWindowsInstallerNotice':
     'Cats 將會關閉並開啟 Windows 安裝程式。過程中可能需要你確認安裝資料夾。',
+  'settings.desktop.updatesLinuxInstallerNotice':
+    'Cats 將會關閉，更新會透過 dpkg 安裝，過程中需要輸入你的密碼。',
   'settings.desktop.updatesPreviewNotice':
     '這是未簽章的預覽組建。更新功能僅供測試發布流程，並非受支援的安裝方式。',
   'settings.desktop.updatesErrorOffline': 'Cats 無法連線到更新服務。',
