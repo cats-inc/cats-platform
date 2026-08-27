@@ -164,7 +164,11 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /resolvePageMode/);
   assert.match(html, /snapshot\.app\.onboardingMode === 'setup_status'/);
   assert.match(html, /continueDisabled = legacyCliGate && installedCount === 0/);
-  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',\s*'goose', 'grok', 'cline', 'devin', 'aider', 'ollama'\s*\]/);
+  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',\s*'goose', 'grok', 'cline', 'devin'\s*\]/);
+  // Aider installs from this grid can never become usable targets, and Ollama
+  // is not a CLI provider at all — neither belongs in the inventory-driven row.
+  assert.doesNotMatch(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[[^\]]*'aider'/);
+  assert.doesNotMatch(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[[^\]]*'ollama'/);
   assert.match(html, /ONBOARDING_NPM_PROVIDER_ORDER = \[\s*'codex', 'copilot', 'opencode',\s*'kilo', 'auggie', 'pi'\s*\]/);
   assert.match(html, /Node\.js \/ npm/);
   assert.match(html, /Required by npm CLIs/);
@@ -178,6 +182,10 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /btnLabel = card\.supportsApply === false \? tx\('status\.installed'\) : tx\('status\.reinstall'\);/);
   assert.doesNotMatch(html, /node-prerequisite-loading/);
   assert.match(html, /ONBOARDING_NODE_HELPER_SUFFIX = '-node-host-installer'/);
+  assert.match(html, /ONBOARDING_LOCAL_MODEL_HELPER_SUFFIX = '-ollama-local-model-installer'/);
+  assert.match(html, /Optional local model runtime/);
+  assert.match(html, /function buildLocalModelCard\(setupSnap\)/);
+  assert.match(html, /supportsApply: localModelInstalled \? false : helper\.supportsApply/);
   assert.match(html, /cli-row-break/);
   assert.match(html, /ONBOARDING_COLLAPSED_PROVIDER_IDS = \['claude_code', 'antigravity', 'codex'\]/);
   assert.match(html, /ONBOARDING_COLLAPSED_INCLUDES_NODE = true/);

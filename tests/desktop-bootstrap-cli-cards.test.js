@@ -14,12 +14,53 @@ import { buildDesktopBootstrapPage } from '../build/desktop/bootstrapPage.js';
  */
 
 const NATIVE_PROVIDERS = [
-  'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie', 'goose', 'grok', 'ollama',
+  'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie', 'goose', 'grok',
 ];
 const NPM_PROVIDERS = ['codex', 'copilot', 'opencode', 'kilo', 'auggie', 'pi'];
+/**
+ * Providers the runtime inventory still reports but onboarding must not offer
+ * as installable cards. They stay in the fixture on purpose: excluding them has
+ * to be the page's decision, not the fixture quietly never mentioning them.
+ */
+const NON_INSTALLABLE_PROVIDERS = ['aider', 'ollama'];
+
+const OLLAMA_HELPER_ID = 'windows-ollama-local-model-installer';
+
+function setupSnapshot(lastAction) {
+  return {
+    helpers: [{
+      id: OLLAMA_HELPER_ID,
+      label: 'Windows Ollama local model installer',
+      kind: 'provider_installer',
+      pack: 'local_model_pack',
+      supportsCheckOnly: true,
+      supportsApply: true,
+      available: true,
+      supported: true,
+      unsupportedReason: null,
+    }],
+    state: { lastAction, updatedAt: '2026-07-31T00:00:00.000Z' },
+    resumeAction: null,
+  };
+}
+
+function auditAction(plannedActions) {
+  return {
+    helperId: 'windows-install-readiness-audit',
+    label: 'Windows setup readiness audit',
+    mode: 'check',
+    runState: 'completed',
+    status: 'ready',
+    plannedActions,
+    interruptions: [],
+    warnings: [],
+    appliedChanges: [],
+    manualSteps: [],
+  };
+}
 
 function candidates(installedProviderIds = []) {
-  return [...NATIVE_PROVIDERS, ...NPM_PROVIDERS].map((providerId) => ({
+  return [...NATIVE_PROVIDERS, ...NPM_PROVIDERS, ...NON_INSTALLABLE_PROVIDERS].map((providerId) => ({
     providerId,
     helperId: `windows-${providerId}-native-installer`,
     label: providerId,
@@ -65,7 +106,7 @@ const SCANNED_INVENTORY = {
  * Boots the page against a stubbed host bridge and resolves once onboarding has
  * rendered. Returns the live document plus the recorded runAction calls.
  */
-async function renderPage(inventory) {
+async function renderPage(inventory, setupSnap = null) {
   const runActions = [];
   let pushSnapshot = null;
   const dom = new JSDOM(buildDesktopBootstrapPage(), {
@@ -74,7 +115,7 @@ async function renderPage(inventory) {
     beforeParse(window) {
       window.catsDesktopHost = {
         getSnapshot: () => Promise.resolve(snapshot(inventory)),
-        getSetupSnapshot: () => Promise.resolve(null),
+        getSetupSnapshot: () => Promise.resolve(setupSnap),
         runSetupHelper: () => Promise.resolve(null),
         runAction: (actionId) => {
           runActions.push(actionId);
@@ -105,14 +146,21 @@ async function renderPage(inventory) {
 }
 
 /**
- * Provider cards only. The Node.js / npm card shares the grid but is built from
- * the setup-helper snapshot rather than from cliInventory, and carries its own
- * "still checking" spinner — it is not part of what these tests cover.
+ * Provider cards only. The Node.js / npm and Ollama cards share the grid but
+ * are built from the setup-helper snapshot rather than from cliInventory, and
+ * carry their own "still checking" spinner — they are covered separately below.
  */
+const AUDIT_BACKED_CARD_NAMES = new Set(['Node.js / npm', 'Ollama']);
+
+function cardNamed(document, name) {
+  return [...document.querySelectorAll('.cli-card')]
+    .find((card) => card.querySelector('.cli-card-name')?.textContent?.trim() === name) ?? null;
+}
+
 function providerCards(document) {
   return [...document.querySelectorAll('.cli-card')].filter((card) => {
     const name = card.querySelector('.cli-card-name')?.textContent?.trim() ?? '';
-    return name !== 'Node.js / npm';
+    return !AUDIT_BACKED_CARD_NAMES.has(name);
   });
 }
 
@@ -250,6 +298,82 @@ test('the scan-all button reaches the host', async () => {
     await new Promise((resolve) => { page.dom.window.setTimeout(resolve, 0); });
 
     assert.deepEqual(page.runActions, ['retry_cli_scan']);
+  } finally {
+    page.close();
+  }
+});
+
+/**
+ * Ollama is not a CLI provider: cats-runtime's setup scan has no entry for it,
+ * so an inventory-driven card is pinned to installed:false forever — including
+ * immediately after a successful install from that very card. These pin the
+ * card to the readiness audit instead.
+ */
+test('the Ollama card reads the readiness audit, not the CLI inventory', async () => {
+  // Installed: the audit only plans to start the service, not to install it.
+  const installed = await renderPage(
+    SCANNED_INVENTORY,
+    setupSnapshot(auditAction(['local_model:start_ollama_local_model'])),
+  );
+  try {
+    const card = cardNamed(installed.document, 'Ollama');
+    assert.ok(card, 'expected an Ollama card in the grid');
+    assert.match(card.querySelector('.cli-card-status').textContent, /Installed/);
+    assert.equal(
+      card.querySelector('.cli-card-btn').disabled,
+      true,
+      'an installed local model runtime has nothing left to apply',
+    );
+  } finally {
+    installed.close();
+  }
+
+  // Missing: the audit plans the install itself.
+  const missing = await renderPage(
+    SCANNED_INVENTORY,
+    setupSnapshot(auditAction(['local_model:install_ollama_local_model'])),
+  );
+  try {
+    const card = cardNamed(missing.document, 'Ollama');
+    assert.ok(card, 'expected an Ollama card in the grid');
+    assert.equal(card.querySelector('.cli-card-btn').textContent.trim(), 'Install');
+  } finally {
+    missing.close();
+  }
+});
+
+test('a direct Ollama install clears the card even when the service is not up yet', async () => {
+  // apply mode reports changes_required when the binary landed but the local
+  // API has not answered yet. That is installed, and the card must say so.
+  const page = await renderPage(SCANNED_INVENTORY, setupSnapshot({
+    helperId: OLLAMA_HELPER_ID,
+    label: 'Windows Ollama local model installer',
+    mode: 'apply',
+    runState: 'completed',
+    status: 'changes_required',
+    plannedActions: ['install_ollama_local_model'],
+    interruptions: [],
+    warnings: [],
+    appliedChanges: ['install_ollama_local_model'],
+    manualSteps: [],
+  }));
+  try {
+    const card = cardNamed(page.document, 'Ollama');
+    assert.ok(card, 'expected an Ollama card in the grid');
+    assert.match(card.querySelector('.cli-card-status').textContent, /Installed/);
+  } finally {
+    page.close();
+  }
+});
+
+test('Aider is never offered for install: the runtime config writer skips it', async () => {
+  const page = await renderPage(SCANNED_INVENTORY, setupSnapshot(auditAction([])));
+  try {
+    assert.equal(
+      cardNamed(page.document, 'Aider'),
+      null,
+      'an Aider card would install a CLI that can never become a usable target',
+    );
   } finally {
     page.close();
   }

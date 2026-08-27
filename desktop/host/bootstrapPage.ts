@@ -644,6 +644,8 @@ export function buildDesktopBootstrapPage(): string {
         'onboarding.installNodeFirst': 'Install Node first',
         'onboarding.nodeLabel': 'Node.js / npm',
         'onboarding.nodeStatus': 'Required by npm CLIs',
+        'onboarding.ollamaLabel': 'Ollama',
+        'onboarding.ollamaStatus': 'Optional local model runtime',
         'onboarding.rescanClis': 'Detect again',
         'onboarding.scanClis': 'Detect installed CLIs',
         'onboarding.scanningClis': 'Detecting…',
@@ -897,6 +899,8 @@ export function buildDesktopBootstrapPage(): string {
         'onboarding.installNodeFirst': '請先安裝 Node',
         'onboarding.nodeLabel': 'Node.js / npm',
         'onboarding.nodeStatus': 'npm CLI 需要此項',
+        'onboarding.ollamaLabel': 'Ollama',
+        'onboarding.ollamaStatus': '本地模型執行環境（選用）',
         'onboarding.rescanClis': '重新偵測',
         'onboarding.scanClis': '偵測已安裝的 CLI',
         'onboarding.scanningClis': '偵測中…',
@@ -1652,21 +1656,33 @@ export function buildDesktopBootstrapPage(): string {
     /* CLI install card — used by onboarding mode AND the recovery accordion.
        First row favors CLIs that do not depend on Node/npm. Lower rows are
        collapsed until Show more is pressed, then npm prerequisites appear
-       before npm-based CLIs. */
+       before npm-based CLIs.
+
+       Two providers are deliberately absent from these lists. Aider: the
+       runtime's config writer skips it outright — it is a presence-only
+       provider with no machine-readable execution contract — so a CLI
+       installed from this grid would be detected and then never become a
+       usable target, which is the worst thing onboarding can produce. Ollama:
+       it is a local model runtime, not a CLI provider, so the runtime scan
+       never reports it; its card is built from the readiness audit instead
+       (see buildLocalModelCard). */
     var ONBOARDING_NATIVE_PROVIDER_ORDER = [
       'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',
-      'goose', 'grok', 'cline', 'devin', 'aider', 'ollama'
+      'goose', 'grok', 'cline', 'devin'
     ];
     var ONBOARDING_NPM_PROVIDER_ORDER = [
       'codex', 'copilot', 'opencode',
       'kilo', 'auggie', 'pi'
     ];
     var ONBOARDING_NODE_HELPER_SUFFIX = '-node-host-installer';
+    var ONBOARDING_LOCAL_MODEL_HELPER_SUFFIX = '-ollama-local-model-installer';
     var ONBOARDING_CARD_LABELS = {
-      node: tx('onboarding.nodeLabel')
+      node: tx('onboarding.nodeLabel'),
+      ollama: tx('onboarding.ollamaLabel')
     };
     var ONBOARDING_CARD_STATUS = {
-      node: tx('onboarding.nodeStatus')
+      node: tx('onboarding.nodeStatus'),
+      ollama: tx('onboarding.ollamaStatus')
     };
     var ONBOARDING_PROVIDER_LABELS = {
       claude_code: 'Claude',
@@ -1683,18 +1699,17 @@ export function buildDesktopBootstrapPage(): string {
       pi: 'Pi',
       grok: 'Grok',
       cline: 'Cline',
-      devin: 'Devin',
-      aider: 'Aider',
-      ollama: 'Ollama'
+      devin: 'Devin'
     };
     var cliInstallingState = Object.create(null);
     var cliScanInFlight = false;
     var onboardingExpanded = false;
 
     /* The runtime only fills in cliInventory after a setup scan has actually
-       run, and that scan is deliberately NOT part of the boot path — it spawns
-       one where/which lookup per provider and would add seconds to startup.
-       Until then every candidate arrives as installed:false, which is
+       run. The host now kicks that scan off in the background at startup, so
+       this is a window of a few seconds rather than a state the user is parked
+       in until they click Detect — but the window still exists, and until it
+       closes every candidate arrives as installed:false, which is
        indistinguishable from "we checked and it is missing". Render that as
        unknown instead of claiming the CLI is absent; the inventory's source
        field is the flag that tells the two apart. */
@@ -1782,6 +1797,73 @@ export function buildDesktopBootstrapPage(): string {
         available: helper.available,
         supported: helper.supported,
         supportsApply: nodeReady ? false : helper.supportsApply
+      };
+    }
+
+    function isLocalModelHelperId(helperId) {
+      return Boolean(helperId && helperId.indexOf(ONBOARDING_LOCAL_MODEL_HELPER_SUFFIX) > 0);
+    }
+
+    function pickLocalModelHelper(setupSnap) {
+      return pickSetupHelper(setupSnap, function (candidate) {
+        return candidate && isLocalModelHelperId(candidate.id);
+      });
+    }
+
+    function plannedActionsIncludeLocalModelInstall(action) {
+      var planned = action && Array.isArray(action.plannedActions) ? action.plannedActions : [];
+      return planned.indexOf('local_model:install_ollama_local_model') >= 0;
+    }
+
+    /* The audit reports installation and API readiness as separate planned
+       actions — start_ollama_local_model means the binary is already on disk,
+       the service just is not up. This card only ever claims installation, so
+       only the install action holds it back. A direct helper run reports the
+       same split through its status, and everything except not_installed
+       means the install itself landed. */
+    function isLocalModelInstalled(setupSnap) {
+      var action = setupSnap && setupSnap.state ? setupSnap.state.lastAction : null;
+      if (!action || action.runState === 'failed') return false;
+      if (isLocalModelHelperId(action.helperId)) {
+        return action.status !== 'not_installed';
+      }
+      if (isReadinessAuditAction(action)) {
+        return !plannedActionsIncludeLocalModelInstall(action);
+      }
+      return false;
+    }
+
+    /* Ollama is not a CLI provider, so cats-runtime's setup scan has no entry
+       for it and its inventory candidate is hardcoded to installed:false —
+       a card driven from the inventory could never clear, not even right after
+       a successful install from that very card. Build it from the readiness
+       audit instead, exactly like the Node prerequisite card above. */
+    function buildLocalModelCard(setupSnap) {
+      var helper = pickLocalModelHelper(setupSnap);
+      if (!helper) {
+        if (!setupSnap) {
+          return {
+            helperId: null,
+            label: ONBOARDING_CARD_LABELS.ollama,
+            statusText: ' ',
+            installed: false,
+            available: false,
+            supported: true,
+            supportsApply: false,
+            checkingHint: 'spinner-in-status'
+          };
+        }
+        return null;
+      }
+      var localModelInstalled = isLocalModelInstalled(setupSnap);
+      return {
+        helperId: helper.id,
+        label: ONBOARDING_CARD_LABELS.ollama,
+        statusText: ONBOARDING_CARD_STATUS.ollama,
+        installed: localModelInstalled,
+        available: helper.available,
+        supported: helper.supported,
+        supportsApply: localModelInstalled ? false : helper.supportsApply
       };
     }
 
@@ -1930,6 +2012,11 @@ export function buildDesktopBootstrapPage(): string {
       var expanded = alwaysExpanded || onboardingExpanded;
       var entries = [];
       appendProviderCards(entries, snapshot, ONBOARDING_NATIVE_PROVIDER_ORDER);
+      /* Tail of the native row, where Ollama used to sit as a provider card. */
+      var localModelCard = buildLocalModelCard(setupSnap);
+      if (localModelCard) {
+        entries.push(localModelCard);
+      }
       entries.push({ kind: 'break' });
       var nodeCard = buildNodePrerequisiteCard(setupSnap);
       if (nodeCard) {
