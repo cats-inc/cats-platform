@@ -1250,7 +1250,13 @@ async function fetchRuntimeCliInventoryProbe(
   const setupStateTimeoutMs = options.setupStateTimeoutMs ?? RUNTIME_SETUP_STATE_TIMEOUT_MS;
   const scanTimeoutMs = options.scanTimeoutMs ?? RUNTIME_SETUP_SCAN_TIMEOUT_MS;
   let probe: RuntimeCliInventoryProbe | null = null;
-  const shouldReadSetupStateFirst = !options.forceRescan || runtimeCliInventoryScanPending;
+  // A forced rescan is a user pressing Detect, and it has to reach the runtime
+  // even when the runtime says a scan is already running. `scanning` is
+  // persisted state: a runtime killed mid-scan -- which the packaged update
+  // handoff does deliberately when it drains the sidecars -- leaves it set for
+  // every launch that follows. Backing off on the strength of that flag turned
+  // Detect into a button that could never do anything again.
+  const shouldReadSetupStateFirst = !options.forceRescan;
   if (shouldReadSetupStateFirst) {
     try {
       probe = await fetchJsonWithTimeout<RuntimeCliInventoryProbe>(`${baseUrl}/setup-state`, {
