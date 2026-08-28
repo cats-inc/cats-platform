@@ -121,15 +121,38 @@ export function formatDesktopUpdateProgressPercent(
 }
 
 /**
- * The Windows package is an assisted NSIS installer, so restart/install hands
- * off to a visible wizard. The section warns before the app exits rather than
- * implying a silent replacement.
+ * What installing will actually do, for the platforms where it is not a silent
+ * replacement.
+ *
+ * Windows hands off to an assisted NSIS installer, so a wizard appears. Linux
+ * installs the .deb through dpkg, which asks for a password -- SPEC-111
+ * section 8 is explicit that the "no elevation prompt" guarantee covers the
+ * per-user Windows installer only and does not extend there. macOS replaces
+ * the app in place with no prompt of its own, so it has nothing to warn about.
+ *
+ * Returns the message alias to render, or null when there is nothing to say.
  */
-export function shouldWarnAboutVisibleInstaller(
+export function resolveDesktopUpdateInstallNoticeKey(
   snapshot: DesktopUpdateSnapshot,
   platform: string,
-): boolean {
-  return snapshot.status === 'downloaded' && platform.toLowerCase().startsWith('win');
+): 'settingsDesktopUpdatesWindowsInstallerNotice'
+  | 'settingsDesktopUpdatesLinuxInstallerNotice'
+  | null {
+  if (snapshot.status !== 'downloaded') {
+    return null;
+  }
+
+  const normalized = platform.toLowerCase();
+  if (normalized.startsWith('win')) {
+    return 'settingsDesktopUpdatesWindowsInstallerNotice';
+  }
+  // navigator.platform reports "Linux x86_64"; process.platform reports
+  // "linux". Both have to resolve here because the section is rendered from
+  // the renderer but the value is injectable for tests.
+  if (normalized.startsWith('linux')) {
+    return 'settingsDesktopUpdatesLinuxInstallerNotice';
+  }
+  return null;
 }
 
 /**

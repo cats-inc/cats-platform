@@ -7,7 +7,7 @@ import {
   resolveDesktopUpdatePrimaryAction,
   resolveDesktopUpdateStatusMessageKey,
   resolveDesktopUpdateStatusTone,
-  shouldWarnAboutVisibleInstaller,
+  resolveDesktopUpdateInstallNoticeKey,
 } from '../src/app/renderer/settings/settingsDesktopUpdateLabels.js';
 import { enCatalog } from '../src/shared/i18n/catalogs/en.js';
 import { zhTWCatalog } from '../src/shared/i18n/catalogs/zh-TW.js';
@@ -204,11 +204,23 @@ test('download progress is rounded and clamped for display', () => {
   );
 });
 
-test('the visible-installer warning appears only before a Windows install', () => {
-  assert.equal(shouldWarnAboutVisibleInstaller(snapshot({ status: 'downloaded' }), 'win32'), true);
-  assert.equal(shouldWarnAboutVisibleInstaller(snapshot({ status: 'downloaded' }), 'darwin'), false);
-  assert.equal(shouldWarnAboutVisibleInstaller(snapshot({ status: 'downloaded' }), 'linux'), false);
-  assert.equal(shouldWarnAboutVisibleInstaller(snapshot({ status: 'idle' }), 'win32'), false);
+test('the install notice names what each platform will actually do', () => {
+  const noticeFor = (platform: string, status = 'downloaded') =>
+    resolveDesktopUpdateInstallNoticeKey(snapshot({ status }), platform);
+
+  assert.equal(noticeFor('win32'), 'settingsDesktopUpdatesWindowsInstallerNotice');
+  // SPEC-111 section 8: a .deb install runs dpkg and asks for elevation, which
+  // the section used to say nothing about.
+  assert.equal(noticeFor('linux'), 'settingsDesktopUpdatesLinuxInstallerNotice');
+  // The renderer that actually mounts this row passes navigator.platform
+  // ("Linux x86_64", "Win32"), not process.platform. Both have to resolve.
+  assert.equal(noticeFor('Linux x86_64'), 'settingsDesktopUpdatesLinuxInstallerNotice');
+  assert.equal(noticeFor('Win32'), 'settingsDesktopUpdatesWindowsInstallerNotice');
+  // macOS replaces the app in place with no prompt of its own.
+  assert.equal(noticeFor('darwin'), null);
+  // Nothing to warn about until there is something downloaded to install.
+  assert.equal(noticeFor('win32', 'idle'), null);
+  assert.equal(noticeFor('linux', 'update_available'), null);
 });
 
 test('every new update message key exists in both catalogs', () => {
