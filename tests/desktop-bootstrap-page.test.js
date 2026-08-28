@@ -171,21 +171,31 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.doesNotMatch(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[[^\]]*'ollama'/);
   assert.match(html, /ONBOARDING_NPM_PROVIDER_ORDER = \[\s*'codex', 'copilot', 'opencode',\s*'kilo', 'auggie', 'pi'\s*\]/);
   assert.match(html, /Node\.js \/ npm/);
-  assert.match(html, /Required by npm CLIs/);
   assert.match(html, /Install Node first/);
   assert.match(html, /cli-card-spinner/);
-  assert.match(html, /'spinner-in-status'/);
-  assert.match(html, /'spinner-in-button'/);
-  assert.match(html, /showCheckingSpinner: !setupSnap/);
   assert.match(html, /if \(!card\.helperId\) return;/);
-  assert.match(html, /supportsApply: nodeReady \? false : helper\.supportsApply/);
+  // The status line of every card in this grid holds a state. It used to hold
+  // the reason the card exists ("Required by npm CLIs"), which sits where a
+  // state sits and so was read as one -- and the state it suggested was the
+  // wrong one while the audit was still checking.
+  assert.doesNotMatch(html, /Required by npm CLIs/);
+  assert.doesNotMatch(html, /Optional local model runtime/);
+  assert.match(html, /'status\.notInstalled': 'Not installed'/);
+  assert.match(html, /'status\.checkingInstall': 'Checking…'/);
+  assert.match(html, /function resolveNodePrerequisiteState\(setupSnap\)/);
+  assert.match(html, /function resolveLocalModelState\(setupSnap\)/);
+  assert.match(html, /supportsApply: ready \|\| !helper \? false : helper\.supportsApply/);
   assert.match(html, /btnLabel = card\.supportsApply === false \? tx\('status\.installed'\) : tx\('status\.reinstall'\);/);
   assert.doesNotMatch(html, /node-prerequisite-loading/);
   assert.match(html, /ONBOARDING_NODE_HELPER_SUFFIX = '-node-host-installer'/);
   assert.match(html, /ONBOARDING_LOCAL_MODEL_HELPER_SUFFIX = '-ollama-local-model-installer'/);
-  assert.match(html, /Optional local model runtime/);
   assert.match(html, /function buildLocalModelCard\(setupSnap\)/);
-  assert.match(html, /supportsApply: localModelInstalled \? false : helper\.supportsApply/);
+  // Only a Node the audit has actually found missing may hold the npm group
+  // back; "still checking" must not take Reinstall away from an installed CLI.
+  assert.match(
+    html,
+    /waitForNodePrerequisite: resolveNodePrerequisiteState\(setupSnap\) === 'missing'/,
+  );
   assert.match(html, /cli-row-break/);
   assert.match(html, /ONBOARDING_COLLAPSED_PROVIDER_IDS = \['claude_code', 'antigravity', 'codex'\]/);
   assert.match(html, /ONBOARDING_COLLAPSED_INCLUDES_NODE = true/);
