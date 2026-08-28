@@ -25,20 +25,28 @@ const NPM_PROVIDERS = ['codex', 'copilot', 'opencode', 'kilo', 'auggie', 'pi'];
 const NON_INSTALLABLE_PROVIDERS = ['aider', 'ollama'];
 
 const OLLAMA_HELPER_ID = 'windows-ollama-local-model-installer';
+const NODE_HELPER_ID = 'windows-node-host-installer';
+
+function helper(id, label) {
+  return {
+    id,
+    label,
+    kind: 'prerequisite_helper',
+    pack: 'native_cli_pack',
+    supportsCheckOnly: true,
+    supportsApply: true,
+    available: true,
+    supported: true,
+    unsupportedReason: null,
+  };
+}
 
 function setupSnapshot(lastAction) {
   return {
-    helpers: [{
-      id: OLLAMA_HELPER_ID,
-      label: 'Windows Ollama local model installer',
-      kind: 'provider_installer',
-      pack: 'local_model_pack',
-      supportsCheckOnly: true,
-      supportsApply: true,
-      available: true,
-      supported: true,
-      unsupportedReason: null,
-    }],
+    helpers: [
+      helper(OLLAMA_HELPER_ID, 'Windows Ollama local model installer'),
+      helper(NODE_HELPER_ID, 'Windows Node.js LTS host installer'),
+    ],
     state: { lastAction, updatedAt: '2026-07-31T00:00:00.000Z' },
     resumeAction: null,
   };
@@ -93,6 +101,17 @@ const UNKNOWN_INVENTORY = {
   candidates: candidates(),
   scannedAt: null,
 };
+
+function inventoryWithCodex() {
+  const scanned = candidates(['claude_code', 'codex']);
+  return {
+    source: 'runtime',
+    installed: scanned.filter((entry) => entry.installed).map((entry) => entry.helperId),
+    total: scanned.filter((entry) => entry.installed).length,
+    candidates: scanned,
+    scannedAt: '2026-07-31T00:00:00.000Z',
+  };
+}
 
 const SCANNED_INVENTORY = {
   source: 'runtime',
@@ -374,6 +393,120 @@ test('Aider is never offered for install: the runtime config writer skips it', a
       null,
       'an Aider card would install a CLI that can never become a usable target',
     );
+  } finally {
+    page.close();
+  }
+});
+
+/**
+ * The bug these pin: "the audit has not reported yet" and "the audit reported
+ * and this is missing" used to render identically -- status text plus a live
+ * Install button. On a machine with Node installed, the Node card therefore
+ * spent the whole audit window telling the user to install Node.
+ */
+test('an audit-backed card says it is still checking rather than claiming absence', async () => {
+  // A setup snapshot whose helpers are known but whose audit has not run.
+  const page = await renderPage(SCANNED_INVENTORY, setupSnapshot(null));
+  try {
+    for (const name of ['Node.js / npm', 'Ollama']) {
+      const card = cardNamed(page.document, name);
+      assert.ok(card, `expected the ${name} card`);
+      assert.equal(card.querySelector('.cli-card-status').textContent.trim(), 'Checking…', name);
+      assert.equal(
+        card.querySelector('.cli-card-btn').disabled,
+        true,
+        `${name} must not offer an action on an answer nobody has`,
+      );
+      assert.equal(
+        card.querySelector('.cli-card-btn').textContent.includes('Install'),
+        false,
+        name,
+      );
+    }
+  } finally {
+    page.close();
+  }
+});
+
+test('an audit-backed card that is genuinely missing says so plainly', async () => {
+  const page = await renderPage(
+    SCANNED_INVENTORY,
+    setupSnapshot(auditAction(['install_node_lts', 'local_model:install_ollama_local_model'])),
+  );
+  try {
+    for (const name of ['Node.js / npm', 'Ollama']) {
+      const card = cardNamed(page.document, name);
+      assert.equal(card.querySelector('.cli-card-status').textContent.trim(), 'Not installed', name);
+      assert.equal(card.querySelector('.cli-card-btn').textContent.trim(), 'Install', name);
+      assert.equal(card.querySelector('.cli-card-btn').disabled, false, name);
+    }
+  } finally {
+    page.close();
+  }
+});
+
+/**
+ * A failed audit is not coming back on its own, so it must not leave the card
+ * spinning. An Install button the user can press beats a spinner that never
+ * stops.
+ */
+test('a failed audit leaves the card actionable rather than spinning', async () => {
+  const page = await renderPage(SCANNED_INVENTORY, setupSnapshot({
+    ...auditAction([]),
+    runState: 'failed',
+    status: 'failed',
+  }));
+  try {
+    const card = cardNamed(page.document, 'Node.js / npm');
+    assert.equal(card.querySelector('.cli-card-status').textContent.trim(), 'Not installed');
+    assert.equal(card.querySelector('.cli-card-btn').disabled, false);
+  } finally {
+    page.close();
+  }
+});
+
+/**
+ * The cascade. While Node was unknown the npm group was told to wait for it,
+ * which overwrote each card's own status and took Reinstall away from CLIs the
+ * user already had -- on the strength of an answer nobody had yet.
+ */
+test('an unreported Node does not hold the npm group back', async () => {
+  const page = await renderPage(
+    inventoryWithCodex(),
+    setupSnapshot(null),
+  );
+  try {
+    const codex = cardNamed(page.document, 'Codex');
+    assert.ok(codex, 'expected the Codex card');
+    assert.match(codex.querySelector('.cli-card-status').textContent, /Installed/);
+    assert.equal(codex.querySelector('.cli-card-btn').textContent.trim(), 'Reinstall');
+    assert.equal(codex.querySelector('.cli-card-btn').disabled, false);
+  } finally {
+    page.close();
+  }
+});
+
+test('a Node the audit found missing does hold the npm group back', async () => {
+  const page = await renderPage(
+    inventoryWithCodex(),
+    setupSnapshot(auditAction(['install_node_lts'])),
+  );
+  try {
+    // An installed npm CLI keeps its own status -- it is installed, and Node
+    // being missing does not change that -- but loses Reinstall, because the
+    // installer it would run cannot work without Node.
+    const codex = cardNamed(page.document, 'Codex');
+    assert.match(codex.querySelector('.cli-card-status').textContent, /Installed/);
+    assert.equal(codex.querySelector('.cli-card-btn').textContent.trim(), 'Installed');
+    assert.equal(codex.querySelector('.cli-card-btn').disabled, true);
+
+    // A missing one is told why it cannot be installed yet.
+    const copilot = cardNamed(page.document, 'Copilot');
+    assert.equal(
+      copilot.querySelector('.cli-card-status').textContent.trim(),
+      'Install Node first',
+    );
+    assert.equal(copilot.querySelector('.cli-card-btn').disabled, true);
   } finally {
     page.close();
   }

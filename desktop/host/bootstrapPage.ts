@@ -643,9 +643,7 @@ export function buildDesktopBootstrapPage(): string {
         'onboarding.installCli': 'Install a CLI',
         'onboarding.installNodeFirst': 'Install Node first',
         'onboarding.nodeLabel': 'Node.js / npm',
-        'onboarding.nodeStatus': 'Required by npm CLIs',
         'onboarding.ollamaLabel': 'Ollama',
-        'onboarding.ollamaStatus': 'Optional local model runtime',
         'onboarding.rescanClis': 'Detect again',
         'onboarding.scanClis': 'Detect installed CLIs',
         'onboarding.scanningClis': 'Detecting…',
@@ -762,8 +760,10 @@ export function buildDesktopBootstrapPage(): string {
         'status.error': 'error',
         'status.failed': 'failed',
         'status.info': 'info',
+        'status.checkingInstall': 'Checking…',
         'status.install': 'Install',
         'status.installed': 'Installed',
+        'status.notInstalled': 'Not installed',
         'status.installedWithCheck': '\u2713 Installed',
         'status.installing': 'Installing\u2026',
         'status.notDetected': 'Not detected yet',
@@ -898,9 +898,7 @@ export function buildDesktopBootstrapPage(): string {
         'onboarding.installCli': '安裝 CLI',
         'onboarding.installNodeFirst': '請先安裝 Node',
         'onboarding.nodeLabel': 'Node.js / npm',
-        'onboarding.nodeStatus': 'npm CLI 需要此項',
         'onboarding.ollamaLabel': 'Ollama',
-        'onboarding.ollamaStatus': '本地模型執行環境（選用）',
         'onboarding.rescanClis': '重新偵測',
         'onboarding.scanClis': '偵測已安裝的 CLI',
         'onboarding.scanningClis': '偵測中…',
@@ -1017,8 +1015,10 @@ export function buildDesktopBootstrapPage(): string {
         'status.error': '錯誤',
         'status.failed': '失敗',
         'status.info': '資訊',
+        'status.checkingInstall': '檢查中…',
         'status.install': '安裝',
         'status.installed': '已安裝',
+        'status.notInstalled': '未安裝',
         'status.installedWithCheck': '\u2713 已安裝',
         'status.installing': '安裝中…',
         'status.notDetected': '尚未偵測',
@@ -1680,10 +1680,6 @@ export function buildDesktopBootstrapPage(): string {
       node: tx('onboarding.nodeLabel'),
       ollama: tx('onboarding.ollamaLabel')
     };
-    var ONBOARDING_CARD_STATUS = {
-      node: tx('onboarding.nodeStatus'),
-      ollama: tx('onboarding.ollamaStatus')
-    };
     var ONBOARDING_PROVIDER_LABELS = {
       claude_code: 'Claude',
       antigravity: 'Antigravity',
@@ -1759,45 +1755,76 @@ export function buildDesktopBootstrapPage(): string {
         || planned.indexOf('install_node_lts_via_nvm') >= 0;
     }
 
-    function isNodePrerequisiteReady(setupSnap) {
+    /* Last conclusive answer per audit-backed card.
+       setupSnap carries only the single most recent setup action, so installing
+       any CLI from this grid overwrites the audit result that these cards are
+       built from. Without a memory the Node card would fall back to "unknown"
+       every time the user installed something, which is the state it is least
+       able to leave on its own -- the audit only re-runs on its own terms. */
+    var lastKnownAuditState = { node: null, ollama: null };
+
+    function rememberAuditState(key, state) {
+      if (state !== 'checking') {
+        lastKnownAuditState[key] = state;
+      }
+      return state === 'checking' && lastKnownAuditState[key]
+        ? lastKnownAuditState[key]
+        : state;
+    }
+
+    /* 'checking' | 'ready' | 'missing'.
+       'checking' and 'missing' were previously the same value, so a card that
+       had not been looked at yet rendered exactly like one that had been looked
+       at and found absent -- a Node card reading "Install" while Node was in
+       fact installed. A failed audit resolves to 'missing' rather than
+       'checking': it is not coming back on its own, and an install button the
+       user can press beats a spinner that never stops. */
+    function resolveNodePrerequisiteState(setupSnap) {
       var action = setupSnap && setupSnap.state ? setupSnap.state.lastAction : null;
-      if (!action || action.runState === 'failed') return false;
+      if (!action) return rememberAuditState('node', 'checking');
+      if (action.runState === 'failed') return rememberAuditState('node', 'missing');
       if (isNodePrerequisiteHelperId(action.helperId)) {
-        return action.status === 'ready';
+        return rememberAuditState('node', action.status === 'ready' ? 'ready' : 'missing');
       }
       if (isReadinessAuditAction(action)) {
-        return !plannedActionsIncludeNodeInstall(action);
+        return rememberAuditState(
+          'node',
+          plannedActionsIncludeNodeInstall(action) ? 'missing' : 'ready'
+        );
       }
-      return false;
+      /* Some other helper ran and says nothing about Node. */
+      return rememberAuditState('node', 'checking');
+    }
+
+    function buildAuditBackedCard(helper, label, state) {
+      var ready = state === 'ready';
+      return {
+        helperId: helper ? helper.id : null,
+        label: label,
+        /* The status line carries a state in every card in this grid. It used
+           to carry the reason the card exists -- why npm CLIs depend on it --
+           which sits in the same place a state sits and therefore reads as one.
+           The state it implied was "you need this and do not have it", which
+           was wrong for the whole window before the audit reported. */
+        statusText: tx('status.notInstalled'),
+        installed: ready,
+        auditPending: state === 'checking',
+        available: helper ? helper.available : false,
+        supported: helper ? helper.supported : true,
+        supportsApply: ready || !helper ? false : helper.supportsApply
+      };
     }
 
     function buildNodePrerequisiteCard(setupSnap) {
       var helper = pickNodePrerequisiteHelper(setupSnap);
-      if (!helper) {
-        if (!setupSnap) {
-          return {
-            helperId: null,
-            label: ONBOARDING_CARD_LABELS.node,
-            statusText: ' ',
-            installed: false,
-            available: false,
-            supported: true,
-            supportsApply: false,
-            checkingHint: 'spinner-in-status'
-          };
-        }
+      if (!helper && setupSnap) {
         return null;
       }
-      var nodeReady = isNodePrerequisiteReady(setupSnap);
-      return {
-        helperId: helper.id,
-        label: ONBOARDING_CARD_LABELS.node,
-        statusText: ONBOARDING_CARD_STATUS.node,
-        installed: nodeReady,
-        available: helper.available,
-        supported: helper.supported,
-        supportsApply: nodeReady ? false : helper.supportsApply
-      };
+      return buildAuditBackedCard(
+        helper,
+        ONBOARDING_CARD_LABELS.node,
+        resolveNodePrerequisiteState(setupSnap)
+      );
     }
 
     function isLocalModelHelperId(helperId) {
@@ -1821,16 +1848,23 @@ export function buildDesktopBootstrapPage(): string {
        only the install action holds it back. A direct helper run reports the
        same split through its status, and everything except not_installed
        means the install itself landed. */
-    function isLocalModelInstalled(setupSnap) {
+    function resolveLocalModelState(setupSnap) {
       var action = setupSnap && setupSnap.state ? setupSnap.state.lastAction : null;
-      if (!action || action.runState === 'failed') return false;
+      if (!action) return rememberAuditState('ollama', 'checking');
+      if (action.runState === 'failed') return rememberAuditState('ollama', 'missing');
       if (isLocalModelHelperId(action.helperId)) {
-        return action.status !== 'not_installed';
+        return rememberAuditState(
+          'ollama',
+          action.status !== 'not_installed' ? 'ready' : 'missing'
+        );
       }
       if (isReadinessAuditAction(action)) {
-        return !plannedActionsIncludeLocalModelInstall(action);
+        return rememberAuditState(
+          'ollama',
+          plannedActionsIncludeLocalModelInstall(action) ? 'missing' : 'ready'
+        );
       }
-      return false;
+      return rememberAuditState('ollama', 'checking');
     }
 
     /* Ollama is not a CLI provider, so cats-runtime's setup scan has no entry
@@ -1840,31 +1874,14 @@ export function buildDesktopBootstrapPage(): string {
        audit instead, exactly like the Node prerequisite card above. */
     function buildLocalModelCard(setupSnap) {
       var helper = pickLocalModelHelper(setupSnap);
-      if (!helper) {
-        if (!setupSnap) {
-          return {
-            helperId: null,
-            label: ONBOARDING_CARD_LABELS.ollama,
-            statusText: ' ',
-            installed: false,
-            available: false,
-            supported: true,
-            supportsApply: false,
-            checkingHint: 'spinner-in-status'
-          };
-        }
+      if (!helper && setupSnap) {
         return null;
       }
-      var localModelInstalled = isLocalModelInstalled(setupSnap);
-      return {
-        helperId: helper.id,
-        label: ONBOARDING_CARD_LABELS.ollama,
-        statusText: ONBOARDING_CARD_STATUS.ollama,
-        installed: localModelInstalled,
-        available: helper.available,
-        supported: helper.supported,
-        supportsApply: localModelInstalled ? false : helper.supportsApply
-      };
+      return buildAuditBackedCard(
+        helper,
+        ONBOARDING_CARD_LABELS.ollama,
+        resolveLocalModelState(setupSnap)
+      );
     }
 
     function toProviderInstallCard(candidate, scanned) {
@@ -1940,6 +1957,14 @@ export function buildDesktopBootstrapPage(): string {
         statusClass = 'c-ok';
         statusContent = tx('status.installedWithCheck');
         btnContent = btnLabel;
+      } else if (card.auditPending) {
+        /* The readiness audit has not reported on this card yet. It runs
+           itself, so there is nothing for the user to press -- and pressing
+           Install here would act on an answer nobody has. */
+        btnLabel = tx('status.checkingInstall');
+        statusClass = '';
+        statusContent = tx('status.checkingInstall');
+        btnContent = spinnerEl();
       } else if (card.inventoryUnknown) {
         btnLabel = tx('status.detect');
         statusClass = '';
@@ -1950,11 +1975,6 @@ export function buildDesktopBootstrapPage(): string {
         statusClass = '';
         statusContent = card.statusText || ' ';
         btnContent = btnLabel;
-        if (card.checkingHint === 'spinner-in-status') {
-          statusContent = spinnerEl();
-        } else if (card.checkingHint === 'spinner-in-button') {
-          btnContent = spinnerEl();
-        }
       }
       var btn = el('button', {
         class: 'btn cli-card-btn',
@@ -1963,6 +1983,7 @@ export function buildDesktopBootstrapPage(): string {
            unknown — the CLI may well already be installed. */
         disabled: installing
           || cliScanInFlight
+          || card.auditPending
           || !card.available
           || !card.supported
           || (!card.inventoryUnknown && card.supportsApply === false),
@@ -1996,11 +2017,8 @@ export function buildDesktopBootstrapPage(): string {
         if (!candidate || !candidate.available) continue;
         var card = toProviderInstallCard(candidate, scanned);
         if (options && options.waitForNodePrerequisite) {
-          card.statusText = options.nodePrerequisiteStatusText || tx('onboarding.installNodeFirst');
+          card.statusText = tx('onboarding.installNodeFirst');
           card.supportsApply = false;
-          if (options.showCheckingSpinner) {
-            card.checkingHint = 'spinner-in-button';
-          }
         }
         card.collapsedSlot = ONBOARDING_COLLAPSED_PROVIDER_IDS.indexOf(providerId) !== -1;
         cards.push(card);
@@ -2023,11 +2041,13 @@ export function buildDesktopBootstrapPage(): string {
         nodeCard.collapsedSlot = ONBOARDING_COLLAPSED_INCLUDES_NODE;
         entries.push(nodeCard);
       }
-      var nodeReady = isNodePrerequisiteReady(setupSnap);
+      /* Only a Node we know is missing holds the npm group back. While the
+         audit is still checking, these cards keep their own state: telling a
+         user to install Node first -- and taking Reinstall away from a CLI
+         they already have -- on the strength of an answer nobody has yet is
+         the same mistake the Node card itself was making. */
       appendProviderCards(entries, snapshot, ONBOARDING_NPM_PROVIDER_ORDER, {
-        waitForNodePrerequisite: !nodeReady,
-        nodePrerequisiteStatusText: setupSnap ? tx('onboarding.installNodeFirst') : ' ',
-        showCheckingSpinner: !setupSnap
+        waitForNodePrerequisite: resolveNodePrerequisiteState(setupSnap) === 'missing'
       });
 
       var elements = [];
