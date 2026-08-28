@@ -25,18 +25,17 @@ export interface DesktopTrayUpdateItem {
   label: string;
   enabled: boolean;
   /**
-   * What activating the item should do.
+   * There is only one intent, on purpose: open the update dialog.
    *
-   * `update` is the whole flow behind one decision -- confirm, download,
-   * install, relaunch -- because a menu item that changes meaning between
-   * clicks makes the manager's state machine the user's workflow. Every
-   * mainstream updater asks once and then finishes; none asks three times.
-   *
-   * `install` is the recovery path only: a download that landed without the
-   * install following it (the confirmation was declined, or the handoff
-   * failed) leaves a downloaded update the user can still apply.
+   * The item is a question and the dialog is the answer. A tray menu closes
+   * the moment it is clicked, so a label that changes with the update state
+   * asks the user to reopen the menu just to find out where they are -- and
+   * to re-read the item every time to learn what pressing it would do now.
+   * Whatever state the host is in, this item reads the same and the dialog
+   * tells the truth: checking, up to date, an offer, a percentage, or an
+   * install about to start.
    */
-  intent: 'check' | 'update' | 'install';
+  intent: 'open';
 }
 
 export interface DesktopTrayMenuState {
@@ -204,21 +203,11 @@ function toTrayProductLabel(productName: string, locale: DesktopTrayLocale): str
 const TRAY_UPDATE_LABELS: Record<DesktopTrayLocale, Record<string, string>> = {
   en: {
     check: 'Check for Updates…',
-    checking: 'Checking for Updates…',
-    update: 'Update to {version}…',
-    updateUnversioned: 'Update Cats…',
     downloading: 'Downloading Update…',
-    downloaded: 'Restart to Update…',
-    installing: 'Installing Update…',
   },
   'zh-TW': {
     check: '檢查更新…',
-    checking: '正在檢查更新…',
-    update: '更新到 {version}…',
-    updateUnversioned: '更新 Cats…',
     downloading: '正在下載更新…',
-    downloaded: '重新啟動以更新…',
-    installing: '正在安裝更新…',
   },
 };
 
@@ -238,48 +227,20 @@ export function buildDesktopTrayUpdateItem(
   }
 
   const locale = normalizeDesktopTrayLocale(localeInput);
-  const labels = TRAY_UPDATE_LABELS[locale];
   // A preview build self-updates, so the tray has to say what it is or a
   // tester cannot tell it apart from a supported release.
   const suffix = snapshot.capability.distribution === 'preview_packaged'
     ? (locale === 'zh-TW' ? '（預覽）' : ' (preview)')
     : '';
 
-  const withSuffix = (item: DesktopTrayUpdateItem): DesktopTrayUpdateItem => ({
-    ...item,
-    label: `${item.label}${suffix}`,
-  });
-
-  return withSuffix(resolveTrayUpdateItem(snapshot, labels));
-}
-
-function resolveTrayUpdateItem(
-  snapshot: DesktopUpdateSnapshot,
-  labels: Record<string, string>,
-): DesktopTrayUpdateItem {
-  switch (snapshot.status) {
-    case 'checking':
-      return { label: labels.checking, enabled: false, intent: 'check' };
-    case 'update_available': {
-      // Name the destination. "Update to 0.1.15…" tells the user what the one
-      // click buys; "Download Update…" described a step, which is how the item
-      // ended up meaning something different every time it was opened.
-      const label = snapshot.availableVersion
-        ? labels.update.replace('{version}', snapshot.availableVersion)
-        : labels.updateUnversioned;
-      return { label, enabled: true, intent: 'update' };
-    }
-    case 'downloading': {
-      const percent = Math.round(snapshot.progress?.percent ?? 0);
-      return { label: `${labels.downloading} ${percent}%`, enabled: false, intent: 'check' };
-    }
-    case 'downloaded':
-      return { label: labels.downloaded, enabled: true, intent: 'install' };
-    case 'installing':
-      return { label: labels.installing, enabled: false, intent: 'check' };
-    default:
-      return { label: labels.check, enabled: true, intent: 'check' };
-  }
+  // Always the same label, and always pressable. An operation already in
+  // flight is not a reason to disable it: asking where the update has got to
+  // is exactly what a user does while waiting, and the dialog answers that.
+  return {
+    label: `${TRAY_UPDATE_LABELS[locale].check}${suffix}`,
+    enabled: true,
+    intent: 'open',
+  };
 }
 
 /**

@@ -93,10 +93,7 @@ import {
   resolveDesktopBootstrapError,
   shouldAttemptDesktopLateReadyRecovery,
 } from './startupRecovery.js';
-import {
-  resolveDesktopInstallConfirmation,
-  type DesktopInstallConfirmationStage,
-} from './updateInstallPrompt.js';
+import { resolveDesktopUpdateDialog } from './updateDialog.js';
 import { resolveDefaultSetupAuditAction } from './setupAudit.js';
 import {
   buildDesktopCliInventoryFromRuntime,
@@ -1051,76 +1048,70 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
       void shutdownHost();
     },
     canInteract: () => !shuttingDown,
-    onCheckForUpdates: async () => {
-      if (shuttingDown) {
-        return;
-      }
-      // The menu closes on click, so this result has to reach the user through
-      // a notification or by opening Settings.
-      await refreshUpdateState('tray');
-    },
-    // The whole update behind one decision. Every mainstream desktop updater
-    // asks once and then finishes; splitting download and install across two
-    // more tray visits turned the manager's state machine into the user's
-    // workflow, and a menu that closes on click made each step a fresh hunt.
-    // The manager is the same one Settings drives, so there is still exactly
-    // one update path.
-    onUpdateNow: async () => {
+    // One item, one handler, whatever state the host is in. The tray closes on
+    // click, so the dialog is where every answer lives -- progress included.
+    onOpenUpdateDialog: async () => {
       if (shuttingDown || !updateManager) {
         return;
       }
-      if (!(await confirmDesktopUpdateInstall())) {
-        return;
-      }
-      const downloaded = await updateManager.downloadUpdate();
-      if (downloaded.status !== 'downloaded' || shuttingDown) {
-        // A failed download leaves the manager in `failed` with the reason,
-        // and the tray closed the moment it was clicked — so the result has to
-        // be carried to the user rather than left for them to find.
-        await announceDesktopUpdateResult('tray', downloaded);
-        return;
-      }
-      await updateManager.restartAndInstall();
-    },
-    // Recovery only: a download that landed without the install following it,
-    // because the confirmation was declined or the handoff failed. The user
-    // already consented to the download, so this asks again before exiting.
-    onInstallUpdate: async () => {
-      if (shuttingDown || !updateManager) {
-        return;
-      }
-      if (!(await confirmDesktopUpdateInstall('install_only'))) {
-        return;
-      }
-      await updateManager.restartAndInstall();
+      await runDesktopUpdateDialog(updateManager.getSnapshot());
     },
   };
 }
 
 /**
- * The one point at which a tray-driven update tells the user what it is about
- * to do. Settings says the same thing inline before its own button; the tray
- * has nowhere to put it but a dialog.
+ * Shows the update dialog for the current state and carries out whatever the
+ * user confirmed, re-entering once when the state it described was "nothing
+ * asked yet" and the answer needed a check first.
  */
-async function confirmDesktopUpdateInstall(
-  stage: DesktopInstallConfirmationStage = 'download_and_install',
-): Promise<boolean> {
-  const confirmation = resolveDesktopInstallConfirmation({
+async function runDesktopUpdateDialog(
+  snapshot: DesktopUpdateSnapshot,
+  allowRecheck = true,
+): Promise<void> {
+  if (!updateManager) {
+    return;
+  }
+  const dialogSpec = resolveDesktopUpdateDialog({
+    snapshot,
     platform: process.platform,
     locale: app.getLocale(),
-    stage,
   });
+
+  // An idle host has nothing to report yet. Run the check first and answer
+  // with its result, so one click produces one dialog rather than a dialog
+  // saying "about to look" followed by silence.
+  if (dialogSpec.action === 'check' && allowRecheck) {
+    const checked = await refreshUpdateState('tray');
+    if (checked && !shuttingDown) {
+      await runDesktopUpdateDialog(checked, false);
+    }
+    return;
+  }
+
   const choice = await dialog.showMessageBox({
-    type: 'question',
-    title: confirmation.title,
-    message: confirmation.message,
-    detail: confirmation.detail,
-    buttons: [confirmation.confirmLabel, confirmation.cancelLabel],
+    type: dialogSpec.action === 'none' ? 'info' : 'question',
+    title: dialogSpec.title,
+    message: dialogSpec.message,
+    detail: dialogSpec.detail,
+    buttons: dialogSpec.buttons,
     defaultId: 0,
-    cancelId: 1,
+    cancelId: dialogSpec.buttons.length - 1,
     noLink: true,
   });
-  return choice.response === 0;
+  if (choice.response !== 0 || dialogSpec.action === 'none' || shuttingDown) {
+    return;
+  }
+
+  if (dialogSpec.action === 'update') {
+    const downloaded = await updateManager.downloadUpdate();
+    if (downloaded.status !== 'downloaded' || shuttingDown) {
+      // The dialog is closed and the tray never held the answer, so a failed
+      // download has to be carried to the user rather than left to be found.
+      await announceDesktopUpdateResult('tray', downloaded);
+      return;
+    }
+  }
+  await updateManager.restartAndInstall();
 }
 
 async function syncTrayController(): Promise<void> {

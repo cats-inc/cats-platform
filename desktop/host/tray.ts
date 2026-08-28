@@ -29,15 +29,10 @@ interface CreateDesktopTrayControllerOptions {
   onRunAction: (actionId: DesktopHostActionId) => Promise<void>;
   onQuit: () => void;
   canInteract?: () => boolean;
-  // Delegates to the same host-owned manager Settings uses, so a tray check
-  // never creates a second provider request path.
-  onCheckForUpdates?: () => Promise<void>;
-  // The whole update behind one decision: confirm, download, install. Named
-  // for what the user asked for rather than for the manager step it starts,
-  // because the tray must not make its caller walk the state machine.
-  onUpdateNow?: () => Promise<void>;
-  // Recovery only, for a download that landed without an install following it.
-  onInstallUpdate?: () => Promise<void>;
+  // Opens the update dialog, which is where every answer lives -- the result
+  // of a check, an offer, a percentage, an install about to start. The tray
+  // item that triggers this reads the same in every state.
+  onOpenUpdateDialog?: () => Promise<void>;
 }
 
 function createBundledTrayImage(name: string): Electron.NativeImage | null {
@@ -134,7 +129,7 @@ function buildDesktopTrayMenuTemplate(
   options: Pick<
     CreateDesktopTrayControllerOptions,
     'onNavigate' | 'onRunAction' | 'onQuit' | 'canInteract'
-    | 'onCheckForUpdates' | 'onUpdateNow' | 'onInstallUpdate'
+    | 'onOpenUpdateDialog'
   >,
   showWindow: () => void,
 ): MenuItemConstructorOptions[] {
@@ -202,15 +197,7 @@ function buildDesktopTrayMenuTemplate(
           if (options.canInteract?.() === false) {
             return;
           }
-          if (item.intent === 'update') {
-            await options.onUpdateNow?.();
-            return;
-          }
-          if (item.intent === 'install') {
-            await options.onInstallUpdate?.();
-            return;
-          }
-          await options.onCheckForUpdates?.();
+          await options.onOpenUpdateDialog?.();
         });
       },
     });

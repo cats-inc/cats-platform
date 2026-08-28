@@ -34,145 +34,34 @@ test('the tray hides the update item for builds without update capability', () =
   );
 });
 
-test('the tray offers a check while the host is idle', () => {
-  assert.deepEqual(buildDesktopTrayUpdateItem(snapshot()), {
-    label: 'Check for Updates…',
-    enabled: true,
-    intent: 'check',
-  });
-  assert.deepEqual(buildDesktopTrayUpdateItem(snapshot({ status: 'up_to_date' })), {
-    label: 'Check for Updates…',
-    enabled: true,
-    intent: 'check',
-  });
-  assert.deepEqual(buildDesktopTrayUpdateItem(snapshot({ status: 'failed' })), {
-    label: 'Check for Updates…',
-    enabled: true,
-    intent: 'check',
-  });
-});
-
-test('the tray disables the item while an operation is in flight', () => {
-  for (const status of ['checking', 'installing']) {
-    const item = buildDesktopTrayUpdateItem(snapshot({ status }));
-    assert.equal(item.enabled, false, status);
-  }
-});
-
-test('the tray reports truthful download progress and stays disabled', () => {
-  const item = buildDesktopTrayUpdateItem(snapshot({
-    status: 'downloading',
-    progress: { percent: 42.7, transferredBytes: 1, totalBytes: 2, bytesPerSecond: 3 },
-  }));
-
-  assert.equal(item.label, 'Downloading Update… 43%');
-  assert.equal(item.enabled, false);
-});
-
-test('the tray shows zero percent before the first progress event', () => {
-  const item = buildDesktopTrayUpdateItem(snapshot({ status: 'downloading', progress: null }));
-
-  assert.equal(item.label, 'Downloading Update… 0%');
-});
-
 /**
- * The tray is a complete update path, not a shortcut into Settings. Routing an
- * actionable state to /settings/desktop used to strand anyone whose setup was
- * unfinished -- the tray withholds its own Settings entry until setup completes
- * -- and offered nothing to a set-up user that the tray could not do itself.
- * Settings stays as the detail surface and drives the same manager.
+ * The item is a question with one fixed label; the dialog is the answer.
+ *
+ * A tray menu closes the moment it is clicked, so a label that tracked the
+ * update state asked the user to reopen the menu just to find out where they
+ * were -- and to re-read the item before every press to learn what pressing it
+ * would do now. Progress in particular was decoration: nobody reopens a tray
+ * menu to watch a percentage.
  */
-/**
- * One decision, not three. The item used to say "Download Update…" and then,
- * on the next visit, "Restart to Update…" -- so completing an update meant
- * opening the tray three times, and the same menu position meant something
- * different each time. Every mainstream desktop updater asks once and then
- * finishes. `install` survives only as the recovery path for a download that
- * landed without the install following it.
- */
-test('an available update is one click that names where it goes', () => {
-  const item = buildDesktopTrayUpdateItem(snapshot({
-    status: 'update_available',
-    availableVersion: '0.1.15',
-  }));
-
-  assert.equal(item.enabled, true);
-  assert.equal(item.intent, 'update');
-  assert.equal(item.label, 'Update to 0.1.15…');
-  assert.equal(item.intent === 'download', false, 'the click is the whole update, not a step');
-});
-
-test('an available update without a version still offers the update', () => {
-  const item = buildDesktopTrayUpdateItem(snapshot({
-    status: 'update_available',
-    availableVersion: null,
-  }));
-
-  assert.equal(item.label, 'Update Cats…');
-  assert.equal(item.intent, 'update');
-});
-
-test('a downloaded update stays applyable as a recovery path', () => {
-  const item = buildDesktopTrayUpdateItem(snapshot({ status: 'downloaded' }));
-
-  assert.equal(item.enabled, true);
-  assert.equal(item.intent, 'install');
-  assert.equal(item.label, 'Restart to Update…');
-});
-
-test('no update state hands the user to Settings', () => {
-  for (const status of ['idle', 'checking', 'update_available', 'downloading', 'downloaded', 'installing']) {
-    const item = buildDesktopTrayUpdateItem(snapshot({ status, availableVersion: '0.1.15' }));
-    assert.notEqual(item.intent, 'open_settings', status);
+test('the update item reads the same in every state', () => {
+  const seen = new Set();
+  for (const status of [
+    'idle', 'checking', 'up_to_date', 'update_available',
+    'downloading', 'downloaded', 'installing', 'failed',
+  ]) {
+    const item = buildDesktopTrayUpdateItem(snapshot({
+      status,
+      availableVersion: '0.1.17',
+      progress: { percent: 42, transferredBytes: 1, totalBytes: 2, bytesPerSecond: 3 },
+    }));
+    seen.add(item.label);
+    assert.equal(item.intent, 'open', status);
+    // Always pressable: asking where the update got to is exactly what a user
+    // does while waiting, and the dialog answers that.
+    assert.equal(item.enabled, true, status);
   }
-});
 
-test('no update state depends on how far setup got', () => {
-  const base = {
-    phase: 'ready_for_setup',
-    summary: 'Desktop services are ready. Continue into setup.',
-    actions: [],
-    products: [],
-  };
-
-  for (const status of ['update_available', 'downloaded', 'idle']) {
-    const unfinished = buildDesktopTrayMenuState({
-      ...base,
-      setupCompleteAt: null,
-      updates: snapshot({ status }),
-    });
-    const complete = buildDesktopTrayMenuState({
-      ...base,
-      setupCompleteAt: '2026-07-29T10:00:00.000Z',
-      updates: snapshot({ status }),
-    });
-
-    assert.deepEqual(unfinished.updateItem, complete.updateItem, status);
-    assert.notEqual(unfinished.updateItem.intent, 'open_settings', status);
-  }
-});
-
-test('tray update labels are localized for Traditional Chinese', () => {
-  assert.equal(buildDesktopTrayUpdateItem(snapshot(), 'zh-TW').label, '檢查更新…');
-  assert.equal(
-    buildDesktopTrayUpdateItem(snapshot({ status: 'checking' }), 'zh-TW').label,
-    '正在檢查更新…',
-  );
-  assert.equal(
-    buildDesktopTrayUpdateItem(
-      snapshot({ status: 'update_available', availableVersion: '0.1.15' }),
-      'zh_tw',
-    ).label,
-    '更新到 0.1.15…',
-  );
-  assert.equal(
-    buildDesktopTrayUpdateItem(snapshot({ status: 'downloaded' }), 'zh-Hant').label,
-    '重新啟動以更新…',
-  );
-  assert.equal(
-    buildDesktopTrayUpdateItem(snapshot({ status: 'installing' }), 'zh-TW').label,
-    '正在安裝更新…',
-  );
+  assert.deepEqual([...seen], ['Check for Updates…']);
 });
 
 test('a preview build labels its tray entry as a preview', () => {
@@ -209,7 +98,7 @@ test('the tray menu state carries the update item alongside existing entries', (
   assert.deepEqual(state.updateItem, {
     label: 'Check for Updates…',
     enabled: true,
-    intent: 'check',
+    intent: 'open',
   });
   assert.equal(state.actions.length, 1);
 });
