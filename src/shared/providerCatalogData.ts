@@ -4,6 +4,7 @@ export const PRODUCT_PROVIDER_ORDER = [
   'antigravity',
   'grok',
   'cline',
+  'devin',
   'cursor',
   'copilot',
   'opencode',
@@ -44,6 +45,9 @@ export const PRODUCT_PROVIDER_MODELS = {
   ],
   cline: [
     { value: 'cline-default', label: 'Cline default', default: true },
+  ],
+  devin: [
+    { value: 'devin-default', label: 'Devin default', default: true },
   ],
   copilot: [
     { value: 'gpt-5.4', label: 'gpt-5.4 (default)', default: true },
@@ -103,4 +107,10 @@ export const PRODUCT_PROVIDER_MODELS = {
   ollama: [
     { value: 'qwen2.5-coder:7b', label: 'qwen2.5-coder:7b (default)', default: true },
   ],
+} as const;
+
+export const PRODUCT_PROVIDER_DEFAULT_MODEL_PLACEHOLDERS = {
+  antigravity: 'antigravity-default',
+  cline: 'cline-default',
+  devin: 'devin-default',
 } as const;

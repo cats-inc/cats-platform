@@ -22,6 +22,9 @@ export const PRODUCT_PROVIDER_INSTANCES: Record<ProductProviderId, ProductProvid
   cline: [
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ],
+  devin: [
+    { id: 'acp', label: 'agent/acp', target: 'agent/acp', backend: 'agent', default: true },
+  ],
   cursor: [
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ],

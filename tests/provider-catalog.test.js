@@ -14,7 +14,7 @@ import {
 import { PRODUCT_PROVIDER_INSTANCES } from '../build/server/shared/providerCatalogInstances.js';
 
 test('verified Grok adapter is available in the product execution catalog', () => {
-  assert.equal(PRODUCT_PROVIDER_ORDER.length, 16);
+  assert.equal(PRODUCT_PROVIDER_ORDER.length, 17);
   assert.equal(PRODUCT_PROVIDER_ORDER.includes('grok'), true);
   assert.equal(
     PRODUCT_PROVIDER_ORDER.indexOf('grok'),
@@ -28,13 +28,26 @@ test('verified Grok adapter is available in the product execution catalog', () =
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ]);
 
-  // Devin executes only through the agent/acp backend and Aider not at all, so
-  // neither belongs in a catalog that offers a selectable execution target.
-  for (const refusalOnlyProvider of ['devin', 'aider']) {
-    assert.equal(PRODUCT_PROVIDER_ORDER.includes(refusalOnlyProvider), false);
-    assert.equal(Object.hasOwn(PRODUCT_PROVIDER_MODELS, refusalOnlyProvider), false);
-    assert.equal(Object.hasOwn(PRODUCT_PROVIDER_INSTANCES, refusalOnlyProvider), false);
-  }
+  // Aider remains install-only and still does not expose a selectable runtime
+  // target.
+  assert.equal(PRODUCT_PROVIDER_ORDER.includes('aider'), false);
+  assert.equal(Object.hasOwn(PRODUCT_PROVIDER_MODELS, 'aider'), false);
+  assert.equal(Object.hasOwn(PRODUCT_PROVIDER_INSTANCES, 'aider'), false);
+});
+
+test('Devin ACP joins the product execution catalog with provider-default model semantics', () => {
+  assert.equal(PRODUCT_PROVIDER_ORDER.includes('devin'), true);
+  assert.equal(
+    PRODUCT_PROVIDER_ORDER.indexOf('devin'),
+    PRODUCT_PROVIDER_ORDER.indexOf('cline') + 1,
+  );
+  assert.equal(getDefaultModel('devin'), 'devin-default');
+  assert.deepEqual(getProviderModels('devin'), [
+    { value: 'devin-default', label: 'Devin default', default: true },
+  ]);
+  assert.deepEqual(PRODUCT_PROVIDER_INSTANCES.devin, [
+    { id: 'acp', label: 'agent/acp', target: 'agent/acp', backend: 'agent', default: true },
+  ]);
 });
 
 test('verified Cline adapter joins the product execution catalog', () => {

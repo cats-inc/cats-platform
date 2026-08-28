@@ -1,5 +1,6 @@
 import {
   createProviderAdvancedCatalogFromModelCatalog,
+  isProductProviderDefaultModelPlaceholder,
   listProductProviders,
   type ProductProviderEventCapabilities,
   type ProductProviderInstanceDescriptor,
@@ -567,6 +568,10 @@ export function shouldTreatPersistedTargetAsLegacyModel(input: {
   model: string | null | undefined;
   modelSelection?: ProviderModelSelection | null;
 }): boolean {
+  if (isProductProviderDefaultModelPlaceholder(input.catalog.provider, input.model)) {
+    return false;
+  }
+
   if (input.catalog.source === 'static') {
     return false;
   }

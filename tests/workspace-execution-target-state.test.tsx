@@ -110,6 +110,18 @@ test('execution target helper defaults stay Claude-backed and normalize trimmed 
     },
     executionLabel: null,
   });
+  assert.deepEqual(toExecutionTargetValue({
+    provider: 'cline',
+    model: null,
+    instance: 'native',
+    modelSelection: null,
+  }), {
+    provider: 'cline',
+    model: null,
+    instance: 'native',
+    modelSelection: null,
+    executionLabel: null,
+  });
 });
 
 test('execution target equality compares normalized nullable fields and model selection content', () => {
@@ -484,6 +496,147 @@ test('runtime-backed execution target reconciliation normalizes legacy Claude op
     'Claude-CLI · Opus 4.7 with 1M context',
   );
 });
+
+test('runtime-backed execution target reconciliation replaces the Antigravity placeholder with a catalog id', async () => {
+  const registry: ProductProviderRegistryReadModel = {
+    state: 'ready',
+    providers: [{
+      id: 'antigravity',
+      label: 'Antigravity',
+      defaultModel: 'antigravity-default',
+      defaultInstance: 'native',
+      defaultBackend: 'cli',
+      instances: [{
+        id: 'native',
+        label: 'cli/native',
+        target: 'cli/native',
+        backend: 'cli',
+        default: true,
+      }],
+      modelsPath: '/api/providers/antigravity/models',
+    }],
+  };
+  const models = [
+    { id: 'gemini-3.7-flash-high', label: 'Gemini 3.7 Flash (High)' },
+    { id: 'gemini-3.7-flash-medium', label: 'Gemini 3.7 Flash (Medium)' },
+  ];
+
+  const reconciled = await reconcileRuntimeBackedExecutionTargetValue({
+    target: {
+      provider: 'antigravity',
+      instance: 'native',
+      model: 'antigravity-default',
+      modelSelection: null,
+      executionLabel: null,
+    },
+    fetchProviderRegistryFn: async () => registry,
+    fetchProviderModelsFn: async () => ({
+      provider: 'antigravity',
+      backend: 'cli',
+      instance: 'native',
+      defaultModel: null,
+      source: 'static',
+      cache: null,
+      models,
+      warnings: [],
+    }),
+    fetchAdvancedProviderModelsFn: async () => normalizeProviderAdvancedModelCatalog({
+      provider: 'antigravity',
+      backend: 'cli',
+      instance: 'native',
+      defaultModel: null,
+      source: 'static',
+      cache: null,
+      entries: models,
+      presets: [],
+      controls: [],
+      defaultSelection: null,
+      support: {
+        tier: 'entry_only',
+        notes: [],
+      },
+      warnings: [],
+    }, 'antigravity'),
+  });
+
+  assert.equal(reconciled.model, 'gemini-3.7-flash-high');
+  assert.deepEqual(reconciled.modelSelection, {
+    entryId: 'gemini-3.7-flash-high',
+    entryMode: 'explicit',
+  });
+  assert.equal(
+    reconciled.executionLabel,
+    'Antigravity-CLI · Gemini 3.7 Flash (High)',
+  );
+});
+
+for (const providerDefaultTarget of [
+  { provider: 'cline', instance: 'native', model: 'cline-default', backend: 'cli' },
+  { provider: 'devin', instance: 'acp', model: 'devin-default', backend: 'agent' },
+] as const) {
+  test(`runtime-backed execution target reconciliation omits ${providerDefaultTarget.provider} placeholder`, async () => {
+    const registry: ProductProviderRegistryReadModel = {
+      state: 'ready',
+      providers: [{
+        id: providerDefaultTarget.provider,
+        label: providerDefaultTarget.provider,
+        defaultModel: providerDefaultTarget.model,
+        defaultInstance: providerDefaultTarget.instance,
+        defaultBackend: providerDefaultTarget.backend,
+        instances: [{
+          id: providerDefaultTarget.instance,
+          label: `${providerDefaultTarget.backend}/${providerDefaultTarget.instance}`,
+          target: `${providerDefaultTarget.backend}/${providerDefaultTarget.instance}`,
+          backend: providerDefaultTarget.backend,
+          default: true,
+        }],
+        modelsPath: `/api/providers/${providerDefaultTarget.provider}/models`,
+      }],
+    };
+
+    const reconciled = await reconcileRuntimeBackedExecutionTargetValue({
+      target: {
+        provider: providerDefaultTarget.provider,
+        instance: providerDefaultTarget.instance,
+        model: providerDefaultTarget.model,
+        modelSelection: null,
+        executionLabel: null,
+      },
+      fetchProviderRegistryFn: async () => registry,
+      fetchProviderModelsFn: async () => ({
+        provider: providerDefaultTarget.provider,
+        backend: providerDefaultTarget.backend,
+        instance: providerDefaultTarget.instance,
+        defaultModel: null,
+        source: 'static',
+        cache: null,
+        models: [],
+        warnings: [],
+      }),
+      fetchAdvancedProviderModelsFn: async () => normalizeProviderAdvancedModelCatalog({
+        provider: providerDefaultTarget.provider,
+        backend: providerDefaultTarget.backend,
+        instance: providerDefaultTarget.instance,
+        defaultModel: null,
+        source: 'static',
+        cache: null,
+        entries: [],
+        presets: [],
+        controls: [],
+        defaultSelection: null,
+        support: {
+          tier: 'entry_only',
+          notes: [],
+        },
+        warnings: [],
+      }, providerDefaultTarget.provider),
+    });
+
+    assert.equal(reconciled.model, null);
+    assert.equal(reconciled.modelSelection, null);
+    assert.equal(reconciled.executionLabel, null);
+  });
+}
 
 test('dispatch execution target resolution keeps advanced default effort explicit before send', async () => {
   const resolved = await resolveDispatchExecutionTargetValue(
