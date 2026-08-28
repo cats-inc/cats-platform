@@ -32,10 +32,11 @@ interface CreateDesktopTrayControllerOptions {
   // Delegates to the same host-owned manager Settings uses, so a tray check
   // never creates a second provider request path.
   onCheckForUpdates?: () => Promise<void>;
-  // Same manager again, for the states the tray drives itself before setup is
-  // complete. Neither opens a window: the update path must not depend on a
-  // surface the tray is deliberately withholding.
-  onDownloadUpdate?: () => Promise<void>;
+  // The whole update behind one decision: confirm, download, install. Named
+  // for what the user asked for rather than for the manager step it starts,
+  // because the tray must not make its caller walk the state machine.
+  onUpdateNow?: () => Promise<void>;
+  // Recovery only, for a download that landed without an install following it.
   onInstallUpdate?: () => Promise<void>;
 }
 
@@ -133,7 +134,7 @@ function buildDesktopTrayMenuTemplate(
   options: Pick<
     CreateDesktopTrayControllerOptions,
     'onNavigate' | 'onRunAction' | 'onQuit' | 'canInteract'
-    | 'onCheckForUpdates' | 'onDownloadUpdate' | 'onInstallUpdate'
+    | 'onCheckForUpdates' | 'onUpdateNow' | 'onInstallUpdate'
   >,
   showWindow: () => void,
 ): MenuItemConstructorOptions[] {
@@ -201,8 +202,8 @@ function buildDesktopTrayMenuTemplate(
           if (options.canInteract?.() === false) {
             return;
           }
-          if (item.intent === 'download') {
-            await options.onDownloadUpdate?.();
+          if (item.intent === 'update') {
+            await options.onUpdateNow?.();
             return;
           }
           if (item.intent === 'install') {
@@ -272,7 +273,7 @@ export async function createDesktopTrayController(
 
   const trayLifecycle = createGuardedTrayLifecycle<DesktopTrayMenuState>({
     apply(state) {
-      tray.setToolTip(state.lockedTooltip ?? state.lockedLabel ?? 'Cats');
+      tray.setToolTip(state.lockedTooltip ?? state.lockedLabel ?? state.tooltip ?? 'Cats');
       currentMenu = Menu.buildFromTemplate(
         buildDesktopTrayMenuTemplate(state, options, showWindow),
       );

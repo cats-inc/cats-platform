@@ -28,6 +28,16 @@ import {
  * All three relaunch afterwards, which configureElectronUpdater pins through
  * autoRunAppAfterInstall.
  */
+/**
+ * Which half of the flow the confirmation is standing in front of.
+ *
+ * The tray asks once, before anything happens, so it has to promise the
+ * download as well as the install. The recovery path -- a download that landed
+ * without the install following it -- must not, because that download is
+ * already on disk.
+ */
+export type DesktopInstallConfirmationStage = 'download_and_install' | 'install_only';
+
 export interface DesktopInstallConfirmation {
   title: string;
   message: string;
@@ -38,7 +48,8 @@ export interface DesktopInstallConfirmation {
 
 interface InstallConfirmationCopy {
   title: string;
-  message: string;
+  downloadAndInstallMessage: string;
+  installOnlyMessage: string;
   confirmLabel: string;
   cancelLabel: string;
   windowsDetail: string;
@@ -49,9 +60,10 @@ interface InstallConfirmationCopy {
 
 const INSTALL_CONFIRMATION_COPY: Record<DesktopTrayLocale, InstallConfirmationCopy> = {
   en: {
-    title: 'Install the update?',
-    message: 'Cats will close to install the update.',
-    confirmLabel: 'Install and Restart',
+    title: 'Update Cats?',
+    downloadAndInstallMessage: 'Cats will download the update, then close to install it.',
+    installOnlyMessage: 'The update is downloaded. Cats will close to install it.',
+    confirmLabel: 'Update and Restart',
     cancelLabel: 'Cancel',
     windowsDetail:
       'The Windows installer will open and may ask you to confirm the installation folder. '
@@ -63,9 +75,10 @@ const INSTALL_CONFIRMATION_COPY: Record<DesktopTrayLocale, InstallConfirmationCo
     genericDetail: 'Cats reopens once the install finishes.',
   },
   'zh-TW': {
-    title: '要安裝更新嗎？',
-    message: 'Cats 將會關閉以安裝更新。',
-    confirmLabel: '安裝並重新啟動',
+    title: '要更新 Cats 嗎？',
+    downloadAndInstallMessage: 'Cats 會下載更新，然後關閉以安裝。',
+    installOnlyMessage: '更新已下載完成。Cats 將會關閉以安裝。',
+    confirmLabel: '更新並重新啟動',
     cancelLabel: '取消',
     windowsDetail: 'Windows 安裝程式會開啟，過程中可能需要你確認安裝資料夾。完成後 Cats 會自動重新開啟。',
     linuxDetail: '更新會透過 dpkg 安裝，過程中需要輸入你的密碼。完成後 Cats 會自動重新開啟。',
@@ -95,12 +108,15 @@ function resolveDetail(
 export function resolveDesktopInstallConfirmation(input: {
   platform: NodeJS.Platform | string;
   locale?: string | null;
+  stage?: DesktopInstallConfirmationStage;
 }): DesktopInstallConfirmation {
   const copy = INSTALL_CONFIRMATION_COPY[normalizeDesktopTrayLocale(input.locale)];
 
   return {
     title: copy.title,
-    message: copy.message,
+    message: input.stage === 'install_only'
+      ? copy.installOnlyMessage
+      : copy.downloadAndInstallMessage,
     detail: resolveDetail(copy, input.platform),
     confirmLabel: copy.confirmLabel,
     cancelLabel: copy.cancelLabel,
