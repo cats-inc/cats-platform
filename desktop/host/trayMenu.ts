@@ -25,12 +25,18 @@ export interface DesktopTrayUpdateItem {
   label: string;
   enabled: boolean;
   /**
-   * What activating the item should do. Every intent is served by the host's
-   * own update manager without a window: the tray is a complete update path,
-   * not a shortcut into Settings. Settings remains the detail surface (channel,
-   * last check, progress, error text) and drives the same manager.
+   * What activating the item should do.
+   *
+   * `update` is the whole flow behind one decision -- confirm, download,
+   * install, relaunch -- because a menu item that changes meaning between
+   * clicks makes the manager's state machine the user's workflow. Every
+   * mainstream updater asks once and then finishes; none asks three times.
+   *
+   * `install` is the recovery path only: a download that landed without the
+   * install following it (the confirmation was declined, or the handoff
+   * failed) leaves a downloaded update the user can still apply.
    */
-  intent: 'check' | 'download' | 'install';
+  intent: 'check' | 'update' | 'install';
 }
 
 export interface DesktopTrayMenuState {
@@ -59,6 +65,11 @@ export interface DesktopTrayMenuState {
   // Present only for builds whose capability allows update checks. Rendered
   // before Settings and Quit.
   updateItem?: DesktopTrayUpdateItem | null;
+  // Hover text for the tray icon. Carries download progress, which a menu
+  // item cannot: an open native menu does not repaint when the menu behind it
+  // is rebuilt, so the percentage there is only visible to someone who closes
+  // and reopens it.
+  tooltip?: string;
 }
 
 export type DesktopTrayLocale = 'en' | 'zh-TW';
@@ -194,7 +205,8 @@ const TRAY_UPDATE_LABELS: Record<DesktopTrayLocale, Record<string, string>> = {
   en: {
     check: 'Check for Updates…',
     checking: 'Checking for Updates…',
-    download: 'Download Update…',
+    update: 'Update to {version}…',
+    updateUnversioned: 'Update Cats…',
     downloading: 'Downloading Update…',
     downloaded: 'Restart to Update…',
     installing: 'Installing Update…',
@@ -202,7 +214,8 @@ const TRAY_UPDATE_LABELS: Record<DesktopTrayLocale, Record<string, string>> = {
   'zh-TW': {
     check: '檢查更新…',
     checking: '正在檢查更新…',
-    download: '下載更新…',
+    update: '更新到 {version}…',
+    updateUnversioned: '更新 Cats…',
     downloading: '正在下載更新…',
     downloaded: '重新啟動以更新…',
     installing: '正在安裝更新…',
@@ -247,9 +260,15 @@ function resolveTrayUpdateItem(
   switch (snapshot.status) {
     case 'checking':
       return { label: labels.checking, enabled: false, intent: 'check' };
-    case 'update_available':
-      // The click downloads, so the label promises that rather than a page.
-      return { label: labels.download, enabled: true, intent: 'download' };
+    case 'update_available': {
+      // Name the destination. "Update to 0.1.15…" tells the user what the one
+      // click buys; "Download Update…" described a step, which is how the item
+      // ended up meaning something different every time it was opened.
+      const label = snapshot.availableVersion
+        ? labels.update.replace('{version}', snapshot.availableVersion)
+        : labels.updateUnversioned;
+      return { label, enabled: true, intent: 'update' };
+    }
     case 'downloading': {
       const percent = Math.round(snapshot.progress?.percent ?? 0);
       return { label: `${labels.downloading} ${percent}%`, enabled: false, intent: 'check' };
@@ -261,6 +280,28 @@ function resolveTrayUpdateItem(
     default:
       return { label: labels.check, enabled: true, intent: 'check' };
   }
+}
+
+/**
+ * Hover text for the tray icon.
+ *
+ * Only download progress overrides the plain product name: it is the one piece
+ * of update state that changes while the user is waiting and has nowhere else
+ * to be seen. The menu item shows the same percentage, but a native menu that
+ * is already open does not repaint when the menu behind it is rebuilt, so a
+ * user watching the download would have to keep closing and reopening it.
+ */
+export function buildDesktopTrayTooltip(
+  snapshot: DesktopUpdateSnapshot | null | undefined,
+  localeInput?: string | null,
+): string {
+  if (!snapshot?.capability.canCheck || snapshot.status !== 'downloading') {
+    return 'Cats';
+  }
+
+  const labels = TRAY_UPDATE_LABELS[normalizeDesktopTrayLocale(localeInput)];
+  const percent = Math.round(snapshot.progress?.percent ?? 0);
+  return `Cats — ${labels.downloading} ${percent}%`;
 }
 
 export function buildDesktopTrayMenuState(
@@ -290,6 +331,7 @@ export function buildDesktopTrayMenuState(
       })),
     products,
     updateItem: buildDesktopTrayUpdateItem(options.updates, options.locale),
+    tooltip: buildDesktopTrayTooltip(options.updates, options.locale),
   };
 }
 

@@ -67,9 +67,14 @@ test('desktop host keeps tray locked while shutdown drains services', async () =
   assert.match(source, /app\.on\('activate', \(\) => \{[\s\S]*if \(shuttingDown\) \{[\s\S]*return;[\s\S]*void showMainWindow\(\);/u);
   assert.match(source, /canInteract: \(\) => !shuttingDown/u);
   assert.match(traySource, /if \(state\.lockedLabel\) \{[\s\S]*label: state\.lockedLabel,[\s\S]*enabled: false,[\s\S]*\};/u);
-  // Tray tooltip falls back through lockedTooltip → lockedLabel → 'Cats'
-  // so a richer locked state can override the menu label without lying.
-  assert.match(traySource, /tray\.setToolTip\(state\.lockedTooltip \?\? state\.lockedLabel \?\? 'Cats'\);/u);
+  // Tray tooltip falls back through lockedTooltip → lockedLabel → tooltip →
+  // 'Cats'. The two locked entries come first on purpose: the ordinary tooltip
+  // carries download progress, and a shutdown that started mid-download must
+  // read as quitting rather than keep advertising a download it just drained.
+  assert.match(
+    traySource,
+    /tray\.setToolTip\(state\.lockedTooltip \?\? state\.lockedLabel \?\? state\.tooltip \?\? 'Cats'\);/u,
+  );
 });
 
 test('the update installer handoff locks the tray, drains, and prepares the exit', async () => {

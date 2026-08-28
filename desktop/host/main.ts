@@ -93,7 +93,10 @@ import {
   resolveDesktopBootstrapError,
   shouldAttemptDesktopLateReadyRecovery,
 } from './startupRecovery.js';
-import { resolveDesktopInstallConfirmation } from './updateInstallPrompt.js';
+import {
+  resolveDesktopInstallConfirmation,
+  type DesktopInstallConfirmationStage,
+} from './updateInstallPrompt.js';
 import { resolveDefaultSetupAuditAction } from './setupAudit.js';
 import {
   buildDesktopCliInventoryFromRuntime,
@@ -1056,45 +1059,68 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
       // a notification or by opening Settings.
       await refreshUpdateState('tray');
     },
-    // Before setup completes the tray owns the whole update flow, because the
-    // Settings surface it would otherwise hand off to is gated behind setup —
-    // and a user parked on the bootstrap screen is exactly who most needs the
-    // build that fixes it. The manager is the same one Settings drives, so
-    // there is still only one update path.
-    onDownloadUpdate: async () => {
+    // The whole update behind one decision. Every mainstream desktop updater
+    // asks once and then finishes; splitting download and install across two
+    // more tray visits turned the manager's state machine into the user's
+    // workflow, and a menu that closes on click made each step a fresh hunt.
+    // The manager is the same one Settings drives, so there is still exactly
+    // one update path.
+    onUpdateNow: async () => {
       if (shuttingDown || !updateManager) {
         return;
       }
-      await updateManager.downloadUpdate();
+      if (!(await confirmDesktopUpdateInstall())) {
+        return;
+      }
+      const downloaded = await updateManager.downloadUpdate();
+      if (downloaded.status !== 'downloaded' || shuttingDown) {
+        // A failed download leaves the manager in `failed` with the reason,
+        // and the tray closed the moment it was clicked — so the result has to
+        // be carried to the user rather than left for them to find.
+        await announceDesktopUpdateResult('tray', downloaded);
+        return;
+      }
+      await updateManager.restartAndInstall();
     },
+    // Recovery only: a download that landed without the install following it,
+    // because the confirmation was declined or the handoff failed. The user
+    // already consented to the download, so this asks again before exiting.
     onInstallUpdate: async () => {
       if (shuttingDown || !updateManager) {
         return;
       }
-      // The tray finishes the update without ever opening a window, so this is
-      // the last point at which the user can be told that the app is about to
-      // exit and what the platform installer will do. Settings says it inline;
-      // the tray has nowhere to put it but a dialog.
-      const confirmation = resolveDesktopInstallConfirmation({
-        platform: process.platform,
-        locale: app.getLocale(),
-      });
-      const choice = await dialog.showMessageBox({
-        type: 'question',
-        title: confirmation.title,
-        message: confirmation.message,
-        detail: confirmation.detail,
-        buttons: [confirmation.confirmLabel, confirmation.cancelLabel],
-        defaultId: 0,
-        cancelId: 1,
-        noLink: true,
-      });
-      if (choice.response !== 0) {
+      if (!(await confirmDesktopUpdateInstall('install_only'))) {
         return;
       }
       await updateManager.restartAndInstall();
     },
   };
+}
+
+/**
+ * The one point at which a tray-driven update tells the user what it is about
+ * to do. Settings says the same thing inline before its own button; the tray
+ * has nowhere to put it but a dialog.
+ */
+async function confirmDesktopUpdateInstall(
+  stage: DesktopInstallConfirmationStage = 'download_and_install',
+): Promise<boolean> {
+  const confirmation = resolveDesktopInstallConfirmation({
+    platform: process.platform,
+    locale: app.getLocale(),
+    stage,
+  });
+  const choice = await dialog.showMessageBox({
+    type: 'question',
+    title: confirmation.title,
+    message: confirmation.message,
+    detail: confirmation.detail,
+    buttons: [confirmation.confirmLabel, confirmation.cancelLabel],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  });
+  return choice.response === 0;
 }
 
 async function syncTrayController(): Promise<void> {

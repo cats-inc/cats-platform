@@ -16,12 +16,35 @@ test('every platform confirmation says the app will close and comes back', () =>
   for (const platform of ['win32', 'linux', 'darwin', 'freebsd']) {
     const confirmation = resolveDesktopInstallConfirmation({ platform });
 
-    assert.equal(confirmation.title, 'Install the update?');
+    assert.equal(confirmation.title, 'Update Cats?');
     assert.match(confirmation.message, /close/i, platform);
     assert.match(confirmation.detail, /reopens/i, platform);
-    assert.equal(confirmation.confirmLabel, 'Install and Restart');
+    assert.equal(confirmation.confirmLabel, 'Update and Restart');
     assert.equal(confirmation.cancelLabel, 'Cancel');
   }
+});
+
+/**
+ * The tray asks once, before anything happens, so it has to promise the
+ * download too. The recovery path stands in front of a download that is
+ * already on disk and must not claim it will fetch it again.
+ */
+test('the message matches which half of the flow is still ahead', () => {
+  const upfront = resolveDesktopInstallConfirmation({ platform: 'win32' });
+  assert.match(upfront.message, /download the update/iu);
+
+  const recovery = resolveDesktopInstallConfirmation({
+    platform: 'win32',
+    stage: 'install_only',
+  });
+  assert.match(recovery.message, /is downloaded/iu);
+  assert.equal(/will download/iu.test(recovery.message), false);
+
+  // The default is the up-front ask, because that is the path a user takes.
+  assert.equal(
+    resolveDesktopInstallConfirmation({ platform: 'win32', stage: 'download_and_install' }).message,
+    upfront.message,
+  );
 });
 
 test('the detail names what each platform actually does', () => {
@@ -57,8 +80,8 @@ test('the confirmation is localized for Traditional Chinese', () => {
     locale: 'zh-TW',
   });
 
-  assert.equal(confirmation.title, '要安裝更新嗎？');
-  assert.equal(confirmation.confirmLabel, '安裝並重新啟動');
+  assert.equal(confirmation.title, '要更新 Cats 嗎？');
+  assert.equal(confirmation.confirmLabel, '更新並重新啟動');
   assert.equal(confirmation.cancelLabel, '取消');
   assert.match(confirmation.detail, /Windows 安裝程式/u);
 
@@ -74,6 +97,6 @@ test('an unknown locale falls back to English rather than an empty dialog', () =
     locale: 'de-DE',
   });
 
-  assert.equal(confirmation.title, 'Install the update?');
+  assert.equal(confirmation.title, 'Update Cats?');
   assert.match(confirmation.detail, /dpkg/u);
 });
