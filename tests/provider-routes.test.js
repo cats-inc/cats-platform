@@ -239,6 +239,99 @@ test('GET /api/providers/:provider/models/advanced scopes selector diagnostics t
   );
 });
 
+test('GET /api/providers exposes Devin ACP and proxies its provider-default catalog', async () => {
+  const runtimeClient = createRuntimeStub();
+  runtimeClient.getProviderConfig = async () => ({
+    devin: {
+      defaultInstance: 'acp',
+      defaultBackend: 'agent',
+      instances: [
+        {
+          id: 'acp',
+          target: 'agent/acp',
+          backend: 'agent',
+          command: 'devin',
+          runner: null,
+          runtime: null,
+          transport: 'acp_stdio',
+          model: null,
+        },
+      ],
+    },
+  });
+  runtimeClient.getProviderDiagnostics = async (query = {}) => {
+    const providers = [
+      {
+        provider: 'devin',
+        backend: 'agent',
+        instance: 'acp',
+        defaultTarget: true,
+        availability: {
+          status: 'ok',
+          summary: 'ACP ready',
+          attentionCodes: [],
+        },
+      },
+    ];
+    return {
+      probe: 'light',
+      providers: typeof query.provider === 'string' && query.provider.trim().length > 0
+        ? providers.filter((entry) => entry.provider === query.provider)
+        : providers,
+    };
+  };
+  runtimeClient.getProviderModels = async (provider, instance) => ({
+    provider,
+    backend: 'agent',
+    instance: instance ?? 'acp',
+    defaultModel: null,
+    source: 'static',
+    cache: null,
+    models: [],
+    warnings: [],
+  });
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const registryResponse = await fetch(`${baseUrl}/api/providers`);
+    assert.equal(registryResponse.status, 200);
+    const registry = await registryResponse.json();
+    assert.deepEqual(registry.providers, [
+      {
+        id: 'devin',
+        label: 'Devin',
+        defaultModel: 'devin-default',
+        defaultInstance: 'acp',
+        defaultBackend: 'agent',
+        instances: [
+          {
+            id: 'acp',
+            label: 'agent/acp',
+            target: 'agent/acp',
+            backend: 'agent',
+            default: true,
+          },
+        ],
+        modelsPath: '/api/providers/devin/models',
+      },
+    ]);
+
+    const modelsResponse = await fetch(`${baseUrl}/api/providers/devin/models?instance=acp`);
+    assert.equal(modelsResponse.status, 200);
+    assert.deepEqual(await modelsResponse.json(), {
+      catalog: {
+        provider: 'devin',
+        backend: 'agent',
+        instance: 'acp',
+        defaultModel: null,
+        source: 'static',
+        cache: null,
+        models: [],
+        warnings: [],
+      },
+    });
+  });
+});
+
 test('GET /api/providers keeps the last good selector after a transient refresh timeout', {
   concurrency: false,
 }, async (t) => {

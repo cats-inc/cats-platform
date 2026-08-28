@@ -10,6 +10,7 @@ import {
 import {
   getDefaultModel,
   getDefaultProviderInstance,
+  isProductProviderDefaultModelPlaceholder,
 } from '../../../../shared/providerCatalog.js';
 import {
   cloneProviderModelSelection,
@@ -349,9 +350,12 @@ export function toExecutionTargetValue(
   }
 
   const provider = defaults.provider?.trim() || 'claude';
+  const model = defaults.model === undefined
+    ? ((defaults.modelSelection?.entryId ?? getDefaultModel(provider)) || null)
+    : (defaults.model ?? defaults.modelSelection?.entryId ?? null);
   return {
     provider,
-    model: defaults.model ?? (getDefaultModel(provider) || null),
+    model,
     instance: defaults.instance ?? getDefaultProviderInstance(provider),
     modelSelection: defaults.modelSelection ?? null,
     executionLabel: null,
@@ -459,6 +463,13 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
     const normalizedFallbackTarget: ExecutionTargetValue = {
       ...input.target,
       instance: resolvedInstance || null,
+      ...(isProductProviderDefaultModelPlaceholder(provider, input.target.model)
+        ? {
+            model: null,
+            modelSelection: null,
+            executionLabel: null,
+          }
+        : {}),
     };
     return sameExecutionTargetValueAndLabel(input.target, normalizedFallbackTarget)
       ? input.target
@@ -471,12 +482,18 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
     instance: resolvedInstance || null,
   });
 
-  const shouldDeferReconciliation = shouldDeferCatalogTargetReconciliation({
-    catalogSource: effectiveCatalog.source,
-    advancedCatalogSource: effectiveAdvancedCatalog.source,
-    model: nextTarget.model,
-    modelSelection: nextTarget.modelSelection,
-  });
+  const providerDefaultPlaceholder = isProductProviderDefaultModelPlaceholder(
+    provider,
+    nextTarget.model,
+  );
+
+  const shouldDeferReconciliation = !providerDefaultPlaceholder
+    && shouldDeferCatalogTargetReconciliation({
+      catalogSource: effectiveCatalog.source,
+      advancedCatalogSource: effectiveAdvancedCatalog.source,
+      model: nextTarget.model,
+      modelSelection: nextTarget.modelSelection,
+    });
   if (!shouldDeferReconciliation && effectiveCatalog.models.length > 0) {
     const preserveExistingSelection =
       Boolean(nextTarget.modelSelection)
@@ -495,6 +512,14 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
       }),
       controls: effectiveAdvancedCatalog.controls,
     });
+  } else if (providerDefaultPlaceholder) {
+    nextTarget = {
+      ...nextTarget,
+      model: '',
+      modelSelection: null,
+      modelResolution: null,
+      executionLabel: null,
+    };
   }
 
   const labeledTarget = nextTarget.model

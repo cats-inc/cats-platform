@@ -1,5 +1,6 @@
 import type { ProviderModelSelection } from './providerSelection.js';
 import {
+  PRODUCT_PROVIDER_DEFAULT_MODEL_PLACEHOLDERS,
   PRODUCT_PROVIDER_MODELS as STATIC_PRODUCT_PROVIDER_MODELS,
   PRODUCT_PROVIDER_ORDER,
 } from './providerCatalogData.js';
@@ -451,6 +452,21 @@ export function getProviderDisplayName(provider: string): string {
 export function getProviderModels(provider: string): ProviderModelOption[] {
   const resolvedProvider = resolveProductProviderId(provider);
   return resolvedProvider ? PRODUCT_PROVIDER_MODELS[resolvedProvider] ?? [] : [];
+}
+
+export function isProductProviderDefaultModelPlaceholder(
+  provider: string,
+  model: string | null | undefined,
+): boolean {
+  const resolvedProvider = resolveProductProviderId(provider);
+  if (!resolvedProvider) {
+    return false;
+  }
+
+  const placeholders = PRODUCT_PROVIDER_DEFAULT_MODEL_PLACEHOLDERS as Partial<
+    Record<ProductProviderId, string>
+  >;
+  return placeholders[resolvedProvider] === model?.trim();
 }
 
 export function normalizeProductProviderModelId(

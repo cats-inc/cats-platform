@@ -4,37 +4,37 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress — Grok setup and execution catalog complete; Devin, Cline, and Aider pending User approval |
+| **Status** | In Progress — packaged setup complete; Grok, Cline, and Devin promoted to product execution; packaged smoke remains deferred |
 | **Owner** | User |
 | **Reviewer** | User |
 
 ## Summary
 
-This spec defines the packaged-setup side of adopting four upstream AI coding CLIs — Grok CLI (xAI), Devin CLI (Cognition), Cline, and Aider — as Cats provider families. It covers repo-owned installer helpers on supported platforms, desktop host wiring, the setup-provider inventory, smoke tests, and evidence-gated promotion into the product execution catalog. Grok now has a working exact-version runtime adapter; the remaining three are refusal-only.
+This spec defines the packaged-setup side of adopting four upstream AI coding CLIs — Grok CLI (xAI), Devin CLI (Cognition), Cline, and Aider — as Cats provider families. It covers repo-owned installer helpers on supported platforms, desktop host wiring, the setup-provider inventory, smoke tests, and evidence-gated promotion into the product execution catalog. Grok and Cline now have working native runtime adapters, Devin has a working ACP adapter, and Aider remains setup-only.
 
 It is the counterpart to `cats-runtime` SPEC-027, which owns the runtime provider taxonomy, install/check knowledge, and execution adapters. ADR-109 captures the underlying decision.
 
 ## Goals
 
-- Ship repo-owned `check/apply/upgrade/force/uninstall` installer helpers for Grok, Devin, and Aider on Windows, macOS, and Linux, and add Cline to the existing npm provider pack on its officially supported macOS and Linux platforms.
+- Ship repo-owned `check/apply/upgrade/force/uninstall` installer helpers for Grok, Devin, and Aider on Windows, macOS, and Linux, and add Cline to the existing npm provider pack on all three platforms after its reviewed Windows execution probe.
 - Extend `provider-cli-common.sh` so a provider's install directory is data, not an assumption, so Grok's `~/.grok/bin` works without a special case.
 - Strip the interactive `devin setup` call from both packaged Devin installers and surface it as a `manualSteps` entry instead.
 - Register the four in `DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS`, the runtime-id mapping, provider labels, and helper-suffix maps.
 - Register setup assets and packaging inventory entries for the new helpers.
-- Promote each provider into `PRODUCT_PROVIDER_ORDER`, `PRODUCT_PROVIDER_MODELS`, and `PRODUCT_PROVIDER_INSTANCES` only when its execution adapter works; Grok joins with verified model `grok-4.5`.
-- Extend the Windows, macOS, and Linux smoke tests to cover supported helpers and Cline's explicit Windows-unsupported state.
+- Promote each provider into `PRODUCT_PROVIDER_ORDER`, `PRODUCT_PROVIDER_MODELS`, and `PRODUCT_PROVIDER_INSTANCES` only when its execution adapter works; Grok joins with verified model `grok-4.5`, while Cline and Devin use provider-default model semantics.
+- Extend the Windows, macOS, and Linux smoke tests to cover all supported helpers.
 - Correct the Pi npm package name to `@earendil-works/pi-coding-agent` across all four platform locations.
 
 ## Non-Goals
 
 - Runtime provider taxonomy, install knowledge, refusal adapters, or `providers.yaml` bootstrap — owned by `cats-runtime` SPEC-027.
 - Runtime session-execution implementation, which remains owned by `cats-runtime`.
-- Adding Devin, Cline, or Aider, including default sentinels, to the product execution catalog while they remain refusal-only.
+- Adding Aider to the product execution catalog while it remains refusal-only, or sending any provider-default UI placeholder to the runtime as a real model id.
 - Managing the `uv` binary that Aider's installer brings with it.
 - Registering Grok's generic `agent` alias as a detection candidate or alias target. Removing the known installer-owned alias path during uninstall remains in scope.
 - Adopting upstream's Quick/Full mode split.
 - WSL-hosted variants of the four.
-- A Windows Cline helper before upstream support or a reviewed live Windows execution probe establishes a supported contract.
+- A dedicated Windows Cline wrapper; the reviewed execution probe supports it through the generic npm helper.
 
 ## User Stories
 
@@ -42,7 +42,7 @@ It is the counterpart to `cats-runtime` SPEC-027, which owns the runtime provide
 - As a Cats Desktop user who installed Devin, I want the setup screen to tell me that packaged install skipped `devin setup` and that authentication remains unverified, rather than showing a green check or guessing whether I later completed the step.
 - As a macOS user, I want Aider's uninstall to actually remove Aider, not just delete a shim that regenerates.
 - As a Linux user, I want Cline to install through the same npm pack flow as Codex and Copilot.
-- As a Windows user, I want setup to say that Cline CLI is unsupported instead of offering an installer that has not been shown to work.
+- As a Windows user, I want Cline setup to use the same reviewed npm-pack flow as the other supported platforms.
 - As a maintainer, I want the packaged smoke tests to fail if a new helper does not honor the JSON mode contract.
 - As a Pi user on a packaged host, I want `upgrade-cli-tools` to actually upgrade Pi.
 
@@ -56,7 +56,7 @@ Three of the four also violate assumptions currently baked into the helpers:
 - `run_remote_pipe_installer` supports only `curl … | bash` shapes. Aider needs `curl -LsSf … | sh`, and its uninstall is a `uv tool` operation.
 - Nothing in the helper contract models "installed, interactive setup skipped, authentication unverified". Devin needs exactly that, because the packaged installer must skip the interactive setup step to avoid hanging the non-interactive setup bridge and cannot later infer whether the user completed it elsewhere.
 
-Cline's official CLI preview supports macOS and Linux, with Windows support still listed as forthcoming. In addition, the product execution catalog represents selectable session providers, not every tool setup can install. Grok has crossed the execution evidence gate; Devin, Cline, and Aider have not, so setup visibility and execution selection remain separate.
+Cline's official CLI preview originally supported macOS and Linux; the later reviewed Windows execution probe recorded in PLAN-102 lifted that setup restriction. In addition, the product execution catalog represents selectable session providers, not every tool setup can install. Grok, Cline, and Devin have crossed the execution evidence gate; Aider has not, so setup visibility and execution selection remain separate.
 
 Separately, four platform locations install Pi from a package name upstream abandoned; npm resolves the old name to its final version and reports it as current, so Pi upgrades silently no-op.
 
@@ -91,32 +91,33 @@ Separately, four platform locations install Pi from a package name upstream aban
 17. `scripts/windows/Install-Grok.ps1` shall implement the full JSON mode contract against `%USERPROFILE%\.grok\bin\grok.exe`, using `irm https://x.ai/cli/install.ps1 | iex` invoked as a scriptblock so the upstream script's `$ErrorActionPreference` does not leak, and shall ensure `%USERPROFILE%\.grok\bin` is on the User PATH. Uninstall shall remove the fixed adjacent `grok.exe` and installer-owned `agent.exe` paths without resolving a generic `agent` from PATH.
 18. `scripts/windows/Install-Devin.ps1` shall implement the same contract against `%LOCALAPPDATA%\devin\cli\bin\devin.exe`, fetch `https://static.devin.ai/cli/setup.ps1`, require and remove exactly one expected trailing `& $EntryExe setup` line before execution, and report `devin setup` in `manualSteps`. If the marker is absent or ambiguous, it shall return a structured failure without executing the downloaded script. Its help text shall record that the upstream installer is PowerShell-only.
 19. `scripts/windows/Install-Aider.ps1` shall implement the same contract against `%USERPROFILE%\.local\bin\aider.exe` using `irm https://aider.chat/install.ps1 | iex` as a scriptblock, and shall use `uv tool uninstall aider-chat` for uninstall with a file-removal fallback.
-20. No `scripts/windows/Install-Cline.ps1` shall ship at this tier. The Windows setup surface shall report Cline CLI as unsupported rather than exposing an install action.
+20. No dedicated `scripts/windows/Install-Cline.ps1` shall ship at this tier. The Windows setup surface shall use the generic npm helper after the reviewed live execution probe established support.
 21. `scripts/windows/Install-Pi.ps1` shall use `@earendil-works/pi-coding-agent` and uninstall `@mariozechner/pi-coding-agent` first.
-22. `scripts/windows/Check-WindowsSetupReadiness.ps1` shall gain executable rows for Grok, Devin, and Aider and shall correct Pi's `PackageName`. Cline shall be absent from executable readiness rows or represented by explicit unsupported metadata; it shall not be reported as a supported Windows install.
+22. `scripts/windows/Check-WindowsSetupReadiness.ps1` shall gain executable rows for Grok, Devin, Aider, and Cline and shall correct Pi's `PackageName`.
 
 #### Readiness audits and upgrades
 
 23. `scripts/{linux,macos}/check-installation.sh` shall report all four.
-24. `scripts/{linux,macos}/upgrade-cli-tools.sh` shall include all four; the Windows equivalent shall include Grok, Devin, and Aider but not Cline.
+24. `scripts/{linux,macos}/upgrade-cli-tools.sh` and the Windows equivalent shall include all four.
 
 #### Desktop host
 
 25. `desktop/host/contracts.ts` `DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS` shall gain `grok`, `devin`, `cline`, `aider`, appended to the CLI setup segment after `pi` and before `ollama`. Existing providers shall retain relative order; `ollama` moves four absolute positions later.
-26. `desktop/host/cliInventoryProbe.ts` shall map each to the identical runtime id and add labels, helper mappings, and platform-support metadata. Grok, Devin, and Aider use native-installer helpers on all three OSes. Cline uses the generic npm helper on macOS and Linux and exposes no executable helper on Windows.
-27. `desktop/host/setupAssets.ts` shall register descriptors for supported provider/platform pairs with `requiresElevation: false`, `resumable: true`, and all five modes supported. Cline joins the Unix generic npm-provider list only; Grok, Devin, and Aider follow the Antigravity descriptor shape on all three OSes.
-28. `desktop/host/packaging.ts` shall gain inventory entries naming only supported helper ids and `currentHome` paths: three platforms for Grok, Devin, and Aider, and macOS/Linux for Cline.
+26. `desktop/host/cliInventoryProbe.ts` shall map each to the identical runtime id and add labels and helper mappings. Grok, Devin, and Aider use native-installer helpers on all three OSes. Cline uses the generic npm helper on all three.
+27. `desktop/host/setupAssets.ts` shall register descriptors for supported provider/platform pairs with `requiresElevation: false`, `resumable: true`, and all five modes supported. Cline joins the generic npm-provider list; Grok, Devin, and Aider follow the Antigravity descriptor shape on all three OSes.
+28. `desktop/host/packaging.ts` shall gain inventory entries naming the supported helper ids and `currentHome` paths on all three platforms.
 29. `desktop/host/bootstrapPage.ts` shall list the four in its setup provider id and label maps. If Proposed Decision PD1 is approved, the onboarding collapsed set shall stay `['claude_code', 'antigravity', 'codex']`.
 
 #### Product execution catalog boundary
 
-30. `src/shared/providerCatalogData.ts` `PRODUCT_PROVIDER_ORDER` shall add `grok` after `antigravity`; Devin, Cline, and Aider remain absent while refusal-only.
-31. `PRODUCT_PROVIDER_MODELS.grok` shall contain only the live-enumerated default `grok-4.5`; the remaining three gain no sentinels or model ids.
-32. `src/shared/providerCatalogInstances.ts` shall add Grok `cli/native`. Each remaining provider may enter these structures only in the reviewed slice that lands its working runtime adapter.
+30. `src/shared/providerCatalogData.ts` `PRODUCT_PROVIDER_ORDER` shall include Grok, Cline, and Devin after their execution adapters land; Aider remains absent while refusal-only.
+31. `PRODUCT_PROVIDER_MODELS.grok` shall contain the live-enumerated default `grok-4.5`. Cline and Devin may carry UI-only provider-default placeholders, but reconciliation shall convert them to an omitted/null runtime model whenever the runtime catalog has no explicit models.
+32. `src/shared/providerCatalogInstances.ts` shall expose Grok and Cline as `cli/native` and Devin as `agent/acp`. Any remaining provider may enter these structures only in the reviewed slice that lands its working runtime adapter.
+33. Once runtime model discovery completes, a UI placeholder shall never survive as the selected execution model: Antigravity resolves to a real catalog entry, while an empty Cline or Devin catalog uses provider-default semantics and sends no fake `*-default` model id.
 
 #### Smoke tests
 
-33. `scripts/{linux,macos}/test-*-package-smoke.sh` shall cover all four helpers' `--check` and `--dry-run` paths. `scripts/windows/Test-WindowsInstallerSmoke.ps1` shall cover Grok, Devin, and Aider and assert that Cline has no supported install action. Both Devin suites shall verify the manual step and the fail-closed result when the expected strip marker is missing.
+34. `scripts/{linux,macos}/test-*-package-smoke.sh` shall cover all four helpers' `--check` and `--dry-run` paths. `scripts/windows/Test-WindowsInstallerSmoke.ps1` shall cover all four providers. Both Devin suites shall verify the manual step and the fail-closed result when the expected strip marker is missing.
 
 ### Non-Functional Requirements
 
@@ -134,10 +135,11 @@ Separately, four platform locations install Pi from a package name upstream aban
 - [ ] `Install-Devin.ps1 -Apply -Json` completes without hanging under `_HiddenProcess.ps1` and returns `devin setup` in `manualSteps`.
 - [ ] Both Devin helpers return a structured failure and do not execute the downloaded installer when the expected trailing setup marker is absent or appears more than once.
 - [ ] `install-aider.sh --uninstall` removes Aider such that `aider --version` fails afterward, and emits the `uv` provenance warning.
-- [ ] Cline installs, upgrades, and uninstalls through the npm pack on macOS and Linux; Windows setup reports it as unsupported and exposes no install action.
+- [ ] Cline installs, upgrades, and uninstalls through the npm pack on macOS, Linux, and Windows.
 - [ ] `buildDesktopCliInventoryFromRuntime` reports all four when the runtime setup scan marks them available.
 - [ ] Provider setup in packaged Desktop lists seventeen setup candidates in the agreed relative order, with the four new ids before `ollama`.
-- [ ] The product execution catalog contains fifteen providers, including Grok with `grok-4.5` and `cli/native`, and contains no Devin, Cline, or Aider entries.
+- [x] The product execution catalog contains seventeen providers, including Grok with `grok-4.5` and `cli/native`, Cline with `cli/native`, and Devin with `agent/acp`; Aider remains absent.
+- [x] Runtime-backed reconciliation replaces Antigravity's static placeholder with a discovered model and clears Cline/Devin provider-default placeholders when their runtime catalogs contain no explicit models.
 - [ ] Pi's package name is `@earendil-works/pi-coding-agent` in all four platform locations, and the old package is removed before install.
 - [ ] Windows, macOS, and Linux smoke tests pass.
 
@@ -157,11 +159,11 @@ Both official Devin installers end with an invocation of the freshly installed b
 
 ### Setup-provider ordering
 
-`DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS` appends the four to its CLI setup segment immediately before `ollama`. Existing providers keep their relative order, while `ollama` moves four absolute positions later. The independent product execution catalog adds only verified Grok after `antigravity`.
+`DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS` appends the four to its CLI setup segment immediately before `ollama`. Existing providers keep their relative order, while `ollama` moves four absolute positions later. The independent product execution catalog includes verified Grok, Cline, and Devin; Aider remains setup-only.
 
 ## Dependencies
 
-- `cats-runtime` SPEC-027 must land taxonomy before setup inventory and a working adapter before product-catalog promotion. Grok satisfies both dependencies.
+- `cats-runtime` SPEC-027 must land taxonomy before setup inventory and a working adapter before product-catalog promotion. Grok, Cline, and Devin satisfy both dependencies.
 - `environment-bootstrap` remains the upstream source of truth for install URLs, directories, and auth flows.
 
 ## Risks
@@ -169,18 +171,18 @@ Both official Devin installers end with an invocation of the freshly installed b
 - **Upstream Devin installer changes shape**, breaking the strip. Mitigation: fail closed before execution and require the exact-match fixture to be reviewed and updated.
 - **Aider's installer changes its shell or bundled-`uv` behavior.** Mitigation: the helper cites the upstream script it mirrors, so reconciliation is a diff.
 - **`provider_install_dir` refactor regresses an existing provider.** Mitigation: the default preserves current behavior and smoke tests cover all providers.
-- **Seventeen setup candidates widen setup renderer assertions.** Mitigation: preserve relative order and separately assert the fifteen-provider execution catalog, including only verified Grok from this group.
+- **Seventeen setup candidates widen setup renderer assertions.** Mitigation: preserve relative order and separately assert the seventeen-provider execution catalog, including verified Grok, Cline, and Devin from this group.
 - **Devin needs an account to verify end to end.** Mitigation: its current acceptance criteria remain install/detect/uninstall only. Grok execution was verified with an authenticated isolated probe.
 
 ## Proposed Decisions
 
-> These proposals turn the first draft's open questions into reviewable choices. The User approved the Grok-only implementation slice on 2026-08-08, including the Grok-specific effects of these proposals. Devin, Cline, and Aider remain approval-gated. PD1 is the most product-sensitive choice because it controls the first-run surface.
+> These proposals turn the first draft's open questions into reviewable choices. The User approved the Grok-only implementation slice on 2026-08-08; subsequent reviewed slices completed Cline and Devin execution support. Aider remains execution-gated. PD1 is the most product-sensitive choice because it controls the first-run surface.
 
 ### PD1 — Onboarding collapsed set
 
 **Proposal**: None of the four joins `ONBOARDING_COLLAPSED_PROVIDER_IDS`. It stays `['claude_code', 'antigravity', 'codex']`.
 
-**Why**: Reading `bootstrapPage.ts` confirms the collapsed set is the list of providers that **stay visible** in the collapsed first-run view — a curated three-card recommendation, not a completeness list. Devin, Cline, and Aider still cannot run sessions. Grok is now executable, but catalog eligibility does not automatically change the separately curated first-run recommendation set.
+**Why**: Reading `bootstrapPage.ts` confirms the collapsed set is the list of providers that **stay visible** in the collapsed first-run view — a curated three-card recommendation, not a completeness list. Aider still cannot run sessions. Grok, Cline, and Devin are executable, but catalog eligibility does not automatically change the separately curated first-run recommendation set.
 
 Grok's upstream **Quick** mode membership was the argument for including it, but Quick mode is about which batch a bootstrap script installs unattended, not about which provider a GUI should recommend first. The two surfaces answer different questions.
 
@@ -206,7 +208,7 @@ Grok is now a reasonable future candidate for the featured set, but this executi
 
 ### PD5 — Windows helper file naming
 
-**Proposal**: The supported Windows helper names are `Install-Grok.ps1`, `Install-Devin.ps1`, and `Install-Aider.ps1`. The rule is PowerShell approved verb followed by the provider id in PascalCase, with no `Cli` suffix. No `Install-Cline.ps1` ships while Cline CLI is unsupported on Windows.
+**Proposal**: The native Windows helper names are `Install-Grok.ps1`, `Install-Devin.ps1`, and `Install-Aider.ps1`. The rule is PowerShell approved verb followed by the provider id in PascalCase, with no `Cli` suffix. Cline uses the generic npm helper and therefore needs no dedicated `Install-Cline.ps1`.
 
 **Why**: The existing directory looks inconsistent but resolves cleanly once the two conventions in it are separated. Acronym casing is settled — `Install-GitHubCli.ps1`, `Install-KiloCli.ps1`, `Install-KiroCli.ps1` all use `Cli`, never `CLI`, so `Install-GrokCLI.ps1` was never a live option. What actually varies is whether a `Cli` suffix appears at all, and the newest addition answers it: `Install-Antigravity.ps1` drops it even though the tool is named "Antigravity CLI". That is the closest precedent — a native CLI installer added by the most recent provider slice — and it matches the Unix wrappers, which are pure provider ids (`install-antigravity.sh`).
 
@@ -216,7 +218,7 @@ Keeping the filename stem equal to the provider id also keeps `setupAssets.ts` m
 
 ### PD6 — Product execution catalog boundary
 
-**Decision**: Add all four to desktop setup, and add each to `PRODUCT_PROVIDER_ORDER`, `PRODUCT_PROVIDER_MODELS`, and `PRODUCT_PROVIDER_INSTANCES` only when its runtime adapter works. Grok now enters with `grok-4.5` and `cli/native`; the remaining three stay out.
+**Decision**: Add all four to desktop setup, and add each to `PRODUCT_PROVIDER_ORDER`, `PRODUCT_PROVIDER_MODELS`, and `PRODUCT_PROVIDER_INSTANCES` only when its runtime adapter works. Grok enters with `grok-4.5` and `cli/native`, Cline with provider-default `cli/native`, and Devin with provider-default `agent/acp`; Aider stays out.
 
 **Why**: Setup inventory answers whether Cats can install and inspect a tool. The product catalog answers what users can select to run a session. Refusal-only adapters satisfy the former contract but not the latter; combining them would advertise guaranteed failures in execution selectors.
 

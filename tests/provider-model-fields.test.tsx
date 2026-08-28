@@ -740,6 +740,28 @@ test('static fallback catalogs do not classify unknown persisted models as legac
   );
 });
 
+test('bundled provider-default placeholders are not treated as custom legacy models', () => {
+  assert.equal(
+    shouldTreatPersistedTargetAsLegacyModel({
+      catalog: {
+        provider: 'antigravity',
+        backend: 'cli',
+        instance: 'native',
+        defaultModel: null,
+        source: 'dynamic',
+        cache: null,
+        models: [
+          { id: 'gemini-3.7-flash-high', label: 'Gemini 3.7 Flash (High)' },
+        ],
+        warnings: [],
+      },
+      model: 'antigravity-default',
+      modelSelection: null,
+    }),
+    false,
+  );
+});
+
 test('persistent selector controls exclude request-only overrides for the chosen entry', () => {
   const controls: ProviderAdvancedCatalogControl[] = [
     {

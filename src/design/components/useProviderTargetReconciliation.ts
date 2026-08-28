@@ -4,6 +4,7 @@ import type {
   ProviderAdvancedModelCatalog,
   ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
+import { isProductProviderDefaultModelPlaceholder } from '../../shared/providerCatalog.js';
 import {
   resolveCatalogTargetSelection,
   sameProviderModelSelection,
@@ -96,12 +97,16 @@ export function useProviderTargetReconciliation(input: {
       return;
     }
 
+    const providerDefaultPlaceholder = isProductProviderDefaultModelPlaceholder(
+      input.provider,
+      input.model,
+    );
     const deferStaticCatalogReconciliation = shouldDeferCatalogTargetReconciliation({
       catalogSource: input.effectiveCatalog.source,
       advancedCatalogSource: input.effectiveAdvancedCatalog.source,
       model: input.model,
       modelSelection: input.modelSelection,
-    });
+    }) && (input.catalogLoading || !providerDefaultPlaceholder);
     if (deferStaticCatalogReconciliation) {
       return;
     }
