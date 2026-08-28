@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   Notification,
   session,
@@ -92,6 +93,7 @@ import {
   resolveDesktopBootstrapError,
   shouldAttemptDesktopLateReadyRecovery,
 } from './startupRecovery.js';
+import { resolveDesktopInstallConfirmation } from './updateInstallPrompt.js';
 import { resolveDefaultSetupAuditAction } from './setupAudit.js';
 import {
   buildDesktopCliInventoryFromRuntime,
@@ -1054,6 +1056,44 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
       // a notification or by opening Settings.
       await refreshUpdateState('tray');
     },
+    // Before setup completes the tray owns the whole update flow, because the
+    // Settings surface it would otherwise hand off to is gated behind setup —
+    // and a user parked on the bootstrap screen is exactly who most needs the
+    // build that fixes it. The manager is the same one Settings drives, so
+    // there is still only one update path.
+    onDownloadUpdate: async () => {
+      if (shuttingDown || !updateManager) {
+        return;
+      }
+      await updateManager.downloadUpdate();
+    },
+    onInstallUpdate: async () => {
+      if (shuttingDown || !updateManager) {
+        return;
+      }
+      // The tray finishes the update without ever opening a window, so this is
+      // the last point at which the user can be told that the app is about to
+      // exit and what the platform installer will do. Settings says it inline;
+      // the tray has nowhere to put it but a dialog.
+      const confirmation = resolveDesktopInstallConfirmation({
+        platform: process.platform,
+        locale: app.getLocale(),
+      });
+      const choice = await dialog.showMessageBox({
+        type: 'question',
+        title: confirmation.title,
+        message: confirmation.message,
+        detail: confirmation.detail,
+        buttons: [confirmation.confirmLabel, confirmation.cancelLabel],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true,
+      });
+      if (choice.response !== 0) {
+        return;
+      }
+      await updateManager.restartAndInstall();
+    },
   };
 }
 
@@ -1561,18 +1601,23 @@ function scheduleBackgroundBootstrapWork(
   // surface install_node_lts before they fail an Install action.
   scheduleBackgroundSetupAudit(snapshot, persistedSetup);
 
-  // CLI inventory is not part of the default first-run gate. We only probe it
-  // before setup when the legacy env policy explicitly asks for that gate.
-  if (setupCompleted || hostConfig?.bootstrap.onboardingMode === 'cli_inventory_gate') {
-    void retryCliInventoryScanInBackground({
-      forceRescan: setupCompleted,
-      setupCompleted,
-    }).catch((error) => {
-      process.stderr.write(
-        `Background CLI inventory rescan failed: ${error instanceof Error ? error.message : String(error)}\n`,
-      );
-    });
-  }
+  // CLI inventory is the only source the onboarding cards can read, so it has
+  // to be probed before setup as well — otherwise a machine with every CLI
+  // already installed shows a grid of "not detected yet" until the user clicks
+  // Detect. This is background work on its own pre-setup timeout budget
+  // (RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS) and, outside the legacy
+  // cli_inventory_gate policy, is display-only: buildDesktopBootstrapSnapshot
+  // gates every phase decision that reads cliInventory on that mode, so a scan
+  // landing here can never move the phase or navigate the window away from
+  // onboarding.
+  void retryCliInventoryScanInBackground({
+    forceRescan: setupCompleted,
+    setupCompleted,
+  }).catch((error) => {
+    process.stderr.write(
+      `Background CLI inventory rescan failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+  });
 
   // Provider diagnostics — only meaningful after setup is applied. Best
   // effort, single-shot; failures fall back to "Cats can still open".

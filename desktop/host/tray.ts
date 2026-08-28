@@ -32,6 +32,11 @@ interface CreateDesktopTrayControllerOptions {
   // Delegates to the same host-owned manager Settings uses, so a tray check
   // never creates a second provider request path.
   onCheckForUpdates?: () => Promise<void>;
+  // Same manager again, for the states the tray drives itself before setup is
+  // complete. Neither opens a window: the update path must not depend on a
+  // surface the tray is deliberately withholding.
+  onDownloadUpdate?: () => Promise<void>;
+  onInstallUpdate?: () => Promise<void>;
 }
 
 function createBundledTrayImage(name: string): Electron.NativeImage | null {
@@ -127,7 +132,8 @@ function buildDesktopTrayMenuTemplate(
   state: DesktopTrayMenuState,
   options: Pick<
     CreateDesktopTrayControllerOptions,
-    'onNavigate' | 'onRunAction' | 'onQuit' | 'canInteract' | 'onCheckForUpdates'
+    'onNavigate' | 'onRunAction' | 'onQuit' | 'canInteract'
+    | 'onCheckForUpdates' | 'onDownloadUpdate' | 'onInstallUpdate'
   >,
   showWindow: () => void,
 ): MenuItemConstructorOptions[] {
@@ -195,12 +201,15 @@ function buildDesktopTrayMenuTemplate(
           if (options.canInteract?.() === false) {
             return;
           }
-          if (item.intent === 'check') {
-            await options.onCheckForUpdates?.();
+          if (item.intent === 'download') {
+            await options.onDownloadUpdate?.();
             return;
           }
-          await options.onNavigate('/settings/desktop');
-          showWindow();
+          if (item.intent === 'install') {
+            await options.onInstallUpdate?.();
+            return;
+          }
+          await options.onCheckForUpdates?.();
         });
       },
     });

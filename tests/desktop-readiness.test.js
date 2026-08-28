@@ -1381,3 +1381,142 @@ test('desktop bootstrap leaves prerequisites null when no inventory passed', () 
   assert.equal(snapshot.prerequisites, null);
   assert.equal(snapshot.phase, 'ready_for_setup');
 });
+
+/**
+ * The packaged audit's auth check only asks whether an API-key env var is set,
+ * so it calls anyone signed in through a browser flow unauthenticated. The
+ * runtime scan reads an actual auth requirement out of the CLI's own probe
+ * output. These pin the handover: the scan wins once it has run, and the audit
+ * still covers the window before it.
+ */
+function authScenario(overrides = {}) {
+  return buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: { setupCompleteAt: null },
+    setup: {
+      updatedAt: '2026-08-28T12:20:00.000Z',
+      lastAction: {
+        helperId: 'windows-install-readiness-audit',
+        assetId: 'windows-setup-readiness-audit-script',
+        label: 'Windows setup readiness audit',
+        mode: 'check',
+        runState: 'completed',
+        status: 'auth_required',
+        summary: 'Windows setup readiness audit check finished with auth_required.',
+        packagedRelativePath: 'desktop/setup-assets/windows/Check-WindowsSetupReadiness.ps1',
+        scriptPath: null,
+        requiresElevation: false,
+        resumable: true,
+        restartRequired: false,
+        startedAt: '2026-08-28T12:10:00.000Z',
+        completedAt: '2026-08-28T12:20:00.000Z',
+        warnings: [],
+        plannedActions: ['provider:authenticate_claude_code'],
+        appliedChanges: [],
+        manualSteps: [],
+        interruptions: [{
+          kind: 'auth_required',
+          summary: 'Complete the Claude Code sign-in flow or configure ANTHROPIC_API_KEY.',
+          resumable: true,
+          requiresRestart: false,
+          requiresElevation: false,
+        }],
+        error: null,
+      },
+    },
+    ...overrides,
+  });
+}
+
+function inventory(candidates) {
+  return {
+    source: 'runtime',
+    installed: candidates.filter((entry) => entry.installed).map((entry) => entry.helperId),
+    total: candidates.filter((entry) => entry.installed).length,
+    candidates,
+    scannedAt: '2026-08-28T12:30:00.000Z',
+  };
+}
+
+function cliCandidate(providerId, installed, authStatus) {
+  return {
+    helperId: `windows-${providerId}-native-installer`,
+    providerId,
+    label: providerId,
+    installed,
+    available: true,
+    supported: true,
+    authStatus,
+  };
+}
+
+test('a scanned CLI reported unauthenticated raises one issue per provider', () => {
+  const snapshot = authScenario({
+    cliInventory: inventory([
+      cliCandidate('claude_code', true, 'missing'),
+      cliCandidate('codex', true, 'missing'),
+      cliCandidate('goose', true, 'unknown'),
+      cliCandidate('kiro', true, 'not_required'),
+      cliCandidate('junie', false, 'missing'),
+    ]),
+  });
+
+  const authIssues = snapshot.issues
+    .filter((issue) => issue.id.startsWith('cli-auth-required-'))
+    .map((issue) => issue.id);
+  assert.deepEqual(
+    authIssues.sort(),
+    ['cli-auth-required-claude_code', 'cli-auth-required-codex'],
+    'only an installed CLI whose probe reported an auth requirement should raise one',
+  );
+
+  const claudeIssue = snapshot.issues.find((issue) => issue.id === 'cli-auth-required-claude_code');
+  assert.equal(claudeIssue?.category, 'install');
+  assert.equal(claudeIssue?.severity, 'warning');
+  // No host action can complete a third-party sign-in.
+  assert.equal(claudeIssue?.remediation, null);
+});
+
+test('the scan takes the auth signal over the audit once it has run', () => {
+  const scanned = authScenario({
+    cliInventory: inventory([cliCandidate('claude_code', true, 'unknown')]),
+  });
+
+  assert.equal(
+    scanned.issues.some((issue) => issue.id === 'setup-auth-required'),
+    false,
+    'the audit env-var check must not outvote a scan that probed the CLI itself',
+  );
+  assert.equal(
+    scanned.issues.some((issue) => issue.id.startsWith('cli-auth-required-')),
+    false,
+    'an unverifiable auth status is not a claim that the user is signed out',
+  );
+});
+
+test('the audit still covers auth in the window before the first scan lands', () => {
+  const unscanned = authScenario({
+    cliInventory: {
+      source: 'unknown',
+      installed: [],
+      total: 0,
+      candidates: [cliCandidate('claude_code', false, 'unknown')],
+      scannedAt: null,
+    },
+  });
+
+  assert.ok(
+    unscanned.issues.find((issue) => issue.id === 'setup-auth-required'),
+    'nothing else has looked at auth yet, so the audit must not go silent',
+  );
+});

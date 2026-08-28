@@ -74,11 +74,48 @@ test('the tray shows zero percent before the first progress event', () => {
   assert.equal(item.label, 'Downloading Update… 0%');
 });
 
-test('actionable update states route the user to Settings rather than acting from the tray', () => {
-  for (const status of ['update_available', 'downloaded']) {
-    const item = buildDesktopTrayUpdateItem(snapshot({ status }));
-    assert.equal(item.enabled, true, status);
-    assert.equal(item.intent, 'open_settings', status);
+/**
+ * The tray is a complete update path, not a shortcut into Settings. Routing an
+ * actionable state to /settings/desktop used to strand anyone whose setup was
+ * unfinished -- the tray withholds its own Settings entry until setup completes
+ * -- and offered nothing to a set-up user that the tray could not do itself.
+ * Settings stays as the detail surface and drives the same manager.
+ */
+test('actionable update states are driven from the tray, never handed to Settings', () => {
+  const available = buildDesktopTrayUpdateItem(snapshot({ status: 'update_available' }));
+  assert.equal(available.enabled, true);
+  assert.equal(available.intent, 'download');
+  // The click downloads, so the label has to promise that and not a page.
+  assert.equal(available.label, 'Download Update…');
+
+  const downloaded = buildDesktopTrayUpdateItem(snapshot({ status: 'downloaded' }));
+  assert.equal(downloaded.enabled, true);
+  assert.equal(downloaded.intent, 'install');
+  assert.equal(downloaded.label, 'Restart to Update…');
+});
+
+test('no update state depends on how far setup got', () => {
+  const base = {
+    phase: 'ready_for_setup',
+    summary: 'Desktop services are ready. Continue into setup.',
+    actions: [],
+    products: [],
+  };
+
+  for (const status of ['update_available', 'downloaded', 'idle']) {
+    const unfinished = buildDesktopTrayMenuState({
+      ...base,
+      setupCompleteAt: null,
+      updates: snapshot({ status }),
+    });
+    const complete = buildDesktopTrayMenuState({
+      ...base,
+      setupCompleteAt: '2026-07-29T10:00:00.000Z',
+      updates: snapshot({ status }),
+    });
+
+    assert.deepEqual(unfinished.updateItem, complete.updateItem, status);
+    assert.notEqual(unfinished.updateItem.intent, 'open_settings', status);
   }
 });
 
@@ -90,7 +127,7 @@ test('tray update labels are localized for Traditional Chinese', () => {
   );
   assert.equal(
     buildDesktopTrayUpdateItem(snapshot({ status: 'update_available' }), 'zh_tw').label,
-    '有可用更新…',
+    '下載更新…',
   );
   assert.equal(
     buildDesktopTrayUpdateItem(snapshot({ status: 'downloaded' }), 'zh-Hant').label,

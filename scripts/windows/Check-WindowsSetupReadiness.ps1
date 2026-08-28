@@ -3,11 +3,19 @@
     Inspect Windows packaged setup readiness for Cats.
 
 .DESCRIPTION
-    Composes the repo-owned packaged setup helpers into one structured host-side
-    readiness audit. The helper is read-only and reports whether the npm prefix
-    substrate, the per-CLI npm-global helpers, and the bundled native provider
-    helpers are ready, missing, or still require changes before deeper provider
-    installation flows can proceed.
+    Composes the repo-owned packaged prerequisite helpers into one structured
+    host-side readiness audit. The helper is read-only and reports whether the
+    Node.js host, the GitHub CLI host, and the npm prefix substrate are ready,
+    missing, or still require changes before deeper provider installation flows
+    can proceed. The optional local-model runtime is included on request.
+
+    Provider presence is deliberately NOT audited here. cats-runtime's setup
+    scan already probes every provider CLI, reports a version and a probe-backed
+    auth status for each, and is the source the desktop host's CLI inventory
+    reads. Auditing them a second time meant spawning one powershell.exe per
+    provider — eighteen processes and roughly a minute and a half on first
+    launch — to produce answers the host then ignored. The audit now owns the
+    prerequisites, and the scan owns the providers.
 
     The audit talks only to helpers that ship in DESKTOP_SETUP_ASSETS. WSL and
     Docker substrates were removed from the packaged path in earlier phases and
@@ -15,11 +23,6 @@
 
 .PARAMETER Json
     Emit a structured JSON result.
-
-.PARAMETER IncludeNativeProviders
-    Include native Claude/Cursor/Goose/Junie/Kiro readiness checks plus
-    authentication follow-through where the provider requires it. Enabled by
-    default.
 
 .PARAMETER IncludeLocalModels
     Include local-model runtime checks such as the repo-owned Ollama helper.
@@ -33,14 +36,6 @@
 
 .PARAMETER SkipNodeCheck
     Skip probing node/npm binaries for deterministic tests.
-
-.PARAMETER InstalledPackagesJson
-    Override the installed npm package set as a JSON array for deterministic
-    tests. Mapped onto each per-CLI helper's `-InstallState`.
-
-.PARAMETER OutdatedPackagesJson
-    Override the outdated npm package set as a JSON array for deterministic
-    tests. Mapped onto each per-CLI helper's `-OutdatedState`.
 
 .PARAMETER DesiredPrefix
     Override the desired npm prefix passed to the sibling prefix helper.
@@ -57,39 +52,6 @@
 .PARAMETER OllamaApiState
     Override Ollama local API readiness for deterministic tests.
 
-.PARAMETER ClaudeInstallState
-    Override Claude Code installation detection for deterministic tests.
-
-.PARAMETER ClaudeAuthState
-    Override Claude Code authentication detection for deterministic tests.
-
-.PARAMETER CursorInstallState
-    Override Cursor Agent installation detection for deterministic tests.
-
-.PARAMETER CursorAuthState
-    Override Cursor Agent authentication detection for deterministic tests.
-
-.PARAMETER AntigravityInstallState
-    Override Antigravity CLI installation detection for deterministic tests.
-
-.PARAMETER GrokInstallState
-    Override Grok CLI installation detection for deterministic tests.
-
-.PARAMETER GooseInstallState
-    Override Goose installation detection for deterministic tests.
-
-.PARAMETER GooseAuthState
-    Override Goose authentication detection for deterministic tests.
-
-.PARAMETER JunieInstallState
-    Override Junie installation detection for deterministic tests.
-
-.PARAMETER JunieAuthState
-    Override Junie authentication detection for deterministic tests.
-
-.PARAMETER KiroInstallState
-    Override Kiro CLI installation detection for deterministic tests.
-
 .PARAMETER NodeHostInstallState
     Override Node.js host installation detection for deterministic tests.
 
@@ -98,37 +60,12 @@
 #>
 param(
   [switch]$Json,
-  [string]$IncludeNativeProviders = 'true',
   [string]$IncludeLocalModels = 'false',
   [string]$Parallel = 'true',
   [switch]$SkipNodeCheck,
-  [string]$InstalledPackagesJson = '',
-  [string]$OutdatedPackagesJson = '',
   [string]$DesiredPrefix = '',
   [string]$CurrentPrefix = '',
   [string]$CurrentUserPath = '',
-  [ValidateSet('auto', 'installed', 'missing')]
-  [string]$ClaudeInstallState = 'auto',
-  [ValidateSet('auto', 'authenticated', 'auth_required')]
-  [string]$ClaudeAuthState = 'auto',
-  [ValidateSet('auto', 'installed', 'missing')]
-  [string]$CursorInstallState = 'auto',
-  [ValidateSet('auto', 'authenticated', 'auth_required')]
-  [string]$CursorAuthState = 'auto',
-  [ValidateSet('auto', 'installed', 'missing')]
-  [string]$AntigravityInstallState = 'auto',
-  [ValidateSet('auto', 'installed', 'missing')]
-  [string]$GrokInstallState = 'auto',
-  [ValidateSet('auto', 'installed', 'missing')]
-  [string]$GooseInstallState = 'auto',
-  [ValidateSet('auto', 'authenticated', 'auth_required')]
-  [string]$GooseAuthState = 'auto',
-  [ValidateSet('auto', 'installed', 'missing')]
-  [string]$JunieInstallState = 'auto',
-  [ValidateSet('auto', 'authenticated', 'auth_required')]
-  [string]$JunieAuthState = 'auto',
-  [ValidateSet('auto', 'installed', 'missing')]
-  [string]$KiroInstallState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$NodeHostInstallState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
@@ -164,7 +101,6 @@ function Resolve-BoolArgument {
   }
 }
 
-$includeNativeProvidersEnabled = Resolve-BoolArgument -Name 'IncludeNativeProviders' -Value $IncludeNativeProviders
 $includeLocalModelsEnabled = Resolve-BoolArgument -Name 'IncludeLocalModels' -Value $IncludeLocalModels
 $parallelChecksEnabled = Resolve-BoolArgument -Name 'Parallel' -Value $Parallel
 
@@ -178,7 +114,6 @@ function Write-StructuredResult {
   } else {
     Write-Host "Status: $($Result.status)"
     Write-Host "Collection mode: $($Result.collectionMode)"
-    Write-Host "Native CLI pack: $($Result.nativeCliPack.status)"
     foreach ($action in $Result.plannedActions) {
       Write-Host "Planned action: $action"
     }
@@ -301,77 +236,10 @@ function Invoke-HelperJsonBatch {
   return $results
 }
 
-# Map InstalledPackagesJson / OutdatedPackagesJson onto per-CLI -InstallState /
-# -OutdatedState so the test fixtures stay deterministic without bulk-pack
-# arguments.
-$installedPackagesSet = @{}
-$hasInstalledPackagesOverride = -not [string]::IsNullOrWhiteSpace($InstalledPackagesJson)
-if ($hasInstalledPackagesOverride) {
-  try {
-    $parsedInstalled = $InstalledPackagesJson | ConvertFrom-Json
-    foreach ($entry in $parsedInstalled) {
-      $installedPackagesSet[[string]$entry] = $true
-    }
-  } catch {
-    throw "Invalid -InstalledPackagesJson payload: $($_.Exception.Message)"
-  }
-}
-$outdatedPackagesSet = @{}
-$hasOutdatedPackagesOverride = -not [string]::IsNullOrWhiteSpace($OutdatedPackagesJson)
-if ($hasOutdatedPackagesOverride) {
-  try {
-    $parsedOutdated = $OutdatedPackagesJson | ConvertFrom-Json
-    foreach ($entry in $parsedOutdated) {
-      $outdatedPackagesSet[[string]$entry] = $true
-    }
-  } catch {
-    throw "Invalid -OutdatedPackagesJson payload: $($_.Exception.Message)"
-  }
-}
-
-function Resolve-NpmCliInstallState {
-  param([string]$PackageName)
-  if (-not $hasInstalledPackagesOverride) {
-    return 'auto'
-  }
-  if ($installedPackagesSet.ContainsKey($PackageName)) {
-    return 'installed'
-  }
-  return 'missing'
-}
-
-function Resolve-NpmCliOutdatedState {
-  param([string]$PackageName)
-  if (-not $hasOutdatedPackagesOverride) {
-    return 'auto'
-  }
-  if ($outdatedPackagesSet.ContainsKey($PackageName)) {
-    return 'outdated'
-  }
-  return 'current'
-}
-
 $nodeHostHelperPath = Join-Path $PSScriptRoot 'Install-Node.ps1'
 $githubCliHelperPath = Join-Path $PSScriptRoot 'Install-GitHubCli.ps1'
 $prefixHelperPath = Join-Path $PSScriptRoot 'Setup-NodeGlobalPrefix.ps1'
-$claudeHelperPath = Join-Path $PSScriptRoot 'Install-ClaudeCode.ps1'
-$cursorHelperPath = Join-Path $PSScriptRoot 'Install-CursorAgent.ps1'
-$antigravityHelperPath = Join-Path $PSScriptRoot 'Install-Antigravity.ps1'
-$grokHelperPath = Join-Path $PSScriptRoot 'Install-Grok.ps1'
-$gooseHelperPath = Join-Path $PSScriptRoot 'Install-Goose.ps1'
-$junieHelperPath = Join-Path $PSScriptRoot 'Install-Junie.ps1'
-$kiroHelperPath = Join-Path $PSScriptRoot 'Install-KiroCli.ps1'
 $ollamaHelperPath = Join-Path $PSScriptRoot 'Install-Ollama.ps1'
-
-$NpmCliCatalog = @(
-  [pscustomobject]@{ Key = 'codex'; ScriptName = 'Install-Codex.ps1'; PackageName = '@openai/codex' },
-  [pscustomobject]@{ Key = 'copilot'; ScriptName = 'Install-Copilot.ps1'; PackageName = '@github/copilot' },
-  [pscustomobject]@{ Key = 'opencode'; ScriptName = 'Install-OpenCode.ps1'; PackageName = 'opencode-ai' },
-  [pscustomobject]@{ Key = 'kilo'; ScriptName = 'Install-KiloCli.ps1'; PackageName = '@kilocode/cli' },
-  [pscustomobject]@{ Key = 'auggie'; ScriptName = 'Install-Auggie.ps1'; PackageName = '@augmentcode/auggie' },
-  [pscustomobject]@{ Key = 'pi'; ScriptName = 'Install-Pi.ps1'; PackageName = '@earendil-works/pi-coding-agent' }
-  [pscustomobject]@{ Key = 'cline'; ScriptName = 'Install-Cline.ps1'; PackageName = 'cline' }
-)
 
 $prefixHelperArguments = @('-CheckOnly', '-Json')
 if ($SkipNodeCheck) {
@@ -420,109 +288,6 @@ $helperInvocations.Add([pscustomobject]@{
     Arguments = $prefixHelperArguments
   })
 
-foreach ($entry in $NpmCliCatalog) {
-  $cliArguments = @('-CheckOnly', '-Json')
-  if ($hasInstalledPackagesOverride) {
-    $cliArguments += '-SkipNpmInvocation'
-  }
-  $installState = Resolve-NpmCliInstallState -PackageName $entry.PackageName
-  if ($installState -ne 'auto') {
-    $cliArguments += @('-InstallState', $installState)
-  }
-  $outdatedState = Resolve-NpmCliOutdatedState -PackageName $entry.PackageName
-  if ($outdatedState -ne 'auto') {
-    $cliArguments += @('-OutdatedState', $outdatedState)
-  }
-  $helperInvocations.Add([pscustomobject]@{
-      Key = "npm:$($entry.Key)"
-      ScriptPath = (Join-Path $PSScriptRoot $entry.ScriptName)
-      Arguments = $cliArguments
-    })
-}
-
-if ($includeNativeProvidersEnabled) {
-  $claudeArguments = @('-CheckOnly', '-Json')
-  if ($ClaudeInstallState -ne 'auto') {
-    $claudeArguments += @('-InstallState', $ClaudeInstallState)
-  }
-  if ($ClaudeAuthState -ne 'auto') {
-    $claudeArguments += @('-AuthState', $ClaudeAuthState)
-  }
-  $helperInvocations.Add([pscustomobject]@{
-      Key = 'claude'
-      ScriptPath = $claudeHelperPath
-      Arguments = $claudeArguments
-    })
-
-  $cursorArguments = @('-CheckOnly', '-Json')
-  if ($CursorInstallState -ne 'auto') {
-    $cursorArguments += @('-InstallState', $CursorInstallState)
-  }
-  if ($CursorAuthState -ne 'auto') {
-    $cursorArguments += @('-AuthState', $CursorAuthState)
-  }
-  $helperInvocations.Add([pscustomobject]@{
-      Key = 'cursor'
-      ScriptPath = $cursorHelperPath
-      Arguments = $cursorArguments
-    })
-
-  $antigravityArguments = @('-CheckOnly', '-Json')
-  if ($AntigravityInstallState -ne 'auto') {
-    $antigravityArguments += @('-InstallState', $AntigravityInstallState)
-  }
-  $helperInvocations.Add([pscustomobject]@{
-      Key = 'antigravity'
-      ScriptPath = $antigravityHelperPath
-      Arguments = $antigravityArguments
-    })
-
-  $grokArguments = @('-CheckOnly', '-Json')
-  if ($GrokInstallState -ne 'auto') {
-    $grokArguments += @('-InstallState', $GrokInstallState)
-  }
-  $helperInvocations.Add([pscustomobject]@{
-      Key = 'grok'
-      ScriptPath = $grokHelperPath
-      Arguments = $grokArguments
-    })
-
-  $gooseArguments = @('-CheckOnly', '-Json')
-  if ($GooseInstallState -ne 'auto') {
-    $gooseArguments += @('-InstallState', $GooseInstallState)
-  }
-  if ($GooseAuthState -ne 'auto') {
-    $gooseArguments += @('-AuthState', $GooseAuthState)
-  }
-  $helperInvocations.Add([pscustomobject]@{
-      Key = 'goose'
-      ScriptPath = $gooseHelperPath
-      Arguments = $gooseArguments
-    })
-
-  $junieArguments = @('-CheckOnly', '-Json')
-  if ($JunieInstallState -ne 'auto') {
-    $junieArguments += @('-InstallState', $JunieInstallState)
-  }
-  if ($JunieAuthState -ne 'auto') {
-    $junieArguments += @('-AuthState', $JunieAuthState)
-  }
-  $helperInvocations.Add([pscustomobject]@{
-      Key = 'junie'
-      ScriptPath = $junieHelperPath
-      Arguments = $junieArguments
-    })
-
-  $kiroArguments = @('-CheckOnly', '-Json')
-  if ($KiroInstallState -ne 'auto') {
-    $kiroArguments += @('-InstallState', $KiroInstallState)
-  }
-  $helperInvocations.Add([pscustomobject]@{
-      Key = 'kiro'
-      ScriptPath = $kiroHelperPath
-      Arguments = $kiroArguments
-    })
-}
 if ($includeLocalModelsEnabled) {
   $ollamaArguments = @('-CheckOnly', '-Json')
   if ($OllamaInstallState -ne 'auto') {
@@ -546,107 +311,12 @@ $helperResults = if ($parallelChecksEnabled) {
 $nodeHostResult = $helperResults['nodeHost']
 $githubCliResult = $helperResults['githubCli']
 $prefixHelper = $helperResults['prefixHelper']
-$claudeResult = if ($helperResults.ContainsKey('claude')) { $helperResults['claude'] } else { $null }
-$cursorResult = if ($helperResults.ContainsKey('cursor')) { $helperResults['cursor'] } else { $null }
-$antigravityResult = if ($helperResults.ContainsKey('antigravity')) { $helperResults['antigravity'] } else { $null }
-$grokResult = if ($helperResults.ContainsKey('grok')) { $helperResults['grok'] } else { $null }
-$gooseResult = if ($helperResults.ContainsKey('goose')) { $helperResults['goose'] } else { $null }
-$junieResult = if ($helperResults.ContainsKey('junie')) { $helperResults['junie'] } else { $null }
-$kiroResult = if ($helperResults.ContainsKey('kiro')) { $helperResults['kiro'] } else { $null }
 $ollamaResult = if ($helperResults.ContainsKey('ollama')) { $helperResults['ollama'] } else { $null }
-
-# Aggregate the per-CLI npm helper results into a single nativeCliPack-shaped
-# object for downstream consumers (renderer, bridge tests) that still expect
-# a single status for the npm-global CLI substrate.
-$npmCliResults = [ordered]@{}
-$npmCliWarnings = [System.Collections.Generic.List[string]]::new()
-$npmCliPlanned = [System.Collections.Generic.List[string]]::new()
-$npmCliApplied = [System.Collections.Generic.List[string]]::new()
-$npmCliInterruptions = [System.Collections.Generic.List[object]]::new()
-$npmCliStatuses = [System.Collections.Generic.List[string]]::new()
-$npmCliInstalledCount = 0
-foreach ($entry in $NpmCliCatalog) {
-  $key = "npm:$($entry.Key)"
-  if (-not $helperResults.ContainsKey($key)) {
-    continue
-  }
-  $perCliResult = $helperResults[$key]
-  $npmCliResults[$entry.Key] = $perCliResult
-  $npmCliStatuses.Add([string]$perCliResult.status)
-  if ($perCliResult.installed) {
-    $npmCliInstalledCount++
-  }
-  foreach ($warning in @($perCliResult.warnings)) {
-    if (-not [string]::IsNullOrWhiteSpace([string]$warning)) {
-      $npmCliWarnings.Add([string]$warning)
-    }
-  }
-  foreach ($planned in @($perCliResult.plannedActions)) {
-    if (-not [string]::IsNullOrWhiteSpace([string]$planned)) {
-      $npmCliPlanned.Add([string]$planned)
-    }
-  }
-  foreach ($applied in @($perCliResult.appliedChanges)) {
-    if (-not [string]::IsNullOrWhiteSpace([string]$applied)) {
-      $npmCliApplied.Add([string]$applied)
-    }
-  }
-  if (@($perCliResult.PSObject.Properties.Match('interruptions')).Count -gt 0) {
-    foreach ($interruption in @($perCliResult.interruptions)) {
-      if ($null -ne $interruption) {
-        $npmCliInterruptions.Add($interruption)
-      }
-    }
-  }
-}
-$nativeCliPackStatus = if ($npmCliStatuses -contains 'failed') {
-  'failed'
-} elseif ($npmCliStatuses -contains 'changes_required') {
-  'changes_required'
-} elseif ($npmCliStatuses -contains 'not_installed') {
-  'not_installed'
-} elseif ($npmCliStatuses.Count -eq 0) {
-  'ready'
-} else {
-  'ready'
-}
-$nativeCliPack = [pscustomobject]@{
-  helper = 'windows-native-cli-pack-aggregate'
-  mode = 'check'
-  status = $nativeCliPackStatus
-  installed = ($npmCliInstalledCount -eq $NpmCliCatalog.Count)
-  packages = $npmCliResults
-  warnings = $npmCliWarnings.ToArray()
-  plannedActions = $npmCliPlanned.ToArray()
-  appliedChanges = $npmCliApplied.ToArray()
-  interruptions = $npmCliInterruptions.ToArray()
-}
 
 $warnings = [System.Collections.Generic.List[string]]::new()
 $plannedActions = [System.Collections.Generic.List[string]]::new()
 $interruptions = [System.Collections.Generic.List[object]]::new()
-$statuses = @($nodeHostResult.status, $githubCliResult.status, $prefixHelper.status, $nativeCliPack.status)
-if ($null -ne $claudeResult) {
-  $statuses += $claudeResult.status
-}
-if ($null -ne $cursorResult) {
-  $statuses += $cursorResult.status
-}
-if ($null -ne $antigravityResult) {
-  $statuses += $antigravityResult.status
-}
-if ($null -ne $grokResult) {
-  $statuses += $grokResult.status
-}
-if ($null -ne $gooseResult) {
-  $statuses += $gooseResult.status
-}
-if ($null -ne $junieResult) {
-  $statuses += $junieResult.status
-}
-if ($null -ne $kiroResult) {
-  $statuses += $kiroResult.status
-}
+$statuses = @($nodeHostResult.status, $githubCliResult.status, $prefixHelper.status)
 if ($null -ne $ollamaResult) {
   $statuses += $ollamaResult.status
 }
@@ -664,49 +334,6 @@ if (-not $nodeMissing -and $prefixHelper.status -ne 'ready') {
   $plannedActions.Add('repair_npm_prefix')
 }
 
-if (-not $nodeMissing -and $nativeCliPack.status -ne 'ready') {
-  # Skip the per-CLI repair signal when Node itself is missing — the npm-global
-  # CLI helpers cannot run until the host installer finishes.
-  $plannedActions.Add('repair_native_cli_pack')
-}
-
-if ($null -ne $claudeResult) {
-  if ($claudeResult.status -eq 'not_installed') {
-    $plannedActions.Add('provider:install_claude_code_native')
-  } elseif ($claudeResult.status -eq 'auth_required') {
-    $plannedActions.Add('provider:authenticate_claude_code')
-  }
-}
-if ($null -ne $cursorResult) {
-  if ($cursorResult.status -eq 'not_installed') {
-    $plannedActions.Add('provider:install_cursor_agent_native')
-  } elseif ($cursorResult.status -eq 'auth_required') {
-    $plannedActions.Add('provider:authenticate_cursor_agent')
-  }
-}
-if ($null -ne $antigravityResult -and $antigravityResult.status -eq 'not_installed') {
-  $plannedActions.Add('provider:install_antigravity_native')
-}
-if ($null -ne $grokResult -and $grokResult.status -eq 'not_installed') {
-  $plannedActions.Add('provider:install_grok_native')
-}
-if ($null -ne $gooseResult) {
-  if ($gooseResult.status -eq 'not_installed') {
-    $plannedActions.Add('provider:install_goose_native')
-  } elseif ($gooseResult.status -eq 'auth_required') {
-    $plannedActions.Add('provider:authenticate_goose')
-  }
-}
-if ($null -ne $junieResult) {
-  if ($junieResult.status -eq 'not_installed') {
-    $plannedActions.Add('provider:install_junie_native')
-  } elseif ($junieResult.status -eq 'auth_required') {
-    $plannedActions.Add('provider:authenticate_junie')
-  }
-}
-if ($null -ne $kiroResult -and $kiroResult.status -eq 'not_installed') {
-  $plannedActions.Add('provider:install_kiro_native')
-}
 if ($null -ne $ollamaResult) {
   foreach ($action in $ollamaResult.plannedActions) {
     $plannedActions.Add("local_model:$action")
@@ -721,44 +348,6 @@ foreach ($warning in $githubCliResult.warnings) {
 }
 foreach ($warning in $prefixHelper.warnings) {
   $warnings.Add([string]$warning)
-}
-foreach ($warning in $nativeCliPack.warnings) {
-  $warnings.Add([string]$warning)
-}
-if ($null -ne $claudeResult) {
-  foreach ($warning in $claudeResult.warnings) {
-    $warnings.Add([string]$warning)
-  }
-}
-if ($null -ne $cursorResult) {
-  foreach ($warning in $cursorResult.warnings) {
-    $warnings.Add([string]$warning)
-  }
-}
-if ($null -ne $antigravityResult) {
-  foreach ($warning in $antigravityResult.warnings) {
-    $warnings.Add([string]$warning)
-  }
-}
-if ($null -ne $grokResult) {
-  foreach ($warning in $grokResult.warnings) {
-    $warnings.Add([string]$warning)
-  }
-}
-if ($null -ne $gooseResult) {
-  foreach ($warning in $gooseResult.warnings) {
-    $warnings.Add([string]$warning)
-  }
-}
-if ($null -ne $junieResult) {
-  foreach ($warning in $junieResult.warnings) {
-    $warnings.Add([string]$warning)
-  }
-}
-if ($null -ne $kiroResult) {
-  foreach ($warning in $kiroResult.warnings) {
-    $warnings.Add([string]$warning)
-  }
 }
 if ($null -ne $ollamaResult) {
   foreach ($warning in $ollamaResult.warnings) {
@@ -792,14 +381,6 @@ function Add-InterruptionsFromResult {
 
 Add-InterruptionsFromResult -HelperResult $nodeHostResult
 Add-InterruptionsFromResult -HelperResult $githubCliResult
-Add-InterruptionsFromResult -HelperResult $nativeCliPack
-Add-InterruptionsFromResult -HelperResult $claudeResult
-Add-InterruptionsFromResult -HelperResult $cursorResult
-Add-InterruptionsFromResult -HelperResult $antigravityResult
-Add-InterruptionsFromResult -HelperResult $grokResult
-Add-InterruptionsFromResult -HelperResult $gooseResult
-Add-InterruptionsFromResult -HelperResult $junieResult
-Add-InterruptionsFromResult -HelperResult $kiroResult
 Add-InterruptionsFromResult -HelperResult $ollamaResult
 
 function Test-InterruptionPresent {
@@ -840,16 +421,6 @@ $result = [pscustomobject]@{
   nodeHost = $nodeHostResult
   githubCli = $githubCliResult
   prefixHelper = $prefixHelper
-  nativeCliPack = $nativeCliPack
-  nativeProviders = [pscustomobject]@{
-    claude = $claudeResult
-    cursor = $cursorResult
-    antigravity = $antigravityResult
-    grok = $grokResult
-    goose = $gooseResult
-    junie = $junieResult
-    kiro = $kiroResult
-  }
   localModels = [pscustomobject]@{
     ollama = $ollamaResult
   }

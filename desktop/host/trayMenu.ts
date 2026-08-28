@@ -24,8 +24,13 @@ export interface DesktopTrayProductDescriptor {
 export interface DesktopTrayUpdateItem {
   label: string;
   enabled: boolean;
-  /** What activating the item should do. */
-  intent: 'check' | 'open_settings';
+  /**
+   * What activating the item should do. Every intent is served by the host's
+   * own update manager without a window: the tray is a complete update path,
+   * not a shortcut into Settings. Settings remains the detail surface (channel,
+   * last check, progress, error text) and drives the same manager.
+   */
+  intent: 'check' | 'download' | 'install';
 }
 
 export interface DesktopTrayMenuState {
@@ -189,7 +194,7 @@ const TRAY_UPDATE_LABELS: Record<DesktopTrayLocale, Record<string, string>> = {
   en: {
     check: 'Check for Updates…',
     checking: 'Checking for Updates…',
-    available: 'Update Available…',
+    download: 'Download Update…',
     downloading: 'Downloading Update…',
     downloaded: 'Restart to Update…',
     installing: 'Installing Update…',
@@ -197,7 +202,7 @@ const TRAY_UPDATE_LABELS: Record<DesktopTrayLocale, Record<string, string>> = {
   'zh-TW': {
     check: '檢查更新…',
     checking: '正在檢查更新…',
-    available: '有可用更新…',
+    download: '下載更新…',
     downloading: '正在下載更新…',
     downloaded: '重新啟動以更新…',
     installing: '正在安裝更新…',
@@ -243,13 +248,14 @@ function resolveTrayUpdateItem(
     case 'checking':
       return { label: labels.checking, enabled: false, intent: 'check' };
     case 'update_available':
-      return { label: labels.available, enabled: true, intent: 'open_settings' };
+      // The click downloads, so the label promises that rather than a page.
+      return { label: labels.download, enabled: true, intent: 'download' };
     case 'downloading': {
       const percent = Math.round(snapshot.progress?.percent ?? 0);
       return { label: `${labels.downloading} ${percent}%`, enabled: false, intent: 'check' };
     }
     case 'downloaded':
-      return { label: labels.downloaded, enabled: true, intent: 'open_settings' };
+      return { label: labels.downloaded, enabled: true, intent: 'install' };
     case 'installing':
       return { label: labels.installing, enabled: false, intent: 'check' };
     default:

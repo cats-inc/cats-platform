@@ -395,48 +395,59 @@ test('Unix self-hosted provider audits expose the shared JSON audit core', async
     assert.equal(Array.isArray(summary.checks), true);
     assert.equal(Array.isArray(summary.phases), true);
     assert.equal(Array.isArray(summary.warnings), true);
-    assert.equal(summary.phases.length, 3);
+    assert.equal(summary.phases.length, 1);
     assert.equal(summary.present + summary.missing, summary.checks.length);
   }
 });
 
-test('Unix self-hosted provider audits can include 7 native providers, 7 npm tools, and Ollama', async () => {
-  const expectedCheckIds = [
-    'node',
-    'npm',
-    'docker',
-    'node_prefix',
-    'claude',
-    'antigravity',
-    'cursor',
-    'goose',
-    'junie',
-    'kiro',
-    'grok',
-    'codex',
-    'copilot',
-    'opencode',
-    'kilo',
-    'auggie',
-    'pi',
-    'cline',
-    'ollama',
+/**
+ * The audit owns prerequisites; cats-runtime's setup scan owns provider
+ * presence. The scan probes every provider CLI once and reports a version and
+ * a probe-backed auth status, and it is the source the desktop host's CLI
+ * inventory reads -- auditing the same CLIs here produced a second, weaker
+ * answer that nothing consumed. Windows dropped its copy of that work in #7;
+ * this is the same contract on macOS and Linux.
+ */
+test('Unix self-hosted provider audits check prerequisites only, never provider CLIs', async () => {
+  const expectedCheckIds = ['node', 'npm', 'docker', 'node_prefix'];
+  const providerCheckIds = [
+    'claude', 'antigravity', 'cursor', 'goose', 'junie', 'kiro', 'grok',
+    'codex', 'copilot', 'opencode', 'kilo', 'auggie', 'pi', 'cline',
   ];
 
+  for (const platform of ['linux', 'macos']) {
+    const summary = await readJsonSummary(
+      join(rootDir, 'scripts', platform, 'check-installation.sh'),
+    );
+
+    assert.deepEqual(summary.checks.map((entry) => entry.id), expectedCheckIds);
+    for (const checkId of providerCheckIds) {
+      assert.equal(
+        summary.checks.some((entry) => entry.id === checkId),
+        false,
+        `${checkId} is the setup scan's to report, not the audit's`,
+      );
+    }
+    assert.deepEqual(summary.phases.map((phase) => phase.id), ['core']);
+    assert.equal(
+      summary.plannedActions.some((action) => action.startsWith('provider:')),
+      false,
+    );
+    assert.equal(summary.plannedActions.includes('repair_native_cli_pack'), false);
+  }
+});
+
+test('Unix self-hosted provider audits still cover the optional local model runtime', async () => {
   for (const platform of ['linux', 'macos']) {
     const summary = await readJsonSummary(
       join(rootDir, 'scripts', platform, 'check-installation.sh'),
       ['--include-local-models'],
     );
 
-    assert.equal(summary.phases.length, 4);
     assert.equal(summary.collectionMode, 'parallel');
-    assert.equal(summary.checks.length, expectedCheckIds.length);
-    assert.equal(summary.present + summary.missing, expectedCheckIds.length);
-    assert.equal(summary.phases.some((phase) => phase.id === 'local_model_pack'), true);
-    for (const checkId of expectedCheckIds) {
-      assert.equal(summary.checks.some((entry) => entry.id === checkId), true);
-    }
+    assert.equal(summary.checks.some((entry) => entry.id === 'ollama'), true);
+    assert.deepEqual(summary.phases.map((phase) => phase.id), ['core', 'local_model_pack']);
+    assert.equal(summary.present + summary.missing, summary.checks.length);
   }
 });
 
@@ -450,5 +461,58 @@ test('Unix self-hosted provider audits can switch to serial collection mode', as
     assert.equal(summary.collectionMode, 'serial');
     assert.equal(Array.isArray(summary.checks), true);
     assert.equal(summary.checks.length > 0, true);
+  }
+});
+
+/**
+ * These five helpers exist as byte-identical copies under scripts/linux and
+ * scripts/macos rather than as one shared file: the packaged setup asset list
+ * stages each platform's tree separately, so both have to be on disk. Nothing
+ * else checks that they still match, which makes "edit one, forget the other"
+ * a silent divergence that only surfaces on the platform nobody tested.
+ *
+ * The 24 other shared filenames (install-node.sh, install-claude-code.sh, and
+ * the rest of the installers) are deliberately platform-specific and must not
+ * be listed here.
+ */
+const IDENTICAL_UNIX_HELPER_COPIES = [
+  'node-cli-common.sh',
+  'provider-cli-common.sh',
+  'start-desktop-host.sh',
+  'sync-agent-skills.sh',
+  'upgrade-cli-tools.sh',
+];
+
+test('the unix helpers kept as two copies stay identical', async () => {
+  for (const name of IDENTICAL_UNIX_HELPER_COPIES) {
+    const [linuxSource, macosSource] = await Promise.all([
+      readFile(join(rootDir, 'scripts', 'linux', name), 'utf8'),
+      readFile(join(rootDir, 'scripts', 'macos', name), 'utf8'),
+    ]);
+
+    if (linuxSource === macosSource) {
+      continue;
+    }
+
+    // Point at the divergence rather than just reporting inequality: the
+    // largest of these is ~1400 lines, and a bare "not equal" sends the reader
+    // off to diff by hand.
+    const linuxLines = linuxSource.split(/\r?\n/u);
+    const macosLines = macosSource.split(/\r?\n/u);
+    const limit = Math.max(linuxLines.length, macosLines.length);
+    let divergedAt = limit;
+    for (let index = 0; index < limit; index += 1) {
+      if (linuxLines[index] !== macosLines[index]) {
+        divergedAt = index + 1;
+        break;
+      }
+    }
+
+    assert.fail([
+      `scripts/linux/${name} and scripts/macos/${name} diverged at line ${divergedAt}.`,
+      `  linux: ${JSON.stringify(linuxLines[divergedAt - 1] ?? '<end of file>')}`,
+      `  macos: ${JSON.stringify(macosLines[divergedAt - 1] ?? '<end of file>')}`,
+      'These two are maintained as copies; every change has to be applied to both.',
+    ].join('\n'));
   }
 });

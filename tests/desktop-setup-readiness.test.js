@@ -16,249 +16,136 @@ function skipUnlessWindows() {
   return {};
 }
 
-const nativeCliPackages = JSON.stringify([
-  '@openai/codex',
-  '@github/copilot',
-  'opencode-ai',
-  '@kilocode/cli',
-  '@augmentcode/auggie',
-  '@earendil-works/pi-coding-agent',
-  'cline',
-]);
+async function runAudit(extraArgs = []) {
+  const { stdout } = await execFile('powershell.exe', [
+    '-NoProfile',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    helperPath,
+    '-Json',
+    '-SkipNodeCheck',
+    ...extraArgs,
+  ]);
+  return JSON.parse(stdout);
+}
 
-test('Check-WindowsSetupReadiness reports ready when prefix substrate and per-CLI helpers are already ready', skipUnlessWindows(), async () => {
+test('Check-WindowsSetupReadiness reports ready when the prerequisite substrate is already ready', skipUnlessWindows(), async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-'));
   const desiredPrefix = join(workingDir, '.npm-global');
   await mkdir(desiredPrefix, { recursive: true });
 
-  const { stdout } = await execFile('powershell.exe', [
-    '-NoProfile',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-File',
-    helperPath,
-    '-Json',
-    '-SkipNodeCheck',
-    '-DesiredPrefix',
-    desiredPrefix,
-    '-CurrentPrefix',
-    desiredPrefix,
-    '-CurrentUserPath',
-    `${desiredPrefix};C:\\Windows\\System32`,
-    '-InstalledPackagesJson',
-    nativeCliPackages,
-    '-ClaudeInstallState',
-    'installed',
-    '-ClaudeAuthState',
-    'authenticated',
-    '-CursorInstallState',
-    'installed',
-    '-CursorAuthState',
-    'authenticated',
-    '-AntigravityInstallState',
-    'installed',
-    '-GooseInstallState',
-    'installed',
-    '-GooseAuthState',
-    'authenticated',
-    '-JunieInstallState',
-    'installed',
-    '-JunieAuthState',
-    'authenticated',
-    '-KiroInstallState',
-    'installed',
-    '-NodeHostInstallState',
-    'installed',
-    '-GitHubCliInstallState',
-    'installed',
+  const result = await runAudit([
+    '-DesiredPrefix', desiredPrefix,
+    '-CurrentPrefix', desiredPrefix,
+    '-CurrentUserPath', `${desiredPrefix};C:\\Windows\\System32`,
+    '-NodeHostInstallState', 'installed',
+    '-GitHubCliInstallState', 'installed',
   ]);
 
-  const result = JSON.parse(stdout);
   assert.equal(result.helper, 'windows-setup-readiness-audit');
   assert.equal(result.collectionMode, 'parallel');
   assert.equal(result.status, 'ready');
-  assert.equal(result.nativeCliPack.status, 'ready');
-  assert.equal(result.nativeProviders.claude.status, 'ready');
-  assert.equal(result.nativeProviders.cursor.status, 'ready');
-  assert.equal(result.nativeProviders.antigravity.status, 'ready');
-  assert.equal(result.nativeProviders.goose.status, 'ready');
-  assert.equal(result.nativeProviders.junie.status, 'ready');
-  assert.equal(result.nativeProviders.kiro.status, 'ready');
   assert.deepEqual(result.plannedActions, []);
 });
 
-test('Check-WindowsSetupReadiness reports repair actions when prefix and per-CLI helpers are misconfigured but Node host is installed', skipUnlessWindows(), async () => {
+/**
+ * The audit's contract, not an implementation detail: provider presence belongs
+ * to cats-runtime's setup scan, which probes each CLI once and reports a
+ * version and a probe-backed auth status. Auditing them here as well meant one
+ * spawned powershell.exe per provider for answers the host never read.
+ */
+test('Check-WindowsSetupReadiness audits prerequisites only, never provider CLIs', skipUnlessWindows(), async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-scope-'));
+  const desiredPrefix = join(workingDir, '.npm-global');
+  await mkdir(desiredPrefix, { recursive: true });
+
+  const result = await runAudit([
+    '-DesiredPrefix', desiredPrefix,
+    '-CurrentPrefix', desiredPrefix,
+    '-CurrentUserPath', `${desiredPrefix};C:\\Windows\\System32`,
+    '-NodeHostInstallState', 'installed',
+    '-GitHubCliInstallState', 'installed',
+  ]);
+
+  assert.deepEqual(
+    Object.keys(result).sort(),
+    [
+      'collectionMode',
+      'githubCli',
+      'helper',
+      'interruptions',
+      'localModels',
+      'nodeHost',
+      'plannedActions',
+      'prefixHelper',
+      'status',
+      'warnings',
+    ],
+    'a provider or npm-pack section here means the audit spawned helpers for them again',
+  );
+  assert.equal(
+    result.plannedActions.some((action) => action.startsWith('provider:')),
+    false,
+  );
+  assert.equal(
+    result.plannedActions.includes('repair_native_cli_pack'),
+    false,
+    'the npm-global CLI pack is inventory territory now',
+  );
+  // Without -IncludeLocalModels only the three prerequisite helpers run.
+  assert.equal(result.localModels.ollama, null);
+});
+
+test('Check-WindowsSetupReadiness reports repair actions when the npm prefix is misconfigured but Node host is installed', skipUnlessWindows(), async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-missing-'));
   const desiredPrefix = join(workingDir, '.npm-global');
 
-  const { stdout } = await execFile('powershell.exe', [
-    '-NoProfile',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-File',
-    helperPath,
-    '-Json',
-    '-SkipNodeCheck',
-    '-DesiredPrefix',
-    desiredPrefix,
-    '-CurrentPrefix',
-    'C:\\Program Files\\nodejs',
-    '-CurrentUserPath',
-    'C:\\Windows\\System32',
-    '-InstalledPackagesJson',
-    JSON.stringify(['@openai/codex']),
-    '-IncludeNativeProviders:$false',
-    '-NodeHostInstallState',
-    'installed',
-    '-GitHubCliInstallState',
-    'installed',
+  const result = await runAudit([
+    '-DesiredPrefix', desiredPrefix,
+    '-CurrentPrefix', 'C:\\Program Files\\nodejs',
+    '-CurrentUserPath', 'C:\\Windows\\System32',
+    '-NodeHostInstallState', 'installed',
+    '-GitHubCliInstallState', 'installed',
   ]);
 
-  const result = JSON.parse(stdout);
-  assert.equal(result.plannedActions.includes('repair_native_cli_pack'), true);
   assert.equal(result.plannedActions.includes('repair_npm_prefix'), true);
   assert.equal(result.plannedActions.includes('install_node_lts'), false);
-  assert.equal(result.nativeCliPack.status === 'changes_required' || result.nativeCliPack.status === 'not_installed', true);
 });
 
 test('Check-WindowsSetupReadiness routes the user to the Node host installer when Node.js is missing', skipUnlessWindows(), async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-no-node-'));
   const desiredPrefix = join(workingDir, '.npm-global');
 
-  const { stdout } = await execFile('powershell.exe', [
-    '-NoProfile',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-File',
-    helperPath,
-    '-Json',
-    '-SkipNodeCheck',
-    '-DesiredPrefix',
-    desiredPrefix,
-    '-CurrentPrefix',
-    '',
-    '-CurrentUserPath',
-    'C:\\Windows\\System32',
-    '-InstalledPackagesJson',
-    JSON.stringify([]),
-    '-IncludeNativeProviders:$false',
-    '-NodeHostInstallState',
-    'missing',
-    '-GitHubCliInstallState',
-    'installed',
+  const result = await runAudit([
+    '-DesiredPrefix', desiredPrefix,
+    '-CurrentPrefix', '',
+    '-CurrentUserPath', 'C:\\Windows\\System32',
+    '-NodeHostInstallState', 'missing',
+    '-GitHubCliInstallState', 'installed',
   ]);
 
-  const result = JSON.parse(stdout);
   assert.equal(result.nodeHost.status, 'changes_required');
   assert.equal(result.plannedActions.includes('install_node_lts'), true);
+  // Node itself is missing, so the prefix helper cannot run yet — do not stack
+  // a second repair signal on top of the one that has to happen first.
   assert.equal(result.plannedActions.includes('repair_npm_prefix'), false);
 });
 
-test('Check-WindowsSetupReadiness reports auth-required when native providers are installed but not yet signed in', skipUnlessWindows(), async () => {
-  const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-auth-'));
+test('Check-WindowsSetupReadiness routes the user to the GitHub CLI installer when gh is missing', skipUnlessWindows(), async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-no-gh-'));
   const desiredPrefix = join(workingDir, '.npm-global');
   await mkdir(desiredPrefix, { recursive: true });
 
-  const { stdout } = await execFile('powershell.exe', [
-    '-NoProfile',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-File',
-    helperPath,
-    '-Json',
-    '-SkipNodeCheck',
-    '-DesiredPrefix',
-    desiredPrefix,
-    '-CurrentPrefix',
-    desiredPrefix,
-    '-CurrentUserPath',
-    `${desiredPrefix};C:\\Windows\\System32`,
-    '-InstalledPackagesJson',
-    nativeCliPackages,
-    '-ClaudeInstallState',
-    'installed',
-    '-ClaudeAuthState',
-    'authenticated',
-    '-CursorInstallState',
-    'installed',
-    '-CursorAuthState',
-    'authenticated',
-    '-AntigravityInstallState',
-    'installed',
-    '-GooseInstallState',
-    'installed',
-    '-GooseAuthState',
-    'auth_required',
-    '-JunieInstallState',
-    'installed',
-    '-JunieAuthState',
-    'authenticated',
-    '-KiroInstallState',
-    'installed',
-    '-NodeHostInstallState',
-    'installed',
-    '-GitHubCliInstallState',
-    'installed',
+  const result = await runAudit([
+    '-DesiredPrefix', desiredPrefix,
+    '-CurrentPrefix', desiredPrefix,
+    '-CurrentUserPath', `${desiredPrefix};C:\\Windows\\System32`,
+    '-NodeHostInstallState', 'installed',
+    '-GitHubCliInstallState', 'missing',
   ]);
 
-  const result = JSON.parse(stdout);
-  assert.equal(result.status, 'auth_required');
-  assert.equal(result.nativeProviders.goose.status, 'auth_required');
-  assert.equal(result.plannedActions.includes('provider:authenticate_goose'), true);
-  assert.equal(result.interruptions.some((entry) => entry.kind === 'auth_required'), true);
-});
-
-test('Check-WindowsSetupReadiness reports install follow-through when Kiro is missing', skipUnlessWindows(), async () => {
-  const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-kiro-'));
-  const desiredPrefix = join(workingDir, '.npm-global');
-  await mkdir(desiredPrefix, { recursive: true });
-
-  const { stdout } = await execFile('powershell.exe', [
-    '-NoProfile',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-File',
-    helperPath,
-    '-Json',
-    '-SkipNodeCheck',
-    '-DesiredPrefix',
-    desiredPrefix,
-    '-CurrentPrefix',
-    desiredPrefix,
-    '-CurrentUserPath',
-    `${desiredPrefix};C:\\Windows\\System32`,
-    '-InstalledPackagesJson',
-    nativeCliPackages,
-    '-ClaudeInstallState',
-    'installed',
-    '-ClaudeAuthState',
-    'authenticated',
-    '-CursorInstallState',
-    'installed',
-    '-CursorAuthState',
-    'authenticated',
-    '-AntigravityInstallState',
-    'installed',
-    '-GooseInstallState',
-    'installed',
-    '-GooseAuthState',
-    'authenticated',
-    '-JunieInstallState',
-    'installed',
-    '-JunieAuthState',
-    'authenticated',
-    '-KiroInstallState',
-    'missing',
-    '-NodeHostInstallState',
-    'installed',
-    '-GitHubCliInstallState',
-    'installed',
-  ]);
-
-  const result = JSON.parse(stdout);
-  assert.equal(result.status, 'not_installed');
-  assert.equal(result.nativeProviders.kiro.status, 'not_installed');
-  assert.equal(result.plannedActions.includes('provider:install_kiro_native'), true);
+  assert.equal(result.plannedActions.includes('install_github_cli'), true);
 });
 
 test('Check-WindowsSetupReadiness reports Ollama follow-through when local-model helpers are included', skipUnlessWindows(), async () => {
@@ -266,54 +153,17 @@ test('Check-WindowsSetupReadiness reports Ollama follow-through when local-model
   const desiredPrefix = join(workingDir, '.npm-global');
   await mkdir(desiredPrefix, { recursive: true });
 
-  const { stdout } = await execFile('powershell.exe', [
-    '-NoProfile',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-File',
-    helperPath,
-    '-Json',
-    '-SkipNodeCheck',
-    '-DesiredPrefix',
-    desiredPrefix,
-    '-CurrentPrefix',
-    desiredPrefix,
-    '-CurrentUserPath',
-    `${desiredPrefix};C:\\Windows\\System32`,
-    '-InstalledPackagesJson',
-    nativeCliPackages,
-    '-ClaudeInstallState',
-    'installed',
-    '-ClaudeAuthState',
-    'authenticated',
-    '-CursorInstallState',
-    'installed',
-    '-CursorAuthState',
-    'authenticated',
-    '-AntigravityInstallState',
-    'installed',
-    '-GooseInstallState',
-    'installed',
-    '-GooseAuthState',
-    'authenticated',
-    '-JunieInstallState',
-    'installed',
-    '-JunieAuthState',
-    'authenticated',
-    '-KiroInstallState',
-    'installed',
-    '-NodeHostInstallState',
-    'installed',
-    '-GitHubCliInstallState',
-    'installed',
+  const result = await runAudit([
+    '-DesiredPrefix', desiredPrefix,
+    '-CurrentPrefix', desiredPrefix,
+    '-CurrentUserPath', `${desiredPrefix};C:\\Windows\\System32`,
+    '-NodeHostInstallState', 'installed',
+    '-GitHubCliInstallState', 'installed',
     '-IncludeLocalModels:$true',
-    '-OllamaInstallState',
-    'installed',
-    '-OllamaApiState',
-    'unreachable',
+    '-OllamaInstallState', 'installed',
+    '-OllamaApiState', 'unreachable',
   ]);
 
-  const result = JSON.parse(stdout);
   assert.equal(result.status, 'changes_required');
   assert.equal(result.localModels.ollama.status, 'changes_required');
   assert.equal(result.plannedActions.includes('local_model:start_ollama_local_model'), true);
@@ -324,50 +174,15 @@ test('Check-WindowsSetupReadiness can force serial collection for deterministic 
   const desiredPrefix = join(workingDir, '.npm-global');
   await mkdir(desiredPrefix, { recursive: true });
 
-  const { stdout } = await execFile('powershell.exe', [
-    '-NoProfile',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-File',
-    helperPath,
-    '-Json',
+  const result = await runAudit([
     '-Parallel:$false',
-    '-SkipNodeCheck',
-    '-DesiredPrefix',
-    desiredPrefix,
-    '-CurrentPrefix',
-    desiredPrefix,
-    '-CurrentUserPath',
-    `${desiredPrefix};C:\\Windows\\System32`,
-    '-InstalledPackagesJson',
-    nativeCliPackages,
-    '-ClaudeInstallState',
-    'installed',
-    '-ClaudeAuthState',
-    'authenticated',
-    '-CursorInstallState',
-    'installed',
-    '-CursorAuthState',
-    'authenticated',
-    '-AntigravityInstallState',
-    'installed',
-    '-GooseInstallState',
-    'installed',
-    '-GooseAuthState',
-    'authenticated',
-    '-JunieInstallState',
-    'installed',
-    '-JunieAuthState',
-    'authenticated',
-    '-KiroInstallState',
-    'installed',
-    '-NodeHostInstallState',
-    'installed',
-    '-GitHubCliInstallState',
-    'installed',
+    '-DesiredPrefix', desiredPrefix,
+    '-CurrentPrefix', desiredPrefix,
+    '-CurrentUserPath', `${desiredPrefix};C:\\Windows\\System32`,
+    '-NodeHostInstallState', 'installed',
+    '-GitHubCliInstallState', 'installed',
   ]);
 
-  const result = JSON.parse(stdout);
   assert.equal(result.collectionMode, 'serial');
   assert.equal(result.status, 'ready');
 });
