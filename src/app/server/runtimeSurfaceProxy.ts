@@ -34,8 +34,7 @@ const SETUP_MUTATION_RUNTIME_API_PATHS = new Set<string>([
   '/setup-scan',
   '/setup-apply',
 ]);
-const DEFAULT_RUNTIME_SETUP_SCAN_PROXY_TIMEOUT_MS = 120_000;
-const DEFAULT_RUNTIME_SETUP_APPLY_PROXY_TIMEOUT_MS = 30_000;
+const DEFAULT_RUNTIME_SETUP_PROXY_TIMEOUT_MS = 30_000;
 
 const PREFIX_RUNTIME_API_PATHS = [
   '/sessions',
@@ -138,32 +137,18 @@ function createForwardedHeaders(
   return headers;
 }
 
-function resolvePositiveTimeoutMs(value: number | undefined, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0
-    ? value
-    : fallback;
-}
-
+// One budget for both setup mutations. /setup-scan used to carry a far larger
+// one because it held the request open for the whole probe run; it now starts
+// the scan and answers 202, and callers wait on /setup-state instead. The
+// default lives here rather than in config alone so that a server built from a
+// hand-assembled config still bounds a wedged runtime.
 function resolveRuntimeSetupProxyTimeoutMs(
-  runtimePath: string,
   dependencies: ResolvedServerDependencies,
-): number | null {
-  const config = dependencies.shared.config;
-  if (runtimePath === '/setup-scan') {
-    return resolvePositiveTimeoutMs(
-      config.runtimeSetupScanProxyTimeoutMs ?? config.runtimeSetupProxyTimeoutMs,
-      DEFAULT_RUNTIME_SETUP_SCAN_PROXY_TIMEOUT_MS,
-    );
-  }
-
-  if (runtimePath === '/setup-apply') {
-    return resolvePositiveTimeoutMs(
-      config.runtimeSetupApplyProxyTimeoutMs ?? config.runtimeSetupProxyTimeoutMs,
-      DEFAULT_RUNTIME_SETUP_APPLY_PROXY_TIMEOUT_MS,
-    );
-  }
-
-  return null;
+): number {
+  const configured = dependencies.shared.config.runtimeSetupProxyTimeoutMs;
+  return typeof configured === 'number' && Number.isFinite(configured) && configured > 0
+    ? configured
+    : DEFAULT_RUNTIME_SETUP_PROXY_TIMEOUT_MS;
 }
 
 function createClientAbortScope(
@@ -629,7 +614,7 @@ export async function handleRuntimeApiProxyRoute(
   const timeoutScope = createRuntimeProxyTimeoutScope(
     abortScope.signal,
     SETUP_MUTATION_RUNTIME_API_PATHS.has(runtimePath)
-      ? resolveRuntimeSetupProxyTimeoutMs(runtimePath, dependencies)
+      ? resolveRuntimeSetupProxyTimeoutMs(dependencies)
       : null,
   );
   try {

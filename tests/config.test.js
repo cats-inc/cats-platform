@@ -52,8 +52,6 @@ test('loadConfig derives storage paths from canonical root directories', () => {
   assert.equal(config.runtimeSessionCreateSlowWarningMs, 6000);
   assert.equal(config.runtimeMessageIdleTimeoutMs, 60000);
   assert.equal(config.runtimeSetupProxyTimeoutMs, 12345);
-  assert.equal(config.runtimeSetupScanProxyTimeoutMs, 12345);
-  assert.equal(config.runtimeSetupApplyProxyTimeoutMs, 12345);
   assert.equal(config.providerCapabilityBootstrapConfigPath, 'C:/Users/test/bootstrap.yaml');
   assert.equal(config.debugLiveTrace, false);
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
@@ -134,9 +132,7 @@ test('loadConfig falls back to CATS_INC_* compatibility aliases for host and por
   );
   assert.equal(config.debugLiveTrace, false);
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
-  assert.equal(config.runtimeSetupProxyTimeoutMs, undefined);
-  assert.equal(config.runtimeSetupScanProxyTimeoutMs, 120000);
-  assert.equal(config.runtimeSetupApplyProxyTimeoutMs, 30000);
+  assert.equal(config.runtimeSetupProxyTimeoutMs, 30000);
   assert.equal(config.runtimeSessionCreateTimeoutMs, DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS);
   assert.equal(
     config.runtimeSessionCreateSlowWarningMs,
