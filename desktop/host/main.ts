@@ -97,6 +97,7 @@ import { resolveDesktopUpdateDialog } from './updateDialog.js';
 import { resolveDefaultSetupAuditAction } from './setupAudit.js';
 import {
   buildDesktopCliInventoryFromRuntime,
+  probeContradictsCachedBootstrapState,
   type RuntimeCliInventoryProbe,
 } from './cliInventoryProbe.js';
 import {
@@ -296,6 +297,22 @@ function isRuntimeCliInventoryScanActive(probe: RuntimeCliInventoryProbe | null)
 
 function isRuntimeCliInventoryScanErrored(probe: RuntimeCliInventoryProbe | null): boolean {
   return probe?.state?.status === 'error';
+}
+
+// Refreshing only when the probe and the cached health payload disagree keeps
+// this off the steady-state path: it fires once, on the transition that
+// actually happened, rather than putting GET /health on a timer.
+function probeContradictsCachedRuntimeHealth(
+  probe: RuntimeCliInventoryProbe | null,
+): boolean {
+  if (!latestRuntimeHealthPayload) {
+    return false;
+  }
+  const cached = normalizeRuntimeHealthPayload(latestRuntimeHealthPayload);
+  return probeContradictsCachedBootstrapState(
+    probe,
+    cached.readiness?.bootstrapRequired === true || cached.startup?.bootstrapRequired === true,
+  );
 }
 
 function rememberRuntimeCliInventoryProbe(probe: RuntimeCliInventoryProbe | null): boolean {
@@ -1531,8 +1548,11 @@ async function pollRuntimeCliInventory(options: {
       ? RUNTIME_SETUP_SCAN_TIMEOUT_MS
       : RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS,
   });
+  const staleRuntimeHealth = probeContradictsCachedRuntimeHealth(probe);
   if (rememberRuntimeCliInventoryProbe(probe)) {
-    const snapshot = publishSnapshot(buildSnapshot());
+    const snapshot = publishSnapshot(
+      staleRuntimeHealth ? await refreshBootstrapSnapshot() : buildSnapshot(),
+    );
     scheduleBackgroundSetupAudit(snapshot, latestPersistedSetupState);
     await maybeOpenApp(snapshot);
     return;
@@ -1542,6 +1562,13 @@ async function pollRuntimeCliInventory(options: {
     const snapshot = publishSnapshot(buildSnapshot());
     scheduleBackgroundSetupAudit(snapshot, latestPersistedSetupState);
     return;
+  }
+  if (staleRuntimeHealth) {
+    // No scan snapshot to publish, but the runtime has still moved on. Pick the
+    // change up rather than republishing a phase built from the stale payload.
+    // Deliberately falls through to the reschedule below: this branch is the
+    // one that keeps waiting for a scan, and it must not stop doing that.
+    publishSnapshot(await refreshBootstrapSnapshot());
   }
   scheduleRuntimeCliInventoryPoll(options);
 }
@@ -1565,9 +1592,14 @@ async function retryCliInventoryScanInBackground(options: {
     } catch {
       probe = null;
     }
+    const staleRuntimeHealth = probeContradictsCachedRuntimeHealth(probe);
     if (rememberRuntimeCliInventoryProbe(probe)) {
       try {
-        const snapshot = publishSnapshot(buildSnapshot());
+        // This path returns without scheduling a poll, so a stale cached health
+        // payload would survive here until the app restarts.
+        const snapshot = publishSnapshot(
+          staleRuntimeHealth ? await refreshBootstrapSnapshot() : buildSnapshot(),
+        );
         scheduleBackgroundSetupAudit(snapshot, latestPersistedSetupState);
         await maybeOpenApp(snapshot);
       } catch {
