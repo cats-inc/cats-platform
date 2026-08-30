@@ -783,6 +783,65 @@ test('runtime setup summary reads still use the standard runtime timeout budget'
   assert.deepEqual(timeoutSignals.calls, [5000]);
 });
 
+test('triggerSetupScan waits for the started scan to leave the scanning state', async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  let stateReads = 0;
+
+  const buildReadModel = (status) => ({
+    bootstrapRequired: true,
+    state: {
+      status,
+      lastScanAt: null,
+      lastManualScanAt: null,
+      appliedAt: null,
+      appliedConfigPath: null,
+      error: null,
+    },
+    scan: null,
+    manualScan: null,
+  });
+
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    calls.push(`${init?.method ?? 'GET'} ${new URL(url).pathname}`);
+
+    if (url.endsWith('/setup-scan')) {
+      // The route starts the run and answers 202; the probes outlive it.
+      return new Response(JSON.stringify({ status: 'scanning', started: true }), {
+        status: 202,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+
+    if (url.endsWith('/setup-state')) {
+      stateReads += 1;
+      return new Response(JSON.stringify(buildReadModel(stateReads < 2 ? 'scanning' : 'ready')), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    const payload = await client.triggerSetupScan({ manual: true });
+    // Returning the first read would have handed the caller a scan that had not
+    // produced anything yet.
+    assert.equal(payload.state.status, 'ready');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(calls, [
+    'POST /setup-scan',
+    'GET /setup-state',
+    'GET /setup-state',
+  ]);
+});
+
 test('runtime client returns truthful provider diagnostics for filtered selector reads', async () => {
   const timeoutSignals = createTimeoutSignalRecorder();
   const originalFetch = globalThis.fetch;

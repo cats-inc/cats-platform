@@ -600,39 +600,6 @@ test('POST /runtime/api/setup-scan times out hung upstream runtime requests', as
   });
 });
 
-test('POST /runtime/api/setup-scan uses its route-specific timeout over the legacy setup timeout', async () => {
-  await withSlowSetupScanRuntimeStub(async (runtimeBaseUrl, slowRuntime) => {
-    await withPlatformServer(runtimeBaseUrl, '', async (platformBaseUrl) => {
-      let settled = false;
-      const request = fetch(`${platformBaseUrl}/runtime/api/setup-scan?slow=1`, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({ manual: true }),
-      }).then((response) => {
-        settled = true;
-        return response;
-      });
-
-      await Promise.race([
-        slowRuntime.requestReceived,
-        rejectAfter(500, 'runtime did not receive setup-scan'),
-      ]);
-      await delay(25);
-      assert.equal(settled, false);
-
-      const response = await request;
-      assert.equal(response.status, 504);
-      const payload = await response.json();
-      assert.equal(payload.error?.code, 'runtime_proxy_timeout');
-    }, {
-      runtimeSetupProxyTimeoutMs: 5,
-      runtimeSetupScanProxyTimeoutMs: 75,
-    });
-  });
-});
-
 test('GET /runtime/api/setup-state uses runtime proxy auth over caller auth when configured', async () => {
   await withRuntimeStub(async (runtimeBaseUrl) => {
     await withPlatformServer(runtimeBaseUrl, 'platform-secret', async (platformBaseUrl) => {

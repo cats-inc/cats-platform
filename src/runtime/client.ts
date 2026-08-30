@@ -356,6 +356,7 @@ export type RuntimeClientDiagnosticEvent = {
 };
 
 const DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS = 5_000;
+const SETUP_SCAN_POLL_INTERVAL_MS = 1_000;
 export const DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS = 60_000;
 export const DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS = 120_000;
 const DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS = 10_000;
@@ -639,7 +640,29 @@ export class CatsRuntimeClient implements RuntimeClient {
       );
     }
 
-    return await this.getSetupState();
+    return await this.waitForSetupScanToSettle();
+  }
+
+  /**
+   * Polls until the runtime's scan settles.
+   *
+   * POST /setup-scan answers 202 as soon as the run starts: a scan takes as
+   * long as the host's provider CLIs take to answer, which is longer than any
+   * request this client would keep open. `scanning` is persisted runtime state
+   * and is cleared when the run settles -- or on the runtime's next start if it
+   * died mid-scan -- so this ends on the runtime's answer rather than on a
+   * guess about how long a scan is allowed to take.
+   */
+  private async waitForSetupScanToSettle(): Promise<RuntimeSetupReadModel> {
+    while (true) {
+      const readModel = await this.getSetupState();
+      if (readModel.state.status !== 'scanning') {
+        return readModel;
+      }
+      await new Promise((resolve) => {
+        setTimeout(resolve, SETUP_SCAN_POLL_INTERVAL_MS);
+      });
+    }
   }
 
   async getProviderModels(
