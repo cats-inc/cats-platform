@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildDesktopCliInventoryFromRuntime } from '../build/desktop/cliInventoryProbe.js';
+import {
+  buildDesktopCliInventoryFromRuntime,
+  probeContradictsCachedBootstrapState,
+} from '../build/desktop/cliInventoryProbe.js';
 
 test('buildDesktopCliInventoryFromRuntime returns unknown source when runtime probe is null', () => {
   const inventory = buildDesktopCliInventoryFromRuntime(null, 'win32');
@@ -140,4 +143,43 @@ test('buildDesktopCliInventoryFromRuntime reports unknown auth before any scan',
   for (const candidate of inventory.candidates) {
     assert.equal(candidate.authStatus, 'unknown');
   }
+});
+
+test('probeContradictsCachedBootstrapState spots a runtime that left bootstrap since the cache was taken', () => {
+  // Applying a provider config takes the runtime out of bootstrap in-process.
+  // Nothing pushes that to the host, so the cached health payload keeps saying
+  // setup is required until something notices the probe disagrees.
+  assert.equal(
+    probeContradictsCachedBootstrapState({ bootstrapRequired: false, scan: null }, true),
+    true,
+  );
+});
+
+test('probeContradictsCachedBootstrapState spots a runtime that re-entered bootstrap', () => {
+  assert.equal(
+    probeContradictsCachedBootstrapState({ bootstrapRequired: true, scan: null }, false),
+    true,
+  );
+});
+
+test('probeContradictsCachedBootstrapState stays quiet while the two agree', () => {
+  assert.equal(
+    probeContradictsCachedBootstrapState({ bootstrapRequired: true, scan: null }, true),
+    false,
+  );
+  assert.equal(
+    probeContradictsCachedBootstrapState({ bootstrapRequired: false, scan: null }, false),
+    false,
+  );
+});
+
+test('probeContradictsCachedBootstrapState treats a missing signal as no claim', () => {
+  // A runtime too old to send the field, a failed probe, or a host with nothing
+  // cached yet must not be read as "the state changed".
+  assert.equal(probeContradictsCachedBootstrapState({ scan: null }, true), false);
+  assert.equal(probeContradictsCachedBootstrapState(null, true), false);
+  assert.equal(
+    probeContradictsCachedBootstrapState({ bootstrapRequired: false, scan: null }, null),
+    false,
+  );
 });

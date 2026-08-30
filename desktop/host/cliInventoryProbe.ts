@@ -10,6 +10,11 @@ import {
 // importing the full RuntimeSetupReadModel type from src/ because the desktop
 // host tsconfig is rooted under desktop/host/ and cannot reach src/.
 export interface RuntimeCliInventoryProbe {
+  // The runtime's own answer about whether setup is still required. It rides
+  // along on every probe, which makes it the freshest bootstrap signal the host
+  // has -- fresher than the cached GET /health payload the snapshot phase is
+  // otherwise derived from.
+  bootstrapRequired?: boolean;
   state?: {
     status?: 'pending' | 'scanning' | 'ready' | 'applied' | 'error' | string;
     error?: string | null;
@@ -18,6 +23,31 @@ export interface RuntimeCliInventoryProbe {
     scannedAt?: string | null;
     providers: Array<{ provider: string; available: boolean; authStatus?: string }>;
   } | null;
+}
+
+/**
+ * True when the runtime's own bootstrap answer on a probe disagrees with the
+ * one the caller has cached.
+ *
+ * The desktop snapshot phase is derived from a cached GET /health payload that
+ * is only refetched at startup and on a few user actions, never on a timer.
+ * Applying a provider config takes the runtime out of bootstrap in-process, so
+ * nothing tells the host: it keeps republishing "Cats Runtime setup is still
+ * required" from a payload captured before the apply, until the app restarts.
+ *
+ * Every probe already carries the runtime's current answer, so the
+ * disagreement is visible without asking for anything extra. A caller that has
+ * no cached answer yet, or a runtime too old to send the field, reports no
+ * disagreement -- absence of a signal is not a claim that the state changed.
+ */
+export function probeContradictsCachedBootstrapState(
+  probe: RuntimeCliInventoryProbe | null,
+  cachedBootstrapRequired: boolean | null,
+): boolean {
+  if (typeof probe?.bootstrapRequired !== 'boolean' || cachedBootstrapRequired === null) {
+    return false;
+  }
+  return cachedBootstrapRequired !== probe.bootstrapRequired;
 }
 
 const DESKTOP_CLI_AUTH_STATUSES: readonly DesktopCliAuthStatus[] = [
