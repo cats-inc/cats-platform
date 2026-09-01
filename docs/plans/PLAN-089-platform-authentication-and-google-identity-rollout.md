@@ -15,6 +15,9 @@
 Related decision:
 [ADR-096: Adopt Platform-Owned Auth Sessions with Google as an Identity Provider](../decisions/096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md)
 
+Focused follow-up:
+[PLAN-104: Admin Bootstrap and Google Account Linking Rollout](./PLAN-104-admin-bootstrap-and-google-account-linking-rollout.md)
+
 ## Overview
 
 Roll out authentication in slices that close the LAN exposure risk first and
@@ -634,6 +637,7 @@ operators before implementation is marked complete.
 | 2026-08-04 | Completed the second Desktop auth-secret hardening review: canonical publication is now atomic and no-clobber under shared-directory races, stale temporary/invalid artifacts are retired, warnings persist to the Desktop host log, the child-process sanitizer removes all documented Cats-owned runtime/Telegram/ngrok credentials, taskkill uses the same sanitized environment, and updater rollback explicitly documents its dependency on the supervisor-lifetime environment snapshot. |
 | 2026-08-04 | Closed the follow-up review findings for the clean-install secret boundary: unsupported-hardlink filesystems now use an exclusive-copy no-clobber fallback with concurrent-winner adoption, permission errors fail closed, pre-auth setup responses use safe configuration/internal error envelopes, and credential documentation coverage now exercises the sanitizer rather than exporting its denylist. |
 | 2026-08-04 | Generalized SPEC-100 requirement 24 from packaged Desktop to the platform process: local dev, npm/global installs, `npx cats-one`, and Desktop now share secure first-run generation and persistence; explicit configuration remains authoritative, fixed public defaults are rejected, project `.env` can redirect the subsequently loaded platform config `.env`, and Desktop surfaces sidecar provisioning errors through Retry. |
+| 2026-09-01 | Linked PLAN-104 as the proposed focused follow-up for mandatory local first-Admin bootstrap, server-bound step-up, and Settings Google link/unlink. No PLAN-104 implementation has started. |
 
 ---
 

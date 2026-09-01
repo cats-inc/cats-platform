@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-104](./PLAN-104-admin-bootstrap-and-google-account-linking-rollout.md) | Admin Bootstrap and Google Account Linking Rollout | Draft — implementation gated on approval | [SPEC-113](../specs/SPEC-113-admin-bootstrap-and-google-account-linking.md), [ADR-111](../decisions/111-keep-first-admin-local-and-require-step-up-for-google-linking.md) |
 | [PLAN-103](./PLAN-103-packaged-provider-helper-smoke-verification.md) | Packaged Provider Helper Smoke Verification | Blocked — waiting on a built desktop package | [SPEC-112](../specs/SPEC-112-grok-devin-cline-aider-in-packaged-setup-and-provider-catalog.md) |
 | [PLAN-102](./PLAN-102-grok-devin-cline-aider-packaged-setup-rollout.md) | Grok, Devin, Cline, and Aider Packaged Setup Rollout | In Progress — all four ported; Grok, Cline, and Devin executable; packaged smoke deferred to PLAN-103 | [SPEC-112](../specs/SPEC-112-grok-devin-cline-aider-in-packaged-setup-and-provider-catalog.md), [ADR-109](../decisions/109-port-grok-devin-cline-aider-installers-into-packaged-setup.md) |
 | [PLAN-101](./PLAN-101-packaged-desktop-update-rollout.md) | Packaged Desktop Update Rollout | Draft | [SPEC-111](../specs/SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md), [ADR-108](../decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md) |
@@ -157,6 +158,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-08-29 (PLAN-102 updated for runtime-backed Antigravity/Cline/Devin execution catalogs.)*
+*Last updated: 2026-09-01 (PLAN-104 Admin bootstrap and Google account-linking rollout added.)*
 
 *See also: [specs/](../specs/) for feature specifications*
