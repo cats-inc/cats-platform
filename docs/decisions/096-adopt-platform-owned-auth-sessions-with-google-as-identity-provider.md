@@ -388,7 +388,7 @@ that need Core actor attribution until an explicit mapping exists.
 
 ## References
 
-- [ADR-111: Keep First-Admin Bootstrap Local and Require Step-Up for Google Linking](./111-keep-first-admin-local-and-require-step-up-for-google-linking.md) — proposed follow-up that narrows Google-only first-admin bootstrap and defines link/unlink step-up
+- [ADR-111: Keep First-Admin Bootstrap Local and Require Step-Up for Google Linking](./111-keep-first-admin-local-and-require-step-up-for-google-linking.md) — accepted amendment that removes Google-only first-admin bootstrap and defines link/unlink step-up
 - [SPEC-113: Admin Bootstrap and Google Account Linking](../specs/SPEC-113-admin-bootstrap-and-google-account-linking.md)
 - [SPEC-100: Platform Authentication, Admin Bootstrap, and Google Identity](../specs/SPEC-100-platform-authentication-admin-bootstrap-and-google-identity.md)
 - [PLAN-089: Platform Authentication and Google Identity Rollout](../plans/PLAN-089-platform-authentication-and-google-identity-rollout.md)
@@ -413,5 +413,5 @@ that need Core actor attribution until an explicit mapping exists.
 *Amended: 2026-08-05 — kept standalone Runtime surfaces in the system browser and added a 30-second, single-use Desktop browser-session handoff with allow-listed return paths.*
 *Amended: 2026-04-30 — aligned the pre-auth gate with Vite/reverse-proxy topologies by using an explicit allowed browser-origin set; clarified that `same-site` does not pass without an allowlisted `Origin`; kept raw recovery tokens out of structured logs; made aggregate account cooldown bounded and recoverable without deleting auth state.*
 *Amended: 2026-04-30 — added Expo Go / Cats Mobile as a first-party non-browser client: QR pairing only bootstraps the bundle, product data requires a mobile device bearer session, and mobile Google login is separate from browser GIS credential POST.*
-*Amended: 2026-09-01 — linked proposed ADR-111/SPEC-113 follow-up for mandatory local first-Admin bootstrap and step-up-protected Google link/unlink; ADR-096 behavior remains unchanged unless ADR-111 is accepted.*
+*Amended: 2026-09-02 — accepted ADR-111/SPEC-113 now requires mandatory local first-Admin bootstrap, the promotion-period non-empty/no-composition password policy, step-up-protected Google link/unlink, and revocation of other Sessions on unlink.*
 *Decision makers: user + Codex*

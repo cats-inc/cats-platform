@@ -59,9 +59,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
-- [ADR-111](./decisions/111-keep-first-admin-local-and-require-step-up-for-google-linking.md) — require a local first-Admin identity and a server-owned, purpose-bound password step-up before Google link/unlink
-- [SPEC-113](./specs/SPEC-113-admin-bootstrap-and-google-account-linking.md) — mandatory serialized Admin bootstrap, truthful login-method status, verified-email binding, Google link/unlink, and Settings Account requirements
-- [PLAN-104](./plans/PLAN-104-admin-bootstrap-and-google-account-linking-rollout.md) — approval-gated rollout for bootstrap hardening, action grants, protected Google identity lifecycle, Settings UX, and regression coverage
+- [ADR-111](./decisions/111-keep-first-admin-local-and-require-step-up-for-google-linking.md) — accepted local first-Admin identity and server-owned, purpose-bound password step-up before Google link/unlink
+- [SPEC-113](./specs/SPEC-113-admin-bootstrap-and-google-account-linking.md) — approved mandatory serialized Admin bootstrap, promotion-period simple password policy, truthful login-method status, verified-email binding, Google link/unlink, and Settings Account requirements
+- [PLAN-104](./plans/PLAN-104-admin-bootstrap-and-google-account-linking-rollout.md) — ready rollout for bootstrap hardening, action grants, protected Google identity lifecycle, Settings UX, and regression coverage; implementation not started
 - [2026-09-01 Credential Vault Admin and Google Linking Reference](./research/2026-09-01-credential-vault-admin-and-google-linking-reference.md) — reusable UX/admin invariants and security patterns that Cats should deliberately avoid copying
 - [ADR-110](./decisions/110-keep-platform-clients-in-one-repository-with-explicit-package-boundaries.md) — keep Web, Desktop, Mobile, and the platform host in one repository while preserving explicit deployable and shared-package boundaries
 - [ADR-108](./decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md) — official packaged Electron builds use one main-process GitHub Release updater while npm/browser installs remain package-manager-owned
@@ -264,4 +264,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-09-01*
+*Last updated: 2026-09-02*

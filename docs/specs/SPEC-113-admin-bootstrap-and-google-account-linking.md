@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Approved |
 | **Owner** | User |
 | **Reviewer** | User |
 
@@ -98,9 +98,11 @@ The remaining gaps are:
 2. The route shall reject missing or partial Admin credentials with `400` and a
    stable structured error code. It shall not complete setup and rely on repair
    mode as an implicit Admin-creation flow.
-3. New local Admin and repair passwords shall contain 12 to 256 Unicode code
-   points. Cats shall allow spaces and password-manager output and shall not add
-   composition rules such as mandatory uppercase or symbols.
+3. During the promotion period, new local Admin and repair passwords shall be
+   non-empty and contain no more than 256 Unicode code points. Cats shall allow
+   spaces and password-manager output and shall not require a minimum beyond
+   one code point or add composition rules such as mandatory uppercase,
+   lowercase, digits, or symbols.
 4. The password policy shall be enforced by the server-domain helper as well as
    reflected in the renderer. The renderer check is advisory; the server check
    is authoritative.
@@ -286,7 +288,10 @@ The remaining gaps are:
 ## Non-Functional Requirements
 
 - **Security**: The backend, not the renderer, must enforce every link/unlink
-  prerequisite. No sensitive token may be persisted client-side.
+  prerequisite. No sensitive token may be persisted client-side. The
+  promotion-period password policy favors onboarding ease; the UI should
+  recommend a longer passphrase without turning that recommendation into a
+  blocking composition rule.
 - **Local-first**: Setup, login, repair, and unlink must remain usable without
   Google after a local password has been established.
 - **Privacy**: Cats stores Google `sub`, verified display email, and optional
@@ -308,7 +313,7 @@ The remaining gaps are:
 ```text
 /setup form
   -> origin gate
-  -> validate identifier + 12..256 character password
+  -> validate identifier + non-empty password (maximum 256 code points)
   -> serialized setup/auth mutation
   -> Account + local Identity + owner/admin Membership + Session
   -> persist setup snapshot and auth state or roll back
@@ -346,8 +351,9 @@ Settings Account section
 
 - [ ] Setup without either Admin identifier or password returns a structured
       `400` and leaves setup incomplete.
-- [ ] Passwords shorter than 12 or longer than 256 code points are rejected by
-      setup and repair domain helpers.
+- [ ] Empty passwords and passwords longer than 256 code points are rejected by
+      setup and repair domain helpers; a one-code-point password is accepted
+      and no uppercase/lowercase/digit/symbol composition rule is applied.
 - [ ] Two concurrent first-admin submissions produce one Account, one local
       Identity, one owner/admin Membership, and one successful Session.
 - [ ] The Google-only setup route and all direct production call paths are
@@ -383,14 +389,16 @@ Settings Account section
 - Existing platform auth store, session/CSRF helpers, throttle policy, Google
   verifier, GIS button, and Settings Account section
 
-## Open Questions
+## Resolved Decisions
 
-- [ ] Approve ADR-111's local-first-only bootstrap amendment to ADR-096.
-- [ ] Confirm that unlink should revoke all other browser and mobile sessions,
-      rather than only sessions known to have originated from Google. The
-      proposal chooses all other sessions because current Session records do
-      not retain authenticating Identity provenance.
-- [ ] Confirm the proposed 12-character minimum for new/repair Admin passwords.
+- [x] The User approved ADR-111's local-first-only bootstrap amendment on
+      2026-09-02. Cats does not ship Google-only first-Admin bootstrap.
+- [x] Google unlink revokes all other browser and mobile Sessions for the
+      Account. Current Session records do not retain authenticating Identity
+      provenance, so selective Google-session revocation would be unreliable.
+- [x] During promotion, Admin passwords need only be non-empty and within the
+      256-code-point resource bound. Cats does not require 12 characters or any
+      uppercase/lowercase/digit/symbol composition.
 
 ## References
 
@@ -402,5 +410,6 @@ Settings Account section
 ---
 
 *Created: 2026-09-01*
+*Approved: 2026-09-02*
 *Author: Codex, for User review*
 *Related Plan: [PLAN-104](../plans/PLAN-104-admin-bootstrap-and-google-account-linking-rollout.md)*

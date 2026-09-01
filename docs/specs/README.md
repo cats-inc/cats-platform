@@ -48,7 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
-| [SPEC-113](./SPEC-113-admin-bootstrap-and-google-account-linking.md) | Admin Bootstrap and Google Account Linking | Draft | [PLAN-104](../plans/PLAN-104-admin-bootstrap-and-google-account-linking-rollout.md), [ADR-111](../decisions/111-keep-first-admin-local-and-require-step-up-for-google-linking.md) |
+| [SPEC-113](./SPEC-113-admin-bootstrap-and-google-account-linking.md) | Admin Bootstrap and Google Account Linking | Approved | [PLAN-104](../plans/PLAN-104-admin-bootstrap-and-google-account-linking-rollout.md), [ADR-111](../decisions/111-keep-first-admin-local-and-require-step-up-for-google-linking.md) |
 | [SPEC-112](./SPEC-112-grok-devin-cline-aider-in-packaged-setup-and-provider-catalog.md) | Grok, Devin, Cline, and Aider in Packaged Setup and the Setup Provider Inventory | In Progress — Grok setup and execution catalog complete | [PLAN-102](../plans/PLAN-102-grok-devin-cline-aider-packaged-setup-rollout.md), [ADR-109](../decisions/109-port-grok-devin-cline-aider-installers-into-packaged-setup.md) |
 | [SPEC-111](./SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md) | Packaged Desktop Update Surfaces and Release Contract | Draft | [PLAN-101](../plans/PLAN-101-packaged-desktop-update-rollout.md), [ADR-108](../decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md) |
 | [SPEC-110](./SPEC-110-antigravity-cli-in-packaged-setup-and-provider-catalog.md) | Antigravity CLI in Packaged Setup and Provider Catalog | Draft | [PLAN-100](../plans/PLAN-100-replace-gemini-cli-with-antigravity-in-packaged-setup.md), [ADR-107](../decisions/107-replace-gemini-cli-with-antigravity-in-packaged-setup.md) |
@@ -168,6 +168,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-09-01 (SPEC-113 Admin bootstrap and Google account-linking requirements added.)*
+*Last updated: 2026-09-02 (SPEC-113 Admin bootstrap and Google account-linking decisions approved.)*
 
 *See also: [plans/](../plans/) for implementation plans*

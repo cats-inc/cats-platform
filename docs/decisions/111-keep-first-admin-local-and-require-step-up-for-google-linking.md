@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -43,8 +43,8 @@ weaken the explicit Cats account boundary.
 
 ## Decision
 
-If accepted, this ADR narrows ADR-096's first-admin choice and defines the
-identity-link lifecycle as follows.
+This ADR narrows ADR-096's first-admin choice and defines the identity-link
+lifecycle as follows.
 
 ### 1. Every real first-admin setup creates a local password identity
 
@@ -61,6 +61,13 @@ create a local Admin through its one-time recovery-token boundary.
 First-admin creation must recheck "no Admin exists" inside the same serialized
 auth-state mutation that creates the account. A prior setup-status read or a
 renderer route gate is not sufficient concurrency control.
+
+During the promotion period, new and repair Admin passwords must be non-empty
+and no longer than 256 Unicode code points. Cats does not require a 12-character
+minimum, mixed uppercase/lowercase, digits, or special symbols. The UI may
+recommend a longer passphrase or password-manager output, but it must not block
+an otherwise valid password on composition rules. A later password-policy
+change requires an explicit follow-up decision rather than a silent rollout.
 
 ### 2. Settings owns the login-method lifecycle
 
@@ -166,6 +173,9 @@ mutation as the lifecycle change, not only in the renderer.
 
 - Linking requires another password entry and a short-lived server action
   grant.
+- The non-empty-only password minimum reduces onboarding friction but permits
+  weak owner-selected passwords; login throttling limits online guessing but
+  does not make a short password intrinsically strong.
 - Owners who chose a non-email local handle cannot preflight email equality;
   their first successful link adopts the verified Google email.
 - Unlinking signs out other browsers and mobile devices for that account.
@@ -240,5 +250,6 @@ mutation as the lifecycle change, not only in the renderer.
 
 ---
 
-*Decision proposed: 2026-09-01*
-*Decision makers: User + Codex (pending approval)*
+*Proposed: 2026-09-01*
+*Accepted: 2026-09-02*
+*Decision makers: User + Codex*

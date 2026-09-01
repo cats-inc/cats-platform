@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft — implementation gated on ADR/SPEC approval |
+| **Status** | Ready — approved, implementation not started |
 | **Owner** | User |
 | **Assigned To** | Unassigned |
 | **Reviewer** | User |
@@ -37,25 +37,26 @@ No phase may write test, smoke, or verification data to the user's real auth or
 product state. Use `MemoryPlatformAuthStore`, temporary directories, fake
 Google verifiers, and fake GIS adapters.
 
-## Approval Gate
+## Resolved Decision Gate
 
-Do not begin implementation until the User resolves these SPEC-113 choices:
+The User resolved the SPEC-113 decision gate on 2026-09-02:
 
-- local-password identity is mandatory for every first Admin;
-- the standalone Google-only setup route is removed;
-- new/repair Admin passwords use a 12-character minimum;
-- Google unlink revokes every other Account session.
+- [x] A local-password Identity is mandatory for every first Admin.
+- [x] The standalone Google-only setup route is removed.
+- [x] During promotion, new/repair Admin passwords need only be non-empty and
+      no longer than 256 Unicode code points; no composition rules apply.
+- [x] Google unlink revokes every other Account Session.
 
-Approval may accept the full draft or amend these points. Record any amendment
-in ADR-111 and SPEC-113 before editing source.
+The plan is ready, but implementation remains a separate task and has not
+started.
 
 ## Implementation Phases
 
 ### Phase 1: First-Admin Bootstrap Invariant
 
 - [ ] Task 1.1: Add one shared Admin-credential validator for setup and repair,
-      including identifier normalization and the 12-to-256-code-point password
-      policy.
+      including identifier normalization and the promotion-period non-empty,
+      maximum-256-code-point password policy without composition rules.
 - [ ] Task 1.2: Make Admin identifier and password mandatory in the real
       platform setup-completion request. Reject missing/partial credentials
       before mutating owner, Guide Cat, setup, or auth state.
@@ -309,8 +310,10 @@ the existing platform renderer shell.
 | Date | Update |
 |------|--------|
 | 2026-09-01 | Draft created from the current Cats auth baseline and the Credential Vault reference review; no implementation started. |
+| 2026-09-02 | User approved local-only first-Admin bootstrap, a non-empty/no-composition promotion-period password policy with a 256-code-point cap, and revocation of every other Account Session on Google unlink. Plan marked ready; implementation remains unstarted. |
 
 ---
 
 *Created: 2026-09-01*
+*Approved: 2026-09-02*
 *Author: Codex, for User review*
