@@ -9,7 +9,8 @@ import { createServer } from '../build/server/app/server/index.js';
 import { requireChannel } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import {
-  createAuthenticatedTestSession,
+  createUnprovisionedTestSession,
+  TEST_ADMIN_CREDENTIALS,
   createTestAuthConfig,
   installAuthenticatedFetch,
   waitForCondition,
@@ -111,11 +112,7 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
   const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-parallel-relay-'));
   const runtimeDataDir = path.join(tempStateDir, 'runtime-data');
   const now = new Date('2026-04-14T00:00:00.000Z');
-  const auth = await createAuthenticatedTestSession({
-    now,
-    sessionSecret: baseConfig.auth.sessionSecret,
-    sessionTtlMs: baseConfig.auth.sessionTtlMs,
-  });
+  const auth = createUnprovisionedTestSession({ now });
   const server = createServer({
     shared: {
       config: {
@@ -156,12 +153,12 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
 
 test('parallel chat relay rebuilds a missing source reply from canonical history', async () => {
   await withServer(createRuntimeStub(), async (baseUrl, chatStore) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -273,12 +270,12 @@ test('parallel chat relay prefers full canonical assistant turns over surviving 
   };
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });

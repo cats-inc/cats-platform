@@ -21,6 +21,34 @@ Deprecations:
 
 ## 2026-09-02
 
+### The legacy `/api/setup/complete` bootstrap route is removed
+
+Behavior change:
+
+`POST /api/setup/complete` — the original Chat-owned onboarding route that
+created a Boss Cat and set `setupCompleteAt` — is removed. It could complete
+setup without creating an Admin, which was a second bootstrap path around the
+first-admin invariant added earlier the same day. `POST /api/platform/setup/complete`
+is now the only setup-completion route, and it always creates the first local
+Admin.
+
+`POST /api/setup/reset` is unchanged and still used by Settings.
+
+Deprecations:
+
+The route, its renderer client (`completeSetup` in the shared and Chat renderer
+setup APIs), and its pre-auth public-route exception are gone. `completeSetup`
+had no caller left in the renderer.
+
+Migration steps:
+
+Anything still calling `POST /api/setup/complete` must move to
+`POST /api/platform/setup/complete` and send `adminIdentifier` and
+`adminPassword`. Two behavior differences matter: the platform route rejects a
+`bossCatName` field because the Guide Cat name is system-managed, and it does
+not create a Boss Cat. Assign one afterwards through `POST /api/cats` with
+`makeBoss: true`, or `PATCH /api/cats/:id` with `makeBoss: true`.
+
 ### First Admin is always local, and Google is linked from Settings
 
 Behavior change:

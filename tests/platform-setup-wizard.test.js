@@ -551,25 +551,6 @@ test('POST /api/platform/setup/complete still accepts legacy Boss Cat provider a
   });
 });
 
-test('old POST /api/setup/complete still works alongside new endpoint', async () => {
-  await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/setup/complete`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ownerDisplayName: 'Kenny',
-        bossCatProvider: 'claude',
-        bossCatModel: 'claude-sonnet',
-      }),
-    });
-
-    assert.equal(response.status, 200);
-    const payload = await response.json();
-    assert.ok(payload.setupCompleteAt);
-    assert.ok(payload.chat.bossCatId, 'old endpoint still creates Boss Cat');
-  });
-});
-
 test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', async () => {
   await withServer(createRuntimeStub(), async (baseUrl, config) => {
     await fetch(`${baseUrl}/api/platform/setup/complete`, {

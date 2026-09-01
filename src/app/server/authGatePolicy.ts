@@ -124,7 +124,6 @@ function isPublicPreSetupRoute(pathname: string, method: string): boolean {
     || (pathname === '/api/platform/bootstrap-diagnostics' && method === 'GET')
     || (pathname === '/api/platform/bootstrap-diagnostics/opened' && method === 'POST')
     || (pathname === '/api/platform/setup/complete' && method === 'POST')
-    || (pathname === '/api/setup/complete' && method === 'POST')
     || (pathname === '/api/platform/preferences' && method === 'POST')
     || (pathname === '/api/platform/guide-cat' && ['PUT', 'PATCH', 'DELETE'].includes(method))
     || (pathname === '/api/platform/assistants' && ['GET', 'POST'].includes(method))
