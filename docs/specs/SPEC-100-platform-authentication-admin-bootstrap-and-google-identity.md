@@ -588,6 +588,8 @@ Public/protected route policy:
 
 ## References
 
+- [SPEC-113: Admin Bootstrap and Google Account Linking](./SPEC-113-admin-bootstrap-and-google-account-linking.md) — approved focused follow-up for mandatory local first-Admin bootstrap and step-up-protected Google link/unlink
+- [ADR-111: Keep First-Admin Bootstrap Local and Require Step-Up for Google Linking](../decisions/111-keep-first-admin-local-and-require-step-up-for-google-linking.md)
 - [ADR-096: Adopt Platform-Owned Auth Sessions with Google as an Identity Provider](../decisions/096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md)
 - [PLAN-089: Platform Authentication and Google Identity Rollout](../plans/PLAN-089-platform-authentication-and-google-identity-rollout.md)
 - [ADR-095: Distribute Cats Mobile as a Static Expo Go Bundle Served by the Desktop](../decisions/095-distribute-mobile-as-static-expo-go-bundle-served-by-desktop.md)
@@ -603,5 +605,6 @@ Public/protected route policy:
 ---
 
 *Created: 2026-04-30*
+*Last updated: 2026-09-02 — SPEC-113 identity-lifecycle follow-up approved.*
 *Author: Codex*
 *Related Plan: [PLAN-089](../plans/PLAN-089-platform-authentication-and-google-identity-rollout.md)*
