@@ -909,15 +909,6 @@ export interface ChannelExportPayload {
   assignedCats: ChatChannelCat[];
 }
 
-export interface SetupCompleteInput {
-  ownerDisplayName: string;
-  bossCatName?: string;
-  bossCatProvider: string;
-  bossCatInstance?: string;
-  bossCatModel?: string;
-  bossCatModelSelection?: ProviderModelSelection | null;
-}
-
 export interface CreateBotBindingInput {
   platform: 'telegram' | 'line';
   botName: string;
