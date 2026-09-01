@@ -62,9 +62,9 @@ First-admin creation must recheck "no Admin exists" inside the same serialized
 auth-state mutation that creates the account. A prior setup-status read or a
 renderer route gate is not sufficient concurrency control.
 
-During the promotion period, new and repair Admin passwords must be non-empty
-and no longer than 256 Unicode code points. Cats does not require a 12-character
-minimum, mixed uppercase/lowercase, digits, or special symbols. The UI may
+During the promotion period, new and repair Admin passwords must contain 8 to
+256 Unicode code points. Cats does not require mixed uppercase/lowercase,
+digits, or special symbols. The UI may
 recommend a longer passphrase or password-manager output, but it must not block
 an otherwise valid password on composition rules. A later password-policy
 change requires an explicit follow-up decision rather than a silent rollout.
@@ -173,9 +173,9 @@ mutation as the lifecycle change, not only in the renderer.
 
 - Linking requires another password entry and a short-lived server action
   grant.
-- The non-empty-only password minimum reduces onboarding friction but permits
-  weak owner-selected passwords; login throttling limits online guessing but
-  does not make a short password intrinsically strong.
+- The eight-code-point password minimum reduces onboarding friction but still
+  permits weak owner-selected passwords; login throttling limits online
+  guessing but does not make a short password intrinsically strong.
 - Owners who chose a non-email local handle cannot preflight email equality;
   their first successful link adopts the verified Google email.
 - Unlinking signs out other browsers and mobile devices for that account.
