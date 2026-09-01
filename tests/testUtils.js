@@ -7,7 +7,7 @@ import {
 
 export const TEST_AUTH_SESSION_SECRET = 'cats-platform-test-session-secret';
 
-const TEST_AUTH_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const TEST_AUTH_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 export function createTestAuthConfig(overrides = {}) {
   const { google: googleOverrides, ...rest } = overrides;
@@ -59,7 +59,44 @@ export async function createAuthenticatedTestSession(options = {}) {
 
 export function installAuthenticatedFetch(baseUrl, auth, options = {}) {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = (input, init = {}) => {
+  // First-run setup mints its own admin and session, so a fixture that starts
+  // without a seeded admin has to pick that session up. Track the cookie the
+  // server hands back and refresh the CSRF token whenever it changes.
+  let cookie = auth.cookie ?? '';
+  let csrfToken = auth.csrfToken ?? '';
+  let csrfStale = !csrfToken;
+
+  async function refreshCsrfToken() {
+    const response = await originalFetch(`${baseUrl}/api/auth/status`, {
+      headers: { accept: 'application/json', ...(cookie ? { cookie } : {}) },
+    });
+    if (!response.ok) {
+      return;
+    }
+    const payload = await response.json();
+    if (typeof payload?.csrfToken === 'string' && payload.csrfToken) {
+      csrfToken = payload.csrfToken;
+      csrfStale = false;
+    }
+  }
+
+  function adoptSessionCookie(response) {
+    const values = typeof response.headers.getSetCookie === 'function'
+      ? response.headers.getSetCookie()
+      : [response.headers.get('set-cookie')].filter(Boolean);
+    for (const value of values) {
+      if (!value.startsWith(`${AUTH_SESSION_COOKIE_NAME}=`)) {
+        continue;
+      }
+      const next = value.split(';')[0];
+      if (next !== cookie) {
+        cookie = next;
+        csrfStale = true;
+      }
+    }
+  }
+
+  globalThis.fetch = async (input, init = {}) => {
     const request = typeof input === 'string' || input instanceof URL ? null : input;
     const requestUrl = typeof input === 'string'
       ? input
@@ -71,22 +108,50 @@ export function installAuthenticatedFetch(baseUrl, auth, options = {}) {
     }
 
     const method = String(init.method ?? request?.method ?? 'GET').toUpperCase();
-    const headers = new Headers(init.headers ?? request?.headers ?? undefined);
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && options.origin && !headers.has('origin')) {
-      headers.set('origin', options.origin);
-    }
-    headers.set('cookie', auth.cookie);
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-      headers.set('x-cats-csrf-token', auth.csrfToken);
+    const mutating = !['GET', 'HEAD', 'OPTIONS'].includes(method);
+    if (mutating && csrfStale && cookie) {
+      await refreshCsrfToken();
     }
 
-    const nextInit = { ...init, headers };
-    return originalFetch(input, nextInit);
+    const headers = new Headers(init.headers ?? request?.headers ?? undefined);
+    if (mutating && options.origin && !headers.has('origin')) {
+      headers.set('origin', options.origin);
+    }
+    if (cookie) {
+      headers.set('cookie', cookie);
+    }
+    if (mutating && csrfToken) {
+      headers.set('x-cats-csrf-token', csrfToken);
+    }
+
+    const response = await originalFetch(input, { ...init, headers });
+    adoptSessionCookie(response);
+    return response;
   };
   return () => {
     globalThis.fetch = originalFetch;
   };
 }
+
+/**
+ * An auth store with no admin yet, for fixtures that exercise first-run setup.
+ * Pair it with `installAuthenticatedFetch`, which adopts the session that
+ * `/api/platform/setup/complete` returns.
+ */
+export function createUnprovisionedTestSession(options = {}) {
+  const now = options.now ?? new Date('2026-03-11T00:00:00.000Z');
+  return {
+    authStore: new MemoryPlatformAuthStore(createEmptyPlatformAuthState(now), () => now),
+    sessionToken: '',
+    csrfToken: '',
+    cookie: '',
+  };
+}
+
+export const TEST_ADMIN_CREDENTIALS = {
+  adminIdentifier: 'owner@example.test',
+  adminPassword: 'correct horse battery staple',
+};
 
 export async function waitForCondition(
   predicate,

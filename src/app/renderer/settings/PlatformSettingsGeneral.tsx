@@ -33,6 +33,7 @@ import {
   type PlatformAuthApiRequestOptions,
 } from '../auth/api.js';
 import { PLATFORM_AUTH_ERROR_CODES } from '../../../platform/auth/errorCodes.js';
+import { PlatformSettingsAccountSection } from './PlatformSettingsAccountSection.js';
 
 export interface PlatformSettingsGeneralProps {
   payload: AppShellPayload;
@@ -461,6 +462,7 @@ export function PlatformSettingsGeneral({
             />
           }
         >
+          <PlatformSettingsAccountSection showToast={showToast} />
           <div className="setupActionGroup">
             <button
               type="button"

@@ -464,6 +464,7 @@ export async function routeRequest(
       authStore: dependencies.shared.authStore,
       auth: dependencies.shared.config.auth,
       googleVerifier: dependencies.shared.googleVerifier,
+      reportAuthSecurityEvent: dependencies.shared.reportAuthSecurityEvent,
       now: dependencies.shared.now,
     },
   };
@@ -509,9 +510,11 @@ export async function routeRequest(
     dependencies: {
       authStore: dependencies.shared.authStore,
       browserHandoffStore: dependencies.shared.browserHandoffStore,
+      actionGrantStore: dependencies.shared.actionGrantStore,
       auth: dependencies.shared.config.auth,
       now: dependencies.shared.now,
       googleVerifier: dependencies.shared.googleVerifier,
+      reportAuthSecurityEvent: dependencies.shared.reportAuthSecurityEvent,
       authRecoveryTokenState: dependencies.shared.authRecoveryTokenState,
       getAuthRecoveryTokenState: dependencies.shared.getAuthRecoveryTokenState,
       setAuthRecoveryTokenState: dependencies.shared.setAuthRecoveryTokenState,

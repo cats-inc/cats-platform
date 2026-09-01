@@ -24,8 +24,6 @@ test('platform auth gate keeps renderer, health, mobile, and auth bootstrap rout
     ['POST', '/api/auth/browser-handoff/exchange'],
     ['POST', '/api/auth/login'],
     ['POST', '/api/auth/google/login'],
-    ['POST', '/api/auth/google/setup'],
-    ['POST', '/api/auth/google/link'],
     ['POST', '/api/auth/repair/first-admin'],
     ['POST', '/api/auth/throttle/clear'],
     ['POST', '/api/auth/logout'],
@@ -35,6 +33,23 @@ test('platform auth gate keeps renderer, health, mobile, and auth bootstrap rout
     assert.equal(
       classifyPlatformAuthRoute({ phase: 'post_setup', method, pathname }).access,
       'public',
+      `${method} ${pathname}`,
+    );
+  }
+
+  // SPEC-113 requirement 25: sensitive identity actions are protected before
+  // auth-route dispatch, and the Google-only bootstrap route no longer exists.
+  const protectedAuthRoutes = [
+    ['POST', '/api/auth/reauth'],
+    ['POST', '/api/auth/google/link'],
+    ['POST', '/api/auth/google/unlink'],
+    ['POST', '/api/auth/google/setup'],
+  ] as const;
+
+  for (const [method, pathname] of protectedAuthRoutes) {
+    assert.equal(
+      classifyPlatformAuthRoute({ phase: 'post_setup', method, pathname }).access,
+      'protected',
       `${method} ${pathname}`,
     );
   }

@@ -187,9 +187,192 @@ test('platform setup rejects partial first-admin credentials before completion',
   });
 
   assert.equal(response.status, 400);
-  assert.equal(response.payload?.error?.code, 'bad_request');
+  assert.equal(response.payload?.error?.code, 'invalid_admin_credentials');
+  assert.equal(response.payload?.error?.reason, 'password_required');
   assert.equal((await fixture.authStore.readState()).accounts.length, 0);
   assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
+});
+
+test('platform setup requires admin credentials rather than falling through to repair', async (t) => {
+  const fixture = await createSetupFixture(t);
+  const response = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+    },
+  });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.payload?.error?.code, 'invalid_admin_credentials');
+  assert.equal(response.payload?.error?.reason, 'identifier_required');
+  // Requirement 2: setup must not complete without an Admin.
+  assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
+  assert.equal((await fixture.authStore.readState()).accounts.length, 0);
+});
+
+test('platform setup enforces the shared admin password policy', async (t) => {
+  const fixture = await createSetupFixture(t);
+  const tooShort = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'sevench',
+    },
+  });
+  assert.equal(tooShort.status, 400);
+  assert.equal(tooShort.payload?.error?.reason, 'password_too_short');
+
+  const tooLong = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'a'.repeat(257),
+    },
+  });
+  assert.equal(tooLong.status, 400);
+  assert.equal(tooLong.payload?.error?.reason, 'password_too_long');
+
+  // Eight code points with no uppercase, digit, or symbol is valid.
+  const accepted = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'eightchr',
+    },
+  });
+  assert.equal(accepted.status, 200);
+  assert.equal((await fixture.authStore.readState()).accounts.length, 1);
+});
+
+test('concurrent first-admin submissions create exactly one admin', async (t) => {
+  const fixture = await createSetupFixture(t);
+  const submit = (identifier: string) =>
+    request(fixture.server, '/api/platform/setup/complete', {
+      method: 'POST',
+      origin: 'http://localhost:5173',
+      secFetchSite: 'same-origin',
+      body: {
+        ownerDisplayName: 'Owner',
+        createGuideCat: false,
+        adminIdentifier: identifier,
+        adminPassword: 'correct-password',
+      },
+    });
+
+  const [first, second] = await Promise.all([
+    submit('first@example.test'),
+    submit('second@example.test'),
+  ]);
+
+  const statuses = [first.status, second.status].sort();
+  assert.deepEqual(statuses, [200, 409]);
+
+  const authState = await fixture.authStore.readState();
+  assert.equal(authState.accounts.length, 1);
+  assert.equal(authState.identities.length, 1);
+  assert.equal(authState.memberships.length, 1);
+  // Requirement 6: the loser gets no session of its own.
+  assert.equal(authState.sessions.length, 1);
+
+  const winner = first.status === 200 ? first : second;
+  const loser = first.status === 200 ? second : first;
+  assert.match(winner.setCookie ?? '', new RegExp(`${AUTH_SESSION_COOKIE_NAME}=`, 'u'));
+  assert.equal(loser.setCookie, null);
+  assert.equal(loser.payload?.error?.code, 'already_complete');
+});
+
+test('a chat snapshot failure rolls the first admin back out of auth state', async (t) => {
+  const fixture = await createSetupFixture(t);
+  const originalWriteSnapshot = fixture.chatStore.writeSnapshot.bind(fixture.chatStore);
+  let failNext = true;
+  fixture.chatStore.writeSnapshot = async (state, core) => {
+    if (failNext) {
+      failNext = false;
+      throw new Error('injected snapshot failure');
+    }
+    return originalWriteSnapshot(state, core);
+  };
+
+  const failed = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'correct-password',
+    },
+  });
+
+  assert.equal(failed.status, 500);
+  // Requirement 7: no partial auth state and no setupCompleteAt.
+  const rolledBack = await fixture.authStore.readState();
+  assert.equal(rolledBack.accounts.length, 0);
+  assert.equal(rolledBack.identities.length, 0);
+  assert.equal(rolledBack.memberships.length, 0);
+  assert.equal(rolledBack.sessions.length, 0);
+  assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
+
+  // The rollback leaves the workspace able to complete setup on a retry.
+  const retried = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'correct-password',
+    },
+  });
+  assert.equal(retried.status, 200);
+  assert.equal((await fixture.authStore.readState()).accounts.length, 1);
+});
+
+test('an auth persistence failure leaves setup incomplete', async (t) => {
+  const fixture = await createSetupFixture(t);
+  const originalUpdateState = fixture.authStore.updateState.bind(fixture.authStore);
+  let failNext = true;
+  fixture.authStore.updateState = async (mutator) => {
+    if (failNext) {
+      failNext = false;
+      throw new Error('injected auth persistence failure');
+    }
+    return originalUpdateState(mutator);
+  };
+
+  const failed = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'correct-password',
+    },
+  });
+
+  assert.equal(failed.status, 500);
+  // Auth is written first, so a failure there must not have set setupCompleteAt.
+  assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
+  assert.equal((await fixture.authStore.readState()).accounts.length, 0);
 });
 
 test('platform setup rejects first-admin creation without allowlisted origin', async (t) => {

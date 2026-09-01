@@ -101,6 +101,22 @@ Auth and repair constraints for LAN/tunnel access:
 - Aggregate login-throttle state can be cleared through the admin+CSRF
   browser route or the one-time recovery token route;
   do not delete the auth-state file just to clear a bounded cooldown.
+- Every workspace has a local Admin password. Setup refuses to complete
+  without one, so a deployment always retains a credential that works offline,
+  on a raw LAN IP, and on origins Google will not authorize.
+- Google account linking is an authenticated `Settings > General > Account`
+  action, not a deployment step. It requires the operator to re-enter the local
+  password; the resulting action grant is single-use, expires in five minutes,
+  is bound to one browser session and purpose, and dies with the process.
+- Google Sign-In requires an origin Google authorizes, which generally rules
+  out raw LAN IP hosts and plain HTTP other than localhost. On those hosts the
+  Account section stays truthful: local password remains the login method and
+  the UI explains that linking needs an authorized origin.
+- Unlinking Google revokes every other browser and mobile session for that
+  account and rotates the current session's CSRF token. Expect other devices
+  and phones to be signed out; the device performing the unlink stays signed
+  in. Unlink is refused when it would leave the account with no local
+  password.
 
 ### Desktop Host First Slice
 

@@ -12,6 +12,32 @@ export interface PlatformLocalPasswordCredentialMatch {
   membership: PlatformMembershipRecord;
 }
 
+/**
+ * SPEC-113 requirement 16: step-up verifies the local-password Identity that
+ * belongs to the *current* account. The caller must never be able to choose
+ * which identity is checked, so this takes an account id rather than a
+ * client-supplied identifier.
+ */
+export async function verifyPlatformLocalPasswordForAccount(
+  state: PlatformAuthState,
+  input: {
+    accountId: string;
+    password: string;
+  },
+): Promise<PlatformLocalPasswordCredentialMatch | null> {
+  const identity = state.identities.find((candidate) =>
+    candidate.provider === 'local_password'
+    && candidate.accountId === input.accountId,
+  ) ?? null;
+  if (!identity) {
+    return null;
+  }
+  return verifyPlatformLocalPasswordCredential(state, {
+    identifier: identity.providerSubject,
+    password: input.password,
+  });
+}
+
 export async function verifyPlatformLocalPasswordCredential(
   state: PlatformAuthState,
   input: {

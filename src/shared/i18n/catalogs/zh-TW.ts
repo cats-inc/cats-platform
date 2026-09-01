@@ -111,6 +111,53 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.general.signOutCsrfError': '安全權杖不一致，請重新整理後再試。',
   'settings.general.signOutForbiddenError': '目前不允許登出。',
   'settings.general.signOutUnauthenticated': '你已經登出。',
+  'settings.account.signedInAs': '目前登入身分：{name}',
+  'settings.account.loginMethodsTitle': '登入方式',
+  'settings.account.localPasswordLabel': '本機密碼',
+  'settings.account.localPasswordDescription':
+    '可在離線或區域網路位址下使用，因此在無法使用 Google 時仍然有效。',
+  'settings.account.localPasswordLinked': '已設定',
+  'settings.account.localPasswordMissing': '尚未設定',
+  'settings.account.googleLabel': 'Google',
+  'settings.account.googleDescription':
+    '使用已綁定的 Google 帳號登入。綁定前會先要求輸入密碼。',
+  'settings.account.googleLinkedStatus': '已綁定 · {email}',
+  'settings.account.googleNotLinkedStatus': '未綁定',
+  'settings.account.googleUnavailableStatus': '無法使用',
+  'settings.account.googleUnavailableHint':
+    '這個位址未設定 Google 登入。請從已授權的來源開啟 Cats 才能綁定帳號。',
+  'settings.account.googleLinkButton': '綁定 Google 帳號',
+  'settings.account.googleUnlinkButton': '解除綁定 Google 帳號',
+  'settings.account.googleLinkingLabel': '綁定中…',
+  'settings.account.googleUnlinkingLabel': '解除綁定中…',
+  'settings.account.reauthTitle': '確認你的密碼',
+  'settings.account.reauthLinkDescription':
+    '請輸入本機密碼以綁定 Google 帳號。',
+  'settings.account.reauthUnlinkDescription':
+    '請輸入本機密碼以解除綁定 Google 帳號。',
+  'settings.account.reauthPasswordLabel': '密碼',
+  'settings.account.reauthPasswordPlaceholder': '你的本機密碼',
+  'settings.account.reauthSubmit': '確認',
+  'settings.account.reauthSubmitting': '確認中…',
+  'settings.account.reauthCancel': '取消',
+  'settings.account.googleContinueTitle': '繼續使用 Google',
+  'settings.account.googleContinueDescription':
+    '請選擇要綁定的 Google 帳號，它必須與這個 Cats 帳號使用相同的電子郵件。',
+  'settings.account.unlinkWarning':
+    '解除綁定會將你其他的瀏覽器與行動裝置登出，這台裝置會保持登入。',
+  'settings.account.reauthFailed': '無法確認你的密碼。',
+  'settings.account.reauthFailedWithStatus': '無法確認你的密碼（{status}）。',
+  'settings.account.reauthInvalidPassword': '密碼不正確。',
+  'settings.account.reauthRequired': '密碼確認已逾期，請再試一次。',
+  'settings.account.linkFailed': '無法綁定 Google 帳號。',
+  'settings.account.linkFailedWithStatus': '無法綁定 Google 帳號（{status}）。',
+  'settings.account.linkConflict':
+    '無法綁定該 Google 帳號，請確認其電子郵件與這個帳號相同。',
+  'settings.account.unlinkFailed': '無法解除綁定 Google 帳號。',
+  'settings.account.unlinkFailedWithStatus': '無法解除綁定 Google 帳號（{status}）。',
+  'settings.account.unlinkConflict':
+    '無法解除綁定 Google，因為這樣就沒有其他可用的登入方式了。',
+  'settings.account.googleUnavailableError': '目前無法使用 Google 登入。',
   'settings.general.languageTitle': '語言',
   'settings.general.languageDescription':
     '選擇助理回覆語言，以及 Cats 介面的顯示語言。',
