@@ -1,4 +1,4 @@
-# SPEC-113: Telegram Work Delivery Golden Path
+# SPEC-114: Telegram Work Delivery Golden Path
 
 > Define the first owner-visible path from a Telegram work request to a
 > supervised result, policy-gated publication, and a durable delivery receipt.
@@ -10,8 +10,8 @@
 | **Status** | Draft |
 | **Owner** | Codex |
 | **Reviewer** | Owner |
-| **Related ADR** | [ADR-111](../decisions/111-adopt-a-core-owned-transport-work-delivery-golden-path.md) |
-| **Related Plan** | [PLAN-104](../plans/PLAN-104-telegram-work-delivery-golden-path-rollout.md) |
+| **Related ADR** | [ADR-112](../decisions/112-adopt-a-core-owned-transport-work-delivery-golden-path.md) |
+| **Related Plan** | [PLAN-105](../plans/PLAN-105-telegram-work-delivery-golden-path-rollout.md) |
 
 ## Summary
 
@@ -478,7 +478,7 @@ receipt.
 - [Telegram Bot API: getUpdates](https://core.telegram.org/bots/api#getupdates)
 - [Telegram Bot API: CallbackQuery](https://core.telegram.org/bots/api#callbackquery)
 - [Telegram Bot API: answerCallbackQuery](https://core.telegram.org/bots/api#answercallbackquery)
-- [ADR-111: Adopt a Core-Owned Transport Work Delivery Golden Path](../decisions/111-adopt-a-core-owned-transport-work-delivery-golden-path.md)
+- [ADR-112: Adopt a Core-Owned Transport Work Delivery Golden Path](../decisions/112-adopt-a-core-owned-transport-work-delivery-golden-path.md)
 
 ---
 
@@ -488,4 +488,4 @@ receipt.
 
 *Last updated: 2026-09-02*
 
-*Related Plan: [PLAN-104](../plans/PLAN-104-telegram-work-delivery-golden-path-rollout.md)*
+*Related Plan: [PLAN-105](../plans/PLAN-105-telegram-work-delivery-golden-path-rollout.md)*

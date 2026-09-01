@@ -39,7 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
-| [111-adopt-a-core-owned-transport-work-delivery-golden-path](./111-adopt-a-core-owned-transport-work-delivery-golden-path.md) | Adopt a Core-Owned Transport Work Delivery Golden Path | Proposed | 2026-09-02 |
+| [112-adopt-a-core-owned-transport-work-delivery-golden-path](./112-adopt-a-core-owned-transport-work-delivery-golden-path.md) | Adopt a Core-Owned Transport Work Delivery Golden Path | Proposed | 2026-09-02 |
 | [110-keep-platform-clients-in-one-repository-with-explicit-package-boundaries](./110-keep-platform-clients-in-one-repository-with-explicit-package-boundaries.md) | Keep Platform Clients in One Repository with Explicit Package Boundaries | Accepted | 2026-08-28 |
 | [109-port-grok-devin-cline-aider-installers-into-packaged-setup](./109-port-grok-devin-cline-aider-installers-into-packaged-setup.md) | Port the Grok, Devin, Cline, and Aider installers into packaged setup | Proposed | 2026-08-07 |
 | [108-use-host-owned-github-release-updates-for-official-desktop-builds](./108-use-host-owned-github-release-updates-for-official-desktop-builds.md) | Use Host-Owned GitHub Release Updates for Official Desktop Builds | Proposed | 2026-07-28 |
@@ -153,6 +153,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-09-02 (ADR-111 Core-owned transport work delivery golden path proposed.)*
+*Last updated: 2026-09-02 (ADR-112 Core-owned transport work delivery golden path proposed.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*

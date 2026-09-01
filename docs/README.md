@@ -59,9 +59,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
-- [ADR-111](./decisions/111-adopt-a-core-owned-transport-work-delivery-golden-path.md) — Cats Core remains the ledger for transport-originated work; Telegram is the intake, decision, notification, and receipt surface rather than a parallel task system
-- [SPEC-113](./specs/SPEC-113-telegram-work-delivery-golden-path.md) — owner-visible contract from Telegram scope confirmation through supervised execution, result review, governed publication, and durable delivery receipt
-- [PLAN-104](./plans/PLAN-104-telegram-work-delivery-golden-path-rollout.md) — gated rollout for readiness, callback/async ingress, idempotent admission, durable supervision, result delivery, restart proof, and packaged real-bot validation
+- [ADR-112](./decisions/112-adopt-a-core-owned-transport-work-delivery-golden-path.md) — Cats Core remains the ledger for transport-originated work; Telegram is the intake, decision, notification, and receipt surface rather than a parallel task system
+- [SPEC-114](./specs/SPEC-114-telegram-work-delivery-golden-path.md) — owner-visible contract from Telegram scope confirmation through supervised execution, result review, governed publication, and durable delivery receipt
+- [PLAN-105](./plans/PLAN-105-telegram-work-delivery-golden-path-rollout.md) — gated rollout for readiness, callback/async ingress, idempotent admission, durable supervision, result delivery, restart proof, and packaged real-bot validation
 - [ADR-110](./decisions/110-keep-platform-clients-in-one-repository-with-explicit-package-boundaries.md) — keep Web, Desktop, Mobile, and the platform host in one repository while preserving explicit deployable and shared-package boundaries
 - [ADR-108](./decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md) — official packaged Electron builds use one main-process GitHub Release updater while npm/browser installs remain package-manager-owned
 - [SPEC-111](./specs/SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md) — capability, Tray, Settings, state-machine, release-version, signing, and three-platform artifact requirements for desktop updates

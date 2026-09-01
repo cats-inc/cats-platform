@@ -1,4 +1,4 @@
-# PLAN-104: Telegram Work Delivery Golden Path Rollout
+# PLAN-105: Telegram Work Delivery Golden Path Rollout
 
 > Roll out the Core-owned path from Telegram intake through supervised
 > execution, result review, policy-gated publication, and delivery receipt.
@@ -13,11 +13,11 @@
 
 ## Related Spec
 
-[SPEC-113: Telegram Work Delivery Golden Path](../specs/SPEC-113-telegram-work-delivery-golden-path.md)
+[SPEC-114: Telegram Work Delivery Golden Path](../specs/SPEC-114-telegram-work-delivery-golden-path.md)
 
 ## Related Decision
 
-[ADR-111: Adopt a Core-Owned Transport Work Delivery Golden Path](../decisions/111-adopt-a-core-owned-transport-work-delivery-golden-path.md)
+[ADR-112: Adopt a Core-Owned Transport Work Delivery Golden Path](../decisions/112-adopt-a-core-owned-transport-work-delivery-golden-path.md)
 
 ## Overview
 
@@ -36,7 +36,7 @@ persisted development state.
 
 | Gate | Required evidence | Effect |
 |------|-------------------|--------|
-| G0: Contract approved | ADR-111 and SPEC-113 approved, open questions needed for Phase 1 resolved | implementation may begin |
+| G0: Contract approved | ADR-112 and SPEC-114 approved, open questions needed for Phase 1 resolved | implementation may begin |
 | G1: Honest readiness | binding, owner, Cat/provider, capability, workspace, permission, and delivery checks have product-visible diagnostics | Telegram may offer Start work |
 | G2: Reliable ingress | callback polling, acknowledgement ordering, dedupe, and async outbox tests pass | Telegram callbacks may drive product commands |
 | G3: Safe admission | versioned scope authorization and duplicate/restart tests produce exactly one approved Task and Run | redundant Desktop Start Run may be removed from the golden path |
@@ -48,13 +48,13 @@ persisted development state.
 
 ### Phase 0: Approve the Contract and Build a Trace Matrix
 
-- [ ] Review and approve ADR-111's Core-ledger, layer-ownership, async-ingress,
+- [ ] Review and approve ADR-112's Core-ledger, layer-ownership, async-ingress,
       execution-authorization, and publish-gate decisions.
-- [ ] Review SPEC-113 with product wording for the accepted, scope-proposed,
+- [ ] Review SPEC-114 with product wording for the accepted, scope-proposed,
       admitted, decision-needed, result-ready, and delivered messages.
 - [ ] Resolve the first default delivery mode and which result types Telegram
       may carry directly.
-- [ ] Map every SPEC-113 requirement to the current implementation, a gap, or a
+- [ ] Map every SPEC-114 requirement to the current implementation, a gap, or a
       deliberately deferred follow-up.
 - [ ] Document the derivation of each golden-path projected stage from existing
       Core, supervision, Artifact/Outcome, and transport receipt state.
@@ -239,7 +239,7 @@ action, final source-binding delivery, and durable receipt/retry state.
 - [ ] Gate rollout to one owner cohort, define rollback as disabling golden-path
       callbacks while retaining Core/transport records, and review failure
       evidence before expanding.
-- [ ] Reconcile SPEC-113, PLAN-104, relevant older Telegram/Work docs, support
+- [ ] Reconcile SPEC-114, PLAN-105, relevant older Telegram/Work docs, support
       documentation, and index/status dates after acceptance.
 
 **Deliverables**: isolated E2E suite, packaged and real-bot evidence,
@@ -325,7 +325,7 @@ The exact new module names are selected during Phase 0. Expected ownership is:
 | Notifications become noisy or arrive out of order | Medium | milestone allowlist, coalescing, causal sequence, terminal/decision priority |
 | Transport data leaks secrets or local paths | High | opaque tokens/refs, secret-owning stores, safe payload policy, leakage tests |
 | Existing Chat, Work, and supervision specs diverge | Medium | Phase 0 trace matrix, reuse product APIs, cross-links, and contract tests |
-| A new ledger is introduced to work around an implementation seam | Medium | ADR-111 gate: prove a Core-model gap and approve a separate ADR first |
+| A new ledger is introduced to work around an implementation seam | Medium | ADR-112 gate: prove a Core-model gap and approve a separate ADR first |
 | Real Telegram testing pollutes operator state | High | dedicated binding and isolated state, explicit owner smoke, cleanup and state-hygiene review |
 
 ## Progress Log

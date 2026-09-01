@@ -1,4 +1,4 @@
-# ADR-111: Adopt a Core-Owned Transport Work Delivery Golden Path
+# ADR-112: Adopt a Core-Owned Transport Work Delivery Golden Path
 
 > Make Cats Core the durable ledger for work that enters through Telegram or
 > another transport, while transports remain ingress, decision, notification,
@@ -62,7 +62,7 @@ Telegram request
 ```
 
 The first product slice is specified by
-[SPEC-113](../specs/SPEC-113-telegram-work-delivery-golden-path.md). The
+[SPEC-114](../specs/SPEC-114-telegram-work-delivery-golden-path.md). The
 architecture follows these rules.
 
 ### 1. Cats Core is the work ledger
@@ -269,7 +269,7 @@ only after their existing gates are enforced end to end.
 - [SPEC-092: Code Artifact Declaration Contract](../specs/SPEC-092-code-artifact-declaration-contract.md)
 - [SPEC-107: Preset-Neutral Product Intent Intake](../specs/SPEC-107-preset-neutral-product-intent-intake.md)
 - [SPEC-109: Phase-Scoped Work Tool Surface](../specs/SPEC-109-phase-scoped-work-tool-surface.md)
-- [SPEC-113: Telegram Work Delivery Golden Path](../specs/SPEC-113-telegram-work-delivery-golden-path.md)
+- [SPEC-114: Telegram Work Delivery Golden Path](../specs/SPEC-114-telegram-work-delivery-golden-path.md)
 
 ---
 
