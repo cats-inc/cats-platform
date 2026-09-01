@@ -15,7 +15,6 @@ import {
   validateCatsCsrfToken,
   type PlatformSessionRecord,
 } from '../../../platform/auth/index.js';
-import type { SetupCompleteInput } from './contracts.js';
 import { waitForGuideCatAssistRefreshIdle } from './guideCatAssist.js';
 import {
   buildAppShellPayload,
