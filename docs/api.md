@@ -423,7 +423,6 @@ Retrieval-context responses return `{ retrieval }`, where `retrieval` includes:
 ### Setup
 
 ```text
-POST /api/setup/complete
 POST /api/setup/reset
 POST /api/platform/setup/complete
 POST /api/platform/preferences
@@ -432,15 +431,14 @@ POST /api/platform/bootstrap-diagnostics/opened
 GET  /api/platform/ingress
 ```
 
-- `POST /api/setup/complete` finishes first-run onboarding by:
-  - creating the current default `Boss Cat`
-  - persisting owner display-name updates
-  - persisting `setupCompleteAt`
-  - returning the refreshed `AppShellPayload`
 - `POST /api/setup/reset` clears chat/core state back to the uninitialized
   first-run baseline and returns the refreshed `AppShellPayload`.
-- `POST /api/platform/setup/complete` finishes the newer platform-owned setup
-  flow by:
+- `POST /api/platform/setup/complete` is the only setup-completion route. The
+  legacy `POST /api/setup/complete` Boss Cat path is removed: it could set
+  `setupCompleteAt` without creating an Admin, which defeated the SPEC-113
+  first-admin invariant. It finishes setup by:
+  - creating the first local Admin from the required `adminIdentifier` and
+    `adminPassword`
   - persisting owner display-name updates
   - optionally creating the platform-level `Guide Cat`
   - preserving `Boss Cat` assignment as a Chat concern instead of forcing one

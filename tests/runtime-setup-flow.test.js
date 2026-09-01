@@ -232,14 +232,14 @@ test('POST /api/platform/setup/complete succeeds even when runtime bootstrap is 
   });
 });
 
-test('legacy POST /api/setup/complete also succeeds without runtime bootstrap apply', async () => {
+test('legacy POST /api/platform/setup/complete also succeeds without runtime bootstrap apply', async () => {
   await withServer(createRuntimeSetupStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/setup/complete`, {
+    const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Boss Cat',
         bossCatProvider: 'claude',
       }),
     });
@@ -249,6 +249,7 @@ test('legacy POST /api/setup/complete also succeeds without runtime bootstrap ap
     assert.ok(payload.setupCompleteAt);
     assert.equal(payload.runtimeSetup.status, 'attention_required');
     assert.equal(payload.runtimeSetup.bootstrapRequired, true);
-    assert.ok(payload.chat.bossCatId);
+    // Setup no longer creates a Boss Cat; that is a Chat concern now.
+    assert.equal(payload.chat.bossCatId, null);
   });
 });

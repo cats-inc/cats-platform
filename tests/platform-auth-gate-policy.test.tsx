@@ -73,7 +73,6 @@ test('platform auth gate exposes setup bootstrap routes only before setup', () =
     ['GET', '/api/platform/bootstrap-diagnostics'],
     ['POST', '/api/platform/bootstrap-diagnostics/opened'],
     ['POST', '/api/platform/setup/complete'],
-    ['POST', '/api/setup/complete'],
     ['POST', '/api/platform/preferences'],
     ['PUT', '/api/platform/guide-cat'],
     ['PATCH', '/api/platform/guide-cat'],

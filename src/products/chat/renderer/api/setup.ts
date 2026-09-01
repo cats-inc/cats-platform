@@ -6,5 +6,4 @@ import { normalizeAppShellPayload } from './normalization.js';
 
 const chatSetupApi = createSetupApi<AppShellPayload>(normalizeAppShellPayload);
 
-export const completeSetup = chatSetupApi.completeSetup;
 export const resetSetup = chatSetupApi.resetSetup;
