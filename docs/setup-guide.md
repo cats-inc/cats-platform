@@ -32,6 +32,11 @@ configured. The generated value is persisted at
 launches. The file is created with user-only permissions where the filesystem
 supports POSIX modes.
 
+Browser sessions, including the packaged Desktop session, default to 30 days.
+Set `CATS_AUTH_SESSION_TTL_MS` to a positive millisecond value to override that
+duration. The configured duration applies when a session is created; existing
+sessions keep their original expiration time until the user signs in again.
+
 An explicit value remains authoritative and is recommended when multiple Cats
 instances must share sessions or the platform config directory is ephemeral:
 

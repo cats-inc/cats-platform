@@ -28,7 +28,7 @@ export interface PlatformAuthConfig {
   google: PlatformGoogleAuthConfig;
 }
 
-export const DEFAULT_AUTH_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const DEFAULT_AUTH_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const DEFAULT_AUTH_MOBILE_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const DEFAULT_AUTH_LOGIN_FAILURE_LIMIT = 5;
 export const DEFAULT_AUTH_LOGIN_LOCKOUT_MS = 30_000;
