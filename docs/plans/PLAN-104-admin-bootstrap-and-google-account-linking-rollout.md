@@ -43,8 +43,8 @@ The User resolved the SPEC-113 decision gate on 2026-09-02:
 
 - [x] A local-password Identity is mandatory for every first Admin.
 - [x] The standalone Google-only setup route is removed.
-- [x] During promotion, new/repair Admin passwords need only be non-empty and
-      no longer than 256 Unicode code points; no composition rules apply.
+- [x] During promotion, new/repair Admin passwords must contain 8 to 256
+      Unicode code points; no composition rules apply.
 - [x] Google unlink revokes every other Account Session.
 
 The plan is ready, but implementation remains a separate task and has not
@@ -55,8 +55,8 @@ started.
 ### Phase 1: First-Admin Bootstrap Invariant
 
 - [ ] Task 1.1: Add one shared Admin-credential validator for setup and repair,
-      including identifier normalization and the promotion-period non-empty,
-      maximum-256-code-point password policy without composition rules.
+      including identifier normalization and the inclusive 8-to-256-Unicode-
+      code-point password policy without composition rules.
 - [ ] Task 1.2: Make Admin identifier and password mandatory in the real
       platform setup-completion request. Reject missing/partial credentials
       before mutating owner, Guide Cat, setup, or auth state.
@@ -310,7 +310,7 @@ the existing platform renderer shell.
 | Date | Update |
 |------|--------|
 | 2026-09-01 | Draft created from the current Cats auth baseline and the Credential Vault reference review; no implementation started. |
-| 2026-09-02 | User approved local-only first-Admin bootstrap, a non-empty/no-composition promotion-period password policy with a 256-code-point cap, and revocation of every other Account Session on Google unlink. Plan marked ready; implementation remains unstarted. |
+| 2026-09-02 | User approved local-only first-Admin bootstrap, an 8-to-256-Unicode-code-point promotion-period password policy without composition rules, and revocation of every other Account Session on Google unlink. Plan marked ready; implementation remains unstarted. |
 
 ---
 

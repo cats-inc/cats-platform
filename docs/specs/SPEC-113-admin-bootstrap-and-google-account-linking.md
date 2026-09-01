@@ -99,10 +99,9 @@ The remaining gaps are:
    stable structured error code. It shall not complete setup and rely on repair
    mode as an implicit Admin-creation flow.
 3. During the promotion period, new local Admin and repair passwords shall be
-   non-empty and contain no more than 256 Unicode code points. Cats shall allow
-   spaces and password-manager output and shall not require a minimum beyond
-   one code point or add composition rules such as mandatory uppercase,
-   lowercase, digits, or symbols.
+   between 8 and 256 Unicode code points, inclusive. Cats shall allow spaces
+   and password-manager output and shall not add composition rules such as
+   mandatory uppercase, lowercase, digits, or symbols.
 4. The password policy shall be enforced by the server-domain helper as well as
    reflected in the renderer. The renderer check is advisory; the server check
    is authoritative.
@@ -313,7 +312,7 @@ The remaining gaps are:
 ```text
 /setup form
   -> origin gate
-  -> validate identifier + non-empty password (maximum 256 code points)
+  -> validate identifier + password (8-256 Unicode code points)
   -> serialized setup/auth mutation
   -> Account + local Identity + owner/admin Membership + Session
   -> persist setup snapshot and auth state or roll back
@@ -351,9 +350,10 @@ Settings Account section
 
 - [ ] Setup without either Admin identifier or password returns a structured
       `400` and leaves setup incomplete.
-- [ ] Empty passwords and passwords longer than 256 code points are rejected by
-      setup and repair domain helpers; a one-code-point password is accepted
-      and no uppercase/lowercase/digit/symbol composition rule is applied.
+- [ ] Passwords shorter than 8 or longer than 256 Unicode code points are
+      rejected by setup and repair domain helpers; an 8-code-point password is
+      accepted and no uppercase/lowercase/digit/symbol composition rule is
+      applied.
 - [ ] Two concurrent first-admin submissions produce one Account, one local
       Identity, one owner/admin Membership, and one successful Session.
 - [ ] The Google-only setup route and all direct production call paths are
@@ -396,9 +396,9 @@ Settings Account section
 - [x] Google unlink revokes all other browser and mobile Sessions for the
       Account. Current Session records do not retain authenticating Identity
       provenance, so selective Google-session revocation would be unreliable.
-- [x] During promotion, Admin passwords need only be non-empty and within the
-      256-code-point resource bound. Cats does not require 12 characters or any
-      uppercase/lowercase/digit/symbol composition.
+- [x] During promotion, Admin passwords must contain 8 to 256 Unicode code
+      points. Cats does not require uppercase/lowercase/digit/symbol
+      composition.
 
 ## References
 
