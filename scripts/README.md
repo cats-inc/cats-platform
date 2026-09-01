@@ -431,4 +431,12 @@ pushed, and skips branches checked out in another worktree. Run
 `git config --global fetch.prune true` once so the `gone` markers it reads
 appear without remembering `--prune`.
 
-The same script lives in `cats-runtime`; keep the two copies in step.
+Three copies of this script exist and are meant to stay in step:
+
+- here
+- `cats-runtime` at the same path
+- `project-bootstrap` at `templates/base/scripts/windows/`, which is where new
+  projects inherit it from, alongside `linux/` and `macos/` bash equivalents
+
+The template copy is the one to treat as canonical when they disagree, since it
+has to work in a repository whose default branch and remote are unknown.
