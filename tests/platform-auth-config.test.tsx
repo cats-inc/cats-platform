@@ -14,6 +14,7 @@ import {
 } from '../src/platform/auth/index.ts';
 
 const TEST_HOME = process.platform === 'win32' ? 'C:/Users/tester' : '/home/tester';
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 function baseEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return {
@@ -28,7 +29,8 @@ test('loadConfig exposes default platform auth config and state paths', () => {
   assert.equal(config.auth.enabled, true);
   assert.equal(config.auth.mode, 'default');
   assert.equal(config.auth.sessionSecret, null);
-  assert.equal(config.auth.sessionTtlMs, DEFAULT_AUTH_SESSION_TTL_MS);
+  assert.equal(DEFAULT_AUTH_SESSION_TTL_MS, THIRTY_DAYS_MS);
+  assert.equal(config.auth.sessionTtlMs, THIRTY_DAYS_MS);
   assert.equal(config.auth.mobileSessionTtlMs, DEFAULT_AUTH_MOBILE_SESSION_TTL_MS);
   assert.equal(config.auth.loginFailureLimit, DEFAULT_AUTH_LOGIN_FAILURE_LIMIT);
   assert.equal(config.auth.loginLockoutMs, DEFAULT_AUTH_LOGIN_LOCKOUT_MS);
