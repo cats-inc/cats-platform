@@ -410,3 +410,25 @@ from the packaged setup wizard/bootstrap flow for now.
 Pass `--include-local-models` to the Unix `check-installation.sh` helpers when
 you also want the optional Ollama local-model check in the audit output.
 Pass `--serial` when you need those Unix audits to avoid background fan-out.
+
+## Merged-Branch Sweep
+
+- `scripts/windows/Remove-MergedBranches.ps1`
+
+This project squash-merges and lets GitHub delete the head branch, so every
+landed PR leaves a local branch behind. Because a squashed commit has a
+different SHA than the branch it came from, `git branch -d` reports "not fully
+merged" and refuses. The script keys off upstream state instead: a branch counts
+as merged once it had an upstream and that upstream is gone.
+
+```powershell
+.\scripts\windows\Remove-MergedBranches.ps1 -WhatIf
+.\scripts\windows\Remove-MergedBranches.ps1 -ReturnToDefault
+```
+
+It refuses to run on a dirty working tree, never sweeps a branch that was never
+pushed, and skips branches checked out in another worktree. Run
+`git config --global fetch.prune true` once so the `gone` markers it reads
+appear without remembering `--prune`.
+
+The same script lives in `cats-runtime`; keep the two copies in step.
