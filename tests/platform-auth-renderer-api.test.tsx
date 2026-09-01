@@ -9,9 +9,10 @@ import {
   loginPlatformLocal,
   logoutPlatformSession,
   readPlatformAuthApiErrorMessage,
+  reauthenticatePlatformLocal,
   repairPlatformFirstAdmin,
   runPlatformAuthCsrfMutation,
-  setupPlatformGoogle,
+  unlinkPlatformGoogle,
 } from '../src/app/renderer/auth/api.ts';
 import { PLATFORM_AUTH_ERROR_CODES } from '../src/platform/auth/errorCodes.ts';
 
@@ -65,12 +66,13 @@ test('renderer auth api posts google credential and logout csrf header', async (
   try {
     const options = fallbackOptions();
     await loginPlatformGoogle({ credential: 'id-token', csrfToken: 'gis-csrf' }, options);
-    await setupPlatformGoogle({ credential: 'setup-id-token', csrfToken: 'setup-csrf' }, options);
     await linkPlatformGoogle(
       { credential: 'link-id-token', csrfToken: 'link-gis-csrf' },
       'link-cats-csrf',
+      'link-action-token',
       options,
     );
+    await unlinkPlatformGoogle('unlink-cats-csrf', 'unlink-action-token', options);
     await logoutPlatformSession('cats-csrf', options);
 
     assert.equal(calls[0]?.input, '/api/auth/google/login');
@@ -78,25 +80,65 @@ test('renderer auth api posts google credential and logout csrf header', async (
       credential: 'id-token',
       csrfToken: 'gis-csrf',
     });
-    assert.equal(calls[1]?.input, '/api/auth/google/setup');
-    assert.deepEqual(JSON.parse(String(calls[1]?.init?.body)), {
-      credential: 'setup-id-token',
-      csrfToken: 'setup-csrf',
-    });
-    assert.equal(calls[2]?.input, '/api/auth/google/link');
+    assert.equal(calls[1]?.input, '/api/auth/google/link');
     assert.equal(
-      (calls[2]?.init?.headers as Record<string, string>)['x-cats-csrf-token'],
+      (calls[1]?.init?.headers as Record<string, string>)['x-cats-csrf-token'],
       'link-cats-csrf',
     );
-    assert.deepEqual(JSON.parse(String(calls[2]?.init?.body)), {
+    // The action grant travels in a header, never in the URL (requirement 21).
+    assert.equal(
+      (calls[1]?.init?.headers as Record<string, string>)['x-cats-auth-action'],
+      'link-action-token',
+    );
+    assert.equal(String(calls[1]?.input).includes('link-action-token'), false);
+    assert.deepEqual(JSON.parse(String(calls[1]?.init?.body)), {
       credential: 'link-id-token',
       csrfToken: 'link-gis-csrf',
     });
+    assert.equal(calls[2]?.input, '/api/auth/google/unlink');
+    assert.equal(
+      (calls[2]?.init?.headers as Record<string, string>)['x-cats-auth-action'],
+      'unlink-action-token',
+    );
     assert.equal(calls[3]?.input, '/api/auth/logout');
     assert.equal(
       (calls[3]?.init?.headers as Record<string, string>)['x-cats-csrf-token'],
       'cats-csrf',
     );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('renderer auth api posts reauthentication with Cats csrf and returns the grant', async () => {
+  const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    calls.push({ input, init });
+    return jsonResponse({
+      purpose: 'link_google',
+      actionToken: 'granted-action-token',
+      expiresAt: '2026-09-02T00:05:00.000Z',
+    });
+  };
+  try {
+    const grant = await reauthenticatePlatformLocal(
+      { password: 'correct horse battery staple', purpose: 'link_google' },
+      'cats-csrf',
+      fallbackOptions(),
+    );
+
+    assert.equal(calls[0]?.input, '/api/auth/reauth');
+    assert.equal(
+      (calls[0]?.init?.headers as Record<string, string>)['x-cats-csrf-token'],
+      'cats-csrf',
+    );
+    assert.deepEqual(JSON.parse(String(calls[0]?.init?.body)), {
+      password: 'correct horse battery staple',
+      purpose: 'link_google',
+    });
+    assert.equal(grant.actionToken, 'granted-action-token');
+    assert.equal(grant.purpose, 'link_google');
   } finally {
     globalThis.fetch = originalFetch;
   }

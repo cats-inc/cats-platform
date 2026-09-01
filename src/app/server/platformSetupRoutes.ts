@@ -24,9 +24,17 @@ import {
 } from '../../products/chat/api/routeSupport.js';
 import {
   createFirstAdminLocalAuthState,
+  createPlatformAuthSecurityEvent,
   evaluatePreAuthOriginGate,
+  hasExistingPlatformAdmin,
   PLATFORM_AUTH_ERROR_CODES,
+  PlatformAdminCredentialError,
+  PlatformFirstAdminExistsError,
   serializeAuthSessionCookie,
+  validatePlatformAdminCredentials,
+  describePlatformAdminCredentialRejection,
+  type PlatformAdminCredentials,
+  type PlatformAuthSecurityEventReporter,
   type PlatformAuthStore,
   type PlatformAuthState,
   type PreAuthOriginGateRejectionReason,
@@ -46,6 +54,7 @@ import { sendPlatformAuthError } from './authErrorResponses.js';
 export interface PlatformSetupAuthDependencies {
   authStore: PlatformAuthStore;
   auth: PlatformAuthConfig;
+  reportAuthSecurityEvent?: PlatformAuthSecurityEventReporter;
 }
 
 export type PlatformSetupContext = RouteContext<
@@ -89,6 +98,24 @@ async function recordProductEvent(
   }
 }
 
+/**
+ * SPEC-113 requirement 5: first-admin creation runs inside a process-wide
+ * serialized critical section. Without it two concurrent submissions can each
+ * read "setup incomplete" before either writes, and the later uniqueness
+ * recheck inside the auth-store mutation would be the only thing standing
+ * between them and two half-built workspaces.
+ */
+let setupCriticalSection: Promise<unknown> = Promise.resolve();
+
+function runExclusiveSetupOperation<T>(operation: () => Promise<T>): Promise<T> {
+  const result = setupCriticalSection.then(operation, operation);
+  setupCriticalSection = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}
+
 async function handlePlatformSetupComplete(
   context: PlatformSetupContext,
 ): Promise<void> {
@@ -120,6 +147,34 @@ async function handlePlatformSetupComplete(
     return;
   }
 
+  // SPEC-113 requirements 1 and 2: Admin credentials are mandatory and are
+  // rejected before any owner, Guide Cat, setup, or auth state is mutated.
+  const credentialValidation = validatePlatformAdminCredentials({
+    identifier: body.adminIdentifier,
+    password: body.adminPassword,
+  });
+  if (!credentialValidation.ok) {
+    sendJson(context.response, 400, {
+      error: {
+        code: 'invalid_admin_credentials',
+        reason: credentialValidation.reason,
+        message: describePlatformAdminCredentialRejection(credentialValidation.reason),
+      },
+    });
+    return;
+  }
+  const adminCredentials = credentialValidation.credentials;
+
+  await runExclusiveSetupOperation(
+    () => completePlatformSetupExclusively(context, body, adminCredentials),
+  );
+}
+
+async function completePlatformSetupExclusively(
+  context: PlatformSetupContext,
+  body: LegacyPlatformSetupCompleteInput,
+  adminCredentials: PlatformAdminCredentials,
+): Promise<void> {
   const now = context.dependencies.now?.() ?? new Date();
   let core = await context.dependencies.chatStore.readCore();
   let chatState = await context.dependencies.chatStore.read();
@@ -137,18 +192,6 @@ async function handlePlatformSetupComplete(
   }
 
   const ownerDisplayName = body.ownerDisplayName?.trim() || 'Owner';
-  let adminCredentials: { identifier: string; password: string } | null;
-  try {
-    adminCredentials = readOptionalAdminCredentials(body);
-  } catch (error) {
-    sendJson(context.response, 400, {
-      error: {
-        code: 'bad_request',
-        message: error instanceof Error ? error.message : 'Invalid admin credentials.',
-      },
-    });
-    return;
-  }
   const createGuideCat = body.createGuideCat ?? body.createBossCat ?? false;
   const resolvedGuideCatName = resolveGuideCatSystemName(
     context.request.headers['accept-language'],
@@ -181,14 +224,15 @@ async function handlePlatformSetupComplete(
   });
 
   try {
-    const firstAdminSession = adminCredentials
-      ? await prepareFirstAdminDuringSetup(context, {
-          displayName: ownerDisplayName,
-          identifier: adminCredentials.identifier,
-          password: adminCredentials.password,
-          now,
-        })
-      : null;
+    // Auth state is persisted before the chat/core snapshot so a failure can
+    // never leave `setupCompleteAt` set without a valid first Admin
+    // (SPEC-113 requirement 7). The reverse order is rolled back below.
+    const firstAdminSession = await createFirstAdminDuringSetup(context, {
+      displayName: ownerDisplayName,
+      identifier: adminCredentials.identifier,
+      password: adminCredentials.password,
+      now,
+    });
 
     if (createGuideCat) {
       const nowIso = now.toISOString();
@@ -224,14 +268,11 @@ async function handlePlatformSetupComplete(
     };
 
     // Commit chat/core as one persisted snapshot so setup cannot land in a half-written state.
-    await context.dependencies.chatStore.writeSnapshot(chatState, core);
-    if (firstAdminSession) {
-      try {
-        await context.dependencies.authStore.writeState(firstAdminSession.state);
-      } catch (error) {
-        await context.dependencies.chatStore.writeSnapshot(previousChatState, previousCore);
-        throw error;
-      }
+    try {
+      await context.dependencies.chatStore.writeSnapshot(chatState, core);
+    } catch (error) {
+      await rollbackFirstAdminAuthState(context, firstAdminSession.previousState);
+      throw error;
     }
     await enqueueGuideCatAssistRefreshIfRuntimeReachable(context.dependencies, {
       guideCat: createGuideCat ? core.guideCat : null,
@@ -351,18 +392,24 @@ async function handlePlatformSetupComplete(
       },
     });
 
+    await reportSetupSecurityEvent(context, {
+      kind: 'first_admin_created',
+      outcome: 'success',
+      now,
+      accountId: firstAdminSession.accountId,
+      sessionId: firstAdminSession.sessionId,
+    });
+
     sendJson(
       context.response,
       200,
       payload,
-      firstAdminSession
-        ? {
-            'Set-Cookie': serializeAuthSessionCookie(
-              firstAdminSession.token,
-              context.dependencies.auth.sessionTtlMs,
-            ),
-          }
-        : undefined,
+      {
+        'Set-Cookie': serializeAuthSessionCookie(
+          firstAdminSession.token,
+          context.dependencies.auth.sessionTtlMs,
+        ),
+      },
     );
   } catch (error) {
     reportSyncFailure('setup_complete', error);
@@ -398,7 +445,7 @@ async function handlePlatformSetupComplete(
 
 function resolveSetupCompleteResponseError(error: unknown): {
   status: number;
-  code: 'configuration_error' | 'internal_error';
+  code: 'configuration_error' | 'internal_error' | 'already_complete' | 'invalid_admin_credentials';
   message: string;
 } {
   if (error instanceof PlatformSetupConfigurationError) {
@@ -406,6 +453,22 @@ function resolveSetupCompleteResponseError(error: unknown): {
       status: 503,
       code: 'configuration_error',
       message: 'Authentication is not configured for first-admin setup.',
+    };
+  }
+  // A concurrent submission that lost the serialized uniqueness recheck is a
+  // conflict, not a server fault (SPEC-113 requirement 6).
+  if (error instanceof PlatformFirstAdminExistsError) {
+    return {
+      status: 409,
+      code: 'already_complete',
+      message: 'Setup has already been completed',
+    };
+  }
+  if (error instanceof PlatformAdminCredentialError) {
+    return {
+      status: 400,
+      code: 'invalid_admin_credentials',
+      message: error.message,
     };
   }
   return {
@@ -449,25 +512,19 @@ function setupPreAuthOriginGateMessage(reason: PreAuthOriginGateRejectionReason)
   }
 }
 
-function readOptionalAdminCredentials(
-  body: LegacyPlatformSetupCompleteInput,
-): { identifier: string; password: string } | null {
-  const identifier = typeof body.adminIdentifier === 'string'
-    ? body.adminIdentifier.trim()
-    : '';
-  const password = typeof body.adminPassword === 'string'
-    ? body.adminPassword
-    : '';
-  if (!identifier && !password) {
-    return null;
-  }
-  if (!identifier || !password) {
-    throw new Error('Admin identifier and password are both required.');
-  }
-  return { identifier, password };
+interface FirstAdminSetupResult {
+  previousState: PlatformAuthState;
+  token: string;
+  accountId: string;
+  sessionId: string;
 }
 
-async function prepareFirstAdminDuringSetup(
+/**
+ * SPEC-113 requirements 5 and 6: the uniqueness recheck and the record writes
+ * happen inside one serialized auth-store mutation, so a concurrent loser can
+ * never create a second Account, Identity, Membership, or Session.
+ */
+async function createFirstAdminDuringSetup(
   context: PlatformSetupContext,
   input: {
     displayName: string;
@@ -475,26 +532,71 @@ async function prepareFirstAdminDuringSetup(
     password: string;
     now: Date;
   },
-): Promise<{ state: PlatformAuthState; token: string } | null> {
+): Promise<FirstAdminSetupResult> {
   const sessionSecret = context.dependencies.auth.sessionSecret;
   if (!sessionSecret) {
     throw new PlatformSetupConfigurationError(
       'CATS_AUTH_SESSION_SECRET is required to create the first admin session.',
     );
   }
-  const created = await createFirstAdminLocalAuthState({
-    state: await context.dependencies.authStore.readState(),
-    displayName: input.displayName,
-    identifier: input.identifier,
-    password: input.password,
-    sessionSecret,
-    sessionTtlMs: context.dependencies.auth.sessionTtlMs,
-    now: input.now,
+
+  let previousState: PlatformAuthState | null = null;
+  let token: string | null = null;
+  let accountId: string | null = null;
+  let sessionId: string | null = null;
+
+  await context.dependencies.authStore.updateState(async (state) => {
+    if (hasExistingPlatformAdmin(state)) {
+      throw new PlatformFirstAdminExistsError();
+    }
+    previousState = structuredClone(state);
+    const created = await createFirstAdminLocalAuthState({
+      state,
+      displayName: input.displayName,
+      identifier: input.identifier,
+      password: input.password,
+      sessionSecret,
+      sessionTtlMs: context.dependencies.auth.sessionTtlMs,
+      now: input.now,
+    });
+    token = created.session.token;
+    accountId = created.account.id;
+    sessionId = created.session.session.id;
+    return created.state;
   });
-  return {
-    state: created.state,
-    token: created.session.token,
-  };
+
+  if (previousState === null || token === null || accountId === null || sessionId === null) {
+    throw new Error('First admin creation did not produce a session.');
+  }
+  return { previousState, token, accountId, sessionId };
+}
+
+async function rollbackFirstAdminAuthState(
+  context: PlatformSetupContext,
+  previousState: PlatformAuthState,
+): Promise<void> {
+  try {
+    await context.dependencies.authStore.writeState(previousState);
+  } catch (error) {
+    // The caller is already unwinding; surface this in diagnostics rather than
+    // masking the original persistence failure.
+    reportSyncFailure('setup_complete_auth_rollback', error);
+  }
+}
+
+async function reportSetupSecurityEvent(
+  context: PlatformSetupContext,
+  input: Parameters<typeof createPlatformAuthSecurityEvent>[0],
+): Promise<void> {
+  const reporter = context.dependencies.reportAuthSecurityEvent;
+  if (!reporter) {
+    return;
+  }
+  try {
+    await reporter(createPlatformAuthSecurityEvent(input));
+  } catch (error) {
+    reportSyncFailure('setup_complete_security_event', error);
+  }
 }
 
 export async function routePlatformSetupApi(

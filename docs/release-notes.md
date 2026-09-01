@@ -19,6 +19,55 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-02
+
+### First Admin is always local, and Google is linked from Settings
+
+Behavior change:
+
+Setup now requires an Admin identifier and password. `/api/platform/setup/complete`
+rejects a missing or partial pair with `400 invalid_admin_credentials` before it
+writes any owner, Guide Cat, setup, or auth state, so a workspace can no longer
+reach `setupCompleteAt` without a local Admin. During the promotion period an
+Admin password must contain 8 to 256 Unicode code points; Cats applies no
+uppercase/lowercase/digit/symbol rule and accepts spaces and password-manager
+output. Length is counted in code points, so an emoji counts once.
+
+First-admin creation is serialized and rechecks "no Admin exists" inside the
+same auth-state write. Two concurrent submissions now produce exactly one
+Admin; the loser receives `409 already_complete` and creates nothing. Auth
+state is written before the chat/core snapshot and rolled back if that snapshot
+fails.
+
+`Settings > General > Account` now reports real login-method state and owns the
+Google lifecycle. Linking or unlinking Google requires re-entering the local
+password: the server issues a single-use action grant, valid for five minutes
+and bound to the account, browser session, and purpose, which the browser sends
+in `X-Cats-Auth-Action`. A stolen session and CSRF token are no longer enough
+to attach a Google identity. A verified Google email must match the account
+email; an account created with a non-email handle adopts the verified address
+on its first successful link. Unlinking refuses to leave the account without a
+local password, and on success revokes every other browser and mobile session
+for that account while keeping the device that performed it signed in.
+
+Ordinary Google login is unchanged in intent and stricter in practice: it
+resolves only an already-linked Google `sub` and no longer rewrites the Cats
+account email from the provider.
+
+Deprecations:
+
+`POST /api/auth/google/setup` — the standalone Google-only first-admin route —
+is removed along with its renderer wrapper, domain helper, and public-route
+exception. It had no supported setup UX. `/api/auth/google/link` and the new
+`/api/auth/google/unlink` are protected routes now, not pre-auth ones.
+
+Migration steps:
+
+None for existing workspaces: an already-created Admin keeps working, and a
+linked Google identity is unaffected. Operators automating first-run setup must
+add `adminIdentifier` and `adminPassword` to their
+`/api/platform/setup/complete` request body.
+
 ## 2026-08-05
 
 ### Desktop runtime setup opens in an authenticated system browser

@@ -106,6 +106,44 @@ Forgotten-credential and repair behavior:
 - For LAN-bound deployments, keep the recovery token local to the operator
   before allowing LAN browsers to reach the host during repair.
 
+First Admin and password policy:
+
+- Setup always creates a local Admin. `/api/platform/setup/complete` requires
+  an Admin identifier and password, and rejects a missing or partial pair with
+  a structured `400` before any owner, Guide Cat, setup, or auth state is
+  written. There is no Google-only bootstrap: a local credential is the
+  offline and raw-LAN-IP recovery anchor.
+- Admin passwords must contain 8 to 256 Unicode code points, inclusive. Cats
+  does not require uppercase, lowercase, digits, or symbols, and accepts spaces
+  and password-manager output. A longer passphrase is still the recommendation;
+  the short minimum only removes an onboarding blocker.
+- Repair mode creates its Admin under the same validator and keeps its
+  one-time recovery-token and allowlisted-origin boundary.
+- First-admin creation is serialized and rechecks "no Admin exists" inside the
+  same auth-state write, so two concurrent submissions produce exactly one
+  Admin. Auth state is persisted before the chat/core snapshot and rolled back
+  if that snapshot fails, so `setupCompleteAt` can never exist without a valid
+  first Admin.
+
+Linking a Google account:
+
+- Google linking lives in `Settings > General > Account`. It is never part of
+  first-run setup.
+- Linking requires re-entering the local password. The server issues a
+  single-use, five-minute action grant bound to the account, browser session,
+  and purpose; the renderer holds it in memory only and sends it in the
+  `X-Cats-Auth-Action` header. A stolen session and CSRF token alone cannot
+  attach a Google identity.
+- The verified Google email must match the Cats account email after trim and
+  lowercase. An account created with a non-email handle has no email to
+  compare, so its first successful link adopts the verified Google address.
+- Google Sign-In needs an origin Google authorizes. On a raw LAN IP the
+  Account section keeps local-password status visible and explains that linking
+  must be done from an authorized origin.
+- Unlinking also requires a fresh password step-up, refuses to run when no
+  local password would remain, and signs out every other browser and mobile
+  session for that account. The device performing the unlink stays signed in.
+
 Account and role boundary:
 
 - First setup creates one local admin account and maps only that first admin to

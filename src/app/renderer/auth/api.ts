@@ -17,11 +17,35 @@ export interface PlatformAuthProviderStatus {
   };
 }
 
+export interface PlatformAuthLoginMethods {
+  localPassword: {
+    linked: boolean;
+  };
+  google: {
+    linked: boolean;
+    email: string | null;
+  };
+}
+
 export interface PlatformAuthStatusPayload {
   authenticated: boolean;
   principal: PlatformAuthPrincipalSummary | null;
   csrfToken: string | null;
   providers: PlatformAuthProviderStatus;
+  loginMethods: PlatformAuthLoginMethods | null;
+}
+
+export type PlatformAuthActionPurpose = 'link_google' | 'unlink_google';
+
+export interface PlatformAuthReauthenticationInput {
+  password: string;
+  purpose: PlatformAuthActionPurpose;
+}
+
+export interface PlatformAuthActionGrant {
+  purpose: PlatformAuthActionPurpose;
+  actionToken: string;
+  expiresAt: string;
 }
 
 export interface PlatformAuthLocalLoginInput {
@@ -143,25 +167,37 @@ export async function loginPlatformGoogle(
   return readPlatformAuthJsonResponse(response, options);
 }
 
-export async function setupPlatformGoogle(
-  input: PlatformAuthGoogleLoginInput,
+/**
+ * Local-password step-up. The returned action token is a one-time capability;
+ * SPEC-113 requirement 47 keeps it in component memory only — never in
+ * `localStorage`, a URL, or any persisted renderer state.
+ */
+export async function reauthenticatePlatformLocal(
+  input: PlatformAuthReauthenticationInput,
+  csrfToken: string,
   options: PlatformAuthApiRequestOptions,
-): Promise<PlatformAuthStatusPayload> {
-  const response = await fetch('/api/auth/google/setup', {
+): Promise<PlatformAuthActionGrant> {
+  const response = await fetch('/api/auth/reauth', {
     method: 'POST',
     headers: {
       Accept: 'application/json',
       'content-type': 'application/json',
+      'x-cats-csrf-token': csrfToken,
     },
     body: JSON.stringify(input),
     signal: options.signal,
   });
-  return readPlatformAuthJsonResponse(response, options);
+  if (!response.ok) {
+    const details = await readPlatformAuthApiErrorDetails(response, options);
+    throw new PlatformAuthApiError(details.message, response.status, details.code);
+  }
+  return await response.json() as PlatformAuthActionGrant;
 }
 
 export async function linkPlatformGoogle(
   input: PlatformAuthGoogleLoginInput,
   csrfToken: string,
+  actionToken: string,
   options: PlatformAuthApiRequestOptions,
 ): Promise<PlatformAuthStatusPayload> {
   const response = await fetch('/api/auth/google/link', {
@@ -170,8 +206,28 @@ export async function linkPlatformGoogle(
       Accept: 'application/json',
       'content-type': 'application/json',
       'x-cats-csrf-token': csrfToken,
+      'x-cats-auth-action': actionToken,
     },
     body: JSON.stringify(input),
+    signal: options.signal,
+  });
+  return readPlatformAuthJsonResponse(response, options);
+}
+
+export async function unlinkPlatformGoogle(
+  csrfToken: string,
+  actionToken: string,
+  options: PlatformAuthApiRequestOptions,
+): Promise<PlatformAuthStatusPayload> {
+  const response = await fetch('/api/auth/google/unlink', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'content-type': 'application/json',
+      'x-cats-csrf-token': csrfToken,
+      'x-cats-auth-action': actionToken,
+    },
+    body: JSON.stringify({}),
     signal: options.signal,
   });
   return readPlatformAuthJsonResponse(response, options);

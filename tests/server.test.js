@@ -46,6 +46,8 @@ import {
 } from '../build/server/shared/chatCoreIds.js';
 import {
   createAuthenticatedTestSession,
+  createUnprovisionedTestSession,
+  TEST_ADMIN_CREDENTIALS,
   createTestAuthConfig,
   installAuthenticatedFetch,
   waitForCondition,
@@ -248,12 +250,8 @@ async function withServer(
   const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-server-state-'));
   const runtimeDataDir = path.join(tempStateDir, 'runtime-data');
   const now = new Date('2026-03-11T00:00:00.000Z');
-  const auth = await createAuthenticatedTestSession({
-    now,
-    sessionSecret: baseConfig.auth.sessionSecret,
-    sessionTtlMs: baseConfig.auth.sessionTtlMs,
-  });
   const {
+    unprovisionedAuth,
     startup,
     coreStore,
     resumePendingOrchestratorDispatch,
@@ -262,6 +260,16 @@ async function withServer(
     code,
     ...chatOverrides
   } = overrides;
+  // Tests that drive `/api/platform/setup/complete` must start without an
+  // Admin: SPEC-113 makes that route create the first one, and it refuses to
+  // run when a seeded Admin already exists.
+  const auth = unprovisionedAuth
+    ? createUnprovisionedTestSession({ now })
+    : await createAuthenticatedTestSession({
+        now,
+        sessionSecret: baseConfig.auth.sessionSecret,
+        sessionTtlMs: baseConfig.auth.sessionTtlMs,
+      });
   const server = createServer({
     shared: {
       config: {
@@ -10544,6 +10552,7 @@ test('default chats without a cwd create isolated runtime sessions', async () =>
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createBossCat: false,
       }),
@@ -10606,7 +10615,7 @@ test('default chats without a cwd create isolated runtime sessions', async () =>
     );
     assert.equal(soloReply?.senderKind, 'agent');
     assert.equal(soloReply?.senderName, 'Orchestrator');
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('PATCH /api/channels/:channelId can start a fresh default continuity branch', async () => {
@@ -11171,6 +11180,7 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions without promo
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createBossCat: false,
       }),
@@ -11273,7 +11283,7 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions without promo
       },
     );
     assert.equal(archivedWebhookResponse.status, 404);
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('archived cats cannot receive new Telegram bot bindings', async () => {
@@ -11282,6 +11292,7 @@ test('archived cats cannot receive new Telegram bot bindings', async () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createBossCat: false,
       }),
@@ -11321,7 +11332,7 @@ test('archived cats cannot receive new Telegram bot bindings', async () => {
     assert.equal(bindingResponse.status, 400);
     const bindingPayload = await bindingResponse.json();
     assert.match(bindingPayload.error.message, /Cat is not active/u);
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('unarchiving a cat restores it without reviving Telegram bindings', async () => {
@@ -11330,6 +11341,7 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createBossCat: false,
       }),
@@ -11422,7 +11434,7 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
       }),
     });
     assert.equal(reboundResponse.status, 201);
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('PATCH /api/cats/:id clears the cat avatar when avatarUrl is null', async () => {
@@ -11431,6 +11443,7 @@ test('PATCH /api/cats/:id clears the cat avatar when avatarUrl is null', async (
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createBossCat: false,
       }),
@@ -11466,7 +11479,7 @@ test('PATCH /api/cats/:id clears the cat avatar when avatarUrl is null', async (
     const clearPayload = await clearResponse.json();
     const clearedCat = clearPayload.chat.cats.find((cat) => cat.id === catId);
     assert.equal(clearedCat?.avatarUrl, null);
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', async () => {
@@ -11475,6 +11488,7 @@ test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', a
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createBossCat: false,
       }),
@@ -11540,7 +11554,7 @@ test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', a
       appShellPayload.chat.channels.some((channel) => channel.id === channelId),
       false,
     );
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('first send does not fall back to Boss Cat when a direct message recipient is missing', async () => {

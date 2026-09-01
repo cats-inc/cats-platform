@@ -25,6 +25,7 @@ import {
   createFileBackedPlatformAuthStore,
   createGoogleJwksIdTokenVerifier,
   loadPlatformAuthConfig,
+  MemoryPlatformAuthActionGrantStore,
   MemoryPlatformBrowserHandoffStore,
   MemoryPlatformAuthStore,
   type PlatformAuthConfig,
@@ -209,6 +210,10 @@ export function resolveServerDependencies(
     ?? createDefaultAuthStore(dependencies.shared, dependencies.chat);
   const browserHandoffStore = dependencies.shared.browserHandoffStore
     ?? new MemoryPlatformBrowserHandoffStore();
+  // Action grants are five-minute, one-time capabilities. They live in memory
+  // so they die with the process rather than surviving in the auth-state file.
+  const actionGrantStore = dependencies.shared.actionGrantStore
+    ?? new MemoryPlatformAuthActionGrantStore();
   const googleVerifier = dependencies.shared.googleVerifier
     ?? (
       dependencies.shared.config.auth.google.clientId
@@ -374,6 +379,7 @@ export function resolveServerDependencies(
       startup,
       authStore,
       browserHandoffStore,
+      actionGrantStore,
       googleVerifier,
       authRecoveryTokenState: getAuthRecoveryTokenState(),
       getAuthRecoveryTokenState,
