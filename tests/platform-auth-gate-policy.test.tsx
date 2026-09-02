@@ -89,6 +89,7 @@ test('platform auth gate exposes setup bootstrap routes only before setup', () =
     ['GET', '/runtime/api/providers/config'],
     ['GET', '/runtime/api/providers/codex/tools'],
     ['GET', '/runtime/api/providers/codex/models'],
+    ['GET', '/runtime/api/diagnostics/health'],
     ['GET', '/runtime/api/diagnostics/providers'],
     ['POST', '/runtime/api/diagnostics/providers/reprobe'],
   ] as const;
@@ -105,6 +106,35 @@ test('platform auth gate exposes setup bootstrap routes only before setup', () =
       `${method} ${pathname} after setup`,
     );
   }
+});
+
+test('first-run runtime setup can reach the health endpoint its own page polls', () => {
+  // The runtime setup page embeds a health overlay that polls
+  // /runtime/api/diagnostics/health. Serving the page while rejecting its poll
+  // made first-run show a rejection the overlay could only report as a missing
+  // runtime API key -- a credential a packaged install does not even have.
+  for (const pathname of ['/runtime/setup', '/runtime/api/diagnostics/health']) {
+    assert.equal(
+      classifyPlatformAuthRoute({ phase: 'pre_setup', method: 'GET', pathname }).access,
+      'public',
+      `${pathname} must be reachable during first run`,
+    );
+    assert.equal(
+      classifyPlatformAuthRoute({ phase: 'post_setup', method: 'GET', pathname }).access,
+      'protected',
+      `${pathname} must close again once setup is complete`,
+    );
+  }
+
+  // Only the read is opened up; the endpoint takes no mutations.
+  assert.equal(
+    classifyPlatformAuthRoute({
+      phase: 'pre_setup',
+      method: 'POST',
+      pathname: '/runtime/api/diagnostics/health',
+    }).access,
+    'protected',
+  );
 });
 
 test('platform auth gate protects product, core, runtime, shell, transport, and subscription APIs', () => {
