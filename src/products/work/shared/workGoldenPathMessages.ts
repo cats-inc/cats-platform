@@ -84,7 +84,6 @@ const SIDE_EFFECT_KEYS: Record<CoreDeliveryMode, MessageKey> = {
 
 const ACTION_LABEL_KEYS: Partial<Record<TransportWorkAction, MessageKey>> = {
   start_work: messageKeys.workDeliveryActionStartWork,
-  adjust: messageKeys.workDeliveryActionAdjust,
   cancel: messageKeys.workDeliveryActionCancel,
 };
 

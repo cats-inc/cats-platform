@@ -74,6 +74,9 @@ import {
   WORK_GOLDEN_PATH_PUBLISH_METADATA_KEY,
 } from './workGoldenPathPublish.js';
 import type { RuntimeDeliveryClient } from '../../../platform/runtime/deliveryClient.js';
+import type {
+  TransportWorkTelemetry,
+} from '../../../platform/transports/work-delivery/telemetry.js';
 import type { WorkGoldenPathAdmissionResult } from './workGoldenPathAdmission.js';
 import {
   assertSafeTransportPayload,
@@ -193,6 +196,8 @@ export interface WorkGoldenPathServiceOptions {
   actorRef?: string;
   /** Absent means gated publication can be approved but not performed. */
   deliveryClient?: RuntimeDeliveryClient;
+  /** Optional counters. Absent means the path runs unmeasured, never broken. */
+  telemetry?: TransportWorkTelemetry;
   now?: () => Date;
 }
 
@@ -232,7 +237,16 @@ function pendingWorkItemKey(externalUpdateRef: string): string {
 const DEFAULT_ACTOR_REF = 'actor-work-golden-path';
 
 /** Actions offered alongside a fresh proposal. */
-const PROPOSAL_ACTIONS: readonly TransportWorkAction[] = ['start_work', 'adjust', 'cancel'];
+/**
+ * Actions a proposal offers.
+ *
+ * `adjust` is deliberately absent. It was offered on every proposal but
+ * `authorize` never handled it, so tapping it returned `action_not_allowed` — a
+ * button that refuses is worse than no button. Restoring it needs the FR-16
+ * clarification loop: intake captures per Telegram update ref, so a follow-up
+ * message currently opens a *parallel* Work Item instead of revising this one.
+ */
+const PROPOSAL_ACTIONS: readonly TransportWorkAction[] = ['start_work', 'cancel'];
 
 /** Offered alongside a gated result preview (FR-41). */
 const PUBLISH_DECISION_ACTIONS: readonly TransportWorkAction[] = ['publish', 'deny'];
@@ -267,6 +281,7 @@ export function createWorkGoldenPathService(
 ): WorkGoldenPathService {
   const now = options.now ?? (() => new Date());
   const actorRef = options.actorRef ?? DEFAULT_ACTOR_REF;
+  const telemetry = options.telemetry;
   const tokenStore = options.tokenStore ?? createTransportWorkActionTokenStore({ now });
   const { coreStore, outbox } = options;
 
@@ -727,6 +742,7 @@ export function createWorkGoldenPathService(
       // FR-3: never claim work is queued when admission cannot happen, and never
       // leave the owner in silence either — say what is missing.
       if (!input.readiness.ready) {
+        telemetry?.record('readiness_failure', 'not_ready');
         await enqueueAndFlush({
           bindingId: input.bindingId,
           externalConversationRef: input.externalConversationRef,
@@ -930,9 +946,17 @@ export function createWorkGoldenPathService(
       });
 
       if (resolution.status === 'rejected') {
+        telemetry?.record('admission_result', 'rejected');
         return { status: 'rejected', rejection: resolution.reason, stage: null };
       }
       const token = resolution.token;
+
+      // How long the proposal sat before the owner acted. Bucketed, so this is
+      // an operational signal rather than a timeline of someone's day.
+      const proposedAt = Date.parse(token.issuedAt ?? '');
+      if (Number.isFinite(proposedAt)) {
+        telemetry?.recordDecisionLatency(now().getTime() - proposedAt);
+      }
 
       if (token.action === 'cancel') {
         return cancelGoldenPathWork(token.workItemId, token.ownerActorId);
@@ -965,6 +989,7 @@ export function createWorkGoldenPathService(
         },
         now,
       );
+      telemetry?.record('admission_result', admission.status);
       if (admission.status === 'blocked') {
         return {
           status: 'rejected',
@@ -1009,6 +1034,9 @@ export function createWorkGoldenPathService(
     },
 
     async markRunStatus(input) {
+      if (input.status === 'blocked' || input.status === 'failed' || input.status === 'cancelled') {
+        telemetry?.record('run_terminal_state', input.status);
+      }
       const core = await coreStore.readCore();
       const run = core.runs.find((candidate) => candidate.id === input.runId) ?? null;
       if (run === null) {

@@ -21,6 +21,7 @@ import type {
   TransportWorkDeliveryState,
   TransportWorkDeliveryV1,
 } from './contracts.js';
+import type { TransportWorkTelemetry } from './telemetry.js';
 
 /** Purposes that must never be suppressed by a newer message. */
 const PRIORITY_PURPOSES: ReadonlySet<TransportWorkDeliveryPurpose> = new Set([
@@ -90,6 +91,8 @@ export interface TransportWorkOutboxOptions {
   now?: () => Date;
   /** Seeds durable rows recovered from disk after a restart. */
   initialRows?: readonly TransportWorkDeliveryV1[];
+  /** Optional counters. Absent means the path runs unmeasured, never broken. */
+  telemetry?: TransportWorkTelemetry;
 }
 
 function isTerminalState(state: TransportWorkDeliveryState): boolean {
@@ -100,6 +103,7 @@ export function createTransportWorkOutbox(
   options: TransportWorkOutboxOptions,
 ): TransportWorkOutbox {
   const now = options.now ?? (() => new Date());
+  const telemetry = options.telemetry;
   const rows = new Map<string, TransportWorkDeliveryV1>();
   const sequenceByWorkItem = new Map<string, number>();
 
@@ -139,6 +143,7 @@ export function createTransportWorkOutbox(
 
   async function flushRow(row: TransportWorkDeliveryV1): Promise<TransportWorkOutboxFlushResult> {
     if (isTerminalState(row.state)) {
+      telemetry?.record('dedupe_hit', 'update');
       return { outcome: 'already_sent', row };
     }
     if (isStaleRoutine(row)) {
@@ -172,7 +177,12 @@ export function createTransportWorkOutbox(
       };
     }
 
+    if (sending.attemptCount > 1) {
+      telemetry?.record('outbox_retry', 'attempt');
+    }
+
     if (result.ok) {
+      telemetry?.record('delivery_receipt', 'sent');
       const sent: TransportWorkDeliveryV1 = {
         ...sending,
         state: 'sent',
@@ -194,6 +204,7 @@ export function createTransportWorkOutbox(
       updatedAt: now().toISOString(),
     };
     rows.set(failed.idempotencyKey, failed);
+    telemetry?.record('delivery_receipt', result.ambiguous === true ? 'ambiguous' : 'failed');
     return { outcome: result.ambiguous === true ? 'ambiguous' : 'failed', row: failed };
   }
 

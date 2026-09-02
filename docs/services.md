@@ -61,6 +61,55 @@ Port numbers should be configurable via environment variables so developers can 
 | `CATS_CODE_LIVE_PREVIEW_ALLOW_IPV6_LOOPBACK` | `false` | Cats Code live preview | Allows `[::1]` leases when explicitly enabled |
 | `CATS_CODE_LIVE_PREVIEW_COMMAND_PROFILES` | `[]` | Cats Code live preview | JSON array of declarative command profiles; assistants cannot provide raw shell commands |
 
+## Telegram work delegation: rollout, rollback, and the offline limit
+
+### Rollout
+
+Work delegation over Telegram is **off by default** and gated twice:
+
+- `CATS_WORK_GOLDEN_PATH_ENABLED` must be `true`, and
+- `CATS_WORK_GOLDEN_PATH_OWNERS` must name the Telegram user ids allowed to
+  delegate. Empty means nobody is authorized. There is deliberately no
+  trust-on-first-use path into a workspace, so the owner cohort is exactly the
+  list, and widening it is an explicit config change.
+
+Before widening the cohort, read `GET /api/work/delivery-telemetry`. It reports
+bounded counters — readiness failures, dedupe hits, admission results, run
+terminal states, outbox retries, delivery receipts, and bucketed decision
+latency — and carries no message bodies, chat ids, or credentials by
+construction: counter labels come from a closed set and anything else is
+refused rather than recorded.
+
+### Rollback
+
+Setting `CATS_WORK_GOLDEN_PATH_ENABLED=false` is the rollback. The host then
+composes no golden path at all, so:
+
+- `/work` reverts to ordinary Cats Chat routing;
+- golden-path inline callbacks are no longer claimed; and
+- **every Core and transport record survives** — Work Items, Tasks, Runs,
+  approvals, outcomes, activities, and delivery receipts are all retained, which
+  is what makes a post-incident review possible.
+
+No data migration is involved in either direction.
+
+### The host-offline limit
+
+This is a local-first path: work executes on the machine running Cats Desktop.
+When that host is asleep or stopped, **Telegram gets no reply at all** — not a
+"host offline" message. That is a property of the design, not an oversight: the
+process that would answer is the process that is not running.
+
+Telegram queues updates for a bounded period, so a `/work` message sent while
+the host was asleep is normally processed when it wakes. A message older than
+Telegram's own retention is lost, and Cats cannot know it existed.
+
+The readiness evaluator does carry a `background_service_unavailable` blocker,
+and it is reported on the Desktop settings surface (`/settings/work`). It is
+effectively unreachable *from Telegram* for the reason above: if the resolver is
+running, the background service is up. Do not read its absence from a `/status`
+reply as proof the host has been up continuously.
+
 ## Cross-Project Port Coordination
 
 This project was created from **project-bootstrap**, which maintains a central port registry at:

@@ -2249,7 +2249,6 @@ export const messageKeys = {
   telegramCommandModeSwitched: 'telegram.command.mode.switched',
   telegramCommandUnknownCommand: 'telegram.command.unknownCommand',
   workDeliveryActionStartWork: 'workDelivery.action.startWork',
-  workDeliveryActionAdjust: 'workDelivery.action.adjust',
   workDeliveryActionCancel: 'workDelivery.action.cancel',
   workDeliveryActionPublish: 'workDelivery.action.publish',
   workDeliveryActionDeny: 'workDelivery.action.deny',

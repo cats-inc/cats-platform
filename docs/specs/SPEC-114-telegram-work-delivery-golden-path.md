@@ -489,3 +489,77 @@ receipt.
 *Last updated: 2026-09-02*
 
 *Related Plan: [PLAN-105](../plans/PLAN-105-telegram-work-delivery-golden-path-rollout.md)*
+
+## Requirement trace (2026-09-02)
+
+Every FR mapped to what implements it, or to an explicit gap. A table is used
+here because the content is genuinely a three-column mapping.
+
+Status values: **done** — implemented and covered by a test; **partial** — some
+of the requirement holds, with the shortfall named; **gap** — not implemented;
+**deferred** — deliberately out of the first slice.
+
+| FR | Status | Where it lives / what is missing |
+|----|--------|----------------------------------|
+| FR-1 Binding readiness | done | `platform/transports/work-delivery/readiness.ts`; admission fails closed in `workGoldenPathService.receiveRequest` |
+| FR-2 Execution readiness | done | Same evaluator; `executionTargetId` resolved per request in `app/server/transportWorkGoldenPath.ts` |
+| FR-3 Actionable degradation | done | All blockers reported at once, each with a localized key and a settings path; `renderNotReadyMessage` |
+| FR-4 Product-owned setup | done | `GET /api/work/delivery-readiness` + `DeliveryReadinessSection` on `/settings/work`; capability bootstrap on `/settings/assistants` |
+| FR-5 Truthful availability | done | `/status` reports ingress health and delegation state; an unresolvable readiness lookup reports "could not be checked", never ready |
+| FR-6 No secret propagation | done | `assertSafeTransportPayload`; opaque action tokens carry no entities |
+| FR-7 Explicit baseline | done | `inboundClassification.ts` |
+| FR-8 Durable acceptance first | done | `workGoldenPathIntake.ts` reuses the capture tool, keyed by update ref |
+| FR-9 Source identity | done | `TransportWorkOriginV1` in the Work Item metadata envelope |
+| FR-10 Update idempotency | done | Relay `markProcessedUpdate` at ingress; capture keyed by `externalUpdateRef` |
+| FR-11 Callback polling | done | `TELEGRAM_ALLOWED_UPDATE_KINDS` |
+| FR-12 Callback acknowledgement | done | `routeTelegramGoldenPathUpdate` answers before product work |
+| FR-13 Opaque callback token | done | `actionTokens.ts`; 18 random bytes, server-side resolution |
+| FR-14 Async ingress | done | `ingressDispatch.ts`, shared by polling and webhook, bounded per binding |
+| FR-15 Proposal contents | done | `renderProposalMessage` |
+| FR-16 One focal clarification | **gap** | Not implemented. Intake captures per Telegram update ref, so a clarification reply would open a *parallel* Work Item rather than revising the same one. The `adjust` action has been withdrawn from proposals until this exists — see the note below. |
+| FR-17 Versioned scope | done | `proposal.ts` revision + digest over execution-relevant fields |
+| FR-18 Decision actions | partial | `start_work`, `cancel`, `view`, and the later `publish`/`deny`/`retry`/`resume` are offered and handled. `adjust` is withdrawn pending FR-16. |
+| FR-19 No pre-confirmation execution | done | Intake triages to `ready` only; no Run exists until `authorize` |
+| FR-20 Later owner event | done | Admission requires a distinct callback bound to a revision + digest |
+| FR-21 Bound authorization | done | Token resolution checks binding, owner, expiry before scope |
+| FR-22 One product command | done | `workGoldenPathAdmission.ts` |
+| FR-23 Atomic observable result | done | Task creation, approval, and Run upsert land in one `updateCore` |
+| FR-24 No redundant Desktop click | done | Task detail shows the Telegram authorization as the approval evidence |
+| FR-25 Existing separation preserved | done | Intake goes through the capture delegate, which cannot approve or start |
+| FR-26 Admission idempotency | done | Deterministic `resolveWorkGoldenPathRunId(admissionKey)` |
+| FR-27 Started response | done | Admission enqueues a started/blocked message |
+| FR-28 Managed Run only | done | `workGoldenPathRuntimeExecutor.ts` routes through the supervision boundary |
+| FR-29 Durable lifecycle | done | Core Run status transitions plus the startup resume sweep |
+| FR-30 Continuation | done | `workGoldenPathRunner.ts`: a successful step is not completion |
+| FR-31 Completion evidence | done | `workCompletionEvidence.ts`; commit id must match `/^[0-9a-f]{7,40}$/u` |
+| FR-32 Milestone notifications | done | Outbox coalescing of routine progress |
+| FR-33 Progress ordering | done | Causal `sequence` per work item in `outbox.ts` |
+| FR-34 Decision requests | done | `notifyDecisionNeeded` |
+| FR-35 Lifecycle controls | done | Cancel/retry/resume offered from the projected stage |
+| FR-36 Transport command compatibility | done | `/status` and `/open` unchanged in meaning; lifecycle uses scoped callbacks. Commands now answer on *both* ingress modes, which they did not before. |
+| FR-37 Result-ready message | done | `renderDecisionMessage` / result payloads |
+| FR-38 Artifact status | done | `previewArtifacts` uses `apply: false`; declarations stay `ready` |
+| FR-39 Delivery mode semantics | done | `deliveryGates.ts` + `workGoldenPathPublish.ts` |
+| FR-40 Policy gates preserved | done | High-side-effect modes always retain `owner_approval_required`; provider tool scope capped at `narrow_write` so execution cannot clear a gate |
+| FR-41 First-slice publication default | done | Every publish action sits behind a Core `release_gate` approval |
+| FR-42 Publish idempotency | done | Per-action `alreadyPerformed`; partial progress stamped without deciding the approval |
+| FR-43 Source-binding delivery | done | `scopeContextToBinding` |
+| FR-44 Safe payload | partial | Summary, deep link, and bounded actions only; `assertSafeTransportPayload` rejects local paths and secrets. Attachment upload and stable URLs are **not** implemented, so an artifact is referenced by deep link rather than sent. |
+| FR-45 Delivery receipt | done | Outbox receipt; `delivered` is defined by a sent receipt, not by the Run |
+| FR-46 Delivery failure | done | A failed send keeps the result undelivered with a retry offer |
+| FR-47 Duplicate suppression | done | An ambiguous send stays `pending`; retry re-drives the same row |
+| FR-48 Inbound attachments | done | Attachment-only `/work` is refused truthfully; no filename is passed as content |
+| FR-49 Desktop projection | done | `api/goldenPathProjection.ts` + `GoldenPathSection.tsx` |
+| FR-50 Activity trail | done | Lifecycle and owner decisions write Core Activities |
+
+### Open follow-ups
+
+- **FR-16 / FR-18 (clarification loop).** `adjust` was offered on every proposal
+  but `authorize` never handled it, so tapping it returned `action_not_allowed`.
+  The action is withdrawn rather than left lying. Implementing it needs intake to
+  revise the *same* Work Item from a follow-up message instead of capturing a new
+  one per update ref.
+- **FR-44 (attachment/stable URL delivery).** Deferred with the rest of outbound
+  attachment handling; the deep link is the safe reference in the meantime.
+- **Gate G6.** No provider, git, or Telegram credential has executed against any
+  of this. Packaged Desktop and real-bot smokes are outstanding.

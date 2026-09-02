@@ -436,7 +436,7 @@ test('a /work message produces a Telegram proposal with inline actions', async (
   assert.equal(sends.length, 2, 'an acknowledgement and a scope proposal are sent');
   const proposal = sends[1];
   assert.equal(proposal.chatId, CHAT_ID, 'delivery targets the originating chat (FR-43)');
-  assert.deepEqual(proposal.buttons, ['Start work', 'Adjust', 'Cancel']);
+  assert.deepEqual(proposal.buttons, ['Start work', 'Cancel']);
   assert.ok(proposal.text.includes('bridge-workspace'));
   assert.ok(proposal.text.includes('Commit only'));
   assert.ok(

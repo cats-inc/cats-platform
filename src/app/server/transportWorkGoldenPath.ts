@@ -34,6 +34,10 @@ import {
   resolveTransportWorkPermissionEnvelope,
   type TransportWorkWorkspaceCapability,
 } from '../../platform/transports/work-delivery/permissionEnvelope.js';
+import {
+  createTransportWorkTelemetry,
+  type TransportWorkTelemetrySnapshot,
+} from '../../platform/transports/work-delivery/telemetry.js';
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import {
@@ -71,6 +75,8 @@ export interface TransportWorkGoldenPathBundle {
   runner: WorkGoldenPathRunner | null;
   /** Desktop's read of the same readiness evaluation the transport uses. */
   readiness: TransportWorkReadinessReader;
+  /** Bounded operational counters; carries no message bodies or secrets. */
+  telemetry: { snapshot(): TransportWorkTelemetrySnapshot };
 }
 
 /**
@@ -184,8 +190,13 @@ export function createTransportWorkGoldenPath(
 
   let latestRelayContext: TelegramRelayContext | null = null;
 
+  // One instance shared by the outbox and the service, so a single snapshot
+  // describes the whole path rather than one layer of it.
+  const telemetry = createTransportWorkTelemetry();
+
   const outbox = createTransportWorkOutbox({
     now: input.now,
+    telemetry,
     send: createTelegramGoldenPathOutboxSender({
       telegramRelay: input.telegramRelay,
       resolveRelayContext: () => {
@@ -206,6 +217,7 @@ export function createTransportWorkGoldenPath(
     coreStore: input.coreStore,
     outbox,
     deliveryClient,
+    telemetry,
     now: input.now,
   });
 
@@ -377,5 +389,12 @@ export function createTransportWorkGoldenPath(
     },
   });
 
-  return { port, service, outbox, runner, readiness: { describe: describeReadiness } };
+  return {
+    port,
+    service,
+    outbox,
+    runner,
+    readiness: { describe: describeReadiness },
+    telemetry,
+  };
 }

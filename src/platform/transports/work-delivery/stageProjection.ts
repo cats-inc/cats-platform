@@ -130,7 +130,7 @@ export function projectTransportWorkStage(
       ...base,
       stage: 'result_ready',
       rationale: 'Result evidence is accepted but a delivery gate still requires an owner decision.',
-      allowedActions: ['publish', 'deny', 'adjust', 'cancel', 'view'],
+      allowedActions: ['publish', 'deny', 'cancel', 'view'],
     };
   }
 
@@ -180,7 +180,8 @@ export function projectTransportWorkStage(
       ...base,
       stage: 'scope_proposed',
       rationale: 'A versioned scope proposal is visible and awaiting owner authorization.',
-      allowedActions: ['start_work', 'adjust', 'cancel', 'view'],
+      // `adjust` is withdrawn until the FR-16 clarification loop exists.
+      allowedActions: ['start_work', 'cancel', 'view'],
     };
   }
 

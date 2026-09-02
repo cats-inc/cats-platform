@@ -449,6 +449,8 @@ export function resolveServerDependencies(
       transportWorkDelivery: dependencies.work?.transportWorkDelivery ?? transportWorkGoldenPath?.outbox,
       transportWorkReadiness: dependencies.work?.transportWorkReadiness
         ?? transportWorkGoldenPath?.readiness,
+      transportWorkTelemetry: dependencies.work?.transportWorkTelemetry
+        ?? transportWorkGoldenPath?.telemetry,
       runtimeClient: dependencies.work?.runtimeClient ?? dependencies.shared.runtimeClient,
       runtimeTarget: dependencies.work?.runtimeTarget,
       scheduleStore: dependencies.work?.scheduleStore

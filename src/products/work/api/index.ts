@@ -94,6 +94,7 @@ import {
   WORK_API_TASK_GOLDEN_PATH_RETRY_DELIVERY_PATTERN,
   WORK_API_TASK_SUPERVISED_RUN_PATTERN,
   WORK_API_DELIVERY_READINESS_PATH,
+  WORK_API_DELIVERY_TELEMETRY_PATH,
   WORK_API_TASKS_PATH,
   WORK_API_WORK_ITEM_DETAIL_PATTERN,
   WORK_API_WORK_ITEMS_PATH,
@@ -147,6 +148,11 @@ export interface WorkApiDependencies {
    * Desktop reports as "not enabled" rather than as "ready".
    */
   transportWorkReadiness?: TransportWorkReadinessReader;
+  /**
+   * Bounded operational counters (PLAN-105 Phase 6). Absent means the host runs
+   * unmeasured, which the endpoint reports as such.
+   */
+  transportWorkTelemetry?: { snapshot(): unknown };
   now?: () => Date;
 }
 
@@ -674,6 +680,19 @@ export async function routeWorkApi(
     } catch (error) {
       handleCoreError(context, error);
     }
+    return true;
+  }
+
+  if (context.url.pathname === WORK_API_DELIVERY_TELEMETRY_PATH) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    const telemetry = context.dependencies.transportWorkTelemetry;
+    sendJson(context.response, 200, {
+      enabled: telemetry !== undefined,
+      snapshot: telemetry?.snapshot() ?? null,
+    });
     return true;
   }
 

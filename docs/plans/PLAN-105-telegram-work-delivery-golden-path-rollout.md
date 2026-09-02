@@ -73,7 +73,11 @@ persisted development state.
   while a removed binding fails rather than misrouting.
 - G5 → also covers the Desktop recovery surface: a failed final send is visible on Task
   detail with a retry that re-drives the same outbox row rather than sending twice.
-- G6 **not started** — no packaged Desktop or real-bot evidence.
+- G6 **partial** — the deterministic end-to-end suite, the restart matrix, the
+  attachment refusal check, telemetry counters, and rollout/rollback semantics all
+  land; the two credential-gated smokes (packaged Desktop, real bot) have not run,
+  so the gate is not clear. No provider, git, or Telegram credential has executed
+  against any of this.
 
 ## Implementation Phases
 
@@ -85,11 +89,14 @@ persisted development state.
       admitted, decision-needed, result-ready, and delivered messages.
 - [x] Resolve the first default delivery mode and which result types Telegram
       may carry directly.
-- [ ] Map every SPEC-114 requirement to the current implementation, a gap, or a
+- [x] Map every SPEC-114 requirement to the current implementation, a gap, or a
       deliberately deferred follow-up.
-      *Partial: the vertical slice covers FR-1..FR-3, FR-6..FR-13, FR-15,
-      FR-17..FR-27, FR-30..FR-33, FR-37..FR-48. A full requirement-by-requirement
-      trace matrix is still outstanding.*
+      *All 50 FRs traced in SPEC-114 "Requirement trace". 47 done, 2 partial
+      (FR-18 pending the clarification loop, FR-44 pending attachment/stable-URL
+      delivery), 1 gap (FR-16). The matrix found two live defects, both fixed:
+      `adjust` was offered on every proposal while `authorize` refused it, and
+      Task detail offered "Start run" on a golden-path Task that already had a
+      queued Run.*
 - [x] Document the derivation of each golden-path projected stage from existing
       Core, supervision, Artifact/Outcome, and transport receipt state.
 - [x] Confirm that no new Core record family is needed. If one is needed, stop
@@ -237,9 +244,13 @@ tokens, durable outbox/receipt behavior, and non-blocking update processing.
 - [x] Record approval provenance as Telegram owner authorization and expose it
       in Task detail.
 - [x] Return admitted/blocked state and a safe Desktop link through the outbox.
-- [ ] Keep manual Desktop approval and Start Run paths for non-golden-path work,
+- [x] Keep manual Desktop approval and Start Run paths for non-golden-path work,
       while avoiding a redundant second click for an already-admitted Telegram
       scope.
+      *The manual approve/reject/start controls are untouched; `canStartRun` now
+      also requires that no Run exists, which is exactly the golden-path shape
+      (admission approves and queues in one transaction). Before this it offered
+      a second click that would have started a second Run.*
 - [x] Test stale revision, changed policy, authorization mismatch, double tap,
       concurrent tap, failure between Task and Run persistence, and restart
       recovery.
@@ -324,29 +335,63 @@ action, final source-binding delivery, and durable receipt/retry state.
 
 ### Phase 6: Prove the Installed Golden Path and Roll It Out Safely
 
-- [ ] Add a deterministic end-to-end suite covering `/work` through delivered
+- [x] Add a deterministic end-to-end suite covering `/work` through delivered
       using isolated Core and Telegram fake-server state.
+      *`tests/work-golden-path-end-to-end.test.ts` drives a raw Telegram update
+      through the real bridge, real relay, real token store, real evidence
+      collector, and real outbox into isolated in-memory Core, asserting on wire
+      traffic and persisted records. Only the provider and the runtime's repo
+      calls are faked.*
 - [ ] Add packaged Desktop smoke that validates background services, binding
       readiness, callback polling, provider launch, Desktop projection, and
       recovery links.
 - [ ] Run one real Telegram smoke with a dedicated bot/binding and an explicit
       owner against both `artifact_only` and `commit_only`; capture redacted
       evidence and remove temporary test entities afterward.
-- [ ] Restart Cats at scope-proposed, admitted/running, result-ready,
+- [x] Restart Cats at scope-proposed, admitted/running, result-ready,
       publish-pending, and delivery-pending checkpoints and prove no duplicate
       Task, Run, commit/publish action, or final message.
-- [ ] Verify attachment-only input fails truthfully and does not pass a filename
+      *Covered in the end-to-end suite by rebuilding every process-local object
+      around surviving Core state — which is what a restart is here, since the
+      driver lives in the process and the ledger does not. Publish-pending
+      restart remains covered by the gated-publish suite's idempotency tests.*
+- [x] Verify attachment-only input fails truthfully and does not pass a filename
       to the agent as content.
-- [ ] Verify the host-offline/sleep limitation is visible in setup, status, and
+      *End-to-end: no Work Item is captured, the owner is told why, and the
+      assertion is specifically that the filename does not appear in the reply.*
+- [x] Verify the host-offline/sleep limitation is visible in setup, status, and
       support documentation.
-- [ ] Add telemetry/diagnostic counters for readiness failure, dedupe hit,
+      *Documented in `docs/services.md`, including the uncomfortable part: when
+      the host is asleep Telegram gets **no reply at all**, not an "offline"
+      message, because the process that would answer is the one that is not
+      running. The `background_service_unavailable` blocker is therefore
+      effectively unreachable from Telegram and its absence must not be read as
+      proof of uptime.*
+- [x] Add telemetry/diagnostic counters for readiness failure, dedupe hit,
       admission result, Run terminal state, decision latency, outbox retry, and
       delivery receipt without recording message bodies or secrets.
-- [ ] Gate rollout to one owner cohort, define rollback as disabling golden-path
+      *`platform/transports/work-delivery/telemetry.ts`, read through
+      `GET /api/work/delivery-telemetry`. "No message bodies or secrets" is a
+      property of the module rather than a rule call sites must remember: every
+      counter label comes from a closed set and anything else is refused at
+      runtime. Latency is counts and totals per bucket, never a sample list,
+      because a sample list is a timeline of one owner's activity.*
+- [x] Gate rollout to one owner cohort, define rollback as disabling golden-path
       callbacks while retaining Core/transport records, and review failure
       evidence before expanding.
-- [ ] Reconcile SPEC-114, PLAN-105, relevant older Telegram/Work docs, support
+      *Two gates already exist (`CATS_WORK_GOLDEN_PATH_ENABLED`, off by default,
+      and an explicit `..._OWNERS` list with no trust-on-first-use). Both, plus
+      the rollback semantics and the pre-expansion telemetry review, are now
+      written down in `docs/services.md`, and a test proves rollback reverts
+      `/work` to chat routing while every Core and transport record survives.*
+- [x] Reconcile SPEC-114, PLAN-105, relevant older Telegram/Work docs, support
       documentation, and index/status dates after acceptance.
+      *SPEC-114 carries the requirement trace; `docs/plans/README.md` and
+      `docs/specs/README.md` status lines and dates updated; `docs/api.md`
+      documents the readiness, telemetry, capability-bootstrap, and changed
+      webhook contracts; `docs/services.md` documents rollout, rollback, and the
+      host-offline limit. Left deliberately un-reconciled: the G6 rows, which
+      stay open because no real smoke has run.*
 
 **Deliverables**: isolated E2E suite, packaged and real-bot evidence,
 restart/failure matrix, diagnostics, rollback, and rollout notes.
@@ -394,6 +439,9 @@ Platform (transport-neutral, no product imports):
   resolution including the first-slice high-side-effect rule.
 - `src/platform/transports/work-delivery/inboundClassification.ts` — new. `/work` parsing
   and truthful attachment refusal.
+- `src/platform/transports/work-delivery/telemetry.ts` — new. Bounded counters with
+  a closed label set, so free text cannot reach a counter name.
+- `src/server/routes/providerCapabilityBootstrap.ts` — new (see Phase 1).
 - `src/platform/transports/telegram/commandPort.ts` — new. The command port both
   ingress modes use; an interface because answering commands needs product state.
 - `src/app/server/telegramCommandSurface.ts` — new. Its host implementation, including
@@ -727,10 +775,11 @@ Docs:
 | 2026-09-02 | Webhook ingress decoupled, closing the Phase 2 item and G2. The webhook had the same defect the poll loop did, with a sharper edge: Telegram waits for the response and redelivers when it takes too long, so a long assistant turn produced a held connection *and* a redelivered update. It now answers 202 on acceptance and runs the room turn detached. Two old paths were deleted rather than kept alongside, per the pre-release policy: the 202 body is now the ingress receipt instead of the post-bridge one (routing moved to transport status/diagnostics, where three route tests now read it), and a mid-bridge failure no longer answers 500 — once Telegram has been told the update was accepted there is no response left to fail on, so it surfaces as the delivery receipt and in-room `runtime_error` the bridge already recorded. The design point worth keeping: **admission is decided before the update is consumed**. `receiveUpdate` marks an update processed, so refusing after it would make Telegram's redelivery answer `duplicate_update` and lose the message outright; a saturated binding therefore answers 429 with the update untouched, and a test proves the redelivered copy is then processed for real. The bounded hand-off was extracted into `ingressDispatch.ts` and is shared by both modes, so a binding's ceiling covers either way an update arrives; it deliberately never refuses work, because a caller holding a consumed update has nowhere to put a refusal. Both new behaviours are mutation-checked: restoring the `await` fails all three new webhook tests, and moving the admission check after `receiveUpdate` fails exactly the one test that guards it. Also made the pre-existing restart test deterministic — it had been asserting on a race between the detached turn and host teardown. 3 new tests, 3 rewritten. Full `npm test`: 4385 tests, 4342 pass, 40 skipped, 3 fail — the same three pre-existing `unix-provider-scripts` bash-3.2 failures, unrelated to this work. `docs/api.md` records the new webhook contract. |
 | 2026-09-02 | G1's two gaps closed. **Permission envelope**: `permissionSufficient: workspacePath !== null` was a placeholder, and the more serious half of it was the scope it granted — `broad_write`, which classifies externally-visible, destructive, and expensive tools. That silently contradicted the design's own rule that execution authorization must not clear a publish gate: a run could have pushed or deployed through its own provider tools while Cats still showed publication waiting on an owner approval. The envelope is now capped at `narrow_write` for *every* delivery mode, because external effects belong to the gated delivery API; a mode with bigger side effects needs a gate, not a wider grant. It is also now derived from what the runtime observes rather than what an operator claimed: the workspace is probed via `/delivery/repo/status`, an uninspectable path grants nothing instead of being optimistically assumed usable, and a commit-backed mode against a plain directory is refused before the run starts rather than failing deep inside a provider turn. The unverified `CATS_WORK_GOLDEN_PATH_WORKSPACE_IS_REPO` setting is deleted — the runtime answers that question now. **Desktop surface**: `GET /api/work/delivery-readiness` and a panel on `/settings/work` show the same evaluation the transport uses, from one `evaluateBinding` closure; only the admission path advances the run-scoped latches, so a Desktop read cannot move the tool scope a pending run will execute under. Writing the "every blocker links somewhere real" test found that three of the ten remediation paths — `/settings/cats/telegram`, `/settings/providers`, `/work/projects` — were not routes at all, so following a "fix this" link landed on the settings not-found page; all ten now resolve, and a test that parses the route table keeps them honest. The generic `permission_insufficient` reason is gone, replaced by `workspace_unreachable` and `workspace_not_a_repository`, because collapsing distinct prerequisites into one code is what made the old surface unactionable. 11 new tests (150 golden-path tests total), plus 10 test fixtures migrated to the envelope shape. Full `npm test`: 4396 tests, 4353 pass, 40 skipped, 3 fail — the same three pre-existing `unix-provider-scripts` bash-3.2 failures, unrelated to this work. G1 stays **partial**: its two remaining items are provider capability bootstrap having no supported Settings path, and `/status` not reporting degraded local execution — neither is a readiness gap. |
 | 2026-09-02 | G1's last two Phase 1 items closed, and the gate with them. **`/status`**: the plan said "ensure `/status` *continues* to report binding health", but it never did — transport slash commands were intercepted in the webhook route only, so on long polling (the default ingress, and what the dev loop and `cats-one` boot chain use) `/status` was forwarded to the assistant as ordinary chat text. Command handling moved into the bridge behind a narrow port, so both ingress modes answer identically; the port is an interface because answering commands needs the chat store and `platform/` must not import product code. `/status` now reports ingress health and delegation state, naming every missing prerequisite, and a readiness lookup that throws reports "could not be checked" rather than ready — FR-5 forbids implying the host can honour work when that is unknown. The webhook route lost ~40 lines and its private mode-switching helpers along with them. **Capability bootstrap**: the config was file-only, and its load diagnostics were collected into a sink that no surface rendered, so a malformed file failed silently. `GET/POST /api/providers/capability-bootstrap` plus a panel on `/settings/assistants` — where the `capability_profile_missing` blocker links — now show the path, parse state, rules in effect, and diagnostics, and install the bundled example once, refusing to overwrite a file an operator may have written by hand. Two things were deliberately left out and said so rather than faked: rule authoring stays in the YAML, where each rule is documented in place; and there is no live reload, because the loaded config is passed by value into the chat dispatch adapters when the host is composed — the view reports `restartRequired` instead of pretending. 17 new tests. Full `npm test`: 4412 tests, 4369 pass, 40 skipped, 3 fail — the same three pre-existing `unix-provider-scripts` bash-3.2 failures, unrelated to this work. |
+| 2026-09-02 | Phase 6 closed apart from the two credential-gated smokes, and the Phase 0 trace matrix with it. All 50 SPEC-114 requirements are now mapped in the SPEC: 47 done, 2 partial, 1 gap. Writing the matrix was worth more than the matrix: it found two live defects. **`adjust` was a button that always failed** — it was offered on every proposal while `authorize` had no branch for it, so tapping it returned `action_not_allowed`. Rather than leave it, the action is removed from the `TransportWorkAction` union entirely, which makes "offer an action nothing handles" a type error instead of a discipline problem; it returns with the FR-16 clarification loop, which is the real gap (intake captures per Telegram update ref, so a follow-up message would open a *parallel* Work Item). **Task detail offered "Start run" on a golden-path Task that already had a queued Run** — `canStartRun` checked only `status === "approved"`, but admission approves and queues in one transaction, so this was exactly the redundant second click FR-24 forbids and taking it would have started a second Run. New: a deterministic end-to-end suite that drives a raw Telegram update through the real bridge, relay, token store, evidence collector, and outbox into isolated Core, asserting on wire traffic and persisted records rather than on function returns — only the provider and the runtime's repo calls are faked; a restart matrix that rebuilds every process-local object around surviving Core state at each checkpoint and proves no duplicate Task, Run, outcome, or final message; bounded telemetry counters where "no message bodies or secrets" is enforced by a closed label set rather than by call-site discipline, read through `GET /api/work/delivery-telemetry`; and a rollback test proving `/work` reverts to chat routing with every Core and transport record intact. Documented the host-offline limit honestly in `docs/services.md`, including the part that is not reassuring: when the host is asleep Telegram gets **no reply at all**, so the absence of a `background_service_unavailable` blocker must not be read as proof of uptime. 18 new tests. Full `npm test`: 4478 tests, 4435 pass, 40 skipped, 3 fail — the same three pre-existing `unix-provider-scripts` bash-3.2 failures, unrelated to this work. |
 ---
 
 *Created: 2026-09-02*
 
 *Author: Codex*
 
-*Last updated: 2026-09-02 (vertical slice through gate G1)*
+*Last updated: 2026-09-02 (Phases 0-5 complete; Phase 6 closed apart from the credential-gated smokes)*
