@@ -1,3 +1,7 @@
+import type {
+  WorkGoldenPathRetryDeliveryResult,
+  WorkGoldenPathRunLifecycleResult,
+} from '../../api/index.js';
 import { expectJson } from './http.js';
 import {
   buildWorkApiProjectPath,
@@ -331,6 +335,50 @@ export async function startWorkTaskSupervisedRun(
     signal,
   });
   return expectJson<WorkSupervisedRunLaunchProjection>(response, errorMessage);
+}
+
+/**
+ * Re-drives a delivery the transport could not complete (SPEC-114 FR-46).
+ *
+ * The server keeps the outbox row as the idempotency record, so pressing this
+ * twice cannot produce two Telegram messages.
+ */
+/**
+ * Retries or resumes a golden-path Run from Desktop (SPEC-114 FR-29).
+ *
+ * Desktop only asks for the transition; the host that owns the runner drives
+ * the Run, so there is one driver regardless of which surface asked.
+ */
+export async function applyWorkGoldenPathRunLifecycle(
+  taskId: string,
+  action: 'retry' | 'resume',
+  signal?: AbortSignal,
+): Promise<WorkGoldenPathRunLifecycleResult> {
+  const response = await fetch(
+    `${buildWorkApiTaskPath(taskId)}/golden-path/lifecycle/${action}`,
+    { method: 'POST', headers: { Accept: 'application/json' }, signal },
+  );
+  return expectJson<WorkGoldenPathRunLifecycleResult>(
+    response,
+    'The run lifecycle action failed.',
+  );
+}
+
+export async function retryWorkGoldenPathDelivery(
+  taskId: string,
+  signal?: AbortSignal,
+): Promise<WorkGoldenPathRetryDeliveryResult> {
+  const response = await fetch(`${buildWorkApiTaskPath(taskId)}/golden-path/retry-delivery`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
+  });
+  return expectJson<WorkGoldenPathRetryDeliveryResult>(
+    response,
+    'Retrying the transport delivery failed.',
+  );
 }
 
 export async function performWorkTaskActionEnvelope(

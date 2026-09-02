@@ -1,4 +1,9 @@
 import {
+  buildWorkGoldenPathDetailProjectionForTask,
+  type TransportWorkDeliveryReader,
+  type WorkGoldenPathDetailProjection,
+} from './goldenPathProjection.js';
+import {
   listCoreOperatorInboxItems,
   summarizeCoreOperatorInboxItems,
   type CoreOperatorInboxItem,
@@ -519,6 +524,11 @@ export interface WorkTaskDetailProjection {
     summary: CoreTaskTimelineQuerySummary;
     view: CoreTaskTimelineView;
   };
+  /**
+   * Present only for work that arrived through a transport (SPEC-114 FR-49).
+   * Null for a Task created in Desktop.
+   */
+  goldenPath: WorkGoldenPathDetailProjection | null;
 }
 
 export interface WorkSupervisedRunLaunchProjection {
@@ -1376,6 +1386,7 @@ export function buildWorkTaskDetailProjection(
   core: CatsCoreState,
   task: CoreTaskRecord,
   evidenceEvents: EvidenceEvent[] = [],
+  deliveryReader?: TransportWorkDeliveryReader,
 ): WorkTaskDetailProjection {
   const timeline = buildWorkTaskTimelineProjection(core, task, evidenceEvents);
   const inspection = buildCoreTaskInspectionView(core, task);
@@ -1427,6 +1438,11 @@ export function buildWorkTaskDetailProjection(
       summary: timeline.summary,
       view: timeline.view,
     },
+    goldenPath: buildWorkGoldenPathDetailProjectionForTask({
+      core,
+      taskId: task.id,
+      deliveryReader,
+    }),
   };
 }
 

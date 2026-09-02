@@ -23,6 +23,7 @@ import {
   isGuideCatEnabledStatus,
   resolveClientGuideCatName,
 } from '../../../shared/guideCatIdentity.js';
+import { CapabilityBootstrapSection } from './CapabilityBootstrapSection.js';
 import { useI18n } from '../i18n/index.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import { readSettingsAssistantsApiErrorMessage } from './settingsAssistantsApiErrors.js';
@@ -715,6 +716,7 @@ export function SettingsAssistants({
             </div>
           ) : null}
         </SettingsSection>
+        <CapabilityBootstrapSection />
       </div>
       <ConfirmDialog dialog={dialog} onClose={handleClose} />
       <ToastContainer toasts={toasts} />

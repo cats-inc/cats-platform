@@ -723,3 +723,53 @@ main.canvas:has(> .taskDetail) {
   color: var(--text);
   font-style: normal;
 }
+
+/* Transport golden path (SPEC-114 FR-49). */
+
+.taskDetail__goldenPathRationale {
+  margin: 0 0 12px;
+  color: var(--text-muted, #6b7280);
+  font-size: 13px;
+}
+
+.taskDetail__goldenPath h3 {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.taskDetail__goldenPathAttempts,
+.taskDetail__goldenPathBlockers {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.taskDetail__goldenPathAttempt {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.taskDetail__goldenPathError {
+  color: var(--danger, #b91c1c);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}
+
+.taskDetail__goldenPathReceipt {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text-muted, #6b7280);
+}
+
+.taskDetail__goldenPathActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}

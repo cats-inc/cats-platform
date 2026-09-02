@@ -48,6 +48,9 @@ Port numbers should be configurable via environment variables so developers can 
 | `CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS` | `60000` | Runtime client | Timeout budget for runtime session creation and provider/workspace startup |
 | `CATS_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS` | `max(2000, budget / 6)` | Runtime client | Threshold above which a successful session create still emits a `slow_session_create` diagnostic record (see ADR-089) |
 | `CATS_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS` | `120000` | Runtime client | Idle timeout for NDJSON message streams; reset whenever the runtime emits another chunk. Depends on the runtime keepalive contract documented in ADR-089 |
+| `CATS_WORK_GOLDEN_PATH_ENABLED` | `false` | Telegram work delivery | Enables the SPEC-114 `/work` golden path; disabled by default. Turning it off is the rollback: Core and transport records survive and `/work` reverts to ordinary chat routing |
+| `CATS_WORK_GOLDEN_PATH_OWNERS` | empty | Telegram work delivery | Comma-separated Telegram user ids allowed to delegate work (SPEC-114 FR-1). Empty means nobody is authorized and the bot says so; there is no trust-on-first-use path |
+| `CATS_WORK_GOLDEN_PATH_WORKSPACE` | empty | Telegram work delivery | Absolute workspace the first slice executes against. Unset reports `workspace_missing` readiness rather than guessing |
 | `CATS_CODE_LIVE_PREVIEW_ENABLED` | `false` | Cats Code live preview | Enables the supervised live-preview substrate after PLAN-097 approval; disabled by default |
 | `CATS_CODE_LIVE_PREVIEW_USE_REAL_PROCESS_ADAPTER` | `false` | Cats Code live preview | Switches the supervisor from the inert adapter to the real `child_process.spawn` adapter; only takes effect when `_ENABLED` is also true and an approved profile is registered |
 | `CATS_CODE_LIVE_PREVIEW_PORT_RANGE` | `47100-47199` | Cats Code live preview | Candidate loopback port range for supervised preview child processes |

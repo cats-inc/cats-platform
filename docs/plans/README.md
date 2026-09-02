@@ -46,7 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
-| [PLAN-105](./PLAN-105-telegram-work-delivery-golden-path-rollout.md) | Telegram Work Delivery Golden Path Rollout | Draft | [SPEC-114](../specs/SPEC-114-telegram-work-delivery-golden-path.md), [ADR-112](../decisions/112-adopt-a-core-owned-transport-work-delivery-golden-path.md) |
+| [PLAN-105](./PLAN-105-telegram-work-delivery-golden-path-rollout.md) | Telegram Work Delivery Golden Path Rollout | In Progress — `/work` runs end to end from Telegram ingress through a supervised continuation loop to a Cats-verified commit, a delivery receipt, and a Desktop inspection/recovery surface (disabled by default); packaged/real-bot proof outstanding | [SPEC-114](../specs/SPEC-114-telegram-work-delivery-golden-path.md), [ADR-112](../decisions/112-adopt-a-core-owned-transport-work-delivery-golden-path.md) |
 | [PLAN-104](./PLAN-104-admin-bootstrap-and-google-account-linking-rollout.md) | Admin Bootstrap and Google Account Linking Rollout | Ready — approved, not started | [SPEC-113](../specs/SPEC-113-admin-bootstrap-and-google-account-linking.md), [ADR-111](../decisions/111-keep-first-admin-local-and-require-step-up-for-google-linking.md) |
 | [PLAN-103](./PLAN-103-packaged-provider-helper-smoke-verification.md) | Packaged Provider Helper Smoke Verification | Blocked — waiting on a built desktop package | [SPEC-112](../specs/SPEC-112-grok-devin-cline-aider-in-packaged-setup-and-provider-catalog.md) |
 | [PLAN-102](./PLAN-102-grok-devin-cline-aider-packaged-setup-rollout.md) | Grok, Devin, Cline, and Aider Packaged Setup Rollout | In Progress — all four ported; Grok, Cline, and Devin executable; packaged smoke deferred to PLAN-103 | [SPEC-112](../specs/SPEC-112-grok-devin-cline-aider-in-packaged-setup-and-provider-catalog.md), [ADR-109](../decisions/109-port-grok-devin-cline-aider-installers-into-packaged-setup.md) |
@@ -159,6 +159,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-09-02 (PLAN-105 Telegram work delivery rollout drafted; PLAN-104 decision gate resolved.)*
+*Last updated: 2026-09-02 (PLAN-105 first golden-path vertical slice implemented; PLAN-104 decision gate resolved.)*
 
 *See also: [specs/](../specs/) for feature specifications*

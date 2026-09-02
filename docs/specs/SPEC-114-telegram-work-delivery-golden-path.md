@@ -7,7 +7,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Approved |
 | **Owner** | Codex |
 | **Reviewer** | Owner |
 | **Related ADR** | [ADR-112](../decisions/112-adopt-a-core-owned-transport-work-delivery-golden-path.md) |

@@ -246,3 +246,73 @@
 /* Danger-zone actions rely on the same `.settings-section > * + *` row
  * gap that every other section uses. For multi-button rows, callers
  * wrap children in `<SettingsActionBar>`. */
+
+/**
+ * Provider capability bootstrap panel (PLAN-105 Phase 1).
+ *
+ * Lives with the settings primitives because it is mounted from an
+ * integration-owned settings page rather than a product tree.
+ */
+.capabilityBootstrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.capabilityBootstrapFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+}
+
+.capabilityBootstrapFacts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.capabilityBootstrapFacts dt {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.capabilityBootstrapFacts dd {
+  margin: 0;
+  font-size: 13px;
+  /* Config paths are long and must not push the card wide. */
+  overflow-wrap: anywhere;
+}
+
+.capabilityBootstrapSubTitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.capabilityBootstrapRules,
+.capabilityBootstrapDiagnostics {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.capabilityBootstrapRules li,
+.capabilityBootstrapDiagnostics li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+}
+
+.capabilityBootstrapRuleId {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}

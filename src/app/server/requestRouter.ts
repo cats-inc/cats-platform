@@ -27,6 +27,10 @@ import {
   handleRefreshProviderCatalogs,
 } from '../../server/routes/providers.js';
 import {
+  handleProviderCapabilityBootstrapAction,
+  handleProviderCapabilityBootstrapRead,
+} from '../../server/routes/providerCapabilityBootstrap.js';
+import {
   handleTelegramDiagnostics,
   handleTelegramPollingReconnect,
   handleTelegramPollingStatus,
@@ -450,6 +454,7 @@ export async function routeRequest(
       orchestratorPlannerSurface: dependencies.chat.orchestratorPlannerSurface,
       telegramRelay: dependencies.chat.telegramRelay,
       telegramRoomBridge: dependencies.chat.telegramRoomBridge,
+      transportWorkGoldenPath: dependencies.chat.transportWorkGoldenPath?.port ?? null,
       pollingSupervisor: dependencies.chat.pollingSupervisor,
       telegramCommandSurfaceSync: dependencies.chat.telegramCommandSurfaceSync,
       companionStore: dependencies.chat.companionStore,
@@ -612,6 +617,27 @@ export async function routeRequest(
     return;
   }
 
+  if (url.pathname === '/api/providers/capability-bootstrap') {
+    const bootstrapDependencies = {
+      configPath: dependencies.shared.config.providerCapabilityBootstrapConfigPath,
+      bundledExamplePath:
+        dependencies.shared.config.providerCapabilityBootstrapBundledExamplePath ?? null,
+      now: dependencies.shared.now ?? (() => new Date()),
+      bootedWithConfig: dependencies.shared.providerCapabilityBootstrapConfig != null,
+    };
+    if (method === 'GET') {
+      handleProviderCapabilityBootstrapRead(response, bootstrapDependencies);
+      return;
+    }
+    if (method === 'POST') {
+      const body = await readJsonBody<{ action?: unknown }>(request);
+      handleProviderCapabilityBootstrapAction(response, bootstrapDependencies, body?.action);
+      return;
+    }
+    sendMethodNotAllowed(response, ['GET', 'POST']);
+    return;
+  }
+
   if (url.pathname === '/api/providers/models/refresh') {
     if (method !== 'POST') {
       sendMethodNotAllowed(response, ['POST']);
@@ -703,10 +729,13 @@ export async function routeRequest(
       {
         chatStore: dependencies.chat.chatStore,
         telegramRoomBridge: dependencies.chat.telegramRoomBridge,
+        transportWorkGoldenPath: dependencies.chat.transportWorkGoldenPath?.port ?? null,
         memoryService: dependencies.chat.memoryService,
         telegramRelay: dependencies.chat.telegramRelay,
         runtimeClient: dependencies.shared.runtimeClient,
         eventHub: dependencies.chat.eventHub,
+        ingressDispatcher: dependencies.chat.telegramIngressDispatcher,
+        telegramCommands: dependencies.chat.telegramCommands,
         now: dependencies.shared.now,
       },
       telegramWebhookMatch[0],

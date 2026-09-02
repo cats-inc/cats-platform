@@ -1,3 +1,10 @@
+import { applyWorkGoldenPathLifecycleAction } from '../state/workGoldenPathLifecycle.js';
+import {
+  buildWorkGoldenPathDetailProjectionForTask,
+  type TransportWorkDeliveryReader,
+  type TransportWorkDeliveryRecovery,
+  type WorkGoldenPathDetailProjection,
+} from './goldenPathProjection.js';
 import type { CoreStore } from '../../../core/store.js';
 import type {
   CatsCoreState,
@@ -83,7 +90,10 @@ import {
   WORK_API_RUNS_PATH,
   WORK_API_TASK_DETAIL_PATTERN,
   WORK_API_TASK_SUPERVISED_RUN_ACTION_PATTERN,
+  WORK_API_TASK_GOLDEN_PATH_LIFECYCLE_PATTERN,
+  WORK_API_TASK_GOLDEN_PATH_RETRY_DELIVERY_PATTERN,
   WORK_API_TASK_SUPERVISED_RUN_PATTERN,
+  WORK_API_DELIVERY_READINESS_PATH,
   WORK_API_TASKS_PATH,
   WORK_API_WORK_ITEM_DETAIL_PATTERN,
   WORK_API_WORK_ITEMS_PATH,
@@ -110,6 +120,14 @@ export interface WorkRuntimeTargetOverride {
   cwd?: string | null;
 }
 
+/**
+ * Re-exported shape rather than an import from `app/server`: products must not
+ * depend on host composition, so the host satisfies this structurally.
+ */
+export interface TransportWorkReadinessReader {
+  describe(): Promise<unknown>;
+}
+
 export interface WorkApiDependencies {
   coreStore: CoreStore;
   runtimeClient?: RuntimeClient;
@@ -118,6 +136,17 @@ export interface WorkApiDependencies {
   evidenceDataDir?: string;
   readEvidenceEvents?: (conversationId: string) => EvidenceEvent[];
   externalIssueImport?: ExternalIssueImportFetchOptions;
+  /**
+   * Read-only view of the transport delivery outbox (SPEC-114 FR-49).
+   * Absent means Desktop shows work without its transport receipts.
+   */
+  transportWorkDelivery?: TransportWorkDeliveryReader;
+  /**
+   * Delegation readiness, evaluated by the same code the transport uses
+   * (SPEC-114 FR-3). Absent means the golden path is off for this host, which
+   * Desktop reports as "not enabled" rather than as "ready".
+   */
+  transportWorkReadiness?: TransportWorkReadinessReader;
   now?: () => Date;
 }
 
@@ -130,13 +159,142 @@ export function createWorkDashboardPayload(
   return buildWorkDashboardProjection(core);
 }
 
+export interface WorkGoldenPathRunLifecycleResult {
+  status: 'redrivable' | 'refused' | 'not_available';
+  action: 'retry' | 'resume';
+  runId: string | null;
+  reason: string | null;
+  goldenPath: WorkGoldenPathDetailProjection | null;
+}
+
+/**
+ * Retries or resumes a golden-path Run from Desktop (SPEC-114 FR-29, FR-35).
+ *
+ * Desktop performs the state transition; it does not drive the run. The host
+ * that owns the runner picks the Run up, exactly as it does for a Telegram
+ * retry, so there is one driver rather than one per surface.
+ */
+export async function applyWorkGoldenPathRunLifecycle(
+  dependencies: WorkApiDependencies,
+  taskId: string,
+  action: 'retry' | 'resume',
+): Promise<WorkGoldenPathRunLifecycleResult> {
+  const core = await dependencies.coreStore.readCore();
+  const projection = buildWorkGoldenPathDetailProjectionForTask({
+    core,
+    taskId,
+    deliveryReader: dependencies.transportWorkDelivery,
+  });
+  if (projection === null) {
+    return {
+      status: 'not_available',
+      action,
+      runId: null,
+      reason: `Task ${taskId} did not arrive through a transport.`,
+      goldenPath: null,
+    };
+  }
+
+  const result = await applyWorkGoldenPathLifecycleAction(
+    dependencies.coreStore,
+    {
+      workItemId: projection.workItemId,
+      action,
+      actorRef: 'actor-work-golden-path',
+      ownerActorId: core.ownerProfile.actorId,
+    },
+    dependencies.now,
+  );
+
+  return {
+    status: result.status === 'refused' ? 'refused' : 'redrivable',
+    action,
+    runId: result.runId,
+    reason: result.reason,
+    goldenPath: buildWorkGoldenPathDetailProjectionForTask({
+      core: await dependencies.coreStore.readCore(),
+      taskId,
+      deliveryReader: dependencies.transportWorkDelivery,
+    }),
+  };
+}
+
+export interface WorkGoldenPathRetryDeliveryResult {
+  status: 'delivered' | 'still_failing' | 'not_available';
+  reason: string | null;
+  goldenPath: WorkGoldenPathDetailProjection | null;
+}
+
+/**
+ * Re-drives a delivery the transport could not complete (SPEC-114 FR-46).
+ *
+ * The outbox row remains the idempotency record, so a row that already reached
+ * `sent` is returned untouched rather than sent again.
+ */
+export async function retryWorkGoldenPathDelivery(
+  dependencies: WorkApiDependencies,
+  taskId: string,
+): Promise<WorkGoldenPathRetryDeliveryResult> {
+  const recovery = dependencies.transportWorkDelivery;
+  if (recovery === undefined || typeof (recovery as TransportWorkDeliveryRecovery).flush !== 'function') {
+    return {
+      status: 'not_available',
+      reason: 'No transport delivery outbox is available on this host.',
+      goldenPath: null,
+    };
+  }
+
+  const core = await dependencies.coreStore.readCore();
+  const projection = buildWorkGoldenPathDetailProjectionForTask({
+    core,
+    taskId,
+    deliveryReader: recovery,
+  });
+  if (projection === null) {
+    return {
+      status: 'not_available',
+      reason: `Task ${taskId} did not arrive through a transport.`,
+      goldenPath: null,
+    };
+  }
+
+  const pending = projection.delivery.attempts.find(
+    (attempt) =>
+      (attempt.purpose === 'result' || attempt.purpose === 'publish_result')
+      && attempt.state !== 'sent',
+  );
+  if (pending === undefined) {
+    return {
+      status: 'not_available',
+      reason: 'There is no failed delivery to retry.',
+      goldenPath: projection,
+    };
+  }
+
+  const flushed = await (recovery as TransportWorkDeliveryRecovery).flush(pending.idempotencyKey);
+  const refreshed = buildWorkGoldenPathDetailProjectionForTask({
+    core: await dependencies.coreStore.readCore(),
+    taskId,
+    deliveryReader: recovery,
+  });
+
+  return {
+    status: flushed.row.state === 'sent' ? 'delivered' : 'still_failing',
+    reason: flushed.row.state === 'sent' ? null : flushed.row.lastErrorCode,
+    goldenPath: refreshed,
+  };
+}
+
 export function createWorkTaskDetailPayload(
   core: Awaited<ReturnType<CoreStore['readCore']>>,
   taskId: string,
   evidenceEvents: EvidenceEvent[] = [],
+  deliveryReader?: TransportWorkDeliveryReader,
 ): WorkTaskDetailProjection | null {
   const task = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
-  return task ? buildWorkTaskDetailProjection(core, task, evidenceEvents) : null;
+  return task
+    ? buildWorkTaskDetailProjection(core, task, evidenceEvents, deliveryReader)
+    : null;
 }
 
 export async function createWorkSupervisedRunPayload(
@@ -496,6 +654,29 @@ export async function routeWorkApi(
     return true;
   }
 
+  if (context.url.pathname === WORK_API_DELIVERY_READINESS_PATH) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    const reader = context.dependencies.transportWorkReadiness;
+    if (reader === undefined) {
+      sendJson(context.response, 200, {
+        enabled: false,
+        workspacePath: null,
+        authorizedOwnerCount: 0,
+        bindings: [],
+      });
+      return true;
+    }
+    try {
+      sendJson(context.response, 200, await reader.describe());
+    } catch (error) {
+      handleCoreError(context, error);
+    }
+    return true;
+  }
+
   if (context.url.pathname === WORK_API_TASKS_PATH) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
@@ -578,6 +759,60 @@ export async function routeWorkApi(
     }
 
     sendJson(context.response, 200, detail);
+    return true;
+  }
+
+  const goldenPathLifecycleMatch = matchRoute(
+    context.url.pathname,
+    WORK_API_TASK_GOLDEN_PATH_LIFECYCLE_PATTERN,
+  );
+  if (goldenPathLifecycleMatch) {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    const taskId = goldenPathLifecycleMatch[0];
+    const action = goldenPathLifecycleMatch[1] as 'retry' | 'resume' | undefined;
+    if (!taskId || !action) {
+      sendJson(context.response, 400, {
+        error: {
+          code: 'invalid_golden_path_lifecycle_action',
+          message: 'Task id and action are required.',
+        },
+      });
+      return true;
+    }
+    try {
+      const payload = await applyWorkGoldenPathRunLifecycle(context.dependencies, taskId, action);
+      sendJson(context.response, payload.status === 'refused' ? 409 : 200, payload);
+    } catch (error) {
+      handleCoreError(context, error);
+    }
+    return true;
+  }
+
+  const goldenPathRetryMatch = matchRoute(
+    context.url.pathname,
+    WORK_API_TASK_GOLDEN_PATH_RETRY_DELIVERY_PATTERN,
+  );
+  if (goldenPathRetryMatch) {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    const taskId = goldenPathRetryMatch[0];
+    if (!taskId) {
+      sendJson(context.response, 400, {
+        error: { code: 'invalid_task_id', message: 'Task id is required.' },
+      });
+      return true;
+    }
+    try {
+      const payload = await retryWorkGoldenPathDelivery(context.dependencies, taskId);
+      sendJson(context.response, payload.status === 'not_available' ? 409 : 200, payload);
+    } catch (error) {
+      handleCoreError(context, error);
+    }
     return true;
   }
 
@@ -668,7 +903,12 @@ export async function routeWorkApi(
       ? context.dependencies.readEvidenceEvents?.(task.conversationId) ?? []
       : [];
     const payload = task
-      ? buildWorkTaskDetailProjection(core, task, evidenceEvents)
+      ? buildWorkTaskDetailProjection(
+        core,
+        task,
+        evidenceEvents,
+        context.dependencies.transportWorkDelivery,
+      )
       : null;
     if (!payload) {
       sendJson(context.response, 404, {

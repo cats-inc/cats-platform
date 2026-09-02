@@ -3,6 +3,12 @@ import type { RuntimeClient } from '../../runtime/client.js';
 import type { CatsMemoryService } from '../../memory/index.js';
 import { telegramIpv4Fetch, type TelegramFetch } from './http.js';
 import {
+  createTelegramIngressDispatcher,
+  type TelegramIngressDispatcher,
+} from './ingressDispatch.js';
+import type { TransportWorkGoldenPathPort } from '../work-delivery/port.js';
+import type { TelegramCommandPort } from './commandPort.js';
+import {
   bridgeTelegramWebhookToRoom,
   type TelegramRoomBridge,
   type TelegramWebhookBridgeResult,
@@ -16,6 +22,14 @@ import type {
 import type { TelegramRelay } from './relay/index.js';
 
 export interface TelegramPollingSupervisor {
+  /**
+   * Waits for bridge work dispatched by the poll loops to settle.
+   *
+   * Drains the dispatcher this supervisor uses, which the host shares with
+   * webhook ingress. See `ingressDispatch.ts` for why this is not part of
+   * shutdown.
+   */
+  drain(): Promise<void>;
   startPolling(input: StartPollingInput): Promise<void>;
   stopPolling(bindingId: string): void;
   stopAll(): void;
@@ -36,6 +50,10 @@ export interface StartPollingInput {
   memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
+  /** SPEC-114 golden path. Absent means `/work` falls through to chat. */
+  goldenPath?: TransportWorkGoldenPathPort | null;
+  /** Transport-owned slash commands, shared with webhook ingress. */
+  commands?: TelegramCommandPort | null;
   onBridgeResult?: TelegramPollingBridgeResultHandler;
 }
 
@@ -47,6 +65,8 @@ export interface ReconcilePollingInput {
   memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
+  goldenPath?: TransportWorkGoldenPathPort | null;
+  commands?: TelegramCommandPort | null;
   onBridgeResult?: TelegramPollingBridgeResultHandler;
 }
 
@@ -121,6 +141,20 @@ export async function telegramDeleteWebhook(
   }
 }
 
+/**
+ * Update kinds this transport can process.
+ *
+ * `callback_query` is required by SPEC-114 FR-11: inline proposal actions
+ * (`Start work` / `Adjust` / `Cancel`) arrive as callback queries, and Telegram
+ * silently withholds any kind absent from `allowed_updates`. Webhook
+ * registration must send the same list so both ingress modes stay at parity.
+ */
+export const TELEGRAM_ALLOWED_UPDATE_KINDS = [
+  'message',
+  'edited_message',
+  'callback_query',
+] as const;
+
 export async function telegramGetUpdates(
   botToken: string,
   offset: number | null,
@@ -130,7 +164,7 @@ export async function telegramGetUpdates(
 ): Promise<TelegramWebhookUpdate[]> {
   const params: Record<string, string> = {
     timeout: String(timeout),
-    allowed_updates: JSON.stringify(['message', 'edited_message']),
+    allowed_updates: JSON.stringify([...TELEGRAM_ALLOWED_UPDATE_KINDS]),
   };
   if (offset !== null) {
     params.offset = String(offset);
@@ -157,6 +191,14 @@ export interface TelegramPollingSupervisorOptions {
   now?: () => Date;
   fetchImpl?: TelegramFetch;
   pollingTimeout?: number;
+  /**
+   * Shared with webhook ingress by the host, so a binding's in-flight ceiling
+   * covers both ways an update can arrive. Left unset, the supervisor keeps its
+   * own — which is what stand-alone tests want.
+   */
+  ingressDispatcher?: TelegramIngressDispatcher;
+  /** Ceiling for a dispatcher the supervisor creates itself. */
+  maxInFlightPerBinding?: number;
 }
 
 export function createTelegramPollingSupervisor(
@@ -166,6 +208,8 @@ export function createTelegramPollingSupervisor(
   const now = options.now ?? (() => new Date());
   const fetchImpl = options.fetchImpl ?? telegramIpv4Fetch;
   const pollingTimeout = options.pollingTimeout ?? 30;
+  const dispatcher = options.ingressDispatcher
+    ?? createTelegramIngressDispatcher({ maxInFlightPerKey: options.maxInFlightPerBinding });
 
   function toStatus(consumer: PollingConsumer): TelegramPollingStatus {
     return {
@@ -233,27 +277,48 @@ export function createTelegramPollingSupervisor(
           const receipt = telegramRelay.receiveUpdate({ update, context: scopedContext });
 
           if (receipt.status === 'accepted') {
-            try {
-              const bridgeResult = await bridgeTelegramWebhookToRoom({
-                update,
-                receipt,
-                context: scopedContext,
-                roomBridge,
-                memoryService: input.memoryService,
-                runtimeClient,
-                telegramRelay,
-                now: options.now,
-              });
+            // Backpressure before dispatching, never between two dispatches for
+            // the same room: the room lock is entered synchronously inside the
+            // bridge, so call order is processing order.
+            await dispatcher.waitForSlot(bindingId);
+
+            dispatcher.dispatch(bindingId, async () => {
               try {
-                input.onBridgeResult?.(bridgeResult);
+                const bridgeResult = await bridgeTelegramWebhookToRoom({
+                  update,
+                  receipt,
+                  context: scopedContext,
+                  roomBridge,
+                  memoryService: input.memoryService,
+                  runtimeClient,
+                  telegramRelay,
+                  goldenPath: input.goldenPath ?? null,
+                  commands: input.commands ?? null,
+                  now: options.now,
+                });
+                try {
+                  input.onBridgeResult?.(bridgeResult);
+                } catch {
+                  // Delivery already succeeded; UI/event hooks stay best-effort.
+                }
               } catch {
-                // Polling delivery already succeeded; UI/event hooks stay best-effort.
+                // Bridge errors are already handled inside bridgeTelegramWebhookToRoom
               }
-            } catch {
-              // Bridge errors are already handled inside bridgeTelegramWebhookToRoom
-            }
+            });
           }
 
+          // The offset advances on dispatch, not on completion (FR-14). A long
+          // assistant turn must not stop this binding — or any other — from
+          // receiving the next update.
+          //
+          // The cost is a wider crash window: an update whose bridge is still
+          // running when the next poll confirms the offset is not redelivered by
+          // Telegram after a host restart. That trade is deliberate. Holding the
+          // offset across a multi-minute provider turn would make one slow room
+          // silence the whole binding, and the work that matters — an admitted
+          // golden-path Run — survives in Core and is re-driven by the startup
+          // resume sweep. An update lost before admission is not recoverable
+          // here, and must not be papered over as if it were.
           if (updateId !== null) {
             consumer.offset = updateId + 1;
             consumer.lastProcessedUpdateId = updateId;
@@ -296,6 +361,10 @@ export function createTelegramPollingSupervisor(
   }
 
   return {
+    drain(): Promise<void> {
+      return dispatcher.drain();
+    },
+
     async startPolling(input: StartPollingInput): Promise<void> {
       const existing = consumers.get(input.bindingId);
       if (existing && existing.health !== 'stopped') {
@@ -372,6 +441,8 @@ export function createTelegramPollingSupervisor(
             memoryService: input.memoryService,
             runtimeClient: input.runtimeClient,
             telegramRelay: input.telegramRelay,
+            goldenPath: input.goldenPath,
+            commands: input.commands,
             onBridgeResult: input.onBridgeResult,
           });
         }
