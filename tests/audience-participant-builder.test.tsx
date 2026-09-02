@@ -29,7 +29,7 @@ test('audience participant builder maps chat cats into stack participants with c
   assert.deepEqual(participant, {
     key: 'cat:cat-1',
     name: 'Planner Cat',
-    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context',
+    executionLabel: 'Claude-CLI · Opus 5 (1M context)',
     avatarColor: '#ff9900',
     avatarUrl: 'https://example.com/cat.png',
     isCat: true,

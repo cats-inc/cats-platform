@@ -8,6 +8,7 @@ import {
   normalizeProductProviderModelId,
   resolveProductProviderId,
 } from './providerCatalog.js';
+import { resolveLiveProviderModelLabel } from './providerModelLabelRegistry.js';
 
 type ExecutionControlValue = string | number | boolean;
 type ExecutionControlMap = Record<string, ExecutionControlValue>;
@@ -86,7 +87,13 @@ function resolveBackendSuffix(
 function resolveModelLabel(provider: string, model: string | null | undefined): string | null {
   if (!model) return null;
   const normalizedModel = normalizeProductProviderModelId(provider, model) ?? model;
-  const catalogLabel = getProviderModels(provider).find((m) => m.value === normalizedModel)?.label;
+  // The runtime owns the version an alias resolves to, so a label it has served
+  // beats the static table, which can only carry whatever version was current
+  // when someone last edited it.
+  const liveLabel = resolveLiveProviderModelLabel(provider, model)
+    ?? resolveLiveProviderModelLabel(provider, normalizedModel);
+  const catalogLabel = liveLabel
+    ?? getProviderModels(provider).find((m) => m.value === normalizedModel)?.label;
   const fallbackLabel = provider === 'claude'
     && (normalizedModel === 'opus' || normalizedModel === 'sonnet' || normalizedModel === 'haiku')
     ? normalizedModel.charAt(0).toUpperCase() + normalizedModel.slice(1)

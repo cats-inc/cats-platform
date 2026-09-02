@@ -11,7 +11,7 @@ import {
 test('buildExecutionLabel derives backend suffixes from instance instead of rendering the raw instance id', () => {
   assert.equal(
     buildExecutionLabel('claude', 'cli/native', 'claude-opus-4-6'),
-    'Claude-CLI · Opus 4.7 with 1M context',
+    'Claude-CLI · Opus 5 (1M context)',
   );
   assert.equal(
     buildExecutionLabel('openclaw', 'agent/gateway', 'openclaw-coder'),
@@ -30,7 +30,7 @@ test('buildExecutionLabel derives backend suffixes from instance instead of rend
 test('buildExecutionLabel falls back to the product default instance when state has not persisted one yet', () => {
   assert.equal(
     buildExecutionLabel('claude', null, 'claude-opus-4-6'),
-    'Claude-CLI · Opus 4.7 with 1M context',
+    'Claude-CLI · Opus 5 (1M context)',
   );
   assert.equal(
     buildExecutionLabel('openclaw', null, 'openclaw-coder'),
@@ -52,7 +52,7 @@ test('buildExecutionLabel normalizes target-level CLI provider ids', () => {
 test('buildExecutionLabel treats runtime canonical default instances as backend aliases', () => {
   assert.equal(
     buildExecutionLabel('claude', 'default', 'claude-opus-4-6'),
-    'Claude-CLI · Opus 4.7 with 1M context',
+    'Claude-CLI · Opus 5 (1M context)',
   );
   assert.equal(
     buildExecutionLabel('kiro', 'default', 'claude-opus-4.6'),
@@ -74,11 +74,11 @@ test('buildExecutionLabel does not render raw instance identifiers in the chip l
 test('buildExecutionLabel resolves Claude native aliases to friendly model names', () => {
   assert.equal(
     buildExecutionLabel('claude', 'cli/native', 'opus'),
-    'Claude-CLI · Opus 4.7 with 1M context',
+    'Claude-CLI · Opus 5 (1M context)',
   );
   assert.equal(
     buildExecutionLabel('claude', 'cli/native', 'claude-opus-4-6'),
-    'Claude-CLI · Opus 4.7 with 1M context',
+    'Claude-CLI · Opus 5 (1M context)',
   );
 });
 

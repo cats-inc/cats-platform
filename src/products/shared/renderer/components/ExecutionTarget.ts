@@ -4,6 +4,7 @@ import {
   getProviderModels,
   normalizeProductProviderModelId,
 } from '../../../../shared/providerCatalog.js';
+import { resolveLiveProviderModelLabel } from '../../../../shared/providerModelLabelRegistry.js';
 import type {
   ProviderModelSelection,
   ProviderTargetSelection,
@@ -37,8 +38,13 @@ function resolveExecutionTargetModelLabel(value: ExecutionTargetValue): string {
   }
 
   const normalizedModel = normalizeProductProviderModelId(value.provider, model) ?? model;
-  const catalogLabel = getProviderModels(value.provider)
-    .find((option) => option.value === normalizedModel)?.label;
+  // Same precedence as resolveModelLabel: a runtime-served label names the
+  // version that is actually current, the static table only a remembered one.
+  const liveLabel = resolveLiveProviderModelLabel(value.provider, model)
+    ?? resolveLiveProviderModelLabel(value.provider, normalizedModel);
+  const catalogLabel = liveLabel
+    ?? getProviderModels(value.provider)
+      .find((option) => option.value === normalizedModel)?.label;
   return stripExecutionTargetModelDecorations(catalogLabel ?? normalizedModel);
 }
 
