@@ -5,6 +5,7 @@ import {
   type ProviderAdvancedModelCatalog,
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
+import { recordLiveProviderModelLabels } from '../../shared/providerModelLabelRegistry.js';
 
 export const PROVIDER_CATALOG_CLIENT_CACHE_TTL_MS = 15_000;
 export const PROVIDER_MODEL_CATALOG_LOAD_FAILED_WARNING =
@@ -207,10 +208,15 @@ export async function fetchProviderModelCatalogFromClientCache(options: {
         );
       }
 
-      return normalizeProviderModelCatalog(
+      const catalog = normalizeProviderModelCatalog(
         await readProviderCatalogJson(response, PROVIDER_MODEL_CATALOG_INCOMPLETE_WARNING),
         provider,
       );
+      // The runtime owns which version an alias points at, so record its labels
+      // for the formatters in src/shared/ that would otherwise fall back to the
+      // static table and name a stale version.
+      recordLiveProviderModelLabels(provider, catalog.models);
+      return catalog;
     },
   });
 }

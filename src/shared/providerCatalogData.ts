@@ -22,9 +22,12 @@ export const PRODUCT_PROVIDER_MODELS = {
   openclaw: [
     { value: 'openclaw-coder', label: 'openclaw-coder (default)', default: true },
   ],
+  // Offline fallback only: a runtime-served label wins via
+  // resolveLiveProviderModelLabel. Kept in step with the runtime's curated
+  // catalog so an offline shell does not name a version that has moved on.
   claude: [
-    { value: 'opus', label: 'Opus 4.7 with 1M context', default: true },
-    { value: 'sonnet', label: 'Sonnet 4.6' },
+    { value: 'opus', label: 'Opus 5 (1M context)', default: true },
+    { value: 'sonnet', label: 'Sonnet 5' },
     { value: 'haiku', label: 'Haiku 4.5' },
   ],
   codex: [
