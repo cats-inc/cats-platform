@@ -13,6 +13,13 @@ import type {
 } from './contracts.js';
 import { describeTelegramRoomRouting } from './mapping.js';
 import { normalizeTelegramAttachments } from './normalization.js';
+import {
+  classifyTransportWorkInbound,
+  isTransportWorkRequestText,
+} from '../work-delivery/inboundClassification.js';
+import type { TransportWorkGoldenPathPort } from '../work-delivery/port.js';
+import type { TelegramCommandPort } from './commandPort.js';
+import { normalizeMessageLocale } from '../../../shared/i18n/index.js';
 import type { TelegramRelay } from './relay/index.js';
 import {
   pickTelegramMessage,
@@ -1138,6 +1145,125 @@ export interface TelegramWebhookBridgeResult {
   messages: TelegramRoomBridgeMessage[];
 }
 
+/**
+ * Consumes a Telegram update on behalf of the golden path, or returns `null` to
+ * let the ordinary chat bridge handle it.
+ *
+ * Two SPEC-114 rules shape the order here:
+ *
+ *  - FR-12: a recognized callback is acknowledged to Telegram *before* any
+ *    product work starts, so the owner's button stops spinning immediately and
+ *    a slow admission cannot look like a dead bot.
+ *  - FR-48: an attachment is refused rather than reduced to a filename, but only
+ *    when the owner actually addressed `/work`. An ordinary chat photo keeps its
+ *    existing behaviour.
+ */
+async function routeTelegramGoldenPathUpdate(input: {
+  update: TelegramWebhookUpdate;
+  receipt: TelegramWebhookReceipt;
+  context: TelegramRelayContext;
+  goldenPath: TransportWorkGoldenPathPort;
+  telegramRelay: TelegramRelay;
+  message: TelegramMessagePayload | null;
+  sender: TelegramMessagePayload['from'] | null;
+  existingRoomId: string | null;
+}): Promise<TelegramWebhookBridgeResult | null> {
+  const chatId = input.receipt.chatId;
+  const conversationId = input.receipt.mappedConversationId;
+  if (chatId === null || conversationId === null) {
+    return null;
+  }
+  const bindingId = input.receipt.bindingId;
+  if (bindingId === null) {
+    return null;
+  }
+  // Telegram sends numeric user ids; normalize before it becomes an opaque ref.
+  const senderId = input.sender?.id;
+  const externalUserRef = typeof senderId === 'number'
+    ? String(senderId)
+    : readTelegramString(senderId);
+  const locale = readTelegramString(input.sender?.language_code);
+  const externalUpdateRef = input.receipt.updateId === null
+    ? null
+    : String(input.receipt.updateId);
+  if (externalUserRef === null || externalUpdateRef === null) {
+    return null;
+  }
+
+  const consumed = (deliveryReceipt: TelegramDeliveryReceipt | null): TelegramWebhookBridgeResult => ({
+    receipt: input.receipt,
+    roomId: input.existingRoomId,
+    roomCreated: false,
+    deliveryReceipt,
+    messages: [],
+  });
+
+  const callbackData = readTelegramString(input.update.callback_query?.data);
+  if (callbackData !== null && input.goldenPath.ownsCallback(callbackData)) {
+    let deliveryReceipt: TelegramDeliveryReceipt | null = null;
+    const callbackQueryId = readTelegramString(input.update.callback_query?.id);
+    if (callbackQueryId) {
+      deliveryReceipt = await input.telegramRelay.deliver({
+        request: {
+          operation: 'answer_callback',
+          conversationId,
+          chatId,
+          callbackQueryId,
+        },
+        context: input.context,
+      });
+    }
+    await input.goldenPath.handleActionCallback({
+      callbackData,
+      bindingId,
+      conversationId,
+      externalUserRef,
+      externalConversationRef: chatId,
+      ownerEventRef: callbackQueryId ?? externalUpdateRef,
+      locale,
+    });
+    return consumed(deliveryReceipt);
+  }
+
+  const text = extractMessageText(input.message);
+  if (!isTransportWorkRequestText(text)) {
+    return null;
+  }
+
+  const attachmentKinds = input.message
+    ? normalizeTelegramAttachments(input.message).map((attachment) => attachment.kind)
+    : [];
+  const classification = classifyTransportWorkInbound({ text, attachmentKinds });
+
+  if (classification.kind === 'work_command' && classification.goal !== null) {
+    await input.goldenPath.handleWorkCommand({
+      bindingId,
+      conversationId,
+      externalUserRef,
+      externalConversationRef: chatId,
+      externalUpdateRef,
+      externalMessageRef: input.receipt.messageId,
+      goal: classification.goal,
+      locale,
+    });
+    return consumed(null);
+  }
+
+  if (classification.refusalKey !== null) {
+    await input.goldenPath.refuse({
+      bindingId,
+      conversationId,
+      externalConversationRef: chatId,
+      externalUpdateRef,
+      reasonKey: classification.refusalKey,
+      locale,
+    });
+    return consumed(null);
+  }
+
+  return null;
+}
+
 export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBridgeState>(input: {
   update: TelegramWebhookUpdate;
   receipt: TelegramWebhookReceipt;
@@ -1146,6 +1272,17 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
   memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
+  /**
+   * Transport-owned slash commands. Absent leaves them to ordinary chat routing,
+   * which is what the polling path did for every command except `/work`.
+   */
+  commands?: TelegramCommandPort | null;
+  /**
+   * Optional golden-path port (SPEC-114). When present, `/work` requests and
+   * golden-path inline actions are consumed here and never reach the chat room:
+   * their durable record is the Work Item, not the transcript.
+   */
+  goldenPath?: TransportWorkGoldenPathPort | null;
   now?: () => Date;
 }): Promise<TelegramWebhookBridgeResult> {
   if (
@@ -1182,6 +1319,57 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
       input.update.callback_query?.data,
     );
     const activeBinding = resolveActiveTelegramBinding(input.context, input.receipt.bindingId);
+
+    if (input.goldenPath && input.receipt.chatId) {
+      const goldenPathResult = await routeTelegramGoldenPathUpdate({
+        update: input.update,
+        receipt: input.receipt,
+        context: input.context,
+        goldenPath: input.goldenPath,
+        telegramRelay: input.telegramRelay,
+        message,
+        sender: pickedMessage.sender,
+        existingRoomId: existingBinding?.linkedRoomId ?? null,
+      });
+      if (goldenPathResult !== null) {
+        return goldenPathResult;
+      }
+    }
+
+    // Transport-owned commands are answered before the room turn, on whichever
+    // ingress the update arrived by. `/work` is already gone by this point; the
+    // remaining product-intent commands are not owned here and fall through.
+    const commandText = extractMessageText(message);
+    if (input.commands && commandText !== null && input.commands.owns(commandText)) {
+      const reply = await input.commands.handle({
+        text: commandText,
+        chatId: input.receipt.chatId ?? '',
+        senderName,
+        binding: activeBinding,
+        locale: normalizeMessageLocale(pickedMessage.sender?.language_code),
+      });
+      if (reply !== null) {
+        const deliveryReceipt = await input.telegramRelay.deliver({
+          request: {
+            operation: input.receipt.messageId ? 'reply' : 'send',
+            conversationId: input.receipt.mappedConversationId,
+            chatId: input.receipt.chatId,
+            replyToMessageId: input.receipt.messageId ?? undefined,
+            text: reply.replyText,
+            disableLinkPreview: true,
+          },
+          context: input.context,
+        });
+        return {
+          receipt: input.receipt,
+          roomId: existingBinding?.linkedRoomId ?? null,
+          roomCreated: false,
+          deliveryReceipt,
+          messages: [],
+        };
+      }
+    }
+
     const currentState = await input.roomBridge.readState();
     const boundCat = resolveBoundCat(currentState, activeBinding, input.context);
     let roomId = existingBinding?.linkedRoomId ?? null;

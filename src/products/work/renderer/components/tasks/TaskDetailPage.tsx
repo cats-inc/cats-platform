@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { LinkageSection } from "../topdown/LinkageSection";
+import { GoldenPathSection } from "./GoldenPathSection";
 import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import {
   buildIndexes,
@@ -426,6 +427,8 @@ export function TaskDetailPage(): JSX.Element {
           graph={graph}
           indexes={indexes}
         />
+
+        <GoldenPathSection taskId={task.id} />
 
         <section className="taskDetail__section">
           <header className="taskDetail__sectionHeader">

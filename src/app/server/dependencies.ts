@@ -31,7 +31,11 @@ import {
   type PlatformAuthRecoveryTokenState,
   type PlatformAuthStore,
 } from '../../platform/auth/index.js';
+import { createTelegramIngressDispatcher } from '../../platform/transports/telegram/ingressDispatch.js';
+import { createTelegramCommandSurface } from './telegramCommandSurface.js';
 import { createTelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
+import { createTransportWorkGoldenPath } from './transportWorkGoldenPath.js';
+import { readTelegramPollingContext } from '../../server/routes/telegram.js';
 import { createTelegramRelay } from '../../platform/transports/telegram/relay/index.js';
 import {
   createFileBackedTelegramRelayStore,
@@ -233,8 +237,15 @@ export function resolveServerDependencies(
     ?? createDefaultMemoryStore(dependencies.shared, dependencies.chat);
   const memoryService = dependencies.chat.memoryService
     ?? createCatsMemoryService(createChatMemorySurface(dependencies.chat.chatStore), memoryStore);
+  // One dispatcher for both ingress modes: an update reaching a binding by
+  // webhook and one reaching it by long polling compete for the same ceiling.
+  const telegramIngressDispatcher = dependencies.chat.telegramIngressDispatcher
+    ?? createTelegramIngressDispatcher();
   const pollingSupervisor = dependencies.chat.pollingSupervisor
-    ?? createTelegramPollingSupervisor({ now: dependencies.shared.now });
+    ?? createTelegramPollingSupervisor({
+      now: dependencies.shared.now,
+      ingressDispatcher: telegramIngressDispatcher,
+    });
   const mutationGate = dependencies.chat.mutationGate ?? createAsyncKeyedGate();
   const capabilityBootstrapLoaded =
     dependencies.shared.providerCapabilityBootstrapConfig !== undefined
@@ -333,6 +344,29 @@ export function resolveServerDependencies(
       naturalProductIntentMode: dependencies.shared.config.chatNaturalProductIntentMode,
       externalIssueImport: dependencies.work?.externalIssueImport,
     });
+  // Built before the slices so both the chat transport and the Work read model
+  // reference one outbox instance rather than two.
+  const transportWorkGoldenPath = createTransportWorkGoldenPath({
+    config: dependencies.shared.config,
+    chatStore: dependencies.chat.chatStore,
+    coreStore: dependencies.work?.coreStore ?? sharedCoreStore,
+    telegramRelay,
+    pollingSupervisor,
+    readRelayContext: async () =>
+      (await readTelegramPollingContext(dependencies.chat.chatStore)).context,
+    runtimeClient: dependencies.shared.runtimeClient,
+    now: dependencies.shared.now,
+  });
+
+  // One command surface for both ingress modes, so `/status` answers the same
+  // way whether the update arrived by webhook or by long polling.
+  const telegramCommands = dependencies.chat.telegramCommands
+    ?? createTelegramCommandSurface({
+      chatStore: dependencies.chat.chatStore,
+      pollingSupervisor,
+      readiness: transportWorkGoldenPath?.readiness,
+    });
+
   const resumePendingOrchestratorDispatch =
     dependencies.shared.resumePendingOrchestratorDispatch
     ?? (async (
@@ -387,6 +421,8 @@ export function resolveServerDependencies(
     chat: {
       ...dependencies.chat,
       mutationGate,
+      telegramIngressDispatcher,
+      telegramCommands,
       companionStore,
       companionActivityStore,
       orchestratorChannelRouter,
@@ -400,9 +436,13 @@ export function resolveServerDependencies(
       telegramCommandSurfaceSync,
       eventHub: dependencies.chat.eventHub ?? createChatEventHub(),
       providerAgentDecisionRequester,
+      transportWorkGoldenPath,
     },
     work: {
       coreStore: dependencies.work?.coreStore ?? sharedCoreStore,
+      transportWorkDelivery: dependencies.work?.transportWorkDelivery ?? transportWorkGoldenPath?.outbox,
+      transportWorkReadiness: dependencies.work?.transportWorkReadiness
+        ?? transportWorkGoldenPath?.readiness,
       runtimeClient: dependencies.work?.runtimeClient ?? dependencies.shared.runtimeClient,
       runtimeTarget: dependencies.work?.runtimeTarget,
       scheduleStore: dependencies.work?.scheduleStore

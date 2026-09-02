@@ -4,36 +4,27 @@ import { createCatActorId } from '../../core/actors.js';
 import type { BotBindingRecord } from '../../core/types.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../platform/memory/index.js';
+import type { TransportWorkGoldenPathPort } from '../../platform/transports/work-delivery/port.js';
 import {
   bridgeTelegramWebhookToRoom,
   type TelegramRoomBridge,
   type TelegramWebhookBridgeResult,
-  TelegramWebhookBridgeError,
 } from '../../platform/transports/telegram/bridge.js';
 import type { TelegramRelayContext, TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
+import type { TelegramCommandPort } from '../../platform/transports/telegram/commandPort.js';
+import type { TelegramIngressDispatcher } from '../../platform/transports/telegram/ingressDispatch.js';
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay/index.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../shared/platformSurfaces.js';
-import { normalizeMessageLocale } from '../../shared/i18n/index.js';
 import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import { normalizeEffectiveBotBinding } from '../../products/chat/state/botBindings.js';
 import type { ChatEventHub } from '../../products/chat/api/chatEventHub.js';
-import { updateCatSkillProfile } from '../../products/chat/state/model/index.js';
 import {
   buildRoomMessageMutationDetail,
   publishRoomMutation,
   publishTransportIngress,
 } from '../../products/chat/api/transportEventPublisher.js';
-import {
-  createTelegramCommandRouter,
-  type TelegramInteractionMode,
-} from '../../platform/transports/telegram/commandRouter.js';
-import { createDefaultCommands } from '../../platform/transports/telegram/commands/index.js';
-import { shouldBridgeTelegramProductIntentCommand } from '../telegramProductIntentCommands.js';
-
-const commandRouter = createTelegramCommandRouter();
-commandRouter.registerAll(createDefaultCommands());
 
 interface TelegramQueryDependencies {
   chatStore: ChatStore;
@@ -45,6 +36,12 @@ interface TelegramWebhookDependencies extends TelegramQueryDependencies {
   memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   eventHub?: ChatEventHub;
+  /** SPEC-114 golden path; absent leaves `/work` to ordinary chat routing. */
+  transportWorkGoldenPath?: TransportWorkGoldenPathPort | null;
+  /** Shared with polling so a binding's in-flight ceiling covers both modes. */
+  ingressDispatcher: TelegramIngressDispatcher;
+  /** Transport-owned slash commands, shared with polling. */
+  telegramCommands?: TelegramCommandPort | null;
   now?: () => Date;
 }
 
@@ -147,34 +144,6 @@ function findBindingChatCat(chatState: ChatState, binding: BotBindingRecord) {
   return chatState.cats.find((cat) =>
     createCatActorId(cat.id) === (binding.catActorId ?? binding.bossCatActorId),
   ) ?? null;
-}
-
-function resolveTelegramInteractionMode(
-  skillProfile: string | null | undefined,
-): TelegramInteractionMode {
-  return skillProfile === 'companion' ? 'companion' : 'agent';
-}
-
-function resolveSkillProfileForInteractionMode(
-  mode: TelegramInteractionMode,
-): string {
-  return mode === 'companion' ? 'companion' : 'chat-default';
-}
-
-async function setTelegramInteractionMode(
-  chatStore: ChatStore,
-  catId: string,
-  mode: TelegramInteractionMode,
-): Promise<TelegramInteractionMode> {
-  const state = await chatStore.read();
-  const nextState = updateCatSkillProfile(
-    state,
-    catId,
-    resolveSkillProfileForInteractionMode(mode),
-  );
-  const persisted = await chatStore.write(nextState);
-  const cat = persisted.cats.find((candidate) => candidate.id === catId);
-  return resolveTelegramInteractionMode(cat?.skillProfile ?? null);
 }
 
 function isActiveChatBinding(chatState: ChatState, binding: BotBindingRecord): boolean {
@@ -301,6 +270,22 @@ export function publishTelegramBridgeResult(
   }
 }
 
+/**
+ * The key an update's in-flight work is counted against.
+ *
+ * The bot binding, matching what long polling uses, so a binding's ceiling
+ * covers both ways an update can arrive rather than one per ingress mode.
+ */
+function resolveTelegramIngressKey(
+  context: TelegramRelayContext,
+  selectedBindingId?: string,
+): string {
+  return selectedBindingId
+    ?? context.selectedBotBinding?.id
+    ?? context.defaultBotBinding?.id
+    ?? 'telegram:unbound';
+}
+
 export async function handleTelegramWebhook(
   request: IncomingMessage,
   response: ServerResponse,
@@ -326,76 +311,63 @@ export async function handleTelegramWebhook(
       ?? context.defaultBotBinding?.webhookSecret
       ?? ingressConfig.secretToken,
     );
-    let receipt = dependencies.telegramRelay.receiveUpdate({ update, context });
-    if (receipt.status === 'accepted') {
-      // Check for slash commands before bridging to room
-      const messageText = update.message?.text?.trim() ?? '';
-      if (
-        commandRouter.isCommand(messageText)
-        && !shouldBridgeTelegramProductIntentCommand(messageText)
-      ) {
-        const binding = context.selectedBotBinding ?? context.defaultBotBinding;
-        const chatState = await dependencies.chatStore.read();
-        const cat = binding ? findBindingChatCat(chatState, binding) : null;
-        const commandResult = await commandRouter.dispatch(messageText, {
-          chatId: String(update.message?.chat?.id ?? ''),
-          senderName: update.message?.from?.first_name ?? 'User',
-          botName: binding?.botName ?? 'CatsBot',
-          catName: cat?.name ?? null,
-          catId: cat?.id ?? null,
-          currentMode: cat ? resolveTelegramInteractionMode(cat.skillProfile) : null,
-          inboundMode: binding?.inboundMode ?? null,
-          locale: normalizeMessageLocale(update.message?.from?.language_code),
-          setMode: cat?.id
-            ? async (mode) => setTelegramInteractionMode(
-              dependencies.chatStore,
-              cat.id,
-              mode,
-            )
-            : undefined,
-        });
-        if (commandResult?.handled) {
-          await dependencies.telegramRelay.deliver({
-            request: {
-              operation: update.message?.message_id ? 'reply' : 'send',
-              conversationId: receipt.mappedConversationId,
-              chatId: receipt.chatId,
-              replyToMessageId: update.message?.message_id
-                ? String(update.message.message_id)
-                : undefined,
-              text: commandResult.replyText,
-              disableLinkPreview: true,
-            },
-            context,
-          });
-          sendJson(response, 202, { receipt: { ...receipt, commandHandled: true } });
-          return;
-        }
-      }
-      const bridgeResult = await bridgeTelegramWebhookToRoom({
-        update,
-        receipt,
-        context,
-        roomBridge: dependencies.telegramRoomBridge,
-        memoryService: dependencies.memoryService,
-        runtimeClient: dependencies.runtimeClient,
-        telegramRelay: dependencies.telegramRelay,
-        now: dependencies.now,
-      });
-      receipt = bridgeResult.receipt;
-      publishTelegramBridgeResult(dependencies.eventHub, bridgeResult);
+
+    // Admission is decided *before* the update is consumed. `receiveUpdate`
+    // marks the update processed, so refusing after it would make Telegram's
+    // redelivery answer `duplicate_update` and the work would vanish. Refusing
+    // first leaves the update unconsumed and Telegram redelivers it for real.
+    const ingressKey = resolveTelegramIngressKey(context, selectedBindingId);
+    if (dependencies.ingressDispatcher.isSaturated(ingressKey)) {
+      sendRestError(
+        response,
+        429,
+        'telegram_ingress_busy',
+        'This Telegram binding already has the maximum number of updates in flight. '
+        + 'The update was not consumed; retry it.',
+      );
+      return;
     }
+
+    const receipt = dependencies.telegramRelay.receiveUpdate({ update, context });
+    if (receipt.status === 'accepted') {
+      // Transport-owned slash commands are answered inside the bridge now, so
+      // long polling gets them too; this route no longer intercepts them.
+      // The room turn runs detached (SPEC-114 FR-14). Awaiting it here held the
+      // connection open for the length of an assistant turn, past Telegram's own
+      // webhook timeout, so Telegram redelivered the update while the first copy
+      // was still being processed.
+      dependencies.ingressDispatcher.dispatch(ingressKey, async () => {
+        try {
+          const bridgeResult = await bridgeTelegramWebhookToRoom({
+            update,
+            receipt,
+            context,
+            roomBridge: dependencies.telegramRoomBridge,
+            memoryService: dependencies.memoryService,
+            runtimeClient: dependencies.runtimeClient,
+            telegramRelay: dependencies.telegramRelay,
+            commands: dependencies.telegramCommands ?? null,
+            goldenPath: dependencies.transportWorkGoldenPath ?? null,
+            now: dependencies.now,
+          });
+          publishTelegramBridgeResult(dependencies.eventHub, bridgeResult);
+        } catch {
+          // A dispatch failure is already recorded as an owner-visible receipt
+          // by the bridge before it throws, so there is nothing left to report
+          // and no response left to report it on.
+        }
+      });
+    }
+
+    // The body is the *ingress* receipt: what Cats knows at the moment it
+    // accepts the update. Room routing is settled afterwards and is observable
+    // through the transport status, diagnostics, and chat event surfaces.
     sendJson(response, 202, { receipt });
   } catch (error) {
     if (error instanceof TelegramWebhookRequestError) {
       sendRestError(response, error.statusCode, error.code, error.message);
       return;
     }
-    if (error instanceof TelegramWebhookBridgeError) {
-      sendRestError(response, 500, error.code, error.message);
-      return;
-    }
-
     sendRestError(
       response,
       500,

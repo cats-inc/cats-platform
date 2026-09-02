@@ -575,6 +575,19 @@ GET /api/providers/{provider}/models/advanced
   for a currently usable execution target. If the target is not currently
   usable, or if the runtime lookup fails, the route returns an explicit error
   instead of falling back to curated static data.
+- `GET /api/providers/capability-bootstrap` reports the provider capability
+  bootstrap config: where it is looked for, whether a file exists, whether it
+  parsed, the rules in effect, and every load diagnostic. `restartRequired` is
+  true when what is on disk no longer matches what the host booted with — the
+  loaded config is passed by value into the chat dispatch adapters at composition
+  time, so a new file cannot take effect in the running process.
+- `POST /api/providers/capability-bootstrap` with `{"action":"install-example"}`
+  copies the bundled example to the configured path and returns the same view.
+  It refuses with `409 capability_bootstrap_config_exists` when a file is already
+  there — that file may hold rules an operator wrote by hand — and with
+  `409 capability_bootstrap_example_missing` when the build ships no example.
+  Editing individual rules stays in the file, where each rule is documented.
+
 - `GET /api/providers/{provider}/models/advanced` follows the same truthful
   contract for advanced catalog reads used by structured provider/model
   selectors.
@@ -588,10 +601,19 @@ GET /api/work/projects/{projectId}
 GET /api/work/work-items
 GET /api/work/work-items/{workItemId}
 GET /api/work/tasks/{taskId}
+GET /api/work/delivery-readiness
 POST /api/work/external-bindings
 DELETE /api/work/external-bindings
 POST /api/work/external-issue-imports
 ```
+
+- `GET /api/work/delivery-readiness` answers "can a Telegram binding accept
+  `/work` right now?", evaluated by the same code the transport uses so the two
+  surfaces cannot disagree. Each binding reports its default delivery mode, the
+  tool scope the provider would be granted, and every blocker with a localized
+  reason key and the settings path that fixes it. A host with the golden path
+  disabled — or with no readiness reader wired — returns `enabled: false` rather
+  than an empty "ready".
 
 - `GET /api/work` returns the first Work dashboard projection above shared
   core task/operator reads. The payload includes:
@@ -885,8 +907,17 @@ POST /api/transports/telegram/webhook/:bindingId
   - rejects oversized bodies using the transport-owned byte limit
   - returns 4xx transport errors for malformed payloads, binding lookup
     failures, invalid secrets, or oversized bodies
-  - returns 500 transport errors such as `telegram_room_dispatch_failed` when
-    an accepted Telegram turn cannot be completed into an internal room turn
+  - answers `202` as soon as the update is accepted and runs the room turn
+    detached, so the response never waits on an assistant turn. The body carries
+    the *ingress* receipt — what Cats knows at acceptance. Room routing settles
+    afterwards and is read from `GET /api/transports/telegram` or
+    `/diagnostics`, not from this response.
+  - a room turn that fails after acceptance therefore has no response left to
+    fail on. It surfaces as the transport delivery receipt (`failedCount`,
+    `lastReceipt.reason`) and an in-room `runtime_error` message.
+  - returns `429 telegram_ingress_busy` when the binding already has the maximum
+    number of updates in flight. The update is **not** consumed, so Telegram's
+    redelivery is processed rather than deduplicated away.
   - returns transport receipts with normalized message summaries
   - persists dedupe and inbox-to-conversation mapping state outside chat core
   - ignores unsupported, bot-authored, or non-private updates with explicit

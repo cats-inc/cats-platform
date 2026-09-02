@@ -18,6 +18,7 @@ import type {
   BudgetEnvelope,
   SupervisedToolManifest,
   SupervisionPolicySnapshot,
+  SupervisionToolScope,
   ToolResult,
 } from './contracts.js';
 import { DEFAULT_SUPERVISION_SCHEMA_VERSION } from './contracts.js';
@@ -36,6 +37,16 @@ export interface RuntimeSupervisionContext {
   policySnapshot?: SupervisionPolicySnapshot;
   evidenceSink?: ToolBoundaryEvidenceSink;
   budget?: BudgetEnvelope;
+  /**
+   * The caller's effective permission envelope, intersected with the parent
+   * grant by the tool registry.
+   *
+   * Defaults to `broad_write`, which is what every caller assumed before this
+   * existed. A caller that knows its envelope is narrower should say so: that
+   * is what lets the boundary refuse with `E_TOOL_SCOPE_DENIED` instead of
+   * letting an under-permissioned run reach the provider.
+   */
+  policyToolScope?: SupervisionToolScope;
 }
 
 export interface SupervisedRuntimeSessionCreateInput {
@@ -136,7 +147,7 @@ export async function createSupervisedRuntimeSession(
     actorRef: input.supervision.actorRef,
     grant: {
       parentToolScope: 'broad_write',
-      policyToolScope: 'broad_write',
+      policyToolScope: input.supervision.policyToolScope ?? 'broad_write',
     },
     policySnapshot: input.supervision.policySnapshot,
     execute: async (toolInput) => ({
@@ -168,7 +179,7 @@ export async function sendSupervisedRuntimeMessage(
     actorRef: input.supervision.actorRef,
     grant: {
       parentToolScope: 'broad_write',
-      policyToolScope: 'broad_write',
+      policyToolScope: input.supervision.policyToolScope ?? 'broad_write',
     },
     policySnapshot: input.supervision.policySnapshot,
     execute: async (toolInput) => ({

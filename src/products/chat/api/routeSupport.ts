@@ -149,6 +149,7 @@ import type {
   ChatChannelCat,
   ChatState,
 } from './contracts.js';
+import type { TransportWorkGoldenPathPort } from '../../../platform/transports/work-delivery/port.js';
 
 export interface ChatApiDependencies {
   config: AppConfig;
@@ -160,6 +161,8 @@ export interface ChatApiDependencies {
   telegramRelay?: TelegramRelay;
   telegramRoomBridge: TelegramRoomBridge<ChatState>;
   pollingSupervisor?: TelegramPollingSupervisor;
+  /** SPEC-114 golden path, injected by the host. */
+  transportWorkGoldenPath?: TransportWorkGoldenPathPort | null;
   telegramCommandSurfaceSync?: {
     reconcile(options?: {
       staleBotTokens?: Array<string | null | undefined>;
@@ -228,6 +231,7 @@ export async function reconcileTelegramTransportAfterBindingMutation(
     memoryService,
     runtimeClient,
     eventHub,
+    transportWorkGoldenPath,
   } = context.dependencies;
   if (telegramCommandSurfaceSync) {
     try {
@@ -249,6 +253,7 @@ export async function reconcileTelegramTransportAfterBindingMutation(
       memoryService,
       runtimeClient,
       telegramRelay,
+      goldenPath: transportWorkGoldenPath ?? null,
       onBridgeResult: (bridgeResult) => publishTelegramBridgeResult(eventHub, bridgeResult),
     });
   } catch {

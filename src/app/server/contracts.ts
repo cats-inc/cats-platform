@@ -1,3 +1,4 @@
+import type { TransportWorkGoldenPathBundle } from './transportWorkGoldenPath.js';
 import type { AppConfig } from '../../config.js';
 import type { CoreStore } from '../../core/store.js';
 import type { TaskExecutionLocator } from '../../core/taskExecutionLocator.js';
@@ -18,6 +19,8 @@ import type {
   ProviderCapabilityBootstrapConfig,
   SupervisionDiagnosticRecord,
 } from '../../platform/supervision/index.js';
+import type { TelegramCommandPort } from '../../platform/transports/telegram/commandPort.js';
+import type { TelegramIngressDispatcher } from '../../platform/transports/telegram/ingressDispatch.js';
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay/index.js';
 import type { TelegramRoomBridge } from '../../platform/transports/telegram/bridge.js';
@@ -92,6 +95,8 @@ export interface ChatServerDependencies {
   telegramRelay?: TelegramRelay;
   telegramRoomBridge?: TelegramRoomBridge<ChatState>;
   pollingSupervisor?: TelegramPollingSupervisor;
+  telegramIngressDispatcher?: TelegramIngressDispatcher;
+  telegramCommands?: TelegramCommandPort;
   telegramCommandSurfaceSync?: TelegramCommandSurfaceSync;
   eventHub?: ChatEventHub;
   providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
@@ -133,9 +138,20 @@ export interface ResolvedChatServerDependencies extends ChatServerDependencies {
   telegramRelay: TelegramRelay;
   telegramRoomBridge: TelegramRoomBridge<ChatState>;
   pollingSupervisor: TelegramPollingSupervisor;
+  /**
+   * Shared by long polling and the webhook route so a binding's in-flight
+   * ceiling covers both ways an update can arrive.
+   */
+  telegramIngressDispatcher: TelegramIngressDispatcher;
+  /** Transport-owned slash commands, shared by webhook and polling ingress. */
+  telegramCommands: TelegramCommandPort;
   telegramCommandSurfaceSync: TelegramCommandSurfaceSync;
   eventHub: ChatEventHub;
+  /** Null when the SPEC-114 golden path is disabled for this host. */
+  transportWorkGoldenPath: TransportWorkGoldenPathBundle | null;
 }
+
+export type { TransportWorkGoldenPathBundle };
 
 export interface ResolvedServerDependencies {
   shared: ResolvedSharedServerDependencies;

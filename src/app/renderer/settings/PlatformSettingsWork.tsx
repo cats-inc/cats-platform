@@ -7,6 +7,7 @@ import {
   isAdvancedDraftControlsEnabled,
   normalizeAdvancedDraftControlsPreferences,
 } from '../../../products/shared/advancedDraftControls.js';
+import { DeliveryReadinessSection } from '../../../products/work/renderer/components/settings/DeliveryReadinessSection.js';
 import { ProductAdvancedDraftControlsSection } from './ProductAdvancedDraftControlsSection.js';
 import { ProductConversationBehaviorSection } from './ProductConversationBehaviorSection.js';
 import { formatSettingsPreferenceMutationError } from './settingsPreferenceErrorLabels.js';
@@ -70,6 +71,7 @@ export function PlatformSettingsWork({
           void updateAdvancedDraftControls(nextEnabled);
         }}
       />
+      <DeliveryReadinessSection />
       <ToastContainer toasts={toasts} />
     </>
   );

@@ -6,7 +6,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -273,7 +273,7 @@ only after their existing gates are enforced end to end.
 
 ---
 
-*Decision proposed: 2026-09-02*
+*Decision accepted: 2026-09-02*
 
 *Decision makers: Owner direction + Codex*
 
