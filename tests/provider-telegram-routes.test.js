@@ -6,6 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createTelegramRelay } from '../build/server/platform/transports/telegram/relay/index.js';
+import { createTelegramIngressDispatcher } from '../build/server/platform/transports/telegram/ingressDispatch.js';
 import { createServer } from '../build/server/app/server/index.js';
 import {
   buildChatConversationId,
@@ -443,6 +444,38 @@ async function waitFor(
     }
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
+}
+
+/**
+ * Waits on a predicate that has to go over HTTP.
+ *
+ * The webhook answers 202 as soon as it accepts an update (SPEC-114 FR-14), so
+ * the room turn settles after the response rather than inside it. What used to
+ * be readable in the response body is now read from the transport surface.
+ */
+async function waitForAsync(predicate, timeoutMs = 4000) {
+  const startedAt = Date.now();
+  for (;;) {
+    if (await predicate()) {
+      return;
+    }
+    if (Date.now() - startedAt > timeoutMs) {
+      throw new Error('Timed out waiting for async side effect');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
+
+/** Resolves the room the webhook routed a chat into, once routing has settled. */
+async function waitForTelegramLinkedRoom(baseUrl, timeoutMs = 4000) {
+  let linkedRoomId = null;
+  await waitForAsync(async () => {
+    const response = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
+    const payload = await response.json();
+    linkedRoomId = payload.telegram.bindings[0]?.linkedRoomId ?? null;
+    return Boolean(linkedRoomId);
+  }, timeoutMs);
+  return linkedRoomId;
 }
 
 async function configureTelegramBossCat(baseUrl) {
@@ -1112,11 +1145,12 @@ test('telegram webhook routes inbox traffic into a room and relays a reply back 
       assert.equal(acceptedPayload.receipt.status, 'accepted');
       assert.equal(acceptedPayload.receipt.bossCatName, 'Smelly');
       assert.equal(acceptedPayload.receipt.mappedConversationId, 'telegram:12345');
-      assert.equal(acceptedPayload.receipt.roomRouting.roomRoutingStatus, 'linked_room');
-      assert.ok(acceptedPayload.receipt.roomRouting.linkedRoomId);
       assert.equal(acceptedPayload.receipt.messageSummary.textPreview, 'hello from telegram');
+      // The body is the ingress receipt: what Cats knows when it accepts the
+      // update. It must not claim a room the detached turn has not reached yet.
+      assert.equal(acceptedPayload.receipt.roomRouting.roomRoutingStatus, 'placeholder');
 
-      const roomId = acceptedPayload.receipt.roomRouting.linkedRoomId;
+      const roomId = await waitForTelegramLinkedRoom(baseUrl);
       const roomResponse = await fetch(`${baseUrl}/api/channels/${roomId}`);
       assert.equal(roomResponse.status, 200);
       const roomPayload = await roomResponse.json();
@@ -1248,8 +1282,10 @@ test('telegram slash commands stay transport-owned and can switch the bound cat 
 
       const commandsPayload = await commandsResponse.json();
       assert.equal(commandsPayload.receipt.status, 'accepted');
-      assert.equal(commandsPayload.receipt.commandHandled, true);
       assert.equal(commandsPayload.receipt.bindingId, bindingId);
+      // Commands are answered in the detached bridge now (so long polling gets
+      // them too), so the reply is the observable, not a flag on the 202 body.
+      await waitForAsync(async () => deliveryCalls.length === 1);
       assert.equal(
         commandsPayload.receipt.mappedConversationId,
         `telegram:${bindingId}:67890`,
@@ -1275,8 +1311,7 @@ test('telegram slash commands stay transport-owned and can switch the bound cat 
         },
       );
       assert.equal(modeAgentResponse.status, 202);
-      const modeAgentPayload = await modeAgentResponse.json();
-      assert.equal(modeAgentPayload.receipt.commandHandled, true);
+      await waitForAsync(async () => deliveryCalls.length === 2);
 
       const catAfterAgentResponse = await fetch(`${baseUrl}/api/cats/${catId}`);
       assert.equal(catAfterAgentResponse.status, 200);
@@ -1303,8 +1338,7 @@ test('telegram slash commands stay transport-owned and can switch the bound cat 
         },
       );
       assert.equal(statusResponse.status, 202);
-      const statusPayload = await statusResponse.json();
-      assert.equal(statusPayload.receipt.commandHandled, true);
+      await waitForAsync(async () => deliveryCalls.length === 3);
 
       const modeCompanionResponse = await fetch(
         `${baseUrl}/api/transports/telegram/webhook/${bindingId}`,
@@ -1326,8 +1360,7 @@ test('telegram slash commands stay transport-owned and can switch the bound cat 
         },
       );
       assert.equal(modeCompanionResponse.status, 202);
-      const modeCompanionPayload = await modeCompanionResponse.json();
-      assert.equal(modeCompanionPayload.receipt.commandHandled, true);
+      await waitForAsync(async () => deliveryCalls.length === 4);
 
       const catAfterCompanionResponse = await fetch(`${baseUrl}/api/cats/${catId}`);
       assert.equal(catAfterCompanionResponse.status, 200);
@@ -1540,11 +1573,16 @@ test('telegram webhook returns 500 and records diagnostics when room persistence
           },
         }),
       });
-      assert.equal(webhookResponse.status, 500);
+      // Telegram has already been told the update was accepted, so a failure in
+      // the detached room turn has no response left to travel on. It surfaces as
+      // an owner-visible delivery receipt and an in-room runtime error instead.
+      assert.equal(webhookResponse.status, 202);
 
-      const errorPayload = await webhookResponse.json();
-      assert.equal(errorPayload.error.code, 'telegram_room_dispatch_failed');
-      assert.match(errorPayload.error.message, /could not process the room turn/i);
+      await waitForAsync(async () => {
+        const probe = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
+        const payload = await probe.json();
+        return payload.telegram.delivery.failedCount === 1;
+      });
 
       const diagnosticsResponse = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
       assert.equal(diagnosticsResponse.status, 200);
@@ -1804,11 +1842,18 @@ test('telegram webhook routes can scope ingress to a specific bot binding path a
     const webhookPayload = await webhookResponse.json();
     assert.equal(webhookPayload.receipt.status, 'accepted');
     assert.equal(webhookPayload.receipt.bindingId, bindingId);
-    assert.equal(webhookPayload.receipt.roomRouting.roomRoutingStatus, 'linked_room');
+    assert.equal(webhookPayload.receipt.roomRouting.roomRoutingStatus, 'placeholder');
     assert.equal(
       webhookPayload.receipt.mappedConversationId,
       `telegram:${bindingId}:12345`,
     );
+
+    await waitForAsync(async () => {
+      const probe = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
+      const payload = await probe.json();
+      return payload.telegram.bindings.some((binding) =>
+        binding.bindingId === bindingId && binding.linkedRoomId);
+    });
 
     const diagnosticsResponse = await fetch(`${baseUrl}/api/transports/telegram/diagnostics`);
     assert.equal(diagnosticsResponse.status, 200);
@@ -2039,6 +2084,11 @@ test('telegram relay state survives restart with file-backed chat storage', asyn
           }),
         });
         assert.equal(webhookResponse.status, 202);
+
+        // The room turn is detached, so the first host must be allowed to finish
+        // writing before it is torn down — otherwise this asserts on a race, and
+        // its in-flight write would land under the second host's feet.
+        await waitForTelegramLinkedRoom(baseUrl);
       },
     );
 
@@ -2086,4 +2136,166 @@ test('telegram relay state survives restart with file-backed chat storage', asyn
   } finally {
     rmSync(stateDir, { recursive: true, force: true });
   }
+});
+
+// --- Non-blocking webhook ingress (SPEC-114 FR-14) -----------------------------
+
+/**
+ * The webhook used to await the whole room turn before answering. Telegram waits
+ * for that response and redelivers the update when it takes too long, so a long
+ * assistant turn produced duplicate processing and a held connection. These
+ * tests pin the new shape and, more importantly, the property that made it safe:
+ * a refusal must never consume the update it refuses.
+ */
+
+function createGatedRuntimeStub() {
+  const base = createRuntimeStub();
+  const entered = [];
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  return {
+    entered,
+    release: () => release(),
+    client: {
+      ...base,
+      async sendMessage(sessionId, content) {
+        entered.push(content);
+        await gate;
+        return base.sendMessage(sessionId, content);
+      },
+    },
+  };
+}
+
+function telegramUpdate(updateId, text, chatId = 12345) {
+  return {
+    update_id: updateId,
+    message: {
+      message_id: updateId * 10,
+      text,
+      chat: { id: chatId, type: 'private' },
+      from: { id: 1, first_name: 'Kenny' },
+    },
+  };
+}
+
+test('telegram webhook answers before the assistant turn finishes', async () => {
+  const runtime = createGatedRuntimeStub();
+
+  await withServer(runtime.client, async (baseUrl) => {
+    await configureTelegramBossCat(baseUrl);
+
+    const webhookResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(telegramUpdate(101, 'take your time')),
+    });
+
+    // Answered while the turn is demonstrably still running.
+    assert.equal(webhookResponse.status, 202);
+    await waitForAsync(async () => runtime.entered.length === 1);
+
+    runtime.release();
+
+    const roomId = await waitForTelegramLinkedRoom(baseUrl);
+    await waitForAsync(async () => {
+      const probe = await fetch(`${baseUrl}/api/channels/${roomId}/messages`);
+      const payload = await probe.json();
+      return payload.messages.some((message) => message.body === 'Boss Cat relay reply');
+    });
+  });
+});
+
+test('a saturated binding is refused without consuming the update', async () => {
+  const runtime = createGatedRuntimeStub();
+  // A ceiling of one makes the second update arrive at a full binding.
+  const telegramIngressDispatcher = createTelegramIngressDispatcher({ maxInFlightPerKey: 1 });
+
+  await withServer(
+    runtime.client,
+    async (baseUrl) => {
+      await configureTelegramBossCat(baseUrl);
+
+      const firstResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(telegramUpdate(101, 'first')),
+      });
+      assert.equal(firstResponse.status, 202);
+      await waitForAsync(async () => runtime.entered.length === 1);
+
+      const refusedResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(telegramUpdate(102, 'second')),
+      });
+      assert.equal(refusedResponse.status, 429);
+      const refusedPayload = await refusedResponse.json();
+      assert.equal(refusedPayload.error.code, 'telegram_ingress_busy');
+
+      // The refusal must leave the update unconsumed. If it had been marked
+      // processed, Telegram's redelivery would answer `duplicate_update` and the
+      // message would be silently lost.
+      const statusResponse = await fetch(`${baseUrl}/api/transports/telegram`);
+      const statusPayload = await statusResponse.json();
+      assert.equal(statusPayload.telegram.lastProcessedUpdateId, 101);
+
+      runtime.release();
+      await waitForAsync(async () => runtime.entered.length === 1);
+
+      // Telegram redelivers what it was refused, and this time it is processed.
+      const retryResponse = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(telegramUpdate(102, 'second')),
+      });
+      assert.equal(retryResponse.status, 202);
+      const retryPayload = await retryResponse.json();
+      assert.equal(retryPayload.receipt.status, 'accepted');
+      assert.notEqual(retryPayload.receipt.reason, 'duplicate_update');
+
+      await waitForAsync(async () => {
+        const probe = await fetch(`${baseUrl}/api/transports/telegram`);
+        const payload = await probe.json();
+        return payload.telegram.lastProcessedUpdateId === 102;
+      });
+    },
+    new MemoryChatStore(),
+    { telegramIngressDispatcher },
+  );
+});
+
+test('a duplicate update is still refused before it reaches the room turn', async () => {
+  const runtime = createGatedRuntimeStub();
+
+  await withServer(runtime.client, async (baseUrl) => {
+    await configureTelegramBossCat(baseUrl);
+
+    const first = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(telegramUpdate(101, 'only once')),
+    });
+    assert.equal(first.status, 202);
+    await waitForAsync(async () => runtime.entered.length === 1);
+
+    // Telegram's own retry, arriving while the first turn is still running.
+    // Dedupe is recorded when the update is accepted, not when the turn ends, so
+    // decoupling must not have opened a double-processing window.
+    const duplicate = await fetch(`${baseUrl}/api/transports/telegram/webhook`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(telegramUpdate(101, 'only once')),
+    });
+    assert.equal(duplicate.status, 202);
+    const duplicatePayload = await duplicate.json();
+    assert.equal(duplicatePayload.receipt.status, 'ignored');
+    assert.equal(duplicatePayload.receipt.reason, 'duplicate_update');
+
+    runtime.release();
+    await waitForTelegramLinkedRoom(baseUrl);
+    assert.equal(runtime.entered.length, 1, 'the room turn ran exactly once');
+  });
 });

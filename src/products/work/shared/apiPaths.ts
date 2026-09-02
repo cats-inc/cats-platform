@@ -30,12 +30,18 @@ export const WORK_API_EXTERNAL_BINDINGS_PATH = `${WORK_API_PREFIX}/external-bind
 export const WORK_API_EXTERNAL_ISSUE_IMPORTS_PATH =
   `${WORK_API_PREFIX}/external-issue-imports`;
 export const WORK_API_GRAPH_PATH = `${WORK_API_PREFIX}/graph`;
+/** Delegation readiness for Desktop remediation (SPEC-114 FR-3). */
+export const WORK_API_DELIVERY_READINESS_PATH = `${WORK_API_PREFIX}/delivery-readiness`;
 export const WORK_API_RAW_PROJECTS_PATH = `${WORK_API_PREFIX}/raw/projects`;
 export const WORK_API_RAW_WORK_ITEMS_PATH = `${WORK_API_PREFIX}/raw/work-items`;
 export const WORK_API_RAW_TASKS_PATH = `${WORK_API_PREFIX}/raw/tasks`;
 
 export const WORK_API_PROJECT_DETAIL_PATH_TEMPLATE = `${WORK_API_PROJECTS_PATH}/:projectId`;
 export const WORK_API_TASK_DETAIL_PATH_TEMPLATE = `${WORK_API_TASKS_PATH}/:taskId`;
+export const WORK_API_TASK_GOLDEN_PATH_LIFECYCLE_PATH_TEMPLATE =
+  `${WORK_API_TASK_DETAIL_PATH_TEMPLATE}/golden-path/lifecycle/:action`;
+export const WORK_API_TASK_GOLDEN_PATH_RETRY_DELIVERY_PATH_TEMPLATE =
+  `${WORK_API_TASK_DETAIL_PATH_TEMPLATE}/golden-path/retry-delivery`;
 export const WORK_API_TASK_SUPERVISED_RUN_PATH_TEMPLATE =
   `${WORK_API_TASK_DETAIL_PATH_TEMPLATE}/supervised-run`;
 export const WORK_API_TASK_SUPERVISED_RUN_ACTION_PATH_TEMPLATE =
@@ -54,6 +60,10 @@ export const WORK_API_MISSION_CANCEL_PATH_TEMPLATE =
 
 export const WORK_API_PROJECT_DETAIL_PATTERN = /^\/api\/work\/projects\/([^/]+)$/u;
 export const WORK_API_TASK_DETAIL_PATTERN = /^\/api\/work\/tasks\/([^/]+)$/u;
+export const WORK_API_TASK_GOLDEN_PATH_LIFECYCLE_PATTERN =
+  /^\/api\/work\/tasks\/([^/]+)\/golden-path\/lifecycle\/(retry|resume)$/u;
+export const WORK_API_TASK_GOLDEN_PATH_RETRY_DELIVERY_PATTERN =
+  /^\/api\/work\/tasks\/([^/]+)\/golden-path\/retry-delivery$/u;
 export const WORK_API_TASK_SUPERVISED_RUN_PATTERN =
   /^\/api\/work\/tasks\/([^/]+)\/supervised-run$/u;
 export const WORK_API_TASK_SUPERVISED_RUN_ACTION_PATTERN =

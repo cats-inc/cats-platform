@@ -70,6 +70,134 @@ export function createWorkExecutionTaskToolExecutors(
   };
 }
 
+/**
+ * The Core mutation behind `work.task.create_from_work_item`, exposed so a
+ * caller that must be atomic across several writes (the transport golden-path
+ * admission command) can compose it inside one `updateCore` transaction instead
+ * of chaining separate persisted steps.
+ *
+ * Throws `WorkExecutionTaskPrecheckError` on any precondition failure, which
+ * leaves the surrounding transaction untouched.
+ */
+export function applyWorkExecutionTaskCreation(
+  core: CatsCoreState,
+  input: WorkTaskCreateFromWorkItemInput,
+  context: WorkExecutionTaskMutationContext,
+  createdAt: Date,
+): { core: CatsCoreState; task: CoreTaskRecord; created: boolean; linked: boolean } {
+  const workItemId = input.workItemId.trim();
+  const idempotencyKey = createTaskFromWorkItemIdempotencyKey(input);
+  const taskId = createTaskFromWorkItemTaskId(idempotencyKey);
+
+  const workItem = core.workItems.find((candidate) => candidate.id === workItemId) ?? null;
+  if (workItem === null) {
+    throw new WorkExecutionTaskPrecheckError(`No Work Item found for id ${workItemId}.`);
+  }
+  assertWorkItemExitedIntakeBoundary(workItem, context);
+  if (workItem.status !== 'ready') {
+    throw new WorkExecutionTaskPrecheckError(
+      `Work Item ${workItemId} must be ready before Task creation; current status is `
+      + `${workItem.status}.`,
+    );
+  }
+  if (workItem.taskId) {
+    return {
+      core,
+      task: readLinkedPendingTask(core, workItem),
+      created: false,
+      linked: false,
+    };
+  }
+
+  const existingTask = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
+  const taskWrite = existingTask === null
+    ? upsertCoreTask(
+      core,
+      {
+        id: taskId,
+        title: input.title?.trim() || workItem.title,
+        status: 'pending_approval',
+        conversationId: workItem.conversationId,
+        ownerActorId: workItem.ownerActorId,
+        orchestratorActorId: context.actorRef,
+        assignedActorIds: resolveExecutionTaskAssignedActors(workItem, context),
+        summary: input.summary?.trim() || workItem.summary,
+        metadata: buildWorkExecutionTaskMetadataEnvelope(
+          workItem,
+          buildWorkExecutionTaskMetadata(
+            workItem,
+            input,
+            context,
+            idempotencyKey,
+            createdAt,
+          ),
+        ),
+      },
+      createdAt,
+    )
+    : { core, task: existingTask, created: false };
+  const approvalWrite = writeApprovalDecision(
+    taskWrite.core,
+    {
+      taskId: taskWrite.task.id,
+      status: 'pending',
+      requestedByActorId: context.actorRef,
+      notes: input.approvalNote ?? `Approve execution Task for Work Item ${workItem.id}.`,
+    },
+    createdAt,
+  );
+  const bindingWrite = upsertCoreApprovalBinding(
+    approvalWrite.core,
+    {
+      id: createTaskApprovalBindingId(taskWrite.task.id),
+      kind: 'owner_decision',
+      approvalTaskId: taskWrite.task.id,
+      subjectKind: 'work_item',
+      subjectId: workItem.id,
+      projectId: workItem.projectId,
+      workItemId: workItem.id,
+      conversationId: workItem.conversationId,
+      requestedByActorId: context.actorRef,
+      requestedForActorId: workItem.ownerActorId,
+      metadata: {
+        [WORK_EXECUTION_METADATA_KEY]: {
+          schemaVersion: WORK_EXECUTION_METADATA_VERSION,
+          phase: 'execution_preparation',
+          toolName: WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
+          idempotencyKey,
+          actionId: context.actionId ?? null,
+          runId: context.runId ?? null,
+          workItemId: workItem.id,
+          taskId: taskWrite.task.id,
+        },
+      },
+    },
+    createdAt,
+  );
+  const linkWrite = linkCoreWorkItemToTask(
+    bindingWrite.core,
+    {
+      workItemId: workItem.id,
+      taskId: taskWrite.task.id,
+    },
+    createdAt,
+  );
+  const activityWrite = appendTaskCreationActivityIfMissing(
+    linkWrite.core,
+    workItem,
+    approvalWrite.task,
+    context,
+    idempotencyKey,
+    createdAt,
+  );
+  return {
+    core: activityWrite.core,
+    task: approvalWrite.task,
+    created: taskWrite.created,
+    linked: linkWrite.linked,
+  };
+}
+
 export async function createTaskFromWorkItem(
   coreStore: CoreStore,
   input: WorkTaskCreateFromWorkItemInput,
@@ -91,112 +219,12 @@ export async function createTaskFromWorkItem(
 
   try {
     const persisted = await coreStore.updateCore((core) => {
-      const workItem = core.workItems.find((candidate) => candidate.id === workItemId) ?? null;
-      if (workItem === null) {
-        throw new WorkExecutionTaskPrecheckError(`No Work Item found for id ${workItemId}.`);
-      }
-      assertWorkItemExitedIntakeBoundary(workItem, context);
-      if (workItem.status !== 'ready') {
-        throw new WorkExecutionTaskPrecheckError(
-          `Work Item ${workItemId} must be ready before Task creation; current status is `
-          + `${workItem.status}.`,
-        );
-      }
-      if (workItem.taskId) {
-        task = readLinkedPendingTask(core, workItem);
-        created = false;
-        linked = false;
-        return core;
-      }
-
-      const existingTask = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
-      const taskWrite = existingTask === null
-        ? upsertCoreTask(
-          core,
-          {
-            id: taskId,
-            title: input.title?.trim() || workItem.title,
-            status: 'pending_approval',
-            conversationId: workItem.conversationId,
-            ownerActorId: workItem.ownerActorId,
-            orchestratorActorId: context.actorRef,
-            assignedActorIds: resolveExecutionTaskAssignedActors(workItem, context),
-            summary: input.summary?.trim() || workItem.summary,
-            metadata: buildWorkExecutionTaskMetadataEnvelope(
-              workItem,
-              buildWorkExecutionTaskMetadata(
-                workItem,
-                input,
-                context,
-                idempotencyKey,
-                createdAt,
-              ),
-            ),
-          },
-          createdAt,
-        )
-        : { core, task: existingTask, created: false };
-      const approvalWrite = writeApprovalDecision(
-        taskWrite.core,
-        {
-          taskId: taskWrite.task.id,
-          status: 'pending',
-          requestedByActorId: context.actorRef,
-          notes: input.approvalNote ?? `Approve execution Task for Work Item ${workItem.id}.`,
-        },
-        createdAt,
-      );
-      const bindingWrite = upsertCoreApprovalBinding(
-        approvalWrite.core,
-        {
-          id: createTaskApprovalBindingId(taskWrite.task.id),
-          kind: 'owner_decision',
-          approvalTaskId: taskWrite.task.id,
-          subjectKind: 'work_item',
-          subjectId: workItem.id,
-          projectId: workItem.projectId,
-          workItemId: workItem.id,
-          conversationId: workItem.conversationId,
-          requestedByActorId: context.actorRef,
-          requestedForActorId: workItem.ownerActorId,
-          metadata: {
-            [WORK_EXECUTION_METADATA_KEY]: {
-              schemaVersion: WORK_EXECUTION_METADATA_VERSION,
-              phase: 'execution_preparation',
-              toolName: WORK_TASK_CREATE_FROM_WORK_ITEM_TOOL,
-              idempotencyKey,
-              actionId: context.actionId ?? null,
-              runId: context.runId ?? null,
-              workItemId: workItem.id,
-              taskId: taskWrite.task.id,
-            },
-          },
-        },
-        createdAt,
-      );
-      const linkWrite = linkCoreWorkItemToTask(
-        bindingWrite.core,
-        {
-          workItemId: workItem.id,
-          taskId: taskWrite.task.id,
-        },
-        createdAt,
-      );
-      const activityWrite = appendTaskCreationActivityIfMissing(
-        linkWrite.core,
-        workItem,
-        approvalWrite.task,
-        context,
-        idempotencyKey,
-        createdAt,
-      );
-
-      task = approvalWrite.task;
-      created = taskWrite.created;
-      linked = linkWrite.linked;
-      return activityWrite.core;
+      const applied = applyWorkExecutionTaskCreation(core, input, context, createdAt);
+      task = applied.task;
+      created = applied.created;
+      linked = applied.linked;
+      return applied.core;
     });
-
     task = task ?? persisted.tasks.find((candidate) => candidate.id === taskId) ?? null;
     if (task === null) {
       return rejected(

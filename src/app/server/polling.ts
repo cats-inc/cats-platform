@@ -20,6 +20,8 @@ export async function reconcilePollingOnStartup(
     memoryService: dependencies.chat.memoryService,
     runtimeClient: dependencies.shared.runtimeClient,
     telegramRelay: dependencies.chat.telegramRelay,
+    goldenPath: dependencies.chat.transportWorkGoldenPath?.port ?? null,
+    commands: dependencies.chat.telegramCommands,
     onBridgeResult: (bridgeResult) => publishTelegramBridgeResult(
       dependencies.chat.eventHub,
       bridgeResult,

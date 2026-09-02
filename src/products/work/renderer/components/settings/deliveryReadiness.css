@@ -1,0 +1,92 @@
+/**
+ * Delegation-readiness panel (SPEC-114 FR-3).
+ *
+ * Sits inside a `SettingsSection`, so it inherits the settings card chrome and
+ * only styles its own rows. Visual idiom mirrors tasks.css.
+ */
+
+.workDeliveryReadiness {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.workDeliveryReadinessFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+}
+
+.workDeliveryReadinessFacts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workDeliveryReadinessFacts dt {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.workDeliveryReadinessFacts dd {
+  margin: 0;
+  font-size: 13px;
+  /* Workspace paths are long and must not push the card wide. */
+  overflow-wrap: anywhere;
+}
+
+.workDeliveryReadinessBindings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workDeliveryReadinessBinding {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--hairline, rgba(128, 128, 128, 0.25));
+  border-radius: 8px;
+}
+
+.workDeliveryReadinessBindingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workDeliveryReadinessBindingName {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.workDeliveryReadinessBlockersTitle {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.7;
+  font-weight: 600;
+}
+
+.workDeliveryReadinessBlockers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workDeliveryReadinessBlockers li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}

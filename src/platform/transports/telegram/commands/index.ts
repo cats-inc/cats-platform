@@ -121,6 +121,31 @@ const statusCommand: TelegramCommand = {
       chatId: context.chatId,
     }));
     lines.push(t(messageKeys.telegramCommandStatusConnectedLine));
+
+    // "Connected" is true — the message arrived — but on its own it reads as
+    // "everything is fine". FR-5 forbids implying the host can honour work when
+    // it cannot, so delegation gets its own explicit lines.
+    const delegation = context.delegation;
+    if (delegation === undefined || delegation === null) {
+      lines.push(t(messageKeys.telegramCommandStatusDelegationUnknownLine));
+    } else {
+      if (delegation.bindingHealth !== null) {
+        lines.push(t(messageKeys.telegramCommandStatusBindingHealthLine, {
+          health: delegation.bindingHealth,
+        }));
+      }
+      if (!delegation.enabled) {
+        lines.push(t(messageKeys.telegramCommandStatusDelegationDisabledLine));
+      } else if (delegation.canAcceptWork) {
+        lines.push(t(messageKeys.telegramCommandStatusDelegationReadyLine));
+      } else {
+        lines.push(t(messageKeys.telegramCommandStatusDelegationBlockedLine));
+        for (const key of delegation.blockerKeys) {
+          // Keys come from the readiness evaluator, which owns the copy.
+          lines.push(`- ${t(key as MessageKey)}`);
+        }
+      }
+    }
     return ok(lines.join('\n'));
   },
 };

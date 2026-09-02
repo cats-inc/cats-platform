@@ -5,6 +5,25 @@ import {
   type MessageKey,
   type MessageLocale,
 } from '../../../shared/i18n/index.js';
+import type { TelegramPollingHealth } from './contracts.js';
+
+/**
+ * What `/status` needs to answer truthfully (SPEC-114 FR-5).
+ *
+ * Without this the command reported "Status: Connected" and nothing else, which
+ * reads as "everything is fine" even when the host cannot accept delegated work
+ * at all. The connection line is still true — the message did arrive — so it
+ * stays; what was missing is everything after it.
+ */
+export interface TelegramCommandDelegationStatus {
+  /** Ingress health for this binding. `null` when it has no polling consumer. */
+  bindingHealth: TelegramPollingHealth | null;
+  /** Whether work delegation is switched on for this host at all. */
+  enabled: boolean;
+  canAcceptWork: boolean;
+  /** i18n keys naming each missing prerequisite, in evaluation order. */
+  blockerKeys: string[];
+}
 
 export interface TelegramCommandContext {
   args: string;
@@ -16,6 +35,8 @@ export interface TelegramCommandContext {
   currentMode: TelegramInteractionMode | null;
   inboundMode: 'polling' | 'webhook' | null;
   locale?: MessageLocale;
+  /** Absent means the host could not resolve it, which `/status` says plainly. */
+  delegation?: TelegramCommandDelegationStatus | null;
   setMode?: (mode: TelegramInteractionMode) => Promise<TelegramInteractionMode>;
 }
 

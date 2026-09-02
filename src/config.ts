@@ -69,6 +69,27 @@ export interface AppConfig {
   auth: PlatformAuthConfig;
   artifactCanvas: ArtifactCanvasPolicyConfig;
   codeLivePreview: LivePreviewConfig;
+  transportWorkGoldenPath: TransportWorkGoldenPathConfig;
+}
+
+/**
+ * Rollout gate for the SPEC-114 Telegram work-delivery golden path.
+ *
+ * Disabled by default. Rollback is exactly "set enabled to false": Core and
+ * transport records are untouched, and `/work` falls back to ordinary chat
+ * routing (PLAN-105 Phase 6).
+ */
+export interface TransportWorkGoldenPathConfig {
+  enabled: boolean;
+  /**
+   * External user references allowed to delegate work on a binding (FR-1).
+   *
+   * Empty means nobody is authorized, and the bot says so rather than guessing:
+   * there is no trust-on-first-use path into someone's workspace.
+   */
+  authorizedOwnerRefs: string[];
+  /** Absolute workspace the first slice executes against. */
+  workspacePath: string | null;
 }
 
 const DEFAULT_HOST = '127.0.0.1';
@@ -205,6 +226,20 @@ function resolveRuntimeApiKey(env: NodeJS.ProcessEnv): string {
   return readRuntimeApiKeyFromDotEnv(runtimeEnvFile, 'CATS_RUNTIME_API_KEY')?.trim() || '';
 }
 
+export function loadTransportWorkGoldenPathConfig(
+  env: NodeJS.ProcessEnv,
+): TransportWorkGoldenPathConfig {
+  const workspacePath = env.CATS_WORK_GOLDEN_PATH_WORKSPACE?.trim() || null;
+  return {
+    enabled: env.CATS_WORK_GOLDEN_PATH_ENABLED?.trim().toLowerCase() === 'true',
+    authorizedOwnerRefs: (env.CATS_WORK_GOLDEN_PATH_OWNERS ?? '')
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0),
+    workspacePath,
+  };
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const catsHomeDir = env.HOME || env.USERPROFILE || undefined;
   const platformDir = env.CATS_PLATFORM_DIR?.trim()
@@ -295,6 +330,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     maxParallelChats: parsePositiveInt(env.CATS_MAX_PARALLEL_CHATS, DEFAULT_MAX_PARALLEL_CHATS),
     auth,
     artifactCanvas,
+    transportWorkGoldenPath: loadTransportWorkGoldenPathConfig(env),
     codeLivePreview,
   };
 }

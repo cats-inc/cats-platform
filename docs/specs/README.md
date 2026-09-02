@@ -48,7 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
-| [SPEC-114](./SPEC-114-telegram-work-delivery-golden-path.md) | Telegram Work Delivery Golden Path | Draft | [PLAN-105](../plans/PLAN-105-telegram-work-delivery-golden-path-rollout.md), [ADR-112](../decisions/112-adopt-a-core-owned-transport-work-delivery-golden-path.md) |
+| [SPEC-114](./SPEC-114-telegram-work-delivery-golden-path.md) | Telegram Work Delivery Golden Path | Approved | [PLAN-105](../plans/PLAN-105-telegram-work-delivery-golden-path-rollout.md), [ADR-112](../decisions/112-adopt-a-core-owned-transport-work-delivery-golden-path.md) |
 | [SPEC-113](./SPEC-113-admin-bootstrap-and-google-account-linking.md) | Admin Bootstrap and Google Account Linking | Approved | [PLAN-104](../plans/PLAN-104-admin-bootstrap-and-google-account-linking-rollout.md), [ADR-111](../decisions/111-keep-first-admin-local-and-require-step-up-for-google-linking.md) |
 | [SPEC-112](./SPEC-112-grok-devin-cline-aider-in-packaged-setup-and-provider-catalog.md) | Grok, Devin, Cline, and Aider in Packaged Setup and the Setup Provider Inventory | In Progress — Grok setup and execution catalog complete | [PLAN-102](../plans/PLAN-102-grok-devin-cline-aider-packaged-setup-rollout.md), [ADR-109](../decisions/109-port-grok-devin-cline-aider-installers-into-packaged-setup.md) |
 | [SPEC-111](./SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md) | Packaged Desktop Update Surfaces and Release Contract | Draft | [PLAN-101](../plans/PLAN-101-packaged-desktop-update-rollout.md), [ADR-108](../decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md) |
@@ -169,6 +169,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-09-02 (SPEC-114 Telegram work delivery golden path drafted; SPEC-113 Admin bootstrap and Google linking approved.)*
+*Last updated: 2026-09-02 (SPEC-114 Telegram work delivery golden path approved; SPEC-113 Admin bootstrap and Google linking approved.)*
 
 *See also: [plans/](../plans/) for implementation plans*
