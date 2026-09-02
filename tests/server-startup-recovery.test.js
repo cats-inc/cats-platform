@@ -60,7 +60,7 @@ test('runStartupRecoveryPasses continues after a failed startup recovery pass', 
   ]);
 });
 
-test('runServerStartupRecoveryPasses reconciles telegram command surfaces on startup', async () => {
+test('runServerStartupRecoveryPasses reconciles commands and pending golden-path deliveries', async () => {
   const calls = [];
   const chatStore = {
     async read() {
@@ -116,12 +116,19 @@ test('runServerStartupRecoveryPasses reconciles telegram command surfaces on sta
           calls.push('telegram-command-surface');
         },
       },
+      transportWorkGoldenPath: {
+        outbox: {
+          async recoverPending() {
+            calls.push('golden-path-deliveries');
+          },
+        },
+        runner: null,
+      },
       eventHub: {},
     },
     work: {},
     code: {},
   });
 
-  assert.deepEqual(calls, ['telegram-command-surface']);
+  assert.deepEqual(calls, ['telegram-command-surface', 'golden-path-deliveries']);
 });
-

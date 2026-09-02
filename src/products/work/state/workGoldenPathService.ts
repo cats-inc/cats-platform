@@ -28,7 +28,9 @@ import type {
   CoreDeliveryGate,
   CoreDeliveryMode,
   CoreRunStatus,
+  ExecutionTargetSummary,
 } from '../../../core/types.js';
+import type { SupervisionToolScope } from '../../../platform/supervision/contracts.js';
 import {
   createTransportWorkActionTokenStore,
   encodeTransportWorkCallbackData,
@@ -113,6 +115,8 @@ export interface WorkGoldenPathRequestInput {
   readiness: TransportWorkReadiness;
   /** Owner's transport locale; every later message is rendered in it. */
   locale: string | null;
+  /** Return after durable Core/outbox capture; transport send continues safely. */
+  deferDelivery?: boolean;
 }
 
 export type WorkGoldenPathActionOffer = TransportWorkPayloadAction;
@@ -132,6 +136,11 @@ export interface WorkGoldenPathAuthorizeInput {
   /** Telegram callback query id; distinguishes owner events, not scopes. */
   ownerEventRef: string;
   readiness: TransportWorkReadiness;
+  executionTarget?: ExecutionTargetSummary | null;
+  toolScope?: SupervisionToolScope;
+  workspaceHeadOid?: string | null;
+  /** Return after durable admission/outbox capture; transport send continues safely. */
+  deferDelivery?: boolean;
 }
 
 export interface WorkGoldenPathRefusalInput {
@@ -169,8 +178,14 @@ export interface WorkGoldenPathRunEvidence {
   satisfiedCriteria: readonly string[];
   summary: string;
   /** Artifact the run produced, for `artifact_only`. */
-  artifact: { title: string; path: string | null; mimeType: string | null } | null;
-  /** Commit evidence, for `commit_only`. */
+  artifact: {
+    title: string;
+    path: string | null;
+    mimeType: string | null;
+    deliveryWorkspacePath?: string | null;
+    deliverySessionId?: string | null;
+  } | null;
+  /** Commit evidence for every repository-backed delivery mode. */
   commit: WorkCommitEvidence | null;
 }
 
@@ -379,7 +394,7 @@ export function createWorkGoldenPathService(
     purpose: 'ack' | 'proposal' | 'progress' | 'decision' | 'result' | 'publish_result';
     discriminator: string;
     payload: TransportWorkDeliveryPayload;
-  }): Promise<string | null> {
+  }, defer = false): Promise<string | null> {
     // Enforced here rather than in each renderer so a future caller cannot
     // bypass it by assembling a payload of its own.
     assertSafeTransportPayload(input.payload);
@@ -399,6 +414,13 @@ export function createWorkGoldenPathService(
       purpose: input.purpose,
       payload: input.payload,
     });
+    if (defer) {
+      void outbox.flushWorkItem(input.workItemId).catch(() => {
+        // The durable row records ambiguity/failure and remains visible for
+        // startup recovery or explicit owner retry.
+      });
+      return null;
+    }
     const flushed = await outbox.flush(idempotencyKey);
     return flushed.row.externalMessageRef;
   }
@@ -750,7 +772,7 @@ export function createWorkGoldenPathService(
           purpose: 'ack',
           discriminator: `not-ready:${input.externalUpdateRef}`,
           payload: renderNotReadyMessage({ t, readiness: input.readiness }),
-        });
+        }, input.deferDelivery);
         return {
           status: 'not_ready',
           workItemId: null,
@@ -864,7 +886,7 @@ export function createWorkGoldenPathService(
         purpose: 'ack',
         discriminator: input.externalUpdateRef,
         payload: renderAcceptedMessage({ t, workItemId, goal: input.goal }),
-      });
+      }, input.deferDelivery);
       const offers = offerActions({
         t,
         bindingId: input.bindingId,
@@ -886,7 +908,7 @@ export function createWorkGoldenPathService(
           proposal: effectiveProposal,
           actions: offers,
         }),
-      });
+      }, input.deferDelivery);
 
       return {
         status: 'accepted',
@@ -986,6 +1008,9 @@ export function createWorkGoldenPathService(
           readiness: input.readiness,
           ownerEventRef: input.ownerEventRef,
           actorRef,
+          executionTarget: input.executionTarget,
+          toolScope: input.toolScope,
+          workspaceHeadOid: input.workspaceHeadOid,
         },
         now,
       );
@@ -1019,7 +1044,7 @@ export function createWorkGoldenPathService(
             stageKey: messageKeys.workDeliveryStageAdmitted,
             milestoneKey: messageKeys.workDeliveryMilestoneAdmitted,
           }),
-        });
+        }, input.deferDelivery);
       }
 
       return {
@@ -1321,6 +1346,12 @@ export function createWorkGoldenPathService(
             outstandingGates,
             ownerActorId: (await coreStore.readCore()).ownerProfile.actorId,
             actorRef,
+            deliveryWorkspacePath: input.commit?.deliveryWorkspacePath
+              ?? input.artifact?.deliveryWorkspacePath
+              ?? null,
+            deliverySessionId: input.commit?.deliverySessionId
+              ?? input.artifact?.deliverySessionId
+              ?? null,
           },
           now,
         );

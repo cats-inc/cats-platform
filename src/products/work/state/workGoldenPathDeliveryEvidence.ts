@@ -47,7 +47,7 @@ function hasPendingChanges(snapshot: RuntimeRepoSnapshot): boolean {
 }
 
 /**
- * Collects `commit_only` evidence.
+ * Collects evidence for every repository-backed delivery mode.
  *
  * Returns nothing when the agent has not changed anything, which is what makes
  * an idle run loop and then fail honestly instead of committing an empty tree
@@ -58,14 +58,22 @@ async function collectCommitEvidence(input: {
   workspacePath: string;
   sessionId: string;
   goal: string;
+  baselineHeadOid: string | null;
+  deliveryWorkspacePath: string | null;
 }): Promise<WorkCommitEvidence | null> {
   const before = await input.deliveryClient.inspectRepo({
-    workspacePath: input.workspacePath,
     sessionId: input.sessionId,
   });
   if (!before.supported || !before.repository) {
     return null;
   }
+  // A different HEAD means something else changed the repository after the
+  // owner admitted this run. Refuse to commit across that ownership boundary.
+  if (input.baselineHeadOid !== null && before.headOid !== input.baselineHeadOid) {
+    return null;
+  }
+  // This is the runtime-managed isolated worktree created for the run, so every
+  // change since the clean baseline belongs to this execution.
   if (!hasPendingChanges(before)) {
     return null;
   }
@@ -77,7 +85,6 @@ async function collectCommitEvidence(input: {
   ].join(', ');
 
   const commit = await input.deliveryClient.createCommit({
-    workspacePath: input.workspacePath,
     sessionId: input.sessionId,
     message: buildCommitMessage({ goal: input.goal }),
   });
@@ -88,7 +95,6 @@ async function collectCommitEvidence(input: {
   // Verify the post-condition rather than trusting the commit response: the
   // worktree must be clean and HEAD must have moved.
   const after = await input.deliveryClient.inspectRepo({
-    workspacePath: input.workspacePath,
     sessionId: input.sessionId,
   });
   const landed = !hasPendingChanges(after) && after.headOid !== before.headOid;
@@ -97,6 +103,8 @@ async function collectCommitEvidence(input: {
     commitId: commit.commitId,
     changeSummary,
     validation: { command: POST_COMMIT_CHECK, passed: landed },
+    deliveryWorkspacePath: input.deliveryWorkspacePath,
+    deliverySessionId: input.sessionId,
   };
 }
 
@@ -104,9 +112,9 @@ async function collectArtifactEvidence(input: {
   deliveryClient: RuntimeDeliveryClient;
   workspacePath: string | null;
   sessionId: string;
+  deliveryWorkspacePath: string | null;
 }): Promise<WorkGoldenPathArtifactEvidence | null> {
   const artifacts = await input.deliveryClient.previewArtifacts({
-    workspacePath: input.workspacePath,
     sessionId: input.sessionId,
   });
   const first = artifacts[0];
@@ -117,6 +125,8 @@ async function collectArtifactEvidence(input: {
     title: first.label ?? first.id,
     path: first.path,
     mimeType: first.mediaType,
+    deliveryWorkspacePath: input.deliveryWorkspacePath,
+    deliverySessionId: input.sessionId,
   };
 }
 
@@ -135,8 +145,10 @@ export function createRuntimeEvidenceCollector(
     goal,
     deliveryMode,
     workspacePath,
+    deliveryWorkspacePath,
     acceptanceCriteria,
     claimedCriteria,
+    baselineHeadOid,
   }) => {
     // Only criteria the proposal actually stated can be claimed; an agent
     // cannot invent a criterion and then satisfy it.
@@ -146,7 +158,7 @@ export function createRuntimeEvidenceCollector(
       ));
 
     try {
-      if (deliveryMode === 'commit_only') {
+      if (deliveryMode !== 'artifact_only') {
         if (workspacePath === null) {
           return { satisfiedCriteria, artifact: null, commit: null };
         }
@@ -158,6 +170,8 @@ export function createRuntimeEvidenceCollector(
             workspacePath,
             sessionId,
             goal,
+            baselineHeadOid,
+            deliveryWorkspacePath: deliveryWorkspacePath ?? workspacePath,
           }),
         };
       }
@@ -167,6 +181,7 @@ export function createRuntimeEvidenceCollector(
           deliveryClient: input.deliveryClient,
           workspacePath,
           sessionId,
+          deliveryWorkspacePath: deliveryWorkspacePath ?? workspacePath,
         }),
         commit: null,
       };

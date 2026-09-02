@@ -7,12 +7,16 @@ import type { CatsMemoryService } from '../../platform/memory/index.js';
 import type { TransportWorkGoldenPathPort } from '../../platform/transports/work-delivery/port.js';
 import {
   bridgeTelegramWebhookToRoom,
+  isTelegramGoldenPathUpdate,
   type TelegramRoomBridge,
   type TelegramWebhookBridgeResult,
 } from '../../platform/transports/telegram/bridge.js';
 import type { TelegramRelayContext, TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
 import type { TelegramCommandPort } from '../../platform/transports/telegram/commandPort.js';
-import type { TelegramIngressDispatcher } from '../../platform/transports/telegram/ingressDispatch.js';
+import {
+  dispatchTelegramIngressAndWait,
+  type TelegramIngressDispatcher,
+} from '../../platform/transports/telegram/ingressDispatch.js';
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay/index.js';
 import { defaultCatProducts, hasPlatformSurface } from '../../shared/platformSurfaces.js';
@@ -328,8 +332,42 @@ export async function handleTelegramWebhook(
       return;
     }
 
-    const receipt = dependencies.telegramRelay.receiveUpdate({ update, context });
+    const goldenPathUpdate = isTelegramGoldenPathUpdate(
+      update,
+      dependencies.transportWorkGoldenPath,
+    );
+    const receipt = dependencies.telegramRelay.receiveUpdate({
+      update,
+      context,
+      deferProcessed: goldenPathUpdate,
+    });
     if (receipt.status === 'accepted') {
+      if (goldenPathUpdate) {
+        // Golden-path intake is a short durability operation. Acknowledge the
+        // webhook and its dedupe id only after Core/outbox capture succeeds.
+        const bridgeResult = await dispatchTelegramIngressAndWait(
+          dependencies.ingressDispatcher,
+          ingressKey,
+          () => bridgeTelegramWebhookToRoom({
+            update,
+            receipt,
+            context,
+            roomBridge: dependencies.telegramRoomBridge,
+            memoryService: dependencies.memoryService,
+            runtimeClient: dependencies.runtimeClient,
+            telegramRelay: dependencies.telegramRelay,
+            commands: dependencies.telegramCommands ?? null,
+            goldenPath: dependencies.transportWorkGoldenPath ?? null,
+            now: dependencies.now,
+          }),
+        );
+        if (receipt.updateId !== null) {
+          dependencies.telegramRelay.markUpdateProcessed(receipt.updateId);
+        }
+        publishTelegramBridgeResult(dependencies.eventHub, bridgeResult);
+        sendJson(response, 202, { receipt });
+        return;
+      }
       // Transport-owned slash commands are answered inside the bridge now, so
       // long polling gets them too; this route no longer intercepts them.
       // The room turn runs detached (SPEC-114 FR-14). Awaiting it here held the

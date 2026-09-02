@@ -133,3 +133,14 @@ export async function resumeGoldenPathRunsOnStartup(
     now: dependencies.shared.now,
   });
 }
+
+/**
+ * Re-drives outbound intents that were durably pending before the host stopped.
+ * Rows left in `sending` are hydrated as ambiguous and deliberately excluded:
+ * only an explicit owner retry may risk sending those again.
+ */
+export async function recoverGoldenPathDeliveriesOnStartup(
+  dependencies: ResolvedServerDependencies,
+): Promise<void> {
+  await dependencies.chat.transportWorkGoldenPath?.outbox.recoverPending();
+}

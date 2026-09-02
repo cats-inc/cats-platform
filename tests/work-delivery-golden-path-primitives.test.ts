@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
@@ -11,6 +14,9 @@ import {
   buildTransportWorkDeliveryKey,
   createTransportWorkOutbox,
 } from '../src/platform/transports/work-delivery/outbox.js';
+import {
+  createFileTransportWorkStateStore,
+} from '../src/platform/transports/work-delivery/stateStore.js';
 import {
   buildTransportWorkProposal,
   isTransportWorkProposalMateriallyChanged,
@@ -458,6 +464,21 @@ test('commit_only requires an immutable commit id and validation evidence (FR-31
   assert.equal(accepted.accepted, true);
 });
 
+test('push and publication modes require commit evidence before their external action', () => {
+  for (const deliveryMode of ['push_branch', 'pr_with_checks', 'deploy_preview'] as const) {
+    const withoutCommit = evaluateWorkCompletionEvidence({
+      deliveryMode,
+      acceptanceCriteria: ['Branch contains the requested change'],
+      satisfiedCriteria: ['Branch contains the requested change'],
+      outcomeStatus: 'succeeded',
+      artifacts: [readyArtifact()],
+      commit: null,
+    });
+    assert.equal(withoutCommit.accepted, false, `${deliveryMode} cannot publish uncommitted edits`);
+    assert.ok(withoutCommit.gaps.includes('no_commit_evidence'));
+  }
+});
+
 // --- FR-32/FR-33/FR-45..FR-47: outbox ---------------------------------------
 
 function deliveryKey(purpose: 'ack' | 'progress' | 'decision' | 'result', discriminator: string) {
@@ -534,7 +555,7 @@ test('a stale routine progress message is suppressed, never delivered late (FR-3
   assert.deepEqual(sent, ['decision:2'], 'only the newer decision reaches the transport');
 });
 
-test('an ambiguous send stays pending for reconciliation rather than failing (FR-47)', async () => {
+test('an ambiguous send requires an explicit owner retry (FR-47)', async () => {
   let attempt = 0;
   const outbox = createTransportWorkOutbox({
     now: frozenClock(),
@@ -558,12 +579,154 @@ test('an ambiguous send stays pending for reconciliation rather than failing (FR
 
   const first = await outbox.flush(key);
   assert.equal(first.outcome, 'ambiguous');
-  assert.equal(first.row.state, 'pending', 'an unproven send must not be recorded as failed');
+  assert.equal(first.row.state, 'ambiguous', 'an unproven send must not be auto-redriven');
   assert.equal(outbox.hasDeliveredResult('work-item-1'), false);
 
   const second = await outbox.flush(key);
-  assert.equal(second.outcome, 'sent');
-  assert.equal(second.row.attemptCount, 2);
+  assert.equal(second.outcome, 'ambiguous');
+  assert.equal(second.row.attemptCount, 1);
+  assert.equal(attempt, 1, 'automatic flush must not duplicate an ambiguous message');
+
+  const retried = await outbox.retry(key);
+  assert.equal(retried.outcome, 'sent');
+  assert.equal(retried.row.attemptCount, 2);
+});
+
+test('concurrent flushes for one key join the same transport send', async () => {
+  let sends = 0;
+  let release!: () => void;
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const outbox = createTransportWorkOutbox({
+    now: frozenClock(),
+    send: async () => {
+      sends += 1;
+      await blocked;
+      return { ok: true, externalMessageRef: 'msg-one' };
+    },
+  });
+  const key = deliveryKey('result', 'concurrent');
+  outbox.enqueue({
+    idempotencyKey: key,
+    bindingId: 'binding-1',
+    externalConversationRef: CHAT_REF,
+    workItemId: 'work-item-1',
+    purpose: 'result',
+    payload: PAYLOAD,
+  });
+
+  const first = outbox.flush(key);
+  const second = outbox.flush(key);
+  await Promise.resolve();
+  assert.equal(sends, 1);
+  release();
+  assert.equal((await first).outcome, 'sent');
+  assert.equal((await second).outcome, 'sent');
+  assert.equal(sends, 1);
+});
+
+test('durable outbox rows and callback grants survive reconstruction', async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'cats-work-state-'));
+  const statePath = path.join(directory, 'state.json');
+  try {
+    const state = createFileTransportWorkStateStore(statePath);
+    const tokenStore = createTransportWorkActionTokenStore({
+      now: frozenClock(),
+      store: state,
+      randomToken: () => 'restart-token',
+    });
+    const token = tokenStore.issue({
+      bindingId: 'binding-1',
+      ownerActorId: 'actor-owner',
+      externalUserRef: 'tg-user-1',
+      workItemId: 'work-item-1',
+      proposalRevision: 1,
+      proposalDigest: 'digest-1',
+      action: 'start_work',
+    });
+    const beforeRestart = createTransportWorkOutbox({
+      now: frozenClock(),
+      store: state,
+      send: async () => ({ ok: true, externalMessageRef: 'unused' }),
+    });
+    const key = deliveryKey('result', 'restart-pending');
+    beforeRestart.enqueue({
+      idempotencyKey: key,
+      bindingId: 'binding-1',
+      externalConversationRef: CHAT_REF,
+      workItemId: 'work-item-1',
+      purpose: 'result',
+      payload: PAYLOAD,
+    });
+
+    const recoveredState = createFileTransportWorkStateStore(statePath);
+    const recoveredTokens = createTransportWorkActionTokenStore({
+      now: frozenClock(),
+      store: recoveredState,
+    });
+    assert.equal(recoveredTokens.resolve({
+      callbackData: encodeTransportWorkCallbackData(token.token),
+      bindingId: 'binding-1',
+      externalUserRef: 'tg-user-1',
+      resolveScope: () => ({
+        proposalRevision: 1,
+        proposalDigest: 'digest-1',
+        allowedActions: ['start_work'],
+      }),
+    }).status, 'resolved');
+
+    let sends = 0;
+    const recoveredOutbox = createTransportWorkOutbox({
+      now: frozenClock(),
+      store: recoveredState,
+      send: async () => {
+        sends += 1;
+        return { ok: true, externalMessageRef: 'msg-after-restart' };
+      },
+    });
+    const results = await recoveredOutbox.recoverPending();
+    assert.equal(results[0]?.outcome, 'sent');
+    assert.equal(sends, 1);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('a row interrupted while sending becomes ambiguous after restart', async () => {
+  let sends = 0;
+  const key = deliveryKey('result', 'interrupted');
+  const outbox = createTransportWorkOutbox({
+    now: frozenClock(),
+    send: async () => {
+      sends += 1;
+      return { ok: true, externalMessageRef: 'duplicate' };
+    },
+    initialRows: [{
+      version: 1,
+      idempotencyKey: key,
+      bindingId: 'binding-1',
+      externalConversationRef: CHAT_REF,
+      workItemId: 'work-item-1',
+      taskId: null,
+      runId: 'run-1',
+      purpose: 'result',
+      payload: PAYLOAD,
+      state: 'sending',
+      externalMessageRef: null,
+      attemptCount: 1,
+      lastErrorCode: null,
+      sequence: 1,
+      createdAt: BASE_TIME.toISOString(),
+      updatedAt: BASE_TIME.toISOString(),
+      sentAt: null,
+    }],
+  });
+
+  const recovered = await outbox.flush(key);
+  assert.equal(recovered.outcome, 'ambiguous');
+  assert.equal(recovered.row.lastErrorCode, 'interrupted_send');
+  assert.equal(sends, 0);
 });
 
 test('outbox rows recovered after a restart are not resent (FR-45)', async () => {

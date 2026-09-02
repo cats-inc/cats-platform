@@ -95,6 +95,10 @@ const REMEDIATION: Record<
     remediationKey: 'workDelivery.readiness.workspaceNotARepository',
     remediationPath: '/settings/work',
   },
+  workspace_not_clean: {
+    remediationKey: 'workDelivery.readiness.workspaceNotClean',
+    remediationPath: '/workspaces',
+  },
   delivery_policy_unresolved: {
     remediationKey: 'workDelivery.readiness.deliveryPolicyUnresolved',
     remediationPath: '/settings/work',
@@ -116,6 +120,7 @@ const PERMISSION_BLOCKERS: Record<
   workspace_not_configured: 'workspace_missing',
   workspace_unreachable: 'workspace_unreachable',
   workspace_not_a_repository: 'workspace_not_a_repository',
+  workspace_not_clean: 'workspace_not_clean',
 };
 
 function blocker(reason: TransportWorkReadinessReason): TransportWorkReadinessBlocker {

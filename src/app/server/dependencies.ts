@@ -360,6 +360,7 @@ export function resolveServerDependencies(
     readRelayContext: async () =>
       (await readTelegramPollingContext(dependencies.chat.chatStore)).context,
     runtimeClient: dependencies.shared.runtimeClient,
+    providerCapabilityBootstrapConfig: capabilityBootstrapLoaded.config,
     now: dependencies.shared.now,
   });
 

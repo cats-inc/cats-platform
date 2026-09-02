@@ -129,6 +129,44 @@ test('telegram relay dedupes exact update ids and keeps the chat-to-conversation
   assert.equal(duplicate.mappedConversationId, 'telegram:12345');
 });
 
+test('telegram relay defers dedupe until durable golden-path capture completes', () => {
+  const store = new InMemoryTelegramRelayStore();
+  const relay = createTelegramRelay({
+    store,
+    now: () => new Date('2026-03-19T00:00:00.000Z'),
+  });
+  const update = {
+    update_id: 101,
+    message: {
+      message_id: 88,
+      text: '/work fix the release',
+      chat: { id: 12345, type: 'private' },
+    },
+  };
+
+  const first = relay.receiveUpdate({
+    update,
+    context: createContext(),
+    deferProcessed: true,
+  });
+  assert.equal(first.status, 'accepted');
+  assert.equal(store.hasProcessedUpdate(101), false);
+
+  // Simulates Telegram redelivery after product capture failed: the exact
+  // update is still accepted because ingress never acknowledged it durably.
+  const retry = relay.receiveUpdate({
+    update,
+    context: createContext(),
+    deferProcessed: true,
+  });
+  assert.equal(retry.status, 'accepted');
+
+  relay.markUpdateProcessed(101);
+  const duplicate = relay.receiveUpdate({ update, context: createContext() });
+  assert.equal(duplicate.status, 'ignored');
+  assert.equal(duplicate.reason, 'duplicate_update');
+});
+
 test('telegram relay can persist a linked room for the active transport inbox', () => {
   const store = new InMemoryTelegramRelayStore();
   const relay = createTelegramRelay({
@@ -648,4 +686,3 @@ test('file-backed telegram relay store restores ingress and delivery diagnostics
   assert.equal(restored.getDeliveryStats().sentCount, 1);
   assert.equal(restored.getDeliveryStats().lastReceipt?.messageId, '89');
 });
-

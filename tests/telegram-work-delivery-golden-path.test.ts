@@ -641,8 +641,14 @@ test('a gated delivery mode stops at result_ready until publication is authorize
     runId,
     satisfiedCriteria: ['Branch pushed'],
     summary: 'Pushed the branch.',
-    artifact: { title: 'Branch summary', path: null, mimeType: 'text/plain' },
-    commit: null,
+    artifact: null,
+    commit: {
+      commitId: 'abc123def456',
+      changeSummary: 'Prepared the branch',
+      validation: { command: 'runtime repo status', passed: true },
+      deliveryWorkspacePath: '/tmp/runtime-worktree',
+      deliverySessionId: 'session-publish',
+    },
   });
 
   assert.equal(completed.status, 'result_ready');

@@ -109,6 +109,9 @@ async function admit(harness: Harness, overrides: {
     externalUserRef: 'tg-owner',
     ownerEventRef: 'tg-callback-1',
     readiness: READINESS,
+    executionTarget: { provider: 'claude', instance: null, model: 'opus' },
+    toolScope: 'narrow_write',
+    workspaceHeadOid: 'aaaaaaaaaaaa',
   });
   assert.equal(authorized.status, 'admitted');
   return {

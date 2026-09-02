@@ -2333,6 +2333,8 @@ export const enCatalog: MessageCatalog = {
     + 'and that the runtime is running.',
   'workDelivery.readiness.workspaceNotARepository':
     'This delivery mode needs a git repository, but the configured workspace is not one.',
+  'workDelivery.readiness.workspaceNotClean':
+    'The repository has existing changes. Commit, stash, or discard them before delegating work.',
   'workDelivery.readiness.deliveryPolicyUnresolved':
     'The effective delivery policy could not be resolved.',
   'workDelivery.readiness.backgroundServiceUnavailable':

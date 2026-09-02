@@ -91,14 +91,14 @@ function collector(input: Parameters<typeof createFakeDeliveryFetch>[0]) {
   };
 }
 
-const DIRTY = {
+const STAGED = {
   supported: true,
   repository: true,
   clean: false,
   headOid: 'aaaaaaaaaaaa',
-  stagedCount: 0,
-  modifiedCount: 2,
-  untrackedCount: 1,
+  stagedCount: 2,
+  modifiedCount: 0,
+  untrackedCount: 0,
 };
 const CLEAN_AFTER = {
   supported: true,
@@ -116,6 +116,8 @@ const BASE_INPUT = {
   goal: 'Add a changelog entry for 0.1.21',
   deliveryMode: 'commit_only' as const,
   workspacePath: WORKSPACE,
+  deliveryWorkspacePath: '/tmp/runtime-worktree',
+  baselineHeadOid: 'aaaaaaaaaaaa',
   acceptanceCriteria: [CRITERION],
   claimedCriteria: [CRITERION],
 };
@@ -124,15 +126,17 @@ const BASE_INPUT = {
 
 test('a real commit produces a verified commit id and post-commit check', async () => {
   const { collect, calls } = collector({
-    repoStates: [DIRTY, CLEAN_AFTER],
+    repoStates: [STAGED, CLEAN_AFTER],
     commit: { state: 'completed', metadata: { commit: { oid: 'bbbbbbbbbbbb' } } },
   });
 
   const evidence = await collect(BASE_INPUT);
 
   assert.equal(evidence.commit?.commitId, 'bbbbbbbbbbbb');
-  assert.equal(evidence.commit?.changeSummary, '0 staged, 2 modified, 1 untracked');
+  assert.equal(evidence.commit?.changeSummary, '2 staged, 0 modified, 0 untracked');
   assert.equal(evidence.commit?.validation?.passed, true);
+  assert.equal(evidence.commit?.deliveryWorkspacePath, '/tmp/runtime-worktree');
+  assert.equal(evidence.commit?.deliverySessionId, 'session-1');
   assert.match(evidence.commit?.validation?.command ?? '', /worktree clean at the new HEAD/u);
   assert.deepEqual(evidence.satisfiedCriteria, [CRITERION]);
 
@@ -143,7 +147,13 @@ test('a real commit produces a verified commit id and post-commit check', async 
     ['/delivery/repo/status', '/delivery/repo/commit', '/delivery/repo/status'],
   );
   assert.equal(calls[1].body.apply, true);
-  assert.match(String((calls[1].body.context as Record<string, unknown>).message), /^feat: /u);
+  assert.equal(calls[1].body.actorRole, 'owner');
+  assert.equal(calls[1].body.approved, true);
+  const repo = calls[1].body.repo as Record<string, unknown>;
+  assert.match(String(repo.message), /^feat: /u);
+  assert.equal(repo.stageAll, true);
+  assert.equal(calls[0].body.workspacePath, undefined);
+  assert.equal(calls[0].body.sessionId, 'session-1');
 });
 
 test('an idle agent produces no commit evidence rather than an empty commit', async () => {
@@ -159,10 +169,54 @@ test('an idle agent produces no commit evidence rather than an empty commit', as
   );
 });
 
+test('push modes create local commit evidence before gated publication', async () => {
+  const { collect, calls } = collector({
+    repoStates: [STAGED, CLEAN_AFTER],
+    commit: { state: 'completed', metadata: { commit: { oid: 'bbbbbbbbbbbb' } } },
+  });
+
+  const evidence = await collect({ ...BASE_INPUT, deliveryMode: 'push_branch' });
+
+  assert.equal(evidence.artifact, null);
+  assert.equal(evidence.commit?.commitId, 'bbbbbbbbbbbb');
+  assert.deepEqual(
+    calls.map((call) => call.path),
+    ['/delivery/repo/status', '/delivery/repo/commit', '/delivery/repo/status'],
+  );
+});
+
+test('a moved HEAD since admission is not committed', async () => {
+  const { collect, calls } = collector({
+    repoStates: [{ ...STAGED, headOid: 'cccccccccccc' }],
+  });
+
+  assert.equal((await collect(BASE_INPUT)).commit, null);
+  assert.deepEqual(calls.map((call) => call.path), ['/delivery/repo/status']);
+});
+
+test('push authorization fields match the cats-runtime delivery contract', async () => {
+  const { fetchImpl, calls } = createFakeDeliveryFetch({ repoStates: [CLEAN_AFTER] });
+  const client = createRuntimeDeliveryClient({
+    baseUrl: 'http://127.0.0.1:3110',
+    fetchImpl,
+  });
+
+  await client.pushBranch({
+    workspacePath: WORKSPACE,
+    sessionId: 'session-1',
+    approvalRef: 'approval-1',
+  });
+  const body = calls[0].body;
+  assert.equal(body.actorRole, 'owner');
+  assert.equal(body.approved, true);
+  assert.deepEqual(body.context, { approvalRef: 'approval-1' });
+  assert.equal(body.authorization, undefined);
+});
+
 test('a commit that did not land fails its post-commit check', async () => {
   const { collect } = collector({
     // The worktree is still dirty afterwards and HEAD never moved.
-    repoStates: [DIRTY, DIRTY],
+    repoStates: [STAGED, STAGED],
     commit: { state: 'completed', metadata: { commit: { oid: 'aaaaaaaaaaaa' } } },
   });
 
@@ -173,7 +227,7 @@ test('a commit that did not land fails its post-commit check', async () => {
 
 test('a blocked commit yields no evidence', async () => {
   const { collect } = collector({
-    repoStates: [DIRTY, DIRTY],
+    repoStates: [STAGED, STAGED],
     commit: { state: 'blocked', blockedReasons: [{ code: 'git_commit_failed' }] },
   });
 
@@ -189,7 +243,7 @@ test('a non-repository workspace yields no commit evidence', async () => {
 });
 
 test('an unreachable delivery endpoint yields no evidence, never false delivery', async () => {
-  const { collect } = collector({ repoStates: [DIRTY], failWith: 500 });
+  const { collect } = collector({ repoStates: [STAGED], failWith: 500 });
 
   const evidence = await collect(BASE_INPUT);
 
@@ -211,6 +265,8 @@ test('artifact_only reads the session artifacts without publishing them (FR-38)'
     title: 'Summary',
     path: '/tmp/out.md',
     mimeType: 'text/markdown',
+    deliveryWorkspacePath: '/tmp/runtime-worktree',
+    deliverySessionId: 'session-1',
   });
   assert.equal(calls[0].path, '/delivery/artifacts/publish');
   assert.equal(calls[0].body.apply, false, 'listing must not publish');
@@ -293,8 +349,12 @@ test('the executor parses claims from its own turn and passes them to the collec
 
 test('the executor asks for the bounded claim format instead of free prose', async () => {
   const messages: string[] = [];
+  const sessionInputs: Record<string, unknown>[] = [];
   const runtimeClient = {
-    createSession: async () => ({ id: 'session-1', provider: 'claude', model: 'opus' }),
+    createSession: async (input: Record<string, unknown>) => {
+      sessionInputs.push(input);
+      return { id: 'session-1', provider: 'claude', model: 'opus' };
+    },
     sendMessage: async (_id: string, content: string) => {
       messages.push(content);
       return { segments: [], inputTokens: 0, outputTokens: 0, tokensUsed: 0 };
@@ -321,6 +381,15 @@ test('the executor asks for the bounded claim format instead of free prose', asy
 
   assert.ok(messages[0].includes('CRITERIA-MET:'));
   assert.ok(messages[0].includes('Do not declare the task complete'));
+  const sessionInput = sessionInputs[0];
+  assert.equal(sessionInput?.workspaceKind, 'worktree');
+  assert.equal(sessionInput?.workspaceAccess, 'read_write');
+  assert.equal(sessionInput?.permissionMode, 'whitelist');
+  const allowedTools = sessionInput?.allowedTools as string[];
+  assert.ok(allowedTools.includes('Read'));
+  assert.ok(allowedTools.includes('apply_patch'));
+  assert.ok(!allowedTools.includes('Bash'));
+  assert.ok(!allowedTools.includes('git'));
 });
 
 test('a run with no resolvable provider fails instead of opening a session', async () => {

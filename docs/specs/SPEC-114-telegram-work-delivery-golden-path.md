@@ -503,18 +503,18 @@ of the requirement holds, with the shortfall named; **gap** — not implemented;
 |----|--------|----------------------------------|
 | FR-1 Binding readiness | done | `platform/transports/work-delivery/readiness.ts`; admission fails closed in `workGoldenPathService.receiveRequest` |
 | FR-2 Execution readiness | done | Same evaluator; `executionTargetId` resolved per request in `app/server/transportWorkGoldenPath.ts` |
-| FR-3 Actionable degradation | done | All blockers reported at once, each with a localized key and a settings path; `renderNotReadyMessage` |
-| FR-4 Product-owned setup | done | `GET /api/work/delivery-readiness` + `DeliveryReadinessSection` on `/settings/work`; capability bootstrap on `/settings/assistants` |
+| FR-3 Actionable degradation | done | All blockers, including an unclean repository baseline, are reported at once with localized remediation and a valid product route; `renderNotReadyMessage` |
+| FR-4 Product-owned setup | partial | Readiness is inspectable at `GET /api/work/delivery-readiness` and `/settings/work`, and capability bootstrap lives on `/settings/assistants`. Rollout owner ids and workspace selection are still environment-backed/read-only and require a host restart rather than being configurable from the product. |
 | FR-5 Truthful availability | done | `/status` reports ingress health and delegation state; an unresolvable readiness lookup reports "could not be checked", never ready |
 | FR-6 No secret propagation | done | `assertSafeTransportPayload`; opaque action tokens carry no entities |
 | FR-7 Explicit baseline | done | `inboundClassification.ts` |
 | FR-8 Durable acceptance first | done | `workGoldenPathIntake.ts` reuses the capture tool, keyed by update ref |
 | FR-9 Source identity | done | `TransportWorkOriginV1` in the Work Item metadata envelope |
-| FR-10 Update idempotency | done | Relay `markProcessedUpdate` at ingress; capture keyed by `externalUpdateRef` |
+| FR-10 Update idempotency | done | Golden-path ingress defers `markUpdateProcessed` until the Core capture and durable outbox row exist; capture is keyed by `externalUpdateRef`, so a crash before that boundary remains redeliverable. |
 | FR-11 Callback polling | done | `TELEGRAM_ALLOWED_UPDATE_KINDS` |
-| FR-12 Callback acknowledgement | done | `routeTelegramGoldenPathUpdate` answers before product work |
-| FR-13 Opaque callback token | done | `actionTokens.ts`; 18 random bytes, server-side resolution |
-| FR-14 Async ingress | done | `ingressDispatch.ts`, shared by polling and webhook, bounded per binding |
+| FR-12 Callback acknowledgement | done | `routeTelegramGoldenPathUpdate` durably captures the owner action first, then answers promptly before awaiting any runtime work; acknowledgement failure cannot lose the command. |
+| FR-13 Opaque callback token | done | `actionTokens.ts`; 18 random bytes with file-backed server-side resolution survive host reconstruction without exposing scope in callback data. |
+| FR-14 Async ingress | done | `ingressDispatch.ts` bounds work per binding. `/work` waits through durable Core/outbox capture, then detaches Telegram delivery and Run execution; owner callbacks wait for their product command to become durable, and ordinary chat remains detached. |
 | FR-15 Proposal contents | done | `renderProposalMessage` |
 | FR-16 One focal clarification | **gap** | Not implemented. Intake captures per Telegram update ref, so a clarification reply would open a *parallel* Work Item rather than revising the same one. The `adjust` action has been withdrawn from proposals until this exists — see the note below. |
 | FR-17 Versioned scope | done | `proposal.ts` revision + digest over execution-relevant fields |
@@ -529,9 +529,9 @@ of the requirement holds, with the shortfall named; **gap** — not implemented;
 | FR-26 Admission idempotency | done | Deterministic `resolveWorkGoldenPathRunId(admissionKey)` |
 | FR-27 Started response | done | Admission enqueues a started/blocked message |
 | FR-28 Managed Run only | done | `workGoldenPathRuntimeExecutor.ts` routes through the supervision boundary |
-| FR-29 Durable lifecycle | done | Core Run status transitions plus the startup resume sweep |
+| FR-29 Durable lifecycle | done | Core Run status transitions, a run-scoped execution target/tool-scope/HEAD snapshot, the file-backed transport store, and startup sweeps for both Runs and pending deliveries. |
 | FR-30 Continuation | done | `workGoldenPathRunner.ts`: a successful step is not completion |
-| FR-31 Completion evidence | done | `workCompletionEvidence.ts`; commit id must match `/^[0-9a-f]{7,40}$/u` |
+| FR-31 Completion evidence | done | `workCompletionEvidence.ts`; non-empty acceptance criteria come from the goal, commit ids are immutable, admitted HEAD must still match, and Cats verifies/commits inside the runtime-owned isolated worktree. Approved runtime commit apply materializes a detached session worktree onto a deterministic runtime-owned branch, so the verified commit is pushable without exposing Git tools to the provider. |
 | FR-32 Milestone notifications | done | Outbox coalescing of routine progress |
 | FR-33 Progress ordering | done | Causal `sequence` per work item in `outbox.ts` |
 | FR-34 Decision requests | done | `notifyDecisionNeeded` |
@@ -539,15 +539,15 @@ of the requirement holds, with the shortfall named; **gap** — not implemented;
 | FR-36 Transport command compatibility | done | `/status` and `/open` unchanged in meaning; lifecycle uses scoped callbacks. Commands now answer on *both* ingress modes, which they did not before. |
 | FR-37 Result-ready message | done | `renderDecisionMessage` / result payloads |
 | FR-38 Artifact status | done | `previewArtifacts` uses `apply: false`; declarations stay `ready` |
-| FR-39 Delivery mode semantics | done | `deliveryGates.ts` + `workGoldenPathPublish.ts` |
-| FR-40 Policy gates preserved | done | High-side-effect modes always retain `owner_approval_required`; provider tool scope capped at `narrow_write` so execution cannot clear a gate |
+| FR-39 Delivery mode semantics | done | `artifact_only` requires a ready Artifact. Every repository-backed mode first creates verified commit evidence in the isolated worktree; `workGoldenPathPublish.ts` then adds gated push/PR/checks/preview actions. |
+| FR-40 Policy gates preserved | done | High-side-effect modes retain `owner_approval_required`; the provider session is a runtime-owned sandbox/worktree with a local-file-only whitelist (no shell/git/network), while Cats performs commit/publish through the delivery API after verifying evidence. Gated publish persists and resumes the same runtime cwd/session rather than the operator's source worktree. |
 | FR-41 First-slice publication default | done | Every publish action sits behind a Core `release_gate` approval |
 | FR-42 Publish idempotency | done | Per-action `alreadyPerformed`; partial progress stamped without deciding the approval |
 | FR-43 Source-binding delivery | done | `scopeContextToBinding` |
 | FR-44 Safe payload | partial | Summary, deep link, and bounded actions only; `assertSafeTransportPayload` rejects local paths and secrets. Attachment upload and stable URLs are **not** implemented, so an artifact is referenced by deep link rather than sent. |
 | FR-45 Delivery receipt | done | Outbox receipt; `delivered` is defined by a sent receipt, not by the Run |
 | FR-46 Delivery failure | done | A failed send keeps the result undelivered with a retry offer |
-| FR-47 Duplicate suppression | done | An ambiguous send stays `pending`; retry re-drives the same row |
+| FR-47 Duplicate suppression | done | Per-key sends are single-flight. A send interrupted in `sending`, or a transport result whose outcome is unknown, becomes `ambiguous` after restart and is never auto-replayed; only an explicit owner retry re-drives the same row. |
 | FR-48 Inbound attachments | done | Attachment-only `/work` is refused truthfully; no filename is passed as content |
 | FR-49 Desktop projection | done | `api/goldenPathProjection.ts` + `GoldenPathSection.tsx` |
 | FR-50 Activity trail | done | Lifecycle and owner decisions write Core Activities |
@@ -561,5 +561,9 @@ of the requirement holds, with the shortfall named; **gap** — not implemented;
   one per update ref.
 - **FR-44 (attachment/stable URL delivery).** Deferred with the rest of outbound
   attachment handling; the deep link is the safe reference in the meantime.
+- **FR-4 (live product setup).** Readiness and capability bootstrap are visible,
+  but the owner cohort and workspace remain environment-backed. A later Settings
+  mutation contract must define validation, persistence, live reload versus
+  explicit restart, and rollback before the panel can truthfully be writable.
 - **Gate G6.** No provider, git, or Telegram credential has executed against any
   of this. Packaged Desktop and real-bot smokes are outstanding.

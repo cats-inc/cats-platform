@@ -1200,28 +1200,37 @@ async function routeTelegramGoldenPathUpdate(input: {
 
   const callbackData = readTelegramString(input.update.callback_query?.data);
   if (callbackData !== null && input.goldenPath.ownsCallback(callbackData)) {
-    let deliveryReceipt: TelegramDeliveryReceipt | null = null;
-    const callbackQueryId = readTelegramString(input.update.callback_query?.id);
-    if (callbackQueryId) {
-      deliveryReceipt = await input.telegramRelay.deliver({
-        request: {
-          operation: 'answer_callback',
-          conversationId,
-          chatId,
-          callbackQueryId,
-        },
-        context: input.context,
-      });
-    }
+    // Persist the owner's action before touching Telegram. answerCallbackQuery
+    // is a UX acknowledgement, not the command ledger; if that short network
+    // call fails or the callback has already expired, the approved/cancelled
+    // product transition must still survive and the update may be consumed.
     await input.goldenPath.handleActionCallback({
       callbackData,
       bindingId,
       conversationId,
       externalUserRef,
       externalConversationRef: chatId,
-      ownerEventRef: callbackQueryId ?? externalUpdateRef,
+      ownerEventRef: readTelegramString(input.update.callback_query?.id) ?? externalUpdateRef,
       locale,
     });
+    let deliveryReceipt: TelegramDeliveryReceipt | null = null;
+    const callbackQueryId = readTelegramString(input.update.callback_query?.id);
+    if (callbackQueryId) {
+      try {
+        deliveryReceipt = await input.telegramRelay.deliver({
+          request: {
+            operation: 'answer_callback',
+            conversationId,
+            chatId,
+            callbackQueryId,
+          },
+          context: input.context,
+        });
+      } catch {
+        // The action is already durable. A cosmetic callback acknowledgement
+        // failure must not reopen the owner transition or force redelivery.
+      }
+    }
     return consumed(deliveryReceipt);
   }
 
@@ -1262,6 +1271,24 @@ async function routeTelegramGoldenPathUpdate(input: {
   }
 
   return null;
+}
+
+/**
+ * Whether ingress must wait for durable golden-path capture before it
+ * acknowledges this Telegram update. This check performs no writes.
+ */
+export function isTelegramGoldenPathUpdate(
+  update: TelegramWebhookUpdate,
+  goldenPath: TransportWorkGoldenPathPort | null | undefined,
+): boolean {
+  if (!goldenPath) {
+    return false;
+  }
+  const callbackData = readTelegramString(update.callback_query?.data);
+  if (callbackData !== null && goldenPath.ownsCallback(callbackData)) {
+    return true;
+  }
+  return isTransportWorkRequestText(extractMessageText(pickTelegramMessage(update).message));
 }
 
 export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBridgeState>(input: {

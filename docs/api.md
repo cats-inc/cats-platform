@@ -670,7 +670,11 @@ POST /api/work/external-issue-imports
   `/work` right now?", evaluated by the same code the transport uses so the two
   surfaces cannot disagree. Each binding reports its default delivery mode, the
   tool scope the provider would be granted, and every blocker with a localized
-  reason key and the settings path that fixes it. A host with the golden path
+  reason key and the settings path that fixes it. Repository-backed modes also
+  require a clean observed baseline, and provider readiness requires a matching
+  loaded capability-bootstrap rule rather than merely a configured target. The
+  panel is currently diagnostic: rollout owners and workspace selection remain
+  environment-backed and require restart. A host with the golden path
   disabled — or with no readiness reader wired — returns `enabled: false` rather
   than an empty "ready".
 

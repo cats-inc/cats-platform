@@ -4,8 +4,9 @@
  * The service-level acceptance path lives in
  * `telegram-work-delivery-golden-path.test.ts`. This file proves the part that
  * file cannot: that a real Telegram update actually reaches the golden path,
- * that a golden-path callback is acknowledged before any long work starts
- * (FR-12), and that everything else still falls through to ordinary chat.
+ * that a golden-path callback is durably captured before its best-effort
+ * Telegram acknowledgement (FR-12), and that everything else still falls
+ * through to ordinary chat.
  *
  * All state is temporary and in-memory; no real bot or credential is involved.
  */
@@ -119,6 +120,7 @@ function createRecordingRelay(log: RecordedCall[]): TelegramRelay {
     findSoleUnlinkedConversation: () => null,
     linkRoom: () => null,
     receiveUpdate: () => acceptedReceipt(),
+    markUpdateProcessed: () => undefined,
     deliver: async ({ request }) => {
       log.push({ kind: `deliver:${request.operation}`, detail: request.text ?? undefined });
       return {
@@ -258,6 +260,7 @@ async function runBridge(input: {
   log: RecordedCall[];
   goldenPath: TransportWorkGoldenPathPort | null;
   receipt?: TelegramWebhookReceipt;
+  telegramRelay?: TelegramRelay;
 }) {
   return bridgeTelegramWebhookToRoom({
     update: input.update,
@@ -268,7 +271,7 @@ async function runBridge(input: {
     roomBridge: createChatRoomBridgeSpy(input.log),
     memoryService,
     runtimeClient,
-    telegramRelay: createRecordingRelay(input.log),
+    telegramRelay: input.telegramRelay ?? createRecordingRelay(input.log),
     goldenPath: input.goldenPath,
   });
 }
@@ -315,7 +318,7 @@ test('with the golden path disabled, /work falls through to chat unchanged', asy
 
 // --- FR-12: acknowledgement ordering -----------------------------------------
 
-test('a golden-path callback is answered before any long work starts (FR-12)', async () => {
+test('a golden-path callback is captured before its Telegram acknowledgement (FR-12)', async () => {
   const log: RecordedCall[] = [];
   await runBridge({
     update: callbackUpdate('gp:AbCdEfGhIjKlMnOpQrStUvWx'),
@@ -326,10 +329,34 @@ test('a golden-path callback is answered before any long work starts (FR-12)', a
 
   assert.deepEqual(
     log.map((entry) => entry.kind),
-    ['deliver:answer_callback', 'handleActionCallback'],
-    'answerCallbackQuery must precede the product command, not follow it',
+    ['handleActionCallback', 'deliver:answer_callback'],
+    'the owner action must be durable before the best-effort Telegram acknowledgement',
   );
-  assert.equal(log[1].detail, 'cbq-1', 'the callback id becomes the owner event ref');
+  assert.equal(log[0].detail, 'cbq-1', 'the callback id becomes the owner event ref');
+});
+
+test('a failed Telegram callback acknowledgement does not lose the captured owner action', async () => {
+  const log: RecordedCall[] = [];
+  const relay = createRecordingRelay(log);
+  relay.deliver = async ({ request }) => {
+    log.push({ kind: `deliver:${request.operation}` });
+    throw new Error('simulated answerCallbackQuery failure');
+  };
+
+  const result = await runBridge({
+    update: callbackUpdate('gp:AbCdEfGhIjKlMnOpQrStUvWx'),
+    log,
+    goldenPath: createRecordingPort(log),
+    receipt: acceptedReceipt({ updateId: 1002, messageId: '56' }),
+    telegramRelay: relay,
+  });
+
+  assert.deepEqual(log.map((entry) => entry.kind), [
+    'handleActionCallback',
+    'deliver:answer_callback',
+  ]);
+  assert.equal(result.deliveryReceipt, null);
+  assert.deepEqual(result.messages, []);
 });
 
 test('a callback the golden path does not own is left to the existing handlers', async () => {

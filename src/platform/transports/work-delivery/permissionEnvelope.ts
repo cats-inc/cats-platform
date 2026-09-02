@@ -32,12 +32,17 @@ export interface TransportWorkWorkspaceCapability {
   reachable: boolean;
   /** The path is a git repository. */
   repository: boolean;
+  /** Whether the repository has no staged, modified, or untracked files. */
+  clean: boolean | null;
+  /** HEAD observed before admission; later commit evidence is bound to it. */
+  headOid: string | null;
 }
 
 export const TRANSPORT_WORK_PERMISSION_REASONS = [
   'workspace_not_configured',
   'workspace_unreachable',
   'workspace_not_a_repository',
+  'workspace_not_clean',
 ] as const;
 
 export type TransportWorkPermissionReason =
@@ -67,6 +72,7 @@ export interface TransportWorkPermissionEnvelopeInput {
  */
 const REPO_BACKED_MODES: ReadonlySet<CoreDeliveryMode> = new Set([
   'commit_only',
+  'push_branch',
   'pr_with_checks',
   'deploy_preview',
 ]);
@@ -90,6 +96,18 @@ export function resolveTransportWorkPermissionEnvelope(
       toolScope: 'read_only',
       sufficient: false,
       reasons: ['workspace_not_a_repository'],
+    };
+  }
+  if (input.deliveryMode !== null
+    && REPO_BACKED_MODES.has(input.deliveryMode)
+    && input.workspace.clean !== true) {
+    // The runtime commit endpoint cannot distinguish changes created by this
+    // run from files that were already present. Never let transport work claim
+    // ownership of an operator's dirty worktree.
+    return {
+      toolScope: 'read_only',
+      sufficient: false,
+      reasons: ['workspace_not_clean'],
     };
   }
   return { toolScope: 'narrow_write', sufficient: true, reasons: [] };

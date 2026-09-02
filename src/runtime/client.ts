@@ -230,6 +230,8 @@ interface RuntimeSessionCreateInputBase extends RuntimeExecutionRequestInput {
   instructions?: string | null;
   context?: RuntimeSessionInvocationContext;
   skills?: RuntimeSkillManifest;
+  /** Runtime-enforced provider tool allowlist when permissionMode is whitelist. */
+  allowedTools?: string[];
 }
 
 export type RuntimeSessionCreateInput =
@@ -753,6 +755,9 @@ export class CatsRuntimeClient implements RuntimeClient {
       provider: input.provider,
       permissionMode: input.permissionMode ?? 'skip',
     };
+    if (input.allowedTools && input.allowedTools.length > 0) {
+      payload.allowedTools = [...input.allowedTools];
+    }
 
     if (input.instance?.trim()) {
       payload.instance = input.instance.trim();

@@ -46,6 +46,8 @@ const READINESS = evaluateTransportWorkReadiness({
 interface DeliveryCall {
   action: string;
   approvalRef: string;
+  workspacePath?: string | null;
+  sessionId?: string | null;
   resumeOperationId?: string | null;
 }
 
@@ -72,11 +74,15 @@ function createFakeDeliveryClient(options: {
     }),
     createCommit: async () => ({ state: 'completed', commitId: 'aaaa', blockedReasons: [] }),
     previewArtifacts: async () => [],
-    pushBranch: async ({ approvalRef }: { approvalRef: string }) => {
+    pushBranch: async ({ workspacePath, sessionId, approvalRef }: {
+      workspacePath?: string | null;
+      sessionId?: string | null;
+      approvalRef: string;
+    }) => {
       if (options.throwOnPush) {
         throw new Error('remote unreachable');
       }
-      calls.push({ action: 'push_branch', approvalRef });
+      calls.push({ action: 'push_branch', approvalRef, workspacePath, sessionId });
       return {
         state: options.pushState ?? 'completed',
         reference: 'feature/x',
@@ -86,8 +92,12 @@ function createFakeDeliveryClient(options: {
           : [],
       };
     },
-    openPullRequest: async ({ approvalRef }: { approvalRef: string }) => {
-      calls.push({ action: 'open_pull_request', approvalRef });
+    openPullRequest: async ({ workspacePath, sessionId, approvalRef }: {
+      workspacePath?: string | null;
+      sessionId?: string | null;
+      approvalRef: string;
+    }) => {
+      calls.push({ action: 'open_pull_request', approvalRef, workspacePath, sessionId });
       return {
         state: options.prState ?? 'completed',
         reference: 'https://example.test/pr/1',
@@ -95,11 +105,19 @@ function createFakeDeliveryClient(options: {
         blockedReasons: [],
       };
     },
-    waitForChecks: async ({ approvalRef, resumeOperationId }: {
+    waitForChecks: async ({ workspacePath, sessionId, approvalRef, resumeOperationId }: {
+      workspacePath?: string | null;
+      sessionId?: string | null;
       approvalRef: string;
       resumeOperationId?: string | null;
     }) => {
-      calls.push({ action: 'wait_for_checks', approvalRef, resumeOperationId: resumeOperationId ?? null });
+      calls.push({
+        action: 'wait_for_checks',
+        approvalRef,
+        workspacePath,
+        sessionId,
+        resumeOperationId: resumeOperationId ?? null,
+      });
       const outcome = (options.checkOutcomes ?? ['completed'])[waitIndex] ?? 'completed';
       waitIndex += 1;
       if (outcome === 'pending') {
@@ -120,8 +138,12 @@ function createFakeDeliveryClient(options: {
       }
       return { state: 'completed', reference: null, pendingOperationId: null, blockedReasons: [] };
     },
-    publishPreview: async ({ approvalRef }: { approvalRef: string }) => {
-      calls.push({ action: 'publish_preview', approvalRef });
+    publishPreview: async ({ workspacePath, sessionId, approvalRef }: {
+      workspacePath?: string | null;
+      sessionId?: string | null;
+      approvalRef: string;
+    }) => {
+      calls.push({ action: 'publish_preview', approvalRef, workspacePath, sessionId });
       return {
         state: options.previewState ?? 'completed',
         reference: 'https://preview.example.test/1',
@@ -206,8 +228,14 @@ async function runToResultReady(
       status: 'claims_complete',
       summary: 'Prepared the branch.',
       satisfiedCriteria: [CRITERION],
-      artifact: { title: 'Branch summary', path: null, mimeType: 'text/plain' },
-      commit: null,
+      artifact: null,
+      commit: {
+        commitId: 'abc123def456',
+        changeSummary: 'Prepared the branch',
+        validation: { command: 'runtime repo status', passed: true },
+        deliveryWorkspacePath: '/tmp/runtime-worktree',
+        deliverySessionId: 'session-publish',
+      },
       blockedReason: null,
     }),
   });
@@ -309,6 +337,8 @@ test('approving publishes once, carries the approval id, and then delivers', asy
   assert.equal(result.status, 'published');
   assert.equal(harness.calls.length, 1);
   assert.equal(harness.calls[0].action, 'push_branch');
+  assert.equal(harness.calls[0].workspacePath, '/tmp/runtime-worktree');
+  assert.equal(harness.calls[0].sessionId, 'session-publish');
 
   const core = await harness.coreStore.readCore();
   const publishTask = core.tasks.find(

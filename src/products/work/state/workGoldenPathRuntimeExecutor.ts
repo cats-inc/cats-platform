@@ -48,6 +48,10 @@ export type WorkGoldenPathEvidenceCollector = (input: {
   goal: string;
   deliveryMode: CoreDeliveryMode;
   workspacePath: string | null;
+  /** Resolved cwd of the runtime-owned sandbox/worktree. */
+  deliveryWorkspacePath?: string | null;
+  /** HEAD captured at admission, before this run was allowed to mutate files. */
+  baselineHeadOid: string | null;
   acceptanceCriteria: readonly string[];
   /** Criteria the provider asserted in this turn. Claims, not verdicts. */
   claimedCriteria: readonly string[];
@@ -78,7 +82,7 @@ export interface CreateWorkGoldenPathRuntimeExecutorInput {
    * boundary to refuse an under-permissioned run with `E_TOOL_SCOPE_DENIED`
    * rather than letting it reach the provider and fail somewhere less legible.
    */
-  resolveToolScope?: () => SupervisionToolScope;
+  resolveToolScope?: (context: WorkGoldenPathStepContext) => SupervisionToolScope;
   /**
    * Resolved when a session is opened, not when the executor is built.
    *
@@ -86,13 +90,34 @@ export interface CreateWorkGoldenPathRuntimeExecutorInput {
    * across steps, but the bound Cat's provider can change between runs, so the
    * target has to be read late.
    */
-  resolveTarget: () => WorkGoldenPathRuntimeTarget | null;
+  resolveTarget?: (context: WorkGoldenPathStepContext) => WorkGoldenPathRuntimeTarget | null;
   collectEvidence?: WorkGoldenPathEvidenceCollector;
   /** Actor the supervised runtime calls are attributed to. */
   actorRef?: string;
 }
 
 const DEFAULT_ACTOR_REF = 'actor-work-golden-path';
+
+/**
+ * Provider-independent spellings used by cats-runtime adapters for local file
+ * inspection and mutation. Shell, git, network, browser, MCP, and delegation
+ * tools are deliberately absent; Cats owns commit/publish side effects.
+ */
+const GOLDEN_PATH_LOCAL_FILE_TOOLS = [
+  'Read',
+  'Glob',
+  'Grep',
+  'Edit',
+  'Write',
+  'read_file',
+  'list_dir',
+  'search',
+  'edit',
+  'write',
+  'fileChange',
+  'file_change',
+  'apply_patch',
+] as const;
 
 /**
  * Rejection codes that mean "the envelope is too narrow", as opposed to "the
@@ -139,6 +164,9 @@ function buildOpeningInstruction(context: WorkGoldenPathStepContext): string {
     '',
     `Delivery mode: ${context.deliveryMode}`,
     'Work only inside the provided workspace. Do not declare the task complete;',
+    ...(context.deliveryMode !== 'artifact_only'
+      ? ['Cats will stage and commit the isolated worktree after verifying your response.']
+      : []),
     'Cats verifies delivery evidence itself. For each criterion you believe now',
     'holds, end your reply with a line of exactly this form:',
     'CRITERIA-MET: <the criterion text, copied verbatim>',
@@ -169,16 +197,32 @@ export function createWorkGoldenPathRuntimeExecutor(
 ): WorkGoldenPathStepExecutor {
   const collectEvidence = input.collectEvidence ?? noEvidenceCollector;
   const actorRef = input.actorRef ?? DEFAULT_ACTOR_REF;
-  const resolveToolScope = input.resolveToolScope ?? (() => 'broad_write' as const);
+  const resolveToolScope = input.resolveToolScope
+    // Directly-constructed executors predate the run envelope and are used by
+    // isolated product tests. Keep their historical safe write ceiling while
+    // production always supplies the run-scoped value.
+    ?? ((context) => context.toolScope ?? 'narrow_write');
   // One session per run, opened lazily and reused across steps so the agent
   // keeps its context instead of restarting from scratch every turn.
   const sessionsByRun = new Map<string, RuntimeSessionInfo>();
 
   return async (context): Promise<WorkGoldenPathStepResult> => {
     try {
+      const runToolScope = resolveToolScope(context);
+      if (runToolScope !== 'narrow_write' && runToolScope !== 'broad_write') {
+        return {
+          status: 'permission_denied',
+          summary: 'The run is not authorized to modify an isolated workspace.',
+          satisfiedCriteria: [],
+          artifact: null,
+          commit: null,
+          blockedReason: 'workspace_write_not_authorized',
+          denial: { toolName: 'cats.runtime.session.create', code: 'E_TOOL_SCOPE_DENIED' },
+        };
+      }
       let session = sessionsByRun.get(context.runId) ?? null;
       if (session === null) {
-        const target = input.resolveTarget();
+        const target = input.resolveTarget?.(context) ?? context.executionTarget ?? null;
         if (target === null) {
           return {
             status: 'failed',
@@ -196,6 +240,10 @@ export function createWorkGoldenPathRuntimeExecutor(
             instance: target.instance ?? null,
             model: target.model ?? null,
             cwd: context.workspacePath,
+            workspaceKind: context.deliveryMode === 'artifact_only' ? 'sandbox' : 'worktree',
+            workspaceAccess: 'read_write',
+            permissionMode: 'whitelist',
+            allowedTools: [...GOLDEN_PATH_LOCAL_FILE_TOOLS],
             context: {
               source: 'assignment',
               reason: 'work_golden_path_run',
@@ -208,7 +256,10 @@ export function createWorkGoldenPathRuntimeExecutor(
             stepIndex: context.stepIndex,
             actorRef,
             toolReason: 'work_golden_path_session_create',
-            policyToolScope: resolveToolScope(),
+            // This scope authorizes the expensive orchestration call itself.
+            // Provider tools are independently narrowed by the runtime
+            // whitelist above.
+            policyToolScope: 'broad_write',
           }),
         });
         sessionsByRun.set(context.runId, session);
@@ -225,7 +276,7 @@ export function createWorkGoldenPathRuntimeExecutor(
           stepIndex: context.stepIndex,
           actorRef,
           toolReason: 'work_golden_path_message_send',
-          policyToolScope: resolveToolScope(),
+          policyToolScope: 'broad_write',
         }),
       });
       const summary = resolveFullResponseText(message.segments).trim();
@@ -235,6 +286,8 @@ export function createWorkGoldenPathRuntimeExecutor(
         goal: context.goal,
         deliveryMode: context.deliveryMode,
         workspacePath: context.workspacePath,
+        deliveryWorkspacePath: session.cwd,
+        baselineHeadOid: context.workspaceHeadOid ?? null,
         acceptanceCriteria: context.acceptanceCriteria,
         claimedCriteria: parseClaimedCriteria(summary),
       });

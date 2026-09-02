@@ -8,7 +8,11 @@
  * nothing here touches Core.
  */
 
-import type { CoreDeliveryGate, CoreDeliveryMode } from '../../../core/types.js';
+import type {
+  CoreDeliveryGate,
+  CoreDeliveryMode,
+  ExecutionTargetSummary,
+} from '../../../core/types.js';
 import type { SupervisionToolScope } from '../../../platform/supervision/contracts.js';
 import type {
   TelegramDeliveryReceipt,
@@ -48,6 +52,10 @@ export interface TelegramGoldenPathContext {
   openQuestion: string | null;
   /** The envelope supervised execution may use for this request. */
   toolScope: SupervisionToolScope;
+  /** Captured with the admitted Run so overlapping requests cannot cross-talk. */
+  executionTarget?: ExecutionTargetSummary | null;
+  /** HEAD observed by readiness immediately before authorization. */
+  workspaceHeadOid?: string | null;
 }
 
 export type TelegramGoldenPathContextResolver = (input: {
@@ -130,6 +138,7 @@ export function createTelegramGoldenPathPort(
         openQuestion: context.openQuestion,
         readiness: context.readiness,
         locale: command.locale,
+        deferDelivery: true,
       });
 
       return handled(
@@ -154,6 +163,10 @@ export function createTelegramGoldenPathPort(
         externalUserRef: callback.externalUserRef,
         ownerEventRef: callback.ownerEventRef,
         readiness: context.readiness,
+        executionTarget: context.executionTarget,
+        toolScope: context.toolScope,
+        workspaceHeadOid: context.workspaceHeadOid,
+        deferDelivery: true,
       });
 
       if (result.status === 'rejected') {
@@ -268,7 +281,7 @@ function classifyDeliveryReceipt(receipt: TelegramDeliveryReceipt): {
 export interface CreateTelegramGoldenPathOutboxSenderInput {
   telegramRelay: TelegramRelay;
   /** Re-read per send so binding/boss changes are picked up (FR-43). */
-  resolveRelayContext: () => TelegramRelayContext;
+  resolveRelayContext: () => TelegramRelayContext | Promise<TelegramRelayContext>;
 }
 
 /**
@@ -313,7 +326,7 @@ export function createTelegramGoldenPathOutboxSender(
           disableLinkPreview: true,
           replyMarkup: buildInlineKeyboard(row.payload) ?? null,
         },
-        context: scopeContextToBinding(input.resolveRelayContext(), row.bindingId),
+        context: scopeContextToBinding(await input.resolveRelayContext(), row.bindingId),
       });
       return classifyDeliveryReceipt(receipt);
     } catch (error) {

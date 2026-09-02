@@ -31,7 +31,7 @@ export interface TransportWorkStageInput {
   run: CoreRunRecord | null;
   outcome: CoreOrchestrationOutcomeRecord | null;
   artifacts: readonly CoreArtifactRecord[];
-  /** Commit evidence for `commit_only`; null when the mode does not need it. */
+  /** Commit evidence for repository-backed modes; null for `artifact_only`. */
   commitId: string | null;
   /** Gates that still require an owner decision before publication. */
   outstandingGates: readonly CoreDeliveryGate[];
@@ -60,7 +60,7 @@ function hasAcceptedResultEvidence(input: TransportWorkStageInput): boolean {
   if (input.outcome === null || input.outcome.status !== 'succeeded') {
     return false;
   }
-  if (input.proposal?.deliveryMode === 'commit_only') {
+  if (input.proposal !== null && input.proposal.deliveryMode !== 'artifact_only') {
     return input.commitId !== null;
   }
   return input.artifacts.some((artifact) =>
