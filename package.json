@@ -147,6 +147,13 @@
         ]
       },
       {
+        "from": "build/desktop-packaging/shared/cats-platform/config",
+        "to": "app-sidecar/config",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "build/desktop-packaging/shared/app-sidecar/package.json",
         "to": "app-sidecar/package.json"
       },
