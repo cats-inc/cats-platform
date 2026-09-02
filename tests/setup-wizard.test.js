@@ -9,7 +9,8 @@ import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { resolveOrchestratorDisplayName } from '../build/server/products/chat/state/model/index.js';
 import {
-  createAuthenticatedTestSession,
+  createUnprovisionedTestSession,
+  TEST_ADMIN_CREDENTIALS,
   createTestAuthConfig,
   installAuthenticatedFetch,
 } from './testUtils.js';
@@ -85,11 +86,7 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
   const chatStatePath = path.join(tempRoot, 'state', 'chat-state.local.json');
   await mkdir(path.dirname(chatStatePath), { recursive: true });
   const now = new Date('2026-03-19T00:00:00.000Z');
-  const auth = await createAuthenticatedTestSession({
-    now,
-    sessionSecret: baseConfig.auth.sessionSecret,
-    sessionTtlMs: baseConfig.auth.sessionTtlMs,
-  });
+  const auth = createUnprovisionedTestSession({ now });
 
   const server = createServer({
     shared: {
@@ -128,6 +125,60 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
   }
 }
 
+/**
+ * Setup no longer creates a Boss Cat, so tests that need one make it through
+ * the same API the product uses.
+ */
+/**
+ * These fixtures start without an Admin, so a test that calls protected chat
+ * routes has to complete setup first: that is what mints its session.
+ */
+async function completePlatformSetup(baseUrl) {
+  const response = await fetch(`${baseUrl}/api/platform/setup/complete`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      ...TEST_ADMIN_CREDENTIALS,
+      ownerDisplayName: 'Kenny',
+      bossCatProvider: 'claude',
+    }),
+  });
+  if (response.status !== 200) {
+    throw new Error(`completePlatformSetup failed with ${response.status}`);
+  }
+  return response.json();
+}
+
+async function configureOrchestrator(baseUrl, executionTarget) {
+  const response = await fetch(`${baseUrl}/api/orchestrator`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(executionTarget),
+  });
+  if (response.status !== 200) {
+    throw new Error(`configureOrchestrator failed with ${response.status}`);
+  }
+  return (await response.json()).orchestrator;
+}
+
+async function createBossCat(baseUrl, name = 'Smelly') {
+  const response = await fetch(`${baseUrl}/api/cats`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      name,
+      provider: 'claude',
+      instance: 'native',
+      model: 'claude-opus-4-6',
+      makeBoss: true,
+    }),
+  });
+  if (response.status !== 201 && response.status !== 200) {
+    throw new Error(`createBossCat failed with ${response.status}`);
+  }
+  return (await response.json()).cat;
+}
+
 test('GET /api/app-shell returns setupCompleteAt: null for uninitialized chat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/app-shell`);
@@ -140,66 +191,27 @@ test('GET /api/app-shell returns setupCompleteAt: null for uninitialized chat', 
   });
 });
 
-test('POST /api/setup/complete creates Boss Cat and marks setup done without creating a channel', async () => {
-  await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/setup/complete`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
-        bossCatProvider: 'claude',
-        bossCatInstance: 'native',
-        bossCatModel: 'claude-opus-4-6',
-      }),
-    });
-    assert.equal(response.status, 200);
-
-    const payload = await response.json();
-
-    // Setup is marked complete
-    assert.ok(payload.setupCompleteAt);
-    assert.equal(payload.ownerDisplayName, 'Kenny');
-
-    // Boss Cat was created
-    assert.ok(payload.chat.bossCatId);
-    assert.ok(payload.chat.cats.length >= 1);
-    const bossCat = payload.chat.cats.find((p) => p.id === payload.chat.bossCatId);
-    assert.equal(bossCat?.defaultExecutionTarget.instance, 'native');
-
-    // No channel created — user navigates to New Chat instead
-    assert.equal(payload.chat.channels.length, 0);
-    assert.equal(payload.chat.selectedChannelId, '');
-
-    // Orchestrator executionTarget matches Boss Cat config
-    const orch = payload.chat.globalOrchestrator;
-    assert.equal(orch.executionTarget.provider, 'claude');
-    assert.equal(orch.executionTarget.instance, 'native');
-    assert.equal(orch.executionTarget.model, 'claude-opus-4-6');
-  });
-});
-
-test('POST /api/setup/complete returns 409 if setup already completed', async () => {
+test('POST /api/platform/setup/complete returns 409 if setup already completed', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     // Complete setup first time
-    const first = await fetch(`${baseUrl}/api/setup/complete`, {
+    const first = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
     assert.equal(first.status, 200);
 
     // Try again
-    const second = await fetch(`${baseUrl}/api/setup/complete`, {
+    const second = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Other',
-        bossCatName: 'Other',
         bossCatProvider: 'claude',
       }),
     });
@@ -210,15 +222,16 @@ test('POST /api/setup/complete returns 409 if setup already completed', async ()
 test('after setup complete, GET /api/app-shell reflects initialized state', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     // Complete setup
-    await fetch(`${baseUrl}/api/setup/complete`, {
+    await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
+    await createBossCat(baseUrl);
 
     // Verify app-shell reflects setup
     const response = await fetch(`${baseUrl}/api/app-shell`);
@@ -235,15 +248,16 @@ test('after setup complete, GET /api/app-shell reflects initialized state', asyn
 test('POST /api/setup/reset clears setup state and returns clean chat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     // Complete setup first
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
+    await createBossCat(baseUrl);
     assert.equal(setupResponse.status, 200);
 
     // Reset
@@ -259,28 +273,6 @@ test('POST /api/setup/reset clears setup state and returns clean chat', async ()
     assert.equal(payload.chat.bossCatId, null);
     assert.deepEqual(payload.chat.cats, []);
     assert.deepEqual(payload.chat.channels, []);
-  });
-});
-
-test('POST /api/setup/complete defaults Boss Cat name to Boss Cat if empty', async () => {
-  await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/setup/complete`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ownerDisplayName: 'Kenny',
-        bossCatName: '',
-        bossCatProvider: 'claude',
-      }),
-    });
-    assert.equal(response.status, 200);
-
-    const payload = await response.json();
-    const bossCat = payload.chat.cats.find(
-      (p) => p.id === payload.chat.bossCatId,
-    );
-    assert.ok(bossCat);
-    assert.equal(bossCat.name, 'Boss Cat');
   });
 });
 
@@ -313,16 +305,18 @@ test('after setup + activate, system messages stay generic and keep verbosity me
   const runtimeClient = createRuntimeStub();
   await withServer(runtimeClient, async (baseUrl) => {
     // Complete setup with a named Boss Cat
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: '將將',
         bossCatProvider: 'claude',
         bossCatInstance: 'native',
       }),
     });
+    await createBossCat(baseUrl);
+    await configureOrchestrator(baseUrl, { provider: 'claude', instance: 'native' });
     assert.equal(setupResponse.status, 200);
 
     // Create a channel explicitly (setup no longer creates one)
@@ -413,15 +407,16 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
   };
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
+    await createBossCat(baseUrl);
     assert.equal(setupResponse.status, 200);
 
     // Create a channel explicitly (setup no longer creates one)
@@ -470,18 +465,18 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
 test('POST /api/channels creates a default Boss Chat without assigning Boss Cat as a worker', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     // Complete setup first
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
+    const bossCat = await createBossCat(baseUrl);
     assert.equal(setupResponse.status, 200);
-    const setupPayload = await setupResponse.json();
-    const bossCatId = setupPayload.chat.bossCatId;
+    const bossCatId = bossCat.id;
 
     // Create a new channel with no cats
     const createResponse = await fetch(`${baseUrl}/api/channels`, {
@@ -518,15 +513,16 @@ test('POST /api/channels creates a default Boss Chat without assigning Boss Cat 
 
 test('POST /api/channels keeps the room_created system message when skipBossCatGreeting is set for default Boss Chat', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
+    await createBossCat(baseUrl);
     assert.equal(setupResponse.status, 200);
 
     const createResponse = await fetch(`${baseUrl}/api/channels`, {
@@ -555,6 +551,7 @@ test('POST /api/channels keeps the room_created system message when skipBossCatG
 
 test('POST /api/channels treats explicit default entry as default even with participants', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
+    await completePlatformSetup(baseUrl);
     const createBossResponse = await fetch(`${baseUrl}/api/cats`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -594,6 +591,7 @@ test('POST /api/channels treats explicit default entry as default even with part
 
 test('POST /api/channels does NOT auto-assign when cats are explicitly provided', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
+    await completePlatformSetup(baseUrl);
     const createBossResponse = await fetch(`${baseUrl}/api/cats`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -642,18 +640,18 @@ test('POST /api/channels does NOT auto-assign when cats are explicitly provided'
 
 test('Boss Cat cannot be assigned as a regular chat participant', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
+    const bossCat = await createBossCat(baseUrl);
     assert.equal(setupResponse.status, 200);
-    const setupPayload = await setupResponse.json();
-    const bossCatId = setupPayload.chat.bossCatId;
+    const bossCatId = bossCat.id;
 
     const createResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',

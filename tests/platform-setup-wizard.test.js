@@ -20,7 +20,8 @@ import { refreshGuideCatAssistEligibleScopes } from '../build/server/products/ch
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import { createCat } from '../build/server/products/chat/state/model/index.js';
 import {
-  createAuthenticatedTestSession,
+  createUnprovisionedTestSession,
+  TEST_ADMIN_CREDENTIALS,
   createTestAuthConfig,
   installAuthenticatedFetch,
 } from './testUtils.js';
@@ -114,7 +115,7 @@ function createRuntimeStub(options = {}) {
 
 async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
   const config = getBaseConfig();
-  const auth = await createAuthenticatedTestSession({ now: TEST_NOW });
+  const auth = createUnprovisionedTestSession({ now: TEST_NOW });
   const server = createServer({
     shared: {
       config: {
@@ -219,6 +220,7 @@ test('POST /api/platform/setup/complete with createGuideCat=true persists a plat
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
         guideCatProvider: 'claude',
@@ -330,6 +332,7 @@ test('POST /api/platform/setup/complete persists Guide Cat modelSelection withou
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
         guideCatProvider: 'codex',
@@ -364,6 +367,7 @@ test('POST /api/platform/setup/complete with createGuideCat=false does not creat
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: false,
       }),
@@ -387,6 +391,7 @@ test('POST /api/platform/setup/complete returns 409 if already completed', async
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: false,
       }),
@@ -396,6 +401,7 @@ test('POST /api/platform/setup/complete returns 409 if already completed', async
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny Again',
         createGuideCat: false,
       }),
@@ -411,6 +417,7 @@ test('POST /api/platform/setup/complete with createGuideCat=true defaults name t
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
         guideCatProvider: 'claude',
@@ -433,6 +440,7 @@ test('POST /api/platform/setup/complete keeps the shipped guide cat name across 
         'accept-language': 'zh-TW,zh;q=0.9,en;q=0.8',
       },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
         guideCatProvider: 'claude',
@@ -452,6 +460,7 @@ test('POST /api/platform/setup/complete rejects guide cat name overrides', async
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
         guideCatName: 'Meowster',
@@ -475,6 +484,7 @@ test('chat functions normally after platform setup without Guide Cat', async () 
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: false,
       }),
@@ -496,6 +506,7 @@ test('POST /api/platform/setup/complete still honors legacy selectedProduct for 
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         selectedProduct: 'work',
         createGuideCat: true,
@@ -521,6 +532,7 @@ test('POST /api/platform/setup/complete still accepts legacy Boss Cat provider a
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createBossCat: true,
         bossCatProvider: 'claude',
@@ -539,31 +551,13 @@ test('POST /api/platform/setup/complete still accepts legacy Boss Cat provider a
   });
 });
 
-test('old POST /api/setup/complete still works alongside new endpoint', async () => {
-  await withServer(createRuntimeStub(), async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/setup/complete`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ownerDisplayName: 'Kenny',
-        bossCatProvider: 'claude',
-        bossCatModel: 'claude-sonnet',
-      }),
-    });
-
-    assert.equal(response.status, 200);
-    const payload = await response.json();
-    assert.ok(payload.setupCompleteAt);
-    assert.ok(payload.chat.bossCatId, 'old endpoint still creates Boss Cat');
-  });
-});
-
 test('POST /api/setup/reset clears lastProductSurface and setupCompleteAt', async () => {
   await withServer(createRuntimeStub(), async (baseUrl, config) => {
     await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
       }),
@@ -634,6 +628,7 @@ test('POST /api/platform/preferences updates lastProductSurface', async () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: false,
       }),
@@ -737,6 +732,7 @@ test('PATCH /api/platform/guide-cat disable status survives later guide cat edit
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
       }),
@@ -778,6 +774,7 @@ test('DELETE /api/platform/guide-cat clears assist cache and restores determinis
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
       }),
@@ -813,6 +810,7 @@ test('GET /api/app-shell uses last-good assist cache when runtime is offline', a
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
       }),
@@ -908,6 +906,7 @@ test('GET /api/app-shell serves stale assist cache first and lazily rehydrates i
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
       }),
@@ -984,6 +983,7 @@ test('PUT /api/platform/guide-cat hydrates assist cache without requiring an app
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: false,
       }),
@@ -1020,6 +1020,7 @@ test('PUT /api/platform/guide-cat refreshes a still-fresh assist cache when guid
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
         guideCatProvider: 'claude',
@@ -1068,6 +1069,7 @@ test('PATCH /api/platform/guide-cat status=active rehydrates assist cache after 
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: true,
       }),
@@ -1105,6 +1107,7 @@ test('PUT /api/platform/guide-cat rejects guide cat name overrides', async () =>
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createGuideCat: false,
       }),

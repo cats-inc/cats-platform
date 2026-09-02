@@ -63,7 +63,6 @@ export {
 } from './shell.js';
 
 export {
-  completeSetup,
   resetSetup,
 } from './setup.js';
 

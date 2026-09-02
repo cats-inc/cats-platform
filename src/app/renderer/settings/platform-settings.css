@@ -350,3 +350,23 @@
     min-width: 120px;
   }
 }
+
+/* Settings > General > Account login-method rows. The step-up dialog reuses
+ * the shared confirm overlay above; only the form layout is local. */
+
+.settingsAccountReauthForm {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.settingsAccountReauthField {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.settingsAccountGoogleStep {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  padding-top: var(--space-2);
+}

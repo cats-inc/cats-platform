@@ -111,6 +111,53 @@ export const enCatalog: MessageCatalog = {
   'settings.general.signOutCsrfError': 'Security token mismatch. Refresh and try again.',
   'settings.general.signOutForbiddenError': 'Sign-out is not allowed right now.',
   'settings.general.signOutUnauthenticated': 'You are already signed out.',
+  'settings.account.signedInAs': 'Signed in as {name}',
+  'settings.account.loginMethodsTitle': 'Sign-in methods',
+  'settings.account.localPasswordLabel': 'Local password',
+  'settings.account.localPasswordDescription':
+    'Works offline and on a local network address, so it stays available when Google cannot be used.',
+  'settings.account.localPasswordLinked': 'Set up',
+  'settings.account.localPasswordMissing': 'Not set up',
+  'settings.account.googleLabel': 'Google',
+  'settings.account.googleDescription':
+    'Sign in with a linked Google account. Linking asks for your password first.',
+  'settings.account.googleLinkedStatus': 'Linked · {email}',
+  'settings.account.googleNotLinkedStatus': 'Not linked',
+  'settings.account.googleUnavailableStatus': 'Unavailable',
+  'settings.account.googleUnavailableHint':
+    'Google sign-in is not configured for this address. Open Cats from an authorized origin to link an account.',
+  'settings.account.googleLinkButton': 'Link Google account',
+  'settings.account.googleUnlinkButton': 'Unlink Google account',
+  'settings.account.googleLinkingLabel': 'Linking…',
+  'settings.account.googleUnlinkingLabel': 'Unlinking…',
+  'settings.account.reauthTitle': 'Confirm your password',
+  'settings.account.reauthLinkDescription':
+    'Enter your local password to link a Google account.',
+  'settings.account.reauthUnlinkDescription':
+    'Enter your local password to unlink your Google account.',
+  'settings.account.reauthPasswordLabel': 'Password',
+  'settings.account.reauthPasswordPlaceholder': 'Your local password',
+  'settings.account.reauthSubmit': 'Confirm',
+  'settings.account.reauthSubmitting': 'Confirming…',
+  'settings.account.reauthCancel': 'Cancel',
+  'settings.account.googleContinueTitle': 'Continue with Google',
+  'settings.account.googleContinueDescription':
+    'Choose the Google account to link. It must use the same email as this Cats account.',
+  'settings.account.unlinkWarning':
+    'Unlinking signs out your other browsers and mobile devices. This device stays signed in.',
+  'settings.account.reauthFailed': 'Could not confirm your password.',
+  'settings.account.reauthFailedWithStatus': 'Could not confirm your password ({status}).',
+  'settings.account.reauthInvalidPassword': 'That password is incorrect.',
+  'settings.account.reauthRequired': 'Password confirmation expired. Try again.',
+  'settings.account.linkFailed': 'Could not link the Google account.',
+  'settings.account.linkFailedWithStatus': 'Could not link the Google account ({status}).',
+  'settings.account.linkConflict':
+    'That Google account cannot be linked. Check that its email matches this account.',
+  'settings.account.unlinkFailed': 'Could not unlink the Google account.',
+  'settings.account.unlinkFailedWithStatus': 'Could not unlink the Google account ({status}).',
+  'settings.account.unlinkConflict':
+    'Google cannot be unlinked because no other sign-in method would remain.',
+  'settings.account.googleUnavailableError': 'Google sign-in is unavailable right now.',
   'settings.general.languageTitle': 'Language',
   'settings.general.languageDescription':
     'Choose how assistants answer and how Cats displays its interface.',

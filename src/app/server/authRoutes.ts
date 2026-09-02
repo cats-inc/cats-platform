@@ -15,8 +15,18 @@ import {
   normalizePlatformBrowserHandoffReturnTo,
   normalizeAccountIdentifier,
   authorizePlatformAuthRepairBootstrap,
-  createFirstAdminGoogleAuthState,
   createLoginThrottleSubject,
+  createPlatformAuthSecurityEvent,
+  hasExistingPlatformAdmin,
+  isPlatformAuthActionGrantPurpose,
+  summarizePlatformLoginMethods,
+  unlinkGoogleIdentityFromAccount,
+  validatePlatformAdminCredentials,
+  describePlatformAdminCredentialRejection,
+  PLATFORM_AUTH_ACTION_HEADER,
+  PLATFORM_AUTH_ERROR_CODES,
+  PlatformAdminCredentialError,
+  PlatformFirstAdminExistsError,
   evaluateLoginThrottle,
   recordFailedLogin,
   recordSuccessfulLogin,
@@ -35,8 +45,16 @@ import {
   validateGoogleGisCsrfToken,
   verifyPlatformGoogleIdentityToken,
   verifyPlatformLocalPasswordCredential,
+  verifyPlatformLocalPasswordForAccount,
+  type GoogleIdentityLinkRejectionReason,
+  type GoogleIdentityUnlinkRejectionReason,
+  type PlatformAuthActionGrantPurpose,
+  type PlatformAuthActionGrantRejectionReason,
+  type PlatformAuthActionGrantStore,
   type PlatformAuthErrorCode,
+  type PlatformAuthSecurityEventReporter,
   type PlatformAuthStore,
+  type PlatformLoginMethodsSummary,
   type PlatformLoginThrottleAlert,
   type PlatformAuthRecoveryTokenState,
   type PlatformBrowserHandoffStore,
@@ -60,8 +78,10 @@ import { sendPlatformAuthError } from './authErrorResponses.js';
 export interface AuthRouteDependencies {
   authStore: PlatformAuthStore;
   browserHandoffStore?: PlatformBrowserHandoffStore;
+  actionGrantStore?: PlatformAuthActionGrantStore;
   auth: PlatformAuthConfig;
   googleVerifier?: PlatformGoogleIdTokenVerifier;
+  reportAuthSecurityEvent?: PlatformAuthSecurityEventReporter;
   authRecoveryTokenState?: PlatformAuthRecoveryTokenState | null;
   getAuthRecoveryTokenState?: () => PlatformAuthRecoveryTokenState | null;
   setAuthRecoveryTokenState?: (
@@ -85,6 +105,18 @@ export interface AuthStatusPayload {
       clientId: string | null;
     };
   };
+  /**
+   * SPEC-113 requirements 11 and 12: only an authenticated response carries a
+   * projection. `providers.google.enabled` says the server can offer GIS;
+   * `loginMethods.google.linked` says this account owns a Google Identity.
+   */
+  loginMethods: PlatformLoginMethodsSummary | null;
+}
+
+export interface AuthReauthenticationPayload {
+  purpose: PlatformAuthActionGrantPurpose;
+  actionToken: string;
+  expiresAt: string;
 }
 
 export async function routePlatformAuthApi(
@@ -149,7 +181,7 @@ export async function routePlatformAuthApi(
     return true;
   }
 
-  if (context.url.pathname === '/api/auth/google/setup') {
+  if (context.url.pathname === '/api/auth/reauth') {
     if (context.method !== 'POST') {
       sendMethodNotAllowed(context.response, ['POST']);
       return true;
@@ -157,7 +189,7 @@ export async function routePlatformAuthApi(
     if (!enforcePreAuthOriginGate(context)) {
       return true;
     }
-    await handleGoogleSetup(context);
+    await handleLocalReauthentication(context);
     return true;
   }
 
@@ -166,7 +198,22 @@ export async function routePlatformAuthApi(
       sendMethodNotAllowed(context.response, ['POST']);
       return true;
     }
+    if (!enforcePreAuthOriginGate(context)) {
+      return true;
+    }
     await handleGoogleLink(context);
+    return true;
+  }
+
+  if (context.url.pathname === '/api/auth/google/unlink') {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    if (!enforcePreAuthOriginGate(context)) {
+      return true;
+    }
+    await handleGoogleUnlink(context);
     return true;
   }
 
@@ -519,10 +566,22 @@ async function handleRepairFirstAdmin(
     sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Invalid auth repair request body.');
     return;
   }
-  if (typeof body.identifier !== 'string' || typeof body.password !== 'string') {
-    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Identifier and password are required.');
+  // PLAN-104 Task 1.6: repair uses the same Admin credential validator as
+  // setup, without weakening the recovery-token/origin boundary below.
+  const credentialValidation = validatePlatformAdminCredentials({
+    identifier: body.identifier,
+    password: body.password,
+  });
+  if (!credentialValidation.ok) {
+    sendAuthError(
+      context.response,
+      400,
+      'E_FORBIDDEN',
+      describePlatformAdminCredentialRejection(credentialValidation.reason),
+    );
     return;
   }
+  const credentials = credentialValidation.credentials;
 
   const now = context.dependencies.now?.() ?? new Date();
   const authorization = authorizePlatformAuthRepairBootstrap({
@@ -541,21 +600,42 @@ async function handleRepairFirstAdmin(
     return;
   }
 
-  const created = await createFirstAdminLocalAuthState({
-    state: createEmptyPlatformAuthState(now),
-    displayName: typeof body.displayName === 'string' && body.displayName.trim()
-      ? body.displayName
-      : 'Owner',
-    identifier: body.identifier,
-    password: body.password,
-    sessionSecret,
-    sessionTtlMs: context.dependencies.auth.sessionTtlMs,
-    now,
-  });
-  await context.dependencies.authStore.writeState(created.state);
+  let created: Awaited<ReturnType<typeof createFirstAdminLocalAuthState>>;
+  try {
+    created = await createFirstAdminLocalAuthState({
+      state: createEmptyPlatformAuthState(now),
+      displayName: typeof body.displayName === 'string' && body.displayName.trim()
+        ? body.displayName
+        : 'Owner',
+      identifier: credentials.identifier,
+      password: credentials.password,
+      sessionSecret,
+      sessionTtlMs: context.dependencies.auth.sessionTtlMs,
+      now,
+    });
+  } catch (error) {
+    if (error instanceof PlatformAdminCredentialError) {
+      sendAuthError(context.response, 400, 'E_FORBIDDEN', error.message);
+      return;
+    }
+    if (error instanceof PlatformFirstAdminExistsError) {
+      sendAuthError(context.response, 409, 'E_FORBIDDEN', 'Auth repair is not required.');
+      return;
+    }
+    throw error;
+  }
+
+  const repairedState = await context.dependencies.authStore.writeState(created.state);
   if (authorization.mode === 'recovery_token') {
     await context.dependencies.setAuthRecoveryTokenState?.(authorization.consumedTokenState);
   }
+  await reportAuthSecurityEvent(context, {
+    kind: 'first_admin_created',
+    outcome: 'success',
+    accountId: created.account.id,
+    sessionId: created.session.session.id,
+    reason: 'repair',
+  });
 
   sendJson(
     context.response,
@@ -564,7 +644,10 @@ async function handleRepairFirstAdmin(
       account: created.account,
       membership: created.membership,
       session: created.session.session,
-    }, created.session.csrfToken),
+    }, created.session.csrfToken, summarizePlatformLoginMethods(
+      repairedState,
+      created.account.id,
+    )),
     {
       'Set-Cookie': serializeAuthSessionCookie(
         created.session.token,
@@ -652,7 +735,7 @@ async function handleAuthStatus(context: RouteContext<AuthRouteDependencies>): P
     now: context.dependencies.now?.() ?? new Date(),
     remoteAddress: readRemoteAddress(context.request),
   });
-  await context.dependencies.authStore.updateState((state) => ({
+  const nextState = await context.dependencies.authStore.updateState((state) => ({
     ...state,
     sessions: state.sessions.map((session) =>
       session.id === resolved.session.id
@@ -669,7 +752,7 @@ async function handleAuthStatus(context: RouteContext<AuthRouteDependencies>): P
       ...touched,
       csrfTokenHash: csrf.tokenHash,
     },
-  }, csrf.token));
+  }, csrf.token, summarizePlatformLoginMethods(nextState, resolved.account.id)));
 }
 
 async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): Promise<void> {
@@ -733,7 +816,7 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
     ttlMs: context.dependencies.auth.sessionTtlMs,
     now,
   });
-  await context.dependencies.authStore.updateState((current) => {
+  const nextState = await context.dependencies.authStore.updateState((current) => {
     const cleared = recordSuccessfulLogin(current, {
       subject: throttleSubject,
       now,
@@ -751,7 +834,7 @@ async function handleLocalLogin(context: RouteContext<AuthRouteDependencies>): P
       account: credential.account,
       membership: credential.membership,
       session: issued.session,
-    }, issued.csrfToken),
+    }, issued.csrfToken, summarizePlatformLoginMethods(nextState, credential.account.id)),
     {
       'Set-Cookie': serializeAuthSessionCookie(
         issued.token,
@@ -806,10 +889,12 @@ async function handleGoogleLogin(context: RouteContext<AuthRouteDependencies>): 
     return;
   }
 
-  await context.dependencies.authStore.writeState(recordSuccessfulLogin(issued.state, {
-    subject: throttleSubject,
-    now,
-  }));
+  const nextState = await context.dependencies.authStore.writeState(
+    recordSuccessfulLogin(issued.state, {
+      subject: throttleSubject,
+      now,
+    }),
+  );
   sendJson(
     context.response,
     200,
@@ -817,7 +902,7 @@ async function handleGoogleLogin(context: RouteContext<AuthRouteDependencies>): 
       account: issued.account,
       membership: issued.membership,
       session: issued.session.session,
-    }, issued.session.csrfToken),
+    }, issued.session.csrfToken, summarizePlatformLoginMethods(nextState, issued.account.id)),
     {
       'Set-Cookie': serializeAuthSessionCookie(
         issued.session.token,
@@ -827,23 +912,77 @@ async function handleGoogleLogin(context: RouteContext<AuthRouteDependencies>): 
   );
 }
 
-async function handleGoogleSetup(context: RouteContext<AuthRouteDependencies>): Promise<void> {
+/**
+ * `POST /api/auth/reauth` — local-password step-up.
+ *
+ * ADR-111 section 3 requires the sensitive-action proof to be server-owned.
+ * The renderer's password modal is presentation; this route is the boundary.
+ */
+async function handleLocalReauthentication(
+  context: RouteContext<AuthRouteDependencies>,
+): Promise<void> {
   const sessionSecret = context.dependencies.auth.sessionSecret;
-  if (!sessionSecret) {
-    sendAuthError(context.response, 503, 'E_FORBIDDEN', 'Google setup is not configured.');
+  const actionGrantStore = context.dependencies.actionGrantStore;
+  if (!sessionSecret || !actionGrantStore) {
+    sendAuthError(context.response, 503, 'E_FORBIDDEN', 'Reauthentication is not configured.');
     return;
   }
 
-  const identity = await readVerifiedBrowserGoogleIdentity(context);
-  if (!identity) {
+  const resolved = await resolveBrowserPrincipal(context);
+  if (!resolved) {
+    sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Authentication is required.');
+    return;
+  }
+  if (!enforceCatsCsrfToken(context, resolved.session)) {
     return;
   }
 
-  const state = await context.dependencies.authStore.readState();
+  let body: { password?: unknown; purpose?: unknown };
+  try {
+    body = await readJsonBody(context.request);
+  } catch {
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Invalid reauthentication request body.');
+    return;
+  }
+  if (!isPlatformAuthActionGrantPurpose(body.purpose)) {
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'A supported action purpose is required.');
+    return;
+  }
+  const purpose = body.purpose;
+  if (typeof body.password !== 'string' || !body.password) {
+    await reportAuthSecurityEvent(context, {
+      kind: 'step_up_failed',
+      outcome: 'failure',
+      accountId: resolved.account.id,
+      sessionId: resolved.session.id,
+      reason: 'password_required',
+    });
+    sendAuthError(context.response, 400, 'E_FORBIDDEN', 'Password is required.');
+    return;
+  }
+
   const now = context.dependencies.now?.() ?? new Date();
+  const state = await context.dependencies.authStore.readState();
+  const localIdentity = state.identities.find((identity) =>
+    identity.provider === 'local_password' && identity.accountId === resolved.account.id,
+  ) ?? null;
+  if (!localIdentity) {
+    await reportAuthSecurityEvent(context, {
+      kind: 'step_up_failed',
+      outcome: 'failure',
+      accountId: resolved.account.id,
+      sessionId: resolved.session.id,
+      reason: 'local_password_missing',
+    });
+    sendAuthError(context.response, 403, 'E_REAUTH_REQUIRED', 'Local password is not available.');
+    return;
+  }
+
+  // SPEC-113 requirement 17: failed step-up feeds the same composite and
+  // aggregate throttle policy that guards ordinary local login.
   const throttleSubject = createLoginThrottleSubject({
-    provider: 'google',
-    accountKey: identity.providerSubject,
+    provider: 'local_password',
+    accountKey: localIdentity.providerSubject,
     remoteAddress: readRemoteAddress(context.request),
   });
   const throttle = evaluateLoginThrottle(state, {
@@ -859,39 +998,48 @@ async function handleGoogleSetup(context: RouteContext<AuthRouteDependencies>): 
     await sleep(throttle.delayMs, context.dependencies.sleep);
   }
 
-  let created: ReturnType<typeof createFirstAdminGoogleAuthState>;
-  try {
-    created = createFirstAdminGoogleAuthState({
-      state,
-      identity,
-      sessionSecret,
-      sessionTtlMs: context.dependencies.auth.sessionTtlMs,
-      now,
+  const credential = await verifyPlatformLocalPasswordForAccount(state, {
+    accountId: resolved.account.id,
+    password: body.password,
+  });
+  if (!credential) {
+    await recordFailedLoginWithAlerts(context, throttleSubject, now);
+    await reportAuthSecurityEvent(context, {
+      kind: 'step_up_failed',
+      outcome: 'failure',
+      accountId: resolved.account.id,
+      sessionId: resolved.session.id,
+      reason: 'invalid_password',
     });
-  } catch {
-    sendAuthError(context.response, 409, 'E_FORBIDDEN', 'First admin already exists.');
+    sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Invalid credentials.');
     return;
   }
 
-  await context.dependencies.authStore.writeState(recordSuccessfulLogin(created.state, {
-    subject: throttleSubject,
-    now,
-  }));
-  sendJson(
-    context.response,
-    200,
-    buildAuthStatusPayload(context.dependencies.auth, {
-      account: created.account,
-      membership: created.membership,
-      session: created.session.session,
-    }, created.session.csrfToken),
-    {
-      'Set-Cookie': serializeAuthSessionCookie(
-        created.session.token,
-        context.dependencies.auth.sessionTtlMs,
-      ),
-    },
+  await context.dependencies.authStore.updateState((current) =>
+    recordSuccessfulLogin(current, { subject: throttleSubject, now }),
   );
+
+  const grant = actionGrantStore.issue({
+    accountId: resolved.account.id,
+    sessionId: resolved.session.id,
+    purpose,
+    sessionSecret,
+    now,
+  });
+  await reportAuthSecurityEvent(context, {
+    kind: 'step_up_succeeded',
+    outcome: 'success',
+    accountId: resolved.account.id,
+    sessionId: resolved.session.id,
+    reason: purpose,
+  });
+
+  const payload: AuthReauthenticationPayload = {
+    purpose,
+    actionToken: grant.token,
+    expiresAt: grant.expiresAt,
+  };
+  sendJson(context.response, 200, payload);
 }
 
 async function handleGoogleLink(context: RouteContext<AuthRouteDependencies>): Promise<void> {
@@ -908,58 +1056,321 @@ async function handleGoogleLink(context: RouteContext<AuthRouteDependencies>): P
   if (!enforceCatsCsrfToken(context, resolved.session)) {
     return;
   }
+  if (!await enforceActionGrant(context, resolved, 'link_google')) {
+    return;
+  }
 
+  // The grant is spent from here on, whatever the outcome below
+  // (SPEC-113 requirement 33).
   const identity = await readVerifiedBrowserGoogleIdentity(context);
   if (!identity) {
+    await reportAuthSecurityEvent(context, {
+      kind: 'google_link_failed',
+      outcome: 'failure',
+      accountId: resolved.account.id,
+      sessionId: resolved.session.id,
+      reason: 'google_credential_rejected',
+    });
     return;
   }
 
   const now = context.dependencies.now?.() ?? new Date();
-  let linked: ReturnType<typeof linkGoogleIdentityToAccount>;
-  try {
-    linked = linkGoogleIdentityToAccount({
-      state: await context.dependencies.authStore.readState(),
-      accountId: resolved.account.id,
-      identity,
-      now,
-    });
-  } catch {
-    sendAuthError(context.response, 409, 'E_FORBIDDEN', 'Google account is already linked.');
-    return;
-  }
-  if (!linked) {
-    sendAuthError(context.response, 403, 'E_FORBIDDEN', 'Google account cannot be linked.');
-    return;
-  }
-
   const csrf = generateSessionTokenMaterial(sessionSecret);
   const touched = touchSession(resolved.session, {
     now,
     remoteAddress: readRemoteAddress(context.request),
   });
-  await context.dependencies.authStore.writeState({
-    ...linked.state,
-    sessions: linked.state.sessions.map((session) =>
-      session.id === resolved.session.id
-        ? {
-            ...touched,
-            csrfTokenHash: csrf.tokenHash,
-          }
-        : session,
-    ),
+  let rejection: GoogleIdentityLinkRejectionReason | null = null;
+  const nextState = await context.dependencies.authStore.updateState((state) => {
+    const outcome = linkGoogleIdentityToAccount({
+      state,
+      accountId: resolved.account.id,
+      identity,
+      now,
+    });
+    if (!outcome.ok) {
+      rejection = outcome.reason;
+      return state;
+    }
+    return {
+      ...outcome.result.state,
+      sessions: outcome.result.state.sessions.map((session) =>
+        session.id === resolved.session.id
+          ? { ...touched, csrfTokenHash: csrf.tokenHash }
+          : session,
+      ),
+    };
   });
+
+  if (rejection !== null) {
+    await reportAuthSecurityEvent(context, {
+      kind: 'google_link_failed',
+      outcome: 'failure',
+      accountId: resolved.account.id,
+      sessionId: resolved.session.id,
+      reason: rejection,
+    });
+    const mapped = mapGoogleLinkRejection(rejection);
+    sendAuthError(context.response, mapped.status, mapped.code, mapped.message);
+    return;
+  }
+
+  await reportAuthSecurityEvent(context, {
+    kind: 'google_link_succeeded',
+    outcome: 'success',
+    accountId: resolved.account.id,
+    sessionId: resolved.session.id,
+    reason: null,
+  });
+
+  const account = nextState.accounts.find(
+    (candidate) => candidate.id === resolved.account.id,
+  ) ?? resolved.account;
   sendJson(
     context.response,
     200,
     buildAuthStatusPayload(context.dependencies.auth, {
-      account: linked.account,
-      membership: linked.membership,
-      session: {
-        ...touched,
-        csrfTokenHash: csrf.tokenHash,
-      },
-    }, csrf.token),
+      account,
+      membership: resolved.membership,
+      session: { ...touched, csrfTokenHash: csrf.tokenHash },
+    }, csrf.token, summarizePlatformLoginMethods(nextState, resolved.account.id)),
   );
+}
+
+async function handleGoogleUnlink(context: RouteContext<AuthRouteDependencies>): Promise<void> {
+  const sessionSecret = context.dependencies.auth.sessionSecret;
+  if (!sessionSecret) {
+    sendAuthError(context.response, 503, 'E_FORBIDDEN', 'Google unlink is not configured.');
+    return;
+  }
+  const resolved = await resolveBrowserPrincipal(context);
+  if (!resolved) {
+    sendAuthError(context.response, 401, 'E_UNAUTHENTICATED', 'Authentication is required.');
+    return;
+  }
+  if (!enforceCatsCsrfToken(context, resolved.session)) {
+    return;
+  }
+  if (!await enforceActionGrant(context, resolved, 'unlink_google')) {
+    return;
+  }
+
+  const now = context.dependencies.now?.() ?? new Date();
+  const csrf = generateSessionTokenMaterial(sessionSecret);
+  const touched = touchSession(resolved.session, {
+    now,
+    remoteAddress: readRemoteAddress(context.request),
+  });
+  let rejection: GoogleIdentityUnlinkRejectionReason | null = null;
+  let revokedSessionIds: string[] = [];
+  const nextState = await context.dependencies.authStore.updateState((state) => {
+    const outcome = unlinkGoogleIdentityFromAccount({
+      state,
+      accountId: resolved.account.id,
+      keepSessionId: resolved.session.id,
+      now,
+    });
+    if (!outcome.ok) {
+      rejection = outcome.reason;
+      return state;
+    }
+    revokedSessionIds = outcome.result.revokedSessionIds;
+    return {
+      ...outcome.result.state,
+      sessions: outcome.result.state.sessions.map((session) =>
+        session.id === resolved.session.id
+          ? { ...touched, csrfTokenHash: csrf.tokenHash }
+          : session,
+      ),
+    };
+  });
+
+  if (rejection !== null) {
+    await reportAuthSecurityEvent(context, {
+      kind: 'google_unlink_failed',
+      outcome: 'failure',
+      accountId: resolved.account.id,
+      sessionId: resolved.session.id,
+      reason: rejection,
+    });
+    const mapped = mapGoogleUnlinkRejection(rejection);
+    sendAuthError(context.response, mapped.status, mapped.code, mapped.message);
+    return;
+  }
+
+  // Sessions that just lost their cookie must not keep a usable step-up
+  // capability either.
+  for (const sessionId of revokedSessionIds) {
+    context.dependencies.actionGrantStore?.revokeForSession(sessionId);
+  }
+  await reportAuthSecurityEvent(context, {
+    kind: 'google_unlink_succeeded',
+    outcome: 'success',
+    accountId: resolved.account.id,
+    sessionId: resolved.session.id,
+    reason: null,
+  });
+
+  const account = nextState.accounts.find(
+    (candidate) => candidate.id === resolved.account.id,
+  ) ?? resolved.account;
+  sendJson(
+    context.response,
+    200,
+    buildAuthStatusPayload(context.dependencies.auth, {
+      account,
+      membership: resolved.membership,
+      session: { ...touched, csrfTokenHash: csrf.tokenHash },
+    }, csrf.token, summarizePlatformLoginMethods(nextState, resolved.account.id)),
+  );
+}
+
+/**
+ * Consumes the one-time action grant carried by `X-Cats-Auth-Action`.
+ * SPEC-113 requirement 21 rejects a token supplied through the URL, so the
+ * header is the only accepted transport.
+ */
+async function enforceActionGrant(
+  context: RouteContext<AuthRouteDependencies>,
+  resolved: PlatformPrincipal,
+  purpose: PlatformAuthActionGrantPurpose,
+): Promise<boolean> {
+  const sessionSecret = context.dependencies.auth.sessionSecret;
+  const actionGrantStore = context.dependencies.actionGrantStore;
+  if (!sessionSecret || !actionGrantStore) {
+    sendAuthError(context.response, 503, 'E_FORBIDDEN', 'Sensitive actions are not configured.');
+    return false;
+  }
+  if (context.url.searchParams.has('actionToken')) {
+    sendAuthError(
+      context.response,
+      403,
+      'E_REAUTH_REQUIRED',
+      'Action token must be sent as a header.',
+    );
+    return false;
+  }
+
+  const header = context.request.headers[PLATFORM_AUTH_ACTION_HEADER];
+  const token = typeof header === 'string' ? header : '';
+  const outcome = actionGrantStore.consume({
+    token,
+    accountId: resolved.account.id,
+    sessionId: resolved.session.id,
+    purpose,
+    sessionSecret,
+    now: context.dependencies.now?.() ?? new Date(),
+  });
+  if (!outcome.ok) {
+    await reportAuthSecurityEvent(context, {
+      kind: 'step_up_failed',
+      outcome: 'failure',
+      accountId: resolved.account.id,
+      sessionId: resolved.session.id,
+      reason: outcome.reason,
+    });
+    sendAuthError(
+      context.response,
+      403,
+      'E_REAUTH_REQUIRED',
+      actionGrantRejectionMessage(outcome.reason),
+    );
+    return false;
+  }
+  return true;
+}
+
+function actionGrantRejectionMessage(
+  reason: PlatformAuthActionGrantRejectionReason,
+): string {
+  switch (reason) {
+    case 'missing_token':
+      return 'Password confirmation is required.';
+    case 'unknown_or_expired':
+      return 'Password confirmation has expired. Confirm your password again.';
+    case 'purpose_mismatch':
+    case 'account_mismatch':
+    case 'session_mismatch':
+      return 'Password confirmation is not valid for this action.';
+  }
+}
+
+function mapGoogleLinkRejection(reason: GoogleIdentityLinkRejectionReason): {
+  status: 403 | 409;
+  code: PlatformAuthErrorCode;
+  message: string;
+} {
+  switch (reason) {
+    case 'account_not_found':
+      return {
+        status: 403,
+        code: PLATFORM_AUTH_ERROR_CODES.forbidden,
+        message: 'Google account cannot be linked.',
+      };
+    case 'email_mismatch':
+      return {
+        status: 409,
+        code: PLATFORM_AUTH_ERROR_CODES.identityConflict,
+        message: 'The Google account email does not match this Cats account.',
+      };
+    case 'subject_owned_by_other_account':
+      return {
+        status: 409,
+        code: PLATFORM_AUTH_ERROR_CODES.identityConflict,
+        message: 'That Google account is already linked to another Cats account.',
+      };
+    case 'account_has_other_google_identity':
+      return {
+        status: 409,
+        code: PLATFORM_AUTH_ERROR_CODES.identityConflict,
+        message: 'This Cats account already has a different Google account linked.',
+      };
+  }
+}
+
+function mapGoogleUnlinkRejection(reason: GoogleIdentityUnlinkRejectionReason): {
+  status: 403 | 409;
+  code: PlatformAuthErrorCode;
+  message: string;
+} {
+  switch (reason) {
+    case 'account_not_found':
+      return {
+        status: 403,
+        code: PLATFORM_AUTH_ERROR_CODES.forbidden,
+        message: 'Google account cannot be unlinked.',
+      };
+    case 'google_not_linked':
+      return {
+        status: 409,
+        code: PLATFORM_AUTH_ERROR_CODES.identityConflict,
+        message: 'No Google account is linked.',
+      };
+    case 'local_fallback_missing':
+      return {
+        status: 409,
+        code: PLATFORM_AUTH_ERROR_CODES.identityConflict,
+        message: 'Set a local password before unlinking Google.',
+      };
+  }
+}
+
+async function reportAuthSecurityEvent(
+  context: RouteContext<AuthRouteDependencies>,
+  input: Omit<Parameters<typeof createPlatformAuthSecurityEvent>[0], 'now'>,
+): Promise<void> {
+  const reporter = context.dependencies.reportAuthSecurityEvent;
+  if (!reporter) {
+    return;
+  }
+  try {
+    await reporter(createPlatformAuthSecurityEvent({
+      ...input,
+      now: context.dependencies.now?.() ?? new Date(),
+    }));
+  } catch (error) {
+    console.warn('[cats-platform] auth security event reporter failed', error);
+  }
 }
 
 async function readVerifiedBrowserGoogleIdentity(
@@ -1095,6 +1506,7 @@ function buildAuthStatusPayload(
   auth: PlatformAuthConfig,
   resolved: PlatformPrincipal | null,
   csrfToken: string | null,
+  loginMethods: PlatformLoginMethodsSummary | null = null,
 ): AuthStatusPayload {
   return {
     authenticated: resolved !== null,
@@ -1106,6 +1518,9 @@ function buildAuthStatusPayload(
         clientId: auth.google.clientId,
       },
     },
+    // Requirement 11: an unauthenticated response never discloses whether an
+    // account or provider identity exists.
+    loginMethods: resolved ? loginMethods : null,
   };
 }
 

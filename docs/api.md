@@ -65,15 +65,52 @@ PLAN-089 auth is rolling out in slices. The current server-side foundation
 includes:
 
 - `GET /api/auth/status` for browser session status and Cats CSRF-token
-  refresh;
+  refresh. Authenticated responses also carry a `loginMethods` projection
+  derived from Identity records:
+
+  ```ts
+  interface PlatformLoginMethodsSummary {
+    localPassword: { linked: boolean };
+    google: { linked: boolean; email: string | null };
+  }
+  ```
+
+  Unauthenticated responses return `loginMethods: null` and disclose nothing
+  about whether an account or provider identity exists. `providers.google.enabled`
+  stays separate: it reports whether this server can offer GIS at all;
 - `POST /api/auth/login` for local password browser login;
 - `POST /api/auth/google/login` for Google browser login to an already linked
-  Cats account;
-- `POST /api/auth/google/setup` for creating the first owner/admin auth account
-  from a verified Google identity when no auth account exists yet;
+  Cats account. Google login resolves only an existing Google Identity by
+  stable provider `sub`; it never creates an account, claims one by email, or
+  promotes an Admin;
+- `POST /api/auth/reauth` for local-password step-up. The route requires an
+  active browser session, an allowlisted origin, and `X-Cats-CSRF-Token`. The
+  body is `{ password, purpose }` where `purpose` is `link_google` or
+  `unlink_google`. It verifies the local-password Identity belonging to the
+  *current* account — a client-supplied identifier is never accepted — and
+  returns `{ purpose, actionToken, expiresAt }`. The action token is opaque,
+  carries at least 256 bits of entropy, is returned exactly once, is stored
+  only as a keyed hash, expires after five minutes, and is bound to the
+  account, browser session, and purpose. Failed attempts feed the same
+  composite and aggregate login-throttle policy as ordinary local login;
 - `POST /api/auth/google/link` for linking a verified Google identity to the
-  current browser session. This route requires both the Cats
-  `X-Cats-CSRF-Token` header and the GIS double-submit CSRF token;
+  current account. It is a protected route and enforces, in order: an active
+  Cats browser session, an allowlisted origin, `X-Cats-CSRF-Token`, a valid
+  `link_google` action grant supplied through `X-Cats-Auth-Action`, the GIS
+  double-submit CSRF token, and a server-verified Google ID token. The grant
+  is consumed on the first attempt that presents it, whether or not the rest
+  of that attempt succeeds. A token supplied through the URL is rejected.
+  The verified Google email must equal the account's non-null email after trim
+  and lowercase; an account whose email is `null` because the Admin identifier
+  is a handle adopts the verified email on success. A `sub` owned by another
+  account, or a second Google identity for this account, is refused;
+- `POST /api/auth/google/unlink` for removing the current account's Google
+  Identity. Same session, origin, and CSRF requirements plus a valid
+  `unlink_google` action grant. It refuses when no Google identity is linked
+  or when the account has no active local-password fallback. On success it
+  removes only the Google Identity, revokes every other browser and mobile
+  session for the account, keeps the step-up-verified session, and rotates
+  that session's CSRF token;
 - `POST /api/auth/logout` for browser logout, requiring
   `X-Cats-CSRF-Token` for active browser sessions;
 - `POST /api/auth/repair/first-admin` for setup-complete workspaces whose auth
@@ -123,12 +160,36 @@ Pinned auth error codes are:
 - `E_FORBIDDEN` for pre-auth origin failures, repair authorization failures,
   login lockout, and other plain authorization denials;
 - `E_CSRF_MISMATCH` for Cats synchronizer CSRF failures on authenticated
-  browser mutations.
+  browser mutations;
+- `E_REAUTH_REQUIRED` (`403`) when a sensitive identity action is missing a
+  step-up action grant, or presents one that is expired, already consumed, or
+  bound to another purpose, account, or session;
+- `E_IDENTITY_CONFLICT` (`409`) when a Google link or unlink is refused on
+  identity grounds: a verified email that does not match the account, a `sub`
+  already owned by another account, a second Google identity for the account,
+  no linked Google identity to remove, or no remaining local-password
+  fallback.
+
+First-run setup errors:
+
+- `/api/platform/setup/complete` requires `adminIdentifier` and
+  `adminPassword`. A missing or policy-violating credential returns `400` with
+  `code: 'invalid_admin_credentials'` and a stable `reason` of
+  `identifier_required`, `password_required`, `password_too_short`, or
+  `password_too_long`.
+- Admin passwords must contain 8 to 256 Unicode code points, inclusive.
+  Length is counted in code points, so an emoji counts once. No
+  uppercase/lowercase/digit/symbol composition rule is applied, and spaces and
+  password-manager output are allowed.
+- First-admin creation is serialized. A concurrent submission that loses the
+  uniqueness recheck receives `409` with `code: 'already_complete'` and creates
+  no account, identity, membership, or session.
 
 Account-management boundary for this rollout:
 
-- PLAN-089 creates the first local admin account during setup and can issue
-  browser/mobile sessions for that account.
+- Setup creates the first local admin account and can issue
+  browser/mobile sessions for that account. Google is linked afterwards from
+  Settings; there is no Google-only first-admin bootstrap route.
 - The first admin membership is the only membership that receives the legacy
   `coreActorId: "actor-owner"` mapping automatically.
 - Later memberships must keep `coreActorId: null` until an explicit Core actor
@@ -362,7 +423,6 @@ Retrieval-context responses return `{ retrieval }`, where `retrieval` includes:
 ### Setup
 
 ```text
-POST /api/setup/complete
 POST /api/setup/reset
 POST /api/platform/setup/complete
 POST /api/platform/preferences
@@ -371,15 +431,14 @@ POST /api/platform/bootstrap-diagnostics/opened
 GET  /api/platform/ingress
 ```
 
-- `POST /api/setup/complete` finishes first-run onboarding by:
-  - creating the current default `Boss Cat`
-  - persisting owner display-name updates
-  - persisting `setupCompleteAt`
-  - returning the refreshed `AppShellPayload`
 - `POST /api/setup/reset` clears chat/core state back to the uninitialized
   first-run baseline and returns the refreshed `AppShellPayload`.
-- `POST /api/platform/setup/complete` finishes the newer platform-owned setup
-  flow by:
+- `POST /api/platform/setup/complete` is the only setup-completion route. The
+  legacy `POST /api/setup/complete` Boss Cat path is removed: it could set
+  `setupCompleteAt` without creating an Admin, which defeated the SPEC-113
+  first-admin invariant. It finishes setup by:
+  - creating the first local Admin from the required `adminIdentifier` and
+    `adminPassword`
   - persisting owner display-name updates
   - optionally creating the platform-level `Guide Cat`
   - preserving `Boss Cat` assignment as a Chat concern instead of forcing one

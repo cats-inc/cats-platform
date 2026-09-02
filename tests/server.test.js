@@ -46,6 +46,8 @@ import {
 } from '../build/server/shared/chatCoreIds.js';
 import {
   createAuthenticatedTestSession,
+  createUnprovisionedTestSession,
+  TEST_ADMIN_CREDENTIALS,
   createTestAuthConfig,
   installAuthenticatedFetch,
   waitForCondition,
@@ -248,12 +250,8 @@ async function withServer(
   const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-server-state-'));
   const runtimeDataDir = path.join(tempStateDir, 'runtime-data');
   const now = new Date('2026-03-11T00:00:00.000Z');
-  const auth = await createAuthenticatedTestSession({
-    now,
-    sessionSecret: baseConfig.auth.sessionSecret,
-    sessionTtlMs: baseConfig.auth.sessionTtlMs,
-  });
   const {
+    unprovisionedAuth,
     startup,
     coreStore,
     resumePendingOrchestratorDispatch,
@@ -262,6 +260,16 @@ async function withServer(
     code,
     ...chatOverrides
   } = overrides;
+  // Tests that drive `/api/platform/setup/complete` must start without an
+  // Admin: SPEC-113 makes that route create the first one, and it refuses to
+  // run when a seeded Admin already exists.
+  const auth = unprovisionedAuth
+    ? createUnprovisionedTestSession({ now })
+    : await createAuthenticatedTestSession({
+        now,
+        sessionSecret: baseConfig.auth.sessionSecret,
+        sessionTtlMs: baseConfig.auth.sessionTtlMs,
+      });
   const server = createServer({
     shared: {
       config: {
@@ -9416,12 +9424,12 @@ test('PATCH /api/preferences only selects the requested Boss Chat without waking
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -9458,7 +9466,7 @@ test('PATCH /api/preferences only selects the requested Boss Chat without waking
     assert.equal(channelPayload.channel.orchestratorLease.sessionId, null);
     assert.equal(channelPayload.channel.roomRouting.lastWakeRequest, null);
     assert.equal(channelPayload.channel.messages[0]?.metadata?.event, 'room_created');
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('first send persists a runtime-sanitized default model selection after dropping a stale preset', async () => {
@@ -9550,12 +9558,12 @@ test('first send on a selected default chat accepts the user turn before startin
   };
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -9617,7 +9625,7 @@ test('first send on a selected default chat accepts the user turn before startin
 
     assert.equal(runtimeClient.sentMessages[0]?.sessionId, 'session-1');
     assert.equal(channelPayload.channel.messages[2]?.metadata?.event, 'session_started');
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('parallel chat first send accepts the user turn before starting member sessions', async () => {
@@ -9633,12 +9641,12 @@ test('parallel chat first send accepts the user turn before starting member sess
   };
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -9728,7 +9736,7 @@ test('parallel chat first send accepts the user turn before starting member sess
     });
     assert.equal(selectPassiveResponse.status, 200);
     assert.equal(runtimeClient.createdSessions.length, 2);
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('GET /api/app-shell repairs missing session_started metadata from runtime responses', async () => {
@@ -9957,12 +9965,12 @@ test('parallel chat first send fans out the selected folder and attachments to e
 
   try {
     await withServer(runtimeClient, async (baseUrl) => {
-      const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
           ownerDisplayName: 'Kenny',
-          bossCatName: 'Smelly',
           bossCatProvider: 'claude',
         }),
       });
@@ -10048,7 +10056,7 @@ test('parallel chat first send fans out the selected folder and attachments to e
           assert.equal(await response.text(), 'parallel attachment');
         }),
       );
-    });
+    }, new MemoryChatStore(), { unprovisionedAuth: true });
   } finally {
     await rm(tempWorkingDir, { recursive: true, force: true });
   }
@@ -10073,12 +10081,12 @@ test('parallel chat member selection stays responsive while the first send is st
   };
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -10148,7 +10156,7 @@ test('parallel chat member selection stays responsive while the first send is st
 
     const sendResponse = await sendResponsePromise;
     assert.equal(sendResponse.status, 200);
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('single chat background finalize preserves a newer acknowledged user turn', async () => {
@@ -10174,12 +10182,12 @@ test('single chat background finalize preserves a newer acknowledged user turn',
   };
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -10256,7 +10264,7 @@ test('single chat background finalize preserves a newer acknowledged user turn',
         .map((message) => message.body),
       ['First question', 'Second question'],
     );
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('single chat failure settlement preserves a newer acknowledged user turn', async () => {
@@ -10283,12 +10291,12 @@ test('single chat failure settlement preserves a newer acknowledged user turn', 
   };
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -10353,7 +10361,7 @@ test('single chat failure settlement preserves a newer acknowledged user turn', 
         .map((message) => message.body),
       ['First failing question', 'Second surviving question'],
     );
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('parallel chat finalize preserves member mutations acknowledged after send ack', async () => {
@@ -10369,12 +10377,12 @@ test('parallel chat finalize preserves member mutations acknowledged after send 
   };
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -10437,17 +10445,17 @@ test('parallel chat finalize preserves member mutations acknowledged after send 
     });
 
     assert.equal(passiveChannelPayload.channel.title, 'Renamed while pending');
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('parallel chat relay returns a validation error without relying on magic-string control flow', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -10484,17 +10492,17 @@ test('parallel chat relay returns a validation error without relying on magic-st
     assert.equal(relayResponse.status, 400);
     const relayPayload = await relayResponse.json();
     assert.equal(relayPayload.error.code, 'channel_not_in_compare_group');
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('ungrouping a parallel chat materializes member chats as standalone recents entries', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -10533,7 +10541,7 @@ test('ungrouping a parallel chat materializes member chats as standalone recents
       .map((channel) => channel.title);
     assert.equal(memberTitles.length, 2);
     assert.deepEqual(memberTitles, ['Parallel Race', 'Parallel Race']);
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('default chats without a cwd create isolated runtime sessions', async () => {
@@ -10544,6 +10552,7 @@ test('default chats without a cwd create isolated runtime sessions', async () =>
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createBossCat: false,
       }),
@@ -10606,7 +10615,7 @@ test('default chats without a cwd create isolated runtime sessions', async () =>
     );
     assert.equal(soloReply?.senderKind, 'agent');
     assert.equal(soloReply?.senderName, 'Orchestrator');
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('PATCH /api/channels/:channelId can start a fresh default continuity branch', async () => {
@@ -11025,12 +11034,12 @@ test('PATCH /api/preferences does not overwrite the last wake request because se
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -11091,19 +11100,19 @@ test('PATCH /api/preferences does not overwrite the last wake request because se
       channelPayload.channel.roomRouting.lastWakeRequest.completedAt,
       firstWakeCompletedAt,
     );
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('PATCH /api/preferences only selects the requested direct message recipient without waking it', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -11160,7 +11169,7 @@ test('PATCH /api/preferences only selects the requested direct message recipient
       null,
     );
     assert.equal(channelPayload.channel.roomRouting.lastWakeRequest, null);
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('PATCH /api/cats/:id archive closes live direct-lane sessions without promoting the lane to recents', async () => {
@@ -11171,6 +11180,7 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions without promo
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createBossCat: false,
       }),
@@ -11273,7 +11283,7 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions without promo
       },
     );
     assert.equal(archivedWebhookResponse.status, 404);
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('archived cats cannot receive new Telegram bot bindings', async () => {
@@ -11282,6 +11292,7 @@ test('archived cats cannot receive new Telegram bot bindings', async () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createBossCat: false,
       }),
@@ -11321,7 +11332,7 @@ test('archived cats cannot receive new Telegram bot bindings', async () => {
     assert.equal(bindingResponse.status, 400);
     const bindingPayload = await bindingResponse.json();
     assert.match(bindingPayload.error.message, /Cat is not active/u);
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('unarchiving a cat restores it without reviving Telegram bindings', async () => {
@@ -11330,6 +11341,7 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createBossCat: false,
       }),
@@ -11422,7 +11434,7 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
       }),
     });
     assert.equal(reboundResponse.status, 201);
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('PATCH /api/cats/:id clears the cat avatar when avatarUrl is null', async () => {
@@ -11431,6 +11443,7 @@ test('PATCH /api/cats/:id clears the cat avatar when avatarUrl is null', async (
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createBossCat: false,
       }),
@@ -11466,7 +11479,7 @@ test('PATCH /api/cats/:id clears the cat avatar when avatarUrl is null', async (
     const clearPayload = await clearResponse.json();
     const clearedCat = clearPayload.chat.cats.find((cat) => cat.id === catId);
     assert.equal(clearedCat?.avatarUrl, null);
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', async () => {
@@ -11475,6 +11488,7 @@ test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', a
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
         createBossCat: false,
       }),
@@ -11540,19 +11554,19 @@ test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', a
       appShellPayload.chat.channels.some((channel) => channel.id === channelId),
       false,
     );
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('first send does not fall back to Boss Cat when a direct message recipient is missing', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -11616,19 +11630,19 @@ test('first send does not fall back to Boss Cat when a direct message recipient 
       channelPayload.channel.messages.at(-1)?.body ?? '',
       /active recipient Cat/i,
     );
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('GET /api/app-shell stays read-only when booting a persisted room route', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
-    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+    const setupResponse = await fetch(`${baseUrl}/api/platform/setup/complete`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        ...TEST_ADMIN_CREDENTIALS,
         ownerDisplayName: 'Kenny',
-        bossCatName: 'Smelly',
         bossCatProvider: 'claude',
       }),
     });
@@ -11679,7 +11693,7 @@ test('GET /api/app-shell stays read-only when booting a persisted room route', a
     );
     assert.equal(appShellPayload.chat.selectedChannel.status, 'configured');
     assert.equal(appShellPayload.chat.selectedChannel.roomRouting.lastWakeRequest, null);
-  });
+  }, new MemoryChatStore(), { unprovisionedAuth: true });
 });
 
 test('re-adding a removed cat to an active chat wakes it again instead of leaving it sleeping', async () => {

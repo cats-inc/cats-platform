@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { assertPlatformAdminCredentials } from './adminCredentials.js';
 import { createLocalPasswordHash } from './password.js';
 import { issueBrowserSession, type BrowserSessionIssueResult } from './session.js';
 import type {
@@ -8,6 +9,30 @@ import type {
   PlatformIdentityRecord,
   PlatformMembershipRecord,
 } from './types.js';
+
+/**
+ * Raised when first-admin creation loses the uniqueness recheck that runs
+ * inside the serialized auth-state mutation. Callers map this to a conflict
+ * response instead of creating a second Account.
+ */
+export class PlatformFirstAdminExistsError extends Error {
+  constructor() {
+    super('First admin already exists.');
+    this.name = 'PlatformFirstAdminExistsError';
+  }
+}
+
+/**
+ * SPEC-113 requirement 5: the "no Admin exists" check must run inside the same
+ * serialized mutation that persists the new records. A prior setup-status read
+ * is not concurrency control.
+ */
+export function hasExistingPlatformAdmin(state: PlatformAuthState): boolean {
+  return state.accounts.length > 0
+    || state.memberships.some((membership) =>
+      membership.roles.some((role) => role === 'owner' || role === 'admin'),
+    );
+}
 
 export interface CreateFirstAdminLocalInput {
   state: PlatformAuthState;
@@ -30,14 +55,18 @@ export interface CreateFirstAdminLocalResult {
 export async function createFirstAdminLocalAuthState(
   input: CreateFirstAdminLocalInput,
 ): Promise<CreateFirstAdminLocalResult> {
-  if (input.state.accounts.length > 0) {
-    throw new Error('First admin already exists.');
+  if (hasExistingPlatformAdmin(input.state)) {
+    throw new PlatformFirstAdminExistsError();
   }
+  const credentials = assertPlatformAdminCredentials({
+    identifier: input.identifier,
+    password: input.password,
+  });
   const now = input.now ?? new Date();
   const nowIso = now.toISOString();
   const accountId = `auth-account-${randomUUID()}`;
-  const normalizedIdentifier = normalizeAccountIdentifier(input.identifier);
-  const password = await createLocalPasswordHash(input.password);
+  const normalizedIdentifier = normalizeAccountIdentifier(credentials.identifier);
+  const password = await createLocalPasswordHash(credentials.password);
   const account: PlatformAccountRecord = {
     id: accountId,
     displayName: input.displayName.trim() || 'Owner',

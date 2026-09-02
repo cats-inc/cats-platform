@@ -10,13 +10,17 @@ import { routePlatformAuthApi } from '../src/app/server/authRoutes.ts';
 import {
   createEmptyPlatformAuthState,
   createFirstAdminLocalAuthState,
-  createFirstAdminGoogleAuthState,
   issuePlatformAuthRecoveryToken,
+  linkGoogleIdentityToAccount,
+  MemoryPlatformAuthActionGrantStore,
   MemoryPlatformAuthStore,
   AUTH_SESSION_COOKIE_NAME,
   createLoginThrottleSubject,
   recordFailedLogin,
+  type PlatformAccountRecord,
+  type PlatformAuthActionGrantStore,
   type PlatformAuthRecoveryTokenState,
+  type PlatformAuthSecurityEvent,
   type PlatformLoginThrottleAlert,
   type PlatformAuthState,
   type PlatformAuthStateReadStatus,
@@ -402,13 +406,7 @@ test('platform auth throttle clear consumes recovery token off loopback', async 
 
 test('platform auth google login issues cookie for linked account', async (t) => {
   const googleIdentity = createGoogleIdentity();
-  const bootstrap = createFirstAdminGoogleAuthState({
-    state: createEmptyPlatformAuthState(NOW),
-    identity: googleIdentity,
-    sessionSecret: SESSION_SECRET,
-    sessionTtlMs: 60_000,
-    now: NOW,
-  });
+  const bootstrap = await createGoogleLinkedBootstrap(googleIdentity);
   const store = new MemoryPlatformAuthStore({
     ...bootstrap.state,
     sessions: [],
@@ -481,13 +479,7 @@ test('platform auth google login does not accept Cats csrf in place of GIS csrf'
 
 test('platform auth google login enforces composite failed-login lockout', async (t) => {
   const googleIdentity = createGoogleIdentity();
-  const bootstrap = createFirstAdminGoogleAuthState({
-    state: createEmptyPlatformAuthState(NOW),
-    identity: googleIdentity,
-    sessionSecret: SESSION_SECRET,
-    sessionTtlMs: 60_000,
-    now: NOW,
-  });
+  const bootstrap = await createGoogleLinkedBootstrap(googleIdentity);
   const store = new MemoryPlatformAuthStore({
     ...bootstrap.state,
     accounts: [{ ...bootstrap.account, status: 'disabled' }],
@@ -524,52 +516,6 @@ test('platform auth google login enforces composite failed-login lockout', async
   assert.match(blocked.payload?.error?.message ?? '', /too many/i);
 });
 
-test('platform auth google setup creates first admin and browser session', async (t) => {
-  const store = new MemoryPlatformAuthStore(createEmptyPlatformAuthState(NOW), () => NOW);
-  const server = createTestServer(store, {
-    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
-  }, fakeGoogleVerifier({
-    sub: 'google-first-admin-subject',
-    aud: 'browser-client-id',
-    iss: 'https://accounts.google.com',
-    exp: Math.floor(NOW.getTime() / 1000) + 600,
-    email: 'owner@example.test',
-    email_verified: true,
-    name: 'Owner',
-  }));
-  await listen(server);
-  t.after(() => server.close());
-
-  const setup = await request(server, '/api/auth/google/setup', {
-    method: 'POST',
-    origin: 'http://localhost:5173',
-    secFetchSite: 'same-origin',
-    cookie: 'g_csrf_token=csrf-token',
-    body: { credential: 'id-token', csrfToken: 'csrf-token' },
-  });
-
-  assert.equal(setup.status, 200);
-  assert.equal(setup.payload?.authenticated, true);
-  assert.equal(setup.payload?.principal?.coreActorId, 'actor-owner');
-  assert.match(setup.setCookie ?? '', /cats_session=/u);
-  const state = await store.readState();
-  assert.equal(state.accounts.length, 1);
-  assert.equal(state.identities.some((identity) =>
-    identity.provider === 'google'
-    && identity.providerSubject === 'google-first-admin-subject',
-  ), true);
-
-  const repeated = await request(server, '/api/auth/google/setup', {
-    method: 'POST',
-    origin: 'http://localhost:5173',
-    secFetchSite: 'same-origin',
-    cookie: 'g_csrf_token=csrf-token',
-    body: { credential: 'id-token', csrfToken: 'csrf-token' },
-  });
-  assert.equal(repeated.status, 409);
-  assert.equal(errorCode(repeated.payload), 'E_FORBIDDEN');
-});
-
 test('platform auth google link attaches identity to current browser session', async (t) => {
   const store = await createSeededStore();
   const server = createTestServer(store, {
@@ -579,9 +525,51 @@ test('platform auth google link attaches identity to current browser session', a
     aud: 'browser-client-id',
     iss: 'https://accounts.google.com',
     exp: Math.floor(NOW.getTime() / 1000) + 600,
-    email: 'linked-owner@example.test',
+    email: 'owner@example.test',
     email_verified: true,
     picture: 'https://example.test/avatar.png',
+  }));
+  await listen(server);
+  t.after(() => server.close());
+
+  const stepUp = await signInAndStepUp(server, 'link_google');
+
+  const linked = await request(server, '/api/auth/google/link', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: `${stepUp.cookie}; g_csrf_token=google-csrf-token`,
+    csrfToken: stepUp.csrfToken,
+    headers: { 'x-cats-auth-action': stepUp.actionToken },
+    body: { credential: 'id-token', csrfToken: 'google-csrf-token' },
+  });
+
+  assert.equal(linked.status, 200);
+  assert.equal(linked.payload?.authenticated, true);
+  assert.equal(linked.payload?.principal?.email, 'owner@example.test');
+  assert.deepEqual(linked.payload?.loginMethods, {
+    localPassword: { linked: true },
+    google: { linked: true, email: 'owner@example.test' },
+  });
+  assert.equal(typeof linked.payload?.csrfToken, 'string');
+  const state = await store.readState();
+  assert.equal(state.identities.some((identity) =>
+    identity.provider === 'google'
+    && identity.providerSubject === 'google-linked-subject',
+  ), true);
+});
+
+test('platform auth google link requires a step-up action grant', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+  }, fakeGoogleVerifier({
+    sub: 'google-linked-subject',
+    aud: 'browser-client-id',
+    iss: 'https://accounts.google.com',
+    exp: Math.floor(NOW.getTime() / 1000) + 600,
+    email: 'owner@example.test',
+    email_verified: true,
   }));
   await listen(server);
   t.after(() => server.close());
@@ -592,25 +580,373 @@ test('platform auth google link attaches identity to current browser session', a
     secFetchSite: 'same-origin',
     body: { identifier: 'owner@example.test', password: 'correct-password' },
   });
-  const sessionCookie = (login.setCookie ?? '').split(';')[0]!;
+  const cookie = (login.setCookie ?? '').split(';')[0]!;
   const csrfToken = String(login.payload?.csrfToken ?? '');
 
-  const linked = await request(server, '/api/auth/google/link', {
+  // A valid session plus a valid Cats CSRF token is deliberately not enough.
+  const withoutGrant = await request(server, '/api/auth/google/link', {
     method: 'POST',
-    cookie: `${sessionCookie}; g_csrf_token=google-csrf-token`,
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: `${cookie}; g_csrf_token=google-csrf-token`,
     csrfToken,
     body: { credential: 'id-token', csrfToken: 'google-csrf-token' },
   });
+  assert.equal(withoutGrant.status, 403);
+  assert.equal(errorCode(withoutGrant.payload), 'E_REAUTH_REQUIRED');
 
-  assert.equal(linked.status, 200);
-  assert.equal(linked.payload?.authenticated, true);
-  assert.equal(linked.payload?.principal?.email, 'linked-owner@example.test');
-  assert.equal(typeof linked.payload?.csrfToken, 'string');
   const state = await store.readState();
-  assert.equal(state.identities.some((identity) =>
-    identity.provider === 'google'
-    && identity.providerSubject === 'google-linked-subject',
-  ), true);
+  assert.equal(state.identities.some((identity) => identity.provider === 'google'), false);
+});
+
+test('platform auth google link consumes the action grant on first use', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+  }, fakeGoogleVerifier({
+    sub: 'google-linked-subject',
+    aud: 'browser-client-id',
+    iss: 'https://accounts.google.com',
+    exp: Math.floor(NOW.getTime() / 1000) + 600,
+    email: 'owner@example.test',
+    email_verified: true,
+  }));
+  await listen(server);
+  t.after(() => server.close());
+
+  const stepUp = await signInAndStepUp(server, 'link_google');
+  const linkRequest = (csrfToken: string) => request(server, '/api/auth/google/link', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: `${stepUp.cookie}; g_csrf_token=google-csrf-token`,
+    csrfToken,
+    headers: { 'x-cats-auth-action': stepUp.actionToken },
+    body: { credential: 'id-token', csrfToken: 'google-csrf-token' },
+  });
+
+  const first = await linkRequest(stepUp.csrfToken);
+  assert.equal(first.status, 200);
+
+  // A successful link rotates the Cats CSRF token, so the replay has to carry
+  // the rotated one; otherwise it would fail on CSRF before reaching the grant.
+  const replay = await linkRequest(String(first.payload?.csrfToken ?? ''));
+  assert.equal(replay.status, 403);
+  assert.equal(errorCode(replay.payload), 'E_REAUTH_REQUIRED');
+});
+
+test('platform auth google link rejects a grant issued for another purpose', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+  }, fakeGoogleVerifier({
+    sub: 'google-linked-subject',
+    aud: 'browser-client-id',
+    iss: 'https://accounts.google.com',
+    exp: Math.floor(NOW.getTime() / 1000) + 600,
+    email: 'owner@example.test',
+    email_verified: true,
+  }));
+  await listen(server);
+  t.after(() => server.close());
+
+  const stepUp = await signInAndStepUp(server, 'unlink_google');
+  const response = await request(server, '/api/auth/google/link', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: `${stepUp.cookie}; g_csrf_token=google-csrf-token`,
+    csrfToken: stepUp.csrfToken,
+    headers: { 'x-cats-auth-action': stepUp.actionToken },
+    body: { credential: 'id-token', csrfToken: 'google-csrf-token' },
+  });
+
+  assert.equal(response.status, 403);
+  assert.equal(errorCode(response.payload), 'E_REAUTH_REQUIRED');
+});
+
+test('platform auth google link rejects a mismatched verified email', async (t) => {
+  const store = await createSeededStore();
+  const securityEvents: PlatformAuthSecurityEvent[] = [];
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+  }, fakeGoogleVerifier({
+    sub: 'google-linked-subject',
+    aud: 'browser-client-id',
+    iss: 'https://accounts.google.com',
+    exp: Math.floor(NOW.getTime() / 1000) + 600,
+    email: 'someone-else@example.test',
+    email_verified: true,
+  }), { securityEvents });
+  await listen(server);
+  t.after(() => server.close());
+
+  const stepUp = await signInAndStepUp(server, 'link_google');
+  const response = await request(server, '/api/auth/google/link', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: `${stepUp.cookie}; g_csrf_token=google-csrf-token`,
+    csrfToken: stepUp.csrfToken,
+    headers: { 'x-cats-auth-action': stepUp.actionToken },
+    body: { credential: 'id-token', csrfToken: 'google-csrf-token' },
+  });
+
+  assert.equal(response.status, 409);
+  assert.equal(errorCode(response.payload), 'E_IDENTITY_CONFLICT');
+  const state = await store.readState();
+  assert.equal(state.identities.some((identity) => identity.provider === 'google'), false);
+  assert.equal(state.accounts[0]?.email, 'owner@example.test');
+  assert.equal(
+    securityEvents.some((event) =>
+      event.kind === 'google_link_failed' && event.reason === 'email_mismatch',
+    ),
+    true,
+  );
+});
+
+test('platform auth google unlink requires step-up and revokes other sessions', async (t) => {
+  const identity = createGoogleIdentity();
+  const bootstrap = await createGoogleLinkedBootstrap(identity);
+  const store = new MemoryPlatformAuthStore({
+    ...bootstrap.state,
+    sessions: [],
+  }, () => NOW);
+  const securityEvents: PlatformAuthSecurityEvent[] = [];
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+  }, undefined, { securityEvents });
+  await listen(server);
+  t.after(() => server.close());
+
+  // A second browser signs in, then the first one unlinks.
+  const otherLogin = await request(server, '/api/auth/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  const otherCookie = (otherLogin.setCookie ?? '').split(';')[0]!;
+
+  const stepUp = await signInAndStepUp(server, 'unlink_google');
+  const unlinked = await request(server, '/api/auth/google/unlink', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: stepUp.cookie,
+    csrfToken: stepUp.csrfToken,
+    headers: { 'x-cats-auth-action': stepUp.actionToken },
+  });
+
+  assert.equal(unlinked.status, 200);
+  assert.deepEqual(unlinked.payload?.loginMethods, {
+    localPassword: { linked: true },
+    google: { linked: false, email: null },
+  });
+
+  const state = await store.readState();
+  assert.equal(state.identities.some((record) => record.provider === 'google'), false);
+  assert.equal(state.identities.some((record) => record.provider === 'local_password'), true);
+
+  // The step-up session survives; the other browser is signed out.
+  const current = await request(server, '/api/auth/status', { cookie: stepUp.cookie });
+  assert.equal(current.payload?.authenticated, true);
+  const other = await request(server, '/api/auth/status', { cookie: otherCookie });
+  assert.equal(other.payload?.authenticated, false);
+  assert.equal(
+    securityEvents.some((event) => event.kind === 'google_unlink_succeeded'),
+    true,
+  );
+});
+
+test('platform auth google unlink refuses without a local password fallback', async (t) => {
+  const identity = createGoogleIdentity();
+  const bootstrap = await createGoogleLinkedBootstrap(identity);
+  const store = new MemoryPlatformAuthStore({
+    ...bootstrap.state,
+    sessions: [],
+  }, () => NOW);
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+  });
+  await listen(server);
+  t.after(() => server.close());
+
+  const stepUp = await signInAndStepUp(server, 'unlink_google');
+  // Drop the local identity after the step-up so the route's own fallback
+  // check is what rejects the mutation.
+  await store.updateState((state) => ({
+    ...state,
+    identities: state.identities.filter((record) => record.provider !== 'local_password'),
+  }));
+
+  const response = await request(server, '/api/auth/google/unlink', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: stepUp.cookie,
+    csrfToken: stepUp.csrfToken,
+    headers: { 'x-cats-auth-action': stepUp.actionToken },
+  });
+
+  assert.equal(response.status, 409);
+  assert.equal(errorCode(response.payload), 'E_IDENTITY_CONFLICT');
+  const state = await store.readState();
+  assert.equal(state.identities.some((record) => record.provider === 'google'), true);
+});
+
+test('platform auth reauth verifies the current account password only', async (t) => {
+  const store = await createSeededStore();
+  const securityEvents: PlatformAuthSecurityEvent[] = [];
+  const server = createTestServer(store, {}, undefined, { securityEvents });
+  await listen(server);
+  t.after(() => server.close());
+
+  const login = await request(server, '/api/auth/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  const cookie = (login.setCookie ?? '').split(';')[0]!;
+  const csrfToken = String(login.payload?.csrfToken ?? '');
+
+  const wrongPassword = await request(server, '/api/auth/reauth', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie,
+    csrfToken,
+    body: { password: 'wrong-password', purpose: 'link_google' },
+  });
+  assert.equal(wrongPassword.status, 401);
+  assert.equal(errorCode(wrongPassword.payload), 'E_UNAUTHENTICATED');
+
+  const unsupportedPurpose = await request(server, '/api/auth/reauth', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie,
+    csrfToken,
+    body: { password: 'correct-password', purpose: 'delete_workspace' },
+  });
+  assert.equal(unsupportedPurpose.status, 400);
+
+  const granted = await request(server, '/api/auth/reauth', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie,
+    csrfToken,
+    body: { password: 'correct-password', purpose: 'link_google' },
+  });
+  assert.equal(granted.status, 200);
+  assert.equal(granted.payload?.purpose, 'link_google');
+  assert.equal(typeof granted.payload?.actionToken, 'string');
+  assert.equal(typeof granted.payload?.expiresAt, 'string');
+
+  // The grant never reaches the auth-state file.
+  const serializedState = JSON.stringify(await store.readState());
+  assert.equal(serializedState.includes(String(granted.payload?.actionToken)), false);
+  assert.equal(serializedState.includes('correct-password'), false);
+
+  // Reported events carry codes, never credential material.
+  const serializedEvents = JSON.stringify(securityEvents);
+  assert.equal(serializedEvents.includes('correct-password'), false);
+  assert.equal(serializedEvents.includes(String(granted.payload?.actionToken)), false);
+  assert.equal(
+    securityEvents.some((event) => event.kind === 'step_up_failed'),
+    true,
+  );
+  assert.equal(
+    securityEvents.some((event) => event.kind === 'step_up_succeeded'),
+    true,
+  );
+});
+
+test('platform auth reauth requires an authenticated session and Cats csrf', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store);
+  await listen(server);
+  t.after(() => server.close());
+
+  const anonymous = await request(server, '/api/auth/reauth', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { password: 'correct-password', purpose: 'link_google' },
+  });
+  assert.equal(anonymous.status, 401);
+  assert.equal(errorCode(anonymous.payload), 'E_UNAUTHENTICATED');
+
+  const login = await request(server, '/api/auth/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  const missingCsrf = await request(server, '/api/auth/reauth', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: (login.setCookie ?? '').split(';')[0]!,
+    body: { password: 'correct-password', purpose: 'link_google' },
+  });
+  assert.equal(missingCsrf.status, 403);
+  assert.equal(errorCode(missingCsrf.payload), 'E_CSRF_MISMATCH');
+});
+
+test('platform auth status exposes login methods only when authenticated', async (t) => {
+  const store = await createSeededStore();
+  const server = createTestServer(store);
+  await listen(server);
+  t.after(() => server.close());
+
+  const anonymous = await request(server, '/api/auth/status');
+  assert.equal(anonymous.payload?.authenticated, false);
+  assert.equal(anonymous.payload?.loginMethods, null);
+
+  const login = await request(server, '/api/auth/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { identifier: 'owner@example.test', password: 'correct-password' },
+  });
+  const status = await request(server, '/api/auth/status', {
+    cookie: (login.setCookie ?? '').split(';')[0]!,
+  });
+  assert.deepEqual(status.payload?.loginMethods, {
+    localPassword: { linked: true },
+    google: { linked: false, email: null },
+  });
+});
+
+test('platform auth google setup route no longer exists', async (t) => {
+  const store = new MemoryPlatformAuthStore(createEmptyPlatformAuthState(NOW), () => NOW);
+  const server = createTestServer(store, {
+    CATS_AUTH_GOOGLE_CLIENT_ID: 'browser-client-id',
+  }, fakeGoogleVerifier({
+    sub: 'google-first-admin-subject',
+    aud: 'browser-client-id',
+    iss: 'https://accounts.google.com',
+    exp: Math.floor(NOW.getTime() / 1000) + 600,
+    email: 'owner@example.test',
+    email_verified: true,
+  }));
+  await listen(server);
+  t.after(() => server.close());
+
+  const response = await request(server, '/api/auth/google/setup', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: 'g_csrf_token=csrf-token',
+    body: { credential: 'id-token', csrfToken: 'csrf-token' },
+  });
+
+  assert.equal(response.status, 404);
+  const state = await store.readState();
+  assert.equal(state.accounts.length, 0);
 });
 
 test('platform auth google link requires Cats csrf and GIS csrf independently', async (t) => {
@@ -622,7 +958,7 @@ test('platform auth google link requires Cats csrf and GIS csrf independently', 
     aud: 'browser-client-id',
     iss: 'https://accounts.google.com',
     exp: Math.floor(NOW.getTime() / 1000) + 600,
-    email: 'linked-owner@example.test',
+    email: 'owner@example.test',
     email_verified: true,
   }));
   await listen(server);
@@ -636,18 +972,26 @@ test('platform auth google link requires Cats csrf and GIS csrf independently', 
   });
   const sessionCookie = (login.setCookie ?? '').split(';')[0]!;
 
+  // Cats CSRF is checked before the action grant, so this fails on CSRF.
   const missingCatsCsrf = await request(server, '/api/auth/google/link', {
     method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
     cookie: `${sessionCookie}; g_csrf_token=google-csrf-token`,
     body: { credential: 'id-token', csrfToken: 'google-csrf-token' },
   });
   assert.equal(missingCatsCsrf.status, 403);
   assert.equal(errorCode(missingCatsCsrf.payload), 'E_CSRF_MISMATCH');
 
+  // With a fresh grant in hand, the GIS double-submit token is still required.
+  const stepUp = await signInAndStepUp(server, 'link_google');
   const missingGoogleCsrf = await request(server, '/api/auth/google/link', {
     method: 'POST',
-    cookie: sessionCookie,
-    csrfToken: String(login.payload?.csrfToken ?? ''),
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie: stepUp.cookie,
+    csrfToken: stepUp.csrfToken,
+    headers: { 'x-cats-auth-action': stepUp.actionToken },
     body: { credential: 'id-token', csrfToken: null },
   });
   assert.equal(missingGoogleCsrf.status, 403);
@@ -753,6 +1097,61 @@ test('platform auth repair first-admin consumes recovery token off loopback', as
   assert.equal(recoveryTokenState?.consumedAt, NOW.toISOString());
 });
 
+async function createGoogleLinkedBootstrap(
+  identity: ReturnType<typeof createGoogleIdentity>,
+): Promise<{ state: PlatformAuthState; account: PlatformAccountRecord }> {
+  const local = await createFirstAdminLocalAuthState({
+    state: createEmptyPlatformAuthState(NOW),
+    displayName: 'Owner',
+    identifier: identity.email,
+    password: 'correct-password',
+    sessionSecret: SESSION_SECRET,
+    sessionTtlMs: 60_000,
+    now: NOW,
+  });
+  const linked = linkGoogleIdentityToAccount({
+    state: local.state,
+    accountId: local.account.id,
+    identity,
+    now: NOW,
+  });
+  if (!linked.ok) {
+    throw new Error(`expected google link to succeed: ${linked.reason}`);
+  }
+  return { state: linked.result.state, account: linked.result.account };
+}
+
+/**
+ * Signs in, performs the local-password step-up, and returns everything a
+ * sensitive-action request needs.
+ */
+async function signInAndStepUp(
+  server: ReturnType<typeof createServer>,
+  purpose: 'link_google' | 'unlink_google',
+  password = 'correct-password',
+): Promise<{ cookie: string; csrfToken: string; actionToken: string }> {
+  const login = await request(server, '/api/auth/login', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: { identifier: 'owner@example.test', password },
+  });
+  const cookie = (login.setCookie ?? '').split(';')[0]!;
+  const csrfToken = String(login.payload?.csrfToken ?? '');
+  const reauth = await request(server, '/api/auth/reauth', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    cookie,
+    csrfToken,
+    body: { password, purpose },
+  });
+  if (reauth.status !== 200) {
+    throw new Error(`step-up failed with ${reauth.status}`);
+  }
+  return { cookie, csrfToken, actionToken: String(reauth.payload?.actionToken ?? '') };
+}
+
 async function createSeededStore(): Promise<MemoryPlatformAuthStore> {
   const bootstrap = await createFirstAdminLocalAuthState({
     state: createEmptyPlatformAuthState(NOW),
@@ -827,6 +1226,8 @@ function createTestServer(
     authRecoveryTokenState?: () => PlatformAuthRecoveryTokenState | null;
     setAuthRecoveryTokenState?: (state: PlatformAuthRecoveryTokenState | null) => void;
     loginThrottleAlerts?: PlatformLoginThrottleAlert[];
+    actionGrantStore?: PlatformAuthActionGrantStore;
+    securityEvents?: PlatformAuthSecurityEvent[];
   } = {},
 ) {
   const config = loadConfig({
@@ -834,6 +1235,10 @@ function createTestServer(
     CATS_AUTH_SESSION_SECRET: SESSION_SECRET,
     ...env,
   });
+  // One store for the server's lifetime: action grants must survive from the
+  // reauth request to the link/unlink request that spends them.
+  const actionGrantStore = options.actionGrantStore
+    ?? new MemoryPlatformAuthActionGrantStore();
   return createServer(async (request, response) => {
     if (options.remoteAddress) {
       Object.defineProperty(request.socket, 'remoteAddress', {
@@ -851,6 +1256,12 @@ function createTestServer(
         authStore: store,
         auth: config.auth,
         googleVerifier,
+        actionGrantStore,
+        reportAuthSecurityEvent: options.securityEvents
+          ? (event) => {
+              options.securityEvents?.push(event);
+            }
+          : undefined,
         readSetupCompleteAt: options.readSetupCompleteAt,
         authRecoveryTokenState: options.authRecoveryTokenState?.() ?? null,
         setAuthRecoveryTokenState: options.setAuthRecoveryTokenState,

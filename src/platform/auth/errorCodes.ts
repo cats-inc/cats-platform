@@ -2,6 +2,8 @@ export const PLATFORM_AUTH_ERROR_CODES = {
   unauthenticated: 'E_UNAUTHENTICATED',
   forbidden: 'E_FORBIDDEN',
   csrfMismatch: 'E_CSRF_MISMATCH',
+  reauthRequired: 'E_REAUTH_REQUIRED',
+  identityConflict: 'E_IDENTITY_CONFLICT',
 } as const;
 
 export type PlatformAuthErrorCode =

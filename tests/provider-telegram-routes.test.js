@@ -22,6 +22,8 @@ import { createChatTelegramRoomBridge } from '../build/server/products/chat/stat
 import { reserveClosedBaseUrl } from './helpers/closedPort.js';
 import {
   createAuthenticatedTestSession,
+  createUnprovisionedTestSession,
+  TEST_ADMIN_CREDENTIALS,
   createTestAuthConfig,
   installAuthenticatedFetch,
 } from './testUtils.js';
@@ -318,11 +320,7 @@ async function withServer(
 ) {
   const { tempRoot, config } = createTempPlatformConfig();
   const now = new Date('2026-03-19T00:00:00.000Z');
-  const auth = await createAuthenticatedTestSession({
-    now,
-    sessionSecret: config.auth.sessionSecret,
-    sessionTtlMs: config.auth.sessionTtlMs,
-  });
+  const auth = await createAuthenticatedTestSession({ now });
   const {
     startup,
     coreStore,
@@ -383,11 +381,7 @@ async function withServerConfig(
   const tempConfig = needsTempConfig ? createTempPlatformConfig() : null;
   const serverConfig = tempConfig?.config ?? config;
   const now = new Date('2026-03-19T00:00:00.000Z');
-  const auth = await createAuthenticatedTestSession({
-    now,
-    sessionSecret: serverConfig.auth.sessionSecret,
-    sessionTtlMs: serverConfig.auth.sessionTtlMs,
-  });
+  const auth = await createAuthenticatedTestSession({ now });
   const {
     startup,
     coreStore,
@@ -485,19 +479,22 @@ async function waitForTelegramLinkedRoom(baseUrl, timeoutMs = 4000) {
 }
 
 async function configureTelegramBossCat(baseUrl) {
-  const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+  // These fixtures seed an Admin directly, so first-run setup is neither
+  // needed nor allowed here. Setup also no longer creates a Boss Cat, so it
+  // is created through the same API the product uses.
+  const bossResponse = await fetch(`${baseUrl}/api/cats`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      ownerDisplayName: 'Kenny',
-      bossCatName: 'Smelly',
-      bossCatProvider: 'claude',
+      name: 'Smelly',
+      provider: 'claude',
+      makeBoss: true,
     }),
   });
   assert.equal(
-    setupResponse.status,
-    200,
-    `setup complete failed: ${setupResponse.status} ${await setupResponse.text()}`,
+    bossResponse.status,
+    201,
+    `boss cat creation failed: ${bossResponse.status} ${await bossResponse.text()}`,
   );
 
   const orchestratorResponse = await fetch(`${baseUrl}/api/orchestrator`, {
@@ -1055,11 +1052,7 @@ test('telegram status ignores orphaned Telegram bindings when Boss Cat is missin
   };
   const { tempRoot, config } = createTempPlatformConfig();
   const now = new Date('2026-03-19T00:00:00.000Z');
-  const auth = await createAuthenticatedTestSession({
-    now,
-    sessionSecret: config.auth.sessionSecret,
-    sessionTtlMs: config.auth.sessionTtlMs,
-  });
+  const auth = await createAuthenticatedTestSession({ now });
   const server = createServer({
     shared: {
       config,

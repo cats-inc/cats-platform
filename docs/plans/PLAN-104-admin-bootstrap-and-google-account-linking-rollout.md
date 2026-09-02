@@ -4,9 +4,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Ready — approved, implementation not started |
+| **Status** | Implemented — Phases 1-5 landed; owner acceptance pass (Task 5.7) outstanding |
 | **Owner** | User |
-| **Assigned To** | Unassigned |
+| **Assigned To** | Claude |
 | **Reviewer** | User |
 
 ## Related Spec
@@ -47,30 +47,29 @@ The User resolved the SPEC-113 decision gate on 2026-09-02:
       Unicode code points; no composition rules apply.
 - [x] Google unlink revokes every other Account Session.
 
-The plan is ready, but implementation remains a separate task and has not
-started.
+All four resolved decisions are implemented as written.
 
 ## Implementation Phases
 
 ### Phase 1: First-Admin Bootstrap Invariant
 
-- [ ] Task 1.1: Add one shared Admin-credential validator for setup and repair,
+- [x] Task 1.1: Add one shared Admin-credential validator for setup and repair,
       including identifier normalization and the inclusive 8-to-256-Unicode-
       code-point password policy without composition rules.
-- [ ] Task 1.2: Make Admin identifier and password mandatory in the real
+- [x] Task 1.2: Make Admin identifier and password mandatory in the real
       platform setup-completion request. Reject missing/partial credentials
       before mutating owner, Guide Cat, setup, or auth state.
-- [ ] Task 1.3: Add a process-wide serialized setup critical section and move
+- [x] Task 1.3: Add a process-wide serialized setup critical section and move
       the final "no Account/Admin exists" check into the auth-store mutation
       that persists first-admin records.
-- [ ] Task 1.4: Preserve logical rollback across chat/core setup snapshot and
+- [x] Task 1.4: Preserve logical rollback across chat/core setup snapshot and
       auth-state persistence. Add injected failure tests for both write orders.
-- [ ] Task 1.5: Remove `/api/auth/google/setup`, its public-route exception,
+- [x] Task 1.5: Remove `/api/auth/google/setup`, its public-route exception,
       renderer API wrapper, Google first-admin domain helper/export, and tests
       that bless Google-only bootstrap.
-- [ ] Task 1.6: Apply the same password validator to repair first-admin
+- [x] Task 1.6: Apply the same password validator to repair first-admin
       creation without weakening the existing recovery-token/origin boundary.
-- [ ] Task 1.7: Add concurrency tests proving two simultaneous setup attempts
+- [x] Task 1.7: Add concurrency tests proving two simultaneous setup attempts
       cannot create two Admins or return two live sessions.
 
 **Deliverables**: every real setup and repair path creates exactly one local
@@ -79,22 +78,22 @@ surface no longer exists.
 
 ### Phase 2: Login-Method Projection and Action Grants
 
-- [ ] Task 2.1: Add a domain helper that derives local-password and Google
+- [x] Task 2.1: Add a domain helper that derives local-password and Google
       linked state for one Account from Identity records.
-- [ ] Task 2.2: Extend authenticated auth status with `loginMethods`, keeping
+- [x] Task 2.2: Extend authenticated auth status with `loginMethods`, keeping
       unauthenticated/minimal bootstrap responses non-disclosing.
-- [ ] Task 2.3: Add an injected in-memory action-grant store with opaque
+- [x] Task 2.3: Add an injected in-memory action-grant store with opaque
       256-bit tokens, keyed hashes, five-minute TTL, account/session/purpose
       binding, single consumption, bounded capacity, and restart invalidation.
-- [ ] Task 2.4: Add `POST /api/auth/reauth` for local-password verification.
+- [x] Task 2.4: Add `POST /api/auth/reauth` for local-password verification.
       Require browser session, origin, Cats CSRF, and one of the two bounded
       purposes.
-- [ ] Task 2.5: Feed failed reauthentication into the existing local-login
+- [x] Task 2.5: Feed failed reauthentication into the existing local-login
       composite and aggregate throttle policy without logging password or
       action-token material.
-- [ ] Task 2.6: Add stable `E_REAUTH_REQUIRED` and `E_IDENTITY_CONFLICT` codes
+- [x] Task 2.6: Add stable `E_REAUTH_REQUIRED` and `E_IDENTITY_CONFLICT` codes
       to the shared auth error registry and renderer error mapping.
-- [ ] Task 2.7: Add unit tests for expiry, first-use consumption, wrong purpose,
+- [x] Task 2.7: Add unit tests for expiry, first-use consumption, wrong purpose,
       wrong account/session, revoked session, capacity eviction, and secret-free
       reporter payloads.
 
@@ -104,29 +103,29 @@ local password.
 
 ### Phase 3: Google Link and Unlink Domain/Routes
 
-- [ ] Task 3.1: Update the Google-link domain helper to require exact normalized
+- [x] Task 3.1: Update the Google-link domain helper to require exact normalized
       email match when Account email is non-null, adopt verified email only
       when Account email is null, preserve stable-`sub` uniqueness, and make
       same-Account/same-`sub` linking idempotent.
-- [ ] Task 3.2: Classify `/api/auth/google/link` as protected in the platform
+- [x] Task 3.2: Classify `/api/auth/google/link` as protected in the platform
       auth gate and retain defensive session/origin/Cats-CSRF checks in the
       handler.
-- [ ] Task 3.3: Require and consume a `link_google` action grant before GIS CSRF
+- [x] Task 3.3: Require and consume a `link_google` action grant before GIS CSRF
       and verified-token binding completes. Keep the raw grant out of request
       URLs, logs, and state files.
-- [ ] Task 3.4: Add `/api/auth/google/unlink` with local-fallback enforcement,
+- [x] Task 3.4: Add `/api/auth/google/unlink` with local-fallback enforcement,
       `unlink_google` action grant, removal of only the Google Identity,
       revocation of every other Account session, and current-session CSRF
       rotation.
-- [ ] Task 3.5: Return updated auth status/login methods after link and unlink.
-- [ ] Task 3.6: Introduce an injected auth security-event reporter and emit
+- [x] Task 3.5: Return updated auth status/login methods after link and unlink.
+- [x] Task 3.6: Introduce an injected auth security-event reporter and emit
       bounded first-admin, step-up, identity-link, identity-unlink, and conflict
       outcomes.
-- [ ] Task 3.7: Add route/domain tests for all guard-order branches, email-null
+- [x] Task 3.7: Add route/domain tests for all guard-order branches, email-null
       adoption, email mismatch, cross-Account `sub` conflict, already-linked
       idempotence, no-local-fallback unlink, other-session revocation, and
       linked-only Google login.
-- [ ] Task 3.8: Add a static regression proving no Google login path calls
+- [x] Task 3.8: Add a static regression proving no Google login path calls
       account-creation or email-claim helpers.
 
 **Deliverables**: Google link/unlink is an explicit, atomic, step-up-protected
@@ -135,30 +134,30 @@ Account.
 
 ### Phase 4: Settings Account UX
 
-- [ ] Task 4.1: Extend the renderer auth client with typed status methods,
+- [x] Task 4.1: Extend the renderer auth client with typed status methods,
       reauthentication, link, and unlink requests. Hold action grants only in
       component state.
-- [ ] Task 4.2: Extract an Account authentication section under the platform
+- [x] Task 4.2: Extract an Account authentication section under the platform
       renderer Settings tree and compose it inside the existing General page.
       Do not add another Settings shell or product-local copy.
-- [ ] Task 4.3: Render local-password and Google status with shared
+- [x] Task 4.3: Render local-password and Google status with shared
       `SettingsSection`, `SettingsOptionRow`, and `SettingsStatusChip`
       primitives, preserving the existing sign-out action.
-- [ ] Task 4.4: Add an accessible local-password reauthentication dialog with
+- [x] Task 4.4: Add an accessible local-password reauthentication dialog with
       focus trapping/restoration, loading state, submit deduplication, and
       discard-on-close action-token behavior.
-- [ ] Task 4.5: After `link_google` step-up, render/initialize the existing GIS
+- [x] Task 4.5: After `link_google` step-up, render/initialize the existing GIS
       button adapter, post the credential with GIS CSRF + Cats CSRF + action
       grant, then refresh the account status.
-- [ ] Task 4.6: Add unlink confirmation, explain that other devices will sign
+- [x] Task 4.6: Add unlink confirmation, explain that other devices will sign
       out, perform a fresh `unlink_google` step-up, and refresh status on
       success.
-- [ ] Task 4.7: Use Toast for failures and no inline feedback. Stay silent on
+- [x] Task 4.7: Use Toast for failures and no inline feedback. Stay silent on
       success when the linked-state row visibly updates.
-- [ ] Task 4.8: Add English and Traditional Chinese messages for linked,
+- [x] Task 4.8: Add English and Traditional Chinese messages for linked,
       unlinked, unavailable-origin, reauthentication, email conflict, unlink
       confirmation, and failure states.
-- [ ] Task 4.9: Add focused renderer tests for each linked/provider state,
+- [x] Task 4.9: Add focused renderer tests for each linked/provider state,
       password-before-GIS ordering, token disposal, duplicate-submit guard,
       Toast-only errors, focus behavior, and sign-out preservation.
 
@@ -167,21 +166,21 @@ Account.
 
 ### Phase 5: Documentation, Validation, and Handoff
 
-- [ ] Task 5.1: Update API documentation with the new status projection,
+- [x] Task 5.1: Update API documentation with the new status projection,
       reauthentication endpoint, action-grant header, link/unlink behavior, and
       stable error codes; remove Google-only setup documentation.
-- [ ] Task 5.2: Update setup and deployment guides with mandatory local Admin,
+- [x] Task 5.2: Update setup and deployment guides with mandatory local Admin,
       password policy, authorized Google origin requirement, local fallback,
       and other-session revocation on unlink.
-- [ ] Task 5.3: Update release notes and the relevant auth ADR/SPEC/PLAN status
+- [x] Task 5.3: Update release notes and the relevant auth ADR/SPEC/PLAN status
       only after implementation and focused validation are complete.
-- [ ] Task 5.4: Run targeted auth domain/route tests, setup/repair tests,
+- [x] Task 5.4: Run targeted auth domain/route tests, setup/repair tests,
       Settings General/renderer auth tests, i18n catalog checks, and the full
       TypeScript typecheck.
-- [ ] Task 5.5: Run browser and server production builds because the change
+- [x] Task 5.5: Run browser and server production builds because the change
       crosses renderer/server imports. Escalate to broader tests only if a
       shared-contract or request-router regression warrants it.
-- [ ] Task 5.6: Inspect the final diff for raw tokens, credentials, test data,
+- [x] Task 5.6: Inspect the final diff for raw tokens, credentials, test data,
       source-only error text in JSX, duplicate Settings shells, and stale
       Google-setup references.
 - [ ] Task 5.7: Ask the User for an owner acceptance pass on the real Google
@@ -311,6 +310,9 @@ the existing platform renderer shell.
 |------|--------|
 | 2026-09-01 | Draft created from the current Cats auth baseline and the Credential Vault reference review; no implementation started. |
 | 2026-09-02 | User approved local-only first-Admin bootstrap, an 8-to-256-Unicode-code-point promotion-period password policy without composition rules, and revocation of every other Account Session on Google unlink. Plan marked ready; implementation remains unstarted. |
+| 2026-09-02 | Phases 1-5 implemented in one branch rather than the five proposed PR slices; the security prerequisites still land ahead of the UI within that branch, so the "do not merge PR 4 against an unprotected link endpoint" gate holds. **Phase 1**: shared `adminCredentials` validator (8-256 Unicode code points, code-point counting, no composition rules) used by both setup and repair; setup credentials mandatory with structured `invalid_admin_credentials` + `reason`; process-wide serialized setup critical section with the uniqueness recheck moved inside the auth-store mutation; auth written before the chat/core snapshot and rolled back on failure; `/api/auth/google/setup`, `createFirstAdminGoogleAuthState`, `setupPlatformGoogle`, and the public-route entry removed. **Phase 2**: `summarizePlatformLoginMethods` projection on authenticated status only; in-memory `MemoryPlatformAuthActionGrantStore` (256-bit opaque token, keyed hash, 5-minute TTL, account/session/purpose binding, single consumption, bounded capacity, restart-scoped); `POST /api/auth/reauth` verifying the current account's local identity with no client-supplied identifier and feeding the existing throttle; `E_REAUTH_REQUIRED` and `E_IDENTITY_CONFLICT` added. **Phase 3**: link hardened for exact normalized email match, null-email adoption, stable-`sub` uniqueness, and same-`sub` idempotence; `/api/auth/google/unlink` added with local-fallback enforcement, other-session revocation, and current-session CSRF rotation; link/unlink/reauth reclassified as protected; injected secret-free security-event reporter. Ordinary Google login no longer rewrites the account email. **Phase 4**: `PlatformSettingsAccountSection` composed into the existing General Account section (no second shell), accessible `PlatformReauthenticationDialog` with focus trap/restore and submit dedup, GIS initialized only after the grant is issued, grant held in a component ref and discarded on cancel/completion/unmount, Toast-only errors, English and Traditional Chinese catalogs. **Phase 5**: `docs/api.md`, `docs/setup-guide.md`, `docs/deployment.md`, and `docs/release-notes.md` updated. Validation: `npm run typecheck` (server, desktop, web, test, mobile) clean; `npm run build:server`, `npm run build:host`, `npm run build:web` clean; targeted suites green — new `platform-auth-admin-credentials` (7), `platform-auth-action-grant` (9), `platform-settings-account-section` (12), plus `platform-auth-google-account` (16), `platform-auth-routes` (32), `platform-auth-setup-bootstrap` (13), and the full auth/settings sweep (219). Test fixtures that drive first-run setup migrated to an unprovisioned auth store, and `installAuthenticatedFetch` now adopts the session setup mints. Task 5.7 (owner acceptance against the real Google origin) is deliberately left open: it needs the User's own account and a live provider call. |
+| 2026-09-02 | Follow-up: removed the legacy Chat-owned `POST /api/setup/complete` route, its renderer client, and its pre-auth public-route exception. It could set `setupCompleteAt` without creating an Admin, so it was a second bootstrap path around the Phase 1 invariant; SPEC-113 scopes its requirements to the platform route, so this was not covered by Task 1.2. `POST /api/setup/reset` is unchanged. Tests that used it as a precondition now complete platform setup and, where they need a Boss Cat, create one through `POST /api/cats` with `makeBoss: true` — setup no longer creates one. |
+| 2026-09-02 | Removed the now-unreferenced `SetupCompleteInput` from `src/products/chat/api/contracts.ts` and `src/products/shared/api/workspaceContracts.ts`, plus the dead type-only import left in `setupRoutes.ts`. The chat contracts file is on the AGENTS.md/CLAUDE.md frozen shared-contract list, so this is recorded here as the required docs half of that rule; the User approved the removal directly as integration owner. The type described the removed legacy Boss Cat setup body and had no remaining reference, no barrel re-export, and no runtime effect. |
 
 ---
 
