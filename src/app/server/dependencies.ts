@@ -371,6 +371,7 @@ export function resolveServerDependencies(
       chatStore: dependencies.chat.chatStore,
       pollingSupervisor,
       readiness: transportWorkGoldenPath?.readiness,
+      runtimeHealth: dependencies.shared.runtimeClient,
     });
 
   const resumePendingOrchestratorDispatch =

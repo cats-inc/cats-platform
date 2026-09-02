@@ -127,6 +127,7 @@ const statusCommand: TelegramCommand = {
     // it cannot, so delegation gets its own explicit lines.
     const delegation = context.delegation;
     if (delegation === undefined || delegation === null) {
+      lines.push(t(messageKeys.telegramCommandStatusLocalExecutionUnknownLine));
       lines.push(t(messageKeys.telegramCommandStatusDelegationUnknownLine));
     } else {
       if (delegation.bindingHealth !== null) {
@@ -134,7 +135,16 @@ const statusCommand: TelegramCommand = {
           health: delegation.bindingHealth,
         }));
       }
-      if (!delegation.enabled) {
+      const localExecutionKey = {
+        healthy: messageKeys.telegramCommandStatusLocalExecutionHealthyLine,
+        degraded: messageKeys.telegramCommandStatusLocalExecutionDegradedLine,
+        unavailable: messageKeys.telegramCommandStatusLocalExecutionUnavailableLine,
+        unknown: messageKeys.telegramCommandStatusLocalExecutionUnknownLine,
+      }[delegation.localExecution];
+      lines.push(t(localExecutionKey));
+      if (delegation.enabled === null) {
+        lines.push(t(messageKeys.telegramCommandStatusDelegationUnknownLine));
+      } else if (!delegation.enabled) {
         lines.push(t(messageKeys.telegramCommandStatusDelegationDisabledLine));
       } else if (delegation.canAcceptWork) {
         lines.push(t(messageKeys.telegramCommandStatusDelegationReadyLine));

@@ -716,7 +716,7 @@ export function SettingsAssistants({
             </div>
           ) : null}
         </SettingsSection>
-        <CapabilityBootstrapSection />
+        <CapabilityBootstrapSection showToast={showToast} />
       </div>
       <ConfirmDialog dialog={dialog} onClose={handleClose} />
       <ToastContainer toasts={toasts} />

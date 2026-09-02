@@ -15,6 +15,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createTelegramCommandSurface } from '../src/app/server/telegramCommandSurface.js';
+import {
+  resolveTransportWorkLocalExecutionStatus,
+} from '../src/app/server/transportWorkGoldenPath.js';
 import type { BotBindingRecord } from '../src/core/types.js';
 import type { ChatStore } from '../src/products/chat/state/store.js';
 
@@ -49,10 +52,14 @@ function createChatStore(): ChatStore {
   } as unknown as ChatStore;
 }
 
-function createSurface(readiness?: { describe(): Promise<unknown> }) {
+function createSurface(
+  readiness?: { describe(): Promise<unknown> },
+  runtimeHealth?: { getHealth(): Promise<unknown> },
+) {
   return createTelegramCommandSurface({
     chatStore: createChatStore(),
     readiness: readiness as never,
+    runtimeHealth: runtimeHealth as never,
   });
 }
 
@@ -89,6 +96,16 @@ test('/status says delegation is off when the host has no golden path', async ()
   const reply = await createSurface(undefined).handle(statusInput());
   assert.ok(reply);
   assert.match(reply.replyText, /Status: Connected/u);
+  assert.match(reply.replyText, /Work delegation: not enabled on this host/u);
+});
+
+test('/status still reports degraded local execution when delegation is disabled', async () => {
+  const reply = await createSurface(undefined, {
+    getHealth: async () => ({ reachable: true, status: 'degraded' }),
+  }).handle(statusInput());
+
+  assert.ok(reply);
+  assert.match(reply.replyText, /Local execution: degraded/u);
   assert.match(reply.replyText, /Work delegation: not enabled on this host/u);
 });
 
@@ -136,6 +153,7 @@ test('/status reports readiness only when the binding is actually ready', async 
       enabled: true,
       workspacePath: '/repos/cats',
       authorizedOwnerCount: 1,
+      localExecution: 'degraded',
       bindings: [{
         bindingId: 'binding-1',
         botName: 'cats_bot',
@@ -147,7 +165,23 @@ test('/status reports readiness only when the binding is actually ready', async 
   }).handle(statusInput());
 
   assert.ok(reply);
+  assert.match(reply.replyText, /Local execution: degraded/u);
   assert.match(reply.replyText, /Work delegation: ready/u);
+});
+
+test('local execution health distinguishes healthy, degraded, and unavailable', () => {
+  assert.equal(
+    resolveTransportWorkLocalExecutionStatus({ reachable: true, status: 'ok' }),
+    'healthy',
+  );
+  assert.equal(
+    resolveTransportWorkLocalExecutionStatus({ reachable: true, status: 'degraded' }),
+    'degraded',
+  );
+  assert.equal(
+    resolveTransportWorkLocalExecutionStatus({ reachable: false, status: 'error' }),
+    'unavailable',
+  );
 });
 
 test('a readiness lookup that fails is reported as unknown, never as ready', async () => {

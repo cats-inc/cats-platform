@@ -27,6 +27,7 @@ export interface WorkDeliveryReadinessReport {
   enabled: boolean;
   workspacePath: string | null;
   authorizedOwnerCount: number;
+  localExecution: 'healthy' | 'degraded' | 'unavailable' | 'unknown';
   bindings: WorkDeliveryReadinessBinding[];
 }
 

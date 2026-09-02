@@ -12,14 +12,11 @@
  *    the diagnostics (which were collected into a sink and surfaced nowhere), and
  *    the rules in effect; and
  *  - install the bundled example at the configured path, once, refusing to
- *    overwrite an existing file.
+ *    overwrite an existing file; and
+ *  - validate and save the complete rule document with an optimistic revision
+ *    check, so Settings cannot overwrite a simultaneous file edit.
  *
- * Two things are deliberately *not* here.
- *
- * Authoring individual rules from the UI: these are supervision policy rules
- * about how far a provider may be trusted before it has been observed, and a
- * half-expressive form editor would be a worse authoring surface than the file
- * with its comments.
+ * One thing is deliberately *not* here.
  *
  * A live reload: the loaded config is passed by value into the chat dispatch
  * adapters when the host is composed, so nothing here can make a new file take
@@ -28,15 +25,30 @@
  * with.
  */
 
-import { copyFileSync, existsSync } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import {
+  constants,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import type { ServerResponse } from 'node:http';
+import { dirname } from 'node:path';
 
 import {
   loadProviderCapabilityBootstrapConfigFromFile,
+  serializeProviderCapabilityBootstrapConfigYaml,
 } from '../../platform/supervision/providerCapabilityBootstrapYaml.js';
 import type { SupervisionDiagnosticRecord } from '../../platform/supervision/contracts.js';
 import type {
   ProviderCapabilityBootstrapConfig,
+} from '../../platform/supervision/providerCapabilityBootstrapConfig.js';
+import {
+  parseProviderCapabilityBootstrapConfigDocument,
 } from '../../platform/supervision/providerCapabilityBootstrapConfig.js';
 import { sendJson } from '../../shared/http.js';
 
@@ -53,8 +65,8 @@ export interface ProviderCapabilityBootstrapDependencies {
   configPath: string;
   bundledExamplePath: string | null;
   now: () => Date;
-  /** Whether the running host booted with a parsed config. */
-  bootedWithConfig: boolean;
+  /** The parsed config captured when the running host was composed. */
+  bootedConfig: ProviderCapabilityBootstrapConfig | null;
 }
 
 export interface ProviderCapabilityBootstrapView {
@@ -62,6 +74,8 @@ export interface ProviderCapabilityBootstrapView {
   bundledExamplePath: string | null;
   /** A file exists at `configPath`. Absent config with no file is the default. */
   configPresent: boolean;
+  /** SHA-256 of the file bytes, used to reject stale Settings writes. */
+  revision: string | null;
   /** The bundled example can be installed — it exists and nothing is there yet. */
   canInstallExample: boolean;
   parsed: boolean;
@@ -81,6 +95,31 @@ export interface ProviderCapabilityBootstrapView {
   diagnostics: SupervisionDiagnosticRecord[];
 }
 
+export interface ProviderCapabilityBootstrapWriteInput {
+  expectedRevision: string | null;
+  config: unknown;
+}
+
+function fingerprintFile(configPath: string): string | null {
+  if (!existsSync(configPath)) {
+    return null;
+  }
+  return createHash('sha256').update(readFileSync(configPath)).digest('hex');
+}
+
+function comparableConfig(config: ProviderCapabilityBootstrapConfig | null): unknown {
+  return config === null
+    ? null
+    : { version: config.version, profiles: config.profiles };
+}
+
+function configsMatch(
+  left: ProviderCapabilityBootstrapConfig | null,
+  right: ProviderCapabilityBootstrapConfig | null,
+): boolean {
+  return JSON.stringify(comparableConfig(left)) === JSON.stringify(comparableConfig(right));
+}
+
 function readView(
   dependencies: ProviderCapabilityBootstrapDependencies,
 ): ProviderCapabilityBootstrapView {
@@ -95,12 +134,13 @@ function readView(
     configPath: dependencies.configPath,
     bundledExamplePath: dependencies.bundledExamplePath,
     configPresent,
+    revision: fingerprintFile(dependencies.configPath),
     canInstallExample:
       !configPresent
       && dependencies.bundledExamplePath !== null
       && existsSync(dependencies.bundledExamplePath),
     parsed: loaded.config !== null,
-    restartRequired: (loaded.config !== null) !== dependencies.bootedWithConfig,
+    restartRequired: !configsMatch(loaded.config, dependencies.bootedConfig),
     ruleCount: rules.length,
     rules: rules.map((rule) => ({
       id: rule.id,
@@ -153,7 +193,12 @@ export function handleProviderCapabilityBootstrapAction(
     return;
   }
   try {
-    copyFileSync(dependencies.bundledExamplePath, dependencies.configPath);
+    mkdirSync(dirname(dependencies.configPath), { recursive: true });
+    copyFileSync(
+      dependencies.bundledExamplePath,
+      dependencies.configPath,
+      constants.COPYFILE_EXCL,
+    );
   } catch (error) {
     sendRestError(
       response,
@@ -165,5 +210,93 @@ export function handleProviderCapabilityBootstrapAction(
   }
 
   // The file now exists, so the view comes back with `restartRequired` set.
+  sendJson(response, 200, readView(dependencies));
+}
+
+function isWriteInput(input: unknown): input is ProviderCapabilityBootstrapWriteInput {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return false;
+  }
+  const record = input as Record<string, unknown>;
+  return (record.expectedRevision === null || typeof record.expectedRevision === 'string')
+    && Object.hasOwn(record, 'config');
+}
+
+export function handleProviderCapabilityBootstrapWrite(
+  response: ServerResponse,
+  dependencies: ProviderCapabilityBootstrapDependencies,
+  input: unknown,
+): void {
+  if (!isWriteInput(input)) {
+    sendRestError(
+      response,
+      400,
+      'invalid_capability_bootstrap_write',
+      'expectedRevision and config are required.',
+    );
+    return;
+  }
+
+  let currentRevision: string | null;
+  try {
+    currentRevision = fingerprintFile(dependencies.configPath);
+  } catch {
+    sendRestError(
+      response,
+      500,
+      'capability_bootstrap_read_failed',
+      'The current capability bootstrap config could not be read.',
+    );
+    return;
+  }
+  if (input.expectedRevision !== currentRevision) {
+    sendRestError(
+      response,
+      409,
+      'capability_bootstrap_revision_conflict',
+      'The capability bootstrap config changed after Settings loaded it.',
+    );
+    return;
+  }
+
+  const parsed = parseProviderCapabilityBootstrapConfigDocument(input.config, {
+    observedAt: dependencies.now().toISOString(),
+    configPath: dependencies.configPath,
+  });
+  if (parsed.config === null) {
+    sendJson(response, 400, {
+      error: {
+        code: 'invalid_capability_bootstrap_config',
+        message: 'The capability bootstrap config is invalid.',
+        diagnostics: parsed.diagnostics,
+      },
+    });
+    return;
+  }
+
+  const temporaryPath = `${dependencies.configPath}.${randomUUID()}.tmp`;
+  try {
+    mkdirSync(dirname(dependencies.configPath), { recursive: true });
+    writeFileSync(
+      temporaryPath,
+      serializeProviderCapabilityBootstrapConfigYaml(parsed.config),
+      { encoding: 'utf8', flag: 'wx', mode: 0o600 },
+    );
+    renameSync(temporaryPath, dependencies.configPath);
+  } catch {
+    try {
+      unlinkSync(temporaryPath);
+    } catch {
+      // The temporary file was never created or has already been renamed.
+    }
+    sendRestError(
+      response,
+      500,
+      'capability_bootstrap_save_failed',
+      'The capability bootstrap config could not be saved.',
+    );
+    return;
+  }
+
   sendJson(response, 200, readView(dependencies));
 }

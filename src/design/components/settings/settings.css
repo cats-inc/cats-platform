@@ -292,7 +292,6 @@
   opacity: 0.7;
 }
 
-.capabilityBootstrapRules,
 .capabilityBootstrapDiagnostics {
   display: flex;
   flex-direction: column;
@@ -303,12 +302,71 @@
   font-size: 13px;
 }
 
-.capabilityBootstrapRules li,
 .capabilityBootstrapDiagnostics li {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 12px;
   align-items: baseline;
+}
+
+.capabilityBootstrapEditor {
+  display: grid;
+  gap: 12px;
+}
+
+.capabilityBootstrapRuleEditorList {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.capabilityBootstrapRuleEditor {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--settings-border);
+  border-radius: 14px;
+  background: var(--settings-sub-surface);
+}
+
+.capabilityBootstrapRuleEditorHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.capabilityBootstrapRuleActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.capabilityBootstrapRuleFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.capabilityBootstrapReasonField {
+  grid-column: 1 / -1;
+}
+
+.capabilityBootstrapReasonField textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+@media (max-width: 760px) {
+  .capabilityBootstrapRuleFields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .capabilityBootstrapReasonField {
+    grid-column: auto;
+  }
 }
 
 .capabilityBootstrapRuleId {

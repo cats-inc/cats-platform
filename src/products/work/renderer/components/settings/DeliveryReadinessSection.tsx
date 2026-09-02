@@ -109,6 +109,15 @@ export function DeliveryReadinessSection() {
               <dt>{t(messageKeys.workDeliveryReadinessAuthorizedOwnersLabel)}</dt>
               <dd>{state.report.authorizedOwnerCount}</dd>
             </div>
+            <div>
+              <dt>{t(messageKeys.workDeliveryReadinessLocalExecutionLabel)}</dt>
+              <dd>{t({
+                healthy: messageKeys.workDeliveryReadinessLocalExecutionHealthy,
+                degraded: messageKeys.workDeliveryReadinessLocalExecutionDegraded,
+                unavailable: messageKeys.workDeliveryReadinessLocalExecutionUnavailable,
+                unknown: messageKeys.workDeliveryReadinessLocalExecutionUnknown,
+              }[state.report.localExecution])}</dd>
+            </div>
           </dl>
 
           {state.report.bindings.length === 0 ? (

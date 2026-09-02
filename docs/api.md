@@ -623,6 +623,9 @@ PATCH /api/preferences
 GET /api/providers
 GET /api/providers/{provider}/models
 GET /api/providers/{provider}/models/advanced
+GET /api/providers/capability-bootstrap
+POST /api/providers/capability-bootstrap
+PUT /api/providers/capability-bootstrap
 ```
 
 - `GET /api/providers` returns the truthful runtime-backed execution targets
@@ -636,16 +639,25 @@ GET /api/providers/{provider}/models/advanced
   instead of falling back to curated static data.
 - `GET /api/providers/capability-bootstrap` reports the provider capability
   bootstrap config: where it is looked for, whether a file exists, whether it
-  parsed, the rules in effect, and every load diagnostic. `restartRequired` is
-  true when what is on disk no longer matches what the host booted with — the
-  loaded config is passed by value into the chat dispatch adapters at composition
-  time, so a new file cannot take effect in the running process.
+  parsed, the rules in effect, every load diagnostic, and a SHA-256 `revision`
+  of the current file. `restartRequired` is true when the parsed rules on disk
+  differ from what the host booted with — the loaded config is passed by value
+  into dispatch adapters at composition time, so a saved rule cannot take
+  effect in the running process.
 - `POST /api/providers/capability-bootstrap` with `{"action":"install-example"}`
   copies the bundled example to the configured path and returns the same view.
   It refuses with `409 capability_bootstrap_config_exists` when a file is already
   there — that file may hold rules an operator wrote by hand — and with
   `409 capability_bootstrap_example_missing` when the build ships no example.
-  Editing individual rules stays in the file, where each rule is documented.
+- `PUT /api/providers/capability-bootstrap` accepts
+  `{ expectedRevision, config: { version: 1, profiles: [...] } }`. It validates
+  the complete rule document before an atomic owner-only YAML write and returns
+  the updated view. A stale revision returns
+  `409 capability_bootstrap_revision_conflict` without modifying the file;
+  invalid rules return `400 invalid_capability_bootstrap_config` with parser
+  diagnostics. The Settings editor covers provider, optional instance/model/
+  control selectors, initial treatment, and reason; `confidenceLevel` remains
+  fixed to `catalog_only`.
 
 - `GET /api/providers/{provider}/models/advanced` follows the same truthful
   contract for advanced catalog reads used by structured provider/model
@@ -673,10 +685,13 @@ POST /api/work/external-issue-imports
   reason key and the settings path that fixes it. Repository-backed modes also
   require a clean observed baseline, and provider readiness requires a matching
   loaded capability-bootstrap rule rather than merely a configured target. The
-  panel is currently diagnostic: rollout owners and workspace selection remain
-  environment-backed and require restart. A host with the golden path
-  disabled — or with no readiness reader wired — returns `enabled: false` rather
-  than an empty "ready".
+  report also carries `localExecution` (`healthy`, `degraded`, or `unavailable`)
+  from runtime health; unavailable local execution contributes the shared
+  `background_service_unavailable` blocker. A disabled host with no reader uses
+  `unknown`. The panel is currently diagnostic:
+  rollout owners and workspace selection remain environment-backed and require
+  restart. A host with the golden path disabled — or with no readiness reader
+  wired — returns `enabled: false` rather than an empty "ready".
 
 - `GET /api/work/delivery-telemetry` returns bounded operational counters for
   the delivery path: readiness failures, dedupe hits, admission results, run
@@ -3375,4 +3390,4 @@ Errors use a minimal payload:
 
 ---
 
-*Last updated: 2026-04-29*
+*Last updated: 2026-09-02*

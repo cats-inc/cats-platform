@@ -10,7 +10,24 @@ import type { SupervisionDiagnosticRecord } from './contracts.js';
 const require = createRequire(import.meta.url);
 const yaml = require('js-yaml') as {
   load(input: string): unknown;
+  dump(input: unknown, options?: Record<string, unknown>): string;
 };
+
+export function serializeProviderCapabilityBootstrapConfigYaml(
+  config: NonNullable<ProviderCapabilityBootstrapConfigResult['config']>,
+): string {
+  return yaml.dump(
+    {
+      version: config.version,
+      profiles: config.profiles,
+    },
+    {
+      noRefs: true,
+      lineWidth: 100,
+      sortKeys: false,
+    },
+  );
+}
 
 export function parseProviderCapabilityBootstrapConfigYaml(
   yamlText: string,

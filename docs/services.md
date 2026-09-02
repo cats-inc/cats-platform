@@ -112,11 +112,15 @@ Telegram queues updates for a bounded period, so a `/work` message sent while
 the host was asleep is normally processed when it wakes. A message older than
 Telegram's own retention is lost, and Cats cannot know it existed.
 
-The readiness evaluator does carry a `background_service_unavailable` blocker,
-and it is reported on the Desktop settings surface (`/settings/work`). It is
-effectively unreachable *from Telegram* for the reason above: if the resolver is
-running, the background service is up. Do not read its absence from a `/status`
-reply as proof the host has been up continuously.
+There are two local processes in the installed path. If the platform process is
+alive but `cats-runtime` is unreachable, `/status` answers and explicitly says
+`Local execution: unavailable`; the shared readiness evaluator also emits
+`background_service_unavailable` and refuses admission. If the runtime is
+reachable but reports a non-healthy status, `/status` says `degraded` without
+inventing an outage; the remaining readiness prerequisites still decide whether
+the specific binding can accept work. These lines cannot prove the host has been
+up continuously: if the platform process itself is asleep, no process exists to
+answer `/status` at all.
 
 ## Cross-Project Port Coordination
 
@@ -135,4 +139,4 @@ This project was created from **project-bootstrap**, which maintains a central p
 
 ---
 
-*Last updated: 2026-05-09*
+*Last updated: 2026-09-02*
