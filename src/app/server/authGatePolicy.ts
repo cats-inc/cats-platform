@@ -133,6 +133,11 @@ function isPublicPreSetupRoute(pathname: string, method: string): boolean {
     || (pathname === '/runtime/api/setup-scan' && method === 'POST')
     || (pathname === '/runtime/api/setup-apply' && method === 'POST')
     || (pathname === '/runtime/api/providers/config' && method === 'GET')
+    // The runtime setup page embeds a health overlay that polls this endpoint.
+    // Allowing the page but not its own poll left first-run showing a rejection
+    // the overlay could only explain as a missing runtime API key, which is not
+    // what happened and not a credential a packaged install even has.
+    || (pathname === '/runtime/api/diagnostics/health' && method === 'GET')
     || (pathname === '/runtime/api/diagnostics/providers' && method === 'GET')
     || (pathname === '/runtime/api/diagnostics/providers/reprobe' && method === 'POST')
   ) {
