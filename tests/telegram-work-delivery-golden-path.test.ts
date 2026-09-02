@@ -778,7 +778,7 @@ test('no local path or credential reaches callback data or a Telegram payload (F
   assert.ok(proposalRow?.payload.text.includes('Commit only'));
   assert.equal(
     proposalRow?.payload.actions.map((action) => action.action).join(','),
-    'start_work,adjust,cancel',
+    'start_work,cancel',
     'the proposal carries its inline actions so the transport can render buttons',
   );
 

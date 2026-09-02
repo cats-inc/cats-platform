@@ -104,10 +104,16 @@ export type TransportWorkStage =
   | 'failed'
   | 'cancelled';
 
-/** Bounded owner actions a stage may expose. Labels are localized elsewhere. */
+/**
+ * Bounded owner actions a stage may expose. Labels are localized elsewhere.
+ *
+ * There is deliberately no `adjust`: it was offered on every proposal while
+ * `authorize` refused it. Removing it from the union makes that class of
+ * mistake a type error rather than a discipline problem. It returns with the
+ * FR-16 clarification loop, together with a handler.
+ */
 export type TransportWorkAction =
   | 'start_work'
-  | 'adjust'
   | 'cancel'
   | 'approve'
   | 'deny'

@@ -215,7 +215,7 @@ test('scope is resolved for the work item the token names, not the first on the 
 
 test('changing scope invalidates outstanding tokens for that work item (FR-17)', () => {
   const store = createTransportWorkActionTokenStore({ now: frozenClock() });
-  for (const action of ['start_work', 'adjust', 'cancel'] as const) {
+  for (const action of ['start_work', 'cancel', 'view'] as const) {
     store.issue({
       bindingId: 'binding-1',
       ownerActorId: 'actor-owner',

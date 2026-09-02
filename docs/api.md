@@ -674,6 +674,14 @@ POST /api/work/external-issue-imports
   disabled — or with no readiness reader wired — returns `enabled: false` rather
   than an empty "ready".
 
+- `GET /api/work/delivery-telemetry` returns bounded operational counters for
+  the delivery path: readiness failures, dedupe hits, admission results, run
+  terminal states, outbox retries, delivery receipts, and decision latency in
+  coarse buckets. Counter labels come from a closed set declared in
+  `platform/transports/work-delivery/telemetry.ts`; anything else is refused
+  rather than recorded, so no message body, chat id, or credential can reach a
+  counter name. `enabled: false` means the host composed no golden path.
+
 - `GET /api/work` returns the first Work dashboard projection above shared
   core task/operator reads. The payload includes:
   - product metadata

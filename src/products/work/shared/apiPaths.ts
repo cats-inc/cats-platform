@@ -32,6 +32,8 @@ export const WORK_API_EXTERNAL_ISSUE_IMPORTS_PATH =
 export const WORK_API_GRAPH_PATH = `${WORK_API_PREFIX}/graph`;
 /** Delegation readiness for Desktop remediation (SPEC-114 FR-3). */
 export const WORK_API_DELIVERY_READINESS_PATH = `${WORK_API_PREFIX}/delivery-readiness`;
+/** Bounded operational counters for the delivery path (PLAN-105 Phase 6). */
+export const WORK_API_DELIVERY_TELEMETRY_PATH = `${WORK_API_PREFIX}/delivery-telemetry`;
 export const WORK_API_RAW_PROJECTS_PATH = `${WORK_API_PREFIX}/raw/projects`;
 export const WORK_API_RAW_WORK_ITEMS_PATH = `${WORK_API_PREFIX}/raw/work-items`;
 export const WORK_API_RAW_TASKS_PATH = `${WORK_API_PREFIX}/raw/tasks`;

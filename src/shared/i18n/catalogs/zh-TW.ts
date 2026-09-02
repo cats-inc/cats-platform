@@ -2210,7 +2210,6 @@ export const zhTWCatalog: MessageCatalog = {
   'telegram.command.unknownCommand':
     '未知指令：/{command}\n輸入 /help 查看可用指令。',
   'workDelivery.action.startWork': '開始執行',
-  'workDelivery.action.adjust': '調整',
   'workDelivery.action.cancel': '取消',
   'workDelivery.action.publish': '發布',
   'workDelivery.action.deny': '不要發布',

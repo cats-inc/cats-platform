@@ -188,7 +188,11 @@ export function TaskDetailPage(): JSX.Element {
   const assignedNames = task.assignedActors.map((actor) => actor.displayName);
   const showApprovalActions = task.status === "pending_approval";
   const approvalDecisionPending = approvalDecisionMutation.isPending;
-  const canStartRun = task.status === "approved";
+  // An approved Task with a Run already on it is the golden-path shape:
+  // admission approves and queues in one transaction. Offering "Start run"
+  // there is the redundant second click FR-24 forbids, and taking it would
+  // start a second Run for work that is already going.
+  const canStartRun = task.status === "approved" && taskRuns.length === 0;
 
   return (
     <div className="taskDetail">

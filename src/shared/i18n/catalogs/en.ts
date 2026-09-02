@@ -2264,7 +2264,6 @@ export const enCatalog: MessageCatalog = {
   'telegram.command.unknownCommand':
     'Unknown command: /{command}\nType /help to see available commands.',
   'workDelivery.action.startWork': 'Start work',
-  'workDelivery.action.adjust': 'Adjust',
   'workDelivery.action.cancel': 'Cancel',
   'workDelivery.action.publish': 'Publish',
   'workDelivery.action.deny': 'Do not publish',
