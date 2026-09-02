@@ -75,9 +75,15 @@ persisted development state.
   detail with a retry that re-drives the same outbox row rather than sending twice.
 - G6 **partial** — the deterministic end-to-end suite, the restart matrix, the
   attachment refusal check, telemetry counters, and rollout/rollback semantics all
-  land; the two credential-gated smokes (packaged Desktop, real bot) have not run,
-  so the gate is not clear. No provider, git, or Telegram credential has executed
-  against any of this.
+  land. The packaged macOS smoke has now run against the published v0.1.22 artifact
+  and passes, and the packaged sidecar was booted against isolated state to confirm
+  it listens, serves the renderer, fails closed on protected routes and on a missing
+  CSRF token, and serves the readiness, telemetry, and capability-bootstrap
+  endpoints. That run found a real shipping defect (see the log below). Still
+  outstanding: the *behavioural* half of the packaged smoke — binding readiness,
+  callback polling, provider launch, Desktop projection, and recovery links — and
+  the real-bot smoke. No provider, git, or Telegram credential has executed against
+  any of this.
 
 ## Implementation Phases
 

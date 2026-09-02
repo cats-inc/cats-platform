@@ -181,6 +181,7 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'app-sidecar\package.json'); Label = 'bundled cats app package manifest' },
   @{ Path = (Join-Path $resourcesRoot 'app-sidecar\node_modules\js-yaml\package.json'); Label = 'bundled cats app js-yaml dependency marker' },
   @{ Path = (Join-Path $resourcesRoot 'app-sidecar\node_modules\argparse\package.json'); Label = 'bundled cats app argparse dependency marker' },
+  @{ Path = (Join-Path $resourcesRoot 'app-sidecar\config\provider-capability-bootstrap.yaml.example'); Label = 'bundled cats capability bootstrap example' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\build\runtime\index.js'); Label = 'bundled cats-runtime entry' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\package.json'); Label = 'bundled cats-runtime package manifest' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\public\provider-setup.html'); Label = 'bundled cats-runtime setup UI' },
