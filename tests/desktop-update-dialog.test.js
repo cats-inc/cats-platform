@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveDesktopUpdateDialog } from '../build/desktop/updateDialog.js';
+import {
+  resolveDesktopUpdateDialog,
+  shouldRefreshDesktopUpdateFromTray,
+} from '../build/desktop/updateDialog.js';
 import { createUnavailableDesktopUpdateSnapshot } from '../build/desktop/updateManager.js';
 
 /**
@@ -103,6 +106,27 @@ test('up to date says which version that is', () => {
 
   assert.match(spec.message, /0\.1\.16/u);
   assert.equal(spec.action, 'none');
+});
+
+test('an explicit tray check refreshes repeatable results exactly once', () => {
+  for (const status of ['idle', 'up_to_date', 'failed']) {
+    const repeatable = snapshot({ status, nextAction: 'check' });
+
+    assert.equal(shouldRefreshDesktopUpdateFromTray(repeatable, true), true, status);
+    assert.equal(shouldRefreshDesktopUpdateFromTray(repeatable, false), false, status);
+  }
+
+  assert.equal(
+    shouldRefreshDesktopUpdateFromTray(snapshot({
+      status: 'update_available',
+      nextAction: 'download',
+    }), true),
+    false,
+  );
+  assert.equal(
+    shouldRefreshDesktopUpdateFromTray(createUnavailableDesktopUpdateSnapshot('0.1.16'), true),
+    false,
+  );
 });
 
 test('a build that cannot update says so instead of offering a check', () => {

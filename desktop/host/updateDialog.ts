@@ -155,6 +155,24 @@ function resolveInstallDetail(
 }
 
 /**
+ * Whether an explicit tray "Check for Updates" click needs a provider query
+ * before the native dialog can give a current answer.
+ *
+ * The manager owns legal transitions through `nextAction`. In particular,
+ * `up_to_date` and `failed` are informational dialog states, but their next
+ * action is another check. The second pass after that check disables refresh
+ * so the fresh result is displayed once instead of starting a loop.
+ */
+export function shouldRefreshDesktopUpdateFromTray(
+  snapshot: DesktopUpdateSnapshot,
+  allowRecheck: boolean,
+): boolean {
+  return allowRecheck
+    && snapshot.capability.canCheck
+    && snapshot.nextAction === 'check';
+}
+
+/**
  * The dialog for the state the host is in right now.
  *
  * `check` is returned when nothing is known yet: the caller runs a check and

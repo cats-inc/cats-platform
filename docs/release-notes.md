@@ -21,6 +21,24 @@ Deprecations:
 
 ## 2026-09-02
 
+### Tray update checks refresh stale results
+
+Behavior change:
+
+Choosing **Check for Updates** from the system tray now performs a fresh
+provider query after a prior `up_to_date` or `failed` result. Previously, a
+long-running Desktop process replayed the earlier informational dialog, so a
+release published after that check remained invisible from the tray even
+though `Settings > Desktop > App updates` found it correctly.
+
+Migration steps:
+
+None.
+
+Deprecations:
+
+None.
+
 ### The legacy `/api/setup/complete` bootstrap route is removed
 
 Behavior change:
