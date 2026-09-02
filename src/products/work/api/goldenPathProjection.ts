@@ -44,7 +44,7 @@ export interface TransportWorkDeliveryReader {
  * still the idempotency record.
  */
 export interface TransportWorkDeliveryRecovery extends TransportWorkDeliveryReader {
-  flush(idempotencyKey: string): Promise<{ row: TransportWorkDeliveryV1 }>;
+  retry(idempotencyKey: string): Promise<{ row: TransportWorkDeliveryV1 }>;
 }
 
 export interface WorkGoldenPathSourceView {

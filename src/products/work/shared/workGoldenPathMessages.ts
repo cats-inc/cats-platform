@@ -55,6 +55,7 @@ export const READINESS_REASON_KEYS: Record<TransportWorkReadinessReason, Message
   workspace_missing: messageKeys.workDeliveryReadinessWorkspaceMissing,
   workspace_unreachable: messageKeys.workDeliveryReadinessWorkspaceUnreachable,
   workspace_not_a_repository: messageKeys.workDeliveryReadinessWorkspaceNotARepository,
+  workspace_not_clean: messageKeys.workDeliveryReadinessWorkspaceNotClean,
   delivery_policy_unresolved: messageKeys.workDeliveryReadinessDeliveryPolicyUnresolved,
   background_service_unavailable:
     messageKeys.workDeliveryReadinessBackgroundServiceUnavailable,

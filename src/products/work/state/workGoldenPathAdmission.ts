@@ -25,7 +25,9 @@ import type {
   CoreRunRecord,
   CoreTaskRecord,
   CoreWorkItemRecord,
+  ExecutionTargetSummary,
 } from '../../../core/types.js';
+import type { SupervisionToolScope } from '../../../platform/supervision/contracts.js';
 import type {
   TransportWorkOriginV1,
   TransportWorkProposalV1,
@@ -68,6 +70,57 @@ export interface WorkGoldenPathAdmissionInput {
    */
   ownerEventRef: string;
   actorRef: string;
+  /** Execution facts captured atomically with the Run, never process globals. */
+  executionTarget?: ExecutionTargetSummary | null;
+  toolScope?: SupervisionToolScope;
+  workspaceHeadOid?: string | null;
+}
+
+export interface WorkGoldenPathExecutionSnapshot {
+  executionTarget: ExecutionTargetSummary | null;
+  toolScope: SupervisionToolScope;
+  workspaceHeadOid: string | null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Reads the run-scoped execution envelope defensively during restart recovery. */
+export function readWorkGoldenPathExecutionSnapshot(
+  metadata: unknown,
+): WorkGoldenPathExecutionSnapshot {
+  if (!isRecord(metadata)) {
+    return { executionTarget: null, toolScope: 'none', workspaceHeadOid: null };
+  }
+  const goldenPath = metadata[WORK_GOLDEN_PATH_METADATA_KEY];
+  if (!isRecord(goldenPath) || !isRecord(goldenPath.execution)) {
+    return { executionTarget: null, toolScope: 'none', workspaceHeadOid: null };
+  }
+  const execution = goldenPath.execution;
+  const rawTarget = isRecord(execution.target) ? execution.target : null;
+  const provider = rawTarget && typeof rawTarget.provider === 'string'
+    ? rawTarget.provider.trim()
+    : '';
+  const rawScope = execution.toolScope;
+  const toolScope: SupervisionToolScope = rawScope === 'read_only'
+    || rawScope === 'narrow_write'
+    || rawScope === 'broad_write'
+    ? rawScope
+    : 'none';
+  return {
+    executionTarget: provider === '' ? null : {
+      provider,
+      instance: rawTarget && typeof rawTarget.instance === 'string'
+        ? rawTarget.instance
+        : null,
+      model: rawTarget && typeof rawTarget.model === 'string' ? rawTarget.model : null,
+    },
+    toolScope,
+    workspaceHeadOid: typeof execution.workspaceHeadOid === 'string'
+      ? execution.workspaceHeadOid
+      : null,
+  };
 }
 
 export interface WorkGoldenPathAdmissionResult {
@@ -288,6 +341,11 @@ export async function admitTransportWorkExecution(
               ownerEventRef: input.ownerEventRef,
               authorizedByActorId: input.ownerActorId,
               authorizedAt: createdAt.toISOString(),
+              execution: {
+                target: input.executionTarget ?? null,
+                toolScope: input.toolScope ?? 'none',
+                workspaceHeadOid: input.workspaceHeadOid ?? null,
+              },
             },
           },
         },

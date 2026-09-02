@@ -24,7 +24,9 @@ import type {
   CoreDeliveryMode,
   CoreRunStatus,
   CoreRunRecord,
+  ExecutionTargetSummary,
 } from '../../../core/types.js';
+import type { SupervisionToolScope } from '../../../platform/supervision/contracts.js';
 import type { TransportWorkStage } from '../../../platform/transports/work-delivery/contracts.js';
 import { messageKeys } from '../../../shared/i18n/index.js';
 import {
@@ -35,6 +37,7 @@ import {
 } from './workCompletionEvidence.js';
 import { readWorkGoldenPathMetadata } from '../shared/workGoldenPathMetadata.js';
 import { applyWorkGoldenPathLifecycleAction } from './workGoldenPathLifecycle.js';
+import { readWorkGoldenPathExecutionSnapshot } from './workGoldenPathAdmission.js';
 import type { WorkGoldenPathService } from './workGoldenPathService.js';
 
 /** Default step ceiling. Bounded so a looping agent cannot run forever. */
@@ -53,6 +56,10 @@ export interface WorkGoldenPathArtifactEvidence {
   title: string;
   path: string | null;
   mimeType: string | null;
+  /** Runtime-owned location from which a later gated publish must resume. */
+  deliveryWorkspacePath?: string | null;
+  /** Runtime session that materialized the artifact. */
+  deliverySessionId?: string | null;
 }
 
 export interface WorkGoldenPathStepContext {
@@ -65,6 +72,9 @@ export interface WorkGoldenPathStepContext {
   acceptanceCriteria: readonly string[];
   deliveryMode: CoreDeliveryMode;
   workspacePath: string | null;
+  executionTarget?: ExecutionTargetSummary | null;
+  toolScope?: SupervisionToolScope;
+  workspaceHeadOid?: string | null;
   /**
    * What was still missing after the previous step.
    *
@@ -419,6 +429,7 @@ export function createWorkGoldenPathRunner(
         reason: `Run ${runId} is not a golden-path run.`,
       };
     }
+    const execution = readWorkGoldenPathExecutionSnapshot(run.metadata);
 
     await service.markRunStatus({
       workItemId: workItem.id,
@@ -467,6 +478,9 @@ export function createWorkGoldenPathRunner(
         acceptanceCriteria: proposal.acceptanceCriteria,
         deliveryMode: proposal.deliveryMode,
         workspacePath: proposal.workspacePath,
+        executionTarget: execution.executionTarget,
+        toolScope: execution.toolScope,
+        workspaceHeadOid: execution.workspaceHeadOid,
         outstandingGaps: evidence.gaps,
         outstandingCriteria: evidence.unmetCriteria,
       });

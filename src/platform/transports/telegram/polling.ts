@@ -4,12 +4,14 @@ import type { CatsMemoryService } from '../../memory/index.js';
 import { telegramIpv4Fetch, type TelegramFetch } from './http.js';
 import {
   createTelegramIngressDispatcher,
+  dispatchTelegramIngressAndWait,
   type TelegramIngressDispatcher,
 } from './ingressDispatch.js';
 import type { TransportWorkGoldenPathPort } from '../work-delivery/port.js';
 import type { TelegramCommandPort } from './commandPort.js';
 import {
   bridgeTelegramWebhookToRoom,
+  isTelegramGoldenPathUpdate,
   type TelegramRoomBridge,
   type TelegramWebhookBridgeResult,
 } from './bridge.js';
@@ -274,17 +276,24 @@ export function createTelegramPollingSupervisor(
 
           const updateId = typeof update.update_id === 'number' ? update.update_id : null;
 
-          const receipt = telegramRelay.receiveUpdate({ update, context: scopedContext });
+          const goldenPathUpdate = isTelegramGoldenPathUpdate(update, input.goldenPath);
+          if (goldenPathUpdate) {
+            // Do not consume a `/work` update until there is capacity to make
+            // its product-owned durable write.
+            await dispatcher.waitForSlot(bindingId);
+          }
+          const receipt = telegramRelay.receiveUpdate({
+            update,
+            context: scopedContext,
+            deferProcessed: goldenPathUpdate,
+          });
 
           if (receipt.status === 'accepted') {
-            // Backpressure before dispatching, never between two dispatches for
-            // the same room: the room lock is entered synchronously inside the
-            // bridge, so call order is processing order.
-            await dispatcher.waitForSlot(bindingId);
-
-            dispatcher.dispatch(bindingId, async () => {
-              try {
-                const bridgeResult = await bridgeTelegramWebhookToRoom({
+            if (goldenPathUpdate) {
+              const bridgeResult = await dispatchTelegramIngressAndWait(
+                dispatcher,
+                bindingId,
+                () => bridgeTelegramWebhookToRoom({
                   update,
                   receipt,
                   context: scopedContext,
@@ -295,21 +304,52 @@ export function createTelegramPollingSupervisor(
                   goldenPath: input.goldenPath ?? null,
                   commands: input.commands ?? null,
                   now: options.now,
-                });
-                try {
-                  input.onBridgeResult?.(bridgeResult);
-                } catch {
-                  // Delivery already succeeded; UI/event hooks stay best-effort.
-                }
-              } catch {
-                // Bridge errors are already handled inside bridgeTelegramWebhookToRoom
+                }),
+              );
+              if (receipt.updateId !== null) {
+                telegramRelay.markUpdateProcessed(receipt.updateId);
               }
-            });
+              try {
+                input.onBridgeResult?.(bridgeResult);
+              } catch {
+                // Delivery succeeded; UI/event hooks stay best-effort.
+              }
+            } else {
+              // Backpressure before dispatching, never between two dispatches for
+              // the same room: the room lock is entered synchronously inside the
+              // bridge, so call order is processing order.
+              await dispatcher.waitForSlot(bindingId);
+
+              dispatcher.dispatch(bindingId, async () => {
+                try {
+                  const bridgeResult = await bridgeTelegramWebhookToRoom({
+                    update,
+                    receipt,
+                    context: scopedContext,
+                    roomBridge,
+                    memoryService: input.memoryService,
+                    runtimeClient,
+                    telegramRelay,
+                    goldenPath: input.goldenPath ?? null,
+                    commands: input.commands ?? null,
+                    now: options.now,
+                  });
+                  try {
+                    input.onBridgeResult?.(bridgeResult);
+                  } catch {
+                    // Delivery already succeeded; UI/event hooks stay best-effort.
+                  }
+                } catch {
+                  // Bridge errors are already handled inside bridgeTelegramWebhookToRoom
+                }
+              });
+            }
           }
 
-          // The offset advances on dispatch, not on completion (FR-14). A long
-          // assistant turn must not stop this binding — or any other — from
-          // receiving the next update.
+          // Ordinary Chat offsets advance on dispatch (FR-14). Golden-path
+          // offsets reach this point only after durable Core/outbox capture.
+          // A long assistant turn must not stop this binding — or any other —
+          // from receiving the next update.
           //
           // The cost is a wider crash window: an update whose bridge is still
           // running when the next poll confirms the offset is not redelivered by
@@ -317,8 +357,8 @@ export function createTelegramPollingSupervisor(
           // offset across a multi-minute provider turn would make one slow room
           // silence the whole binding, and the work that matters — an admitted
           // golden-path Run — survives in Core and is re-driven by the startup
-          // resume sweep. An update lost before admission is not recoverable
-          // here, and must not be papered over as if it were.
+          // resume sweep. `/work` intake is excluded from this tradeoff by the
+          // awaited durability branch above.
           if (updateId !== null) {
             consumer.offset = updateId + 1;
             consumer.lastProcessedUpdateId = updateId;

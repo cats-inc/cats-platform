@@ -2313,6 +2313,7 @@ export const messageKeys = {
   workDeliveryReadinessOpenRemediation: 'workDelivery.readiness.openRemediation',
   workDeliveryReadinessRefresh: 'workDelivery.readiness.refresh',
   workDeliveryReadinessWorkspaceNotARepository: 'workDelivery.readiness.workspaceNotARepository',
+  workDeliveryReadinessWorkspaceNotClean: 'workDelivery.readiness.workspaceNotClean',
   workDeliveryReadinessDeliveryPolicyUnresolved: 'workDelivery.readiness.deliveryPolicyUnresolved',
   workDeliveryReadinessBackgroundServiceUnavailable: 'workDelivery.readiness.backgroundServiceUnavailable',
   workDeliveryProposalTitle: 'workDelivery.proposal.title',

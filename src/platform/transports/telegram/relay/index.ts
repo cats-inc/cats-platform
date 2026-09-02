@@ -53,7 +53,10 @@ export interface TelegramRelay {
   receiveUpdate(input: {
     update: TelegramWebhookUpdate;
     context: TelegramRelayContext;
+    deferProcessed?: boolean;
   }): TelegramWebhookReceipt;
+  /** Completes a deferred ingress acknowledgement after durable product capture. */
+  markUpdateProcessed(updateId: number): void;
   deliver(input: {
     request: TelegramDeliveryRequest;
     context: TelegramRelayContext;
@@ -194,9 +197,11 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
     receiveUpdate({
       update,
       context,
+      deferProcessed,
     }: {
       update: TelegramWebhookUpdate;
       context: TelegramRelayContext;
+      deferProcessed?: boolean;
     }): TelegramWebhookReceipt {
       return receiveTelegramUpdate({
         now,
@@ -204,7 +209,12 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
         conversationMapper,
         context,
         update,
+        deferProcessed,
       });
+    },
+
+    markUpdateProcessed(updateId): void {
+      store.markProcessedUpdate(updateId);
     },
 
     async deliver({

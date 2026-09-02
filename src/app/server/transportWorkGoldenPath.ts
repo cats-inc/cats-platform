@@ -16,6 +16,7 @@ import type {
   BotBindingRecord,
   CatsCoreState,
   CoreDeliveryMode,
+  ExecutionTargetSummary,
 } from '../../core/types.js';
 import type { TransportWorkReadiness } from '../../platform/transports/work-delivery/contracts.js';
 import type { TelegramRelayContext } from '../../platform/transports/telegram/contracts.js';
@@ -25,6 +26,11 @@ import {
   createTransportWorkOutbox,
   type TransportWorkOutbox,
 } from '../../platform/transports/work-delivery/outbox.js';
+import { createTransportWorkActionTokenStore } from '../../platform/transports/work-delivery/actionTokens.js';
+import {
+  createFileTransportWorkStateStore,
+  resolveTransportWorkStatePath,
+} from '../../platform/transports/work-delivery/stateStore.js';
 import type { TransportWorkGoldenPathPort } from '../../platform/transports/work-delivery/port.js';
 import {
   evaluateTransportWorkReadiness,
@@ -53,6 +59,10 @@ import {
 } from '../../products/work/state/workGoldenPathRuntimeExecutor.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
 import type { SupervisionToolScope } from '../../platform/supervision/contracts.js';
+import {
+  resolveProviderCapabilityBootstrapRule,
+  type ProviderCapabilityBootstrapConfig,
+} from '../../platform/supervision/providerCapabilityBootstrapConfig.js';
 import {
   createRuntimeDeliveryClient,
   type RuntimeDeliveryClient,
@@ -111,24 +121,9 @@ export interface CreateTransportWorkGoldenPathInput {
   readRelayContext: () => Promise<TelegramRelayContext>;
   /** Absent means admitted work is recorded but never executed. */
   runtimeClient?: RuntimeClient;
+  /** Loaded provider capability bootstrap used by the rest of Chat supervision. */
+  providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   now?: () => Date;
-}
-
-/**
- * Splits `provider:model` back into a runtime target.
- *
- * The readiness evaluator wants one comparable id; the runtime wants the parts.
- */
-function parseRuntimeTarget(
-  executionTargetId: string,
-): { provider: string; model: string | null } {
-  const separator = executionTargetId.indexOf(':');
-  return separator === -1
-    ? { provider: executionTargetId, model: null }
-    : {
-      provider: executionTargetId.slice(0, separator),
-      model: executionTargetId.slice(separator + 1),
-    };
 }
 
 function findBinding(core: CatsCoreState, bindingId: string): BotBindingRecord | null {
@@ -142,13 +137,27 @@ function findBinding(core: CatsCoreState, bindingId: string): BotBindingRecord |
  * resolved: FR-2 wants a *resolved* target, and inventing one here would make
  * the bot promise execution it cannot perform.
  */
-function resolveExecutionTargetId(state: ChatState, catActorId: string | null): string | null {
+function resolveExecutionTarget(
+  state: ChatState,
+  catActorId: string | null,
+): ExecutionTargetSummary | null {
   if (catActorId === null) {
     return null;
   }
   const cat = state.cats.find((candidate) => createCatActorId(candidate.id) === catActorId);
   const target = cat?.defaultExecutionTarget;
   if (!target || !target.provider) {
+    return null;
+  }
+  return {
+    provider: target.provider,
+    instance: target.instance ?? null,
+    model: target.model ?? null,
+  };
+}
+
+function describeExecutionTarget(target: ExecutionTargetSummary | null): string | null {
+  if (target === null) {
     return null;
   }
   return target.model ? `${target.provider}:${target.model}` : target.provider;
@@ -171,7 +180,12 @@ async function probeWorkspace(
   }
   try {
     const snapshot = await deliveryClient.inspectRepo({ workspacePath });
-    return { reachable: snapshot.supported, repository: snapshot.repository };
+    return {
+      reachable: snapshot.supported,
+      repository: snapshot.repository,
+      clean: snapshot.clean,
+      headOid: snapshot.headOid,
+    };
   } catch {
     return null;
   }
@@ -188,23 +202,20 @@ export function createTransportWorkGoldenPath(
     return null;
   }
 
-  let latestRelayContext: TelegramRelayContext | null = null;
-
   // One instance shared by the outbox and the service, so a single snapshot
   // describes the whole path rather than one layer of it.
   const telemetry = createTransportWorkTelemetry();
+  const transportState = createFileTransportWorkStateStore(
+    resolveTransportWorkStatePath(input.config.platformStateDir),
+  );
 
   const outbox = createTransportWorkOutbox({
     now: input.now,
     telemetry,
+    store: transportState,
     send: createTelegramGoldenPathOutboxSender({
       telegramRelay: input.telegramRelay,
-      resolveRelayContext: () => {
-        if (latestRelayContext === null) {
-          throw new Error('Telegram relay context is not available for golden-path delivery.');
-        }
-        return latestRelayContext;
-      },
+      resolveRelayContext: input.readRelayContext,
     }),
   });
 
@@ -216,15 +227,14 @@ export function createTransportWorkGoldenPath(
   const service = createWorkGoldenPathService({
     coreStore: input.coreStore,
     outbox,
+    tokenStore: createTransportWorkActionTokenStore({
+      now: input.now,
+      store: transportState,
+    }),
     deliveryClient,
     telemetry,
     now: input.now,
   });
-
-  // Resolved at admission time rather than at construction: the bound Cat's
-  // provider can change between the proposal and the owner's confirmation.
-  let latestExecutionTargetId: string | null = null;
-  let latestToolScope: SupervisionToolScope = 'none';
 
   /**
    * The single readiness evaluation, shared by Telegram admission and the
@@ -253,7 +263,14 @@ export function createTransportWorkGoldenPath(
       workspace,
       deliveryMode,
     });
-    const executionTargetId = resolveExecutionTargetId(state, catActorId);
+    const executionTarget = resolveExecutionTarget(state, catActorId);
+    const executionTargetId = describeExecutionTarget(executionTarget);
+    const capabilityProfileResolved = executionTarget !== null
+      && resolveProviderCapabilityBootstrapRule(
+        input.providerCapabilityBootstrapConfig,
+        executionTarget,
+        { observedAt: (input.now?.() ?? new Date()).toISOString() },
+      ).treatment !== 'default';
 
     const readiness = evaluateTransportWorkReadiness({
       bindingEnabled: binding?.status === 'active',
@@ -266,9 +283,10 @@ export function createTransportWorkGoldenPath(
         : settings.authorizedOwnerRefs.includes(externalUserRef),
       boundCatId: catActorId,
       executionTargetId,
-      // The bootstrap config path is always resolved by `loadConfig`, so the
-      // meaningful signal is whether a provider target exists at all.
-      capabilityProfileResolved: executionTargetId !== null,
+      // A provider target and a capability rule are separate prerequisites.
+      // Treating "target exists" as "profile resolved" made the Settings
+      // bootstrap blocker unreachable and let unknown providers look ready.
+      capabilityProfileResolved,
       workspacePath,
       permission,
       deliveryMode,
@@ -281,9 +299,11 @@ export function createTransportWorkGoldenPath(
     return {
       readiness,
       permission,
+      executionTarget,
       executionTargetId,
       deliveryMode,
       workspacePath,
+      workspaceHeadOid: workspace?.headOid ?? null,
       ownerActorId: core.ownerProfile.actorId,
       botName: binding?.botName ?? null,
       targetLabel: workspacePath === null
@@ -324,10 +344,6 @@ export function createTransportWorkGoldenPath(
     ? createWorkGoldenPathRuntimeExecutor({
       runtimeClient: input.runtimeClient,
       collectEvidence,
-      resolveTarget: () => (latestExecutionTargetId === null
-        ? null
-        : parseRuntimeTarget(latestExecutionTargetId)),
-      resolveToolScope: () => latestToolScope,
     })
     : null;
 
@@ -362,17 +378,14 @@ export function createTransportWorkGoldenPath(
         // catch only stops an unhandled rejection from taking down the host.
       });
     },
-    resolveContext: async ({ bindingId, externalUserRef }): Promise<TelegramGoldenPathContext> => {
+    resolveContext: async ({
+      bindingId,
+      externalUserRef,
+      goal,
+    }): Promise<TelegramGoldenPathContext> => {
       // Refreshed per request so a binding, Cat, or provider change between two
       // `/work` messages is reflected instead of cached into a stale promise.
-      latestRelayContext = await input.readRelayContext();
       const evaluated = await evaluateBinding(bindingId, externalUserRef);
-
-      // Only the execution path advances the run-scoped latches. The Desktop
-      // reader below shares the evaluation but must never move the scope a
-      // pending run will be executed under.
-      latestExecutionTargetId = evaluated.executionTargetId;
-      latestToolScope = evaluated.permission.toolScope;
 
       return {
         readiness: evaluated.readiness,
@@ -383,8 +396,13 @@ export function createTransportWorkGoldenPath(
         workspacePath: evaluated.workspacePath,
         deliveryMode: evaluated.deliveryMode,
         deliveryGates: [],
-        acceptanceCriteria: [],
+        // Until the clarification loop lands, the owner's requested outcome is
+        // the minimum non-vacuous criterion. An empty list would make every
+        // otherwise valid commit satisfy acceptance automatically.
+        acceptanceCriteria: goal.trim() === '' ? [] : [goal.trim()],
         openQuestion: null,
+        executionTarget: evaluated.executionTarget,
+        workspaceHeadOid: evaluated.workspaceHeadOid,
       };
     },
   });

@@ -23,8 +23,9 @@ import {
 } from '../src/platform/transports/work-delivery/permissionEnvelope.js';
 import type { CoreDeliveryMode } from '../src/core/types.js';
 
-const REPO = { reachable: true, repository: true };
-const PLAIN_DIRECTORY = { reachable: true, repository: false };
+const REPO = { reachable: true, repository: true, clean: true, headOid: 'aaaaaaaaaaaa' };
+const DIRTY_REPO = { ...REPO, clean: false };
+const PLAIN_DIRECTORY = { reachable: true, repository: false, clean: null, headOid: null };
 
 // --- The scope ceiling ---------------------------------------------------------
 
@@ -76,7 +77,10 @@ test('a workspace the runtime cannot inspect grants nothing', () => {
   // The runtime being unreachable, or the path not existing, both arrive here as
   // "no observation". Assuming the optimistic case would hand out write tools
   // for a directory nobody has confirmed exists.
-  for (const workspace of [null, { reachable: false, repository: false }]) {
+  for (const workspace of [
+    null,
+    { reachable: false, repository: false, clean: null, headOid: null },
+  ]) {
     const envelope = resolveTransportWorkPermissionEnvelope({
       workspacePath: '/repos/typo',
       workspace,
@@ -102,6 +106,24 @@ test('a commit-backed mode against a plain directory is refused before the run s
   );
 });
 
+test('every repository-backed publish mode requires a clean repository baseline', () => {
+  for (const deliveryMode of ['push_branch', 'pr_with_checks', 'deploy_preview'] as const) {
+    const plainDirectory = resolveTransportWorkPermissionEnvelope({
+      workspacePath: '/tmp/workspace',
+      workspace: { reachable: true, repository: false, clean: null, headOid: null },
+      deliveryMode,
+    });
+    assert.deepEqual(plainDirectory.reasons, ['workspace_not_a_repository']);
+
+    const dirtyRepository = resolveTransportWorkPermissionEnvelope({
+      workspacePath: '/tmp/workspace',
+      workspace: { reachable: true, repository: true, clean: false, headOid: 'abc1234' },
+      deliveryMode,
+    });
+    assert.deepEqual(dirtyRepository.reasons, ['workspace_not_clean']);
+  }
+});
+
 test('artifact_only does not need a repository', () => {
   const envelope = resolveTransportWorkPermissionEnvelope({
     workspacePath: '/tmp/notes',
@@ -109,6 +131,19 @@ test('artifact_only does not need a repository', () => {
     deliveryMode: 'artifact_only',
   });
   assert.deepEqual(envelope, { toolScope: 'narrow_write', sufficient: true, reasons: [] });
+});
+
+test('repo-backed delivery refuses a dirty worktree before execution', () => {
+  const envelope = resolveTransportWorkPermissionEnvelope({
+    workspacePath: '/repos/cats',
+    workspace: DIRTY_REPO,
+    deliveryMode: 'commit_only',
+  });
+  assert.deepEqual(envelope, {
+    toolScope: 'read_only',
+    sufficient: false,
+    reasons: ['workspace_not_clean'],
+  });
 });
 
 // --- Reaching the owner --------------------------------------------------------
@@ -123,6 +158,11 @@ test('every permission reason becomes its own readiness blocker', () => {
     {
       workspacePath: '/x',
       workspace: PLAIN_DIRECTORY,
+      deliveryMode: 'commit_only' as const,
+    },
+    {
+      workspacePath: '/x',
+      workspace: DIRTY_REPO,
       deliveryMode: 'commit_only' as const,
     },
   ];

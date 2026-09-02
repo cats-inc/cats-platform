@@ -2,7 +2,10 @@ import type { ResolvedServerDependencies } from './contracts.js';
 import { reconcileChatWorkflowRecoveryOnStartup } from './chatWorkflowRecovery.js';
 import { reconcileOrchestratorRecoveryOnStartup } from './orchestratorRecovery.js';
 import { reconcilePollingOnStartup } from './polling.js';
-import { resumeGoldenPathRunsOnStartup } from './goldenPathStartupResume.js';
+import {
+  recoverGoldenPathDeliveriesOnStartup,
+  resumeGoldenPathRunsOnStartup,
+} from './goldenPathStartupResume.js';
 import {
   resolvePlatformAuthReadiness,
   startPlatformAuthRepairMode,
@@ -29,6 +32,7 @@ export async function runServerStartupRecoveryPasses(
     () => dependencies.chat.telegramCommandSurfaceSync.reconcile(),
     () => reconcileChatWorkflowRecoveryOnStartup(dependencies),
     () => reconcileOrchestratorRecoveryOnStartup(dependencies),
+    () => recoverGoldenPathDeliveriesOnStartup(dependencies),
     // Last: transport ingress and orchestrator recovery should be settled
     // before supervised work starts moving again.
     () => resumeGoldenPathRunsOnStartup(dependencies),

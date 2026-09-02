@@ -33,6 +33,11 @@ import type {
   TelegramWebhookUpdate,
 } from '../src/platform/transports/telegram/contracts.js';
 import { createTransportWorkOutbox } from '../src/platform/transports/work-delivery/outbox.js';
+import { createTransportWorkActionTokenStore } from '../src/platform/transports/work-delivery/actionTokens.js';
+import {
+  createMemoryTransportWorkStateStore,
+  type TransportWorkStateStore,
+} from '../src/platform/transports/work-delivery/stateStore.js';
 import { evaluateTransportWorkReadiness } from '../src/platform/transports/work-delivery/readiness.js';
 import {
   createTransportWorkTelemetry,
@@ -137,6 +142,7 @@ function callbackUpdate(updateId: number, data: string): TelegramWebhookUpdate {
 
 interface Harness {
   coreStore: MemoryCoreStore;
+  transportState: TransportWorkStateStore;
   /** Message bodies that reached ordinary chat routing instead of the path. */
   routedToChat: string[];
   outbox: ReturnType<typeof createTransportWorkOutbox>;
@@ -156,8 +162,11 @@ function createHarness(options: {
   dirty?: boolean;
   /** Models the rollback switch: the host composes no golden path at all. */
   disabled?: boolean;
+  coreStore?: MemoryCoreStore;
+  transportState?: TransportWorkStateStore;
 } = {}): Harness {
-  const coreStore = new MemoryCoreStore(createDefaultCoreState());
+  const coreStore = options.coreStore ?? new MemoryCoreStore(createDefaultCoreState());
+  const transportState = options.transportState ?? createMemoryTransportWorkStateStore();
   const routedToChat: string[] = [];
   const wire: WireMessage[] = [];
   const answered: AnsweredCallbacks = [];
@@ -211,6 +220,7 @@ function createHarness(options: {
   const telemetry = createTransportWorkTelemetry();
   const outbox = createTransportWorkOutbox({
     telemetry,
+    store: transportState,
     send: createTelegramGoldenPathOutboxSender({
       telegramRelay: relay,
       resolveRelayContext: () => context,
@@ -229,8 +239,8 @@ function createHarness(options: {
         clean: committed || options.dirty === false,
         branch: 'main',
         headOid: committed ? HEAD_AFTER : HEAD_BEFORE,
-        stagedCount: 0,
-        modifiedCount: committed ? 0 : 1,
+        stagedCount: committed ? 0 : 1,
+        modifiedCount: 0,
         untrackedCount: 0,
       };
     },
@@ -244,7 +254,13 @@ function createHarness(options: {
     },
   } as unknown as RuntimeDeliveryClient;
 
-  const service = createWorkGoldenPathService({ coreStore, outbox, deliveryClient, telemetry });
+  const service = createWorkGoldenPathService({
+    coreStore,
+    outbox,
+    deliveryClient,
+    telemetry,
+    tokenStore: createTransportWorkActionTokenStore({ store: transportState }),
+  });
 
   // The provider is the only fake in the execution path: the real evidence
   // collector still decides what counts as done, from what the repo reports.
@@ -273,8 +289,9 @@ function createHarness(options: {
         sessionId: 'session-e2e',
         goal: context.goal,
         deliveryMode: context.deliveryMode,
-        workspacePath: context.workspacePath,
-        acceptanceCriteria: context.acceptanceCriteria,
+          workspacePath: context.workspacePath,
+          baselineHeadOid: context.workspaceHeadOid ?? null,
+          acceptanceCriteria: context.acceptanceCriteria,
         claimedCriteria: step.satisfied,
       });
       return {
@@ -301,6 +318,8 @@ function createHarness(options: {
       acceptanceCriteria: [CRITERION],
       openQuestion: null,
       toolScope: 'narrow_write',
+      executionTarget: { provider: 'claude', instance: 'native', model: 'opus' },
+      workspaceHeadOid: HEAD_BEFORE,
     }),
     onAdmitted: ({ runId }) => {
       driving.push(runner.drive({ runId }).catch(() => undefined));
@@ -309,6 +328,7 @@ function createHarness(options: {
 
   return {
     coreStore,
+    transportState,
     routedToChat,
     outbox,
     telemetry,
@@ -341,6 +361,12 @@ function createHarness(options: {
         telegramRelay: relay,
         goldenPath: options.disabled ? null : port,
       });
+      // Production ingress returns once Core and the durable outbox are
+      // captured. This deterministic harness drains that outbox so assertions
+      // about wire order do not race the intentionally detached sender.
+      await outbox.flushWorkItem(
+        (await coreStore.readCore()).workItems.at(-1)?.id ?? `pending:${String(update.update_id)}`,
+      );
     },
     async settle() {
       await Promise.allSettled(driving);
@@ -387,6 +413,15 @@ test('a /work message reaches delivered without any layer being stubbed out', as
   const core = await harness.coreStore.readCore();
   const run = core.runs.at(-1)!;
   assert.equal(run.status, 'completed');
+  assert.deepEqual(
+    (run.metadata.workGoldenPath as Record<string, unknown>).execution,
+    {
+      target: { provider: 'claude', instance: 'native', model: 'opus' },
+      toolScope: 'narrow_write',
+      workspaceHeadOid: HEAD_BEFORE,
+    },
+    'execution facts are attached to this Run rather than held in process globals',
+  );
   assert.equal(core.runs.length, 1, 'exactly one Run for one authorization');
   assert.equal(core.tasks.length, 1, 'exactly one Task');
 
@@ -506,10 +541,10 @@ test('an attachment-only request is refused without inventing a goal (FR-48)', a
 
 /** Rebuilds the process-local objects around surviving Core state. */
 function restart(previous: Harness): Harness {
-  const next = createHarness();
-  // The ledger survives; everything else is new.
-  (next as { coreStore: MemoryCoreStore }).coreStore = previous.coreStore;
-  return next;
+  return createHarness({
+    coreStore: previous.coreStore,
+    transportState: previous.transportState,
+  });
 }
 
 async function proposeAndCaptureButton(harness: Harness): Promise<string> {
@@ -527,12 +562,12 @@ test('restarting at scope-proposed keeps one Work Item and the button still work
   const beforeRuns = (await second.coreStore.readCore()).runs.length;
   assert.equal(beforeRuns, 0, 'no Run exists before authorization (FR-19)');
 
-  // A token issued by the dead process is not resolvable by the new one, which
-  // is the safe direction: the owner is told, not silently ignored.
+  // Both the opaque token grant and the proposal survive the process boundary.
   await second.deliver(callbackUpdate(2, button));
+  await second.settle();
   const core = await second.coreStore.readCore();
   assert.equal(core.workItems.length, 1, 'no parallel Work Item appeared');
-  assert.equal(core.runs.length, 0, 'a stale token cannot start a Run');
+  assert.equal(core.runs.length, 1, 'the already-issued button admits exactly one Run');
   assert.deepEqual(second.answered, ['cb-2'], 'the tap was still acknowledged (FR-12)');
 });
 

@@ -2,9 +2,8 @@
  * Durable transport delivery outbox (SPEC-114 FR-32..FR-33, FR-42..FR-47).
  *
  * This is a narrow, replaceable platform interface rather than a new Core
- * record family (ADR-112 section 1). The first implementation is in-memory and
- * is the same shape a Telegram-store-backed implementation must satisfy, so the
- * storage swap is later and local.
+ * record family (ADR-112 section 1). Production supplies a transport state
+ * store; isolated tests may keep using the in-memory form.
  *
  * Three invariants earn this module its existence:
  *
@@ -22,6 +21,7 @@ import type {
   TransportWorkDeliveryV1,
 } from './contracts.js';
 import type { TransportWorkTelemetry } from './telemetry.js';
+import type { TransportWorkStateStore } from './stateStore.js';
 
 /** Purposes that must never be suppressed by a newer message. */
 const PRIORITY_PURPOSES: ReadonlySet<TransportWorkDeliveryPurpose> = new Set([
@@ -78,8 +78,12 @@ export interface TransportWorkOutbox {
   /** Idempotent: an existing key returns the stored row untouched. */
   enqueue(input: TransportWorkOutboxEnqueueInput): TransportWorkDeliveryV1;
   flush(idempotencyKey: string): Promise<TransportWorkOutboxFlushResult>;
+  /** Explicit owner retry; this is the only operation allowed to re-drive ambiguity. */
+  retry(idempotencyKey: string): Promise<TransportWorkOutboxFlushResult>;
   /** Flushes every non-terminal row for a work item, in sequence order. */
   flushWorkItem(workItemId: string): Promise<TransportWorkOutboxFlushResult[]>;
+  /** Startup recovery sends only rows that were safely pending before a crash. */
+  recoverPending(): Promise<TransportWorkOutboxFlushResult[]>;
   get(idempotencyKey: string): TransportWorkDeliveryV1 | null;
   list(workItemId: string): TransportWorkDeliveryV1[];
   /** True once a `result` or `publish_result` row reached `sent`. */
@@ -93,10 +97,12 @@ export interface TransportWorkOutboxOptions {
   initialRows?: readonly TransportWorkDeliveryV1[];
   /** Optional counters. Absent means the path runs unmeasured, never broken. */
   telemetry?: TransportWorkTelemetry;
+  /** Durable storage for intents, attempts, and receipts. */
+  store?: TransportWorkStateStore;
 }
 
 function isTerminalState(state: TransportWorkDeliveryState): boolean {
-  return state === 'sent';
+  return state === 'sent' || state === 'ambiguous';
 }
 
 export function createTransportWorkOutbox(
@@ -106,11 +112,36 @@ export function createTransportWorkOutbox(
   const telemetry = options.telemetry;
   const rows = new Map<string, TransportWorkDeliveryV1>();
   const sequenceByWorkItem = new Map<string, number>();
+  const inFlight = new Map<string, Promise<TransportWorkOutboxFlushResult>>();
 
-  for (const row of options.initialRows ?? []) {
-    rows.set(row.idempotencyKey, { ...row });
+  const recoveredRows = [
+    ...(options.store?.listDeliveries() ?? []),
+    ...(options.initialRows ?? []),
+  ];
+  for (const recovered of recoveredRows) {
+    // A process that died while `send` was in flight cannot know whether the
+    // transport accepted the message. Preserve that uncertainty; never turn it
+    // into an automatic duplicate after restart.
+    const wasInterrupted = recovered.state === 'sending';
+    const row: TransportWorkDeliveryV1 = wasInterrupted
+      ? {
+        ...recovered,
+        state: 'ambiguous',
+        lastErrorCode: recovered.lastErrorCode ?? 'interrupted_send',
+        updatedAt: now().toISOString(),
+      }
+      : { ...recovered };
+    rows.set(row.idempotencyKey, row);
+    if (wasInterrupted) {
+      options.store?.putDelivery(row);
+    }
     const highest = sequenceByWorkItem.get(row.workItemId) ?? 0;
     sequenceByWorkItem.set(row.workItemId, Math.max(highest, row.sequence));
+  }
+
+  function put(row: TransportWorkDeliveryV1): void {
+    rows.set(row.idempotencyKey, row);
+    options.store?.putDelivery(row);
   }
 
   function nextSequence(workItemId: string): number {
@@ -142,9 +173,12 @@ export function createTransportWorkOutbox(
   }
 
   async function flushRow(row: TransportWorkDeliveryV1): Promise<TransportWorkOutboxFlushResult> {
-    if (isTerminalState(row.state)) {
+    if (row.state === 'sent') {
       telemetry?.record('dedupe_hit', 'update');
       return { outcome: 'already_sent', row };
+    }
+    if (row.state === 'ambiguous') {
+      return { outcome: 'ambiguous', row };
     }
     if (isStaleRoutine(row)) {
       const suppressed: TransportWorkDeliveryV1 = {
@@ -153,7 +187,7 @@ export function createTransportWorkOutbox(
         lastErrorCode: 'suppressed_stale',
         updatedAt: now().toISOString(),
       };
-      rows.set(suppressed.idempotencyKey, suppressed);
+      put(suppressed);
       return { outcome: 'suppressed_stale', row: suppressed };
     }
 
@@ -163,7 +197,7 @@ export function createTransportWorkOutbox(
       attemptCount: row.attemptCount + 1,
       updatedAt: now().toISOString(),
     };
-    rows.set(sending.idempotencyKey, sending);
+    put(sending);
 
     let result: TransportWorkOutboxSendResult;
     try {
@@ -191,21 +225,41 @@ export function createTransportWorkOutbox(
         updatedAt: now().toISOString(),
         sentAt: now().toISOString(),
       };
-      rows.set(sent.idempotencyKey, sent);
+      put(sent);
       return { outcome: 'sent', row: sent };
     }
 
-    // An ambiguous send stays `pending`: the message may already be on the
-    // wire, so the row must be reconciled rather than blindly retried.
+    // Ambiguity is terminal for automatic recovery. Only an explicit owner
+    // retry may move it back to pending, because the message may be on the wire.
     const failed: TransportWorkDeliveryV1 = {
       ...sending,
-      state: result.ambiguous === true ? 'pending' : 'failed',
+      state: result.ambiguous === true ? 'ambiguous' : 'failed',
       lastErrorCode: result.errorCode ?? 'send_failed',
       updatedAt: now().toISOString(),
     };
-    rows.set(failed.idempotencyKey, failed);
+    put(failed);
     telemetry?.record('delivery_receipt', result.ambiguous === true ? 'ambiguous' : 'failed');
     return { outcome: result.ambiguous === true ? 'ambiguous' : 'failed', row: failed };
+  }
+
+  function flushOne(idempotencyKey: string): Promise<TransportWorkOutboxFlushResult> {
+    const active = inFlight.get(idempotencyKey);
+    if (active) {
+      return active;
+    }
+    const row = rows.get(idempotencyKey);
+    if (!row) {
+      return Promise.reject(
+        new Error(`Unknown transport work delivery key: ${idempotencyKey}`),
+      );
+    }
+    const started = flushRow(row).finally(() => {
+      if (inFlight.get(idempotencyKey) === started) {
+        inFlight.delete(idempotencyKey);
+      }
+    });
+    inFlight.set(idempotencyKey, started);
+    return started;
   }
 
   return {
@@ -234,16 +288,33 @@ export function createTransportWorkOutbox(
         updatedAt: timestamp,
         sentAt: null,
       };
-      rows.set(row.idempotencyKey, row);
+      put(row);
       return row;
     },
 
-    async flush(idempotencyKey) {
+    flush(idempotencyKey) {
+      return flushOne(idempotencyKey);
+    },
+
+    async retry(idempotencyKey) {
+      const active = inFlight.get(idempotencyKey);
+      if (active) {
+        return active;
+      }
       const row = rows.get(idempotencyKey);
       if (!row) {
         throw new Error(`Unknown transport work delivery key: ${idempotencyKey}`);
       }
-      return flushRow(row);
+      if (row.state === 'sent') {
+        return { outcome: 'already_sent', row };
+      }
+      const pending: TransportWorkDeliveryV1 = {
+        ...row,
+        state: 'pending',
+        updatedAt: now().toISOString(),
+      };
+      put(pending);
+      return flushOne(idempotencyKey);
     },
 
     async flushWorkItem(workItemId) {
@@ -254,7 +325,19 @@ export function createTransportWorkOutbox(
         if (isTerminalState(row.state)) {
           continue;
         }
-        results.push(await flushRow(rows.get(row.idempotencyKey) ?? row));
+        results.push(await flushOne(row.idempotencyKey));
+      }
+      return results;
+    },
+
+    async recoverPending() {
+      const results: TransportWorkOutboxFlushResult[] = [];
+      const pending = [...rows.values()]
+        .filter((row) => row.state === 'pending')
+        .sort((left, right) => left.createdAt.localeCompare(right.createdAt)
+          || left.sequence - right.sequence);
+      for (const row of pending) {
+        results.push(await flushOne(row.idempotencyKey));
       }
       return results;
     },

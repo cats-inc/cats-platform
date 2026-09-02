@@ -26,6 +26,10 @@ export interface WorkCommitEvidence {
   changeSummary: string;
   /** Validation the run performed (test command, typecheck, lint). */
   validation: { command: string; passed: boolean } | null;
+  /** Runtime-owned location that contains this commit, never the operator's source worktree. */
+  deliveryWorkspacePath?: string | null;
+  /** Runtime session that owns the isolated delivery workspace. */
+  deliverySessionId?: string | null;
 }
 
 export interface WorkCompletionEvidenceInput {
@@ -76,7 +80,10 @@ export function evaluateWorkCompletionEvidence(
     gaps.push('acceptance_criteria_unmet');
   }
 
-  if (input.deliveryMode === 'commit_only') {
+  // Every repository-backed mode builds on a local commit. Push, PR, and
+  // preview are publication steps added *after* that evidence, not substitutes
+  // for proving the provider's edits were captured.
+  if (input.deliveryMode !== 'artifact_only') {
     if (input.commit === null || !isImmutableCommitId(input.commit.commitId)) {
       gaps.push('no_commit_evidence');
     } else if (input.commit.validation === null || !input.commit.validation.passed) {

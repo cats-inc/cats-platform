@@ -242,7 +242,7 @@ export async function retryWorkGoldenPathDelivery(
   taskId: string,
 ): Promise<WorkGoldenPathRetryDeliveryResult> {
   const recovery = dependencies.transportWorkDelivery;
-  if (recovery === undefined || typeof (recovery as TransportWorkDeliveryRecovery).flush !== 'function') {
+  if (recovery === undefined || typeof (recovery as TransportWorkDeliveryRecovery).retry !== 'function') {
     return {
       status: 'not_available',
       reason: 'No transport delivery outbox is available on this host.',
@@ -277,7 +277,7 @@ export async function retryWorkGoldenPathDelivery(
     };
   }
 
-  const flushed = await (recovery as TransportWorkDeliveryRecovery).flush(pending.idempotencyKey);
+  const flushed = await (recovery as TransportWorkDeliveryRecovery).retry(pending.idempotencyKey);
   const refreshed = buildWorkGoldenPathDetailProjectionForTask({
     core: await dependencies.coreStore.readCore(),
     taskId,

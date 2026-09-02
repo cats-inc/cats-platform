@@ -50,6 +50,27 @@ export interface TelegramIngressDispatcherOptions {
   maxInFlightPerKey?: number;
 }
 
+/**
+ * Runs short durability-critical ingress work through the shared capacity
+ * tracker and exposes its result to the caller. The dispatched promise always
+ * settles successfully; the returned promise carries any failure.
+ */
+export function dispatchTelegramIngressAndWait<T>(
+  dispatcher: TelegramIngressDispatcher,
+  key: string,
+  work: () => Promise<T>,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    dispatcher.dispatch(key, async () => {
+      try {
+        resolve(await work());
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}
+
 export function createTelegramIngressDispatcher(
   options: TelegramIngressDispatcherOptions = {},
 ): TelegramIngressDispatcher {

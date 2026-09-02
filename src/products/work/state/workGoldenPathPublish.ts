@@ -59,6 +59,9 @@ export interface WorkGoldenPathPublishRequest {
   outstandingGates: readonly CoreDeliveryGate[];
   ownerActorId: string;
   actorRef: string;
+  /** Runtime-owned cwd/session captured with the accepted evidence. */
+  deliveryWorkspacePath: string | null;
+  deliverySessionId: string | null;
 }
 
 export interface WorkGoldenPathPublishApprovalRef {
@@ -194,7 +197,8 @@ export async function requestWorkGoldenPathPublishApproval(
             deliveryMode: input.proposal.deliveryMode,
             effectiveGates: [...input.outstandingGates],
             requestedActions: PUBLISH_ACTIONS[input.proposal.deliveryMode] ?? null,
-            workspacePath: input.proposal.workspacePath,
+            workspacePath: input.deliveryWorkspacePath,
+            sessionId: input.deliverySessionId,
           },
         },
       },
@@ -290,7 +294,8 @@ async function performPublishActions(input: {
   /** Actions a previous attempt already landed; never repeated. */
   alreadyPerformed: readonly CoreRuntimeDeliveryAction[];
   deliveryClient: RuntimeDeliveryClient;
-  workspacePath: string;
+  workspacePath: string | null;
+  sessionId: string | null;
   approvalRef: string;
   goal: string;
   resumeOperationId: string | null;
@@ -314,11 +319,13 @@ async function performPublishActions(input: {
     if (action === 'push_branch') {
       outcome = await input.deliveryClient.pushBranch({
         workspacePath: input.workspacePath,
+        sessionId: input.sessionId,
         approvalRef: input.approvalRef,
       });
     } else if (action === 'open_pull_request') {
       outcome = await input.deliveryClient.openPullRequest({
         workspacePath: input.workspacePath,
+        sessionId: input.sessionId,
         approvalRef: input.approvalRef,
         title: input.goal,
         body: `Opened by Cats for "${input.goal}".`,
@@ -326,12 +333,14 @@ async function performPublishActions(input: {
     } else if (action === 'wait_for_checks') {
       outcome = await input.deliveryClient.waitForChecks({
         workspacePath: input.workspacePath,
+        sessionId: input.sessionId,
         approvalRef: input.approvalRef,
         resumeOperationId: input.resumeOperationId,
       });
     } else if (action === 'publish_preview') {
       outcome = await input.deliveryClient.publishPreview({
         workspacePath: input.workspacePath,
+        sessionId: input.sessionId,
         approvalRef: input.approvalRef,
       });
     } else {
@@ -459,6 +468,7 @@ export async function applyWorkGoldenPathPublishDecision(
   const workspacePath = typeof envelope.workspacePath === 'string'
     ? envelope.workspacePath
     : null;
+  const sessionId = typeof envelope.sessionId === 'string' ? envelope.sessionId : null;
 
   if (actions === undefined) {
     return {
@@ -480,7 +490,7 @@ export async function applyWorkGoldenPathPublishDecision(
   let blockedReasons: string[] = [];
 
   if (actions.length > 0) {
-    if (input.deliveryClient === undefined || workspacePath === null) {
+    if (input.deliveryClient === undefined || (workspacePath === null && sessionId === null)) {
       blockedReasons = ['publish_transport_unavailable'];
     } else {
       try {
@@ -489,6 +499,7 @@ export async function applyWorkGoldenPathPublishDecision(
           alreadyPerformed: performed,
           deliveryClient: input.deliveryClient,
           workspacePath,
+          sessionId,
           // The Core approval id is the authorization the runtime records.
           approvalRef: approvalTask.id,
           goal: approvalTask.title.replace(/^Publish:\s*/u, ''),

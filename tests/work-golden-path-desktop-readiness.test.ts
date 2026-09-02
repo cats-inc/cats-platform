@@ -92,6 +92,13 @@ test('every declared reason is reachable from the evaluator', () => {
         reasons: ['workspace_not_a_repository' as const],
       },
     },
+    {
+      permission: {
+        toolScope: 'read_only' as const,
+        sufficient: false,
+        reasons: ['workspace_not_clean' as const],
+      },
+    },
   ];
   for (const base of bases) {
     const readiness = evaluateTransportWorkReadiness({

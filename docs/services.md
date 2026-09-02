@@ -93,6 +93,14 @@ composes no golden path at all, so:
 
 No data migration is involved in either direction.
 
+Opaque action grants and outbound delivery intents/receipts live in
+`<platform-state-dir>/transport-work-delivery.json`, written atomically with
+owner-only file permissions. Startup automatically sends rows that were still
+plain `pending`. A row found in `sending` has an unknowable Telegram outcome,
+so it becomes `ambiguous` and is never sent again until the owner explicitly
+chooses Retry; this prefers a visible possible duplicate over a silent automatic
+duplicate.
+
 ### The host-offline limit
 
 This is a local-first path: work executes on the machine running Cats Desktop.

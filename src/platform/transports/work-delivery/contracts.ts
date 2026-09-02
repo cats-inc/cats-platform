@@ -43,12 +43,13 @@ export type TransportWorkDeliveryPurpose =
   | 'result'
   | 'publish_result';
 
-/** Lifecycle of one outbox row. `sent` and `failed` are both terminal-ish. */
+/** Lifecycle of one outbox row. `ambiguous` requires explicit owner retry. */
 export type TransportWorkDeliveryState =
   | 'pending'
   | 'sending'
   | 'sent'
-  | 'failed';
+  | 'failed'
+  | 'ambiguous';
 
 /**
  * One durable outbound intent plus its receipt.
@@ -180,6 +181,7 @@ export const TRANSPORT_WORK_READINESS_REASONS = [
   'workspace_missing',
   'workspace_unreachable',
   'workspace_not_a_repository',
+  'workspace_not_clean',
   'delivery_policy_unresolved',
   'background_service_unavailable',
 ] as const;

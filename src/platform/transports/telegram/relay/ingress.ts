@@ -68,6 +68,8 @@ export interface ReceiveTelegramUpdateOptions {
   conversationMapper: TelegramConversationMapper;
   context: TelegramRelayContext;
   update: TelegramWebhookUpdate;
+  /** Delay dedupe acknowledgement until product-owned durable capture succeeds. */
+  deferProcessed?: boolean;
 }
 
 export function receiveTelegramUpdate(options: ReceiveTelegramUpdateOptions): TelegramWebhookReceipt {
@@ -184,7 +186,7 @@ export function receiveTelegramUpdate(options: ReceiveTelegramUpdateOptions): Te
     }),
   });
 
-  if (updateId !== null) {
+  if (updateId !== null && options.deferProcessed !== true) {
     options.store.markProcessedUpdate(updateId);
   }
 

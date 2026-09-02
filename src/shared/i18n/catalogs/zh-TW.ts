@@ -2274,6 +2274,7 @@ export const zhTWCatalog: MessageCatalog = {
   'workDelivery.readiness.refresh': '重新檢查',
   'workDelivery.readiness.workspaceUnreachable': '無法讀取設定的工作區路徑，請確認路徑存在且 runtime 正在執行。',
   'workDelivery.readiness.workspaceNotARepository': '此交付模式需要 git 儲存庫，但設定的工作區不是。',
+  'workDelivery.readiness.workspaceNotClean': '儲存庫已有未交付的變更。請先交付、stash 或捨棄它們再交辦工作。',
   'workDelivery.readiness.deliveryPolicyUnresolved': '無法解析有效的交付政策。',
   'workDelivery.readiness.backgroundServiceUnavailable': 'Cats Desktop 背景服務未執行，因此無法在此執行工作。',
   'workDelivery.proposal.title': '工作範圍（版本 {revision}）',

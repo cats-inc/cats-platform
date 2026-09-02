@@ -14,6 +14,7 @@ import type {
   TransportWorkActionTokenResolution,
   TransportWorkActionTokenV1,
 } from './contracts.js';
+import type { TransportWorkStateStore } from './stateStore.js';
 
 /** Telegram's hard `callback_data` limit. */
 const TELEGRAM_CALLBACK_DATA_MAX_BYTES = 64;
@@ -74,6 +75,8 @@ export interface TransportWorkActionTokenStoreOptions {
   ttlMs?: number;
   /** Injectable for deterministic tests; must return unpredictable bytes. */
   randomToken?: () => string;
+  /** Durable transport state. Production always supplies this. */
+  store?: TransportWorkStateStore;
 }
 
 export function encodeTransportWorkCallbackData(token: string): string {
@@ -116,7 +119,19 @@ export function createTransportWorkActionTokenStore(
   const now = options.now ?? (() => new Date());
   const ttlMs = options.ttlMs ?? DEFAULT_TOKEN_TTL_MS;
   const randomToken = options.randomToken ?? defaultRandomToken;
-  const tokens = new Map<string, TransportWorkActionTokenV1>();
+  const tokens = new Map<string, TransportWorkActionTokenV1>(
+    (options.store?.listActionTokens() ?? []).map((token) => [token.token, token]),
+  );
+
+  function removeExpired(): void {
+    const timestamp = now().getTime();
+    for (const [key, token] of tokens) {
+      if (timestamp >= Date.parse(token.expiresAt)) {
+        tokens.delete(key);
+        options.store?.deleteActionToken(key);
+      }
+    }
+  }
 
   function findToken(candidate: string): TransportWorkActionTokenV1 | null {
     const direct = tokens.get(candidate);
@@ -128,6 +143,7 @@ export function createTransportWorkActionTokenStore(
 
   return {
     issue(input) {
+      removeExpired();
       const issuedAt = now();
       const token: TransportWorkActionTokenV1 = {
         version: 1,
@@ -143,6 +159,7 @@ export function createTransportWorkActionTokenStore(
         expiresAt: new Date(issuedAt.getTime() + ttlMs).toISOString(),
       };
       tokens.set(token.token, token);
+      options.store?.putActionToken(token);
       return token;
     },
 
@@ -164,6 +181,8 @@ export function createTransportWorkActionTokenStore(
         return { status: 'rejected', reason: 'unauthorized_owner' };
       }
       if (now().getTime() >= Date.parse(token.expiresAt)) {
+        tokens.delete(token.token);
+        options.store?.deleteActionToken(token.token);
         return { status: 'rejected', reason: 'expired' };
       }
 
@@ -199,6 +218,7 @@ export function createTransportWorkActionTokenStore(
           removed += 1;
         }
       }
+      options.store?.deleteActionTokensForWorkItem(workItemId);
       return removed;
     },
 

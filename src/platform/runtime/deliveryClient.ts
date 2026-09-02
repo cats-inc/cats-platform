@@ -55,11 +55,11 @@ export interface RuntimePublishOutcome {
 }
 
 export interface RuntimeDeliveryClient {
-  inspectRepo(input: { workspacePath: string; sessionId?: string | null }): Promise<
+  inspectRepo(input: { workspacePath?: string | null; sessionId?: string | null }): Promise<
     RuntimeRepoSnapshot
   >;
   createCommit(input: {
-    workspacePath: string;
+    workspacePath?: string | null;
     sessionId?: string | null;
     message: string;
   }): Promise<RuntimeCommitOutcome>;
@@ -74,12 +74,12 @@ export interface RuntimeDeliveryClient {
    * than being told only that someone did.
    */
   pushBranch(input: {
-    workspacePath: string;
+    workspacePath?: string | null;
     sessionId?: string | null;
     approvalRef: string;
   }): Promise<RuntimePublishOutcome>;
   openPullRequest(input: {
-    workspacePath: string;
+    workspacePath?: string | null;
     sessionId?: string | null;
     approvalRef: string;
     title: string;
@@ -93,14 +93,14 @@ export interface RuntimeDeliveryClient {
    * real answer, not a timeout.
    */
   waitForChecks(input: {
-    workspacePath: string;
+    workspacePath?: string | null;
     sessionId?: string | null;
     approvalRef: string;
     timeoutMs?: number;
     resumeOperationId?: string | null;
   }): Promise<RuntimePublishOutcome>;
   publishPreview(input: {
-    workspacePath: string;
+    workspacePath?: string | null;
     sessionId?: string | null;
     approvalRef: string;
   }): Promise<RuntimePublishOutcome>;
@@ -287,7 +287,7 @@ export function createRuntimeDeliveryClient(
     async inspectRepo({ workspacePath, sessionId }) {
       return parseRepoSnapshot(await post('/delivery/repo/status', {
         action: 'inspect-repo-status',
-        workspacePath,
+        ...(workspacePath ? { workspacePath } : {}),
         ...(sessionId ? { sessionId } : {}),
       }));
     },
@@ -295,9 +295,16 @@ export function createRuntimeDeliveryClient(
     async createCommit({ workspacePath, sessionId, message }) {
       const body = await post('/delivery/repo/commit', {
         action: 'create-commit',
-        workspacePath,
+        ...(workspacePath ? { workspacePath } : {}),
         apply: true,
-        context: { message, stageAll: true },
+        actorRole: 'owner',
+        approved: true,
+        // cats-runtime reads commit options from `repo`, not `context`.
+        // Golden-path sessions run in a runtime-managed isolated worktree. Cats
+        // stages that entire clean-baseline sandbox itself; the provider has no
+        // git/shell tool and cannot sweep the operator's original worktree.
+        repo: { message, stageAll: true },
+        context: { source: 'cats_work_golden_path', isolatedWorktree: true },
         ...(sessionId ? { sessionId } : {}),
       });
       const record = isRecord(body) ? body : {};
@@ -314,9 +321,13 @@ export function createRuntimeDeliveryClient(
     async pushBranch({ workspacePath, sessionId, approvalRef }) {
       const body = await post('/delivery/repo/push', {
         action: 'push-branch',
-        workspacePath,
+        ...(workspacePath ? { workspacePath } : {}),
         apply: true,
-        authorization: { actorRole: 'owner', approved: true, approvalRef },
+        // cats-runtime authorizes delivery from top-level fields. Preserve the
+        // Core approval reference as delivery context for audit correlation.
+        actorRole: 'owner',
+        approved: true,
+        context: { approvalRef },
         ...(sessionId ? { sessionId } : {}),
       });
       const record = isRecord(body) ? body : {};
@@ -331,7 +342,7 @@ export function createRuntimeDeliveryClient(
 
     async openPullRequest({ workspacePath, sessionId, approvalRef, title, body: prBody }) {
       const body = await post('/management/review/open-pr', {
-        workspacePath,
+        ...(workspacePath ? { workspacePath } : {}),
         apply: true,
         actorClass: 'owner',
         approvalRef,
@@ -356,7 +367,7 @@ export function createRuntimeDeliveryClient(
           ...(timeoutMs === undefined ? {} : { timeoutMs }),
         })
         : await post('/management/review/wait-checks', {
-          workspacePath,
+          ...(workspacePath ? { workspacePath } : {}),
           apply: true,
           actorClass: 'owner',
           approvalRef,
@@ -368,7 +379,7 @@ export function createRuntimeDeliveryClient(
 
     async publishPreview({ workspacePath, sessionId, approvalRef }) {
       const body = await post('/management/deployment/create', {
-        workspacePath,
+        ...(workspacePath ? { workspacePath } : {}),
         apply: true,
         actorClass: 'owner',
         approvalRef,
