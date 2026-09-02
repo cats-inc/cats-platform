@@ -49,9 +49,9 @@ persisted development state.
 - G0 **passed** — ADR-112 Accepted, SPEC-114 Approved, Phase 1 open questions resolved by
   owner direction.
 - G1 **passed** — the shared readiness evaluator, its reason codes, localized remediation
-  copy, the real permission envelope, the Desktop settings remediation panel, the capability
-  bootstrap Settings surface, and a truthful `/status` on both ingress modes are all wired,
-  and every surface reads one evaluation.
+  copy, the real permission envelope, the Desktop settings remediation panel, the writable
+  capability-bootstrap Settings surface, and a truthful `/status` on both ingress modes are
+  all wired, and every surface reads one evaluation.
 - G2 **passed** — callback polling, opaque action tokens, the durable outbox, ordering,
   coalescing, receipt/retry behaviour, bridge-level callback acknowledgement, and
   non-blocking continuation on *both* ingress modes with one bounded per-binding
@@ -137,15 +137,16 @@ rules, idempotency scheme, and isolated test plan.
       catalogs; every outbound golden-path message is localized at render time.*
 - [x] Surface provider capability bootstrap/configuration through a supported
       Settings/onboarding path so local file editing is not the sole path.
-      *`GET/POST /api/providers/capability-bootstrap` plus a panel on
+      *`GET/POST/PUT /api/providers/capability-bootstrap` plus a panel on
       `/settings/assistants` — where the `capability_profile_missing` blocker
       links. It shows where the file is looked for, whether it parsed, the rules
       in effect, and every diagnostic (previously collected into a sink that no
       surface rendered, so a malformed file failed silently), and it installs the
-      bundled example once, refusing to overwrite. Rule authoring stays in the
-      file, and a newly installed file reports `restartRequired` rather than
-      implying a live reload the host cannot perform — the loaded config is
-      passed by value into the chat dispatch adapters at composition time.*
+      bundled example once, refusing to overwrite. The panel now authors every
+      rule field and saves through a validating `PUT`; a SHA-256 revision rejects
+      stale writes after an out-of-band YAML edit. Saves report `restartRequired`
+      rather than implying live reload — the loaded config is passed by value into
+      dispatch adapters at composition time.*
 - [x] Prevent Telegram from offering Start work until the versioned proposal
       contains a currently admissible target.
 - [x] Ensure `/status` continues to report binding health and identifies when
@@ -153,10 +154,11 @@ rules, idempotency scheme, and isolated test plan.
       *"Continues" did not hold: transport commands were intercepted in the
       webhook route only, so on long polling — the default ingress — `/status`
       was forwarded to the assistant as chat text. Commands now run through the
-      bridge, so both ingress modes answer identically. `/status` reports ingress
-      health and delegation state with every missing prerequisite named; a
-      readiness lookup that fails reports "could not be checked" rather than
-      ready (FR-5).*
+      bridge, so both ingress modes answer identically. `/status` reports ingress,
+      local runtime health, and delegation as separate lines. A reachable runtime
+      with a non-healthy status is `degraded`; an unreachable runtime is
+      `unavailable` and also blocks readiness. A readiness lookup failure still
+      reports delegation as unknown while independently checking local execution.*
 - [x] Add tests for missing provider binary/auth, absent capability profile,
       invalid workspace, insufficient permission, disabled binding, and stopped
       background service.
@@ -372,9 +374,10 @@ action, final source-binding delivery, and durable receipt/retry state.
       *Documented in `docs/services.md`, including the uncomfortable part: when
       the host is asleep Telegram gets **no reply at all**, not an "offline"
       message, because the process that would answer is the one that is not
-      running. The `background_service_unavailable` blocker is therefore
-      effectively unreachable from Telegram and its absence must not be read as
-      proof of uptime.*
+      running. When the platform is alive but its local runtime is unavailable,
+      `/status` now reports that state and the shared evaluator emits
+      `background_service_unavailable`; neither result proves the platform host
+      has been up continuously.*
 - [x] Add telemetry/diagnostic counters for readiness failure, dedupe hit,
       admission result, Run terminal state, decision latency, outbox retry, and
       delivery receipt without recording message bodies or secrets.
@@ -454,8 +457,8 @@ Platform (transport-neutral, no product imports):
   ingress modes use; an interface because answering commands needs product state.
 - `src/app/server/telegramCommandSurface.ts` — new. Its host implementation, including
   the delegation status `/status` reports.
-- `src/server/routes/providerCapabilityBootstrap.ts` — new. Read and install-example for
-  the capability bootstrap config.
+- `src/server/routes/providerCapabilityBootstrap.ts` — new. Read, install-example, and
+  revision-guarded validated writes for the capability bootstrap config.
 - `src/app/renderer/settings/CapabilityBootstrapSection.tsx` — new. Its Settings panel on
   `/settings/assistants`.
 - `src/platform/transports/work-delivery/permissionEnvelope.ts` — new. The permission
@@ -786,6 +789,7 @@ Docs:
 | 2026-09-02 | Phase 6 closed apart from the two credential-gated smokes, and the Phase 0 trace matrix with it. All 50 SPEC-114 requirements are now mapped in the SPEC: 46 done, 3 partial, 1 gap. Writing the matrix was worth more than the matrix: it found two live defects. **`adjust` was a button that always failed** — it was offered on every proposal while `authorize` had no branch for it, so tapping it returned `action_not_allowed`. Rather than leave it, the action is removed from the `TransportWorkAction` union entirely, which makes "offer an action nothing handles" a type error instead of a discipline problem; it returns with the FR-16 clarification loop, which is the real gap (intake captures per Telegram update ref, so a follow-up message would open a *parallel* Work Item). **Task detail offered "Start run" on a golden-path Task that already had a queued Run** — `canStartRun` checked only `status === "approved"`, but admission approves and queues in one transaction, so this was exactly the redundant second click FR-24 forbids and taking it would have started a second Run. New: a deterministic end-to-end suite that drives a raw Telegram update through the real bridge, relay, token store, evidence collector, and outbox into isolated Core, asserting on wire traffic and persisted records rather than on function returns — only the provider and the runtime's repo calls are faked; a restart matrix that rebuilds every process-local object around surviving Core state at each checkpoint and proves no duplicate Task, Run, outcome, or final message; bounded telemetry counters where "no message bodies or secrets" is enforced by a closed label set rather than by call-site discipline, read through `GET /api/work/delivery-telemetry`; and a rollback test proving `/work` reverts to chat routing with every Core and transport record intact. Documented the host-offline limit honestly in `docs/services.md`, including the part that is not reassuring: when the host is asleep Telegram gets **no reply at all**, so the absence of a `background_service_unavailable` blocker must not be read as proof of uptime. 18 new tests. Full `npm test`: 4478 tests, 4435 pass, 40 skipped, 3 fail — the same three pre-existing `unix-provider-scripts` bash-3.2 failures, unrelated to this work. |
 | 2026-09-02 | Post-merge review hardening for commits `82ed9823` through `127ff568`. Removed process-global target/relay state in favor of request/run-scoped snapshots; made the callback-token/outbox ledger file-backed with atomic writes and startup recovery; changed interrupted or otherwise ambiguous Telegram sends to explicit-owner retry only and made concurrent flushes single-flight; delayed Telegram dedupe/offset acknowledgement until `/work` reaches durable Core/outbox capture; rejected dirty repository baselines; moved provider edits into runtime-owned isolated worktrees with a local-file-only tool whitelist; aligned commit/push authorization payloads with cats-runtime; carried the runtime cwd/session through evidence into gated publish; and made every repository-backed mode create verified commit evidence before push/PR/preview. Capability readiness now requires an actual matching bootstrap rule, and the trace matrix correctly keeps environment-backed Work Settings at partial. Verification: full typecheck and all builds passed; focused durability/evidence/publish/readiness/E2E suites passed (91 tests), plus the rebuilt gated-delivery suite passed (17 tests). The full 4,490-test run initially had one stale repository-mode fixture plus the three already-documented bash-3.2 Unix-helper failures; the fixture was corrected and passed in both source and compiled form, leaving only those three unrelated known failures. |
 | 2026-09-02 | Cross-repo delivery blocker closed in cats-runtime. Its isolated session worktree intentionally starts on detached HEAD, but the delivery service previously committed there and then refused the same workspace at `push-branch`; therefore `push_branch`, `pr_with_checks`, and `deploy_preview` could never finish in a live run. Approved `create-commit` now creates a deterministic `cats/runtime/<session-id>` branch for runtime-owned worktree sessions before committing, after which the unchanged push/review adapters can continue. Ordinary worktree preparation remains detached, and discard/orphan cleanup removes only that reserved runtime branch namespace. Runtime typecheck and the 15 focused delivery/worktree tests pass. The full runtime suite built successfully and passed 1,913/1,915 tests; two unrelated tests exceeded their fixed five-second timeout under the serial full-suite load, then each passed alone with a 15-second timeout (Linux autostart in 5.8 s and legacy Copilot resume in 3.8 s). |
+| 2026-09-02 | Closed the two remaining non-blocking G1 product gaps. Capability bootstrap is now writable from `/settings/assistants`: the structured editor covers the complete v1 selector/treatment/reason schema, server-side parsing remains authoritative, atomic YAML writes use owner-only permissions, and a file revision prevents silently overwriting an external edit. Because dispatch adapters still receive the config at composition time, a successful mutation explicitly requires restart. `/status` now reports local execution independently from ingress and delegation; runtime health maps to healthy/degraded/unavailable, an unavailable runtime blocks admission, and readiness failure cannot hide a separately observable runtime degradation. The same local-execution projection appears in Work readiness. Targeted API, renderer, command, and readiness tests pass. No new ADR was needed because this completes SPEC-114's accepted readiness contract rather than changing it. |
 ---
 
 *Created: 2026-09-02*

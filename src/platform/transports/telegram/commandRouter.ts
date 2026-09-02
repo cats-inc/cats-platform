@@ -18,8 +18,10 @@ import type { TelegramPollingHealth } from './contracts.js';
 export interface TelegramCommandDelegationStatus {
   /** Ingress health for this binding. `null` when it has no polling consumer. */
   bindingHealth: TelegramPollingHealth | null;
-  /** Whether work delegation is switched on for this host at all. */
-  enabled: boolean;
+  /** Health of the local runtime that would execute delegated work. */
+  localExecution: 'healthy' | 'degraded' | 'unavailable' | 'unknown';
+  /** Whether delegation is on; null when readiness itself could not be read. */
+  enabled: boolean | null;
   canAcceptWork: boolean;
   /** i18n keys naming each missing prerequisite, in evaluation order. */
   blockerKeys: string[];

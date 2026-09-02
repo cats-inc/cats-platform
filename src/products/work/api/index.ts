@@ -671,6 +671,7 @@ export async function routeWorkApi(
         enabled: false,
         workspacePath: null,
         authorizedOwnerCount: 0,
+        localExecution: 'unknown',
         bindings: [],
       });
       return true;

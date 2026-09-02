@@ -406,11 +406,13 @@ or the path in `CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG`.
 
 Unlisted provider/model/control targets start as `default` / `unknown`.
 Provider catalog entries and runtime delivery richness do not grant
-`strong_agent` or `weak_worker` treatment by themselves. Copy
+`strong_agent` or `weak_worker` treatment by themselves. Use
+`Settings > Assistants > Provider capability bootstrap` to manage rules. The
+same surface can install the bundled example, or an operator may copy
 `config/provider-capability-bootstrap.yaml.example` (bundled at
 `<platform package root>/config/` in dev and at
 `<resources>/cats-platform/config/` in the packaged Electron host) to the active
-config path and edit it when an operator wants an initial strong/weak bootstrap.
+config path for file-based administration.
 
 Valid YAML rules use only:
 
@@ -422,11 +424,12 @@ Rules using `initialTreatment: default`, `confidenceLevel: unknown`,
 `evaluated`, or `observed` are invalid and fail closed. Duplicate rule ids also
 fail the whole config closed because the id is part of the audit identity.
 
-This rollout does not ship a UI/admin editor for the bootstrap file. Operators
-edit YAML directly, and Cats emits structured startup/dispatch diagnostics plus
-`provider-capability-bootstrap-diagnostics.local.json` records so a future
-admin editor can read the same audit trail instead of creating a separate
-source of truth.
+Settings validates the whole rule document before writing YAML, and rejects a
+save if the file changed after the page loaded. A successful save requires a
+Cats restart because the config is injected into dispatch adapters at host
+composition time. Direct YAML editing remains supported; Settings and
+`provider-capability-bootstrap-diagnostics.local.json` read the same parser and
+diagnostic contract rather than creating a second source of truth.
 
 ### Secrets Management
 
@@ -503,4 +506,4 @@ per-user path.
 
 ---
 
-*Last updated: 2026-08-04*
+*Last updated: 2026-09-02*

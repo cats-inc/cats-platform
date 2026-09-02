@@ -188,6 +188,7 @@ test('a host without the golden path reports not-enabled rather than ready', asy
     enabled: false,
     workspacePath: null,
     authorizedOwnerCount: 0,
+    localExecution: 'unknown',
     bindings: [],
   });
 });
@@ -198,6 +199,7 @@ test('the endpoint returns the readiness evaluation unchanged', async () => {
     enabled: true,
     workspacePath: '/repos/cats',
     authorizedOwnerCount: 1,
+    localExecution: 'healthy',
     bindings: [{
       bindingId: 'binding-1',
       botName: 'cats_bot',

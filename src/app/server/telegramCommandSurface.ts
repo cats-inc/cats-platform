@@ -16,6 +16,7 @@ import {
   type TelegramInteractionMode,
 } from '../../platform/transports/telegram/commandRouter.js';
 import { createDefaultCommands } from '../../platform/transports/telegram/commands/index.js';
+import type { RuntimeClient } from '../../platform/runtime/client.js';
 import type {
   TelegramCommandPort,
   TelegramCommandPortInput,
@@ -26,7 +27,10 @@ import type { ChatState } from '../../products/chat/api/contracts.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import { updateCatSkillProfile } from '../../products/chat/state/model/index.js';
 import { shouldBridgeTelegramProductIntentCommand } from '../../server/telegramProductIntentCommands.js';
-import type { TransportWorkReadinessReport } from './transportWorkGoldenPath.js';
+import {
+  resolveTransportWorkLocalExecutionStatus,
+  type TransportWorkReadinessReport,
+} from './transportWorkGoldenPath.js';
 
 export interface CreateTelegramCommandSurfaceInput {
   chatStore: ChatStore;
@@ -36,6 +40,8 @@ export interface CreateTelegramCommandSurfaceInput {
    * host, which `/status` reports as such rather than staying silent.
    */
   readiness?: { describe(): Promise<TransportWorkReadinessReport> };
+  /** Runtime health is still shown when work delegation itself is disabled. */
+  runtimeHealth?: Pick<RuntimeClient, 'getHealth'>;
 }
 
 function findBindingChatCat(chatState: ChatState, binding: BotBindingRecord) {
@@ -73,6 +79,17 @@ export function createTelegramCommandSurface(
   const router = createTelegramCommandRouter();
   router.registerAll(createDefaultCommands());
 
+  async function resolveLocalExecution() {
+    if (input.runtimeHealth === undefined) {
+      return 'unknown' as const;
+    }
+    try {
+      return resolveTransportWorkLocalExecutionStatus(await input.runtimeHealth.getHealth());
+    } catch {
+      return 'unavailable' as const;
+    }
+  }
+
   /**
    * Resolves what `/status` may claim about delegation.
    *
@@ -86,7 +103,13 @@ export function createTelegramCommandSurface(
       ? input.pollingSupervisor?.getPollingStatus(bindingId)?.health ?? null
       : null;
     if (input.readiness === undefined) {
-      return { bindingHealth, enabled: false, canAcceptWork: false, blockerKeys: [] };
+      return {
+        bindingHealth,
+        localExecution: await resolveLocalExecution(),
+        enabled: false,
+        canAcceptWork: false,
+        blockerKeys: [],
+      };
     }
     try {
       const report = await input.readiness.describe();
@@ -94,16 +117,29 @@ export function createTelegramCommandSurface(
         ? report.bindings.find((candidate) => candidate.bindingId === bindingId) ?? null
         : null;
       if (row === null) {
-        return { bindingHealth, enabled: report.enabled, canAcceptWork: false, blockerKeys: [] };
+        return {
+          bindingHealth,
+          localExecution: report.localExecution ?? await resolveLocalExecution(),
+          enabled: report.enabled,
+          canAcceptWork: false,
+          blockerKeys: [],
+        };
       }
       return {
         bindingHealth,
+        localExecution: report.localExecution ?? await resolveLocalExecution(),
         enabled: report.enabled,
         canAcceptWork: row.readiness.ready,
         blockerKeys: row.readiness.blockers.map((blocker) => blocker.remediationKey),
       };
     } catch {
-      return null;
+      return {
+        bindingHealth,
+        localExecution: await resolveLocalExecution(),
+        enabled: null,
+        canAcceptWork: false,
+        blockerKeys: [],
+      };
     }
   }
 

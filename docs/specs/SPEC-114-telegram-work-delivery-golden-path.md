@@ -504,8 +504,8 @@ of the requirement holds, with the shortfall named; **gap** — not implemented;
 | FR-1 Binding readiness | done | `platform/transports/work-delivery/readiness.ts`; admission fails closed in `workGoldenPathService.receiveRequest` |
 | FR-2 Execution readiness | done | Same evaluator; `executionTargetId` resolved per request in `app/server/transportWorkGoldenPath.ts` |
 | FR-3 Actionable degradation | done | All blockers, including an unclean repository baseline, are reported at once with localized remediation and a valid product route; `renderNotReadyMessage` |
-| FR-4 Product-owned setup | partial | Readiness is inspectable at `GET /api/work/delivery-readiness` and `/settings/work`, and capability bootstrap lives on `/settings/assistants`. Rollout owner ids and workspace selection are still environment-backed/read-only and require a host restart rather than being configurable from the product. |
-| FR-5 Truthful availability | done | `/status` reports ingress health and delegation state; an unresolvable readiness lookup reports "could not be checked", never ready |
+| FR-4 Product-owned setup | partial | Readiness is inspectable at `GET /api/work/delivery-readiness` and `/settings/work`; `/settings/assistants` can add, edit, remove, validate, and persist the complete capability-bootstrap rule schema with stale-write protection. Saved capability changes explicitly require restart. Rollout owner ids and workspace selection are still environment-backed/read-only. |
+| FR-5 Truthful availability | done | `/status` reports ingress, local execution (`healthy`, `degraded`, or `unavailable`), and delegation separately. Runtime-unavailable readiness fails closed; an unresolvable readiness lookup reports "could not be checked", never ready. |
 | FR-6 No secret propagation | done | `assertSafeTransportPayload`; opaque action tokens carry no entities |
 | FR-7 Explicit baseline | done | `inboundClassification.ts` |
 | FR-8 Durable acceptance first | done | `workGoldenPathIntake.ts` reuses the capture tool, keyed by update ref |
@@ -561,9 +561,10 @@ of the requirement holds, with the shortfall named; **gap** — not implemented;
   one per update ref.
 - **FR-44 (attachment/stable URL delivery).** Deferred with the rest of outbound
   attachment handling; the deep link is the safe reference in the meantime.
-- **FR-4 (live product setup).** Readiness and capability bootstrap are visible,
-  but the owner cohort and workspace remain environment-backed. A later Settings
-  mutation contract must define validation, persistence, live reload versus
-  explicit restart, and rollback before the panel can truthfully be writable.
+- **FR-4 (live product setup).** Capability bootstrap now has a validated,
+  revision-guarded Settings mutation contract with explicit restart semantics.
+  The remaining partial scope is the environment-backed owner cohort and
+  workspace selection; those still need their own persistence, validation, and
+  rollback contract before `/settings/work` can mutate them.
 - **Gate G6.** No provider, git, or Telegram credential has executed against any
   of this. Packaged Desktop and real-bot smokes are outstanding.

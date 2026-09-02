@@ -29,6 +29,7 @@ import {
 import {
   handleProviderCapabilityBootstrapAction,
   handleProviderCapabilityBootstrapRead,
+  handleProviderCapabilityBootstrapWrite,
 } from '../../server/routes/providerCapabilityBootstrap.js';
 import {
   handleTelegramDiagnostics,
@@ -623,7 +624,7 @@ export async function routeRequest(
       bundledExamplePath:
         dependencies.shared.config.providerCapabilityBootstrapBundledExamplePath ?? null,
       now: dependencies.shared.now ?? (() => new Date()),
-      bootedWithConfig: dependencies.shared.providerCapabilityBootstrapConfig != null,
+      bootedConfig: dependencies.shared.providerCapabilityBootstrapConfig,
     };
     if (method === 'GET') {
       handleProviderCapabilityBootstrapRead(response, bootstrapDependencies);
@@ -634,7 +635,12 @@ export async function routeRequest(
       handleProviderCapabilityBootstrapAction(response, bootstrapDependencies, body?.action);
       return;
     }
-    sendMethodNotAllowed(response, ['GET', 'POST']);
+    if (method === 'PUT') {
+      const body = await readJsonBody<unknown>(request);
+      handleProviderCapabilityBootstrapWrite(response, bootstrapDependencies, body);
+      return;
+    }
+    sendMethodNotAllowed(response, ['GET', 'POST', 'PUT']);
     return;
   }
 

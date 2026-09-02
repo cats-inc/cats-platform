@@ -99,6 +99,7 @@ export interface TransportWorkReadinessReport {
   enabled: boolean;
   workspacePath: string | null;
   authorizedOwnerCount: number;
+  localExecution: TransportWorkLocalExecutionStatus;
   bindings: Array<{
     bindingId: string;
     botName: string | null;
@@ -107,6 +108,11 @@ export interface TransportWorkReadinessReport {
     readiness: TransportWorkReadiness;
   }>;
 }
+
+export type TransportWorkLocalExecutionStatus =
+  | 'healthy'
+  | 'degraded'
+  | 'unavailable';
 
 export interface TransportWorkReadinessReader {
   describe(): Promise<TransportWorkReadinessReport>;
@@ -191,6 +197,19 @@ async function probeWorkspace(
   }
 }
 
+export function resolveTransportWorkLocalExecutionStatus(input: {
+  reachable: boolean;
+  status: string;
+}): TransportWorkLocalExecutionStatus {
+  if (!input.reachable) {
+    return 'unavailable';
+  }
+  const status = input.status.trim().toLowerCase();
+  return status === 'ok' || status === 'ready' || status === 'healthy'
+    ? 'healthy'
+    : 'degraded';
+}
+
 export function createTransportWorkGoldenPath(
   input: CreateTransportWorkGoldenPathInput,
 ): TransportWorkGoldenPathBundle | null {
@@ -224,6 +243,17 @@ export function createTransportWorkGoldenPath(
     apiKey: input.config.runtimeApiKey,
   });
 
+  async function readLocalExecutionStatus(): Promise<TransportWorkLocalExecutionStatus> {
+    if (input.runtimeClient === undefined) {
+      return 'unavailable';
+    }
+    try {
+      return resolveTransportWorkLocalExecutionStatus(await input.runtimeClient.getHealth());
+    } catch {
+      return 'unavailable';
+    }
+  }
+
   const service = createWorkGoldenPathService({
     coreStore: input.coreStore,
     outbox,
@@ -244,16 +274,23 @@ export function createTransportWorkGoldenPath(
    * shows a missing provider. Two callers evaluating the same rules separately
    * would reintroduce exactly that, so both go through here.
    */
-  async function evaluateBinding(bindingId: string, externalUserRef: string | null) {
+  async function evaluateBinding(
+    bindingId: string,
+    externalUserRef: string | null,
+    observedLocalExecution?: TransportWorkLocalExecutionStatus,
+  ) {
     const state = await input.chatStore.read();
     const core = await input.coreStore.readCore();
     const binding = findBinding(core, bindingId);
+    const localExecution = observedLocalExecution ?? await readLocalExecutionStatus();
     const catActorId = binding?.catActorId ?? binding?.bossCatActorId ?? null;
     const pollingHealth = input.pollingSupervisor?.getPollingStatus(bindingId)?.health ?? null;
     const workspacePath = settings.workspacePath;
     // Observed, not claimed. The delivery-mode default used to rest on an
     // operator's `workspaceIsRepo` flag that nothing verified.
-    const workspace = await probeWorkspace(deliveryClient, workspacePath);
+    const workspace = localExecution === 'unavailable'
+      ? null
+      : await probeWorkspace(deliveryClient, workspacePath);
     const deliveryMode = resolveDefaultDeliveryMode({
       workspacePath,
       isRepo: workspace?.repository ?? false,
@@ -291,9 +328,9 @@ export function createTransportWorkGoldenPath(
       permission,
       deliveryMode,
       deliveryGates: [],
-      // We are executing inside the host that would run the work, so if this
-      // resolver runs at all the background service is up.
-      backgroundServiceAvailable: true,
+      // The platform process answering Telegram may still be alive while the
+      // local runtime that executes the admitted Run is unavailable.
+      backgroundServiceAvailable: localExecution !== 'unavailable',
     });
 
     return {
@@ -306,6 +343,7 @@ export function createTransportWorkGoldenPath(
       workspaceHeadOid: workspace?.headOid ?? null,
       ownerActorId: core.ownerProfile.actorId,
       botName: binding?.botName ?? null,
+      localExecution,
       targetLabel: workspacePath === null
         ? 'no workspace'
         : workspacePath.split('/').filter(Boolean).pop() ?? workspacePath,
@@ -315,9 +353,10 @@ export function createTransportWorkGoldenPath(
   /** Desktop's read of the same evaluation, one row per Telegram binding. */
   async function describeReadiness(): Promise<TransportWorkReadinessReport> {
     const core = await input.coreStore.readCore();
+    const localExecution = await readLocalExecutionStatus();
     const bindings: TransportWorkReadinessReport['bindings'] = [];
     for (const binding of core.botBindings) {
-      const evaluated = await evaluateBinding(binding.id, null);
+      const evaluated = await evaluateBinding(binding.id, null, localExecution);
       bindings.push({
         bindingId: binding.id,
         botName: evaluated.botName,
@@ -330,6 +369,7 @@ export function createTransportWorkGoldenPath(
       enabled: true,
       workspacePath: settings.workspacePath,
       authorizedOwnerCount: settings.authorizedOwnerRefs.length,
+      localExecution,
       bindings,
     };
   }
