@@ -93,7 +93,10 @@ import {
   resolveDesktopBootstrapError,
   shouldAttemptDesktopLateReadyRecovery,
 } from './startupRecovery.js';
-import { resolveDesktopUpdateDialog } from './updateDialog.js';
+import {
+  resolveDesktopUpdateDialog,
+  shouldRefreshDesktopUpdateFromTray,
+} from './updateDialog.js';
 import { resolveDefaultSetupAuditAction } from './setupAudit.js';
 import {
   buildDesktopCliInventoryFromRuntime,
@@ -1094,10 +1097,10 @@ async function runDesktopUpdateDialog(
     locale: app.getLocale(),
   });
 
-  // An idle host has nothing to report yet. Run the check first and answer
-  // with its result, so one click produces one dialog rather than a dialog
-  // saying "about to look" followed by silence.
-  if (dialogSpec.action === 'check' && allowRecheck) {
+  // The tray label is an explicit request to check, so stale up-to-date and
+  // failed results must re-query just like idle. The manager's nextAction owns
+  // that transition; allowRecheck prevents the fresh result from looping.
+  if (shouldRefreshDesktopUpdateFromTray(snapshot, allowRecheck)) {
     const checked = await refreshUpdateState('tray');
     if (checked && !shuttingDown) {
       await runDesktopUpdateDialog(checked, false);
