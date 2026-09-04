@@ -264,6 +264,25 @@ export function ProviderModelFields({
     if (!selectedProvider || !trimmedModel) {
       return;
     }
+    // This effect persists a label, and in the direct-lane draft that persist
+    // is a server write of the whole cat profile. It must therefore only ever
+    // act on data React tracks: the catalog this picker has loaded. While the
+    // catalog is loading, or when it has no entry for the model, the label
+    // would come from the live-label registry -- a module-level map that other
+    // catalog loads fill in at arbitrary times -- so the computed label can
+    // flip between renders without any dependency changing. That flip re-fired
+    // this effect with whatever props it saw at the moment, and during a fresh
+    // pick those props were still the previous provider/model, which it then
+    // wrote back over the pick. Wait for the catalog instead.
+    if (catalogLoading) {
+      return;
+    }
+    const catalogEntries = effectiveAdvancedCatalog.entries.length > 0
+      ? effectiveAdvancedCatalog.entries
+      : effectiveCatalog.models;
+    if (!catalogEntries.some((entry) => entry.id === trimmedModel)) {
+      return;
+    }
 
     const rememberedExecutionLabel = peekRememberedExecutionLabel({
       provider,
@@ -291,6 +310,7 @@ export function ProviderModelFields({
       executionLabel: resolvedExecutionLabel,
     });
   }, [
+    catalogLoading,
     effectiveAdvancedCatalog,
     effectiveCatalog,
     model,

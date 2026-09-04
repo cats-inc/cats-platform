@@ -183,14 +183,17 @@ export function resolveChatNewChatDraftViewState(input: {
   const highlightedCat = input.draftHighlightedCatId && input.draftCatIds.includes(input.draftHighlightedCatId)
     ? chatCats.find((cat) => cat.id === input.draftHighlightedCatId) ?? null
     : null;
+  // Prefer the draft's own override for the direct-lane cat, as the
+  // highlighted-cat branch already does: the pick is visible immediately
+  // instead of only once the profile save has round-tripped.
   const activePanelExecutionTarget: ExecutionTargetValue | null =
     draftSuggestionContext.isDirectLaneContext && defaultRecipientCat
-      ? {
+      ? (input.draftCatExecutionTargetOverrides.get(defaultRecipientCat.id) ?? {
           provider: defaultRecipientCat.defaultExecutionTarget.provider,
           model: defaultRecipientCat.defaultExecutionTarget.model,
           instance: defaultRecipientCat.defaultExecutionTarget.instance,
           modelSelection: defaultRecipientCat.defaultModelSelection ?? null,
-        }
+        })
       : highlightedCat
         ? (input.draftCatExecutionTargetOverrides.get(highlightedCat.id) ?? {
             provider: highlightedCat.defaultExecutionTarget.provider,

@@ -28,14 +28,21 @@ export interface UseWorkspaceDirectLaneModelSaveOptions<TPayload> {
     input: WorkspaceDirectLaneModelValueLike,
   ) => Promise<TPayload>;
   publishReadyPayload: (payload: TPayload) => void;
+  /**
+   * A failed save used to be swallowed here, which left the picker sitting on
+   * the previous provider/model with nothing to say why -- indistinguishable,
+   * from the user's side, from the selection being silently reverted.
+   */
+  onError?: (error: unknown) => void;
 }
 
 export function useWorkspaceDirectLaneModelSave<TPayload>({
   updateCatProfile,
   publishReadyPayload,
+  onError,
 }: UseWorkspaceDirectLaneModelSaveOptions<TPayload>) {
   return useCallback(
-    async (catId: string, value: WorkspaceDirectLaneModelValueLike) => {
+    async (catId: string, value: WorkspaceDirectLaneModelValueLike): Promise<boolean> => {
       try {
         const result = await updateCatProfile(catId, {
           provider: value.provider,
@@ -44,11 +51,13 @@ export function useWorkspaceDirectLaneModelSave<TPayload>({
           modelSelection: value.modelSelection,
         });
         startTransition(() => publishReadyPayload(result));
-      } catch {
-        // Silent fail; the panel continues showing payload-backed state.
+        return true;
+      } catch (error) {
+        onError?.(error);
+        return false;
       }
     },
-    [publishReadyPayload, updateCatProfile],
+    [onError, publishReadyPayload, updateCatProfile],
   );
 }
 

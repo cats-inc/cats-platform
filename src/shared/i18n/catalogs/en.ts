@@ -1663,6 +1663,8 @@ export const enCatalog: MessageCatalog = {
     'Failed to save new chat model defaults.',
   'shared.executionTarget.saveChatReplySettingsError':
     'Failed to save this chat AI reply settings.',
+  'shared.executionTarget.saveDirectLaneError':
+    'Failed to save the provider and model for this cat. The previous selection is still in effect.',
   'shared.channelContinuity.startFreshError':
     'Failed to start a fresh chat continuity branch.',
   'shared.settingsCatsMemory.saveError': 'Failed to save memory.',
