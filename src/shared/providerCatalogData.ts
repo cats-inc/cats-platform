@@ -5,6 +5,7 @@ export const PRODUCT_PROVIDER_ORDER = [
   'grok',
   'cline',
   'devin',
+  'muse',
   'cursor',
   'copilot',
   'opencode',
@@ -51,6 +52,15 @@ export const PRODUCT_PROVIDER_MODELS = {
   ],
   devin: [
     { value: 'devin-default', label: 'Devin default', default: true },
+  ],
+  // Offline fallback only, kept in step with the runtime's curated Muse
+  // catalog. The account default is deliberately not one of the -contributor
+  // rows: those let Meta use the session for product improvement, which is an
+  // opt-in an offline default must not make on the operator's behalf.
+  muse: [
+    { value: 'muse-default', label: 'Muse account default', default: true },
+    { value: 'muse-spark-1.3', label: 'muse-spark-1.3' },
+    { value: 'muse-spark-1.2', label: 'muse-spark-1.2' },
   ],
   copilot: [
     { value: 'gpt-5.4', label: 'gpt-5.4 (default)', default: true },

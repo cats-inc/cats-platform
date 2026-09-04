@@ -187,7 +187,7 @@ packaging and installer flows.
 - `scripts/windows/Install-Antigravity.ps1`
 - `scripts/windows/Install-Grok.ps1`
 - `scripts/windows/Install-Devin.ps1`
-- `scripts/windows/Install-Aider.ps1`
+- `scripts/windows/Install-MetaCli.ps1`
 - `scripts/windows/Install-Copilot.ps1`
 - `scripts/windows/Install-OpenCode.ps1`
 - `scripts/windows/Install-KiloCli.ps1`
@@ -253,19 +253,34 @@ still owed after a successful install: run `devin auth login` once and check
 with `devin auth status`. Uninstall removes the versioned tree under
 `%LOCALAPPDATA%\devin\cli` as well as the entry point.
 
-`Install-Aider.ps1` wraps Aider's installer, which is the uv installer plus
-`uv tool install --force --python python3.12 --with pip aider-chat@latest`. The
-entry point is a uv tool shim rather than the tool, so uninstall runs
-`uv tool uninstall aider-chat` before removing paths — deleting the shim alone
-leaves `aider-chat` installed and the shim regenerable. The uv binary Aider
-installs alongside it is deliberately left in place: users commonly have their
-own, and the helper cannot tell them apart.
+`Install-MetaCli.ps1` and `install-meta-cli.sh` wrap Meta's Muse installer.
+What that installer places is a *launcher*, not the agent: it downloads
+`muse-bin-<version>` beside itself and records the version in `.muse-version`.
+Two things follow from that.
 
-Cats installs and detects Devin and Aider but does not run sessions through
-either from the CLI backend. Devin has no machine-readable CLI output and
-executes through the `agent/acp` backend instead; Aider has no machine-readable
-output, no ACP or server mode, and exits 0 even when its model call fails.
-Neither appears in the product execution catalog.
+Detection requires the agent build, not the entry point. The installer writes
+the shim and launcher first and downloads the agent last, so a run that fails in
+between leaves an entry point with nothing behind it; reporting that as
+installed would skip the reinstall that repairs it. Uninstall removes every
+`muse-bin-*` build and `.muse-*` state file in the install directory, not just
+the entry point.
+
+The version is read from `.muse-version` and the helpers never execute `muse`.
+The launcher forwards every argument straight to the agent binary, so a flag
+that binary does not recognise opens the interactive TUI instead of failing —
+in a packaged setup step with no console a prompt can reach, that is an
+unbounded hang rather than an error. On Windows the installer runs under
+Windows PowerShell 5.1 for the same reason the launcher does: a `PSModulePath`
+inherited from PowerShell 7 breaks the launcher's download step.
+
+Install directories differ by platform: `%LOCALAPPDATA%\Programs\muse` on Windows
+(entry point `muse.cmd`) and `~/.local/bin` on macOS and Linux. `MUSE_INSTALL_DIR`
+overrides both, matching the official installer.
+
+Cats installs and detects Devin but does not run its sessions through the CLI
+backend. Devin has no machine-readable CLI output and executes through the
+`agent/acp` backend instead, so it has no `cli/native` entry in the product
+execution catalog.
 
 `Check-WindowsSetupReadiness.ps1` composes the repo-owned packaged setup
 helpers into one host-readable audit for the npm prefix substrate, the
@@ -296,7 +311,7 @@ runtime:
 - `scripts/linux/install-antigravity.sh`
 - `scripts/linux/install-grok.sh`
 - `scripts/linux/install-devin.sh`
-- `scripts/linux/install-aider.sh`
+- `scripts/linux/install-meta-cli.sh`
 - `scripts/linux/install-copilot.sh`
 - `scripts/linux/install-opencode.sh`
 - `scripts/linux/install-kilo.sh`
@@ -317,7 +332,7 @@ runtime:
 - `scripts/macos/install-antigravity.sh`
 - `scripts/macos/install-grok.sh`
 - `scripts/macos/install-devin.sh`
-- `scripts/macos/install-aider.sh`
+- `scripts/macos/install-meta-cli.sh`
 - `scripts/macos/install-copilot.sh`
 - `scripts/macos/install-opencode.sh`
 - `scripts/macos/install-kilo.sh`

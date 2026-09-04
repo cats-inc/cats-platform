@@ -617,19 +617,20 @@ const LOCAL_PROVIDER_BASELINES: DesktopLocalProviderBaseline[] = [
     ],
   },
   {
-    id: 'aider',
-    label: 'Aider',
+    id: 'muse',
+    label: 'Meta Muse CLI',
     pack: 'native_cli_pack',
     helperIds: [
-      'windows-aider-native-installer',
-      'linux-aider-native-installer',
-      'macos-aider-native-installer',
+      'windows-muse-native-installer',
+      'linux-muse-native-installer',
+      'macos-muse-native-installer',
     ],
-    currentHome: 'cats-platform/scripts/{windows/Install-Aider.ps1,linux/install-aider.sh,macos/install-aider.sh}',
+    currentHome: 'cats-platform/scripts/{windows/Install-MetaCli.ps1,linux/install-meta-cli.sh,macos/install-meta-cli.sh}',
     targetHome: 'cats-platform packaged-host provider assets',
     notes: [
-      'Bundled through the repo-owned native Aider installer wrapper on each supported host platform.',
-      'Uninstall runs uv tool uninstall aider-chat; the entry point is a uv tool shim, and the bundled uv is left in place.',
+      'Bundled through the repo-owned native Meta Muse installer wrapper on each supported host platform.',
+      'What the installer places is a launcher; detection requires the muse-bin-<version> build beside it, not just the launcher.',
+      'Every version read comes from the launcher .muse-version state file. The helper never runs muse: the launcher forwards arguments straight to the agent binary, so an unrecognised flag opens the interactive TUI and hangs an unattended setup run.',
     ],
   },
   {

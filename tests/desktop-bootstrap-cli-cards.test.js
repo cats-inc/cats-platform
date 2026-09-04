@@ -14,7 +14,7 @@ import { buildDesktopBootstrapPage } from '../build/desktop/bootstrapPage.js';
  */
 
 const NATIVE_PROVIDERS = [
-  'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie', 'goose', 'grok',
+  'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie', 'goose', 'grok', 'muse',
 ];
 const NPM_PROVIDERS = ['codex', 'copilot', 'opencode', 'kilo', 'auggie', 'pi'];
 /**
@@ -22,7 +22,7 @@ const NPM_PROVIDERS = ['codex', 'copilot', 'opencode', 'kilo', 'auggie', 'pi'];
  * as installable cards. They stay in the fixture on purpose: excluding them has
  * to be the page's decision, not the fixture quietly never mentioning them.
  */
-const NON_INSTALLABLE_PROVIDERS = ['aider', 'ollama'];
+const NON_INSTALLABLE_PROVIDERS = ['ollama'];
 
 const OLLAMA_HELPER_ID = 'windows-ollama-local-model-installer';
 const NODE_HELPER_ID = 'windows-node-host-installer';
@@ -385,13 +385,12 @@ test('a direct Ollama install clears the card even when the service is not up ye
   }
 });
 
-test('Aider is never offered for install: the runtime config writer skips it', async () => {
+test('Meta Muse is offered for install like any other native CLI', async () => {
   const page = await renderPage(SCANNED_INVENTORY, setupSnapshot(auditAction([])));
   try {
-    assert.equal(
-      cardNamed(page.document, 'Aider'),
-      null,
-      'an Aider card would install a CLI that can never become a usable target',
+    assert.ok(
+      cardNamed(page.document, 'Meta Muse'),
+      'expected a Meta Muse card in the grid',
     );
   } finally {
     page.close();

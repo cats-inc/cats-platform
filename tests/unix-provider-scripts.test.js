@@ -28,6 +28,7 @@ const linuxScripts = [
   'install-codex.sh',
   'install-antigravity.sh',
   'install-grok.sh',
+  'install-meta-cli.sh',
   'install-copilot.sh',
   'install-opencode.sh',
   'install-kilo.sh',
@@ -49,6 +50,7 @@ const macosScripts = [
   'install-codex.sh',
   'install-antigravity.sh',
   'install-grok.sh',
+  'install-meta-cli.sh',
   'install-copilot.sh',
   'install-opencode.sh',
   'install-kilo.sh',
@@ -110,6 +112,7 @@ test('Unix self-hosted provider helpers expose help text without mutating the ho
     await assertHelp(join(rootDir, 'scripts', platform, 'install-junie.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-kiro-cli.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-grok.sh'));
+    await assertHelp(join(rootDir, 'scripts', platform, 'install-meta-cli.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'upgrade-cli-tools.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'check-installation.sh'));
   }
@@ -184,6 +187,93 @@ test('Unix Grok helpers detect only grok and uninstall only fixed installer-owne
     } finally {
       await rm(home, { recursive: true, force: true });
       await rm(unrelatedBin, { recursive: true, force: true });
+    }
+  }
+});
+
+test('Unix Meta Muse helpers read .muse-version and never execute muse', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const home = await mkdtemp(join(tmpdir(), `cats-${platform}-muse-home-`));
+    const localBin = join(home, '.local', 'bin');
+    const launcherPath = join(localBin, 'muse');
+    const versionFilePath = join(localBin, '.muse-version');
+    const agentPath = join(localBin, 'muse-bin-1.0.3-R2198.1');
+    const staleAgentPath = join(localBin, 'muse-bin-1.0.2-R2100.4');
+    const channelPath = join(localBin, '.muse-channel');
+    const neighbourPath = join(localBin, 'some-other-tool');
+    // Running the launcher is what this helper must never do: muse forwards
+    // every argument to the agent binary, and a flag it does not know opens the
+    // interactive TUI. A tripwire file proves the helper stayed off it.
+    const tripwirePath = join(home, 'muse-was-executed');
+    const helperPath = join(rootDir, 'scripts', platform, 'install-meta-cli.sh');
+    const bashPath = relative(rootDir, helperPath).replace(/\\/gu, '/');
+    const env = { ...process.env, HOME: toBashPath(home) };
+    const runHelper = (args) => (process.platform === 'win32'
+      ? execFile(bashExecutable, [
+        '-c',
+        'export HOME="$CATS_MUSE_TEST_HOME"; exec /bin/bash "$CATS_MUSE_TEST_SCRIPT" "$CATS_MUSE_TEST_ARG1" "$CATS_MUSE_TEST_ARG2"',
+      ], {
+        cwd: rootDir,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          CATS_MUSE_TEST_HOME: toBashPath(home),
+          CATS_MUSE_TEST_SCRIPT: bashPath,
+          CATS_MUSE_TEST_ARG1: args[0],
+          CATS_MUSE_TEST_ARG2: args[1],
+          WSLENV: [
+            process.env.WSLENV,
+            'CATS_MUSE_TEST_HOME',
+            'CATS_MUSE_TEST_SCRIPT',
+            'CATS_MUSE_TEST_ARG1',
+            'CATS_MUSE_TEST_ARG2',
+          ].filter(Boolean).join(':'),
+        },
+      })
+      : execFile(bashExecutable, [bashPath, ...args], { cwd: rootDir, encoding: 'utf8', env }));
+
+    try {
+      await mkdir(localBin, { recursive: true });
+
+      const missing = JSON.parse((await runHelper(['--check', '--json'])).stdout);
+      assert.equal(missing.installed, false);
+
+      // A launcher with no agent build behind it is a half-finished install,
+      // not an install. The official installer writes the launcher first and
+      // downloads the agent last, so this state is reachable.
+      await writeFile(launcherPath, `#!/usr/bin/env bash\ntouch "${toBashPath(tripwirePath)}"\n`);
+      await chmod(launcherPath, 0o755);
+      await writeFile(versionFilePath, '1.0.3-R2198.1\n');
+
+      const partial = JSON.parse((await runHelper(['--check', '--json'])).stdout);
+      assert.equal(partial.installed, false, JSON.stringify(partial));
+
+      await writeFile(agentPath, '#!/usr/bin/env bash\nprintf "agent\\n"\n');
+      await chmod(agentPath, 0o755);
+      await writeFile(staleAgentPath, '#!/usr/bin/env bash\nprintf "old agent\\n"\n');
+      await writeFile(channelPath, 'muse-stable\n');
+      await writeFile(neighbourPath, '#!/usr/bin/env bash\nprintf "neighbour\\n"\n');
+
+      const installed = JSON.parse((await runHelper(['--check', '--json'])).stdout);
+      assert.equal(installed.installed, true, JSON.stringify(installed));
+      assert.equal(installed.commandPath, toBashPath(launcherPath));
+      // The version came from .muse-version, not from running the launcher.
+      assert.equal(installed.detectedVersion, '1.0.3-R2198.1');
+      await assert.rejects(access(tripwirePath), 'the helper executed muse');
+
+      const removed = JSON.parse((await runHelper(['--uninstall', '--json'])).stdout);
+      assert.equal(removed.status, 'uninstalled', JSON.stringify(removed));
+      await assert.rejects(access(launcherPath));
+      // Every downloaded build goes, not just the one .muse-version names.
+      await assert.rejects(access(agentPath));
+      await assert.rejects(access(staleAgentPath));
+      await assert.rejects(access(versionFilePath));
+      await assert.rejects(access(channelPath));
+      // ~/.local/bin is shared with other tools; nothing else may be touched.
+      await access(neighbourPath);
+      await assert.rejects(access(tripwirePath), 'the helper executed muse');
+    } finally {
+      await rm(home, { recursive: true, force: true });
     }
   }
 });

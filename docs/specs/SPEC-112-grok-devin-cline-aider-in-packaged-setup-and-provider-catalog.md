@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress — packaged setup complete; Grok, Cline, and Devin promoted to product execution; packaged smoke remains deferred |
+| **Status** | In Progress — packaged setup complete; Grok, Cline, and Devin promoted to product execution; Aider retired by [ADR-113](../decisions/113-port-the-meta-muse-installer-into-packaged-setup-and-retire-aider.md); packaged smoke remains deferred |
 | **Owner** | User |
 | **Reviewer** | User |
 
@@ -13,6 +13,12 @@
 This spec defines the packaged-setup side of adopting four upstream AI coding CLIs — Grok CLI (xAI), Devin CLI (Cognition), Cline, and Aider — as Cats provider families. It covers repo-owned installer helpers on supported platforms, desktop host wiring, the setup-provider inventory, smoke tests, and evidence-gated promotion into the product execution catalog. Grok and Cline now have working native runtime adapters, Devin has a working ACP adapter, and Aider remains setup-only.
 
 It is the counterpart to `cats-runtime` SPEC-027, which owns the runtime provider taxonomy, install/check knowledge, and execution adapters. ADR-109 captures the underlying decision.
+
+Aider amendment (2026-09-05): [ADR-113](../decisions/113-port-the-meta-muse-installer-into-packaged-setup-and-retire-aider.md)
+retires Aider from packaged setup. Everything this spec says about Aider is history:
+its installers, setup assets, packaging entry, desktop provider id, and the `uv`
+uninstall special case are deleted. Meta Muse replaced it on all three platforms and,
+unlike Aider, is in the product execution catalog.
 
 ## Goals
 
