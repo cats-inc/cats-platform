@@ -1672,6 +1672,8 @@ export const messageKeys = {
     'shared.executionTarget.saveNewChatDefaultsError',
   sharedExecutionTargetSaveChatReplySettingsError:
     'shared.executionTarget.saveChatReplySettingsError',
+  sharedExecutionTargetSaveDirectLaneError:
+    'shared.executionTarget.saveDirectLaneError',
   sharedChannelContinuityStartFreshError:
     'shared.channelContinuity.startFreshError',
   sharedSettingsCatsMemorySaveError: 'shared.settingsCatsMemory.saveError',

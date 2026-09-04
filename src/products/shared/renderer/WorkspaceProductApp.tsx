@@ -88,6 +88,7 @@ import {
 import { useWorkspaceChannelParticipantUpdate } from "./hooks/useWorkspaceChannelParticipantUpdate.js";
 import { useWorkspaceCompareRelay } from "./hooks/useWorkspaceCompareRelay.js";
 import { usePublishReadyPayload } from "./hooks/usePublishReadyPayload.js";
+import { formatWorkspaceChatActionError } from "./hooks/workspaceChatActionErrorLabels.js";
 import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiActions.js";
 import { useWorkspaceAppNavigationActions } from "./hooks/useWorkspaceAppNavigationActions.js";
 import { useWorkspaceAppShellRouting } from "./hooks/useWorkspaceAppShellRouting.js";
@@ -534,11 +535,45 @@ export function createWorkspaceProductApp({
       [publishReadyPayload],
     );
 
+    const onDirectLaneModelSaveError = useCallback((error: unknown): void => {
+      setFeedback(formatWorkspaceChatActionError(
+        error,
+        t(messageKeys.sharedExecutionTargetSaveDirectLaneError),
+        t,
+      ));
+    }, [setFeedback, t]);
     const onDirectLaneModelSave =
       useWorkspaceDirectLaneModelSave<AppShellPayload>({
         updateCatProfile,
         publishReadyPayload,
+        onError: onDirectLaneModelSaveError,
       });
+    // The new-chat draft's direct lane: show the pick immediately through the
+    // draft's own override, persist it to the cat profile, and hand display
+    // back to the payload once the save has landed. On failure the override
+    // is dropped so the panel truthfully shows what is still in effect, and the
+    // save hook has already surfaced why.
+    const onDraftDirectLaneExecutionTargetChange = useCallback(
+      (catId: string, value: ExecutionTargetValue): void => {
+        onDraftCatExecutionTargetOverride(catId, value);
+        void onDirectLaneModelSave(catId, value).then((saved) => {
+          setDraftCatExecutionTargetOverrides((current) => {
+            if (!current.has(catId)) {
+              return current;
+            }
+            // A newer pick for the same cat may have replaced this one while
+            // the save was in flight; only clear the entry this save wrote.
+            if (saved && current.get(catId) !== value) {
+              return current;
+            }
+            const next = new Map(current);
+            next.delete(catId);
+            return next;
+          });
+        });
+      },
+      [onDirectLaneModelSave, onDraftCatExecutionTargetOverride, setDraftCatExecutionTargetOverrides],
+    );
 
     const {
       accountMenuOpen,
@@ -1854,7 +1889,7 @@ export function createWorkspaceProductApp({
                     onHighlightDraftCat: setDraftHighlightedCatId,
                     draftCatExecutionTargetOverrides,
                     onDraftCatExecutionTargetOverride,
-                    onDirectLaneExecutionTargetChange: onDirectLaneModelSave,
+                    onDirectLaneExecutionTargetChange: onDraftDirectLaneExecutionTargetChange,
                     parallelTargets:
                       supportsStructuredDraftModes
                         && showingGenericNewChatDraft

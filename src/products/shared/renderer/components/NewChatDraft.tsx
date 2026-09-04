@@ -355,13 +355,18 @@ export function WorkspaceNewChatDraft({
   const highlightedCat = draftHighlightedCatId && draftCatIds.includes(draftHighlightedCatId)
     ? chatCats.find((cat) => cat.id === draftHighlightedCatId) ?? null
     : null;
+  // The direct lane persists a pick to the cat profile, so its panel used to
+  // read straight from the payload and show nothing new until the save came
+  // back -- and showed the previous target again if it never did. Prefer the
+  // draft's own override for the cat, exactly as the highlighted-cat branch
+  // below already does, so the pick is visible the moment it is made.
   const activePanelExecutionTarget: ExecutionTargetValue | null = isDirectLaneContext && defaultRecipientCat
-    ? {
+    ? (draftCatExecutionTargetOverrides.get(defaultRecipientCat.id) ?? {
         provider: defaultRecipientCat.defaultExecutionTarget.provider,
         model: defaultRecipientCat.defaultExecutionTarget.model,
         instance: defaultRecipientCat.defaultExecutionTarget.instance,
         modelSelection: defaultRecipientCat.defaultModelSelection ?? null,
-      }
+      })
     : highlightedCat
       ? (draftCatExecutionTargetOverrides.get(highlightedCat.id) ?? {
           provider: highlightedCat.defaultExecutionTarget.provider,

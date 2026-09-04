@@ -1621,6 +1621,8 @@ export const zhTWCatalog: MessageCatalog = {
     '儲存新增聊天室模型預設值失敗。',
   'shared.executionTarget.saveChatReplySettingsError':
     '儲存這個聊天室的 AI 回覆設定失敗。',
+  'shared.executionTarget.saveDirectLaneError':
+    '儲存這隻貓的 provider 與模型失敗，目前仍沿用先前的選擇。',
   'shared.channelContinuity.startFreshError':
     '開始新的聊天連續性分支失敗。',
   'shared.settingsCatsMemory.saveError': '儲存記憶失敗。',
