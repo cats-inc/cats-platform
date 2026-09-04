@@ -1,4 +1,5 @@
 import { matchRoute, readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
+import { parseProviderModelSelection } from '../../../../shared/providerSelection.js';
 import {
   beginChannelMessageRetryDispatch,
   beginChannelMessageDispatch,
@@ -495,10 +496,31 @@ async function handleRestPatchChannelParticipant(
     requireValidChatScopeId(chatScopeId);
     const body = await readJsonBody<UpdateChannelParticipantInput>(context.request);
     await context.dependencies.mutationGate.run(channelId, async () => {
-      if (body.name === undefined && body.roleHint === undefined) {
+      const updatesTarget = body.provider !== undefined
+        || body.instance !== undefined
+        || body.model !== undefined
+        || body.modelSelection !== undefined;
+      if (body.name === undefined && body.roleHint === undefined && !updatesTarget) {
         sendJson(context.response, 400, {
           error: 'participant_update_required',
           message: 'At least one participant field must be updated.',
+        });
+        return;
+      }
+      if (body.provider !== undefined && (typeof body.provider !== 'string' || !body.provider.trim())) {
+        sendJson(context.response, 400, {
+          error: 'participant_provider_invalid',
+          message: 'provider must be a non-empty string.',
+        });
+        return;
+      }
+      const modelSelection = body.modelSelection === undefined || body.modelSelection === null
+        ? body.modelSelection
+        : parseProviderModelSelection(body.modelSelection);
+      if (body.modelSelection !== undefined && body.modelSelection !== null && !modelSelection) {
+        sendJson(context.response, 400, {
+          error: 'participant_model_selection_invalid',
+          message: 'modelSelection must be a provider model selection.',
         });
         return;
       }
@@ -506,6 +528,10 @@ async function handleRestPatchChannelParticipant(
       await persistUpdatedChannelParticipant(context, channelId, participantId, {
         name: body.name,
         roleHint: body.roleHint,
+        ...(body.provider !== undefined ? { provider: body.provider } : {}),
+        ...(body.instance !== undefined ? { instance: body.instance } : {}),
+        ...(body.model !== undefined ? { model: body.model } : {}),
+        ...(modelSelection !== undefined ? { modelSelection } : {}),
       });
       sendJson(context.response, 200, { updated: true, channelId, participantId });
       publishChannelMutationEvents(context, channelId);

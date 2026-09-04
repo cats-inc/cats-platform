@@ -573,6 +573,27 @@ DELETE /api/channels/{channelId}/cats/{catId}
   Returns `{ cat: { catId, ...hydrated } }`.
 - `DELETE` returns `{ removed: true, channelId, catId }`.
 
+### Channel Participants
+
+```text
+PATCH /api/channels/{channelId}/participants/{participantId}
+```
+
+Updates one participant of one conversation. Body fields are all optional,
+but at least one must be present (`400 participant_update_required`):
+
+- `name`, `roleHint` — the ad-hoc participant profile.
+- `provider`, `instance`, `model`, `modelSelection` — **this conversation's
+  own execution target** for the participant, i.e. the assignment target the
+  send path uses and the composer chip shows. This is distinct from the cat
+  profile default (`PATCH /api/cats/{catId}`), which every conversation with
+  that cat shares and which only seeds a conversation that has not chosen
+  yet. `provider` must be a non-empty string
+  (`400 participant_provider_invalid`); `modelSelection` must be a provider
+  model selection or `null` (`400 participant_model_selection_invalid`).
+
+Returns `{ updated: true, channelId, participantId }`.
+
 ### Channel Activations
 
 ```text

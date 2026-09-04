@@ -315,6 +315,59 @@ export function setChannelParticipantExecutionTarget(
   return nextState;
 }
 
+/**
+ * One participant update from the API: profile fields go to the ad-hoc
+ * participant profile, execution-target fields go to this conversation's own
+ * assignment. Each writer is only invoked for the fields it owns, so a
+ * target-only update on a cat participant never touches the ad-hoc profile
+ * lookup, and a rename never disturbs the target.
+ */
+export function updateChannelParticipant(
+  state: ChatState,
+  channelId: string,
+  participantId: string,
+  input: {
+    name?: string | null;
+    roleHint?: string | null;
+    provider?: string | null;
+    model?: string | null;
+    instance?: string | null;
+    modelSelection?: AssignChannelCatInput['modelSelection'];
+  },
+  now: Date = new Date(),
+): ChatState {
+  let nextState = state;
+  if (input.name !== undefined || input.roleHint !== undefined) {
+    nextState = updateChannelParticipantProfile(
+      nextState,
+      channelId,
+      participantId,
+      { name: input.name, roleHint: input.roleHint },
+      now,
+    );
+  }
+  if (
+    input.provider !== undefined
+    || input.model !== undefined
+    || input.instance !== undefined
+    || input.modelSelection !== undefined
+  ) {
+    nextState = setChannelParticipantExecutionTarget(
+      nextState,
+      channelId,
+      participantId,
+      {
+        ...(input.provider !== undefined ? { provider: input.provider } : {}),
+        ...(input.model !== undefined ? { model: input.model } : {}),
+        ...(input.instance !== undefined ? { instance: input.instance } : {}),
+        ...(input.modelSelection !== undefined ? { modelSelection: input.modelSelection } : {}),
+      },
+      now,
+    );
+  }
+  return nextState;
+}
+
 export function updateChannelParticipantProfile(
   state: ChatState,
   channelId: string,

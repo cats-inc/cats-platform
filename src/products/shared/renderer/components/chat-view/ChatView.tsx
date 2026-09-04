@@ -250,7 +250,14 @@ export interface ChatViewProps {
   onRelayMessage?: (messageId: string, command: ParallelChatRelayCommandKind) => Promise<void>;
   onUpdateChannelParticipant?: (
     participantId: string,
-    input: { name?: string; roleHint?: string | null },
+    input: {
+      name?: string;
+      roleHint?: string | null;
+      provider?: string;
+      instance?: string | null;
+      model?: string | null;
+      modelSelection?: ExecutionTargetValue['modelSelection'];
+    },
   ) => Promise<void>;
   buildTranscriptMessageActions?: (
     input: TranscriptMessageActionContext,
@@ -992,6 +999,16 @@ export function ChatView({
     onExecutionTargetChange,
     onStartFresh,
     onDirectLaneExecutionTargetChange,
+    onDirectLaneParticipantTargetChange: onUpdateChannelParticipant
+      ? (participantId, value) => {
+          void onUpdateChannelParticipant(participantId, {
+            provider: value.provider,
+            instance: value.instance,
+            model: value.model,
+            modelSelection: value.modelSelection,
+          });
+        }
+      : undefined,
     buildParticipantAvatarStyle,
   });
 

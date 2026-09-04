@@ -693,6 +693,11 @@ export interface UpdateChannelInput {
 export interface UpdateChannelParticipantInput {
   name?: string;
   roleHint?: string | null;
+  /** The conversation's own execution target for this participant. */
+  provider?: string;
+  instance?: string | null;
+  model?: string | null;
+  modelSelection?: ProviderModelSelection | null;
 }
 
 export interface RelayParallelChatMessageInput {

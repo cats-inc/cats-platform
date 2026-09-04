@@ -68,6 +68,13 @@ export interface BuildChatSidePanelSectionsOptions {
   onExecutionTargetChange?: (value: ExecutionTargetValue) => void;
   onStartFresh?: () => void;
   onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
+  /**
+   * Saves the pick as this conversation's own target for the participant.
+   * When provided and the conversation has a participant, the panel edits
+   * that instead of the cat profile, which every conversation with the cat
+   * shares.
+   */
+  onDirectLaneParticipantTargetChange?: (participantId: string, value: ExecutionTargetValue) => void;
   buildParticipantAvatarStyle: (
     participant: ResolvedChannelParticipant,
     catRecord?: ChatCat | null,
@@ -107,6 +114,7 @@ export function buildChatSidePanelSections({
   onExecutionTargetChange,
   onStartFresh,
   onDirectLaneExecutionTargetChange,
+  onDirectLaneParticipantTargetChange,
   buildParticipantAvatarStyle,
 }: BuildChatSidePanelSectionsOptions): SidePanelSection[] {
   const { t } = useI18n();
@@ -144,6 +152,19 @@ export function buildChatSidePanelSections({
   const executionChildren = (() => {
     if (isDirectLane && directLaneCat && directLaneExecutionTarget) {
       const mcpProfileLabel = getCatMcpProfileLabel(directLaneCat.mcpProfile);
+      // The conversation's own target is what the chip shows and what a send
+      // uses (`assignment.execution.target`). The cat profile default is only
+      // the seed for a conversation that has no participant yet; showing it
+      // here for an existing conversation put another conversation's last
+      // pick into this panel, and edits went to the profile, not the chat.
+      const conversationExecutionTarget: ExecutionTargetValue = defaultRecipientParticipant
+        ? {
+            provider: defaultRecipientParticipant.execution.target.provider,
+            instance: defaultRecipientParticipant.execution.target.instance ?? null,
+            model: defaultRecipientParticipant.execution.target.model ?? null,
+            modelSelection: defaultRecipientParticipant.execution.modelSelection ?? null,
+          }
+        : directLaneExecutionTarget;
       return (
         <>
           <div className="sidePanelSectionStack">
@@ -171,15 +192,17 @@ export function buildChatSidePanelSections({
             </div>
           </div>
           <ProviderModelFields
-            provider={directLaneExecutionTarget.provider}
-            instance={directLaneExecutionTarget.instance ?? ''}
-            model={directLaneExecutionTarget.model ?? ''}
-            modelSelection={directLaneExecutionTarget.modelSelection}
+            provider={conversationExecutionTarget.provider}
+            instance={conversationExecutionTarget.instance ?? ''}
+            model={conversationExecutionTarget.model ?? ''}
+            modelSelection={conversationExecutionTarget.modelSelection}
             onTargetChange={(target) => {
-              onDirectLaneExecutionTargetChange?.(
-                directLaneCat.id,
-                createExecutionTargetValueFromProviderSelection(target),
-              );
+              const value = createExecutionTargetValueFromProviderSelection(target);
+              if (defaultRecipientParticipant && onDirectLaneParticipantTargetChange) {
+                onDirectLaneParticipantTargetChange(defaultRecipientParticipant.participantId, value);
+                return;
+              }
+              onDirectLaneExecutionTargetChange?.(directLaneCat.id, value);
             }}
           />
         </>
