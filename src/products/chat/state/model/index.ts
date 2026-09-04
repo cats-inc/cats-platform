@@ -125,6 +125,7 @@ export {
   resetDefaultChatContinuity,
   setChannelCatExecutionTarget,
   setChannelParticipantExecutionTarget,
+  updateChannelParticipant,
   setChannelPendingExecutionTarget,
   setGlobalOrchestratorExecutionTarget,
   updateChannelParticipantProfile,

@@ -795,6 +795,16 @@ export interface UpdateChannelInput {
 export interface UpdateChannelParticipantInput {
   name?: string;
   roleHint?: string | null;
+  /**
+   * The conversation's own execution target for this participant -- the value
+   * the send path actually uses (`assignment.execution.target`). Distinct from
+   * the cat profile default, which is shared by every conversation with that
+   * cat and is only the seed for a conversation that has not chosen yet.
+   */
+  provider?: string;
+  instance?: string | null;
+  model?: string | null;
+  modelSelection?: ProviderModelSelection | null;
 }
 
 export interface ChannelActivationResult {

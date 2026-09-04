@@ -28,7 +28,10 @@ import { sendJson, type RouteContext } from '../../../shared/http.js';
 import { readDesktopHostBootstrapAttemptId } from '../../../shared/desktopHostState.js';
 import { readPlatformPreferences } from '../../../shared/platformPreferences.js';
 import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
-import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
+import {
+  createExplicitProviderModelSelection,
+  type ProviderModelSelection,
+} from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import {
   ensurePlatformScopeId,
@@ -62,7 +65,7 @@ import {
   unarchiveCat,
   setChannelCatLease,
   setChannelChatCwd,
-  updateChannelParticipantProfile,
+  updateChannelParticipant,
   setChannelStatus,
   ungroupParallelChatGroup,
 } from '../state/model/index.js';
@@ -518,10 +521,14 @@ export async function persistUpdatedChannelParticipant(
   input: {
     name?: string | null;
     roleHint?: string | null;
+    provider?: string | null;
+    instance?: string | null;
+    model?: string | null;
+    modelSelection?: ProviderModelSelection | null;
   },
 ): Promise<ChatState> {
   const currentState = await context.dependencies.chatStore.read();
-  const nextState = updateChannelParticipantProfile(
+  const nextState = updateChannelParticipant(
     currentState,
     channelId,
     participantId,
