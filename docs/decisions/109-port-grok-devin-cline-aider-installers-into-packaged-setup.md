@@ -10,6 +10,12 @@ and all three are in the product execution catalog. Aider remains setup-only.
 The original Windows Cline restriction was superseded by the reviewed live
 Windows execution probe recorded in PLAN-102 on 2026-08-09.
 
+Aider amendment (2026-09-05): [ADR-113](./113-port-the-meta-muse-installer-into-packaged-setup-and-retire-aider.md)
+retires Aider from packaged setup entirely, alongside cats-runtime ADR-037 removing it
+from the runtime. Its installers, setup assets, packaging entry, and the `uv` uninstall
+special case are deleted; Meta Muse takes its place, and unlike Aider it is executable.
+The setup-only arrangement described below no longer exists.
+
 ## Context
 
 `environment-bootstrap` added four AI coding CLIs to the upstream installer suite between 2026-08-04 and 2026-08-05: Grok CLI (xAI, `cb5efc7`), Cline (`d131535`), Devin CLI (`216ef96`), and Aider (`54992d6`). `cats-runtime` ADR-033 proposes adopting all four as CLI provider families at the install/check tier.

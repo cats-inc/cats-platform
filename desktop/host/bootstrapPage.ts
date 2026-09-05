@@ -1658,17 +1658,13 @@ export function buildDesktopBootstrapPage(): string {
        collapsed until Show more is pressed, then npm prerequisites appear
        before npm-based CLIs.
 
-       Two providers are deliberately absent from these lists. Aider: the
-       runtime's config writer skips it outright — it is a presence-only
-       provider with no machine-readable execution contract — so a CLI
-       installed from this grid would be detected and then never become a
-       usable target, which is the worst thing onboarding can produce. Ollama:
-       it is a local model runtime, not a CLI provider, so the runtime scan
-       never reports it; its card is built from the readiness audit instead
-       (see buildLocalModelCard). */
+       Ollama is deliberately absent from these lists: it is a local model
+       runtime, not a CLI provider, so the runtime scan never reports it. Its
+       card is built from the readiness audit instead (see
+       buildLocalModelCard). */
     var ONBOARDING_NATIVE_PROVIDER_ORDER = [
       'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',
-      'goose', 'grok', 'cline', 'devin'
+      'goose', 'grok', 'cline', 'devin', 'muse'
     ];
     var ONBOARDING_NPM_PROVIDER_ORDER = [
       'codex', 'copilot', 'opencode',
@@ -1695,7 +1691,8 @@ export function buildDesktopBootstrapPage(): string {
       pi: 'Pi',
       grok: 'Grok',
       cline: 'Cline',
-      devin: 'Devin'
+      devin: 'Devin',
+      muse: 'Meta Muse'
     };
     var cliInstallingState = Object.create(null);
     var cliScanInFlight = false;

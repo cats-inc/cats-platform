@@ -15,6 +15,10 @@
 
 ## Why this exists
 
+> Aider amendment (2026-09-05): [ADR-113](../decisions/113-port-the-meta-muse-installer-into-packaged-setup-and-retire-aider.md)
+> retired Aider from packaged setup and Meta Muse replaced it. The Aider acceptance
+> criteria below were rewritten for muse; the rest of this plan is unchanged.
+
 PLAN-102 ported Grok, Cline, Devin, and Aider into packaged setup and extended the smoke
 suites to cover them. Those smoke assertions have never run against a **built package with
 real installers** — only the unit and contract tests have. Every claim about how the helpers
@@ -46,8 +50,8 @@ Everything that only a packaged host exercises:
 - That an **apply** actually installs each CLI on a clean host, and that the JSON reports
   what happened.
 - That Devin's apply surfaces the `devin auth login` manual step and never reports ready.
-- That Aider's uninstall removes the tool via `uv tool uninstall aider-chat` rather than
-  leaving it behind a deleted shim.
+- That Meta Muse's uninstall removes every downloaded `muse-bin-*` build and `.muse-*`
+  state file, not just the launcher, and that no step ever executes `muse`.
 - That the superseded-package removal fires when the abandoned Pi package is actually
   installed.
 
@@ -83,8 +87,8 @@ pass in CI form.
 - Devin's apply result carries `devin auth login` in `manualSteps` and does **not** report a
   ready/authenticated state.
 - Devin's uninstall removes both the entry point and the versioned tree.
-- Aider's uninstall leaves `aider --version` failing, and warns that the bundled `uv` was
-  left in place.
+- Meta Muse's uninstall leaves the install directory free of `muse-bin-*` builds, and a
+  launcher present without a matching build is reported as not installed.
 - Cline installs, upgrades, and uninstalls through the npm pack on all three platforms.
 - With the abandoned `@mariozechner/pi-coding-agent` installed beforehand, a Pi apply removes
   it and installs `@earendil-works/pi-coding-agent`.
@@ -95,8 +99,9 @@ pass in CI form.
   packager does not stage.
 - The Devin strip failing against a future upstream installer shape — the helper is designed
   to refuse rather than run, so this would surface as a clean failure, not a hang.
-- `uv` being absent on a host where Aider was installed, making uninstall fall back to shim
-  removal only.
+- A muse build whose agent binary no longer accepts a flag the helpers pass, which would
+  hang the step rather than fail it. The helpers never execute `muse`, so this would
+  surface only if that rule regressed.
 
 ## If it fails
 

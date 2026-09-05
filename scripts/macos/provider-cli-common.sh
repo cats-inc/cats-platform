@@ -52,7 +52,7 @@ provider_display_name() {
     antigravity) printf '%s\n' 'Antigravity CLI' ;;
     grok) printf '%s\n' 'Grok CLI' ;;
     devin) printf '%s\n' 'Devin CLI' ;;
-    aider) printf '%s\n' 'Aider' ;;
+    muse) printf '%s\n' 'Meta Muse CLI' ;;
     claude) printf '%s\n' 'Claude Code CLI' ;;
     cursor) printf '%s\n' 'Cursor Agent CLI' ;;
     goose) printf '%s\n' 'Goose CLI' ;;
@@ -67,7 +67,7 @@ provider_primary_command() {
     antigravity) printf '%s\n' 'agy' ;;
     grok) printf '%s\n' 'grok' ;;
     devin) printf '%s\n' 'devin' ;;
-    aider) printf '%s\n' 'aider' ;;
+    muse) printf '%s\n' 'muse' ;;
     claude) printf '%s\n' 'claude' ;;
     cursor) printf '%s\n' 'cursor-agent' ;;
     goose) printf '%s\n' 'goose' ;;
@@ -98,7 +98,7 @@ provider_install_url() {
     antigravity) printf '%s\n' 'https://antigravity.google/cli/install.sh' ;;
     grok) printf '%s\n' 'https://x.ai/cli/install.sh' ;;
     devin) printf '%s\n' 'https://cli.devin.ai/install.sh' ;;
-    aider) printf '%s\n' 'https://aider.chat/install.sh' ;;
+    muse) printf '%s\n' 'https://dev.meta.ai/install.sh' ;;
     claude) printf '%s\n' 'https://claude.ai/install.sh' ;;
     cursor) printf '%s\n' 'https://cursor.com/install' ;;
     goose) printf '%s\n' 'https://github.com/block/goose/releases/download/stable/download_cli.sh' ;;
@@ -111,6 +111,7 @@ provider_install_url() {
 provider_install_dir() {
   case "$1" in
     grok) printf '%s\n' "$HOME/.grok/bin" ;;
+    muse) muse_install_dir ;;
     *) printf '%s\n' "$HOME/.local/bin" ;;
   esac
 }
@@ -249,11 +250,58 @@ ensure_provider_alias() {
   fi
 }
 
+# muse's install directory holds the launcher, its state files, and one
+# muse-bin-<version> build per version it has downloaded.
+muse_install_dir() {
+  printf '%s\n' "${MUSE_INSTALL_DIR:-$HOME/.local/bin}"
+}
+
+# The version comes from the launcher's own state file, never from running muse.
+# The launcher forwards every argument straight to the agent binary, so a flag
+# that binary does not recognise opens the interactive TUI and hangs an
+# unattended setup run forever.
+muse_installed_version() {
+  local version_file
+  version_file="$(muse_install_dir)/.muse-version"
+  if [ -r "$version_file" ]; then
+    tr -d '\r\n' < "$version_file"
+  fi
+}
+
+# "Installed" means the launcher actually fetched a build. The official
+# installer writes the launcher first and downloads muse-bin-<version> last, so
+# a run that dies in between leaves a launcher with nothing behind it. Treating
+# that as installed would skip the reinstall that repairs it.
+muse_install_complete() {
+  local dir version
+  dir="$(muse_install_dir)"
+  [ -x "$dir/muse" ] || return 1
+  version="$(muse_installed_version)"
+  [ -n "$version" ] || return 1
+  [ -x "$dir/muse-bin-$version" ]
+}
+
 detect_provider_command() {
   local platform="$1"
   local provider="$2"
   local primary_command
   local candidate
+
+  if [ "$provider" = 'muse' ]; then
+    if muse_install_complete; then
+      prepend_path_if_missing "$(muse_install_dir)"
+      printf '%s\n' "$(muse_install_dir)/muse"
+      return 0
+    fi
+    # A muse elsewhere on PATH is someone's own install; report it rather than
+    # claiming the tool is missing, but never treat a half-written install
+    # directory as one.
+    if [ -x "$(muse_install_dir)/muse" ]; then
+      return 1
+    fi
+    command -v muse 2>/dev/null && return 0
+    return 1
+  fi
 
   primary_command="$(provider_primary_command "$provider")"
   if command -v "$primary_command" >/dev/null 2>&1; then
@@ -276,7 +324,34 @@ EOF
 
 provider_version_line() {
   local command_path="$1"
+  local provider="${2:-}"
+
+  # muse is read, never run: see muse_installed_version.
+  if [ "$provider" = 'muse' ]; then
+    muse_installed_version
+    return 0
+  fi
+
   "$command_path" --version 2>&1 | head -1 || true
+}
+
+# `curl ... | bash` returns 0 when the download itself fails, because bash reads
+# empty input and succeeds. Staging the script first is what makes a failed
+# install report as a failure.
+run_downloaded_shell_installer() {
+  local url="$1"
+  local installer_path status=0
+
+  installer_path="$(mktemp)"
+  if ! curl -fsSL "$url" -o "$installer_path"; then
+    rm -f "$installer_path"
+    printf 'Failed to download the installer from %s\n' "$url" >&2
+    return 1
+  fi
+
+  bash "$installer_path" < /dev/null || status=$?
+  rm -f "$installer_path"
+  return "$status"
 }
 
 # Devin's official install.sh ends by launching the interactive `devin setup`
@@ -342,8 +417,10 @@ run_remote_pipe_installer() {
     goose)
       curl -fsSL "$url" | env CONFIGURE=false bash
       ;;
-    aider)
-      curl -LsSf "$url" | sh
+    muse)
+      # Download first, then run: with `curl ... | bash` a failed download still
+      # exits 0, because bash reads empty input and succeeds.
+      run_downloaded_shell_installer "$url"
       ;;
     cursor)
       curl "$url" -fsSL | bash
@@ -424,7 +501,9 @@ run_provider_install_action() {
     devin)
       run_devin_installer
       ;;
-    aider)
+    muse)
+      # The official installer always refreshes the launcher and asks it to pull
+      # the newest build, so install, upgrade, and force are the same call.
       run_remote_pipe_installer "$provider"
       ;;
     claude)
@@ -559,28 +638,22 @@ UPNP_EOF
     esac
   fi
 
-  # ~/.local/bin/aider is a uv tool shim, not the tool. Removing only the shim
-  # leaves aider-chat installed in the uv tool environment and the shim
-  # regenerable by any later `uv tool` command, so the tool is uninstalled
-  # through uv first and path removal only mops up what uv left behind.
-  #
-  # The uv binary itself is deliberately left in place: Aider's installer drops
-  # its own uv into ~/.local/bin, users commonly have another, and the helper
-  # cannot tell them apart. Removing a uv the user installed separately is a
-  # destructive false positive, so this warns instead (SPEC-112 PD4).
-  if [ "$provider" = 'aider' ]; then
-    if command -v uv >/dev/null 2>&1; then
-      if [ "$dry_run" = 'true' ]; then
-        __CATS_UNINSTALL_PLANNED+=("uv_tool_uninstall:aider-chat")
-      elif uv tool uninstall aider-chat >/dev/null 2>&1; then
-        __CATS_UNINSTALL_APPLIED+=("uv_tool_uninstalled:aider-chat")
-      else
-        __CATS_UNINSTALL_WARNINGS+=("uv_tool_uninstall_failed:aider-chat")
-      fi
-    else
-      __CATS_UNINSTALL_WARNINGS+=("uv_missing_aider_chat_may_remain")
-    fi
-    __CATS_UNINSTALL_WARNINGS+=("bundled_uv_left_in_place_provenance_unknown")
+  # The muse launcher is not the tool either: every muse-bin-<version> build it
+  # has downloaded, plus its .muse-* state files, sit in the same directory and
+  # survive removing the launcher alone. They are named deterministically, so
+  # they can be removed without guessing at unrelated files in ~/.local/bin.
+  if [ "$provider" = 'muse' ]; then
+    local muse_dir muse_leftover
+    muse_dir="$(muse_install_dir)"
+    for muse_leftover in "$muse_dir"/muse-bin-* "$muse_dir"/.muse-*; do
+      case "$muse_leftover" in
+        "$HOME"/*)
+          if [ -e "$muse_leftover" ] || [ -L "$muse_leftover" ]; then
+            planned_paths+=("$muse_leftover")
+          fi
+          ;;
+      esac
+    done
   fi
 
   for path in "${planned_paths[@]}"; do
@@ -796,7 +869,7 @@ run_native_provider_installer() {
 
   if command_path="$(detect_provider_command "$platform" "$provider")"; then
     initial_installed='true'
-    detected_version="$(provider_version_line "$command_path")"
+    detected_version="$(provider_version_line "$command_path" "$provider")"
     if [ "$check_only" = 'true' ]; then
       if [ "$emit_json" = 'true' ]; then
         printf '{'
@@ -928,7 +1001,7 @@ run_native_provider_installer() {
 
   while [ $attempt -le 3 ]; do
     if command_path="$(detect_provider_command "$platform" "$provider")"; then
-      detected_version="$(provider_version_line "$command_path")"
+      detected_version="$(provider_version_line "$command_path" "$provider")"
       if [ "$emit_json" = 'true' ]; then
         warnings=("Reload your shell if ${display_name} is not visible yet: source ${shell_rc}")
         printf '{'

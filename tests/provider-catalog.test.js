@@ -14,7 +14,7 @@ import {
 import { PRODUCT_PROVIDER_INSTANCES } from '../build/server/shared/providerCatalogInstances.js';
 
 test('verified Grok adapter is available in the product execution catalog', () => {
-  assert.equal(PRODUCT_PROVIDER_ORDER.length, 17);
+  assert.equal(PRODUCT_PROVIDER_ORDER.length, 18);
   assert.equal(PRODUCT_PROVIDER_ORDER.includes('grok'), true);
   assert.equal(
     PRODUCT_PROVIDER_ORDER.indexOf('grok'),
@@ -28,11 +28,30 @@ test('verified Grok adapter is available in the product execution catalog', () =
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ]);
 
-  // Aider remains install-only and still does not expose a selectable runtime
-  // target.
+  // Aider was retired with the provider itself (cats-runtime ADR-037) and must
+  // not reappear in any product catalog.
   assert.equal(PRODUCT_PROVIDER_ORDER.includes('aider'), false);
   assert.equal(Object.hasOwn(PRODUCT_PROVIDER_MODELS, 'aider'), false);
   assert.equal(Object.hasOwn(PRODUCT_PROVIDER_INSTANCES, 'aider'), false);
+});
+
+test('Meta Muse joins the product execution catalog as a CLI target', () => {
+  assert.equal(PRODUCT_PROVIDER_ORDER.includes('muse'), true);
+  assert.equal(
+    PRODUCT_PROVIDER_ORDER.indexOf('muse'),
+    PRODUCT_PROVIDER_ORDER.indexOf('devin') + 1,
+  );
+  // The account default, not one of the -contributor rows: those let Meta use
+  // the session for product improvement, which a default must not opt into.
+  assert.equal(getDefaultModel('muse'), 'muse-default');
+  assert.deepEqual(getProviderModels('muse'), [
+    { value: 'muse-default', label: 'Muse account default', default: true },
+    { value: 'muse-spark-1.3', label: 'muse-spark-1.3' },
+    { value: 'muse-spark-1.2', label: 'muse-spark-1.2' },
+  ]);
+  assert.deepEqual(PRODUCT_PROVIDER_INSTANCES.muse, [
+    { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
+  ]);
 });
 
 test('Devin ACP joins the product execution catalog with provider-default model semantics', () => {

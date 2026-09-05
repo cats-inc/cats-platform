@@ -164,10 +164,9 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /resolvePageMode/);
   assert.match(html, /snapshot\.app\.onboardingMode === 'setup_status'/);
   assert.match(html, /continueDisabled = legacyCliGate && installedCount === 0/);
-  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',\s*'goose', 'grok', 'cline', 'devin'\s*\]/);
-  // Aider installs from this grid can never become usable targets, and Ollama
-  // is not a CLI provider at all — neither belongs in the inventory-driven row.
-  assert.doesNotMatch(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[[^\]]*'aider'/);
+  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',\s*'goose', 'grok', 'cline', 'devin', 'muse'\s*\]/);
+  // Ollama is not a CLI provider at all, so it does not belong in the
+  // inventory-driven row.
   assert.doesNotMatch(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[[^\]]*'ollama'/);
   assert.match(html, /ONBOARDING_NPM_PROVIDER_ORDER = \[\s*'codex', 'copilot', 'opencode',\s*'kilo', 'auggie', 'pi'\s*\]/);
   assert.match(html, /Node\.js \/ npm/);

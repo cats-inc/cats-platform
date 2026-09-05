@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [113-port-the-meta-muse-installer-into-packaged-setup-and-retire-aider](./113-port-the-meta-muse-installer-into-packaged-setup-and-retire-aider.md) | Port the Meta Muse installer into packaged setup and retire Aider | Accepted | 2026-09-05 |
 | [112-adopt-a-core-owned-transport-work-delivery-golden-path](./112-adopt-a-core-owned-transport-work-delivery-golden-path.md) | Adopt a Core-Owned Transport Work Delivery Golden Path | Accepted | 2026-09-02 |
 | [111-keep-first-admin-local-and-require-step-up-for-google-linking](./111-keep-first-admin-local-and-require-step-up-for-google-linking.md) | Keep First-Admin Bootstrap Local and Require Step-Up for Google Linking | Accepted | 2026-09-02 |
 | [110-keep-platform-clients-in-one-repository-with-explicit-package-boundaries](./110-keep-platform-clients-in-one-repository-with-explicit-package-boundaries.md) | Keep Platform Clients in One Repository with Explicit Package Boundaries | Accepted | 2026-08-28 |
@@ -154,6 +155,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-09-02 (ADR-112 transport work delivery golden path accepted; ADR-111 local first-Admin and protected Google linking accepted.)*
+*Last updated: 2026-09-05 (ADR-113 ports the Meta Muse installer into packaged setup and retires Aider.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*
