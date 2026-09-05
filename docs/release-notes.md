@@ -19,6 +19,45 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-05
+
+### Meta Muse joins the provider set and Aider is removed
+
+Behavior change:
+
+Meta's Muse CLI (`muse`) is now a fully supported provider. Packaged setup can
+install, detect, upgrade, and uninstall it on Windows, macOS, and Linux, it
+appears in the onboarding CLI grid, and it is selectable as an execution target
+with model and reasoning-effort controls. Sessions run headless through
+`muse exec --json` and resume with their history intact.
+
+Aider is removed. It could be installed and detected but never executed, so it
+was hidden from the onboarding grid and absent from the execution catalog. Its
+installers, setup assets, and packaging entry are gone.
+
+Two limits are worth knowing before selecting Muse:
+
+- Muse reports no token usage at all, so metering and cost surfaces stay empty
+  for this provider. This is a limit of the CLI, not of the integration.
+- Muse exposes no per-tool allowlist, only three capability switches (writes,
+  shell, web tools). A tool allowlist that names part of one of those groups is
+  refused rather than silently widened to the whole group.
+
+Migration steps:
+
+If you use Aider through Cats, install it yourself from
+https://aider.chat/install.sh; Cats no longer manages it. Nothing else changes
+for existing providers.
+
+To use Muse, install it from packaged setup and run `muse login` once. The
+credential is stored in `~/.config/muse/auth.json`; there is no API-key
+environment variable that substitutes for that account sign-in.
+
+Deprecations:
+
+Aider is removed rather than deprecated. The `aider` provider id no longer
+resolves anywhere in setup, packaging, or the execution catalog.
+
 ## 2026-09-02
 
 ### Tray update checks refresh stale results
