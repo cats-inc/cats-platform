@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   getDefaultModel,
   getProviderModels,
+  isProductProviderDefaultModelPlaceholder,
   normalizeProviderAdvancedModelCatalog,
   normalizeProviderModelCatalog,
 } from '../build/server/shared/providerCatalog.js';
@@ -52,6 +53,10 @@ test('Meta Muse joins the product execution catalog as a CLI target', () => {
   assert.deepEqual(PRODUCT_PROVIDER_INSTANCES.muse, [
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
   ]);
+  // `muse-default` is a placeholder for "let the account decide", not a model
+  // id, so it must never be sent through `--model`.
+  assert.equal(isProductProviderDefaultModelPlaceholder('muse', 'muse-default'), true);
+  assert.equal(isProductProviderDefaultModelPlaceholder('muse', 'muse-spark-1.3'), false);
 });
 
 test('Devin ACP joins the product execution catalog with provider-default model semantics', () => {

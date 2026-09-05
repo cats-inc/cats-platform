@@ -126,4 +126,5 @@ export const PRODUCT_PROVIDER_DEFAULT_MODEL_PLACEHOLDERS = {
   antigravity: 'antigravity-default',
   cline: 'cline-default',
   devin: 'devin-default',
+  muse: 'muse-default',
 } as const;
