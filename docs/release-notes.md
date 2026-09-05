@@ -19,6 +19,34 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-05 (0.2.1)
+
+### Muse appears in the provider list without a relaunch
+
+Behavior change:
+
+The 0.2.0 preview left Meta Muse out of the desktop provider list on hosts that
+had it installed. The bundled runtime inherited a PATH captured before the muse
+installer ran — the installer writes its directory into the User PATH in the
+registry, which no already-running process picks up — so it could not resolve
+`muse`, reported it as degraded, and the desktop filtered it out.
+
+The runtime bundled with 0.2.1 resolves a provider from the directory its own
+installer uses when PATH cannot see it, so Muse shows up as ready immediately
+after install. On Windows it also runs the recorded `muse-bin-<version>.exe`
+directly instead of going through the `muse.cmd` launcher, which removes a
+console flash on every launch from the desktop and roughly four seconds of
+launcher startup from every probe and turn.
+
+Migration steps:
+
+None. If you installed Muse and did not see it, this build is the fix; no
+relaunch or PATH change is needed.
+
+Deprecations:
+
+None.
+
 ## 2026-09-05
 
 ### Meta Muse joins the provider set and Aider is removed
