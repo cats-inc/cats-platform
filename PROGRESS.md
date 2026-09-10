@@ -4,6 +4,18 @@
 
 ## Current Status
 
+Quota follow-up (2026-09-11, PR-only delivery): SDK 1.2 and the
+authorized renderer/host bridge now support native Codex/Copilot/Claude/Antigravity
+queries, native quantities and unlimited entitlements. Twenty-one focused
+host/renderer/client tests, the shipped-SDK sidecar regression, typechecks and
+production builds passed. Built Usage 0.2.0 passed both standalone and production
+renderer browser checks in isolated profiles; independent review completed.
+Browser quota values are fixtures, with live CLI checks recorded in Runtime.
+Full Windows `npm test` passed before commit: 4,546 passed, 5 skipped, 0 failed.
+An initial concurrent run hit one existing Telegram fixture timeout; that case
+passed alone and the complete serial rerun passed without a product or timeout change.
+No Desktop version, release pins, publication or installed state changed.
+
 Implementation update (2026-09-10): SPEC-115 / PLAN-106 now provide verified
 `.catsapp` installs, an opaque-frame renderer with executable SDK v1, a revocable
 telemetry read bridge, and exact-version/hash Desktop bundle selection. Usage's
@@ -13,8 +25,8 @@ Release follow-through: Usage 0.1.0 is published and selected for Desktop 0.2.2;
 Runtime's snapshot PR is merged. Packaged App/config roots now match installer
 resource destinations, and all OS release jobs verify the actual App bytes/SDK
 and temporary-profile offline activation. No real user registry or provider
-account was changed. Interactive native installers on all OSes and independent
-review remain unverified; remote catalog and general
+account was changed. Interactive native installers on all OSes remained
+unverified in that slice; remote catalog and general
 App executors remain deferred. See the [package guide](./docs/app-packages.md)
 and [PLAN-106](./docs/plans/PLAN-106-official-app-package-hosting.md).
 

@@ -35,6 +35,40 @@ function setup(t: TestContext) {
 const surface = () => <AppRendererSurface appId="cats.usage" version="0.1.0" title="Usage" locale="zh-TW" onLobby={() => {}} />;
 const payload = () => new Response(JSON.stringify({ html: '<html><head></head><body>Usage</body></html>', sdk: '', version: '0.1.0' }));
 
+test('iframe quota bridge forwards each supported provider unchanged and rejects unsupported targets', async (t) => {
+  setup(t);
+  const originalChannel = globalThis.MessageChannel;
+  const port = { onmessage: null as ((event: { data: unknown }) => Promise<void>) | null,
+    start() {}, close() {}, postMessage(value: { ok: boolean }) { replies.push(value); } };
+  const replies: Array<{ ok: boolean }> = [];
+  globalThis.MessageChannel = class { port1 = port; port2 = {}; } as unknown as typeof MessageChannel;
+  t.after(() => { globalThis.MessageChannel = originalChannel; });
+  let time = Date.now(); t.mock.method(Date, 'now', () => time);
+  const requests: Array<{ provider: string; instance: string }> = [];
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    if (url.includes('/renderer?')) return payload();
+    assert.equal(url, '/api/apps/cats.usage/usage/refresh?version=0.1.0');
+    assert.equal(init?.method, 'POST'); requests.push(JSON.parse(String(init?.body)));
+    return new Response(JSON.stringify({ status: 'updated' }));
+  }) as typeof fetch;
+  const view = render(surface());
+  const iframe = await waitFor(() => view.getByTitle('Usage') as HTMLIFrameElement);
+  const boot = JSON.parse(/globalThis\.__CATS_APP_BOOT__=(.*?);/u.exec(iframe.srcdoc)![1]!);
+  t.mock.method(iframe.contentWindow!, 'postMessage', () => {});
+  window.dispatchEvent(new window.MessageEvent('message', {
+    origin: 'null', source: iframe.contentWindow, data: { type: 'cats.app.ready', nonce: boot.nonce },
+  }));
+  assert.ok(port.onmessage);
+  for (const [index, provider] of ['codex', 'copilot', 'claude', 'antigravity'].entries()) {
+    time += 1100;
+    await port.onmessage({ data: { id: index + 1, method: 'usage.refreshQuota', params: { provider, instance: 'default' } } });
+    assert.deepEqual(requests.at(-1), { provider, instance: 'default' });
+    assert.equal(replies.at(-1)?.ok, true);
+  }
+  await port.onmessage({ data: { id: 5, method: 'usage.refreshQuota', params: { provider: 'kiro', instance: 'default' } } });
+  assert.equal(replies.at(-1)?.ok, false); assert.equal(requests.length, 4);
+});
+
 test('stalled renderer request times out, aborts and can be retried without reinstallation', async (t) => {
   const clock = setup(t);
   let oldSignal: AbortSignal | null | undefined;

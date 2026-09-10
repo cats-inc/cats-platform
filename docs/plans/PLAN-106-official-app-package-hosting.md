@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Hosting and native Codex refresh implemented; 0.2.4 unsigned preview preparation; 0.2.3 Windows acceptance confirmed; cross-platform native acceptance and catalog deferred |
+| Status | SDK 1.2 multi-CLI refresh implemented, unreleased; existing Desktop pins unchanged; native cross-platform acceptance/catalog deferred |
 | Owner | cats-platform |
 | Related spec | SPEC-115 |
 | Related decision | ADR-114 |
@@ -60,6 +60,33 @@ integration. Keep the initial slice smaller than the full extension manifesto.
 - [x] Revoke the next/in-flight bridge read on disable/uninstall and tear down on denial.
 
 ### Phase 4: Desktop Preinstallation
+
+Multi-CLI follow-up (2026-09-11, PR-only delivery):
+
+- [x] Extend SDK 1.2 provider allowlist to Codex/Copilot/Claude/Antigravity.
+- [x] Preserve native request/credit quantities, unlimited and refresh capability.
+- [x] Retain scoped permissions, auth/CSRF, bounded fixed routes and in-flight revocation.
+- [x] Add provider projection/routing tests; retain shipped-SDK sidecar regression.
+- [x] Verify built Usage 0.2.0 query buttons with the authenticated host in an isolated browser.
+- [x] Final independent review and focused regression pass.
+
+Validation: 21 host/renderer/client tests, the bundled-SDK sidecar test, typechecks
+and server/web builds passed. Both standalone and production renderer smoke tests
+used the actual 0.2.0 archive with isolated auth/CSRF and fixture snapshots.
+The production run exercised Lobby entry/re-entry and routed Copilot, Claude and
+Antigravity clicks to their exact provider targets without automatic CLI queries.
+Independent review covered collector boundaries and the complete renderer bridge.
+
+The owner subsequently authorized commit/push and auto-merge PRs only. Full
+Windows `npm test` passed: 4,551 cases, 4,546 passed, 5 skipped, 0 failed, including
+server/desktop/renderer/test/mobile typechecks and test builds. The initial run
+alongside Runtime had one Telegram file-store restart timeout; its isolated rerun
+and the complete serial suite both passed without modifying production code,
+test assertions or timeout limits. GitHub required checks remain the merge gate.
+
+No Desktop version bump, tag, release lock edit, publication or installed update
+belongs to this follow-up. Later delivery must select the new App version/hash and
+matching Runtime revision explicitly. Existing Codex publication history follows.
 
 Codex refresh follow-up (2026-09-10): SDK 1.1 and a distinct telemetry-refresh
 permission now bridge explicit native CLI quota reads. The host enforces bounded

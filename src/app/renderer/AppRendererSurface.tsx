@@ -54,7 +54,7 @@ export function AppRendererSurface({ appId, version, title, locale, onLobby }: {
         if (data.method === 'navigation.lobby') { reply(true); onLobbyRef.current(); return; }
         const refreshQuota = data.method === 'usage.refreshQuota';
         if (data.method !== 'usage.snapshot' && !refreshQuota) { reply(false, undefined, 'Unsupported app capability.'); return; }
-        if (refreshQuota && (data.params?.provider !== 'codex' || typeof data.params?.instance !== 'string'
+        if (refreshQuota && (!['codex', 'copilot', 'claude', 'antigravity'].includes(data.params?.provider) || typeof data.params?.instance !== 'string'
           || !data.params.instance || data.params.instance.length > 100)) { reply(false, undefined, 'Invalid quota target.'); return; }
         if (busy || Date.now() - (lastRequestAt.get(data.method) ?? 0) < 1000) { reply(false, undefined, 'Usage refresh is rate limited.'); return; }
         busy = true; lastRequestAt.set(data.method, Date.now());
@@ -62,7 +62,7 @@ export function AppRendererSurface({ appId, version, title, locale, onLobby }: {
           const response = await fetch(`/api/apps/${encodeURIComponent(appId)}/usage${refreshQuota ? '/refresh' : ''}?version=${encodeURIComponent(version)}`, {
             signal: controller.signal, cache: 'no-store',
             ...(refreshQuota ? { method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ provider: 'codex', instance: data.params.instance }) } : {}),
+              body: JSON.stringify({ provider: data.params.provider, instance: data.params.instance }) } : {}),
           });
           if (!response.ok) {
             if ([401, 403, 409].includes(response.status)) {

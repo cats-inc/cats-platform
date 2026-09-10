@@ -10,7 +10,11 @@ and loaded through this repo's verified renderer host and App SDK v1. Desktop
 packaging accepts `--apps-lock` for exact App versions and SHA-256 hashes; no App
 source checkout is needed. The 0.2.2 preview selects published Usage 0.1.0 for
 automatic offline installation on first launch. See the [build/install guide](./docs/app-packages.md).
-Remote catalog/independent updates and active account collectors remain deferred.
+SDK 1.2 (2026-09-11 source follow-up) supports explicit native
+Codex/Copilot/Claude/Antigravity quota queries and native quantities through the
+permission-checked Runtime bridge. Usage 0.2.0 passed built-package browser checks;
+this follow-up does not publish or change the Desktop 0.2.4 / Usage 0.1.1 release pins.
+Remote catalog/independent updates and scheduled account polling remain deferred.
 
 This standalone repo hosts the platform host, packaged as `@cats-inc/cats-platform`
 (extracted from the original monorepo in 2026-07 with full history).

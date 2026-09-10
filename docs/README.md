@@ -9,6 +9,10 @@ App host/public SDK in `cats-platform`. Initial Desktop distribution will
 consume pinned, prebuilt App packages; remote catalog discovery and independent
 updates remain later work. The verified renderer/SDK/read bridge and Desktop
 lockfile handoff are implemented; native release publication is a separate action.
+SDK 1.2 now carries explicit Codex/Copilot/Claude/Antigravity quota refresh and
+native quantities through the same authenticated, revocable host boundary.
+The Usage 0.2.0 source follow-up is verified but not published; release pins and
+the installed Desktop remain unchanged.
 
 - [Built App packages, version selection, and isolated validation](./app-packages.md)
 
