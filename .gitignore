@@ -28,6 +28,7 @@ desktop/native/**/obj/
 config/*
 !config/.gitkeep
 !config/*.example
+!config/desktop-apps.lock.json
 platform-preferences.json
 suite-preferences.json
 

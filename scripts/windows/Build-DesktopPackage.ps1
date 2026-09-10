@@ -13,6 +13,9 @@
 .PARAMETER OutputDir
     Optional override for the packaging output directory.
 
+.PARAMETER AppsLock
+    App selection lock with exact IDs, versions and SHA-256 hashes.
+
 .EXAMPLE
     .\scripts\windows\Build-DesktopPackage.ps1 -Platform windows
     Build the staged Windows packaging outputs.
@@ -20,7 +23,8 @@
 param(
   [ValidateSet('all', 'windows', 'macos', 'linux')]
   [string]$Platform = 'all',
-  [string]$OutputDir = ''
+  [string]$OutputDir = '',
+  [string]$AppsLock = ''
 )
 
 Set-StrictMode -Version Latest
@@ -34,11 +38,10 @@ try {
   if ($LASTEXITCODE -ne 0) {
     throw "npm run build failed with exit code $LASTEXITCODE"
   }
-  if ($OutputDir) {
-    node .\scripts\package-desktop.mjs --platform $Platform --output-dir $OutputDir
-  } else {
-    node .\scripts\package-desktop.mjs --platform $Platform
-  }
+  $packageArguments = @('.\scripts\package-desktop.mjs', '--platform', $Platform)
+  if ($OutputDir) { $packageArguments += @('--output-dir', $OutputDir) }
+  if ($AppsLock) { $packageArguments += @('--apps-lock', $AppsLock) }
+  node @packageArguments
   if ($LASTEXITCODE -ne 0) {
     throw "desktop packaging failed with exit code $LASTEXITCODE"
   }

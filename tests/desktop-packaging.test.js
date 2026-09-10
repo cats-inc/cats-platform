@@ -3,6 +3,8 @@ import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promise
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
+import { gzipSync } from 'node:zlib';
+import { sha256 } from '#cats-app-package';
 
 import { resolveDesktopHostConfig } from '../build/desktop/config.js';
 import { resolveDesktopWindowIconPath } from '../build/desktop/windowIcon.js';
@@ -28,6 +30,37 @@ async function seedFile(path, contents = '') {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, contents);
 }
+
+function createPinnedApp(compatibility = '^0.2.1') {
+  const manifest = { id: 'cats.usage', version: '0.1.0', compatibility: { catsPlatform: compatibility, appSdk: '1.x' }, entrypoints: { renderer: 'renderer/index.html' } };
+  const bytes = gzipSync(Buffer.from(JSON.stringify({ schemaVersion: 1, kind: 'cats-app', manifest, files: [{ path: 'renderer/index.html', base64: Buffer.from('<head></head><body>Usage</body>').toString('base64') }] })));
+  return { id: manifest.id, version: manifest.version, sha256: sha256(bytes), artifact: 'usage-0.1.0.catsapp', bytes, manifest };
+}
+
+test('both Desktop entrypoints accept explicit lock paths and fail on a missing value', () => {
+  const lock = '../cats-apps/dist/usage-0.1.0.lock.json';
+  assert.equal(parseBuildDesktopInstallerArgs(['--apps-lock', lock], {}).appsLock, lock);
+  assert.equal(parsePackageDesktopArgs(['--apps-lock', lock], {}).appsLock, lock);
+  assert.equal(parsePackageDesktopArgs([], { CATS_DESKTOP_APPS_LOCK: lock }).appsLock, lock);
+  assert.throws(() => parseBuildDesktopInstallerArgs(['--apps-lock'], {}), /requires a path/);
+  assert.throws(() => parsePackageDesktopArgs(['--apps-lock', '--platform'], {}), /requires a path/);
+});
+
+test('invalid app pins fail before any existing Desktop stage is removed', async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-desktop-pin-rejection-'));
+  const outputRoot = join(workingDir, 'desktop-packaging');
+  const marker = join(outputRoot, 'keep.txt'); await seedFile(marker, 'previous stage');
+  const config = resolveDesktopHostConfig({ env: {}, userDataDir: join(workingDir, 'profile'), catsHomeDir: join(workingDir, '.cats') });
+  for (const apps of [
+    [{ ...createPinnedApp(), sha256: '0'.repeat(64) }],
+    [{ ...createPinnedApp(), version: '0.2.0' }],
+    [createPinnedApp('9.x')],
+    [createPinnedApp(), createPinnedApp()],
+  ]) {
+    await assert.rejects(stageDesktopPackagingOutputs(config, { outputRoot, apps }), /SHA-256|identity\/version|Incompatible|Duplicate/);
+    assert.equal(await readFile(marker, 'utf8'), 'previous stage');
+  }
+});
 
 function createDesktopIconManifest(overrides = {}) {
   return {
@@ -99,6 +132,9 @@ async function seedRuntimeBundle(runtimeRoot, contents = 'export const layout = 
 }
 
 async function seedAppSidecarRuntimeDependencies(packageRoot) {
+  await seedFile(join(packageRoot, 'packages', 'app-sdk', 'package.json'), '{"version":"1.0.0","type":"module"}');
+  await seedFile(join(packageRoot, 'packages', 'app-sdk', 'package.js'), 'export {};');
+  await seedFile(join(packageRoot, 'packages', 'app-sdk', 'browser.js'), '// SDK fixture');
   for (const dependency of ['js-yaml', 'argparse']) {
     await seedFile(
       join(packageRoot, 'node_modules', dependency, 'package.json'),
@@ -1219,7 +1255,15 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   const plan = await stageDesktopPackagingOutputs(config, {
     generatedAt: new Date('2026-03-24T12:05:00.000Z'),
     platforms: ['windows', 'linux'],
+    apps: [createPinnedApp()],
   });
+
+  const bundle = JSON.parse(await readFile(join(plan.outputRoot, 'shared', 'official-apps', 'bundle.lock.json'), 'utf8'));
+  assert.deepEqual(bundle.apps, plan.apps);
+  assert.equal(bundle.apps[0].version, '0.1.0');
+  assert.equal(bundle.apps[0].artifact, 'cats.usage-0.1.0.catsapp');
+  assert.equal(sha256(await readFile(join(plan.outputRoot, 'shared', 'official-apps', bundle.apps[0].artifact))), createPinnedApp().sha256);
+  await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'packages', 'app-sdk', 'browser.js'));
 
   assert.deepEqual(plan.sidecarLayout, {
     app: 'split',

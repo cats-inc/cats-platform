@@ -158,6 +158,7 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
     'build/server',
     'build/desktop',
     'scripts',
+    'packages/app-sdk',
     'config/provider-capability-bootstrap.yaml.example',
     '.env.example',
     'README.md',
@@ -174,6 +175,9 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal(packedPaths.has('build/server/index.js'), true);
   assert.equal(packedPaths.has('build/desktop/main.js'), true);
   assert.equal(packedPaths.has('build/desktop/preload.cjs'), true);
+  assert.equal(packedPaths.has('packages/app-sdk/package.js'), true);
+  assert.equal(packedPaths.has('packages/app-sdk/browser.js'), true);
+  assert.equal(packedPaths.has('packages/app-sdk/browser.d.ts'), true);
   assert.equal(packedPaths.has('scripts/linux/install-node.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-github-cli.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-codex.sh'), true);

@@ -1,5 +1,6 @@
 import { access, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
+import { decodeAppPackage, parseAppLock, supportsVersion, APP_SDK_VERSION, PLATFORM_VERSION, type ResolvedAppPin } from '#cats-app-package';
 
 import type { DesktopHostConfig } from './config.js';
 import type {
@@ -19,6 +20,7 @@ import {
 } from './setupAssets.js';
 
 interface DesktopPackagingPlanOptions {
+  apps?: ResolvedAppPin[];
   generatedAt?: Date;
   outputRoot?: string;
   platforms?: DesktopPackagingPlatform[] | null;
@@ -1045,6 +1047,7 @@ export function createDesktopPackagingPlan(
 
   return {
     strategy: 'electron-sidecar-bundle',
+    apps: (options.apps ?? []).map(({ id, version, sha256 }) => ({ id, version, sha256, artifact: `${id}-${version}.catsapp` })),
     generatedAt: generatedAt.toISOString(),
     outputRoot,
     sidecarLayout,
@@ -1120,6 +1123,7 @@ async function writeInstallerManifest(
     sidecarLayout: plan.sidecarLayout,
     installer,
     updates: plan.updates,
+    apps: plan.apps,
     artifacts: target.artifacts,
   }, null, 2));
 }
@@ -1131,11 +1135,19 @@ export async function stageDesktopPackagingOutputs(
   const generatedAt = options.generatedAt ?? new Date();
   const outputRoot = resolve(options.outputRoot ?? defaultOutputRoot(config));
   const sidecarLayout = resolveSidecarLayoutSelection(options.sidecarLayout);
+  // Validate every selected byte before touching the staging directory.
+  parseAppLock({ schemaVersion: 1, apps: options.apps ?? [] });
+  for (const app of options.apps ?? []) {
+    const { manifest } = decodeAppPackage(app.bytes, app);
+    if (!supportsVersion(PLATFORM_VERSION, manifest.compatibility?.catsPlatform)
+      || !supportsVersion(APP_SDK_VERSION, manifest.compatibility?.appSdk)) throw new Error(`Incompatible app package: ${app.id}@${app.version}.`);
+  }
   const plan = createDesktopPackagingPlan(config, {
     generatedAt,
     outputRoot,
     platforms: options.platforms,
     sidecarLayout: sidecarLayout.app,
+    apps: options.apps,
   });
   const allowedPlatforms = new Set(plan.targets.map((target) => target.platform));
 
@@ -1152,6 +1164,12 @@ export async function stageDesktopPackagingOutputs(
   await copyDirectory(join(config.packageRoot, 'build', 'renderer'), join(outputRoot, 'shared', 'build', 'renderer'));
   await copyDirectory(join(config.packageRoot, 'build', 'desktop'), join(outputRoot, 'shared', 'build', 'desktop'));
   await copyFile(join(config.packageRoot, 'package.json'), join(outputRoot, 'shared', 'app-sidecar', 'package.json'));
+  await copyDirectory(join(config.packageRoot, 'packages', 'app-sdk'), join(outputRoot, 'shared', 'app-sidecar', 'packages', 'app-sdk'));
+  await mkdir(join(outputRoot, 'shared', 'official-apps'), { recursive: true });
+  for (const app of options.apps ?? []) {
+    await writeFile(join(outputRoot, 'shared', 'official-apps', `${app.id}-${app.version}.catsapp`), app.bytes);
+  }
+  await writeFile(join(outputRoot, 'shared', 'official-apps', 'bundle.lock.json'), `${JSON.stringify({ schemaVersion: 1, apps: plan.apps ?? [] }, null, 2)}\n`);
   for (const asset of PLATFORM_OPTIONAL_ASSETS) {
     const sourcePath = join(config.packageRoot, asset.sourceRelativePath);
     const targetPath = join(outputRoot, asset.targetRelativePath);
@@ -1222,6 +1240,7 @@ export async function stageDesktopPackagingOutputs(
   await writeFile(join(outputRoot, 'desktop-package-plan.json'), JSON.stringify(plan, null, 2));
   await writeFile(join(outputRoot, 'shared', 'asset-map.json'), JSON.stringify({
     copiedAt: generatedAt.toISOString(),
+    apps: plan.apps,
     sidecarLayout,
     roots: {
       app: '.',

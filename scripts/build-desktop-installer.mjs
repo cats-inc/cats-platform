@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 
 import { parseStableReleaseTag } from './validate-release-version.mjs';
 import { DESCRIPTOR_RELATIVE_PATH } from './generate-desktop-release-descriptor.mjs';
+import { resolveAppLock, materializeAppSelection } from '#cats-app-package';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
@@ -32,6 +33,7 @@ Options:
   --format <nsis|dmg|pkg|zip|AppImage|deb|tar.gz>
                                          Override the configured installer formats.
   --sidecar-layout <split|bundle>         Choose loose-file or bundled sidecars for both app/runtime.
+  --apps-lock <path>                      Bundle the exact ID/version/SHA-256 selection in this lock.
   --skip-mobile                           Skip the mobile bundle (\`expo export\`). Also honored via
                                           CATS_SKIP_MOBILE=1 in the environment or .env.
   --release                               Build an official release package: embed the release
@@ -102,6 +104,7 @@ export function parseArgs(argv, env = process.env) {
   // cannot override anything in the GITHUB_ namespace, and a preview run is
   // dispatched from a branch, so the tag has to arrive as an explicit input.
   let tag = (env.CATS_DESKTOP_RELEASE_TAG ?? env.GITHUB_REF_NAME ?? '').trim();
+  let appsLock = env.CATS_DESKTOP_APPS_LOCK?.trim() || null;
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
@@ -117,10 +120,16 @@ export function parseArgs(argv, env = process.env) {
         previewMode,
         publish,
         tag,
+        ...(appsLock ? { appsLock } : {}),
       };
     }
     if (value === '--release') {
       releaseMode = true;
+      continue;
+    }
+    if (value === '--apps-lock') {
+      appsLock = argv[++index];
+      if (!appsLock || appsLock.startsWith('--')) throw new Error('--apps-lock requires a path.');
       continue;
     }
     if (value === '--no-release') {
@@ -187,6 +196,7 @@ export function parseArgs(argv, env = process.env) {
     previewMode,
     publish,
     tag,
+    ...(appsLock ? { appsLock } : {}),
   };
 }
 
@@ -673,6 +683,10 @@ async function main() {
   }
 
   const resolvedTarget = resolveBuilderTarget(parsed.target);
+  // Resolve once before builds can clear build/. Stage an offline immutable copy
+  // in an OS temporary directory so retries never redownload a moving asset.
+  const selectedApps = parsed.appsLock ? await resolveAppLock(resolve(parsed.appsLock)) : null;
+  const appLockForBuild = selectedApps ? await materializeAppSelection(selectedApps) : null;
   const envOptions = { releaseMode: parsed.releaseMode };
 
   if (parsed.releaseMode && parsed.previewMode) {
@@ -762,6 +776,7 @@ async function main() {
       resolvedTarget,
       '--sidecar-layout',
       parsed.sidecarLayout,
+      ...(appLockForBuild ? ['--apps-lock', appLockForBuild] : []),
     ],
     PROJECT_ROOT,
     sidecarBuildEnv,

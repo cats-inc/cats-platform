@@ -4,11 +4,11 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Planned; execution follow-through not started |
+| Status | Renderer/SDK/telemetry implemented; pinned 0.2.2 preview release in progress; catalog deferred |
 | Owner | cats-platform |
 | Related spec | SPEC-115 |
 | Related decision | ADR-114 |
-| First app | Cats Usage (cats.usage) |
+| First app | Usage (cats.usage) |
 
 ## Related Spec
 
@@ -28,44 +28,51 @@ integration. Keep the initial slice smaller than the full extension manifesto.
       unimplemented scoped API executor.
 - [x] Record cats-apps source ownership and coordinated Desktop distribution.
 - [x] Link Apps and runtime specifications/plans.
-- [ ] Agree the U1 telemetry DTO and unsupported/coverage semantics with runtime.
+- [x] Agree the U1 telemetry DTO and unsupported/coverage semantics with runtime.
 
 ### Phase 1: Freeze Executable Contracts
 
-- [ ] Define the public SDK export/version and actual renderer context bootstrap.
-- [ ] Select renderer isolation, origin/CSP policy, message binding, and capability
+- [x] Define the public SDK export/version and actual renderer context bootstrap.
+- [x] Select renderer isolation, origin/CSP policy, message binding, and capability
       revocation behavior; verify the isolated-frame candidate.
-- [ ] Freeze package payload/entrypoints and archive import rules.
-- [ ] Freeze app/version/source/checksum Desktop bundle metadata.
-- [ ] Define runtime.telemetry.read and usage.snapshot or their final equivalents.
-- [ ] Keep unimplemented server/jobs/general scoped executors outside this slice.
+- [x] Freeze package payload/entrypoints and archive import rules.
+- [x] Freeze app/version/artifact/checksum Desktop bundle metadata.
+- [x] Define runtime.telemetry.read and usage.snapshot or their final equivalents.
+- [x] Keep unimplemented server/jobs/general scoped executors outside this slice.
 
 ### Phase 2: Managed Installation and Loader
 
-- [ ] Replace production references to developer package paths with staged,
+- [x] Replace production references to developer package paths with staged,
       validated app/version installations.
-- [ ] Commit registry changes only after the candidate payload is usable.
-- [ ] Preserve prior versions/data on failure and explicit disabled state on update.
-- [ ] Load the built renderer and assets through the actual host route.
-- [ ] Supply identity, locale/theme, navigation, lifecycle, and the real SDK bridge.
-- [ ] Verify source-free and offline package execution using temporary app roots.
+- [x] Commit registry changes only after the candidate payload is usable.
+- [x] Preserve prior versions/data on failure and explicit disabled state on update.
+- [x] Load the built renderer and assets through the actual host route.
+- [x] Supply identity, locale/theme, navigation, lifecycle, and the real SDK bridge.
+- [x] Verify source-free and offline package execution using temporary app roots.
 
 ### Phase 3: Read-Only Usage Bridge
 
-- [ ] Enforce a narrowly scoped telemetry permission against the active app/version.
-- [ ] Adapt existing runtime diagnostics for U1 without claiming account quota.
-- [ ] Redact/minimize data and expose coverage, freshness, confidence, and failures.
-- [ ] Verify polling reads only cached data and cannot invoke CLI/model work.
-- [ ] Add quota-window projection when runtime PLAN-038 delivers verified sources.
-- [ ] Revoke bridge access on disable/uninstall and tear down stale contexts.
+- [x] Enforce a narrowly scoped telemetry permission against the active app/version.
+- [x] Read the dedicated Runtime snapshot for U1 and supported passive quota signals.
+- [x] Redact/minimize data and expose coverage, freshness, confidence, and failures.
+- [x] Verify polling reads only cached data and cannot invoke CLI/model work.
+- [x] Add quota-window projection for the existing fixture-backed Claude/Codex signals.
+- [x] Revoke the next/in-flight bridge read on disable/uninstall and tear down on denial.
 
 ### Phase 4: Desktop Preinstallation
 
-- [ ] Select built cats-apps artifacts from an identified revision/build.
-- [ ] Include exact versions/checksums in release provenance and package staging.
-- [ ] Install the selected app set without a network catalog or source checkout.
-- [ ] Validate Cats Usage launch from Lobby on supported Desktop targets.
-- [ ] Validate update failure, preserved disabled state, and scoped data retention.
+- [x] Select built cats-apps artifacts from an identified artifact/build.
+- [x] Include exact versions/checksums in package plans, staging and installer manifests.
+- [x] Install the selected app set without a network catalog or source checkout.
+- [ ] Validate Usage launch from Lobby on supported Desktop targets.
+- [x] Match packaged App/config/SDK paths to Electron resource destinations.
+- [x] Publish and select the immutable Usage 0.1.0 release for Desktop 0.2.2.
+- [x] Gate each OS release on shipped App hashes and isolated offline activation.
+- [x] Validate update failure, preserved disabled state, and scoped data retention.
+
+Implemented details and exact pinning commands: [App package guide](../app-packages.md).
+Windows staging and an isolated headless host test passed; this does not claim a
+signed/public release, native installer execution on all platforms or independent review.
 
 ### Phase 5: Later Remote Catalog and App Updates
 
@@ -93,7 +100,7 @@ Add targeted contract tests for manifests/compatibility/permission denial, insta
 staging and failure recovery, renderer asset paths, SDK context binding, revoked
 access, DTO redaction, unknown/zero/stale coverage, and disabled-state retention.
 
-Then run a built Cats Usage package with source directories unavailable and with
+Then run a built Usage package with source directories unavailable and with
 runtime offline. Use temporary app/runtime profiles; do not seed the user's real
 registry with verification apps. Record actual Desktop platform coverage rather
 than treating a rendered placeholder as end-to-end success.
@@ -118,6 +125,7 @@ than treating a rendered placeholder as end-to-end success.
 
 | Date | Update |
 |------|--------|
-| 2026-09-10 | Current implementation audited; source/package/release and telemetry-host follow-through documented. New implementation remains planned. |
+| 2026-09-10 | Renderer/SDK/read bridge and pinned package installation implemented with isolated browser tests. |
+| 2026-09-10 | Usage 0.1.0 published; Runtime PR 39 merged. Desktop 0.2.2 pins the published archive; corrected resource roots, mobile-safe snapshot decoding, and actual-installer-resource checks added. Native interactive acceptance remains separate. |
 
 *Created: 2026-09-10*

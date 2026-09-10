@@ -13,6 +13,10 @@
 The host repo/package target is now `cats-platform`, but the running local app
 service names remain `cats` for product-facing and operational continuity.
 
+The isolated Usage package smoke binds `127.0.0.1` on port `0` (OS-assigned),
+serves fixtures only, and closes on completion. It reserves no fixed port and
+does not use the developer's running Platform/Runtime services or state.
+
 ## Planned Dynamic Port Ranges
 
 | Service Name | Port Range | Protocol | Status | Description |

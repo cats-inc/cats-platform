@@ -33,6 +33,7 @@ import {
   readRuntimeSseResponse,
 } from './clientStreams.js';
 import type { RuntimeSetupReadModel } from './setup.js';
+import { projectUsageSnapshot } from './usageSnapshot.js';
 
 export interface RuntimeProviderInstanceConfig {
   id: string;
@@ -297,6 +298,7 @@ export interface RuntimeDeleteSessionResult {
 
 export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
+  getUsageSnapshot?(): Promise<Record<string, unknown>>;
   getSetupState(): Promise<RuntimeSetupReadModel>;
   triggerSetupScan?(options?: { manual?: boolean }): Promise<RuntimeSetupReadModel>;
   getProviderConfig(options?: { selector?: boolean }): Promise<RuntimeProviderConfigRegistry>;
@@ -461,6 +463,26 @@ function readRuntimeSessionInfo(
 }
 
 export class CatsRuntimeClient implements RuntimeClient {
+  async getUsageSnapshot(): Promise<Record<string, unknown>> {
+    const response = await fetch(`${this.baseUrl}/usage/snapshot`, {
+      headers: this.authHeaders(), signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok || !response.body) throw new Error(`Runtime usage snapshot unavailable (${response.status}).`);
+    const chunks: Uint8Array[] = []; let size = 0;
+    for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+      size += chunk.length;
+      if (size > 2 * 1024 * 1024) throw new Error('Runtime usage snapshot exceeds size limit.');
+      chunks.push(chunk);
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    }
+    return projectUsageSnapshot(JSON.parse(new TextDecoder().decode(bytes)));
+  }
+
   private readonly apiKey: string;
   private readonly timeoutMs: number;
   private readonly sessionCreateTimeoutMs: number;

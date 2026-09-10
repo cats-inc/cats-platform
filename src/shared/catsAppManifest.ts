@@ -25,6 +25,7 @@ export const CATS_APP_PERMISSIONS = [
   'agent.tools.execute',
   'connector.auth',
   'runtime.adapter',
+  'runtime.telemetry.read',
   'jobs.schedule',
   'core.read',
   'core.write',
@@ -155,6 +156,8 @@ export interface CatsInstalledAppRecord {
   installedAt: string;
   updatedAt: string;
   lastError?: string | null;
+  packageSha256?: string;
+  packageSource?: 'desktop-bundle' | 'local-package';
 }
 
 export interface PlatformInstalledAppDescriptor {

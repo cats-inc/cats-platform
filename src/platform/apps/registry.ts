@@ -17,6 +17,8 @@ export interface CatsAppRegistryInstallInput {
   packagePath: string;
   installState?: CatsAppInstallState;
   enabled?: boolean;
+  packageSha256?: string;
+  packageSource?: 'desktop-bundle' | 'local-package';
 }
 
 export interface CatsAppRegistryUpdateStateInput {
@@ -79,6 +81,8 @@ function enabledForState(state: CatsAppInstallState): boolean {
   return state === 'enabled';
 }
 
+const registryWrites = new Map<string, Promise<unknown>>();
+
 export class FileCatsAppRegistry {
   private readonly registryPath: string;
   private readonly now: () => Date;
@@ -113,6 +117,10 @@ export class FileCatsAppRegistry {
   }
 
   async installApp(input: CatsAppRegistryInstallInput): Promise<CatsInstalledAppRecord> {
+    return this.serialize(() => this.installAppUnlocked(input));
+  }
+
+  private async installAppUnlocked(input: CatsAppRegistryInstallInput): Promise<CatsInstalledAppRecord> {
     const state = await this.readState();
     const now = this.now().toISOString();
     const installState = input.installState ?? 'installed';
@@ -125,6 +133,7 @@ export class FileCatsAppRegistry {
       installedAt: now,
       updatedAt: now,
       lastError: null,
+      ...(input.packageSha256 ? { packageSha256: input.packageSha256, packageSource: input.packageSource } : {}),
     };
     const existingIndex = state.apps.findIndex((record) => record.id === nextRecord.id);
     if (existingIndex >= 0) {
@@ -142,6 +151,10 @@ export class FileCatsAppRegistry {
     appId: string,
     input: CatsAppRegistryUpdateStateInput,
   ): Promise<CatsInstalledAppRecord> {
+    return this.serialize(() => this.updateAppStateUnlocked(appId, input));
+  }
+
+  private async updateAppStateUnlocked(appId: string, input: CatsAppRegistryUpdateStateInput): Promise<CatsInstalledAppRecord> {
     const state = await this.readState();
     const record = state.apps.find((entry) => entry.id === appId);
     if (!record) {
@@ -161,6 +174,10 @@ export class FileCatsAppRegistry {
     appId: string,
     options: CatsAppRegistryUninstallOptions = {},
   ): Promise<CatsInstalledAppRecord | null> {
+    return this.serialize(() => this.uninstallAppUnlocked(appId, options));
+  }
+
+  private async uninstallAppUnlocked(appId: string, options: CatsAppRegistryUninstallOptions): Promise<CatsInstalledAppRecord | null> {
     const state = await this.readState();
     const existingIndex = state.apps.findIndex((record) => record.id === appId);
     if (existingIndex < 0) {
@@ -189,6 +206,15 @@ export class FileCatsAppRegistry {
     const tempPath = `${this.registryPath}.${process.pid}.${Date.now()}.tmp`;
     await writeFile(tempPath, `${JSON.stringify(cloneState(state), null, 2)}\n`, 'utf8');
     await rename(tempPath, this.registryPath);
+  }
+
+  private async serialize<T>(operation: () => Promise<T>): Promise<T> {
+    const key = path.resolve(this.registryPath).toLowerCase();
+    const previous = registryWrites.get(key) ?? Promise.resolve();
+    const current = previous.catch(() => {}).then(operation);
+    registryWrites.set(key, current);
+    try { return await current; }
+    finally { if (registryWrites.get(key) === current) registryWrites.delete(key); }
   }
 }
 

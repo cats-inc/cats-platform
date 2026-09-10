@@ -34,6 +34,8 @@ permissions:
 
 env:
   CATS_SKIP_MOBILE: '1'
+  # Source-controlled exact release URLs and SHA-256 hashes, never implicit latest.
+  CATS_DESKTOP_APPS_LOCK: config/desktop-apps.lock.json
 
 jobs:
   guard:
@@ -210,6 +212,9 @@ jobs:
           ${{ needs.guard.outputs.preview == 'true' && '--preview' || '--release' }}
           --publish always
           ${{ matrix.extra_args }}
+
+      - name: Verify bundled App versions and offline activation
+        run: node scripts/verify-desktop-app-bundle.mjs --release-root release --expect-lock config/desktop-apps.lock.json
 
       - name: Verify Windows signature
         if: matrix.platform == 'windows' && needs.guard.outputs.preview == 'false'

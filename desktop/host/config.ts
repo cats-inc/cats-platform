@@ -173,7 +173,7 @@ function resolveHostRuntimeRoot(
     appSidecarRoot: resolveDesktopPath(joinDesktopPath(bundledResourcesRoot, 'app-sidecar')),
     runtimePackageRoot: resolveDesktopPath(joinDesktopPath(bundledResourcesRoot, 'cats-runtime')),
     platformBundledConfigDir: resolveDesktopPath(
-      joinDesktopPath(bundledResourcesRoot, 'cats-platform', 'config'),
+      joinDesktopPath(bundledResourcesRoot, 'app-sidecar', 'config'),
     ),
   };
 }

@@ -3,12 +3,11 @@
 Status: Draft
 
 Implementation audit (2026-09-10): registry, manifest, Settings, and Lobby slices
-are present. Route registration is not renderer execution: the App route is a
-package-information placeholder and scoped App API dispatch still returns 501.
-Current local installs retain the supplied package path; the managed versioned
-directory helper is not wired into installation. [PLAN-106](./PLAN-106-official-app-package-hosting.md)
-now tracks real versioned-package loading and the narrow read-only bridge for
-official Cats Usage. General connector/server execution remains broader work in
+are present. [PLAN-106](./PLAN-106-official-app-package-hosting.md) now implements
+managed `.catsapp` installation, an opaque-frame renderer, SDK v1, and a narrowly
+authorized telemetry bridge for Usage, plus pinned Desktop package selection.
+Manifest-only local registration remains distinct from verified renderer execution.
+General scoped App dispatch still returns 501. Connector/server execution remains broader work in
 this plan. See [ADR-114](../decisions/114-separate-official-app-sources-and-coordinate-desktop-distribution.md)
 and [SPEC-115](../specs/SPEC-115-versioned-official-app-packages-and-telemetry-bridge.md).
 
@@ -138,7 +137,7 @@ Inventory notes:
 - [ ] Load and execute an installed built renderer (official utility slice in
       PLAN-106).
 - [ ] Execute declared scoped App server APIs; registration alone is insufficient
-      and this broader executor is not required by Cats Usage U1.
+      and this broader executor is not required by Usage U1.
 - [x] Gate mutations behind owner-level confirmation in the UI flow.
 - [x] Ensure app APIs cannot shadow core, product, setup, runtime, or settings
       endpoints.

@@ -12,9 +12,9 @@
 
 Baseline update (2026-09-10): the original Lobby mock-replacement milestone below
 has landed through registry-backed entries. Manifest/SDK interfaces, local-path
-installation, and Settings management exist, but installed renderer execution
-and scoped App API execution do not. The concrete next consumer is the official
-Cats Usage utility from `cats-apps`. Its prebuilt-package hosting and read-only
+installation, and Settings management exist. The verified renderer/SDK v1 and
+telemetry read bridge are now implemented for the official Usage utility from
+`cats-apps`; general scoped App/server execution remains unsupported. Its prebuilt-package hosting and read-only
 telemetry requirements are scoped in [SPEC-115](./SPEC-115-versioned-official-app-packages-and-telemetry-bridge.md),
 following [ADR-114](../decisions/114-separate-official-app-sources-and-coordinate-desktop-distribution.md)
 and [PLAN-106](../plans/PLAN-106-official-app-package-hosting.md). Reserved extension

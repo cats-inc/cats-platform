@@ -5,11 +5,12 @@
 
 ## Overview
 
-Official utility App planning (2026-09-10): source packages live in the sibling
-`cats-apps` repository, while this repo owns the App host and public SDK. The
-first planned app is **Cats Usage** (`cats.usage`). Initial Desktop distribution
-will include pinned, prebuilt app versions; the installed renderer/telemetry
-bridge is not implemented yet. See the [planning entry point](./docs/README.md#official-utility-apps-and-cats-usage).
+Official utility Apps (2026-09-10): **Usage** (`cats.usage`) is built in `cats-apps`
+and loaded through this repo's verified renderer host and App SDK v1. Desktop
+packaging accepts `--apps-lock` for exact App versions and SHA-256 hashes; no App
+source checkout is needed. The 0.2.2 preview selects published Usage 0.1.0 for
+automatic offline installation on first launch. See the [build/install guide](./docs/app-packages.md).
+Remote catalog/independent updates and active account collectors remain deferred.
 
 This standalone repo hosts the platform host, packaged as `@cats-inc/cats-platform`
 (extracted from the original monorepo in 2026-07 with full history).

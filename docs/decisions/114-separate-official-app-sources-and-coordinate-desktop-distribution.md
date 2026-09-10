@@ -3,7 +3,8 @@
 ## Status
 
 Accepted — repository and initial distribution direction approved on 2026-09-10.
-Host execution, package installation, and telemetry bridge follow-through remain planned.
+The renderer/package/telemetry slice is now implemented under PLAN-106. General
+extensions and catalog updates remain planned; see the [frozen v1 contract](../app-packages.md).
 
 ## Context
 
@@ -12,10 +13,10 @@ the App Package extension boundary, and PLAN-087 delivered its first registry,
 management, and Lobby foundations.
 
 Small official utility apps now have a separate source home, cats-inc/cats-apps.
-The first planned app is Cats Usage. This requires a clear source/package/release
+The first app is Usage. This requires a clear source/package/release
 boundary without forcing every small app into its own repository and release system.
 
-The current app route renders package metadata, not the app's renderer. The local
+At decision time, the app route rendered package metadata, not the app's renderer. The local
 install API records an input package path; declared scoped API routes return 501.
 Reserved entrypoints and SDK interfaces do not prove deployed app execution.
 
@@ -35,12 +36,12 @@ Reserved entrypoints and SDK interfaces do not prove deployed app execution.
    or release workflow per utility is not required.
 7. The host owns versioned installation and per-app data separation. Bundle
    provenance establishes first-party trust; manifest text cannot self-grant it.
-8. Cats Usage (cats.usage) contributes an App entry under Lobby Apps. It does not
+8. Usage (cats.usage) contributes an App entry under Lobby Apps. It does not
    become a new Product or move Chat/Work/Code out of the platform repository.
 9. A future remote App Catalog describes available apps/versions and artifacts.
    GitHub Releases may store artifacts; the local registry records installed state.
    The host consumes catalogs/downloads and manages updates when that phase is built.
-10. Provide a narrow read-only telemetry bridge for Cats Usage. The app does not
+10. Provide a narrow read-only telemetry bridge for Usage. The app does not
     receive raw runtime credentials, provider login files, or arbitrary host access.
 
 ## Consequences
