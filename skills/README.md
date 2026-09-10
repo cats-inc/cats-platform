@@ -13,10 +13,16 @@ packages.
 ## How It Works
 
 1. **Canonical source**: All skills live in `skills/` (version-controlled)
-2. **Sync to agents**: Run `Sync-AgentSkills.ps1` to copy skills to each agent's discovery path
+2. **Sync to agents**: Run `Sync-AgentSkills.ps1` to discover nested packages and copy them to each agent's discovery path
 3. **Agent discovery**: Each agent finds skills in its own directory
 
 Skill directories may include supporting files (for example `scripts/`, `references/`, or `assets/`). Sync copies the entire skill directory so agents can access all referenced files.
+
+Discovery supports family directories such as `skills/orchestration/`. It stops
+at each package root, excludes pending `*.bootstrap` directories and rejects
+duplicate leaf names before writing either mirror. These developer skills are
+not shipped as product content. Desktop bundles the separate library from
+`cats-runtime/runtime-skills/`.
 
 ### Discovery Paths
 

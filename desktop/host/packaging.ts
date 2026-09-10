@@ -153,8 +153,8 @@ const RUNTIME_OPTIONAL_ASSETS: RuntimeSidecarAsset[] = [
     directory: true,
   },
   {
-    sourceRelativePath: 'skills',
-    targetRelativePath: join('shared', 'cats-runtime', 'skills'),
+    sourceRelativePath: 'runtime-skills',
+    targetRelativePath: join('shared', 'cats-runtime', 'runtime-skills'),
     directory: true,
   },
   {
@@ -336,7 +336,7 @@ async function ensureBundledRuntimeAssets(
     join(runtimePackageRoot, 'build', 'runtime', 'index.js'),
     join(runtimePackageRoot, 'package.json'),
     ...RUNTIME_PUBLIC_FILES.map((fileName) => join(runtimePackageRoot, 'public', fileName)),
-    join(runtimePackageRoot, 'skills'),
+    join(runtimePackageRoot, 'runtime-skills'),
     join(runtimePackageRoot, 'config', 'management.yaml.example'),
     join(runtimePackageRoot, 'config', 'providers.yaml.example'),
     join(runtimePackageRoot, 'config', 'curated-model-catalogs.yaml.example'),
@@ -990,7 +990,7 @@ function buildPackagingTarget(
     { id: 'runtime-sidecar', relativePath: 'shared/cats-runtime/build/runtime/index.js', role: 'runtime_sidecar' as const },
     { id: 'runtime-package-manifest', relativePath: 'shared/cats-runtime/package.json', role: 'runtime_sidecar' as const },
     { id: 'runtime-setup-ui', relativePath: 'shared/cats-runtime/public/provider-setup.html', role: 'runtime_sidecar' as const },
-    { id: 'runtime-skills', relativePath: 'shared/cats-runtime/skills/README.md', role: 'runtime_sidecar' as const },
+    { id: 'runtime-skills', relativePath: 'shared/cats-runtime/runtime-skills/README.md', role: 'runtime_sidecar' as const },
     {
       id: runtimeDependencyArtifactId(sidecarLayout.runtime),
       relativePath: runtimeDependencyArtifactPath(sidecarLayout.runtime),
@@ -1288,8 +1288,8 @@ export async function stageDesktopPackagingOutputs(
         target: 'shared/cats-runtime/public/provider-setup.html',
       },
       {
-        source: relative(outputRoot, join(config.runtimePackageRoot, 'skills')),
-        target: 'shared/cats-runtime/skills',
+        source: relative(outputRoot, join(config.runtimePackageRoot, 'runtime-skills')),
+        target: 'shared/cats-runtime/runtime-skills',
       },
       {
         source: relative(outputRoot, join(config.runtimePackageRoot, 'config', 'providers.yaml.example')),

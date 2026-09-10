@@ -185,7 +185,7 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\build\runtime\index.js'); Label = 'bundled cats-runtime entry' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\package.json'); Label = 'bundled cats-runtime package manifest' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\public\provider-setup.html'); Label = 'bundled cats-runtime setup UI' },
-  @{ Path = (Join-Path $resourcesRoot 'cats-runtime\skills\README.md'); Label = 'bundled cats-runtime skills catalog root' },
+  @{ Path = (Join-Path $resourcesRoot 'cats-runtime\runtime-skills\README.md'); Label = 'bundled cats-runtime skills catalog root' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\config\management.yaml.example'); Label = 'bundled cats-runtime management config example' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\config\providers.yaml.example'); Label = 'bundled cats-runtime provider config example' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\config\curated-model-catalogs.yaml.example'); Label = 'bundled cats-runtime curated model catalog example' },

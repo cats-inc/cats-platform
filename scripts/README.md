@@ -143,7 +143,8 @@ discovery paths do not depend on bootstrap submodules:
 - `scripts/linux/sync-agent-skills.sh`
 - `scripts/macos/sync-agent-skills.sh`
 
-These scripts sync `skills/` into `.claude/skills` and `.agents/skills`, and
+These scripts recursively discover packages under developer `skills/` and copy
+their complete resources into `.claude/skills` and `.agents/skills`, and
 support:
 
 - `--clean` / `-Clean`
@@ -152,6 +153,10 @@ support:
 Antigravity CLI is intentionally not a skill sync target yet. Its repo/project
 skill discovery path has not been verified, so these helpers do not create an
 `.antigravity/skills` convention.
+
+Skill discovery stops at package roots and rejects duplicate leaf names before
+writing. It skips pending `*.bootstrap` directories. Desktop packaging obtains
+product skills separately from `cats-runtime/runtime-skills/`.
 
 ## Self-Hosted npm Package Helpers
 

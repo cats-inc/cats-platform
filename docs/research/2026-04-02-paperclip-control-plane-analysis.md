@@ -191,7 +191,7 @@ early product and shared-core seams. The main gaps are:
   [`paperclip/server/src/services/heartbeat.ts`](../../../paperclip/server/src/services/heartbeat.ts),
   [`paperclip/server/src/services/workspace-runtime.ts`](../../../paperclip/server/src/services/workspace-runtime.ts)
 - Skill integration:
-  [`cats-runtime/skills/README.md`](../../../cats-runtime/skills/README.md),
+  [`cats-runtime/runtime-skills/README.md`](../../../cats-runtime/runtime-skills/README.md),
   [`cats-runtime/scripts/windows/Sync-AgentSkills.ps1`](../../../cats-runtime/scripts/windows/Sync-AgentSkills.ps1),
   [`paperclip/skills/paperclip/SKILL.md`](../../../paperclip/skills/paperclip/SKILL.md),
   [`paperclip/packages/adapters/codex-local/src/server/execute.ts`](../../../paperclip/packages/adapters/codex-local/src/server/execute.ts)
