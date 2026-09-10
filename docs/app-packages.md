@@ -9,10 +9,10 @@ In cats-apps:
 
 ```powershell
 npm test
-npm run build -- --version 0.1.0
+npm run build -- --version 0.1.1
 ```
 
-This produces an archive, `usage-0.1.0.lock.json`, and provenance in `dist/`.
+This produces an archive, `usage-0.1.1.lock.json`, and provenance in `dist/`.
 The requested version must equal both App manifests. Rebuilding different bytes
 over an existing output version is rejected; use a separate development output
 directory or publish a new version. Release builds record their GitHub source SHA;
@@ -21,7 +21,7 @@ local builds report an unknown revision and an input-content digest.
 In cats-platform, build the Windows installer with that selection:
 
 ```powershell
-npm run desktop:package:windows -- --apps-lock ../cats-apps/dist/usage-0.1.0.lock.json --skip-mobile
+npm run desktop:package:windows -- --apps-lock ../cats-apps/dist/usage-0.1.1.lock.json --skip-mobile
 ```
 
 `--apps-lock` also works on the macOS/Linux installer entrypoints. The Windows
@@ -32,7 +32,7 @@ for automation. An explicit CLI argument takes precedence.
 To stage already-built host/runtime artifacts without creating an installer:
 
 ```powershell
-node scripts/package-desktop.mjs --platform windows --apps-lock ../cats-apps/dist/usage-0.1.0.lock.json
+node scripts/package-desktop.mjs --platform windows --apps-lock ../cats-apps/dist/usage-0.1.1.lock.json
 ```
 
 The lock format is `{ schemaVersion: 1, apps: [{ id, version, sha256, artifact }] }`.
@@ -52,24 +52,25 @@ Temporary build selections are safe to remove after the build is finished.
 
 ## Release policy and default selection
 
-The cats-apps shared tag workflow publishes `usage-v0.1.0` (and future utility
+The cats-apps shared tag workflow publishes `usage-v0.1.1` (and other utility
 tags) independently of Desktop. It refuses to replace an existing release and
 does not mark utility releases as a repository-wide `latest` release.
 
 Desktop release CI reads the source-controlled `config/desktop-apps.lock.json`.
-Desktop 0.2.3 retains the published [Usage 0.1.0 release](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.1.0) selected in 0.2.2,
-with SHA-256 `568fbc3fa2efaee2036f4ae04d97d379945988d6e9300e41861b61c01beb1222`.
-The release provenance identifies Apps commit `f0f1b2757d26cdb8fafdb25967008a3ffa348e25`.
+Desktop 0.2.4 selects the published [Usage 0.1.1 release](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.1.1),
+with SHA-256 `2334a33c059502cf1209aa399e1ad7ce7123c6fc4c2c54173ec271c60a5803fd`.
+The release provenance identifies Apps commit `1a06d51523e0175f65a3a062be3581a659ada2ef`.
+Desktop 0.2.2 and 0.2.3 retain their existing Usage 0.1.0 archive unchanged.
 Future selections must copy the actual release's version/hash and immutable
 asset URL into the lock and commit it with Desktop. Do not substitute a local
 rebuild's hash: gzip headers can differ by build OS even for identical payloads.
 No fake URL or implicit latest version is shipped. Local builds without a
 selection still explicitly report that no optional Apps are included.
 
-For the 0.2.3 unsigned preview, merge the Platform version/fix changes, then
+For the 0.2.4 unsigned preview, merge the Platform version/selection changes, then
 manually dispatch the Desktop release workflow on that merged commit with
-`tag=v0.2.3` and `runtime_ref=0345d319cf2f97ea51a482dd6932b34576a491b3`.
-This is the merged Runtime Usage snapshot implementation. Let the preview
+`tag=v0.2.4` and `runtime_ref=603afdc2f9e46b31b56b0223f6a3f0690b5af76f`.
+This is the merged Runtime native Codex quota-query implementation. Let the preview
 workflow create its tag; pushing a Desktop version tag selects the signed stable
 release path instead. Utility App tags and Desktop tags are independent.
 
@@ -107,9 +108,9 @@ The authenticated local install API also accepts `.catsapp`:
 
 ```json
 {
-  "packagePath": "C:/downloads/usage-0.1.0.catsapp",
+  "packagePath": "C:/downloads/usage-0.1.1.catsapp",
   "id": "cats.usage",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "sha256": "<copy the real 64-hex hash from the verified lock>",
   "enable": true
 }
@@ -132,9 +133,9 @@ Runtime uses CLI stdio only (8-second attempt plus cleanup, 60-second cooldown),
 never reads CLI credentials, never invokes model work and never calls a provider
 API directly. Native Windows was verified; WSL/Docker currently return unsupported.
 The result includes sanitized status, `nextRefreshAt`, and a cached v1 snapshot.
-Usage 0.1.1 requires SDK ^1.1.0. Selecting its published version/hash for Desktop
-is still a release step; the default lock above continues to identify the last
-published package until that step is completed.
+Usage 0.1.1 requires SDK ^1.1.0. Desktop 0.2.4's default lock selects its published
+version/hash, and its host provides SDK 1.1.0. The actual installer resources and
+offline activation must still pass the release gates before publication.
 
 - `.catsapp`: gzip JSON `{schemaVersion:1,kind:"cats-app",manifest,files:[{path,base64}]}`.
   Limits: 8 MiB compressed, 24 MiB expanded envelope, 128 files, 8 MiB/file.
@@ -184,11 +185,15 @@ Platform page and Lobby navigation, instead of only the standalone App surface:
 ```powershell
 $env:CATS_TEST_PLAYWRIGHT_MODULE = '<absolute path to playwright-core/index.mjs>'
 $env:CATS_TEST_BROWSER_EXECUTABLE = '<absolute path to a Chromium/Edge executable>'
-node --import tsx scripts/testing/check-usage-app.mts --apps-lock ../cats-apps/dist/usage-0.1.0.lock.json
+node --import tsx scripts/testing/check-usage-app.mts --apps-lock <verified-usage-0.1.0-release-lock>
 node --import tsx scripts/testing/check-usage-app.mts --apps-lock <verified-release-lock> --renderer-root build/renderer --check-loading-recovery
 ```
 
 It binds `127.0.0.1` on an OS-assigned port and closes the test server/browser.
+This older smoke fixture explicitly targets Usage 0.1.0; it is not a Usage 0.1.1
+query-button acceptance test. Native Codex refresh has separate built-App
+validation recorded in PLAN-106 and the Usage plan. Every 0.2.4 release build
+instead applies the resource/offline-activation gate to its selected Usage 0.1.1 bytes.
 It does not read provider accounts, browser profiles or real user state.
 Screenshots go to `build/usage-smoke/`. Fixtures are not live collector evidence.
 The recovery check injects a stalled renderer request and a missing SDK handshake,
