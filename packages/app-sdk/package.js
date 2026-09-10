@@ -5,7 +5,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 
-export const APP_SDK_VERSION = '1.0.0';
+export const APP_SDK_VERSION = '1.1.0';
 export const PLATFORM_VERSION = createRequire(import.meta.url)('../../package.json').version;
 export const MAX_PACKAGE_BYTES = 8 * 1024 * 1024;
 const MAX_EXPANDED_BYTES = 24 * 1024 * 1024;

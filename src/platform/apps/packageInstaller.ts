@@ -14,7 +14,7 @@ export function validateRendererPackage(bytes: Uint8Array, pin: Pick<AppPin, 'id
   if (manifest.category !== 'user-app' || ['install', 'validate'].includes(manifest.id)) throw new Error('Only utility user-app packages are supported.');
   if (!supportsVersion(PLATFORM_VERSION, manifest.compatibility.catsPlatform)
     || !supportsVersion(APP_SDK_VERSION, manifest.compatibility.appSdk)) throw new Error('Incompatible platform or App SDK version.');
-  if (manifest.permissions.some((permission) => !['ui.route', 'ui.lobby', 'runtime.telemetry.read'].includes(permission))) throw new Error('This package requests capabilities not supported by the renderer host.');
+  if (manifest.permissions.some((permission) => !['ui.route', 'ui.lobby', 'runtime.telemetry.read', 'runtime.telemetry.refresh'].includes(permission))) throw new Error('This package requests capabilities not supported by the renderer host.');
   return { ...decoded, manifest };
 }
 

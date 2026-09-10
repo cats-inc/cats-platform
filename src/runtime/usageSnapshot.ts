@@ -34,8 +34,10 @@ export function projectUsageSnapshot(value: unknown): Record<string, unknown> {
       return { ...target(t), usage: usage(t.usage), guardrails: list(t.guardrails, 100).map(guardrail), quota: {
         status: ['available', 'unsupported'].includes(String(q.status)) ? q.status : 'unavailable',
         freshness: ['fresh', 'stale'].includes(String(q.freshness)) ? q.freshness : 'unknown',
-        source: ['claude.rate_limit_event', 'codex.account/rateLimits/updated'].includes(String(q.source)) ? q.source : null,
-        observedAt: time(q.observedAt), accountId: null, accountLinkage: 'unverified', scope: 'provider_reported_during_runtime_execution', automaticRefresh: false,
+        source: ['claude.rate_limit_event', 'codex.account/rateLimits/updated', 'codex.account/rateLimits/read'].includes(String(q.source)) ? q.source : null,
+        observedAt: time(q.observedAt), accountId: null, accountLinkage: 'unverified',
+        scope: q.source === 'codex.account/rateLimits/read' ? 'provider_account_query' : 'provider_reported_during_runtime_execution', automaticRefresh: false,
+        limitId: typeof q.limitId === 'string' && /^[a-zA-Z0-9_-]{1,64}$/u.test(q.limitId) ? q.limitId : null,
         windows: list(q.windows, 20).map((item) => {
           const window = record(item); const used = number(window.usedPercent); const usedPercent = used !== null && used <= 100 ? used : null;
           return { id: text(window.id, 64), unit: 'percent', usedPercent, remainingPercent: usedPercent === null ? null : 100 - usedPercent, resetsAt: time(window.resetsAt), windowMinutes: number(window.windowMinutes) };
@@ -46,4 +48,12 @@ export function projectUsageSnapshot(value: unknown): Record<string, unknown> {
     incidents: list(v.incidents, 20).map((item) => { const incident = record(item); return { ...target(incident), id: text(incident.id), classification: text(incident.classification, 50), scope: text(incident.scope, 50), observedAt: time(incident.observedAt), retryAt: time(incident.retryAt) }; }),
     guardrails: list(v.guardrails, 100).map(guardrail),
   };
+}
+
+export function projectUsageQuotaRefresh(value: unknown): Record<string, unknown> {
+  const v = record(value);
+  if (!['updated', 'cooldown', 'busy', 'auth_required', 'unsupported', 'unavailable', 'timeout', 'error'].includes(String(v.status))) {
+    throw new Error('Unsupported quota refresh result.');
+  }
+  return { status: v.status, nextRefreshAt: time(v.nextRefreshAt), snapshot: projectUsageSnapshot(v.snapshot) };
 }

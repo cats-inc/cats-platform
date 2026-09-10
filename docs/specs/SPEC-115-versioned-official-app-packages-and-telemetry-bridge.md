@@ -116,6 +116,24 @@ includes passive Claude/Codex windows, but active collectors/history remain defe
 24. Any later upstream refresh operation needs its own authorized contract.
     A read-only telemetry permission does not automatically grant it.
 
+### SDK 1.1: explicit Codex quota refresh
+
+`usage.refreshQuota({provider:"codex", instance})` is now implemented and requires
+both `runtime.telemetry.read` and the distinct `runtime.telemetry.refresh` permission.
+The host issues authenticated, CSRF-protected
+`POST /api/apps/:id/usage/refresh?version=...`, checks the enabled package/version/
+hash/permissions before and after the request, and forwards only the bounded target
+to Runtime `POST /usage/refresh`. The App cannot choose commands, credentials or URLs.
+
+The response is `{status, nextRefreshAt, snapshot}`; status is `updated`, `cooldown`,
+`busy`, `auth_required`, `unsupported`, `unavailable`, `timeout` or `error`. Only an
+allowlisted projection crosses the bridge (2 MiB; 12-second Runtime request;
+15-second SDK deadline). Runtime owns the 8-second CLI attempt plus cleanup and
+60-second cooldown. The snapshot can contain `provider_account_query` scope and
+`codex.account/rateLimits/read` source, with a sanitized limit ID. App polling
+continues using only the passive snapshot operation. Cats never reads CLI
+credentials or sends provider API requests; the Codex CLI owns its authentication.
+
 ## Catalog and Update Direction (Deferred)
 
 The remote catalog identifies available apps, versions, compatibility, download

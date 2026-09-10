@@ -33,7 +33,7 @@ import {
   readRuntimeSseResponse,
 } from './clientStreams.js';
 import type { RuntimeSetupReadModel } from './setup.js';
-import { projectUsageSnapshot } from './usageSnapshot.js';
+import { projectUsageSnapshot, projectUsageQuotaRefresh } from './usageSnapshot.js';
 
 export interface RuntimeProviderInstanceConfig {
   id: string;
@@ -299,6 +299,7 @@ export interface RuntimeDeleteSessionResult {
 export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
   getUsageSnapshot?(): Promise<Record<string, unknown>>;
+  refreshUsageQuota?(target: { provider: 'codex'; instance: string }): Promise<Record<string, unknown>>;
   getSetupState(): Promise<RuntimeSetupReadModel>;
   triggerSetupScan?(options?: { manual?: boolean }): Promise<RuntimeSetupReadModel>;
   getProviderConfig(options?: { selector?: boolean }): Promise<RuntimeProviderConfigRegistry>;
@@ -467,7 +468,22 @@ export class CatsRuntimeClient implements RuntimeClient {
     const response = await fetch(`${this.baseUrl}/usage/snapshot`, {
       headers: this.authHeaders(), signal: AbortSignal.timeout(8000),
     });
-    if (!response.ok || !response.body) throw new Error(`Runtime usage snapshot unavailable (${response.status}).`);
+    return projectUsageSnapshot(await this.readUsageResponse(response));
+  }
+
+  async refreshUsageQuota(target: { provider: 'codex'; instance: string }): Promise<Record<string, unknown>> {
+    if (target.provider !== 'codex' || typeof target.instance !== 'string' || !target.instance || target.instance.length > 100) {
+      throw new Error('Invalid quota target.');
+    }
+    const response = await fetch(`${this.baseUrl}/usage/refresh`, {
+      method: 'POST', headers: { ...this.authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: 'codex', instance: target.instance }), signal: AbortSignal.timeout(12000),
+    });
+    return projectUsageQuotaRefresh(await this.readUsageResponse(response));
+  }
+
+  private async readUsageResponse(response: Response): Promise<unknown> {
+    if (!response.ok || !response.body) throw new Error(`Runtime usage unavailable (${response.status}).`);
     const chunks: Uint8Array[] = []; let size = 0;
     for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
       size += chunk.length;
@@ -480,7 +496,7 @@ export class CatsRuntimeClient implements RuntimeClient {
       bytes.set(chunk, offset);
       offset += chunk.length;
     }
-    return projectUsageSnapshot(JSON.parse(new TextDecoder().decode(bytes)));
+    return JSON.parse(new TextDecoder().decode(bytes));
   }
 
   private readonly apiKey: string;

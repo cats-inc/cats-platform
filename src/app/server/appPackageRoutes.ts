@@ -33,7 +33,7 @@ import { readAppRenderer } from '../../platform/apps/renderer.js';
 export interface AppPackageApiDependencies {
   config: Pick<AppConfig, 'chatStatePath'>;
   now?: () => Date;
-  runtimeClient?: Pick<RuntimeClient, 'getUsageSnapshot'>;
+  runtimeClient?: Pick<RuntimeClient, 'getUsageSnapshot' | 'refreshUsageQuota'>;
 }
 
 export type AppPackageRouteContext = RouteContext<AppPackageApiDependencies>;
@@ -411,9 +411,11 @@ async function handleUninstall(context: AppPackageRouteContext, appId: string): 
 export async function routeAppPackageApi(
   context: AppPackageRouteContext,
 ): Promise<boolean> {
-  const rendererMatch = matchRoute(context.url.pathname, /^\/api\/apps\/([^/]+)\/(renderer|usage)$/u);
+  const rendererMatch = matchRoute(context.url.pathname, /^\/api\/apps\/([^/]+)\/(renderer|usage|usage\/refresh)$/u);
   if (rendererMatch) {
-    if (context.method !== 'GET') { sendMethodNotAllowed(context.response, ['GET']); return true; }
+    const refresh = rendererMatch[1] === 'usage/refresh';
+    const method = refresh ? 'POST' : 'GET';
+    if (context.method !== method) { sendMethodNotAllowed(context.response, [method]); return true; }
     const record = await appRegistryFor(context).getInstalledApp(rendererMatch[0]!);
     const headers = { 'cache-control': 'no-store' };
     if (!record || !record.enabled || record.installState !== 'enabled'
@@ -428,21 +430,53 @@ export async function routeAppPackageApi(
     try {
       if (rendererMatch[1] === 'renderer') {
         sendJson(context.response, 200, { ...(await readAppRenderer(record)), version: record.manifest.version }, headers);
-      } else if (!record.manifest.permissions.includes('runtime.telemetry.read')) {
-        sendJson(context.response, 403, { error: { code: 'app_permission_denied', message: 'runtime.telemetry.read is required.' } }, headers);
-      } else if (!context.dependencies.runtimeClient?.getUsageSnapshot) {
+      } else if (!record.manifest.permissions.includes('runtime.telemetry.read')
+        || (refresh && !record.manifest.permissions.includes('runtime.telemetry.refresh'))) {
+        sendJson(context.response, 403, { error: { code: 'app_permission_denied', message: 'The requested telemetry permission is required.' } }, headers);
+      } else if (refresh ? !context.dependencies.runtimeClient?.refreshUsageQuota : !context.dependencies.runtimeClient?.getUsageSnapshot) {
         sendJson(context.response, 503, { error: { code: 'runtime_usage_unavailable', message: 'Runtime usage service is unavailable.' } }, headers);
       } else {
-        const snapshot = await context.dependencies.runtimeClient.getUsageSnapshot();
-        const current = await appRegistryFor(context).getInstalledApp(record.id);
-        if (!current?.enabled || current.installState !== 'enabled' || current.manifest.version !== record.manifest.version
-          || !current.manifest.permissions.includes('runtime.telemetry.read')) {
+        let target: { provider: 'codex'; instance: string } | undefined;
+        if (refresh) {
+          try {
+            const chunks: Buffer[] = []; let size = 0;
+            for await (const chunk of context.request) {
+              const bytes = Buffer.from(chunk); size += bytes.length;
+              if (size > 1024) throw new Error('Quota target is too large.');
+              chunks.push(bytes);
+            }
+            const value: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+            if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid quota target.');
+            const input = value as Record<string, unknown>;
+            if (Object.keys(input).some((key) => key !== 'provider' && key !== 'instance')
+              || input.provider !== 'codex' || typeof input.instance !== 'string' || !input.instance || input.instance.length > 100) throw new Error('Invalid quota target.');
+            target = { provider: 'codex', instance: input.instance };
+          } catch {
+            sendJson(context.response, 400, { error: { code: 'invalid_quota_target', message: 'A Codex provider instance is required.' } }, headers);
+            return true;
+          }
+        }
+        const authorized = async () => {
+          const current = await appRegistryFor(context).getInstalledApp(record.id);
+          return current?.enabled && current.installState === 'enabled'
+            && current.manifest.version === record.manifest.version && current.packageSha256 === record.packageSha256
+            && current.manifest.permissions.includes('ui.route') && current.manifest.permissions.includes('runtime.telemetry.read')
+            && (!refresh || current.manifest.permissions.includes('runtime.telemetry.refresh'));
+        };
+        if (!await authorized()) {
+          sendJson(context.response, 409, { error: { code: 'app_context_revoked', message: 'App access was revoked.' } }, headers);
+          return true;
+        }
+        const snapshot = target
+          ? await context.dependencies.runtimeClient!.refreshUsageQuota!(target)
+          : await context.dependencies.runtimeClient!.getUsageSnapshot!();
+        if (!await authorized()) {
           sendJson(context.response, 409, { error: { code: 'app_context_revoked', message: 'App access was revoked.' } }, headers);
         } else sendJson(context.response, 200, snapshot, headers);
       }
     } catch {
-      sendJson(context.response, 503, { error: { code: rendererMatch[1] === 'usage' ? 'runtime_usage_unavailable' : 'app_renderer_unavailable',
-        message: rendererMatch[1] === 'usage' ? 'Runtime usage is unavailable or incompatible. No quota estimate was substituted.' : 'The renderer package could not be verified or loaded.' } }, headers);
+      sendJson(context.response, 503, { error: { code: rendererMatch[1] !== 'renderer' ? 'runtime_usage_unavailable' : 'app_renderer_unavailable',
+        message: rendererMatch[1] !== 'renderer' ? 'Runtime usage is unavailable or incompatible. No quota estimate was substituted.' : 'The renderer package could not be verified or loaded.' } }, headers);
     }
     return true;
   }
