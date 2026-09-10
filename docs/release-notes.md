@@ -19,6 +19,44 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-11 (0.2.4 unsigned preview)
+
+### Explicit Codex quota refresh in bundled Usage
+
+Behavior change:
+
+Desktop bundles Usage 0.1.1 with App SDK 1.1 and Runtime commit
+`603afdc2f9e46b31b56b0223f6a3f0690b5af76f`. The source-controlled App lock
+pins the published archive's exact version, download URL and SHA-256.
+Usage adds a Codex-only **Query latest quota / 查詢最新額度** button, showing
+the provider's actual window duration, remaining percentage and reset time.
+Opening the dashboard and its periodic snapshot refresh remain passive.
+
+An explicit click uses the configured native Codex CLI's App Server stdio
+`account/rateLimits/read` operation. Cats does not extract local CLI credentials
+or issue its own provider HTTP request, and the query does not start a model
+turn. Failed queries retain the last observation, and a 60-second cooldown
+prevents repeated requests. WSL/Docker transports return unsupported; native
+Windows was live-verified, while native macOS/Linux live validation remains open.
+
+Migration steps:
+
+Fully quit Cats and install the 0.2.4 preview normally. Desktop activates its
+bundled Usage package offline; no separate App download, extraction or file move
+is needed. Existing settings, conversations and App data are retained, as are
+explicit disabled/uninstalled App choices. This release task does not update
+the operator's installed Desktop automatically.
+
+Deprecations:
+
+None. This is an unsigned GitHub prerelease, not a signed stable distribution.
+After this preparation is merged, manually dispatch the Desktop release workflow
+with `tag=v0.2.4` and the exact Runtime commit above. Let that workflow create the
+preview tag; do not push a Desktop version tag into the signed release path.
+The release matrix remains Windows x64 (NSIS), macOS x64 (DMG/updater ZIP), and
+Linux arm64 (DEB). Each build must pass the actual-resource/offline-App verifier
+before publication; these checks are not interactive native-installer acceptance.
+
 ## 2026-09-10 (0.2.3 unsigned preview)
 
 ### App renderer loading recovery

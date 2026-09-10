@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | 0.2.3 release candidate fixes the reproduced Windows bundled SDK path failure; release/install acceptance pending; catalog deferred |
+| Status | Hosting and native Codex refresh implemented; 0.2.4 unsigned preview preparation; 0.2.3 Windows acceptance confirmed; cross-platform native acceptance and catalog deferred |
 | Owner | cats-platform |
 | Related spec | SPEC-115 |
 | Related decision | ADR-114 |
@@ -66,19 +66,23 @@ permission now bridge explicit native CLI quota reads. The host enforces bounded
 Codex-only targets, authentication/CSRF, before/after version/hash/permission
 checks and sanitized responses. Usage 0.1.1 requires SDK ^1.1.0; it must be selected
 as an immutable new artifact, not overwritten into the old 0.1.0 archive.
-Coordinated release and installed delivery of this follow-up remain pending.
+This follow-up now targets the 0.2.4 unsigned preview. Updating the operator's
+installed Desktop remains outside the release task.
 Validation on 2026-09-11: 27 focused hosting/renderer/client/package tests passed,
 server and production web builds plus renderer/test typechecks passed. A real
 built Usage 0.1.1 archive went through the same offline staging helper as Desktop,
 then launched in an authenticated temporary Platform profile. One UI click caused
 one native Codex CLI quota read and displayed the matching remaining percentage;
 opening the page caused none. Independent review covered permissions, redaction
-and revocation. No public release, installed update or native macOS/Linux claim.
+and revocation. That implementation validation did not publish a release, update
+an installed Desktop or claim native macOS/Linux live validation.
 
-PR preparation (2026-09-11): full Windows `npm test` completed successfully,
+Earlier PR-only delivery (2026-09-11): full Windows `npm test` completed successfully,
 including server/desktop/renderer/test/mobile typechecks and builds: 4,548 cases,
 4,543 passed, 5 skipped, 0 failed. The owner authorized commit/push and auto-merge
-PRs only. No tag, release publication, Desktop App-lock change or installed update.
+PRs only. That task did not create a tag, publish a release, change the Desktop
+App lock or update an installation. The later 0.2.4 release authorization below
+supersedes that publication hold, not the installed-update boundary.
 
 - [x] Select built cats-apps artifacts from an identified artifact/build.
 - [x] Include exact versions/checksums in package plans, staging and installer manifests.
@@ -91,11 +95,12 @@ PRs only. No tag, release publication, Desktop App-lock change or installed upda
 
 Implemented details and exact pinning commands: [App package guide](../app-packages.md).
 Windows staging and an isolated headless host test passed; this does not claim a
-signed release, native installer/UI acceptance on all platforms or independent review.
-The unsigned 0.2.2 preview is published. Its Windows bundled SDK path failure is
-reproduced and fixed in the 0.2.3 release candidate, but the affected installation
-still needs that updated build and direct acceptance; passing source-only tests
-is not sufficient.
+signed release or native installer/UI acceptance on all platforms.
+The Windows bundled SDK path failure in 0.2.2 was fixed in the published 0.2.3
+unsigned preview. After the installed Windows Desktop was updated, the user
+confirmed that the complete Usage dashboard was visible. Desktop 0.2.4 adds
+the separately verified explicit Codex query; its release gates and any later
+installed-update acceptance remain separate from that 0.2.3 confirmation.
 
 ### Phase 5: Later Remote Catalog and App Updates
 
@@ -148,6 +153,8 @@ than treating a rendered placeholder as end-to-end success.
 
 | Date | Update |
 |------|--------|
+| 2026-09-11 | Release authorization supersedes the earlier publication hold: prepare Desktop 0.2.4 unsigned preview with the published Usage 0.1.1 archive and fixed Runtime commit `603afdc2f9e46b31b56b0223f6a3f0690b5af76f`. Pin the actual release bytes, merge through PR/CI, and require all three installer-resource/offline-activation gates before publishing. Updating the operator's installed Desktop remains out of scope. |
+| 2026-09-11 | 0.2.4 preparation verified: full Windows `npm test` passed (4,543 passed, 5 skipped, 0 failed), version identity passed, and the production resolver downloaded the pinned public artifact successfully. The released Usage manifest/payload exactly match the previously live-verified 0.1.1 archive; release digest/lock/provenance agree. Independent release review found no blockers; corrected the old 0.2.3 status. PR CI and actual three-OS packaging remain the next gates, with no installed update performed. |
 | 2026-09-10 | Renderer/SDK/read bridge and pinned package installation implemented with isolated browser tests. |
 | 2026-09-10 | Usage 0.1.0 published; Runtime PR 39 merged. Desktop 0.2.2 pins the published archive; corrected resource roots, mobile-safe snapshot decoding, and actual-installer-resource checks added. Native interactive acceptance remains separate. |
 | 2026-09-10 | Follow-up to a reported `Loading Usage` stall: bounded renderer/SDK startup, localized retry, caught nonce initialization failures and stale-attempt protection. Extend smoke coverage to production Platform assets, authenticated router, Lobby re-entry and injected startup failures. The installed-window cause and new release acceptance remain open. |
