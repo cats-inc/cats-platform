@@ -2,6 +2,7 @@ import { resetTestDom } from './helpers/installDomBeforeReact.ts';
 
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
+import { setImmediate as nextTask } from 'node:timers/promises';
 import React from 'react';
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { AppRendererSurface, APP_RENDERER_STARTUP_TIMEOUT_MS } from '../src/app/renderer/AppRendererSurface.tsx';
@@ -51,7 +52,11 @@ test('stalled renderer request times out, aborts and can be retried without rein
   fireEvent.click(view.getByRole('button', { name: '重新載入' }));
   await waitFor(() => view.getByTitle('Usage'));
   // A late stale attempt must not replace the new attempt with an access error.
-  await act(async () => releaseOld(new Response(JSON.stringify({ version: '0.0.0' }))));
+  releaseOld(new Response(JSON.stringify({ version: '0.0.0' })));
+  // This disposed response must not update React. Drain its microtasks without
+  // async act(): esbuild's ESM bundle makes React's Node scheduler fall back to
+  // a referenced MessageChannel, preventing the no-isolation suite from exiting.
+  await nextTask();
   assert.equal(view.queryByRole('alert'), null);
   assert.ok(view.getByTitle('Usage'));
 });
