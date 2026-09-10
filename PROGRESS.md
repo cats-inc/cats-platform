@@ -4,7 +4,15 @@
 
 ## Current Status
 
-Latest update (2026-04-28): PLAN-080 is complete. The hard-coded
+Planning update (2026-09-10): ADR-114 accepts the official `cats-apps` repository
+boundary and coordinated Desktop distribution of independently versioned,
+prebuilt App packages. SPEC-115 / PLAN-106 describe the remaining managed install,
+real renderer loader, public SDK, and read-only telemetry bridge for Cats Usage.
+The existing registry/Lobby/Settings foundations remain the implementation
+baseline; this update ships documentation only, not an executable App host or
+remote catalog. See [PLAN-106](./docs/plans/PLAN-106-official-app-package-hosting.md).
+
+Earlier implementation update (2026-04-28): PLAN-080 is complete. The hard-coded
 Claude/Codex/Ollama strong/weak bootstrap has been replaced by an
 operator-owned provider capability bootstrap YAML path. Unlisted
 provider/model/control targets default to unknown, and only explicit YAML rules

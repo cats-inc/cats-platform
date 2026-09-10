@@ -2,6 +2,19 @@
 
 > This directory contains all project documentation.
 
+## Official Utility Apps and Cats Usage
+
+The 2026-09-10 decision keeps official utility sources in `cats-apps` and the
+App host/public SDK in `cats-platform`. Initial Desktop distribution will
+consume pinned, prebuilt App packages; remote catalog discovery and independent
+updates remain later work. This is a planning track, not a shipped App loader.
+
+- [ADR-114: ownership and coordinated distribution](./decisions/114-separate-official-app-sources-and-coordinate-desktop-distribution.md)
+- [SPEC-115: versioned packages and telemetry bridge](./specs/SPEC-115-versioned-official-app-packages-and-telemetry-bridge.md)
+- [PLAN-106: host rollout and acceptance gates](./plans/PLAN-106-official-app-package-hosting.md)
+- [Cats Apps documentation and Cats Usage dashboard scope](../../cats-apps/docs/README.md)
+- [Runtime usage/account-quota contract](../../cats-runtime/docs/specs/SPEC-029-provider-account-quota-and-usage-snapshots.md)
+
 ## Root-Level Documents
 
 These important documents live in the project root:

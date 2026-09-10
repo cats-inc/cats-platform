@@ -22,15 +22,18 @@ Create an ADR when:
 ## Naming Convention
 
 ```
-ADR-NNN-short-title.md
+NNN-short-title.md
 
 Examples:
-ADR-001-use-postgresql-database.md
-ADR-002-adopt-hexagonal-architecture.md
-ADR-003-jwt-authentication.md
+001-use-postgresql-database.md
+002-adopt-hexagonal-architecture.md
+003-jwt-authentication.md
 ```
 
 ## Template
+
+File names use the numeric prefix above; document headings and references use
+`ADR-NNN`, matching the existing records in this repository.
 
 Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
@@ -39,6 +42,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [114-separate-official-app-sources-and-coordinate-desktop-distribution](./114-separate-official-app-sources-and-coordinate-desktop-distribution.md) | Separate Official App Sources and Coordinate Desktop Distribution | Accepted | 2026-09-10 |
 | [113-port-the-meta-muse-installer-into-packaged-setup-and-retire-aider](./113-port-the-meta-muse-installer-into-packaged-setup-and-retire-aider.md) | Port the Meta Muse installer into packaged setup and retire Aider | Accepted | 2026-09-05 |
 | [112-adopt-a-core-owned-transport-work-delivery-golden-path](./112-adopt-a-core-owned-transport-work-delivery-golden-path.md) | Adopt a Core-Owned Transport Work Delivery Golden Path | Accepted | 2026-09-02 |
 | [111-keep-first-admin-local-and-require-step-up-for-google-linking](./111-keep-first-admin-local-and-require-step-up-for-google-linking.md) | Keep First-Admin Bootstrap Local and Require Step-Up for Google Linking | Accepted | 2026-09-02 |
