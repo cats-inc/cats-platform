@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CatsRuntimeClient } from '../src/runtime/client.ts';
-import { projectUsageSnapshot } from '../src/runtime/usageSnapshot.ts';
+import { projectUsageSnapshot, projectUsageQuotaRefresh } from '../src/runtime/usageSnapshot.ts';
 
 function fixture() {
   return { schemaVersion: 1, generatedAt: '2026-09-10T00:00:00Z', runtime: { status: 'available', epoch: 'test', secret: 'SECRET' },
@@ -50,4 +50,21 @@ test('usage decoding preserves UTF-8 across chunks and rejects oversized streams
   assert.equal((snapshot.targets as Array<{ instance: string }>)[0]!.instance, '用量');
   oversized = true;
   await assert.rejects(client.getUsageSnapshot(), /size limit/);
+});
+
+test('quota refresh is a separate authenticated fixed-route POST and projects only safe facts', async (t) => {
+  const snapshot = fixture();
+  snapshot.targets[0]!.quota.source = 'codex.account/rateLimits/read';
+  t.mock.method(globalThis, 'fetch', async (url: string, options: RequestInit) => {
+    assert.equal(url, 'http://runtime.test/usage/refresh'); assert.equal(options.method, 'POST');
+    assert.equal((options.headers as Record<string, string>).Authorization, 'Bearer fixture-key');
+    assert.deepEqual(JSON.parse(String(options.body)), { provider: 'codex', instance: 'default' });
+    return new Response(JSON.stringify({ status: 'updated', nextRefreshAt: '2026-09-10T00:01:00Z', snapshot, raw: 'SECRET' }));
+  });
+  const client = new CatsRuntimeClient('http://runtime.test', { apiKey: 'fixture-key' });
+  const result = await client.refreshUsageQuota({ provider: 'codex', instance: 'default' });
+  assert.equal(result.status, 'updated'); assert.doesNotMatch(JSON.stringify(result), /SECRET/);
+  assert.match(JSON.stringify(result), /provider_account_query/);
+  await assert.rejects(client.refreshUsageQuota({ provider: 'claude', instance: 'default' } as never), /Invalid quota target/);
+  assert.throws(() => projectUsageQuotaRefresh({ status: 'invented', snapshot }), /Unsupported/);
 });

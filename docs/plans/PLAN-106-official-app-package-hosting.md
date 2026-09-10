@@ -61,6 +61,25 @@ integration. Keep the initial slice smaller than the full extension manifesto.
 
 ### Phase 4: Desktop Preinstallation
 
+Codex refresh follow-up (2026-09-10): SDK 1.1 and a distinct telemetry-refresh
+permission now bridge explicit native CLI quota reads. The host enforces bounded
+Codex-only targets, authentication/CSRF, before/after version/hash/permission
+checks and sanitized responses. Usage 0.1.1 requires SDK ^1.1.0; it must be selected
+as an immutable new artifact, not overwritten into the old 0.1.0 archive.
+Coordinated release and installed delivery of this follow-up remain pending.
+Validation on 2026-09-11: 27 focused hosting/renderer/client/package tests passed,
+server and production web builds plus renderer/test typechecks passed. A real
+built Usage 0.1.1 archive went through the same offline staging helper as Desktop,
+then launched in an authenticated temporary Platform profile. One UI click caused
+one native Codex CLI quota read and displayed the matching remaining percentage;
+opening the page caused none. Independent review covered permissions, redaction
+and revocation. No public release, installed update or native macOS/Linux claim.
+
+PR preparation (2026-09-11): full Windows `npm test` completed successfully,
+including server/desktop/renderer/test/mobile typechecks and builds: 4,548 cases,
+4,543 passed, 5 skipped, 0 failed. The owner authorized commit/push and auto-merge
+PRs only. No tag, release publication, Desktop App-lock change or installed update.
+
 - [x] Select built cats-apps artifacts from an identified artifact/build.
 - [x] Include exact versions/checksums in package plans, staging and installer manifests.
 - [x] Install the selected app set without a network catalog or source checkout.

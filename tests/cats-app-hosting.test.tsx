@@ -129,6 +129,39 @@ test('local install endpoint requires explicit pins and renderer errors never di
   assert.equal(broken.statusCode, 503); assert.ok(!broken.body.includes(state.root));
 });
 
+test('explicit quota refresh needs a separate permission, bounded Codex target and live version context', async () => {
+  const state = await setup(); let reads = 0;
+  const client = { async refreshUsageQuota(target: { provider: 'codex'; instance: string }) {
+    reads++; assert.deepEqual(target, { provider: 'codex', instance: 'default' });
+    return { status: 'updated', snapshot: { marker: 'safe' } };
+  } };
+  const url = '/api/apps/cats.usage/usage/refresh?version=0.1.0';
+  const target = { provider: 'codex', instance: 'default' };
+  await installRendererPackage({ ...state, ...fixture(), source: 'local-package', enable: true });
+  assert.equal((await request(state.chatStatePath, url, client, target)).statusCode, 403);
+  assert.equal(reads, 0);
+  const app = fixture('0.1.1', ['ui.route', 'ui.lobby', 'runtime.telemetry.read', 'runtime.telemetry.refresh']);
+  await installRendererPackage({ ...state, ...app, source: 'local-package', enable: true });
+  const active = url.replace('0.1.0', '0.1.1');
+  assert.equal((await request(state.chatStatePath, url, client, target)).statusCode, 409);
+  assert.equal((await request(state.chatStatePath, active, client)).statusCode, 405);
+  for (const invalid of [{ ...target, command: 'PRIVATE' }, { ...target, provider: 'claude' }, { ...target, instance: 'x'.repeat(2000) }]) {
+    assert.equal((await request(state.chatStatePath, active, client, invalid)).statusCode, 400);
+  }
+  assert.equal(reads, 0);
+  const success = await request(state.chatStatePath, active, client, target);
+  assert.equal(success.statusCode, 200); assert.equal(success.payload.status, 'updated');
+  assert.equal(success.headers['cache-control'], 'no-store'); assert.equal(reads, 1);
+  const revoked = await request(state.chatStatePath, active, { async refreshUsageQuota() {
+    await state.registry.updateAppState(app.pin.id, { installState: 'disabled' });
+    return { secret: 'PRIVATE' };
+  } }, target);
+  assert.equal(revoked.statusCode, 409); assert.doesNotMatch(revoked.body, /PRIVATE/);
+  for (const phase of ['pre_setup', 'post_setup', 'repair'] as const) {
+    assert.equal(classifyPlatformAuthRoute({ phase, method: 'POST', pathname: '/api/apps/cats.usage/usage/refresh' }).access, 'protected');
+  }
+});
+
 test('host places its CSP/SDK before any app markup and does not relax the opaque-origin sandbox', () => {
   const doc = createAppDocument('<script>untrusted()</script><head></head>', '/* trusted SDK */', { nonce: '</script><script>escape()</script>' });
   assert.ok(doc.indexOf('Content-Security-Policy') < doc.indexOf('untrusted()'));

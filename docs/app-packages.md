@@ -123,6 +123,19 @@ registrations do not grant a verified executable renderer. Local archives become
 
 ## Frozen v1 boundary
 
+SDK 1.1 adds `usage.refreshQuota({provider:"codex",instance})`. Unlike cached reads,
+this requires both telemetry permissions (`runtime.telemetry.read` and
+`runtime.telemetry.refresh`). Its version-bound host route is POST
+`/api/apps/:id/usage/refresh?version=...`; normal authentication and CSRF apply.
+It forwards only a Codex instance selector, with a 12-second/2-MiB response bound.
+Runtime uses CLI stdio only (8-second attempt plus cleanup, 60-second cooldown),
+never reads CLI credentials, never invokes model work and never calls a provider
+API directly. Native Windows was verified; WSL/Docker currently return unsupported.
+The result includes sanitized status, `nextRefreshAt`, and a cached v1 snapshot.
+Usage 0.1.1 requires SDK ^1.1.0. Selecting its published version/hash for Desktop
+is still a release step; the default lock above continues to identify the last
+published package until that step is completed.
+
 - `.catsapp`: gzip JSON `{schemaVersion:1,kind:"cats-app",manifest,files:[{path,base64}]}`.
   Limits: 8 MiB compressed, 24 MiB expanded envelope, 128 files, 8 MiB/file.
   Absolute/traversal/device names, duplicate/case-colliding paths and invalid base64
@@ -130,7 +143,7 @@ registrations do not grant a verified executable renderer. Local archives become
   verified archive and reads its renderer from those bytes instead of trusting loose files.
 - Renderer: one self-contained HTML entry with explicit `<head>`; inline JS/CSS,
   data images if needed. Server/worker execution and additional capabilities are rejected.
-- Compatibility: SDK `1.0.0`; exact stable versions, `major.x`, `major.minor.x` and
+- Compatibility: SDK `1.1.0`; exact stable versions, `major.x`, `major.minor.x` and
   caret ranges only. Unsupported ranges/prereleases fail rather than being guessed.
   Existing old releases with matching version strings do not imply the new host implementation is present.
 - SDK: host-injected `globalThis.catsApp`, with identity/version/locale/theme,
