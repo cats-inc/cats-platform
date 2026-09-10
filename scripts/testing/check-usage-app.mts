@@ -13,7 +13,7 @@ import { resolveAppLock } from '#cats-app-package';
 import { installRendererPackage } from '../../src/platform/apps/packageInstaller.js';
 import { FileCatsAppRegistry } from '../../src/platform/apps/registry.js';
 import { resolveCatsAppStoragePathsFromChatState } from '../../src/platform/apps/paths.js';
-import { projectUsageSnapshot } from '../../src/runtime/usageSnapshot.js';
+import { projectUsageSnapshot, projectUsageQuotaRefresh } from '../../src/runtime/usageSnapshot.js';
 import { toPlatformInstalledAppDescriptor } from '../../src/platform/apps/envelope.js';
 import { routeRequest } from '../../src/app/server/requestRouter.js';
 import type { ResolvedServerDependencies } from '../../src/app/server/contracts.js';
@@ -36,8 +36,9 @@ if (args.indexOf('--apps-lock') < 0 || !lockPath || !process.env.CATS_TEST_PLAYW
 const root = await mkdtemp(path.join(tmpdir(), 'cats-usage-browser-'));
 const chatStatePath = path.join(root, 'state', 'chat-state.local.json');
 const apps = await resolveAppLock(path.resolve(lockPath));
-const usage = apps.find((app) => app.id === 'cats.usage' && app.version === '0.1.0');
-if (!usage) throw new Error('This smoke fixture targets Usage 0.1.0.');
+const usage = apps.find((app) => app.id === 'cats.usage');
+if (!usage) throw new Error('The selected lock must contain a built Usage package.');
+const entryPath = rendererRoot ? '/apps/cats.usage' : `/?appVersion=${encodeURIComponent(usage.version)}`;
 await installRendererPackage({ chatStatePath, bytes: usage.bytes, pin: usage, source: 'local-package', enable: true });
 const registry = new FileCatsAppRegistry({ registryPath: resolveCatsAppStoragePathsFromChatState(chatStatePath).registryPath });
 const bundle = rendererRoot ? null : await build({ entryPoints: [fileURLToPath(new URL('./usage-app-smoke-renderer.tsx', import.meta.url))], bundle: true,
@@ -60,6 +61,7 @@ const hostEnvelope = {
   ownerDisplayName: 'Test', ownerAvatarColor: null, ownerAvatarUrl: null, lastProductSurface: null, guideCat: null,
 };
 let offline = false; let epoch = 'fixture-epoch'; let stale = false; let reads = 0;
+const queries: string[] = [];
 const timestamp = () => new Date().toISOString();
 const totals = (totalTokens: number | null, currency = 'USD') => ({ observations: totalTokens === null ? 0 : 1,
   inputTokens: totalTokens === null ? null : Math.floor(totalTokens * 0.8), outputTokens: totalTokens === null ? null : Math.ceil(totalTokens * 0.2),
@@ -68,15 +70,31 @@ const totals = (totalTokens: number | null, currency = 'USD') => ({ observations
 const runtimeClient = { async getUsageSnapshot() {
   reads++; if (offline) throw new Error('Fixture offline');
   const observedAt = new Date(Date.now() - (stale ? 600_000 : 30_000)).toISOString();
-  const targets = ['claude', 'codex', 'copilot'].map((provider, index) => ({ provider, instance: 'default', backend: 'cli', usage: totals(index === 2 ? null : 12500 + index * 1000, index ? 'EUR' : 'USD'), guardrails: [],
-    quota: { status: index === 2 ? 'unsupported' : 'available', freshness: stale ? 'stale' : 'fresh', source: index === 0 ? 'claude.rate_limit_event' : index === 1 ? 'codex.account/rateLimits/updated' : null,
-      observedAt: index === 2 ? null : observedAt, accountId: null, accountLinkage: 'unverified', automaticRefresh: false,
-      windows: index === 2 ? [] : [{ id: index ? 'primary' : 'five_hour', unit: 'percent', usedPercent: index ? 60 : 25, remainingPercent: index ? 40 : 75,
-        resetsAt: new Date(Date.now() + (stale ? -60_000 : 3_600_000)).toISOString(), windowMinutes: 300 }] } }));
+  const resetsAt = new Date(Date.now() + (stale ? -60_000 : 3_600_000)).toISOString();
+  const targets = ['claude', 'codex', 'copilot', 'antigravity', 'kiro'].map((provider, index) => {
+    const queried = queries.includes(provider);
+    const source = queried ? { claude: 'claude.get_usage', codex: 'codex.account/rateLimits/read',
+      copilot: 'copilot.account.getQuota', antigravity: 'antigravity.usage' }[provider]
+      : index === 0 ? 'claude.rate_limit_event' : index === 1 ? 'codex.account/rateLimits/updated' : null;
+    const windows = queried && provider === 'copilot' ? [
+      { id: 'premium_interactions', unit: 'requests', used: 0, limit: 1500, remaining: 1500, usedPercent: 0, resetsAt },
+      { id: 'chat', unit: 'requests', used: 0, unlimited: true, resetsAt },
+    ] : queried ? [{ id: provider === 'antigravity' ? 'gemini_models_weekly' : 'seven_day', unit: 'percent',
+      usedPercent: provider === 'claude' ? 6 : 22, windowMinutes: 10080, resetsAt }]
+      : index < 2 ? [{ id: index ? 'primary' : 'five_hour', unit: 'percent', usedPercent: index ? 60 : 25, resetsAt, windowMinutes: 300 }] : [];
+    return { provider, instance: 'default', backend: 'cli', usage: totals(index >= 2 ? null : 12500 + index * 1000, index ? 'EUR' : 'USD'), guardrails: [],
+      quota: { status: index === 4 ? 'unsupported' : windows.length ? 'available' : 'unavailable', freshness: stale ? 'stale' : 'fresh',
+        source, observedAt: windows.length ? observedAt : null, accountId: null, accountLinkage: 'unverified',
+        automaticRefresh: false, refreshSupported: index < 4, windows } };
+  });
   return { schemaVersion: 1, generatedAt: timestamp(), runtime: { status: 'available', epoch },
     coverage: { mode: 'memory', scope: 'runtime_observed_results', startedAt: observedAt, retainedRecords: 2, droppedRecords: 0, droppedQuotaTargets: 0, truncated: false, historyAvailable: false },
     totals: { ...totals(26000), costs: [{ currency: 'USD', amount: 0.12 }, { currency: 'EUR', amount: 0.12 }] }, targets,
     sessions: targets.slice(0, 2).map((target, index) => ({ ...target, sessionId: `fixture-session-${index + 1}` })), incidents: [], guardrails: [] };
+}, async refreshUsageQuota(target: { provider: string; instance: string }) {
+  assert.equal(target.instance, 'default'); assert.ok(['codex', 'copilot', 'claude', 'antigravity'].includes(target.provider));
+  queries.push(target.provider);
+  return { status: 'updated', nextRefreshAt: null, snapshot: await this.getUsageSnapshot() };
 } };
 const sessionSecret = 'isolated-usage-smoke-session-secret';
 const auth = await createFirstAdminLocalAuthState({ state: createEmptyPlatformAuthState(), displayName: 'Test',
@@ -86,7 +104,8 @@ const dependencies = { shared: {
   config: loadConfig({ CATS_HOME_DIR: root, CATS_PLATFORM_DIR: root, CATS_CHAT_STATE_PATH: chatStatePath,
     CATS_AUTH_SESSION_SECRET: sessionSecret }),
   coreStore: new MemoryCoreStore(core), authStore: new MemoryPlatformAuthStore(auth.state),
-  runtimeClient: { getUsageSnapshot: async () => projectUsageSnapshot(await runtimeClient.getUsageSnapshot()) },
+  runtimeClient: { getUsageSnapshot: async () => projectUsageSnapshot(await runtimeClient.getUsageSnapshot()),
+    refreshUsageQuota: async (target: { provider: string; instance: string }) => projectUsageQuotaRefresh(await runtimeClient.refreshUsageQuota(target)) },
 }, chat: {}, work: {}, code: {} } as unknown as ResolvedServerDependencies;
 // Use the same temp path as the package installer regardless of config environment aliases.
 dependencies.shared.config.chatStatePath = chatStatePath;
@@ -98,7 +117,7 @@ const server = createServer(async (request, response) => {
     }
     if (url.pathname === '/smoke.js') { response.writeHead(200, { 'content-type': 'text/javascript' }); response.end(js); return; }
     if (url.pathname.startsWith('/api/')) {
-      if (url.pathname.startsWith('/api/apps/')) { await routeRequest(request, response, dependencies); return; }
+      if (url.pathname.startsWith('/api/apps/') || url.pathname === '/api/auth/status') { await routeRequest(request, response, dependencies); return; }
       response.writeHead(404); response.end(); return;
     }
     if (rendererRoot) {
@@ -129,9 +148,9 @@ try {
     : await browser.newPage({ viewport: { width: 1440, height: 1200 }, locale: 'zh-TW' });
   await page.context().addCookies([{ name: 'cats_session', value: auth.session.token, url: `http://127.0.0.1:${address.port}` }]);
   const errors: string[] = []; page.on('pageerror', (error: Error) => errors.push(error.message));
-  await page.goto(`http://127.0.0.1:${address.port}${rendererRoot ? '/apps/cats.usage' : ''}`);
+  await page.goto(`http://127.0.0.1:${address.port}${entryPath}`);
   const frame = page.frameLocator('iframe[title="Usage"]');
-  try { await frame.getByText('75%', { exact: true }).waitFor({ timeout: 15_000 }); }
+  try { await frame.getByText('75% 剩餘', { exact: true }).waitFor({ timeout: 15_000 }); }
   catch (error) {
     process.stderr.write(`${JSON.stringify({ errors, body: await page.locator('body').innerText(), secure: await page.evaluate(() => isSecureContext) })}\n`);
     throw error;
@@ -139,6 +158,22 @@ try {
   assert.equal(await page.locator('iframe').getAttribute('sandbox'), 'allow-scripts');
   process.stdout.write('Usage iframe rendered and received the fixture snapshot.\n');
   assert.equal(await frame.getByText('尚未支援', { exact: true }).count(), 1);
+  assert.equal(queries.length, 0, 'Opening the App never queries a CLI');
+  assert.equal(await frame.locator('[data-query-provider="kiro"]').count(), 0);
+  for (const provider of ['copilot', 'claude', 'antigravity']) {
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    await frame.locator(`[data-query-provider="${provider}"]`).click();
+    try { await frame.getByText(/已透過 .* CLI 取得額度回報/).first().waitFor({ timeout: 5000 }); }
+    catch (error) {
+      process.stderr.write(`${JSON.stringify({ queries, provider, body: await page.locator('body').innerText(),
+        frame: await frame.locator('body').innerText({ timeout: 1000 }).catch(() => 'Frame unavailable'), errors })}\n`);
+      throw error;
+    }
+    const expected = provider === 'copilot' ? /1,500 requests/ : provider === 'claude' ? /^94% 剩餘$/ : /^78% 剩餘$/;
+    await frame.getByText(expected).first().waitFor();
+  }
+  assert.deepEqual(queries, ['copilot', 'claude', 'antigravity']);
+  await frame.getByText('不限額', { exact: true }).waitFor();
   assert.equal(await frame.locator('.stat .cost').innerText(), 'USD 0.12\nEUR 0.12');
   const innerFrame = page.frames().find((candidate: { parentFrame(): unknown }) => candidate.parentFrame() !== null);
   assert.ok(innerFrame);
@@ -169,10 +204,10 @@ try {
   };
   offline = true; await refresh();
   await frame.getByText('Runtime 無法連線 · 以下保留最後快照', { exact: true }).waitFor();
-  assert.equal(await frame.getByText('75%', { exact: true }).count(), 1);
+  assert.equal(await frame.getByText('94% 剩餘', { exact: true }).count(), 1);
   offline = false; stale = true; await refresh();
-  await frame.getByText('已過預定重設時間，等待供應商新回報', { exact: true }).first().waitFor();
-  assert.equal(await frame.getByText('75%', { exact: true }).count(), 1);
+  await frame.getByText('已過回報的重設時間；目前沒有可靠的未來重設時間', { exact: true }).first().waitFor();
+  assert.equal(await frame.getByText('94% 剩餘', { exact: true }).count(), 1);
   epoch = 'fixture-restarted'; await refresh();
   await frame.getByText('Runtime 已重新啟動，本次用量觀測區間已重設。', { exact: true }).waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
@@ -190,7 +225,7 @@ try {
   if (rendererRoot) {
     await page.getByRole('button', { name: '返回大廳', exact: true }).click();
     await page.getByRole('button', { name: /Usage/ }).click();
-    await page.frameLocator('iframe[title="Usage"]').getByText('75%', { exact: true }).waitFor();
+    await page.frameLocator('iframe[title="Usage"]').getByText('94% 剩餘', { exact: true }).waitFor();
   }
   if (args.includes('--check-loading-recovery')) {
     await page.clock.install();
@@ -200,7 +235,7 @@ try {
       await new Promise<void>((resolve) => { releaseRequest = resolve; });
       await route.abort().catch(() => {}); // The host timeout may already have aborted it.
     });
-    await page.goto(`http://127.0.0.1:${address.port}${rendererRoot ? '/apps/cats.usage' : ''}`);
+    await page.goto(`http://127.0.0.1:${address.port}${entryPath}`);
     await page.getByRole('status').filter({ hasText: '載入 Usage' }).waitFor();
     await page.clock.fastForward(15_001);
     await page.getByRole('alert').filter({ hasText: '載入逾時' }).waitFor();
@@ -208,22 +243,22 @@ try {
     await page.unroute(rendererPattern);
     releaseRequest();
     await page.getByRole('button', { name: '重新載入', exact: true }).click();
-    await page.frameLocator('iframe[title="Usage"]').getByText('75%', { exact: true }).waitFor();
+    await page.frameLocator('iframe[title="Usage"]').getByText('94% 剩餘', { exact: true }).waitFor();
     await page.route(rendererPattern, async (route: any) => {
       const response = await route.fetch();
       await route.fulfill({ response, json: { ...await response.json(), sdk: '' } });
     });
-    await page.goto(`http://127.0.0.1:${address.port}${rendererRoot ? '/apps/cats.usage' : ''}`);
+    await page.goto(`http://127.0.0.1:${address.port}${entryPath}`);
     await page.locator('iframe[title="Usage"]').waitFor();
     await page.clock.fastForward(15_001);
     await page.getByRole('alert').filter({ hasText: '載入逾時' }).waitFor();
     assert.equal(await page.locator('iframe').count(), 0);
     await page.unroute(rendererPattern);
     await page.getByRole('button', { name: '重新載入', exact: true }).click();
-    await page.frameLocator('iframe[title="Usage"]').getByText('75%', { exact: true }).waitFor();
+    await page.frameLocator('iframe[title="Usage"]').getByText('94% 剩餘', { exact: true }).waitFor();
   }
   assert.deepEqual(errors, []);
-  process.stdout.write(`${JSON.stringify({ ok: true, reads, rendererRoot, electronMode, loadingRecovery: args.includes('--check-loading-recovery'),
+  process.stdout.write(`${JSON.stringify({ ok: true, reads, queries, rendererRoot, electronMode, loadingRecovery: args.includes('--check-loading-recovery'),
     app: { id: usage.id, version: usage.version, sha256: usage.sha256 }, screenshotDir: electronMode ? null : screenshotDir, isolatedRegistry: root }, null, 2)}\n`);
 } finally {
   await browser.close();

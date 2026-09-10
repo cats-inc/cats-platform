@@ -1,13 +1,13 @@
 /** Host-injected browser API. No imports, secrets, filesystem or general network proxy. */
 export interface CatsAppBrowserSdkV1 {
-  readonly sdkVersion: '1.1.0';
+  readonly sdkVersion: '1.2.0';
   readonly appId: string;
   readonly version: string;
   readonly locale: string;
   readonly theme: 'light' | 'dark';
   readonly usage: {
     getSnapshot(): Promise<UsageSnapshotV1>;
-    refreshQuota(target: { provider: 'codex'; instance: string }): Promise<UsageQuotaRefreshV1>;
+    refreshQuota(target: { provider: 'codex' | 'copilot' | 'claude' | 'antigravity'; instance: string }): Promise<UsageQuotaRefreshV1>;
   };
   openLobby(): Promise<void>;
 }
@@ -36,7 +36,8 @@ export interface UsageSnapshotV1 {
     source: string | null; observedAt: string | null; accountId: null; accountLinkage: 'unverified';
     scope: 'provider_reported_during_runtime_execution' | 'provider_account_query'; automaticRefresh: false;
     limitId: string | null;
-    windows: Array<{ id: string; unit: 'percent'; usedPercent: number | null; remainingPercent: number | null; resetsAt: string | null; windowMinutes: number | null }>;
+    refreshSupported: boolean;
+    windows: Array<{ id: string; unit: 'percent' | 'requests' | 'credits'; used: number | null; limit: number | null; remaining: number | null; unlimited: boolean; usedPercent: number | null; remainingPercent: number | null; resetsAt: string | null; windowMinutes: number | null }>;
   } }>;
   sessions: Array<UsageTargetV1 & { sessionId: string; usage: UsageTotalsV1 }>;
   incidents: Array<UsageTargetV1 & { id: string; classification: string; scope: string; observedAt: string; retryAt: string | null }>;

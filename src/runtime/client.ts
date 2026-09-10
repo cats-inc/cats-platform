@@ -299,7 +299,7 @@ export interface RuntimeDeleteSessionResult {
 export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
   getUsageSnapshot?(): Promise<Record<string, unknown>>;
-  refreshUsageQuota?(target: { provider: 'codex'; instance: string }): Promise<Record<string, unknown>>;
+  refreshUsageQuota?(target: { provider: 'codex' | 'copilot' | 'claude' | 'antigravity'; instance: string }): Promise<Record<string, unknown>>;
   getSetupState(): Promise<RuntimeSetupReadModel>;
   triggerSetupScan?(options?: { manual?: boolean }): Promise<RuntimeSetupReadModel>;
   getProviderConfig(options?: { selector?: boolean }): Promise<RuntimeProviderConfigRegistry>;
@@ -471,13 +471,13 @@ export class CatsRuntimeClient implements RuntimeClient {
     return projectUsageSnapshot(await this.readUsageResponse(response));
   }
 
-  async refreshUsageQuota(target: { provider: 'codex'; instance: string }): Promise<Record<string, unknown>> {
-    if (target.provider !== 'codex' || typeof target.instance !== 'string' || !target.instance || target.instance.length > 100) {
+  async refreshUsageQuota(target: { provider: 'codex' | 'copilot' | 'claude' | 'antigravity'; instance: string }): Promise<Record<string, unknown>> {
+    if (!['codex', 'copilot', 'claude', 'antigravity'].includes(target.provider) || typeof target.instance !== 'string' || !target.instance || target.instance.length > 100) {
       throw new Error('Invalid quota target.');
     }
     const response = await fetch(`${this.baseUrl}/usage/refresh`, {
       method: 'POST', headers: { ...this.authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider: 'codex', instance: target.instance }), signal: AbortSignal.timeout(12000),
+      body: JSON.stringify({ provider: target.provider, instance: target.instance }), signal: AbortSignal.timeout(12000),
     });
     return projectUsageQuotaRefresh(await this.readUsageResponse(response));
   }

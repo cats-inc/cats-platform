@@ -124,15 +124,22 @@ registrations do not grant a verified executable renderer. Local archives become
 
 ## Frozen v1 boundary
 
-SDK 1.1 adds `usage.refreshQuota({provider:"codex",instance})`. Unlike cached reads,
+SDK 1.2 supports `usage.refreshQuota({provider,instance})` for `codex`, `copilot`,
+`claude` and `antigravity`. Unlike cached reads,
 this requires both telemetry permissions (`runtime.telemetry.read` and
 `runtime.telemetry.refresh`). Its version-bound host route is POST
 `/api/apps/:id/usage/refresh?version=...`; normal authentication and CSRF apply.
-It forwards only a Codex instance selector, with a 12-second/2-MiB response bound.
+It forwards only an allowlisted provider/instance selector, with a 12-second/2-MiB response bound.
 Runtime uses CLI stdio only (8-second attempt plus cleanup, 60-second cooldown),
 never reads CLI credentials, never invokes model work and never calls a provider
 API directly. Native Windows was verified; WSL/Docker currently return unsupported.
 The result includes sanitized status, `nextRefreshAt`, and a cached v1 snapshot.
+The quota projection carries `refreshSupported`, nullable native used/limit/remaining,
+unit and explicit unlimited state. New collectors reject custom CLI startup args;
+Kiro remains unverified after an auth-related CLI response. See
+[Runtime evidence](../../cats-runtime/docs/research/2026-09-11-additional-cli-quota-queries.md).
+Usage 0.2.0 requires SDK ^1.2.0 and is not yet published. This source change does
+not alter the existing Desktop 0.2.4 lock or installation.
 Usage 0.1.1 requires SDK ^1.1.0. Desktop 0.2.4's default lock selects its published
 version/hash, and its host provides SDK 1.1.0. The actual installer resources and
 offline activation must still pass the release gates before publication.
@@ -144,7 +151,7 @@ offline activation must still pass the release gates before publication.
   verified archive and reads its renderer from those bytes instead of trusting loose files.
 - Renderer: one self-contained HTML entry with explicit `<head>`; inline JS/CSS,
   data images if needed. Server/worker execution and additional capabilities are rejected.
-- Compatibility: SDK `1.1.0`; exact stable versions, `major.x`, `major.minor.x` and
+- Compatibility: SDK `1.2.0`; exact stable versions, `major.x`, `major.minor.x` and
   caret ranges only. Unsupported ranges/prereleases fail rather than being guessed.
   Existing old releases with matching version strings do not imply the new host implementation is present.
 - SDK: host-injected `globalThis.catsApp`, with identity/version/locale/theme,
@@ -185,15 +192,15 @@ Platform page and Lobby navigation, instead of only the standalone App surface:
 ```powershell
 $env:CATS_TEST_PLAYWRIGHT_MODULE = '<absolute path to playwright-core/index.mjs>'
 $env:CATS_TEST_BROWSER_EXECUTABLE = '<absolute path to a Chromium/Edge executable>'
-node --import tsx scripts/testing/check-usage-app.mts --apps-lock <verified-usage-0.1.0-release-lock>
+node --import tsx scripts/testing/check-usage-app.mts --apps-lock <built-usage-0.2.0-lock>
 node --import tsx scripts/testing/check-usage-app.mts --apps-lock <verified-release-lock> --renderer-root build/renderer --check-loading-recovery
 ```
 
 It binds `127.0.0.1` on an OS-assigned port and closes the test server/browser.
-This older smoke fixture explicitly targets Usage 0.1.0; it is not a Usage 0.1.1
-query-button acceptance test. Native Codex refresh has separate built-App
-validation recorded in PLAN-106 and the Usage plan. Every 0.2.4 release build
-instead applies the resource/offline-activation gate to its selected Usage 0.1.1 bytes.
+The smoke selects the App version from its lock and exercises the Usage 0.2.0
+multi-provider buttons, request counts, unlimited semantics and stale/offline states.
+Native Codex refresh has separate live built-App validation in PLAN-106. Existing
+0.2.4 release builds apply their offline-activation gate to selected Usage 0.1.1 bytes.
 It does not read provider accounts, browser profiles or real user state.
 Screenshots go to `build/usage-smoke/`. Fixtures are not live collector evidence.
 The recovery check injects a stalled renderer request and a missing SDK handshake,

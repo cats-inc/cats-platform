@@ -37,7 +37,16 @@ The delivered contract and exact build commands are frozen in the
 [App package guide](../app-packages.md). The placeholder remains only for unverified
 manifest registrations; verified enabled utility archives execute in the real host.
 `runtime.telemetry.read` and `usage.snapshot` are now implemented. The Runtime DTO
-includes passive Claude/Codex windows, but active collectors/history remain deferred.
+includes passive Claude/Codex windows and explicit native CLI queries; history remains deferred.
+
+SDK 1.2 (2026-09-11, unreleased) accepts only Codex, Copilot, Claude and Antigravity
+provider/instance selectors for `usage.refreshQuota`. Both telemetry permissions,
+authentication/CSRF and before/after package version/hash checks remain required.
+The allowlisted projection adds `refreshSupported`, native request/credit quantities
+and explicit unlimited semantics; no provider credentials or generic RPC proxy are
+exposed. Runtime owns CLI invocation, bounds and evidence. Usage 0.2.0 requires SDK
+^1.2.0; existing Desktop release pins remain unchanged until a separately authorized
+coordinated release. Kiro is not enabled without authenticated success evidence.
 
 ## Goals
 

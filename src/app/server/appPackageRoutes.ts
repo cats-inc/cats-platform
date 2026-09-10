@@ -436,7 +436,7 @@ export async function routeAppPackageApi(
       } else if (refresh ? !context.dependencies.runtimeClient?.refreshUsageQuota : !context.dependencies.runtimeClient?.getUsageSnapshot) {
         sendJson(context.response, 503, { error: { code: 'runtime_usage_unavailable', message: 'Runtime usage service is unavailable.' } }, headers);
       } else {
-        let target: { provider: 'codex'; instance: string } | undefined;
+        let target: { provider: 'codex' | 'copilot' | 'claude' | 'antigravity'; instance: string } | undefined;
         if (refresh) {
           try {
             const chunks: Buffer[] = []; let size = 0;
@@ -449,10 +449,10 @@ export async function routeAppPackageApi(
             if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid quota target.');
             const input = value as Record<string, unknown>;
             if (Object.keys(input).some((key) => key !== 'provider' && key !== 'instance')
-              || input.provider !== 'codex' || typeof input.instance !== 'string' || !input.instance || input.instance.length > 100) throw new Error('Invalid quota target.');
-            target = { provider: 'codex', instance: input.instance };
+              || (input.provider !== 'codex' && input.provider !== 'copilot' && input.provider !== 'claude' && input.provider !== 'antigravity') || typeof input.instance !== 'string' || !input.instance || input.instance.length > 100) throw new Error('Invalid quota target.');
+            target = { provider: input.provider, instance: input.instance };
           } catch {
-            sendJson(context.response, 400, { error: { code: 'invalid_quota_target', message: 'A Codex provider instance is required.' } }, headers);
+            sendJson(context.response, 400, { error: { code: 'invalid_quota_target', message: 'A supported provider instance is required.' } }, headers);
             return true;
           }
         }
