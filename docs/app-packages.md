@@ -57,7 +57,7 @@ tags) independently of Desktop. It refuses to replace an existing release and
 does not mark utility releases as a repository-wide `latest` release.
 
 Desktop release CI reads the source-controlled `config/desktop-apps.lock.json`.
-Desktop 0.2.2 selects the published [Usage 0.1.0 release](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.1.0),
+Desktop 0.2.3 retains the published [Usage 0.1.0 release](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.1.0) selected in 0.2.2,
 with SHA-256 `568fbc3fa2efaee2036f4ae04d97d379945988d6e9300e41861b61c01beb1222`.
 The release provenance identifies Apps commit `f0f1b2757d26cdb8fafdb25967008a3ffa348e25`.
 Future selections must copy the actual release's version/hash and immutable
@@ -66,9 +66,9 @@ rebuild's hash: gzip headers can differ by build OS even for identical payloads.
 No fake URL or implicit latest version is shipped. Local builds without a
 selection still explicitly report that no optional Apps are included.
 
-For the 0.2.2 unsigned preview, merge the Platform version/pin changes, then
+For the 0.2.3 unsigned preview, merge the Platform version/fix changes, then
 manually dispatch the Desktop release workflow on that merged commit with
-`tag=v0.2.2` and `runtime_ref=0345d319cf2f97ea51a482dd6932b34576a491b3`.
+`tag=v0.2.3` and `runtime_ref=0345d319cf2f97ea51a482dd6932b34576a491b3`.
 This is the merged Runtime Usage snapshot implementation. Let the preview
 workflow create its tag; pushing a Desktop version tag selects the signed stable
 release path instead. Utility App tags and Desktop tags are independent.
@@ -80,7 +80,8 @@ installer resources before the draft can be published:
 node scripts/verify-desktop-app-bundle.mjs --release-root release --expect-lock config/desktop-apps.lock.json
 ```
 
-It verifies the selected App set, archive hashes/identity, shipped SDK/config paths
+It verifies the selected App set, archive hashes/identity, shipped SDK/config paths,
+the entrypoint's SDK package alias, retention of that import in bundled sidecars,
 and offline/idempotent activation in a temporary registry. It does not touch user
 state and is not a full interactive native-installer/UI acceptance test.
 
@@ -150,23 +151,60 @@ registrations do not grant a verified executable renderer. Local archives become
   Disable/uninstall/version changes revoke the next read; the surface tears down
   when notified of revoked access or when unmounted. Already-delivered data cannot
   be recalled. UI requests are limited to one in flight and at least one second apart.
+- Startup: loading the verified renderer and establishing its SDK bridge share a
+  15-second deadline. A stalled request or missing handshake produces a localized
+  error and a retry button, aborts the request and removes any incomplete frame.
+  Retry creates a fresh nonce/context without reinstalling the App. Initialization
+  failures are caught, and late responses from disposed attempts cannot replace
+  the new attempt. Nonces use 128 cryptographically random bits without requiring
+  the secure-context-only `crypto.randomUUID` API.
 
 ## Validation and remaining work
 
 Run `cats-app-package`, `cats-app-hosting`, `runtime-usage-client`, `app-host-route`,
 registry/manifest, and `desktop-packaging` tests with the repository test runner.
-The browser smoke uses the actual built package, real App surface/routes, a fixture
-runtime, a fresh browser context, and a temporary registry:
+The browser smoke uses the actual built package, authenticated App requests through
+the complete request router, a fixture runtime, a fresh browser context, and a
+temporary registry. Supply the built renderer root to exercise the full production
+Platform page and Lobby navigation, instead of only the standalone App surface:
 
 ```powershell
 $env:CATS_TEST_PLAYWRIGHT_MODULE = '<absolute path to playwright-core/index.mjs>'
 $env:CATS_TEST_BROWSER_EXECUTABLE = '<absolute path to a Chromium/Edge executable>'
 node --import tsx scripts/testing/check-usage-app.mts --apps-lock ../cats-apps/dist/usage-0.1.0.lock.json
+node --import tsx scripts/testing/check-usage-app.mts --apps-lock <verified-release-lock> --renderer-root build/renderer --check-loading-recovery
 ```
 
 It binds `127.0.0.1` on an OS-assigned port and closes the test server/browser.
 It does not read provider accounts, browser profiles or real user state.
 Screenshots go to `build/usage-smoke/`. Fixtures are not live collector evidence.
+The recovery check injects a stalled renderer request and a missing SDK handshake,
+then requires an error, successful retry and a visible dashboard. The normal smoke
+also checks return-to-Lobby/re-entry when using the complete production page.
+
+To run the same functional checks in an isolated hidden Electron window, point
+`CATS_TEST_BROWSER_EXECUTABLE` at a stock Electron executable matching Desktop and
+add `--electron`. Its fresh profile, lack of a Desktop supervisor/preload, and fixture
+host envelope are deliberate: this is not an installed Desktop acceptance test.
+Hidden Electron runs do not produce screenshots. Do not label either this test or
+the offline package verifier as proof that a user's installed Desktop works.
+Run `--check-loading-recovery` with Chromium/Edge only; its request interception
+is not supported by this Electron harness. The regular Electron run covers
+rendering, filters, offline/stale/restart state, revocation and Lobby re-entry.
+
+Desktop 0.2.2's Windows bundled sidecar inlined the `#cats-app-package` module.
+That relocated the SDK loader's `import.meta.url` to the server entrypoint, so it
+read a nonexistent sibling `browser.js` instead of the shipped SDK resource. The
+renderer API consequently returned 503 even though the App archive was valid.
+Keep this package-import alias external to the server bundle. The bundled-sidecar
+regression test executes the production bundler's output in a temporary install
+layout and must receive the actual SDK from the renderer API; source-only tests
+cannot catch this failure. The installer verifier also rejects the bad bundle.
+
+These packaging and loading-recovery fixes are included in the 0.2.3 build;
+they do not modify the published 0.2.2 installer or Usage 0.1.0 artifact. Fully
+quit Cats and install 0.2.3 over the existing installation, preserving the user
+profile. Installation and live-window acceptance must be verified separately.
 
 Deferred: remote catalog/install/update UX, signatures/revocation infrastructure,
 general App actions/server/worker/storage capabilities, active account collectors,

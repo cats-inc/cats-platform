@@ -8,6 +8,7 @@ import { access, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
 import { resolveDesktopHostConfig } from '../build/desktop/config.js';
 import { buildManagedServiceSpecs } from '../build/desktop/processSupervisor.js';
 import { installBundledApps } from '../build/server/platform/apps/packageInstaller.js';
@@ -35,6 +36,15 @@ export async function verifyDesktopAppBundle(resourcesRoot, expectedLockPath) {
     const plan = JSON.parse(await readFile(path.join(resourcesRoot, 'desktop-package-plan.json'), 'utf8'));
     assert.deepEqual(pins(bundled.apps), pins(expected.apps), 'Installer must contain the selected exact App set');
     assert.deepEqual(pins(plan.apps ?? []), pins(expected.apps), 'Packaging plan must retain the selected App set');
+    if (expected.apps.length > 0) {
+      assert.equal(createRequire(pathToFileURL(config.paths.appEntryScript)).resolve('#cats-app-package'),
+        path.join(config.packageRoot, 'packages/app-sdk/package.js'), 'Sidecar SDK alias must resolve to its shipped package');
+      if (plan.sidecarLayout?.app === 'bundle') {
+        const entry = await readFile(config.paths.appEntryScript, 'utf8');
+        assert.match(entry, /\bfrom\s+['"]#cats-app-package['"]/u,
+          'Bundled sidecar must retain the SDK package import; inlining relocates browser.js');
+      }
+    }
     assert.ok((await sdk.readBrowserSdk()).includes('getSnapshot'), 'Shipped browser SDK must be readable');
     for (const app of bundled.apps) {
       assert.equal(app.artifact, `${app.id}-${app.version}.catsapp`, 'Startup must use adjacent offline archives');

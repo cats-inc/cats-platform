@@ -41,6 +41,11 @@ test('installer verifier checks shipped bytes and source-free offline activation
     await writeFile(path.join(resources, 'desktop-package-plan.json'), JSON.stringify({ apps }));
     await writeFile(archive, bytes);
     assert.equal((await verifyDesktopAppBundle(resources, expectedLock)).offlineActivation, true);
+    await writeFile(path.join(resources, 'desktop-package-plan.json'),
+      JSON.stringify({ apps, sidecarLayout: { app: 'bundle', runtime: 'bundle' } }));
+    await assert.rejects(verifyDesktopAppBundle(resources, expectedLock), /retain the SDK package import/);
+    await writeFile(path.join(appRoot, 'build/server/index.js'), 'import { readBrowserSdk } from "#cats-app-package";');
+    assert.equal((await verifyDesktopAppBundle(resources, expectedLock)).offlineActivation, true);
     await writeFile(bundledLock, JSON.stringify({ schemaVersion: 1, apps: [] }));
     await assert.rejects(verifyDesktopAppBundle(resources, expectedLock), /exact App set/);
     await writeFile(bundledLock, lock);

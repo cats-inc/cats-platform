@@ -55,6 +55,8 @@ export const zhTWCatalog: MessageCatalog = {
   'appHost.notInstalledTitle': '此應用程式未安裝',
   'appHost.backToLobby': '返回大廳',
   'appHost.rendererUnavailable': '此應用程式目前沒有可用且通過驗證的畫面。',
+  'appHost.rendererTimedOut': '應用程式載入逾時。請重試，或返回大廳重新開啟。',
+  'appHost.rendererRetry': '重新載入',
   'appHost.rendererAccessChanged': '應用程式的存取權或版本已變更，請返回大廳重新開啟。',
   'appHost.rendererNavigatedAway': '應用程式已離開原本的頁面，請從大廳重新開啟。',
   'appHost.subtitleRendererPending': '應用程式元件尚未準備好',

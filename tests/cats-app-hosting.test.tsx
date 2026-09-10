@@ -13,7 +13,7 @@ import { readAppRenderer } from '../src/platform/apps/renderer.ts';
 import { FileCatsAppRegistry } from '../src/platform/apps/registry.ts';
 import { resolveCatsAppStoragePathsFromChatState } from '../src/platform/apps/paths.ts';
 import { routeAppPackageApi, type AppPackageRouteContext } from '../src/app/server/appPackageRoutes.ts';
-import { AppRendererSurface, createAppDocument, APP_RENDERER_CSP } from '../src/app/renderer/AppRendererSurface.tsx';
+import { AppRendererSurface, createAppBridgeNonce, createAppDocument, APP_RENDERER_CSP } from '../src/app/renderer/AppRendererSurface.tsx';
 import { classifyPlatformAuthRoute } from '../src/app/server/authGatePolicy.ts';
 
 function fixture(version = '0.1.0', permissions = ['ui.route', 'ui.lobby', 'runtime.telemetry.read']) {
@@ -30,6 +30,15 @@ test('App loading chrome follows the host locale', () => {
     title="Usage" locale="zh-TW" onLobby={() => {}} />);
   assert.match(markup, /載入 Usage/);
   assert.doesNotMatch(markup, /Loading/);
+});
+
+test('App bridge uses 128 random bits without requiring secure-context randomUUID', () => {
+  const nonce = createAppBridgeNonce({ getRandomValues: ((bytes: Uint8Array) => {
+    assert.equal(bytes.byteLength, 16);
+    return bytes.fill(0x0a);
+  }) as Crypto['getRandomValues'] });
+  assert.equal(nonce, '0a'.repeat(16));
+  assert.match(createAppBridgeNonce(), /^[0-9a-f]{32}$/);
 });
 
 async function setup() {

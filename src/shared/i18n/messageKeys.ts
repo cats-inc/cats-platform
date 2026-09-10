@@ -47,6 +47,8 @@ export const messageKeys = {
   appHostNotInstalledTitle: 'appHost.notInstalledTitle',
   appHostBackToLobby: 'appHost.backToLobby',
   appHostRendererUnavailable: 'appHost.rendererUnavailable',
+  appHostRendererTimedOut: 'appHost.rendererTimedOut',
+  appHostRendererRetry: 'appHost.rendererRetry',
   appHostRendererAccessChanged: 'appHost.rendererAccessChanged',
   appHostRendererNavigatedAway: 'appHost.rendererNavigatedAway',
   appHostSubtitleRendererPending: 'appHost.subtitleRendererPending',
