@@ -2,6 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createTranslator, parseMessageLocale, type MessageKey } from '../../shared/i18n/index.js';
 
 export const APP_RENDERER_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+export const APP_RENDERER_STARTUP_TIMEOUT_MS = 15_000;
+
+export function createAppBridgeNonce(cryptoSource: Pick<Crypto, 'getRandomValues'> = crypto): string {
+  // getRandomValues is also available on HTTP hosts; randomUUID is secure-context-only.
+  return Array.from(cryptoSource.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
 
 export function createAppDocument(html: string, sdk: string, boot: Record<string, string>): string {
   if (!/<head\s*>/i.test(html)) throw new Error('The app renderer has no head element.');
@@ -19,18 +25,21 @@ export function AppRendererSurface({ appId, version, title, locale, onLobby }: {
   onLobbyRef.current = onLobby;
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<MessageKey | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const loads = useRef(0);
   const revoke = useRef<() => void>(() => {});
   useEffect(() => {
     const controller = new AbortController();
-    const nonce = crypto.randomUUID();
+    let nonce: string;
     let port: MessagePort | null = null;
     let disposed = false;
     let busy = false;
     let lastRequestAt = 0;
     loads.current = 0;
     setHtml(null); setError(null);
-    const close = () => { disposed = true; controller.abort(); port?.close(); };
+    let startupTimer: ReturnType<typeof setTimeout> | undefined;
+    const close = () => { disposed = true; clearTimeout(startupTimer); controller.abort(); port?.close(); };
+    const fail = (key: MessageKey) => { if (!disposed) { setError(key); close(); } };
     revoke.current = close;
     const bridge = (event: MessageEvent) => {
       if (disposed || port || event.source !== frame.current?.contentWindow || event.origin !== 'null'
@@ -61,27 +70,37 @@ export function AppRendererSurface({ appId, version, title, locale, onLobby }: {
       };
       port.start();
       frame.current?.contentWindow?.postMessage({ type: 'cats.app.connect', nonce }, '*', [channel.port2]);
+      clearTimeout(startupTimer);
     };
     window.addEventListener('message', bridge);
+    startupTimer = setTimeout(() => fail('appHostRendererTimedOut'), APP_RENDERER_STARTUP_TIMEOUT_MS);
     void (async () => {
       try {
+        nonce = createAppBridgeNonce();
         const response = await fetch(`/api/apps/${encodeURIComponent(appId)}/renderer?version=${encodeURIComponent(version)}`, { signal: controller.signal, cache: 'no-store' });
+        if ([401, 403, 409].includes(response.status)) { fail('appHostRendererAccessChanged'); return; }
         if (!response.ok) throw new Error('This app has no available, verified renderer.');
         const payload = await response.json() as { html: string; sdk: string; version: string };
-        if (payload.version !== version) { setError('appHostRendererAccessChanged'); close(); return; }
+        if (disposed) return;
+        if (payload.version !== version) { fail('appHostRendererAccessChanged'); return; }
         if (!disposed) setHtml(createAppDocument(payload.html, payload.sdk, {
           nonce, appId, version, locale,
           theme: document.documentElement.dataset.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
         }));
       } catch {
-        if (!disposed) setError('appHostRendererUnavailable');
+        fail('appHostRendererUnavailable');
       }
     })();
     return () => { close(); window.removeEventListener('message', bridge); };
-  }, [appId, version, locale]);
-  if (error) return <p role="alert">{t(error)}</p>;
+  }, [appId, version, locale, attempt]);
+  if (error) return <div>
+    <p role="alert">{t(error)}</p>
+    <button type="button" className="secondaryButton" onClick={() => setAttempt((current) => current + 1)}>
+      {t('appHostRendererRetry')}
+    </button>
+  </div>;
   if (!html) return <p role="status">{t('appLoadingWithSurface', { surface: title })}</p>;
-  return <iframe ref={frame} title={title} sandbox="allow-scripts" referrerPolicy="no-referrer"
+  return <iframe key={`${appId}:${version}:${locale}:${attempt}`} ref={frame} title={title} sandbox="allow-scripts" referrerPolicy="no-referrer"
     srcDoc={html} style={{ width: '100%', height: 'calc(100dvh - 160px)', minHeight: 520, border: 0, borderRadius: 16 }}
     onLoad={() => { if (++loads.current > 1) { revoke.current(); setError('appHostRendererNavigatedAway'); } }} />;
 }

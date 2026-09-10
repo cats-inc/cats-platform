@@ -19,6 +19,39 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-10 (0.2.3 unsigned preview)
+
+### App renderer loading recovery
+
+Behavior change:
+
+Fix the Windows single-file sidecar's SDK resource lookup by preserving its
+package import during bundling. Version 0.2.2 inlined that module, making a valid
+installed Usage archive fail to render with HTTP 503 because the SDK was read
+from the wrong directory. Add a production-bundler regression test and an
+installer-resource gate for this exact failure.
+
+App startup now has a 15-second renderer/SDK deadline and a localized retry button.
+Failed initialization and late responses from disposed attempts cannot leave a
+permanent loading placeholder or replace a newer attempt. This is a host change;
+no Usage package reinstall is required. Desktop still pins Usage 0.1.0 and the
+same Runtime commit as 0.2.2.
+
+Migration steps:
+
+Fully quit Cats, then install the 0.2.3 preview over the existing installation.
+Settings, conversations and App data remain in the existing user profile; do not
+uninstall or delete that profile. No manual App extraction or file move is needed.
+The published 0.2.2 installer is unchanged. Direct installed-window acceptance is
+separate from the automated package and isolated browser/Electron checks.
+
+Deprecations:
+
+None. Merge this version bump before manually dispatching the Desktop release
+workflow with tag `v0.2.3` and Runtime commit
+`0345d319cf2f97ea51a482dd6932b34576a491b3`. Let the workflow create the preview
+tag; do not push it directly into the signed stable release path.
+
 ## 2026-09-10 (0.2.2 unsigned preview)
 
 ### Usage is included as a version-pinned utility

@@ -55,6 +55,8 @@ export const enCatalog: MessageCatalog = {
   'appHost.notInstalledTitle': 'App not installed',
   'appHost.backToLobby': 'Back to Lobby',
   'appHost.rendererUnavailable': 'This app has no available, verified renderer.',
+  'appHost.rendererTimedOut': 'The app did not finish loading. Retry, or return to the lobby and reopen it.',
+  'appHost.rendererRetry': 'Retry loading',
   'appHost.rendererAccessChanged': 'App access or version changed. Return to the lobby and reopen this app.',
   'appHost.rendererNavigatedAway': 'The app navigated away. Reopen it from the lobby.',
   'appHost.subtitleRendererPending': 'App renderer pending',
