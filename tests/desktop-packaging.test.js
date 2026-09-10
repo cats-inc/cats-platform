@@ -110,7 +110,9 @@ async function seedRuntimeSidecar(runtimeRoot) {
   await seedFile(join(runtimeRoot, 'public', 'index.html'), '<!doctype html>');
   await seedFile(join(runtimeRoot, 'public', 'playground.html'), '<!doctype html>');
   await seedFile(join(runtimeRoot, 'public', 'provider-setup.html'), '<!doctype html>');
-  await seedFile(join(runtimeRoot, 'skills', 'README.md'), '# skills');
+  await seedFile(join(runtimeRoot, 'runtime-skills', 'README.md'), '# skills');
+  await seedFile(join(runtimeRoot, 'runtime-skills', 'chat', 'fixture-product', 'SKILL.md'), 'Product fixture');
+  await seedFile(join(runtimeRoot, 'skills', 'developer-only', 'SKILL.md'), 'Developer fixture');
   await seedFile(join(runtimeRoot, 'config', 'management.yaml.example'), 'version: 1\n');
   await seedFile(join(runtimeRoot, 'config', 'providers.yaml.example'), 'version: 1\n');
   await seedFile(join(runtimeRoot, 'config', 'curated-model-catalogs.yaml.example'), 'schema_version: 1\ncatalogs: []\n');
@@ -839,7 +841,7 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /cats-runtime\\build\\runtime\\index\.js/);
   assert.match(script, /cats-runtime\\package\.json/);
   assert.match(script, /cats-runtime\\public\\provider-setup\.html/);
-  assert.match(script, /cats-runtime\\skills\\README\.md/);
+  assert.match(script, /cats-runtime\\runtime-skills\\README\.md/);
   assert.match(script, /cats-runtime\\config\\providers\.yaml\.example/);
   assert.match(script, /cats-runtime\\node_modules\\playwright-core\\package\.json/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Node\.ps1/);
@@ -1281,7 +1283,9 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'build', 'runtime', 'index.js'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'public', 'provider-setup.html'));
-  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'skills', 'README.md'));
+  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'runtime-skills', 'README.md'));
+  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'runtime-skills', 'chat', 'fixture-product', 'SKILL.md'));
+  await assert.rejects(access(join(plan.outputRoot, 'shared', 'cats-runtime', 'skills')), { code: 'ENOENT' });
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'management.yaml.example'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'providers.yaml.example'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'curated-model-catalogs.yaml.example'));

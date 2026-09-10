@@ -41,7 +41,7 @@ assert_file "${RESOURCES_ROOT}/app-sidecar/config/provider-capability-bootstrap.
 assert_file "${RESOURCES_ROOT}/cats-runtime/build/runtime/index.js" 'bundled cats-runtime entry'
 assert_file "${RESOURCES_ROOT}/cats-runtime/package.json" 'bundled cats-runtime package manifest'
 assert_file "${RESOURCES_ROOT}/cats-runtime/public/provider-setup.html" 'bundled cats-runtime setup UI'
-assert_file "${RESOURCES_ROOT}/cats-runtime/skills/README.md" 'bundled cats-runtime skills catalog root'
+assert_file "${RESOURCES_ROOT}/cats-runtime/runtime-skills/README.md" 'bundled cats-runtime skills catalog root'
 assert_file "${RESOURCES_ROOT}/cats-runtime/config/management.yaml.example" 'bundled cats-runtime management config example'
 assert_file "${RESOURCES_ROOT}/cats-runtime/config/providers.yaml.example" 'bundled cats-runtime provider config example'
 assert_file "${RESOURCES_ROOT}/cats-runtime/config/curated-model-catalogs.yaml.example" 'bundled cats-runtime curated model catalog example'

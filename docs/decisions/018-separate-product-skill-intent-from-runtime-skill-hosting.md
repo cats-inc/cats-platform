@@ -8,6 +8,10 @@
 
 Accepted
 
+Directory alignment (2026-09-11, runtime ADR-036): execution packages now live
+in `cats-runtime/runtime-skills/`. Platform root `skills/` remains developer
+collaboration content. The product-intent/runtime-hosting split below is unchanged.
+
 ## Context
 
 `cats` now needs a stable answer for how `SKILL.md` should work across the

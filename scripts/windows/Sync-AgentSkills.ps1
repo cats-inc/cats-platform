@@ -3,7 +3,8 @@
     Syncs skills from the canonical skills/ directory to each agent's discovery path.
 
 .DESCRIPTION
-    Copies skill directories from the project's skills/ directory to the agent-specific
+    Recursively discovers skill packages in the project's skills/ directory and copies them to
+    the agent-specific
     discovery paths (.claude/skills/, .agents/skills/), including any supporting files
     under each skill (e.g., scripts/, references/, assets/).
 
@@ -62,8 +63,8 @@ if (-not (Test-Path $SkillsDir)) {
 
 # Define agent discovery paths
 $AgentPaths = @{
-    "claude" = Join-Path $ProjectRoot ".claude" "skills"
-    "codex"  = Join-Path $ProjectRoot ".agents" "skills"
+    "claude" = Join-Path (Join-Path $ProjectRoot ".claude") "skills"
+    "codex"  = Join-Path (Join-Path $ProjectRoot ".agents") "skills"
 }
 
 # Filter to specific agent if requested
@@ -74,9 +75,31 @@ else {
     $TargetAgents = $AgentPaths
 }
 
-# Discover skills (directories containing SKILL.md)
-$SkillDirs = Get-ChildItem -Path $SkillsDir -Directory | Where-Object {
-    Test-Path (Join-Path $_.FullName "SKILL.md")
+# Stop at package roots: a resource named SKILL.md is not another package.
+function Find-SkillPackages {
+    param([string]$Directory)
+    foreach ($Entry in Get-ChildItem -LiteralPath $Directory -Directory) {
+        if ($Entry.Name.EndsWith('.bootstrap', [StringComparison]::OrdinalIgnoreCase)) { continue }
+        if ($Entry.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+            throw "Linked skill directories are not supported: $($Entry.FullName)"
+        }
+        if (Test-Path -LiteralPath (Join-Path $Entry.FullName 'SKILL.md') -PathType Leaf) {
+            $Entry
+        }
+        else {
+            Find-SkillPackages -Directory $Entry.FullName
+        }
+    }
+}
+
+$SkillDirs = @(Find-SkillPackages -Directory $SkillsDir)
+# Flattening family directories must never silently overwrite a same-named package.
+$SkillNames = @{}
+foreach ($Skill in $SkillDirs) {
+    if ($SkillNames.ContainsKey($Skill.Name)) {
+        throw "Duplicate skill '$($Skill.Name)': $($SkillNames[$Skill.Name]) and $($Skill.FullName)"
+    }
+    $SkillNames[$Skill.Name] = $Skill.FullName
 }
 
 if ($SkillDirs.Count -eq 0) {

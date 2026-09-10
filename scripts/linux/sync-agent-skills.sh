@@ -76,11 +76,33 @@ if [[ -n "$agent" ]]; then
 fi
 
 skill_dirs=()
-for entry in "$skills_dir"/*; do
-  [[ -d "$entry" ]] || continue
-  [[ -f "$entry/SKILL.md" ]] || continue
-  skill_dirs+=("$entry")
-done
+discover_skills() {
+  local entry skill_name existing existing_name
+  for entry in "$1"/*; do
+    [[ -d "$entry" ]] || continue
+    [[ "$entry" != *.bootstrap ]] || continue
+    if [[ -L "$entry" ]]; then
+      echo "Linked skill directories are not supported: $entry" >&2
+      exit 1
+    fi
+    if [[ -f "$entry/SKILL.md" ]]; then
+      skill_name="$(basename "$entry" | tr '[:upper:]' '[:lower:]')"
+      # macOS Bash 3.2 treats an empty array as unset under nounset.
+      for existing in ${skill_dirs[@]+"${skill_dirs[@]}"}; do
+        existing_name="$(basename "$existing" | tr '[:upper:]' '[:lower:]')"
+        if [[ "$skill_name" == "$existing_name" ]]; then
+          echo "Duplicate skill '$skill_name': $existing and $entry" >&2
+          exit 1
+        fi
+      done
+      skill_dirs+=("$entry")
+      # Resources inside this package are copied intact, never discovered again.
+    else
+      discover_skills "$entry"
+    fi
+  done
+}
+discover_skills "$skills_dir"
 
 if [[ ${#skill_dirs[@]} -eq 0 ]]; then
   echo "No skills found in $skills_dir (no directories with SKILL.md)" >&2

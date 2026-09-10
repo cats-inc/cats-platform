@@ -411,6 +411,11 @@ This project supports [Agent Skills](https://agentskills.io), an open standard f
 
 Skills live in `skills/` (version-controlled) and are synced to each agent's discovery path via `Sync-AgentSkills.ps1`. Each agent automatically discovers skills from its own directory.
 
+These are developer collaboration skills. The helpers discover nested packages,
+including `skills/orchestration/`, and copy each package and its resources under
+its leaf name. Product skill packages are owned by `cats-runtime/runtime-skills/`;
+Desktop packaging copies that library separately.
+
 | Agent | Discovery Path |
 |-------|---------------|
 | Claude Code | `.claude/skills/<name>/SKILL.md` |

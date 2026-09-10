@@ -77,6 +77,35 @@ Desktop-host regression coverage now also checks:
 
 ## Running Tests
 
+### Developer skills and runtime library packaging
+
+```sh
+node --test tests/skill-sync-scripts.test.js
+npm run build:host
+node --test tests/desktop-packaging.test.js
+```
+
+Skill-sync fixtures use temporary repositories. Windows exercises PowerShell
+5.1, PowerShell 7 when installed, and Git Bash when installed for both POSIX wrappers. POSIX hosts
+execute the Bash wrappers natively. Coverage includes nested package discovery,
+resource preservation, duplicate-name preflight and product-root exclusion.
+Desktop fixtures verify `runtime-skills/` is staged and runtime developer
+`skills/` is excluded. These tests do not launch an installed Desktop app.
+
+2026-09-11 directory-alignment validation: host build passed, and the two test
+files above passed all 33 cases. After optional-shell detection was added,
+the 9 helper cases passed again under Windows PowerShell 5.1, PowerShell 7 and
+Git Bash (both Linux/macOS scripts). Independent read-only review findings were
+addressed. Native Linux/macOS execution and an installed Desktop launch remain
+outside this validation. The real repository sync copied both developer skills
+into both local discovery mirrors.
+
+The final pre-commit `npm test` on current main passed 4,554 tests with five
+skips, including server/Desktop/UI/mobile typechecks and builds. A preceding
+full run hit an intermittent Telegram file-backed restart fixture timeout;
+the unchanged final full rerun passed. Temporary diagnostic instrumentation
+was removed, and no Telegram production or test changes are included here.
+
 ### All Tests
 
 ```bash
