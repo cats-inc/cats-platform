@@ -2,6 +2,16 @@
 
 Status: Draft
 
+Implementation audit (2026-09-10): registry, manifest, Settings, and Lobby slices
+are present. Route registration is not renderer execution: the App route is a
+package-information placeholder and scoped App API dispatch still returns 501.
+Current local installs retain the supplied package path; the managed versioned
+directory helper is not wired into installation. [PLAN-106](./PLAN-106-official-app-package-hosting.md)
+now tracks real versioned-package loading and the narrow read-only bridge for
+official Cats Usage. General connector/server execution remains broader work in
+this plan. See [ADR-114](../decisions/114-separate-official-app-sources-and-coordinate-desktop-distribution.md)
+and [SPEC-115](../specs/SPEC-115-versioned-official-app-packages-and-telemetry-bridge.md).
+
 ## Related Spec
 
 - [SPEC-098](../specs/SPEC-098-cats-app-package-and-extension-interface.md)
@@ -123,8 +133,12 @@ Inventory notes:
 - [x] Add `GET /api/apps` and `GET /api/apps/:appId`.
 - [x] Add enable, disable, and uninstall endpoints.
 - [x] Add inspect endpoint.
-- [x] Add route serving for `/apps/:appId/*`.
-- [x] Add scoped app API route mounting under `/api/apps/:appId/*`.
+- [x] Register `/apps/:appId/*` with a package-information placeholder.
+- [x] Reserve `/api/apps/:appId/*` with scope validation and a 501 response.
+- [ ] Load and execute an installed built renderer (official utility slice in
+      PLAN-106).
+- [ ] Execute declared scoped App server APIs; registration alone is insufficient
+      and this broader executor is not required by Cats Usage U1.
 - [x] Gate mutations behind owner-level confirmation in the UI flow.
 - [x] Ensure app APIs cannot shadow core, product, setup, runtime, or settings
       endpoints.
@@ -138,7 +152,9 @@ Inventory notes:
 | `src/app/renderer/App.tsx` | Modify | Add `/apps/:appId/*` route host |
 | `src/app/renderer/AppHostRoute.tsx` | Create | Runtime route wrapper for app UI |
 
-**Deliverables**: local app validation, install, registry update, and launch.
+**Deliverables**: local app validation, path-based install, registry update, and
+navigation to the App host placeholder. Real installed renderer launch and
+scoped server execution remain incomplete.
 
 ## Phase 5: Define the Cats Code Export Pipeline
 

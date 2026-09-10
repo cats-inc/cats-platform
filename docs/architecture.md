@@ -13,6 +13,24 @@ modes." It is a unified interaction core plus a structured materialization
 layer so `Cats Chat`, `Cats Work`, and `Cats Code` can all project from the
 same engine and provenance model.
 
+## Official Utility App Boundary (Accepted Direction, Implementation Pending)
+
+`cats-apps` owns official utility source and versioned build artifacts. This
+repository keeps the App manifest/SDK, install registry, permission enforcement,
+renderer hosting, and Desktop distribution. `cats-runtime` remains the owner of
+provider execution and usage/account-quota collection. Cats Usage (`cats.usage`)
+is an App under Lobby `Apps`, not a new platform Product or a provider adapter.
+
+Production will load validated prebuilt packages with immutable versions and
+digests, initially pinned into Desktop releases. A source checkout may be a build
+input, but it is not the installed package path. Remote catalog discovery and
+independent updates are deferred. Registry/local-path installation and Lobby
+entries exist today; the real renderer loader and scoped telemetry bridge do not.
+
+See [ADR-114](./decisions/114-separate-official-app-sources-and-coordinate-desktop-distribution.md),
+[SPEC-115](./specs/SPEC-115-versioned-official-app-packages-and-telemetry-bridge.md),
+and [PLAN-106](./plans/PLAN-106-official-app-package-hosting.md).
+
 ## Unified Interaction and Materialization Direction
 
 The current architectural north star is:

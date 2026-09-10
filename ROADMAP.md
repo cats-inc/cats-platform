@@ -11,6 +11,22 @@ Node.js/TypeScript chat shell, but the roadmap now assumes parallel product
 tracks that reuse the same actors, conversations, approvals, and owner-memory
 contracts.
 
+## Official Utility App Track (Planned)
+
+- [x] Record official app source ownership in `cats-apps` and initial coordinated
+      Desktop distribution in ADR-114; name the first utility Cats Usage.
+- [ ] Finish managed versioned-package installation and a real installed renderer
+      loader with a permission-checked public SDK.
+- [ ] Expose a scoped, read-only runtime telemetry view for Cats Usage.
+- [ ] Bundle pinned, prebuilt app artifacts into Desktop and verify offline launch,
+      failed-update recovery, and app-data preservation.
+- [ ] Later: introduce a remote App Catalog and independently installable updates
+      when the package/host contract is stable.
+
+Details: [SPEC-115](./docs/specs/SPEC-115-versioned-official-app-packages-and-telemetry-bridge.md)
+and [PLAN-106](./docs/plans/PLAN-106-official-app-package-hosting.md). Source checkout
+paths and development servers are not production deployment inputs.
+
 ## Milestones
 
 ### Phase 1: Foundation

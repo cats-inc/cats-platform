@@ -10,6 +10,16 @@ Proposed
 
 ## Context
 
+Implementation and follow-up note (2026-09-10): manifest validation, the local
+registry, Settings management, and Lobby entries now exist. The App route still
+shows package information rather than executing an installed renderer, and
+declared scoped APIs still return 501. The official utility source/distribution
+boundary is accepted separately in [ADR-114](./114-separate-official-app-sources-and-coordinate-desktop-distribution.md),
+with host follow-through in [SPEC-115](../specs/SPEC-115-versioned-official-app-packages-and-telemetry-bridge.md)
+and [PLAN-106](../plans/PLAN-106-official-app-package-hosting.md). That narrower
+decision does not mark all connector/product-module proposals here as accepted
+or implemented.
+
 ADR-048 separated platform-owned `products` from installable `apps`.
 
 The platform now needs a concrete extension boundary that can carry three
