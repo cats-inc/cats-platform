@@ -38,6 +38,7 @@ import {
   warmProviderSelectorCache,
 } from './server/routes/providers.js';
 import { resolveProviderSnapshotPathFromChatState } from './shared/platformPaths.js';
+import { installBundledApps } from './platform/apps/packageInstaller.js';
 
 let startup = createAppStartupState();
 
@@ -90,6 +91,9 @@ async function main(): Promise<void> {
   });
   startupTrace.trace('runtime.client.created');
   const chatStore = new FileChatStore(config.chatStatePath);
+  if (process.env.CATS_APP_BUNDLE_PATH?.trim()) {
+    await installBundledApps(config.chatStatePath, process.env.CATS_APP_BUNDLE_PATH.trim());
+  }
   startupTrace.trace('chat.store.created', {
     chatStatePath: config.chatStatePath,
   });

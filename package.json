@@ -1,10 +1,13 @@
 {
   "name": "@cats-inc/cats-platform",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Technical host package for the Cats platform, backed by cats-runtime.",
   "author": "Cats Inc. <sammykenny2@gmail.com>",
   "homepage": "https://github.com/cats-inc/cats-platform",
   "type": "module",
+  "imports": {
+    "#cats-app-package": "./packages/app-sdk/package.js"
+  },
   "bin": {
     "cats-platform": "build/server/index.js"
   },
@@ -14,6 +17,7 @@
     "build/server",
     "build/desktop",
     "scripts",
+    "packages/app-sdk",
     "config/provider-capability-bootstrap.yaml.example",
     ".env.example",
     "README.md",
@@ -126,12 +130,23 @@
     },
     "files": [
       "build/desktop/**/*",
+      "packages/app-sdk/**/*",
       "assets/build/icon.ico",
       "assets/build/icon.png",
       "assets/tray-icon*.png",
       "package.json"
     ],
     "extraResources": [
+      {
+        "from": "build/desktop-packaging/shared/official-apps",
+        "to": "app-sidecar/official-apps",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "build/desktop-packaging/shared/app-sidecar/packages/app-sdk",
+        "to": "app-sidecar/packages/app-sdk",
+        "filter": ["**/*"]
+      },
       {
         "from": "build/desktop-packaging/shared/build/server",
         "to": "app-sidecar/build/server",

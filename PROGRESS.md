@@ -4,13 +4,19 @@
 
 ## Current Status
 
-Planning update (2026-09-10): ADR-114 accepts the official `cats-apps` repository
-boundary and coordinated Desktop distribution of independently versioned,
-prebuilt App packages. SPEC-115 / PLAN-106 describe the remaining managed install,
-real renderer loader, public SDK, and read-only telemetry bridge for Cats Usage.
-The existing registry/Lobby/Settings foundations remain the implementation
-baseline; this update ships documentation only, not an executable App host or
-remote catalog. See [PLAN-106](./docs/plans/PLAN-106-official-app-package-hosting.md).
+Implementation update (2026-09-10): SPEC-115 / PLAN-106 now provide verified
+`.catsapp` installs, an opaque-frame renderer with executable SDK v1, a revocable
+telemetry read bridge, and exact-version/hash Desktop bundle selection. Usage's
+real built archive passed isolated browser/host checks (including offline, stale,
+restart and disable), and package/lifecycle/redaction/selection regressions pass.
+Release follow-through: Usage 0.1.0 is published and selected for Desktop 0.2.2;
+Runtime's snapshot PR is merged. Packaged App/config roots now match installer
+resource destinations, and all OS release jobs verify the actual App bytes/SDK
+and temporary-profile offline activation. No real user registry or provider
+account was changed. Interactive native installers on all OSes and independent
+review remain unverified; remote catalog and general
+App executors remain deferred. See the [package guide](./docs/app-packages.md)
+and [PLAN-106](./docs/plans/PLAN-106-official-app-package-hosting.md).
 
 Earlier implementation update (2026-04-28): PLAN-080 is complete. The hard-coded
 Claude/Codex/Ollama strong/weak bootstrap has been replaced by an

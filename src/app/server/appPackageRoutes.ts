@@ -25,16 +25,24 @@ import {
 import { resolveCatsAppStoragePathsFromChatState } from '../../platform/apps/paths.js';
 import { FileCatsAppRegistry } from '../../platform/apps/registry.js';
 import { PLATFORM_ENTITY_PATH_PREFIXES } from '../../shared/platformRoutePaths.js';
+import type { RuntimeClient } from '../../runtime/client.js';
+import { MAX_PACKAGE_BYTES } from '#cats-app-package';
+import { installRendererPackage, validateRendererPackage } from '../../platform/apps/packageInstaller.js';
+import { readAppRenderer } from '../../platform/apps/renderer.js';
 
 export interface AppPackageApiDependencies {
   config: Pick<AppConfig, 'chatStatePath'>;
   now?: () => Date;
+  runtimeClient?: Pick<RuntimeClient, 'getUsageSnapshot'>;
 }
 
 export type AppPackageRouteContext = RouteContext<AppPackageApiDependencies>;
 
 interface AppPackagePathInput {
   packagePath?: string;
+  id?: string;
+  version?: string;
+  sha256?: string;
 }
 
 interface AppPackageInstallInput extends AppPackagePathInput {
@@ -251,6 +259,21 @@ async function handleInstall(context: AppPackageRouteContext): Promise<void> {
     return;
   }
 
+  if (body.packagePath?.endsWith('.catsapp')) {
+    try {
+      if (!body.id || !body.version || !body.sha256) throw new Error('Archive install requires an explicit id, version, and sha256.');
+      if ((await stat(body.packagePath)).size > MAX_PACKAGE_BYTES) throw new Error('App package exceeds size limit.');
+      const bytes = await readFile(body.packagePath);
+      const pin = { id: body.id, version: body.version, sha256: body.sha256 };
+      validateRendererPackage(bytes, pin);
+      const record = await installRendererPackage({ chatStatePath: context.dependencies.config.chatStatePath,
+        bytes, pin, source: 'local-package', enable: body.enable });
+      sendJson(context.response, 201, { ok: true, app: toPlatformInstalledAppDescriptor(record) });
+    } catch (error) {
+      sendJson(context.response, 400, { ok: false, issues: [badRequestIssue(error instanceof Error ? error.message : 'Invalid app archive.')] });
+    }
+    return;
+  }
   const result = await validateLocalManifestPackage(context, body);
   if (!result.ok) {
     sendJson(context.response, 400, result);
@@ -388,6 +411,41 @@ async function handleUninstall(context: AppPackageRouteContext, appId: string): 
 export async function routeAppPackageApi(
   context: AppPackageRouteContext,
 ): Promise<boolean> {
+  const rendererMatch = matchRoute(context.url.pathname, /^\/api\/apps\/([^/]+)\/(renderer|usage)$/u);
+  if (rendererMatch) {
+    if (context.method !== 'GET') { sendMethodNotAllowed(context.response, ['GET']); return true; }
+    const record = await appRegistryFor(context).getInstalledApp(rendererMatch[0]!);
+    const headers = { 'cache-control': 'no-store' };
+    if (!record || !record.enabled || record.installState !== 'enabled'
+      || context.url.searchParams.get('version') !== record.manifest.version) {
+      sendJson(context.response, 409, { error: { code: 'app_context_revoked', message: 'App is disabled, uninstalled, or its active version changed.' } }, headers);
+      return true;
+    }
+    if (!record.manifest.permissions.includes('ui.route') || !record.packageSha256) {
+      sendJson(context.response, 403, { error: { code: 'app_permission_denied', message: 'A verified renderer package with ui.route is required.' } }, headers);
+      return true;
+    }
+    try {
+      if (rendererMatch[1] === 'renderer') {
+        sendJson(context.response, 200, { ...(await readAppRenderer(record)), version: record.manifest.version }, headers);
+      } else if (!record.manifest.permissions.includes('runtime.telemetry.read')) {
+        sendJson(context.response, 403, { error: { code: 'app_permission_denied', message: 'runtime.telemetry.read is required.' } }, headers);
+      } else if (!context.dependencies.runtimeClient?.getUsageSnapshot) {
+        sendJson(context.response, 503, { error: { code: 'runtime_usage_unavailable', message: 'Runtime usage service is unavailable.' } }, headers);
+      } else {
+        const snapshot = await context.dependencies.runtimeClient.getUsageSnapshot();
+        const current = await appRegistryFor(context).getInstalledApp(record.id);
+        if (!current?.enabled || current.installState !== 'enabled' || current.manifest.version !== record.manifest.version
+          || !current.manifest.permissions.includes('runtime.telemetry.read')) {
+          sendJson(context.response, 409, { error: { code: 'app_context_revoked', message: 'App access was revoked.' } }, headers);
+        } else sendJson(context.response, 200, snapshot, headers);
+      }
+    } catch {
+      sendJson(context.response, 503, { error: { code: rendererMatch[1] === 'usage' ? 'runtime_usage_unavailable' : 'app_renderer_unavailable',
+        message: rendererMatch[1] === 'usage' ? 'Runtime usage is unavailable or incompatible. No quota estimate was substituted.' : 'The renderer package could not be verified or loaded.' } }, headers);
+    }
+    return true;
+  }
   if (context.url.pathname === '/api/apps') {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);

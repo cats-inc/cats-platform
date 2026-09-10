@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "apps": [
+    {
+      "id": "cats.usage",
+      "version": "0.1.0",
+      "sha256": "568fbc3fa2efaee2036f4ae04d97d379945988d6e9300e41861b61c01beb1222",
+      "artifact": "https://github.com/cats-inc/cats-apps/releases/download/usage-v0.1.0/usage-0.1.0.catsapp"
+    }
+  ]
+}

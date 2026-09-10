@@ -501,6 +501,7 @@ export async function routeRequest(
     ...context,
     dependencies: {
       config: dependencies.shared.config,
+      runtimeClient: dependencies.shared.runtimeClient,
       now: dependencies.shared.now,
     },
   };

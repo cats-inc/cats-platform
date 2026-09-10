@@ -108,7 +108,7 @@ test('AppHostRoute renders installed app route metadata', () => {
   }));
 
   assert.match(markup, />Focus Timer</u);
-  assert.match(markup, />Focus timer with break reminders</u);
+  assert.match(markup, /Loading Focus Timer/u);
   assert.match(markup, />user.focus</u);
   assert.match(markup, />enabled</u);
 });

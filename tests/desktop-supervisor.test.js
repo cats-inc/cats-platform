@@ -231,6 +231,37 @@ test('desktop host config resolves bundled sidecar paths in packaged mode', () =
   assert.equal(config.packaged, true);
 });
 
+test('packaged service inputs agree with electron-builder resource destinations on the current OS', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-desktop-resource-contract-'));
+  try {
+    const resourcesRoot = join(root, 'resources');
+    const config = resolveDesktopHostConfig({
+      env: {}, packaged: true, resourcesPath: resourcesRoot,
+      userDataDir: join(root, 'user-data'), catsHomeDir: join(root, 'cats-home'),
+    });
+    const [, appSpec] = buildManagedServiceSpecs(config, {}, process.platform);
+    const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+    const destination = (source) => {
+      const entry = pkg.build.extraResources.find((item) => item.from === source);
+      assert.ok(entry, `Missing packaged resource: ${source}`);
+      return join(resourcesRoot, entry.to);
+    };
+    assert.equal(config.paths.platformBundledConfigDir,
+      destination('build/desktop-packaging/shared/cats-platform/config'));
+    assert.equal(appSpec.env.CATS_PLATFORM_PACKAGE_ROOT, config.packageRoot);
+    assert.equal(appSpec.env.CATS_APP_BUNDLE_PATH,
+      join(destination('build/desktop-packaging/shared/official-apps'), 'bundle.lock.json'));
+    assert.equal(destination('build/desktop-packaging/shared/app-sidecar/packages/app-sdk'),
+      join(config.packageRoot, 'packages', 'app-sdk'));
+    const devConfig = resolveDesktopHostConfig({
+      env: {}, userDataDir: join(root, 'dev-data'), catsHomeDir: join(root, 'dev-home'),
+    });
+    assert.equal(buildManagedServiceSpecs(devConfig, {}, process.platform)[1].env.CATS_APP_BUNDLE_PATH, undefined);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('packaged desktop host seeds bundled runtime config templates into cats home without overwriting user files', async () => {
   const resourcesRoot = await mkdtemp(join(tmpdir(), 'cats-desktop-packaged-resources-'));
   const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-packaged-userdata-'));

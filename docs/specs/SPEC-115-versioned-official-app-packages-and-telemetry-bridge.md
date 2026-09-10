@@ -4,10 +4,10 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Draft requirements; direction accepted in ADR-114 |
+| Status | Renderer/telemetry/pinned-package v1 implemented; broader extensions deferred |
 | Owner | cats-platform |
-| Implementation | Registry/Lobby foundations exist; runtime loading remains unimplemented |
-| First consumer | Cats Usage (cats.usage) from cats-apps |
+| Implementation | Managed .catsapp install, opaque-frame SDK v1, read bridge, Desktop lock selection |
+| First consumer | Usage (cats.usage) from cats-apps |
 
 ## Summary
 
@@ -16,7 +16,7 @@ packages, load their renderers, enforce a public SDK boundary, and expose a scop
 read-only telemetry operation. Include pinned app versions with Desktop first;
 remote catalog discovery and independent app updates are later phases.
 
-## Existing Baseline
+## Baseline Before This Slice
 
 | Capability | Actual implementation |
 |------------|-----------------------|
@@ -33,12 +33,18 @@ remote catalog discovery and independent app updates are later phases.
 This spec extends the narrow official utility route. It does not require activating
 all reserved server, worker, connector, product-module, job, or scoped API features.
 
+The delivered contract and exact build commands are frozen in the
+[App package guide](../app-packages.md). The placeholder remains only for unverified
+manifest registrations; verified enabled utility archives execute in the real host.
+`runtime.telemetry.read` and `usage.snapshot` are now implemented. The Runtime DTO
+includes passive Claude/Codex windows, but active collectors/history remain deferred.
+
 ## Goals
 
 - Actual source-independent app execution from a versioned installed package.
 - A usable public renderer SDK with scoped, revocable access.
 - A pinned official app set in Desktop releases.
-- Truthful Cats Usage reads without provider credentials in a renderer.
+- Truthful Usage reads without provider credentials in a renderer.
 
 ## Non-Goals
 
@@ -46,7 +52,7 @@ all reserved server, worker, connector, product-module, job, or scoped API featu
 - A full marketplace or arbitrary third-party server code execution.
 - App-owned provider CLI/account access.
 - Embedded live dashboard widgets in Lobby.
-- General mutation APIs or quota/budget override controls for Cats Usage.
+- General mutation APIs or quota/budget override controls for Usage.
 
 ## Package and Install Requirements
 
@@ -90,9 +96,9 @@ all reserved server, worker, connector, product-module, job, or scoped API featu
 
 ## Telemetry Read Requirements
 
-17. Add a narrow permission, proposed as runtime.telemetry.read, to the validated
-    permission model and to host enforcement. It is not currently implemented.
-18. Expose an allowlisted operation, proposed as usage.snapshot, through the
+17. Enforce the implemented runtime.telemetry.read permission in the validated
+    permission model and at the host boundary.
+18. Expose the implemented allowlisted usage.snapshot operation through the
     renderer context. Its presence must be negotiated, not inferred from a
     manifest permission string.
 19. Project only sanitized usage, quota-window, incident, freshness, and coverage
@@ -122,7 +128,7 @@ The Desktop updater and an App updater remain distinct ownership scopes.
 
 ## Acceptance
 
-- A built Cats Usage package opens from Lobby with its source checkout unavailable.
+- A built Usage package opens from Lobby with its source checkout unavailable.
 - Assets load offline, and runtime-unavailable data is shown truthfully.
 - The exact app version/provenance is inspectable and matches Desktop bundle inputs.
 - Denied/revoked telemetry access cannot reach runtime.

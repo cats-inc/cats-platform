@@ -2,6 +2,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import type { PlatformHostEnvelope } from '../../shared/platform-contract.js';
 import { useI18n } from './i18n/index.js';
+import { AppRendererSurface } from './AppRendererSurface.js';
 
 function routeBelongsToEntry(pathname: string, routePath: string): boolean {
   return pathname === routePath || pathname.startsWith(`${routePath}/`);
@@ -12,7 +13,7 @@ export function AppHostRoute({
 }: {
   envelope: PlatformHostEnvelope;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   const { appId = '' } = useParams();
@@ -46,7 +47,7 @@ export function AppHostRoute({
 
   return (
     <div className="screen screenCentered appHostScreen">
-      <section className="appHostPanel">
+      <section className="appHostPanel" style={active ? { width: '100%', maxWidth: 1440 } : undefined}>
         <div className="appHostHeader">
           <div>
             <p className="eyebrow">{t('appHostLabel')}</p>
@@ -60,7 +61,8 @@ export function AppHostRoute({
             {t('appHostBackToLobby')}
           </button>
         </div>
-        <p className="appHostSubtext">{subtitle}</p>
+        {active ? <AppRendererSurface appId={app.id} version={app.version} title={title}
+          locale={locale} onLobby={() => navigate('/lobby')} /> : <p className="appHostSubtext">{subtitle}</p>}
         <dl className="appHostMeta">
           <div>
             <dt>{t('appHostSectionPackage')}</dt>

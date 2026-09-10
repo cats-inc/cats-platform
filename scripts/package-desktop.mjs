@@ -4,6 +4,7 @@ import process from 'node:process';
 import { access, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveAppLock } from '#cats-app-package';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -36,6 +37,7 @@ Options:
   --platform <all|windows|macos|linux>  Filter staged target manifests
   --output-dir <path>                   Override packaging output root
   --sidecar-layout <split|bundle>       Choose loose-file or bundled sidecars for both app/runtime
+  --apps-lock <path>                    Exact App ID/version/SHA-256 selection (no latest resolution)
   --help                                Show this help text
 `);
 }
@@ -54,15 +56,21 @@ export function parseArgs(argv, env = process.env) {
   let platform = 'all';
   let outputDir = null;
   let sidecarLayout = resolveSidecarLayout(env.CATS_DESKTOP_SIDECAR_LAYOUT);
+  let appsLock = env.CATS_DESKTOP_APPS_LOCK?.trim() || null;
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') {
-      return { help: true, platform, outputDir, sidecarLayout };
+      return { help: true, platform, outputDir, sidecarLayout, ...(appsLock ? { appsLock } : {}) };
     }
     if (value === '--platform') {
       platform = argv[index + 1] ?? 'all';
       index += 1;
+      continue;
+    }
+    if (value === '--apps-lock') {
+      appsLock = argv[++index];
+      if (!appsLock || appsLock.startsWith('--')) throw new Error('--apps-lock requires a path.');
       continue;
     }
     if (value === '--output-dir') {
@@ -78,7 +86,7 @@ export function parseArgs(argv, env = process.env) {
     throw new Error(`Unknown option: ${value}`);
   }
 
-  return { help: false, platform, outputDir, sidecarLayout };
+  return { help: false, platform, outputDir, sidecarLayout, ...(appsLock ? { appsLock } : {}) };
 }
 
 export function resolveRequiredDesktopIconPaths(projectRoot = PROJECT_ROOT) {
@@ -176,6 +184,9 @@ async function main() {
   const { resolveDesktopHostConfig } = await import('../build/desktop/config.js');
   const { stageDesktopPackagingOutputs } = await import('../build/desktop/packaging.js');
 
+  const apps = parsed.appsLock ? await resolveAppLock(resolve(parsed.appsLock)) : [];
+  if (!parsed.appsLock) process.stderr.write('[desktop-package] No --apps-lock selected; this package contains no optional Apps.\n');
+
   await assertDesktopIconAssetsPresent(PROJECT_ROOT);
   const config = resolveDesktopHostConfig({
     env: process.env,
@@ -185,10 +196,12 @@ async function main() {
     outputRoot: parsed.outputDir ? resolve(PROJECT_ROOT, parsed.outputDir) : undefined,
     platforms: allowedPlatforms,
     sidecarLayout: parsed.sidecarLayout,
+    apps,
   });
 
   process.stdout.write(JSON.stringify({
     outputRoot: plan.outputRoot,
+    apps: plan.apps,
     sidecarLayout: plan.sidecarLayout,
     targets: plan.targets.map((target) => ({
       id: target.id,

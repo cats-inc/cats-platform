@@ -19,6 +19,39 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-10 (0.2.2 unsigned preview)
+
+### Usage is included as a version-pinned utility
+
+Behavior change:
+
+Desktop includes the independently released Usage 0.1.0 package selected by an
+exact version, release asset URL and SHA-256. On first launch, Platform validates
+and installs the bundled package offline, enables it and shows Usage in Lobby's
+Apps section. Users do not separately download, move or extract the utility.
+The packaged App/config/SDK roots now agree with Electron's resource layout.
+Release jobs verify the actual unpacked resources and temporary-profile offline
+activation on Windows, macOS and Linux before publishing the preview.
+
+Usage reads the bundled Runtime's cached usage snapshot. Token/currency totals,
+passive Claude/Codex quota reports, freshness and offline state are available;
+active account polling and persistent usage history are not. Missing reports do
+not mean zero usage or a full allowance.
+
+Migration steps:
+
+Install Desktop normally. Existing disabled/uninstalled App choices remain in
+effect. No manual App migration is required. The release matrix is Windows x64
+(NSIS), macOS x64 (DMG/updater ZIP), and Linux arm64 (DEB). Automated resource and
+activation checks are not full interactive native-installer acceptance tests.
+
+Deprecations:
+
+None. This remains an unsigned prerelease, not a signed stable distribution.
+Merge the version bump before manually dispatching the Desktop release workflow
+with tag `v0.2.2` and the exact merged Runtime commit. Let the workflow create the
+tag; pushing that tag directly selects the signed stable workflow instead.
+
 ## 2026-09-05 (0.2.1)
 
 ### Muse appears in the provider list without a relaunch

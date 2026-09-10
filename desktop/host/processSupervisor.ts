@@ -598,6 +598,9 @@ export function buildManagedServiceSpecs(
         CATS_PORT: String(config.appPort),
         CATS_PLATFORM_DIR: config.paths.platformDir,
         CATS_PLATFORM_PACKAGE_ROOT: pathModule.dirname(config.paths.platformBundledConfigDir),
+        ...(config.packaged ? {
+          CATS_APP_BUNDLE_PATH: pathModule.join(config.packageRoot, 'official-apps', 'bundle.lock.json'),
+        } : {}),
         CATS_DESKTOP_DIR: pathModule.dirname(config.paths.hostStatePath),
         CATS_MOBILE_BUNDLE_ROOT: config.paths.mobileBundleRoot,
         CATS_RUNTIME_DIR: config.paths.runtimeRootDir,
