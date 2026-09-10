@@ -11,8 +11,10 @@ updates remain later work. The verified renderer/SDK/read bridge and Desktop
 lockfile handoff are implemented; native release publication is a separate action.
 SDK 1.2 now carries explicit Codex/Copilot/Claude/Antigravity quota refresh and
 native quantities through the same authenticated, revocable host boundary.
-The Usage 0.2.0 source follow-up is verified but not published; release pins and
-the installed Desktop remain unchanged.
+Usage 0.2.0 is published and selected for the coordinated Desktop 0.2.5 unsigned
+preview with SDK 1.2 and the merged Runtime quota/skill-root revision. See the
+package guide for exact pins and PLAN-106 for validation/publication gates.
+The installed Desktop remains unchanged by this release task.
 
 - [Built App packages, version selection, and isolated validation](./app-packages.md)
 

@@ -19,6 +19,49 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-11 (0.2.5 unsigned preview)
+
+### Multi-CLI quota queries and the separated runtime skill library
+
+Behavior change:
+
+Desktop selects the published Usage 0.2.0 archive with App SDK 1.2.0 and Runtime
+commit `91bba98e2e621ec3124130b7c79fdc6c3ab7ca19`. The App lock pins SHA-256
+`7d5455bb6b484b731becbc69b469e649fbfc433cf015586e0022c3045974c04e`
+from Apps source commit `1affcf38e427f636e1eedb45bf3d1ac4e78eeb4f`.
+Alongside Codex, Usage offers explicit Copilot, Claude Code and Antigravity
+(`agy`) quota queries when Runtime advertises support. It preserves native
+request quantities, unlimited entitlements, unknown values, stale observations
+and independent provider/instance cooldowns. Opening or polling the dashboard
+does not query accounts. Runtime invokes the configured native CLI only: no
+credential extraction, Cats-originated provider API requests or model turns.
+
+Kiro remains unenabled pending authenticated success evidence. Native Windows
+CLI queries were live-verified; native macOS/Linux live queries and WSL/Docker
+query transports remain unverified/unsupported respectively.
+
+This preview includes the merged skill-root alignment: Desktop stages the
+Runtime product library from `runtime-skills/`, not developer `skills/`.
+cats-one's developer-workspace changes are merged but are not a Desktop sidecar.
+
+Migration steps:
+
+Fully quit Cats and install the 0.2.5 preview normally. The host activates the
+bundled Usage update offline with no separate download, extraction or file move.
+Settings, conversations and App data are retained, along with explicit disabled
+or uninstalled App choices. This release task does not update the operator's
+installed Desktop or modify its profile.
+
+Deprecations:
+
+None. This is an unsigned GitHub prerelease, not a signed stable distribution.
+After this preparation merges, dispatch the Desktop release workflow with
+`tag=v0.2.5` and the exact Runtime commit above. Let the workflow create its tag;
+do not push a Desktop tag into the signed release path. The matrix is Windows
+x64 (NSIS), macOS x64 (DMG/updater ZIP) and Linux arm64 (DEB). Each build must
+verify actual bundled App bytes and temporary-profile offline activation before
+publication. Those gates do not claim interactive native-installer acceptance.
+
 ## 2026-09-11 (0.2.4 unsigned preview)
 
 ### Explicit Codex quota refresh in bundled Usage

@@ -9,10 +9,10 @@ In cats-apps:
 
 ```powershell
 npm test
-npm run build -- --version 0.1.1
+npm run build -- --version 0.2.0
 ```
 
-This produces an archive, `usage-0.1.1.lock.json`, and provenance in `dist/`.
+This produces an archive, `usage-0.2.0.lock.json`, and provenance in `dist/`.
 The requested version must equal both App manifests. Rebuilding different bytes
 over an existing output version is rejected; use a separate development output
 directory or publish a new version. Release builds record their GitHub source SHA;
@@ -21,7 +21,7 @@ local builds report an unknown revision and an input-content digest.
 In cats-platform, build the Windows installer with that selection:
 
 ```powershell
-npm run desktop:package:windows -- --apps-lock ../cats-apps/dist/usage-0.1.1.lock.json --skip-mobile
+npm run desktop:package:windows -- --apps-lock ../cats-apps/dist/usage-0.2.0.lock.json --skip-mobile
 ```
 
 `--apps-lock` also works on the macOS/Linux installer entrypoints. The Windows
@@ -32,7 +32,7 @@ for automation. An explicit CLI argument takes precedence.
 To stage already-built host/runtime artifacts without creating an installer:
 
 ```powershell
-node scripts/package-desktop.mjs --platform windows --apps-lock ../cats-apps/dist/usage-0.1.1.lock.json
+node scripts/package-desktop.mjs --platform windows --apps-lock ../cats-apps/dist/usage-0.2.0.lock.json
 ```
 
 The lock format is `{ schemaVersion: 1, apps: [{ id, version, sha256, artifact }] }`.
@@ -52,14 +52,15 @@ Temporary build selections are safe to remove after the build is finished.
 
 ## Release policy and default selection
 
-The cats-apps shared tag workflow publishes `usage-v0.1.1` (and other utility
+The cats-apps shared tag workflow publishes `usage-v0.2.0` (and other utility
 tags) independently of Desktop. It refuses to replace an existing release and
 does not mark utility releases as a repository-wide `latest` release.
 
 Desktop release CI reads the source-controlled `config/desktop-apps.lock.json`.
-Desktop 0.2.4 selects the published [Usage 0.1.1 release](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.1.1),
-with SHA-256 `2334a33c059502cf1209aa399e1ad7ce7123c6fc4c2c54173ec271c60a5803fd`.
-The release provenance identifies Apps commit `1a06d51523e0175f65a3a062be3581a659ada2ef`.
+Desktop 0.2.5 selects the published [Usage 0.2.0 release](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.2.0),
+with SHA-256 `7d5455bb6b484b731becbc69b469e649fbfc433cf015586e0022c3045974c04e`.
+The release provenance identifies Apps commit `1affcf38e427f636e1eedb45bf3d1ac4e78eeb4f`.
+Desktop 0.2.4 retains Usage 0.1.1 and SDK 1.1.0 unchanged.
 Desktop 0.2.2 and 0.2.3 retain their existing Usage 0.1.0 archive unchanged.
 Future selections must copy the actual release's version/hash and immutable
 asset URL into the lock and commit it with Desktop. Do not substitute a local
@@ -67,10 +68,12 @@ rebuild's hash: gzip headers can differ by build OS even for identical payloads.
 No fake URL or implicit latest version is shipped. Local builds without a
 selection still explicitly report that no optional Apps are included.
 
-For the 0.2.4 unsigned preview, merge the Platform version/selection changes, then
+For the 0.2.5 unsigned preview, merge the Platform version/selection changes, then
 manually dispatch the Desktop release workflow on that merged commit with
-`tag=v0.2.4` and `runtime_ref=603afdc2f9e46b31b56b0223f6a3f0690b5af76f`.
-This is the merged Runtime native Codex quota-query implementation. Let the preview
+`tag=v0.2.5` and `runtime_ref=91bba98e2e621ec3124130b7c79fdc6c3ab7ca19`.
+This includes the merged native multi-CLI quota queries and product skill-root
+alignment. Desktop bundles SDK 1.2.0 and the separate `runtime-skills/` library.
+Let the preview
 workflow create its tag; pushing a Desktop version tag selects the signed stable
 release path instead. Utility App tags and Desktop tags are independent.
 
@@ -108,9 +111,9 @@ The authenticated local install API also accepts `.catsapp`:
 
 ```json
 {
-  "packagePath": "C:/downloads/usage-0.1.1.catsapp",
+  "packagePath": "C:/downloads/usage-0.2.0.catsapp",
   "id": "cats.usage",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "sha256": "<copy the real 64-hex hash from the verified lock>",
   "enable": true
 }
@@ -138,11 +141,11 @@ The quota projection carries `refreshSupported`, nullable native used/limit/rema
 unit and explicit unlimited state. New collectors reject custom CLI startup args;
 Kiro remains unverified after an auth-related CLI response. See
 [Runtime evidence](../../cats-runtime/docs/research/2026-09-11-additional-cli-quota-queries.md).
-Usage 0.2.0 requires SDK ^1.2.0 and is not yet published. This source change does
-not alter the existing Desktop 0.2.4 lock or installation.
-Usage 0.1.1 requires SDK ^1.1.0. Desktop 0.2.4's default lock selects its published
-version/hash, and its host provides SDK 1.1.0. The actual installer resources and
-offline activation must still pass the release gates before publication.
+Usage 0.2.0 is published, requires SDK ^1.2.0 and is selected for Desktop 0.2.5.
+Usage 0.1.1 requires SDK ^1.1.0 and remains in the existing Desktop 0.2.4 release.
+Neither publication changes an existing installation automatically. The actual
+0.2.5 installer resources and offline activation must pass the release gates
+before preview publication; installed acceptance remains a separate task.
 
 - `.catsapp`: gzip JSON `{schemaVersion:1,kind:"cats-app",manifest,files:[{path,base64}]}`.
   Limits: 8 MiB compressed, 24 MiB expanded envelope, 128 files, 8 MiB/file.

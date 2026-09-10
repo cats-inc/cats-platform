@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | SDK 1.2 multi-CLI refresh implemented, unreleased; existing Desktop pins unchanged; native cross-platform acceptance/catalog deferred |
+| Status | Desktop 0.2.5 preview preparation selects published Usage 0.2.0 and SDK 1.2; release gates pending; native cross-platform acceptance/catalog deferred |
 | Owner | cats-platform |
 | Related spec | SPEC-115 |
 | Related decision | ADR-114 |
@@ -61,6 +61,34 @@ integration. Keep the initial slice smaller than the full extension manifesto.
 
 ### Phase 4: Desktop Preinstallation
 
+Coordinated release authorization (2026-09-11): the owner authorized a version
+bump and unsigned preview after the parallel skill-root work merged. Runtime
+PR #43, Platform PR #70 and cats-one PR #8 are merged. This preparation selects
+published Usage 0.2.0, SDK 1.2.0 and exact Runtime commit
+`91bba98e2e621ec3124130b7c79fdc6c3ab7ca19` for Desktop 0.2.5. The Runtime pin
+includes multi-CLI quota queries and the separated `runtime-skills/` library.
+Usage release lock, GitHub digest, downloaded archive and provenance agree on
+SHA-256 `7d5455bb6b484b731becbc69b469e649fbfc433cf015586e0022c3045974c04e`
+and Apps source `1affcf38e427f636e1eedb45bf3d1ac4e78eeb4f`; decoded payloads
+match the locally tested 0.2.0 build. PR/CI and each OS's actual-resource/offline
+activation gate must pass before Desktop publication. Updating the operator's
+installed Desktop is not authorized by this release task.
+
+Local release verification: version identity, public artifact download and
+Platform/SDK compatibility passed; changed Markdown files have 511 valid local
+link targets. Production renderer build passed. The full Windows run executed
+4,559 cases: 4,551 passed, 5 skipped and 3 package-contract cases failed because
+the verification log was mistakenly held open inside the build directory that
+those tests clean (`EBUSY`). With logs outside build output, the complete
+four-case package-contract suite passed, including two clean builds and a real
+temporary tarball install. No production code, assertions or timeout limits were
+changed. This is not claimed as an uninterrupted full-suite pass; required PR
+CI remains the merge gate. The published 0.2.0 archive passed production-page
+headless Edge checks for all three new query buttons, provider routing,
+Lobby re-entry, stale/offline/revoked state and injected loading recovery, using
+only a temporary profile and fixture Runtime. Independent release review found
+no blockers. Three-OS installer-resource gates remain required before publication.
+
 Multi-CLI follow-up (2026-09-11, PR-only delivery):
 
 - [x] Extend SDK 1.2 provider allowlist to Codex/Copilot/Claude/Antigravity.
@@ -84,9 +112,10 @@ alongside Runtime had one Telegram file-store restart timeout; its isolated reru
 and the complete serial suite both passed without modifying production code,
 test assertions or timeout limits. GitHub required checks remain the merge gate.
 
-No Desktop version bump, tag, release lock edit, publication or installed update
-belongs to this follow-up. Later delivery must select the new App version/hash and
-matching Runtime revision explicitly. Existing Codex publication history follows.
+That implementation-only follow-up did not authorize a Desktop version bump,
+tag, release lock edit, publication or installed update. The later 0.2.5 release
+authorization above supersedes the publication hold, not the installed-update
+boundary. Existing Codex publication history follows.
 
 Codex refresh follow-up (2026-09-10): SDK 1.1 and a distinct telemetry-refresh
 permission now bridge explicit native CLI quota reads. The host enforces bounded
@@ -180,6 +209,7 @@ than treating a rendered placeholder as end-to-end success.
 
 | Date | Update |
 |------|--------|
+| 2026-09-11 | Prepare Desktop 0.2.5 unsigned preview from the merged skill-root alignment and multi-CLI query work. Select published Usage 0.2.0 by exact release hash/URL with SDK 1.2.0 and Runtime `91bba98e2e621ec3124130b7c79fdc6c3ab7ca19`. App release CI and artifact/provenance/payload verification passed. Desktop validation and publication gates remain pending; no installed update. |
 | 2026-09-11 | Release authorization supersedes the earlier publication hold: prepare Desktop 0.2.4 unsigned preview with the published Usage 0.1.1 archive and fixed Runtime commit `603afdc2f9e46b31b56b0223f6a3f0690b5af76f`. Pin the actual release bytes, merge through PR/CI, and require all three installer-resource/offline-activation gates before publishing. Updating the operator's installed Desktop remains out of scope. |
 | 2026-09-11 | 0.2.4 preparation verified: full Windows `npm test` passed (4,543 passed, 5 skipped, 0 failed), version identity passed, and the production resolver downloaded the pinned public artifact successfully. The released Usage manifest/payload exactly match the previously live-verified 0.1.1 archive; release digest/lock/provenance agree. Independent release review found no blockers; corrected the old 0.2.3 status. PR CI and actual three-OS packaging remain the next gates, with no installed update performed. |
 | 2026-09-10 | Renderer/SDK/read bridge and pinned package installation implemented with isolated browser tests. |

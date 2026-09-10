@@ -39,14 +39,16 @@ manifest registrations; verified enabled utility archives execute in the real ho
 `runtime.telemetry.read` and `usage.snapshot` are now implemented. The Runtime DTO
 includes passive Claude/Codex windows and explicit native CLI queries; history remains deferred.
 
-SDK 1.2 (2026-09-11, unreleased) accepts only Codex, Copilot, Claude and Antigravity
+SDK 1.2 (2026-09-11, selected for Desktop 0.2.5) accepts only Codex, Copilot, Claude and Antigravity
 provider/instance selectors for `usage.refreshQuota`. Both telemetry permissions,
 authentication/CSRF and before/after package version/hash checks remain required.
 The allowlisted projection adds `refreshSupported`, native request/credit quantities
 and explicit unlimited semantics; no provider credentials or generic RPC proxy are
 exposed. Runtime owns CLI invocation, bounds and evidence. Usage 0.2.0 requires SDK
-^1.2.0; existing Desktop release pins remain unchanged until a separately authorized
-coordinated release. Kiro is not enabled without authenticated success evidence.
+^1.2.0 and is now published. The separately authorized Desktop 0.2.5 preview
+selects its exact version/hash and a fixed Runtime revision; older installers
+and the user's installed state remain unchanged. Kiro is not enabled without
+authenticated success evidence. See PLAN-106 for the release gates.
 
 ## Goals
 
