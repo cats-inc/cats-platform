@@ -4,6 +4,15 @@
 
 ## Current Status
 
+Release follow-through (2026-09-11): the owner authorized Desktop 0.2.5 unsigned
+preview after Runtime #43, Platform #70 and cats-one #8 merged. Usage 0.2.0 is
+published; its downloaded archive, release lock, source provenance and GitHub
+digest agree. The Desktop selection pins those bytes, SDK 1.2.0 and Runtime
+`91bba98e2e621ec3124130b7c79fdc6c3ab7ca19`, including the `runtime-skills/`
+packaging alignment. PR/CI and three-platform resource/offline-activation gates
+remain required before publication. No installed Desktop update is included;
+see PLAN-106 and the release notes for the exact boundary.
+
 Quota follow-up (2026-09-11, PR-only delivery): SDK 1.2 and the
 authorized renderer/host bridge now support native Codex/Copilot/Claude/Antigravity
 queries, native quantities and unlimited entitlements. Twenty-one focused

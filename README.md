@@ -8,12 +8,14 @@
 Official utility Apps (2026-09-10): **Usage** (`cats.usage`) is built in `cats-apps`
 and loaded through this repo's verified renderer host and App SDK v1. Desktop
 packaging accepts `--apps-lock` for exact App versions and SHA-256 hashes; no App
-source checkout is needed. The 0.2.2 preview selects published Usage 0.1.0 for
+source checkout is needed. The 0.2.5 preview selection pins published Usage 0.2.0 for
 automatic offline installation on first launch. See the [build/install guide](./docs/app-packages.md).
-SDK 1.2 (2026-09-11 source follow-up) supports explicit native
+SDK 1.2 (2026-09-11) supports explicit native
 Codex/Copilot/Claude/Antigravity quota queries and native quantities through the
 permission-checked Runtime bridge. Usage 0.2.0 passed built-package browser checks;
-this follow-up does not publish or change the Desktop 0.2.4 / Usage 0.1.1 release pins.
+the coordinated Desktop 0.2.5 preview selects its published version/hash and the
+merged Runtime quota/skill-root revision. Existing 0.2.4 / Usage 0.1.1 installers
+and the user's installed Desktop are not modified by preparing this release.
 Remote catalog/independent updates and scheduled account polling remain deferred.
 
 This standalone repo hosts the platform host, packaged as `@cats-inc/cats-platform`
