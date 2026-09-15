@@ -146,7 +146,10 @@ function Detect-OllamaInstall {
 
   if ($installed -and [string]::IsNullOrWhiteSpace($version) -and $versionProbePath) {
     try {
-      $version = Get-HiddenCommandText -FileName $versionProbePath -ArgumentList @('--version')
+      # Detection must not launch a provider, including during login setup audits.
+      $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($versionProbePath)
+      $version = $versionInfo.ProductVersion
+      if ([string]::IsNullOrWhiteSpace($version)) { $version = $versionInfo.FileVersion }
     } catch {
       $version = ''
     }

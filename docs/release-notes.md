@@ -19,6 +19,23 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-15 (0.2.6 unsigned preview)
+
+### Passive provider detection at login
+
+Desktop accepts installed, unverified provider targets as usable and preserves
+their diagnostic warnings, matching the Runtime's shared passive detection policy.
+The first-run Windows Ollama audit reads file version metadata without starting
+the provider. Runtime background CLI/ACP checks and discovery no longer execute
+providers to inspect versions, help, or session lists.
+
+Desktop 0.2.6 packages Runtime 0.1.22 with the corresponding fix. The preview
+workflow selects its exact merged Runtime commit. No migration or global
+provider settings change is required. See the
+[incident and validation record](../../cats-runtime/docs/research/2026-08-27-cline-self-update-and-probe-concurrency.md).
+
+Deprecations: none.
+
 ## 2026-09-11 (0.2.5 unsigned preview)
 
 ### Multi-CLI quota queries and the separated runtime skill library

@@ -168,7 +168,7 @@ function resolveAppEntryPath(setupCompleteAt: string | null | undefined): string
 }
 
 function hasReadyProviderPath(summary: DesktopProviderSummary | null): boolean {
-  return (summary?.ok ?? 0) > 0;
+  return (summary?.ok ?? 0) + (summary?.degraded ?? 0) > 0;
 }
 
 function toProviderIssues(
