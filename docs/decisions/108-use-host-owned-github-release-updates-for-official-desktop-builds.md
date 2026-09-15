@@ -141,8 +141,9 @@ Official packaged builds expose manual update checks in both locations:
 
 Both commands call the same main-process method. The Settings surface is the
 durable detail surface for current version, channel, status, progress, and the
-next action. Tray-originated results use a native notification when available;
-an available update can bring the user to `Settings > Desktop`.
+next action. Tray-originated results use the update dialog, including download
+failures. Updates never post operating system notifications on Windows, macOS,
+or Linux; Settings keeps its existing state display and in-app toasts.
 
 A Windows taskbar Jump List is not an update surface in this decision. The
 requested shell surface is the notification-area tray menu.
@@ -215,8 +216,8 @@ downloaded update.
 
 Startup checks may be enabled later through the same update manager after
 signed old-version-to-new-version upgrades have passed on all supported
-platforms. A startup check must remain silent when the application is current
-and must never imply automatic installation.
+platforms. A startup check only updates shared state, remains silent for every
+result, and must never imply automatic installation.
 
 ## Consequences
 
@@ -300,4 +301,5 @@ and must never imply automatic installation.
 ---
 
 *Decision proposed: 2026-07-28*
+*Last updated: 2026-09-16*
 *Decision makers: User, with Codex support*

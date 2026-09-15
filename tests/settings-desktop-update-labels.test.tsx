@@ -13,8 +13,8 @@ import { enCatalog } from '../src/shared/i18n/catalogs/en.js';
 import { zhTWCatalog } from '../src/shared/i18n/catalogs/zh-TW.js';
 import { messageKeys } from '../src/shared/i18n/messageKeys.js';
 import {
-  DESKTOP_UPDATE_NOTIFICATION_ERROR_COPY,
-} from '../desktop/host/updateNotifications.ts';
+  DESKTOP_UPDATE_DIALOG_ERROR_COPY,
+} from '../desktop/host/updateDialog.ts';
 
 /**
  * `MessageKey` is deliberately broad -- it accepts both an alias name and a
@@ -98,19 +98,19 @@ test('every update error code resolves to a catalogued message in both locales',
   }
 });
 
-test('native notification error copy matches the renderer catalogs word for word', () => {
+test('update dialog error copy matches the renderer catalogs word for word', () => {
   // The main process has no translator, so the host keeps its own copy of this
   // copy. The same failure must not read differently depending on whether the
-  // user saw it in Settings or in a notification.
+  // user saw it in Settings or in the update dialog.
   for (const code of ERROR_CODES) {
     const dotted = messageKeys[resolveDesktopUpdateErrorMessageKey(code) as MessageAlias];
     assert.equal(
-      DESKTOP_UPDATE_NOTIFICATION_ERROR_COPY.en[code],
+      DESKTOP_UPDATE_DIALOG_ERROR_COPY.en[code],
       catalogs.en[dotted],
       `en/${code} drifted from ${dotted}`,
     );
     assert.equal(
-      DESKTOP_UPDATE_NOTIFICATION_ERROR_COPY['zh-TW'][code],
+      DESKTOP_UPDATE_DIALOG_ERROR_COPY['zh-TW'][code],
       catalogs['zh-TW'][dotted],
       `zh-TW/${code} drifted from ${dotted}`,
     );

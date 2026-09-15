@@ -7,6 +7,7 @@
 | **Status** | Draft |
 | **Owner** | User |
 | **Reviewer** | User |
+| **Last updated** | 2026-09-16 |
 
 ## Related Spec
 
@@ -198,16 +199,15 @@ capability gating.
 - [x] Use the shared toast system for manual up-to-date results and failures.
 - [x] Add English and Traditional Chinese strings through shared i18n catalogs.
 - [x] Add `Check for Updates…` to the tray before Settings and Quit.
-- [x] Disable or relabel the tray item during active update operations.
-- [x] Add native up-to-date, available, and failed notifications.
-- [x] Route available-update notification activation to `Settings > Desktop`.
-- [x] Fall back to opening `Settings > Desktop` when native notifications are
-      unavailable, or when showing one fails.
-- [x] Decide announcement policy per origin in one place, so a Settings check is
-      not reported twice and a silent startup check does not nag.
+- [x] Keep the tray item enabled with a fixed label; show state and progress in
+      the update dialog.
+- [x] Show up-to-date, available, and failed results in the dialog, including
+      failures after the user confirms a download.
+- [x] Remove update system notifications and their Settings navigation fallback
+      on Windows, macOS, and Linux. Startup checks only update shared state.
+- [x] Preserve the existing Settings feedback and localized error copy.
 - [x] Claim the electron-builder `appId` as the Windows Application User Model
-      ID, which is what makes a packaged Windows notification deliverable.
-      Delivery itself stays unverified until the Phase 6 real-machine pass.
+      ID for shell identity and taskbar grouping.
 - [x] Confirm npm/browser and Electron development renders contain no update
       button.
 
@@ -319,13 +319,13 @@ startup-check policy.
 | `desktop/host/releaseDescriptor.ts` | Create | validate embedded descriptor and resolve official capability |
 | `desktop/host/update.ts` | Replace/refactor | electron-updater adapter and state manager |
 | `desktop/host/contracts.ts` | Modify | capability, progress, error, and command contracts |
-| `desktop/host/main.ts` | Modify | updater lifecycle, IPC, notifications, clean install handoff |
+| `desktop/host/main.ts` | Modify | updater lifecycle, IPC, dialogs, clean install handoff |
 | `desktop/host/preload.cts` | Modify | bounded update bridge |
 | `desktop/host/tray.ts` | Modify | update command rendering and interaction |
 | `desktop/host/trayMenu.ts` | Modify | localized tray update state |
-| `desktop/host/updateNotifications.ts` | Create | per-origin native announcement policy and localized notification copy |
+| `desktop/host/updateDialog.ts` | Modify | dialog feedback for checks and download failures; no system notifications |
 | `desktop/host/updateInstallHandoff.ts` | Create | drain managed sidecars before the installer, and recover when the handoff fails |
-| `desktop/host/hostVersion.ts` | Modify | expose the electron-builder `appId` for the Windows notification identity |
+| `desktop/host/hostVersion.ts` | Modify | expose the electron-builder `appId` for the Windows shell identity |
 | `src/shared/desktopRecoveryBridge.ts` | Modify | browser-safe update bridge types/helpers |
 | `src/app/renderer/settings/PlatformSettingsDesktopUpdates.tsx` | Create | `App updates` section container over the host snapshot |
 | `src/app/renderer/settings/PlatformSettingsDesktop.tsx` | Create | Desktop route composer: section order plus the shared toast surface |
@@ -424,6 +424,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 
 | Date | Update |
 |------|--------|
+| 2026-09-16 | Removed update system notifications across Windows, macOS, and Linux. Manual checks and download failures use the existing dialog; optional startup checks only update shared state. Validation: desktop host build, 116 focused desktop tests, and 20 Settings tests passed. Packaged UI checks on the three operating systems remain pending. |
 | 2026-07-28 | Plan created with ADR-108, SPEC-111, and the official-tooling research note. No implementation has started. |
 | 2026-07-28 | Review follow-up added the installer-wrapper publish/signing interlocks, first-tag bootstrap, assisted NSIS UX, strict development capability policy, unsigned-install classification gate, and explicit bundled Windows sidecars. |
 | 2026-07-28 | Phase 1 started: added `scripts/validate-release-version.mjs` and its tests. |

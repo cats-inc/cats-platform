@@ -5,7 +5,6 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
-  Notification,
   session,
   shell,
   systemPreferences,
@@ -93,10 +92,7 @@ import {
   resolveDesktopBootstrapError,
   shouldAttemptDesktopLateReadyRecovery,
 } from './startupRecovery.js';
-import {
-  resolveDesktopUpdateDialog,
-  shouldRefreshDesktopUpdateFromTray,
-} from './updateDialog.js';
+import { runDesktopUpdateDialog } from './updateDialog.js';
 import { resolveDefaultSetupAuditAction } from './setupAudit.js';
 import {
   buildDesktopCliInventoryFromRuntime,
@@ -138,12 +134,6 @@ import {
   createDesktopUpdateSnapshotBroadcast,
 } from './updateIpc.js';
 import { withDesktopInstallHandoff } from './updateInstallHandoff.js';
-import {
-  DESKTOP_UPDATE_SETTINGS_PATH,
-  resolveDesktopUpdateAnnouncement,
-  type DesktopUpdateNotification,
-  type DesktopUpdateNotificationOrigin,
-} from './updateNotifications.js';
 import {
   applyDesktopWindowChrome,
   resolveDesktopWindowChromeOptions,
@@ -1074,64 +1064,27 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
       if (shuttingDown || !updateManager) {
         return;
       }
-      await runDesktopUpdateDialog(updateManager.getSnapshot());
+      await runDesktopUpdateDialog({
+        manager: updateManager,
+        platform: process.platform,
+        locale: app.getLocale(),
+        isShuttingDown: () => shuttingDown,
+        showDialog: async (dialogSpec) => {
+          const choice = await dialog.showMessageBox({
+            type: dialogSpec.action === 'none' ? 'info' : 'question',
+            title: dialogSpec.title,
+            message: dialogSpec.message,
+            detail: dialogSpec.detail,
+            buttons: dialogSpec.buttons,
+            defaultId: 0,
+            cancelId: dialogSpec.buttons.length - 1,
+            noLink: true,
+          });
+          return choice.response;
+        },
+      });
     },
   };
-}
-
-/**
- * Shows the update dialog for the current state and carries out whatever the
- * user confirmed, re-entering once when the state it described was "nothing
- * asked yet" and the answer needed a check first.
- */
-async function runDesktopUpdateDialog(
-  snapshot: DesktopUpdateSnapshot,
-  allowRecheck = true,
-): Promise<void> {
-  if (!updateManager) {
-    return;
-  }
-  const dialogSpec = resolveDesktopUpdateDialog({
-    snapshot,
-    platform: process.platform,
-    locale: app.getLocale(),
-  });
-
-  // The tray label is an explicit request to check, so stale up-to-date and
-  // failed results must re-query just like idle. The manager's nextAction owns
-  // that transition; allowRecheck prevents the fresh result from looping.
-  if (shouldRefreshDesktopUpdateFromTray(snapshot, allowRecheck)) {
-    const checked = await refreshUpdateState('tray');
-    if (checked && !shuttingDown) {
-      await runDesktopUpdateDialog(checked, false);
-    }
-    return;
-  }
-
-  const choice = await dialog.showMessageBox({
-    type: dialogSpec.action === 'none' ? 'info' : 'question',
-    title: dialogSpec.title,
-    message: dialogSpec.message,
-    detail: dialogSpec.detail,
-    buttons: dialogSpec.buttons,
-    defaultId: 0,
-    cancelId: dialogSpec.buttons.length - 1,
-    noLink: true,
-  });
-  if (choice.response !== 0 || dialogSpec.action === 'none' || shuttingDown) {
-    return;
-  }
-
-  if (dialogSpec.action === 'update') {
-    const downloaded = await updateManager.downloadUpdate();
-    if (downloaded.status !== 'downloaded' || shuttingDown) {
-      // The dialog is closed and the tray never held the answer, so a failed
-      // download has to be carried to the user rather than left to be found.
-      await announceDesktopUpdateResult('tray', downloaded);
-      return;
-    }
-  }
-  await updateManager.restartAndInstall();
 }
 
 async function syncTrayController(): Promise<void> {
@@ -1855,89 +1808,6 @@ async function createUpdateManagerForLaunch(
   });
 }
 
-async function openDesktopUpdateSettings(): Promise<void> {
-  if (shuttingDown || !hostConfig) {
-    return;
-  }
-  await showMainWindow(`${hostConfig.appBaseUrl}${DESKTOP_UPDATE_SETTINGS_PATH}`);
-}
-
-/**
- * Shows a native notification, reporting whether the user will actually see it.
- *
- * A false return sends the caller to the navigation fallback. Notifying is not
- * worth failing a check over, so a throwing platform is treated the same as one
- * without notification support.
- */
-function showDesktopUpdateNotification(notification: DesktopUpdateNotification): boolean {
-  try {
-    const native = new Notification({
-      title: notification.title,
-      body: notification.body,
-    });
-    native.on('click', () => {
-      void openDesktopUpdateSettings();
-    });
-    native.show();
-    return true;
-  } catch (error) {
-    process.stderr.write(
-      '[desktop-update] native notification unavailable: '
-        + `${error instanceof Error ? error.message : String(error)}\n`,
-    );
-    return false;
-  }
-}
-
-function areNativeNotificationsSupported(): boolean {
-  try {
-    return Notification.isSupported();
-  } catch {
-    return false;
-  }
-}
-
-async function announceDesktopUpdateResult(
-  origin: DesktopUpdateNotificationOrigin,
-  snapshot: DesktopUpdateSnapshot | null,
-): Promise<void> {
-  if (!snapshot || shuttingDown) {
-    return;
-  }
-
-  const announcement = resolveDesktopUpdateAnnouncement({
-    origin,
-    snapshot,
-    locale: app.getLocale(),
-    notificationsSupported: areNativeNotificationsSupported(),
-  });
-
-  if (announcement.notification && showDesktopUpdateNotification(announcement.notification)) {
-    return;
-  }
-  if (announcement.fallbackNavigatePath) {
-    await openDesktopUpdateSettings();
-  }
-}
-
-/**
- * Runs a check and reports its result to whoever asked for it.
- *
- * The origin is required rather than defaulted: it decides whether the result
- * is announced at all, and a new caller silently inheriting another surface's
- * policy is the failure this signature exists to prevent.
- */
-async function refreshUpdateState(
-  origin: DesktopUpdateNotificationOrigin,
-): Promise<DesktopUpdateSnapshot | null> {
-  if (!updateManager) {
-    return null;
-  }
-  updateState = await updateManager.checkForUpdates();
-  await announceDesktopUpdateResult(origin, updateState);
-  return updateState;
-}
-
 async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBootstrapSnapshot> {
   if (!hostConfig || !supervisor) {
     throw new Error('Desktop host is not initialized.');
@@ -2337,11 +2207,8 @@ async function main(): Promise<void> {
   }
 
   app.setPath('userData', resolveDesktopUserDataDir(app.getPath('appData')));
-  // Windows routes a notification through the Start Menu shortcut whose
-  // Application User Model ID matches the running process. The installer writes
-  // that shortcut with the electron-builder appId, so claiming it here is what
-  // makes update notifications visible at all. Unpackaged runs have no such
-  // shortcut, so the claim would buy nothing.
+  // Keep the packaged process identity aligned with the installer-created
+  // Windows shortcuts and taskbar grouping.
   if (process.platform === 'win32' && app.isPackaged && DESKTOP_APP_USER_MODEL_ID) {
     app.setAppUserModelId(DESKTOP_APP_USER_MODEL_ID);
   }
@@ -2699,7 +2566,7 @@ async function main(): Promise<void> {
   // SPEC-111 section 6: at most one silent check per launch, and only when the
   // build actually has update capability.
   if (hostConfig.update.checkOnStartup && updateManager?.getSnapshot().capability.canCheck) {
-    void refreshUpdateState('startup');
+    void updateManager.checkForUpdates();
   }
 }
 

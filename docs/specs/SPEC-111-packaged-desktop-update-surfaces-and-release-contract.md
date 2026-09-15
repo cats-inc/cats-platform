@@ -7,6 +7,7 @@
 | **Status** | Draft |
 | **Owner** | User |
 | **Reviewer** | User |
+| **Last updated** | 2026-09-16 |
 
 ## Summary
 
@@ -103,15 +104,12 @@ Landed:
   (`src/app/renderer/settings/PlatformSettingsDesktopUpdates.tsx`), mounted
   first in the Desktop settings route. It shows version and channel for every
   desktop build and gates the update controls on `canCheck`, per section 4.
-- Native up-to-date, available, and failed notifications, with the
-  origin-dependent policy in section 5 owned by
-  `desktop/host/updateNotifications.ts`. Notification error copy is duplicated
-  into the host because the main process has no translator; a drift test asserts
-  it stays identical to the renderer catalogs.
-
-  Windows toast delivery depends on the packaged Start Menu shortcut and has not
-  been confirmed on a real machine yet. It is covered by the Phase 6 upgrade
-  matrix rather than assumed working.
+- Tray update dialogs for up-to-date, available, progress, and failed states,
+  owned by `desktop/host/updateDialog.ts`. Checks and download failures report
+  through that dialog on Windows, macOS, and Linux. Updates never post operating
+  system notifications. Dialog error copy is duplicated into the host because
+  the main process has no translator; a drift test keeps it aligned with the
+  renderer catalogs.
 
 - Phase 5 hardening. The download/restart lifecycle is user-controlled and
   duplicate-guarded, every failure code has a test, and
@@ -403,40 +401,29 @@ before Settings and Quit.
 
 Requirements:
 
-1. The item shall invoke the same main-process check used by Settings.
-2. While checking, downloading, or installing, the item shall be disabled or
-   replaced by a truthful progress label.
-3. A manual up-to-date result shall produce a native notification when
-   available.
-4. An available-update result shall produce a native notification. Activating
-   it shall open the main window at `Settings > Desktop`.
-5. If native notifications are unavailable, a tray-originated result shall
-   open the main window at `Settings > Desktop` so the action always has
-   visible feedback. Failing to show a notification shall take the same
-   fallback, because from the user's side the two are the same outcome.
-6. A tray check shall not create a second update manager or a second provider
-   request path.
-7. A tray-originated failure shall also produce a native notification. It shall
-   read from the stable error code, not the provider message, so the copy is
-   the same text Settings would show.
+1. The item shall open the update dialog, using the same main-process manager
+   as Settings. Idle, up-to-date, and failed states shall query the provider
+   before displaying the fresh result, once per explicit click.
+2. The item shall keep its fixed label and remain enabled during checking,
+   downloading, and installing so the dialog can display current progress.
+3. Up-to-date, available, and failed results shall appear in the dialog only.
+   An available update shall offer `Update and Restart` and `Later`.
+4. Update operations shall never post an operating system notification on
+   Windows, macOS, or Linux, including success, failure, and startup checks.
+   There is no notification-click navigation or Settings fallback.
+5. A tray check shall not create a second update manager or provider request
+   path. Settings shall continue to receive the shared snapshot updates.
+6. If a confirmed update fails to download, the dialog shall show the error
+   without starting another check or attempting installation. Error messages
+   shall use stable codes and localized copy matching Settings, never raw
+   provider messages.
 
-Announcement policy applies to every origin, not only the tray, and is decided
-in one place (`desktop/host/updateNotifications.ts`) rather than at each call
-site:
+Settings keeps its existing state display and shared in-app toasts. A startup
+check only updates the shared state; it shall never open a dialog or bring a
+window forward, even when a new version is available.
 
-- A **Settings**-originated result is never announced natively. The section
-  shows the state directly and routes manual results through the shared toast
-  system, so a notification would report the same check twice.
-- A **tray**-originated result announces up-to-date, available, and failed.
-- A **startup**-originated result announces only an available update. The user
-  did not request that check, so an up-to-date or offline result has nothing to
-  report and would otherwise nag on every launch. A startup result shall never
-  pull a window forward.
-
-On Windows a notification is delivered through the Start Menu shortcut whose
-Application User Model ID matches the running process, so a packaged Windows
-build shall claim the electron-builder `appId` at startup. Reading that ID from
-the build configuration keeps it from becoming a second source of truth.
+Packaged Windows builds continue to claim the electron-builder `appId` for
+shell identity and taskbar grouping, independently of update feedback.
 
 ### 6. Startup Check Policy
 
@@ -452,7 +439,7 @@ When later enabled:
 
 - run at most once per process launch
 - wait until desktop bootstrap reaches a non-blocking ready state
-- remain silent when current
+- remain silent for every result, including an available update or failure
 - never automatically install
 - share state and concurrency control with manual checks
 
@@ -611,7 +598,7 @@ selection applies to both `cats-platform` and `cats-runtime`.
 
 ## Localization Requirements
 
-All new Settings, tray, notification, button, status, and error copy shall ship
+All new Settings, tray, dialog, button, status, and error copy shall ship
 in English and Traditional Chinese through the shared i18n catalogs.
 
 Release notes supplied by GitHub are external content and are not required to
@@ -628,7 +615,10 @@ be translated.
    without a second request.
 5. Triggering a check from Settings updates the tray state.
 6. Up-to-date, available, download-progress, downloaded, failed, and
-   restart/install states are covered by automated tests.
+   restart/install states are covered by automated tests. Manual checks show
+   one result dialog, and download errors return to the dialog without another
+   check. No update operation creates an operating system notification on
+   Windows, macOS, or Linux.
 7. An old signed Windows install upgrades to the tagged Windows release.
    The test shall cover the visible assisted installer, retained install
    location, the absence of an install-mode page, and that no elevation prompt
