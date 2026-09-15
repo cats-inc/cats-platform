@@ -124,6 +124,10 @@ First Admin and password policy:
   Admin. Auth state is persisted before the chat/core snapshot and rolled back
   if that snapshot fails, so `setupCompleteAt` can never exist without a valid
   first Admin.
+- `Settings > Data > Reset all data` also clears local accounts, linked login
+  identities, memberships, and browser/mobile sessions. The next setup creates
+  a fresh local Admin; retaining an old Admin would block the wizard with
+  `already_complete` after the setup timestamp was cleared.
 
 Linking a Google account:
 
@@ -1042,4 +1046,4 @@ See `Dependency install warnings` under `Installation`.
 
 ---
 
-*Last updated: 2026-08-04*
+*Last updated: 2026-09-16*

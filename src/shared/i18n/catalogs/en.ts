@@ -502,7 +502,7 @@ export const enCatalog: MessageCatalog = {
   'settings.apps.openPairingUrl': 'Open pairing URL',
   'settings.data.resetAllDataTitle': 'Reset all data',
   'settings.data.resetAllDataDescription':
-    'This will erase all chats, cats, platform preferences, and setup state. You will be returned to the setup wizard.',
+    'This will erase all chats, cats, accounts, login sessions, and setup state. You will be returned to the setup wizard.',
   'settings.data.resetButtonResetting': 'Resetting...',
   'settings.data.resetButtonLabel': 'Reset all data',
   'settings.data.resetFailure': 'Failed to reset setup.',

@@ -489,7 +489,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.apps.openPairingUrl': '開啟配對網址',
   'settings.data.resetAllDataTitle': '重設所有資料',
   'settings.data.resetAllDataDescription':
-    '這將清除聊天、貓咪、平台偏好與設定狀態，並返回初始設定精靈。',
+    '這將清除聊天、貓咪、帳號、登入工作階段與設定狀態，並返回初始設定精靈。',
   'settings.data.resetButtonResetting': '重設中…',
   'settings.data.resetButtonLabel': '重設所有資料',
   'settings.data.resetFailure': '重設安裝失敗。',

@@ -5,13 +5,18 @@ import path from 'node:path';
 import test, { type TestContext } from 'node:test';
 
 import { loadConfig } from '../src/config.ts';
+import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { createServer } from '../src/app/server/index.ts';
 import {
   AUTH_SESSION_COOKIE_NAME,
+  createFileBackedPlatformAuthStore,
   hashSessionToken,
   MemoryPlatformAuthStore,
+  type PlatformAuthStore,
 } from '../src/platform/auth/index.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
+import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
+import { waitForGuideCatAssistRefreshIdle } from '../src/products/chat/api/guideCatAssist.ts';
 
 const NOW = new Date('2026-05-10T00:00:00.000Z');
 const SESSION_SECRET = 'test-session-secret-at-least-sixteen-chars';
@@ -444,14 +449,260 @@ test('setup reset requires authenticated admin csrf after setup is complete', as
   });
   assert.equal(reset.status, 200);
   assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
+  const clearedAuth = await fixture.authStore.readState();
+  assert.deepEqual(clearedAuth.accounts, []);
+  assert.deepEqual(clearedAuth.identities, []);
+  assert.deepEqual(clearedAuth.memberships, []);
+  assert.deepEqual(clearedAuth.sessions, []);
+  assert.deepEqual(clearedAuth.loginFailures, []);
+  assert.deepEqual(clearedAuth.loginCooldowns, []);
+});
+
+for (const createGuideCat of [false, true]) {
+  test(`setup can complete again after reset (Guide Cat: ${createGuideCat})`, async (t) => {
+    const fixture = await createSetupFixture(t, { authPersistence: 'file' });
+    const setup = await request(fixture.server, '/api/platform/setup/complete', {
+      method: 'POST',
+      origin: 'http://localhost:5173',
+      secFetchSite: 'same-origin',
+      body: {
+        ownerDisplayName: 'Original owner',
+        createGuideCat,
+        adminIdentifier: 'original@example.test',
+        adminPassword: 'original-password',
+      },
+    });
+    assert.equal(setup.status, 200);
+    const oldCookie = (setup.setCookie ?? '').split(';')[0]!;
+    const oldAuth = await fixture.authStore.readState();
+    const status = await request(fixture.server, '/api/auth/status', { cookie: oldCookie });
+
+    const reset = await request(fixture.server, '/api/setup/reset', {
+      method: 'POST',
+      cookie: oldCookie,
+      csrfToken: status.payload?.csrfToken,
+    });
+    assert.equal(reset.status, 200);
+    assert.equal(reset.payload?.setupCompleteAt, null);
+    assert.equal(reset.payload?.guideCat, null);
+
+    const repeated = await request(fixture.server, '/api/platform/setup/complete', {
+      method: 'POST',
+      origin: 'http://localhost:5173',
+      secFetchSite: 'same-origin',
+      body: {
+        ownerDisplayName: 'New owner',
+        createGuideCat,
+        adminIdentifier: 'new@example.test',
+        adminPassword: 'new-password',
+      },
+    });
+    assert.equal(repeated.status, 200);
+    assert.ok(repeated.payload?.setupCompleteAt);
+    assert.equal(repeated.payload?.ownerDisplayName, 'New owner');
+    assert.equal(Boolean(repeated.payload?.guideCat), createGuideCat);
+    assert.match(reset.setCookie ?? '', /cats_session=;.*Max-Age=0/u);
+
+    const newAuth = await fixture.authStore.readState();
+    assert.equal(newAuth.accounts.length, 1);
+    assert.equal(newAuth.identities.length, 1);
+    assert.equal(newAuth.memberships.length, 1);
+    assert.equal(newAuth.sessions.length, 1);
+    assert.equal(newAuth.accounts[0]?.email, 'new@example.test');
+    assert.notEqual(newAuth.accounts[0]?.id, oldAuth.accounts[0]?.id);
+    assert.notEqual(newAuth.sessions[0]?.id, oldAuth.sessions[0]?.id);
+
+    const oldStatus = await request(fixture.server, '/api/auth/status', { cookie: oldCookie });
+    assert.equal(oldStatus.payload?.authenticated, false);
+    const newCookie = (repeated.setCookie ?? '').split(';')[0]!;
+    const newStatus = await request(fixture.server, '/api/auth/status', { cookie: newCookie });
+    assert.equal(newStatus.payload?.authenticated, true);
+    const shell = await request(fixture.server, '/api/app-shell', { cookie: newCookie });
+    assert.equal(shell.status, 200);
+    assert.equal(shell.payload?.setupCompleteAt, repeated.payload?.setupCompleteAt);
+    assert.equal(shell.payload?.ownerDisplayName, 'New owner');
+  });
+}
+
+for (const failedStore of ['chat', 'auth'] as const) {
+  test(`setup reset preserves the workspace when ${failedStore} persistence fails`, async (t) => {
+    const fixture = await createSetupFixture(t);
+    const setup = await request(fixture.server, '/api/platform/setup/complete', {
+      method: 'POST',
+      origin: 'http://localhost:5173',
+      secFetchSite: 'same-origin',
+      body: {
+        ownerDisplayName: 'Original owner',
+        createGuideCat: false,
+        adminIdentifier: 'owner@example.test',
+        adminPassword: 'correct-password',
+      },
+    });
+    assert.equal(setup.status, 200);
+    const cookie = (setup.setCookie ?? '').split(';')[0]!;
+    const status = await request(fixture.server, '/api/auth/status', { cookie });
+    const previousCore = await fixture.chatStore.readCore();
+    const previousChat = await fixture.chatStore.read();
+    const previousAuth = await fixture.authStore.readState();
+
+    let failNext = true;
+    if (failedStore === 'chat') {
+      const writeSnapshot = fixture.chatStore.writeSnapshot.bind(fixture.chatStore);
+      fixture.chatStore.writeSnapshot = async (chat, core) => {
+        if (failNext) {
+          failNext = false;
+          throw new Error('injected chat reset failure');
+        }
+        return writeSnapshot(chat, core);
+      };
+    } else {
+      const writeState = fixture.authStore.writeState.bind(fixture.authStore);
+      fixture.authStore.writeState = async (state) => {
+        if (failNext) {
+          failNext = false;
+          throw new Error('injected auth reset failure');
+        }
+        return writeState(state);
+      };
+    }
+
+    const reset = () => request(fixture.server, '/api/setup/reset', {
+      method: 'POST',
+      cookie,
+      csrfToken: status.payload?.csrfToken,
+    });
+    const failed = await reset();
+    assert.equal(failed.status, 500);
+    assert.deepEqual(failed.payload?.error, {
+      code: 'internal_error',
+      message: 'Setup could not be reset.',
+    });
+    assert.equal(failed.setCookie, null);
+    const restoredCore = await fixture.chatStore.readCore();
+    // The store stamps updatedAt again when restoring a snapshot.
+    assert.deepEqual({ ...restoredCore, updatedAt: previousCore.updatedAt }, previousCore);
+    assert.deepEqual(await fixture.chatStore.read(), previousChat);
+    assert.deepEqual(await fixture.authStore.readState(), previousAuth);
+
+    const retried = await reset();
+    assert.equal(retried.status, 200);
+    assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
+    assert.deepEqual((await fixture.authStore.readState()).accounts, []);
+  });
+}
+
+test('setup reset still requires an Admin when the setup timestamp is missing', async (t) => {
+  const fixture = await createSetupFixture(t);
+  const setup = await request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: 'owner@example.test',
+      adminPassword: 'correct-password',
+    },
+  });
+  assert.equal(setup.status, 200);
+  const cookie = (setup.setCookie ?? '').split(';')[0]!;
+  const status = await request(fixture.server, '/api/auth/status', { cookie });
+  const originalAuth = await fixture.authStore.readState();
+  // Reproduce the incomplete state left by the previous reset implementation.
+  await fixture.chatStore.writeSnapshot(createDefaultChatState(), createDefaultCoreState());
+
+  const unauthorized = await request(fixture.server, '/api/setup/reset', { method: 'POST' });
+  assert.equal(unauthorized.status, 401);
+  const missingCsrf = await request(fixture.server, '/api/setup/reset', { method: 'POST', cookie });
+  assert.equal(missingCsrf.status, 403);
+  await fixture.authStore.updateState((state) => ({
+    ...state,
+    memberships: state.memberships.map((membership) => ({ ...membership, roles: ['member'] })),
+  }));
+  const notAdmin = await request(fixture.server, '/api/setup/reset', {
+    method: 'POST',
+    cookie,
+    csrfToken: status.payload?.csrfToken,
+  });
+  assert.equal(notAdmin.status, 403);
+  assert.equal(notAdmin.payload?.error?.code, 'E_FORBIDDEN');
+  assert.equal((await fixture.authStore.readState()).accounts.length, 1);
+
+  await fixture.authStore.writeState(originalAuth);
+  const reset = await request(fixture.server, '/api/setup/reset', {
+    method: 'POST',
+    cookie,
+    csrfToken: status.payload?.csrfToken,
+  });
+  assert.equal(reset.status, 200);
+  assert.deepEqual((await fixture.authStore.readState()).accounts, []);
+});
+
+test('setup completion waits for an in-flight reset to clear the previous Admin', async (t) => {
+  const fixture = await createSetupFixture(t);
+  const submit = (identifier: string) => request(fixture.server, '/api/platform/setup/complete', {
+    method: 'POST',
+    origin: 'http://localhost:5173',
+    secFetchSite: 'same-origin',
+    body: {
+      ownerDisplayName: 'Owner',
+      createGuideCat: false,
+      adminIdentifier: identifier,
+      adminPassword: 'correct-password',
+    },
+  });
+  const setup = await submit('original@example.test');
+  assert.equal(setup.status, 200);
+  const cookie = (setup.setCookie ?? '').split(';')[0]!;
+  const status = await request(fixture.server, '/api/auth/status', { cookie });
+
+  let releaseReset!: () => void;
+  const resetPaused = new Promise<void>((resolve) => { releaseReset = resolve; });
+  let notifyResetStarted!: () => void;
+  const resetStarted = new Promise<void>((resolve) => { notifyResetStarted = resolve; });
+  const writeState = fixture.authStore.writeState.bind(fixture.authStore);
+  fixture.authStore.writeState = async (state) => {
+    if (state.accounts.length === 0) {
+      notifyResetStarted();
+      await resetPaused;
+    }
+    return writeState(state);
+  };
+
+  const reset = request(fixture.server, '/api/setup/reset', {
+    method: 'POST',
+    cookie,
+    csrfToken: status.payload?.csrfToken,
+  });
+  let repeated: ReturnType<typeof submit> | undefined;
+  try {
+    await resetStarted;
+    assert.equal((await fixture.chatStore.readCore()).setupCompleteAt, null);
+    repeated = submit('new@example.test');
+    const resultWhileResetting = await Promise.race([
+      repeated.then(() => 'completed'),
+      new Promise<string>((resolve) => setTimeout(() => resolve('waiting'), 100)),
+    ]);
+    assert.equal(resultWhileResetting, 'waiting');
+  } finally {
+    releaseReset();
+    await reset;
+    await repeated;
+  }
+  assert.equal((await reset).status, 200);
+  assert.equal((await repeated)?.status, 200);
+  assert.ok((await fixture.chatStore.readCore()).setupCompleteAt);
+  const auth = await fixture.authStore.readState();
+  assert.equal(auth.accounts.length, 1);
+  assert.equal(auth.accounts[0]?.email, 'new@example.test');
 });
 
 async function createSetupFixture(
   t: TestContext,
-  options: { sessionSecret?: string | null } = {},
+  options: { sessionSecret?: string | null; authPersistence?: 'memory' | 'file' } = {},
 ): Promise<{
   server: ReturnType<typeof createServer>;
-  authStore: MemoryPlatformAuthStore;
+  authStore: PlatformAuthStore;
   chatStore: MemoryChatStore;
 }> {
   const sessionSecret = options.sessionSecret === undefined
@@ -463,7 +714,9 @@ async function createSetupFixture(
     CATS_PLATFORM_DIR: path.join(tempDir, 'platform'),
     ...(sessionSecret === null ? {} : { CATS_AUTH_SESSION_SECRET: sessionSecret }),
   });
-  const authStore = new MemoryPlatformAuthStore(undefined, () => NOW);
+  const authStore = options.authPersistence === 'file'
+    ? createFileBackedPlatformAuthStore(config.chatStatePath, () => NOW)
+    : new MemoryPlatformAuthStore(undefined, () => NOW);
   const chatStore = new MemoryChatStore();
   const server = createServer({
     shared: {
@@ -478,7 +731,10 @@ async function createSetupFixture(
   });
   await listen(server);
   t.after(async () => {
-    server.close();
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+    await waitForGuideCatAssistRefreshIdle(config.chatStatePath);
     await rm(tempDir, { recursive: true, force: true });
   });
   return { server, authStore, chatStore };

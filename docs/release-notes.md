@@ -19,6 +19,38 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-16 (0.2.7 unsigned preview)
+
+### Complete setup again after resetting all data
+
+Behavior change:
+
+Resetting all data now clears the previous local Admin, linked identities,
+memberships, browser/mobile sessions, and login throttles alongside chat/core
+setup state. Previously the remaining Admin made the second setup step fail
+with `already_complete` when opening Cats, whether Catlas was enabled or skipped.
+The reset confirmation now describes account and session removal.
+
+Reset and setup completion share one serialized operation. Reset still requires
+an authenticated Admin and CSRF token when an account remains but the setup
+timestamp is missing. An auth-reset write rejection restores the previous
+chat/core snapshot, and unexpected reset failures return a safe error message.
+
+Migration steps:
+
+Fully quit Cats and install the 0.2.7 preview normally. Upgrading does not itself
+clear accounts: an installation already stuck after a reset on an older preview
+needs another authenticated reset to remove its leftover Admin.
+
+Desktop packages Runtime 0.1.22 at
+`af2793ff6d50163efac65418d0deda7ff7f7eb9f`, with the existing locked Usage 0.2.0
+archive. After merge, manually dispatch the Desktop release workflow with
+`tag=v0.2.7` and that exact Runtime commit. The workflow creates the preview tag
+and publishes Windows x64 NSIS, macOS x64 DMG/updater ZIP, and Linux arm64 DEB
+only after all packaging and asset-validation gates pass.
+
+Deprecations: none. This remains an unsigned GitHub prerelease.
+
 ## 2026-09-15 (0.2.6 unsigned preview)
 
 ### Passive provider detection at login
