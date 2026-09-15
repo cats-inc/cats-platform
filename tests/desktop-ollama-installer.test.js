@@ -14,6 +14,41 @@ function skipUnlessWindows() {
   return {};
 }
 
+test('Ollama detection reads file metadata without executing the installed command', skipUnlessWindows(), async () => {
+  const script = `
+    $ErrorActionPreference = 'Stop'
+    $InstallState = 'auto'
+    $DetectedVersion = ''
+    $script:executed = $false
+    function Resolve-OllamaExecutablePath { $env:CATS_TEST_EXECUTABLE }
+    function Resolve-OllamaAppPath { 'fixture-app' }
+    function Refresh-UserPath {}
+    function Get-Command { [pscustomobject]@{ Source = $env:CATS_TEST_EXECUTABLE } }
+    function Resolve-HiddenVersionProbePath { param($PreferredPath, $FallbackPath) $PreferredPath }
+    function Get-HiddenCommandText { $script:executed = $true; throw 'Provider execution is forbidden' }
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($env:CATS_TEST_HELPER, [ref]$null, [ref]$null)
+    $detector = $ast.Find({ param($node)
+      $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Detect-OllamaInstall'
+    }, $true)
+    Invoke-Expression $detector.Extent.Text
+    $result = Detect-OllamaInstall
+    [pscustomobject]@{
+      detected = $result
+      executed = $script:executed
+      expectedVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($env:CATS_TEST_EXECUTABLE).ProductVersion
+    } | ConvertTo-Json -Depth 4
+  `;
+  const { stdout } = await execFile('powershell.exe', ['-NoProfile', '-Command', script], {
+    windowsHide: true,
+    env: { ...process.env, CATS_TEST_HELPER: helperPath, CATS_TEST_EXECUTABLE: process.execPath },
+  });
+  const result = JSON.parse(stdout);
+  assert.equal(result.executed, false);
+  assert.equal(result.detected.installed, true);
+  assert.ok(result.expectedVersion);
+  assert.equal(result.detected.detectedVersion, result.expectedVersion);
+});
+
 test('Install-Ollama reports ready in check mode when Ollama is installed and its API is reachable', skipUnlessWindows(), async () => {
   const { stdout } = await execFile('powershell.exe', [
     '-NoProfile',

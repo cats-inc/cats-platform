@@ -226,63 +226,65 @@ test('desktop bootstrap opens setup before setup without waiting for provider di
   assert.ok(snapshot.actions.some((action) => action.id === 'open_setup'));
 });
 
-test('desktop bootstrap opens chat when setup and provider readiness are complete', () => {
-  const snapshot = buildDesktopBootstrapSnapshot({
-    config: desktopConfig,
-    services: [
-      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
-      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
-    ],
-    appHealth: {
-      status: 'ok',
-      summary: 'Cats app server is ready to accept requests.',
-      readiness: { ready: true, phase: 'ready' },
-      runtime: { reachable: true },
-    },
-    appShell: {
-      setupCompleteAt: '2026-03-23T10:05:00.000Z',
-    },
-    runtimeHealth: {
-      status: 'ok',
-      runtime: {
+for (const passive of [false, true]) {
+  test(`desktop bootstrap opens chat with ${passive ? 'installed, unverified' : 'verified'} providers`, () => {
+    const snapshot = buildDesktopBootstrapSnapshot({
+      config: desktopConfig,
+      services: [
+        readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+        readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+      ],
+      appHealth: {
         status: 'ok',
-        summary: 'Runtime is ready.',
+        summary: 'Cats app server is ready to accept requests.',
+        readiness: { ready: true, phase: 'ready' },
+        runtime: { reachable: true },
       },
-      providers: {
-        summary: {
+      appShell: {
+        setupCompleteAt: '2026-03-23T10:05:00.000Z',
+      },
+      runtimeHealth: {
+        status: passive ? 'degraded' : 'ok',
+        runtime: {
           status: 'ok',
+          summary: 'Runtime is ready.',
+        },
+        providers: {
+          summary: {
+            status: 'ok',
+            summary: 'All configured provider targets passed the current probe mode.',
+            configuredProviders: 1,
+            targets: 1,
+            defaultTargets: 1,
+            ok: 1,
+            degraded: 0,
+            unavailable: 0,
+          },
+        },
+      },
+      providerDiagnostics: {
+        summary: {
+          status: passive ? 'degraded' : 'ok',
           summary: 'All configured provider targets passed the current probe mode.',
           configuredProviders: 1,
           targets: 1,
           defaultTargets: 1,
-          ok: 1,
-          degraded: 0,
+          ok: passive ? 0 : 1,
+          degraded: passive ? 1 : 0,
           unavailable: 0,
         },
+        providers: [],
       },
-    },
-    providerDiagnostics: {
-      summary: {
-        status: 'ok',
-        summary: 'All configured provider targets passed the current probe mode.',
-        configuredProviders: 1,
-        targets: 1,
-        defaultTargets: 1,
-        ok: 1,
-        degraded: 0,
-        unavailable: 0,
-      },
-      providers: [],
-    },
-  });
+    });
 
-  assert.equal(snapshot.phase, 'ready_for_chat');
-  assert.equal(snapshot.status, 'ok');
-  assert.equal(snapshot.app.entryPath, '/');
-  assert.ok(snapshot.actions.some((action) => action.id === 'open_chat'));
-  assert.equal(snapshot.progress.steps.at(-1)?.status, 'completed');
-  assert.equal(snapshot.packaging.targets.length >= 3, true);
-});
+    assert.equal(snapshot.phase, 'ready_for_chat');
+    assert.equal(snapshot.status, passive ? 'degraded' : 'ok');
+    assert.equal(snapshot.app.entryPath, '/');
+    assert.ok(snapshot.actions.some((action) => action.id === 'open_chat'));
+    assert.equal(snapshot.progress.steps.at(-1)?.status, 'completed');
+    assert.equal(snapshot.packaging.targets.length >= 3, true);
+  });
+}
 
 test('desktop bootstrap opens chat after setup without requiring startup provider diagnostics reprobe', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
@@ -725,7 +727,7 @@ test('desktop bootstrap surfaces Docker Desktop elevation recovery as an install
   assert.match(installIssue?.detail ?? '', /Kiro/i);
 });
 
-test('desktop bootstrap surfaces provider remediation after setup if no provider is ready', () => {
+test('desktop bootstrap keeps degraded provider remediation available after opening chat', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
     config: desktopConfig,
     services: [
@@ -788,10 +790,11 @@ test('desktop bootstrap surfaces provider remediation after setup if no provider
     },
   });
 
-  assert.equal(snapshot.phase, 'needs_prerequisites');
-  assert.ok(snapshot.issues.some((issue) => /provider target/i.test(issue.title)));
+  assert.equal(snapshot.phase, 'ready_for_chat');
+  assert.equal(snapshot.status, 'degraded');
+  assert.ok(snapshot.issues.some((issue) => issue.title === 'claude/default needs attention'));
   assert.ok(snapshot.actions.some((action) => action.id === 'open_chat'));
-  assert.ok(snapshot.actions.some((action) => action.id === 'retry'));
+  assert.equal(snapshot.actions.some((action) => action.id === 'retry'), false);
   assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
   assert.equal(snapshot.actions.some((action) => action.id === 'open_runtime_diagnostics'), false);
   assert.equal(snapshot.issues[0]?.remediation?.kind, 'open_runtime_diagnostics');
@@ -799,7 +802,7 @@ test('desktop bootstrap surfaces provider remediation after setup if no provider
     snapshot.progress.steps.find((step) => step.id === 'enter-chat')?.status,
     'completed',
   );
-  assert.match(snapshot.progress.steps.find((step) => step.id === 'enter-chat')?.detail ?? '', /recover/i);
+  assert.equal(snapshot.runtime.issues[0]?.attentionCodes.includes('auth_required'), true);
 });
 
 test('desktop bootstrap keeps completed setup out of onboarding when runtime health is unavailable', () => {

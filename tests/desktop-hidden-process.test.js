@@ -28,13 +28,18 @@ function escapePowerShellSingleQuoted(value) {
   return value.replaceAll("'", "''");
 }
 
-test('provider installer version probes use the hidden process helper', async () => {
+test('provider installers use metadata or hidden processes for version detection', async () => {
   for (const scriptName of providerScripts) {
     const scriptPath = join(scriptsRoot, scriptName);
     const script = await readFile(scriptPath, 'utf8');
     assert.match(script, /_HiddenProcess\.ps1/);
     assert.match(script, /Resolve-HiddenVersionProbePath/);
-    assert.match(script, /Get-HiddenCommandText/);
+    if (scriptName === 'Install-Ollama.ps1') {
+      assert.match(script, /FileVersionInfo\]::GetVersionInfo/);
+      assert.doesNotMatch(script, /Get-HiddenCommandText/);
+    } else {
+      assert.match(script, /Get-HiddenCommandText/);
+    }
     assert.doesNotMatch(script, /& (claude|cursor-agent|goose|junie|ollama) --version/);
     assert.doesNotMatch(script, /& \$[A-Za-z]+ExecutablePath --version/);
   }
