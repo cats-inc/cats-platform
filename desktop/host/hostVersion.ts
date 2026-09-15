@@ -33,11 +33,9 @@ function readPackageVersion(): string {
 /**
  * The electron-builder `appId`, or null when it cannot be read.
  *
- * Windows only shows a native notification when the running process claims the
- * same Application User Model ID as the Start Menu shortcut the installer
- * wrote, and that shortcut carries `appId`. Reading it here keeps the value
- * from becoming a second source of truth; a missing field disables the claim
- * rather than guessing an ID that would silently swallow every notification.
+ * Keep the Windows process and installer-created shortcuts on the same
+ * Application User Model ID for shell identity and taskbar grouping. Read it
+ * from the build configuration so there is only one source of truth.
  */
 function readAppUserModelId(): string | null {
   try {

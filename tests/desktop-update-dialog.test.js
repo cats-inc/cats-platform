@@ -2,10 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  DESKTOP_UPDATE_DIALOG_ERROR_COPY,
   resolveDesktopUpdateDialog,
+  runDesktopUpdateDialog,
   shouldRefreshDesktopUpdateFromTray,
 } from '../build/desktop/updateDialog.js';
-import { createUnavailableDesktopUpdateSnapshot } from '../build/desktop/updateManager.js';
+import {
+  createDesktopUpdateManager,
+  createUnavailableDesktopUpdateSnapshot,
+} from '../build/desktop/updateManager.js';
 
 /**
  * The tray item is a question with one fixed label; this dialog is the answer.
@@ -177,3 +182,120 @@ test('an unknown locale falls back to English rather than an empty dialog', () =
   assert.equal(spec.title, 'Cats is up to date');
   assert.ok(spec.message.length > 0);
 });
+
+test('failure dialogs use localized stable errors without exposing provider text', () => {
+  for (const locale of ['en', 'zh-TW']) {
+    for (const code of Object.keys(DESKTOP_UPDATE_DIALOG_ERROR_COPY.en)) {
+      const spec = dialogFor({
+        status: 'failed',
+        error: { code, summary: 'raw provider text that must not leak' },
+      }, 'win32', locale);
+      assert.equal(spec.message, DESKTOP_UPDATE_DIALOG_ERROR_COPY[locale][code]);
+      assert.equal(JSON.stringify(spec).includes('raw provider text'), false);
+    }
+  }
+});
+
+function createDialogFlow(platform, options = {}) {
+  const calls = { check: 0, download: 0, install: 0 };
+  const dialogs = [];
+  let shuttingDown = false;
+  const manager = createDesktopUpdateManager({
+    capability: {
+      ...snapshot().capability,
+      provider: 'github_release',
+      unavailableReason: null,
+    },
+    adapter: {
+      async checkForUpdates() {
+        calls.check += 1;
+        if (options.stopAfterCheck) shuttingDown = true;
+        if (options.checkError) throw options.checkError;
+        return options.upToDate
+          ? { updateAvailable: false, version: null, releaseSummary: null }
+          : { updateAvailable: true, version: '0.1.17', releaseSummary: null };
+      },
+      async downloadUpdate() {
+        calls.download += 1;
+        if (options.stopAfterDownload) shuttingDown = true;
+        if (options.downloadError) throw options.downloadError;
+      },
+      async quitAndInstall() {
+        calls.install += 1;
+      },
+    },
+  });
+  return {
+    calls,
+    dialogs,
+    manager,
+    run: () => runDesktopUpdateDialog({
+      manager,
+      platform,
+      isShuttingDown: () => shuttingDown,
+      showDialog: async (spec) => {
+        dialogs.push(spec);
+        return options.acceptUpdate ? 0 : spec.buttons.length - 1;
+      },
+    }),
+  };
+}
+
+for (const platform of ['win32', 'darwin', 'linux']) {
+  test(`${platform}: manual checks show one dialog for current, available, and failed results`, async () => {
+    for (const [options, title, status] of [
+      [{ upToDate: true }, 'Cats is up to date', 'up_to_date'],
+      [{}, 'Update available', 'update_available'],
+      [{ checkError: new Error('ENOTFOUND') }, 'Update check failed', 'failed'],
+    ]) {
+      const flow = createDialogFlow(platform, options);
+      await flow.run();
+
+      assert.deepEqual(flow.dialogs.map((spec) => spec.title), [title]);
+      assert.equal(flow.manager.getSnapshot().status, status);
+      assert.deepEqual(flow.calls, { check: 1, download: 0, install: 0 });
+      // Repeated clicks refresh a completed check exactly once per click.
+      if (status !== 'update_available') {
+        await flow.run();
+        assert.equal(flow.calls.check, 2);
+        assert.equal(flow.dialogs.length, 2);
+      }
+    }
+  });
+
+  test(`${platform}: a failed download returns to the dialog without rechecking or installing`, async () => {
+    const flow = createDialogFlow(platform, {
+      acceptUpdate: true,
+      downloadError: new Error('sha512 checksum mismatch'),
+    });
+    await flow.run();
+
+    assert.deepEqual(flow.dialogs.map((spec) => spec.action), ['update', 'none']);
+    assert.equal(flow.dialogs[1].message, DESKTOP_UPDATE_DIALOG_ERROR_COPY.en.checksum_mismatch);
+    assert.equal(flow.manager.getSnapshot().status, 'failed');
+    assert.deepEqual(flow.calls, { check: 1, download: 1, install: 0 });
+  });
+
+  test(`${platform}: confirming the dialog still downloads and hands off to the installer`, async () => {
+    const flow = createDialogFlow(platform, { acceptUpdate: true });
+    await flow.run();
+
+    assert.deepEqual(flow.dialogs.map((spec) => spec.action), ['update']);
+    assert.deepEqual(flow.calls, { check: 1, download: 1, install: 1 });
+  });
+
+  test(`${platform}: shutdown suppresses late check and download-error dialogs`, async () => {
+    const check = createDialogFlow(platform, { stopAfterCheck: true });
+    await check.run();
+    assert.deepEqual(check.dialogs, []);
+
+    const download = createDialogFlow(platform, {
+      acceptUpdate: true,
+      stopAfterDownload: true,
+      downloadError: new Error('ENOTFOUND'),
+    });
+    await download.run();
+    assert.equal(download.dialogs.length, 1);
+    assert.equal(download.calls.install, 0);
+  });
+}

@@ -1,7 +1,6 @@
-import type { DesktopUpdateSnapshot } from './contracts.js';
-// Locale normalization is shared with the tray and the notifications rather
-// than duplicated. The main process has no i18n runtime, so every surface it
-// owns resolves its own copy from the same two-locale rule.
+import type { DesktopUpdateErrorCode, DesktopUpdateSnapshot } from './contracts.js';
+import type { DesktopUpdateManager } from './updateManager.js';
+// The dialog and tray use the same locale rules in the main process.
 import {
   normalizeDesktopTrayLocale,
   type DesktopTrayLocale,
@@ -65,6 +64,40 @@ interface UpdateDialogCopy {
   macosDetail: string;
   genericDetail: string;
 }
+
+/**
+ * The main process has no translator. The Settings label tests keep these
+ * stable error messages aligned with the renderer's English and Chinese copy.
+ */
+export const DESKTOP_UPDATE_DIALOG_ERROR_COPY: Record<
+  DesktopTrayLocale,
+  Record<DesktopUpdateErrorCode, string>
+> = {
+  en: {
+    offline: 'Cats could not reach the update service.',
+    timeout: 'The update service did not respond in time.',
+    provider_rejected: 'The update service rejected the request.',
+    metadata_invalid: 'The update information could not be read.',
+    checksum_mismatch: 'The downloaded update failed its integrity check.',
+    signature_rejected: 'The downloaded update failed its signature check.',
+    unsupported_package: 'This installation cannot update itself.',
+    download_cancelled: 'The update download was cancelled.',
+    install_handoff_failed: 'Cats could not open the installer.',
+    unknown: 'The update could not be completed.',
+  },
+  'zh-TW': {
+    offline: 'Cats 無法連線到更新服務。',
+    timeout: '更新服務未在時限內回應。',
+    provider_rejected: '更新服務拒絕了這次請求。',
+    metadata_invalid: '無法讀取更新資訊。',
+    checksum_mismatch: '下載的更新未通過完整性檢查。',
+    signature_rejected: '下載的更新未通過簽章檢查。',
+    unsupported_package: '這個安裝方式無法自我更新。',
+    download_cancelled: '更新下載已取消。',
+    install_handoff_failed: 'Cats 無法開啟安裝程式。',
+    unknown: '更新無法完成。',
+  },
+};
 
 const UPDATE_DIALOG_COPY: Record<DesktopTrayLocale, UpdateDialogCopy> = {
   en: {
@@ -185,7 +218,8 @@ export function resolveDesktopUpdateDialog(input: {
   locale?: string | null;
 }): DesktopUpdateDialog {
   const { snapshot } = input;
-  const copy = UPDATE_DIALOG_COPY[normalizeDesktopTrayLocale(input.locale)];
+  const locale = normalizeDesktopTrayLocale(input.locale);
+  const copy = UPDATE_DIALOG_COPY[locale];
   // A preview self-updates from an unsigned prerelease feed. A tester who
   // cannot tell that apart from a supported release cannot report usefully.
   const suffix = snapshot.capability.distribution === 'preview_packaged'
@@ -262,7 +296,9 @@ export function resolveDesktopUpdateDialog(input: {
     case 'failed':
       return {
         title: titled(copy.failedTitle),
-        message: copy.failedMessage,
+        message: snapshot.error
+          ? DESKTOP_UPDATE_DIALOG_ERROR_COPY[locale][snapshot.error.code]
+          : copy.failedMessage,
         detail: copy.currentVersion(snapshot.currentVersion),
         buttons: [copy.ok],
         action: 'none',
@@ -278,4 +314,52 @@ export function resolveDesktopUpdateDialog(input: {
         action: 'check',
       };
   }
+}
+
+export interface RunDesktopUpdateDialogInput {
+  manager: DesktopUpdateManager;
+  platform: NodeJS.Platform | string;
+  locale?: string | null;
+  isShuttingDown: () => boolean;
+  showDialog: (dialog: DesktopUpdateDialog) => Promise<number>;
+}
+
+/** Runs the tray update flow using the dialog as its only feedback surface. */
+export async function runDesktopUpdateDialog(input: RunDesktopUpdateDialogInput): Promise<void> {
+  const { manager, isShuttingDown, showDialog } = input;
+
+  async function showSnapshot(snapshot: DesktopUpdateSnapshot, allowRecheck: boolean): Promise<void> {
+    if (isShuttingDown()) {
+      return;
+    }
+    if (shouldRefreshDesktopUpdateFromTray(snapshot, allowRecheck)) {
+      await showSnapshot(await manager.checkForUpdates(), false);
+      return;
+    }
+
+    const dialogSpec = resolveDesktopUpdateDialog({
+      snapshot,
+      platform: input.platform,
+      locale: input.locale,
+    });
+    const response = await showDialog(dialogSpec);
+    if (response !== 0 || dialogSpec.action === 'none' || isShuttingDown()) {
+      return;
+    }
+
+    if (dialogSpec.action === 'update') {
+      const downloaded = await manager.downloadUpdate();
+      if (downloaded.status !== 'downloaded' || isShuttingDown()) {
+        // The offer has closed. Show a download error without starting another
+        // check or sending it to the operating system's notification center.
+        if (downloaded.status === 'failed') {
+          await showSnapshot(downloaded, false);
+        }
+        return;
+      }
+    }
+    await manager.restartAndInstall();
+  }
+
+  await showSnapshot(manager.getSnapshot(), true);
 }
