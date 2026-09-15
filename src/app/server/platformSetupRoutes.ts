@@ -8,6 +8,7 @@ import {
   createPlatformWarmRuntimeSummary,
 } from '../../shared/platformEnvelopeMetadata.js';
 import { appendPlatformOnboardingEvent } from '../../shared/platformOnboardingHistory.js';
+import { runExclusiveSetupOperation } from '../../shared/platformSetupOperation.js';
 import { listPlatformProductDescriptors } from '../../shared/platformProducts.js';
 import {
   readPlatformPreferences,
@@ -96,24 +97,6 @@ async function recordProductEvent(
   } catch (error) {
     reportSyncFailure(`bootstrap_diagnostics:${input.kind}`, error);
   }
-}
-
-/**
- * SPEC-113 requirement 5: first-admin creation runs inside a process-wide
- * serialized critical section. Without it two concurrent submissions can each
- * read "setup incomplete" before either writes, and the later uniqueness
- * recheck inside the auth-store mutation would be the only thing standing
- * between them and two half-built workspaces.
- */
-let setupCriticalSection: Promise<unknown> = Promise.resolve();
-
-function runExclusiveSetupOperation<T>(operation: () => Promise<T>): Promise<T> {
-  const result = setupCriticalSection.then(operation, operation);
-  setupCriticalSection = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  return result;
 }
 
 async function handlePlatformSetupComplete(

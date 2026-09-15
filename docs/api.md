@@ -431,8 +431,15 @@ POST /api/platform/bootstrap-diagnostics/opened
 GET  /api/platform/ingress
 ```
 
-- `POST /api/setup/reset` clears chat/core state back to the uninitialized
-  first-run baseline and returns the refreshed `AppShellPayload`.
+- `POST /api/setup/reset` clears chat/core and auth state (accounts, identities,
+  memberships, sessions, and login throttles) back to the uninitialized
+  first-run baseline. It expires the browser session cookie and returns the
+  refreshed `AppShellPayload`, so the wizard can create a fresh first Admin.
+  Existing installations require an authenticated Admin and CSRF token, even
+  if their setup timestamp is missing. Reset and setup completion share one
+  serialized operation; an auth-reset write failure restores the previous
+  chat/core snapshot. Unexpected reset failures return a fixed
+  `500 internal_error` response with details retained only in server logs.
 - `POST /api/platform/setup/complete` is the only setup-completion route. The
   legacy `POST /api/setup/complete` Boss Cat path is removed: it could set
   `setupCompleteAt` without creating an Admin, which defeated the SPEC-113
@@ -3411,4 +3418,4 @@ Errors use a minimal payload:
 
 ---
 
-*Last updated: 2026-09-02*
+*Last updated: 2026-09-16*

@@ -2,6 +2,7 @@ import { createDefaultCoreState } from '../../../core/model/index.js';
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../shared/http.js';
 import { clearGuideCatAssistCache } from '../../../shared/guideCatAssistStore.js';
 import { resetPlatformOnboardingHistory } from '../../../shared/platformOnboardingHistory.js';
+import { runExclusiveSetupOperation } from '../../../shared/platformSetupOperation.js';
 import {
   readPlatformPreferences,
   writePlatformPreferences,
@@ -11,6 +12,9 @@ import { createGlobalOrchestratorVisibleParticipant } from '../state/orchestrato
 import { createCat } from '../state/model/index.js';
 import {
   AUTH_SESSION_COOKIE_NAME,
+  clearAuthSessionCookie,
+  createEmptyPlatformAuthState,
+  hasExistingPlatformAdmin,
   resolveBrowserPrincipalFromToken,
   validateCatsCsrfToken,
   type PlatformSessionRecord,
@@ -18,7 +22,6 @@ import {
 import { waitForGuideCatAssistRefreshIdle } from './guideCatAssist.js';
 import {
   buildAppShellPayload,
-  handleRestError,
   nowFrom,
   sendRestError,
   type ChatApiRouteContext,
@@ -39,10 +42,20 @@ async function handleSetupReset(
     if (!(await authorizeSetupReset(context, core.setupCompleteAt))) {
       return;
     }
+    const chatState = await context.dependencies.chatStore.read();
     await context.dependencies.chatStore.writeSnapshot(
       createDefaultChatState(),
       createDefaultCoreState(),
     );
+    try {
+      // First-run setup always creates a new Admin. Retaining the previous
+      // account leaves the wizard permanently failing with already_complete.
+      await context.dependencies.authStore?.writeState(createEmptyPlatformAuthState(now));
+    } catch (error) {
+      // Keep the existing authenticated workspace usable when auth reset fails.
+      await context.dependencies.chatStore.writeSnapshot(chatState, core);
+      throw error;
+    }
     try {
       await waitForGuideCatAssistRefreshIdle(context.dependencies.config.chatStatePath);
       await clearGuideCatAssistCache(context.dependencies.config.chatStatePath, now);
@@ -75,9 +88,13 @@ async function handleSetupReset(
       context.response,
       200,
       await buildAppShellPayload(context.dependencies),
+      { 'Set-Cookie': clearAuthSessionCookie() },
     );
   } catch (error) {
-    handleRestError(context, error);
+    reportSetupRouteFailure('setup_reset', error);
+    sendJson(context.response, 500, {
+      error: { code: 'internal_error', message: 'Setup could not be reset.' },
+    });
   }
 }
 
@@ -85,11 +102,11 @@ async function authorizeSetupReset(
   context: ChatApiRouteContext,
   setupCompleteAt: string | null,
 ): Promise<boolean> {
-  if (!setupCompleteAt) {
-    return true;
-  }
   const auth = context.dependencies.auth;
   const authStore = context.dependencies.authStore;
+  if (!setupCompleteAt && (!authStore || !hasExistingPlatformAdmin(await authStore.readState()))) {
+    return true;
+  }
   const sessionSecret = auth?.sessionSecret;
   if (!auth || !authStore || !sessionSecret) {
     sendSetupAuthError(context, 401, 'E_UNAUTHENTICATED', 'Authentication is required.');
@@ -179,7 +196,7 @@ export async function routeSetupApi(
       sendMethodNotAllowed(context.response, ['POST']);
       return true;
     }
-    await handleSetupReset(context);
+    await runExclusiveSetupOperation(() => handleSetupReset(context));
     return true;
   }
 
