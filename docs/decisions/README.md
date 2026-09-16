@@ -150,6 +150,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [004-separate-cat-identity-from-provider-execution](./004-separate-cat-identity-from-provider-execution.md) | Separate cat identity from provider execution | Accepted | 2026-03-13 |
 | [005-use-chat-cat-registry-and-channel-assignments](./005-use-chat-cat-registry-and-channel-assignments.md) | Use a global cat registry with channel assignments | Accepted | 2026-03-13 |
 | [050-use-ack-first-chat-dispatch-lifecycle](./050-use-ack-first-chat-dispatch-lifecycle.md) | Use an ACK-first chat dispatch lifecycle | Accepted | 2026-04-03 |
+| [116](./116-share-desktop-provider-management-across-onboarding-and-settings.md) | Share Desktop provider management across onboarding and Settings | Accepted | 2026-09-16 |
 <!-- Add new ADRs above this line -->
 
 ## For AI Agents

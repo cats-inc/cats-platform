@@ -4,6 +4,12 @@
 
 ## Provider Selection and Bootstrap
 
+Desktop onboarding and Settings share the provider manager described by
+[ADR-116](./decisions/116-share-desktop-provider-management-across-onboarding-and-settings.md),
+[SPEC-116](./specs/SPEC-116-desktop-provider-management.md), and
+[PLAN-107](./plans/PLAN-107-desktop-provider-management.md). The plan records
+native installer reconciliation, validation, and unsigned preview delivery.
+
 Runtime owns the active provider selection for standalone, local development,
 and Desktop. First-run choices are saved before inventory or helper work;
 ordinary provider/model pickers follow exact selected targets and revisions.
