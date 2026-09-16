@@ -125,3 +125,9 @@ CI locally solely for a commit/version bump.
 - Final viewport inspection bounded the provider list inside onboarding, keeping
   Apply/progress/Continue visible at the Desktop window size even with all 18
   supported native examples. Settings uses a bounded list for the same footer.
+
+- The first full Platform CI run passed 4,530 cases and caught 14 expectations
+  tied to the replaced onboarding cards. Those fixtures now exercise the shared
+  manager's scoped actions, Ollama connection/install separation, Muse install,
+  retained failed outcomes, and the still-supported recovery accordion. The
+  focused host/view/page set passed before resubmitting the full CI gate.
