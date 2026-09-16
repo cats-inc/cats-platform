@@ -131,3 +131,13 @@ CI locally solely for a commit/version bump.
   manager's scoped actions, Ollama connection/install separation, Muse install,
   retained failed outcomes, and the still-supported recovery accordion. The
   focused host/view/page set passed before resubmitting the full CI gate.
+
+- Follow-up review restored prerequisite/recovery-action regression coverage and
+  identified redraws resetting a scrolled provider list. The shared manager now
+  retains list position and expanded controls across edits and detection; all
+  14 view/page cases pass. Independent review cleared the final delta. An isolated
+  960x700 Edge run preserved scrollTop 1346 through selection edits, Apply and
+  per-row Detect, retained expanded controls, kept the footer visible, and
+  reported no browser errors. Platform PR #80 passed both required CI checks and
+  merged as `5a9f8908b82046ffbf5a49e691e0d3c3ef32e091`; this final fix follows in
+  a separate PR before preview publication.

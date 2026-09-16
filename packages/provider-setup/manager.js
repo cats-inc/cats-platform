@@ -197,7 +197,7 @@ export function mountProviderManager(root, bridge, options = {}) {
     if (wanted) controls.append(button(isService ? text('Test Connection', '測試連線') : observation ? text('Detect Again', '重新偵測') : text('Detect', '偵測'), () => run('detect', [target]), !canAct, { 'data-action': 'detect', 'data-target': id }));
     if (helper && wanted && !installed) controls.append(button(text('Install', '安裝'), () => run('install', [target]), !canAct || !helper.supportsApply, { 'data-action': 'install', 'data-target': id }));
     if (helper && wanted) {
-      const more = el('details', { class: 'pm-more' }, el('summary', {}, text('More', '更多')));
+      const more = el('details', { class: 'pm-more', 'data-details': `more:${id}` }, el('summary', {}, text('More', '更多')));
       if (helper.supportsUpgrade) more.append(button(text('Upgrade', '更新'), () => run('upgrade', [target]), !canAct));
       if (helper.supportsForce) more.append(button(text('Repair', '修復'), () => run('repair', [target]), !canAct));
       if (helper.supportsUninstall) more.append(button(text('Uninstall…', '解除安裝…'), () => run('preview_uninstall', [target]), !canAct));
@@ -212,12 +212,14 @@ export function mountProviderManager(root, bridge, options = {}) {
     if (selected && outcome) {
       const remaining = [...outcome.warnings, ...outcome.manualSteps];
       details.append(el('p', { class: outcome.runState === 'failed' || outcome.status === 'failed' ? 'pm-warn' : 'pm-intro' }, outcome.summary));
-      if (remaining.length) details.append(el('details', {}, el('summary', {}, text('Remaining steps / details', '待辦步驟／詳細資訊')), el('ul', {}, remaining.map((value) => el('li', {}, value)))));
+      if (remaining.length) details.append(el('details', { 'data-details': `steps:${id}` }, el('summary', {}, text('Remaining steps / details', '待辦步驟／詳細資訊')), el('ul', {}, remaining.map((value) => el('li', {}, value)))));
     }
     return el('div', { class: 'pm-row', 'data-provider': target.provider, 'data-target': id }, details, controls);
   }
   function render() {
     if (destroyed) return;
+    const scrollTop = root.querySelector('.pm-list')?.scrollTop || 0;
+    const opened = new Set([...root.querySelectorAll('details[open][data-details]')].map((node) => node.getAttribute('data-details')));
     const focus = doc.activeElement?.getAttribute('data-focus');
     const cursor = doc.activeElement?.selectionStart;
     root.classList.add('catsProviderManager');
@@ -301,6 +303,9 @@ export function mountProviderManager(root, bridge, options = {}) {
         : text(`${selection.targets.length} selected · ${detected} checked · ${ready} found or connected. Installation and sign-in can be completed later.`, `已選 ${selection.targets.length} 項・已偵測 ${detected} 項・已找到或連線 ${ready} 項。安裝與登入可稍後完成。`)));
     }
     root.replaceChildren(...content);
+    for (const node of root.querySelectorAll('details[data-details]')) node.open = opened.has(node.getAttribute('data-details'));
+    const list = root.querySelector('.pm-list');
+    if (list) list.scrollTop = scrollTop;
     if (focus) {
       const next = [...root.querySelectorAll('[data-focus]')].find((node) => node.getAttribute('data-focus') === focus);
       next?.focus({ preventScroll: true });
