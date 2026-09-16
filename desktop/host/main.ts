@@ -93,7 +93,8 @@ import {
   shouldAttemptDesktopLateReadyRecovery,
 } from './startupRecovery.js';
 import { runDesktopUpdateDialog } from './updateDialog.js';
-import { resolveDefaultSetupAuditAction } from './setupAudit.js';
+import { resolveSelectedSetupAuditActions } from './setupAudit.js';
+import { pauseSelectedSetupHelpers, retryPendingSetupOperationReleases, targetsForSetupHelper, withSelectedSetupTargets } from './providerSelection.js';
 import {
   buildDesktopCliInventoryFromRuntime,
   probeContradictsCachedBootstrapState,
@@ -240,6 +241,7 @@ let runtimeCliInventoryPollTimer: ReturnType<typeof setTimeout> | null = null;
 let runtimeCliInventoryScanPending = false;
 let shuttingDown = false;
 let shutdownPromise: Promise<void> | null = null;
+let setupHelperDrain: ReturnType<typeof pauseSelectedSetupHelpers> | null = null;
 let exitingAfterShutdown = false;
 let trayController: DesktopTrayController | null = null;
 let stateStore: DesktopHostStateStore | null = null;
@@ -312,8 +314,11 @@ function rememberRuntimeCliInventoryProbe(probe: RuntimeCliInventoryProbe | null
   if (!probe) {
     return false;
   }
-  if (probe.scan) {
-    latestCliInventoryProbe = probe;
+  if (latestCliInventoryProbe?.selection?.revision !== probe.selection?.revision) {
+    latestProviderDiagnosticsPayload = null;
+  }
+  latestCliInventoryProbe = probe;
+  if (probe.selection?.state !== 'selected' || (probe.scan && !isRuntimeCliInventoryScanActive(probe))) {
     runtimeCliInventoryScanPending = false;
     clearCliInventoryError();
     return true;
@@ -1151,11 +1156,20 @@ async function getSetupSnapshot(): Promise<DesktopSetupSnapshot> {
     throw new Error('Desktop host is not initialized.');
   }
 
-  return await buildDesktopSetupSnapshot({
+  const snapshot = await buildDesktopSetupSnapshot({
     config: hostConfig,
     packaging: resolveCurrentPackagingPlan(hostConfig),
     state: setupState ?? createEmptyDesktopSetupState(),
   });
+  const probe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl);
+  snapshot.helpers = snapshot.helpers.filter((helper) => {
+    if (!probe?.selection) return false;
+    try { return targetsForSetupHelper(helper.id, probe.selection).length > 0; } catch { return false; }
+  });
+  if (snapshot.resumeAction && !snapshot.helpers.some((helper) => helper.id === snapshot.resumeAction!.helperId)) {
+    snapshot.resumeAction = null;
+  }
+  return snapshot;
 }
 
 async function fetchWithTimeout(
@@ -1195,22 +1209,6 @@ async function fetchJsonWithTimeout<T>(
   return await response.json() as T;
 }
 
-function shouldRefreshRuntimeCliInventoryProbe(
-  probe: RuntimeCliInventoryProbe | null,
-  options: { triggerScanIfMissing?: boolean },
-): boolean {
-  if (options.triggerScanIfMissing !== true) {
-    return false;
-  }
-  if (runtimeCliInventoryScanPending || isRuntimeCliInventoryScanActive(probe)) {
-    return false;
-  }
-  if (!probe?.scan) {
-    return true;
-  }
-  return !probe.scan.providers.some((provider) => provider.available === true);
-}
-
 async function fetchRuntimeCliInventoryProbe(
   baseUrl: string,
   options: {
@@ -1220,72 +1218,29 @@ async function fetchRuntimeCliInventoryProbe(
     scanTimeoutMs?: number;
   } = {},
 ): Promise<RuntimeCliInventoryProbe | null> {
-  const setupStateTimeoutMs = options.setupStateTimeoutMs ?? RUNTIME_SETUP_STATE_TIMEOUT_MS;
-  const scanTimeoutMs = options.scanTimeoutMs ?? RUNTIME_SETUP_SCAN_TIMEOUT_MS;
-  let probe: RuntimeCliInventoryProbe | null = null;
-  // A forced rescan is a user pressing Detect, and it has to reach the runtime
-  // even when the runtime says a scan is already running. `scanning` is
-  // persisted state: a runtime killed mid-scan -- which the packaged update
-  // handoff does deliberately when it drains the sidecars -- leaves it set for
-  // every launch that follows. Backing off on the strength of that flag turned
-  // Detect into a button that could never do anything again.
-  const shouldReadSetupStateFirst = !options.forceRescan;
-  if (shouldReadSetupStateFirst) {
-    try {
-      probe = await fetchJsonWithTimeout<RuntimeCliInventoryProbe>(`${baseUrl}/setup-state`, {
-        method: 'GET',
-      }, setupStateTimeoutMs);
-    } catch {
-      if (options.triggerScanIfMissing !== true) {
-        return null;
-      }
-    }
-    if (probe?.scan || isRuntimeCliInventoryScanActive(probe)) {
-      return probe;
-    }
-    if (runtimeCliInventoryScanPending) {
-      return probe;
-    }
-    if (!options.forceRescan && !shouldRefreshRuntimeCliInventoryProbe(probe, options)) {
-      return probe;
-    }
-  }
-  // Trigger a fresh scan (none cached before setup, cached zero CLIs, or caller
-  // forced rescan after install/uninstall). The runtime exposes scan progress
-  // through /setup-state, so a host-side HTTP timeout means "poll later", not
-  // "startup failed".
+  await retryPendingSetupOperationReleases();
+  const timeout = options.setupStateTimeoutMs ?? RUNTIME_SETUP_STATE_TIMEOUT_MS;
+  let probe: RuntimeCliInventoryProbe;
+  try {
+    probe = await fetchJsonWithTimeout<RuntimeCliInventoryProbe>(`${baseUrl}/setup-state`, { method: 'GET' }, timeout);
+  } catch { return null; }
+  // A forced scan still needs a current, nonempty declared selection.
+  if (probe.selection?.state !== 'selected') return probe;
+  if (runtimeCliInventoryScanPending || isRuntimeCliInventoryScanActive(probe)) return probe;
+  if (!options.forceRescan && (probe.scan || !options.triggerScanIfMissing)) return probe;
   try {
     runtimeCliInventoryScanPending = true;
-    const scanResponse = await fetchWithTimeout(`${baseUrl}/setup-scan`, {
+    const response = await fetchWithTimeout(`${baseUrl}/setup-scan`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify({ manual: false }),
-    }, scanTimeoutMs);
-    if (!scanResponse.ok) {
-      runtimeCliInventoryScanPending = false;
-      return probe;
-    }
+      body: JSON.stringify({ manual: options.forceRescan === true, targets: probe.selection.targets }),
+    }, options.scanTimeoutMs ?? RUNTIME_SETUP_SCAN_TIMEOUT_MS);
+    if (!response.ok) runtimeCliInventoryScanPending = false;
+    return await fetchJsonWithTimeout<RuntimeCliInventoryProbe>(`${baseUrl}/setup-state`, { method: 'GET' }, timeout);
   } catch {
+    runtimeCliInventoryScanPending = false;
     return probe;
   }
-  try {
-    return await fetchJsonWithTimeout<RuntimeCliInventoryProbe>(`${baseUrl}/setup-state`, {
-      method: 'GET',
-    }, setupStateTimeoutMs);
-  } catch {
-    return probe;
-  }
-}
-
-function isCliMissingBootstrapSnapshot(snapshot: DesktopBootstrapSnapshot): boolean {
-  if (hostConfig?.bootstrap.onboardingMode !== 'cli_inventory_gate') {
-    return false;
-  }
-  return Boolean(
-    snapshot.phase === 'needs_prerequisites'
-      && snapshot.prerequisites?.cliInventory?.source === 'runtime'
-      && snapshot.prerequisites.cliInventory.total === 0,
-  );
 }
 
 function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
@@ -1313,6 +1268,8 @@ function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
     packaging: packagingState ?? undefined,
     setup: setupState ?? undefined,
     hostStatePath: hostConfig.paths.hostStatePath,
+    providerSelection: latestCliInventoryProbe?.selection ?? null,
+    providerCatalog: latestCliInventoryProbe?.universe ?? [],
     cliInventory: resolveSnapshotCliInventory(),
     cliInventoryError: latestCliInventoryError,
   });
@@ -1347,8 +1304,7 @@ async function refreshBootstrapSnapshot(
   const setupCompleted = Boolean(
     effectivePersistedSetup.setupCompleteAt || effectivePersistedSetup.productSetupCompleted,
   );
-  const shouldReadCliInventory =
-    setupCompleted || hostConfig.bootstrap.onboardingMode === 'cli_inventory_gate';
+  const shouldReadCliInventory = true;
   // /diagnostics/providers is intentionally NOT fetched on the boot critical
   // path — it's not authoritative for any phase decision before setup, and
   // for setup-complete users we kick it off in the background (see
@@ -1412,6 +1368,8 @@ async function refreshBootstrapSnapshot(
     packaging: packagingState ?? undefined,
     setup: setupState ?? undefined,
     hostStatePath: hostConfig.paths.hostStatePath,
+    providerSelection: latestCliInventoryProbe?.selection ?? null,
+    providerCatalog: latestCliInventoryProbe?.universe ?? [],
     cliInventory: resolveSnapshotCliInventory(),
     cliInventoryError: latestCliInventoryError,
   });
@@ -1428,32 +1386,22 @@ function hasPersistedProductSetupCompletion(
   return productEvents.some((event) => event.kind === 'setup_completed' && event.status === 'ok');
 }
 
-async function maybePrimeSetupAudit(
-  snapshot: DesktopBootstrapSnapshot,
-  persistedSetup: PersistedSetupCompletionState | null = null,
-): Promise<void> {
-  if (!hostConfig) {
-    return;
-  }
-  if (!shouldAutoRunSetupAudit(setupState, {
-    setupCompleteAt: snapshot.app.setupCompleteAt ?? persistedSetup?.setupCompleteAt ?? null,
-    productSetupCompleted: hasPersistedProductSetupCompletion(persistedSetup),
-  })) {
-    return;
-  }
-  const setupAuditAction = resolveDefaultSetupAuditAction(hostConfig);
-  if (!setupAuditAction) {
-    return;
-  }
+const auditedSetupHelpers = new Set<string>();
 
-  await runSetupAction({
-    helperId: setupAuditAction.helperId,
-    mode: 'check',
-    extraArguments: setupAuditAction.extraArguments,
-  }, {
-    publishMode: 'bootstrap-only',
-    refreshBootstrap: false,
-  });
+async function maybePrimeSetupAudit(
+  _snapshot: DesktopBootstrapSnapshot,
+  _persistedSetup: PersistedSetupCompletionState | null = null,
+): Promise<void> {
+  if (!hostConfig) return;
+  const selection = latestCliInventoryProbe?.selection ?? null;
+  for (const action of resolveSelectedSetupAuditActions(selection)) {
+    const key = `${selection!.revision}:${action.helperId}`;
+    if (auditedSetupHelpers.has(key)) continue;
+    auditedSetupHelpers.add(key);
+    await runSetupAction({ helperId: action.helperId, mode: 'check' }, {
+      publishMode: 'bootstrap-only', refreshBootstrap: false,
+    });
+  }
 }
 
 function scheduleBackgroundSetupAudit(
@@ -1568,7 +1516,7 @@ async function retryCliInventoryScanInBackground(options: {
       await new Promise<void>((resolve) => setTimeout(resolve, wait));
     }
   }
-  if (!options.setupCompleted && latestSnapshot && isDesktopBootstrapLoadingPhase(latestSnapshot.phase)) {
+  if (runtimeCliInventoryScanPending || isRuntimeCliInventoryScanActive(latestCliInventoryProbe)) {
     scheduleRuntimeCliInventoryPoll({
       setupCompleted: options.setupCompleted,
     });
@@ -1606,23 +1554,13 @@ function scheduleBackgroundBootstrapWork(
       ?? persistedSetup?.productSetupCompleted,
   );
 
-  // Prerequisite audit — Node / GitHub CLI / npm prefix detection lives in
-  // the packaged readiness audit, not in cats-runtime's CLI inventory probe.
-  // Fresh users without Node need this signal so the recovery panel can
-  // surface install_node_lts before they fail an Install action.
+  // Run shared Node and local-model checks only for eligible selected targets.
   scheduleBackgroundSetupAudit(snapshot, persistedSetup);
 
-  // CLI inventory is the only source the onboarding cards can read, so it has
-  // to be probed before setup as well — otherwise a machine with every CLI
-  // already installed shows a grid of "not detected yet" until the user clicks
-  // Detect. This is background work on its own pre-setup timeout budget
-  // (RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS) and, outside the legacy
-  // cli_inventory_gate policy, is display-only: buildDesktopBootstrapSnapshot
-  // gates every phase decision that reads cliInventory on that mode, so a scan
-  // landing here can never move the phase or navigate the window away from
-  // onboarding.
+  // Inventory observes the saved selection; missing/invalid/empty selections
+  // never launch a provider scan. Availability does not gate product onboarding.
   void retryCliInventoryScanInBackground({
-    forceRescan: setupCompleted,
+    forceRescan: false,
     setupCompleted,
   }).catch((error) => {
     process.stderr.write(
@@ -1774,7 +1712,16 @@ async function createUpdateManagerForLaunch(
           // supervisor-lifetime environment snapshot populated during the first
           // bootstrap, including the Desktop-provisioned platform auth secret.
           exitingAfterShutdown = false;
-          await supervisor?.startAll();
+          try {
+            await supervisor?.startAll();
+          } finally {
+            // A failed recovery leaves Runtime unavailable, not helper admission
+            // permanently paused after a later successful Retry.
+            if (!shuttingDown) {
+              setupHelperDrain?.resume();
+              setupHelperDrain = null;
+            }
+          }
           await syncTrayController();
         },
         exitAfterUncertainHandoff: async () => {
@@ -1816,7 +1763,9 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
     return bootstrapPromise;
   }
 
+  const helperPause = restartServices ? pauseSelectedSetupHelpers() : null;
   bootstrapPromise = (async () => {
+    await helperPause?.drained;
     latestBootstrapError = null;
     latestCliInventoryError = null;
     runtimeCliInventoryScanPending = false;
@@ -1855,6 +1804,7 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
     const snapshot = publishSnapshot(buildSnapshot());
     return maybeOpenApp(snapshot).then(() => snapshot);
   }).finally(() => {
+    helperPause?.resume();
     bootstrapPromise = null;
   });
 
@@ -1891,17 +1841,13 @@ async function runHostAction(actionId: DesktopHostActionId): Promise<DesktopBoot
   }
   if (actionId === 'open_setup') {
     const snapshot = latestSnapshot ?? await refreshBootstrapSnapshot();
-    if (isCliMissingBootstrapSnapshot(snapshot)) {
-      return snapshot;
-    }
+    if (!latestCliInventoryProbe?.selection || ['missing', 'invalid'].includes(latestCliInventoryProbe.selection.state)) return snapshot;
     await showMainWindow(`${hostConfig.appBaseUrl}/setup`);
     return snapshot;
   }
   if (actionId === 'open_chat') {
     const snapshot = latestSnapshot ?? await refreshBootstrapSnapshot();
-    if (isCliMissingBootstrapSnapshot(snapshot)) {
-      return snapshot;
-    }
+    if (!latestCliInventoryProbe?.selection || ['missing', 'invalid'].includes(latestCliInventoryProbe.selection.state)) return snapshot;
     await showMainWindow(`${hostConfig.appBaseUrl}${snapshot.app.entryPath}`);
     return snapshot;
   }
@@ -1930,10 +1876,9 @@ async function runSetupAction(
   }
 
   const packaging = resolveCurrentPackagingPlan(hostConfig);
-  const result = await runDesktopSetupHelper({
-    config: hostConfig,
-    packaging,
-    action,
+  const result = await withSelectedSetupTargets({
+    baseUrl: hostConfig.runtimeBaseUrl, helperId: action.helperId,
+    run: () => runDesktopSetupHelper({ config: hostConfig!, packaging, action }),
   });
   packagingState = packaging;
   setupState = {
@@ -1974,7 +1919,7 @@ async function runSetupAction(
   const shouldRefreshCliInventory =
     action.mode !== 'check'
       && shouldRefreshCliInventoryAfterSetupAction(action.helperId)
-      && (setupCompleted || hostConfig.bootstrap.onboardingMode === 'cli_inventory_gate');
+;
   if (shouldRefreshCliInventory) {
     const refreshedProbe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
       forceRescan: true,
@@ -2125,6 +2070,9 @@ function waitForShutdownDeadline(ms: number): Promise<'timed_out'> {
  * surviving sidecar may still hold.
  */
 async function drainManagedServices(): Promise<{ timedOut: boolean }> {
+  setupHelperDrain ??= pauseSelectedSetupHelpers();
+  // Installer completion is outside the sidecar shutdown watchdog budget.
+  await setupHelperDrain.drained;
   const drain = supervisor?.stopAll() ?? Promise.resolve();
   const shutdownWatchdogMs = hostConfig
     ? resolveShutdownWatchdogMs(hostConfig, supervisor?.getManagedServiceCount() ?? 0)
@@ -2155,8 +2103,10 @@ async function shutdownHost(): Promise<void> {
     return shutdownPromise;
   }
   shuttingDown = true;
+  setupHelperDrain ??= pauseSelectedSetupHelpers();
   clearRuntimeCliInventoryPoll();
   shutdownPromise = (async () => {
+    await setupHelperDrain!.drained;
     let shutdownExitCode = 0;
     let forcedStopAttempted = false;
     const activeTrayController = trayController;
@@ -2337,6 +2287,33 @@ async function main(): Promise<void> {
       throw new Error(`Invalid desktop host action: ${String(actionId)}`);
     }
     return await runHostAction(actionId);
+  });
+  ipcMain.handle('cats-host:save-provider-selection', async (event, payload: unknown) => {
+    assertMainWindowIpcSender(event, mainWindow, 'Provider selection is only available to the main Cats window.');
+    if (!hostConfig || !payload || typeof payload !== 'object') throw new Error('Invalid provider selection.');
+    const body = payload as { targets?: unknown; expectedRevision?: unknown; reload?: unknown };
+    if ((!Array.isArray(body.targets) && body.reload !== true) || typeof body.expectedRevision !== 'string') {
+      throw new Error('Invalid provider selection.');
+    }
+    await retryPendingSetupOperationReleases();
+    const response = await fetchWithTimeout(
+      `${hostConfig.runtimeBaseUrl}/setup-selection${body.reload === true ? '/reload' : ''}`, {
+        method: body.reload === true ? 'POST' : 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ targets: body.targets, expectedRevision: body.expectedRevision }),
+      }, RUNTIME_SETUP_STATE_TIMEOUT_MS);
+    if (!response.ok) {
+      const result = await response.json() as { error?: string };
+      throw new Error(result.error || 'Could not save provider selection.');
+    }
+    latestProviderDiagnosticsPayload = null;
+    latestCliInventoryError = null;
+    runtimeCliInventoryScanPending = false;
+    const snapshot = await refreshBootstrapSnapshot();
+    publishSnapshot(snapshot);
+    scheduleBackgroundBootstrapWork(snapshot, latestPersistedSetupState);
+    await maybeOpenApp(snapshot);
+    return snapshot;
   });
   ipcMain.handle('cats-host:run-setup-helper', async (_event, payload: unknown) => {
     if (

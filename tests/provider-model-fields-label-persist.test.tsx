@@ -11,14 +11,13 @@ import { clearProviderCatalogClientCache } from '../src/app/renderer/providerCat
 import { clearProviderRegistryClientCache } from '../src/app/renderer/providerRegistryClient.ts';
 import {
   ProviderModelFields,
-  createStaticProviderRegistryReadModel,
 } from '../src/design/components/ProviderModelFields.tsx';
 import { shouldPublishReadyPayload } from '../src/products/shared/renderer/hooks/usePublishReadyPayload.ts';
 import { clearRememberedExecutionLabels } from '../src/shared/executionLabel.ts';
 import { enCatalog } from '../src/shared/i18n/catalogs/en.ts';
 import { zhTWCatalog } from '../src/shared/i18n/catalogs/zh-TW.ts';
 import { messageKeys } from '../src/shared/i18n/messageKeys.ts';
-import { getDefaultProviderInstance } from '../src/shared/providerCatalog.ts';
+import { getDefaultProviderInstance, listProductProviders } from '../src/shared/providerCatalog.ts';
 import type {
   ProviderAdvancedModelCatalog,
   ProviderModelCatalog,
@@ -40,7 +39,8 @@ const RUNTIME_LABEL = 'Codex Label Test Model';
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = false;
 
 function codexInstance(): string {
-  return getDefaultProviderInstance('codex') ?? 'native';
+  const instance = getDefaultProviderInstance('codex') ?? 'native';
+  return instance.includes('/') ? instance : `cli/${instance}`;
 }
 
 function runtimeCatalog(): ProviderModelCatalog {
@@ -115,7 +115,8 @@ function ControlledPicker(props: {
   }>({ instance: codexInstance(), model: MODEL_ID, modelSelection: null });
   const { models, advanced, onChange } = props;
   const fetchProviderRegistry = useCallback(
-    async () => createStaticProviderRegistryReadModel(),
+    async () => ({ state: 'ready' as const, revision: 'selected-codex',
+      providers: listProductProviders().filter((provider) => provider.id === 'codex') }),
     [],
   );
   const fetchProviderModels = useCallback(() => models, [models]);

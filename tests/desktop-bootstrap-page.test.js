@@ -59,7 +59,7 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /Packaged platform setup was opened[\s\S]*diagnostics\.summary\.productSetupOpened/);
   assert.match(html, /結束 Cats/);
   assert.match(html, /顯示詳細資料/);
-  assert.match(html, /歡迎。你可以現在安裝 CLI/);
+  assert.match(html, /選擇 Cats 可以使用的 providers，再繼續設定/);
   assert.match(html, /手動後續步驟/);
   assert.match(html, /完成 \{helperLabel\} 的手動後續步驟/);
   assert.match(html, /目前的主機版本未套裝 \{helperLabel\}/);
@@ -163,12 +163,12 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   // Page mode handling
   assert.match(html, /resolvePageMode/);
   assert.match(html, /snapshot\.app\.onboardingMode === 'setup_status'/);
-  assert.match(html, /continueDisabled = legacyCliGate && installedCount === 0/);
-  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',\s*'goose', 'grok', 'cline', 'devin', 'muse'\s*\]/);
+  assert.doesNotMatch(html, /legacyCliGate/);
+  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',\s*'goose', 'grok', 'devin', 'muse'\s*\]/);
   // Ollama is not a CLI provider at all, so it does not belong in the
   // inventory-driven row.
   assert.doesNotMatch(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[[^\]]*'ollama'/);
-  assert.match(html, /ONBOARDING_NPM_PROVIDER_ORDER = \[\s*'codex', 'copilot', 'opencode',\s*'kilo', 'auggie', 'pi'\s*\]/);
+  assert.match(html, /ONBOARDING_NPM_PROVIDER_ORDER = \[\s*'codex', 'copilot', 'opencode',\s*'kilo', 'auggie', 'pi', 'cline'\s*\]/);
   assert.match(html, /Node\.js \/ npm/);
   assert.match(html, /Install Node first/);
   assert.match(html, /cli-card-spinner/);

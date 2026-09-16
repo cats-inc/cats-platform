@@ -21,6 +21,20 @@ notes.
 
 ## Deployment Methods
 
+### Provider selection contract
+
+Selection-aware Platform/Desktop must connect to the matching Runtime contract
+from [Runtime PLAN-039](../../cats-runtime/docs/plans/PLAN-039-provider-selection-bootstrap-rollout.md).
+Desktop packaging builds the sibling Runtime checkout; use the matching
+`runtime_ref` in release automation. This implementation does not publish a new
+package or update an installed Desktop.
+
+The connected Runtime's `~/.cats/runtime/config/providers.yaml` (root override:
+`CATS_RUNTIME_DIR`) owns selection. A new root offers static choices and saves
+them before inventory or helpers. Empty selection is valid idle mode; an old or
+unreachable Runtime cannot authorize an all-provider fallback. Keep the full
+example out of automatic installation/upgrade configuration writes.
+
 ### Manual Deployment
 
 ```bash

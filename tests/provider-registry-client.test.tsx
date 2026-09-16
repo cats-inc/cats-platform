@@ -1,352 +1,85 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-
 import {
-  readProviderCachedRefreshFailedWarning,
-} from '../src/shared/providerRegistryWarnings.ts';
-
-import {
-  clearProviderRegistryClientCache,
-  fetchProviderRegistryFromClientCache,
-  prefetchProviderRegistryFromClientCache,
-  PROVIDER_REGISTRY_CLIENT_CACHE_TTL_MS,
-  PROVIDER_REGISTRY_CLIENT_STALE_IF_ERROR_MS,
+  clearProviderRegistryClientCache, fetchProviderRegistryFromClientCache,
+  peekProviderRegistryClientCache, subscribeProviderRegistry,
 } from '../src/app/renderer/providerRegistryClient.ts';
-import { captured } from './helpers/capturedValue.ts';
+import {
+  fetchProviderModelCatalogFromClientCache, peekProviderModelCatalogFromClientCache,
+} from '../src/app/renderer/providerCatalogClient.ts';
 
-test('client provider registry cache dedupes in-flight reads and reuses the warmed result', async () => {
+function registry(revision = 'one', providers = ['claude']) {
+  return Response.json({ revision, state: providers.length ? 'ready' : 'no_usable_targets',
+    providers: providers.map((id) => ({ id, label: id, instances: [
+      { id: 'native', target: 'cli/native', backend: 'cli', label: 'Native' },
+    ] })) });
+}
+
+test('coalesces concurrent reads but verifies selection on every reopened picker', async () => {
   clearProviderRegistryClientCache();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
   let calls = 0;
-  let releaseFetch: (() => void) | null = null;
-  const fetchGate = new Promise<void>((resolve) => {
-    releaseFetch = resolve;
-  });
-
-  const fetchImpl = async () => {
-    calls += 1;
-    await fetchGate;
-    return new Response(JSON.stringify({
-      state: 'ready',
-      providers: [{
-        id: 'claude',
-        label: 'Claude',
-        defaultModel: 'sonnet',
-        defaultInstance: 'native',
-        defaultBackend: 'cli',
-        instances: [{
-          id: 'native',
-          label: 'cli/native',
-          target: 'cli/native',
-          backend: 'cli',
-          default: true,
-        }],
-        modelsPath: '/api/providers/claude/models',
-      }],
-    }), {
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-    });
-  };
-
-  const prefetchPromise = prefetchProviderRegistryFromClientCache({ fetchImpl });
-  const fetchPromise = fetchProviderRegistryFromClientCache({ fetchImpl });
-  captured<() => void>(releaseFetch)?.();
-
-  await prefetchPromise;
-  const registry = await fetchPromise;
+  const fetchImpl = async () => { calls++; await gate; return registry(); };
+  const first = fetchProviderRegistryFromClientCache({ fetchImpl });
+  const second = fetchProviderRegistryFromClientCache({ fetchImpl });
+  release();
+  assert.equal((await first).providers.length, 1);
+  assert.equal((await second).revision, 'one');
   assert.equal(calls, 1);
-  assert.equal(registry.state, 'ready');
-  assert.equal(registry.providers.length, 1);
-
-  const cachedRegistry = await fetchProviderRegistryFromClientCache({
-    fetchImpl: async () => {
-      throw new Error('cache miss');
-    },
-  });
-  assert.equal(cachedRegistry.providers[0]?.id, 'claude');
+  const reopened = await fetchProviderRegistryFromClientCache({ fetchImpl: async () => registry('two', []) });
+  assert.deepEqual(reopened.providers, []);
+  assert.equal(reopened.revision, 'two');
 });
 
-test('client provider registry cache refreshes after ttl expiry', async () => {
+test('drops cached choices when the connected Runtime cannot verify selection', async () => {
   clearProviderRegistryClientCache();
-  const originalDateNow = Date.now;
-  let nowMs = Date.parse('2026-04-08T12:00:00.000Z');
-  let calls = 0;
+  await fetchProviderRegistryFromClientCache({ fetchImpl: async () => registry() });
+  const failed = await fetchProviderRegistryFromClientCache({ fetchImpl: async () => { throw new Error('offline'); } });
+  assert.equal(failed.state, 'runtime_unreachable');
+  assert.deepEqual(failed.providers, []);
+  assert.equal((await fetchProviderRegistryFromClientCache({ fetchImpl: async () => registry('two') })).state, 'ready');
+});
 
-  Date.now = () => nowMs;
+test('invalidation prevents a late registry response from restoring removed choices', async () => {
+  clearProviderRegistryClientCache();
+  let release!: (value: Response) => void;
+  const pending = fetchProviderRegistryFromClientCache({ fetchImpl: () => new Promise((resolve) => { release = resolve; }) });
+  const rejected = assert.rejects(pending, /superseded/);
+  clearProviderRegistryClientCache();
+  await fetchProviderRegistryFromClientCache({ fetchImpl: async () => registry('two', []) });
+  release(registry('one'));
+  await rejected;
+  assert.deepEqual(peekProviderRegistryClientCache()?.providers, []);
+});
+
+test('a forced request supersedes an older request without erasing the new in-flight request', async () => {
+  clearProviderRegistryClientCache();
+  let releaseOld!: (value: Response) => void;
+  let releaseNew!: (value: Response) => void;
+  const old = fetchProviderRegistryFromClientCache({ fetchImpl: () => new Promise((resolve) => { releaseOld = resolve; }) });
+  const rejected = assert.rejects(old, /superseded/);
+  const next = fetchProviderRegistryFromClientCache({ force: true,
+    fetchImpl: () => new Promise((resolve) => { releaseNew = resolve; }) });
+  releaseOld(registry('one'));
+  await rejected;
+  const shared = fetchProviderRegistryFromClientCache({ fetchImpl: async () => { throw new Error('must coalesce'); } });
+  releaseNew(registry('two', []));
+  assert.equal((await next).revision, 'two');
+  assert.equal((await shared).revision, 'two');
+});
+
+test('selection revision changes clear model caches and notify mounted pickers', async () => {
+  clearProviderRegistryClientCache();
+  await fetchProviderRegistryFromClientCache({ fetchImpl: async () => registry() });
+  await fetchProviderModelCatalogFromClientCache({ provider: 'claude', instance: 'cli/native',
+    fetchImpl: async () => Response.json({ catalog: { provider: 'claude', instance: 'cli/native', models: [] } }) });
+  assert.ok(peekProviderModelCatalogFromClientCache({ provider: 'claude', instance: 'cli/native' }));
+  const seen: string[] = [];
+  const unsubscribe = subscribeProviderRegistry((value) => { seen.push(value.revision ?? 'offline'); });
   try {
-    const first = await fetchProviderRegistryFromClientCache({
-      fetchImpl: async () => {
-        calls += 1;
-        return new Response(JSON.stringify({
-          state: 'ready',
-          providers: [{
-            id: `claude-${calls}`,
-            label: 'Claude',
-            defaultModel: 'sonnet',
-            defaultInstance: 'native',
-            defaultBackend: 'cli',
-            instances: [{
-              id: 'native',
-              label: 'cli/native',
-              target: 'cli/native',
-              backend: 'cli',
-              default: true,
-            }],
-            modelsPath: '/api/providers/claude/models',
-          }],
-        }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      },
-    });
-    assert.equal(first.providers[0]?.id, 'claude-1');
-
-    nowMs += PROVIDER_REGISTRY_CLIENT_CACHE_TTL_MS - 1;
-    const cached = await fetchProviderRegistryFromClientCache({
-      fetchImpl: async () => {
-        calls += 1;
-        throw new Error('should not refresh yet');
-      },
-    });
-    assert.equal(cached.providers[0]?.id, 'claude-1');
-
-    nowMs += 2;
-    const refreshed = await fetchProviderRegistryFromClientCache({
-      fetchImpl: async () => {
-        calls += 1;
-        return new Response(JSON.stringify({
-          state: 'ready',
-          providers: [{
-            id: `claude-${calls}`,
-            label: 'Claude',
-            defaultModel: 'sonnet',
-            defaultInstance: 'native',
-            defaultBackend: 'cli',
-            instances: [{
-              id: 'native',
-              label: 'cli/native',
-              target: 'cli/native',
-              backend: 'cli',
-              default: true,
-            }],
-            modelsPath: '/api/providers/claude/models',
-          }],
-        }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      },
-    });
-    assert.equal(refreshed.providers[0]?.id, 'claude-2');
-  } finally {
-    Date.now = originalDateNow;
-    clearProviderRegistryClientCache();
-  }
-});
-
-test('client provider registry cache normalizes thrown fetch failures into runtime_unreachable state', async () => {
-  clearProviderRegistryClientCache();
-
-  const registry = await fetchProviderRegistryFromClientCache({
-    force: true,
-    fetchImpl: async () => {
-      throw new Error('The operation was aborted due to timeout');
-    },
-  });
-
-  assert.equal(registry.state, 'runtime_unreachable');
-  assert.deepEqual(registry.providers, []);
-  assert.equal(registry.warnings?.[0], 'The operation was aborted due to timeout');
-});
-
-test('client provider registry cache does not keep runtime_unreachable results warm', async () => {
-  clearProviderRegistryClientCache();
-  let calls = 0;
-
-  const first = await fetchProviderRegistryFromClientCache({
-    fetchImpl: async () => {
-      calls += 1;
-      throw new Error('cold start');
-    },
-  });
-  assert.equal(first.state, 'runtime_unreachable');
-
-  const second = await fetchProviderRegistryFromClientCache({
-    fetchImpl: async () => {
-      calls += 1;
-      return new Response(JSON.stringify({
-        state: 'ready',
-        providers: [{
-          id: 'claude',
-          label: 'Claude',
-          defaultModel: 'sonnet',
-          defaultInstance: 'native',
-          defaultBackend: 'cli',
-          instances: [{
-            id: 'native',
-            label: 'cli/native',
-            target: 'cli/native',
-            backend: 'cli',
-            default: true,
-          }],
-          modelsPath: '/api/providers/claude/models',
-        }],
-      }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      });
-    },
-  });
-
-  assert.equal(calls, 2);
-  assert.equal(second.state, 'ready');
-  assert.equal(second.providers[0]?.id, 'claude');
-});
-
-test('client provider registry cache serves the last good registry after transient refresh failures', async () => {
-  clearProviderRegistryClientCache();
-  const originalDateNow = Date.now;
-  let nowMs = Date.parse('2026-04-21T04:00:00.000Z');
-  let calls = 0;
-
-  Date.now = () => nowMs;
-  try {
-    const first = await fetchProviderRegistryFromClientCache({
-      fetchImpl: async () => {
-        calls += 1;
-        return new Response(JSON.stringify({
-          state: 'ready',
-          providers: [{
-            id: 'claude',
-            label: 'Claude',
-            defaultModel: 'sonnet',
-            defaultInstance: 'native',
-            defaultBackend: 'cli',
-            instances: [{
-              id: 'native',
-              label: 'cli/native',
-              target: 'cli/native',
-              backend: 'cli',
-              default: true,
-            }],
-            modelsPath: '/api/providers/claude/models',
-          }],
-        }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      },
-    });
-    assert.equal(first.state, 'ready');
-
-    nowMs += PROVIDER_REGISTRY_CLIENT_CACHE_TTL_MS + 1;
-    const stale = await fetchProviderRegistryFromClientCache({
-      fetchImpl: async () => {
-        calls += 1;
-        throw new Error('The operation was aborted due to timeout');
-      },
-    });
-
-    assert.equal(calls, 2);
-    assert.equal(stale.state, 'ready');
-    assert.equal(stale.providers[0]?.id, 'claude');
-    assert.equal(
-      readProviderCachedRefreshFailedWarning(stale.warnings?.at(-1) ?? ''),
-      'The operation was aborted due to timeout',
-    );
-  } finally {
-    Date.now = originalDateNow;
-    clearProviderRegistryClientCache();
-  }
-});
-
-test('client provider registry cache expires stale-if-error protection after the recovery window', async () => {
-  clearProviderRegistryClientCache();
-  const originalDateNow = Date.now;
-  let nowMs = Date.parse('2026-04-21T04:00:00.000Z');
-
-  Date.now = () => nowMs;
-  try {
-    await fetchProviderRegistryFromClientCache({
-      fetchImpl: async () => new Response(JSON.stringify({
-        state: 'ready',
-        providers: [{
-          id: 'claude',
-          label: 'Claude',
-          defaultModel: 'sonnet',
-          defaultInstance: 'native',
-          defaultBackend: 'cli',
-          instances: [{
-            id: 'native',
-            label: 'cli/native',
-            target: 'cli/native',
-            backend: 'cli',
-            default: true,
-          }],
-          modelsPath: '/api/providers/claude/models',
-        }],
-      }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
-    });
-
-    nowMs += PROVIDER_REGISTRY_CLIENT_STALE_IF_ERROR_MS + 1;
-    const expired = await fetchProviderRegistryFromClientCache({
-      fetchImpl: async () => {
-        throw new Error('runtime stayed down');
-      },
-    });
-
-    assert.equal(expired.state, 'runtime_unreachable');
-    assert.deepEqual(expired.providers, []);
-  } finally {
-    Date.now = originalDateNow;
-    clearProviderRegistryClientCache();
-  }
-});
-
-test('client provider registry cache force refresh bypasses a stuck in-flight request', async () => {
-  clearProviderRegistryClientCache();
-  let calls = 0;
-
-  void fetchProviderRegistryFromClientCache({
-    fetchImpl: async () => {
-      calls += 1;
-      return new Promise(() => {});
-    },
-  });
-
-  const forced = await fetchProviderRegistryFromClientCache({
-    force: true,
-    fetchImpl: async () => {
-      calls += 1;
-      return new Response(JSON.stringify({
-        state: 'ready',
-        providers: [{
-          id: 'claude',
-          label: 'Claude',
-          defaultModel: 'sonnet',
-          defaultInstance: 'native',
-          defaultBackend: 'cli',
-          instances: [{
-            id: 'native',
-            label: 'cli/native',
-            target: 'cli/native',
-            backend: 'cli',
-            default: true,
-          }],
-          modelsPath: '/api/providers/claude/models',
-        }],
-      }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      });
-    },
-  });
-
-  assert.equal(calls, 2);
-  assert.equal(forced.state, 'ready');
-  assert.equal(forced.providers[0]?.id, 'claude');
+    await fetchProviderRegistryFromClientCache({ fetchImpl: async () => registry('two', []) });
+    assert.deepEqual(seen, ['two']);
+    assert.equal(peekProviderModelCatalogFromClientCache({ provider: 'claude', instance: 'cli/native' }), null);
+  } finally { unsubscribe(); }
 });

@@ -6,6 +6,7 @@ import {
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
 import { recordLiveProviderModelLabels } from '../../shared/providerModelLabelRegistry.js';
+import { resolveSelectedProviderInstance } from '../../shared/providerSelection.js';
 
 export const PROVIDER_CATALOG_CLIENT_CACHE_TTL_MS = 15_000;
 export const PROVIDER_MODEL_CATALOG_LOAD_FAILED_WARNING =
@@ -104,6 +105,7 @@ async function fetchProviderCatalogFromClientCache<TCatalog>(input: {
   cacheKey: string;
   force?: boolean;
   load: () => Promise<TCatalog>;
+  accepted?: (value: TCatalog) => void;
 }): Promise<TCatalog> {
   const now = Date.now();
   if (!input.force) {
@@ -120,6 +122,10 @@ async function fetchProviderCatalogFromClientCache<TCatalog>(input: {
 
   const request = input.load()
     .then((value) => {
+      if (input.cache.inflight.get(input.cacheKey) !== request) {
+        throw new Error('Provider selection changed during catalog loading.');
+      }
+      input.accepted?.(value);
       input.cache.entries.set(input.cacheKey, {
         value,
         freshUntilMs: Date.now() + PROVIDER_CATALOG_CLIENT_CACHE_TTL_MS,
@@ -127,7 +133,7 @@ async function fetchProviderCatalogFromClientCache<TCatalog>(input: {
       return value;
     })
     .finally(() => {
-      input.cache.inflight.delete(input.cacheKey);
+      if (input.cache.inflight.get(input.cacheKey) === request) input.cache.inflight.delete(input.cacheKey);
     });
 
   input.cache.inflight.set(input.cacheKey, request);
@@ -195,6 +201,7 @@ export async function fetchProviderModelCatalogFromClientCache(options: {
     cache: providerModelCatalogClientCache,
     cacheKey,
     force: options.force,
+    accepted: (catalog) => recordLiveProviderModelLabels(provider, catalog.models),
     load: async () => {
       const response = await (options.fetchImpl ?? fetch)(
         buildProviderCatalogRequestPath({ provider, instance }),
@@ -215,7 +222,6 @@ export async function fetchProviderModelCatalogFromClientCache(options: {
       // The runtime owns which version an alias points at, so record its labels
       // for the formatters in src/shared/ that would otherwise fall back to the
       // static table and name a stale version.
-      recordLiveProviderModelLabels(provider, catalog.models);
       return catalog;
     },
   });
@@ -278,10 +284,7 @@ export function prefetchProviderCatalogsForRegistryFromClientCache(
 ): Promise<void> {
   return Promise.allSettled(
     registry.providers.map((provider) => {
-      const instance = provider.defaultInstance
-        ?? provider.instances.find((candidate) => candidate.default)?.id
-        ?? provider.instances[0]?.id
-        ?? null;
+      const instance = resolveSelectedProviderInstance(provider, '') || null;
       return prefetchProviderCatalogPairFromClientCache({
         provider: provider.id,
         instance,

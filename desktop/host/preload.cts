@@ -182,6 +182,13 @@ const bridge = {
   getSetupSnapshot(): Promise<DesktopSetupSnapshot> {
     return ipcRenderer.invoke('cats-host:get-setup-snapshot');
   },
+  saveProviderSelection(payload: { targets?: unknown[]; expectedRevision: string; reload?: boolean }): Promise<DesktopBootstrapSnapshot> {
+    if (!payload || typeof payload.expectedRevision !== 'string'
+      || (payload.reload !== true && !Array.isArray(payload.targets))) {
+      throw new Error('Invalid provider selection.');
+    }
+    return ipcRenderer.invoke('cats-host:save-provider-selection', payload);
+  },
   runAction(actionId: DesktopHostActionId): Promise<DesktopBootstrapSnapshot> {
     return ipcRenderer.invoke('cats-host:run-action', assertDesktopHostActionId(actionId));
   },

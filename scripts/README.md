@@ -287,14 +287,11 @@ backend. Devin has no machine-readable CLI output and executes through the
 `agent/acp` backend instead, so it has no `cli/native` entry in the product
 execution catalog.
 
-`Check-WindowsSetupReadiness.ps1` composes the repo-owned packaged setup
-helpers into one host-readable audit for the npm prefix substrate, the
-per-CLI npm-global helpers, the native Windows provider helpers including
-Kiro, and the optional local-model/Ollama follow-up. Set
-`CATS_DESKTOP_SETUP_AUDIT_PARALLEL=false` when you need the packaged host to
-force that audit into serial collection for debugging. WSL and Docker
-substrates were removed from the packaged path in earlier phases and are no
-longer covered here.
+`Check-WindowsSetupReadiness.ps1` remains an explicit operator utility for an
+aggregate audit. Packaged Desktop runs individual checks only for Runtime-selected
+native targets: shared Node/npm prerequisites and selected local Ollama. It does
+not invoke the aggregate audit during startup. WSL/Docker variants remain
+operator-configured and are outside the native Desktop helper editor.
 
 OpenClaw is intentionally not part of this local readiness audit because the
 provider catalog models it as an `agent/gateway` backend, not a repo-owned

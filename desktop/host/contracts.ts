@@ -26,7 +26,6 @@ export const DESKTOP_BACKGROUND_CLOSE_BEHAVIORS = [
 ] as const;
 export const DESKTOP_BOOTSTRAP_ONBOARDING_MODES = [
   'setup_status',
-  'cli_inventory_gate',
 ] as const;
 export const DESKTOP_PROGRESS_STEP_STATUSES = [
   'pending',
@@ -833,6 +832,8 @@ export interface DesktopCliInventoryError {
 }
 
 export interface DesktopBootstrapPrerequisites {
+  providerSelection?: import('./providerSelection.js').ProviderSelection | null;
+  providerCatalog?: import('./providerSelection.js').ProviderSelectionCatalogEntry[];
   cliInventory: DesktopCliInventory | null;
   cliInventoryError?: DesktopCliInventoryError | null;
 }

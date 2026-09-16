@@ -3,12 +3,25 @@ import test from 'node:test';
 
 import {
   clearProviderCatalogClientCache,
+  peekProviderModelCatalogFromClientCache,
   fetchProviderAdvancedCatalogFromClientCache,
   fetchProviderModelCatalogFromClientCache,
   prefetchProviderCatalogsForRegistryFromClientCache,
   PROVIDER_CATALOG_CLIENT_CACHE_TTL_MS,
 } from '../src/app/renderer/providerCatalogClient.ts';
 import { captured } from './helpers/capturedValue.ts';
+
+test('late catalog responses cannot repopulate an invalidated selection', async () => {
+  clearProviderCatalogClientCache();
+  let release!: (response: Response) => void;
+  const old = fetchProviderModelCatalogFromClientCache({ provider: 'claude', instance: 'cli/native',
+    fetchImpl: () => new Promise((resolve) => { release = resolve; }) });
+  const rejected = assert.rejects(old, /selection changed/);
+  clearProviderCatalogClientCache();
+  release(createModelCatalogResponse('old'));
+  await rejected;
+  assert.equal(peekProviderModelCatalogFromClientCache({ provider: 'claude', instance: 'cli/native' }), null);
+});
 
 function createModelCatalogResponse(modelId: string): Response {
   return new Response(JSON.stringify({
@@ -247,20 +260,20 @@ test('client provider catalog prefetch warms model and advanced catalogs for reg
   }, { fetchImpl });
 
   assert.deepEqual(paths, [
-    '/api/providers/claude/models?instance=native',
-    '/api/providers/claude/models/advanced?instance=native',
+    '/api/providers/claude/models?instance=cli%2Fnative',
+    '/api/providers/claude/models/advanced?instance=cli%2Fnative',
   ]);
 
   const modelCatalog = await fetchProviderModelCatalogFromClientCache({
     provider: 'claude',
-    instance: 'native',
+    instance: 'cli/native',
     fetchImpl: async () => {
       throw new Error('cache miss');
     },
   });
   const advancedCatalog = await fetchProviderAdvancedCatalogFromClientCache({
     provider: 'claude',
-    instance: 'native',
+    instance: 'cli/native',
     fetchImpl: async () => {
       throw new Error('cache miss');
     },

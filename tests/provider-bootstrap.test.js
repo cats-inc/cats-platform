@@ -67,6 +67,11 @@ async function withTempDir(callback) {
 
 function createReachableRuntimeStub() {
   return {
+    async getSetupState() {
+      return { selection: { state: 'selected', revision: 'test-selection', diskChanged: false, error: null,
+        targets: [{ provider: 'claude', backend: 'cli', instance: 'native' },
+          { provider: 'devin', backend: 'agent', instance: 'acp' }] } };
+    },
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -141,6 +146,11 @@ function createReachableRuntimeStub() {
 
 function createUnreachableRuntimeStub() {
   return {
+    async getSetupState() {
+      return { selection: { state: 'selected', revision: 'test-selection', diskChanged: false, error: null,
+        targets: [{ provider: 'claude', backend: 'cli', instance: 'native' },
+          { provider: 'devin', backend: 'agent', instance: 'acp' }] } };
+    },
     async getHealth() {
       return { baseUrl: 'http://127.0.0.1:3110', reachable: false, status: 'error' };
     },
@@ -210,7 +220,7 @@ test('bootstrapProviderSelector tolerates an unreachable runtime without writing
   });
 });
 
-test('seedProviderSelectorFromSnapshot makes the first /api/providers response serve the cached snapshot', async () => {
+test('seedProviderSelectorFromSnapshot cannot admit targets while Runtime is unreachable', async () => {
   await withTempDir(async (directory) => {
     const snapshotPath = path.join(directory, 'provider-snapshot.json');
     await writeProviderSnapshot(snapshotPath, {
@@ -269,15 +279,8 @@ test('seedProviderSelectorFromSnapshot makes the first /api/providers response s
       const response = await fetch(`${baseUrl}/api/providers`);
       assert.equal(response.status, 200);
       const payload = await response.json();
-      assert.equal(payload.state, 'ready');
-      assert.ok(
-        payload.providers.some((provider) => provider.id === 'claude'),
-        'snapshot providers should appear in the first response',
-      );
-      assert.ok(
-        payload.warnings?.some((warning) => warning.toLowerCase().includes('last saved')),
-        'response should disclose that providers came from the on-disk snapshot',
-      );
+      assert.equal(payload.state, 'runtime_unreachable');
+      assert.deepEqual(payload.providers, []);
     });
 
     // Background SWR refresh fires once after the initial response; we don't

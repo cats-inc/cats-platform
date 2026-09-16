@@ -10,6 +10,20 @@
 
 ## Summary
 
+### Selection scope amendment — 2026-09-16
+
+[ADR-115](../decisions/115-bound-bootstrap-and-provider-choices-by-runtime-selection.md)
+and [Runtime SPEC-030](../../../cats-runtime/docs/specs/SPEC-030-provider-selection-before-bootstrap-probes.md)
+now govern bootstrap and provider intent. Every lifecycle check/action and rescan
+must remain inside the connected Runtime's active selection, with native host
+helpers additionally restricted to its `nativeSetupTargets`. Bulk actions cannot
+expand to all recognized installations. Select new targets in the Runtime-owned
+editor before spending provider resources; availability never selects them.
+Deselection and explicit empty idle mode do not uninstall providers. The planned
+uninstall controls below remain separate work, and do not change this boundary.
+
+### Original lifecycle proposal
+
 `Settings > Runtime` already shows a CLI/provider list, but the list is mostly
 diagnostic today. The next slice should make that existing list useful by
 turning it into the provider lifecycle control surface for desktop users:

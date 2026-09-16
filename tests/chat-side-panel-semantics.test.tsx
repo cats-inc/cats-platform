@@ -1,5 +1,8 @@
+import { resetTestDom } from './helpers/installDomBeforeReact.ts';
+
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { cleanup, render, waitFor } from '@testing-library/react';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
@@ -7,6 +10,7 @@ import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import { buildChatSidePanelSections } from '../src/products/shared/renderer/components/chat-view/ChatSidePanelSections.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
+import { clearProviderRegistryClientCache } from '../src/app/renderer/providerRegistryClient.ts';
 
 type SidePanelOptions = Parameters<typeof buildChatSidePanelSections>[0];
 
@@ -65,6 +69,52 @@ function renderExecutionMarkup(options: SidePanelOptions): string {
       <ExecutionSection options={options} />
     </I18nProvider>,
   );
+}
+
+async function assertLoadedExecutionTarget(
+  options: SidePanelOptions,
+  expectedProvider: string,
+  expectedModel: string,
+): Promise<void> {
+  cleanup();
+  resetTestDom();
+  clearProviderRegistryClientCache();
+  const originalFetch = globalThis.fetch;
+  const models: Record<string, string> = { claude: 'opus', codex: 'gpt-5.6-sol' };
+  globalThis.fetch = async (input) => {
+    const path = String(input);
+    if (/\/api\/providers(?:\?|$)/u.test(path)) {
+      return Response.json({ state: 'ready', revision: 'selected-test-targets',
+        providers: Object.entries(models).map(([id, model]) => ({
+          id, label: id, defaultModel: model, defaultInstance: 'native', defaultBackend: 'cli',
+          instances: [{ id: 'native', target: 'cli/native', label: 'Native', backend: 'cli', default: true }],
+          modelsPath: `/api/providers/${id}/models`,
+        })),
+      });
+    }
+    const provider = path.split('/')[3];
+    const model = models[provider];
+    assert.ok(model, `Unexpected catalog request: ${path}`);
+    return Response.json({ catalog: {
+      provider, backend: 'cli', instance: 'cli/native', defaultModel: model, source: 'dynamic', cache: null,
+      models: [{ id: model, label: model, default: true }],
+      entries: [{ id: model, label: model, default: true }], presets: [], controls: [],
+      defaultSelection: { entryId: model, entryMode: 'explicit' },
+      support: { tier: 'full', notes: [] }, warnings: [],
+    } });
+  };
+  try {
+    const view = render(<I18nProvider locale="en"><ExecutionSection options={options} /></I18nProvider>);
+    await waitFor(() => {
+      const values = Array.from(view.container.querySelectorAll('select'), (select) => select.value);
+      assert.ok(values.includes(expectedProvider), `Provider selection: ${values}`);
+      assert.ok(values.includes(expectedModel), `Model selection: ${values}`);
+    });
+  } finally {
+    cleanup();
+    clearProviderRegistryClientCache();
+    globalThis.fetch = originalFetch;
+  }
 }
 
 function buildExecutionMarkup(overrides: {
@@ -129,12 +179,12 @@ test('cat execution side panel surfaces the Cat tool profile', () => {
   assert.match(markup, />Work memory</u);
 });
 
-test('direct-lane execution panel shows the conversation\'s own target, not the cat profile', () => {
+test('direct-lane execution panel shows the conversation\'s own target, not the cat profile', async () => {
   // The cat profile default is shared by every conversation with this cat and
   // is what the panel used to render, so opening the panel in conversation B
   // showed whatever conversation A last picked. The conversation's own target
   // (the assignment the send path uses, and what the chip shows) wins.
-  const markup = renderExecutionMarkup(createExecutionOptions({
+  const options = createExecutionOptions({
     payload: {
       chat: {
         bossCatId: null,
@@ -181,17 +231,13 @@ test('direct-lane execution panel shows the conversation\'s own target, not the 
     } as never,
     onDirectLaneExecutionTargetChange: () => {},
     onDirectLaneParticipantTargetChange: () => {},
-  }));
+  });
 
-  // Provider and model selects are controlled by the conversation's target
-  // (React serializes `value` before `selected`).
-  assert.match(markup, /<option value="claude" selected=""/u);
-  assert.match(markup, /<option value="opus" selected=""/u);
-  assert.doesNotMatch(markup, /<option value="codex" selected=""/u);
+  await assertLoadedExecutionTarget(options, 'claude', 'opus');
 });
 
-test('direct-lane execution panel falls back to the cat profile only when the conversation has no participant yet', () => {
-  const markup = renderExecutionMarkup(createExecutionOptions({
+test('direct-lane execution panel falls back to the cat profile only when the conversation has no participant yet', async () => {
+  const options = createExecutionOptions({
     payload: {
       chat: {
         bossCatId: null,
@@ -220,7 +266,7 @@ test('direct-lane execution panel falls back to the cat profile only when the co
     defaultRecipientParticipant: null,
     onDirectLaneExecutionTargetChange: () => {},
     onDirectLaneParticipantTargetChange: () => {},
-  }));
+  });
 
-  assert.match(markup, /<option value="codex" selected=""/u);
+  await assertLoadedExecutionTarget(options, 'codex', 'gpt-5.6-sol');
 });

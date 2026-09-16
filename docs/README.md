@@ -2,6 +2,17 @@
 
 > This directory contains all project documentation.
 
+## Provider Selection and Bootstrap
+
+Runtime owns the active provider selection for standalone, local development,
+and Desktop. First-run choices are saved before inventory or helper work;
+ordinary provider/model pickers follow exact selected targets and revisions.
+Valid empty selection supports idle onboarding. See
+[ADR-115](./decisions/115-bound-bootstrap-and-provider-choices-by-runtime-selection.md),
+[Runtime SPEC-030](../../cats-runtime/docs/specs/SPEC-030-provider-selection-before-bootstrap-probes.md),
+and the shared [PLAN-039](../../cats-runtime/docs/plans/PLAN-039-provider-selection-bootstrap-rollout.md)
+for implementation progress and native OS verification limits.
+
 ## Official Utility Apps and Usage
 
 The 2026-09-10 decision keeps official utility sources in `cats-apps` and the

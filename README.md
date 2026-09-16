@@ -89,6 +89,11 @@ The current slices are:
 
 ## Current Status
 
+- [x] Save Runtime-owned provider selection before Desktop inventory and helpers;
+      scope product provider/model choices by exact target and config revision.
+      Explicit empty selection supports idle mode. Native installer acceptance
+      remains tracked in the shared [bootstrap rollout plan](../cats-runtime/docs/plans/PLAN-039-provider-selection-bootstrap-rollout.md).
+
 - [x] Bootstrap `cats-platform/` from `project-bootstrap`
 - [x] Establish `cats-runtime` as the only runtime boundary
 - [x] Add a minimal Node/TypeScript HTTP entrypoint and smoke tests

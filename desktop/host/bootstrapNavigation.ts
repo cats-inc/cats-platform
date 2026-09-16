@@ -2,15 +2,9 @@ import type { DesktopBootstrapSnapshot } from './contracts.js';
 
 type NavSnapshot = Pick<DesktopBootstrapSnapshot, 'phase' | 'app' | 'prerequisites'>;
 
-function isCliMissing(snapshot: NavSnapshot): boolean {
-  return Boolean(
-    snapshot.phase === 'needs_prerequisites'
-      && snapshot.app.onboardingMode === 'cli_inventory_gate'
-      && snapshot.prerequisites
-      && snapshot.prerequisites.cliInventory
-      && snapshot.prerequisites.cliInventory.source === 'runtime'
-      && snapshot.prerequisites.cliInventory.total === 0,
-  );
+function isSelectionRequired(snapshot: NavSnapshot): boolean {
+  const selection = snapshot.prerequisites?.providerSelection;
+  return selection?.state === 'missing' || selection?.state === 'invalid';
 }
 
 function isSetupComplete(snapshot: NavSnapshot): boolean {
@@ -21,7 +15,7 @@ function shouldShowSetupStatusOnboarding(snapshot: NavSnapshot): boolean {
   return Boolean(
     snapshot.phase === 'ready_for_setup'
       && snapshot.app.onboardingMode === 'setup_status'
-      && !isSetupComplete(snapshot),
+      && (!isSetupComplete(snapshot) || isSelectionRequired(snapshot)),
   );
 }
 
@@ -47,10 +41,7 @@ export function resolveDesktopBootstrapNavigation(
     return `${options.appBaseUrl}${snapshot.app.entryPath}`;
   }
 
-  // CLI missing is a hard gate: stay on bootstrap page regardless of
-  // setupCompleteAt so the user lands on the install UI instead of an
-  // empty-shell chat (or, post-setup, on a chat that can't reach any CLI).
-  if (snapshot.phase === 'needs_prerequisites' && isCliMissing(snapshot)) {
+  if (isSelectionRequired(snapshot)) {
     return null;
   }
 
@@ -89,7 +80,7 @@ export function shouldRevealDesktopBootstrapRecovery(
   return snapshot.phase === 'failed'
     || shouldShowSetupStatusOnboarding(snapshot)
     || (snapshot.phase === 'needs_prerequisites'
-      && (!isSetupComplete(snapshot) || isCliMissing(snapshot)));
+      && (!isSetupComplete(snapshot) || isSelectionRequired(snapshot)));
 }
 
 export function resolveDesktopWindowRevealNavigation(

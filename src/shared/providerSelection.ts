@@ -6,6 +6,7 @@ import type {
 } from './providerCatalog.js';
 import {
   normalizeProductProviderModelId,
+  providerInstanceTarget,
   resolveProviderCatalogDefaultModel,
 } from './providerCatalog.js';
 
@@ -361,21 +362,15 @@ export function resolveSelectedProviderInstance(
   requestedInstance: string,
 ): string {
   const normalizedRequested = requestedInstance.trim();
-  if (normalizedRequested && provider.instances.some((instance) => instance.id === normalizedRequested)) {
-    return normalizedRequested;
-  }
-
-  // Before the runtime-backed provider registry arrives we may not know any instances yet.
-  // Preserve the caller's current choice instead of clearing it to the empty fallback.
-  if (normalizedRequested && provider.instances.length === 0) {
-    return normalizedRequested;
-  }
-
-  if (normalizedRequested && provider.instances.length > 0) {
-    console.warn(`Unknown provider instance "${normalizedRequested}" for ${provider.id}, falling back to default`);
-  }
-
-  return provider.defaultInstance ?? provider.instances[0]?.id ?? '';
+  const requested = provider.instances.filter((instance) =>
+    providerInstanceTarget(instance) === normalizedRequested || instance.id === normalizedRequested);
+  if (normalizedRequested && requested.length === 1) return providerInstanceTarget(requested[0]!);
+  const defaultTarget = provider.instances.find((instance) => instance.default)
+    ?? provider.instances.find((instance) => (instance.id === provider.defaultInstance
+      || providerInstanceTarget(instance) === provider.defaultInstance)
+      && (!provider.defaultBackend || instance.backend === provider.defaultBackend))
+    ?? provider.instances[0];
+  return defaultTarget ? providerInstanceTarget(defaultTarget) : '';
 }
 
 export function isLegacyProviderModelTarget(input: {

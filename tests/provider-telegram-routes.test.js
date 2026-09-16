@@ -60,6 +60,17 @@ function createTempPlatformConfig(prefix = 'cats-telegram-routes-') {
 function createRuntimeStub() {
   let sessionCounter = 0;
   return {
+    async getSetupState() {
+      return { selection: { state: 'selected', revision: 'telegram-selected', nativeSetupTargets: [],
+        diskChanged: false, error: null, targets: [
+          { provider: 'openclaw', backend: 'agent', instance: 'gateway' },
+          { provider: 'claude', backend: 'cli', instance: 'native' },
+          { provider: 'codex', backend: 'agent', instance: 'bridge' },
+          { provider: 'codex', backend: 'cli', instance: 'ubuntu' },
+          { provider: 'opencode', backend: 'cli', instance: 'native' },
+          { provider: 'kilo', backend: 'cli', instance: 'native' },
+        ] } };
+    },
     async getHealth() {
       return {
         baseUrl: RUNTIME_BASE_URL,
@@ -103,11 +114,11 @@ function createRuntimeStub() {
           ],
         },
         codex: {
-          defaultInstance: 'agent/bridge',
+          defaultInstance: 'bridge',
           defaultBackend: 'agent',
           instances: [
             {
-              id: 'agent/bridge',
+              id: 'bridge',
               target: 'agent/bridge',
               backend: 'agent',
               command: null,
@@ -189,7 +200,7 @@ function createRuntimeStub() {
         {
           provider: 'codex',
           backend: 'agent',
-          instance: 'agent/bridge',
+          instance: 'bridge',
           defaultTarget: true,
           availability: {
             status: 'ok',
@@ -566,7 +577,7 @@ test('GET /api/providers returns the runtime-backed provider registry', async ()
     assert.equal(claude.instances[0].label, 'cli/native');
     const codex = payload.providers.find((provider) => provider.id === 'codex');
     assert.equal(codex.label, 'Codex');
-    assert.equal(codex.defaultInstance, 'agent/bridge');
+    assert.equal(codex.defaultInstance, 'bridge');
     assert.equal(codex.instances.length, 2);
     assert.equal(codex.instances[0].label, 'agent/bridge');
     const opencodeIndex = payload.providers.findIndex((provider) => provider.id === 'opencode');
@@ -587,7 +598,7 @@ test('GET /api/providers returns the runtime-backed provider registry', async ()
   ]);
 });
 
-test('GET /api/providers stays ready when runtime config enrichment fails but availability truth succeeds', async () => {
+test('GET /api/providers withholds targets when runtime config is unavailable despite diagnostics', async () => {
   const runtimeClient = createRuntimeStub();
   let configAttempts = 0;
 
@@ -601,17 +612,14 @@ test('GET /api/providers stays ready when runtime config enrichment fails but av
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.state, 'ready');
-    assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
-    const codex = payload.providers.find((provider) => provider.id === 'codex');
-    assert.equal(codex.defaultInstance, 'agent/bridge');
-    assert.ok(codex.instances.some((instance) => instance.id === 'agent/bridge'));
+    assert.equal(payload.state, 'no_usable_targets');
+    assert.deepEqual(payload.providers, []);
   });
 
   assert.equal(configAttempts, 1);
 });
 
-test('GET /api/providers does not wait on a hung runtime config enrichment read', async () => {
+test('GET /api/providers bounds a hung config read and withholds unconfirmed targets', async () => {
   const runtimeClient = createRuntimeStub();
   runtimeClient.getProviderConfig = async () => new Promise(() => {});
 
@@ -626,8 +634,8 @@ test('GET /api/providers does not wait on a hung runtime config enrichment read'
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.state, 'ready');
-    assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
+    assert.equal(payload.state, 'no_usable_targets');
+    assert.deepEqual(payload.providers, []);
   });
 });
 

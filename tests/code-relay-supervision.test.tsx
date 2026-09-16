@@ -22,8 +22,9 @@ function createRuntimeStub(): RuntimeClient & {
   const providerConfig = {
     claude: {
       defaultInstance: 'native',
-      defaultBackend: 'cli',
-      instances: [{ id: 'native', target: 'cli/native', backend: 'cli' }],
+      defaultBackend: 'api',
+      instances: [{ id: 'native', target: 'cli/native', backend: 'cli' },
+        { id: 'native', target: 'api/native', backend: 'api' }],
     },
     codex: {
       defaultInstance: 'native',
@@ -52,7 +53,7 @@ function createRuntimeStub(): RuntimeClient & {
         providers: [],
         availableCount: 0,
         providerCount: 0,
-        providersReadyToApply: [],
+        providersReady: [],
         providersNeedingAttention: [],
       };
     },
@@ -159,7 +160,7 @@ interface RelayDispatchLike {
 interface RelayPayloadLike {
   threads: Array<{
     thread: { id: string; status: string };
-    roster: Array<{ id: string }>;
+    roster: Array<{ id: string; provider: string; instance: string; availability: string }>;
     rounds: Array<{ dispatches: RelayDispatchLike[] }>;
   }>;
 }
@@ -215,6 +216,8 @@ test('Code relay fan-out creates sibling supervised runs and durable evidence', 
   assert.equal(createResponse.status, 201);
   const createPayload = await createResponse.json() as RelayPayloadLike;
   const thread = createPayload.threads[0];
+  assert.equal(thread.roster.find((entry) => entry.provider === 'claude')?.instance, 'api/native');
+  assert.equal(thread.roster.find((entry) => entry.provider === 'claude')?.availability, 'available');
 
   const fanOutResponse = await fetch(
     `${baseUrl}/api/code/relay/threads/${thread.thread.id}/fan-out`,

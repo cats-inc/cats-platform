@@ -1,185 +1,66 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { buildDesktopCliInventoryFromRuntime, probeContradictsCachedBootstrapState } from '../build/desktop/cliInventoryProbe.js';
+import { nativeSetupTarget } from '../build/desktop/providerSelection.js';
 
-import {
-  buildDesktopCliInventoryFromRuntime,
-  probeContradictsCachedBootstrapState,
-} from '../build/desktop/cliInventoryProbe.js';
+function probe(providers, overrides = {}) {
+  const targets = providers.map(({ provider }) => nativeSetupTarget(provider));
+  return { selection: { state: targets.length ? 'selected' : 'empty', revision: 'one', targets,
+    nativeSetupTargets: targets, diskChanged: false, error: null }, universe: [],
+    scan: { revision: 'one', scannedAt: '2026-09-16T00:00:00.000Z',
+      providers: providers.map((entry) => ({ ...nativeSetupTarget(entry.provider), ...entry })) }, ...overrides };
+}
 
-test('buildDesktopCliInventoryFromRuntime returns unknown source when runtime probe is null', () => {
-  const inventory = buildDesktopCliInventoryFromRuntime(null, 'win32');
-
-  assert.equal(inventory.source, 'unknown');
-  assert.equal(inventory.total, 0);
-  assert.deepEqual(inventory.installed, []);
-  assert.equal(inventory.scannedAt, null);
-  assert.equal(inventory.candidates.length, 17);
-  for (const candidate of inventory.candidates) {
-    assert.equal(candidate.installed, false);
-  }
+test('missing selection never expands to the complete static installer catalog', () => {
+  assert.deepEqual(buildDesktopCliInventoryFromRuntime(null, 'win32').candidates, []);
+  assert.deepEqual(buildDesktopCliInventoryFromRuntime({ scan: null }, 'win32').candidates, []);
 });
 
-test('buildDesktopCliInventoryFromRuntime returns unknown source when probe scan is null', () => {
-  const inventory = buildDesktopCliInventoryFromRuntime({ scan: null }, 'win32');
+for (const [platform, prefix] of [['win32', 'windows'], ['darwin', 'macos'], ['linux', 'linux']]) {
+  test(platform + ' inventory contains selected native installers only', () => {
+    const inventory = buildDesktopCliInventoryFromRuntime(probe([
+      { provider: 'claude', available: true, authStatus: 'missing' },
+      { provider: 'codex', available: false },
+    ]), platform);
+    assert.equal(inventory.source, 'runtime');
+    assert.equal(inventory.candidates.length, 2);
+    assert.deepEqual(inventory.installed, [prefix + '-claude-native-installer']);
+    assert.equal(inventory.candidates.find((entry) => entry.providerId === 'claude_code').authStatus, 'missing');
+  });
+}
 
-  assert.equal(inventory.source, 'unknown');
-  assert.equal(inventory.total, 0);
-});
-
-test('buildDesktopCliInventoryFromRuntime maps runtime providers to platform-specific helper ids', () => {
-  const inventory = buildDesktopCliInventoryFromRuntime({
-    scan: {
-      scannedAt: '2026-04-30T10:00:00.000Z',
-      providers: [
-        { provider: 'claude', available: true },
-        { provider: 'codex', available: true },
-        { provider: 'antigravity', available: false },
-        { provider: 'cursor', available: true },
-        { provider: 'kiro', available: false },
-        { provider: 'grok', available: true },
-      ],
-    },
-  }, 'win32');
-
+test('retains selected unavailable providers before the first scan', () => {
+  const inventory = buildDesktopCliInventoryFromRuntime(probe([{ provider: 'codex' }], { scan: null }), 'win32');
   assert.equal(inventory.source, 'runtime');
-  assert.equal(inventory.scannedAt, '2026-04-30T10:00:00.000Z');
-  assert.equal(inventory.total, 4);
-  assert.deepEqual(
-    inventory.installed.sort(),
-    [
-      'windows-claude-native-installer',
-      'windows-codex-native-installer',
-      'windows-cursor-native-installer',
-      'windows-grok-native-installer',
-    ].sort(),
-  );
-
-  const claudeEntry = inventory.candidates.find((c) => c.providerId === 'claude_code');
-  assert.ok(claudeEntry);
-  assert.equal(claudeEntry?.installed, true);
-  assert.equal(claudeEntry?.helperId, 'windows-claude-native-installer');
-
-  const cursorEntry = inventory.candidates.find((c) => c.providerId === 'cursor_agent');
-  assert.equal(cursorEntry?.installed, true);
-  assert.equal(cursorEntry?.helperId, 'windows-cursor-native-installer');
-
-  const antigravityEntry = inventory.candidates.find((c) => c.providerId === 'antigravity');
-  assert.equal(antigravityEntry?.installed, false);
-
-  const grokEntry = inventory.candidates.find((c) => c.providerId === 'grok');
-  assert.equal(grokEntry?.installed, true);
-  assert.equal(grokEntry?.helperId, 'windows-grok-native-installer');
+  assert.equal(inventory.scannedAt, null);
+  assert.equal(inventory.candidates.length, 1);
+  assert.equal(inventory.candidates[0].installed, false);
 });
 
-test('buildDesktopCliInventoryFromRuntime never marks ollama as installed (not in runtime KNOWN_PROVIDERS)', () => {
-  const inventory = buildDesktopCliInventoryFromRuntime({
-    scan: {
-      scannedAt: '2026-04-30T10:00:00.000Z',
-      providers: [
-        { provider: 'claude', available: true },
-        { provider: 'ollama', available: true },
-      ],
-    },
-  }, 'win32');
-
-  const ollamaEntry = inventory.candidates.find((c) => c.providerId === 'ollama');
-  assert.ok(ollamaEntry);
-  assert.equal(ollamaEntry?.installed, false);
+test('ignores observations from old revisions and targets with the same bare instance name', () => {
+  const data = probe([{ provider: 'codex', available: true }]);
+  data.scan.revision = 'old';
+  assert.equal(buildDesktopCliInventoryFromRuntime(data, 'linux').total, 0);
+  data.scan.revision = 'one';
+  data.scan.providers[0].backend = 'api';
+  assert.equal(buildDesktopCliInventoryFromRuntime(data, 'linux').total, 0);
 });
 
-test('buildDesktopCliInventoryFromRuntime emits linux helper ids on linux', () => {
-  const inventory = buildDesktopCliInventoryFromRuntime({
-    scan: {
-      scannedAt: '2026-04-30T10:00:00.000Z',
-      providers: [{ provider: 'claude', available: true }],
-    },
-  }, 'linux');
-
-  assert.deepEqual(inventory.installed, ['linux-claude-native-installer']);
+test('non-native configurations named native have no local installer', () => {
+  const data = probe([{ provider: 'codex', available: true }]);
+  data.selection.nativeSetupTargets = [];
+  assert.deepEqual(buildDesktopCliInventoryFromRuntime(data, 'win32').candidates, []);
 });
 
-test('buildDesktopCliInventoryFromRuntime emits macos helper ids on darwin', () => {
-  const inventory = buildDesktopCliInventoryFromRuntime({
-    scan: {
-      scannedAt: '2026-04-30T10:00:00.000Z',
-      providers: [{ provider: 'codex', available: true }],
-    },
-  }, 'darwin');
-
-  assert.deepEqual(inventory.installed, ['macos-codex-native-installer']);
+test('selected local Ollama can use a matching Runtime observation', () => {
+  const inventory = buildDesktopCliInventoryFromRuntime(probe([{ provider: 'ollama', available: true }]), 'linux');
+  assert.deepEqual(inventory.installed, ['linux-ollama-local-model-installer']);
 });
 
-test('buildDesktopCliInventoryFromRuntime carries the runtime auth signal for installed CLIs', () => {
-  const inventory = buildDesktopCliInventoryFromRuntime({
-    scan: {
-      scannedAt: '2026-08-28T10:00:00.000Z',
-      providers: [
-        { provider: 'claude', available: true, authStatus: 'missing' },
-        { provider: 'codex', available: true, authStatus: 'not_required' },
-        { provider: 'goose', available: true, authStatus: 'unknown' },
-        // Reported unauthenticated but not installed: nothing to sign in to.
-        { provider: 'junie', available: false, authStatus: 'missing' },
-        // Older runtime, or a value we do not recognize.
-        { provider: 'grok', available: true },
-        { provider: 'cline', available: true, authStatus: 'sort_of' },
-      ],
-    },
-  }, 'win32');
-
-  const authOf = (providerId) => inventory.candidates
-    .find((candidate) => candidate.providerId === providerId)?.authStatus;
-
-  assert.equal(authOf('claude_code'), 'missing');
-  assert.equal(authOf('codex'), 'not_required');
-  assert.equal(authOf('goose'), 'unknown');
-  assert.equal(authOf('junie'), 'unknown', 'a missing CLI cannot be unauthenticated');
-  assert.equal(authOf('grok'), 'unknown', 'an absent authStatus is not a claim');
-  assert.equal(authOf('cline'), 'unknown', 'an unrecognized authStatus is not a claim');
-});
-
-test('buildDesktopCliInventoryFromRuntime reports unknown auth before any scan', () => {
-  const inventory = buildDesktopCliInventoryFromRuntime(null, 'win32');
-
-  for (const candidate of inventory.candidates) {
-    assert.equal(candidate.authStatus, 'unknown');
-  }
-});
-
-test('probeContradictsCachedBootstrapState spots a runtime that left bootstrap since the cache was taken', () => {
-  // Applying a provider config takes the runtime out of bootstrap in-process.
-  // Nothing pushes that to the host, so the cached health payload keeps saying
-  // setup is required until something notices the probe disagrees.
-  assert.equal(
-    probeContradictsCachedBootstrapState({ bootstrapRequired: false, scan: null }, true),
-    true,
-  );
-});
-
-test('probeContradictsCachedBootstrapState spots a runtime that re-entered bootstrap', () => {
-  assert.equal(
-    probeContradictsCachedBootstrapState({ bootstrapRequired: true, scan: null }, false),
-    true,
-  );
-});
-
-test('probeContradictsCachedBootstrapState stays quiet while the two agree', () => {
-  assert.equal(
-    probeContradictsCachedBootstrapState({ bootstrapRequired: true, scan: null }, true),
-    false,
-  );
-  assert.equal(
-    probeContradictsCachedBootstrapState({ bootstrapRequired: false, scan: null }, false),
-    false,
-  );
-});
-
-test('probeContradictsCachedBootstrapState treats a missing signal as no claim', () => {
-  // A runtime too old to send the field, a failed probe, or a host with nothing
-  // cached yet must not be read as "the state changed".
-  assert.equal(probeContradictsCachedBootstrapState({ scan: null }, true), false);
+test('probe bootstrap signals invalidate contradictory health without inventing missing signals', () => {
+  assert.equal(probeContradictsCachedBootstrapState({ bootstrapRequired: false, scan: null }, true), true);
+  assert.equal(probeContradictsCachedBootstrapState({ bootstrapRequired: true, scan: null }, false), true);
+  assert.equal(probeContradictsCachedBootstrapState({ bootstrapRequired: false, scan: null }, false), false);
   assert.equal(probeContradictsCachedBootstrapState(null, true), false);
-  assert.equal(
-    probeContradictsCachedBootstrapState({ bootstrapRequired: false, scan: null }, null),
-    false,
-  );
+  assert.equal(probeContradictsCachedBootstrapState({ scan: null }, true), false);
 });

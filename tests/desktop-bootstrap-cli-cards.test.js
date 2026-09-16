@@ -79,6 +79,10 @@ function candidates(installedProviderIds = []) {
 }
 
 function snapshot(inventory) {
+  const targets = [...NATIVE_PROVIDERS, ...NPM_PROVIDERS, 'ollama'].map((id) => ({
+    provider: id === 'claude_code' ? 'claude' : id === 'cursor_agent' ? 'cursor' : id,
+    backend: id === 'ollama' ? 'local' : 'cli', instance: id === 'ollama' ? 'local' : 'native',
+  }));
   return {
     phase: 'ready_for_setup',
     app: {
@@ -90,7 +94,10 @@ function snapshot(inventory) {
     actions: [],
     services: [],
     events: [],
-    prerequisites: { cliInventory: inventory },
+    prerequisites: { cliInventory: inventory,
+      providerSelection: { state: 'selected', revision: 'one', targets, nativeSetupTargets: targets, diskChanged: false, error: null },
+      providerCatalog: targets.map((target) => ({ ...target, familyLabel: target.provider, binaryName: target.provider })),
+    },
   };
 }
 
@@ -178,6 +185,7 @@ function cardNamed(document, name) {
 
 function providerCards(document) {
   return [...document.querySelectorAll('.cli-card')].filter((card) => {
+    if (card.closest('.selection-editor')) return false;
     const name = card.querySelector('.cli-card-name')?.textContent?.trim() ?? '';
     return !AUDIT_BACKED_CARD_NAMES.has(name);
   });

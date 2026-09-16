@@ -564,39 +564,33 @@ showing only provider remediation.
 Once setup is complete, the desktop host keeps runtime/provider regressions in
 recovery: it opens Cats or runtime diagnostics instead of routing the user
 back into onboarding.
-On packaged Windows/macOS/Linux hosts, the desktop host now also auto-runs the
-repo-owned platform-specific readiness audit during bootstrap whenever no more
-specific packaged setup recovery action is active, so the first-run provider
-scan is no longer just a manifest promise. On Windows, that bootstrap-time
-audit also carries optional local-model follow-through for the current
-`local_model_pack`, but the host keeps those findings non-blocking for the API
-baseline and first chat. That state is now persisted explicitly in the host
-setup record instead of being inferred only from helper planned-action
-strings, and the bootstrap UI now names the pack directly when it surfaces
-that follow-through.
-If the API baseline is already ready and chat can open, the bootstrap action
-bar still keeps a non-blocking setup shortcut for that optional local-model
-pack instead of hiding it behind chat-only actions.
-When a helper reports only manual follow-through, the host now prefers a
-verification-first resume step instead of recommending another install/apply
-mutation by default.
+### Select Providers before Inventory
 
-Current interruption truth in the packaged host:
+On Windows, macOS, and Linux, the first bootstrap page reads the connected
+Runtime's static provider catalog. Select the providers you want, then save.
+Installation and login are not prerequisites for saving. The Runtime writes its
+active configuration before Desktop starts provider-specific inventory/checks.
+You can explicitly save an empty selection and continue in idle mode.
 
-- relaunch, restart, elevation/UAC, first WSL boot, and auth-required
-  follow-through are now explicit host-owned setup states
-- the setup recovery panel and bootstrap action bar can surface
-  `Resume Packaged Setup` when the last helper run is resumable
-- the Windows readiness audit now also audits native Claude/Cursor/Goose/Junie
-  auth-required follow-through plus native Kiro install readiness
-- the same Windows readiness audit can now optionally surface
-  `docker_warm_up_required` for Docker-requiring packaged paths when Docker
-  Desktop is installed but its engine is not ready yet
-- the same Windows readiness audit can now also optionally surface Ollama
-  local-model follow-through when the runtime is installed but its local API is
-  not ready
-- set `CATS_DESKTOP_SETUP_AUDIT_PARALLEL=false` when you need startup audits
-  to collect serially for debugging instead of using background fan-out
+Runtime owns `~/.cats/runtime/config/providers.yaml` (or the root selected by
+`CATS_RUNTIME_DIR`). The complete example remains a reference. Existing custom
+commands, API/agent targets, WSL/Docker variants, credentials references, comments,
+and valid routing are preserved for retained targets. Hand edits are detected;
+use Reload to validate and activate them before changing the selection in UI.
+A stale save or removal of a target with running work returns a conflict.
+
+Desktop uses Runtime's exact native helper eligibility. It checks Node/npm only
+when a selected installer needs it and checks Ollama only for a selected local
+loopback target. OpenClaw-only and API-only configurations need no CLI inventory.
+Inventory and scans remain scoped after repair or install; ordinary product
+pickers show usable selected targets, while repair surfaces retain unavailable
+selected targets. Adding bundled helpers never changes user selection.
+
+Installer helpers hold Runtime operation receipts until completion. Desktop
+waits for active helpers before restarting Runtime, exiting, or handing off an
+update. A dropped receipt release is retried on the next inventory/save/helper
+interaction. The standalone aggregate readiness scripts remain manual operator
+utilities; Desktop no longer runs an all-provider startup audit.
 
 ### Self-Hosted npm Package Smoke
 

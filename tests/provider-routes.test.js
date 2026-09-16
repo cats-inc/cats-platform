@@ -32,6 +32,11 @@ function createRuntimeRequestError(message, status) {
 
 function createRuntimeStub() {
   return {
+    async getSetupState() {
+      return { selection: { state: 'selected', revision: 'test-selection', diskChanged: false, error: null,
+        targets: [{ provider: 'claude', backend: 'cli', instance: 'native' },
+          { provider: 'devin', backend: 'agent', instance: 'acp' }] } };
+    },
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -159,6 +164,71 @@ async function withMockedDateNow(testContext, initialNowMs, callback) {
     },
   });
 }
+
+test('selection changes evict both provider and model choices without waiting for cache expiry', async () => {
+  const runtimeClient = createRuntimeStub();
+  let removed = false;
+  const readSelection = runtimeClient.getSetupState;
+  runtimeClient.getSetupState = async () => removed
+    ? { selection: { state: 'empty', revision: 'empty', targets: [] } }
+    : readSelection();
+  let modelCalls = 0;
+  const getModels = runtimeClient.getProviderModels;
+  runtimeClient.getProviderModels = async (...args) => { modelCalls++; return getModels(...args); };
+  await withServer(runtimeClient, async (baseUrl) => {
+    assert.equal((await fetch(`${baseUrl}/api/providers/claude/models`)).status, 200);
+    removed = true;
+    const registry = await (await fetch(`${baseUrl}/api/providers`)).json();
+    assert.deepEqual(registry.providers, []);
+    assert.equal(registry.revision, 'empty');
+    assert.equal((await fetch(`${baseUrl}/api/providers/claude/models`)).status, 409);
+    assert.equal(modelCalls, 1);
+  });
+});
+
+test('a model response finishing after selection changed is rejected', async () => {
+  const runtimeClient = createRuntimeStub();
+  const selection = (await runtimeClient.getSetupState()).selection;
+  runtimeClient.getSetupState = async () => ({ selection });
+  const getModels = runtimeClient.getProviderModels;
+  runtimeClient.getProviderModels = async (...args) => {
+    const result = await getModels(...args);
+    selection.revision = 'removed';
+    selection.state = 'empty';
+    selection.targets = [];
+    return result;
+  };
+  await withServer(runtimeClient, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers/claude/models`);
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error.code, 'provider_selection_changed');
+  });
+});
+
+test('same instance IDs on different backends keep separate model routes and a precise default', async () => {
+  const runtimeClient = createRuntimeStub();
+  const targets = ['cli', 'api'].map((backend) => ({ provider: 'claude', backend, instance: 'native' }));
+  runtimeClient.getSetupState = async () => ({ selection: { state: 'selected', revision: 'both', targets } });
+  runtimeClient.getProviderConfig = async () => ({ claude: {
+    defaultInstance: 'native', defaultBackend: 'api',
+    instances: targets.map(({ backend }) => ({ id: 'native', backend, target: `${backend}/native` })),
+  } });
+  runtimeClient.getProviderDiagnostics = async () => ({ probe: 'light', providers: targets.map((target) => ({
+    ...target, availability: { status: 'ok', summary: 'ready', attentionCodes: [] },
+  })) });
+  const calls = [];
+  const getModels = runtimeClient.getProviderModels;
+  runtimeClient.getProviderModels = async (...args) => { calls.push(args[1]); return getModels(...args); };
+  await withServer(runtimeClient, async (baseUrl) => {
+    for (const [query, expected] of [['', 'api/native'], ['?instance=cli%2Fnative', 'cli/native']]) {
+      const response = await fetch(`${baseUrl}/api/providers/claude/models${query}`);
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).catalog.instance, expected);
+    }
+    assert.equal((await fetch(`${baseUrl}/api/providers/claude/models?instance=native`)).status, 409);
+    assert.deepEqual(calls, ['api/native', 'cli/native']);
+  });
+});
 
 test('GET /api/providers/:provider/models scopes selector diagnostics to the requested provider', async () => {
   const runtimeClient = createRuntimeStub();
@@ -321,7 +391,7 @@ test('GET /api/providers exposes Devin ACP and proxies its provider-default cata
       catalog: {
         provider: 'devin',
         backend: 'agent',
-        instance: 'acp',
+        instance: 'agent/acp',
         defaultModel: null,
         source: 'static',
         cache: null,

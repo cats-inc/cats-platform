@@ -5,7 +5,6 @@ import {
   attachExecutionLabelToProviderTarget,
   catalogMatchesTarget,
   countRequestScopedControls,
-  createStaticProviderRegistryReadModel,
   filterPersistentControlValues,
   formatCatalogEntryLabel,
   hasExplicitDefaultEnumOption,
@@ -307,7 +306,7 @@ test('stale catalogs from the previous instance are ignored during instance swit
 test('instance field stays hidden when a provider only exposes one runtime instance', () => {
   assert.equal(
     shouldShowInstanceField({
-      resolvedInstance: 'native',
+      resolvedInstance: 'cli/native',
       instanceOptions: [
         {
           id: 'native',
@@ -323,7 +322,7 @@ test('instance field stays hidden when a provider only exposes one runtime insta
 
 test('selected instance capability summary reflects runtime-owned event truth', () => {
   const capabilities = resolveSelectedInstanceEventCapabilities({
-    resolvedInstance: 'native',
+    resolvedInstance: 'cli/native',
     instanceOptions: [
       {
         id: 'native',
@@ -612,16 +611,7 @@ test('provider registry and model placeholders use the supplied translator', () 
   assert.equal(viewState.providerRegistryHint, '正在檢查 cats-runtime 可用的供應器目標。');
 });
 
-test('static provider registry fallback gives selectors immediate provider options', () => {
-  const registry = createStaticProviderRegistryReadModel(['warming runtime']);
-
-  assert.equal(registry.state, 'ready');
-  assert.ok(registry.providers.some((provider) => provider.id === 'claude'));
-  assert.ok(registry.providers.some((provider) => provider.id === 'codex'));
-  assert.deepEqual(registry.warnings, ['warming runtime']);
-});
-
-test('provider registry auto-recheck continues while static fallback providers are shown', () => {
+test('provider registry auto-recheck observes loaded, visible, and cooldown state', () => {
   assert.equal(shouldAutoRecheckProviderRegistry({
     providersLoaded: false,
     providerCount: 0,
@@ -1459,7 +1449,7 @@ test('provider model field view state derives instance, entry, and catalog warni
     isLegacyModelTarget: false,
   });
 
-  assert.equal(viewState.resolvedInstance, 'native');
+  assert.equal(viewState.resolvedInstance, 'cli/native');
   assert.equal(viewState.showInstanceField, true);
   assert.equal(viewState.selectedEntryId, 'gpt-5.4');
   assert.equal(viewState.modelPlaceholder, 'Select a model');

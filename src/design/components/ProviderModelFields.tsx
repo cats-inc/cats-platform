@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 
 import {
+  providerInstanceTarget,
   type ProductProviderRegistryReadModel,
   type ProviderAdvancedModelCatalog,
   type ProviderModelCatalog,
@@ -43,7 +44,6 @@ export {
   PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   catalogMatchesTarget,
   countRequestScopedControls,
-  createStaticProviderRegistryReadModel,
   filterPersistentControlValues,
   formatCatalogEntryLabel,
   hasExplicitDefaultEnumOption,
@@ -136,6 +136,7 @@ export function ProviderModelFields({
     provider,
     resolvedInstance,
     hasSelectedProvider: Boolean(selectedProvider),
+    selectionRevision: providerRegistry.revision,
     fetchProviderModels,
     fetchAdvancedProviderModels,
     translate: t,
@@ -367,7 +368,7 @@ export function ProviderModelFields({
             onChange={(event) => onInstanceChange(event.target.value)}
           >
             {instanceOptions.map((option) => (
-              <option key={option.id} value={option.id}>
+              <option key={providerInstanceTarget(option)} value={providerInstanceTarget(option)}>
                 {option.label}
               </option>
             ))}

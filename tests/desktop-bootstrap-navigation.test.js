@@ -41,21 +41,21 @@ test('desktop bootstrap navigation stays on host onboarding before setup by defa
   assert.equal(nextUrl, null);
 });
 
-test('desktop bootstrap navigation opens setup when legacy CLI gate is enabled', () => {
+test('desktop bootstrap navigation keeps a missing selection on the host editor', () => {
   const nextUrl = resolveDesktopBootstrapNavigation({
     phase: 'ready_for_setup',
     app: {
       entryPath: '/setup',
       setupCompleteAt: null,
       setupCompleted: false,
-      onboardingMode: 'cli_inventory_gate',
+      onboardingMode: 'setup_status',
     },
   }, {
     appBaseUrl: 'http://127.0.0.1:8181',
     showWindowOnStartup: true,
   });
 
-  assert.equal(nextUrl, 'http://127.0.0.1:8181/setup');
+  assert.equal(nextUrl, null);
 });
 
 test('desktop bootstrap navigation opens the product entry when chat is ready', () => {
@@ -171,6 +171,7 @@ test('desktop bootstrap only reveals the host recovery page for failed or setup-
 });
 
 const EMPTY_RUNTIME_INVENTORY = {
+  providerSelection: { state: 'missing', revision: 'missing', targets: [], nativeSetupTargets: [], diskChanged: false, error: null },
   cliInventory: {
     source: 'runtime',
     installed: [],
@@ -180,14 +181,14 @@ const EMPTY_RUNTIME_INVENTORY = {
   },
 };
 
-test('desktop bootstrap navigation stays on host page when runtime probe reports zero CLIs (fresh user)', () => {
+test('desktop bootstrap navigation stays on host page when runtime probe reports a missing selection (fresh user)', () => {
   assert.equal(resolveDesktopBootstrapNavigation({
     phase: 'needs_prerequisites',
     app: {
       entryPath: '/setup',
       setupCompleteAt: null,
       setupCompleted: false,
-      onboardingMode: 'cli_inventory_gate',
+      onboardingMode: 'setup_status',
     },
     prerequisites: EMPTY_RUNTIME_INVENTORY,
   }, {
@@ -196,14 +197,14 @@ test('desktop bootstrap navigation stays on host page when runtime probe reports
   }), null);
 });
 
-test('desktop bootstrap navigation stays on host page even after setup if runtime probe reports zero CLIs', () => {
+test('desktop bootstrap navigation stays on host page even after setup if runtime probe reports a missing selection', () => {
   assert.equal(resolveDesktopBootstrapNavigation({
     phase: 'needs_prerequisites',
     app: {
       entryPath: '/',
       setupCompleteAt: '2026-04-30T08:00:00.000Z',
       setupCompleted: true,
-      onboardingMode: 'cli_inventory_gate',
+      onboardingMode: 'setup_status',
     },
     prerequisites: EMPTY_RUNTIME_INVENTORY,
   }, {
@@ -236,17 +237,17 @@ test('desktop bootstrap navigation passes through to chat once runtime reports a
   }), 'http://127.0.0.1:8181/');
 });
 
-test('desktop bootstrap navigation does not gate on unknown-source probe (legacy / probe failed)', () => {
-  // Runtime hasn't returned data yet — must not block legacy users.
+test('desktop bootstrap navigation does not gate on a valid empty selection without requiring any CLI', () => {
   assert.equal(resolveDesktopBootstrapNavigation({
     phase: 'needs_prerequisites',
     app: {
       entryPath: '/',
       setupCompleteAt: '2026-04-30T08:00:00.000Z',
       setupCompleted: true,
-      onboardingMode: 'cli_inventory_gate',
+      onboardingMode: 'setup_status',
     },
     prerequisites: {
+      providerSelection: { state: 'empty', revision: 'one', targets: [], nativeSetupTargets: [], diskChanged: false, error: null },
       cliInventory: {
         source: 'unknown',
         installed: [],
@@ -261,7 +262,7 @@ test('desktop bootstrap navigation does not gate on unknown-source probe (legacy
   }), 'http://127.0.0.1:8181/');
 });
 
-test('desktop bootstrap reveals recovery for cli_missing whether or not setup was complete', () => {
+test('desktop bootstrap reveals recovery for missing selection whether or not setup was complete', () => {
   const options = {
     showWindowOnStartup: true,
     windowRevealRequested: false,
@@ -273,7 +274,7 @@ test('desktop bootstrap reveals recovery for cli_missing whether or not setup wa
       entryPath: '/',
       setupCompleteAt: '2026-04-30T08:00:00.000Z',
       setupCompleted: true,
-      onboardingMode: 'cli_inventory_gate',
+      onboardingMode: 'setup_status',
     },
     prerequisites: EMPTY_RUNTIME_INVENTORY,
   }, options), true);

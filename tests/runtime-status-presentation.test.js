@@ -169,7 +169,7 @@ describe('resolveRuntimeRecoveryTarget', () => {
 
   it('returns runtime-setup when runtime setup is ready to apply', () => {
     assert.equal(
-      resolveRuntimeRecoveryTarget('ready', { runtimeSetupStatus: 'ready_to_apply' }),
+      resolveRuntimeRecoveryTarget('ready', { runtimeSetupStatus: 'selection_required' }),
       'runtime-setup',
     );
   });
@@ -237,7 +237,7 @@ describe('resolveRuntimeRecoveryUrl', () => {
 
 describe('needsRuntimeSetupRecovery', () => {
   it('returns true for runtime setup states that need remediation', () => {
-    assert.equal(needsRuntimeSetupRecovery('ready_to_apply'), true);
+    assert.equal(needsRuntimeSetupRecovery('selection_required'), true);
     assert.equal(needsRuntimeSetupRecovery('scan_required'), true);
     assert.equal(needsRuntimeSetupRecovery('attention_required'), true);
     assert.equal(needsRuntimeSetupRecovery('unavailable'), true);
