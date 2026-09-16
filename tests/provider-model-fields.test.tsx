@@ -232,7 +232,7 @@ test('Cursor fallback exposes six fixed combos and initializes the first without
   assert.equal(catalog.models.length, 6);
   assert.ok(catalog.models.every(model => !model.default && !/default/i.test(model.label)));
   assert.equal(catalog.models[2].id, 'claude-opus-5[thinking=true,context=300k,effort=high,fast=false]');
-  assert.equal(catalog.models[2].label, 'Claude Opus 5 — 300K, High, Thinking');
+  assert.equal(catalog.models[2].label, 'Claude Opus 5 — 300K High Thinking');
   assert.equal(shouldAllowLegacyManualModelEntry({ entryCount: 6, isLegacyModelTarget: false }), true);
 });
 

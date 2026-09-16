@@ -2,12 +2,15 @@
 
 Desktop's fallback menu follows the six owner-approved Cursor CLI combinations, in order:
 
-1. Cursor Grok 4.6 — Extra High, Fast
+1. Cursor Grok 4.6 — Extra High Fast
 2. Composer 2.5 — Fast
-3. Claude Opus 5 — 300K, High, Thinking
-4. GPT-5.6 Sol — 272K, Medium
+3. Claude Opus 5 — 300K High Thinking
+4. GPT-5.6 Sol — 272K Medium
 5. Gemini 3.8 Flash — High
-6. Muse Spark 1.3 — 300K, High
+6. Muse Spark 1.3 — 300K High
+
+The owner clarified that commas in the supplied combinations only separated fields. Display
+labels use spaces between parameters; the executable model strings remain unchanged.
 
 These entries use complete parameterized Cursor model strings, retaining the specified
 context and Fast values when sent to Runtime. The UI initializes from the first entry without
