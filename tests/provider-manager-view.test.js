@@ -83,3 +83,16 @@ test('a changed revision invalidates an uninstall preview', async (t) => {
   await f.view.refresh();
   assert.equal(f.root.querySelector('[role=dialog]'), null);
 });
+
+test('selection edits and detection retain list position and expanded provider controls', async (t) => {
+  const f = fixture(t); await flush();
+  f.root.querySelector('.pm-list').scrollTop = 320;
+  f.root.querySelector('.pm-more').open = true;
+  f.choice('pi').click();
+  assert.equal(f.root.querySelector('.pm-list').scrollTop, 320);
+  assert.equal(f.root.querySelector('.pm-more').open, true);
+  f.button('apply').click(); await flush(); await flush();
+  f.button('detect-selected').click(); await flush(); await flush();
+  assert.equal(f.root.querySelector('.pm-list').scrollTop, 320);
+  assert.equal(f.root.querySelector('.pm-more').open, true);
+});
