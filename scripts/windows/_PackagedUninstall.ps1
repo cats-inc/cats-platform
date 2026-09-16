@@ -24,7 +24,15 @@ if (-not (Get-Module -ListAvailable -Name Microsoft.PowerShell.Utility)) {
 function Test-PackagedProviderPathRemovable {
   param([string]$Path)
   if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
-  return (Test-Path -LiteralPath $Path)
+  $fullPath = [IO.Path]::GetFullPath($Path).TrimEnd('\', '/')
+  $withinUserRoot = $false
+  foreach ($base in @($env:USERPROFILE, $env:LOCALAPPDATA)) {
+    if (-not $base) { continue }
+    $root = [IO.Path]::GetFullPath($base).TrimEnd('\', '/') + '\'
+    if ($fullPath.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) { $withinUserRoot = $true }
+  }
+  if (-not $withinUserRoot) { return $false }
+  return (Test-Path -LiteralPath $fullPath)
 }
 
 function Test-DetectedPathInPlannedRemovals {

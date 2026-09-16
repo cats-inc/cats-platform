@@ -43,6 +43,7 @@ param(
   [switch]$Apply,
   [switch]$Upgrade,
   [switch]$Force,
+  [switch]$DryRun,
   [switch]$Json,
   [switch]$AllowAdmin,
   [ValidateSet('auto', 'installed', 'missing')]
@@ -55,12 +56,17 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+. (Join-Path $PSScriptRoot '_NativeInstallerSupport.ps1')
 
 function Write-StructuredResult {
   param(
     [pscustomobject]$Result,
     [int]$ExitCode
   )
+
+  if (Get-Variable -Name catsInitialObservation -Scope Script -ErrorAction SilentlyContinue) {
+    Add-CatsNativeObservation -Result $Result -Before $script:catsInitialObservation -Attempted ([bool]$script:shouldInstall) -Skipped ([bool]$SkipInstaller)
+  }
 
   if ($Json) {
     $Result | ConvertTo-Json -Depth 10
@@ -86,7 +92,11 @@ function Write-StructuredResult {
 }
 
 function Resolve-KiroExecutablePath {
-  return Join-Path $env:ProgramFiles 'Kiro-Cli\kiro-cli.exe'
+  $perUser = Join-Path $env:LOCALAPPDATA 'Kiro-Cli\kiro-cli.exe'
+  $machine = Join-Path $env:ProgramFiles 'Kiro-Cli\kiro-cli.exe'
+  if (Test-Path -LiteralPath $perUser -PathType Leaf) { return $perUser }
+  if (Test-Path -LiteralPath $machine -PathType Leaf) { return $machine }
+  return $perUser
 }
 
 function Refresh-UserPath {
@@ -145,12 +155,8 @@ function Invoke-KiroInstaller {
     }
   }
 
-  $installScript = Invoke-RestMethod 'https://cli.kiro.dev/install.ps1'
-  Invoke-Expression $installScript
-
-  return [pscustomobject]@{
-    skipped = $false
-  }
+  $installScript = Invoke-RestMethod -TimeoutSec 30 -UseBasicParsing 'https://cli.kiro.dev/install.ps1'
+  return Invoke-CatsRemoteInstaller -ScriptText $installScript
 }
 
 if (-not $CheckOnly -and -not $Apply -and -not $Upgrade -and -not $Force) {
@@ -205,9 +211,26 @@ if ($CheckOnly) {
   Write-StructuredResult -Result $result -ExitCode 0
 }
 
+if ($DryRun) {
+  Write-CatsNativePreview -Helper 'windows-kiro-native-installer' -Mode $executionMode -Detected $detected -Actions $plannedActions.ToArray() -EmitJson ([bool]$Json)
+}
+
+$installFailed = $false
+$catsInitialObservation = $detected.PSObject.Copy()
 $shouldInstall = $Force -or $Upgrade -or -not $detected.installed
+if ($Upgrade -and -not $Force -and $detected.installed -and -not $SkipInstaller -and -not $installFailed) {
+  $versionGate = Test-CatsNativeUpgrade -Provider 'kiro' -InstalledVersion $detected.detectedVersion
+  $shouldInstall = $versionGate.shouldInstall
+  if (-not $versionGate.known) { $warnings.Add('Could not compare the published version; the official installer will verify the update.') }
+  if (-not $shouldInstall) { $plannedActions.Clear() }
+}
+$installFailed = $false
 if ($shouldInstall) {
-  $installResult = Invoke-KiroInstaller
+  $installResult = try { Invoke-KiroInstaller } catch { [pscustomobject]@{ skipped = $false; success = $false; stderr = [string]$_.Exception.Message; usedPowerShell51Fallback = $false; usedWingetFallback = $false } }
+  if ($installResult.PSObject.Properties['success'] -and -not $installResult.success) {
+    $installFailed = $true
+    $warnings.Add($installResult.stderr)
+  }
   if ($installResult.skipped) {
     $warnings.Add('Installer invocation was skipped by request.')
   }
@@ -215,8 +238,9 @@ if ($shouldInstall) {
   Start-Sleep -Seconds 3
   Refresh-UserPath
   $detected = Detect-KiroInstall
-  if (-not $detected.installed -and -not $SkipInstaller) {
-    throw 'Kiro CLI installation completed but kiro-cli was still not detected.'
+  if (-not $detected.installed -and -not $SkipInstaller -and -not $installFailed) {
+    $warnings.Add('Kiro CLI installation completed but kiro-cli was still not detected.')
+    $installFailed = $true
   }
 
   if ($Force) {
@@ -232,7 +256,7 @@ $interruptions = [System.Collections.Generic.List[object]]::new()
 if ($shouldInstall) {
   $interruptions.Add([pscustomobject]@{
       kind = 'relaunch_required'
-      summary = 'Relaunch Cats Desktop Host after the Kiro CLI install step, then rerun the packaged setup check.'
+      summary = 'Run Detect Again after the Kiro CLI install step if the command is not visible yet.'
       resumable = $true
       requiresRestart = $false
       requiresElevation = $false
@@ -242,7 +266,7 @@ if ($shouldInstall) {
 $result = [pscustomobject]@{
   helper = 'windows-kiro-native-installer'
   mode = $executionMode
-  status = if ($interruptions.Count -gt 0) { [string]$interruptions[0].kind } else { 'ready' }
+  status = if ($installFailed) { 'failed' } elseif ($interruptions.Count -gt 0) { [string]$interruptions[0].kind } else { 'ready' }
   installed = [bool]$detected.installed
   detectedVersion = if ($detected.detectedVersion) { $detected.detectedVersion } else { $null }
   commandPath = $detected.commandPath
@@ -253,4 +277,4 @@ $result = [pscustomobject]@{
   manualSteps = $manualSteps.ToArray()
   interruptions = $interruptions.ToArray()
 }
-Write-StructuredResult -Result $result -ExitCode 0
+Write-StructuredResult -Result $result -ExitCode $(if ($installFailed) { 1 } else { 0 })

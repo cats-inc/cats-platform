@@ -160,6 +160,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-002](./SPEC-002-chat-renderer-shell.md) | Chat Renderer Shell | Implemented | [PLAN-002](../plans/PLAN-002-chat-renderer-shell.md) |
 | [SPEC-001](./SPEC-001-initial-chat-shell.md) | Initial Chat Shell | Implemented | [PLAN-001](../plans/PLAN-001-initial-chat-shell.md) |
 | [000-template](./000-template.md) | Template | - | - |
+| [SPEC-116](./SPEC-116-desktop-provider-management.md) | Desktop provider management | Approved | 2026-09-16 |
 <!-- Add new specs above this line -->
 
 ## For AI Agents

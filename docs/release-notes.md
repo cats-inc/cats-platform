@@ -19,6 +19,50 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-16 (0.2.9 unsigned preview)
+
+### Shared provider onboarding and Settings
+
+Behavior change:
+
+Desktop onboarding and Settings > Runtime now share the provider manager.
+Checkboxes express the user's chosen scope and load the saved Runtime selection;
+new installations start unchecked. Apply saves the selection and optionally
+runs detection. Each selected provider supports its own Detect/Install actions,
+with Upgrade/Repair/previewed Uninstall where supported. Prior detection results
+remain visible after save-only changes. Ollama/OpenClaw expose endpoint editing
+and explicit connection checks; command presence, sign-in and connection are
+separate observations.
+
+Saving an empty or partially ready scope completes Runtime bootstrap, so Desktop
+can continue to product setup without opening another setup page. Progress stays
+visible until the requested operation finishes. Installing a provider verifies
+that target once, rather than scanning every selected provider.
+
+Native Windows/macOS/Linux packaged scripts incorporate the reviewed
+`environment-bootstrap` changes through `752dc13`: current-version gates,
+Cursor/Kiro Windows paths, isolated vendor PowerShell, Devin sharing-lock retry,
+bounded old-build cleanup, truthful observed changes, and verified npm updates.
+An explicit npm-provider Upgrade also updates npm in its existing prefix; Apply
+and Detect do not. Explicit custom prefixes are preserved.
+
+Migration steps:
+
+Use Cats Desktop **Check for Update** from an unsigned preview build. Existing
+provider selections and detection history are retained; review them in Settings
+> Runtime. This preview packages Runtime 0.1.24 at
+`c1a5c0ae108a155b14867f85c344a23c9a95bdbf` (Runtime PR #54), with the existing
+Usage 0.2.0 App lock. Release automation must use `tag=v0.2.9` and that exact
+`runtime_ref`; the manual workflow creates the tag and publishes only after
+Windows x64 NSIS, macOS x64 DMG/updater ZIP, Linux arm64 DEB and update metadata
+validation pass.
+
+Deprecations: the separate Desktop provider editors and save-triggered global
+scan path are replaced by the shared manager. WSL/Docker variants are outside
+this native onboarding rollout. Physical native installation/login remains
+user acceptance; automated validation uses isolated fixtures. This remains an
+unsigned GitHub prerelease.
+
 ## 2026-09-16 (0.2.8 unsigned preview)
 
 ### Updated Claude/Codex catalogs and consistent defaults

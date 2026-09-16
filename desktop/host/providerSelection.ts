@@ -60,6 +60,7 @@ export function targetsForSetupHelper(helperId: string, selection: ProviderSelec
 interface SelectedSetupOperation<T> {
   baseUrl: string;
   helperId: string;
+  expectedRevision?: string;
   run: () => Promise<T>;
   fetch?: typeof fetch;
 }
@@ -100,7 +101,7 @@ async function runSelectedSetupOperation<T>(options: SelectedSetupOperation<T>):
       operations.push(operationId);
       const response = await request(`${base}/setup-operations`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ target, expectedRevision: selection.revision, operationId }),
+        body: JSON.stringify({ target, expectedRevision: options.expectedRevision ?? selection.revision, operationId }),
         signal: AbortSignal.timeout(10_000),
       });
       if (!response.ok) throw new Error('Provider selection changed. Refresh before running this helper.');

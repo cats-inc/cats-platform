@@ -59,6 +59,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+. (Join-Path $PSScriptRoot '_NativeInstallerSupport.ps1')
 . (Join-Path $PSScriptRoot '_PackagedUninstall.ps1')
 
 function Write-StructuredResult {
@@ -66,6 +67,10 @@ function Write-StructuredResult {
     [pscustomobject]$Result,
     [int]$ExitCode
   )
+
+  if (Get-Variable -Name catsInitialObservation -Scope Script -ErrorAction SilentlyContinue) {
+    Add-CatsNativeObservation -Result $Result -Before $script:catsInitialObservation -Attempted ([bool]$script:shouldInstall) -Skipped ([bool]$SkipInstaller)
+  }
 
   if ($Json) {
     $Result | ConvertTo-Json -Depth 10
@@ -136,6 +141,7 @@ function Detect-JunieInstall {
     }
   }
 
+  if ($installed -and -not $version -and $commandPath -match '\.(cmd|bat)$') { $version = Get-CatsShimVersionText -Path $commandPath }
   return [pscustomobject]@{
     installed = $installed
     commandPath = $commandPath
@@ -165,11 +171,8 @@ function Invoke-JunieInstaller {
     }
   }
 
-  $installScript = Invoke-RestMethod 'https://junie.jetbrains.com/install.ps1'
-  Invoke-Expression $installScript
-  return [pscustomobject]@{
-    skipped = $false
-  }
+  $installScript = Invoke-RestMethod -TimeoutSec 30 -UseBasicParsing 'https://junie.jetbrains.com/install.ps1'
+  return Invoke-CatsRemoteInstaller -ScriptText $installScript
 }
 
 if (-not $CheckOnly -and -not $Apply -and -not $Upgrade -and -not $Force -and -not $Uninstall) {
@@ -278,17 +281,35 @@ if ($CheckOnly) {
   Write-StructuredResult -Result $result -ExitCode 0
 }
 
+if ($DryRun) {
+  Write-CatsNativePreview -Helper 'windows-junie-native-installer' -Mode $executionMode -Detected $detected -Actions $plannedActions.ToArray() -EmitJson ([bool]$Json)
+}
+
+$installFailed = $false
+$catsInitialObservation = $detected.PSObject.Copy()
 $shouldInstall = $Force -or $Upgrade -or -not $detected.installed
+if ($Upgrade -and -not $Force -and $detected.installed -and -not $SkipInstaller -and -not $DryRun) {
+  $versionGate = Test-CatsNativeUpgrade -Provider 'junie' -InstalledVersion $detected.detectedVersion
+  $shouldInstall = $versionGate.shouldInstall
+  if (-not $versionGate.known) { $warnings.Add('Could not compare the published version; the official installer will verify the update.') }
+  if (-not $shouldInstall) { $plannedActions.Clear() }
+}
+$installFailed = $false
 if ($shouldInstall) {
-  $installResult = Invoke-JunieInstaller
+  $installResult = try { Invoke-JunieInstaller } catch { [pscustomobject]@{ skipped = $false; success = $false; stderr = [string]$_.Exception.Message; usedPowerShell51Fallback = $false; usedWingetFallback = $false } }
+  if ($installResult.PSObject.Properties['success'] -and -not $installResult.success) {
+    $installFailed = $true
+    $warnings.Add($installResult.stderr)
+  }
   if ($installResult.skipped) {
     $warnings.Add('Installer invocation was skipped by request.')
   }
 
   Start-Sleep -Seconds 2
   $detected = Detect-JunieInstall
-  if (-not $detected.installed -and -not $SkipInstaller) {
-    throw 'Junie installation completed but junie was still not detected.'
+  if (-not $detected.installed -and -not $SkipInstaller -and -not $installFailed) {
+    $warnings.Add('Junie installation completed but junie was still not detected.')
+    $installFailed = $true
   }
 
   if ($Force) {
@@ -306,7 +327,7 @@ $interruptions = [System.Collections.Generic.List[object]]::new()
 if ($shouldInstall) {
   $interruptions.Add([pscustomobject]@{
       kind = 'relaunch_required'
-      summary = 'Relaunch Cats Desktop Host after the Junie install step, then rerun the packaged setup check.'
+      summary = 'Run Detect Again after the Junie install step if the command is not visible yet.'
       resumable = $true
       requiresRestart = $false
       requiresElevation = $false
@@ -325,7 +346,7 @@ if (-not $authSatisfied) {
 $result = [pscustomobject]@{
   helper = 'windows-junie-native-installer'
   mode = $executionMode
-  status = if ($interruptions.Count -gt 0) { [string]$interruptions[0].kind } else { 'ready' }
+  status = if ($installFailed) { 'failed' } elseif ($interruptions.Count -gt 0) { [string]$interruptions[0].kind } else { 'ready' }
   installed = [bool]$detected.installed
   detectedVersion = if ($detected.detectedVersion) { $detected.detectedVersion } else { $null }
   commandPath = $detected.commandPath
@@ -336,4 +357,4 @@ $result = [pscustomobject]@{
   manualSteps = $manualSteps.ToArray()
   interruptions = $interruptions.ToArray()
 }
-Write-StructuredResult -Result $result -ExitCode 0
+Write-StructuredResult -Result $result -ExitCode $(if ($installFailed) { 1 } else { 0 })

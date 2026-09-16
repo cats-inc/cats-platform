@@ -18,6 +18,10 @@ export interface RuntimeCliInventoryProbe {
   // has -- fresher than the cached GET /health payload the snapshot phase is
   // otherwise derived from.
   bootstrapRequired?: boolean;
+  observations?: Array<SelectedProviderTarget & {
+    available: boolean; authStatus?: string; observedAt: string;
+    configurationStatus: 'unchanged' | 'changed' | 'not_selected';
+  }>;
   state?: {
     status?: 'pending' | 'scanning' | 'ready' | 'applied' | 'error' | string;
     error?: string | null;
@@ -154,11 +158,12 @@ export function buildDesktopCliInventoryFromRuntime(
   const runtimeAvailability = new Map<string, boolean>();
   const runtimeAuthStatus = new Map<string, DesktopCliAuthStatus>();
   let scannedAt: string | null = null;
-  if (probe?.scan && probe.scan.revision === probe.selection?.revision) {
-    scannedAt = probe.scan.scannedAt ?? null;
-    for (const provider of probe.scan.providers) {
+  if (probe?.observations) {
+    for (const provider of probe.observations) {
+      if (provider.configurationStatus !== 'unchanged') continue;
       runtimeAvailability.set(targetKey(provider), provider.available === true);
       runtimeAuthStatus.set(targetKey(provider), normalizeCliAuthStatus(provider.authStatus));
+      if (!scannedAt || provider.observedAt > scannedAt) scannedAt = provider.observedAt;
     }
   }
 

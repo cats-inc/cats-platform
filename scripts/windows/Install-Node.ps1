@@ -180,6 +180,10 @@ $mode = if ($CheckOnly) {
   'apply'
 }
 
+# Each invocation inherits the long-lived Desktop host's environment. Include
+# newly installed system/user commands before check-only detection as well.
+$env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
+  [System.Environment]::GetEnvironmentVariable('Path', 'User') + ';' + $env:Path
 $installed = Test-NodeInstalled -Mode $mode
 $detected = Get-NodeDetectedVersion -Override $DetectedVersion
 $commandPath = if ($SkipNodeProbe) { '' } else { Resolve-NodeCommandPath }

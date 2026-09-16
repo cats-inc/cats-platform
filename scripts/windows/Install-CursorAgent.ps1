@@ -59,6 +59,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+. (Join-Path $PSScriptRoot '_NativeInstallerSupport.ps1')
 . (Join-Path $PSScriptRoot '_PackagedUninstall.ps1')
 
 function Write-StructuredResult {
@@ -66,6 +67,10 @@ function Write-StructuredResult {
     [pscustomobject]$Result,
     [int]$ExitCode
   )
+
+  if (Get-Variable -Name catsInitialObservation -Scope Script -ErrorAction SilentlyContinue) {
+    Add-CatsNativeObservation -Result $Result -Before $script:catsInitialObservation -Attempted ([bool]$script:shouldInstall) -Skipped ([bool]$SkipInstaller)
+  }
 
   if ($Json) {
     $Result | ConvertTo-Json -Depth 10
@@ -88,7 +93,13 @@ function Write-StructuredResult {
 }
 
 function Resolve-CursorExecutablePath {
-  return Join-Path $env:USERPROFILE '.local\bin\cursor-agent.exe'
+  foreach ($name in @('cursor-agent.exe', 'cursor-agent.cmd', 'agent.exe', 'agent.cmd')) {
+    $candidate = Join-Path $env:LOCALAPPDATA "cursor-agent\$name"
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+  }
+  $legacy = Join-Path $env:USERPROFILE '.local\bin\cursor-agent.exe'
+  if (Test-Path -LiteralPath $legacy -PathType Leaf) { return $legacy }
+  return Join-Path $env:LOCALAPPDATA 'cursor-agent\cursor-agent.cmd'
 }
 
 function Refresh-UserPath {
@@ -133,6 +144,10 @@ function Detect-CursorInstall {
     }
   }
 
+  if ($installed -and -not $version -and $commandPath -match '\.(cmd|bat)$') {
+    $version = Get-CatsShimVersionText -Path $commandPath
+  }
+
   return [pscustomobject]@{
     installed = $installed
     commandPath = $commandPath
@@ -161,30 +176,11 @@ function Invoke-CursorInstaller {
     }
   }
 
-  try {
-    $installScript = Invoke-RestMethod 'https://cursor.com/install?win32=true'
-    Invoke-Expression $installScript
-    return [pscustomobject]@{
-      usedPowerShell51Fallback = $false
-      skipped = $false
-    }
-  } catch {
-    $isPowerShell7 = $PSVersionTable.PSVersion.Major -ge 7
-    $ps51Path = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-    if (-not $isPowerShell7 -or -not (Test-Path -LiteralPath $ps51Path -PathType Leaf)) {
-      throw
-    }
+  $installScript = Invoke-RestMethod 'https://cursor.com/install?win32=true' -TimeoutSec 30 -UseBasicParsing
+  $result = Invoke-CatsRemoteInstaller -ScriptText $installScript
+  $result | Add-Member -NotePropertyName usedPowerShell51Fallback -NotePropertyValue $true
+  return $result
 
-    & $ps51Path -NoProfile -ExecutionPolicy Bypass -Command "irm 'https://cursor.com/install?win32=true' | iex"
-    if ($LASTEXITCODE -ne 0) {
-      throw 'Cursor Agent installer fallback via Windows PowerShell 5.1 failed.'
-    }
-
-    return [pscustomobject]@{
-      usedPowerShell51Fallback = $true
-      skipped = $false
-    }
-  }
 }
 
 if (-not $CheckOnly -and -not $Apply -and -not $Upgrade -and -not $Force -and -not $Uninstall) {
@@ -219,6 +215,7 @@ if ($Uninstall) {
   Invoke-PackagedProviderUninstall `
     -HelperId 'windows-cursor-native-installer' `
     -UserBinaryPath (Resolve-CursorExecutablePath) `
+    -ExtraUserOwnedPaths @((Join-Path $env:LOCALAPPDATA 'cursor-agent')) `
     -RedetectCommand { Detect-CursorInstall } `
     -EmitJson:$Json `
     -DryRun:$DryRun
@@ -289,9 +286,26 @@ if ($CheckOnly) {
   Write-StructuredResult -Result $result -ExitCode 0
 }
 
+if ($DryRun) {
+  Write-CatsNativePreview -Helper 'windows-cursor-native-installer' -Mode $executionMode -Detected $detected -Actions $plannedActions.ToArray() -EmitJson ([bool]$Json)
+}
+
+$installFailed = $false
+$catsInitialObservation = $detected.PSObject.Copy()
 $shouldInstall = $Force -or $Upgrade -or -not $detected.installed
+if ($Upgrade -and -not $Force -and $detected.installed -and -not $SkipInstaller -and -not $DryRun) {
+  $versionGate = Test-CatsNativeUpgrade -Provider 'cursor' -InstalledVersion $detected.detectedVersion
+  $shouldInstall = $versionGate.shouldInstall
+  if (-not $versionGate.known) { $warnings.Add('Could not compare the published version; the official installer will verify the update.') }
+  if (-not $shouldInstall) { $plannedActions.Clear() }
+}
+$installFailed = $false
 if ($shouldInstall) {
-  $installResult = Invoke-CursorInstaller
+  $installResult = try { Invoke-CursorInstaller } catch { [pscustomobject]@{ skipped = $false; success = $false; stderr = [string]$_.Exception.Message; usedPowerShell51Fallback = $false; usedWingetFallback = $false } }
+  if ($installResult.PSObject.Properties['success'] -and -not $installResult.success) {
+    $installFailed = $true
+    $warnings.Add($installResult.stderr)
+  }
   $usedPowerShell51Fallback = [bool]$installResult.usedPowerShell51Fallback
   if ($usedPowerShell51Fallback) {
     $warnings.Add('Cursor installer required the Windows PowerShell 5.1 fallback.')
@@ -302,8 +316,9 @@ if ($shouldInstall) {
 
   Start-Sleep -Seconds 2
   $detected = Detect-CursorInstall
-  if (-not $detected.installed -and -not $SkipInstaller) {
-    throw 'Cursor Agent installation completed but cursor-agent was still not detected.'
+  if (-not $detected.installed -and -not $SkipInstaller -and -not $installFailed) {
+    $warnings.Add('Cursor Agent installation completed but cursor-agent was still not detected.')
+    $installFailed = $true
   }
 
   if ($Force) {
@@ -320,7 +335,7 @@ $interruptions = [System.Collections.Generic.List[object]]::new()
 if ($shouldInstall) {
   $interruptions.Add([pscustomobject]@{
       kind = 'relaunch_required'
-      summary = 'Relaunch Cats Desktop Host after the Cursor Agent install step, then rerun the packaged setup check.'
+      summary = 'Run Detect Again after the Cursor Agent install step if the command is not visible yet.'
       resumable = $true
       requiresRestart = $false
       requiresElevation = $false
@@ -339,7 +354,7 @@ if (-not $authSatisfied) {
 $result = [pscustomobject]@{
   helper = 'windows-cursor-native-installer'
   mode = $executionMode
-  status = if ($interruptions.Count -gt 0) { [string]$interruptions[0].kind } else { 'ready' }
+  status = if ($installFailed) { 'failed' } elseif ($interruptions.Count -gt 0) { [string]$interruptions[0].kind } else { 'ready' }
   installed = [bool]$detected.installed
   detectedVersion = if ($detected.detectedVersion) { $detected.detectedVersion } else { $null }
   commandPath = $detected.commandPath
@@ -350,4 +365,4 @@ $result = [pscustomobject]@{
   interruptions = $interruptions.ToArray()
   usedPowerShell51Fallback = $usedPowerShell51Fallback
 }
-Write-StructuredResult -Result $result -ExitCode 0
+Write-StructuredResult -Result $result -ExitCode $(if ($installFailed) { 1 } else { 0 })

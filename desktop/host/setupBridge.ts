@@ -844,7 +844,7 @@ export async function runDesktopSetupHelper(
     mode: input.action.mode,
     runState,
     status,
-    summary: buildSummary(helper.label, input.action.mode, runState, status),
+    summary: readString(parsed?.summary) ?? buildSummary(helper.label, input.action.mode, runState, status),
     packagedRelativePath: helper.packagedRelativePath,
     scriptPath,
     requiresElevation: helper.requiresElevation,

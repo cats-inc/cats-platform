@@ -7,6 +7,7 @@ function probe(providers, overrides = {}) {
   const targets = providers.map(({ provider }) => nativeSetupTarget(provider));
   return { selection: { state: targets.length ? 'selected' : 'empty', revision: 'one', targets,
     nativeSetupTargets: targets, diskChanged: false, error: null }, universe: [],
+    observations: providers.filter((entry) => typeof entry.available === 'boolean').map((entry) => ({ ...nativeSetupTarget(entry.provider), ...entry, observedAt: '2026-09-16T00:00:00.000Z', configurationStatus: 'unchanged' })),
     scan: { revision: 'one', scannedAt: '2026-09-16T00:00:00.000Z',
       providers: providers.map((entry) => ({ ...nativeSetupTarget(entry.provider), ...entry })) }, ...overrides };
 }
@@ -39,10 +40,10 @@ test('retains selected unavailable providers before the first scan', () => {
 
 test('ignores observations from old revisions and targets with the same bare instance name', () => {
   const data = probe([{ provider: 'codex', available: true }]);
-  data.scan.revision = 'old';
+  data.observations[0].configurationStatus = 'changed';
   assert.equal(buildDesktopCliInventoryFromRuntime(data, 'linux').total, 0);
-  data.scan.revision = 'one';
-  data.scan.providers[0].backend = 'api';
+  data.observations[0].configurationStatus = 'unchanged';
+  data.observations[0].backend = 'api';
   assert.equal(buildDesktopCliInventoryFromRuntime(data, 'linux').total, 0);
 });
 

@@ -8,6 +8,7 @@ readonly CATS_PLATFORM_UNIX_NODE_COMMON_SH=1
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=provider-cli-common.sh
 . "$SCRIPT_DIR/provider-cli-common.sh"
+. "$SCRIPT_DIR/verified-npm-update.sh"
 
 normalize_npm_registry() {
   case "$1" in
@@ -52,25 +53,51 @@ ensure_node_and_npm() {
     printf 'npm is required but was not found.\n' >&2
     return 1
   fi
+  # Desktop invokes each helper in a fresh non-login shell. Read the configured
+  # prefix, never source arbitrary shell startup files to recover its commands.
+  local configured_prefix
+  configured_prefix="$(npm config get prefix 2>/dev/null || true)"
+  [ -z "$configured_prefix" ] || prepend_path_if_missing "$configured_prefix/bin"
+  return 0
+}
+
+has_explicit_npm_prefix() {
+  [ -z "${NPM_CONFIG_PREFIX:-${npm_config_prefix:-}}" ] || return 0
+  local npmrc="${NPM_CONFIG_USERCONFIG:-${npm_config_userconfig:-$HOME/.npmrc}}"
+  [ -f "$npmrc" ] && grep -qE '^[[:space:]]*prefix[[:space:]]*=' "$npmrc"
+}
+
+preferred_npm_prefix() {
+  local existing canonical_home
+  existing="$(npm config get prefix 2>/dev/null || true)"
+  if [ -n "$existing" ] && has_explicit_npm_prefix; then printf '%s\n' "$existing"; return 0; fi
+  if [ -d "$existing" ] && [ -w "$existing" ]; then
+    existing="$(cd -P -- "$existing" && pwd -P)"
+    canonical_home="$(cd -P -- "$HOME" && pwd -P)"
+    case "$existing" in "$canonical_home"/*) printf '%s\n' "$existing"; return 0 ;; esac
+  fi
+  printf '%s\n' "$HOME/.npm-global"
 }
 
 ensure_npm_global_path_export() {
-  local shell_rc="$1"
+  local shell_rc="$1" prefix="${2:-$HOME/.npm-global}" export_line
+  printf -v export_line 'export PATH=%q:$PATH' "$prefix/bin"
   append_line_if_missing "$shell_rc" '# Added by cats-platform self-hosted npm helpers' '# Added by cats-platform self-hosted npm helpers'
-  append_line_if_missing "$shell_rc" 'export PATH="$HOME/.npm-global/bin:$PATH"' 'export PATH="$HOME/.npm-global/bin:$PATH"'
-  prepend_path_if_missing "$HOME/.npm-global/bin"
+  append_line_if_missing "$shell_rc" "$export_line" "$export_line"
+  prepend_path_if_missing "$prefix/bin"
 }
 
 node_prefix_ready() {
-  local prefix
+  local prefix desired_prefix
   local registry
   local shell_rc
 
   prefix="$(npm config get prefix 2>/dev/null || printf '')"
   registry="$(normalize_npm_registry "$(npm config get registry 2>/dev/null || printf '')")"
   shell_rc="$(detect_shell_rc)"
+  desired_prefix="$(preferred_npm_prefix)"
 
-  if nvm_is_active; then
+  if nvm_is_active && ! has_explicit_npm_prefix; then
     if npmrc_has_prefix_conflict; then
       return 1
     fi
@@ -78,7 +105,7 @@ node_prefix_ready() {
     return $?
   fi
 
-  if [ "$prefix" != "$HOME/.npm-global" ]; then
+  if [ "$prefix" != "$desired_prefix" ]; then
     return 1
   fi
 
@@ -86,11 +113,11 @@ node_prefix_ready() {
     return 1
   fi
 
-  if [[ ":$PATH:" == *":$HOME/.npm-global/bin:"* ]]; then
+  if [[ ":$PATH:" == *":$desired_prefix/bin:"* ]]; then
     return 0
   fi
 
-  grep -Fq 'export PATH="$HOME/.npm-global/bin:$PATH"' "$shell_rc" 2>/dev/null
+  return 1
 }
 
 node_prefix_help() {
@@ -119,7 +146,7 @@ run_node_prefix_setup() {
   local force='false'
   local emit_json='false'
   local shell_rc
-  local prefix
+  local prefix desired_prefix
   local registry
   local status='ready'
   local execution_mode='apply'
@@ -170,6 +197,7 @@ run_node_prefix_setup() {
     execution_mode='apply'
   fi
 
+  desired_prefix="$HOME/.npm-global"
   load_nvm_if_present
   if ! ensure_node_and_npm; then
     if [ "$emit_json" = 'true' ]; then
@@ -178,7 +206,7 @@ run_node_prefix_setup() {
       printf '"mode":"%s",' "$execution_mode"
       printf '"status":"failed",'
       printf '"restartRequired":false,'
-      printf '"desiredPrefix":"%s",' "$(json_escape "$HOME/.npm-global")"
+      printf '"desiredPrefix":"%s",' "$(json_escape "$desired_prefix")"
       printf '"shellRc":"%s",' "$(json_escape "$(detect_shell_rc)")"
       printf '"plannedActions":[],'
       printf '"appliedChanges":[],'
@@ -191,10 +219,11 @@ run_node_prefix_setup() {
   fi
 
   shell_rc="$(detect_shell_rc)"
+  desired_prefix="$(preferred_npm_prefix)"
   prefix="$(npm config get prefix 2>/dev/null || printf '')"
   registry="$(normalize_npm_registry "$(npm config get registry 2>/dev/null || printf '')")"
 
-  if nvm_is_active; then
+  if nvm_is_active && ! has_explicit_npm_prefix; then
     if npmrc_has_prefix_conflict; then
       planned_actions+=('clear_npm_prefix_conflict')
     fi
@@ -202,13 +231,13 @@ run_node_prefix_setup() {
       planned_actions+=('set_npm_registry')
     fi
   else
-    if [ "$prefix" != "$HOME/.npm-global" ]; then
+    if [ "$prefix" != "$desired_prefix" ]; then
       planned_actions+=('set_npm_prefix')
     fi
     if [ "$registry" != 'https://registry.npmjs.org/' ]; then
       planned_actions+=('set_npm_registry')
     fi
-    if [[ ":$PATH:" != *":$HOME/.npm-global/bin:"* ]]; then
+    if [[ ":$PATH:" != *":$desired_prefix/bin:"* ]]; then
       planned_actions+=('repair_npm_global_path')
     fi
   fi
@@ -224,7 +253,7 @@ run_node_prefix_setup() {
       printf '"mode":"check",'
       printf '"status":"%s",' "$status"
       printf '"restartRequired":false,'
-      printf '"desiredPrefix":"%s",' "$(json_escape "$HOME/.npm-global")"
+      printf '"desiredPrefix":"%s",' "$(json_escape "$desired_prefix")"
       printf '"shellRc":"%s",' "$(json_escape "$shell_rc")"
       printf '"plannedActions":'
       json_string_array "${planned_actions[@]}"
@@ -251,7 +280,7 @@ run_node_prefix_setup() {
       printf '"mode":"%s",' "$execution_mode"
       printf '"status":"ready",'
       printf '"restartRequired":false,'
-      printf '"desiredPrefix":"%s",' "$(json_escape "$HOME/.npm-global")"
+      printf '"desiredPrefix":"%s",' "$(json_escape "$desired_prefix")"
       printf '"shellRc":"%s",' "$(json_escape "$shell_rc")"
       printf '"plannedActions":[],'
       printf '"appliedChanges":[],'
@@ -265,7 +294,7 @@ run_node_prefix_setup() {
     return 0
   fi
 
-  if nvm_is_active; then
+  if nvm_is_active && ! has_explicit_npm_prefix; then
     nvm use --delete-prefix "$(node -v)" --silent >/dev/null 2>&1 || true
     npm config delete prefix >/dev/null 2>&1 || true
     npm config delete globalconfig >/dev/null 2>&1 || true
@@ -275,10 +304,10 @@ run_node_prefix_setup() {
       applied_changes+=('clear_npm_prefix_conflict')
     fi
   else
-    mkdir -p "$HOME/.npm-global"
-    npm config set prefix "$HOME/.npm-global"
+    mkdir -p "$desired_prefix"
+    npm config set prefix "$desired_prefix"
     npm config set registry 'https://registry.npmjs.org/'
-    ensure_npm_global_path_export "$shell_rc"
+    ensure_npm_global_path_export "$shell_rc" "$desired_prefix"
     applied_changes+=('set_npm_prefix' 'set_npm_registry' 'repair_npm_global_path')
   fi
 
@@ -294,7 +323,7 @@ run_node_prefix_setup() {
     printf '"mode":"%s",' "$execution_mode"
     printf '"status":"%s",' "$status"
     printf '"restartRequired":false,'
-    printf '"desiredPrefix":"%s",' "$(json_escape "$HOME/.npm-global")"
+    printf '"desiredPrefix":"%s",' "$(json_escape "$desired_prefix")"
     printf '"shellRc":"%s",' "$(json_escape "$shell_rc")"
     printf '"plannedActions":'
     json_string_array "${planned_actions[@]}"
@@ -340,8 +369,8 @@ remove_superseded_npm_packages() {
   while IFS= read -r legacy; do
     [ -n "$legacy" ] || continue
     npm list -g "$legacy" --depth=0 >/dev/null 2>&1 || continue
-    printf 'Removing superseded package %s (replaced by %s).\n' "$legacy" "$package_name"
-    npm uninstall -g "$legacy" >/dev/null 2>&1 || true
+    printf 'Removing superseded package %s (replaced by %s).\n' "$legacy" "$package_name" >&2
+    npm uninstall -g "$legacy" >/dev/null 2>&1 || return 1
   done <<EOF
 $(node_cli_superseded_packages "$package_name")
 EOF
@@ -1081,9 +1110,6 @@ run_npm_cli_provider() {
     shift
   done
 
-  if [ "$check_only" != 'true' ] && [ "$uninstall" != 'true' ]; then
-    remove_superseded_npm_packages "$package_name"
-  fi
 
   if [ "$force" = 'true' ]; then
     upgrade='false'
@@ -1134,7 +1160,17 @@ run_npm_cli_provider() {
   if command -v "$command_name" >/dev/null 2>&1 || npm list -g "$package_name" --depth=0 >/dev/null 2>&1; then
     installed='true'
     command_path="$(command -v "$command_name" 2>/dev/null || true)"
-    detected_version="$(npm list -g --depth=0 --json "$package_name" 2>/dev/null | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' | head -1)"
+    detected_version="$( (npm list -g --depth=0 --json "$package_name" 2>/dev/null || true) | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{try{console.log(JSON.parse(s).dependencies?.[process.argv[1]]?.version||"")}catch{}})' "$package_name")"
+  fi
+
+  if [ "$installed" = true ] && [ -z "$detected_version" ]; then
+    local legacy
+    while IFS= read -r legacy; do
+      [ -n "$legacy" ] || continue
+      if npm list -g "$legacy" --depth=0 >/dev/null 2>&1; then installed=false; break; fi
+    done <<LEGACY_EOF
+$(node_cli_superseded_packages "$package_name")
+LEGACY_EOF
   fi
 
   if [ "$execution_mode" = 'uninstall' ]; then
@@ -1208,13 +1244,15 @@ run_npm_cli_provider() {
     return 0
   fi
 
-  local is_outdated='false'
-  if [ "$upgrade" = 'true' ] || [ "$force" = 'true' ]; then
-    if [ "$installed" = 'true' ]; then
-      if npm outdated -g "$package_name" --json 2>/dev/null | grep -q "\"$package_name\""; then
-        is_outdated='true'
-      fi
-    fi
+  local is_outdated=false expected_version=''
+  if [ "$check_only" = false ] && [ "$uninstall" = false ] && [ "$dry_run" = false ] && { [ "$upgrade" = true ] || [ "$force" = true ] || [ "$installed" = false ]; }; then
+    if [ "$upgrade" = true ]; then cats_upgrade_npm || return 1; fi
+    expected_version="$(npm view "${package_name}@latest" version --fetch-retries=0 --fetch-timeout=10000 --loglevel=error)" || { printf 'Provider version query failed.\n' >&2; return 1; }
+    [[ "$expected_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$ ]] || { printf 'Invalid provider version metadata.\n' >&2; return 1; }
+    local comparison
+    comparison="$(cats_version_compare "$detected_version" "$expected_version")"
+    if [ -z "$detected_version" ] || [ "$comparison" = -1 ]; then is_outdated=true
+    elif [ "$comparison" = 0 ] && [[ "$detected_version" == *-* ]] && [[ "$expected_version" != *-* ]]; then is_outdated=true; fi
   fi
 
   local planned_action='skip'
@@ -1293,25 +1331,26 @@ run_npm_cli_provider() {
   fi
 
   local applied=()
-  case "$planned_action" in
-    install)
-      npm install -g --include=optional "$package_name" >/dev/null
-      applied+=("${package_name}:install")
-      ;;
-    upgrade)
-      npm install -g --include=optional "${package_name}@latest" >/dev/null
-      applied+=("${package_name}:upgrade")
-      ;;
-    reinstall)
-      npm install -g --include=optional "$package_name" --force >/dev/null
-      applied+=("${package_name}:reinstall")
-      ;;
-  esac
+  if [ "$dry_run" = true ]; then
+    printf '{"helper":"%s","mode":"%s","status":"preview","plannedActions":["%s:%s"],"appliedChanges":[],"warnings":[],"manualSteps":[],"interruptions":[]}\n' "$helper_id" "$execution_mode" "$package_name" "$planned_action"
+    return 0
+  fi
+  if [ "$check_only" != 'true' ] && [ "$dry_run" != 'true' ]; then
+    remove_superseded_npm_packages "$package_name"
+  fi
+  npm install -g --include=optional --engine-strict --fetch-retries=0 --fetch-timeout=30000 "${package_name}@${expected_version}" >/dev/null || return 1
+  applied+=("${package_name}:${planned_action}")
+  hash -r
 
   local final_command_path
   final_command_path="$(command -v "$command_name" 2>/dev/null || true)"
   local final_version
-  final_version="$(npm list -g --depth=0 --json "$package_name" 2>/dev/null | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' | head -1)"
+  final_version="$(npm list -g --depth=0 --json "$package_name" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{try{console.log(JSON.parse(s).dependencies?.[process.argv[1]]?.version||"")}catch{}})' "$package_name")"
+
+  if [ -z "$final_command_path" ] || [ "$final_version" != "$expected_version" ]; then
+    printf 'Provider verification failed. Check npm prefix and PATH.\n' >&2
+    return 1
+  fi
 
   if [ "$emit_json" = 'true' ]; then
     printf '{'

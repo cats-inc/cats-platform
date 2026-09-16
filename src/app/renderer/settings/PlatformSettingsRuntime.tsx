@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 
 import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import {
-  SettingsActionBar,
   SettingsSection,
   SettingsSectionHeader,
   SettingsStatusChip,
@@ -19,21 +18,12 @@ import {
 } from '../../../products/shared/renderer/api/providerCatalogRefreshStore.js';
 import {
   isDesktopEnvironment,
-  type RuntimeLifecycleHelperSummary,
+  resolveDesktopHostBridge,
 } from '../../../shared/desktopRecoveryBridge.js';
 import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { resolveRuntimePresentationStatus } from '../../../shared/runtimeStatusPresentation.js';
-import {
-  deriveHelperActions,
-  fetchRuntimeLifecycleHelpers,
-  presentRuntimeLifecycleHelperLabel,
-  previewRuntimeLifecycleUninstall,
-  runRuntimeLifecycleAction,
-  selectLifecycleHelpers,
-  type RuntimeLifecycleAction,
-  type RuntimeUninstallPreview,
-} from './runtimeLifecycleHelpers.js';
+import { mountProviderManager, type ProviderManagerBridge } from '../../../../packages/provider-setup/manager.js';
 import {
   useI18n,
 } from '../i18n/index.js';
@@ -69,16 +59,18 @@ function resolveRuntimeStatusChip(
   }
 }
 
-interface UninstallPrompt {
-  helper: RuntimeLifecycleHelperSummary;
-  preview: RuntimeUninstallPreview | null;
-  loading: boolean;
-}
-
-function uninstallPromptIsActionable(prompt: UninstallPrompt): boolean {
-  if (prompt.loading) return false;
-  if (!prompt.preview || !prompt.preview.available) return false;
-  return prompt.preview.plannedActions.length > 0;
+function DesktopProviders({ onFeedback }: { onFeedback: (message: string) => void }) {
+  const root = useRef<HTMLDivElement>(null);
+  const { locale } = useI18n();
+  useEffect(() => {
+    const bridge = resolveDesktopHostBridge();
+    if (!root.current || !bridge?.getProviderSetup || !bridge.applyProviderSetup || !bridge.runProviderSetup) return;
+    const view = mountProviderManager(root.current, bridge as ProviderManagerBridge, {
+      context: 'settings', locale, onFeedback,
+    });
+    return () => view.destroy();
+  }, [locale, onFeedback]);
+  return <div ref={root} />;
 }
 
 export function PlatformSettingsRuntime({
@@ -96,26 +88,7 @@ export function PlatformSettingsRuntime({
   const refreshing = refreshSnapshot.inflight;
 
   const desktopEnvironment = useMemo(() => isDesktopEnvironment(), []);
-  const [helpers, setHelpers] = useState<RuntimeLifecycleHelperSummary[]>([]);
-  const [helpersLoading, setHelpersLoading] = useState(false);
-  const [runningHelperId, setRunningHelperId] = useState<string | null>(null);
-  const [confirmation, setConfirmation] = useState<UninstallPrompt | null>(null);
   const runtimeChip = resolveRuntimeStatusChip(payload.runtime, payload.runtimeSetup, t);
-
-  const actionLabel = (action: RuntimeLifecycleAction): string => {
-    switch (action) {
-      case 'check':
-        return t('settingsRuntimeActionCheckLabel');
-      case 'install':
-        return t('settingsRuntimeActionInstallLabel');
-      case 'upgrade':
-        return t('settingsRuntimeActionUpgradeLabel');
-      case 'repair':
-        return t('settingsRuntimeActionRepairLabel');
-      case 'uninstall':
-        return t('settingsRuntimeActionUninstallLabel');
-    }
-  };
 
   const pluralSuffix = (count: number): string => (count === 1 ? '' : 's');
   const presentRefreshError = useCallback((error: unknown): string => {
@@ -128,23 +101,8 @@ export function PlatformSettingsRuntime({
       : t('settingsRuntimeRefreshFailureWithStatus', { status });
   }, [t]);
 
-  const refreshHelpers = useCallback(async () => {
-    if (!desktopEnvironment) return;
-    setHelpersLoading(true);
-    try {
-      const next = await fetchRuntimeLifecycleHelpers();
-      setHelpers(next);
-    } finally {
-      setHelpersLoading(false);
-    }
-  }, [desktopEnvironment]);
-
   useEffect(() => {
-    void refreshHelpers();
-  }, [refreshHelpers]);
-
-  useEffect(() => {
-    subscribeProviderCatalogRefreshResult((result) => {
+    return subscribeProviderCatalogRefreshResult((result) => {
       if (result.type === 'success') {
         const { refreshed, failures } = result.value;
         if (failures.length > 0) {
@@ -167,43 +125,6 @@ export function PlatformSettingsRuntime({
   const handleRefresh = () => {
     void triggerProviderCatalogRefresh().catch(() => undefined);
   };
-
-  const lifecycleHelpers = useMemo(() => selectLifecycleHelpers(helpers), [helpers]);
-
-  const runAction = useCallback(async (
-    helper: RuntimeLifecycleHelperSummary,
-    action: RuntimeLifecycleAction,
-  ) => {
-    setRunningHelperId(helper.id);
-    try {
-      const outcome = await runRuntimeLifecycleAction(helper, action, t);
-      showToast(outcome.message);
-      if (outcome.kind !== 'failure') {
-        await refreshHelpers();
-      }
-      return outcome;
-    } finally {
-      setRunningHelperId(null);
-    }
-  }, [refreshHelpers, showToast, t]);
-
-  const openUninstallPrompt = useCallback(async (helper: RuntimeLifecycleHelperSummary) => {
-    setConfirmation({ helper, preview: null, loading: true });
-    const preview = await previewRuntimeLifecycleUninstall(helper, t);
-    setConfirmation((prev) => {
-      if (!prev || prev.helper.id !== helper.id) {
-        return prev;
-      }
-      return { helper, preview, loading: false };
-    });
-  }, [t]);
-
-  const handleUninstallConfirmed = useCallback(async () => {
-    if (!confirmation || confirmation.loading) return;
-    const helper = confirmation.helper;
-    setConfirmation(null);
-    await runAction(helper, 'uninstall');
-  }, [confirmation, runAction]);
 
   return (
     <>
@@ -265,65 +186,7 @@ export function PlatformSettingsRuntime({
       ) : null}
 
       {desktopEnvironment ? (
-        <SettingsSection
-          header={
-            <SettingsSectionHeader
-              title={t('settingsRuntimeProviderHelpersTitle')}
-              description={t('settingsRuntimeProviderHelpersDescription')}
-            />
-          }
-        >
-          {helpersLoading && lifecycleHelpers.length === 0 ? (
-            <p className="settingsRuntimeNote">{t('settingsRuntimeLoadingHelpers')}</p>
-          ) : lifecycleHelpers.length === 0 ? (
-            <p className="settingsRuntimeNote">
-              {t('settingsRuntimeNoProviderHelpers')}
-            </p>
-          ) : (
-            <ul className="settingsRuntimeList settingsRuntimeHelperList">
-              {lifecycleHelpers.map((helper) => {
-                const actions = deriveHelperActions(helper, t);
-                const isThisHelperRunning = runningHelperId === helper.id;
-                const helperLabel = presentRuntimeLifecycleHelperLabel(helper, t);
-                return (
-                  <li key={helper.id} className="settingsRuntimeHelperRow">
-                    <div className="settingsRuntimeHelperHead">
-                      <strong>{helperLabel}</strong>
-                      <span>{helper.packagedRelativePath}</span>
-                    </div>
-                    <div className="settingsRuntimeHelperActions">
-                      {actions
-                        .filter((entry) => entry.action !== 'uninstall' && entry.available)
-                        .map((entry) => (
-                          <button
-                            key={entry.action}
-                            type="button"
-                            className="secondaryButton"
-                            disabled={isThisHelperRunning}
-                            onClick={() => void runAction(helper, entry.action)}
-                          >
-                            {isThisHelperRunning
-                              ? t('settingsRuntimeWorkingState')
-                              : actionLabel(entry.action)}
-                          </button>
-                        ))}
-                      {helper.supportsUninstall ? (
-                        <button
-                          type="button"
-                          className="dangerButton"
-                          disabled={isThisHelperRunning}
-                          onClick={() => void openUninstallPrompt(helper)}
-                        >
-                          {t('settingsRuntimeUninstallButtonLabel')}
-                        </button>
-                      ) : null}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </SettingsSection>
+        <SettingsSection headerless><DesktopProviders onFeedback={showToast} /></SettingsSection>
       ) : null}
 
       <SettingsSection
@@ -370,134 +233,7 @@ export function PlatformSettingsRuntime({
         </AuthenticatedBrowserLink>
       </SettingsSection>
 
-      {confirmation ? (() => {
-        const canConfirm = uninstallPromptIsActionable(confirmation);
-        const showCloseAction = !canConfirm && !confirmation.loading;
-        return (
-          <div className="settingsRuntimeConfirmOverlay" role="dialog" aria-modal="true">
-            <div className="settingsRuntimeConfirmCard">
-              <UninstallConfirmBody prompt={confirmation} t={t} />
-              <SettingsActionBar>
-                <button
-                  type="button"
-                  className="secondaryButton"
-                  onClick={() => setConfirmation(null)}
-                >
-                  {t(
-                    showCloseAction
-                      ? 'settingsRuntimeCancelActionFallbackLabel'
-                      : 'settingsRuntimeCancelActionLabel',
-                  )}
-                </button>
-                <button
-                  type="button"
-                  className="dangerButton"
-                  disabled={!canConfirm}
-                  onClick={() => void handleUninstallConfirmed()}
-                >
-                  {t('settingsRuntimeUninstallButtonLabel')}
-                </button>
-              </SettingsActionBar>
-            </div>
-          </div>
-        );
-      })() : null}
-
       <ToastContainer toasts={toasts} />
     </>
-  );
-}
-
-function UninstallConfirmBody({
-  prompt,
-  t,
-}: {
-  prompt: UninstallPrompt;
-  t: (key: MessageKey, values?: MessageInterpolationValues) => string;
-}) {
-  const helperLabel = presentRuntimeLifecycleHelperLabel(prompt.helper, t);
-  return (
-    <>
-      <h3>{t('settingsRuntimeUninstallTitle', { label: helperLabel })}?</h3>
-      <p>
-        {t('settingsRuntimeUninstallDescriptionPrefix')}
-        <strong> {helperLabel}</strong>.
-        {' '}
-        {t('settingsRuntimeUninstallDescriptionSuffix')}
-      </p>
-      <p className="settingsRuntimeNote">
-        {t('settingsRuntimeUninstallHelperLabel', { helperId: prompt.helper.id })}
-        <br />
-        {t('settingsRuntimeUninstallScriptLabel', { scriptPath: prompt.helper.packagedRelativePath })}
-      </p>
-      <RemovalPreview preview={prompt.preview} loading={prompt.loading} t={t} />
-    </>
-  );
-}
-
-function RemovalPreview({
-  preview,
-  loading,
-  t,
-}: {
-  preview: RuntimeUninstallPreview | null;
-  loading: boolean;
-  t: (key: MessageKey, values?: MessageInterpolationValues) => string;
-}) {
-  if (loading) {
-    return <p className="settingsRuntimeNote">{t('settingsRuntimeComputingPlannedRemovals')}</p>;
-  }
-  if (!preview || !preview.available) {
-    return (
-      <p className="settingsRuntimeNote">
-        {preview?.message ?? t('settingsRuntimePreviewUnavailable')}
-      </p>
-    );
-  }
-  if (preview.status === 'not_installed') {
-    return (
-      <p className="settingsRuntimeNote">
-        {t('settingsRuntimeNothingToRemove')}
-        {preview.systemInstallPath ? (
-          <>
-            <br />
-            {t('settingsRuntimeSystemInstallDetected', {
-              installPath: preview.systemInstallPath,
-            })}
-          </>
-        ) : null}
-      </p>
-    );
-  }
-  return (
-    <div className="settingsRuntimePreview">
-      <p className="settingsRuntimeNote">
-        {t('settingsRuntimeWillRemoveItems', {
-          itemCount: preview.plannedActions.length,
-          pluralSuffix: preview.plannedActions.length === 1 ? '' : 's',
-        })}
-      </p>
-      <ul className="settingsRuntimePreviewList">
-        {preview.plannedActions.map((entry) => (
-          <li key={entry}>
-            <code>{entry}</code>
-          </li>
-        ))}
-      </ul>
-      {preview.systemInstallPath ? (
-        <p className="settingsRuntimeNote">
-          {t('settingsRuntimeSystemInstallCannotRemove', {
-            installPath: preview.systemInstallPath,
-          })}
-        </p>
-      ) : null}
-      {preview.manualSteps.length > 0 ? (
-        <ul className="settingsRuntimePreviewList settingsRuntimePreviewManual">
-          {preview.manualSteps.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
   );
 }

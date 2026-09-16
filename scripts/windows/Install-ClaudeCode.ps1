@@ -74,12 +74,17 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+. (Join-Path $PSScriptRoot '_NativeInstallerSupport.ps1')
 
 function Write-StructuredResult {
   param(
     [pscustomobject]$Result,
     [int]$ExitCode
   )
+
+  if (Get-Variable -Name catsInitialObservation -Scope Script -ErrorAction SilentlyContinue) {
+    Add-CatsNativeObservation -Result $Result -Before $script:catsInitialObservation -Attempted ([bool]$script:shouldInstall) -Skipped ([bool]$SkipInstaller)
+  }
 
   if ($Json) {
     $Result | ConvertTo-Json -Depth 10
@@ -250,7 +255,8 @@ function Invoke-ClaudeInstaller {
 
   try {
     $installScript = Invoke-RestMethod 'https://claude.ai/install.ps1'
-    Invoke-Expression $installScript
+    $child = Invoke-CatsRemoteInstaller -ScriptText $installScript
+    if (-not $child.success) { throw $child.stderr }
     return [pscustomobject]@{
       usedWingetFallback = $false
       skipped = $false
@@ -493,6 +499,10 @@ if ($CheckOnly) {
   Write-StructuredResult -Result $result -ExitCode 0
 }
 
+if ($DryRun) {
+  Write-CatsNativePreview -Helper 'windows-claude-native-installer' -Mode $executionMode -Detected $detected -Actions $plannedActions.ToArray() -EmitJson ([bool]$Json)
+}
+
 $cleanedNpmShim = $false
 if ($npmShimPresent) {
   $cleanedNpmShim = Remove-ClaudeNpmShim
@@ -503,9 +513,16 @@ if ($npmShimPresent) {
   }
 }
 
+$installFailed = $false
+$catsInitialObservation = $detected.PSObject.Copy()
 $shouldInstall = $Force -or $Upgrade -or -not $detected.installed
+$installFailed = $false
 if ($shouldInstall) {
-  $installResult = Invoke-ClaudeInstaller
+  $installResult = try { Invoke-ClaudeInstaller } catch { [pscustomobject]@{ skipped = $false; success = $false; stderr = [string]$_.Exception.Message; usedPowerShell51Fallback = $false; usedWingetFallback = $false } }
+  if ($installResult.PSObject.Properties['success'] -and -not $installResult.success) {
+    $installFailed = $true
+    $warnings.Add($installResult.stderr)
+  }
   $usedWingetFallback = [bool]$installResult.usedWingetFallback
   if ($usedWingetFallback) {
     $warnings.Add('Claude Code installer required the winget fallback path.')
@@ -516,8 +533,9 @@ if ($shouldInstall) {
 
   Start-Sleep -Seconds 2
   $detected = Detect-ClaudeInstall
-  if (-not $detected.installed -and -not $SkipInstaller) {
-    throw 'Claude Code installation completed but claude was still not detected.'
+  if (-not $detected.installed -and -not $SkipInstaller -and -not $installFailed) {
+    $warnings.Add('Claude Code installation completed but claude was still not detected.')
+    $installFailed = $true
   }
 
   if ($Force) {
@@ -535,7 +553,7 @@ $interruptions = [System.Collections.Generic.List[object]]::new()
 if ($shouldInstall -or $cleanedNpmShim) {
   $interruptions.Add([pscustomobject]@{
       kind = 'relaunch_required'
-      summary = 'Relaunch Cats Desktop Host after the Claude Code install step, then rerun the packaged setup check.'
+      summary = 'Run Detect Again after the Claude Code install step if the command is not visible yet.'
       resumable = $true
       requiresRestart = $false
       requiresElevation = $false
@@ -555,7 +573,7 @@ $restartRequired = $false
 $result = [pscustomobject]@{
   helper = 'windows-claude-native-installer'
   mode = $executionMode
-  status = if ($interruptions.Count -gt 0) { [string]$interruptions[0].kind } else { 'ready' }
+  status = if ($installFailed) { 'failed' } elseif ($interruptions.Count -gt 0) { [string]$interruptions[0].kind } else { 'ready' }
   installed = [bool]$detected.installed
   detectedVersion = if ($detected.detectedVersion) { $detected.detectedVersion } else { $null }
   commandPath = $detected.commandPath
@@ -568,4 +586,4 @@ $result = [pscustomobject]@{
   cleanedNpmShim = $cleanedNpmShim
   usedWingetFallback = $usedWingetFallback
 }
-Write-StructuredResult -Result $result -ExitCode 0
+Write-StructuredResult -Result $result -ExitCode $(if ($installFailed) { 1 } else { 0 })

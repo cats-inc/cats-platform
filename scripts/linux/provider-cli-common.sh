@@ -4,6 +4,7 @@ if [ -n "${CATS_PLATFORM_UNIX_PROVIDER_COMMON_SH:-}" ]; then
   return 0 2>/dev/null || exit 0
 fi
 readonly CATS_PLATFORM_UNIX_PROVIDER_COMMON_SH=1
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/provider-version-common.sh"
 
 json_escape() {
   local value="$1"
@@ -343,7 +344,7 @@ run_downloaded_shell_installer() {
   local installer_path status=0
 
   installer_path="$(mktemp)"
-  if ! curl -fsSL "$url" -o "$installer_path"; then
+  if ! curl -fsSL --connect-timeout 10 --max-time 60 "$url" -o "$installer_path"; then
     rm -f "$installer_path"
     printf 'Failed to download the installer from %s\n' "$url" >&2
     return 1
@@ -411,26 +412,8 @@ run_remote_pipe_installer() {
   url="$(provider_install_url "$provider")"
 
   case "$provider" in
-    antigravity|grok)
-      curl -fsSL "$url" | bash
-      ;;
-    goose)
-      curl -fsSL "$url" | env CONFIGURE=false bash
-      ;;
-    muse)
-      # Download first, then run: with `curl ... | bash` a failed download still
-      # exits 0, because bash reads empty input and succeeds.
-      run_downloaded_shell_installer "$url"
-      ;;
-    cursor)
-      curl "$url" -fsSL | bash
-      ;;
-    claude|junie)
-      curl -fsSL "$url" | bash
-      ;;
-    *)
-      return 1
-      ;;
+    goose) CONFIGURE=false run_downloaded_shell_installer "$url" ;;
+    *) run_downloaded_shell_installer "$url" ;;
   esac
 }
 
@@ -457,20 +440,14 @@ run_kiro_installer() {
   local installer_path
 
   installer_path="$(mktemp)"
-  curl -fsSL "$(provider_install_url kiro)" -o "$installer_path"
+  curl -fsSL --connect-timeout 10 --max-time 60 "$(provider_install_url kiro)" -o "$installer_path" || { rm -f "$installer_path"; return 1; }
   chmod +x "$installer_path"
 
-  if [ "$mode" = 'reinstall' ]; then
-    rm -f "$HOME/.local/bin/kiro-cli" "$HOME/.local/bin/kiro-cli-chat" "$HOME/.local/bin/kiro-cli-term"
-    if [ "$platform" = 'macos' ]; then
-      rm -rf '/Applications/Kiro CLI.app'
-      rm -f "$HOME/.local/bin/bash (kiro-cli-term)" "$HOME/.local/bin/fish (kiro-cli-term)" \
-        "$HOME/.local/bin/nu (kiro-cli-term)" "$HOME/.local/bin/zsh (kiro-cli-term)"
-    fi
-  fi
 
-  bash "$installer_path" --force < /dev/null
+  local install_status=0
+  bash "$installer_path" --force < /dev/null || install_status=$?
   rm -f "$installer_path"
+  [ "$install_status" -eq 0 ] || return "$install_status"
 
   if [ "$platform" = 'macos' ]; then
     ensure_kiro_cli_symlink_macos
@@ -485,15 +462,17 @@ run_provider_install_action() {
 
   case "$provider" in
     antigravity)
-      if [ "$action" = 'upgrade' ]; then
-        rm -f "$HOME/.local/bin/agy" || true
-        run_remote_pipe_installer "$provider"
-      elif [ "$action" = 'force' ]; then
-        rm -f "$HOME/.local/bin/agy" || true
-        run_remote_pipe_installer "$provider"
-      else
-        run_remote_pipe_installer "$provider"
+      local backup='' result=0 destination="$HOME/.local/bin/agy"
+      if { [ "$action" = upgrade ] || [ "$action" = force ]; } && [ -f "$destination" ] && [ ! -L "$destination" ]; then
+        backup="$(mktemp)" || return 1
+        cp -p "$destination" "$backup" || { rm -f "$backup"; return 1; }
+        rm -f "$destination" || { rm -f "$backup"; return 1; }
       fi
+      run_remote_pipe_installer "$provider" || result=$?
+      [ -x "$destination" ] || result=1
+      if [ "$result" -ne 0 ] && [ -n "$backup" ]; then cp -p "$backup" "$destination" || true; fi
+      [ -z "$backup" ] || rm -f "$backup"
+      return "$result"
       ;;
     grok)
       run_remote_pipe_installer "$provider"
@@ -508,7 +487,7 @@ run_provider_install_action() {
       ;;
     claude)
       if [ "$action" = 'upgrade' ] && current_command="$(detect_provider_command "$platform" "$provider")"; then
-        "$current_command" update || true
+        "$current_command" update
       else
         run_remote_pipe_installer "$provider"
       fi
@@ -986,76 +965,72 @@ run_native_provider_installer() {
     return 0
   fi
 
-  printf 'Installing %s...\n' "$display_name"
-  if [ "$force" = 'true' ]; then
-    run_provider_install_action "$platform" "$provider" 'force'
-  elif [ "$upgrade" = 'true' ]; then
-    run_provider_install_action "$platform" "$provider" 'upgrade'
-  else
-    run_provider_install_action "$platform" "$provider" 'install'
-  fi
-  applied_changes=("${planned_actions[@]}")
-
-  ensure_provider_bin_path_export "$shell_rc" "$provider"
-  ensure_provider_alias "$shell_rc" "$provider"
-
-  while [ $attempt -le 3 ]; do
-    if command_path="$(detect_provider_command "$platform" "$provider")"; then
-      detected_version="$(provider_version_line "$command_path" "$provider")"
-      if [ "$emit_json" = 'true' ]; then
-        warnings=("Reload your shell if ${display_name} is not visible yet: source ${shell_rc}")
-        printf '{'
-        printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
-        printf '"mode":"%s",' "$execution_mode"
-        printf '"status":"ready",'
-        printf '"installed":true,'
-        printf '"commandPath":"%s",' "$(json_escape "$command_path")"
-        printf '"detectedVersion":"%s",' "$(json_escape "$detected_version")"
-        printf '"plannedActions":'
-        json_string_array "${planned_actions[@]}"
-        printf ','
-        printf '"appliedChanges":'
-        json_string_array "${applied_changes[@]}"
-        printf ','
-        printf '"warnings":'
-        json_string_array "${warnings[@]}"
-        printf ','
-        printf '"manualSteps":'
-        json_string_array "$(provider_manual_steps "$provider")"
-        printf ','
-        printf '"interruptions":[]'
-        printf '}\n'
-      else
-        printf '%s ready: %s\n' "$display_name" "$detected_version"
-        printf 'Reload your shell if %s is not visible yet: source %s\n' "$display_name" "$shell_rc"
-      fi
-      return 0
+  local before_version="$detected_version" latest='' version_state=unknown
+  local install_status=0 attempted=true final_installed=false observed_change=unchanged
+  if [ "$upgrade" = true ] && [ "$force" = false ] && [ "$initial_installed" = true ]; then
+    latest="$(cats_native_latest_version "$provider")"
+    version_state="$(cats_native_version_state "$provider" "$detected_version" "$latest")"
+    if [ "$version_state" = current ]; then
+      attempted=false
+      planned_actions=()
+    elif [ -z "$latest" ] && [ "$provider" != claude ] && [ "$provider" != muse ]; then
+      warnings+=('Could not compare the published version; the official installer will verify the update.')
     fi
-
-    sleep 2
-    attempt=$((attempt + 1))
-  done
-
-  if [ "$emit_json" = 'true' ]; then
-    printf '{'
-    printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
-    printf '"mode":"%s",' "$execution_mode"
-    printf '"status":"failed",'
-    printf '"installed":false,'
-    printf '"commandPath":null,'
-    printf '"detectedVersion":null,'
-    printf '"plannedActions":'
-    json_string_array "${planned_actions[@]}"
-    printf ','
-    printf '"appliedChanges":'
-    json_string_array "${applied_changes[@]}"
-    printf ','
-    printf '"warnings":[],'
-    printf '"manualSteps":[],'
-    printf '"interruptions":[]'
-    printf '}\n'
-    return 1
   fi
-  printf 'Failed to verify %s after install.\n' "$display_name" >&2
-  return 1
+  if [ "$attempted" = true ]; then
+    printf 'Installing %s...\n' "$display_name" >&2
+    if [ "$force" = true ]; then
+      run_provider_install_action "$platform" "$provider" force || install_status=$?
+    elif [ "$upgrade" = true ]; then
+      run_provider_install_action "$platform" "$provider" upgrade || install_status=$?
+    else
+      run_provider_install_action "$platform" "$provider" install || install_status=$?
+    fi
+  fi
+  hash -r
+  if [ "$install_status" -eq 0 ]; then
+    ensure_provider_bin_path_export "$shell_rc" "$provider"
+    ensure_provider_alias "$shell_rc" "$provider"
+  fi
+  for attempt in 1 2 3; do
+    if command_path="$(detect_provider_command "$platform" "$provider")"; then
+      final_installed=true
+      detected_version="$(provider_version_line "$command_path" "$provider")"
+      break
+    fi
+    [ "$install_status" -eq 0 ] && [ "$attempted" = true ] || break
+    sleep 2
+  done
+  local final_status=ready
+  if [ "$install_status" -ne 0 ] || [ "$final_installed" = false ]; then
+    final_status=failed
+    observed_change=failed
+    warnings+=("Installer or verification failed (exit $install_status); any previous installation is shown separately.")
+  elif [ "$attempted" = false ]; then observed_change=unchanged
+  elif [ "$initial_installed" = false ]; then observed_change=installed
+  elif [ -n "$before_version" ] && [ -n "$detected_version" ] && [ "$before_version" != "$detected_version" ]; then
+    case "$(cats_version_compare "$(cats_native_version_token "$provider" "$detected_version")" "$(cats_native_version_token "$provider" "$before_version")")" in
+      1) observed_change=upgraded ;; -1) observed_change=downgraded ;; *) observed_change=version_changed ;;
+    esac
+  else observed_change=unchanged; fi
+  if [ "$final_status" = ready ] && { [ "$upgrade" = true ] || [ "$force" = true ]; }; then
+    cats_cleanup_native_versions "$provider" "$detected_version" || true
+  fi
+  case "$observed_change" in
+    installed|upgraded|downgraded|version_changed) applied_changes=("${observed_change}_${provider}_installation") ;;
+  esac
+  if [ "$emit_json" = true ]; then
+    printf '{"helper":"%s-%s-native-installer","mode":"%s","status":"%s",' "$platform" "$provider" "$execution_mode" "$final_status"
+    printf '"installed":%s,"commandPath":"%s","detectedVersion":"%s",' "$final_installed" "$(json_escape "$command_path")" "$(json_escape "$detected_version")"
+    printf '"previousVersion":"%s","observedChange":"%s",' "$(json_escape "$before_version")" "$observed_change"
+    printf '"summary":"%s: %s -> %s",' "$observed_change" "$(json_escape "$before_version")" "$(json_escape "$detected_version")"
+    printf '"plannedActions":'; json_string_array "${planned_actions[@]}"
+    printf ',"appliedChanges":'; json_string_array "${applied_changes[@]}"
+    printf ',"warnings":'; json_string_array "${warnings[@]}"
+    printf ',"manualSteps":'; json_string_array "$(provider_manual_steps "$provider")"
+    printf ',"interruptions":[]}\n'
+  else
+    printf '%s %s: %s -> %s\n' "$display_name" "$observed_change" "$before_version" "$detected_version"
+  fi
+  [ "$final_status" = ready ]
 }

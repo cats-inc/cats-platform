@@ -1,3 +1,5 @@
+import { mountProviderManager } from '../../packages/provider-setup/manager.js';
+
 export function buildDesktopBootstrapPage(): string {
   return `<!doctype html>
 <html lang="en">
@@ -399,10 +401,17 @@ export function buildDesktopBootstrapPage(): string {
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
-      padding: 38vh 24px 56px;
+      height: 100dvh;
+      padding: 32px 24px 24px;
       text-align: center;
     }
+    .onboarding-page > .hero { flex-shrink: 0; }
+    .onboarding-page > .catsProviderManager {
+      width: 100%; text-align: left; margin: 0 auto; min-height: 0;
+      flex: 1; display: flex; flex-direction: column;
+    }
+    .onboarding-page .catsProviderManager > :not(.pm-list) { flex-shrink: 0; }
+    .onboarding-page .catsProviderManager .pm-list { flex: 1; min-height: 0; max-height: none; }
     .onboarding-headline {
       font-size: 0.92rem;
       color: var(--muted);
@@ -487,7 +496,7 @@ export function buildDesktopBootstrapPage(): string {
       .actions { flex-direction: column; }
       .btn { width: 100%; }
       .error-actions { flex-direction: column; }
-      .onboarding-page { padding: 16vh 16px 40px; }
+      .onboarding-page { padding: 24px 16px; }
       .cli-grid { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
@@ -1643,7 +1652,7 @@ export function buildDesktopBootstrapPage(): string {
       if (!snapshot) return 'loading';
       if (snapshot.phase === 'failed') return 'recovery';
       var setupComplete = isSetupComplete(snapshot);
-      if (onboardingActive && !setupComplete) {
+      if (onboardingActive) {
         return 'onboarding';
       }
       if (
@@ -2638,79 +2647,7 @@ export function buildDesktopBootstrapPage(): string {
       return 'retry';
     }
 
-    var selectionDraft = null;
-    var selectionDraftRevision = null;
-    var selectionSaving = false;
-    var selectionError = '';
-    function providerTargetKey(target) {
-      return JSON.stringify([target.provider, target.backend, target.instance]);
-    }
-    function hasSelectionDraftChanges(selection) {
-      if (!selectionDraft) return false;
-      var saved = selection.targets.map(providerTargetKey);
-      return selectionDraftRevision !== selection.revision || saved.length !== selectionDraft.length
-        || saved.some(function (key) { return selectionDraft.indexOf(key) < 0; });
-    }
-    function ProviderSelectionEditor(snap) {
-      var prerequisites = snap.prerequisites || {};
-      var selection = prerequisites.providerSelection;
-      if (!selection) return el('p', {}, tx('selection.loading'));
-      if (!selectionDraft) {
-        selectionDraft = selection.targets.map(providerTargetKey);
-        selectionDraftRevision = selection.revision;
-      }
-      var catalog = (prerequisites.providerCatalog || []).slice();
-      selection.targets.forEach(function (target) {
-        if (!catalog.some(function (entry) { return providerTargetKey(entry) === providerTargetKey(target); })) {
-          catalog.push(Object.assign({ familyLabel: target.provider }, target));
-        }
-      });
-      var choices = catalog.map(function (target) {
-        var key = providerTargetKey(target);
-        var checkbox = el('input', {
-          type: 'checkbox', disabled: selectionSaving,
-          onchange: function () {
-            selectionDraft = selectionDraft.filter(function (value) { return value !== key; });
-            if (this.checked) selectionDraft.push(key);
-            doRender();
-          }
-        });
-        checkbox.checked = selectionDraft.indexOf(key) >= 0;
-        return el('label', { class: 'cli-card' }, checkbox,
-          ' ' + target.familyLabel + ' (' + target.backend + '/' + target.instance + ')');
-      });
-      function saveSelection(reload) {
-        selectionSaving = true;
-        selectionError = '';
-        doRender();
-        bridge.saveProviderSelection({
-          targets: selectionDraft.map(function (key) {
-            var values = JSON.parse(key);
-            return { provider: values[0], backend: values[1], instance: values[2] };
-          }),
-          expectedRevision: reload ? selection.revision : selectionDraftRevision,
-          reload: reload
-        }).then(function (next) {
-          currentSnapshot = next;
-          selectionDraft = null;
-          selectionDraftRevision = null;
-        }).catch(function (error) {
-          selectionError = error && error.message ? error.message : String(error);
-        }).finally(function () { selectionSaving = false; doRender(); });
-      }
-      return el('section', { class: 'selection-editor' },
-        el('h2', {}, tx('selection.title')),
-        el('p', {}, tx('selection.description')),
-        el('div', { class: 'cli-grid' }, choices),
-        el('div', { class: 'onboarding-actions' },
-          el('button', { class: 'btn', disabled: selectionSaving, onclick: function () { saveSelection(false); } }, tx('selection.save')),
-          selection.diskChanged ? el('button', { class: 'btn', disabled: selectionSaving, onclick: function () { saveSelection(true); } }, tx('selection.reload')) : null,
-          hasSelectionDraftChanges(selection) ? el('button', { class: 'btn', disabled: selectionSaving, onclick: function () { selectionDraft = null; doRender(); } }, tx('selection.reset')) : null
-        ),
-        selectionError || selection.error ? el('p', { role: 'alert' }, selectionError || selection.error) : null
-      );
-    }
-
+    var providerManagerView = null;
     function showOnboarding(snap) {
       onboardingActive = true;
       splashEl.classList.add('hidden');
@@ -2718,61 +2655,20 @@ export function buildDesktopBootstrapPage(): string {
       onboardingEl.classList.remove('hidden');
       onboardingEl.classList.add('onboarding-page');
       resetSlowHintCycle();
-
+      // Keep the same view mounted while host snapshots arrive: draft inputs,
+      // focus, progress and the footer must not jump during a long operation.
+      if (providerManagerView) return;
       onboardingEl.innerHTML = '';
-
-      var selection = snap.prerequisites && snap.prerequisites.providerSelection;
-      var continueDisabled = !selection || selection.state === 'missing' || selection.state === 'invalid' || hasSelectionDraftChanges(selection);
-
-      var continueBtn = el('button', {
-        class: 'btn',
-        disabled: continueDisabled,
-        onclick: function () {
-          if (continueDisabled) return;
-          var self = this;
-          self.disabled = true;
+      var providerRoot = el('section', {});
+      onboardingEl.append(el('section', { class: 'hero' }, el('h1', { class: 'hero-title' }, 'Cats')), providerRoot);
+      providerManagerView = (${mountProviderManager.toString()})(providerRoot, bridge, {
+        context: 'onboarding', locale: bootstrapLocale,
+        onContinue: async function () {
+          await bridge.runAction('open_setup');
           onboardingActive = false;
-          bridge.runAction('open_setup').catch(function () {
-            onboardingActive = true;
-            self.disabled = false;
-          });
         }
-      }, tx('action.continue'));
-
-      var cardSet = buildCliCards(snap, currentSetupSnapshot, { alwaysExpanded: false });
-      var actions = [continueBtn];
-      /* Offered even once the inventory is known: a CLI installed outside Cats
-         since the last scan is otherwise invisible until something else forces
-         a rescan. */
-      var scanLabel = cliScanInFlight
-        ? tx('onboarding.scanningClis')
-        : (isCliInventoryScanned(snap) ? tx('onboarding.rescanClis') : tx('onboarding.scanClis'));
-      actions.push(el('button', {
-        class: 'btn',
-        disabled: cliScanInFlight || continueDisabled,
-        onclick: handleCliScanClick
-      }, scanLabel));
-      if (cardSet.hasHiddenCards) {
-        var moreLabel = onboardingExpanded ? tx('action.showFewer') : tx('action.showMore');
-        actions.push(el('button', {
-          class: 'btn',
-          onclick: function () {
-            onboardingExpanded = !onboardingExpanded;
-            doRender();
-          }
-        }, moreLabel));
-      }
-
-      onboardingEl.append(
-        el('section', { class: 'hero' },
-          el('h1', { class: 'hero-title' }, 'Cats')
-        ),
-        el('p', { class: 'onboarding-headline' },
-          tx('onboarding.headline')),
-        ProviderSelectionEditor(snap),
-        el('div', { class: 'onboarding-actions' }, actions),
-        el('div', { class: 'cli-grid' }, cardSet.elements)
-      );
+      });
+      window.addEventListener('pagehide', function () { providerManagerView.destroy(); });
     }
 
     function InstallACliSection(snap) {

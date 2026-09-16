@@ -28,6 +28,11 @@ Naming across the project: `Cats` is the name of this application,
 boundary, and `cats-one` is the one-shot bootstrap installer path. The
 persistent host executable is `cats-platform`.
 
+Desktop provider setup (2026-09-16): onboarding and Settings > Runtime share
+provider selection, per-provider detection/installation and endpoint checks.
+Apply saves the selected scope to Runtime; detection is optional and missing
+providers do not prevent completion. See [PLAN-107](./docs/plans/PLAN-107-desktop-provider-management.md).
+
 The current slices are:
 
 - a Node app/runtime core on `CATS_PORT` (default `8181`, with `CATS_INC_PORT`

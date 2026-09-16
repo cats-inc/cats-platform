@@ -4,6 +4,17 @@
 
 ## Current Status
 
+Desktop provider management (2026-09-16): onboarding and Settings > Runtime
+share one intent editor with exact Runtime scope, retained detection history,
+per-provider installation/checks, endpoint connection tests, Apply with optional
+detection, and explicit Continue. Empty/partially ready selections finish
+Runtime bootstrap. Native Windows/macOS/Linux helpers incorporate the reviewed
+upstream port through `752dc13`, with version gates, truthful outcomes, bounded
+cleanup and verified npm updates. ADR/SPEC-116 and PLAN-107 record the delivery;
+focused validation and isolated browser checks passed. Desktop 0.2.9 is the
+authorized unsigned preview candidate; required CI/release gates remain pending.
+
+
 Release follow-through (2026-09-11): the owner authorized Desktop 0.2.5 unsigned
 preview after Runtime #43, Platform #70 and cats-one #8 merged. Usage 0.2.0 is
 published; its downloaded archive, release lock, source provenance and GitHub

@@ -1,6 +1,6 @@
 {
   "name": "@cats-inc/cats-platform",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Technical host package for the Cats platform, backed by cats-runtime.",
   "author": "Cats Inc. <sammykenny2@gmail.com>",
   "homepage": "https://github.com/cats-inc/cats-platform",
@@ -18,6 +18,7 @@
     "build/desktop",
     "scripts",
     "packages/app-sdk",
+    "packages/provider-setup",
     "config/provider-capability-bootstrap.yaml.example",
     ".env.example",
     "README.md",
@@ -131,6 +132,7 @@
     "files": [
       "build/desktop/**/*",
       "packages/app-sdk/**/*",
+      "packages/provider-setup/**/*",
       "assets/build/icon.ico",
       "assets/build/icon.png",
       "assets/tray-icon*.png",
@@ -150,23 +152,17 @@
       {
         "from": "build/desktop-packaging/shared/build/server",
         "to": "app-sidecar/build/server",
-        "filter": [
-          "**/*"
-        ]
+        "filter": ["**/*"]
       },
       {
         "from": "build/desktop-packaging/shared/build/renderer",
         "to": "app-sidecar/build/renderer",
-        "filter": [
-          "**/*"
-        ]
+        "filter": ["**/*"]
       },
       {
         "from": "build/desktop-packaging/shared/cats-platform/config",
         "to": "app-sidecar/config",
-        "filter": [
-          "**/*"
-        ]
+        "filter": ["**/*"]
       },
       {
         "from": "build/desktop-packaging/shared/app-sidecar/package.json",
@@ -199,16 +195,12 @@
       {
         "from": "build/desktop-packaging/shared/setup-assets",
         "to": "desktop/setup-assets",
-        "filter": [
-          "**/*"
-        ]
+        "filter": ["**/*"]
       },
       {
         "from": "build/mobile",
         "to": "mobile",
-        "filter": [
-          "**/*"
-        ]
+        "filter": ["**/*"]
       },
       {
         "from": "build/desktop-packaging/desktop-package-plan.json",
@@ -217,9 +209,7 @@
       {
         "from": "build/native",
         "to": "native",
-        "filter": [
-          "**/*"
-        ]
+        "filter": ["**/*"]
       }
     ],
     "win": {

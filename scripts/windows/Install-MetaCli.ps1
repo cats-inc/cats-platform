@@ -42,6 +42,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+. (Join-Path $PSScriptRoot '_NativeInstallerSupport.ps1')
 . (Join-Path $PSScriptRoot '_PackagedUninstall.ps1')
 
 function Write-StructuredResult {
@@ -49,6 +50,10 @@ function Write-StructuredResult {
     [pscustomobject]$Result,
     [int]$ExitCode
   )
+
+  if (Get-Variable -Name catsInitialObservation -Scope Script -ErrorAction SilentlyContinue) {
+    Add-CatsNativeObservation -Result $Result -Before $script:catsInitialObservation -Attempted ([bool]$script:shouldInstall) -Skipped ([bool]$SkipInstaller)
+  }
 
   if ($Json) {
     $Result | ConvertTo-Json -Depth 10
@@ -364,6 +369,8 @@ if ($CheckOnly) {
     }) -ExitCode 0
 }
 
+$installFailed = $false
+$catsInitialObservation = $detected.PSObject.Copy()
 $shouldInstall = $Force -or $Upgrade -or -not $detected.installed
 $installFailed = $false
 $installSkipped = $false
@@ -423,7 +430,7 @@ $interruptions = [System.Collections.Generic.List[object]]::new()
 if ($shouldInstall -and -not $installFailed -and -not $DryRun) {
   $interruptions.Add([pscustomobject]@{
       kind = 'relaunch_required'
-      summary = 'Relaunch Cats Desktop Host after the Meta Muse install step, then rerun the packaged setup check.'
+      summary = 'Run Detect Again after the Meta Muse install step if the command is not visible yet.'
       resumable = $true
       requiresRestart = $false
       requiresElevation = $false

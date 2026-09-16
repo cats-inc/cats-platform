@@ -28,6 +28,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+. (Join-Path $PSScriptRoot '_NativeInstallerSupport.ps1')
 . (Join-Path $PSScriptRoot '_PackagedUninstall.ps1')
 
 function Write-StructuredResult {
@@ -35,6 +36,10 @@ function Write-StructuredResult {
     [pscustomobject]$Result,
     [int]$ExitCode
   )
+
+  if (Get-Variable -Name catsInitialObservation -Scope Script -ErrorAction SilentlyContinue) {
+    Add-CatsNativeObservation -Result $Result -Before $script:catsInitialObservation -Attempted ([bool]$script:shouldInstall) -Skipped ([bool]$SkipInstaller)
+  }
 
   if ($Json) {
     $Result | ConvertTo-Json -Depth 10
@@ -274,7 +279,15 @@ if ($CheckOnly) {
   Write-StructuredResult -Result $result -ExitCode 0
 }
 
+$installFailed = $false
+$catsInitialObservation = $detected.PSObject.Copy()
 $shouldInstall = $Force -or $Upgrade -or -not $detected.installed
+if ($Upgrade -and -not $Force -and $detected.installed -and -not $SkipInstaller -and -not $DryRun) {
+  $versionGate = Test-CatsNativeUpgrade -Provider 'antigravity' -InstalledVersion $detected.detectedVersion
+  $shouldInstall = $versionGate.shouldInstall
+  if (-not $versionGate.known) { $warnings.Add('Could not compare the published version; the official installer will verify the update.') }
+  if (-not $shouldInstall) { $plannedActions.Clear() }
+}
 $installFailed = $false
 $installSkipped = $false
 if ($shouldInstall) {
@@ -282,8 +295,11 @@ if ($shouldInstall) {
     $warnings.Add('Dry-run requested; Antigravity installer invocation was skipped.')
     $installSkipped = $true
   } else {
-    if (($Force -or $Upgrade) -and (Test-Path -LiteralPath (Resolve-AntigravityExecutablePath) -PathType Leaf)) {
+    $previousBinary = $null
+    if (($Force -or $Upgrade) -and -not $SkipInstaller -and (Test-Path -LiteralPath (Resolve-AntigravityExecutablePath) -PathType Leaf)) {
       try {
+        $previousBinary = Join-Path ([IO.Path]::GetTempPath()) ('cats-agy-' + [guid]::NewGuid().ToString('N') + '.exe')
+        Copy-Item -LiteralPath (Resolve-AntigravityExecutablePath) -Destination $previousBinary -ErrorAction Stop
         Remove-Item -LiteralPath (Resolve-AntigravityExecutablePath) -Force -ErrorAction Stop
       } catch {
         $warnings.Add("Unable to remove existing agy.exe before refresh: $($_.Exception.Message)")
@@ -308,11 +324,18 @@ if ($shouldInstall) {
     }
 
     Start-Sleep -Seconds 2
-    Add-AntigravityToUserPath
+    if (-not $SkipInstaller) { Add-AntigravityToUserPath }
     $detected = Detect-AntigravityInstall
     if (-not $detected.installed -and -not $installSkipped -and -not $installFailed) {
       $warnings.Add('Antigravity installation completed but agy.exe was not detected at the expected path.')
       $installFailed = $true
+    }
+    if ($previousBinary) {
+      if ($installFailed) {
+        Copy-Item -LiteralPath $previousBinary -Destination (Resolve-AntigravityExecutablePath) -Force
+        $detected = Detect-AntigravityInstall
+      }
+      Remove-Item -LiteralPath $previousBinary -Force -ErrorAction SilentlyContinue
     }
   }
 
@@ -332,7 +355,7 @@ $interruptions = [System.Collections.Generic.List[object]]::new()
 if ($shouldInstall -and -not $installFailed -and -not $DryRun) {
   $interruptions.Add([pscustomobject]@{
       kind = 'relaunch_required'
-      summary = 'Relaunch Cats Desktop Host after the Antigravity install step, then rerun the packaged setup check.'
+      summary = 'Run Detect Again after the Antigravity install step if the command is not visible yet.'
       resumable = $true
       requiresRestart = $false
       requiresElevation = $false

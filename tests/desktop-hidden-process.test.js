@@ -78,3 +78,22 @@ test('Invoke-HiddenCommand preserves stdout, stderr, and exit code', skipUnlessW
   assert.equal(result.output, 'fake-cli 1.2.3');
   assert.equal(result.errorOutput, 'fake warning');
 });
+
+test('hidden command timeout terminates its owned descendant process', skipUnlessWindows(), async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'cats-hidden-timeout-'));
+  const child = join(dir, 'child.ps1');
+  const parent = join(dir, 'parent.ps1');
+  const pidFile = join(dir, 'child.pid');
+  const runner = join(dir, 'runner.ps1');
+  const literal = (s) => `'${escapePowerShellSingleQuoted(s)}'`;
+  await writeFile(child, 'Start-Sleep -Seconds 45');
+  await writeFile(parent, `$p = Start-Process powershell.exe -WindowStyle Hidden -PassThru -ArgumentList @('-NoProfile','-File',${literal(child)})\n$p.Id | Set-Content -LiteralPath ${literal(pidFile)}\nStart-Sleep -Seconds 45`);
+  await writeFile(runner, `. ${literal(hiddenProcessPath)}
+$result = Invoke-HiddenCommand -FileName powershell.exe -ArgumentList @('-NoProfile', '-File', ${literal(parent)}) -TimeoutMs 5000
+$childId = [int](Get-Content -LiteralPath ${literal(pidFile)})
+$remaining = Get-Process -Id $childId -ErrorAction SilentlyContinue
+if ($remaining) { Stop-Process -Id $childId -Force }
+@{ timedOut = $result.ExitCode -eq -1; childAlive = $null -ne $remaining } | ConvertTo-Json`);
+  const { stdout } = await execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', runner], { timeout: 20000 });
+  assert.deepEqual(JSON.parse(stdout), { timedOut: true, childAlive: false });
+});

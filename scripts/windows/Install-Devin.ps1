@@ -31,6 +31,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+. (Join-Path $PSScriptRoot '_NativeInstallerSupport.ps1')
 . (Join-Path $PSScriptRoot '_PackagedUninstall.ps1')
 
 function Write-StructuredResult {
@@ -38,6 +39,10 @@ function Write-StructuredResult {
     [pscustomobject]$Result,
     [int]$ExitCode
   )
+
+  if (Get-Variable -Name catsInitialObservation -Scope Script -ErrorAction SilentlyContinue) {
+    Add-CatsNativeObservation -Result $Result -Before $script:catsInitialObservation -Attempted ([bool]$script:shouldInstall) -Skipped ([bool]$SkipInstaller)
+  }
 
   if ($Json) {
     $Result | ConvertTo-Json -Depth 10
@@ -126,12 +131,6 @@ function Invoke-DevinInstaller {
     return [pscustomobject]@{ skipped = $true; success = $true; exitCode = 0; stderr = '' }
   }
 
-  $tempScript = [System.IO.Path]::Combine(
-    [System.IO.Path]::GetTempPath(),
-    "cats-devin-install-$([System.Guid]::NewGuid().ToString('N')).ps1"
-  )
-  $stdoutPath = "$tempScript.stdout"
-  $stderrPath = "$tempScript.stderr"
   # Devin's setup.ps1 ends by launching the interactive `devin setup` wizard.
   # Packaged setup runs with no console a prompt can reach, so an unstripped
   # installer would stall the step rather than fail.
@@ -174,46 +173,8 @@ function Invoke-DevinInstaller {
   }
   $bootstrap = ($patchedLines -join [Environment]::NewLine)
 
-  try {
-    [System.IO.File]::WriteAllText(
-      $tempScript,
-      $bootstrap,
-      [System.Text.UTF8Encoding]::new($false)
-    )
-    $powerShellExe = if (Get-Command pwsh.exe -ErrorAction SilentlyContinue) {
-      'pwsh.exe'
-    } else {
-      'powershell.exe'
-    }
-    $process = Start-Process -FilePath $powerShellExe `
-      -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tempScript) `
-      -Wait -PassThru -NoNewWindow `
-      -RedirectStandardOutput $stdoutPath `
-      -RedirectStandardError $stderrPath
-    $stderrRaw = if (Test-Path -LiteralPath $stderrPath -PathType Leaf) {
-      Get-Content -LiteralPath $stderrPath -Raw -ErrorAction SilentlyContinue
-    } else { $null }
+  return Invoke-CatsRemoteInstaller -ScriptText $bootstrap -RetrySharingViolation
 
-    return [pscustomobject]@{
-      skipped = $false
-      success = ($process.ExitCode -eq 0)
-      exitCode = $process.ExitCode
-      stderr = if ($null -eq $stderrRaw) { '' } else { [string]$stderrRaw }
-    }
-  } catch {
-    return [pscustomobject]@{
-      skipped = $false
-      success = $false
-      exitCode = -1
-      stderr = "Failed to invoke Devin installer: $($_.Exception.Message)"
-    }
-  } finally {
-    foreach ($path in @($tempScript, $stdoutPath, $stderrPath)) {
-      if (Test-Path -LiteralPath $path -PathType Leaf) {
-        Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
-      }
-    }
-  }
 }
 
 if (-not $CheckOnly -and -not $Apply -and -not $Upgrade -and -not $Force -and -not $Uninstall) {
@@ -303,7 +264,15 @@ if ($CheckOnly) {
     }) -ExitCode 0
 }
 
+$installFailed = $false
+$catsInitialObservation = $detected.PSObject.Copy()
 $shouldInstall = $Force -or $Upgrade -or -not $detected.installed
+if ($Upgrade -and -not $Force -and $detected.installed -and -not $SkipInstaller -and -not $DryRun) {
+  $versionGate = Test-CatsNativeUpgrade -Provider 'devin' -InstalledVersion $detected.detectedVersion
+  $shouldInstall = $versionGate.shouldInstall
+  if (-not $versionGate.known) { $warnings.Add('Could not compare the published version; the official installer will verify the update.') }
+  if (-not $shouldInstall) { $plannedActions.Clear() }
+}
 $installFailed = $false
 $installSkipped = $false
 if ($shouldInstall) {
@@ -347,12 +316,12 @@ if ($shouldInstall) {
   }
 }
 
-$manualSteps.Add('Run `devin login` or set XAI_API_KEY before first use.')
+$manualSteps.Add('Run `devin auth login` to authenticate; check with `devin auth status`. The interactive setup wizard is skipped.')
 $interruptions = [System.Collections.Generic.List[object]]::new()
 if ($shouldInstall -and -not $installFailed -and -not $DryRun) {
   $interruptions.Add([pscustomobject]@{
       kind = 'relaunch_required'
-      summary = 'Relaunch Cats Desktop Host after the Devin install step, then rerun the packaged setup check.'
+      summary = 'Run Detect Again after the Devin install step if the command is not visible yet.'
       resumable = $true
       requiresRestart = $false
       requiresElevation = $false

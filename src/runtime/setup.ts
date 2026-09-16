@@ -41,6 +41,9 @@ export interface RuntimeSetupReadModel {
   };
   scan: RuntimeSetupScanSummary | null;
   manualScan: RuntimeSetupScanSummary | null;
+  observations?: Array<RuntimeSetupScanProviderEntry & {
+    observedAt: string; configurationStatus: 'unchanged' | 'changed' | 'not_selected';
+  }>;
   repair: {
     status: 'ready' | 'selection_required' | 'scan_required' | 'attention_required';
     summary: string;
@@ -145,7 +148,9 @@ export function summarizeRuntimeSetupReadModel(
     lastManualScanAt: readModel.state.lastManualScanAt,
     appliedAt: readModel.state.appliedAt,
     providerCount: readModel.selection.targets.length,
-    availableCount: readModel.repair.preferredScan.availableCount,
+    availableCount: readModel.observations?.filter((entry) => entry.configurationStatus === 'unchanged'
+      && entry.available && readModel.selection.targets.some((target) => target.provider === entry.provider
+        && target.backend === entry.backend && target.instance === entry.instance)).length ?? providersReady.length,
     providersReady,
     providersNeedingAttention,
     selectedProviders,

@@ -8,6 +8,7 @@
  */
 
 import type { VoiceCaptureBridge } from './voiceCaptureBridge.js';
+import type { ProviderManagerBridge } from '../../packages/provider-setup/manager.js';
 
 interface DesktopSetupResumeAction {
   helperId: string;
@@ -165,7 +166,7 @@ export interface DesktopUpdateSnapshot {
   nextAction: DesktopUpdateNextAction;
 }
 
-export interface DesktopHostBridge {
+export interface DesktopHostBridge extends Partial<ProviderManagerBridge> {
   getSetupSnapshot?: () => Promise<DesktopSetupSnapshot>;
   runAction?: (actionId: string) => Promise<DesktopBootstrapSnapshot>;
   runSetupHelper?: (

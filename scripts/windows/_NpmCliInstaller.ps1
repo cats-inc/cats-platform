@@ -23,6 +23,8 @@
     can run it explicitly when needed.
 #>
 
+. (Join-Path $PSScriptRoot '_VerifiedNpmUpdate.ps1')
+
 function Test-NpmCliInstallerAdminGuard {
   param(
     [Parameter(Mandatory = $true)]
@@ -163,11 +165,16 @@ function Test-NpmCliPackageOutdated {
     [string]$PackageName
   )
 
-  $outdatedRaw = (& npm outdated -g --json $PackageName 2>$null) | Out-String
-  if ([string]::IsNullOrWhiteSpace($outdatedRaw)) {
-    return $false
-  }
-  return $outdatedRaw.Contains("`"$PackageName`"")
+  $latest = ((& npm view "$PackageName@latest" version --fetch-retries=0 --fetch-timeout=10000 --loglevel=error) | Out-String).Trim()
+  if ($LASTEXITCODE -ne 0 -or $latest -notmatch '^\d+\.\d+\.\d+(-[a-zA-Z0-9._-]+)?$') { throw 'Provider version query failed; update status is unknown.' }
+  $installed = Get-NpmCliPackageVersion -PackageName $PackageName
+  if (-not $installed) { return $true }
+  $currentBase = [version]($installed -split '-')[0]
+  $latestBase = [version]($latest -split '-')[0]
+  # Preserve a newer local/pre-release build. Equal numeric prerelease advances
+  # to the stable release; Repair remains the explicit reinstall action.
+  return $currentBase -lt $latestBase -or ($currentBase -eq $latestBase -and $installed.Contains('-') -and -not $latest.Contains('-'))
+
 }
 
 function Resolve-NpmCliCommandPath {
@@ -216,6 +223,7 @@ function Remove-SupersededNpmPackages {
 
     Write-Host "Removing superseded package $legacy (replaced by $PackageName)."
     & npm uninstall -g $legacy 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Could not remove superseded package $legacy." }
     if ($AppliedChanges) {
       $AppliedChanges.Add("${legacy}:removed-superseded") | Out-Null
     }
@@ -315,6 +323,12 @@ function Invoke-PackagedNpmCliInstall {
     $null
   }
   $commandPath = if ($installed) { Resolve-NpmCliCommandPath -CommandName $CommandName } else { $null }
+  if ($installed -and -not $detectedVersion -and -not $SkipNpmInvocation) {
+    foreach ($legacy in (Get-SupersededNpmPackages -PackageName $PackageName)) {
+      & npm list -g --depth=0 $legacy 2>$null | Out-Null
+      if ($LASTEXITCODE -eq 0) { $installed = $false; break }
+    }
+  }
 
   $plannedActions = [System.Collections.Generic.List[string]]::new()
   $appliedChanges = [System.Collections.Generic.List[string]]::new()
@@ -444,6 +458,17 @@ function Invoke-PackagedNpmCliInstall {
     exit 0
   }
 
+  if ($DryRun -and -not $CheckOnly) {
+    $preview = [pscustomobject]@{
+      helper = $HelperId; mode = $mode; status = 'preview'; installed = [bool]$installed
+      detectedVersion = $detectedVersion; commandPath = $commandPath; restartRequired = $false
+      plannedActions = @("${PackageName}:${mode}"); appliedChanges = @(); warnings = @(); manualSteps = @(); interruptions = @()
+    }
+    if ($Json) { $preview | ConvertTo-Json -Depth 10 } else { Write-Host "Preview: ${PackageName}:${mode}" }
+    exit 0
+  }
+  if ($Upgrade -and -not $CheckOnly -and -not $SkipNpmInvocation) { Update-CatsNpm }
+
   $isOutdated = if (-not $Upgrade -and -not $Force) {
     $false
   } else {
@@ -565,15 +590,9 @@ function Invoke-PackagedNpmCliInstall {
   # Without it, packages like @openai/codex skip their platform-specific
   # binaries (codex-win32-x64, codex-darwin-arm64, ...), leaving a shim that
   # silently exits when invoked. Pure-JS CLIs such as copilot don't notice.
-  $arguments = @('install', '-g', '--include=optional')
-  if ($plannedAction -eq 'upgrade') {
-    $arguments += "$PackageName@latest"
-  } else {
-    $arguments += $PackageName
-  }
-  if ($plannedAction -eq 'reinstall') {
-    $arguments += '--force'
-  }
+  $expectedVersion = ((& npm view "$PackageName@latest" version --fetch-retries=0 --fetch-timeout=10000 --loglevel=error) | Out-String).Trim()
+  if ($LASTEXITCODE -ne 0 -or $expectedVersion -notmatch '^\d+\.\d+\.\d+(-[a-zA-Z0-9._-]+)?$') { throw 'Could not resolve the provider version before installing.' }
+  $arguments = @('install', '-g', '--include=optional', '--engine-strict', '--fetch-retries=0', '--fetch-timeout=30000', "$PackageName@$expectedVersion")
 
   & npm @arguments | Out-Null
   if ($LASTEXITCODE -ne 0) {
@@ -584,6 +603,8 @@ function Invoke-PackagedNpmCliInstall {
   $finalInstalled = Test-NpmCliPackageInstalled -PackageName $PackageName -CommandName $CommandName
   $finalCommandPath = if ($finalInstalled) { Resolve-NpmCliCommandPath -CommandName $CommandName } else { $null }
   $finalVersion = if ($finalInstalled) { Get-NpmCliPackageVersion -PackageName $PackageName } else { $null }
+
+  if (-not $finalInstalled -or -not $finalCommandPath -or $finalVersion -ne $expectedVersion) { throw 'Provider installation verification failed. Check npm prefix and command PATH.' }
 
   $result = [pscustomobject]@{
     helper = $HelperId
