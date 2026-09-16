@@ -319,8 +319,12 @@ export function resolveDisplayedEnumControlValue(
   const explicitDefault = options
     .find((option) => typeof option.label === 'string' && /\(default\)/iu.test(option.label));
   const initialOption = explicitDefault
-    ?? (control.key === 'antigravity.effort' ? options[0] : undefined);
+    ?? (usesFirstEnumOption(control) ? options[0] : undefined);
   return initialOption ? String(initialOption.value) : '';
+}
+
+export function usesFirstEnumOption(control: ProviderAdvancedCatalogControl): boolean {
+  return control.key === 'antigravity.effort' || control.key === 'grok.reasoning_effort';
 }
 
 export function parseControlInputValue(
@@ -498,6 +502,24 @@ export function filterPersistentControlValues(
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
 
+// Persist the UI's first choice so execution uses the displayed effort. Keep
+// initialization separate from provider defaults used to render status labels.
+export function initializePersistentControlValues(
+  controls: ProviderAdvancedCatalogControl[],
+  entryId: string,
+  values: Record<string, ProviderAdvancedControlValue> | undefined,
+): Record<string, ProviderAdvancedControlValue> | undefined {
+  const initialized = { ...filterPersistentControlValues(controls, entryId, values) };
+  for (const control of listPersistentControlOptions(controls, entryId)) {
+    if (control.key !== 'grok.reasoning_effort' || initialized[control.key] !== undefined) {
+      continue;
+    }
+    const firstValue = resolveDisplayedEnumControlValue(control, entryId, undefined);
+    if (firstValue) initialized[control.key] = firstValue;
+  }
+  return Object.keys(initialized).length ? initialized : undefined;
+}
+
 function formatControlWarningValue(
   control: ProviderAdvancedCatalogControl,
   value: ProviderAdvancedControlValue,
@@ -608,7 +630,7 @@ export function sanitizePersistentTargetSelection(input: {
     return input.target;
   }
 
-  const sanitizedControls = filterPersistentControlValues(
+  const sanitizedControls = initializePersistentControlValues(
     input.controls,
     clonedSelection.entryId ?? input.target.model,
     clonedSelection.controls,

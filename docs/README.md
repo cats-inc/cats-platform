@@ -21,6 +21,9 @@ for implementation progress and native OS verification limits.
 
 ## Provider Catalog Labels
 
+[Grok Build 1.0.34](./research/2026-09-17-grok-model-picker.md) records exact
+model/effort labels and first-item initialization without default claims.
+
 [Antigravity 1.2.3 model and effort selection](./research/2026-09-16-antigravity-model-picker.md)
 records the seven-model fallback and effort selection without invented defaults.
 

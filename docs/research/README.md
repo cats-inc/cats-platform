@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-09-17-grok-model-picker](./2026-09-17-grok-model-picker.md) | 2026-09-17 | Grok Build 1.0.34 picker | Two exact fallback names, per-model first-effort initialization and persisted execution choices without default labels |
 | [2026-09-16-antigravity-model-picker](./2026-09-16-antigravity-model-picker.md) | 2026-09-16 | Antigravity 1.2.3 picker | Seven exact model labels and first-effort initialization without invented defaults |
 | [2026-09-16-claude-catalog-labels](./2026-09-16-claude-catalog-labels.md) | 2026-09-16 | Claude labels and default markers | Four version-bearing fallback names and lowercase model/effort default markers across providers and backends |
 | [2026-09-01-credential-vault-admin-and-google-linking-reference](./2026-09-01-credential-vault-admin-and-google-linking-reference.md) | 2026-09-01 | Credential Vault Admin bootstrap and Google linking reference | Static review of the sibling reference at `aa0a353`: adapt its explicit setup, Settings linked-state UX, local fallback, audit, and last-Admin invariants while rejecting client-only step-up, automatic email claim/user creation, localStorage JWTs, and placeholder identity ids |

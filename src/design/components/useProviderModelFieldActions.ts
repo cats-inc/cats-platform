@@ -13,7 +13,7 @@ import {
   attachExecutionLabelToProviderTarget,
   buildSelectionForEntry,
   CUSTOM_LEGACY_MODEL_VALUE,
-  filterPersistentControlValues,
+  initializePersistentControlValues,
   updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
 
@@ -66,7 +66,7 @@ export function useProviderModelFieldActions(input: {
     controls?: Record<string, ProviderAdvancedControlValue> | undefined;
   }): void => {
     const nextModel = next.model ?? selectedCatalogEntryId;
-    const nextControls = filterPersistentControlValues(
+    const nextControls = initializePersistentControlValues(
       effectiveControls,
       nextModel,
       next.controls,

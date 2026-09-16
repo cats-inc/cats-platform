@@ -49,7 +49,8 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'gpt-oss-120b-medium', label: 'GPT-OSS 120B (Medium)' },
   ],
   grok: [
-    { value: 'grok-4.5', label: 'grok-4.5 (default)', default: true },
+    { value: 'grok-4.6', label: 'Grok 4.6' },
+    { value: 'grok-4.5', label: 'Grok 4.5' },
   ],
   cline: [
     { value: 'cline-default', label: 'Cline default', default: true },

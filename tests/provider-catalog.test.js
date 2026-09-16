@@ -21,9 +21,10 @@ test('verified Grok adapter is available in the product execution catalog', () =
     PRODUCT_PROVIDER_ORDER.indexOf('grok'),
     PRODUCT_PROVIDER_ORDER.indexOf('antigravity') + 1,
   );
-  assert.equal(getDefaultModel('grok'), 'grok-4.5');
+  assert.equal(getDefaultModel('grok'), 'grok-4.6');
   assert.deepEqual(getProviderModels('grok'), [
-    { value: 'grok-4.5', label: 'grok-4.5 (default)', default: true },
+    { value: 'grok-4.6', label: 'Grok 4.6' },
+    { value: 'grok-4.5', label: 'Grok 4.5' },
   ]);
   assert.deepEqual(PRODUCT_PROVIDER_INSTANCES.grok, [
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
