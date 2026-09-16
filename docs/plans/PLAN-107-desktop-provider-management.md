@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Local acceptance correction complete; no new release authorized |
+| Status | Acceptance correction complete; 0.2.11 preview explicitly authorized |
 | Owner / Reviewer | User |
 | Last updated | 2026-09-17 |
 
@@ -21,8 +21,10 @@ from documentation into implementation and release.
 ### User acceptance correction — 2026-09-17
 
 The user rejected the shared row layout for onboarding and the loss of visible
-Node/npm preparation. Version bumps and release publication are paused until
-explicitly requested again. This correction keeps version 0.2.10.
+Node/npm preparation. The correction was first completed locally at 0.2.10.
+The user then explicitly requested a version bump and preview publication for
+this correction. This authorization covers 0.2.11 only; it does not reinstate
+ongoing permission to publish future changes.
 
 - [x] Restore Desktop's background Node/npm, npm prefix/PATH and GitHub CLI
   checks independently of provider selection, with separately retained results.
@@ -57,7 +59,17 @@ verification, exact provider actions, collapsed details and no horizontal
 overflow or browser errors. Native helper checks used temporary homes and fake
 commands, without downloads, installations or real user-state writes. Independent
 review cleared the final changes. Full PR CI and physical installations were not
-run for this local acceptance correction; version files remain at 0.2.10.
+run for the initial local acceptance correction.
+
+Release follow-through: version files and release notes now name 0.2.11. The
+branch includes Platform's merged Grok picker fix (#84), and Runtime 0.1.24 is
+pinned to `580f1c9be3a5158fb8967157900629062c9ea020` (successful
+`release-preflight`), including its matching Grok catalog. Required full PR CI,
+confirmed auto-squash merge, three-platform unsigned builds, asset validation,
+publication and updater discovery remain delivery gates. The 0.2.11 version
+guard and 46 focused release-version/asset/workflow contract checks passed.
+No real provider installation or user-state mutation is part of release
+verification.
 
 ### 1. Shared state and operations
 

@@ -19,6 +19,42 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-17 (0.2.11 unsigned preview)
+
+### Restore Desktop onboarding cards and clean-machine preparation
+
+Behavior change:
+
+Desktop onboarding again uses its original classified cards and Show more,
+with visible Node.js/npm preparation before any provider is selected. Node/npm,
+npm prefix/PATH and GitHub CLI background checks run independently of provider
+selection and retain their individual results. Installation remains explicit;
+provider scans remain limited to the saved selection. Fresh helper checks find
+newly installed commands and verify both Node and npm after installation.
+
+Onboarding and Settings show short statuses and useful next actions, with
+technical diagnostics and maintenance inside collapsed details. Checking one
+tool no longer erases another tool's prerequisite status, including recovery.
+This preview also includes the merged Grok 4.6/4.5 catalog and picker correction,
+without inventing an upstream default marker.
+
+Migration steps:
+
+Use Cats Desktop **Check for Update** to install the 0.2.11 unsigned preview.
+Existing provider selections and user data do not require a reset. Runtime
+remains 0.1.24, pinned to `580f1c9be3a5158fb8967157900629062c9ea020`, with the
+existing Usage 0.2.0 lock. The manual Desktop workflow uses `tag=v0.2.11` and
+that exact `runtime_ref`; it publishes Windows x64, macOS x64 and Linux arm64
+only after all release checks pass.
+
+Validation: 98 focused cases, affected host/renderer builds and typechecks,
+isolated onboarding/Settings browser checks, and independent review passed.
+Required full PR CI and three-platform packaging/asset validation gate this
+publication. Physical provider installation and sign-in remain user acceptance.
+
+Deprecations: none. This remains an unsigned preview. The user explicitly
+authorized this release; future version bumps still need a new request.
+
 ## 2026-09-17 (0.2.10 unsigned preview)
 
 ### Let first-run Catlas setup read provider catalogs before login
