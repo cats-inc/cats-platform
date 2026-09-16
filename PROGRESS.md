@@ -11,8 +11,16 @@ detection, and explicit Continue. Empty/partially ready selections finish
 Runtime bootstrap. Native Windows/macOS/Linux helpers incorporate the reviewed
 upstream port through `752dc13`, with version gates, truthful outcomes, bounded
 cleanup and verified npm updates. ADR/SPEC-116 and PLAN-107 record the delivery;
-focused validation and isolated browser checks passed. Desktop 0.2.9 is the
-authorized unsigned preview candidate; required CI/release gates remain pending.
+focused validation and isolated browser checks passed. Desktop 0.2.9 unsigned
+preview was published on 2026-09-16 at 13:02 UTC after Runtime #54 and Platform
+#80/#81 merged. Final Platform CI passed 4,540 tests (54 conditional skips).
+All three release builds, bundled-App checks, asset validation and publication
+passed. The actual updater parser resolved 0.2.9 from the public feed for Windows
+x64, macOS x64 and Linux arm64 using the existing 0.2.8 preview settings. Runtime
+0.1.24 is pinned to `c1a5c0ae108a155b14867f85c344a23c9a95bdbf`; real provider
+installation/sign-in and the installed Desktop update handoff remain user
+acceptance. [Release](https://github.com/cats-inc/cats-platform/releases/tag/v0.2.9)
+and [workflow](https://github.com/cats-inc/cats-platform/actions/runs/35098915681).
 
 
 Release follow-through (2026-09-11): the owner authorized Desktop 0.2.5 unsigned

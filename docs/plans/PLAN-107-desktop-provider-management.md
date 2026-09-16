@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress |
+| Status | Delivered in 0.2.9 unsigned preview; native acceptance remains |
 | Owner / Reviewer | User |
 | Last updated | 2026-09-16 |
 
@@ -50,10 +50,10 @@ from documentation into implementation and release.
 - [x] Independent review and isolated visual/behavior verification of both entries.
 - [x] Incremental commits; update docs and actual validation results.
 - [x] Select unused Desktop patch version; update package/lock/release notes.
-- [ ] Open auto-squash PR(s), wait for required full CI and actual merge.
-- [ ] Dispatch unsigned preview with exact merged Runtime commit; wait for all
+- [x] Open auto-squash PR(s), wait for required full CI and actual merge.
+- [x] Dispatch unsigned preview with exact merged Runtime commit; wait for all
   platform builds, asset validation, and publication; verify update metadata.
-- [ ] Return changed repos to clean main and remove confirmed merged branches.
+- [x] Return changed repos to clean main and remove confirmed merged branches.
 
 ## Upstream Reconciliation
 
@@ -141,3 +141,27 @@ CI locally solely for a commit/version bump.
   reported no browser errors. Platform PR #80 passed both required CI checks and
   merged as `5a9f8908b82046ffbf5a49e691e0d3c3ef32e091`; this final fix follows in
   a separate PR before preview publication.
+
+## Delivery Evidence
+
+- Runtime [#54](https://github.com/cats-inc/cats-runtime/pull/54), Platform
+  [#80](https://github.com/cats-inc/cats-platform/pull/80) and follow-up
+  [#81](https://github.com/cats-inc/cats-platform/pull/81) passed their required
+  CI and squash-merged. Final Platform CI passed 4,540 cases, skipped 54
+  conditionally, and failed none. Both implementation checkouts returned to
+  clean main; the confirmed merged task branches were removed locally/remotely.
+- [Unsigned preview 0.2.9](https://github.com/cats-inc/cats-platform/releases/tag/v0.2.9)
+  was published at 2026-09-16 13:02:03 UTC by
+  [run 35098915681](https://github.com/cats-inc/cats-platform/actions/runs/35098915681).
+  Platform source is `fb402fced2f048ff96a03cb7b619d0b7c8b32a69`; packaged Runtime
+  0.1.24 is `c1a5c0ae108a155b14867f85c344a23c9a95bdbf`. All three builds, bundled
+  App verification, update-asset validation and publication succeeded.
+- The actual `electron-updater` GitHub provider parsed the public feed using
+  the 0.2.8 preview settings and selected 0.2.9 on Windows x64, macOS x64 and
+  Linux arm64. Every metadata file resolved to the corresponding published
+  installer/archive with matching asset size and a well-formed SHA-512 value.
+  This verified update discovery without downloading/installing the application
+  or changing the user's Desktop state.
+- Physical provider installation, provider sign-in, and the installed Desktop
+  download/restart handoff remain user acceptance. Fixture/packaging success
+  does not claim that those machine-specific actions were performed.

@@ -52,10 +52,12 @@ Use Cats Desktop **Check for Update** from an unsigned preview build. Existing
 provider selections and detection history are retained; review them in Settings
 > Runtime. This preview packages Runtime 0.1.24 at
 `c1a5c0ae108a155b14867f85c344a23c9a95bdbf` (Runtime PR #54), with the existing
-Usage 0.2.0 App lock. Release automation must use `tag=v0.2.9` and that exact
-`runtime_ref`; the manual workflow creates the tag and publishes only after
-Windows x64 NSIS, macOS x64 DMG/updater ZIP, Linux arm64 DEB and update metadata
-validation pass.
+Usage 0.2.0 App lock. The
+[unsigned preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.2.9)
+was published by [run 35098915681](https://github.com/cats-inc/cats-platform/actions/runs/35098915681)
+after Windows x64 NSIS, macOS x64 DMG/updater ZIP, Linux arm64 DEB, bundled-App
+checks and update metadata validation passed. The public updater feed was
+verified with the actual Desktop parser and resolves 0.2.9 on all three targets.
 
 Deprecations: the separate Desktop provider editors and save-triggered global
 scan path are replaced by the shared manager. WSL/Docker variants are outside
