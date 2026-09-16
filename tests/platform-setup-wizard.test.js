@@ -254,6 +254,84 @@ test('POST /api/platform/setup/complete with createGuideCat=true persists a plat
   });
 });
 
+test('first-run Catlas setup reads selected catalogs before login and requires login after completion', async () => {
+  const anonymousFetch = globalThis.fetch;
+  const runtime = createRuntimeStub();
+  const target = { provider: 'claude', backend: 'cli', instance: 'native' };
+  runtime.getSetupState = async () => ({
+    bootstrapRequired: false,
+    state: { status: 'ready', appliedAt: TEST_NOW.toISOString(), lastScanAt: null,
+      lastManualScanAt: null, appliedConfigPath: null, error: null },
+    selection: { state: 'selected', revision: 'first-run', targets: [target] },
+    repair: { status: 'ready', summary: 'Runtime ready', providersReady: [{ provider: 'claude', family: 'Claude' }],
+      providersNeedingAttention: [], preferredScan: { source: 'none', scannedAt: null,
+        providerCount: 1, availableCount: 1, unavailableCount: 0, remediationCount: 0 } },
+  });
+  runtime.getProviderConfig = async () => ({
+    claude: { defaultBackend: 'cli', defaultInstance: 'native',
+      instances: [{ id: 'native', backend: 'cli', target: 'cli/native' }] },
+  });
+  runtime.getProviderDiagnostics = async () => ({ probe: 'light', providers: [
+    { ...target, defaultTarget: true, availability: { status: 'ok', summary: 'CLI ready', attentionCodes: [] } },
+    { provider: 'codex', backend: 'cli', instance: 'native', defaultTarget: true,
+      availability: { status: 'ok', summary: 'Installed but not selected', attentionCodes: [] } },
+  ] });
+  runtime.getAdvancedProviderModels = async () => ({
+    ...target, defaultSelection: null, entries: [{ id: 'claude-default', label: 'Claude default' }],
+    presets: [], controls: [], warnings: [],
+  });
+
+  await withServer(runtime, async (baseUrl) => {
+    const before = await (await anonymousFetch(`${baseUrl}/api/auth/status`)).json();
+    assert.equal(before.authenticated, false);
+
+    for (const query of ['', '?force=1']) {
+      const response = await anonymousFetch(`${baseUrl}/api/providers${query}`);
+      assert.equal(response.status, 200, 'the second setup step must read providers before an Admin exists');
+      const registry = await response.json();
+      assert.equal(registry.state, 'ready');
+      assert.deepEqual(registry.providers.map((provider) => provider.id), ['claude']);
+      assert.equal(registry.revision, 'first-run');
+    }
+    const catalogs = [
+      '/api/providers',
+      '/api/providers/claude/models?instance=cli%2Fnative',
+      '/api/providers/claude/models/advanced?instance=cli%2Fnative',
+    ];
+    let model;
+    for (const pathname of catalogs.slice(1)) {
+      const response = await anonymousFetch(`${baseUrl}${pathname}`);
+      assert.equal(response.status, 200);
+      const { catalog } = await response.json();
+      assert.equal(catalog.provider, 'claude');
+      assert.equal(catalog.instance, 'cli/native');
+      if (catalog.models) model = catalog.models[0].id;
+    }
+    assert.equal(model, 'claude-default');
+    assert.equal((await anonymousFetch(`${baseUrl}/api/providers/codex/models`)).status, 409);
+    assert.equal((await anonymousFetch(`${baseUrl}/api/providers/models/refresh`, { method: 'POST' })).status, 401);
+
+    const completed = await fetch(`${baseUrl}/api/platform/setup/complete`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...TEST_ADMIN_CREDENTIALS, ownerDisplayName: 'Fixture Owner',
+        createGuideCat: true, guideCatProvider: 'claude', guideCatInstance: 'cli/native', guideCatModel: model }),
+    });
+    assert.equal(completed.status, 200);
+    const envelope = await completed.json();
+    assert.ok(envelope.setupCompleteAt);
+    assert.equal(envelope.runtimeSetup.status, 'ready');
+    assert.deepEqual(envelope.guideCat.executionTarget, { provider: 'claude', instance: 'cli/native', model });
+    assert.equal((await (await fetch(`${baseUrl}/api/auth/status`)).json()).authenticated, true);
+
+    for (const pathname of catalogs) {
+      assert.equal((await anonymousFetch(`${baseUrl}${pathname}`)).status, 401,
+        'the bootstrap read exemption must close after setup');
+      assert.equal((await fetch(`${baseUrl}${pathname}`)).status, 200,
+        'the newly issued Admin session must still read the catalogs');
+    }
+  });
+});
+
 test('platform assistant presets can be created, updated, listed, and removed without becoming chat cats', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     const initialListResponse = await fetch(`${baseUrl}/api/platform/assistants`);

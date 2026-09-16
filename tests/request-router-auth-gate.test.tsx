@@ -476,6 +476,20 @@ test('request router rejects unsafe disabled auth after setup', async (t) => {
   assert.match(payload.error.message, /not allowed after setup/u);
 });
 
+test('request router closes setup catalog reads during auth repair', async (t) => {
+  const server = createTestServer({
+    setupCompleteAt: NOW.toISOString(),
+    authStore: createStatusOnlyAuthStore({ status: 'corrupt', error: new Error('bad auth state') }),
+  });
+  await listen(server);
+  t.after(() => server.close());
+  for (const pathname of ['/api/providers', '/api/providers/claude/models', '/api/providers/claude/models/advanced']) {
+    const response = await fetch(serverUrl(server, pathname));
+    assert.equal(response.status, 401);
+    assert.equal((await response.json() as { error: { code: string } }).error.code, 'E_UNAUTHENTICATED');
+  }
+});
+
 interface TestServerInput {
   setupCompleteAt: string | null;
   authStore?: PlatformAuthStore;
