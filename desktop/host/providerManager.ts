@@ -160,8 +160,14 @@ export class DesktopProviderManager {
       if (checked.status === 'ready') continue;
       this.operation!.stage = suffix === 'node-host-installer' ? 'Installing Node.js prerequisite…' : 'Preparing npm prefix…';
       const installed = await this.dependencies.helper(id, 'apply', false, revision);
-      if (installed.runState === 'failed' || installed.status !== 'ready') {
+      if (installed.runState === 'failed' || installed.status === 'failed') {
         throw new Error([installed.summary, ...installed.manualSteps].join(' '));
+      }
+      // New helpers run in a fresh process; PATH-only changes need no Desktop
+      // restart. Re-check readiness before admitting the provider installer.
+      const verified = await this.dependencies.helper(id, 'check', false, revision);
+      if (verified.runState === 'failed' || verified.status !== 'ready') {
+        throw new Error([verified.summary, ...installed.manualSteps, ...verified.manualSteps].join(' '));
       }
     }
   }

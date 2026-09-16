@@ -56,7 +56,7 @@ test('Install-KiroCli reports install action in check mode when Kiro is missing'
   assert.equal(result.plannedActions.includes('install_kiro_native'), true);
 });
 
-test('Install-KiroCli applies native install when Kiro is missing', skipUnlessWindows(), async () => {
+test('Install-KiroCli does not claim an installation when its installer is skipped', skipUnlessWindows(), async () => {
   const { stdout } = await execFile('powershell.exe', [
     '-NoProfile',
     '-ExecutionPolicy',
@@ -72,5 +72,6 @@ test('Install-KiroCli applies native install when Kiro is missing', skipUnlessWi
 
   const result = JSON.parse(stdout);
   assert.equal(result.mode, 'apply');
-  assert.equal(result.appliedChanges.includes('install_kiro_native'), true);
+  assert.deepEqual(result.appliedChanges, []);
+  assert.equal(result.observedChange, 'unchanged');
 });

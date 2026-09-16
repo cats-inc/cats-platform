@@ -66,6 +66,8 @@ assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-goose.sh" 'bun
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-junie.sh" 'bundled macOS Junie installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-kiro-cli.sh" 'bundled macOS Kiro installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/check-installation.sh" 'bundled macOS readiness audit helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/provider-version-common.sh" 'bundled native version library'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/verified-npm-update.sh" 'bundled npm verification library'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/provider-cli-common.sh" 'bundled macOS provider helper library'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/node-cli-common.sh" 'bundled macOS npm helper library'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/manifest.json" 'bundled setup-assets manifest'

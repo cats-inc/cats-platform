@@ -59,6 +59,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+. (Join-Path $PSScriptRoot '_NativeInstallerSupport.ps1')
 . (Join-Path $PSScriptRoot '_PackagedUninstall.ps1')
 
 function Write-StructuredResult {
@@ -66,6 +67,10 @@ function Write-StructuredResult {
     [pscustomobject]$Result,
     [int]$ExitCode
   )
+
+  if (Get-Variable -Name catsInitialObservation -Scope Script -ErrorAction SilentlyContinue) {
+    Add-CatsNativeObservation -Result $Result -Before $script:catsInitialObservation -Attempted ([bool]$script:shouldInstall) -Skipped ([bool]$SkipInstaller)
+  }
 
   if ($Json) {
     $Result | ConvertTo-Json -Depth 10
@@ -364,7 +369,19 @@ if ($CheckOnly) {
   Write-StructuredResult -Result $result -ExitCode 0
 }
 
+if ($DryRun) {
+  Write-CatsNativePreview -Helper 'windows-goose-native-installer' -Mode $executionMode -Detected $detected -Actions $plannedActions.ToArray() -EmitJson ([bool]$Json)
+}
+
+$installFailed = $false
+$catsInitialObservation = $detected.PSObject.Copy()
 $shouldInstall = $Force -or $Upgrade -or -not $detected.installed
+if ($Upgrade -and -not $Force -and $detected.installed -and -not $SkipInstaller -and -not $DryRun) {
+  $versionGate = Test-CatsNativeUpgrade -Provider 'goose' -InstalledVersion $detected.detectedVersion
+  $shouldInstall = $versionGate.shouldInstall
+  if (-not $versionGate.known) { $warnings.Add('Could not compare the published version; the official installer will verify the update.') }
+  if (-not $shouldInstall) { $plannedActions.Clear() }
+}
 $installFailed = $false
 $installSkipped = $false
 if ($shouldInstall) {
@@ -410,7 +427,7 @@ $interruptions = [System.Collections.Generic.List[object]]::new()
 if ($shouldInstall -and -not $installFailed) {
   $interruptions.Add([pscustomobject]@{
       kind = 'relaunch_required'
-      summary = 'Relaunch Cats Desktop Host after the Goose install step, then rerun the packaged setup check.'
+      summary = 'Run Detect Again after the Goose install step if the command is not visible yet.'
       resumable = $true
       requiresRestart = $false
       requiresElevation = $false

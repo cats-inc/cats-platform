@@ -381,11 +381,11 @@ test('Unix Antigravity helpers own refresh before invoking the official installe
 
     assert.match(
       commonScript,
-      /curl -fsSL "\$url" \| bash/u,
+      /curl -fsSL --connect-timeout \d+ --max-time \d+ "\$url" -o/u,
     );
     assert.match(
       commonScript,
-      /rm -f "\$HOME\/\.local\/bin\/agy" \|\| true/u,
+      /cp -p "\$destination" "\$backup"/u,
     );
     assert.doesNotMatch(commonScript, /run_remote_pipe_installer "\$provider" '-upgrade'/u);
     assert.doesNotMatch(commonScript, /run_remote_pipe_installer "\$provider" '-force'/u);

@@ -17,6 +17,29 @@ scripts/
 
 Follow `docs/SCRIPT-STANDARDS.md` for naming and documentation rules.
 
+## Desktop provider helpers (2026-09-16)
+
+Onboarding and Settings > Runtime use the same selection and per-provider
+operations. Apply only saves intent; optional detection and explicit Install,
+Upgrade, Repair, and previewed Uninstall are separate actions. Installing an
+npm provider prepares Node/npm only when needed. An explicit npm-provider
+Upgrade also checks and updates npm in its current prefix, with engine checks
+and post-install verification; Apply and Detect do not upgrade npm.
+
+The native helper port is reconciled through environment-bootstrap `752dc13`
+from the prior Muse port `6f59feb`. See PLAN-107 for the commit applicability
+matrix. `_NativeInstallerSupport.ps1` / `provider-version-common.sh` contain
+bounded published-version queries and guarded old-build cleanup. The verified
+npm support files are packaged on all three native operating systems.
+
+Check and DryRun never invoke installers. Native vendor failure remains a
+failure even if an older command survives. Results include `previousVersion`,
+`observedChange`, and a summary; an unchanged version does not establish that
+files were refreshed. Authentication remains a separate manual step. Custom
+npm prefixes are preserved; helpers refresh their own command paths before
+post-install checks. WSL/Docker variants are outside this native onboarding
+rollout.
+
 ## Ingress Smoke Helper
 
 `cats-platform` now also ships a small cross-platform ingress probe:

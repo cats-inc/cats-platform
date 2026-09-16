@@ -151,6 +151,8 @@ async function seedAppSidecarRuntimeDependencies(packageRoot) {
 
 async function seedWindowsSetupAssets(packageRoot) {
   await seedAppSidecarRuntimeDependencies(packageRoot);
+  await seedFile(join(packageRoot, 'scripts', 'windows', '_NativeInstallerSupport.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', '_VerifiedNpmUpdate.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', '_HiddenProcess.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', '_PackagedUninstall.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', '_NpmCliInstaller.ps1'), '# helper');
@@ -181,6 +183,8 @@ async function seedWindowsSetupAssets(packageRoot) {
 }
 
 async function seedUnixSetupAssets(packageRoot, platform) {
+  await seedFile(join(packageRoot, 'scripts', platform, 'provider-version-common.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'verified-npm-update.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'provider-cli-common.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'node-cli-common.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-node.sh'), '#!/usr/bin/env bash\n');

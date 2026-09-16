@@ -15,7 +15,8 @@ function Invoke-HiddenCommand {
     [Parameter(Mandatory)]
     [string]$FileName,
 
-    [string[]]$ArgumentList = @()
+    [string[]]$ArgumentList = @(),
+    [int]$TimeoutMs = 0
   )
 
   $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -36,9 +37,19 @@ function Invoke-HiddenCommand {
   }
 
   $proc = [System.Diagnostics.Process]::Start($psi)
-  $output = $proc.StandardOutput.ReadToEnd()
-  $errorOutput = $proc.StandardError.ReadToEnd()
+  $outputTask = $proc.StandardOutput.ReadToEndAsync()
+  $errorTask = $proc.StandardError.ReadToEndAsync()
+  if ($TimeoutMs -gt 0 -and -not $proc.WaitForExit($TimeoutMs)) {
+    # taskkill /T works in Windows PowerShell 5.1 as well as PowerShell 7;
+    # Process.Kill(true) is unavailable in the former. Only this owned tree is killed.
+    $null = Invoke-HiddenCommand -FileName (Join-Path $env:SystemRoot 'System32\taskkill.exe') -ArgumentList @('/PID', [string]$proc.Id, '/T', '/F')
+    if (-not $proc.HasExited) { $proc.Kill() }
+    $proc.WaitForExit()
+    return [pscustomobject]@{ ExitCode = -1; Output = ''; ErrorOutput = 'Command timed out.' }
+  }
   $proc.WaitForExit()
+  $output = $outputTask.GetAwaiter().GetResult()
+  $errorOutput = $errorTask.GetAwaiter().GetResult()
 
   return [pscustomobject]@{
     ExitCode    = $proc.ExitCode

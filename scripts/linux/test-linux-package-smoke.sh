@@ -66,6 +66,8 @@ assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-goose.sh" 'bun
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-junie.sh" 'bundled Linux Junie installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-kiro-cli.sh" 'bundled Linux Kiro installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/check-installation.sh" 'bundled Linux readiness audit helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/provider-version-common.sh" 'bundled native version library'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/verified-npm-update.sh" 'bundled npm verification library'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/provider-cli-common.sh" 'bundled Linux provider helper library'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/node-cli-common.sh" 'bundled Linux npm helper library'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/manifest.json" 'bundled setup-assets manifest'

@@ -402,9 +402,10 @@ export function buildDesktopBootstrapPage(): string {
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      padding: 38vh 24px 56px;
+      padding: 40px 24px 32px;
       text-align: center;
     }
+    .onboarding-page > .catsProviderManager { width: 100%; text-align: left; }
     .onboarding-headline {
       font-size: 0.92rem;
       color: var(--muted);
@@ -489,7 +490,7 @@ export function buildDesktopBootstrapPage(): string {
       .actions { flex-direction: column; }
       .btn { width: 100%; }
       .error-actions { flex-direction: column; }
-      .onboarding-page { padding: 16vh 16px 40px; }
+      .onboarding-page { padding: 24px 16px; }
       .cli-grid { grid-template-columns: repeat(2, 1fr); }
     }
   </style>

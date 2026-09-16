@@ -61,6 +61,26 @@ test('stale or unselected actions never reach helpers or scans', async () => {
   assert.equal(f.calls.some((entry) => entry.helper || entry.path === '/setup-scan'), false);
 });
 
+test('a prerequisite PATH change is checked in a fresh helper before provider install', async () => {
+  const calls = [];
+  let installed = false;
+  const f = fixture({ helper: async (id, mode, dryRun, revision) => {
+    calls.push([id, mode, revision]);
+    if (id === 'windows-node-host-installer') {
+      if (mode === 'apply') { installed = true; return { ...result, status: 'relaunch_required' }; }
+      if (!installed) return { ...result, status: 'not_installed' };
+    }
+    return result;
+  } });
+  await f.manager.run({ action: 'install', targets: [codex], expectedRevision: 'one' });
+  assert.deepEqual(calls.slice(0, 3), [
+    ['windows-node-host-installer', 'check', 'one'],
+    ['windows-node-host-installer', 'apply', 'one'],
+    ['windows-node-host-installer', 'check', 'one'],
+  ]);
+  assert.equal(calls.at(-1)[0], 'windows-codex-native-installer');
+});
+
 test('uninstall preview is read-only, bound to the selection revision, and does not scan', async () => {
   const f = fixture();
   const snapshot = await f.manager.run({ action: 'preview_uninstall', targets: [codex], expectedRevision: 'one' });

@@ -267,6 +267,12 @@ function createUnixSetupSupportAssets(platform: UnixAssetPlatform): DesktopSetup
   const packagedRoot = `desktop/setup-assets/${platform}`;
 
   return [
+    ...['provider-version-common', 'verified-npm-update'].map((name) => ({
+      id: `${platform}-${name}-support-script`, label: `${platformLabel} packaged ${name} library`,
+      sourceRelativePath: `${sourceRoot}/${name}.sh`, stageRelativePath: `${stageRoot}/${name}.sh`,
+      packagedRelativePath: `${packagedRoot}/${name}.sh`, targetPlatforms: [platform],
+      notes: ['Bounded vendor queries and verified updates for explicitly selected providers.'],
+    })),
     {
       id: `${platform}-provider-cli-common-support-script`,
       label: `${platformLabel} packaged setup provider helper library`,
@@ -688,6 +694,12 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
 ];
 
 export const DESKTOP_SETUP_SUPPORT_ASSETS: DesktopSetupSupportAsset[] = [
+  ...['_NativeInstallerSupport', '_VerifiedNpmUpdate'].map((name) => ({
+    id: `windows-${name.toLowerCase()}-support-script`, label: `Windows packaged ${name} library`,
+    sourceRelativePath: `scripts/windows/${name}.ps1`, stageRelativePath: `shared/setup-assets/windows/${name}.ps1`,
+    packagedRelativePath: `desktop/setup-assets/windows/${name}.ps1`, targetPlatforms: ['windows' as const],
+    notes: ['Bounded vendor queries, hidden installer processes and verified selected-provider updates.'],
+  })),
   {
     id: 'windows-hidden-process-support-script',
     label: 'Windows packaged setup background process helper',

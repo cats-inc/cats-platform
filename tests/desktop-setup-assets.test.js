@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile as execFileCallback } from 'node:child_process';
-import { mkdtemp, mkdir } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -15,6 +15,30 @@ function skipUnlessWindows() {
   }
   return {};
 }
+
+test('npm preparation preserves an existing prefix under the selected user home', skipUnlessWindows(), async () => {
+  const home = await mkdtemp(join(tmpdir(), 'cats-prefix-custom-'));
+  const prefix = join(home, 'custom-npm');
+  await mkdir(prefix);
+  const { stdout } = await execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', helperPath,
+    '-CheckOnly', '-Json', '-SkipNodeCheck', '-UserHome', home, '-CurrentPrefix', prefix, '-CurrentUserPath', prefix]);
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'ready');
+  assert.equal(result.desiredPrefix, prefix);
+});
+
+test('npm preparation preserves an explicit external prefix before creating its directory', skipUnlessWindows(), async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cats-prefix-external-'));
+  const home = join(root, 'home');
+  const prefix = join(root, 'external-not-created');
+  await mkdir(home);
+  await writeFile(join(home, '.npmrc'), `prefix=${prefix.replaceAll('\\', '/')}\n`);
+  const { stdout } = await execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', helperPath,
+    '-CheckOnly', '-Json', '-SkipNodeCheck', '-UserHome', home, '-CurrentPrefix', prefix, '-CurrentUserPath', prefix]);
+  const result = JSON.parse(stdout);
+  assert.equal(result.desiredPrefix, prefix);
+  assert.equal(result.plannedChanges.some((entry) => entry.startsWith('Set user-scoped npm prefix')), false);
+});
 
 test('Setup-NodeGlobalPrefix reports ready in check mode when prefix and PATH already match', skipUnlessWindows(), async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-node-prefix-ready-'));

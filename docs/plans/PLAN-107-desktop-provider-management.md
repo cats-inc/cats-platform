@@ -22,15 +22,15 @@ from documentation into implementation and release.
 
 - [x] Inspect current onboarding, Settings, Runtime selection/observations, and
   upstream helper history; record accepted design.
-- [ ] Implement host provider-management read/action contracts with sender checks,
+- [x] Implement host provider-management read/action contracts with sender checks,
   exact target/revision validation, operation progress, and retained observations.
-- [ ] Add any required Runtime contract support for scoped connection checks and
+- [x] Add any required Runtime contract support for scoped connection checks and
   race-safe subset scans; keep existing standalone setup semantics.
-- [ ] Remove save-triggered and helper-triggered redundant whole-selection scans.
+- [x] Remove save-triggered and helper-triggered redundant whole-selection scans.
 
 ### 2. Shared UX
 
-- [ ] Embed one browser-safe manager in onboarding and Settings > Runtime.
+- [x] Embed one browser-safe manager in onboarding and Settings > Runtime.
 - [x] Selection + observations + actions per row; Apply with optional detection;
   stable footer; explicit Continue; empty and partially ready completion.
 - [x] Per-target install/check progress, useful manual steps, endpoint editing,
@@ -38,18 +38,18 @@ from documentation into implementation and release.
 
 ### 3. Native helper maintenance
 
-- [ ] Record source baseline and applicability for all post-port upstream changes.
-- [ ] Correct Windows Cursor/Kiro paths and sync native version gates.
-- [ ] Port Devin retry/Grok metadata behavior and truthful observed results.
-- [ ] Bring selected npm prerequisites up to the verified update contract.
-- [ ] Stage new shared support assets for Windows/macOS/Linux and cover contracts.
+- [x] Record source baseline and applicability for all post-port upstream changes.
+- [x] Correct Windows Cursor/Kiro paths and sync native version gates.
+- [x] Port Devin retry/Grok metadata behavior and truthful observed results.
+- [x] Bring selected npm prerequisites up to the verified update contract.
+- [x] Stage new shared support assets for Windows/macOS/Linux and cover contracts.
 
 ### 4. Verification and release
 
-- [ ] Focused Runtime/host/renderer/helper regressions and affected type/build checks.
-- [ ] Independent review and isolated visual/behavior verification of both entries.
-- [ ] Incremental commits; update docs and actual validation results.
-- [ ] Select unused Desktop patch version; update package/lock/release notes.
+- [x] Focused Runtime/host/renderer/helper regressions and affected type/build checks.
+- [x] Independent review and isolated visual/behavior verification of both entries.
+- [x] Incremental commits; update docs and actual validation results.
+- [x] Select unused Desktop patch version; update package/lock/release notes.
 - [ ] Open auto-squash PR(s), wait for required full CI and actual merge.
 - [ ] Dispatch unsigned preview with exact merged Runtime commit; wait for all
   platform builds, asset validation, and publication; verify update metadata.
@@ -96,3 +96,28 @@ CI locally solely for a commit/version bump.
   revision-bound per-target operations. Focused Desktop tests passed (33), plus
   host build and renderer typecheck. Independent core-flow review found no
   remaining blockers after async/revision/PATH fixes. Native helper port follows.
+
+- 2026-09-16: Native helpers now gate upgrades with published metadata, keep
+  newer installations, run vendor PowerShell in isolated children, and report
+  observed version changes (a same-version attempt remains unchanged). Devin
+  retries only typed sharing violations. Cleanup is limited to older builds in
+  canonical user-owned trees; current/newer/pending builds and links remain.
+  npm upgrades resolve and install exact versions with engine checks and verify
+  command/package versions, preserving explicit prefixes. Dry-run paths return
+  before mutation, including superseded-package migration.
+- Validation: 38 initial Windows helper regressions passed; follow-up coverage
+  includes Node registry PATH, owned-child timeout, external npm prefixes and
+  legacy Pi migration. Seven Unix observation fixtures passed for both script
+  copies; the 19 existing Unix contracts passed. Host, renderer, package staging,
+  tarball executable, and shared-view regressions passed; package manifest
+  assertion was updated for the new shared module. TypeScript and renderer/host
+  builds passed. Isolated Edge checks exercised onboarding Apply/wait/Continue
+  and the shared Settings view without browser errors or user-state writes.
+  Native downloads, installation/login on physical macOS/Linux remain manual
+  acceptance; required CI and three-platform release builds are delivery gates.
+
+- Runtime PR #54 passed release-preflight and merged as
+  `c1a5c0ae108a155b14867f85c344a23c9a95bdbf`. Desktop version 0.2.9 and the release
+  notes pin that exact Runtime 0.1.24 source. Final independent helper review
+  cleared all blockers. The new Windows helper/PATH cases passed (7), and the
+  package-content assertion passed after registering the shared manager.

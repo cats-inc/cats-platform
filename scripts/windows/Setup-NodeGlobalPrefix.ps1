@@ -215,6 +215,16 @@ if (-not $SkipNodeCheck) {
   }
 }
 
+if (-not $PSBoundParameters.ContainsKey('DesiredPrefix') -and $prefixProbe) {
+  $existingPrefix = [IO.Path]::GetFullPath($prefixProbe)
+  $userRoot = [IO.Path]::GetFullPath($UserHome).TrimEnd('\') + '\'
+  $npmrc = if ($env:NPM_CONFIG_USERCONFIG) { $env:NPM_CONFIG_USERCONFIG } else { Join-Path $UserHome '.npmrc' }
+  $explicitPrefix = $env:NPM_CONFIG_PREFIX -or ((Test-Path -LiteralPath $npmrc -PathType Leaf) -and
+    (Select-String -LiteralPath $npmrc -Pattern '^\s*prefix\s*=' -Quiet))
+  if ($explicitPrefix -or $existingPrefix.StartsWith($userRoot, [StringComparison]::OrdinalIgnoreCase)) {
+    $desiredPrefixPath = $existingPrefix
+  }
+}
 $pathEntries = Get-PathEntries -PathValue $pathProbe
 $needsDirectory = -not (Test-Path -LiteralPath $desiredPrefixPath -PathType Container)
 $needsPrefixUpdate = (Normalize-PathValue -Path $prefixProbe).ToLowerInvariant() -ne

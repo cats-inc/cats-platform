@@ -82,7 +82,7 @@ test('Install-Junie reports install action in check mode when Junie is missing',
   assert.equal(result.plannedActions.includes('install_junie_native'), true);
 });
 
-test('Install-Junie records relaunch-required recovery after reinstall work', skipUnlessWindows(), async () => {
+test('Install-Junie retains recovery guidance without claiming a skipped reinstall', skipUnlessWindows(), async () => {
   const { stdout } = await execFile('powershell.exe', [
     '-NoProfile',
     '-ExecutionPolicy',
@@ -103,7 +103,8 @@ test('Install-Junie records relaunch-required recovery after reinstall work', sk
   const result = JSON.parse(stdout);
   assert.equal(result.status, 'relaunch_required');
   assert.equal(result.restartRequired, false);
-  assert.equal(result.appliedChanges.includes('reinstall_junie_native'), true);
+  assert.deepEqual(result.appliedChanges, []);
+  assert.equal(result.observedChange, 'unchanged');
   assert.equal(result.interruptions.some((entry) => entry.kind === 'relaunch_required'), true);
   assert.equal(result.interruptions.some((entry) => entry.kind === 'auth_required'), true);
 });

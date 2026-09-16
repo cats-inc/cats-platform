@@ -77,7 +77,7 @@ test('Install-Goose reports install action in check mode when Goose is missing',
   assert.equal(result.plannedActions.includes('install_goose_native'), true);
 });
 
-test('Install-Goose records relaunch-required recovery after reinstall work', skipUnlessWindows(), async () => {
+test('Install-Goose retains recovery guidance without claiming a skipped reinstall', skipUnlessWindows(), async () => {
   const result = await runGooseHelper([
     '-Force',
     '-Json',
@@ -91,7 +91,8 @@ test('Install-Goose records relaunch-required recovery after reinstall work', sk
   ]);
   assert.equal(result.status, 'relaunch_required');
   assert.equal(result.restartRequired, false);
-  assert.equal(result.appliedChanges.includes('reinstall_goose_native'), true);
+  assert.deepEqual(result.appliedChanges, []);
+  assert.equal(result.observedChange, 'unchanged');
   assert.equal(result.interruptions.some((entry) => entry.kind === 'relaunch_required'), true);
   assert.equal(result.interruptions.some((entry) => entry.kind === 'auth_required'), true);
 });

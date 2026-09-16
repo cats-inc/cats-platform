@@ -190,6 +190,8 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\config\providers.yaml.example'); Label = 'bundled cats-runtime provider config example' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\config\curated-model-catalogs.yaml.example'); Label = 'bundled cats-runtime curated model catalog example' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\node_modules\playwright-core\package.json'); Label = 'bundled cats-runtime external dependency marker' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\_NativeInstallerSupport.ps1'); Label = 'bundled native version/installer support' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\_VerifiedNpmUpdate.ps1'); Label = 'bundled verified npm update support' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Node.ps1'); Label = 'bundled Windows Node.js LTS host installer' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-GitHubCli.ps1'); Label = 'bundled Windows GitHub CLI host installer' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Setup-NodeGlobalPrefix.ps1'); Label = 'bundled Windows npm prefix helper' },
