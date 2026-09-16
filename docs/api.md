@@ -689,7 +689,15 @@ PUT /api/providers/capability-bootstrap
 
 - `GET /api/providers/{provider}/models/advanced` follows the same truthful
   contract for advanced catalog reads used by structured provider/model
-  selectors.
+  selectors. It preserves each entry's optional `controlDefaults`; these are
+  model-specific, while `defaultSelection` describes the target's default model.
+  Model display names preserve the provider's supplied casing; static fallback
+  rows must not introduce a different capitalization.
+  Desktop marks the default model and reasoning value with `(default)`, starts
+  model switches from the new model's defaults, and keeps explicit saved controls
+  when reopening. A blank provider selection waits for catalog loading before
+  choosing the runtime default. The Codex 0.154.0 picker and confirmations are
+  recorded in the [runtime evidence note](../../cats-runtime/docs/research/2026-09-16-codex-model-picker-defaults.md).
 
 ### Cats Work
 

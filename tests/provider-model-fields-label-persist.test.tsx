@@ -34,8 +34,8 @@ import type {
 
 // A model the runtime serves but the static fallback table does not carry, so
 // the fallback label is the raw id and the runtime label is something else.
-const MODEL_ID = 'gpt-5.6-sol';
-const RUNTIME_LABEL = 'GPT-5.6-Sol';
+const MODEL_ID = 'codex-label-test-model';
+const RUNTIME_LABEL = 'Codex Label Test Model';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = false;
 
@@ -256,4 +256,3 @@ test('the direct-lane save error is translated in every catalog', () => {
     assert.ok(text && text.trim().length > 0, `${locale} is missing ${key}`);
   }
 });
-

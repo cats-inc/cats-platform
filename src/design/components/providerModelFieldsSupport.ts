@@ -424,14 +424,21 @@ export function resolveCatalogEntryStatusSuffix(
 }
 
 export function formatCatalogEntryLabel(
-  entry: Pick<ProviderCatalogEntry, 'label' | 'status'>,
+  entry: Pick<ProviderCatalogEntry, 'label' | 'status' | 'default'>,
 ): string {
-  return `${entry.label}${resolveCatalogEntryStatusSuffix(entry.status)}`;
+  return `${formatDefaultLabel(entry.label, entry.default)}${resolveCatalogEntryStatusSuffix(entry.status)}`;
+}
+
+function formatDefaultLabel(label: string, isDefault: boolean | undefined): string {
+  if (isDefault === undefined) return label;
+  const plainLabel = label.replace(/\s*\(default\)/giu, '');
+  return isDefault ? `${plainLabel} (default)` : plainLabel;
 }
 
 export function listPersistentControlOptions(
   controls: ProviderAdvancedCatalogControl[],
   entryId: string,
+  defaults: Record<string, ProviderAdvancedControlValue> = {},
 ): ProviderAdvancedCatalogControl[] {
   return controls
     .filter((control) =>
@@ -440,7 +447,15 @@ export function listPersistentControlOptions(
     .map((control) => ({
       ...control,
       ...(control.kind === 'enum' && control.values
-        ? { values: listApplicableControlValueOptions(control, entryId) }
+        ? {
+            values: listApplicableControlValueOptions(control, entryId).map((option) => ({
+              ...option,
+              label: formatDefaultLabel(
+                option.label,
+                defaults[control.key] !== undefined ? option.value === defaults[control.key] : undefined,
+              ),
+            })),
+          }
         : {}),
     }));
 }
@@ -452,6 +467,24 @@ export function countRequestScopedControls(
   return controls.filter((control) =>
     control.scope === 'request'
     && controlAppliesToEntry(control, entryId)).length;
+}
+
+export function resolveEntryControlDefaults(
+  catalog: ProviderAdvancedModelCatalog,
+  entryId: string,
+  presetId?: string | null,
+): Record<string, ProviderAdvancedControlValue> {
+  const entry = catalog.entries.find((candidate) => candidate.id === entryId);
+  const preset = catalog.presets.find((candidate) =>
+    candidate.id === presetId && presetAppliesToEntry(candidate, entryId));
+  const selection = catalog.defaultSelection;
+  return filterPersistentControlValues(catalog.controls, entryId, {
+    ...entry?.controlDefaults,
+    ...preset?.controlDefaults,
+    ...(selection?.entryId === entryId && (selection.presetId ?? '') === (presetId ?? '')
+      ? selection.controls
+      : {}),
+  }) ?? {};
 }
 
 export function filterPersistentControlValues(
@@ -542,10 +575,11 @@ function resolveExecutionLabelControlValues(input: {
   }
 
   const resolvedValues: Record<string, ProviderAdvancedControlValue> = {};
-  const defaultSelectionControls =
-    effectiveAdvancedCatalog.defaultSelection?.entryId === entryId
-      ? effectiveAdvancedCatalog.defaultSelection.controls
-      : undefined;
+  const defaultSelectionControls = resolveEntryControlDefaults(
+    effectiveAdvancedCatalog,
+    entryId,
+    modelSelection?.presetId,
+  );
 
   for (const control of persistentControls) {
     const explicitValue = modelSelection?.controls?.[control.key];
@@ -902,8 +936,13 @@ export function resolveProviderModelFieldsViewState(input: {
     && presetOptions.some((preset) => preset.id === modelSelection?.presetId)
     ? modelSelection?.presetId ?? ''
     : '';
+  const controlDefaults = resolveEntryControlDefaults(
+    effectiveAdvancedCatalog,
+    selectedCatalogEntryId,
+    selectedPresetId,
+  );
   const controlOptions = !isLegacyModelTarget
-    ? listPersistentControlOptions(effectiveAdvancedCatalog.controls, selectedCatalogEntryId)
+    ? listPersistentControlOptions(effectiveAdvancedCatalog.controls, selectedCatalogEntryId, controlDefaults)
     : [];
   const unsupportedSelectionWarning = !isLegacyModelTarget
     ? resolveUnsupportedPersistentControlWarning({
@@ -915,7 +954,7 @@ export function resolveProviderModelFieldsViewState(input: {
   const requestScopedControlCount = !isLegacyModelTarget
     ? countRequestScopedControls(effectiveAdvancedCatalog.controls, selectedCatalogEntryId)
     : 0;
-  const controlValues = modelSelection?.controls ?? {};
+  const controlValues = { ...controlDefaults, ...modelSelection?.controls };
   const supportBadge = resolveProviderSupportBadge(effectiveAdvancedCatalog.support.tier);
   const selectedEntryNotes = !isLegacyModelTarget
     ? entryOptions.find((option) => option.id === selectedCatalogEntryId)?.notes ?? []
