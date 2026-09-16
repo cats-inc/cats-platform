@@ -43,6 +43,19 @@ const codex: ProviderAdvancedModelCatalog = {
 };
 const claude = createStaticProviderModelCatalog('claude', { instance: 'cli/native' });
 const agyModels = createStaticProviderModelCatalog('antigravity', { instance: 'cli/native' });
+const grokModels = createStaticProviderModelCatalog('grok', { instance: 'cli/native' });
+const grok: ProviderAdvancedModelCatalog = {
+  ...createProviderAdvancedCatalogFromModelCatalog(grokModels),
+  backend: 'cli', defaultModel: null, defaultSelection: null,
+  controls: [{
+    key: 'grok.reasoning_effort', label: 'Reasoning effort', kind: 'enum', scope: 'both',
+    values: [
+      { value: 'xhigh', label: 'Extra High Effort', applicableEntryIds: ['grok-4.6'] },
+      ...['High', 'Medium', 'Low'].map((label) => ({ value: label.toLowerCase(),
+        label: `${label} Effort`, applicableEntryIds: ['grok-4.6', 'grok-4.5'] })),
+    ],
+  }],
+};
 const agy: ProviderAdvancedModelCatalog = {
   ...createProviderAdvancedCatalogFromModelCatalog(agyModels),
   backend: 'cli', defaultModel: null, defaultSelection: null,
@@ -66,15 +79,17 @@ function Picker(props: {
   });
   const { ready, onChange } = props;
   const registry = useCallback(async () => ({ state: 'ready' as const, revision: 'selected-claude-codex',
-    providers: listProductProviders().filter((provider) => ['claude', 'codex', 'antigravity'].includes(provider.id)),
+    providers: listProductProviders().filter((provider) => ['claude', 'codex', 'antigravity', 'grok'].includes(provider.id)),
   }), []);
   const models = useCallback(async (provider: string) => {
+    if (provider === 'grok') return { ...grokModels, defaultModel: null };
     if (provider === 'antigravity') return { ...agyModels, defaultModel: null };
     if (provider !== 'codex') return claude;
     await ready;
     return { ...codex, models: codex.entries };
   }, [ready]);
   const advanced = useCallback(async (provider: string) => {
+    if (provider === 'grok') return grok;
     if (provider === 'antigravity') return agy;
     if (provider !== 'codex') return createProviderAdvancedCatalogFromModelCatalog(claude);
     await ready;
@@ -97,6 +112,40 @@ function reset(): void {
   clearProviderCatalogClientCache();
   clearProviderRegistryClientCache();
 }
+
+test('Grok selects the first effort for each model, keeps labels and restores saved effort', async (t) => {
+  reset();
+  t.after(reset);
+  const changes: ProviderTargetSelection[] = [];
+  const onChange = (target: ProviderTargetSelection) => { changes.push(target); };
+  const ready = Promise.resolve();
+  let view = render(<Picker ready={ready} onChange={onChange} />);
+  const model = () => view.getByRole('combobox', { name: /^Model/ }) as HTMLSelectElement;
+  const effort = () => view.getByRole('combobox', { name: 'Reasoning effort' }) as HTMLSelectElement;
+  await waitFor(() => assert.equal(changes.at(-1)?.model, 'opus'));
+  fireEvent.change(view.getByRole('combobox', { name: 'Provider' }), { target: { value: 'grok' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.model, 'grok-4.6'));
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.controls?.['grok.reasoning_effort'], 'xhigh'));
+  assert.equal(model().selectedOptions[0].textContent, 'Grok 4.6');
+  assert.equal(effort().value, 'xhigh');
+  assert.deepEqual([...effort().options].map((option) => option.textContent),
+    ['Extra High Effort', 'High Effort', 'Medium Effort', 'Low Effort']);
+  assert.ok([...model().options].every((option) => !/default|active/i.test(option.textContent ?? '')));
+
+  fireEvent.change(model(), { target: { value: 'grok-4.5' } });
+  await waitFor(() => assert.equal(effort().value, 'high'));
+  assert.equal(changes.at(-1)?.modelSelection?.controls?.['grok.reasoning_effort'], 'high');
+  assert.deepEqual([...effort().options].map((option) => option.textContent),
+    ['High Effort', 'Medium Effort', 'Low Effort']);
+  fireEvent.change(effort(), { target: { value: 'low' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.controls?.['grok.reasoning_effort'], 'low'));
+  const saved = changes.at(-1)!;
+  view.unmount();
+  view = render(<Picker ready={ready} initialTarget={saved} onChange={onChange} />);
+  await waitFor(() => assert.equal(effort().value, 'low'));
+  fireEvent.change(model(), { target: { value: 'grok-4.6' } });
+  await waitFor(() => assert.equal(effort().value, 'xhigh'));
+});
 
 test('provider/model switches select and mark runtime defaults while reload preserves explicit effort', async (t) => {
   reset();
