@@ -94,6 +94,13 @@ The current slices are:
 
 ## Current Status
 
+- [x] Ship shared provider onboarding and Settings in
+      [Desktop 0.2.9 unsigned preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.2.9),
+      with Runtime 0.1.24, optional detection after Apply, scoped installation,
+      retained results, and Windows/macOS/Linux helper updates. All release jobs
+      passed; the public updater feed resolves 0.2.9 for all three release targets.
+      See [PLAN-107](./docs/plans/PLAN-107-desktop-provider-management.md).
+
 - [x] Save Runtime-owned provider selection before Desktop inventory and helpers;
       scope product provider/model choices by exact target and config revision.
       Explicit empty selection supports idle mode. Native installer acceptance

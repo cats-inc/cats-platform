@@ -150,7 +150,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 | [PLAN-002](./PLAN-002-chat-renderer-shell.md) | Chat Renderer Shell | Completed | [SPEC-002](../specs/SPEC-002-chat-renderer-shell.md) |
 | [PLAN-001](./PLAN-001-initial-chat-shell.md) | Initial Chat Shell | Completed | [SPEC-001](../specs/SPEC-001-initial-chat-shell.md) |
 | [000-template](./000-template.md) | Template | - | - |
-| [PLAN-107](./PLAN-107-desktop-provider-management.md) | Desktop provider management | In progress | 2026-09-16 |
+| [PLAN-107](./PLAN-107-desktop-provider-management.md) | Desktop provider management | Delivered in 0.2.9 unsigned preview; native acceptance remains | 2026-09-16 |
 <!-- Add new plans above this line -->
 
 ## For AI Agents
