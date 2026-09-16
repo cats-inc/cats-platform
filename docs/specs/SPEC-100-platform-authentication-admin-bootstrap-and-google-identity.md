@@ -190,6 +190,12 @@ the ADR-095 pairing QR.
     endpoints, auth bootstrap/status endpoints, optional Google auth bootstrap
     endpoints, narrow health/readiness endpoints, and the mobile
     manifest/bundle/assets surface when the mobile pairing feature is enabled.
+29a. First-run setup may read `GET /api/providers`,
+     `GET /api/providers/{provider}/models`, and its `/advanced` variant before
+     the final setup submission creates the first Admin/session. These reads
+     shall remain limited by Runtime's selected targets. The exemption shall
+     end after setup and shall not apply during auth repair, to provider
+     mutations, or to capability configuration routes.
 30. Unauthenticated app-shell/bootstrap reads shall return only setup/auth
     routing state and provider availability, including
     `auth.providers.google = { enabled, clientId }`. They shall not include
@@ -561,7 +567,7 @@ Public/protected route policy:
 
 | Phase | Public | Protected |
 |-------|--------|-----------|
-| Before setup | static assets, mobile manifest/bundle/assets when pairing is enabled, health, minimal app-shell/bootstrap envelope, setup bootstrap, auth status, optional Google auth bootstrap | product data, runtime proxy, shell helpers, transports |
+| Before setup | static assets, mobile manifest/bundle/assets when pairing is enabled, health, minimal app-shell/bootstrap envelope, setup bootstrap and its selected provider/model catalog GET routes, auth status, optional Google auth bootstrap | product data, provider mutations/configuration, runtime proxy, shell helpers, transports |
 | After setup | static assets, mobile manifest/bundle/assets when pairing is enabled, health, minimal app-shell/bootstrap envelope, login, auth status/logout | all product/runtime/shell/transport/Core APIs unless the request has a valid browser or mobile session |
 
 ## Dependencies

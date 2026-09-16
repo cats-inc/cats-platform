@@ -672,6 +672,14 @@ POST /api/providers/capability-bootstrap
 PUT /api/providers/capability-bootstrap
 ```
 
+The three catalog reads (`GET /api/providers`, `GET /api/providers/{provider}/models`
+and its `/advanced` variant) are available without a session only during
+`pre_setup`, so the Catlas picker works before final submission creates the
+first Admin. Runtime's selected target scope still applies. Once setup is
+complete, or auth repair is required, all three require authentication. This
+exception does not include capability configuration, refresh mutations, or
+other provider routes.
+
 - `GET /api/providers` returns the truthful runtime-backed execution targets
   currently usable for setup and in-product provider/model selectors. The
   response includes `state` (`ready`, `no_usable_targets`, or

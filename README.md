@@ -94,6 +94,11 @@ The current slices are:
 
 ## Current Status
 
+- [x] Correct first-run Catlas setup in Desktop 0.2.10: read the selected
+      provider/model catalogs before the first Admin session exists, then
+      require authentication after setup. Isolated HTTP and browser checks
+      cover both steps through account creation with auth enabled.
+
 - [x] Ship shared provider onboarding and Settings in
       [Desktop 0.2.9 unsigned preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.2.9),
       with Runtime 0.1.24, optional detection after Apply, scoped installation,

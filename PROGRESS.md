@@ -4,6 +4,16 @@
 
 ## Current Status
 
+First-run Catlas correction (2026-09-17): Desktop 0.2.10 allows only the three
+provider/model catalog GET routes during `pre_setup`. The first Admin session
+is created at final submission, so gating these earlier picker reads had caused
+401 responses despite a ready Runtime. Post-setup/repair and mutation gates
+remain protected. The original 401 was reproduced before the fix; 49 focused
+auth/setup cases and an isolated browser two-step setup passed afterwards.
+Runtime stays at 0.1.24. Release identity and validation are recorded in
+[PLAN-107](./docs/plans/PLAN-107-desktop-provider-management.md) and the
+[0.2.10 release](https://github.com/cats-inc/cats-platform/releases/tag/v0.2.10).
+
 Desktop provider management (2026-09-16): onboarding and Settings > Runtime
 share one intent editor with exact Runtime scope, retained detection history,
 per-provider installation/checks, endpoint connection tests, Apply with optional

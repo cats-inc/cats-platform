@@ -19,6 +19,35 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-17 (0.2.10 unsigned preview)
+
+### Let first-run Catlas setup read provider catalogs before login
+
+Behavior change:
+
+The second setup step could show `Authentication is required.` and disable the
+provider/model selectors even after Runtime setup was ready. The first Admin
+session is created only at final submission, but the picker had called catalog
+routes that required that session. The three catalog GET routes are now allowed
+only during first setup; post-setup/repair requests and mutations retain their
+authentication requirements. Runtime-selected scope still limits the results.
+
+Migration steps:
+
+Use **Check for Update** to install the 0.2.10 unsigned preview and reopen setup.
+The fix requires no reset of provider selection or user data. Runtime remains
+0.1.24 at `c1a5c0ae108a155b14867f85c344a23c9a95bdbf`, with the existing Usage
+0.2.0 lock. The manual Desktop workflow uses `tag=v0.2.10` and that exact
+`runtime_ref`; it publishes Windows x64, macOS x64 and Linux arm64 after all
+release checks pass.
+
+Validation: the original 401 was reproduced in an isolated HTTP test. The fix
+passed 49 focused auth/setup cases and an actual browser flow through both
+setup steps, provider/model selection, first-Admin creation and authenticated
+catalog access. Anonymous access is denied again immediately after setup.
+
+Deprecations: none. This remains an unsigned preview.
+
 ## 2026-09-16 (0.2.9 unsigned preview)
 
 ### Shared provider onboarding and Settings

@@ -6,7 +6,7 @@
 |-------|-------|
 | Status | Delivered in 0.2.9 unsigned preview; native acceptance remains |
 | Owner / Reviewer | User |
-| Last updated | 2026-09-16 |
+| Last updated | 2026-09-17 |
 
 ## Related Design
 
@@ -165,3 +165,25 @@ CI locally solely for a commit/version bump.
 - Physical provider installation, provider sign-in, and the installed Desktop
   download/restart handoff remain user acceptance. Fixture/packaging success
   does not claim that those machine-specific actions were performed.
+
+## First-run Catlas Auth Correction (Desktop 0.2.10)
+
+- User acceptance found the product setup's second step returning
+  `Authentication is required.` even after Runtime had applied its selection.
+  The initial browser checks had covered Desktop provider setup but not the
+  subsequent product setup with authentication enabled and no Admin session.
+- The correction allows only `GET /api/providers` and the exact basic/advanced
+  model catalog paths during `pre_setup`. Existing Runtime target projection
+  remains authoritative; catalog mutations, unrelated APIs, post-setup and
+  auth repair retain their original authentication requirements.
+- An isolated HTTP regression first reproduced the 401, then passed the full
+  catalog-to-Admin/Catlas completion flow. Together with policy/router coverage,
+  49 focused cases pass. Server build and test TypeScript checks passed. An isolated Edge run
+  exercised the actual two-step UI, enabled the model picker, completed setup,
+  confirmed its authenticated session and anonymous post-setup 401, and reported
+  no browser errors. Independent review cleared the change.
+- The patch release uses Desktop `v0.2.10` with the same exact Runtime 0.1.24
+  commit `c1a5c0ae108a155b14867f85c344a23c9a95bdbf`. Required PR CI and the manual
+  three-platform unsigned release workflow remain publication gates. The
+  [release record](https://github.com/cats-inc/cats-platform/releases/tag/v0.2.10)
+  carries the actual publication and updater-discovery evidence.

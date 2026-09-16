@@ -169,6 +169,41 @@ test('platform auth gate protects product, core, runtime, shell, transport, and 
   }
 });
 
+test('Catlas catalog reads are public only while creating the first Admin', () => {
+  const catalogs = [
+    '/api/providers',
+    '/api/providers/claude/models',
+    '/api/providers/claude/models/advanced',
+  ];
+  for (const pathname of catalogs) {
+    for (const phase of ['pre_setup', 'post_setup', 'repair'] satisfies PlatformAuthGatePhase[]) {
+      assert.equal(
+        classifyPlatformAuthRoute({ phase, method: 'GET', pathname }).access,
+        phase === 'pre_setup' ? 'public' : 'protected',
+        `GET ${pathname} during ${phase}`,
+      );
+      for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+        assert.equal(classifyPlatformAuthRoute({ phase, method, pathname }).access, 'protected');
+      }
+    }
+  }
+
+  for (const pathname of [
+    '/api/providers/capability-bootstrap',
+    '/api/providers/models/refresh',
+    '/api/providers/claude/tools',
+    '/api/providers/claude/models/advanced/refresh',
+  ]) {
+    for (const method of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) {
+      assert.equal(
+        classifyPlatformAuthRoute({ phase: 'pre_setup', method, pathname }).access,
+        'protected',
+        `${method} ${pathname} must not be opened with the catalogs`,
+      );
+    }
+  }
+});
+
 test('platform auth gate fails closed during repair except narrow public bootstrap routes', () => {
   assert.equal(
     classifyPlatformAuthRoute({

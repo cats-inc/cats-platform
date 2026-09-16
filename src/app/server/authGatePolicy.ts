@@ -119,6 +119,15 @@ function isPublicAuthRoute(pathname: string, method: string): boolean {
 }
 
 function isPublicPreSetupRoute(pathname: string, method: string): boolean {
+  // Catlas is selected before setup completion creates the first Admin/session.
+  // Expose only the picker's catalog reads; the Runtime selection still scopes
+  // their results, and post-setup/repair requests remain authenticated.
+  if (method === 'GET' && (
+    pathname === '/api/providers'
+    || /^\/api\/providers\/[^/]+\/models(?:\/advanced)?$/u.test(pathname)
+  )) {
+    return true;
+  }
   if (
     (pathname === '/api/platform/ingress' && method === 'GET')
     || (pathname === '/api/platform/bootstrap-diagnostics' && method === 'GET')
