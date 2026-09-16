@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { isDesktopPrerequisiteHelper } from './setupAudit.js';
 
 /** The connected Runtime owns both selection and operation admission. */
 export interface SelectedProviderTarget {
@@ -86,6 +87,10 @@ export async function withSelectedSetupTargets<T>(options: SelectedSetupOperatio
 }
 
 async function runSelectedSetupOperation<T>(options: SelectedSetupOperation<T>): Promise<T> {
+  // Node/npm/PATH and GitHub CLI prepare the Desktop host, including before a
+  // Runtime selection exists. The allowlist is exact; provider helpers still
+  // require their saved target and revision-bound operation admission below.
+  if (isDesktopPrerequisiteHelper(options.helperId)) return options.run();
   const request = options.fetch ?? fetch;
   const base = options.baseUrl.replace(/\/+$/u, '');
   await retryPendingSetupOperationReleases();

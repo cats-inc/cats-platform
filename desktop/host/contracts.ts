@@ -1,3 +1,5 @@
+import type { DesktopPrerequisite } from '../../packages/provider-setup/manager.js';
+
 export const DESKTOP_HOST_NAME = 'cats-electron-host';
 export const DESKTOP_BOOTSTRAP_PHASES = [
   'starting_services',
@@ -757,6 +759,7 @@ export interface DesktopSetupState {
 
 export interface DesktopSetupSnapshot {
   helpers: DesktopSetupHelperSummary[];
+  prerequisiteChecks?: DesktopPrerequisite[];
   state: DesktopSetupState;
   resumeAction: DesktopSetupResumeAction | null;
 }

@@ -52,9 +52,11 @@ test('onboarding distinguishes selected-but-unchecked providers from providers o
   assert.match(p.row('codex').textContent, /Not detected/);
   assert.equal(p.button('codex', 'detect').disabled, false);
   assert.equal(p.button('codex', 'install').disabled, false);
+  assert.ok(p.root.querySelector('[data-prerequisite="node"].cli-card'));
+  p.root.querySelector('[data-action="show-more"]').click();
   assert.match(p.row('muse').textContent, /Not selected/);
   assert.equal(p.button('muse', 'install'), null);
-  assert.equal(p.root.querySelector('.cli-card'), null);
+  assert.ok(p.row('muse').classList.contains('cli-card'));
 });
 
 const recoveryHelpers = ['windows-node-host-installer', 'windows-ollama-local-model-installer', 'windows-codex-native-installer']
@@ -91,6 +93,16 @@ test('the retained recovery install action refreshes its inventory after complet
   p.card('Codex').querySelector('.cli-card-btn').click(); await settle(); await settle();
   assert.equal(p.helperActions.length, 1);
   assert.ok(p.oldActions.includes('retry_cli_scan'));
+});
+
+test('recovery retains the Node/npm result after a different prerequisite check completes', async (t) => {
+  const setup = audit([]);
+  setup.state.lastAction = { ...setup.state.lastAction, helperId: 'windows-github-cli-installer', status: 'changes_required' };
+  setup.prerequisiteChecks = [{ helperId: 'windows-node-host-installer', checking: false,
+    result: { runState: 'completed', status: 'ready' } }];
+  const p = await recoveryPage(t, setup);
+  assert.match(p.card('Node.js / npm').textContent, /Installed/);
+  assert.doesNotMatch(p.card('Node.js / npm').textContent, /Checking/);
 });
 
 test('a row Detect requests its exact target and never triggers the old whole-inventory action', async (t) => {

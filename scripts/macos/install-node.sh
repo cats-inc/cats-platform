@@ -90,7 +90,7 @@ is_node_installed() {
   if [ "$skip_node_probe" = 'true' ]; then
     return 1
   fi
-  command -v node >/dev/null 2>&1
+  command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1
 }
 
 json_array_from_lines() {
@@ -148,6 +148,12 @@ JSON
 
   exit "$exit_code"
 }
+
+# Desktop's environment may predate nvm installation. Load it before read-only
+# detection too; a bundled or standalone node without npm is not this substrate.
+if [ "$install_state" = 'auto' ] && [ "$skip_node_probe" = 'false' ]; then
+  load_nvm
+fi
 
 # Mode: check
 if [ "$mode" = 'check' ]; then
@@ -214,10 +220,10 @@ case "$mode" in
     ;;
 esac
 
-if command -v node >/dev/null 2>&1; then
+if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
   emit_result 'ready' 'true' 0
 else
-  warnings+=('Node binary still missing after install.')
+  warnings+=('Node.js or npm is still missing after install.')
   manual_steps+=('Open a new terminal so PATH picks up the nvm-managed node binary.')
   emit_result 'failed' 'false' 1
 fi

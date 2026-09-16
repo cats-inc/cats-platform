@@ -1,6 +1,7 @@
-import type { ProviderManagerSnapshot, ProviderSetupOutcome, ProviderTarget } from '../../packages/provider-setup/manager.js';
+import type { DesktopPrerequisite, ProviderManagerSnapshot, ProviderSetupOutcome, ProviderTarget } from '../../packages/provider-setup/manager.js';
 import type { DesktopSetupActionRecord, DesktopSetupHelperMode, DesktopSetupHelperSummary } from './contracts.js';
 import { NPM_PROVIDERS, targetKey, targetsForSetupHelper } from './providerSelection.js';
+import { isDesktopPrerequisiteHelper } from './setupAudit.js';
 
 export type ProviderManagerRuntime = ProviderManagerSnapshot['runtime'] & {
   scan: { revision: string; scannedAt?: string | null; providers: Array<ProviderTarget & { available: boolean; authStatus?: string }> } | null;
@@ -13,6 +14,7 @@ interface Dependencies {
   helpers(): Promise<DesktopSetupHelperSummary[]>;
   helper(helperId: string, mode: DesktopSetupHelperMode, dryRun: boolean, expectedRevision: string): Promise<DesktopSetupActionRecord>;
   changed(runtime: ProviderManagerRuntime): Promise<void>;
+  prerequisites?: () => DesktopPrerequisite[];
   wait?: (milliseconds: number) => Promise<void>;
   timeoutMs?: number;
 }
@@ -55,9 +57,11 @@ export class DesktopProviderManager {
       this.dependencies.request<ProviderManagerRuntime>('/setup-state'), this.dependencies.helpers(),
     ]);
     return { runtime, helpers: helpers.filter((helper) => {
+      if (isDesktopPrerequisiteHelper(helper.id)) return true;
       try { return targetsForSetupHelper(helper.id, runtime.selection).length > 0; } catch { return false; }
     }), platform: this.dependencies.platform,
-    operations: this.operation ? [{ ...this.operation }] : [], outcomes: { ...this.outcomes } };
+    operations: this.operation ? [{ ...this.operation }] : [], outcomes: { ...this.outcomes },
+    prerequisites: this.dependencies.prerequisites?.() ?? [] };
   }
 
   private assertRevision(runtime: ProviderManagerRuntime, expected: unknown): asserts expected is string {

@@ -347,6 +347,13 @@ Codex MUST treat the following as hard guardrails when refactoring `cats`.
 These notes capture the current user direction for `cats`. They are
 working memory for Codex, not yet a ratified product spec or ADR.
 
+- September 17, 2026 user correction: do not bump versions or publish releases
+  without a new explicit request. Prior overnight release permission is no
+  longer ongoing. Desktop onboarding is for ordinary users on clean machines:
+  retain its original classified cards and visible Node.js/npm preparation.
+  Share provider behavior with Settings without imposing the same row layout.
+  Put paths, timestamps, raw diagnostics and maintenance in collapsed details.
+
 - The flagship product brand remains `Cats`, but the main platform
   host/repo/package target is now `cats-platform` under the `Cats Inc`
   umbrella brand, with a later public repo target of

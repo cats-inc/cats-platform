@@ -40,6 +40,7 @@ test('first-run provider choices are selectable before detection and save exact 
   const p = await page();
   try {
     assert.equal(p.continueButton().disabled, true);
+    p.document.querySelector('[data-action=show-more]').click();
     const choices = p.document.querySelectorAll('.pm-list input[type=checkbox]');
     assert.equal(choices.length, 2);
     assert.equal(choices[1].disabled, false);

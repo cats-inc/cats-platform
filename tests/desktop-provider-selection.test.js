@@ -10,13 +10,14 @@ function selection(providers = []) {
 }
 
 for (const [platform, prefix] of [['win32', 'windows'], ['darwin', 'macos'], ['linux', 'linux']]) {
-  test(`${platform} runs only setup checks needed by selected providers`, () => {
-    assert.deepEqual(resolveSelectedSetupAuditActions(null, platform), []);
-    assert.deepEqual(resolveSelectedSetupAuditActions(selection(), platform), []);
-    assert.deepEqual(resolveSelectedSetupAuditActions(selection(['claude']), platform), []);
-    assert.deepEqual(resolveSelectedSetupAuditActions(selection(['cline']), platform), [{ helperId: `${prefix}-node-host-installer` }]);
+  test(`${platform} checks the Desktop environment before provider selection while bounding provider probes`, () => {
+    const baseline = ['node-host-installer', 'npm-prefix-helper', 'github-cli-installer'].map((suffix) => ({ helperId: `${prefix}-${suffix}` }));
+    assert.deepEqual(resolveSelectedSetupAuditActions(null, platform), baseline);
+    assert.deepEqual(resolveSelectedSetupAuditActions(selection(), platform), baseline);
+    assert.deepEqual(resolveSelectedSetupAuditActions(selection(['claude']), platform), baseline);
+    assert.deepEqual(resolveSelectedSetupAuditActions(selection(['cline']), platform), baseline);
     assert.deepEqual(resolveSelectedSetupAuditActions(selection(['codex', 'ollama']), platform), [
-      { helperId: `${prefix}-node-host-installer` }, { helperId: `${prefix}-ollama-local-model-installer` },
+      ...baseline, { helperId: `${prefix}-ollama-local-model-installer` },
     ]);
     assert.deepEqual(targetsForSetupHelper(`${prefix}-codex-native-installer`, selection(['codex'])), [nativeSetupTarget('codex')]);
     assert.throws(() => targetsForSetupHelper(`${prefix}-claude-native-installer`, selection(['codex'])), /outside/);
@@ -26,9 +27,22 @@ for (const [platform, prefix] of [['win32', 'windows'], ['darwin', 'macos'], ['l
 
 test('remote variants and a remote Ollama named local cannot admit local helpers', () => {
   const remote = { ...selection(['codex', 'ollama']), nativeSetupTargets: [] };
-  assert.deepEqual(resolveSelectedSetupAuditActions(remote, 'linux'), []);
+  assert.deepEqual(resolveSelectedSetupAuditActions(remote, 'linux').map((entry) => entry.helperId),
+    ['linux-node-host-installer', 'linux-npm-prefix-helper', 'linux-github-cli-installer']);
   assert.throws(() => targetsForSetupHelper('linux-node-host-installer', remote), /outside/);
   assert.throws(() => targetsForSetupHelper('linux-ollama-local-model-installer', remote), /outside/);
+});
+
+test('Desktop prerequisite helpers can prepare a clean host without reading or expanding Runtime selection', async () => {
+  for (const platform of ['windows', 'macos', 'linux']) {
+    for (const suffix of ['node-host-installer', 'npm-prefix-helper', 'github-cli-installer']) {
+      const result = await withSelectedSetupTargets({ baseUrl: 'http://runtime.test', helperId: `${platform}-${suffix}`,
+        fetch: async () => { assert.fail('Desktop prerequisites must not depend on Runtime selection'); }, run: async () => 'checked' });
+      assert.equal(result, 'checked');
+    }
+  }
+  await assert.rejects(withSelectedSetupTargets({ baseUrl: 'http://runtime.test', helperId: 'windows-claude-native-installer',
+    fetch: async () => Response.json({ selection: selection() }), run: async () => assert.fail('unselected provider installer ran') }), /Select providers/);
 });
 
 test('a setup helper holds its exact selected target through execution and releases on failure', async () => {

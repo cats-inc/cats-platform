@@ -91,12 +91,41 @@ test('Node check refreshes registry PATH before detecting a newly installed prer
 $env:Path = 'stale-desktop-environment'
 function Get-Command {
  param($Name)
- if ($Name -eq 'node' -and $env:Path.Contains([Environment]::GetEnvironmentVariable('Path', 'Machine'))) {
-   return [pscustomobject]@{ Source = 'fixture-node.exe' }
+ if ($Name -in @('node', 'npm') -and $env:Path.Contains([Environment]::GetEnvironmentVariable('Path', 'Machine'))) {
+   return [pscustomobject]@{ Source = "fixture-$Name.exe" }
  }
 }
 & ${helper} -CheckOnly -Json -DetectedVersion '24.0.0'`);
   const result = JSON.parse(stdout);
   assert.equal(result.status, 'ready');
   assert.equal(result.commandPath, 'fixture-node.exe');
+});
+
+test('Node without npm still needs the Desktop Node/npm prerequisite', windows, async () => {
+  const helper = literal(join(process.cwd(), 'scripts/windows/Install-Node.ps1'));
+  const { stdout } = await run(`
+function Get-Command {
+ param($Name)
+ if ($Name -eq 'node') { return [pscustomobject]@{ Source = 'fixture-node.exe' } }
+}
+& ${helper} -CheckOnly -Json -DetectedVersion '24.0.0'`);
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'changes_required');
+  assert.deepEqual(result.plannedActions, ['install_node_lts']);
+});
+
+test('GitHub CLI check refreshes registry PATH after installation without restarting Desktop', windows, async () => {
+  const helper = literal(join(process.cwd(), 'scripts/windows/Install-GitHubCli.ps1'));
+  const { stdout } = await run(`
+$env:Path = 'stale-desktop-environment'
+function Get-Command {
+ param($Name)
+ if ($Name -eq 'gh' -and $env:Path.Contains([Environment]::GetEnvironmentVariable('Path', 'Machine'))) {
+   return [pscustomobject]@{ Source = 'fixture-gh.exe' }
+ }
+}
+& ${helper} -CheckOnly -Json -DetectedVersion '2.0.0'`);
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'ready');
+  assert.equal(result.commandPath, 'fixture-gh.exe');
 });

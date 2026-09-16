@@ -4,6 +4,20 @@
 
 ## Current Status
 
+Desktop acceptance correction (2026-09-17, 0.2.11 preview candidate): onboarding again uses
+the original classified compact cards, with Node.js/npm visible before any
+provider selection and Show more for the remaining tools. Desktop restores its
+independent Node/npm, npm prefix/PATH and GitHub CLI checks; observations survive
+unrelated actions and recovery. Both editors keep technical details collapsed.
+Fresh helper checks now find newly installed gh/nvm and require npm alongside
+node. Focused validation and isolated browser checks are recorded in
+[PLAN-107](./docs/plans/PLAN-107-desktop-provider-management.md). After the local
+correction was complete, the user explicitly authorized this 0.2.11 preview.
+Future version bumps still require a new request. Runtime 0.1.24 is pinned to
+`580f1c9be3a5158fb8967157900629062c9ea020`, including the merged Grok catalog
+matching Platform #84. Required PR CI and three-platform release checks gate
+publication; the release record carries the final delivery evidence.
+
 First-run Catlas correction (2026-09-17): Desktop 0.2.10 allows only the three
 provider/model catalog GET routes during `pre_setup`. The first Admin session
 is created at final submission, so gating these earlier picker reads had caused

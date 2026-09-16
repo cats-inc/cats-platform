@@ -401,17 +401,14 @@ export function buildDesktopBootstrapPage(): string {
       display: flex;
       flex-direction: column;
       align-items: center;
-      height: 100dvh;
-      padding: 32px 24px 24px;
+      min-height: 100dvh;
+      padding: clamp(32px, 16vh, 160px) 24px 56px;
       text-align: center;
     }
     .onboarding-page > .hero { flex-shrink: 0; }
     .onboarding-page > .catsProviderManager {
-      width: 100%; text-align: left; margin: 0 auto; min-height: 0;
-      flex: 1; display: flex; flex-direction: column;
+      width: 100%; margin: 0 auto;
     }
-    .onboarding-page .catsProviderManager > :not(.pm-list) { flex-shrink: 0; }
-    .onboarding-page .catsProviderManager .pm-list { flex: 1; min-height: 0; max-height: none; }
     .onboarding-headline {
       font-size: 0.92rem;
       color: var(--muted);
@@ -1795,6 +1792,11 @@ export function buildDesktopBootstrapPage(): string {
        'checking': it is not coming back on its own, and an install button the
        user can press beats a spinner that never stops. */
     function resolveNodePrerequisiteState(setupSnap) {
+      var checks = setupSnap && setupSnap.prerequisiteChecks;
+      var nodeCheck = checks && checks.find(function (entry) { return isNodePrerequisiteHelperId(entry.helperId); });
+      if (nodeCheck && nodeCheck.result) {
+        return rememberAuditState('node', nodeCheck.result.status === 'ready' ? 'ready' : 'missing');
+      }
       var action = setupSnap && setupSnap.state ? setupSnap.state.lastAction : null;
       if (!action) return rememberAuditState('node', 'checking');
       if (action.runState === 'failed') return rememberAuditState('node', 'missing');

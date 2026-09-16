@@ -60,6 +60,11 @@ declare -a applied_changes=()
 declare -a warnings=()
 declare -a manual_steps=()
 
+# A Desktop-launched helper may inherit PATH from before gh was installed.
+# Include our fallback destination and the supported Homebrew locations in this
+# process only; check mode must not edit the user's shell profile.
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
 resolve_gh_path() {
   command -v gh 2>/dev/null || true
 }

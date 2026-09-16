@@ -40,6 +40,11 @@ export interface ProviderSetupOutcome {
   plannedActions: string[];
   runState: string;
 }
+export interface DesktopPrerequisite {
+  helperId: string;
+  checking: boolean;
+  result: ProviderSetupOutcome | null;
+}
 export interface ProviderManagerSnapshot {
   runtime: {
     bootstrapRequired?: boolean;
@@ -54,9 +59,12 @@ export interface ProviderManagerSnapshot {
   platform: 'windows' | 'macos' | 'linux';
   operations: Array<{ targets: ProviderTarget[]; stage: string }>;
   outcomes: Record<string, ProviderSetupOutcome>;
+  prerequisites?: DesktopPrerequisite[];
   preview?: { target: ProviderTarget; result: ProviderSetupOutcome; revision: string };
 }
 export interface ProviderManagerBridge {
+  runSetupHelper?(helperId: string, mode: 'check' | 'apply'):
+    Promise<{ state?: { lastAction: ProviderSetupOutcome | null } }>;
   getProviderSetup(context?: 'onboarding' | 'settings'): Promise<ProviderManagerSnapshot>;
   applyProviderSetup(input: { targets: ProviderTarget[]; expectedRevision: string;
     detectAfter: boolean; reload?: boolean }): Promise<ProviderManagerSnapshot>;

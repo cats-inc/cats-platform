@@ -42,6 +42,17 @@ test('passive reads and apply without detection spend no provider work', async (
   assert.deepEqual(f.runtime.selection.targets, [codex]);
 });
 
+test('fresh Desktop reads expose prerequisite helpers and retained checks without selecting providers', async () => {
+  const observations = [{ helperId: 'windows-node-host-installer', checking: false, result: { ...result, status: 'changes_required' } }];
+  const f = fixture({ prerequisites: () => observations });
+  f.runtime.selection = { ...f.runtime.selection, state: 'missing', targets: [], nativeSetupTargets: [] };
+  const snapshot = await f.manager.read();
+  assert.deepEqual(snapshot.helpers.map((entry) => entry.id), ['windows-node-host-installer', 'windows-npm-prefix-helper']);
+  assert.deepEqual(snapshot.prerequisites, observations);
+  assert.deepEqual(snapshot.runtime.selection.targets, []);
+  assert.equal(f.calls.some((entry) => entry.path === '/setup-scan' || entry.helper), false);
+});
+
 test('one row install checks prerequisites and verifies exactly that target once with its revision', async () => {
   const f = fixture();
   await f.manager.run({ action: 'install', targets: [codex], expectedRevision: 'one' });

@@ -155,7 +155,8 @@ function Test-NodeInstalled {
     return $false
   }
 
-  return [bool](Get-Command node -ErrorAction SilentlyContinue)
+  return [bool](Get-Command node -ErrorAction SilentlyContinue) -and
+    [bool](Get-Command npm -ErrorAction SilentlyContinue)
 }
 
 if (-not $CheckOnly -and -not $Apply -and -not $Upgrade -and -not $Force) {
