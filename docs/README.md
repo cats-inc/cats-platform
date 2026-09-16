@@ -21,6 +21,9 @@ for implementation progress and native OS verification limits.
 
 ## Provider Catalog Labels
 
+[Cursor fixed presets](./research/2026-09-17-cursor-fixed-presets.md) records six parameterized
+combinations plus custom input, with first-item initialization and no default marker.
+
 [Grok Build 1.0.34](./research/2026-09-17-grok-model-picker.md) records exact
 model/effort labels and first-item initialization without default claims.
 
