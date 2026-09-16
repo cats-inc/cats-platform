@@ -27,7 +27,8 @@ export const PRODUCT_PROVIDER_MODELS = {
   // resolveLiveProviderModelLabel. Kept in step with the runtime's curated
   // catalog so an offline shell does not name a version that has moved on.
   claude: [
-    { value: 'opus', label: 'Opus 5 (1M context)', default: true },
+    { value: 'opus', label: 'Opus 5 with 1M context', default: true },
+    { value: 'fable', label: 'Fable 5.1' },
     { value: 'sonnet', label: 'Sonnet 5' },
     { value: 'haiku', label: 'Haiku 4.5' },
   ],

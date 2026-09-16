@@ -13,6 +13,11 @@ Valid empty selection supports idle onboarding. See
 and the shared [PLAN-039](../../cats-runtime/docs/plans/PLAN-039-provider-selection-bootstrap-rollout.md)
 for implementation progress and native OS verification limits.
 
+## Provider Catalog Labels
+
+[Claude 2.1.273 labels and Cats default markers](./research/2026-09-16-claude-catalog-labels.md)
+records the current version-bearing fallback labels and shared lowercase default-marker rule.
+
 ## Official Utility Apps and Usage
 
 The 2026-09-10 decision keeps official utility sources in `cats-apps` and the
