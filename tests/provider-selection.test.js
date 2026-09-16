@@ -26,10 +26,10 @@ test('resolveSelectedProviderInstance picks the runtime default instance when no
   };
 
   assert.equal(resolveSelectedProviderInstance(provider, ''), 'agent/bridge');
-  assert.equal(resolveSelectedProviderInstance(provider, 'ubuntu'), 'ubuntu');
+  assert.equal(resolveSelectedProviderInstance(provider, 'ubuntu'), 'cli/ubuntu');
 });
 
-test('resolveSelectedProviderInstance preserves an existing instance until the runtime registry is loaded', () => {
+test('resolveSelectedProviderInstance offers no instance until the runtime registry is loaded', () => {
   const provider = {
     id: 'claude',
     label: 'Claude',
@@ -40,7 +40,7 @@ test('resolveSelectedProviderInstance preserves an existing instance until the r
     modelsPath: '/api/providers/claude/models',
   };
 
-  assert.equal(resolveSelectedProviderInstance(provider, 'native'), 'native');
+  assert.equal(resolveSelectedProviderInstance(provider, 'native'), '');
 });
 
 test('static Codex catalog keeps raw model labels without a synthetic default suffix', () => {

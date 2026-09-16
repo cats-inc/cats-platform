@@ -34,7 +34,7 @@ test('desktop host bounds fresh-start CLI inventory scans without failing pendin
   assert.match(source, /triggerScanIfMissing: false,/);
   assert.match(
     source,
-    /!options\.setupCompleted && latestSnapshot && isDesktopBootstrapLoadingPhase\(latestSnapshot\.phase\)/u,
+    /runtimeCliInventoryScanPending \|\| isRuntimeCliInventoryScanActive\(latestCliInventoryProbe\)/u,
   );
   assert.match(
     source,

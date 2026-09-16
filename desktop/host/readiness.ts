@@ -91,6 +91,8 @@ export interface RuntimeProviderDiagnosticsPayload {
 }
 
 interface BuildDesktopBootstrapSnapshotInput {
+  providerSelection?: import('./providerSelection.js').ProviderSelection | null;
+  providerCatalog?: import('./providerSelection.js').ProviderSelectionCatalogEntry[];
   config: DesktopHostConfig;
   services: ManagedServiceSnapshot[];
   appHealth?: AppHealthPayload | null;
@@ -616,7 +618,7 @@ function buildActions(
   options: {
     appReady: boolean;
     setupComplete: boolean;
-    cliMissing: boolean;
+    selectionRequired: boolean;
     setup: DesktopSetupState | null | undefined;
     cliInventoryError: DesktopCliInventoryError | null | undefined;
   },
@@ -634,7 +636,7 @@ function buildActions(
   }
 
   // ── Continue slot ──────────────────────────────────────────────────
-  if (!options.cliMissing) {
+  if (!options.selectionRequired) {
     if (phase === 'ready_for_setup') {
       pushAction('open_setup', 'Continue to Setup', true);
     } else if (phase === 'ready_for_chat') {
@@ -741,21 +743,10 @@ export function buildDesktopBootstrapSnapshot(
   const hasAppHealth = Boolean(input.appHealth);
   const hasAppShell = Boolean(input.appShell);
   const runtimeBootstrapRequired = Boolean(
-    input.runtimeHealth?.readiness?.bootstrapRequired === true
-      || input.runtimeHealth?.startup?.bootstrapRequired === true,
-  );
-  const cliInventoryGateEnabled =
-    input.config.bootstrap?.onboardingMode === 'cli_inventory_gate';
-  const cliMissing = Boolean(
-    cliInventoryGateEnabled
-      && input.cliInventory
-      && input.cliInventory.source === 'runtime'
-      && input.cliInventory.total === 0,
-  );
-  const cliInventoryPending = Boolean(
-    cliInventoryGateEnabled
-      && !setupCompleted
-      && (!input.cliInventory || input.cliInventory.source === 'unknown'),
+    input.providerSelection
+      ? input.providerSelection.state === 'missing' || input.providerSelection.state === 'invalid'
+      : input.runtimeHealth?.readiness?.bootstrapRequired === true
+        || input.runtimeHealth?.startup?.bootstrapRequired === true,
   );
   let phase: DesktopBootstrapSnapshot['phase'];
   let status: DesktopBootstrapSnapshot['status'];
@@ -773,19 +764,10 @@ export function buildDesktopBootstrapSnapshot(
     phase = 'checking_prerequisites';
     status = 'degraded';
     summary = 'Local services are ready. Running prerequisite checks.';
-  } else if (cliMissing) {
-    // CLI gate: only fires when we have authoritative runtime probe data
-    // saying zero CLIs are installed. Source 'unknown' (probe failed / pending)
-    // never fires the gate so we don't block users on unavailable signal.
-    phase = 'needs_prerequisites';
+  } else if (runtimeBootstrapRequired) {
+    phase = 'ready_for_setup';
     status = 'degraded';
-    summary = setupCompleteAt
-      ? 'No CLI is currently installed. Install one to continue using Cats.'
-      : 'Welcome. Install a CLI to get started with Cats.';
-  } else if (cliInventoryPending) {
-    phase = 'checking_prerequisites';
-    status = 'degraded';
-    summary = 'Local services are ready. Checking local CLI inventory.';
+    summary = 'Choose the providers Cats may use. You can also continue with an empty selection.';
   } else if (!setupCompleted) {
     if (!hasRuntimeHealth) {
       phase = 'checking_prerequisites';
@@ -802,11 +784,7 @@ export function buildDesktopBootstrapSnapshot(
     phase = 'needs_prerequisites';
     status = 'unavailable';
     summary = 'Cats Runtime is unavailable. Open Cats to recover in-app once the runtime is back.';
-  } else if (runtimeBootstrapRequired) {
-    phase = 'ready_for_setup';
-    status = 'degraded';
-    summary = 'Cats Runtime setup is still required. Continue into setup.';
-  } else if (!input.providerDiagnostics || hasReadyProviderPath(providerSummary)) {
+  } else if (input.providerSelection?.state === 'empty' || !input.providerDiagnostics || hasReadyProviderPath(providerSummary)) {
     phase = 'ready_for_chat';
     status = normalizeHealthStatus(input.runtimeHealth?.status)
       ?? normalizeHealthStatus(input.runtimeHealth?.runtime?.status)
@@ -869,7 +847,7 @@ export function buildDesktopBootstrapSnapshot(
     actions: buildActions(phase, {
       appReady: Boolean(appService?.ready),
       setupComplete: setupCompleted,
-      cliMissing,
+      selectionRequired: runtimeBootstrapRequired,
       setup,
       cliInventoryError: input.cliInventoryError,
     }),
@@ -881,8 +859,10 @@ export function buildDesktopBootstrapSnapshot(
     setup,
     diagnostics: null,
     hostStatePath: input.hostStatePath ?? input.config.paths.hostStatePath,
-    prerequisites: input.cliInventory || input.cliInventoryError
+    prerequisites: input.cliInventory || input.cliInventoryError || input.providerSelection
       ? ({
+        providerSelection: input.providerSelection ?? null,
+        providerCatalog: input.providerCatalog ?? [],
           cliInventory: input.cliInventory ?? null,
           cliInventoryError: input.cliInventoryError ?? null,
         } satisfies DesktopBootstrapPrerequisites)

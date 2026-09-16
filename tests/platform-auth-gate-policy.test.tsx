@@ -85,7 +85,7 @@ test('platform auth gate exposes setup bootstrap routes only before setup', () =
     ['GET', '/runtime/setup'],
     ['GET', '/runtime/api/setup-state'],
     ['POST', '/runtime/api/setup-scan'],
-    ['POST', '/runtime/api/setup-apply'],
+    ['PUT', '/runtime/api/setup-selection'],
     ['GET', '/runtime/api/providers/config'],
     ['GET', '/runtime/api/providers/codex/tools'],
     ['GET', '/runtime/api/providers/codex/models'],
@@ -157,7 +157,7 @@ test('platform auth gate protects product, core, runtime, shell, transport, and 
     ['POST', '/api/shell/open-folder'],
     ['GET', '/runtime/setup'],
     ['GET', '/runtime/setup-state'],
-    ['POST', '/api/runtime/setup-apply'],
+    ['PUT', '/api/runtime/setup-selection'],
   ] as const;
 
   for (const [method, pathname] of protectedRoutes) {

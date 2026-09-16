@@ -47,12 +47,6 @@ const desktopConfig = {
   },
 };
 
-const cliGateDesktopConfig = {
-  ...desktopConfig,
-  bootstrap: {
-    onboardingMode: 'cli_inventory_gate',
-  },
-};
 
 function readyService(name, healthUrl) {
   return {
@@ -223,7 +217,7 @@ test('desktop bootstrap opens setup before setup without waiting for provider di
 
   assert.equal(snapshot.phase, 'ready_for_setup');
   assert.equal(snapshot.app.entryPath, '/setup');
-  assert.ok(snapshot.actions.some((action) => action.id === 'open_setup'));
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
 });
 
 for (const passive of [false, true]) {
@@ -363,9 +357,9 @@ test('desktop bootstrap returns to setup after setup if runtime bootstrap is sti
   assert.equal(snapshot.phase, 'ready_for_setup');
   assert.equal(snapshot.status, 'degraded');
   assert.equal(snapshot.app.entryPath, '/');
-  assert.ok(snapshot.actions.some((action) => action.id === 'open_setup'));
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
   assert.equal(snapshot.actions.some((action) => action.id === 'open_chat'), false);
-  assert.match(snapshot.summary, /setup is still required/i);
+  assert.match(snapshot.summary, /Choose.*providers/i);
 });
 
 test('desktop bootstrap surfaces packaged setup restart recovery as an install issue', () => {
@@ -1286,9 +1280,10 @@ test('desktop bootstrap opens setup by default even when runtime reports zero CL
   assert.equal(snapshot.actions.some((action) => action.id === 'open_chat'), false);
 });
 
-test('desktop bootstrap can restore legacy cli_missing gate for fresh users', () => {
+test('desktop bootstrap requires a saved selection before first-run continuation', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
-    config: cliGateDesktopConfig,
+    config: desktopConfig,
+    providerSelection: { state: 'missing', revision: 'missing', targets: [], nativeSetupTargets: [], diskChanged: false, error: null },
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
       readyService('cats-platform', 'http://127.0.0.1:8181/health'),
@@ -1297,17 +1292,18 @@ test('desktop bootstrap can restore legacy cli_missing gate for fresh users', ()
     cliInventory: emptyCliInventory(),
   });
 
-  assert.equal(snapshot.phase, 'needs_prerequisites');
-  assert.match(snapshot.summary, /Welcome\.|Install a CLI/i);
+  assert.equal(snapshot.phase, 'ready_for_setup');
+  assert.match(snapshot.summary, /Choose.*providers/i);
   assert.equal(snapshot.prerequisites?.cliInventory?.source, 'runtime');
   assert.equal(snapshot.prerequisites?.cliInventory?.total, 0);
   assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
   assert.equal(snapshot.actions.some((action) => action.id === 'open_chat'), false);
 });
 
-test('desktop bootstrap can restore legacy cli_missing gate for setup-complete users', () => {
+test('desktop bootstrap returns completed setup to provider selection when configuration is missing', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
-    config: cliGateDesktopConfig,
+    config: desktopConfig,
+    providerSelection: { state: 'missing', revision: 'missing', targets: [], nativeSetupTargets: [], diskChanged: false, error: null },
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
       readyService('cats-platform', 'http://127.0.0.1:8181/health'),
@@ -1319,8 +1315,8 @@ test('desktop bootstrap can restore legacy cli_missing gate for setup-complete u
     cliInventory: emptyCliInventory(),
   });
 
-  assert.equal(snapshot.phase, 'needs_prerequisites');
-  assert.match(snapshot.summary, /No CLI is currently installed|Install/i);
+  assert.equal(snapshot.phase, 'ready_for_setup');
+  assert.match(snapshot.summary, /Choose.*providers/i);
   assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
   assert.equal(snapshot.actions.some((action) => action.id === 'open_chat'), false);
 });
@@ -1340,9 +1336,10 @@ test('desktop bootstrap ignores unknown CLI inventory by default before setup', 
   assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), true);
 });
 
-test('desktop bootstrap can restore legacy pending state when CLI inventory is unknown', () => {
+test('desktop bootstrap shows provider selection without waiting for inventory', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
-    config: cliGateDesktopConfig,
+    config: desktopConfig,
+    providerSelection: { state: 'missing', revision: 'missing', targets: [], nativeSetupTargets: [], diskChanged: false, error: null },
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
       readyService('cats-platform', 'http://127.0.0.1:8181/health'),
@@ -1351,8 +1348,8 @@ test('desktop bootstrap can restore legacy pending state when CLI inventory is u
     cliInventory: emptyCliInventory({ source: 'unknown', scannedAt: null }),
   });
 
-  assert.equal(snapshot.phase, 'checking_prerequisites');
-  assert.match(snapshot.summary, /Checking local CLI inventory/i);
+  assert.equal(snapshot.phase, 'ready_for_setup');
+  assert.match(snapshot.summary, /Choose.*providers/i);
 });
 
 test('desktop bootstrap clears cli_missing once runtime reports any CLI installed', () => {

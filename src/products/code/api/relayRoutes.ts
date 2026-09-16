@@ -11,7 +11,7 @@ import {
   sendJson,
   sendMethodNotAllowed,
 } from '../../../shared/http.js';
-import { listProductProviders } from '../../../shared/providerCatalog.js';
+import { providerInstanceTarget } from '../../../shared/providerCatalog.js';
 import { parseProviderModelSelection } from '../../../shared/providerSelection.js';
 import { resolveFullResponseText, type RuntimeProviderConfigRegistry } from '../../../runtime/client.js';
 import {
@@ -101,7 +101,7 @@ function createRelayContract(
 ): CodeRelayThreadRecord['contract'] {
   const supportedProviders = runtimeConfig
     ? Object.keys(runtimeConfig)
-    : listProductProviders().map((provider) => provider.id);
+    : [];
   return {
     version: 'phase0-runtime-bridge-v1',
     transport: 'runtime_session_bridge',
@@ -113,7 +113,7 @@ function createRelayContract(
         ]
       : [
           'Relay fan-out uses cats-runtime session APIs.',
-          'Runtime provider config was unavailable, so the provider list fell back to the product catalog.',
+          'Runtime provider selection is unavailable. Reconnect before choosing providers.',
         ],
   };
 }
@@ -145,7 +145,10 @@ function probeRelayRosterEntries(
 
     const resolvedInstance = entry.instance?.trim() || providerConfig.defaultInstance || null;
     if (resolvedInstance) {
-      const instanceConfig = providerConfig.instances.find((candidate) => candidate.id === resolvedInstance) ?? null;
+      const matches = providerConfig.instances.filter((candidate) =>
+        (providerInstanceTarget(candidate) === resolvedInstance || candidate.id === resolvedInstance)
+        && (entry.instance?.trim() || !providerConfig.defaultBackend || candidate.backend === providerConfig.defaultBackend));
+      const instanceConfig = matches.length === 1 ? matches[0]! : null;
       if (!instanceConfig) {
         return {
           ...entry,
@@ -160,7 +163,7 @@ function probeRelayRosterEntries(
 
       return {
         ...entry,
-        instance: resolvedInstance,
+        instance: providerInstanceTarget(instanceConfig),
         availability: 'available',
         availabilitySummary: {
           kind: 'runtime_ready_via',
@@ -342,7 +345,9 @@ async function buildRelayThreadsPayload(
   const core = await context.dependencies.coreStore.readCore();
   const runtimeConfig = await readRelayRuntimeProviderConfig(context);
   const projects = listCodeRelayProjects(core);
-  const defaultRoster = probeRelayRosterEntries(createDefaultCodeRelayRoster(), runtimeConfig);
+  const defaultRoster = probeRelayRosterEntries(
+    createDefaultCodeRelayRoster(Object.keys(runtimeConfig ?? {})), runtimeConfig,
+  );
   const threads = projects.map((project) => {
     const relay = readCodeRelayThread(project);
     if (!relay) {
@@ -530,13 +535,20 @@ export async function routeCodeRelayApi(
 
     const now = context.dependencies.now?.() ?? new Date();
     let core = await context.dependencies.coreStore.readCore();
+    const runtimeConfig = await readRelayRuntimeProviderConfig(context);
+    if (!runtimeConfig || Object.keys(runtimeConfig).length === 0) {
+      sendJson(context.response, runtimeConfig ? 409 : 503, {
+        error: { code: 'relay_selection_unavailable', message: 'Select a Runtime provider before creating a relay thread.' },
+      });
+      return true;
+    }
     const created = createCodeRelayThread(core, {
       title,
       objective: readNullableString(body.objective),
       repoPath: readNullableString(body.repoPath),
+      providerIds: Object.keys(runtimeConfig ?? {}),
     }, now);
     core = created.core;
-    const runtimeConfig = await readRelayRuntimeProviderConfig(context);
     const probedRoster = probeRelayRosterEntries(created.thread.roster, runtimeConfig);
     const probed = applyCodeRelayRosterProbe(core, created.project.id, probedRoster, now);
     if (probed) {
@@ -665,6 +677,26 @@ export async function routeCodeRelayApi(
 
     const now = context.dependencies.now?.() ?? new Date();
     let core = await context.dependencies.coreStore.readCore();
+    const runtimeConfig = await readRelayRuntimeProviderConfig(context);
+    if (!runtimeConfig) {
+      sendJson(context.response, 503, {
+        error: { code: 'relay_selection_unavailable', message: 'Reconnect to Runtime before starting a relay round.' },
+      });
+      return true;
+    }
+    const project = core.projects.find((candidate) => candidate.id === threadId);
+    const thread = project ? readCodeRelayThread(project) : null;
+    if (thread) {
+      const roster = probeRelayRosterEntries(thread.roster, runtimeConfig);
+      if (agentIds.some((id) => !roster.some((entry) => entry.id === id
+        && entry.enabled && entry.availability === 'available'))) {
+        sendJson(context.response, 409, {
+          error: { code: 'relay_agents_unavailable', message: 'Selected relay agents are outside the current Runtime provider selection.' },
+        });
+        return true;
+      }
+      core = applyCodeRelayRosterProbe(core, threadId, roster, now)?.core ?? core;
+    }
     const started = startCodeRelayFanOut(core, threadId, {
       mode: readMode(body.mode),
       objective: readNonEmptyString(body.objective) ?? 'Open discussion round',

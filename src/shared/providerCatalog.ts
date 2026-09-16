@@ -30,6 +30,10 @@ export interface ProductProviderInstanceDescriptor {
 }
 
 export type ProductProviderEventCapabilitySupport = 'none' | 'derived' | 'native' | 'unknown';
+
+export function providerInstanceTarget(instance: Pick<ProductProviderInstanceDescriptor, 'id' | 'target' | 'backend'>): string {
+  return instance.target ?? (instance.backend ? `${instance.backend}/${instance.id}` : instance.id);
+}
 export type ProductProviderTextStreamingMode =
   | 'none'
   | 'final'
@@ -206,6 +210,7 @@ export interface ProductProviderRegistryRecovery {
 
 export interface ProductProviderRegistryReadModel {
   state: ProductProviderRegistryState;
+  revision?: string;
   providers: ProductProviderDescriptor[];
   recovery?: ProductProviderRegistryRecovery;
   warnings?: string[];

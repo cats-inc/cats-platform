@@ -6,11 +6,12 @@ import React, { useCallback, useState } from 'react';
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import { clearProviderCatalogClientCache } from '../src/app/renderer/providerCatalogClient.ts';
 import { clearProviderRegistryClientCache } from '../src/app/renderer/providerRegistryClient.ts';
-import { ProviderModelFields, createStaticProviderRegistryReadModel }
+import { ProviderModelFields }
   from '../src/design/components/ProviderModelFields.tsx';
 import {
   createProviderAdvancedCatalogFromModelCatalog,
   createStaticProviderModelCatalog,
+  listProductProviders,
   type ProviderAdvancedModelCatalog,
 } from '../src/shared/providerCatalog.ts';
 import type { ProviderTargetSelection } from '../src/shared/providerSelection.ts';
@@ -19,7 +20,7 @@ import type { ProviderTargetSelection } from '../src/shared/providerSelection.ts
 
 // A non-first runtime default deliberately differs from the warm static catalog.
 const codex: ProviderAdvancedModelCatalog = {
-  provider: 'codex', backend: 'cli', instance: 'native', source: 'static', cache: null,
+  provider: 'codex', backend: 'cli', instance: 'cli/native', source: 'static', cache: null,
   defaultModel: 'gpt-5.6-sol',
   entries: [
     { id: 'gpt-6-astra', label: 'gpt-6-astra',
@@ -40,7 +41,7 @@ const codex: ProviderAdvancedModelCatalog = {
     controls: { 'codex.reasoning_effort': 'low' } },
   support: { tier: 'full', notes: [] }, warnings: [],
 };
-const claude = createStaticProviderModelCatalog('claude', { instance: 'native' });
+const claude = createStaticProviderModelCatalog('claude', { instance: 'cli/native' });
 
 function Picker(props: {
   ready: Promise<void>;
@@ -48,10 +49,12 @@ function Picker(props: {
   onChange: (target: ProviderTargetSelection) => void;
 }) {
   const [target, setTarget] = useState<ProviderTargetSelection>(props.initialTarget ?? {
-    provider: 'claude', instance: 'native', model: '', modelSelection: null,
+    provider: 'claude', instance: 'cli/native', model: '', modelSelection: null,
   });
   const { ready, onChange } = props;
-  const registry = useCallback(async () => createStaticProviderRegistryReadModel(), []);
+  const registry = useCallback(async () => ({ state: 'ready' as const, revision: 'selected-claude-codex',
+    providers: listProductProviders().filter((provider) => ['claude', 'codex'].includes(provider.id)),
+  }), []);
   const models = useCallback(async (provider: string) => {
     if (provider !== 'codex') return claude;
     await ready;

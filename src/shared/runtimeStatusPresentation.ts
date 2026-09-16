@@ -87,7 +87,7 @@ export type RuntimeRecoveryTarget = 'desktop-setup' | 'runtime-setup' | 'runtime
 export function needsRuntimeSetupRecovery(
   runtimeSetupStatus?: RuntimeSetupStatus | null,
 ): boolean {
-  return runtimeSetupStatus === 'ready_to_apply'
+  return runtimeSetupStatus === 'selection_required'
     || runtimeSetupStatus === 'scan_required'
     || runtimeSetupStatus === 'attention_required'
     || runtimeSetupStatus === 'unavailable';

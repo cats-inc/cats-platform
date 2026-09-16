@@ -1,5 +1,6 @@
 import type { RuntimeClient } from './client.js';
 import type { RuntimeSetupSummary } from '../shared/runtimeSetup.js';
+import type { RuntimeProviderSelection, RuntimeSelectedProviderTarget } from '../shared/runtimeSetup.js';
 
 type RawRuntimeSetupStateStatus =
   | 'pending'
@@ -8,8 +9,7 @@ type RawRuntimeSetupStateStatus =
   | 'applied'
   | 'error';
 
-export interface RuntimeSetupScanProviderEntry {
-  provider: string;
+export interface RuntimeSetupScanProviderEntry extends RuntimeSelectedProviderTarget {
   family: string;
   commandStatus: string;
   commandPath: string | null;
@@ -19,6 +19,7 @@ export interface RuntimeSetupScanProviderEntry {
 }
 
 export interface RuntimeSetupScanSummary {
+  revision: string;
   scannedAt: string;
   scanType: 'auto' | 'manual';
   providers: RuntimeSetupScanProviderEntry[];
@@ -28,6 +29,8 @@ export interface RuntimeSetupScanSummary {
 
 export interface RuntimeSetupReadModel {
   bootstrapRequired: boolean;
+  selection: RuntimeProviderSelection;
+  universe: Array<RuntimeSelectedProviderTarget & { familyLabel: string; binaryName: string }>;
   state: {
     status: RawRuntimeSetupStateStatus;
     lastScanAt: string | null;
@@ -39,7 +42,7 @@ export interface RuntimeSetupReadModel {
   scan: RuntimeSetupScanSummary | null;
   manualScan: RuntimeSetupScanSummary | null;
   repair: {
-    status: 'ready' | 'scan_required' | 'attention_required';
+    status: 'ready' | 'selection_required' | 'scan_required' | 'attention_required';
     summary: string;
     preferredScan: {
       source: 'scan' | 'manualScan' | 'none';
@@ -49,7 +52,7 @@ export interface RuntimeSetupReadModel {
       unavailableCount: number;
       remediationCount: number;
     };
-    providersReadyToApply: Array<{
+    providersReady: Array<{
       provider: string;
       family: string;
     }>;
@@ -80,11 +83,11 @@ export function createAssumedReadyRuntimeSetupSummary(): RuntimeSetupSummary {
     appliedAt: null,
     providerCount: 0,
     availableCount: 0,
-    providersReadyToApply: [],
+    providersReady: [],
     providersNeedingAttention: [],
-    suggestedProviders: [],
+    selectedProviders: [],
     canRunManualScan: false,
-    canApply: false,
+    canManageSelection: false,
     error: null,
   };
 }
@@ -103,11 +106,11 @@ export function createUnavailableRuntimeSetupSummary(
     appliedAt: null,
     providerCount: 0,
     availableCount: 0,
-    providersReadyToApply: [],
+    providersReady: [],
     providersNeedingAttention: [],
-    suggestedProviders: [],
+    selectedProviders: [],
     canRunManualScan: false,
-    canApply: false,
+    canManageSelection: false,
     error: readRuntimeSetupError(error, 'Cats Runtime setup is currently unavailable.'),
   };
 }
@@ -115,7 +118,7 @@ export function createUnavailableRuntimeSetupSummary(
 export function summarizeRuntimeSetupReadModel(
   readModel: RuntimeSetupReadModel,
 ): RuntimeSetupSummary {
-  const providersReadyToApply = readModel.repair.providersReadyToApply.map((provider) => ({
+  const providersReady = readModel.repair.providersReady.map((provider) => ({
     provider: provider.provider,
     family: provider.family,
   }));
@@ -124,12 +127,8 @@ export function summarizeRuntimeSetupReadModel(
     family: provider.family,
     remediationCount: provider.remediationCount,
   }));
-  const suggestedProviders = providersReadyToApply.map((provider) => provider.provider);
-  const status = readModel.bootstrapRequired
-    ? readModel.repair.status === 'ready'
-      ? 'ready_to_apply'
-      : readModel.repair.status
-    : 'ready';
+  const selectedProviders = [...new Set(readModel.selection.targets.map((target) => target.provider))];
+  const status = readModel.bootstrapRequired ? 'selection_required' : 'ready';
   const summary = readModel.bootstrapRequired
     ? readModel.repair.summary
     : readModel.state.appliedAt
@@ -145,13 +144,13 @@ export function summarizeRuntimeSetupReadModel(
     scannedAt: readModel.repair.preferredScan.scannedAt,
     lastManualScanAt: readModel.state.lastManualScanAt,
     appliedAt: readModel.state.appliedAt,
-    providerCount: readModel.repair.preferredScan.providerCount,
+    providerCount: readModel.selection.targets.length,
     availableCount: readModel.repair.preferredScan.availableCount,
-    providersReadyToApply,
+    providersReady,
     providersNeedingAttention,
-    suggestedProviders,
-    canRunManualScan: readModel.bootstrapRequired,
-    canApply: readModel.bootstrapRequired && suggestedProviders.length > 0,
+    selectedProviders,
+    canRunManualScan: readModel.selection.state === 'selected',
+    canManageSelection: true,
     error: readModel.state.error,
   };
 }

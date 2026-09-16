@@ -55,6 +55,8 @@ function createRuntimeStub(options: {
     },
     async getSetupState(): Promise<RuntimeSetupReadModel> {
       return {
+        selection: { state: 'empty', revision: 'empty', targets: [], nativeSetupTargets: [], diskChanged: false, error: null },
+        universe: [],
         bootstrapRequired: false,
         state: {
           status: 'ready',
@@ -77,7 +79,7 @@ function createRuntimeStub(options: {
             unavailableCount: 0,
             remediationCount: 0,
           },
-          providersReadyToApply: [],
+          providersReady: [],
           providersNeedingAttention: [],
         },
       };

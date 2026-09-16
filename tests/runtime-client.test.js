@@ -751,7 +751,7 @@ test('runtime setup summary reads still use the standard runtime timeout budget'
             unavailableCount: 0,
             remediationCount: 0,
           },
-          providersReadyToApply: [
+          providersReady: [
             {
               provider: 'claude',
               family: 'Claude Code CLI',

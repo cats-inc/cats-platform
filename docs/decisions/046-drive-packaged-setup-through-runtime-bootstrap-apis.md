@@ -9,6 +9,18 @@
 
 Accepted
 
+### Amendment — 2026-09-16
+
+[ADR-115](./115-bound-bootstrap-and-provider-choices-by-runtime-selection.md)
+replaces the scan-then-materialize ordering below. The host first saves the
+user's exact selected targets through Runtime, then scopes inventory and helpers
+to those targets. A valid empty selection is an explicit idle mode. Neither an
+installed CLI nor a successful scan is required to persist intent or continue
+product onboarding. The Electron host owns the first provider selection editor;
+Platform `/setup` remains the product onboarding flow. Runtime remains the sole
+configuration writer. The original rationale below is historical where it
+requires a usable provider or a post-scan config apply.
+
 ## Date
 
 2026-03-30

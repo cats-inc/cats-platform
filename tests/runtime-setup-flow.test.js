@@ -76,6 +76,11 @@ function createRuntimeSetupStub({
 
     return {
       bootstrapRequired: currentBootstrapRequired,
+      universe: [],
+      selection: { state: currentBootstrapRequired ? 'missing' : currentProviders.length ? 'selected' : 'empty',
+        revision: currentBootstrapRequired ? 'missing' : 'one', diskChanged: false, error: null,
+        targets: currentBootstrapRequired ? [] : currentProviders.map((entry) => ({ provider: entry.provider, backend: 'cli', instance: 'native' })),
+      },
       state: {
         status: currentBootstrapRequired ? 'ready' : 'applied',
         lastScanAt,
@@ -109,7 +114,7 @@ function createRuntimeSetupStub({
           unavailableCount: attentionProviders.length,
           remediationCount,
         },
-        providersReadyToApply: readyProviders.map((provider) => ({
+        providersReady: readyProviders.map((provider) => ({
           provider: provider.provider,
           family: provider.family,
         })),
@@ -177,10 +182,10 @@ test('GET /api/app-shell includes runtime setup summary and bootstrap attempt id
     const payload = await response.json();
     assert.equal(payload.bootstrapAttemptId, 'attempt-123');
     assert.equal(payload.setupCompleteAt, null);
-    assert.equal(payload.runtimeSetup.status, 'attention_required');
+    assert.equal(payload.runtimeSetup.status, 'selection_required');
     assert.equal(payload.runtimeSetup.bootstrapRequired, true);
     assert.equal(payload.runtimeSetup.availableCount, 1);
-    assert.deepEqual(payload.runtimeSetup.suggestedProviders, ['claude']);
+    assert.deepEqual(payload.runtimeSetup.selectedProviders, []);
   });
 });
 
@@ -216,7 +221,7 @@ test('POST /api/platform/setup/complete succeeds even when runtime bootstrap is 
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.ok(payload.setupCompleteAt);
-    assert.equal(payload.runtimeSetup.status, 'attention_required');
+    assert.equal(payload.runtimeSetup.status, 'selection_required');
     assert.equal(payload.runtimeSetup.bootstrapRequired, true);
     assert.equal(payload.ownerDisplayName, 'Kenny');
     assert.equal(payload.lastProductSurface, null);
@@ -247,7 +252,7 @@ test('legacy POST /api/platform/setup/complete also succeeds without runtime boo
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.ok(payload.setupCompleteAt);
-    assert.equal(payload.runtimeSetup.status, 'attention_required');
+    assert.equal(payload.runtimeSetup.status, 'selection_required');
     assert.equal(payload.runtimeSetup.bootstrapRequired, true);
     // Setup no longer creates a Boss Cat; that is a Chat concern now.
     assert.equal(payload.chat.bossCatId, null);

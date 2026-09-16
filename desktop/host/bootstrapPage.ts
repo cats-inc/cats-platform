@@ -639,7 +639,7 @@ export function buildDesktopBootstrapPage(): string {
         'loading.ready': 'Ready.',
         'loading.retrying': 'Trying again\u2026',
         'loading.startingUp': 'Starting up\u2026',
-        'onboarding.headline': 'Welcome. Install a CLI now or continue into setup.',
+        'onboarding.headline': 'Choose which providers Cats may use, then continue into setup.',
         'onboarding.installCli': 'Install a CLI',
         'onboarding.installNodeFirst': 'Install Node first',
         'onboarding.nodeLabel': 'Node.js / npm',
@@ -657,7 +657,7 @@ export function buildDesktopBootstrapPage(): string {
         'recovery.summary.readyForSetup': 'Local helpers are running. Continue into setup to get started.',
         'recovery.title.failed': 'Cats needs a quick restart',
         'recovery.title.helperAttention': 'Cats can open, but one helper needs attention',
-        'recovery.title.installCliContinue': 'Install a CLI to continue using Cats',
+        'recovery.title.installCliContinue': 'Choose providers to continue using Cats',
         'recovery.title.oneSetupFix': 'Cats needs one setup fix',
         'recovery.title.pickCli': 'Pick a CLI to get started',
         'recovery.title.readyForSetup': 'Cats is ready to set up',
@@ -669,6 +669,12 @@ export function buildDesktopBootstrapPage(): string {
         'section.setupFix': 'Setup fix',
         'section.whatNeedsAttention': 'What needs attention',
         'setup.noSummary': 'No summary recorded.',
+        'selection.title': 'Choose your providers',
+        'selection.description': 'Cats only checks and uses the providers you select. Save an empty selection to continue without a provider.',
+        'selection.save': 'Save selection',
+        'selection.reload': 'Reload edited configuration',
+        'selection.reset': 'Discard unsaved changes',
+        'selection.loading': 'Loading provider selection…',
         'setup.recommendedNextStep': 'Recommended next step',
         'setup.restartNeeded': 'A restart is needed before the next step.',
         'setupError.failedBeforeStructuredOutput': '{helperLabel} failed before emitting structured output.',
@@ -894,7 +900,7 @@ export function buildDesktopBootstrapPage(): string {
         'loading.ready': '已就緒。',
         'loading.retrying': '正在重試…',
         'loading.startingUp': '正在啟動…',
-        'onboarding.headline': '歡迎。你可以現在安裝 CLI，或繼續進入設定。',
+        'onboarding.headline': '選擇 Cats 可以使用的 providers，再繼續設定。',
         'onboarding.installCli': '安裝 CLI',
         'onboarding.installNodeFirst': '請先安裝 Node',
         'onboarding.nodeLabel': 'Node.js / npm',
@@ -912,7 +918,7 @@ export function buildDesktopBootstrapPage(): string {
         'recovery.summary.readyForSetup': '本機輔助程式已在執行。請繼續進入設定開始使用。',
         'recovery.title.failed': 'Cats 需要快速重新啟動',
         'recovery.title.helperAttention': 'Cats 可以開啟，但有一個本機輔助程式需要處理',
-        'recovery.title.installCliContinue': '安裝 CLI 以繼續使用 Cats',
+        'recovery.title.installCliContinue': '選擇 providers 以繼續使用 Cats',
         'recovery.title.oneSetupFix': 'Cats 需要完成一項設定修復',
         'recovery.title.pickCli': '選一個 CLI 開始',
         'recovery.title.readyForSetup': 'Cats 已準備好進行設定',
@@ -924,6 +930,12 @@ export function buildDesktopBootstrapPage(): string {
         'section.setupFix': '設定修復',
         'section.whatNeedsAttention': '需要處理的項目',
         'setup.noSummary': '未記錄摘要。',
+        'selection.title': '選擇你要使用的 providers',
+        'selection.description': 'Cats 只會檢查與使用你選擇的 providers。也可以儲存空白選擇，稍後再設定。',
+        'selection.save': '儲存選擇',
+        'selection.reload': '重新載入已編輯的設定',
+        'selection.reset': '捨棄尚未儲存的變更',
+        'selection.loading': '正在載入 provider 選擇…',
         'setup.recommendedNextStep': '建議的下一步',
         'setup.restartNeeded': '下一步前需要重新啟動。',
         'setupError.failedBeforeStructuredOutput': '{helperLabel} 在輸出結構化結果前失敗。',
@@ -1557,6 +1569,7 @@ export function buildDesktopBootstrapPage(): string {
           if (v == null || v === false) continue;
           if (k === 'class') e.className = v;
           else if (k === 'onclick') e.addEventListener('click', v);
+          else if (k === 'onchange') e.addEventListener('change', v);
           else if (k === 'disabled') e.disabled = true;
           else e.setAttribute(k, String(v));
         }
@@ -1607,13 +1620,9 @@ export function buildDesktopBootstrapPage(): string {
        when the user explicitly continues into setup. */
     var onboardingActive = false;
 
-    function isCliMissing(snapshot) {
-      return Boolean(
-        snapshot && snapshot.phase === 'needs_prerequisites'
-          && snapshot.prerequisites && snapshot.prerequisites.cliInventory
-          && snapshot.prerequisites.cliInventory.source === 'runtime'
-          && snapshot.prerequisites.cliInventory.total === 0
-      );
+    function isSelectionRequired(snapshot) {
+      var selection = snapshot && snapshot.prerequisites && snapshot.prerequisites.providerSelection;
+      return Boolean(selection && (selection.state === 'missing' || selection.state === 'invalid'));
     }
 
     function isSetupComplete(snapshot) {
@@ -1639,13 +1648,13 @@ export function buildDesktopBootstrapPage(): string {
       }
       if (
         usesSetupStatusOnboarding(snapshot)
-          && !setupComplete
+          && (!setupComplete || isSelectionRequired(snapshot))
           && snapshot.phase === 'ready_for_setup'
       ) {
         return 'onboarding';
       }
       if (snapshot.phase === 'needs_prerequisites') {
-        if (isCliMissing(snapshot) && !setupComplete) {
+        if (isSelectionRequired(snapshot) && !setupComplete) {
           return 'onboarding';
         }
         return 'recovery';
@@ -1664,11 +1673,11 @@ export function buildDesktopBootstrapPage(): string {
        buildLocalModelCard). */
     var ONBOARDING_NATIVE_PROVIDER_ORDER = [
       'claude_code', 'antigravity', 'cursor_agent', 'kiro', 'junie',
-      'goose', 'grok', 'cline', 'devin', 'muse'
+      'goose', 'grok', 'devin', 'muse'
     ];
     var ONBOARDING_NPM_PROVIDER_ORDER = [
       'codex', 'copilot', 'opencode',
-      'kilo', 'auggie', 'pi'
+      'kilo', 'auggie', 'pi', 'cline'
     ];
     var ONBOARDING_NODE_HELPER_SUFFIX = '-node-host-installer';
     var ONBOARDING_LOCAL_MODEL_HELPER_SUFFIX = '-ollama-local-model-installer';
@@ -1708,7 +1717,7 @@ export function buildDesktopBootstrapPage(): string {
        field is the flag that tells the two apart. */
     function isCliInventoryScanned(snapshot) {
       var inv = snapshot && snapshot.prerequisites && snapshot.prerequisites.cliInventory;
-      return Boolean(inv && inv.source === 'runtime');
+      return Boolean(inv && inv.source === 'runtime' && inv.scannedAt);
     }
 
     function pickInventoryCandidate(snapshot, providerId) {
@@ -2028,12 +2037,14 @@ export function buildDesktopBootstrapPage(): string {
       var entries = [];
       appendProviderCards(entries, snapshot, ONBOARDING_NATIVE_PROVIDER_ORDER);
       /* Tail of the native row, where Ollama used to sit as a provider card. */
-      var localModelCard = buildLocalModelCard(setupSnap);
+      var localModelCard = pickInventoryCandidate(snapshot, 'ollama') ? buildLocalModelCard(setupSnap) : null;
       if (localModelCard) {
         entries.push(localModelCard);
       }
       entries.push({ kind: 'break' });
-      var nodeCard = buildNodePrerequisiteCard(setupSnap);
+      var inventory = snapshot.prerequisites && snapshot.prerequisites.cliInventory;
+      var needsNode = inventory && inventory.candidates.some(function (entry) { return ONBOARDING_NPM_PROVIDER_ORDER.indexOf(entry.providerId) >= 0; });
+      var nodeCard = needsNode ? buildNodePrerequisiteCard(setupSnap) : null;
       if (nodeCard) {
         nodeCard.collapsedSlot = ONBOARDING_COLLAPSED_INCLUDES_NODE;
         entries.push(nodeCard);
@@ -2209,7 +2220,7 @@ export function buildDesktopBootstrapPage(): string {
     function recoveryTitle(snap) {
       if (snap.phase === 'failed') return tx('recovery.title.failed');
       if (snap.phase === 'needs_prerequisites') {
-        if (isCliMissing(snap)) {
+        if (isSelectionRequired(snap)) {
           return snap.app && snap.app.setupCompleteAt
             ? tx('recovery.title.installCliContinue')
             : tx('recovery.title.pickCli');
@@ -2233,7 +2244,7 @@ export function buildDesktopBootstrapPage(): string {
         return tx('recovery.summary.failedHelper');
       }
       if (snap.phase === 'needs_prerequisites') {
-        if (isCliMissing(snap)) {
+        if (isSelectionRequired(snap)) {
           return snap.app && snap.app.setupCompleteAt
             ? tx('recovery.summary.noCliAfterSetup')
             : tx('recovery.summary.noCliBeforeSetup');
@@ -2627,6 +2638,79 @@ export function buildDesktopBootstrapPage(): string {
       return 'retry';
     }
 
+    var selectionDraft = null;
+    var selectionDraftRevision = null;
+    var selectionSaving = false;
+    var selectionError = '';
+    function providerTargetKey(target) {
+      return JSON.stringify([target.provider, target.backend, target.instance]);
+    }
+    function hasSelectionDraftChanges(selection) {
+      if (!selectionDraft) return false;
+      var saved = selection.targets.map(providerTargetKey);
+      return selectionDraftRevision !== selection.revision || saved.length !== selectionDraft.length
+        || saved.some(function (key) { return selectionDraft.indexOf(key) < 0; });
+    }
+    function ProviderSelectionEditor(snap) {
+      var prerequisites = snap.prerequisites || {};
+      var selection = prerequisites.providerSelection;
+      if (!selection) return el('p', {}, tx('selection.loading'));
+      if (!selectionDraft) {
+        selectionDraft = selection.targets.map(providerTargetKey);
+        selectionDraftRevision = selection.revision;
+      }
+      var catalog = (prerequisites.providerCatalog || []).slice();
+      selection.targets.forEach(function (target) {
+        if (!catalog.some(function (entry) { return providerTargetKey(entry) === providerTargetKey(target); })) {
+          catalog.push(Object.assign({ familyLabel: target.provider }, target));
+        }
+      });
+      var choices = catalog.map(function (target) {
+        var key = providerTargetKey(target);
+        var checkbox = el('input', {
+          type: 'checkbox', disabled: selectionSaving,
+          onchange: function () {
+            selectionDraft = selectionDraft.filter(function (value) { return value !== key; });
+            if (this.checked) selectionDraft.push(key);
+            doRender();
+          }
+        });
+        checkbox.checked = selectionDraft.indexOf(key) >= 0;
+        return el('label', { class: 'cli-card' }, checkbox,
+          ' ' + target.familyLabel + ' (' + target.backend + '/' + target.instance + ')');
+      });
+      function saveSelection(reload) {
+        selectionSaving = true;
+        selectionError = '';
+        doRender();
+        bridge.saveProviderSelection({
+          targets: selectionDraft.map(function (key) {
+            var values = JSON.parse(key);
+            return { provider: values[0], backend: values[1], instance: values[2] };
+          }),
+          expectedRevision: reload ? selection.revision : selectionDraftRevision,
+          reload: reload
+        }).then(function (next) {
+          currentSnapshot = next;
+          selectionDraft = null;
+          selectionDraftRevision = null;
+        }).catch(function (error) {
+          selectionError = error && error.message ? error.message : String(error);
+        }).finally(function () { selectionSaving = false; doRender(); });
+      }
+      return el('section', { class: 'selection-editor' },
+        el('h2', {}, tx('selection.title')),
+        el('p', {}, tx('selection.description')),
+        el('div', { class: 'cli-grid' }, choices),
+        el('div', { class: 'onboarding-actions' },
+          el('button', { class: 'btn', disabled: selectionSaving, onclick: function () { saveSelection(false); } }, tx('selection.save')),
+          selection.diskChanged ? el('button', { class: 'btn', disabled: selectionSaving, onclick: function () { saveSelection(true); } }, tx('selection.reload')) : null,
+          hasSelectionDraftChanges(selection) ? el('button', { class: 'btn', disabled: selectionSaving, onclick: function () { selectionDraft = null; doRender(); } }, tx('selection.reset')) : null
+        ),
+        selectionError || selection.error ? el('p', { role: 'alert' }, selectionError || selection.error) : null
+      );
+    }
+
     function showOnboarding(snap) {
       onboardingActive = true;
       splashEl.classList.add('hidden');
@@ -2637,10 +2721,8 @@ export function buildDesktopBootstrapPage(): string {
 
       onboardingEl.innerHTML = '';
 
-      var legacyCliGate = snap.app && snap.app.onboardingMode === 'cli_inventory_gate';
-      var inventory = (snap.prerequisites && snap.prerequisites.cliInventory) || {};
-      var installedCount = Array.isArray(inventory.installed) ? inventory.installed.length : 0;
-      var continueDisabled = legacyCliGate && installedCount === 0;
+      var selection = snap.prerequisites && snap.prerequisites.providerSelection;
+      var continueDisabled = !selection || selection.state === 'missing' || selection.state === 'invalid' || hasSelectionDraftChanges(selection);
 
       var continueBtn = el('button', {
         class: 'btn',
@@ -2667,7 +2749,7 @@ export function buildDesktopBootstrapPage(): string {
         : (isCliInventoryScanned(snap) ? tx('onboarding.rescanClis') : tx('onboarding.scanClis'));
       actions.push(el('button', {
         class: 'btn',
-        disabled: cliScanInFlight,
+        disabled: cliScanInFlight || continueDisabled,
         onclick: handleCliScanClick
       }, scanLabel));
       if (cardSet.hasHiddenCards) {
@@ -2687,6 +2769,7 @@ export function buildDesktopBootstrapPage(): string {
         ),
         el('p', { class: 'onboarding-headline' },
           tx('onboarding.headline')),
+        ProviderSelectionEditor(snap),
         el('div', { class: 'onboarding-actions' }, actions),
         el('div', { class: 'cli-grid' }, cardSet.elements)
       );

@@ -57,7 +57,7 @@ function resolveRuntimeStatusChip(
   switch (runtimeSetup.status) {
     case 'ready':
       return { tone: 'ready', label: t('settingsRuntimeStatusChipRuntimeReady') };
-    case 'ready_to_apply':
+    case 'selection_required':
       return { tone: 'warm', label: t('settingsRuntimeStatusChipSetupReadyToApply') };
     case 'attention_required':
       return { tone: 'warm', label: t('settingsRuntimeStatusChipSetupNeedsRemediation') };

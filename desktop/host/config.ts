@@ -40,10 +40,6 @@ export interface DesktopHostBackgroundConfig {
   closeBehavior: 'quit' | 'minimize_to_tray';
 }
 
-export interface DesktopHostSetupAuditConfig {
-  parallel: boolean;
-}
-
 export interface DesktopHostBootstrapConfig {
   onboardingMode: DesktopBootstrapOnboardingMode;
 }
@@ -65,7 +61,6 @@ export interface DesktopHostConfig {
   gracefulShutdownMs: number;
   bootstrap: DesktopHostBootstrapConfig;
   background: DesktopHostBackgroundConfig;
-  setupAudit: DesktopHostSetupAuditConfig;
   update: DesktopUpdateConfig;
   paths: DesktopHostPaths;
 }
@@ -100,7 +95,6 @@ const DEFAULT_DESKTOP_TRAY_ENABLED = true;
 const DEFAULT_KEEP_SERVICES_RUNNING = true;
 const DEFAULT_CLOSE_BEHAVIOR = 'minimize_to_tray';
 const DEFAULT_FORCE_QUIT_ON_CLOSE = false;
-const DEFAULT_SETUP_AUDIT_PARALLEL = true;
 const DEFAULT_BOOTSTRAP_ONBOARDING_MODE: DesktopBootstrapOnboardingMode = 'setup_status';
 export const DESKTOP_USER_DATA_DIR_NAME = 'Cats';
 
@@ -295,12 +289,6 @@ export function resolveDesktopHostConfig(
   const bootstrap: DesktopHostBootstrapConfig = {
     onboardingMode: parseBootstrapOnboardingMode(env.CATS_DESKTOP_BOOTSTRAP_ONBOARDING_MODE),
   };
-  const setupAudit: DesktopHostSetupAuditConfig = {
-    parallel: parseDesktopBoolean(
-      env.CATS_DESKTOP_SETUP_AUDIT_PARALLEL,
-      DEFAULT_SETUP_AUDIT_PARALLEL,
-    ),
-  };
   const update: DesktopUpdateConfig = {
     // SPEC-111 section 6: startup checks stay off for public builds until the
     // signed old-to-new upgrade gate passes on every supported platform.
@@ -324,7 +312,6 @@ export function resolveDesktopHostConfig(
     gracefulShutdownMs,
     bootstrap,
     background,
-    setupAudit,
     update,
     paths: {
       platformDir,

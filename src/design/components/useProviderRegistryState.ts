@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { peekProviderRegistryClientCache } from '../../app/renderer/providerRegistryClient.js';
+import { subscribeProviderRegistry } from '../../app/renderer/providerRegistryClient.js';
 import type { ProductProviderRegistryReadModel } from '../../shared/providerCatalog.js';
 import {
-  createStaticProviderRegistryReadModel,
   PROVIDER_LOAD_FAILED_WARNING,
   PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING,
   sanitizeProviderRegistryReadModel,
@@ -13,24 +12,20 @@ export function useProviderRegistryState(input: {
   fetchProviderRegistry: (options?: { force?: boolean }) => Promise<ProductProviderRegistryReadModel>;
   onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
 }) {
-  const initialCached = peekProviderRegistryClientCache();
-  const initialRegistry = initialCached
-    ? sanitizeProviderRegistryReadModel(initialCached)
-    : createStaticProviderRegistryReadModel([PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING]);
+  const initialRegistry: ProductProviderRegistryReadModel = {
+    state: 'no_usable_targets', providers: [], warnings: [PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING],
+  };
   const [providers, setProviders] = useState<ProductProviderRegistryReadModel['providers']>(
     initialRegistry.providers,
   );
   const [providerRegistry, setProviderRegistry] = useState<ProductProviderRegistryReadModel>(
     () => initialRegistry,
   );
-  const [providersLoaded, setProvidersLoaded] = useState(true);
+  const [providersLoaded, setProvidersLoaded] = useState(false);
   const [providerRegistryReloadToken, setProviderRegistryReloadToken] = useState(0);
   const [lastAutoProviderRegistryRecheckAt, setLastAutoProviderRegistryRecheckAt] = useState(0);
   const onProviderRegistryChangeRef = useRef(input.onProviderRegistryChange);
   const providerRegistryRequestIdRef = useRef(0);
-  const providersRef = useRef<ProductProviderRegistryReadModel['providers']>(
-    initialRegistry.providers,
-  );
 
   useEffect(() => {
     onProviderRegistryChangeRef.current = input.onProviderRegistryChange;
@@ -43,16 +38,7 @@ export function useProviderRegistryState(input: {
     if (requestId !== providerRegistryRequestIdRef.current) {
       return;
     }
-    const sanitizedRegistry = sanitizeProviderRegistryReadModel(nextRegistryResult);
-    const nextRegistry = sanitizedRegistry.state === 'runtime_unreachable'
-      && sanitizedRegistry.providers.length === 0
-      && providersRef.current.length > 0
-      ? {
-          ...sanitizedRegistry,
-          providers: providersRef.current,
-        }
-      : sanitizedRegistry;
-    providersRef.current = nextRegistry.providers;
+    const nextRegistry = sanitizeProviderRegistryReadModel(nextRegistryResult);
     setProviders(nextRegistry.providers);
     setProviderRegistry(nextRegistry);
     setProvidersLoaded(true);
@@ -69,25 +55,24 @@ export function useProviderRegistryState(input: {
     const errorMessage = error instanceof Error ? error.message : PROVIDER_LOAD_FAILED_WARNING;
     setProviderRegistry((current) => {
       const baseWarnings = (current.warnings ?? []).filter((warning) => warning !== errorMessage);
-      const keepProviders = current.providers.length > 0;
       const nextRegistry: ProductProviderRegistryReadModel = {
         state: 'runtime_unreachable',
-        // Preserve the last known providers list on transient failures so the
-        // dropdowns keep working; we still surface the outage through the
-        // registry state and warnings. First-load failures have nothing to
-        // preserve and fall through to an empty list as before.
-        providers: keepProviders ? current.providers : [],
+        providers: [],
         recovery: {
           retryable: true,
         },
         warnings: [...baseWarnings, errorMessage],
       };
-      providersRef.current = nextRegistry.providers;
       onProviderRegistryChangeRef.current?.(nextRegistry);
       return nextRegistry;
     });
+    setProviders([]);
     setProvidersLoaded(true);
   }
+
+  useEffect(() => subscribeProviderRegistry((registry) => {
+    commitProviderRegistry(++providerRegistryRequestIdRef.current, registry);
+  }), []);
 
   useEffect(() => {
     let cancelled = false;

@@ -1,6 +1,6 @@
 export type RuntimeSetupStatus =
   | 'ready'
-  | 'ready_to_apply'
+  | 'selection_required'
   | 'scan_required'
   | 'attention_required'
   | 'unavailable';
@@ -19,6 +19,21 @@ export interface RuntimeSetupProviderSummary {
   remediationCount?: number;
 }
 
+export interface RuntimeSelectedProviderTarget {
+  provider: string;
+  backend: 'cli' | 'api' | 'local' | 'agent';
+  instance: string;
+}
+
+export interface RuntimeProviderSelection {
+  state: 'missing' | 'invalid' | 'empty' | 'selected';
+  revision: string;
+  targets: RuntimeSelectedProviderTarget[];
+  nativeSetupTargets: RuntimeSelectedProviderTarget[];
+  diskChanged: boolean;
+  error: string | null;
+}
+
 export interface RuntimeSetupSummary {
   source: 'runtime' | 'assumed_ready' | 'unavailable';
   bootstrapRequired: boolean;
@@ -30,10 +45,10 @@ export interface RuntimeSetupSummary {
   appliedAt: string | null;
   providerCount: number;
   availableCount: number;
-  providersReadyToApply: RuntimeSetupProviderSummary[];
+  providersReady: RuntimeSetupProviderSummary[];
   providersNeedingAttention: RuntimeSetupProviderSummary[];
-  suggestedProviders: string[];
+  selectedProviders: string[];
   canRunManualScan: boolean;
-  canApply: boolean;
+  canManageSelection: boolean;
   error: string | null;
 }

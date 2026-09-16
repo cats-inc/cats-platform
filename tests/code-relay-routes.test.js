@@ -82,7 +82,7 @@ function createRuntimeStub() {
   };
 }
 
-async function withServer(callback) {
+async function withServer(callback, runtimeClient = createRuntimeStub()) {
   const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-code-relay-'));
   const server = createServer({
     shared: {
@@ -90,7 +90,7 @@ async function withServer(callback) {
         ...baseConfig,
         chatStatePath: path.join(tempStateDir, 'platform', 'state', 'chat-state.local.json'),
       },
-      runtimeClient: createRuntimeStub(),
+      runtimeClient,
       now: () => new Date('2026-03-30T12:00:00.000Z'),
     },
     chat: {
@@ -219,4 +219,37 @@ test('Code relay routes create threads, update roster, and fan out prompts', asy
     assert.equal(settledRound.messages[0].kind, 'prompt');
     assert.match(settledRound.messages[1].content, /\[(codex|antigravity)\]/u);
   });
+});
+
+test('new relay rosters follow selected providers and removed targets never dispatch', async () => {
+  const runtime = createRuntimeStub();
+  const selected = await runtime.getProviderConfig();
+  delete selected.codex;
+  delete selected.antigravity;
+  let sessionRequests = 0;
+  runtime.createSession = async () => { sessionRequests += 1; throw new Error('Unexpected dispatch'); };
+  await withServer(async (baseUrl) => {
+    const request = (path, body) => fetch(`${baseUrl}${path}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const created = await request('/api/code/relay/threads', { title: 'Selected relay' });
+    const payload = await created.json();
+    const thread = payload.threads[0];
+    assert.deepEqual(thread.roster.map((entry) => entry.provider), ['claude']);
+    assert.equal(thread.roster[0].instance, 'cli/native');
+    delete selected.claude;
+    const blocked = await request(`/api/code/relay/threads/${thread.thread.id}/fan-out`, {
+      prompt: 'Must not run', agentIds: [thread.roster[0].id],
+    });
+    assert.equal(blocked.status, 409);
+    assert.equal(sessionRequests, 0);
+    const refreshed = await (await fetch(`${baseUrl}/api/code/relay/threads`)).json();
+    assert.deepEqual(refreshed.defaults.roster, []);
+    assert.deepEqual(refreshed.contract.supportedProviders, []);
+    assert.deepEqual(refreshed.threads[0].rounds, []);
+    assert.equal((await request('/api/code/relay/threads', { title: 'Empty selection' })).status, 409);
+    runtime.getProviderConfig = async () => { throw new Error('Offline'); };
+    assert.equal((await request('/api/code/relay/threads', { title: 'Offline' })).status, 503);
+    assert.equal((await (await fetch(`${baseUrl}/api/code/relay/threads`)).json()).threads.length, 1);
+  }, runtime);
 });

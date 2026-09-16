@@ -647,6 +647,22 @@ PATCH /api/preferences
 
 ### Providers
 
+Provider intent is owned by the connected Runtime's active configuration.
+`GET /api/providers` includes its `revision` and projects only selected, usable
+`(provider, backend, instance)` targets. Every registry/model read verifies that
+selection; a revision change invalidates local caches, and an unreachable
+Runtime yields no current execution choices. Model requests use qualified
+`instance=cli/native` or `instance=api/personal`; a bare instance is accepted only
+when it identifies exactly one selected usable target.
+
+Setup uses the connected editor at `/runtime/setup`. The proxy forwards
+`GET /setup-state`, `PUT /setup-selection`, `POST /setup-selection/reload`, and
+`POST /setup-scan` with their Runtime contracts. Selection writes/reloads carry
+`expectedRevision`; stale writes or busy-target changes return `409`. The removed
+`POST /setup-apply` route has no compatibility alias. Desktop's sandboxed preload
+also exposes `saveProviderSelection({expectedRevision, targets})` and explicit
+reload through the same host-owned bridge.
+
 ```text
 GET /api/providers
 GET /api/providers/{provider}/models

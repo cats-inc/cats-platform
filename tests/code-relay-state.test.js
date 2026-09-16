@@ -15,6 +15,7 @@ test('createCodeRelayThread seeds a persistent thread-wide roster', () => {
     createDefaultCoreState(),
     {
       title: 'Relay MVP',
+      providerIds: ['claude', 'codex', 'antigravity'],
       objective: 'Compare agent opinions',
       repoPath: 'C:/repo/cats-platform',
     },
@@ -36,6 +37,7 @@ test('roster entry target can be reconfigured without changing slot identity', (
     createDefaultCoreState(),
     {
       title: 'Relay MVP',
+      providerIds: ['claude', 'codex', 'antigravity'],
       objective: 'Compare agent opinions',
       repoPath: 'C:/repo/cats-platform',
     },
@@ -75,6 +77,7 @@ test('fan-out round records prompt, dispatch status, and proven providers', () =
     createDefaultCoreState(),
     {
       title: 'Relay MVP',
+      providerIds: ['claude', 'codex', 'antigravity'],
       objective: 'Compare agent opinions',
       repoPath: 'C:/repo/cats-platform',
     },
@@ -133,6 +136,7 @@ test('readCodeRelayThread derives deterministic fallback ids for malformed metad
     createDefaultCoreState(),
     {
       title: 'Malformed relay',
+      providerIds: ['claude', 'codex', 'antigravity'],
       objective: 'Recover deterministic ids',
       repoPath: null,
     },

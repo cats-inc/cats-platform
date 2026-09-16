@@ -105,6 +105,7 @@ function peekCachedCatalogPair(
 }
 
 export function useProviderCatalogState(input: {
+  selectionRevision?: string;
   provider: string;
   resolvedInstance: string;
   hasSelectedProvider: boolean;
@@ -239,6 +240,7 @@ export function useProviderCatalogState(input: {
     input.provider,
     input.resolvedInstance,
     translate,
+    input.selectionRevision,
   ]);
 
   const fallbackCatalog = createEmptyProviderModelCatalog(input.provider, input.resolvedInstance || null);

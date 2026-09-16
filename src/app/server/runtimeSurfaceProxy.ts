@@ -24,7 +24,8 @@ const EXACT_RUNTIME_API_PATHS = new Set<string>([
   '/health',
   '/setup-state',
   '/setup-scan',
-  '/setup-apply',
+  '/setup-selection',
+  '/setup-selection/reload',
   '/browse',
   '/pool/status',
   '/discovery/status',
@@ -32,7 +33,8 @@ const EXACT_RUNTIME_API_PATHS = new Set<string>([
 
 const SETUP_MUTATION_RUNTIME_API_PATHS = new Set<string>([
   '/setup-scan',
-  '/setup-apply',
+  '/setup-selection',
+  '/setup-selection/reload',
 ]);
 const DEFAULT_RUNTIME_SETUP_PROXY_TIMEOUT_MS = 30_000;
 

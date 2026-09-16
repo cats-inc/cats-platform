@@ -5,28 +5,31 @@ import type {
 import { normalizeProductProviderEventCapabilities } from '../../shared/providerCatalog.js';
 import {
   PROVIDER_LOAD_FAILED_WARNING,
-  PROVIDER_REFRESH_FAILED_WARNING,
-  createProviderCachedRefreshFailedWarning,
 } from '../../shared/providerRegistryWarnings.js';
+import { clearProviderCatalogClientCache } from './providerCatalogClient.js';
 
 export const PROVIDER_REGISTRY_CLIENT_CACHE_TTL_MS = 15_000;
-export const PROVIDER_REGISTRY_CLIENT_STALE_IF_ERROR_MS = 10 * 60_000;
 
 type ProviderRegistryFetch = typeof fetch;
 
 interface ProviderRegistryClientCacheState {
   value: ProductProviderRegistryReadModel | null;
   freshUntilMs: number;
-  staleIfErrorUntilMs: number;
   inflight: Promise<ProductProviderRegistryReadModel> | null;
 }
 
 const providerRegistryClientCache: ProviderRegistryClientCacheState = {
   value: null,
   freshUntilMs: 0,
-  staleIfErrorUntilMs: 0,
   inflight: null,
 };
+
+const listeners = new Set<(value: ProductProviderRegistryReadModel) => void>();
+
+export function subscribeProviderRegistry(listener: (value: ProductProviderRegistryReadModel) => void): () => void {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
 
 async function readProviderRegistryErrorMessage(
   response: Response,
@@ -50,6 +53,7 @@ function normalizeProviderRegistryPayload(
 
   return {
     state: payload.state ?? (providers.length > 0 ? 'ready' : 'no_usable_targets'),
+    revision: payload.revision,
     providers: providers.map((provider) => ({
       id: provider.id,
       label: provider.label,
@@ -84,45 +88,16 @@ function createRuntimeUnreachableRegistry(message: string): ProductProviderRegis
   };
 }
 
-function shouldCacheProviderRegistryValue(
-  value: ProductProviderRegistryReadModel,
-): boolean {
-  return value.state !== 'runtime_unreachable';
-}
-
-function appendProviderRegistryWarning(
-  value: ProductProviderRegistryReadModel,
-  warning: string,
-): ProductProviderRegistryReadModel {
-  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
-  return {
-    ...value,
-    warnings: warnings.includes(warning)
-      ? warnings
-      : [...warnings, warning],
-  };
-}
-
-function resolveProviderRegistryFailureMessage(
-  value: ProductProviderRegistryReadModel,
-): string {
-  return value.warnings?.[0] ?? PROVIDER_REFRESH_FAILED_WARNING;
-}
-
 function writeProviderRegistryClientCache(
   value: ProductProviderRegistryReadModel,
 ): void {
   const now = Date.now();
+  if (providerRegistryClientCache.value?.revision !== value.revision || value.state === 'runtime_unreachable') {
+    clearProviderCatalogClientCache();
+  }
   providerRegistryClientCache.value = value;
   providerRegistryClientCache.freshUntilMs = now + PROVIDER_REGISTRY_CLIENT_CACHE_TTL_MS;
-  providerRegistryClientCache.staleIfErrorUntilMs =
-    now + PROVIDER_REGISTRY_CLIENT_STALE_IF_ERROR_MS;
-}
-
-function clearExpiredProviderRegistryClientCache(): void {
-  providerRegistryClientCache.value = null;
-  providerRegistryClientCache.freshUntilMs = 0;
-  providerRegistryClientCache.staleIfErrorUntilMs = 0;
+  for (const listener of listeners) listener(value);
 }
 
 async function loadProviderRegistry(
@@ -150,8 +125,9 @@ async function loadProviderRegistry(
 export function clearProviderRegistryClientCache(): void {
   providerRegistryClientCache.value = null;
   providerRegistryClientCache.freshUntilMs = 0;
-  providerRegistryClientCache.staleIfErrorUntilMs = 0;
   providerRegistryClientCache.inflight = null;
+  clearProviderCatalogClientCache();
+  for (const listener of listeners) listener(createRuntimeUnreachableRegistry(PROVIDER_LOAD_FAILED_WARNING));
 }
 
 export function peekProviderRegistryClientCache(): ProductProviderRegistryReadModel | null {
@@ -169,41 +145,22 @@ export async function fetchProviderRegistryFromClientCache(options: {
   force?: boolean;
   fetchImpl?: ProviderRegistryFetch;
 } = {}): Promise<ProductProviderRegistryReadModel> {
-  const now = Date.now();
-  if (
-    !options.force
-    && providerRegistryClientCache.value
-    && providerRegistryClientCache.freshUntilMs > now
-  ) {
-    return providerRegistryClientCache.value;
-  }
-
+  // Every opened picker verifies current intent. The server can reuse its
+  // diagnostics cache after this cheap selection check.
   if (!options.force && providerRegistryClientCache.inflight) {
     return providerRegistryClientCache.inflight;
   }
 
   const request = loadProviderRegistry(options.fetchImpl ?? fetch, { force: options.force })
     .then((value) => {
-      if (shouldCacheProviderRegistryValue(value)) {
-        writeProviderRegistryClientCache(value);
-        return value;
+      if (providerRegistryClientCache.inflight !== request) {
+        throw new Error('Provider selection request was superseded.');
       }
-
-      const cachedValue = providerRegistryClientCache.value;
-      if (cachedValue && providerRegistryClientCache.staleIfErrorUntilMs > Date.now()) {
-        return appendProviderRegistryWarning(
-          cachedValue,
-          createProviderCachedRefreshFailedWarning(
-            resolveProviderRegistryFailureMessage(value),
-          ),
-        );
-      }
-
-      clearExpiredProviderRegistryClientCache();
+      writeProviderRegistryClientCache(value);
       return value;
     })
     .finally(() => {
-      providerRegistryClientCache.inflight = null;
+      if (providerRegistryClientCache.inflight === request) providerRegistryClientCache.inflight = null;
     });
 
   providerRegistryClientCache.inflight = request;

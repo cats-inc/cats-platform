@@ -148,7 +148,7 @@ function createDefaultContract(): CodeRelayConnectorContract {
   return {
     version: 'phase0-runtime-bridge-v1',
     transport: 'runtime_session_bridge',
-    supportedProviders: listProductProviders().map((provider) => provider.id),
+    supportedProviders: [],
     notes: [
       'Relay fan-out runs through cats-runtime session APIs rather than product-owned provider adapters.',
       'Provider readiness and execution behavior remain runtime-owned.',
@@ -187,13 +187,13 @@ function createCodeRelayRosterEntry(input: {
   };
 }
 
-export function createDefaultCodeRelayRoster(): CodeRelayRosterEntry[] {
-  return listProductProviders()
+export function createDefaultCodeRelayRoster(providerIds: readonly string[]): CodeRelayRosterEntry[] {
+  return [...new Set(providerIds)]
     .slice(0, 3)
     .map((provider) => createCodeRelayRosterEntry({
-      provider: provider.id,
-      instance: provider.defaultInstance,
-      model: provider.defaultModel,
+      provider,
+      // Let the connected Runtime resolve its selected default backend/instance.
+      instance: null,
     }));
 }
 
@@ -333,6 +333,7 @@ export function createCodeRelayThread(
     title: string;
     objective: string | null;
     repoPath: string | null;
+    providerIds: readonly string[];
   },
   now: Date = new Date(),
 ): { core: CatsCoreState; project: CoreProjectRecord; thread: CodeRelayThreadRecord } {
@@ -340,7 +341,7 @@ export function createCodeRelayThread(
     version: 1,
     contract: createDefaultContract(),
     status: 'active',
-    roster: createDefaultCodeRelayRoster(),
+    roster: createDefaultCodeRelayRoster(input.providerIds),
     rounds: [],
     currentRoundId: null,
     provenProviderIds: [],

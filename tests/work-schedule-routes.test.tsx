@@ -118,7 +118,7 @@ function createRuntimeStub(): RuntimeClient & {
         providers: [],
         availableCount: 0,
         providerCount: 0,
-        providersReadyToApply: [],
+        providersReady: [],
         providersNeedingAttention: [],
       };
     },

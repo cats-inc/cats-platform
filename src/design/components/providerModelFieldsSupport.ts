@@ -1,7 +1,7 @@
 import {
   createProviderAdvancedCatalogFromModelCatalog,
   isProductProviderDefaultModelPlaceholder,
-  listProductProviders,
+  providerInstanceTarget,
   type ProductProviderEventCapabilities,
   type ProductProviderInstanceDescriptor,
   type ProductProviderRegistryReadModel,
@@ -97,22 +97,13 @@ export function createEmptyProviderAdvancedModelCatalog(
   };
 }
 
-export function createStaticProviderRegistryReadModel(
-  warnings: string[] = [],
-): ProductProviderRegistryReadModel {
-  return {
-    state: 'ready',
-    providers: listProductProviders(),
-    ...(warnings.length > 0 ? { warnings } : {}),
-  };
-}
-
 export function sanitizeProviderRegistryReadModel(
   value: ProductProviderRegistryReadModel,
 ): ProductProviderRegistryReadModel {
   return {
     state: value.state,
-    providers: Array.isArray(value.providers) ? value.providers : [],
+    revision: value.revision,
+    providers: value.state !== 'runtime_unreachable' && Array.isArray(value.providers) ? value.providers : [],
     recovery: value.recovery,
     warnings: Array.isArray(value.warnings) ? value.warnings : [],
   };
@@ -227,19 +218,11 @@ export function resolveProviderRegistryAutoRecheckDelayMs(input: {
     return null;
   }
 
-  if (input.providerCount > 0 && input.registryState !== 'runtime_unreachable') {
+  if (!input.documentVisible) {
     return null;
   }
 
-  if (input.registryState === 'ready') {
-    return null;
-  }
-
-  if (!input.retryable || !input.documentVisible) {
-    return null;
-  }
-
-  if (input.registryState !== 'runtime_unreachable' && !input.hasSetupHref) {
+  if (input.registryState !== 'ready' && !input.retryable && !input.hasSetupHref) {
     return null;
   }
 
@@ -745,7 +728,7 @@ export function resolveSelectedInstanceEventCapabilities(input: {
   resolvedInstance: string;
   instanceOptions: ProductProviderInstanceDescriptor[];
 }): ProductProviderEventCapabilities | null {
-  return input.instanceOptions.find((option) => option.id === input.resolvedInstance)?.eventCapabilities ?? null;
+  return input.instanceOptions.find((option) => providerInstanceTarget(option) === input.resolvedInstance)?.eventCapabilities ?? null;
 }
 
 export function catalogMatchesTarget(input: {
@@ -896,20 +879,7 @@ export function resolveProviderModelFieldsViewState(input: {
     entryCount: entryOptions.length,
     isLegacyModelTarget,
   });
-  const instanceOptions: ProductProviderInstanceDescriptor[] = selectedProvider
-    ? (
-        selectedProvider.instances.some((option) => option.id === resolvedInstance)
-          ? selectedProvider.instances
-          : resolvedInstance
-            ? [{
-                id: resolvedInstance,
-                label: resolvedInstance,
-                target: resolvedInstance,
-                backend: null,
-              }, ...selectedProvider.instances]
-            : selectedProvider.instances
-      )
-    : [];
+  const instanceOptions = selectedProvider?.instances ?? [];
   const showInstanceField = shouldShowInstanceField({
     resolvedInstance,
     instanceOptions,

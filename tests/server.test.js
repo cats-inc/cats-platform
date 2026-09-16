@@ -3843,6 +3843,10 @@ test('GET /health reports runtime reachability', async () => {
 
 test('GET /api/providers/:provider/models/advanced returns the runtime advanced catalog additively', async () => {
   const runtime = createRuntimeStub();
+  runtime.getSetupState = async () => ({ selection: {
+    state: 'selected', revision: 'selected-codex', targets: [{ provider: 'codex', backend: 'cli', instance: 'default' }],
+    nativeSetupTargets: [], diskChanged: false, error: null,
+  } });
   runtime.getProviderConfig = async () => ({
     codex: {
       defaultInstance: 'default',

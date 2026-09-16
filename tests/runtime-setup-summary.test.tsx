@@ -15,7 +15,7 @@ test('createAssumedReadyRuntimeSetupSummary returns a ready non-bootstrap summar
   assert.equal(summary.status, 'ready');
   assert.equal(summary.bootstrapRequired, false);
   assert.equal(summary.canRunManualScan, false);
-  assert.equal(summary.canApply, false);
+  assert.equal(summary.canManageSelection, false);
   assert.equal(isRuntimeSetupReady(summary), true);
 });
 
@@ -29,9 +29,11 @@ test('createUnavailableRuntimeSetupSummary captures explicit Error messages and 
   assert.equal(isRuntimeSetupReady(summary), false);
 });
 
-test('summarizeRuntimeSetupReadModel promotes ready repair state to ready_to_apply and copies suggested providers', () => {
+test('summarizeRuntimeSetupReadModel reports missing intent independently of installed providers', () => {
   const summary = summarizeRuntimeSetupReadModel({
     bootstrapRequired: true,
+    selection: { state: 'missing', revision: 'missing', targets: [], nativeSetupTargets: [], diskChanged: false, error: null },
+    universe: [],
     state: {
       status: 'scanning',
       lastScanAt: '2026-04-20T01:00:00.000Z',
@@ -53,7 +55,7 @@ test('summarizeRuntimeSetupReadModel promotes ready repair state to ready_to_app
         unavailableCount: 1,
         remediationCount: 1,
       },
-      providersReadyToApply: [
+      providersReady: [
         { provider: 'claude', family: 'anthropic' },
         { provider: 'codex', family: 'openai' },
       ],
@@ -63,13 +65,13 @@ test('summarizeRuntimeSetupReadModel promotes ready repair state to ready_to_app
     },
   });
 
-  assert.equal(summary.status, 'ready_to_apply');
+  assert.equal(summary.status, 'selection_required');
   assert.equal(summary.summary, '2 providers ready to apply.');
-  assert.equal(summary.providerCount, 3);
+  assert.equal(summary.providerCount, 0);
   assert.equal(summary.availableCount, 2);
-  assert.deepEqual(summary.suggestedProviders, ['claude', 'codex']);
-  assert.equal(summary.canRunManualScan, true);
-  assert.equal(summary.canApply, true);
+  assert.deepEqual(summary.selectedProviders, []);
+  assert.equal(summary.canRunManualScan, false);
+  assert.equal(summary.canManageSelection, true);
   assert.deepEqual(summary.providersNeedingAttention, [
     { provider: 'antigravity', family: 'google', remediationCount: 2 },
   ]);
@@ -78,6 +80,8 @@ test('summarizeRuntimeSetupReadModel promotes ready repair state to ready_to_app
 test('summarizeRuntimeSetupReadModel reports runtime-ready state when bootstrap is no longer required', () => {
   const summary = summarizeRuntimeSetupReadModel({
     bootstrapRequired: false,
+    selection: { state: 'empty', revision: 'empty', targets: [], nativeSetupTargets: [], diskChanged: false, error: null },
+    universe: [],
     state: {
       status: 'applied',
       lastScanAt: '2026-04-20T01:00:00.000Z',
@@ -99,7 +103,7 @@ test('summarizeRuntimeSetupReadModel reports runtime-ready state when bootstrap 
         unavailableCount: 0,
         remediationCount: 0,
       },
-      providersReadyToApply: [],
+      providersReady: [],
       providersNeedingAttention: [],
     },
   });
@@ -107,6 +111,6 @@ test('summarizeRuntimeSetupReadModel reports runtime-ready state when bootstrap 
   assert.equal(summary.status, 'ready');
   assert.equal(summary.summary, 'Runtime provider config is applied and Cats Runtime is ready.');
   assert.equal(summary.canRunManualScan, false);
-  assert.equal(summary.canApply, false);
+  assert.equal(summary.canManageSelection, true);
   assert.equal(isRuntimeSetupReady(summary), true);
 });

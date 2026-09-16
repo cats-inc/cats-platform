@@ -1,13 +1,16 @@
+import type { RuntimeProviderSelection } from '../../shared/runtimeSetup.js';
 import type { ServerResponse } from 'node:http';
 
 import {
   isKnownProvider,
+  providerInstanceTarget,
   listProductProviders,
   type ProviderAdvancedModelCatalog,
   type ProviderModelCatalog,
   type ProductProviderDescriptor,
   type ProductProviderInstanceDescriptor,
 } from '../../shared/providerCatalog.js';
+import { resolveSelectedProviderInstance } from '../../shared/providerSelection.js';
 import type {
   RuntimeProviderDiagnosticsEntry,
   RuntimeProviderDiagnosticsPayload,
@@ -76,6 +79,7 @@ type ProviderTimedCacheEntry<TValue> =
   | ProviderErrorBackoffCacheEntry<TValue>;
 
 interface TruthfulProviderRegistryReadModel {
+  revision?: string;
   state: ProviderRegistryState;
   providers: ProductProviderDescriptor[];
   recovery?: {
@@ -89,6 +93,7 @@ type TruthfulProviderRegistryCacheEntry =
   ProviderTimedCacheEntry<TruthfulProviderRegistryReadModel>;
 
 interface TruthfulProviderRegistryCacheState {
+  revision?: string;
   entries: Map<string, TruthfulProviderRegistryCacheEntry>;
   inflight: Map<string, Promise<TruthfulProviderRegistryReadModel>>;
 }
@@ -419,10 +424,7 @@ export async function warmProviderSelectorCache(
   const catalogCacheState = getProviderCatalogCacheState(runtimeClient);
   await Promise.allSettled(
     registry.providers.map(async (provider) => {
-      const defaultInstanceId = provider.defaultInstance
-        ?? provider.instances.find((candidate) => candidate.default)?.id
-        ?? provider.instances[0]?.id
-        ?? null;
+      const defaultInstanceId = resolveSelectedProviderInstance(provider, '') || null;
       if (!defaultInstanceId) {
         return;
       }
@@ -489,7 +491,7 @@ function findInstanceDiagnostic(
   instanceId: string,
   backend: string | null,
 ): RuntimeProviderDiagnosticsEntry | null {
-  return entries.find((entry) => entry.instance === instanceId)
+  return entries.find((entry) => entry.instance === instanceId && entry.backend === backend)
     ?? entries.find((entry) =>
       entry.instance === null
       && backend !== null
@@ -521,7 +523,7 @@ function mergeTruthfulProviderRegistryFromRuntimeConfig(
       label: instance.target ?? instance.id,
       target: instance.target,
       backend: instance.backend,
-      default: runtimeProvider.defaultInstance === instance.id,
+      default: runtimeProvider.defaultInstance === instance.id && runtimeProvider.defaultBackend === instance.backend,
       eventCapabilities: instance.eventCapabilities,
     }));
 
@@ -545,85 +547,6 @@ function mergeTruthfulProviderRegistryFromRuntimeConfig(
   };
 }
 
-function resolveDiagnosticsInstanceId(
-  entry: RuntimeProviderDiagnosticsEntry,
-): string {
-  return entry.instance?.trim()
-    || entry.backend?.trim()
-    || 'default';
-}
-
-function resolveDiagnosticsInstanceTarget(
-  entry: RuntimeProviderDiagnosticsEntry,
-): string | null {
-  const instanceId = entry.instance?.trim() || '';
-  const backend = entry.backend?.trim() || '';
-  if (instanceId) {
-    if (instanceId.includes('/')) {
-      return instanceId;
-    }
-    return backend ? `${backend}/${instanceId}` : instanceId;
-  }
-  return backend ? `${backend}/default` : null;
-}
-
-function resolveDiagnosticsInstanceLabel(
-  entry: RuntimeProviderDiagnosticsEntry,
-): string {
-  return resolveDiagnosticsInstanceTarget(entry)
-    ?? entry.backend?.trim()
-    ?? 'default';
-}
-
-function buildDiagnosticsOnlyProviderDescriptor(
-  provider: ProductProviderDescriptor,
-  diagnosticsEntries: RuntimeProviderDiagnosticsEntry[],
-): ProductProviderDescriptor | null {
-  const instancesById = new Map<string, ProductProviderInstanceDescriptor>();
-
-  for (const entry of diagnosticsEntries) {
-    const instanceId = resolveDiagnosticsInstanceId(entry);
-    const staticInstance = provider.instances.find((candidate) =>
-      candidate.id === instanceId
-      || (
-        candidate.target !== null
-        && candidate.target === resolveDiagnosticsInstanceTarget(entry)
-      ));
-    const target = staticInstance?.target ?? resolveDiagnosticsInstanceTarget(entry);
-    instancesById.set(instanceId, {
-      id: instanceId,
-      label: staticInstance?.label ?? resolveDiagnosticsInstanceLabel(entry),
-      target,
-      backend: staticInstance?.backend ?? entry.backend,
-      default: entry.defaultTarget,
-      eventCapabilities: staticInstance?.eventCapabilities ?? null,
-    });
-  }
-
-  const instances = [...instancesById.values()];
-  if (instances.length === 0) {
-    return null;
-  }
-
-  const defaultInstance = instances.find((instance) => instance.default)?.id
-    ?? instances.find((instance) => instance.id === provider.defaultInstance)?.id
-    ?? instances[0]?.id
-    ?? null;
-  const defaultBackend = instances.find((instance) => instance.id === defaultInstance)?.backend
-    ?? instances[0]?.backend
-    ?? provider.defaultBackend;
-
-  return {
-    ...provider,
-    defaultInstance,
-    defaultBackend,
-    instances: instances.map((instance) => ({
-      ...instance,
-      default: instance.id === defaultInstance,
-    })),
-  };
-}
-
 function mergeTruthfulProviderRegistry(
   productProviders: ProductProviderDescriptor[],
   runtimeConfig: RuntimeProviderConfigRegistry | null,
@@ -642,8 +565,7 @@ function mergeTruthfulProviderRegistry(
       return [merged];
     }
 
-    const diagnosticsOnly = buildDiagnosticsOnlyProviderDescriptor(provider, diagnosticsEntries);
-    return diagnosticsOnly ? [diagnosticsOnly] : [];
+    return [];
   });
 }
 
@@ -773,6 +695,7 @@ function deriveTruthfulProviderRegistryForProvider(
   const provider = source.providers.find((entry) => entry.id === providerId);
   if (!provider) {
     return {
+      revision: source.revision,
       state: 'no_usable_targets',
       providers: [],
       recovery: {
@@ -785,6 +708,7 @@ function deriveTruthfulProviderRegistryForProvider(
   return {
     state: 'ready',
     providers: [provider],
+    revision: source.revision,
     ...(source.warnings ? { warnings: [...source.warnings] } : {}),
   };
 }
@@ -898,11 +822,59 @@ async function loadTruthfulProviderRegistryFromRuntime(
   };
 }
 
+function syncProviderSelectionCache(
+  client: RuntimeClient, selection: RuntimeProviderSelection,
+): TruthfulProviderRegistryCacheState {
+  const state = getTruthfulProviderRegistryCacheState(client);
+  if (state.revision !== selection.revision) {
+    state.entries.clear();
+    state.inflight.clear();
+    providerCatalogCache.delete(client);
+    state.revision = selection.revision;
+  }
+  return state;
+}
+
+function projectSelectedProviders(
+  value: TruthfulProviderRegistryReadModel, selection: RuntimeProviderSelection,
+): TruthfulProviderRegistryReadModel {
+  const selected = new Set(selection.targets.map((target) =>
+    JSON.stringify([target.provider, target.backend, target.instance])));
+  const providers = value.providers.flatMap((provider) => {
+    const instances = provider.instances.filter((instance) =>
+      selected.has(JSON.stringify([provider.id, instance.backend, instance.id])));
+    if (!instances.length) return [];
+    const defaultTarget = instances.find((instance) => instance.default) ?? instances[0]!;
+    return [{ ...provider, instances: instances.map((instance) => ({ ...instance, default: instance === defaultTarget })),
+      defaultInstance: defaultTarget.id, defaultBackend: defaultTarget.backend }];
+  });
+  return { ...value, revision: selection.revision, providers,
+    state: providers.length ? 'ready' : value.state === 'runtime_unreachable' ? value.state : 'no_usable_targets',
+    ...(providers.length ? {} : { recovery: { openRuntimeSetupPath: '/runtime/setup' } }) };
+}
+
+async function currentSelection(dependencies: ProviderRouteDependencies): Promise<RuntimeProviderSelection> {
+  const { selection } = await dependencies.runtimeClient.getSetupState();
+  if (!selection || !Array.isArray(selection.targets)) throw new Error('Runtime provider selection is unavailable.');
+  syncProviderSelectionCache(dependencies.runtimeClient, selection);
+  return selection;
+}
+
+function unavailableSelection(): TruthfulProviderRegistryReadModel {
+  return { state: 'runtime_unreachable', providers: [], recovery: { retryable: true },
+    warnings: ['Cannot verify the connected Runtime provider selection.'] };
+}
+
 async function refreshTruthfulProviderRegistry(
   dependencies: ProviderRouteDependencies,
   cacheState: TruthfulProviderRegistryCacheState,
   options: { force?: boolean } = {},
 ): Promise<TruthfulProviderRegistryReadModel> {
+  let selection: RuntimeProviderSelection;
+  try { selection = await currentSelection(dependencies); } catch { return unavailableSelection(); }
+  if (selection.state !== 'selected') {
+    return projectSelectedProviders({ state: 'no_usable_targets', providers: [] }, selection);
+  }
   const cacheKey = TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY;
   if (!options.force) {
     const inflight = cacheState.inflight.get(cacheKey);
@@ -913,7 +885,13 @@ async function refreshTruthfulProviderRegistry(
 
   let refreshPromise!: Promise<TruthfulProviderRegistryReadModel>;
   refreshPromise = loadTruthfulProviderRegistryFromRuntime(dependencies)
-    .then((value) => {
+    .then(async (loaded) => {
+      let latest: RuntimeProviderSelection;
+      try { latest = await currentSelection(dependencies); } catch { return unavailableSelection(); }
+      if (latest.revision !== selection.revision) {
+        return projectSelectedProviders({ state: 'no_usable_targets', providers: [] }, latest);
+      }
+      const value = projectSelectedProviders(loaded, latest);
       // Stale-probe guard: if a parallel forced refresh has replaced us as
       // the current inflight probe (or already finished and cleaned up), our
       // value is stale by definition. Don't write it to the cache — that
@@ -969,6 +947,11 @@ async function readTruthfulProviderRegistry(
     provider?: string | null;
   } = {},
 ): Promise<TruthfulProviderRegistryReadModel> {
+  let selection: RuntimeProviderSelection;
+  try { selection = await currentSelection(dependencies); } catch { return unavailableSelection(); }
+  if (selection.state !== 'selected') {
+    return projectSelectedProviders({ state: 'no_usable_targets', providers: [] }, selection);
+  }
   const cacheState = getTruthfulProviderRegistryCacheState(dependencies.runtimeClient);
   const cacheKey = TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY;
   const now = Date.now();
@@ -977,8 +960,8 @@ async function readTruthfulProviderRegistry(
 
   const project = (value: TruthfulProviderRegistryReadModel): TruthfulProviderRegistryReadModel =>
     requestedProvider
-      ? deriveTruthfulProviderRegistryForProvider(value, requestedProvider)
-      : value;
+      ? deriveTruthfulProviderRegistryForProvider(projectSelectedProviders(value, selection), requestedProvider)
+      : projectSelectedProviders(value, selection);
 
   if (cached && cached.freshUntilMs > now) {
     return project(readProviderCacheValue(cached, appendTruthfulProviderRegistryWarning));
@@ -1008,7 +991,11 @@ async function readTruthfulProviderRegistry(
       { provider: requestedProvider },
     );
     void refreshTruthfulProviderRegistry(dependencies, cacheState).catch(() => {});
-    return scopedRegistry;
+    const latest = await currentSelection(dependencies).catch(() => null);
+    if (!latest) return unavailableSelection();
+    return latest.revision === selection.revision
+      ? project(scopedRegistry)
+      : projectSelectedProviders({ state: 'no_usable_targets', providers: [] }, latest);
   }
 
   return project(await refreshTruthfulProviderRegistry(dependencies, cacheState));
@@ -1279,8 +1266,8 @@ export async function handleProviderModels(
     return;
   }
 
-  const normalizedInstance = instance?.trim() || null;
-  if (normalizedInstance && !providerDescriptor.instances.some((entry) => entry.id === normalizedInstance)) {
+  const normalizedInstance = resolveRequestedInstance(providerDescriptor, instance);
+  if (!normalizedInstance) {
     sendRestError(
       response,
       409,
@@ -1300,7 +1287,12 @@ export async function handleProviderModels(
       load: () => dependencies.runtimeClient.getProviderModels(provider, normalizedInstance),
       runtimeClient: dependencies.runtimeClient,
     });
-    sendJson(response, 200, { catalog });
+    const latest = await currentSelection(dependencies);
+    if (latest.revision !== registry.revision) {
+      sendRestError(response, 409, 'provider_selection_changed', 'Provider selection changed. Refresh the provider list.');
+      return;
+    }
+    sendJson(response, 200, { catalog: { ...catalog, instance: normalizedInstance } });
   } catch (error) {
     const runtimeError = error as RuntimeRequestError | Error;
     if ('status' in runtimeError && typeof runtimeError.status === 'number' && runtimeError.status < 500) {
@@ -1322,6 +1314,14 @@ export async function handleProviderModels(
       { provider, instance: normalizedInstance },
     );
   }
+}
+
+function resolveRequestedInstance(provider: ProductProviderDescriptor, instance?: string | null): string | null {
+  const requested = instance?.trim();
+  if (!requested) return resolveSelectedProviderInstance(provider, '') || null;
+  const matches = provider.instances.filter((target) =>
+    providerInstanceTarget(target) === requested || target.id === requested);
+  return matches.length === 1 ? providerInstanceTarget(matches[0]!) : null;
 }
 
 export async function handleAdvancedProviderModels(
@@ -1359,8 +1359,8 @@ export async function handleAdvancedProviderModels(
     return;
   }
 
-  const normalizedInstance = instance?.trim() || null;
-  if (normalizedInstance && !providerDescriptor.instances.some((entry) => entry.id === normalizedInstance)) {
+  const normalizedInstance = resolveRequestedInstance(providerDescriptor, instance);
+  if (!normalizedInstance) {
     sendRestError(
       response,
       409,
@@ -1380,7 +1380,12 @@ export async function handleAdvancedProviderModels(
       load: () => dependencies.runtimeClient.getAdvancedProviderModels(provider, normalizedInstance),
       runtimeClient: dependencies.runtimeClient,
     });
-    sendJson(response, 200, { catalog });
+    const latest = await currentSelection(dependencies);
+    if (latest.revision !== registry.revision) {
+      sendRestError(response, 409, 'provider_selection_changed', 'Provider selection changed. Refresh the provider list.');
+      return;
+    }
+    sendJson(response, 200, { catalog: { ...catalog, instance: normalizedInstance } });
   } catch (error) {
     const runtimeError = error as RuntimeRequestError | Error;
     if ('status' in runtimeError && typeof runtimeError.status === 'number' && runtimeError.status < 500) {
@@ -1429,10 +1434,12 @@ async function refreshProviderCatalogsInternal(
       const task = (async () => {
         try {
           const [models, advanced] = await Promise.all([
-            dependencies.runtimeClient.getProviderModels(provider.id, instance.id, { forceRefresh: true }),
-            dependencies.runtimeClient.getAdvancedProviderModels(provider.id, instance.id, { forceRefresh: true }),
+            dependencies.runtimeClient.getProviderModels(provider.id, providerInstanceTarget(instance), { forceRefresh: true }),
+            dependencies.runtimeClient.getAdvancedProviderModels(provider.id, providerInstanceTarget(instance), { forceRefresh: true }),
           ]);
-          const cacheKey = buildProviderCatalogCacheKey({ provider: provider.id, instance: instance.id });
+          const latest = await currentSelection(dependencies);
+          if (latest.revision !== registry.revision) throw new Error('Provider selection changed during catalog refresh.');
+          const cacheKey = buildProviderCatalogCacheKey({ provider: provider.id, instance: providerInstanceTarget(instance) });
           writeProviderCatalogCacheEntry(cacheState.models, cacheKey, models);
           writeProviderCatalogCacheEntry(cacheState.advanced, cacheKey, advanced);
           notifyProviderCacheUpdated(dependencies.runtimeClient);

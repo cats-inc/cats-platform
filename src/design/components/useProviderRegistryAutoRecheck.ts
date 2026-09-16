@@ -48,6 +48,7 @@ export function useProviderRegistryAutoRecheck(input: {
     }
     const currentWindow = activeWindow;
     const currentDocument = activeDocument;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
 
     function maybeAutoRecheck(): void {
       const now = Date.now();
@@ -62,24 +63,29 @@ export function useProviderRegistryAutoRecheck(input: {
         now,
       });
       if (!shouldRecheck) {
+        scheduleNextRecheck();
         return;
       }
       reloadProviderRegistry({ markAutoRecheckAt: now });
     }
 
-    const nextAutoRecheckDelayMs = resolveProviderRegistryAutoRecheckDelayMs({
-      providersLoaded,
-      providerCount,
-      registryState,
-      retryable,
-      hasSetupHref: Boolean(providerRegistrySetupHref),
-      documentVisible: currentDocument.visibilityState !== 'hidden',
-      lastAutoRecheckAt: lastAutoProviderRegistryRecheckAt,
-      now: Date.now(),
-    });
-    const timeout = nextAutoRecheckDelayMs === null
-      ? null
-      : setTimeout(maybeAutoRecheck, nextAutoRecheckDelayMs);
+    function scheduleNextRecheck(): void {
+      if (timeout !== null) clearTimeout(timeout);
+      const nextAutoRecheckDelayMs = resolveProviderRegistryAutoRecheckDelayMs({
+        providersLoaded,
+        providerCount,
+        registryState,
+        retryable,
+        hasSetupHref: Boolean(providerRegistrySetupHref),
+        documentVisible: currentDocument.visibilityState !== 'hidden',
+        lastAutoRecheckAt: lastAutoProviderRegistryRecheckAt,
+        now: Date.now(),
+      });
+      timeout = nextAutoRecheckDelayMs === null
+        ? null
+        : setTimeout(maybeAutoRecheck, nextAutoRecheckDelayMs);
+    }
+    scheduleNextRecheck();
 
     currentWindow.addEventListener('focus', maybeAutoRecheck);
     currentDocument.addEventListener('visibilitychange', maybeAutoRecheck);

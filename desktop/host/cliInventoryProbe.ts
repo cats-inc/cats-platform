@@ -5,11 +5,14 @@ import {
   type DesktopCliInventoryEntry,
   type DesktopProviderSetupLocalProviderId,
 } from './contracts.js';
+import { nativeSetupTarget, targetKey, type ProviderSelection, type ProviderSelectionCatalogEntry, type SelectedProviderTarget } from './providerSelection.js';
 
 // Shape we read from cats-runtime's GET /setup-state response. We avoid
 // importing the full RuntimeSetupReadModel type from src/ because the desktop
 // host tsconfig is rooted under desktop/host/ and cannot reach src/.
 export interface RuntimeCliInventoryProbe {
+  selection: ProviderSelection;
+  universe: ProviderSelectionCatalogEntry[];
   // The runtime's own answer about whether setup is still required. It rides
   // along on every probe, which makes it the freshest bootstrap signal the host
   // has -- fresher than the cached GET /health payload the snapshot phase is
@@ -20,8 +23,9 @@ export interface RuntimeCliInventoryProbe {
     error?: string | null;
   } | null;
   scan: {
+    revision: string;
     scannedAt?: string | null;
-    providers: Array<{ provider: string; available: boolean; authStatus?: string }>;
+    providers: Array<SelectedProviderTarget & { available: boolean; authStatus?: string }>;
   } | null;
 }
 
@@ -88,7 +92,7 @@ const DESKTOP_TO_RUNTIME_PROVIDER: Record<DesktopProviderSetupLocalProviderId, s
   // Ollama is a local model, not in runtime KNOWN_PROVIDERS — runtime never
   // reports it via setup-state. Desktop tracks it separately via the local
   // model installer helper, but the bootstrap CLI gate doesn't depend on it.
-  ollama: null,
+  ollama: 'ollama',
 };
 
 const PROVIDER_LABEL: Record<DesktopProviderSetupLocalProviderId, string> = {
@@ -150,25 +154,28 @@ export function buildDesktopCliInventoryFromRuntime(
   const runtimeAvailability = new Map<string, boolean>();
   const runtimeAuthStatus = new Map<string, DesktopCliAuthStatus>();
   let scannedAt: string | null = null;
-  if (probe?.scan) {
+  if (probe?.scan && probe.scan.revision === probe.selection?.revision) {
     scannedAt = probe.scan.scannedAt ?? null;
     for (const provider of probe.scan.providers) {
-      runtimeAvailability.set(provider.provider, provider.available === true);
-      runtimeAuthStatus.set(provider.provider, normalizeCliAuthStatus(provider.authStatus));
+      runtimeAvailability.set(targetKey(provider), provider.available === true);
+      runtimeAuthStatus.set(targetKey(provider), normalizeCliAuthStatus(provider.authStatus));
     }
   }
 
-  const candidates: DesktopCliInventoryEntry[] = DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS.map((providerId) => {
+  const selected = new Set(probe?.selection?.nativeSetupTargets?.map(targetKey) ?? []);
+  const candidates: DesktopCliInventoryEntry[] = DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS.filter((providerId) =>
+    selected.has(targetKey(nativeSetupTarget(DESKTOP_TO_RUNTIME_PROVIDER[providerId]!))))
+    .map((providerId) => {
     const suffix = PROVIDER_TO_HELPER_SUFFIX[providerId];
     const helperId = helperPrefix ? `${helperPrefix}-${suffix}` : '';
     const runtimeProvider = DESKTOP_TO_RUNTIME_PROVIDER[providerId];
     const installed = runtimeProvider !== null
-      ? runtimeAvailability.get(runtimeProvider) === true
+      ? runtimeAvailability.get(targetKey(nativeSetupTarget(runtimeProvider))) === true
       : false;
     // Auth only means something for a CLI we found. A provider that is not
     // installed has nothing to be signed in to.
     const authStatus: DesktopCliAuthStatus = installed && runtimeProvider !== null
-      ? runtimeAuthStatus.get(runtimeProvider) ?? 'unknown'
+      ? runtimeAuthStatus.get(targetKey(nativeSetupTarget(runtimeProvider))) ?? 'unknown'
       : 'unknown';
     return {
       helperId,
@@ -184,7 +191,7 @@ export function buildDesktopCliInventoryFromRuntime(
     .filter((entry) => entry.installed)
     .map((entry) => entry.helperId);
   return {
-    source: probe?.scan ? 'runtime' : 'unknown',
+    source: probe?.selection ? 'runtime' : 'unknown',
     installed,
     total: installed.length,
     candidates,
