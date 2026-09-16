@@ -40,7 +40,13 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'gpt-5.5', label: 'gpt-5.5' },
   ],
   antigravity: [
-    { value: 'antigravity-default', label: 'Antigravity default', default: true },
+    { value: 'gemini-3.8-flash-low', label: 'Gemini 3.8 Flash' },
+    { value: 'gemini-3.7-flash-low', label: 'Gemini 3.7 Flash' },
+    { value: 'gemini-3.6-flash-low', label: 'Gemini 3.6 Flash' },
+    { value: 'gemini-3.1-pro-low', label: 'Gemini 3.1 Pro' },
+    { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (Thinking)' },
+    { value: 'claude-opus-4-6-thinking', label: 'Claude Opus 4.6 (Thinking)' },
+    { value: 'gpt-oss-120b-medium', label: 'GPT-OSS 120B (Medium)' },
   ],
   grok: [
     { value: 'grok-4.5', label: 'grok-4.5 (default)', default: true },

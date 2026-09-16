@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-09-16-antigravity-model-picker](./2026-09-16-antigravity-model-picker.md) | 2026-09-16 | Antigravity 1.2.3 picker | Seven exact model labels and first-effort initialization without invented defaults |
 | [2026-09-16-claude-catalog-labels](./2026-09-16-claude-catalog-labels.md) | 2026-09-16 | Claude labels and default markers | Four version-bearing fallback names and lowercase model/effort default markers across providers and backends |
 | [2026-09-01-credential-vault-admin-and-google-linking-reference](./2026-09-01-credential-vault-admin-and-google-linking-reference.md) | 2026-09-01 | Credential Vault Admin bootstrap and Google linking reference | Static review of the sibling reference at `aa0a353`: adapt its explicit setup, Settings linked-state UX, local fallback, audit, and last-Admin invariants while rejecting client-only step-up, automatic email claim/user creation, localStorage JWTs, and placeholder identity ids |
 | [2026-07-28-electron-github-release-update-contract](./2026-07-28-electron-github-release-update-contract.md) | 2026-07-28 | Electron and GitHub Release update contract | Official Electron, electron-builder, and GitHub findings for a host-owned updater: NSIS/DMG+ZIP/AppImage targets, generated metadata, signing gates, tag-based draft-first releases, and npm/browser exclusion |

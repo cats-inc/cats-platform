@@ -15,6 +15,9 @@ for implementation progress and native OS verification limits.
 
 ## Provider Catalog Labels
 
+[Antigravity 1.2.3 model and effort selection](./research/2026-09-16-antigravity-model-picker.md)
+records the seven-model fallback and effort selection without invented defaults.
+
 [Claude 2.1.273 labels and Cats default markers](./research/2026-09-16-claude-catalog-labels.md)
 records the current version-bearing fallback labels and shared lowercase default-marker rule.
 

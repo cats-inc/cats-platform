@@ -37,15 +37,15 @@ test('buildExecutionLabel falls back to the product default instance when state 
     'OpenClaw-AGENT · openclaw-coder',
   );
   assert.equal(
-    buildExecutionLabel('antigravity', '', 'antigravity-default'),
-    'Antigravity-CLI · Antigravity default',
+    buildExecutionLabel('antigravity', '', 'gemini-3.8-flash-low'),
+    'Antigravity-CLI · Gemini 3.8 Flash',
   );
 });
 
 test('buildExecutionLabel normalizes target-level CLI provider ids', () => {
   assert.equal(
-    buildExecutionLabel('antigravity-cli', null, 'antigravity-default'),
-    'Antigravity-CLI · Antigravity default',
+    buildExecutionLabel('antigravity-cli', null, 'gemini-3.8-flash-low'),
+    'Antigravity-CLI · Gemini 3.8 Flash',
   );
 });
 

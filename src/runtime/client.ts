@@ -800,7 +800,11 @@ export class CatsRuntimeClient implements RuntimeClient {
     if (input.instance?.trim()) {
       payload.instance = input.instance.trim();
     }
-    if (input.model?.trim()) {
+    // Antigravity's picker entry identifies a family; effort changes the actual
+    // CLI model id. Let Runtime resolve it instead of sending a conflicting id.
+    const resolvesAntigravityEffort = input.provider === 'antigravity'
+      && typeof input.modelSelection?.controls?.['antigravity.effort'] === 'string';
+    if (input.model?.trim() && !resolvesAntigravityEffort) {
       payload.model = input.model.trim();
     }
     if (input.modelSelection) {

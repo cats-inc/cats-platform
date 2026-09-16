@@ -54,7 +54,7 @@ export function ProviderModelFieldControls(input: {
         control,
         selectedCatalogEntryId,
       );
-      const showSyntheticDefaultOption = !hasExplicitDefaultEnumOption(
+      const showSyntheticDefaultOption = control.key !== 'antigravity.effort' && !hasExplicitDefaultEnumOption(
         control,
         selectedCatalogEntryId,
       );
