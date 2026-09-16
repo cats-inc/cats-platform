@@ -217,14 +217,13 @@ function reconcileReopenedTarget(input: {
   };
 }
 
-test('createStaticProviderModelCatalog keeps Antigravity on a provider-default sentinel', () => {
+test('createStaticProviderModelCatalog initializes Antigravity from its first picker family without a default claim', () => {
   const catalog = createStaticProviderModelCatalog('antigravity', { instance: 'native' });
 
-  assert.equal(catalog.defaultModel, 'antigravity-default');
-  assert.deepEqual(
-    catalog.models.map((model) => model.id),
-    ['antigravity-default'],
-  );
+  assert.equal(catalog.defaultModel, 'gemini-3.8-flash-low');
+  assert.equal(catalog.models.length, 7);
+  assert.equal(catalog.models[0].label, 'Gemini 3.8 Flash');
+  assert.ok(catalog.models.every((model) => !model.default && !/default/i.test(model.label)));
 });
 
 test('createStaticProviderModelCatalog exposes Cursor Composer 2 Fast as the static default', () => {

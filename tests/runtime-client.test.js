@@ -1008,6 +1008,36 @@ test('runtime client does not fall back to static advanced catalogs on upstream 
   }
 });
 
+test('runtime client lets Runtime resolve Antigravity family and effort into the execution model', async () => {
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  const modelSelection = {
+    entryId: 'gemini-3.1-pro-low', entryMode: 'explicit',
+    controls: { 'antigravity.effort': 'high' },
+  };
+  globalThis.fetch = async (_url, init) => {
+    const payload = JSON.parse(init.body);
+    requests.push(payload);
+    return new Response(JSON.stringify({
+      id: 'agy-fixture', providerName: 'antigravity', status: 'ready',
+      model: 'gemini-3.1-pro-high', modelSelection,
+    }), { status: 201, headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    const session = await client.createSession({
+      provider: 'antigravity', instance: 'cli/native', model: 'gemini-3.1-pro-low', modelSelection,
+    });
+    assert.equal(requests[0].model, undefined);
+    assert.deepEqual(requests[0].modelSelection, modelSelection);
+    assert.equal(session.model, 'gemini-3.1-pro-high');
+    await client.createSession({ provider: 'antigravity', model: 'gemini-3.1-pro-high' });
+    assert.equal(requests[1].model, 'gemini-3.1-pro-high');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('runtime client preserves the runtime-sanitized modelSelection returned from session creation', async () => {
   const requests = [];
   let session;

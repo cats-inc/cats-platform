@@ -42,6 +42,19 @@ const codex: ProviderAdvancedModelCatalog = {
   support: { tier: 'full', notes: [] }, warnings: [],
 };
 const claude = createStaticProviderModelCatalog('claude', { instance: 'cli/native' });
+const agyModels = createStaticProviderModelCatalog('antigravity', { instance: 'cli/native' });
+const agy: ProviderAdvancedModelCatalog = {
+  ...createProviderAdvancedCatalogFromModelCatalog(agyModels),
+  backend: 'cli', defaultModel: null, defaultSelection: null,
+  controls: [{
+    key: 'antigravity.effort', label: 'Effort', kind: 'enum', scope: 'both',
+    applicableEntryIds: agyModels.models.slice(0, 4).map((model) => model.id),
+    values: ['low', 'medium', 'high'].map((value) => ({
+      value, label: value,
+      applicableEntryIds: agyModels.models.slice(0, value === 'medium' ? 3 : 4).map((model) => model.id),
+    })),
+  }],
+};
 
 function Picker(props: {
   ready: Promise<void>;
@@ -53,14 +66,16 @@ function Picker(props: {
   });
   const { ready, onChange } = props;
   const registry = useCallback(async () => ({ state: 'ready' as const, revision: 'selected-claude-codex',
-    providers: listProductProviders().filter((provider) => ['claude', 'codex'].includes(provider.id)),
+    providers: listProductProviders().filter((provider) => ['claude', 'codex', 'antigravity'].includes(provider.id)),
   }), []);
   const models = useCallback(async (provider: string) => {
+    if (provider === 'antigravity') return { ...agyModels, defaultModel: null };
     if (provider !== 'codex') return claude;
     await ready;
     return { ...codex, models: codex.entries };
   }, [ready]);
   const advanced = useCallback(async (provider: string) => {
+    if (provider === 'antigravity') return agy;
     if (provider !== 'codex') return createProviderAdvancedCatalogFromModelCatalog(claude);
     await ready;
     return codex;
@@ -94,11 +109,13 @@ test('provider/model switches select and mark runtime defaults while reload pres
   const model = () => view.getByRole('combobox', { name: /^Model/ }) as HTMLSelectElement;
   const effort = () => view.getByRole('combobox', { name: 'Reasoning effort' }) as HTMLSelectElement;
   await waitFor(() => assert.equal(model().value, 'opus'));
+  await waitFor(() => assert.equal(changes.at(-1)?.model, 'opus'));
   fireEvent.change(view.getByRole('combobox', { name: 'Provider' }), { target: { value: 'codex' } });
   await new Promise((resolve) => setTimeout(resolve, 60));
   assert.equal(changes.filter((entry) => entry.provider === 'codex' && entry.model).length, 0);
   release();
   await waitFor(() => assert.equal(model().value, 'gpt-5.6-sol'));
+  await waitFor(() => assert.equal(changes.at(-1)?.model, 'gpt-5.6-sol'));
   assert.equal(model().selectedOptions[0].textContent, 'gpt-5.6-sol (default)');
   assert.equal(effort().value, 'low');
   assert.equal(effort().selectedOptions[0].textContent, 'Low (default)');
@@ -116,4 +133,40 @@ test('provider/model switches select and mark runtime defaults while reload pres
   assert.equal([...effort().options].find((option) => option.value === 'medium')?.textContent, 'Medium (default)');
   fireEvent.change(model(), { target: { value: 'gpt-5.6-sol' } });
   await waitFor(() => assert.equal(effort().value, 'low'));
+});
+
+test('Antigravity selects first model and effort without synthetic defaults and keeps model-specific effort', async (t) => {
+  reset();
+  t.after(reset);
+  const changes: ProviderTargetSelection[] = [];
+  const onChange = (target: ProviderTargetSelection) => { changes.push(target); };
+  const ready = Promise.resolve();
+  let view = render(<Picker ready={ready} onChange={onChange} />);
+  const model = () => view.getByRole('combobox', { name: /^Model/ }) as HTMLSelectElement;
+  const effort = () => view.getByRole('combobox', { name: 'Effort' }) as HTMLSelectElement;
+  await waitFor(() => assert.equal(model().value, 'opus'));
+  await waitFor(() => assert.equal(changes.at(-1)?.model, 'opus'));
+  fireEvent.change(view.getByRole('combobox', { name: 'Provider' }), { target: { value: 'antigravity' } });
+  await waitFor(() => assert.equal(model().value, 'gemini-3.8-flash-low'));
+  await waitFor(() => assert.equal(changes.at(-1)?.model, 'gemini-3.8-flash-low'));
+  assert.equal(model().selectedOptions[0].textContent, 'Gemini 3.8 Flash');
+  assert.equal(effort().value, 'low');
+  assert.deepEqual([...effort().options].map((option) => option.textContent), ['low', 'medium', 'high']);
+  assert.ok([...model().options].every((option) => !/default/i.test(option.textContent ?? '')));
+
+  fireEvent.change(effort(), { target: { value: 'high' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.controls?.['antigravity.effort'], 'high'));
+  const saved = changes.at(-1)!;
+  view.unmount();
+  view = render(<Picker ready={ready} initialTarget={saved} onChange={onChange} />);
+  await waitFor(() => assert.equal(effort().value, 'high'));
+  fireEvent.change(model(), { target: { value: 'gemini-3.1-pro-low' } });
+  await waitFor(() => assert.equal(effort().value, 'low'));
+  assert.deepEqual([...effort().options].map((option) => option.textContent), ['low', 'high']);
+
+  for (const id of ['claude-sonnet-4-6', 'claude-opus-4-6-thinking', 'gpt-oss-120b-medium']) {
+    fireEvent.change(model(), { target: { value: id } });
+    await waitFor(() => assert.equal(view.queryByRole('combobox', { name: 'Effort' }), null));
+    assert.equal(changes.at(-1)?.modelSelection?.controls?.['antigravity.effort'], undefined);
+  }
 });

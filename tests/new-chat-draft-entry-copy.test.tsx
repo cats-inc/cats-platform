@@ -274,7 +274,7 @@ test('default chat draft expanded to a group with runtime assist hides the chat-
             name: 'Reviewer A',
             provider: 'antigravity',
             instance: 'native',
-            model: 'antigravity-default',
+            model: 'gemini-3.8-flash-low',
             modelSelection: null,
           },
           {
@@ -348,7 +348,7 @@ test('group route shows add-participant hint inside the composer', () => {
             name: 'Inline Reviewer',
             provider: 'antigravity',
             instance: 'native',
-            model: 'antigravity-default',
+            model: 'gemini-3.8-flash-low',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },
@@ -407,7 +407,7 @@ test('group route hides add-participant hint and button when max participants is
             name: 'Inline Reviewer',
             provider: 'antigravity',
             instance: 'native',
-            model: 'antigravity-default',
+            model: 'gemini-3.8-flash-low',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },
@@ -437,7 +437,7 @@ test('group route keeps the current audience chip and inline avatar row for part
             name: 'Inline Reviewer',
             provider: 'antigravity',
             instance: 'native',
-            model: 'antigravity-default',
+            model: 'gemini-3.8-flash-low',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },
@@ -452,7 +452,7 @@ test('group route keeps the current audience chip and inline avatar row for part
   assert.equal(avatarSlotMatches.length, 2);
   assert.match(markup, /class="audienceChip"/u);
   assert.match(markup, /Milo \+1/u);
-  assert.match(markup, /data-tooltip="Antigravity-CLI · Antigravity default"/u);
+  assert.match(markup, /data-tooltip="Antigravity-CLI · Gemini 3.8 Flash"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /aria-label="Remove Inline Reviewer"/u);
 });
@@ -504,7 +504,7 @@ test('group route caps the audience chip selection to the configured max audienc
             name: 'Inline Reviewer',
             provider: 'antigravity',
             instance: 'native',
-            model: 'antigravity-default',
+            model: 'gemini-3.8-flash-low',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },
@@ -541,7 +541,7 @@ test('group route keeps remove controls hidden when only two participants remain
             name: 'Inline Reviewer',
             provider: 'antigravity',
             instance: 'native',
-            model: 'antigravity-default',
+            model: 'gemini-3.8-flash-low',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },
@@ -585,7 +585,7 @@ test('group route restores remove controls once the draft has three participants
             name: 'Inline Reviewer',
             provider: 'antigravity',
             instance: 'native',
-            model: 'antigravity-default',
+            model: 'gemini-3.8-flash-low',
             modelSelection: null,
             roleHint: 'Counterpoint',
           },
@@ -638,7 +638,7 @@ test('parallel draft keeps follower targets on the same audience-chip treatment 
           {
             provider: 'antigravity-cli',
             instance: null,
-            model: 'antigravity-default',
+            model: 'gemini-3.8-flash-low',
             modelSelection: null,
           },
         ],
@@ -654,7 +654,7 @@ test('parallel draft keeps follower targets on the same audience-chip treatment 
   assert.match(markup, /class="draftCompareCarousel"/u);
   assert.match(markup, /data-tooltip="[^"]*opus-4\.6-1m"/u);
   assert.match(markup, /data-tooltip="[^"]*codex-max"/u);
-  assert.match(markup, /data-tooltip="[^"]*Antigravity default"/u);
+  assert.match(markup, /data-tooltip="[^"]*Gemini 3.8 Flash"/u);
   assert.equal(audienceChipMatches.length, 3);
   assert.equal(audienceAvatarMatches.length, 0);
   assert.equal(recipientChipMatches.length, 0);
@@ -1141,7 +1141,7 @@ test('advanced draft controls off hides the per-branch collaborator button on pa
         parallelTargets: [
           leadTarget,
           { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
-          { provider: 'antigravity-cli', instance: null, model: 'antigravity-default', modelSelection: null },
+          { provider: 'antigravity-cli', instance: null, model: 'gemini-3.8-flash-low', modelSelection: null },
         ],
         onAddParallelTarget: () => {},
       })}
@@ -1162,7 +1162,7 @@ test('advanced draft controls on exposes a collaborator button on every parallel
         parallelTargets: [
           leadTarget,
           { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
-          { provider: 'antigravity-cli', instance: null, model: 'antigravity-default', modelSelection: null },
+          { provider: 'antigravity-cli', instance: null, model: 'gemini-3.8-flash-low', modelSelection: null },
         ],
         builderControls: {
           showGroupAddButton: true,
@@ -1195,7 +1195,7 @@ test('+Group preset with advanced on still lets every shadow row add collaborato
         parallelTargets: [
           leadTarget,
           { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
-          { provider: 'antigravity-cli', instance: null, model: 'antigravity-default', modelSelection: null },
+          { provider: 'antigravity-cli', instance: null, model: 'gemini-3.8-flash-low', modelSelection: null },
         ],
         onQuickAddDraftTemporaryParticipant: () => {},
         parallelBranchActions: { onQuickAddTemporaryParticipant: () => {} },
@@ -1510,7 +1510,7 @@ test('synthetic orchestrator-authored parallel draft renders landed branch field
           {
             provider: 'antigravity-cli',
             instance: null,
-            model: 'antigravity-default',
+            model: 'gemini-3.8-flash-low',
             modelSelection: null,
             audienceKeys: ['temp:critic'],
             workflowShape: 'concurrent',
@@ -1522,7 +1522,7 @@ test('synthetic orchestrator-authored parallel draft renders landed branch field
         draftTemporaryParticipants: [
           { participantId: 'lead', name: 'Lead Cat', provider: 'claude-cli', model: 'opus-4.6-1m', modelSelection: null },
           { participantId: 'reviewer', name: 'Reviewer Cat', provider: 'codex-cli', model: 'codex-max', modelSelection: null },
-          { participantId: 'critic', name: 'Critic Cat', provider: 'antigravity-cli', model: 'antigravity-default', modelSelection: null },
+          { participantId: 'critic', name: 'Critic Cat', provider: 'antigravity-cli', model: 'gemini-3.8-flash-low', modelSelection: null },
         ],
         parallelBranchActions: {
           onSetAudienceKeys: () => {},
@@ -1537,7 +1537,7 @@ test('synthetic orchestrator-authored parallel draft renders landed branch field
   assert.match(markup, /class="draftCompareCarousel"/u);
   assert.match(markup, /C:\/repo\/worktrees\/review/u);
   assert.match(markup, /Worktree \/ Read only/u);
-  assert.match(markup, /Antigravity-CLI · Antigravity default/u);
+  assert.match(markup, /Antigravity-CLI · Gemini 3.8 Flash/u);
   // Per the 2026-05-01 retirement, no shadow branch may surface its
   // own prompt — the lead's `composerDraft` shows verbatim.
   assert.doesNotMatch(markup, /Prompt detached/u);
@@ -1603,7 +1603,7 @@ test('+Group + many +compares keeps every branch collaborator button visible whi
           {
             provider: 'antigravity-cli',
             instance: null,
-            model: 'antigravity-default',
+            model: 'gemini-3.8-flash-low',
             modelSelection: null,
             audienceKeys: ['temp:d'],
             workflowShape: 'sequential',
@@ -1621,7 +1621,7 @@ test('+Group + many +compares keeps every branch collaborator button visible whi
           { participantId: 'a', name: 'Aria', provider: 'claude-cli', model: 'opus-4.6-1m', modelSelection: null },
           { participantId: 'b', name: 'Bram', provider: 'claude-cli', model: 'opus-4.6-1m', modelSelection: null },
           { participantId: 'c', name: 'Cleo', provider: 'codex-cli', model: 'codex-max', modelSelection: null },
-          { participantId: 'd', name: 'Dot', provider: 'antigravity-cli', model: 'antigravity-default', modelSelection: null },
+          { participantId: 'd', name: 'Dot', provider: 'antigravity-cli', model: 'gemini-3.8-flash-low', modelSelection: null },
           { participantId: 'e', name: 'Echo', provider: 'cursor-cli', model: 'composer-max', modelSelection: null },
         ],
         onQuickAddDraftTemporaryParticipant: () => {},
@@ -1651,7 +1651,7 @@ test('parallel draft without temp participants keeps the lead roster collapsed a
         parallelTargets: [
           { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null },
           { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
-          { provider: 'antigravity-cli', instance: null, model: 'antigravity-default', modelSelection: null },
+          { provider: 'antigravity-cli', instance: null, model: 'gemini-3.8-flash-low', modelSelection: null },
           { provider: 'cursor-cli', instance: null, model: 'composer-max', modelSelection: null },
         ],
       })}

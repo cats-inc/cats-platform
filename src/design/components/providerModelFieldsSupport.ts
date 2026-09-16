@@ -315,9 +315,12 @@ export function resolveDisplayedEnumControlValue(
     return serialized;
   }
 
-  const explicitDefault = listApplicableControlValueOptions(control, entryId)
+  const options = listApplicableControlValueOptions(control, entryId);
+  const explicitDefault = options
     .find((option) => typeof option.label === 'string' && /\(default\)/iu.test(option.label));
-  return explicitDefault ? String(explicitDefault.value) : '';
+  const initialOption = explicitDefault
+    ?? (control.key === 'antigravity.effort' ? options[0] : undefined);
+  return initialOption ? String(initialOption.value) : '';
 }
 
 export function parseControlInputValue(
