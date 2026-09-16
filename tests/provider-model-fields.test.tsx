@@ -226,14 +226,14 @@ test('createStaticProviderModelCatalog initializes Antigravity from its first pi
   assert.ok(catalog.models.every((model) => !model.default && !/default/i.test(model.label)));
 });
 
-test('createStaticProviderModelCatalog exposes Cursor Composer 2 Fast as the static default', () => {
+test('Cursor fallback exposes six fixed combos and initializes the first without a default claim', () => {
   const catalog = createStaticProviderModelCatalog('cursor', { instance: 'native' });
-
-  assert.equal(catalog.defaultModel, 'composer-2-fast');
-  assert.equal(
-    catalog.models.find((model) => model.default)?.id,
-    'composer-2-fast',
-  );
+  assert.equal(catalog.defaultModel, 'grok-4.6[effort=xhigh,fast=true]');
+  assert.equal(catalog.models.length, 6);
+  assert.ok(catalog.models.every(model => !model.default && !/default/i.test(model.label)));
+  assert.equal(catalog.models[2].id, 'claude-opus-5[thinking=true,context=300k,effort=high,fast=false]');
+  assert.equal(catalog.models[2].label, 'Claude Opus 5 — 300K, High, Thinking');
+  assert.equal(shouldAllowLegacyManualModelEntry({ entryCount: 6, isLegacyModelTarget: false }), true);
 });
 
 test('static fallback catalogs do not overwrite an existing model selection during panel reopen', () => {

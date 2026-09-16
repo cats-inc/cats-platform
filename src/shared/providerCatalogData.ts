@@ -107,11 +107,12 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'Grok 4.1 Fast Reasoning', label: 'Grok 4.1 Fast Reasoning' },
   ],
   cursor: [
-    { value: 'auto', label: 'auto' },
-    { value: 'composer-2-fast', label: 'Composer 2 Fast (default)', default: true },
-    { value: 'gpt-5.4', label: 'gpt-5.4' },
-    { value: 'claude-opus-4-6', label: 'claude 4.6 opus' },
-    { value: 'gemini-3.1-pro', label: 'gemini 3.1 pro' },
+    { value: 'grok-4.6[effort=xhigh,fast=true]', label: 'Cursor Grok 4.6 — Extra High, Fast' },
+    { value: 'composer-2.5[fast=true]', label: 'Composer 2.5 — Fast' },
+    { value: 'claude-opus-5[thinking=true,context=300k,effort=high,fast=false]', label: 'Claude Opus 5 — 300K, High, Thinking' },
+    { value: 'gpt-5.6-sol[context=272k,reasoning=medium,fast=false]', label: 'GPT-5.6 Sol — 272K, Medium' },
+    { value: 'gemini-3.8-flash[reasoning_effort=high]', label: 'Gemini 3.8 Flash — High' },
+    { value: 'muse-spark-1.3[context=300k,effort=high]', label: 'Muse Spark 1.3 — 300K, High' },
   ],
   kiro: [
     { value: 'claude-sonnet-4.5', label: 'claude-sonnet-4.5 (default)', default: true },
