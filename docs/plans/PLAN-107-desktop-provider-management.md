@@ -121,3 +121,7 @@ CI locally solely for a commit/version bump.
   notes pin that exact Runtime 0.1.24 source. Final independent helper review
   cleared all blockers. The new Windows helper/PATH cases passed (7), and the
   package-content assertion passed after registering the shared manager.
+
+- Final viewport inspection bounded the provider list inside onboarding, keeping
+  Apply/progress/Continue visible at the Desktop window size even with all 18
+  supported native examples. Settings uses a bounded list for the same footer.

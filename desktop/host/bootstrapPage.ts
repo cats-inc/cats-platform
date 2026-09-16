@@ -401,11 +401,17 @@ export function buildDesktopBootstrapPage(): string {
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
-      padding: 40px 24px 32px;
+      height: 100dvh;
+      padding: 32px 24px 24px;
       text-align: center;
     }
-    .onboarding-page > .catsProviderManager { width: 100%; text-align: left; }
+    .onboarding-page > .hero { flex-shrink: 0; }
+    .onboarding-page > .catsProviderManager {
+      width: 100%; text-align: left; margin: 0 auto; min-height: 0;
+      flex: 1; display: flex; flex-direction: column;
+    }
+    .onboarding-page .catsProviderManager > :not(.pm-list) { flex-shrink: 0; }
+    .onboarding-page .catsProviderManager .pm-list { flex: 1; min-height: 0; max-height: none; }
     .onboarding-headline {
       font-size: 0.92rem;
       color: var(--muted);

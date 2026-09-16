@@ -227,6 +227,7 @@ export function mountProviderManager(root, bridge, options = {}) {
       .catsProviderManager .pm-intro,.catsProviderManager small{color:var(--pm-muted);font-size:.85rem;display:block;line-height:1.6}
       .catsProviderManager .pm-row{display:flex;justify-content:space-between;align-items:start;gap:16px;padding:18px 0;border-bottom:1px solid var(--pm-border)}
       .catsProviderManager .pm-detail{flex:1;min-width:0}.catsProviderManager .pm-name{display:flex;align-items:center;gap:10px;cursor:pointer}
+      .catsProviderManager .pm-list{max-height:min(60vh,640px);overflow-y:auto;overscroll-behavior:contain;padding-right:4px}
       .catsProviderManager input[type=checkbox]{width:19px;height:19px;accent-color:var(--pm-accent);flex-shrink:0;opacity:1}
       .catsProviderManager .pm-status{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:.88rem}.catsProviderManager .pm-ok{color:#207a53}.catsProviderManager .pm-warn{color:#986515}
       .catsProviderManager .pm-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;max-width:330px}
@@ -240,7 +241,7 @@ export function mountProviderManager(root, bridge, options = {}) {
       .catsProviderManager .pm-progress{display:flex;gap:10px;align-items:center;padding:12px;background:rgba(196,101,58,.08);border-radius:8px;margin:12px 0}
       .catsProviderManager .pm-spinner{display:inline-block;width:19px;height:19px;border:2px solid var(--pm-border);border-top-color:var(--pm-accent);border-radius:50%;animation:pm-spin .8s linear infinite;flex-shrink:0}
       @keyframes pm-spin{to{transform:rotate(360deg)}}.catsProviderManager a{font-size:.8rem;color:var(--pm-accent)}.catsProviderManager summary{font-size:.83rem;cursor:pointer;padding:7px 0}
-      .catsProviderManager .pm-more button{display:block;margin:4px 0}.catsProviderManager .pm-dialog{border:2px solid var(--pm-accent);border-radius:10px;padding:20px;margin:16px 0;background:var(--panel,#fff)}
+      .catsProviderManager .pm-more button{display:block;margin:4px 0}.catsProviderManager .pm-dialog{border:2px solid var(--pm-accent);border-radius:10px;padding:20px;margin:16px 0;background:var(--panel,#fff);max-height:45vh;overflow:auto}
       .catsProviderManager [role=alert]{color:#b2342c;overflow-wrap:anywhere}.catsProviderManager li{margin-left:20px;font-size:.83rem;overflow-wrap:anywhere}
       @media(max-width:580px){.catsProviderManager .pm-row{flex-direction:column}.catsProviderManager .pm-actions{max-width:none;justify-content:flex-start}.catsProviderManager .pm-footer{gap:8px}}
       @media(prefers-reduced-motion:reduce){.catsProviderManager .pm-spinner{animation-duration:2s}}
