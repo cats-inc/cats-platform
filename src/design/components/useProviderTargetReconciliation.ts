@@ -93,7 +93,7 @@ export function useProviderTargetReconciliation(input: {
   ]);
 
   useEffect(() => {
-    if (input.effectiveCatalog.models.length === 0 || hasBlankLegacyDraft) {
+    if (input.catalogLoading || input.effectiveCatalog.models.length === 0 || hasBlankLegacyDraft) {
       return;
     }
 
@@ -140,6 +140,7 @@ export function useProviderTargetReconciliation(input: {
       }));
     }
   }, [
+    input.catalogLoading,
     input.effectiveAdvancedCatalog,
     input.effectiveCatalog,
     input.instance,

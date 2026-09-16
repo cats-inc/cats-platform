@@ -45,8 +45,24 @@ test('resolveSelectedProviderInstance preserves an existing instance until the r
 
 test('static Codex catalog keeps raw model labels without a synthetic default suffix', () => {
   const catalog = createStaticProviderModelCatalog('codex');
-  assert.equal(catalog.models[0]?.id, 'gpt-5.4');
-  assert.equal(catalog.models[0]?.label, 'gpt-5.4');
+  assert.equal(catalog.models[0]?.id, 'gpt-6-astra');
+  assert.equal(catalog.models[0]?.label, 'gpt-6-astra');
+});
+
+test('advanced catalog preserves scalar per-entry defaults and drops malformed values', () => {
+  const catalog = normalizeProviderAdvancedModelCatalog({
+    entries: [
+      { id: 'gpt-5.6-sol', controlDefaults: {
+        'codex.reasoning_effort': 'low', count: 0, enabled: false,
+        missing: null, invalid: { value: 'medium' },
+      } },
+      { id: 'gpt-5.5', controlDefaults: [] },
+    ],
+  }, 'codex');
+  assert.deepEqual(catalog.entries[0].controlDefaults, {
+    'codex.reasoning_effort': 'low', count: 0, enabled: false,
+  });
+  assert.equal(catalog.entries[1].controlDefaults, undefined);
 });
 
 test('resolveCatalogTargetSelection prefers the runtime catalog default over a stale initial model', () => {

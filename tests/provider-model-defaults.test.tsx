@@ -1,0 +1,116 @@
+import { resetTestDom } from './helpers/installDomBeforeReact.ts';
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import React, { useCallback, useState } from 'react';
+import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
+import { clearProviderCatalogClientCache } from '../src/app/renderer/providerCatalogClient.ts';
+import { clearProviderRegistryClientCache } from '../src/app/renderer/providerRegistryClient.ts';
+import { ProviderModelFields, createStaticProviderRegistryReadModel }
+  from '../src/design/components/ProviderModelFields.tsx';
+import {
+  createProviderAdvancedCatalogFromModelCatalog,
+  createStaticProviderModelCatalog,
+  type ProviderAdvancedModelCatalog,
+} from '../src/shared/providerCatalog.ts';
+import type { ProviderTargetSelection } from '../src/shared/providerSelection.ts';
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = false;
+
+// A non-first runtime default deliberately differs from the warm static catalog.
+const codex: ProviderAdvancedModelCatalog = {
+  provider: 'codex', backend: 'cli', instance: 'native', source: 'static', cache: null,
+  defaultModel: 'gpt-5.6-sol',
+  entries: [
+    { id: 'gpt-6-astra', label: 'gpt-6-astra',
+      controlDefaults: { 'codex.reasoning_effort': 'medium' } },
+    { id: 'gpt-5.6-sol', label: 'gpt-5.6-sol', default: true,
+      controlDefaults: { 'codex.reasoning_effort': 'low' } },
+  ],
+  presets: [],
+  controls: [{
+    key: 'codex.reasoning_effort', label: 'Reasoning effort', kind: 'enum', scope: 'both',
+    values: [
+      { value: 'low', label: 'Low' },
+      { value: 'medium', label: 'Medium' },
+      { value: 'high', label: 'High' },
+    ],
+  }],
+  defaultSelection: { entryMode: 'explicit', entryId: 'gpt-5.6-sol',
+    controls: { 'codex.reasoning_effort': 'low' } },
+  support: { tier: 'full', notes: [] }, warnings: [],
+};
+const claude = createStaticProviderModelCatalog('claude', { instance: 'native' });
+
+function Picker(props: {
+  ready: Promise<void>;
+  initialTarget?: ProviderTargetSelection;
+  onChange: (target: ProviderTargetSelection) => void;
+}) {
+  const [target, setTarget] = useState<ProviderTargetSelection>(props.initialTarget ?? {
+    provider: 'claude', instance: 'native', model: '', modelSelection: null,
+  });
+  const { ready, onChange } = props;
+  const registry = useCallback(async () => createStaticProviderRegistryReadModel(), []);
+  const models = useCallback(async (provider: string) => {
+    if (provider !== 'codex') return claude;
+    await ready;
+    return { ...codex, models: codex.entries };
+  }, [ready]);
+  const advanced = useCallback(async (provider: string) => {
+    if (provider !== 'codex') return createProviderAdvancedCatalogFromModelCatalog(claude);
+    await ready;
+    return codex;
+  }, [ready]);
+  const changed = useCallback((next: ProviderTargetSelection) => {
+    onChange(next);
+    setTarget(next);
+  }, [onChange]);
+  return <I18nProvider locale="en"><ProviderModelFields
+    provider={target.provider} instance={target.instance} model={target.model}
+    modelSelection={target.modelSelection} onTargetChange={changed}
+    fetchProviderRegistry={registry} fetchProviderModels={models} fetchAdvancedProviderModels={advanced}
+  /></I18nProvider>;
+}
+
+function reset(): void {
+  cleanup();
+  resetTestDom();
+  clearProviderCatalogClientCache();
+  clearProviderRegistryClientCache();
+}
+
+test('provider/model switches select and mark runtime defaults while reload preserves explicit effort', async (t) => {
+  reset();
+  t.after(reset);
+  let release!: () => void;
+  const ready = new Promise<void>((resolve) => { release = resolve; });
+  const changes: ProviderTargetSelection[] = [];
+  const onChange = (target: ProviderTargetSelection) => { changes.push(target); };
+  let view = render(<Picker ready={ready} onChange={onChange} />);
+  const model = () => view.getByRole('combobox', { name: /^Model/ }) as HTMLSelectElement;
+  const effort = () => view.getByRole('combobox', { name: 'Reasoning effort' }) as HTMLSelectElement;
+  await waitFor(() => assert.equal(model().value, 'opus'));
+  fireEvent.change(view.getByRole('combobox', { name: 'Provider' }), { target: { value: 'codex' } });
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(changes.filter((entry) => entry.provider === 'codex' && entry.model).length, 0);
+  release();
+  await waitFor(() => assert.equal(model().value, 'gpt-5.6-sol'));
+  assert.equal(model().selectedOptions[0].textContent, 'gpt-5.6-sol (default)');
+  assert.equal(effort().value, 'low');
+  assert.equal(effort().selectedOptions[0].textContent, 'Low (default)');
+
+  fireEvent.change(model(), { target: { value: 'gpt-6-astra' } });
+  await waitFor(() => assert.equal(effort().value, 'medium'));
+  assert.equal(effort().selectedOptions[0].textContent, 'Medium (default)');
+  assert.equal([...effort().options].filter((option) => option.textContent?.includes('(default)')).length, 1);
+  fireEvent.change(effort(), { target: { value: 'high' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.controls?.['codex.reasoning_effort'], 'high'));
+  const saved = changes.at(-1)!;
+  view.unmount();
+  view = render(<Picker ready={ready} initialTarget={saved} onChange={onChange} />);
+  await waitFor(() => assert.equal(effort().value, 'high'));
+  assert.equal([...effort().options].find((option) => option.value === 'medium')?.textContent, 'Medium (default)');
+  fireEvent.change(model(), { target: { value: 'gpt-5.6-sol' } });
+  await waitFor(() => assert.equal(effort().value, 'low'));
+});

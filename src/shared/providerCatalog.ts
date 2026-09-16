@@ -117,6 +117,7 @@ export interface ProviderAdvancedCatalogEntryLimits {
 }
 
 export interface ProviderAdvancedCatalogEntry extends ProviderCatalogEntry {
+  controlDefaults?: Record<string, ProviderAdvancedControlValue>;
   capabilityTags?: string[];
   limits?: ProviderAdvancedCatalogEntryLimits;
   notes?: string[];
@@ -705,6 +706,9 @@ export function normalizeProviderAdvancedModelCatalog(
         id: readNullableString(entry.id) ?? '',
         label: readNullableString(entry.label) ?? readNullableString(entry.id) ?? '',
         default: Boolean(entry.default),
+        ...(readSelectionControls(entry.controlDefaults)
+          ? { controlDefaults: readSelectionControls(entry.controlDefaults)! }
+          : {}),
         ...(readNullableString(entry.status) ? { status: readNullableString(entry.status)! } : {}),
         ...(readStringArray(entry.capabilityTags).length > 0
           ? { capabilityTags: readStringArray(entry.capabilityTags) }
