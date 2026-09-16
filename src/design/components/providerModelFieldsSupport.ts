@@ -413,7 +413,7 @@ export function formatCatalogEntryLabel(
 }
 
 function formatDefaultLabel(label: string, isDefault: boolean | undefined): string {
-  if (isDefault === undefined) return label;
+  if (isDefault === undefined) return label.replace(/\(default\)/giu, '(default)');
   const plainLabel = label.replace(/\s*\(default\)/giu, '');
   return isDefault ? `${plainLabel} (default)` : plainLabel;
 }

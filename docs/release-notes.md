@@ -19,6 +19,41 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-16 (0.2.8 unsigned preview)
+
+### Updated Claude/Codex catalogs and consistent defaults
+
+Behavior change:
+
+Claude Code 2.1.273 appears as four version-bearing choices: Opus 5 with 1M
+context (default), Fable 5.1, Sonnet 5, and Haiku 4.5. The duplicate upstream
+Default/Opus row is represented once. Opus, Fable, and Sonnet offer all six
+observed effort levels with High as default; Haiku has no effort selector.
+Desktop and Playground fallback lists now include Fable. Model/effort menus
+standardize only the status marker to lowercase `(default)`, preserving the
+model name's spelling and case.
+
+The preview also includes the merged Codex 0.154.0 five-model catalog and
+per-model effort defaults, Runtime's initial session discovery fixes, and the
+new provider-selection bootstrap flow. Provider inventory and ordinary selectors
+follow the provider targets selected in Runtime setup.
+
+Migration steps:
+
+Fully quit Cats and install the 0.2.8 preview normally. Desktop packages Runtime
+0.1.23 at `46982a34d6964d2eee804fb60a4274ab382ea8ff` (Runtime PR #49); the existing
+Usage 0.2.0 App lock remains unchanged. User-curated catalog overrides still take
+precedence over the bundled example; this operator's Claude override was explicitly
+approved and synchronized separately.
+
+After both preparation PRs merge, dispatch the unsigned preview with `tag=v0.2.8`
+and `runtime_ref=46982a34d6964d2eee804fb60a4274ab382ea8ff`. The workflow creates
+the tag and publishes Windows
+x64 NSIS, macOS x64 DMG/updater ZIP, and Linux arm64 DEB after all packaging and
+asset-validation gates pass. npm packages use the existing `next` channel.
+
+Deprecations: none. This remains an unsigned GitHub prerelease.
+
 ## 2026-09-16 (0.2.7 unsigned preview)
 
 ### Complete setup again after resetting all data

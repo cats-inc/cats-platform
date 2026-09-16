@@ -391,6 +391,18 @@ test('support badge labels match runtime catalog support tiers', () => {
 
 test('catalog entry labels hide available markers but keep actionable statuses', () => {
   assert.equal(
+    formatCatalogEntryLabel({ label: 'Opus 5 with 1M context (Default)', default: true }),
+    'Opus 5 with 1M context (default)',
+  );
+  assert.equal(
+    formatCatalogEntryLabel({ label: 'Fable 5.1 (DEFAULT)', default: false }),
+    'Fable 5.1',
+  );
+  assert.equal(
+    formatCatalogEntryLabel({ label: 'MiXeD model (Default)' }),
+    'MiXeD model (default)',
+  );
+  assert.equal(
     formatCatalogEntryLabel({
       label: 'GPT-5.4',
       status: 'available',
