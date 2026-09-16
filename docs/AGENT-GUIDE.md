@@ -124,8 +124,8 @@ Update indexes when adding or changing tracked artifacts:
 
 Before completing a task or handing off:
 
-- [ ] Code compiles/runs without errors
-- [ ] Tests pass
+- [ ] Required checks for the changed surface passed under [Local Validation Scope](../AGENTS.md#local-validation-scope)
+- [ ] Actual checks/results and any remaining CI or OS validation are recorded; no full-suite claim from focused checks
 - [ ] Documentation updated
 - [ ] Durable state is written to repo memory docs when needed
 - [ ] Commit message follows conventions
@@ -155,4 +155,4 @@ validated `cats-runtime` pilot posture.
 
 ---
 
-*Last updated: 2026-04-11*
+*Last updated: 2026-09-16*

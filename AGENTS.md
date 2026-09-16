@@ -537,9 +537,46 @@ tests/
 └── e2e/            # End-to-end tests (full system)
 ```
 
+### Local Validation Scope
+
+This is the shared testing policy for all agents, adopted 2026-09-16.
+Agent-specific instructions and handoff checklists MUST use this scope.
+
+- Before commit or handoff, run the smallest validation that covers the changed
+  behavior and its affected consumers. A commit or PR alone MUST NOT trigger a
+  local full `npm test` or production/Desktop/mobile build.
+- Choose local checks by impact:
+
+  | Change | Local validation |
+  |--------|------------------|
+  | Documentation, rules, or comments only | Review the diff, links, and stated commands; no application tests or builds unless executable behavior is also changed |
+  | Localized product/server logic | Relevant regression tests and the affected TypeScript/build checks |
+  | Renderer or mobile UI | Relevant behavior/boundary tests and the affected renderer/mobile checks; build outputs consumed by those tests first |
+  | Shared contracts, storage, auth, startup/bootstrap, Runtime integration, or cross-product routing | Expand to affected integration and consumer suites, including cats-runtime when its contract changes |
+  | Dependencies, Desktop host, packaging, updates, or OS helpers | Relevant host, build, package/install, or process/OS checks for the changed surface |
+
+- Select tests using both code dependencies and explicit contracts. Include
+  HTML, configuration, filesystem-loaded assets, and generated outputs; import
+  analysis alone cannot identify every affected test.
+- Run a full local suite only when explicitly requested, when a failure needs
+  full-suite reproduction, or when the affected scope cannot be bounded with
+  confidence. State the reason before expanding the run.
+- Reuse passing checks while their inputs, generated artifacts, and relevant
+  environment remain unchanged. Rebuild stale required artifacts, but do not
+  repeat a passing build or suite merely to advance from review to commit/PR.
+- Record the checks actually run, their results, and any relevant validation
+  left to CI or unavailable OSes. Focused validation MUST NOT be described as
+  a full-suite pass. The State Hygiene Policy applies to every local check.
+- PR CI remains the full-suite gate: `validate` and `nodejs (24)` must pass.
+  Version bumps and publication candidates must satisfy full test validation
+  and the existing checks for their npm/Desktop release path. Passing CI for
+  the candidate does not require a duplicate full local run. A version bump
+  is not the only reason to expand validation of a core or packaging change.
+
 ### Testing Rules
 
-1. **Before Commit**: All unit tests must pass (`npm test` / `pytest` / `dotnet test`)
+1. **Before Commit**: The checks selected under **Local Validation Scope** must
+   pass. Full local `npm test` is not a blanket prerequisite.
 2. **Coverage Target**: Minimum 80% for stable domain modules
 3. **Naming Convention**: `*.test.js`, `*.test.ts`, or `*.test.tsx` with clear
    scenario-oriented test names. All three are collected: `.ts`/`.tsx` are bundled
@@ -548,7 +585,8 @@ tests/
    the bundler nor a run glob -- a test that never runs looks exactly like a
    passing one.
 4. **Mocking**: Prefer lightweight in-process stubs over heavy mocking frameworks
-5. **CI Requirement**: All tests must pass before merge
+5. **CI Requirement**: The required full-suite CI checks must pass before merge.
+   Focused local validation does not waive CI.
 6. **Fixtures Are Typechecked**: `tsconfig.test.json` is part of
    `npm run typecheck`, so a fixture that drifts from the contract it stands in
    for fails the build. Prefer completing a fixture, or reaching for the
@@ -628,7 +666,7 @@ docs(readme): update installation instructions
 Before submitting a PR, ensure:
 
 - [ ] Code follows project coding conventions
-- [ ] All tests pass locally
+- [ ] Scoped local validation passed; actual checks and results are recorded
 - [ ] New code has appropriate test coverage
 - [ ] Documentation is updated (if applicable)
 - [ ] No secrets or credentials in code
