@@ -95,6 +95,7 @@ import {
 import { runDesktopUpdateDialog } from './updateDialog.js';
 import { resolveSelectedSetupAuditActions } from './setupAudit.js';
 import { pauseSelectedSetupHelpers, retryPendingSetupOperationReleases, targetsForSetupHelper, withSelectedSetupTargets } from './providerSelection.js';
+import { DesktopProviderManager, type ProviderManagerRuntime } from './providerManager.js';
 import {
   buildDesktopCliInventoryFromRuntime,
   probeContradictsCachedBootstrapState,
@@ -318,6 +319,11 @@ function rememberRuntimeCliInventoryProbe(probe: RuntimeCliInventoryProbe | null
     latestProviderDiagnosticsPayload = null;
   }
   latestCliInventoryProbe = probe;
+  if (probe.state?.status === 'error') {
+    runtimeCliInventoryScanPending = false;
+    latestCliInventoryError = createCliInventoryScanFailedError();
+    return false;
+  }
   if (probe.selection?.state !== 'selected' || (probe.scan && !isRuntimeCliInventoryScanActive(probe))) {
     runtimeCliInventoryScanPending = false;
     clearCliInventoryError();
@@ -1172,6 +1178,37 @@ async function getSetupSnapshot(): Promise<DesktopSetupSnapshot> {
   return snapshot;
 }
 
+let providerManager: DesktopProviderManager | null = null;
+let holdProviderOnboarding = false;
+function getProviderManager(): DesktopProviderManager {
+  if (!hostConfig) throw new Error('Desktop host is not initialized.');
+  providerManager ??= new DesktopProviderManager({
+    platform: process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'macos' : 'linux',
+    request: async <T>(path: string, init: RequestInit = {}): Promise<T> => {
+      const response = await fetchWithTimeout(`${hostConfig!.runtimeBaseUrl}${path}`, init, RUNTIME_SETUP_STATE_TIMEOUT_MS);
+      if (!response.ok) {
+        const result = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(result?.error || `Runtime provider request failed (${response.status}).`);
+      }
+      return response.json() as Promise<T>;
+    },
+    helpers: async () => (await buildDesktopSetupSnapshot({ config: hostConfig!,
+      packaging: resolveCurrentPackagingPlan(hostConfig!), state: setupState ?? createEmptyDesktopSetupState() })).helpers,
+    helper: async (helperId, mode, dryRun, expectedRevision) => {
+      const snapshot = await runSetupAction({ helperId, mode, dryRun }, { refreshInventory: false, expectedRevision });
+      if (!snapshot.state.lastAction) throw new Error('Installer did not return a result.');
+      return snapshot.state.lastAction;
+    },
+    changed: async (runtime: ProviderManagerRuntime) => {
+      rememberRuntimeCliInventoryProbe(runtime);
+      latestProviderDiagnosticsPayload = null;
+      const snapshot = await refreshBootstrapSnapshot();
+      publishSnapshot(snapshot);
+    },
+  });
+  return providerManager;
+}
+
 async function fetchWithTimeout(
   url: string,
   init: RequestInit,
@@ -1233,7 +1270,7 @@ async function fetchRuntimeCliInventoryProbe(
     const response = await fetchWithTimeout(`${baseUrl}/setup-scan`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify({ manual: options.forceRescan === true, targets: probe.selection.targets }),
+      body: JSON.stringify({ manual: options.forceRescan === true, targets: probe.selection.targets, expectedRevision: probe.selection.revision }),
     }, options.scanTimeoutMs ?? RUNTIME_SETUP_SCAN_TIMEOUT_MS);
     if (!response.ok) runtimeCliInventoryScanPending = false;
     return await fetchJsonWithTimeout<RuntimeCliInventoryProbe>(`${baseUrl}/setup-state`, { method: 'GET' }, timeout);
@@ -1447,7 +1484,7 @@ async function pollRuntimeCliInventory(options: {
 }): Promise<void> {
   if (!hostConfig) return;
   const probe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
-    triggerScanIfMissing: !runtimeCliInventoryScanPending,
+    triggerScanIfMissing: false,
     scanTimeoutMs: options.setupCompleted
       ? RUNTIME_SETUP_SCAN_TIMEOUT_MS
       : RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS,
@@ -1580,6 +1617,7 @@ function scheduleBackgroundBootstrapWork(
 }
 
 async function maybeOpenApp(snapshot: DesktopBootstrapSnapshot): Promise<void> {
+  if (holdProviderOnboarding && snapshot.phase !== 'failed') return;
   if (!mainWindow || !hostConfig) {
     return;
   }
@@ -1840,14 +1878,16 @@ async function runHostAction(actionId: DesktopHostActionId): Promise<DesktopBoot
     return latestSnapshot ?? buildSnapshot(null);
   }
   if (actionId === 'open_setup') {
-    const snapshot = latestSnapshot ?? await refreshBootstrapSnapshot();
+    const snapshot = await refreshBootstrapSnapshot();
     if (!latestCliInventoryProbe?.selection || ['missing', 'invalid'].includes(latestCliInventoryProbe.selection.state)) return snapshot;
+    holdProviderOnboarding = false;
     await showMainWindow(`${hostConfig.appBaseUrl}/setup`);
     return snapshot;
   }
   if (actionId === 'open_chat') {
-    const snapshot = latestSnapshot ?? await refreshBootstrapSnapshot();
+    const snapshot = await refreshBootstrapSnapshot();
     if (!latestCliInventoryProbe?.selection || ['missing', 'invalid'].includes(latestCliInventoryProbe.selection.state)) return snapshot;
+    holdProviderOnboarding = false;
     await showMainWindow(`${hostConfig.appBaseUrl}${snapshot.app.entryPath}`);
     return snapshot;
   }
@@ -1869,6 +1909,8 @@ async function runSetupAction(
   options: {
     publishMode?: 'always' | 'bootstrap-only';
     refreshBootstrap?: boolean;
+    refreshInventory?: boolean;
+    expectedRevision?: string;
   } = {},
 ): Promise<DesktopSetupSnapshot> {
   if (!hostConfig) {
@@ -1878,6 +1920,7 @@ async function runSetupAction(
   const packaging = resolveCurrentPackagingPlan(hostConfig);
   const result = await withSelectedSetupTargets({
     baseUrl: hostConfig.runtimeBaseUrl, helperId: action.helperId,
+    expectedRevision: options.expectedRevision,
     run: () => runDesktopSetupHelper({ config: hostConfig!, packaging, action }),
   });
   packagingState = packaging;
@@ -1920,7 +1963,7 @@ async function runSetupAction(
     action.mode !== 'check'
       && shouldRefreshCliInventoryAfterSetupAction(action.helperId)
 ;
-  if (shouldRefreshCliInventory) {
+  if (shouldRefreshCliInventory && options.refreshInventory !== false) {
     const refreshedProbe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
       forceRescan: true,
     });
@@ -1941,7 +1984,8 @@ async function runSetupAction(
       publishSnapshot(snapshot);
     }
   }
-  return await getSetupSnapshot();
+  const snapshot = await getSetupSnapshot();
+  return { ...snapshot, state: { ...snapshot.state, lastAction: result } };
 }
 
 function shouldRefreshCliInventoryAfterSetupAction(helperId: string): boolean {
@@ -2288,32 +2332,21 @@ async function main(): Promise<void> {
     }
     return await runHostAction(actionId);
   });
-  ipcMain.handle('cats-host:save-provider-selection', async (event, payload: unknown) => {
-    assertMainWindowIpcSender(event, mainWindow, 'Provider selection is only available to the main Cats window.');
-    if (!hostConfig || !payload || typeof payload !== 'object') throw new Error('Invalid provider selection.');
-    const body = payload as { targets?: unknown; expectedRevision?: unknown; reload?: unknown };
-    if ((!Array.isArray(body.targets) && body.reload !== true) || typeof body.expectedRevision !== 'string') {
-      throw new Error('Invalid provider selection.');
-    }
+  ipcMain.handle('cats-host:provider-setup-read', async (event, context: unknown) => {
+    assertMainWindowIpcSender(event, mainWindow, 'Provider setup is only available to the main Cats window.');
+    if (context !== 'onboarding' && context !== 'settings') throw new Error('Invalid provider setup context.');
+    if (context === 'onboarding') holdProviderOnboarding = true;
+    return await getProviderManager().read();
+  });
+  ipcMain.handle('cats-host:provider-setup-apply', async (event, payload: unknown) => {
+    assertMainWindowIpcSender(event, mainWindow, 'Provider setup is only available to the main Cats window.');
     await retryPendingSetupOperationReleases();
-    const response = await fetchWithTimeout(
-      `${hostConfig.runtimeBaseUrl}/setup-selection${body.reload === true ? '/reload' : ''}`, {
-        method: body.reload === true ? 'POST' : 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ targets: body.targets, expectedRevision: body.expectedRevision }),
-      }, RUNTIME_SETUP_STATE_TIMEOUT_MS);
-    if (!response.ok) {
-      const result = await response.json() as { error?: string };
-      throw new Error(result.error || 'Could not save provider selection.');
-    }
-    latestProviderDiagnosticsPayload = null;
-    latestCliInventoryError = null;
-    runtimeCliInventoryScanPending = false;
-    const snapshot = await refreshBootstrapSnapshot();
-    publishSnapshot(snapshot);
-    scheduleBackgroundBootstrapWork(snapshot, latestPersistedSetupState);
-    await maybeOpenApp(snapshot);
-    return snapshot;
+    return await getProviderManager().apply(payload);
+  });
+  ipcMain.handle('cats-host:provider-setup-run', async (event, payload: unknown) => {
+    assertMainWindowIpcSender(event, mainWindow, 'Provider setup is only available to the main Cats window.');
+    await retryPendingSetupOperationReleases();
+    return await getProviderManager().run(payload);
   });
   ipcMain.handle('cats-host:run-setup-helper', async (_event, payload: unknown) => {
     if (

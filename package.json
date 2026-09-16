@@ -18,6 +18,7 @@
     "build/desktop",
     "scripts",
     "packages/app-sdk",
+    "packages/provider-setup",
     "config/provider-capability-bootstrap.yaml.example",
     ".env.example",
     "README.md",
@@ -131,6 +132,7 @@
     "files": [
       "build/desktop/**/*",
       "packages/app-sdk/**/*",
+      "packages/provider-setup/**/*",
       "assets/build/icon.ico",
       "assets/build/icon.png",
       "assets/tray-icon*.png",

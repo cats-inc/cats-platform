@@ -19,11 +19,12 @@ async function page() {
       window.catsDesktopHost = {
         getSnapshot: async () => snapshot, getSetupSnapshot: async () => null, onSnapshot: () => () => {},
         runAction: async (action) => { actions.push(action); return snapshot; },
-        saveProviderSelection: async (input) => {
+        getProviderSetup: async () => ({ runtime: { selection: snapshot.prerequisites.providerSelection, universe: snapshot.prerequisites.providerCatalog }, helpers: [], platform: 'windows', operations: [], outcomes: {} }),
+        applyProviderSetup: async (input) => {
           saves.push(JSON.parse(JSON.stringify(input)));
           snapshot.prerequisites.providerSelection = { ...snapshot.prerequisites.providerSelection,
             state: input.targets.length ? 'selected' : 'empty', revision: 'saved', targets: input.targets };
-          return snapshot;
+          return { runtime: { selection: snapshot.prerequisites.providerSelection, universe: snapshot.prerequisites.providerCatalog }, helpers: [], platform: 'windows', operations: [], outcomes: {} };
         },
       };
     },
@@ -31,21 +32,21 @@ async function page() {
   const settle = async () => { await new Promise((resolve) => setTimeout(resolve, 30)); };
   await settle();
   return { dom, saves, actions, settle, document: dom.window.document,
-    continueButton: () => dom.window.document.querySelector('.onboarding-page > .onboarding-actions button'),
-    save: () => dom.window.document.querySelector('.selection-editor .onboarding-actions button').click() };
+    continueButton: () => dom.window.document.querySelector('[data-action=continue]'),
+    save: () => dom.window.document.querySelector('[data-action=apply]').click() };
 }
 
 test('first-run provider choices are selectable before detection and save exact targets', async () => {
   const p = await page();
   try {
     assert.equal(p.continueButton().disabled, true);
-    const choices = p.document.querySelectorAll('.selection-editor input[type=checkbox]');
+    const choices = p.document.querySelectorAll('.pm-list input[type=checkbox]');
     assert.equal(choices.length, 2);
     assert.equal(choices[1].disabled, false);
     choices[1].click();
     p.save();
     await p.settle();
-    assert.deepEqual(p.saves, [{ expectedRevision: 'missing', targets: [openclaw], reload: false }]);
+    assert.deepEqual(p.saves, [{ expectedRevision: 'missing', targets: [openclaw], detectAfter: true, reload: false }]);
     assert.equal(p.continueButton().disabled, false);
   } finally { p.dom.window.close(); }
 });

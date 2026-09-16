@@ -31,9 +31,9 @@ from documentation into implementation and release.
 ### 2. Shared UX
 
 - [ ] Embed one browser-safe manager in onboarding and Settings > Runtime.
-- [ ] Selection + observations + actions per row; Apply with optional detection;
+- [x] Selection + observations + actions per row; Apply with optional detection;
   stable footer; explicit Continue; empty and partially ready completion.
-- [ ] Per-target install/check progress, useful manual steps, endpoint editing,
+- [x] Per-target install/check progress, useful manual steps, endpoint editing,
   advanced lifecycle controls, retained history and cross-editor conflicts.
 
 ### 3. Native helper maintenance
@@ -91,3 +91,8 @@ CI locally solely for a commit/version bump.
 | Date | Update |
 |------|--------|
 | 2026-09-16 | Design approved; documented current split UI, global per-card scans, retained-observation gap, and upstream drift. User authorized implementation, auto-merge and unsigned preview publication. |
+
+- 2026-09-16: Shared DOM manager is mounted by onboarding and Settings; host owns
+  revision-bound per-target operations. Focused Desktop tests passed (33), plus
+  host build and renderer typecheck. Independent core-flow review found no
+  remaining blockers after async/revision/PATH fixes. Native helper port follows.
