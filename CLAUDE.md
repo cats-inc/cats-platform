@@ -43,7 +43,7 @@ Only Claude should read and maintain this file.
 
 - **MUST** read AGENTS.md at the start of every session
 - **MUST** follow the Development Workflow defined in AGENTS.md
-- **SHOULD** run only the relevant test files when asked to test, not the full suite
+- **MUST** validate changes under [AGENTS.md: Local Validation Scope](./AGENTS.md#local-validation-scope)
 - **MUST NOT** modify other agents' files (GEMINI.md, CODEX.md)
 - **MUST NOT** use compound commands with `cd` and `git`（例如 `cd submodule && git log`）。對 submodule 操作時，使用 `-C` 參數或指定完整路徑
 - **SHOULD** ask for clarification when requirements are ambiguous
@@ -59,7 +59,7 @@ If assigned as Conductor in Project Roles table:
 
 ### Code Modification Rules
 
-- **SHOULD** update tests when modifying code, only if the user requests it
+- **MUST** add or update relevant regression tests when behavior or contracts change
 - **MUST** update documentation when changing public APIs
 - **MUST** follow coding conventions specified in AGENTS.md
 - **SHOULD** make minimal, focused changes
@@ -115,7 +115,9 @@ Rules:
   - Code: `src/products/code/api/index.ts`
 - Shared visual primitives may live in `src/design/**`, but do not upstream Chat-specific UI behavior into shared components prematurely.
 - Keep layering intact: `core/` and `platform/` must not import product implementations.
-- Do not run the full `npm test` suite unless the user explicitly asks. Only run targeted test files when needed.
+- Before handoff or commit, follow [Local Validation Scope](./AGENTS.md#local-validation-scope)
+  and include affected dependency/boundary tests. Use the shared policy's
+  escalation criteria for a full local run; full PR CI remains required.
 - For the full protocol, see `docs/product-integration-guide.md` and `docs/plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md`.
 
 #### Canvas Top Bar Edge Alignment
@@ -151,4 +153,4 @@ The bar then uses `.channelTopBar`'s default `-28px` bleed — no per-viewport m
 
 This file is maintained by Claude only. Other agents should not modify this file.
 
-Last updated: 2026-04-28
+Last updated: 2026-09-16

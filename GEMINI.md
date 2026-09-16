@@ -34,7 +34,10 @@ Rules:
   - Code: `src/products/code/api/index.ts`
 - Shared visual primitives may live in `src/design/**`, but do not upstream Chat-specific UI behavior into shared components prematurely.
 - Keep layering intact: `core/` and `platform/` must not import product implementations.
-- Before handoff or commit, run `npm test` and keep dependency/boundary tests green.
+- Before handoff or commit, follow [Local Validation Scope](./AGENTS.md#local-validation-scope)
+  and include affected dependency/boundary tests. A full local `npm test` is not
+  a routine prerequisite; full PR CI remains required. Documentation/rules-only
+  edits need diff/reference review without application tests or builds.
 - For the full protocol, see `docs/product-integration-guide.md` and `docs/plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md`.
 
 ---
@@ -53,4 +56,4 @@ Rules:
 
 This file is maintained by Gemini only. Other agents should not modify this file.
 
-Last updated: 2026-03-25
+Last updated: 2026-09-16

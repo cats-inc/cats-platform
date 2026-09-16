@@ -75,6 +75,27 @@ Desktop-host regression coverage now also checks:
 - **Scope**: app-managed startup contract, host prerequisite snapshot logic,
   and managed child-process launch/shutdown seams
 
+## Choosing Local Validation
+
+[AGENTS.md: Local Validation Scope](../AGENTS.md#local-validation-scope) is the
+canonical policy for all agents. Local commit/handoff checks cover the affected
+behavior and consumers; a full local suite is not a routine prerequisite.
+Documentation/rules-only changes use diff and reference review.
+
+Use focused Node test files, rebuilding only the artifacts those tests consume:
+
+```bash
+node --test --test-isolation=none tests/<name>.test.js
+node --test --test-isolation=none build/test/<name>.test.js
+```
+
+The first form may require a fresh `build:server` or `build:host`, depending on
+its imports. The second requires `build:test-ui` for the selected TypeScript/UI
+tests. Run affected type/boundary checks and include indirect consumers of
+shared contracts. Reuse passing checks for unchanged inputs; full local
+`npm test` remains available for explicit requests, full-suite diagnosis, or
+changes whose impact cannot be bounded confidently.
+
 ## Running Tests
 
 ### Developer skills and runtime library packaging
@@ -100,13 +121,15 @@ addressed. Native Linux/macOS execution and an installed Desktop launch remain
 outside this validation. The real repository sync copied both developer skills
 into both local discovery mirrors.
 
-The final pre-commit `npm test` on current main passed 4,554 tests with five
+The 2026-09-11 pre-commit `npm test` passed 4,554 tests with five
 skips, including server/Desktop/UI/mobile typechecks and builds. A preceding
 full run hit an intermittent Telegram file-backed restart fixture timeout;
 the unchanged final full rerun passed. Temporary diagnostic instrumentation
 was removed, and no Telegram production or test changes are included here.
 
 ### All Tests
+
+This is the full suite, used by CI and when local scope warrants it:
 
 ```bash
 npm test
@@ -173,9 +196,20 @@ These smoke-checks validate:
 - Tests run automatically on:
   - [x] Pull requests
   - [x] Main branch commits
+  - [x] Manual npm publishing (test gate before publication)
   - [ ] Production bundle build verification
   - [ ] Scheduled (nightly)
 
+PR CI still requires `validate` and `nodejs (24)`, including the full `npm test`
+suite. Scoped local validation does not change those gates. Version bumps and
+release candidates retain full test validation and the existing npm/Desktop
+release checks; successful candidate CI does not require a second full run on
+the developer's machine. The npm publish path builds through `prepack`; the
+separate Desktop release workflow builds platform packages and validates their
+release assets. Ordinary PR CI does not prove a native installer was exercised.
+Automatic selection of CI tests and build deduplication are separate workflow
+changes, not implemented by this policy update.
+
 ---
 
-*Last updated: 2026-03-24*
+*Last updated: 2026-09-16*

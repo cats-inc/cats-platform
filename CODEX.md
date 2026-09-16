@@ -83,15 +83,13 @@ If assigned as Conductor in Project Roles table:
 
 ### Testing Scope
 
-- Default to the smallest validation that can prove the change works.
-- Do **not** default to `npm test` for small or localized edits.
-- Prefer file-scoped tests, targeted `node --test ...`, targeted Vitest runs,
-  build checks, or a narrow manual verification of the touched flow.
-- Escalate to broader suites only when touching shared contracts, cross-product
-  wiring, storage layout, startup/bootstrap, or routing used by multiple
-  surfaces.
-- For docs-only changes, do not run code tests unless the docs depend on a
-  command or behavior you re-verified.
+- Follow [AGENTS.md: Local Validation Scope](./AGENTS.md#local-validation-scope)
+  for local checks, scope escalation, result reuse, and CI/release gates.
+- Use focused Node test files and required build/type checks for affected
+  contracts. Commit, PR creation, or a version bump does not itself require
+  duplicating the full CI suite locally.
+- For documentation/rules-only edits, review the diff and references without
+  running application tests or builds.
 
 ### Runtime Smoke / Live Debug SOP
 
@@ -415,9 +413,8 @@ working memory for Codex, not yet a ratified product spec or ADR.
   Chat-specific UI behavior into shared components prematurely.
 - Keep layering intact: `core/` and `platform/` must not import product
   implementations.
-- Before handoff or commit, run the narrowest validation that covers the
-  changed surface; only run `npm test` when the change actually warrants full
-  suite coverage.
+- Before handoff or commit, follow [Local Validation Scope](./AGENTS.md#local-validation-scope)
+  and include affected dependency/boundary tests.
 - Follow `docs/product-integration-guide.md` and
   `docs/plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md`
   when integrating product work into the platform host.
@@ -428,4 +425,4 @@ working memory for Codex, not yet a ratified product spec or ADR.
 
 This file is maintained by Codex only. Other agents should not modify this file.
 
-Last updated: 2026-04-18
+Last updated: 2026-09-16
