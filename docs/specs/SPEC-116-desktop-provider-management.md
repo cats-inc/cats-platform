@@ -9,9 +9,11 @@
 
 ## Summary
 
-Onboarding and Settings > Runtime provide the same selection, detection,
-installation, and repair experience. Runtime's persisted selection is the only
-resource boundary. Users can finish initial setup now and add providers later.
+Onboarding and Settings > Runtime share selection, detection and installation
+behavior. Onboarding keeps the original compact classified card layout;
+Settings may use rows. Runtime's persisted selection bounds provider work.
+Desktop separately detects its host prerequisites on a clean computer.
+Users can finish initial setup now and add providers later.
 
 ## Goals
 
@@ -37,8 +39,10 @@ resource boundary. Users can finish initial setup now and add providers later.
 3. Apply has a Detect after applying checkbox. Default on only for first-run,
    off for existing settings. Apply without detection performs no follow-up scan.
 4. CLI observations distinguish never detected, installed, missing, failed, and
-   configuration changed. Show observation time and unknown authentication
-   honestly. Local/agent endpoints use connection wording rather than CLI status.
+   configuration changed. Keep cards simple: name, intended use, short status
+   and next actions. Observation time, unknown authentication, command hints,
+   connection addresses and diagnostic output belong in collapsed details.
+   Local/agent endpoints use connection wording rather than CLI status.
 5. Detect one row scans that target only. Detect selected is a separate explicit
    batch action. Preserve other rows through subset scans and selection changes.
 6. Install is explicit, uses a matching native helper and required prerequisites,
@@ -55,6 +59,16 @@ resource boundary. Users can finish initial setup now and add providers later.
    from helper completion, UI polling, navigation, and catalog refresh.
 10. Windows, macOS, and Linux share behavior and expose only supported helpers.
     Browser Settings retains links to the connected Runtime setup.
+11. Before any provider is selected, Desktop checks Node.js/npm, npm installation
+    location/PATH and GitHub CLI in the background. These host checks never scan
+    unselected providers or install software. Retain each result independently
+    so unrelated checks/installs cannot erase it. Keep Node.js/npm visible in
+    collapsed onboarding; show its install/fix action on a clean computer.
+12. Restore the original native/local-model row, followed by Node/npm tools,
+    with Claude, Antigravity, Node.js/npm and Codex initially visible and Show
+    more revealing the rest. Existing selected tools remain visible. Connection
+    tools and custom targets remain accessible without exposing backend/instance
+    terminology on default cards. No search field is needed in onboarding.
 
 ## Installer Integration
 

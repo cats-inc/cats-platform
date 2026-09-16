@@ -33,18 +33,22 @@ product onboarding, and operating-system installation.
 4. Runtime preserves retained custom commands, credentials references, variants,
    comments, and valid routing. External YAML edits require explicit reload;
    stale editors receive a conflict instead of overwriting a newer file.
-5. Desktop inventory and helpers use Runtime's `nativeSetupTargets` eligibility,
+5. Desktop provider inventory and provider helpers use Runtime's `nativeSetupTargets` eligibility,
    rather than assuming an instance named `native` is a native host install.
-   Node/npm checks are shared only among selected npm-backed providers; Ollama
-   checks require a selected loopback local-model target. OpenClaw and API-only
+   As clarified by user acceptance on 2026-09-17 (ADR-116), Desktop independently
+   checks Node/npm, npm prefix/PATH and GitHub CLI for clean consumer machines;
+   their explicit host preparation does not add providers to Runtime selection.
+   Ollama checks require a selected loopback local-model target. OpenClaw and API-only
    configurations do not require any installed CLI.
-6. Host helpers acquire an operation receipt for each exact target before work
+6. Provider helpers acquire an operation receipt for each exact target before work
    starts and release it in `finally`. Client-generated operation IDs make a
    lost admission response recoverable; unsuccessful releases are retried on
    the next inventory refresh, save, or helper invocation. Busy-target changes
    are rejected while non-cancellable provider work remains active. Desktop
    pauses new helpers and waits for running ones before retry/restart, shutdown,
    or update handoff so restarting Runtime cannot discard their admission.
+   The three allowlisted Desktop prerequisite helpers participate in host
+   draining but do not need a provider receipt or a nonempty selection.
 7. Ordinary product selectors are bounded by current selection and usability.
    The server verifies selection on each registry/catalog request; renderer
    caches follow revisions and refresh on focus/visibility or a bounded visible

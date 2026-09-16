@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Delivered in 0.2.9 unsigned preview; native acceptance remains |
+| Status | Local acceptance correction complete; no new release authorized |
 | Owner / Reviewer | User |
 | Last updated | 2026-09-17 |
 
@@ -17,6 +17,47 @@ provider selection contract. The user explicitly approved continuing directly
 from documentation into implementation and release.
 
 ## Implementation Phases
+
+### User acceptance correction — 2026-09-17
+
+The user rejected the shared row layout for onboarding and the loss of visible
+Node/npm preparation. Version bumps and release publication are paused until
+explicitly requested again. This correction keeps version 0.2.10.
+
+- [x] Restore Desktop's background Node/npm, npm prefix/PATH and GitHub CLI
+  checks independently of provider selection, with separately retained results.
+- [x] Restore compact onboarding cards, original grouping/collapsed choices and
+  Show more. Add intent and scoped actions without replacing that layout.
+- [x] Simplify both surfaces; move technical data and maintenance into details.
+- [x] Verify clean-machine fixtures, scoped detection/install, retained state,
+  host/renderer boundaries and actual isolated browser layouts. No real installs
+  or user-state writes; no version bump or release.
+
+Audit findings and correction:
+
+| Surface | Regression | Correction |
+|---------|------------|------------|
+| Desktop preparation | Node checks depended on a selected npm provider; npm prefix/PATH and GitHub CLI background checks were absent | Check the host independently, defer prefix checks until Node/npm exist, retain each result, and keep installation explicit |
+| Onboarding | The shared row editor replaced classified cards and hid Node preparation | Restore the four-column native/local-model then Node/npm card layout, original collapsed choices and Show more; keep selected tools visible |
+| Both editors | Default rows exposed timestamps, auth caveats, addresses, raw outcomes and maintenance | Short status and next action first; technical details and maintenance are collapsed; custom instances remain distinguishable |
+| Fresh helper processes | Newly installed gh/nvm commands could be missed; node alone was accepted without npm | Refresh Windows registry PATH, include Unix gh fallback paths, load nvm before check, require both node and npm, and verify again after Apply |
+| Recovery | Single last-action state could forget Node after another helper ran | Return independent prerequisite observations to recovery as well |
+
+Provider scans remain bounded by saved intent; Ollama checks still require the
+selected local target. Restoring host prerequisites does not restore broad
+unselected-provider scans or change Runtime's standalone developer setup.
+
+Validation: 98 distinct focused cases passed across the affected view, host,
+bridge, helper, scope, recovery and test-collection suites. One existing native
+dry-run fixture hit its process timeout during concurrent builds; its isolated
+rerun passed. Host and renderer builds and renderer TypeScript checks passed.
+An isolated Edge run verified the actual onboarding page at 960×700 and 480px,
+the Settings manager, empty-machine Node/npm preparation with apply/check
+verification, exact provider actions, collapsed details and no horizontal
+overflow or browser errors. Native helper checks used temporary homes and fake
+commands, without downloads, installations or real user-state writes. Independent
+review cleared the final changes. Full PR CI and physical installations were not
+run for this local acceptance correction; version files remain at 0.2.10.
 
 ### 1. Shared state and operations
 

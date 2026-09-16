@@ -93,7 +93,8 @@ import {
   shouldAttemptDesktopLateReadyRecovery,
 } from './startupRecovery.js';
 import { runDesktopUpdateDialog } from './updateDialog.js';
-import { resolveSelectedSetupAuditActions } from './setupAudit.js';
+import { isDesktopPrerequisiteHelper, resolveSelectedSetupAuditActions } from './setupAudit.js';
+import { DesktopPrerequisiteChecks } from './setupPrerequisites.js';
 import { pauseSelectedSetupHelpers, retryPendingSetupOperationReleases, targetsForSetupHelper, withSelectedSetupTargets } from './providerSelection.js';
 import { DesktopProviderManager, type ProviderManagerRuntime } from './providerManager.js';
 import {
@@ -1167,11 +1168,13 @@ async function getSetupSnapshot(): Promise<DesktopSetupSnapshot> {
     packaging: resolveCurrentPackagingPlan(hostConfig),
     state: setupState ?? createEmptyDesktopSetupState(),
   });
-  const probe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl);
+  const probe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl).catch(() => null);
   snapshot.helpers = snapshot.helpers.filter((helper) => {
+    if (isDesktopPrerequisiteHelper(helper.id)) return true;
     if (!probe?.selection) return false;
     try { return targetsForSetupHelper(helper.id, probe.selection).length > 0; } catch { return false; }
   });
+  snapshot.prerequisiteChecks = desktopPrerequisites.read();
   if (snapshot.resumeAction && !snapshot.helpers.some((helper) => helper.id === snapshot.resumeAction!.helperId)) {
     snapshot.resumeAction = null;
   }
@@ -1179,11 +1182,15 @@ async function getSetupSnapshot(): Promise<DesktopSetupSnapshot> {
 }
 
 let providerManager: DesktopProviderManager | null = null;
+const desktopPrerequisites = new DesktopPrerequisiteChecks(
+  process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'macos' : 'linux',
+);
 let holdProviderOnboarding = false;
 function getProviderManager(): DesktopProviderManager {
   if (!hostConfig) throw new Error('Desktop host is not initialized.');
   providerManager ??= new DesktopProviderManager({
     platform: process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'macos' : 'linux',
+    prerequisites: () => desktopPrerequisites.read(),
     request: async <T>(path: string, init: RequestInit = {}): Promise<T> => {
       const response = await fetchWithTimeout(`${hostConfig!.runtimeBaseUrl}${path}`, init, RUNTIME_SETUP_STATE_TIMEOUT_MS);
       if (!response.ok) {
@@ -1432,12 +1439,22 @@ async function maybePrimeSetupAudit(
   if (!hostConfig) return;
   const selection = latestCliInventoryProbe?.selection ?? null;
   for (const action of resolveSelectedSetupAuditActions(selection)) {
-    const key = `${selection!.revision}:${action.helperId}`;
+    const prerequisites = desktopPrerequisites.read();
+    if (prerequisites.some((entry) => entry.helperId === action.helperId && entry.result)) continue;
+    if (action.helperId.endsWith('-npm-prefix-helper') && !prerequisites.some((entry) =>
+      entry.helperId.endsWith('-node-host-installer') && entry.result?.status === 'ready')) continue;
+    const key = `${isDesktopPrerequisiteHelper(action.helperId) ? 'desktop' : selection?.revision}:${action.helperId}`;
     if (auditedSetupHelpers.has(key)) continue;
     auditedSetupHelpers.add(key);
-    await runSetupAction({ helperId: action.helperId, mode: 'check' }, {
-      publishMode: 'bootstrap-only', refreshBootstrap: false,
-    });
+    try {
+      await runSetupAction({ helperId: action.helperId, mode: 'check' }, {
+        publishMode: 'bootstrap-only', refreshBootstrap: false,
+      });
+    } catch (error) {
+      // Each failed prerequisite remains retryable in its card; do not let one
+      // missing host tool prevent the other environment checks from finishing.
+      process.stderr.write(`Desktop setup check failed (${action.helperId}): ${String(error)}\n`);
+    }
   }
 }
 
@@ -1591,7 +1608,7 @@ function scheduleBackgroundBootstrapWork(
       ?? persistedSetup?.productSetupCompleted,
   );
 
-  // Run shared Node and local-model checks only for eligible selected targets.
+  // Always check Desktop prerequisites; provider/local-model probes remain scoped.
   scheduleBackgroundSetupAudit(snapshot, persistedSetup);
 
   // Inventory observes the saved selection; missing/invalid/empty selections
@@ -1918,11 +1935,11 @@ async function runSetupAction(
   }
 
   const packaging = resolveCurrentPackagingPlan(hostConfig);
-  const result = await withSelectedSetupTargets({
-    baseUrl: hostConfig.runtimeBaseUrl, helperId: action.helperId,
+  const result = await desktopPrerequisites.run(action.helperId, () => withSelectedSetupTargets({
+    baseUrl: hostConfig!.runtimeBaseUrl, helperId: action.helperId,
     expectedRevision: options.expectedRevision,
     run: () => runDesktopSetupHelper({ config: hostConfig!, packaging, action }),
-  });
+  }));
   packagingState = packaging;
   setupState = {
     lastAction: result,
@@ -2348,7 +2365,8 @@ async function main(): Promise<void> {
     await retryPendingSetupOperationReleases();
     return await getProviderManager().run(payload);
   });
-  ipcMain.handle('cats-host:run-setup-helper', async (_event, payload: unknown) => {
+  ipcMain.handle('cats-host:run-setup-helper', async (event, payload: unknown) => {
+    assertMainWindowIpcSender(event, mainWindow, 'Setup helpers are only available to the main Cats window.');
     if (
       typeof payload !== 'object'
       || payload === null

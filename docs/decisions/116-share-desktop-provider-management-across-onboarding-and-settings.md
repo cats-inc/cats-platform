@@ -5,6 +5,9 @@
 Accepted — 2026-09-16. The user authorized documentation, implementation,
 incremental commits, auto-merge, a version bump, and an unsigned Desktop preview.
 
+Amended — 2026-09-17 after user acceptance. That release authorization is no
+longer ongoing: do not bump versions or publish without a new user request.
+
 ## Context
 
 Desktop currently separates selection checkboxes from installer cards. A card's
@@ -15,8 +18,12 @@ detection history. The packaged installers also predate upstream maintenance.
 
 ## Decision
 
-1. Onboarding and Settings > Runtime embed the same browser-safe provider
-   manager, with host-specific navigation and feedback supplied by the caller.
+1. Onboarding and Settings > Runtime share browser-safe selection and action
+   logic, with distinct presentation. Onboarding retains its original compact
+   four-column cards, native/local-model and Node/npm grouping, initial
+   Claude/Antigravity/Node/Codex choices, and Show more expansion. Settings can
+   use rows. Both show short status and next actions first; technical details
+   and maintenance actions are collapsed.
    The first-run view must work before the Platform renderer is available.
 2. Each provider row combines draft selection, saved selection, the last
    observation with its time, and relevant actions. Missing configuration starts
@@ -27,7 +34,11 @@ detection history. The packaged installers also predate upstream maintenance.
 4. Explicit detection and post-install verification target only the requested
    saved target. Passive polling never starts probes. Unchanged observations
    survive unrelated saves; changed settings require a new observation.
-5. Desktop owns allowlisted OS helpers and prerequisites. Runtime owns selection,
+5. Desktop owns allowlisted OS helpers and prerequisites. Its read-only Node.js,
+   npm prefix/PATH and GitHub CLI checks run independently of provider selection;
+   a clean consumer computer cannot be assumed to have these installed. Their
+   results are retained separately, and installation still needs an explicit
+   user action. Runtime owns selection,
    admission, and observations. Helpers cannot bypass selection or operate on
    remote/custom targets merely because they have a familiar provider name.
 6. Installation, authentication, and endpoint connectivity remain distinct.

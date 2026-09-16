@@ -61,6 +61,45 @@ remove_superseded_npm_packages() { printf 'Unexpected removal\\n' >&2; return 92
 fixture_version=3.0.0
 `;
 
+test('Unix GitHub CLI detects its local install with a clean Desktop PATH', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const helper = quote(bashPath(join(process.cwd(), `scripts/${platform}/install-github-cli.sh`)));
+    const { stdout } = await run(platform, `
+mkdir -p "$HOME/.local/bin"
+printf '#!/bin/sh\\nprintf "gh version 2.0.0\\\\n"\\n' > "$HOME/.local/bin/gh"
+chmod +x "$HOME/.local/bin/gh"
+PATH=/usr/bin:/bin bash ${helper} --check --json`);
+    const result = JSON.parse(stdout);
+    assert.equal(result.status, 'ready');
+    assert.equal(result.detectedVersion, '2.0.0');
+    assert.match(result.commandPath, /\.local\/bin\/gh$/);
+  }
+});
+
+test('Unix Node checks load an existing nvm installation and require npm as well', async () => {
+  for (const platform of ['linux', 'macos']) {
+    const helper = quote(bashPath(join(process.cwd(), `scripts/${platform}/install-node.sh`)));
+    const { stdout } = await run(platform, `
+mkdir -p "$HOME/.nvm"
+cat > "$HOME/.nvm/nvm.sh" <<'NVM'
+node() { printf 'v24.0.0'; }
+npm() { printf '10.0.0'; }
+# Keep system-installed commands outside this deterministic fixture's answer.
+command() {
+ if [ "$1" = '-v' ] && [ "$2" = 'npm' ] && [ -f "$NVM_DIR/no-npm" ]; then return 1; fi
+ builtin command "$@"
+}
+NVM
+NVM_DIR="$HOME/.nvm" bash ${helper} --check --json
+touch "$HOME/.nvm/no-npm"
+NVM_DIR="$HOME/.nvm" bash ${helper} --check --json`);
+    const results = stdout.match(/\{[\s\S]*?\n\}/g).map((value) => JSON.parse(value));
+    assert.equal(results[0].status, 'ready');
+    assert.equal(results[0].detectedVersion, '24.0.0');
+    assert.equal(results[1].status, 'changes_required');
+  }
+});
+
 test('Unix npm dry runs never query or mutate and upgrades preserve newer local versions', async () => {
   for (const platform of ['linux', 'macos']) {
     let result = await run(platform, `${npmFixture}

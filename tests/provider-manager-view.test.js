@@ -33,6 +33,7 @@ test('new users explicitly select intent; Apply stays busy until detection finis
   assert.equal(f.choice('codex').checked, false);
   assert.equal(f.button('detect-after').checked, true);
   assert.equal(f.button('continue').disabled, true);
+  f.button('show-more').click();
   f.choice('pi').click();
   const gate = defer(); const apply = f.bridge.applyProviderSetup;
   f.bridge.applyProviderSetup = async (input) => { await gate.promise; return apply(input); };
@@ -45,6 +46,82 @@ test('new users explicitly select intent; Apply stays busy until detection finis
   assert.equal(f.button('continue').disabled, false);
   assert.deepEqual(f.calls[0].targets, [pi]);
   assert.equal(f.calls[0].detectAfter, true);
+});
+
+test('onboarding keeps the original compact cards and grouping without a provider search form', async (t) => {
+  const f = fixture(t, 'onboarding', true); await flush();
+  const names = ['claude', 'antigravity', 'cursor', 'kiro', 'junie', 'goose', 'grok', 'devin', 'muse', 'ollama',
+    'codex', 'copilot', 'opencode', 'kilo', 'auggie', 'pi', 'cline', 'openclaw'];
+  f.snapshot.runtime.universe = names.map((provider) => ({ provider, backend: 'cli', instance: 'native', familyLabel: provider }));
+  await f.view.refresh();
+  const order = () => [...f.root.querySelectorAll('.cli-card')].map((card) => card.dataset.provider || 'node');
+  assert.deepEqual(order(), ['claude', 'antigravity', 'node', 'codex']);
+  assert.equal(f.root.querySelector('input[type=search]'), null);
+  assert.equal(f.root.querySelector('[data-prerequisite] input[type=checkbox]'), null);
+  f.button('show-more').click();
+  assert.deepEqual(order(), [...names.slice(0, 10), 'node', ...names.slice(10)]);
+  assert.ok(f.root.querySelector('[data-group=npm]'));
+  f.choice('pi').click();
+  f.button('show-more').click();
+  assert.deepEqual(order(), ['claude', 'antigravity', 'node', 'codex', 'pi']);
+  assert.deepEqual(f.calls, []);
+});
+
+test('Node/npm preparation is actionable on an empty fresh machine and never saves or scans providers', async (t) => {
+  const f = fixture(t, 'onboarding', true); await flush();
+  const missing = { runState: 'completed', status: 'not_installed', summary: 'Node missing', warnings: [], manualSteps: [], plannedActions: [] };
+  f.snapshot.prerequisites = ['node-host-installer', 'npm-prefix-helper', 'github-cli-installer'].map((suffix) => ({
+    helperId: `windows-${suffix}`, checking: false, result: suffix === 'node-host-installer' ? missing : null,
+  }));
+  f.snapshot.helpers.push(...f.snapshot.prerequisites.map((entry) => ({ id: entry.helperId, available: true, supported: true, supportsApply: true })));
+  const helpers = [];
+  const installed = new Set();
+  f.bridge.runSetupHelper = async (id, mode) => {
+    helpers.push([id, mode]);
+    if (mode === 'apply') installed.add(id);
+    const result = { ...missing, status: mode === 'apply' ? 'restart_required' : installed.has(id) ? 'ready' : 'changes_required', summary: 'Checked' };
+    f.snapshot.prerequisites.find((entry) => entry.helperId === id).result = result;
+    return { state: { lastAction: result } };
+  };
+  await f.view.refresh();
+  assert.match(f.root.querySelector('[data-prerequisite=node] .pm-status').textContent, /Not installed/);
+  assert.equal(f.button('prepare-node').disabled, false);
+  f.button('prepare-node').click(); await flush(); await flush();
+  assert.deepEqual(helpers, [['windows-node-host-installer', 'apply'], ['windows-node-host-installer', 'check'],
+    ['windows-npm-prefix-helper', 'check'], ['windows-npm-prefix-helper', 'apply'], ['windows-npm-prefix-helper', 'check']]);
+  assert.match(f.root.querySelector('[data-prerequisite=node] .pm-status').textContent, /Installed/);
+  assert.deepEqual(f.calls, []);
+  assert.equal(f.button('continue').disabled, true);
+});
+
+test('technical observations and maintenance stay under closed details in Settings', async (t) => {
+  const f = fixture(t); await flush();
+  const row = f.root.querySelector('[data-provider=codex]');
+  assert.equal(row.querySelector('.pm-status').textContent, 'Installed');
+  const details = row.querySelector('details');
+  assert.equal(details.open, false);
+  assert.match(details.textContent, /Last checked/);
+  assert.match(details.textContent, /Sign-in has not been verified/);
+  const uninstall = [...row.querySelectorAll('button')].find((entry) => entry.textContent === 'Uninstall…');
+  assert.equal(uninstall.closest('details'), details);
+});
+
+test('custom connections remain distinguishable while their execution details stay collapsed', async (t) => {
+  const f = fixture(t); await flush();
+  f.snapshot.runtime.selection.targets = [
+    { ...codex, instance: 'work-laptop' }, { ...codex, instance: 'personal' },
+  ];
+  f.snapshot.runtime.selection.revision = 'custom';
+  await f.view.refresh();
+  const choices = [...f.root.querySelectorAll('[data-provider=codex] input')];
+  assert.ok(choices.some((entry) => entry.getAttribute('aria-label').includes('work-laptop')));
+  assert.ok(choices.some((entry) => entry.getAttribute('aria-label').includes('personal')));
+  const custom = [...f.root.querySelectorAll('[data-provider=codex]')].find((entry) => entry.textContent.includes('work-laptop'));
+  assert.equal(custom.querySelector('details').open, false);
+  assert.match(custom.querySelector('details').textContent, /cli \/ work-laptop/);
+  custom.querySelector('input').click();
+  f.button('apply').click(); await flush(); await flush();
+  assert.deepEqual(f.calls[0].targets, [{ ...codex, instance: 'personal' }]);
 });
 
 test('Settings Apply defaults to save-only and retains previous results with stable footer', async (t) => {

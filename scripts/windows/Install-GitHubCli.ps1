@@ -179,6 +179,10 @@ $mode = if ($CheckOnly) {
   'apply'
 }
 
+# Desktop can outlive an installation. A fresh check must include the registry
+# PATH, while retaining caller-provided command locations in this process.
+$env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
+  [System.Environment]::GetEnvironmentVariable('Path', 'User') + ';' + $env:Path
 $installed = Test-GhInstalled
 $detected = Get-GhDetectedVersion -Override $DetectedVersion
 $commandPath = if ($SkipGhProbe) { '' } else { Resolve-GhCommandPath }
