@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-09-17-copilot-fixed-presets](./2026-09-17-copilot-fixed-presets.md) | 2026-09-17 | Copilot fixed model/effort shortlist | Six fixed combinations, Terra default, exact labels and existing custom input |
 | [2026-09-17-cursor-fixed-presets](./2026-09-17-cursor-fixed-presets.md) | 2026-09-17 | Cursor six fixed combinations | Parameterized fallback entries, first-item initialization without default markers, and existing custom input |
 | [2026-09-17-grok-model-picker](./2026-09-17-grok-model-picker.md) | 2026-09-17 | Grok Build 1.0.34 picker | Two exact fallback names, per-model first-effort initialization and persisted execution choices without default labels |
 | [2026-09-16-antigravity-model-picker](./2026-09-16-antigravity-model-picker.md) | 2026-09-16 | Antigravity 1.2.3 picker | Seven exact model labels and first-effort initialization without invented defaults |
