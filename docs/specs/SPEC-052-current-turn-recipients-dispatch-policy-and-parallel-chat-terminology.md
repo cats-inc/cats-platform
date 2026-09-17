@@ -7,6 +7,7 @@
 | **Status** | Approved |
 | **Owner** | Codex |
 | **Reviewer** | User |
+| **Last updated** | 2026-09-18 (conversation-owned execution selection) |
 | **Supersedes** | [SPEC-030](./SPEC-030-composer-scoped-lead-cat-and-boss-auto-helper-semantics.md) |
 
 ## Summary
@@ -199,6 +200,35 @@ than a named participant, the composer must render that selection as an
 implicit recipient.
 
 The product should not describe this state as "no recipient."
+
+#### Conversation-Owned Selection (2026-09-18)
+
+Each persisted default conversation owns its God Cat / implicit recipient's
+provider, instance, model, and model-selection controls (including reasoning
+effort). The composer chip, execution picker, and next outgoing turn must use
+that same conversation-owned selection.
+
+- New-chat defaults seed a new draft; choosing a different combination in a
+  later draft or conversation must not rewrite existing conversations.
+- Switching conversations must bind the selection to the destination
+  conversation before rendering children or starting reconciliation/autosave.
+  A shared unkeyed target synchronized only in an effect is insufficient.
+- Catalog/label reconciliation and save responses must remain scoped to the
+  conversation and selection that started them. Warm caches and delayed
+  responses must not carry A's selection into B or overwrite a newer pick.
+- A refreshed copy of the same persisted selection must not discard a pending
+  local edit merely because its objects have new references.
+- When a conversation has its own provider, its nullable model, instance, and
+  controls belong to that selection too. Never fill those fields independently
+  from global God Cat defaults. The global fallback applies only when no
+  conversation provider selection exists.
+
+Regression coverage must exercise multiple combinations, same-provider effort
+differences, warm and delayed catalogs, asynchronous navigation, persisted
+reloads, and the chip/picker/send path together. Existing conversations whose
+pending selections were already overwritten require an explicit new selection;
+the last Runtime session is historical execution evidence, not permission to
+silently restore a potentially different next-turn choice.
 
 ### Sequential Ordering
 

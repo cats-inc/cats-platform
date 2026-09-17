@@ -283,6 +283,27 @@ test('default channel execution target falls back to the global orchestrator whe
   );
 });
 
+test('a conversation selection never inherits another provider model, instance or effort from God Cat defaults', () => {
+  const target = toDefaultChatExecutionTargetValue({
+    newChatDefaults: null,
+    globalOrchestrator: {
+      executionTarget: { provider: 'claude', model: 'opus', instance: 'cli/native' },
+      executionModelSelection: {
+        entryId: 'opus', entryMode: 'explicit', controls: { 'claude.reasoning_effort': 'max' },
+      },
+    },
+  }, {
+    id: 'conversation-with-provider-defaults',
+    pendingProvider: 'codex',
+    pendingModel: null,
+    pendingInstance: null,
+    pendingModelSelection: null,
+  });
+  assert.deepEqual(target, {
+    provider: 'codex', model: null, instance: null, modelSelection: null, executionLabel: null,
+  });
+});
+
 test('runtime-backed execution target reconciliation adopts the advanced default effort for bare Claude opus targets', async () => {
   const reconciled = await reconcileRuntimeBackedExecutionTargetValue({
     target: {
