@@ -1,5 +1,6 @@
 import {
   startTransition,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -547,22 +548,23 @@ export function toDefaultChatExecutionTargetValue<
     return null;
   }
 
+  // A conversation owns the entire selection, including explicit nulls. Do
+  // not combine its provider with the global orchestrator's model or effort.
+  if (readySelectedChannel.pendingProvider) {
+    return {
+      provider: readySelectedChannel.pendingProvider,
+      model: readySelectedChannel.pendingModel ?? null,
+      instance: readySelectedChannel.pendingInstance ?? null,
+      modelSelection: readySelectedChannel.pendingModelSelection ?? null,
+      executionLabel: null,
+    };
+  }
+
   return {
-    provider:
-      readySelectedChannel.pendingProvider
-      ?? readyChat.globalOrchestrator.executionTarget.provider,
-    model:
-      readySelectedChannel.pendingModel
-      ?? readyChat.globalOrchestrator.executionTarget.model
-      ?? null,
-    instance:
-      readySelectedChannel.pendingInstance
-      ?? readyChat.globalOrchestrator.executionTarget.instance
-      ?? null,
-    modelSelection:
-      readySelectedChannel.pendingModelSelection
-      ?? readyChat.globalOrchestrator.executionModelSelection
-      ?? null,
+    provider: readyChat.globalOrchestrator.executionTarget.provider,
+    model: readyChat.globalOrchestrator.executionTarget.model ?? null,
+    instance: readyChat.globalOrchestrator.executionTarget.instance ?? null,
+    modelSelection: readyChat.globalOrchestrator.executionModelSelection ?? null,
     executionLabel: null,
   };
 }
@@ -585,9 +587,41 @@ export function useWorkspaceExecutionTargetState<
   const [draftExecutionTarget, setDraftExecutionTarget] = useState<ExecutionTargetValue>(
     createDefaultExecutionTargetValue,
   );
-  const [defaultChannelExecutionTarget, setDefaultChannelExecutionTarget] = useState<ExecutionTargetValue>(
-    createDefaultExecutionTargetValue,
-  );
+  const persistedChannelTarget = toDefaultChatExecutionTargetValue(readyChat, readySelectedChannel);
+  const targetChannelId = persistedChannelTarget ? readySelectedChannel?.id ?? null : null;
+  const persistedChannelTargetSignature = persistedChannelTarget
+    ? buildExecutionTargetReconcileSignature(persistedChannelTarget)
+    : null;
+  const [channelTargetState, setChannelTargetState] = useState(() => ({
+    channelId: targetChannelId,
+    persistedSignature: persistedChannelTargetSignature,
+    target: persistedChannelTarget ?? createDefaultExecutionTargetValue(),
+  }));
+  // Synchronize before children/effects can see a new channel paired with the
+  // previous channel's target. An effect is too late: a warm catalog can
+  // reconcile that stale pair and the autosave can then write it to the new room.
+  if (
+    channelTargetState.channelId !== targetChannelId
+    || channelTargetState.persistedSignature !== persistedChannelTargetSignature
+  ) {
+    setChannelTargetState({
+      channelId: targetChannelId,
+      persistedSignature: persistedChannelTargetSignature,
+      target: persistedChannelTarget ?? createDefaultExecutionTargetValue(),
+    });
+  }
+  const defaultChannelExecutionTarget = channelTargetState.target;
+  const setDefaultChannelExecutionTarget = useCallback<Dispatch<SetStateAction<ExecutionTargetValue>>>((update) => {
+    setChannelTargetState((current) => {
+      if (!targetChannelId || current.channelId !== targetChannelId) {
+        return current;
+      }
+      const target = typeof update === 'function' ? update(current.target) : update;
+      return sameExecutionTargetValueAndLabel(current.target, target)
+        ? current
+        : { ...current, target };
+    });
+  }, [targetChannelId]);
   const latestNewChatDefaultsSaveId = useRef(0);
   const pendingNewChatDefaultsSaveTimeout = useRef<ReturnType<
     typeof setTimeout
@@ -638,52 +672,6 @@ export function useWorkspaceExecutionTargetState<
   }, []);
 
   useEffect(() => {
-    const nextDefaultChatExecutionTarget = toDefaultChatExecutionTargetValue(
-      readyChat,
-      readySelectedChannel,
-    );
-    if (!nextDefaultChatExecutionTarget) {
-      return;
-    }
-
-    setDefaultChannelExecutionTarget((currentDefaultChatExecutionTarget) =>
-      mergeExecutionTargetValue(currentDefaultChatExecutionTarget, nextDefaultChatExecutionTarget));
-  }, [
-    readySelectedChannel?.id,
-    readySelectedChannel?.channelKind,
-    readySelectedChannel?.roomRouting?.mode,
-    readySelectedChannel?.pendingProvider,
-    readySelectedChannel?.pendingModel,
-    readySelectedChannel?.pendingInstance,
-    readySelectedChannel?.pendingModelSelection,
-    readyChat?.globalOrchestrator.executionTarget.provider,
-    readyChat?.globalOrchestrator.executionTarget.model,
-    readyChat?.globalOrchestrator.executionTarget.instance,
-    readyChat?.globalOrchestrator.executionModelSelection,
-  ]);
-
-  useEffect(() => {
-    if (!readySelectedChannel || !isDefaultChatChannel(readySelectedChannel)) {
-      return;
-    }
-
-    if (!readySelectedChannel.pendingProvider) {
-      return;
-    }
-
-    const pendingProvider = readySelectedChannel.pendingProvider;
-
-    setDefaultChannelExecutionTarget((currentDefaultChatExecutionTarget) =>
-      mergeExecutionTargetValue(currentDefaultChatExecutionTarget, {
-        provider: pendingProvider,
-        model: readySelectedChannel.pendingModel ?? null,
-        instance: readySelectedChannel.pendingInstance ?? null,
-        modelSelection: readySelectedChannel.pendingModelSelection ?? null,
-        executionLabel: null,
-      }));
-  }, [readySelectedChannel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
     if (state.status !== 'ready') {
       return;
     }
@@ -729,7 +717,9 @@ export function useWorkspaceExecutionTargetState<
       }
 
       setDefaultChannelExecutionTarget((currentDefaultChatExecutionTarget) =>
-        mergeExecutionTargetValue(currentDefaultChatExecutionTarget, nextDefaultChatExecutionTarget));
+        sameExecutionTargetValue(currentDefaultChatExecutionTarget, defaultChannelExecutionTarget)
+          ? mergeExecutionTargetValue(currentDefaultChatExecutionTarget, nextDefaultChatExecutionTarget)
+          : currentDefaultChatExecutionTarget);
     }).catch((error) => {
       logExecutionTargetReconcileWarning(
         `failed to reconcile default chat execution target for ${defaultChannelExecutionTarget.provider}:${defaultChannelExecutionTarget.model ?? 'default'}`,
@@ -745,6 +735,7 @@ export function useWorkspaceExecutionTargetState<
     readySelectedChannel?.channelKind,
     readySelectedChannel?.roomRouting?.mode,
     defaultChannelExecutionTargetReconcileSignature,
+    setDefaultChannelExecutionTarget,
     state.status,
   ]);
 

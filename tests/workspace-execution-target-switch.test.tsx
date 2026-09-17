@@ -3,14 +3,22 @@ import { resetTestDom } from './helpers/installDomBeforeReact.ts';
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { cleanup, renderHook, waitFor } from '@testing-library/react';
-import React from 'react';
+import { act, cleanup, render, renderHook, waitFor } from '@testing-library/react';
+import React, { startTransition, useState } from 'react';
 
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
+import { ProviderModelFields } from '../src/products/shared/renderer/components/ProviderModelFields.tsx';
+import { createExecutionTargetValueFromProviderSelection, type ExecutionTargetValue } from '../src/products/shared/renderer/components/ExecutionTarget.ts';
+import { AudienceChip } from '../src/products/shared/renderer/components/AudienceChip.tsx';
+import { buildAudienceParticipantFromExecutionTarget } from '../src/products/shared/renderer/audienceParticipantBuilder.ts';
+import { buildDefaultChatDispatchTarget } from '../src/products/shared/renderer/composerDispatch.ts';
 import {
   useWorkspaceExecutionTargetState,
   type WorkspaceExecutionTargetChannelLike,
   type WorkspaceExecutionTargetChatLike,
+  type PendingExecutionTargetUpdateInput,
+  type PersistedNewChatDefaultsInput,
+  type WorkspaceExecutionTargetLoadState,
 } from '../src/products/shared/renderer/hooks/useWorkspaceExecutionTargetState.ts';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = false;
@@ -53,11 +61,14 @@ function catalogBody(provider: string, model: string, label: string) {
     catalog: {
       provider,
       backend: 'cli',
-      instance: 'native',
+      instance: 'cli/native',
       source: 'dynamic',
       cache: null,
       defaultModel: model,
-      models: [{ id: model, label, default: true }],
+      models: [
+        { id: model, label, default: true },
+        ...(provider === 'claude' ? [{ id: 'sonnet', label: 'Sonnet' }] : []),
+      ],
       warnings: [],
     },
   };
@@ -68,13 +79,22 @@ function advancedCatalogBody(provider: string, model: string, label: string) {
     catalog: {
       provider,
       backend: 'cli',
-      instance: 'native',
+      instance: 'cli/native',
       source: 'dynamic',
       cache: null,
       defaultModel: model,
-      entries: [{ id: model, label, default: true }],
+      entries: [
+        { id: model, label, default: true },
+        ...(provider === 'claude' ? [{ id: 'sonnet', label: 'Sonnet' }] : []),
+      ],
       presets: [],
-      controls: [],
+      controls: [{
+        key: `${provider}.reasoning_effort`,
+        label: 'Reasoning effort',
+        kind: 'enum',
+        scope: 'both',
+        values: ['low', 'medium', 'high', 'max'].map((value) => ({ value, label: value })),
+      }],
       defaultSelection: { entryId: model, entryMode: 'explicit', controls: {} },
       support: { tier: 'full', notes: [] },
       warnings: [],
@@ -150,7 +170,7 @@ const channelA: WorkspaceExecutionTargetChannelLike = {
   channelKind: 'chat_channel',
   pendingProvider: 'codex',
   pendingModel: 'gpt-5.6-sol',
-  pendingInstance: 'native',
+  pendingInstance: 'cli/native',
   pendingModelSelection: { entryId: 'gpt-5.6-sol', entryMode: 'explicit' },
 };
 
@@ -159,7 +179,7 @@ const channelB: WorkspaceExecutionTargetChannelLike = {
   channelKind: 'chat_channel',
   pendingProvider: 'claude',
   pendingModel: 'opus',
-  pendingInstance: 'native',
+  pendingInstance: 'cli/native',
   pendingModelSelection: { entryId: 'opus', entryMode: 'explicit' },
 };
 
@@ -230,4 +250,220 @@ test('switching conversations never writes the previous conversation\'s target i
     `local target drifted back to A after the switch: ${JSON.stringify(result.current.defaultChannelExecutionTarget)}`,
   );
   assert.equal(result.current.defaultChannelExecutionTarget.model, 'opus');
+});
+
+test('four conversations keep their own chip, picker and send target with warm catalogs and async navigation', async (t) => {
+  resetTestDom();
+  const registry = deferred<unknown>();
+  registry.resolve(registryBody);
+  const restoreFetch = installFetch(registry);
+  t.after(() => {
+    cleanup();
+    restoreFetch();
+    resetTestDom();
+  });
+
+  const choices: WorkspaceExecutionTargetChannelLike[] = [
+    { ...channelA, pendingModelSelection: { entryId: 'gpt-5.6-sol', entryMode: 'explicit', controls: { 'codex.reasoning_effort': 'high' } } },
+    { ...channelB, pendingModelSelection: { entryId: 'opus', entryMode: 'explicit', controls: { 'claude.reasoning_effort': 'max' } } },
+    { ...channelB, id: 'channel-c', pendingModel: 'sonnet', pendingModelSelection: { entryId: 'sonnet', entryMode: 'explicit', controls: { 'claude.reasoning_effort': 'medium' } } },
+    { ...channelA, id: 'channel-d', pendingModelSelection: { entryId: 'gpt-5.6-sol', entryMode: 'explicit', controls: { 'codex.reasoning_effort': 'low' } } },
+  ];
+  const channels = new Map(choices.map((channel) => [channel.id, structuredClone(channel)]));
+  let selectedId = channelA.id;
+  let defaults: PersistedNewChatDefaultsInput = {
+    provider: 'claude', model: 'opus', instance: 'cli/native',
+    modelSelection: { entryId: 'opus', entryMode: 'explicit' },
+  };
+  const snapshot = () => ({ chat: { ...chat, newChatDefaults: structuredClone(defaults), selectedChannel: structuredClone(channels.get(selectedId)!) } });
+  type Payload = ReturnType<typeof snapshot>;
+  const writes: Array<{ channelId: string; patch: PendingExecutionTargetUpdateInput }> = [];
+  const updateNewChatDefaultsPreference = async (next: PersistedNewChatDefaultsInput) => {
+    defaults = structuredClone(next);
+    return snapshot();
+  };
+  const updateChannelPendingExecutionTarget = async (channelId: string, patch: PendingExecutionTargetUpdateInput) => {
+    writes.push({ channelId, patch });
+    Object.assign(channels.get(channelId)!, structuredClone(patch));
+    return snapshot();
+  };
+  const setFeedback = () => {};
+  let controls!: {
+    select: (id: string) => Promise<void>;
+    refresh: () => void;
+    target: ExecutionTargetValue;
+    change: (target: ExecutionTargetValue) => void;
+  };
+  function Harness() {
+    const [state, setState] = useState<WorkspaceExecutionTargetLoadState<Payload>>({ status: 'ready', payload: snapshot() });
+    const readyChat = state.status === 'ready' ? state.payload.chat : null;
+    const targetState = useWorkspaceExecutionTargetState({
+      state,
+      readyChat,
+      readySelectedChannel: readyChat?.selectedChannel ?? null,
+      setState,
+      setFeedback,
+      updateNewChatDefaultsPreference,
+      updateChannelPendingExecutionTarget,
+      debounceMs: 30,
+    });
+    const target = targetState.defaultChannelExecutionTarget;
+    controls = {
+      target,
+      change: targetState.setDefaultChannelExecutionTarget,
+      refresh: () => startTransition(() => setState({ status: 'ready', payload: snapshot() })),
+      select: async (id) => {
+        selectedId = id;
+        await Promise.resolve();
+        startTransition(() => setState({ status: 'ready', payload: snapshot() }));
+      },
+    };
+    return <div data-channel={readyChat?.selectedChannel.id}>
+      <AudienceChip audienceParticipants={[buildAudienceParticipantFromExecutionTarget(target)]} />
+      <ProviderModelFields
+        provider={target.provider}
+        instance={target.instance ?? ''}
+        model={target.model ?? ''}
+        modelSelection={target.modelSelection}
+        onTargetChange={(selection) => targetState.setDefaultChannelExecutionTarget(createExecutionTargetValueFromProviderSelection(selection))}
+      />
+    </div>;
+  }
+  let view = render(<I18nProvider locale="en"><Harness /></I18nProvider>);
+
+  function assertChoice(choice: WorkspaceExecutionTargetChannelLike): void {
+    assert.equal(controls.target.provider, choice.pendingProvider);
+    assert.equal(controls.target.instance, choice.pendingInstance);
+    assert.equal(controls.target.model, choice.pendingModel);
+    assert.deepEqual(controls.target.modelSelection, choice.pendingModelSelection);
+    assert.equal(view.container.querySelectorAll('select')[0]?.value, choice.pendingProvider);
+    const effort = Object.values(choice.pendingModelSelection?.controls ?? {})[0];
+    assert.match(view.container.querySelector('.audienceChipLabel')?.textContent ?? '', new RegExp(String(effort), 'i'));
+    assert.deepEqual(buildDefaultChatDispatchTarget({
+      wasDraftingNewChat: false, isCatScopedLaneRoute: false,
+      channelId: choice.id,
+      selectedChannel: { id: choice.id, channelKind: 'chat_channel', pendingProvider: choice.pendingProvider },
+      defaultChannelExecutionTarget: controls.target,
+    }), {
+      pendingProvider: choice.pendingProvider,
+      pendingModel: choice.pendingModel,
+      pendingInstance: choice.pendingInstance,
+      pendingModelSelection: choice.pendingModelSelection,
+    });
+  }
+
+  await tick(200);
+  assertChoice(choices[0]);
+  writes.length = 0;
+  const staleChangeFromA = controls.change;
+  for (const choice of [choices[1], choices[2], choices[3], choices[0], choices[2]]) {
+    await controls.select(choice.id);
+    await tick(150);
+    assertChoice(choice);
+    assert.deepEqual(channels.get(choice.id), choice);
+  }
+  act(() => staleChangeFromA({ provider: 'codex', instance: 'cli/native', model: 'wrong-old-model', modelSelection: null }));
+  await tick(80);
+  assertChoice(choices[2]);
+  assert.equal(writes.length, 0, 'navigation and label refresh must not save another conversation\'s selection');
+
+  // Refreshing a cloned app-shell snapshot must not erase an edit while its
+  // debounced save is pending. Only C should change, and remount must retain it.
+  const editedSelection = { entryId: 'sonnet', entryMode: 'explicit' as const, controls: { 'claude.reasoning_effort': 'high' } };
+  act(() => controls.change({ ...controls.target, modelSelection: editedSelection, executionLabel: null }));
+  controls.refresh();
+  await tick(150);
+  const editedC = { ...choices[2], pendingModelSelection: editedSelection };
+  assertChoice(editedC);
+  assert.deepEqual(writes.map((write) => write.channelId), ['channel-c']);
+  for (const choice of [choices[0], choices[1], choices[3]]) assert.deepEqual(channels.get(choice.id), choice);
+  view.unmount();
+  view = render(<I18nProvider locale="en"><Harness /></I18nProvider>);
+  await tick(150);
+  assertChoice(editedC);
+});
+
+test('late saves cannot replace another conversation or a newer effort choice', async (t) => {
+  resetTestDom();
+  const registry = deferred<unknown>();
+  registry.resolve(registryBody);
+  const restoreFetch = installFetch(registry);
+  t.after(() => { cleanup(); restoreFetch(); resetTestDom(); });
+
+  const stableChat = {
+    ...chat,
+    newChatDefaults: {
+      provider: 'claude', model: 'opus', instance: 'cli/native',
+      modelSelection: { entryId: 'opus', entryMode: 'explicit' as const },
+    },
+  };
+  const payload = { chat: stableChat };
+  const state = { status: 'ready' as const, payload };
+  const published: Array<typeof payload> = [];
+  const saves: Array<{
+    channelId: string;
+    patch: PendingExecutionTargetUpdateInput;
+    signal: AbortSignal;
+    response: Deferred<typeof payload>;
+  }> = [];
+  const options = {
+    state,
+    readyChat: stableChat,
+    setState: (update: React.SetStateAction<WorkspaceExecutionTargetLoadState<typeof payload>>) => {
+      const next = typeof update === 'function' ? update(state) : update;
+      if (next.status === 'ready') published.push(next.payload);
+    },
+    setFeedback: () => {},
+    updateNewChatDefaultsPreference: async () => payload,
+    updateChannelPendingExecutionTarget: (channelId: string, patch: PendingExecutionTargetUpdateInput, signal: AbortSignal) => {
+      const response = deferred<typeof payload>();
+      saves.push({ channelId, patch, signal, response });
+      return response.promise; // Deliberately resolves even after abort.
+    },
+    debounceMs: 10,
+  };
+  const { result, rerender } = renderHook(
+    ({ channel }) => useWorkspaceExecutionTargetState({ ...options, readySelectedChannel: channel }),
+    {
+      initialProps: { channel: channelA },
+      wrapper: ({ children }) => <I18nProvider locale="en">{children}</I18nProvider>,
+    },
+  );
+  await tick(80);
+  function changeEffort(effort: string): void {
+    const target = result.current.defaultChannelExecutionTarget;
+    act(() => result.current.setDefaultChannelExecutionTarget({
+      ...target,
+      modelSelection: {
+        entryId: target.model!, entryMode: 'explicit',
+        controls: { [`${target.provider}.reasoning_effort`]: effort },
+      },
+      executionLabel: null,
+    }));
+  }
+
+  changeEffort('high');
+  await waitFor(() => assert.equal(saves.length, 1));
+  rerender({ channel: channelB });
+  saves[0].response.resolve(payload);
+  await tick(80);
+  assert.equal(saves[0].channelId, channelA.id);
+  assert.equal(saves[0].signal.aborted, true);
+  assert.equal(published.length, 0);
+  assert.equal(result.current.defaultChannelExecutionTarget.provider, 'claude');
+
+  changeEffort('medium');
+  await waitFor(() => assert.equal(saves.length, 2));
+  changeEffort('low');
+  await waitFor(() => assert.equal(saves.length, 3));
+  assert.equal(saves[1].signal.aborted, true);
+  const newestPayload = structuredClone(payload);
+  saves[2].response.resolve(newestPayload);
+  await tick(50);
+  saves[1].response.resolve(payload);
+  await tick(50);
+  assert.equal(published.length, 1);
+  assert.equal(published[0], newestPayload);
+  assert.equal(result.current.defaultChannelExecutionTarget.modelSelection?.controls?.['claude.reasoning_effort'], 'low');
+  assert.ok(saves.slice(1).every((save) => save.channelId === channelB.id));
 });
