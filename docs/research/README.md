@@ -6,6 +6,8 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-09-18-kilo-shortlist](./2026-09-18-kilo-shortlist.md) | 2026-09-18 | Kilo six-model shortlist | Exact labels, Thinking suffixes, first-item initialization and custom input |
+| [2026-09-18-opencode-shortlist](./2026-09-18-opencode-shortlist.md) | 2026-09-18 | OpenCode six-model shortlist | Exact fallback labels, Go namespaces, first-item initialization and custom input |
 | [2026-09-17-copilot-fixed-presets](./2026-09-17-copilot-fixed-presets.md) | 2026-09-17 | Copilot fixed model/effort shortlist | Six fixed combinations, Terra default, exact labels and existing custom input |
 | [2026-09-17-cursor-fixed-presets](./2026-09-17-cursor-fixed-presets.md) | 2026-09-17 | Cursor six fixed combinations | Parameterized fallback entries, first-item initialization without default markers, and existing custom input |
 | [2026-09-17-grok-model-picker](./2026-09-17-grok-model-picker.md) | 2026-09-17 | Grok Build 1.0.34 picker | Two exact fallback names, per-model first-effort initialization and persisted execution choices without default labels |

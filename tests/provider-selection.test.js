@@ -49,6 +49,48 @@ test('static Codex catalog keeps raw model labels without a synthetic default su
   assert.equal(catalog.models[0]?.label, 'gpt-6-astra');
 });
 
+test('OpenCode shortlist preserves labels, starts at the first row, and retains custom model strings', () => {
+  const catalog = createStaticProviderModelCatalog('opencode');
+  assert.deepEqual(catalog.models.map(({ id, label }) => ({ id, label })), [
+    { id: 'opencode-go/union-alpha', label: 'Union Alpha Free' },
+    { id: 'opencode-go/deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash' },
+    { id: 'opencode-go/hy4-preview', label: 'Hy4 preview' },
+    { id: 'opencode-go/glm-5.3-flash', label: 'GLM-5.3-Flash' },
+    { id: 'opencode-go/qwen3.8-flash', label: 'Qwen3.8 Flash' },
+    { id: 'opencode-go/minimax-m3', label: 'MiniMax-M3' },
+  ]);
+  assert.ok(catalog.models.every(model => !model.default));
+  const target = { provider: 'opencode', instance: 'native', model: '' };
+  assert.equal(resolveCatalogTargetSelection({ target, catalog }).model, 'opencode-go/union-alpha');
+  const custom = resolveCatalogTargetSelection({
+    target: { ...target, model: 'another-provider/custom-model', modelSelection: null },
+    catalog, preserveCurrentModel: true, preserveCurrentSelection: true,
+  });
+  assert.equal(custom.model, 'another-provider/custom-model');
+  assert.equal(custom.modelSelection, null);
+});
+
+test('Kilo shortlist preserves labels, starts at the first row, and retains custom model strings', () => {
+  const catalog = createStaticProviderModelCatalog('kilo');
+  assert.deepEqual(catalog.models.map(({ id, label }) => ({ id, label })), [
+    { id: 'kilo/deepseek/deepseek-v4.1-flash', label: 'DeepSeek: DeepSeek V4.1 Flash' },
+    { id: 'kilo/z-ai/glm-5.3-flash', label: 'Z.ai: GLM 5.3 Flash' },
+    { id: 'kilo/moonshotai/kimi-k3', label: 'MoonshotAI: Kimi K3' },
+    { id: 'kilo/minimax/minimax-m3', label: 'MiniMax: MiniMax M3' },
+    { id: 'kilo/bytedance-seed/seed-2-1-turbo', label: 'ByteDance Seed: Seed 2.1 Turbo Thinking' },
+    { id: 'kilo/google/gemini-3-pro-image', label: 'Google: Nano Banana Pro (Gemini 3 Pro Image) Thinking' },
+  ]);
+  assert.ok(catalog.models.every(model => !model.default));
+  const target = { provider: 'kilo', instance: 'native', model: '' };
+  assert.equal(resolveCatalogTargetSelection({ target, catalog }).model, 'kilo/deepseek/deepseek-v4.1-flash');
+  const custom = resolveCatalogTargetSelection({
+    target: { ...target, model: 'another-provider/custom-model', modelSelection: null },
+    catalog, preserveCurrentModel: true, preserveCurrentSelection: true,
+  });
+  assert.equal(custom.model, 'another-provider/custom-model');
+  assert.equal(custom.modelSelection, null);
+});
+
 test('advanced catalog preserves scalar per-entry defaults and drops malformed values', () => {
   const catalog = normalizeProviderAdvancedModelCatalog({
     entries: [
