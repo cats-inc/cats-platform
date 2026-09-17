@@ -19,6 +19,43 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-18 (0.2.12 unsigned preview)
+
+### Keep provider/model pickers available and recover automatically
+
+Behavior change:
+
+Chat, Settings and first setup's Catlas picker retain successful provider/model
+data across tray idle and refresh failures. Initial loading and recovery use an
+animated indicator with automatic retry. Raw timeout/auth messages, Retry and
+Open Runtime Setup actions are removed from these pickers. Base and advanced
+catalogs recover independently; confirmed selection/auth changes still clear
+retained data. First setup also contains optional prefetch failures so recovery
+does not leave an unhandled exception.
+
+This preview includes the merged Copilot and Cursor fixed presets, OpenCode and
+Kilo curated shortlists, and Runtime's corrected Muse effort menus. Existing
+user-curated catalog overrides retain their normal precedence.
+
+Migration steps:
+
+Use Cats Desktop **Check for Update** in an existing unsigned preview to install
+0.2.12. Provider selections and user data do not require a reset. Runtime remains
+0.1.24, pinned to `03d3e1786b49de66b74b55a8c478db96f9721d6b`; the bundled Usage
+App remains 0.2.0. Dispatch the manual Desktop workflow with `tag=v0.2.12` and
+that exact `runtime_ref`. Windows x64 NSIS, macOS x64 DMG/updater ZIP and Linux
+arm64 DEB publish only after all packaging and update-asset gates succeed.
+
+Validation: provider recovery and first-setup regressions, isolated picker
+visual checks, merged Platform CI and the pinned Runtime release preflight
+passed. The version candidate requires full PR CI plus the three-platform
+unsigned release workflow. Check public update discovery after publication;
+the installed upgrade/restart remains user acceptance.
+
+Deprecations: manual recovery actions inside provider/model pickers are removed.
+This remains an unsigned GitHub prerelease. This release was explicitly
+requested; future version bumps still need a new request.
+
 ## 2026-09-17 (0.2.11 unsigned preview)
 
 ### Restore Desktop onboarding cards and clean-machine preparation
