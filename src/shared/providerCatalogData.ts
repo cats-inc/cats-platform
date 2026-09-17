@@ -68,9 +68,12 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'muse-spark-1.2', label: 'muse-spark-1.2' },
   ],
   copilot: [
-    { value: 'gpt-5.4', label: 'gpt-5.4 (default)', default: true },
-    { value: 'claude-opus-4-6', label: 'claude-opus-4-6' },
-    { value: 'gemini-3-pro-preview', label: 'gemini-3-pro-preview' },
+    { value: 'gpt-5.6-terra', label: 'GPT-5.6 Terra — Medium (default)', default: true },
+    { value: 'claude-sonnet-5', label: 'Claude Sonnet 5 — Medium' },
+    { value: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash — Medium' },
+    { value: 'grok-4.6', label: 'Grok 4.6 — Medium' },
+    { value: 'gpt-5.6-luna', label: 'GPT-5.6 Luna — Medium' },
+    { value: 'kimi-k3', label: 'Kimi K3 — High' },
   ],
   opencode: [
     { value: 'opencode-go/glm-5', label: 'glm-5 (default)', default: true },

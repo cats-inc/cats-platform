@@ -21,6 +21,9 @@ for implementation progress and native OS verification limits.
 
 ## Provider Catalog Labels
 
+[Copilot fixed presets](./research/2026-09-17-copilot-fixed-presets.md) records the approved fixed
+efforts, Terra default and per-model raw-ID evidence.
+
 [Cursor fixed presets](./research/2026-09-17-cursor-fixed-presets.md) records six parameterized
 combinations plus custom input, with first-item initialization and no default marker.
 
