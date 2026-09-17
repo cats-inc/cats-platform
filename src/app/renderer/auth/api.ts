@@ -1,5 +1,6 @@
 import type { PlatformAuthErrorCode } from '../../../platform/auth/errorCodes.js';
 import { seedCsrfToken } from '../csrfFetch.js';
+import { invalidateProviderClientSession } from '../providerClientInvalidation.js';
 
 export interface PlatformAuthPrincipalSummary {
   accountId: string;
@@ -263,7 +264,9 @@ export async function logoutPlatformSession(
     body: JSON.stringify({}),
     signal: options.signal,
   });
-  return readPlatformAuthJsonResponse(response, options);
+  const status = await readPlatformAuthJsonResponse(response, options);
+  invalidateProviderClientSession();
+  return status;
 }
 
 export async function runPlatformAuthCsrfMutation<T>(

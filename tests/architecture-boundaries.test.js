@@ -1991,10 +1991,8 @@ test('ProviderModelFields composes dedicated support helpers instead of defining
   assert.match(componentSource, /providerModelFieldsSupport\.js/u);
   assert.doesNotMatch(componentSource, /function createEmptyProviderModelCatalog\(/u);
   assert.doesNotMatch(componentSource, /function sanitizeProviderRegistryReadModel\(/u);
-  assert.doesNotMatch(componentSource, /function shouldAutoRecheckProviderRegistry\(/u);
   assert.match(supportSource, /export function createEmptyProviderModelCatalog/u);
   assert.match(supportSource, /export function sanitizeProviderRegistryReadModel/u);
-  assert.match(supportSource, /export function shouldAutoRecheckProviderRegistry/u);
 });
 
 test('platform setup routes consume dedicated parser helpers instead of keeping validation inline', async () => {

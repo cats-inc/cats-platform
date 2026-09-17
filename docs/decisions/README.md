@@ -42,7 +42,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
-| [115-bound-bootstrap-and-provider-choices-by-runtime-selection](./115-bound-bootstrap-and-provider-choices-by-runtime-selection.md) | Bound Bootstrap and Provider Choices by Runtime Selection | Accepted | 2026-09-16 |
+| [115-bound-bootstrap-and-provider-choices-by-runtime-selection](./115-bound-bootstrap-and-provider-choices-by-runtime-selection.md) | Bound Bootstrap and Provider Choices by Runtime Selection | Accepted; picker continuity amended 2026-09-18 | 2026-09-16 |
 | [114-separate-official-app-sources-and-coordinate-desktop-distribution](./114-separate-official-app-sources-and-coordinate-desktop-distribution.md) | Separate Official App Sources and Coordinate Desktop Distribution | Accepted | 2026-09-10 |
 | [113-port-the-meta-muse-installer-into-packaged-setup-and-retire-aider](./113-port-the-meta-muse-installer-into-packaged-setup-and-retire-aider.md) | Port the Meta Muse installer into packaged setup and retire Aider | Accepted | 2026-09-05 |
 | [112-adopt-a-core-owned-transport-work-delivery-golden-path](./112-adopt-a-core-owned-transport-work-delivery-golden-path.md) | Adopt a Core-Owned Transport Work Delivery Golden Path | Accepted | 2026-09-02 |

@@ -522,6 +522,15 @@ See `skills/README.md` for full details on the SKILL.md format and available ski
 
 ## Testing Protocols
 
+### Provider/model picker continuity
+
+- Provider/model pickers MUST follow the [SPEC-013 continuity contract](./docs/specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md#picker-continuity-contract-accepted-2026-09-18).
+- Retain successful Runtime-backed options across idle/temporary failures and
+  recover automatically with a visible spinner. MUST NOT add transport error
+  strings, Retry buttons, or Runtime Setup links to pickers or their wrappers.
+- Confirmed selection changes and connection/auth resets still invalidate
+  retained choices. Cached display never authorizes execution outside ROI.
+
 ### Testing Framework
 
 - **Unit Tests**: `node:test`

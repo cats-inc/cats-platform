@@ -34,7 +34,6 @@ const PROVIDER_SNAPSHOT_DEBOUNCE_MS = 1_000;
 const PROVIDER_SNAPSHOT_FLUSH_INFLIGHT_TIMEOUT_MS = 2_000;
 
 type ProviderRegistryState = 'ready' | 'no_usable_targets' | 'runtime_unreachable';
-const PROVIDER_CACHE_STALE_IF_ERROR_MS = 10 * 60_000;
 const PROVIDER_CACHE_ERROR_BACKOFF_MS = 30_000;
 const TRUTHFUL_SELECTOR_CACHE_TTL_MS = 30_000;
 const TRUTHFUL_SELECTOR_STALE_WINDOW_MS = 15_000;
@@ -62,7 +61,6 @@ interface ProviderTimedCacheEntryBase<TValue> {
   value: TValue;
   freshUntilMs: number;
   staleUntilMs: number;
-  staleIfErrorUntilMs: number;
 }
 
 interface ProviderFreshCacheEntry<TValue> extends ProviderTimedCacheEntryBase<TValue> {
@@ -333,13 +331,11 @@ function seedTruthfulProviderRegistryFromSnapshot(
   if (cacheState.entries.has(cacheKey)) {
     return;
   }
-  const now = Date.now();
   cacheState.entries.set(cacheKey, {
     lifecycle: 'error_backoff',
     value: snapshot.registry,
     freshUntilMs: 0,
     staleUntilMs: 0,
-    staleIfErrorUntilMs: now + PROVIDER_CACHE_STALE_IF_ERROR_MS,
     cacheRefreshWarning: {
       kind: 'provider-targets',
       message: 'Using last saved provider targets while cats-runtime reconnects.',
@@ -355,7 +351,6 @@ function seedProviderCatalogsFromSnapshot(
     return;
   }
   const cacheState = getProviderCatalogCacheState(runtimeClient);
-  const now = Date.now();
   for (const entry of snapshot.catalogs) {
     const cacheKey = buildProviderCatalogCacheKey({
       provider: entry.provider,
@@ -367,7 +362,6 @@ function seedProviderCatalogsFromSnapshot(
         value: entry.models,
         freshUntilMs: 0,
         staleUntilMs: 0,
-        staleIfErrorUntilMs: now + PROVIDER_CACHE_STALE_IF_ERROR_MS,
         cacheRefreshWarning: {
           kind: 'model-catalog',
           message: 'Using last saved model catalog while cats-runtime reconnects.',
@@ -380,7 +374,6 @@ function seedProviderCatalogsFromSnapshot(
         value: entry.advanced,
         freshUntilMs: 0,
         staleUntilMs: 0,
-        staleIfErrorUntilMs: now + PROVIDER_CACHE_STALE_IF_ERROR_MS,
         cacheRefreshWarning: {
           kind: 'model-catalog',
           message: 'Using last saved model catalog while cats-runtime reconnects.',
@@ -588,12 +581,9 @@ const TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY = '*';
 function shouldCacheTruthfulProviderRegistry(
   value: TruthfulProviderRegistryReadModel,
 ): boolean {
-  // Only 'ready' is authoritative enough for the full TTL+stale window.
-  // 'no_usable_targets' might be transient (e.g. runtime config reload mid-
-  // probe) — we don't want it to displace a recently-good baseline for 30s.
-  // 'runtime_unreachable' is the explicit failure state. Both fall through
-  // to the stale-fallback / short-backoff path below.
-  return value.state === 'ready';
+  // A successful empty read is authoritative too. Only transport failure
+  // retains the previous observation; elapsed time does not authorize it.
+  return value.state !== 'runtime_unreachable';
 }
 
 function appendProviderCacheWarning(
@@ -645,7 +635,6 @@ function writeProviderCacheErrorBackoff<TValue>(
     lifecycle: 'error_backoff',
     freshUntilMs: now + PROVIDER_CACHE_ERROR_BACKOFF_MS,
     staleUntilMs: Math.max(cached.staleUntilMs, now + PROVIDER_CACHE_ERROR_BACKOFF_MS),
-    staleIfErrorUntilMs: cached.staleIfErrorUntilMs,
     cacheRefreshWarning,
   });
   return appendWarning(cached.value, cacheRefreshWarning.message);
@@ -800,9 +789,13 @@ async function loadTruthfulProviderRegistryFromRuntime(
   }
 
   const runtimeConfig = await configTask;
+  if (!runtimeConfig) {
+    return { state: 'runtime_unreachable', providers: [], recovery: { retryable: true },
+      warnings: ['Runtime provider configuration is still loading.'] };
+  }
   const providers = mergeTruthfulProviderRegistry(
     configuredProductProviders,
-    runtimeConfig ?? null,
+    runtimeConfig,
     diagnostics,
   );
 
@@ -912,14 +905,13 @@ async function refreshTruthfulProviderRegistry(
           value,
           freshUntilMs: now + TRUTHFUL_SELECTOR_CACHE_TTL_MS,
           staleUntilMs: now + TRUTHFUL_SELECTOR_CACHE_TTL_MS + TRUTHFUL_SELECTOR_STALE_WINDOW_MS,
-          staleIfErrorUntilMs: now + PROVIDER_CACHE_STALE_IF_ERROR_MS,
         });
         notifyProviderCacheUpdated(dependencies.runtimeClient);
         return value;
       }
 
       const cached = cacheState.entries.get(cacheKey);
-      if (cached && cached.staleIfErrorUntilMs > now) {
+      if (cached) {
         return writeTruthfulProviderRegistryErrorBackoff(cacheState, cacheKey, cached, value);
       }
 
@@ -972,7 +964,9 @@ async function readTruthfulProviderRegistry(
     return project(readProviderCacheValue(cached, appendTruthfulProviderRegistryWarning));
   }
 
-  if (cached && cached.staleIfErrorUntilMs > now) {
+  // Expiry triggers refresh, not loss of the last successful result. The
+  // selection check above invalidates all entries when intent changes.
+  if (cached) {
     void refreshTruthfulProviderRegistry(dependencies, cacheState).catch(() => {});
     return project(appendTruthfulProviderRegistryWarning(
       readProviderCacheValue(cached, appendTruthfulProviderRegistryWarning),
@@ -1070,7 +1064,6 @@ function writeProviderCatalogCacheEntry<TCatalog extends { warnings?: string[] }
     staleUntilMs: now
       + PROVIDER_MODEL_CATALOG_CACHE_TTL_MS
       + PROVIDER_MODEL_CATALOG_STALE_WINDOW_MS,
-    staleIfErrorUntilMs: now + PROVIDER_CACHE_STALE_IF_ERROR_MS,
   });
 }
 
@@ -1091,17 +1084,6 @@ function writeProviderCatalogErrorBackoff<TCatalog extends { warnings?: string[]
     appendProviderCatalogWarning,
     (entry) => cacheState.entries.set(cacheKey, entry),
   );
-}
-
-function pruneExpiredProviderCatalogCacheEntries<TCatalog extends { warnings?: string[] }>(
-  cacheState: ProviderCatalogTypedCacheState<TCatalog>,
-  now: number,
-): void {
-  for (const [cacheKey, cached] of cacheState.entries) {
-    if (cached.staleIfErrorUntilMs <= now && !cacheState.inflight.has(cacheKey)) {
-      cacheState.entries.delete(cacheKey);
-    }
-  }
 }
 
 function refreshProviderCatalogCacheEntry<TCatalog extends { warnings?: string[] }>(
@@ -1128,7 +1110,6 @@ function refreshProviderCatalogCacheEntry<TCatalog extends { warnings?: string[]
       if (
         shouldServeStaleProviderCatalogForError(error)
         && cached
-        && cached.staleIfErrorUntilMs > Date.now()
       ) {
         return writeProviderCatalogErrorBackoff<TCatalog>(cacheState, cacheKey, cached, error);
       }
@@ -1151,7 +1132,6 @@ async function readProviderCatalogCached<TCatalog extends { warnings?: string[] 
 }): Promise<TCatalog> {
   const cacheKey = buildProviderCatalogCacheKey(input);
   const now = Date.now();
-  pruneExpiredProviderCatalogCacheEntries(input.cacheState, now);
   const cached = readProviderCatalogCacheEntry(input.cacheState, cacheKey);
 
   if (cached && cached.freshUntilMs > now) {
@@ -1168,7 +1148,7 @@ async function readProviderCatalogCached<TCatalog extends { warnings?: string[] 
     return readProviderCacheValue(cached, appendProviderCatalogWarning);
   }
 
-  if (cached && cached.staleIfErrorUntilMs > now) {
+  if (cached) {
     void refreshProviderCatalogCacheEntry(
       input.cacheState,
       cacheKey,

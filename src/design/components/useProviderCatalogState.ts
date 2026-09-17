@@ -1,108 +1,20 @@
 import { useEffect, useState } from 'react';
 
 import {
-  PROVIDER_ADVANCED_CATALOG_INCOMPLETE_WARNING,
-  PROVIDER_ADVANCED_CATALOG_LOAD_FAILED_WARNING,
-  PROVIDER_MODEL_CATALOG_INCOMPLETE_WARNING,
-  PROVIDER_MODEL_CATALOG_LOAD_FAILED_WARNING,
   peekProviderAdvancedCatalogFromClientCache,
   peekProviderModelCatalogFromClientCache,
 } from '../../app/renderer/providerCatalogClient.js';
+import { startProviderReadLoop } from '../../app/renderer/providerReadLoop.js';
+import { isProviderReadRevalidating } from '../../shared/providerRegistryWarnings.js';
 import type {
   ProviderAdvancedModelCatalog,
   ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
 import {
-  createStaticProviderAdvancedModelCatalog,
-  createStaticProviderModelCatalog,
-} from '../../shared/providerCatalog.js';
-import {
   catalogMatchesTarget,
   createEmptyProviderAdvancedModelCatalog,
   createEmptyProviderModelCatalog,
-  resolveAdvancedCatalogFallback,
-  type ProviderModelFieldsTranslate,
 } from './providerModelFieldsSupport.js';
-import { messageKeys, t as defaultTranslate } from '../../shared/i18n/index.js';
-
-function isProviderCatalogFallbackWarning(message: string): boolean {
-  return message === PROVIDER_MODEL_CATALOG_LOAD_FAILED_WARNING
-    || message === PROVIDER_MODEL_CATALOG_INCOMPLETE_WARNING
-    || message === PROVIDER_ADVANCED_CATALOG_LOAD_FAILED_WARNING
-    || message === PROVIDER_ADVANCED_CATALOG_INCOMPLETE_WARNING;
-}
-
-function readCatalogFailureMessage(error: unknown, fallback: string): string {
-  if (!(error instanceof Error)) {
-    return fallback;
-  }
-  return isProviderCatalogFallbackWarning(error.message) ? fallback : error.message;
-}
-
-function localizeCatalogFailureReason(error: unknown, fallback: string): unknown {
-  return error instanceof Error && isProviderCatalogFallbackWarning(error.message)
-    ? new Error(fallback)
-    : error;
-}
-
-function createWarmProviderModelCatalog(
-  provider: string,
-  instance: string | null,
-  warning?: string,
-): ProviderModelCatalog {
-  return createStaticProviderModelCatalog(provider, {
-    instance,
-    ...(warning ? { warnings: [warning] } : {}),
-  });
-}
-
-function createWarmProviderAdvancedModelCatalog(
-  provider: string,
-  instance: string | null,
-  warning?: string,
-): ProviderAdvancedModelCatalog {
-  return createStaticProviderAdvancedModelCatalog(provider, {
-    instance,
-    ...(warning ? { warnings: [warning] } : {}),
-  });
-}
-
-function createRuntimeCatalogUnavailableWarning(
-  error: unknown,
-  catalogKind: string,
-  translate: ProviderModelFieldsTranslate,
-): string {
-  const fallback = translate(messageKeys.sharedProviderModelFieldRuntimeCatalogUnavailable, {
-    catalogKind,
-  });
-  return translate(messageKeys.sharedProviderModelFieldRuntimeCatalogUnavailableWarning, {
-    catalogKind,
-    message: readCatalogFailureMessage(error, fallback),
-  });
-}
-
-function peekCachedCatalogPair(
-  provider: string,
-  instance: string,
-  hasSelectedProvider: boolean,
-): { models: ProviderModelCatalog; advanced: ProviderAdvancedModelCatalog } | null {
-  if (!hasSelectedProvider || !provider) {
-    return null;
-  }
-  const normalizedInstance = instance || null;
-  const models = peekProviderModelCatalogFromClientCache({
-    provider,
-    instance: normalizedInstance,
-  });
-  const advanced = peekProviderAdvancedCatalogFromClientCache({
-    provider,
-    instance: normalizedInstance,
-  });
-  if (models && advanced) {
-    return { models, advanced };
-  }
-  return null;
-}
 
 export function useProviderCatalogState(input: {
   selectionRevision?: string;
@@ -114,160 +26,75 @@ export function useProviderCatalogState(input: {
     provider: string,
     instance?: string | null,
   ) => Promise<ProviderAdvancedModelCatalog>;
-  translate?: ProviderModelFieldsTranslate;
 }) {
-  const translate = input.translate ?? defaultTranslate;
-  const initialPeek = peekCachedCatalogPair(
-    input.provider,
-    input.resolvedInstance,
-    input.hasSelectedProvider,
-  );
-  const [catalogLoading, setCatalogLoading] = useState(
-    Boolean(input.provider) && !initialPeek,
-  );
-  const [catalog, setCatalog] = useState<ProviderModelCatalog>(() =>
-    initialPeek?.models
-      ?? (
-        input.hasSelectedProvider && input.provider
-          ? createWarmProviderModelCatalog(input.provider, input.resolvedInstance || null)
-          : createEmptyProviderModelCatalog(input.provider, input.resolvedInstance || null)
-      ),
-  );
-  const [advancedCatalog, setAdvancedCatalog] = useState<ProviderAdvancedModelCatalog>(() =>
-    initialPeek?.advanced
-      ?? (
-        input.hasSelectedProvider && input.provider
-          ? createWarmProviderAdvancedModelCatalog(input.provider, input.resolvedInstance || null)
-          : createEmptyProviderAdvancedModelCatalog(input.provider, input.resolvedInstance || null)
-      ),
-  );
+  const { provider, resolvedInstance, hasSelectedProvider, selectionRevision } = input;
+  const instance = resolvedInstance || null;
+  const key = JSON.stringify([provider, instance, selectionRevision, hasSelectedProvider]);
+  function initialState() {
+    const models = hasSelectedProvider
+      ? peekProviderModelCatalogFromClientCache({ provider, instance }) : null;
+    return {
+      key,
+      models: models ?? createEmptyProviderModelCatalog(provider, instance),
+      resolved: models !== null,
+      advanced: (hasSelectedProvider && peekProviderAdvancedCatalogFromClientCache({ provider, instance }))
+        || createEmptyProviderAdvancedModelCatalog(provider, instance),
+      loading: hasSelectedProvider && Boolean(provider),
+    };
+  }
+  const [state, setState] = useState(initialState);
 
   useEffect(() => {
     let cancelled = false;
+    const current = initialState();
+    let modelsReady = false;
+    let advancedReady = false;
+    setState(current);
+    if (!hasSelectedProvider || !provider) return;
 
-    if (!input.hasSelectedProvider || !input.provider) {
-      setCatalog(createEmptyProviderModelCatalog(input.provider, input.resolvedInstance || null));
-      setAdvancedCatalog(
-        createEmptyProviderAdvancedModelCatalog(input.provider, input.resolvedInstance || null),
-      );
-      setCatalogLoading(false);
-      return () => {
-        cancelled = true;
-      };
+    function publish(): void {
+      if (!cancelled) setState({ ...current });
     }
-
-    const peek = peekCachedCatalogPair(
-      input.provider,
-      input.resolvedInstance,
-      input.hasSelectedProvider,
-    );
-    if (peek) {
-      setCatalog(peek.models);
-      setAdvancedCatalog(peek.advanced);
-      setCatalogLoading(false);
-    } else {
-      setCatalog(createWarmProviderModelCatalog(input.provider, input.resolvedInstance || null));
-      setAdvancedCatalog(createWarmProviderAdvancedModelCatalog(
-        input.provider,
-        input.resolvedInstance || null,
-      ));
-      setCatalogLoading(true);
+    function matches(catalog: ProviderModelCatalog | ProviderAdvancedModelCatalog): boolean {
+      return catalogMatchesTarget({ catalogProvider: catalog.provider, catalogInstance: catalog.instance,
+        provider, instance: resolvedInstance });
     }
+    const stop = startProviderReadLoop(async () => {
+      // Retry just the failed half. Successful base models remain usable while
+      // advanced controls load, and a failed refresh never erases either half.
+      if (modelsReady && advancedReady) { modelsReady = false; advancedReady = false; }
+      current.loading = true;
+      publish();
+      await Promise.allSettled([
+        modelsReady ? Promise.resolve() : input.fetchProviderModels(provider, instance).then((value) => {
+          if (cancelled || !matches(value)) return;
+          modelsReady = !isProviderReadRevalidating(value);
+          current.models = value;
+          current.resolved = true;
+          publish();
+        }),
+        advancedReady ? Promise.resolve() : input.fetchAdvancedProviderModels(provider, instance).then((value) => {
+          if (cancelled || !matches(value)) return;
+          advancedReady = !isProviderReadRevalidating(value);
+          current.advanced = value;
+          publish();
+        }),
+      ]);
+      current.loading = !(modelsReady && advancedReady);
+      publish();
+      return !current.loading;
+    }, 60_000);
+    return () => { cancelled = true; stop(); };
+  }, [provider, resolvedInstance, hasSelectedProvider, selectionRevision,
+    input.fetchProviderModels, input.fetchAdvancedProviderModels]);
 
-    void Promise.allSettled([
-      input.fetchProviderModels(input.provider, input.resolvedInstance || null),
-      input.fetchAdvancedProviderModels(input.provider, input.resolvedInstance || null),
-    ]).then(([modelsResult, advancedResult]) => {
-      if (cancelled) {
-        return;
-      }
-
-      const nextCatalog = modelsResult.status === 'fulfilled'
-        ? modelsResult.value
-        : createWarmProviderModelCatalog(
-            input.provider,
-            input.resolvedInstance || null,
-            createRuntimeCatalogUnavailableWarning(
-              modelsResult.reason,
-              translate(messageKeys.sharedProviderModelFieldCatalogKindModel),
-              translate,
-            ),
-          );
-      setCatalog(nextCatalog);
-
-      if (advancedResult.status === 'fulfilled' || modelsResult.status === 'fulfilled') {
-        const advancedCatalogUnavailableMessage = translate(
-          messageKeys.sharedProviderModelFieldAdvancedCatalogUnavailable,
-        );
-        setAdvancedCatalog(resolveAdvancedCatalogFallback({
-          provider: input.provider,
-          instance: input.resolvedInstance || null,
-          catalog: nextCatalog,
-          advancedCatalogResult: advancedResult.status === 'rejected'
-            ? {
-                status: 'rejected',
-                reason: localizeCatalogFailureReason(
-                  advancedResult.reason,
-                  advancedCatalogUnavailableMessage,
-                ),
-              }
-            : advancedResult,
-          modelsResult,
-          translate,
-        }));
-      } else {
-        setAdvancedCatalog(createWarmProviderAdvancedModelCatalog(
-          input.provider,
-          input.resolvedInstance || null,
-          createRuntimeCatalogUnavailableWarning(
-            advancedResult.reason,
-            translate(messageKeys.sharedProviderModelFieldCatalogKindAdvancedModel),
-            translate,
-          ),
-        ));
-      }
-
-      setCatalogLoading(false);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    input.fetchAdvancedProviderModels,
-    input.fetchProviderModels,
-    input.hasSelectedProvider,
-    input.provider,
-    input.resolvedInstance,
-    translate,
-    input.selectionRevision,
-  ]);
-
-  const fallbackCatalog = createEmptyProviderModelCatalog(input.provider, input.resolvedInstance || null);
-  const fallbackAdvancedCatalog = createEmptyProviderAdvancedModelCatalog(
-    input.provider,
-    input.resolvedInstance || null,
-  );
-  const effectiveCatalog = catalogMatchesTarget({
-    catalogProvider: catalog.provider,
-    catalogInstance: catalog.instance,
-    provider: input.provider,
-    instance: input.resolvedInstance,
-  })
-    ? catalog
-    : fallbackCatalog;
-  const effectiveAdvancedCatalog = catalogMatchesTarget({
-    catalogProvider: advancedCatalog.provider,
-    catalogInstance: advancedCatalog.instance,
-    provider: input.provider,
-    instance: input.resolvedInstance,
-  })
-    ? advancedCatalog
-    : fallbackAdvancedCatalog;
-
+  // Never display a previous provider/revision during the render before the
+  // effect runs. Cache invalidation precedes registry publication.
+  const effective = state.key === key ? state : initialState();
   return {
-    catalogLoading,
-    effectiveCatalog,
-    effectiveAdvancedCatalog,
+    catalogLoading: effective.loading,
+    catalogResolved: effective.resolved,
+    effectiveCatalog: effective.models,
+    effectiveAdvancedCatalog: effective.advanced,
   };
 }

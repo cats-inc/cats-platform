@@ -4,6 +4,8 @@
 
 Accepted — 2026-09-16. Implementation and verification are tracked in the shared
 [Runtime PLAN-039](../../../cats-runtime/docs/plans/PLAN-039-provider-selection-bootstrap-rollout.md).
+Picker display continuity amended 2026-09-18; implementation and validation are
+recorded in [SPEC-013](../specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md).
 
 ## Context
 
@@ -52,7 +54,11 @@ product onboarding, and operating-system installation.
 7. Ordinary product selectors are bounded by current selection and usability.
    The server verifies selection on each registry/catalog request; renderer
    caches follow revisions and refresh on focus/visibility or a bounded visible
-   timer. Disconnected Runtime state does not authorize stale cached choices.
+   timer. As amended by the user on 2026-09-18, transient disconnection must not
+   erase the last successful picker display. Keep that session's observed
+   choices while revalidating automatically; confirmed selection revisions or
+   explicit connection/auth cache resets invalidate them. Cached display is
+   not execution authorization: server requests still verify current intent.
    Backend-qualified instance values prevent same-name targets from colliding.
 8. The superseded `POST /setup-apply` flow and `cli_inventory_gate` policy are
    removed. Runtime/Platform must ship matching contracts; an incompatible
@@ -64,6 +70,15 @@ in their existing layers. WSL/Docker editor redesign and package publication are
 outside this delivery.
 
 ## Consequences
+
+- Provider/model pickers retain successful catalogs across tray idle periods.
+  Freshness deadlines trigger background refresh, not destruction of the last
+  successful result. Without data they show a visible, accessible spinner and
+  retry automatically while mounted and visible. Transport errors, Retry
+  buttons, and Runtime Setup links must not appear inside these pickers or
+  their Brain/setup wrappers. See
+  [SPEC-013](../specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md)
+  for the regression contract.
 
 - New Code Relay rosters derive from the connected Runtime's selected providers.
   Starting a round revalidates exact targets before creating dispatches. Empty

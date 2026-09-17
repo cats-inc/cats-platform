@@ -7,6 +7,7 @@ import {
 } from '../../shared/providerCatalog.js';
 import { recordLiveProviderModelLabels } from '../../shared/providerModelLabelRegistry.js';
 import { resolveSelectedProviderInstance } from '../../shared/providerSelection.js';
+import { invalidateProviderClientSession, onProviderClientInvalidation, ProviderClientAuthError } from './providerClientInvalidation.js';
 
 export const PROVIDER_CATALOG_CLIENT_CACHE_TTL_MS = 15_000;
 export const PROVIDER_MODEL_CATALOG_LOAD_FAILED_WARNING =
@@ -132,6 +133,12 @@ async function fetchProviderCatalogFromClientCache<TCatalog>(input: {
       });
       return value;
     })
+    .catch((error) => {
+      if (error instanceof ProviderClientAuthError && input.cache.inflight.get(input.cacheKey) === request) {
+        invalidateProviderClientSession();
+      }
+      throw error;
+    })
     .finally(() => {
       if (input.cache.inflight.get(input.cacheKey) === request) input.cache.inflight.delete(input.cacheKey);
     });
@@ -147,6 +154,8 @@ export function clearProviderCatalogClientCache(): void {
   providerAdvancedCatalogClientCache.inflight.clear();
 }
 
+onProviderClientInvalidation(clearProviderCatalogClientCache);
+
 function peekProviderCatalogClientCache<TCatalog>(
   cache: ProviderCatalogClientCacheState<TCatalog>,
   provider: string,
@@ -159,10 +168,9 @@ function peekProviderCatalogClientCache<TCatalog>(
     normalizeCatalogInstance(instance),
   );
   const cached = cache.entries.get(cacheKey);
-  if (cached && cached.freshUntilMs > Date.now()) {
-    return cached.value;
-  }
-  return null;
+  // TTL schedules refresh. Only selection/connection invalidation removes
+  // the last successful catalog from the display cache.
+  return cached?.value ?? null;
 }
 
 export function peekProviderModelCatalogFromClientCache(options: {
@@ -205,8 +213,12 @@ export async function fetchProviderModelCatalogFromClientCache(options: {
     load: async () => {
       const response = await (options.fetchImpl ?? fetch)(
         buildProviderCatalogRequestPath({ provider, instance }),
+        { signal: AbortSignal.timeout(30_000) },
       );
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new ProviderClientAuthError('Provider session is unavailable.');
+        }
         throw new Error(
           await readProviderCatalogErrorMessage(
             response,
@@ -244,8 +256,12 @@ export async function fetchProviderAdvancedCatalogFromClientCache(options: {
     load: async () => {
       const response = await (options.fetchImpl ?? fetch)(
         buildProviderCatalogRequestPath({ provider, instance, advanced: true }),
+        { signal: AbortSignal.timeout(30_000) },
       );
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new ProviderClientAuthError('Provider session is unavailable.');
+        }
         throw new Error(
           await readProviderCatalogErrorMessage(
             response,

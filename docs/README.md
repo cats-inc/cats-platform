@@ -19,6 +19,12 @@ Valid empty selection supports idle onboarding. See
 and the shared [PLAN-039](../../cats-runtime/docs/plans/PLAN-039-provider-selection-bootstrap-rollout.md)
 for implementation progress and native OS verification limits.
 
+Provider/model pickers retain the last successful display across tray idle and
+recover automatically with loading indicators. Raw transport errors and manual
+recovery actions do not belong in the picker or its wrappers. The accepted
+2026-09-18 contract and validation are in
+[SPEC-013](./specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md).
+
 ## Provider Catalog Labels
 
 [Copilot fixed presets](./research/2026-09-17-copilot-fixed-presets.md) records the approved fixed

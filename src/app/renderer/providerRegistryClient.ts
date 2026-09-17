@@ -7,20 +7,17 @@ import {
   PROVIDER_LOAD_FAILED_WARNING,
 } from '../../shared/providerRegistryWarnings.js';
 import { clearProviderCatalogClientCache } from './providerCatalogClient.js';
-
-export const PROVIDER_REGISTRY_CLIENT_CACHE_TTL_MS = 15_000;
+import { invalidateProviderClientSession, onProviderClientInvalidation, ProviderClientAuthError } from './providerClientInvalidation.js';
 
 type ProviderRegistryFetch = typeof fetch;
 
 interface ProviderRegistryClientCacheState {
   value: ProductProviderRegistryReadModel | null;
-  freshUntilMs: number;
   inflight: Promise<ProductProviderRegistryReadModel> | null;
 }
 
 const providerRegistryClientCache: ProviderRegistryClientCacheState = {
   value: null,
-  freshUntilMs: 0,
   inflight: null,
 };
 
@@ -90,14 +87,28 @@ function createRuntimeUnreachableRegistry(message: string): ProductProviderRegis
 
 function writeProviderRegistryClientCache(
   value: ProductProviderRegistryReadModel,
-): void {
-  const now = Date.now();
-  if (providerRegistryClientCache.value?.revision !== value.revision || value.state === 'runtime_unreachable') {
+): ProductProviderRegistryReadModel {
+  const previous = providerRegistryClientCache.value;
+  if ((value.revision !== undefined || value.state !== 'runtime_unreachable')
+    && previous?.revision !== value.revision) {
     clearProviderCatalogClientCache();
   }
+  value = retainProviderRegistryOnFailure(previous, value);
   providerRegistryClientCache.value = value;
-  providerRegistryClientCache.freshUntilMs = now + PROVIDER_REGISTRY_CLIENT_CACHE_TTL_MS;
   for (const listener of listeners) listener(value);
+  return value;
+}
+
+/** A missing revision during an outage is not an authoritative deselection. */
+export function retainProviderRegistryOnFailure(
+  previous: ProductProviderRegistryReadModel | null,
+  value: ProductProviderRegistryReadModel,
+): ProductProviderRegistryReadModel {
+  if (value.state === 'runtime_unreachable' && previous
+    && (value.revision === undefined || value.revision === previous.revision)) {
+    return { ...value, revision: previous.revision, providers: previous.providers };
+  }
+  return value;
 }
 
 async function loadProviderRegistry(
@@ -106,8 +117,11 @@ async function loadProviderRegistry(
 ): Promise<ProductProviderRegistryReadModel> {
   try {
     const url = options.force ? '/api/providers?force=1' : '/api/providers';
-    const response = await fetchImpl(url);
+    const response = await fetchImpl(url, { signal: AbortSignal.timeout(30_000) });
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        throw new ProviderClientAuthError('Provider session is unavailable.');
+      }
       return createRuntimeUnreachableRegistry(
         await readProviderRegistryErrorMessage(response, PROVIDER_LOAD_FAILED_WARNING),
       );
@@ -116,6 +130,7 @@ async function loadProviderRegistry(
     const payload = (await response.json()) as ProductProviderRegistryReadModel;
     return normalizeProviderRegistryPayload(payload);
   } catch (error) {
+    if (error instanceof ProviderClientAuthError) throw error;
     return createRuntimeUnreachableRegistry(
       error instanceof Error ? error.message : PROVIDER_LOAD_FAILED_WARNING,
     );
@@ -123,22 +138,18 @@ async function loadProviderRegistry(
 }
 
 export function clearProviderRegistryClientCache(): void {
-  providerRegistryClientCache.value = null;
-  providerRegistryClientCache.freshUntilMs = 0;
-  providerRegistryClientCache.inflight = null;
-  clearProviderCatalogClientCache();
-  for (const listener of listeners) listener(createRuntimeUnreachableRegistry(PROVIDER_LOAD_FAILED_WARNING));
+  invalidateProviderClientSession();
 }
 
+onProviderClientInvalidation(() => {
+  providerRegistryClientCache.value = null;
+  providerRegistryClientCache.inflight = null;
+  for (const listener of listeners) listener(createRuntimeUnreachableRegistry(PROVIDER_LOAD_FAILED_WARNING));
+});
+
 export function peekProviderRegistryClientCache(): ProductProviderRegistryReadModel | null {
-  const now = Date.now();
-  if (
-    providerRegistryClientCache.value
-    && providerRegistryClientCache.freshUntilMs > now
-  ) {
-    return providerRegistryClientCache.value;
-  }
-  return null;
+  // Reopen immediately from observed data; the mounted picker revalidates it.
+  return providerRegistryClientCache.value;
 }
 
 export async function fetchProviderRegistryFromClientCache(options: {
@@ -156,8 +167,13 @@ export async function fetchProviderRegistryFromClientCache(options: {
       if (providerRegistryClientCache.inflight !== request) {
         throw new Error('Provider selection request was superseded.');
       }
-      writeProviderRegistryClientCache(value);
-      return value;
+      return writeProviderRegistryClientCache(value);
+    })
+    .catch((error) => {
+      if (error instanceof ProviderClientAuthError && providerRegistryClientCache.inflight === request) {
+        invalidateProviderClientSession();
+      }
+      throw error;
     })
     .finally(() => {
       if (providerRegistryClientCache.inflight === request) providerRegistryClientCache.inflight = null;

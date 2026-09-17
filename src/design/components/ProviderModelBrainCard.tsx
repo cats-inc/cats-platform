@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useI18n } from '../../app/renderer/i18n/useI18n.js';
 import { messageKeys } from '../../shared/i18n/index.js';
 
@@ -13,7 +13,6 @@ import type {
 } from '../../shared/providerSelection.js';
 import {
   ProviderModelFields,
-  type ProviderRegistryRecoveryState,
 } from './ProviderModelFields.js';
 import {
   SettingsSectionHeader,
@@ -48,28 +47,15 @@ export function ProviderModelBrainCard({
   ...fieldsProps
 }: ProviderModelBrainCardProps) {
   const { t } = useI18n();
-  const [recovery, setRecovery] = useState<ProviderRegistryRecoveryState | null>(null);
   const resolvedTitle = title ?? t(messageKeys.sharedProviderModelBrainCardTitle);
-
-  const status = recovery?.canRetry ? (
-    <button
-      type="button"
-      className="secondaryButton"
-      onClick={() => recovery.retry()}
-    >
-      {t(messageKeys.sharedCommonRetry)}
-    </button>
-  ) : null;
 
   return (
     <SettingsSubSection
       className={className}
-      header={<SettingsSectionHeader title={resolvedTitle} nested status={status} />}
+      header={<SettingsSectionHeader title={resolvedTitle} nested />}
     >
       <ProviderModelFields
         {...fieldsProps}
-        hideInlineRetry
-        onRegistryRecoveryChange={setRecovery}
       />
     </SettingsSubSection>
   );
