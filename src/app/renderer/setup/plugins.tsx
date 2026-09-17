@@ -4,10 +4,7 @@ import { CatCreationFields } from './CatCreationFields.js';
 import type { ProductProviderRegistryReadModel } from '../../../shared/providerCatalog.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { messageKeys } from '../../../shared/i18n/messageKeys.js';
-import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
 import { useI18n } from '../i18n/index.js';
-import { AuthenticatedBrowserLink } from '../auth/AuthenticatedBrowserLink.js';
-import { resolveProviderRegistrySetupHref } from '../../../design/components/ProviderModelFields.js';
 import {
   resolveClientGuideCatName,
 } from '../../../shared/guideCatIdentity.js';
@@ -40,13 +37,10 @@ export function GuideCatSetupFields({
     state: 'ready',
     providers: [],
   });
-  const [runtimeBrowserOpenFailed, setRuntimeBrowserOpenFailed] = useState(false);
-  const runtimeSetupHref = resolveProviderRegistrySetupHref(providerRegistry)
-    ?? PLATFORM_RUNTIME_SETUP_PATH;
   const runtimeStatusChip = providerRegistry.state === 'runtime_unreachable'
     ? {
       className: 'statusChip statusChipWarm',
-      label: t(messageKeys.setupGuideCatRuntimeUnavailable),
+      label: t(messageKeys.sharedProviderModelFieldLoadingProviders),
     }
     : providerRegistry.state === 'no_usable_targets'
       ? {
@@ -79,45 +73,6 @@ export function GuideCatSetupFields({
         <span className={runtimeStatusChip.className}>
           {runtimeStatusChip.label}
         </span>
-        {providerRegistry.state === 'runtime_unreachable' ? (
-          <>
-            <span className="setupRuntimeNote">
-              {t(messageKeys.setupGuideCatUnavailableNote)}
-            </span>
-            <AuthenticatedBrowserLink
-              className="secondaryButton setupInlineLink"
-              href={runtimeSetupHref}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => setRuntimeBrowserOpenFailed(false)}
-              onOpenError={() => setRuntimeBrowserOpenFailed(true)}
-            >
-              {t(messageKeys.setupGuideCatOpenRuntimeSetup)}
-            </AuthenticatedBrowserLink>
-          </>
-        ) : null}
-        {providerRegistry.state === 'no_usable_targets' ? (
-          <>
-            <span className="setupRuntimeNote">
-              {t(messageKeys.setupGuideCatNoUsableTargetsNote)}
-            </span>
-            <AuthenticatedBrowserLink
-              className="secondaryButton setupInlineLink"
-              href={runtimeSetupHref}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => setRuntimeBrowserOpenFailed(false)}
-              onOpenError={() => setRuntimeBrowserOpenFailed(true)}
-            >
-              {t(messageKeys.setupGuideCatOpenRuntimeSetup)}
-            </AuthenticatedBrowserLink>
-          </>
-        ) : null}
-        {runtimeBrowserOpenFailed ? (
-          <span className="setupRuntimeNote" role="alert">
-            {t(messageKeys.settingsRuntimeBrowserHandoffError)}
-          </span>
-        ) : null}
       </div>
     </>
   );

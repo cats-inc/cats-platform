@@ -5,6 +5,15 @@ export const LAST_SAVED_PROVIDER_TARGETS_WARNING =
 export const PROVIDER_LOAD_FAILED_WARNING = 'provider_registry.load_failed';
 export const PROVIDER_REFRESH_FAILED_WARNING = 'provider_registry.refresh_failed';
 
+/** Existing server cache markers are diagnostics, never inline picker copy. */
+export function isProviderReadRevalidating(value: { warnings?: string[] }): boolean {
+  return (value.warnings ?? []).some((warning) =>
+    warning.startsWith('Using cached provider targets ')
+    || warning.startsWith('Using cached model catalog ')
+    || warning.startsWith('Using last saved provider targets ')
+    || warning.startsWith('Using last saved model catalog '));
+}
+
 const PROVIDER_CACHED_REFRESH_FAILED_WARNING_PREFIX =
   'provider_registry.cached_refresh_failed:';
 

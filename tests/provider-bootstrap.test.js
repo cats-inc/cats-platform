@@ -359,7 +359,7 @@ test('GET /api/providers?force=1 bypasses a stuck inflight probe instead of join
   });
 });
 
-test('a no_usable_targets refresh after a successful warm preserves the prior ready cache and disk snapshot', async () => {
+test('authoritative no_usable_targets replaces live choices while the disk snapshot stays historical', async () => {
   await withTempDir(async (directory) => {
     const snapshotPath = path.join(directory, 'provider-snapshot.json');
     const runtimeClient = createReachableRuntimeStub();
@@ -388,25 +388,18 @@ test('a no_usable_targets refresh after a successful warm preserves the prior re
     // Now flip the runtime to report no_usable_targets and trigger a refresh.
     suppressProviders = true;
     await withSeededServer(runtimeClient, snapshotPath, async (baseUrl) => {
-      // The forced refresh hits a no_usable_targets runtime, but because we
-      // already have a recent 'ready' baseline in the cache, the route falls
-      // through to the stale-fallback path and returns the prior ready
-      // registry (with a runtime-warning prefix).
+      // A successful empty observation is different from a timeout. It must
+      // replace live choices even though the last usable disk snapshot remains.
       const forced = await fetch(`${baseUrl}/api/providers?force=1`);
       assert.equal(forced.status, 200);
       const payload = await forced.json();
-      assert.equal(payload.state, 'ready');
-      assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
-      assert.ok(
-        payload.warnings?.some((warning) => warning.toLowerCase().includes('no usable provider targets')),
-        'response should disclose that the latest runtime probe reported no usable targets',
-      );
+      assert.equal(payload.state, 'no_usable_targets');
+      assert.deepEqual(payload.providers, []);
 
-      // A subsequent non-forced read inside the cache window still returns
-      // the preserved ready snapshot, not the stale no_usable_targets value.
+      // A non-forced read must not resurrect the historical ready snapshot.
       const followUp = await fetch(`${baseUrl}/api/providers`);
       const followUpPayload = await followUp.json();
-      assert.equal(followUpPayload.state, 'ready');
+      assert.equal(followUpPayload.state, 'no_usable_targets');
 
       // Wait past the snapshot debounce window so any (incorrect) write would
       // have landed by now.
@@ -517,7 +510,7 @@ test('a stale forced probe returns the current error-backoff warning when a newe
       if (diagnosticsCalls === 1) {
         await firstCallReady;
       }
-      return { probe: 'light', providers: [] };
+      throw new Error('Runtime diagnostics timed out.');
     };
 
     await withSeededServer(runtimeClient, snapshotPath, async (baseUrl) => {
@@ -530,7 +523,7 @@ test('a stale forced probe returns the current error-backoff warning when a newe
       const newerPayload = await newerForced.json();
       assert.equal(newerPayload.state, 'ready');
       assert.ok(
-        newerPayload.warnings?.some((warning) => warning.toLowerCase().includes('no usable provider targets')),
+        newerPayload.warnings?.some((warning) => warning.toLowerCase().includes('diagnostics timed out')),
         'newer forced response should disclose the failed runtime refresh',
       );
 
@@ -540,7 +533,7 @@ test('a stale forced probe returns the current error-backoff warning when a newe
       const stalePayload = await staleForced.json();
       assert.equal(stalePayload.state, 'ready');
       assert.ok(
-        stalePayload.warnings?.some((warning) => warning.toLowerCase().includes('no usable provider targets')),
+        stalePayload.warnings?.some((warning) => warning.toLowerCase().includes('diagnostics timed out')),
         'stale forced response should return the current cached warning too',
       );
     });

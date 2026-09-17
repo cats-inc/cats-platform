@@ -1,0 +1,267 @@
+import { resetTestDom, testDomWindow } from './helpers/installDomBeforeReact.ts';
+import assert from 'node:assert/strict';
+import test, { type TestContext } from 'node:test';
+import React from 'react';
+import { setImmediate as nextTurn } from 'node:timers/promises';
+import { act, cleanup, render } from '@testing-library/react';
+import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
+import { ProviderModelBrainCard } from '../src/design/components/ProviderModelBrainCard.tsx';
+import { startProviderReadLoop } from '../src/app/renderer/providerReadLoop.ts';
+import {
+  clearProviderRegistryClientCache, fetchProviderRegistryFromClientCache,
+} from '../src/app/renderer/providerRegistryClient.ts';
+import {
+  fetchProviderAdvancedCatalogFromClientCache, fetchProviderModelCatalogFromClientCache,
+} from '../src/app/renderer/providerCatalogClient.ts';
+import type { ProviderTargetSelection } from '../src/shared/providerSelection.ts';
+
+// Async act in esbuild's ESM bundle leaks React MessageChannel ports. Drain
+// real event-loop turns instead; the deterministic clock only owns retry timers.
+async function settle(): Promise<void> {
+  for (let turn = 0; turn < 5; turn++) await nextTurn();
+}
+
+function installClock(t: TestContext) {
+  resetTestDom();
+  clearProviderRegistryClientCache();
+  let now = Date.parse('2026-09-18T00:00:00Z');
+  let visible = true;
+  let nextId = 0;
+  const timers = new Map<number, { callback: () => void; at: number }>();
+  t.mock.method(Date, 'now', () => now);
+  t.mock.method(globalThis, 'setTimeout', (callback: () => void, delay = 0) => {
+    timers.set(++nextId, { callback, at: now + delay });
+    return nextId;
+  });
+  t.mock.method(globalThis, 'clearTimeout', (id: number) => timers.delete(id));
+  Object.defineProperty(document, 'visibilityState', {
+    configurable: true, get: () => visible ? 'visible' : 'hidden',
+  });
+  t.after(() => { cleanup(); clearProviderRegistryClientCache(); Reflect.deleteProperty(document, 'visibilityState'); });
+  return {
+    timers,
+    async advance(ms: number) {
+      now += ms;
+      act(() => {
+        for (const [id, timer] of [...timers]) {
+          if (timer.at <= now && timers.delete(id)) timer.callback();
+        }
+      });
+      await settle();
+    },
+    async visibility(value: boolean) {
+      visible = value;
+      act(() => { document.dispatchEvent(new testDomWindow.Event('visibilitychange')); });
+      await settle();
+    },
+  };
+}
+
+function catalog(provider: string, instance: string | null, model = 'model-a') {
+  return { provider, instance, backend: 'cli', defaultModel: model, source: 'dynamic', cache: null,
+    models: [{ id: model, label: model, default: true }],
+    entries: [{ id: model, label: model, default: true }],
+    presets: [], controls: [], defaultSelection: { entryId: model, entryMode: 'explicit' },
+    support: { tier: 'full', notes: [] }, warnings: [] };
+}
+
+function api() {
+  const state = { registryFailures: 0, modelFailures: 0, advancedFailures: 0,
+    registryCalls: 0, modelCalls: 0, advancedCalls: 0, revision: 'one', selected: true,
+    revalidating: false, emptyCatalog: false };
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = new URL(String(input), 'http://localhost');
+    if (url.pathname === '/api/providers') {
+      state.registryCalls++;
+      if (state.registryFailures-- > 0) throw new Error('The operation was aborted due to timeout');
+      return Response.json({ revision: state.revision, state: state.selected ? 'ready' : 'no_usable_targets',
+        providers: state.selected ? [{ id: 'claude', label: 'Claude', defaultInstance: 'native', defaultBackend: 'cli',
+          instances: [{ id: 'native', backend: 'cli', target: 'cli/native', label: 'Native', default: true }],
+          modelsPath: '/api/providers/claude/models' }] : [],
+        warnings: state.revalidating
+          ? ['Using cached provider targets because runtime refresh failed: timeout'] : [],
+        recovery: { openRuntimeSetupPath: '/runtime/setup', retryable: true } });
+    }
+    const advanced = url.pathname.endsWith('/advanced');
+    if (advanced) state.advancedCalls++; else state.modelCalls++;
+    if ((advanced ? state.advancedFailures-- : state.modelFailures--) > 0) {
+      throw new Error('The operation was aborted due to timeout');
+    }
+    return Response.json({ catalog: { ...catalog('claude', url.searchParams.get('instance')),
+      ...(state.emptyCatalog ? { models: [], entries: [], defaultModel: null, defaultSelection: null } : {}),
+      warnings: state.revalidating
+        ? ['Using cached model catalog because runtime refresh failed: timeout'] : [] } });
+  };
+  const props = {
+    provider: 'claude', instance: 'cli/native', model: 'model-a',
+    onTargetChange: (_target: ProviderTargetSelection) => {},
+    fetchProviderRegistry: () => fetchProviderRegistryFromClientCache({ fetchImpl }),
+    fetchProviderModels: (provider: string, instance?: string | null) =>
+      fetchProviderModelCatalogFromClientCache({ provider, instance, fetchImpl }),
+    fetchAdvancedProviderModels: (provider: string, instance?: string | null) =>
+      fetchProviderAdvancedCatalogFromClientCache({ provider, instance, fetchImpl }),
+  };
+  return { state, props, fetchImpl };
+}
+
+function assertNoManualRecovery(container: HTMLElement) {
+  assert.doesNotMatch(container.textContent ?? '', /aborted|timeout|Retry|Runtime setup|重試|執行階段設定/i);
+  assert.equal(container.querySelectorAll('button, a').length, 0);
+}
+
+test('cold picker retries consecutive timeouts automatically and replaces its spinner with data', async (t) => {
+  const clock = installClock(t);
+  const { state, props } = api();
+  state.registryFailures = 2;
+  const view = render(<I18nProvider locale="en"><ProviderModelBrainCard {...props} /></I18nProvider>);
+  await settle();
+  assertNoManualRecovery(view.container);
+  assert.ok(view.container.querySelector('[role="status"] .providerPickerSpinner'));
+  await clock.advance(2_000);
+  assert.equal(state.registryCalls, 2);
+  assertNoManualRecovery(view.container);
+  await clock.advance(4_000);
+  assert.equal(state.registryCalls, 3);
+  assert.equal(view.getByRole('combobox', { name: 'Provider' }).getAttribute('disabled'), null);
+  assert.ok(view.container.querySelector('option[value="model-a"]'));
+  assert.equal(view.container.querySelectorAll('[role="status"]').length, 0);
+});
+
+test('base models remain selectable while only the failed advanced request retries', async (t) => {
+  const clock = installClock(t);
+  const { state, props } = api();
+  state.advancedFailures = 2;
+  const view = render(<I18nProvider locale="en"><ProviderModelBrainCard {...props} /></I18nProvider>);
+  await settle();
+  const model = view.getByRole('combobox', { name: /Model/ }) as HTMLSelectElement;
+  assert.equal(model.disabled, false);
+  assert.equal(model.value, 'model-a');
+  assert.ok(view.container.querySelector('[role="status"]'));
+  await clock.advance(2_000);
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.advancedCalls, 2);
+  assert.equal(model.value, 'model-a');
+  await clock.advance(4_000);
+  assert.equal(state.advancedCalls, 3);
+  assert.equal(view.container.querySelectorAll('[role="status"]').length, 0);
+  assertNoManualRecovery(view.container);
+});
+
+test('reopening after a day retains choices and a custom model through a failed refresh', async (t) => {
+  const clock = installClock(t);
+  const { state, props } = api();
+  await props.fetchProviderRegistry();
+  await props.fetchProviderModels('claude', 'cli/native');
+  await props.fetchAdvancedProviderModels('claude', 'cli/native');
+  await clock.advance(24 * 60 * 60_000);
+  state.registryFailures = state.modelFailures = state.advancedFailures = 2;
+  const changes: ProviderTargetSelection[] = [];
+  const view = render(<I18nProvider locale="en"><ProviderModelBrainCard {...props}
+    model="my-custom-model" onTargetChange={(value) => changes.push(value)} /></I18nProvider>);
+  assert.ok(view.container.querySelector('option[value="claude"]'));
+  assert.ok(view.container.querySelector('option[value="model-a"]'));
+  await settle();
+  assert.ok(view.container.querySelector('option[value="claude"]'));
+  assert.equal((view.getByRole('textbox') as HTMLInputElement).value, 'my-custom-model');
+  assert.equal(changes.length, 0, 'failed reads must not rewrite the saved target');
+  assertNoManualRecovery(view.container);
+});
+
+test('confirmed deselection removes retained choices and unmount cancels recovery', async (t) => {
+  const clock = installClock(t);
+  const { state, props } = api();
+  const view = render(<I18nProvider locale="en"><ProviderModelBrainCard {...props} /></I18nProvider>);
+  await settle();
+  assert.ok(view.container.querySelector('option[value="model-a"]'));
+  state.selected = false;
+  state.revision = 'two';
+  await clock.advance(30_000);
+  assert.equal(view.container.querySelector('option[value="claude"]'), null);
+  assert.equal(view.container.querySelector('option[value="model-a"]'), null);
+  const calls = state.registryCalls;
+  view.unmount();
+  assert.equal(clock.timers.size, 0);
+  await clock.advance(120_000);
+  assert.equal(state.registryCalls, calls);
+});
+
+test('custom model remains visible when a successfully empty catalog later fails to refresh', async (t) => {
+  const clock = installClock(t);
+  const { state, props } = api();
+  state.emptyCatalog = true;
+  const view = render(<I18nProvider locale="en"><ProviderModelBrainCard {...props}
+    model="my-custom-model" /></I18nProvider>);
+  await settle();
+  assert.equal((view.getByRole('textbox') as HTMLInputElement).value, 'my-custom-model');
+  state.modelFailures = state.advancedFailures = 2;
+  await clock.advance(60_000);
+  assert.equal((view.getByRole('textbox') as HTMLInputElement).value, 'my-custom-model');
+  assert.ok(view.container.querySelector('[role="status"]'));
+});
+
+test('retained server responses keep a spinner until background revalidation succeeds', async (t) => {
+  const clock = installClock(t);
+  const { state, props } = api();
+  state.revalidating = true;
+  const view = render(<I18nProvider locale="en"><ProviderModelBrainCard {...props} /></I18nProvider>);
+  await settle();
+  assert.ok(view.container.querySelector('option[value="model-a"]'));
+  assert.equal(view.container.querySelectorAll('[role="status"]').length, 2);
+  assertNoManualRecovery(view.container);
+  state.revalidating = false;
+  await clock.advance(16_000);
+  assert.equal(view.container.querySelectorAll('[role="status"]').length, 0);
+});
+
+test('unmounted catalog requests cannot overwrite a remounted picker after a selection reset', async (t) => {
+  installClock(t);
+  const { props } = api();
+  let release!: (response: Response) => void;
+  const pendingModels = (provider: string, instance?: string | null) =>
+    fetchProviderModelCatalogFromClientCache({ provider, instance,
+      fetchImpl: () => new Promise((resolve) => { release = resolve; }) });
+  const first = render(<I18nProvider locale="en"><ProviderModelBrainCard {...props}
+    fetchProviderModels={pendingModels} /></I18nProvider>);
+  await settle();
+  first.unmount();
+  clearProviderRegistryClientCache();
+  const next = render(<I18nProvider locale="en"><ProviderModelBrainCard {...props} /></I18nProvider>);
+  await settle();
+  act(() => { release(Response.json({ catalog: catalog('claude', 'cli/native', 'obsolete') })); });
+  await settle();
+  assert.equal(next.container.querySelector('option[value="obsolete"]'), null);
+  assert.ok(next.container.querySelector('option[value="model-a"]'));
+});
+
+test('read loop caps backoff, pauses hidden retries, resumes and never overlaps pending reads', async (t) => {
+  const clock = installClock(t);
+  let calls = 0;
+  let release: (() => void) | undefined;
+  const stop = startProviderReadLoop(async () => {
+    calls++;
+    if (calls === 1) await new Promise<void>((resolve) => { release = resolve; });
+    return false;
+  });
+  t.after(stop);
+  await clock.advance(60_000);
+  await clock.visibility(false);
+  await clock.visibility(true);
+  assert.equal(calls, 1);
+  act(() => { release?.(); });
+  await settle();
+  for (const delay of [2_000, 4_000, 8_000, 16_000, 30_000, 30_000]) {
+    await clock.advance(delay - 1);
+    const before: number = calls;
+    await clock.advance(1);
+    assert.equal(calls, before + 1);
+  }
+  await clock.visibility(false);
+  await clock.advance(120_000);
+  const hiddenCalls = calls;
+  assert.equal(clock.timers.size, 0);
+  await clock.visibility(true);
+  await clock.advance(0);
+  assert.equal(calls, hiddenCalls + 1);
+  stop();
+  assert.equal(clock.timers.size, 0);
+});

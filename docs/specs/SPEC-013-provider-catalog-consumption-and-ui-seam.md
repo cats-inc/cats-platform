@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft (Revised Direction) |
+| **Status** | Revised direction; picker continuity amendment accepted and implemented 2026-09-18 |
 | **Owner** | Codex |
 | **Reviewer** | User / provider-catalog workstream |
 
@@ -38,7 +38,7 @@ or future settings surfaces, but they are not valid execution pickers.
 
 - making `cats-platform` the owner of runtime discovery or provider health
 - requiring the renderer to call `cats-runtime` directly
-- hiding runtime warnings or recovery states from the user
+- redesigning the dedicated Runtime settings/diagnostics surfaces
 - preventing informational provider catalogs from existing elsewhere in the
   product
 - solving every future provider-management screen in this one spec
@@ -61,9 +61,10 @@ or future settings surfaces, but they are not valid execution pickers.
 
 1. `cats-platform` shall expose a product-owned selector API used by setup and
    in-product provider/model execution pickers.
-2. That selector API shall return only currently usable runtime targets. It
-   shall not return product-catalog-only providers as selectable execution
-   options.
+2. That selector API shall return Runtime-observed targets bounded by current
+   selection. Retained observations during recovery carry freshness warnings;
+   they do not authorize execution. Product-catalog-only providers are not
+   selectable execution options.
 3. When the runtime is reachable but no usable targets exist, the selector API
    shall return an explicit machine-readable state such as
    `no_usable_targets`, not an empty success with fallback catalog entries.
@@ -72,14 +73,14 @@ or future settings surfaces, but they are not valid execution pickers.
    provider list.
 5. Selector responses may include provider family, backend, default instance,
    instance list, default model hint, model-catalog provenance, and warnings,
-   but only for usable runtime targets.
+   for usable targets or retained Runtime observations during recovery.
 6. `cats-platform` shall keep the renderer off direct `cats-runtime` calls.
 7. `GET /api/providers/{provider}/models` and
    `GET /api/providers/{provider}/models/advanced` when used by execution
    selectors shall only proxy runtime catalogs for resolved usable targets.
 8. Product execution selectors shall not fall back to curated static model
-   lists when runtime lookup fails. They shall surface recovery state or
-   warnings instead.
+   lists when runtime lookup fails. They retain previously observed runtime
+   data and recover automatically under the picker continuity contract below.
 9. When the runtime only has a trustworthy default-model hint for a usable
    target, selector UI shall present that default or `Provider default`; it
    shall not invent a larger hardcoded model list.
@@ -114,10 +115,41 @@ or future settings surfaces, but they are not valid execution pickers.
     truthful availability reads. That timeout should reflect the chosen runtime
     scope rather than inherit a per-target probing budget blindly.
 
+### Picker continuity contract (accepted 2026-09-18)
+
+This amendment governs every shared provider/model picker, including setup,
+Settings Brain cards and Chat. It supersedes earlier instructions to display
+transport warnings or manual recovery actions inside execution pickers.
+
+- **MUST** render the last successful Runtime-backed provider/model data
+  immediately on reopen, including after prolonged tray idle. TTL controls
+  refresh frequency; it must not delete that session's last successful data.
+- **MUST** preserve independently successful base/advanced model catalogs when
+  the other request fails. A refresh failure must not replace them with static
+  product catalogs, an empty list, or a different selected model.
+- **MUST** show an animated, accessible loading indicator while initial reads
+  or recovery are pending. Transient failures keep recovery active until data
+  arrives, without requiring a click. A successful authoritative empty result
+  can show the ordinary empty state and continue bounded availability polling.
+- **MUST NOT** render raw transport/timeout/auth error strings, a Retry button,
+  or an Open Cats Runtime Setup button in the picker or its surrounding setup
+  or Brain card. Dedicated environment settings retain their existing role.
+- **MUST** coalesce shared reads, avoid overlapping retry attempts, apply a
+  bounded delay/backoff, pause retries while hidden, resume on visibility/focus,
+  and cancel timers/listeners and reject late results after unmount/target change.
+- **MUST** invalidate retained data on a confirmed selection revision change or
+  explicit connection/auth reset. Unknown revision during transient failure is
+  not evidence of deselection. Server catalog and execution requests still
+  verify the current Runtime selection; retained UI data cannot widen ROI.
+- **MUST** cover long idle, consecutive failures then automatic success,
+  partial catalog success, hidden/resumed/unmounted pickers, and selection
+  invalidation with regression tests. Do not restore click-to-recover behavior
+  when fixing other selector issues.
+
 ### Non-Functional Requirements
 
-- **Truthfulness**: execution pickers must prefer omission and recovery prompts
-  over misleading fallback options
+- **Truthfulness**: execution pickers retain observed data while recovering;
+  they never invent static options or treat a cached display as execution authority
 - **Boundary ownership**: runtime discovery and availability remain inside
   `cats-runtime`
 - **Consistency**: setup and in-product selectors must tell the same story
@@ -132,7 +164,8 @@ or future settings surfaces, but they are not valid execution pickers.
 - **Cross-layer complementarity**: the product's short-lived selector cache
   should cover repeated mount/reopen churn and complement the runtime's
   existing compatibility cache plus any later selector-oriented runtime cache,
-  rather than duplicate them with another long-lived stale window
+  while the last successful display remains available until authoritative
+  selection/session invalidation or a newer successful result
 
 ## API Shape
 
@@ -175,6 +208,8 @@ instrumentation, but the selector payload itself must remain runtime-backed:
   snapshot
 - cache reuse is an optimization, not permission to synthesize providers or
   models that the runtime did not report
+- recovery metadata is for automatic recovery and diagnostic consumers; it
+  does not authorize Retry or Runtime Setup actions inside pickers
 
 Selector-oriented runtime follow-through for this route:
 
@@ -291,8 +326,9 @@ Selector-specific notes:
   target is currently usable
 - `source` tells the caller where the model metadata came from, not whether the
   target is healthy on its own
-- when lookup fails, execution-selector callers should receive an explicit
-  error/recovery state rather than static fallback options
+- when lookup fails, API callers receive an explicit error/recovery state;
+  pickers retain observed data and automatically recover under the continuity
+  contract, without rendering the raw error or static fallback options
 
 ## Design Notes
 
@@ -310,12 +346,10 @@ Selector-specific notes:
 - The product server may keep a short-lived truthful selector snapshot cache,
   plus in-flight request dedupe, so repeated setup/product mounts do not
   re-fetch the same provider registry on every reopen.
-- Truthful selector caching is allowed only as a reuse of recent runtime truth.
-  It must not degrade into product-owned static provider or model fallback.
-- That product cache should stay materially shorter-lived than the runtime's
-  existing compatibility cache and any future selector-oriented runtime cache;
-  its job is to absorb repeated UI mounts inside one interaction window, not
-  to become a second long-lived source of truth.
+- Freshness deadlines schedule revalidation. The last successful Runtime
+  observation remains available during transient failures, regardless of idle
+  duration, until a newer authoritative result or selection/session invalidation.
+  It must not become product-owned static fallback or execution authority.
 - Model and advanced-model selector routes should reuse truthful selector state
   rather than revalidating the entire provider registry before every catalog
   fetch when the selected provider was already established as usable.
@@ -332,6 +366,36 @@ Selector-specific notes:
 - [SPEC-049](./SPEC-049-guide-cat-setup-and-generalized-participant-entry.md)
 - [PLAN-040](../plans/PLAN-040-simplify-setup-wizard-and-decouple-runtime-bootstrap.md)
 
+## Picker continuity implementation and validation (2026-09-18)
+
+The renderer now separates display retention from refresh freshness. Registry
+and model clients coalesce requests, reject superseded results, and clear data
+on confirmed selection changes, logout or current-session 401/403 responses.
+Base and advanced catalogs recover independently. Reads use a 30-second request
+deadline, retry after 2/4/8/16/30 seconds with a 30-second cap, and stop scheduling
+while hidden or unmounted. Successful registry and model reads refresh on
+30-second and 60-second visible schedules respectively.
+
+Server caches retain the last successful observation beyond the old ten-minute
+deadline while checking current selection on every request. An authoritative
+empty result replaces prior choices; incomplete or failed topology reads remain
+transient failures. Existing server backoff still bounds Runtime work.
+
+Validation on Windows:
+
+- Scoped client/component tests cover 24-hour idle, consecutive failures,
+  partial success, empty/custom catalogs, stale refresh markers, auth/revision
+  invalidation, late responses, hidden/resumed reads and cleanup.
+- Provider routes/bootstrap/snapshot/Telegram suites and architecture,
+  browser-ingress, renderer-boundary and test-collection checks pass.
+- Server/web builds and test TypeScript checking pass. No full local test run
+  was performed; required PR CI remains the full-suite gate.
+- An isolated hidden Electron fixture with a temporary profile verified the
+  Chinese picker: timeout shows an animated spinner without error/actions,
+  then mocked recovery fills Grok/Grok 4.6 automatically with no overflow or
+  renderer errors. It did not access the user's persisted data. This is not a
+  packaged Windows/macOS/Linux smoke run, and no preview was published.
+
 ## Open Questions
 
 - [ ] Keep `GET /api/providers` as the selector route name, or introduce a new
@@ -339,9 +403,9 @@ Selector-specific notes:
 - [ ] Which non-execution product surfaces still need a separate informational
       provider catalog, and should that be a new route or static server-owned
       data?
-- [ ] Should selector responses expose the runtime's current availability
-      reason/warning text directly, or normalize them into product-owned
-      categories first?
+- [x] Picker recovery hides transport warnings and uses accessible loading
+      indicators with automatic retry; diagnostic metadata remains available
+      to dedicated settings/diagnostic consumers.
 
 ## References
 
@@ -352,5 +416,5 @@ Selector-specific notes:
 ---
 
 *Created: 2026-03-19*
-*Revised: 2026-04-08*
+*Revised: 2026-09-18*
 *Author: Codex*

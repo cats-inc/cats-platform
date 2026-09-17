@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect } from 'react';
 
 import {
   providerInstanceTarget,
@@ -13,22 +13,18 @@ import {
   type ProviderTargetSelection,
 } from '../../shared/providerSelection.js';
 import {
-  PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   catalogMatchesTarget,
   filterPersistentControlValues,
   formatCatalogEntryLabel,
   resolveExecutionLabelForProviderTarget,
   resolveProviderModelFieldsViewState,
-  shouldAutoRecheckProviderRegistry,
 } from './providerModelFieldsSupport.js';
 import { ProviderModelFieldControls } from './ProviderModelFieldControls.js';
-import { ProviderRegistryRecovery } from './ProviderRegistryRecovery.js';
 import { useProviderCatalogState } from './useProviderCatalogState.js';
 import {
   CUSTOM_LEGACY_MODEL_VALUE,
   useProviderModelFieldActions,
 } from './useProviderModelFieldActions.js';
-import { useProviderRegistryAutoRecheck } from './useProviderRegistryAutoRecheck.js';
 import { useProviderRegistryState } from './useProviderRegistryState.js';
 import { useProviderTargetReconciliation } from './useProviderTargetReconciliation.js';
 import { useI18n } from '../../app/renderer/i18n/useI18n.js';
@@ -41,7 +37,6 @@ export {
   PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING,
   PROVIDER_LOAD_FAILED_WARNING,
   PROVIDER_REFRESH_FAILED_WARNING,
-  PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   catalogMatchesTarget,
   countRequestScopedControls,
   filterPersistentControlValues,
@@ -53,7 +48,6 @@ export {
   resolveCatalogEntryStatusSuffix,
   resolveProviderModelFieldsViewState,
   resolveProviderRegistryHint,
-  resolveProviderRegistryAutoRecheckDelayMs,
   resolveProviderRegistryPlaceholder,
   resolveProviderRegistrySetupHref,
   resolveProviderSupportBadge,
@@ -61,19 +55,12 @@ export {
   resolveUnsupportedPersistentControlWarning,
   sanitizePersistentTargetSelection,
   shouldAllowLegacyManualModelEntry,
-  shouldAutoRecheckProviderRegistry,
   shouldDeferCatalogTargetReconciliation,
   shouldShowInstanceField,
   shouldTreatPersistedTargetAsLegacyModel,
   translateProviderRegistryWarning,
   updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
-
-export interface ProviderRegistryRecoveryState {
-  canRetry: boolean;
-  retry: () => void;
-  setupHref: string | null;
-}
 
 interface SharedProviderModelFieldsProps {
   provider: string;
@@ -88,12 +75,6 @@ interface SharedProviderModelFieldsProps {
     instance?: string | null,
   ) => Promise<ProviderAdvancedModelCatalog>;
   onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
-  /** When true, the inline Retry button under the Provider dropdown is hidden
-   * so callers can surface it elsewhere (e.g. in the Brain subcard header). */
-  hideInlineRetry?: boolean;
-  /** Called when the registry recovery state (canRetry/setupHref) changes so
-   * callers can render their own Retry affordance; receives null on unmount. */
-  onRegistryRecoveryChange?: (state: ProviderRegistryRecoveryState | null) => void;
 }
 
 export function ProviderModelFields({
@@ -106,8 +87,6 @@ export function ProviderModelFields({
   fetchProviderModels,
   fetchAdvancedProviderModels,
   onProviderRegistryChange,
-  hideInlineRetry = false,
-  onRegistryRecoveryChange,
 }: SharedProviderModelFieldsProps) {
   const { t } = useI18n();
 
@@ -115,9 +94,7 @@ export function ProviderModelFields({
     providers,
     providerRegistry,
     providersLoaded,
-    lastAutoProviderRegistryRecheckAt,
-    reloadProviderRegistry,
-    forceReloadProviderRegistry,
+    providersLoading,
   } = useProviderRegistryState({
     fetchProviderRegistry,
     onProviderRegistryChange,
@@ -130,6 +107,7 @@ export function ProviderModelFields({
     : '';
   const {
     catalogLoading,
+    catalogResolved,
     effectiveCatalog,
     effectiveAdvancedCatalog,
   } = useProviderCatalogState({
@@ -139,7 +117,6 @@ export function ProviderModelFields({
     selectionRevision: providerRegistry.revision,
     fetchProviderModels,
     fetchAdvancedProviderModels,
-    translate: t,
   });
   const {
     persistedLegacyModelTarget,
@@ -155,6 +132,7 @@ export function ProviderModelFields({
     resolvedInstance,
     hasSelectedProvider: Boolean(selectedProvider),
     catalogLoading,
+    catalogResolved,
     effectiveCatalog,
     effectiveAdvancedCatalog,
     onTargetChange,
@@ -175,12 +153,8 @@ export function ProviderModelFields({
     controlValues,
     supportBadge,
     selectedEntryNotes,
-    primaryCatalogWarning,
     providerPlaceholder,
     modelPlaceholder,
-    providerRegistryHint,
-    providerRegistrySetupHref,
-    canRetryProviderRegistry,
     allowLegacyManualModelEntry,
   } = resolveProviderModelFieldsViewState({
     selectedProvider,
@@ -199,40 +173,6 @@ export function ProviderModelFields({
     isLegacyModelTarget,
     translate: t,
   });
-
-  useProviderRegistryAutoRecheck({
-    providersLoaded,
-    providerCount: providerOptions.length,
-    registryState: providerRegistry.state,
-    retryable: providerRegistry.recovery?.retryable !== false,
-    providerRegistrySetupHref,
-    lastAutoProviderRegistryRecheckAt,
-    reloadProviderRegistry,
-  });
-
-  // Give consumers (e.g. the Brain subcard header) a stable way to reach
-  // `forceReloadProviderRegistry` without re-running the effect every render:
-  // forceReloadProviderRegistry is created fresh on each render of the state
-  // hook, so we capture the latest version in a ref and expose a stable
-  // wrapper.
-  const forceReloadRef = useRef(forceReloadProviderRegistry);
-  forceReloadRef.current = forceReloadProviderRegistry;
-  const stableForceReload = useMemo(
-    () => (): void => forceReloadRef.current(),
-    [],
-  );
-  const onRegistryRecoveryChangeRef = useRef(onRegistryRecoveryChange);
-  onRegistryRecoveryChangeRef.current = onRegistryRecoveryChange;
-  useEffect(() => {
-    onRegistryRecoveryChangeRef.current?.({
-      canRetry: canRetryProviderRegistry,
-      retry: stableForceReload,
-      setupHref: providerRegistrySetupHref,
-    });
-  }, [canRetryProviderRegistry, providerRegistrySetupHref, stableForceReload]);
-  useEffect(() => () => {
-    onRegistryRecoveryChangeRef.current?.(null);
-  }, []);
 
   const {
     onProviderChange,
@@ -325,7 +265,12 @@ export function ProviderModelFields({
   return (
     <>
       <label className="fieldLabel">
-        <span>{t(messageKeys.sharedProviderModelFieldProviderLabel)}</span>
+        <span className="fieldLabelInline">
+          <span>{t(messageKeys.sharedProviderModelFieldProviderLabel)}</span>
+          {providersLoading ? (
+            <ProviderPickerLoading label={t(messageKeys.sharedProviderModelFieldLoadingProviders)} />
+          ) : null}
+        </span>
         <select
           className="textInput"
           value={selectedProvider?.id ?? ''}
@@ -349,15 +294,6 @@ export function ProviderModelFields({
             </>
           )}
         </select>
-        {providerOptions.length === 0 ? (
-          <ProviderRegistryRecovery
-            providerRegistryHint={providerRegistryHint}
-            canRetryProviderRegistry={canRetryProviderRegistry}
-            providerRegistrySetupHref={providerRegistrySetupHref}
-            forceReloadProviderRegistry={forceReloadProviderRegistry}
-            hideRetry={hideInlineRetry}
-          />
-        ) : null}
       </label>
       {showInstanceField ? (
         <label className="fieldLabel">
@@ -383,6 +319,9 @@ export function ProviderModelFields({
       <label className="fieldLabel">
         <div className="fieldLabelInline">
           <span>{t(messageKeys.sharedProviderModelFieldModelLabel)}</span>
+          {catalogLoading ? (
+            <ProviderPickerLoading label={t(messageKeys.sharedProviderModelFieldLoadingModels)} />
+          ) : null}
           {supportBadge ? (
             <span className={`providerSupportBadge providerSupportBadge${supportBadge.tone}`}>
               {t(supportBadge.labelKey)}
@@ -414,10 +353,6 @@ export function ProviderModelFields({
         {selectedEntryNotes.length > 0 ? (
           <span className="fieldHint">
             {selectedEntryNotes[0]}
-          </span>
-        ) : primaryCatalogWarning ? (
-          <span className="fieldHint">
-            {primaryCatalogWarning}
           </span>
         ) : null}
       </label>
@@ -493,11 +428,14 @@ export function ProviderModelFields({
           {t(messageKeys.sharedProviderModelFieldRequestScopedWarning)}
         </span>
       ) : null}
-      {effectiveAdvancedCatalog.warnings.length > 0 ? (
-        <span className="fieldHint providerCatalogHint">
-          {effectiveAdvancedCatalog.warnings[0]}
-        </span>
-      ) : null}
     </>
+  );
+}
+
+function ProviderPickerLoading({ label }: { label: string }) {
+  return (
+    <span className="providerPickerLoading" role="status" aria-label={label}>
+      <span className="providerPickerSpinner" aria-hidden="true" />
+    </span>
   );
 }

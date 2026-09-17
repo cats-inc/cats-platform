@@ -612,7 +612,7 @@ test('GET /api/providers withholds targets when runtime config is unavailable de
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.state, 'no_usable_targets');
+    assert.equal(payload.state, 'runtime_unreachable');
     assert.deepEqual(payload.providers, []);
   });
 
@@ -634,7 +634,7 @@ test('GET /api/providers bounds a hung config read and withholds unconfirmed tar
     assert.equal(response.status, 200);
 
     const payload = await response.json();
-    assert.equal(payload.state, 'no_usable_targets');
+    assert.equal(payload.state, 'runtime_unreachable');
     assert.deepEqual(payload.providers, []);
   });
 });

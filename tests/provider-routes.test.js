@@ -205,6 +205,32 @@ test('a model response finishing after selection changed is rejected', async () 
   });
 });
 
+test('authoritative empty availability replaces retained readiness even when selection is unchanged', async () => {
+  const runtimeClient = createRuntimeStub();
+  await withServer(runtimeClient, async (baseUrl) => {
+    assert.equal((await (await fetch(`${baseUrl}/api/providers`)).json()).state, 'ready');
+    runtimeClient.getProviderDiagnostics = async () => ({ probe: 'light', providers: [] });
+    const empty = await (await fetch(`${baseUrl}/api/providers?force=1`)).json();
+    assert.equal(empty.state, 'no_usable_targets');
+    assert.deepEqual(empty.providers, []);
+    assert.deepEqual((await (await fetch(`${baseUrl}/api/providers`)).json()).providers, []);
+    assert.equal((await fetch(`${baseUrl}/api/providers/claude/models`)).status, 409);
+  });
+});
+
+test('failed topology refresh preserves prior choices instead of becoming authoritative empty', async () => {
+  const runtimeClient = createRuntimeStub();
+  await withServer(runtimeClient, async (baseUrl) => {
+    const initial = await (await fetch(`${baseUrl}/api/providers`)).json();
+    assert.equal(initial.state, 'ready');
+    runtimeClient.getProviderConfig = async () => { throw new Error('Topology timed out'); };
+    const retained = await (await fetch(`${baseUrl}/api/providers?force=1`)).json();
+    assert.equal(retained.state, 'ready');
+    assert.deepEqual(retained.providers, initial.providers);
+    assert.ok(retained.warnings.some((warning) => warning.includes('runtime refresh failed')));
+  });
+});
+
 test('same instance IDs on different backends keep separate model routes and a precise default', async () => {
   const runtimeClient = createRuntimeStub();
   const targets = ['cli', 'api'].map((backend) => ({ provider: 'claude', backend, instance: 'native' }));
@@ -451,11 +477,12 @@ test('GET /api/providers keeps the last good selector after a transient refresh 
       );
       assert.equal(diagnosticsCalls, 3);
 
-      clock.set(initialNowMs + 600_001);
+      clock.set(initialNowMs + 24 * 60 * 60_000);
       const expired = await fetch(`${baseUrl}/api/providers`);
       assert.equal(expired.status, 200);
       const expiredPayload = await expired.json();
-      assert.equal(expiredPayload.state, 'runtime_unreachable');
+      assert.equal(expiredPayload.state, 'ready');
+      assert.ok(expiredPayload.providers.some((provider) => provider.id === 'claude'));
     });
   });
 
@@ -515,9 +542,10 @@ test('GET /api/providers/:provider/models serves stale catalog after transient r
       );
       assert.equal(modelCalls, 3);
 
-      clock.set(initialNowMs + 600_001);
+      clock.set(initialNowMs + 24 * 60 * 60_000);
       const expired = await fetch(`${baseUrl}/api/providers/claude/models`);
-      assert.ok(expired.status >= 500 && expired.status < 600);
+      assert.equal(expired.status, 200);
+      assert.equal((await expired.json()).catalog.models[0].id, 'claude-default');
       assert.equal(modelCalls, 4);
     });
   });

@@ -26,6 +26,7 @@ export function useProviderTargetReconciliation(input: {
   resolvedInstance: string;
   hasSelectedProvider: boolean;
   catalogLoading: boolean;
+  catalogResolved: boolean;
   effectiveCatalog: ProviderModelCatalog;
   effectiveAdvancedCatalog: ProviderAdvancedModelCatalog;
   onTargetChange: (target: ProviderTargetSelection) => void;
@@ -41,7 +42,7 @@ export function useProviderTargetReconciliation(input: {
 
   const targetKey = `${input.provider}::${input.resolvedInstance}`;
   const persistedLegacyModelTarget =
-    !input.catalogLoading
+    input.catalogResolved
     && shouldTreatPersistedTargetAsLegacyModel({
       catalog: input.effectiveCatalog,
       model: input.model,

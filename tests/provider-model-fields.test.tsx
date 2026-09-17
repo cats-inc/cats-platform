@@ -10,10 +10,8 @@ import {
   hasExplicitDefaultEnumOption,
   PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING,
   PROVIDER_LOAD_FAILED_WARNING,
-  PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   listPersistentControlOptions,
   resolveProviderRegistryHint,
-  resolveProviderRegistryAutoRecheckDelayMs,
   resolveProviderRegistrySetupHref,
   resolveProviderRegistryPlaceholder,
   resolveDisplayedEnumControlValue,
@@ -23,7 +21,6 @@ import {
   resolveSelectedInstanceEventCapabilities,
   resolveUnsupportedPersistentControlWarning,
   sanitizePersistentTargetSelection,
-  shouldAutoRecheckProviderRegistry,
   shouldAllowLegacyManualModelEntry,
   shouldTreatPersistedTargetAsLegacyModel,
   shouldShowInstanceField,
@@ -464,7 +461,7 @@ test('provider registry empty states distinguish runtime failure from no usable 
       providersLoaded: true,
       registryState: 'runtime_unreachable',
     }),
-    'Could not load runtime-backed providers',
+    'Loading available providers...',
   );
   assert.equal(
     resolveProviderRegistryPlaceholder({
@@ -483,7 +480,7 @@ test('provider registry empty states distinguish runtime failure from no usable 
         warnings: ['Runtime provider registry timed out.'],
       },
     }),
-    'Runtime provider registry timed out.',
+    'Checking cats-runtime for usable provider targets.',
   );
   assert.equal(
     resolveProviderRegistryHint({
@@ -494,7 +491,7 @@ test('provider registry empty states distinguish runtime failure from no usable 
         warnings: [PROVIDER_LOAD_FAILED_WARNING],
       },
     }, createTranslator('zh-TW')),
-    '無法載入執行階段支援的供應器',
+    '正在檢查 cats-runtime 可用的供應器目標。',
   );
   assert.equal(
     resolveProviderRegistryHint({
@@ -535,7 +532,7 @@ test('provider registry empty states distinguish runtime failure from no usable 
         warnings: [PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING],
       },
     }, createTranslator('zh-TW')),
-    '檢查 cats-runtime 供應器目標時，先使用產品內建供應器目錄。',
+    'cats-runtime 重新連線時，先顯示上次可用的供應器目標。',
   );
   assert.equal(
     resolveProviderRegistryHint({
@@ -633,111 +630,6 @@ test('provider registry and model placeholders use the supplied translator', () 
   assert.equal(viewState.providerPlaceholder, '正在載入可用的供應器…');
   assert.equal(viewState.modelPlaceholder, '正在等待可用的供應器…');
   assert.equal(viewState.providerRegistryHint, '正在檢查 cats-runtime 可用的供應器目標。');
-});
-
-test('provider registry auto-recheck observes loaded, visible, and cooldown state', () => {
-  assert.equal(shouldAutoRecheckProviderRegistry({
-    providersLoaded: false,
-    providerCount: 0,
-    registryState: 'runtime_unreachable',
-    retryable: true,
-    hasSetupHref: true,
-    documentVisible: true,
-    lastAutoRecheckAt: 0,
-    now: PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
-  }), false);
-
-  assert.equal(shouldAutoRecheckProviderRegistry({
-    providersLoaded: true,
-    providerCount: 1,
-    registryState: 'runtime_unreachable',
-    retryable: true,
-    hasSetupHref: true,
-    documentVisible: true,
-    lastAutoRecheckAt: 0,
-    now: PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
-  }), true);
-
-  assert.equal(shouldAutoRecheckProviderRegistry({
-    providersLoaded: true,
-    providerCount: 0,
-    registryState: 'runtime_unreachable',
-    retryable: true,
-    hasSetupHref: false,
-    documentVisible: true,
-    lastAutoRecheckAt: 0,
-    now: PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
-  }), true);
-
-  assert.equal(shouldAutoRecheckProviderRegistry({
-    providersLoaded: true,
-    providerCount: 0,
-    registryState: 'runtime_unreachable',
-    retryable: true,
-    hasSetupHref: true,
-    documentVisible: false,
-    lastAutoRecheckAt: 0,
-    now: PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
-  }), false);
-
-  assert.equal(shouldAutoRecheckProviderRegistry({
-    providersLoaded: true,
-    providerCount: 0,
-    registryState: 'no_usable_targets',
-    retryable: true,
-    hasSetupHref: true,
-    documentVisible: true,
-    lastAutoRecheckAt: 1000,
-    now: 1000 + PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS - 1,
-  }), false);
-
-  assert.equal(shouldAutoRecheckProviderRegistry({
-    providersLoaded: true,
-    providerCount: 0,
-    registryState: 'no_usable_targets',
-    retryable: true,
-    hasSetupHref: true,
-    documentVisible: true,
-    lastAutoRecheckAt: 1000,
-    now: 1000 + PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
-  }), true);
-});
-
-test('provider registry auto-recheck delay schedules retry instead of waiting for focus events only', () => {
-  assert.equal(PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS, 30_000);
-
-  assert.equal(resolveProviderRegistryAutoRecheckDelayMs({
-    providersLoaded: true,
-    providerCount: 0,
-    registryState: 'runtime_unreachable',
-    retryable: true,
-    hasSetupHref: false,
-    documentVisible: true,
-    lastAutoRecheckAt: 0,
-    now: 10_000,
-  }), PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS - 10_000);
-
-  assert.equal(resolveProviderRegistryAutoRecheckDelayMs({
-    providersLoaded: true,
-    providerCount: 0,
-    registryState: 'runtime_unreachable',
-    retryable: true,
-    hasSetupHref: false,
-    documentVisible: true,
-    lastAutoRecheckAt: 10_000,
-    now: 10_000 + PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS - 250,
-  }), 250);
-
-  assert.equal(resolveProviderRegistryAutoRecheckDelayMs({
-    providersLoaded: true,
-    providerCount: 1,
-    registryState: 'runtime_unreachable',
-    retryable: true,
-    hasSetupHref: false,
-    documentVisible: true,
-    lastAutoRecheckAt: 10_000,
-    now: 20_000,
-  }), PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS - 10_000);
 });
 
 test('static fallback catalogs do not classify unknown persisted models as legacy before runtime data arrives', () => {

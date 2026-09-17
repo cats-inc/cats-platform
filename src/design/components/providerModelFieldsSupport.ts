@@ -49,8 +49,6 @@ export {
   PROVIDER_REFRESH_FAILED_WARNING,
 } from '../../shared/providerRegistryWarnings.js';
 
-export const PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS = 30_000;
-
 export type ProviderModelFieldsTranslate = (
   key: MessageKey,
   values?: MessageInterpolationValues,
@@ -103,7 +101,7 @@ export function sanitizeProviderRegistryReadModel(
   return {
     state: value.state,
     revision: value.revision,
-    providers: value.state !== 'runtime_unreachable' && Array.isArray(value.providers) ? value.providers : [],
+    providers: Array.isArray(value.providers) ? value.providers : [],
     recovery: value.recovery,
     warnings: Array.isArray(value.warnings) ? value.warnings : [],
   };
@@ -117,17 +115,15 @@ export function resolveProviderRegistryPlaceholder(
   },
   translate: ProviderModelFieldsTranslate = defaultTranslate,
 ): string {
-  if (!input.providersLoaded) {
-    return translate(messageKeys.sharedProviderModelFieldLoadingProviders);
-  }
-
   if ((input.providerCount ?? 0) > 0) {
     return translate(messageKeys.sharedProviderModelFieldSelectProviderHint);
   }
 
-  return input.registryState === 'runtime_unreachable'
-    ? translate(messageKeys.sharedProviderModelFieldProviderLoadFailed)
-    : translate(messageKeys.sharedProviderModelFieldNoProviders);
+  if (!input.providersLoaded || input.registryState === 'runtime_unreachable') {
+    return translate(messageKeys.sharedProviderModelFieldLoadingProviders);
+  }
+
+  return translate(messageKeys.sharedProviderModelFieldNoProviders);
 }
 
 export function resolveProviderRegistryHint(
@@ -137,18 +133,12 @@ export function resolveProviderRegistryHint(
   },
   translate: ProviderModelFieldsTranslate = defaultTranslate,
 ): string {
-  if (!input.providersLoaded) {
-    return translate(messageKeys.sharedProviderModelFieldRegistryCheckingHint);
-  }
-
   if (input.registry.providers.length > 0) {
-    return translateProviderRegistryWarning(input.registry.warnings?.[0], translate)
-      ?? translate(messageKeys.sharedProviderModelFieldRegistryStaleHint);
+    return translate(messageKeys.sharedProviderModelFieldRegistryStaleHint);
   }
 
-  if (input.registry.state === 'runtime_unreachable') {
-    return translateProviderRegistryWarning(input.registry.warnings?.[0], translate)
-      ?? translate(messageKeys.sharedProviderModelFieldRegistryLoadFailedHint);
+  if (!input.providersLoaded || input.registry.state === 'runtime_unreachable') {
+    return translate(messageKeys.sharedProviderModelFieldRegistryCheckingHint);
   }
 
   return translate(messageKeys.sharedProviderModelFieldRegistryEmptyHint);
@@ -189,45 +179,6 @@ export function resolveProviderRegistrySetupHref(
 ): string | null {
   const href = registry.recovery?.openRuntimeSetupPath?.trim();
   return href ? href : null;
-}
-
-export function shouldAutoRecheckProviderRegistry(input: {
-  providersLoaded: boolean;
-  providerCount: number;
-  registryState: ProductProviderRegistryState;
-  retryable: boolean;
-  hasSetupHref: boolean;
-  documentVisible: boolean;
-  lastAutoRecheckAt: number;
-  now: number;
-}): boolean {
-  return resolveProviderRegistryAutoRecheckDelayMs(input) === 0;
-}
-
-export function resolveProviderRegistryAutoRecheckDelayMs(input: {
-  providersLoaded: boolean;
-  providerCount: number;
-  registryState: ProductProviderRegistryState;
-  retryable: boolean;
-  hasSetupHref: boolean;
-  documentVisible: boolean;
-  lastAutoRecheckAt: number;
-  now: number;
-}): number | null {
-  if (!input.providersLoaded) {
-    return null;
-  }
-
-  if (!input.documentVisible) {
-    return null;
-  }
-
-  if (input.registryState !== 'ready' && !input.retryable && !input.hasSetupHref) {
-    return null;
-  }
-
-  const elapsedMs = input.now - input.lastAutoRecheckAt;
-  return Math.max(0, PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS - elapsedMs);
 }
 
 function presetAppliesToEntry(
@@ -966,7 +917,7 @@ export function resolveProviderModelFieldsViewState(input: {
   const modelPlaceholder = !selectedProvider
     ? (providersLoaded
         ? providerRegistry.state === 'runtime_unreachable' && !hasProviderOptions
-          ? translate(messageKeys.sharedProviderModelFieldRetryProvidersFirst)
+          ? translate(messageKeys.sharedProviderModelFieldWaitingProviders)
           : translate(messageKeys.sharedProviderModelFieldSelectProviderFirst)
         : translate(messageKeys.sharedProviderModelFieldWaitingProviders))
     : catalogLoading

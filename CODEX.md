@@ -347,6 +347,13 @@ Codex MUST treat the following as hard guardrails when refactoring `cats`.
 These notes capture the current user direction for `cats`. They are
 working memory for Codex, not yet a ratified product spec or ADR.
 
+- September 18, 2026 picker contract is ratified in SPEC-013 and ADR-115:
+  retain successful provider/model display across tray idle, animate loading
+  and retry automatically during transient failures. Never restore raw timeout
+  strings, Retry buttons or Runtime Setup links in pickers or their wrappers.
+  TTL expires freshness, not observed data; confirmed ROI/auth resets invalidate
+  retained choices. These choices never authorize execution beyond current ROI.
+
 - September 17, 2026 user correction: do not bump versions or publish releases
   without a new explicit request. Prior overnight release permission is no
   longer ongoing. Desktop onboarding is for ordinary users on clean machines:

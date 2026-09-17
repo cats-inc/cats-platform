@@ -42,11 +42,27 @@
   margin-top: 2px;
 }
 
-.providerCatalogRecoveryActions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 6px;
+.providerPickerLoading {
+  display: inline-flex;
+  align-items: center;
+}
+
+.providerPickerSpinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: providerPickerSpin 0.8s linear infinite;
+}
+
+@keyframes providerPickerSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .providerPickerSpinner { animation-duration: 2s; }
 }
 
 .providerSupportBadge {
