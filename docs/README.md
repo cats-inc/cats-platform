@@ -28,6 +28,12 @@ setup step 2's Catlas selection and optional prefetch. The accepted
 
 ## Provider Catalog Labels
 
+[Kilo shortlist](./research/2026-09-18-kilo-shortlist.md) records six selected models and fixed
+Thinking transport for the final two entries.
+
+[OpenCode shortlist](./research/2026-09-18-opencode-shortlist.md) records the six exact fallback
+labels and verified Go IDs, with first-item initialization and custom input.
+
 [Copilot fixed presets](./research/2026-09-17-copilot-fixed-presets.md) records the approved fixed
 efforts, Terra default and per-model raw-ID evidence.
 
