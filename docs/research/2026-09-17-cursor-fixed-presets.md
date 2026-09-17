@@ -2,7 +2,7 @@
 
 Desktop's fallback menu follows the six owner-approved Cursor CLI combinations, in order:
 
-1. Cursor Grok 4.6 — Extra High Fast
+1. Cursor Grok 4.6 — High Fast
 2. Composer 2.5 — Fast
 3. Claude Opus 5 — 300K High Thinking
 4. GPT-5.6 Sol — 272K Medium
@@ -21,6 +21,17 @@ Runtime owns the same curated shortlist and prevents live discovery or cached ca
 expanding it on refresh. Its evidence is recorded in the matching 2026-09-17 Cursor research
 note and `cursor-2026.09.15-d2fe57e` fixtures. The installed CLI's account-resolved variant
 strings were checked without running inference.
+
+On 2026-09-18, the operator changed only Cursor Grok 4.6 from Extra High Fast to High Fast.
+The Runtime's retained account-resolved capture verifies `grok-4.6[effort=high,fast=true]`.
+Desktop's first-entry value and display label follow that revision; no default marker is added.
+The pending Copilot MAI revision is preserved. The checks below describe the original rollout;
+revision validation is recorded separately.
+
+Revision validation: the official UI test bundle, 44 focused selector/default/persistence/audience
+tests, renderer TypeScript and test TypeScript checks passed. The Cursor assertion verifies the
+High Fast first-entry value and label without a default marker. Diff checks passed; no installed
+Desktop or model-inference smoke test was performed.
 
 Validation: 25 provider-selection/execution-label tests and 43 selector/default/persistence/
 audience tests passed. Server and test UI builds, renderer TypeScript, and test TypeScript
