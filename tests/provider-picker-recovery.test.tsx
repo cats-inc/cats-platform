@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
 import React from 'react';
 import { setImmediate as nextTurn } from 'node:timers/promises';
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import { ProviderModelBrainCard } from '../src/design/components/ProviderModelBrainCard.tsx';
+import { PlatformSetupWizard } from '../src/app/renderer/setup/PlatformSetupWizard.tsx';
 import { startProviderReadLoop } from '../src/app/renderer/providerReadLoop.ts';
 import {
   clearProviderRegistryClientCache, fetchProviderRegistryFromClientCache,
@@ -14,6 +15,7 @@ import {
   fetchProviderAdvancedCatalogFromClientCache, fetchProviderModelCatalogFromClientCache,
 } from '../src/app/renderer/providerCatalogClient.ts';
 import type { ProviderTargetSelection } from '../src/shared/providerSelection.ts';
+import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
 
 // Async act in esbuild's ESM bundle leaks React MessageChannel ports. Drain
 // real event-loop turns instead; the deterministic clock only owns retry timers.
@@ -107,6 +109,60 @@ function api() {
 function assertNoManualRecovery(container: HTMLElement) {
   assert.doesNotMatch(container.textContent ?? '', /aborted|timeout|Retry|Runtime setup|重試|執行階段設定/i);
   assert.equal(container.querySelectorAll('button, a').length, 0);
+}
+
+for (const authStatus of [401, 403]) {
+  test(`first setup step 2 automatically recovers from ${authStatus}, registry and model timeouts`, async (t) => {
+    const clock = installClock(t);
+    const { state, fetchImpl } = api();
+    state.registryFailures = state.modelFailures = state.advancedFailures = 1;
+    let authFailures = 1;
+    let providerReads = 0;
+    t.mock.method(globalThis, 'fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      const pathname = new URL(String(input), 'http://localhost').pathname;
+      if (pathname === '/api/platform/bootstrap-diagnostics/opened') return Response.json({});
+      if (pathname === '/api/providers') {
+        providerReads++;
+        if (authFailures-- > 0) return Response.json({ error: { message: 'Authentication is required.' } }, { status: authStatus });
+      }
+      assert.ok(pathname.startsWith('/api/providers'), 'verification must not submit setup or write user state');
+      return fetchImpl(input, init);
+    });
+    // Deliberately partial: this renderer only reads the attempt ID and Runtime
+    // reachability. All HTTP calls are stubbed; no host or persisted state exists.
+    const envelope = { bootstrapAttemptId: 'isolated-recovery', runtime: { reachable: false } } as PlatformHostEnvelope;
+    const view = render(<I18nProvider locale="en"><PlatformSetupWizard envelope={envelope} onComplete={() => {}} /></I18nProvider>);
+    fireEvent.change(view.getByRole('textbox', { name: 'Your name' }), { target: { value: 'Test Owner' } });
+    fireEvent.change(view.getByRole('textbox', { name: 'Admin login email' }), { target: { value: 'owner@example.test' } });
+    fireEvent.change(view.getByLabelText('Admin password'), { target: { value: 'test-password' } });
+    fireEvent.click(view.getByRole('button', { name: 'Get started' }));
+    await settle();
+    assert.equal(providerReads, 0, 'Guide Cat opt-in owns provider reads');
+    fireEvent.click(view.getByRole('checkbox', { name: /Enable Catlas/ }));
+    await settle();
+    function assertAutomaticRecovery() {
+      assert.doesNotMatch(view.container.textContent ?? '', /Authentication is required|aborted|timeout|Retry|Runtime setup/i);
+      assert.equal(view.queryByRole('button', { name: /retry|runtime/i }), null);
+      assert.equal(view.container.querySelectorAll('a').length, 0);
+      assert.ok(view.container.querySelector('[role="status"] .providerPickerSpinner'));
+    }
+    assert.equal(providerReads, 1, 'wizard prefetch and picker share the same request');
+    assertAutomaticRecovery();
+    await clock.advance(2_000);
+    assertAutomaticRecovery();
+    await clock.advance(4_000);
+    assertAutomaticRecovery();
+    await clock.advance(2_000);
+    assert.equal((view.getByRole('combobox', { name: 'Provider' }) as HTMLSelectElement).value, 'claude');
+    assert.equal((view.getByRole('combobox', { name: /Model/ }) as HTMLSelectElement).value, 'model-a');
+    assert.equal(view.container.querySelectorAll('[role="status"]').length, 0);
+    assert.equal((view.getByRole('button', { name: 'Open Cats' }) as HTMLButtonElement).disabled, false);
+    const calls = providerReads;
+    fireEvent.click(view.getByRole('checkbox', { name: /Enable Catlas/ }));
+    await clock.advance(60_000);
+    assert.equal(providerReads, calls, 'disabling Guide Cat stops recovery reads');
+    assert.equal(clock.timers.size, 0);
+  });
 }
 
 test('cold picker retries consecutive timeouts automatically and replaces its spinner with data', async (t) => {

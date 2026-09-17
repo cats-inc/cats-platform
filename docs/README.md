@@ -21,7 +21,8 @@ for implementation progress and native OS verification limits.
 
 Provider/model pickers retain the last successful display across tray idle and
 recover automatically with loading indicators. Raw transport errors and manual
-recovery actions do not belong in the picker or its wrappers. The accepted
+recovery actions do not belong in the picker or its wrappers, including first
+setup step 2's Catlas selection and optional prefetch. The accepted
 2026-09-18 contract and validation are in
 [SPEC-013](./specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md).
 
