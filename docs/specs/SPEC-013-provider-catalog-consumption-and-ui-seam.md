@@ -137,6 +137,9 @@ transport warnings or manual recovery actions inside execution pickers.
 - **MUST** coalesce shared reads, avoid overlapping retry attempts, apply a
   bounded delay/backoff, pause retries while hidden, resume on visibility/focus,
   and cancel timers/listeners and reject late results after unmount/target change.
+- First setup step 2's optional prefetch **MUST** contain rejected reads. The
+  mounted Catlas picker owns retry; prefetch must not create an unhandled error,
+  duplicate recovery UI, or fetch catalogs before the user enables Catlas.
 - **MUST** invalidate retained data on a confirmed selection revision change or
   explicit connection/auth reset. Unknown revision during transient failure is
   not evidence of deselection. Server catalog and execution requests still
@@ -386,6 +389,16 @@ Validation on Windows:
 - Scoped client/component tests cover 24-hour idle, consecutive failures,
   partial success, empty/custom catalogs, stale refresh markers, auth/revision
   invalidation, late responses, hidden/resumed reads and cleanup.
+- First setup follow-up renders the actual wizard, advances from owner details
+  to Catlas opt-in, and exercises 401/403 followed by registry/model timeouts.
+  It verifies automatic recovery, no inline error or recovery actions, coalesced
+  prefetch, and stopped reads after opt-out. The initial test reproduced an
+  unhandled prefetch rejection; the wizard now contains that failure while the
+  shared picker retries. Server regression coverage separately verifies catalog
+  reads before first-admin creation and authenticated access after completion.
+  The follow-up's 43 scoped checks and test TypeScript check pass; one unrelated
+  assist-cache timing case timed out during the initial concurrent typecheck and
+  passed when rerun on its own.
 - Provider routes/bootstrap/snapshot/Telegram suites and architecture,
   browser-ingress, renderer-boundary and test-collection checks pass.
 - Server/web builds and test TypeScript checking pass. No full local test run

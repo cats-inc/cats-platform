@@ -156,7 +156,9 @@ export function PlatformSetupWizard({
     if (!shouldPrefetchGuideCatProviderRegistry({ step, createGuideCat })) {
       return;
     }
-    void prefetchProviderRegistryFromClientCache();
+    // The mounted picker owns automatic recovery. Best-effort prefetch must
+    // not leave an unhandled rejection when auth or selection changes mid-read.
+    void prefetchProviderRegistryFromClientCache().catch(() => {});
   }, [createGuideCat, step]);
 
   const dots = Array.from({ length: TOTAL_SETUP_STEPS }, (_, index) => index + 1);
