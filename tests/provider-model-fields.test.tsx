@@ -228,7 +228,8 @@ test('createStaticProviderModelCatalog initializes Antigravity from its first pi
 
 test('Cursor fallback exposes six fixed combos and initializes the first without a default claim', () => {
   const catalog = createStaticProviderModelCatalog('cursor', { instance: 'native' });
-  assert.equal(catalog.defaultModel, 'grok-4.6[effort=xhigh,fast=true]');
+  assert.equal(catalog.defaultModel, 'grok-4.6[effort=high,fast=true]');
+  assert.equal(catalog.models[0].label, 'Cursor Grok 4.6 — High Fast');
   assert.equal(catalog.models.length, 6);
   assert.ok(catalog.models.every(model => !model.default && !/default/i.test(model.label)));
   assert.equal(catalog.models[2].id, 'claude-opus-5[thinking=true,context=300k,effort=high,fast=false]');
@@ -241,6 +242,8 @@ test('Copilot fallback preserves the approved fixed efforts and Terra default', 
   assert.equal(catalog.defaultModel, 'gpt-5.6-terra');
   assert.equal(catalog.models.length, 6);
   assert.equal(catalog.models[0].label, 'GPT-5.6 Terra — Medium (default)');
+  assert.equal(catalog.models[4].id, 'mai-code-1.1-flash');
+  assert.equal(catalog.models[4].label, 'MAI-Code-1.1-Flash — Medium');
   assert.equal(catalog.models.at(-1)?.label, 'Kimi K3 — High');
   assert.equal(catalog.models.filter(model => model.default).length, 1);
   assert.equal(shouldAllowLegacyManualModelEntry({ entryCount: 6, isLegacyModelTarget: false }), true);

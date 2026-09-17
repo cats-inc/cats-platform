@@ -72,7 +72,7 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'claude-sonnet-5', label: 'Claude Sonnet 5 — Medium' },
     { value: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash — Medium' },
     { value: 'grok-4.6', label: 'Grok 4.6 — Medium' },
-    { value: 'gpt-5.6-luna', label: 'GPT-5.6 Luna — Medium' },
+    { value: 'mai-code-1.1-flash', label: 'MAI-Code-1.1-Flash — Medium' },
     { value: 'kimi-k3', label: 'Kimi K3 — High' },
   ],
   opencode: [
@@ -110,7 +110,7 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'Grok 4.1 Fast Reasoning', label: 'Grok 4.1 Fast Reasoning' },
   ],
   cursor: [
-    { value: 'grok-4.6[effort=xhigh,fast=true]', label: 'Cursor Grok 4.6 — Extra High Fast' },
+    { value: 'grok-4.6[effort=high,fast=true]', label: 'Cursor Grok 4.6 — High Fast' },
     { value: 'composer-2.5[fast=true]', label: 'Composer 2.5 — Fast' },
     { value: 'claude-opus-5[thinking=true,context=300k,effort=high,fast=false]', label: 'Claude Opus 5 — 300K High Thinking' },
     { value: 'gpt-5.6-sol[context=272k,reasoning=medium,fast=false]', label: 'GPT-5.6 Sol — 272K Medium' },
