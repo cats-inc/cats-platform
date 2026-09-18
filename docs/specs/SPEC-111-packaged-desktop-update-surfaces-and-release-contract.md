@@ -493,7 +493,11 @@ When later enabled:
     preview tag from the selected workflow branch commit so testing does not
     first trigger the stable tag path.
 
-    Per ADR-117, a preview is signed on every platform whose credentials exist.
+    Per ADR-117, a preview is signed by default on every platform whose credentials exist.
+    A manual dispatch may explicitly request `unsigned=true`; that run shall
+    withhold signing/notarization credentials and disable identity discovery.
+    This option shall not affect tag-triggered official releases or promote
+    the preview, and unsigned macOS artifacts require manual installation.
     Signing is artifact trust; preview-versus-official is release identity, and
     signing a preview shall not promote it. On macOS this is a precondition
     rather than a convenience: Squirrel.Mac refuses to apply an update to an
@@ -566,8 +570,9 @@ selection applies to both `cats-platform` and `cats-runtime`.
 3. Artifact trust shall be resolved per platform as credentials arrive. A
    platform without credentials produces unsigned artifacts on both the preview
    and official paths, and its official path stays blocked by the release gate.
-   A platform with credentials signs both paths. Neither state changes what any
-   build claims about its release identity.
+   A platform with credentials signs both paths by default. The explicit unsigned
+   manual-preview exception in section 7.14 does not apply to official releases.
+   Neither state changes what any build claims about its release identity.
 4. Release jobs shall use least-privilege GitHub permissions.
 5. Signing credentials shall remain in protected GitHub secrets and shall not
    be exposed to pull-request workflows from untrusted forks.
@@ -687,9 +692,10 @@ be translated.
 14. A manual preview completes Windows, macOS, and Linux packaging plus asset
     validation, while producing no official release descriptor and publishing
     only a GitHub prerelease that is not `latest`. Platforms whose credentials
-    exist produce signed artifacts on this path; platforms without credentials
-    produce unsigned ones, and neither outcome changes the preview's release
-    identity.
+    exist produce signed artifacts on this path by default; platforms without
+    credentials produce unsigned ones. Explicit unsigned previews withhold
+    signing credentials and remain prereleases. Neither outcome changes the
+    preview's release identity.
 
 ## Dependencies
 

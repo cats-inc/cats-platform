@@ -19,6 +19,35 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-18 (0.3.3 unsigned preview)
+
+### Let Cline accept short chat messages
+
+Behavior change:
+
+The bundled Runtime fixes Cline rejecting messages such as `晚安` or `hello`
+as an unknown command before model execution. It also protects messages that
+look like CLI subcommands or flags while retaining the selected provider,
+model, effort and permission settings.
+
+This preview is explicitly unsigned on all platforms at the operator's request.
+The workflow now exposes an opt-in `unsigned` input for manual previews; the
+default signing behavior from ADR-117 is unchanged for other runs.
+
+Migration steps:
+
+On Windows, use Cats Desktop **Check for Update**. Install the macOS DMG manually
+for this unsigned preview; its update cannot be applied by Squirrel.Mac, including
+from the signed 0.3.2 build. Linux users can install the published arm64 DEB.
+
+The release uses Runtime commit `bf0c24880fb5045b4c2b0daaf27ce905f9b60b53`
+(`0.1.24`, Runtime PR #69) and retains the locked Usage app `0.2.1`.
+Dispatch `desktop-release.yml` with `tag=v0.3.3`, that exact `runtime_ref`, and
+`unsigned=true`. Windows x64 NSIS, macOS x64 DMG/updater ZIP and Linux arm64
+DEB remain the release artifact set.
+
+Deprecations: none.
+
 ## 2026-09-18 (0.3.2 preview — first signed macOS preview)
 
 ### Sign and notarize macOS preview artifacts
