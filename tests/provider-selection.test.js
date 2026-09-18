@@ -91,6 +91,20 @@ test('Kilo shortlist preserves labels, starts at the first row, and retains cust
   assert.equal(custom.modelSelection, null);
 });
 
+test('Devin starts at Adaptive and preserves a custom model outside the shortlist', () => {
+  const catalog = createStaticProviderModelCatalog('devin');
+  assert.equal(catalog.models.length, 6);
+  assert.ok(catalog.models.every(model => !model.default));
+  const target = { provider: 'devin', instance: 'agent/acp', model: '' };
+  assert.equal(resolveCatalogTargetSelection({ target, catalog }).model, 'adaptive');
+  const custom = resolveCatalogTargetSelection({
+    target: { ...target, model: 'custom-devin-model', modelSelection: null }, catalog,
+    preserveCurrentModel: true, preserveCurrentSelection: true,
+  });
+  assert.equal(custom.model, 'custom-devin-model');
+  assert.equal(custom.modelSelection, null);
+});
+
 test('advanced catalog preserves scalar per-entry defaults and drops malformed values', () => {
   const catalog = normalizeProviderAdvancedModelCatalog({
     entries: [

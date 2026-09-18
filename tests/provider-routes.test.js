@@ -335,7 +335,7 @@ test('GET /api/providers/:provider/models/advanced scopes selector diagnostics t
   );
 });
 
-test('GET /api/providers exposes Devin ACP and proxies its provider-default catalog', async () => {
+test('GET /api/providers exposes Devin ACP, uses Adaptive initially, and preserves an empty runtime catalog', async () => {
   const runtimeClient = createRuntimeStub();
   runtimeClient.getProviderConfig = async () => ({
     devin: {
@@ -395,7 +395,7 @@ test('GET /api/providers exposes Devin ACP and proxies its provider-default cata
       {
         id: 'devin',
         label: 'Devin',
-        defaultModel: 'devin-default',
+        defaultModel: 'adaptive',
         defaultInstance: 'acp',
         defaultBackend: 'agent',
         instances: [
