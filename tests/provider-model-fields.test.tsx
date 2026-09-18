@@ -243,6 +243,14 @@ test('ClinePass offers six fixed Medium choices plus manual model entry', () => 
   assert.equal(shouldAllowLegacyManualModelEntry({ entryCount: 6, isLegacyModelTarget: false }), true);
 });
 
+test('Kiro offers six raw model names plus custom input without effort or default labels', () => {
+  const catalog = createStaticProviderModelCatalog('kiro', { instance: 'native' });
+  assert.equal(catalog.defaultModel, 'claude-opus-5');
+  assert.equal(catalog.models.length, 6);
+  assert.ok(catalog.models.every(model => model.label === model.id && !model.default));
+  assert.equal(shouldAllowLegacyManualModelEntry({ entryCount: 6, isLegacyModelTarget: false }), true);
+});
+
 test('Copilot fallback preserves the approved fixed efforts and Terra default', () => {
   const catalog = createStaticProviderModelCatalog('copilot', { instance: 'native' });
   assert.equal(catalog.defaultModel, 'gpt-5.6-terra');
