@@ -676,7 +676,7 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   );
   assert.deepEqual(
     packageJson.build.mac.target,
-    [{ target: 'dmg', arch: ['x64'] }, { target: 'zip', arch: ['x64'] }],
+    [{ target: 'dmg', arch: ['universal'] }, { target: 'zip', arch: ['universal'] }],
   );
   assert.deepEqual(
     packageJson.build.linux.target,
@@ -733,6 +733,50 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
     packageJson.build.mac.extendInfo.NSMicrophoneUsageDescription,
     'Cats uses the microphone for voice input in the chat composer.',
   );
+});
+
+test('macOS packaging hardens the runtime and ships the entitlements it then needs', async () => {
+  const packageJson = JSON.parse(await readFile(join(process.cwd(), 'package.json'), 'utf8'));
+
+  // electron-builder 26 hardens non-MAS builds unless this is explicitly
+  // false, and notarization rejects an unhardened bundle outright. Pinned
+  // rather than left to the default so a version bump cannot flip it back.
+  assert.equal(packageJson.build.mac.hardenedRuntime, true);
+  // Notarization is opted back in per build by build-desktop-installer.mjs, so
+  // a local package or an unsigned preview never waits on Apple, and a
+  // half-configured release cannot quietly skip it.
+  assert.equal(packageJson.build.mac.notarize, false);
+  // electron-builder would otherwise run spctl mid-packaging, which cannot
+  // pass before the ticket is stapled. The release workflow asserts Gatekeeper
+  // on the finished bundle instead.
+  assert.equal(packageJson.build.mac.gatekeeperAssess, false);
+  // electron-builder resolves both plists out of buildResources by filename.
+  // An explicit override would just be a second source of truth for the path.
+  assert.equal(Object.hasOwn(packageJson.build.mac, 'entitlements'), false);
+  assert.equal(Object.hasOwn(packageJson.build.mac, 'entitlementsInherit'), false);
+  assert.equal(packageJson.build.directories.buildResources, 'assets/build');
+
+  const requiredEntitlements = [
+    // Electron's V8 JIT: the renderer aborts on launch without these.
+    'com.apple.security.cs.allow-jit',
+    'com.apple.security.cs.allow-unsigned-executable-memory',
+    // Native addons loaded from Resources/app-sidecar and Resources/cats-runtime.
+    'com.apple.security.cs.disable-library-validation',
+    // Voice input. NSMicrophoneUsageDescription alone stops working once the
+    // hardened runtime is on.
+    'com.apple.security.device.audio-input',
+  ];
+
+  for (const plist of ['entitlements.mac.plist', 'entitlements.mac.inherit.plist']) {
+    const contents = await readFile(join(process.cwd(), 'assets', 'build', plist), 'utf8');
+    for (const entitlement of requiredEntitlements) {
+      assert.equal(
+        contents.includes(`<key>${entitlement}</key>`),
+        true,
+        `${plist} is missing ${entitlement}`,
+      );
+    }
+  }
 });
 
 test('resolveDesktopWindowIconPath finds packaged window icons for supported desktop platforms', async () => {
@@ -1011,7 +1055,13 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /env\.CSC_IDENTITY_AUTO_DISCOVERY = 'false'/);
   assert.match(
     script,
-    /const SIGNING_CREDENTIAL_KEYS = \[\s*'WIN_CSC_LINK',\s*'CSC_LINK',\s*'WIN_CSC_KEY_PASSWORD',\s*'CSC_KEY_PASSWORD',\s*\]/,
+    /const MACOS_NOTARIZATION_CREDENTIAL_KEYS = \[\s*'APPLE_API_KEY',\s*'APPLE_API_KEY_ID',\s*'APPLE_API_ISSUER',\s*\]/,
+  );
+  // The notarization keys are scrubbed alongside the certificates: an empty
+  // APPLE_API_KEY is read as a relative path to a key file that does not exist.
+  assert.match(
+    script,
+    /const SIGNING_CREDENTIAL_KEYS = \[\s*'WIN_CSC_LINK',\s*'CSC_LINK',\s*'WIN_CSC_KEY_PASSWORD',\s*'CSC_KEY_PASSWORD',\s*\.\.\.MACOS_NOTARIZATION_CREDENTIAL_KEYS,\s*\]/,
   );
   assert.match(script, /for \(const key of SIGNING_CREDENTIAL_KEYS\)/);
   assert.match(script, /typeof value !== 'string' \|\| value\.trim\(\) === ''/);

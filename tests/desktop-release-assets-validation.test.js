@@ -34,10 +34,10 @@ const COMPLETE_FILES = [
   'collected/unsigned-preview-windows/Cats-0.2.0-setup-x64.exe',
   'collected/unsigned-preview-windows/Cats-0.2.0-setup-x64.exe.blockmap',
   'collected/unsigned-preview-windows/latest.yml',
-  'collected/unsigned-preview-macos/Cats-0.2.0-x64.dmg',
-  'collected/unsigned-preview-macos/Cats-0.2.0-x64.dmg.blockmap',
-  'collected/unsigned-preview-macos/Cats-0.2.0-x64.zip',
-  'collected/unsigned-preview-macos/Cats-0.2.0-x64.zip.blockmap',
+  'collected/unsigned-preview-macos/Cats-0.2.0-universal.dmg',
+  'collected/unsigned-preview-macos/Cats-0.2.0-universal.dmg.blockmap',
+  'collected/unsigned-preview-macos/Cats-0.2.0-universal.zip',
+  'collected/unsigned-preview-macos/Cats-0.2.0-universal.zip.blockmap',
   'collected/unsigned-preview-macos/latest-mac.yml',
   'collected/unsigned-preview-linux/Cats-0.2.0-arm64.deb',
   'collected/unsigned-preview-linux/latest-linux-arm64.yml',
@@ -57,10 +57,10 @@ function metadata(name, overrides = {}) {
     'latest-mac.yml': {
       version: '0.2.0',
       // The real feed lists both the updater archive and the DMG.
-      path: 'Cats-0.2.0-x64.zip',
+      path: 'Cats-0.2.0-universal.zip',
       files: [
-        { url: 'Cats-0.2.0-x64.zip' },
-        { url: 'Cats-0.2.0-x64.dmg' },
+        { url: 'Cats-0.2.0-universal.zip' },
+        { url: 'Cats-0.2.0-universal.dmg' },
       ],
     },
     'latest-linux-arm64.yml': {
@@ -92,7 +92,7 @@ test('a complete release passes validation', () => {
 
 test('artifacts outside the release contract fail validation', () => {
   for (const forbidden of [
-    'Cats-0.2.0-x64.pkg',
+    'Cats-0.2.0-universal.pkg',
     'Cats-0.2.0-arm64.AppImage',
     'Cats-0.2.0-x86_64.tar.gz',
   ]) {
@@ -173,7 +173,7 @@ test('architecture is judged per platform, not across the whole matrix', () => {
   assert.deepEqual(
     resolveUnreleasedArchitectureArtifacts([
       'Cats-0.2.0-setup-x64.exe',
-      'Cats-0.2.0-x64.dmg',
+      'Cats-0.2.0-universal.dmg',
       'Cats-0.2.0-arm64.deb',
     ]),
     [],
@@ -365,6 +365,37 @@ test('the release workflow runs the guard before any platform build', async () =
   assert.ok(buildIndex > guardIndex, 'the guard must precede the installer build');
 });
 
+test('the release workflow keeps notarization credentials out of unsigned previews', async () => {
+  const workflow = await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
+    'utf8',
+  );
+
+  // Every notarization input rides the same preview check that already blanks
+  // the certificates, so a preview build cannot reach Apple with real keys.
+  for (const credential of ['APPLE_API_KEY_P8_BASE64', 'APPLE_API_KEY_ID', 'APPLE_API_ISSUER']) {
+    const line = workflow
+      .split('\n')
+      .find((candidate) => candidate.includes(`secrets.${credential}`));
+    assert.ok(line, `the workflow must configure ${credential}`);
+    assert.match(line, /needs\.guard\.outputs\.preview == 'false'/u);
+  }
+
+  // The .p8 is materialized as a file because electron-builder reads
+  // APPLE_API_KEY as a path, so that step needs the platform gate too.
+  const stageStep = workflow.slice(workflow.indexOf('- name: Stage the notarization API key'));
+  assert.ok(stageStep.length > 0, 'the workflow must stage the notarization key');
+  assert.match(
+    stageStep.slice(0, 300),
+    /if: matrix\.platform == 'macos' && needs\.guard\.outputs\.preview == 'false'/u,
+  );
+
+  // Pre-release policy: the retired Apple ID path is gone rather than kept as
+  // a fallback beside the API key.
+  assert.equal(workflow.includes('APPLE_APP_SPECIFIC_PASSWORD'), false);
+  assert.equal(workflow.includes('secrets.APPLE_ID'), false);
+});
+
 test('the release workflow only triggers on stable version tags', async () => {
   const workflow = await readFile(
     join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
@@ -454,7 +485,7 @@ test('the release matrix pins every platform to its contracted formats and arch'
   );
 
   assert.match(workflow, /platform: windows[\s\S]*?--format nsis --arch x64/u);
-  assert.match(workflow, /platform: macos[\s\S]*?--format dmg,zip --arch x64/u);
+  assert.match(workflow, /platform: macos[\s\S]*?--format dmg,zip --arch universal/u);
   assert.match(workflow, /platform: linux[\s\S]*?--format deb --arch arm64/u);
 });
 

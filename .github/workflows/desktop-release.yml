@@ -122,8 +122,8 @@ jobs:
       matrix:
         # SPEC-111 section 8 names exactly one primary artifact per OS plus the
         # macOS updater ZIP. Formats and architectures are pinned here so
-        # --publish never uploads PKG, DEB, tar.gz, or arm64 builds that are
-        # outside the release contract.
+        # --publish never uploads PKG, DEB, tar.gz, or per-architecture macOS
+        # builds that are outside the release contract.
         include:
           - platform: windows
             runner: windows-latest
@@ -131,7 +131,7 @@ jobs:
             extra_args: --sidecar-layout bundle --format nsis --arch x64
           - platform: macos
             runner: macos-latest
-            extra_args: --format dmg,zip --arch x64
+            extra_args: --format dmg,zip --arch universal
           - platform: linux
             runner: ubuntu-latest
             extra_args: --format deb --arch arm64
@@ -182,6 +182,24 @@ jobs:
       - name: Approve packaged install scripts
         run: npm rebuild electron
 
+      # electron-builder reads APPLE_API_KEY as a path to the .p8 file rather
+      # than as its contents, so the secret is materialized outside the
+      # workspace first. Staging it through GITHUB_ENV rather than the build
+      # step's own env block keeps the key file out of the packaged tree.
+      - name: Stage the notarization API key
+        if: matrix.platform == 'macos' && needs.guard.outputs.preview == 'false'
+        env:
+          APPLE_API_KEY_P8_BASE64: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_API_KEY_P8_BASE64 || '' }}
+        run: |
+          if [ -z "$APPLE_API_KEY_P8_BASE64" ]; then
+            echo 'APPLE_API_KEY_P8_BASE64 is not configured; refusing to build an official macOS release.'
+            exit 1
+          fi
+          key_path="$RUNNER_TEMP/apple-api-key.p8"
+          printf '%s' "$APPLE_API_KEY_P8_BASE64" | base64 --decode > "$key_path"
+          chmod 600 "$key_path"
+          echo "APPLE_API_KEY=$key_path" >> "$GITHUB_ENV"
+
       - name: Build installer
         env:
           # Anything in the GITHUB_ namespace is runner-provided and cannot be
@@ -197,9 +215,11 @@ jobs:
           WIN_CSC_KEY_PASSWORD: ${{ needs.guard.outputs.preview == 'false' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
           CSC_LINK: ${{ needs.guard.outputs.preview == 'false' && secrets.CSC_LINK || '' }}
           CSC_KEY_PASSWORD: ${{ needs.guard.outputs.preview == 'false' && secrets.CSC_KEY_PASSWORD || '' }}
-          APPLE_ID: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_TEAM_ID || '' }}
+          # APPLE_API_KEY is the .p8 path staged above. These two complete the
+          # App Store Connect key; electron-builder requires all three or it
+          # refuses to notarize.
+          APPLE_API_KEY_ID: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_API_ISSUER || '' }}
         # Manual dispatch exercises packaging, metadata generation, artifact
         # upload, validation, and the update client itself. The preview embeds
         # a descriptor marked `preview`, so it can self-update while resolving
@@ -234,6 +254,17 @@ jobs:
           app=$(find release -maxdepth 3 -name '*.app' | head -1)
           if [ -z "$app" ]; then echo 'No macOS app bundle was produced.'; exit 1; fi
           codesign --verify --deep --strict --verbose=2 "$app"
+          # The Swift voice helper and the sidecar native addons ship under
+          # Contents/Resources, which is the part of the bundle most likely to
+          # be missed. Notarization rejects any unsigned Mach-O in there, so
+          # check the helper explicitly rather than trusting --deep.
+          helper="$app/Contents/Resources/native/macos-stt/cats-stt-macos"
+          if [ ! -f "$helper" ]; then echo "Missing voice helper at $helper"; exit 1; fi
+          codesign --verify --strict --verbose=2 "$helper"
+          # Gatekeeper reads the stapled ticket offline, not the notarization
+          # log, so an upload that succeeded but failed to staple must still
+          # fail the release. The DMG and ZIP wrap this already-stapled app.
+          xcrun stapler validate "$app"
           spctl --assess --type execute --verbose "$app"
 
       - name: Upload artifacts for validation
