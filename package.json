@@ -230,13 +230,13 @@
         {
           "target": "dmg",
           "arch": [
-            "universal"
+            "x64"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "universal"
+            "x64"
           ]
         }
       ],

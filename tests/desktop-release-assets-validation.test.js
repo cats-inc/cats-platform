@@ -34,10 +34,10 @@ const COMPLETE_FILES = [
   'collected/unsigned-preview-windows/Cats-0.2.0-setup-x64.exe',
   'collected/unsigned-preview-windows/Cats-0.2.0-setup-x64.exe.blockmap',
   'collected/unsigned-preview-windows/latest.yml',
-  'collected/unsigned-preview-macos/Cats-0.2.0-universal.dmg',
-  'collected/unsigned-preview-macos/Cats-0.2.0-universal.dmg.blockmap',
-  'collected/unsigned-preview-macos/Cats-0.2.0-universal.zip',
-  'collected/unsigned-preview-macos/Cats-0.2.0-universal.zip.blockmap',
+  'collected/unsigned-preview-macos/Cats-0.2.0-x64.dmg',
+  'collected/unsigned-preview-macos/Cats-0.2.0-x64.dmg.blockmap',
+  'collected/unsigned-preview-macos/Cats-0.2.0-x64.zip',
+  'collected/unsigned-preview-macos/Cats-0.2.0-x64.zip.blockmap',
   'collected/unsigned-preview-macos/latest-mac.yml',
   'collected/unsigned-preview-linux/Cats-0.2.0-arm64.deb',
   'collected/unsigned-preview-linux/latest-linux-arm64.yml',
@@ -57,10 +57,10 @@ function metadata(name, overrides = {}) {
     'latest-mac.yml': {
       version: '0.2.0',
       // The real feed lists both the updater archive and the DMG.
-      path: 'Cats-0.2.0-universal.zip',
+      path: 'Cats-0.2.0-x64.zip',
       files: [
-        { url: 'Cats-0.2.0-universal.zip' },
-        { url: 'Cats-0.2.0-universal.dmg' },
+        { url: 'Cats-0.2.0-x64.zip' },
+        { url: 'Cats-0.2.0-x64.dmg' },
       ],
     },
     'latest-linux-arm64.yml': {
@@ -92,7 +92,7 @@ test('a complete release passes validation', () => {
 
 test('artifacts outside the release contract fail validation', () => {
   for (const forbidden of [
-    'Cats-0.2.0-universal.pkg',
+    'Cats-0.2.0-x64.pkg',
     'Cats-0.2.0-arm64.AppImage',
     'Cats-0.2.0-x86_64.tar.gz',
   ]) {
@@ -173,7 +173,7 @@ test('architecture is judged per platform, not across the whole matrix', () => {
   assert.deepEqual(
     resolveUnreleasedArchitectureArtifacts([
       'Cats-0.2.0-setup-x64.exe',
-      'Cats-0.2.0-universal.dmg',
+      'Cats-0.2.0-x64.dmg',
       'Cats-0.2.0-arm64.deb',
     ]),
     [],
@@ -485,7 +485,7 @@ test('the release matrix pins every platform to its contracted formats and arch'
   );
 
   assert.match(workflow, /platform: windows[\s\S]*?--format nsis --arch x64/u);
-  assert.match(workflow, /platform: macos[\s\S]*?--format dmg,zip --arch universal/u);
+  assert.match(workflow, /platform: macos[\s\S]*?--format dmg,zip --arch x64/u);
   assert.match(workflow, /platform: linux[\s\S]*?--format deb --arch arm64/u);
 });
 

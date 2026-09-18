@@ -7,7 +7,7 @@
 | **Status** | Draft |
 | **Owner** | User |
 | **Reviewer** | User |
-| **Last updated** | 2026-09-16 |
+| **Last updated** | 2026-09-18 |
 
 ## Related Spec
 
@@ -16,6 +16,8 @@
 ## Related Decision
 
 [ADR-108: Use Host-Owned GitHub Release Updates for Official Desktop Builds](../decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md)
+
+[ADR-117: Separate Artifact Trust from Desktop Release Identity](../decisions/117-separate-artifact-trust-from-desktop-release-identity.md)
 
 ## Overview
 
@@ -36,7 +38,7 @@ package-manager-owned and receives no desktop update action.
 | G0: Contract approved | ADR-108 and SPEC-111 approved | implementation may begin |
 | G1: Release identity | tag/package version guard and draft release workflow | artifacts are traceable to one version |
 | G2: Check contract | manager, IPC, bridge, Tray, and Settings automated tests | manual check UX may be reviewed |
-| G3: Signed platform upgrade | real old-to-new upgrade passes on the platform | update capability may be enabled for that platform |
+| G3: Signed platform upgrade | real old-to-new upgrade passes on the platform; per ADR-117 a signed preview is a valid source of this evidence | update capability may be enabled for that platform |
 | G4: Three-OS release | Windows, macOS, Linux artifacts and metadata pass | GitHub Release may be published as complete |
 | G5: Startup checks | repeated-launch/rate/concurrency validation | startup check may be enabled separately |
 
@@ -55,11 +57,17 @@ package-manager-owned and receives no desktop update action.
 - [ ] Classify the existing unsigned `0.1.1` Windows installer as either an
       internal test artifact or a supported installed baseline. If supported,
       require an unsigned-to-signed migration decision before G3.
-- [ ] Select the Windows signing certificate source.
-- [ ] Configure Apple Developer ID signing and notarization ownership.
+- [ ] Select the Windows signing certificate source. Until this lands, ADR-117
+      section 2 keeps Windows unsigned on both the preview and official paths,
+      and the release gate keeps refusing an official Windows build.
+- [ ] Configure Apple Developer ID signing and notarization ownership. The
+      Individual Apple Developer Program membership is active; the Developer ID
+      Application certificate and the App Store Connect API key still have to be
+      created and stored as repository secrets.
 - [ ] Confirm the primary release targets:
       - Windows x64 NSIS
-      - macOS x64 DMG plus updater ZIP
+      - macOS x64 DMG plus updater ZIP (x64 only while there is no macOS
+        arm64 test environment; see SPEC-111 section 8 and ADR-117 section 6)
       - Linux arm64 `.deb`
 - [ ] Confirm `--sidecar-layout bundle` as the explicit official Windows
       release layout for both managed sidecars; retain the switch for
@@ -104,6 +112,9 @@ protected release environment.
       descriptor, or become `latest`. Publish it as a GitHub prerelease so the
       draft/build/validate/publish sequence can be tested end to end. Retain
       signed fail-fast behavior for stable tag releases.
+      *Superseded in part by ADR-117: the unofficial, non-`latest`, no-official-
+      descriptor properties stand, but the preview is no longer unsigned on a
+      platform whose credentials exist. See Phase 1b.*
 - [x] Let manual preview input name an unused version tag and create it from
       the selected workflow branch commit, avoiding a preliminary tag push
       that would incorrectly trigger the signed stable path.
@@ -127,6 +138,37 @@ protected release environment.
 
 **Deliverables**: a tag-gated draft-first desktop release pipeline that does
 not create versions or releases for ordinary commits.
+
+### Phase 1b: Sign Preview Artifacts per ADR-117
+
+ADR-117 revises the Phase 1 decision that made previews unsigned. Artifact
+trust and release identity are separate axes, and macOS cannot produce the
+evidence G3 asks for while its preview is unsigned: Squirrel.Mac refuses to
+apply an update to an unsigned application, and Gatekeeper refuses to install
+a quarantined one without a manual bypass.
+
+- [ ] Let the preview path read macOS signing and notarization credentials,
+      leaving Windows unsigned until its certificate exists.
+- [ ] Stop forcing `CSC_IDENTITY_AUTO_DISCOVERY=false` in preview mode, while
+      keeping it forced for local and test packaging.
+- [ ] Apply `-c.mac.notarize=true` on the preview path under the same
+      credentials-present rule the release path uses.
+- [ ] Leave the release gate untouched: an official build whose platform lacks
+      credentials still fails before packaging starts.
+- [ ] Verify signature, notarization ticket, and the Swift voice helper on the
+      preview path, not only on the release path.
+- [ ] Rename `unsigned-preview-*` Actions artifacts to `preview-*`, and update
+      the release asset validator, its fixtures, and the workflow assertions.
+- [ ] Confirm the preview still resolves to `preview_packaged`, still publishes
+      as a prerelease that is not `latest`, and still stays outside
+      `DESKTOP_RELEASE_READY_PLATFORMS`.
+- [ ] Add an explicit opt-in for signing a local build rather than enabling
+      identity discovery by default.
+- [ ] Record that existing unsigned macOS preview installs cannot self-update
+      into the first signed preview and need one manual download.
+
+**Deliverables**: a signed, notarized macOS preview that keeps preview release
+identity, and a Windows preview whose behavior is unchanged.
 
 ### Phase 2: Replace the Manifest Prototype with a Host-Owned Update Manager
 
@@ -314,6 +356,9 @@ startup-check policy.
 | `package.json`, `package-lock.json` | Modify | application dependency, publish provider, primary targets |
 | `.github/workflows/desktop-release.yml` | Create | tag-gated native release matrix and draft publication |
 | `scripts/build-desktop-installer.mjs` | Modify | separate safe local packaging from publish/sign-capable release mode |
+| `assets/build/entitlements.mac.plist` | Create | hardened-runtime grants for V8's JIT, the sidecar native addon loads, and voice input |
+| `assets/build/entitlements.mac.inherit.plist` | Create | the same grants for the nested Electron helpers |
+| `scripts/validate-release-assets.mjs` | Modify | declared release set, update metadata names, and preview artifact naming |
 | `scripts/validate-release-version.mjs` | Create | tag/package version guard |
 | `scripts/generate-desktop-release-descriptor.mjs` | Create | emit tag/commit/platform/channel/provider provenance for release packages |
 | `desktop/host/releaseDescriptor.ts` | Create | validate embedded descriptor and resolve official capability |
@@ -424,6 +469,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 
 | Date | Update |
 |------|--------|
+| 2026-09-18 | ADR-117 separates artifact trust from release identity. SPEC-111 section 9 gained the per-platform trust rule, requirement 14 and acceptance criterion 14 no longer define a preview as unsigned, and the `unsigned-preview` artifact naming is retired. Phase 1b holds the implementation, which has not started. Landed ahead of it: macOS signing and notarization on the release path, plus hardened runtime with entitlements. The macOS target moved to universal and was reverted to x64 the same day — there is no macOS arm64 machine to execute that slice, so SPEC-111 section 8 now records that reason and the exit condition rather than only the Rosetta 2 consequence. |
 | 2026-09-16 | Removed update system notifications across Windows, macOS, and Linux. Manual checks and download failures use the existing dialog; optional startup checks only update shared state. Validation: desktop host build, 116 focused desktop tests, and 20 Settings tests passed. Packaged UI checks on the three operating systems remain pending. |
 | 2026-07-28 | Plan created with ADR-108, SPEC-111, and the official-tooling research note. No implementation has started. |
 | 2026-07-28 | Review follow-up added the installer-wrapper publish/signing interlocks, first-tag bootstrap, assisted NSIS UX, strict development capability policy, unsigned-install classification gate, and explicit bundled Windows sidecars. |
