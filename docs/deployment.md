@@ -452,6 +452,13 @@ diagnostic contract rather than creating a second source of truth.
 
 ### Desktop Release Signing
 
+Manual previews sign where credentials exist by default. To publish an explicitly
+unsigned preview, pass `unsigned=true` to the `desktop-release.yml` workflow
+dispatch along with the unused version tag and an exact `runtime_ref` commit.
+This skips signing/notarization for that run; it does not alter repository secrets
+or tag-triggered official releases. macOS unsigned previews require manual DMG
+installation and cannot be used to validate self-update (ADR-117).
+
 macOS is the constrained platform: Developer ID certificates are issued only by
 Apple, so an official macOS build requires an Apple Developer Program
 membership (USD 99/year; Individual enrollment is sufficient and needs no

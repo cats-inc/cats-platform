@@ -79,6 +79,14 @@ other platforms.
 - **Linux**: unchanged; the `.deb` is not signed and this decision does not
   change that.
 
+**Explicit unsigned preview (2026-09-18 amendment):** an operator may request
+`unsigned=true` on manual workflow dispatch. This withholds signing/notarization
+credentials, skips Apple key staging and disables identity discovery for that
+preview only. The default stays platform-based signing; tag-triggered official
+releases cannot opt out. An explicitly unsigned macOS preview requires manual
+installation and does not qualify as self-update validation. This exception
+implements the operator's explicit unsigned release request for 0.3.3.
+
 ### 3. Signing does not promote a preview
 
 A signed, notarized preview still:

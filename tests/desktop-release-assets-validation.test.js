@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { load } from 'js-yaml';
 
 import {
   DESKTOP_RELEASE_MATRIX,
@@ -387,7 +388,7 @@ test('the release workflow scopes notarization credentials to the macOS job', as
   // previews.
   const stageStep = workflow.slice(workflow.indexOf('- name: Stage the notarization API key'));
   assert.ok(stageStep.length > 0, 'the workflow must stage the notarization key');
-  assert.match(stageStep.slice(0, 200), /if: matrix\.platform == 'macos'$/mu);
+  assert.match(stageStep.slice(0, 220), /if: matrix\.platform == 'macos' && needs\.guard\.outputs\.unsigned != 'true'$/mu);
   // A preview without credentials degrades to unsigned; only an official
   // release refuses to build.
   assert.match(stageStep.slice(0, 900), /IS_PREVIEW/u);
@@ -450,6 +451,41 @@ test('manual release workflow publishes a prerelease preview, signed where crede
   assert.match(workflow, /matrix\.platform == 'windows' && secrets\.WIN_CSC_LINK \|\| ''/u);
   assert.match(workflow, /matrix\.platform == 'macos' && secrets\.CSC_LINK \|\| ''/u);
   assert.equal(/preview == 'false' && secrets\./u.test(workflow), false);
+});
+
+test('an explicit unsigned preview withholds signing credentials without weakening official releases', async () => {
+  const workflow = load(await readFile(
+    join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'), 'utf8',
+  ));
+  const unsigned = workflow.on.workflow_dispatch.inputs.unsigned;
+  assert.equal(unsigned.type, 'boolean');
+  assert.equal(unsigned.default, false);
+  const resolve = workflow.jobs.guard.steps.find(step => step.id === 'resolve');
+  assert.equal(resolve.env.RESOLVED_UNSIGNED,
+    "${{ github.event_name == 'workflow_dispatch' && inputs.unsigned == true }}");
+  assert.match(resolve.run, /echo "unsigned=\$RESOLVED_UNSIGNED" >> "\$GITHUB_OUTPUT"/u);
+  assert.equal(workflow.jobs.guard.outputs.unsigned, '${{ steps.resolve.outputs.unsigned }}');
+
+  const steps = workflow.jobs.build.steps;
+  const stage = steps.find(step => step.name === 'Stage the notarization API key');
+  assert.equal(stage.if, "matrix.platform == 'macos' && needs.guard.outputs.unsigned != 'true'");
+  const buildEnv = steps.find(step => step.name === 'Build installer').env;
+  for (const credential of [
+    'WIN_CSC_LINK', 'WIN_CSC_KEY_PASSWORD', 'CSC_LINK', 'CSC_KEY_PASSWORD',
+    'APPLE_API_KEY_ID', 'APPLE_API_ISSUER',
+  ]) {
+    assert.match(buildEnv[credential], /^\$\{\{ needs\.guard\.outputs\.unsigned != 'true' && /u, credential);
+  }
+  assert.equal(buildEnv.CSC_IDENTITY_AUTO_DISCOVERY,
+    "${{ needs.guard.outputs.unsigned == 'true' && 'false' || 'true' }}");
+  assert.equal(buildEnv.GITHUB_TOKEN, '${{ secrets.GITHUB_TOKEN }}');
+
+  for (const name of ['Verify Windows signature', 'Verify macOS signature and notarization']) {
+    const verify = steps.find(step => step.name === name);
+    assert.match(verify.env.HAS_CERT, /^\$\{\{ needs\.guard\.outputs\.unsigned != 'true' && /u);
+    assert.equal(verify.env.UNSIGNED_PREVIEW, '${{ needs.guard.outputs.unsigned }}');
+    assert.match(verify.run, /Unsigned preview unexpectedly/u);
+  }
 });
 
 test('electron-builder publishes drafts to the public GitHub repository', async () => {
