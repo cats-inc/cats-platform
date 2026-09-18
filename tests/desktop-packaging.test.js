@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 import { gzipSync } from 'node:zlib';
-import { sha256 } from '#cats-app-package';
+import { sha256, PLATFORM_VERSION } from '#cats-app-package';
 
 import { resolveDesktopHostConfig } from '../build/desktop/config.js';
 import { resolveDesktopWindowIconPath } from '../build/desktop/windowIcon.js';
@@ -31,7 +31,7 @@ async function seedFile(path, contents = '') {
   await writeFile(path, contents);
 }
 
-function createPinnedApp(compatibility = '^0.2.1') {
+function createPinnedApp(compatibility = PLATFORM_VERSION) {
   const manifest = { id: 'cats.usage', version: '0.1.0', compatibility: { catsPlatform: compatibility, appSdk: '1.x' }, entrypoints: { renderer: 'renderer/index.html' } };
   const bytes = gzipSync(Buffer.from(JSON.stringify({ schemaVersion: 1, kind: 'cats-app', manifest, files: [{ path: 'renderer/index.html', base64: Buffer.from('<head></head><body>Usage</body>').toString('base64') }] })));
   return { id: manifest.id, version: manifest.version, sha256: sha256(bytes), artifact: 'usage-0.1.0.catsapp', bytes, manifest };

@@ -19,6 +19,53 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-18 (0.3.0 unsigned preview)
+
+### Faster conversation switching and independent execution selections
+
+Behavior change:
+
+Previously opened conversations appear immediately from a bounded in-memory
+cache while their subscriptions refresh in the background. Each conversation
+retains its own provider/model/effort selection, draft, attachments and scroll
+position. Delayed responses cannot switch the active conversation or overwrite
+another conversation's draft. Interrupted subscriptions reconnect automatically.
+
+This preview also includes the aligned Desktop Devin model presets, preservation
+of custom model selections, and Runtime's Devin setup/model/Playground fixes.
+The macOS installer and updater ZIP now use the merged universal build path.
+The preview remains unsigned and does not use signing or notarization secrets.
+
+Migration steps:
+
+Use Cats Desktop **Check for Update** in an existing unsigned preview to install
+0.3.0. Existing conversations, provider selections and user data do not require
+a reset. Runtime remains 0.1.24, pinned to
+`29ef46443c81d8d0e50944a052db882a18668376`. The bundled Usage App is 0.2.1,
+which declares Platform 0.3.x compatibility with the same SDK 1.2 contract.
+Its [immutable release](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.2.1)
+comes from source `df1c57168c98a6a83fffb54f58ad298a1b769511`; the Desktop lock
+pins its published SHA-256
+`6b8160e548488f30c741cadd4726b55fa18f8c0a324d48ac0cbc6ea143788f24`.
+Dispatch the manual Desktop workflow with `tag=v0.3.0` and that exact
+`runtime_ref`. Windows x64 NSIS, macOS universal DMG/updater ZIP and Linux arm64
+DEB publish only after all packaging and update-asset gates succeed.
+
+Validation: the merged conversation-cache change passed full CI (4,588 tests,
+56 skipped) and isolated renderer navigation checks. The pinned Runtime release
+preflight passed. The version candidate requires full PR CI and the
+three-platform unsigned release workflow. Verify public update discovery after
+publication; the installed upgrade/restart remains user acceptance.
+
+Release preparation passed 118 focused package/compatibility/release tests,
+Desktop host and UI-test builds, plus independent compatibility review. Usage's
+docs/tests/build release workflow passed; its downloaded digest, lock and
+provenance agree. Platform fixtures use the current host version while explicit
+incompatibility and caret-boundary tests retain their fixed assertions.
+
+Deprecations: none. This remains an unsigned GitHub prerelease. This release
+was explicitly requested; future version bumps still need a new request.
+
 ## 2026-09-18 (0.2.12 unsigned preview)
 
 ### Keep provider/model pickers available and recover automatically
