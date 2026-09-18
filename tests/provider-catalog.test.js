@@ -60,16 +60,22 @@ test('Meta Muse joins the product execution catalog as a CLI target', () => {
   assert.equal(isProductProviderDefaultModelPlaceholder('muse', 'muse-spark-1.3'), false);
 });
 
-test('Devin ACP joins the product execution catalog with provider-default model semantics', () => {
+test('Devin ACP offers the fixed shortlist without claiming a provider default', () => {
   assert.equal(PRODUCT_PROVIDER_ORDER.includes('devin'), true);
   assert.equal(
     PRODUCT_PROVIDER_ORDER.indexOf('devin'),
     PRODUCT_PROVIDER_ORDER.indexOf('cline') + 1,
   );
-  assert.equal(getDefaultModel('devin'), 'devin-default');
+  assert.equal(getDefaultModel('devin'), 'adaptive');
   assert.deepEqual(getProviderModels('devin'), [
-    { value: 'devin-default', label: 'Devin default', default: true },
+    { value: 'adaptive', label: 'Adaptive' },
+    { value: 'claude-fable-5-1-medium', label: 'Claude Fable 5.1 — Medium' },
+    { value: 'gemini-3-8-flash-medium', label: 'Gemini 3.8 Flash — Medium' },
+    { value: 'gpt-6-astra-medium', label: 'GPT-6 Astra — Medium' },
+    { value: 'grok-4-6-medium', label: 'Grok 4.6 — Medium' },
+    { value: 'nemotron-3-ultra-high', label: 'Nemotron 3 Ultra — High' },
   ]);
+  assert.equal(isProductProviderDefaultModelPlaceholder('devin', 'adaptive'), false);
   assert.deepEqual(PRODUCT_PROVIDER_INSTANCES.devin, [
     { id: 'acp', label: 'agent/acp', target: 'agent/acp', backend: 'agent', default: true },
   ]);

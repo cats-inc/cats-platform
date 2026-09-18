@@ -593,9 +593,9 @@ test('runtime-backed execution target reconciliation replaces the Antigravity pl
 
 for (const providerDefaultTarget of [
   { provider: 'cline', instance: 'native', model: 'cline-default', backend: 'cli' },
-  { provider: 'devin', instance: 'acp', model: 'devin-default', backend: 'agent' },
+  { provider: 'devin', instance: 'acp', model: 'adaptive', backend: 'agent' },
 ] as const) {
-  test(`runtime-backed execution target reconciliation omits ${providerDefaultTarget.provider} placeholder`, async () => {
+  test(`runtime-backed execution target reconciliation distinguishes ${providerDefaultTarget.provider} model from a placeholder`, async () => {
     const registry: ProductProviderRegistryReadModel = {
       state: 'ready',
       providers: [{
@@ -653,9 +653,13 @@ for (const providerDefaultTarget of [
       }, providerDefaultTarget.provider),
     });
 
-    assert.equal(reconciled.model, null);
+    assert.equal(reconciled.model, providerDefaultTarget.provider === 'devin' ? 'adaptive' : null);
     assert.equal(reconciled.modelSelection, null);
-    assert.equal(reconciled.executionLabel, null);
+    if (providerDefaultTarget.provider === 'devin') {
+      assert.match(reconciled.executionLabel ?? '', /Adaptive/);
+    } else {
+      assert.equal(reconciled.executionLabel, null);
+    }
   });
 }
 

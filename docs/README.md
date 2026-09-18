@@ -2,6 +2,13 @@
 
 > This directory contains all project documentation.
 
+## Pending Workspace Lifecycle Review
+
+[Runtime's Playground workspace retention note](../../cats-runtime/docs/research/2026-09-18-playground-workspace-retention.md)
+records unexpected output loss on Stop Chat and the joint follow-up for
+Chat/Code/Work deletion, room ownership, and managed cleanup. Proposals remain
+pending; existing cleanup behavior is unchanged.
+
 ## Provider Selection and Bootstrap
 
 Desktop onboarding and Settings share the provider manager described by
@@ -27,6 +34,9 @@ setup step 2's Catlas selection and optional prefetch. The accepted
 [SPEC-013](./specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md).
 
 ## Provider Catalog Labels
+
+[Devin shortlist](./research/2026-09-18-devin-shortlist.md) records six fixed combinations,
+first-item initialization without default badges, and custom input over agent/acp.
 
 [Kilo shortlist](./research/2026-09-18-kilo-shortlist.md) records six selected models and fixed
 Thinking transport for the final two entries.

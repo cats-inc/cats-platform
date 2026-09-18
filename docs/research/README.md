@@ -6,6 +6,8 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [Playground workspace retention (Runtime)](../../../cats-runtime/docs/research/2026-09-18-playground-workspace-retention.md) | 2026-09-18 | Cross-product workspace lifecycle | Unexpected Stop Chat output deletion; joint review of ownership, retention and product deletion remains pending |
+| [2026-09-18-devin-shortlist](./2026-09-18-devin-shortlist.md) | 2026-09-18 | Devin six-model shortlist | Fixed effort labels/UIDs, no default claims, Adaptive first and custom input |
 | [2026-09-18-kilo-shortlist](./2026-09-18-kilo-shortlist.md) | 2026-09-18 | Kilo six-model shortlist | Exact labels, Thinking suffixes, first-item initialization and custom input |
 | [2026-09-18-opencode-shortlist](./2026-09-18-opencode-shortlist.md) | 2026-09-18 | OpenCode six-model shortlist | Exact fallback labels, Go namespaces, first-item initialization and custom input |
 | [2026-09-17-copilot-fixed-presets](./2026-09-17-copilot-fixed-presets.md) | 2026-09-17 | Copilot fixed model/effort shortlist | Six fixed combinations, Terra default, exact labels and existing custom input |

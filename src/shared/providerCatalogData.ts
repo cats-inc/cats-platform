@@ -56,7 +56,12 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'cline-default', label: 'Cline default', default: true },
   ],
   devin: [
-    { value: 'devin-default', label: 'Devin default', default: true },
+    { value: 'adaptive', label: 'Adaptive' },
+    { value: 'claude-fable-5-1-medium', label: 'Claude Fable 5.1 — Medium' },
+    { value: 'gemini-3-8-flash-medium', label: 'Gemini 3.8 Flash — Medium' },
+    { value: 'gpt-6-astra-medium', label: 'GPT-6 Astra — Medium' },
+    { value: 'grok-4-6-medium', label: 'Grok 4.6 — Medium' },
+    { value: 'nemotron-3-ultra-high', label: 'Nemotron 3 Ultra — High' },
   ],
   // Offline fallback only, kept in step with the runtime's curated Muse
   // catalog. The account default is deliberately not one of the -contributor
@@ -137,6 +142,5 @@ export const PRODUCT_PROVIDER_MODELS = {
 export const PRODUCT_PROVIDER_DEFAULT_MODEL_PLACEHOLDERS = {
   antigravity: 'antigravity-default',
   cline: 'cline-default',
-  devin: 'devin-default',
   muse: 'muse-default',
 } as const;
