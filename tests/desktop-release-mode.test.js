@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   buildInstallerEnvironment,
   electronBuilderArgs,
+  hasMacosNotarizationCredentials,
   hasMacosSigningCredentials,
   hasWindowsSigningCredentials,
   parseArgs,
@@ -25,6 +26,9 @@ function workflowEnv(overrides = {}) {
     GITHUB_TOKEN: 'token',
     WIN_CSC_LINK: 'file:///tmp/win.p12',
     CSC_LINK: 'file:///tmp/mac.p12',
+    APPLE_API_KEY: '/tmp/apple-api-key.p8',
+    APPLE_API_KEY_ID: 'ABCD123456',
+    APPLE_API_ISSUER: '11111111-2222-3333-4444-555555555555',
     ...overrides,
   };
 }
@@ -73,6 +77,43 @@ test('release packaging re-enables Windows executable signing only with credenti
   assert.equal(unsigned.includes('-c.win.signAndEditExecutable=true'), false);
 });
 
+test('release packaging enables macOS notarization only with credentials', () => {
+  const notarized = electronBuilderArgs('macos', null, null, {
+    releaseMode: true,
+    publish: 'always',
+    notarizeMacos: true,
+  });
+  assert.deepEqual(notarized, [
+    'electron-builder',
+    '--mac',
+    '-c.mac.notarize=true',
+    '--publish',
+    'always',
+  ]);
+
+  const unnotarized = electronBuilderArgs('macos', null, null, { releaseMode: true });
+  assert.equal(unnotarized.includes('-c.mac.notarize=true'), false);
+});
+
+test('local packaging never enables macOS notarization', () => {
+  // package.json pins mac.notarize to false, so an unsigned local build never
+  // reaches out to Apple even on a machine that happens to have credentials.
+  const args = electronBuilderArgs('macos', null, null, { notarizeMacos: true });
+
+  assert.deepEqual(args, ['electron-builder', '--mac', '--publish', 'never']);
+});
+
+test('the macOS notarization override never leaks into Windows or Linux release builds', () => {
+  for (const target of ['windows', 'linux']) {
+    const args = electronBuilderArgs(target, null, null, {
+      releaseMode: true,
+      publish: 'always',
+      notarizeMacos: true,
+    });
+    assert.equal(args.includes('-c.mac.notarize=true'), false, target);
+  }
+});
+
 test('local packaging never re-enables Windows executable signing', () => {
   const args = electronBuilderArgs('windows', null, null, { signWindowsExecutable: true });
 
@@ -111,7 +152,15 @@ test('release installer environment leaves signing identity discovery to the wor
 
 test('release installer environment still drops empty signing credentials', () => {
   const env = buildInstallerEnvironment(
-    { CSC_LINK: '', WIN_CSC_LINK: '   ', CSC_KEY_PASSWORD: '', WIN_CSC_KEY_PASSWORD: '' },
+    {
+      CSC_LINK: '',
+      WIN_CSC_LINK: '   ',
+      CSC_KEY_PASSWORD: '',
+      WIN_CSC_KEY_PASSWORD: '',
+      APPLE_API_KEY: '',
+      APPLE_API_KEY_ID: '   ',
+      APPLE_API_ISSUER: '',
+    },
     { releaseMode: true },
   );
 
@@ -119,6 +168,11 @@ test('release installer environment still drops empty signing credentials', () =
   assert.equal('WIN_CSC_LINK' in env, false);
   assert.equal('CSC_KEY_PASSWORD' in env, false);
   assert.equal('WIN_CSC_KEY_PASSWORD' in env, false);
+  // An empty APPLE_API_KEY would be resolved as a relative path and reported as
+  // a missing key file rather than as an unconfigured release.
+  assert.equal('APPLE_API_KEY' in env, false);
+  assert.equal('APPLE_API_KEY_ID' in env, false);
+  assert.equal('APPLE_API_ISSUER' in env, false);
 });
 
 test('Windows signing credential detection accepts either the scoped or shared link', () => {
@@ -273,8 +327,41 @@ test('Linux needs no signing credentials', () => {
   );
   assert.deepEqual(
     problemCodes(resolveSigningProblems({ env: {}, target: 'macos' })),
-    ['release_macos_signing_missing'],
+    ['release_macos_signing_missing', 'release_macos_notarization_missing'],
   );
+});
+
+test('an official macOS release refuses to build without notarization credentials', () => {
+  // Signed but un-notarized is the trap this gate exists for: electron-builder
+  // only warns when the credentials are absent, and Gatekeeper then rejects the
+  // download on every machine except the one that built it.
+  const problems = resolveReleaseModeProblems({
+    env: workflowEnv({ APPLE_API_ISSUER: undefined }),
+    target: 'macos',
+    packageVersion: '0.2.0',
+  });
+
+  assert.deepEqual(problemCodes(problems), ['release_macos_notarization_missing']);
+});
+
+test('macOS notarization detection requires the whole App Store Connect key', () => {
+  assert.equal(hasMacosNotarizationCredentials({
+    APPLE_API_KEY: '/tmp/apple-api-key.p8',
+    APPLE_API_KEY_ID: 'ABCD123456',
+    APPLE_API_ISSUER: '11111111-2222-3333-4444-555555555555',
+  }), true);
+  assert.equal(hasMacosNotarizationCredentials({
+    APPLE_API_KEY: '/tmp/apple-api-key.p8',
+    APPLE_API_KEY_ID: 'ABCD123456',
+  }), false);
+  assert.equal(hasMacosNotarizationCredentials({
+    APPLE_API_KEY: '/tmp/apple-api-key.p8',
+    APPLE_API_KEY_ID: '   ',
+    APPLE_API_ISSUER: '11111111-2222-3333-4444-555555555555',
+  }), false);
+  assert.equal(hasMacosNotarizationCredentials({}), false);
+  // The macOS certificate alone must not be read as permission to notarize.
+  assert.equal(hasMacosNotarizationCredentials({ CSC_LINK: 'file:///tmp/mac.p12' }), false);
 });
 
 test('macOS signing detection ignores the Windows-scoped credential', () => {

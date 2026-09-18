@@ -37,8 +37,9 @@ Options:
   --skip-mobile                           Skip the mobile bundle (\`expo export\`). Also honored via
                                           CATS_SKIP_MOBILE=1 in the environment or .env.
   --release                               Build an official release package: embed the release
-                                          descriptor, require platform signing credentials, and
-                                          allow signing identity discovery. Requires a GitHub
+                                          descriptor, require platform signing credentials (plus
+                                          macOS notarization credentials), and allow signing
+                                          identity discovery. Requires a GitHub
                                           Actions tag run whose tag matches the package version.
                                           Also honored via CATS_DESKTOP_RELEASE_MODE=1.
   --preview                               Build an unsupported unsigned GitHub prerelease preview.
@@ -241,11 +242,18 @@ async function resolveCommandInvocation(command, args) {
   };
 }
 
+const MACOS_NOTARIZATION_CREDENTIAL_KEYS = [
+  'APPLE_API_KEY',
+  'APPLE_API_KEY_ID',
+  'APPLE_API_ISSUER',
+];
+
 const SIGNING_CREDENTIAL_KEYS = [
   'WIN_CSC_LINK',
   'CSC_LINK',
   'WIN_CSC_KEY_PASSWORD',
   'CSC_KEY_PASSWORD',
+  ...MACOS_NOTARIZATION_CREDENTIAL_KEYS,
 ];
 
 /**
@@ -287,6 +295,22 @@ export function hasMacosSigningCredentials(env = process.env) {
 }
 
 /**
+ * electron-builder reads notarization credentials straight from the
+ * environment and only warns when they are absent, so a misconfigured release
+ * would otherwise produce a signed but un-notarized app. Gatekeeper rejects
+ * that on every machine except the one that built it.
+ *
+ * App Store Connect API keys are used rather than an Apple ID and
+ * app-specific password: they are revocable on their own and survive an Apple
+ * ID password change, which a CI secret has no way to notice.
+ */
+export function hasMacosNotarizationCredentials(env = process.env) {
+  return MACOS_NOTARIZATION_CREDENTIAL_KEYS.every(
+    (key) => typeof env[key] === 'string' && env[key].trim() !== '',
+  );
+}
+
+/**
  * Signing is a release gate, not a nice-to-have.
  *
  * SPEC-111 section 9 forbids advertising stable self-update on Windows or
@@ -302,11 +326,21 @@ export function resolveSigningProblems({ env = process.env, target } = {}) {
     }];
   }
 
-  if (target === 'macos' && !hasMacosSigningCredentials(env)) {
-    return [{
-      code: 'release_macos_signing_missing',
-      message: 'An official macOS release requires CSC_LINK.',
-    }];
+  if (target === 'macos') {
+    const problems = [];
+    if (!hasMacosSigningCredentials(env)) {
+      problems.push({
+        code: 'release_macos_signing_missing',
+        message: 'An official macOS release requires CSC_LINK.',
+      });
+    }
+    if (!hasMacosNotarizationCredentials(env)) {
+      problems.push({
+        code: 'release_macos_notarization_missing',
+        message: 'An official macOS release requires APPLE_API_KEY, APPLE_API_KEY_ID, and APPLE_API_ISSUER.',
+      });
+    }
+    return problems;
   }
 
   return [];
@@ -650,6 +684,7 @@ export function electronBuilderArgs(target, archOverride, formatOverride, option
   const releaseMode = options.releaseMode === true;
   const publish = resolvePublishPolicy(options.publish ?? 'never');
   const signWindowsExecutable = options.signWindowsExecutable === true;
+  const notarizeMacos = options.notarizeMacos === true;
   const formats = normalizeFormats(target, formatOverride);
   const platformFlag = target === 'windows' ? '--win' : target === 'macos' ? '--mac' : '--linux';
   const args = ['electron-builder', platformFlag];
@@ -669,6 +704,13 @@ export function electronBuilderArgs(target, archOverride, formatOverride, option
   // to opt back in, and only then.
   if (releaseMode && target === 'windows' && signWindowsExecutable) {
     args.push('-c.win.signAndEditExecutable=true');
+  }
+
+  // package.json pins mac.notarize to false so an unsigned preview never waits
+  // on Apple and a half-configured environment cannot quietly ship an
+  // un-notarized build. A release build with real credentials opts back in.
+  if (releaseMode && target === 'macos' && notarizeMacos) {
+    args.push('-c.mac.notarize=true');
   }
 
   args.push('--publish', publish);
@@ -788,6 +830,7 @@ async function main() {
       releaseMode: parsed.releaseMode,
       publish: parsed.publish,
       signWindowsExecutable: hasWindowsSigningCredentials(process.env),
+      notarizeMacos: hasMacosNotarizationCredentials(process.env),
     }),
     PROJECT_ROOT,
     {},

@@ -219,7 +219,7 @@ npm run desktop:package:windows -- --sidecar-layout split
 ```bash
 npm run desktop:package:macos
 npm run desktop:package:linux
-node scripts/build-desktop-installer.mjs --target macos --arch x64 --format dmg --sidecar-layout split
+node scripts/build-desktop-installer.mjs --target macos --arch universal --format dmg --sidecar-layout split
 node scripts/build-desktop-installer.mjs --target linux --arch arm64 --format deb --sidecar-layout bundle
 ```
 
@@ -449,6 +449,64 @@ diagnostic contract rather than creating a second source of truth.
 
 - Keep `.env` local and uncommitted
 - Never hardcode runtime API keys in source or docs
+
+### Desktop Release Signing
+
+macOS is the constrained platform: Developer ID certificates are issued only by
+Apple, so an official macOS build requires an Apple Developer Program
+membership (USD 99/year; Individual enrollment is sufficient and needs no
+D-U-N-S number). Notarization is included in the membership. Windows
+certificates, by contrast, can be bought from any commercial CA.
+
+Repository secrets an official macOS release reads:
+
+- `CSC_LINK` — the Developer ID Application certificate exported as a `.p12`,
+  base64-encoded (`base64 -i DeveloperID.p12 | pbcopy`).
+- `CSC_KEY_PASSWORD` — the password set when exporting that `.p12`.
+- `APPLE_API_KEY_P8_BASE64` — the App Store Connect API key (`AuthKey_*.p8`),
+  base64-encoded. The workflow decodes it into `$RUNNER_TEMP` and exports
+  `APPLE_API_KEY` as its path, because electron-builder reads that variable as
+  a path to the key file rather than as the key itself.
+- `APPLE_API_KEY_ID` — the key's 10-character ID.
+- `APPLE_API_ISSUER` — the issuer UUID shown above the key list in App Store
+  Connect.
+
+An API key is used rather than `APPLE_ID` plus an app-specific password
+because it is revocable on its own and survives an Apple ID password change,
+which a stored CI secret has no way to notice.
+
+Windows reads `WIN_CSC_LINK` and `WIN_CSC_KEY_PASSWORD` the same way. Previews
+read none of these: the workflow blanks every signing secret when
+`preview == 'true'`.
+
+Missing credentials fail an official build instead of downgrading it:
+
+- `resolveSigningProblems` in `scripts/build-desktop-installer.mjs` refuses an
+  official macOS build unless both the certificate and the complete API key are
+  present.
+- electron-builder only *warns* when notarization credentials are absent, so
+  without that gate a release would ship signed but un-notarized — which
+  Gatekeeper rejects on every machine except the one that built it.
+
+What the packaging configuration contributes:
+
+- `build.mac.hardenedRuntime` is `true`. Notarization rejects an unhardened
+  bundle, and electron-builder 26 hardens non-MAS builds unless explicitly told
+  otherwise.
+- `assets/build/entitlements.mac.plist` and its `.inherit` sibling are resolved
+  by filename out of `buildResources`. They grant V8's JIT, let the native
+  addons under `Resources/app-sidecar` and `Resources/cats-runtime` load, and
+  keep microphone access working for composer voice input — under the hardened
+  runtime `NSMicrophoneUsageDescription` alone no longer grants it.
+- `build.mac.notarize` is `false`. The wrapper passes `-c.mac.notarize=true`
+  only for a release build that has credentials, so a local package or an
+  unsigned preview never waits on Apple.
+
+The release workflow verifies the output rather than trusting the build:
+`codesign --verify --deep --strict` on the bundle, an explicit `codesign`
+check on `Resources/native/macos-stt/cats-stt-macos` (Mach-O files staged under
+`Resources` are the ones most easily missed), `xcrun stapler validate` for the
+ticket Gatekeeper reads offline, and `spctl --assess`.
 
 ## Monitoring
 

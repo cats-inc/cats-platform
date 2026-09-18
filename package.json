@@ -230,21 +230,22 @@
         {
           "target": "dmg",
           "arch": [
-            "x64"
+            "universal"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "x64"
+            "universal"
           ]
         }
       ],
       "icon": "icon.icns",
       "artifactName": "Cats-${version}-${arch}.${ext}",
       "category": "public.app-category.productivity",
-      "hardenedRuntime": false,
+      "hardenedRuntime": true,
       "gatekeeperAssess": false,
+      "notarize": false,
       "extendInfo": {
         "NSSpeechRecognitionUsageDescription": "Cats uses speech recognition for voice input in the chat composer.",
         "NSMicrophoneUsageDescription": "Cats uses the microphone for voice input in the chat composer."

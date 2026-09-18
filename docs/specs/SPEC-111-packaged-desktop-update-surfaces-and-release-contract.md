@@ -7,7 +7,7 @@
 | **Status** | Draft |
 | **Owner** | User |
 | **Reviewer** | User |
-| **Last updated** | 2026-09-16 |
+| **Last updated** | 2026-09-18 |
 
 ## Summary
 
@@ -486,8 +486,8 @@ When later enabled:
 One public release shall contain:
 
 - Windows x64 NSIS installer built with `--sidecar-layout bundle`
-- macOS x64 DMG
-- macOS x64 ZIP required by the updater
+- macOS universal DMG
+- macOS universal ZIP required by the updater
 - Linux arm64 `.deb`
 - generated Windows, macOS, and Linux update metadata
 - any differential-update files generated and referenced by that metadata
@@ -500,11 +500,14 @@ presented as additional user installation choices.
 Two consequences of this target set are deliberate and shall not be treated as
 defects:
 
-- macOS ships x64 only, so Apple Silicon runs it under Rosetta 2. The macOS
-  runner is arm64, which makes every macOS build a cross-compile: the Swift
-  voice helper shall be built for the target architecture explicitly, because an
-  unqualified `swift build` follows the host and would bundle an arm64 helper
-  inside an x64 app.
+- macOS ships one universal binary rather than two per-architecture builds, so
+  Apple Silicon runs natively and the updater keeps a single `latest-mac.yml`
+  feed. The Swift voice helper shall be built for both architectures and merged,
+  because an unqualified `swift build` follows the host, and the universal merge
+  refuses a binary that is byte-identical in both slices: it cannot tell a
+  shared resource from a single-architecture executable that should have been
+  lipo'd. Only the helper needs this -- every sidecar dependency that ships
+  under `Resources` is pure JavaScript.
 - Installing a `.deb` update runs `dpkg`, which requires elevation. Section 4's
   "no elevation prompt" guarantee is specific to the per-user Windows installer
   and does not extend to Linux.
