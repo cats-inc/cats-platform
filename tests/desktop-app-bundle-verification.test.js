@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import test from 'node:test';
-import { sha256 } from '#cats-app-package';
+import { sha256, PLATFORM_VERSION } from '#cats-app-package';
 import { verifyDesktopAppBundle } from '../scripts/verify-desktop-app-bundle.mjs';
 
 test('installer verifier checks shipped bytes and source-free offline activation, rejecting omissions and corruption', async () => {
@@ -23,7 +23,7 @@ test('installer verifier checks shipped bytes and source-free offline activation
     const manifest = {
       schemaVersion: 1, id: 'cats.usage', displayName: 'Usage', version: '0.1.0',
       category: 'user-app', trustTier: 'system', publisher: { name: 'Test' },
-      compatibility: { catsPlatform: '^0.2.1', appSdk: '1.x' },
+      compatibility: { catsPlatform: PLATFORM_VERSION, appSdk: '1.x' },
       entrypoints: { renderer: 'renderer/index.html' },
       contributions: { lobbyApps: [{ id: 'usage', title: 'Usage', routePath: '/apps/cats.usage' }] },
       permissions: ['ui.route', 'ui.lobby', 'runtime.telemetry.read'],

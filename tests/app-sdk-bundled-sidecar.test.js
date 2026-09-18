@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { Readable } from 'node:stream';
-import { sha256, readBrowserSdk } from '#cats-app-package';
+import { sha256, readBrowserSdk, PLATFORM_VERSION } from '#cats-app-package';
 import { bundleServer } from '../scripts/bundle-server.mjs';
 import { installRendererPackage } from '../build/server/platform/apps/packageInstaller.js';
 
@@ -29,7 +29,7 @@ test('bundled sidecar serves an installed renderer using the shipped SDK, not bu
   const manifest = {
     schemaVersion: 1, id: 'cats.usage', displayName: 'Usage', version: '0.1.0',
     category: 'user-app', trustTier: 'system', publisher: { name: 'Test' },
-    compatibility: { catsPlatform: '^0.2.1', appSdk: '1.x' },
+    compatibility: { catsPlatform: PLATFORM_VERSION, appSdk: '1.x' },
     entrypoints: { renderer: 'renderer/index.html' },
     contributions: { lobbyApps: [{ id: 'usage', title: 'Usage', routePath: '/apps/cats.usage' }] },
     permissions: ['ui.route', 'ui.lobby', 'runtime.telemetry.read'],
