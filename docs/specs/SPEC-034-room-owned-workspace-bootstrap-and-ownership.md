@@ -331,6 +331,11 @@ Write-time rules:
 
 ## Open Questions
 
+- Joint follow-up (2026-09-18): [Playground workspace retention](../../../cats-runtime/docs/research/2026-09-18-playground-workspace-retention.md)
+  records the user's objection to deleting generated files on Stop Chat. Review
+  room persistence, explicit deletion and bounded cleanup together with Runtime;
+  room ownership alone does not establish an output-retention policy.
+
 - Should a later slice move managed room workspace bootstrap behind a dedicated
   `cats-runtime` API once the product-owned repair is stable?
 - What UI language should distinguish `user_selected` versus `managed_room`
@@ -347,4 +352,4 @@ Write-time rules:
 
 ---
 
-*Last updated: 2026-03-25*
+*Last updated: 2026-09-18*

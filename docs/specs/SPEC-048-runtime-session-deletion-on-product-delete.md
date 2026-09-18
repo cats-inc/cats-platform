@@ -139,6 +139,11 @@ It is not a second first-class user-facing delete mode.
 
 ## Open Questions
 
+- Joint follow-up (2026-09-18): [Playground workspace retention](../../../cats-runtime/docs/research/2026-09-18-playground-workspace-retention.md)
+  records unexpected file deletion on Stop Chat. Audit Chat/Code/Work cleanup
+  coverage and reconcile the implementation's retained-session feedback with
+  this spec's older fail-and-keep rule before approving a shared lifecycle change.
+
 - Should the first UX surface a single generic error, or list which runtime
   sessions were retained/deleted per product delete?
 - In debug-retention mode, should the product emit a visible transcript/system
@@ -154,4 +159,4 @@ It is not a second first-class user-facing delete mode.
 
 ---
 
-*Last updated: 2026-04-02*
+*Last updated: 2026-09-18*
