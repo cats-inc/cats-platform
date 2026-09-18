@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { mkdtempSync, rmSync } from 'node:fs';
+import { createServer as createHttpServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -8,6 +9,7 @@ import test from 'node:test';
 import { createTelegramRelay } from '../build/server/platform/transports/telegram/relay/index.js';
 import { createTelegramIngressDispatcher } from '../build/server/platform/transports/telegram/ingressDispatch.js';
 import { createServer } from '../build/server/app/server/index.js';
+import { CatsRuntimeClient } from '../build/server/runtime/client.js';
 import {
   buildChatConversationId,
   buildTelegramBotTransportBindingId,
@@ -619,24 +621,48 @@ test('GET /api/providers withholds targets when runtime config is unavailable de
   assert.equal(configAttempts, 1);
 });
 
-test('GET /api/providers bounds a hung config read and withholds unconfirmed targets', async () => {
+test('GET /api/providers uses the Runtime client deadline for hung config and recovers on the next read', {
+  timeout: 10_000,
+}, async () => {
   const runtimeClient = createRuntimeStub();
-  runtimeClient.getProviderConfig = async () => new Promise(() => {});
-
-  await withServer(runtimeClient, async (baseUrl) => {
-    const response = await Promise.race([
-      fetch(`${baseUrl}/api/providers`),
-      new Promise((_, reject) => setTimeout(
-        () => reject(new Error('selector waited on config enrichment')),
-        1_500,
-      )),
-    ]);
-    assert.equal(response.status, 200);
-
-    const payload = await response.json();
-    assert.equal(payload.state, 'runtime_unreachable');
-    assert.deepEqual(payload.providers, []);
+  const providers = await runtimeClient.getProviderConfig();
+  let respond = false;
+  let configAttempts = 0;
+  const runtimeServer = createHttpServer((_request, response) => {
+    configAttempts += 1;
+    if (respond) {
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ providers }));
+    }
   });
+  runtimeServer.listen(0, '127.0.0.1');
+  await once(runtimeServer, 'listening');
+  const client = new CatsRuntimeClient(`http://127.0.0.1:${runtimeServer.address().port}`, {
+    selectorConfigTimeoutMs: 1_000,
+  });
+  runtimeClient.getProviderConfig = (options) => client.getProviderConfig(options);
+
+  try {
+    await withServer(runtimeClient, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/providers`);
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      assert.equal(payload.state, 'runtime_unreachable');
+      assert.deepEqual(payload.providers, []);
+      assert.equal(configAttempts, 1);
+
+      respond = true;
+      const recovered = await (await fetch(`${baseUrl}/api/providers`)).json();
+      assert.equal(recovered.state, 'ready');
+      assert.ok(recovered.providers.some((provider) => provider.id === 'claude'));
+      assert.equal(configAttempts, 2, 'a cold timeout must not be cached as a ready result');
+    });
+  } finally {
+    runtimeServer.closeAllConnections();
+    await new Promise((resolve, reject) => {
+      runtimeServer.close((error) => error ? reject(error) : resolve());
+    });
+  }
 });
 
 test('GET /api/providers surfaces availability timeouts without retrying the selector request path', async () => {
