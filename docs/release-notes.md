@@ -19,6 +19,49 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-18 (0.3.1 unsigned preview)
+
+### Let first setup finish loading Catlas providers
+
+Behavior change:
+
+First setup can populate the Catlas provider/model picker when Runtime's initial
+configuration response takes longer than 500 ms. Platform now waits within the
+existing 5-second Runtime request deadline, retains the successful result and
+reuses it on subsequent reads. Automatic retry and the spinner remain; no manual
+recovery buttons or raw transport errors are added. Provider selection and
+authentication checks retain their existing scope.
+
+This preview also includes the separately merged ClinePass six-model shortlist
+and its matching Runtime execution support. The merged macOS release target is
+x64 again under ADR-117; preview artifacts remain unsigned.
+
+Migration steps:
+
+On Windows, use Cats Desktop **Check for Update** to install 0.3.1. Unsigned
+macOS previews require downloading and installing the DMG manually; Squirrel.Mac
+does not apply updates to an unsigned app. Linux users can install the published
+DEB. A setup that could not finish can continue after the update; deleting local
+Cats data is unnecessary.
+Runtime remains 0.1.24, pinned to
+`a44eb734279d5211f687d7dc3047d8207347c87c`. Usage remains 0.2.1 with the existing
+immutable artifact and SHA-256 lock. Dispatch the manual Desktop workflow with
+`tag=v0.3.1` and that exact `runtime_ref`. Windows x64 NSIS, macOS x64 DMG/updater
+ZIP and Linux arm64 DEB publish after packaging and update-asset gates succeed.
+
+Validation: the merged setup fix passed full CI (4,596 passed, 56 skipped,
+0 failed). Read-only verification against the affected Runtime returned ten
+providers in 1,497 ms cold and 23 ms warm. The paired ClinePass Platform and
+Runtime commits passed their full CI. Version consistency and 47 focused release
+version/asset checks passed. The version candidate requires its own
+full CI plus the three-platform release workflow; verify the public update feed
+after publication. Installed update/restart and setup acceptance remain with
+the user.
+
+Deprecations: none. This is an explicitly requested unsigned GitHub prerelease;
+future version bumps still require a new request. The reported Devin model
+execution issue is deferred and is not claimed as fixed by this release.
+
 ## 2026-09-18 (0.3.0 unsigned preview)
 
 ### Faster conversation switching and independent execution selections
