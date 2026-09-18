@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   buildInstallerEnvironment,
+  describeArtifactTrust,
   electronBuilderArgs,
   hasMacosNotarizationCredentials,
   hasMacosSigningCredentials,
@@ -112,6 +113,96 @@ test('the macOS notarization override never leaks into Windows or Linux release 
     });
     assert.equal(args.includes('-c.mac.notarize=true'), false, target);
   }
+});
+
+test('preview packaging signs and notarizes like a release', () => {
+  // ADR-117: signing is artifact trust, not release identity. An unsigned
+  // macOS preview cannot be installed without a Gatekeeper bypass and cannot
+  // self-update at all, because Squirrel.Mac refuses to update an unsigned app.
+  const args = electronBuilderArgs('macos', null, null, {
+    previewMode: true,
+    publish: 'always',
+    notarizeMacos: true,
+  });
+
+  assert.deepEqual(args, [
+    'electron-builder',
+    '--mac',
+    '-c.mac.notarize=true',
+    '--publish',
+    'always',
+  ]);
+});
+
+test('preview packaging leaves signing identity discovery to the workflow', () => {
+  const env = buildInstallerEnvironment({ CSC_LINK: 'file:///tmp/mac.p12' }, { previewMode: true });
+
+  assert.equal('CSC_IDENTITY_AUTO_DISCOVERY' in env, false);
+  assert.equal(env.CSC_LINK, 'file:///tmp/mac.p12');
+});
+
+test('a preview without credentials still produces an unsigned build rather than failing', () => {
+  // Only the release gate mandates credentials. A preview on a platform with
+  // none degrades, which is how Windows behaves until its certificate exists.
+  assert.deepEqual(
+    resolveReleaseModeProblems({
+      env: workflowEnv({ CSC_LINK: undefined, APPLE_API_KEY: undefined }),
+      target: 'macos',
+      packageVersion: '0.2.0',
+      requireSigning: false,
+      requireTagRef: false,
+    }),
+    [],
+  );
+
+  const args = electronBuilderArgs('macos', null, null, { previewMode: true, notarizeMacos: false });
+  assert.equal(args.includes('-c.mac.notarize=true'), false);
+});
+
+test('local packaging signs only when explicitly asked', () => {
+  // A developer machine may hold unrelated certificates, so identity discovery
+  // stays off unless the build asks for it by name.
+  const guarded = buildInstallerEnvironment({}, {});
+  assert.equal(guarded.CSC_IDENTITY_AUTO_DISCOVERY, 'false');
+
+  const optedIn = buildInstallerEnvironment({}, { allowLocalSigning: true });
+  assert.equal('CSC_IDENTITY_AUTO_DISCOVERY' in optedIn, false);
+});
+
+test('the local signing opt-in never reaches for Apple notarization', () => {
+  // `--sign` is about using a local keychain identity, not about submitting a
+  // local build to Apple's notary service.
+  const args = electronBuilderArgs('macos', null, null, {
+    allowLocalSigning: true,
+    notarizeMacos: true,
+  });
+
+  assert.deepEqual(args, ['electron-builder', '--mac', '--publish', 'never']);
+});
+
+test('artifact trust is reported per platform from the credentials present', () => {
+  const complete = {
+    CSC_LINK: 'file:///tmp/mac.p12',
+    APPLE_API_KEY: '/tmp/apple-api-key.p8',
+    APPLE_API_KEY_ID: 'ABCD123456',
+    APPLE_API_ISSUER: '11111111-2222-3333-4444-555555555555',
+  };
+
+  assert.match(describeArtifactTrust('macos', complete), /signed and notarized/u);
+  // Signed but un-notarized is the dangerous middle state: it looks fine on the
+  // build machine and is rejected everywhere else.
+  assert.match(describeArtifactTrust('macos', { CSC_LINK: 'file:///tmp/mac.p12' }), /NOT notarized/u);
+  assert.match(describeArtifactTrust('macos', {}), /unsigned/u);
+  assert.match(describeArtifactTrust('windows', {}), /unsigned/u);
+  assert.match(describeArtifactTrust('windows', { WIN_CSC_LINK: 'file:///tmp/win.p12' }), /^signed$/u);
+  assert.match(describeArtifactTrust('linux', complete), /unsigned/u);
+});
+
+test('parseArgs exposes the local signing opt-in through flag and environment', () => {
+  assert.equal(parseArgs(['--sign']).allowLocalSigning, true);
+  assert.equal(parseArgs(['--sign', '--no-sign']).allowLocalSigning, false);
+  assert.equal(parseArgs([]).allowLocalSigning, false);
+  assert.equal(parseArgs([], { CATS_DESKTOP_SIGN_LOCAL: '1' }).allowLocalSigning, true);
 });
 
 test('local packaging never re-enables Windows executable signing', () => {

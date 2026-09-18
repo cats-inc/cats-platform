@@ -31,16 +31,16 @@ const FORMAT_EXTENSIONS_FOR_TEST = {
 };
 
 const COMPLETE_FILES = [
-  'collected/unsigned-preview-windows/Cats-0.2.0-setup-x64.exe',
-  'collected/unsigned-preview-windows/Cats-0.2.0-setup-x64.exe.blockmap',
-  'collected/unsigned-preview-windows/latest.yml',
-  'collected/unsigned-preview-macos/Cats-0.2.0-x64.dmg',
-  'collected/unsigned-preview-macos/Cats-0.2.0-x64.dmg.blockmap',
-  'collected/unsigned-preview-macos/Cats-0.2.0-x64.zip',
-  'collected/unsigned-preview-macos/Cats-0.2.0-x64.zip.blockmap',
-  'collected/unsigned-preview-macos/latest-mac.yml',
-  'collected/unsigned-preview-linux/Cats-0.2.0-arm64.deb',
-  'collected/unsigned-preview-linux/latest-linux-arm64.yml',
+  'collected/preview-windows/Cats-0.2.0-setup-x64.exe',
+  'collected/preview-windows/Cats-0.2.0-setup-x64.exe.blockmap',
+  'collected/preview-windows/latest.yml',
+  'collected/preview-macos/Cats-0.2.0-x64.dmg',
+  'collected/preview-macos/Cats-0.2.0-x64.dmg.blockmap',
+  'collected/preview-macos/Cats-0.2.0-x64.zip',
+  'collected/preview-macos/Cats-0.2.0-x64.zip.blockmap',
+  'collected/preview-macos/latest-mac.yml',
+  'collected/preview-linux/Cats-0.2.0-arm64.deb',
+  'collected/preview-linux/latest-linux-arm64.yml',
 ];
 
 function withExtraFile(name) {
@@ -365,30 +365,33 @@ test('the release workflow runs the guard before any platform build', async () =
   assert.ok(buildIndex > guardIndex, 'the guard must precede the installer build');
 });
 
-test('the release workflow keeps notarization credentials out of unsigned previews', async () => {
+test('the release workflow scopes notarization credentials to the macOS job', async () => {
   const workflow = await readFile(
     join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
     'utf8',
   );
 
-  // Every notarization input rides the same preview check that already blanks
-  // the certificates, so a preview build cannot reach Apple with real keys.
-  for (const credential of ['APPLE_API_KEY_P8_BASE64', 'APPLE_API_KEY_ID', 'APPLE_API_ISSUER']) {
+  // ADR-117: previews notarize too, so these are no longer gated on release
+  // identity. They are gated on the platform, so the Windows and Linux jobs
+  // never receive an Apple credential they cannot use.
+  for (const credential of ['APPLE_API_KEY_ID', 'APPLE_API_ISSUER']) {
     const line = workflow
       .split('\n')
       .find((candidate) => candidate.includes(`secrets.${credential}`));
     assert.ok(line, `the workflow must configure ${credential}`);
-    assert.match(line, /needs\.guard\.outputs\.preview == 'false'/u);
+    assert.match(line, /matrix\.platform == 'macos'/u);
   }
 
   // The .p8 is materialized as a file because electron-builder reads
-  // APPLE_API_KEY as a path, so that step needs the platform gate too.
+  // APPLE_API_KEY as a path. That step is macOS-only and no longer excludes
+  // previews.
   const stageStep = workflow.slice(workflow.indexOf('- name: Stage the notarization API key'));
   assert.ok(stageStep.length > 0, 'the workflow must stage the notarization key');
-  assert.match(
-    stageStep.slice(0, 300),
-    /if: matrix\.platform == 'macos' && needs\.guard\.outputs\.preview == 'false'/u,
-  );
+  assert.match(stageStep.slice(0, 200), /if: matrix\.platform == 'macos'$/mu);
+  // A preview without credentials degrades to unsigned; only an official
+  // release refuses to build.
+  assert.match(stageStep.slice(0, 900), /IS_PREVIEW/u);
+  assert.match(stageStep.slice(0, 900), /refusing to build an official macOS release/u);
 
   // Pre-release policy: the retired Apple ID path is gone rather than kept as
   // a fallback beside the API key.
@@ -419,7 +422,7 @@ test('the release workflow publishes stable or preview releases only after valid
   assert.match(publishBlock, /--latest/u);
 });
 
-test('manual release workflow publishes an unsigned prerelease preview', async () => {
+test('manual release workflow publishes a prerelease preview, signed where credentials exist', async () => {
   const workflow = await readFile(
     join(process.cwd(), '.github', 'workflows', 'desktop-release.yml'),
     'utf8',
@@ -432,26 +435,21 @@ test('manual release workflow publishes an unsigned prerelease preview', async (
   assert.match(workflow, /--publish always/u);
   assert.match(workflow, /gh release create "\$TAG" --target "\$COMMIT" --draft --prerelease/u);
   assert.match(workflow, /ref: \$\{\{ needs\.guard\.outputs\.source_commit \}\}/u);
-  assert.match(
-    workflow,
-    /if: matrix\.platform == 'windows' && needs\.guard\.outputs\.preview == 'false'/u,
-  );
-  assert.match(
-    workflow,
-    /if: matrix\.platform == 'macos' && needs\.guard\.outputs\.preview == 'false'/u,
-  );
-  assert.match(
-    workflow,
-    /'unsigned-preview' \|\| 'release'/u,
-  );
-  assert.match(
-    workflow,
-    /preview == 'false' && secrets\.WIN_CSC_LINK \|\| ''/u,
-  );
-  assert.match(
-    workflow,
-    /preview == 'false' && secrets\.CSC_LINK \|\| ''/u,
-  );
+  // ADR-117: verification follows the platform, not the release identity, so a
+  // signed preview is verified like any other build. The steps themselves skip
+  // when that platform has no certificate.
+  assert.match(workflow, /^\s*if: matrix\.platform == 'windows'$/mu);
+  assert.match(workflow, /^\s*if: matrix\.platform == 'macos'$/mu);
+  // The artifact name no longer asserts something that may be false.
+  assert.match(workflow, /'preview' \|\| 'release'/u);
+  assert.equal(workflow.includes('unsigned-preview'), false);
+  // Credentials are scoped to the platform that can use them. That is what
+  // lets a preview sign, and it also keeps the macOS certificate out of the
+  // Windows job, where electron-builder would read a bare CSC_LINK as its
+  // Windows certificate.
+  assert.match(workflow, /matrix\.platform == 'windows' && secrets\.WIN_CSC_LINK \|\| ''/u);
+  assert.match(workflow, /matrix\.platform == 'macos' && secrets\.CSC_LINK \|\| ''/u);
+  assert.equal(/preview == 'false' && secrets\./u.test(workflow), false);
 });
 
 test('electron-builder publishes drafts to the public GitHub repository', async () => {
@@ -572,7 +570,7 @@ test('artifact collection excludes electron-builder diagnostics', async () => {
 
 test('build diagnostics are rejected if they ever reach the validator', () => {
   const result = validateReleaseAssets({
-    files: [...COMPLETE_FILES, 'collected/unsigned-preview-linux/builder-debug.yml'],
+    files: [...COMPLETE_FILES, 'collected/preview-linux/builder-debug.yml'],
     metadataDocuments: completeDocuments(),
   });
 

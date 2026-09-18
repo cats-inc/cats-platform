@@ -19,6 +19,42 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-18 (0.3.2 preview — first signed macOS preview)
+
+### Sign and notarize macOS preview artifacts
+
+Behavior change:
+
+macOS preview artifacts are now signed with a Developer ID Application
+certificate and notarized by Apple. A downloaded DMG installs without a
+Gatekeeper bypass, and **Check for Update** works on macOS for the first time.
+That was previously impossible rather than merely inconvenient: Squirrel.Mac
+refuses to apply an update to an unsigned application, and macOS 15 removed the
+right-click-to-open Gatekeeper bypass.
+
+Per ADR-117 this changes artifact trust only. The build keeps its preview
+release identity: it publishes as a GitHub prerelease, never becomes `latest`,
+resolves to `preview_packaged`, and stays outside the release-ready platform
+gate. Signing credentials are scoped per platform, so each platform starts
+signing when its own certificate exists rather than waiting for the others.
+Windows and Linux preview artifacts remain unsigned.
+
+Migration steps:
+
+**Existing macOS preview installs cannot update themselves into this release.**
+Squirrel.Mac validates the signature of the *running* application before
+applying an update, so the unsigned-to-signed transition is a discontinuity.
+Download and install the 0.3.2 DMG manually, once; updates from 0.3.2 onward
+work normally. This affects only that one transition.
+
+On Windows, use Cats Desktop **Check for Update** as usual. Linux users can
+install the published DEB.
+
+Deprecations:
+
+The `unsigned-preview-*` Actions artifact names are retired in favour of
+`preview-*`, because a preview is no longer necessarily unsigned.
+
 ## 2026-09-18 (0.3.1 unsigned preview)
 
 ### Let first setup finish loading Catlas providers

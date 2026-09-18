@@ -47,6 +47,12 @@ Options:
                                           omits the official descriptor, and disables signing
                                           identity discovery. Also honored via
                                           CATS_DESKTOP_PREVIEW_MODE=1.
+  --sign                                  Let local packaging use a signing identity from the
+                                          OS keychain. Off by default so an unconfigured machine
+                                          cannot pick up an unrelated certificate. Ignored by
+                                          --release and --preview, which always sign when their
+                                          credentials are present. Also honored via
+                                          CATS_DESKTOP_SIGN_LOCAL=1.
   --publish <never|always>                Publish policy, default never. Publishing requires
                                           --release or --preview plus a GitHub token. Also honored
                                           via CATS_DESKTOP_PUBLISH.
@@ -100,6 +106,7 @@ export function parseArgs(argv, env = process.env) {
   let skipMobile = parseBooleanFlag(env.CATS_SKIP_MOBILE);
   let releaseMode = parseBooleanFlag(env.CATS_DESKTOP_RELEASE_MODE);
   let previewMode = parseBooleanFlag(env.CATS_DESKTOP_PREVIEW_MODE);
+  let allowLocalSigning = parseBooleanFlag(env.CATS_DESKTOP_SIGN_LOCAL);
   let publish = resolvePublishPolicy(env.CATS_DESKTOP_PUBLISH);
   // GITHUB_REF_NAME is a runner-provided default. A workflow `env:` block
   // cannot override anything in the GITHUB_ namespace, and a preview run is
@@ -119,6 +126,7 @@ export function parseArgs(argv, env = process.env) {
         skipMobile,
         releaseMode,
         previewMode,
+        allowLocalSigning,
         publish,
         tag,
         ...(appsLock ? { appsLock } : {}),
@@ -143,6 +151,14 @@ export function parseArgs(argv, env = process.env) {
     }
     if (value === '--no-preview') {
       previewMode = false;
+      continue;
+    }
+    if (value === '--sign') {
+      allowLocalSigning = true;
+      continue;
+    }
+    if (value === '--no-sign') {
+      allowLocalSigning = false;
       continue;
     }
     if (value === '--publish') {
@@ -195,6 +211,7 @@ export function parseArgs(argv, env = process.env) {
     skipMobile,
     releaseMode,
     previewMode,
+    allowLocalSigning,
     publish,
     tag,
     ...(appsLock ? { appsLock } : {}),
@@ -259,18 +276,28 @@ const SIGNING_CREDENTIAL_KEYS = [
 /**
  * Local and test packaging must never reach for a signing identity, because an
  * unconfigured machine would otherwise pick up an unrelated certificate from
- * the OS keychain. Release mode leaves identity discovery to the workflow so a
- * configured certificate can actually be used.
+ * the OS keychain. Both guarded workflow paths leave identity discovery alone
+ * so a configured certificate can actually be used.
  *
- * Empty credential variables are dropped in both modes: electron-builder treats
+ * ADR-117: a preview is signed on any platform whose credentials exist, so
+ * preview mode is a signing path too. Signing is artifact trust; it says
+ * nothing about whether the build claims official release identity.
+ *
+ * `--sign` is the local escape hatch. It is an explicit request rather than an
+ * inference from the environment, because a developer machine may hold
+ * unrelated certificates.
+ *
+ * Empty credential variables are dropped in every mode: electron-builder treats
  * an empty CSC_LINK as a relative path and resolves it against the project
  * root.
  */
 export function buildInstallerEnvironment(baseEnv = process.env, options = {}) {
-  const releaseMode = options.releaseMode === true;
+  const signingAllowed = options.releaseMode === true
+    || options.previewMode === true
+    || options.allowLocalSigning === true;
   const env = { ...baseEnv };
 
-  if (!releaseMode) {
+  if (!signingAllowed) {
     env.CSC_IDENTITY_AUTO_DISCOVERY = 'false';
   }
 
@@ -344,6 +371,33 @@ export function resolveSigningProblems({ env = process.env, target } = {}) {
   }
 
   return [];
+}
+
+/**
+ * ADR-117: trust is resolved per platform from the credentials actually
+ * present. The build states which it got, because a silently unsigned artifact
+ * is indistinguishable from a signed one until a user tries to install it.
+ */
+export function describeArtifactTrust(target, env = process.env) {
+  if (target === 'linux') {
+    return 'unsigned (Linux packages are not signed)';
+  }
+
+  if (target === 'windows') {
+    return hasWindowsSigningCredentials(env)
+      ? 'signed'
+      : 'unsigned (no Windows certificate configured)';
+  }
+
+  const signed = hasMacosSigningCredentials(env);
+  const notarized = hasMacosNotarizationCredentials(env);
+  if (signed && notarized) {
+    return 'signed and notarized';
+  }
+  if (signed) {
+    return 'signed but NOT notarized (no App Store Connect API key) — Gatekeeper will reject the download';
+  }
+  return 'unsigned (no Developer ID certificate)';
 }
 
 /**
@@ -682,6 +736,11 @@ export function electronBuilderArgs(target, archOverride, formatOverride, option
   }
 
   const releaseMode = options.releaseMode === true;
+  const previewMode = options.previewMode === true;
+  // Signing overrides key off artifact trust, not release identity, so both
+  // guarded paths qualify. Local packaging never does, even with `--sign`:
+  // an ad-hoc local build has no reason to reach Apple's notary service.
+  const signedBuild = releaseMode || previewMode;
   const publish = resolvePublishPolicy(options.publish ?? 'never');
   const signWindowsExecutable = options.signWindowsExecutable === true;
   const notarizeMacos = options.notarizeMacos === true;
@@ -702,14 +761,14 @@ export function electronBuilderArgs(target, archOverride, formatOverride, option
   // package.json pins signAndEditExecutable to false so unsigned local builds
   // avoid the winCodeSign download. A release build with real credentials has
   // to opt back in, and only then.
-  if (releaseMode && target === 'windows' && signWindowsExecutable) {
+  if (signedBuild && target === 'windows' && signWindowsExecutable) {
     args.push('-c.win.signAndEditExecutable=true');
   }
 
   // package.json pins mac.notarize to false so an unsigned preview never waits
   // on Apple and a half-configured environment cannot quietly ship an
   // un-notarized build. A release build with real credentials opts back in.
-  if (releaseMode && target === 'macos' && notarizeMacos) {
+  if (signedBuild && target === 'macos' && notarizeMacos) {
     args.push('-c.mac.notarize=true');
   }
 
@@ -729,7 +788,11 @@ async function main() {
   // in an OS temporary directory so retries never redownload a moving asset.
   const selectedApps = parsed.appsLock ? await resolveAppLock(resolve(parsed.appsLock)) : null;
   const appLockForBuild = selectedApps ? await materializeAppSelection(selectedApps) : null;
-  const envOptions = { releaseMode: parsed.releaseMode };
+  const envOptions = {
+    releaseMode: parsed.releaseMode,
+    previewMode: parsed.previewMode,
+    allowLocalSigning: parsed.allowLocalSigning,
+  };
 
   if (parsed.releaseMode && parsed.previewMode) {
     throw new Error('--release and --preview are mutually exclusive build modes.');
@@ -759,10 +822,11 @@ async function main() {
           .join('\n')}`,
       );
     }
-    const buildKind = parsed.releaseMode ? 'official' : 'unsigned preview';
+    const buildKind = parsed.releaseMode ? 'official' : 'preview';
     process.stdout.write(
       `[build-desktop-installer] ${buildKind} ${resolvedTarget} build for `
-        + `${process.env.GITHUB_REF_NAME} (publish=${parsed.publish}).\n`,
+        + `${process.env.GITHUB_REF_NAME} (publish=${parsed.publish}, `
+        + `trust=${describeArtifactTrust(resolvedTarget, process.env)}).\n`,
     );
   }
 
@@ -828,6 +892,7 @@ async function main() {
     'npx',
     electronBuilderArgs(resolvedTarget, parsed.arch, parsed.format, {
       releaseMode: parsed.releaseMode,
+      previewMode: parsed.previewMode,
       publish: parsed.publish,
       signWindowsExecutable: hasWindowsSigningCredentials(process.env),
       notarizeMacos: hasMacosNotarizationCredentials(process.env),

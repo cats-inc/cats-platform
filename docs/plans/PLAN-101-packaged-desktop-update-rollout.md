@@ -147,24 +147,24 @@ evidence G3 asks for while its preview is unsigned: Squirrel.Mac refuses to
 apply an update to an unsigned application, and Gatekeeper refuses to install
 a quarantined one without a manual bypass.
 
-- [ ] Let the preview path read macOS signing and notarization credentials,
+- [x] Let the preview path read macOS signing and notarization credentials,
       leaving Windows unsigned until its certificate exists.
-- [ ] Stop forcing `CSC_IDENTITY_AUTO_DISCOVERY=false` in preview mode, while
+- [x] Stop forcing `CSC_IDENTITY_AUTO_DISCOVERY=false` in preview mode, while
       keeping it forced for local and test packaging.
-- [ ] Apply `-c.mac.notarize=true` on the preview path under the same
+- [x] Apply `-c.mac.notarize=true` on the preview path under the same
       credentials-present rule the release path uses.
-- [ ] Leave the release gate untouched: an official build whose platform lacks
+- [x] Leave the release gate untouched: an official build whose platform lacks
       credentials still fails before packaging starts.
-- [ ] Verify signature, notarization ticket, and the Swift voice helper on the
+- [x] Verify signature, notarization ticket, and the Swift voice helper on the
       preview path, not only on the release path.
-- [ ] Rename `unsigned-preview-*` Actions artifacts to `preview-*`, and update
+- [x] Rename `unsigned-preview-*` Actions artifacts to `preview-*`, and update
       the release asset validator, its fixtures, and the workflow assertions.
-- [ ] Confirm the preview still resolves to `preview_packaged`, still publishes
+- [x] Confirm the preview still resolves to `preview_packaged`, still publishes
       as a prerelease that is not `latest`, and still stays outside
       `DESKTOP_RELEASE_READY_PLATFORMS`.
-- [ ] Add an explicit opt-in for signing a local build rather than enabling
+- [x] Add an explicit opt-in for signing a local build rather than enabling
       identity discovery by default.
-- [ ] Record that existing unsigned macOS preview installs cannot self-update
+- [x] Record that existing unsigned macOS preview installs cannot self-update
       into the first signed preview and need one manual download.
 
 **Deliverables**: a signed, notarized macOS preview that keeps preview release
@@ -469,6 +469,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 
 | Date | Update |
 |------|--------|
+| 2026-09-18 | Phase 1b implemented. Preview is now a signing path: credentials are scoped per platform in the workflow rather than gated on release identity, `-c.mac.notarize=true` applies to both guarded paths, verification runs on the preview path and skips only where a platform has no certificate, and the `unsigned-preview` artifact naming is retired. Added `--sign` as the explicit local opt-in and `describeArtifactTrust`, so every guarded build states the trust it actually received rather than producing a silently unsigned artifact. Also fixed a latent defect the change exposed: the macOS `CSC_LINK` reached the Windows job, where electron-builder reads a bare `CSC_LINK` as a Windows certificate and the release gate would have accepted it. Validation: 151 focused tests across packaging, release-mode, release-assets, descriptor identity/generation, update contracts, and suite collection. The signing and notarization paths themselves are still unexercised until the first preview dispatch. |
 | 2026-09-18 | ADR-117 separates artifact trust from release identity. SPEC-111 section 9 gained the per-platform trust rule, requirement 14 and acceptance criterion 14 no longer define a preview as unsigned, and the `unsigned-preview` artifact naming is retired. Phase 1b holds the implementation, which has not started. Landed ahead of it: macOS signing and notarization on the release path, plus hardened runtime with entitlements. The macOS target moved to universal and was reverted to x64 the same day — there is no macOS arm64 machine to execute that slice, so SPEC-111 section 8 now records that reason and the exit condition rather than only the Rosetta 2 consequence. |
 | 2026-09-16 | Removed update system notifications across Windows, macOS, and Linux. Manual checks and download failures use the existing dialog; optional startup checks only update shared state. Validation: desktop host build, 116 focused desktop tests, and 20 Settings tests passed. Packaged UI checks on the three operating systems remain pending. |
 | 2026-07-28 | Plan created with ADR-108, SPEC-111, and the official-tooling research note. No implementation has started. |
