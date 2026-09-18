@@ -91,6 +91,19 @@ test('Kilo shortlist preserves labels, starts at the first row, and retains cust
   assert.equal(custom.modelSelection, null);
 });
 
+test('ClinePass starts at GLM and retains a custom string after catalog refresh', () => {
+  const catalog = createStaticProviderModelCatalog('cline');
+  const target = { provider: 'cline', instance: 'native', model: '' };
+  assert.equal(resolveCatalogTargetSelection({ target, catalog }).model, 'cline-pass/glm-5.3');
+  assert.ok(catalog.models.every(model => !model.default));
+  const custom = resolveCatalogTargetSelection({
+    target: { ...target, model: 'vendor/CaseSensitive.Model', modelSelection: null }, catalog,
+    preserveCurrentModel: true, preserveCurrentSelection: true,
+  });
+  assert.equal(custom.model, 'vendor/CaseSensitive.Model');
+  assert.equal(custom.modelSelection, null);
+});
+
 test('Devin starts at Adaptive and preserves a custom model outside the shortlist', () => {
   const catalog = createStaticProviderModelCatalog('devin');
   assert.equal(catalog.models.length, 6);

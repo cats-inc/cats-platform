@@ -592,7 +592,7 @@ test('runtime-backed execution target reconciliation replaces the Antigravity pl
 });
 
 for (const providerDefaultTarget of [
-  { provider: 'cline', instance: 'native', model: 'cline-default', backend: 'cli' },
+  { provider: 'cline', instance: 'native', model: 'cline-pass/glm-5.3', backend: 'cli' },
   { provider: 'devin', instance: 'acp', model: 'adaptive', backend: 'agent' },
 ] as const) {
   test(`runtime-backed execution target reconciliation distinguishes ${providerDefaultTarget.provider} model from a placeholder`, async () => {
@@ -653,12 +653,12 @@ for (const providerDefaultTarget of [
       }, providerDefaultTarget.provider),
     });
 
-    assert.equal(reconciled.model, providerDefaultTarget.provider === 'devin' ? 'adaptive' : null);
+    assert.equal(reconciled.model, providerDefaultTarget.model);
     assert.equal(reconciled.modelSelection, null);
     if (providerDefaultTarget.provider === 'devin') {
       assert.match(reconciled.executionLabel ?? '', /Adaptive/);
     } else {
-      assert.equal(reconciled.executionLabel, null);
+      assert.match(reconciled.executionLabel ?? '', /GLM-5.3 — Medium/);
     }
   });
 }

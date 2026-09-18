@@ -41,6 +41,9 @@ setup step 2's Catlas selection and optional prefetch. The accepted
 
 ## Provider Catalog Labels
 
+[ClinePass shortlist](./research/2026-09-18-cline-shortlist.md) records six fixed Medium
+choices, no default labels and custom model preservation.
+
 [Devin shortlist](./research/2026-09-18-devin-shortlist.md) records six fixed combinations,
 first-item initialization without default badges, and custom input over agent/acp.
 

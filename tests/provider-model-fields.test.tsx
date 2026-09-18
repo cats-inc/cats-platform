@@ -234,6 +234,15 @@ test('Cursor fallback exposes six fixed combos and initializes the first without
   assert.equal(shouldAllowLegacyManualModelEntry({ entryCount: 6, isLegacyModelTarget: false }), true);
 });
 
+test('ClinePass offers six fixed Medium choices plus manual model entry', () => {
+  const catalog = createStaticProviderModelCatalog('cline', { instance: 'native' });
+  assert.equal(catalog.defaultModel, 'cline-pass/glm-5.3');
+  assert.equal(catalog.models.length, 6);
+  assert.equal(catalog.models[2].label, 'Qwen3.8 Max — Medium');
+  assert.ok(catalog.models.every(model => !model.default && !/default/i.test(model.label)));
+  assert.equal(shouldAllowLegacyManualModelEntry({ entryCount: 6, isLegacyModelTarget: false }), true);
+});
+
 test('Copilot fallback preserves the approved fixed efforts and Terra default', () => {
   const catalog = createStaticProviderModelCatalog('copilot', { instance: 'native' });
   assert.equal(catalog.defaultModel, 'gpt-5.6-terra');

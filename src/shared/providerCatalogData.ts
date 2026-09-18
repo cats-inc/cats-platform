@@ -53,7 +53,12 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'grok-4.5', label: 'Grok 4.5' },
   ],
   cline: [
-    { value: 'cline-default', label: 'Cline default', default: true },
+    { value: 'cline-pass/glm-5.3', label: 'GLM-5.3 — Medium' },
+    { value: 'cline-pass/kimi-k3', label: 'Kimi K3 — Medium' },
+    { value: 'cline-pass/qwen3.8-max', label: 'Qwen3.8 Max — Medium' },
+    { value: 'cline-pass/deepseek-v4-pro', label: 'DeepSeek V4 Pro — Medium' },
+    { value: 'cline-pass/minimax-m3', label: 'MiniMax-M3 — Medium' },
+    { value: 'cline-pass/mimo-v2.5-pro', label: 'MiMo-V2.5-Pro — Medium' },
   ],
   devin: [
     { value: 'adaptive', label: 'Adaptive' },
@@ -141,6 +146,5 @@ export const PRODUCT_PROVIDER_MODELS = {
 
 export const PRODUCT_PROVIDER_DEFAULT_MODEL_PLACEHOLDERS = {
   antigravity: 'antigravity-default',
-  cline: 'cline-default',
   muse: 'muse-default',
 } as const;

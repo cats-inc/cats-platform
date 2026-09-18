@@ -81,19 +81,20 @@ test('Devin ACP offers the fixed shortlist without claiming a provider default',
   ]);
 });
 
-test('verified Cline adapter joins the product execution catalog', () => {
-  // cats-runtime db63f74 enabled Cline execution behind the exact-version
-  // cline-cli-json-3.0.51 compatibility profile.
+test('ClinePass offers six fixed Medium combinations without a provider default', () => {
   assert.equal(PRODUCT_PROVIDER_ORDER.includes('cline'), true);
   assert.equal(
     PRODUCT_PROVIDER_ORDER.indexOf('cline'),
     PRODUCT_PROVIDER_ORDER.indexOf('grok') + 1,
   );
-  // Cline exposes no model-enumeration command, so only the default sentinel
-  // is offered rather than a fabricated list.
-  assert.equal(getDefaultModel('cline'), 'cline-default');
+  assert.equal(getDefaultModel('cline'), 'cline-pass/glm-5.3');
   assert.deepEqual(getProviderModels('cline'), [
-    { value: 'cline-default', label: 'Cline default', default: true },
+    { value: 'cline-pass/glm-5.3', label: 'GLM-5.3 — Medium' },
+    { value: 'cline-pass/kimi-k3', label: 'Kimi K3 — Medium' },
+    { value: 'cline-pass/qwen3.8-max', label: 'Qwen3.8 Max — Medium' },
+    { value: 'cline-pass/deepseek-v4-pro', label: 'DeepSeek V4 Pro — Medium' },
+    { value: 'cline-pass/minimax-m3', label: 'MiniMax-M3 — Medium' },
+    { value: 'cline-pass/mimo-v2.5-pro', label: 'MiMo-V2.5-Pro — Medium' },
   ]);
   assert.deepEqual(PRODUCT_PROVIDER_INSTANCES.cline, [
     { id: 'native', label: 'cli/native', target: 'cli/native', backend: 'cli', default: true },
