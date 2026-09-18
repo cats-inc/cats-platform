@@ -3,14 +3,11 @@ import type {
   ChatMessage,
   ParallelChatGroupSummary,
 } from '../../../products/chat/api/contracts.js';
-import type {
-  ChatApiDependencies,
-} from '../../../products/chat/api/routeSupport.js';
-import { repairChannelReadState } from '../../../products/chat/api/channelRepair.js';
 import {
-  buildChannelView,
-  summarizeParallelChatGroups,
-} from '../../../products/chat/state/model/readModels.js';
+  buildChannelSubscriptionView,
+  type ChatApiDependencies,
+} from '../../../products/chat/api/routeSupport.js';
+export { ChannelSubscriptionNotFoundError } from '../../../products/chat/api/routeSupport.js';
 
 export const CHANNEL_ENTITY_SUBSCRIPTION_VERSION = 1;
 
@@ -153,35 +150,11 @@ function collectChannelSessions(
   return sessions;
 }
 
-export class ChannelSubscriptionNotFoundError extends Error {}
-
 export async function buildChannelSubscriptionState(
   dependencies: ChatApiDependencies,
   channelId: string,
 ): Promise<ChannelSubscriptionState> {
-  let state = await dependencies.chatStore.read();
-  if (!state.channels.some((channel) => channel.id === channelId)) {
-    throw new ChannelSubscriptionNotFoundError(`Channel not found: ${channelId}`);
-  }
-
-  // A transcript must be available even while Runtime health/setup is slow.
-  // Keep the same canonical read repairs as the shell without building it.
-  state = await repairChannelReadState(
-    {
-      chatStore: dependencies.chatStore,
-      mutationGate: dependencies.mutationGate,
-      runtimeDataDir: dependencies.config.runtimeDataDir,
-      now: dependencies.now,
-    },
-    channelId,
-    state,
-  );
-
-  return {
-    selectedChannelId: channelId,
-    selectedChannel: buildChannelView(state, channelId),
-    parallelChatGroups: summarizeParallelChatGroups(state, channelId),
-  };
+  return buildChannelSubscriptionView(dependencies, channelId);
 }
 
 export function buildChannelSubscriptionPatches(

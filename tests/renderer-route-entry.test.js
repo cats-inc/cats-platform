@@ -56,7 +56,7 @@ test('renderer route entry only reselects when the route is not the hydrated sel
   );
 });
 
-test('workspace route hook uses the shared channel entry helper without sleeping reselect logic', async () => {
+test('workspace route entry persists selection in the background without waking or waiting for a shell', async () => {
   const channelEntrySource = await readFile(
     path.join(process.cwd(), 'src/products/shared/channelEntry.ts'),
     'utf8',
@@ -66,7 +66,8 @@ test('workspace route hook uses the shared channel entry helper without sleeping
     'utf8',
   );
 
-  assert.match(routingHookSource, /shouldWakeRouteChannelOnEntry/u);
+  assert.match(routingHookSource, /selectedChannelPersistence\.select\(/u);
+  assert.doesNotMatch(routingHookSource, /shouldWakeRouteChannelOnEntry|updateSelectedChannel/u);
   assert.doesNotMatch(channelEntrySource, /entryLifecycleState === 'sleeping'/u);
 });
 

@@ -26,7 +26,9 @@ Governing contracts: ADR-075, SPEC-076, SPEC-052 execution-target isolation.
   subscribes to its channel; warm routes render the retained projection while
   that subscription refreshes it. Selection writes coalesce in the background.
 - Channel projection reads/repairs the channel directly without calling Runtime
-  or assembling the complete app shell. Missing channels and transient read
+  or assembling the complete app shell. It remains behind the product-owned
+  Chat API boundary; platform code does not import Chat repair/model internals.
+  Missing channels and transient read
   failures have separate close/retry semantics.
 - Optimistic sends stay outside retained server projections. Delayed callbacks
   cannot overwrite another route/scope or repopulate state after an auth reset.
@@ -48,6 +50,12 @@ the user's persisted profile, provider execution, version bump or release.
 - Artifact subscription and avatar-style consumers: 12 passing tests.
 - Server build, renderer/test TypeScript checks, and web production build passed.
   These are overlapping focused batches, not a full local test-suite claim.
+- Initial full CI found two omissions in focused coverage: the product dependency
+  boundary and an obsolete route-entry source assertion. The projection was moved
+  behind the existing Chat API boundary and the assertion updated to background
+  selection persistence. The boundary allowlist was not expanded.
+- After correction, the server build and all 16 channel/read-repair,
+  dependency-graph and route-entry checks passed.
 
 ### Rendered verification
 
