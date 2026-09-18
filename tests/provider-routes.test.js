@@ -7,6 +7,8 @@ import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { MemoryPlatformAuthStore } from '../build/server/platform/auth/index.js';
+import { createTestAuthConfig } from './testUtils.js';
 import {
   MODEL_CATALOG_CACHE_REFRESH_WARNING_PREFIX as MODEL_CATALOG_CACHE_WARNING_PREFIX,
   MODEL_CATALOG_CACHE_REVALIDATION_WARNING,
@@ -117,7 +119,7 @@ function createRuntimeStub() {
   };
 }
 
-async function withServer(runtimeClient, callback) {
+async function withServer(runtimeClient, callback, { firstSetup = false } = {}) {
   const tempRoot = await mkdtemp(path.join(tmpdir(), 'cats-provider-routes-'));
   const chatStatePath = path.join(tempRoot, 'platform', 'state', 'chat-state.local.json');
   const server = createServer({
@@ -125,8 +127,10 @@ async function withServer(runtimeClient, callback) {
       config: {
         ...baseConfig,
         chatStatePath,
+        ...(firstSetup ? { auth: createTestAuthConfig() } : {}),
       },
       runtimeClient,
+      ...(firstSetup ? { authStore: new MemoryPlatformAuthStore() } : {}),
       now: () => new Date('2026-04-21T00:00:00.000Z'),
     },
     chat: {
@@ -164,6 +168,41 @@ async function withMockedDateNow(testContext, initialNowMs, callback) {
     },
   });
 }
+
+test('first setup waits for slow provider configuration and warms the Catlas catalog cache', async () => {
+  const runtimeClient = createRuntimeStub();
+  const getConfig = runtimeClient.getProviderConfig;
+  let configCalls = 0;
+  runtimeClient.getProviderConfig = async (options) => {
+    assert.deepEqual(options, { selector: true });
+    configCalls += 1;
+    // A healthy cold Runtime can take over a second. This must outlive the
+    // former 500 ms enrichment race and still populate the empty cache.
+    await new Promise((resolve) => setTimeout(resolve, 1_300));
+    return getConfig();
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    assert.equal((await fetch(`${baseUrl}/api/channels`)).status, 401);
+    const responses = await Promise.all([
+      fetch(`${baseUrl}/api/providers`),
+      fetch(`${baseUrl}/api/providers`),
+    ]);
+    for (const response of responses) {
+      assert.equal(response.status, 200);
+      const registry = await response.json();
+      assert.equal(registry.state, 'ready');
+      assert.deepEqual(registry.providers.map((provider) => provider.id), ['claude']);
+    }
+    assert.equal(configCalls, 1, 'concurrent cold reads must share the pending configuration');
+    const modelResponse = await fetch(`${baseUrl}/api/providers/claude/models?instance=cli/native`);
+    assert.equal(modelResponse.status, 200);
+    assert.equal((await modelResponse.json()).catalog.models[0].id, 'claude-default');
+    const warmed = await (await fetch(`${baseUrl}/api/providers`)).json();
+    assert.equal(warmed.state, 'ready');
+    assert.equal(configCalls, 1, 'the successful slow read must warm the registry for model reads');
+  }, { firstSetup: true });
+});
 
 test('selection changes evict both provider and model choices without waiting for cache expiry', async () => {
   const runtimeClient = createRuntimeStub();

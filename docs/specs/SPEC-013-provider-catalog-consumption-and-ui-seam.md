@@ -148,6 +148,11 @@ transport warnings or manual recovery actions inside execution pickers.
   partial catalog success, hidden/resumed/unmounted pickers, and selection
   invalidation with regression tests. Do not restore click-to-recover behavior
   when fixing other selector issues.
+- **MUST** allow a cold registry read to consume a successful topology response
+  within the Runtime client's request deadline. Topology is required input, not
+  optional enrichment: a shorter race that discards every slow response can
+  starve an empty cache indefinitely. Warm reads retain the existing background
+  refresh behavior; failed reads still withhold unconfirmed targets.
 
 ### Non-Functional Requirements
 
@@ -408,6 +413,42 @@ Validation on Windows:
   then mocked recovery fills Grok/Grok 4.6 automatically with no overflow or
   renderer errors. It did not access the user's persisted data. This is not a
   packaged Windows/macOS/Linux smoke run, and no preview was published.
+
+## Follow-up: first setup with an empty cache (2026-09-18)
+
+After removing local Cats state and launching Desktop 0.3.0, Catlas selection
+remained loading. Read-only inspection established that Runtime was ready,
+bootstrap was complete, and the selected provider configuration was present.
+Runtime configuration reads succeeded in approximately 1.3–1.7 seconds, while
+Platform repeatedly returned an empty `runtime_unreachable` registry.
+
+The route retained an obsolete 500 ms best-effort enrichment race even though
+topology had become mandatory for usable target validation. Each late success
+was discarded without warming the cache. Automatic retries repeated the same
+failure; no amount of display retention could help a clean install with no
+previous successful observation.
+
+The route now awaits configuration under the existing Runtime client deadline
+(5 seconds by default for selectors), concurrently with availability. Successful
+cold reads seed the existing registry cache. Actual failures still yield a
+retryable state; warm display, selection revision checks, authentication gates,
+and automatic picker recovery keep their existing contracts. This change does
+not widen the selected provider scope or require changing Runtime APIs.
+
+Regression coverage includes an authenticated-policy first setup before any
+Admin exists, a 1.3-second configuration response, coalesced cold reads, model
+lookup using the newly warmed registry, and a real HTTP client deadline followed
+by recovery. The slow-response case reproduced the failure before the fix.
+
+Validation: server TypeScript build passed. Nine focused suites covered 126
+cases; 125 passed in the combined run, and one Telegram file-store async wait
+timed out and passed on an isolated rerun. Both new provider regressions and the
+existing picker/auth/revision tests passed. Independent review found no blocking
+issues. A read-only check using the corrected production registry handler and
+the already-running Runtime returned all ten selected providers in 1,497 ms on
+the first read and 23 ms on the warm read. It created no sessions, wrote no
+Platform snapshot, and did not replace or restart the installed Desktop.
+Required PR CI remains the full-suite gate; no new packaged release is claimed.
 
 ## Open Questions
 

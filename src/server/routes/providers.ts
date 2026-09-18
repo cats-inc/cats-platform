@@ -37,7 +37,6 @@ type ProviderRegistryState = 'ready' | 'no_usable_targets' | 'runtime_unreachabl
 const PROVIDER_CACHE_ERROR_BACKOFF_MS = 30_000;
 const TRUTHFUL_SELECTOR_CACHE_TTL_MS = 30_000;
 const TRUTHFUL_SELECTOR_STALE_WINDOW_MS = 15_000;
-const TRUTHFUL_SELECTOR_CONFIG_ENRICHMENT_BUDGET_MS = 500;
 const PROVIDER_MODEL_CATALOG_CACHE_TTL_MS = 60_000;
 const PROVIDER_MODEL_CATALOG_STALE_WINDOW_MS = 5 * 60_000;
 
@@ -702,12 +701,6 @@ function deriveTruthfulProviderRegistryForProvider(
   };
 }
 
-async function readProviderConfig(
-  dependencies: ProviderRouteDependencies,
-): Promise<RuntimeProviderConfigRegistry> {
-  return dependencies.runtimeClient.getProviderConfig({ selector: true });
-}
-
 async function readProviderDiagnostics(
   dependencies: ProviderRouteDependencies,
   options: {
@@ -723,27 +716,14 @@ async function readProviderDiagnostics(
 async function readProviderConfigBestEffort(
   dependencies: ProviderRouteDependencies,
 ): Promise<RuntimeProviderConfigRegistry | null> {
-  const task = readProviderConfig(dependencies)
-    .then((value) => ({
-      status: 'fulfilled' as const,
-      value,
-    }))
-    .catch(() => ({
-      status: 'rejected' as const,
-    }));
-  const timeoutToken = Symbol('selector-config-timeout');
-  const winner = await Promise.race([
-    task,
-    new Promise<typeof timeoutToken>((resolve) => {
-      setTimeout(() => resolve(timeoutToken), TRUTHFUL_SELECTOR_CONFIG_ENRICHMENT_BUDGET_MS);
-    }),
-  ]);
-
-  if (winner === timeoutToken) {
+  try {
+    // Topology is required to establish the first usable selector snapshot.
+    // Let the Runtime client's request deadline bound this read; a shorter
+    // enrichment race discards healthy slow responses on every cold retry.
+    return await dependencies.runtimeClient.getProviderConfig({ selector: true });
+  } catch {
     return null;
   }
-
-  return winner.status === 'fulfilled' ? winner.value : null;
 }
 
 async function loadTruthfulProviderRegistryFromRuntime(
@@ -791,7 +771,7 @@ async function loadTruthfulProviderRegistryFromRuntime(
   const runtimeConfig = await configTask;
   if (!runtimeConfig) {
     return { state: 'runtime_unreachable', providers: [], recovery: { retryable: true },
-      warnings: ['Runtime provider configuration is still loading.'] };
+      warnings: ['Runtime provider configuration is unavailable.'] };
   }
   const providers = mergeTruthfulProviderRegistry(
     configuredProductProviders,
