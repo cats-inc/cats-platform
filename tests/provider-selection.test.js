@@ -104,6 +104,23 @@ test('ClinePass starts at GLM and retains a custom string after catalog refresh'
   assert.equal(custom.modelSelection, null);
 });
 
+test('Kiro starts at the first raw id and retains custom input through refresh', () => {
+  const catalog = createStaticProviderModelCatalog('kiro');
+  const ids = ['claude-opus-5', 'claude-sonnet-5', 'gpt-5.6-sol', 'gpt-5.6-terra',
+    'gpt-5.6-luna', 'claude-haiku-4.5'];
+  assert.deepEqual(catalog.models.map(({ id, label }) => ({ id, label })),
+    ids.map(id => ({ id, label: id })));
+  assert.ok(catalog.models.every(model => !model.default));
+  const target = { provider: 'kiro', instance: 'native', model: '' };
+  assert.equal(resolveCatalogTargetSelection({ target, catalog }).model, ids[0]);
+  const custom = resolveCatalogTargetSelection({
+    target: { ...target, model: 'Vendor/CaseSensitive.Model', modelSelection: null }, catalog,
+    preserveCurrentModel: true, preserveCurrentSelection: true,
+  });
+  assert.equal(custom.model, 'Vendor/CaseSensitive.Model');
+  assert.equal(custom.modelSelection, null);
+});
+
 test('Devin starts at Adaptive and preserves a custom model outside the shortlist', () => {
   const catalog = createStaticProviderModelCatalog('devin');
   assert.equal(catalog.models.length, 6);

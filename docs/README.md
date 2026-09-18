@@ -41,6 +41,9 @@ setup step 2's Catlas selection and optional prefetch. The accepted
 
 ## Provider Catalog Labels
 
+[Kiro shortlist](./research/2026-09-18-kiro-shortlist.md) records six raw model IDs
+without default claims, first-row initialization and custom input.
+
 [ClinePass shortlist](./research/2026-09-18-cline-shortlist.md) records six fixed Medium
 choices, no default labels and custom model preservation.
 

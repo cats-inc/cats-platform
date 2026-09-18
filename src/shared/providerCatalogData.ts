@@ -131,9 +131,12 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'muse-spark-1.3[context=300k,effort=high]', label: 'Muse Spark 1.3 — 300K High' },
   ],
   kiro: [
-    { value: 'claude-sonnet-4.5', label: 'claude-sonnet-4.5 (default)', default: true },
-    { value: 'deepseek-3.2', label: 'deepseek-3.2' },
-    { value: 'minimax-m2.1', label: 'minimax-m2.1' },
+    { value: 'claude-opus-5', label: 'claude-opus-5' },
+    { value: 'claude-sonnet-5', label: 'claude-sonnet-5' },
+    { value: 'gpt-5.6-sol', label: 'gpt-5.6-sol' },
+    { value: 'gpt-5.6-terra', label: 'gpt-5.6-terra' },
+    { value: 'gpt-5.6-luna', label: 'gpt-5.6-luna' },
+    { value: 'claude-haiku-4.5', label: 'claude-haiku-4.5' },
   ],
   goose: [
     { value: 'openai/gpt-5-codex', label: 'openai/gpt-5-codex (default)', default: true },
