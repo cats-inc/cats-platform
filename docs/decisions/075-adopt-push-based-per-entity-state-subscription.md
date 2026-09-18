@@ -84,6 +84,30 @@ for the full design-space survey.
 
 ## Decision
 
+### Conversation navigation continuity (accepted 2026-09-18)
+
+Retain recent channel projections in bounded, memory-only renderer cache keyed
+by platform scope and channel ID. Cached projections provide immediate first
+paint; the existing authoritative channel subscription always reconnects and
+refreshes them. This is not offline persistence or client-side projection of
+Runtime events. Use the existing QueryClient as storage; no Redis service.
+
+The URL owns visible selection. Persisting the last selected channel is a
+serialized, coalesced background operation, never a prerequisite to reading or
+rendering a channel. Opening a subscription must not wait for a preference write
+or a full app-shell fetch. Channel projection must not call Runtime health/setup
+or enumerate installed products. Keep canonical channel read repairs.
+
+Retain conversation-specific execution targets, drafts and scroll position.
+Late responses cannot change the active route or apply one channel's data to
+another. Remove deleted entities from cache and clear it on auth/connection or
+platform-scope reset. Transient disconnects retain successful display while the
+subscription reconnects automatically. Temporary projection failures are
+retryable closes; only confirmed removal is terminal. Validate cold/warm navigation with delayed
+Runtime and writes, rapid switches, background messages and scope isolation.
+
+Implementation and validation: [PLAN-108](../plans/PLAN-108-conversation-navigation-cache.md).
+
 ### 1. Treat state sync as per-entity subscription, not global polling
 
 The renderer must move from "fetch whole app shell periodically" to

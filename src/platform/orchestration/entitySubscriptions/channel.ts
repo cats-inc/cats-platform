@@ -6,7 +6,11 @@ import type {
 import type {
   ChatApiDependencies,
 } from '../../../products/chat/api/routeSupport.js';
-import { buildAppShellPayload } from '../../../products/chat/api/routeSupport.js';
+import { repairChannelReadState } from '../../../products/chat/api/channelRepair.js';
+import {
+  buildChannelView,
+  summarizeParallelChatGroups,
+} from '../../../products/chat/state/model/readModels.js';
 
 export const CHANNEL_ENTITY_SUBSCRIPTION_VERSION = 1;
 
@@ -149,32 +153,34 @@ function collectChannelSessions(
   return sessions;
 }
 
+export class ChannelSubscriptionNotFoundError extends Error {}
+
 export async function buildChannelSubscriptionState(
   dependencies: ChatApiDependencies,
   channelId: string,
 ): Promise<ChannelSubscriptionState> {
-  const state = await dependencies.chatStore.read();
+  let state = await dependencies.chatStore.read();
   if (!state.channels.some((channel) => channel.id === channelId)) {
-    throw new Error(`Channel not found: ${channelId}`);
+    throw new ChannelSubscriptionNotFoundError(`Channel not found: ${channelId}`);
   }
 
-  const payload = await buildAppShellPayload(
-    dependencies,
+  // A transcript must be available even while Runtime health/setup is slow.
+  // Keep the same canonical read repairs as the shell without building it.
+  state = await repairChannelReadState(
     {
-      ...state,
-      selectedChannelId: channelId,
+      chatStore: dependencies.chatStore,
+      mutationGate: dependencies.mutationGate,
+      runtimeDataDir: dependencies.config.runtimeDataDir,
+      now: dependencies.now,
     },
+    channelId,
+    state,
   );
-  const selectedChannel = payload.chat.selectedChannel;
-  if (!selectedChannel || selectedChannel.id !== channelId) {
-    throw new Error(`Channel projection unavailable: ${channelId}`);
-  }
 
   return {
-    selectedChannelId: payload.chat.selectedChannelId,
-    selectedChannel,
-    parallelChatGroups: payload.chat.parallelChatGroups.filter((group) =>
-      group.memberChannelIds.includes(channelId)),
+    selectedChannelId: channelId,
+    selectedChannel: buildChannelView(state, channelId),
+    parallelChatGroups: summarizeParallelChatGroups(state, channelId),
   };
 }
 

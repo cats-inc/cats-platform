@@ -20,6 +20,7 @@ export interface EntitySubscriptionPatchEvent<TPatch = unknown> {
 
 export interface EntitySubscriptionCloseEvent {
   reason: string;
+  retryable?: boolean;
 }
 
 export type EntitySubscriptionSseEvent<TState = unknown, TPatch = unknown> =

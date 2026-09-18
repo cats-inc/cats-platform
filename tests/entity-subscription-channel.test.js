@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { createServer } from 'node:http';
+import { once } from 'node:events';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -16,6 +18,8 @@ import {
   createParallelChatGroup,
 } from '../build/server/products/chat/state/model/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { createChatEventHub } from '../build/server/products/chat/api/chatEventHub.js';
+import { routeEntitySubscriptionApi } from '../build/server/app/server/subscribeRoutes.js';
 
 function createRuntimeStub() {
   return {
@@ -29,6 +33,72 @@ function createRuntimeStub() {
     },
   };
 }
+
+test('channel subscription distinguishes temporary read failures from removed channels', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'cats-channel-recovery-'));
+  const store = new MemoryChatStore();
+  const initial = createParallelChatGroup(await store.read(), {
+    title: 'Recovery', originSurface: 'chat', targets: [
+      { provider: 'codex', model: null, instance: null, modelSelection: null },
+      { provider: 'claude', model: null, instance: null, modelSelection: null },
+    ],
+  });
+  await store.write(initial);
+  const id = initial.selectedChannelId;
+  const read = store.read.bind(store);
+  let failRead = true;
+  store.read = async () => {
+    if (failRead) throw new Error('Temporary read failure');
+    return read();
+  };
+  const eventHub = createChatEventHub();
+  const dependencies = {
+    config: loadConfig({ CATS_PLATFORM_DIR: root, CATS_RUNTIME_DIR: path.join(root, 'runtime'), CATS_DESKTOP_DIR: path.join(root, 'desktop') }),
+    chatStore: store, coreStore: store, eventHub, runtimeClient: createRuntimeStub(),
+  };
+  const server = createServer((request, response) => {
+    void routeEntitySubscriptionApi({ request, response, url: new URL(request.url, 'http://localhost'),
+      method: request.method, dependencies }).catch((error) => response.destroy(error));
+  });
+  t.after(async () => {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const url = `http://127.0.0.1:${server.address().port}/api/subscribe?kind=channel&id=${id}`;
+  const get = () => fetch(url, { signal: AbortSignal.timeout(5_000) });
+  assert.equal((await get()).status, 503);
+  failRead = false;
+  const until = async (reader, marker) => {
+    let text = '';
+    while (!text.includes(marker)) {
+      const chunk = await reader.read();
+      if (chunk.done) throw new Error(`Stream ended before ${marker}`);
+      text += new TextDecoder().decode(chunk.value);
+    }
+    return text;
+  };
+  const first = await get();
+  assert.equal(first.status, 200);
+  const firstReader = first.body.getReader();
+  await until(firstReader, 'event: snapshot');
+  failRead = true;
+  eventHub.emit({ kind: 'room_updated', channelId: id, timestamp: new Date().toISOString() });
+  assert.match(await until(firstReader, 'event: close'), /"retryable":true/u);
+  await firstReader.cancel();
+  failRead = false;
+  const recovered = await get();
+  assert.equal(recovered.status, 200);
+  const recoveredReader = recovered.body.getReader();
+  await until(recoveredReader, 'event: snapshot');
+  await store.write({ ...initial, channels: initial.channels.filter((channel) => channel.id !== id) });
+  eventHub.emit({ kind: 'recents_changed', timestamp: new Date().toISOString() });
+  assert.match(await until(recoveredReader, 'event: close'), /"retryable":false/u);
+  await recoveredReader.cancel();
+  assert.equal((await get()).status, 404);
+});
 
 function createChannelState(overrides = {}) {
   const selectedChannel = {
@@ -191,7 +261,11 @@ test('buildChannelSubscriptionState projects mounted channel and its compare gro
   const snapshot = await buildChannelSubscriptionState(
     {
       config,
-      runtimeClient: createRuntimeStub(),
+      runtimeClient: new Proxy({}, {
+        get(_target, method) {
+          throw new Error(`Channel projection must not access Runtime: ${String(method)}`);
+        },
+      }),
       chatStore,
       mutationGate: {
         async run(_key, operation) {

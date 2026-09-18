@@ -881,6 +881,7 @@ export function ChatView({
       channelId: selectedChannel.id,
       scrollKey: transcriptScrollKey,
       scrollOnChannelChange: true,
+      scopeKey: payload.scopeId,
     });
 
   useIsoLayoutEffect(() => {

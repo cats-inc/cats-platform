@@ -18,6 +18,7 @@ export interface EntitySubscriptionPatch<TPatch = unknown> {
 
 export interface EntitySubscriptionClose {
   reason: string;
+  retryable?: boolean;
 }
 
 export interface EntitySubscriptionCallbacks<TState = unknown, TPatch = unknown> {
@@ -31,6 +32,7 @@ export interface EntitySubscriptionOptions<TState = unknown, TPatch = unknown>
   kind: EntitySubscriptionKind;
   id: string | null;
   enabled?: boolean;
+  scopeKey?: string;
 }
 
 type EventSourceFactory = (url: string) => EventSource;
@@ -39,14 +41,15 @@ interface EntitySubscriptionEntry {
   kind: EntitySubscriptionKind;
   id: string;
   callbacks: Set<EntitySubscriptionCallbacks>;
+  scopeKey?: string;
   source: EventSource | null;
   retryCount: number;
   retryTimer: ReturnType<typeof setTimeout> | null;
   closed: boolean;
 }
 
-function createSubscriptionKey(kind: EntitySubscriptionKind, id: string): string {
-  return `${kind}:${id}`;
+function createSubscriptionKey(kind: EntitySubscriptionKind, id: string, scopeKey = ''): string {
+  return JSON.stringify([scopeKey, kind, id]);
 }
 
 export class EntitySubscriptionHub {
@@ -66,12 +69,13 @@ export class EntitySubscriptionHub {
       return () => {};
     }
 
-    const key = createSubscriptionKey(options.kind, options.id);
+    const key = createSubscriptionKey(options.kind, options.id, options.scopeKey);
     let entry = this.entries.get(key);
     if (!entry) {
       entry = {
         kind: options.kind,
         id: options.id,
+        scopeKey: options.scopeKey,
         callbacks: new Set<EntitySubscriptionCallbacks>(),
         source: null,
         retryCount: 0,
@@ -117,32 +121,45 @@ export class EntitySubscriptionHub {
     entry.source = source;
 
     source.addEventListener('open', () => {
+      if (entry.closed || entry.source !== source) return;
       entry.retryCount = 0;
     });
 
     source.addEventListener('snapshot', (event) => {
+      if (entry.closed || entry.source !== source) return;
       const snapshot = JSON.parse((event as MessageEvent).data) as EntitySubscriptionSnapshot;
+      if (snapshot.kind !== entry.kind || snapshot.id !== entry.id) return;
       for (const callbacks of entry.callbacks) {
         callbacks.onSnapshot(snapshot);
       }
     });
 
     source.addEventListener('patch', (event) => {
+      if (entry.closed || entry.source !== source) return;
       const patch = JSON.parse((event as MessageEvent).data) as EntitySubscriptionPatch;
+      if (patch.kind !== entry.kind || patch.id !== entry.id) return;
       for (const callbacks of entry.callbacks) {
         callbacks.onPatch(patch);
       }
     });
 
     source.addEventListener('close', (event) => {
+      if (entry.closed || entry.source !== source) return;
       const close = JSON.parse((event as MessageEvent).data) as EntitySubscriptionClose;
       for (const callbacks of entry.callbacks) {
         callbacks.onClose?.(close);
       }
-      this.closeEntry(createSubscriptionKey(entry.kind, entry.id), entry);
+      if (close.retryable) {
+        source.close();
+        entry.source = null;
+        this.scheduleReconnect(entry);
+        return;
+      }
+      this.closeEntry(createSubscriptionKey(entry.kind, entry.id, entry.scopeKey), entry);
     });
 
     source.onerror = () => {
+      if (entry.closed || entry.source !== source) return;
       source.close();
       if (entry.source === source) {
         entry.source = null;
@@ -180,7 +197,10 @@ export const entitySubscriptionHub = new EntitySubscriptionHub();
 
 export function useEntitySubscription<TState, TPatch>(
   options: EntitySubscriptionOptions<TState, TPatch>,
+  hub: EntitySubscriptionHub = entitySubscriptionHub,
 ): void {
+  const scopeRef = useRef(options.scopeKey);
+  scopeRef.current = options.scopeKey;
   const callbacksRef = useRef<EntitySubscriptionCallbacks<TState, TPatch>>({
     onSnapshot: options.onSnapshot,
     onPatch: options.onPatch,
@@ -192,12 +212,13 @@ export function useEntitySubscription<TState, TPatch>(
     onClose: options.onClose,
   };
 
-  useEffect(() => entitySubscriptionHub.subscribe<TState, TPatch>({
+  useEffect(() => hub.subscribe<TState, TPatch>({
     kind: options.kind,
     id: options.id,
     enabled: options.enabled,
-    onSnapshot: (snapshot) => callbacksRef.current.onSnapshot(snapshot),
-    onPatch: (patch) => callbacksRef.current.onPatch(patch),
-    onClose: (close) => callbacksRef.current.onClose?.(close),
-  }), [options.enabled, options.id, options.kind]);
+    scopeKey: options.scopeKey,
+    onSnapshot: (snapshot) => { if (scopeRef.current === options.scopeKey) callbacksRef.current.onSnapshot(snapshot); },
+    onPatch: (patch) => { if (scopeRef.current === options.scopeKey) callbacksRef.current.onPatch(patch); },
+    onClose: (close) => { if (scopeRef.current === options.scopeKey) callbacksRef.current.onClose?.(close); },
+  }), [hub, options.enabled, options.id, options.kind, options.scopeKey]);
 }

@@ -108,6 +108,9 @@ import {
   type ChannelSubscriptionState,
 } from "./entitySubscriptionChannelDispatcher.js";
 import { useEntitySubscription } from "./entitySubscriptionHub.js";
+import { useConversationNavigationState } from './hooks/useConversationNavigationState.js';
+import { conversationScope } from './conversationNavigationCache.js';
+import { useConversationComposerState, writeConversationComposer } from './conversationViewMemory.js';
 import {
   createDefaultRuntimeSessionPolicy,
   type RuntimeSessionPolicy,
@@ -339,10 +342,8 @@ export function createWorkspaceProductApp({
     }, [currentNavigationPath, initialWarmPayload, shellSurface]);
 
     const {
-      state,
-      setState,
-      composerDraft,
-      setComposerDraft,
+      state: storedState,
+      setState: setStoredState,
       catForm,
       setCatForm,
       busy,
@@ -356,8 +357,6 @@ export function createWorkspaceProductApp({
       setDraftCwd,
       draftFiles,
       setDraftFiles,
-      channelFiles,
-      setChannelFiles,
     } = useWorkspaceAppTransientState<AppLoadState, CatFormState>({
       initialState: initialWarmPayload
         ? { status: "ready", payload: initialWarmPayload }
@@ -365,6 +364,16 @@ export function createWorkspaceProductApp({
       createEmptyCatForm: emptyCatForm,
       pickGreeting: () => pickGreeting(t),
     });
+    const { state, setState, channelId: navigationChannelId, subscriptionScope } = useConversationNavigationState({
+      state: storedState,
+      setState: setStoredState,
+      routeChannelId,
+      directRecipientId: showingMyCatDirectLane ? draftDefaultRecipientCatId : null,
+    });
+    const { composerDraft, setComposerDraft, channelFiles, setChannelFiles, generation: composerGeneration } = useConversationComposerState(
+      state.status === 'ready' ? conversationScope(state.payload) : '',
+      navigationChannelId ? `channel:${navigationChannelId}` : `draft:${currentNavigationPath}`,
+    );
     const draftFolderBrowseTargetRef = useRef<DraftFolderBrowseTarget>({ kind: "lead" });
     const parallelBranchCwdSetterRef = useRef<(
       (index: number, cwd: string | null) => void
@@ -1273,10 +1282,14 @@ export function createWorkspaceProductApp({
       setState,
       navigate,
       platformShellSurface: shellSurface,
+      navigationSnapshot: state.status === 'ready' ? state.payload : undefined,
       setBusy,
       setFeedback,
       setComposerDraft,
       setAccountMenuOpen,
+      resetDraftComposer: (path) => {
+        if (state.status === 'ready') writeConversationComposer(conversationScope(state.payload), `draft:${path}`, { text: '', files: [] }, composerGeneration);
+      },
       setAddCatOpen,
       setPlusMenuOpen,
       setChannelPlusMenuOpen,
@@ -1304,21 +1317,24 @@ export function createWorkspaceProductApp({
       selectedChannel: liveIndicatorChannel,
       debugTraceEnabled: readyPayload?.chat.capabilities.debugLiveTrace === true,
     });
-    const subscribedChannelId = liveIndicatorChannel
-      && readyPayload?.chat.selectedChannelId === liveIndicatorChannel.id
-      ? liveIndicatorChannel.id
+    const subscribedChannelId = navigationChannelId
+      && readyPayload?.chat.channels.some((channel) => channel.id === navigationChannelId)
+      ? navigationChannelId
       : null;
     useEntitySubscription<ChannelSubscriptionState, ChannelSubscriptionPatch>({
       kind: 'channel',
       id: subscribedChannelId,
+      scopeKey: subscriptionScope,
       enabled: state.status === 'ready' && Boolean(subscribedChannelId),
       onSnapshot: (snapshot) => {
+        if (snapshot.id !== subscribedChannelId) return;
         startTransition(() => {
           setState((current) =>
             applyChannelSubscriptionSnapshotToLoadState(current, snapshot));
         });
       },
       onPatch: (patch) => {
+        if (patch.id !== subscribedChannelId) return;
         startTransition(() => {
           setState((current) =>
             applyChannelSubscriptionPatchToLoadState(current, patch));
@@ -1395,6 +1411,9 @@ export function createWorkspaceProductApp({
       composerDraft,
       setComposerDraft,
       showingNewChatDraft,
+      restoreConversationComposer: (channelId, text, files) => {
+        if (state.status === 'ready') writeConversationComposer(conversationScope(state.payload), `channel:${channelId}`, { text, files }, composerGeneration);
+      },
       showingMyCatDirectLane,
       draftEntryKind,
       draftDefaultRecipientCatId,

@@ -99,6 +99,7 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   currentPath: string;
   composerDraft: string;
   setComposerDraft: Dispatch<SetStateAction<string>>;
+  restoreConversationComposer?: (channelId: string, text: string, files: File[]) => void;
   showingNewChatDraft: boolean;
   showingMyCatDirectLane: boolean;
   draftEntryKind?: 'default' | 'group' | 'direct';
@@ -161,6 +162,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     currentPath,
     composerDraft,
     setComposerDraft,
+    restoreConversationComposer,
     showingNewChatDraft,
     showingMyCatDirectLane,
     draftEntryKind = 'default',
@@ -302,6 +304,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
 
         rollbackPayload = dispatch.createdAppShell;
         rollbackPath = dispatch.rollbackPath;
+        channelId = dispatch.createdAppShell.chat.selectedChannelId;
         setComposerDraft('');
         setDraftFiles([]);
         navigateWithinManagedFlow(rollbackPath);
@@ -531,8 +534,14 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         pendingOptimisticMessageId = null;
       }
       setState({ status: 'ready', payload: rollbackPayload });
-      setComposerDraft(body);
-      restoreFiles();
+      if (restoreConversationComposer && channelId && rollbackPayload.chat.channels.some((channel) => channel.id === channelId)) {
+        setComposerDraft('');
+        restoreConversationComposer(channelId, body,
+          wasDraftingNewChat || (isCatScopedLaneRoute && !hydratedDirectLane) ? originalDraftFiles : originalChannelFiles);
+      } else {
+        setComposerDraft(body);
+        restoreFiles();
+      }
       if (isAbortError(error)) {
         setFeedback('');
       } else {
@@ -559,6 +568,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     clearAckRequestIfCurrent,
     clearDispatchRequestIfCurrent,
     composerDraft,
+    restoreConversationComposer,
     currentPath,
     draftCatIds,
     draftTemporaryParticipants,
