@@ -475,9 +475,26 @@ An API key is used rather than `APPLE_ID` plus an app-specific password
 because it is revocable on its own and survives an Apple ID password change,
 which a stored CI secret has no way to notice.
 
-Windows reads `WIN_CSC_LINK` and `WIN_CSC_KEY_PASSWORD` the same way. Previews
-read none of these: the workflow blanks every signing secret when
-`preview == 'true'`.
+Windows reads `WIN_CSC_LINK` and `WIN_CSC_KEY_PASSWORD` the same way.
+
+Per ADR-117, these credentials are scoped to the **platform** that can use
+them, not to release identity, so a preview signs on any platform whose
+certificate exists. The macOS certificate never reaches the Windows job, where
+electron-builder would otherwise read a bare `CSC_LINK` as a Windows
+certificate. A preview on a platform with no certificate degrades to an
+unsigned artifact; only an official release refuses to build.
+
+Local packaging still never touches the keychain. Pass `--sign` (or
+`CATS_DESKTOP_SIGN_LOCAL=1`) to opt a local build into using an identity from
+the OS keychain — it is an explicit request rather than an inference, because
+a developer machine may hold unrelated certificates. `--sign` never submits
+anything to Apple's notary service.
+
+Every guarded build prints the trust it actually got, for example
+`trust=signed and notarized` or
+`trust=signed but NOT notarized (no App Store Connect API key)`. That middle
+state is the dangerous one: it looks correct on the build machine and is
+rejected on every other.
 
 Missing credentials fail an official build instead of downgrading it:
 
@@ -501,6 +518,12 @@ What the packaging configuration contributes:
 - `build.mac.notarize` is `false`. The wrapper passes `-c.mac.notarize=true`
   only for a release build that has credentials, so a local package or an
   unsigned preview never waits on Apple.
+
+**Existing unsigned macOS preview installs cannot self-update into the first
+signed preview.** Squirrel.Mac requires a valid signature on the *running*
+application before it will apply an update, so the unsigned-to-signed
+transition is a discontinuity: those users download the next preview manually,
+once. This applies only to that one transition.
 
 The release workflow verifies the output rather than trusting the build:
 `codesign --verify --deep --strict` on the bundle, an explicit `codesign`

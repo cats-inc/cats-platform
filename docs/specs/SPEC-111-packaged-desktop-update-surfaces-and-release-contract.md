@@ -84,15 +84,22 @@ Landed:
 - Manual workflow dispatch builds a clearly named preview on the same three
   runners, published as a GitHub prerelease that never becomes `latest`.
 
-  As implemented today the preview is unsigned on every platform: it does not
-  read signing secrets and its signatures are not verified. ADR-117 supersedes
-  that behavior — a preview is to be signed on any platform whose credentials
-  exist, because Squirrel.Mac will not update an unsigned application and
-  Gatekeeper will not install one without a manual bypass, which leaves the
-  macOS update client untestable. The rename from `unsigned-preview` artifact
-  names follows the same change. PLAN-101 tracks the remaining work; until it
-  lands, macOS previews still require a manual quarantine bypass and cannot
-  self-update.
+  Per ADR-117 the preview is signed on any platform whose credentials exist.
+  Signing secrets are scoped to the platform that can use them rather than to
+  release identity, so macOS previews are signed and notarized while Windows
+  previews stay unsigned until that certificate is obtained. A platform with no
+  credentials degrades to an unsigned artifact; only an official release
+  refuses to build. Each guarded build reports the trust it actually received,
+  because a silently unsigned artifact is indistinguishable from a signed one
+  until a user tries to install it.
+
+  Verification follows the same rule: the signature, notarization ticket, and
+  the Swift voice helper under `Resources` are checked on the preview path too,
+  and skipped only where that platform has no certificate.
+
+  Existing unsigned macOS preview installs cannot self-update into the first
+  signed preview, because Squirrel.Mac requires a valid signature on the
+  running application. That one transition needs a manual download.
 
   The preview does embed a release descriptor, marked `kind: preview`, so the
   update client itself can be exercised once signing allows it. That descriptor

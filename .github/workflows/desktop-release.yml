@@ -6,9 +6,11 @@ name: cats-platform desktop release
 # The draft is created first, every platform uploads into it, a validation job
 # checks the update metadata references real assets, and only then is the
 # release published. A failed platform job therefore leaves no partially
-# published latest stable release. Manual dispatch is a separate unsigned
-# preview: it exercises the same draft/build/validate/publish sequence but
-# publishes only as a GitHub prerelease and never becomes latest.
+# published latest stable release. Manual dispatch is a separate preview path:
+# it exercises the same draft/build/validate/publish sequence but publishes
+# only as a GitHub prerelease and never becomes latest. Per ADR-117 a preview
+# is signed wherever credentials exist; that is artifact trust, not release
+# identity, and it never makes the preview official.
 
 on:
   push:
@@ -104,7 +106,7 @@ jobs:
             fi
             echo "Draft release for $TAG already exists; reusing it."
           elif [ "$PREVIEW" = "true" ]; then
-            gh release create "$TAG" --target "$COMMIT" --draft --prerelease --title "Cats $TAG (unsigned preview)" --generate-notes
+            gh release create "$TAG" --target "$COMMIT" --draft --prerelease --title "Cats $TAG (preview)" --generate-notes
           else
             gh release create "$TAG" --verify-tag --draft --title "Cats $TAG" --generate-notes
           fi
@@ -186,12 +188,22 @@ jobs:
       # than as its contents, so the secret is materialized outside the
       # workspace first. Staging it through GITHUB_ENV rather than the build
       # step's own env block keeps the key file out of the packaged tree.
+      #
+      # ADR-117: previews are notarized too, so this runs on both guarded
+      # paths. A preview without credentials degrades to unsigned rather than
+      # failing -- mandating them is the release gate's job, not this step's.
       - name: Stage the notarization API key
-        if: matrix.platform == 'macos' && needs.guard.outputs.preview == 'false'
+        if: matrix.platform == 'macos'
         env:
-          APPLE_API_KEY_P8_BASE64: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_API_KEY_P8_BASE64 || '' }}
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          IS_PREVIEW: ${{ needs.guard.outputs.preview }}
         run: |
           if [ -z "$APPLE_API_KEY_P8_BASE64" ]; then
+            if [ "$IS_PREVIEW" = "true" ]; then
+              echo 'APPLE_API_KEY_P8_BASE64 is not configured: this preview will be unsigned,'
+              echo 'so it cannot be installed without a Gatekeeper bypass and cannot self-update.'
+              exit 0
+            fi
             echo 'APPLE_API_KEY_P8_BASE64 is not configured; refusing to build an official macOS release.'
             exit 1
           fi
@@ -209,17 +221,20 @@ jobs:
           CATS_DESKTOP_RELEASE_TAG: ${{ needs.guard.outputs.tag }}
           CATS_DESKTOP_RELEASE_PLATFORM: ${{ matrix.platform }}
           CATS_DESKTOP_RUNTIME_COMMIT: ${{ steps.runtime.outputs.sha }}
-          # Unsigned previews must not read signing secrets even after those
-          # secrets are configured for stable tag releases.
-          WIN_CSC_LINK: ${{ needs.guard.outputs.preview == 'false' && secrets.WIN_CSC_LINK || '' }}
-          WIN_CSC_KEY_PASSWORD: ${{ needs.guard.outputs.preview == 'false' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
-          CSC_LINK: ${{ needs.guard.outputs.preview == 'false' && secrets.CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ needs.guard.outputs.preview == 'false' && secrets.CSC_KEY_PASSWORD || '' }}
+          # ADR-117: credentials are scoped to the platform that can use them,
+          # not to release identity, so previews sign wherever a certificate
+          # exists. Scoping by platform also keeps the macOS certificate out of
+          # the Windows job, where electron-builder would otherwise read a bare
+          # CSC_LINK as its Windows certificate.
+          WIN_CSC_LINK: ${{ matrix.platform == 'windows' && secrets.WIN_CSC_LINK || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ matrix.platform == 'windows' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+          CSC_LINK: ${{ matrix.platform == 'macos' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'macos' && secrets.CSC_KEY_PASSWORD || '' }}
           # APPLE_API_KEY is the .p8 path staged above. These two complete the
           # App Store Connect key; electron-builder requires all three or it
           # refuses to notarize.
-          APPLE_API_KEY_ID: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_API_KEY_ID || '' }}
-          APPLE_API_ISSUER: ${{ needs.guard.outputs.preview == 'false' && secrets.APPLE_API_ISSUER || '' }}
+          APPLE_API_KEY_ID: ${{ matrix.platform == 'macos' && secrets.APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ matrix.platform == 'macos' && secrets.APPLE_API_ISSUER || '' }}
         # Manual dispatch exercises packaging, metadata generation, artifact
         # upload, validation, and the update client itself. The preview embeds
         # a descriptor marked `preview`, so it can self-update while resolving
@@ -236,10 +251,21 @@ jobs:
       - name: Verify bundled App versions and offline activation
         run: node scripts/verify-desktop-app-bundle.mjs --release-root release --expect-lock config/desktop-apps.lock.json
 
+      # Verification follows the credentials, not the release identity: a
+      # signed preview is verified, and a platform with no certificate says so
+      # rather than failing a build that was never going to be signed. An
+      # official release cannot reach this step unsigned -- the release gate
+      # refuses that build before packaging starts.
       - name: Verify Windows signature
-        if: matrix.platform == 'windows' && needs.guard.outputs.preview == 'false'
+        if: matrix.platform == 'windows'
         shell: pwsh
+        env:
+          HAS_CERT: ${{ secrets.WIN_CSC_LINK != '' }}
         run: |
+          if ($env:HAS_CERT -ne 'true') {
+            Write-Host 'No Windows certificate configured; this artifact is unsigned.'
+            exit 0
+          }
           $installer = Get-ChildItem release -Filter *.exe | Select-Object -First 1
           if (-not $installer) { throw 'No Windows installer was produced.' }
           $signature = Get-AuthenticodeSignature $installer.FullName
@@ -249,8 +275,14 @@ jobs:
           }
 
       - name: Verify macOS signature and notarization
-        if: matrix.platform == 'macos' && needs.guard.outputs.preview == 'false'
+        if: matrix.platform == 'macos'
+        env:
+          HAS_CERT: ${{ secrets.CSC_LINK != '' }}
         run: |
+          if [ "$HAS_CERT" != "true" ]; then
+            echo 'No macOS certificate configured; this artifact is unsigned and cannot self-update.'
+            exit 0
+          fi
           app=$(find release -maxdepth 3 -name '*.app' | head -1)
           if [ -z "$app" ]; then echo 'No macOS app bundle was produced.'; exit 1; fi
           codesign --verify --deep --strict --verbose=2 "$app"
@@ -270,7 +302,7 @@ jobs:
       - name: Upload artifacts for validation
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ needs.guard.outputs.preview == 'true' && 'unsigned-preview' || 'release' }}-${{ matrix.platform }}
+          name: ${{ needs.guard.outputs.preview == 'true' && 'preview' || 'release' }}-${{ matrix.platform }}
           # latest*.yml rather than *.yml: electron-builder also writes
           # builder-debug.yml and builder-effective-config.yaml into release/,
           # and those are build diagnostics, not release artifacts. Collecting
