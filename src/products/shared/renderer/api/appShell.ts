@@ -78,6 +78,19 @@ export async function updateSelectedChannel(
   );
 }
 
+export async function persistSelectedChannel(
+  selectedChannelId: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await fetch('/api/preferences', {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ selectedChannelId }),
+    signal,
+  });
+  await expectJson<WorkspacePreferencesPayload>(response, `cats chat selection returned ${response.status}`);
+}
+
 export async function updateConversationBehaviorPreference(
   surface: ConversationBehaviorSurface,
   patch: SurfaceConversationBehaviorPatch,

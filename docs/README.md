@@ -2,6 +2,12 @@
 
 > This directory contains all project documentation.
 
+## Conversation Navigation
+
+Conversation switching and retained projection work is tracked in
+[PLAN-108](./plans/PLAN-108-conversation-navigation-cache.md), governed by ADR-075
+and SPEC-076. It includes isolated validation and timing evidence.
+
 ## Pending Workspace Lifecycle Review
 
 [Runtime's Playground workspace retention note](../../cats-runtime/docs/research/2026-09-18-playground-workspace-retention.md)

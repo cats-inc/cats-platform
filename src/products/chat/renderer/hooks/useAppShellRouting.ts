@@ -7,7 +7,6 @@ import {
 import { CHAT_PREFIX } from '../../shared/channelPaths.js';
 import {
   fetchAppShell,
-  updateSelectedChannel,
 } from '../api/index.js';
 import {
   resolveDraftRouteContext,
@@ -26,7 +25,6 @@ export function useAppShellRouting(
     ...options,
     chatPrefix: CHAT_PREFIX,
     fetchAppShell,
-    updateSelectedChannel,
     isRouteSelectionBlocked: doesComposerSelectionBlockChannelRoute,
     resolveMissingDraftDefaultRecipientPath: ({
       channels,

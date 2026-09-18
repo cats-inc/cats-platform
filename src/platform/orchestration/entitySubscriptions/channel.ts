@@ -3,10 +3,11 @@ import type {
   ChatMessage,
   ParallelChatGroupSummary,
 } from '../../../products/chat/api/contracts.js';
-import type {
-  ChatApiDependencies,
+import {
+  buildChannelSubscriptionView,
+  type ChatApiDependencies,
 } from '../../../products/chat/api/routeSupport.js';
-import { buildAppShellPayload } from '../../../products/chat/api/routeSupport.js';
+export { ChannelSubscriptionNotFoundError } from '../../../products/chat/api/routeSupport.js';
 
 export const CHANNEL_ENTITY_SUBSCRIPTION_VERSION = 1;
 
@@ -153,29 +154,7 @@ export async function buildChannelSubscriptionState(
   dependencies: ChatApiDependencies,
   channelId: string,
 ): Promise<ChannelSubscriptionState> {
-  const state = await dependencies.chatStore.read();
-  if (!state.channels.some((channel) => channel.id === channelId)) {
-    throw new Error(`Channel not found: ${channelId}`);
-  }
-
-  const payload = await buildAppShellPayload(
-    dependencies,
-    {
-      ...state,
-      selectedChannelId: channelId,
-    },
-  );
-  const selectedChannel = payload.chat.selectedChannel;
-  if (!selectedChannel || selectedChannel.id !== channelId) {
-    throw new Error(`Channel projection unavailable: ${channelId}`);
-  }
-
-  return {
-    selectedChannelId: payload.chat.selectedChannelId,
-    selectedChannel,
-    parallelChatGroups: payload.chat.parallelChatGroups.filter((group) =>
-      group.memberChannelIds.includes(channelId)),
-  };
+  return buildChannelSubscriptionView(dependencies, channelId);
 }
 
 export function buildChannelSubscriptionPatches(

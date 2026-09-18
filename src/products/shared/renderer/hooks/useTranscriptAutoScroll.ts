@@ -1,12 +1,14 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type RefCallback,
 } from 'react';
 
 import { isScrollNearBottom } from '../../../../core/scrolling.js';
+import { readConversationScroll, rememberConversationScroll } from '../conversationViewMemory.js';
 
 const NEAR_BOTTOM_PX = 80;
 const COMPOSER_CLEARANCE_PX = 12;
@@ -33,6 +35,7 @@ export function useTranscriptAutoScroll(options: {
   channelId: string;
   scrollKey: string;
   scrollOnChannelChange?: boolean;
+  scopeKey?: string;
 }): {
   transcriptListRef: RefCallback<HTMLDivElement>;
   composerCardRef: RefCallback<HTMLElement>;
@@ -40,7 +43,7 @@ export function useTranscriptAutoScroll(options: {
   isNearBottom: boolean;
   scrollToBottom: () => void;
 } {
-  const { channelId, scrollKey, scrollOnChannelChange = true } = options;
+  const { channelId, scrollKey, scrollOnChannelChange = true, scopeKey = '' } = options;
   const [transcriptListElement, setTranscriptListElement] = useState<HTMLDivElement | null>(null);
   const [composerCardElement, setComposerCardElement] = useState<HTMLElement | null>(null);
   const [bottomSentinelElement, setBottomSentinelElement] = useState<HTMLDivElement | null>(null);
@@ -161,25 +164,43 @@ export function useTranscriptAutoScroll(options: {
     });
   }, [scrollToBottom]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const scrollContainer = findScrollContainer(transcriptListElement);
     scrollContainerRef.current = scrollContainer;
     if (!scrollContainer) {
       return;
     }
 
-    syncScrollState();
+    const retained = readConversationScroll(scopeKey, channelId);
+    if (scrollOnChannelChange && retained && !retained.nearBottom) {
+      scrollContainer.scrollTop = retained.top;
+      shouldAutoScrollRef.current = false;
+      setIsNearBottom(false);
+    } else if (scrollOnChannelChange) {
+      shouldAutoScrollRef.current = true;
+      scheduleScrollToBottom();
+    } else {
+      syncScrollState();
+    }
     const handleScroll = (): void => {
       syncScrollState();
+      rememberConversationScroll(scopeKey, channelId, {
+        top: scrollContainer.scrollTop,
+        nearBottom: shouldAutoScrollRef.current,
+      });
     };
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
+      if (pendingScrollFrameRef.current !== null) {
+        cancelAnimationFrame(pendingScrollFrameRef.current);
+        pendingScrollFrameRef.current = null;
+      }
       scrollContainer.removeEventListener('scroll', handleScroll);
       if (scrollContainerRef.current === scrollContainer) {
         scrollContainerRef.current = null;
       }
     };
-  }, [syncScrollState, transcriptListElement]);
+  }, [channelId, scopeKey, scrollOnChannelChange, scheduleScrollToBottom, syncScrollState, transcriptListElement]);
 
   useEffect(() => {
     syncComposerDocking();
@@ -204,16 +225,6 @@ export function useTranscriptAutoScroll(options: {
       bottomSentinelHeightRef.current = null;
     };
   }, [bottomSentinelElement, composerCardElement, syncComposerDocking, syncTranscriptBottomInset, transcriptListElement]);
-
-  useEffect(() => {
-    if (!transcriptListElement || !scrollOnChannelChange) {
-      return;
-    }
-
-    shouldAutoScrollRef.current = true;
-    scheduleScrollToBottom();
-    return undefined;
-  }, [channelId, scrollOnChannelChange, scheduleScrollToBottom, transcriptListElement]);
 
   useEffect(() => {
     if (!transcriptListElement || !shouldAutoScrollRef.current) {

@@ -332,8 +332,12 @@ export function buildChannelExportFilename(state: ChatState, channelId: string):
   return createChannelExportFilename(channel.title, channel.id);
 }
 
-function summarizeParallelChatGroups(state: ChatState): ParallelChatGroupSummary[] {
+export function summarizeParallelChatGroups(
+  state: ChatState,
+  channelId?: string,
+): ParallelChatGroupSummary[] {
   return state.parallelChatGroups
+    .filter((group) => !channelId || group.memberChannelIds.includes(channelId))
     .map((group) => {
       const members = group.memberChannelIds
         .map((channelId) => requireChannel(state, channelId))

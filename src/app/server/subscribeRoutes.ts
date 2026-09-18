@@ -14,6 +14,7 @@ import {
   buildChannelSubscriptionPatches,
   buildChannelSubscriptionState,
   CHANNEL_ENTITY_SUBSCRIPTION_VERSION,
+  ChannelSubscriptionNotFoundError,
   type ChannelSubscriptionState,
 } from '../../platform/orchestration/entitySubscriptions/channel.js';
 import {
@@ -75,9 +76,10 @@ async function routeChannelSubscription(
   try {
     latestState = await buildChannelSubscriptionState(context.dependencies, id);
   } catch (error) {
-    sendJson(context.response, 404, {
+    const missing = error instanceof ChannelSubscriptionNotFoundError;
+    sendJson(context.response, missing ? 404 : 503, {
       error: {
-        code: 'subscription_entity_not_found',
+        code: missing ? 'subscription_entity_not_found' : 'subscription_temporarily_unavailable',
         message: error instanceof Error ? error.message : `Channel not found: ${id}`,
       },
     });
@@ -130,6 +132,7 @@ async function routeChannelSubscription(
           event: 'close',
           data: {
             reason: error instanceof Error ? error.message : 'Subscription refresh failed',
+            retryable: !(error instanceof ChannelSubscriptionNotFoundError),
           },
         });
         context.response.end();

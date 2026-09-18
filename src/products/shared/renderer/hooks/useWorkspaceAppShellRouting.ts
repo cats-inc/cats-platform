@@ -15,7 +15,6 @@ import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js'
 import type { AppShellPayload, ChatChannelSummary } from '../../api/workspaceContracts.js';
 import {
   fetchAppShell as fetchWorkspaceAppShell,
-  updateSelectedChannel as updateWorkspaceSelectedChannel,
 } from '../api/index.js';
 import {
   buildWorkspaceChannelPath,
@@ -23,8 +22,8 @@ import {
   resolveWorkspaceNewChatPath,
   resolveWorkspaceVisibleChatPath,
 } from '../../channelPaths.js';
-import { shouldWakeRouteChannelOnEntry, type SelectedChannelView } from '../../channelEntry.js';
-import { isDirectLaneChannel } from '../../channelTopology.js';
+import type { SelectedChannelView } from '../../channelEntry.js';
+import { selectedChannelPersistence } from '../selectedChannelPersistence.js';
 import type { ChatLifecycleState } from '../../lifecycle.js';
 import {
   consumeCrossSurfaceNavigationSnapshot,
@@ -45,6 +44,7 @@ export interface WorkspaceRoutingPayloadLike {
 }
 
 export interface BackgroundRefreshPayloadLike extends WorkspaceRoutingPayloadLike {
+  scopeId?: string;
   runtime: AppShellPayload['runtime'];
   runtimeSetup: AppShellPayload['runtimeSetup'];
   metadata: AppShellPayload['metadata'];
@@ -77,7 +77,6 @@ export interface WorkspaceAppShellRoutingOptions<
   readySelectedChannel: SelectedChannelView | null;
   unknownRendererErrorMessage: string;
   fetchAppShell?: (signal: AbortSignal) => Promise<TPayload>;
-  updateSelectedChannel?: (channelId: string, signal: AbortSignal) => Promise<TPayload>;
   isRouteSelectionBlocked?: (
     busy: WorkspaceBusyState | null | undefined,
     routeChannelId: string | null,
@@ -262,19 +261,12 @@ export function useWorkspaceAppShellRouting<
     routeChannelId,
     routeChannelExists,
     selectedChannelId,
-    selectedChannelViewId,
-    selectedChannelEntryLifecycle,
     draftDefaultRecipientCatId,
     showingMyCatDirectLane,
     routeDirectLaneSummary,
-    readySelectedChannel,
     unknownRendererErrorMessage,
     fetchAppShell =
       fetchWorkspaceAppShell as unknown as (signal: AbortSignal) => Promise<TPayload>,
-    updateSelectedChannel = updateWorkspaceSelectedChannel as unknown as (
-      channelId: string,
-      signal: AbortSignal,
-    ) => Promise<TPayload>,
     isRouteSelectionBlocked = doesComposerSelectionBlockChannelRoute,
     resolveMissingDraftDefaultRecipientPath,
   } = options;
@@ -313,10 +305,6 @@ export function useWorkspaceAppShellRouting<
       cat.id === draftDefaultRecipientCatId && cat.status === 'active')
     : false;
   const routeDirectLaneSummaryId = routeDirectLaneSummary?.id ?? null;
-  const readySelectedDirectLaneRecipientId =
-    readySelectedChannel && isDirectLaneChannel(readySelectedChannel)
-      ? readySelectedChannel.roomRouting.defaultRecipientId ?? null
-      : null;
   const initialNavigationMatchRef = useRef({
     surface,
     path: currentPath,
@@ -435,30 +423,9 @@ export function useWorkspaceAppShellRouting<
       return;
     }
 
-    if (!shouldWakeRouteChannelOnEntry({
-      routeChannelId,
-      routeChannelExists,
-      selectedChannelId,
-      selectedChannelViewId,
-      entryLifecycleState: selectedChannelEntryLifecycle,
-    })) {
-      return;
-    }
-
-    const controller = new AbortController();
-    updateSelectedChannel(routeChannelId, controller.signal)
-      .then((payload) => {
-        if (!controller.signal.aborted) {
-          startTransition(() => setState({ status: 'ready', payload }));
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          navigate(routeSelectionVisibleChatPath, { replace: true });
-        }
-      });
-
-    return () => controller.abort();
+    // Visible selection is route-owned. Persistence never fetches an app shell
+    // or redirects the user; the mounted entity subscription reads the channel.
+    selectedChannelPersistence.select(readyPayload.scopeId ?? '', routeChannelId);
   }, [
     busy,
     chatPrefix,
@@ -466,11 +433,8 @@ export function useWorkspaceAppShellRouting<
     routeChannelExists,
     routeChannelId,
     routeSelectionVisibleChatPath,
-    selectedChannelEntryLifecycle,
-    selectedChannelId,
-    selectedChannelViewId,
-    setState,
-    readyPayload,
+    readyPayload?.scopeId,
+    state.status,
   ]);
 
   useEffect(() => {
@@ -495,33 +459,16 @@ export function useWorkspaceAppShellRouting<
       || !showingMyCatDirectLane
       || !draftDefaultRecipientCatId
       || !routeDirectLaneSummaryId
-      || (
-        readySelectedDirectLaneRecipientId
-        && readySelectedDirectLaneRecipientId === draftDefaultRecipientCatId
-      )
     ) {
       return;
     }
 
-    const controller = new AbortController();
-    updateSelectedChannel(routeDirectLaneSummaryId, controller.signal)
-      .then((payload) => {
-        if (!controller.signal.aborted) {
-          startTransition(() => setState({ status: 'ready', payload }));
-        }
-      })
-      .catch(() => {
-        // Keep the route on the in-place lane even if the hidden backing channel
-        // could not be reselected; the draft surface remains the fallback.
-      });
-
-    return () => controller.abort();
+    selectedChannelPersistence.select(readyPayload.scopeId ?? '', routeDirectLaneSummaryId);
   }, [
     draftDefaultRecipientCatId,
-    readyPayload,
-    readySelectedDirectLaneRecipientId,
+    readyPayload?.scopeId,
+    state.status,
     routeDirectLaneSummaryId,
-    setState,
     showingMyCatDirectLane,
   ]);
 }

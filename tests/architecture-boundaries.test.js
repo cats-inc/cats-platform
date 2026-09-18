@@ -1182,7 +1182,7 @@ test('renderer app consumes a dedicated app-shell routing hook instead of defini
   assert.doesNotMatch(appSource, /updateSelectedChannel\(routeChannelId,\s*controller\.signal\)/u);
   assert.match(chatHookSource, /useWorkspaceAppShellRouting/u);
   assert.match(sharedHookSource, /fetchAppShell/u);
-  assert.match(sharedHookSource, /updateSelectedChannel/u);
+  assert.match(sharedHookSource, /selectedChannelPersistence\.select/u);
 });
 
 test('renderer app consumes a dedicated folder-browser hook instead of defining browse flows inline', async () => {

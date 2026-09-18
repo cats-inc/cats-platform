@@ -69,6 +69,7 @@ import {
   setChannelStatus,
   ungroupParallelChatGroup,
 } from '../state/model/index.js';
+import { summarizeParallelChatGroups } from '../state/model/readModels.js';
 import {
   channelDispatchCancellationRegistry,
 } from '../state/runtime-dispatch/cancellation.js';
@@ -150,6 +151,8 @@ import type {
   CreateChatChannelInput,
   CreateCatInput,
   ChatChannelCat,
+  ChatChannelView,
+  ParallelChatGroupSummary,
   ChatState,
 } from './contracts.js';
 import type { TransportWorkGoldenPathPort } from '../../../platform/transports/work-delivery/port.js';
@@ -191,6 +194,35 @@ export const DEFAULT_CHAT_SCOPE_ID = 'default';
 
 export function nowFrom(dependencies: ChatApiDependencies): Date {
   return dependencies.now?.() ?? new Date();
+}
+
+export class ChannelSubscriptionNotFoundError extends Error {}
+
+/** Product-owned projection consumed through the existing Chat API boundary. */
+export async function buildChannelSubscriptionView(
+  dependencies: ChatApiDependencies,
+  channelId: string,
+): Promise<{
+  selectedChannelId: string;
+  selectedChannel: ChatChannelView;
+  parallelChatGroups: ParallelChatGroupSummary[];
+}> {
+  let state = await dependencies.chatStore.read();
+  if (!state.channels.some((channel) => channel.id === channelId)) {
+    throw new ChannelSubscriptionNotFoundError(`Channel not found: ${channelId}`);
+  }
+  // Reading a transcript must not wait for Runtime health/setup or full shell work.
+  state = await repairChannelReadState({
+    chatStore: dependencies.chatStore,
+    mutationGate: dependencies.mutationGate,
+    runtimeDataDir: dependencies.config.runtimeDataDir,
+    now: dependencies.now,
+  }, channelId, state);
+  return {
+    selectedChannelId: channelId,
+    selectedChannel: buildChannelView(state, channelId),
+    parallelChatGroups: summarizeParallelChatGroups(state, channelId),
+  };
 }
 
 export async function enqueueGuideCatAssistRefreshIfRuntimeReachable(

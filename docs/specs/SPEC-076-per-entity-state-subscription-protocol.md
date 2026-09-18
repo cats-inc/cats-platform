@@ -144,8 +144,9 @@ state to the target surface.
      state of `(kind, id)` before any `patch` event
    - zero or more `patch` events in the order they were applied on the
      server
-   - a terminal `close` event if the server decides to stop the
-     subscription (entity deleted, auth lost, etc.)
+   - a `close` event if the server stops the subscription. A channel refresh
+     failure sets `retryable: true`; the hub reconnects automatically. Entity
+     deletion is terminal (`retryable: false` or omitted).
 
 2. **FR-2: Snapshot semantics.** The `snapshot` event payload must be
    sufficient for the renderer to render the entity without
@@ -275,8 +276,15 @@ event: patch
 data: { "kind": "...", "id": "...", "patch": { ... }, "version": 1 }
 
 event: close
-data: { "reason": "..." }
+data: { "reason": "...", "retryable": true }
 ```
+
+For channel subscriptions, a missing entity at open returns HTTP 404; a
+temporary projection/read failure returns HTTP 503. Transport/open failures use
+the hub's existing backoff. A refresh failure after opening sends a retryable
+close, then ends the connection. The hub closes that source and uses the same
+single reconnect timer, preserving displayed data until the replacement
+snapshot arrives. Terminal entity removal must not schedule reconnect.
 
 `version` is per-kind; it lets the renderer reject a `snapshot` with
 an unsupported shape rather than silently render corrupt state.
@@ -698,6 +706,30 @@ once the subscription layer has matured.
       three. Entity
       subscription and ADR-041 stream coexist without either
       shadowing the other.
+
+## Conversation navigation acceptance (2026-09-18)
+
+- Retained channels render immediately by `(platformScopeId, channelId)`.
+  Provider/model/effort, messages, drafts and scroll position stay channel-owned.
+- Cold channel entry subscribes immediately. Neither cold nor warm navigation
+  waits for saving selectedChannelId or Runtime health/setup/catalog work.
+- Last-opened selection writes are serialized and coalesced; failed writes retry
+  in the background without replacing or redirecting the visible conversation.
+- Live channel snapshots and patches refresh the retained projection. Late
+  events from disposed subscriptions and old selections never replace another
+  conversation. Successful display survives transient reconnection failures.
+- Both transport failures and retryable server closes recover automatically;
+  a temporary read failure must never leave a mounted conversation permanently
+  detached from updates.
+- Cache is bounded and memory-only; deleted channels, scope changes and explicit
+  auth/connection resets invalidate it. Cached display never authorizes execution.
+- Channel projection retains canonical read repair and compare-group membership,
+  without building the global app shell. Collection and live-progress streams
+  retain their separate authority.
+- Validate with controlled delayed requests and real rendered navigation, record
+  click-to-correct-content timing, and rerun execution-target isolation coverage.
+
+See [PLAN-108](../plans/PLAN-108-conversation-navigation-cache.md) for delivery evidence.
 
 ## References
 

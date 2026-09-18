@@ -446,6 +446,30 @@ test('entity subscription hub coalesces artifact subscribers independently', () 
   assert.equal(sources[0]?.closed, true);
 });
 
+test('entity subscription hub retries a temporary server close but stops for a removed entity', async () => {
+  const sources: FakeEventSource[] = [];
+  const snapshots: unknown[] = [];
+  const hub = new EntitySubscriptionHub((url) => {
+    const source = new FakeEventSource(url);
+    sources.push(source);
+    return source as unknown as EventSource;
+  });
+  const unsubscribe = hub.subscribe({
+    kind: 'channel', id: 'channel-1', onSnapshot: (snapshot) => snapshots.push(snapshot), onPatch: () => {},
+  });
+  try {
+    sources[0].emit('close', { reason: 'Temporary read failure', retryable: true });
+    assert.equal(sources[0].closed, true);
+    await waitForCondition(() => sources.length === 2);
+    sources[0].emit('snapshot', { kind: 'channel', id: 'channel-1', version: 1, state: 'stale' });
+    sources[1].emit('snapshot', { kind: 'channel', id: 'channel-1', version: 1, state: 'fresh' });
+    assert.equal(snapshots.length, 1);
+    sources[1].emit('close', { reason: 'Channel removed', retryable: false });
+    assert.equal(sources[1].closed, true);
+    assert.deepEqual(hub.getActiveSubscribedIds('channel'), []);
+  } finally { unsubscribe(); }
+});
+
 test('artifact subscription dispatcher refreshes only the matching Artifact Canvas entity', () => {
   const snapshot = {
     kind: 'artifact',
