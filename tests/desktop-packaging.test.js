@@ -676,7 +676,7 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
   );
   assert.deepEqual(
     packageJson.build.mac.target,
-    [{ target: 'dmg', arch: ['universal'] }, { target: 'zip', arch: ['universal'] }],
+    [{ target: 'dmg', arch: ['x64'] }, { target: 'zip', arch: ['x64'] }],
   );
   assert.deepEqual(
     packageJson.build.linux.target,

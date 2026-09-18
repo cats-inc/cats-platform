@@ -67,7 +67,7 @@ written. It is deliberately not updated as implementation lands; see
 
 ## Implementation Status
 
-Current as of 2026-07-30. PLAN-101 holds the per-task detail.
+Current as of 2026-09-18. PLAN-101 holds the per-task detail.
 
 Landed:
 
@@ -81,13 +81,21 @@ Landed:
 - The tray shows a capability-gated update entry with localized labels.
 - `desktop-release.yml` is tag-gated, builds on three native runners, collects
   into a draft, and publishes only after asset validation.
-- Manual workflow dispatch builds a clearly named unsigned preview on the same
-  three runners. It never reads signing secrets and its signatures are not
-  verified, and the result is explicitly an unsigned GitHub prerelease that
-  never becomes `latest`.
+- Manual workflow dispatch builds a clearly named preview on the same three
+  runners, published as a GitHub prerelease that never becomes `latest`.
+
+  As implemented today the preview is unsigned on every platform: it does not
+  read signing secrets and its signatures are not verified. ADR-117 supersedes
+  that behavior — a preview is to be signed on any platform whose credentials
+  exist, because Squirrel.Mac will not update an unsigned application and
+  Gatekeeper will not install one without a manual bypass, which leaves the
+  macOS update client untestable. The rename from `unsigned-preview` artifact
+  names follows the same change. PLAN-101 tracks the remaining work; until it
+  lands, macOS previews still require a manual quarantine bypass and cannot
+  self-update.
 
   The preview does embed a release descriptor, marked `kind: preview`, so the
-  update client itself can be exercised before signing exists. That descriptor
+  update client itself can be exercised once signing allows it. That descriptor
   resolves to the `preview_packaged` distribution mode rather than
   `official_packaged`, and the tray and Settings label the build as a preview.
   The release-ready platform gate does not apply to a preview, because a
@@ -174,7 +182,7 @@ preserved.
 | Execution mode | Desktop route | App updates section | Update controls | Tray update command | Update owner |
 |----------------|---------------|---------------------|-----------------|---------------------|--------------|
 | Official packaged Electron | Visible | Visible | Visible | Visible | Electron main process |
-| Unsigned preview from the release workflow | Visible | Visible, marked preview | Visible | Visible, marked preview | Electron main process |
+| Preview from the release workflow | Visible | Visible, marked preview | Visible | Visible, marked preview | Electron main process |
 | Electron development | Visible | Visible, version only | Hidden | Hidden | None |
 | Unofficial/unsigned packaged Electron | Visible where otherwise supported | Visible, version only | Hidden | Hidden | Distributor/manual |
 | npm, `npx`, or `cats-one` self-hosted execution | Hidden under current route policy | Hidden | Hidden | Not applicable | npm/deployment owner |
@@ -353,8 +361,9 @@ show:
 - download progress while downloading
 - exactly one primary next-action button
 
-An unsigned preview build shall additionally carry a notice identifying it as
-an unsigned preview.
+A preview build shall additionally carry a notice identifying it as a preview.
+The notice describes release identity, not signing state: a preview is still a
+preview after it is signed and notarized.
 
 Button/state mapping:
 
@@ -469,25 +478,32 @@ When later enabled:
 13. The release workflow shall embed a non-secret official release descriptor
     in each platform package. The descriptor shall identify the tag version,
     source commit, platform, stable channel, and GitHub provider.
-14. Manual workflow-dispatch validation shall use an unsigned, unofficial
-    preview path until signing is configured. It shall run the three-platform
-    draft, packaging, asset-validation, and publication stages, but shall not
-    embed the official descriptor, access signing secrets, become `latest`, or
-    advertise desktop update capability. The preview shall be published as a
-    GitHub prerelease. The workflow shall create its unused preview tag from
-    the selected workflow branch commit so testing does not first trigger the
-    signed stable tag path.
-15. Publishing an unsigned preview consumes that version/tag for test purposes.
-    A later signed stable release shall use a higher version rather than
-    replacing the preview artifacts in place.
+14. Manual workflow-dispatch validation shall use an unofficial preview path.
+    It shall run the three-platform draft, packaging, asset-validation, and
+    publication stages, but shall not embed the official descriptor, become
+    `latest`, or advertise desktop update capability. The preview shall be
+    published as a GitHub prerelease. The workflow shall create its unused
+    preview tag from the selected workflow branch commit so testing does not
+    first trigger the stable tag path.
+
+    Per ADR-117, a preview is signed on every platform whose credentials exist.
+    Signing is artifact trust; preview-versus-official is release identity, and
+    signing a preview shall not promote it. On macOS this is a precondition
+    rather than a convenience: Squirrel.Mac refuses to apply an update to an
+    unsigned application, so an unsigned macOS preview cannot exercise the
+    update client at all, and Gatekeeper refuses to install one without a
+    manual quarantine bypass.
+15. Publishing a preview consumes that version/tag for test purposes. A later
+    stable release shall use a higher version rather than replacing the preview
+    artifacts in place.
 
 ### 8. Required Release Assets
 
 One public release shall contain:
 
 - Windows x64 NSIS installer built with `--sidecar-layout bundle`
-- macOS universal DMG
-- macOS universal ZIP required by the updater
+- macOS x64 DMG
+- macOS x64 ZIP required by the updater
 - Linux arm64 `.deb`
 - generated Windows, macOS, and Linux update metadata
 - any differential-update files generated and referenced by that metadata
@@ -500,14 +516,25 @@ presented as additional user installation choices.
 Two consequences of this target set are deliberate and shall not be treated as
 defects:
 
-- macOS ships one universal binary rather than two per-architecture builds, so
-  Apple Silicon runs natively and the updater keeps a single `latest-mac.yml`
-  feed. The Swift voice helper shall be built for both architectures and merged,
-  because an unqualified `swift build` follows the host, and the universal merge
-  refuses a binary that is byte-identical in both slices: it cannot tell a
-  shared resource from a single-architecture executable that should have been
-  lipo'd. Only the helper needs this -- every sidecar dependency that ships
-  under `Resources` is pure JavaScript.
+- macOS ships x64 only, so Apple Silicon runs it under Rosetta 2.
+
+  The reason is test coverage, not preference. The project has no macOS arm64
+  machine: the available hardware is an Intel Mac and a Linux arm64 board, and
+  the board's architecture does not help with a different operating system. A
+  universal build would therefore ship a slice that nobody executed before
+  release, and would add packaging and notarization time to every preview
+  iteration -- a cost paid on each development cycle for a slice that cannot be
+  verified.
+
+  This is a deliberate, stage-specific narrowing of ADR-108 section 6, which
+  targets a universal DMG. It is revisited when an Apple Silicon test machine
+  exists, or when builds are distributed beyond the maintainer. Until then,
+  changing this target set is a decision, not a defect fix.
+
+  The macOS runner is arm64, which makes every macOS build a cross-compile: the
+  Swift voice helper shall be built for the target architecture explicitly,
+  because an unqualified `swift build` follows the host and would bundle an
+  arm64 helper inside an x64 app.
 - Installing a `.deb` update runs `dpkg`, which requires elevation. Section 4's
   "no elevation prompt" guarantee is specific to the per-user Windows installer
   and does not extend to Linux.
@@ -525,20 +552,29 @@ selection applies to both `cats-platform` and `cats-runtime`.
 
 1. Stable Windows and macOS self-update shall not be enabled until their
    signing configuration is available and validated.
-2. macOS update testing shall use a signed application.
-3. Release jobs shall use least-privilege GitHub permissions.
-4. Signing credentials shall remain in protected GitHub secrets and shall not
+2. macOS update testing shall use a signed application. Because Squirrel.Mac
+   will not apply an update to an unsigned application, this applies to preview
+   testing too, which is why ADR-117 signs previews rather than deferring
+   signing to official releases.
+3. Artifact trust shall be resolved per platform as credentials arrive. A
+   platform without credentials produces unsigned artifacts on both the preview
+   and official paths, and its official path stays blocked by the release gate.
+   A platform with credentials signs both paths. Neither state changes what any
+   build claims about its release identity.
+4. Release jobs shall use least-privilege GitHub permissions.
+5. Signing credentials shall remain in protected GitHub secrets and shall not
    be exposed to pull-request workflows from untrusted forks.
-5. Update metadata and artifacts shall be generated in the same release run.
-6. The production app shall use HTTPS and the configured GitHub provider; it
+6. Update metadata and artifacts shall be generated in the same release run.
+7. The production app shall use HTTPS and the configured GitHub provider; it
    shall not accept renderer-supplied mirrors.
-7. Release notes rendered in Settings shall be treated as untrusted text and
+8. Release notes rendered in Settings shall be treated as untrusted text and
    shall not execute HTML or open arbitrary links without the existing safe
    external-navigation policy.
-8. Unsigned preview artifacts shall use `unsigned-preview` Actions artifact
-   names and publish only in a GitHub prerelease. They shall not be promoted
-   into the stable GitHub Release update feed.
-9. A preview build shall resolve updates from the prerelease feed it publishes
+9. Preview artifacts shall use `preview` Actions artifact names and publish
+   only in a GitHub prerelease. They shall not be promoted into the stable
+   GitHub Release update feed. This exclusion follows from release identity,
+   not from signing state: a signed, notarized preview is still excluded.
+10. A preview build shall resolve updates from the prerelease feed it publishes
    to, and an official build shall not. GitHub's `latest` release excludes
    prereleases, so an updater configured for stable only can never find a
    preview's successor -- which would defeat the reason previews embed a
@@ -641,10 +677,12 @@ be translated.
 13. The first desktop release uses a new registry-safe version and establishes
     the repository's first matching version tag without retroactively tagging
     an older npm release.
-14. A manual unsigned preview completes Windows, macOS, and Linux packaging
-    plus asset validation without Windows or Apple signing credentials, while
-    producing no official release descriptor and publishing only a GitHub
-    prerelease that is not `latest`.
+14. A manual preview completes Windows, macOS, and Linux packaging plus asset
+    validation, while producing no official release descriptor and publishing
+    only a GitHub prerelease that is not `latest`. Platforms whose credentials
+    exist produce signed artifacts on this path; platforms without credentials
+    produce unsigned ones, and neither outcome changes the preview's release
+    identity.
 
 ## Dependencies
 
@@ -661,8 +699,12 @@ be translated.
 
 ## Open Questions
 
-- [ ] Which Windows certificate source and Apple signing/notarization account
-      will be used for stable releases?
+- [x] Which Windows certificate source and Apple signing/notarization account
+      will be used for stable releases? Apple is settled: an Individual Apple
+      Developer Program membership, a Developer ID Application certificate, and
+      an App Store Connect API key for notarization. The Windows certificate
+      source is still undecided, which is what keeps Windows unsigned on both
+      the preview and official paths under ADR-117 section 2.
 - [ ] Should startup checks become default-on immediately after the three-OS
       upgrade gate passes, or wait for a later release?
 - [ ] When prerelease channels are enabled, should users choose a channel in
@@ -673,10 +715,17 @@ be translated.
       If it was distributed, decide and validate whether unsigned-to-signed
       automatic upgrade is supported or require one documented manual
       reinstall.
+- [ ] How should existing macOS preview installs be told to re-download?
+      ADR-117 establishes that unsigned-to-signed is a discontinuity on macOS
+      because Squirrel.Mac requires a valid signature on the *running*
+      application, so those installs cannot self-update into the first signed
+      preview. Decide whether that notice belongs in the release notes, in the
+      Settings update section, or both.
 
 ## References
 
 - [ADR-108: Host-Owned GitHub Release Updates](../decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md)
+- [ADR-117: Separate Artifact Trust from Desktop Release Identity](../decisions/117-separate-artifact-trust-from-desktop-release-identity.md)
 - [PLAN-101: Packaged Desktop Update Rollout](../plans/PLAN-101-packaged-desktop-update-rollout.md)
 - [SPEC-023: Packaged Setup Wizard and Provider Installation](./SPEC-023-packaged-setup-wizard-and-provider-installation.md)
 - [SPEC-073: Settings Composition Layer](./SPEC-073-settings-composition-layer.md)

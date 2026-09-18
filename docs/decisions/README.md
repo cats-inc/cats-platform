@@ -151,6 +151,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [005-use-chat-cat-registry-and-channel-assignments](./005-use-chat-cat-registry-and-channel-assignments.md) | Use a global cat registry with channel assignments | Accepted | 2026-03-13 |
 | [050-use-ack-first-chat-dispatch-lifecycle](./050-use-ack-first-chat-dispatch-lifecycle.md) | Use an ACK-first chat dispatch lifecycle | Accepted | 2026-04-03 |
 | [116](./116-share-desktop-provider-management-across-onboarding-and-settings.md) | Share Desktop provider management across onboarding and Settings | Accepted | 2026-09-16 |
+| [117](./117-separate-artifact-trust-from-desktop-release-identity.md) | Separate artifact trust from desktop release identity | Accepted | 2026-09-18 |
 <!-- Add new ADRs above this line -->
 
 ## For AI Agents
@@ -161,6 +162,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-09-05 (ADR-113 ports the Meta Muse installer into packaged setup and retires Aider.)*
+*Last updated: 2026-09-18 (ADR-117 separates artifact trust from desktop release identity.)*
 
 *See also: [AGENTS.md](../../AGENTS.md) for decision-making protocols*

@@ -34,10 +34,11 @@ const PROJECT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
  */
 export const DESKTOP_RELEASE_MATRIX = [
   { platform: 'windows', formats: ['nsis'], arches: ['x64'] },
-  // macOS ships one universal binary rather than two per-architecture builds:
-  // Apple Silicon runs natively instead of under Rosetta 2, and the updater
-  // keeps a single latest-mac.yml feed.
-  { platform: 'macos', formats: ['dmg', 'zip'], arches: ['universal'] },
+  // macOS ships x64 only: there is no macOS arm64 test environment, so a
+  // universal build would ship a slice nobody executed before release. Apple
+  // Silicon runs this under Rosetta 2. SPEC-111 section 8 records the exit
+  // condition for revisiting it.
+  { platform: 'macos', formats: ['dmg', 'zip'], arches: ['x64'] },
   // Linux ships an arm64 .deb. electron-updater installs it with dpkg, which
   // needs elevation -- unlike the per-user Windows path.
   { platform: 'linux', formats: ['deb'], arches: ['arm64'] },
@@ -155,10 +156,9 @@ const FORMAT_EXTENSIONS = {
   nsis: ['.exe'],
   dmg: ['.dmg'],
   // The updater archive is named from this repository's artifactName template,
-  // which produces Cats-<version>-universal.zip rather than the -mac.zip
-  // default some electron-builder setups emit. The name carries no platform
-  // marker, so match it by extension and rely on the per-platform format list
-  // above.
+  // which produces Cats-<version>-x64.zip rather than the -mac.zip default some
+  // electron-builder setups emit. The name carries no platform marker, so match
+  // it by extension and rely on the per-platform format list above.
   zip: ['.zip'],
   AppImage: ['.AppImage'],
   deb: ['.deb'],

@@ -122,8 +122,8 @@ jobs:
       matrix:
         # SPEC-111 section 8 names exactly one primary artifact per OS plus the
         # macOS updater ZIP. Formats and architectures are pinned here so
-        # --publish never uploads PKG, DEB, tar.gz, or per-architecture macOS
-        # builds that are outside the release contract.
+        # --publish never uploads PKG, DEB, tar.gz, or arm64 builds that are
+        # outside the release contract.
         include:
           - platform: windows
             runner: windows-latest
@@ -131,7 +131,7 @@ jobs:
             extra_args: --sidecar-layout bundle --format nsis --arch x64
           - platform: macos
             runner: macos-latest
-            extra_args: --format dmg,zip --arch universal
+            extra_args: --format dmg,zip --arch x64
           - platform: linux
             runner: ubuntu-latest
             extra_args: --format deb --arch arm64
