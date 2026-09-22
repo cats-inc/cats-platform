@@ -844,3 +844,15 @@ test('normalizeProviderAdvancedModelCatalog preserves runtime preset availabilit
   ]);
   assert.equal(catalog.entries[0]?.limits?.contextWindowTokens, 200000);
 });
+
+test('Junie initializes Gemini 3.7 Flash and preserves custom input through refresh', () => {
+  const catalog = createStaticProviderModelCatalog('junie');
+  const target = { provider: 'junie', instance: 'native', model: '' };
+  assert.equal(resolveCatalogTargetSelection({ target, catalog }).model, 'Gemini 3.7 Flash');
+  const custom = resolveCatalogTargetSelection({
+    target: { ...target, model: 'Vendor/CaseSensitive.Model', modelSelection: null }, catalog,
+    preserveCurrentModel: true, preserveCurrentSelection: true,
+  });
+  assert.equal(custom.model, 'Vendor/CaseSensitive.Model');
+  assert.equal(custom.modelSelection, null);
+});
