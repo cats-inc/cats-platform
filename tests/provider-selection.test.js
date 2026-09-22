@@ -856,3 +856,24 @@ test('Junie initializes Gemini 3.7 Flash and preserves custom input through refr
   assert.equal(custom.model, 'Vendor/CaseSensitive.Model');
   assert.equal(custom.modelSelection, null);
 });
+
+test('Auggie preserves six labels, initializes Astra and keeps custom input through refresh', () => {
+  const catalog = createStaticProviderModelCatalog('auggie');
+  assert.deepEqual(catalog.models.map(({ id, label }) => ({ id, label })), [
+    { id: 'gpt-6-astra', label: 'GPT-6 Astra' },
+    { id: 'gpt-5-6-sol', label: 'GPT-5.6 Sol' },
+    { id: 'claude-fable-5-1', label: 'Claude Fable 5.1' },
+    { id: 'claude-opus-5-5', label: 'Claude Opus 5.5' },
+    { id: 'grok-4-7', label: 'Grok 4.7' },
+    { id: 'butler_a', label: 'Prism (Claude + GPT)' },
+  ]);
+  assert.ok(catalog.models.every(model => !model.default));
+  const target = { provider: 'auggie', instance: 'native', model: '' };
+  assert.equal(resolveCatalogTargetSelection({ target, catalog }).model, 'gpt-6-astra');
+  const custom = resolveCatalogTargetSelection({
+    target: { ...target, model: 'Vendor/CaseSensitive.Model', modelSelection: null }, catalog,
+    preserveCurrentModel: true, preserveCurrentSelection: true,
+  });
+  assert.equal(custom.model, 'Vendor/CaseSensitive.Model');
+  assert.equal(custom.modelSelection, null);
+});

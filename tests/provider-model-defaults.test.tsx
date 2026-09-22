@@ -42,6 +42,10 @@ const codex: ProviderAdvancedModelCatalog = {
   support: { tier: 'full', notes: [] }, warnings: [],
 };
 const claude = createStaticProviderModelCatalog('claude', { instance: 'cli/native' });
+const auggieModels = { ...createStaticProviderModelCatalog('auggie', { instance: 'cli/native' }),
+  defaultModel: null };
+const auggie = { ...createProviderAdvancedCatalogFromModelCatalog(auggieModels),
+  defaultSelection: null };
 const junieModels = createStaticProviderModelCatalog('junie', { instance: 'cli/native' });
 const junie: ProviderAdvancedModelCatalog = {
   ...createProviderAdvancedCatalogFromModelCatalog(junieModels),
@@ -86,9 +90,10 @@ function Picker(props: {
   });
   const { ready, onChange } = props;
   const registry = useCallback(async () => ({ state: 'ready' as const, revision: 'selected-claude-codex',
-    providers: listProductProviders().filter((provider) => ['claude', 'codex', 'antigravity', 'grok', 'junie'].includes(provider.id)),
+    providers: listProductProviders().filter((provider) => ['claude', 'codex', 'antigravity', 'grok', 'junie', 'auggie'].includes(provider.id)),
   }), []);
   const models = useCallback(async (provider: string) => {
+    if (provider === 'auggie') return auggieModels;
     if (provider === 'junie') return junieModels;
     if (provider === 'grok') return { ...grokModels, defaultModel: null };
     if (provider === 'antigravity') return { ...agyModels, defaultModel: null };
@@ -97,6 +102,7 @@ function Picker(props: {
     return { ...codex, models: codex.entries };
   }, [ready]);
   const advanced = useCallback(async (provider: string) => {
+    if (provider === 'auggie') return auggie;
     if (provider === 'junie') return junie;
     if (provider === 'grok') return grok;
     if (provider === 'antigravity') return agy;
@@ -253,4 +259,29 @@ test('Antigravity selects first model and effort without synthetic defaults and 
     await waitFor(() => assert.equal(view.queryByRole('combobox', { name: 'Effort' }), null));
     assert.equal(changes.at(-1)?.modelSelection?.controls?.['antigravity.effort'], undefined);
   }
+});
+
+test('Auggie shows six choices plus custom and sends the opaque Prism id without default labels', async (t) => {
+  reset();
+  t.after(reset);
+  const changes: ProviderTargetSelection[] = [];
+  const onChange = (target: ProviderTargetSelection) => { changes.push(target); };
+  const ready = Promise.resolve();
+  let view = render(<Picker ready={ready} onChange={onChange} />);
+  const model = () => view.getByRole('combobox', { name: /^Model/ }) as HTMLSelectElement;
+  await waitFor(() => assert.equal(changes.at(-1)?.model, 'opus'));
+  fireEvent.change(view.getByRole('combobox', { name: 'Provider' }), { target: { value: 'auggie' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.entryId, 'gpt-6-astra'));
+  assert.equal(model().selectedOptions[0].textContent, 'GPT-6 Astra');
+  assert.equal(model().options.length, 7);
+  assert.ok([...model().options].every(option => !option.textContent?.includes('(default)')));
+  assert.equal(view.queryByRole('combobox', { name: /effort/i }), null);
+  fireEvent.change(model(), { target: { value: 'butler_a' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.entryId, 'butler_a'));
+  assert.equal(model().selectedOptions[0].textContent, 'Prism (Claude + GPT)');
+  assert.equal(changes.at(-1)?.modelSelection?.controls, undefined);
+  const saved = changes.at(-1)!;
+  view.unmount();
+  view = render(<Picker ready={ready} initialTarget={saved} onChange={onChange} />);
+  await waitFor(() => assert.equal(model().value, 'butler_a'));
 });
