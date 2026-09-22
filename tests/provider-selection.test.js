@@ -898,3 +898,24 @@ test('Goose preserves six fixed Off labels, initializes Sol and keeps custom inp
   assert.equal(custom.model, 'Vendor/CaseSensitive.Model');
   assert.equal(custom.modelSelection, null);
 });
+
+test('Pi preserves six subscription labels, initializes Luna and keeps custom input through refresh', () => {
+  const catalog = createStaticProviderModelCatalog('pi');
+  assert.deepEqual(catalog.models.map(({ id, label }) => ({ id, label })), [
+    { id: 'openai-codex/gpt-5.6-luna', label: 'gpt-5.6-luna [openai-codex] — medium' },
+    { id: 'openai-codex/gpt-5.6-sol', label: 'gpt-5.6-sol [openai-codex] — medium' },
+    { id: 'openai-codex/gpt-5.6-terra', label: 'gpt-5.6-terra [openai-codex] — medium' },
+    { id: 'openai-codex/gpt-6-astra', label: 'gpt-6-astra [openai-codex] — medium' },
+    { id: 'openai-codex/gpt-6-luna', label: 'gpt-6-luna [openai-codex] — medium' },
+    { id: 'openai-codex/gpt-6-sol', label: 'gpt-6-sol [openai-codex] — medium' },
+  ]);
+  assert.ok(catalog.models.every(model => !model.default));
+  const target = { provider: 'pi', instance: 'native', model: '' };
+  assert.equal(resolveCatalogTargetSelection({ target, catalog }).model, 'openai-codex/gpt-5.6-luna');
+  const custom = resolveCatalogTargetSelection({
+    target: { ...target, model: 'Vendor/CaseSensitive.Model', modelSelection: null }, catalog,
+    preserveCurrentModel: true, preserveCurrentSelection: true,
+  });
+  assert.equal(custom.model, 'Vendor/CaseSensitive.Model');
+  assert.equal(custom.modelSelection, null);
+});

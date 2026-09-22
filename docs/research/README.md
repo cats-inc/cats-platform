@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-09-23-pi-shortlist](./2026-09-23-pi-shortlist.md) | 2026-09-23 | Pi subscription shortlist | Six bracketed provider labels, fixed medium choices and custom input |
 | [2026-09-23-goose-shortlist](./2026-09-23-goose-shortlist.md) | 2026-09-23 | Goose fixed Off shortlist | Six ChatGPT Codex labels, first-row initialization and custom input |
 | [2026-09-23-auggie-shortlist](./2026-09-23-auggie-shortlist.md) | 2026-09-23 | Auggie shortlist | Six exact labels, first-row initialization and custom input |
 | [2026-09-23-junie-shortlist](./2026-09-23-junie-shortlist.md) | 2026-09-23 | Junie shortlist | Five fixed efforts, explicit default and custom input |
