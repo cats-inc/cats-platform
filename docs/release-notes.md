@@ -19,6 +19,27 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-23 (0.3.4 npm alignment)
+
+### Make the current Platform available to npm launchers
+
+Behavior change:
+
+Prepare the current Platform implementation for publication as
+`@cats-inc/cats-platform@0.3.4` on npm's `latest` tag. cats-one 0.1.22 will require
+Platform `^0.3.4` and Runtime `^0.1.25`, replacing its outdated dependency floor.
+The existing setup and configuration ownership remains unchanged: preferences
+are persisted when saved, the auth session secret is generated when needed,
+and provider capability bootstrap rules remain opt-in.
+
+Migration steps:
+
+Publish Runtime and Platform first, then resolve cats-one's lockfile from npm
+and publish the launcher. A fresh `npx @cats-inc/cats-one@latest` can then use
+the aligned packages. Desktop installer publication is a separate workflow.
+
+Deprecations: none.
+
 ## 2026-09-18 (0.3.3 unsigned preview)
 
 ### Let Cline accept short chat messages
