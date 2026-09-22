@@ -42,6 +42,10 @@ const codex: ProviderAdvancedModelCatalog = {
   support: { tier: 'full', notes: [] }, warnings: [],
 };
 const claude = createStaticProviderModelCatalog('claude', { instance: 'cli/native' });
+const piModels = { ...createStaticProviderModelCatalog('pi', { instance: 'cli/native' }),
+  defaultModel: null };
+const pi = { ...createProviderAdvancedCatalogFromModelCatalog(piModels),
+  defaultSelection: { entryMode: 'explicit' as const, entryId: 'openai-codex/gpt-5.6-luna' } };
 const gooseModels = { ...createStaticProviderModelCatalog('goose', { instance: 'cli/native' }),
   defaultModel: null };
 const goose = { ...createProviderAdvancedCatalogFromModelCatalog(gooseModels),
@@ -94,9 +98,10 @@ function Picker(props: {
   });
   const { ready, onChange } = props;
   const registry = useCallback(async () => ({ state: 'ready' as const, revision: 'selected-claude-codex',
-    providers: listProductProviders().filter((provider) => ['claude', 'codex', 'antigravity', 'grok', 'junie', 'auggie', 'goose'].includes(provider.id)),
+    providers: listProductProviders().filter((provider) => ['claude', 'codex', 'antigravity', 'grok', 'junie', 'auggie', 'goose', 'pi'].includes(provider.id)),
   }), []);
   const models = useCallback(async (provider: string) => {
+    if (provider === 'pi') return piModels;
     if (provider === 'goose') return gooseModels;
     if (provider === 'auggie') return auggieModels;
     if (provider === 'junie') return junieModels;
@@ -107,6 +112,7 @@ function Picker(props: {
     return { ...codex, models: codex.entries };
   }, [ready]);
   const advanced = useCallback(async (provider: string) => {
+    if (provider === 'pi') return pi;
     if (provider === 'goose') return goose;
     if (provider === 'auggie') return auggie;
     if (provider === 'junie') return junie;
@@ -316,4 +322,31 @@ test('Goose shows six fixed Off choices plus custom and preserves the selected f
   view.unmount();
   view = render(<Picker ready={ready} initialTarget={saved} onChange={onChange} />);
   await waitFor(() => assert.equal(model().value, 'chatgpt_codex/gpt-5.4'));
+});
+
+test('Pi shows subscription labels on all six fixed medium choices plus custom', async (t) => {
+  reset();
+  t.after(reset);
+  const changes: ProviderTargetSelection[] = [];
+  const onChange = (target: ProviderTargetSelection) => { changes.push(target); };
+  const ready = Promise.resolve();
+  let view = render(<Picker ready={ready} onChange={onChange} />);
+  const model = () => view.getByRole('combobox', { name: /^Model/ }) as HTMLSelectElement;
+  await waitFor(() => assert.equal(changes.at(-1)?.model, 'opus'));
+  fireEvent.change(view.getByRole('combobox', { name: 'Provider' }), { target: { value: 'pi' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.entryId, 'openai-codex/gpt-5.6-luna'));
+  assert.equal(model().selectedOptions[0].textContent, 'gpt-5.6-luna [openai-codex] — medium');
+  assert.equal(changes.at(-1)?.modelSelection?.controls, undefined);
+  assert.equal(model().options.length, 7);
+  assert.ok([...model().options].slice(0, 6).every(option => option.textContent?.includes('[openai-codex]')));
+  assert.ok([...model().options].every(option => !option.textContent?.includes('(default)')));
+  assert.equal(view.queryByRole('combobox', { name: /effort/i }), null);
+  fireEvent.change(model(), { target: { value: 'openai-codex/gpt-6-sol' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.entryId, 'openai-codex/gpt-6-sol'));
+  assert.equal(model().selectedOptions[0].textContent, 'gpt-6-sol [openai-codex] — medium');
+  assert.equal(changes.at(-1)?.modelSelection?.controls, undefined);
+  const saved = changes.at(-1)!;
+  view.unmount();
+  view = render(<Picker ready={ready} initialTarget={saved} onChange={onChange} />);
+  await waitFor(() => assert.equal(model().value, 'openai-codex/gpt-6-sol'));
 });

@@ -110,7 +110,12 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'butler_a', label: 'Prism (Claude + GPT)' },
   ],
   pi: [
-    { value: 'openai-codex/gpt-5.4', label: 'openai-codex gpt-5.4 (default)', default: true },
+    { value: 'openai-codex/gpt-5.6-luna', label: 'gpt-5.6-luna [openai-codex] — medium' },
+    { value: 'openai-codex/gpt-5.6-sol', label: 'gpt-5.6-sol [openai-codex] — medium' },
+    { value: 'openai-codex/gpt-5.6-terra', label: 'gpt-5.6-terra [openai-codex] — medium' },
+    { value: 'openai-codex/gpt-6-astra', label: 'gpt-6-astra [openai-codex] — medium' },
+    { value: 'openai-codex/gpt-6-luna', label: 'gpt-6-luna [openai-codex] — medium' },
+    { value: 'openai-codex/gpt-6-sol', label: 'gpt-6-sol [openai-codex] — medium' },
   ],
   junie: [
     { value: 'Gemini 3.7 Flash', label: 'Gemini 3.7 Flash — Medium (default)', default: true },
