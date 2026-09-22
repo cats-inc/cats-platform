@@ -27,6 +27,21 @@ interactive run without automatic browser launch. Automation should use the
 existing app-managed mode; it never claims keyboard input or opens a browser.
 Watch supervisors retain terminal ownership across file-change/crash restarts.
 
+### npm publication
+
+Publish `@cats-inc/cats-platform` through the manual
+[npm publish workflow](../.github/workflows/npm-publish.yml), which runs the full
+test gate and fresh prepack build before trusted publication. Update the root
+manifest and lockfile version together and integrate remote main first:
+
+```sh
+gh workflow run npm-publish.yml --repo cats-inc/cats-platform --ref main -f dist_tag=latest
+```
+
+Verify the successful run and registry version. For a coordinated cats-one
+release, publish Runtime and Platform before updating the launcher's dependency
+minima and lockfile. npm publication is separate from Desktop installer releases.
+
 ### Provider selection contract
 
 Selection-aware Platform/Desktop must connect to the matching Runtime contract
