@@ -19,6 +19,35 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-23 (0.3.6 preview — first signed macOS self-update candidate)
+
+### Bring the update dialog to the foreground on macOS
+
+Behavior change:
+
+The tray-originated update dialog now activates the app before it opens. The
+tray closes on click and the main window is usually hidden, so that message
+box has no parent window, and macOS does not bring an app forward for a
+parentless dialog: the "ready to install" prompt that follows a download opened
+behind whatever was frontmost and went unseen until the next tray click.
+Windows raises such a dialog on its own, which is why the two platforms looked
+inconsistent.
+
+Migration steps:
+
+This is the first preview that can validate macOS self-update end to end.
+0.3.3 was dispatched with `unsigned=true`, so Squirrel.Mac refused to apply it
+over the signed 0.3.2 -- by design, as that release's notes stated; Windows and
+Linux applied it because NSIS and dpkg do not verify signatures. From a signed
+0.3.2 install, **Check for Update** should find 0.3.6, download it, and relaunch
+into it. Anyone who installed the unsigned 0.3.3 DMG manually must install
+0.3.6 manually once; self-update resumes from there.
+
+0.3.4 and 0.3.5 were published to npm only; no desktop artifacts carry those
+versions.
+
+Deprecations: none.
+
 ## 2026-09-23 (0.3.4 npm alignment)
 
 ### Make the current Platform available to npm launchers
