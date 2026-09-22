@@ -42,6 +42,13 @@ const codex: ProviderAdvancedModelCatalog = {
   support: { tier: 'full', notes: [] }, warnings: [],
 };
 const claude = createStaticProviderModelCatalog('claude', { instance: 'cli/native' });
+const junieModels = createStaticProviderModelCatalog('junie', { instance: 'cli/native' });
+const junie: ProviderAdvancedModelCatalog = {
+  ...createProviderAdvancedCatalogFromModelCatalog(junieModels),
+  entries: junieModels.models.map(entry => ({ ...entry,
+    label: entry.label.replace(/ \(default\)$/, '') })),
+  defaultSelection: { entryMode: 'explicit', entryId: 'Gemini 3.7 Flash' },
+};
 const agyModels = createStaticProviderModelCatalog('antigravity', { instance: 'cli/native' });
 const grokModels = createStaticProviderModelCatalog('grok', { instance: 'cli/native' });
 const grok: ProviderAdvancedModelCatalog = {
@@ -79,9 +86,10 @@ function Picker(props: {
   });
   const { ready, onChange } = props;
   const registry = useCallback(async () => ({ state: 'ready' as const, revision: 'selected-claude-codex',
-    providers: listProductProviders().filter((provider) => ['claude', 'codex', 'antigravity', 'grok'].includes(provider.id)),
+    providers: listProductProviders().filter((provider) => ['claude', 'codex', 'antigravity', 'grok', 'junie'].includes(provider.id)),
   }), []);
   const models = useCallback(async (provider: string) => {
+    if (provider === 'junie') return junieModels;
     if (provider === 'grok') return { ...grokModels, defaultModel: null };
     if (provider === 'antigravity') return { ...agyModels, defaultModel: null };
     if (provider !== 'codex') return claude;
@@ -89,6 +97,7 @@ function Picker(props: {
     return { ...codex, models: codex.entries };
   }, [ready]);
   const advanced = useCallback(async (provider: string) => {
+    if (provider === 'junie') return junie;
     if (provider === 'grok') return grok;
     if (provider === 'antigravity') return agy;
     if (provider !== 'codex') return createProviderAdvancedCatalogFromModelCatalog(claude);
@@ -112,6 +121,32 @@ function reset(): void {
   clearProviderCatalogClientCache();
   clearProviderRegistryClientCache();
 }
+
+test('Junie keeps its runtime default label and fixed effort across model changes and reopen', async (t) => {
+  reset();
+  t.after(reset);
+  const changes: ProviderTargetSelection[] = [];
+  const onChange = (target: ProviderTargetSelection) => { changes.push(target); };
+  const ready = Promise.resolve();
+  let view = render(<Picker ready={ready} onChange={onChange} />);
+  const model = () => view.getByRole('combobox', { name: /^Model/ }) as HTMLSelectElement;
+  await waitFor(() => assert.equal(changes.at(-1)?.model, 'opus'));
+  fireEvent.change(view.getByRole('combobox', { name: 'Provider' }), { target: { value: 'junie' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.entryId, 'Gemini 3.7 Flash'));
+  assert.equal(model().value, 'Gemini 3.7 Flash');
+  assert.equal(model().selectedOptions[0].textContent, 'Gemini 3.7 Flash — Medium (default)');
+  assert.equal([...model().options].filter(option => option.textContent?.includes('(default)')).length, 1);
+  assert.equal(model().options.length, 6);
+  assert.equal(view.queryByRole('combobox', { name: /effort/i }), null);
+  fireEvent.change(model(), { target: { value: 'GPT-5.6-SOL' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.entryId, 'GPT-5.6-SOL'));
+  assert.equal(model().selectedOptions[0].textContent, 'GPT-5.6-SOL — Low');
+  assert.equal(changes.at(-1)?.modelSelection?.controls, undefined);
+  const saved = changes.at(-1)!;
+  view.unmount();
+  view = render(<Picker ready={ready} initialTarget={saved} onChange={onChange} />);
+  await waitFor(() => assert.equal(model().value, 'GPT-5.6-SOL'));
+});
 
 test('Grok selects the first effort for each model, keeps labels and restores saved effort', async (t) => {
   reset();

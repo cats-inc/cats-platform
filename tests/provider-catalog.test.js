@@ -101,24 +101,15 @@ test('ClinePass offers six fixed Medium combinations without a provider default'
   ]);
 });
 
-test('Junie static fallback matches the curated picker snapshot', () => {
-  assert.equal(getDefaultModel('junie'), 'Gemini 3 Flash');
-  assert.deepEqual(
-    getProviderModels('junie').map((model) => model.value),
-    [
-      'Gemini 3 Flash',
-      'Claude Opus 4.6',
-      'Claude Opus 4.7',
-      'Claude Sonnet 4.6',
-      'Gemini 3.1 Flash Lite',
-      'Gemini 3.1 Pro Preview',
-      'GPT-5',
-      'GPT-5.2',
-      'GPT-5.3-codex',
-      'GPT-5.4',
-      'Grok 4.1 Fast Reasoning',
-    ],
-  );
+test('Junie static fallback preserves five fixed efforts and the explicit model default', () => {
+  assert.equal(getDefaultModel('junie'), 'Gemini 3.7 Flash');
+  assert.deepEqual(getProviderModels('junie'), [
+    { value: 'Gemini 3.7 Flash', label: 'Gemini 3.7 Flash — Medium (default)', default: true },
+    { value: 'Claude Fable 5.1', label: 'Claude Fable 5.1 — Low' },
+    { value: 'Gemini 3.8 Flash', label: 'Gemini 3.8 Flash — Medium' },
+    { value: 'GPT-5.6-SOL', label: 'GPT-5.6-SOL — Low' },
+    { value: 'Grok 4.6', label: 'Grok 4.6 — Low' },
+  ]);
 });
 
 test('provider catalog normalizers accept runtime catalog envelopes', () => {

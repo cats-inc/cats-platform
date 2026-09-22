@@ -1492,3 +1492,13 @@ test('updating persistent control values adds, updates, and removes keyed contro
     },
   );
 });
+
+test('Junie offers five fixed combinations, a lowercase default marker and custom input', () => {
+  const catalog = createStaticProviderModelCatalog('junie', { instance: 'native' });
+  assert.equal(catalog.defaultModel, 'Gemini 3.7 Flash');
+  assert.equal(catalog.models.length, 5);
+  assert.equal(catalog.models[0].label, 'Gemini 3.7 Flash — Medium (default)');
+  assert.equal(catalog.models[3].label, 'GPT-5.6-SOL — Low');
+  assert.equal(catalog.models.filter(model => model.default).length, 1);
+  assert.equal(shouldAllowLegacyManualModelEntry({ entryCount: 5, isLegacyModelTarget: false }), true);
+});

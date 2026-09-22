@@ -41,6 +41,8 @@ setup step 2's Catlas selection and optional prefetch. The accepted
 
 ## Provider Catalog Labels
 
+[Junie shortlist](./research/2026-09-23-junie-shortlist.md) records five fixed model/effort combinations and the explicit model default.
+
 [Kiro shortlist](./research/2026-09-18-kiro-shortlist.md) records six raw model IDs
 without default claims, first-row initialization and custom input.
 
