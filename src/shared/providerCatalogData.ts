@@ -136,8 +136,12 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'claude-haiku-4.5', label: 'claude-haiku-4.5' },
   ],
   goose: [
-    { value: 'openai/gpt-5-codex', label: 'openai/gpt-5-codex (default)', default: true },
-    { value: 'openai/gpt-5', label: 'openai/gpt-5' },
+    { value: 'chatgpt_codex/gpt-5.6-sol', label: 'gpt-5.6-sol — Off' },
+    { value: 'chatgpt_codex/gpt-5.6-terra', label: 'gpt-5.6-terra — Off' },
+    { value: 'chatgpt_codex/gpt-5.6-luna', label: 'gpt-5.6-luna — Off' },
+    { value: 'chatgpt_codex/gpt-5.6', label: 'gpt-5.6 — Off' },
+    { value: 'chatgpt_codex/gpt-5.5', label: 'gpt-5.5 — Off' },
+    { value: 'chatgpt_codex/gpt-5.4', label: 'gpt-5.4 — Off' },
   ],
   ollama: [
     { value: 'qwen2.5-coder:7b', label: 'qwen2.5-coder:7b (default)', default: true },

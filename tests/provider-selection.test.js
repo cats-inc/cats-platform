@@ -877,3 +877,24 @@ test('Auggie preserves six labels, initializes Astra and keeps custom input thro
   assert.equal(custom.model, 'Vendor/CaseSensitive.Model');
   assert.equal(custom.modelSelection, null);
 });
+
+test('Goose preserves six fixed Off labels, initializes Sol and keeps custom input through refresh', () => {
+  const catalog = createStaticProviderModelCatalog('goose');
+  assert.deepEqual(catalog.models.map(({ id, label }) => ({ id, label })), [
+    { id: 'chatgpt_codex/gpt-5.6-sol', label: 'gpt-5.6-sol — Off' },
+    { id: 'chatgpt_codex/gpt-5.6-terra', label: 'gpt-5.6-terra — Off' },
+    { id: 'chatgpt_codex/gpt-5.6-luna', label: 'gpt-5.6-luna — Off' },
+    { id: 'chatgpt_codex/gpt-5.6', label: 'gpt-5.6 — Off' },
+    { id: 'chatgpt_codex/gpt-5.5', label: 'gpt-5.5 — Off' },
+    { id: 'chatgpt_codex/gpt-5.4', label: 'gpt-5.4 — Off' },
+  ]);
+  assert.ok(catalog.models.every(model => !model.default));
+  const target = { provider: 'goose', instance: 'native', model: '' };
+  assert.equal(resolveCatalogTargetSelection({ target, catalog }).model, 'chatgpt_codex/gpt-5.6-sol');
+  const custom = resolveCatalogTargetSelection({
+    target: { ...target, model: 'Vendor/CaseSensitive.Model', modelSelection: null }, catalog,
+    preserveCurrentModel: true, preserveCurrentSelection: true,
+  });
+  assert.equal(custom.model, 'Vendor/CaseSensitive.Model');
+  assert.equal(custom.modelSelection, null);
+});
