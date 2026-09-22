@@ -27,6 +27,11 @@ test('parseAppCliOptions accepts app-managed lifecycle flags', () => {
   assert.equal(options.readyOutput, 'json');
 });
 
+test('parseAppCliOptions accepts --no-open and documents the keyboard alternative', () => {
+  assert.deepEqual(parseAppCliOptions(['--no-open']), { noOpen: true });
+  assert.match(getAppHelpText(), /--no-open/);
+});
+
 test('resolveAppStartupState prefers explicit app-managed settings', () => {
   const startup = resolveAppStartupState(
     {

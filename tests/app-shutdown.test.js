@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createServer } from 'node:http';
 
 import { closeAppServerGracefully } from '../build/server/app/server/shutdown.js';
+
+test('cancellation before listening treats the server as already closed', async () => {
+  await closeAppServerGracefully(createServer());
+});
+
+test('unexpected shutdown errors still reject', async () => {
+  await assert.rejects(closeAppServerGracefully({
+    close(callback) { callback(new Error('unexpected cleanup failure')); },
+  }), /unexpected cleanup failure/);
+});
 
 test('closeAppServerGracefully closes idle connections before waiting for shutdown', async () => {
   let closeCalls = 0;
@@ -53,4 +64,3 @@ test('closeAppServerGracefully force closes lingering sockets after the grace de
   assert.equal(closeIdleCalls, 1);
   assert.equal(closeAllCalls, 1);
 });
-

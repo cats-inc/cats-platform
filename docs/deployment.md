@@ -21,6 +21,12 @@ notes.
 
 ## Deployment Methods
 
+Standalone npm CLI browser/keyboard behavior is documented under
+[Terminal controls](setup-guide.md#terminal-controls). Use `--no-open` for an
+interactive run without automatic browser launch. Automation should use the
+existing app-managed mode; it never claims keyboard input or opens a browser.
+Watch supervisors retain terminal ownership across file-change/crash restarts.
+
 ### Provider selection contract
 
 Selection-aware Platform/Desktop must connect to the matching Runtime contract

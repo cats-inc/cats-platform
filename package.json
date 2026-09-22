@@ -50,7 +50,7 @@
     "desktop:start": "npm run build && npm run desktop:host",
     "dev": "npm run dev:web",
     "dev:server": "node scripts/dev-server.mjs",
-    "dev:server:tsx": "tsx watch src/index.ts",
+    "dev:server:tsx": "tsx watch src/index.ts --startup-mode app-managed --managed-by tsx-watch --ready-output plain",
     "dev:toggle-flag": "tsx scripts/dev-toggle-feature-flag.mts",
     "dev:web": "vite",
     "ingress:smoke": "node scripts/testing/check-platform-ingress.mjs",

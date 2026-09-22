@@ -70,6 +70,9 @@ export const APP_SHUTDOWN_REASONS = [
   'sigint',
   'sigterm',
   'stdin_closed',
+  'keyboard',
+  'parent_requested',
+  'parent_disconnected',
 ] as const;
 
 export type AppStartupMode = typeof APP_STARTUP_MODES[number];
@@ -81,6 +84,7 @@ export type AppLifecyclePhase = 'starting' | 'ready' | 'stopping' | 'stopped';
 
 export interface AppCliOptions {
   help?: boolean;
+  noOpen?: boolean;
   startupMode?: AppStartupMode;
   managedBy?: string;
   readyOutput?: AppReadyOutput;
@@ -164,6 +168,11 @@ export function parseAppCliOptions(argv: string[]): AppCliOptions {
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
+
+    if (arg === '--no-open') {
+      options.noOpen = true;
+      continue;
+    }
 
     if (arg === '--help' || arg === '-h') {
       options.help = true;
@@ -481,6 +490,7 @@ export function getAppHelpText(): string {
     '  --startup-mode <standalone|app-managed>',
     '  --managed-by <name>',
     '  --ready-output <plain|json|silent>',
+    '  --no-open                             Skip opening the browser (press o to open later)',
     '  -h, --help',
   ].join('\n');
 }

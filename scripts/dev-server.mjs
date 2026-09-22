@@ -26,7 +26,10 @@ let crashCount = 0;
 
 function spawnServer() {
   intentionalRestart = false;
-  child = spawn(process.execPath, ['--import', 'tsx', entry], {
+  child = spawn(process.execPath, [
+    '--import', 'tsx', entry,
+    '--startup-mode', 'app-managed', '--managed-by', 'dev-server', '--ready-output', 'plain',
+  ], {
     stdio: 'inherit',
     env: process.env,
   });

@@ -44,6 +44,20 @@ Desktop-host regression coverage now also checks:
 
 ## Test Types
 
+### Interactive CLI Lifecycle
+
+After `npm run build:server`, run the affected entrypoint and Desktop consumers:
+
+```sh
+node --test tests/cli-interaction.test.js tests/cli-entrypoint.test.js tests/app-startup.test.js tests/app-shutdown.test.js tests/platform-cli-auth-session-secret.test.js tests/desktop-startup.test.js tests/desktop-host-bootstrap-contract.test.js
+```
+
+The compiled-entrypoint fixtures isolate HOME/config/state and intercept browser
+openers. They verify ready-only opening, `o`, `q`, Ctrl+C, `--no-open`, early
+parent disconnect and IPC cleanup without touching user state. Helper tests
+cover managed, CI, redirected and machine-output exclusions plus all three OS
+opener commands. Native browser/physical-terminal smoke on each OS is separate.
+
 ### Smoke and Integration Tests
 
 - **Location**: `tests/*.test.js`

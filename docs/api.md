@@ -1313,7 +1313,7 @@ Example response:
       "app.stopped"
     ],
     "shutdownSignals": ["SIGINT", "SIGTERM"],
-    "shutdownReasons": ["sigint", "sigterm", "stdin_closed"]
+    "shutdownReasons": ["sigint", "sigterm", "stdin_closed", "keyboard", "parent_requested", "parent_disconnected"]
   },
   "readiness": {
     "endpoint": "/health",
@@ -1339,7 +1339,7 @@ Example response:
   },
   "shutdown": {
     "signals": ["SIGINT", "SIGTERM"],
-    "reasons": ["sigint", "sigterm", "stdin_closed"],
+    "reasons": ["sigint", "sigterm", "stdin_closed", "keyboard", "parent_requested", "parent_disconnected"],
     "stdinCloseEnabled": true
   },
   "runtime": {

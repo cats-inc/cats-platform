@@ -3,6 +3,26 @@
 > Environment setup and installation instructions for `Cats` and the local
 > host workspace that targets public packaging as `cats-platform`.
 
+## Terminal controls
+
+`npx @cats-inc/cats-platform` opens the application root (`/`) in the default
+browser after its listener is ready. The application routes first-time users
+through setup. The printed URL uses the actual listening port and replaces a
+wildcard bind address with a dialable loopback address.
+
+In an interactive terminal, `o` opens the browser and `q` / Ctrl+C requests
+graceful shutdown, including pending provider snapshot persistence. `--no-open`
+suppresses only the initial browser launch; `o` remains available. Browser launch
+failure leaves the URL visible and the service running.
+
+App-managed/Desktop, dev/watch supervisors, CI, non-TTY, JSON/silent output and
+help do not auto-open browsers or install keyboard handlers. The parent continues
+to own managed lifecycle and terminal input. `cats-one` delegates its visible
+controls to Platform and uses a private Node IPC shutdown request; Platform also
+cleans up on parent disconnect, including disconnect during startup.
+
+The cross-repository contract is [SPEC-002](../../cats-one/docs/specs/SPEC-002-interactive-cli-startup.md).
+
 ## Prerequisites
 
 - Node.js 22+

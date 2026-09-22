@@ -32,6 +32,7 @@ import {
 } from './platform/runtime/clientDiagnostics.js';
 import { FileChatStore } from './products/chat/state/store.js';
 import { isDirectCliEntrypoint } from './shared/cliEntrypoint.js';
+import { browserUrl, startCliInteraction } from './shared/cliInteraction.js';
 import {
   flushProviderSnapshotPersistence,
   seedProviderSelectorFromSnapshot,
@@ -126,6 +127,7 @@ async function main(): Promise<void> {
   // request path will retry as usual.
   void warmProviderSelectorCache(runtimeClient).catch(() => {});
   let shutdownPromise: Promise<void> | null = null;
+  let stopInteraction = () => {};
 
   const writeLifecycle = (line: string | null) => {
     if (line) {
@@ -139,6 +141,7 @@ async function main(): Promise<void> {
     }
 
     markAppStopping(startup, reason);
+    stopInteraction();
     writeLifecycle(formatAppStoppingMessage(startup, reason));
 
     shutdownPromise = closeAppServerGracefully(server)
@@ -174,6 +177,23 @@ async function main(): Promise<void> {
     requestShutdown('sigterm');
   });
 
+  // cats-one owns this private IPC channel. It requests cleanup instead of
+  // process.kill(), which forcibly terminates Node children on Windows.
+  if (process.send) {
+    process.on('message', (message: unknown) => {
+      if (message && typeof message === 'object'
+          && 'type' in message && message.type === 'cats.shutdown') {
+        requestShutdown('parent_requested');
+      }
+    });
+    process.on('disconnect', () => requestShutdown('parent_disconnected'));
+    // Disconnect can precede this handler while asynchronous startup work runs.
+    if (!process.connected) {
+      await shutdown('parent_disconnected');
+      return;
+    }
+  }
+
   if (startup.mode === 'app-managed' && process.stdin.readable && !process.stdin.isTTY) {
     process.stdin.resume();
     process.stdin.on('end', () => {
@@ -198,6 +218,10 @@ async function main(): Promise<void> {
   });
 
   const address = server.address();
+  if (shutdownPromise) {
+    await shutdownPromise;
+    return;
+  }
   if (!address || typeof address === 'string') {
     throw new Error('Cats app failed to resolve its listening address.');
   }
@@ -215,6 +239,13 @@ async function main(): Promise<void> {
   writeLifecycle(
     formatAppReadyMessage(startup, listeningAddress),
   );
+  stopInteraction = startCliInteraction({
+    url: browserUrl(config.host, address.port),
+    mode: startup.mode,
+    readyOutput: startup.readyOutput,
+    noOpen: cliOptions.noOpen,
+    onQuit: requestShutdown,
+  });
 }
 
 if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {

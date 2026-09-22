@@ -30,7 +30,9 @@ export function closeAppServerGracefully(
     };
 
     server.close((error?: Error) => {
-      if (error) {
+      // Cancellation may arrive through the parent IPC channel before listen().
+      // A server that never listened is already closed, not a shutdown failure.
+      if (error && (error as NodeJS.ErrnoException).code !== 'ERR_SERVER_NOT_RUNNING') {
         finish(() => reject(error));
         return;
       }

@@ -2,6 +2,11 @@
 
 > This directory contains all project documentation.
 
+## Interactive npm entrypoint
+
+[Terminal controls](setup-guide.md#terminal-controls) covers browser opening,
+o/q/Ctrl+C, headless/managed opt-outs and graceful launcher shutdown.
+
 ## Conversation Navigation
 
 Conversation switching and retained projection work is tracked in

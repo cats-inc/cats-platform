@@ -182,6 +182,13 @@ several Phase 3 items remain:
 
 ## Quick Start
 
+For the npm entrypoint, run `npx @cats-inc/cats-platform`. After readiness, an
+interactive terminal opens the application in the default browser and displays
+its URL. Press `o` to open it again, or `q` / Ctrl+C to stop gracefully. Use
+`--no-open` to skip the initial browser launch. Desktop, watch supervisors, CI,
+redirected terminals, and JSON/silent lifecycle output do not take over keyboard
+input or open browsers. See the [CLI controls](docs/setup-guide.md#terminal-controls).
+
 > [!NOTE]
 > Upgrading an existing local workspace? Review
 > [docs/release-notes.md](./docs/release-notes.md) for behavior changes and
@@ -235,7 +242,7 @@ the Electron host that supervises local `cats-runtime` and `cats-platform` sidec
 For host-package smoke validation, the local tarball path mirrors the
 published `@cats-inc/cats-platform` host package while using the installed
 command `cats-platform`. The separate one-shot bootstrap publication target is
-reserved as `cats-one`.
+available as `cats-one`.
 
 For staged packaging outputs:
 
