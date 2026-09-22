@@ -4,6 +4,7 @@ import { access, readFile, readdir, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createPlatformChildProcessEnv } from '../../shared/platformChildProcessEnv.js';
+import { resolvePlatformPackageRoot } from '../../shared/platformPaths.js';
 import type { ResolvedServerDependencies } from './contracts.js';
 import { routeAppPackageApi } from './appPackageRoutes.js';
 import { routeMobileAuthApi } from './mobileAuthRoutes.js';
@@ -68,7 +69,9 @@ type PlatformAuthGateHandlingResult =
   | { handled: true }
   | { handled: false; auth: RouteAuthContext | null };
 
-const WEB_BUILD_ROOT = path.resolve(path.dirname(process.argv[1]!), '..', 'renderer');
+// npm's Unix bin entry is a symlink under node_modules/.bin. Locate assets
+// through the package module (or Desktop's package override), not argv[1].
+const WEB_BUILD_ROOT = path.join(resolvePlatformPackageRoot(), 'build', 'renderer');
 const MIME_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',

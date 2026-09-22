@@ -10,7 +10,7 @@ const { EventEmitter } = require('node:events');
 const originalSpawn = cp.spawn;
 cp.spawn = function(command, args, options) {
   if (['powershell.exe', 'open', 'xdg-open'].includes(command)) {
-    process.stderr.write('TEST_BROWSER ' + JSON.stringify({ command, args }) + '\\n');
+    process.stderr.write('TEST_BROWSER ' + JSON.stringify({ command, args, options }) + '\\n');
     const child = new EventEmitter();
     child.unref = () => {};
     process.nextTick(() => child.emit('exit', 0));
@@ -54,7 +54,8 @@ export async function launchCli({ entry, args = [], tty = true, environment = ()
     CATS_TEST_TTY: String(tty),
     ...await environment(root),
   });
-  const child = spawn(process.execPath, ['--require', preloadPath, entry, ...args], {
+  const entryPath = typeof entry === 'function' ? await entry(root) : entry;
+  const child = spawn(process.execPath, ['--require', preloadPath, entryPath, ...args], {
     cwd: root, env, stdio: ['pipe', 'pipe', 'pipe', 'ipc'], windowsHide: true,
   });
   let stdout = '', stderr = '';

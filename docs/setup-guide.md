@@ -15,6 +15,12 @@ graceful shutdown, including pending provider snapshot persistence. `--no-open`
 suppresses only the initial browser launch; `o` remains available. Browser launch
 failure leaves the URL visible and the service running.
 
+Windows uses a hidden, non-detached PowerShell launcher. Detached PowerShell can
+exit successfully without executing the browser command. Web assets resolve
+from the package root, including Desktop's package-root override, rather than
+the executable argument: Linux/macOS npm bin entries are symlinks and must still
+serve the bundled homepage, setup route and assets.
+
 App-managed/Desktop, dev/watch supervisors, CI, non-TTY, JSON/silent output and
 help do not auto-open browsers or install keyboard handlers. The parent continues
 to own managed lifecycle and terminal input. `cats-one` delegates its visible
