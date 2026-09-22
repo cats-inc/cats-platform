@@ -1082,6 +1082,13 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
         locale: app.getLocale(),
         isShuttingDown: () => shuttingDown,
         showDialog: async (dialogSpec) => {
+          // The tray closes on click and the main window is usually hidden, so
+          // this box has no parent. On macOS a parentless message box does not
+          // activate the app: it opens behind whatever is frontmost, which is
+          // how the "ready to install" prompt after a download went unseen
+          // until the next tray click. Windows raises a parentless box itself.
+          // `steal` is a macOS-only option and is ignored elsewhere.
+          app.focus({ steal: true });
           const choice = await dialog.showMessageBox({
             type: dialogSpec.action === 'none' ? 'info' : 'question',
             title: dialogSpec.title,
