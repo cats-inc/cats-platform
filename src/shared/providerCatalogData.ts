@@ -102,9 +102,12 @@ export const PRODUCT_PROVIDER_MODELS = {
     { value: 'kilo/google/gemini-3-pro-image', label: 'Google: Nano Banana Pro (Gemini 3 Pro Image) Thinking' },
   ],
   auggie: [
-    { value: 'gpt-5.4', label: 'gpt-5.4 (default)', default: true },
-    { value: 'claude opus 4.6', label: 'claude opus 4.6' },
-    { value: 'sonnet 4.6', label: 'sonnet 4.6' },
+    { value: 'gpt-6-astra', label: 'GPT-6 Astra' },
+    { value: 'gpt-5-6-sol', label: 'GPT-5.6 Sol' },
+    { value: 'claude-fable-5-1', label: 'Claude Fable 5.1' },
+    { value: 'claude-opus-5-5', label: 'Claude Opus 5.5' },
+    { value: 'grok-4-7', label: 'Grok 4.7' },
+    { value: 'butler_a', label: 'Prism (Claude + GPT)' },
   ],
   pi: [
     { value: 'openai-codex/gpt-5.4', label: 'openai-codex gpt-5.4 (default)', default: true },
