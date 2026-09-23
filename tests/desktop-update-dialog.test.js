@@ -211,6 +211,9 @@ function createDialogFlow(platform, options = {}) {
         calls.check += 1;
         if (options.stopAfterCheck) shuttingDown = true;
         if (options.checkError) throw options.checkError;
+        if (Array.isArray(options.versions) && options.versions.length > 0) {
+          return { updateAvailable: true, version: options.versions.shift(), releaseSummary: null };
+        }
         return options.upToDate
           ? { updateAvailable: false, version: null, releaseSummary: null }
           : { updateAvailable: true, version: '0.1.17', releaseSummary: null };
@@ -222,6 +225,11 @@ function createDialogFlow(platform, options = {}) {
       },
       async quitAndInstall() {
         calls.install += 1;
+        if (options.installErrorOnce) {
+          const error = options.installErrorOnce;
+          options.installErrorOnce = null;
+          throw error;
+        }
       },
     },
   });
@@ -299,3 +307,81 @@ for (const platform of ['win32', 'darwin', 'linux']) {
     assert.equal(download.calls.install, 0);
   });
 }
+
+test('the tray re-checks a downloaded artifact whose last handoff failed', () => {
+  const rejected = snapshot({
+    status: 'downloaded',
+    availableVersion: '0.3.3',
+    nextAction: 'restart_install',
+    error: { code: 'signature_rejected', summary: 'The downloaded update failed its signature check.' },
+  });
+
+  assert.equal(shouldRefreshDesktopUpdateFromTray(rejected, true), true);
+  assert.equal(shouldRefreshDesktopUpdateFromTray(rejected, false), false);
+  assert.equal(
+    shouldRefreshDesktopUpdateFromTray(
+      { ...rejected, capability: { ...rejected.capability, canCheck: false } },
+      true,
+    ),
+    false,
+  );
+  // A clean download is offered as before; only a failed handoff earns a re-check.
+  assert.equal(
+    shouldRefreshDesktopUpdateFromTray(
+      snapshot({ status: 'downloaded', nextAction: 'restart_install', error: null }),
+      true,
+    ),
+    false,
+  );
+});
+
+test('a rejected download renders as a failure, not as an offer to install it again', () => {
+  const spec = dialogFor({
+    status: 'downloaded',
+    availableVersion: '0.3.3',
+    error: { code: 'signature_rejected', summary: 'x' },
+  });
+
+  assert.equal(spec.title, 'Update could not be installed');
+  assert.match(spec.message, /signature check/u);
+  assert.equal(spec.action, 'none');
+  assert.deepEqual(spec.buttons, ['OK']);
+
+  const zh = dialogFor(
+    { status: 'downloaded', availableVersion: '0.3.3', error: { code: 'signature_rejected', summary: 'x' } },
+    'darwin',
+    'zh-TW',
+  );
+  assert.equal(zh.title, '更新無法安裝');
+  assert.match(zh.message, /簽章/u);
+});
+
+test('a failed install handoff is shown once, and the next click re-checks', async () => {
+  const flow = createDialogFlow('darwin', {
+    acceptUpdate: true,
+    versions: ['0.3.3', '0.3.6'],
+    installErrorOnce: new Error('Code signature at URL file:///tmp/Cats.app did not pass validation'),
+  });
+
+  // Click one: the offer is accepted, the download succeeds, and Squirrel.Mac
+  // refuses the bundle. Before this change the flow ended here in silence.
+  await flow.run();
+  assert.deepEqual(
+    flow.dialogs.map((spec) => spec.title),
+    ['Update available', 'Update could not be installed'],
+  );
+  assert.match(flow.dialogs[1].message, /signature/u);
+  assert.equal(flow.dialogs[1].action, 'none');
+  assert.equal(flow.manager.getSnapshot().status, 'downloaded');
+  assert.equal(flow.manager.getSnapshot().error.code, 'signature_rejected');
+  assert.deepEqual(flow.calls, { check: 1, download: 1, install: 1 });
+
+  // Click two: the stale artifact is re-checked instead of offered again, the
+  // feed has moved on, and the newer release goes through.
+  await flow.run();
+  assert.deepEqual(flow.dialogs.slice(2).map((spec) => spec.title), ['Update available']);
+  assert.match(flow.dialogs[2].message, /0\.3\.6/u);
+  assert.deepEqual(flow.calls, { check: 2, download: 2, install: 2 });
+  assert.equal(flow.manager.getSnapshot().availableVersion, '0.3.6');
+  assert.equal(flow.manager.getSnapshot().error, null);
+});

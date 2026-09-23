@@ -50,6 +50,8 @@ interface UpdateDialogCopy {
   installingMessage: string;
   failedTitle: string;
   failedMessage: string;
+  installFailedTitle: string;
+  installFailedDetail: string;
   unavailableTitle: string;
   unavailableMessage: string;
   currentVersion: (version: string) => string;
@@ -116,6 +118,8 @@ const UPDATE_DIALOG_COPY: Record<DesktopTrayLocale, UpdateDialogCopy> = {
     installingMessage: 'Cats is handing off to the installer.',
     failedTitle: 'Update check failed',
     failedMessage: 'The update could not be completed.',
+    installFailedTitle: 'Update could not be installed',
+    installFailedDetail: 'Cats will look for a newer release the next time you choose Check for Updates.',
     unavailableTitle: 'Updates are unavailable',
     unavailableMessage: 'This installation cannot update itself.',
     currentVersion: (version) => `You are running Cats ${version}.`,
@@ -153,6 +157,8 @@ const UPDATE_DIALOG_COPY: Record<DesktopTrayLocale, UpdateDialogCopy> = {
     installingMessage: 'Cats 正在交給安裝程式處理。',
     failedTitle: '更新失敗',
     failedMessage: '這次更新無法完成。',
+    installFailedTitle: '更新無法安裝',
+    installFailedDetail: '下次選擇「檢查更新」時，Cats 會先重新檢查是否有更新的版本。',
     unavailableTitle: '無法更新',
     unavailableMessage: '這個安裝方式無法自我更新。',
     currentVersion: (version) => `你目前使用的是 Cats ${version}。`,
@@ -195,14 +201,27 @@ function resolveInstallDetail(
  * `up_to_date` and `failed` are informational dialog states, but their next
  * action is another check. The second pass after that check disables refresh
  * so the fresh result is displayed once instead of starting a loop.
+ *
+ * One state re-checks even though its next action is not `check`: a
+ * `downloaded` artifact whose last handoff failed. See the body.
  */
 export function shouldRefreshDesktopUpdateFromTray(
   snapshot: DesktopUpdateSnapshot,
   allowRecheck: boolean,
 ): boolean {
-  return allowRecheck
-    && snapshot.capability.canCheck
-    && snapshot.nextAction === 'check';
+  if (!allowRecheck || !snapshot.capability.canCheck) {
+    return false;
+  }
+  // A downloaded artifact whose last handoff failed is re-checked before it is
+  // offered again. If the feed has moved on the manager supersedes it; if the
+  // feed still names it the manager keeps it and the install prompt follows as
+  // before. Without this a rejected download -- an unsigned bundle Squirrel.Mac
+  // refused, say -- would be offered on every tray click until the app
+  // restarted, because from `downloaded` nothing else re-checks.
+  if (snapshot.status === 'downloaded' && snapshot.error !== null) {
+    return true;
+  }
+  return snapshot.nextAction === 'check';
 }
 
 /**
@@ -249,6 +268,18 @@ export function resolveDesktopUpdateDialog(input: {
       };
 
     case 'downloaded':
+      // A failed handoff leaves the artifact in place with the process still
+      // alive and, until now, nothing on screen. Say why once; the next tray
+      // click re-checks before this artifact is offered again.
+      if (snapshot.error) {
+        return {
+          title: titled(copy.installFailedTitle),
+          message: DESKTOP_UPDATE_DIALOG_ERROR_COPY[locale][snapshot.error.code],
+          detail: copy.installFailedDetail,
+          buttons: [copy.ok],
+          action: 'none',
+        };
+      }
       return {
         title: titled(copy.downloadedTitle),
         message: copy.downloadedMessage,
@@ -358,7 +389,12 @@ export async function runDesktopUpdateDialog(input: RunDesktopUpdateDialogInput)
         return;
       }
     }
-    await manager.restartAndInstall();
+    const installed = await manager.restartAndInstall();
+    if (installed.error !== null && !isShuttingDown()) {
+      // The handoff failed with the process still alive. Show it the way a
+      // failed download is shown, without starting another check.
+      await showSnapshot(installed, false);
+    }
   }
 
   await showSnapshot(manager.getSnapshot(), true);

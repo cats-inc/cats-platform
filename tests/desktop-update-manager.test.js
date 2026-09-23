@@ -37,6 +37,9 @@ function createFakeAdapter(behaviour = {}) {
       if (behaviour.checkError) {
         throw behaviour.checkError;
       }
+      if (Array.isArray(behaviour.checkResults) && behaviour.checkResults.length > 0) {
+        return behaviour.checkResults.shift();
+      }
       return behaviour.checkResult
         ?? { updateAvailable: true, version: '0.3.0', releaseSummary: 'Notes' };
     },
@@ -51,6 +54,9 @@ function createFakeAdapter(behaviour = {}) {
     },
     async quitAndInstall() {
       calls.install += 1;
+      if (behaviour.installNever) {
+        return new Promise(() => {});
+      }
       if (behaviour.installError) {
         throw behaviour.installError;
       }
@@ -445,6 +451,93 @@ test('a failed install handoff returns to the recoverable downloaded state', asy
   assert.equal(snapshot.status, 'downloaded');
   assert.equal(snapshot.error.code, 'install_handoff_failed');
   assert.equal(snapshot.nextAction, 'restart_install');
+});
+
+test('a re-check from downloaded keeps the artifact when the feed still names that version', async () => {
+  const adapter = createFakeAdapter({ installError: new Error('spawn failed') });
+  const manager = createDesktopUpdateManager({ capability: readyCapability(), adapter });
+
+  await manager.checkForUpdates();
+  await manager.downloadUpdate();
+  await manager.restartAndInstall();
+  const snapshot = await manager.checkForUpdates();
+
+  assert.equal(adapter.calls.check, 2);
+  assert.equal(snapshot.status, 'downloaded');
+  assert.equal(snapshot.availableVersion, '0.3.0');
+  assert.equal(snapshot.error, null);
+  assert.equal(snapshot.nextAction, 'restart_install');
+});
+
+test('a re-check from downloaded supersedes the artifact when the feed has moved on', async () => {
+  // The scenario this exists for: an unsigned 0.3.3 that Squirrel.Mac refused
+  // sat in `downloaded`, a signed 0.3.6 shipped, and the tray kept offering
+  // 0.3.3 because nothing could re-check without restarting the app.
+  const adapter = createFakeAdapter({
+    checkResults: [
+      { updateAvailable: true, version: '0.3.3', releaseSummary: 'Unsigned' },
+      { updateAvailable: true, version: '0.3.6', releaseSummary: 'Signed' },
+    ],
+    installError: new Error('Code signature at URL file:///tmp/Cats.app did not pass validation'),
+  });
+  const manager = createDesktopUpdateManager({ capability: readyCapability(), adapter });
+
+  await manager.checkForUpdates();
+  await manager.downloadUpdate();
+  const rejected = await manager.restartAndInstall();
+  assert.equal(rejected.status, 'downloaded');
+  assert.equal(rejected.error.code, 'signature_rejected');
+
+  const superseded = await manager.checkForUpdates();
+  assert.equal(superseded.status, 'update_available');
+  assert.equal(superseded.availableVersion, '0.3.6');
+  assert.equal(superseded.nextAction, 'download');
+  assert.equal(superseded.error, null);
+});
+
+test('a re-check from downloaded reports up to date when the feed has nothing', async () => {
+  const adapter = createFakeAdapter({
+    checkResults: [
+      { updateAvailable: true, version: '0.3.0', releaseSummary: 'Notes' },
+      { updateAvailable: false, version: null, releaseSummary: null },
+    ],
+  });
+  const manager = createDesktopUpdateManager({ capability: readyCapability(), adapter });
+
+  await manager.checkForUpdates();
+  await manager.downloadUpdate();
+  const snapshot = await manager.checkForUpdates();
+
+  assert.equal(snapshot.status, 'up_to_date');
+  assert.equal(snapshot.availableVersion, null);
+});
+
+test('a handoff failure that is not an artifact rejection stays the generic handoff error', async () => {
+  const manager = createDesktopUpdateManager({
+    capability: readyCapability(),
+    adapter: createFakeAdapter({
+      installError: new Error('Timed out waiting for the desktop update handoff to quit Cats.'),
+    }),
+  });
+
+  await manager.checkForUpdates();
+  await manager.downloadUpdate();
+  const snapshot = await manager.restartAndInstall();
+
+  assert.equal(snapshot.error.code, 'install_handoff_failed');
+});
+
+test('a check is still refused while an installer handoff is in flight', async () => {
+  const adapter = createFakeAdapter({ installNever: true });
+  const manager = createDesktopUpdateManager({ capability: readyCapability(), adapter });
+
+  await manager.checkForUpdates();
+  await manager.downloadUpdate();
+  void manager.restartAndInstall();
+  const snapshot = await manager.checkForUpdates();
+
+  assert.equal(snapshot.status, 'installing');
+  assert.equal(adapter.calls.check, 1);
 });
 
 test('subscribers can unsubscribe deterministically', async () => {
