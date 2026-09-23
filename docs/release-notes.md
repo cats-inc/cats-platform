@@ -19,6 +19,38 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-23 (0.3.8 preview — provider catalog data and local patches)
+
+### Update one installation's model catalog without rebuilding
+
+Behavior change:
+
+Runtime 0.1.28 and Desktop now share the same validated catalog data for model
+names, ordered controls, explicit defaults and fixed combinations. A local YAML
+override replaces only its provider/backend/transport scope; other scopes inherit
+factory data. Validation, digest-checked apply with backup, reload and rollback
+are available through the Runtime catalog tool. Existing sessions retain their
+recorded execution bindings. Desktop retains coherent observed menus during
+temporary disconnections and never uses local informational labels to authorize
+execution on a remote Runtime.
+
+Migration steps:
+
+An existing schema-1 `curated-model-catalogs.yaml` requires explicit conversion
+to schema 2. The update does not rewrite personal files automatically. Before
+using its model menus, use the new bundled Runtime's catalog tool to produce a
+separate converted candidate, review it, then preview/apply and reload (or restart)
+the same Runtime. Without valid schema-2 data or a compatible accepted snapshot,
+the catalog reports unavailable. Clean profiles use factory data directly.
+See the [catalog patch and conversion guide](https://github.com/cats-inc/cats-runtime/blob/main/docs/provider-catalog-soft-patches.md).
+
+Deprecations:
+
+Handwritten model/default/effort tables and schema-1 runtime loading are replaced
+by the schema-2 data contract. The explicit converter retains evidenced legacy
+mappings. Runtime and Platform npm versions are prepared only; this release
+publishes Desktop preview assets and does not publish either npm package.
+
 ## 2026-09-23 (0.3.7 preview — macOS admitted to the release-ready gate)
 
 ### Recover from a rejected update download
