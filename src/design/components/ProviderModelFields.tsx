@@ -107,6 +107,7 @@ export function ProviderModelFields({
   const {
     catalogLoading,
     catalogResolved,
+    catalogConfigurationRequired,
     effectiveCatalog,
     effectiveAdvancedCatalog,
   } = useProviderCatalogState({
@@ -162,6 +163,7 @@ export function ProviderModelFields({
     model,
     modelSelection,
     catalogLoading,
+    catalogConfigurationRequired,
     providersLoaded,
     providerRegistry: {
       ...providerRegistry,
@@ -287,6 +289,11 @@ export function ProviderModelFields({
             </option>
           ) : null}
         </select>
+        {catalogConfigurationRequired && entryOptions.length > 0 ? (
+          <span className="fieldHint" role="status">
+            {t(messageKeys.sharedProviderModelFieldCatalogConfigurationRequired)}
+          </span>
+        ) : null}
         {selectedEntryNotes.length > 0 ? (
           <span className="fieldHint">
             {selectedEntryNotes[0]}

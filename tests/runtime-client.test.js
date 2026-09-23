@@ -49,6 +49,16 @@ function createIdleTimeoutRecorder() {
   };
 }
 
+test('runtime model reads preserve the explicit catalog configuration error code', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json({
+    error: 'Catalog configuration needs attention.', code: 'catalog_unavailable',
+  }, { status: 503 }));
+  const client = new CatsRuntimeClient('http://runtime.test');
+  for (const read of [() => client.getProviderModels('claude'), () => client.getAdvancedProviderModels('claude')]) {
+    await assert.rejects(read, { status: 503, code: 'catalog_unavailable' });
+  }
+});
+
 test('runtime client reuses the shared execution-request serializer for outbound payloads', async () => {
   const requests = [];
   const originalFetch = globalThis.fetch;

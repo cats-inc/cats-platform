@@ -74,7 +74,7 @@ function catalog(provider: string, instance: string | null, model = 'model-a') {
 function api() {
   const state = { registryFailures: 0, modelFailures: 0, advancedFailures: 0,
     registryCalls: 0, modelCalls: 0, advancedCalls: 0, revision: 'one', selected: true,
-    revalidating: false, emptyCatalog: false };
+    revalidating: false, emptyCatalog: false, catalogConfigurationRequired: false };
   const fetchImpl: typeof fetch = async (input) => {
     const url = new URL(String(input), 'http://localhost');
     if (url.pathname === '/api/providers') {
@@ -90,6 +90,9 @@ function api() {
     }
     const advanced = url.pathname.endsWith('/advanced');
     if (advanced) state.advancedCalls++; else state.modelCalls++;
+    if (state.catalogConfigurationRequired) {
+      return Response.json({ error: { code: 'catalog_unavailable', message: 'Unsupported catalog schema 1; raw diagnostic' } }, { status: 503 });
+    }
     if ((advanced ? state.advancedFailures-- : state.modelFailures--) > 0) {
       throw new Error('The operation was aborted due to timeout');
     }
@@ -114,6 +117,42 @@ function assertNoManualRecovery(container: HTMLElement) {
   assert.doesNotMatch(container.textContent ?? '', /aborted|timeout|Retry|Runtime setup|重試|執行階段設定/i);
   assert.equal(container.querySelectorAll('button, a').length, 0);
 }
+
+test('a cold picker stops spinning for invalid catalog configuration and automatically recovers after repair', async (t) => {
+  const clock = installClock(t);
+  const fixture = api();
+  fixture.state.catalogConfigurationRequired = true;
+  const changes: ProviderTargetSelection[] = [];
+  const view = render(<I18nProvider locale="zh-TW"><ProviderModelBrainCard {...fixture.props}
+    model="" onTargetChange={target => changes.push(target)} /></I18nProvider>);
+  await settle();
+  assert.match(view.container.textContent ?? '', /模型清單設定需要修正/);
+  assert.equal(view.container.querySelectorAll('.providerPickerLoading').length, 0);
+  assert.doesNotMatch(view.container.textContent ?? '', /Unsupported|schema|raw diagnostic/);
+  assert.equal(changes.some(target => Boolean(target.model)), false);
+  assertNoManualRecovery(view.container);
+  fixture.state.catalogConfigurationRequired = false;
+  await clock.advance(60_000);
+  assert.doesNotMatch(view.container.textContent ?? '', /模型清單設定需要修正/);
+  assert.match(view.container.textContent ?? '', /model-a/);
+  assert.equal(view.container.querySelectorAll('.providerPickerLoading').length, 0);
+});
+
+test('a configuration failure retains observed choices while replacing the spinner with a configuration notice', async (t) => {
+  const clock = installClock(t);
+  const fixture = api();
+  const view = render(<I18nProvider locale="zh-TW"><ProviderModelBrainCard {...fixture.props} /></I18nProvider>);
+  await settle();
+  fixture.state.catalogConfigurationRequired = true;
+  await clock.advance(60_000);
+  assert.match(view.container.textContent ?? '', /model-a/);
+  assert.match(view.container.textContent ?? '', /模型清單設定需要修正/);
+  assert.equal(view.container.querySelectorAll('.providerPickerLoading').length, 0);
+  fixture.state.catalogConfigurationRequired = false;
+  await clock.advance(60_000);
+  assert.doesNotMatch(view.container.textContent ?? '', /模型清單設定需要修正/);
+  assert.match(view.container.textContent ?? '', /model-a/);
+});
 
 test('catalog refresh without a selected provider never starts a loading spinner or request', async (t) => {
   installClock(t);

@@ -26,6 +26,7 @@ import {
 import {
   normalizeRuntimeProviderDiagnosticsPayload,
   normalizeRuntimeProviderConfigRegistry,
+  readRuntimeErrorCode,
   readRuntimeErrorText,
 } from './clientParsing.js';
 import {
@@ -430,7 +431,7 @@ function createDefaultIdleTimeoutController(timeoutMs: number): RuntimeIdleTimeo
 }
 
 export class RuntimeRequestError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly code?: string) {
     super(message);
     this.name = 'RuntimeRequestError';
   }
@@ -735,6 +736,7 @@ export class CatsRuntimeClient implements RuntimeClient {
       throw new RuntimeRequestError(
         readRuntimeErrorText(rawBody, `Failed to fetch provider models (${response.status})`),
         response.status,
+        readRuntimeErrorCode(rawBody),
       );
     }
 
@@ -771,6 +773,7 @@ export class CatsRuntimeClient implements RuntimeClient {
       throw new RuntimeRequestError(
         readRuntimeErrorText(rawBody, `Failed to fetch advanced provider models (${response.status})`),
         response.status,
+        readRuntimeErrorCode(rawBody),
       );
     }
 

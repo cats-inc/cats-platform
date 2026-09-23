@@ -666,8 +666,13 @@ function readRuntimeRequestStatus(error: unknown): number | null {
 }
 
 function shouldServeStaleProviderCatalogForError(error: unknown): boolean {
+  if (isCatalogConfigurationError(error)) return false;
   const status = readRuntimeRequestStatus(error);
   return status === null || status >= 500 || status === 429;
+}
+
+function isCatalogConfigurationError(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'catalog_unavailable';
 }
 
 function readTruthfulProviderRegistryFailureMessage(
@@ -1099,6 +1104,9 @@ function refreshProviderCatalogCacheEntry<TCatalog extends { warnings?: string[]
     })
     .catch((error) => {
       if (cacheState.inflight.get(cacheKey) !== refreshPromise) throw error;
+      // Do not repeatedly hide a rejected configuration behind stale success.
+      // Mounted pickers retain their observed choices when this error surfaces.
+      if (isCatalogConfigurationError(error)) cacheState.entries.delete(cacheKey);
       const cached = readProviderCatalogCacheEntry(cacheState, cacheKey);
       if (
         shouldServeStaleProviderCatalogForError(error)
@@ -1268,6 +1276,11 @@ export async function handleProviderModels(
     sendJson(response, 200, { catalog: { ...catalog, instance: normalizedInstance } });
   } catch (error) {
     const runtimeError = error as RuntimeRequestError | Error;
+    if (isCatalogConfigurationError(error)) {
+      sendRestError(response, 503, 'catalog_unavailable', runtimeError.message,
+        { provider, instance: normalizedInstance });
+      return;
+    }
     if ('status' in runtimeError && typeof runtimeError.status === 'number' && runtimeError.status < 500) {
       sendRestError(
         response,
@@ -1361,6 +1374,11 @@ export async function handleAdvancedProviderModels(
     sendJson(response, 200, { catalog: { ...catalog, instance: normalizedInstance } });
   } catch (error) {
     const runtimeError = error as RuntimeRequestError | Error;
+    if (isCatalogConfigurationError(error)) {
+      sendRestError(response, 503, 'catalog_unavailable', runtimeError.message,
+        { provider, instance: normalizedInstance });
+      return;
+    }
     if ('status' in runtimeError && typeof runtimeError.status === 'number' && runtimeError.status < 500) {
       sendRestError(
         response,

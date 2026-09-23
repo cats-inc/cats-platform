@@ -32,6 +32,38 @@ function createRuntimeRequestError(message, status) {
   return Object.assign(new Error(message), { status });
 }
 
+test('model routes preserve configuration failures for the picker and recover after repair', async (t) => {
+  const runtime = createRuntimeStub();
+  const readModels = runtime.getProviderModels;
+  const readAdvanced = runtime.getAdvancedProviderModels;
+  const fail = async () => { throw Object.assign(createRuntimeRequestError('Catalog configuration needs attention.', 503), { code: 'catalog_unavailable' }); };
+  runtime.getProviderModels = fail;
+  runtime.getAdvancedProviderModels = fail;
+  await withMockedDateNow(t, Date.parse('2026-09-23T10:00:00Z'), async clock => withServer(runtime, async baseUrl => {
+    for (const suffix of ['', '/advanced']) {
+      const response = await fetch(`${baseUrl}/api/providers/claude/models${suffix}`);
+      assert.equal(response.status, 503);
+      assert.equal((await response.json()).error.code, 'catalog_unavailable');
+    }
+    runtime.getProviderModels = readModels;
+    runtime.getAdvancedProviderModels = readAdvanced;
+    assert.equal((await fetch(`${baseUrl}/api/providers/claude/models`)).status, 200);
+    assert.equal((await fetch(`${baseUrl}/api/providers/claude/models/advanced`)).status, 200);
+    // A later configuration failure must escape the stale-while-refreshing cache.
+    runtime.getProviderModels = fail;
+    runtime.getAdvancedProviderModels = fail;
+    clock.advance(361_000);
+    for (const suffix of ['', '/advanced']) {
+      const retained = await fetch(`${baseUrl}/api/providers/claude/models${suffix}`);
+      assert.equal(retained.status, 200);
+      await retained.json();
+      const rejected = await fetch(`${baseUrl}/api/providers/claude/models${suffix}`);
+      assert.equal(rejected.status, 503);
+      assert.equal((await rejected.json()).error.code, 'catalog_unavailable');
+    }
+  }));
+});
+
 function createRuntimeStub() {
   return {
     async getSetupState() {

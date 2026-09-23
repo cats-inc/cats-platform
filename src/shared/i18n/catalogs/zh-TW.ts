@@ -2726,6 +2726,7 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.providerModel.field.selectProviderFirst': '請先選擇可用的供應器',
   'shared.providerModel.field.waitingProviders': '正在等待可用的供應器…',
   'shared.providerModel.field.loadingModels': '正在載入可用模型…',
+  'shared.providerModel.field.catalogConfigurationRequired': '模型清單設定需要修正',
   'shared.providerModel.field.selectModel': '選擇模型',
   'shared.providerModel.field.noModels': '沒有執行階段支援的模型可用',
   'shared.providerModel.field.customLegacyModelLabel': '自訂舊版模型…',

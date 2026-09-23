@@ -2793,6 +2793,7 @@ export const enCatalog: MessageCatalog = {
   'shared.providerModel.field.selectProviderFirst': 'Select an available provider first',
   'shared.providerModel.field.waitingProviders': 'Waiting for available providers...',
   'shared.providerModel.field.loadingModels': 'Loading available models...',
+  'shared.providerModel.field.catalogConfigurationRequired': 'Model catalog settings need attention',
   'shared.providerModel.field.selectModel': 'Select a model',
   'shared.providerModel.field.noModels': 'No runtime-backed models available',
   'shared.providerModel.field.customLegacyModelLabel': 'Custom legacy model...',

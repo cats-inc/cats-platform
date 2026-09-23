@@ -6,6 +6,7 @@ import {
   peekProviderModelCatalogFromClientCache,
   getProviderCatalogRefreshVersion,
   subscribeProviderCatalogRefreshes,
+  ProviderCatalogConfigurationError,
 } from '../../app/renderer/providerCatalogClient.js';
 import { startProviderReadLoop } from '../../app/renderer/providerReadLoop.js';
 import { isProviderReadRevalidating } from '../../shared/providerRegistryWarnings.js';
@@ -49,13 +50,14 @@ export function useProviderCatalogState(input: {
       resolved: models !== null,
       advanced: models && advanced && coherent(models, advanced) ? advanced : createEmptyProviderAdvancedModelCatalog(provider, instance),
       loading: hasSelectedProvider && Boolean(provider),
+      configurationRequired: false,
     };
   }
   const [state, setState] = useState(initialState);
 
   useEffect(() => {
     let cancelled = false;
-    const current = state.key === key ? { ...state, loading: hasSelectedProvider && Boolean(provider) } : initialState();
+    const current = state.key === key ? { ...state, loading: !state.configurationRequired && hasSelectedProvider && Boolean(provider) } : initialState();
     let modelsReady = false;
     let advancedReady = false;
     let candidateModels: ProviderModelCatalog | null = null;
@@ -74,9 +76,9 @@ export function useProviderCatalogState(input: {
       // Retry just the failed half. Successful base models remain usable while
       // advanced controls load, and a failed refresh never erases either half.
       if (modelsReady && advancedReady) { modelsReady = false; advancedReady = false; }
-      current.loading = true;
+      current.loading = !current.configurationRequired;
       publish();
-      await Promise.allSettled([
+      const reads = await Promise.allSettled([
         modelsReady ? Promise.resolve() : input.fetchProviderModels(provider, instance).then((value) => {
           if (cancelled || !matches(value)) return;
           modelsReady = !isProviderReadRevalidating(value);
@@ -88,10 +90,14 @@ export function useProviderCatalogState(input: {
           candidateAdvanced = value;
         }),
       ]);
+      if (reads.some(result => result.status === 'rejected' && result.reason instanceof ProviderCatalogConfigurationError)) {
+        current.configurationRequired = true;
+      }
       if (candidateModels && candidateAdvanced && coherent(candidateModels, candidateAdvanced)) {
         current.models = candidateModels;
         current.advanced = candidateAdvanced;
         current.resolved = true;
+        if (modelsReady && advancedReady) current.configurationRequired = false;
       } else {
         // Keep a coherent observed snapshot across mixed reload responses. On a
         // cold read, basic models may load independently with advanced controls withheld.
@@ -105,7 +111,7 @@ export function useProviderCatalogState(input: {
           advancedReady = false;
         }
       }
-      current.loading = !(modelsReady && advancedReady);
+      current.loading = !(modelsReady && advancedReady) && !current.configurationRequired;
       publish();
       return !current.loading;
     }, 60_000);
@@ -119,6 +125,7 @@ export function useProviderCatalogState(input: {
   return {
     catalogLoading: effective.loading,
     catalogResolved: effective.resolved,
+    catalogConfigurationRequired: effective.configurationRequired,
     effectiveCatalog: effective.models,
     effectiveAdvancedCatalog: effective.advanced,
   };

@@ -653,6 +653,20 @@ ticket Gatekeeper reads offline, and `spctl --assess`.
 
 ## Troubleshooting
 
+### Model picker keeps loading after a catalog-format upgrade
+
+First read the running Runtime's `GET /providers/catalogs`. A healthy service with
+`available: false` and an unsupported catalog schema needs a data conversion; vendor
+login, model discovery and repeated restarts cannot repair it. Follow Runtime's
+[backed-up conversion and reload procedure](../../cats-runtime/docs/provider-catalog-soft-patches.md#existing-schema-1-files-and-rollback)
+using the package actually bundled in that installation and its exact profile.
+Preserve local choices and obtain required authorization before modifying personal
+files. Confirm both basic/advanced model responses and the mounted selector recover.
+
+When a release changes this format, exercise an isolated previous-version profile
+in addition to the clean-install gate. Passing build/asset checks and mentioning
+migration in release notes are insufficient evidence of a working upgrade.
+
 ### Issue 1: Runtime dependency unavailable
 
 **Symptoms**: `/health` returns `503`

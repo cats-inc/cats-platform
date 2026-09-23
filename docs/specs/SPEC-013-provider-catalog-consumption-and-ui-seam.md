@@ -488,6 +488,35 @@ labels, late responses, connection fences, persisted selection revisions, and sp
 bundle staged catalog module and CLI imports. The joint plan records installed
 Runtime acceptance and OS limits; no Desktop release is published by this change.
 
+## Follow-up: catalog configuration failure after upgrade (2026-09-23)
+
+Desktop 0.3.8's cold picker repeatedly retried model reads when an existing
+schema-1 personal catalog was rejected by Runtime's schema-2 loader. Runtime was
+healthy, but had no accepted catalog. Conversion guidance in release notes and
+clean-profile tests did not exercise this installed upgrade path.
+
+Runtime now reports this distinct condition as HTTP 503 `catalog_unavailable`.
+The Platform client and routes preserve that code; selectors stop their spinner
+and display a localized configuration notice, retaining already observed choices
+and the current selection. This does not expose raw errors, add manual recovery
+buttons, substitute factory choices, or change the transient-network spinner
+contract. Automatic background reads continue at the ordinary refresh interval;
+after a validated repair/reload, a coherent model/advanced pair clears the notice.
+No implicit schema conversion or personal-file writes occur in the picker.
+
+Regression coverage connects a cold old-format profile to explicit backup,
+conversion, apply and reload in Runtime, preserves the code through both Platform
+model routes, and mounts cold/warm pickers to verify notice, retention and recovery.
+
+Validation: 63 focused Platform tests and two Runtime integration tests passed;
+the 18 provider-route cases were rerun after covering stale-cache rejection and
+passed. Server build, test TypeScript checking, Runtime TypeScript checking and
+both catalog boundary guards passed. With explicit operator authorization, the
+installed 0.3.8 profile was backed up, converted and reloaded; its Claude basic and
+advanced endpoints and subsequent Desktop reads returned 200. That operational
+recovery uses the existing installation; the new notice code is not yet published
+in an installer. No full local suite or new installer smoke is claimed.
+
 ## Open Questions
 
 - [ ] Keep `GET /api/providers` as the selector route name, or introduce a new

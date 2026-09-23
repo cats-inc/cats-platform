@@ -21,6 +21,13 @@ export const PROVIDER_ADVANCED_CATALOG_INCOMPLETE_WARNING =
 
 type ProviderCatalogFetch = typeof fetch;
 
+export class ProviderCatalogConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProviderCatalogConfigurationError';
+  }
+}
+
 interface ProviderCatalogClientCacheState<TCatalog> {
   entries: Map<string, {
     value: TCatalog;
@@ -89,19 +96,24 @@ function buildProviderCatalogRequestPath(input: {
   return queryString ? `${path}?${queryString}` : path;
 }
 
-async function readProviderCatalogErrorMessage(
+async function readProviderCatalogError(
   response: Response,
   fallback: string,
-): Promise<string> {
+): Promise<Error> {
   try {
-    const payload = await response.json() as { error?: { message?: unknown } };
+    const payload = await response.json() as { error?: { message?: unknown; code?: unknown } };
+    if (payload.error?.code === 'catalog_unavailable') {
+      return new ProviderCatalogConfigurationError(
+        typeof payload.error.message === 'string' ? payload.error.message : fallback,
+      );
+    }
     if (typeof payload.error?.message === 'string') {
-      return payload.error.message;
+      return new Error(payload.error.message);
     }
   } catch {
     // Ignore invalid error payloads and fall back to the default message.
   }
-  return fallback;
+  return new Error(fallback);
 }
 
 async function readProviderCatalogJson(
@@ -253,11 +265,9 @@ export async function fetchProviderModelCatalogFromClientCache(options: {
         if (response.status === 401 || response.status === 403) {
           throw new ProviderClientAuthError('Provider session is unavailable.');
         }
-        throw new Error(
-          await readProviderCatalogErrorMessage(
-            response,
-            PROVIDER_MODEL_CATALOG_LOAD_FAILED_WARNING,
-          ),
+        throw await readProviderCatalogError(
+          response,
+          PROVIDER_MODEL_CATALOG_LOAD_FAILED_WARNING,
         );
       }
 
@@ -296,11 +306,9 @@ export async function fetchProviderAdvancedCatalogFromClientCache(options: {
         if (response.status === 401 || response.status === 403) {
           throw new ProviderClientAuthError('Provider session is unavailable.');
         }
-        throw new Error(
-          await readProviderCatalogErrorMessage(
-            response,
-            PROVIDER_ADVANCED_CATALOG_LOAD_FAILED_WARNING,
-          ),
+        throw await readProviderCatalogError(
+          response,
+          PROVIDER_ADVANCED_CATALOG_LOAD_FAILED_WARNING,
         );
       }
 

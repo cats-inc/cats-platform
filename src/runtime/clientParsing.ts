@@ -8,6 +8,15 @@ import type {
 } from './client.js';
 import { normalizeProductProviderEventCapabilities } from '../shared/providerCatalog.js';
 
+export function readRuntimeErrorCode(body: string): string | undefined {
+  try {
+    const payload = JSON.parse(body);
+    return typeof payload?.code === 'string' ? payload.code : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function readRuntimeErrorText(body: string, fallback: string): string {
   const trimmed = body.trim();
   if (!trimmed) {

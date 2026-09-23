@@ -792,6 +792,7 @@ export function resolveProviderModelFieldsViewState(input: {
   model: string;
   modelSelection?: ProviderModelSelection | null;
   catalogLoading: boolean;
+  catalogConfigurationRequired?: boolean;
   providersLoaded: boolean;
   providerRegistry: ProductProviderRegistryReadModel;
   effectiveCatalog: ProviderModelCatalog;
@@ -914,11 +915,13 @@ export function resolveProviderModelFieldsViewState(input: {
           ? translate(messageKeys.sharedProviderModelFieldWaitingProviders)
           : translate(messageKeys.sharedProviderModelFieldSelectProviderFirst)
         : translate(messageKeys.sharedProviderModelFieldWaitingProviders))
-    : catalogLoading
-      ? translate(messageKeys.sharedProviderModelFieldLoadingModels)
-      : allowLegacyManualModelEntry
-        ? translate(messageKeys.sharedProviderModelFieldSelectModel)
-        : translate(messageKeys.sharedProviderModelFieldNoModels);
+    : input.catalogConfigurationRequired
+      ? translate(messageKeys.sharedProviderModelFieldCatalogConfigurationRequired)
+      : catalogLoading
+        ? translate(messageKeys.sharedProviderModelFieldLoadingModels)
+        : allowLegacyManualModelEntry
+          ? translate(messageKeys.sharedProviderModelFieldSelectModel)
+          : translate(messageKeys.sharedProviderModelFieldNoModels);
   const providerRegistryHint = resolveProviderRegistryHint({
     providersLoaded,
     registry: providerRegistry,

@@ -2861,6 +2861,7 @@ export const messageKeys = {
   sharedProviderModelFieldWaitingProviders:
     'shared.providerModel.field.waitingProviders',
   sharedProviderModelFieldLoadingModels: 'shared.providerModel.field.loadingModels',
+  sharedProviderModelFieldCatalogConfigurationRequired: 'shared.providerModel.field.catalogConfigurationRequired',
   sharedProviderModelFieldSelectModel: 'shared.providerModel.field.selectModel',
   sharedProviderModelFieldNoModels: 'shared.providerModel.field.noModels',
   sharedProviderModelFieldCustomLegacyModelLabel:
