@@ -1,4 +1,4 @@
-# Linux Self-Update Investigation (0.3.8 through 0.4.2)
+# Linux Self-Update Investigation (0.3.8 through 0.4.3)
 
 Date: 2026-09-23
 Last updated: 2026-09-24
@@ -379,3 +379,90 @@ requires a future target; its NNP 0 is verified but subsequent authentication is
 not claimed. Diagnostic socket inheritance remains a separate unresolved
 follow-up. No source fix, version bump, publication or official-platform
 allowlist change was made during this acceptance run.
+
+## 2026-09-24 follow-up: released 0.4.2 to 0.4.3
+
+The installed Linux ARM64 Desktop completed **automatic 0.4.2 → 0.4.3 update
+acceptance**, including the released tray shortcut fix. The target is Platform
+`ccfba1388374ef8913486acc5adc8fcd9645bca4`, Runtime 0.2.0 at
+`edfec394951200702b9a88b4f9d76d97669b9be8`, and Usage 0.3.0. Private backups,
+stdout/stderr, process snapshots, package logs, model responses and screenshots
+are owner-only under `.cats-update-evidence/20260924-linux-043/` in the parent
+workspace, outside Git. No manual installation, cache injection, source patch,
+version bump or publication was performed for this acceptance.
+
+### Preserved source and actual updater
+
+The initial installed host was PID 249291, `/opt/Cats/cats`, UID 1000,
+`NoNewPrivs: 0`; dpkg reported `cats 0.4.2 arm64 install ok installed`.
+Its stdout/stderr pointed to `/dev/null`. After preserving the existing profiles,
+update cache, configuration hashes, source `app.asar` and process state, the host
+was exited through Tray Quit and the same installed 0.4.2 executable launched
+normally with stdout/stderr captured. That source updater was PID 329982, still
+UID 1000 / NNP 0, with no diagnostic arguments. This run therefore verifies an
+unmodified installed 0.4.2 updater, but not an uninterrupted multi-update process
+chain from the earlier 0.4.1 acceptance.
+
+The native update dialog identified source 0.4.2 and target 0.4.3. Before the
+update, the tray lacked all three product shortcuts despite completed setup.
+The current configuration baseline contained five files; the older curated-model
+catalog and its migration backup were already absent before this run. Nothing
+was removed or restored to force agreement with the earlier acceptance baseline.
+
+### Download, authentication, installation and relaunch
+
+The old updater downloaded `Cats-0.4.3-arm64.deb`, 94995544 bytes. Its SHA-256 is
+`3dcf3dba94cafe3fec3f36265b6d2889121f3bc19d327d209dcc32d0c63dcc60`; SHA-512
+matches the published metadata:
+
+```text
+BmJtFegisC0RMui1pAvSc8DAKES4lNEF9ipWaC3Fd9YeN/2NoEIHpkBrDBChLZJI2RByUXzICa9vtiOra378vQ==
+```
+
+The updater's old-cache checksum mismatch was expected: it replaced the cached
+0.4.2 artifact with the newly downloaded 0.4.3 target. The cache had already been
+backed up; no agent cleared it. At 04:26:27 Asia/Taipei, Platform PID 330080 and
+Runtime PID 330064 emitted normal stopped events with `reason: stdin_closed`.
+The captured command was:
+
+```text
+pkexec --disable-internal-agent /bin/bash -c 'dpkg -i .../Cats-0.4.3-arm64.deb'
+```
+
+The real system authentication dialog appeared and the user authenticated
+locally. The dpkg log records `upgrade cats:arm64 0.4.2 0.4.3` at 04:28:10 and
+`status installed cats:arm64 0.4.3` at 04:28:51. The external launcher captured
+source host PID 329982 exiting with **code 0** at 04:28:51.792. The numeric
+installer exit code was not independently captured and is not claimed.
+
+Exactly one replacement main host, PID 335561, started automatically from
+`/opt/Cats/cats`, with the original empty argument list, UID 1000 and
+**NNP 0→0**. It was not manually relaunched afterward. Runtime PID 335647 and
+Platform PID 335663 were ready at versions 0.2.0 and 0.4.3. Dpkg independently
+reported `cats 0.4.3 arm64 install ok installed`; the installed release descriptor
+matched the target commits, and the new Desktop's own native update dialog read
+`Cats 0.4.3 已是最新版本。`.
+
+No `install_handoff_failed`, pkexec restriction, relaunch helper failure or
+installer-handoff timeout was observed. Authentication and installation finished
+within five minutes; this is not an additional long-authentication stress test.
+
+### Settings, models and released tray fix
+
+The complete current five-file configuration inventory stayed byte-identical.
+All 16 providers' standard and advanced model API responses returned HTTP 200
+and matched the fresh pre-update normalized snapshot exactly. The actual renderer
+showed Claude's four models and six reasoning-effort choices, retaining Opus 5
+and High as defaults. Usage 0.3.0 remained enabled. No model execution or
+verification chat was created.
+
+On the automatic replacement's normal startup, the tray contained `開啟聊天`,
+`開啟程式碼` and `開啟工作`. They remained present after a normal renderer reload;
+both the live DBus menu and visible native tray menu confirmed the result.
+This is packaged Linux acceptance of the 0.4.3 shortcut fix, in addition to its
+earlier disposable-profile Electron regression coverage.
+
+The final host remains the automatic replacement PID 335561 with NNP 0 and no
+diagnostic arguments. A future update initiated by 0.4.3, Windows/macOS native
+acceptance, and the separate diagnostic-socket inheritance follow-up are not
+claimed complete by this Linux run.

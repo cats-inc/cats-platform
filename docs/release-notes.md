@@ -43,10 +43,12 @@ Every OS bundles Runtime 0.2.0 from immutable commit
 with SHA-256 `61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509`.
 No npm or new App publication is part of this release.
 
-Installed Desktop 0.4.2 does not contain this fix; 0.4.2 → 0.4.3 packaged upgrade
-and tray acceptance remain pending. Linux Electron 41.2.0 regression testing
-with a disposable profile verified persisted-login cold start, refresh, logout,
-and login again; it also reproduced the old transport returning no products.
+Linux ARM64 installed Desktop 0.4.2 → 0.4.3 automatic upgrade and tray acceptance
+passed: the new package and native Desktop both report 0.4.3, and all three
+shortcuts appear on automatic restart and survive renderer refresh. Linux
+Electron 41.2.0 regression testing with a disposable profile also verified
+persisted-login cold start, refresh, logout, and login again; it reproduced the
+old transport returning no products.
 
 Deprecations:
 
@@ -67,8 +69,17 @@ stapled-ticket and Gatekeeper checks; Linux is ARM64 `.deb`.
 The downloaded Linux package's SHA-512 matches its update metadata; SHA-256 is
 `3dcf3dba94cafe3fec3f36265b6d2889121f3bc19d327d209dcc32d0c63dcc60`.
 Read-only extraction confirmed package/Desktop/Platform 0.4.3, Runtime 0.2.0,
-and the authenticated-session tray reader in the shipped host. This checks the
-published artifact; it does not claim an installed upgrade or tray acceptance.
+and the authenticated-session tray reader in the shipped host.
+
+The [real Linux update acceptance](research/2026-09-23-linux-self-update-validation.md#2026-09-24-follow-up-released-042-to-043)
+subsequently passed through the installed 0.4.2 updater and system authentication.
+The old host exited with code 0; the automatic replacement preserved UID,
+arguments and NoNewPrivs 0→0. All five current configuration files and normalized
+model catalogs for all 16 providers remained unchanged; real model/effort menus
+and Usage 0.3.0 remained available. No manual installation or source patch was
+used. The source 0.4.2 was normally cold-launched to capture stdout before this
+test; this does not claim an uninterrupted chain from the prior update. Windows
+and macOS native update acceptance and a future update from 0.4.3 remain untested.
 
 ## 2026-09-24 (0.4.2 preview — publication)
 
