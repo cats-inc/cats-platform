@@ -46,7 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
-| [PLAN-109](PLAN-109-cats-self-development-and-catlas-practice.md) | Cats Self-Development and Catlas Practice | Draft; planning documents drafted, implementation not started | [SPEC-117](../specs/SPEC-117-cats-self-development-and-catlas-practice.md), [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
+| [PLAN-109](PLAN-109-cats-self-development-and-catlas-practice.md) | Cats Self-Development and Catlas Practice | Draft; preview/debug-to-release knowledge handoff staged, implementation pending | [SPEC-117](../specs/SPEC-117-cats-self-development-and-catlas-practice.md), [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
 | [PLAN-108](./PLAN-108-conversation-navigation-cache.md) | Conversation Navigation Cache | Implemented | [SPEC-076](../specs/SPEC-076-per-entity-state-subscription-protocol.md), [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md) |
 | [PLAN-106](./PLAN-106-official-app-package-hosting.md) | Official App Package Hosting | Host/SDK implemented; Desktop 0.2.5 preview selection prepared; native acceptance/catalog deferred | [SPEC-115](../specs/SPEC-115-versioned-official-app-packages-and-telemetry-bridge.md), [ADR-114](../decisions/114-separate-official-app-sources-and-coordinate-desktop-distribution.md) |
 | [PLAN-105](./PLAN-105-telegram-work-delivery-golden-path-rollout.md) | Telegram Work Delivery Golden Path Rollout | In Progress — gates G0-G5 passed and all 50 SPEC-114 requirements traced; `/work` runs end to end from Telegram ingress through a supervised continuation loop to a Cats-verified commit, a delivery receipt, and Desktop inspection/recovery (disabled by default). G6 outstanding: no provider, git, or Telegram credential has executed against it yet | [SPEC-114](../specs/SPEC-114-telegram-work-delivery-golden-path.md), [ADR-112](../decisions/112-adopt-a-core-owned-transport-work-delivery-golden-path.md) |
@@ -163,6 +163,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-09-24 (PLAN-109 stages development isolation, Catlas guidance and verified practice.)*
+*Last updated: 2026-09-24 (PLAN-109 adds profile-specific packaging and source-free release Catlas inference gates.)*
 
 *See also: [specs/](../specs/) for feature specifications*

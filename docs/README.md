@@ -7,12 +7,15 @@
 [ADR-118](decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md),
 [SPEC-117](specs/SPEC-117-cats-self-development-and-catlas-practice.md), and
 [PLAN-109](plans/PLAN-109-cats-self-development-and-catlas-practice.md) propose
-installed-Desktop-managed source development and evidence-based Catlas operation
-practice. The package covers isolated candidates, multi-repository ownership,
-versioned operation knowledge, actual skill delivery and verified procedure
-promotion. ADR is Proposed and SPEC/PLAN are Draft; implementation and native
-acceptance have not started. Platform owns this joint design, with explicit
-Runtime, cats-one and Apps work packages.
+preview/debug-managed source development and knowledge-producing practice.
+The owner's clarified profile split gives only preview/debug the extra
+development/practice skills. End-user release omits that supplement and gives
+compatible local knowledge plus current context to Catlas's bound provider/model
+for situational guidance. The package covers isolated candidates, multi-repo
+ownership, artifact inventories, actual model-input delivery and reviewed
+knowledge promotion. ADR is Proposed and SPEC/PLAN are Draft; implementation
+and native acceptance have not started. Platform owns this joint design, with
+explicit Runtime, cats-one and Apps work packages.
 
 ## Provider Catalog Soft Patches
 

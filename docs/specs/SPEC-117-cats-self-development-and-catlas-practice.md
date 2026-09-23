@@ -13,12 +13,18 @@
 
 ## Summary
 
-An installed Cats Desktop shall be able to manage bounded development tasks
-against the Cats source repositories, verify a separate candidate, and retain
-reviewable results. Catlas shall use versioned operation knowledge and current
-product observations to explain, guide, and, when authorized, perform supported
-operations. Practice shall produce evaluated candidates for code, knowledge,
-and skill improvements, with traceable promotion and revocation.
+Preview/debug Cats Desktop shall carry additional skills for admitted managed
+agents to improve Cats source and produce knowledge files. End-user release
+shall omit that development/practice supplement while shipping the promoted
+knowledge. In both profiles, Catlas shall give relevant knowledge and current
+user/product context to its bound provider/model, which reasons about the user's
+situation, likely intent and obstacles and produces useful guidance. Supported
+operations may execute through their separate authorization boundary.
+
+This distribution split incorporates the owner's 2026-09-24 clarification. The
+learning output is versioned external knowledge, alongside reviewable code/skill
+changes; installing release does not require source access, development skills,
+or training/fine-tuning the user's selected model.
 
 These are proposed requirements. Named records below are conceptual contracts,
 not existing APIs, schemas, CLI commands, or promised installed capabilities.
@@ -30,6 +36,8 @@ not existing APIs, schemas, CLI commands, or promised installed capabilities.
 - Keep Catlas guidance accurate for the product actually running on the machine.
 - Reuse one operation definition for explanation, guidance, and execution.
 - Improve procedures using reproducible outcomes, including failure evidence.
+- Transfer reviewed development/practice knowledge to source-free release users
+  without transferring the development supplement or private raw traces.
 
 ## Non-Goals
 
@@ -53,15 +61,51 @@ coverage, not checks executed during this drafting task.
 | Session workspaces | [Runtime preparation](../../../cats-runtime/src/core/workspace/sessionWorkspace.ts), [worktree tests](../../../cats-runtime/src/http/sessionWorktree.test.ts) | Source/sandbox/worktree primitives exist; worktree preparation resolves one Git repository |
 | Developer workspace | [cats-one SPEC-001](../../../cats-one/docs/specs/SPEC-001-developer-workspace-bootstrap.md) | Four-member inventory and managed skill sync exist; no cross-repository build/dev orchestration or established managed-session discovery acceptance |
 | Runtime skills | [catalog/delivery](../../../cats-runtime/src/core/skills/catalog.ts), [hydration](../../../cats-runtime/src/core/hydration/sessionHydration.ts) | Delivery is provider-dependent; filesystem and instruction delivery differ, and re-entry can resolve newer content |
+| Skill packaging | [Desktop staging](../../desktop/host/packaging.ts), [Runtime package inventory](../../../cats-runtime/package.json) | The Runtime skill library is included broadly today; preview/debug-only supplement filtering is not implemented |
 | Supervised operations | [tool boundary](../../src/platform/supervision/toolBoundary.ts), [tool registry documentation](../tool-calls.md) | Delegates and decision contracts exist; several agent-callable adapter/result loops remain pending |
 | Catlas assistance | [assist refresh](../../src/products/chat/api/guideCatAssist.ts), [sidecar](../../src/design/components/GuideCatSidecar.tsx) | Fixed navigation and deterministic/last-good cache hydration exist; runtime-generated assist and the proposed operation loop are absent |
 | Desktop isolation | [host config](../../desktop/host/config.ts), [host startup](../../desktop/host/main.ts) | Some state/port overrides exist; a complete candidate profile, including Electron identity and single-instance behavior, is not established |
 | Product memory | [SPEC-031](SPEC-031-built-in-memory-extraction-durable-sync-and-retrieval-context.md), [SPEC-088](SPEC-088-companion-memory-bridge-contract-placeholder.md) | Evidence/memory/retrieval have defined boundaries; a validated-procedure promotion store is not implemented |
 
+## Distribution and Knowledge Contract
+
+Release and preview/debug are provisional audience/profile names. Bind their
+effective content/capabilities to build provenance, independently of signing
+and update-feed identity under ADR-117. Both profiles may ship the same compatible
+knowledge revision and use the same configured inference provider/model.
+
+| Dimension | Preview/debug | End-user release |
+|-----------|---------------|------------------|
+| Extra Cats-development/practice skills | Present through an explicitly selected supplement | Absent from shipped assets, advertised catalog and automatic session injection |
+| Managed Cats source feedback | Admitted development tasks may produce bounded changes | This built-in workflow is unavailable |
+| Practice and knowledge production | Admitted exercises produce candidates and review evidence | No autonomous practice, distillation or knowledge-promotion workflow |
+| Published knowledge files | Consume them and propose revised content | Consume compatible, reviewed content without source checkout |
+| Catlas reasoning and help | Bound model receives relevant knowledge and current context | Same model/context path; no development-skill dependency |
+| Ordinary user features | Existing permissions and supported product capabilities | Existing permissions and supported product capabilities |
+
+The exclusion concerns the extra Cats self-development package. It does not
+remove unrelated Runtime skills or ordinary Code use. This controls Cats-owned
+packaging and orchestration; it is not a claim that a general agent can never
+read user-selected repository instructions.
+
+Knowledge entries cover product concepts, intent/symptom cues, diagnostic
+checks, known limitations, recovery advice, and operation definitions. Files
+shall be inspectable Markdown/structured content with a manifest of entry IDs,
+revisions/digests, applicability, locale and provenance. A sanitized evidence
+reference can establish why an entry was accepted without shipping raw private
+traces. The first bundle is build-coupled and stored locally with the product;
+derived indexes/caches must remain replaceable from the authoritative files.
+
+Local storage and delivery to the model are separate steps. The first path
+selects relevant entries and sends their actual content in the model request.
+A capable local agent may instead read a bounded read-only knowledge root or
+use a retrieval tool, after that path is verified. A remote/API model cannot
+read the desktop's files just because its prompt contains their paths.
+
 ## First Acceptance Slice
 
-Use one machine, initially Windows, an identified installed release/preview
-controller with the required capabilities, and the four source members. Missing
+Use one machine, initially Windows, an identified preview/debug controller
+with the required capabilities, and the four source members. Missing
 controller capabilities must be reported; source availability alone is not
 proof that an older installation implements this feature.
 
@@ -70,11 +114,17 @@ proof that an older installation implements this feature.
 2. Prepare an isolated worktree, resolve developer instructions and skills, and
    create managed implementation and verification sessions.
 3. Build/test the candidate with separate data, listeners, and process ownership.
-4. Produce a bounded diff, validation receipt, and retained workspace. The
-   acceptance path ends at reviewable local delivery.
-5. Catlas explains and guides selecting a usable execution target, selecting the
-   intended repo, and opening a Code session. The resulting session's actual
-   workspace and access are checked through authoritative state.
+4. Produce a bounded diff, validation receipt, retained workspace and candidate
+   knowledge entries. Independently verify and curate an initial knowledge
+   bundle; the code path ends at reviewable local delivery.
+5. Run an isolated release-profile candidate without the supplement or access
+   to Cats source. Its Catlas uses that bundle plus a bounded user/context
+   fixture through its bound provider/model to explain a situation and identify
+   a useful next step. Verify actual content delivery to the model.
+6. Catlas explains and guides selecting a usable execution target, selecting the
+   intended user repository, and opening a Code session. The resulting session's
+   actual workspace and access are checked through authoritative state. A
+   release-profile user repository need not be the Cats source workspace.
 
 Only one member is writable in this slice. Cross-member mutation, autonomous
 practice, general authorized-operation mode, and native OS parity have later
@@ -87,8 +137,9 @@ symlink arrangement must not be passed off as a supported full workspace.
 ### Development and candidate execution
 
 - **FR-01 — Readiness and scope.** Resolve the controller's build/capability
-  identity, Runtime endpoint, authorized source root, member identities,
-  provider/model target, effective write grant, budget, and delivery intent.
+  identity and development profile, Runtime endpoint, authorized source root,
+  member identities, provider/model target, effective write grant, budget, and
+  delivery intent.
   Show missing prerequisites before starting mutations. Readiness must be
   inspectable through the product, without requiring handwritten state files.
 - **FR-02 — Revision set.** Record each participating member's base commit,
@@ -132,19 +183,23 @@ symlink arrangement must not be passed off as a supported full workspace.
   changes, not assume historical content is still applied. A required skill
   needs a successful delivery/behavior probe on the selected provider before
   the managed development workflow is called ready. Installing workspace
-  mirrors alone does not prove session discovery.
-- **FR-09 — Compatible operation knowledge.** Supply a Platform-owned bundle
-  containing operation definitions, build compatibility, required capability
-  revisions, OS/locale support, provenance, and a content digest. Product
-  installations must use it without a source checkout. Choose by observed
+  mirrors alone does not prove session discovery. Apply this supplement only
+  to preview/debug development/practice sessions. Release Catlas readiness uses
+  its normal model/context delivery, not installation of these skills.
+- **FR-09 — Compatible product knowledge.** Supply a Platform-owned bundle
+  containing concepts, intent/symptom cues, diagnostics, operation definitions,
+  build compatibility, required capability revisions, OS/locale support,
+  provenance, and a content digest. Installations must use it without a source
+  checkout. Choose by observed
   capabilities as well as version; unsupported or stale instructions cannot
   authorize execution. Ship the initial bundle with the corresponding build;
   independently updated bundles require a later distribution/trust contract.
 - **FR-10 — Bounded observation.** Provide the current surface and revision,
   relevant selected entities, workspace/access summary, provider readiness,
-  recent bounded failure signals, and policy-filtered operations. Exclude
-  secrets and unrelated private conversations. Resolve authorization and target
-  identifiers server-side. Retained display information is not current
+  the user's request or relevant help trigger, recent bounded failure signals,
+  and policy-filtered operations. Exclude secrets and unrelated private
+  conversations. Resolve authorization and target identifiers server-side.
+  Retained display information is not current
   execution authority.
 - **FR-11 — Shared workflow semantics.** Each operation defines prerequisites,
   steps, stable UI targets where supported, tool/delegate bindings, outcome
@@ -163,15 +218,16 @@ symlink arrangement must not be passed off as a supported full workspace.
   model-generated hints are event-triggered, deduplicated, dismissible, and
   rate-limited. New runtime assistance initially defaults to explicit help;
   proactive generation and scheduled practice require separately enabled
-  settings and budgets. Existing deterministic welcome/navigation remains
-  available. Catlas does not join private conversations or receive
-  development/publishing authority by default.
+  settings and budgets; practice is available only in preview/debug. Existing
+  deterministic welcome/navigation remains available. Catlas does not join
+  private conversations or receive development/publishing authority by default.
 
 ### Practice, evidence, and durable improvement
 
-- **FR-14 — Resettable practice.** Every exercise declares a goal, owned fixture,
-  initial-state recipe, permitted actions, expected outcomes, timeout/budget,
-  cleanup/retention policy, and evaluator revision. Use synthetic or explicitly
+- **FR-14 — Resettable practice.** Preview/debug admits each exercise, which
+  declares a goal, owned fixture, initial-state recipe, permitted actions,
+  expected outcomes, timeout/budget, cleanup/retention policy, and evaluator
+  revision. Use synthetic or explicitly
   admitted sanitized inputs. Run candidate procedures on clean resets, with a
   fixed baseline for comparison. Cap attempts, elapsed time, and provider usage;
   when monetary cost is unknown, enforce available time/turn/token limits and
@@ -211,6 +267,46 @@ symlink arrangement must not be passed off as a supported full workspace.
   persisted-data contracts need the next minor boundary. Bumps/publication stay
   outside this documentation task. Restoring a binary is not a data downgrade.
 
+### Distribution and knowledge-fed inference
+
+- **FR-20 — Build-profile separation.** Package the extra Cats development,
+  operation-practice and distillation skills/resources only in the preview/debug
+  supplement. Release artifacts must exclude them physically and omit them from
+  Cats-owned catalogs, auto-discovery/injection, development/practice endpoints
+  and hydration of inherited/resumed sessions. Validate both artifact inventories
+  and runtime requests; a hidden control is not absence. Leftover preview state,
+  nearby Cats source or caller-supplied metadata must not enable the supplement
+  in release. Removing a skill from request metadata does not erase a provider's
+  retained context: reject a development-session resume when that exclusion
+  cannot be verified, or create a fresh context with only release-compatible
+  inputs. Preserve unrelated product features and skill packages.
+- **FR-21 — Reviewed knowledge production.** Preview/debug code work and practice
+  shall produce reviewable knowledge-file candidates with evidence, applicability
+  and digests. Independent validation/review promotes selected content into the
+  Platform-owned bundle for both profiles. Do not ship raw private traces,
+  development instructions or unverified lessons as end-user knowledge. Record
+  the exact bundle in the artifact inventory. Knowledge promotion/publication
+  remains separate from code integration and obeys existing authorization.
+- **FR-22 — Deliver content to the bound model.** Assemble bounded relevant
+  knowledge plus the current observation/user request for Catlas's configured
+  provider/model. Initially inject selected entry contents into the inference
+  request. File-reading or retrieval-tool delivery may be used only when the
+  adapter and session can actually read the selected read-only resource; supply
+  content/tool results for remote/API models rather than a desktop-only path.
+  Verify effective delivery, record entry IDs/digests and provider target, and
+  reselect on context/build/knowledge revision changes. Missing or incompatible
+  content must be visible to the inference path and cannot support a completion
+  claim. Neither source access nor a development skill is a release dependency.
+- **FR-23 — Contextual inference.** The bound model shall use available evidence
+  to identify the current situation, form a tentative understanding of intent
+  and blockers, and suggest an explanation, diagnostic question or supported
+  next step. Keep inferred intent distinct from observed facts; ask when the
+  distinction affects the next action. Contextually different situations must
+  not be answered solely by replaying the same canned help. Show brief grounded
+  guidance and truthful action results without requiring storage of private
+  model reasoning. Offline/model failures preserve basic product usability and
+  are not presented as successful inference or completed operations.
+
 ### Non-functional requirements
 
 - **Auditability:** correlate work, agent sessions, revisions, candidate profile,
@@ -227,16 +323,20 @@ symlink arrangement must not be passed off as a supported full workspace.
 ## Design Overview
 
 ```text
-Installed Desktop / existing Core Task + Run
+Preview/debug Desktop + development supplement / existing Core Task + Run
   -> admitted source assignments -> per-repo worktrees
   -> candidate build in a separate environment
-  -> independent outcome checks -> reviewable change-set receipt
+  -> independent outcome checks -> code + candidate knowledge files
+  -> reviewed changes / promoted Platform knowledge bundle
 
-Platform capabilities + versioned operation bundle + current surface
-  -> Catlas explanation / guidance / supervised tool request
-  -> verified outcome evidence
-  -> candidate lesson -> replay + held-out evaluation
-  -> reviewed code / knowledge / skill revision
+Release Desktop (no development supplement) or preview/debug
+  -> compatible local knowledge bundle + bounded current context/user request
+  -> selected content injection or verified read/retrieval tool
+  -> Catlas's bound provider/model reasons about situation, intent and blockers
+  -> explanation / guidance / authorized operation + checked result
+
+Preview/debug-only practice
+  -> candidate lesson -> replay + held-out evaluation -> reviewed knowledge
 ```
 
 The controller and candidate exchange bounded requests and artifact/evidence
@@ -251,6 +351,8 @@ silently rewrite an active run's inputs.
 | Development change set | Core task/run refs, member revision set, assignments/grants, workspace ownership, candidate and validation refs, delivery state | Platform; Runtime owns actual session/worktree state |
 | Candidate environment | Build identity, allocated data/profile roots, endpoints, owned processes, fixture revision, recovery/retention disposition | Desktop/Platform, using Runtime primitives |
 | Operation definition | Stable id/revision, compatibility/capabilities, prerequisites, guide steps, action bindings, postconditions, recovery | Platform; Apps contributes utility-owned content |
+| Product knowledge bundle | Concepts, symptom/intent cues, diagnostics and operations; manifest, entry revisions/digests, applicability, locale and sanitized provenance | Platform; promoted from reviewed preview/debug output |
+| Catlas context receipt | Bound provider/model, observation revision, selected entry IDs/digests, content/tool delivery outcome; no required private reasoning trace | Platform projection over the Runtime inference boundary |
 | Practice attempt | Scenario/reset recipe, input digests, model/skill/knowledge identities, run/evidence refs, measured result | Platform projection over Runtime evidence |
 | Procedure candidate and promotion receipt | Proposed digest, source/counterexample refs, evaluation-set revision, independent reviewer/evaluator, outcomes, active/revoked state | Platform |
 
@@ -261,13 +363,19 @@ shapes and new control-surface names are a Phase 0 integration deliverable.
 
 | Package | Canonical authoring owner | Delivery and scope |
 |---------|--------------------------|--------------------|
-| `cats-inc-development` | cats-one developer `skills/` | Managed workspace discovery; provider-visible instructions/resources must be verified for the selected session |
-| `cats-platform-operation` | Runtime `runtime-skills/` | Runtime delivery of procedural instructions; current product facts come from the Platform bundle/observation |
-| `cats-practice-and-distill` | Runtime `runtime-skills/` | Runtime delivery for explicitly admitted practice; consumes evaluator results and proposes lessons, never grants promotion authority |
+| `cats-inc-development` | cats-one developer `skills/` | Preview/debug supplement; managed workspace discovery/delivery verified for the selected development session |
+| `cats-platform-operation` | Runtime `runtime-skills/` | Preview/debug operation-practice supplement; absent from release and not required for normal Catlas inference |
+| `cats-practice-and-distill` | Runtime `runtime-skills/` | Preview/debug practice supplement; consumes evaluator results and proposes knowledge candidates, never grants promotion authority |
 
 Reuse existing handoff, project-memory, development/review roles, and native UI
 automation where appropriate. Do not copy all developer skills into the shipped
-product catalog. Any missing resource-delivery capability is an explicit Runtime
+release product catalog. These canonical locations are authoring ownership, not
+a rule that the full tree ships in every build. Define explicit supplement
+selection and filtering for Desktop staging and Runtime catalog/hydration before
+adding the packages; review the default Runtime npm inventory as part of that
+contract. Release Catlas receives ordinary inference instructions and knowledge
+content directly, without resolving any of these supplement IDs.
+Any missing resource-delivery capability is an explicit Runtime
 work item, not a claim that instruction text makes helper files accessible.
 
 ## Acceptance Criteria
@@ -288,6 +396,9 @@ All criteria start **pending**. A phase may report only its own achieved gates.
 | AC-10 | Resettable practice captures failure classes, counterexamples and budget exhaustion; a product defect can yield a linked code proposal without silently broadening scope | FR-14, FR-15, FR-16 |
 | AC-11 | An incorrect self-reported success, changed evaluator, contaminated holdout, stale digest, or failed critical check cannot promote a procedure; a passing reviewed candidate can be selected and revoked | FR-17 |
 | AC-12 | Private input cannot leak into another scope/export; revocation/delete removes active retrieval; atomic-write interruption and any applicable old-profile migration recover without losing source data | FR-18, FR-19 |
+| AC-13 | Preview/debug includes the selected supplement; release artifacts, catalogs and Cats-managed requests exclude it even with nearby Cats source or stale preview caches; a development-session resume with unverifiable retained context is rejected or replaced with a fresh release context; ordinary product capabilities remain available | FR-20 |
+| AC-14 | Source-free release Catlas, with the supplement absent, receives relevant entry content through the enabled delivery path and its bound provider/model gives context-appropriate guidance for distinct intent/blocker fixtures; inaccessible paths, stale entries and provider failures are reported honestly | FR-22, FR-23 |
+| AC-15 | A verified preview/debug task yields reviewed knowledge files whose promoted digest is packaged and usable in a compatible release candidate; raw traces, unverified lessons and developer instructions are excluded | FR-21 |
 
 For the first practice promotion gate, freeze at least ten named scenarios
 before optimization, with at least four held out from the candidate-authoring
@@ -310,9 +421,11 @@ gates, not a statistical claim of general competence.
 - [Desktop release/update contract](SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md)
   and [cross-repository release policy](../../../cats-one/docs/release-guide.md).
 
-Phase 0 must settle the Core record extensions, candidate-profile startup and
-enforcement contract, operation-bundle schema/package location, and exact first
-operation/tool loop. Native acceptance will identify its controller build,
+Phase 0 must settle the Core record extensions, build-profile supplement
+selection and artifact/catalog filtering, candidate-profile startup and
+enforcement contract, knowledge-file schema/package location, normal Catlas
+inference/context delivery, and exact first operation/tool loop. Native
+acceptance will identify its preview/debug controller and release candidate builds,
 provider, model, and CLI version from the actual machine rather than prescribing
 an unverified version here. Broader OS support and independent bundle updates
 remain later work, each requiring evidence and an explicit rollout decision.
