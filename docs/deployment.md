@@ -290,8 +290,9 @@ CATS_TEST_ELECTRON_PLATFORM_SHELL=1 node --test --test-isolation=none tests/desk
 This uses a synthetic local server and a disposable profile. It starts Electron
 twice to check persisted login, cold-start shortcuts, refresh, logout, and login
 again without reading or changing the installed user's profile. On 2026-09-24 it
-passed on Linux ARM64 with Electron 41.2.0; the installed 0.4.2 needs the planned
-0.4.3 preview to receive this source fix. This is native Electron regression
+passed on Linux ARM64 with Electron 41.2.0; the installed 0.4.2 needs the published
+[0.4.3 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.4.3)
+to receive this source fix. This is native Electron regression
 coverage, not acceptance of a newly packaged release.
 
 - self-hosted npm package smoke helpers:

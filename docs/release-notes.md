@@ -19,7 +19,7 @@ Migration steps:
 Deprecations:
 ```
 
-## 2026-09-24 (0.4.3 preview — preparation)
+## 2026-09-24 (0.4.3 preview — publication)
 
 Behavior change:
 
@@ -37,8 +37,8 @@ cannot erase a newer list. Ordinary synchronization preserves provider diagnosti
 Migration steps:
 
 No data migration or dependency change. Existing setup remains valid.
-Platform and Desktop share version 0.4.3; the authorized preview publication is
-pending. It will bundle Runtime 0.2.0 from immutable commit
+Platform and Desktop share version 0.4.3; the preview is published.
+Every OS bundles Runtime 0.2.0 from immutable commit
 `edfec394951200702b9a88b4f9d76d97669b9be8` and the existing Usage 0.3.0 artifact
 with SHA-256 `61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509`.
 No npm or new App publication is part of this release.
@@ -51,6 +51,24 @@ and login again; it also reproduced the old transport returning no products.
 Deprecations:
 
 None.
+
+Release verification:
+
+The [0.4.3 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.4.3)
+was published from Platform `ccfba1388374ef8913486acc5adc8fcd9645bca4`.
+[Release-source CI](https://github.com/cats-inc/cats-platform/actions/runs/35912025735)
+and the [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/35912123788)
+passed. The tag resolves to that source commit. All ten expected release assets
+are present, and all three public update metadata files name 0.4.3 with matching
+asset names and sizes. Each OS verified the pinned Usage 0.3.0 artifact and offline
+activation. Windows x64 is unsigned; macOS x64 passed signature, notarization,
+stapled-ticket and Gatekeeper checks; Linux is ARM64 `.deb`.
+
+The downloaded Linux package's SHA-512 matches its update metadata; SHA-256 is
+`3dcf3dba94cafe3fec3f36265b6d2889121f3bc19d327d209dcc32d0c63dcc60`.
+Read-only extraction confirmed package/Desktop/Platform 0.4.3, Runtime 0.2.0,
+and the authenticated-session tray reader in the shipped host. This checks the
+published artifact; it does not claim an installed upgrade or tray acceptance.
 
 ## 2026-09-24 (0.4.2 preview — publication)
 
