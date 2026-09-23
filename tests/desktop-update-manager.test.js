@@ -73,19 +73,26 @@ function progressEvent(percent) {
   };
 }
 
-test('no platform is release ready yet, so official builds do not advertise self-update', () => {
-  assert.deepEqual([...DESKTOP_RELEASE_READY_PLATFORMS], []);
+test('macOS is release ready; an official Windows or Linux build still advertises nothing', () => {
+  // G3 passed on macOS on 2026-09-23 (signed 0.3.2 -> signed 0.3.6). A valid
+  // release descriptor on a platform that has not passed opens nothing.
+  assert.deepEqual([...DESKTOP_RELEASE_READY_PLATFORMS], ['macos']);
 
-  const capability = createDesktopUpdateCapability({
-    identity: OFFICIAL_IDENTITY,
-    nodePlatform: 'win32',
-  });
+  for (const nodePlatform of ['win32', 'linux']) {
+    const capability = createDesktopUpdateCapability({ identity: OFFICIAL_IDENTITY, nodePlatform });
+    assert.equal(capability.distribution, 'official_packaged', nodePlatform);
+    assert.equal(capability.canCheck, false, nodePlatform);
+    assert.equal(capability.canDownload, false, nodePlatform);
+    assert.equal(capability.canInstall, false, nodePlatform);
+    assert.equal(capability.unavailableReason, 'platform_not_release_ready', nodePlatform);
+  }
 
-  assert.equal(capability.distribution, 'official_packaged');
-  assert.equal(capability.canCheck, false);
-  assert.equal(capability.canDownload, false);
-  assert.equal(capability.canInstall, false);
-  assert.equal(capability.unavailableReason, 'platform_not_release_ready');
+  const macos = createDesktopUpdateCapability({ identity: OFFICIAL_IDENTITY, nodePlatform: 'darwin' });
+  assert.equal(macos.distribution, 'official_packaged');
+  assert.equal(macos.canCheck, true);
+  assert.equal(macos.canDownload, true);
+  assert.equal(macos.canInstall, true);
+  assert.equal(macos.unavailableReason, null);
 });
 
 test('capability opens once the running platform passes its release gate', () => {
