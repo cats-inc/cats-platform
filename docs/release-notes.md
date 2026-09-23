@@ -19,6 +19,42 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-23 (0.4.0 preview — existing catalog upgrades)
+
+### Upgrade existing model settings before the first model request
+
+Behavior change:
+
+The preview bundles Runtime 0.2.0. On writable startup or explicit catalog reload,
+Runtime validates and converts recognized schema-1 model settings to schema 2,
+preserves their scopes/models/options, creates a unique raw backup and atomically
+replaces the file. Current-format files and absent overrides need no migration.
+Unknown mappings or write conflicts preserve the existing file and expose recovery
+diagnostics. Compatible accepted settings remain usable when available.
+
+Desktop model selectors stop indefinite loading for rejected catalog settings.
+Runtime Setup & Repair shows upgrade details, the backup path and explicit retry
+after correction. Successful retry refreshes the configured targets' model data.
+
+Migration steps:
+
+Install this preview over the previous Desktop version with the existing profile.
+Recognized schema-1 catalogs upgrade automatically before model reads. Check the
+model names, order, efforts and defaults, and restart to confirm no second backup
+is created. If the profile was already manually converted, its schema-2 file stays
+unchanged; use an isolated copy of the old backup to exercise conversion rather
+than resetting the active profile. Setup & Repair reports any blocked conversion.
+See the [catalog upgrade guide](https://github.com/cats-inc/cats-runtime/blob/main/docs/provider-catalog-soft-patches.md#existing-schema-1-files-and-rollback).
+
+Deprecations:
+
+The previously shipped schema-2 contract now uses the required 0.x minor release
+boundary. Execution remains schema 2; migration is a bounded data conversion.
+Runtime/Platform npm versions are prepared, with no npm publication in this task.
+Usage 0.3.0 targets Desktop 0.4.x; the old Desktop 0.3.x App
+artifact remains unchanged. Native installer upgrade acceptance is the purpose of
+this preview and is separate from package and isolated-profile checks.
+
 ## 2026-09-23 (0.3.8 preview — provider catalog data and local patches)
 
 ### Update one installation's model catalog without rebuilding

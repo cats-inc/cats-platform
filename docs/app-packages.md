@@ -6,12 +6,12 @@ implementation is a renderer-only utility package, not another Platform product.
 ## Host and SDK compatibility
 
 An App declares supported hosts in `cats.app.json` independently of its own
-artifact version. Current Usage 0.2.1 declares:
+artifact version. Current Usage 0.3.0 declares:
 
 ```json
 {
   "compatibility": {
-    "catsPlatform": "^0.3.0",
+    "catsPlatform": "^0.4.0",
     "appSdk": "^1.2.0"
   }
 }
@@ -53,10 +53,10 @@ In cats-apps:
 
 ```powershell
 npm test
-npm run build -- --version 0.2.0
+npm run build -- --version 0.3.0
 ```
 
-This produces an archive, `usage-0.2.0.lock.json`, and provenance in `dist/`.
+This produces an archive, `usage-0.3.0.lock.json`, and provenance in `dist/`.
 The requested version must equal both App manifests. Rebuilding different bytes
 over an existing output version is rejected; use a separate development output
 directory or publish a new version. Release builds record their GitHub source SHA;
@@ -65,7 +65,7 @@ local builds report an unknown revision and an input-content digest.
 In cats-platform, build the Windows installer with that selection:
 
 ```powershell
-npm run desktop:package:windows -- --apps-lock ../cats-apps/dist/usage-0.2.0.lock.json --skip-mobile
+npm run desktop:package:windows -- --apps-lock ../cats-apps/dist/usage-0.3.0.lock.json --skip-mobile
 ```
 
 `--apps-lock` also works on the macOS/Linux installer entrypoints. The Windows
@@ -76,7 +76,7 @@ for automation. An explicit CLI argument takes precedence.
 To stage already-built host/runtime artifacts without creating an installer:
 
 ```powershell
-node scripts/package-desktop.mjs --platform windows --apps-lock ../cats-apps/dist/usage-0.2.0.lock.json
+node scripts/package-desktop.mjs --platform windows --apps-lock ../cats-apps/dist/usage-0.3.0.lock.json
 ```
 
 The lock format is `{ schemaVersion: 1, apps: [{ id, version, sha256, artifact }] }`.
@@ -96,11 +96,19 @@ Temporary build selections are safe to remove after the build is finished.
 
 ## Release policy and default selection
 
-The cats-apps shared tag workflow publishes `usage-v0.2.0` (and other utility
+The cats-apps shared tag workflow publishes `usage-v0.3.0` (and other utility
 tags) independently of Desktop. It refuses to replace an existing release and
 does not mark utility releases as a repository-wide `latest` release.
 
 Desktop release CI reads the source-controlled `config/desktop-apps.lock.json`.
+Desktop 0.4.0 selects the published [Usage 0.3.0 release](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.3.0),
+with SHA-256 `61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509`.
+Provenance identifies Apps commit `4c3f6057747032df24b1c1b1bb5ea873fa94f387`.
+The release workflow passed; downloaded archive, lock, provenance and GitHub digest
+agree. Platform 0.4.0 / SDK 1.2.0 accepts the archive, and its decoded payload equals
+the locally tested build. Only the App version and host range differ from Usage
+0.2.1; Desktop 0.3.x retains that prior artifact unchanged.
+
 Desktop 0.2.5 selects the published [Usage 0.2.0 release](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.2.0),
 with SHA-256 `7d5455bb6b484b731becbc69b469e649fbfc433cf015586e0022c3045974c04e`.
 The release provenance identifies Apps commit `1affcf38e427f636e1eedb45bf3d1ac4e78eeb4f`.
@@ -112,14 +120,14 @@ rebuild's hash: gzip headers can differ by build OS even for identical payloads.
 No fake URL or implicit latest version is shipped. Local builds without a
 selection still explicitly report that no optional Apps are included.
 
-For the 0.2.5 unsigned preview, merge the Platform version/selection changes, then
-manually dispatch the Desktop release workflow on that merged commit with
-`tag=v0.2.5` and `runtime_ref=91bba98e2e621ec3124130b7c79fdc6c3ab7ca19`.
-This includes the merged native multi-CLI quota queries and product skill-root
-alignment. Desktop bundles SDK 1.2.0 and the separate `runtime-skills/` library.
-Let the preview
-workflow create its tag; pushing a Desktop version tag selects the signed stable
-release path instead. Utility App tags and Desktop tags are independent.
+For the 0.4.0 catalog-upgrade preview, commit/push the Platform version and App
+selection, then manually dispatch the Desktop release workflow on that commit with
+`tag=v0.4.0` and `runtime_ref=edfec394951200702b9a88b4f9d76d97669b9be8`.
+That Runtime 0.2.0 source passed release preflight and includes automatic schema-1
+catalog upgrades. Desktop bundles SDK 1.2.0 and the separate `runtime-skills/`
+library. npm publication is not part of this release. Let the preview workflow
+create its tag; pushing a Desktop version tag selects the official release path
+instead. Utility App tags and Desktop tags are independent.
 
 Each Windows/macOS/Linux build runs the following check against its real unpacked
 installer resources before the draft can be published:
