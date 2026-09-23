@@ -19,6 +19,34 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-23 (0.3.7 preview — macOS admitted to the release-ready gate)
+
+### Recover from a rejected update download
+
+Behavior change:
+
+An update that downloaded but could not be installed no longer traps the
+updater. Before this, a downloaded artifact could not be re-checked, a failed
+install handoff returned to the same "ready to install" state, and the tray
+flow showed nothing when the handoff failed -- so a rejected download was
+offered on every click until Cats was restarted. Now a failed handoff is shown
+once with its reason (a Squirrel.Mac signature rejection reads as "failed its
+signature check" rather than "could not open the installer"), and the next
+**Check for Update** re-checks first: a newer release supersedes the stale
+download, and an unchanged one is offered again without re-downloading.
+
+macOS passed the signed old-to-new self-update test (0.3.2 to 0.3.6) and is
+admitted to `DESKTOP_RELEASE_READY_PLATFORMS`. This affects only official
+builds, of which none exist yet; previews never went through that gate.
+
+Migration steps:
+
+From 0.3.6 on macOS, **Check for Update** downloads 0.3.7 and relaunches into
+it; on Windows and Linux use **Check for Update** as usual. Anyone still on
+the unsigned 0.3.3 DMG on macOS must install 0.3.7 manually once.
+
+Deprecations: none.
+
 ## 2026-09-23 (0.3.6 preview — first signed macOS self-update candidate)
 
 ### Bring the update dialog to the foreground on macOS
