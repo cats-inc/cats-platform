@@ -19,16 +19,40 @@ Migration steps:
 Deprecations:
 ```
 
-## Unreleased — Linux Desktop update relaunch
+## 2026-09-23 (0.4.1 preview — Linux Desktop update relaunch)
+
+Behavior change:
 
 Linux update/setup relaunch now preserves the host's existing privilege state.
 Electron 41's native relaunch introduced NoNewPrivs and made a later `.deb`
 update fail at pkexec with exit 127. The quit watchdog also starts after the
 synchronous installer returns, so time spent authenticating does not cause a
-successful install to be reported as a timed-out handoff. Existing restricted
-hosts still need a normal cold launch; the flag cannot be cleared in place.
-No version bump or new Desktop/npm publication accompanies this source fix.
+successful install to be reported as a timed-out handoff. The Linux helper
+preserves the existing UID, arguments and privilege restriction, waits for the
+old host to exit, and retains DebUpdater's production HTTP executor.
+
+Migration steps:
+
+Existing restricted hosts still need a full Tray Quit and a normal cold launch;
+the flag cannot be cleared in place. The source version's updater performs the
+first upgrade to 0.4.1, so an automatic relaunch from 0.4.0 can still inherit the
+old restriction. After installing 0.4.1, fully quit and launch normally once before
+testing its repaired update/setup relaunch. Verify the actual package and running
+Desktop versions; a downloaded update or host exit alone is not success.
+
+The repaired released-version update chain remains pending: start an update from
+the repaired host, confirm the replacement preserves NoNewPrivs=0, then verify a
+subsequent update can still authenticate. Linux's official release-ready gate
+remains unchanged. Existing catalog upgrades and settings must remain intact.
 See the [Linux validation record](./research/2026-09-23-linux-self-update-validation.md).
+
+Deprecations:
+
+None. This compatible repair uses the next 0.4.x patch. Desktop bundles the same
+Runtime 0.2.0 source (`edfec394951200702b9a88b4f9d76d97669b9be8`) and published
+Usage 0.3.0 artifact as 0.4.0. Platform's npm version follows the shared manifest;
+neither npm package is published. Source-fix CI passed before this release bump;
+the preview still requires its package, offline App and release-asset gates.
 
 ## 2026-09-23 (0.4.0 preview — existing catalog upgrades)
 
