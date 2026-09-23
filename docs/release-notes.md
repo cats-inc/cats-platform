@@ -19,25 +19,42 @@ Migration steps:
 Deprecations:
 ```
 
-## 2026-09-24 (0.4.2 — version preparation)
+## 2026-09-24 (0.4.2 preview — publication)
 
 Behavior change:
 
-Prepare the shared Platform/Desktop patch version for the next selected
-publication. This version-only change retains the implementation shipped in
+This version-only patch retains the implementation shipped in
 0.4.1 and the subsequent [Linux investigation and native acceptance record](./research/2026-09-23-linux-self-update-validation.md).
 It introduces no additional updater fix: the diagnostic socket inheritance
 follow-up remains open, as does a complete update initiated by released 0.4.1.
 
 Migration steps:
 
-No new data migration or dependency change. This prepares version files only;
-no npm/Desktop/App publication or Git release tag is created. The installed
-Desktop stays at 0.4.1. Runtime and App versions remain independently managed.
+No new data migration or dependency change. Desktop 0.4.2 is published as a
+preview; Runtime and App versions remain independently managed. This publication
+does not establish native 0.4.1 → 0.4.2 update acceptance. Verify the installed
+package and restarted Desktop versions, preserved settings/model choices and
+subsequent update authentication before closing the Linux acceptance follow-up.
 
 Deprecations:
 
 None.
+
+Release verification:
+
+The [0.4.2 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.4.2)
+is published from Platform `92ada3ae2377d17b38f17486100677a07eee96ab`.
+[Release-source CI](https://github.com/cats-inc/cats-platform/actions/runs/35893841114)
+and the [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/35895597553)
+passed. The release is a published GitHub prerelease with all ten expected assets;
+all three update metadata files name version 0.4.2 and the matching installers.
+Every OS bundled Runtime 0.2.0 from
+`edfec394951200702b9a88b4f9d76d97669b9be8` and verified Usage 0.3.0 offline
+activation. The Usage artifact remains pinned to SHA-256
+`61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509`.
+Windows x64 is unsigned; macOS x64 passed signature, notarization, stapled-ticket
+and Gatekeeper checks; Linux is ARM64 `.deb`. No npm or new App publication
+occurred. No additional native update acceptance was performed for this release.
 
 ## 2026-09-23 (0.4.1 preview — Linux Desktop update relaunch)
 
