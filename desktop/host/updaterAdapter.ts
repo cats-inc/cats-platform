@@ -385,8 +385,13 @@ export function createElectronUpdaterAdapter(
         autoUpdater.on('error', onError);
         try {
           detachQuit = installHandoffObserver.onQuit(resolveOnQuit);
-          detachTimeout = installHandoffObserver.onTimeout(rejectOnTimeout);
           autoUpdater.quitAndInstall(false, true);
+          // Linux runs polkit/dpkg synchronously. Time spent authenticating or
+          // installing must not expire the quit watchdog before the updater's
+          // queued app.quit() can run. Async native handoffs remain bounded.
+          if (!settled) {
+            detachTimeout = installHandoffObserver.onTimeout(rejectOnTimeout);
+          }
         } catch (error) {
           rejectOnError(error);
         }

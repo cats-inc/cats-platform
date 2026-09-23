@@ -324,6 +324,12 @@ that cooperates with desktop sidecar shutdown.
       - install N from the arm64 `.deb` on an arm64 host
       - update to N+1 and verify the resulting install; the `dpkg` step prompts
         for elevation, unlike the per-user Windows path
+      - 2026-09-23: 0.3.8 → 0.4.0 completed through the installed updater after
+        a normal cold launch recovered inherited NoNewPrivs. Runtime 0.2.0,
+        Usage 0.3.0 and existing-profile migration verified. Native relaunch
+        reintroduced the flag; source fixes pass isolated Electron/process
+        regressions, but a published repaired update chain remains pending.
+        See `docs/research/2026-09-23-linux-self-update-validation.md`.
 - [ ] Verify Settings and Tray stay synchronized on all platforms.
 - [ ] Verify npm, `npx`, `cats-one`, browser, and Electron development runs
       contain no desktop update action.

@@ -10,6 +10,7 @@ import {
   systemPreferences,
 } from 'electron';
 
+import { createLinuxDesktopRelaunch } from './linuxRelaunch.js';
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
 import {
   resolveDesktopBootstrapNavigation,
@@ -220,6 +221,14 @@ import {
 // this stage, so keep the ceiling generous while still bounding a missing
 // update/error event that would otherwise strand a drained tray process.
 const DESKTOP_INSTALL_HANDOFF_WATCHDOG_MS = 5 * 60_000;
+
+const relaunchDesktopHost = process.platform === 'linux'
+  ? createLinuxDesktopRelaunch({
+    executable: process.execPath,
+    args: process.argv.slice(1),
+    logger: (message) => process.stderr.write(`${message}\n`),
+  })
+  : () => app.relaunch();
 
 let mainWindow: BrowserWindow | null = null;
 let hostConfig: DesktopHostConfig | null = null;
@@ -1736,7 +1745,9 @@ async function createUpdateManagerForLaunch(
     // cannot be constructed the app must still open with update capability
     // switched off, rather than failing to launch at all.
     try {
-      const autoUpdater = resolveAutoUpdaterExport(await import('electron-updater'));
+      const autoUpdater = process.platform === 'linux'
+        ? new (await import('./linuxUpdater.js')).LinuxDesktopUpdater(relaunchDesktopHost)
+        : resolveAutoUpdaterExport(await import('electron-updater'));
       configureElectronUpdater(autoUpdater, {
         repository: identity.repository,
         channel: capability.channel,
@@ -2522,7 +2533,7 @@ async function main(): Promise<void> {
     return await enableDesktopMobilePairingEnv(hostConfig);
   });
   ipcMain.handle('cats-host:relaunch', () => {
-    app.relaunch();
+    relaunchDesktopHost();
     app.quit();
   });
   ipcMain.handle('cats-host:update-platform-shell', async (_event, payload: unknown) => {

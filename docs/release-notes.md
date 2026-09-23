@@ -19,6 +19,17 @@ Migration steps:
 Deprecations:
 ```
 
+## Unreleased — Linux Desktop update relaunch
+
+Linux update/setup relaunch now preserves the host's existing privilege state.
+Electron 41's native relaunch introduced NoNewPrivs and made a later `.deb`
+update fail at pkexec with exit 127. The quit watchdog also starts after the
+synchronous installer returns, so time spent authenticating does not cause a
+successful install to be reported as a timed-out handoff. Existing restricted
+hosts still need a normal cold launch; the flag cannot be cleared in place.
+No version bump or new Desktop/npm publication accompanies this source fix.
+See the [Linux validation record](./research/2026-09-23-linux-self-update-validation.md).
+
 ## 2026-09-23 (0.4.0 preview — existing catalog upgrades)
 
 ### Upgrade existing model settings before the first model request
@@ -64,7 +75,10 @@ CI passed. The [Desktop workflow](https://github.com/cats-inc/cats-platform/acti
 passed all three package builds, Usage 0.3.0 offline activation, macOS signature /
 notarization checks and validation of all ten release assets. Windows x64 is
 unsigned; macOS x64 is signed/notarized; Linux is arm64. This GitHub prerelease did
-not publish either npm package. Native installed upgrade acceptance remains open.
+not publish either npm package. Linux ARM64 0.3.8 → 0.4.0 package/profile
+acceptance passed on 2026-09-23, while exposing the relaunch/watchdog defects
+described above. The repaired published update chain and other native upgrade
+acceptance remain open.
 
 ## 2026-09-23 (0.3.8 preview — provider catalog data and local patches)
 

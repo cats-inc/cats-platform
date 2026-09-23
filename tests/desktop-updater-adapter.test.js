@@ -472,6 +472,38 @@ test('adapter install rejects a stalled handoff when the host watchdog expires',
   assert.equal(autoUpdater.listenerCount(), 0);
 });
 
+test('waiting synchronously for Linux authentication does not consume the quit watchdog', async () => {
+  const autoUpdater = createFakeAutoUpdater();
+  let quit;
+  autoUpdater.quitAndInstall = () => {
+    // Mirrors upstream spawnSync: no timer can run during polkit/dpkg. Once
+    // installation returns, an expired watchdog would beat the queued quit.
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 60);
+    setTimeout(() => quit(), 0);
+  };
+  const adapter = createElectronUpdaterAdapter(autoUpdater, {
+    onQuit(listener) {
+      quit = listener;
+      return () => {};
+    },
+    onTimeout(listener) {
+      const timer = setTimeout(listener, 20);
+      return () => clearTimeout(timer);
+    },
+  });
+  await adapter.quitAndInstall();
+  assert.equal(autoUpdater.listenerCount(), 0);
+});
+
+test('a synchronous installer failure leaves no late watchdog', async () => {
+  const autoUpdater = createFakeAutoUpdater();
+  autoUpdater.quitAndInstall = () => autoUpdater.emit('error', new Error('pkexec exited 127'));
+  const { adapter, timeoutListenerCount, quitListenerCount } = createAdapterHarness(autoUpdater);
+  await assert.rejects(adapter.quitAndInstall(), /pkexec exited 127/u);
+  assert.equal(timeoutListenerCount(), 0);
+  assert.equal(quitListenerCount(), 0);
+});
+
 test('an updater install error restores services before reporting a failed handoff', async () => {
   const {
     adapter,

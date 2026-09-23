@@ -571,11 +571,26 @@ The desktop host now also keeps a host-readable state file at
 For packaged bootstrap or onboarding failures, collect these files first:
 
 - `%USERPROFILE%\\.cats\\desktop\\state.json`
-- `%USERPROFILE%\\.cats\\desktop\\logs\\desktop-host.log`
 - `%USERPROFILE%\\.cats\\desktop\\logs\\cats-runtime.log`
 - `%USERPROFILE%\\.cats\\desktop\\logs\\cats.log`
 - `%USERPROFILE%\\.cats\\platform\\state\\platform-onboarding-history.json`
   - this file may be absent if `cats` never reached the product-owned setup flow
+
+Host update diagnostics are written to stdout/stderr; `desktop-host.log` is not
+guaranteed to exist. Preserve the profile and updater cache before reproducing an
+installation failure. Fully exit through Tray, then start the installed executable
+from a normal user terminal with output redirected to a private diagnostic file.
+On Linux, verify the executable location first (the `.deb` installs
+`/opt/Cats/cats`) and do not run the entire application with `sudo`.
+
+For Linux `install_handoff_failed`, collect the original
+`[desktop-update] install handoff failed: ...` line, surrounding updater stderr,
+package version, and the main process's `/proc/<pid>/status`. An inherited
+`NoNewPrivs: 1` prevents `pkexec` from acquiring its setuid privileges even when
+`/usr/bin/pkexec` has the correct root owner and setuid mode. Fully exit and launch
+Cats from the normal desktop session to retry; do not change system security
+policy or the permissions on `pkexec`. See the
+[Linux update investigation](./research/2026-09-23-linux-self-update-validation.md).
 
 The host-side bootstrap bridge now stays inside a sandboxed Electron renderer
 and only exposes the narrow desktop action/snapshot IPC surface through a
