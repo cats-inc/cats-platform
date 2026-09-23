@@ -55,6 +55,17 @@ Usage 0.3.0 targets Desktop 0.4.x; the old Desktop 0.3.x App
 artifact remains unchanged. Native installer upgrade acceptance is the purpose of
 this preview and is separate from package and isolated-profile checks.
 
+Release verification:
+
+The [0.4.0 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.4.0)
+is published from Platform `2874dd0eba8625c1a7086f65aea47dd2a63d60ac`, bundling
+Runtime `edfec394951200702b9a88b4f9d76d97669b9be8` on every OS. Runtime and Platform
+CI passed. The [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/35862976809)
+passed all three package builds, Usage 0.3.0 offline activation, macOS signature /
+notarization checks and validation of all ten release assets. Windows x64 is
+unsigned; macOS x64 is signed/notarized; Linux is arm64. This GitHub prerelease did
+not publish either npm package. Native installed upgrade acceptance remains open.
+
 ## 2026-09-23 (0.3.8 preview — provider catalog data and local patches)
 
 ### Update one installation's model catalog without rebuilding
