@@ -33,7 +33,7 @@ stable `0.3.2` and later `0.3.x`, excluding `0.4.0`; `^1.2.0` accepts SDK 1.2.0
 through 1.x, excluding 2.0.0. A broad `0.x` would admit all 0.x minors and does not
 express a useful minimum for an App requiring newer features.
 
-Recommended release discipline preserves App-facing contracts within a 0.x minor
+Required project release discipline preserves App-facing contracts within a 0.x minor
 line and changes the minor for breaking host changes; stable SDK breaking changes
 use a major bump. This is a project choice, not a promise of universal pre-1.0
 compatibility. If a compatible line is not yet supportable, declare an exact

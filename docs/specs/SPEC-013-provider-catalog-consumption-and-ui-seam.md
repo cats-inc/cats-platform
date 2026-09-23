@@ -517,6 +517,18 @@ advanced endpoints and subsequent Desktop reads returned 200. That operational
 recovery uses the existing installation; the new notice code is not yet published
 in an installer. No full local suite or new installer smoke is claimed.
 
+### Runtime-owned automatic upgrade follow-up (2026-09-23)
+
+The next Runtime implementation advertises `automaticSchema1Upgrade` and performs
+the reviewed schema-1 to schema-2 conversion at writable startup/reload, preserving
+the complete personal catalog with a raw backup and atomic replacement. Desktop
+and cats-one use this same activation boundary. Local informational projections
+and pickers remain read-only; Desktop must not race Runtime with its own converter.
+Runtime Setup & Repair displays completed/blocked upgrade details and provides
+explicit retry after correction. Unknown mappings remain actionable configuration
+errors handled by the picker behavior above. The joint Runtime plan tracks package
+and existing-profile checks; release/installer validation is still a separate gate.
+
 ## Open Questions
 
 - [ ] Keep `GET /api/providers` as the selector route name, or introduce a new

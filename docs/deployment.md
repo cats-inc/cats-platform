@@ -21,6 +21,22 @@ notes.
 
 ## Release boundaries
 
+Apply the [cross-repository compatibility and data-upgrade policy](https://github.com/cats-inc/cats-one/blob/main/docs/release-guide.md#compatibility-and-data-upgrades):
+breaking public APIs, configuration, stored-data requirements or supported user
+flows move `0.x` to the next minor, and stable `1.x+` to the next major. Compatible
+fixes can use patch releases. Internal schema changes with a transparent, lossless
+migration are judged by their actual compatibility, not the schema number alone.
+Preview status does not waive backup, validation, atomic migration, idempotent
+restart or existing-profile upgrade tests. Keep obsolete execution APIs removed.
+
+The catalog cutover sets the next authorized Platform/Desktop release boundary
+at `0.4.0`. Before that release, recheck bundled Apps' `catsPlatform` ranges (a
+`^0.3.0` declaration excludes `0.4.0`) and coordinate any required new immutable
+App artifact. Do not bypass host compatibility or mutate an existing App archive.
+Record the selected Runtime source and its upgrade capability; Desktop delegates
+Runtime-owned data migration to Runtime instead of rewriting the same file itself.
+These rules do not authorize version bumps or publication in a documentation task.
+
 Platform npm and Cats Desktop share the root `package.json` version and the root
 and `packages[""]` version entries in `package-lock.json`. Keep this single version
 source for now; their publication timing is independent. For example, npm may
@@ -656,8 +672,12 @@ ticket Gatekeeper reads offline, and `spctl --assess`.
 ### Model picker keeps loading after a catalog-format upgrade
 
 First read the running Runtime's `GET /providers/catalogs`. A healthy service with
-`available: false` and an unsupported catalog schema needs a data conversion; vendor
-login, model discovery and repeated restarts cannot repair it. Follow Runtime's
+`available: false` is a catalog configuration failure; vendor login and model
+discovery cannot repair it. Runtime builds advertising `automaticSchema1Upgrade`
+migrate recognized schema-1 overrides during startup/reload, with validation and
+backup. Inspect `upgrade.state` and diagnostics in Setup & Repair, correct a blocked
+cause, then use its retry action. Read-only host/picker code never performs migration.
+For older installations without that capability, follow Runtime's
 [backed-up conversion and reload procedure](../../cats-runtime/docs/provider-catalog-soft-patches.md#existing-schema-1-files-and-rollback)
 using the package actually bundled in that installation and its exact profile.
 Preserve local choices and obtain required authorization before modifying personal

@@ -160,6 +160,13 @@ for shared `Cats Core v1` contracts that `Cats Chat`, `Cats Work`, and
 
 ## Pre-Release Compatibility Policy
 
+- This policy does not waive upgrades of existing user data. Bounded one-time
+  migrations must validate, back up and atomically replace recognized old data;
+  failures preserve it and expose recovery. Keep only the current execution API.
+- Preserve compatibility within a `0.x` minor line. Breaking public API, CLI,
+  config or persisted-data contracts require the next minor; stable `1.x+`
+  breaking APIs require major. Apply the release guide before choosing a version.
+
 - This product has never had a public or stable release. Agents MUST treat
   legacy product surfaces, stale room modes, deprecated contracts, and
   exploratory prototypes as replaceable implementation history, not

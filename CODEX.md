@@ -394,11 +394,13 @@ working memory for Codex, not yet a ratified product spec or ADR.
 - Packaging and onboarding matter. The product should move toward a
   native-feeling desktop experience with simple installation and guided setup,
   especially to reduce the friction of deploying local runtime dependencies.
-- For desktop packaging/startup bugs, do **not** assume a meaningful shipped
-  install base or invent migration/self-heal work by default. Unless the user
-  explicitly says an upgrade path or existing deployed installs matter, prefer
-  direct fixes for the current package and clean-install behavior over legacy
-  registry cleanup, compatibility shims, or one-off migration code.
+- For desktop packaging/startup bugs, investigate the selected installation and
+  its supported profile before adding registry cleanup or execution shims. The
+  2026-09-23 version/data-upgrade policy supersedes the previous clean-install-only
+  preference: schema changes must protect existing profiles through validated,
+  backed-up, atomic migration and failure/restart tests. Keep a single current
+  execution contract; Desktop delegates Runtime-owned migration to Runtime.
+  See [Release boundaries](docs/deployment.md#release-boundaries).
 
 ### Parallel Product Delivery Rules
 
