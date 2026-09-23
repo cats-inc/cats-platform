@@ -182,7 +182,7 @@ Recent additions:
 - [ADR-108](./decisions/108-use-host-owned-github-release-updates-for-official-desktop-builds.md) — official packaged Electron builds use one main-process GitHub Release updater while npm/browser installs remain package-manager-owned
 - [SPEC-111](./specs/SPEC-111-packaged-desktop-update-surfaces-and-release-contract.md) — capability, Tray dialogs, Settings, state-machine, release-version, signing, and three-platform desktop updates without system notifications
 - [PLAN-101](./plans/PLAN-101-packaged-desktop-update-rollout.md) — rollout plan for tag-gated releases, updater replacement, bounded preload IPC, dialog update feedback, and real old-to-new platform validation
-- [Linux self-update investigation](./research/2026-09-23-linux-self-update-validation.md) — installed 0.3.8 updater evidence, inherited NoNewPrivs failure, and 0.4.0 native acceptance status
+- [Linux self-update investigation](./research/2026-09-23-linux-self-update-validation.md) — inherited NoNewPrivs failure, 0.4.0 acceptance, and the separate 0.4.1 HTTP download failure/retry
 - [2026-07-28 Electron and GitHub Release Update Contract](./research/2026-07-28-electron-github-release-update-contract.md) — official tooling evidence for NSIS, macOS DMG+ZIP, Linux AppImage, generated metadata, signing, and draft-first tagged releases
 - [ADR-105](./decisions/105-adopt-phase-scoped-work-tool-surface.md) — strong Cats and Boss Cat receive phase-scoped Cats-owned Work tools for intake, triage, execution preparation, and external tracker binding
 - [SPEC-109](./specs/SPEC-109-phase-scoped-work-tool-surface.md) — requirements for turning Chat/Telegram work talk into durable Work Items through supervised tools rather than prompt-only behavior

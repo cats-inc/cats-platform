@@ -7,7 +7,7 @@
 | **Status** | Draft |
 | **Owner** | User |
 | **Reviewer** | User |
-| **Last updated** | 2026-09-23 |
+| **Last updated** | 2026-09-24 |
 
 ## Related Spec
 
@@ -330,6 +330,12 @@ that cooperates with desktop sidecar shutdown.
         reintroduced the flag; source fixes pass isolated Electron/process
         regressions, but a published repaired update chain remains pending.
         See `docs/research/2026-09-23-linux-self-update-validation.md`.
+      - 2026-09-24: 0.4.0 → published 0.4.1 completed through the old updater
+        after retrying an HTTP 500/slow asset download. Package and running
+        Desktop are 0.4.1; settings and model results are preserved. After the
+        documented cold launch, 0.4.1's own host relaunch preserves NNP 0→0.
+        An update initiated by 0.4.1 remains pending; temporary DevTools socket
+        inheritance is recorded separately in the same validation note.
 - [ ] Verify Settings and Tray stay synchronized on all platforms.
 - [ ] Verify npm, `npx`, `cats-one`, browser, and Electron development runs
       contain no desktop update action.
@@ -482,6 +488,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 
 | Date | Update |
 |------|--------|
+| 2026-09-24 | Linux's second incident was a pre-install HTTP 500 while downloading 0.4.1, with the original host already NNP 0. The unchanged installed updater retried and completed 0.4.0 → 0.4.1 after system authentication. Native 0.4.1 host relaunch then preserved NNP 0→0; seven config/catalog files and all 16 model API results matched their pre-update state. Full repaired update-chain acceptance remains open. See the Linux validation record for original errors, retry evidence and the temporary diagnostic-socket limitation. |
 | 2026-09-23 | G3 passed on macOS: signed 0.3.2 self-updated to signed 0.3.6 through Squirrel.Mac on the Intel test Mac, relaunching with `source=Notarized Developer ID`. Evidence in `docs/research/2026-09-23-macos-self-update-validation.md`. `macos` is admitted to `DESKTOP_RELEASE_READY_PLATFORMS`; Windows and Linux remain gated. No official build exists yet, so this changes nothing at runtime until one does. |
 | 2026-09-23 | A rejected download could trap the update manager: from `downloaded`, `checkForUpdates()` was refused (`nextAction` is `restart_install`), a failed handoff returned to `downloaded`, and the tray flow after an accepted offer went download → `restartAndInstall()` with nothing shown when the handoff failed. On the Intel test Mac the unsigned 0.3.3 sat in that state for eight hours and was offered on every tray click while the signed 0.3.6 was live. Fixed: a re-check is allowed from `downloaded` (only `installing` stays closed); a re-check keeps the artifact when the feed still names it and supersedes it otherwise; the tray re-checks a downloaded artifact whose last handoff failed before offering it again; a failed handoff is shown once with its reason, and a Squirrel.Mac signature rejection keeps `signature_rejected` instead of the generic handoff code. Validation: update-manager and update-dialog suites including an end-to-end tray scenario (rejected 0.3.3 → shown → re-check → 0.3.6). |
 | 2026-09-23 | macOS self-update could not be validated against 0.3.3: that preview was dispatched with `unsigned=true`, and Squirrel.Mac refuses an unsigned bundle over the signed 0.3.2, as its release notes predicted. Windows and Linux applied it because NSIS and dpkg do not verify signatures. Fixed the tray update dialog not activating the app on macOS (`app.focus({ steal: true })` before the parentless message box), which hid the post-download "ready to install" prompt until the next tray click. 0.3.6 is the first signed successor to a signed build and is the G3 candidate for macOS. |

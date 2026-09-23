@@ -7,7 +7,7 @@
 | **Status** | Draft |
 | **Owner** | User |
 | **Reviewer** | User |
-| **Last updated** | 2026-09-23 |
+| **Last updated** | 2026-09-24 |
 
 ## Summary
 
@@ -67,7 +67,7 @@ written. It is deliberately not updated as implementation lands; see
 
 ## Implementation Status
 
-Current as of 2026-09-18. PLAN-101 holds the per-task detail.
+Current as of 2026-09-24. PLAN-101 holds the per-task detail.
 
 Landed:
 
@@ -142,8 +142,13 @@ Not yet landed:
   0.3.8 → 0.4.0 on 2026-09-23, but exposed inherited NoNewPrivs on native
   relaunch and a synchronous-authentication watchdog race. Source repairs and
   isolated Electron checks are recorded in
-  `docs/research/2026-09-23-linux-self-update-validation.md`; the repaired
-  released update chain is still pending. Both remain outside the gate below.
+  `docs/research/2026-09-23-linux-self-update-validation.md`. On 2026-09-24,
+  0.4.0 → published 0.4.1 completed after retrying a separate HTTP 500 download
+  failure. Released 0.4.1's host relaunch preserves NNP 0→0 after a normal cold
+  launch, with existing settings/models preserved. An update initiated by the
+  repaired release is still pending; the note also records a temporary
+  remote-debugging socket inheritance limitation. Both platforms remain outside
+  the gate below.
 
 Gated off deliberately:
 
