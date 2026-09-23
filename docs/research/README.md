@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-09-23-linux-self-update-validation](./2026-09-23-linux-self-update-validation.md) | 2026-09-23 | Linux 0.3.8 to 0.4.0 update investigation | Installed updater reproduction identifies inherited NoNewPrivs blocking pkexec; records recovery and native acceptance evidence |
 | [2026-09-23-pi-shortlist](./2026-09-23-pi-shortlist.md) | 2026-09-23 | Pi subscription shortlist | Six bracketed provider labels, fixed medium choices and custom input |
 | [2026-09-23-goose-shortlist](./2026-09-23-goose-shortlist.md) | 2026-09-23 | Goose fixed Off shortlist | Six ChatGPT Codex labels, first-row initialization and custom input |
 | [2026-09-23-auggie-shortlist](./2026-09-23-auggie-shortlist.md) | 2026-09-23 | Auggie shortlist | Six exact labels, first-row initialization and custom input |
