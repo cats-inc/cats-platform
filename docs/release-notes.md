@@ -19,6 +19,26 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-24 (0.4.2 — version preparation)
+
+Behavior change:
+
+Prepare the shared Platform/Desktop patch version for the next selected
+publication. This version-only change retains the implementation shipped in
+0.4.1 and the subsequent [Linux investigation and native acceptance record](./research/2026-09-23-linux-self-update-validation.md).
+It introduces no additional updater fix: the diagnostic socket inheritance
+follow-up remains open, as does a complete update initiated by released 0.4.1.
+
+Migration steps:
+
+No new data migration or dependency change. This prepares version files only;
+no npm/Desktop/App publication or Git release tag is created. The installed
+Desktop stays at 0.4.1. Runtime and App versions remain independently managed.
+
+Deprecations:
+
+None.
+
 ## 2026-09-23 (0.4.1 preview — Linux Desktop update relaunch)
 
 Behavior change:
