@@ -25,16 +25,16 @@ Behavior change:
 
 This version-only patch retains the implementation shipped in
 0.4.1 and the subsequent [Linux investigation and native acceptance record](./research/2026-09-23-linux-self-update-validation.md).
-It introduces no additional updater fix: the diagnostic socket inheritance
-follow-up remains open, as does a complete update initiated by released 0.4.1.
+It introduces no additional updater fix. Native 0.4.1 → 0.4.2 update acceptance
+now passes; the diagnostic socket inheritance follow-up remains open.
 
 Migration steps:
 
 No new data migration or dependency change. Desktop 0.4.2 is published as a
-preview; Runtime and App versions remain independently managed. This publication
-does not establish native 0.4.1 → 0.4.2 update acceptance. Verify the installed
-package and restarted Desktop versions, preserved settings/model choices and
-subsequent update authentication before closing the Linux acceptance follow-up.
+preview; Runtime and App versions remain independently managed. Linux acceptance
+confirmed the actual installed package and restarted Desktop at 0.4.2, preserved
+settings/model choices and NoNewPrivs 0→0. A subsequent update initiated by the
+automatically restarted 0.4.2 host still requires a future target.
 
 Deprecations:
 
@@ -54,7 +54,20 @@ activation. The Usage artifact remains pinned to SHA-256
 `61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509`.
 Windows x64 is unsigned; macOS x64 passed signature, notarization, stapled-ticket
 and Gatekeeper checks; Linux is ARM64 `.deb`. No npm or new App publication
-occurred. No additional native update acceptance was performed for this release.
+occurred during publication.
+
+Native Linux acceptance:
+
+The installed, continuously running 0.4.1 updater completed 0.4.1 → 0.4.2 after
+normal system authentication. The package and native Desktop dialog both
+reported 0.4.2; the automatic replacement preserved UID, arguments and
+NoNewPrivs 0→0 without a cold launch. Runtime 0.2.0 and Usage 0.3.0 remained
+healthy/enabled. Seven configuration hashes, the existing migration backup and
+all 16 providers' model API results were preserved; the actual model/effort
+menus displayed their existing defaults. See the
+[native acceptance record](./research/2026-09-23-linux-self-update-validation.md#2026-09-24-follow-up-released-041-to-042)
+for timestamps, evidence and remaining gates. No manual Cats installation was
+used.
 
 ## 2026-09-23 (0.4.1 preview — Linux Desktop update relaunch)
 
@@ -77,10 +90,10 @@ old restriction. After installing 0.4.1, fully quit and launch normally once bef
 testing its repaired update/setup relaunch. Verify the actual package and running
 Desktop versions; a downloaded update or host exit alone is not success.
 
-The repaired released-version update chain remains pending: start an update from
-the repaired host, confirm the replacement preserves NoNewPrivs=0, then verify a
-subsequent update can still authenticate. Linux's official release-ready gate
-remains unchanged. Existing catalog upgrades and settings must remain intact.
+The repaired host completed 0.4.1 → 0.4.2 with its automatic replacement preserving
+NoNewPrivs=0; a subsequent update from that replacement remains pending.
+Linux's official release-ready gate remains unchanged. Existing catalog upgrades
+and settings must remain intact.
 See the [Linux validation record](./research/2026-09-23-linux-self-update-validation.md).
 
 Deprecations:
@@ -106,9 +119,10 @@ On 2026-09-24 the Linux ARM64 installed updater completed 0.4.0 → 0.4.1 after
 retrying an initial HTTP 500 and intermittent asset transfer. Both the package
 and restarted Desktop reported 0.4.1; existing settings and model API results
 were preserved. Following the required normal cold launch, the published
-0.4.1 host's own relaunch preserved NoNewPrivs 0→0. An update initiated by 0.4.1
-and subsequent authentication remain pending. The validation record separately
-documents a temporary remote-debugging socket inherited during that diagnostic
+0.4.1 host's own relaunch preserved NoNewPrivs 0→0. The later 0.4.1 → 0.4.2
+acceptance above validates that host's updater and automatic restart. The
+validation record separately documents a temporary remote-debugging socket
+inherited during that diagnostic
 relaunch; the final normal launch omitted diagnostic arguments.
 
 ## 2026-09-23 (0.4.0 preview — existing catalog upgrades)

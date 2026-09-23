@@ -1,4 +1,4 @@
-# Linux Self-Update Investigation (0.3.8 through 0.4.1)
+# Linux Self-Update Investigation (0.3.8 through 0.4.2)
 
 Date: 2026-09-23
 Last updated: 2026-09-24
@@ -307,7 +307,75 @@ UID 1000, NNP 0. Package 0.4.1, Platform 0.4.1 and Runtime 0.2.0 were confirmed
 healthy again; configuration hashes and the single existing catalog backup were
 unchanged. Port 9333 was closed.
 
-Remaining gate: this is an automatic **0.4.0 → 0.4.1** upgrade plus released
+At the end of that attempt, this was an automatic **0.4.0 → 0.4.1** upgrade plus released
 0.4.1 setup/host relaunch validation. A future update **initiated by 0.4.1** and
-the next update's ability to authenticate remain untested because no newer
-release was created. The Linux official-release allowlist stays unchanged.
+the next update's ability to authenticate were untested because no newer
+release had been created. The following attempt closes the 0.4.1-source update
+gate. The Linux official-release allowlist stays unchanged.
+
+## 2026-09-24 follow-up: released 0.4.1 to 0.4.2
+
+The [0.4.2 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.4.2)
+was published from Platform `92ada3ae2377d17b38f17486100677a07eee96ab`, with the
+same Runtime 0.2.0 commit and Usage 0.3.0 artifact as 0.4.1. Private evidence is
+under `.cats-update-evidence/20260924-linux-042/` in the parent workspace,
+owner-only and outside Git. Before installation, the investigation saved the
+existing profiles, cache, seven configuration hashes, original `app.asar`,
+process status and source host/dpkg logs.
+
+The source was the still-running normal 0.4.1 host from the preceding attempt:
+PID 173151, `/opt/Cats/cats`, UID 1000, `NoNewPrivs: 0`, without diagnostic
+arguments. Its embedded descriptor records Platform
+`2a8a58ff9d8a77d0c912042c3950bad3019a5e0d`. It was not cold-restarted, patched or
+replaced before this update. Its existing stdout/stderr log captured the native
+tray update flow. No manual Cats installation or cache injection was used.
+
+The installed 0.4.1 updater downloaded `Cats-0.4.2-arm64.deb`, 95015744 bytes.
+The cached package declares `cats 0.4.2 arm64`; its SHA-512 matches the published
+metadata:
+
+```text
+UY7k6mZ2/CxBpUFCyETaSV+XWmZD/PQt8hzuJamaPQtDZpp48Txh7ADrbTwxp0RhY0AoZYYDJZLAZorks3ATNA==
+```
+
+At 01:51:27 Asia/Taipei, Platform and Runtime emitted normal stopped events
+with `reason: stdin_closed`. The updater invoked
+`pkexec --disable-internal-agent /bin/bash -c 'dpkg -i ...Cats-0.4.2-arm64.deb'`
+and displayed the system authentication dialog. The user authenticated locally.
+The dpkg log records `upgrade cats:arm64 0.4.1 0.4.2` at 01:51:48 and
+`status installed cats:arm64 0.4.2` at 01:52:29.
+
+Source PID 173151 exited and exactly one replacement host, PID 227752, started
+automatically with the original executable, arguments and UID. Its
+**`NoNewPrivs` remained 0**, so this real installed-updater path preserved 0→0
+without an intervening cold launch. Runtime PID 227838 and Platform PID 227868
+were ready at versions 0.2.0 and 0.4.2. Independently, dpkg reported
+`cats 0.4.2 arm64 install ok installed`, the installed descriptor matched the
+published target commits, and that replacement Desktop's native Check for
+Updates dialog displayed `Cats 0.4.2 已是最新版本。`.
+
+No download failure, `install_handoff_failed`, pkexec restriction, relaunch
+helper error or installer-handoff timeout was recorded. Numeric installer and
+source-host exit codes were not captured by an external parent and are not
+claimed as observed zeroes; the installed status, process replacement and live
+version checks independently establish success. This authentication completed
+within the five-minute interval, so it does not add a long-authentication
+watchdog stress result to the earlier regression test.
+
+All seven configuration/catalog files stayed byte-identical to the pre-update
+snapshot, including the single existing schema-migration backup. Read-only model
+API results for all 16 providers, standard and advanced, matched the preceding
+0.4.1 acceptance record exactly. The real 0.4.2 renderer displayed Claude's
+four models and all six effort choices, with Opus 5 and High still the defaults.
+Usage 0.3.0 remained enabled. No model request or verification chat was created.
+Screenshots and full API results are private evidence, not published artifacts.
+
+The final host remains the automatic replacement PID 227752, NNP 0, with no
+diagnostic arguments; port 9333 is closed. This is successful **automatic
+0.4.1 → 0.4.2 update acceptance**, including authentication, package replacement,
+native Desktop version, healthy services, settings and model-menu preservation.
+An additional update initiated by this automatically restarted 0.4.2 host still
+requires a future target; its NNP 0 is verified but subsequent authentication is
+not claimed. Diagnostic socket inheritance remains a separate unresolved
+follow-up. No source fix, version bump, publication or official-platform
+allowlist change was made during this acceptance run.
