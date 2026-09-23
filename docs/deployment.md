@@ -290,10 +290,12 @@ CATS_TEST_ELECTRON_PLATFORM_SHELL=1 node --test --test-isolation=none tests/desk
 This uses a synthetic local server and a disposable profile. It starts Electron
 twice to check persisted login, cold-start shortcuts, refresh, logout, and login
 again without reading or changing the installed user's profile. On 2026-09-24 it
-passed on Linux ARM64 with Electron 41.2.0; the installed 0.4.2 needs the published
+passed on Linux ARM64 with Electron 41.2.0. The published
 [0.4.3 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.4.3)
-to receive this source fix. This is native Electron regression
-coverage, not acceptance of a newly packaged release.
+also passed separate [installed Linux 0.4.2 → 0.4.3 automatic update acceptance](research/2026-09-23-linux-self-update-validation.md#2026-09-24-follow-up-released-042-to-043):
+package and native Desktop versions changed, settings/model choices survived,
+and all three tray shortcuts appeared on automatic restart and survived renderer
+refresh. Windows/macOS native acceptance is not implied by either Linux check.
 
 - self-hosted npm package smoke helpers:
 
