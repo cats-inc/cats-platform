@@ -450,6 +450,37 @@ the first read and 23 ms on the warm read. It created no sessions, wrote no
 Platform snapshot, and did not replace or restart the installed Desktop.
 Required PR CI remains the full-suite gate; no new packaged release is claimed.
 
+## Planned Catalog Data and Soft-Patch Integration (2026-09-23)
+
+Runtime's proposed
+[ADR-040](../../../cats-runtime/docs/decisions/040-use-data-driven-provider-catalogs-and-local-overrides.md),
+[SPEC-031](../../../cats-runtime/docs/specs/SPEC-031-provider-catalog-data-and-local-overrides.md), and
+[joint PLAN-040](../../../cats-runtime/docs/plans/PLAN-040-provider-catalog-data-and-local-overrides.md)
+replace handwritten factory model data with one Runtime-owned pack and scoped
+local overrides. Implementation is pending. Platform's phase-4 responsibilities are:
+
+- consume the effective Runtime catalog revision for models, options, defaults,
+  fixed combinations, and live labels; remove independent model tables;
+- use the same Runtime-owned read-only resolver for local offline informational
+  labels, with explicit local Runtime paths and no service/probe startup;
+- keep execution pickers bound to Runtime observations and selected targets under
+  this spec; neither factory data nor a patch creates usable targets;
+- scope retained observations and label maps by Runtime connection, authorization
+  context, exact target, selection revision, and catalog revision; remove obsolete
+  rows and fence late responses without treating hashes as ordered versions;
+- retain a coherent catalog when base/advanced reads return different revisions,
+  or withhold mismatched advanced selections while revalidating; independent
+  successful-result retention must not combine new models with old controls;
+- retain the last observed remote catalog while disconnected, then reconcile on
+  reconnect; a local Desktop file never overrides a remote Runtime;
+- package projections and the read-only resolver from one pinned Runtime source,
+  with data-only patch, upgrade, and native-package contract checks.
+
+This proposed work preserves the accepted spinner/automatic-recovery UX and
+explicit connection/auth invalidation. It does not reinstate static execution
+fallbacks or add recovery buttons/errors to pickers. The joint plan owns sequencing
+and acceptance; it must not be described as implemented based on this amendment.
+
 ## Open Questions
 
 - [ ] Keep `GET /api/providers` as the selector route name, or introduce a new

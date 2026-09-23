@@ -2,6 +2,18 @@
 
 > This directory contains all project documentation.
 
+## Proposed Provider Catalog Soft Patches
+
+Runtime owns the joint
+[ADR-040](../../cats-runtime/docs/decisions/040-use-data-driven-provider-catalogs-and-local-overrides.md),
+[SPEC-031](../../cats-runtime/docs/specs/SPEC-031-provider-catalog-data-and-local-overrides.md), and
+[PLAN-040](../../cats-runtime/docs/plans/PLAN-040-provider-catalog-data-and-local-overrides.md)
+for one factory catalog plus scoped local data patches. Platform work covers
+Runtime-owned projections, offline informational labels, connection/revision-scoped
+caches, and packaged resources, while preserving SPEC-013 picker authority and
+continuity. Skill cutover includes the Runtime canonical source and workspace
+Codex/Claude mirrors. This is a proposal; no consumer or packaging behavior has changed.
+
 ## Interactive npm entrypoint
 
 [Terminal controls](setup-guide.md#terminal-controls) covers browser opening,
