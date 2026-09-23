@@ -63,8 +63,16 @@ and the [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/run
 passed, including all three installers, Usage 0.3.0 offline activation, macOS
 signature/notarization and validation of all ten assets. Every OS bundled the
 Runtime commit above. Windows x64 is unsigned; macOS x64 is signed/notarized;
-Linux is ARM64. No npm publication occurred. The repaired native update chain
-described above remains pending and is not established by these build checks.
+Linux is ARM64. No npm publication occurred.
+
+On 2026-09-24 the Linux ARM64 installed updater completed 0.4.0 → 0.4.1 after
+retrying an initial HTTP 500 and intermittent asset transfer. Both the package
+and restarted Desktop reported 0.4.1; existing settings and model API results
+were preserved. Following the required normal cold launch, the published
+0.4.1 host's own relaunch preserved NoNewPrivs 0→0. An update initiated by 0.4.1
+and subsequent authentication remain pending. The validation record separately
+documents a temporary remote-debugging socket inherited during that diagnostic
+relaunch; the final normal launch omitted diagnostic arguments.
 
 ## 2026-09-23 (0.4.0 preview — existing catalog upgrades)
 

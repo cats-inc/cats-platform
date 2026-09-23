@@ -1,6 +1,7 @@
-# Linux Self-Update Investigation (0.3.8 to 0.4.0)
+# Linux Self-Update Investigation (0.3.8 through 0.4.1)
 
 Date: 2026-09-23
+Last updated: 2026-09-24
 
 ## Scope and builds
 
@@ -205,3 +206,108 @@ remote-debugging arguments were removed and port 9333 was confirmed closed.
 - Linux's official release-ready allowlist is unchanged by this investigation.
 - Windows/macOS results and the complete cross-platform failure/retry matrix are
   outside this machine's evidence.
+
+## 2026-09-24 follow-up: 0.4.0 to 0.4.1
+
+The user published [0.4.1 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.4.1)
+from Platform `2a8a58ff9d8a77d0c912042c3950bad3019a5e0d`, including PR #117.
+Its Linux asset is `Cats-0.4.1-arm64.deb`, 95014964 bytes. Published SHA-512:
+
+```text
+ud2deTZ9CpLRxc6FD4DFzTfdlF4bBOqVsWo3PRspzrQIcN33PhKeMxYkKU/aIqjLCcSAq1Wh8zQx9n7+UDsCoA==
+```
+
+### Original failure: HTTP download, not installer handoff
+
+At approximately 00:09 Asia/Taipei, the installed 0.4.0 reported the generic
+update failure dialog and correctly retained its current-version label, 0.4.0.
+The original main process was PID 155884, UID 1000, `NoNewPrivs: 0`, executable
+`/opt/Cats/cats`. Its stdout/stderr pointed to `~/.xsession-errors`. That log
+preserved the actual failed attempt, without needing a reconstructed failure:
+
+```text
+Found version 0.4.1 (url: Cats-0.4.1-arm64.deb)
+Error: Error: Cannot download "https://github.com/cats-inc/cats-platform/releases/download/v0.4.1/Cats-0.4.1-arm64.deb", status 500:
+[desktop-update] download failed (unknown): Cannot download "https://github.com/cats-inc/cats-platform/releases/download/v0.4.1/Cats-0.4.1-arm64.deb", status 500:
+```
+
+The updater invalidated its old 0.4.0 cache because the new target's hash differed,
+then the new download failed; the pending cache was empty at inspection. No
+0.4.1 dpkg transaction occurred and the package remained `cats 0.4.0 arm64`.
+The failure therefore preceded service drain, pkexec and package installation.
+It is distinct from the earlier `NoNewPrivs`/exit-127 defect. The original HTTP
+500 response body/headers were not retained by the updater, so the record cannot
+attribute the server-side failure to a particular GitHub/CDN component.
+
+At 00:13 a fresh request to the same public asset URL returned GitHub HTTP 302
+followed by asset HTTP 200; published metadata still selected the expected file,
+size and hash. The original session log, process state, dpkg history, updater
+cache and complete Cats/Electron profiles were saved in the owner-only sibling
+workspace directory `.cats-update-evidence/20260924-linux-041/` before retry.
+No manual package replacement or cache insertion was used.
+
+After normal Tray Quit, the same installed 0.4.0 was started as UID 1000 with
+`NoNewPrivs: 0`, stdout captured and a temporary loopback diagnostic port. Its
+existing renderer update bridge selected 0.4.1. The first retry downloaded about
+one third quickly, then slowed to approximately 16 KB/s. Independent curl
+requests also stalled or became slow; small range requests later recovered,
+while ordinary full downloads remained intermittent. HTTP/1.1 and a fresh
+download URL also exhibited the slow full transfer. These observations do not
+identify a specific failing network/CDN component or establish an Electron-only
+transport defect.
+
+After preserving the partial download and another normal Tray Quit, the
+unchanged updater retried. It eventually completed the full asset at about
+00:27. Its downloaded snapshot selected 0.4.1, the `.deb` declared `cats 0.4.1
+arm64`, and independent SHA-512 validation matched the published value above.
+Diagnostic curl copies stayed outside the updater cache and were never installed
+or substituted for its download. Source-host PID 164924 then invoked the normal
+restart/install bridge at 00:28, drained both managed services and started pkexec
+successfully. The user authenticated in the system dialog; no password passed
+through the diagnostic session.
+
+### Native upgrade and released relaunch acceptance
+
+The dpkg log records `upgrade cats:arm64 0.4.0 0.4.1` at 00:31:16 Asia/Taipei
+and `status installed cats:arm64 0.4.1` at 00:31:43. Source PID 164924 exited and
+the updater automatically started PID 168661. The new renderer reported
+`currentVersion: 0.4.1`; dpkg independently reported `cats 0.4.1 arm64`,
+`install ok installed`. Platform health reported 0.4.1 and Runtime health 0.2.0,
+both ready. The installed descriptor matched the 0.4.1 Platform and Runtime
+commits, and the installed archive contained both Linux relaunch repair modules.
+No manual installer, substituted cache, source patch or new publication was
+used to recover this attempt.
+
+As predicted in the release notes, the **old 0.4.0 updater** still used native
+Electron relaunch, so that first 0.4.1 process inherited `NoNewPrivs: 1`. After
+a normal Tray Quit and cold launch, released 0.4.1 PID 170232 had `NoNewPrivs: 0`.
+Its own updater successfully checked the public feed and reported 0.4.1 as
+up to date. Its official `relaunch()` bridge then exited that host and started
+exactly one replacement, PID 171213, with the same arguments and UID 1000,
+**preserving `NoNewPrivs: 0`**. Both managed services restarted ready. This is
+native evidence for the repair in the installed, published 0.4.1 package,
+in addition to the earlier isolated Electron tests.
+
+Seven backed-up configuration/catalog files, including the existing catalog
+migration backup, remained byte-identical. The before/after model API results
+were identical across all 16 provider scopes. Usage remained 0.3.0. No additional
+catalog migration was needed for this patch update.
+
+Diagnostic limitation: relaunch with the temporary remote-debugging arguments
+retained the old listening socket for port 9333 in the replacement/sidecars;
+the diagnostic HTTP endpoint no longer answered. The services stayed healthy,
+but no post-relaunch CDP UI result is claimed for that process. A normal Tray
+Quit closed that socket, and the final cold launch omitted all diagnostic
+arguments. File-descriptor inheritance under this diagnostic launch remains a
+separate follow-up; the NNP preservation result does not establish descriptor
+hygiene.
+
+Final normal launch PID 173151 ran `/opt/Cats/cats` without extra arguments,
+UID 1000, NNP 0. Package 0.4.1, Platform 0.4.1 and Runtime 0.2.0 were confirmed
+healthy again; configuration hashes and the single existing catalog backup were
+unchanged. Port 9333 was closed.
+
+Remaining gate: this is an automatic **0.4.0 → 0.4.1** upgrade plus released
+0.4.1 setup/host relaunch validation. A future update **initiated by 0.4.1** and
+the next update's ability to authenticate remain untested because no newer
+release was created. The Linux official-release allowlist stays unchanged.
