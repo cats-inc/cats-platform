@@ -138,8 +138,12 @@ Not yet landed:
 - The Phase 6 real-machine upgrade matrix for Windows and Linux. macOS passed
   on 2026-09-23: signed 0.3.2 self-updated to signed 0.3.6 through Squirrel.Mac
   on the Intel test machine (`docs/research/2026-09-23-macos-self-update-validation.md`).
-  Windows is unsigned until its certificate exists and Linux has not been
-  exercised, which is why both stay outside the release-ready gate below.
+  Windows is unsigned until its certificate exists. Linux ARM64 completed
+  0.3.8 → 0.4.0 on 2026-09-23, but exposed inherited NoNewPrivs on native
+  relaunch and a synchronous-authentication watchdog race. Source repairs and
+  isolated Electron checks are recorded in
+  `docs/research/2026-09-23-linux-self-update-validation.md`; the repaired
+  released update chain is still pending. Both remain outside the gate below.
 
 Gated off deliberately:
 
@@ -612,9 +616,13 @@ selection applies to both `cats-platform` and `cats-runtime`.
   terminates the running app on its own, so a vetoed quit still ends in a
   successful upgrade on Windows. `dpkg -i` only replaces the files under the
   install prefix and leaves the running process alone, so on Linux
-  `electron-updater` installs the package, calls `app.relaunch()`, and then
-  calls `app.quit()` — and the spawned relauncher blocks until the current
-  process actually exits. Any handler that vetoes that quit shall be treated as
+  `electron-updater` installs the package, requests relaunch, and then calls
+  `app.quit()`. The Linux host replaces Electron's native relaunch helper with
+  a Node helper waiting on host shutdown, because Electron 41's helper adds
+  NoNewPrivs and prevents the replacement host's next pkexec update. Relaunch
+  shall preserve existing UID/restrictions, never remove inherited restrictions,
+  and start only after the old profile lock is released. Any handler that vetoes
+  that quit shall be treated as
   an update-path regression. The reachable case is a tray build whose window
   `close` handler hides to tray instead of closing: it strands the user with the
   old build running, the new build already unpacked, sidecars drained, and a
@@ -637,7 +645,9 @@ selection applies to both `cats-platform` and `cats-runtime`.
   recoverable failed or downloaded state, and the drained sidecars shall be
   restarted. A running app with dead services is worse than the state the user
   started from.
-- Installer handoff shall be bounded by a host-owned watchdog. Success is the
+- Installer handoff shall be bounded by a host-owned watchdog after the updater
+  call returns; synchronous Linux authentication/installation must not consume
+  the subsequent quit budget. Success is the
   Electron `quit` event, not the earlier cancellable `before-quit` or
   `will-quit` events. If neither quit nor an updater error arrives before the
   watchdog expires, installer ownership is uncertain: the old host shall keep
