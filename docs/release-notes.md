@@ -19,7 +19,7 @@ Migration steps:
 Deprecations:
 ```
 
-## 2026-09-24 (unreleased — stable Desktop tray product shortcuts)
+## 2026-09-24 (0.4.3 preview — preparation)
 
 Behavior change:
 
@@ -36,9 +36,15 @@ cannot erase a newer list. Ordinary synchronization preserves provider diagnosti
 
 Migration steps:
 
-No data migration, version bump, or publication. Existing setup remains valid.
-Installed Desktop 0.4.2 does not contain this fix; a future Desktop release and
-packaged acceptance are still required. Linux Electron 41.2.0 regression testing
+No data migration or dependency change. Existing setup remains valid.
+Platform and Desktop share version 0.4.3; the authorized preview publication is
+pending. It will bundle Runtime 0.2.0 from immutable commit
+`edfec394951200702b9a88b4f9d76d97669b9be8` and the existing Usage 0.3.0 artifact
+with SHA-256 `61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509`.
+No npm or new App publication is part of this release.
+
+Installed Desktop 0.4.2 does not contain this fix; 0.4.2 → 0.4.3 packaged upgrade
+and tray acceptance remain pending. Linux Electron 41.2.0 regression testing
 with a disposable profile verified persisted-login cold start, refresh, logout,
 and login again; it also reproduced the old transport returning no products.
 
