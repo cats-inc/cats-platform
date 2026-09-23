@@ -52,7 +52,19 @@ None. This compatible repair uses the next 0.4.x patch. Desktop bundles the same
 Runtime 0.2.0 source (`edfec394951200702b9a88b4f9d76d97669b9be8`) and published
 Usage 0.3.0 artifact as 0.4.0. Platform's npm version follows the shared manifest;
 neither npm package is published. Source-fix CI passed before this release bump;
-the preview still requires its package, offline App and release-asset gates.
+publication checks are recorded below, separately from native upgrade acceptance.
+
+Release verification:
+
+The [0.4.1 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.4.1)
+is published from Platform `2a8a58ff9d8a77d0c912042c3950bad3019a5e0d`.
+[Release-source CI](https://github.com/cats-inc/cats-platform/actions/runs/35883051347)
+and the [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/35883097624)
+passed, including all three installers, Usage 0.3.0 offline activation, macOS
+signature/notarization and validation of all ten assets. Every OS bundled the
+Runtime commit above. Windows x64 is unsigned; macOS x64 is signed/notarized;
+Linux is ARM64. No npm publication occurred. The repaired native update chain
+described above remains pending and is not established by these build checks.
 
 ## 2026-09-23 (0.4.0 preview — existing catalog upgrades)
 
