@@ -54,6 +54,8 @@ export interface AppConfig {
   desktopHostStatePath: string;
   desktopDir: string;
   runtimeDir: string;
+  runtimeCatalogPackageRoot?: string;
+  runtimeCatalogConfigPath?: string;
   runtimeStaleSessionRetryLimit: number;
   platformDir: string;
   platformStateDir: string;
@@ -271,6 +273,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     host,
     port,
     runtimeBaseUrl: (env.CATS_RUNTIME_BASE_URL || DEFAULT_RUNTIME_BASE_URL).replace(/\/+$/, ''),
+    runtimeCatalogPackageRoot: env.CATS_RUNTIME_PACKAGE_ROOT?.trim() || undefined,
+    runtimeCatalogConfigPath: env.CATS_RUNTIME_CATALOG_CONFIG_PATH?.trim() || undefined,
     runtimeApiKey: resolveRuntimeApiKey(env),
     runtimeSessionCreateTimeoutMs,
     runtimeSessionCreateSlowWarningMs: parsePositiveInt(

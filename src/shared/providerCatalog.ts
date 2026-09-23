@@ -1,9 +1,6 @@
 import type { ProviderModelSelection } from './providerSelection.js';
-import {
-  PRODUCT_PROVIDER_DEFAULT_MODEL_PLACEHOLDERS,
-  PRODUCT_PROVIDER_MODELS as STATIC_PRODUCT_PROVIDER_MODELS,
-  PRODUCT_PROVIDER_ORDER,
-} from './providerCatalogData.js';
+import { PRODUCT_PROVIDER_ORDER } from './providerCatalogData.js';
+import { readObservedProviderModels } from './providerModelLabelRegistry.js';
 import { PRODUCT_PROVIDER_INSTANCES } from './providerCatalogInstances.js';
 
 export interface ProviderModelOption {
@@ -100,6 +97,8 @@ export interface ProviderCatalogCacheMetadata {
 export type ProviderCatalogSource = 'dynamic' | 'config' | 'static';
 
 export interface ProviderModelCatalog {
+  catalogRevision?: string;
+  catalogActivationId?: string;
   provider: string;
   backend: string | null;
   instance: string | null;
@@ -121,6 +120,7 @@ export interface ProviderAdvancedCatalogEntryLimits {
 }
 
 export interface ProviderAdvancedCatalogEntry extends ProviderCatalogEntry {
+  controls?: ProviderAdvancedCatalogControl[];
   controlDefaults?: Record<string, ProviderAdvancedControlValue>;
   capabilityTags?: string[];
   limits?: ProviderAdvancedCatalogEntryLimits;
@@ -163,6 +163,8 @@ export interface ProviderAdvancedCatalogSupport {
 }
 
 export interface ProviderAdvancedModelCatalog {
+  catalogRevision?: string;
+  catalogActivationId?: string;
   provider: string;
   backend: string | null;
   instance: string | null;
@@ -182,14 +184,6 @@ export type ProductProviderId = (typeof PRODUCT_PROVIDER_ORDER)[number];
 
 export const PAL_PROVIDER_ORDER = PRODUCT_PROVIDER_ORDER;
 export type CatProviderId = ProductProviderId;
-export const PRODUCT_PROVIDER_MODELS = Object.fromEntries(
-  Object.entries(STATIC_PRODUCT_PROVIDER_MODELS).map(([provider, models]) => [
-    provider,
-    models.map((model) => ({ ...model })),
-  ]),
-) as Record<ProductProviderId, ProviderModelOption[]>;
-
-export const PAL_PROVIDER_MODELS = PRODUCT_PROVIDER_MODELS;
 
 export interface ProductProviderDescriptor {
   id: ProductProviderId;
@@ -455,54 +449,17 @@ export function getProviderDisplayName(provider: string): string {
   return resolvedProvider.charAt(0).toUpperCase() + resolvedProvider.slice(1);
 }
 
-export function getProviderModels(provider: string): ProviderModelOption[] {
+export function getProviderModels(provider: string, target?: string | null): ProviderModelOption[] {
   const resolvedProvider = resolveProductProviderId(provider);
-  return resolvedProvider ? PRODUCT_PROVIDER_MODELS[resolvedProvider] ?? [] : [];
+  return resolvedProvider && target ? readObservedProviderModels(resolvedProvider, target).map(row=>({value:row.id,label:row.label||row.id,default:row.default})) : [];
 }
 
-export function isProductProviderDefaultModelPlaceholder(
-  provider: string,
-  model: string | null | undefined,
-): boolean {
-  const resolvedProvider = resolveProductProviderId(provider);
-  if (!resolvedProvider) {
-    return false;
-  }
+/** Absence represents no selection; model strings are never magic sentinels. */
+export function isProductProviderDefaultModelPlaceholder(_provider: string, _model: string | null | undefined): boolean { return false; }
+export function normalizeProductProviderModelId(_provider: string, modelId: string | null | undefined): string | null { return modelId?.trim() || null; }
 
-  const placeholders = PRODUCT_PROVIDER_DEFAULT_MODEL_PLACEHOLDERS as Partial<
-    Record<ProductProviderId, string>
-  >;
-  return placeholders[resolvedProvider] === model?.trim();
-}
-
-export function normalizeProductProviderModelId(
-  provider: string,
-  modelId: string | null | undefined,
-): string | null {
-  const normalized = modelId?.trim();
-  if (!normalized) {
-    return null;
-  }
-
-  const resolvedProvider = resolveProductProviderId(provider) ?? provider;
-  if (resolvedProvider === 'claude') {
-    const lower = normalized.toLowerCase();
-    if (lower === 'claude-opus-4-6' || lower === 'claude-opus-4.6' || lower === 'opus') {
-      return 'opus';
-    }
-    if (lower === 'claude-sonnet-4-6' || lower === 'claude-sonnet-4.6' || lower === 'sonnet') {
-      return 'sonnet';
-    }
-    if (lower === 'claude-haiku-4-5' || lower === 'claude-haiku-4.5' || lower === 'haiku') {
-      return 'haiku';
-    }
-  }
-
-  return normalized;
-}
-
-export function getDefaultModel(provider: string): string {
-  const models = getProviderModels(provider);
+export function getDefaultModel(provider: string, target?: string | null): string {
+  const models = getProviderModels(provider, target);
   return models.find((model) => model.default)?.value ?? models[0]?.value ?? '';
 }
 
@@ -607,6 +564,8 @@ export function createProviderAdvancedCatalogFromModelCatalog(
 ): ProviderAdvancedModelCatalog {
   const defaultModel = resolveProviderCatalogDefaultModel(catalog) || null;
   return {
+    catalogRevision: catalog.catalogRevision,
+    catalogActivationId: catalog.catalogActivationId,
     provider: catalog.provider,
     backend: catalog.backend,
     instance: catalog.instance,
@@ -646,6 +605,8 @@ export function normalizeProviderModelCatalog(
   const rawModels = Array.isArray(record.models) ? record.models : [];
 
   return {
+    ...(readNullableString(record.catalogRevision) ? {catalogRevision:readNullableString(record.catalogRevision)!} : {}),
+    ...(readNullableString(record.catalogActivationId) ? {catalogActivationId:readNullableString(record.catalogActivationId)!} : {}),
     provider: readNullableString(record.provider) ?? fallbackProvider,
     backend: readNullableString(record.backend),
     instance: readNullableString(record.instance),
@@ -692,6 +653,8 @@ export function normalizeProviderAdvancedModelCatalog(
   const defaultSelectionRecord = asRecord(record.defaultSelection);
 
   return {
+    ...(readNullableString(record.catalogRevision) ? {catalogRevision:readNullableString(record.catalogRevision)!} : {}),
+    ...(readNullableString(record.catalogActivationId) ? {catalogActivationId:readNullableString(record.catalogActivationId)!} : {}),
     provider: readNullableString(record.provider) ?? fallbackProvider,
     backend: readNullableString(record.backend),
     instance: readNullableString(record.instance),
@@ -711,6 +674,7 @@ export function normalizeProviderAdvancedModelCatalog(
         id: readNullableString(entry.id) ?? '',
         label: readNullableString(entry.label) ?? readNullableString(entry.id) ?? '',
         default: Boolean(entry.default),
+        ...(Array.isArray(entry.controls) ? { controls: normalizeProviderAdvancedModelCatalog({controls:entry.controls}, fallbackProvider).controls } : {}),
         ...(readSelectionControls(entry.controlDefaults)
           ? { controlDefaults: readSelectionControls(entry.controlDefaults)! }
           : {}),
@@ -793,6 +757,7 @@ export function normalizeProviderAdvancedModelCatalog(
           ...(readNullableString(defaultSelectionRecord.entryId)
             ? { entryId: readNullableString(defaultSelectionRecord.entryId)! }
             : {}),
+          ...(readNullableString(defaultSelectionRecord.catalogRevision) ? { catalogRevision:readNullableString(defaultSelectionRecord.catalogRevision)! } : {}),
           entryMode: readSelectionEntryMode(defaultSelectionRecord.entryMode),
           ...(readNullableString(defaultSelectionRecord.presetId)
             ? { presetId: readNullableString(defaultSelectionRecord.presetId)! }

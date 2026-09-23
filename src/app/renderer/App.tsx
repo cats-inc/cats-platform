@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import { flushSync } from 'react-dom';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -66,7 +67,8 @@ import {
   resolvePlatformEnvelopeLoadFailureDecision,
   resolvePostAuthenticationEntryPath,
 } from './auth/appAuthRouting.js';
-import { prefetchProviderCatalogsForRegistryFromClientCache } from './providerCatalogClient.js';
+import { loadInformationalProviderLabels, prefetchProviderCatalogsForRegistryFromClientCache } from './providerCatalogClient.js';
+import { providerModelLabelVersion, subscribeProviderModelLabels } from '../../shared/providerModelLabelRegistry.js';
 import { fetchProviderRegistryFromClientCache } from './providerRegistryClient.js';
 import { recordSettingsRouteTransition } from './settings/settingsExitMemory.js';
 import { recordEntitiesRouteTransition } from './entities-shell/entitiesExitMemory.js';
@@ -243,6 +245,7 @@ function shouldApplyPlatformEnvelopeRefresh(
 }
 
 export default function PlatformApp() {
+  useSyncExternalStore(subscribeProviderModelLabels, providerModelLabelVersion, providerModelLabelVersion);
   const location = useLocation();
   const navigate = useNavigate();
   const [state, setState] = useState<PlatformLoadState>({ status: 'loading' });
@@ -462,6 +465,7 @@ export default function PlatformApp() {
     void fetchProviderRegistryFromClientCache()
       .then((registry) => prefetchProviderCatalogsForRegistryFromClientCache(registry))
       .catch(() => {});
+    void loadInformationalProviderLabels();
   }, [setupComplete, state.status]);
 
   useEffect(() => {

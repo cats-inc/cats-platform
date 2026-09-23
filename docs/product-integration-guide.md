@@ -471,3 +471,23 @@ When converging product work into the platform host:
 ---
 
 *Last updated: 2026-04-29*
+
+## Provider catalog data and soft patches
+
+Consume Runtime basic/advanced catalogs as a coherent target, revision and activation
+pair. Selection revisions and connection/auth changes invalidate cached observations;
+catalog refresh notifies mounted pickers immediately. Persist model selections and
+resolved labels without normalizing opaque IDs or inventing defaults. Removed saved
+entries remain exact custom strings; new drafts wait for Runtime observations.
+
+Local offline informational labels use the authenticated
+`/api/provider-catalog/information` route and Runtime's read-only `./catalogs`
+export. Host configuration supplies `CATS_RUNTIME_PACKAGE_ROOT`, the selected
+Runtime profile and optional `CATS_RUNTIME_CONFIG_PATH`. These labels cannot
+populate execution choices. Remote connections never consult local catalog files.
+
+Factory authoring and single-machine overrides belong to Runtime; follow its
+[soft-patch guide](../../cats-runtime/docs/provider-catalog-soft-patches.md).
+Do not add model/default/effort arrays to Platform. `npm run catalog:check`
+enforces the production code/data boundary. Desktop staging verifies factory
+digests and retains the module/CLI for both split and bundled sidecars.

@@ -212,7 +212,10 @@ test('mobile Expo asset route does not intercept normal desktop assets', async (
 
     const response = await fetch(`${baseUrl}/assets/app.js`);
 
-    assert.notEqual(response.status, 200);
+    // A prior local web build may serve the desktop SPA fallback with 200.
+    // The routing contract is that this is not an Expo asset response.
+    assert.notEqual(await response.text(), 'android-asset');
+    assert.notEqual(response.headers.get('cache-control'), 'public, max-age=31536000, immutable');
     assert.notEqual(response.headers.get('content-type'), 'image/png');
   });
 });

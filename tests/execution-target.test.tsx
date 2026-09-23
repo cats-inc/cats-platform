@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { clearRememberedExecutionLabels } from '../src/shared/executionLabel.ts';
+import { clearLiveProviderModelLabels } from '../src/shared/providerModelLabelRegistry.ts';
 import {
   buildExecutionTargetSummary,
   createExecutionTargetValueFromProviderSelection,
 } from '../src/products/shared/renderer/components/ExecutionTarget.ts';
 
 test('execution target summary centralizes provider and model labels', () => {
-  clearRememberedExecutionLabels();
+  clearLiveProviderModelLabels();
 
   const summary = buildExecutionTargetSummary({
     provider: 'copilot',

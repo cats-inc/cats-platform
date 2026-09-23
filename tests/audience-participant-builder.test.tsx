@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { clearRememberedExecutionLabels } from '../src/shared/executionLabel.ts';
+import { clearLiveProviderModelLabels } from '../src/shared/providerModelLabelRegistry.ts';
 import {
   buildAudienceParticipantFromCat,
   buildAudienceParticipantFromExecutionTarget,
@@ -11,7 +11,7 @@ import {
 } from '../src/products/shared/renderer/audienceParticipantBuilder.ts';
 
 test('audience participant builder maps chat cats into stack participants with cat execution labels', () => {
-  clearRememberedExecutionLabels();
+  clearLiveProviderModelLabels();
 
   const participant = buildAudienceParticipantFromCat({
     id: 'cat-1',
@@ -29,7 +29,7 @@ test('audience participant builder maps chat cats into stack participants with c
   assert.deepEqual(participant, {
     key: 'cat:cat-1',
     name: 'Planner Cat',
-    executionLabel: 'Claude-CLI · Opus 5 with 1M context',
+    executionLabel: 'Claude-CLI · opus',
     avatarColor: '#ff9900',
     avatarUrl: 'https://example.com/cat.png',
     isCat: true,
@@ -39,7 +39,7 @@ test('audience participant builder maps chat cats into stack participants with c
 });
 
 test('audience participant builder maps temporary participants and implicit execution targets into neutral stack entries', () => {
-  clearRememberedExecutionLabels();
+  clearLiveProviderModelLabels();
 
   const temporaryParticipant = buildAudienceParticipantFromTemporaryParticipant({
     participantId: 'temp-1',
@@ -83,7 +83,7 @@ test('audience participant builder maps temporary participants and implicit exec
 });
 
 test('audience participant builder preserves recipient metadata and explicit execution labels', () => {
-  clearRememberedExecutionLabels();
+  clearLiveProviderModelLabels();
 
   const recipientParticipant = buildAudienceParticipantFromRecipient({
     kind: 'named',

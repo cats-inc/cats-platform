@@ -8,11 +8,15 @@ import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import { ProviderModelBrainCard } from '../src/design/components/ProviderModelBrainCard.tsx';
 import { PlatformSetupWizard } from '../src/app/renderer/setup/PlatformSetupWizard.tsx';
 import { startProviderReadLoop } from '../src/app/renderer/providerReadLoop.ts';
+import { useProviderCatalogState } from '../src/design/components/useProviderCatalogState.ts';
+import { refreshProviderModelCatalogs } from '../src/products/shared/renderer/api/providers.ts';
+import { normalizeProviderModelCatalog, normalizeProviderAdvancedModelCatalog } from '../src/shared/providerCatalog.ts';
 import {
   clearProviderRegistryClientCache, fetchProviderRegistryFromClientCache,
 } from '../src/app/renderer/providerRegistryClient.ts';
 import {
   fetchProviderAdvancedCatalogFromClientCache, fetchProviderModelCatalogFromClientCache,
+  refreshProviderCatalogClientCache,
 } from '../src/app/renderer/providerCatalogClient.ts';
 import type { ProviderTargetSelection } from '../src/shared/providerSelection.ts';
 import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
@@ -110,6 +114,56 @@ function assertNoManualRecovery(container: HTMLElement) {
   assert.doesNotMatch(container.textContent ?? '', /aborted|timeout|Retry|Runtime setup|重試|執行階段設定/i);
   assert.equal(container.querySelectorAll('button, a').length, 0);
 }
+
+test('catalog refresh without a selected provider never starts a loading spinner or request', async (t) => {
+  installClock(t);
+  const noModels = async () => { throw new Error('no target must make no request'); };
+  function Probe() {
+    const state = useProviderCatalogState({ provider: '', resolvedInstance: '', hasSelectedProvider: false,
+      fetchProviderModels: noModels, fetchAdvancedProviderModels: noModels });
+    return <output>{String(state.catalogLoading)}</output>;
+  }
+  const view = render(<Probe />); await settle();
+  assert.equal(view.container.textContent, 'false');
+  act(() => { refreshProviderCatalogClientCache(); }); await settle();
+  assert.equal(view.container.textContent, 'false');
+});
+
+test('a mounted picker keeps a coherent snapshot while base and advanced revisions or activations differ', async (t) => {
+  const clock = installClock(t);
+  let baseRevision = 'one'; let advancedRevision = 'one';
+  let baseActivation = 'a'; let advancedActivation = 'a';
+  const fetchModels = async () => normalizeProviderModelCatalog({ catalog: {
+    ...catalog('claude', 'cli/native', baseRevision), catalogRevision: baseRevision, catalogActivationId: baseActivation,
+  } }, 'claude');
+  const fetchAdvanced = async () => normalizeProviderAdvancedModelCatalog({ catalog: {
+    ...catalog('claude', 'cli/native', advancedRevision), catalogRevision: advancedRevision, catalogActivationId: advancedActivation,
+  } }, 'claude');
+  function Probe() {
+    const state = useProviderCatalogState({ provider: 'claude', resolvedInstance: 'cli/native', hasSelectedProvider: true,
+      fetchProviderModels: fetchModels, fetchAdvancedProviderModels: fetchAdvanced });
+    return <output>{JSON.stringify([state.effectiveCatalog.catalogRevision, state.effectiveAdvancedCatalog.catalogRevision,
+      state.effectiveCatalog.catalogActivationId, state.effectiveAdvancedCatalog.catalogActivationId])}</output>;
+  }
+  const view = render(<Probe />);
+  await settle();
+  assert.equal(view.container.textContent, '["one","one","a","a"]');
+  baseRevision = 'two'; baseActivation = 'b';
+  await clock.advance(60_000);
+  assert.equal(view.container.textContent, '["one","one","a","a"]');
+  advancedRevision = 'two';
+  await clock.advance(2_000);
+  assert.equal(view.container.textContent, '["one","one","a","a"]', 'same revision alone does not identify an activation');
+  advancedActivation = 'b';
+  await clock.advance(4_000);
+  assert.equal(view.container.textContent, '["two","two","b","b"]');
+  baseRevision = advancedRevision = 'three';
+  baseActivation = advancedActivation = 'c';
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ refreshed: 1, failures: [] }));
+  await refreshProviderModelCatalogs();
+  await settle();
+  assert.equal(view.container.textContent, '["three","three","c","c"]', 'explicit refresh updates mounted pickers without waiting 60 seconds');
+});
 
 for (const authStatus of [401, 403]) {
   test(`first setup step 2 automatically recovers from ${authStatus}, registry and model timeouts`, async (t) => {

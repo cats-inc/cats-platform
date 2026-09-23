@@ -15,10 +15,7 @@ import type { SelectedChannelView } from '../src/products/chat/shared/channelEnt
 import { ChatView, type ChatViewProps } from '../src/products/shared/renderer/components/chat-view/ChatView.tsx';
 import { buildDraftParticipantExecutionLabel } from '../src/products/chat/renderer/chatUtils.tsx';
 import { EMPTY_LIVE_INDICATOR } from '../src/products/chat/renderer/hooks/useLiveIndicator.ts';
-import {
-  clearRememberedExecutionLabels,
-  rememberExecutionLabel,
-} from '../src/shared/executionLabel.ts';
+import { clearLiveProviderModelLabels, recordLiveProviderModelLabels } from '../src/shared/providerModelLabelRegistry.ts';
 import {
   createLiveIndicatorSegmentState,
   projectLiveIndicatorStateFromSegments,
@@ -329,7 +326,7 @@ test('ChatView shows temporary participants in the top bar and composer avatar s
     <ChatView {...createProps()} />,
   );
 
-  assert.match(markup, /data-tooltip="Antigravity-CLI · Gemini 3.8 Flash"/u);
+  assert.match(markup, /data-tooltip="Antigravity-CLI · gemini-3.8-flash-low"/u);
   assert.match(markup, /data-tooltip="Claude-CLI · claude-sonnet"/u);
   assert.match(markup, /audienceChip/u);
   assert.doesNotMatch(markup, /data-tooltip="2 participants"/u);
@@ -444,7 +441,7 @@ test('ChatView keeps Cat visuals in room stacks while the composer stack preserv
   );
   assert.match(
     markup,
-    /class="catAvatar channelParticipantAvatar" data-tooltip="Antigravity-CLI · Gemini 3.8 Flash"/u,
+    /class="catAvatar channelParticipantAvatar" data-tooltip="Antigravity-CLI · gemini-3.8-flash-low"/u,
   );
   assert.match(
     markup,
@@ -456,19 +453,9 @@ test('ChatView keeps Cat visuals in room stacks while the composer stack preserv
   );
 });
 
-test('ChatView reuses remembered runtime-backed labels for Cat avatars and participant stacks', () => {
-  clearRememberedExecutionLabels();
-  rememberExecutionLabel({
-    provider: 'claude',
-    instance: 'cli/native',
-    model: 'opus',
-    modelSelection: {
-      controls: {
-        'claude.reasoning_effort': 'xhigh',
-      },
-    },
-    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
-  });
+test('ChatView reuses target-scoped Runtime-observed labels for Cat avatars and participant stacks', () => {
+  clearLiveProviderModelLabels();
+  recordLiveProviderModelLabels('claude', [{ id: 'opus', label: 'Opus 4.7 with 1M context' }], { target: 'cli/native', catalogRevision: 'fixture' });
 
   const leadCat = createChatCat({
     defaultExecutionTarget: {
@@ -533,10 +520,10 @@ test('ChatView reuses remembered runtime-backed labels for Cat avatars and parti
     />,
   );
 
-  assert.match(markup, /data-tooltip="Milo · Claude-CLI[^"]*Opus 4\.7 with 1M context[^"]*xHigh/u);
+  assert.match(markup, /data-tooltip="Milo · Claude-CLI[^"]*Opus 4\.7 with 1M context[^"]*xhigh/u);
   assert.doesNotMatch(markup, /Opus 4\.6 with 1M context/u);
   assert.doesNotMatch(markup, /Extra High/u);
-  clearRememberedExecutionLabels();
+  clearLiveProviderModelLabels();
 });
 
 test('ChatView renders temporary participant transcript speakers as room members', () => {

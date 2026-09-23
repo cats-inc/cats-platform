@@ -1,92 +1,37 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-
 import { resolveExecutionTargetLabel } from '../src/shared/executionLabel.ts';
-import {
-  clearLiveProviderModelLabels,
-  recordLiveProviderModelLabels,
-  resolveLiveProviderModelLabel,
-} from '../src/shared/providerModelLabelRegistry.ts';
+import {getDefaultModel, getProviderModels} from '../src/shared/providerCatalog.ts';
+import {buildExecutionTargetSummary} from '../src/products/shared/renderer/components/ExecutionTarget.ts';
+import {clearLiveProviderModelLabels,recordLiveProviderModelLabels,resolveLiveProviderModelLabel,
+  replaceInformationalProviderLabels,setProviderModelLabelContext} from '../src/shared/providerModelLabelRegistry.ts';
 
-function target(model: string) {
-  return { provider: 'claude', instance: 'native', model };
-}
-
-test('a runtime-served label wins over the static fallback table', (t) => {
-  t.after(() => clearLiveProviderModelLabels());
-  clearLiveProviderModelLabels();
-
-  // What the static table alone produces.
-  const staticLabel = resolveExecutionTargetLabel(target('opus'));
-  assert.match(staticLabel, /Opus/u);
-
-  // The runtime is the only thing that knows which version the alias points at,
-  // so once it has said, that answer is used.
-  recordLiveProviderModelLabels('claude', [
-    { id: 'opus', label: 'Opus 6 (1M context)' },
-  ]);
-
-  const liveLabel = resolveExecutionTargetLabel(target('opus'));
-  assert.match(liveLabel, /Opus 6/u);
-  assert.equal(liveLabel.includes('Opus 5'), false);
+test('exact target labels preserve spelling and explicit removals', t => {
+  clearLiveProviderModelLabels(); t.after(clearLiveProviderModelLabels);
+  replaceInformationalProviderLabels([{provider:'claude',backend:'cli',models:[{id:'new-ID',label:'Factory name'}]}]);
+  recordLiveProviderModelLabels('claude',[{id:'new-ID',label:'Custom (recommended)'}],{target:'cli/native',catalogRevision:'R1'});
+  recordLiveProviderModelLabels('claude',[{id:'new-ID',label:'API name'}],{target:'api/main',catalogRevision:'R1'});
+  const target={provider:'claude',instance:'cli/native',model:'new-ID',modelSelection:null};
+  assert.equal(buildExecutionTargetSummary(target).modelLabel,'Custom (recommended)');
+  assert.match(resolveExecutionTargetLabel(target),/Custom \(recommended\)/);
+  assert.equal(resolveLiveProviderModelLabel('claude','new-id','cli/native'),null);
+  recordLiveProviderModelLabels('claude',[],{target:'cli/native',catalogRevision:'R2'});
+  assert.equal(resolveLiveProviderModelLabel('claude','new-ID','cli/native'),null);
+  assert.equal(resolveLiveProviderModelLabel('claude','new-ID','api/main'),'API name');
 });
 
-test('the static fallback still names a target before any catalog has loaded', () => {
-  clearLiveProviderModelLabels();
-
-  // An offline shell has no runtime label, and must still show the version
-  // rather than a bare alias.
-  const label = resolveExecutionTargetLabel(target('opus'));
-  assert.match(label, /Opus 5/u);
-});
-
-test('an alias resolves through normalization when the live label is keyed by alias', (t) => {
-  t.after(() => clearLiveProviderModelLabels());
-  clearLiveProviderModelLabels();
-  recordLiveProviderModelLabels('claude', [
-    { id: 'opus', label: 'Opus 6 (1M context)' },
-  ]);
-
-  // `claude-opus-4-6` normalizes to the `opus` alias, so it picks up the live
-  // label recorded against that alias.
-  assert.match(resolveExecutionTargetLabel(target('claude-opus-4-6')), /Opus 6/u);
-});
-
-test('a pinned model id keeps its own runtime label', (t) => {
-  t.after(() => clearLiveProviderModelLabels());
-  clearLiveProviderModelLabels();
-  recordLiveProviderModelLabels('cursor', [
-    { id: 'claude-opus-5-high', label: 'Claude Opus 5 High' },
-  ]);
-
-  assert.equal(
-    resolveLiveProviderModelLabel('cursor', 'claude-opus-5-high'),
-    'Claude Opus 5 High',
-  );
-});
-
-test('a sparse catalog cannot erase a name the static table can supply', (t) => {
-  t.after(() => clearLiveProviderModelLabels());
-  clearLiveProviderModelLabels();
-  recordLiveProviderModelLabels('claude', [
-    { id: 'opus', label: '   ' },
-    { id: 'sonnet' },
-  ]);
-
-  assert.equal(resolveLiveProviderModelLabel('claude', 'opus'), null);
-  assert.equal(resolveLiveProviderModelLabel('claude', 'sonnet'), null);
-  assert.match(resolveExecutionTargetLabel(target('opus')), /Opus 5/u);
-});
-
-test('label lookup is case and whitespace insensitive', (t) => {
-  t.after(() => clearLiveProviderModelLabels());
-  clearLiveProviderModelLabels();
-  recordLiveProviderModelLabels('Claude', [
-    { id: ' Opus ', label: 'Opus 6 (1M context)' },
-  ]);
-
-  assert.equal(
-    resolveLiveProviderModelLabel('claude', 'opus'),
-    'Opus 6 (1M context)',
-  );
+test('informational labels do not populate executable defaults and contexts do not leak', t => {
+  clearLiveProviderModelLabels(); t.after(clearLiveProviderModelLabels);
+  setProviderModelLabelContext('A');
+  replaceInformationalProviderLabels([{provider:'pi',backend:'cli',models:[{id:'provider/opaque',label:'Opaque [subscription]'}]}],'A');
+  assert.equal(resolveLiveProviderModelLabel('pi','provider/opaque','cli/native'),'Opaque [subscription]');
+  assert.deepEqual(getProviderModels('pi','cli/native'),[]);
+  recordLiveProviderModelLabels('pi',[{id:'api-model',label:'API'}],{target:'api/main',context:'A'});
+  assert.equal(getDefaultModel('pi','cli/native'),'');
+  assert.equal(getDefaultModel('pi'),'');
+  assert.equal(getDefaultModel('pi','api/main'),'api-model');
+  setProviderModelLabelContext('B');
+  recordLiveProviderModelLabels('pi',[{id:'old',label:'Old'}],{target:'cli/native',context:'A'});
+  assert.equal(resolveLiveProviderModelLabel('pi','provider/opaque','cli/native'),null);
+  assert.deepEqual(getProviderModels('pi','cli/native'),[]);
 });

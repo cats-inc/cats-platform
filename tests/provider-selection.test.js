@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createFixtureProviderModelCatalog} from './helpers/catalogFixture.js';
 import test from 'node:test';
 
 import {
@@ -7,7 +8,6 @@ import {
   resolveSelectedProviderInstance,
 } from '../build/server/shared/providerSelection.js';
 import {
-  createStaticProviderModelCatalog,
   normalizeProviderAdvancedModelCatalog,
 } from '../build/server/shared/providerCatalog.js';
 
@@ -44,13 +44,13 @@ test('resolveSelectedProviderInstance offers no instance until the runtime regis
 });
 
 test('static Codex catalog keeps raw model labels without a synthetic default suffix', () => {
-  const catalog = createStaticProviderModelCatalog('codex');
+  const catalog = createFixtureProviderModelCatalog('codex');
   assert.equal(catalog.models[0]?.id, 'gpt-6-astra');
   assert.equal(catalog.models[0]?.label, 'gpt-6-astra');
 });
 
 test('OpenCode shortlist preserves labels, starts at the first row, and retains custom model strings', () => {
-  const catalog = createStaticProviderModelCatalog('opencode');
+  const catalog = createFixtureProviderModelCatalog('opencode');
   assert.deepEqual(catalog.models.map(({ id, label }) => ({ id, label })), [
     { id: 'opencode-go/union-alpha', label: 'Union Alpha Free' },
     { id: 'opencode-go/deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash' },
@@ -71,7 +71,7 @@ test('OpenCode shortlist preserves labels, starts at the first row, and retains 
 });
 
 test('Kilo shortlist preserves labels, starts at the first row, and retains custom model strings', () => {
-  const catalog = createStaticProviderModelCatalog('kilo');
+  const catalog = createFixtureProviderModelCatalog('kilo');
   assert.deepEqual(catalog.models.map(({ id, label }) => ({ id, label })), [
     { id: 'kilo/deepseek/deepseek-v4.1-flash', label: 'DeepSeek: DeepSeek V4.1 Flash' },
     { id: 'kilo/z-ai/glm-5.3-flash', label: 'Z.ai: GLM 5.3 Flash' },
@@ -92,7 +92,7 @@ test('Kilo shortlist preserves labels, starts at the first row, and retains cust
 });
 
 test('ClinePass starts at GLM and retains a custom string after catalog refresh', () => {
-  const catalog = createStaticProviderModelCatalog('cline');
+  const catalog = createFixtureProviderModelCatalog('cline');
   const target = { provider: 'cline', instance: 'native', model: '' };
   assert.equal(resolveCatalogTargetSelection({ target, catalog }).model, 'cline-pass/glm-5.3');
   assert.ok(catalog.models.every(model => !model.default));
@@ -105,7 +105,7 @@ test('ClinePass starts at GLM and retains a custom string after catalog refresh'
 });
 
 test('Kiro starts at the first raw id and retains custom input through refresh', () => {
-  const catalog = createStaticProviderModelCatalog('kiro');
+  const catalog = createFixtureProviderModelCatalog('kiro');
   const ids = ['claude-opus-5', 'claude-sonnet-5', 'gpt-5.6-sol', 'gpt-5.6-terra',
     'gpt-5.6-luna', 'claude-haiku-4.5'];
   assert.deepEqual(catalog.models.map(({ id, label }) => ({ id, label })),
@@ -122,7 +122,7 @@ test('Kiro starts at the first raw id and retains custom input through refresh',
 });
 
 test('Devin starts at Adaptive and preserves a custom model outside the shortlist', () => {
-  const catalog = createStaticProviderModelCatalog('devin');
+  const catalog = createFixtureProviderModelCatalog('devin');
   assert.equal(catalog.models.length, 6);
   assert.ok(catalog.models.every(model => !model.default));
   const target = { provider: 'devin', instance: 'agent/acp', model: '' };
@@ -201,10 +201,10 @@ test('resolveCatalogTargetSelection keeps a manual model choice for the same pro
     preserveCurrentModel: true,
   });
 
-  assert.equal(nextTarget.model, 'opus');
+  assert.equal(nextTarget.model, 'claude-opus-4-6');
 });
 
-test('resolveCatalogTargetSelection normalizes Claude legacy aliases onto native CLI catalog entries', () => {
+test('resolveCatalogTargetSelection preserves a removed structured entry as custom without alias inference', () => {
   const nextTarget = resolveCatalogTargetSelection({
     target: {
       provider: 'claude',
@@ -272,11 +272,8 @@ test('resolveCatalogTargetSelection normalizes Claude legacy aliases onto native
     preserveCurrentSelection: true,
   });
 
-  assert.equal(nextTarget.model, 'opus');
-  assert.deepEqual(nextTarget.modelSelection, {
-    entryId: 'opus',
-    entryMode: 'explicit',
-  });
+  assert.equal(nextTarget.model, 'claude-opus-4-6');
+  assert.equal(nextTarget.modelSelection, null);
 });
 
 test('isLegacyProviderModelTarget detects a raw model id that is not part of the runtime catalog', () => {
@@ -302,7 +299,7 @@ test('isLegacyProviderModelTarget detects a raw model id that is not part of the
   );
 });
 
-test('isLegacyProviderModelTarget treats Claude native aliases as catalog models', () => {
+test('isLegacyProviderModelTarget does not infer catalog aliases from an old model token', () => {
   assert.equal(
     isLegacyProviderModelTarget({
       catalog: {
@@ -322,7 +319,7 @@ test('isLegacyProviderModelTarget treats Claude native aliases as catalog models
       model: 'claude-opus-4-6',
       modelSelection: null,
     }),
-    false,
+    true,
   );
 });
 
@@ -846,7 +843,7 @@ test('normalizeProviderAdvancedModelCatalog preserves runtime preset availabilit
 });
 
 test('Junie initializes Gemini 3.7 Flash and preserves custom input through refresh', () => {
-  const catalog = createStaticProviderModelCatalog('junie');
+  const catalog = createFixtureProviderModelCatalog('junie');
   const target = { provider: 'junie', instance: 'native', model: '' };
   assert.equal(resolveCatalogTargetSelection({ target, catalog }).model, 'Gemini 3.7 Flash');
   const custom = resolveCatalogTargetSelection({
@@ -858,7 +855,7 @@ test('Junie initializes Gemini 3.7 Flash and preserves custom input through refr
 });
 
 test('Auggie preserves six labels, initializes Astra and keeps custom input through refresh', () => {
-  const catalog = createStaticProviderModelCatalog('auggie');
+  const catalog = createFixtureProviderModelCatalog('auggie');
   assert.deepEqual(catalog.models.map(({ id, label }) => ({ id, label })), [
     { id: 'gpt-6-astra', label: 'GPT-6 Astra' },
     { id: 'gpt-5-6-sol', label: 'GPT-5.6 Sol' },
@@ -879,7 +876,7 @@ test('Auggie preserves six labels, initializes Astra and keeps custom input thro
 });
 
 test('Goose preserves six fixed Off labels, initializes Sol and keeps custom input through refresh', () => {
-  const catalog = createStaticProviderModelCatalog('goose');
+  const catalog = createFixtureProviderModelCatalog('goose');
   assert.deepEqual(catalog.models.map(({ id, label }) => ({ id, label })), [
     { id: 'chatgpt_codex/gpt-5.6-sol', label: 'gpt-5.6-sol — Off' },
     { id: 'chatgpt_codex/gpt-5.6-terra', label: 'gpt-5.6-terra — Off' },
@@ -900,7 +897,7 @@ test('Goose preserves six fixed Off labels, initializes Sol and keeps custom inp
 });
 
 test('Pi preserves six subscription labels, initializes Luna and keeps custom input through refresh', () => {
-  const catalog = createStaticProviderModelCatalog('pi');
+  const catalog = createFixtureProviderModelCatalog('pi');
   assert.deepEqual(catalog.models.map(({ id, label }) => ({ id, label })), [
     { id: 'openai-codex/gpt-5.6-luna', label: 'gpt-5.6-luna [openai-codex] — medium' },
     { id: 'openai-codex/gpt-5.6-sol', label: 'gpt-5.6-sol [openai-codex] — medium' },

@@ -452,7 +452,7 @@ test('group route keeps the current audience chip and inline avatar row for part
   assert.equal(avatarSlotMatches.length, 2);
   assert.match(markup, /class="audienceChip"/u);
   assert.match(markup, /Milo \+1/u);
-  assert.match(markup, /data-tooltip="Antigravity-CLI · Gemini 3.8 Flash"/u);
+  assert.match(markup, /data-tooltip="Antigravity-CLI · gemini-3.8-flash-low"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /aria-label="Remove Inline Reviewer"/u);
 });
@@ -654,7 +654,7 @@ test('parallel draft keeps follower targets on the same audience-chip treatment 
   assert.match(markup, /class="draftCompareCarousel"/u);
   assert.match(markup, /data-tooltip="[^"]*opus-4\.6-1m"/u);
   assert.match(markup, /data-tooltip="[^"]*codex-max"/u);
-  assert.match(markup, /data-tooltip="[^"]*Gemini 3.8 Flash"/u);
+  assert.match(markup, /data-tooltip="[^"]*gemini-3.8-flash-low"/u);
   assert.equal(audienceChipMatches.length, 3);
   assert.equal(audienceAvatarMatches.length, 0);
   assert.equal(recipientChipMatches.length, 0);
@@ -1537,7 +1537,7 @@ test('synthetic orchestrator-authored parallel draft renders landed branch field
   assert.match(markup, /class="draftCompareCarousel"/u);
   assert.match(markup, /C:\/repo\/worktrees\/review/u);
   assert.match(markup, /Worktree \/ Read only/u);
-  assert.match(markup, /Antigravity-CLI · Gemini 3.8 Flash/u);
+  assert.match(markup, /Antigravity-CLI · gemini-3.8-flash-low/u);
   // Per the 2026-05-01 retirement, no shadow branch may surface its
   // own prompt — the lead's `composerDraft` shows verbatim.
   assert.doesNotMatch(markup, /Prompt detached/u);

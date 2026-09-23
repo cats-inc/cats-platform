@@ -169,6 +169,39 @@ async function withMockedDateNow(testContext, initialNowMs, callback) {
   });
 }
 
+test('a late forced catalog refresh cannot replace a newer catalog revision', async () => {
+  const runtimeClient = createRuntimeStub();
+  let forced = 0; let release; let started;
+  const firstStarted = new Promise(resolve => { started = resolve; });
+  const firstGate = new Promise(resolve => { release = resolve; });
+  function payload(provider, instance, revision) {
+    return { provider, instance, backend: 'cli', source: 'static', cache: null, defaultModel: null,
+      catalogRevision: revision, catalogActivationId: revision,
+      models: [{ id: revision, label: revision }], entries: [{ id: revision, label: revision }],
+      controls: [], presets: [], defaultSelection: null, support: { tier: 'entry_only', notes: [] }, warnings: [] };
+  }
+  runtimeClient.getProviderModels = async (provider, instance, options) => {
+    const revision = options?.forceRefresh ? `revision-${++forced}` : 'baseline';
+    if (revision === 'revision-1') { started(); await firstGate; }
+    return payload(provider, instance, revision);
+  };
+  runtimeClient.getAdvancedProviderModels = async (provider, instance, options) =>
+    payload(provider, instance, options?.forceRefresh ? `revision-${forced}` : 'baseline');
+  await withServer(runtimeClient, async baseUrl => {
+    await fetch(`${baseUrl}/api/providers`);
+    await fetch(`${baseUrl}/api/providers/claude/models?instance=cli/native`);
+    const old = fetch(`${baseUrl}/api/providers/models/refresh`, { method: 'POST' });
+    await firstStarted;
+    const fresh = await fetch(`${baseUrl}/api/providers/models/refresh`, { method: 'POST' });
+    assert.equal((await fresh.json()).refreshed, 1);
+    release(); await old;
+    const models = await (await fetch(`${baseUrl}/api/providers/claude/models?instance=cli/native`)).json();
+    const advanced = await (await fetch(`${baseUrl}/api/providers/claude/models/advanced?instance=cli/native`)).json();
+    assert.equal(models.catalog.catalogRevision, 'revision-2');
+    assert.equal(advanced.catalog.catalogRevision, 'revision-2');
+  });
+});
+
 test('first setup waits for slow provider configuration and warms the Catlas catalog cache', async () => {
   const runtimeClient = createRuntimeStub();
   const getConfig = runtimeClient.getProviderConfig;
@@ -374,7 +407,7 @@ test('GET /api/providers/:provider/models/advanced scopes selector diagnostics t
   );
 });
 
-test('GET /api/providers exposes Devin ACP, uses Adaptive initially, and preserves an empty runtime catalog', async () => {
+test('GET /api/providers exposes Devin ACP and preserves an empty runtime catalog without a guessed default', async () => {
   const runtimeClient = createRuntimeStub();
   runtimeClient.getProviderConfig = async () => ({
     devin: {
@@ -434,7 +467,7 @@ test('GET /api/providers exposes Devin ACP, uses Adaptive initially, and preserv
       {
         id: 'devin',
         label: 'Devin',
-        defaultModel: 'adaptive',
+        defaultModel: null,
         defaultInstance: 'acp',
         defaultBackend: 'agent',
         instances: [

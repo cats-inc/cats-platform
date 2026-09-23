@@ -15,7 +15,7 @@ import {
   type WorkspaceBusyState,
 } from '../../../shared/workspaceBusy.js';
 import { syncDesktopHostPlatformShellState } from '../setup/desktopHostBridge.js';
-import { clearRememberedExecutionLabels } from '../../../shared/executionLabel.js';
+import { invalidateProviderClientSession } from '../providerClientInvalidation.js';
 import { messageKeys } from '../../../shared/i18n/index.js';
 import { useI18n } from '../i18n/index.js';
 import { PlatformSettingsRoutes } from './PlatformSettingsRoutes.js';
@@ -68,7 +68,7 @@ export function SettingsCanvasContent() {
     setBusy(createSetupBusyState());
     try {
       const next = await resetSetup();
-      clearRememberedExecutionLabels();
+      invalidateProviderClientSession();
       await syncDesktopHostPlatformShellState({
         bootstrapAttemptId: next.bootstrapAttemptId ?? null,
         setupCompleteAt: next.setupCompleteAt ?? null,

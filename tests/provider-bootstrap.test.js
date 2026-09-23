@@ -192,6 +192,10 @@ test('bootstrapProviderSelector persists fresh registry and catalog data to disk
     assert.ok(snapshot.registry?.providers.some((provider) => provider.id === 'claude'));
     const claudeCatalog = snapshot.catalogs.find((entry) => entry.provider === 'claude');
     assert.ok(claudeCatalog, 'expected claude catalog to be persisted');
+    assert.equal(snapshot.registry.revision, 'test-selection');
+    assert.equal(claudeCatalog.instance, 'cli/native');
+    assert.equal(claudeCatalog.models.instance, 'cli/native');
+    assert.equal(claudeCatalog.advanced.instance, 'cli/native');
     assert.equal(claudeCatalog.models?.defaultModel, 'claude-default');
     assert.ok(claudeCatalog.advanced, 'expected advanced catalog to be persisted');
   });

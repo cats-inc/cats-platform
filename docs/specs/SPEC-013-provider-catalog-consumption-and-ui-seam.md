@@ -450,14 +450,14 @@ the first read and 23 ms on the warm read. It created no sessions, wrote no
 Platform snapshot, and did not replace or restart the installed Desktop.
 Required PR CI remains the full-suite gate; no new packaged release is claimed.
 
-## Planned Catalog Data and Soft-Patch Integration (2026-09-23)
+## Catalog Data and Soft-Patch Integration (2026-09-23)
 
-Runtime's proposed
+Runtime's accepted
 [ADR-040](../../../cats-runtime/docs/decisions/040-use-data-driven-provider-catalogs-and-local-overrides.md),
 [SPEC-031](../../../cats-runtime/docs/specs/SPEC-031-provider-catalog-data-and-local-overrides.md), and
 [joint PLAN-040](../../../cats-runtime/docs/plans/PLAN-040-provider-catalog-data-and-local-overrides.md)
 replace handwritten factory model data with one Runtime-owned pack and scoped
-local overrides. Implementation is pending. Platform's phase-4 responsibilities are:
+local overrides. The implemented Platform contract is:
 
 - consume the effective Runtime catalog revision for models, options, defaults,
   fixed combinations, and live labels; remove independent model tables;
@@ -476,18 +476,25 @@ local overrides. Implementation is pending. Platform's phase-4 responsibilities 
 - package projections and the read-only resolver from one pinned Runtime source,
   with data-only patch, upgrade, and native-package contract checks.
 
-This proposed work preserves the accepted spinner/automatic-recovery UX and
-explicit connection/auth invalidation. It does not reinstate static execution
-fallbacks or add recovery buttons/errors to pickers. The joint plan owns sequencing
-and acceptance; it must not be described as implemented based on this amendment.
+This implementation preserves spinner/automatic recovery and explicit connection/
+auth invalidation. Manual model refresh now notifies mounted pickers immediately;
+it retains their coherent prior snapshot while replacements arrive. The authenticated
+`GET /api/provider-catalog/information` route imports only the selected local
+Runtime's read-only module with explicit package/profile/config paths. It returns
+informational labels, never executable targets; remote connections return no local data.
+
+Validation includes mounted mixed revision/activation and refresh tests, target-scoped
+labels, late responses, connection fences, persisted selection revisions, and split/
+bundle staged catalog module and CLI imports. The joint plan records installed
+Runtime acceptance and OS limits; no Desktop release is published by this change.
 
 ## Open Questions
 
 - [ ] Keep `GET /api/providers` as the selector route name, or introduce a new
       dedicated selector endpoint to avoid overloading the old catalog meaning?
-- [ ] Which non-execution product surfaces still need a separate informational
-      provider catalog, and should that be a new route or static server-owned
-      data?
+- [x] Non-execution labels consume observed target-scoped data or the local
+      informational catalog route. They do not introduce a server-owned model
+      table or grant executable availability.
 - [x] Picker recovery hides transport warnings and uses accessible loading
       indicators with automatic retry; diagnostic metadata remains available
       to dedicated settings/diagnostic consumers.
@@ -501,5 +508,5 @@ and acceptance; it must not be described as implemented based on this amendment.
 ---
 
 *Created: 2026-03-19*
-*Revised: 2026-09-18*
+*Revised: 2026-09-23*
 *Author: Codex*

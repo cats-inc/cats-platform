@@ -1,4 +1,5 @@
 import { access, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { dirname, join, relative, resolve } from 'node:path';
 import { decodeAppPackage, parseAppLock, supportsVersion, APP_SDK_VERSION, PLATFORM_VERSION, type ResolvedAppPin } from '#cats-app-package';
 
@@ -147,6 +148,10 @@ const APP_SIDECAR_RUNTIME_DEPENDENCIES = ['js-yaml', 'argparse'] as const;
 const RUNTIME_BUNDLE_EXTERNAL_DEPENDENCIES = ['playwright-core', 'yaml'] as const;
 
 const RUNTIME_OPTIONAL_ASSETS: RuntimeSidecarAsset[] = [
+  { sourceRelativePath: join('build', 'runtime', 'catalogs'), targetRelativePath: join('shared', 'cats-runtime', 'build', 'runtime', 'catalogs'), directory: true },
+  { sourceRelativePath: join('build', 'runtime', 'bin', 'catalogs.js'), targetRelativePath: join('shared', 'cats-runtime', 'build', 'runtime', 'bin', 'catalogs.js'), directory: false },
+  { sourceRelativePath: join('config', 'curated-model-catalogs.generated.json'), targetRelativePath: join('shared', 'cats-runtime', 'config', 'curated-model-catalogs.generated.json'), directory: false },
+  { sourceRelativePath: join('config', 'catalog-schema1-migration.json'), targetRelativePath: join('shared', 'cats-runtime', 'config', 'catalog-schema1-migration.json'), directory: false },
   {
     sourceRelativePath: 'public',
     targetRelativePath: join('shared', 'cats-runtime', 'public'),
@@ -340,10 +345,17 @@ async function ensureBundledRuntimeAssets(
     join(runtimePackageRoot, 'config', 'management.yaml.example'),
     join(runtimePackageRoot, 'config', 'providers.yaml.example'),
     join(runtimePackageRoot, 'config', 'curated-model-catalogs.yaml.example'),
+    join(runtimePackageRoot, 'config', 'curated-model-catalogs.generated.json'),
+    join(runtimePackageRoot, 'config', 'catalog-schema1-migration.json'),
+    join(runtimePackageRoot, 'build', 'runtime', 'catalogs', 'index.js'),
+    join(runtimePackageRoot, 'build', 'runtime', 'bin', 'catalogs.js'),
     ...dependencyAssets.map((dependency) => join(runtimePackageRoot, dependency.packageJsonPath)),
   ];
 
   await Promise.all(requiredPaths.map((path) => ensureRequiredFile(path)));
+  const factory = await readFile(join(runtimePackageRoot, 'config', 'curated-model-catalogs.yaml.example'), 'utf8');
+  const generated = JSON.parse(await readFile(join(runtimePackageRoot, 'config', 'curated-model-catalogs.generated.json'), 'utf8'));
+  if (generated.sourceDigest !== createHash('sha256').update(factory).digest('hex')) throw new Error('Runtime factory catalog resource digest mismatch.');
   return dependencyAssets;
 }
 

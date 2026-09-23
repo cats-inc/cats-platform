@@ -4,7 +4,7 @@ import type {
   ProviderModelCatalog,
 } from '../../../../shared/providerCatalog.js';
 import {
-  clearProviderCatalogClientCache,
+  refreshProviderCatalogClientCache,
   fetchProviderAdvancedCatalogFromClientCache,
   fetchProviderModelCatalogFromClientCache,
 } from '../../../../app/renderer/providerCatalogClient.js';
@@ -74,8 +74,7 @@ export async function refreshProviderModelCatalogs(): Promise<RefreshProviderCat
     throw new Error(message);
   }
   const result = await response.json() as RefreshProviderCatalogsResult;
-  // Server cache is already populated by the refresh; drop any stale entries
-  // the renderer was holding onto so the next fetch surfaces the fresh data.
-  clearProviderCatalogClientCache();
+  // Notify mounted pickers now; retain coherent observations until replacement arrives.
+  refreshProviderCatalogClientCache();
   return result;
 }

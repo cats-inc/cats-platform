@@ -1,3 +1,5 @@
+import { getProviderClientGeneration } from '../../../../app/renderer/providerClientInvalidation.js';
+import { getProviderCatalogRefreshVersion } from '../../../../app/renderer/providerCatalogClient.js';
 import {
   startTransition,
   useCallback,
@@ -129,34 +131,6 @@ export interface UseWorkspaceExecutionTargetStateOptions<
   debounceMs?: number;
 }
 
-const RECONCILE_CACHE_TTL_MS = 5_000;
-
-let cachedProviderRegistry:
-  | {
-      value: Awaited<ReturnType<typeof fetchProviderRegistry>>;
-      expiresAt: number;
-    }
-  | null = null;
-let inflightProviderRegistry:
-  Promise<Awaited<ReturnType<typeof fetchProviderRegistry>>> | null = null;
-const cachedProviderCatalogBundles = new Map<
-  string,
-  {
-    value: {
-      effectiveCatalog: Awaited<ReturnType<typeof fetchProviderModels>>;
-      effectiveAdvancedCatalog: Awaited<ReturnType<typeof fetchAdvancedProviderModels>>;
-    };
-    expiresAt: number;
-  }
->();
-const inflightProviderCatalogBundles = new Map<
-  string,
-  Promise<{
-    effectiveCatalog: Awaited<ReturnType<typeof fetchProviderModels>>;
-    effectiveAdvancedCatalog: Awaited<ReturnType<typeof fetchAdvancedProviderModels>>;
-  }>
->();
-
 function logExecutionTargetReconcileWarning(
   message: string,
   error: unknown,
@@ -190,6 +164,7 @@ function serializeExecutionTargetModelSelection(
   return JSON.stringify({
     ...(clonedSelection.entryId ? { entryId: clonedSelection.entryId } : {}),
     entryMode: clonedSelection.entryMode,
+    catalogRevision: clonedSelection.catalogRevision,
     ...(clonedSelection.presetId ? { presetId: clonedSelection.presetId } : {}),
     ...(serializedControls ? { controls: serializedControls } : {}),
   });
@@ -204,98 +179,6 @@ function buildExecutionTargetReconcileSignature(
     model: target.model ?? null,
     modelSelection: serializeExecutionTargetModelSelection(target.modelSelection),
   });
-}
-
-function shouldUseExecutionTargetCatalogCache(input: {
-  fetchProviderRegistryFn?: typeof fetchProviderRegistry;
-  fetchProviderModelsFn?: typeof fetchProviderModels;
-  fetchAdvancedProviderModelsFn?: typeof fetchAdvancedProviderModels;
-}): boolean {
-  return (input.fetchProviderRegistryFn ?? fetchProviderRegistry) === fetchProviderRegistry
-    && (input.fetchProviderModelsFn ?? fetchProviderModels) === fetchProviderModels
-    && (input.fetchAdvancedProviderModelsFn ?? fetchAdvancedProviderModels)
-      === fetchAdvancedProviderModels;
-}
-
-async function readProviderRegistryCached(
-  fetchProviderRegistryFn: typeof fetchProviderRegistry,
-): Promise<Awaited<ReturnType<typeof fetchProviderRegistry>>> {
-  const now = Date.now();
-  if (cachedProviderRegistry && cachedProviderRegistry.expiresAt > now) {
-    return cachedProviderRegistry.value;
-  }
-
-  if (inflightProviderRegistry) {
-    return inflightProviderRegistry;
-  }
-
-  inflightProviderRegistry = fetchProviderRegistryFn()
-    .then((value) => {
-      cachedProviderRegistry = {
-        value,
-        expiresAt: Date.now() + RECONCILE_CACHE_TTL_MS,
-      };
-      return value;
-    })
-    .finally(() => {
-      inflightProviderRegistry = null;
-    });
-
-  return inflightProviderRegistry;
-}
-
-async function readProviderCatalogBundleCached(input: {
-  provider: string;
-  instance: string | null;
-  fetchProviderModelsFn: typeof fetchProviderModels;
-  fetchAdvancedProviderModelsFn: typeof fetchAdvancedProviderModels;
-}): Promise<{
-  effectiveCatalog: Awaited<ReturnType<typeof fetchProviderModels>>;
-  effectiveAdvancedCatalog: Awaited<ReturnType<typeof fetchAdvancedProviderModels>>;
-}> {
-  const cacheKey = `${input.provider}\u0000${input.instance ?? ''}`;
-  const now = Date.now();
-  const cachedBundle = cachedProviderCatalogBundles.get(cacheKey);
-  if (cachedBundle && cachedBundle.expiresAt > now) {
-    return cachedBundle.value;
-  }
-
-  const inflightBundle = inflightProviderCatalogBundles.get(cacheKey);
-  if (inflightBundle) {
-    return inflightBundle;
-  }
-
-  const bundlePromise = Promise.allSettled([
-    input.fetchProviderModelsFn(input.provider, input.instance),
-    input.fetchAdvancedProviderModelsFn(input.provider, input.instance),
-  ]).then(([modelsResult, advancedResult]) => {
-    if (modelsResult.status !== 'fulfilled') {
-      throw modelsResult.reason;
-    }
-
-    const effectiveCatalog = modelsResult.value;
-    const effectiveAdvancedCatalog = resolveAdvancedCatalogFallback({
-      provider: input.provider,
-      instance: input.instance,
-      catalog: effectiveCatalog,
-      advancedCatalogResult: advancedResult,
-      modelsResult,
-    });
-    const value = {
-      effectiveCatalog,
-      effectiveAdvancedCatalog,
-    };
-    cachedProviderCatalogBundles.set(cacheKey, {
-      value,
-      expiresAt: Date.now() + RECONCILE_CACHE_TTL_MS,
-    });
-    return value;
-  }).finally(() => {
-    inflightProviderCatalogBundles.delete(cacheKey);
-  });
-
-  inflightProviderCatalogBundles.set(cacheKey, bundlePromise);
-  return bundlePromise;
 }
 
 async function readProviderCatalogBundle(input: {
@@ -429,10 +312,11 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
   const fetchProviderModelsFn = input.fetchProviderModelsFn ?? fetchProviderModels;
   const fetchAdvancedProviderModelsFn =
     input.fetchAdvancedProviderModelsFn ?? fetchAdvancedProviderModels;
-  const shouldUseCache = shouldUseExecutionTargetCatalogCache(input);
-  const registry = shouldUseCache
-    ? await readProviderRegistryCached(fetchProviderRegistryFn)
-    : await fetchProviderRegistryFn();
+  const generation = getProviderClientGeneration();
+  const refreshVersion = getProviderCatalogRefreshVersion();
+  const isCurrent = () => generation === getProviderClientGeneration() && refreshVersion === getProviderCatalogRefreshVersion();
+  const registry = await fetchProviderRegistryFn();
+  if (!isCurrent()) return input.target;
   const selectedProvider = registry.providers.find((option) => option.id === provider);
   if (!selectedProvider) {
     return input.target;
@@ -445,22 +329,14 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
   let effectiveCatalog: Awaited<ReturnType<typeof fetchProviderModels>>;
   let effectiveAdvancedCatalog: Awaited<ReturnType<typeof fetchAdvancedProviderModels>>;
   try {
-    const bundle = shouldUseCache
-      ? await readProviderCatalogBundleCached({
-          provider,
-          instance: resolvedInstance || null,
-          fetchProviderModelsFn,
-          fetchAdvancedProviderModelsFn,
-        })
-      : await readProviderCatalogBundle({
-          provider,
-          instance: resolvedInstance || null,
-          fetchProviderModelsFn,
-          fetchAdvancedProviderModelsFn,
-        });
+    const bundle = await readProviderCatalogBundle({
+      provider, instance: resolvedInstance || null, fetchProviderModelsFn, fetchAdvancedProviderModelsFn,
+    });
+    if (!isCurrent()) return input.target;
     effectiveCatalog = bundle.effectiveCatalog;
     effectiveAdvancedCatalog = bundle.effectiveAdvancedCatalog;
   } catch {
+    if (!isCurrent()) return input.target;
     const normalizedFallbackTarget: ExecutionTargetValue = {
       ...input.target,
       instance: resolvedInstance || null,

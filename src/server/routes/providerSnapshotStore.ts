@@ -16,6 +16,7 @@ const VALID_REGISTRY_STATES: ReadonlySet<ProviderSnapshotRegistryReadModel['stat
 ]);
 
 export interface ProviderSnapshotRegistryReadModel {
+  revision?: string;
   state: 'ready' | 'no_usable_targets' | 'runtime_unreachable';
   providers: ProductProviderDescriptor[];
   warnings?: string[];
@@ -29,6 +30,7 @@ export interface ProviderSnapshotCatalogEntry {
 }
 
 export interface ProviderSnapshot {
+  connectionIdentity?: string;
   schemaVersion: number;
   savedAt: string;
   registry: ProviderSnapshotRegistryReadModel | null;
@@ -146,6 +148,7 @@ export async function loadProviderSnapshot(
   return {
     schemaVersion: PROVIDER_SNAPSHOT_SCHEMA_VERSION,
     savedAt,
+    ...(typeof candidate.connectionIdentity === 'string' ? { connectionIdentity: candidate.connectionIdentity } : {}),
     registry,
     catalogs,
   };

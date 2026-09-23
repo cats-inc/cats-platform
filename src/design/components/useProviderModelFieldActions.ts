@@ -14,6 +14,7 @@ import {
   buildSelectionForEntry,
   CUSTOM_LEGACY_MODEL_VALUE,
   initializePersistentControlValues,
+  resolveEntryControlDefaults,
   updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
 
@@ -67,12 +68,13 @@ export function useProviderModelFieldActions(input: {
   }): void => {
     const nextModel = next.model ?? selectedCatalogEntryId;
     const nextControls = initializePersistentControlValues(
-      effectiveControls,
+      effectiveAdvancedCatalog.entries.find(entry => entry.id === nextModel)?.controls ?? effectiveControls,
       nextModel,
-      next.controls,
+      { ...resolveEntryControlDefaults(effectiveAdvancedCatalog, nextModel, next.presetId), ...next.controls },
     );
     const nextPresetId = next.presetId ?? null;
     const nextModelSelection = buildSelectionForEntry(nextModel, nextPresetId, nextControls);
+    if (nextModelSelection && effectiveCatalog.catalogRevision) nextModelSelection.catalogRevision = effectiveCatalog.catalogRevision;
     markManualSelection();
     onTargetChange(attachExecutionLabelToProviderTarget({
       target: {

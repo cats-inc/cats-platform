@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createFixtureProviderModelCatalog} from './helpers/catalogFixture.js';
 import test from 'node:test';
 
 import {
@@ -28,7 +29,6 @@ import {
   updatePersistentControlValues,
 } from '../src/design/components/ProviderModelFields.tsx';
 import {
-  createStaticProviderModelCatalog,
   normalizeProviderAdvancedModelCatalog,
   type ProductProviderDescriptor,
   type ProviderAdvancedCatalogControl,
@@ -38,7 +38,7 @@ import { formatProviderEventCapabilitiesSummary } from '../src/shared/providerEv
 import { resolveCatalogTargetSelection } from '../src/shared/providerSelection.ts';
 
 function buildCurrentAdvancedCatalog(provider: 'claude' | 'codex') {
-  const baseCatalog = createStaticProviderModelCatalog(provider, { instance: 'native' });
+  const baseCatalog = createFixtureProviderModelCatalog(provider, { instance: 'native' });
   if (provider === 'codex') {
     // Pin this selection/applicability fixture independently of the shipped picker.
     baseCatalog.defaultModel = 'gpt-5.4';
@@ -214,18 +214,18 @@ function reconcileReopenedTarget(input: {
   };
 }
 
-test('createStaticProviderModelCatalog initializes Antigravity from its first picker family without a default claim', () => {
-  const catalog = createStaticProviderModelCatalog('antigravity', { instance: 'native' });
+test('createFixtureProviderModelCatalog initializes Antigravity from its first picker family without a default claim', () => {
+  const catalog = createFixtureProviderModelCatalog('antigravity', { instance: 'native' });
 
-  assert.equal(catalog.defaultModel, 'gemini-3.8-flash-low');
+  assert.equal(catalog.defaultModel, null);
   assert.equal(catalog.models.length, 7);
   assert.equal(catalog.models[0].label, 'Gemini 3.8 Flash');
   assert.ok(catalog.models.every((model) => !model.default && !/default/i.test(model.label)));
 });
 
 test('Cursor fallback exposes six fixed combos and initializes the first without a default claim', () => {
-  const catalog = createStaticProviderModelCatalog('cursor', { instance: 'native' });
-  assert.equal(catalog.defaultModel, 'grok-4.6[effort=high,fast=true]');
+  const catalog = createFixtureProviderModelCatalog('cursor', { instance: 'native' });
+  assert.equal(catalog.defaultModel, null);
   assert.equal(catalog.models[0].label, 'Cursor Grok 4.6 — High Fast');
   assert.equal(catalog.models.length, 6);
   assert.ok(catalog.models.every(model => !model.default && !/default/i.test(model.label)));
@@ -235,8 +235,8 @@ test('Cursor fallback exposes six fixed combos and initializes the first without
 });
 
 test('ClinePass offers six fixed Medium choices plus manual model entry', () => {
-  const catalog = createStaticProviderModelCatalog('cline', { instance: 'native' });
-  assert.equal(catalog.defaultModel, 'cline-pass/glm-5.3');
+  const catalog = createFixtureProviderModelCatalog('cline', { instance: 'native' });
+  assert.equal(catalog.defaultModel, null);
   assert.equal(catalog.models.length, 6);
   assert.equal(catalog.models[2].label, 'Qwen3.8 Max — Medium');
   assert.ok(catalog.models.every(model => !model.default && !/default/i.test(model.label)));
@@ -244,18 +244,18 @@ test('ClinePass offers six fixed Medium choices plus manual model entry', () => 
 });
 
 test('Kiro offers six raw model names plus custom input without effort or default labels', () => {
-  const catalog = createStaticProviderModelCatalog('kiro', { instance: 'native' });
-  assert.equal(catalog.defaultModel, 'claude-opus-5');
+  const catalog = createFixtureProviderModelCatalog('kiro', { instance: 'native' });
+  assert.equal(catalog.defaultModel, null);
   assert.equal(catalog.models.length, 6);
   assert.ok(catalog.models.every(model => model.label === model.id && !model.default));
   assert.equal(shouldAllowLegacyManualModelEntry({ entryCount: 6, isLegacyModelTarget: false }), true);
 });
 
 test('Copilot fallback preserves the approved fixed efforts and Terra default', () => {
-  const catalog = createStaticProviderModelCatalog('copilot', { instance: 'native' });
+  const catalog = createFixtureProviderModelCatalog('copilot', { instance: 'native' });
   assert.equal(catalog.defaultModel, 'gpt-5.6-terra');
   assert.equal(catalog.models.length, 6);
-  assert.equal(catalog.models[0].label, 'GPT-5.6 Terra — Medium (default)');
+  assert.equal(formatCatalogEntryLabel(catalog.models[0]), 'GPT-5.6 Terra — Medium (default)');
   assert.equal(catalog.models[4].id, 'mai-code-1.1-flash');
   assert.equal(catalog.models[4].label, 'MAI-Code-1.1-Flash — Medium');
   assert.equal(catalog.models.at(-1)?.label, 'Kimi K3 — High');
@@ -291,13 +291,13 @@ test('static fallback catalogs still resolve an initial empty target', () => {
   );
 });
 
-test('empty truthful catalogs do not automatically unlock manual legacy model entry', () => {
+test('empty truthful catalogs permit manual legacy model entry', () => {
   assert.equal(
     shouldAllowLegacyManualModelEntry({
       entryCount: 0,
       isLegacyModelTarget: false,
     }),
-    false,
+    true,
   );
   assert.equal(
     shouldAllowLegacyManualModelEntry({
@@ -649,7 +649,7 @@ test('provider registry and model placeholders use the supplied translator', () 
   assert.equal(viewState.providerRegistryHint, '正在檢查 cats-runtime 可用的供應器目標。');
 });
 
-test('static fallback catalogs do not classify unknown persisted models as legacy before runtime data arrives', () => {
+test('static fallback catalogs preserve unknown persisted models as legacy before runtime data arrives', () => {
   assert.equal(
     shouldTreatPersistedTargetAsLegacyModel({
       catalog: {
@@ -667,11 +667,11 @@ test('static fallback catalogs do not classify unknown persisted models as legac
       model: 'claude-sonnet-4-6',
       modelSelection: null,
     }),
-    false,
+    true,
   );
 });
 
-test('bundled provider-default placeholders are not treated as custom legacy models', () => {
+test('bundled provider-default placeholders are treated as custom legacy models', () => {
   assert.equal(
     shouldTreatPersistedTargetAsLegacyModel({
       catalog: {
@@ -689,7 +689,7 @@ test('bundled provider-default placeholders are not treated as custom legacy mod
       model: 'antigravity-default',
       modelSelection: null,
     }),
-    false,
+    true,
   );
 });
 
@@ -906,6 +906,7 @@ test('runtime reconciliation sanitizes Claude Max when reopening a Sonnet select
   assert.deepEqual(target.modelSelection, {
     entryId: 'sonnet',
     entryMode: 'explicit',
+    controls: { 'claude.reasoning_effort': 'medium' },
   });
   assert.equal(
     resolveDisplayedEnumControlValue(advancedCatalog.controls[0], 'sonnet', target.modelSelection?.controls?.['claude.reasoning_effort']),
@@ -1038,6 +1039,7 @@ test('runtime reconciliation sanitizes Codex Extra High when reopening a gpt-5.1
   assert.deepEqual(target.modelSelection, {
     entryId: 'gpt-5.1-codex-mini',
     entryMode: 'explicit',
+    controls: { 'codex.reasoning_effort': 'medium' },
   });
   assert.equal(
     resolveDisplayedEnumControlValue(
@@ -1494,10 +1496,10 @@ test('updating persistent control values adds, updates, and removes keyed contro
 });
 
 test('Junie offers five fixed combinations, a lowercase default marker and custom input', () => {
-  const catalog = createStaticProviderModelCatalog('junie', { instance: 'native' });
+  const catalog = createFixtureProviderModelCatalog('junie', { instance: 'native' });
   assert.equal(catalog.defaultModel, 'Gemini 3.7 Flash');
   assert.equal(catalog.models.length, 5);
-  assert.equal(catalog.models[0].label, 'Gemini 3.7 Flash — Medium (default)');
+  assert.equal(formatCatalogEntryLabel(catalog.models[0]), 'Gemini 3.7 Flash — Medium (default)');
   assert.equal(catalog.models[3].label, 'GPT-5.6-SOL — Low');
   assert.equal(catalog.models.filter(model => model.default).length, 1);
   assert.equal(shouldAllowLegacyManualModelEntry({ entryCount: 5, isLegacyModelTarget: false }), true);

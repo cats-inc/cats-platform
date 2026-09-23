@@ -4,14 +4,12 @@ import test from 'node:test';
 import {
   buildCatExecutionLabel,
   buildExecutionLabel,
-  clearRememberedExecutionLabels,
-  rememberExecutionLabel,
 } from '../build/server/shared/executionLabel.js';
 
 test('buildExecutionLabel derives backend suffixes from instance instead of rendering the raw instance id', () => {
   assert.equal(
     buildExecutionLabel('claude', 'cli/native', 'claude-opus-4-6'),
-    'Claude-CLI · Opus 5 with 1M context',
+    'Claude-CLI · claude-opus-4-6',
   );
   assert.equal(
     buildExecutionLabel('openclaw', 'agent/gateway', 'openclaw-coder'),
@@ -30,7 +28,7 @@ test('buildExecutionLabel derives backend suffixes from instance instead of rend
 test('buildExecutionLabel falls back to the product default instance when state has not persisted one yet', () => {
   assert.equal(
     buildExecutionLabel('claude', null, 'claude-opus-4-6'),
-    'Claude-CLI · Opus 5 with 1M context',
+    'Claude-CLI · claude-opus-4-6',
   );
   assert.equal(
     buildExecutionLabel('openclaw', null, 'openclaw-coder'),
@@ -38,21 +36,21 @@ test('buildExecutionLabel falls back to the product default instance when state 
   );
   assert.equal(
     buildExecutionLabel('antigravity', '', 'gemini-3.8-flash-low'),
-    'Antigravity-CLI · Gemini 3.8 Flash',
+    'Antigravity-CLI · gemini-3.8-flash-low',
   );
 });
 
 test('buildExecutionLabel normalizes target-level CLI provider ids', () => {
   assert.equal(
     buildExecutionLabel('antigravity-cli', null, 'gemini-3.8-flash-low'),
-    'Antigravity-CLI · Gemini 3.8 Flash',
+    'Antigravity-CLI · gemini-3.8-flash-low',
   );
 });
 
 test('buildExecutionLabel treats runtime canonical default instances as backend aliases', () => {
   assert.equal(
     buildExecutionLabel('claude', 'default', 'claude-opus-4-6'),
-    'Claude-CLI · Opus 5 with 1M context',
+    'Claude-CLI · claude-opus-4-6',
   );
   assert.equal(
     buildExecutionLabel('kiro', 'default', 'claude-opus-4.6'),
@@ -71,14 +69,14 @@ test('buildExecutionLabel does not render raw instance identifiers in the chip l
   );
 });
 
-test('buildExecutionLabel resolves Claude native aliases to friendly model names', () => {
+test('buildExecutionLabel preserves raw IDs before a scoped label is observed', () => {
   assert.equal(
     buildExecutionLabel('claude', 'cli/native', 'opus'),
-    'Claude-CLI · Opus 5 with 1M context',
+    'Claude-CLI · opus',
   );
   assert.equal(
     buildExecutionLabel('claude', 'cli/native', 'claude-opus-4-6'),
-    'Claude-CLI · Opus 5 with 1M context',
+    'Claude-CLI · claude-opus-4-6',
   );
 });
 
@@ -89,19 +87,11 @@ test('buildExecutionLabel does not treat default as a Claude opus alias', () => 
   );
 });
 
-test('buildCatExecutionLabel reuses remembered runtime-backed labels for matching targets', () => {
-  clearRememberedExecutionLabels();
-  rememberExecutionLabel({
-    provider: 'claude',
-    instance: 'cli/native',
-    model: 'opus',
-    modelSelection: {
-      controls: {
-        'claude.reasoning_effort': 'xhigh',
-      },
-    },
-    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
-  });
+test('buildCatExecutionLabel does not reuse another session’s remembered label', () => {
+  assert.equal(buildCatExecutionLabel({
+    defaultExecutionTarget: { provider: 'claude', instance: 'cli/native', model: 'opus' },
+    executionLabel: 'Saved historical model label',
+  }), 'Saved historical model label');
 
   assert.equal(
     buildCatExecutionLabel({
@@ -116,8 +106,7 @@ test('buildCatExecutionLabel reuses remembered runtime-backed labels for matchin
         },
       },
     }),
-    'Claude-CLI · Opus 4.7 with 1M context · xHigh',
+    'Claude-CLI · opus · xhigh',
   );
 
-  clearRememberedExecutionLabels();
 });

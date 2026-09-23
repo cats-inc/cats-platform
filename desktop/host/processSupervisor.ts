@@ -49,26 +49,6 @@ const DEFAULT_APP_STARTUP_TIMEOUT_MS = 90_000;
 const DEFAULT_WINDOWS_RUNTIME_STARTUP_TIMEOUT_MS = 60_000;
 const FORCE_STOP_EXIT_WAIT_MS = 1_000;
 const RUNTIME_TEMPLATE_SEED_STATE_FILE_NAME = '.bundled-template-seeds.json';
-const LEGACY_CURATED_TEMPLATE_SOURCE_HASHES = [
-  '04519fcae77681ce2bf4bd231218163fca82611a0e95cf8c52f29c767ec72b7e',
-  'c71d76e3a994f623c0b921c7f41b516e3cfd4ac81820d4ad65e2668ac0f7f31b',
-  'c5cdbcf3f5ff72d38345fee84ed1973e9a2f5d2f043d1be607c776e7b72a4875',
-  'c64eada9a5e52f7ebe7481f3db16bc11aca1b5e3a62bb1124f8cf5c1b0ec4752',
-  'e79ed7703e1a61d0c1364f0248a9b795244ce899326e3910f135e68d7ca0b16e',
-  '036e115a93c3eae0f8c559499fb27882d3584f872bcd15b2d5087b1689360ce9',
-  '084c0cd9fa674cf9baa5f16b3d0c2272750d820a36a3a85333d7ae6651ea8030',
-  '923fa9d179293ded5635f517fa2c14f87d9c644c163b2db1ec2f38f38d1dfe5e',
-  '7b4a1ff8a3575b197b42433a5fefec5eb9fd001c84368625d6586ce7b88e618d',
-  'd76e5557f8c7bf2ab5d3c1cec410d0bd4f8a811f383f7e9c42279a3e700e95d6',
-  'aadb2b740389eacd215844b64a9a6a06a46c0ba833cfa64255af1cda7f699ba9',
-  '8b7484427ef9638ef3f0d5a594ab1171e6ed66f5ceb1b5bd377e565877e3b0bf',
-  '21c29f808c277c8f1192de2c75c5dd64027c29668c6ac5d7da68451a4d1788bb',
-  'af7ca217713399c077c46dcfedf4ef6bb62d1337f31e64b8f49aff25289aeb5b',
-  '85104967b99b1c4e006c781712237fade6a93c2598df1d5107a5706679617855',
-  'b0cb21b068b127168b1e59a245ce5322bae6c3189880cfe82d4abc77a4fe8b83',
-  '5f409b315aca5569568a05a0ecad3706cbb077bcfa316a2e3abeacb572305869',
-  '749083d483fea9f0e38b138183b5cab3d56c289ebd3acddde9c059e02116fc81',
-] as const;
 
 interface RuntimeTemplateSeedMetadataEntry {
   sourceHash: string;
@@ -82,12 +62,6 @@ const RUNTIME_TEMPLATE_SEEDS = [
     sourceFileName: 'management.yaml.example',
     targetPathKey: 'runtimeManagementConfigPath',
     allowManagedRefresh: false,
-  },
-  {
-    sourceFileName: 'curated-model-catalogs.yaml.example',
-    targetPathKey: 'runtimeCuratedModelCatalogPath',
-    allowManagedRefresh: true,
-    legacyManagedSourceHashes: LEGACY_CURATED_TEMPLATE_SOURCE_HASHES,
   },
 ] as const;
 
@@ -328,9 +302,6 @@ export async function seedBundledRuntimeConfigTemplates(
       currentHash,
       sourceHash,
       recordedSourceHash,
-      legacyManagedSourceHashes: 'legacyManagedSourceHashes' in seed
-        ? seed.legacyManagedSourceHashes
-        : undefined,
     })) {
       continue;
     }
@@ -605,6 +576,8 @@ export function buildManagedServiceSpecs(
         CATS_MOBILE_BUNDLE_ROOT: config.paths.mobileBundleRoot,
         CATS_RUNTIME_DIR: config.paths.runtimeRootDir,
         CATS_RUNTIME_BASE_URL: config.runtimeBaseUrl,
+        CATS_RUNTIME_PACKAGE_ROOT: config.runtimePackageRoot,
+        CATS_RUNTIME_CATALOG_CONFIG_PATH: config.paths.runtimeConfigPath,
       },
       healthUrl: `${config.appBaseUrl}/health`,
       logPath: join(config.paths.hostLogsDir, 'cats.log'),

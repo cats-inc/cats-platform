@@ -2,6 +2,16 @@
 
 > Technical architecture and design decisions for `Cats`.
 
+## Provider catalog ownership
+
+Runtime owns schema-2 factory and local override data, validation and activation.
+Platform consumes coherent observed revisions for execution choices and the selected
+Runtime package's read-only export for local informational labels. Renderer/server
+caches fence connection/auth, target, selection and catalog changes. Desktop packaging
+ships the matching catalog resources and module; it no longer seeds complete personal
+catalog copies. See [SPEC-013](specs/SPEC-013-provider-catalog-consumption-and-ui-seam.md)
+and the [Runtime workflow](../../cats-runtime/docs/provider-catalog-soft-patches.md).
+
 ## Overview
 
 `Cats` remains the product-facing brand, while this repo targets the technical

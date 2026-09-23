@@ -1,3 +1,6 @@
+import {createHash} from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -100,6 +103,7 @@ async function seedRuntimeSidecar(runtimeRoot) {
     name: 'cats-runtime',
     version: '0.1.0',
     type: 'module',
+    exports: { './catalogs': './build/runtime/catalogs/index.js' },
     dependencies: {
       '@hono/node-server': '^1.14.0',
       hono: '^4.7.0',
@@ -115,12 +119,30 @@ async function seedRuntimeSidecar(runtimeRoot) {
   await seedFile(join(runtimeRoot, 'skills', 'developer-only', 'SKILL.md'), 'Developer fixture');
   await seedFile(join(runtimeRoot, 'config', 'management.yaml.example'), 'version: 1\n');
   await seedFile(join(runtimeRoot, 'config', 'providers.yaml.example'), 'version: 1\n');
-  await seedFile(join(runtimeRoot, 'config', 'curated-model-catalogs.yaml.example'), 'schema_version: 1\ncatalogs: []\n');
+  const factory = 'schema_version: 2\ncatalogs: []\n';
+  await seedFile(join(runtimeRoot, 'config', 'curated-model-catalogs.yaml.example'), factory);
+  await seedFile(join(runtimeRoot, 'config', 'curated-model-catalogs.generated.json'), JSON.stringify({sourceDigest:createHash('sha256').update(factory).digest('hex')}));
+  await seedFile(join(runtimeRoot, 'config', 'catalog-schema1-migration.json'), '[]');
+  await seedFile(join(runtimeRoot, 'build', 'runtime', 'catalogs', 'index.js'), 'export {catalogCapabilities} from "./bindings.js";');
+  await seedFile(join(runtimeRoot, 'build', 'runtime', 'catalogs', 'bindings.js'), 'export const catalogCapabilities = {schemaVersion:2,bindingVersion:1,localOverrides:true};');
+  await seedFile(join(runtimeRoot, 'build', 'runtime', 'bin', 'catalogs.js'), 'import {catalogCapabilities} from "../catalogs/index.js"; console.log(JSON.stringify(catalogCapabilities));');
   await seedFile(join(runtimeRoot, 'node_modules', '@hono', 'node-server', 'package.json'), '{"name":"@hono/node-server"}');
   await seedFile(join(runtimeRoot, 'node_modules', 'hono', 'package.json'), '{"name":"hono"}');
   await seedFile(join(runtimeRoot, 'node_modules', 'playwright-core', 'package.json'), '{"name":"playwright-core"}');
   await seedFile(join(runtimeRoot, 'node_modules', 'yaml', 'package.json'), '{"name":"yaml"}');
   await seedFile(join(runtimeRoot, 'node_modules', 'vitest', 'package.json'), '{"name":"vitest"}');
+}
+
+async function smokeStagedCatalog(root) {
+  const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
+  const modulePath = manifest.exports['./catalogs'];
+  const module = await import(pathToFileURL(join(root, modulePath)).href);
+  assert.deepEqual(module.catalogCapabilities, { schemaVersion: 2, bindingVersion: 1, localOverrides: true });
+  const cli = spawnSync(process.execPath, [join(root, 'build/runtime/bin/catalogs.js')], { encoding: 'utf8', windowsHide: true });
+  assert.equal(cli.status, 0, cli.stderr);
+  assert.deepEqual(JSON.parse(cli.stdout), module.catalogCapabilities);
+  const generated = JSON.parse(await readFile(join(root, 'config/curated-model-catalogs.generated.json'), 'utf8'));
+  assert.equal(generated.sourceDigest, createHash('sha256').update(await readFile(join(root, 'config/curated-model-catalogs.yaml.example'))).digest('hex'));
 }
 
 async function seedPlatformServerBundle(packageRoot, contents = 'export const layout = "bundle";') {
@@ -650,7 +672,7 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
 
   assert.equal(packageJson.main, 'build/desktop/main.js');
   assert.equal(Object.hasOwn(packageJson, 'types'), false);
-  assert.equal(packageJson.scripts.build, 'npm run clean:build && node scripts/build-server-artifacts.mjs && npm run build:web && npm run build:mobile && npm run build:host');
+  assert.equal(packageJson.scripts.build, 'npm run catalog:check && npm run clean:build && node scripts/build-server-artifacts.mjs && npm run build:web && npm run build:mobile && npm run build:host');
   assert.equal(packageJson.scripts['build:server-bundle'], 'node scripts/bundle-server.mjs');
   assert.equal(packageJson.scripts['build:mobile'], 'npm run mobile:install && npm run mobile:export && node scripts/check-mobile-build.mjs');
   assert.equal(packageJson.scripts['build:mobile:check'], 'npm run mobile:install && npm run mobile:typecheck && npm run mobile:export && node scripts/check-mobile-build.mjs');
@@ -1349,6 +1371,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'management.yaml.example'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'providers.yaml.example'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'curated-model-catalogs.yaml.example'));
+  await smokeStagedCatalog(join(plan.outputRoot, 'shared', 'cats-runtime'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'yaml', 'package.json'));
   await assert.rejects(
     access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'vitest', 'package.json')),
@@ -1784,6 +1807,7 @@ test('stageDesktopPackagingOutputs honors bundle layout for both app and runtime
     await readFile(join(plan.outputRoot, 'shared', 'cats-runtime', 'build', 'runtime', 'index.js'), 'utf8'),
     'export const layout = "bundle-runtime";',
   );
+  await smokeStagedCatalog(join(plan.outputRoot, 'shared', 'cats-runtime'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'playwright-core', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'yaml', 'package.json'));
   await assert.rejects(

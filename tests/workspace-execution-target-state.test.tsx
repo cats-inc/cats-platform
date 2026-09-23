@@ -13,6 +13,22 @@ import {
 import { formatWorkspaceExecutionTargetMutationError } from '../src/products/shared/renderer/hooks/workspaceExecutionTargetErrorLabels.ts';
 import { resolveDispatchExecutionTargetValue } from '../src/products/chat/renderer/hooks/useComposerSubmit.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
+import { invalidateProviderClientSession } from '../src/app/renderer/providerClientInvalidation.ts';
+
+test('workspace reconciliation cannot commit a binding from the previous connection', async () => {
+  const target = { provider: 'claude', instance: 'native', model: 'opus', modelSelection: null, executionLabel: null };
+  let release!: (registry: ProductProviderRegistryReadModel) => void;
+  const pending = reconcileRuntimeBackedExecutionTargetValue({ target,
+    fetchProviderRegistryFn: () => new Promise(resolve => { release = resolve; }),
+    fetchProviderModelsFn: async () => { throw new Error('must not fetch the previous connection'); },
+    fetchAdvancedProviderModelsFn: async () => { throw new Error('must not fetch the previous connection'); },
+  });
+  invalidateProviderClientSession();
+  release(createProviderRegistry());
+  assert.deepEqual(await pending, target);
+  assert.equal(sameExecutionTargetValue({ ...target, modelSelection: { entryId: 'opus', entryMode: 'explicit', catalogRevision: 'one' } },
+    { ...target, modelSelection: { entryId: 'opus', entryMode: 'explicit', catalogRevision: 'two' } }), false);
+});
 
 function createProviderRegistry(): ProductProviderRegistryReadModel {
   return {
@@ -80,14 +96,14 @@ test('execution target helper defaults stay Claude-backed and normalize trimmed 
   assert.deepEqual(createDefaultExecutionTargetValue(), {
     provider: 'claude',
     instance: 'native',
-    model: 'opus',
+    model: null,
     modelSelection: null,
     executionLabel: null,
   });
   assert.deepEqual(createExecutionTargetValueForProvider('claude'), {
     provider: 'claude',
     instance: 'native',
-    model: 'opus',
+    model: null,
     modelSelection: null,
     executionLabel: null,
   });
@@ -380,7 +396,7 @@ test('runtime-backed execution target reconciliation adopts the advanced default
   );
 });
 
-test('runtime-backed execution target reconciliation sanitizes stale Claude effort controls without inferring a replacement effort', async () => {
+test('runtime-backed draft reconciliation replaces unsupported effort with the explicit catalog default', async () => {
   const reconciled = await reconcileRuntimeBackedExecutionTargetValue({
     target: {
       provider: 'claude',
@@ -452,14 +468,15 @@ test('runtime-backed execution target reconciliation sanitizes stale Claude effo
   assert.deepEqual(reconciled.modelSelection, {
     entryId: 'sonnet',
     entryMode: 'explicit',
+    controls: { 'claude.reasoning_effort': 'medium' },
   });
   assert.equal(
     reconciled.executionLabel,
-    'Claude-CLI · Sonnet 4.6',
+    'Claude-CLI · Sonnet 4.6 · Medium',
   );
 });
 
-test('runtime-backed execution target reconciliation normalizes legacy Claude opus ids to the current opus entry', async () => {
+test('runtime-backed execution target reconciliation preserves an unlisted model without alias guessing', async () => {
   const reconciled = await reconcileRuntimeBackedExecutionTargetValue({
     target: {
       provider: 'claude',
@@ -507,18 +524,15 @@ test('runtime-backed execution target reconciliation normalizes legacy Claude op
     }, 'claude'),
   });
 
-  assert.equal(reconciled.model, 'opus');
-  assert.deepEqual(reconciled.modelSelection, {
-    entryId: 'opus',
-    entryMode: 'explicit',
-  });
+  assert.equal(reconciled.model, 'claude-opus-4-6');
+  assert.equal(reconciled.modelSelection, null);
   assert.equal(
     reconciled.executionLabel,
-    'Claude-CLI · Opus 4.7 with 1M context',
+    'Claude-CLI · claude-opus-4-6',
   );
 });
 
-test('runtime-backed execution target reconciliation replaces the Antigravity placeholder with a catalog id', async () => {
+test('runtime-backed execution target reconciliation does not interpret placeholder-looking custom strings', async () => {
   const registry: ProductProviderRegistryReadModel = {
     state: 'ready',
     providers: [{
@@ -580,14 +594,11 @@ test('runtime-backed execution target reconciliation replaces the Antigravity pl
     }, 'antigravity'),
   });
 
-  assert.equal(reconciled.model, 'gemini-3.7-flash-high');
-  assert.deepEqual(reconciled.modelSelection, {
-    entryId: 'gemini-3.7-flash-high',
-    entryMode: 'explicit',
-  });
+  assert.equal(reconciled.model, 'antigravity-default');
+  assert.equal(reconciled.modelSelection, null);
   assert.equal(
     reconciled.executionLabel,
-    'Antigravity-CLI · Gemini 3.7 Flash (High)',
+    'Antigravity-CLI · antigravity-default',
   );
 });
 
@@ -655,11 +666,7 @@ for (const providerDefaultTarget of [
 
     assert.equal(reconciled.model, providerDefaultTarget.model);
     assert.equal(reconciled.modelSelection, null);
-    if (providerDefaultTarget.provider === 'devin') {
-      assert.match(reconciled.executionLabel ?? '', /Adaptive/);
-    } else {
-      assert.match(reconciled.executionLabel ?? '', /GLM-5.3 — Medium/);
-    }
+    assert.ok(reconciled.executionLabel?.endsWith(providerDefaultTarget.model));
   });
 }
 

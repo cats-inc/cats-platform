@@ -128,7 +128,7 @@ test('buildChatComposerRecipients preserves default execution-target controls fo
   assert.equal(recipients.length, 1);
   assert.equal(recipients[0]?.kind, 'implicit');
   assert.equal(recipients[0]?.modelSelection?.controls?.['claude.reasoning_effort'], 'max');
-  assert.match(recipients[0]?.name ?? '', /Max/u);
+  assert.match(recipients[0]?.name ?? '', /max/u);
 });
 
 test('resolveLatestUserTurnPresentationState shows processing only before the first assistant identity bubble', () => {

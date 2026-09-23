@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createHash } from 'node:crypto';
 import { loadConfig } from './config.js';
 import { loadProjectEnvFiles } from './shared/loadProjectEnvFile.js';
 import { createServer } from './app/server/index.js';
@@ -112,6 +113,7 @@ async function main(): Promise<void> {
     await seedProviderSelectorFromSnapshot(
       runtimeClient,
       resolveProviderSnapshotPathFromChatState(config.chatStatePath),
+      { connectionIdentity: createHash('sha256').update(JSON.stringify([config.runtimeBaseUrl, config.runtimeApiKey])).digest('hex') },
     );
     startupTrace.trace('provider.selector.snapshot.seeded');
   } catch (error) {

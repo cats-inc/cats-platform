@@ -8,9 +8,9 @@ import {
   normalizeProductProviderModelId,
 } from '../src/shared/providerCatalog.ts';
 
-test('normalizeProductProviderModelId canonicalizes Claude legacy aliases but leaves other providers untouched', () => {
-  assert.equal(normalizeProductProviderModelId('claude', ' claude-opus-4.6 '), 'opus');
-  assert.equal(normalizeProductProviderModelId('claude', 'claude-sonnet-4-6'), 'sonnet');
+test('normalizeProductProviderModelId preserves exact model tokens for all providers', () => {
+  assert.equal(normalizeProductProviderModelId('claude', ' claude-opus-4.6 '), 'claude-opus-4.6');
+  assert.equal(normalizeProductProviderModelId('claude', 'claude-sonnet-4-6'), 'claude-sonnet-4-6');
   assert.equal(normalizeProductProviderModelId('claude', 'haiku'), 'haiku');
   assert.equal(normalizeProductProviderModelId('codex', ' gpt-5.4 '), 'gpt-5.4');
   assert.equal(normalizeProductProviderModelId('claude', '   '), null);
@@ -36,8 +36,8 @@ test('static advanced provider catalogs inherit the base catalog defaults and wa
 
   assert.equal(staticCatalog.provider, 'codex');
   assert.equal(staticCatalog.instance, 'main');
-  assert.equal(staticCatalog.defaultSelection?.entryId, staticCatalog.defaultModel);
-  assert.equal(staticCatalog.defaultSelection?.entryMode, 'explicit');
+  assert.equal(staticCatalog.defaultSelection, null);
+  assert.deepEqual(staticCatalog.entries, []);
   assert.deepEqual(staticCatalog.warnings, ['static fallback']);
   assert.equal(staticCatalog.support.tier, 'entry_only');
 

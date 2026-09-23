@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { readLocalCatalogInformation } from '../../platform/runtime/localCatalogProjection.js';
 import type { IncomingMessage } from 'node:http';
 import { access, readFile, readdir, stat } from 'node:fs/promises';
 import os from 'node:os';
@@ -557,6 +558,12 @@ export async function routeRequest(
       return;
     }
     await handleShellOpenFolder(request, response);
+    return;
+  }
+
+  if (url.pathname === '/api/provider-catalog/information') {
+    if (method !== 'GET') { sendMethodNotAllowed(response, ['GET']); return; }
+    sendJson(response, 200, await readLocalCatalogInformation(dependencies.shared.config));
     return;
   }
 

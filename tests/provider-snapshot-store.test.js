@@ -32,9 +32,11 @@ test('writeProviderSnapshot then loadProviderSnapshot round-trips registry and c
     const snapshotPath = path.join(directory, 'snapshot.json');
     const sample = {
       schemaVersion: PROVIDER_SNAPSHOT_SCHEMA_VERSION,
+      connectionIdentity: 'account-and-runtime-A',
       savedAt: new Date(0).toISOString(),
       registry: {
         state: 'ready',
+        revision: 'selection-A',
         providers: [
           {
             id: 'claude',
@@ -81,6 +83,8 @@ test('writeProviderSnapshot then loadProviderSnapshot round-trips registry and c
     assert.ok(loaded);
     assert.equal(loaded.schemaVersion, PROVIDER_SNAPSHOT_SCHEMA_VERSION);
     assert.equal(loaded.registry?.state, 'ready');
+    assert.equal(loaded.connectionIdentity, 'account-and-runtime-A');
+    assert.equal(loaded.registry?.revision, 'selection-A');
     assert.equal(loaded.registry?.providers[0]?.id, 'claude');
     assert.equal(loaded.catalogs[0]?.provider, 'claude');
     assert.equal(loaded.catalogs[0]?.models?.defaultModel, 'claude-default');

@@ -7,11 +7,10 @@ import {
   syncLeadCompareTarget,
 } from '../src/products/chat/renderer/hooks/useParallelChatDraft.ts';
 import {
-  getDefaultModel,
   getDefaultProviderInstance,
 } from '../src/shared/providerCatalog.ts';
 
-test('parallel draft seeds fallback targets with each provider default model and instance', () => {
+test('parallel draft seeds unobserved targets without guessing a model', () => {
   const baseTarget = {
     provider: 'claude',
     model: 'opus',
@@ -23,11 +22,11 @@ test('parallel draft seeds fallback targets with each provider default model and
 
   assert.deepEqual(leadTarget, baseTarget);
   assert.equal(followerTarget.provider, 'codex');
-  assert.equal(followerTarget.model, getDefaultModel('codex'));
+  assert.equal(followerTarget.model, null);
   assert.equal(followerTarget.instance, getDefaultProviderInstance('codex'));
 });
 
-test('parallel draft adds later targets with provider defaults instead of blank model labels', () => {
+test('parallel draft adds later targets without a guessed model', () => {
   const targets = createInitialCompareTargets({
     provider: 'claude',
     model: 'opus',
@@ -38,7 +37,7 @@ test('parallel draft adds later targets with provider defaults instead of blank 
   const nextTarget = createNextCompareTarget(targets, targets[0]!);
 
   assert.equal(nextTarget.provider, 'antigravity');
-  assert.equal(nextTarget.model, getDefaultModel('antigravity'));
+  assert.equal(nextTarget.model, null);
   assert.equal(nextTarget.instance, getDefaultProviderInstance('antigravity'));
 });
 
@@ -61,7 +60,7 @@ test('parallel draft treats target-level CLI provider ids as occupied provider a
   const nextTarget = createNextCompareTarget(currentTargets, currentTargets[0]!);
 
   assert.equal(nextTarget.provider, 'antigravity');
-  assert.equal(nextTarget.model, getDefaultModel('antigravity'));
+  assert.equal(nextTarget.model, null);
   assert.equal(nextTarget.instance, getDefaultProviderInstance('antigravity'));
 });
 

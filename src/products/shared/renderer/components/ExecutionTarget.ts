@@ -1,7 +1,6 @@
 import { resolveExecutionTargetLabel } from '../../../../shared/executionLabel.js';
 import {
   getProviderDisplayName,
-  getProviderModels,
   normalizeProductProviderModelId,
 } from '../../../../shared/providerCatalog.js';
 import { resolveLiveProviderModelLabel } from '../../../../shared/providerModelLabelRegistry.js';
@@ -27,7 +26,7 @@ export interface ExecutionTargetSummary {
 
 function stripExecutionTargetModelDecorations(label: string): string {
   return label
-    .replace(/\s*\((?:default|recommended)\)\s*/giu, ' ')
+    .replace(/\s*\(default\)\s*$/iu, '')
     .trim();
 }
 
@@ -38,13 +37,8 @@ function resolveExecutionTargetModelLabel(value: ExecutionTargetValue): string {
   }
 
   const normalizedModel = normalizeProductProviderModelId(value.provider, model) ?? model;
-  // Same precedence as resolveModelLabel: a runtime-served label names the
-  // version that is actually current, the static table only a remembered one.
-  const liveLabel = resolveLiveProviderModelLabel(value.provider, model)
-    ?? resolveLiveProviderModelLabel(value.provider, normalizedModel);
-  const catalogLabel = liveLabel
-    ?? getProviderModels(value.provider)
-      .find((option) => option.value === normalizedModel)?.label;
+  const catalogLabel = resolveLiveProviderModelLabel(value.provider, model, value.instance)
+    ?? resolveLiveProviderModelLabel(value.provider, normalizedModel, value.instance);
   return stripExecutionTargetModelDecorations(catalogLabel ?? normalizedModel);
 }
 

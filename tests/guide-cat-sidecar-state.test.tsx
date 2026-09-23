@@ -18,10 +18,7 @@ import {
   GuideCatSidecarView,
   resolveGuideCatSidecarSurfaceMode,
 } from '../src/design/components/GuideCatSidecar.tsx';
-import {
-  clearRememberedExecutionLabels,
-  rememberExecutionLabel,
-} from '../src/shared/executionLabel.ts';
+import { clearLiveProviderModelLabels, recordLiveProviderModelLabels } from '../src/shared/providerModelLabelRegistry.ts';
 import { resolveClientGuideCatName } from '../src/shared/guideCatIdentity.ts';
 
 function createGuideCat() {
@@ -265,7 +262,7 @@ test('Guide Cat sidecar collapsed pill shows the same execution tooltip metadata
   );
 
   assert.match(markup, /class="guideCatPill"/u);
-  assert.match(markup, new RegExp(`data-tooltip="${guideCatName} · Claude-CLI · [^\"]* · Max"`, 'u'));
+  assert.match(markup, new RegExp(`data-tooltip="${guideCatName} · Claude-CLI · [^\"]* · max"`, 'u'));
 });
 
 test('Guide Cat sidecar open panel header keeps the execution tooltip metadata on product pages', () => {
@@ -291,24 +288,14 @@ test('Guide Cat sidecar open panel header keeps the execution tooltip metadata o
 
   assert.match(
     markup,
-    new RegExp(`class="guideCatPanelHeader" data-tooltip="${guideCatName} · Claude-CLI · [^\"]* · Max"`, 'u'),
+    new RegExp(`class="guideCatPanelHeader" data-tooltip="${guideCatName} · Claude-CLI · [^\"]* · max"`, 'u'),
   );
 });
 
-test('Guide Cat sidecar reuses remembered runtime-backed execution labels for tooltips', () => {
+test('Guide Cat sidecar reuses target-scoped Runtime-observed execution labels for tooltips', () => {
   const guideCatName = resolveClientGuideCatName();
-  clearRememberedExecutionLabels();
-  rememberExecutionLabel({
-    provider: 'claude',
-    instance: 'native',
-    model: 'opus',
-    modelSelection: {
-      controls: {
-        'claude.reasoning_effort': 'max',
-      },
-    },
-    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
-  });
+  clearLiveProviderModelLabels();
+  recordLiveProviderModelLabels('claude', [{ id: 'opus', label: 'Opus 4.7 with 1M context' }], { target: 'cli/native', catalogRevision: 'fixture' });
 
   try {
     const markup = renderToStaticMarkup(
@@ -332,10 +319,10 @@ test('Guide Cat sidecar reuses remembered runtime-backed execution labels for to
 
     assert.match(
       markup,
-      new RegExp(`data-tooltip="${guideCatName} · Claude-CLI · Opus 4\\.7 with 1M context · xHigh"`, 'u'),
+      new RegExp(`data-tooltip="${guideCatName} · Claude-CLI · Opus 4\\.7 with 1M context · max"`, 'u'),
     );
   } finally {
-    clearRememberedExecutionLabels();
+    clearLiveProviderModelLabels();
   }
 });
 

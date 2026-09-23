@@ -50,7 +50,7 @@ import {
 import { formatSettingsCatsRegistryMutationError } from './settingsCatsRegistryErrorLabels.js';
 import { formatWorkspaceNavigationMutationError } from './workspaceNavigationErrorLabels.js';
 import { syncDesktopHostPlatformShellState } from '../../../../app/renderer/setup/desktopHostBridge.js';
-import { clearRememberedExecutionLabels } from '../../../../shared/executionLabel.js';
+import { invalidateProviderClientSession } from '../../../../app/renderer/providerClientInvalidation.js';
 import {
   clearBusyState,
   createCatBusyState,
@@ -605,7 +605,7 @@ export function useWorkspaceAppNavigationActions<
     setBusy(createSetupBusyState());
     try {
       const payload = await navigationApi.resetSetup();
-      clearRememberedExecutionLabels();
+      invalidateProviderClientSession();
       await syncDesktopHostPlatformShellState({
         bootstrapAttemptId: payload.bootstrapAttemptId ?? null,
         setupCompleteAt: payload.setupCompleteAt ?? null,

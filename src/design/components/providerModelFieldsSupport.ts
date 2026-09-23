@@ -25,7 +25,6 @@ import {
 import { formatProviderEventCapabilitiesSummary } from '../../shared/providerEventCapabilities.js';
 import {
   buildExecutionLabel,
-  rememberExecutionLabel,
   resolveControlDisplayLabels,
 } from '../../shared/executionLabel.js';
 import {
@@ -419,7 +418,7 @@ export function resolveEntryControlDefaults(
   const preset = catalog.presets.find((candidate) =>
     candidate.id === presetId && presetAppliesToEntry(candidate, entryId));
   const selection = catalog.defaultSelection;
-  return filterPersistentControlValues(catalog.controls, entryId, {
+  return filterPersistentControlValues(entry?.controls ?? catalog.controls, entryId, {
     ...entry?.controlDefaults,
     ...preset?.controlDefaults,
     ...(selection?.entryId === entryId && (selection.presetId ?? '') === (presetId ?? '')
@@ -462,7 +461,7 @@ export function initializePersistentControlValues(
 ): Record<string, ProviderAdvancedControlValue> | undefined {
   const initialized = { ...filterPersistentControlValues(controls, entryId, values) };
   for (const control of listPersistentControlOptions(controls, entryId)) {
-    if (control.key !== 'grok.reasoning_effort' || initialized[control.key] !== undefined) {
+    if (initialized[control.key] !== undefined) {
       continue;
     }
     const firstValue = resolveDisplayedEnumControlValue(control, entryId, undefined);
@@ -526,7 +525,7 @@ function resolveExecutionLabelControlValues(input: {
   }
 
   const persistentControls = listPersistentControlOptions(
-    effectiveAdvancedCatalog.controls,
+    effectiveAdvancedCatalog.entries.find(entry=>entry.id===entryId)?.controls ?? effectiveAdvancedCatalog.controls,
     entryId,
   );
   if (persistentControls.length === 0) {
@@ -562,10 +561,6 @@ export function shouldTreatPersistedTargetAsLegacyModel(input: {
   modelSelection?: ProviderModelSelection | null;
 }): boolean {
   if (isProductProviderDefaultModelPlaceholder(input.catalog.provider, input.model)) {
-    return false;
-  }
-
-  if (input.catalog.source === 'static') {
     return false;
   }
 
@@ -613,7 +608,7 @@ export function resolveExecutionLabelForProviderTarget(input: {
     : input.effectiveCatalog.models;
   const modelLabel = entryOptions.find((option) => option.id === entryId)?.label ?? null;
   const controlCatalog = entryId
-    ? listPersistentControlOptions(input.effectiveAdvancedCatalog.controls, entryId)
+    ? listPersistentControlOptions(input.effectiveAdvancedCatalog.entries.find(entry=>entry.id===entryId)?.controls ?? input.effectiveAdvancedCatalog.controls, entryId)
     : [];
   const controlValues = resolveExecutionLabelControlValues({
     entryId,
@@ -633,13 +628,6 @@ export function resolveExecutionLabelForProviderTarget(input: {
     controlLabels,
     modelLabel,
   );
-  rememberExecutionLabel({
-    provider: input.provider,
-    instance: input.instance,
-    model: input.model,
-    modelSelection: input.modelSelection ?? null,
-    executionLabel,
-  });
   return executionLabel;
 }
 
@@ -686,7 +674,8 @@ export function shouldAllowLegacyManualModelEntry(input: {
   entryCount: number;
   isLegacyModelTarget: boolean;
 }): boolean {
-  return input.entryCount > 0 || input.isLegacyModelTarget;
+  // An explicitly empty catalog still permits a user-supplied model string.
+  return true;
 }
 
 function instanceKey(value: string | null | undefined): string {
@@ -738,6 +727,11 @@ export function resolveAdvancedCatalogFallback(input: {
     translate = defaultTranslate,
   } = input;
   if (advancedCatalogResult.status === 'fulfilled') {
+    const advanced = advancedCatalogResult.value;
+    if (advanced.catalogRevision !== catalog.catalogRevision
+      || advanced.catalogActivationId !== catalog.catalogActivationId
+      || advanced.provider !== catalog.provider || advanced.backend !== catalog.backend
+      || advanced.instance !== catalog.instance) throw new Error('Catalog changed during selection; retry.');
     return advancedCatalogResult.value;
   }
   if (modelsResult.status === 'fulfilled') {
@@ -888,17 +882,17 @@ export function resolveProviderModelFieldsViewState(input: {
     selectedPresetId,
   );
   const controlOptions = !isLegacyModelTarget
-    ? listPersistentControlOptions(effectiveAdvancedCatalog.controls, selectedCatalogEntryId, controlDefaults)
+    ? listPersistentControlOptions(effectiveAdvancedCatalog.entries.find(entry=>entry.id===selectedCatalogEntryId)?.controls ?? effectiveAdvancedCatalog.controls, selectedCatalogEntryId, controlDefaults)
     : [];
   const unsupportedSelectionWarning = !isLegacyModelTarget
     ? resolveUnsupportedPersistentControlWarning({
-        controls: effectiveAdvancedCatalog.controls,
+        controls: effectiveAdvancedCatalog.entries.find(entry=>entry.id===selectedCatalogEntryId)?.controls ?? effectiveAdvancedCatalog.controls,
         entryId: selectedCatalogEntryId,
         modelSelection,
       })
     : null;
   const requestScopedControlCount = !isLegacyModelTarget
-    ? countRequestScopedControls(effectiveAdvancedCatalog.controls, selectedCatalogEntryId)
+    ? countRequestScopedControls(effectiveAdvancedCatalog.entries.find(entry=>entry.id===selectedCatalogEntryId)?.controls ?? effectiveAdvancedCatalog.controls, selectedCatalogEntryId)
     : 0;
   const controlValues = { ...controlDefaults, ...modelSelection?.controls };
   const supportBadge = resolveProviderSupportBadge(effectiveAdvancedCatalog.support.tier);

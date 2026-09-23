@@ -13,7 +13,6 @@ import { resolveLiveProviderModelLabel } from './providerModelLabelRegistry.js';
 type ExecutionControlValue = string | number | boolean;
 type ExecutionControlMap = Record<string, ExecutionControlValue>;
 
-const executionLabelMemory = new Map<string, string>();
 
 interface ProviderBackendAlias {
   provider: string;
@@ -43,7 +42,7 @@ function stripExecutionLabelDecorations(
   label: string,
 ): string {
   return label
-    .replace(/\s*\((?:default|recommended)\)\s*/giu, ' ')
+    .replace(/\s*\(default\)\s*$/iu, '')
     .trim();
 }
 
@@ -84,21 +83,9 @@ function resolveBackendSuffix(
   return '';
 }
 
-function resolveModelLabel(provider: string, model: string | null | undefined): string | null {
+function resolveModelLabel(provider: string, model: string | null | undefined, instance?: string | null): string | null {
   if (!model) return null;
-  const normalizedModel = normalizeProductProviderModelId(provider, model) ?? model;
-  // The runtime owns the version an alias resolves to, so a label it has served
-  // beats the static table, which can only carry whatever version was current
-  // when someone last edited it.
-  const liveLabel = resolveLiveProviderModelLabel(provider, model)
-    ?? resolveLiveProviderModelLabel(provider, normalizedModel);
-  const catalogLabel = liveLabel
-    ?? getProviderModels(provider).find((m) => m.value === normalizedModel)?.label;
-  const fallbackLabel = provider === 'claude'
-    && (normalizedModel === 'opus' || normalizedModel === 'sonnet' || normalizedModel === 'haiku')
-    ? normalizedModel.charAt(0).toUpperCase() + normalizedModel.slice(1)
-    : normalizedModel;
-  return stripExecutionLabelDecorations(catalogLabel ?? fallbackLabel);
+  return stripExecutionLabelDecorations(resolveLiveProviderModelLabel(provider, model, instance) ?? model);
 }
 
 function normalizeExecutionModelLabel(
@@ -112,127 +99,14 @@ function normalizeExecutionModelLabel(
   return stripExecutionLabelDecorations(trimmed);
 }
 
-function normalizeRememberedExecutionLabel(
+function normalizeExplicitExecutionLabel(
   label: string | null | undefined,
 ): string | null {
   const trimmed = label?.trim();
   return trimmed ? stripExecutionLabelDecorations(trimmed) : null;
 }
 
-function serializeExecutionControlValue(
-  value: ExecutionControlValue,
-): string {
-  return JSON.stringify([typeof value, value]);
-}
-
-function serializeExecutionControls(
-  controls: ExecutionControlMap | null | undefined,
-): string {
-  if (!controls) {
-    return '';
-  }
-
-  const normalizedEntries = Object.entries(controls)
-    .filter(([, value]) => value !== '' && value !== false)
-    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
-    .map(([key, value]) => [key, serializeExecutionControlValue(value)] as const);
-  return normalizedEntries.length > 0 ? JSON.stringify(normalizedEntries) : '';
-}
-
-function buildExecutionLabelMemoryKey(input: {
-  provider: string;
-  instance: string | null | undefined;
-  model: string | null | undefined;
-  controls?: ExecutionControlMap | null;
-}): string {
-  const normalizedProvider =
-    resolveProductProviderId(input.provider) ?? input.provider.trim().toLowerCase();
-  const normalizedInstance = (
-    input.instance?.trim()
-    || getDefaultProviderInstance(input.provider)
-    || ''
-  ).toLowerCase();
-  const normalizedModel = (
-    normalizeProductProviderModelId(input.provider, input.model)
-    ?? input.model?.trim()
-    ?? ''
-  ).toLowerCase();
-  return JSON.stringify([
-    normalizedProvider,
-    normalizedInstance,
-    normalizedModel,
-    serializeExecutionControls(input.controls),
-  ]);
-}
-
-export function clearRememberedExecutionLabels(): void {
-  executionLabelMemory.clear();
-}
-
-export function peekRememberedExecutionLabel(input: {
-  provider: string;
-  instance: string | null | undefined;
-  model: string | null | undefined;
-  modelSelection?: { controls?: ExecutionControlMap | null } | null;
-}): string | null {
-  return readRememberedExecutionLabel(input);
-}
-
-export function rememberExecutionLabel(input: {
-  provider: string;
-  instance: string | null | undefined;
-  model: string | null | undefined;
-  modelSelection?: { controls?: ExecutionControlMap | null } | null;
-  executionLabel: string | null | undefined;
-}): string | null {
-  const resolvedExecutionLabel = normalizeRememberedExecutionLabel(input.executionLabel);
-  if (!resolvedExecutionLabel) {
-    return null;
-  }
-
-  executionLabelMemory.set(
-    buildExecutionLabelMemoryKey({
-      provider: input.provider,
-      instance: input.instance,
-      model: input.model,
-      controls: input.modelSelection?.controls ?? null,
-    }),
-    resolvedExecutionLabel,
-  );
-  return resolvedExecutionLabel;
-}
-
-function readRememberedExecutionLabel(input: {
-  provider: string;
-  instance: string | null | undefined;
-  model: string | null | undefined;
-  modelSelection?: { controls?: ExecutionControlMap | null } | null;
-}): string | null {
-  return executionLabelMemory.get(
-    buildExecutionLabelMemoryKey({
-      provider: input.provider,
-      instance: input.instance,
-      model: input.model,
-      controls: input.modelSelection?.controls ?? null,
-    }),
-  ) ?? null;
-}
-
-const KNOWN_CONTROL_VALUE_LABELS: Record<string, string> = {
-  max: 'Max',
-  xhigh: 'xHigh',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
-  none: 'None',
-};
-
-function formatFallbackControlValue(value: string | number | boolean): string {
-  if (typeof value === 'boolean') return value ? 'On' : 'Off';
-  if (typeof value === 'number') return String(value);
-  return KNOWN_CONTROL_VALUE_LABELS[value]
-    ?? value.replace(/[_-]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
-}
+function formatFallbackControlValue(value: string | number | boolean): string { return String(value); }
 
 export function resolveControlDisplayLabels(
   controls: Record<string, string | number | boolean> | null | undefined,
@@ -266,7 +140,7 @@ export function buildExecutionLabel(
   const suffix = providerAlias.backendSuffix
     ?? resolveBackendSuffix(providerAlias.provider, effectiveInstance);
   const modelLabel = normalizeExecutionModelLabel(modelLabelOverride)
-    ?? resolveModelLabel(providerAlias.provider, model);
+    ?? resolveModelLabel(providerAlias.provider, model, effectiveInstance);
   const controlsSuffix = controlLabels && controlLabels.length > 0
     ? ` \u00b7 ${controlLabels.join(' \u00b7 ')}`
     : '';
@@ -287,25 +161,9 @@ export function resolveExecutionTargetLabel(input: {
   }> | null;
   modelLabelOverride?: string | null;
 }): string {
-  const explicitExecutionLabel = rememberExecutionLabel({
-    provider: input.provider,
-    instance: input.instance,
-    model: input.model,
-    modelSelection: input.modelSelection ?? null,
-    executionLabel: input.executionLabel ?? null,
-  });
+  const explicitExecutionLabel = normalizeExplicitExecutionLabel(input.executionLabel);
   if (explicitExecutionLabel) {
     return explicitExecutionLabel;
-  }
-
-  const rememberedExecutionLabel = readRememberedExecutionLabel({
-    provider: input.provider,
-    instance: input.instance,
-    model: input.model,
-    modelSelection: input.modelSelection ?? null,
-  });
-  if (rememberedExecutionLabel) {
-    return rememberedExecutionLabel;
   }
 
   const controlLabels = input.controlLabels
@@ -344,7 +202,7 @@ export function buildParticipantExecutionLabel(participant: {
 }): string | null {
   const target = participant.execution?.target;
   if (!target?.provider) {
-    return normalizeRememberedExecutionLabel(participant.executionLabel);
+    return normalizeExplicitExecutionLabel(participant.executionLabel);
   }
 
   return resolveExecutionTargetLabel({

@@ -262,7 +262,7 @@ test('packaged service inputs agree with electron-builder resource destinations 
   }
 });
 
-test('packaged desktop host seeds bundled runtime config templates into cats home without overwriting user files', async () => {
+test('packaged desktop host seeds management without copying a personal factory catalog', async () => {
   const resourcesRoot = await mkdtemp(join(tmpdir(), 'cats-desktop-packaged-resources-'));
   const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-packaged-userdata-'));
   const catsHomeDir = join(userDataDir, 'cats-home');
@@ -290,10 +290,7 @@ test('packaged desktop host seeds bundled runtime config templates into cats hom
       await readFile(config.paths.runtimeManagementConfigPath, 'utf8'),
       'version: 1\nadapters:\n  review:\n    default: github\n    instances: {}\n',
     );
-    assert.equal(
-      await readFile(config.paths.runtimeCuratedModelCatalogPath, 'utf8'),
-      'schema_version: 1\ncatalogs: []\n',
-    );
+    await assert.rejects(readFile(config.paths.runtimeCuratedModelCatalogPath), {code:'ENOENT'});
   } finally {
     await rm(resourcesRoot, { recursive: true, force: true });
     await rm(userDataDir, { recursive: true, force: true });
@@ -342,7 +339,7 @@ test('shouldRefreshManagedSeedTemplate only refreshes managed curated copies', (
   );
 });
 
-test('packaged desktop host refreshes unchanged curated template copies that were previously auto-seeded', async () => {
+test('packaged desktop host does not seed or overwrite catalogs during factory updates', async () => {
   const resourcesRoot = await mkdtemp(join(tmpdir(), 'cats-desktop-packaged-refresh-resources-'));
   const userDataDir = await mkdtemp(join(tmpdir(), 'cats-desktop-packaged-refresh-userdata-'));
   const catsHomeDir = join(userDataDir, 'cats-home');
@@ -363,10 +360,7 @@ test('packaged desktop host refreshes unchanged curated template copies that wer
     });
 
     await seedBundledRuntimeConfigTemplates(config);
-    assert.equal(
-      await readFile(config.paths.runtimeCuratedModelCatalogPath, 'utf8'),
-      'schema_version: 1\ncatalogs: []\n',
-    );
+    await assert.rejects(readFile(config.paths.runtimeCuratedModelCatalogPath), {code:'ENOENT'});
 
     await writeFile(
       curatedExample,
@@ -376,10 +370,7 @@ test('packaged desktop host refreshes unchanged curated template copies that wer
 
     await seedBundledRuntimeConfigTemplates(config);
 
-    assert.equal(
-      await readFile(config.paths.runtimeCuratedModelCatalogPath, 'utf8'),
-      'schema_version: 1\ncatalogs:\n  - cli: Claude\n',
-    );
+    await assert.rejects(readFile(config.paths.runtimeCuratedModelCatalogPath), {code:'ENOENT'});
   } finally {
     await rm(resourcesRoot, { recursive: true, force: true });
     await rm(userDataDir, { recursive: true, force: true });

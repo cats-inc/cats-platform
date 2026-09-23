@@ -1,0 +1,3421 @@
+{
+  "claude": {
+    "base": {
+      "provider": "claude",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": "opus",
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "opus",
+          "label": "Opus 5 with 1M context",
+          "default": true
+        },
+        {
+          "id": "fable",
+          "label": "Fable 5.1"
+        },
+        {
+          "id": "sonnet",
+          "label": "Sonnet 5"
+        },
+        {
+          "id": "haiku",
+          "label": "Haiku 4.5"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "claude",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": "opus",
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "opus",
+          "label": "Opus 5 with 1M context",
+          "default": true,
+          "limits": {
+            "contextWindowTokens": 1000000
+          },
+          "notes": [
+            "Picker description: Opus 5 with 1M context - best for everyday, complex tasks"
+          ],
+          "capabilityTags": [
+            "tool_use",
+            "reasoning"
+          ],
+          "controls": [
+            {
+              "key": "claude.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Claude Code effort for supported models.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "low",
+                  "label": "Low",
+                  "description": "Quick, straightforward implementation with minimal overhead",
+                  "applicableEntryIds": [
+                    "opus"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "Medium",
+                  "description": "Balanced approach with standard implementation and testing",
+                  "applicableEntryIds": [
+                    "opus"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "High (default)",
+                  "description": "Comprehensive implementation with extensive testing and documentation",
+                  "applicableEntryIds": [
+                    "opus"
+                  ]
+                },
+                {
+                  "value": "xhigh",
+                  "label": "xHigh",
+                  "description": "Deeper reasoning than high, just below maximum (Fable 5, Opus 4.7+, Sonnet 5)",
+                  "applicableEntryIds": [
+                    "opus"
+                  ]
+                },
+                {
+                  "value": "max",
+                  "label": "Max",
+                  "description": "Maximum capability with deepest reasoning. May use excessive tokens resulting in long response times or overthinking. Use sparingly for the hardest tasks.",
+                  "applicableEntryIds": [
+                    "opus"
+                  ]
+                },
+                {
+                  "value": "ultracode",
+                  "label": "Ultracode",
+                  "description": "2.1.258 static artifact description: xHigh effort plus dynamic workflow orchestration for this session only",
+                  "applicableEntryIds": [
+                    "opus"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "opus"
+              ]
+            }
+          ],
+          "controlDefaults": {
+            "claude.reasoning_effort": "high"
+          }
+        },
+        {
+          "id": "fable",
+          "label": "Fable 5.1",
+          "notes": [
+            "Picker description: Fable 5.1 - most capable for your hardest and longest-running tasks"
+          ],
+          "capabilityTags": [
+            "tool_use",
+            "reasoning"
+          ],
+          "controls": [
+            {
+              "key": "claude.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Claude Code effort for supported models.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "low",
+                  "label": "Low",
+                  "description": "Quick, straightforward implementation with minimal overhead",
+                  "applicableEntryIds": [
+                    "fable"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "Medium",
+                  "description": "Balanced approach with standard implementation and testing",
+                  "applicableEntryIds": [
+                    "fable"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "High (default)",
+                  "description": "Comprehensive implementation with extensive testing and documentation",
+                  "applicableEntryIds": [
+                    "fable"
+                  ]
+                },
+                {
+                  "value": "xhigh",
+                  "label": "xHigh",
+                  "description": "Deeper reasoning than high, just below maximum (Fable 5, Opus 4.7+, Sonnet 5)",
+                  "applicableEntryIds": [
+                    "fable"
+                  ]
+                },
+                {
+                  "value": "max",
+                  "label": "Max",
+                  "description": "May use excessive tokens resulting in long response times or overthinking. Use sparingly for the hardest tasks.",
+                  "applicableEntryIds": [
+                    "fable"
+                  ]
+                },
+                {
+                  "value": "ultracode",
+                  "label": "Ultracode",
+                  "description": "2.1.258 static artifact description: xHigh effort plus dynamic workflow orchestration for this session only",
+                  "applicableEntryIds": [
+                    "fable"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "fable"
+              ]
+            }
+          ],
+          "controlDefaults": {
+            "claude.reasoning_effort": "high"
+          }
+        },
+        {
+          "id": "sonnet",
+          "label": "Sonnet 5",
+          "limits": {
+            "contextWindowTokens": 1000000
+          },
+          "notes": [
+            "Picker description: Sonnet 5 - efficient for routine tasks"
+          ],
+          "capabilityTags": [
+            "tool_use"
+          ],
+          "controls": [
+            {
+              "key": "claude.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Claude Code effort for supported models.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "low",
+                  "label": "Low",
+                  "description": "Quick, straightforward implementation with minimal overhead",
+                  "applicableEntryIds": [
+                    "sonnet"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "Medium",
+                  "description": "Balanced approach with standard implementation and testing",
+                  "applicableEntryIds": [
+                    "sonnet"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "High (default)",
+                  "description": "Comprehensive implementation with extensive testing and documentation",
+                  "applicableEntryIds": [
+                    "sonnet"
+                  ]
+                },
+                {
+                  "value": "xhigh",
+                  "label": "xHigh",
+                  "description": "Deeper reasoning than high, just below maximum (Fable 5, Opus 4.7+, Sonnet 5)",
+                  "applicableEntryIds": [
+                    "sonnet"
+                  ]
+                },
+                {
+                  "value": "max",
+                  "label": "Max",
+                  "description": "May use excessive tokens resulting in long response times or overthinking. Use sparingly for the hardest tasks.",
+                  "applicableEntryIds": [
+                    "sonnet"
+                  ]
+                },
+                {
+                  "value": "ultracode",
+                  "label": "Ultracode",
+                  "description": "2.1.258 static artifact description: xHigh effort plus dynamic workflow orchestration for this session only",
+                  "applicableEntryIds": [
+                    "sonnet"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "sonnet"
+              ]
+            }
+          ],
+          "controlDefaults": {
+            "claude.reasoning_effort": "high"
+          }
+        },
+        {
+          "id": "haiku",
+          "label": "Haiku 4.5",
+          "limits": {
+            "contextWindowTokens": 200000
+          },
+          "notes": [
+            "Picker description: Haiku 4.5 - fastest for quick answers"
+          ],
+          "capabilityTags": [
+            "tool_use",
+            "latency_optimized"
+          ],
+          "controls": []
+        }
+      ],
+      "controls": [
+        {
+          "key": "claude.reasoning_effort",
+          "label": "Reasoning effort",
+          "description": "Controls Claude Code effort for supported models.",
+          "kind": "enum",
+          "scope": "both",
+          "values": [
+            {
+              "value": "low",
+              "label": "Low",
+              "description": "Quick, straightforward implementation with minimal overhead",
+              "applicableEntryIds": [
+                "opus"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "Medium",
+              "description": "Balanced approach with standard implementation and testing",
+              "applicableEntryIds": [
+                "opus"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "High (default)",
+              "description": "Comprehensive implementation with extensive testing and documentation",
+              "applicableEntryIds": [
+                "opus"
+              ]
+            },
+            {
+              "value": "xhigh",
+              "label": "xHigh",
+              "description": "Deeper reasoning than high, just below maximum (Fable 5, Opus 4.7+, Sonnet 5)",
+              "applicableEntryIds": [
+                "opus"
+              ]
+            },
+            {
+              "value": "max",
+              "label": "Max",
+              "description": "Maximum capability with deepest reasoning. May use excessive tokens resulting in long response times or overthinking. Use sparingly for the hardest tasks.",
+              "applicableEntryIds": [
+                "opus"
+              ]
+            },
+            {
+              "value": "ultracode",
+              "label": "Ultracode",
+              "description": "2.1.258 static artifact description: xHigh effort plus dynamic workflow orchestration for this session only",
+              "applicableEntryIds": [
+                "opus"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "Low",
+              "description": "Quick, straightforward implementation with minimal overhead",
+              "applicableEntryIds": [
+                "fable"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "Medium",
+              "description": "Balanced approach with standard implementation and testing",
+              "applicableEntryIds": [
+                "fable"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "High (default)",
+              "description": "Comprehensive implementation with extensive testing and documentation",
+              "applicableEntryIds": [
+                "fable"
+              ]
+            },
+            {
+              "value": "xhigh",
+              "label": "xHigh",
+              "description": "Deeper reasoning than high, just below maximum (Fable 5, Opus 4.7+, Sonnet 5)",
+              "applicableEntryIds": [
+                "fable"
+              ]
+            },
+            {
+              "value": "max",
+              "label": "Max",
+              "description": "May use excessive tokens resulting in long response times or overthinking. Use sparingly for the hardest tasks.",
+              "applicableEntryIds": [
+                "fable"
+              ]
+            },
+            {
+              "value": "ultracode",
+              "label": "Ultracode",
+              "description": "2.1.258 static artifact description: xHigh effort plus dynamic workflow orchestration for this session only",
+              "applicableEntryIds": [
+                "fable"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "Low",
+              "description": "Quick, straightforward implementation with minimal overhead",
+              "applicableEntryIds": [
+                "sonnet"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "Medium",
+              "description": "Balanced approach with standard implementation and testing",
+              "applicableEntryIds": [
+                "sonnet"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "High (default)",
+              "description": "Comprehensive implementation with extensive testing and documentation",
+              "applicableEntryIds": [
+                "sonnet"
+              ]
+            },
+            {
+              "value": "xhigh",
+              "label": "xHigh",
+              "description": "Deeper reasoning than high, just below maximum (Fable 5, Opus 4.7+, Sonnet 5)",
+              "applicableEntryIds": [
+                "sonnet"
+              ]
+            },
+            {
+              "value": "max",
+              "label": "Max",
+              "description": "May use excessive tokens resulting in long response times or overthinking. Use sparingly for the hardest tasks.",
+              "applicableEntryIds": [
+                "sonnet"
+              ]
+            },
+            {
+              "value": "ultracode",
+              "label": "Ultracode",
+              "description": "2.1.258 static artifact description: xHigh effort plus dynamic workflow orchestration for this session only",
+              "applicableEntryIds": [
+                "sonnet"
+              ]
+            }
+          ],
+          "semanticTags": [
+            "reasoning_intensity"
+          ],
+          "applicableEntryIds": [
+            "opus",
+            "fable",
+            "sonnet"
+          ]
+        }
+      ],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "opus",
+        "entryMode": "explicit",
+        "controls": {
+          "claude.reasoning_effort": "high"
+        }
+      },
+      "support": {
+        "tier": "full",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "claude/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "codex": {
+    "base": {
+      "provider": "codex",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": "gpt-6-astra",
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "gpt-6-astra",
+          "label": "gpt-6-astra",
+          "default": true
+        },
+        {
+          "id": "gpt-5.6-sol",
+          "label": "gpt-5.6-sol"
+        },
+        {
+          "id": "gpt-5.6-terra",
+          "label": "gpt-5.6-terra"
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "label": "gpt-5.6-luna"
+        },
+        {
+          "id": "gpt-5.5",
+          "label": "gpt-5.5"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "codex",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": "gpt-6-astra",
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "gpt-6-astra",
+          "label": "gpt-6-astra",
+          "default": true,
+          "notes": [
+            "Our most capable model for complex, demanding work."
+          ],
+          "capabilityTags": [
+            "tool_use"
+          ],
+          "controls": [
+            {
+              "key": "codex.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Codex CLI reasoning depth for supported models.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "low",
+                  "label": "Low",
+                  "description": "Fast responses with lighter reasoning",
+                  "applicableEntryIds": [
+                    "gpt-6-astra"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "Medium (default)",
+                  "description": "Balances speed and reasoning depth for everyday tasks",
+                  "applicableEntryIds": [
+                    "gpt-6-astra"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "High",
+                  "description": "Greater reasoning depth for complex problems",
+                  "applicableEntryIds": [
+                    "gpt-6-astra"
+                  ]
+                },
+                {
+                  "value": "xhigh",
+                  "label": "Extra high",
+                  "description": "Extra high reasoning depth for complex problems",
+                  "applicableEntryIds": [
+                    "gpt-6-astra"
+                  ]
+                },
+                {
+                  "value": "max",
+                  "label": "Max",
+                  "description": "For difficult problems when quality matters more than speed · higher usage",
+                  "applicableEntryIds": [
+                    "gpt-6-astra"
+                  ]
+                },
+                {
+                  "value": "ultra",
+                  "label": "Ultra",
+                  "description": "For demanding work using multiple agents · highest usage",
+                  "applicableEntryIds": [
+                    "gpt-6-astra"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "gpt-6-astra"
+              ]
+            }
+          ],
+          "controlDefaults": {
+            "codex.reasoning_effort": "medium"
+          }
+        },
+        {
+          "id": "gpt-5.6-sol",
+          "label": "gpt-5.6-sol",
+          "limits": {
+            "contextWindowTokens": 272000
+          },
+          "notes": [
+            "Reliable agentic workhorse for everyday tasks."
+          ],
+          "capabilityTags": [
+            "tool_use"
+          ],
+          "controls": [
+            {
+              "key": "codex.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Codex CLI reasoning depth for supported models.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "low",
+                  "label": "Low (default)",
+                  "description": "Fast responses with lighter reasoning",
+                  "applicableEntryIds": [
+                    "gpt-5.6-sol"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "Medium",
+                  "description": "Balances speed and reasoning depth for everyday tasks",
+                  "applicableEntryIds": [
+                    "gpt-5.6-sol"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "High",
+                  "description": "Greater reasoning depth for complex problems",
+                  "applicableEntryIds": [
+                    "gpt-5.6-sol"
+                  ]
+                },
+                {
+                  "value": "xhigh",
+                  "label": "Extra high",
+                  "description": "Extra high reasoning depth for complex problems",
+                  "applicableEntryIds": [
+                    "gpt-5.6-sol"
+                  ]
+                },
+                {
+                  "value": "max",
+                  "label": "Max",
+                  "description": "For difficult problems when quality matters more than speed · higher usage",
+                  "applicableEntryIds": [
+                    "gpt-5.6-sol"
+                  ]
+                },
+                {
+                  "value": "ultra",
+                  "label": "Ultra",
+                  "description": "For demanding work using multiple agents · highest usage",
+                  "applicableEntryIds": [
+                    "gpt-5.6-sol"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "gpt-5.6-sol"
+              ]
+            }
+          ],
+          "controlDefaults": {
+            "codex.reasoning_effort": "low"
+          }
+        },
+        {
+          "id": "gpt-5.6-terra",
+          "label": "gpt-5.6-terra",
+          "limits": {
+            "contextWindowTokens": 272000
+          },
+          "notes": [
+            "Balanced agentic coding model for everyday work."
+          ],
+          "capabilityTags": [
+            "tool_use"
+          ],
+          "controls": [
+            {
+              "key": "codex.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Codex CLI reasoning depth for supported models.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "low",
+                  "label": "Low",
+                  "description": "Fast responses with lighter reasoning",
+                  "applicableEntryIds": [
+                    "gpt-5.6-terra"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "Medium (default)",
+                  "description": "Balances speed and reasoning depth for everyday tasks",
+                  "applicableEntryIds": [
+                    "gpt-5.6-terra"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "High",
+                  "description": "Greater reasoning depth for complex problems",
+                  "applicableEntryIds": [
+                    "gpt-5.6-terra"
+                  ]
+                },
+                {
+                  "value": "xhigh",
+                  "label": "Extra high",
+                  "description": "Extra high reasoning depth for complex problems",
+                  "applicableEntryIds": [
+                    "gpt-5.6-terra"
+                  ]
+                },
+                {
+                  "value": "max",
+                  "label": "Max",
+                  "description": "For difficult problems when quality matters more than speed · higher usage",
+                  "applicableEntryIds": [
+                    "gpt-5.6-terra"
+                  ]
+                },
+                {
+                  "value": "ultra",
+                  "label": "Ultra",
+                  "description": "For demanding work using multiple agents · highest usage",
+                  "applicableEntryIds": [
+                    "gpt-5.6-terra"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "gpt-5.6-terra"
+              ]
+            }
+          ],
+          "controlDefaults": {
+            "codex.reasoning_effort": "medium"
+          }
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "label": "gpt-5.6-luna",
+          "limits": {
+            "contextWindowTokens": 272000
+          },
+          "notes": [
+            "Fast and affordable agentic coding model."
+          ],
+          "capabilityTags": [
+            "tool_use"
+          ],
+          "controls": [
+            {
+              "key": "codex.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Codex CLI reasoning depth for supported models.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "low",
+                  "label": "Low",
+                  "description": "Fast responses with lighter reasoning",
+                  "applicableEntryIds": [
+                    "gpt-5.6-luna"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "Medium (default)",
+                  "description": "Balances speed and reasoning depth for everyday tasks",
+                  "applicableEntryIds": [
+                    "gpt-5.6-luna"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "High",
+                  "description": "Greater reasoning depth for complex problems",
+                  "applicableEntryIds": [
+                    "gpt-5.6-luna"
+                  ]
+                },
+                {
+                  "value": "xhigh",
+                  "label": "Extra high",
+                  "description": "Extra high reasoning depth for complex problems",
+                  "applicableEntryIds": [
+                    "gpt-5.6-luna"
+                  ]
+                },
+                {
+                  "value": "max",
+                  "label": "Max",
+                  "description": "For difficult problems when quality matters more than speed · higher usage",
+                  "applicableEntryIds": [
+                    "gpt-5.6-luna"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "gpt-5.6-luna"
+              ]
+            }
+          ],
+          "controlDefaults": {
+            "codex.reasoning_effort": "medium"
+          }
+        },
+        {
+          "id": "gpt-5.5",
+          "label": "gpt-5.5",
+          "limits": {
+            "contextWindowTokens": 272000
+          },
+          "notes": [
+            "Proven previous-generation model for coding and general work."
+          ],
+          "capabilityTags": [
+            "tool_use"
+          ],
+          "controls": [
+            {
+              "key": "codex.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Codex CLI reasoning depth for supported models.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "low",
+                  "label": "Low",
+                  "description": "Fast responses with lighter reasoning",
+                  "applicableEntryIds": [
+                    "gpt-5.5"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "Medium (default)",
+                  "description": "Balances speed and reasoning depth for everyday tasks",
+                  "applicableEntryIds": [
+                    "gpt-5.5"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "High",
+                  "description": "Greater reasoning depth for complex problems",
+                  "applicableEntryIds": [
+                    "gpt-5.5"
+                  ]
+                },
+                {
+                  "value": "xhigh",
+                  "label": "Extra high",
+                  "description": "Extra high reasoning depth for complex problems",
+                  "applicableEntryIds": [
+                    "gpt-5.5"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "gpt-5.5"
+              ]
+            }
+          ],
+          "controlDefaults": {
+            "codex.reasoning_effort": "medium"
+          }
+        }
+      ],
+      "controls": [
+        {
+          "key": "codex.reasoning_effort",
+          "label": "Reasoning effort",
+          "description": "Controls Codex CLI reasoning depth for supported models.",
+          "kind": "enum",
+          "scope": "both",
+          "values": [
+            {
+              "value": "low",
+              "label": "Low",
+              "description": "Fast responses with lighter reasoning",
+              "applicableEntryIds": [
+                "gpt-6-astra"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "Medium (default)",
+              "description": "Balances speed and reasoning depth for everyday tasks",
+              "applicableEntryIds": [
+                "gpt-6-astra"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "High",
+              "description": "Greater reasoning depth for complex problems",
+              "applicableEntryIds": [
+                "gpt-6-astra"
+              ]
+            },
+            {
+              "value": "xhigh",
+              "label": "Extra high",
+              "description": "Extra high reasoning depth for complex problems",
+              "applicableEntryIds": [
+                "gpt-6-astra"
+              ]
+            },
+            {
+              "value": "max",
+              "label": "Max",
+              "description": "For difficult problems when quality matters more than speed · higher usage",
+              "applicableEntryIds": [
+                "gpt-6-astra"
+              ]
+            },
+            {
+              "value": "ultra",
+              "label": "Ultra",
+              "description": "For demanding work using multiple agents · highest usage",
+              "applicableEntryIds": [
+                "gpt-6-astra"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "Low (default)",
+              "description": "Fast responses with lighter reasoning",
+              "applicableEntryIds": [
+                "gpt-5.6-sol"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "Medium",
+              "description": "Balances speed and reasoning depth for everyday tasks",
+              "applicableEntryIds": [
+                "gpt-5.6-sol"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "High",
+              "description": "Greater reasoning depth for complex problems",
+              "applicableEntryIds": [
+                "gpt-5.6-sol"
+              ]
+            },
+            {
+              "value": "xhigh",
+              "label": "Extra high",
+              "description": "Extra high reasoning depth for complex problems",
+              "applicableEntryIds": [
+                "gpt-5.6-sol"
+              ]
+            },
+            {
+              "value": "max",
+              "label": "Max",
+              "description": "For difficult problems when quality matters more than speed · higher usage",
+              "applicableEntryIds": [
+                "gpt-5.6-sol"
+              ]
+            },
+            {
+              "value": "ultra",
+              "label": "Ultra",
+              "description": "For demanding work using multiple agents · highest usage",
+              "applicableEntryIds": [
+                "gpt-5.6-sol"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "Low",
+              "description": "Fast responses with lighter reasoning",
+              "applicableEntryIds": [
+                "gpt-5.6-terra"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "Medium (default)",
+              "description": "Balances speed and reasoning depth for everyday tasks",
+              "applicableEntryIds": [
+                "gpt-5.6-terra"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "High",
+              "description": "Greater reasoning depth for complex problems",
+              "applicableEntryIds": [
+                "gpt-5.6-terra"
+              ]
+            },
+            {
+              "value": "xhigh",
+              "label": "Extra high",
+              "description": "Extra high reasoning depth for complex problems",
+              "applicableEntryIds": [
+                "gpt-5.6-terra"
+              ]
+            },
+            {
+              "value": "max",
+              "label": "Max",
+              "description": "For difficult problems when quality matters more than speed · higher usage",
+              "applicableEntryIds": [
+                "gpt-5.6-terra"
+              ]
+            },
+            {
+              "value": "ultra",
+              "label": "Ultra",
+              "description": "For demanding work using multiple agents · highest usage",
+              "applicableEntryIds": [
+                "gpt-5.6-terra"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "Low",
+              "description": "Fast responses with lighter reasoning",
+              "applicableEntryIds": [
+                "gpt-5.6-luna"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "Medium (default)",
+              "description": "Balances speed and reasoning depth for everyday tasks",
+              "applicableEntryIds": [
+                "gpt-5.6-luna"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "High",
+              "description": "Greater reasoning depth for complex problems",
+              "applicableEntryIds": [
+                "gpt-5.6-luna"
+              ]
+            },
+            {
+              "value": "xhigh",
+              "label": "Extra high",
+              "description": "Extra high reasoning depth for complex problems",
+              "applicableEntryIds": [
+                "gpt-5.6-luna"
+              ]
+            },
+            {
+              "value": "max",
+              "label": "Max",
+              "description": "For difficult problems when quality matters more than speed · higher usage",
+              "applicableEntryIds": [
+                "gpt-5.6-luna"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "Low",
+              "description": "Fast responses with lighter reasoning",
+              "applicableEntryIds": [
+                "gpt-5.5"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "Medium (default)",
+              "description": "Balances speed and reasoning depth for everyday tasks",
+              "applicableEntryIds": [
+                "gpt-5.5"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "High",
+              "description": "Greater reasoning depth for complex problems",
+              "applicableEntryIds": [
+                "gpt-5.5"
+              ]
+            },
+            {
+              "value": "xhigh",
+              "label": "Extra high",
+              "description": "Extra high reasoning depth for complex problems",
+              "applicableEntryIds": [
+                "gpt-5.5"
+              ]
+            }
+          ],
+          "semanticTags": [
+            "reasoning_intensity"
+          ],
+          "applicableEntryIds": [
+            "gpt-6-astra",
+            "gpt-5.6-sol",
+            "gpt-5.6-terra",
+            "gpt-5.6-luna",
+            "gpt-5.5"
+          ]
+        }
+      ],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "gpt-6-astra",
+        "entryMode": "explicit",
+        "controls": {
+          "codex.reasoning_effort": "medium"
+        }
+      },
+      "support": {
+        "tier": "full",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "codex/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "antigravity": {
+    "base": {
+      "provider": "antigravity",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "gemini-3.8-flash-low",
+          "label": "Gemini 3.8 Flash"
+        },
+        {
+          "id": "gemini-3.7-flash-low",
+          "label": "Gemini 3.7 Flash"
+        },
+        {
+          "id": "gemini-3.6-flash-low",
+          "label": "Gemini 3.6 Flash"
+        },
+        {
+          "id": "gemini-3.1-pro-low",
+          "label": "Gemini 3.1 Pro"
+        },
+        {
+          "id": "claude-sonnet-4-6",
+          "label": "Claude Sonnet 4.6 (Thinking)"
+        },
+        {
+          "id": "claude-opus-4-6-thinking",
+          "label": "Claude Opus 4.6 (Thinking)"
+        },
+        {
+          "id": "gpt-oss-120b-medium",
+          "label": "GPT-OSS 120B (Medium)"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "antigravity",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "gemini-3.8-flash-low",
+          "label": "Gemini 3.8 Flash",
+          "capabilityTags": [
+            "tool_use",
+            "latency_optimized"
+          ],
+          "controls": [
+            {
+              "key": "antigravity.effort",
+              "label": "Effort",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "low",
+                  "label": "low",
+                  "description": "Faster responses, lighter reasoning — great for simpler tasks",
+                  "applicableEntryIds": [
+                    "gemini-3.8-flash-low"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "medium",
+                  "description": "Balanced speed and reasoning quality for most tasks",
+                  "applicableEntryIds": [
+                    "gemini-3.8-flash-low"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "high",
+                  "description": "Deepest reasoning for complex problems — slower but strongest",
+                  "applicableEntryIds": [
+                    "gemini-3.8-flash-low"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning"
+              ],
+              "applicableEntryIds": [
+                "gemini-3.8-flash-low"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "gemini-3.7-flash-low",
+          "label": "Gemini 3.7 Flash",
+          "capabilityTags": [
+            "tool_use",
+            "latency_optimized"
+          ],
+          "controls": [
+            {
+              "key": "antigravity.effort",
+              "label": "Effort",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "low",
+                  "label": "low",
+                  "description": "Faster responses, lighter reasoning — great for simpler tasks",
+                  "applicableEntryIds": [
+                    "gemini-3.7-flash-low"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "medium",
+                  "description": "Balanced speed and reasoning quality for most tasks",
+                  "applicableEntryIds": [
+                    "gemini-3.7-flash-low"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "high",
+                  "description": "Deepest reasoning for complex problems — slower but strongest",
+                  "applicableEntryIds": [
+                    "gemini-3.7-flash-low"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning"
+              ],
+              "applicableEntryIds": [
+                "gemini-3.7-flash-low"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "gemini-3.6-flash-low",
+          "label": "Gemini 3.6 Flash",
+          "capabilityTags": [
+            "tool_use",
+            "latency_optimized"
+          ],
+          "controls": [
+            {
+              "key": "antigravity.effort",
+              "label": "Effort",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "low",
+                  "label": "low",
+                  "description": "Faster responses, lighter reasoning — great for simpler tasks",
+                  "applicableEntryIds": [
+                    "gemini-3.6-flash-low"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "medium",
+                  "description": "Balanced speed and reasoning quality for most tasks",
+                  "applicableEntryIds": [
+                    "gemini-3.6-flash-low"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "high",
+                  "description": "Deepest reasoning for complex problems — slower but strongest",
+                  "applicableEntryIds": [
+                    "gemini-3.6-flash-low"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning"
+              ],
+              "applicableEntryIds": [
+                "gemini-3.6-flash-low"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "gemini-3.1-pro-low",
+          "label": "Gemini 3.1 Pro",
+          "capabilityTags": [
+            "tool_use",
+            "reasoning"
+          ],
+          "controls": [
+            {
+              "key": "antigravity.effort",
+              "label": "Effort",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "low",
+                  "label": "low",
+                  "description": "Faster responses, lighter reasoning — great for simpler tasks",
+                  "applicableEntryIds": [
+                    "gemini-3.1-pro-low"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "high",
+                  "description": "Deepest reasoning for complex problems — slower but strongest",
+                  "applicableEntryIds": [
+                    "gemini-3.1-pro-low"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning"
+              ],
+              "applicableEntryIds": [
+                "gemini-3.1-pro-low"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "claude-sonnet-4-6",
+          "label": "Claude Sonnet 4.6 (Thinking)",
+          "capabilityTags": [
+            "tool_use"
+          ],
+          "controls": []
+        },
+        {
+          "id": "claude-opus-4-6-thinking",
+          "label": "Claude Opus 4.6 (Thinking)",
+          "capabilityTags": [
+            "tool_use",
+            "reasoning"
+          ],
+          "controls": []
+        },
+        {
+          "id": "gpt-oss-120b-medium",
+          "label": "GPT-OSS 120B (Medium)",
+          "capabilityTags": [
+            "tool_use"
+          ],
+          "controls": []
+        }
+      ],
+      "controls": [
+        {
+          "key": "antigravity.effort",
+          "label": "Effort",
+          "kind": "enum",
+          "scope": "both",
+          "values": [
+            {
+              "value": "low",
+              "label": "low",
+              "description": "Faster responses, lighter reasoning — great for simpler tasks",
+              "applicableEntryIds": [
+                "gemini-3.8-flash-low"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "medium",
+              "description": "Balanced speed and reasoning quality for most tasks",
+              "applicableEntryIds": [
+                "gemini-3.8-flash-low"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "high",
+              "description": "Deepest reasoning for complex problems — slower but strongest",
+              "applicableEntryIds": [
+                "gemini-3.8-flash-low"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "low",
+              "description": "Faster responses, lighter reasoning — great for simpler tasks",
+              "applicableEntryIds": [
+                "gemini-3.7-flash-low"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "medium",
+              "description": "Balanced speed and reasoning quality for most tasks",
+              "applicableEntryIds": [
+                "gemini-3.7-flash-low"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "high",
+              "description": "Deepest reasoning for complex problems — slower but strongest",
+              "applicableEntryIds": [
+                "gemini-3.7-flash-low"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "low",
+              "description": "Faster responses, lighter reasoning — great for simpler tasks",
+              "applicableEntryIds": [
+                "gemini-3.6-flash-low"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "medium",
+              "description": "Balanced speed and reasoning quality for most tasks",
+              "applicableEntryIds": [
+                "gemini-3.6-flash-low"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "high",
+              "description": "Deepest reasoning for complex problems — slower but strongest",
+              "applicableEntryIds": [
+                "gemini-3.6-flash-low"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "low",
+              "description": "Faster responses, lighter reasoning — great for simpler tasks",
+              "applicableEntryIds": [
+                "gemini-3.1-pro-low"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "high",
+              "description": "Deepest reasoning for complex problems — slower but strongest",
+              "applicableEntryIds": [
+                "gemini-3.1-pro-low"
+              ]
+            }
+          ],
+          "semanticTags": [
+            "reasoning"
+          ],
+          "applicableEntryIds": [
+            "gemini-3.8-flash-low",
+            "gemini-3.7-flash-low",
+            "gemini-3.6-flash-low",
+            "gemini-3.1-pro-low"
+          ]
+        }
+      ],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "gemini-3.8-flash-low",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "full",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "antigravity/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "grok": {
+    "base": {
+      "provider": "grok",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "grok-4.6",
+          "label": "Grok 4.6"
+        },
+        {
+          "id": "grok-4.5",
+          "label": "Grok 4.5"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "grok",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "grok-4.6",
+          "label": "Grok 4.6",
+          "limits": {
+            "contextWindowTokens": 500000
+          },
+          "notes": [
+            "Picker description: SpaceXAI's latest frontier model"
+          ],
+          "controls": [
+            {
+              "key": "grok.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Grok CLI reasoning effort for supported models.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "xhigh",
+                  "label": "Extra High Effort",
+                  "description": "Extra High Effort - Highest effort and reasoning level",
+                  "applicableEntryIds": [
+                    "grok-4.6"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "High Effort",
+                  "description": "High Effort - Higher implementation quality with extensive reasoning",
+                  "applicableEntryIds": [
+                    "grok-4.6"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "Medium Effort",
+                  "description": "Medium Effort - Balanced effort with standard implementation and testing",
+                  "applicableEntryIds": [
+                    "grok-4.6"
+                  ]
+                },
+                {
+                  "value": "low",
+                  "label": "Low Effort",
+                  "description": "Low Effort - Quick, fast implementations",
+                  "applicableEntryIds": [
+                    "grok-4.6"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "grok-4.6"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "grok-4.5",
+          "label": "Grok 4.5",
+          "limits": {
+            "contextWindowTokens": 500000
+          },
+          "notes": [
+            "The 1.0.34 picker row shows the label alone."
+          ],
+          "controls": [
+            {
+              "key": "grok.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Grok CLI reasoning effort for supported models.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "high",
+                  "label": "High Effort",
+                  "description": "High Effort - Highest implementation quality with extensive reasoning",
+                  "applicableEntryIds": [
+                    "grok-4.5"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "Medium Effort",
+                  "description": "Medium Effort - Balanced effort with standard implementation and testing",
+                  "applicableEntryIds": [
+                    "grok-4.5"
+                  ]
+                },
+                {
+                  "value": "low",
+                  "label": "Low Effort",
+                  "description": "Low Effort - Quick, fast implementations",
+                  "applicableEntryIds": [
+                    "grok-4.5"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "grok-4.5"
+              ]
+            }
+          ]
+        }
+      ],
+      "controls": [
+        {
+          "key": "grok.reasoning_effort",
+          "label": "Reasoning effort",
+          "description": "Controls Grok CLI reasoning effort for supported models.",
+          "kind": "enum",
+          "scope": "both",
+          "values": [
+            {
+              "value": "xhigh",
+              "label": "Extra High Effort",
+              "description": "Extra High Effort - Highest effort and reasoning level",
+              "applicableEntryIds": [
+                "grok-4.6"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "High Effort",
+              "description": "High Effort - Higher implementation quality with extensive reasoning",
+              "applicableEntryIds": [
+                "grok-4.6"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "Medium Effort",
+              "description": "Medium Effort - Balanced effort with standard implementation and testing",
+              "applicableEntryIds": [
+                "grok-4.6"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "Low Effort",
+              "description": "Low Effort - Quick, fast implementations",
+              "applicableEntryIds": [
+                "grok-4.6"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "High Effort",
+              "description": "High Effort - Highest implementation quality with extensive reasoning",
+              "applicableEntryIds": [
+                "grok-4.5"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "Medium Effort",
+              "description": "Medium Effort - Balanced effort with standard implementation and testing",
+              "applicableEntryIds": [
+                "grok-4.5"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "Low Effort",
+              "description": "Low Effort - Quick, fast implementations",
+              "applicableEntryIds": [
+                "grok-4.5"
+              ]
+            }
+          ],
+          "semanticTags": [
+            "reasoning_intensity"
+          ],
+          "applicableEntryIds": [
+            "grok-4.6",
+            "grok-4.5"
+          ]
+        }
+      ],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "grok-4.6",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "full",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "grok/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "muse": {
+    "base": {
+      "provider": "muse",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "muse-spark-1.3",
+          "label": "muse-spark-1.3"
+        },
+        {
+          "id": "muse-spark-1.3-contributor",
+          "label": "muse-spark-1.3 (contributor)"
+        },
+        {
+          "id": "muse-spark-1.2",
+          "label": "muse-spark-1.2"
+        },
+        {
+          "id": "muse-spark-1.2-contributor",
+          "label": "muse-spark-1.2 (contributor)"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "muse",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "muse-spark-1.3",
+          "label": "muse-spark-1.3",
+          "limits": {
+            "contextWindowTokens": 1007997,
+            "maxOutputTokens": 128000
+          },
+          "notes": [
+            "releaseDate 2026-09-02; the catalog carries no description for this row."
+          ],
+          "controls": [
+            {
+              "key": "muse.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Meta Muse CLI reasoning effort.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "minimal",
+                  "label": "minimal",
+                  "description": "Minimal reasoning budget.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.3"
+                  ]
+                },
+                {
+                  "value": "low",
+                  "label": "low",
+                  "description": "Quick responses with lighter reasoning.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.3"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "medium",
+                  "description": "Balances speed and reasoning depth.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.3"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "high",
+                  "description": "Greater reasoning depth for complex problems.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.3"
+                  ]
+                },
+                {
+                  "value": "xhigh",
+                  "label": "xhigh",
+                  "description": "Extra high reasoning depth.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.3"
+                  ]
+                },
+                {
+                  "value": "max",
+                  "label": "max",
+                  "description": "Maximum reasoning depth.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.3"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "muse-spark-1.3"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "muse-spark-1.3-contributor",
+          "label": "muse-spark-1.3 (contributor)",
+          "limits": {
+            "contextWindowTokens": 1007997,
+            "maxOutputTokens": 128000
+          },
+          "notes": [
+            "Catalog description: Your content, including inter-session messages, may be used for product improvement.",
+            "Marked isDefault by `model/list`; deliberately not marked default here."
+          ],
+          "controls": [
+            {
+              "key": "muse.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Meta Muse CLI reasoning effort.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "minimal",
+                  "label": "minimal",
+                  "description": "Minimal reasoning budget.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.3-contributor"
+                  ]
+                },
+                {
+                  "value": "low",
+                  "label": "low",
+                  "description": "Quick responses with lighter reasoning.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.3-contributor"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "medium",
+                  "description": "Balances speed and reasoning depth.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.3-contributor"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "high",
+                  "description": "Greater reasoning depth for complex problems.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.3-contributor"
+                  ]
+                },
+                {
+                  "value": "xhigh",
+                  "label": "xhigh",
+                  "description": "Extra high reasoning depth.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.3-contributor"
+                  ]
+                },
+                {
+                  "value": "max",
+                  "label": "max",
+                  "description": "Maximum reasoning depth.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.3-contributor"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "muse-spark-1.3-contributor"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "muse-spark-1.2",
+          "label": "muse-spark-1.2",
+          "limits": {
+            "contextWindowTokens": 1007997,
+            "maxOutputTokens": 128000
+          },
+          "notes": [
+            "releaseDate 2026-08-05; the catalog carries no description for this row."
+          ],
+          "controls": [
+            {
+              "key": "muse.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Meta Muse CLI reasoning effort.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "minimal",
+                  "label": "minimal",
+                  "description": "Minimal reasoning budget.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.2"
+                  ]
+                },
+                {
+                  "value": "low",
+                  "label": "low",
+                  "description": "Quick responses with lighter reasoning.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.2"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "medium",
+                  "description": "Balances speed and reasoning depth.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.2"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "high",
+                  "description": "Greater reasoning depth for complex problems.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.2"
+                  ]
+                },
+                {
+                  "value": "xhigh",
+                  "label": "xhigh",
+                  "description": "Extra high reasoning depth.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.2"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "muse-spark-1.2"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "muse-spark-1.2-contributor",
+          "label": "muse-spark-1.2 (contributor)",
+          "limits": {
+            "contextWindowTokens": 1007997,
+            "maxOutputTokens": 128000
+          },
+          "notes": [
+            "Catalog description: Your content, including inter-session messages, may be used for product improvement."
+          ],
+          "controls": [
+            {
+              "key": "muse.reasoning_effort",
+              "label": "Reasoning effort",
+              "description": "Controls Meta Muse CLI reasoning effort.",
+              "kind": "enum",
+              "scope": "both",
+              "values": [
+                {
+                  "value": "minimal",
+                  "label": "minimal",
+                  "description": "Minimal reasoning budget.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.2-contributor"
+                  ]
+                },
+                {
+                  "value": "low",
+                  "label": "low",
+                  "description": "Quick responses with lighter reasoning.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.2-contributor"
+                  ]
+                },
+                {
+                  "value": "medium",
+                  "label": "medium",
+                  "description": "Balances speed and reasoning depth.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.2-contributor"
+                  ]
+                },
+                {
+                  "value": "high",
+                  "label": "high",
+                  "description": "Greater reasoning depth for complex problems.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.2-contributor"
+                  ]
+                },
+                {
+                  "value": "xhigh",
+                  "label": "xhigh",
+                  "description": "Extra high reasoning depth.",
+                  "applicableEntryIds": [
+                    "muse-spark-1.2-contributor"
+                  ]
+                }
+              ],
+              "semanticTags": [
+                "reasoning_intensity"
+              ],
+              "applicableEntryIds": [
+                "muse-spark-1.2-contributor"
+              ]
+            }
+          ]
+        }
+      ],
+      "controls": [
+        {
+          "key": "muse.reasoning_effort",
+          "label": "Reasoning effort",
+          "description": "Controls Meta Muse CLI reasoning effort.",
+          "kind": "enum",
+          "scope": "both",
+          "values": [
+            {
+              "value": "minimal",
+              "label": "minimal",
+              "description": "Minimal reasoning budget.",
+              "applicableEntryIds": [
+                "muse-spark-1.3"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "low",
+              "description": "Quick responses with lighter reasoning.",
+              "applicableEntryIds": [
+                "muse-spark-1.3"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "medium",
+              "description": "Balances speed and reasoning depth.",
+              "applicableEntryIds": [
+                "muse-spark-1.3"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "high",
+              "description": "Greater reasoning depth for complex problems.",
+              "applicableEntryIds": [
+                "muse-spark-1.3"
+              ]
+            },
+            {
+              "value": "xhigh",
+              "label": "xhigh",
+              "description": "Extra high reasoning depth.",
+              "applicableEntryIds": [
+                "muse-spark-1.3"
+              ]
+            },
+            {
+              "value": "max",
+              "label": "max",
+              "description": "Maximum reasoning depth.",
+              "applicableEntryIds": [
+                "muse-spark-1.3"
+              ]
+            },
+            {
+              "value": "minimal",
+              "label": "minimal",
+              "description": "Minimal reasoning budget.",
+              "applicableEntryIds": [
+                "muse-spark-1.3-contributor"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "low",
+              "description": "Quick responses with lighter reasoning.",
+              "applicableEntryIds": [
+                "muse-spark-1.3-contributor"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "medium",
+              "description": "Balances speed and reasoning depth.",
+              "applicableEntryIds": [
+                "muse-spark-1.3-contributor"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "high",
+              "description": "Greater reasoning depth for complex problems.",
+              "applicableEntryIds": [
+                "muse-spark-1.3-contributor"
+              ]
+            },
+            {
+              "value": "xhigh",
+              "label": "xhigh",
+              "description": "Extra high reasoning depth.",
+              "applicableEntryIds": [
+                "muse-spark-1.3-contributor"
+              ]
+            },
+            {
+              "value": "max",
+              "label": "max",
+              "description": "Maximum reasoning depth.",
+              "applicableEntryIds": [
+                "muse-spark-1.3-contributor"
+              ]
+            },
+            {
+              "value": "minimal",
+              "label": "minimal",
+              "description": "Minimal reasoning budget.",
+              "applicableEntryIds": [
+                "muse-spark-1.2"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "low",
+              "description": "Quick responses with lighter reasoning.",
+              "applicableEntryIds": [
+                "muse-spark-1.2"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "medium",
+              "description": "Balances speed and reasoning depth.",
+              "applicableEntryIds": [
+                "muse-spark-1.2"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "high",
+              "description": "Greater reasoning depth for complex problems.",
+              "applicableEntryIds": [
+                "muse-spark-1.2"
+              ]
+            },
+            {
+              "value": "xhigh",
+              "label": "xhigh",
+              "description": "Extra high reasoning depth.",
+              "applicableEntryIds": [
+                "muse-spark-1.2"
+              ]
+            },
+            {
+              "value": "minimal",
+              "label": "minimal",
+              "description": "Minimal reasoning budget.",
+              "applicableEntryIds": [
+                "muse-spark-1.2-contributor"
+              ]
+            },
+            {
+              "value": "low",
+              "label": "low",
+              "description": "Quick responses with lighter reasoning.",
+              "applicableEntryIds": [
+                "muse-spark-1.2-contributor"
+              ]
+            },
+            {
+              "value": "medium",
+              "label": "medium",
+              "description": "Balances speed and reasoning depth.",
+              "applicableEntryIds": [
+                "muse-spark-1.2-contributor"
+              ]
+            },
+            {
+              "value": "high",
+              "label": "high",
+              "description": "Greater reasoning depth for complex problems.",
+              "applicableEntryIds": [
+                "muse-spark-1.2-contributor"
+              ]
+            },
+            {
+              "value": "xhigh",
+              "label": "xhigh",
+              "description": "Extra high reasoning depth.",
+              "applicableEntryIds": [
+                "muse-spark-1.2-contributor"
+              ]
+            }
+          ],
+          "semanticTags": [
+            "reasoning_intensity"
+          ],
+          "applicableEntryIds": [
+            "muse-spark-1.3",
+            "muse-spark-1.3-contributor",
+            "muse-spark-1.2",
+            "muse-spark-1.2-contributor"
+          ]
+        }
+      ],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "muse-spark-1.3",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "full",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "muse/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "cursor": {
+    "base": {
+      "provider": "cursor",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "grok-4.6[effort=high,fast=true]",
+          "label": "Cursor Grok 4.6 — High Fast"
+        },
+        {
+          "id": "composer-2.5[fast=true]",
+          "label": "Composer 2.5 — Fast"
+        },
+        {
+          "id": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
+          "label": "Claude Opus 5 — 300K High Thinking"
+        },
+        {
+          "id": "gpt-5.6-sol[context=272k,reasoning=medium,fast=false]",
+          "label": "GPT-5.6 Sol — 272K Medium"
+        },
+        {
+          "id": "gemini-3.8-flash[reasoning_effort=high]",
+          "label": "Gemini 3.8 Flash — High"
+        },
+        {
+          "id": "muse-spark-1.3[context=300k,effort=high]",
+          "label": "Muse Spark 1.3 — 300K High"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "cursor",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "grok-4.6[effort=high,fast=true]",
+          "label": "Cursor Grok 4.6 — High Fast",
+          "controls": []
+        },
+        {
+          "id": "composer-2.5[fast=true]",
+          "label": "Composer 2.5 — Fast",
+          "controls": []
+        },
+        {
+          "id": "claude-opus-5[thinking=true,context=300k,effort=high,fast=false]",
+          "label": "Claude Opus 5 — 300K High Thinking",
+          "capabilityTags": [
+            "reasoning"
+          ],
+          "controls": []
+        },
+        {
+          "id": "gpt-5.6-sol[context=272k,reasoning=medium,fast=false]",
+          "label": "GPT-5.6 Sol — 272K Medium",
+          "capabilityTags": [
+            "reasoning"
+          ],
+          "controls": []
+        },
+        {
+          "id": "gemini-3.8-flash[reasoning_effort=high]",
+          "label": "Gemini 3.8 Flash — High",
+          "capabilityTags": [
+            "reasoning",
+            "latency_optimized"
+          ],
+          "controls": []
+        },
+        {
+          "id": "muse-spark-1.3[context=300k,effort=high]",
+          "label": "Muse Spark 1.3 — 300K High",
+          "controls": []
+        }
+      ],
+      "controls": [],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "grok-4.6[effort=high,fast=true]",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "entry_only",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "cursor/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "copilot": {
+    "base": {
+      "provider": "copilot",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": "gpt-5.6-terra",
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "gpt-5.6-terra",
+          "label": "GPT-5.6 Terra — Medium",
+          "default": true
+        },
+        {
+          "id": "claude-sonnet-5",
+          "label": "Claude Sonnet 5 — Medium"
+        },
+        {
+          "id": "gemini-3.8-flash",
+          "label": "Gemini 3.8 Flash — Medium"
+        },
+        {
+          "id": "grok-4.6",
+          "label": "Grok 4.6 — Medium"
+        },
+        {
+          "id": "mai-code-1.1-flash",
+          "label": "MAI-Code-1.1-Flash — Medium"
+        },
+        {
+          "id": "kimi-k3",
+          "label": "Kimi K3 — High"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "copilot",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": "gpt-5.6-terra",
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "gpt-5.6-terra",
+          "label": "GPT-5.6 Terra — Medium",
+          "default": true,
+          "controls": []
+        },
+        {
+          "id": "claude-sonnet-5",
+          "label": "Claude Sonnet 5 — Medium",
+          "controls": []
+        },
+        {
+          "id": "gemini-3.8-flash",
+          "label": "Gemini 3.8 Flash — Medium",
+          "capabilityTags": [
+            "latency_optimized"
+          ],
+          "controls": []
+        },
+        {
+          "id": "grok-4.6",
+          "label": "Grok 4.6 — Medium",
+          "controls": []
+        },
+        {
+          "id": "mai-code-1.1-flash",
+          "label": "MAI-Code-1.1-Flash — Medium",
+          "capabilityTags": [
+            "latency_optimized"
+          ],
+          "controls": []
+        },
+        {
+          "id": "kimi-k3",
+          "label": "Kimi K3 — High",
+          "controls": []
+        }
+      ],
+      "controls": [],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "gpt-5.6-terra",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "entry_only",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "copilot/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "opencode": {
+    "base": {
+      "provider": "opencode",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "opencode-go/union-alpha",
+          "label": "Union Alpha Free"
+        },
+        {
+          "id": "opencode-go/deepseek-v4.1-flash",
+          "label": "DeepSeek V4.1 Flash"
+        },
+        {
+          "id": "opencode-go/hy4-preview",
+          "label": "Hy4 preview"
+        },
+        {
+          "id": "opencode-go/glm-5.3-flash",
+          "label": "GLM-5.3-Flash"
+        },
+        {
+          "id": "opencode-go/qwen3.8-flash",
+          "label": "Qwen3.8 Flash"
+        },
+        {
+          "id": "opencode-go/minimax-m3",
+          "label": "MiniMax-M3"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "opencode",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "opencode-go/union-alpha",
+          "label": "Union Alpha Free",
+          "controls": []
+        },
+        {
+          "id": "opencode-go/deepseek-v4.1-flash",
+          "label": "DeepSeek V4.1 Flash",
+          "capabilityTags": [
+            "latency_optimized"
+          ],
+          "controls": []
+        },
+        {
+          "id": "opencode-go/hy4-preview",
+          "label": "Hy4 preview",
+          "controls": []
+        },
+        {
+          "id": "opencode-go/glm-5.3-flash",
+          "label": "GLM-5.3-Flash",
+          "capabilityTags": [
+            "latency_optimized"
+          ],
+          "controls": []
+        },
+        {
+          "id": "opencode-go/qwen3.8-flash",
+          "label": "Qwen3.8 Flash",
+          "capabilityTags": [
+            "latency_optimized"
+          ],
+          "controls": []
+        },
+        {
+          "id": "opencode-go/minimax-m3",
+          "label": "MiniMax-M3",
+          "capabilityTags": [
+            "latency_optimized"
+          ],
+          "controls": []
+        }
+      ],
+      "controls": [],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "opencode-go/union-alpha",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "entry_only",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "opencode/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "kilo": {
+    "base": {
+      "provider": "kilo",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "kilo/deepseek/deepseek-v4.1-flash",
+          "label": "DeepSeek: DeepSeek V4.1 Flash"
+        },
+        {
+          "id": "kilo/z-ai/glm-5.3-flash",
+          "label": "Z.ai: GLM 5.3 Flash"
+        },
+        {
+          "id": "kilo/moonshotai/kimi-k3",
+          "label": "MoonshotAI: Kimi K3"
+        },
+        {
+          "id": "kilo/minimax/minimax-m3",
+          "label": "MiniMax: MiniMax M3"
+        },
+        {
+          "id": "kilo/bytedance-seed/seed-2-1-turbo",
+          "label": "ByteDance Seed: Seed 2.1 Turbo Thinking"
+        },
+        {
+          "id": "kilo/google/gemini-3-pro-image",
+          "label": "Google: Nano Banana Pro (Gemini 3 Pro Image) Thinking"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "kilo",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "kilo/deepseek/deepseek-v4.1-flash",
+          "label": "DeepSeek: DeepSeek V4.1 Flash",
+          "capabilityTags": [
+            "latency_optimized"
+          ],
+          "controls": []
+        },
+        {
+          "id": "kilo/z-ai/glm-5.3-flash",
+          "label": "Z.ai: GLM 5.3 Flash",
+          "capabilityTags": [
+            "latency_optimized"
+          ],
+          "controls": []
+        },
+        {
+          "id": "kilo/moonshotai/kimi-k3",
+          "label": "MoonshotAI: Kimi K3",
+          "controls": []
+        },
+        {
+          "id": "kilo/minimax/minimax-m3",
+          "label": "MiniMax: MiniMax M3",
+          "capabilityTags": [
+            "latency_optimized"
+          ],
+          "controls": []
+        },
+        {
+          "id": "kilo/bytedance-seed/seed-2-1-turbo",
+          "label": "ByteDance Seed: Seed 2.1 Turbo Thinking",
+          "controls": []
+        },
+        {
+          "id": "kilo/google/gemini-3-pro-image",
+          "label": "Google: Nano Banana Pro (Gemini 3 Pro Image) Thinking",
+          "capabilityTags": [
+            "reasoning"
+          ],
+          "controls": []
+        }
+      ],
+      "controls": [],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "kilo/deepseek/deepseek-v4.1-flash",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "entry_only",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "kilo/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "goose": {
+    "base": {
+      "provider": "goose",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "chatgpt_codex/gpt-5.6-sol",
+          "label": "gpt-5.6-sol — Off"
+        },
+        {
+          "id": "chatgpt_codex/gpt-5.6-terra",
+          "label": "gpt-5.6-terra — Off"
+        },
+        {
+          "id": "chatgpt_codex/gpt-5.6-luna",
+          "label": "gpt-5.6-luna — Off"
+        },
+        {
+          "id": "chatgpt_codex/gpt-5.6",
+          "label": "gpt-5.6 — Off"
+        },
+        {
+          "id": "chatgpt_codex/gpt-5.5",
+          "label": "gpt-5.5 — Off"
+        },
+        {
+          "id": "chatgpt_codex/gpt-5.4",
+          "label": "gpt-5.4 — Off"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "goose",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "chatgpt_codex/gpt-5.6-sol",
+          "label": "gpt-5.6-sol — Off",
+          "controls": []
+        },
+        {
+          "id": "chatgpt_codex/gpt-5.6-terra",
+          "label": "gpt-5.6-terra — Off",
+          "controls": []
+        },
+        {
+          "id": "chatgpt_codex/gpt-5.6-luna",
+          "label": "gpt-5.6-luna — Off",
+          "controls": []
+        },
+        {
+          "id": "chatgpt_codex/gpt-5.6",
+          "label": "gpt-5.6 — Off",
+          "controls": []
+        },
+        {
+          "id": "chatgpt_codex/gpt-5.5",
+          "label": "gpt-5.5 — Off",
+          "controls": []
+        },
+        {
+          "id": "chatgpt_codex/gpt-5.4",
+          "label": "gpt-5.4 — Off",
+          "capabilityTags": [
+            "reasoning"
+          ],
+          "controls": []
+        }
+      ],
+      "controls": [],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "chatgpt_codex/gpt-5.6-sol",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "entry_only",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "goose/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "pi": {
+    "base": {
+      "provider": "pi",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "openai-codex/gpt-5.6-luna",
+          "label": "gpt-5.6-luna [openai-codex] — medium"
+        },
+        {
+          "id": "openai-codex/gpt-5.6-sol",
+          "label": "gpt-5.6-sol [openai-codex] — medium"
+        },
+        {
+          "id": "openai-codex/gpt-5.6-terra",
+          "label": "gpt-5.6-terra [openai-codex] — medium"
+        },
+        {
+          "id": "openai-codex/gpt-6-astra",
+          "label": "gpt-6-astra [openai-codex] — medium"
+        },
+        {
+          "id": "openai-codex/gpt-6-luna",
+          "label": "gpt-6-luna [openai-codex] — medium"
+        },
+        {
+          "id": "openai-codex/gpt-6-sol",
+          "label": "gpt-6-sol [openai-codex] — medium"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "pi",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "openai-codex/gpt-5.6-luna",
+          "label": "gpt-5.6-luna [openai-codex] — medium",
+          "controls": []
+        },
+        {
+          "id": "openai-codex/gpt-5.6-sol",
+          "label": "gpt-5.6-sol [openai-codex] — medium",
+          "controls": []
+        },
+        {
+          "id": "openai-codex/gpt-5.6-terra",
+          "label": "gpt-5.6-terra [openai-codex] — medium",
+          "controls": []
+        },
+        {
+          "id": "openai-codex/gpt-6-astra",
+          "label": "gpt-6-astra [openai-codex] — medium",
+          "controls": []
+        },
+        {
+          "id": "openai-codex/gpt-6-luna",
+          "label": "gpt-6-luna [openai-codex] — medium",
+          "controls": []
+        },
+        {
+          "id": "openai-codex/gpt-6-sol",
+          "label": "gpt-6-sol [openai-codex] — medium",
+          "controls": []
+        }
+      ],
+      "controls": [],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "openai-codex/gpt-5.6-luna",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "entry_only",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "pi/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "auggie": {
+    "base": {
+      "provider": "auggie",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "gpt-6-astra",
+          "label": "GPT-6 Astra"
+        },
+        {
+          "id": "gpt-5-6-sol",
+          "label": "GPT-5.6 Sol"
+        },
+        {
+          "id": "claude-fable-5-1",
+          "label": "Claude Fable 5.1"
+        },
+        {
+          "id": "claude-opus-5-5",
+          "label": "Claude Opus 5.5"
+        },
+        {
+          "id": "grok-4-7",
+          "label": "Grok 4.7"
+        },
+        {
+          "id": "butler_a",
+          "label": "Prism (Claude + GPT)"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "auggie",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "gpt-6-astra",
+          "label": "GPT-6 Astra",
+          "controls": []
+        },
+        {
+          "id": "gpt-5-6-sol",
+          "label": "GPT-5.6 Sol",
+          "controls": []
+        },
+        {
+          "id": "claude-fable-5-1",
+          "label": "Claude Fable 5.1",
+          "capabilityTags": [
+            "reasoning"
+          ],
+          "controls": []
+        },
+        {
+          "id": "claude-opus-5-5",
+          "label": "Claude Opus 5.5",
+          "capabilityTags": [
+            "reasoning"
+          ],
+          "controls": []
+        },
+        {
+          "id": "grok-4-7",
+          "label": "Grok 4.7",
+          "controls": []
+        },
+        {
+          "id": "butler_a",
+          "label": "Prism (Claude + GPT)",
+          "controls": []
+        }
+      ],
+      "controls": [],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "gpt-6-astra",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "entry_only",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "auggie/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "junie": {
+    "base": {
+      "provider": "junie",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": "Gemini 3.7 Flash",
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "Gemini 3.7 Flash",
+          "label": "Gemini 3.7 Flash — Medium",
+          "default": true
+        },
+        {
+          "id": "Claude Fable 5.1",
+          "label": "Claude Fable 5.1 — Low"
+        },
+        {
+          "id": "Gemini 3.8 Flash",
+          "label": "Gemini 3.8 Flash — Medium"
+        },
+        {
+          "id": "GPT-5.6-SOL",
+          "label": "GPT-5.6-SOL — Low"
+        },
+        {
+          "id": "Grok 4.6",
+          "label": "Grok 4.6 — Low"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "junie",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": "Gemini 3.7 Flash",
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "Gemini 3.7 Flash",
+          "label": "Gemini 3.7 Flash — Medium",
+          "default": true,
+          "capabilityTags": [
+            "latency_optimized"
+          ],
+          "controls": []
+        },
+        {
+          "id": "Claude Fable 5.1",
+          "label": "Claude Fable 5.1 — Low",
+          "capabilityTags": [
+            "reasoning"
+          ],
+          "controls": []
+        },
+        {
+          "id": "Gemini 3.8 Flash",
+          "label": "Gemini 3.8 Flash — Medium",
+          "capabilityTags": [
+            "latency_optimized"
+          ],
+          "controls": []
+        },
+        {
+          "id": "GPT-5.6-SOL",
+          "label": "GPT-5.6-SOL — Low",
+          "controls": []
+        },
+        {
+          "id": "Grok 4.6",
+          "label": "Grok 4.6 — Low",
+          "controls": []
+        }
+      ],
+      "controls": [],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "Gemini 3.7 Flash",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "entry_only",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "junie/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "kiro": {
+    "base": {
+      "provider": "kiro",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "claude-opus-5",
+          "label": "claude-opus-5"
+        },
+        {
+          "id": "claude-sonnet-5",
+          "label": "claude-sonnet-5"
+        },
+        {
+          "id": "gpt-5.6-sol",
+          "label": "gpt-5.6-sol"
+        },
+        {
+          "id": "gpt-5.6-terra",
+          "label": "gpt-5.6-terra"
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "label": "gpt-5.6-luna"
+        },
+        {
+          "id": "claude-haiku-4.5",
+          "label": "claude-haiku-4.5"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "kiro",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "claude-opus-5",
+          "label": "claude-opus-5",
+          "capabilityTags": [
+            "reasoning"
+          ],
+          "controls": []
+        },
+        {
+          "id": "claude-sonnet-5",
+          "label": "claude-sonnet-5",
+          "controls": []
+        },
+        {
+          "id": "gpt-5.6-sol",
+          "label": "gpt-5.6-sol",
+          "controls": []
+        },
+        {
+          "id": "gpt-5.6-terra",
+          "label": "gpt-5.6-terra",
+          "controls": []
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "label": "gpt-5.6-luna",
+          "controls": []
+        },
+        {
+          "id": "claude-haiku-4.5",
+          "label": "claude-haiku-4.5",
+          "capabilityTags": [
+            "latency_optimized"
+          ],
+          "controls": []
+        }
+      ],
+      "controls": [],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "claude-opus-5",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "entry_only",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "kiro/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "cline": {
+    "base": {
+      "provider": "cline",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "cline-pass/glm-5.3",
+          "label": "GLM-5.3 — Medium"
+        },
+        {
+          "id": "cline-pass/kimi-k3",
+          "label": "Kimi K3 — Medium"
+        },
+        {
+          "id": "cline-pass/qwen3.8-max",
+          "label": "Qwen3.8 Max — Medium"
+        },
+        {
+          "id": "cline-pass/deepseek-v4-pro",
+          "label": "DeepSeek V4 Pro — Medium"
+        },
+        {
+          "id": "cline-pass/minimax-m3",
+          "label": "MiniMax-M3 — Medium"
+        },
+        {
+          "id": "cline-pass/mimo-v2.5-pro",
+          "label": "MiMo-V2.5-Pro — Medium"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "cline",
+      "backend": "cli",
+      "instance": "native",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "cline-pass/glm-5.3",
+          "label": "GLM-5.3 — Medium",
+          "controls": []
+        },
+        {
+          "id": "cline-pass/kimi-k3",
+          "label": "Kimi K3 — Medium",
+          "controls": []
+        },
+        {
+          "id": "cline-pass/qwen3.8-max",
+          "label": "Qwen3.8 Max — Medium",
+          "controls": []
+        },
+        {
+          "id": "cline-pass/deepseek-v4-pro",
+          "label": "DeepSeek V4 Pro — Medium",
+          "capabilityTags": [
+            "reasoning"
+          ],
+          "controls": []
+        },
+        {
+          "id": "cline-pass/minimax-m3",
+          "label": "MiniMax-M3 — Medium",
+          "capabilityTags": [
+            "latency_optimized"
+          ],
+          "controls": []
+        },
+        {
+          "id": "cline-pass/mimo-v2.5-pro",
+          "label": "MiMo-V2.5-Pro — Medium",
+          "capabilityTags": [
+            "reasoning"
+          ],
+          "controls": []
+        }
+      ],
+      "controls": [],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "cline-pass/glm-5.3",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "entry_only",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "cline/cli/"
+        }
+      },
+      "warnings": []
+    }
+  },
+  "devin": {
+    "base": {
+      "provider": "devin",
+      "backend": "agent",
+      "instance": "acp",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "warnings": [],
+      "models": [
+        {
+          "id": "adaptive",
+          "label": "Adaptive"
+        },
+        {
+          "id": "claude-fable-5-1-medium",
+          "label": "Claude Fable 5.1 — Medium"
+        },
+        {
+          "id": "gemini-3-8-flash-medium",
+          "label": "Gemini 3.8 Flash — Medium"
+        },
+        {
+          "id": "gpt-6-astra-medium",
+          "label": "GPT-6 Astra — Medium"
+        },
+        {
+          "id": "grok-4-6-medium",
+          "label": "Grok 4.6 — Medium"
+        },
+        {
+          "id": "nemotron-3-ultra-high",
+          "label": "Nemotron 3 Ultra — High"
+        }
+      ]
+    },
+    "advanced": {
+      "provider": "devin",
+      "backend": "agent",
+      "instance": "acp",
+      "defaultModel": null,
+      "source": "static",
+      "cache": null,
+      "entries": [
+        {
+          "id": "adaptive",
+          "label": "Adaptive",
+          "capabilityTags": [
+            "tool_use"
+          ],
+          "controls": []
+        },
+        {
+          "id": "claude-fable-5-1-medium",
+          "label": "Claude Fable 5.1 — Medium",
+          "capabilityTags": [
+            "tool_use",
+            "reasoning"
+          ],
+          "controls": []
+        },
+        {
+          "id": "gemini-3-8-flash-medium",
+          "label": "Gemini 3.8 Flash — Medium",
+          "capabilityTags": [
+            "tool_use",
+            "latency_optimized"
+          ],
+          "controls": []
+        },
+        {
+          "id": "gpt-6-astra-medium",
+          "label": "GPT-6 Astra — Medium",
+          "capabilityTags": [
+            "tool_use"
+          ],
+          "controls": []
+        },
+        {
+          "id": "grok-4-6-medium",
+          "label": "Grok 4.6 — Medium",
+          "capabilityTags": [
+            "tool_use"
+          ],
+          "controls": []
+        },
+        {
+          "id": "nemotron-3-ultra-high",
+          "label": "Nemotron 3 Ultra — High",
+          "capabilityTags": [
+            "tool_use"
+          ],
+          "controls": []
+        }
+      ],
+      "controls": [],
+      "presets": [],
+      "defaultSelection": {
+        "entryId": "adaptive",
+        "entryMode": "explicit"
+      },
+      "support": {
+        "tier": "entry_only",
+        "advancedMetadataStatus": "verified_manifest",
+        "discoveryMode": "manual_refresh",
+        "provenance": {
+          "status": "verified_manifest",
+          "manifestId": "devin/agent/acp_stdio"
+        }
+      },
+      "warnings": []
+    }
+  }
+}

@@ -11,6 +11,7 @@ import {
 } from './providerCatalog.js';
 
 export interface ProviderModelSelection {
+  catalogRevision?: string;
   entryId?: string;
   entryMode: 'auto' | 'explicit';
   presetId?: string;
@@ -18,6 +19,10 @@ export interface ProviderModelSelection {
 }
 
 export interface ProviderModelResolution {
+  catalogRevision?: string;
+  bindingVersion?: number;
+  executionProvider?: string;
+  label?: string;
   entryId: string;
   model: string;
   entryMode: 'auto' | 'explicit';
@@ -76,7 +81,7 @@ function filterApplicableControls(
     return cloneSelectionControls(controls);
   }
 
-  const allowedControls = advancedCatalog.controls.filter((control) =>
+  const allowedControls = (advancedCatalog.entries.find(entry=>entry.id===entryId)?.controls ?? advancedCatalog.controls).filter((control) =>
     !control.applicableEntryIds
     || control.applicableEntryIds.length === 0
     || control.applicableEntryIds.includes(entryId));
@@ -109,14 +114,6 @@ function normalizeProviderEntryAlias(input: {
   const normalizedModel = normalizeProductProviderModelId(input.provider, input.model) ?? '';
   if (!normalizedModel) {
     return null;
-  }
-
-  if (
-    input.provider === 'claude'
-    && input.backend === 'cli'
-    && input.catalog.models.some((option) => option.id === 'opus')
-  ) {
-    return normalizedModel;
   }
 
   return normalizedModel;
@@ -192,6 +189,7 @@ export function cloneProviderModelSelection(
   }
 
   return {
+    ...(selection.catalogRevision ? {catalogRevision:selection.catalogRevision} : {}),
     ...(selection.entryId ? { entryId: selection.entryId } : {}),
     entryMode: selection.entryMode,
     ...(selection.presetId ? { presetId: selection.presetId } : {}),
@@ -216,6 +214,7 @@ function serializeProviderModelSelection(
     : undefined;
 
   return JSON.stringify({
+    ...(cloned.catalogRevision ? {catalogRevision:cloned.catalogRevision} : {}),
     ...(cloned.entryId ? { entryId: cloned.entryId } : {}),
     entryMode: cloned.entryMode,
     ...(cloned.presetId ? { presetId: cloned.presetId } : {}),
@@ -238,6 +237,10 @@ export function cloneProviderModelResolution(
   }
 
   return {
+    ...(resolution.catalogRevision ? {catalogRevision:resolution.catalogRevision} : {}),
+    ...(resolution.bindingVersion ? {bindingVersion:resolution.bindingVersion} : {}),
+    ...(resolution.executionProvider ? {executionProvider:resolution.executionProvider} : {}),
+    ...(resolution.label ? {label:resolution.label} : {}),
     entryId: resolution.entryId,
     model: resolution.model,
     entryMode: resolution.entryMode,
@@ -271,6 +274,7 @@ export function parseProviderModelSelection(
   return {
     ...(readTrimmedString(record.entryId) ? { entryId: readTrimmedString(record.entryId)! } : {}),
     entryMode,
+    ...(readTrimmedString(record.catalogRevision) ? {catalogRevision:readTrimmedString(record.catalogRevision)!} : {}),
     ...(readTrimmedString(record.presetId) ? { presetId: readTrimmedString(record.presetId)! } : {}),
     ...(controls ? { controls } : {}),
   };
@@ -307,8 +311,12 @@ export function parseProviderModelResolution(
     entryId,
     model,
     entryMode,
+    ...(readTrimmedString(record.catalogRevision) ? {catalogRevision:readTrimmedString(record.catalogRevision)!} : {}),
     ...(readTrimmedString(record.presetId) ? { presetId: readTrimmedString(record.presetId)! } : {}),
     ...(controls ? { controls } : {}),
+    ...(typeof record.bindingVersion === 'number' ? {bindingVersion:record.bindingVersion} : {}),
+    ...(readTrimmedString(record.executionProvider) ? {executionProvider:readTrimmedString(record.executionProvider)!} : {}),
+    ...(readTrimmedString(record.label) ? {label:readTrimmedString(record.label)!} : {}),
     ...(supportTier ? { supportTier } : {}),
     warnings: Array.isArray(record.warnings)
       ? record.warnings.filter((warning): warning is string => typeof warning === 'string')
@@ -319,6 +327,7 @@ export function parseProviderModelResolution(
 export function createExplicitProviderModelSelection(
   model: string | null | undefined,
   options: {
+    catalogRevision?: string;
     presetId?: string | null;
     controls?: Record<string, ProviderAdvancedControlValue>;
   } = {},
@@ -333,6 +342,7 @@ export function createExplicitProviderModelSelection(
   return {
     entryId,
     entryMode: 'explicit',
+    ...(options.catalogRevision ? {catalogRevision:options.catalogRevision} : {}),
     ...(options.presetId?.trim() ? { presetId: options.presetId.trim() } : {}),
     ...(controls ? { controls } : {}),
   };
@@ -352,6 +362,7 @@ export function sameProviderModelSelection(
   const leftControls = cloneSelectionControls(left.controls);
   const rightControls = cloneSelectionControls(right.controls);
   return left.entryMode === right.entryMode
+    && left.catalogRevision === right.catalogRevision
     && (left.entryId ?? null) === (right.entryId ?? null)
     && (left.presetId ?? null) === (right.presetId ?? null)
     && JSON.stringify(leftControls ?? null) === JSON.stringify(rightControls ?? null);
@@ -404,6 +415,13 @@ export function resolveCatalogTargetSelection(input: {
     advancedCatalog: input.advancedCatalog,
   });
   const resolvedInstance = (input.catalog.instance ?? normalizedTarget.instance) || '';
+  const savedEntry = normalizedTarget.modelSelection?.entryMode === 'explicit'
+    ? normalizedTarget.modelSelection.entryId?.trim() : undefined;
+  if ((input.preserveCurrentSelection ?? input.preserveCurrentModel) && savedEntry
+    && !input.catalog.models.some(entry => entry.id === savedEntry)) {
+    return { provider: normalizedTarget.provider, instance: resolvedInstance,
+      model: normalizedTarget.model?.trim() || savedEntry, modelSelection: null, modelResolution: null };
+  }
   const normalizedTargetModel = normalizedTarget.model?.trim() || '';
   const hasCurrentModel = input.catalog.models.some((option) => option.id === normalizedTarget.model);
   const legacyModelTarget = isLegacyProviderModelTarget({
@@ -459,12 +477,14 @@ export function resolveCatalogTargetSelection(input: {
   );
   const resolvedSelection = requestedSelection
     ? {
+        ...(input.catalog.catalogRevision ? {catalogRevision: input.catalog.catalogRevision} : {}),
         entryId: resolvedEntryId,
         entryMode: requestedSelection.entryMode,
         ...(resolvedPreset ? { presetId: resolvedPreset.id } : {}),
         ...(controls ? { controls } : {}),
       }
     : createExplicitProviderModelSelection(resolvedEntryId, {
+        catalogRevision: input.catalog.catalogRevision,
         presetId: undefined,
         controls,
       });

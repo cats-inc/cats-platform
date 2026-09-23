@@ -34,6 +34,7 @@ export function useProviderTargetReconciliation(input: {
   const [legacyManualTargetKey, setLegacyManualTargetKey] = useState<string | null>(null);
   const manualSelectionTargetKey = useRef<string | null>(null);
   const previousTargetKey = useRef('');
+  const publishedTarget = useRef<string | null>(null);
   const onTargetChangeRef = useRef(input.onTargetChange);
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export function useProviderTargetReconciliation(input: {
     && !input.modelSelection;
   const preserveExistingSelection =
     manualSelectionTargetKey.current === targetKey
+    || Boolean(input.model.trim())
     || Boolean(input.modelSelection)
     || isLegacyModelTarget;
 
@@ -126,19 +128,30 @@ export function useProviderTargetReconciliation(input: {
     });
     const sanitizedTarget = sanitizePersistentTargetSelection({
       target: nextTarget,
-      controls: input.effectiveAdvancedCatalog.controls,
+      controls: input.effectiveAdvancedCatalog.entries.find(entry => entry.id === nextTarget.model)?.controls ?? input.effectiveAdvancedCatalog.controls,
     });
 
-    if (
+    const targetChanged =
       sanitizedTarget.instance !== input.instance
       || sanitizedTarget.model !== input.model
-      || !sameProviderModelSelection(sanitizedTarget.modelSelection, input.modelSelection)
-    ) {
-      onTargetChangeRef.current(attachExecutionLabelToProviderTarget({
-        target: sanitizedTarget,
-        effectiveCatalog: input.effectiveCatalog,
-        effectiveAdvancedCatalog: input.effectiveAdvancedCatalog,
-      }));
+      || !sameProviderModelSelection(sanitizedTarget.modelSelection, input.modelSelection);
+    const knownEntry = input.effectiveCatalog.models.some(entry => entry.id === sanitizedTarget.model);
+    if (!targetChanged && !knownEntry) {
+      return;
+    }
+    // Publish the reconciled selection and its label together. A separate label
+    // effect using the original props could otherwise overwrite this revision
+    // or restore controls that reconciliation just removed.
+    const labeledTarget = attachExecutionLabelToProviderTarget({
+      target: sanitizedTarget,
+      effectiveCatalog: input.effectiveCatalog,
+      effectiveAdvancedCatalog: input.effectiveAdvancedCatalog,
+    });
+    const publicationKey = JSON.stringify([labeledTarget,
+      input.effectiveCatalog.catalogRevision, input.effectiveCatalog.catalogActivationId]);
+    if (targetChanged || publishedTarget.current !== publicationKey) {
+      publishedTarget.current = publicationKey;
+      onTargetChangeRef.current(labeledTarget);
     }
   }, [
     input.catalogLoading,

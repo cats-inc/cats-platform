@@ -5,9 +5,9 @@ import {
   type ProviderAdvancedModelCatalog,
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
-import { recordLiveProviderModelLabels } from '../../shared/providerModelLabelRegistry.js';
+import { clearLiveProviderModelLabels, recordLiveProviderModelLabels, replaceInformationalProviderLabels, setProviderModelLabelContext } from '../../shared/providerModelLabelRegistry.js';
 import { resolveSelectedProviderInstance } from '../../shared/providerSelection.js';
-import { invalidateProviderClientSession, onProviderClientInvalidation, ProviderClientAuthError } from './providerClientInvalidation.js';
+import { getProviderClientGeneration, invalidateProviderClientSession, onProviderClientInvalidation, ProviderClientAuthError } from './providerClientInvalidation.js';
 
 export const PROVIDER_CATALOG_CLIENT_CACHE_TTL_MS = 15_000;
 export const PROVIDER_MODEL_CATALOG_LOAD_FAILED_WARNING =
@@ -40,6 +40,20 @@ const providerAdvancedCatalogClientCache:
     inflight: new Map(),
   };
 
+let catalogRefreshVersion = 0;
+const catalogRefreshListeners = new Set<() => void>();
+export function getProviderCatalogRefreshVersion(): number { return catalogRefreshVersion; }
+export function subscribeProviderCatalogRefreshes(listener: () => void): () => void {
+  catalogRefreshListeners.add(listener); return () => { catalogRefreshListeners.delete(listener); };
+}
+
+/** Refresh same-context catalogs immediately while mounted views retain a coherent baseline. */
+export function refreshProviderCatalogClientCache(): void {
+  clearCatalogEntries();
+  catalogRefreshVersion += 1;
+  for (const listener of catalogRefreshListeners) listener();
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -55,7 +69,7 @@ function buildProviderCatalogCacheKey(
   provider: string,
   instance: string | null | undefined,
 ): string {
-  return `${provider.trim()}\u0000${normalizeCatalogInstance(instance) ?? ''}`;
+  return `${getProviderClientGeneration()}\u0000${provider.trim()}\u0000${normalizeCatalogInstance(instance) ?? ''}`;
 }
 
 function buildProviderCatalogRequestPath(input: {
@@ -148,6 +162,12 @@ async function fetchProviderCatalogFromClientCache<TCatalog>(input: {
 }
 
 export function clearProviderCatalogClientCache(): void {
+  clearLiveProviderModelLabels();
+  setProviderModelLabelContext(String(getProviderClientGeneration()));
+  clearCatalogEntries();
+}
+
+function clearCatalogEntries(): void {
   providerModelCatalogClientCache.entries.clear();
   providerModelCatalogClientCache.inflight.clear();
   providerAdvancedCatalogClientCache.entries.clear();
@@ -155,6 +175,17 @@ export function clearProviderCatalogClientCache(): void {
 }
 
 onProviderClientInvalidation(clearProviderCatalogClientCache);
+
+export async function loadInformationalProviderLabels(): Promise<void> {
+  const generation = getProviderClientGeneration();
+  try {
+    const response = await fetch('/api/provider-catalog/information', { signal: AbortSignal.timeout(10_000) });
+    if (!response.ok || generation !== getProviderClientGeneration()) return;
+    const value = await response.json();
+    if (generation !== getProviderClientGeneration()) return;
+    if (Array.isArray(value.scopes)) replaceInformationalProviderLabels(value.scopes);
+  } catch { /* Informational labels do not affect Runtime-backed picker availability. */ }
+}
 
 function peekProviderCatalogClientCache<TCatalog>(
   cache: ProviderCatalogClientCacheState<TCatalog>,
@@ -209,7 +240,10 @@ export async function fetchProviderModelCatalogFromClientCache(options: {
     cache: providerModelCatalogClientCache,
     cacheKey,
     force: options.force,
-    accepted: (catalog) => recordLiveProviderModelLabels(provider, catalog.models),
+    accepted: (catalog) => recordLiveProviderModelLabels(provider, catalog.models, {
+      target: catalog.instance?.includes('/') ? catalog.instance : catalog.backend && catalog.instance ? `${catalog.backend}/${catalog.instance}` : instance ?? '',
+      catalogRevision: catalog.catalogRevision,
+    }),
     load: async () => {
       const response = await (options.fetchImpl ?? fetch)(
         buildProviderCatalogRequestPath({ provider, instance }),

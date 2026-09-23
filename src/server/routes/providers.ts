@@ -113,6 +113,7 @@ interface ProviderCatalogCacheState {
 const providerCatalogCache = new WeakMap<RuntimeClient, ProviderCatalogCacheState>();
 
 interface ProviderSnapshotPersistenceState {
+  connectionIdentity?: string;
   snapshotPath: string;
   pendingTimer: ReturnType<typeof setTimeout> | null;
   writing: Promise<void> | null;
@@ -124,9 +125,10 @@ const providerSnapshotPersistence = new WeakMap<RuntimeClient, ProviderSnapshotP
 function configureProviderSnapshotPersistence(
   runtimeClient: RuntimeClient,
   snapshotPath: string,
-  options: { writeNotifier?: () => void } = {},
+  options: { writeNotifier?: () => void; connectionIdentity?: string } = {},
 ): void {
   providerSnapshotPersistence.set(runtimeClient, {
+    connectionIdentity: options.connectionIdentity,
     snapshotPath,
     pendingTimer: null,
     writing: null,
@@ -138,6 +140,7 @@ function buildProviderSnapshotForRuntime(
   runtimeClient: RuntimeClient,
 ): ProviderSnapshot {
   const snapshot = createEmptyProviderSnapshot();
+  snapshot.connectionIdentity = providerSnapshotPersistence.get(runtimeClient)?.connectionIdentity;
   const registryCacheState = truthfulProviderRegistryCache.get(runtimeClient);
   const registryEntry = registryCacheState?.entries.get(TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY);
   // Only persist a 'ready' registry. 'no_usable_targets' would mislead the
@@ -147,6 +150,7 @@ function buildProviderSnapshotForRuntime(
   if (registryEntry && registryEntry.value.state === 'ready') {
     snapshot.registry = {
       state: registryEntry.value.state,
+      revision: registryEntry.value.revision,
       providers: registryEntry.value.providers,
       ...(registryEntry.value.warnings ? { warnings: registryEntry.value.warnings } : {}),
     };
@@ -158,8 +162,8 @@ function buildProviderSnapshotForRuntime(
     for (const [cacheKey, entry] of catalogCacheState.models.entries) {
       catalogEntries.set(cacheKey, {
         provider: entry.value.provider,
-        instance: entry.value.instance ?? null,
-        models: entry.value,
+        instance: entry.value.instance?.includes('/') ? entry.value.instance : `${entry.value.backend}/${entry.value.instance ?? ''}`,
+        models: { ...entry.value, instance: entry.value.instance?.includes('/') ? entry.value.instance : `${entry.value.backend}/${entry.value.instance ?? ''}` },
         advanced: catalogEntries.get(cacheKey)?.advanced ?? null,
       });
     }
@@ -167,9 +171,9 @@ function buildProviderSnapshotForRuntime(
       const existing = catalogEntries.get(cacheKey);
       catalogEntries.set(cacheKey, {
         provider: entry.value.provider,
-        instance: entry.value.instance ?? null,
+        instance: entry.value.instance?.includes('/') ? entry.value.instance : `${entry.value.backend}/${entry.value.instance ?? ''}`,
         models: existing?.models ?? null,
-        advanced: entry.value,
+        advanced: { ...entry.value, instance: entry.value.instance?.includes('/') ? entry.value.instance : `${entry.value.backend}/${entry.value.instance ?? ''}` },
       });
     }
     snapshot.catalogs = [...catalogEntries.values()];
@@ -330,6 +334,7 @@ function seedTruthfulProviderRegistryFromSnapshot(
   if (cacheState.entries.has(cacheKey)) {
     return;
   }
+  cacheState.revision = snapshot.registry.revision;
   cacheState.entries.set(cacheKey, {
     lifecycle: 'error_backoff',
     value: snapshot.registry,
@@ -367,7 +372,10 @@ function seedProviderCatalogsFromSnapshot(
         },
       });
     }
-    if (entry.advanced && !cacheState.advanced.entries.has(cacheKey)) {
+    if (entry.advanced && (!entry.models || (entry.models.catalogRevision === entry.advanced.catalogRevision
+      && entry.models.catalogActivationId === entry.advanced.catalogActivationId
+      && entry.models.backend === entry.advanced.backend && entry.models.instance === entry.advanced.instance))
+      && !cacheState.advanced.entries.has(cacheKey)) {
       cacheState.advanced.entries.set(cacheKey, {
         lifecycle: 'error_backoff',
         value: entry.advanced,
@@ -386,15 +394,17 @@ export async function seedProviderSelectorFromSnapshot(
   runtimeClient: RuntimeClient,
   snapshotPath: string,
   options: {
+    connectionIdentity?: string;
     onSnapshotPersisted?: () => void;
   } = {},
 ): Promise<void> {
   const snapshot = await loadProviderSnapshot(snapshotPath);
-  if (snapshot) {
+  if (snapshot && (!options.connectionIdentity || snapshot.connectionIdentity === options.connectionIdentity)) {
     seedTruthfulProviderRegistryFromSnapshot(runtimeClient, snapshot);
     seedProviderCatalogsFromSnapshot(runtimeClient, snapshot);
   }
   configureProviderSnapshotPersistence(runtimeClient, snapshotPath, {
+    connectionIdentity: options.connectionIdentity,
     writeNotifier: options.onSnapshotPersisted,
   });
 }
@@ -1071,14 +1081,16 @@ function refreshProviderCatalogCacheEntry<TCatalog extends { warnings?: string[]
   cacheKey: string,
   load: () => Promise<TCatalog>,
   runtimeClient?: RuntimeClient,
+  forceRefresh = false,
 ): Promise<TCatalog> {
   const inflight = cacheState.inflight.get(cacheKey);
-  if (inflight) {
+  if (inflight && !forceRefresh) {
     return inflight;
   }
 
   const refreshPromise = load()
     .then((value) => {
+      if (cacheState.inflight.get(cacheKey) !== refreshPromise) throw new Error('Provider catalog request was superseded.');
       writeProviderCatalogCacheEntry(cacheState, cacheKey, value);
       if (runtimeClient) {
         notifyProviderCacheUpdated(runtimeClient);
@@ -1086,6 +1098,7 @@ function refreshProviderCatalogCacheEntry<TCatalog extends { warnings?: string[]
       return value;
     })
     .catch((error) => {
+      if (cacheState.inflight.get(cacheKey) !== refreshPromise) throw error;
       const cached = readProviderCatalogCacheEntry(cacheState, cacheKey);
       if (
         shouldServeStaleProviderCatalogForError(error)
@@ -1096,7 +1109,7 @@ function refreshProviderCatalogCacheEntry<TCatalog extends { warnings?: string[]
       throw error;
     })
     .finally(() => {
-      cacheState.inflight.delete(cacheKey);
+      if (cacheState.inflight.get(cacheKey) === refreshPromise) cacheState.inflight.delete(cacheKey);
     });
 
   cacheState.inflight.set(cacheKey, refreshPromise);
@@ -1393,16 +1406,17 @@ async function refreshProviderCatalogsInternal(
     for (const instance of provider.instances) {
       const task = (async () => {
         try {
+          const cacheKey = buildProviderCatalogCacheKey({ provider: provider.id, instance: providerInstanceTarget(instance) });
           const [models, advanced] = await Promise.all([
-            dependencies.runtimeClient.getProviderModels(provider.id, providerInstanceTarget(instance), { forceRefresh: true }),
-            dependencies.runtimeClient.getAdvancedProviderModels(provider.id, providerInstanceTarget(instance), { forceRefresh: true }),
+            refreshProviderCatalogCacheEntry(cacheState.models, cacheKey,
+              () => dependencies.runtimeClient.getProviderModels(provider.id, providerInstanceTarget(instance), { forceRefresh: true }), dependencies.runtimeClient, true),
+            refreshProviderCatalogCacheEntry(cacheState.advanced, cacheKey,
+              () => dependencies.runtimeClient.getAdvancedProviderModels(provider.id, providerInstanceTarget(instance), { forceRefresh: true }), dependencies.runtimeClient, true),
           ]);
           const latest = await currentSelection(dependencies);
           if (latest.revision !== registry.revision) throw new Error('Provider selection changed during catalog refresh.');
-          const cacheKey = buildProviderCatalogCacheKey({ provider: provider.id, instance: providerInstanceTarget(instance) });
-          writeProviderCatalogCacheEntry(cacheState.models, cacheKey, models);
-          writeProviderCatalogCacheEntry(cacheState.advanced, cacheKey, advanced);
-          notifyProviderCacheUpdated(dependencies.runtimeClient);
+          if (models.catalogRevision !== advanced.catalogRevision
+            || models.catalogActivationId !== advanced.catalogActivationId) throw new Error('Catalog changed during refresh; retry.');
           refreshed += 1;
         } catch (error) {
           failures.push({

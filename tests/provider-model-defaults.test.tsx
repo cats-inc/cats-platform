@@ -1,16 +1,17 @@
 import { resetTestDom } from './helpers/installDomBeforeReact.ts';
 import assert from 'node:assert/strict';
+import {createFixtureProviderModelCatalog} from './helpers/catalogFixture.js';
 import test from 'node:test';
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import React, { useCallback, useState } from 'react';
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import { clearProviderCatalogClientCache } from '../src/app/renderer/providerCatalogClient.ts';
+import { refreshProviderCatalogClientCache } from '../src/app/renderer/providerCatalogClient.ts';
 import { clearProviderRegistryClientCache } from '../src/app/renderer/providerRegistryClient.ts';
 import { ProviderModelFields }
   from '../src/design/components/ProviderModelFields.tsx';
 import {
   createProviderAdvancedCatalogFromModelCatalog,
-  createStaticProviderModelCatalog,
   listProductProviders,
   type ProviderAdvancedModelCatalog,
 } from '../src/shared/providerCatalog.ts';
@@ -41,28 +42,28 @@ const codex: ProviderAdvancedModelCatalog = {
     controls: { 'codex.reasoning_effort': 'low' } },
   support: { tier: 'full', notes: [] }, warnings: [],
 };
-const claude = createStaticProviderModelCatalog('claude', { instance: 'cli/native' });
-const piModels = { ...createStaticProviderModelCatalog('pi', { instance: 'cli/native' }),
+const claude = createFixtureProviderModelCatalog('claude', { instance: 'cli/native' });
+const piModels = { ...createFixtureProviderModelCatalog('pi', { instance: 'cli/native' }),
   defaultModel: null };
 const pi = { ...createProviderAdvancedCatalogFromModelCatalog(piModels),
   defaultSelection: { entryMode: 'explicit' as const, entryId: 'openai-codex/gpt-5.6-luna' } };
-const gooseModels = { ...createStaticProviderModelCatalog('goose', { instance: 'cli/native' }),
+const gooseModels = { ...createFixtureProviderModelCatalog('goose', { instance: 'cli/native' }),
   defaultModel: null };
 const goose = { ...createProviderAdvancedCatalogFromModelCatalog(gooseModels),
   defaultSelection: { entryMode: 'explicit' as const, entryId: 'chatgpt_codex/gpt-5.6-sol' } };
-const auggieModels = { ...createStaticProviderModelCatalog('auggie', { instance: 'cli/native' }),
+const auggieModels = { ...createFixtureProviderModelCatalog('auggie', { instance: 'cli/native' }),
   defaultModel: null };
 const auggie = { ...createProviderAdvancedCatalogFromModelCatalog(auggieModels),
   defaultSelection: null };
-const junieModels = createStaticProviderModelCatalog('junie', { instance: 'cli/native' });
+const junieModels = createFixtureProviderModelCatalog('junie', { instance: 'cli/native' });
 const junie: ProviderAdvancedModelCatalog = {
   ...createProviderAdvancedCatalogFromModelCatalog(junieModels),
   entries: junieModels.models.map(entry => ({ ...entry,
     label: entry.label.replace(/ \(default\)$/, '') })),
   defaultSelection: { entryMode: 'explicit', entryId: 'Gemini 3.7 Flash' },
 };
-const agyModels = createStaticProviderModelCatalog('antigravity', { instance: 'cli/native' });
-const grokModels = createStaticProviderModelCatalog('grok', { instance: 'cli/native' });
+const agyModels = createFixtureProviderModelCatalog('antigravity', { instance: 'cli/native' });
+const grokModels = createFixtureProviderModelCatalog('grok', { instance: 'cli/native' });
 const grok: ProviderAdvancedModelCatalog = {
   ...createProviderAdvancedCatalogFromModelCatalog(grokModels),
   backend: 'cli', defaultModel: null, defaultSelection: null,
@@ -140,6 +141,33 @@ function reset(): void {
   clearProviderRegistryClientCache();
 }
 
+test('a data-only Pi replacement exposes an unknown model and preserves its subscription label without editable fixed effort', async (t) => {
+  reset(); t.after(reset);
+  let data = { ...piModels, catalogRevision: 'before', catalogActivationId: 'before' };
+  const changes: ProviderTargetSelection[] = [];
+  const registry = async () => ({ state: 'ready' as const, providers: listProductProviders().filter(p => p.id === 'pi') });
+  const models = async () => data;
+  const advanced = async () => createProviderAdvancedCatalogFromModelCatalog(data);
+  function PatchPicker() {
+    const [target, setTarget] = useState<ProviderTargetSelection>({ provider: 'pi', instance: 'cli/native', model: '', modelSelection: null });
+    const change = useCallback((next: ProviderTargetSelection) => { changes.push(next); setTarget(next); }, []);
+    return <I18nProvider locale="en"><ProviderModelFields provider={target.provider} instance={target.instance}
+      model={target.model} modelSelection={target.modelSelection} onTargetChange={change}
+      fetchProviderRegistry={registry} fetchProviderModels={models} fetchAdvancedProviderModels={advanced} /></I18nProvider>;
+  }
+  const view = render(<PatchPicker />);
+  await waitFor(() => assert.equal(changes.at(-1)?.model, piModels.models[0].id));
+  data = { ...data, catalogRevision: 'patched', catalogActivationId: 'patched', defaultModel: null,
+    models: [{ id: 'Future.Unknown-ID', label: 'Future model [test-subscription]' }] };
+  refreshProviderCatalogClientCache();
+  await waitFor(() => assert.ok(view.getByRole('option', { name: 'Future model [test-subscription]' })));
+  fireEvent.change(view.getByRole('combobox', { name: /^Model/ }), { target: { value: 'Future.Unknown-ID' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.entryId, 'Future.Unknown-ID'));
+  assert.equal(changes.at(-1)?.modelSelection?.catalogRevision, 'patched');
+  assert.equal(view.queryByRole('combobox', { name: /effort|thinking/i }), null);
+  assert.equal(view.queryByRole('option', { name: /default/i }), null);
+});
+
 test('Junie keeps its runtime default label and fixed effort across model changes and reopen', async (t) => {
   reset();
   t.after(reset);
@@ -177,7 +205,7 @@ test('Grok selects the first effort for each model, keeps labels and restores sa
   const effort = () => view.getByRole('combobox', { name: 'Reasoning effort' }) as HTMLSelectElement;
   await waitFor(() => assert.equal(changes.at(-1)?.model, 'opus'));
   fireEvent.change(view.getByRole('combobox', { name: 'Provider' }), { target: { value: 'grok' } });
-  await waitFor(() => assert.equal(changes.at(-1)?.model, 'grok-4.6'));
+  await waitFor(() => assert.equal(changes.at(-1)?.model, 'grok-4.6', JSON.stringify(changes)));
   await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.controls?.['grok.reasoning_effort'], 'xhigh'));
   assert.equal(model().selectedOptions[0].textContent, 'Grok 4.6');
   assert.equal(effort().value, 'xhigh');

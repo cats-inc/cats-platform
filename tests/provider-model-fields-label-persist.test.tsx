@@ -3,7 +3,7 @@ import { resetTestDom } from './helpers/installDomBeforeReact.ts';
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import React, { useCallback, useState } from 'react';
 
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
@@ -13,7 +13,6 @@ import {
   ProviderModelFields,
 } from '../src/design/components/ProviderModelFields.tsx';
 import { shouldPublishReadyPayload } from '../src/products/shared/renderer/hooks/usePublishReadyPayload.ts';
-import { clearRememberedExecutionLabels } from '../src/shared/executionLabel.ts';
 import { enCatalog } from '../src/shared/i18n/catalogs/en.ts';
 import { zhTWCatalog } from '../src/shared/i18n/catalogs/zh-TW.ts';
 import { messageKeys } from '../src/shared/i18n/messageKeys.ts';
@@ -89,7 +88,6 @@ function resetSharedState(): void {
   resetTestDom();
   clearProviderCatalogClientCache();
   clearProviderRegistryClientCache();
-  clearRememberedExecutionLabels();
   clearLiveProviderModelLabels();
 }
 
@@ -107,12 +105,14 @@ function ControlledPicker(props: {
   onChange: (target: ProviderTargetSelection) => void;
   /** Changing this forces a render without touching the picker's own props. */
   bump: number;
+  unstableHandler?: boolean;
+  initialSelection?: ProviderModelSelection;
 }) {
   const [target, setTarget] = useState<{
     instance: string;
     model: string;
     modelSelection: ProviderModelSelection | null;
-  }>({ instance: codexInstance(), model: MODEL_ID, modelSelection: null });
+  }>({ instance: codexInstance(), model: MODEL_ID, modelSelection: props.initialSelection ?? null });
   const { models, advanced, onChange } = props;
   const fetchProviderRegistry = useCallback(
     async () => ({ state: 'ready' as const, revision: 'selected-codex',
@@ -137,7 +137,7 @@ function ControlledPicker(props: {
         instance={target.instance}
         model={target.model}
         modelSelection={target.modelSelection}
-        onTargetChange={onTargetChange}
+        onTargetChange={props.unstableHandler ? next => onTargetChange(structuredClone(next)) : onTargetChange}
         fetchProviderRegistry={fetchProviderRegistry}
         fetchProviderModels={fetchProviderModels}
         fetchAdvancedProviderModels={fetchAdvancedProviderModels}
@@ -157,6 +157,95 @@ function ControlledPicker(props: {
 async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 60));
 }
+
+test('label publication stays bounded with changing parent callbacks and cloned selections', async (t) => {
+  resetSharedState(); t.after(resetSharedState);
+  const changes: ProviderTargetSelection[] = [];
+  const models = Promise.resolve(runtimeCatalog());
+  const advanced = Promise.resolve(runtimeAdvancedCatalog());
+  const onChange = (target: ProviderTargetSelection) => {
+    changes.push(target);
+    assert.ok(changes.length < 8, 'label persistence must not create a parent write loop');
+  };
+  const view = render(<ControlledPicker models={models} advanced={advanced} onChange={onChange} bump={0} unstableHandler />);
+  await waitFor(() => assert.ok(changes.some(change => change.executionLabel?.includes(RUNTIME_LABEL))));
+  await settle();
+  const count = changes.length;
+  view.rerender(<ControlledPicker models={models} advanced={advanced} onChange={onChange} bump={1} unstableHandler />);
+  await settle();
+  assert.equal(changes.length, count, 'same catalog/target label is published once per picker identity');
+});
+
+test('label publication never restores an old revision or a removed control after reconciliation', async (t) => {
+  resetSharedState(); t.after(resetSharedState);
+  const changes: ProviderTargetSelection[] = [];
+  const models = Promise.resolve({ ...runtimeCatalog(), catalogRevision: 'R2', catalogActivationId: 'A2' });
+  const advanced = Promise.resolve({ ...runtimeAdvancedCatalog(), catalogRevision: 'R2', catalogActivationId: 'A2' });
+  const onChange = (target: ProviderTargetSelection) => { changes.push(target); };
+  render(<ControlledPicker models={models} advanced={advanced} onChange={onChange} bump={0}
+    initialSelection={{ entryId: MODEL_ID, entryMode: 'explicit', catalogRevision: 'R1',
+      controls: { 'codex.removed_control': 'stale' } }} />);
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.catalogRevision, 'R2'));
+  await settle();
+  assert.ok(changes.length > 0);
+  for (const change of changes) {
+    assert.equal(change.modelSelection?.catalogRevision, 'R2', 'a label write cannot restore R1');
+    assert.equal(change.modelSelection?.controls?.['codex.removed_control'], undefined);
+    assert.ok(change.executionLabel?.includes(RUNTIME_LABEL));
+  }
+});
+
+test('a saved plain model remains selected when it differs from the current catalog default', async (t) => {
+  resetSharedState(); t.after(resetSharedState);
+  const changes: ProviderTargetSelection[] = [];
+  const preferred = { id: 'different-default', label: 'Different default', default: true };
+  const saved = { id: MODEL_ID, label: RUNTIME_LABEL };
+  const models = Promise.resolve({ ...runtimeCatalog(), defaultModel: preferred.id, models: [preferred, saved] });
+  const advanced = Promise.resolve({ ...runtimeAdvancedCatalog(), defaultModel: preferred.id,
+    entries: [preferred, saved], defaultSelection: { entryId: preferred.id, entryMode: 'explicit' as const } });
+  const onChange = (target: ProviderTargetSelection) => { changes.push(target); };
+  render(<ControlledPicker models={models} advanced={advanced} onChange={onChange} bump={0} />);
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.entryId, MODEL_ID));
+  await settle();
+  assert.ok(changes.every(change => change.model === MODEL_ID), JSON.stringify(changes));
+});
+
+test('a late catalog and label from the previous provider cannot overwrite a fresh pick', async (t) => {
+  resetSharedState(); t.after(resetSharedState);
+  const oldModels = deferred<ProviderModelCatalog>();
+  const oldAdvanced = deferred<ProviderAdvancedModelCatalog>();
+  const changes: ProviderTargetSelection[] = [];
+  const grokModel = 'unfamiliar-grok-selection';
+  const newModels = { ...runtimeCatalog(), provider: 'grok', defaultModel: grokModel,
+    models: [{ id: grokModel, label: 'Selected Grok model' }], catalogRevision: 'G2', catalogActivationId: 'G2' };
+  const newAdvanced = { ...runtimeAdvancedCatalog(), ...newModels, entries: newModels.models,
+    defaultSelection: { entryId: grokModel, entryMode: 'explicit' as const } };
+  const registry = async () => ({ state: 'ready' as const,
+    providers: listProductProviders().filter(provider => ['codex', 'grok'].includes(provider.id)) });
+  const models = async (provider: string) => provider === 'codex' ? oldModels.promise : newModels;
+  const advanced = async (provider: string) => provider === 'codex' ? oldAdvanced.promise : newAdvanced;
+  function SwitchPicker() {
+    const [target, setTarget] = useState<ProviderTargetSelection>({ provider: 'codex', instance: codexInstance(),
+      model: MODEL_ID, modelSelection: null });
+    const change = useCallback((next: ProviderTargetSelection) => { changes.push(next); setTarget(next); }, []);
+    return <I18nProvider locale="en"><ProviderModelFields provider={target.provider} instance={target.instance}
+      model={target.model} modelSelection={target.modelSelection} onTargetChange={change}
+      fetchProviderRegistry={registry} fetchProviderModels={models} fetchAdvancedProviderModels={advanced} /></I18nProvider>;
+  }
+  const view = render(<SwitchPicker />);
+  await waitFor(() => assert.ok([...(view.getByRole('combobox', { name: 'Provider' }) as HTMLSelectElement).options]
+    .some(option => option.value === 'grok')));
+  fireEvent.change(view.getByRole('combobox', { name: 'Provider' }), { target: { value: 'grok' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.model, grokModel));
+  oldModels.resolve(runtimeCatalog());
+  oldAdvanced.resolve(runtimeAdvancedCatalog());
+  await settle();
+  assert.equal(changes.at(-1)?.provider, 'grok');
+  assert.equal(changes.at(-1)?.model, grokModel);
+  const selected = changes.findIndex(change => change.provider === 'grok');
+  assert.ok(selected >= 0);
+  assert.ok(changes.slice(selected).every(change => change.provider === 'grok'), JSON.stringify(changes));
+});
 
 test('the label persist waits for the loaded catalog and does not re-fire when the live registry fills in later', async (t) => {
   resetSharedState();

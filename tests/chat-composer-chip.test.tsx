@@ -5,10 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import { ChatComposerArea } from '../src/products/shared/renderer/components/chat-view/ChatComposerArea.tsx';
-import {
-  clearRememberedExecutionLabels,
-  rememberExecutionLabel,
-} from '../src/shared/executionLabel.ts';
+import { clearLiveProviderModelLabels, recordLiveProviderModelLabels } from '../src/shared/providerModelLabelRegistry.ts';
 
 function createPayload(): AppShellPayload {
   return {
@@ -87,7 +84,7 @@ test('chat composer keeps default implicit recipient controls on the active audi
 });
 
 test('chat composer preserves runtime-backed implicit audience labels instead of rebuilding static fallback text', () => {
-  clearRememberedExecutionLabels();
+  clearLiveProviderModelLabels();
   const markup = renderToStaticMarkup(
     <ChatComposerArea
       hasConversationStarted
@@ -148,22 +145,12 @@ test('chat composer preserves runtime-backed implicit audience labels instead of
   assert.match(markup, /data-tooltip="Claude-CLI[^"]*Opus 4\.7 with 1M context[^"]*xHigh/u);
   assert.doesNotMatch(markup, /Opus 4\.6 with 1M context/u);
   assert.doesNotMatch(markup, /Extra High/u);
-  clearRememberedExecutionLabels();
+  clearLiveProviderModelLabels();
 });
 
 test('chat composer renders a cat-backed audience chip for direct lanes', () => {
-  clearRememberedExecutionLabels();
-  rememberExecutionLabel({
-    provider: 'claude',
-    instance: 'native',
-    model: 'opus',
-    modelSelection: {
-      controls: {
-        'claude.reasoning_effort': 'xhigh',
-      },
-    },
-    executionLabel: 'Claude-CLI · Opus 4.7 with 1M context · xHigh',
-  });
+  clearLiveProviderModelLabels();
+  recordLiveProviderModelLabels('claude', [{ id: 'opus', label: 'Opus 4.7 with 1M context' }], { target: 'cli/native', catalogRevision: 'fixture' });
   const payload = createPayload();
   payload.chat.bossCatId = 'cat-jiang';
   payload.chat.cats = [
@@ -253,12 +240,12 @@ test('chat composer renders a cat-backed audience chip for direct lanes', () => 
   assert.match(markup, /class="audienceChip"/u);
   assert.match(markup, /class="audienceChipAvatar"/u);
   assert.match(markup, /class="audienceChipLabel">將將</u);
-  assert.match(markup, /data-tooltip="將將 · Claude-CLI[^"]*Opus 4\.7 with 1M context[^"]*xHigh/u);
+  assert.match(markup, /data-tooltip="將將 · Claude-CLI[^"]*Opus 4\.7 with 1M context[^"]*xhigh/u);
   assert.doesNotMatch(markup, /Opus 4\.6 with 1M context/u);
   assert.doesNotMatch(markup, /Extra High/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /class="composerCatStack"/u);
-  clearRememberedExecutionLabels();
+  clearLiveProviderModelLabels();
 });
 
 test('chat composer renders a multi-audience chip for group chats', () => {
