@@ -7,7 +7,7 @@
 | **Status** | Draft |
 | **Owner** | User |
 | **Reviewer** | User |
-| **Last updated** | 2026-09-18 |
+| **Last updated** | 2026-09-23 |
 
 ## Related Spec
 
@@ -304,16 +304,22 @@ that cooperates with desktop sidecar shutdown.
 
 ### Phase 6: Validate Real Upgrade Paths
 
-- [ ] Publish a non-public or prerelease test pair for version N and N+1.
+- [x] Publish a non-public or prerelease test pair for version N and N+1.
+      macOS: 0.3.2 and 0.3.6, both signed and notarized previews (ADR-117
+      section 3 admits a signed preview as G3 evidence).
 - [ ] Windows:
       - install signed N via NSIS
       - check from Settings
       - check from Tray
       - download, restart/install, and verify N+1
-- [ ] macOS:
-      - install signed/notarized N
-      - verify DMG plus ZIP metadata pairing
-      - update to N+1 and verify signature/notarization
+- [x] macOS (2026-09-23, Intel x64, macOS 26.7; see
+      `docs/research/2026-09-23-macos-self-update-validation.md`):
+      - install signed/notarized N -- 0.3.2 from the prerelease DMG, through
+        Gatekeeper
+      - verify DMG plus ZIP metadata pairing -- the ZIP `latest-mac.yml` named
+        is the one electron-updater downloaded
+      - update to N+1 and verify signature/notarization -- 0.3.6 relaunched
+        with `source=Notarized Developer ID`, TeamIdentifier `97JBZ3MFX5`
 - [ ] Linux:
       - install N from the arm64 `.deb` on an arm64 host
       - update to N+1 and verify the resulting install; the `dpkg` step prompts
@@ -326,8 +332,9 @@ that cooperates with desktop sidecar shutdown.
 - [ ] If Phase 0 identifies a real unsigned `0.1.1` install base, test its
       agreed migration path to signed N. Otherwise record that it was an
       internal test artifact and start supported upgrade validation at signed N.
-- [ ] Save only non-secret validation evidence in a dated research/validation
-      note.
+- [x] Save only non-secret validation evidence in a dated research/validation
+      note. macOS: `docs/research/2026-09-23-macos-self-update-validation.md`.
+      Windows and Linux notes follow their own runs.
 
 **Deliverables**: platform-by-platform old-to-new upgrade evidence and a clear
 go/no-go decision for each capability.
@@ -469,6 +476,7 @@ ownership boundaries in ADR-108 and SPEC-111.
 
 | Date | Update |
 |------|--------|
+| 2026-09-23 | G3 passed on macOS: signed 0.3.2 self-updated to signed 0.3.6 through Squirrel.Mac on the Intel test Mac, relaunching with `source=Notarized Developer ID`. Evidence in `docs/research/2026-09-23-macos-self-update-validation.md`. `macos` is admitted to `DESKTOP_RELEASE_READY_PLATFORMS`; Windows and Linux remain gated. No official build exists yet, so this changes nothing at runtime until one does. |
 | 2026-09-23 | A rejected download could trap the update manager: from `downloaded`, `checkForUpdates()` was refused (`nextAction` is `restart_install`), a failed handoff returned to `downloaded`, and the tray flow after an accepted offer went download → `restartAndInstall()` with nothing shown when the handoff failed. On the Intel test Mac the unsigned 0.3.3 sat in that state for eight hours and was offered on every tray click while the signed 0.3.6 was live. Fixed: a re-check is allowed from `downloaded` (only `installing` stays closed); a re-check keeps the artifact when the feed still names it and supersedes it otherwise; the tray re-checks a downloaded artifact whose last handoff failed before offering it again; a failed handoff is shown once with its reason, and a Squirrel.Mac signature rejection keeps `signature_rejected` instead of the generic handoff code. Validation: update-manager and update-dialog suites including an end-to-end tray scenario (rejected 0.3.3 → shown → re-check → 0.3.6). |
 | 2026-09-23 | macOS self-update could not be validated against 0.3.3: that preview was dispatched with `unsigned=true`, and Squirrel.Mac refuses an unsigned bundle over the signed 0.3.2, as its release notes predicted. Windows and Linux applied it because NSIS and dpkg do not verify signatures. Fixed the tray update dialog not activating the app on macOS (`app.focus({ steal: true })` before the parentless message box), which hid the post-download "ready to install" prompt until the next tray click. 0.3.6 is the first signed successor to a signed build and is the G3 candidate for macOS. |
 | 2026-09-18 | Phase 1b implemented. Preview is now a signing path: credentials are scoped per platform in the workflow rather than gated on release identity, `-c.mac.notarize=true` applies to both guarded paths, verification runs on the preview path and skips only where a platform has no certificate, and the `unsigned-preview` artifact naming is retired. Added `--sign` as the explicit local opt-in and `describeArtifactTrust`, so every guarded build states the trust it actually received rather than producing a silently unsigned artifact. Also fixed a latent defect the change exposed: the macOS `CSC_LINK` reached the Windows job, where electron-builder reads a bare `CSC_LINK` as a Windows certificate and the release gate would have accepted it. Validation: 151 focused tests across packaging, release-mode, release-assets, descriptor identity/generation, update contracts, and suite collection. The signing and notarization paths themselves are still unexercised until the first preview dispatch. |

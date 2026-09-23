@@ -7,7 +7,7 @@
 | **Status** | Draft |
 | **Owner** | User |
 | **Reviewer** | User |
-| **Last updated** | 2026-09-18 |
+| **Last updated** | 2026-09-23 |
 
 ## Summary
 
@@ -135,15 +135,18 @@ Landed:
 
 Not yet landed:
 
-- The Phase 6 real-machine upgrade matrix. Everything above is verified by
-  automated tests only; no signed old-version-to-new-version upgrade has been
-  run on Windows, macOS, or Linux, which is why the release-ready gate below is
-  still empty.
+- The Phase 6 real-machine upgrade matrix for Windows and Linux. macOS passed
+  on 2026-09-23: signed 0.3.2 self-updated to signed 0.3.6 through Squirrel.Mac
+  on the Intel test machine (`docs/research/2026-09-23-macos-self-update-validation.md`).
+  Windows is unsigned until its certificate exists and Linux has not been
+  exercised, which is why both stay outside the release-ready gate below.
 
 Gated off deliberately:
 
-- `DESKTOP_RELEASE_READY_PLATFORMS` is empty, so no build advertises
-  self-update yet. A platform is added only after its G3 upgrade test passes.
+- `DESKTOP_RELEASE_READY_PLATFORMS` is `['macos']`. A platform is added only
+  after its G3 upgrade test passes, and macOS did on 2026-09-23. An official
+  Windows or Linux build still advertises no self-update. No official build
+  exists yet, so the admission changes nothing at runtime until one does.
 
 ## Goals
 

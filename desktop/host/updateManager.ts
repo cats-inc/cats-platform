@@ -28,11 +28,15 @@ import { resolveDesktopReleasePlatform } from './releaseDescriptor.js';
  * Platforms whose signed old-version-to-new-version upgrade path has passed.
  *
  * PLAN-101 gate G3 admits one platform at a time, and SPEC-111 section 9 keeps
- * Windows and macOS self-update disabled until signing is validated. The list
- * is empty on purpose: no platform has passed yet, so no build advertises
- * self-update even when it carries a valid release descriptor.
+ * A platform enters this list only after PLAN-101's G3 gate: a signed
+ * old-version-to-new-version self-update observed on a real machine. macOS
+ * passed on 2026-09-23 (0.3.2 to 0.3.6, both signed previews; ADR-117
+ * section 3 admits preview evidence). Windows is unsigned until a certificate
+ * exists and Linux has not been exercised, so an official build on either
+ * still advertises no self-update even with a valid release descriptor.
+ * Evidence: docs/research/2026-09-23-macos-self-update-validation.md.
  */
-export const DESKTOP_RELEASE_READY_PLATFORMS: readonly DesktopReleasePlatform[] = [];
+export const DESKTOP_RELEASE_READY_PLATFORMS: readonly DesktopReleasePlatform[] = ['macos'];
 
 export interface DesktopUpdaterCheckResult {
   updateAvailable: boolean;
