@@ -2,6 +2,18 @@
 
 > This directory contains all project documentation.
 
+## Cats Self-Development and Catlas Practice
+
+[ADR-118](decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md),
+[SPEC-117](specs/SPEC-117-cats-self-development-and-catlas-practice.md), and
+[PLAN-109](plans/PLAN-109-cats-self-development-and-catlas-practice.md) propose
+installed-Desktop-managed source development and evidence-based Catlas operation
+practice. The package covers isolated candidates, multi-repository ownership,
+versioned operation knowledge, actual skill delivery and verified procedure
+promotion. ADR is Proposed and SPEC/PLAN are Draft; implementation and native
+acceptance have not started. Platform owns this joint design, with explicit
+Runtime, cats-one and Apps work packages.
+
 ## Provider Catalog Soft Patches
 
 Runtime owns the joint
@@ -391,4 +403,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-09-23*
+*Last updated: 2026-09-24*
