@@ -317,6 +317,9 @@ export function createDesktopUpdateManager(
   }
 
   async function runCheck(activeAdapter: DesktopUpdaterAdapter): Promise<DesktopUpdateSnapshot> {
+    // A re-check from `downloaded` must not discard an artifact the feed still
+    // names; only a different version supersedes it.
+    const downloadedVersion = status === 'downloaded' ? availableVersion : null;
     status = 'checking';
     error = null;
     publish();
@@ -334,6 +337,12 @@ export function createDesktopUpdateManager(
 
       if (result.version === null || result.version.trim() === '') {
         throw new Error('Provider reported an available update without a version.');
+      }
+
+      if (downloadedVersion !== null && result.version === downloadedVersion) {
+        status = 'downloaded';
+        releaseSummary = result.releaseSummary;
+        return publish();
       }
 
       status = 'update_available';
@@ -395,7 +404,14 @@ export function createDesktopUpdateManager(
       // installer handoff is pending would share electron-updater's global
       // error channel with that handoff and could make a provider failure look
       // like an installer failure after managed services have already drained.
-      if (resolveDesktopUpdateNextAction(status, capability) !== 'check') {
+      //
+      // `downloaded` is deliberately not terminal. The feed can move on while
+      // an artifact sits there, and a failed handoff leaves it in place -- so
+      // without a way to re-check, a rejected download would be offered on
+      // every click and the only exit would be restarting the app. `installing`
+      // is the state that has to stay closed, and it still does.
+      const recheckableDownload = status === 'downloaded' && capability.canCheck;
+      if (!recheckableDownload && resolveDesktopUpdateNextAction(status, capability) !== 'check') {
         return snapshot();
       }
 
@@ -448,13 +464,18 @@ export function createDesktopUpdateManager(
             + `${cause instanceof Error ? cause.message : String(cause)}`,
         );
         // The handoff failed before the process exited, so the downloaded
-        // update is still installable and the user can retry it.
+        // update is still in place and the user can retry it -- or re-check,
+        // which the tray does first so a rejected artifact is not offered again
+        // blindly. Only a rejection of the artifact itself (Squirrel.Mac
+        // refusing the bundle's code signature, most often) keeps its own code,
+        // so the user learns why; a timeout or a spawn failure stays the generic
+        // handoff failure, because that is what it is.
         status = 'downloaded';
         progress = null;
-        error = {
-          code: 'install_handoff_failed',
-          summary: ERROR_SUMMARIES.install_handoff_failed,
-        };
+        const mapped = mapDesktopUpdateError(cause);
+        error = mapped.code === 'signature_rejected' || mapped.code === 'checksum_mismatch'
+          ? mapped
+          : { code: 'install_handoff_failed', summary: ERROR_SUMMARIES.install_handoff_failed };
         return publish();
       }
     },
