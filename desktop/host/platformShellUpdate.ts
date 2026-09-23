@@ -82,7 +82,10 @@ export function applyDesktopHostPlatformShellUpdate(
 ): DesktopHostPlatformShellState {
   const setupCompleteAt = update.setupCompleteAt;
   const setupCompleted = Boolean(setupCompleteAt || state.persistedSetup.productSetupCompleted);
-  const setup = normalizePlatformShellSetupState(state.setup, setupCompleted);
+  const setupChanged = setupCompleteAt !== state.persistedSetup.setupCompleteAt;
+  const setup = setupChanged
+    ? normalizePlatformShellSetupState(state.setup, setupCompleted)
+    : state.setup;
 
   return {
     appShell: {
@@ -95,7 +98,7 @@ export function applyDesktopHostPlatformShellUpdate(
       setupCompleteAt,
       productSetupCompleted: Boolean(setupCompleteAt),
     },
-    providerDiagnostics: setupCompleteAt
+    providerDiagnostics: setupChanged && setupCompleteAt
       ? null
       : state.providerDiagnostics,
     setup,

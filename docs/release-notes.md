@@ -19,6 +19,33 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-24 (unreleased — stable Desktop tray product shortcuts)
+
+Behavior change:
+
+Cats Chat, Cats Work, and Cats Code shortcuts now survive normal Desktop restart
+and shell refresh after setup. The old host used Node fetch without the window's
+login session; the server correctly returned a minimal unauthenticated envelope,
+which replaced the product list. Only setup completion previously synchronized
+the authenticated renderer list, explaining why the shortcuts appeared sometimes.
+
+The host now uses the window's Electron session, refreshes on login/logout, and
+accepts shell updates from normal renderer loads and product changes. Confirmed
+logout or product removal clears shortcuts; transient failures and stale responses
+cannot erase a newer list. Ordinary synchronization preserves provider diagnostics.
+
+Migration steps:
+
+No data migration, version bump, or publication. Existing setup remains valid.
+Installed Desktop 0.4.2 does not contain this fix; a future Desktop release and
+packaged acceptance are still required. Linux Electron 41.2.0 regression testing
+with a disposable profile verified persisted-login cold start, refresh, logout,
+and login again; it also reproduced the old transport returning no products.
+
+Deprecations:
+
+None.
+
 ## 2026-09-24 (0.4.2 preview — publication)
 
 Behavior change:

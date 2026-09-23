@@ -59,6 +59,7 @@ import { useGuideCatUiPrefs } from './guideCatUiPrefsStore.js';
 import { PLATFORM_ENVELOPE_REFRESH_EVENT } from './platformEnvelopeEvents.js';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
+import { useDesktopHostPlatformShellSync } from './setup/useDesktopHostPlatformShellSync.js';
 import { PlatformLoginScreen } from './auth/PlatformLoginScreen.js';
 import { PlatformRepairScreen } from './auth/PlatformRepairScreen.js';
 import {
@@ -249,6 +250,7 @@ export default function PlatformApp() {
   const location = useLocation();
   const navigate = useNavigate();
   const [state, setState] = useState<PlatformLoadState>({ status: 'loading' });
+  useDesktopHostPlatformShellSync(state.status === 'ready' ? state.envelope : null);
   const [productSurfaceFallbackActive, setProductSurfaceFallbackActive] = useState(false);
   const [guideCatProactiveGreetingToken, setGuideCatProactiveGreetingToken] = useState(0);
   const envelopeLanguagePreference = resolveEnvelopeUiLanguagePreference(

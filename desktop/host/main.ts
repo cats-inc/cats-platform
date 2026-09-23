@@ -66,7 +66,6 @@ import {
   buildDesktopBootstrapSnapshot,
   fetchJson,
   type AppHealthPayload,
-  type AppShellPayload,
   type ReadinessPayload,
   type RuntimeDiagnosticsHealthPayload,
   type RuntimeProviderDiagnosticsPayload,
@@ -116,6 +115,10 @@ import {
   normalizePlatformShellSetupState,
   parseDesktopHostPlatformShellUpdate,
 } from './platformShellUpdate.js';
+import {
+  DesktopPlatformShellReader,
+  isDesktopPlatformSessionCookie,
+} from './platformShellReader.js';
 import { enableDesktopMobilePairingEnv } from './mobilePairingEnv.js';
 import { DESKTOP_APP_USER_MODEL_ID, DESKTOP_HOST_VERSION } from './hostVersion.js';
 import {
@@ -235,7 +238,7 @@ let hostConfig: DesktopHostConfig | null = null;
 let supervisor: ManagedServiceSupervisor | null = null;
 let latestSnapshot: DesktopBootstrapSnapshot | null = null;
 let latestAppHealthPayload: AppHealthPayload | null = null;
-let latestAppShellPayload: AppShellPayload | null = null;
+let platformShellReader: DesktopPlatformShellReader | null = null;
 let latestRuntimeHealthPayload: RuntimeDiagnosticsHealthPayload | ReadinessPayload | null = null;
 let latestProviderDiagnosticsPayload: RuntimeProviderDiagnosticsPayload | null = null;
 let latestCliInventoryProbe: RuntimeCliInventoryProbe | null = null;
@@ -935,7 +938,7 @@ function resolveDesktopTrayMenuState(snapshot: DesktopBootstrapSnapshot) {
     setupCompleteAt: snapshot.app.setupCompleteAt,
     fallbackSetupCompleteAt: latestPersistedSetupState.setupCompleteAt,
     actions: snapshot.actions,
-    products: latestAppShellPayload?.products,
+    products: platformShellReader?.read()?.products,
     locale: app.getLocale(),
     updates: updateState,
   });
@@ -1315,7 +1318,7 @@ function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
     config: hostConfig,
     services: supervisor.getSnapshots(),
     appHealth: latestAppHealthPayload,
-    appShell: latestAppShellPayload,
+    appShell: platformShellReader?.read(),
     runtimeHealth: latestRuntimeHealthPayload
       ? normalizeRuntimeHealthPayload(latestRuntimeHealthPayload)
       : null,
@@ -1372,13 +1375,13 @@ async function refreshBootstrapSnapshot(
   // the window from opening.
   const [
     appHealth,
-    appShell,
+    , // The reader commits only the latest response; read its current state below.
     runtimeHealth,
     productDiagnostics,
     cliInventoryProbe,
   ] = await Promise.allSettled([
     fetchJson<AppHealthPayload>(`${hostConfig.appBaseUrl}/health`),
-    fetchJson<AppShellPayload>(`${hostConfig.appBaseUrl}/api/app-shell`),
+    platformShellReader!.refresh(),
     fetchJson<RuntimeDiagnosticsHealthPayload | ReadinessPayload>(`${hostConfig.runtimeBaseUrl}/health`),
     fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/platform/bootstrap-diagnostics`),
     shouldReadCliInventory
@@ -1393,9 +1396,6 @@ async function refreshBootstrapSnapshot(
 
   if (appHealth.status === 'fulfilled') {
     latestAppHealthPayload = appHealth.value;
-  }
-  if (appShell.status === 'fulfilled') {
-    latestAppShellPayload = appShell.value;
   }
   if (runtimeHealth.status === 'fulfilled') {
     latestRuntimeHealthPayload = runtimeHealth.value;
@@ -1416,7 +1416,7 @@ async function refreshBootstrapSnapshot(
     config: hostConfig,
     services: supervisor.getSnapshots(),
     appHealth: appHealth.status === 'fulfilled' ? appHealth.value : null,
-    appShell: appShell.status === 'fulfilled' ? appShell.value : null,
+    appShell: platformShellReader?.read(),
     runtimeHealth: runtimeHealth.status === 'fulfilled'
       ? normalizeRuntimeHealthPayload(runtimeHealth.value)
       : null,
@@ -2250,6 +2250,19 @@ async function main(): Promise<void> {
     packaged: app.isPackaged,
     resourcesPath: nodeProcess.resourcesPath,
   });
+  platformShellReader = new DesktopPlatformShellReader(
+    hostConfig.appBaseUrl,
+    (url, init) => session.defaultSession.fetch(url, init),
+  );
+  session.defaultSession.cookies.on('changed', (_event, cookie) => {
+    if (shuttingDown || !latestSnapshot || !hostConfig || !platformShellReader
+      || !isDesktopPlatformSessionCookie(cookie, hostConfig.appBaseUrl)) return;
+    void platformShellReader.refresh().then(() => {
+      if (!shuttingDown) publishSnapshot(buildSnapshot());
+    }).catch((error: unknown) => {
+      process.stderr.write(`Desktop platform shell refresh failed: ${String(error)}\n`);
+    });
+  });
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     if (!mainWindow || webContents !== mainWindow.webContents) {
       callback(false);
@@ -2538,13 +2551,13 @@ async function main(): Promise<void> {
   });
   ipcMain.handle('cats-host:update-platform-shell', async (_event, payload: unknown) => {
     const nextState = applyDesktopHostPlatformShellUpdate({
-      appShell: latestAppShellPayload,
+      appShell: platformShellReader?.read() ?? null,
       persistedSetup: latestPersistedSetupState,
       providerDiagnostics: latestProviderDiagnosticsPayload,
       setup: setupState ?? createEmptyDesktopSetupState(),
     }, parseDesktopHostPlatformShellUpdate(payload));
 
-    latestAppShellPayload = nextState.appShell;
+    platformShellReader?.replace(nextState.appShell);
     latestPersistedSetupState = nextState.persistedSetup;
     latestProviderDiagnosticsPayload = nextState.providerDiagnostics;
     setupState = nextState.setup;

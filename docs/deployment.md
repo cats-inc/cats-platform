@@ -267,11 +267,32 @@ The first desktop-host slice is now in-tree:
   host rather than pushing shell work into the renderer
 - after setup completes, runtime/provider regressions stay in recovery instead
   of routing the user back into onboarding
+- tray product shortcuts read `/api/app-shell` through the same Electron session
+  as the window. Normal renderer loads/product changes also synchronize the shell;
+  login/logout cookie changes refresh it even while the window is hidden.
+  Confirmed logout, disabled products, and authoritative empty lists remove
+  shortcuts. Temporary request failures retain the last confirmed list, and older
+  responses cannot overwrite a newer shell update. Ordinary synchronization keeps
+  provider diagnostics and setup work intact.
 - current launch command:
 
 ```bash
 npm run desktop:start
 ```
+
+Native tray/session regression (requires a graphical Electron environment):
+
+```bash
+npm run build:host
+CATS_TEST_ELECTRON_PLATFORM_SHELL=1 node --test --test-isolation=none tests/desktop-platform-shell-electron.test.js
+```
+
+This uses a synthetic local server and a disposable profile. It starts Electron
+twice to check persisted login, cold-start shortcuts, refresh, logout, and login
+again without reading or changing the installed user's profile. On 2026-09-24 it
+passed on Linux ARM64 with Electron 41.2.0; the installed 0.4.2 still needs a future
+Desktop publication to receive this source fix. This is native Electron regression
+coverage, not acceptance of a newly packaged release.
 
 - self-hosted npm package smoke helpers:
 

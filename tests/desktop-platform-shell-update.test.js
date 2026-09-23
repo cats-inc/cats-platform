@@ -217,3 +217,20 @@ test('desktop host platform shell update parser normalizes invalid payloads', ()
     },
   ]);
 });
+
+test('ordinary shell synchronization preserves provider diagnostics and setup work', () => {
+  const completed = '2026-09-24T00:00:00Z';
+  const state = {
+    appShell: { setupCompleteAt: completed, products: [] },
+    persistedSetup: { setupCompleteAt: completed, productSetupCompleted: true },
+    providerDiagnostics: { providers: [{ provider: 'claude', availability: { status: 'unavailable' } }] },
+    setup: createEmptyDesktopSetupState(),
+  };
+  const next = applyDesktopHostPlatformShellUpdate(state, {
+    bootstrapAttemptId: 'existing', setupCompleteAt: completed,
+    products: [{ id: 'chat', productName: 'Cats Chat', routePrefix: '/chat' }],
+  });
+  assert.strictEqual(next.providerDiagnostics, state.providerDiagnostics);
+  assert.strictEqual(next.setup, state.setup);
+  assert.equal(next.appShell.products[0].id, 'chat');
+});
