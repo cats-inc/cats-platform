@@ -3,6 +3,50 @@
 Usage is the display name; `cats.usage` remains the stable package ID. The first
 implementation is a renderer-only utility package, not another Platform product.
 
+## Host and SDK compatibility
+
+An App declares supported hosts in `cats.app.json` independently of its own
+artifact version. Current Usage 0.2.1 declares:
+
+```json
+{
+  "compatibility": {
+    "catsPlatform": "^0.3.0",
+    "appSdk": "^1.2.0"
+  }
+}
+```
+
+`catsPlatform` compares against the Platform root package version, also used by
+Desktop. `appSdk` compares against the host's independent SDK interface version.
+Both must match: a new SDK feature can require a newer SDK even within a supported
+Desktop line. No separate minimum-Desktop field is needed while versions are shared.
+
+[Package installation validation](../src/platform/apps/packageInstaller.ts)
+checks both declarations using [the version matcher](../packages/app-sdk/package.js).
+The current grammar accepts exact stable `X.Y.Z`, `^X.Y.Z`, `major.x` and
+`major.minor.x`. It rejects prerelease strings and unsupported expressions such
+as `>=0.3.2 <0.4.0`, `~0.3.2` or unions. Do not describe it as a full npm semver parser.
+
+Use the actual minimum plus an upper compatibility boundary: `^0.3.2` accepts
+stable `0.3.2` and later `0.3.x`, excluding `0.4.0`; `^1.2.0` accepts SDK 1.2.0
+through 1.x, excluding 2.0.0. A broad `0.x` would admit all 0.x minors and does not
+express a useful minimum for an App requiring newer features.
+
+Recommended release discipline preserves App-facing contracts within a 0.x minor
+line and changes the minor for breaking host changes; stable SDK breaking changes
+use a major bump. This is a project choice, not a promise of universal pre-1.0
+compatibility. If a compatible line is not yet supportable, declare an exact
+verified version. Record verification evidence separately from declared ranges.
+Pre-release permission to remove obsolete contracts does not justify silently
+accepting incompatible Apps.
+
+An App's unchanged range need not track every Desktop patch. Raise its minimum
+only when required capabilities/fixes demand it. Changing a published manifest
+changes artifact bytes and requires a new App version when released. See the
+[App release SOP](https://github.com/cats-inc/cats-apps/blob/main/docs/deployment.md#host-and-sdk-compatibility)
+and [all-target release guide](https://github.com/cats-inc/cats-one/blob/main/docs/release-guide.md).
+
 ## Build and select an exact App version
 
 In cats-apps:

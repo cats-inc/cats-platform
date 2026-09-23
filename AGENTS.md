@@ -280,6 +280,33 @@ pattern needs a code-level guardrail (e.g. dev-server seal mode).
 
 ---
 
+## Release Scope and Versioning
+
+- Follow the [Platform/Desktop release SOP](docs/deployment.md#release-boundaries)
+  and the [cross-repository release guide](https://github.com/cats-inc/cats-one/blob/main/docs/release-guide.md).
+- Ordinary implementation, documentation, commit/push and merge requests do not
+  authorize version bumps or publication. Accumulate commits until a release is
+  requested. Apply existing user authorization without asking for it again.
+- Platform npm and Desktop currently share root package.json/package-lock.json
+  version values; keep this arrangement. They have independent publication timing,
+  and Desktop may skip versions released only to npm.
+- A branch push runs CI. Platform npm publication requires npm-publish.yml manual
+  dispatch. A matching vX.Y.Z tag push triggers the official Desktop workflow;
+  never create/push that tag as a side effect of an npm-only release.
+- Desktop previews use desktop-release.yml manual dispatch, which creates its
+  own matching tag. Do not push the preview tag first. Preview and unsigned are
+  separate choices; use unsigned=true only when requested.
+- Do not automatically bump/publish Runtime, cats-one or Apps. Pin `runtime_ref`
+  for previews and exact App versions/URLs/hashes for Desktop. Official builds
+  currently resolve Runtime main per OS; record those SHAs and the limitation in
+  the SOP. Bundling Runtime does not require a preceding Runtime npm release.
+- Publishing an App does not automatically change config/desktop-apps.lock.json
+  or publish Desktop. Compatibility requirements determine coordinated changes.
+- Preserve App manifest `catsPlatform` and `appSdk` compatibility checks. The
+  shared Desktop/Platform version supplies the host requirement; do not infer
+  compatibility from an App's own version or bypass a mismatch because both hosts
+  are 0.x. Follow the [App compatibility guide](docs/app-packages.md#host-and-sdk-compatibility).
+
 ## Development Workflow
 
 <!-- Overview of the development process. See detailed sections below for specific rules. -->

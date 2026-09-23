@@ -135,7 +135,7 @@ These important documents live in the project root:
 |----------|--------|-------------|
 | [setup-guide.md](./setup-guide.md) | Complete | Environment setup |
 | [testing.md](./testing.md) | Complete | Current testing strategy and coverage boundaries |
-| [deployment.md](./deployment.md) | Complete | Current local deployment plus planned desktop-first packaged topology and onboarding direction |
+| [deployment.md](./deployment.md) | Complete | Local deployment, independent npm/Desktop release scope and official/preview publication SOP |
 | [release-notes.md](./release-notes.md) | Complete | Operator-facing behavior changes and migration notes |
 | [product-integration-guide.md](./product-integration-guide.md) | Complete | Product registration plus unified engine, materialization, agent/transport vocabulary, conversational-vs-operational projection rules, `MY CATS` platform-home/subset rules, and optional-capability integration rules for parallel Chat/Work/Code delivery |
 | [agent-control-surfaces.md](./agent-control-surfaces.md) | Draft | Parent registry for mandatory structured agent/runtime control surfaces: decision envelopes, tool calls, finalization envelopes, lifecycle events, and evidence events |
@@ -377,4 +377,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-09-02*
+*Last updated: 2026-09-23*

@@ -19,6 +19,36 @@ Before upgrading an existing local workspace, review
 [release-notes.md](./release-notes.md) for behavior changes and migration
 notes.
 
+## Release boundaries
+
+Platform npm and Cats Desktop share the root `package.json` version and the root
+and `packages[""]` version entries in `package-lock.json`. Keep this single version
+source for now; their publication timing is independent. For example, npm may
+ship two intervening versions before the next Desktop release. Skipping those
+Desktop numbers is valid and does not require a separate Desktop version counter.
+
+Ordinary implementation, documentation, commit/push and merge requests do not
+authorize a version bump or publication. Accumulate commits until the owner
+selects a release target, using existing authorization for the necessary steps.
+Do not release Runtime, cats-one or Apps merely because Platform changed.
+
+| Selected target | Preparation | Publication trigger |
+| --- | --- | --- |
+| Platform npm | Root manifest and lockfile version | Manually dispatch `npm-publish.yml` |
+| Official Desktop | Same version fields; matching `vX.Y.Z` tag | Push that Git tag |
+| Preview Desktop | Same version fields; matching unused `vX.Y.Z` tag name | Manually dispatch `desktop-release.yml`; it creates the tag/release |
+
+Pushing version files to a branch runs CI, not publication. An npm-only release
+needs no Git tag; use `npm version <version> --no-git-tag-version` or update the
+files directly. npm dist-tags (`latest`/`next`) are unrelated to Git release tags.
+Reuse an already prepared version if it is unused on the chosen publication
+target; never overwrite published bytes or recreate an existing release tag.
+
+Follow [local validation scope](../AGENTS.md#local-validation-scope); a version
+bump does not itself require duplicating the full hosted suite locally. See the
+[cross-repository release guide](https://github.com/cats-inc/cats-one/blob/main/docs/release-guide.md)
+for dependency ranges, launcher releases and independently versioned Apps.
+
 ## Deployment Methods
 
 Standalone npm CLI browser/keyboard behavior is documented under
@@ -38,9 +68,58 @@ manifest and lockfile version together and integrate remote main first:
 gh workflow run npm-publish.yml --repo cats-inc/cats-platform --ref main -f dist_tag=latest
 ```
 
-Verify the successful run and registry version. For a coordinated cats-one
-release, publish Runtime and Platform before updating the launcher's dependency
-minima and lockfile. npm publication is separate from Desktop installer releases.
+`--ref main` selects main's source at dispatch time; use the intended release
+branch when necessary. Choose the dist-tag explicitly; the workflow defaults to
+`next`. Verify the successful run, registry version and tarball availability.
+Only when a selected cats-one release needs a new Platform minimum, publish that
+version before updating the launcher's range and registry lockfile. Existing
+compatible npm dependencies need no repeat release. npm publication neither
+publishes Desktop nor creates its Git tag.
+
+### Desktop publication
+
+The [Desktop workflow](../.github/workflows/desktop-release.yml) validates that
+the tag matches the manifest and lockfile versions, builds into a draft, validates
+the assets, then publishes. Prepare the version files and commit/push the chosen
+source before triggering it.
+
+- **Official:** push the matching `vX.Y.Z` Git tag pointing at the selected
+  Platform commit. This selects the official signing/release gates and publishes
+  the release as latest after they pass. An npm publish is not a prerequisite.
+- **Preview:** manually dispatch from the intended branch with an unused matching
+  tag and an immutable Runtime commit. Do not push the preview tag first; that
+  would select the official path. Example with placeholders:
+
+  ```sh
+  gh workflow run desktop-release.yml --repo cats-inc/cats-platform --ref main -f tag=vX.Y.Z -f runtime_ref=RUNTIME_COMMIT_SHA
+  ```
+
+  The workflow creates the preview tag and publishes a GitHub prerelease, not
+  latest. Current preview tag names still use plain `vX.Y.Z`.
+- **Unsigned preview:** append `-f unsigned=true` only when unsigned output is
+  requested. Preview status and signing are separate: the default signs where
+  credentials exist. Unsigned macOS previews require manual installation and
+  cannot self-update; preview publication alone does not guarantee update support
+  on every OS.
+
+Desktop builds Runtime from source, so Runtime npm publication is unnecessary.
+For previews, pass the full Runtime SHA rather than accepting the default `main`.
+**Current official-workflow limitation:** tag-triggered runs resolve Runtime
+`main` in each OS build and record the resulting SHA. The Platform tag does not
+pin Runtime, and the workflow does not currently resolve one shared Runtime SHA
+before the matrix. Record the actual revisions; adding that pin to official
+builds is a separate workflow change, not behavior supplied by this guide.
+
+Apps are selected separately through `config/desktop-apps.lock.json`, using exact
+versions, published URLs and SHA-256 values. Reuse the selected artifacts unless
+the authorized Desktop release includes an App update. An App release does not
+automatically change this lock or update an installed Desktop.
+Check both the App's [host and SDK requirements](app-packages.md#host-and-sdk-compatibility);
+the App version itself does not specify a compatible Desktop version.
+
+Confirm the complete workflow and the published release assets before reporting
+completion. Dispatching a workflow or uploading CI artifacts alone is not a
+published Desktop release.
 
 ### Provider selection contract
 
@@ -629,4 +708,4 @@ per-user path.
 
 ---
 
-*Last updated: 2026-09-02*
+*Last updated: 2026-09-23*
