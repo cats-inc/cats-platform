@@ -1,0 +1,3 @@
+interface:
+  display_name: "Desktop UI Automation"
+  short_description: "Inspect and operate a ready local desktop"

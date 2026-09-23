@@ -21,6 +21,17 @@ A new installed build is required before old installations can use the new contr
 [Terminal controls](setup-guide.md#terminal-controls) covers browser opening,
 o/q/Ctrl+C, headless/managed opt-outs and graceful launcher shutdown.
 
+## Developer Desktop UI Automation
+
+The optional [desktop-ui-automation skill](../skills/desktop-ui-automation/SKILL.md)
+covers native Windows, macOS and Linux desktop observation/control when tools,
+session access and OS permissions are available. It separates readiness, UI
+actions and verified outcomes. Linux labwc usage has
+[installed-update evidence](research/2026-09-23-linux-self-update-validation.md);
+the other platform recipes are documented approaches, not native acceptance
+claims. [Skill synchronization](../skills/README.md#parent-workspace-discovery)
+uses cats-one's existing inventory and includes all supporting references.
+
 ## Conversation Navigation
 
 Conversation switching and retained projection work is tracked in

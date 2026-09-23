@@ -466,3 +466,12 @@ The final host remains the automatic replacement PID 335561 with NNP 0 and no
 diagnostic arguments. A future update initiated by 0.4.3, Windows/macOS native
 acceptance, and the separate diagnostic-socket inheritance follow-up are not
 claimed complete by this Linux run.
+
+### Reusable desktop procedure
+
+The Linux observation/control techniques are now captured in the optional
+[desktop-ui-automation developer skill](../../skills/desktop-ui-automation/SKILL.md).
+It includes separate macOS and Windows recipes based on primary OS documentation,
+with native validation explicitly unclaimed for those platforms. The skill and
+its resources are discoverable through cats-one's existing workspace sync;
+syncing instructions does not grant desktop permissions or prove host readiness.
