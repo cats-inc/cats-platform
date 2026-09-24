@@ -157,6 +157,7 @@ declare module 'electron' {
 
   export const app: {
     isPackaged: boolean;
+    setName(name: string): void;
     requestSingleInstanceLock(): boolean;
     whenReady(): Promise<void>;
     getPath(name: string): string;

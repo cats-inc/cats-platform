@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1-K3 CI-validated; K4 pending |
+| Status | In progress; K1-K3 CI-validated; K4 distribution/native startup verified, full live execution pending |
 | Owner | Platform integration; Chat owns conversation operations |
 | Reviewer | Product owner; independent Codex implementation review |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
@@ -231,7 +231,11 @@ unknown/catalog-only models, and weak-worker ceilings remain unchanged.
 After the local queue tool returns and its receipt is persisted, the host drains
 that queued role in the existing post-ACK continuation. Work independently checks
 the persisted owner grant (proposal digest, fixed role/Cat, repository, permission
-envelope and shared budget), then calls the expensive supervised Runtime boundary.
+envelope and shared budget), resolves exactly one configured Runtime backend/instance,
+and requires strict `ok` from bounded full `probe: live` diagnostics for CLI targets
+(version/help capability checks without model inference) or existing light availability
+checks for other backends before calling the supervised Runtime boundary with that
+verified backend-qualified instance.
 The queue result itself grants no execution authority. A subsequent host inspection
 receipt delivers the actual Run result to the same coordinator. This follows the
 existing Work admission-to-runner separation; expensive execution is not relabeled
@@ -260,6 +264,13 @@ generic convergence cannot mistake implementation alone for completion.
 
 Budget fields on Runtime supervision metadata are descriptive today; the K3
 delegate must enforce elapsed time, measured usage and cancellation itself.
+Token checks currently occur at response boundaries and include cached input.
+One in-flight response can exceed the remaining threshold; this is not a provider
+hard ceiling. K4 must record that limitation and prove an adequate bounded live
+flow before claiming completion. A later feedback failure must preserve the
+original terminal execution reason and retained stage evidence. This protection
+must hold inside the atomic stop writer when cancellation or another stop wins
+concurrently; confirmed cleanup may still advance for the same owned session.
 Persist the supervised runtime bridge immediately after session creation and
 before sending work. Runtime has no create-session idempotency key or lookup by
 operation: a crash between accepted creation and bridge persistence is ambiguous
@@ -376,6 +387,38 @@ starting a run and completing a task are separately observable outcomes.
 
 ## First End-to-End Acceptance Scenario
 
+### K4 candidate launch prerequisite
+
+An opt-in `CATS_DESKTOP_CANDIDATE_ROOT` identifies a private acceptance profile,
+independent of release trust and future development-supplement content profiles.
+It must be an absolute, non-root path outside normal Cats and Electron data;
+resolve existing path ancestors so a symlink/junction cannot alias normal data.
+Derive candidate Electron userData and Platform/Runtime/Desktop storage below it
+before acquiring the instance lock. A repeated candidate root shares only its
+own lock; a different root or the normal app remains independent.
+
+Candidate launch ignores normal cwd/Desktop dotenv files, uses private sidecar
+working directories, and rejects conflicting data overrides or shared/default
+listeners. It neither changes OS login registration nor exposes host installation,
+provider-install, packaging or update actions. Ordinary model execution still uses
+the existing owner consent, provider authentication and supervision contracts.
+Candidate process isolation does not claim an OS filesystem sandbox or full
+PLAN-109 release/preview cached-context exclusion.
+
+Verify resolved paths, identity/lock ordering, occupied-port rejection and normal
+startup compatibility in temporary fixtures before live launch. Keep evidence and
+cleanup scoped to candidate-owned processes and data. This is additive launch
+configuration; no stored-data migration or release/version change is required.
+
+The decision request must deliver complete response field rules/examples, not
+only the prompt schema name. Example tools and output references come from the
+current observation; examples confer no action authority. Keep strict parsing
+and policy rejection. Measured coordinator usage must be persisted before those
+checks, including malformed JSON, invalid decisions and forbidden native tool
+activity. A rejected decision must not execute its requested product operation.
+
+### Scenario
+
 Request: "Create a bug-fix conversation with one implementer and one reviewer."
 
 1. Resolve the current goal, authorized scope and two eligible existing Cats.
@@ -403,6 +446,12 @@ result feedback, stale-state rejection and cancellation. Real provider/native
 behavior, full profile exclusion and installed end-to-end acceptance remain K4.
 K3 adds mutation, immutable-revision, result-feedback and recovery fixtures for
 AC-05/AC-06/AC-07/AC-08; validation outcomes are recorded in PLAN-110.
+K4 adds relocated npm/Desktop knowledge acceptance and native Windows candidate
+startup/lock/close evidence. Real Codex coordination reaches conversation and
+membership but not worker execution. Exact CLI readiness now passes without
+inference; response-boundary budget limits and full worker execution remain
+open. See PLAN-110's dated evidence before interpreting AC-09/AC-10
+as complete.
 
 | ID | Observable criterion | Requirements |
 |----|----------------------|--------------|

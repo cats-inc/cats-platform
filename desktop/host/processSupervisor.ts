@@ -5,6 +5,7 @@ import { access, appendFile, mkdir, readFile, rename, rm, writeFile } from 'node
 import { delimiter, dirname, join, posix, win32 } from 'node:path';
 
 import type { DesktopHostConfig } from './config.js';
+import { assertDesktopCandidatePaths, assertDesktopCandidatePortAvailable, createDesktopCandidateEnv } from './candidateProfile.js';
 import type { ManagedServiceName, ManagedServiceSnapshot } from './contracts.js';
 import {
   waitForServiceReadiness,
@@ -163,6 +164,7 @@ function getManagedServiceStartupTimeoutMs(
 }
 
 async function ensureLaunchAssets(config: DesktopHostConfig): Promise<void> {
+  if (config.candidateProfile) assertDesktopCandidatePaths(config.candidateProfile);
   await access(config.paths.appEntryScript);
   await access(config.paths.runtimeEntryScript);
   await access(config.paths.preloadScript);
@@ -525,7 +527,8 @@ export function buildManagedServiceSpecs(
   env: NodeJS.ProcessEnv = process.env,
   platform: NodeJS.Platform = process.platform,
 ): ManagedServiceSpec[] {
-  const managedEnv = createManagedServiceEnv(env, platform);
+  const managedEnv = createManagedServiceEnv(config.candidateProfile
+    ? createDesktopCandidateEnv(config.candidateProfile, env) : env, platform);
   const runtimeManagedEnv = { ...managedEnv };
   delete runtimeManagedEnv.CATS_AUTH_SESSION_SECRET;
   const pathModule = platform === 'win32' ? win32 : posix;
@@ -540,7 +543,7 @@ export function buildManagedServiceSpecs(
         '--managed-by=cats-electron',
         '--ready-output=json',
       ],
-      cwd: config.runtimePackageRoot,
+      cwd: config.candidateProfile?.runtimeCwd ?? config.runtimePackageRoot,
       env: {
         ...runtimeManagedEnv,
         ELECTRON_RUN_AS_NODE: '1',
@@ -561,7 +564,7 @@ export function buildManagedServiceSpecs(
         '--managed-by=cats-electron',
         '--ready-output=json',
       ],
-      cwd: config.packageRoot,
+      cwd: config.candidateProfile?.appCwd ?? config.packageRoot,
       env: {
         ...managedEnv,
         ELECTRON_RUN_AS_NODE: '1',
@@ -749,6 +752,11 @@ export class ManagedServiceSupervisor {
       return;
     }
 
+    if (this.config.candidateProfile) {
+      assertDesktopCandidatePaths(this.config.candidateProfile);
+      await assertDesktopCandidatePortAvailable(spec.name === 'cats-runtime' ? this.config.runtimePort : this.config.appPort);
+    }
+
     await (this.logQueues.get(spec.name) ?? Promise.resolve()).catch(() => undefined);
     await prepareManagedServiceLog(spec.logPath);
 
@@ -913,10 +921,14 @@ export class ManagedServiceSupervisor {
       this.platform,
     );
     const startupDeadline = createStartupDeadlinePromise(spec.name, startupTimeoutMs);
-    const readinessOutcomePromise = Promise.any([
-      readinessPromise.then(() => 'health' as const),
-      lifecycleReady.then(() => 'lifecycle' as const),
-    ]);
+    const readinessOutcomePromise = this.config.candidateProfile
+      ? lifecycleReady.then(() => 'lifecycle' as const)
+      : Promise.any([
+        readinessPromise.then(() => 'health' as const),
+        lifecycleReady.then(() => 'lifecycle' as const),
+      ]);
+    // An existing server's health response cannot establish candidate ownership.
+    if (this.config.candidateProfile) void readinessPromise.catch(() => undefined);
 
     try {
       const readinessSource = await Promise.race([

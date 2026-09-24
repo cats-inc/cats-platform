@@ -23,6 +23,7 @@ export async function runCollaborationExecutionLoop(input: ChatCollaborationExec
   let stopped = false;
   let deliveredCount = 0;
   let reason: string | undefined;
+  let usageFailure: unknown;
   const cleanup = async (id: string) => settleCleanup(async () => {
     await input.runtimeClient.cancelSession(id);
     await input.runtimeClient.closeSession(id);
@@ -43,6 +44,14 @@ export async function runCollaborationExecutionLoop(input: ChatCollaborationExec
       }
       await port!.current();
       return created;
+    };
+    if (property === 'sendMessage') return async (...args: Parameters<RuntimeClient['sendMessage']>) => {
+      const response = await target.sendMessage(...args);
+      // Rejected JSON/native activity still consumed provider tokens. Persist
+      // measured usage before decision parsing and policy validation can throw.
+      try { await recordCollaborationUsage(port!, response.tokensUsed); }
+      catch (error) { usageFailure = error; throw error; }
+      return response;
     };
     const value = Reflect.get(target, property);
     return typeof value === 'function' ? value.bind(target) : value;
@@ -77,7 +86,6 @@ export async function runCollaborationExecutionLoop(input: ChatCollaborationExec
       const result = await boundedCollaboration(port, () => input.request(state, observation, runtime, sessionId, intent.receipts.slice(-4)));
       sessionId = result.sessionId;
       deliveredCount = intent.receipts.length;
-      await recordCollaborationUsage(port, result.runtimeMessage.tokensUsed);
       const decision = result.decision;
       if (final) {
         if (['admitted', 'running'].includes(intent.status)) reason = 'operation_limit';
@@ -110,15 +118,26 @@ export async function runCollaborationExecutionLoop(input: ChatCollaborationExec
       }
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : '';
+    // The Runtime boundary wraps callback failures; retain our budget reason.
+    const failure = usageFailure ?? error;
+    const message = failure instanceof Error ? failure.message : '';
     reason = ['cancelled', 'budget_exhausted', 'stale_context', 'usage_unavailable',
       'unsupported_cost_budget', 'owner_confirmation_required', 'repository_required',
       'approval_revoked', 'run_stopped', 'membership_changed'].includes(message) ? message : 'collaboration_failed';
   } finally {
     stopped = true;
-    if (port && reason) await stopCollaboration(input.chatStore, input.runtimeClient, port.intentId, reason);
+    if (port && reason) {
+      const latest = readCollaborationIntent(await input.chatStore.readCore(), port.intentId);
+      if (latest && ['admitted', 'running'].includes(latest.status)) {
+        await stopCollaboration(input.chatStore, input.runtimeClient, port.intentId, reason);
+      } else if (latest?.reason) {
+        // Failed reporting must not overwrite the retained execution failure.
+        reason = latest.reason;
+      }
+    }
     if (sessionId && await cleanup(sessionId) && port) await markSessionClosed(input.chatStore, port.intentId, 'coordinator');
     const intent = port ? readCollaborationIntent(await input.chatStore.readCore(), port.intentId) : null;
+    reason = intent?.reason ?? reason;
     input.report({ schemaVersion: 1, revision: intent?.contextRevision ?? '',
       status: intent ? 'inspected' : 'stopped', ...(reason ? { reason } : {}),
       receipts: intent?.receipts ?? [], feedbackDelivered: deliveredCount === (intent?.receipts.length ?? 0),

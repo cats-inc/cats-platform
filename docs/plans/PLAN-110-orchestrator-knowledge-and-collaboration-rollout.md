@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1-K3 CI-validated; K4 pending |
+| Status | In progress; K1-K3 CI-validated; K4 distribution/native startup verified, full live execution pending |
 | Owner | Platform integration; Chat and Work own their operation delegates |
 | Reviewer | Independent Codex contract and implementation review; product owner |
 | Last updated | 2026-09-25 |
@@ -273,7 +273,22 @@ persisted schema, version or release changed.
 
 ### K4: Validate distribution and real execution
 
-- [ ] Verify source-free npm/Desktop artifacts contain compatible normal
+The owner requested continuation after K3 on 2026-09-25. Integration owns the
+isolated live/native scenario; independent reviewers own distribution/profile
+inspection and Runtime enforcement review. Before launching a candidate, verify
+Electron identity and userData before its instance lock, private Platform/Runtime/
+Desktop roots, loopback listeners, candidate-only cleanup and absence of automatic
+OS-login/update mutations. A different cwd or sidecar state root is insufficient.
+
+Current prerequisite findings: relocated npm/Desktop knowledge delivery now has
+executable acceptance below. PLAN-109 G1 supplement
+selection/cached-profile exclusion is not implemented; release trust/update flags
+are not content profiles. Record that dependency separately rather than marking
+G1 complete merely because no development supplement has been added yet.
+The first live target must support the requested workspace access policy through
+its actual adapter. Runtime capability labels alone are not enforcement evidence.
+
+- [x] Verify source-free npm/Desktop artifacts contain compatible normal
   procedures and work without optional Catlas or development-supplement skills.
 - [ ] Validate profile exclusion with PLAN-109's inventory/cached-state gates;
   do not infer release exclusion from a hidden control or a skill name.
@@ -281,13 +296,101 @@ persisted schema, version or release changed.
   product state with a real provider, identified tools and bounded budget.
 - [ ] Inspect native UI projections, actual model delivery, conversation and
   membership IDs, Task/Run results and retained cancellation/recovery evidence.
-- [ ] Test a model path without native skill discovery. Native skills or MCP
+- [x] Test a model path without native skill discovery. Native skills or MCP
   resources remain optional later delivery work, requiring separate proof.
 - [ ] Record provider/OS/build-specific limits and scoped completion. Update
   SPEC, registries and parent-plan links without closing unrelated practice gates.
 
 **Exit:** AC-09/AC-10 and the end-to-end scenario have identified live/native
 evidence. Publication still follows the existing release authorization/SOP.
+
+#### K4 evidence and remaining work (2026-09-25)
+
+Source-free acceptance passes all three test cases: an actual offline npm pack
+is relocated away from the checkout, and Desktop's real staging/bundler and
+extraResources mappings materialize the second consumer. Both locales preserve
+asset bytes, selected content, digests and request receipts. Removing Catlas's
+asset does not stop the Orchestrator request. Desktop's renderer and Runtime
+assets are minimal packaging fixtures; this test does not claim packaged Runtime
+or renderer execution, or PLAN-109 cached-profile exclusion. The renderer fixture
+also makes the test independent of local Vite output, which clean test CI does
+not build. The final rerun used the corrected server and host output.
+
+An additive candidate profile establishes Electron identity/storage before the
+lock and private sidecar homes/cwd, Cats state and loopback ports. It disables
+installation/update/OS-login mutations. Native Windows 11/RDP acceptance used
+Platform 0.4.4 and Runtime 0.2.1 at `8e1c6fc`, alongside installed Cats 0.4.3.
+Both sidecars reported their own lifecycle-ready events. A real second launch
+of the same candidate exited successfully without duplicate sidecars. Scoped
+UI Automation and a viewed 1280-by-860 capture verified the onboarding window;
+this was a checkout-built candidate, not a new installer/release validation.
+
+The first close exposed snapshot delivery to an already destroyed BrowserWindow.
+The candidate host and Runtime required scoped process-tree cleanup. The fix
+clears closed window references and guards event delivery. A fresh native repeat
+then stopped Platform and Runtime via stdin closure and exited all three owned
+PIDs; no forced kill was needed. This proves native startup/close, not the Chat/
+Work result projections. Temporary authentication copies from the live probes
+were removed; no test records were placed in the user's normal Cats state.
+
+The real-provider harness runs production K3 admission/delegates against private
+Runtime and Git fixtures. It constructs K2 preparation and the owner choice;
+natural-language proposal generation remains a separate check. First Codex
+0.156.1 / `gpt-6-astra` inference returned an invalid decision because the prompt
+provided only a schema label. Complete response examples/rules now accompany
+the observation, without relaxing validation. Rejected response usage is now
+recorded before parsing, and failed final feedback preserves original terminal
+execution evidence. Atomic stop writers also preserve the winning cancelled or
+blocked result when an earlier stop resumes late; cleanup acknowledgements can
+only advance for the same owned session. A deterministic interleaving reproduced
+both reason-overwrite failures before the fix. Independent review and regression
+fixtures cover these fixes.
+
+The second inference run used no native skills, created a real conversation,
+verified the two canonical participants and queued implementation. Work stopped
+at strict provider readiness before creating a worker session. Preparation had
+recorded `degraded`, which is not executable `ok`. The four coordinator responses
+consumed 18,967 + 24,884 + 30,203 + 34,555 = **108,609 tokens**. Runtime's raw
+last-turn and cumulative usage agree. The 80,000-token continuation threshold
+was crossed by the final response; it is not a provider hard ceiling. No source
+edit, captured revision, independent review or mechanical fixture success is
+claimed. The source fixture remained unchanged and coordinator cleanup completed.
+
+Readiness-only probes require exact worker `ok` before inference, initialize
+private provider history and capture diagnostics. Initial passive probes timed
+out or returned `degraded/version_unknown`, including with the actual npm prefix.
+Source review exposed the structural mismatch: passive CLI availability is
+metadata-only and intentionally classified `degraded`, while Work requires `ok`.
+Increasing the selector timeout cannot resolve that contract mismatch.
+
+The final isolated Codex probe used full live compatibility diagnostics and
+returned strict `ok`: **zero inference calls, zero measured tokens**, with Runtime
+shutdown and authentication-copy removal confirmed. For this CLI backend those
+diagnostics execute bounded version/help commands. Other backend diagnostics can
+create transient sessions, so the Work correction resolves the configured exact
+target first, uses full live diagnostics only for CLI, and retains light checks
+for other backends. Execution pins the verified backend-qualified instance;
+readiness never replaces the existing owner grant or shared budget. This probe
+proves readiness only; no worker/model attempt was repeated after this correction.
+The final readiness-only repeat also verified the spawned Runtime's own lifecycle
+PID/endpoint before HTTP access, rejecting another process's healthy listener.
+It again returned `ok` without inference; the exact owned PID was absent after
+cleanup and the temporary authentication copy was removed.
+
+Next executable work is to define an adequate bounded continuation policy for
+growing native CLI context. Keep strict readiness and the existing owner grant.
+Then rerun implementation, exact revision review, duplicate confirmation
+and native Chat/Work projections. Full K4 and PLAN-109 G1/G2/G4 stay open; no
+version bump, publication, native-skill requirement or frozen-contract change
+has been introduced. Local checks pass: server/Desktop/test TypeScript, 39 K3
+cases, the earlier 53-case K2/K3/knowledge batch, 52 decision/adapter/policy cases,
+102 architecture/browser-boundary cases, 91 Desktop lifecycle/config/packaging
+cases and the final 15-case candidate/visibility/recovery batch. These batches
+overlap; they are not an aggregate unique-test count. Distribution adds its
+three passing cases and candidate lifecycle parsing adds four passing cases.
+All 984 local links in the ten changed Markdown documents resolve; fences and
+UTF-8/LF checks pass. Independent reviews covered production changes and the
+live harness; full CI for this executable K4 slice is pending.
 
 ## Initial Change Map
 
@@ -335,6 +438,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | K4 source-free npm/Desktop knowledge and native Windows candidate startup/lock/close acceptance pass. Real Codex coordination exposed missing decision-format guidance, pre-parse usage loss and terminal-feedback reason overwrites; fixes and focused regressions pass. Exact CLI readiness now passes via bounded version/help diagnostics with zero inference; Work's passive-versus-execution readiness mismatch is corrected without widening other backends. Native CLI input growth still crosses the response-boundary token threshold. Worker execution, revision/review, native result projections and profile exclusion remain open; see the dated K4 evidence. No release/version or user-state change. Full CI pending. |
 | 2026-09-25 | Full [CI on `115fe483`](https://github.com/cats-inc/cats-platform/actions/runs/36052038916) passed `validate` and `nodejs (24)`, including full typechecks and 4,747 passing tests (59 skipped; zero failures/cancellations). K3's code/integration gate is complete. This subsequent documentation-only record does not change tested executable inputs; all 1,031 local Markdown links resolve and fences balance. K4 live/native/source-free acceptance and PLAN-109 development/practice/promotion remain open. |
 | 2026-09-25 | Initial K3 CI exposed only the missing seven exact Chat-to-Work dependency registrations. Added those planned edges without weakening generic ownership rules. Follow-up review found stale Core writers in memory/Bot APIs; corrected atomic validation/mutation, with twelve isolated HTTP races failing before and passing after. All 257 affected follow-up tests and server compilation pass; independent reviews cover production changes, boundary registrations and tests. Corrected full CI pending. |
 | 2026-09-25 | Implemented K3 owner-confirmed Chat/Work collaboration, pure role queue plus independently authorized host execution, immutable revision review and durable cancellation/recovery. Fixed concurrent Chat/Telegram writers and duplicate-confirmation turn lifecycle. All 823 focused tests, server/test typechecks, document checks and independent review pass. Full CI pending; K4 live/native/distribution and PLAN-109 practice remain open. |

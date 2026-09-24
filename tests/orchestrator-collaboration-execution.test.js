@@ -18,11 +18,12 @@ import { ACCEPT_COLLABORATION, ENSURE_COLLABORATION_CONVERSATION as conversation
   INSPECT_COLLABORATION_WORK as inspectWork, STOP_COLLABORATION_WORK as stop,
   collaborationExecutionDescriptors } from '../build/server/products/chat/state/collaborationExecutionSurface.js';
 import { createChatCollaborationExecution } from '../build/server/products/chat/state/collaborationExecution.js';
+import { runCollaborationExecutionLoop } from '../build/server/products/chat/state/collaborationExecutionLoop.js';
 import { createChatProviderAgentDecisionRequester } from '../build/server/products/chat/state/providerAgentDecisionRequester.js';
 import { buildChatProviderAgentObservation } from '../build/server/products/chat/state/providerAgentObservation.js';
 import { resolveProviderCapabilityProfile } from '../build/server/platform/supervision/providerCapabilityProfiles.js';
 import { readCollaborationIntent, writeCollaborationIntent, admitCollaboration } from '../build/server/products/work/state/collaborationRecords.js';
-import { recoverCollaborations, executeCollaborationRole, recordCollaborationUsage } from '../build/server/products/work/state/collaborationExecution.js';
+import { recoverCollaborations, executeCollaborationRole, recordCollaborationUsage, stopCollaboration } from '../build/server/products/work/state/collaborationExecution.js';
 import { upsertCoreTask, upsertCoreRun } from '../build/server/core/model/index.js';
 import { checkoutTaskExecution } from '../build/server/core/taskLifecycle.js';
 import { stopRun } from '../build/server/platform/supervision/runCancellation.js';
@@ -43,13 +44,13 @@ function respond() { return { contractVersion: 1, kind: 'semantic_plan', decisio
   confidence: 'high', rationaleSummary: 'Acknowledge observed results.',
   steps: [{ stepId: 'report', summary: 'Report actual results only.', action: 'respond' }] }; }
 
-function fixture({ intent = 'create', confirm = true, budget = {}, old = false } = {}) {
+function fixture({ intent = 'create', confirm = true, budget = {}, old = false, instance = null } = {}) {
   const now = new Date();
   let state = createDefaultChatState();
   state = createChannel(state, { title: 'Collaboration', topic: goal, originSurface: 'chat', repoPath: join(tmpdir(), 'cats-k3-source'),
-    roomMode: 'chat_channel', responseLanguage: 'zh-TW', cats: [{ name: 'Implementer', provider: 'claude', roles: ['implementation'] }] }, now);
+    roomMode: 'chat_channel', responseLanguage: 'zh-TW', cats: [{ name: 'Implementer', provider: 'claude', instance, roles: ['implementation'] }] }, now);
   const channelId = state.selectedChannelId;
-  state = createCat(state, { name: 'Reviewer', provider: 'claude', roles: ['review'] }, now);
+  state = createCat(state, { name: 'Reviewer', provider: 'claude', instance, roles: ['review'] }, now);
   const original = appendMessage(state, channelId, { body: goal, senderKind: 'user', senderName: 'Owner' }, now);
   state = original.state;
   function observe(availableTools) {
@@ -62,8 +63,8 @@ function fixture({ intent = 'create', confirm = true, budget = {}, old = false }
   const receipts = [];
   const read = (toolName, toolInput) => {
     const result = executeCollaborationRead({ toolName, toolInput, snapshot, goal, receipts,
-      diagnostics: { probe: 'light', providers: [{ provider: 'claude', instance: null, defaultTarget: true,
-        availability: { status: 'ok', summary: null, attentionCodes: [] } }] } });
+      diagnostics: { probe: 'light', providers: [{ provider: 'claude', backend: 'cli', instance: 'native', defaultTarget: true,
+        availability: { status: 'degraded', summary: 'CLI execution is unverified.', attentionCodes: ['profile_selected'] } }] } });
     receipts.push({ toolName, decisionId: toolName, result }); return result;
   };
   read(discover, {}); read(inspect, {});
@@ -88,15 +89,24 @@ function fixture({ intent = 'create', confirm = true, budget = {}, old = false }
 }
 
 function clients(h, hooks = {}) {
-  const calls = { create: [], send: [], cancel: [], close: [], commit: [] };
+  const calls = { config: [], diagnostics: [], create: [], send: [], cancel: [], close: [], commit: [] };
   let changed = false, committed = false, coordinatorCalls = 0;
   const workspace = join(tmpdir(), 'cats-k3-owned-worktree');
+  const backend = hooks.backend ?? 'cli';
+  const native = { id: 'native', target: `${backend}/native`, backend,
+    command: null, args: null, runner: null, runtime: null, transport: null, model: null, eventCapabilities: null };
   const runtime = {
     async getHealth() { return { baseUrl: 'http://127.0.0.1:3110', reachable: true, status: 'ok', service: 'cats-runtime' }; },
-    async getProviderConfig() { return {}; },
+    async getProviderConfig() { calls.config.push(true); return { claude: {
+      defaultInstance: 'native', defaultBackend: backend,
+      instances: [native, hooks.ambiguous
+        ? { ...native, backend: 'agent', target: 'agent/native' }
+        : { ...native, id: 'other', target: `${backend}/other` }],
+    } }; },
     async getProviderModels(provider) { return { provider, models: [], warnings: [] }; },
-    async getProviderDiagnostics() { return { probe: 'light', providers: [{ provider: 'claude', instance: null, defaultTarget: true,
-      availability: { status: hooks.unavailable ? 'unavailable' : 'ok', summary: null, attentionCodes: [] } }] }; },
+    async getProviderDiagnostics(input) { calls.diagnostics.push(input);
+      return { probe: input.probe, providers: [{ provider: 'claude', backend, instance: 'native', defaultTarget: true,
+        availability: { status: hooks.availability ?? (hooks.unavailable ? 'unavailable' : 'ok'), summary: null, attentionCodes: [] } }] }; },
     async createSession(input) {
       const role = input.workspaceKind === 'worktree' ? 'implementation' : input.workspaceKind === 'source' ? 'review' : 'coordinator';
       calls.create.push({ ...input, role });
@@ -142,6 +152,24 @@ async function run(h, clients, store = new MemoryChatStore(h.state), extra = {})
   return { store, reports, report: reports[0] };
 }
 const intents = async store => (await store.readCore()).tasks.filter(task => task.metadata.collaborationIntent);
+test('K3 retains measured coordinator usage when a real-shaped incomplete decision is rejected', async () => {
+  const h = fixture();
+  const c = clients(h, { coordinatorTokens: 987, decide: () => ({
+    schema: 'cats.provider_agent.decision.v1', contractVersion: 1,
+    observationId: h.observation.observationId, kind: 'tool_request', toolName: conversation, input: {},
+  }) });
+  const { store, report } = await run(h, c);
+  const intent = (await intents(store))[0].metadata.collaborationIntent;
+  assert.equal(intent.status, 'blocked');
+  assert.equal(intent.tokensUsed, 987);
+  assert.equal(intent.channelId, null);
+  assert.equal(intent.receipts.length, 0);
+  assert.equal(c.calls.create.length, 1);
+  assert.equal(c.calls.send.length, 1);
+  assert.equal(c.calls.commit.length, 0);
+  assert.ok(c.calls.close.includes('session-coordinator'));
+  assert.equal(report.execution.tokensUsed, 987);
+});
 async function service(h, c, store = new MemoryChatStore(h.state), extra = {}) {
   return { ...await createChatCollaborationExecution({ chatStore: store, runtimeClient: c.runtime, deliveryClient: c.delivery,
     channelId: h.channelId, choiceResponse: h.choiceResponse, ...extra }), store };
@@ -176,6 +204,37 @@ test('K3 executes the admitted goal, separate roles, verified revision and feedb
   assert.match(describeCollaborationReport(report, 'en'), /does not prove tests passed/u);
 });
 
+test('worker readiness verifies only the admitted CLI target and retains strict failure and non-CLI boundaries', async t => {
+  for (const scenario of [
+    { name: 'default CLI', instance: null },
+    { name: 'explicit CLI', instance: 'native' },
+    { name: 'qualified CLI', instance: 'cli/native' },
+    { name: 'degraded CLI', instance: null, availability: 'degraded', blocked: true },
+    { name: 'unavailable CLI', instance: null, availability: 'unavailable', blocked: true },
+    { name: 'non-CLI', instance: 'agent/native', backend: 'agent' },
+    { name: 'ambiguous selector', instance: 'native', ambiguous: true, blocked: true },
+  ]) await t.test(scenario.name, async () => {
+    const h = fixture({ instance: scenario.instance }); const c = clients(h, scenario);
+    const { report } = await run(h, c);
+    assert.equal(report.execution.status, scenario.blocked ? 'blocked' : 'completed');
+    if (scenario.ambiguous) {
+      assert.equal(c.calls.diagnostics.length, 0);
+    } else {
+      assert.deepEqual(c.calls.diagnostics, Array.from({ length: scenario.blocked ? 1 : 2 }, () => ({
+        ...(scenario.backend === 'agent' ? { probe: 'light', scope: 'availability' } : { probe: 'live' }),
+        provider: 'claude', backend: scenario.backend ?? 'cli', instance: 'native',
+      })));
+    }
+    if (scenario.blocked) {
+      assert.equal(report.execution.reason, 'provider_unavailable');
+      assert.equal(c.calls.create.filter(call => call.role !== 'coordinator').length, 0);
+    } else {
+      assert.deepEqual(c.calls.create.filter(call => call.role !== 'coordinator').map(call => call.instance),
+        Array(2).fill(`${scenario.backend ?? 'cli'}/native`));
+    }
+  });
+});
+
 test('reusing the current Chat adds canonical members once and preserves duplicate identities', async () => {
   const h = fixture({ intent: 'reuse_current' }); const c = clients(h); const events = [];
   const s = await service(h, c, undefined, { publish: (...args) => events.push(args) });
@@ -202,6 +261,8 @@ test('forged or legacy choices and stale proposals cannot admit work', async () 
     const c = clients(h); const { store, report } = await run(h, c);
     assert.equal(report.status, 'stopped', mode);
     assert.equal((await intents(store)).length, 0, mode);
+    assert.equal(c.calls.config.length, 0, mode);
+    assert.equal(c.calls.diagnostics.length, 0, mode);
     assert.equal(c.calls.create.length, 0, mode);
   }
 });
@@ -247,6 +308,102 @@ test('shared token and elapsed budgets include workers and fence late implementa
   release?.(); await new Promise(resolve => setTimeout(resolve, 30));
   assert.equal(pending.calls.commit.length, 0);
   assert.ok(pending.calls.cancel.includes('session-implementation'));
+});
+
+test('terminal execution evidence survives exhausted feedback and coordinator budget errors stay classified', async () => {
+  const h = fixture({ budget: { maxTokens: 70 } });
+  const c = clients(h, { unavailable: true });
+  const { report } = await run(h, c);
+  assert.equal(c.calls.send.length, 4);
+  assert.equal(report.execution.tokensUsed, 80);
+  assert.equal(report.execution.reason, 'provider_unavailable');
+  assert.equal(report.execution.stages.implementation.reason, 'provider_unavailable');
+  assert.equal(report.execution.stages.review.reason, 'provider_unavailable');
+  assert.equal(report.feedbackDelivered, false);
+  const low = fixture({ budget: { maxTokens: 10 } });
+  const lowClients = clients(low);
+  const result = await run(low, lowClients);
+  assert.equal(result.report.execution.reason, 'budget_exhausted');
+  assert.equal(result.report.execution.tokensUsed, 20);
+  assert.equal(lowClients.calls.send.length, 1);
+  assert.equal(result.report.receipts.length, 0);
+});
+
+test('a stop delayed before its atomic write preserves a concurrent terminal result and still cleans owned sessions', async t => {
+  for (const winningReason of ['cancelled', 'provider_unavailable']) await t.test(winningReason, async () => {
+    const h = fixture(); const c = clients(h); const s = await service(h, c);
+    await s.execute(conversation, {}); await s.execute(participants, {});
+    await s.execute(execute, { role: 'implementation' });
+    await s.store.updateCore(core => {
+      const intent = readCollaborationIntent(core, s.port.intentId);
+      intent.coordinatorSessionId = 'owned-coordinator';
+      intent.stages.implementation = { ...intent.stages.implementation,
+        status: 'running', sessionId: 'owned-worker', sessionClosed: false };
+      const run = core.runs.find(entry => entry.id === intent.stages.implementation.runId);
+      core = upsertCoreRun(core, { ...run, status: 'running', metadata: { ...run.metadata,
+        supervision: { runtimeBridge: { sessionId: 'owned-worker' } } } }).core;
+      return writeCollaborationIntent(core, intent);
+    });
+    const entered = Promise.withResolvers(), release = Promise.withResolvers();
+    let delayFirstWrite = true;
+    const delayedStore = new Proxy(s.store, { get(target, property) {
+      if (property === 'updateCore') return async mutator => {
+        if (delayFirstWrite) { delayFirstWrite = false; entered.resolve(); await release.promise; }
+        return target.updateCore(mutator);
+      };
+      const value = Reflect.get(target, property);
+      return typeof value === 'function' ? value.bind(target) : value;
+    } });
+    const staleStop = stopCollaboration(delayedStore, c.runtime, s.port.intentId, 'collaboration_failed', true);
+    await entered.promise;
+    let winner;
+    try {
+      winner = await stopCollaboration(s.store, c.runtime, s.port.intentId, winningReason);
+      assert.equal(winner.status, winningReason === 'cancelled' ? 'cancelled' : 'blocked');
+      assert.equal(winner.reason, winningReason);
+      assert.equal(winner.stages.implementation.sessionClosed, true);
+      assert.notEqual(winner.coordinatorClosed, true);
+    } finally { release.resolve(); }
+    const retained = await staleStop;
+    assert.equal(retained.status, winner.status);
+    assert.equal(retained.reason, winner.reason);
+    assert.deepEqual(retained.stages, winner.stages);
+    assert.equal(retained.coordinatorClosed, true);
+    assert.equal((await s.store.readCore()).tasks.find(task => task.id === s.port.intentId).status, winner.status);
+    assert.ok(c.calls.close.includes('owned-worker'));
+    assert.ok(c.calls.close.includes('owned-coordinator'));
+    assert.ok(c.calls.cancel.every(id => ['owned-worker', 'owned-coordinator'].includes(id)));
+    assert.equal(c.calls.send.length, 0);
+    assert.equal(c.calls.commit.length, 0);
+  });
+});
+
+test('final report reason matches cancellation that wins during the loop stop writer', async () => {
+  const h = fixture(); const c = clients(h); const store = new MemoryChatStore(h.state);
+  const entered = Promise.withResolvers(), release = Promise.withResolvers();
+  let pauseNextWrite = false;
+  const delayedStore = new Proxy(store, { get(target, property) {
+    if (property === 'updateCore') return async mutator => {
+      if (pauseNextWrite) { pauseNextWrite = false; entered.resolve(); await release.promise; }
+      return target.updateCore(mutator);
+    };
+    const value = Reflect.get(target, property);
+    return typeof value === 'function' ? value.bind(target) : value;
+  } });
+  const reports = [];
+  const pending = runCollaborationExecutionLoop({ chatStore: delayedStore, runtimeClient: c.runtime,
+    deliveryClient: c.delivery, channelId: h.channelId, choiceResponse: h.choiceResponse,
+    observation: h.observation, report: report => reports.push(report),
+    request: async () => { pauseNextWrite = true; throw new Error('Coordinator transport failed'); } });
+  await entered.promise;
+  try { await stopCollaboration(store, c.runtime, (await intents(store))[0].id, 'cancelled'); }
+  finally { release.resolve(); }
+  await pending;
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0].execution.status, 'cancelled');
+  assert.equal(reports[0].execution.reason, 'cancelled');
+  assert.equal(reports[0].reason, reports[0].execution.reason);
+  assert.equal(c.calls.send.length, 0);
 });
 
 test('canonical Run stop while a worker is pending prevents commit, review and late resurrection', async () => {

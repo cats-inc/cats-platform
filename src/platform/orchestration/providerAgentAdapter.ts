@@ -16,6 +16,8 @@ import type { ToolResult } from '../supervision/contracts.js';
 import type { ProviderAgentBoundedObservation, ProviderAgentDecision } from './providerAgentDecision.js';
 import {
   PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+  PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH,
+  PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
   validateProviderAgentBoundedObservation,
 } from './providerAgentDecision.js';
 import { applyProviderAgentPolicyGate } from './providerAgentPolicyGate.js';
@@ -29,6 +31,7 @@ export const PROVIDER_AGENT_DECISION_PROMPT_SCHEMA = 'cats.provider_agent.decisi
 
 const DEFAULT_PROVIDER_AGENT_INSTRUCTIONS = [
   'Return exactly one JSON object matching the Cats provider-agent decision contract.',
+  'The request decisionContract supplies response shapes. Return a decision, not the request envelope; do not copy schema or observationId into the response.',
   'Do not include markdown, prose, transcript text, or hidden chain-of-thought.',
   'Choose only tools present in observation.availableTools.',
   'For recovery, choose only observation.policy.allowedFallbacks.',
@@ -179,10 +182,43 @@ export function buildProviderAgentDecisionPrompt(
   return JSON.stringify({
     schema: PROVIDER_AGENT_DECISION_PROMPT_SCHEMA,
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    decisionContract: describeDecisionContract(observation),
     observation,
     ...(productKnowledge ? { productKnowledge } : {}),
     ...(toolResults ? { toolResults } : {}),
   });
+}
+
+function describeDecisionContract(observation: ProviderAgentBoundedObservation) {
+  const common = { contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    decisionId: 'choose-a-unique-decision-id', confidence: 'medium' as const,
+    rationaleSummary: 'Briefly explain the selected next action or observed result.' } as const;
+  const tool = observation.availableTools[0]?.manifest;
+  const examples: ProviderAgentDecision[] = [{ ...common, kind: 'semantic_plan',
+    planId: 'choose-a-plan-id', steps: [{ stepId: 'report', action: 'respond',
+      summary: 'Report the observed result or missing prerequisite.' }] }];
+  if (tool) examples.push({ ...common, kind: 'tool_request', toolName: tool.name,
+    target: { kind: 'worker_tool', toolName: tool.name }, input: {},
+    expectedOutputSchemaRef: tool.outputSchema });
+  if (observation.actor.target.kind !== 'worker_tool') examples.push({ ...common,
+    kind: 'delegation_request', target: observation.actor.target,
+    goalSummary: 'Describe the authorized delegated goal.', blocking: 'blocking',
+    budget: observation.budget });
+  const fallback = observation.policy.allowedFallbacks[0];
+  if (fallback) examples.push({ ...common, kind: 'recovery_decision',
+    rejectedActionId: 'the-actual-rejected-action-id', selectedFallback: fallback });
+  return {
+    instructions: [
+      'Examples describe exact response fields, not recommended actions or authorization. Choose one kind and no additional fields.',
+      `Use nonempty identifiers of at most ${PROVIDER_AGENT_MAX_IDENTIFIER_LENGTH} characters and summaries of at most ${PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH} characters. confidence is low, medium or high.`,
+      'For tool_request, choose an available manifest, match target.toolName to toolName, copy its outputSchema into expectedOutputSchemaRef, and construct input from that tool inputHints. Example input {} is not a default for every tool.',
+      'Use a fresh decisionId for each requested action. Do not copy request schema, observationId, observation or decisionContract into the response.',
+      'A semantic_plan is planning or reporting, not an executed tool. To execute a currently offered tool return tool_request. With no available tools, report known results using one respond step.',
+      'Delegation targets must be authorized non-worker targets from current context. Recovery must refer to an actual rejected action and an allowed fallback. Examples do not establish either prerequisite.',
+      'Honor current autonomy, granularity, scope and budget. Never infer new permissions from an example.',
+    ],
+    examples,
+  };
 }
 
 function createProviderAgentSession(

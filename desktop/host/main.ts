@@ -139,6 +139,7 @@ import {
 import {
   createDesktopUpdateIpcHandlers,
   createDesktopUpdateSnapshotBroadcast,
+  DESKTOP_UPDATE_IPC_CHANNELS,
 } from './updateIpc.js';
 import { withDesktopInstallHandoff } from './updateInstallHandoff.js';
 import {
@@ -156,6 +157,11 @@ import {
   type DesktopStartupPreferences,
 } from './desktopStartup.js';
 import { loadDesktopEnvFiles } from './env.js';
+import {
+  assertDesktopCandidateActionAllowed,
+  assertDesktopCandidatePortsAvailable,
+  initializeDesktopLaunch,
+} from './candidateProfile.js';
 import {
   assertMainWindowScreenshotIpcSender,
   captureScreenshotRegion,
@@ -908,11 +914,19 @@ function writePersistedHostState(snapshot: DesktopBootstrapSnapshot): void {
   });
 }
 
+function sendMainWindowEvent(channel: string, payload: unknown): void {
+  const window = mainWindow;
+  if (!window || window.isDestroyed()) return;
+  const webContents = window.webContents;
+  if (!webContents.isDestroyed()) webContents.send(channel, payload);
+}
+
 function publishSnapshot(snapshot: DesktopBootstrapSnapshot): DesktopBootstrapSnapshot {
   recordSnapshotTransitions(snapshot);
   const diagnostics = buildDiagnosticsState(snapshot);
   const enriched: DesktopBootstrapSnapshot = {
     ...snapshot,
+    ...(hostConfig?.candidateProfile ? { actions: snapshot.actions.filter((action) => action.id !== 'resume_setup') } : {}),
     background: backgroundState ?? snapshot.background,
     updates: updateState ?? snapshot.updates,
     packaging: packagingState ?? snapshot.packaging,
@@ -927,7 +941,7 @@ function publishSnapshot(snapshot: DesktopBootstrapSnapshot): DesktopBootstrapSn
       : resolveDesktopTrayMenuState(enriched),
   );
   writePersistedHostState(enriched);
-  mainWindow?.webContents.send('cats-host:snapshot', enriched);
+  sendMainWindowEvent('cats-host:snapshot', enriched);
   return enriched;
 }
 
@@ -1166,11 +1180,19 @@ function buildHostPackagingPlan(
   config: DesktopHostConfig,
   generatedAt: Date = new Date(),
 ): DesktopPackagingPlan {
-  return createDesktopPackagingPlan(config, {
+  const plan = createDesktopPackagingPlan(config, {
     generatedAt,
     outputRoot: config.paths.packagingOutputRoot,
     platforms: resolveHostPackagingPlatforms(),
   });
+  if (config.candidateProfile) {
+    plan.targets = [];
+    plan.installer.prerequisiteChecks = [];
+    plan.installer.remediationActions = [];
+    plan.installer.providerSetup.helperCatalog = [];
+    plan.installer.providerSetup.prioritizedAssets = [];
+  }
+  return plan;
 }
 
 function resolveCurrentPackagingPlan(config: DesktopHostConfig): DesktopPackagingPlan {
@@ -1194,6 +1216,7 @@ async function getSetupSnapshot(): Promise<DesktopSetupSnapshot> {
     try { return targetsForSetupHelper(helper.id, probe.selection).length > 0; } catch { return false; }
   });
   snapshot.prerequisiteChecks = desktopPrerequisites.read();
+  if (hostConfig.candidateProfile) snapshot.resumeAction = null;
   if (snapshot.resumeAction && !snapshot.helpers.some((helper) => helper.id === snapshot.resumeAction!.helperId)) {
     snapshot.resumeAction = null;
   }
@@ -1452,7 +1475,7 @@ async function maybePrimeSetupAudit(
   _snapshot: DesktopBootstrapSnapshot,
   _persistedSetup: PersistedSetupCompletionState | null = null,
 ): Promise<void> {
-  if (!hostConfig) return;
+  if (!hostConfig || hostConfig.candidateProfile) return;
   const selection = latestCliInventoryProbe?.selection ?? null;
   for (const action of resolveSelectedSetupAuditActions(selection)) {
     const prerequisites = desktopPrerequisites.read();
@@ -1727,6 +1750,12 @@ async function createUpdateManagerForLaunch(
   config: DesktopHostConfig,
   initialLastCheckedAt: string | null = null,
 ): Promise<DesktopUpdateManager> {
+  if (config.candidateProfile) {
+    return createDesktopUpdateManager({
+      capability: createUnavailableDesktopUpdateSnapshot(DESKTOP_HOST_VERSION).capability,
+      adapter: null,
+    });
+  }
   const descriptor = await loadDesktopReleaseDescriptor();
   const identity = resolveDesktopDistributionIdentity({
     isPackaged: config.packaged,
@@ -1888,6 +1917,7 @@ async function runHostAction(actionId: DesktopHostActionId): Promise<DesktopBoot
   if (!hostConfig || !supervisor || !mainWindow) {
     throw new Error('Desktop host is not initialized.');
   }
+  assertDesktopCandidateActionAllowed(hostConfig.candidateProfile, actionId);
 
   if (actionId === 'retry') {
     return await bootstrapDesktopHost(true);
@@ -1951,6 +1981,7 @@ async function runSetupAction(
   if (!hostConfig) {
     throw new Error('Desktop host is not initialized.');
   }
+  assertDesktopCandidateActionAllowed(hostConfig.candidateProfile, 'setup-helper');
 
   const packaging = resolveCurrentPackagingPlan(hostConfig);
   const result = await desktopPrerequisites.run(action.helperId, () => withSelectedSetupTargets({
@@ -2227,24 +2258,29 @@ async function shutdownHost(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  loadDesktopEnvFiles();
-
-  const gotLock = app.requestSingleInstanceLock();
+  const { candidate, gotLock } = initializeDesktopLaunch(app, {
+    env: process.env,
+    normalCatsHomeDir: resolveCatsHomeDir(),
+    normalUserDataDir: resolveDesktopUserDataDir(app.getPath('appData')),
+    loadNormalEnvFiles: loadDesktopEnvFiles,
+    changeCwd: (cwd) => process.chdir(cwd),
+  });
   if (!gotLock) {
     app.quit();
     return;
   }
 
-  app.setPath('userData', resolveDesktopUserDataDir(app.getPath('appData')));
+  if (candidate) await assertDesktopCandidatePortsAvailable(candidate);
   // Keep the packaged process identity aligned with the installer-created
   // Windows shortcuts and taskbar grouping.
-  if (process.platform === 'win32' && app.isPackaged && DESKTOP_APP_USER_MODEL_ID) {
+  if (!candidate && process.platform === 'win32' && app.isPackaged && DESKTOP_APP_USER_MODEL_ID) {
     app.setAppUserModelId(DESKTOP_APP_USER_MODEL_ID);
   }
   await app.whenReady();
   const nodeProcess = process as NodeJS.Process & { resourcesPath?: string };
 
   hostConfig = resolveDesktopHostConfig({
+    candidateProfile: candidate,
     userDataDir: app.getPath('userData'),
     catsHomeDir: resolveCatsHomeDir(),
     packaged: app.isPackaged,
@@ -2271,10 +2307,10 @@ async function main(): Promise<void> {
     callback(shouldAllowDesktopRendererPermission(permission));
   });
   latestDesktopStartupPreferences = await readDesktopStartupPreferences(hostConfig.paths.appStatePath);
-  await syncDesktopStartupPreferences(app, latestDesktopStartupPreferences);
+  if (!candidate) await syncDesktopStartupPreferences(app, latestDesktopStartupPreferences);
   startupLaunchContext = resolveDesktopStartupLaunchContext({
     argv: process.argv,
-    wasOpenedAtLogin: process.platform === 'darwin'
+    wasOpenedAtLogin: !candidate && process.platform === 'darwin'
       ? app.getLoginItemSettings().wasOpenedAtLogin === true
       : false,
     preferences: latestDesktopStartupPreferences,
@@ -2352,7 +2388,7 @@ async function main(): Promise<void> {
     config: hostConfig,
     resourcesPath: nodeProcess.resourcesPath,
     sendEvent: (event) => {
-      mainWindow?.webContents.send(DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL, event);
+      sendMainWindowEvent(DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL, event);
     },
   });
 
@@ -2368,7 +2404,12 @@ async function main(): Promise<void> {
       },
     });
     for (const [channel, handler] of Object.entries(updateHandlers)) {
-      ipcMain.handle(channel, async (event) => handler(event));
+      ipcMain.handle(channel, async (event) => {
+        if (channel !== DESKTOP_UPDATE_IPC_CHANNELS.snapshot) {
+          assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'update');
+        }
+        return handler(event);
+      });
     }
   }
   ipcMain.handle('cats-host:get-setup-snapshot', async () => {
@@ -2393,6 +2434,9 @@ async function main(): Promise<void> {
   });
   ipcMain.handle('cats-host:provider-setup-run', async (event, payload: unknown) => {
     assertMainWindowIpcSender(event, mainWindow, 'Provider setup is only available to the main Cats window.');
+    if ((payload as { action?: unknown } | null)?.action !== 'detect') {
+      assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'provider-install');
+    }
     await retryPendingSetupOperationReleases();
     return await getProviderManager().run(payload);
   });
@@ -2425,6 +2469,7 @@ async function main(): Promise<void> {
     });
   });
   ipcMain.handle('cats-host:resume-setup', async () => {
+    assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'resume_setup');
     return await resumeSetupAction();
   });
   ipcMain.handle(DESKTOP_BROWSER_HANDOFF_OPEN_CHANNEL, async (event, launchPath: unknown) => {
@@ -2523,10 +2568,10 @@ async function main(): Promise<void> {
         systemTrayEnabled: (payload as { systemTrayEnabled: boolean }).systemTrayEnabled,
       },
     );
-    await syncDesktopStartupPreferences(app, latestDesktopStartupPreferences);
+    if (!candidate) await syncDesktopStartupPreferences(app, latestDesktopStartupPreferences);
     startupLaunchContext = resolveDesktopStartupLaunchContext({
       argv: process.argv,
-      wasOpenedAtLogin: process.platform === 'darwin'
+      wasOpenedAtLogin: !candidate && process.platform === 'darwin'
         ? app.getLoginItemSettings().wasOpenedAtLogin === true
         : process.argv.includes(DESKTOP_LAUNCH_AT_LOGIN_ARG),
       preferences: latestDesktopStartupPreferences,
@@ -2540,6 +2585,7 @@ async function main(): Promise<void> {
     return latestDesktopStartupPreferences;
   });
   ipcMain.handle('cats-host:enable-mobile-pairing', async () => {
+    assertDesktopCandidateActionAllowed(hostConfig?.candidateProfile, 'mobile-pairing');
     if (!hostConfig) {
       throw new Error('Desktop host is not initialized.');
     }
@@ -2565,9 +2611,18 @@ async function main(): Promise<void> {
     publishSnapshot(buildSnapshot(null));
   });
 
-  mainWindow = await createMainWindow(hostConfig, {
+  const window = await createMainWindow(hostConfig, {
     showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
   });
+  mainWindow = window;
+  window.once('closed', () => {
+    if (mainWindow === window) mainWindow = null;
+  });
+  if (window.isDestroyed()) {
+    mainWindow = null;
+    await shutdownHost();
+    return;
+  }
   await syncTrayController();
 
   app.on('before-quit', (event) => {
@@ -2576,7 +2631,7 @@ async function main(): Promise<void> {
       void shutdownHost();
     }
   });
-  mainWindow.on('close', (event) => {
+  window.on('close', (event) => {
     // Two separate reasons to stop hiding to tray, and both are needed.
     //
     // shuttingDown: once shutdownHost has flipped it the user has explicitly

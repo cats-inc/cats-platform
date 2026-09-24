@@ -9,6 +9,7 @@ import {
   ProviderAgentAdapterError,
   buildProviderAgentDecisionPrompt,
   requestProviderAgentDecision,
+  validateProviderAgentDecision,
   type ProviderAgentBoundedObservation,
   type ProviderAgentDecision,
   type ProviderAgentSemanticPlanDecision,
@@ -129,6 +130,25 @@ function semanticPlanDecision(): ProviderAgentSemanticPlanDecision {
     ],
   };
 }
+
+test('decision prompt teaches complete validator-compatible response shapes independently of knowledge', () => {
+  const current = observation();
+  const prompt = JSON.parse(buildProviderAgentDecisionPrompt(current));
+  assert.equal(prompt.productKnowledge, undefined);
+  assert.equal(prompt.decisionContract.examples.length, 4);
+  for (const decision of prompt.decisionContract.examples) {
+    assert.deepEqual(validateProviderAgentDecision({ observation: current, decision }), []);
+    assert.equal(decision.schema, undefined);
+    assert.equal(decision.observationId, undefined);
+  }
+  const tool = prompt.decisionContract.examples.find((entry: ProviderAgentDecision) => entry.kind === 'tool_request');
+  assert.equal(tool.target.toolName, current.availableTools[0]?.manifest.name);
+  assert.deepEqual(tool.expectedOutputSchemaRef, current.availableTools[0]?.manifest.outputSchema);
+  const empty = JSON.parse(buildProviderAgentDecisionPrompt({ ...current, availableTools: [],
+    policy: { ...current.policy, allowedFallbacks: [] } }));
+  assert.equal(empty.decisionContract.examples.some((entry: ProviderAgentDecision) => entry.kind === 'tool_request'), false);
+  assert.equal(empty.decisionContract.examples.some((entry: ProviderAgentDecision) => entry.kind === 'recovery_decision'), false);
+});
 
 function createRuntimeStub(
   decision: ProviderAgentDecision,

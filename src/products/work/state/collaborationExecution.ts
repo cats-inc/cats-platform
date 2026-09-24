@@ -3,6 +3,7 @@ import type { CatsCoreState } from '../../../core/types.js';
 import type { CoreStore } from '../../../core/store.js';
 import { upsertCoreRun, upsertCoreArtifact, upsertCoreOutcome, writeApprovalDecision } from '../../../core/model/index.js';
 import { GLOBAL_ORCHESTRATOR_ACTOR_ID } from '../../../core/actors.js';
+import { providerInstanceTarget } from '../../../shared/providerCatalog.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import { resolveFullResponseText } from '../../../platform/runtime/client.js';
 import type { RuntimeDeliveryClient } from '../../../platform/runtime/deliveryClient.js';
@@ -95,7 +96,7 @@ export async function stopCollaboration(
 ): Promise<WorkCollaborationIntent | null> {
   await coreStore.updateCore((core) => {
     const intent = readCollaborationIntent(core, intentId);
-    if (!intent || intent.status === 'completed') return core;
+    if (!intent || !['admitted', 'running'].includes(intent.status)) return core;
     const task = core.tasks.find((entry) => entry.id === intentId)!;
     // Fence late completions before waiting for Runtime cancellation.
     return writeCollaborationIntent(core, { ...intent,
@@ -103,6 +104,7 @@ export async function stopCollaboration(
   });
   const intent = readCollaborationIntent(await coreStore.readCore(), intentId);
   if (!intent) return intent;
+  const stopReason = intent.reason ?? reason;
   for (const role of ['implementation', 'review'] as const) {
     const stage = intent.stages[role];
     if (stage.status === 'result_ready' || stage.status === 'reviewed') {
@@ -113,18 +115,29 @@ export async function stopCollaboration(
       continue;
     }
     await settleCleanup(() => stopRun({ coreStore, runtimeClient }, stage.runId, {
-      idempotencyKey: `${intentId}:${role}:stop`, requestedByActorId: intent.ownerActorId, reason,
+      idempotencyKey: `${intentId}:${role}:stop`, requestedByActorId: intent.ownerActorId, reason: stopReason,
     }));
-    const sessionClosed = stage.sessionId ? await cleanupSession(runtimeClient, stage.sessionId, true) : false;
+    const sessionClosed = stage.sessionClosed === true
+      || (stage.sessionId ? await cleanupSession(runtimeClient, stage.sessionId, true) : false);
     await coreStore.updateCore((core) => {
-      const latest = readCollaborationIntent(core, intentId)!;
-      const run = core.runs.find((entry) => entry.id === stage.runId);
+      const latest = readCollaborationIntent(core, intentId);
+      if (!latest) return core;
+      const current = latest.stages[role];
+      const closedCurrentSession = sessionClosed && current.sessionId === stage.sessionId;
+      // A concurrent stop/result owns its terminal evidence; only advance confirmed cleanup.
+      if (['result_ready', 'reviewed', 'cancelled', 'blocked'].includes(current.status)) {
+        if (!closedCurrentSession || current.sessionClosed) return core;
+        current.sessionClosed = true;
+        return writeCollaborationAudit(core, latest);
+      }
+      const run = core.runs.find((entry) => entry.id === current.runId);
       // Missing session IDs on a starting stage are ambiguous, never proof of cancellation.
-      latest.stages[role] = { ...latest.stages[role],
-        status: stage.status === 'starting' && !stage.sessionId ? 'blocked'
-          : run?.status === 'cancelled' || stage.status === 'pending' ? 'cancelled' : 'blocked',
-        sessionClosed, reason };
-      return writeCollaborationIntent(updateCollaborationChild(core, latest, role,
+      latest.stages[role] = { ...current,
+        status: current.status === 'starting' && !current.sessionId ? 'blocked'
+          : run?.status === 'cancelled' || current.status === 'pending' ? 'cancelled' : 'blocked',
+        sessionClosed: current.sessionClosed === true || closedCurrentSession,
+        reason: latest.reason ?? stopReason };
+      return writeCollaborationAudit(updateCollaborationChild(core, latest, role,
         latest.stages[role].status === 'cancelled' ? 'cancelled' : 'blocked'), latest);
     });
   }
@@ -215,15 +228,26 @@ export async function executeCollaborationRole(port: CollaborationExecutionPort,
     const supervision = { product: 'cats-work', surface: 'collaboration', runId: stage.runId,
       actionId: `${stage.runId}:create`, actorRef: worker.actorId, reason: `collaboration_${role}`,
       budget: { ...intent.budget, hardStop: true }, policyToolScope: 'broad_write' as const };
+    const configured = (await bounded(() => port.runtimeClient.getProviderConfig()))[worker.target.provider!];
+    const requestedInstance = worker.target.instance?.trim();
+    const selector = requestedInstance || configured?.defaultInstance;
+    const matches = configured?.instances.filter((candidate) => selector
+      && (candidate.id === selector || providerInstanceTarget(candidate) === selector)
+      && (requestedInstance || candidate.backend === configured.defaultBackend)) ?? [];
+    const target = matches.length === 1 ? matches[0] : null;
+    if (!target?.backend) throw new Error('provider_unavailable');
+    // CLI execution is unverified in passive health; live version/help probes send no model prompt.
+    // Other backends retain their light path because live diagnostics can create remote sessions.
     const diagnostics = await bounded(() => port.runtimeClient.getProviderDiagnostics({
-      probe: 'light', scope: 'availability', provider: worker.target.provider, instance: worker.target.instance,
+      ...(target.backend === 'cli' ? { probe: 'live' as const } : { probe: 'light' as const, scope: 'availability' as const }),
+      provider: worker.target.provider, backend: target.backend, instance: target.id,
     }));
     const available = diagnostics.providers.find((entry) => entry.provider === worker.target.provider
-      && (worker.target.instance ? entry.instance === worker.target.instance : entry.defaultTarget));
+      && entry.backend === target.backend && entry.instance === target.id);
     if (available?.availability.status !== 'ok') throw new Error('provider_unavailable');
     const created = await bounded(async () => {
       const result = await createSupervisedRuntimeSession({ runtimeClient: port.runtimeClient,
-        input: { provider: worker.target.provider!, instance: worker.target.instance,
+        input: { provider: worker.target.provider!, instance: `${target.backend}/${target.id}`,
           model: worker.target.model, modelSelection: worker.modelSelection ?? undefined, cwd,
           ...(role === 'implementation' ? { workspaceKind: 'worktree', workspaceAccess: 'read_write',
             permissionMode: 'whitelist', allowedTools: [...intent.executionGrant.implementationTools] } as const

@@ -157,6 +157,60 @@ Maintenance and the current validation limits are recorded in
 [SPEC-117](specs/SPEC-117-cats-self-development-and-catlas-practice.md#implemented-code-entry-assistance)
 and [SPEC-118](specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md#k1-implementation-contract).
 
+### Isolated candidate acceptance
+
+Set `CATS_DESKTOP_CANDIDATE_ROOT` in the launch environment to a new absolute
+directory outside normal Cats/Electron data. Also set both
+`CATS_DESKTOP_APP_HOST=127.0.0.1` and `CATS_DESKTOP_RUNTIME_HOST=127.0.0.1`, and
+choose explicit distinct available `CATS_DESKTOP_APP_PORT` and
+`CATS_DESKTOP_RUNTIME_PORT` values (neither `8181` nor `3110`). Do not put these
+settings in the normal Desktop or checkout dotenv: candidate launch skips them.
+Conflicting Cats data/listener/config overrides are rejected.
+
+Before its instance lock, the host establishes private Electron storage and a
+root-derived identity. Platform/Runtime/Desktop data, logs, temporary files and
+sidecar cwd live below that root. Managed children use a private home and provider
+history; authentication/configuration must be provisioned explicitly there.
+The host retains its original OS home environment so relaunch validates the same
+normal-data boundary. A candidate is not an OS filesystem sandbox.
+
+Candidate launch skips OS login registration and background installation audits,
+disables installer/provider-install/update actions and mobile listener widening,
+and quits on close. Private provider selection/detection remains available.
+Both port preflight and child-owned lifecycle readiness are required; another
+service's healthy endpoint cannot authorize adoption. Stop only candidate-owned
+processes and retain the isolated evidence needed for review.
+
+The opt-in live harness is available with
+`node scripts/testing/orchestrator-collaboration-live.mjs --help`. It requires
+explicit built Platform/Runtime package roots, installed Codex command, model,
+authentication source and a new output directory. It copies only authentication
+into a private provider profile and removes that copy after stopping its Runtime.
+It requires the spawned Runtime's own matching lifecycle-ready event before any
+HTTP/provider request; a healthy responder on the chosen port is insufficient.
+It runs one fixed local Git fixture with a five-minute/80,000-token threshold, no
+remote, records actual requests/results, and checks implementation/review revision
+identity and duplicate confirmation. The fixture's owner choice and K2
+preparation are constructed through production delegates; this does not prove
+natural-language proposal generation or a native UI flow.
+`--readiness-only` performs the same isolated startup and strict Codex CLI
+readiness check through bounded version/help diagnostics without inference.
+Passive CLI availability is metadata-only and cannot establish executable `ok`.
+The fixture initializes its private provider history directory before boot.
+Usage is measured after each response, including cached input; a single response
+can exceed the remaining tokens. This is a continuation threshold, not a provider
+hard token ceiling. Do not raise the fixture or product budget merely to label a
+failed acceptance run successful; record the actual remaining limitation.
+For a selected CLI installed under a separate npm prefix, `--npm-prefix` allows
+passive inspection of that real installation while npm cache/logs remain private.
+It does not install, synthesize version evidence or waive strict worker readiness.
+The dated acceptance results and remaining limits are recorded in
+[PLAN-110](plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md#k4-evidence-and-remaining-work-2026-09-25).
+
+This acceptance identity neither enables development skills nor proves the
+release/preview cached-content exclusion required by PLAN-109. It does not
+authorize packaging publication or a version bump.
+
 ### Provider selection contract
 
 Selection-aware Platform/Desktop must connect to the matching Runtime contract
@@ -540,6 +594,7 @@ for the planned desktop host model.
 | `CATS_PORT` | Yes | Service port (`CATS_INC_PORT` remains a compatibility alias) |
 | `CATS_PLATFORM_DIR` | No | Override the platform root used for `state/chat-state.local.json`, `state/platform-onboarding-history.json`, and `config/platform-preferences.json` |
 | `CATS_DESKTOP_DIR` | No | Override the desktop root used for `state.json` and `logs/` |
+| `CATS_DESKTOP_CANDIDATE_ROOT` | No | Opt into [isolated candidate acceptance](#isolated-candidate-acceptance); explicit loopback hosts and distinct non-default ports are required |
 | `CATS_RUNTIME_DIR` | No | Override the runtime root used for `config/`, `data/`, and `sessions/` |
 | `CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG` | No | Override the provider capability bootstrap YAML path. Defaults to `<platform config dir>/provider-capability-bootstrap.yaml` |
 | `CATS_RUNTIME_BASE_URL` | Yes | Upstream runtime URL |

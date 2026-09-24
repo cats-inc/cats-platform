@@ -112,6 +112,27 @@ active Chat turn. Recovery fences unfinished roles, persists late session IDs,
 and records cleanup only after Runtime confirms it; it never silently relaunches
 an ambiguous create or deletes retained work.
 
+K4 live acceptance exposed a response-contract delivery gap: a schema name and
+tool manifests did not teach the model the required decision envelope. The
+adapter now supplies complete response examples and field rules alongside the
+observation, independently of optional knowledge. Existing decision validation
+and policy remain authoritative; malformed output is never repaired into an
+authorized action. Coordinator usage is recorded at the Runtime response boundary
+before parsing, so a rejected decision still consumes the admitted budget.
+
+Worker execution resolves and pins the exact configured backend/instance before
+readiness. CLI targets use bounded version/help compatibility diagnostics because
+passive CLI availability is metadata-only and cannot establish executable `ok`.
+Other backends retain their light checks: their full diagnostics can create
+transient sessions outside the recorded worker bridge. Neither diagnostic result
+grants execution authority or replaces the persisted owner grant and budget.
+
+Candidate Desktop acceptance uses an explicit isolated launch identity before
+Electron's instance lock, private storage/sidecar working directories and owned
+loopback listeners. Installer/update/OS-login mutations are unavailable there.
+This additive acceptance profile is distinct from release trust, OS sandboxing
+and the future release/preview development-content selection in ADR-118.
+
 ### Keep normal product procedures available in both profiles
 
 Release and preview/debug both consume reviewed product concepts and ordinary

@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 import { parseDesktopBoolean } from './env.js';
+import { createDesktopCandidateEnv, type DesktopCandidateProfile } from './candidateProfile.js';
 import { normalizeDesktopHost } from './security.js';
 import {
   resolvePlatformStatePath,
@@ -45,6 +46,7 @@ export interface DesktopHostBootstrapConfig {
 }
 
 export interface DesktopHostConfig {
+  candidateProfile?: DesktopCandidateProfile;
   packaged: boolean;
   packageRoot: string;
   runtimePackageRoot: string;
@@ -78,6 +80,7 @@ export interface DesktopUpdateConfig {
 }
 
 interface ResolveDesktopHostConfigOptions {
+  candidateProfile?: DesktopCandidateProfile | null;
   env?: NodeJS.ProcessEnv;
   userDataDir: string;
   catsHomeDir?: string;
@@ -208,7 +211,13 @@ function resolveDesktopAppConnectHost(bindHost: string): string {
 export function resolveDesktopHostConfig(
   options: ResolveDesktopHostConfigOptions,
 ): DesktopHostConfig {
-  const env = options.env ?? process.env;
+  const sourceEnv = options.env ?? process.env;
+  if (sourceEnv.CATS_DESKTOP_CANDIDATE_ROOT !== undefined && !options.candidateProfile) {
+    throw new Error('Candidate launch must validate its profile before resolving host configuration.');
+  }
+  const env = options.candidateProfile
+    ? createDesktopCandidateEnv(options.candidateProfile, sourceEnv)
+    : sourceEnv;
   const hostPackageRoot = readCurrentPackageRoot();
   const layout = resolveHostRuntimeRoot(
     options.packaged === true,
@@ -254,8 +263,8 @@ export function resolveDesktopHostConfig(
     env.CATS_DESKTOP_GRACEFUL_SHUTDOWN_MS,
     DEFAULT_GRACEFUL_SHUTDOWN_MS,
   );
-  const userDataDir = resolveDesktopPath(options.userDataDir);
-  const catsHomeDir = resolveDesktopPath(options.catsHomeDir ?? resolveCatsHomeDir());
+  const userDataDir = resolveDesktopPath(options.candidateProfile?.userDataDir ?? options.userDataDir);
+  const catsHomeDir = resolveDesktopPath(options.candidateProfile?.catsHomeDir ?? options.catsHomeDir ?? resolveCatsHomeDir());
   const platformDir = resolveDesktopPath(
     env.CATS_PLATFORM_DIR?.trim()
       || joinDesktopPath(catsHomeDir, 'platform'),
@@ -296,6 +305,7 @@ export function resolveDesktopHostConfig(
   };
 
   return {
+    ...(options.candidateProfile ? { candidateProfile: options.candidateProfile } : {}),
     packaged: options.packaged === true,
     packageRoot,
     runtimePackageRoot,

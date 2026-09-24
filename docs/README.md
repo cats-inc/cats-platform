@@ -21,8 +21,11 @@ same-session result feedback, cancellation and concurrent-state protection.
 K3 adds owner-confirmed conversation/membership and bounded Work execution,
 verified revision review, same-session feedback and durable recovery. The 823-test
 focused batch and 257-test correction batch pass. Full CI passes with 4,747 tests
-passed and 59 skipped. Live/native and installed acceptance remain K4. The existing
-provider-agent decision setting stays off by default.
+passed and 59 skipped. K4 adds relocated npm/Desktop knowledge acceptance and
+native Windows candidate startup/lock/close proof; real Codex coordination reaches
+conversation/membership but full worker execution, native result projections and
+release-profile exclusion remain pending. The existing provider-agent decision
+setting stays off by default.
 
 ## Cats Self-Development and Catlas Practice
 

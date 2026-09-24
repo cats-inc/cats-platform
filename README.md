@@ -102,7 +102,9 @@ The current slices are:
       and validated collaboration proposals with same-session result feedback.
       K3 adds owner-confirmed conversation/membership, bounded Work execution,
       verified local revision review and durable cancellation/recovery.
-      Focused validation and full CI pass. Live/native and installed acceptance remain K4.
+      K1-K3 focused validation and full CI pass. K4 now verifies relocated knowledge
+      delivery and native Windows candidate startup/close; live worker execution,
+      native Chat/Work results and release-profile exclusion remain pending.
       Provider-selected default Chat retains its own assistant identity;
       preview-only development/practice skills remain a separate workstream.
 

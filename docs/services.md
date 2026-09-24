@@ -9,6 +9,8 @@
 |--------------|------|----------|-------------|---------------|
 | `cats` HTTP app | 8181 | TCP | Product-facing app shell and health endpoints | `npm start` |
 | `cats` Vite dev server | 5173 | TCP | Renderer development server with `/api` proxy | `npm run dev:web` |
+| Isolated candidate Desktop sidecars | Explicit distinct non-default ports | TCP, `127.0.0.1` only | Candidate-owned Platform and Runtime; occupied listeners fail launch | Desktop with `CATS_DESKTOP_CANDIDATE_ROOT` and explicit host/port pairs |
+| K4 live collaboration fixture Runtime | OS-assigned available port | TCP, `127.0.0.1` only | Temporary authenticated Runtime, stopped after the bounded fixture | `node scripts/testing/orchestrator-collaboration-live.mjs --help` |
 
 The host repo/package target is now `cats-platform`, but the running local app
 service names remain `cats` for product-facing and operational continuity.
@@ -46,6 +48,7 @@ Port numbers should be configurable via environment variables so developers can 
 | `CATS_PORT` | `8181` | `cats` HTTP app | Main local app port; `CATS_INC_PORT` remains accepted temporarily |
 | `CATS_PLATFORM_DIR` | `~/.cats/platform` | Chat store | Base directory for product-owned platform storage under `state/` and `config/` |
 | `CATS_DESKTOP_DIR` | `~/.cats/desktop` | Desktop host | Base directory for desktop host state and logs |
+| `CATS_DESKTOP_CANDIDATE_ROOT` | unset | Desktop host | Opt-in private acceptance identity/storage; requires explicit loopback hosts and distinct non-default ports; see [candidate launch](deployment.md#isolated-candidate-acceptance) |
 | `CATS_RUNTIME_DIR` | `~/.cats/runtime` | Runtime client | Base directory for runtime config, data, and sessions |
 | `CATS_RUNTIME_BASE_URL` | `http://127.0.0.1:3110` | Runtime client | Points to `cats-runtime` |
 | `CATS_RUNTIME_API_KEY` | empty | Runtime client | Optional bearer token for `cats-runtime` |
@@ -143,4 +146,4 @@ This project was created from **project-bootstrap**, which maintains a central p
 
 ---
 
-*Last updated: 2026-09-02*
+*Last updated: 2026-09-25*
