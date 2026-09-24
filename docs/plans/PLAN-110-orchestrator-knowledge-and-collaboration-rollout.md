@@ -4,10 +4,10 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1 implemented with scoped fixtures and full CI passing; K2-K4 pending |
+| Status | In progress; K1 validated; K2 read/preparation fixtures pass, full CI pending; K3-K4 pending |
 | Owner | Platform integration; Chat and Work own their operation delegates |
-| Reviewer | Independent Codex review for K1; product owner for remaining operation contracts |
-| Last updated | 2026-09-24 |
+| Reviewer | Independent Codex review for K1/K2; product owner for remaining write contracts |
+| Last updated | 2026-09-25 |
 
 ## Related Spec
 
@@ -29,7 +29,7 @@ that Orchestrator can create conversations or recruit Cats autonomously.
 |------|-------------|------------|---------------|
 | K0 | ADR/SPEC/PLAN, baseline and operation ownership mapping | Existing Catlas and supervision seams | Drafted; detailed write-contract mapping pending |
 | K1 | Shared role-aware knowledge plus actual Orchestrator content delivery | K0 knowledge contract | Implemented; scoped fixtures and full CI pass |
-| K2 | Authorized teammate/context discovery and collaboration preparation | K1; read-only delegate mapping | Pending |
+| K2 | Authorized teammate/context discovery and collaboration preparation | K1; read-only delegate mapping | Implemented; focused integration fixtures pass, full CI pending |
 | K3 | Conversation/membership/work mutations with durable identity and result feedback | K2; write/recovery contract review | Pending |
 | K4 | Source-free distribution and isolated live-provider/native acceptance | K3 | Pending |
 
@@ -57,6 +57,8 @@ routine continuation does not create a new approval ceremony.
 - [x] Record the collaboration scenario and requirement-to-acceptance mapping.
 - [ ] Finalize operation identifiers and owner mappings for discovery,
   conversation/membership, work start, inspection and stop.
+  K2's three read/preparation identifiers are mapped to Chat in SPEC-118;
+  mutation/lifecycle mapping remains open.
 - [ ] Map durable operation identity, state revisions and interrupted execution
   to existing Core/Work records before any new mutation is exposed.
 
@@ -108,26 +110,69 @@ binding/control and truncation-provenance defects; fixes and regression cases
 were reviewed with no residual findings. Remote CI outcomes and subsequent
 corrections are recorded in the progress log below.
 
-These fixtures do not establish live-provider/native skill behavior, installed
+The K1 fixtures do not establish live-provider/native skill behavior, installed
 Desktop acceptance, profile exclusion, or a complete collaboration tool/result
-loop. K2-K4 and PLAN-109 development/practice/promotion gates remain open. No
+loop. K2 evidence is recorded below; K3-K4 and PLAN-109 development/practice/promotion gates remain open. No
 persisted product schema, frozen contract, version or publication changed.
 
 ### K2: Add discovery and collaboration preparation
 
-- [ ] Expose an authorized, bounded eligible-Cat lookup and conversation-context
+- [x] Expose an authorized, bounded eligible-Cat lookup and conversation-context
   inspection through product-owned supervised delegates.
-- [ ] Include the real goal and resolved state summaries in the model request;
+- [x] Include the real goal and resolved state summaries in the model request;
   do not rely on message length or opaque references as task understanding.
-- [ ] Produce a proposal referencing two distinct existing Cats, intended
+- [x] Produce a proposal referencing two distinct existing Cats, intended
   conversation reuse/create behavior, product origin, context scope, expected
   output, implementation-to-review dependency and budget.
-- [ ] Reject stale/unknown targets and distinguish unavailable capability from
+- [x] Reject stale/unknown targets and distinguish unavailable capability from
   missing user input. Reuse existing consent/approval handling where applicable.
-- [ ] Register only implemented descriptors and result contracts; test the same
+- [x] Register only implemented descriptors and result contracts; test the same
   read operations through the provider-agent path, not just direct unit calls.
 
-**Exit:** AC-03/AC-04 and preparation aspects of AC-08 pass without product writes.
+**Exit:** AC-03/AC-04 and preparation aspects of AC-08 pass without collaboration
+mutations; ordinary Chat turn/run/transcript projections still persist.
+
+K2 implements `chat.collaboration.discover_cats`, `inspect_context`, and
+`prepare` (all revision 1.0) as Chat-owned read-only supervised delegates. The
+existing decision opt-in remains off by default. Only a locally routed true
+Chat coordinator receives the surface, outside existing Work tool phases.
+Default-provider Chat, direct Cat replies, multi-target delivery, Code/Work and
+external transports retain their existing paths. The authenticated Chat
+message/retry entry explicitly enables the surface; the separate direct
+Orchestrator dispatch endpoint does not advertise it.
+
+The production continuation starts after ACK with an active cancellable turn.
+A maximum of four delegate operations/five model requests share one ephemeral
+decision session, 30-second elapsed cap and measured-usage checks. Structured
+results return to that session, then a localized transcript response records a
+validated proposal, missing input/capability, or a truthful stop. Current
+conversation/goal scope, distinct discovered IDs, exact target availability,
+review-after-artifact dependency and unadmitted work budgets are explicit.
+The normal dispatch merge preserves concurrent edits and revalidates proposal
+revision/source identity under its mutation gate. Normal Chat trace/run
+projections remain; no conversation/member/managed Work or teammate run is added.
+
+Provider-native enforcement remains a K4 limitation. K2 requests the existing
+isolated read-only/default Runtime policy, no skills, and rejects observed
+native activity; it does not claim an empty whitelist is a universal no-tools
+boundary. No Runtime contract, persisted schema, version or release changed.
+
+Validation: all 480 focused tests pass, including 16 K2 cases and 11 K1 knowledge
+cases. The batch covers Chat/Work dispatch, observation/policy/adapter contracts,
+Catlas, cancellation, merge/recovery, supervision and architecture boundaries.
+Server compilation, the affected test TypeScript check and refreshed test bundles
+pass. Captured Runtime
+requests verify actual goals, procedure content, same-session results and
+isolated read-only/no-requested-skills setup. In-memory/temporary HTTP fixtures
+verify post-ACK execution, cancel consumption, concurrent-edit preservation and
+successful proposal publication through the production merge. Scope exclusion,
+malformed/unsupported decisions, stale source/targets, cleanup-time changes,
+read/usage/elapsed bounds, rejection wording and ordinary fallback are covered.
+Independent review rechecked all reported corrections with no remaining
+blocking findings. All 1,016 local links in affected Markdown resolve, fences
+balance, and changed files use UTF-8/LF with no whitespace errors. Full CI remains
+the integration gate; no live provider, installed Desktop or user-state writes
+were used for this validation.
 
 ### K3: Complete collaboration operations and feedback
 
@@ -214,6 +259,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | Implemented K2's Chat read delegates, exact manifests/procedure dependency, bounded same-session feedback, validated proposals and post-ACK continuation. Independent review corrections cover substantive revisions, original-source anchoring, cleanup/publication revalidation, cancellation consumption, concurrent-state preservation, authenticated entry scoping, Runtime request policy and ordinary fallback. The first expanded run exposed seven metadata-only observation regressions; limited actual-goal delivery to the verified K2 surface without weakening existing tests. The final 480-test focused batch, compilation/typecheck, document checks and independent review pass. Full CI pending; K3-K4 remain open. |
 | 2026-09-24 | Full [CI on `c4736f98`](https://github.com/cats-inc/cats-platform/actions/runs/35976031494) passed both `validate` and `nodejs (24)`, including the corrected Code/Work scope and asynchronous rewrite fixtures. K1's code/integration gate is complete. This subsequent documentation-only record does not change tested executable inputs or claim K2-K4/live-provider completion. |
 | 2026-09-24 | CI corrections passed 26 focused scope/Code/setup cases and then the expanded 255-test regression batch. Refreshed server typecheck/output, test bundles and bundled server output passed. Independent review confirmed the scope fix and asynchronous test correction without weakening product assertions. Follow-up full CI remains the integration gate. |
 | 2026-09-24 | Initial [CI on `3815c6d0`](https://github.com/cats-inc/cats-platform/actions/runs/35974455451) passed typechecks and 4,688 tests but exposed two integration failures: Code's internal actor slot received Chat coordinator instructions, and the rewrite fixture read the transcript immediately after asynchronous ACK. Restricted both knowledge paths to explicit Chat origin, added Code/Work exclusion coverage, and made the rewrite fixture await the actual reply while also checking its delivered content/receipt. Follow-up validation is required before reporting CI success. |
@@ -224,4 +270,4 @@ future promotion through PLAN-109.
 ---
 
 *Created: 2026-09-24*
-*Last updated: 2026-09-24*
+*Last updated: 2026-09-25*

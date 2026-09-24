@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "revision": "2026-09-24.1",
+  "revision": "2026-09-25.1",
   "platformRange": "0.4.x",
   "requiredCapabilities": ["orchestrator-context-v1"],
   "entries": [
@@ -47,6 +47,25 @@
       "content": {
         "en": "To prepare collaboration: (1) state the goal, output and success criteria; (2) inspect only supplied authorized participants, keeping stable IDs distinct from display names; (3) propose an implementer and a different reviewer only when eligible candidates are actually known; (4) define the bounded handoff and make review depend on a verified implementation artifact/revision. Missing candidate discovery, conversation creation, membership or work-start operations are capability gaps, not reasons to invent Cats or claim recruitment. These procedures support preparation and existing current-room handoff; new mutations require separately available tools. Explain a gap and the supported next step. Ask one focused question only for genuinely missing user intent, and do not re-request existing authorization.",
         "zh-TW": "準備合作時：(1) 說明目標、產出與成功條件；(2) 只查看本次提供且已授權的參與者，區分穩定 ID 與顯示名稱；(3) 確實知道合適候選者時，才提議實作者與另一位審查者；(4) 定義有範圍的交接，讓審查依賴已驗證的實作產物／版本。缺少候選者探索、建立對話、加入成員或啟動工作的操作，是能力缺口，不能虛構 Cats 或宣稱已招募。這些程序支援準備與現有的聊天室內交接；新增寫入操作需要另外提供的工具。說明缺口與受支援的下一步。只有真的缺少使用者意圖時，才問一個聚焦問題；不要重複索取既有授權。"
+      }
+    },
+    {
+      "id": "orchestrator.discovery",
+      "revision": 1,
+      "kind": "procedure",
+      "roles": ["orchestrator"],
+      "surfaces": ["chat-decision"],
+      "topics": ["always"],
+      "requiredOperations": [
+        {"id": "chat.collaboration.discover_cats", "version": "1.0"},
+        {"id": "chat.collaboration.inspect_context", "version": "1.0"},
+        {"id": "chat.collaboration.prepare", "version": "1.0"}
+      ],
+      "verifiedAt": "2026-09-25",
+      "sources": ["docs/specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md"],
+      "content": {
+        "en": "For a request to involve teammates, first call discover_cats and inspect_context, one tool_request per response. Read toolResults in this same session; never invent IDs. Use declared roles to suggest suitability, not to claim verified capabilities or execution permission. Light provider availability is not work admission. Then call prepare with the returned current revision, two distinct discovered Cat IDs, reuse_current/create intent, concrete expected output and a suggested budget. Ask for genuinely missing intent through missingInformation; absent Cats/tools are capability gaps, not permission questions. Handoff is limited to the current goal and conversation. Review depends on a verified implementation artifact/revision. Rejected reads or stale revisions require a fresh read within the remaining budget. After the preparation result, return a single respond semantic_plan step acknowledging the actual result. Do not create resources or start work; preparation is not execution. If coordination is irrelevant, respond normally without calling these tools.",
+        "zh-TW": "使用者要找同伴合作時，先呼叫 discover_cats 與 inspect_context，每次回應只送一個 tool_request。讀取同一 session 裡的 toolResults，不要虛構 ID。角色設定只能用來建議適任性，不代表能力已驗證或取得執行權限。provider 的輕量可用性檢查也不代表工作已核准。接著呼叫 prepare，帶入查詢回傳的目前 revision、兩位不同同伴的真實 ID、reuse_current/create 意圖、具體產出與建議預算。真的缺少使用者意圖時用 missingInformation 提問；缺少 Cats 或工具是能力缺口，不要當成需要再問授權。交接限本次目標與目前對話；審查必須等實作產物／版本確認後開始。讀取被拒或版本過期時，只能在剩餘預算內重新讀取。收到準備結果後，回傳只有一個 respond 步驟的 semantic_plan，承認實際結果。不要建立資源或啟動工作；準備不等於執行。若不需要合作，直接正常回應，不必呼叫這些工具。"
       }
     },
     {

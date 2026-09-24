@@ -4,8 +4,10 @@
 
 Accepted for the shared knowledge and role-procedure architecture, 2026-09-24.
 The owner requested documentation followed by wiring in the same work package.
-K1 implements inline knowledge consumption; collaboration operation mapping and
-K2-K4 acceptance remain pending. Publication remains a separate authorization.
+K1 implements inline knowledge consumption. K2 implements opt-in supervised
+teammate/context reads and collaboration preparation, with same-session feedback
+and isolated HTTP acceptance fixtures. K3 mutation contracts and K4 live/native
+acceptance remain pending. Publication remains a separate authorization.
 
 ## Context
 

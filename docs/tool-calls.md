@@ -47,6 +47,7 @@ rather than duplicating every validation branch.
 | `runtime_tool` | Tool appears in a runtime session tool catalog and is callable by an agent / assistant through the runtime loop. | No |
 | `runtime_bridge_delegate` | Server-side runtime bridge code calls an internal product delegate when it observes a known output. | No |
 | `product_internal_delegate` | Product UI or service code calls an in-process delegate, not a user-facing HTTP route. | No |
+| `provider_agent_tool_request` | An advertised provider-agent decision requests a supervised product delegate; structured results return in the decision session. | No |
 | `mcp_tool` | Tool is exposed through an MCP facade. | No, unless the same operation also has an HTTP route |
 | `http_route` | Tool-like operation is exposed as a product HTTP endpoint. | Yes |
 
@@ -55,14 +56,17 @@ rather than duplicating every validation branch.
 [SPEC-118](specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md)
 connects ordinary Orchestrator procedures through inline request context.
 This content is not a tool registration and cannot expand the callable catalog.
-Its candidate operations are semantic responsibilities, not current tool names.
-Register them here only after delegate, policy, provider delivery and result
-feedback are implemented and their supported path has validation evidence.
+K2's read/preparation delegates below have policy, actual provider-request/result
+delivery and isolated HTTP fixture evidence. Its remaining conversation,
+membership and work mutation responsibilities are not registered capabilities.
 
 | Tool | Owner | Status | Channel | Caller | Contract |
 |------|-------|--------|---------|--------|----------|
 | `cats.runtime.session.create` | Platform supervision | Implemented | `product_internal_delegate` | Platform runtime wrapper | [Runtime Supervision Tools](#runtime-supervision-tools) |
 | `cats.runtime.message.send` | Platform supervision | Implemented | `product_internal_delegate` | Platform runtime wrapper | [Runtime Supervision Tools](#runtime-supervision-tools) |
+| `chat.collaboration.discover_cats` | Cats Chat | Implemented; opt-in K2 read/result loop | `provider_agent_tool_request` | Authenticated Chat Orchestrator with read scope | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
+| `chat.collaboration.inspect_context` | Cats Chat | Implemented; opt-in K2 read/result loop | `provider_agent_tool_request` | Authenticated Chat Orchestrator with read scope | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
+| `chat.collaboration.prepare` | Cats Chat | Implemented; proposal only | `provider_agent_tool_request` | Authenticated Chat Orchestrator after discovery/inspection | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
 | `cats.lifecycle.run.spawn` | Platform supervision | Implemented | `product_internal_delegate` / future `runtime_tool` | Supervised run agent / Work delegate | [Lifecycle Tools](#lifecycle-tools) |
 | `work.context.lookup` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / future `runtime_tool` | Work supervised agent | [Work Supervised Tools](#work-supervised-tools) |
 | `work.local_note.apply` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / future `runtime_tool` | Work supervised agent | [Work Supervised Tools](#work-supervised-tools) |
@@ -99,6 +103,45 @@ Tool result statuses are:
 
 These tools are part of the broader agent control surface registry described in
 [agent-control-surfaces.md](./agent-control-surfaces.md).
+
+## Orchestrator Collaboration Preparation
+
+These revision `1.0` manifests and delegates live in
+`src/products/chat/state/orchestratorCollaboration.ts`; the Chat decision
+requester and `orchestratorCollaborationLoop.ts` supply their bounded feedback
+loop. [SPEC-118](specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md#k2-read-operation-contract)
+defines their contract under [ADR-119](decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md)
+and [PLAN-110](plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md).
+
+| Operation | Input summary | Applied result |
+|-----------|---------------|----------------|
+| `chat.collaboration.discover_cats` | Optional name/role query up to 128 characters; limit 1-16, default 8 | Bounded authorized Chat Cat IDs, declared roles, target/availability, current-room lease and observed revision |
+| `chat.collaboration.inspect_context` | `{}` only | Current canonical conversation/topology, participants, routing, workspace presence and revision; Work state explicitly not inspected |
+| `chat.collaboration.prepare` | Observed revision, distinct discovered implementer/reviewer IDs, `reuse_current`/`create`, expected output, missing-information list, proposed duration/token budget | `prepared`, `needs_input` or `unavailable`; execution remains `not_started` and budget `not_admitted` |
+
+The server binds owner, conversation, actual goal, Chat origin, context scope and
+review-after-artifact dependency. Callers cannot override conversation scope or
+invent IDs, grants or readiness. Both successful discovery and context receipts
+are required before preparation; roles and light availability are not execution
+admission. Exact output schema ID/version and target are validated.
+
+All three tools have `sideEffect: none`, `blocking: blocking`,
+`approval: never`, `cancellation: cooperative` and `evidence: summary`.
+Malformed input yields `E_SCHEMA_INVALID`; stale/unscoped input or unverified
+targets yield `E_TOOL_SCOPE_DENIED`/`E_PRECHECK_FAILED`. Missing intent or a
+missing eligible/configured teammate is a structured preparation result.
+Repeated reads create no collaboration entity; the normal Chat transcript and
+turn/run projections retain the coordinator result and bounded tool receipts.
+This is not durable mutation idempotency, which remains K3 work.
+
+Only the existing opt-in provider-agent path in authenticated Chat message/retry
+continuation advertises these tools. Default-provider/direct/multi-target Chat,
+Code/Work, external transports, Work tool phases and direct Orchestrator dispatch
+do not gain the surface. The loop begins after ACK, reuses one decision session,
+limits calls/elapsed time/usage, returns results to that model, and consumes
+ordinary cancellation. Publication revalidates revision and source message
+inside the existing merge gate. No new MCP or public HTTP operation is exposed.
+Provider-native enforcement and installed/live acceptance remain K4.
 
 ## Runtime Supervision Tools
 

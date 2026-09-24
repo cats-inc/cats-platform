@@ -16,6 +16,7 @@ import {
 } from '../../state/model/index.js';
 import { repairChannelReadState } from '../channelRepair.js';
 import { createMergedDispatchChatStore } from '../../state/runtime-dispatch/merge.js';
+import { revalidateCollaborationPublication } from '../../state/orchestratorCollaborationReport.js';
 import { notifyStreamTargetChanged } from './streamTargetSignal.js';
 import { isDefaultChatChannel } from '../../shared/channelTopology.js';
 import { resolveRoomRoutingState } from '../../state/room-routing/index.js';
@@ -257,6 +258,13 @@ async function continueAcknowledgedChannelDispatchInBackground(
     channelId,
     baselineState: acknowledgedDispatch.state,
     now: () => nowFrom(context.dependencies),
+    beforeMerge: (latestState, dispatchState) => {
+      const turn = acknowledgedDispatch.preparedTurn;
+      return turn?.providerAgentDecisionDeferred && turn.providerAgentObservation
+        ? revalidateCollaborationPublication({ latestState, dispatchState, channelId,
+            observation: turn.providerAgentObservation, sourceMessageId: turn.userMessage.id })
+        : dispatchState;
+    },
     onPersistMergedState: ({ previousState, persistedState }) => {
       if (!previousState.channels.some((channel) => channel.id === channelId)) {
         return;
@@ -289,6 +297,8 @@ async function continueAcknowledgedChannelDispatchInBackground(
         },
         cancellationRegistry: channelDispatchCancellationRegistry,
         onStateWritten: notifyStreamTargetChanged,
+        providerAgentDecisionRequester: context.dependencies.providerAgentDecisionRequester,
+        enableCollaborationReads: true,
       },
     );
   } catch (error) {
@@ -609,6 +619,7 @@ async function handleRestSendMessage(
             staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
           },
           providerAgentDecisionRequester: context.dependencies.providerAgentDecisionRequester,
+          enableCollaborationReads: true,
           providerCapabilityBootstrapConfig:
             context.dependencies.providerCapabilityBootstrapConfig,
           providerCapabilityBootstrapDiagnosticSink:
@@ -760,6 +771,7 @@ async function handleRestRetryMessage(
             staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
           },
           providerAgentDecisionRequester: context.dependencies.providerAgentDecisionRequester,
+          enableCollaborationReads: true,
           externalIssueImport: context.dependencies.externalIssueImport,
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,

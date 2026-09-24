@@ -9,16 +9,22 @@ import { buildChannelView, requireChannel } from './model/index.js';
 import { resolveOrchestratorExecutionTarget } from './runtimeTargeting.js';
 import { isOrchestratorKnowledgeChannel, loadOrchestratorKnowledge } from './orchestratorKnowledge.js';
 import { resolveProviderCapabilityProfile } from '../../../platform/supervision/providerCapabilityProfiles.js';
+import type { ChatState } from '../api/contracts.js';
+import type { ProviderAgentBoundedObservation } from '../../../platform/orchestration/providerAgentDecision.js';
+import type { RuntimeClient } from '../../../platform/runtime/client.js';
+import { isCollaborationTool, type CollaborationReadReceipt } from './orchestratorCollaboration.js';
+import { runCollaborationDecisionLoop } from './orchestratorCollaborationLoop.js';
 
 export interface ChatProviderAgentDecisionRequesterOptions {
   failureMode?: 'throw' | 'return_null';
   knowledgeFilePath?: string;
+  readState?: () => Promise<ChatState>;
 }
 
 export function createChatProviderAgentDecisionRequester(
   options: ChatProviderAgentDecisionRequesterOptions = {},
 ): ProviderAgentDecisionRequester {
-  return async (input) => {
+  const requester: ProviderAgentDecisionRequester = async (input) => {
     const target = input.observation.actor.target;
     if (target.kind !== 'execution_target') {
       return null;
@@ -40,59 +46,85 @@ export function createChatProviderAgentDecisionRequester(
         || currentProfile.control !== (target.control ?? null))) {
         return null;
       }
-      const productKnowledge = isOrchestrator
-        ? await loadOrchestratorKnowledge({
-            channel: buildChannelView(input.state, input.channelId),
-            body: input.payload.body,
-            surface: 'chat-decision',
-            target: binding ?? { provider: target.provider, model: target.model ?? null },
-            operations: input.observation.availableTools.map(({ manifest }) => ({
-              id: manifest.name, version: manifest.manifestVersion,
-            })),
-            policyDigest: knowledgeDigest(JSON.stringify(input.observation.policy)),
-            filePath: options.knowledgeFilePath,
-          })
-        : undefined;
-      const result = await requestProviderAgentDecision({
-        runtimeClient: input.runtimeClient,
-        observation: input.observation,
-        productKnowledge,
-        target: {
-          provider: target.provider,
-          instance: binding?.instance,
-          model: binding ? binding.model : target.model,
-          createInput: {
-            modelSelection: binding?.modelSelection ?? undefined,
-            context: {
-              source: 'automation',
-              reason: 'chat-provider-agent-decision-session',
-              metadata: {
-                channelId: input.channelId,
-                observationId: input.observation.observationId,
+      const request = async (state: ChatState, observation: ProviderAgentBoundedObservation,
+        runtimeClient: RuntimeClient, sessionId: string | null = null,
+        receipts?: CollaborationReadReceipt[]) => {
+        const productKnowledge = isOrchestrator
+          ? await loadOrchestratorKnowledge({
+              channel: buildChannelView(state, input.channelId),
+              body: input.payload.body,
+              surface: 'chat-decision',
+              target: binding ?? { provider: target.provider, model: target.model ?? null },
+              operations: observation.availableTools.map(({ manifest }) => ({
+                id: manifest.name, version: manifest.manifestVersion,
+              })),
+              policyDigest: knowledgeDigest(JSON.stringify(observation.policy)),
+              filePath: options.knowledgeFilePath,
+            })
+          : undefined;
+        const result = await requestProviderAgentDecision({
+          runtimeClient,
+          observation,
+          productKnowledge,
+          toolResults: receipts,
+          target: {
+            sessionId,
+            provider: target.provider,
+            instance: binding?.instance,
+            model: binding ? binding.model : target.model,
+            createInput: {
+              ...(receipts ? {
+                workspaceKind: 'sandbox' as const, workspaceAccess: 'read_only' as const,
+                permissionMode: 'default' as const, sharingMode: 'isolated' as const,
+                skills: { requestedSkills: [], strict: true },
+              } : {}),
+              modelSelection: binding?.modelSelection ?? undefined,
+              context: {
+                source: 'automation',
+                reason: 'chat-provider-agent-decision-session',
+                metadata: {
+                  channelId: input.channelId,
+                  observationId: observation.observationId,
+                },
+              },
+            },
+            sendInput: {
+              context: {
+                source: 'automation',
+                reason: 'chat-provider-agent-decision',
+                metadata: {
+                  channelId: input.channelId,
+                  observationId: observation.observationId,
+                },
               },
             },
           },
-          sendInput: {
-            context: {
-              source: 'automation',
-              reason: 'chat-provider-agent-decision',
-              metadata: {
-                channelId: input.channelId,
-                observationId: input.observation.observationId,
-              },
-            },
+          supervision: {
+            product: 'cats-chat',
+            surface: 'provider-agent-decision',
+            runId: input.channelId,
+            actionId: `${observation.observationId}:decision`,
+            actorRef: input.observation.actor.actorRef,
+            reason: 'chat_provider_agent_decision',
           },
-        },
-        supervision: {
-          product: 'cats-chat',
-          surface: 'provider-agent-decision',
-          runId: input.channelId,
-          actionId: `${input.observation.observationId}:decision`,
-          actorRef: input.observation.actor.actorRef,
-          reason: 'chat_provider_agent_decision',
-        },
-      });
+        });
+        if (receipts && result.runtimeMessage.segments.some((segment) => segment.kind !== 'text')) {
+          throw new Error('Native tool activity is not part of collaboration preparation.');
+        }
+        return result;
+      };
 
+      if (isOrchestrator && input.onCollaborationResult
+        && input.observation.availableTools.some(({ manifest }) => isCollaborationTool(manifest.name))) {
+        return runCollaborationDecisionLoop({
+          state: input.state, channelId: input.channelId, goal: input.payload.body,
+          observation: input.observation, runtimeClient: input.runtimeClient,
+          readState: options.readState, isCancelled: input.isCancelled,
+          report: input.onCollaborationResult, request,
+        });
+      }
+
+      const result = await request(input.state, input.observation, input.runtimeClient);
       return result.decision;
     } catch (error) {
       if (options.failureMode === 'return_null') {
@@ -101,4 +133,6 @@ export function createChatProviderAgentDecisionRequester(
       throw error;
     }
   };
+  requester.supportsCollaboration = true;
+  return requester;
 }

@@ -4,12 +4,12 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1 knowledge delivery fixture-validated; collaboration operations pending |
+| Status | In progress; K1 validated; K2 read/preparation fixtures pass, full CI pending; K3-K4 pending |
 | Owner | Platform integration; Chat owns conversation operations |
-| Reviewer | Product owner; independent implementation reviewer unassigned |
+| Reviewer | Product owner; independent Codex implementation review |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
 | Plan | [PLAN-110](../plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md) |
-| Last updated | 2026-09-24 |
+| Last updated | 2026-09-25 |
 
 ## Summary
 
@@ -131,13 +131,73 @@ The existing request/session evidence identifies the execution target. These
 receipts prove what the request contained, not model understanding or completed
 product operations. Missing/invalid/incompatible content produces an empty
 snapshot and normal dispatch under existing policy. Native skill discovery is
-not required; new collaboration tools and their result loop remain K2/K3 work.
+not required. K2 adds the read/preparation loop below; mutation tools remain K3.
+
+### K2 read-operation contract
+
+K2 uses Chat-owned supervised delegates, delivered through the existing opt-in
+provider-agent decision path (`CATS_CHAT_PROVIDER_AGENT_DECISION_ENABLED`). It
+does not change the default setting or expose a public HTTP/MCP endpoint.
+Existing Work intake/triage phases retain their own tools; the new read surface
+is offered only when no such product operation phase is selected.
+Only the authenticated Chat message/retry entry explicitly enables this surface;
+the separate direct Orchestrator dispatch endpoint does not advertise it.
+The actual bounded goal is added only when these read descriptors are available;
+other decision observations retain their existing metadata-only input contract.
+
+| Operation (revision 1.0) | Input | Result |
+|--------------------------|-------|--------|
+| `chat.collaboration.discover_cats` | Optional query (128 characters), limit (1-16) | Active Chat Cats in the authenticated local owner's directory, stable IDs, declared roles, configured targets, current-room lease status and light Runtime availability; bounded/truncated flags |
+| `chat.collaboration.inspect_context` | Empty object; scope is server-bound | Current canonical conversation identity, topology, active participant IDs, workspace presence, current routing status and revision; no other conversation contents |
+| `chat.collaboration.prepare` | Observed revision, two distinct discovered Cat IDs, reuse-current/create intent, expected output, bounded missing-information list and proposed work budget | A validated proposal or a missing-input/capability result; no creation, membership, assignment or execution |
+
+Only a routed Chat Orchestrator can receive these descriptors. Read grants are
+intersected with policy; tool and output revisions are checked. Roles are
+declared metadata, not verified skill or permission claims. Light availability
+does not admit execution. Default-provider Chat, direct Cat replies, Code/Work
+and external transports do not inherit owner-directory access from an actor name.
+
+The requester performs bounded, sequential calls in one ephemeral decision
+session, after the ordinary message ACK and active-turn persistence. Every
+delegate result returns as structured feedback to that session.
+At most four operations and five model requests fit within the original elapsed
+budget (capped at 30 seconds); measured usage is checked between calls. Tokens
+cannot be hard-capped inside a provider call with the current Runtime contract.
+Timeout/cancellation stops continuation and requests best-effort Runtime cancel
+and close. Fresh reads recheck scope, binding and relevant state before acting
+on a model response and before returning a proposal. No continuation survives a
+restart. Preparation budgets are suggestions, never execution grants.
+
+The ordinary cancel endpoint stops the active preparation and consumes its
+cancellation request. The existing mutation-gated dispatch merge preserves
+concurrent changes; a final revision/source-message check inside that gate
+downgrades stale proposals before publication. Discovery results are bounded to
+10,000 serialized candidate characters; all feedback together is limited to
+24,000 characters/four receipts. Unsupported monetary limits and missing usage
+measurements stop preparation once a collaboration tool is selected. An ordinary
+first response retains the existing decision/fallback path even if usage is
+unavailable. Cleanup is best effort and bounded separately.
+
+Decision sessions reuse the existing isolated `sandbox` / `read_only` / `default`
+Runtime request contract, request no native skills, instruct JSON-only decisions
+and reject observed non-text/native-tool segments. This is not a universal
+provider-native tool prohibition: provider-specific enforcement and live/native
+acceptance remain K4, with no Runtime implementation changes in K2.
+
+The final proposal has Chat origin, goal/current-conversation-only handoff scope,
+expected output, distinct implementation/review roles and a review dependency on
+the actual implementation artifact/revision. An ordinary localized transcript
+message records preparation and tool receipts; it cannot claim collaboration
+mutations. Ordinary Chat turn/run projections still record the coordinator's
+preparation response; no teammate execution run or managed Work is admitted.
+K3 must re-admit and revalidate any later execution.
 
 ### Candidate collaboration operations
 
-The following are semantic responsibilities, not registered tool names or new
-public endpoints. Final identifiers/schemas come from their owning delegates
-and are registered only when the complete call/result path is implemented.
+The following maps the complete workflow. The K2 read/preparation identifiers
+are registered above; remaining mutation/lifecycle responsibilities are proposed,
+with final identifiers/schemas owned by their delegates. They become callable
+only after the complete call/result path is implemented.
 
 | Operation | Input supplied by model | Server-resolved context and result |
 |-----------|-------------------------|------------------------------------|
@@ -253,9 +313,11 @@ reported as this end-to-end scenario passing.
 ## Acceptance Criteria
 
 K1 has fixture evidence for AC-01/AC-02 and the knowledge-only parts of
-AC-03/AC-08/AC-09, recorded in PLAN-110. Real provider/native behavior, new
-collaboration operations, full profile exclusion and end-to-end acceptance
-remain pending; the criteria below describe the full target.
+AC-03/AC-08/AC-09, recorded in PLAN-110. K2 adds read/preparation evidence for
+AC-03/AC-04/AC-08, including actual requester and authenticated HTTP continuation,
+result feedback, stale-state rejection and cancellation. Real provider/native
+behavior, collaboration mutations, full profile exclusion and end-to-end
+acceptance remain pending; the criteria below describe the full target.
 
 | ID | Observable criterion | Requirements |
 |----|----------------------|--------------|
@@ -292,4 +354,4 @@ must have their own member-local implementation and compatibility checks.
 ---
 
 *Created: 2026-09-24*
-*Last updated: 2026-09-24*
+*Last updated: 2026-09-25*

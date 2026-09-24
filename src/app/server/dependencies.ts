@@ -314,7 +314,9 @@ export function resolveServerDependencies(
   const providerAgentDecisionRequester = dependencies.chat.providerAgentDecisionRequester
     ?? (
       dependencies.shared.config.chatProviderAgentDecisionEnabled === true
-        ? createChatProviderAgentDecisionRequester({ failureMode: 'return_null' })
+        ? createChatProviderAgentDecisionRequester({
+            failureMode: 'return_null', readState: () => dependencies.chat.chatStore.read(),
+          })
         : undefined
     );
   const orchestratorChannelRouter = dependencies.chat.orchestratorChannelRouter

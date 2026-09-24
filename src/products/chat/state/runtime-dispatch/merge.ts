@@ -392,6 +392,7 @@ export function createMergedDispatchChatStore(options: {
   channelId: string;
   baselineState: ChatState;
   now: () => Date;
+  beforeMerge?: (latestState: ChatState, dispatchState: ChatState) => ChatState;
   onPersistMergedState?: (input: {
     previousState: ChatState;
     persistedState: ChatState;
@@ -414,10 +415,11 @@ export function createMergedDispatchChatStore(options: {
             return latestState;
           }
 
+          const checkedDispatchState = options.beforeMerge?.(latestState, dispatchState) ?? dispatchState;
           const mergedState = mergeCompletedDispatchState(
             latestState,
             previousState,
-            dispatchState,
+            checkedDispatchState,
             options.channelId,
             options.now(),
           );

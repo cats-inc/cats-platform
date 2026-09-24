@@ -56,6 +56,7 @@ export interface BuildChatProviderAgentObservationInput {
   policy: SupervisionPolicy;
   routing: ChatProviderAgentRoutingSummary;
   messageCharacterCount: number;
+  goal?: string;
   allowedFallbacks?: SupervisionFallbackPolicy[];
   availableTools?: ProviderAgentToolDescriptor[];
   additionalContextRefs?: string[];
@@ -101,7 +102,8 @@ export function buildChatProviderAgentObservation(
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
     observationId: `chat-provider-agent:${channel.id}:${now.toISOString()}`,
     runId: `chat:${channel.id}`,
-    goal: 'Handle the next Chat turn using deterministic routing metadata and bounded tools.',
+    goal: input.goal?.slice(0, 2000)
+      || 'Handle the next Chat turn using deterministic routing metadata and bounded tools.',
     task: {
       kind: 'chat_turn',
       risk: input.routing.targetCount > 1 ? 'medium' : 'low',

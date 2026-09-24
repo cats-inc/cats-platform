@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import type { CollaborationReport } from '../orchestratorCollaboration.js';
+import { isCollaborationTool } from '../orchestratorCollaboration.js';
+import { appendCollaborationReport } from '../orchestratorCollaborationReport.js';
 
 import type {
   ChannelDispatchResult,
@@ -454,16 +457,19 @@ interface WorkItemAssignProjectResultMetadata {
   assigned: boolean;
 }
 
-export type ProviderAgentDecisionRequester = (input: {
+export type ProviderAgentDecisionRequester = ((input: {
   state: ChatState;
   channelId: string;
   payload: SendChannelMessageInput;
   observation: NonNullable<import('./turn.js').PreparedDispatchTurn['providerAgentObservation']>;
   runtimeClient: RuntimeClient;
   now: Date;
-}) => Promise<ProviderAgentDecision | null>;
+  onCollaborationResult?: (report: CollaborationReport) => void;
+  isCancelled?: () => boolean;
+}) => Promise<ProviderAgentDecision | null>) & { supportsCollaboration?: boolean };
 
 interface RouteChannelMessageOptions {
+  enableCollaborationReads?: boolean;
   transport?: RuntimeTransportContext;
   transportLocale?: string | null;
   transportBindingId?: string | null;
@@ -6997,6 +7003,7 @@ export async function beginChannelMessageDispatch(
         options.providerCapabilityBootstrapDiagnosticSink,
       naturalProductIntentMode: options.naturalProductIntentMode,
       transport: options.transport,
+      enableCollaborationReads: options.enableCollaborationReads,
       transportBindingId: options.transportBindingId,
     },
   );
@@ -7013,8 +7020,11 @@ export async function beginChannelMessageDispatch(
     preparedTurn.state = metadataApplied.state;
     preparedTurn.userMessage = metadataApplied.userMessage;
   }
+  preparedTurn.providerAgentDecisionDeferred = Boolean(options.providerAgentDecisionRequester?.supportsCollaboration
+    && preparedTurn.providerAgentObservation?.availableTools.some(({ manifest }) => isCollaborationTool(manifest.name)));
   const providerAgentDecision = preparedTurn.providerAgentObservation
     && options.providerAgentDecisionRequester
+    && !preparedTurn.providerAgentDecisionDeferred
     ? await options.providerAgentDecisionRequester({
         state: preparedTurn.state,
         channelId,
@@ -7234,6 +7244,7 @@ export async function beginChannelMessageRetryDispatch(
       providerCapabilityBootstrapDiagnosticSink:
         options.providerCapabilityBootstrapDiagnosticSink,
       naturalProductIntentMode: options.naturalProductIntentMode,
+      enableCollaborationReads: options.enableCollaborationReads,
       transport: options.transport,
       transportBindingId: options.transportBindingId,
     },
@@ -7252,8 +7263,11 @@ export async function beginChannelMessageRetryDispatch(
     preparedTurn.userMessage = preparedMetadataApplied.userMessage;
     sourceMessage = preparedMetadataApplied.userMessage;
   }
+  preparedTurn.providerAgentDecisionDeferred = Boolean(options.providerAgentDecisionRequester?.supportsCollaboration
+    && preparedTurn.providerAgentObservation?.availableTools.some(({ manifest }) => isCollaborationTool(manifest.name)));
   const providerAgentDecision = preparedTurn.providerAgentObservation
     && options.providerAgentDecisionRequester
+    && !preparedTurn.providerAgentDecisionDeferred
     ? await options.providerAgentDecisionRequester({
         state: preparedTurn.state,
         channelId,
@@ -7471,6 +7485,51 @@ export async function continueBegunChannelMessageDispatch(
     workflow,
   } = begun.preparedTurn;
   let latestCheckpoint = initialCheckpoint;
+  if (begun.preparedTurn.providerAgentDecisionDeferred && options.providerAgentDecisionRequester
+    && begun.preparedTurn.providerAgentObservation) {
+    let report: CollaborationReport | undefined;
+    await options.providerAgentDecisionRequester({
+      state: nextState, channelId, payload: { body: userMessage.body },
+      observation: begun.preparedTurn.providerAgentObservation, runtimeClient, now,
+      onCollaborationResult: (value) => { report = value; },
+      isCancelled: () => Boolean(options.cancellationRegistry?.read(channelId)),
+    });
+    if (report) {
+      const completedAt = new Date();
+      const sidecar = appendCollaborationReport({ state: nextState, channelId,
+        sourceMessageId: userMessage.id, report,
+        locale: resolveOwnerVisibleMessageLocale(requireChannel(nextState, channelId), options.transportLocale),
+        now: completedAt });
+      const cancelled = report.reason === 'cancelled';
+      options.cancellationRegistry?.consume(channelId);
+      for (const target of activeTurn.targetStatuses) {
+        target.status = cancelled ? 'cancelled' : report.status === 'stopped' ? 'failed' : 'completed';
+        target.completedAt = completedAt.toISOString();
+        const dispatchId = target.dispatchId ?? randomUUID();
+        target.dispatchId = dispatchId;
+        outcome.dispatches.push({ id: dispatchId, sourceMessageId: userMessage.id,
+          source: null, target: target.participant, laneId: null, sessionId: null,
+          trigger: initialResolution.trigger,
+          status: report.status === 'stopped' ? 'error' : 'completed', mentionNames: [],
+          response: null, startedAt: nowIso,
+          completedAt: completedAt.toISOString(), error: report.reason ?? null });
+        outcome.totalDispatchCount += 1;
+        results.push({ targetKind: 'orchestrator', targetId: 'orchestrator', targetName: 'Orchestrator',
+          laneId: null, sessionId: null, status: report.status === 'stopped' ? 'error' : 'sent',
+          turnId: activeTurn.id, dispatchId, sourceMessageId: userMessage.id, targetStatus: target.status });
+      }
+      nextState = finalizeDispatchTurn(sidecar.state, channelId, completedAt, {
+        nowIso: completedAt.toISOString(), baseRoomRouting, workflow, activeTurn, outcome,
+        latestCheckpoint, guardReason: null,
+        blockedResolution: cancelled ? { blockedReason: 'user_cancelled', note: 'Stopped by user.' } : null,
+        userMessageId: userMessage.id, describeGuardReason,
+      });
+      // The HTTP continuation supplies the existing mutation-gated merge writer.
+      nextState = await persistInFlightDispatchState(options.chatStore, nextState);
+      options.onStateWritten?.(channelId);
+      return { state: nextState, results };
+    }
+  }
   const loopResult = await processDispatchQueue({
     state: nextState,
     channelId,

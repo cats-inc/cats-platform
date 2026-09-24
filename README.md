@@ -97,9 +97,11 @@ The current slices are:
 - [x] Connect shared product knowledge and role procedures to the applicable
       Orchestrator reply and decision requests, with bounded inline content,
       provenance and normal npm/Desktop assets. Scoped fixtures pass in
-      [PLAN-110](./docs/plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md);
-      supervised conversation/teammate/work operations and live acceptance remain
-      pending. Provider-selected default Chat retains its own assistant identity;
+      [PLAN-110](./docs/plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md).
+      Opt-in Orchestrator decisions now support supervised teammate/context reads
+      and validated collaboration proposals with same-session result feedback.
+      Conversation/membership/work mutations and live acceptance remain pending.
+      Provider-selected default Chat retains its own assistant identity;
       preview-only development/practice skills remain a separate workstream.
 
 - [x] Implement the initial Code-entry Catlas help slice: a bundled bilingual

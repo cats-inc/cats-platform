@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { collaborationToolDescriptors } from '../orchestratorCollaboration.js';
+import { isOrchestratorKnowledgeChannel } from '../orchestratorKnowledge.js';
+import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 
 import type {
   ChannelDispatchResult,
@@ -165,10 +168,12 @@ export interface PreparedDispatchTurn {
   maxDispatches: number;
   maxTargetVisits: number;
   providerAgentObservation: ProviderAgentBoundedObservation | null;
+  providerAgentDecisionDeferred?: boolean;
   terminalResult: { state: ChatState; results: ChannelDispatchResult[] } | null;
 }
 
 export interface PrepareDispatchTurnOptions {
+  enableCollaborationReads?: boolean;
   deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
@@ -273,6 +278,7 @@ export function prepareDispatchTurnForUserMessage(
     providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
     providerCapabilityBootstrapDiagnosticSink: options.providerCapabilityBootstrapDiagnosticSink,
     naturalProductIntentMode: options.naturalProductIntentMode,
+    enableCollaborationReads: options.enableCollaborationReads,
     transport: options.transport,
     transportBindingId: options.transportBindingId,
   });
@@ -515,6 +521,7 @@ export function prepareDispatchTurnForUserMessage(
 }
 
 function buildProviderAgentObservationForTurn(input: {
+  enableCollaborationReads?: boolean;
   state: ChatState;
   channelId: string;
   payload: SendChannelMessageInput;
@@ -844,6 +851,22 @@ function buildProviderAgentObservationForTurn(input: {
     observationPolicy = workExternalBindingPolicyDecision.result.policy;
   }
 
+  const collaborationTools = input.enableCollaborationReads === true
+    && providerAgentActorRef === 'orchestrator'
+    && input.initialResolution.targets.length === 1
+    && input.initialResolution.targets[0]?.participantKind === 'orchestrator'
+    && isOrchestratorKnowledgeChannel(channel) && !isDirectLaneChannel(channel)
+    && (!input.transport || input.transport === 'web' || input.transport === 'mobile')
+    && !input.payload.body.trimStart().startsWith('/')
+    && !exposeCatProductIntentProposalTool
+    && [workIntakeToolObservation, workExecutionPreparationToolObservation,
+      workExternalIssueImportToolObservation, workExternalBindingToolObservation,
+      workTriageToolObservation, workProjectCreateToolObservation,
+      workItemUpdateToolObservation, workItemAssignProjectToolObservation]
+      .every((entry) => entry.descriptors.length === 0)
+    ? collaborationToolDescriptors({ dials: observationPolicy,
+        allowedFallbacks: [observationPolicy.fallbackPolicy] }) : [];
+
   return buildChatProviderAgentObservation({
     state: input.state,
     channelId: input.channelId,
@@ -851,6 +874,7 @@ function buildProviderAgentObservationForTurn(input: {
     capabilityProfile,
     policy: observationPolicy,
     availableTools: [
+      ...collaborationTools,
       ...(exposeCatProductIntentProposalTool
         ? [
           {
@@ -897,6 +921,7 @@ function buildProviderAgentObservationForTurn(input: {
       ...workItemAssignProjectToolObservation.invariants,
     ],
     messageCharacterCount: input.payload.body.length,
+    goal: collaborationTools.length > 0 ? input.payload.body : undefined,
     routing: {
       trigger: input.initialResolution.trigger,
       resolution: input.initialResolution.resolution,

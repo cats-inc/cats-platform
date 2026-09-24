@@ -15,8 +15,11 @@ verified tools, current observations and authoritative operation results.
 Normal collaboration procedures belong in release and preview/debug; the
 Cats-development/practice supplement stays preview/debug-only. The first
 knowledge-delivery gate is separate from conversation creation, recruitment and
-work execution. K1 inline delivery and npm/Desktop asset fixtures pass;
-collaboration operations and live end-to-end acceptance remain pending.
+work execution. K1 inline delivery and npm/Desktop asset fixtures pass. K2 adds
+opt-in teammate/context discovery and validated preparation with bounded
+same-session result feedback, cancellation and concurrent-state protection.
+Conversation/membership/work mutations and live end-to-end acceptance remain
+K3/K4 work; the existing provider-agent decision setting stays off by default.
 
 ## Cats Self-Development and Catlas Practice
 
