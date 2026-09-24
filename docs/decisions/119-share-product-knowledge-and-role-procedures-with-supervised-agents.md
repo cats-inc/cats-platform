@@ -7,8 +7,8 @@ The owner requested documentation followed by wiring in the same work package.
 K1 implements inline knowledge consumption. K2 implements opt-in supervised
 teammate/context reads and collaboration preparation, with same-session feedback
 and isolated HTTP acceptance fixtures. K3 adds owner-confirmed conversation,
-membership and Work execution with durable recovery; scoped validation passes,
-with full CI pending.
+membership and Work execution with durable recovery; scoped validation and full
+CI pass, as recorded in [PLAN-110](../plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md).
 K4 live/native acceptance remains pending. Publication remains a separate authorization.
 
 ## Context

@@ -19,8 +19,9 @@ work execution. K1 inline delivery and npm/Desktop asset fixtures pass. K2 adds
 opt-in teammate/context discovery and validated preparation with bounded
 same-session result feedback, cancellation and concurrent-state protection.
 K3 adds owner-confirmed conversation/membership and bounded Work execution,
-verified revision review, same-session feedback and durable recovery. All 823
-focused tests pass; full CI is pending. Live/native and installed acceptance remain K4. The existing
+verified revision review, same-session feedback and durable recovery. The 823-test
+focused batch and 257-test correction batch pass. Full CI passes with 4,747 tests
+passed and 59 skipped. Live/native and installed acceptance remain K4. The existing
 provider-agent decision setting stays off by default.
 
 ## Cats Self-Development and Catlas Practice

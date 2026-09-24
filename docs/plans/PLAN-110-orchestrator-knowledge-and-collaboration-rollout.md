@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1-K2 CI-validated; K3 scoped validation passed, CI pending; K4 pending |
+| Status | In progress; K1-K3 CI-validated; K4 pending |
 | Owner | Platform integration; Chat and Work own their operation delegates |
 | Reviewer | Independent Codex contract and implementation review; product owner |
 | Last updated | 2026-09-25 |
@@ -30,7 +30,7 @@ that Orchestrator can create conversations or recruit Cats autonomously.
 | K0 | ADR/SPEC/PLAN, baseline and operation ownership mapping | Existing Catlas and supervision seams | Complete; K2/K3 delegate and recovery mapping recorded |
 | K1 | Shared role-aware knowledge plus actual Orchestrator content delivery | K0 knowledge contract | Implemented; scoped fixtures and full CI pass |
 | K2 | Authorized teammate/context discovery and collaboration preparation | K1; read-only delegate mapping | Implemented; 480 focused tests and full CI pass |
-| K3 | Conversation/membership/work mutations with durable identity and result feedback | K2; write/recovery contract review | Implemented; 823 focused tests pass; CI pending |
+| K3 | Conversation/membership/work mutations with durable identity and result feedback | K2; write/recovery contract review | Implemented; focused and correction batches plus full CI pass |
 | K4 | Source-free distribution and isolated live-provider/native acceptance | K3 | Pending |
 
 ## Ownership and Boundaries
@@ -118,7 +118,7 @@ corrections are recorded in the progress log below.
 
 The K1 fixtures do not establish live-provider/native skill behavior, installed
 Desktop acceptance, profile exclusion, or a complete collaboration tool/result
-loop. K2 evidence is recorded below; K3-K4 and PLAN-109 development/practice/promotion gates remain open. No
+loop. K2/K3 evidence is recorded below; K4 and PLAN-109 development/practice/promotion gates remain open. No
 persisted product schema, frozen contract, version or publication changed.
 
 ### K2: Add discovery and collaboration preparation
@@ -262,7 +262,10 @@ Initial [CI on `97e1f6fb`](https://github.com/cats-inc/cats-platform/actions/run
 passed full typechecks and 4,734 tests (59 skipped), with one dependency-graph
 failure for the seven planned but unregistered integration edges. The exact
 edge registration and the independently reviewed persistence correction pass
-the follow-up checks above; corrected full CI remains pending.
+the follow-up checks above.
+Corrected [CI on `115fe483`](https://github.com/cats-inc/cats-platform/actions/runs/36052038916)
+passes both `validate` and `nodejs (24)`, including full typechecks and the complete
+test suite: 4,806 cases, 4,747 passed, 59 skipped, zero failures/cancellations.
 Fixtures use temporary or memory state; no live provider,
 installed Desktop, native UI or user's persisted dev state was exercised. K4 and
 PLAN-109 development/practice/promotion gates remain open. No frozen contract,
@@ -332,6 +335,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | Full [CI on `115fe483`](https://github.com/cats-inc/cats-platform/actions/runs/36052038916) passed `validate` and `nodejs (24)`, including full typechecks and 4,747 passing tests (59 skipped; zero failures/cancellations). K3's code/integration gate is complete. This subsequent documentation-only record does not change tested executable inputs; all 1,031 local Markdown links resolve and fences balance. K4 live/native/source-free acceptance and PLAN-109 development/practice/promotion remain open. |
 | 2026-09-25 | Initial K3 CI exposed only the missing seven exact Chat-to-Work dependency registrations. Added those planned edges without weakening generic ownership rules. Follow-up review found stale Core writers in memory/Bot APIs; corrected atomic validation/mutation, with twelve isolated HTTP races failing before and passing after. All 257 affected follow-up tests and server compilation pass; independent reviews cover production changes, boundary registrations and tests. Corrected full CI pending. |
 | 2026-09-25 | Implemented K3 owner-confirmed Chat/Work collaboration, pure role queue plus independently authorized host execution, immutable revision review and durable cancellation/recovery. Fixed concurrent Chat/Telegram writers and duplicate-confirmation turn lifecycle. All 823 focused tests, server/test typechecks, document checks and independent review pass. Full CI pending; K4 live/native/distribution and PLAN-109 practice remain open. |
 | 2026-09-25 | Full [CI on `34221fad`](https://github.com/cats-inc/cats-platform/actions/runs/36035473857) passed both `validate` and `nodejs (24)`, including full typechecks and the complete test suite. K2's code/integration gate is complete. This subsequent documentation-only record does not change tested executable inputs or claim K3-K4/live-provider completion. |

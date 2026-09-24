@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1-K2 CI-validated; K3 scoped validation passed, CI pending; K4 pending |
+| Status | In progress; K1-K3 CI-validated; K4 pending |
 | Owner | Platform integration; Chat owns conversation operations |
 | Reviewer | Product owner; independent Codex implementation review |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
@@ -194,8 +194,8 @@ K3 must re-admit and revalidate any later execution.
 
 ### K3 admission, mutation and recovery contract
 
-K3's complete provider call/result path is implemented; scoped validation passes
-and full CI is pending (see PLAN-110).
+K3's complete provider call/result path is implemented; scoped validation and
+full CI pass (see PLAN-110).
 The following operations require an actual owner-confirmed proposal. This adds
 no public HTTP route and does not alter the default provider-agent opt-in.
 

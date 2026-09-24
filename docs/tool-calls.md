@@ -58,7 +58,7 @@ connects ordinary Orchestrator procedures through inline request context.
 This content is not a tool registration and cannot expand the callable catalog.
 K2's read/preparation and K3's owner-confirmed mutation delegates below use
 policy-filtered provider requests and same-session result delivery. K3 scoped
-validation passes; full CI is pending; live/native and installed-profile acceptance remain K4.
+validation and full CI pass; live/native and installed-profile acceptance remain K4.
 
 | Tool | Owner | Status | Channel | Caller | Contract |
 |------|-------|--------|---------|--------|----------|
