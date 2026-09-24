@@ -2,6 +2,9 @@
 
 > This directory contains all project documentation.
 
+[Windows Terminal catalog pilot](research/2026-09-24-windows-terminal-catalog-pilot.md) records
+native UI Automation capture, pane/focus guards and the Runtime-owned Codex catalog workflow.
+
 ## Cats Self-Development and Catlas Practice
 
 [ADR-118](decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md),

@@ -41,6 +41,10 @@ Read the owning repository's instructions, including its rules for real user dat
 | Native macOS GUI session | [macOS accessibility, AppleScript and capture](references/macos.md) |
 | Native Windows interactive session, including an explicit bridge from WSL | [Windows UI Automation, input and capture](references/windows.md) |
 
+For terminal/TUI catalog work, use the Windows reference's scoped text/input helper where
+applicable. The catalog-maintenance skill owns model/menu interpretation; this skill owns window,
+pane, focus and input checks. Native validation of one terminal does not cover every CLI or OS.
+
 ## Observe, act, verify
 
 - Establish the requested outcome before acting. Preserve relevant settings,

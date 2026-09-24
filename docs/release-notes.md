@@ -19,6 +19,26 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-24 (0.4.4 — preparation)
+
+Behavior change:
+
+The canonical desktop automation skill now includes Windows Terminal text capture,
+window/pane/focus guards and bounded keyboard handling, with native pilot evidence
+and isolated guard tests. Runtime owns Codex menu traversal and catalog data; no
+new model mapping is added to Platform product code. See the
+[Windows Terminal pilot](research/2026-09-24-windows-terminal-catalog-pilot.md).
+
+Migration steps:
+
+No product API, persisted-data or App compatibility change. Platform and Desktop
+share the prepared 0.4.4 version. This bump does not publish npm or a Desktop
+preview; future Desktop publication must select an immutable Runtime source.
+
+Deprecations:
+
+None.
+
 ## 2026-09-24 (0.4.3 preview — publication)
 
 Behavior change:
