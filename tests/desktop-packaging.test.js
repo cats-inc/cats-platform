@@ -9,6 +9,7 @@ import test from 'node:test';
 import { gzipSync } from 'node:zlib';
 import { sha256, PLATFORM_VERSION } from '#cats-app-package';
 import { loadCatlasKnowledge } from '../build/server/platform/catlas/knowledge.js';
+import { loadProductKnowledge } from '../build/server/platform/knowledge/productKnowledge.js';
 
 import { resolveDesktopHostConfig } from '../build/desktop/config.js';
 import { resolveDesktopWindowIconPath } from '../build/desktop/windowIcon.js';
@@ -157,6 +158,8 @@ async function seedRuntimeBundle(runtimeRoot, contents = 'export const layout = 
 }
 
 async function seedAppSidecarRuntimeDependencies(packageRoot) {
+  await seedFile(join(packageRoot, 'config', 'orchestrator-knowledge.json'),
+    await readFile(new URL('../config/orchestrator-knowledge.json', import.meta.url), 'utf8'));
   await seedFile(join(packageRoot, 'config', 'catlas-knowledge.json'),
     await readFile(new URL('../config/catlas-knowledge.json', import.meta.url), 'utf8'));
   await seedFile(join(packageRoot, 'packages', 'app-sdk', 'package.json'), '{"version":"1.0.0","type":"module"}');
@@ -1357,6 +1360,12 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   });
   assert.equal(knowledge.status, 'ready');
   assert.match(knowledge.bundle.entries[0].content, /工作階段/u);
+  const orchestratorKnowledge = await loadProductKnowledge({
+    filePath: join(plan.outputRoot, 'shared', 'cats-platform', 'config', 'orchestrator-knowledge.json'),
+    locale: 'zh-TW', capabilities: ['orchestrator-context-v1'],
+  });
+  assert.equal(orchestratorKnowledge.status, 'ready');
+  assert.match(orchestratorKnowledge.bundle.entries[0].content, /協調目前已授權的目標/u);
 
   assert.deepEqual(plan.sidecarLayout, {
     app: 'split',

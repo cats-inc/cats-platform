@@ -53,7 +53,8 @@ rather than duplicating every validation branch.
 ## Registry
 
 [SPEC-118](specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md)
-plans ordinary Orchestrator procedures alongside collaboration tool adapters.
+connects ordinary Orchestrator procedures through inline request context.
+This content is not a tool registration and cannot expand the callable catalog.
 Its candidate operations are semantic responsibilities, not current tool names.
 Register them here only after delegate, policy, provider delivery and result
 feedback are implemented and their supported path has validation evidence.

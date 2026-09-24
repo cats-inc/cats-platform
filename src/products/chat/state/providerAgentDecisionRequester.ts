@@ -4,9 +4,16 @@ import {
 import type {
   ProviderAgentDecisionRequester,
 } from './runtime-dispatch/routing.js';
+import { knowledgeDigest } from '../../../platform/knowledge/productKnowledge.js';
+import { buildChannelView, requireChannel } from './model/index.js';
+import { resolveOrchestratorExecutionTarget } from './runtimeTargeting.js';
+import { loadOrchestratorKnowledge } from './orchestratorKnowledge.js';
+import { isProviderDefaultChatChannel } from '../shared/channelTopology.js';
+import { resolveProviderCapabilityProfile } from '../../../platform/supervision/providerCapabilityProfiles.js';
 
 export interface ChatProviderAgentDecisionRequesterOptions {
   failureMode?: 'throw' | 'return_null';
+  knowledgeFilePath?: string;
 }
 
 export function createChatProviderAgentDecisionRequester(
@@ -19,13 +26,44 @@ export function createChatProviderAgentDecisionRequester(
     }
 
     try {
+      const isOrchestrator = input.observation.actor.actorRef === 'orchestrator'
+        && !isProviderDefaultChatChannel(requireChannel(input.state, input.channelId));
+      const binding = isOrchestrator
+        ? resolveOrchestratorExecutionTarget(input.state, requireChannel(input.state, input.channelId))
+        : null;
+      // Profile identity includes normalized default models, instance and model controls.
+      // No bootstrap policy is re-decided here: only its target identity is compared.
+      const currentProfile = binding ? resolveProviderCapabilityProfile(binding, {
+        assessedAt: input.now.toISOString(),
+      }) : null;
+      if (currentProfile && (currentProfile.profileId !== input.observation.actor.capabilityProfileRef
+        || currentProfile.provider !== target.provider || currentProfile.model !== target.model
+        || currentProfile.control !== (target.control ?? null))) {
+        return null;
+      }
+      const productKnowledge = isOrchestrator
+        ? await loadOrchestratorKnowledge({
+            channel: buildChannelView(input.state, input.channelId),
+            body: input.payload.body,
+            surface: 'chat-decision',
+            target: binding ?? { provider: target.provider, model: target.model ?? null },
+            operations: input.observation.availableTools.map(({ manifest }) => ({
+              id: manifest.name, version: manifest.manifestVersion,
+            })),
+            policyDigest: knowledgeDigest(JSON.stringify(input.observation.policy)),
+            filePath: options.knowledgeFilePath,
+          })
+        : undefined;
       const result = await requestProviderAgentDecision({
         runtimeClient: input.runtimeClient,
         observation: input.observation,
+        productKnowledge,
         target: {
           provider: target.provider,
-          model: target.model,
+          instance: binding?.instance,
+          model: binding ? binding.model : target.model,
           createInput: {
+            modelSelection: binding?.modelSelection ?? undefined,
             context: {
               source: 'automation',
               reason: 'chat-provider-agent-decision-session',

@@ -61,15 +61,19 @@ corresponding tool, route, delegate, or lifecycle request through its boundary.
 
 ## Current Registry
 
-Planned shared role-procedure context and Orchestrator collaboration operations
+Shared role-procedure context and planned Orchestrator collaboration operations
 are specified in [SPEC-118](specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md)
 and staged in [PLAN-110](plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md).
-Their operation names/schemas are not yet registered as callable surfaces. The
-existing observation/decision boundary remains authoritative during this work.
+Inline knowledge now reaches the applicable visible and decision requests, with
+`productKnowledge` provenance in request metadata and visible assistant receipts.
+Provider-selected default Chat keeps its own identity. New collaboration operation
+names/schemas are not yet registered as callable surfaces; the existing
+observation/decision boundary remains authoritative.
 
 | Surface | Kind | Status | Producer | Consumer | Contract / implementation | Details |
 |---------|------|--------|----------|----------|---------------------------|---------|
 | `ProviderAgentBoundedObservation` | `bounded_observation` | Implemented contract | Platform orchestration / supervision | Driving provider agent | `src/platform/orchestration/providerAgentDecision.ts` | [Provider-Agent Observation](#provider-agent-observation) |
+| `ProductKnowledgeContext` / `productKnowledge` receipt | `bounded_observation` / request metadata | K1 inline delivery; new collaboration operations pending | Platform shared reader / Chat context assembly | Applicable Orchestrator reply and decision sessions | `src/platform/knowledge/productKnowledge.ts`, `src/products/chat/state/orchestratorKnowledge.ts` | [SPEC-118 K1](specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md#k1-implementation-contract) |
 | `ProviderAgentDecision` | `decision_envelope` | Implemented contract | Driving provider agent | Platform policy gate | `src/platform/orchestration/providerAgentDecision.ts`, `providerAgentPolicyGate.ts` | [Provider-Agent Decision](#provider-agent-decision) |
 | `SupervisedToolInvocation` / `ToolResult<T>` | `tool_call` | Implemented contract | Agent, runtime bridge, or product delegate | Supervised tool boundary | `src/platform/supervision/contracts.ts`, `toolBoundary.ts`, `toolRegistry.ts` | [tool-calls.md](./tool-calls.md) |
 | `PhaseScopedWorkToolSurface` | `tool_call` | Product delegates, Chat bounded-observation descriptors, planner `work-memory` intent, and runtime dispatch intent metadata implemented; runtime MCP execution adapter pending | Strong Cat / Boss Cat via phase-scoped observations and `work-memory` tool intent | Cats Work supervised tool boundary | `src/products/work/shared/workToolSurface.ts`, `src/products/work/shared/workToolObservation.ts`, `src/products/work/shared/workToolIntent.ts`, `src/products/chat/state/workToolIntentResolver.ts`, `src/products/work/state/workIntakeDelegate.ts` | [tool-calls.md](./tool-calls.md#phase-scoped-work-tools) |

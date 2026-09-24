@@ -26,8 +26,15 @@ import { type DispatchRequest } from '../room-routing/runtime.js';
 import {
   type RuntimeTransportContext,
   buildPromptForTarget,
+  resolveExecutionMetadataForTarget,
   resolveRuntimeEnvelopeForTarget,
 } from '../runtimeTargeting.js';
+import { loadOrchestratorKnowledge } from '../orchestratorKnowledge.js';
+import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
+import {
+  productKnowledgeInstructions,
+  productKnowledgeReceipt,
+} from '../../../../platform/knowledge/productKnowledge.js';
 import { resolveChatWorkToolIntentManifest } from '../workToolIntentResolver.js';
 import {
   participantKey,
@@ -201,12 +208,25 @@ export async function executeDispatch(
       request,
       transport,
     });
+    const knowledge = request.target.participantKind === 'orchestrator' && !isProviderDefaultChatChannel(channel)
+      ? await loadOrchestratorKnowledge({
+          channel,
+          body: request.promptSourceMessage?.body ?? request.sourceMessage.body,
+          surface: 'chat-visible',
+          target: { ...resolveExecutionMetadataForTarget(state, channelId, request.target), sessionId },
+          // Tool intent is not proof of a provider's callable tool inventory.
+          // Until verified here, only existing room routing is exposed.
+        })
+      : null;
+    const knowledgeReceipt = knowledge ? productKnowledgeReceipt(knowledge) : null;
     const runtimeInvocationInput = enrichRuntimeInvocation(channel, {
-      instructions: dispatchPrompt.instructions?.trim() || undefined,
+      instructions: [dispatchPrompt.instructions?.trim(), knowledge && productKnowledgeInstructions(knowledge)]
+        .filter(Boolean).join('\n\n') || undefined,
       context: mergeRuntimeInvocationContextMetadata(
         runtimeEnvelope.context,
         {
           ...dispatchContextMetadata,
+          ...(knowledgeReceipt ? { productKnowledge: knowledgeReceipt } : {}),
           ...(toolIntent ? { toolIntent } : {}),
         },
       ),
@@ -233,6 +253,7 @@ export async function executeDispatch(
       channel,
       runtimeResult.segments,
     );
+    if (knowledgeReceipt) runtimeAssistantMetadata.productKnowledge = knowledgeReceipt;
     if (
       coreStore
       && hasRuntimeInvocationAssistantEffects(channel, runtimeResult.segments)
@@ -283,6 +304,10 @@ export async function executeDispatch(
             request.target.participantName,
             fullResponseText,
           ),
+          input: knowledge ? {
+            instructions: productKnowledgeInstructions(knowledge),
+            context: runtimeInvocationInput.context,
+          } : undefined,
           supervision: {
             product: 'cats-chat',
             surface: 'orchestrator-rewrite',

@@ -162,6 +162,7 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
     'packages/provider-setup',
     'config/provider-capability-bootstrap.yaml.example',
     'config/catlas-knowledge.json',
+    'config/orchestrator-knowledge.json',
     '.env.example',
     'README.md',
     'LICENSE',
@@ -183,6 +184,7 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal(packedPaths.has('packages/provider-setup/manager.js'), true);
   assert.equal(packedPaths.has('packages/provider-setup/manager.d.ts'), true);
   assert.equal(packedPaths.has('config/catlas-knowledge.json'), true);
+  assert.equal(packedPaths.has('config/orchestrator-knowledge.json'), true);
   assert.equal(packedPaths.has('scripts/linux/install-node.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-github-cli.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-codex.sh'), true);

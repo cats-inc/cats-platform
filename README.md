@@ -94,12 +94,13 @@ The current slices are:
 
 ## Current Status
 
-- [ ] Connect shared product knowledge and role procedures to Orchestrator,
-      then complete supervised conversation/teammate/work operations and result
-      feedback. Planning is documented in
+- [x] Connect shared product knowledge and role procedures to the applicable
+      Orchestrator reply and decision requests, with bounded inline content,
+      provenance and normal npm/Desktop assets. Scoped fixtures pass in
       [PLAN-110](./docs/plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md);
-      normal collaboration procedures and preview-only development skills have
-      separate distribution rules. Orchestrator wiring remains pending.
+      supervised conversation/teammate/work operations and live acceptance remain
+      pending. Provider-selected default Chat retains its own assistant identity;
+      preview-only development/practice skills remain a separate workstream.
 
 - [x] Implement the initial Code-entry Catlas help slice: a bundled bilingual
       knowledge source and current draft context reach Catlas's bound model on

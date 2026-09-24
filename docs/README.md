@@ -10,13 +10,13 @@ native UI Automation capture, pane/focus guards and the Runtime-owned Codex cata
 [ADR-119](decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md),
 [SPEC-118](specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md), and
 [PLAN-110](plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md)
-plan shared product knowledge and role procedures for Orchestrator alongside
+track shared product knowledge and role procedures for Orchestrator alongside
 verified tools, current observations and authoritative operation results.
 Normal collaboration procedures belong in release and preview/debug; the
 Cats-development/practice supplement stays preview/debug-only. The first
 knowledge-delivery gate is separate from conversation creation, recruitment and
-work execution. These documents are Draft/Proposed; Orchestrator wiring and
-its end-to-end acceptance remain pending.
+work execution. K1 inline delivery and npm/Desktop asset fixtures pass;
+collaboration operations and live end-to-end acceptance remain pending.
 
 ## Cats Self-Development and Catlas Practice
 

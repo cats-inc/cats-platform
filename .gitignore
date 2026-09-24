@@ -29,6 +29,7 @@ config/*
 !config/*.example
 !config/desktop-apps.lock.json
 !config/catlas-knowledge.json
+!config/orchestrator-knowledge.json
 platform-preferences.json
 suite-preferences.json
 
@@ -82,3 +83,4 @@ workspace/
 !src/products/chat/workspace/
 !src/products/chat/workspace/**
 knowledge/
+!src/platform/knowledge/

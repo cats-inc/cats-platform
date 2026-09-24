@@ -2,10 +2,10 @@
 
 ## Status
 
-Proposed, 2026-09-24. The owner requested documentation before connecting
-Orchestrator knowledge and collaboration operations. This record defines that
-follow-up to ADR-118; no Orchestrator wiring or new callable operation is claimed
-by the documentation change. Publication remains a separate authorization.
+Accepted for the shared knowledge and role-procedure architecture, 2026-09-24.
+The owner requested documentation followed by wiring in the same work package.
+K1 implements inline knowledge consumption; collaboration operation mapping and
+K2-K4 acceptance remain pending. Publication remains a separate authorization.
 
 ## Context
 
@@ -16,10 +16,10 @@ knowledge: how conversations work, when to involve another Cat, how to transfer
 context, and how to verify delegated work. These names refer to an existing
 capability; this decision does not introduce another agent identity.
 
-Current Orchestrator prompts include a roster, recent messages, memory and
+Before K1, Orchestrator prompts included a roster, recent messages, memory and
 instructions to mention existing participants. A separate provider-agent seam
 accepts bounded observations and structured decisions under Platform policy.
-Neither path currently consumes the Catlas knowledge bundle. Existing HTTP
+Neither path consumed shared product knowledge. Existing HTTP
 operations and internal delegates do not by themselves establish a complete
 model-callable conversation-creation/recruitment loop.
 

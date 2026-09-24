@@ -21,6 +21,7 @@
     "packages/provider-setup",
     "config/provider-capability-bootstrap.yaml.example",
     "config/catlas-knowledge.json",
+    "config/orchestrator-knowledge.json",
     ".env.example",
     "README.md",
     "LICENSE"

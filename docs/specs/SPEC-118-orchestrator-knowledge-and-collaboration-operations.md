@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Draft; planning documented, Orchestrator implementation pending |
+| Status | In progress; K1 knowledge delivery fixture-validated; collaboration operations pending |
 | Owner | Platform integration; Chat owns conversation operations |
 | Reviewer | Product owner; independent implementation reviewer unassigned |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
@@ -40,7 +40,7 @@ The contracts below are proposed until their PLAN-110 gate has evidence.
 - A generic shell/HTTP escape hatch for missing product operations.
 - Shipping a new MCP server, native skill library or vector database in phase 1.
 
-## Inspected Baseline
+## Inspected Baseline (before K1)
 
 Static inspection on 2026-09-24 used Platform `1391075e`, including the Catlas
 implementation and packaging correction in `0f140439` / `e3a61434`. This planning
@@ -78,7 +78,7 @@ content delivered to another session is already present in its own context.
 ### Knowledge and procedure contract
 
 The shared reader must retain the current Catlas v1 behavior while introducing
-an explicitly versioned role-aware format. Proposed entry metadata is:
+an explicitly versioned role-aware format. Entry metadata is:
 
 | Field group | Meaning |
 |-------------|---------|
@@ -93,6 +93,43 @@ Knowledge files contain product facts and methods. Actual Cat IDs, provider
 readiness, grants, budgets and conversation contents belong in a fresh
 observation, not a distributable bundle. Build-coupled files are authoritative;
 indexes and native/MCP delivery representations are derived and replaceable.
+
+### K1 implementation contract
+
+The shared Platform reader accepts the shipped Catlas `schemaVersion: 1`
+bundle and the new `schemaVersion: 2` Orchestrator bundle. V1 entries normalize
+to `catlas` concepts on `code-help`; V2 explicitly validates `roles`, `kind`,
+`surfaces` and `requiredOperations: [{ id, version }]`, as well as both `en` and
+`zh-TW` contents. Operation dependencies require an exact manifest revision.
+Bundle loading is capped at 128 KiB; the entire serialized Orchestrator knowledge
+envelope, including goal, scope, operations, entries and digest, is at most
+16,000 characters. Truncated goals/operations and omitted large scope summaries
+are explicit; omitted scope retains a digest and suppresses intent procedures.
+
+Chat selects on the actual bounded goal, response language, current roster,
+surface and verified operation descriptors. Ordinary/global Orchestrator replies
+receive inline per-turn instructions, including the rewrite pass; structured
+decision requests receive the same content mechanism in their own JSON envelope.
+Provider-selected default Chat retains its ordinary assistant identity and does
+not receive coordinator role instructions. Other Cats do not inherit this role.
+
+Decision requests compare the current normalized provider/model/instance/control
+identity with the capability observation and send the actual Orchestrator binding,
+including default-model selection and controls. This does not use Catlas's binding.
+Each invocation reloads the packaged asset and recomputes context provenance;
+there is no selection cache that survives a binding, locale, roster, policy or
+tool change. Visible dispatch conservatively exposes only the existing room
+handoff convention; a requested tool-intent profile is not a verified provider
+tool inventory. Decision selection uses its policy-filtered `availableTools`.
+
+`productKnowledge` request metadata records status, role/surface/locale, bundle
+revision/digest, entry IDs/revisions/digests, context digest and `inline`/`none`
+delivery. Visible assistant metadata retains the receipt after Runtime returns.
+The existing request/session evidence identifies the execution target. These
+receipts prove what the request contained, not model understanding or completed
+product operations. Missing/invalid/incompatible content produces an empty
+snapshot and normal dispatch under existing policy. Native skill discovery is
+not required; new collaboration tools and their result loop remain K2/K3 work.
 
 ### Candidate collaboration operations
 
@@ -213,7 +250,10 @@ reported as this end-to-end scenario passing.
 
 ## Acceptance Criteria
 
-All criteria are pending at drafting time; gate evidence is recorded in PLAN-110.
+K1 has fixture evidence for AC-01/AC-02 and the knowledge-only parts of
+AC-03/AC-08/AC-09, recorded in PLAN-110. Real provider/native behavior, new
+collaboration operations, full profile exclusion and end-to-end acceptance
+remain pending; the criteria below describe the full target.
 
 | ID | Observable criterion | Requirements |
 |----|----------------------|--------------|

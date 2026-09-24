@@ -355,6 +355,7 @@ skill. Check both real artifact contents and effective session/model inputs.
 
 | Date | Update |
 |------|--------|
+| 2026-09-24 | PLAN-110 K1 now shares the Platform knowledge reader with Catlas and delivers normal Orchestrator procedures inline, with source-free asset fixtures. Catlas's 13 regressions pass within the 239-test scoped batch. This does not close this plan's preview development, practice/promotion, live-provider or installed-Desktop gates. |
 | 2026-09-24 | Drafted ADR-118, SPEC-117 and this plan at the owner's request. Recorded static source baselines, pending gaps, ownership, staged gates and acceptance criteria. No implementation, live-provider/native acceptance, version bump or publication is claimed. |
 | 2026-09-24 | Initial draft documentation validation passed: git diff whitespace checks and a filesystem-only check of all three new documents plus their new index references (51 local links, 19 unique functional requirements mapped to 12 acceptance criteria, balanced fences, no template placeholders, UTF-8/LF). Application tests/builds were not run for this documentation-only change. |
 | 2026-09-24 | Incorporated the owner's two-profile clarification: extra development/practice skills only in preview/debug; reviewed local knowledge plus current context delivered to release Catlas's bound model. Added artifact exclusion, knowledge handoff and actual model-input delivery requirements and gates. Implementation remains pending. |

@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Draft; documentation first, wiring pending |
+| Status | In progress; K1 implemented and fixture-validated; K2-K4 pending |
 | Owner | Platform integration; Chat and Work own their operation delegates |
 | Reviewer | Product owner; implementation reviewer unassigned |
 | Last updated | 2026-09-24 |
@@ -28,7 +28,7 @@ that Orchestrator can create conversations or recruit Cats autonomously.
 | Gate | Deliverable | Depends on | Current state |
 |------|-------------|------------|---------------|
 | K0 | ADR/SPEC/PLAN, baseline and operation ownership mapping | Existing Catlas and supervision seams | Drafted; detailed write-contract mapping pending |
-| K1 | Shared role-aware knowledge plus actual Orchestrator content delivery | K0 knowledge contract | Pending |
+| K1 | Shared role-aware knowledge plus actual Orchestrator content delivery | K0 knowledge contract | Implemented; scoped fixtures pass |
 | K2 | Authorized teammate/context discovery and collaboration preparation | K1; read-only delegate mapping | Pending |
 | K3 | Conversation/membership/work mutations with durable identity and result feedback | K2; write/recovery contract review | Pending |
 | K4 | Source-free distribution and isolated live-provider/native acceptance | K3 | Pending |
@@ -65,27 +65,51 @@ requires reviewed mutation schemas, topology and persistence/recovery ownership.
 
 ### K1: Connect shared knowledge and Orchestrator procedures
 
-- [ ] Extract the current Catlas reader into a Platform-owned product-knowledge
+- [x] Extract the current Catlas reader into a Platform-owned product-knowledge
   module; keep Code help as a consumer and preserve its behavior/provenance.
-- [ ] Define and validate role/kind/applicability/operation-dependency metadata
+- [x] Define and validate role/kind/applicability/operation-dependency metadata
   with explicit format versions and fixtures for the existing Catlas v1 bundle.
-- [ ] Author initial English/Traditional Chinese procedures for role selection,
+- [x] Author initial English/Traditional Chinese procedures for role selection,
   current-room handoff, collaboration preparation, truthful result reporting
   and missing-capability recovery. Distinguish current operations from future
   conversation creation/recruitment.
-- [ ] Select procedures using the role, actual user intent, current scope and
+- [x] Select procedures using the role, actual user intent, current scope and
   verified available tools. Knowledge-only fallback must not enable new writes.
-- [ ] Inject content into the visible coordinator and applicable provider-agent
+- [x] Inject content into the visible coordinator and applicable provider-agent
   decision request. Resolve Orchestrator's own binding, never Catlas's binding.
-- [ ] Attach selected/delivered revision/digest metadata using existing request
+- [x] Attach selected/delivered revision/digest metadata using existing request
   and evidence seams; invalidate on relevant binding/tool/context changes.
-- [ ] Package the shared content for npm/Desktop; update both staging fixtures
+- [x] Package the shared content for npm/Desktop; update both staging fixtures
   and npm declared/packed inventory tests.
-- [ ] Verify missing/incompatible knowledge fallback, unsupported-tool exclusion,
+- [x] Verify missing/incompatible knowledge fallback, unsupported-tool exclusion,
   bounded payloads, both actual model-input paths and existing Code/Chat routing.
 
 **Exit:** AC-01, AC-02 and the knowledge-only parts of AC-03/AC-08/AC-09 have
 fixture evidence. No new creation/recruitment capability is advertised yet.
+
+K1 uses a shared v1/v2 reader, a five-entry bilingual Orchestrator bundle, and
+inline per-turn instructions/decision JSON. Provider-selected default Chat is
+excluded from coordinator role injection. Exact operation revisions, normalized
+binding identity (including instance/model controls), fresh per-request loading,
+and a 16,000-character complete knowledge envelope bound selection. Visible
+handoff remains the existing room-routing convention; it is not a new tool.
+
+Validation: 239 focused knowledge, Catlas, Chat prompt/routing, observation,
+decision/policy, Work-intent, supervision and architecture tests passed. The
+10 new knowledge integration cases capture actual Runtime request contents;
+13 existing Catlas cases retain their HTTP-adapter and lifecycle coverage.
+All 25 Desktop packaging tests and the focused npm declared/packed inventory
+test passed. Server/Desktop/renderer builds, bundled server output, and the
+affected TypeScript checks passed. An initial sandboxed routing batch stalled
+in its local session fixture; the isolated fixture and complete focused batch
+passed outside that restriction. Independent agent review found identity,
+binding/control and truncation-provenance defects; fixes and regression cases
+were reviewed with no residual findings. Required remote CI is the next gate.
+
+These fixtures do not establish live-provider/native skill behavior, installed
+Desktop acceptance, profile exclusion, or a complete collaboration tool/result
+loop. K2-K4 and PLAN-109 development/practice/promotion gates remain open. No
+persisted product schema, frozen contract, version or publication changed.
 
 ### K2: Add discovery and collaboration preparation
 
@@ -188,6 +212,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-24 | After the owner confirmed same-round wiring, implemented K1 shared knowledge, both applicable Orchestrator input paths, bilingual procedures, provenance and npm/Desktop assets. Scoped validation and independent review passed as recorded above; K2-K4 operations and live acceptance remain pending. |
 | 2026-09-24 | Drafted ADR-119, SPEC-118 and PLAN-110 from the owner's knowledge/tools/skills clarification. Recorded the current two Orchestrator input paths, separate operation/result gaps, staged ownership and pending acceptance. This drafting change adds no executable wiring, runtime tool, native skill, user state, version bump or publication. |
 | 2026-09-24 | Documentation validation passed for all three new documents and their four index references: 41 local links, 14 unique functional requirements mapped to 10 acceptance criteria, balanced fences, no template placeholders and UTF-8/LF. Reviewed parent-plan and registry links, profile boundaries, current-versus-proposed capability claims and whitespace. No application tests or builds were run for this documentation-only change. |
 
