@@ -11,7 +11,7 @@ test('desktop host routes window close through the tray only when the system tra
   assert.match(source, /systemTrayEnabled: true/u);
   assert.match(source, /function isSystemTrayEnabled\(\)/u);
   assert.match(source, /latestDesktopStartupPreferences\.systemTrayEnabled/u);
-  assert.match(source, /mainWindow\.on\('close', \(event\) => \{[\s\S]*!shuttingDown && !exitingAfterShutdown && isSystemTrayEnabled\(\) && trayController[\s\S]*hideMainWindowToTray\(\);/u);
+  assert.match(source, /window\.on\('close', \(event\) => \{[\s\S]*!shuttingDown && !exitingAfterShutdown && isSystemTrayEnabled\(\) && trayController[\s\S]*hideMainWindowToTray\(\);/u);
 });
 
 test('a tray build lets the installer handoff quit instead of hiding the window', async () => {
@@ -30,7 +30,7 @@ test('a tray build lets the installer handoff quit instead of hiding the window'
   );
   assert.match(
     source,
-    /mainWindow\.on\('close', \(event\) => \{[\s\S]*!exitingAfterShutdown[\s\S]*hideMainWindowToTray\(\);/u,
+    /window\.on\('close', \(event\) => \{[\s\S]*!exitingAfterShutdown[\s\S]*hideMainWindowToTray\(\);/u,
   );
 });
 

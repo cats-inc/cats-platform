@@ -390,7 +390,13 @@ overlap; they are not an aggregate unique-test count. Distribution adds its
 three passing cases and candidate lifecycle parsing adds four passing cases.
 All 984 local links in the ten changed Markdown documents resolve; fences and
 UTF-8/LF checks pass. Independent reviews covered production changes and the
-live harness; full CI for this executable K4 slice is pending.
+live harness. Initial [CI on `49434c11`](https://github.com/cats-inc/cats-platform/actions/runs/36064609559)
+passed full typechecks and 4,778 tests (59 skipped), with two failures in legacy
+close-handler source assertions. The native shutdown fix binds the handler to
+the captured `window`; those assertions still required `mainWindow.on`. Updating
+the binding expectation retains every tray, shutdown and installer-handoff guard.
+All four close-behavior checks and independent review pass after the correction.
+Corrected full CI remains pending.
 
 ## Initial Change Map
 
@@ -438,6 +444,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | Initial K4 CI passed full typechecks and 4,778 tests (59 skipped), with two stale close-handler source assertions. Updated their captured-window binding expectations while preserving the tray/shutdown/installer guards; all four focused checks and independent review pass. This correction changes tests and this validation record only; production behavior and the remaining live acceptance limits are unchanged. Corrected full CI pending. |
 | 2026-09-25 | K4 source-free npm/Desktop knowledge and native Windows candidate startup/lock/close acceptance pass. Real Codex coordination exposed missing decision-format guidance, pre-parse usage loss and terminal-feedback reason overwrites; fixes and focused regressions pass. Exact CLI readiness now passes via bounded version/help diagnostics with zero inference; Work's passive-versus-execution readiness mismatch is corrected without widening other backends. Native CLI input growth still crosses the response-boundary token threshold. Worker execution, revision/review, native result projections and profile exclusion remain open; see the dated K4 evidence. No release/version or user-state change. Full CI pending. |
 | 2026-09-25 | Full [CI on `115fe483`](https://github.com/cats-inc/cats-platform/actions/runs/36052038916) passed `validate` and `nodejs (24)`, including full typechecks and 4,747 passing tests (59 skipped; zero failures/cancellations). K3's code/integration gate is complete. This subsequent documentation-only record does not change tested executable inputs; all 1,031 local Markdown links resolve and fences balance. K4 live/native/source-free acceptance and PLAN-109 development/practice/promotion remain open. |
 | 2026-09-25 | Initial K3 CI exposed only the missing seven exact Chat-to-Work dependency registrations. Added those planned edges without weakening generic ownership rules. Follow-up review found stale Core writers in memory/Bot APIs; corrected atomic validation/mutation, with twelve isolated HTTP races failing before and passing after. All 257 affected follow-up tests and server compilation pass; independent reviews cover production changes, boundary registrations and tests. Corrected full CI pending. |
