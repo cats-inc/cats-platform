@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "revision": "2026-09-24.1",
+  "platformRange": "0.4.x",
+  "requiredCapabilities": ["code-entry-v1"],
+  "entries": [
+    {
+      "id": "code.entry",
+      "revision": 1,
+      "topics": ["always"],
+      "verifiedAt": "2026-09-24",
+      "sources": ["Cats Code entry behavior", "SPEC-091", "SPEC-117"],
+      "content": {
+        "en": "Cats Code starts a coding conversation from New Code. Select the execution target or Cat, choose the intended folder when working on an existing project, describe the task and send. A folder is optional for a new task: without one the session can use a managed sandbox. New Code, Team Code and Peer Code have different participant arrangements. This help explains the observed draft; it does not create a session, edit files or confirm completion. Draft selections are requested settings. Check the created session's actual workspace and access before claiming the intended setup succeeded.",
+        "zh-TW": "Cats Code 可從「新增程式」開始程式對話。選擇執行目標或 Cat；若要修改既有專案，選擇正確資料夾，再描述任務並送出。新任務可以不選資料夾，使用受管理的沙箱。新增、團隊與並列程式的參與者安排不同。這項求助會解釋目前草稿狀態，不會建立工作階段、修改檔案或宣告任務完成。草稿選項是預期設定；建立後仍須確認實際工作目錄與存取權限。"
+      }
+    },
+    {
+      "id": "code.execution",
+      "revision": 1,
+      "topics": ["execution"],
+      "verifiedAt": "2026-09-24",
+      "sources": ["SPEC-013", "Cats Runtime provider readiness contract"],
+      "content": {
+        "en": "The coding target and Catlas's help target can be different providers or models. Catlas uses its own configured binding. A displayed model choice can be retained during a transient outage and does not prove the coding provider is ready. When no coding target is selected, choose one using the existing target picker. A provider reported unavailable cannot be treated as ready; unknown or degraded status needs verification. Do not infer a missing login or installation from a generic failure. Existing product setup and settings surfaces own preparation and connection recovery.",
+        "zh-TW": "程式任務與 Catlas 求助可使用不同的 provider 或 model；Catlas 使用自己的綁定設定。暫時斷線時，畫面可能保留先前模型選項，顯示選項不代表目前可執行。尚未選擇程式執行目標時，使用既有選擇器設定。回報不可用的 provider 不能視為就緒；狀態未知或降級時需再確認。不能只憑一般錯誤就判定未登入或未安裝。安裝準備與連線修復由產品既有設定介面處理。"
+      }
+    },
+    {
+      "id": "code.workspace",
+      "revision": 1,
+      "topics": ["workspace"],
+      "verifiedAt": "2026-09-24",
+      "sources": ["SPEC-091", "Cats Code workspace resolution and draft session policy"],
+      "content": {
+        "en": "For an existing project, use the folder control to select its intended local directory. A missing folder is not automatically an error: a new task can start in a managed sandbox. If the selected path cannot be inspected or is not a directory, ask the user to choose an accessible folder. Directory existence does not prove Git membership, write access, or that it is the intended repository. An independent worktree requires a usable Git repository; do not suggest enabling it merely because a directory exists. Local filesystem observations describe the Platform host and must not be assumed to describe a remote Runtime host.",
+        "zh-TW": "處理既有專案時，透過資料夾控制項選擇正確的本地目錄。沒有選資料夾不一定是錯誤，新任務可以從受管理沙箱開始。若選定路徑無法檢查或不是目錄，請使用者選擇可存取資料夾。目錄存在不代表它是 Git repo、具備寫入權限，或就是使用者要的專案。獨立 worktree 需要可用 Git repo，不能只因目錄存在就建議啟用。本地檔案系統觀察屬於 Platform 主機，不代表遠端 Runtime 主機也有相同路徑。"
+      }
+    },
+    {
+      "id": "code.permissions",
+      "revision": 1,
+      "topics": ["permissions"],
+      "verifiedAt": "2026-09-24",
+      "sources": ["Cats Runtime session policy contract", "Cats Code draft permission controls"],
+      "content": {
+        "en": "Read-only access is suitable for inspecting or explaining code. A requested edit needs an explicitly chosen writable session scope. Explain the difference and let the user choose; help must never change permissions automatically. The draft permission choice is not proof of effective filesystem permission or provider enforcement. A full-access selection still does not establish that a directory is writable. Session startup may reject an unsupported provider/policy combination, and that rejection must be surfaced rather than silently switching to broader access.",
+        "zh-TW": "唯讀權限適合檢查或解釋程式碼。若任務需要修改檔案，必須明確選擇允許寫入的工作階段範圍。說明差異並由使用者選擇，求助功能不能自動調高權限。草稿權限選項不等於檔案系統的實際權限，也不代表 provider 已成功套用限制。選擇完整存取仍不保證目錄可寫入。不支援的 provider／權限組合可能在啟動時被拒絕，應如實顯示而非自動放寬權限。"
+      }
+    },
+    {
+      "id": "code.recovery",
+      "revision": 1,
+      "topics": ["recovery"],
+      "verifiedAt": "2026-09-24",
+      "sources": ["SPEC-060", "SPEC-117"],
+      "content": {
+        "en": "When the cause is unclear, ask one focused question about the intended task or the visible failure. Distinguish observed facts from likely explanations. Do not invent an error, claim a repair, repeat a potentially completed action, or imply that advice executed a step. If Catlas or its model is unavailable, ordinary Code use remains available and the UI offers basic help. Missing or incompatible product knowledge cannot support a claim about the installed build. Re-evaluate advice after the user changes target, folder, permissions or task.",
+        "zh-TW": "原因不明時，針對預期任務或可見錯誤提出一個具體問題。區分已觀察事實與可能原因，不要編造錯誤、宣告已修復、重複可能已完成的操作，或把建議說成已執行。Catlas 或其模型不可用時，一般 Code 功能仍可使用，介面提供基本說明。缺少或不相容的產品知識無法支持對目前安裝版本的確定判斷。使用者變更目標、資料夾、權限或任務後，需重新判讀建議。"
+      }
+    }
+  ]
+}

@@ -940,6 +940,7 @@ GET /api/code/tasks/:taskId
 GET /api/code/codespaces
 GET /api/code/codespaces/:codespaceId
 POST /api/code/codespaces/resolve
+POST /api/code/catlas/help
 GET /api/code/artifacts
 POST /api/code/artifacts/declarations
 GET /api/code/artifacts/:artifactId
@@ -1001,6 +1002,54 @@ GET /api/code/previews
   creating a second code-specific task or artifact schema. Richer project and
   live preview/build behavior should land through active Code entry/task
   surfaces, not through standalone sidebar Build or Relay surfaces.
+
+#### Code Catlas Help
+
+`POST /api/code/catlas/help` is an authenticated, explicit-help request for the
+default New Code draft. Opening the help panel does not invoke it.
+
+```json
+{
+  "locale": "en",
+  "question": "How do I start working on this project?",
+  "draft": {
+    "cwd": null,
+    "target": null,
+    "policy": {
+      "workspaceKind": "sandbox",
+      "workspaceAccess": "read_only",
+      "permissionMode": "default"
+    }
+  }
+}
+```
+
+`locale` is `en` or `zh-TW`; `question` is nonempty and at most 1,000 characters.
+`cwd` is null or a bounded path used only for a local directory check. `target`
+is null or `{ provider, instance, model }`, with nullable instance/model. The
+explicit policy must satisfy the normal Runtime workspace/access/permission
+combination rules. Only declared observation fields reach the model. This
+coding target is context; Catlas's own provider/model binding comes from Core.
+The request cannot override that binding or grant product-operation authority.
+
+A valid request returns HTTP 200 and `Cache-Control: no-store` with
+`{ source, advice, reason, knowledgeIds, receipt }`. `source: "model"` carries
+validated plain-text advice, known entry IDs and a provenance/cleanup receipt.
+`source: "basic"` carries deterministic guidance, an empty ID list, null receipt,
+and one of `catlas_disabled`, `knowledge_unavailable`, `runtime_unavailable`,
+`model_unavailable`, `busy`, `cancelled`, `timeout` or `invalid_response`.
+Invalid input returns 400; other methods return 405. The route remains protected
+in pre-setup, post-setup and repair auth phases.
+
+The service admits one request at a time with a 90-second deadline. It creates
+a fresh read-only sandbox Runtime session, sends selected knowledge contents
+inline, and closes its owned session best effort after completion/cancellation.
+Caller disconnect cancels the turn; late creation still reaches cleanup. No
+product operation or Core task/memory write is performed. Runtime session
+history follows normal Runtime retention. Catlas binding and surface enablement
+are rechecked before returning model advice. See
+[Catlas Code Help](agent-control-surfaces.md#catlas-code-help) and
+[SPEC-117](specs/SPEC-117-cats-self-development-and-catlas-practice.md).
 
 ### Shell Helpers
 

@@ -137,6 +137,22 @@ Confirm the complete workflow and the published release assets before reporting
 completion. Dispatching a workflow or uploading CI artifacts alone is not a
 published Desktop release.
 
+### Catlas knowledge assets
+
+The initial Code-entry assistance ships `config/catlas-knowledge.json` in the
+Platform npm package and Desktop's shared Platform staging assets. Electron
+copies that config directory into `resources/app-sidecar/config`; the existing
+Platform package-root resolver supports both split and bundled server output.
+Desktop staging fails if the required knowledge asset is missing. The runtime
+loader validates its schema, Platform version range and required capabilities;
+invalid or incompatible content yields basic help instead of model guidance.
+
+This build-coupled bundle is product knowledge, separate from the user's
+replaceable assist cache and the proposed preview/debug development supplement.
+Knowledge consumption needs neither a source checkout nor development skills.
+Maintenance and the current validation limits are recorded in
+[SPEC-117](specs/SPEC-117-cats-self-development-and-catlas-practice.md#implemented-code-entry-assistance).
+
 ### Provider selection contract
 
 Selection-aware Platform/Desktop must connect to the matching Runtime contract

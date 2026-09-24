@@ -32,6 +32,8 @@ import { routeCodeRuntimeBridgeApi } from './runtimeBridgeRoutes.js';
 import { routeCodeRelayApi } from './relayRoutes.js';
 import { routeCodeArtifactDeclarationApi } from './artifactDeclarationRoutes.js';
 import { routeCodeLivePreviewApi } from './livePreviewRoutes.js';
+import { routeCodeCatlasHelpApi } from './catlasHelpRoutes.js';
+import type { CodeCatlasHelpService } from '../state/catlasHelp.js';
 import {
   matchRoute,
   sendJson,
@@ -59,6 +61,7 @@ export interface CodeApiDependencies {
   coreStore: CoreStore;
   runtimeClient: RuntimeClient;
   config: AppConfig;
+  catlasHelp?: CodeCatlasHelpService;
   logger?: PlatformApiLogger;
   evidenceDataDir?: string;
   readEvidenceEvents?: (conversationId: string) => EvidenceEvent[];
@@ -195,6 +198,9 @@ export function readArtifactListFiltersFromQuery(
 export async function routeCodeApi(
   context: CodeApiRouteContext,
 ): Promise<boolean> {
+  if (await routeCodeCatlasHelpApi(context)) {
+    return true;
+  }
   if (await routeCodeRuntimeBridgeApi(context)) {
     return true;
   }

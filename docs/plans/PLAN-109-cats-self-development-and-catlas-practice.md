@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Draft; planning documents drafted, implementation not started |
+| Status | In progress; initial Code knowledge assistance implemented, live/native acceptance pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; independent implementation reviewers unassigned |
 | Last updated | 2026-09-24 |
@@ -16,9 +16,9 @@ the requirements and pending acceptance criteria.
 [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md)
 records the proposed architecture.
 
-This draft plan was requested together with the ADR and SPEC so the proposal
-can be reviewed as one package. Writing it does not mark the design approved,
-start implementation, or authorize a release.
+This plan was requested together with the ADR and SPEC. The owner subsequently
+authorized the initial Code knowledge-assistance work package below. Broader
+architecture review and release authorization remain separate gates.
 
 ## Overview
 
@@ -40,7 +40,7 @@ retrieval tools can provide another delivery path without changing ownership.
 | G0 | Reviewed profile, knowledge-delivery, ownership and acceptance contracts | Draft package | Pending |
 | G1 | Profile-specific artifact selection, isolated candidate and recoverable workspace lifecycle | G0 | Pending |
 | G2 | Managed single-member fix, actual skill delivery and independent validation | G1 | Pending |
-| G3 | Release Catlas inference/guidance using promoted knowledge, with development skills absent | G0; G1/G2 for combined native acceptance | Pending |
+| G3 | Release Catlas inference/guidance using promoted knowledge, with development skills absent | G0; G1/G2 for combined native acceptance | Code-help subset implemented; full gate pending |
 | G4 | Supervised execution in supported profiles; preview/debug practice and verified knowledge promotion | G1, G2, G3 | Pending |
 | G5 | Coordinated multi-repo changes and separately evidenced distribution/OS expansion | G2; G4 for learning rollout | Pending |
 
@@ -56,8 +56,8 @@ retrieval tools can provide another delivery path without changing ownership.
 
 Assign an integration owner and a reviewer for each executable slice before
 concurrent work begins. One author must not supply their own independent review.
-These are proposed work assignments; no agents or implementation tasks have been
-started by this documentation change. Member-local plans should link this parent
+Broader work assignments remain proposed; the initial Code-help slice was
+authorized and implemented in Platform. Member-local plans should link this parent
 when work begins rather than copy its lifecycle or status into competing ledgers.
 
 Every phase that introduces persistent state must pass its applicable atomic
@@ -65,6 +65,38 @@ write, restart recovery and migration checks before closing that phase. The full
 AC-12 gate in G4 does not defer those earlier data-owner obligations.
 
 ## Implementation Phases
+
+### Authorized first implementation: Code-entry knowledge assistance
+
+On 2026-09-24 the owner authorized the initial knowledge-consumption work package.
+Implement the independently useful G3 explain/guide subset before the G1/G2
+development machinery. This does not close the combined preview-to-release gate.
+
+- [x] Ship a curated, versioned bilingual knowledge bundle in Platform's bundled
+  config assets, with a validated loader, compatibility selection and digests.
+- [x] Add a Code-owned, authenticated, explicit-help endpoint. Resolve Catlas's
+  model binding from Core, validate bounded draft context, and use the existing
+  supervised Runtime boundary with a fresh isolated read-only session.
+- [x] Inject selected knowledge contents and current observations into the model
+  request. Return bounded plain-text advice plus knowledge/context receipts;
+  preserve deterministic help on missing knowledge, unavailable models or errors.
+- [x] Add an optional Code-entry help surface with localized copy, cancellation
+  and invalidation when the selected context changes. No product actions execute.
+- [x] Verify the source-free bundle, actual request contents, distinct context
+  cases, cleanup/error behavior, API boundary and renderer behavior in fixtures.
+  Record live-provider/native acceptance separately from these local checks.
+
+Integration scope: Platform owns the generic knowledge reader and inference
+service; Code owns observation, routing and presentation. Additive dependency
+injection in the host connects them. Existing frozen Core/Chat contracts and the
+deterministic assist-cache format remain unchanged. Runtime owns provider policy
+enforcement; unsupported read-only execution must degrade explicitly. No developer
+supplement is added in this slice, and its profile-filtering work remains pending.
+
+Compatibility: the endpoint and packaged resource are additive within Platform
+0.4.x. Existing persisted user data is unchanged, so no migration is required.
+Any future breaking contract or stored-data requirement follows the shared
+version/upgrade policy; this work package does not bump or publish a version.
 
 ### Phase 0: Resolve contracts and freeze a small acceptance set
 
@@ -322,6 +354,10 @@ skill. Check both real artifact contents and effective session/model inputs.
 | 2026-09-24 | Initial draft documentation validation passed: git diff whitespace checks and a filesystem-only check of all three new documents plus their new index references (51 local links, 19 unique functional requirements mapped to 12 acceptance criteria, balanced fences, no template placeholders, UTF-8/LF). Application tests/builds were not run for this documentation-only change. |
 | 2026-09-24 | Incorporated the owner's two-profile clarification: extra development/practice skills only in preview/debug; reviewed local knowledge plus current context delivered to release Catlas's bound model. Added artifact exclusion, knowledge handoff and actual model-input delivery requirements and gates. Implementation remains pending. |
 | 2026-09-24 | Amended documentation validation passed: git diff whitespace checks, 54 local links, 23 unique functional requirements mapped to 15 acceptance criteria, balanced fences, no template placeholders and UTF-8/LF. Reviewed profile separation and knowledge-delivery consistency across ADR/SPEC/PLAN and their four indexes. Application tests/builds and live-provider checks were not run for this documentation-only amendment. |
+| 2026-09-24 | Implemented the owner-authorized Code-entry work package: curated bilingual build-coupled knowledge, validated loader, bounded observation, Core-bound read-only Runtime inference, authenticated help API, optional localized UI, provenance receipts and cancellation/failure fallback. npm/Desktop asset inventories include the bundle. No new Core persistence, developer supplement, skill, promotion workflow, version bump or publication was introduced. |
+| 2026-09-24 | Focused server/assist-store/architecture checks passed 125/125, including 13 Catlas cases and actual inline content delivery through the Runtime HTTP adapter. Renderer/Code-entry/i18n/API-path checks passed 31/31. Desktop packaging checks passed 25/25; after adding a staged knowledge-loader assertion, its focused staging test also passed. Server/Desktop builds, renderer/test typechecks, UI-test bundling and Vite production build passed (existing chunk-size warning). This is scoped validation, not a full-suite pass. |
+| 2026-09-24 | An isolated headless Edge component fixture passed explicit-request, question, response, close, no-page-error and narrow-viewport checks; desktop and 390px screenshots were visually inspected. It used local fixture responses and a separate browser profile, without touching the user's application state. Live-provider behavior, installed-Desktop/native acceptance, other OSes and the combined preview-to-release demonstration remain pending. |
+| 2026-09-24 | Final server-bundle build and npm dry-run package inspection passed; the npm file inventory includes the 6,800-byte knowledge asset. Documentation validation passed 59 local links, 23 functional requirements mapped to 15 acceptance criteria, UTF-8/LF and balanced fences. Full-suite CI and publication validation are separate from these scoped local checks. |
 
 ---
 

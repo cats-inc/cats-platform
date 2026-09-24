@@ -28,6 +28,7 @@ config/*
 !config/.gitkeep
 !config/*.example
 !config/desktop-apps.lock.json
+!config/catlas-knowledge.json
 platform-preferences.json
 suite-preferences.json
 

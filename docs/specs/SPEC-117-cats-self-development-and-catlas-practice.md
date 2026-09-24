@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Draft; documentation only, implementation not started |
+| Status | Initial Code knowledge assistance implemented; live/native acceptance and broader architecture pending |
 | Owner | Platform integration, with member-owned work packages |
 | Reviewer | Product owner; implementation reviewers not yet assigned |
 | Decision | [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
@@ -26,8 +26,70 @@ learning output is versioned external knowledge, alongside reviewable code/skill
 changes; installing release does not require source access, development skills,
 or training/fine-tuning the user's selected model.
 
-These are proposed requirements. Named records below are conceptual contracts,
-not existing APIs, schemas, CLI commands, or promised installed capabilities.
+The requirements describe the target architecture. The implemented subset is
+listed below; remaining named records are conceptual contracts, not existing
+APIs, schemas, CLI commands, or promised installed capabilities.
+
+## Implemented Code-Entry Assistance
+
+The first authorized work package implements part of FR-09, FR-10, FR-13,
+FR-22 and FR-23 on the default New Code surface. The user opens **Help me get
+started** / **協助我開始**, writes a separate help question, and explicitly asks
+Catlas. Opening the page or typing a coding task does not call a model.
+
+- **Authoritative knowledge:** [catlas-knowledge.json](../../config/catlas-knowledge.json)
+  contains schema version 1, bundle revision, Platform version range, required
+  capabilities and five curated entries covering Code entry, execution target,
+  workspace, permissions and recovery. Each entry has an ID, revision, topics,
+  verification date, source references and English/Traditional Chinese content.
+  This seed was authored from current product behavior; automated practice and
+  promotion have not produced it.
+- **Loading and distribution:** the [loader](../../src/platform/catlas/knowledge.ts)
+  validates UTF-8, size/schema, compatibility and locale, computes bundle and
+  content digests, and selects bounded topic content. npm includes the JSON;
+  Desktop staging requires it and copies it into the shared Platform config
+  assets, then the packaged app-sidecar config directory. Loading requires no
+  source checkout. Missing, invalid or incompatible knowledge uses basic help.
+- **Observation:** Code reads Runtime reachability and the selected coding
+  target's availability. A local-host workspace check reports only whether the
+  selected path is a directory; a remote Runtime reports `remote_unverified`.
+  The model receives target selection and requested policy, not the full path,
+  source files or composer contents. Git status stays `unknown`; draft access
+  is not represented as an effective running-session grant.
+- **Inference:** the [inference service](../../src/platform/catlas/inference.ts)
+  resolves Catlas's own Core provider/model binding independently of the coding
+  target. Existing supervised Runtime wrappers create an isolated sandbox
+  session with `read_only` / `default`, no source cwd and no requested skills.
+  Selected knowledge contents and the observation are delivered inline.
+  Runtime/provider policy enforcement remains authoritative; unsupported
+  execution falls back to basic help.
+- **Response and lifecycle:** strict `{ advice, knowledgeIds }` validation rejects
+  unknown references, extra action fields and non-text result segments. The UI
+  renders plain text and supplies no product-action executor. A receipt records
+  provider/model, session/request IDs, knowledge revision/digests, observation
+  digest and cleanup outcome. One request is admitted at a time with a 90-second
+  deadline, cancellation and best-effort closing of the owned session, including
+  late session creation. Runtime retains history under its normal policy; this
+  slice adds no Core task or memory ledger.
+- **Invalidation:** question, draft, locale and Catlas binding changes clear old
+  UI results and abort pending requests. The server rechecks the Core binding
+  and disabled surface before returning model advice. Missing/disabled Catlas,
+  unavailable knowledge/Runtime/model, invalid output, cancellation, timeout
+  and busy admission return clearly labeled basic guidance.
+
+See the [HTTP contract](../api.md#code-catlas-help) and
+[agent control surface](../agent-control-surfaces.md#catlas-code-help).
+Fixture tests cover inline delivery through the real Runtime HTTP adapter;
+live-provider behavior and an installed Desktop are still separate pending
+acceptance checks. Development supplements, autonomous practice, reviewed
+promotion and product-operation execution remain later work packages.
+
+To maintain knowledge, verify the documented behavior against the owning
+implementation, edit the authoritative JSON, update changed entry revisions,
+bundle revision, verification dates and applicability, then run loader,
+inference and packaging checks. Review content and provenance as product code.
+The existing deterministic assist cache is not this knowledge source and is
+not promoted automatically. No model-weight training is introduced.
 
 ## Goals
 
@@ -51,7 +113,7 @@ not existing APIs, schemas, CLI commands, or promised installed capabilities.
 
 ## Inspected Baseline
 
-Static inspection on 2026-09-24 used Platform `f10dc011`, Runtime `edfec39`,
+Pre-implementation static inspection on 2026-09-24 used Platform `f10dc011`, Runtime `edfec39`,
 cats-one `af2e2d3`, and Apps `97e9005`. No installed-build or live-provider
 acceptance was performed for this proposal. Existing tests are references to
 coverage, not checks executed during this drafting task.
@@ -380,7 +442,9 @@ work item, not a claim that instruction text makes helper files accessible.
 
 ## Acceptance Criteria
 
-All criteria start **pending**. A phase may report only its own achieved gates.
+The full criteria below remain **pending**. The initial Code-help fixtures cover
+subsets of AC-07, AC-09 and AC-14; they do not close native, live-provider or
+combined development-to-release gates. PLAN-109 records the executed checks.
 
 | ID | Required observable result | Requirements |
 |----|----------------------------|--------------|

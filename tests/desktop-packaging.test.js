@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import test from 'node:test';
 import { gzipSync } from 'node:zlib';
 import { sha256, PLATFORM_VERSION } from '#cats-app-package';
+import { loadCatlasKnowledge } from '../build/server/platform/catlas/knowledge.js';
 
 import { resolveDesktopHostConfig } from '../build/desktop/config.js';
 import { resolveDesktopWindowIconPath } from '../build/desktop/windowIcon.js';
@@ -156,6 +157,8 @@ async function seedRuntimeBundle(runtimeRoot, contents = 'export const layout = 
 }
 
 async function seedAppSidecarRuntimeDependencies(packageRoot) {
+  await seedFile(join(packageRoot, 'config', 'catlas-knowledge.json'),
+    await readFile(new URL('../config/catlas-knowledge.json', import.meta.url), 'utf8'));
   await seedFile(join(packageRoot, 'packages', 'app-sdk', 'package.json'), '{"version":"1.0.0","type":"module"}');
   await seedFile(join(packageRoot, 'packages', 'app-sdk', 'package.js'), 'export {};');
   await seedFile(join(packageRoot, 'packages', 'app-sdk', 'browser.js'), '// SDK fixture');
@@ -1348,6 +1351,12 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(bundle.apps[0].artifact, 'cats.usage-0.1.0.catsapp');
   assert.equal(sha256(await readFile(join(plan.outputRoot, 'shared', 'official-apps', bundle.apps[0].artifact))), createPinnedApp().sha256);
   await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'packages', 'app-sdk', 'browser.js'));
+  const knowledge = await loadCatlasKnowledge({
+    filePath: join(plan.outputRoot, 'shared', 'cats-platform', 'config', 'catlas-knowledge.json'),
+    locale: 'zh-TW',
+  });
+  assert.equal(knowledge.status, 'ready');
+  assert.match(knowledge.bundle.entries[0].content, /工作階段/u);
 
   assert.deepEqual(plan.sidecarLayout, {
     app: 'split',

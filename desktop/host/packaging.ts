@@ -133,6 +133,11 @@ interface PlatformSidecarAsset {
 
 const PLATFORM_OPTIONAL_ASSETS: PlatformSidecarAsset[] = [
   {
+    sourceRelativePath: join('config', 'catlas-knowledge.json'),
+    targetRelativePath: join('shared', 'cats-platform', 'config', 'catlas-knowledge.json'),
+    directory: false,
+  },
+  {
     sourceRelativePath: join('config', 'provider-capability-bootstrap.yaml.example'),
     targetRelativePath: join('shared', 'cats-platform', 'config', 'provider-capability-bootstrap.yaml.example'),
     directory: false,
@@ -997,6 +1002,11 @@ function buildPackagingTarget(
     {
       id: 'platform-config-bootstrap-example',
       relativePath: 'shared/cats-platform/config/provider-capability-bootstrap.yaml.example',
+      role: 'app_server' as const,
+    },
+    {
+      id: 'platform-catlas-knowledge',
+      relativePath: 'shared/cats-platform/config/catlas-knowledge.json',
       role: 'app_server' as const,
     },
     { id: 'runtime-sidecar', relativePath: 'shared/cats-runtime/build/runtime/index.js', role: 'runtime_sidecar' as const },

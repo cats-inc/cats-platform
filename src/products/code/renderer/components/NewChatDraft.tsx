@@ -41,6 +41,7 @@ import {
   type RuntimeSessionPolicy,
 } from '../../../../shared/runtimeSessionPolicy.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { CodeCatlasHelp } from './CodeCatlasHelp.js';
 
 type CodeDraftTranslate = (
   key: MessageKey,
@@ -497,6 +498,11 @@ function CodeChatDraft(props: NewChatDraftProps) {
     hasVisibleParallelDraftTargets: (props.parallelTargets?.length ?? 0) > 1,
   });
   const codeGreeting = resolveCodeDraftGreeting(props, draftCopy, t);
+  const selectedCatId = props.draftDefaultRecipientCatId ?? props.draftCatIds[0];
+  const selectedCat = props.payload.chat.cats.find((cat) => cat.id === selectedCatId);
+  const helpTarget = selectedCat
+    ? props.draftCatExecutionTargetOverrides.get(selectedCat.id) ?? selectedCat.defaultExecutionTarget
+    : props.selectedExecutionTarget;
 
   return (
     <ChatNewChatDraft
@@ -516,6 +522,24 @@ function CodeChatDraft(props: NewChatDraftProps) {
         headerAccessory: permissionChip,
         headerWhereExtras: whereExtras,
         surfaceTag: buildCodeSurfaceTag(props),
+        customRegion: (!props.entryPreset || props.entryPreset === 'default')
+          && props.draftSurface === 'code' ? (
+            <CodeCatlasHelp
+              guideCat={props.payload.guideCat ?? null}
+              disabled={props.payload.guideCatAssist?.codeNewDraft?.surfaceDisabled}
+              draft={{
+                cwd: props.draftCwd,
+                target: helpTarget ? {
+                  provider: helpTarget.provider,
+                  instance: helpTarget.instance ?? null,
+                  model: helpTarget.model ?? null,
+                } : null,
+                policy: resolveCreateRuntimeSessionPolicy({
+                  repoPath: props.draftCwd, policy: props.draftRuntimeSessionPolicy,
+                }),
+              }}
+            />
+          ) : null,
       }}
       draftCopy={{
         composerPlaceholder: draftCopy.composer?.placeholder,

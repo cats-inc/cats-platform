@@ -41,7 +41,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| [ADR-118](118-use-isolated-development-and-verified-practice-for-cats-improvement.md) | Use Isolated Development and Verified Practice for Cats Improvement | Proposed; owner clarified preview/debug skills vs release knowledge | 2026-09-24 |
+| [ADR-118](118-use-isolated-development-and-verified-practice-for-cats-improvement.md) | Use Isolated Development and Verified Practice for Cats Improvement | Proposed overall; initial Code knowledge-assistance slice authorized and implemented | 2026-09-24 |
 | [000-template](./000-template.md) | Template | - | - |
 | [115-bound-bootstrap-and-provider-choices-by-runtime-selection](./115-bound-bootstrap-and-provider-choices-by-runtime-selection.md) | Bound Bootstrap and Provider Choices by Runtime Selection | Accepted; picker continuity amended 2026-09-18 | 2026-09-16 |
 | [114-separate-official-app-sources-and-coordinate-desktop-distribution](./114-separate-official-app-sources-and-coordinate-desktop-distribution.md) | Separate Official App Sources and Coordinate Desktop Distribution | Accepted | 2026-09-10 |

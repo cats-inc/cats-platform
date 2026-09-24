@@ -70,6 +70,35 @@ corresponding tool, route, delegate, or lifecycle request through its boundary.
 | `CodeAssistantFinalization` | `finalization_envelope` | Scaffolded, not wired | Code assistant / runtime adapter | Cats Code finalization gate | `src/products/code/state/sessionFinalization.ts` | [Code Assistant Finalization](#code-assistant-finalization) |
 | `ToolBoundaryEvidenceEvent` | `evidence_event` | Implemented contract | Tool boundary | Evidence sink / Work projections | `src/platform/supervision/toolBoundary.ts`, `evidenceSink.ts` | [Tool Boundary Evidence](#tool-boundary-evidence) |
 | `RuntimeSupervisionContext` | `lifecycle_event` / boundary context | Implemented contract | Platform supervision wrapper | cats-runtime call path | `src/platform/supervision/runtimeBoundary.ts` | [Runtime Supervision Boundary](#runtime-supervision-boundary) |
+| Code Catlas observation | `bounded_observation` | Implemented; fixture coverage | Code help service | Core-bound Catlas provider/model | `src/products/code/state/catlasHelp.ts` | [Catlas Code Help](#catlas-code-help) |
+| `CatlasAdvice` | `finalization_envelope` | Implemented; fixture coverage | Catlas provider/model | Code help response gate | `src/platform/catlas/inference.ts` | [Catlas Code Help](#catlas-code-help) |
+
+## Catlas Code Help
+
+The [Code help HTTP route](api.md#code-catlas-help) accepts a separate user
+question plus a bounded draft. The Code-owned service constructs an observation
+with surface/time, Runtime reachability, draft coding target and availability,
+workspace directory-check outcome, requested policy and explicit unknown/not-yet-
+started state. Full paths, source files and composer content are excluded.
+
+The Platform inference service adds the selected versioned knowledge contents
+and instructs Catlas's Core-bound model to distinguish observed state, draft
+intent and inference. Existing supervised Runtime wrappers request an isolated
+read-only sandbox session with no requested skills or product-action executor.
+Provider enforcement is still Runtime-owned; unsupported execution yields basic
+guidance. No operation-decision envelope or new agent tool is exposed here.
+
+`CatlasAdvice` is exactly `{ advice: string, knowledgeIds: string[] }`. The gate
+requires bounded nonempty advice, known knowledge IDs and no extra fields. It
+rejects non-text result segments. Advice is rendered as text. A separate receipt
+identifies the input bundle/entries and observation by digest, the effective
+provider/model/session, and best-effort cleanup. Server binding/enablement checks
+and renderer context invalidation prevent reuse after settings change.
+
+Fixture coverage includes actual inline knowledge transmission through the
+Runtime HTTP client, failure/cancellation cleanup and UI invalidation. Live
+provider and installed-Desktop acceptance remain pending under
+[PLAN-109](plans/PLAN-109-cats-self-development-and-catlas-practice.md).
 
 ## Provider-Agent Observation
 

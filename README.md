@@ -94,6 +94,12 @@ The current slices are:
 
 ## Current Status
 
+- [x] Implement the initial Code-entry Catlas help slice: a bundled bilingual
+      knowledge source and current draft context reach Catlas's bound model on
+      explicit request, with cancellation and basic-help fallback. Scoped
+      API/renderer/packaging checks pass; live-provider and installed-Desktop
+      acceptance remain pending in [PLAN-109](./docs/plans/PLAN-109-cats-self-development-and-catlas-practice.md).
+
 - [x] Correct first-run Catlas setup in Desktop 0.2.10: read the selected
       provider/model catalogs before the first Admin session exists, then
       require authentication after setup. Isolated HTTP and browser checks

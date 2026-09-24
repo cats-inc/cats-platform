@@ -83,6 +83,7 @@ import {
   registerCodeArtifactRuntimeFinalizationGate,
 } from '../../products/code/state/sessionFinalization.js';
 import type { AppConfig } from '../../config.js';
+import { createCodeCatlasHelpService } from '../../products/code/state/catlasHelp.js';
 
 type InjectedAppConfig = AppConfig & {
   auth?: Partial<PlatformAuthConfig>;
@@ -468,6 +469,12 @@ export function resolveServerDependencies(
       coreStore: dependencies.code?.coreStore ?? sharedCoreStore,
       runtimeClient: dependencies.code?.runtimeClient ?? dependencies.shared.runtimeClient,
       config: dependencies.code?.config ?? dependencies.shared.config,
+      catlasHelp: dependencies.code?.catlasHelp ?? createCodeCatlasHelpService({
+        coreStore: dependencies.code?.coreStore ?? sharedCoreStore,
+        runtimeClient: dependencies.code?.runtimeClient ?? dependencies.shared.runtimeClient,
+        chatStatePath: (dependencies.code?.config ?? dependencies.shared.config).chatStatePath,
+        now: dependencies.code?.now ?? dependencies.shared.now,
+      }),
       evidenceDataDir: dependencies.code?.evidenceDataDir ?? dependencies.shared.config.chatStatePath,
       readEvidenceEvents: dependencies.code?.readEvidenceEvents
         ?? ((conversationId: string) =>

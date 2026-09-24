@@ -1,5 +1,34 @@
 /* Code Builder — product-local styles for the Cats Code builder loop */
 
+.codeCatlasHelp {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-align: left;
+}
+
+.codeCatlasHelpHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.codeCatlasHelpNote {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.codeCatlasHelpAdvice {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .codeBuilderView {
   display: grid;
   gap: 20px;

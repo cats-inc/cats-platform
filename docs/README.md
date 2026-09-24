@@ -13,9 +13,11 @@ development/practice skills. End-user release omits that supplement and gives
 compatible local knowledge plus current context to Catlas's bound provider/model
 for situational guidance. The package covers isolated candidates, multi-repo
 ownership, artifact inventories, actual model-input delivery and reviewed
-knowledge promotion. ADR is Proposed and SPEC/PLAN are Draft; implementation
-and native acceptance have not started. Platform owns this joint design, with
-explicit Runtime, cats-one and Apps work packages.
+knowledge promotion. The initial Code-entry knowledge reader, inline model
+context and explicit-help UI are implemented with fixture coverage. Live-provider
+and installed-Desktop acceptance, development supplements, practice and promotion
+remain pending. ADR is Proposed overall and PLAN is in progress. Platform owns
+this joint design, with explicit Runtime, cats-one and Apps work packages.
 
 ## Provider Catalog Soft Patches
 

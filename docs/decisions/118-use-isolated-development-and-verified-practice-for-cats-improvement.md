@@ -2,9 +2,11 @@
 
 ## Status
 
-Proposed, 2026-09-24. The owner requested an ADR/SPEC/PLAN drafting pass.
-Architecture acceptance and implementation are pending; this document does not
-authorize publication or a change to an installed Desktop.
+Proposed overall, 2026-09-24. After the drafting pass, the owner authorized the
+initial Code-entry knowledge-consumption work package. That explain/guide slice
+is implemented; live-provider and installed-Desktop acceptance remain pending.
+The broader self-development/practice architecture remains proposed. This work
+does not authorize publication or a change to an installed Desktop.
 
 Owner clarification, 2026-09-24: preview/debug carries the extra Cats-development
 and practice skills and produces knowledge; end-user release omits those skills

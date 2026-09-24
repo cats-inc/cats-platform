@@ -103,6 +103,13 @@ These tools are part of the broader agent control surface registry described in
 Both tools stamp `RuntimeSupervisionContext` metadata into the runtime request.
 They are implementation tools for platform runtime calls, not public HTTP APIs.
 
+The initial [Code Catlas help](api.md#code-catlas-help) service consumes these
+existing wrappers to create a fresh read-only sandbox session and deliver
+versioned knowledge plus a bounded observation to Catlas's Core-bound model.
+It adds no agent-callable product tool. Its advice-only response gate and
+cleanup/validation limits are documented in
+[Catlas Code Help](agent-control-surfaces.md#catlas-code-help).
+
 ## Lifecycle Tools
 
 | Tool | Implementation | Blocking | Side effect | Approval | Evidence | Notes |
