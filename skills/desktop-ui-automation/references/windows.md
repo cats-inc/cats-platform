@@ -80,6 +80,16 @@ input. Map screenshot pixels, DPI scaling, virtual-screen origin (possibly
 negative), and SendInput's absolute/virtual-desktop coordinate convention.
 Prefer a verified existing helper over rebuilding that mapping casually.
 
+Windows foreground lock can make `SetForegroundWindow` fail for a process that does
+not own the current foreground. This happens, for example, after another app
+relaunches and raises its window. The helper's `Set-WindowsUiFocus` then reports a
+foreground change and sends no input. On the 2026-09-25 host, calling UI Automation
+`SetFocus()` on the owned, uniquely resolved window brought it forward; verify the
+foreground handle again afterwards. Before taking focus back, check `GetLastInputInfo`.
+Recent input means the operator is active, so pause and ask rather than compete for
+focus. Do not force activation through Alt-key injection, `AttachThreadInput` or
+foreground-lock settings.
+
 Input injection is restricted by UIPI: an ordinary process cannot inject into
 a higher-integrity target. A zero SendInput result does not identify the precise
 cause. Do not elevate the whole agent/target as a default workaround. Report
