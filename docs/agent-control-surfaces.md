@@ -61,6 +61,12 @@ corresponding tool, route, delegate, or lifecycle request through its boundary.
 
 ## Current Registry
 
+Planned shared role-procedure context and Orchestrator collaboration operations
+are specified in [SPEC-118](specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md)
+and staged in [PLAN-110](plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md).
+Their operation names/schemas are not yet registered as callable surfaces. The
+existing observation/decision boundary remains authoritative during this work.
+
 | Surface | Kind | Status | Producer | Consumer | Contract / implementation | Details |
 |---------|------|--------|----------|----------|---------------------------|---------|
 | `ProviderAgentBoundedObservation` | `bounded_observation` | Implemented contract | Platform orchestration / supervision | Driving provider agent | `src/platform/orchestration/providerAgentDecision.ts` | [Provider-Agent Observation](#provider-agent-observation) |

@@ -16,6 +16,11 @@ the requirements and pending acceptance criteria.
 [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md)
 records the proposed architecture.
 
+[PLAN-110](PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md) is the
+related ordinary Orchestrator consumer/operation workstream: shared role
+procedures, verified tools, bounded observations and result feedback. It has its
+own staged acceptance and does not close G1/G2 development or G4 practice gates.
+
 This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
@@ -360,6 +365,7 @@ skill. Check both real artifact contents and effective session/model inputs.
 | 2026-09-24 | Final server-bundle build and npm dry-run package inspection passed; the npm file inventory includes the 6,800-byte knowledge asset. Documentation validation passed 59 local links, 23 functional requirements mapped to 15 acceptance criteria, UTF-8/LF and balanced fences. Full-suite CI and publication validation are separate from these scoped local checks. |
 | 2026-09-24 | The first full CI run on `0f140439` passed validation/typechecking and 4,679 tests, with 59 skips and one failure: the npm package-contract test still expected the pre-knowledge file inventory. Updated that expected inventory and added an explicit packed-knowledge presence assertion. The implementation's knowledge delivery and Desktop checks passed in that run; the corrected package contract is validated separately below. |
 | 2026-09-24 | The corrected npm executable/package contract passed its focused test, including a clean non-mobile server/renderer/Desktop build and actual npm dry-run inventory inspection. The new knowledge file is now asserted both in the declared package inventory and the packed file list. Full CI runs again on the correction commit. |
+| 2026-09-24 | Full [CI on `e3a61434`](https://github.com/cats-inc/cats-platform/actions/runs/35940019078) passed both `validate` and `nodejs (24)`. The owner subsequently requested Orchestrator knowledge/procedure planning before wiring; ADR-119, SPEC-118 and PLAN-110 track that separate consumer/operation workstream. |
 
 ---
 

@@ -30,6 +30,12 @@ The requirements describe the target architecture. The implemented subset is
 listed below; remaining named records are conceptual contracts, not existing
 APIs, schemas, CLI commands, or promised installed capabilities.
 
+The follow-up [SPEC-118](SPEC-118-orchestrator-knowledge-and-collaboration-operations.md)
+plans shared product-knowledge consumption by Orchestrator, including ordinary
+role procedures and verified collaboration tools/results. Those procedures can
+ship in both profiles without the preview-only development/practice supplement.
+That work does not complete this spec's source-development or promotion gates.
+
 ## Implemented Code-Entry Assistance
 
 The first authorized work package implements part of FR-09, FR-10, FR-13,

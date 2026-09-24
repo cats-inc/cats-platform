@@ -94,6 +94,13 @@ The current slices are:
 
 ## Current Status
 
+- [ ] Connect shared product knowledge and role procedures to Orchestrator,
+      then complete supervised conversation/teammate/work operations and result
+      feedback. Planning is documented in
+      [PLAN-110](./docs/plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md);
+      normal collaboration procedures and preview-only development skills have
+      separate distribution rules. Orchestrator wiring remains pending.
+
 - [x] Implement the initial Code-entry Catlas help slice: a bundled bilingual
       knowledge source and current draft context reach Catlas's bound model on
       explicit request, with cancellation and basic-help fallback. Scoped

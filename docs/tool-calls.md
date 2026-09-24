@@ -52,6 +52,12 @@ rather than duplicating every validation branch.
 
 ## Registry
 
+[SPEC-118](specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md)
+plans ordinary Orchestrator procedures alongside collaboration tool adapters.
+Its candidate operations are semantic responsibilities, not current tool names.
+Register them here only after delegate, policy, provider delivery and result
+feedback are implemented and their supported path has validation evidence.
+
 | Tool | Owner | Status | Channel | Caller | Contract |
 |------|-------|--------|---------|--------|----------|
 | `cats.runtime.session.create` | Platform supervision | Implemented | `product_internal_delegate` | Platform runtime wrapper | [Runtime Supervision Tools](#runtime-supervision-tools) |

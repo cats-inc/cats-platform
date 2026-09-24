@@ -205,6 +205,13 @@ resolution, session hydration and inherited/resumed state. The current broad
 Runtime-library packaging needs to change before these entries can be added
 without leaking into release. These packages and filtering are not implemented.
 
+[ADR-119](119-share-product-knowledge-and-role-procedures-with-supervised-agents.md)
+and [SPEC-118](../specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md)
+plan the ordinary Orchestrator consumer of product concepts/procedures. Those
+normal collaboration procedures belong in both profiles and can be delivered as
+knowledge content. They are distinct from the three preview-only packages above;
+their knowledge delivery and callable operation/result paths have separate gates.
+
 ### 8. Deliver incrementally and preserve upgrade boundaries
 
 First prove one bounded source fix and one Catlas-guided Code-session workflow
