@@ -6,6 +6,7 @@ import type {
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import { requireChannel } from '../model/index.js';
 import type { ChatStore } from '../store.js';
+import type { CatsCoreState } from '../../../../core/types.js';
 
 interface MutationGateLike {
   run<T>(key: string, operation: () => Promise<T>): Promise<T>;
@@ -180,6 +181,15 @@ function mergeDispatchMessages(
   baselineChannel: ChatChannelState,
   dispatchChannel: ChatChannelState,
 ): void {
+  const baselineMessages = new Map(baselineChannel.messages.map((message) => [message.id, message]));
+  const dispatchMessages = new Map(dispatchChannel.messages.map((message) => [message.id, message]));
+  // Begin/intake can annotate an already persisted user message. Preserve those edits
+  // only when no concurrent writer has changed that same message.
+  latestChannel.messages = latestChannel.messages.map((message) => {
+    const baseline = baselineMessages.get(message.id);
+    const dispatch = dispatchMessages.get(message.id);
+    return baseline && dispatch ? mergeChangedValue(message, baseline, dispatch) : message;
+  });
   const baselineMessageIds = new Set(baselineChannel.messages.map((message) => message.id));
   const latestMessageIds = new Set(latestChannel.messages.map((message) => message.id));
   const newMessages = dispatchChannel.messages.filter((message) =>
@@ -386,13 +396,26 @@ export function mergeCompletedDispatchState(
   return refreshDerivedMemoryLayers(nextState, channelId, now);
 }
 
+/** Caller already owns the channel gate; each write still merges under the store's atomic lock. */
+export function createLockedDispatchChatStore(
+  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore' | 'updateCore' | 'updateSnapshot'>,
+  channelId: string,
+  baselineState: ChatState,
+  now: () => Date,
+) {
+  return { read: chatStore.read.bind(chatStore), ...createMergedDispatchChatStore({
+    chatStore, channelId, baselineState, now,
+    mutationGate: { run: (_key, operation) => operation() },
+  }) };
+}
+
 export function createMergedDispatchChatStore(options: {
-  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore' | 'updateCore'>;
+  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore' | 'updateCore' | 'updateSnapshot'>;
   mutationGate: MutationGateLike;
   channelId: string;
   baselineState: ChatState;
   now: () => Date;
-  beforeMerge?: (latestState: ChatState, dispatchState: ChatState) => ChatState;
+  beforeMerge?: (latestState: ChatState, dispatchState: ChatState, core?: CatsCoreState) => ChatState;
   onPersistMergedState?: (input: {
     previousState: ChatState;
     persistedState: ChatState;
@@ -400,7 +423,7 @@ export function createMergedDispatchChatStore(options: {
     channelId: string;
   }) => void;
 }): Pick<ChatStore, 'write' | 'readCore' | 'writeCore' | 'updateCore'> {
-  let previousState = options.baselineState;
+  let previousState = structuredClone(options.baselineState);
 
   return {
     readCore: options.chatStore.readCore.bind(options.chatStore),
@@ -409,9 +432,22 @@ export function createMergedDispatchChatStore(options: {
     async write(dispatchState: ChatState): Promise<ChatState> {
       return options.mutationGate.run(options.channelId, async () => {
         return options.mutationGate.run(MERGED_DISPATCH_WRITE_GATE_KEY, async () => {
+          if (options.chatStore.updateSnapshot) {
+            let before!: ChatState;
+            const snapshot = await options.chatStore.updateSnapshot(({ chat, core }) => {
+              before = chat;
+              if (!chat.channels.some((channel) => channel.id === options.channelId)) return { chat, core };
+              const checked = options.beforeMerge?.(chat, dispatchState, core) ?? dispatchState;
+              return { chat: mergeCompletedDispatchState(chat, previousState, checked, options.channelId, options.now()), core };
+            });
+            previousState = structuredClone(dispatchState);
+            options.onPersistMergedState?.({ previousState: before, persistedState: snapshot.chat,
+              dispatchState, channelId: options.channelId });
+            return snapshot.chat;
+          }
           const latestState = await options.chatStore.read();
           if (!latestState.channels.some((channel) => channel.id === options.channelId)) {
-            previousState = dispatchState;
+            previousState = structuredClone(dispatchState);
             return latestState;
           }
 
@@ -424,7 +460,7 @@ export function createMergedDispatchChatStore(options: {
             options.now(),
           );
           const persisted = await options.chatStore.write(mergedState);
-          previousState = dispatchState;
+          previousState = structuredClone(dispatchState);
           options.onPersistMergedState?.({
             previousState: latestState,
             persistedState: persisted,

@@ -1,5 +1,6 @@
 import { readJsonBody, sendJson } from '../../../../shared/http.js';
 import { createParallelChatGroup } from '../../state/model/index.js';
+import { updateChatState } from '../../state/store.js';
 import type { CreateParallelChatGroupInput } from '../contracts.js';
 import {
   buildAppShellPayload,
@@ -37,8 +38,8 @@ export async function handleCreateParallelChatGroup(
       targetNoun: 'Parallel chat create request',
     });
 
-    const nextState = createParallelChatGroup(
-      await context.dependencies.chatStore.read(),
+    const persisted = await updateChatState(context.dependencies.chatStore, (state) => createParallelChatGroup(
+      state,
       {
         title,
         originSurface,
@@ -50,9 +51,8 @@ export async function handleCreateParallelChatGroup(
         temporaryParticipants: body.temporaryParticipants,
       },
       nowFrom(context.dependencies),
-    );
-    const groupId = nextState.parallelChatGroups[0]?.id ?? '';
-    const persisted = await context.dependencies.chatStore.write(nextState);
+    ));
+    const groupId = persisted.parallelChatGroups[0]?.id ?? '';
     const appShell = await buildAppShellPayload(context.dependencies, persisted);
     const group = appShell.chat.parallelChatGroups.find((candidate) => candidate.id === groupId);
     if (!group) {

@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1-K2 implemented and CI-validated; K3-K4 pending |
+| Status | In progress; K1-K2 CI-validated; K3 scoped validation passed, CI pending; K4 pending |
 | Owner | Platform integration; Chat owns conversation operations |
 | Reviewer | Product owner; independent Codex implementation review |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
@@ -192,12 +192,92 @@ mutations. Ordinary Chat turn/run projections still record the coordinator's
 preparation response; no teammate execution run or managed Work is admitted.
 K3 must re-admit and revalidate any later execution.
 
-### Candidate collaboration operations
+### K3 admission, mutation and recovery contract
 
-The following maps the complete workflow. The K2 read/preparation identifiers
-are registered above; remaining mutation/lifecycle responsibilities are proposed,
-with final identifiers/schemas owned by their delegates. They become callable
-only after the complete call/result path is implemented.
+K3's complete provider call/result path is implemented; scoped validation passes
+and full CI is pending (see PLAN-110).
+The following operations require an actual owner-confirmed proposal. This adds
+no public HTTP route and does not alter the default provider-agent opt-in.
+
+An executable preparation is displayed through the existing Chat choice surface.
+Its submitted owner choice binds the persisted proposal, original goal, two
+selected Cats, workspace policy and combined duration/token budget. Plain model
+text, a fabricated choice, or a proposal without the new execution-scope digest
+cannot authorize writes. Existing K2 proposals remain readable; prepare a fresh
+proposal to execute them. This additive metadata requires no persisted schema
+migration and must preserve old snapshots unchanged.
+
+| Operation (revision 1.0) | Owner | Result / boundary |
+|--------------------------|-------|-------------------|
+| `chat.collaboration.ensure_conversation` | Chat | Create or reuse the admitted Chat conversation through the canonical channel builder; return verified canonical identity and created/reused outcome |
+| `chat.collaboration.ensure_participants` | Chat | Add only the two admitted existing Cats through membership delegates; return canonical membership postconditions |
+| `work.collaboration.request_role` | Work | Persist one queued role Run only, returning an accepted request; no Runtime calls inside this tool. Review queuing requires the implementation's verified immutable revision |
+| `work.collaboration.inspect` | Work | Read only this intent's authoritative records, stage, results and retained evidence |
+| `work.collaboration.stop` | Work | Stop only this intent's owned execution; retain conversations, memberships, Tasks/Runs and evidence |
+
+One durable parent Task carries a versioned collaboration intent in existing
+metadata. Its key derives from the source conversation and proposal message;
+input digest conflicts reject instead of creating another workflow. Child Task,
+Run, artifact and outcome identities derive from that intent and role. The Chat
+store uses an additive atomic snapshot mutation seam so a canonical conversation
+or membership change and its intent receipt commit together. Core/Work updates
+use the existing Core transaction seam; no second store or scheduler is added.
+
+The coordinator retains `narrow_write`; FR-19 still denies broad writes to
+unknown/catalog-only models, and weak-worker ceilings remain unchanged.
+After the local queue tool returns and its receipt is persisted, the host drains
+that queued role in the existing post-ACK continuation. Work independently checks
+the persisted owner grant (proposal digest, fixed role/Cat, repository, permission
+envelope and shared budget), then calls the expensive supervised Runtime boundary.
+The queue result itself grants no execution authority. A subsequent host inspection
+receipt delivers the actual Run result to the same coordinator. This follows the
+existing Work admission-to-runner separation; expensive execution is not relabeled
+as a local-state model tool. Reviewer Tasks remain non-dispatchable until proof.
+
+Each stage records intent before external work. A bounded sequential coordinator
+session receives actual tool results; proposed/accepted/started/result-ready/
+reviewed states remain distinct. The combined work budget covers both Cats and
+is checked between calls; deadline/cancellation cancels owned Runtime work and
+prevents late responses from committing success. Native provider enforcement
+and installed/live acceptance remain K4, not claims of this implementation.
+
+Implementation evidence comes from Runtime delivery, not a Cat's prose or an
+invented artifact ID. The reviewer receives that exact isolated workspace and
+artifact/revision, under read-only policy. A review verdict is attributed to the
+reviewer and does not establish mechanical correctness of free-text acceptance
+criteria. Publication to a remote repository is outside this collaboration grant.
+
+The initial K3 execution requires a repository workspace. Runtime must produce a
+new immutable commit in its isolated worktree and confirm a clean matching HEAD;
+an artifact listing currently has no digest and cannot satisfy this gate alone.
+The reviewer session's actual cwd must match that verified delivery workspace,
+with matching clean HEAD before and after review. The check proves captured
+revision identity, not passing tests. Both role Tasks exist at admission so
+generic convergence cannot mistake implementation alone for completion.
+
+Budget fields on Runtime supervision metadata are descriptive today; the K3
+delegate must enforce elapsed time, measured usage and cancellation itself.
+Persist the supervised runtime bridge immediately after session creation and
+before sending work. Runtime has no create-session idempotency key or lookup by
+operation: a crash between accepted creation and bridge persistence is ambiguous
+and must block, never trigger a blind replacement session. Recovery must not use
+the transport golden-path startup sweep, which may create replacement sessions.
+
+Duplicate requests return existing postconditions; HTTP confirmation preserves
+the original cancellable turn. A stopped attempt requires a new proposal, not
+an automatic retry. Restart recovery reconciles active and fenced parents with
+unfinished children/sessions. Known late session IDs are persisted even after
+cancellation, and cleanup is marked complete only after confirmation. Starting
+without a session ID remains ambiguous and never triggers a replacement create.
+Concurrent edits, continuity resets, target changes, removed members,
+stale owner intent and revoked scope stop further effects. Partial completion is
+reported truthfully; already-created user work is never silently deleted.
+
+### Collaboration responsibility map
+
+The following maps the complete workflow. K2 read/preparation and K3 mutation/
+lifecycle identifiers and exact input restrictions are registered above. Model
+inputs cannot override the server-bound intent, identities, workspace or grant.
 
 | Operation | Input supplied by model | Server-resolved context and result |
 |-----------|-------------------------|------------------------------------|
@@ -316,8 +396,9 @@ K1 has fixture evidence for AC-01/AC-02 and the knowledge-only parts of
 AC-03/AC-08/AC-09, recorded in PLAN-110. K2 adds read/preparation evidence for
 AC-03/AC-04/AC-08, including actual requester and authenticated HTTP continuation,
 result feedback, stale-state rejection and cancellation. Real provider/native
-behavior, collaboration mutations, full profile exclusion and end-to-end
-acceptance remain pending; the criteria below describe the full target.
+behavior, full profile exclusion and installed end-to-end acceptance remain K4.
+K3 adds mutation, immutable-revision, result-feedback and recovery fixtures for
+AC-05/AC-06/AC-07/AC-08; validation outcomes are recorded in PLAN-110.
 
 | ID | Observable criterion | Requirements |
 |----|----------------------|--------------|

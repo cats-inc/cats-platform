@@ -21,6 +21,8 @@ import {
 import { routeChannelMessage } from './runtimeActions.js';
 import type { CompanionBoxStore } from './companion-box/index.js';
 import type { ChatStore } from './store.js';
+import { updateChatState } from './store.js';
+import { createLockedDispatchChatStore, mergeCompletedDispatchState } from './runtime-dispatch/merge.js';
 import type { ProviderAgentDecisionRequester } from './runtime-dispatch/routing.js';
 
 export function createChatTelegramRoomBridge(input: {
@@ -36,12 +38,30 @@ export function createChatTelegramRoomBridge(input: {
   naturalProductIntentMode?: ChatNaturalProductIntentMode;
   externalIssueImport?: ExternalIssueImportFetchOptions;
 }): TelegramRoomBridge<ChatState> {
+  // Transport selection restoration shallow-copies the state, retaining this identity.
+  // Track only outputs owned by this adapter, without changing the shared bridge contract.
+  const pendingWrites = new WeakMap<ChatState['channels'], { baseline: ChatState; roomId: string; now: Date }>();
+  const recordWrite = (state: ChatState, baseline: ChatState, roomId: string, now: Date): ChatState => {
+    pendingWrites.set(state.channels, { baseline: structuredClone(baseline), roomId, now });
+    return state;
+  };
   return {
     readState() {
       return input.chatStore.read();
     },
-    writeState(state) {
-      return input.chatStore.write(state);
+    async writeState(state) {
+      const pending = pendingWrites.get(state.channels);
+      if (!pending) throw new Error('Telegram state write requires an adapter-owned room mutation.');
+      const { baseline, roomId, now } = pending;
+      const persisted = await updateChatState(input.chatStore, (latest) => {
+        const existed = baseline.channels.some((channel) => channel.id === roomId);
+        const exists = latest.channels.some((channel) => channel.id === roomId);
+        if (existed) return exists ? mergeCompletedDispatchState(latest, baseline, state, roomId, now) : latest;
+        if (!exists) latest.channels.push(structuredClone(requireChannel(state, roomId)));
+        return latest;
+      });
+      recordWrite(state, state, roomId, now);
+      return recordWrite(persisted, persisted, roomId, now);
     },
     runExclusive(key, operation) {
       return input.mutationGate ? input.mutationGate.run(key, operation) : operation();
@@ -81,7 +101,7 @@ export function createChatTelegramRoomBridge(input: {
       if (!roomId) {
         throw new Error('Telegram room creation did not select a room.');
       }
-      return { state: nextState, roomId };
+      return { state: recordWrite(nextState, state, roomId, timestamp), roomId };
     },
     readRoom(state, roomId) {
       const channel = requireChannel(state, roomId);
@@ -110,7 +130,9 @@ export function createChatTelegramRoomBridge(input: {
       memoryService,
       timestamp,
     }) {
-      return routeChannelMessage(
+      const writer = createLockedDispatchChatStore(input.chatStore, roomId, state, () => timestamp);
+      let lastPersisted = structuredClone(state);
+      const routed = await routeChannelMessage(
         state,
         roomId,
         {
@@ -128,7 +150,11 @@ export function createChatTelegramRoomBridge(input: {
             : null,
           companionStore: input.companionStore,
           memoryService,
-          chatStore: input.chatStore,
+          chatStore: { ...writer, write: async (next) => {
+            const persisted = await writer.write(next);
+            lastPersisted = structuredClone(persisted);
+            return persisted;
+          } },
           runtimeRecovery: input.runtimeRecovery,
           chatStatePath: input.chatStatePath,
           runtimeDataDir: input.runtimeDataDir,
@@ -139,6 +165,7 @@ export function createChatTelegramRoomBridge(input: {
           externalIssueImport: input.externalIssueImport,
         },
       );
+      return { ...routed, state: recordWrite(routed.state, lastPersisted, roomId, timestamp) };
     },
     buildRecoveryState({
       state,
@@ -196,7 +223,7 @@ export function createChatTelegramRoomBridge(input: {
         },
       ).state;
 
-      return refreshDerivedMemoryLayers(recoveryState, roomId, occurredAt);
+      return recordWrite(refreshDerivedMemoryLayers(recoveryState, roomId, occurredAt), state, roomId, occurredAt);
     },
   };
 }

@@ -82,46 +82,49 @@ async function handleCanonicalUpdateCat(
       avatarUrl?: string | null;
     }>(context.request);
     const currentState = await context.dependencies.chatStore.read();
-    let state = currentState;
-    if (body.name !== undefined) {
-      state = renameCat(state, catId, body.name);
-    }
-    if (body.skillProfile !== undefined) {
-      state = updateCatSkillProfile(state, catId, body.skillProfile);
-    }
-    if (body.mcpProfile !== undefined) {
-      state = updateCatMcpProfile(state, catId, body.mcpProfile);
-    }
-    if (body.makeBoss) {
-      state = setBossCat(state, catId);
-    }
-    if (body.products !== undefined) {
-      state = updateCatProducts(state, catId, body.products);
-    }
-    if (body.provider !== undefined || body.instance !== undefined || body.model !== undefined || body.modelSelection !== undefined) {
-      state = updateCatExecutionTarget(state, catId, {
-        provider: body.provider,
-        instance: body.instance,
-        model: body.model,
-        modelSelection: body.modelSelection,
-      });
-    }
-    if (body.avatarUrl !== undefined) {
-      const cat = state.cats.find((c) => c.id === catId);
-      if (cat) {
-        cat.avatarUrl = typeof body.avatarUrl === 'string' ? body.avatarUrl : null;
-        cat.updatedAt = new Date().toISOString();
+    const patch = (state: typeof currentState) => {
+      if (body.name !== undefined) {
+        state = renameCat(state, catId, body.name);
       }
-    }
+      if (body.skillProfile !== undefined) {
+        state = updateCatSkillProfile(state, catId, body.skillProfile);
+      }
+      if (body.mcpProfile !== undefined) {
+        state = updateCatMcpProfile(state, catId, body.mcpProfile);
+      }
+      if (body.makeBoss) {
+        state = setBossCat(state, catId);
+      }
+      if (body.products !== undefined) {
+        state = updateCatProducts(state, catId, body.products);
+      }
+      if (body.provider !== undefined || body.instance !== undefined || body.model !== undefined || body.modelSelection !== undefined) {
+        state = updateCatExecutionTarget(state, catId, {
+          provider: body.provider,
+          instance: body.instance,
+          model: body.model,
+          modelSelection: body.modelSelection,
+        });
+      }
+      if (body.avatarUrl !== undefined) {
+        const cat = state.cats.find((c) => c.id === catId);
+        if (cat) {
+          cat.avatarUrl = typeof body.avatarUrl === 'string' ? body.avatarUrl : null;
+          cat.updatedAt = new Date().toISOString();
+        }
+      }
+      return state;
+    };
+    let state = patch(currentState);
     if (body.archive && body.unarchive) {
       throw new Error('Cat cannot be archived and recovered at the same time');
     }
     if (body.archive) {
-      state = await persistArchivedCat(context, state, catId);
+      state = await persistArchivedCat(context, currentState, catId, patch);
     } else if (body.unarchive) {
-      state = await persistUnarchivedCat(context, state, catId);
+      state = await persistUnarchivedCat(context, currentState, catId, patch);
     } else {
-      state = await persistUpdatedCat(context, currentState, state, catId);
+      state = await persistUpdatedCat(context, currentState, state, catId, patch);
     }
     sendJson(
       context.response,

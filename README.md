@@ -100,7 +100,9 @@ The current slices are:
       [PLAN-110](./docs/plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md).
       Opt-in Orchestrator decisions now support supervised teammate/context reads
       and validated collaboration proposals with same-session result feedback.
-      Conversation/membership/work mutations and live acceptance remain pending.
+      K3 adds owner-confirmed conversation/membership, bounded Work execution,
+      verified local revision review and durable cancellation/recovery.
+      Focused validation passes; full CI is pending. Live/native and installed acceptance remain K4.
       Provider-selected default Chat retains its own assistant identity;
       preview-only development/practice skills remain a separate workstream.
 

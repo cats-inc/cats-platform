@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { collaborationToolDescriptors } from '../orchestratorCollaboration.js';
+import { collaborationExecutionDescriptors, collaborationExecutionManifests,
+  resolveCollaborationOwnerChoice, REQUEST_COLLABORATION_ROLE } from '../collaborationExecutionSurface.js';
 import { isOrchestratorKnowledgeChannel } from '../orchestratorKnowledge.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 
@@ -12,6 +14,7 @@ import type {
 import type { CatsCoreState } from '../../../../core/types.js';
 import type {
   ProviderAgentBoundedObservation,
+  ProviderAgentToolDescriptor,
 } from '../../../../platform/orchestration/index.js';
 import {
   decideSupervisionPolicy,
@@ -174,6 +177,7 @@ export interface PreparedDispatchTurn {
 
 export interface PrepareDispatchTurnOptions {
   enableCollaborationReads?: boolean;
+  enableCollaborationExecution?: boolean;
   deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
@@ -279,6 +283,7 @@ export function prepareDispatchTurnForUserMessage(
     providerCapabilityBootstrapDiagnosticSink: options.providerCapabilityBootstrapDiagnosticSink,
     naturalProductIntentMode: options.naturalProductIntentMode,
     enableCollaborationReads: options.enableCollaborationReads,
+    enableCollaborationExecution: options.enableCollaborationExecution,
     transport: options.transport,
     transportBindingId: options.transportBindingId,
   });
@@ -522,6 +527,7 @@ export function prepareDispatchTurnForUserMessage(
 
 function buildProviderAgentObservationForTurn(input: {
   enableCollaborationReads?: boolean;
+  enableCollaborationExecution?: boolean;
   state: ChatState;
   channelId: string;
   payload: SendChannelMessageInput;
@@ -867,6 +873,25 @@ function buildProviderAgentObservationForTurn(input: {
     ? collaborationToolDescriptors({ dials: observationPolicy,
         allowedFallbacks: [observationPolicy.fallbackPolicy] }) : [];
 
+  const ownerChoice = input.enableCollaborationExecution && collaborationTools.length
+    ? resolveCollaborationOwnerChoice(input.state, input.channelId, input.payload.choiceResponse) : null;
+  let executionTools: ProviderAgentToolDescriptor[] = [];
+  if (ownerChoice) {
+    const executionPolicy = decideSupervisionPolicy({
+      actionId: `${input.userMessage.id}:collaboration-admission`, runId: `chat:${input.channelId}`,
+      actorRef: providerAgentActorRef, targetRef: REQUEST_COLLABORATION_ROLE,
+      providerRef: capabilityProfile.profileId, actionType: 'owner_confirmed_collaboration',
+      evaluatedAt: input.nowIso, capabilityAssessment: capabilityProfile.assessment,
+      toolManifest: collaborationExecutionManifests().find((entry) => entry.name === REQUEST_COLLABORATION_ROLE)!,
+      approvalState: 'owner_confirmed_proposal',
+      requestedPolicy: { toolScope: 'narrow_write', approvalThreshold: 'high' },
+    });
+    if (executionPolicy.status === 'applied') {
+      observationPolicy = executionPolicy.result.policy;
+      executionTools = collaborationExecutionDescriptors();
+    }
+  }
+
   return buildChatProviderAgentObservation({
     state: input.state,
     channelId: input.channelId,
@@ -874,7 +899,7 @@ function buildProviderAgentObservationForTurn(input: {
     capabilityProfile,
     policy: observationPolicy,
     availableTools: [
-      ...collaborationTools,
+      ...(executionTools.length ? executionTools : collaborationTools),
       ...(exposeCatProductIntentProposalTool
         ? [
           {
@@ -921,7 +946,8 @@ function buildProviderAgentObservationForTurn(input: {
       ...workItemAssignProjectToolObservation.invariants,
     ],
     messageCharacterCount: input.payload.body.length,
-    goal: collaborationTools.length > 0 ? input.payload.body : undefined,
+    goal: executionTools.length ? ownerChoice!.proposal.goal
+      : collaborationTools.length > 0 ? input.payload.body : undefined,
     routing: {
       trigger: input.initialResolution.trigger,
       resolution: input.initialResolution.resolution,

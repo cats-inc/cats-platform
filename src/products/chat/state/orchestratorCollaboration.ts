@@ -13,6 +13,8 @@ import { resolveChannelParticipantAssignments } from '../shared/channelParticipa
 import { resolveChannelCanonicalIdentity } from '../shared/channelCanonicalIdentity.js';
 import { isOrchestratorKnowledgeChannel } from './orchestratorKnowledge.js';
 import { resolveOrchestratorExecutionTarget } from './runtimeTargeting.js';
+import { collaborationExecutionRevision } from './collaborationExecutionSurface.js';
+import type { CollaborationExecutionSummary } from '../../work/state/collaborationRecords.js';
 
 export const DISCOVER_COLLABORATION_CATS = 'chat.collaboration.discover_cats';
 export const INSPECT_COLLABORATION_CONTEXT = 'chat.collaboration.inspect_context';
@@ -98,6 +100,7 @@ export interface CollaborationProposal {
   reviewDependsOn: 'verified_implementation_artifact_or_revision';
   budget: { maxDurationMs: number; maxTokens: number; admission: 'not_admitted' };
   execution: 'not_started';
+  executionRevision?: string;
 }
 
 export type CollaborationPreparation = CollaborationProposal | {
@@ -118,10 +121,12 @@ export interface CollaborationReport {
   reason?: string;
   feedbackDelivered: boolean;
   receipts: CollaborationReadReceipt[];
+  execution?: CollaborationExecutionSummary;
 }
 
 export interface CollaborationSnapshot {
   revision: string;
+  executionRevision?: string;
   candidates: CollaborationCandidate[];
   context: {
     channelId: string; conversationId: string; originSurface: 'chat';
@@ -173,7 +178,7 @@ export function collaborationSnapshot(
     policy: observation.policy, capabilities: state.capabilities,
     goal: observation.goal, tools: observation.availableTools.map(({ manifest }) => manifest),
   }));
-  return { revision, candidates, context };
+  return { revision, executionRevision: collaborationExecutionRevision(state, channelId), candidates, context };
 }
 
 function record(value: unknown, keys: string[]): value is Record<string, unknown> {
@@ -291,5 +296,6 @@ export function executeCollaborationRead(input: {
     reviewDependsOn: 'verified_implementation_artifact_or_revision',
     budget: { maxDurationMs: value.budget.maxDurationMs, maxTokens: value.budget.maxTokens,
       admission: 'not_admitted' }, execution: 'not_started',
+    executionRevision: snapshot.executionRevision,
   } satisfies CollaborationProposal };
 }

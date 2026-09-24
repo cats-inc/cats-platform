@@ -1,4 +1,5 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
+import { updateChatState } from '../../state/store.js';
 import {
   updateGlobalOrchestrator,
 } from '../../state/model/index.js';
@@ -45,13 +46,8 @@ async function handleRestUpdateOrchestrator(
     const body = await readJsonBody<UpdateGlobalOrchestratorInput>(
       context.request,
     );
-    const nextState = updateGlobalOrchestrator(
-      await context.dependencies.chatStore.read(),
-      body,
-      nowFrom(context.dependencies),
-    );
     const [persisted, runtime] = await Promise.all([
-      context.dependencies.chatStore.write(nextState),
+      updateChatState(context.dependencies.chatStore, (state) => updateGlobalOrchestrator(state, body, nowFrom(context.dependencies))),
       context.dependencies.runtimeClient.getHealth(),
     ]);
     sendJson(context.response, 200, {

@@ -12,6 +12,7 @@ import type {
 } from '../../../platform/orchestration/contracts.js';
 import type { ChatApiRouteContext } from './routeSupport.js';
 import { handleRestError } from './routeSupport.js';
+import { createLockedDispatchChatStore } from '../state/runtime-dispatch/merge.js';
 
 async function handlePlan(
   context: ChatApiRouteContext,
@@ -45,7 +46,8 @@ async function handleDispatch(
       body.channelId,
       async () => dispatchOrchestratorTurn({
         ...body,
-        chatStore: context.dependencies.chatStore,
+        chatStore: createLockedDispatchChatStore(context.dependencies.chatStore, body.channelId,
+          await context.dependencies.chatStore.read(), () => context.dependencies.now?.() ?? new Date()),
         channelRouter: context.dependencies.orchestratorChannelRouter,
         plannerSurface: context.dependencies.orchestratorPlannerSurface,
         runtimeClient: context.dependencies.runtimeClient,

@@ -24,8 +24,10 @@ import {
   settleBegunChannelMessageDispatchFailure,
 } from '../build/server/products/chat/state/runtimeActions.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { createDefaultChatState } from '../build/server/products/chat/state/defaults.js';
 import {
   createMergedDispatchChatStore,
+  createLockedDispatchChatStore,
   mergeCompletedDispatchState,
 } from '../build/server/products/chat/state/runtime-dispatch/merge.js';
 import {
@@ -48,6 +50,29 @@ function createNoopRuntimeClient() {
     async closeSession() {},
   };
 }
+
+test('locked dispatch preserves message annotations without overwriting a newer owner edit or sibling creation', async () => {
+  let state = createChannel(createDefaultChatState(), { title: 'Source', topic: '', originSurface: 'chat' });
+  const channelId = state.selectedChannelId;
+  state = appendMessage(state, channelId, { senderKind: 'user', senderName: 'Owner', body: 'Original' }).state;
+  const store = new MemoryChatStore(state);
+  const writer = createLockedDispatchChatStore(store, channelId, state, () => new Date());
+  const dispatch = structuredClone(state);
+  requireChannel(dispatch, channelId).messages.at(-1).metadata.intakeMarker = 'admitted';
+  await store.updateSnapshot(({ chat, core }) => ({ core,
+    chat: createChannel(chat, { title: 'Concurrent collaboration', topic: '', originSurface: 'chat' }) }));
+  await writer.write(dispatch);
+  const persisted = await store.read();
+  assert.equal(persisted.channels.length, state.channels.length + 1);
+  assert.equal(requireChannel(persisted, channelId).messages.at(-1).metadata.intakeMarker, 'admitted');
+  await store.updateSnapshot(({ chat, core }) => {
+    requireChannel(chat, channelId).messages.at(-1).body = 'Owner correction';
+    return { chat, core };
+  });
+  requireChannel(dispatch, channelId).messages.at(-1).body = 'Late replacement';
+  await writer.write(dispatch);
+  assert.equal(requireChannel(await store.read(), channelId).messages.at(-1).body, 'Owner correction');
+});
 
 test('applyDispatchExecutions advances sequential queued frames by canonical source identity before participant fallback', async () => {
   const runtimeClient = createNoopRuntimeClient();

@@ -6,8 +6,10 @@ Accepted for the shared knowledge and role-procedure architecture, 2026-09-24.
 The owner requested documentation followed by wiring in the same work package.
 K1 implements inline knowledge consumption. K2 implements opt-in supervised
 teammate/context reads and collaboration preparation, with same-session feedback
-and isolated HTTP acceptance fixtures. K3 mutation contracts and K4 live/native
-acceptance remain pending. Publication remains a separate authorization.
+and isolated HTTP acceptance fixtures. K3 adds owner-confirmed conversation,
+membership and Work execution with durable recovery; scoped validation passes,
+with full CI pending.
+K4 live/native acceptance remains pending. Publication remains a separate authorization.
 
 ## Context
 
@@ -90,6 +92,26 @@ different resources. Persist idempotency and recovery references with existing
 owners before enabling resumable mutations. A second coordinator scheduler,
 roster or transcript store is outside this decision.
 
+K3 keeps the model coordinator at `narrow_write`. Its role request only queues
+a fixed Work Run, then the host checks the persisted owner choice independently
+before using the expensive Runtime boundaries. Queue acceptance is persisted
+before that drain; a separate inspection receipt returns the actual result.
+This preserves FR-19's unknown-model restrictions without promoting catalog
+metadata into capability evidence or treating execution as a local-state tool.
+
+Chat and Core mutations share one atomic snapshot writer. Concurrent Chat
+dispatch/settings writers merge their own changes into current state. Work owns
+the parent intent, two role Tasks and Runs, verified local revision, attributed
+review and cancellation/recovery metadata. Review remains non-dispatchable until
+implementation proof is committed. Runtime creates an isolated worktree; the
+reviewer must observe its exact clean commit before and after review. This proves
+revision identity, not passing tests. Remote publishing remains outside the grant.
+
+Repeated confirmation acknowledges the existing attempt without replacing its
+active Chat turn. Recovery fences unfinished roles, persists late session IDs,
+and records cleanup only after Runtime confirms it; it never silently relaunches
+an ambiguous create or deletes retained work.
+
 ### Keep normal product procedures available in both profiles
 
 Release and preview/debug both consume reviewed product concepts and ordinary
@@ -142,4 +164,4 @@ as official knowledge. This work does not introduce model-weight training.
 ---
 
 *Proposed: 2026-09-24*
-*Last updated: 2026-09-24*
+*Last updated: 2026-09-25*

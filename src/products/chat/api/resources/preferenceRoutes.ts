@@ -1,4 +1,5 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
+import { updateChatState } from '../../state/store.js';
 import {
   selectChannel,
   updateNewChatDefaults,
@@ -154,20 +155,14 @@ async function handleRestUpdatePreferences(
       async () => (
         body.selectedChannelId !== undefined
           ? context.dependencies.mutationGate.run(body.selectedChannelId, async () => {
-            let nextState = await context.dependencies.chatStore.read();
-
-            nextState = selectChannel(
-              nextState,
+            return updateChatState(context.dependencies.chatStore, (state) => applyPreferencePatch(selectChannel(
+              state,
               body.selectedChannelId!,
               nowFrom(context.dependencies),
-            );
-            nextState = applyPreferencePatch(nextState, body);
-            return context.dependencies.chatStore.write(nextState);
+            ), body));
           })
           : (async () => {
-            let nextState = await context.dependencies.chatStore.read();
-            nextState = applyPreferencePatch(nextState, body);
-            return context.dependencies.chatStore.write(nextState);
+            return updateChatState(context.dependencies.chatStore, (state) => applyPreferencePatch(state, body));
           })()
       ),
     );

@@ -14,11 +14,19 @@ import type { ProviderAgentBoundedObservation } from '../../../platform/orchestr
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import { isCollaborationTool, type CollaborationReadReceipt } from './orchestratorCollaboration.js';
 import { runCollaborationDecisionLoop } from './orchestratorCollaborationLoop.js';
+import { isCollaborationExecutionTool } from './collaborationExecutionSurface.js';
+import { runCollaborationExecutionLoop } from './collaborationExecutionLoop.js';
+import type { ChatStore } from './store.js';
+import type { RuntimeDeliveryClient } from '../../../platform/runtime/deliveryClient.js';
 
 export interface ChatProviderAgentDecisionRequesterOptions {
   failureMode?: 'throw' | 'return_null';
   knowledgeFilePath?: string;
   readState?: () => Promise<ChatState>;
+  chatStore?: ChatStore;
+  deliveryClient?: RuntimeDeliveryClient;
+  publishCollaboration?: (channelId: string, action: 'created' | 'updated') => void;
+  runChatMutation?: <T>(channelId: string, operation: () => Promise<T>) => Promise<T>;
 }
 
 export function createChatProviderAgentDecisionRequester(
@@ -52,7 +60,7 @@ export function createChatProviderAgentDecisionRequester(
         const productKnowledge = isOrchestrator
           ? await loadOrchestratorKnowledge({
               channel: buildChannelView(state, input.channelId),
-              body: input.payload.body,
+              body: receipts ? observation.goal : input.payload.body,
               surface: 'chat-decision',
               target: binding ?? { provider: target.provider, model: target.model ?? null },
               operations: observation.availableTools.map(({ manifest }) => ({
@@ -114,6 +122,14 @@ export function createChatProviderAgentDecisionRequester(
         return result;
       };
 
+      if (isOrchestrator && input.onCollaborationResult && options.chatStore && options.deliveryClient
+        && input.observation.availableTools.some(({ manifest }) => isCollaborationExecutionTool(manifest.name))) {
+        return runCollaborationExecutionLoop({ chatStore: options.chatStore, deliveryClient: options.deliveryClient,
+          runtimeClient: input.runtimeClient, channelId: input.channelId,
+          choiceResponse: input.payload.choiceResponse, observation: input.observation,
+          isCancelled: input.isCancelled, report: input.onCollaborationResult, request,
+          publish: options.publishCollaboration, runChatMutation: options.runChatMutation });
+      }
       if (isOrchestrator && input.onCollaborationResult
         && input.observation.availableTools.some(({ manifest }) => isCollaborationTool(manifest.name))) {
         return runCollaborationDecisionLoop({
@@ -134,5 +150,6 @@ export function createChatProviderAgentDecisionRequester(
     }
   };
   requester.supportsCollaboration = true;
+  requester.supportsCollaborationExecution = Boolean(options.chatStore?.updateSnapshot && options.deliveryClient);
   return requester;
 }

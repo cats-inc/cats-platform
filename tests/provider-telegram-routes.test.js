@@ -315,13 +315,13 @@ class FailingWriteChatStore extends MemoryChatStore {
     this.relativeWriteCount = 0;
   }
 
-  async write(state) {
+  async updateSnapshot(mutator) {
     this.relativeWriteCount += 1;
     if (this.failOnRelativeWrite === this.relativeWriteCount) {
       this.failOnRelativeWrite = null;
       throw new Error('Simulated chat store write failure');
     }
-    return super.write(state);
+    return super.updateSnapshot(mutator);
   }
 }
 

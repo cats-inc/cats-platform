@@ -1,4 +1,6 @@
 import { createChatEventHub } from '../../products/chat/api/chatEventHub.js';
+import { publishChannelMutation } from '../../products/chat/api/transportEventPublisher.js';
+import { createRuntimeDeliveryClient } from '../../platform/runtime/deliveryClient.js';
 import { createAppStartupState } from './startup.js';
 import { createTelegramCommandSurfaceSync } from './telegramCommandSurfaceSync.js';
 import type {
@@ -64,6 +66,7 @@ import {
   resumeStoredWorkflowContinuationDispatch,
 } from '../../products/chat/state/deterministicRouterAdapter.js';
 import { createChatProviderAgentDecisionRequester } from '../../products/chat/state/providerAgentDecisionRequester.js';
+import { createLockedDispatchChatStore } from '../../products/chat/state/runtime-dispatch/merge.js';
 import {
   createProviderCapabilityBootstrapDiagnosticSink,
   resolveProviderCapabilityBootstrapDiagnosticsPath,
@@ -311,11 +314,17 @@ export function resolveServerDependencies(
   );
   const companionActivityStore = dependencies.chat.companionActivityStore
     ?? createDefaultCompanionActivityStore(dependencies.shared, dependencies.chat);
+  const chatEventHub = dependencies.chat.eventHub ?? createChatEventHub();
   const providerAgentDecisionRequester = dependencies.chat.providerAgentDecisionRequester
     ?? (
       dependencies.shared.config.chatProviderAgentDecisionEnabled === true
         ? createChatProviderAgentDecisionRequester({
             failureMode: 'return_null', readState: () => dependencies.chat.chatStore.read(),
+            chatStore: dependencies.chat.chatStore,
+            deliveryClient: createRuntimeDeliveryClient({ baseUrl: dependencies.shared.config.runtimeBaseUrl,
+              apiKey: dependencies.shared.config.runtimeApiKey }),
+            publishCollaboration: (channelId, action) => publishChannelMutation(chatEventHub, channelId, action),
+            runChatMutation: (channelId, operation) => mutationGate.run(channelId, operation),
           })
         : undefined
     );
@@ -387,7 +396,8 @@ export function resolveServerDependencies(
     ) => mutationGate.run(request.channelId, async () => dispatchOrchestratorTurn({
       ...request,
       senderName: request.senderName ?? undefined,
-      chatStore: dependencies.chat.chatStore,
+      chatStore: createLockedDispatchChatStore(dependencies.chat.chatStore, request.channelId,
+        await dependencies.chat.chatStore.read(), () => dependencies.shared.now?.() ?? new Date()),
       channelRouter: orchestratorChannelRouter,
       plannerSurface: orchestratorPlannerSurface,
       runtimeClient: dependencies.shared.runtimeClient,
@@ -445,7 +455,7 @@ export function resolveServerDependencies(
       telegramRoomBridge,
       pollingSupervisor,
       telegramCommandSurfaceSync,
-      eventHub: dependencies.chat.eventHub ?? createChatEventHub(),
+      eventHub: chatEventHub,
       providerAgentDecisionRequester,
       transportWorkGoldenPath,
     },

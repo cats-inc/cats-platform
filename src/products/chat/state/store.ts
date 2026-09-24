@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 
 import type { ChatState } from '../api/contracts.js';
 import type { CatsCoreState } from '../../../core/types.js';
@@ -38,6 +39,17 @@ export interface ChatStore extends CoreStore {
   read(): Promise<ChatState>;
   write(state: ChatState): Promise<ChatState>;
   writeSnapshot(chat: ChatState, core: CatsCoreState): Promise<PersistedChatSnapshot>;
+  /** Pure, atomic Chat/Core mutation. Callers must not perform external work in the callback. */
+  updateSnapshot?(mutator: ChatSnapshotMutator): Promise<PersistedChatSnapshot>;
+}
+
+export type ChatSnapshotMutator = (snapshot: { chat: ChatState; core: CatsCoreState })
+  => { chat: ChatState; core: CatsCoreState };
+
+/** Apply a synchronous product mutation to the latest Chat, preserving concurrent Core writes. */
+export async function updateChatState(store: ChatStore, mutate: (state: ChatState) => ChatState): Promise<ChatState> {
+  if (store.updateSnapshot) return (await store.updateSnapshot(({ chat, core }) => ({ chat: mutate(chat), core }))).chat;
+  return store.write(mutate(await store.read()));
 }
 
 type CoreStateMutator = (
@@ -308,6 +320,19 @@ export class FileChatStore implements ChatStore {
     });
   }
 
+  async updateSnapshot(mutator: ChatSnapshotMutator): Promise<PersistedChatSnapshot> {
+    return this.runExclusive(async () => {
+      const current = await this.readPersistedSnapshotUnsafe();
+      const previousCore = extractCoreState(current);
+      const next = mutator({ chat: structuredClone(current.chat), core: structuredClone(previousCore) });
+      if (isDeepStrictEqual(next.chat, current.chat) && isDeepStrictEqual(next.core, previousCore)) return current;
+      const persisted = await this.writeSnapshotUnsafe(next.chat, next.core);
+      const nextCore = extractCoreState(persisted);
+      if (hasSubstantiveCoreChange(previousCore, nextCore)) this.emitCoreChange(nextCore);
+      return persisted;
+    });
+  }
+
   async write(state: ChatState): Promise<ChatState> {
     return this.runExclusive(async () => {
       const currentCore = extractCoreState(await this.readPersistedSnapshotUnsafe());
@@ -357,6 +382,7 @@ export class FileChatStore implements ChatStore {
 }
 
 export class MemoryChatStore implements ChatStore {
+  private mutationQueue: Promise<void> = Promise.resolve();
   private chatState: ChatState;
   private coreState: CatsCoreState;
   private readonly coreListeners = new Set<CoreStoreListener>();
@@ -370,14 +396,20 @@ export class MemoryChatStore implements ChatStore {
   }
 
   async read(): Promise<ChatState> {
+    await this.mutationQueue;
     return structuredClone(this.chatState);
   }
 
   async readCore(): Promise<CatsCoreState> {
+    await this.mutationQueue;
     return structuredClone(this.coreState);
   }
 
   async writeSnapshot(chat: ChatState, core: CatsCoreState): Promise<PersistedChatSnapshot> {
+    return this.runExclusive(() => this.writeSnapshotUnsafe(chat, core));
+  }
+
+  private writeSnapshotUnsafe(chat: ChatState, core: CatsCoreState): PersistedChatSnapshot {
     const previousCore = this.coreState;
     const snapshot = this.applySnapshotState(chat, core);
     if (hasSubstantiveCoreChange(previousCore, this.coreState)) {
@@ -387,19 +419,36 @@ export class MemoryChatStore implements ChatStore {
   }
 
   async write(state: ChatState): Promise<ChatState> {
-    await this.writeSnapshot(state, this.coreState);
-    return structuredClone(this.chatState);
+    return this.runExclusive(() => this.writeSnapshotUnsafe(state, this.coreState).chat);
   }
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
-    await this.writeSnapshot(this.chatState, state);
-    return structuredClone(this.coreState);
+    return this.runExclusive(() => extractCoreState(this.writeSnapshotUnsafe(this.chatState, state)));
   }
 
   async updateCore(mutator: CoreStateMutator): Promise<CatsCoreState> {
-    const nextCore = await mutator(structuredClone(this.coreState));
-    await this.writeSnapshot(this.chatState, nextCore);
-    return structuredClone(this.coreState);
+    return this.runExclusive(async () => {
+      const nextCore = await mutator(structuredClone(this.coreState));
+      return extractCoreState(this.writeSnapshotUnsafe(this.chatState, nextCore));
+    });
+  }
+
+  async updateSnapshot(mutator: ChatSnapshotMutator): Promise<PersistedChatSnapshot> {
+    return this.runExclusive(() => {
+      const next = mutator({ chat: structuredClone(this.chatState), core: structuredClone(this.coreState) });
+      if (isDeepStrictEqual(next.chat, this.chatState) && isDeepStrictEqual(next.core, this.coreState)) {
+        return buildPersistedChatSnapshot(this.chatState, this.coreState);
+      }
+      return this.writeSnapshotUnsafe(next.chat, next.core);
+    });
+  }
+
+  private async runExclusive<T>(operation: () => T | Promise<T>): Promise<T> {
+    const previous = this.mutationQueue;
+    let release: () => void = () => {};
+    this.mutationQueue = new Promise<void>((resolve) => { release = resolve; });
+    await previous;
+    try { return await operation(); } finally { release(); }
   }
 
   subscribeCore(listener: CoreStoreListener): () => void {

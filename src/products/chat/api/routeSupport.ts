@@ -1,4 +1,5 @@
 import type { AppConfig } from '../../../config.js';
+import { updateChatState } from '../state/store.js';
 import { createCatActorId } from '../../../core/actors.js';
 import type { GuideCatRecord } from '../../../core/types.js';
 import type { TelegramPollingSupervisor } from '../../../platform/transports/telegram/polling.js';
@@ -451,23 +452,25 @@ export async function persistCreatedChannel(
     (input.cats?.length ?? 0)
     + (input.participantCatIds?.length ?? 0)
     + (input.temporaryParticipants?.length ?? 0);
-  let nextState = createChannel(
-    await context.dependencies.chatStore.read(),
-    input,
-    now,
-    { prevalidatedRuntimePolicy: parsed.policy },
-  );
+  return updateChatState(context.dependencies.chatStore, (state) => {
+    let nextState = createChannel(
+      state,
+      input,
+      now,
+      { prevalidatedRuntimePolicy: parsed.policy },
+    );
 
-  if (
-    !input.skipBossCatGreeting
-    && input.entryKind !== 'default'
-    && requestedRoomMode !== 'direct_message'
-    && requestedParticipantCount > 0
-  ) {
-    nextState = seedBossCatGreeting(nextState, nextState.selectedChannelId, now);
-  }
+    if (
+      !input.skipBossCatGreeting
+      && input.entryKind !== 'default'
+      && requestedRoomMode !== 'direct_message'
+      && requestedParticipantCount > 0
+    ) {
+      nextState = seedBossCatGreeting(nextState, nextState.selectedChannelId, now);
+    }
 
-  return context.dependencies.chatStore.write(nextState);
+    return nextState;
+  });
 }
 
 export function resolveCreateOriginSurface(
@@ -507,15 +510,14 @@ async function writeCoreWithUpdatedBindings(
   ) => Awaited<ReturnType<ChatStore['readCore']>>['botBindings'],
 ): Promise<void> {
   const nowIso = nowFrom(context.dependencies).toISOString();
-  const currentCore = await context.dependencies.chatStore.readCore();
-  await context.dependencies.chatStore.writeCore({
+  await context.dependencies.chatStore.updateCore((currentCore) => ({
     ...currentCore,
     updatedAt: nowIso,
     botBindings: update(
       currentCore.botBindings.map((binding) => structuredClone(binding)),
       nowIso,
     ),
-  });
+  }));
 }
 
 export async function persistDeletedChannel(
@@ -530,9 +532,7 @@ export async function persistDeletedChannel(
     collectLinkedChannelSessionIds(channel),
   );
 
-  await context.dependencies.chatStore.write(
-    deleteChannel(currentState, channelId),
-  );
+  await updateChatState(context.dependencies.chatStore, (state) => deleteChannel(state, channelId));
   return runtimeCleanup;
 }
 
@@ -541,9 +541,8 @@ export async function persistRenamedChannel(
   channelId: string,
   title: string,
 ): Promise<ChatState> {
-  const currentState = await context.dependencies.chatStore.read();
-  const nextState = renameChannel(currentState, channelId, title, nowFrom(context.dependencies));
-  return context.dependencies.chatStore.write(nextState);
+  return updateChatState(context.dependencies.chatStore, (state) =>
+    renameChannel(state, channelId, title, nowFrom(context.dependencies)));
 }
 
 export async function persistUpdatedChannelParticipant(
@@ -559,15 +558,13 @@ export async function persistUpdatedChannelParticipant(
     modelSelection?: ProviderModelSelection | null;
   },
 ): Promise<ChatState> {
-  const currentState = await context.dependencies.chatStore.read();
-  const nextState = updateChannelParticipant(
-    currentState,
+  return updateChatState(context.dependencies.chatStore, (state) => updateChannelParticipant(
+    state,
     channelId,
     participantId,
     input,
     nowFrom(context.dependencies),
-  );
-  return context.dependencies.chatStore.write(nextState);
+  ));
 }
 
 export async function persistRenamedParallelChatGroup(
@@ -575,22 +572,19 @@ export async function persistRenamedParallelChatGroup(
   groupId: string,
   title: string,
 ): Promise<ChatState> {
-  const currentState = await context.dependencies.chatStore.read();
-  const nextState = renameParallelChatGroup(
-    currentState,
+  return updateChatState(context.dependencies.chatStore, (state) => renameParallelChatGroup(
+    state,
     groupId,
     title,
     nowFrom(context.dependencies),
-  );
-  return context.dependencies.chatStore.write(nextState);
+  ));
 }
 
 export async function persistUngroupedParallelChatGroup(
   context: ChatApiRouteContext,
   groupId: string,
 ): Promise<ChatState> {
-  const currentState = await context.dependencies.chatStore.read();
-  return context.dependencies.chatStore.write(ungroupParallelChatGroup(currentState, groupId));
+  return updateChatState(context.dependencies.chatStore, (state) => ungroupParallelChatGroup(state, groupId));
 }
 
 export async function persistDeletedParallelChatGroup(
@@ -608,30 +602,29 @@ export async function persistDeletedParallelChatGroup(
     return collectLinkedChannelSessionIds(channel);
   }));
 
-  return context.dependencies.chatStore.write(deleteParallelChatGroup(currentState, groupId));
+  return updateChatState(context.dependencies.chatStore, (state) => deleteParallelChatGroup(state, groupId));
 }
 
 export async function persistCreatedCat(
   context: ChatApiRouteContext,
   input: CreateCatInput,
 ): Promise<ChatState> {
-  const nextState = createCat(
-    await context.dependencies.chatStore.read(),
+  return updateChatState(context.dependencies.chatStore, (state) => createCat(
+    state,
     input,
     nowFrom(context.dependencies),
-  );
-
-  return context.dependencies.chatStore.write(nextState);
+  ));
 }
 
 export async function persistArchivedCat(
   context: ChatApiRouteContext,
   currentState: ChatState,
   catId: string,
+  patch: (state: ChatState) => ChatState = (state) => state,
 ): Promise<ChatState> {
   const now = nowFrom(context.dependencies);
   await closeSessionIds(context, collectCatSessionIds(currentState, catId));
-  const nextState = await context.dependencies.chatStore.write(archiveCat(currentState, catId, now));
+  const nextState = await updateChatState(context.dependencies.chatStore, (state) => archiveCat(patch(state), catId, now));
   await writeCoreWithUpdatedBindings(context, (bindings) =>
     bindings.filter((binding) =>
       binding.catActorId !== createCatActorId(catId) && binding.bossCatActorId !== createCatActorId(catId),
@@ -644,10 +637,10 @@ export async function persistUnarchivedCat(
   context: ChatApiRouteContext,
   currentState: ChatState,
   catId: string,
+  patch: (state: ChatState) => ChatState = (state) => state,
 ): Promise<ChatState> {
-  const nextState = await context.dependencies.chatStore.write(
-    unarchiveCat(currentState, catId, nowFrom(context.dependencies)),
-  );
+  const nextState = await updateChatState(context.dependencies.chatStore, (state) =>
+    unarchiveCat(patch(state), catId, nowFrom(context.dependencies)));
   await writeCoreWithUpdatedBindings(context, (bindings) =>
     bindings.filter((binding) =>
       binding.catActorId !== createCatActorId(catId) && binding.bossCatActorId !== createCatActorId(catId),
@@ -661,13 +654,14 @@ export async function persistUpdatedCat(
   currentState: ChatState,
   nextState: ChatState,
   catId: string,
+  patch: (state: ChatState) => ChatState,
 ): Promise<ChatState> {
   const currentCat = requireCat(currentState, catId);
   const nextCat = requireCat(nextState, catId);
   if (catParticipatesInChat(currentCat.products) && !catParticipatesInChat(nextCat.products)) {
     await closeSessionIds(context, collectCatSessionIds(currentState, catId));
   }
-  return context.dependencies.chatStore.write(nextState);
+  return updateChatState(context.dependencies.chatStore, patch);
 }
 
 export async function persistCatAssignmentUpdate(
@@ -917,7 +911,8 @@ export async function persistCatAssignmentUpdate(
     }
   }
 
-  const persisted = await context.dependencies.chatStore.write(nextState);
+  const persisted = await updateChatState(context.dependencies.chatStore, (state) => ({ ...state,
+    channels: state.channels.map((channel) => channel.id === channelId ? requireChannel(nextState, channelId) : channel) }));
   const persistedChannel = requireChannel(persisted, channelId);
   const persistedAssignment = persistedChannel.catAssignments.find(
     (candidate) => candidate.catId === input.catId,
@@ -1006,7 +1001,8 @@ export async function persistCatAssignmentRemoval(
     }
   }
 
-  await context.dependencies.chatStore.write(nextState);
+  await updateChatState(context.dependencies.chatStore, (state) => ({ ...state,
+    channels: state.channels.map((entry) => entry.id === channelId ? requireChannel(nextState, channelId) : entry) }));
 }
 
 export function sendChannelExport(
@@ -1031,8 +1027,7 @@ export async function persistDeletedCat(
   const currentState = await context.dependencies.chatStore.read();
   const now = nowFrom(context.dependencies);
   await cleanupSessionsForProductDelete(context, collectCatSessionIds(currentState, catId));
-  const nextState = deleteCat(currentState, catId, now);
-  await context.dependencies.chatStore.write(nextState);
+  await updateChatState(context.dependencies.chatStore, (state) => deleteCat(state, catId, now));
   await writeCoreWithUpdatedBindings(context, (bindings) =>
     bindings.filter((binding) =>
       binding.catActorId !== createCatActorId(catId) && binding.bossCatActorId !== createCatActorId(catId),

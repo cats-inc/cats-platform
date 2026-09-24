@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { CollaborationReport } from '../orchestratorCollaboration.js';
 import { isCollaborationTool } from '../orchestratorCollaboration.js';
+import { isCollaborationExecutionTool } from '../collaborationExecutionSurface.js';
 import { appendCollaborationReport } from '../orchestratorCollaborationReport.js';
 
 import type {
@@ -175,6 +176,8 @@ import {
 } from './finalize.js';
 import { processDispatchQueue } from './loop.js';
 import { mergeCompletedDispatchState } from './merge.js';
+import { resolveCollaborationOwnerChoice } from '../collaborationExecutionSurface.js';
+import { collaborationDigest, collaborationIntentId, readCollaborationIntent } from '../../../work/state/collaborationRecords.js';
 import {
   addWorkflowCheckpoint,
   appendWorkflowEvent,
@@ -466,10 +469,13 @@ export type ProviderAgentDecisionRequester = ((input: {
   now: Date;
   onCollaborationResult?: (report: CollaborationReport) => void;
   isCancelled?: () => boolean;
-}) => Promise<ProviderAgentDecision | null>) & { supportsCollaboration?: boolean };
+}) => Promise<ProviderAgentDecision | null>) & {
+  supportsCollaboration?: boolean; supportsCollaborationExecution?: boolean;
+};
 
 interface RouteChannelMessageOptions {
   enableCollaborationReads?: boolean;
+  enableCollaborationExecution?: boolean;
   transport?: RuntimeTransportContext;
   transportLocale?: string | null;
   transportBindingId?: string | null;
@@ -6129,6 +6135,17 @@ export async function beginChannelMessageDispatch(
 ): Promise<BegunChannelMessageDispatch> {
   let nextState = state;
   const channelBeforeMessage = requireChannel(nextState, channelId);
+  if (options.enableCollaborationExecution && options.chatStore && options.transport !== 'telegram') {
+    const choice = resolveCollaborationOwnerChoice(state, channelId, payload.choiceResponse);
+    const intent = choice ? readCollaborationIntent(await options.chatStore.readCore(),
+      collaborationIntentId(channelId, choice.proposalMessageId)) : null;
+    const confirmation = intent && channelBeforeMessage.messages.find((entry) => entry.id === intent.confirmationMessageId);
+    if (choice && intent && confirmation && intent.proposalDigest === collaborationDigest(choice.proposal)) {
+      // Repeated confirmation acknowledges the original attempt without replacing its cancellable turn.
+      return { state, results: [], preparedTurn: null, userMessage: confirmation,
+        providerAgentDecision: null, idempotent: true };
+    }
+  }
   // Inbound direct-lane pre-flight: when the channel is a direct-
   // message lane and a chatStore is available, verify the canonical
   // direct-lane transport binding (deterministically derived from
@@ -7004,6 +7021,7 @@ export async function beginChannelMessageDispatch(
       naturalProductIntentMode: options.naturalProductIntentMode,
       transport: options.transport,
       enableCollaborationReads: options.enableCollaborationReads,
+      enableCollaborationExecution: options.enableCollaborationExecution,
       transportBindingId: options.transportBindingId,
     },
   );
@@ -7021,7 +7039,8 @@ export async function beginChannelMessageDispatch(
     preparedTurn.userMessage = metadataApplied.userMessage;
   }
   preparedTurn.providerAgentDecisionDeferred = Boolean(options.providerAgentDecisionRequester?.supportsCollaboration
-    && preparedTurn.providerAgentObservation?.availableTools.some(({ manifest }) => isCollaborationTool(manifest.name)));
+    && preparedTurn.providerAgentObservation?.availableTools.some(({ manifest }) =>
+      isCollaborationTool(manifest.name) || isCollaborationExecutionTool(manifest.name)));
   const providerAgentDecision = preparedTurn.providerAgentObservation
     && options.providerAgentDecisionRequester
     && !preparedTurn.providerAgentDecisionDeferred
@@ -7245,6 +7264,7 @@ export async function beginChannelMessageRetryDispatch(
         options.providerCapabilityBootstrapDiagnosticSink,
       naturalProductIntentMode: options.naturalProductIntentMode,
       enableCollaborationReads: options.enableCollaborationReads,
+      enableCollaborationExecution: options.enableCollaborationExecution,
       transport: options.transport,
       transportBindingId: options.transportBindingId,
     },
@@ -7264,7 +7284,8 @@ export async function beginChannelMessageRetryDispatch(
     sourceMessage = preparedMetadataApplied.userMessage;
   }
   preparedTurn.providerAgentDecisionDeferred = Boolean(options.providerAgentDecisionRequester?.supportsCollaboration
-    && preparedTurn.providerAgentObservation?.availableTools.some(({ manifest }) => isCollaborationTool(manifest.name)));
+    && preparedTurn.providerAgentObservation?.availableTools.some(({ manifest }) =>
+      isCollaborationTool(manifest.name) || isCollaborationExecutionTool(manifest.name)));
   const providerAgentDecision = preparedTurn.providerAgentObservation
     && options.providerAgentDecisionRequester
     && !preparedTurn.providerAgentDecisionDeferred
@@ -7489,7 +7510,7 @@ export async function continueBegunChannelMessageDispatch(
     && begun.preparedTurn.providerAgentObservation) {
     let report: CollaborationReport | undefined;
     await options.providerAgentDecisionRequester({
-      state: nextState, channelId, payload: { body: userMessage.body },
+      state: nextState, channelId, payload: { body: userMessage.body, choiceResponse: userMessage.choiceResponse },
       observation: begun.preparedTurn.providerAgentObservation, runtimeClient, now,
       onCollaborationResult: (value) => { report = value; },
       isCancelled: () => Boolean(options.cancellationRegistry?.read(channelId)),
@@ -7498,6 +7519,7 @@ export async function continueBegunChannelMessageDispatch(
       const completedAt = new Date();
       const sidecar = appendCollaborationReport({ state: nextState, channelId,
         sourceMessageId: userMessage.id, report,
+        canExecute: options.enableCollaborationExecution,
         locale: resolveOwnerVisibleMessageLocale(requireChannel(nextState, channelId), options.transportLocale),
         now: completedAt });
       const cancelled = report.reason === 'cancelled';

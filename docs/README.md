@@ -18,8 +18,10 @@ knowledge-delivery gate is separate from conversation creation, recruitment and
 work execution. K1 inline delivery and npm/Desktop asset fixtures pass. K2 adds
 opt-in teammate/context discovery and validated preparation with bounded
 same-session result feedback, cancellation and concurrent-state protection.
-Conversation/membership/work mutations and live end-to-end acceptance remain
-K3/K4 work; the existing provider-agent decision setting stays off by default.
+K3 adds owner-confirmed conversation/membership and bounded Work execution,
+verified revision review, same-session feedback and durable recovery. All 823
+focused tests pass; full CI is pending. Live/native and installed acceptance remain K4. The existing
+provider-agent decision setting stays off by default.
 
 ## Cats Self-Development and Catlas Practice
 

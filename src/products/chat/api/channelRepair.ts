@@ -9,7 +9,7 @@ import {
 } from '../state/runtime-dispatch/repair.js';
 
 interface ChannelReadRepairDependencies {
-  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore'>;
+  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'updateSnapshot'>;
   mutationGate: AsyncKeyedGate;
   runtimeDataDir?: string | null;
   now?: () => Date;
@@ -85,6 +85,15 @@ export async function repairChannelReadState(
 
   resolvedState = repairedState.state;
   return dependencies.mutationGate.run(channelId, async () => {
+    if (dependencies.chatStore.updateSnapshot) {
+      const snapshot = await dependencies.chatStore.updateSnapshot(({ chat, core: latestCore }) => ({
+        chat: applyChannelReadRepairs(chat, channelId, {
+          core: latestCore, runtimeDataDir, now: resolveRepairNow(dependencies),
+        }).state,
+        core: latestCore,
+      }));
+      return snapshot.chat;
+    }
     const latestState = await dependencies.chatStore.read();
     const latestCore = await dependencies.chatStore.readCore();
     const latestRepair = applyChannelReadRepairs(latestState, channelId, {

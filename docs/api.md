@@ -530,8 +530,9 @@ POST /api/channels/{channelId}/messages
 ```
 
 - `GET` returns `{ messages: [...] }`.
-- `POST` accepts `{ body, senderName? }` and returns
-  `{ message: { ...userMessage }, dispatch: { channelId, results } }`.
+- `POST` accepts `{ body, senderName?, choiceResponse? }` and acknowledges with
+  `{ phase: "acknowledged", appShell, message, results, dispatch }`; Runtime
+  continuation results arrive through the existing state/event projections.
 - `dispatch.results` now covers the whole live routing loop for that user turn,
   not just the first target. A single `POST` may therefore include:
   - the default orchestrator dispatch
@@ -566,6 +567,23 @@ Those fields let the renderer correlate dispatch receipts with
 `roomRouting.workflow.targetStatuses` and `roomRouting.workflow.eventHistory`.
 The richer route-resolution and wake-request contract lives in the persisted
 `roomRouting` read model rather than only in the transient dispatch response.
+
+With provider-agent decisions explicitly enabled, an actual Orchestrator's
+prepared collaboration can offer the existing structured choice surface.
+Submitting its exact `choiceResponse` admits K3 work bound to that persisted
+proposal's original goal, two Cats, repository and budget. A fabricated choice,
+stale proposal or plain message text cannot grant execution. Repeating the same
+confirmed proposal returns `idempotent: true` and the original confirmation,
+preserving the original active turn and `/cancel` behavior.
+
+The post-ACK continuation creates/reuses canonical Chat resources, queues fixed
+Work roles and lets the host validate the owner grant before Runtime execution.
+Transcript metadata `collaborationPreparation.execution` reports authoritative
+membership, Tasks/Runs, captured local commit, review verdict and retained work.
+Review requires the verified implementation revision. No additional public
+endpoint or default-on behavior is introduced. See
+[collaboration tool contracts](tool-calls.md#orchestrator-collaboration-execution)
+for limits, recovery and the separate K4 live/native acceptance gate.
 
 ### Channel Cats
 

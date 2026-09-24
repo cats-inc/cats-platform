@@ -4,9 +4,9 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1-K2 implemented and CI-validated; K3-K4 pending |
+| Status | In progress; K1-K2 CI-validated; K3 scoped validation passed, CI pending; K4 pending |
 | Owner | Platform integration; Chat and Work own their operation delegates |
-| Reviewer | Independent Codex review for K1/K2; product owner for remaining write contracts |
+| Reviewer | Independent Codex contract and implementation review; product owner |
 | Last updated | 2026-09-25 |
 
 ## Related Spec
@@ -27,10 +27,10 @@ that Orchestrator can create conversations or recruit Cats autonomously.
 
 | Gate | Deliverable | Depends on | Current state |
 |------|-------------|------------|---------------|
-| K0 | ADR/SPEC/PLAN, baseline and operation ownership mapping | Existing Catlas and supervision seams | Drafted; detailed write-contract mapping pending |
+| K0 | ADR/SPEC/PLAN, baseline and operation ownership mapping | Existing Catlas and supervision seams | Complete; K2/K3 delegate and recovery mapping recorded |
 | K1 | Shared role-aware knowledge plus actual Orchestrator content delivery | K0 knowledge contract | Implemented; scoped fixtures and full CI pass |
 | K2 | Authorized teammate/context discovery and collaboration preparation | K1; read-only delegate mapping | Implemented; 480 focused tests and full CI pass |
-| K3 | Conversation/membership/work mutations with durable identity and result feedback | K2; write/recovery contract review | Pending |
+| K3 | Conversation/membership/work mutations with durable identity and result feedback | K2; write/recovery contract review | Implemented; 823 focused tests pass; CI pending |
 | K4 | Source-free distribution and isolated live-provider/native acceptance | K3 | Pending |
 
 ## Ownership and Boundaries
@@ -55,11 +55,11 @@ routine continuation does not create a new approval ceremony.
 - [x] Distinguish executable tools, role procedures, live observations and
   preview-only development/practice skills in ADR/SPEC.
 - [x] Record the collaboration scenario and requirement-to-acceptance mapping.
-- [ ] Finalize operation identifiers and owner mappings for discovery,
+- [x] Finalize operation identifiers and owner mappings for discovery,
   conversation/membership, work start, inspection and stop.
-  K2's three read/preparation identifiers are mapped to Chat in SPEC-118;
-  mutation/lifecycle mapping remains open.
-- [ ] Map durable operation identity, state revisions and interrupted execution
+  SPEC-118 maps K2's three read/preparation and K3's five mutation/lifecycle
+  identifiers to Chat/Work delegates.
+- [x] Map durable operation identity, state revisions and interrupted execution
   to existing Core/Work records before any new mutation is exposed.
 
 **Exit:** K1 can proceed with the bounded knowledge contract. K3 additionally
@@ -177,24 +177,75 @@ user-state writes were used for this validation.
 
 ### K3: Complete collaboration operations and feedback
 
-- [ ] Reuse Chat's conversation and membership persistence/materialization,
+The owner requested K3 continuation on 2026-09-25. SPEC-118 now records the
+five implemented operations, existing Chat choice-based admission, durable parent
+Task/role identities, atomic Chat/Core publication, verified implementation-to-
+review handoff and interruption rules. Independent contract review established
+the narrow-write queue/host-drain split. Preserve frozen shared contracts and existing transport Work
+semantics; validate new metadata against old snapshots and isolated failure tests.
+
+- [x] Reuse Chat's conversation and membership persistence/materialization,
   origin/topology rules and state-event publication in supervised adapters.
-- [ ] Reuse Work/Core assignment and run admission; keep membership, work
+- [x] Reuse Work/Core assignment and run admission; keep membership, work
   assignment and Runtime session startup separately observable.
-- [ ] Persist admitted intent/operation identity and expected scope/revision
+- [x] Persist admitted intent/operation identity and expected scope/revision
   before side effects. Apply validated storage evolution and recovery if needed.
-- [ ] Execute one bounded operation at a time under existing policy, then send
+- [x] Execute one bounded operation at a time under existing policy, then send
   structured outcome and refreshed observations back to the same coordinator.
-- [ ] Start review only after a verified implementation artifact/revision is
+- [x] Start review only after a verified implementation artifact/revision is
   available, with a scoped handoff and distinct eligible reviewer.
-- [ ] Handle duplicate/concurrent calls, conflicting input, partial failure,
+- [x] Handle duplicate/concurrent calls, conflicting input, partial failure,
   restart reconciliation, cancellation and bounded retry without silent cleanup
   of created conversations or user work.
-- [ ] Verify the full scenario in MemoryCoreStore/temporary product fixtures;
+- [x] Verify the full scenario in MemoryCoreStore/temporary product fixtures;
   include failure paths and authoritative postcondition checks.
 
 **Exit:** AC-05/AC-06/AC-07 and remaining operation invalidation checks pass in
 fixtures. Product tool registries identify which adapters and transports passed.
+
+The original proposal's structured owner choice admits one parent Task and two
+fixed role Tasks. Five tools ensure Chat topology/membership, queue one role,
+inspect and stop. The queue tool has no Runtime effects: a host-owned drain
+checks the persisted owner grant independently after queue receipt persistence.
+The coordinator remains narrow-write; unknown-model FR-19 and weak ceilings are
+unchanged. No scheduler, public HTTP/MCP endpoint or frozen contract is added.
+
+Implementation runs with local file tools in an isolated worktree. Runtime
+captures a new full commit ID and confirms clean HEAD; the distinct reviewer's
+Task remains pending approval until that proof exists. Review is read-only at
+the actual verified cwd/commit. Results and bounded receipts return to the same
+coordinator, with shared time/token limits. Commit identity and review judgment
+are separate from test evidence; remote publishing is not granted.
+
+Atomic Chat/Core writes and current-state merges preserve concurrent edits.
+Repeated HTTP confirmation acknowledges the existing attempt without replacing
+its cancellable turn. Run/Task revocation prevents late sends or success;
+metadata audit updates preserve operator state. Recovery includes fenced parents
+with queued/pending roles and unclosed sessions. Known late session IDs remain
+recoverable; unconfirmed creation blocks rather than launching another attempt.
+Existing snapshots retain their format and backups; unknown metadata cannot run.
+
+Validation: all 823 tests across 83 affected files pass, including 25 K3
+cases. Captured Runtime inputs and authenticated HTTP fixtures cover owner
+admission, queue-before-host ordering, exact revision review, same-session
+feedback, repeated confirmation, cancellation during create/send, late replies,
+shared budgets, stale scope, ambiguous restart and retained effects. Chat store,
+CRUD, dispatch/retry, parallel relay, Telegram, Work golden path, Catlas,
+knowledge, supervision and architecture regressions pass. New persistence tests
+cover concurrent creation, existing-message annotations, selection preservation
+and no resurrection of deleted rooms. A persistence-failure fixture targets the
+actual atomic writer; its original failure assertions remain intact.
+
+Server compilation, affected test typechecking and refreshed test bundles pass.
+Independent review reports no remaining P1/P2 findings after corrections to
+revocation, duplicate HTTP turns, cleanup recovery and concurrent writers. The
+initial expanded batch exposed two parallel-relay regressions; corrected merges
+retain preparation metadata and immutable baselines, and both regressions now
+pass. All 1,030 local links in affected Markdown resolve and fences balance.
+Full CI remains pending. Fixtures use temporary or memory state; no live provider,
+installed Desktop, native UI or user's persisted dev state was exercised. K4 and
+PLAN-109 development/practice/promotion gates remain open. No frozen contract,
+persisted schema, version or release changed.
 
 ### K4: Validate distribution and real execution
 
@@ -260,6 +311,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | Implemented K3 owner-confirmed Chat/Work collaboration, pure role queue plus independently authorized host execution, immutable revision review and durable cancellation/recovery. Fixed concurrent Chat/Telegram writers and duplicate-confirmation turn lifecycle. All 823 focused tests, server/test typechecks, document checks and independent review pass. Full CI pending; K4 live/native/distribution and PLAN-109 practice remain open. |
 | 2026-09-25 | Full [CI on `34221fad`](https://github.com/cats-inc/cats-platform/actions/runs/36035473857) passed both `validate` and `nodejs (24)`, including full typechecks and the complete test suite. K2's code/integration gate is complete. This subsequent documentation-only record does not change tested executable inputs or claim K3-K4/live-provider completion. |
 | 2026-09-25 | Implemented K2's Chat read delegates, exact manifests/procedure dependency, bounded same-session feedback, validated proposals and post-ACK continuation. Independent review corrections cover substantive revisions, original-source anchoring, cleanup/publication revalidation, cancellation consumption, concurrent-state preservation, authenticated entry scoping, Runtime request policy and ordinary fallback. The first expanded run exposed seven metadata-only observation regressions; limited actual-goal delivery to the verified K2 surface without weakening existing tests. The final 480-test focused batch, compilation/typecheck, document checks and independent review pass. Full CI pending; K3-K4 remain open. |
 | 2026-09-24 | Full [CI on `c4736f98`](https://github.com/cats-inc/cats-platform/actions/runs/35976031494) passed both `validate` and `nodejs (24)`, including the corrected Code/Work scope and asynchronous rewrite fixtures. K1's code/integration gate is complete. This subsequent documentation-only record does not change tested executable inputs or claim K2-K4/live-provider completion. |

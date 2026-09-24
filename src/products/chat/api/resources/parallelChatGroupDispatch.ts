@@ -10,7 +10,8 @@ import {
   selectChannel,
   touchParallelChatGroup,
 } from '../../state/model/index.js';
-import { createMergedDispatchChatStore } from '../../state/runtime-dispatch/merge.js';
+import { createMergedDispatchChatStore, mergeCompletedDispatchState } from '../../state/runtime-dispatch/merge.js';
+import { updateChatState } from '../../state/store.js';
 import type {
   ParallelChatDispatchResponse,
   ParallelChatDispatchResult,
@@ -113,6 +114,7 @@ export async function dispatchParallelChatBodies(
       const prepared = await options.prepare(lockedState, lockedGroup);
       return stageParallelChatBodies(context, {
         groupId: options.groupId,
+        baselineState: lockedState,
         state: prepared.state,
         activeChannelId: prepared.activeChannelId,
         channelInputs: prepared.channelInputs,
@@ -148,6 +150,7 @@ export async function acknowledgeParallelChatBodies(
       const prepared = await options.prepare(lockedState, lockedGroup);
       return stageParallelChatBodies(context, {
         groupId: options.groupId,
+        baselineState: lockedState,
         state: prepared.state,
         activeChannelId: prepared.activeChannelId,
         channelInputs: prepared.channelInputs,
@@ -183,6 +186,7 @@ async function stageParallelChatBodies(
   context: ChatApiRouteContext,
   options: {
     groupId: string;
+    baselineState: ChatState;
     state: ChatState;
     activeChannelId: string;
     channelInputs: Map<string, SendChannelMessageInput>;
@@ -286,8 +290,17 @@ async function stageParallelChatBodies(
 
   let mergedState = acknowledgedState;
   if (options.persistAcknowledgedStateBeforeDispatch) {
-    touchParallelChatGroup(mergedState, options.groupId, nowIso, nowIso);
-    await context.dependencies.chatStore.write(mergedState);
+    mergedState = await updateChatState(context.dependencies.chatStore, (latest) => {
+      for (const channelId of options.lockedChannelIds) {
+        if (latest.channels.some((channel) => channel.id === channelId)) {
+          latest = mergeCompletedDispatchState(latest, options.baselineState, acknowledgedState, channelId, now);
+        }
+      }
+      if (latest.parallelChatGroups.some((group) => group.id === options.groupId)) {
+        touchParallelChatGroup(latest, options.groupId, nowIso, nowIso);
+      }
+      return selectChannel(latest, options.activeChannelId, now);
+    });
   }
 
   return {
@@ -389,7 +402,8 @@ export async function finalizeParallelChatBodies(
     context,
     staged.lockedChannelIds,
     async () => {
-      let mergedState = await context.dependencies.chatStore.read();
+      const baseline = await context.dependencies.chatStore.read();
+      let mergedState = structuredClone(baseline);
       const results: ParallelChatDispatchResult[] = [];
 
       for (const dispatch of dispatches) {
@@ -433,7 +447,18 @@ export async function finalizeParallelChatBodies(
       if (mergedState.parallelChatGroups.some((group) => group.id === staged.groupId)) {
         touchParallelChatGroup(mergedState, staged.groupId, staged.nowIso, staged.nowIso);
       }
-      const persisted = await context.dependencies.chatStore.write(mergedState);
+      const persisted = await updateChatState(context.dependencies.chatStore, (latest) => {
+        for (const dispatch of dispatches) {
+          if (latest.channels.some((channel) => channel.id === dispatch.channelId)
+            && baseline.channels.some((channel) => channel.id === dispatch.channelId)) {
+            latest = mergeCompletedDispatchState(latest, baseline, mergedState, dispatch.channelId, staged.now);
+          }
+        }
+        if (latest.parallelChatGroups.some((group) => group.id === staged.groupId)) {
+          touchParallelChatGroup(latest, staged.groupId, staged.nowIso, staged.nowIso);
+        }
+        return latest;
+      });
       const appShell = await buildAppShellPayload(context.dependencies, persisted);
       return {
         appShell,

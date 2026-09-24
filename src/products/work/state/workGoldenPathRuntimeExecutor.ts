@@ -103,7 +103,7 @@ const DEFAULT_ACTOR_REF = 'actor-work-golden-path';
  * inspection and mutation. Shell, git, network, browser, MCP, and delegation
  * tools are deliberately absent; Cats owns commit/publish side effects.
  */
-const GOLDEN_PATH_LOCAL_FILE_TOOLS = [
+export const GOLDEN_PATH_LOCAL_FILE_TOOLS = [
   'Read',
   'Glob',
   'Grep',

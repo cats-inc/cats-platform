@@ -126,6 +126,56 @@ function createRuntimeStub(): RuntimeClient {
   } as unknown as RuntimeClient;
 }
 
+test('Telegram dispatch and final bridge write preserve concurrently created Chat channels', { timeout: 15000 }, async () => {
+  const state = createChannel(createDefaultChatState(), { title: 'Telegram', topic: '', originSurface: 'chat',
+    roomMode: 'direct_message', cats: [{ name: 'Worker', provider: 'claude', roles: ['worker'] }] });
+  const roomId = state.selectedChannelId;
+  const chatStore = new MemoryChatStore(state);
+  const bridge = createChatTelegramRoomBridge({ chatStore, companionStore: new MemoryCompanionBoxStore() });
+  const runtimeClient = createRuntimeStub();
+  const originalSend = runtimeClient.sendMessage;
+  let release!: () => void;
+  let markStarted!: () => void;
+  const started = new Promise<void>((resolve) => { markStarted = resolve; });
+  const pendingReply = new Promise<void>((resolve) => { release = resolve; });
+  runtimeClient.sendMessage = async (...args) => {
+    markStarted(); await pendingReply; return originalSend(...args);
+  };
+  const pending = bridge.routeRoomMessage({ state, roomId, body: 'Hello', senderName: 'Owner',
+    bindingId: 'binding-concurrent', runtimeClient, memoryService, timestamp: new Date() });
+  await started;
+  const concurrent = await chatStore.updateSnapshot(({ chat, core }) => ({ core,
+    chat: createChannel(chat, { title: 'Concurrent collaboration', topic: '', originSurface: 'chat' }) }));
+  release();
+  const routed = await pending;
+  const finalSibling = await chatStore.updateSnapshot(({ chat, core }) => ({ core,
+    chat: createChannel(chat, { title: 'Between final writes', topic: '', originSurface: 'chat' }) }));
+  const before = await chatStore.read();
+  const persisted = await bridge.writeState({ ...routed.state, selectedChannelId: roomId });
+  assert.ok(persisted.channels.some(channel => channel.id === concurrent.chat.selectedChannelId));
+  assert.ok(persisted.channels.some(channel => channel.id === finalSibling.chat.selectedChannelId));
+  assert.equal(persisted.selectedChannelId, finalSibling.chat.selectedChannelId);
+  assert.equal(persisted.channels.find(channel => channel.id === roomId)!.unreadCount,
+    before.channels.find(channel => channel.id === roomId)!.unreadCount);
+});
+
+test('Telegram room creation and recovery merge only their own room and do not resurrect a deleted room', async () => {
+  const state = createDefaultChatState(); const chatStore = new MemoryChatStore(state);
+  const bridge = createChatTelegramRoomBridge({ chatStore, companionStore: new MemoryCompanionBoxStore() });
+  const created = bridge.createRoom(state, { title: 'Inbound', topic: '', roomMode: 'chat_channel', participantCatIds: [] }, new Date());
+  const concurrent = await chatStore.updateSnapshot(({ chat, core }) => ({ core,
+    chat: createChannel(chat, { title: 'Collaboration', topic: '', originSurface: 'chat' }) }));
+  const persisted = await bridge.writeState({ ...created.state, selectedChannelId: state.selectedChannelId });
+  assert.ok(persisted.channels.some(channel => channel.id === concurrent.chat.selectedChannelId));
+  const recovery = bridge.buildRecoveryState({ state: persisted, roomId: created.roomId,
+    senderName: 'Owner', inboundBody: 'Hello', occurredAt: new Date(), errorMessage: 'offline', includeInboundMessage: true });
+  await chatStore.updateSnapshot(({ chat, core }) => {
+    chat.channels = chat.channels.filter(channel => channel.id !== created.roomId);
+    return { chat, core };
+  });
+  assert.equal((await bridge.writeState(recovery)).channels.some(channel => channel.id === created.roomId), false);
+});
+
 test('Telegram room bridge passes provider tool decisions into Work intake sidecars', async () => {
   let state = createDefaultChatState();
   state = createChannel(

@@ -15,7 +15,8 @@ import {
   toChannelSummary,
 } from '../../state/model/index.js';
 import { repairChannelReadState } from '../channelRepair.js';
-import { createMergedDispatchChatStore } from '../../state/runtime-dispatch/merge.js';
+import { createMergedDispatchChatStore, createLockedDispatchChatStore, mergeCompletedDispatchState } from '../../state/runtime-dispatch/merge.js';
+import { updateChatState } from '../../state/store.js';
 import { revalidateCollaborationPublication } from '../../state/orchestratorCollaborationReport.js';
 import { notifyStreamTargetChanged } from './streamTargetSignal.js';
 import { isDefaultChatChannel } from '../../shared/channelTopology.js';
@@ -258,10 +259,10 @@ async function continueAcknowledgedChannelDispatchInBackground(
     channelId,
     baselineState: acknowledgedDispatch.state,
     now: () => nowFrom(context.dependencies),
-    beforeMerge: (latestState, dispatchState) => {
+    beforeMerge: (latestState, dispatchState, latestCore) => {
       const turn = acknowledgedDispatch.preparedTurn;
       return turn?.providerAgentDecisionDeferred && turn.providerAgentObservation
-        ? revalidateCollaborationPublication({ latestState, dispatchState, channelId,
+        ? revalidateCollaborationPublication({ latestState, dispatchState, channelId, latestCore,
             observation: turn.providerAgentObservation, sourceMessageId: turn.userMessage.id })
         : dispatchState;
     },
@@ -299,6 +300,7 @@ async function continueAcknowledgedChannelDispatchInBackground(
         onStateWritten: notifyStreamTargetChanged,
         providerAgentDecisionRequester: context.dependencies.providerAgentDecisionRequester,
         enableCollaborationReads: true,
+        enableCollaborationExecution: context.dependencies.providerAgentDecisionRequester?.supportsCollaborationExecution,
       },
     );
   } catch (error) {
@@ -321,7 +323,8 @@ async function continueAcknowledgedChannelDispatchInBackground(
         if (settled.state.selectedChannelId === channelId) {
           requireChannel(settled.state, channelId).unreadCount = 0;
         }
-        await context.dependencies.chatStore.write(settled.state);
+        await updateChatState(context.dependencies.chatStore, (latest) => latest.channels.some((channel) => channel.id === channelId)
+          ? mergeCompletedDispatchState(latest, latestState, settled.state, channelId, dispatchNow) : latest);
       });
     } catch (persistError) {
       logBackgroundDispatchPersistenceError(channelId, persistError);
@@ -332,14 +335,12 @@ async function continueAcknowledgedChannelDispatchInBackground(
 
   try {
     await context.dependencies.mutationGate.run(channelId, async () => {
-      const latestState = await context.dependencies.chatStore.read();
-      if (!latestState.channels.some((channel) => channel.id === channelId)) {
-        return;
-      }
-      if (latestState.selectedChannelId === channelId) {
-        requireChannel(latestState, channelId).unreadCount = 0;
-        await context.dependencies.chatStore.write(latestState);
-      }
+      await updateChatState(context.dependencies.chatStore, (latestState) => {
+        if (latestState.selectedChannelId === channelId && latestState.channels.some((channel) => channel.id === channelId)) {
+          requireChannel(latestState, channelId).unreadCount = 0;
+        }
+        return latestState;
+      });
     });
   } catch (persistError) {
     logBackgroundDispatchPersistenceError(channelId, persistError);
@@ -442,13 +443,12 @@ async function handleRestPatchChannel(
         || body.pendingInstance !== undefined
         || body.pendingModelSelection !== undefined
       ) {
-        const nextState = setChannelPendingExecutionTarget(persisted, channelId, {
+        persisted = await updateChatState(context.dependencies.chatStore, (state) => setChannelPendingExecutionTarget(state, channelId, {
           provider: body.pendingProvider,
           model: body.pendingModel,
           instance: body.pendingInstance,
           modelSelection: body.pendingModelSelection,
-        }, nowFrom(context.dependencies));
-        persisted = await context.dependencies.chatStore.write(nextState);
+        }, nowFrom(context.dependencies)));
       }
 
       if (body.resetContinuity === true) {
@@ -478,12 +478,11 @@ async function handleRestPatchChannel(
             logContinuityResetCleanupError(channelId, error);
           }
         }
-        const nextState = resetDefaultChatContinuity(
-          persisted,
+        persisted = await updateChatState(context.dependencies.chatStore, (state) => resetDefaultChatContinuity(
+          state,
           channelId,
           nowFrom(context.dependencies),
-        );
-        persisted = await context.dependencies.chatStore.write(nextState);
+        ));
       }
 
       sendJson(context.response, 200, {
@@ -612,7 +611,7 @@ async function handleRestSendMessage(
           transport: resolveRestMessageTransport(context.request),
           companionStore: context.dependencies.companionStore,
           memoryService: context.dependencies.memoryService,
-          chatStore: context.dependencies.chatStore,
+          chatStore: createLockedDispatchChatStore(context.dependencies.chatStore, channelId, stateBefore, () => nowFrom(context.dependencies)),
           chatStatePath: context.dependencies.config.chatStatePath,
           runtimeDataDir: context.dependencies.config.runtimeDataDir,
           runtimeRecovery: {
@@ -620,6 +619,7 @@ async function handleRestSendMessage(
           },
           providerAgentDecisionRequester: context.dependencies.providerAgentDecisionRequester,
           enableCollaborationReads: true,
+          enableCollaborationExecution: context.dependencies.providerAgentDecisionRequester?.supportsCollaborationExecution,
           providerCapabilityBootstrapConfig:
             context.dependencies.providerCapabilityBootstrapConfig,
           providerCapabilityBootstrapDiagnosticSink:
@@ -764,7 +764,7 @@ async function handleRestRetryMessage(
         {
           companionStore: context.dependencies.companionStore,
           memoryService: context.dependencies.memoryService,
-          chatStore: context.dependencies.chatStore,
+          chatStore: createLockedDispatchChatStore(context.dependencies.chatStore, channelId, state, () => nowFrom(context.dependencies)),
           chatStatePath: context.dependencies.config.chatStatePath,
           runtimeDataDir: context.dependencies.config.runtimeDataDir,
           runtimeRecovery: {
@@ -772,6 +772,7 @@ async function handleRestRetryMessage(
           },
           providerAgentDecisionRequester: context.dependencies.providerAgentDecisionRequester,
           enableCollaborationReads: true,
+          enableCollaborationExecution: context.dependencies.providerAgentDecisionRequester?.supportsCollaborationExecution,
           externalIssueImport: context.dependencies.externalIssueImport,
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,

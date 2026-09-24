@@ -56,9 +56,9 @@ rather than duplicating every validation branch.
 [SPEC-118](specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md)
 connects ordinary Orchestrator procedures through inline request context.
 This content is not a tool registration and cannot expand the callable catalog.
-K2's read/preparation delegates below have policy, actual provider-request/result
-delivery and isolated HTTP fixture evidence. Its remaining conversation,
-membership and work mutation responsibilities are not registered capabilities.
+K2's read/preparation and K3's owner-confirmed mutation delegates below use
+policy-filtered provider requests and same-session result delivery. K3 scoped
+validation passes; full CI is pending; live/native and installed-profile acceptance remain K4.
 
 | Tool | Owner | Status | Channel | Caller | Contract |
 |------|-------|--------|---------|--------|----------|
@@ -67,6 +67,11 @@ membership and work mutation responsibilities are not registered capabilities.
 | `chat.collaboration.discover_cats` | Cats Chat | Implemented; opt-in K2 read/result loop | `provider_agent_tool_request` | Authenticated Chat Orchestrator with read scope | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
 | `chat.collaboration.inspect_context` | Cats Chat | Implemented; opt-in K2 read/result loop | `provider_agent_tool_request` | Authenticated Chat Orchestrator with read scope | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
 | `chat.collaboration.prepare` | Cats Chat | Implemented; proposal only | `provider_agent_tool_request` | Authenticated Chat Orchestrator after discovery/inspection | [Orchestrator Collaboration Preparation](#orchestrator-collaboration-preparation) |
+| `chat.collaboration.ensure_conversation` | Cats Chat | Implemented; owner-confirmed K3 | `provider_agent_tool_request` | Orchestrator with admitted proposal and narrow write scope | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
+| `chat.collaboration.ensure_participants` | Cats Chat | Implemented; owner-confirmed K3 | `provider_agent_tool_request` | Same admitted scope | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
+| `work.collaboration.request_role` | Cats Work | Implemented; queues a fixed Run only | `provider_agent_tool_request` | Same admitted scope; host separately authorizes execution | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
+| `work.collaboration.inspect` | Cats Work | Implemented; own-intent read only | `provider_agent_tool_request` / host inspection | Same admitted scope | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
+| `work.collaboration.stop` | Cats Work | Implemented; retains existing effects | `provider_agent_tool_request` | Same admitted scope | [Orchestrator Collaboration Execution](#orchestrator-collaboration-execution) |
 | `cats.lifecycle.run.spawn` | Platform supervision | Implemented | `product_internal_delegate` / future `runtime_tool` | Supervised run agent / Work delegate | [Lifecycle Tools](#lifecycle-tools) |
 | `work.context.lookup` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / future `runtime_tool` | Work supervised agent | [Work Supervised Tools](#work-supervised-tools) |
 | `work.local_note.apply` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / future `runtime_tool` | Work supervised agent | [Work Supervised Tools](#work-supervised-tools) |
@@ -132,7 +137,7 @@ targets yield `E_TOOL_SCOPE_DENIED`/`E_PRECHECK_FAILED`. Missing intent or a
 missing eligible/configured teammate is a structured preparation result.
 Repeated reads create no collaboration entity; the normal Chat transcript and
 turn/run projections retain the coordinator result and bounded tool receipts.
-This is not durable mutation idempotency, which remains K3 work.
+K3 separately provides durable mutation idempotency after owner confirmation.
 
 Only the existing opt-in provider-agent path in authenticated Chat message/retry
 continuation advertises these tools. Default-provider/direct/multi-target Chat,
@@ -142,6 +147,49 @@ limits calls/elapsed time/usage, returns results to that model, and consumes
 ordinary cancellation. Publication revalidates revision and source message
 inside the existing merge gate. No new MCP or public HTTP operation is exposed.
 Provider-native enforcement and installed/live acceptance remain K4.
+
+## Orchestrator Collaboration Execution
+
+K3 revision `1.0` manifests are defined in
+`src/products/chat/state/collaborationExecutionSurface.ts`; Chat's execution
+delegate owns conversation/membership, Work's collaboration delegate owns fixed
+role admission and execution, and the Chat execution loop returns receipts.
+See [SPEC-118](specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md#k3-admission-mutation-and-recovery-contract)
+and [PLAN-110](plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md).
+
+| Operation | Exact input | Effect / authoritative result |
+|-----------|-------------|-------------------------------|
+| `chat.collaboration.ensure_conversation` | `{}` | Local state; canonical created/reused channel and conversation identity |
+| `chat.collaboration.ensure_participants` | `{}` | Local state; the two admitted Cats' canonical membership |
+| `work.collaboration.request_role` | `{ "role": "implementation" }` or `{ "role": "review" }` | Local state only; queued fixed role Run. No Runtime call inside this tool |
+| `work.collaboration.inspect` | `{}` | No mutation; intent/stage status, verified commit, attributed review, remaining budget and retained work |
+| `work.collaboration.stop` | `{}` | Cooperative cancellation of owned Runs/sessions; preserves created resources and evidence |
+
+Only an actual persisted preparation accepted through Chat's `choiceResponse`
+admits the original goal, repository, distinct Cats, expected output and shared
+budget. The server supplies all IDs, context, workspace policy and grant;
+additional input fields reject with `E_SCHEMA_INVALID`. The coordinator remains
+`narrow_write`. After persisting the queue receipt, the host revalidates the
+owner grant and drains Work through the existing expensive Runtime boundaries.
+A separate host inspection receipt carries the actual result back to the same
+private read-only coordinator session. At most eight receipts/nine model calls
+share the approved duration/token budget; recent feedback is capped at four
+receipts and 24,000 serialized characters.
+
+Implementation uses an isolated worktree and local file-tool allowlist. Work
+captures a new full commit ID and verifies clean HEAD. Only then is the distinct
+reviewer's Task approved; its read-only session must observe that actual cwd and
+commit before and after review. A commit and attributed verdict are separate
+evidence and do not prove tests passed. No remote publishing is admitted.
+
+Parent/child Task, Run, artifact and outcome IDs are durable. Repeated requests
+return the same attempt; repeated HTTP confirmation preserves its active turn
+and normal cancellation. Scope/approval/member changes stop further effects.
+Recovery stops unfinished owned work, retains known late session IDs and retries
+unconfirmed cleanup. Ambiguous creation never starts a replacement. Blocked or
+cancelled work needs a fresh proposal. No general MCP or HTTP operation is added;
+the K2 exclusions and default-off setting remain. Live/native enforcement and
+installed distribution acceptance remain K4.
 
 ## Runtime Supervision Tools
 

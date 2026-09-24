@@ -1,4 +1,6 @@
 import { matchRoute, sendJson, sendMethodNotAllowed } from '../../../../shared/http.js';
+import { updateChatState } from '../../state/store.js';
+import { mergeCompletedDispatchState } from '../../state/runtime-dispatch/merge.js';
 import { pushServerLiveTrace } from '../../../../shared/liveTrace.js';
 import {
   buildRuntimeDeliveryContentBlocksFromResultPayload,
@@ -433,7 +435,8 @@ async function handleRestDeactivateChannel(
         );
       }
 
-      await context.dependencies.chatStore.write(nextState);
+      await updateChatState(context.dependencies.chatStore, (latest) =>
+        mergeCompletedDispatchState(latest, state, nextState, channelId, now));
       notifyStreamTargetChanged(channelId);
       sendJson(context.response, 200, {
         deactivation: {
@@ -458,8 +461,9 @@ async function handleRestActivateChannel(
     requireValidChatScopeId(chatScopeId);
     await context.dependencies.mutationGate.run(channelId, async () => {
       const now = nowFrom(context.dependencies);
+      const baseline = await context.dependencies.chatStore.read();
       const activation = await activateChannelSessions(
-        await context.dependencies.chatStore.read(),
+        baseline,
         channelId,
         context.dependencies.runtimeClient,
         now,
@@ -470,7 +474,8 @@ async function handleRestActivateChannel(
           runtimeDataDir: context.dependencies.config.runtimeDataDir,
         },
       );
-      await context.dependencies.chatStore.write(activation.state);
+      await updateChatState(context.dependencies.chatStore, (latest) =>
+        mergeCompletedDispatchState(latest, baseline, activation.state, channelId, now));
       notifyStreamTargetChanged(channelId);
       if (activation.results.some((result) =>
         result.targetKind === 'orchestrator'

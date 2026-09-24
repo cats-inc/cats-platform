@@ -1,20 +1,33 @@
 import type { ChatState, ChatMessage } from '../api/contracts.js';
+import type { CatsCoreState } from '../../../core/types.js';
+import { readCollaborationIntent, collaborationSummary } from '../../work/state/collaborationRecords.js';
 import type { MessageLocale } from '../../../shared/i18n/index.js';
 import { parseMessageLocale } from '../../../shared/i18n/index.js';
 import type { ProviderAgentBoundedObservation } from '../../../platform/orchestration/providerAgentDecision.js';
 import { appendMessage } from './model/index.js';
+import { ACCEPT_COLLABORATION } from './collaborationExecutionSurface.js';
 import { collaborationSnapshot, DISCOVER_COLLABORATION_CATS, INSPECT_COLLABORATION_CONTEXT, type CollaborationReport,
   type CollaborationCandidate } from './orchestratorCollaboration.js';
 
 export function appendCollaborationReport(input: {
   state: ChatState; channelId: string; sourceMessageId: string;
   report?: CollaborationReport; locale: MessageLocale; now: Date;
+  canExecute?: boolean;
 }): { state: ChatState; resultMessage: ChatMessage | null } {
   if (!input.report) return { state: input.state, resultMessage: null };
   const appended = appendMessage(input.state, input.channelId, {
     senderKind: 'orchestrator', senderName: 'Orchestrator',
     body: describeCollaborationReport(input.report, input.locale),
-  }, input.now, { metadata: {
+  }, input.now, {
+    ...(input.canExecute && input.report.status === 'prepared'
+      && input.report.preparation?.status === 'prepared'
+      && input.report.preparation.executionRevision && !input.report.preparation.goalTruncated
+      ? { choices: [{ question: input.locale === 'zh-TW' ? '依此範圍與預算執行協作？' : 'Execute this scope and budget?',
+          options: [{ id: ACCEPT_COLLABORATION,
+            label: input.locale === 'zh-TW' ? '執行方案' : 'Execute proposal', style: 'primary' as const },
+          { id: 'decline_collaboration', label: input.locale === 'zh-TW' ? '暫不執行' : 'Not now' }],
+          multiSelect: false, allowCustom: false, allowSkip: true }] } : {}),
+    metadata: {
     event: 'orchestrator_collaboration_preparation', sourceMessageId: input.sourceMessageId,
     collaborationPreparation: input.report,
   }, incrementUnread: false });
@@ -23,6 +36,21 @@ export function appendCollaborationReport(input: {
 
 export function describeCollaborationReport(report: CollaborationReport, locale: MessageLocale): string {
   const zh = locale === 'zh-TW';
+  if (report.execution) {
+    const result = report.execution;
+    return [zh ? '協作執行狀態：' : 'Collaboration execution:',
+      result.conversationId ? (zh ? '對話已確認。' : 'Conversation verified.') : (zh ? '尚未建立對話。' : 'No conversation created.'),
+      result.membershipVerified ? (zh ? '兩位同伴的成員身分已確認。' : 'Both participant memberships verified.') : (zh ? '成員安排尚未完成。' : 'Membership is incomplete.'),
+      result.implementationEvidence ? (zh ? '實作已產生經確認的版本。' : 'Implementation produced a verified revision.')
+        : (zh ? '實作尚無已確認的版本。' : 'No verified implementation revision yet.'),
+      result.review ? (zh ? `審查結論：${result.review.verdict === 'approved' ? '通過' : '需要修改'}。${result.review.summary}`
+        : `Reviewer verdict: ${result.review.verdict}. ${result.review.summary}`)
+        : (zh ? '審查尚未完成。' : 'Review is incomplete.'),
+      ...(result.status === 'blocked' || result.status === 'cancelled'
+        ? [zh ? '協作已停止；已建立的對話、工作與產物會保留。' : 'Collaboration stopped; created conversations, work and evidence are retained.'] : []),
+      zh ? '版本確認不代表測試通過；審查結論來自所選審查者。' : 'Revision verification does not prove tests passed; the verdict is attributed to the selected reviewer.',
+    ].join('\n');
+  }
   const clean = (value: string) => value.replace(/[\r\n]/gu, ' ');
   const preparation = report.preparation;
   let body: string;
@@ -76,6 +104,7 @@ export function describeCollaborationReport(report: CollaborationReport, locale:
 export function revalidateCollaborationPublication(input: {
   latestState: ChatState; dispatchState: ChatState; channelId: string;
   observation: ProviderAgentBoundedObservation; sourceMessageId: string;
+  latestCore?: CatsCoreState;
 }): ChatState {
   const channel = input.latestState.channels.find((entry) => entry.id === input.channelId);
   const snapshot = collaborationSnapshot(input.latestState, input.channelId, input.observation);
@@ -86,7 +115,16 @@ export function revalidateCollaborationPublication(input: {
     if (message.metadata?.sourceMessageId !== input.sourceMessageId
       || message.metadata.event !== 'orchestrator_collaboration_preparation') continue;
     const report = message.metadata.collaborationPreparation as CollaborationReport;
-    if (report.status === 'stopped') continue;
+    if (report.execution && input.latestCore) {
+      const intent = readCollaborationIntent(input.latestCore, report.execution.intentId);
+      if (intent?.sourceChannelId === input.channelId) {
+        const current = { ...report, execution: collaborationSummary(intent) };
+        message.metadata.collaborationPreparation = current;
+        message.body = describeCollaborationReport(current, parseMessageLocale(channel?.responseLanguage) ?? 'en');
+      }
+      continue;
+    }
+    if (report.status === 'stopped' || report.execution) continue;
     if (snapshot?.revision === report.revision && latestUser?.id === input.sourceMessageId) continue;
     const stale: CollaborationReport = { ...report, status: 'stopped', reason: 'stale_context', preparation: undefined };
     message.metadata.collaborationPreparation = stale;
