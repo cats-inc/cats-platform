@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1 validated; K2 read/preparation fixtures pass, full CI pending; K3-K4 pending |
+| Status | In progress; K1-K2 implemented and CI-validated; K3-K4 pending |
 | Owner | Platform integration; Chat and Work own their operation delegates |
 | Reviewer | Independent Codex review for K1/K2; product owner for remaining write contracts |
 | Last updated | 2026-09-25 |
@@ -29,7 +29,7 @@ that Orchestrator can create conversations or recruit Cats autonomously.
 |------|-------------|------------|---------------|
 | K0 | ADR/SPEC/PLAN, baseline and operation ownership mapping | Existing Catlas and supervision seams | Drafted; detailed write-contract mapping pending |
 | K1 | Shared role-aware knowledge plus actual Orchestrator content delivery | K0 knowledge contract | Implemented; scoped fixtures and full CI pass |
-| K2 | Authorized teammate/context discovery and collaboration preparation | K1; read-only delegate mapping | Implemented; focused integration fixtures pass, full CI pending |
+| K2 | Authorized teammate/context discovery and collaboration preparation | K1; read-only delegate mapping | Implemented; 480 focused tests and full CI pass |
 | K3 | Conversation/membership/work mutations with durable identity and result feedback | K2; write/recovery contract review | Pending |
 | K4 | Source-free distribution and isolated live-provider/native acceptance | K3 | Pending |
 
@@ -170,9 +170,10 @@ malformed/unsupported decisions, stale source/targets, cleanup-time changes,
 read/usage/elapsed bounds, rejection wording and ordinary fallback are covered.
 Independent review rechecked all reported corrections with no remaining
 blocking findings. All 1,016 local links in affected Markdown resolve, fences
-balance, and changed files use UTF-8/LF with no whitespace errors. Full CI remains
-the integration gate; no live provider, installed Desktop or user-state writes
-were used for this validation.
+balance, and changed files use UTF-8/LF with no whitespace errors.
+Full [CI on `34221fad`](https://github.com/cats-inc/cats-platform/actions/runs/36035473857)
+passed both `validate` and `nodejs (24)`. No live provider, installed Desktop or
+user-state writes were used for this validation.
 
 ### K3: Complete collaboration operations and feedback
 
@@ -259,6 +260,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | Full [CI on `34221fad`](https://github.com/cats-inc/cats-platform/actions/runs/36035473857) passed both `validate` and `nodejs (24)`, including full typechecks and the complete test suite. K2's code/integration gate is complete. This subsequent documentation-only record does not change tested executable inputs or claim K3-K4/live-provider completion. |
 | 2026-09-25 | Implemented K2's Chat read delegates, exact manifests/procedure dependency, bounded same-session feedback, validated proposals and post-ACK continuation. Independent review corrections cover substantive revisions, original-source anchoring, cleanup/publication revalidation, cancellation consumption, concurrent-state preservation, authenticated entry scoping, Runtime request policy and ordinary fallback. The first expanded run exposed seven metadata-only observation regressions; limited actual-goal delivery to the verified K2 surface without weakening existing tests. The final 480-test focused batch, compilation/typecheck, document checks and independent review pass. Full CI pending; K3-K4 remain open. |
 | 2026-09-24 | Full [CI on `c4736f98`](https://github.com/cats-inc/cats-platform/actions/runs/35976031494) passed both `validate` and `nodejs (24)`, including the corrected Code/Work scope and asynchronous rewrite fixtures. K1's code/integration gate is complete. This subsequent documentation-only record does not change tested executable inputs or claim K2-K4/live-provider completion. |
 | 2026-09-24 | CI corrections passed 26 focused scope/Code/setup cases and then the expanded 255-test regression batch. Refreshed server typecheck/output, test bundles and bundled server output passed. Independent review confirmed the scope fix and asynchronous test correction without weakening product assertions. Follow-up full CI remains the integration gate. |

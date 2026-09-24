@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1 validated; K2 read/preparation fixtures pass, full CI pending; K3-K4 pending |
+| Status | In progress; K1-K2 implemented and CI-validated; K3-K4 pending |
 | Owner | Platform integration; Chat owns conversation operations |
 | Reviewer | Product owner; independent Codex implementation review |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
