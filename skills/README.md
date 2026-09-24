@@ -81,9 +81,11 @@ Note: `allowed-tools` is experimental and may be ignored by some agents.
 | `project-memory-sync` | durable markdown-state synchronization during collaboration |
 
 `desktop-ui-automation` is optional guidance, not an installed desktop-control
-service. Its Linux labwc path has real Desktop acceptance evidence; macOS,
-Windows and other Linux sessions must establish their own readiness and native
-validation. It adds no product dependency or permission grant.
+service. Its Linux labwc path has real Desktop acceptance evidence; the Windows
+11/RDP pilot verified window/tray interaction and Windows Terminal text/menu capture.
+macOS and other sessions/applications must establish their own readiness and native
+validation. It adds no product dependency or permission grant. The Windows helper
+and capture limitations are in its platform reference.
 
 ### Parent workspace discovery
 

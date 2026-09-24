@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-09-24-windows-terminal-catalog-pilot](./2026-09-24-windows-terminal-catalog-pilot.md) | 2026-09-24 | Native terminal catalog capture | UIA text, window screenshots, pane/focus guards and Runtime-owned Codex traversal |
 | [2026-09-23-linux-self-update-validation](./2026-09-23-linux-self-update-validation.md) | 2026-09-24 | Linux updates from 0.3.8 through 0.4.3 | Separates the privilege and download failures; records automatic 0.4.1 → 0.4.2 and 0.4.2 → 0.4.3 acceptance with NoNewPrivs 0→0, preserved settings/models, and the released tray fix |
 | [2026-09-23-pi-shortlist](./2026-09-23-pi-shortlist.md) | 2026-09-23 | Pi subscription shortlist | Six bracketed provider labels, fixed medium choices and custom input |
 | [2026-09-23-goose-shortlist](./2026-09-23-goose-shortlist.md) | 2026-09-23 | Goose fixed Off shortlist | Six ChatGPT Codex labels, first-row initialization and custom input |

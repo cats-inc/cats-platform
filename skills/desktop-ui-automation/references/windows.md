@@ -1,7 +1,9 @@
 # Windows desktop recipe
 
-This is a documented approach, not a claim of native Windows validation for this
-skill. Windows includes UI Automation and Win32 input APIs; extra tools such as
+Native Windows 11/RDP acceptance on 2026-09-24 covered window capture, Cats tray
+interaction, and a Codex 0.156.1 picker in Windows Terminal. Other applications,
+privilege levels and sessions still require readiness checks. Windows includes
+UI Automation and Win32 input APIs; extra tools such as
 AutoHotkey or Python wrappers are optional. A PowerShell/C# helper can call the
 native APIs, but APIs being present is not proof that a ready CLI wrapper exists.
 
@@ -89,6 +91,53 @@ Locked/disconnected sessions can prevent visual capture and real input even when
 some UIA queries succeed. Report observation and input readiness separately, and
 verify application state after any attempted action instead of trusting an API
 return value alone.
+
+## Scoped terminal helper
+
+Dot-source [`WindowsUi.ps1`](../scripts/windows/WindowsUi.ps1) in Windows PowerShell 5.1.
+Resolve a uniquely titled window by process name, explicitly focus it, and inspect a snapshot:
+
+```powershell
+. $windowsUiHelper
+$target = Get-WindowsUiTarget -Title $uniqueWindowTitle -ProcessName WindowsTerminal
+Set-WindowsUiFocus $target
+Save-WindowsUiSnapshot $target -OutputPrefix $privateSnapshotPrefix
+```
+
+`Get-WindowsUiText` reads visible ranges from one visible keyboard-focusable TextPattern surface.
+It excludes non-input title text, binds the inspected surface's runtime ID and rejects split panes.
+`Send-WindowsUiKey` checks expected text, foreground window and focused surface immediately before
+input. Match the selected row as well as a shared heading before Enter. If the UI is custom drawn,
+`Save-WindowsUiSnapshot -ImageOnly` can capture it, but state-guarded keyboard actions still require
+TextPattern; do not pretend image capture supplies semantic text.
+
+After a key, `Wait-WindowsUiText` waits for an observed heading/highlight with a bounded timeout.
+On timeout or focus change, stop and inspect instead of replaying the key. Read actual footers:
+some notices interpret Escape as confirmation. The helper does not know provider menu semantics.
+It rejects already-held modifiers and makes one best-effort key-up cleanup after partial native
+input; it does not repeat a failed shortcut. Use `[uint16]` in PowerShell 5.1, not `[ushort]`.
+
+Native pilot lessons:
+
+- The sandbox saw no UIA windows and could not capture the interactive desktop. A scoped,
+  host-approved executor outside that sandbox reached the existing user session. This was not
+  app/admin elevation and is not authority to bypass a denied permission.
+- The 1129 × 635 images were window captures, including terminal chrome; the desktop was
+  2560 × 1306. Prefer text for routine traversal and key screenshots for visual evidence, avoiding
+  duplicated screenshots at every arrow key. Saved file count is not image-input/token usage.
+- Windows Terminal reused a process across windows. Cleanup closed only the owned, uniquely
+  identified window after its CLI exited normally; killing the shared PID would affect user work.
+- Config hashing proves only the selected config remained unchanged. CLI startup can still create
+  ordinary session/cache files, even when no inference prompt was submitted.
+
+Offline guard tests (no native input):
+
+```powershell
+powershell.exe -NoProfile -File skills/desktop-ui-automation/scripts/windows/Test-WindowsUiGuards.ps1
+```
+
+See the owning repo's `docs/research/2026-09-24-windows-terminal-catalog-pilot.md` for native scope
+and limits. Do not infer macOS/Linux validation from this Windows run.
 
 ## Sources
 
