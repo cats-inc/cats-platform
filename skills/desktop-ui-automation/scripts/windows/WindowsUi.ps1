@@ -2,9 +2,11 @@
 .SYNOPSIS
     Provides scoped Windows UI Automation text, capture and keyboard helpers.
 .DESCRIPTION
-    Dot-source in an authorized interactive Windows PowerShell session. These functions
-    do not launch apps, grant access, or bypass desktop isolation. Resolve one target,
-    focus it explicitly, inspect a snapshot, then use state-checked keyboard actions.
+    Dot-source in an authorized interactive Windows PowerShell session. Only
+    Start-WindowsUiTerminal launches anything, and only a new, uniquely titled Windows
+    Terminal window for a command the operator authorized. The other functions do not
+    launch apps. None of them grant access or bypass desktop isolation. Resolve one target, focus it
+    explicitly, inspect a snapshot, then use state-checked keyboard or text actions.
     Text/input require exactly one visible, keyboard-focusable TextPattern surface.
     Split panes are rejected. Use -ImageOnly for visual capture without TextPattern.
     Save snapshots outside Git; they can contain private screen and terminal content.
@@ -13,6 +15,12 @@
     $target = Get-WindowsUiTarget -Title 'Evidence terminal' -ProcessName WindowsTerminal
     Set-WindowsUiFocus $target
     Save-WindowsUiSnapshot $target -OutputPrefix 'C:\private-evidence\before'
+.EXAMPLE
+    $target = Start-WindowsUiTerminal -Title 'Catalog check claude' -WorkingDirectory $repo `
+        -CommandLine @('claude', '--safe-mode')
+    Send-WindowsUiText $target -Text '/model' -ExpectedText $emptyPromptPattern
+    $null = Wait-WindowsUiText $target -ExpectedText $typedCommandPattern
+    Send-WindowsUiKey $target -Key Enter -ExpectedText $typedCommandPattern
 #>
 
 Add-Type -AssemblyName UIAutomationClient
@@ -86,6 +94,21 @@ public static class CatsSkillWindowsInput {
             throw new InvalidOperationException("Incomplete keyboard input; re-observe before retrying.");
         }
     }
+    public static void Unicode(char value) {
+        foreach (int modifier in new int[] { 0x10, 0x11, 0x12, 0x5B, 0x5C }) {
+            if ((GetAsyncKeyState(modifier) & 0x8000) != 0)
+                throw new InvalidOperationException("A modifier is already held; no text was sent.");
+        }
+        Input[] events = new Input[2];
+        events[0].type = 1; events[0].data.keyboard.scan = value; events[0].data.keyboard.flags = 4;
+        events[1].type = 1; events[1].data.keyboard.scan = value; events[1].data.keyboard.flags = 6;
+        int size = Marshal.SizeOf(typeof(Input));
+        uint inserted = SendInput(2, events, size);
+        if (inserted != 2) {
+            if (inserted == 1) SendInput(1, new Input[] { events[1] }, size); // one best-effort key-up
+            throw new InvalidOperationException("Incomplete text input; re-observe before retrying.");
+        }
+    }
 }
 '@
 }
@@ -108,6 +131,49 @@ function Get-WindowsUiTarget {
         ProcessId = $current.ProcessId; Handle = $current.NativeWindowHandle
         TextSurfaceId = $null
     }
+}
+
+function Get-WindowsUiTitledWindows {
+    param([Parameter(Mandatory)][string]$Title)
+    $root = [System.Windows.Automation.AutomationElement]::RootElement
+    @($root.FindAll(
+        [System.Windows.Automation.TreeScope]::Children,
+        [System.Windows.Automation.Condition]::TrueCondition) | Where-Object { $_.Current.Name -ceq $Title })
+}
+
+function Invoke-WindowsUiTerminalLaunch([string[]]$Arguments) {
+    Start-Process -FilePath 'wt.exe' -ArgumentList $Arguments
+}
+
+function Start-WindowsUiTerminal {
+    param(
+        [Parameter(Mandatory)][string]$Title,
+        [Parameter(Mandatory)][string]$WorkingDirectory,
+        [Parameter(Mandatory)][string[]]$CommandLine,
+        [ValidateRange(1,120)][int]$TimeoutSeconds = 20
+    )
+    # wt.exe treats ';' as a command separator; quotes would break the argument boundaries.
+    foreach ($value in @($Title, $WorkingDirectory) + $CommandLine) {
+        if ($value -match '[;"]' -or $value -match '[\x00-\x1F]') {
+            throw 'Terminal title, directory and command must not contain ; " or control characters.'
+        }
+    }
+    if (-not (Test-Path -LiteralPath $WorkingDirectory -PathType Container)) {
+        throw 'Working directory does not exist.'
+    }
+    if (@(Get-WindowsUiTitledWindows -Title $Title).Count -ne 0) {
+        throw "A window titled '$Title' already exists; choose a unique title."
+    }
+    $quote = { param($v) if ($v -match '\s') { '"' + $v + '"' } else { $v } }
+    $arguments = @('-w', 'new', 'new-tab', '--title', (& $quote $Title), '--suppressApplicationTitle',
+        '-d', (& $quote $WorkingDirectory)) + @($CommandLine | ForEach-Object { & $quote $_ })
+    Invoke-WindowsUiTerminalLaunch $arguments
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    do {
+        Start-Sleep -Milliseconds 300
+        try { return Get-WindowsUiTarget -Title $Title -ProcessName WindowsTerminal } catch { }
+    } while ([DateTime]::UtcNow -lt $deadline)
+    throw "Window '$Title' did not appear within $TimeoutSeconds s; inspect the desktop before retrying."
 }
 
 function Get-WindowsUiElement {
@@ -232,6 +298,30 @@ function Send-WindowsUiKey {
     $codes = @{ Enter=13; Escape=27; Up=38; Down=40; Left=37; Right=39; CtrlC=67; CtrlD=68 }
     Assert-WindowsUiInputState $Target (Get-WindowsUiInputState $Target)
     Invoke-WindowsUiKeyInput -Code ([uint16]$codes[$Key]) -Control ($Key.StartsWith('Ctrl'))
+}
+
+function Invoke-WindowsUiCharInput([char]$Character) {
+    [CatsSkillWindowsInput]::Unicode($Character)
+}
+
+function Send-WindowsUiText {
+    param(
+        [Parameter(Mandatory)]$Target,
+        [Parameter(Mandatory)][ValidateLength(1,200)][string]$Text,
+        [Parameter(Mandatory)][string]$ExpectedText
+    )
+    # Enter and other keys stay explicit Send-WindowsUiKey calls after the echo is observed.
+    if ($Text -match '[\x00-\x1F\x7F]') { throw 'Text must not contain control characters; no text was sent.' }
+    Assert-WindowsUiFocus $Target
+    if ((Get-WindowsUiText $Target) -notmatch $ExpectedText) {
+        throw 'Expected screen was not observed; no text was sent.'
+    }
+    Assert-WindowsUiInputState $Target (Get-WindowsUiInputState $Target)
+    foreach ($character in $Text.ToCharArray()) {
+        Assert-WindowsUiFocus $Target
+        Invoke-WindowsUiCharInput $character
+        Start-Sleep -Milliseconds 30
+    }
 }
 
 function Wait-WindowsUiText {

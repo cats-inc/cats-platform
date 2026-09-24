@@ -153,6 +153,27 @@ some notices interpret Escape as confirmation. The helper does not know provider
 It rejects already-held modifiers and makes one best-effort key-up cleanup after partial native
 input; it does not repeat a failed shortcut. Use `[uint16]` in PowerShell 5.1, not `[ushort]`.
 
+`Start-WindowsUiTerminal` opens an operator-authorized command in a new Windows Terminal window.
+It refuses a title that already exists on any window and any argument containing `;` (wt's command
+separator), `"` or a control character. It returns the resolved target once that window
+appears. `Send-WindowsUiText` types plain text with the same expected-text, foreground and focused-surface
+guards as `Send-WindowsUiKey`. It rejects control characters, so Enter is always a separate call:
+
+```powershell
+$target = Start-WindowsUiTerminal -Title $uniqueTitle -WorkingDirectory $repo -CommandLine $command
+Send-WindowsUiText $target -Text '/model' -ExpectedText $emptyPromptPattern
+$null = Wait-WindowsUiText $target -ExpectedText $typedCommandPattern
+Send-WindowsUiKey $target -Key Enter -ExpectedText $typedCommandPattern
+```
+
+- Wait for the typed command to appear before Enter. Autocomplete lists can lag the last
+  character, and an immediate Enter guard sees a partial line.
+- Wait for a pattern that was absent before the key. For example, `model` already appears in a
+  startup banner, so waiting for it after `/status` returns immediately with the old screen.
+- Match prompt separators with `\s`: Claude Code follows its `❯` prompt glyph with U+00A0.
+- A launch from inside an agent CLI session inherits that session's environment variables; record
+  any that change the launched CLI's behavior.
+
 Native pilot lessons:
 
 - The sandbox saw no UIA windows and could not capture the interactive desktop. A scoped,
