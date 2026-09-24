@@ -13,6 +13,7 @@ import {
   TEST_ADMIN_CREDENTIALS,
   createTestAuthConfig,
   installAuthenticatedFetch,
+  waitForCondition,
 } from './testUtils.js';
 
 const baseConfig = {
@@ -385,8 +386,8 @@ test('after setup + activate, system messages stay generic and keep verbosity me
 test('orchestrator self-routing draft is rewritten before it reaches the transcript', async () => {
   const runtimeClient = createRuntimeStub();
   let sendCount = 0;
-  runtimeClient.sendMessage = async (sessionId, content) => {
-    runtimeClient.sentMessages.push({ sessionId, content });
+  runtimeClient.sendMessage = async (sessionId, content, input) => {
+    runtimeClient.sentMessages.push({ sessionId, content, input });
     sendCount += 1;
 
     if (sendCount === 1) {
@@ -442,10 +443,14 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
     });
     assert.equal(messageResponse.status, 200);
 
-    const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
-    assert.equal(channelResponse.status, 200);
-    const channelPayload = await channelResponse.json();
-    const latestMessage = channelPayload.channel.messages.at(-1);
+    // The message POST acknowledges intake; await the actual asynchronous reply.
+    const latestMessage = await waitForCondition(async () => {
+      const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);
+      assert.equal(channelResponse.status, 200);
+      const channelPayload = await channelResponse.json();
+      const latest = channelPayload.channel.messages.at(-1);
+      return latest?.senderKind === 'agent' ? latest : null;
+    });
 
     assert.ok(latestMessage, 'Final transcript message should exist');
     assert.equal(latestMessage.senderKind, 'agent');
@@ -459,6 +464,10 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
       'Rewritten direct answer should be persisted instead',
     );
     assert.equal(runtimeClient.sentMessages.length, 2);
+    assert.equal(runtimeClient.sentMessages[1].input.context.metadata.productKnowledge.delivery, 'inline');
+    assert.deepEqual(runtimeClient.sentMessages[1].input.context.metadata.productKnowledge,
+      runtimeClient.sentMessages[0].input.context.metadata.productKnowledge);
+    assert.match(runtimeClient.sentMessages[1].input.instructions, /orchestrator.results/u);
   });
 });
 

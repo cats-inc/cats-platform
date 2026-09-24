@@ -37,12 +37,12 @@ const load = (filePath, extra = {}) => loadProductKnowledge({
   filePath, locale: 'en', capabilities: ['orchestrator-context-v1'], ...extra,
 });
 
-function harness({ group = false, locale = 'en', body = 'Ask a teammate to implement and review this change.' } = {}) {
+function harness({ group = false, locale = 'en', originSurface = 'chat', body = 'Ask a teammate to implement and review this change.' } = {}) {
   let state = createDefaultChatState();
   state.globalOrchestrator.executionTarget = { ...binding };
   state.globalOrchestrator.visibleParticipant.executionTarget = { ...binding };
   state = createChannel(state, {
-    title: 'Knowledge fixture', topic: 'Isolated model delivery', originSurface: 'chat',
+    title: 'Knowledge fixture', topic: 'Isolated model delivery', originSurface,
     roomMode: 'chat_channel', responseLanguage: locale,
     ...(group ? { cats: [{ name: 'Reviewer', provider: 'claude', roles: ['reviewer'] }] } : {}),
   }, now);
@@ -283,6 +283,20 @@ test('decision session receives actual goal and procedures using its own binding
     assert.equal(call.input.context.metadata.productKnowledge.delivery, 'inline');
     assert.match(call.input.instructions, /exactly one JSON object/u);
     assert.equal(prompt.productKnowledge.scope.participants.length, 1);
+  }
+});
+
+test('Code and Work retain product-owned instructions in the shared internal actor slot', async () => {
+  for (const originSurface of ['code', 'work']) {
+    const h = harness({ group: true, originSurface });
+    const client = runtime();
+    assert.equal((await executeDispatch(h.state, h.channelId, h.request, client, now)).error, null);
+    assert.equal(client.calls.send[0].input.context.metadata.productKnowledge, undefined);
+    assert.doesNotMatch(client.calls.send[0].input.instructions ?? '', /Cats Orchestrator|visible Boss Cat/u);
+    const decisionClient = runtime(JSON.stringify(decision()));
+    await createChatProviderAgentDecisionRequester()({ state: h.state, channelId: h.channelId,
+      payload: { body: h.body }, observation: observation(h.channelId), runtimeClient: decisionClient, now });
+    assert.equal(JSON.parse(decisionClient.calls.send[0].content).productKnowledge, undefined);
   }
 });
 

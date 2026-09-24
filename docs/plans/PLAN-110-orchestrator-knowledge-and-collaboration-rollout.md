@@ -88,15 +88,16 @@ requires reviewed mutation schemas, topology and persistence/recovery ownership.
 fixture evidence. No new creation/recruitment capability is advertised yet.
 
 K1 uses a shared v1/v2 reader, a five-entry bilingual Orchestrator bundle, and
-inline per-turn instructions/decision JSON. Provider-selected default Chat is
-excluded from coordinator role injection. Exact operation revisions, normalized
+inline per-turn instructions/decision JSON. Provider-selected default Chat and
+Code/Work consumers of the internal actor slot are excluded from coordinator
+role injection. Exact operation revisions, normalized
 binding identity (including instance/model controls), fresh per-request loading,
 and a 16,000-character complete knowledge envelope bound selection. Visible
 handoff remains the existing room-routing convention; it is not a new tool.
 
-Validation: 239 focused knowledge, Catlas, Chat prompt/routing, observation,
-decision/policy, Work-intent, supervision and architecture tests passed. The
-10 new knowledge integration cases capture actual Runtime request contents;
+Validation: 255 focused knowledge, Catlas, Chat prompt/routing, observation,
+decision/policy, Code policy/artifacts, setup, Work-intent, supervision and architecture tests passed. The
+11 new knowledge integration cases capture actual Runtime request contents;
 13 existing Catlas cases retain their HTTP-adapter and lifecycle coverage.
 All 25 Desktop packaging tests and the focused npm declared/packed inventory
 test passed. Server/Desktop/renderer builds, bundled server output, and the
@@ -104,7 +105,8 @@ affected TypeScript checks passed. An initial sandboxed routing batch stalled
 in its local session fixture; the isolated fixture and complete focused batch
 passed outside that restriction. Independent agent review found identity,
 binding/control and truncation-provenance defects; fixes and regression cases
-were reviewed with no residual findings. Required remote CI is the next gate.
+were reviewed with no residual findings. Remote CI outcomes and subsequent
+corrections are recorded in the progress log below.
 
 These fixtures do not establish live-provider/native skill behavior, installed
 Desktop acceptance, profile exclusion, or a complete collaboration tool/result
@@ -212,6 +214,8 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-24 | CI corrections passed 26 focused scope/Code/setup cases and then the expanded 255-test regression batch. Refreshed server typecheck/output, test bundles and bundled server output passed. Independent review confirmed the scope fix and asynchronous test correction without weakening product assertions. Follow-up full CI remains the integration gate. |
+| 2026-09-24 | Initial [CI on `3815c6d0`](https://github.com/cats-inc/cats-platform/actions/runs/35974455451) passed typechecks and 4,688 tests but exposed two integration failures: Code's internal actor slot received Chat coordinator instructions, and the rewrite fixture read the transcript immediately after asynchronous ACK. Restricted both knowledge paths to explicit Chat origin, added Code/Work exclusion coverage, and made the rewrite fixture await the actual reply while also checking its delivered content/receipt. Follow-up validation is required before reporting CI success. |
 | 2026-09-24 | After the owner confirmed same-round wiring, implemented K1 shared knowledge, both applicable Orchestrator input paths, bilingual procedures, provenance and npm/Desktop assets. Scoped validation and independent review passed as recorded above; K2-K4 operations and live acceptance remain pending. |
 | 2026-09-24 | Drafted ADR-119, SPEC-118 and PLAN-110 from the owner's knowledge/tools/skills clarification. Recorded the current two Orchestrator input paths, separate operation/result gaps, staged ownership and pending acceptance. This drafting change adds no executable wiring, runtime tool, native skill, user state, version bump or publication. |
 | 2026-09-24 | Documentation validation passed for all three new documents and their four index references: 41 local links, 14 unique functional requirements mapped to 10 acceptance criteria, balanced fences, no template placeholders and UTF-8/LF. Reviewed parent-plan and registry links, profile boundaries, current-versus-proposed capability claims and whitespace. No application tests or builds were run for this documentation-only change. |

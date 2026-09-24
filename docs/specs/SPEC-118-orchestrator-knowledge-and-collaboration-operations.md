@@ -110,8 +110,10 @@ Chat selects on the actual bounded goal, response language, current roster,
 surface and verified operation descriptors. Ordinary/global Orchestrator replies
 receive inline per-turn instructions, including the rewrite pass; structured
 decision requests receive the same content mechanism in their own JSON envelope.
-Provider-selected default Chat retains its ordinary assistant identity and does
-not receive coordinator role instructions. Other Cats do not inherit this role.
+Provider-selected default Chat retains its ordinary assistant identity. Code and
+Work also reuse the internal actor slot; they retain product-owned instructions.
+K1 coordinator role injection requires explicit Chat origin and a real
+Orchestrator consumer. Other Cats do not inherit this role.
 
 Decision requests compare the current normalized provider/model/instance/control
 identity with the capability observation and send the actual Orchestrator binding,

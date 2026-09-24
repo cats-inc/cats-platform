@@ -66,7 +66,8 @@ are specified in [SPEC-118](specs/SPEC-118-orchestrator-knowledge-and-collaborat
 and staged in [PLAN-110](plans/PLAN-110-orchestrator-knowledge-and-collaboration-rollout.md).
 Inline knowledge now reaches the applicable visible and decision requests, with
 `productKnowledge` provenance in request metadata and visible assistant receipts.
-Provider-selected default Chat keeps its own identity. New collaboration operation
+Provider-selected default Chat keeps its own identity; Code/Work retain their
+product-owned instructions despite sharing the internal actor slot. New collaboration operation
 names/schemas are not yet registered as callable surfaces; the existing
 observation/decision boundary remains authoritative.
 

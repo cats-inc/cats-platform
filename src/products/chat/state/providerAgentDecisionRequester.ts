@@ -7,8 +7,7 @@ import type {
 import { knowledgeDigest } from '../../../platform/knowledge/productKnowledge.js';
 import { buildChannelView, requireChannel } from './model/index.js';
 import { resolveOrchestratorExecutionTarget } from './runtimeTargeting.js';
-import { loadOrchestratorKnowledge } from './orchestratorKnowledge.js';
-import { isProviderDefaultChatChannel } from '../shared/channelTopology.js';
+import { isOrchestratorKnowledgeChannel, loadOrchestratorKnowledge } from './orchestratorKnowledge.js';
 import { resolveProviderCapabilityProfile } from '../../../platform/supervision/providerCapabilityProfiles.js';
 
 export interface ChatProviderAgentDecisionRequesterOptions {
@@ -27,7 +26,7 @@ export function createChatProviderAgentDecisionRequester(
 
     try {
       const isOrchestrator = input.observation.actor.actorRef === 'orchestrator'
-        && !isProviderDefaultChatChannel(requireChannel(input.state, input.channelId));
+        && isOrchestratorKnowledgeChannel(requireChannel(input.state, input.channelId));
       const binding = isOrchestrator
         ? resolveOrchestratorExecutionTarget(input.state, requireChannel(input.state, input.channelId))
         : null;

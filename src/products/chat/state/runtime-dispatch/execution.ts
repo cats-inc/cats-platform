@@ -29,8 +29,7 @@ import {
   resolveExecutionMetadataForTarget,
   resolveRuntimeEnvelopeForTarget,
 } from '../runtimeTargeting.js';
-import { loadOrchestratorKnowledge } from '../orchestratorKnowledge.js';
-import { isProviderDefaultChatChannel } from '../../shared/channelTopology.js';
+import { isOrchestratorKnowledgeChannel, loadOrchestratorKnowledge } from '../orchestratorKnowledge.js';
 import {
   productKnowledgeInstructions,
   productKnowledgeReceipt,
@@ -208,7 +207,7 @@ export async function executeDispatch(
       request,
       transport,
     });
-    const knowledge = request.target.participantKind === 'orchestrator' && !isProviderDefaultChatChannel(channel)
+    const knowledge = request.target.participantKind === 'orchestrator' && isOrchestratorKnowledgeChannel(channel)
       ? await loadOrchestratorKnowledge({
           channel,
           body: request.promptSourceMessage?.body ?? request.sourceMessage.body,
