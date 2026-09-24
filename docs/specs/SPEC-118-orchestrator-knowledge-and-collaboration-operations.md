@@ -222,6 +222,9 @@ Run, artifact and outcome identities derive from that intent and role. The Chat
 store uses an additive atomic snapshot mutation seam so a canonical conversation
 or membership change and its intent receipt commit together. Core/Work updates
 use the existing Core transaction seam; no second store or scheduler is added.
+Unrelated memory and bot-binding mutations also apply to the latest Core inside
+that transaction. A delayed request must not replace newly admitted Tasks/Runs,
+restore deleted memory, or bypass current binding-token uniqueness.
 
 The coordinator retains `narrow_write`; FR-19 still denies broad writes to
 unknown/catalog-only models, and weak-worker ceilings remain unchanged.
@@ -281,12 +284,13 @@ inputs cannot override the server-bound intent, identities, workspace or grant.
 
 | Operation | Input supplied by model | Server-resolved context and result |
 |-----------|-------------------------|------------------------------------|
-| Discover eligible teammates | Required role/capability, bounded query | Authorized existing Cats, stable IDs, readiness/availability and capability limits |
-| Inspect collaboration context | Authorized conversation reference | Current participants, supported topology, work state and observed revision |
-| Prepare or ensure conversation | Goal, product origin, reuse/create intent, selected eligible participants | Validated scope, creation identity, canonical conversation/channel mapping and created/reused outcome |
-| Ensure participant membership | Existing Cat reference and intended role | Allowed conversation, current membership, added/already-present outcome |
-| Assign and start work | Bounded task, target, context references and dependency | Existing Task/Run owner, admitted budget, accepted/started/rejected outcome and runtime references |
-| Inspect or stop owned work | Operation/run reference | Authoritative lifecycle, cancellation outcome, retained work/evidence references |
+| Discover eligible teammates | Optional bounded query and limit | Authorized existing Cats, stable IDs, readiness/availability and capability limits |
+| Inspect collaboration context | `{}` | Current bound conversation, participants, supported topology, workspace, routing and observed revision |
+| Prepare collaboration | Observed revision, distinct discovered Cat IDs, reuse/create intent, expected output, missing information and proposed budget | Original goal, product origin, authorized candidates and validated proposal |
+| Ensure conversation | `{}` | Owner-confirmed scope, canonical conversation/channel mapping and created/reused outcome |
+| Ensure participant membership | `{}` | The two admitted Cats, current canonical membership and added/already-present outcome |
+| Request role work | `{role: "implementation"}` or `{role: "review"}` | Fixed Task/Run, owner grant, dependency and accepted queue result; host separately validates before Runtime startup |
+| Inspect or stop owned work | `{}` | Bound intent's authoritative lifecycle, cancellation outcome, retained work/evidence references |
 
 The first flow uses two distinct existing, eligible Cats for implementation and
 review. It does not create permanent Cats or provider instances. Review starts

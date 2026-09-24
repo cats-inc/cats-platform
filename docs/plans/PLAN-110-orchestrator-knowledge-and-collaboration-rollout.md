@@ -47,6 +47,12 @@ Do not reshape frozen Core/Chat contracts or add another scheduler/roster/store
 to avoid an ownership decision. Existing user authorization carries forward;
 routine continuation does not create a new approval ceremony.
 
+K3 composes Work-owned admission, execution and result records from Chat-owned
+coordination through the Work execution port. The dependency guard records the
+seven exact Chat-to-Work integration edges; its generic product-boundary checks
+remain intact. Work does not import Chat implementations, and this integration
+adds no Core/Platform-to-product dependency.
+
 ## Implementation Phases
 
 ### K0: Document and resolve contracts
@@ -225,6 +231,16 @@ with queued/pending roles and unclosed sessions. Known late session IDs remain
 recoverable; unconfirmed creation blocks rather than launching another attempt.
 Existing snapshots retain their format and backups; unknown metadata cannot run.
 
+Follow-up persistence review also found stale Core replacement in memory and bot
+settings. Those mutations now validate and update the latest Core atomically;
+canonical memory/transport reconciliation stays after commit. Twelve isolated
+HTTP races reproduce the previous Task/Run loss, deleted-memory resurrection and
+duplicate-token acceptance. All twelve fail against the pre-fix build and pass
+after the correction. The fixtures use delayed bodies and explicit gates, not
+timing sleeps or user state. The final follow-up batch passes all 257 tests,
+including those twelve cases, all 25 K3 cases, memory/store/REST/Telegram coverage
+and both architecture guards; server compilation also passes.
+
 Validation: all 823 tests across 83 affected files pass, including 25 K3
 cases. Captured Runtime inputs and authenticated HTTP fixtures cover owner
 admission, queue-before-host ordering, exact revision review, same-session
@@ -242,7 +258,12 @@ revocation, duplicate HTTP turns, cleanup recovery and concurrent writers. The
 initial expanded batch exposed two parallel-relay regressions; corrected merges
 retain preparation metadata and immutable baselines, and both regressions now
 pass. All 1,030 local links in affected Markdown resolve and fences balance.
-Full CI remains pending. Fixtures use temporary or memory state; no live provider,
+Initial [CI on `97e1f6fb`](https://github.com/cats-inc/cats-platform/actions/runs/36049653929)
+passed full typechecks and 4,734 tests (59 skipped), with one dependency-graph
+failure for the seven planned but unregistered integration edges. The exact
+edge registration and the independently reviewed persistence correction pass
+the follow-up checks above; corrected full CI remains pending.
+Fixtures use temporary or memory state; no live provider,
 installed Desktop, native UI or user's persisted dev state was exercised. K4 and
 PLAN-109 development/practice/promotion gates remain open. No frozen contract,
 persisted schema, version or release changed.
@@ -311,6 +332,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | Initial K3 CI exposed only the missing seven exact Chat-to-Work dependency registrations. Added those planned edges without weakening generic ownership rules. Follow-up review found stale Core writers in memory/Bot APIs; corrected atomic validation/mutation, with twelve isolated HTTP races failing before and passing after. All 257 affected follow-up tests and server compilation pass; independent reviews cover production changes, boundary registrations and tests. Corrected full CI pending. |
 | 2026-09-25 | Implemented K3 owner-confirmed Chat/Work collaboration, pure role queue plus independently authorized host execution, immutable revision review and durable cancellation/recovery. Fixed concurrent Chat/Telegram writers and duplicate-confirmation turn lifecycle. All 823 focused tests, server/test typechecks, document checks and independent review pass. Full CI pending; K4 live/native/distribution and PLAN-109 practice remain open. |
 | 2026-09-25 | Full [CI on `34221fad`](https://github.com/cats-inc/cats-platform/actions/runs/36035473857) passed both `validate` and `nodejs (24)`, including full typechecks and the complete test suite. K2's code/integration gate is complete. This subsequent documentation-only record does not change tested executable inputs or claim K3-K4/live-provider completion. |
 | 2026-09-25 | Implemented K2's Chat read delegates, exact manifests/procedure dependency, bounded same-session feedback, validated proposals and post-ACK continuation. Independent review corrections cover substantive revisions, original-source anchoring, cleanup/publication revalidation, cancellation consumption, concurrent-state preservation, authenticated entry scoping, Runtime request policy and ordinary fallback. The first expanded run exposed seven metadata-only observation regressions; limited actual-goal delivery to the verified K2 surface without weakening existing tests. The final 480-test focused batch, compilation/typecheck, document checks and independent review pass. Full CI pending; K3-K4 remain open. |

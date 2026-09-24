@@ -9,6 +9,7 @@ import { createCatActorId } from '../../../../core/actors.js';
 import { buildMemoryFlushSummary } from '../../../../platform/memory/maintenance.js';
 import { requireCat } from '../../state/model/index.js';
 import {
+  ChatApiError,
   handleRestError,
   sendRestError,
   type ChatApiRouteContext,
@@ -57,9 +58,7 @@ async function handleCreateCatMemory(
     }
 
     const record = buildCatMemoryRecord(catId, body);
-    const core = await context.dependencies.chatStore.readCore();
-    const nextCore = addDurableMemory(core, record);
-    await context.dependencies.chatStore.writeCore(nextCore);
+    await context.dependencies.chatStore.updateCore((core) => addDurableMemory(core, record));
     await trySyncCanonicalCatMemory(context, catId);
     sendJson(context.response, 201, { memory: record });
   } catch (error) {
@@ -92,11 +91,15 @@ async function handleUpdateCatMemory(
       return;
     }
 
-    const nextCore = updateDurableMemory(core, memoryId, buildDurableMemoryUpdates(body));
-    await context.dependencies.chatStore.writeCore(nextCore);
+    const persisted = await context.dependencies.chatStore.updateCore((latestCore) => {
+      if (!findCatMemoryRecord(latestCore, catId, memoryId)) {
+        throw new ChatApiError(404, 'memory_not_found', `Cat memory not found: ${memoryId}`);
+      }
+      return updateDurableMemory(latestCore, memoryId, buildDurableMemoryUpdates(body));
+    });
+    const updated = findCatMemoryRecord(persisted, catId, memoryId);
     await trySyncCanonicalCatMemory(context, catId);
 
-    const updated = nextCore.durableMemory.find((record) => record.id === memoryId);
     sendJson(context.response, 200, { memory: updated });
   } catch (error) {
     handleRestError(context, error);
@@ -109,13 +112,12 @@ async function handleDeleteCatMemory(
   memoryId: string,
 ): Promise<void> {
   try {
-    const core = await context.dependencies.chatStore.readCore();
-    if (!findCatMemoryRecord(core, catId, memoryId)) {
-      sendRestError(context, 404, 'memory_not_found', `Cat memory not found: ${memoryId}`);
-      return;
-    }
-    const nextCore = removeDurableMemory(core, memoryId);
-    await context.dependencies.chatStore.writeCore(nextCore);
+    await context.dependencies.chatStore.updateCore((core) => {
+      if (!findCatMemoryRecord(core, catId, memoryId)) {
+        throw new ChatApiError(404, 'memory_not_found', `Cat memory not found: ${memoryId}`);
+      }
+      return removeDurableMemory(core, memoryId);
+    });
     await trySyncCanonicalCatMemory(context, catId);
     sendJson(context.response, 200, { deleted: true, memoryId });
   } catch (error) {

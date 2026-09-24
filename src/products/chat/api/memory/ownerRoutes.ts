@@ -8,6 +8,7 @@ import {
 import { OWNER_ACTOR_ID } from '../../../../core/actors.js';
 import { buildMemoryFlushSummary } from '../../../../platform/memory/maintenance.js';
 import {
+  ChatApiError,
   handleRestError,
   sendRestError,
   type ChatApiRouteContext,
@@ -53,9 +54,7 @@ async function handleCreateOwnerMemory(
     }
 
     const record = buildOwnerMemoryRecord(body);
-    const core = await context.dependencies.chatStore.readCore();
-    const nextCore = addDurableMemory(core, record);
-    await context.dependencies.chatStore.writeCore(nextCore);
+    await context.dependencies.chatStore.updateCore((core) => addDurableMemory(core, record));
     await trySyncCanonicalOwnerMemory(context, 'manual');
     sendJson(context.response, 201, { memory: record });
   } catch (error) {
@@ -87,11 +86,15 @@ async function handleUpdateOwnerMemory(
       return;
     }
 
-    const nextCore = updateDurableMemory(core, memoryId, buildDurableMemoryUpdates(body));
-    await context.dependencies.chatStore.writeCore(nextCore);
+    const persisted = await context.dependencies.chatStore.updateCore((latestCore) => {
+      if (!findOwnerMemoryRecord(latestCore, memoryId)) {
+        throw new ChatApiError(404, 'memory_not_found', `Owner memory not found: ${memoryId}`);
+      }
+      return updateDurableMemory(latestCore, memoryId, buildDurableMemoryUpdates(body));
+    });
+    const updated = findOwnerMemoryRecord(persisted, memoryId);
     await trySyncCanonicalOwnerMemory(context, 'manual');
 
-    const updated = nextCore.durableMemory.find((record) => record.id === memoryId);
     sendJson(context.response, 200, { memory: updated });
   } catch (error) {
     handleRestError(context, error);
@@ -103,13 +106,12 @@ async function handleDeleteOwnerMemory(
   memoryId: string,
 ): Promise<void> {
   try {
-    const core = await context.dependencies.chatStore.readCore();
-    if (!findOwnerMemoryRecord(core, memoryId)) {
-      sendRestError(context, 404, 'memory_not_found', `Owner memory not found: ${memoryId}`);
-      return;
-    }
-    const nextCore = removeDurableMemory(core, memoryId);
-    await context.dependencies.chatStore.writeCore(nextCore);
+    await context.dependencies.chatStore.updateCore((core) => {
+      if (!findOwnerMemoryRecord(core, memoryId)) {
+        throw new ChatApiError(404, 'memory_not_found', `Owner memory not found: ${memoryId}`);
+      }
+      return removeDurableMemory(core, memoryId);
+    });
     await trySyncCanonicalOwnerMemory(context, 'manual');
     sendJson(context.response, 200, { deleted: true, memoryId });
   } catch (error) {

@@ -68,6 +68,20 @@ function requireBindableCat(
   return cat;
 }
 
+function requireBindableCoreCat(core: CatsCoreState, catId: string) {
+  const actor = core.actors.find((candidate) =>
+    candidate.id === createCatActorId(catId)
+    && candidate.source === 'chat_cat'
+    && candidate.sourceId === catId);
+  if (!actor) {
+    throw new Error(`Cat not found: ${catId}`);
+  }
+  if (actor.status !== 'active') {
+    throw new Error(`Cat is not active: ${catId}`);
+  }
+  return actor;
+}
+
 function createBindingRecord(
   chat: Awaited<ReturnType<ChatApiRouteContext['dependencies']['chatStore']['read']>>,
   input: CreateBotBindingInput,
@@ -145,15 +159,17 @@ function validateTokenUniqueness(
 async function handleCreateBotBinding(context: ChatApiRouteContext): Promise<void> {
   const body = await readJsonBody<CreateBotBindingInput>(context.request);
   const nowIso = nowFrom(context.dependencies).toISOString();
-  const [chat, core] = await Promise.all([
-    context.dependencies.chatStore.read(),
-    context.dependencies.chatStore.readCore(),
-  ]);
+  const chat = await context.dependencies.chatStore.read();
 
-  validateTokenUniqueness(body.botToken, core.botBindings);
   const binding = createBindingRecord(chat, body, nowIso);
-  const nextCore = updateCoreBindings(core, (bindings) => [...bindings, binding], nowIso);
-  const persisted = await context.dependencies.chatStore.writeCore(nextCore);
+  const persisted = await context.dependencies.chatStore.updateCore((core) => {
+    validateTokenUniqueness(body.botToken, core.botBindings);
+    const actor = requireBindableCoreCat(core, body.catId);
+    return updateCoreBindings(core, (bindings) => [...bindings, {
+      ...binding,
+      bossCatActorId: actor.roles.includes('boss_cat') ? actor.id : null,
+    }], nowIso);
+  });
 
   sendJson(context.response, 201, {
     botBinding: summarizeBinding(
@@ -170,70 +186,71 @@ async function handleUpdateBotBinding(
 ): Promise<void> {
   const body = await readJsonBody<UpdateBotBindingInput>(context.request);
   const nowIso = nowFrom(context.dependencies).toISOString();
-  const [chat, core] = await Promise.all([
-    context.dependencies.chatStore.read(),
-    context.dependencies.chatStore.readCore(),
-  ]);
-  const existing = core.botBindings.find((binding) => binding.id === bindingId);
-  if (!existing) {
-    throw new Error(`Bot binding not found: ${bindingId}`);
-  }
-
-  if (body.botToken !== undefined) {
-    validateTokenUniqueness(body.botToken, core.botBindings, bindingId);
-  }
-
-  let catActorId = existing.catActorId ?? existing.bossCatActorId;
-  let bossCatActorId = existing.bossCatActorId;
-  let roomMode = body.roomMode === 'chat_channel'
-    ? 'direct_message'
-    : body.roomMode ?? resolveEffectiveBotBindingRoomMode(existing);
-
-  if (body.catId !== undefined) {
-    const cat = requireBindableCat(chat, body.catId);
-    catActorId = createCatActorId(cat.id);
-    bossCatActorId = chat.bossCatId === cat.id ? catActorId : null;
-    if (body.roomMode === undefined) {
-      roomMode = 'direct_message';
+  const chat = await context.dependencies.chatStore.read();
+  let previousBinding!: BotBindingRecord;
+  const persisted = await context.dependencies.chatStore.updateCore((core) => {
+    const existing = core.botBindings.find((binding) => binding.id === bindingId);
+    if (!existing) {
+      throw new Error(`Bot binding not found: ${bindingId}`);
     }
-  }
+    previousBinding = existing;
 
-  const inboundMode = body.inboundMode === 'polling' || body.inboundMode === 'webhook'
-    ? body.inboundMode
-    : existing.inboundMode;
+    if (body.botToken !== undefined) {
+      validateTokenUniqueness(body.botToken, core.botBindings, bindingId);
+    }
 
-  const nextCore = updateCoreBindings(core, (bindings) =>
-    bindings.map((binding) =>
-      binding.id === bindingId
-        ? {
-            ...binding,
-            botName: body.botName?.trim() || binding.botName,
-            catActorId,
-            bossCatActorId,
-            botToken: body.botToken === undefined
-              ? binding.botToken
-              : trimNullableString(body.botToken),
-            webhookSecret: body.webhookSecret === undefined
-              ? binding.webhookSecret
-              : trimNullableString(body.webhookSecret),
-            inboundMode,
-            roomMode,
-            status: body.status ?? binding.status,
-            outboundFanoutEnabled: body.outboundFanoutEnabled === undefined
-              ? binding.outboundFanoutEnabled
-              : body.outboundFanoutEnabled,
-            updatedAt: nowIso,
-          }
-        : binding,
-    ), nowIso);
-  const persisted = await context.dependencies.chatStore.writeCore(nextCore);
+    let catActorId = existing.catActorId ?? existing.bossCatActorId;
+    let bossCatActorId = existing.bossCatActorId;
+    let roomMode = body.roomMode === 'chat_channel'
+      ? 'direct_message'
+      : body.roomMode ?? resolveEffectiveBotBindingRoomMode(existing);
+
+    if (body.catId !== undefined) {
+      requireBindableCat(chat, body.catId);
+      const actor = requireBindableCoreCat(core, body.catId);
+      catActorId = actor.id;
+      bossCatActorId = actor.roles.includes('boss_cat') ? actor.id : null;
+      if (body.roomMode === undefined) {
+        roomMode = 'direct_message';
+      }
+    }
+
+    const inboundMode = body.inboundMode === 'polling' || body.inboundMode === 'webhook'
+      ? body.inboundMode
+      : existing.inboundMode;
+
+    return updateCoreBindings(core, (bindings) =>
+      bindings.map((binding) =>
+        binding.id === bindingId
+          ? {
+              ...binding,
+              botName: body.botName?.trim() || binding.botName,
+              catActorId,
+              bossCatActorId,
+              botToken: body.botToken === undefined
+                ? binding.botToken
+                : trimNullableString(body.botToken),
+              webhookSecret: body.webhookSecret === undefined
+                ? binding.webhookSecret
+                : trimNullableString(body.webhookSecret),
+              inboundMode,
+              roomMode,
+              status: body.status ?? binding.status,
+              outboundFanoutEnabled: body.outboundFanoutEnabled === undefined
+                ? binding.outboundFanoutEnabled
+                : body.outboundFanoutEnabled,
+              updatedAt: nowIso,
+            }
+          : binding,
+      ), nowIso);
+  });
   const updated = persisted.botBindings.find((binding) => binding.id === bindingId);
 
   sendJson(context.response, 200, {
-    botBinding: summarizeBinding(updated ?? existing, chat),
+    botBinding: summarizeBinding(updated ?? previousBinding, chat),
   });
   void reconcileTelegramTransportAfterBindingMutation(context, {
-    staleBotTokens: [existing.botToken],
+    staleBotTokens: [previousBinding.botToken],
   });
 }
 
@@ -242,21 +259,23 @@ async function handleDeleteBotBinding(
   bindingId: string,
 ): Promise<void> {
   const nowIso = nowFrom(context.dependencies).toISOString();
-  const core = await context.dependencies.chatStore.readCore();
-  const existing = core.botBindings.find((binding) => binding.id === bindingId);
-  if (!existing) {
-    throw new Error(`Bot binding not found: ${bindingId}`);
-  }
+  let previousBinding!: BotBindingRecord;
+  await context.dependencies.chatStore.updateCore((core) => {
+    const existing = core.botBindings.find((binding) => binding.id === bindingId);
+    if (!existing) {
+      throw new Error(`Bot binding not found: ${bindingId}`);
+    }
+    previousBinding = existing;
 
-  const nextCore = updateCoreBindings(
-    core,
-    (bindings) => bindings.filter((binding) => binding.id !== bindingId),
-    nowIso,
-  );
-  await context.dependencies.chatStore.writeCore(nextCore);
+    return updateCoreBindings(
+      core,
+      (bindings) => bindings.filter((binding) => binding.id !== bindingId),
+      nowIso,
+    );
+  });
   sendJson(context.response, 200, { deleted: true, bindingId });
   void reconcileTelegramTransportAfterBindingMutation(context, {
-    staleBotTokens: [existing.botToken],
+    staleBotTokens: [previousBinding.botToken],
   });
 }
 

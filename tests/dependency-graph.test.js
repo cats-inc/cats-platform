@@ -53,6 +53,17 @@ const ALLOWED_BOUNDARY_IMPORTS = new Set([
   'products/chat/state/workToolIntentResolver.ts -> products/work/shared/workExternalBindingPhase.ts',
   'products/chat/state/workToolIntentResolver.ts -> products/work/shared/workExternalIssueImportPhase.ts',
 
+  // SPEC-118 / PLAN-110 K3: Chat owns conversation/membership and composes
+  // Work-owned admission, role execution and evidence through its execution port.
+  // Keep these integration edges exact; Work must not import Chat implementations.
+  'products/chat/state/collaborationExecution.ts -> products/work/state/collaborationRecords.ts',
+  'products/chat/state/collaborationExecution.ts -> products/work/state/collaborationExecution.ts',
+  'products/chat/state/collaborationExecutionLoop.ts -> products/work/state/collaborationRecords.ts',
+  'products/chat/state/collaborationExecutionLoop.ts -> products/work/state/collaborationExecution.ts',
+  'products/chat/state/orchestratorCollaboration.ts -> products/work/state/collaborationRecords.ts',
+  'products/chat/state/orchestratorCollaborationReport.ts -> products/work/state/collaborationRecords.ts',
+  'products/chat/state/runtime-dispatch/routing.ts -> products/work/state/collaborationRecords.ts',
+
   // The shared product shell still reuses chat-specific participant and
   // composer utilities. These are exact edges, not product-wide exemptions.
   'products/shared/channelParticipants.ts -> products/chat/shared/channelParticipants.ts',
