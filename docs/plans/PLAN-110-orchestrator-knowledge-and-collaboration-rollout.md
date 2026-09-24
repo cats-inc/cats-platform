@@ -4,9 +4,9 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1 implemented and fixture-validated; K2-K4 pending |
+| Status | In progress; K1 implemented with scoped fixtures and full CI passing; K2-K4 pending |
 | Owner | Platform integration; Chat and Work own their operation delegates |
-| Reviewer | Product owner; implementation reviewer unassigned |
+| Reviewer | Independent Codex review for K1; product owner for remaining operation contracts |
 | Last updated | 2026-09-24 |
 
 ## Related Spec
@@ -28,7 +28,7 @@ that Orchestrator can create conversations or recruit Cats autonomously.
 | Gate | Deliverable | Depends on | Current state |
 |------|-------------|------------|---------------|
 | K0 | ADR/SPEC/PLAN, baseline and operation ownership mapping | Existing Catlas and supervision seams | Drafted; detailed write-contract mapping pending |
-| K1 | Shared role-aware knowledge plus actual Orchestrator content delivery | K0 knowledge contract | Implemented; scoped fixtures pass |
+| K1 | Shared role-aware knowledge plus actual Orchestrator content delivery | K0 knowledge contract | Implemented; scoped fixtures and full CI pass |
 | K2 | Authorized teammate/context discovery and collaboration preparation | K1; read-only delegate mapping | Pending |
 | K3 | Conversation/membership/work mutations with durable identity and result feedback | K2; write/recovery contract review | Pending |
 | K4 | Source-free distribution and isolated live-provider/native acceptance | K3 | Pending |
@@ -214,6 +214,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-24 | Full [CI on `c4736f98`](https://github.com/cats-inc/cats-platform/actions/runs/35976031494) passed both `validate` and `nodejs (24)`, including the corrected Code/Work scope and asynchronous rewrite fixtures. K1's code/integration gate is complete. This subsequent documentation-only record does not change tested executable inputs or claim K2-K4/live-provider completion. |
 | 2026-09-24 | CI corrections passed 26 focused scope/Code/setup cases and then the expanded 255-test regression batch. Refreshed server typecheck/output, test bundles and bundled server output passed. Independent review confirmed the scope fix and asynchronous test correction without weakening product assertions. Follow-up full CI remains the integration gate. |
 | 2026-09-24 | Initial [CI on `3815c6d0`](https://github.com/cats-inc/cats-platform/actions/runs/35974455451) passed typechecks and 4,688 tests but exposed two integration failures: Code's internal actor slot received Chat coordinator instructions, and the rewrite fixture read the transcript immediately after asynchronous ACK. Restricted both knowledge paths to explicit Chat origin, added Code/Work exclusion coverage, and made the rewrite fixture await the actual reply while also checking its delivered content/receipt. Follow-up validation is required before reporting CI success. |
 | 2026-09-24 | After the owner confirmed same-round wiring, implemented K1 shared knowledge, both applicable Orchestrator input paths, bilingual procedures, provenance and npm/Desktop assets. Scoped validation and independent review passed as recorded above; K2-K4 operations and live acceptance remain pending. |
