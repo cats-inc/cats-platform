@@ -396,7 +396,12 @@ close-handler source assertions. The native shutdown fix binds the handler to
 the captured `window`; those assertions still required `mainWindow.on`. Updating
 the binding expectation retains every tray, shutdown and installer-handoff guard.
 All four close-behavior checks and independent review pass after the correction.
-Corrected full CI remains pending.
+Corrected [CI on `b30d5adc`](https://github.com/cats-inc/cats-platform/actions/runs/36065815288)
+passes both `validate` and `nodejs (24)`, including full typechecks and 4,839 test
+cases: 4,780 passed, 59 skipped, zero failures/cancellations. The integration gate
+for this K4 slice is verified; full live execution and PLAN-109 profile/practice
+gates remain open. This subsequent documentation-only record does not change
+tested executable or packaged knowledge inputs.
 
 ## Initial Change Map
 
@@ -444,6 +449,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | Corrected [K4 CI on `b30d5adc`](https://github.com/cats-inc/cats-platform/actions/runs/36065815288) passes `validate` and `nodejs (24)`, full typechecks and 4,780 tests (59 skipped; zero failures/cancellations). The isolated acceptance and live-preflight correction slice is integration-validated. Full worker/revision/review execution, native result projections, the bounded native CLI flow and PLAN-109 profile/practice gates remain open. This documentation-only record changes no tested executable or packaged knowledge inputs. |
 | 2026-09-25 | Initial K4 CI passed full typechecks and 4,778 tests (59 skipped), with two stale close-handler source assertions. Updated their captured-window binding expectations while preserving the tray/shutdown/installer guards; all four focused checks and independent review pass. This correction changes tests and this validation record only; production behavior and the remaining live acceptance limits are unchanged. Corrected full CI pending. |
 | 2026-09-25 | K4 source-free npm/Desktop knowledge and native Windows candidate startup/lock/close acceptance pass. Real Codex coordination exposed missing decision-format guidance, pre-parse usage loss and terminal-feedback reason overwrites; fixes and focused regressions pass. Exact CLI readiness now passes via bounded version/help diagnostics with zero inference; Work's passive-versus-execution readiness mismatch is corrected without widening other backends. Native CLI input growth still crosses the response-boundary token threshold. Worker execution, revision/review, native result projections and profile exclusion remain open; see the dated K4 evidence. No release/version or user-state change. Full CI pending. |
 | 2026-09-25 | Full [CI on `115fe483`](https://github.com/cats-inc/cats-platform/actions/runs/36052038916) passed `validate` and `nodejs (24)`, including full typechecks and 4,747 passing tests (59 skipped; zero failures/cancellations). K3's code/integration gate is complete. This subsequent documentation-only record does not change tested executable inputs; all 1,031 local Markdown links resolve and fences balance. K4 live/native/source-free acceptance and PLAN-109 development/practice/promotion remain open. |
