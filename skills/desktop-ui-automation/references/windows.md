@@ -92,6 +92,32 @@ some UIA queries succeed. Report observation and input readiness separately, and
 verify application state after any attempted action instead of trusting an API
 return value alone.
 
+## Cats tray menu on Windows 11
+
+A 2026-09-25 run used an interactive RDP session with installed Cats 0.4.2. It opened and read
+the tray menu, then closed it without choosing an item. The agent host's own PowerShell reached
+this desktop directly, unlike the 2026-09-24 sandbox, so check readiness on each host.
+
+- Windows 11 often hides Cats in the overflow flyout. `Shell_TrayWnd` exposes the chevron as a
+  `SystemTrayIcon` button with InvokePattern. One Invoke opens the
+  `TopLevelWindowForOverflowXamlIsland` flyout and a second Invoke closes it. Other system icons
+  share that AutomationId, and the chevron's name is localized (顯示隱藏的圖示 in zh-TW), so require
+  exactly one match.
+- Each flyout icon is a `NotifyItemIcon` button, and its name can start with a space (` Cats`).
+  Trim the name, then compare it exactly; a substring match can select another app's icon.
+- `AutomationElement.FromPoint` over the flyout returned only the island root. Instead, confirm
+  that the Cats icon is the only icon whose bounding rectangle contains the click point.
+- Cats shows the main window on left click and the context menu on right click
+  (`desktop/host/trayInteractionPolicy.ts`), so read the menu after a pointer right-click.
+- The menu is a Chromium Views popup, not a Win32 `#32768` menu. Look for a top-level
+  `Chrome_WidgetWin_1` owned by a Cats PID that contains `SubmenuView` with `MenuItemView` and
+  `MenuSeparator` children; UIA exposes item names and enabled state.
+- `desktop/host/tray.ts` builds the items, which vary with setup, update capability and locale.
+  The observed zh-TW menu was 開啟 Cats, 檢查更新…（預覽）, 設定 and 結束. That is evidence
+  for one build and state, not a fixed contract.
+- While the Cats menu was in the foreground, one Escape closed it. Confirm the menu has closed
+  before closing the flyout, because a menu still open can capture a later key.
+
 ## Scoped terminal helper
 
 Dot-source [`WindowsUi.ps1`](../scripts/windows/WindowsUi.ps1) in Windows PowerShell 5.1.
