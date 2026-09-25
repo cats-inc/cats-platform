@@ -25,7 +25,115 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Overview
+## Resume Checkpoint — preview supplement and practice (2026-09-25)
+
+The owner resumed this work after PLAN-110 acceptance and authorized preview
+development skills, release exclusion, practice and knowledge distillation.
+Commit each independently validated slice to feature branches. **Do not push to
+main or merge automatically**; future integration uses normal PR/CI gates.
+The owner is handling publication separately. This work does not bump versions,
+publish, alter an installed Desktop, or reuse consumed live-model approvals.
+
+- Platform worktree: `../cats-platform-preview-skills`, branch
+  `feat/preview-development-skills`, baseline `cf2f5169`.
+- Runtime worktree: `../cats-runtime-preview-skills`, branch
+  `feat/preview-content-policy`, baseline `a694104`.
+- Original checkouts remain available for the owner's release work.
+- Recovery order: workspace/member instructions, ADR-118, SPEC-117, this
+  checkpoint, then the current branch diff. PLAN-110 retains the completed K2,
+  K3 and native projection evidence; those separate runs must not be repeated
+  or described as one end-to-end acceptance.
+- Current slice: agree the concrete content/provenance and practice contracts
+  below, then implement Runtime filtering before adding supplement assets.
+- P0 contract review passed after adding artifact-root authority, durable
+  exposure-before-delivery and local revocation invalidation. Documentation
+  whitespace/link checks passed. No supplement or promotion is implemented
+  merely by this checkpoint. P1 Runtime implementation is in progress.
+
+### Continuous slices
+
+1. **P0 contract/checkpoint:** record ownership, artifact authority, retained
+   context policy, compatibility and independent review. Commit documentation.
+2. **P1 Runtime content boundary:** filter catalog/resolution/materialization
+   and instruction rebuilds; persist monotonic content provenance; reject
+   unverified retained contexts at release execution boundaries. Verify catalog
+   cache transitions and fresh/resumed/discovered/cleared skill cases without
+   a model. Commit code, validation and checkpoint.
+3. **P2 supplement/distribution:** add the three complete skill packages and
+   Desktop profile selection. Verify actual release/preview and npm inventories,
+   provider delivery input, and stale staged resources. Commit independently.
+4. **P3 practice/candidate artifacts:** add bounded, on-demand isolated practice
+   inputs, evaluator-owned receipts and knowledge candidates. Reuse existing
+   operation and knowledge contracts; no new scheduler or automatic private
+   transcript capture. Verify failures and interruption in private fixtures.
+5. **P4 review/promotion:** validate immutable evaluation and review digests,
+   export only accepted sanitized knowledge through the existing bundle loader,
+   test revocation and source-free Catlas/Orchestrator consumption. Record live,
+   native, installed and other-OS acceptance still outstanding.
+
+At each commit update this checkpoint with the exact completed behavior, tests,
+remaining work and next entry point. Keep failed or incomplete evidence explicit.
+
+### Concrete implementation contract
+
+- All three **managed product** packages (`cats-inc-development`,
+  `cats-platform-operation`, `cats-practice-and-distill`) are authored together
+  in Runtime's reserved `runtime-skills/preview/` subtree. This refines the
+  proposed cats-one authoring assignment: cats-one continues to own workspace
+  composition and its developer instructions, while the shipped supplement
+  stays self-contained in the existing Runtime library. No second product
+  catalog and no copying of the entire workspace developer skill inventory.
+- The ordinary 33 packages and both Platform knowledge bundles remain available
+  in release and preview. Classification is explicit, never inferred from
+  family names such as `code` or `work`.
+- The executing artifact's package-local content manifest selects `release` or
+  `preview`; a caller-selected catalog/package root cannot elevate it. Missing
+  manifests select release; invalid or unsupported manifests fail explicitly.
+  Source
+  development and preview staging carry preview eligibility; official/default
+  distributable staging and the normal Runtime npm artifact are release.
+  Signing/update identity remains separate. Runtime requests, model text and
+  a user's nearby source checkout cannot elevate a packaged release profile.
+- Release staging physically omits the reserved subtree and all its resources.
+  Runtime also filters catalog/resolution and checks delivery/rebuilds; hiding
+  a catalog row alone is insufficient. Cache identity includes content policy.
+  Staging must replace its owned output so an earlier preview cannot leave files.
+- Record the effective content profile and whether preview content has ever
+  entered a context. Clearing/changing the requested skill list cannot clear
+  that history. Release execution/resume/fork rejects retained preview or
+  unverified native context before provider work; the remedy is a fresh context,
+  with no silent transplant of excluded instructions. Discovered aliases of a
+  native thread do not establish clean provenance. Existing files stay intact.
+  Persist exposure intent before materialization/provider handoff; interrupted
+  or failed delivery remains conservative. No crash window may leave preview
+  instructions in a context recorded as release-compatible.
+- Provenance is additive metadata; no destructive migration or new required
+  stored-data field. Requiring verifiable provenance for previously resumable
+  contexts tightens execution compatibility: before shipping that strict path,
+  record/apply the required Runtime minor boundary under the release SOP. Do
+  not bump versions in these implementation branches. Unknown old state is
+  retained and receives a fresh-context recovery instruction.
+- Eligibility is content delivery only. Skills consume the existing task's
+  repository, operation, permission and budget grants. They never authorize
+  source writes, publication, other-machine access, or model usage themselves.
+- Practice is initially an operator-invoked developer workflow with explicit
+  private fixture/output roots and bounded attempts. Candidate authors may
+  propose knowledge but cannot mark it verified or edit the active evaluator.
+  Freeze the scenario set, critical checks, target metric and budget before
+  candidate evaluation; protect held-out inputs from the authoring context.
+- Candidate, evaluation and review artifacts bind exact input/content digests
+  and sanitized evidence references. Promotion requires an independent review,
+  complete required results and compatibility validation through the production
+  knowledge loader. An ordinary model claim of success is never evaluator
+  evidence. Raw transcripts and developer instructions are not release knowledge.
+- Export is build-coupled and reviewable on a branch. It does not overwrite the
+  installed bundle or publish. Revocation removes the candidate from subsequent
+  exports and invalidates any local active retrieval/cache; already published
+  bundle changes require the normal release process. Receipt validation alone
+  does not satisfy SPEC-117's ten scenarios, four held-out cases, three clean
+  resets, baseline comparison and critical-check acceptance gates.
+
+## Overview (delivery gates)
 
 Deliver an observable local workflow before autonomous practice or broad
 cross-repository automation. Reuse the existing Core/Work/Runtime contracts,
@@ -56,7 +164,7 @@ retrieval tools can provide another delivery path without changing ownership.
 | Task/change-set integration, Catlas and procedure evaluation | cats-platform | Extend existing Core/Work records and product-owned delegates; coordinate frozen-contract changes |
 | Desktop build profiles and candidate process control | cats-platform | Supplement inventory, release exclusion, isolated startup, state/profile identity, listeners, bounded host actions and packaged/native evidence |
 | Workspace/session and provider delivery | cats-runtime | Generic primitives, access enforcement, retention hooks, profile-scoped skills/resources, normal Catlas context delivery and operation-result transport |
-| Cats source composition and development guidance | cats-one | Four-member profile, developer skill, managed instruction synchronization and Cats-specific build composition |
+| Cats source composition and developer workspace guidance | cats-one | Four-member profile, managed developer instruction synchronization and Cats-specific build composition; Runtime authors the managed product supplement |
 | Utility changes and procedures | cats-apps | App source/tests and built artifacts through the SDK/package boundary, only when a scenario needs them |
 
 Assign an integration owner and a reviewer for each executable slice before
@@ -212,8 +320,8 @@ not a reason to silently widen its permissions.
 
 ### Phase 2: Deliver one managed development task
 
-- [ ] Author `cats-inc-development` in cats-one's canonical developer skill
-  root. Reuse existing project-memory/handoff and development/review roles.
+- [ ] Author `cats-inc-development` in Runtime's reserved product preview
+  subtree. Reuse existing project-memory/handoff and development/review roles.
   Include it only in the preview/debug supplement. Synchronize complete
   resources through the current workspace tool; if a
   candidate parent is used, satisfy its four-member inventory contract.
@@ -345,7 +453,7 @@ Phase 0 chooses exact new files and fields after integration review.
 | Platform `src/shared/guideCatAssist*`, existing Catlas renderer components | Knowledge production/selection, bounded observations, model-context assembly and explain/guide presentation |
 | Platform `desktop/host/`, packaging scripts | Profile-specific supplement/knowledge inventories, candidate identity and owned process lifecycle |
 | Runtime `src/core/workspace/`, `src/core/hydration/`, `src/core/skills/`, provider adapters | Generic workspaces, effective skill delivery and enforced execution |
-| cats-one workspace tooling and canonical `skills/` | Cats member composition and the development procedure |
+| cats-one workspace tooling and canonical `skills/` | Cats member composition and developer workspace procedures, separate from shipped managed product skills |
 | Runtime canonical `runtime-skills/` | Preview/debug-only operation/practice packages with explicit distribution selection and validator metadata |
 | Apps `apps/`, package builder and tests | Utility-owned scenarios only when selected |
 | Platform control/tool registries, API docs, member guides and release SOPs | Publish the actual implemented contracts and evidence boundaries with each slice |

@@ -435,9 +435,15 @@ shapes and new control-surface names are a Phase 0 integration deliverable.
 
 | Package | Canonical authoring owner | Delivery and scope |
 |---------|--------------------------|--------------------|
-| `cats-inc-development` | cats-one developer `skills/` | Preview/debug supplement; managed workspace discovery/delivery verified for the selected development session |
-| `cats-platform-operation` | Runtime `runtime-skills/` | Preview/debug operation-practice supplement; absent from release and not required for normal Catlas inference |
-| `cats-practice-and-distill` | Runtime `runtime-skills/` | Preview/debug practice supplement; consumes evaluator results and proposes knowledge candidates, never grants promotion authority |
+| `cats-inc-development` | Runtime `runtime-skills/preview/` | Preview/debug managed supplement; repository routing follows cats-one's workspace composition and member instructions |
+| `cats-platform-operation` | Runtime `runtime-skills/preview/` | Preview/debug operation-practice supplement; absent from release and not required for normal Catlas inference |
+| `cats-practice-and-distill` | Runtime `runtime-skills/preview/` | Preview/debug practice supplement; consumes evaluator results and proposes knowledge candidates, never grants promotion authority |
+
+The owner authorized this implementation on feature branches on 2026-09-25.
+PLAN-109's Resume Checkpoint defines the concrete artifact/provenance and
+practice contract. The managed `cats-inc-development` authoring owner is refined
+from the original cats-one proposal to Runtime so the product supplement is
+self-contained. cats-one continues to own developer workspace composition.
 
 Reuse existing handoff, project-memory, development/review roles, and native UI
 automation where appropriate. Do not copy all developer skills into the shipped
