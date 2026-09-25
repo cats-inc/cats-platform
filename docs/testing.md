@@ -116,6 +116,18 @@ shared contracts. Reuse passing checks for unchanged inputs; full local
 `npm test` remains available for explicit requests, full-suite diagnosis, or
 changes whose impact cannot be bounded confidently.
 
+### Docs-only changes in CI
+
+The CI workflow first checks whether every changed file is under `docs/`. If so,
+the required `nodejs (24)` job still runs, so branch protection sees a passing check
+with a stable name, but it skips install, typecheck and tests. `validate` runs as
+usual. Any other path, a manual run or a failed detection runs every step.
+
+Tests, scripts and tools must therefore not read repository documentation; keep
+executable inputs under `tests/fixtures/`. `tests/docs-boundary.test.js` enforces the
+rule. A line that names a docs path without reading it carries
+`// docs-boundary-ignore: <reason>`.
+
 ## Running Tests
 
 ### Developer skills and runtime library packaging
