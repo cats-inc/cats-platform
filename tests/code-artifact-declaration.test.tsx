@@ -367,7 +367,7 @@ test('declare_artifact tool builds declarations without materializing artifacts'
     declarationId: 'spec-092:spec_document',
     label: 'spec_document',
     title: 'SPEC-092 update',
-    location: { kind: 'local_path', value: 'docs/specs/SPEC-092.md' },
+    location: { kind: 'local_path', value: 'docs/specs/SPEC-092.md' }, // docs-boundary-ignore: artifact path data, not a read
   });
 
   const declaration = CODE_ARTIFACT_DECLARATION_TOOL.createDeclaration(
