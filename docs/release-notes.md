@@ -19,6 +19,30 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-25 (0.4.5 preview — preparation)
+
+Behavior change:
+
+Desktop 0.4.5 preview is the first publication carrying the 0.4.4-prepared
+desktop automation skill updates (Windows Terminal text capture, window/pane/
+focus guards, bounded keyboard handling). No new model mapping is added to
+Platform product code. The bundled Runtime also brings the current provider
+model catalogs, including the Muse 1.3.0 refresh. Version 0.4.4 was prepared
+but never published; Desktop skips it.
+
+Migration steps:
+
+No data migration or dependency change. Existing setup remains valid.
+Platform and Desktop share version 0.4.5; the authorized preview publication is
+pending. It will bundle Runtime 0.2.1 from immutable commit
+`b712da2faf233c2ec9e4ecb831566a29f6effaa7` and the existing Usage 0.3.0 artifact
+with SHA-256 `61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509`.
+No npm or new App publication is part of this release.
+
+Deprecations:
+
+None.
+
 ## 2026-09-24 (0.4.4 — preparation)
 
 Behavior change:
