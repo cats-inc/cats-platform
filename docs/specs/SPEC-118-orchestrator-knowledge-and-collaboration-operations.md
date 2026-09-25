@@ -568,7 +568,15 @@ production wire capture and
 The subsequent K2 failure-accounting correction passes server compilation, test
 typechecking, 74 focused cases, independent review and
 [full CI on `24205589`](https://github.com/cats-inc/cats-platform/actions/runs/36086668719).
-The fixture constructs K2 preparation; model-driven discovery/preparation and
+Explicit host preparation settings pass 190 focused cases, independent review
+and [full CI on `cc5d07ad`](https://github.com/cats-inc/cats-platform/actions/runs/36089146521).
+The separate preparation harness uses authenticated Chat ingress, actual
+discovery/preparation decisions, persisted receipts, final model feedback and
+one-coordinator native usage reconciliation. Its credential-free readiness and
+fake-Runtime fixtures do not establish native model acceptance. It must await
+startup recovery and settle the active Chat continuation before cleanup, and
+must not forward ordinary fallback or worker inference outside this K2 fixture.
+The completed K3 fixture constructs its K2 preparation; model-driven discovery/preparation and
 PLAN-109 profile exclusion are separate open gates. See PLAN-110's dated evidence
 before interpreting AC-09/AC-10 as complete.
 

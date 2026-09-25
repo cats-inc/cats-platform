@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Run one owner-confirmed K3 collaboration with a real Codex Runtime.
+ * Run isolated K2 preparation or one owner-confirmed K3 collaboration.
  * Usage: node scripts/testing/orchestrator-collaboration-live.mjs --help
  * All writes use a new output directory, including provider state and Git work.
  */
@@ -14,6 +14,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { waitForCandidateRuntimeReady } from './runtime-candidate-readiness.mjs';
+import { runPreparationAcceptance } from './orchestrator-preparation-acceptance.mjs';
 
 const exec = promisify(execFile);
 const options = {};
@@ -24,32 +25,58 @@ for (let i = 2; i < process.argv.length; i += 1) {
   --platform-package PATH  Built or extracted Platform package (required)
   --runtime-package PATH   Built or extracted Runtime package (required)
   --codex-command PATH     Absolute installed Codex executable/shim (required)
-  --auth-source PATH       Codex auth.json to copy privately (required; never printed)
+  --auth-source PATH       Codex auth.json to copy privately (required except readiness; never printed)
   --output-dir PATH        New, absolute evidence/profile directory (required)
   --model ID               Explicit Codex model (required)
   --npm-prefix PATH        Existing Codex npm installation prefix for version inspection
+  --phase PHASE            execution (default K3) or preparation (K2 only)
+  --preparation-max-duration-ms N  Explicit host K2 elapsed limit (required for preparation)
+  --preparation-max-tokens N       Explicit host K2 token limit (required for preparation)
   --readiness-only         Check the isolated provider configuration without inference
 Copies only provider authentication into the new profile, then removes that copy
 on exit. Does not import user provider configuration, skills or session history.
 Uses separate coordinator/worker instances with minimal native base instruction
 files and disabled unused native features/system skills. This reduces context; it is not a native-tool
 firewall. Worker file permissions remain controlled by the production owner grant.
-Runs one fixed fixture with a 5-minute/80,000-token collaboration threshold.
+Execution runs one fixed fixture with a 5-minute/80,000-token collaboration threshold.
+Preparation uses the supplied host settings (maximum 300,000ms/80,000 tokens),
+posts one synthetic goal to an isolated authenticated Chat API, and starts no workers.
+Preparation readiness also checks that HTTP/configuration path without submitting a message.
+Readiness may omit authentication; that checks launch/configuration, not a logged-in model call.
+Choosing a preparation limit does not authorize inference; obtain the owner's run authorization.
 Tokens are measured after each response; one response can exceed the remainder. Retains
 fixture data and sanitized evidence; never uses the default running services.
 `);
     process.exit(0);
   }
   if (flag === '--readiness-only') { options['readiness-only'] = true; continue; }
-  if (!['--platform-package', '--runtime-package', '--codex-command', '--auth-source', '--output-dir', '--model', '--npm-prefix'].includes(flag)
+  if (!['--platform-package', '--runtime-package', '--codex-command', '--auth-source', '--output-dir', '--model', '--npm-prefix',
+    '--phase', '--preparation-max-duration-ms', '--preparation-max-tokens'].includes(flag)
     || !process.argv[i + 1] || process.argv[i + 1].startsWith('--')) throw new Error(`Invalid option: ${flag}`);
   options[flag.slice(2)] = process.argv[++i];
 }
-for (const name of ['platform-package', 'runtime-package', 'codex-command', 'auth-source', 'output-dir', 'model']) {
+for (const name of ['platform-package', 'runtime-package', 'codex-command', 'output-dir', 'model']) {
   if (!options[name]) throw new Error(`Missing --${name}`);
   if (name !== 'model' && !path.isAbsolute(options[name])) throw new Error(`--${name} must be absolute`);
 }
+if (!options['readiness-only'] && !options['auth-source']) throw new Error('Missing --auth-source');
+if (options['auth-source'] && !path.isAbsolute(options['auth-source'])) throw new Error('--auth-source must be absolute');
 if (options['npm-prefix'] && !path.isAbsolute(options['npm-prefix'])) throw new Error('--npm-prefix must be absolute');
+const phase = options.phase ?? 'execution';
+if (!['preparation', 'execution'].includes(phase)) throw new Error('Invalid --phase');
+const load = relative => import(pathToFileURL(path.join(options['platform-package'], 'build/server', relative)).href);
+let preparationBudget;
+if (phase === 'preparation') {
+  for (const name of ['preparation-max-duration-ms', 'preparation-max-tokens']) {
+    if (!options[name]?.trim()) throw new Error(`Missing --${name}`);
+  }
+  const { readCollaborationPreparationBudget } = await load('products/chat/shared/collaborationPreparationBudget.js');
+  preparationBudget = readCollaborationPreparationBudget({
+    CATS_CHAT_COLLABORATION_PREPARATION_MAX_DURATION_MS: options['preparation-max-duration-ms'],
+    CATS_CHAT_COLLABORATION_PREPARATION_MAX_TOKENS: options['preparation-max-tokens'] });
+} else if (options['preparation-max-duration-ms'] || options['preparation-max-tokens']) {
+  throw new Error('Preparation limits require --phase preparation');
+}
 const root = path.resolve(options['output-dir']);
 if (root === path.parse(root).root) throw new Error('Output must not be a filesystem root');
 try { await access(root); throw new Error('Output directory must not already exist'); }
@@ -72,8 +99,8 @@ const sessions = new Set();
 const calls = [];
 const runtimeLogs = [];
 const report = { startedAt: new Date().toISOString(), provider: 'codex', model: options.model,
-  budget: { maxDurationMs: 300_000, maxTokens: 80_000 }, status: 'starting' };
-const load = relative => import(pathToFileURL(path.join(options['platform-package'], 'build/server', relative)).href);
+  acceptancePhase: phase, authenticationSupplied: Boolean(options['auth-source']),
+  budget: preparationBudget ?? { maxDurationMs: 300_000, maxTokens: 80_000 }, status: 'starting' };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const inheritedKeys = new Set(['path', 'pathext', 'systemroot', 'windir', 'comspec', 'systemdrive',
   'programfiles', 'programfiles(x86)', 'programw6432', 'programdata', 'os', 'number_of_processors',
@@ -126,7 +153,10 @@ async function cleanup() {
 async function saveEvidence() {
   report.finishedAt = new Date().toISOString();
   const messages = calls.filter(call => call.operation === 'sendMessage' && call.result);
-  report.inferenceCalls = messages.length;
+  report.inferenceCalls = calls.filter(call => call.operation === 'sendMessage').length;
+  report.responsesReceived = messages.length;
+  report.runtimeUsageComplete = report.inferenceCalls === messages.length
+    && messages.every(call => Number.isFinite(call.result.tokensUsed) && call.result.tokensUsed > 0);
   report.measuredTokens = messages.reduce((sum, call) => sum + (call.result.tokensUsed ?? 0), 0);
   const native = [];
   const inspectNative = async directory => {
@@ -147,18 +177,21 @@ async function saveEvidence() {
       const expectedBase = role === 'coordinator' ? 'coordinator-instructions.md' : 'worker-instructions.md';
       const sandboxModes = [...new Set(records.filter(record => record.type === 'turn_context')
         .map(record => record.payload?.sandbox_policy?.type))];
+      const models = [...new Set(records.filter(record => record.type === 'turn_context').map(record => record.payload?.model))];
       const expectedSandbox = role === 'implementation' ? 'workspace-write' : 'read-only';
       native.push({ providerSessionId: meta.id, role,
         cumulativeTokens: usage.at(-1).payload.info.total_token_usage.total_tokens,
         usageUpdates: usage.length,
-        sandboxModes, sandboxMatches: sandboxModes.length === 1 && sandboxModes[0] === expectedSandbox,
+        models, sandboxModes, sandboxMatches: sandboxModes.length === 1 && sandboxModes[0] === expectedSandbox,
         configuredBaseMatches: (meta.base_instructions?.text ?? '').trim() === (await readFile(path.join(root, expectedBase), 'utf8')).trim() });
     }
   };
   await inspectNative(path.join(codexHome, 'sessions'));
-  const bindings = Object.entries({ coordinator: report.intent?.coordinatorSessionId,
+  const roleSessions = phase === 'preparation' ? { coordinator: report.coordinatorSessionId }
+    : { coordinator: report.intent?.coordinatorSessionId,
     implementation: report.intent?.stages.implementation.sessionId,
-    review: report.intent?.stages.review.sessionId }).map(([role, runtimeSessionId]) => {
+    review: report.intent?.stages.review.sessionId };
+  const bindings = Object.entries(roleSessions).map(([role, runtimeSessionId]) => {
     const turns = messages.filter(call => call.sessionId === runtimeSessionId);
     const ids = [...new Set(turns.map(call => call.providerSessionId))];
     const observed = ids.length === 1 && ids[0] ? native.find(entry => entry.providerSessionId === ids[0]) : undefined;
@@ -178,6 +211,17 @@ async function saveEvidence() {
     report.error = 'Native profile/usage reconciliation failed; do not claim bounded live acceptance.';
     process.exitCode = 1;
   }
+  if (report.status === 'prepared' && (native.length !== 1 || native[0].role !== 'coordinator'
+    || native[0].models.length !== 1 || native[0].models[0] !== options.model
+    || !native[0].configuredBaseMatches || !native[0].sandboxMatches || bindings.some(entry => !entry.matched)
+    || report.nativeUsage.totalTokens !== report.measuredTokens
+    || !report.runtimeUsageComplete || report.collaboration?.preparationUsage?.complete !== true
+    || report.collaboration.preparationUsage.measuredTokens !== report.measuredTokens
+    || report.measuredTokens >= report.budget.maxTokens || !report.platformServerClosed || !report.sourceUnchanged)) {
+    report.status = 'failed';
+    report.error = 'Native K2 profile/usage reconciliation failed; do not claim preparation acceptance.';
+    process.exitCode = 1;
+  }
   report.authenticationCopyRemoved = await access(authCopy).then(() => false, error => error.code === 'ENOENT');
   if (report.cleanupError || !report.authenticationCopyRemoved) {
     report.status = 'failed';
@@ -191,6 +235,9 @@ async function saveEvidence() {
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
   interrupted = true;
   report.status = 'interrupted';
+  // The preparation helper cancels and settles its post-ACK continuation first;
+  // main's finally then closes Runtime and saves evidence in that order.
+  if (phase === 'preparation') { process.exitCode = signal === 'SIGINT' ? 130 : 143; return; }
   void cleanup().catch(error => { report.cleanupError = error.message; }).then(saveEvidence)
     .finally(() => process.exit(signal === 'SIGINT' ? 130 : 143));
 });
@@ -203,11 +250,15 @@ async function freePort() {
   return port;
 }
 try {
-  credentialCopy = copyFile(options['auth-source'], authCopy);
+  credentialCopy = options['auth-source'] ? copyFile(options['auth-source'], authCopy) : undefined;
   await credentialCopy;
   if (interrupted) throw new Error('Interrupted before candidate startup');
   delete process.env.CATS_PLATFORM_PACKAGE_ROOT;
   process.chdir(root);
+  if (phase === 'preparation') {
+    for (const name of Object.keys(process.env)) delete process.env[name];
+    Object.assign(process.env, env);
+  }
   // Provider and Git overrides apply only to candidate children, never the agent shell.
   const hookDir = path.join(root, 'empty-hooks');
   await mkdir(hookDir);
@@ -299,11 +350,14 @@ assert.equal(add(-2, 3), 1);
       return result;
     };
     if (property === 'sendMessage') return async (id, content, input) => {
-      const result = await target.sendMessage(id, content, input);
-      const call = { operation: 'sendMessage', sessionId: id, content, input,
-        result: { tokensUsed: result.tokensUsed, inputTokens: result.inputTokens, outputTokens: result.outputTokens,
-          segments: result.segments } };
+      const call = { operation: 'sendMessage', sessionId: id, content, input, startedAt: new Date().toISOString() };
       calls.push(call);
+      let result;
+      try { result = await target.sendMessage(id, content, input); }
+      catch (error) { call.error = error.message; throw error; }
+      call.result = { tokensUsed: result.tokensUsed, inputTokens: result.inputTokens, outputTokens: result.outputTokens,
+        segments: result.segments };
+      call.finishedAt = new Date().toISOString();
       const observed = await fetch(`${baseUrl}/sessions/${id}`, { headers: { authorization: `Bearer ${key}` },
         signal: AbortSignal.timeout(5000) });
       assert.equal(observed.ok, true, 'Completed Runtime turn must retain its native session binding');
@@ -370,7 +424,15 @@ assert.equal(add(-2, 3), 1);
   const coordinatorDiagnostics = await runtime.getProviderDiagnostics({ probe: 'live', provider: 'codex', instance: 'coordinator' });
   assert.equal(coordinatorDiagnostics.providers.find(entry => entry.provider === 'codex' && entry.instance === 'coordinator')?.availability.status,
     'ok', 'Strict coordinator readiness is required before inference');
-  if (options['readiness-only']) {
+  if (interrupted) throw new Error('Interrupted before acceptance');
+  if (phase === 'preparation') {
+    await runPreparationAcceptance({ load, root, workspace, target, coordinatorTarget, runtime,
+      runtimeBaseUrl: baseUrl, runtimeApiKey: key, budget: preparationBudget,
+      readinessOnly: options['readiness-only'] === true, isCancelled: () => interrupted, report });
+    report.sourceUnchanged = (await git(['status', '--porcelain'])).stdout.trim() === ''
+      && (await git(['rev-parse', 'HEAD'])).stdout.trim() === report.baselineCommitId;
+    assert.equal(report.sourceUnchanged, true);
+  } else if (options['readiness-only']) {
     report.status = 'ready';
     report.inferenceCalls = 0;
   } else {

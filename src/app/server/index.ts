@@ -86,7 +86,7 @@ export function createServer(dependencies: ServerDependencies) {
     resolvedDependencies.chat.pollingSupervisor.stopAll();
   });
 
-  void runServerStartupRecoveryPasses(resolvedDependencies);
-
-  return server;
+  // Resolution means all best-effort passes settled, not that every pass succeeded.
+  // Callers with private state can await this before submitting work or cleaning up.
+  return Object.assign(server, { startupRecovery: runServerStartupRecoveryPasses(resolvedDependencies) });
 }
