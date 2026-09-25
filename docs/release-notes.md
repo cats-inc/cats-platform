@@ -42,6 +42,10 @@ It also includes:
   knowledge-practice tooling stays developer-only.
 - **Usage App 0.4.0.** It declares Platform `^0.5.0`; its content equals Usage
   0.3.0, which declares `^0.4.0` and continues to serve Desktop 0.4.x.
+- **Knowledge compatibility.** Catlas and Orchestrator bundled knowledge declares
+  Platform `0.5.x`, preserving model guidance after the minor upgrade. Practice
+  fixtures follow the checkout version. Cancellation tests fail promptly on
+  unavailable knowledge, and CI has a bounded job duration.
 
 Expected platform trust: macOS signed + notarized, Windows unsigned (no
 certificate), Linux n/a.

@@ -194,11 +194,12 @@ test('promotion refuses provenance growth that evicts previously evaluated conte
   const after = structuredClone(before);
   for (const item of after.entries) item.sources.push(`evaluation:${'e'.repeat(64)}`, `review:${'a'.repeat(64)}`);
   const context = { role: 'catlas', surface: 'code-help', locale: 'en', goal: 'Next step', scope: {}, topics: ['code'], operations: [] };
-  const beforeLoaded = (await validateBundle(before, '0.4.5')).en;
-  const afterLoaded = (await validateBundle(after, '0.4.5')).en;
+  const { platformVersion } = await readJson(f.paths.exerciseFile);
+  const beforeLoaded = (await validateBundle(before, platformVersion)).en;
+  const afterLoaded = (await validateBundle(after, platformVersion)).en;
   assert.equal(assembleProductKnowledgeContext(beforeLoaded, context).entries.length, 4);
   assert.ok(assembleProductKnowledgeContext(afterLoaded, context).entries.length < 4);
-  await assert.rejects(assertPromotionSelection({ candidate, exercise: { platformVersion: '0.4.5', scenarios: [{ context }] } }, after),
+  await assert.rejects(assertPromotionSelection({ candidate, exercise: { platformVersion, scenarios: [{ context }] } }, after),
     /Promotion changed/u);
 });
 

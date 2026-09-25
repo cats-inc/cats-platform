@@ -27,6 +27,25 @@ architecture review and release authorization remain separate gates.
 
 ## Resume Checkpoint — preview supplement and practice (2026-09-25)
 
+### Desktop 0.5.0 release repair
+
+PR #141 exposed a minor-version compatibility gap: the 0.5.0 host rejected the
+bundled 0.4.x knowledge, and the Catlas cancellation test waited indefinitely for
+a model call that early fallback never made. The cancelled CI run was
+`36128249129`. The repair updates both reviewed product bundle ranges/revisions,
+derives synthetic fixture versions from the checkout, races model startup against
+early completion, releases deferred responses on cleanup, and bounds test/CI waits.
+This repair stays on PR #141; it does not resume the broader development backlog.
+Server/host builds and 72 focused tests passed, including early-fallback cancellation,
+both bilingual consumers, the practice/promotion workflow, Desktop staging and
+source-free npm/Desktop knowledge delivery. Independent review found no blockers;
+CI YAML and whitespace checks passed. Full PR CI remains the merge gate before
+the authorized 0.5.0 standard-profile preview publication. Private logs and the
+recovery checkpoint remain under `build/validation/pr141-fix` in the repair
+worktree and `build/validation/pr141-diagnosis` in the original checkout.
+
+### Previous implementation checkpoint
+
 The owner resumed this work after PLAN-110 acceptance and authorized preview
 development skills, release exclusion, practice and knowledge distillation.
 The initial delivery used independently validated feature-branch checkpoints.
