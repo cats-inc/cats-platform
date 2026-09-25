@@ -28,6 +28,23 @@ container, or in another RDP/session context may not reach the user's desktop.
 Identify the target's real PID, window handle and privilege level. Do not assign
 to PowerShell's automatic `$PID` or `$HOME`; use task-specific variable names.
 
+Check which desktop the executor's commands actually run on. Read the thread
+desktop name with `GetThreadDesktop(GetCurrentThreadId())` and
+`GetUserObjectInformation(..., UOI_NAME)`, and count UIA top-level windows. The
+user's desktop is `WinSta0\Default`. Any other desktop is isolated from it, even
+inside `WinSta0`, and UIA sees none of the user's windows.
+
+Operator-run probes on 2026-09-25 showed that Antigravity CLI (`agy` 1.2.10) runs
+its command tool on a private `exebox-*` desktop, where UIA saw 0 top-level
+windows. This happened for plain `agy` and for `agy --sandbox=false`, so neither
+the `--sandbox` flag nor the `enableTerminalSandbox` setting removes that desktop.
+`agy --sandbox` adds terminal restrictions: it requested a one-time administrator
+elevation to set up sandboxing, and in that test the elevated setup never
+finished. Do not use agy's command tool as the desktop executor. Its per-command
+overrides (`BypassSandbox`, the approval `sandboxOverride` and `command(...)`
+allow rules) are unverified for desktop access; probe the desktop name before
+relying on any of them.
+
 ## Prefer UI Automation for exposed controls
 
 With Windows PowerShell/.NET Framework where the assemblies are available, this
