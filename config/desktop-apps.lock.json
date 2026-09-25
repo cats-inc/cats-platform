@@ -3,9 +3,9 @@
   "apps": [
     {
       "id": "cats.usage",
-      "version": "0.3.0",
-      "sha256": "61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509",
-      "artifact": "https://github.com/cats-inc/cats-apps/releases/download/usage-v0.3.0/usage-0.3.0.catsapp"
+      "version": "0.4.0",
+      "sha256": "7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba",
+      "artifact": "https://github.com/cats-inc/cats-apps/releases/download/usage-v0.4.0/usage-0.4.0.catsapp"
     }
   ]
 }

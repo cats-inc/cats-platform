@@ -91,6 +91,12 @@ opener commands. Native browser/physical-terminal smoke on each OS is separate.
 
 ## Choosing Local Validation
 
+The hosted Node.js CI job has a 20-minute deadline. Catlas cancellation fixtures
+also bound their wait for model startup and fail immediately if help returns before
+dispatch; deferred model responses are released during cleanup. A missing or
+incompatible knowledge bundle must fail a test instead of leaving CI waiting for
+a model call that will never occur.
+
 [AGENTS.md: Local Validation Scope](../AGENTS.md#local-validation-scope) is the
 canonical policy for all agents. Local commit/handoff checks cover the affected
 behavior and consumers; a full local suite is not a routine prerequisite.

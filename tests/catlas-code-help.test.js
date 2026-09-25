@@ -262,10 +262,11 @@ test('disabling assistance invalidates an in-flight result', async (t) => {
   assert.deepEqual(f.calls.close, ['help-session']);
 });
 
-test('timeout keeps admission occupied until a late-created session is closed', async (t) => {
+test('timeout keeps admission occupied until a late-created session is closed', { timeout: 5_000 }, async (t) => {
   let releaseCreate;
   const created = new Promise((resolve) => { releaseCreate = resolve; });
   const f = await fixture(t, { createSession: async () => created }, { timeoutMs: 500 });
+  t.after(() => releaseCreate({ id: 'late-session', provider: 'claude', model: 'help-model' }));
   const first = await f.service.help(request(), new AbortController().signal);
   assert.equal(first.reason, 'timeout');
   assert.equal((await f.service.help(request(), new AbortController().signal)).reason, 'busy');
@@ -278,7 +279,23 @@ test('timeout keeps admission occupied until a late-created session is closed', 
   assert.equal(f.calls.send.length, 0);
 });
 
-test('cancellation cancels an active turn and still closes its owned session', async (t) => {
+function waitForSendStart(sending, pending) {
+  return Promise.race([sending, pending.then((result) => {
+    assert.fail(`Expected a model turn to start; help returned ${result.reason}.`);
+  })]);
+}
+
+test('cancellation setup fails promptly when incompatible knowledge prevents a model turn', { timeout: 5_000 }, async (t) => {
+  const f = await fixture(t);
+  const incompatible = { ...JSON.parse(sourceKnowledge), platformRange: '99.x' };
+  await writeFile(f.knowledgeFilePath, JSON.stringify(incompatible));
+  const pending = f.service.help(request(), new AbortController().signal);
+  await assert.rejects(waitForSendStart(new Promise(() => {}), pending), /help returned knowledge_unavailable/u);
+  assert.equal(f.calls.create.length, 0);
+  assert.equal(f.calls.send.length, 0);
+});
+
+test('cancellation cancels an active turn and still closes its owned session', { timeout: 5_000 }, async (t) => {
   let finish;
   let started;
   const sending = new Promise((resolve) => { started = resolve; });
@@ -286,7 +303,12 @@ test('cancellation cancels an active turn and still closes its owned session', a
   const f = await fixture(t, { sendMessage: async () => { started(); return message; } });
   const controller = new AbortController();
   const pending = f.service.help(request(), controller.signal);
-  await sending;
+  t.after(async () => {
+    controller.abort();
+    finish({ segments: [] });
+    await pending;
+  });
+  await waitForSendStart(sending, pending);
   controller.abort();
   assert.equal((await pending).reason, 'cancelled');
   for (let attempt = 0; attempt < 40 && !f.calls.close.length; attempt++) {

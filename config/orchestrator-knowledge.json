@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "revision": "2026-09-25.3",
-  "platformRange": "0.4.x",
+  "revision": "2026-09-25.4",
+  "platformRange": "0.5.x",
   "requiredCapabilities": ["orchestrator-context-v1"],
   "entries": [
     {

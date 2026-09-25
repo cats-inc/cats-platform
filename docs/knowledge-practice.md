@@ -32,6 +32,12 @@ cross-role selection fixture; its combined required capabilities deliberately
 cannot export to either single production consumer. Do not weaken a consumer's
 capability list to make a fixture load.
 
+Generated fixtures use the checkout's Platform version and matching minor range
+for both the exercise and candidate knowledge. Shipped Catlas/Orchestrator bundles
+retain explicit reviewed ranges: when preparing a new minor, verify those assets
+against the new consumers and update their ranges and bundle revisions. Fixture
+version derivation does not automatically approve product knowledge for a new minor.
+
 The source/preview Runtime manifest must permit practice. Missing/release
 eligibility rejects admission. This developer command explicitly selects its
 Runtime artifact; it does not claim to identify an installed/running controller.

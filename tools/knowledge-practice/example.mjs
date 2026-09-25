@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { PLATFORM_VERSION } from '#cats-app-package';
 import { writeNew } from './artifacts.mjs';
 
 export const FIXTURE_EVALUATOR = `export async function attempt({ fixture, context, signal }) {
@@ -43,7 +44,8 @@ export async function createFixtureInputs(root, { consumer } = {}) {
   }
   const requiredCapabilities = consumer === 'catlas' ? ['code-entry-v1']
     : consumer === 'orchestrator' ? ['orchestrator-context-v1'] : ['code-entry-v1', 'orchestrator-context-v1'];
-  const knowledge = { revision: 'fixture.practice.v1', platformRange: '0.4.x', requiredCapabilities, entries: [guide, procedure] };
+  const platformRange = `${PLATFORM_VERSION.split('.').slice(0, 2).join('.')}.x`;
+  const knowledge = { revision: 'fixture.practice.v1', platformRange, requiredCapabilities, entries: [guide, procedure] };
   const baseline = { schemaVersion: 2, ...knowledge, entries: [{ ...guide, verifiedAt: '2026-09-25', sources: ['fixture:baseline'] }] };
   const draft = { schemaVersion: 1, id: 'fixture-lesson', authorId: 'fixture-author',
     evidenceRefs: ['fixture:selection-observation'], counterexamples: ['Knowledge must match the current role, surface, topic and available operations.'], knowledge };
@@ -74,7 +76,7 @@ export async function createFixtureInputs(root, { consumer } = {}) {
     ['held-goal-truncation', 'catlas', 'code-help', 'code', [], 'practice.guide', true],
   ];
   const exercise = { schemaVersion: 1, id: 'fixture-curriculum', revision: 'v1', evidenceMode: 'fixture',
-    platformVersion: '0.4.5', capabilities: knowledge.requiredCapabilities, repeats: 3,
+    platformVersion: PLATFORM_VERSION, capabilities: knowledge.requiredCapabilities, repeats: 3,
     budget: { maxAttempts: 60, maxElapsedMs: 180_000, attemptTimeoutMs: 10_000, maxTokens: 10_000 },
     metric: { name: 'passedChecks', minimumImprovement: 1 },
     scenarios: definitions.map(([scenarioId, role, surface, topic, operations, entryId, expected], index) => ({
