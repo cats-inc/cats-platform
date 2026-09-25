@@ -2,8 +2,9 @@
 
 [Preview knowledge practice](knowledge-practice.md) documents the developer-only
 Desktop-managed candidate authoring, frozen evaluator and interruption/checkpoint
-workflow for PLAN-109. Native authoring inference awaits explicit external-call
-authorization; isolated authoring and lifecycle tests pass.
+workflow for PLAN-109. Native Windows authoring now produces an attributed,
+unverified draft within budget; independent content evaluation/promotion remains
+pending. Isolated authoring and lifecycle tests pass.
 
 > This directory contains all project documentation.
 
@@ -50,9 +51,11 @@ compatible local knowledge plus current context to Catlas's bound provider/model
 for situational guidance. The package covers isolated candidates, multi-repo
 ownership, artifact inventories, actual model-input delivery and reviewed
 knowledge promotion. The initial Code-entry knowledge reader, inline model
-context and explicit-help UI are implemented with fixture coverage. Live-provider
-and installed-Desktop acceptance, development supplements, practice and promotion
-remain pending. ADR is Proposed overall and PLAN is in progress. Platform owns
+context and explicit-help UI are implemented with fixture coverage. Preview
+supplements and developer practice/promotion mechanics are implemented; native
+managed authoring now produces a linked unverified candidate. Independent lesson
+evaluation/promotion, managed source development and combined installed-profile
+acceptance remain pending. ADR is Proposed overall and PLAN is in progress. Platform owns
 this joint design, with explicit Runtime, cats-one and Apps work packages.
 
 ## Provider Catalog Soft Patches

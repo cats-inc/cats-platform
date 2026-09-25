@@ -4,9 +4,9 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; initial Code knowledge assistance implemented, live/native acceptance pending |
+| Status | Native Desktop candidate authoring accepted; knowledge evaluation/promotion and broader gates pending |
 | Owner | Platform integration; member responsibilities listed below |
-| Reviewer | Product owner; independent implementation reviewers unassigned |
+| Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Last updated | 2026-09-26 |
 
 ## Related Spec
@@ -25,16 +25,76 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — managed knowledge authoring (2026-09-26)
+## Resume Checkpoint — native candidate authoring accepted (2026-09-26)
 
-**Resume here:** implementation is locally checkpointed at Platform `4f92836e`
+- Code heads: Platform `4f92836e` (documentation checkpoint `3d3f12d9`) and Runtime
+  `4bb1495`. Branches remain `feat/desktop-knowledge-candidate` and
+  `fix/readonly-sandbox-skill-delivery`. Native acceptance required no further
+  production-code changes or repeated test suites.
+- The owner explicitly authorized one new `gpt-6-astra` turn after profile 03's
+  budget rejection. **This second authorization is now consumed.** Do not replay
+  either native run. Private evidence root is
+  `build/validation/knowledge-authoring-native/profile-prepared-04`.
+- Owned native Windows Desktop PID 15340 managed Platform 8772 / Runtime 19116
+  on loopback 59347 / 59348. Fresh ownership, lifecycle and compiled-artifact
+  checks passed before opening the gate. Runtime session
+  `b3eb0d63-0af6-4443-87a7-147edf3ab3bf` completed one agent turn; Core Run
+  duration was 51,986 ms, within the unchanged 180-second / 24,000-token thresholds.
+- The provider's project-instruction block contains only the private 375-byte author instructions
+  (604 bytes with provider wrapping); the inherited Platform rules are absent.
+  One read_file invocation read the delivered author skill. Two native usage
+  records total **14,589 tokens** (13,305 input + 1,284 output; cached input
+  6,144 is included), matching Core. This verifies the prepared instruction
+  boundary on this native CLI, not a general hard token cap.
+- Before/after observations and strict skill receipts agree on preview profile, exact
+  cats-practice-and-distill package fingerprint, selected provider/model,
+  session-bound provenance, filesystem delivery, sandbox/read_only/default and
+  read/list grant. Post-run observe reports the session closed with these fields
+  retained. Native output, saved draft and candidate content match exactly.
+- Candidate digest:
+  `6c7ce9b832a987ab91295fc1d2e3c0eec6dd65a2042ba043c2c2da2468c12ac5`.
+  Core Task/Run completed and exactly one artifact
+  `artifact-0c62afd2cbad997baadfe30f` is attributed to the author actor, Runtime
+  session and correct Task/Run. Status is draft, disposition candidate and
+  knowledge state unverified, with no verification timestamp or promotion.
+- Actual Desktop task and artifact pages plus scoped Windows UIA confirm the
+  completed task, linked draft, unverified summary and candidate path. The
+  existing dataset detail has **no inline JSON preview**; full content inspection
+  used the retained file. Evidence includes `authoring-task-completed.png`,
+  `authoring-candidate-detail.png`, `candidate-ui-observation.json`,
+  `native-output-observation.json`, receipts and native history.
+- Independent evidence/provenance review passed. Content review found that the
+  one cancellation lesson replaced guidance across all five baseline topics;
+  workspace and permissions entries are now off-topic. This is a valid authored
+  **unverified draft**, not evidence that it improves Catlas. Do not promote this
+  complete replacement bundle without addressing topic preservation and running
+  independent evaluation. Its scope is Catlas/code-help only; it establishes no
+  Orchestrator knowledge consumption or supported new operation.
+- Cleanup completed: Desktop exit 0, private provider auth removed, independent
+  CIM/listener receipt shows no owned processes or either listener. All evidence
+  remains private; no installed/user product state, released knowledge, version,
+  remote branch or publication was changed.
+- **Next work:** constrain author changes to evidence-relevant topics and preserve
+  unrelated baseline guidance; prepare independent baseline/candidate evaluation
+  with critical topic-preservation checks. Candidate contents, held-out evaluation
+  and review remain separate from successful transport/materialization. Keep the
+  existing release-consumer gates and separate Catlas/Orchestrator applicability.
+  Local preparation can continue without owner-operated testing; another external
+  model turn requires a new applicable authorization. G1/G2/G4 and combined
+  installed-profile acceptance remain open.
+
+## Previous checkpoint — managed knowledge authoring (2026-09-26)
+
+**Historical preflight:** implementation was locally checkpointed at Platform `4f92836e`
 and Runtime `4bb1495`. The single authorized native turn is consumed: strict
 skill delivery worked, but 43,818 measured tokens exceeded 24,000 and no artifact
 was admitted. All owned processes and temporary provider auth are gone. New
 private `profile-prepared-04` is prepared with its own Git instruction boundary;
-it has never launched, copied provider auth or opened its gate. A new explicit
-single-turn authorization is required before execution. See the final bullets
-below for evidence and exact remaining acceptance; do not replay profile 03.
+it had not launched, copied provider auth or opened its gate at that checkpoint.
+The owner then replied `授權` to the second single-turn request, keeping
+`gpt-6-astra` and 180 seconds / 24,000 measured tokens. Profile 04 subsequently
+completed as recorded above; both authorizations are consumed. These historical
+instructions do not authorize another launch or provider turn.
 
 The owner authorized continuing the next bounded slice, maintaining checkpoints
 and doing isolated validation without requiring owner-operated testing. The
@@ -178,7 +238,7 @@ separately. No version bump, publication or installed-profile mutation is includ
   Runtime revision `4bb1495`, and absent Desktop/auth/start gate. Helpers now check
   the boundary/instruction digest before opening a gate. This is documented
   mitigation, not proof of the next effective prompt or its token spend.
-- Next entry after **new** authorization: keep `gpt-6-astra`, one agent turn,
+- Planned profile 04 entry, now completed above: keep `gpt-6-astra`, one agent turn,
   the same candidate/evidence and 180-second / 24,000-token post-response threshold.
   Recheck prepared ports are free (refresh launch/cookie fixture consistently if
   needed), launch profile 04, renew ownership proof and inspect actual context,
