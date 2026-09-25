@@ -13,11 +13,11 @@ import { isCatPartOfChatProduct } from '../shared/directMessageSelectors.js';
 import { knowledgeDigest } from '../../../platform/knowledge/productKnowledge.js';
 import { collaborationExecutionRevision, resolveCollaborationOwnerChoice,
   ENSURE_COLLABORATION_CONVERSATION, ENSURE_COLLABORATION_PARTICIPANTS,
-  REQUEST_COLLABORATION_ROLE, INSPECT_COLLABORATION_WORK, STOP_COLLABORATION_WORK } from './collaborationExecutionSurface.js';
+  REQUEST_COLLABORATION_ROLE, REQUEST_COLLABORATION_EXECUTION, INSPECT_COLLABORATION_WORK, STOP_COLLABORATION_WORK } from './collaborationExecutionSurface.js';
 import { admitCollaboration, collaborationIntentId, collaborationDigest, readCollaborationIntent,
   writeCollaborationIntent, collaborationSummary, updateCollaborationChild,
   type CollaborationWorker, type WorkCollaborationIntent } from '../../work/state/collaborationRecords.js';
-import { requestCollaborationRole, stopCollaboration, assertCollaborationBudget,
+import { requestCollaborationRole, requestCollaborationExecution, stopCollaboration, assertCollaborationBudget,
   type CollaborationExecutionPort } from '../../work/state/collaborationExecution.js';
 
 export interface ChatCollaborationExecutionOptions {
@@ -234,14 +234,16 @@ export async function createChatCollaborationExecution(options: ChatCollaboratio
       || (toolName === REQUEST_COLLABORATION_ROLE && !['implementation', 'review'].includes(String(object.role)))) {
       return { status: 'rejected', error: { code: 'E_SCHEMA_INVALID', message: 'Use only the server-bound operation input.' } };
     }
-    if (toolName === ENSURE_COLLABORATION_CONVERSATION) await ensureChat(false);
+    if (toolName === REQUEST_COLLABORATION_EXECUTION) await requestCollaborationExecution(port);
+    else if (toolName === ENSURE_COLLABORATION_CONVERSATION) await ensureChat(false);
     else if (toolName === ENSURE_COLLABORATION_PARTICIPANTS) await ensureChat(true);
     else if (toolName === REQUEST_COLLABORATION_ROLE) await requestCollaborationRole(port, object.role as 'implementation' | 'review');
     else if (toolName === STOP_COLLABORATION_WORK) await stopCollaboration(store, options.runtimeClient, intentId, 'cancelled');
     else if (toolName !== INSPECT_COLLABORATION_WORK) return { status: 'rejected', error: {
       code: 'E_TOOL_SCOPE_DENIED', message: 'Unknown collaboration operation.' } };
     const intent = readCollaborationIntent(await store.readCore(), intentId)!;
-    return { status: 'applied', result: collaborationSummary(intent) };
+    return { status: 'applied', result: { ...collaborationSummary(intent),
+      ...(toolName === REQUEST_COLLABORATION_EXECUTION ? { request: { status: 'accepted', runtimeStarted: false } } : {}) } };
   }
   return { port, created, execute };
 }

@@ -25,6 +25,7 @@ import {
   productKnowledgeReceipt,
   type ProductKnowledgeContext,
 } from '../knowledge/productKnowledge.js';
+import type { ProviderAgentPromptSession } from './providerAgentPromptSession.js';
 
 export const PROVIDER_AGENT_ADAPTER_VERSION = 1;
 export const PROVIDER_AGENT_DECISION_PROMPT_SCHEMA = 'cats.provider_agent.decision.v1' as const;
@@ -64,6 +65,8 @@ export interface ProviderAgentAdapterInput {
   observation: ProviderAgentBoundedObservation;
   productKnowledge?: ProductKnowledgeContext;
   toolResults?: ProviderAgentToolFeedback[];
+  /** Optional, ephemeral delivery cache owned by one K3 coordinator attempt. */
+  promptSession?: ProviderAgentPromptSession;
   supervision: RuntimeSupervisionContext;
 }
 
@@ -94,6 +97,15 @@ export class ProviderAgentAdapterError extends Error {
 export async function requestProviderAgentDecision(
   input: ProviderAgentAdapterInput,
 ): Promise<ProviderAgentAdapterResult> {
+  try {
+    return await requestDecision(input);
+  } catch (error) {
+    input.promptSession?.reset();
+    throw error;
+  }
+}
+
+async function requestDecision(input: ProviderAgentAdapterInput): Promise<ProviderAgentAdapterResult> {
   const observationErrors = validateProviderAgentBoundedObservation(input.observation);
   if (observationErrors.length > 0) {
     throw new ProviderAgentAdapterError(
@@ -103,9 +115,20 @@ export async function requestProviderAgentDecision(
     );
   }
 
-  const content = buildProviderAgentDecisionPrompt(
-    input.observation, input.productKnowledge, input.toolResults,
+  const fullPrompt = buildProviderAgentDecisionPrompt(
+    input.observation, input.productKnowledge, input.toolResults, input.promptSession ? 8 : 4,
   );
+  const prepared = input.promptSession?.prepare(fullPrompt, JSON.stringify({
+    runId: input.observation.runId, actor: input.observation.actor,
+    provider: input.target.provider, instance: input.target.instance, model: input.target.model,
+    modelSelection: input.target.createInput?.modelSelection,
+    cwd: input.target.cwd, instructions: input.target.instructions,
+    skills: input.target.skills ?? input.target.createInput?.skills,
+    workspaceKind: input.target.createInput?.workspaceKind,
+    workspaceAccess: input.target.createInput?.workspaceAccess,
+    permissionMode: input.target.createInput?.permissionMode,
+  }), input.target.sessionId);
+  const content = prepared?.content ?? fullPrompt;
 
   const createdSession = input.target.sessionId
     ? null
@@ -136,7 +159,15 @@ export async function requestProviderAgentDecision(
           providerAgentContractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
           observationId: input.observation.observationId,
           runId: input.observation.runId,
-          ...(input.productKnowledge ? { productKnowledge: productKnowledgeReceipt(input.productKnowledge) } : {}),
+          ...(prepared ? { providerAgentContextDelivery: prepared.metadata } : {}),
+          ...(input.productKnowledge ? { productKnowledge: {
+            ...productKnowledgeReceipt(input.productKnowledge),
+            ...(prepared?.metadata.referencedEntries.length ? {
+              delivery: prepared.metadata.inlineEntries.length ? 'mixed' : 'session_reference',
+              inlineEntries: prepared.metadata.inlineEntries,
+              referencedEntries: prepared.metadata.referencedEntries,
+            } : {}),
+          } } : {}),
         },
       },
     },
@@ -163,6 +194,7 @@ export async function requestProviderAgentDecision(
     );
   }
 
+  prepared?.accept(sessionId);
   return {
     sessionId,
     createdSession,
@@ -175,8 +207,9 @@ export function buildProviderAgentDecisionPrompt(
   observation: ProviderAgentBoundedObservation,
   productKnowledge?: ProductKnowledgeContext,
   toolResults?: ProviderAgentToolFeedback[],
+  maxToolResults: 4 | 8 = 4,
 ): string {
-  if (toolResults && (toolResults.length > 4 || JSON.stringify(toolResults).length > 24_000)) {
+  if (toolResults && (toolResults.length > maxToolResults || JSON.stringify(toolResults).length > 24_000)) {
     throw new ProviderAgentAdapterError('INVALID_OBSERVATION', 'Tool feedback exceeds its bounded envelope.');
   }
   return JSON.stringify({

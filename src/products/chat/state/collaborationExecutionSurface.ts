@@ -8,12 +8,13 @@ import { resolveOrchestratorExecutionTarget } from './runtimeTargeting.js';
 import type { CollaborationProposal, CollaborationReport } from './orchestratorCollaboration.js';
 
 export const ACCEPT_COLLABORATION = 'execute_collaboration';
+export const REQUEST_COLLABORATION_EXECUTION = 'work.collaboration.request_execution';
 export const ENSURE_COLLABORATION_CONVERSATION = 'chat.collaboration.ensure_conversation';
 export const ENSURE_COLLABORATION_PARTICIPANTS = 'chat.collaboration.ensure_participants';
 export const REQUEST_COLLABORATION_ROLE = 'work.collaboration.request_role';
 export const INSPECT_COLLABORATION_WORK = 'work.collaboration.inspect';
 export const STOP_COLLABORATION_WORK = 'work.collaboration.stop';
-export const EXECUTION_TOOL_NAMES = [ENSURE_COLLABORATION_CONVERSATION,
+export const EXECUTION_TOOL_NAMES = [REQUEST_COLLABORATION_EXECUTION, ENSURE_COLLABORATION_CONVERSATION,
   ENSURE_COLLABORATION_PARTICIPANTS, REQUEST_COLLABORATION_ROLE,
   INSPECT_COLLABORATION_WORK, STOP_COLLABORATION_WORK] as const;
 export const isCollaborationExecutionTool = (name: string) =>
@@ -68,7 +69,9 @@ export function resolveCollaborationOwnerChoice(
 }
 export function collaborationExecutionManifests(): SupervisedToolManifest[] {
   return EXECUTION_TOOL_NAMES.map((name) => ({ schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,
-    name, manifestVersion: '1.0', description: name === REQUEST_COLLABORATION_ROLE
+    name, manifestVersion: '1.0', description: name === REQUEST_COLLABORATION_EXECUTION
+      ? 'Accept the fixed owner-confirmed collaboration only; the host separately validates and executes Chat setup, implementation and dependent review.'
+      : name === REQUEST_COLLABORATION_ROLE
       ? 'Queue one fixed role Run only; the host separately validates the owner grant before Runtime execution.'
       : name === INSPECT_COLLABORATION_WORK ? 'Inspect only the admitted collaboration intent.'
         : name === STOP_COLLABORATION_WORK ? 'Stop owned collaboration execution and preserve completed effects.'
@@ -87,7 +90,9 @@ export function collaborationExecutionDescriptors(): ProviderAgentToolDescriptor
     inputHints: [manifest.name === REQUEST_COLLABORATION_ROLE
       ? 'Input: { role: "implementation" | "review" }. No other fields. Repeated calls return existing stage; they never start a new attempt.'
       : 'Input: {} only. No caller-supplied intent, Cat, conversation, task, run, path or grant.',
-    'Sequence: ensure_conversation, ensure_participants, request_role implementation, request_role review, inspect. Queue accepted is not Runtime started; wait for the host inspection receipt. Stop on rejection or blocked work.',
+    manifest.name === REQUEST_COLLABORATION_EXECUTION
+      ? 'Prefer this single request for the complete already-confirmed workflow. It records acceptance only. The host returns actual Chat and both role results; do not call the individual steps again. Stop on rejected or blocked work.'
+      : 'For individual operations: ensure_conversation, ensure_participants, request_role implementation, request_role review, inspect. Queue accepted is not Runtime started; wait for host inspection. Stop on rejection or blocked work.',
     'A clean new commit verifies captured revision only. An attributed review verdict is not proof that tests passed.'],
   }));
 }

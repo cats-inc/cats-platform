@@ -40,6 +40,7 @@ export interface WorkCollaborationIntent {
   stages: Record<CollaborationRole, CollaborationStage>;
   coordinatorSessionId: string | null;
   coordinatorClosed?: boolean;
+  executionRequested?: boolean;
   executionGrant: { source: 'owner_choice'; implementationWorkspace: 'worktree';
     implementationTools: string[]; reviewAccess: 'read_only'; delivery: 'local_commit_only' };
   receipts: ProviderAgentToolFeedback[];
@@ -50,7 +51,7 @@ export interface WorkCollaborationIntent {
 export type CollaborationAdmission = Omit<WorkCollaborationIntent,
   'schemaVersion' | 'id' | 'inputDigest' | 'admittedAt' | 'deadline' | 'tokensUsed'
   | 'channelId' | 'conversationId' | 'membershipVerified' | 'status' | 'stages'
-  | 'coordinatorSessionId' | 'coordinatorClosed' | 'executionGrant' | 'receipts' | 'implementationEvidence' | 'review' | 'reason'>;
+  | 'coordinatorSessionId' | 'coordinatorClosed' | 'executionRequested' | 'executionGrant' | 'receipts' | 'implementationEvidence' | 'review' | 'reason'>;
 
 export const collaborationDigest = (value: unknown): string => createHash('sha256')
   .update(JSON.stringify(value)).digest('hex');
@@ -62,6 +63,7 @@ export function readCollaborationIntent(core: CatsCoreState, id: string): WorkCo
   const value = task?.metadata[COLLABORATION_METADATA_KEY] as WorkCollaborationIntent | undefined;
   if (!value) return null;
   if (value.schemaVersion !== 1 || value.id !== id || !value.workers?.implementation
+    || (value.executionRequested !== undefined && typeof value.executionRequested !== 'boolean')
     || !value.workers?.review || !value.stages?.implementation || !value.stages?.review
     || !value.inputDigest || !Number.isFinite(Date.parse(value.deadline))
     || !Number.isFinite(value.tokensUsed) || value.tokensUsed < 0
@@ -164,3 +166,30 @@ export function collaborationSummary(intent: WorkCollaborationIntent) {
     budget: intent.budget, deadline: intent.deadline };
 }
 export type CollaborationExecutionSummary = ReturnType<typeof collaborationSummary>;
+
+/** Descriptive model feedback is bounded; canonical Run/Artifact evidence stays complete. */
+export function collaborationFeedbackSummary(summary: CollaborationExecutionSummary) {
+  const result = structuredClone(summary);
+  const truncatedSummaries: Record<string, {
+    serializedDigest: string; originalCharacters: number; artifactId: string;
+  }> = {};
+  const project = (text: string, field: string, role: CollaborationRole): string => {
+    if (JSON.stringify(text).length <= 512) return text;
+    let low = 0, high = text.length;
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      if (JSON.stringify(text.slice(0, middle)).length <= 512) low = middle;
+      else high = middle - 1;
+    }
+    truncatedSummaries[field] = { serializedDigest: collaborationDigest(text),
+      originalCharacters: text.length, artifactId: `artifact-${result.stages[role].runId}` };
+    // Do not end the displayed prefix in half of a UTF-16 surrogate pair.
+    return text.slice(0, low).replace(/[\uD800-\uDBFF]$/u, '');
+  };
+  for (const role of ['implementation', 'review'] as const) {
+    const stage = result.stages[role];
+    if (stage.summary !== undefined) stage.summary = project(stage.summary, `stages.${role}.summary`, role);
+  }
+  if (result.review) result.review.summary = project(result.review.summary, 'review.summary', 'review');
+  return { ...result, ...(Object.keys(truncatedSummaries).length ? { truncatedSummaries } : {}) };
+}

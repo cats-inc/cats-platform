@@ -160,6 +160,18 @@ export async function markSessionClosed(coreStore: CoreStore, id: string, role: 
 const fullCommit = (value: string | null): value is string => Boolean(value && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u.test(value));
 const samePath = (left: string, right: string): boolean => path.resolve(left) === path.resolve(right);
 
+/** Accept the fixed workflow only. The host separately performs every admitted stage. */
+export async function requestCollaborationExecution(port: CollaborationExecutionPort): Promise<WorkCollaborationIntent> {
+  await port.mutate((core, intent) => {
+    assertOpen(intent);
+    if (intent.executionRequested) return core;
+    intent.executionRequested = true;
+    intent.status = 'running';
+    return writeCollaborationIntent(core, intent);
+  });
+  return port.current();
+}
+
 /** Model-visible local-state tool: persist a queued Run only. No Runtime calls. */
 export async function requestCollaborationRole(port: CollaborationExecutionPort, role: CollaborationRole): Promise<WorkCollaborationIntent> {
   await port.mutate((core, intent) => {
@@ -250,8 +262,13 @@ export async function executeCollaborationRole(port: CollaborationExecutionPort,
         input: { provider: worker.target.provider!, instance: `${target.backend}/${target.id}`,
           model: worker.target.model, modelSelection: worker.modelSelection ?? undefined, cwd,
           ...(role === 'implementation' ? { workspaceKind: 'worktree', workspaceAccess: 'read_write',
-            permissionMode: 'whitelist', allowedTools: [...intent.executionGrant.implementationTools] } as const
-            : { workspaceKind: 'source', workspaceAccess: 'read_only', permissionMode: 'default' } as const),
+            permissionMode: 'whitelist',
+            // Runtime's canonical spelling of the already admitted list_dir capability.
+            // Keep the persisted owner grant unchanged for existing collaboration records.
+            allowedTools: [...intent.executionGrant.implementationTools,
+              ...(intent.executionGrant.implementationTools.includes('list_dir') ? ['list_files'] : [])] } as const
+            : { workspaceKind: 'source', workspaceAccess: 'read_only', permissionMode: 'default',
+              allowedTools: ['read_file', 'list_files'] } as const),
           sharingMode: 'isolated', skills: { requestedSkills: [], strict: true } }, supervision });
       sessionId = result.id;
       let canRun = false;
@@ -281,8 +298,8 @@ export async function executeCollaborationRole(port: CollaborationExecutionPort,
     if (!before.supported || !before.repository || !before.clean || !fullCommit(before.headOid)
       || (role === 'review' && before.headOid !== revision!.commitId)) throw new Error('revision_precheck_failed');
     const prompt = role === 'implementation'
-      ? `Implement this owner-approved goal within this isolated repository.\n${intent.goal}\nExpected output: ${intent.expectedOutput}\nOnly inspect and edit local files. Do not commit, publish, use network, delegate, or alter other workspaces. Cats captures a local commit. Report changes and any validation limitations; never claim unrun tests passed.`
-      : `Independently review the actual repository revision ${revision!.commitId} against baseline ${revision!.baselineCommitId}.\nOwner goal: ${intent.goal}\nExpected output: ${intent.expectedOutput}\nRead only. Inspect the files; do not change, publish, delegate or execute shell commands. Return ONLY JSON: {"commitId":"${revision!.commitId}","verdict":"approved"|"changes_requested","summary":"specific findings and validation limitations"}. Your review is an attributed judgment, not proof that tests ran.`;
+      ? `Implement this owner-approved goal within this isolated repository.\n${intent.goal}\nExpected output: ${intent.expectedOutput}\nYour assigned role is implementation only. Cats handles conversation setup, participant recruitment, local revision capture, independent review and final reporting. Only inspect and edit local files. Use read_file/list_files when provided for inspection; batch independent reads when possible. A file-tool grant does not grant shell execution. Do not commit, publish, use network, delegate, or alter other workspaces. Report changes and any validation limitations; never claim unrun tests passed.`
+      : `Independently review the actual repository revision ${revision!.commitId} against baseline ${revision!.baselineCommitId}.\nOwner goal: ${intent.goal}\nExpected output: ${intent.expectedOutput}\nYour assigned role is independent review only. Cats handles conversation setup, participant recruitment, revision capture and final reporting. Read only. Use read_file/list_files when provided for inspection, or provider-native read-only file tools; batch independent reads when possible. Do not change files, run project scripts or tests, publish, delegate, or execute commands with side effects. Return ONLY JSON: {"commitId":"${revision!.commitId}","verdict":"approved"|"changes_requested","summary":"specific findings and validation limitations"}. Your review is an attributed judgment, not proof that tests ran.`;
     const response = await bounded(() => sendSupervisedRuntimeMessage({
       runtimeClient: port.runtimeClient, sessionId: created.id, content: prompt,
       supervision: { ...supervision, actionId: `${stage.runId}:execute` },

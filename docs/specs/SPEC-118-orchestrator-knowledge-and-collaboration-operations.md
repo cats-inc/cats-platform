@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1-K3 CI-validated; K4 distribution/native startup verified, full live execution pending |
+| Status | In progress; K1-K3 CI-validated; bounded live K3 passes, successful native projection and profile gates open |
 | Owner | Platform integration; Chat owns conversation operations |
 | Reviewer | Product owner; independent Codex implementation review |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
@@ -209,6 +209,7 @@ migration and must preserve old snapshots unchanged.
 
 | Operation (revision 1.0) | Owner | Result / boundary |
 |--------------------------|-------|-------------------|
+| `work.collaboration.request_execution` | Work | Accept the already confirmed fixed workflow with input `{}`; persist the request only. The host subsequently ensures Chat setup and drains implementation followed by proof-gated review |
 | `chat.collaboration.ensure_conversation` | Chat | Create or reuse the admitted Chat conversation through the canonical channel builder; return verified canonical identity and created/reused outcome |
 | `chat.collaboration.ensure_participants` | Chat | Add only the two admitted existing Cats through membership delegates; return canonical membership postconditions |
 | `work.collaboration.request_role` | Work | Persist one queued role Run only, returning an accepted request; no Runtime calls inside this tool. Review queuing requires the implementation's verified immutable revision |
@@ -242,11 +243,56 @@ existing Work admission-to-runner separation; expensive execution is not relabel
 as a local-state model tool. Reviewer Tasks remain non-dispatchable until proof.
 
 Each stage records intent before external work. A bounded sequential coordinator
+can request the complete, already confirmed workflow in one decision. Work
+persists an additive `executionRequested` marker and reports acceptance, not
+started Runtime work. After that receipt is durable, the host invokes the same
+Chat delegates and existing role queue/drain boundaries. Review stays pending
+until the implementation evidence is verified. Every operation revalidates the
+owner, scope and shared budget; a blocked/cancelled stage stops the sequence.
+No automatic retry or restart replay is introduced. Already completed phases
+are inspected and reused without duplicating their operation receipts. Existing
+primitive tools remain available with their original semantics. The new request
+is preferred only for this fixed owner-confirmed workflow.
+
+A complete request can produce seven receipts before feedback. K3 retains up to
+eight complete receipts and sends a feedback projection of every new outcome,
+bounded to 24,000 serialized characters including JSON escaping. Descriptive
+stage/review summaries use at most 512 serialized characters each; truncation
+markers include the full serialized-summary digest, original length and canonical
+Artifact reference. Exact identities, revisions, verdicts and reasons are not
+truncated. Core evidence, raw receipts and the product report retain the original
+text. If an unprojectable result still exceeds the transport limit, it is persisted
+before stopping further work/model calls; feedback is reported as undelivered.
+K2 and ordinary decisions retain their four-receipt bound. This does not batch
+arbitrary model-authored actions or grant broader tool scope.
+
+A bounded sequential coordinator
 session receives actual tool results; proposed/accepted/started/result-ready/
 reviewed states remain distinct. The combined work budget covers both Cats and
 is checked between calls; deadline/cancellation cancels owned Runtime work and
 prevents late responses from committing success. Native provider enforcement
 and installed/live acceptance remain K4, not claims of this implementation.
+
+K4 bounds repeated prompt content with a K3-only, run-local continuation cache.
+The first request delivers the complete snapshot. Later requests retain the
+complete decision contract and fresh observation, policy, budget and knowledge
+scope, but may reference previously delivered tool descriptors and selected
+knowledge entries by hashes of their complete serialized values. Selection runs
+again each turn; removed tools, missing knowledge and terminal empty tool lists
+supersede earlier selections. New or changed values are delivered inline.
+New operation receipts are delivered once while all receipts remain durable.
+The full current host observation still drives validation and policy checks.
+
+The cache is bound to the actual Runtime session, target, actor profile and run;
+it is never persisted or shared between attempts. Unknown or changed sessions
+receive a full snapshot. Failed requests invalidate the base. Delivery metadata
+distinguishes assembled knowledge identity, newly inline entries, referenced
+entries and the digest of the actual wire payload. A session reference is not
+new inline delivery, proof of model understanding or an execution grant. Models
+must stop and report unavailable context if referenced content is absent.
+K2 and ordinary decisions retain their complete-snapshot behavior. Serialized
+wire limits and the existing response-boundary token threshold both apply;
+prompt reduction is not a hard provider token ceiling.
 
 Implementation evidence comes from Runtime delivery, not a Cat's prose or an
 invented artifact ID. The reviewer receives that exact isolated workspace and
@@ -261,6 +307,16 @@ The reviewer session's actual cwd must match that verified delivery workspace,
 with matching clean HEAD before and after review. The check proves captured
 revision identity, not passing tests. Both role Tasks exist at admission so
 generic convergence cannot mistake implementation alone for completion.
+File inspection prefers explicit Runtime `read_file` / `list_files` tools when
+the provider supports them. Work projects the already admitted `list_dir`
+capability to Runtime's canonical `list_files` spelling when creating the
+implementation session; the durable owner grant remains unchanged. Review
+explicitly requests the two read tools while retaining read-only workspace and
+default permission mode. Coordinators receive neither grant. The prompts still
+prohibit project scripts/tests, publication, delegation and command side effects.
+No shell grant follows from a file-tool name. Runtime owns native registration,
+workspace containment and tool execution under
+[ADR-041](https://github.com/cats-inc/cats-runtime/blob/main/docs/decisions/041-bridge-explicit-codex-read-tools-through-runtime.md).
 
 Budget fields on Runtime supervision metadata are descriptive today; the K3
 delegate must enforce elapsed time, measured usage and cancellation itself.
@@ -447,11 +503,18 @@ behavior, full profile exclusion and installed end-to-end acceptance remain K4.
 K3 adds mutation, immutable-revision, result-feedback and recovery fixtures for
 AC-05/AC-06/AC-07/AC-08; validation outcomes are recorded in PLAN-110.
 K4 adds relocated npm/Desktop knowledge acceptance and native Windows candidate
-startup/lock/close evidence. Real Codex coordination reaches conversation and
-membership but not worker execution. Exact CLI readiness now passes without
-inference; response-boundary budget limits and full worker execution remain
-open. See PLAN-110's dated evidence before interpreting AC-09/AC-10
-as complete.
+startup/lock/close evidence. Real Codex coordination creates conversation and
+membership, completes implementation, captures an actual revision and receives
+independent review. After a recorded 95,312-token failed attempt, the reduced
+private native profile completes all seven outcomes and final feedback in
+61,033 reconciled tokens, within the unchanged 80,000-token continuation limit.
+Blocked/cancelled native Chat/Work projections and actual Runtime create/bridge
+cancellation/process-loss recovery pass at their recorded boundaries. A reduced
+private native context is independently reviewed; successful native result
+projection remains pending. The fixture constructs
+K2 preparation; model-driven discovery/preparation and PLAN-109 profile exclusion
+are separate open gates. See PLAN-110's dated evidence before interpreting
+AC-09/AC-10 as complete.
 
 | ID | Observable criterion | Requirements |
 |----|----------------------|--------------|

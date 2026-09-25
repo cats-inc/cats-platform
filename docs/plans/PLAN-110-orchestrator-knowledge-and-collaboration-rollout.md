@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1-K3 CI-validated; K4 distribution/native startup verified, full live execution pending |
+| Status | In progress; K1-K3 CI-validated; bounded live K3 passes, successful native projection and profile gates open |
 | Owner | Platform integration; Chat and Work own their operation delegates |
 | Reviewer | Independent Codex contract and implementation review; product owner |
 | Last updated | 2026-09-25 |
@@ -17,6 +17,42 @@ defines the requirements and acceptance scenario.
 records the shared knowledge/procedure decision. This is a consumer/operation
 workstream related to [PLAN-109](PLAN-109-cats-self-development-and-catlas-practice.md),
 not a replacement for its preview development or practice/promotion gates.
+
+## Resume Checkpoint (2026-09-25)
+
+The owner requested short, continuous slices with durable checkpoints so a
+session reset does not lose work. Continue from this section; do not restart
+already completed model runs. Read workspace/member `AGENTS.md`, `CODEX.md`,
+[the collaboration guide](../AGENT-GUIDE.md), this plan and its linked SPEC/ADR
+before changing the owning repository. Direct commit/push to `main` is authorized;
+no release, version bump or publication is authorized.
+
+- **Completed slice:** bounded K3 coordination, implementation, revision capture,
+  independent review and final feedback pass with **61,033 tokens** in a private
+  Windows/Codex 0.156.1 / `gpt-6-astra` profile. Duplicate confirmation preserves
+  identities; source fixture unchanged; temporary auth copy removed. This is
+  the fifth continuation attempt, not a new task to rerun after reset.
+- **Code/validation:** Platform server build and 53 latest collaboration/prompt
+  regressions pass; independent reviews cover the continuation, role grants and
+  private context reduction. Runtime commits `e43d421` / `a694104` are on main;
+  [Runtime full CI passes](https://github.com/cats-inc/cats-runtime/actions/runs/36080164885).
+  Platform continuation changes are in this checkpoint's commit; its full CI
+  remains to be checked after push.
+- **Next slice:** inspect the successful saved Chat/Work result in the private
+  native candidate, close all owned processes, then record Platform CI and UI
+  evidence. This needs no new model inference. Commit that evidence separately.
+- **Local evidence to reuse:** `%TEMP%/cats-k4-live-20260925-continuation-05/`
+  contains `result.json`, `provider-calls.json` and private persisted product
+  state. Successful revision is `8547f80885c8c6d1ca8e219194046a291ded2a7b`;
+  parent Task is `task-collaboration-a7102c69be393ef6a148d559f4de7a53`.
+  `%TEMP%/cats-k4-projection-XJZ2Kj/` contains the closed private Desktop candidate,
+  guarded UI helper, reopen helper and earlier blocked projection captures.
+  Never copy these fixtures into normal Cats state.
+- **Open gates:** successful native result projection, real model-driven K2
+  discovery/preparation and PLAN-109 profile inventory/cache exclusion. The
+  create/bridge cancellation/recovery evidence does not prove active-inference
+  cancellation or installed-Desktop crash recovery. Practice/promotion remains
+  a separate workstream. Do not label all K4 or the parent plan complete.
 
 ## Overview
 
@@ -403,6 +439,186 @@ for this K4 slice is verified; full live execution and PLAN-109 profile/practice
 gates remain open. This subsequent documentation-only record does not change
 tested executable or packaged knowledge inputs.
 
+#### K4 continuation and native enforcement (2026-09-25)
+
+The retained four-call trace contains 73,587 Platform prompt characters. The
+first three requests each repeat 6,017 characters of tool descriptors and
+7,669 characters of knowledge. Native Codex also adds coding-agent instructions,
+skills/plugins and tools despite an empty Runtime skill request. A successful
+primitive workflow needs five coordinator decisions and two worker turns, so
+Platform prompt reduction alone must not be described as an 80,000-token fit.
+
+- [x] Implement session-bound K3 delivery references with fresh host validation,
+  truthful provenance, bounded wire payloads and newly delivered receipts.
+- [x] Verify the provider-native context controls through the Runtime boundary;
+  keep ordinary coding-worker capabilities and read-only coordinator scope.
+- [x] Run focused regressions and independent review, then exercise actual
+  implementation/revision/review with reconciled usage and cleanup evidence.
+- [x] Complete final model feedback within the unchanged 80,000-token threshold.
+- [x] Exercise actual Runtime create/bridge cancellation and process-loss recovery,
+  plus native Chat/Work blocked/cancelled projections at the recorded boundaries.
+- [ ] Inspect successful final feedback and revision/review in native Chat/Work.
+
+The fixed live threshold remains a continuation limit, not a provider hard cap.
+Any incomplete or over-budget attempt remains recorded as such.
+
+The private fixture uses explicitly configured coordinator and worker
+instances with small native base instruction files and optional apps/plugins
+disabled. This is a configured-profile acceptance, not a claim about default
+Codex context cost or universal native-tool isolation. The production host still
+supplies the role, goal, tool restrictions and output contract. Read-only native
+file inspection commands are permitted for review without widening its Runtime
+sandbox or approval policy. A zero-turn Codex probe found that configured `-c`
+values before `app-server` were ignored. Runtime's provider-owned argument
+placement correction now passes a compiled WorkerProcess/native configuration
+probe without authentication or inference. Explicit per-session model/control
+values retain precedence over configured defaults.
+
+The first continuation attempt consumed **73,818 actual tokens** in four
+coordinator calls and no worker inference. It exposed a maintenance race: Runtime
+deleted a worktree between preparation and registry publication. Runtime now
+reserves preparation through publication/rollback, checks current ownership just
+before deletion, and makes a new preparation wait for an already claimed cleanup.
+Actual Git create/fork/failed-hydration and inverse-race fixtures pass.
+
+An additive fixed-workflow acceptance request now lets the host run the existing
+Chat setup and implementation/review boundaries between two coordinator calls.
+Seven operation outcomes are durably retained; all their bounded feedback
+projections reach the next decision. The independent review caught JSON-escaped
+summaries exceeding the aggregate limit. Complete raw receipts and canonical
+evidence now survive; model projections explicitly mark truncated descriptions
+with digests and Artifact references. Unprojectable oversized reasons stop later
+effects without losing the current outcome. Both regressions pass.
+
+The second continuation attempt reached a real implementation session but made
+no edit. Runtime reported **42,723 tokens**, while native history proved
+**52,053**: two implementation model responses consumed 9,330 + 9,477 = 18,807,
+but only the last response was charged. Native coordinator totals matched. This
+is an accounting failure, not bounded-flow acceptance. The worker also observed
+read-only native permissions despite an admitted writable worktree. Zero-turn,
+unauthenticated native probes showed a clean Windows profile downgrades requested
+workspace-write without `windows.sandbox="unelevated"`. That setting belongs only
+to the explicit private acceptance profile; the user profile is untouched.
+The resulting audit also found Runtime's read-only sandbox legacy-mode mapping
+needed correction before repeating inference. Neither a larger token threshold
+nor broader worker grants is used as a workaround. Both failed attempts stopped
+their owned Runtime and removed temporary authentication copies; fixture sources
+remained unchanged. Full worker/revision/review and native projection acceptance
+are still pending at this checkpoint.
+
+The third continuation attempt verifies both Runtime corrections: native and
+charged usage are exactly **62,897 tokens**, including all implementation
+responses; native coordinator sandbox is read-only and implementation is
+workspace-write. It remains blocked because Codex uses native shell commands for
+file inspection, while the admitted file-tool whitelist intentionally excludes
+shell execution. The fixture source is unchanged, no revision/review is claimed,
+and owned Runtime shutdown/auth-copy removal passed.
+
+The next correction follows Runtime ADR-041: opt-in dynamic `read_file` and
+`list_files` operations use Runtime's existing local path/tool policy. Work
+projects its admitted directory-read capability to the canonical name without
+altering stored owner grants and requests the two read operations for review.
+General shell approval stays unchanged. Native registration, scope/lifecycle
+regressions and independent review precede another inference attempt.
+
+The live harness now binds each Runtime role session to its actual native thread
+and compares native totals, returned usage, persisted intent usage and final
+report usage. Successful completion also requires delivered final feedback and
+JSON-equivalent stored Chat metadata. Cleanup failure cannot pass acceptance.
+
+Native Windows UI acceptance reopened the second attempt's private saved state
+in the checkout-built candidate. UI Automation and a viewed 1280-by-860 capture
+confirmed Chat's truthful blocked report and disabled consumed confirmation.
+Cats Work opened the retained linked work item, but that detail screen alone
+does not prove parent/child Task status projection; that gate remains open.
+Normal window close stopped the owned Electron, Platform and Runtime PIDs.
+
+A separate zero-inference native Runtime trial verifies cancellation during a
+held real create response and recovery after terminating an owned fixture host
+after its bridge was persisted, before model send. In both cases the actual
+Runtime sessions reached `closed`, both role stages were cancelled and the
+conversation was retained. Reopening the persisted store stopped the parent with
+`interrupted_requires_new_proposal`; repeating recovery preserved the result and
+did not send a goal. The source repository was unchanged and Runtime exited with
+code zero. No provider authentication was copied. The first probe checked the
+asynchronous `closing` status too early; the repeat waits up to five seconds for
+`closed`. This proves create/bridge recovery at that boundary, not cancellation
+of an in-flight native model response or a crash of the installed Desktop app.
+
+The Work projection map was also checked against the saved Core records: the
+first Tasks sidebar entry exposes the collaboration parent and role subtasks;
+Missions is a separate route. An unrelated existing WorkItem graph limitation
+keeps `linkedWorkItemId` null even for explicit WorkItem-to-Task links. That issue
+does not erase collaboration Tasks and is not used to infer a missing K3 record.
+An additional native repeat opened the actual collaboration parent through
+Tasks. UI Automation verified the blocked parent, both cancelled child Tasks
+and disabled dispatch; a viewed 1280-by-860 capture confirms that screen.
+All three owned candidate processes stopped normally after window close.
+
+The fourth continuation attempt completes real implementation, captures revision
+`cc11281d4729e30653986fbbd2a04bec28e78e0f`, and receives independent approval for
+the inspected addition function. Host-run fixed fixture tests pass after
+verifying the pure, single-file edit. Reviewer limitations remain explicit:
+static inspection did not independently establish the baseline diff and no tests
+were run by the reviewer. The host verifies revision identity and the fixture.
+
+This attempt still fails bounded-flow acceptance. Actual/native/Work usage all
+match **95,312 tokens** (coordinator 35,638; implementation 30,483; review 29,191).
+The final coordinator response crosses the 80,000 continuation threshold, so
+feedback delivery is not reported as successful even though role work finished.
+The temporary authentication copy was removed and source checkout stayed clean.
+The two worker prompts are only 870 and 1,097 characters, while each native
+response carries roughly 9,500 tokens of context; further improvement must be
+verified at the native/profile and wire-delivery boundaries. Raising the fixture
+threshold is not a substitute for proving the intended bounded path.
+
+The final zero-inference lifecycle repeat uses the corrected Runtime build and
+the probe's final cleanup-dependent success gate. Cancellation and process-loss
+recovery both pass, both real sessions reach `closed`, repeated recovery is
+unchanged, and Runtime exits normally without any authentication copy.
+
+Runtime's worktree ownership/read-only corrections and Codex argument, usage and
+explicit read-tool bridge are committed through `a694104`. Its full
+[release-preflight CI](https://github.com/cats-inc/cats-runtime/actions/runs/36080164885)
+passes. The Platform continuation remains subject to its own integration gate.
+Worker prompts now explicitly assign implementation or independent review only:
+the host owns conversation setup, recruitment, revision capture and final
+reporting. Independent reads may be batched without dropping inspection or
+claiming validation that did not run.
+
+A private unauthenticated native request capture then compares three profiles
+against a loopback-only mock provider. Each sends one request, receives HTTP 400
+and stops its owned child; none performs model inference. The serialized input
+falls from 31,271 to 20,844 bytes after disabling unused goal/image/shell tools
+and the five packaged system skills. Required `apply_patch`, `read_file` and
+`list_files` declarations remain, with code mode enabled. This is byte evidence,
+not a token estimate. The multi-agent namespace remains despite its feature
+flag; optional context settings are not a native-tool firewall. The private live
+harness applies these settings without changing ordinary provider profiles.
+
+The owner explicitly approved the isolated provider payload after an automatic
+approval review requested confirmation. The fifth continuation completed even
+though its command view was interrupted. Its saved success evidence was checked
+before any retry: **61,033 tokens** (coordinator 26,876; implementation 20,176;
+review 13,981) across three distinct native threads and four Runtime sends.
+Native usage, returned usage, Work intent and final report totals agree. Native
+base instructions and role sandboxes match the private configuration. The actual
+revision is `8547f80885c8c6d1ca8e219194046a291ded2a7b`; the independent review approves
+the inspected addition function with its static-inspection limits preserved.
+The host verifies revision identity, the single-file edit and passing fixture
+tests. All seven actual outcomes reach the coordinator, final feedback is true,
+persisted Chat metadata matches, duplicate confirmation creates no extra work,
+the source fixture is unchanged and the temporary authentication copy is removed.
+This proves bounded K3 execution in the configured profile, not default native
+context cost, model-driven K2 preparation or all K4 gates.
+
+Validation of the latest Platform delta passes server compilation and 53 focused
+collaboration/prompt-session tests. Earlier affected adapter, knowledge,
+distribution and boundary checks also pass. Independent review covers prompt
+delivery, workflow acceptance, receipt bounds, native read grants and the private
+profile reduction. Full Platform integration CI and successful native Chat/Work
+projection remain pending in the next slice.
+
 ## Initial Change Map
 
 | Area | Intended change |
@@ -449,6 +665,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | Bounded live K3 passes at 61,033 reconciled tokens after the recorded 95,312-token failure: real implementation/revision/review, all seven outcomes, final feedback, duplicate confirmation and cleanup verified. Added session-bound context references, fixed-workflow acceptance, bounded feedback projections and canonical read-tool grants; 53 latest focused cases, compilation and independent review pass. Native blocked/cancelled projections and create/bridge recovery pass. Runtime through `a694104` passes full CI; Platform CI and successful native projections are the next checkpointed slice. PLAN-109 profile/practice gates and model-driven K2 acceptance remain open. |
 | 2026-09-25 | Corrected [K4 CI on `b30d5adc`](https://github.com/cats-inc/cats-platform/actions/runs/36065815288) passes `validate` and `nodejs (24)`, full typechecks and 4,780 tests (59 skipped; zero failures/cancellations). The isolated acceptance and live-preflight correction slice is integration-validated. Full worker/revision/review execution, native result projections, the bounded native CLI flow and PLAN-109 profile/practice gates remain open. This documentation-only record changes no tested executable or packaged knowledge inputs. |
 | 2026-09-25 | Initial K4 CI passed full typechecks and 4,778 tests (59 skipped), with two stale close-handler source assertions. Updated their captured-window binding expectations while preserving the tray/shutdown/installer guards; all four focused checks and independent review pass. This correction changes tests and this validation record only; production behavior and the remaining live acceptance limits are unchanged. Corrected full CI pending. |
 | 2026-09-25 | K4 source-free npm/Desktop knowledge and native Windows candidate startup/lock/close acceptance pass. Real Codex coordination exposed missing decision-format guidance, pre-parse usage loss and terminal-feedback reason overwrites; fixes and focused regressions pass. Exact CLI readiness now passes via bounded version/help diagnostics with zero inference; Work's passive-versus-execution readiness mismatch is corrected without widening other backends. Native CLI input growth still crosses the response-boundary token threshold. Worker execution, revision/review, native result projections and profile exclusion remain open; see the dated K4 evidence. No release/version or user-state change. Full CI pending. |

@@ -120,6 +120,29 @@ and policy remain authoritative; malformed output is never repaired into an
 authorized action. Coordinator usage is recorded at the Runtime response boundary
 before parsing, so a rejected decision still consumes the admitted budget.
 
+K3 continuation reuses exact tool and knowledge bytes already delivered to its
+own coordinating session. Current selections, policy, budget, scope and complete
+decision shapes remain explicit on every turn. Content hashes include metadata;
+fresh or changed blocks are delivered inline, and delivery receipts distinguish
+inline bytes from same-session references. The host always validates against
+the full current observation. This is a run-local prompt optimization, not a
+second knowledge store or a resumable execution mechanism. An unknown session
+or failed request cannot inherit a cached delivery base. Provider-native coding
+instructions and tool inventories are a separate Runtime concern; reducing
+Platform payloads alone does not establish an adequate live token budget.
+
+The next measured run confirmed that per-primitive model decisions remain too
+expensive for the bounded fixture. An additive `request_execution({})` therefore
+accepts only the already owner-confirmed fixed collaboration. It persists a
+local request; the host performs the existing conversation/membership delegates
+and implementation-to-review drains, with every current grant, revision, budget,
+cancellation and recovery check intact. Complete receipts remain durable; bounded
+feedback projections of every new outcome return to the same coordinator, with
+explicit summary truncation/digests and canonical evidence references. Outcomes
+are persisted before a projection limit can stop further execution. This removes
+redundant model decisions about predetermined steps,
+without interpreting a model-authored action batch or changing primitive tools.
+
 Worker execution resolves and pins the exact configured backend/instance before
 readiness. CLI targets use bounded version/help compatibility diagnostics because
 passive CLI availability is metadata-only and cannot establish executable `ok`.

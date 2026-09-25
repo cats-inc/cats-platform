@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "revision": "2026-09-25.2",
+  "revision": "2026-09-25.3",
   "platformRange": "0.4.x",
   "requiredCapabilities": ["orchestrator-context-v1"],
   "entries": [
@@ -69,8 +69,36 @@
       }
     },
     {
-      "id": "orchestrator.execution",
+      "id": "orchestrator.confirmed-execution",
       "revision": 1,
+      "kind": "procedure",
+      "roles": ["orchestrator"],
+      "surfaces": ["chat-decision"],
+      "topics": ["always"],
+      "requiredOperations": [
+        {
+          "id": "work.collaboration.request_execution",
+          "version": "1.0"
+        },
+        {
+          "id": "work.collaboration.inspect",
+          "version": "1.0"
+        },
+        {
+          "id": "work.collaboration.stop",
+          "version": "1.0"
+        }
+      ],
+      "verifiedAt": "2026-09-25",
+      "sources": ["docs/specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md"],
+      "content": {
+        "en": "For the fixed owner-confirmed collaboration, prefer one request_execution with {} over the individual-step path. It only accepts the already approved goal, Cats, repository and shared budget; it grants no new authority. The host then ensures the conversation and its two participants, runs implementation, captures a verified immutable revision, and only then admits the separate read-only reviewer. Wait for the actual operation receipts in this same session; acceptance alone is not started or completed work. Do not repeat the individual operations after requesting the workflow. Each retained partial effect and blocked/cancelled reason remains authoritative. Do not retry a stopped attempt. With no available tools, return one respond semantic_plan acknowledging all receipts and the actual outcome; a commit or attributed review does not prove tests ran.",
+        "zh-TW": "對於使用者已確認的固定合作流程，優先呼叫一次 request_execution（{}），無須逐步呼叫個別操作。它只接受已核准的目標、Cats、repository 與共用預算，不增加任何權限。host 接著確認對話與兩位成員、執行實作、取得已驗證的不可變版本，然後才允許另一位唯讀審查者工作。在同一 session 等待實際操作 receipts；接受請求不代表已開始或完成。要求完整流程後不要再重複個別操作。已保留的部分結果與 blocked／cancelled 原因仍是權威事實。停止的嘗試不得重跑。沒有可用工具時，用只有一個 respond 步驟的 semantic_plan 承認所有 receipts 與實際結果；commit 或具名審查不代表測試已執行。"
+      }
+    },
+    {
+      "id": "orchestrator.execution",
+      "revision": 2,
       "kind": "procedure",
       "roles": ["orchestrator"],
       "surfaces": ["chat-decision"],
@@ -85,8 +113,8 @@
       "verifiedAt": "2026-09-25",
       "sources": ["docs/specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md"],
       "content": {
-        "en": "These operations exist only after the owner confirms an actual proposal. The server binds the original goal, two Cats, repository and shared budget; never supply substitute IDs or expand scope. Call ensure_conversation with {}, then ensure_participants with {}, request_role with {role: implementation}, request_role with {role: review}, and inspect with {}, one tool_request at a time in this same session. request_role only queues a fixed Run. The host independently validates the owner grant before expensive Runtime work, then returns an inspection receipt; queue acceptance alone is not execution or permission. Read these actual results before proceeding. Review requires Runtime's verified clean new commit, a different Cat and a read-only session at that revision. Membership, queued Run, started session, captured commit and reviewer verdict are distinct. A verified commit does not prove tests passed. On a blocked/rejected result, report retained work and the reason; do not retry execution. Use stop with {} to cancel remaining work. Never claim rollback. When no tools remain, return one respond semantic_plan acknowledging the receipts. No native tools, publishing or general broad-write authority are granted.",
-        "zh-TW": "這些操作只在使用者確認實際提案後提供。伺服器綁定原始目標、兩位 Cat、repository 與共用預算；不要替換 ID 或擴張範圍。在同一 session 依序呼叫 ensure_conversation（{}）、ensure_participants（{}）、request_role（{role: implementation}）、request_role（{role: review}）及 inspect（{}），每次只發一個 tool_request。request_role 只建立固定 Run 的排隊紀錄；host 另外驗證使用者的授權後才進行 Runtime 工作，並回傳 inspection receipt。排隊成功不代表已執行，也不增加權限。讀取實際結果後才能繼續。審查依賴 Runtime 確認的新 commit，由另一位 Cat 在該版本的唯讀 session 進行。成員加入、Run 排隊、session 啟動、commit 確認與審查結論是不同結果；commit 確認不代表測試通過。若結果 blocked 或 rejected，回報保留的工作與原因，不要重試執行。用 stop（{}）取消剩餘工作，不得宣稱已回復。沒有剩餘工具時，用只有一個 respond 步驟的 semantic_plan 承認實際結果。不授權 native tools、發布或一般性廣泛寫入。"
+        "en": "These operations exist only after the owner confirms an actual proposal. The server binds the original goal, two Cats, repository and shared budget; never supply substitute IDs or expand scope. For the individual-step path, call ensure_conversation with {}, then ensure_participants with {}, request_role with {role: implementation}, request_role with {role: review}, and inspect with {}, one tool_request at a time in this same session. request_role only queues a fixed Run. The host independently validates the owner grant before expensive Runtime work, then returns an inspection receipt; queue acceptance alone is not execution or permission. Read these actual results before proceeding. Review requires Runtime's verified clean new commit, a different Cat and a read-only session at that revision. Membership, queued Run, started session, captured commit and reviewer verdict are distinct. A verified commit does not prove tests passed. On a blocked/rejected result, report retained work and the reason; do not retry execution. Use stop with {} to cancel remaining work. Never claim rollback. When no tools remain, return one respond semantic_plan acknowledging the receipts. No native tools, publishing or general broad-write authority are granted.",
+        "zh-TW": "這些操作只在使用者確認實際提案後提供。伺服器綁定原始目標、兩位 Cat、repository 與共用預算；不要替換 ID 或擴張範圍。若採逐步操作，在同一 session 依序呼叫 ensure_conversation（{}）、ensure_participants（{}）、request_role（{role: implementation}）、request_role（{role: review}）及 inspect（{}），每次只發一個 tool_request。request_role 只建立固定 Run 的排隊紀錄；host 另外驗證使用者的授權後才進行 Runtime 工作，並回傳 inspection receipt。排隊成功不代表已執行，也不增加權限。讀取實際結果後才能繼續。審查依賴 Runtime 確認的新 commit，由另一位 Cat 在該版本的唯讀 session 進行。成員加入、Run 排隊、session 啟動、commit 確認與審查結論是不同結果；commit 確認不代表測試通過。若結果 blocked 或 rejected，回報保留的工作與原因，不要重試執行。用 stop（{}）取消剩餘工作，不得宣稱已回復。沒有剩餘工具時，用只有一個 respond 步驟的 semantic_plan 承認實際結果。不授權 native tools、發布或一般性廣泛寫入。"
       }
     },
     {

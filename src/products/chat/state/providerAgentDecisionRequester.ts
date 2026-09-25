@@ -18,6 +18,7 @@ import { isCollaborationExecutionTool } from './collaborationExecutionSurface.js
 import { runCollaborationExecutionLoop } from './collaborationExecutionLoop.js';
 import type { ChatStore } from './store.js';
 import type { RuntimeDeliveryClient } from '../../../platform/runtime/deliveryClient.js';
+import { createProviderAgentPromptSession } from '../../../platform/orchestration/providerAgentPromptSession.js';
 
 export interface ChatProviderAgentDecisionRequesterOptions {
   failureMode?: 'throw' | 'return_null';
@@ -54,6 +55,9 @@ export function createChatProviderAgentDecisionRequester(
         || currentProfile.control !== (target.control ?? null))) {
         return null;
       }
+      const promptSession = isOrchestrator
+        && input.observation.availableTools.some(({ manifest }) => isCollaborationExecutionTool(manifest.name))
+        ? createProviderAgentPromptSession() : undefined;
       const request = async (state: ChatState, observation: ProviderAgentBoundedObservation,
         runtimeClient: RuntimeClient, sessionId: string | null = null,
         receipts?: CollaborationReadReceipt[]) => {
@@ -75,6 +79,7 @@ export function createChatProviderAgentDecisionRequester(
           observation,
           productKnowledge,
           toolResults: receipts,
+          promptSession,
           target: {
             sessionId,
             provider: target.provider,

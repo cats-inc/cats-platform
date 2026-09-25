@@ -7,10 +7,19 @@ import { createInMemoryToolEvidenceSink, createToolBoundary } from '../../../pla
 import type { CollaborationReadReceipt, CollaborationReport } from './orchestratorCollaboration.js';
 import { createChatCollaborationExecution, type ChatCollaborationExecutionOptions } from './collaborationExecution.js';
 import { collaborationExecutionManifests, isCollaborationExecutionTool, REQUEST_COLLABORATION_ROLE,
+  REQUEST_COLLABORATION_EXECUTION, ENSURE_COLLABORATION_CONVERSATION, ENSURE_COLLABORATION_PARTICIPANTS,
   INSPECT_COLLABORATION_WORK } from './collaborationExecutionSurface.js';
-import { collaborationSummary, readCollaborationIntent, writeCollaborationAudit } from '../../work/state/collaborationRecords.js';
+import { collaborationSummary, collaborationFeedbackSummary, readCollaborationIntent, writeCollaborationAudit,
+  type CollaborationExecutionSummary } from '../../work/state/collaborationRecords.js';
 import { boundedCollaboration, recordCollaborationUsage, stopCollaboration, settleCleanup,
   markSessionClosed, executeCollaborationRole, type CollaborationExecutionPort } from '../../work/state/collaborationExecution.js';
+
+function feedbackProjection(receipts: CollaborationReadReceipt[]): CollaborationReadReceipt[] {
+  return receipts.map((receipt) => receipt.result.status !== 'applied' ? structuredClone(receipt)
+    : { ...receipt, result: { ...receipt.result,
+      // Only the fixed execution delegates produce applied receipts in this loop.
+      result: collaborationFeedbackSummary(receipt.result.result as CollaborationExecutionSummary) } });
+}
 
 export async function runCollaborationExecutionLoop(input: ChatCollaborationExecutionOptions & {
   observation: ProviderAgentBoundedObservation;
@@ -70,9 +79,53 @@ export async function runCollaborationExecutionLoop(input: ChatCollaborationExec
     const persistReceipt = async (receipt: CollaborationReadReceipt) => input.chatStore.updateCore((core) => {
       const latest = readCollaborationIntent(core, port!.intentId)!;
       const receipts = [...latest.receipts, receipt];
-      if (receipts.length > 8 || JSON.stringify(receipts.slice(-4)).length > 24_000) throw new Error('feedback_limit');
+      if (receipts.length > 8) throw new Error('feedback_limit');
       return writeCollaborationAudit(core, { ...latest, receipts });
     });
+    const invoke = async (toolName: string, value: unknown, decisionId: string, actorRef: string) => {
+      const intent = await port!.current();
+      if (intent.receipts.length >= 8 || JSON.stringify(feedbackProjection(intent.receipts)).length > 24_000) throw new Error('feedback_limit');
+      const receipt = { toolName, decisionId,
+        result: await boundary.invoke<unknown, unknown>({ toolName, input: value,
+          actionId: decisionId, runId: intent.id, actorRef,
+          grant: toolName === INSPECT_COLLABORATION_WORK
+            ? { parentToolScope: 'read_only', policyToolScope: 'read_only' }
+            : { parentToolScope: input.observation.policy.parentToolScope ?? input.observation.policy.dials.toolScope,
+              policyToolScope: input.observation.policy.dials.toolScope },
+          execute: (request) => execution.execute(toolName, request) }) };
+      await persistReceipt(receipt);
+      // An unusually large identity/reason must stop further work, never erase
+      // an outcome whose effect already happened. The adapter also bounds delivery.
+      if (JSON.stringify(feedbackProjection((await port!.current()).receipts)).length > 24_000) throw new Error('feedback_limit');
+      if (receipt.result.status !== 'applied') {
+        await stopCollaboration(input.chatStore, input.runtimeClient, intent.id, 'operation_rejected');
+      }
+      return receipt;
+    };
+    const drainRole = async (role: 'implementation' | 'review', decisionId: string) => {
+      await executeCollaborationRole(port!, role);
+      await invoke(INSPECT_COLLABORATION_WORK, {}, `${decisionId}:host-result`, 'host-work-runner');
+    };
+    const drainExecution = async (decisionId: string) => {
+      if (!(await port!.current()).executionRequested) throw new Error('execution_request_required');
+      for (const name of [ENSURE_COLLABORATION_CONVERSATION, ENSURE_COLLABORATION_PARTICIPANTS]) {
+        const current = await port!.current();
+        if (!['admitted', 'running'].includes(current.status)) return;
+        if (name === ENSURE_COLLABORATION_CONVERSATION ? current.conversationId : current.membershipVerified) continue;
+        if ((await invoke(name, {}, `${decisionId}:${name}`, 'host-collaboration')).result.status !== 'applied') return;
+      }
+      for (const role of ['implementation', 'review'] as const) {
+        const current = await port!.current();
+        if (!['admitted', 'running'].includes(current.status)) return;
+        if (['result_ready', 'reviewed'].includes(current.stages[role].status)) continue;
+        // Reserve both queue and inspection receipts before any expensive work.
+        if (current.receipts.length > 6) throw new Error('feedback_limit');
+        if (current.stages[role].status === 'pending'
+          && (await invoke(REQUEST_COLLABORATION_ROLE, { role }, `${decisionId}:${role}`, 'host-collaboration')).result.status !== 'applied') return;
+        if ((await port!.current()).stages[role].status !== 'queued') throw new Error('role_in_progress');
+        await drainRole(role, `${decisionId}:${role}`);
+      }
+    };
     for (let call = 0; call < 9; call += 1) {
       const intent = await port.current();
       const final = !['admitted', 'running'].includes(intent.status) || intent.receipts.length >= 7;
@@ -83,7 +136,7 @@ export async function runCollaborationExecutionLoop(input: ChatCollaborationExec
           maxTokens: Math.max(1, intent.budget.maxTokens - intent.tokensUsed), hardStop: true },
       };
       const state = await input.chatStore.read();
-      const result = await boundedCollaboration(port, () => input.request(state, observation, runtime, sessionId, intent.receipts.slice(-4)));
+      const result = await boundedCollaboration(port, () => input.request(state, observation, runtime, sessionId, feedbackProjection(intent.receipts)));
       sessionId = result.sessionId;
       deliveredCount = intent.receipts.length;
       const decision = result.decision;
@@ -94,27 +147,15 @@ export async function runCollaborationExecutionLoop(input: ChatCollaborationExec
       if (decision.kind !== 'tool_request' || !isCollaborationExecutionTool(decision.toolName)) {
         reason = 'coordinator_stopped'; break;
       }
-      const receipt = { toolName: decision.toolName, decisionId: decision.decisionId,
-        result: await boundary.invoke<unknown, unknown>({ toolName: decision.toolName,
-          input: decision.input, actionId: decision.decisionId, runId: intent.id, actorRef: 'orchestrator',
-          grant: { parentToolScope: observation.policy.parentToolScope ?? observation.policy.dials.toolScope,
-            policyToolScope: observation.policy.dials.toolScope },
-          execute: (value) => execution.execute(decision.toolName, value) }) };
       // Acceptance is durable before the host considers any expensive operation.
-      await persistReceipt(receipt);
+      const receipt = await invoke(decision.toolName, decision.input, decision.decisionId, 'orchestrator');
+      if (receipt.result.status === 'applied' && decision.toolName === REQUEST_COLLABORATION_EXECUTION) {
+        await drainExecution(decision.decisionId);
+      }
       if (receipt.result.status === 'applied' && decision.toolName === REQUEST_COLLABORATION_ROLE) {
         const role = (decision.input as { role: 'implementation' | 'review' }).role;
         // Work derives authority from the persisted owner choice, never from this tool result.
-        await executeCollaborationRole(port, role);
-        const inspection = await boundary.invoke<unknown, unknown>({ toolName: INSPECT_COLLABORATION_WORK,
-          input: {}, actionId: `${decision.decisionId}:host-result`, runId: intent.id, actorRef: 'host-work-runner',
-          grant: { parentToolScope: 'read_only', policyToolScope: 'read_only' },
-          execute: () => execution.execute(INSPECT_COLLABORATION_WORK, {}) });
-        await persistReceipt({ toolName: INSPECT_COLLABORATION_WORK,
-          decisionId: `${decision.decisionId}:host-result`, result: inspection });
-      }
-      if (receipt.result.status !== 'applied') {
-        await stopCollaboration(input.chatStore, input.runtimeClient, intent.id, 'operation_rejected');
+        await drainRole(role, decision.decisionId);
       }
     }
   } catch (error) {
@@ -123,7 +164,7 @@ export async function runCollaborationExecutionLoop(input: ChatCollaborationExec
     const message = failure instanceof Error ? failure.message : '';
     reason = ['cancelled', 'budget_exhausted', 'stale_context', 'usage_unavailable',
       'unsupported_cost_budget', 'owner_confirmation_required', 'repository_required',
-      'approval_revoked', 'run_stopped', 'membership_changed'].includes(message) ? message : 'collaboration_failed';
+      'approval_revoked', 'run_stopped', 'membership_changed', 'feedback_limit'].includes(message) ? message : 'collaboration_failed';
   } finally {
     stopped = true;
     if (port && reason) {

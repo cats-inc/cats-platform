@@ -25,6 +25,7 @@ import type {
   RuntimeMessageResult,
   RuntimeSessionCreateInput,
 } from '../src/platform/runtime/client.ts';
+import { createProviderAgentPromptSession } from '../src/platform/orchestration/providerAgentPromptSession.ts';
 
 function manifest(name: string): SupervisedToolManifest {
   return {
@@ -430,6 +431,25 @@ test('provider-agent adapter rejects invalid bounded observations before runtime
   );
   assert.equal(runtimeClient.createdSessions.length, 0);
   assert.equal(runtimeClient.sentMessages.length, 0);
+});
+
+test('continuation validates against current host tools and invalidates its base after rejected output', async () => {
+  const promptSession = createProviderAgentPromptSession();
+  const runtimeClient = createRuntimeStub(semanticPlanDecision());
+  const input = { runtimeClient, promptSession, observation: observation(),
+    target: { provider: 'codex', model: 'gpt-5.4', sessionId: 'known-session' },
+    supervision: { product: 'cats-work', surface: 'provider-agent', runId: 'run-1',
+      actionId: 'action-1', actorRef: 'agent:codex', reason: 'semantic_decision' },
+  };
+  await requestProviderAgentDecision(input);
+  await requestProviderAgentDecision(input);
+  assert.equal(JSON.parse(runtimeClient.sentMessages[1]!.content).contextDelivery.mode, 'continuation');
+  // The old model response still names a tool removed from the current host observation.
+  await assert.rejects(() => requestProviderAgentDecision({ ...input,
+    observation: { ...input.observation, availableTools: [] },
+  }), (error) => error instanceof ProviderAgentAdapterError && error.code === 'INVALID_DECISION');
+  await requestProviderAgentDecision(input);
+  assert.equal(JSON.parse(runtimeClient.sentMessages[3]!.content).contextDelivery.mode, 'bootstrap');
 });
 
 test('provider-agent adapter rejects runtime decisions outside the bounded tool surface', async () => {

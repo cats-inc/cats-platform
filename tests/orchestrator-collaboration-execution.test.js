@@ -16,13 +16,14 @@ import { collaborationSnapshot, executeCollaborationRead, collaborationToolDescr
 import { ACCEPT_COLLABORATION, ENSURE_COLLABORATION_CONVERSATION as conversation,
   ENSURE_COLLABORATION_PARTICIPANTS as participants, REQUEST_COLLABORATION_ROLE as execute,
   INSPECT_COLLABORATION_WORK as inspectWork, STOP_COLLABORATION_WORK as stop,
+  REQUEST_COLLABORATION_EXECUTION as executeAll,
   collaborationExecutionDescriptors } from '../build/server/products/chat/state/collaborationExecutionSurface.js';
 import { createChatCollaborationExecution } from '../build/server/products/chat/state/collaborationExecution.js';
 import { runCollaborationExecutionLoop } from '../build/server/products/chat/state/collaborationExecutionLoop.js';
 import { createChatProviderAgentDecisionRequester } from '../build/server/products/chat/state/providerAgentDecisionRequester.js';
 import { buildChatProviderAgentObservation } from '../build/server/products/chat/state/providerAgentObservation.js';
 import { resolveProviderCapabilityProfile } from '../build/server/platform/supervision/providerCapabilityProfiles.js';
-import { readCollaborationIntent, writeCollaborationIntent, admitCollaboration } from '../build/server/products/work/state/collaborationRecords.js';
+import { readCollaborationIntent, writeCollaborationIntent, admitCollaboration, collaborationDigest, collaborationFeedbackSummary } from '../build/server/products/work/state/collaborationRecords.js';
 import { recoverCollaborations, executeCollaborationRole, recordCollaborationUsage, stopCollaboration } from '../build/server/products/work/state/collaborationExecution.js';
 import { upsertCoreTask, upsertCoreRun } from '../build/server/core/model/index.js';
 import { checkoutTaskExecution } from '../build/server/core/taskLifecycle.js';
@@ -114,8 +115,8 @@ function clients(h, hooks = {}) {
         cwd: role === 'coordinator' ? null : role === 'implementation' ? workspace : input.cwd };
       return hooks.create ? hooks.create(role, result) : result;
     },
-    async sendMessage(sessionId, content) {
-      calls.send.push({ sessionId, content });
+    async sendMessage(sessionId, content, input) {
+      calls.send.push({ sessionId, content, input });
       if (sessionId === 'session-coordinator') {
         const envelope = JSON.parse(content);
         const index = coordinatorCalls++;
@@ -125,9 +126,9 @@ function clients(h, hooks = {}) {
         return message(JSON.stringify(decision), hooks.coordinatorTokens ?? 20);
       }
       if (hooks.send) await hooks.send(sessionId, content);
-      if (sessionId === 'session-implementation') { changed = !hooks.noChanges; return message('Implemented the fix; tests not run.', hooks.workerTokens ?? 100); }
+      if (sessionId === 'session-implementation') { changed = !hooks.noChanges; return message(hooks.implementationSummary ?? 'Implemented the fix; tests not run.', hooks.workerTokens ?? 100); }
       return message(JSON.stringify({ commitId: hooks.wrongReview ? baseline : revision,
-        verdict: hooks.verdict ?? 'approved', summary: 'Reviewed actual revision; no tests executed.' }), hooks.workerTokens ?? 100);
+        verdict: hooks.verdict ?? 'approved', summary: hooks.reviewSummary ?? 'Reviewed actual revision; no tests executed.' }), hooks.workerTokens ?? 100);
     },
     async cancelSession(id) { calls.cancel.push(id); },
     async closeSession(id) { calls.close.push(id); if (hooks.close) await hooks.close(id); },
@@ -185,23 +186,159 @@ test('K3 executes the admitted goal, separate roles, verified revision and feedb
   assert.equal(c.calls.create[1].workspaceKind, 'worktree');
   assert.equal(c.calls.create[1].permissionMode, 'whitelist');
   assert.equal(c.calls.create[2].workspaceAccess, 'read_only');
+  assert.equal(c.calls.create[2].permissionMode, 'default');
+  assert.deepEqual(c.calls.create[2].allowedTools, ['read_file', 'list_files']);
+  assert.equal(c.calls.create[0].allowedTools, undefined);
   assert.equal(c.calls.create[2].cwd, c.workspace);
   assert.equal(report.execution.implementationEvidence.commitId, revision);
   assert.equal(report.execution.review.commitId, revision);
   assert.notEqual(report.execution.participants[0].catId, report.execution.participants[1].catId);
   assert.equal((await store.read()).channels.length, h.state.channels.length + 1);
   const core = await store.readCore(); const intent = (await intents(store))[0].metadata.collaborationIntent;
+  assert.ok(intent.executionGrant.implementationTools.includes('list_dir'));
+  assert.ok(!intent.executionGrant.implementationTools.includes('list_files'));
+  assert.deepEqual(c.calls.create[1].allowedTools,
+    [...intent.executionGrant.implementationTools, 'list_files']);
   assert.equal(core.tasks.filter(task => task.parentTaskId === intent.id).length, 2);
   assert.equal(core.runs.filter(r => r.metadata.collaborationId === intent.id).length, 2);
   assert.equal(core.artifacts.filter(a => a.metadata.source === 'work-collaboration').length, 2);
   assert.equal(intent.tokensUsed, 300);
   const coordinator = c.calls.send.filter(call => call.sessionId === 'session-coordinator').map(call => JSON.parse(call.content));
   assert.equal(coordinator.length, 5);
+  assert.equal(coordinator[0].contextDelivery.mode, 'bootstrap');
+  assert.ok(coordinator.slice(1).every(entry => entry.contextDelivery.mode === 'continuation'));
+  assert.ok(coordinator[1].observation.availableTools.every(entry => entry.reference));
+  assert.deepEqual(coordinator.at(-1).observation.availableTools, []);
+  const delivered = coordinator.flatMap(entry => entry.toolResults);
+  assert.deepEqual(delivered, JSON.parse(JSON.stringify(intent.receipts)));
+  const sent = c.calls.send.filter(call => call.sessionId === 'session-coordinator');
+  assert.equal(sent[0].input.context.metadata.productKnowledge.delivery, 'inline');
+  assert.equal(sent[1].input.context.metadata.productKnowledge.delivery, 'session_reference');
+  assert.equal(sent[1].input.context.metadata.providerAgentContextDelivery.inlineEntries.length, 0);
   assert.ok(coordinator[0].productKnowledge.entries.some(entry => entry.id === 'orchestrator.execution'));
   assert.equal(coordinator[0].observation.goal, goal);
   assert.equal(coordinator.at(-1).toolResults.at(-1).result.result.review.verdict, 'approved');
   assert.match(c.calls.send.find(call => call.sessionId === 'session-review').content, new RegExp(revision));
   assert.match(describeCollaborationReport(report, 'en'), /does not prove tests passed/u);
+});
+
+test('fixed workflow accepts once and returns all seven actual receipts in two coordinator decisions', async () => {
+  const h = fixture();
+  const store = new MemoryChatStore(h.state);
+  const c = clients(h, { decide: (_, index) => index === 0 ? tool(executeAll, {}) : respond(),
+    create: async (role, result) => {
+      if (role === 'implementation') {
+        const current = (await intents(store))[0].metadata.collaborationIntent;
+        assert.equal(current.executionRequested, true);
+        assert.deepEqual(current.receipts.map(receipt => receipt.toolName), [executeAll, conversation, participants, execute]);
+        assert.equal(current.receipts[0].result.result.request.runtimeStarted, false);
+        assert.equal(current.stages.review.status, 'pending');
+      }
+      return result;
+    } });
+  const { report } = await run(h, c, store);
+  assert.equal(report.execution.status, 'completed', JSON.stringify(report));
+  assert.equal(report.feedbackDelivered, true);
+  const prompts = c.calls.send.filter(call => call.sessionId === 'session-coordinator').map(call => JSON.parse(call.content));
+  assert.equal(prompts.length, 2);
+  assert.equal(prompts[1].toolResults.length, 7);
+  assert.deepEqual(prompts[1].toolResults, JSON.parse(JSON.stringify(report.receipts)));
+  assert.deepEqual(report.receipts.map(receipt => receipt.toolName),
+    [executeAll, conversation, participants, execute, inspectWork, execute, inspectWork]);
+  assert.deepEqual(c.calls.create.map(call => call.role), ['coordinator', 'implementation', 'review']);
+  assert.equal(report.execution.review.commitId, report.execution.implementationEvidence.commitId);
+});
+
+test('fixed workflow delivers all seven escaped-summary receipts and preserves full canonical evidence', async () => {
+  const h = fixture();
+  const summary = '\u0000"\\😀'.repeat(400).slice(0, 2000);
+  const c = clients(h, { implementationSummary: summary, reviewSummary: summary,
+    decide: (_, index) => index === 0 ? tool(executeAll, {}) : respond() });
+  const { store, report } = await run(h, c);
+  assert.equal(report.execution.status, 'completed', JSON.stringify(report));
+  assert.equal(report.feedbackDelivered, true);
+  assert.equal(report.receipts.length, 7);
+  assert.ok(JSON.stringify(report.receipts).length > 24_000, 'the raw receipts remain complete');
+  const prompts = c.calls.send.filter(call => call.sessionId === 'session-coordinator').map(call => JSON.parse(call.content));
+  assert.equal(prompts.length, 2);
+  assert.equal(prompts[1].toolResults.length, 7);
+  assert.ok(JSON.stringify(prompts[1].toolResults).length <= 24_000);
+  const final = prompts[1].toolResults.at(-1).result.result;
+  for (const role of ['implementation', 'review']) {
+    assert.equal(report.execution.stages[role].summary, summary);
+    assert.ok(JSON.stringify(final.stages[role].summary).length <= 512);
+    const marker = final.truncatedSummaries[`stages.${role}.summary`];
+    assert.equal(marker.serializedDigest, collaborationDigest(summary));
+    assert.equal(marker.originalCharacters, summary.length);
+    assert.equal((await store.readCore()).artifacts.find(a => a.id === marker.artifactId).summary, summary);
+    assert.equal(final.stages[role].runId, report.execution.stages[role].runId);
+  }
+  assert.equal(report.execution.review.summary, summary);
+  assert.equal(final.review.commitId, revision);
+  assert.equal(final.review.verdict, 'approved');
+  assert.deepEqual(prompts[1].toolResults, JSON.parse(JSON.stringify(report.receipts.map(receipt => ({
+    ...receipt, result: { ...receipt.result, result: collaborationFeedbackSummary(receipt.result.result) },
+  })))));
+});
+
+test('unprojectable failure reasons retain the raw outcome and stop all later work', async () => {
+  const h = fixture(); const providerReason = 'provider-error:'.repeat(2000);
+  const reason = `cats.runtime.message.send rejected: E_PRECHECK_FAILED ${providerReason}`;
+  const c = clients(h, { decide: () => tool(executeAll, {}),
+    send: async () => { throw new Error(providerReason); } });
+  const { store, report } = await run(h, c);
+  const intent = (await intents(store))[0].metadata.collaborationIntent;
+  assert.equal(intent.status, 'blocked');
+  assert.equal(intent.reason, reason);
+  assert.equal(report.reason, reason);
+  assert.equal(report.feedbackDelivered, false);
+  assert.equal(intent.receipts.length, 5);
+  assert.equal(intent.receipts.at(-1).result.result.reason, reason);
+  assert.equal(report.receipts.at(-1).result.result.reason, reason);
+  assert.equal(c.calls.send.filter(call => call.sessionId === 'session-coordinator').length, 1);
+  assert.equal(c.calls.create.some(call => call.role === 'review'), false);
+  assert.equal(c.calls.commit.length, 0);
+});
+
+test('fixed workflow reuses primitive setup and stops before review on implementation failure or cancellation', async t => {
+  for (const mode of ['mixed', 'failed', 'cancelled', 'report_failed']) await t.test(mode, async () => {
+    const h = fixture(); let cancelled = false;
+    const sequence = mode === 'mixed' ? [conversation, participants, executeAll] : [executeAll];
+    const c = clients(h, { noChanges: mode === 'failed',
+      decide: (_, index) => sequence[index] ? tool(sequence[index], {}) : mode === 'report_failed' ? { kind: 'invalid' } : respond(),
+      send: async sessionId => { if (mode === 'cancelled' && sessionId === 'session-implementation') cancelled = true; } });
+    const { report } = await run(h, c, undefined, { isCancelled: () => cancelled });
+    if (mode === 'mixed' || mode === 'report_failed') {
+      assert.equal(report.execution.status, 'completed', JSON.stringify(report));
+      assert.equal(report.receipts.length, 7);
+      assert.equal(report.feedbackDelivered, mode !== 'report_failed');
+      assert.equal(report.receipts.filter(receipt => receipt.toolName === conversation).length, 1);
+      assert.equal(report.receipts.filter(receipt => receipt.toolName === participants).length, 1);
+    } else {
+      assert.equal(c.calls.create.some(call => call.role === 'review'), false);
+      assert.equal(report.execution.status, mode === 'cancelled' ? 'cancelled' : 'blocked');
+      assert.equal(report.execution.reason, mode === 'cancelled' ? 'cancelled' : 'implementation_evidence_missing');
+    }
+  });
+});
+
+test('workflow request is pure acceptance; duplicate acceptance and recovery never start unbridged work', async () => {
+  const h = fixture(); const c = clients(h); const s = await service(h, c);
+  const before = await s.store.read();
+  const accepted = await s.execute(executeAll, {});
+  assert.equal(accepted.status, 'applied');
+  assert.deepEqual(accepted.result.request, { status: 'accepted', runtimeStarted: false });
+  await s.execute(executeAll, {});
+  assert.deepEqual((await s.store.read()).channels, before.channels);
+  assert.equal(c.calls.create.length, 0);
+  const intent = (await intents(s.store))[0].metadata.collaborationIntent;
+  assert.equal(intent.executionRequested, true);
+  assert.equal(intent.stages.implementation.status, 'pending');
+  assert.equal(intent.stages.review.status, 'pending');
+  await recoverCollaborations(s.store, c.runtime);
+  assert.equal(c.calls.create.length, 0);
+  assert.equal((await intents(s.store))[0].metadata.collaborationIntent.status, 'blocked');
+  assert.equal((await service(h, c, s.store)).created, false);
 });
 
 test('worker readiness verifies only the admitted CLI target and retains strict failure and non-CLI boundaries', async t => {
