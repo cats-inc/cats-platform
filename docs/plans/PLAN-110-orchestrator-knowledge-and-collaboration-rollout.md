@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; bounded live K3/native projections and K2 context/accounting CI pass; model-driven K2/profile gates open |
+| Status | In progress; isolated native K2/K3, K3 saved-state projections and full CI pass; content-profile/practice gates open |
 | Owner | Platform integration; Chat and Work own their operation delegates |
 | Reviewer | Independent Codex contract and implementation review; product owner |
 | Last updated | 2026-09-25 |
@@ -55,27 +55,29 @@ no release, version bump or publication is authorized.
   test typechecking, all 190 focused cases and independent implementation review
   pass. Commit `cc5d07ad` is on main and its
   [full CI passes](https://github.com/cats-inc/cats-platform/actions/runs/36089146521).
-  No normal host setting or native inference has changed.
-- **Active slice:** prepare a K2-only mode in the isolated live harness, including
-  the real authenticated Chat API, explicit private host budget, zero-inference
-  readiness, terminal report/receipt checks and native usage reconciliation.
-  Server compilation, test typechecking and nine fake-Runtime/startup cases pass.
-  Native readiness also passes without credentials, sessions or inference;
-  independent implementation review passes; full CI is pending.
-  The HTTP host must expose startup-recovery completion to await before accepting
-  a fixture message or closing readiness; closing its listener alone does not
-  wait for either recovery or an acknowledged background turn. On interruption,
-  cancel and settle the private Chat turn before closing HTTP and Runtime.
-  Readiness evidence is `%TEMP%/cats-k2-readiness-a622e179/`; private Runtime PID
-  13028 is absent and the HTTP server is closed. This does not test a logged-in
-  model call. A new K2 model run remains a separate explicit authorization from
-  the earlier owner-approved final K3 attempt; prepare the concrete command and
-  fixed data/model/budget scope before asking.
-  K2's default remains 30 seconds/8,000 tokens;
-  its budget is separate from the later owner-confirmed K3 execution budget.
-  Do not infer native fit from wire bytes or raise limits just to pass a fixture.
-  Keep PLAN-109 profile inventory a separate dependency; the private acceptance
-  settings are not production release/preview profile separation.
+  That host-budget slice changed no normal host setting and ran no native inference.
+- **Completed K2 native slice:** the real authenticated Chat path produces actual
+  model-driven discovery, context inspection, preparation and final feedback in
+  one read-only Codex/`gpt-6-astra` session: **53,128 tokens**, four decisions,
+  36.635 seconds from first send to final response. Runtime/native/persisted
+  preparation usage agrees; no collaboration admission, worker or source edit.
+  Server compilation, test typechecking, nine focused cases, independent harness
+  review and [full CI on `c5f73f7e`](https://github.com/cats-inc/cats-platform/actions/runs/36090719739)
+  pass. Evidence is `%TEMP%/cats-k2-live-20260925-preparation-01/`; the private
+  auth copy is removed, HTTP closed, and PIDs 7884/13904 are absent. The interrupted
+  tool view resumed observation of this same run; it did not trigger another run.
+  The one-run authorization is consumed. Independent raw-evidence review passes.
+  This acceptance uses the explicitly approved private 300-second/80,000-token
+  policy. Its first send alone used 8,669 tokens; it does not fit or raise the
+  unchanged 30-second/8,000-token defaults. The suggested later Work budget is
+  240 seconds/16,000 tokens, remains unadmitted and was not executed.
+- **Next slice:** finalize this evidence checkpoint, then review the exact
+  content-profile/supplement contract from PLAN-109's G0 inventory on `024130b6`.
+  Retain its 33 ordinary Runtime skills and normal Catlas/Orchestrator knowledge;
+  specify Cats-specific supplement ownership, artifact selection, cache identity
+  and resume/fresh-context behavior before wiring filters. No further live model
+  call is needed to complete that contract slice. The private acceptance settings
+  do not implement production release/preview content separation.
 - **Completed accounting slice:** an isolated fake-Runtime audit reproduced a first
   malformed response with 9,001 returned tokens but no preparation report;
   ordinary dispatch could then fall through to a second inference. The fix
@@ -98,8 +100,10 @@ no release, version bump or publication is authorized.
   `chat-completed`, `work-completed-parent`, `work-completed-review-run` captures
   with accessibility snapshots. Candidate PIDs 3140/14640/8912 are all absent.
   Never copy these fixtures into normal Cats state.
-- **Open gates:** real model-driven K2 discovery/preparation and PLAN-109 profile
-  inventory/cache exclusion. The
+- **Open gates:** PLAN-109 content-profile selection/cache exclusion and subsequent
+  development/practice/promotion. K2 preparation and K3 execution were separately
+  accepted; this evidence does not compose the new K2 proposal through K3/native
+  UI in one uninterrupted scenario. The
   create/bridge cancellation/recovery evidence does not prove active-inference
   cancellation or installed-Desktop crash recovery. Practice/promotion remains
   a separate workstream. Do not label all K4 or the parent plan complete.
@@ -117,7 +121,7 @@ that Orchestrator can create conversations or recruit Cats autonomously.
 | K1 | Shared role-aware knowledge plus actual Orchestrator content delivery | K0 knowledge contract | Implemented; scoped fixtures and full CI pass |
 | K2 | Authorized teammate/context discovery and collaboration preparation | K1; read-only delegate mapping | Implemented; 480 focused tests and full CI pass |
 | K3 | Conversation/membership/work mutations with durable identity and result feedback | K2; write/recovery contract review | Implemented; focused and correction batches plus full CI pass |
-| K4 | Source-free distribution and isolated live-provider/native acceptance | K3 | Bounded K3, native projections and CI pass; model-driven K2 and profile exclusion pending |
+| K4 | Source-free distribution and isolated live-provider/native acceptance | K3 | Separate native K2/K3 and K3 saved-state projections pass; content-profile exclusion and combined rollout acceptance pending |
 
 ## Ownership and Boundaries
 
@@ -823,7 +827,7 @@ show no collaboration creation/admission or worker execution. Reuse the existing
 K3 evidence instead of launching workers again. PLAN-109 content-profile
 inventory/cache exclusion and practice/promotion remain separate work packages.
 
-#### K2 acceptance harness slice (local validation; full CI pending)
+#### K2 acceptance harness slice (local validation and full CI pass)
 
 `scripts/testing/orchestrator-collaboration-live.mjs --phase preparation` requires
 explicit `--preparation-max-duration-ms` and `--preparation-max-tokens`, using the
@@ -862,7 +866,72 @@ of 300 seconds/80,000 tokens, unchanged fixture source and closed HTTP/Runtime.
 PID 13028 is absent. This proves local launch/configuration only; no logged-in
 model inference or native K2 preparation acceptance is claimed. Independent
 implementation review approves the exact target/sandbox/budget guards, lifecycle
-settlement, usage reconciliation and K3 preservation. Full CI remains pending.
+settlement, usage reconciliation and K3 preservation. Commit `c5f73f7e` passes
+[full CI](https://github.com/cats-inc/cats-platform/actions/runs/36090719739),
+including `validate`, `nodejs (24)`, full typechecks and tests.
+
+#### Model-driven K2 native acceptance (2026-09-25)
+
+After the harness CI passed, the owner explicitly approved one isolated model
+run using existing Codex authentication and the synthetic addition goal, normal
+Cats knowledge/tool descriptors and private state/local paths. The private host
+policy was 300 seconds/80,000 tokens, at most five decisions, with possible
+single-response overshoot. Platform code is `c5f73f7e` (documentation-only
+`024130b6` followed); Runtime is `a694104`. Windows/Codex 0.156.1 used the same
+reviewed minimal native profile and explicit `gpt-6-astra` target. The interrupted
+tool view left the original background process running; resume inspected that
+run instead of launching another inference.
+
+Evidence `%TEMP%/cats-k2-live-20260925-preparation-01/` records `prepared`,
+four Runtime sends and four native usage updates in one read-only coordinator
+thread. Total usage is **53,128 tokens**: 52,425 input and 703 output.
+The actual decisions and measured Runtime usage are:
+
+| Decision | Tokens | Delivered prior result |
+|----------|--------|------------------------|
+| Discover eligible Cats | 8,669 | None; bootstrap carries selected knowledge and descriptors |
+| Inspect current context | 11,700 | Actual discovery receipt |
+| Prepare collaboration | 14,877 | Actual context receipt |
+| Report prepared proposal | 17,882 | Actual preparation receipt; no available tools |
+
+Runtime session `3a9ddfb1-86ae-4ebc-871d-c0e52b413175` maps to native thread
+`01a0d6a8-d1ed-77b3-8f5f-62bbb0de0b83`. The first send starts at
+03:43:00.692 UTC and the last response completes at 03:43:37.327 UTC (36.635
+seconds); the whole harness including preflight/cleanup spans 03:42:15.846 to
+03:43:38.091 UTC. Native model, base instructions and read-only sandbox match.
+The terminal `preparationUsage` is complete and equals Runtime/native totals;
+the reopened private Chat snapshot contains the same report and original owner
+message identity. Source/result message IDs are
+`5ca49dbc-7923-4db0-8634-71c3a29ac465` /
+`95bc3503-0b3b-4936-ac37-b8fe6d311046`.
+
+The model chose two distinct discovered Cats, requested a new conversation,
+retained review-after-revision dependency and truthfully described their
+declared-only roles and degraded passive availability. It suggested a later
+240-second/16,000-token Work budget with `not_admitted` / `not_started` status;
+that is not a measured execution estimate or an execution grant. No execution
+choice was submitted, no worker session/Work admission was created, topology
+was preserved and the fixture repository is unchanged. The HTTP server closed,
+the temporary authentication copy is gone, and harness/Runtime PIDs 7884/13904
+are absent. Independent raw-evidence review confirms the actual decisions,
+receipts, usage, persisted report, no admission/source edits and cleanup.
+
+Runtime inventory also contains a closed `origin: discovered` alias for the same
+native thread, labelled `source` / `read_write`. The actual owned session has
+`origin: runtime`, `sandbox` / `read_only`, and every native turn is read-only.
+There is one forwarded `createSession` and one native model thread, not only one
+persisted Runtime row. The alias did not execute another request or worker and
+does not invalidate preparation evidence; retain this metadata limitation when
+designing content-profile provenance and resumed/discovered-session exclusion.
+
+This closes the isolated model-driven K2 preparation gate for this exact target
+and explicit private policy. The first decision already exceeds the unchanged
+8,000-token default; no default-budget or other-provider fit is established.
+K3's earlier 61,033-token execution and saved-state native UI evidence are
+separate accepted fixtures, not execution of this proposal. Content-profile
+exclusion, combined rollout acceptance, active-inference crash recovery and
+PLAN-109 practice/promotion remain open. Do not repeat either successful model
+run or reuse its consumed one-run authorization after a reset.
 
 ## Initial Change Map
 
@@ -910,6 +979,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | K2 harness `c5f73f7e` passes [full CI](https://github.com/cats-inc/cats-platform/actions/runs/36090719739). The separately approved one-run native K2 acceptance completes actual discovery/inspection/preparation/final feedback in four decisions and 53,128 reconciled tokens, with no admission/worker/edit and verified private cleanup. Interrupted tool observation resumed the same run. Explicit private 300-second/80,000-token policy passes; the first 8,669-token response does not fit the unchanged default. Independent raw-evidence review passes and records the closed discovery alias without claiming another model thread. Content-profile/combined rollout/practice gates remain open. |
 | 2026-09-25 | Host-budget commit `cc5d07ad` passes [full CI](https://github.com/cats-inc/cats-platform/actions/runs/36089146521). Added a separate K2 acceptance harness mode with explicit limits, real authenticated Chat API, startup/turn settlement, one-session containment and native usage reconciliation. Server build, test typecheck, nine focused cases, credential-free native readiness and independent review pass; full CI pending. No further native inference is authorized or claimed by this checkpoint. |
 | 2026-09-25 | Added strict, immutable host-owned K2 preparation settings with unchanged 30-second/8,000-token defaults. Begin/retry receives the policy; the loop preserves narrower limits and K3 keeps its separate execution allowance. Three prior-build regressions fail as expected; server compilation, test typecheck, 190 focused cases and independent implementation review pass. Full CI pending. No normal host configuration, native inference, target/grant, persisted schema or frozen contract changed. |
 | 2026-09-25 | K2 failure accounting on `24205589` passes [full CI](https://github.com/cats-inc/cats-platform/actions/runs/36086668719), including `validate`, `nodejs (24)`, full typechecks and tests. Both context reuse and accounting prerequisites are integration-validated. The next preparation-budget contract is documented and independently reviewed as proposed; no numerical increase, target substitution or native call is authorized by that note. Native K2 and PLAN-109 profile/practice gates remain open. |

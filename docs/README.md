@@ -26,8 +26,11 @@ collaboration at 61,033 measured tokens, including actual implementation, review
 and final feedback. Successful saved-state native Chat/Work projections and K2
 context-reuse CI also pass. K2 captures usage before decision parsing and stops
 failed preparation without an unreported ordinary Chat retry; focused tests and
-full CI pass. Model-driven K2 preparation and release/preview
-profile exclusion remain open. The existing provider-agent decision setting
+full CI pass. A separate model-driven K2 run now completes discovery, inspection,
+preparation and final feedback at 53,128 reconciled tokens under an explicit
+private host policy, without work admission or source edits. K2/K3 were accepted
+separately; release/preview profile exclusion and combined rollout acceptance
+remain open. The existing provider-agent decision setting
 stays off by default; PLAN-110's resume checkpoint records the next bounded slice.
 
 ## Cats Self-Development and Catlas Practice

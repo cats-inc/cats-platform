@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; bounded live K3/native projections and K2 context/accounting CI pass; model-driven K2/profile gates open |
+| Status | In progress; isolated native K2/K3, K3 saved-state projections and full CI pass; content-profile/practice gates open |
 | Owner | Platform integration; Chat owns conversation operations |
 | Reviewer | Product owner; independent Codex implementation review |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
@@ -576,9 +576,16 @@ one-coordinator native usage reconciliation. Its credential-free readiness and
 fake-Runtime fixtures do not establish native model acceptance. It must await
 startup recovery and settle the active Chat continuation before cleanup, and
 must not forward ordinary fallback or worker inference outside this K2 fixture.
-The completed K3 fixture constructs its K2 preparation; model-driven discovery/preparation and
-PLAN-109 profile exclusion are separate open gates. See PLAN-110's dated evidence
-before interpreting AC-09/AC-10 as complete.
+The harness [full CI on `c5f73f7e`](https://github.com/cats-inc/cats-platform/actions/runs/36090719739)
+passes. The separately approved native K2 run now completes model-driven
+discovery, context inspection, preparation and final feedback in one read-only
+`gpt-6-astra` session: four decisions, 53,128 reconciled tokens and a complete
+persisted usage snapshot, without admission/workers/source edits. Cleanup passes.
+This uses an explicit private 300-second/80,000-token policy; its first 8,669-token
+decision does not fit the unchanged default. The earlier K3 fixture constructs
+its own preparation; the new K2 proposal was not executed through K3/native UI.
+PLAN-109 profile exclusion and combined rollout acceptance remain open. See
+PLAN-110's dated evidence before interpreting AC-09/AC-10 as complete.
 
 | ID | Observable criterion | Requirements |
 |----|----------------------|--------------|
