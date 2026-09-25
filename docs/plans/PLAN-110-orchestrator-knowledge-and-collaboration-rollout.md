@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1-K3 CI-validated; bounded live K3 passes, successful native projection and profile gates open |
+| Status | In progress; bounded live K3, native result projections and full CI pass; model-driven K2 and profile gates open |
 | Owner | Platform integration; Chat and Work own their operation delegates |
 | Reviewer | Independent Codex contract and implementation review; product owner |
 | Last updated | 2026-09-25 |
@@ -27,29 +27,35 @@ already completed model runs. Read workspace/member `AGENTS.md`, `CODEX.md`,
 before changing the owning repository. Direct commit/push to `main` is authorized;
 no release, version bump or publication is authorized.
 
-- **Completed slice:** bounded K3 coordination, implementation, revision capture,
+- **Completed slices:** bounded K3 coordination, implementation, revision capture,
   independent review and final feedback pass with **61,033 tokens** in a private
   Windows/Codex 0.156.1 / `gpt-6-astra` profile. Duplicate confirmation preserves
   identities; source fixture unchanged; temporary auth copy removed. This is
-  the fifth continuation attempt, not a new task to rerun after reset.
+  the fifth continuation attempt, not a new task to rerun after reset. Successful
+  saved-state Chat/Work native projections also pass; the Desktop candidate and
+  its two sidecars are closed.
 - **Code/validation:** Platform server build and 53 latest collaboration/prompt
   regressions pass; independent reviews cover the continuation, role grants and
   private context reduction. Runtime commits `e43d421` / `a694104` are on main;
   [Runtime full CI passes](https://github.com/cats-inc/cats-runtime/actions/runs/36080164885).
-  Platform continuation changes are in this checkpoint's commit; its full CI
-  remains to be checked after push.
-- **Next slice:** inspect the successful saved Chat/Work result in the private
-  native candidate, close all owned processes, then record Platform CI and UI
-  evidence. This needs no new model inference. Commit that evidence separately.
+  Platform continuation is on main as `471755c9`; its
+  [full CI passes](https://github.com/cats-inc/cats-platform/actions/runs/36082102563).
+  This subsequent evidence-only checkpoint changes no tested executable inputs.
+- **Next slice:** plan the real model-driven K2 discovery/preparation acceptance
+  and the separate PLAN-109 profile-inventory dependency. Keep these independently
+  bounded; do not rerun the completed K3 fixture or treat the current private
+  acceptance settings as production release/preview profile separation.
 - **Local evidence to reuse:** `%TEMP%/cats-k4-live-20260925-continuation-05/`
   contains `result.json`, `provider-calls.json` and private persisted product
   state. Successful revision is `8547f80885c8c6d1ca8e219194046a291ded2a7b`;
   parent Task is `task-collaboration-a7102c69be393ef6a148d559f4de7a53`.
   `%TEMP%/cats-k4-projection-XJZ2Kj/` contains the closed private Desktop candidate,
-  guarded UI helper, reopen helper and earlier blocked projection captures.
+  guarded UI helper, reopen helper, earlier blocked captures and successful
+  `chat-completed`, `work-completed-parent`, `work-completed-review-run` captures
+  with accessibility snapshots. Candidate PIDs 3140/14640/8912 are all absent.
   Never copy these fixtures into normal Cats state.
-- **Open gates:** successful native result projection, real model-driven K2
-  discovery/preparation and PLAN-109 profile inventory/cache exclusion. The
+- **Open gates:** real model-driven K2 discovery/preparation and PLAN-109 profile
+  inventory/cache exclusion. The
   create/bridge cancellation/recovery evidence does not prove active-inference
   cancellation or installed-Desktop crash recovery. Practice/promotion remains
   a separate workstream. Do not label all K4 or the parent plan complete.
@@ -67,7 +73,7 @@ that Orchestrator can create conversations or recruit Cats autonomously.
 | K1 | Shared role-aware knowledge plus actual Orchestrator content delivery | K0 knowledge contract | Implemented; scoped fixtures and full CI pass |
 | K2 | Authorized teammate/context discovery and collaboration preparation | K1; read-only delegate mapping | Implemented; 480 focused tests and full CI pass |
 | K3 | Conversation/membership/work mutations with durable identity and result feedback | K2; write/recovery contract review | Implemented; focused and correction batches plus full CI pass |
-| K4 | Source-free distribution and isolated live-provider/native acceptance | K3 | Pending |
+| K4 | Source-free distribution and isolated live-provider/native acceptance | K3 | Bounded K3, native projections and CI pass; model-driven K2 and profile exclusion pending |
 
 ## Ownership and Boundaries
 
@@ -330,11 +336,12 @@ its actual adapter. Runtime capability labels alone are not enforcement evidence
   do not infer release exclusion from a hidden control or a skill name.
 - [ ] Run the collaboration scenario against an isolated candidate Runtime and
   product state with a real provider, identified tools and bounded budget.
-- [ ] Inspect native UI projections, actual model delivery, conversation and
-  membership IDs, Task/Run results and retained cancellation/recovery evidence.
+- [x] Inspect native UI projections, actual model delivery, conversation and
+  membership IDs, Task/Run results and retained create/bridge cancellation/recovery
+  evidence at the recorded boundaries.
 - [x] Test a model path without native skill discovery. Native skills or MCP
   resources remain optional later delivery work, requiring separate proof.
-- [ ] Record provider/OS/build-specific limits and scoped completion. Update
+- [x] Record provider/OS/build-specific limits and scoped completion. Update
   SPEC, registries and parent-plan links without closing unrelated practice gates.
 
 **Exit:** AC-09/AC-10 and the end-to-end scenario have identified live/native
@@ -457,7 +464,7 @@ Platform prompt reduction alone must not be described as an 80,000-token fit.
 - [x] Complete final model feedback within the unchanged 80,000-token threshold.
 - [x] Exercise actual Runtime create/bridge cancellation and process-loss recovery,
   plus native Chat/Work blocked/cancelled projections at the recorded boundaries.
-- [ ] Inspect successful final feedback and revision/review in native Chat/Work.
+- [x] Inspect successful final feedback and revision/review in native Chat/Work.
 
 The fixed live threshold remains a continuation limit, not a provider hard cap.
 Any incomplete or over-budget attempt remains recorded as such.
@@ -616,8 +623,31 @@ Validation of the latest Platform delta passes server compilation and 53 focused
 collaboration/prompt-session tests. Earlier affected adapter, knowledge,
 distribution and boundary checks also pass. Independent review covers prompt
 delivery, workflow acceptance, receipt bounds, native read grants and the private
-profile reduction. Full Platform integration CI and successful native Chat/Work
-projection remain pending in the next slice.
+profile reduction. Independent evidence review also verifies nine native model
+responses behind the four Runtime sends, the actual one-line Git change and
+absence of Runtime PID 5916/authentication copy. Reviewer inspection covers the
+file content; Cats verifies commit identity. The host's fixed mechanical tests
+run after final model feedback, so the model report correctly says tests were
+not run at its reporting point.
+
+The next slice loads that successful saved state into the private checkout-built
+Desktop candidate without another model call. UI Automation and viewed
+1280-by-860 captures verify Chat's actual completion report, reviewer limitations
+and disabled consumed owner confirmation. Work's Tasks view shows the completed
+parent and both completed role children; the review child opens its completed
+Run, specific inspection summary and successful outcome. Canonical commit IDs
+remain verified in persisted evidence; the Chat text reports revision verification
+without displaying the full hash. The parent has no direct worker Run because
+execution belongs to the two child Tasks. Normal window close stops Electron,
+Platform and Runtime (3140/14640/8912); all three PIDs are absent. This is a
+saved-state native projection check, not a new installed-release execution test.
+
+Full [Platform CI on `471755c9`](https://github.com/cats-inc/cats-platform/actions/runs/36082102563)
+passes `validate` and `nodejs (24)`, including full typechecks and tests. Workspace
+skill mirrors were refreshed after the unrelated upstream skill changes and the
+read-only sync check is clean. This evidence-only follow-up changes no tested
+executable or packaged knowledge inputs. Model-driven K2 preparation, profile
+inventory/cache exclusion and PLAN-109 practice/promotion remain open.
 
 ## Initial Change Map
 
@@ -665,6 +695,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | Full [CI on `471755c9`](https://github.com/cats-inc/cats-platform/actions/runs/36082102563) passes `validate` and `nodejs (24)`. Successful saved-state native Chat/Work projections now pass: completion report, consumed confirmation, completed parent/role Tasks and review Run/outcome; all owned processes close normally. This evidence-only slice records the resumable next boundary without changing tested inputs. Model-driven K2 preparation and PLAN-109 profile/practice gates remain open. |
 | 2026-09-25 | Bounded live K3 passes at 61,033 reconciled tokens after the recorded 95,312-token failure: real implementation/revision/review, all seven outcomes, final feedback, duplicate confirmation and cleanup verified. Added session-bound context references, fixed-workflow acceptance, bounded feedback projections and canonical read-tool grants; 53 latest focused cases, compilation and independent review pass. Native blocked/cancelled projections and create/bridge recovery pass. Runtime through `a694104` passes full CI; Platform CI and successful native projections are the next checkpointed slice. PLAN-109 profile/practice gates and model-driven K2 acceptance remain open. |
 | 2026-09-25 | Corrected [K4 CI on `b30d5adc`](https://github.com/cats-inc/cats-platform/actions/runs/36065815288) passes `validate` and `nodejs (24)`, full typechecks and 4,780 tests (59 skipped; zero failures/cancellations). The isolated acceptance and live-preflight correction slice is integration-validated. Full worker/revision/review execution, native result projections, the bounded native CLI flow and PLAN-109 profile/practice gates remain open. This documentation-only record changes no tested executable or packaged knowledge inputs. |
 | 2026-09-25 | Initial K4 CI passed full typechecks and 4,778 tests (59 skipped), with two stale close-handler source assertions. Updated their captured-window binding expectations while preserving the tray/shutdown/installer guards; all four focused checks and independent review pass. This correction changes tests and this validation record only; production behavior and the remaining live acceptance limits are unchanged. Corrected full CI pending. |

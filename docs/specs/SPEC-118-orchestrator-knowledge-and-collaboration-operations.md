@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; K1-K3 CI-validated; bounded live K3 passes, successful native projection and profile gates open |
+| Status | In progress; bounded live K3, native result projections and full CI pass; model-driven K2 and profile gates open |
 | Owner | Platform integration; Chat owns conversation operations |
 | Reviewer | Product owner; independent Codex implementation review |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
@@ -510,11 +510,13 @@ private native profile completes all seven outcomes and final feedback in
 61,033 reconciled tokens, within the unchanged 80,000-token continuation limit.
 Blocked/cancelled native Chat/Work projections and actual Runtime create/bridge
 cancellation/process-loss recovery pass at their recorded boundaries. A reduced
-private native context is independently reviewed; successful native result
-projection remains pending. The fixture constructs
-K2 preparation; model-driven discovery/preparation and PLAN-109 profile exclusion
-are separate open gates. See PLAN-110's dated evidence before interpreting
-AC-09/AC-10 as complete.
+private native context is independently reviewed. Successful saved-state native
+Chat/Work projection now verifies the completion report, consumed confirmation,
+completed parent/child Tasks and review Run with its inspection limitations;
+all owned candidate processes close normally. Full CI on `471755c9` passes.
+The fixture constructs K2 preparation; model-driven discovery/preparation and
+PLAN-109 profile exclusion are separate open gates. See PLAN-110's dated evidence
+before interpreting AC-09/AC-10 as complete.
 
 | ID | Observable criterion | Requirements |
 |----|----------------------|--------------|
