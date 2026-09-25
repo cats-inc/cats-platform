@@ -121,6 +121,15 @@ export interface CollaborationReport {
   reason?: string;
   feedbackDelivered: boolean;
   receipts: CollaborationReadReceipt[];
+  /** Terminal snapshot of Runtime sends, not native model-response counts. Older reports omit this. */
+  preparationUsage?: {
+    limits: { maxDurationMs: number; maxTokens: number };
+    requestsStarted: number;
+    responsesReceived: number;
+    /** Known subtotal only when complete is false; a timeout is not zero usage. */
+    measuredTokens: number;
+    complete: boolean;
+  };
   execution?: CollaborationExecutionSummary;
 }
 

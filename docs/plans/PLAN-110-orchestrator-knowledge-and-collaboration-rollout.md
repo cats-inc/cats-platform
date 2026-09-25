@@ -49,12 +49,21 @@ no release, version bump or publication is authorized.
   including `validate`, `nodejs (24)`, full typechecks and tests.
   No native model call, budget/grant change or new tool is part of this slice.
 - **Next slice:** resolve the real model-driven preparation acceptance, starting
-  with a review of preparation target/budget and failure accounting. K2 still
+  with preparation target/budget after the active accounting correction. K2 still
   clips preparation to 30 seconds/8,000 tokens;
   its budget is separate from the later owner-confirmed K3 execution budget.
   Do not infer native fit from wire bytes or raise limits just to pass a fixture.
   Keep PLAN-109 profile inventory a separate dependency; the private acceptance
   settings are not production release/preview profile separation.
+- **Active accounting slice:** an isolated fake-Runtime audit reproduced a first
+  malformed response with 9,001 returned tokens but no preparation report;
+  ordinary dispatch could then fall through to a second inference. The fix
+  captures usage before parsing, records a terminal snapshot for attempted
+  failures and retains valid ordinary/pre-send setup fallback. The unchanged
+  compiled baseline fails three new regressions; server compilation, test
+  typechecking, 74 focused cases and independent review pass. Full CI is pending
+  after this slice's push. No native inference
+  or changed budget/target/grant is part of this slice.
 - **Local evidence to reuse:** `%TEMP%/cats-k4-live-20260925-continuation-05/`
   contains `result.json`, `provider-calls.json` and private persisted product
   state. Successful revision is `8547f80885c8c6d1ca8e219194046a291ded2a7b`;
@@ -707,6 +716,37 @@ The subsequent checkpoint changes documentation only. Workspace skill mirrors
 were refreshed after upstream `910219b7`; the read-only sync check is clean.
 This is a prerequisite optimization, not live K2 or profile-exclusion acceptance.
 
+#### K2 preparation failure-accounting slice (2026-09-25)
+
+The next zero-inference audit finds that K2 counted tokens only after a parsed,
+policy-accepted decision. A malformed first response returning 9,001 tokens had
+no preparation report; post-ACK dispatch could fall through to ordinary Chat.
+A malformed second response hid a 9,021-token total behind a generic error.
+Private reproduction evidence is in `%TEMP%/cats-k2-failure-audit-s9P6p4/`.
+
+The correction captures each Runtime send/result before parsing, with a copied
+terminal usage report and explicit incomplete subtotals. Failed attempted
+inference stops the current preparation without silently retrying through Chat.
+Known budget exhaustion takes precedence over malformed output, while explicit
+cancellation, stale context and currency-policy failures retain their cause.
+Valid ordinary first responses and pre-send setup failures retain existing
+fallback. The optional report field preserves old metadata without migration;
+original limits, target binding, grants and K3 admission are unchanged. Native
+response counts remain separate from Runtime sends. This does not establish
+that a real model-driven K2 preparation fits 30 seconds/8,000 tokens.
+
+Three new regressions fail against the prior compiled implementation; the
+ordinary/setup compatibility case already passes. Updated server compilation,
+test typechecking and 74 focused collaboration/execution/prompt-session cases
+pass. Coverage includes first and later JSON/policy/native rejection, missing
+or invalid usage, transport failure, first timeout, immutable late-response
+snapshots and existing metadata without the new field. An authenticated HTTP
+fixture verifies that a malformed 9,001-token response publishes one localized
+budget-stop report, settles the active turn and sends no ordinary fallback
+inference. Independent review approves accounting, cancellation, compatibility
+and tests. Full CI remains pending after push. All fixtures use fake Runtime or
+private stores; no live model/authentication or ordinary user state is involved.
+
 ## Initial Change Map
 
 | Area | Intended change |
@@ -753,6 +793,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | K2 records Runtime usage before parsing and publishes a terminal report for attempted-inference failures, preventing an unreported ordinary Chat retry. Optional usage snapshots distinguish known subtotal from complete usage and stay fixed after late replies. Three red regressions confirm the original failure; 74 focused cases, server compilation, test typecheck and independent review pass. Original budgets, target, normal first-decision/setup fallback and K3 grants remain unchanged. Full CI pending; native K2/profile gates stay open. |
 | 2026-09-25 | K2 context reuse on `14c080fc` passes [full CI](https://github.com/cats-inc/cats-platform/actions/runs/36084948721), including `validate`, `nodejs (24)`, full typechecks and tests. The reset checkpoint and indexes now distinguish completed bounded K3/native projection and K2 cache evidence from still-open native preparation and profile/practice gates. This follow-up is documentation-only; no further model inference or budget change. |
 | 2026-09-25 | K2 preparation now reuses the reviewed session-bound delivery helper while retaining four results/five requests/30 seconds/8,000 tokens. Actual zero-inference production capture reduces new wire bytes from 63,213 to 45,688, matching the offline projection; bootstrap metadata grows, and native token fit is not inferred. All 92 focused cases, server compilation, test typecheck and independent review pass. Full CI pending; native K2 and profile/practice gates remain open. |
 | 2026-09-25 | Full [CI on `471755c9`](https://github.com/cats-inc/cats-platform/actions/runs/36082102563) passes `validate` and `nodejs (24)`. Successful saved-state native Chat/Work projections now pass: completion report, consumed confirmation, completed parent/role Tasks and review Run/outcome; all owned processes close normally. This evidence-only slice records the resumable next boundary without changing tested inputs. Model-driven K2 preparation and PLAN-109 profile/practice gates remain open. |

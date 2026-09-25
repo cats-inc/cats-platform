@@ -140,6 +140,10 @@ test('real requester delivers goal, discovery/context results and validated prep
   assert.equal(result, null);
   assert.equal(reports[0].status, 'prepared', JSON.stringify(reports));
   assert.equal(reports[0].feedbackDelivered, true);
+  assert.deepEqual(reports[0].preparationUsage, {
+    limits: { maxDurationMs: 30_000, maxTokens: 8000 },
+    requestsStarted: 4, responsesReceived: 4, measuredTokens: 80, complete: true,
+  });
   assert.equal(runtime.calls.create.length, 1);
   assert.equal(runtime.calls.create[0].permissionMode, 'default');
   assert.equal(runtime.calls.create[0].workspaceAccess, 'read_only');
@@ -357,6 +361,115 @@ test('an ordinary first response preserves normal Chat fallback when Runtime usa
   assert.deepEqual(reports, []);
 });
 
+test('rejected decision responses retain measured preparation usage and stop at the original limit', async () => {
+  for (const first of [true, false]) {
+    for (const rejection of ['json', 'policy', 'native']) {
+      const h = fixture();
+      const before = structuredClone(h.state);
+      const runtime = client();
+      const send = runtime.sendMessage.bind(runtime);
+      runtime.sendMessage = async (...args) => {
+        const response = await send(...args);
+        if (!first && runtime.calls.send.length === 1) return response;
+        response.tokensUsed = 9001;
+        if (rejection === 'json') response.segments[0].text = 'invalid JSON';
+        if (rejection === 'policy') response.segments[0].text = JSON.stringify(tool('chat.create', {}));
+        if (rejection === 'native') response.segments.push({ kind: 'tool_use', text: '', toolName: 'shell', toolId: 'native' });
+        return response;
+      };
+      const { result, reports } = await request(h, runtime);
+      assert.equal(result, null);
+      assert.equal(reports.length, 1, `${first}/${rejection}: failed inference must produce a terminal report`);
+      assert.equal(reports[0].reason, 'budget_exhausted');
+      assert.equal(reports[0].preparation, undefined);
+      assert.deepEqual(reports[0].preparationUsage, {
+        limits: { maxDurationMs: 30_000, maxTokens: 8000 },
+        requestsStarted: first ? 1 : 2, responsesReceived: first ? 1 : 2,
+        measuredTokens: first ? 9001 : 9021, complete: true,
+      });
+      assert.equal(runtime.calls.send.length, first ? 1 : 2);
+      assert.equal(reports[0].receipts.length, first ? 0 : 1);
+      assert.deepEqual(runtime.calls.cancel, ['decision-session']);
+      assert.deepEqual(runtime.calls.close, ['decision-session']);
+      assert.deepEqual(h.state, before);
+    }
+  }
+});
+
+test('unknown preparation usage stays an incomplete subtotal, including malformed replies and transport failure', async () => {
+  for (const kind of ['missing', 'zero', 'nan', 'negative', 'infinite', 'transport']) {
+    const runtime = client();
+    const send = runtime.sendMessage.bind(runtime);
+    runtime.sendMessage = async (...args) => {
+      const response = await send(...args);
+      if (runtime.calls.send.length === 1) return response;
+      if (kind === 'transport') throw new Error('Disconnected before response');
+      response.segments[0].text = 'invalid JSON';
+      response.tokensUsed = { missing: undefined, zero: 0, nan: NaN, negative: -1, infinite: Infinity }[kind];
+      return response;
+    };
+    const { reports } = await request(fixture(), runtime);
+    assert.equal(reports[0].reason, kind === 'transport' ? 'decision_or_read_failed' : 'usage_unavailable', kind);
+    assert.deepEqual(reports[0].preparationUsage, {
+      limits: { maxDurationMs: 30_000, maxTokens: 8000 }, requestsStarted: 2,
+      responsesReceived: kind === 'transport' ? 1 : 2, measuredTokens: 20, complete: false,
+    }, kind);
+    assert.equal(runtime.calls.send.length, 2);
+    assert.equal(reports[0].receipts.length, 1);
+  }
+});
+
+test('first inference timeout reports incomplete usage and a late response cannot change the terminal snapshot', async () => {
+  const h = fixture();
+  h.observation.budget.maxDurationMs = 200;
+  let release;
+  let responseReturned;
+  const returned = new Promise(resolve => { responseReturned = resolve; });
+  const runtime = client(async () => {
+    await new Promise(resolve => { release = resolve; });
+    return tool(discover, {});
+  });
+  const send = runtime.sendMessage.bind(runtime);
+  runtime.sendMessage = async (...args) => {
+    const response = await send(...args);
+    responseReturned();
+    return response;
+  };
+  const { reports } = await request(h, runtime);
+  try {
+    assert.equal(typeof release, 'function');
+    assert.equal(reports[0]?.reason, 'budget_exhausted');
+    assert.deepEqual(reports[0].preparationUsage, {
+      limits: { maxDurationMs: 200, maxTokens: 8000 },
+      requestsStarted: 1, responsesReceived: 0, measuredTokens: 0, complete: false,
+    });
+    const terminal = structuredClone(reports);
+    release();
+    await returned;
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(reports, terminal);
+    assert.equal(runtime.calls.send.length, 1);
+    assert.deepEqual(runtime.calls.cancel, ['decision-session']);
+    assert.deepEqual(runtime.calls.close, ['decision-session']);
+  } finally { release?.(); }
+});
+
+test('valid ordinary first decisions and failures before inference retain the existing fallback', async () => {
+  const h = fixture();
+  const runtime = client(() => respond());
+  const send = runtime.sendMessage.bind(runtime);
+  runtime.sendMessage = async (...args) => ({ ...await send(...args), tokensUsed: 9001 });
+  const ordinary = await request(h, runtime, { readState: async () => h.state });
+  assert.equal(ordinary.result.kind, 'semantic_plan');
+  assert.deepEqual(ordinary.reports, []);
+  const unavailable = client();
+  unavailable.createSession = async () => { throw new Error('Provider unavailable before inference'); };
+  const setup = await request(fixture(), unavailable);
+  assert.equal(setup.result, null);
+  assert.deepEqual(setup.reports, []);
+  assert.equal(unavailable.calls.send.length, 0);
+});
+
 async function withApi(t, runtime, execute) {
   const root = await mkdtemp(join(tmpdir(), 'cats-collaboration-api-'));
   t.after(async () => {
@@ -392,6 +505,49 @@ async function waitUntil(check) {
 }
 const sendOwner = (base, channelId) => fetch(`${base}/api/channels/${channelId}/messages`, {
   method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ body: goal }),
+});
+
+test('API publishes first-response budget failure and never falls through to ordinary Chat inference', async (t) => {
+  const runtime = client();
+  const send = runtime.sendMessage.bind(runtime);
+  let fallbackCalls = 0;
+  runtime.sendMessage = async (...args) => {
+    if (!args[1].startsWith('{')) {
+      fallbackCalls += 1;
+      return { segments: [{ kind: 'text', text: 'Unexpected ordinary fallback', toolName: null, toolId: null }], tokensUsed: 10 };
+    }
+    const response = await send(...args);
+    response.segments[0].text = 'invalid JSON';
+    response.tokensUsed = 9001;
+    return response;
+  };
+  await withApi(t, runtime, async ({ base, channelId, store }) => {
+    const response = await sendOwner(base, channelId);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).phase, 'acknowledged');
+    await waitUntil(async () => (await store.read()).channels.find(c => c.id === channelId)
+      .messages.some(message => message.metadata?.collaborationPreparation));
+    const state = await store.read();
+    const channel = state.channels.find(c => c.id === channelId);
+    const message = channel.messages.at(-1);
+    const report = message.metadata.collaborationPreparation;
+    assert.equal(report.status, 'stopped');
+    assert.equal(report.reason, 'budget_exhausted');
+    assert.equal(report.preparationUsage.measuredTokens, 9001);
+    assert.equal(report.preparationUsage.complete, true);
+    assert.equal(channel.roomRouting.workflow.activeTurn, null);
+    assert.equal(runtime.calls.create.length, 1);
+    assert.equal(runtime.calls.send.length, 1);
+    assert.equal(fallbackCalls, 0);
+    assert.match(message.body, /時間或 token 上限/u);
+    assert.match(describeCollaborationReport(report, 'en'), /time or token limit/u);
+    // Existing metadata has no usage snapshot and remains readable without migration.
+    const legacy = structuredClone(report);
+    delete legacy.preparationUsage;
+    assert.equal(describeCollaborationReport(legacy, 'zh-TW'), message.body);
+    assert.equal(state.channels.length, fixture().state.channels.length);
+    assert.deepEqual(runtime.calls.close, ['decision-session']);
+  });
 });
 
 test('authenticated API acknowledges before inference and normal cancel settles the preparation', async (t) => {

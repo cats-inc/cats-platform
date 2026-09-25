@@ -136,6 +136,15 @@ K2 explicitly retains its four-result delivery bound, five-request ceiling and
 execution budget. Ordinary decisions outside these collaboration surfaces retain
 complete snapshots.
 
+K2 also captures Runtime response usage before parsing or policy rejection. An
+attempted inference failure ends preparation with a terminal report, avoiding an
+unreported second inference through ordinary Chat fallback. The report preserves
+known tokens, Runtime request/response counts, original limits and whether usage
+is complete; late responses cannot change that snapshot. Existing reports may
+omit this additive metadata. A valid ordinary first decision and setup failure
+before any send retain their original fallback behavior. This is an accounting
+and failure-reporting correction, not authority to enlarge preparation budgets.
+
 The next measured run confirmed that per-primitive model decisions remain too
 expensive for the bounded fixture. An additive `request_execution({})` therefore
 accepts only the already owner-confirmed fixed collaboration. It persists a

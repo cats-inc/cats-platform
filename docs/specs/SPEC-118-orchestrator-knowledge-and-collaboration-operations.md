@@ -178,6 +178,26 @@ measurements stop preparation once a collaboration tool is selected. An ordinary
 first response retains the existing decision/fallback path even if usage is
 unavailable. Cleanup is best effort and bounded separately.
 
+K2 captures returned usage at the Runtime `sendMessage` boundary, before JSON
+parsing, policy checks or native-activity rejection. Its optional
+`preparationUsage` report contains the original time/token limits, Runtime sends
+started, responses received, measured token subtotal and completeness. These
+counts are not native model-response counts. Completeness requires a valid
+positive usage result for every attempted send; a thrown request, timeout or
+missing measurement leaves an incomplete subtotal, never a claim of zero usage.
+The terminal report copies the counters, so late results cannot mutate published
+metadata or restart the Chat turn. Older report metadata without this optional
+field remains readable; no stored-data migration is required.
+
+Once an inference request has been attempted, preparation failure produces a
+terminal report instead of silently falling through to another ordinary Chat
+inference. Explicit cancellation/stale-context/currency-policy failures retain
+their cause; known token or elapsed exhaustion takes precedence over malformed
+output, then missing returned usage, then a general decision/read failure.
+Pre-send setup failure and a valid ordinary first decision keep the existing
+fallback contract. This changes neither preparation limits nor K3 admission;
+the later proposal's suggested budget cannot authorize a larger preparation.
+
 Decision sessions reuse the existing isolated `sandbox` / `read_only` / `default`
 Runtime request contract, request no native skills, instruct JSON-only decisions
 and reject observed non-text/native-tool segments. This is not a universal
@@ -520,6 +540,8 @@ all owned candidate processes close normally. Full CI on `471755c9` passes.
 The later K2 delivery-reuse slice passes 92 focused cases, its zero-inference
 production wire capture and
 [full CI on `14c080fc`](https://github.com/cats-inc/cats-platform/actions/runs/36084948721).
+The subsequent K2 failure-accounting correction passes server compilation, test
+typechecking, 74 focused cases and independent review; its full CI is pending.
 The fixture constructs K2 preparation; model-driven discovery/preparation and
 PLAN-109 profile exclusion are separate open gates. See PLAN-110's dated evidence
 before interpreting AC-09/AC-10 as complete.

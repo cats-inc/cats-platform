@@ -38,6 +38,9 @@ export async function runCollaborationDecisionLoop(input: {
   const deadline = Date.now() + duration;
   const maxTokens = Math.min(input.observation.budget.maxTokens ?? 8000, 8000);
   let tokens = 0;
+  let requestsStarted = 0;
+  let responsesReceived = 0;
+  let missingUsage = false;
   let sessionId: string | null = null;
   let stopped = false;
   let entered = false;
@@ -69,13 +72,24 @@ export async function runCollaborationDecisionLoop(input: {
         }
         return created;
       };
+      if (property === 'sendMessage') return async (...args: Parameters<RuntimeClient['sendMessage']>) => {
+        if (stopped) throw new Error('collaboration_stopped');
+        requestsStarted += 1;
+        const response = await target.sendMessage(...args);
+        // Even malformed JSON, rejected decisions and native activity consume
+        // usage. Capture before parsing; ordinary first decisions keep their fallback.
+        responsesReceived += 1;
+        if (Number.isFinite(response.tokensUsed) && response.tokensUsed > 0) tokens += response.tokensUsed;
+        else missingUsage = true;
+        return response;
+      };
       const value = Reflect.get(target, property);
       return typeof value === 'function' ? value.bind(target) : value;
     },
   });
   async function bounded<T>(operation: () => Promise<T>): Promise<T> {
     if (input.isCancelled?.()) throw new Error('cancelled');
-    if (Date.now() >= deadline || tokens >= maxTokens) throw new Error('budget_exhausted');
+    if (Date.now() >= deadline || (entered && tokens >= maxTokens)) throw new Error('budget_exhausted');
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let poll: ReturnType<typeof setInterval> | undefined;
     try {
@@ -109,6 +123,9 @@ export async function runCollaborationDecisionLoop(input: {
       status: reason ? 'stopped' : preparation?.status ?? 'inspected',
       ...(reason ? { reason } : { preparation }),
       feedbackDelivered: deliveredCount === receipts.length, receipts,
+      preparationUsage: { limits: { maxDurationMs: duration, maxTokens },
+        requestsStarted, responsesReceived, measuredTokens: tokens,
+        complete: requestsStarted === responsesReceived && !missingUsage },
     };
   }
 
@@ -138,9 +155,7 @@ export async function runCollaborationDecisionLoop(input: {
         return decision;
       }
       entered ||= selectedRead;
-      const usage = response.runtimeMessage.tokensUsed;
-      if (!Number.isFinite(usage) || usage <= 0) throw new Error('usage_unavailable');
-      tokens += usage;
+      if (missingUsage || requestsStarted !== responsesReceived) throw new Error('usage_unavailable');
       await currentState();
       if (Date.now() >= deadline || tokens >= maxTokens || input.isCancelled?.()) {
         throw new Error(input.isCancelled?.() ? 'cancelled' : 'budget_exhausted');
@@ -187,10 +202,15 @@ export async function runCollaborationDecisionLoop(input: {
     return null;
   } catch (error) {
     const code = error instanceof Error ? error.message : '';
-    if (!entered && !['cancelled', 'stale_context', 'unsupported_cost_budget',
+    if (!entered && requestsStarted === 0 && !['cancelled', 'stale_context', 'unsupported_cost_budget',
       'Native tool activity is not part of collaboration preparation.'].includes(code)) return null;
-    report(['cancelled', 'budget_exhausted', 'stale_context', 'usage_unavailable',
-      'unsupported_cost_budget'].includes(code) ? code : 'decision_or_read_failed');
+    const reason = input.isCancelled?.() ? 'cancelled'
+      : ['cancelled', 'stale_context', 'unsupported_cost_budget'].includes(code) ? code
+        : Date.now() >= deadline || tokens >= maxTokens || code === 'budget_exhausted' ? 'budget_exhausted'
+          : missingUsage || code === 'usage_unavailable' ? 'usage_unavailable' : 'decision_or_read_failed';
+    // An attempted inference failure is terminal. Without a report, dispatch
+    // would fall through to another ordinary Chat inference outside this budget.
+    report(reason);
     return null;
   } finally {
     stopped = true;

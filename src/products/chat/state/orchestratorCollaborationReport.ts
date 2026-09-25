@@ -83,7 +83,11 @@ export function describeCollaborationReport(report: CollaborationReport, locale:
       ? (zh ? '對話或同伴設定已改變，需要重新查詢。' : 'Conversation or teammate settings changed; a fresh lookup is needed.')
       : report.reason === 'cancelled'
         ? (zh ? '這次準備已取消。' : 'This preparation was cancelled.')
-        : (zh ? '這次準備未完成，已停止查詢。' : 'This preparation did not finish; discovery has stopped.');
+        : report.reason === 'budget_exhausted'
+          ? (zh ? '準備協作已達到目前的時間或 token 上限。' : 'Collaboration preparation reached its time or token limit.')
+          : report.reason === 'usage_unavailable'
+            ? (zh ? '無法確認模型用量，這次準備已停止。' : 'Model usage could not be confirmed; preparation has stopped.')
+            : (zh ? '這次準備未完成，已停止查詢。' : 'This preparation did not finish; discovery has stopped.');
     body = reason + (zh ? '尚未建立對話、加入成員或啟動工作。' : ' No conversation, membership or work has been created or started.');
   } else {
     const candidates = report.receipts.flatMap((receipt) => {
