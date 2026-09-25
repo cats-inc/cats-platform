@@ -9,6 +9,101 @@ the production knowledge loader and their configured provider/model.
 Implementation/checkpoints: [PLAN-109](plans/PLAN-109-cats-self-development-and-catlas-practice.md).
 Requirements: [SPEC-117](specs/SPEC-117-cats-self-development-and-catlas-practice.md).
 
+## Managed authoring in an isolated preview Desktop
+
+The developer-only `tools/knowledge-practice/authoring-host.mjs` is an explicit
+Platform sidecar entry for a candidate Desktop. It composes the normal app
+startup/shutdown with one admitted knowledge-authoring task. It uses the same
+FileChatStore instance and atomic mutation queue as that product server. It is
+outside npm/Desktop asset inventories; ordinary installed builds expose no new
+authoring endpoint or automatic practice loop.
+
+Build Platform server/host and the selected preview Runtime. Use the existing
+isolated Desktop candidate launch contract, including separate data/Electron
+roots, non-default loopback listeners and owned app/Runtime sidecars. Set:
+
+```text
+CATS_DESKTOP_APP_ROOT=<built Platform checkout>
+CATS_DESKTOP_APP_ENTRY=<Platform checkout>/tools/knowledge-practice/authoring-host.mjs
+CATS_DESKTOP_RUNTIME_ROOT=<built preview Runtime checkout>
+CATS_KNOWLEDGE_AUTHORING_REQUEST=<candidate root>/request.json
+```
+
+The host checks the candidate state paths, expected listeners, explicit Runtime
+artifact and request location before normal startup can provision state. Desktop
+process ownership/readiness must establish that these are its sidecars; a local
+manifest alone does not identify an arbitrary running HTTP service. Admission
+waits for normal startup recovery. Never use this entry against real user state.
+After inspecting the actual Desktop PID, both child PIDs, lifecycle-ready events,
+listener ownership, private roots and compiled Runtime revision, the native
+operator writes `<candidate root>/authoring-start.json` with `requestDigest`
+(the request's canonical SHA-256), `desktopPid`, `appPid` and `runtimePid`.
+The host checks the request and its actual process/parent identity, waits at most
+three minutes for this receipt, and makes no model call when it is absent or
+invalid. This gate is a trusted local acceptance step, not an approval API.
+Provider use still requires the owner's applicable authorization.
+
+Private state directories alone do not isolate native provider instructions.
+When a candidate lives beneath a source checkout, Codex can automatically load
+ancestor repository guidance into the authoring context. Prepare a separate
+project boundary (for example, a private Git root with minimal author guidance),
+and inspect the actual native instruction history as part of acceptance. A local
+Git-root check establishes preparation only; it does not prove which context the
+provider loaded or guarantee a token budget. See
+[Codex instruction discovery](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
+
+Request schema 1 contains `id`, `title`, an explicit `target` with `provider`,
+`instance`, `model`, a `budget` with `maxDurationMs` (1,000–300,000) and `maxTokens`
+(1–80,000), a complete `draft` in the existing candidate-draft shape, and `evidence`.
+Each evidence entry has `id`, a sanitized `summary`, and a SHA-256 `sourceDigest`;
+the ordered IDs must equal the draft's `evidenceRefs`. The draft supplies the
+admitted author, applicability, baseline entries and initial counterexamples.
+The model returns a revised draft; it cannot select new evidence references or
+claim independent verification. These operator-supplied summaries/digests need
+independent checking before later evaluation/promotion.
+
+The first slice distills existing development evidence. It creates one Core
+worker, Task and Run, then a fresh read-only Runtime sandbox with only the
+`cats-practice-and-distill` skill and read/list tools. The host checks Runtime's
+actual preview policy, canonical artifact/skill paths, resolved/applied versions
+and fingerprints, provider/instance/model, session-bound hydration provenance,
+tool allowlist and workspace before
+dispatch and again after response. It records delivery mode and distinguishes
+materialized resources from unestablished optional instruction resources. Session
+lifecycle supervision permits creation/cancellation; the worker's tool and
+filesystem grant remains read-only. Its permission gate is explicitly `default`,
+as required by the product's read-only session policy; the read/list tool allowlist
+is supplied separately and retained in the observed receipt.
+
+The host validates the returned JSON, writes `draft.json` and `candidate.json`
+under `<candidate root>/knowledge-authoring/<id>/`, and declares an attributed
+Code artifact with candidate disposition and draft status, linked to its Task,
+Run and Runtime session. `authoring-receipt.json` is a local inspection snapshot;
+the Core run is authoritative for later usage/cleanup callbacks. Candidate
+knowledge remains **unverified**. A completed run means drafting completed, not
+that the lesson improves product behavior or can ship.
+
+Admission and session-create/send intent are persisted before execution. Reusing
+the same request ID inspects the existing attempt; changed inputs with that ID
+are rejected. Startup fences an interrupted run and its Task without dispatching
+again; cleanup of a known session is retried only against the same recorded
+Runtime endpoint/artifact binding. Unknown session creation stays explicit.
+The stored package digest covers `package.json`; compiled entry/revision and
+process ownership must be retained separately in the native evidence. A cleanup
+value of `requested` means HTTP acknowledgements only, while `pending` means the
+request failed or timed out. Verify owned process disappearance separately.
+Retain partial output and reconcile ambiguous effects before explicitly admitting
+a new ID. Canonical Run stop and owning-Task cancellation fence materialization;
+known usage from late responses remains recorded. Unknown usage, malformed
+output, changed delivery or an exceeded token threshold cannot yield a candidate.
+Unexpected tool activity also rejects the draft and remains visible in the run.
+The token budget is checked after the one response and is not a hard spend cap.
+
+This slice does not execute a source fix, run the frozen practice curriculum,
+review/export knowledge, or update a release bundle. The normal independent
+evaluation and promotion workflow below still applies. See PLAN-109 for actual
+fixture/native acceptance status and retained checkpoints.
+
 ## Try the fixture workflow
 
 Build Platform server/host and the paired Runtime first. From Platform, select a

@@ -1380,7 +1380,7 @@ Example response:
       "app.stopped"
     ],
     "shutdownSignals": ["SIGINT", "SIGTERM"],
-    "shutdownReasons": ["sigint", "sigterm", "stdin_closed", "keyboard", "parent_requested", "parent_disconnected"]
+    "shutdownReasons": ["sigint", "sigterm", "stdin_closed", "keyboard", "parent_requested", "parent_disconnected", "startup_failed"]
   },
   "readiness": {
     "endpoint": "/health",
@@ -1406,7 +1406,7 @@ Example response:
   },
   "shutdown": {
     "signals": ["SIGINT", "SIGTERM"],
-    "reasons": ["sigint", "sigterm", "stdin_closed", "keyboard", "parent_requested", "parent_disconnected"],
+    "reasons": ["sigint", "sigterm", "stdin_closed", "keyboard", "parent_requested", "parent_disconnected", "startup_failed"],
     "stdinCloseEnabled": true
   },
   "runtime": {

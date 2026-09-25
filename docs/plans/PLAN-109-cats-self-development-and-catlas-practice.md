@@ -4,10 +4,10 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; initial Code knowledge assistance implemented, live/native acceptance pending |
+| Status | Native Desktop candidate authoring accepted; knowledge evaluation/promotion and broader gates pending |
 | Owner | Platform integration; member responsibilities listed below |
-| Reviewer | Product owner; independent implementation reviewers unassigned |
-| Last updated | 2026-09-25 |
+| Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
+| Last updated | 2026-09-26 |
 
 ## Related Spec
 
@@ -25,7 +25,263 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — preview supplement and practice (2026-09-25)
+## Resume Checkpoint — integration and Desktop preview (2026-09-26)
+
+- Owner authorized normal auto-merge PR integration and a Desktop
+  **standard-profile preview**, including its version preparation; explicitly
+  **no npm publication**. No new provider inference is authorized or needed.
+- Latest main was fetched. Platform `b45f5d9c` is 0.5.1 with Muse default and
+  docs-only CI changes; Runtime `0a60f31` is 0.3.1 with Windows Codex hidden-host,
+  catalog-upgrade, discovery and CI updates. Both feature branches rebased cleanly:
+  Platform `8765f92b`, Runtime `546429d`. Native evidence below remains historical
+  to its recorded revision set. Range-diff confirms all implementation commits
+  were preserved unchanged. Rebased validation passed: Runtime 135 tests across
+  skills/hydration/content policy, hidden Windows Codex host/launcher/guard and
+  docs boundary; Platform 49 authoring/lifecycle/practice/promotion/docs-boundary
+  cases; Runtime TypeScript and Platform server/host builds; 0.5.2 version guard.
+  Independent integration review found no blocking code interactions.
+- Prepare compatible Desktop/Platform **0.5.2** (tag was absent on GitHub).
+  Keep Runtime's package version, existing Usage 0.4.0 pin and 0.5.x knowledge
+  compatibility; no migration or new App/npm release is needed. Merge Runtime
+  first, then Platform through full CI; dispatch Desktop from merged main with
+  the immutable Runtime merge SHA and standard profile (`unsigned=false`).
+- Publication is incomplete until the workflow, prerelease assets, source/runtime
+  identities and per-OS trust results are verified. Do not push the preview tag
+  manually or claim the unverified authored lesson is promoted. Preserve private
+  native evidence before local clean-build, which deletes `build/validation`.
+  A private copy now exists outside both repos at
+  `../.validation/knowledge-authoring-native-20260926` (129 files, each copy
+  SHA-256 verified, no provider/UI authentication or Electron browser profile).
+  Its `evidence-manifest.json` SHA-256 is
+  `84b89a3d7594bd90d8b3cebc26913591a591132622d8181500e79d001beab9b9`.
+  Full PR CI and publication remain the next gates. No new inference ran.
+
+## Previous checkpoint — native candidate authoring accepted (2026-09-26)
+
+- Code heads: Platform `4f92836e` (documentation checkpoint `3d3f12d9`) and Runtime
+  `4bb1495`. Branches remain `feat/desktop-knowledge-candidate` and
+  `fix/readonly-sandbox-skill-delivery`. Native acceptance required no further
+  production-code changes or repeated test suites.
+- The owner explicitly authorized one new `gpt-6-astra` turn after profile 03's
+  budget rejection. **This second authorization is now consumed.** Do not replay
+  either native run. Private evidence root is
+  `build/validation/knowledge-authoring-native/profile-prepared-04`.
+- Owned native Windows Desktop PID 15340 managed Platform 8772 / Runtime 19116
+  on loopback 59347 / 59348. Fresh ownership, lifecycle and compiled-artifact
+  checks passed before opening the gate. Runtime session
+  `b3eb0d63-0af6-4443-87a7-147edf3ab3bf` completed one agent turn; Core Run
+  duration was 51,986 ms, within the unchanged 180-second / 24,000-token thresholds.
+- The provider's project-instruction block contains only the private 375-byte author instructions
+  (604 bytes with provider wrapping); the inherited Platform rules are absent.
+  One read_file invocation read the delivered author skill. Two native usage
+  records total **14,589 tokens** (13,305 input + 1,284 output; cached input
+  6,144 is included), matching Core. This verifies the prepared instruction
+  boundary on this native CLI, not a general hard token cap.
+- Before/after observations and strict skill receipts agree on preview profile, exact
+  cats-practice-and-distill package fingerprint, selected provider/model,
+  session-bound provenance, filesystem delivery, sandbox/read_only/default and
+  read/list grant. Post-run observe reports the session closed with these fields
+  retained. Native output, saved draft and candidate content match exactly.
+- Candidate digest:
+  `6c7ce9b832a987ab91295fc1d2e3c0eec6dd65a2042ba043c2c2da2468c12ac5`.
+  Core Task/Run completed and exactly one artifact
+  `artifact-0c62afd2cbad997baadfe30f` is attributed to the author actor, Runtime
+  session and correct Task/Run. Status is draft, disposition candidate and
+  knowledge state unverified, with no verification timestamp or promotion.
+- Actual Desktop task and artifact pages plus scoped Windows UIA confirm the
+  completed task, linked draft, unverified summary and candidate path. The
+  existing dataset detail has **no inline JSON preview**; full content inspection
+  used the retained file. Evidence includes `authoring-task-completed.png`,
+  `authoring-candidate-detail.png`, `candidate-ui-observation.json`,
+  `native-output-observation.json`, receipts and native history.
+- Independent evidence/provenance review passed. Content review found that the
+  one cancellation lesson replaced guidance across all five baseline topics;
+  workspace and permissions entries are now off-topic. This is a valid authored
+  **unverified draft**, not evidence that it improves Catlas. Do not promote this
+  complete replacement bundle without addressing topic preservation and running
+  independent evaluation. Its scope is Catlas/code-help only; it establishes no
+  Orchestrator knowledge consumption or supported new operation.
+- Cleanup completed: Desktop exit 0, private provider auth removed, independent
+  CIM/listener receipt shows no owned processes or either listener. All evidence
+  remains private; no installed/user product state, released knowledge, version,
+  remote branch or publication was changed.
+- **Next work:** constrain author changes to evidence-relevant topics and preserve
+  unrelated baseline guidance; prepare independent baseline/candidate evaluation
+  with critical topic-preservation checks. Candidate contents, held-out evaluation
+  and review remain separate from successful transport/materialization. Keep the
+  existing release-consumer gates and separate Catlas/Orchestrator applicability.
+  Local preparation can continue without owner-operated testing; another external
+  model turn requires a new applicable authorization. G1/G2/G4 and combined
+  installed-profile acceptance remain open.
+
+## Previous checkpoint — managed knowledge authoring (2026-09-26)
+
+**Historical preflight:** implementation was locally checkpointed at Platform `4f92836e`
+and Runtime `4bb1495`. The single authorized native turn is consumed: strict
+skill delivery worked, but 43,818 measured tokens exceeded 24,000 and no artifact
+was admitted. All owned processes and temporary provider auth are gone. New
+private `profile-prepared-04` is prepared with its own Git instruction boundary;
+it had not launched, copied provider auth or opened its gate at that checkpoint.
+The owner then replied `授權` to the second single-turn request, keeping
+`gpt-6-astra` and 180 seconds / 24,000 measured tokens. Profile 04 subsequently
+completed as recorded above; both authorizations are consumed. These historical
+instructions do not authorize another launch or provider turn.
+
+The owner authorized continuing the next bounded slice, maintaining checkpoints
+and doing isolated validation without requiring owner-operated testing. The
+target is a preview Desktop-managed agent producing an inspectable **unverified**
+knowledge candidate, correlated with its existing task/run/session and evidence.
+Independent product evaluation/promotion and release-consumer acceptance follow
+separately. No version bump, publication or installed-profile mutation is included.
+
+- Checkout: `cats-platform`, branch `feat/desktop-knowledge-candidate`, baseline
+  `524e3406`; paired Runtime main is `e464619` (0.3.0 preparation). The earlier
+  P1–P4 branches are merged (`b36571d2` / `d2d12db`); do not repeat their work or
+  the consumed PLAN-110 live runs. Both original working trees were clean.
+- Completed: repository/spec/ADR recovery and initial seam inventory. Existing
+  candidate/evaluation/review/export tools remain developer-only. Ordinary Code
+  task execution has no requested-skill input; Chat exposes only none/companion
+  profiles; K3 workers deliberately request no skills. Merely packaging the
+  preview supplement does not establish its delivery to a Desktop agent.
+- Contract review: independently reviewed developer-only authoring host, selected
+  through `CATS_DESKTOP_APP_ENTRY` in an isolated candidate Desktop. It reuses the
+  normal `startApp` lifecycle and the **same** FileChatStore as the product server.
+  Existing verified evidence is supplied to one fresh read-only Runtime sandbox;
+  no source mutation or new K3/Chat skill profile is introduced. This implements
+  a narrower managed-authoring seam; G2 source-fix and G4 learning/promotion remain
+  separate gates, and native authoring acceptance is still pending.
+- Implemented, validation in progress: `managedAuthoring.mjs` records admission and
+  session identity before dispatch, requires actual preview skill receipts, keeps
+  measured usage on rejected output, fences cancellation/late creation, and
+  materializes an unverified draft through existing Code artifact declarations.
+  `authoring-host.mjs` checks private paths/endpoints before startup. `src/index.ts`
+  exports optional trusted in-process lifecycle hooks; normal startup has none.
+- Independent review found and drove corrections for real nested Runtime
+  observations, canonical Run-stop session bridging, Task cancellation, startup
+  reconciliation without inference replay, exact target/artifact/provenance
+  binding, and failure-safe startup/shutdown hooks. Re-review found no blockers.
+  Cleanup acknowledgements are labelled `requested`, never process-exit proof.
+- Validation: server/host builds and the final 17-case isolated authoring suite
+  passed; all 21 lifecycle cases passed, including failing hooks
+  and shutdown during startup. Earlier
+  practice/promotion regression run passed 27/28; the Catlas promotion case saw
+  the tool-engine digest change while an authoring file was being edited, so
+  its isolated rerun passed with tool files stable. Lifecycle
+  tests required outside-sandbox execution because sandbox spawn returned EPERM.
+  Runtime's generated build was refreshed at this earlier checkpoint.
+- Native zero-provider preflight: Windows UIA observes the private Cats window.
+  Desktop PID 8924 owned Runtime 3700 and Platform 13608; their lifecycle events
+  and loopback listeners (57820/57819) matched the expected roots/entries.
+  Private evidence and resumable scripts: `build/validation/knowledge-authoring-native/`.
+  The first private-wrapper import and readiness-wait failures were corrected
+  before sidecars/inference; their logs are retained. All testing used the isolated
+  profile; no installed Desktop or user product records were changed.
+- External inference is **not run at the preceding checkpoint**. Automatic approval review rejected
+  `start-author.mjs`: it requires explicit owner authorization to send the admitted
+  candidate knowledge/evidence to the external Codex provider. Do not bypass or
+  silently retry this rejection. The prepared request is one `gpt-6-astra` draft,
+  read-only, maximum 180 seconds / 24,000 measured tokens (post-response threshold,
+  not a provider hard cap). No provider authentication was copied and the start
+  gate was never opened. The candidate Desktop shut down normally (exit 0);
+  independent process/listener observation confirms all three PIDs and both
+  listeners are gone. No live authored candidate/UI projection is claimed.
+- Owner authorization received in chat: `授權`, explicitly responding to the
+  one external Codex call above. Continue from implementation checkpoint
+  `64f3b013`; the authorization covers one `gpt-6-astra` request with the unchanged
+  180-second / 24,000-token threshold, supplied knowledge/evidence/author
+  instructions and temporary isolated authentication. Do not ask for this again.
+  New private run: `build/validation/knowledge-authoring-native/profile-authorized-01`.
+  Fresh preflight passed: Desktop 17160 owns Platform 17556 / Runtime 8648 on
+  loopback 60940 / 60941. The one-call gate opened at approximately 18:55 UTC
+  (2026-09-25); temporary auth was copied into this private profile. This attempt
+  failed in the real Platform client policy guard **before HTTP session creation**:
+  read-only sessions require `permissionMode: default`, not `whitelist`.
+  Core records zero inference attempts; Runtime/provider session directories and
+  Runtime create/message requests are empty. Desktop exited normally and the
+  temporary credential copy was removed. The single authorized inference remains
+  unused. Preserve `precheck-failure.json` and the failed Run; do not rewrite it.
+  The narrow correction changes creation and observed-policy assertions to
+  `default`, preserving read-only access and the exact read/list tool allowlist.
+  Independent source review confirms Runtime declines command/file-change approval
+  requests for this combination; the dynamic read-tool grant alone does not prove
+  every native provider tool is disabled. A regression through the actual CatsRuntimeClient now passes;
+  the other 17 authoring cases also passed. A private fixture-only setup mistake
+  (writing Core setup completion through the Chat adapter) was corrected before
+  the next native launch. Continue in new `profile-authorized-02`, under the same
+  unused one-call authorization; no automatic second inference is authorized.
+  Profile 02 ownership preflight passed: Desktop 10996 owns Platform 17260 /
+  Runtime 14884 on loopback 62439 / 62440. It failed strict Runtime skill delivery
+  before provider dispatch: the legacy read-only mode lost sandbox ownership at
+  the skill resolver. Core records zero inference attempts, provider history is
+  empty, and only the Runtime exposure marker exists. Preserve its failed Run and
+  `precheck-failure.json`. Desktop exited 0; independent CIM/listener observation
+  confirms all three PIDs and both listeners gone and temporary auth removed.
+  The actual Cats Code home rendered in the private window; this is not candidate
+  UI acceptance. The single authorized inference remains unused.
+- Runtime correction validated in `cats-runtime`, branch
+  `fix/readonly-sandbox-skill-delivery`, commit `4bb1495` (base `e464619`): canonical sandbox kind
+  controls Runtime-owned skill preparation, while read-only provider access stays
+  unchanged. Source/worktree locations remain non-writing. Message hydration now
+  preserves canonical topology. Runtime TypeScript build and 113 distinct focused
+  cases passed; independent review found no blockers. See Runtime PLAN-041.
+  Private preflight now records the actual Runtime revision and compiled entry,
+  catalog, hydration and message-route digests, rather than a stale baseline SHA.
+- Native single-turn checkpoint: Platform `4f92836e` with Runtime `4bb1495`,
+  fresh `profile-authorized-03`. Desktop 9292 owned Platform 8352 / Runtime 17216
+  on loopback 50767 / 50768; exact entries, revisions and compiled digests passed.
+  The authorized request ran once in session
+  `6aadb188-988f-43fc-8dfd-ccf800abc5ac`, approximately 19:22:54–19:23:55 UTC
+  on 2026-09-25 (local date 2026-09-26). Strict preview skill delivery succeeded
+  with the exact package identity, read-only sandbox, default gate and read/list
+  grant. Native history confirms the agent read the delivered SKILL.md and
+  checklist and returned a JSON draft. This establishes actual skill delivery
+  and a provider response, not candidate admission or promotion.
+- The request **failed the unchanged token threshold**: 43,818 measured tokens
+  versus 24,000 allowed, with 42,455 input + 1,363 output. Three native usage
+  records independently sum to the same result; 27,520 cached input tokens are
+  already included, not subtracted. The Core Run records one inference attempt,
+  retained usage and failure; Task is blocked and there are zero artifacts.
+  This was one agent turn with two native tool rounds and four actual read_file
+  invocations, not four duplicate activity events. No second request was sent.
+- Context cause: placing the private sandbox below the Platform source checkout
+  caused the provider to inject the unrelated Platform AGENTS block (32,747
+  characters) in addition to the 6,317-character author prompt. The agent also
+  attempted CODEX.md and docs/AGENT-GUIDE.md; both reads were denied as unavailable
+  or outside the admitted read boundary. This explains excess context and extra
+  work. Do not relax the measured-token threshold retroactively or materialize
+  the rejected response as a successful candidate.
+  Independent inspection confirms the instruction body is exactly the first
+  32,768 bytes of Platform AGENTS, truncated mid-rule; the larger block size
+  includes provider wrapping. The extra source context must be disclosed as part
+  of the effective input, not described as only the supplied author request.
+- Evidence retained privately: request/authoring receipts, Core Run and Task,
+  native history, `native-output-observation.json`, `post-run-observe.json`, and
+  `authoring-budget-rejection.png`. The actual Desktop task page showed blocked
+  and no artifact. Post-run Runtime observe retained applied filesystem skill
+  delivery and read-only access with session closed. Desktop exited 0; independent
+  cleanup observation confirms owned processes/listeners absent and auth removed.
+- Next preparation completed without inference: `profile-prepared-04` has a
+  private Git root and a 375-byte author AGENTS file. Native project discovery
+  starts at the project root according to
+  [official Codex guidance](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
+  `preparation-observation.json` verifies the Git boundary from the session base,
+  unchanged request digest `2930ddb1f269f9f06f94294bcccdafce88aa508341a15f2a78cbed6f6e9c9ed5`,
+  Runtime revision `4bb1495`, and absent Desktop/auth/start gate. Helpers now check
+  the boundary/instruction digest before opening a gate. This is documented
+  mitigation, not proof of the next effective prompt or its token spend.
+- Planned profile 04 entry, now completed above: keep `gpt-6-astra`, one agent turn,
+  the same candidate/evidence and 180-second / 24,000-token post-response threshold.
+  Recheck prepared ports are free (refresh launch/cookie fixture consistently if
+  needed), launch profile 04, renew ownership proof and inspect actual context,
+  usage and candidate/UI attribution. Do not reuse profile 03 or automatically
+  run another inference. Independent evaluation/promotion remains pending.
+  Earlier P1–P4 and PLAN-110 live runs need no replay.
+- Compatibility: existing Core records gain optional namespaced metadata;
+  no persisted format or execution API is replaced. Trusted app composition and
+  the additive `startup_failed` lifecycle reason preserve this minor line.
+  No version bump, release, push or publication is performed.
+
+## Previous checkpoint — preview supplement and practice (2026-09-25)
 
 ### Desktop 0.5.0 release repair
 

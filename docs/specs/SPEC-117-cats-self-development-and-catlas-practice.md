@@ -4,12 +4,12 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Initial Code knowledge assistance implemented; live/native acceptance and broader architecture pending |
+| Status | Native managed candidate authoring accepted; independent evaluation/promotion and broader acceptance pending |
 | Owner | Platform integration, with member-owned work packages |
-| Reviewer | Product owner; implementation reviewers not yet assigned |
+| Reviewer | Product owner; managed-authoring implementation and evidence independently reviewed |
 | Decision | [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
 | Plan | [PLAN-109](../plans/PLAN-109-cats-self-development-and-catlas-practice.md) |
-| Last updated | 2026-09-25 |
+| Last updated | 2026-09-26 |
 
 ## Summary
 
@@ -75,6 +75,27 @@ historical snapshots, while revocation prevents future local reads/exports.
 The operator guide defines the concurrent export/revocation snapshot boundary.
 A passing P3 receipt alone cannot promote knowledge. These developer tools do
 not add a shipped endpoint, automatic practice loop, or installed overlay.
+
+## Native managed candidate authoring
+
+On 2026-09-26, an explicitly selected developer authoring host in an isolated
+Windows Desktop completed one real Codex turn with the required preview author
+skill. Its canonical read-only sandbox, strict skill identity/provenance and
+unchanged before/after delivery were observed. The native response became one
+unverified draft candidate through the normal Code artifact materializer, with
+author, Runtime session and Task/Run attribution. Actual task/artifact pages and
+Windows UI Automation showed the linked draft; the dataset page exposes summary
+and location, with no inline JSON preview. Private file inspection verified the
+complete content and digest. Usage was 14,589 tokens under the admitted 24,000
+threshold, and owned processes/listeners/authentication were cleaned up.
+
+This accepts the bounded managed-authoring path, not the generated lesson's
+quality. Independent review found off-topic replacement of baseline workspace
+and permissions guidance, so the draft remains unverified and unsuitable for
+promotion without correction and evaluation. It targets Catlas/code-help only.
+It does not establish Orchestrator consumption, protected-holdout improvement,
+source-fix execution, installed-profile acceptance or publication. PLAN-109
+retains the exact revisions, prior failed attempts and next evaluation scope.
 
 ## Implemented Code-Entry Assistance
 
@@ -214,6 +235,21 @@ selects relevant entries and sends their actual content in the model request.
 A capable local agent may instead read a bounded read-only knowledge root or
 use a retrieval tool, after that path is verified. A remote/API model cannot
 read the desktop's files just because its prompt contains their paths.
+
+## Managed authoring refinement (2026-09-26)
+
+The owner authorized the next managed-authoring slice and isolated validation.
+A developer-only app entry composes the normal candidate Desktop lifecycle with
+one admitted authoring session and the product's existing FileChatStore/Core
+identities. It distills already verified development evidence, as permitted by
+the preview practice skill, into an attributed unverified Code candidate artifact.
+The host fixes evidence references and applicability, checks actual Runtime
+preview skill delivery, persists operation intent before dispatch and retains
+interrupted attempts without automatic replay. See the [operator guide](../knowledge-practice.md)
+and [current checkpoint](../plans/PLAN-109-cats-self-development-and-catlas-practice.md).
+This incremental path does not close the source-fix G2, product practice/promotion
+G4 or source-free release acceptance gates. Native results are recorded separately
+from deterministic provider fixtures.
 
 ## First Acceptance Slice
 
@@ -554,4 +590,4 @@ remain later work, each requiring evidence and an explicit rollout decision.
 ---
 
 *Created: 2026-09-24*
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-26*

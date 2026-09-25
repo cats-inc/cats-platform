@@ -8,7 +8,11 @@ is implemented; live-provider and installed-Desktop acceptance remain pending.
 On 2026-09-25 the owner authorized implementation of preview development skills,
 release exclusion, practice and knowledge distillation on feature branches.
 The concrete contract and recovery checkpoints are in PLAN-109. Broader managed
-development/native acceptance remains pending. This work does not authorize
+development/combined native acceptance remains pending. On 2026-09-26 the
+bounded Desktop-managed knowledge-authoring path passed native Windows acceptance:
+strict preview skill delivery, an attributed unverified draft and verified cleanup.
+Independent content review found topic regressions; knowledge evaluation/promotion
+remains open. PLAN-109 records the exact scope and evidence. This work does not authorize
 publication or a change to an installed Desktop.
 
 Owner clarification, 2026-09-24: preview/debug carries the extra Cats-development

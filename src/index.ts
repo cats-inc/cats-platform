@@ -44,7 +44,16 @@ import { installBundledApps } from './platform/apps/packageInstaller.js';
 
 let startup = createAppStartupState();
 
-async function main(): Promise<void> {
+/** Trusted in-process host composition; no extension is loaded from user requests. */
+export async function startApp(extension: {
+  ready?(context: {
+    config: ReturnType<typeof loadConfig>;
+    chatStore: FileChatStore;
+    runtimeClient: CatsRuntimeClient;
+    server: ReturnType<typeof createServer>;
+  }): Promise<void>;
+  shutdown?(): Promise<void>;
+} = {}): Promise<void> {
   loadProjectEnvFiles();
   const startupTrace = createAppStartupTrace();
   startupTrace.trace('main.entered', {
@@ -146,8 +155,14 @@ async function main(): Promise<void> {
     stopInteraction();
     writeLifecycle(formatAppStoppingMessage(startup, reason));
 
-    shutdownPromise = closeAppServerGracefully(server)
+    const reportShutdownError = (error: unknown) => {
+      process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+      process.exitCode = 1;
+    };
+    shutdownPromise = Promise.resolve()
       .then(async () => {
+        try { await extension.shutdown?.(); } catch (error) { reportShutdownError(error); }
+        try { await closeAppServerGracefully(server); } catch (error) { reportShutdownError(error); }
         // Flush any pending provider snapshot before exiting so a recent
         // successful refresh isn't lost when the debounce timer hadn't fired
         // yet. Best-effort: failures must not block the lifecycle event.
@@ -155,12 +170,7 @@ async function main(): Promise<void> {
         markAppStopped(startup, reason);
         writeLifecycle(formatAppStoppedMessage(startup, reason));
       })
-      .catch((error) => {
-        process.stderr.write(
-          `${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
-        );
-        process.exitCode = 1;
-      })
+      .catch(reportShutdownError)
       .finally(() => {
         process.exit(process.exitCode ?? 0);
       });
@@ -233,6 +243,19 @@ async function main(): Promise<void> {
     port: address.port,
     healthUrl: `http://${config.host}:${address.port}/health`,
   };
+  try {
+    if (extension.ready) {
+      await server.startupRecovery;
+      if (shutdownPromise) { await shutdownPromise; return; }
+      await extension.ready({ config, chatStore, runtimeClient, server });
+    }
+  } catch (error) {
+    process.stderr.write(formatAppStartupError(startup, error));
+    process.exitCode = 1;
+    await shutdown('startup_failed');
+    return;
+  }
+  if (shutdownPromise) { await shutdownPromise; return; }
   markAppReady(startup, listeningAddress);
   startupTrace.trace('ready.message.emitted', {
     host: listeningAddress.host,
@@ -252,7 +275,7 @@ async function main(): Promise<void> {
 
 if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {
   installGlobalCrashHandlers();
-  main().catch((error) => {
+  startApp().catch((error) => {
     createAppStartupTrace().trace('main.error', {
       message: error instanceof Error ? error.message : String(error),
     });
