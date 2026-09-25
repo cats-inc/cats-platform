@@ -76,6 +76,21 @@ part of the task and unsaved work is accounted for. Capture again after each
 chosen action. `wtype -k Return` does not guarantee a modal's intended button is
 focused. Native update dialogs may need their own focus operation.
 
+## Degraded paths observed on 2026-09-26
+
+A sandboxed executor's `grim` fails with `failed to create display` even though
+the Wayland socket is listed; use a host-approved executor outside the sandbox
+for capture, as with the Windows sandbox lesson in the Windows reference.
+
+When `wlrctl`/`wtype` are not installed there is no Wayland input path. The
+degraded option for a TUI target is driving it through a pty with terminal-query
+answers: the TUI stalls before rendering unless cursor-position (`ESC[6n`),
+kitty-keyboard and device-attributes queries are answered. Screenshots taken
+during a pty run then show desktop context only, not picker pixels; picker text
+comes from the pty bytes instead of accessibility/UI text. Record that split in
+the evidence note and label the transcription accordingly rather than claiming
+screenshot-checked visible text.
+
 ## X11
 
 If the target is actually an X11/XWayland client and `xdotool` is available,
