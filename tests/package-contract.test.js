@@ -228,7 +228,7 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
 
   assert.equal([...packedPaths].some((path) => path.startsWith('src/')), false);
   assert.equal([...packedPaths].some((path) => path.startsWith('tests/')), false);
-  assert.equal([...packedPaths].some((path) => path.startsWith('docs/')), false);
+  assert.equal([...packedPaths].some((path) => path.startsWith('docs/')), false); // docs-boundary-ignore: asserts the package excludes docs
   assert.equal([...packedPaths].some((path) => path.startsWith('mobile/')), false);
   assert.equal([...packedPaths].some((path) => path.startsWith('node_modules/')), false);
   assert.equal(packedPaths.has('tsconfig.json'), false);
