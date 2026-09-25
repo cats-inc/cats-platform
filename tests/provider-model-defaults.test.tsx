@@ -76,6 +76,21 @@ const grok: ProviderAdvancedModelCatalog = {
     ],
   }],
 };
+// Muse's picker declares no effort default; 1.3 rows add max beyond the 1.2 menu.
+const museModels = createFixtureProviderModelCatalog('muse', { instance: 'cli/native' });
+const museIds = (generation: string) => museModels.models.map((model) => model.id)
+  .filter((id) => id.startsWith(`muse-spark-${generation}`));
+const muse: ProviderAdvancedModelCatalog = {
+  ...createProviderAdvancedCatalogFromModelCatalog(museModels),
+  backend: 'cli', defaultModel: null, defaultSelection: null,
+  controls: [{
+    key: 'muse.reasoning_effort', label: 'Reasoning effort', kind: 'enum', scope: 'both',
+    values: ['minimal', 'low', 'medium', 'high', 'xhigh', 'max'].map((value) => ({
+      value, label: value,
+      applicableEntryIds: value === 'max' ? museIds('1.3') : [...museIds('1.3'), ...museIds('1.2')],
+    })),
+  }],
+};
 const agy: ProviderAdvancedModelCatalog = {
   ...createProviderAdvancedCatalogFromModelCatalog(agyModels),
   backend: 'cli', defaultModel: null, defaultSelection: null,
@@ -99,7 +114,7 @@ function Picker(props: {
   });
   const { ready, onChange } = props;
   const registry = useCallback(async () => ({ state: 'ready' as const, revision: 'selected-claude-codex',
-    providers: listProductProviders().filter((provider) => ['claude', 'codex', 'antigravity', 'grok', 'junie', 'auggie', 'goose', 'pi'].includes(provider.id)),
+    providers: listProductProviders().filter((provider) => ['claude', 'codex', 'antigravity', 'grok', 'muse', 'junie', 'auggie', 'goose', 'pi'].includes(provider.id)),
   }), []);
   const models = useCallback(async (provider: string) => {
     if (provider === 'pi') return piModels;
@@ -107,6 +122,7 @@ function Picker(props: {
     if (provider === 'auggie') return auggieModels;
     if (provider === 'junie') return junieModels;
     if (provider === 'grok') return { ...grokModels, defaultModel: null };
+    if (provider === 'muse') return { ...museModels, defaultModel: null };
     if (provider === 'antigravity') return { ...agyModels, defaultModel: null };
     if (provider !== 'codex') return claude;
     await ready;
@@ -118,6 +134,7 @@ function Picker(props: {
     if (provider === 'auggie') return auggie;
     if (provider === 'junie') return junie;
     if (provider === 'grok') return grok;
+    if (provider === 'muse') return muse;
     if (provider === 'antigravity') return agy;
     if (provider !== 'codex') return createProviderAdvancedCatalogFromModelCatalog(claude);
     await ready;
@@ -192,6 +209,29 @@ test('Junie keeps its runtime default label and fixed effort across model change
   view.unmount();
   view = render(<Picker ready={ready} initialTarget={saved} onChange={onChange} />);
   await waitFor(() => assert.equal(model().value, 'GPT-5.6-SOL'));
+});
+
+test('Muse starts each model at its first listed effort and offers no synthetic Default', async (t) => {
+  reset();
+  t.after(reset);
+  const changes: ProviderTargetSelection[] = [];
+  const view = render(<Picker ready={Promise.resolve()} onChange={(target) => { changes.push(target); }} />);
+  const model = () => view.getByRole('combobox', { name: /^Model/ }) as HTMLSelectElement;
+  const effort = () => view.getByRole('combobox', { name: 'Reasoning effort' }) as HTMLSelectElement;
+  const effortLabels = () => [...effort().options].map((option) => option.textContent);
+  await waitFor(() => assert.equal(changes.at(-1)?.model, 'opus'));
+  fireEvent.change(view.getByRole('combobox', { name: 'Provider' }), { target: { value: 'muse' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.model, 'muse-spark-1.3', JSON.stringify(changes)));
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.controls?.['muse.reasoning_effort'], 'minimal'));
+  assert.equal(effort().value, 'minimal');
+  assert.deepEqual(effortLabels(), ['minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
+
+  fireEvent.change(model(), { target: { value: 'muse-spark-1.2' } });
+  await waitFor(() => assert.deepEqual(effortLabels(), ['minimal', 'low', 'medium', 'high', 'xhigh']));
+  assert.equal(effort().value, 'minimal');
+  assert.equal(changes.at(-1)?.modelSelection?.controls?.['muse.reasoning_effort'], 'minimal');
+  fireEvent.change(effort(), { target: { value: 'high' } });
+  await waitFor(() => assert.equal(changes.at(-1)?.modelSelection?.controls?.['muse.reasoning_effort'], 'high'));
 });
 
 test('Grok selects the first effort for each model, keeps labels and restores saved effort', async (t) => {

@@ -273,8 +273,16 @@ export function resolveDisplayedEnumControlValue(
   return initialOption ? String(initialOption.value) : '';
 }
 
+// These pickers declare no effort default, so the menu starts at the first listed value and
+// submits it instead of offering a synthetic Default (Runtime provider references).
+const FIRST_OPTION_CONTROL_KEYS: ReadonlySet<string> = new Set([
+  'antigravity.effort',
+  'grok.reasoning_effort',
+  'muse.reasoning_effort',
+]);
+
 export function usesFirstEnumOption(control: ProviderAdvancedCatalogControl): boolean {
-  return control.key === 'antigravity.effort' || control.key === 'grok.reasoning_effort';
+  return FIRST_OPTION_CONTROL_KEYS.has(control.key);
 }
 
 export function parseControlInputValue(
