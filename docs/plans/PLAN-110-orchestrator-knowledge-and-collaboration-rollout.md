@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; bounded live K3/native projections pass; K2 context reuse validated locally, full CI pending; model-driven K2/profile gates open |
+| Status | In progress; bounded live K3/native projections and K2 context reuse CI pass; model-driven K2/profile gates open |
 | Owner | Platform integration; Chat and Work own their operation delegates |
 | Reviewer | Independent Codex contract and implementation review; product owner |
 | Last updated | 2026-09-25 |
@@ -41,13 +41,16 @@ no release, version bump or publication is authorized.
   Platform continuation is on main as `471755c9`; its
   [full CI passes](https://github.com/cats-inc/cats-platform/actions/runs/36082102563).
   Evidence-only checkpoint `88a2716f` records the completed native projection.
-- **Active slice:** K2 now reuses the existing same-session delivery helper with
+- **Completed K2 context slice:** K2 now reuses the existing same-session delivery helper with
   an explicit four-result bound; K3 retains eight. Server compilation, test
   typechecking, 92 focused cases, actual wire recapture and independent review
-  pass. This slice's full CI remains pending after push.
+  pass. Commit `14c080fc` is on main and its
+  [full CI passes](https://github.com/cats-inc/cats-platform/actions/runs/36084948721),
+  including `validate`, `nodejs (24)`, full typechecks and tests.
   No native model call, budget/grant change or new tool is part of this slice.
-- **Next slice:** finish K2 cache validation/CI, then resolve the real model-driven
-  preparation acceptance. K2 still clips preparation to 30 seconds/8,000 tokens;
+- **Next slice:** resolve the real model-driven preparation acceptance, starting
+  with a review of preparation target/budget and failure accounting. K2 still
+  clips preparation to 30 seconds/8,000 tokens;
   its budget is separate from the later owner-confirmed K3 execution budget.
   Do not infer native fit from wire bytes or raise limits just to pass a fixture.
   Keep PLAN-109 profile inventory a separate dependency; the private acceptance
@@ -697,7 +700,11 @@ production repeat prepares a valid proposal, delivers its actual final feedback,
 leaves Chat state unchanged and closes its fake session once. Exact prior wire
 digests/references match; each of the three read results arrives once, current
 token/time constraints remain explicit and final tools are empty. It uses no
-authentication, native model or network request. Full CI is pending after push.
+authentication, native model or network request.
+Full [CI on `14c080fc`](https://github.com/cats-inc/cats-platform/actions/runs/36084948721)
+passes `validate` and `nodejs (24)`, including full typechecks and tests.
+The subsequent checkpoint changes documentation only. Workspace skill mirrors
+were refreshed after upstream `910219b7`; the read-only sync check is clean.
 This is a prerequisite optimization, not live K2 or profile-exclusion acceptance.
 
 ## Initial Change Map
@@ -746,6 +753,7 @@ future promotion through PLAN-109.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | K2 context reuse on `14c080fc` passes [full CI](https://github.com/cats-inc/cats-platform/actions/runs/36084948721), including `validate`, `nodejs (24)`, full typechecks and tests. The reset checkpoint and indexes now distinguish completed bounded K3/native projection and K2 cache evidence from still-open native preparation and profile/practice gates. This follow-up is documentation-only; no further model inference or budget change. |
 | 2026-09-25 | K2 preparation now reuses the reviewed session-bound delivery helper while retaining four results/five requests/30 seconds/8,000 tokens. Actual zero-inference production capture reduces new wire bytes from 63,213 to 45,688, matching the offline projection; bootstrap metadata grows, and native token fit is not inferred. All 92 focused cases, server compilation, test typecheck and independent review pass. Full CI pending; native K2 and profile/practice gates remain open. |
 | 2026-09-25 | Full [CI on `471755c9`](https://github.com/cats-inc/cats-platform/actions/runs/36082102563) passes `validate` and `nodejs (24)`. Successful saved-state native Chat/Work projections now pass: completion report, consumed confirmation, completed parent/role Tasks and review Run/outcome; all owned processes close normally. This evidence-only slice records the resumable next boundary without changing tested inputs. Model-driven K2 preparation and PLAN-109 profile/practice gates remain open. |
 | 2026-09-25 | Bounded live K3 passes at 61,033 reconciled tokens after the recorded 95,312-token failure: real implementation/revision/review, all seven outcomes, final feedback, duplicate confirmation and cleanup verified. Added session-bound context references, fixed-workflow acceptance, bounded feedback projections and canonical read-tool grants; 53 latest focused cases, compilation and independent review pass. Native blocked/cancelled projections and create/bridge recovery pass. Runtime through `a694104` passes full CI; Platform CI and successful native projections are the next checkpointed slice. PLAN-109 profile/practice gates and model-driven K2 acceptance remain open. |
