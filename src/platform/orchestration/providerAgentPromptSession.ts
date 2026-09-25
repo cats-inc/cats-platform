@@ -22,10 +22,11 @@ interface DeliveryBase {
 }
 const digest = (value: unknown) => knowledgeDigest(JSON.stringify(value));
 
-/** One admitted run only. References attest prior delivery, never provider retention. */
-export function createProviderAgentPromptSession() {
+/** One coordinator attempt only. References attest delivery, never provider retention. */
+export function createProviderAgentPromptSession(maxFeedbackResults: 4 | 8 = 8) {
   let base: DeliveryBase | undefined;
   return {
+    maxFeedbackResults,
     reset() { base = undefined; },
     prepare(fullPrompt: string, binding: string, sessionId?: string | null) {
       const payload = JSON.parse(fullPrompt) as PromptPayload;

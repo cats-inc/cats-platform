@@ -55,9 +55,11 @@ export function createChatProviderAgentDecisionRequester(
         || currentProfile.control !== (target.control ?? null))) {
         return null;
       }
-      const promptSession = isOrchestrator
-        && input.observation.availableTools.some(({ manifest }) => isCollaborationExecutionTool(manifest.name))
-        ? createProviderAgentPromptSession() : undefined;
+      const hasCollaborationExecution = input.observation.availableTools
+        .some(({ manifest }) => isCollaborationExecutionTool(manifest.name));
+      const promptSession = isOrchestrator && (hasCollaborationExecution
+        || input.observation.availableTools.some(({ manifest }) => isCollaborationTool(manifest.name)))
+        ? createProviderAgentPromptSession(hasCollaborationExecution ? 8 : 4) : undefined;
       const request = async (state: ChatState, observation: ProviderAgentBoundedObservation,
         runtimeClient: RuntimeClient, sessionId: string | null = null,
         receipts?: CollaborationReadReceipt[]) => {

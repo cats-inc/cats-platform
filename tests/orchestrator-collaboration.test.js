@@ -73,18 +73,23 @@ function proposal(envelope, change = {}) {
 function client(handler = (envelope, index) => index === 0 ? tool(discover, {})
   : index === 1 ? tool(inspect, {}) : index === 2 ? tool(prepare, proposal(envelope)) : respond()) {
   const calls = { create: [], send: [], cancel: [], close: [], diagnostics: [] };
+  const sessionReceipts = new Map();
   return { calls,
     async getHealth() { return { baseUrl: 'http://127.0.0.1:3110', reachable: true, status: 'ok', service: 'cats-runtime' }; },
     async getProviderConfig() { return {}; },
     async getProviderModels(provider) { return { provider, backend: 'cli', instance: 'default',
       defaultModel: null, source: 'config', cache: null, models: [], warnings: [] }; },
-    async createSession(input) { calls.create.push(input); return { id: 'decision-session', provider: input.provider,
+    async createSession(input) { calls.create.push(input); sessionReceipts.set('decision-session', []);
+      return { id: 'decision-session', provider: input.provider,
       model: input.model, status: 'ready', cwd: null }; },
     async sendMessage(sessionId, content, input) {
       const envelope = JSON.parse(content);
       const index = calls.send.length;
       calls.send.push({ sessionId, envelope, input });
-      const result = await handler(envelope, index);
+      // Model context retains prior deliveries in this session; captured wire stays exact.
+      const remembered = [...(sessionReceipts.get(sessionId) ?? []), ...envelope.toolResults];
+      const result = await handler({ ...envelope, toolResults: remembered }, index);
+      sessionReceipts.set(sessionId, remembered);
       return { segments: [{ kind: 'text', text: JSON.stringify(result), toolName: null, toolId: null }],
         inputTokens: 10, outputTokens: 10, tokensUsed: 20 };
     },
@@ -145,7 +150,19 @@ test('real requester delivers goal, discovery/context results and validated prep
   assert.equal(new Set(runtime.calls.send.map((call) => call.envelope.observation.observationId)).size, 4);
   assert.equal(runtime.calls.send[0].envelope.observation.goal, goal);
   assert.ok(runtime.calls.send[0].envelope.productKnowledge.entries.some((entry) => entry.id === 'orchestrator.discovery'));
-  const prepared = runtime.calls.send[3].envelope.toolResults[2].result.result;
+  const prompts = runtime.calls.send.map(call => call.envelope);
+  assert.equal(prompts[0].contextDelivery?.mode, 'bootstrap');
+  assert.ok(prompts.slice(1).every(prompt => prompt.contextDelivery?.mode === 'continuation'));
+  assert.ok(prompts[1].observation.availableTools.every(descriptor => descriptor.reference));
+  assert.deepEqual(prompts.at(-1).observation.availableTools, []);
+  assert.deepEqual(prompts.map(prompt => prompt.toolResults.length), [0, 1, 1, 1]);
+  assert.deepEqual(prompts.flatMap(prompt => prompt.toolResults), JSON.parse(JSON.stringify(reports[0].receipts)));
+  assert.equal(prompts[0].observation.budget.maxTokens, 8000);
+  assert.deepEqual(prompts.map(prompt => prompt.observation.budget.maxTokens), [8000, 7980, 7960, 7940]);
+  assert.ok(prompts.every(prompt => prompt.observation.budget.maxDurationMs <= 30_000));
+  assert.equal(runtime.calls.send[0].input.context.metadata.productKnowledge.delivery, 'inline');
+  assert.equal(runtime.calls.send[1].input.context.metadata.productKnowledge.delivery, 'session_reference');
+  const prepared = prompts.at(-1).toolResults.find(receipt => receipt.toolName === prepare).result.result;
   assert.notEqual(prepared.implementer.id, prepared.reviewer.id);
   assert.equal(prepared.reviewDependsOn, 'verified_implementation_artifact_or_revision');
   assert.equal(prepared.budget.admission, 'not_admitted');
@@ -167,7 +184,7 @@ test('unknown, duplicate, undiscovered and stale targets are rejected and reject
       : index === 1 ? tool(inspect, {}) : index === 2 ? tool(prepare, proposal(envelope, actualChange)) : respond());
     const { reports } = await request(h, runtime);
     assert.equal(reports[0].receipts[2].result.status, 'rejected');
-    assert.equal(runtime.calls.send[3].envelope.toolResults[2].result.status, 'rejected');
+    assert.equal(runtime.calls.send[3].envelope.toolResults.find(receipt => receipt.toolName === prepare).result.status, 'rejected');
     assert.notEqual(reports[0].status, 'prepared');
   }
 });

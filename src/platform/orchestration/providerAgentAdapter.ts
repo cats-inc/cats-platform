@@ -65,7 +65,7 @@ export interface ProviderAgentAdapterInput {
   observation: ProviderAgentBoundedObservation;
   productKnowledge?: ProductKnowledgeContext;
   toolResults?: ProviderAgentToolFeedback[];
-  /** Optional, ephemeral delivery cache owned by one K3 coordinator attempt. */
+  /** Optional, ephemeral delivery cache owned by one collaboration coordinator attempt. */
   promptSession?: ProviderAgentPromptSession;
   supervision: RuntimeSupervisionContext;
 }
@@ -116,7 +116,7 @@ async function requestDecision(input: ProviderAgentAdapterInput): Promise<Provid
   }
 
   const fullPrompt = buildProviderAgentDecisionPrompt(
-    input.observation, input.productKnowledge, input.toolResults, input.promptSession ? 8 : 4,
+    input.observation, input.productKnowledge, input.toolResults, input.promptSession?.maxFeedbackResults ?? 4,
   );
   const prepared = input.promptSession?.prepare(fullPrompt, JSON.stringify({
     runId: input.observation.runId, actor: input.observation.actor,

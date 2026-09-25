@@ -452,6 +452,25 @@ test('continuation validates against current host tools and invalidates its base
   assert.equal(JSON.parse(runtimeClient.sentMessages[3]!.content).contextDelivery.mode, 'bootstrap');
 });
 
+test('preparation delivery references retain the four-result bound independently of execution', async () => {
+  const runtimeClient = createRuntimeStub(semanticPlanDecision());
+  const input = { runtimeClient, observation: observation(),
+    target: { provider: 'codex', model: 'gpt-5.4', sessionId: 'known-session' },
+    toolResults: Array.from({ length: 5 }, (_, index) => ({
+      toolName: 'work.context.lookup', decisionId: `lookup-${index}`,
+      result: { status: 'applied' as const, result: { index } },
+    })),
+    supervision: { product: 'cats-work', surface: 'provider-agent', runId: 'run-1',
+      actionId: 'action-1', actorRef: 'agent:codex', reason: 'semantic_decision' },
+  };
+  await assert.rejects(() => requestProviderAgentDecision({ ...input,
+    promptSession: createProviderAgentPromptSession(4),
+  }), (error) => error instanceof ProviderAgentAdapterError && error.code === 'INVALID_OBSERVATION');
+  assert.equal(runtimeClient.sentMessages.length, 0);
+  await requestProviderAgentDecision({ ...input, promptSession: createProviderAgentPromptSession() });
+  assert.equal(JSON.parse(runtimeClient.sentMessages[0]!.content).toolResults.length, 5);
+});
+
 test('provider-agent adapter rejects runtime decisions outside the bounded tool surface', async () => {
   const invalidDecision: ProviderAgentSemanticPlanDecision = {
     ...semanticPlanDecision(),

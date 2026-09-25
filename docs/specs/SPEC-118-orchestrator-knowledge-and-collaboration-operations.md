@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; bounded live K3, native result projections and full CI pass; model-driven K2 and profile gates open |
+| Status | In progress; bounded live K3/native projections pass; K2 context reuse validated locally, full CI pending; model-driven K2/profile gates open |
 | Owner | Platform integration; Chat owns conversation operations |
 | Reviewer | Product owner; independent Codex implementation review |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
@@ -273,7 +273,7 @@ is checked between calls; deadline/cancellation cancels owned Runtime work and
 prevents late responses from committing success. Native provider enforcement
 and installed/live acceptance remain K4, not claims of this implementation.
 
-K4 bounds repeated prompt content with a K3-only, run-local continuation cache.
+K4 bounds repeated prompt content with a K2/K3 run-local continuation cache.
 The first request delivers the complete snapshot. Later requests retain the
 complete decision contract and fresh observation, policy, budget and knowledge
 scope, but may reference previously delivered tool descriptors and selected
@@ -290,7 +290,10 @@ distinguishes assembled knowledge identity, newly inline entries, referenced
 entries and the digest of the actual wire payload. A session reference is not
 new inline delivery, proof of model understanding or an execution grant. Models
 must stop and report unavailable context if referenced content is absent.
-K2 and ordinary decisions retain their complete-snapshot behavior. Serialized
+K2 retains its four-result delivery bound, five-request ceiling and unchanged
+30-second/8,000-token preparation budget. Cache selection does not inherit K3's
+eight-result delivery bound or owner-confirmed execution budget. Ordinary decisions
+outside these collaboration surfaces retain complete snapshots. Serialized
 wire limits and the existing response-boundary token threshold both apply;
 prompt reduction is not a hard provider token ceiling.
 
@@ -514,6 +517,8 @@ private native context is independently reviewed. Successful saved-state native
 Chat/Work projection now verifies the completion report, consumed confirmation,
 completed parent/child Tasks and review Run with its inspection limitations;
 all owned candidate processes close normally. Full CI on `471755c9` passes.
+The later K2 delivery-reuse slice passes 92 focused cases and its zero-inference
+production wire capture; its full CI is pending separately.
 The fixture constructs K2 preparation; model-driven discovery/preparation and
 PLAN-109 profile exclusion are separate open gates. See PLAN-110's dated evidence
 before interpreting AC-09/AC-10 as complete.

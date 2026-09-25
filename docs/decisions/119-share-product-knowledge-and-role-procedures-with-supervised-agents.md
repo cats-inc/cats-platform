@@ -120,7 +120,7 @@ and policy remain authoritative; malformed output is never repaired into an
 authorized action. Coordinator usage is recorded at the Runtime response boundary
 before parsing, so a rejected decision still consumes the admitted budget.
 
-K3 continuation reuses exact tool and knowledge bytes already delivered to its
+K2/K3 continuation reuses exact tool and knowledge bytes already delivered to its
 own coordinating session. Current selections, policy, budget, scope and complete
 decision shapes remain explicit on every turn. Content hashes include metadata;
 fresh or changed blocks are delivered inline, and delivery receipts distinguish
@@ -130,6 +130,10 @@ second knowledge store or a resumable execution mechanism. An unknown session
 or failed request cannot inherit a cached delivery base. Provider-native coding
 instructions and tool inventories are a separate Runtime concern; reducing
 Platform payloads alone does not establish an adequate live token budget.
+K2 explicitly retains its four-result delivery bound, five-request ceiling and
+30-second/8,000-token preparation budget; it does not inherit K3's owner-confirmed
+execution budget. Ordinary decisions outside these collaboration surfaces retain
+complete snapshots.
 
 The next measured run confirmed that per-primitive model decisions remain too
 expensive for the bounded fixture. An additive `request_execution({})` therefore
