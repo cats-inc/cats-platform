@@ -113,21 +113,20 @@ test('up to date says which version that is', () => {
   assert.equal(spec.action, 'none');
 });
 
-test('an explicit tray check refreshes repeatable results exactly once', () => {
-  for (const status of ['idle', 'up_to_date', 'failed']) {
-    const repeatable = snapshot({ status, nextAction: 'check' });
+test('an explicit tray check refreshes every settled result exactly once', () => {
+  // An earlier offer or download is re-queried too: it describes the feed as
+  // it was, and the click asks for the feed as it is now.
+  for (const status of ['idle', 'up_to_date', 'failed', 'update_available', 'downloaded']) {
+    const settled = snapshot({ status });
 
-    assert.equal(shouldRefreshDesktopUpdateFromTray(repeatable, true), true, status);
-    assert.equal(shouldRefreshDesktopUpdateFromTray(repeatable, false), false, status);
+    assert.equal(shouldRefreshDesktopUpdateFromTray(settled, true), true, status);
+    assert.equal(shouldRefreshDesktopUpdateFromTray(settled, false), false, status);
   }
 
-  assert.equal(
-    shouldRefreshDesktopUpdateFromTray(snapshot({
-      status: 'update_available',
-      nextAction: 'download',
-    }), true),
-    false,
-  );
+  // In-flight states show their progress instead of starting another query.
+  for (const status of ['checking', 'downloading', 'installing']) {
+    assert.equal(shouldRefreshDesktopUpdateFromTray(snapshot({ status }), true), false, status);
+  }
   assert.equal(
     shouldRefreshDesktopUpdateFromTray(createUnavailableDesktopUpdateSnapshot('0.1.16'), true),
     false,
@@ -212,7 +211,11 @@ function createDialogFlow(platform, options = {}) {
         if (options.stopAfterCheck) shuttingDown = true;
         if (options.checkError) throw options.checkError;
         if (Array.isArray(options.versions) && options.versions.length > 0) {
-          return { updateAvailable: true, version: options.versions.shift(), releaseSummary: null };
+          // null stands for a feed that no longer offers anything.
+          const version = options.versions.shift();
+          return version === null
+            ? { updateAvailable: false, version: null, releaseSummary: null }
+            : { updateAvailable: true, version, releaseSummary: null };
         }
         return options.upToDate
           ? { updateAvailable: false, version: null, releaseSummary: null }
@@ -262,12 +265,11 @@ for (const platform of ['win32', 'darwin', 'linux']) {
       assert.deepEqual(flow.dialogs.map((spec) => spec.title), [title]);
       assert.equal(flow.manager.getSnapshot().status, status);
       assert.deepEqual(flow.calls, { check: 1, download: 0, install: 0 });
-      // Repeated clicks refresh a completed check exactly once per click.
-      if (status !== 'update_available') {
-        await flow.run();
-        assert.equal(flow.calls.check, 2);
-        assert.equal(flow.dialogs.length, 2);
-      }
+      // Repeated clicks refresh a completed check exactly once per click,
+      // an earlier offer included.
+      await flow.run();
+      assert.equal(flow.calls.check, 2);
+      assert.equal(flow.dialogs.length, 2);
     }
   });
 
@@ -281,7 +283,8 @@ for (const platform of ['win32', 'darwin', 'linux']) {
     assert.deepEqual(flow.dialogs.map((spec) => spec.action), ['update', 'none']);
     assert.equal(flow.dialogs[1].message, DESKTOP_UPDATE_DIALOG_ERROR_COPY.en.checksum_mismatch);
     assert.equal(flow.manager.getSnapshot().status, 'failed');
-    assert.deepEqual(flow.calls, { check: 1, download: 1, install: 0 });
+    // The second check is the download's own re-validation, not a retry.
+    assert.deepEqual(flow.calls, { check: 2, download: 1, install: 0 });
   });
 
   test(`${platform}: confirming the dialog still downloads and hands off to the installer`, async () => {
@@ -289,7 +292,31 @@ for (const platform of ['win32', 'darwin', 'linux']) {
     await flow.run();
 
     assert.deepEqual(flow.dialogs.map((spec) => spec.action), ['update']);
-    assert.deepEqual(flow.calls, { check: 1, download: 1, install: 1 });
+    assert.deepEqual(flow.calls, { check: 2, download: 1, install: 1 });
+  });
+
+  test(`${platform}: a later click offers the newest release, not the remembered one`, async () => {
+    const flow = createDialogFlow(platform, { versions: ['0.4.6', '0.4.7'] });
+
+    // First click finds 0.4.6 and the user chooses Later.
+    await flow.run();
+    // 0.4.7 ships while the app sits in the tray; the next click must say so.
+    await flow.run();
+
+    assert.deepEqual(flow.dialogs.map((spec) => spec.title), ['Update available', 'Update available']);
+    assert.match(flow.dialogs[0].message, /0\.4\.6/u);
+    assert.match(flow.dialogs[1].message, /0\.4\.7/u);
+    assert.equal(flow.manager.getSnapshot().availableVersion, '0.4.7');
+    assert.deepEqual(flow.calls, { check: 2, download: 0, install: 0 });
+  });
+
+  test(`${platform}: a release withdrawn before the download answers up to date`, async () => {
+    const flow = createDialogFlow(platform, { acceptUpdate: true, versions: ['0.1.17', null] });
+    await flow.run();
+
+    assert.deepEqual(flow.dialogs.map((spec) => spec.title), ['Update available', 'Cats is up to date']);
+    assert.equal(flow.manager.getSnapshot().status, 'up_to_date');
+    assert.deepEqual(flow.calls, { check: 2, download: 0, install: 0 });
   });
 
   test(`${platform}: shutdown suppresses late check and download-error dialogs`, async () => {
@@ -325,13 +352,14 @@ test('the tray re-checks a downloaded artifact whose last handoff failed', () =>
     ),
     false,
   );
-  // A clean download is offered as before; only a failed handoff earns a re-check.
+  // A clean download is re-checked too; the manager keeps it while the feed
+  // still names that version, so the install prompt follows as before.
   assert.equal(
     shouldRefreshDesktopUpdateFromTray(
       snapshot({ status: 'downloaded', nextAction: 'restart_install', error: null }),
       true,
     ),
-    false,
+    true,
   );
 });
 
@@ -359,7 +387,8 @@ test('a rejected download renders as a failure, not as an offer to install it ag
 test('a failed install handoff is shown once, and the next click re-checks', async () => {
   const flow = createDialogFlow('darwin', {
     acceptUpdate: true,
-    versions: ['0.3.3', '0.3.6'],
+    // Each click checks from the tray and again before downloading.
+    versions: ['0.3.3', '0.3.3', '0.3.6', '0.3.6'],
     installErrorOnce: new Error('Code signature at URL file:///tmp/Cats.app did not pass validation'),
   });
 
@@ -374,14 +403,14 @@ test('a failed install handoff is shown once, and the next click re-checks', asy
   assert.equal(flow.dialogs[1].action, 'none');
   assert.equal(flow.manager.getSnapshot().status, 'downloaded');
   assert.equal(flow.manager.getSnapshot().error.code, 'signature_rejected');
-  assert.deepEqual(flow.calls, { check: 1, download: 1, install: 1 });
+  assert.deepEqual(flow.calls, { check: 2, download: 1, install: 1 });
 
   // Click two: the stale artifact is re-checked instead of offered again, the
   // feed has moved on, and the newer release goes through.
   await flow.run();
   assert.deepEqual(flow.dialogs.slice(2).map((spec) => spec.title), ['Update available']);
   assert.match(flow.dialogs[2].message, /0\.3\.6/u);
-  assert.deepEqual(flow.calls, { check: 2, download: 2, install: 2 });
+  assert.deepEqual(flow.calls, { check: 4, download: 2, install: 2 });
   assert.equal(flow.manager.getSnapshot().availableVersion, '0.3.6');
   assert.equal(flow.manager.getSnapshot().error, null);
 });
