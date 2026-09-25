@@ -29,8 +29,10 @@ architecture review and release authorization remain separate gates.
 
 The owner resumed this work after PLAN-110 acceptance and authorized preview
 development skills, release exclusion, practice and knowledge distillation.
-Commit each independently validated slice to feature branches. **Do not push to
-main or merge automatically**; future integration uses normal PR/CI gates.
+The initial delivery used independently validated feature-branch checkpoints.
+The owner subsequently authorized pushing both branches, opening auto-merge PRs,
+merging through the full CI gates and cleaning up merged branches/worktrees.
+Direct main pushes remain outside this integration workflow.
 The owner is handling publication separately. This work does not bump versions,
 publish, alter an installed Desktop, or reuse consumed live-model approvals.
 
@@ -43,13 +45,15 @@ publish, alter an installed Desktop, or reuse consumed live-model approvals.
   checkpoint, then the current branch diff. PLAN-110 retains the completed K2,
   K3 and native projection evidence; those separate runs must not be repeated
   or described as one end-to-end acceptance.
-- Current slice: P0–P4 implementation and scoped validation are complete on the
-  two feature branches. P4 is the commit containing this final checkpoint; use
-  the branch log for its SHA. No push, PR, main integration or release is performed
-  in this slice. Next integration uses paired PRs and full CI before merge.
-  P3 is committed as `0dc8bf2d`; preserve its historical evidence below.
-  Runtime P1 committed as `2c05544`, P2 skills as `ce98afc` on its feature branch;
-  do not replay P1/P2 work.
+- Current slice: P0–P4 implementation and scoped validation are complete. Both
+  branches were rebased without conflicts onto current main: Platform `a267b6b0`
+  (Desktop 0.4.7 records) and Runtime `b712da2` (catalog refreshes). Rebased
+  implementation heads are Platform `1056c412` and Runtime `758ee63`; the earlier
+  slice hashes below are historical. Integration now uses paired PRs and full CI
+  before auto-merge. GitHub PR checks/merge state are the authoritative delivery
+  record. Preserve private evidence before removing worktrees, then synchronize
+  the original main checkouts and remove only verified merged branches.
+  Do not replay P1–P4 implementation or previously consumed native acceptance.
 - P0 contract review passed after adding artifact-root authority, durable
   exposure-before-delivery and local revocation invalidation. Documentation
   whitespace/link checks passed. No supplement or promotion is implemented
