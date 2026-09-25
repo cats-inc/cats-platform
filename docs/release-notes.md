@@ -19,6 +19,40 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-25 (0.4.7 preview, standard profile — preparation)
+
+Behavior change:
+
+Desktop 0.4.7 is a preview with the
+[standard signing profile](deployment.md#desktop-signing-profiles). It restores
+macOS self-update after the 0.4.6 unsigned override. Product content matches
+0.4.6: no Platform product code, Runtime or App changes. The build takes the main
+tip at dispatch; since 0.4.6 that adds only documentation and the reworded
+`unsigned` workflow input description.
+
+Expected platform trust: macOS signed + notarized, Windows unsigned (no
+certificate), Linux n/a.
+
+Self-update into 0.4.7:
+
+- Windows and Linux: installs of 0.4.3, 0.4.5 and 0.4.6 self-update.
+- macOS: standard-profile installs such as 0.4.3 and 0.4.5 self-update directly
+  into 0.4.7, skipping 0.4.6. A 0.4.6 install (unsigned override) cannot
+  self-update; install the 0.4.7 DMG manually, once.
+
+Migration steps:
+
+No data migration or dependency change. Existing setup remains valid.
+Platform and Desktop share version 0.4.7; the authorized standard-profile
+preview publication is pending. It will bundle Runtime 0.2.1 from immutable
+commit `b712da2faf233c2ec9e4ecb831566a29f6effaa7` and the existing Usage 0.3.0
+artifact with SHA-256 `61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509`.
+No npm or new App publication is part of this release.
+
+Deprecations:
+
+None.
+
 ## 2026-09-25 (Desktop signing profiles — correction for 0.4.5 and 0.4.6)
 
 Behavior change:
