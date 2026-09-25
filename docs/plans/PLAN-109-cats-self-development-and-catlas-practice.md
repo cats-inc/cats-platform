@@ -27,6 +27,15 @@ architecture review and release authorization remain separate gates.
 
 ## Resume Checkpoint — managed knowledge authoring (2026-09-26)
 
+**Resume here:** implementation is locally checkpointed at Platform `4f92836e`
+and Runtime `4bb1495`. The single authorized native turn is consumed: strict
+skill delivery worked, but 43,818 measured tokens exceeded 24,000 and no artifact
+was admitted. All owned processes and temporary provider auth are gone. New
+private `profile-prepared-04` is prepared with its own Git instruction boundary;
+it has never launched, copied provider auth or opened its gate. A new explicit
+single-turn authorization is required before execution. See the final bullets
+below for evidence and exact remaining acceptance; do not replay profile 03.
+
 The owner authorized continuing the next bounded slice, maintaining checkpoints
 and doing isolated validation without requiring owner-operated testing. The
 target is a preview Desktop-managed agent producing an inspectable **unverified**
@@ -126,12 +135,56 @@ separately. No version bump, publication or installed-profile mutation is includ
   cases passed; independent review found no blockers. See Runtime PLAN-041.
   Private preflight now records the actual Runtime revision and compiled entry,
   catalog, hydration and message-route digests, rather than a stale baseline SHA.
-- Next entry: Platform policy/checkpoint commit, then prepare fresh `profile-authorized-03`,
-  perform a new ownership preflight, then the single bounded
-  request; preserve failure evidence and do not
-  automatically spend another request. Candidate/UI attribution and model-skill
-  delivery acceptance remain pending; no live authored candidate or promotion is
-  claimed. Earlier P1–P4 work and consumed PLAN-110 live runs need no replay.
+- Native single-turn checkpoint: Platform `4f92836e` with Runtime `4bb1495`,
+  fresh `profile-authorized-03`. Desktop 9292 owned Platform 8352 / Runtime 17216
+  on loopback 50767 / 50768; exact entries, revisions and compiled digests passed.
+  The authorized request ran once in session
+  `6aadb188-988f-43fc-8dfd-ccf800abc5ac`, approximately 19:22:54–19:23:55 UTC
+  on 2026-09-25 (local date 2026-09-26). Strict preview skill delivery succeeded
+  with the exact package identity, read-only sandbox, default gate and read/list
+  grant. Native history confirms the agent read the delivered SKILL.md and
+  checklist and returned a JSON draft. This establishes actual skill delivery
+  and a provider response, not candidate admission or promotion.
+- The request **failed the unchanged token threshold**: 43,818 measured tokens
+  versus 24,000 allowed, with 42,455 input + 1,363 output. Three native usage
+  records independently sum to the same result; 27,520 cached input tokens are
+  already included, not subtracted. The Core Run records one inference attempt,
+  retained usage and failure; Task is blocked and there are zero artifacts.
+  This was one agent turn with two native tool rounds and four actual read_file
+  invocations, not four duplicate activity events. No second request was sent.
+- Context cause: placing the private sandbox below the Platform source checkout
+  caused the provider to inject the unrelated Platform AGENTS block (32,747
+  characters) in addition to the 6,317-character author prompt. The agent also
+  attempted CODEX.md and docs/AGENT-GUIDE.md; both reads were denied as unavailable
+  or outside the admitted read boundary. This explains excess context and extra
+  work. Do not relax the measured-token threshold retroactively or materialize
+  the rejected response as a successful candidate.
+  Independent inspection confirms the instruction body is exactly the first
+  32,768 bytes of Platform AGENTS, truncated mid-rule; the larger block size
+  includes provider wrapping. The extra source context must be disclosed as part
+  of the effective input, not described as only the supplied author request.
+- Evidence retained privately: request/authoring receipts, Core Run and Task,
+  native history, `native-output-observation.json`, `post-run-observe.json`, and
+  `authoring-budget-rejection.png`. The actual Desktop task page showed blocked
+  and no artifact. Post-run Runtime observe retained applied filesystem skill
+  delivery and read-only access with session closed. Desktop exited 0; independent
+  cleanup observation confirms owned processes/listeners absent and auth removed.
+- Next preparation completed without inference: `profile-prepared-04` has a
+  private Git root and a 375-byte author AGENTS file. Native project discovery
+  starts at the project root according to
+  [official Codex guidance](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
+  `preparation-observation.json` verifies the Git boundary from the session base,
+  unchanged request digest `2930ddb1f269f9f06f94294bcccdafce88aa508341a15f2a78cbed6f6e9c9ed5`,
+  Runtime revision `4bb1495`, and absent Desktop/auth/start gate. Helpers now check
+  the boundary/instruction digest before opening a gate. This is documented
+  mitigation, not proof of the next effective prompt or its token spend.
+- Next entry after **new** authorization: keep `gpt-6-astra`, one agent turn,
+  the same candidate/evidence and 180-second / 24,000-token post-response threshold.
+  Recheck prepared ports are free (refresh launch/cookie fixture consistently if
+  needed), launch profile 04, renew ownership proof and inspect actual context,
+  usage and candidate/UI attribution. Do not reuse profile 03 or automatically
+  run another inference. Independent evaluation/promotion remains pending.
+  Earlier P1–P4 and PLAN-110 live runs need no replay.
 - Compatibility: existing Core records gain optional namespaced metadata;
   no persisted format or execution API is replaced. Trusted app composition and
   the additive `startup_failed` lifecycle reason preserve this minor line.

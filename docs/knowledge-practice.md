@@ -43,6 +43,15 @@ three minutes for this receipt, and makes no model call when it is absent or
 invalid. This gate is a trusted local acceptance step, not an approval API.
 Provider use still requires the owner's applicable authorization.
 
+Private state directories alone do not isolate native provider instructions.
+When a candidate lives beneath a source checkout, Codex can automatically load
+ancestor repository guidance into the authoring context. Prepare a separate
+project boundary (for example, a private Git root with minimal author guidance),
+and inspect the actual native instruction history as part of acceptance. A local
+Git-root check establishes preparation only; it does not prove which context the
+provider loaded or guarantee a token budget. See
+[Codex instruction discovery](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
+
 Request schema 1 contains `id`, `title`, an explicit `target` with `provider`,
 `instance`, `model`, a `budget` with `maxDurationMs` (1,000–300,000) and `maxTokens`
 (1–80,000), a complete `draft` in the existing candidate-draft shape, and `evidence`.
