@@ -1,5 +1,5 @@
 import type { DesktopUpdateErrorCode, DesktopUpdateSnapshot } from './contracts.js';
-import type { DesktopUpdateManager } from './updateManager.js';
+import { canStartDesktopUpdateCheck, type DesktopUpdateManager } from './updateManager.js';
 // The dialog and tray use the same locale rules in the main process.
 import {
   normalizeDesktopTrayLocale,
@@ -197,31 +197,20 @@ function resolveInstallDetail(
  * Whether an explicit tray "Check for Updates" click needs a provider query
  * before the native dialog can give a current answer.
  *
- * The manager owns legal transitions through `nextAction`. In particular,
- * `up_to_date` and `failed` are informational dialog states, but their next
- * action is another check. The second pass after that check disables refresh
- * so the fresh result is displayed once instead of starting a loop.
- *
- * One state re-checks even though its next action is not `check`: a
- * `downloaded` artifact whose last handoff failed. See the body.
+ * Every settled state is queried again, including an earlier offer and a
+ * downloaded artifact: a tray-resident app can hold either for hours while
+ * newer releases ship, and a check must answer with the feed as it is now.
+ * If the feed still names a downloaded artifact the manager keeps it and the
+ * install prompt follows; if the feed has moved on the newer release replaces
+ * it. In-flight states show their progress instead. The second pass after the
+ * check disables refresh so the fresh result is displayed once instead of
+ * starting a loop.
  */
 export function shouldRefreshDesktopUpdateFromTray(
   snapshot: DesktopUpdateSnapshot,
   allowRecheck: boolean,
 ): boolean {
-  if (!allowRecheck || !snapshot.capability.canCheck) {
-    return false;
-  }
-  // A downloaded artifact whose last handoff failed is re-checked before it is
-  // offered again. If the feed has moved on the manager supersedes it; if the
-  // feed still names it the manager keeps it and the install prompt follows as
-  // before. Without this a rejected download -- an unsigned bundle Squirrel.Mac
-  // refused, say -- would be offered on every tray click until the app
-  // restarted, because from `downloaded` nothing else re-checks.
-  if (snapshot.status === 'downloaded' && snapshot.error !== null) {
-    return true;
-  }
-  return snapshot.nextAction === 'check';
+  return allowRecheck && canStartDesktopUpdateCheck(snapshot.status, snapshot.capability);
 }
 
 /**
@@ -381,9 +370,11 @@ export async function runDesktopUpdateDialog(input: RunDesktopUpdateDialogInput)
     if (dialogSpec.action === 'update') {
       const downloaded = await manager.downloadUpdate();
       if (downloaded.status !== 'downloaded' || isShuttingDown()) {
-        // The offer has closed. Show a download error without starting another
-        // check or sending it to the operating system's notification center.
-        if (downloaded.status === 'failed') {
+        // The offer has closed. Show a download error, or the up-to-date
+        // answer when the manager's pre-download re-check found the release
+        // withdrawn, without starting another check or sending it to the
+        // operating system's notification center.
+        if (downloaded.status === 'failed' || downloaded.status === 'up_to_date') {
           await showSnapshot(downloaded, false);
         }
         return;

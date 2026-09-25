@@ -119,7 +119,8 @@ test('check and download are untouched by the handoff wrapper', async () => {
 
   await driveToDownloaded(wrapped);
 
-  assert.deepEqual(adapterCalls, ['check', 'download']);
+  // The manager re-validates the offer before downloading.
+  assert.deepEqual(adapterCalls, ['check', 'check', 'download']);
   assert.equal(hookCalls.includes('drain'), false);
 });
 

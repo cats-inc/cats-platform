@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   DESKTOP_RELEASE_READY_PLATFORMS,
+  canStartDesktopUpdateCheck,
   createDesktopUpdateCapability,
   createDesktopUpdateManager,
   mapDesktopUpdateError,
@@ -38,7 +39,11 @@ function createFakeAdapter(behaviour = {}) {
         throw behaviour.checkError;
       }
       if (Array.isArray(behaviour.checkResults) && behaviour.checkResults.length > 0) {
-        return behaviour.checkResults.shift();
+        const next = behaviour.checkResults.shift();
+        if (next instanceof Error) {
+          throw next;
+        }
+        return next;
       }
       return behaviour.checkResult
         ?? { updateAvailable: true, version: '0.3.0', releaseSummary: 'Notes' };
@@ -271,7 +276,7 @@ test('an available update without a version is treated as invalid metadata', asy
   assert.equal(snapshot.nextAction, 'check');
 });
 
-test('the full lifecycle runs check, download, and install in order', async () => {
+test('the full lifecycle runs check, re-validating check, download, and install in order', async () => {
   const adapter = createFakeAdapter({ progressEvents: [progressEvent(25), progressEvent(80)] });
   const observed = [];
   const manager = createDesktopUpdateManager({ capability: readyCapability(), adapter });
@@ -285,8 +290,11 @@ test('the full lifecycle runs check, download, and install in order', async () =
 
   await manager.restartAndInstall();
 
-  assert.deepEqual(adapter.calls, { check: 1, download: 1, install: 1 });
+  assert.deepEqual(adapter.calls, { check: 2, download: 1, install: 1 });
   assert.deepEqual(observed, [
+    'checking',
+    'update_available',
+    // The download queries the feed again before it starts.
     'checking',
     'update_available',
     'downloading',
@@ -384,7 +392,9 @@ test('a check requested during a download joins the download instead of racing i
 
   const [downloadResult, joinedResult] = await Promise.all([download, joined]);
 
-  assert.equal(adapter.calls.check, 1);
+  // The initial check plus the download's own re-validation; the joined check
+  // starts nothing.
+  assert.equal(adapter.calls.check, 2);
   assert.equal(adapter.calls.download, 1);
   assert.equal(downloadResult.status, 'downloaded');
   assert.equal(joinedResult.status, 'downloaded');
@@ -409,7 +419,7 @@ test('a check requested during an installer handoff returns the installing snaps
 
   assert.equal(snapshot.status, 'installing');
   assert.equal(manager.getSnapshot().status, 'installing');
-  assert.deepEqual(adapter.calls, { check: 1, download: 1, install: 1 });
+  assert.deepEqual(adapter.calls, { check: 2, download: 1, install: 1 });
 
   releaseInstall();
   await install;
@@ -469,7 +479,7 @@ test('a re-check from downloaded keeps the artifact when the feed still names th
   await manager.restartAndInstall();
   const snapshot = await manager.checkForUpdates();
 
-  assert.equal(adapter.calls.check, 2);
+  assert.equal(adapter.calls.check, 3);
   assert.equal(snapshot.status, 'downloaded');
   assert.equal(snapshot.availableVersion, '0.3.0');
   assert.equal(snapshot.error, null);
@@ -482,6 +492,7 @@ test('a re-check from downloaded supersedes the artifact when the feed has moved
   // 0.3.3 because nothing could re-check without restarting the app.
   const adapter = createFakeAdapter({
     checkResults: [
+      { updateAvailable: true, version: '0.3.3', releaseSummary: 'Unsigned' },
       { updateAvailable: true, version: '0.3.3', releaseSummary: 'Unsigned' },
       { updateAvailable: true, version: '0.3.6', releaseSummary: 'Signed' },
     ],
@@ -506,6 +517,7 @@ test('a re-check from downloaded reports up to date when the feed has nothing', 
   const adapter = createFakeAdapter({
     checkResults: [
       { updateAvailable: true, version: '0.3.0', releaseSummary: 'Notes' },
+      { updateAvailable: true, version: '0.3.0', releaseSummary: 'Notes' },
       { updateAvailable: false, version: null, releaseSummary: null },
     ],
   });
@@ -517,6 +529,93 @@ test('a re-check from downloaded reports up to date when the feed has nothing', 
 
   assert.equal(snapshot.status, 'up_to_date');
   assert.equal(snapshot.availableVersion, null);
+});
+
+test('every settled status can start a check; in-flight statuses cannot', () => {
+  const capability = readyCapability();
+  for (const status of ['idle', 'up_to_date', 'failed', 'update_available', 'downloaded']) {
+    assert.equal(canStartDesktopUpdateCheck(status, capability), true, status);
+    assert.equal(
+      canStartDesktopUpdateCheck(status, { ...capability, canCheck: false }),
+      false,
+      status,
+    );
+  }
+  for (const status of ['unavailable', 'checking', 'downloading', 'installing']) {
+    assert.equal(canStartDesktopUpdateCheck(status, capability), false, status);
+  }
+});
+
+test('a check after an earlier offer queries the feed again and offers the newer release', async () => {
+  // The reported case: a tray-resident 0.4.3 found 0.4.6, the user chose
+  // Later, 0.4.7 shipped, and the next Check for Updates still offered 0.4.6.
+  const adapter = createFakeAdapter({
+    checkResults: [
+      { updateAvailable: true, version: '0.4.6', releaseSummary: null },
+      { updateAvailable: true, version: '0.4.7', releaseSummary: null },
+    ],
+  });
+  const manager = createDesktopUpdateManager({ capability: readyCapability(), adapter });
+
+  assert.equal((await manager.checkForUpdates()).availableVersion, '0.4.6');
+  const again = await manager.checkForUpdates();
+
+  assert.equal(adapter.calls.check, 2);
+  assert.equal(again.status, 'update_available');
+  assert.equal(again.availableVersion, '0.4.7');
+});
+
+test('a download re-validates the offer and downloads the release the feed names now', async () => {
+  const adapter = createFakeAdapter({
+    checkResults: [
+      { updateAvailable: true, version: '0.4.6', releaseSummary: null },
+      { updateAvailable: true, version: '0.4.7', releaseSummary: 'Newer' },
+    ],
+  });
+  const manager = createDesktopUpdateManager({ capability: readyCapability(), adapter });
+
+  await manager.checkForUpdates();
+  const downloaded = await manager.downloadUpdate();
+
+  assert.deepEqual(adapter.calls, { check: 2, download: 1, install: 0 });
+  assert.equal(downloaded.status, 'downloaded');
+  assert.equal(downloaded.availableVersion, '0.4.7');
+  assert.equal(downloaded.releaseSummary, 'Newer');
+});
+
+test('a download downloads nothing when its re-check finds the release withdrawn', async () => {
+  const adapter = createFakeAdapter({
+    checkResults: [
+      { updateAvailable: true, version: '0.3.0', releaseSummary: null },
+      { updateAvailable: false, version: null, releaseSummary: null },
+    ],
+  });
+  const manager = createDesktopUpdateManager({ capability: readyCapability(), adapter });
+
+  await manager.checkForUpdates();
+  const snapshot = await manager.downloadUpdate();
+
+  assert.equal(snapshot.status, 'up_to_date');
+  assert.equal(snapshot.availableVersion, null);
+  assert.equal(adapter.calls.download, 0);
+});
+
+test('a download whose re-check fails reports the failure and downloads nothing', async () => {
+  const adapter = createFakeAdapter({
+    checkResults: [
+      { updateAvailable: true, version: '0.3.0', releaseSummary: null },
+      Object.assign(new Error('getaddrinfo ENOTFOUND'), { code: 'ENOTFOUND' }),
+    ],
+  });
+  const manager = createDesktopUpdateManager({ capability: readyCapability(), adapter });
+
+  await manager.checkForUpdates();
+  const snapshot = await manager.downloadUpdate();
+
+  assert.equal(snapshot.status, 'failed');
+  assert.equal(snapshot.error.code, 'offline');
+  assert.equal(snapshot.nextAction, 'check');
+  assert.equal(adapter.calls.download, 0);
 });
 
 test('a handoff failure that is not an artifact rejection stays the generic handoff error', async () => {
@@ -544,7 +643,7 @@ test('a check is still refused while an installer handoff is in flight', async (
   const snapshot = await manager.checkForUpdates();
 
   assert.equal(snapshot.status, 'installing');
-  assert.equal(adapter.calls.check, 1);
+  assert.equal(adapter.calls.check, 2);
 });
 
 test('subscribers can unsubscribe deterministically', async () => {
@@ -643,6 +742,10 @@ test('a download survives the window hiding to tray and reports truthful state',
   // be the live one, not a stale snapshot from before it left.
   let releaseDownload = () => {};
   let reportProgress = () => {};
+  let downloadStarted = () => {};
+  const started = new Promise((resolve) => {
+    downloadStarted = resolve;
+  });
   const manager = createDesktopUpdateManager({
     capability: readyCapability(),
     adapter: {
@@ -652,6 +755,7 @@ test('a download survives the window hiding to tray and reports truthful state',
       },
       async downloadUpdate(onProgress) {
         reportProgress = onProgress;
+        downloadStarted();
         await new Promise((resolve) => {
           releaseDownload = resolve;
         });
@@ -665,7 +769,8 @@ test('a download survives the window hiding to tray and reports truthful state',
   const unsubscribe = manager.subscribe((snapshot) => seen.push(snapshot.status));
 
   const download = manager.downloadUpdate();
-  await Promise.resolve();
+  // The provider download starts after the manager's re-validating check.
+  await started;
   reportProgress(progressEvent(25));
 
   // The renderer goes away, exactly as it does when the window hides.

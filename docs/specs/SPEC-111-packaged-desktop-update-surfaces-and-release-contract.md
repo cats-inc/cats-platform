@@ -324,11 +324,23 @@ capability unavailable ──resolve──> unavailable
 capability valid ────────resolve──> idle
 idle ──check──> checking ──current──> up_to_date
                          └─newer────> update_available
-update_available ──download──> downloading ──complete──> downloaded
+up_to_date, update_available ──check──> checking
+downloaded ──check──> checking ──same version──> downloaded
+                               └─other result──> update_available / up_to_date
+update_available ──download──> checking ──newer──> downloading ──complete──> downloaded
+                                        └─current──> up_to_date
 downloaded ──restart/install──> installing ──handoff/exit──> platform installer
 platform installer ──success/next launch──> new version
 any active state ──error──> failed ──check──> checking
 ```
+
+A check may start from every settled status: `idle`, `up_to_date`, `failed`,
+`update_available` and `downloaded`. An earlier offer or download describes the
+feed at its last check, which can be hours old in a tray-resident app, and shall
+never be presented as the answer to a new check. A download shall query the feed
+again immediately before downloading and download the release the feed names at
+that moment; if the feed no longer offers a newer release, it ends in
+`up_to_date` without downloading.
 
 `unavailable` is terminal for the current process because official
 distribution identity is embedded at build time. It can become `idle` only
@@ -395,6 +407,9 @@ Button/state mapping:
 | `downloaded` | `Restart and Install` |
 | `installing` | disabled `Installing…` |
 
+`Download Update` re-validates the offer first (section 2), so an offer shown
+before a newer release shipped still downloads the newest release.
+
 On Windows, the current package is an assisted NSIS installer. Before invoking
 restart/install, Settings shall explain that Cats will close and a Windows
 installer will open. The host shall use the non-silent install path. The
@@ -430,8 +445,10 @@ before Settings and Quit.
 Requirements:
 
 1. The item shall open the update dialog, using the same main-process manager
-   as Settings. Idle, up-to-date, and failed states shall query the provider
-   before displaying the fresh result, once per explicit click.
+   as Settings. Every settled state (idle, up-to-date, failed, update available
+   and downloaded) shall query the provider before displaying the fresh result,
+   once per explicit click; checking, downloading and installing display their
+   current progress instead.
 2. The item shall keep its fixed label and remain enabled during checking,
    downloading, and installing so the dialog can display current progress.
 3. Up-to-date, available, and failed results shall appear in the dialog only.

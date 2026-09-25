@@ -173,6 +173,37 @@ export function resolveDesktopUpdateNextAction(
   }
 }
 
+/**
+ * Whether a provider check may start from this status.
+ *
+ * Every settled status can check again. An offer (`update_available`) or a
+ * downloaded artifact describes the feed as it was at the last check, which may
+ * be hours old in a tray-resident app; a user who asks to check for updates has
+ * to get the feed as it is now, never a remembered answer. Only the in-flight
+ * statuses stay closed: `checking` and `downloading` join their operation, and
+ * `installing` must not share electron-updater's global error channel with a
+ * pending installer handoff.
+ */
+export function canStartDesktopUpdateCheck(
+  status: DesktopUpdateStatus,
+  capability: DesktopUpdateCapability,
+): boolean {
+  if (!capability.canCheck) {
+    return false;
+  }
+
+  switch (status) {
+    case 'idle':
+    case 'up_to_date':
+    case 'failed':
+    case 'update_available':
+    case 'downloaded':
+      return true;
+    default:
+      return false;
+  }
+}
+
 const ERROR_SUMMARIES: Record<DesktopUpdateErrorCode, string> = {
   offline: 'Cats could not reach the update service.',
   timeout: 'The update service did not respond in time.',
@@ -383,6 +414,18 @@ export function createDesktopUpdateManager(
     }
   }
 
+  async function runFreshDownload(activeAdapter: DesktopUpdaterAdapter): Promise<DesktopUpdateSnapshot> {
+    // electron-updater downloads whatever its last check found. An offer can
+    // outlive several releases while the app sits in the tray, so the feed is
+    // queried again first and the download takes the release it names now --
+    // a newer one supersedes the offer, and a withdrawn one ends the attempt.
+    const checked = await runCheck(activeAdapter);
+    if (checked.status !== 'update_available') {
+      return checked;
+    }
+    return runDownload(activeAdapter);
+  }
+
   return {
     getSnapshot: snapshot,
 
@@ -404,18 +447,8 @@ export function createDesktopUpdateManager(
         return pendingCheck;
       }
       // Keep the manager, rather than its renderer/tray callers, responsible
-      // for legal transitions. In particular, a check started while an
-      // installer handoff is pending would share electron-updater's global
-      // error channel with that handoff and could make a provider failure look
-      // like an installer failure after managed services have already drained.
-      //
-      // `downloaded` is deliberately not terminal. The feed can move on while
-      // an artifact sits there, and a failed handoff leaves it in place -- so
-      // without a way to re-check, a rejected download would be offered on
-      // every click and the only exit would be restarting the app. `installing`
-      // is the state that has to stay closed, and it still does.
-      const recheckableDownload = status === 'downloaded' && capability.canCheck;
-      if (!recheckableDownload && resolveDesktopUpdateNextAction(status, capability) !== 'check') {
+      // for legal transitions; see canStartDesktopUpdateCheck.
+      if (!canStartDesktopUpdateCheck(status, capability)) {
         return snapshot();
       }
 
@@ -441,7 +474,9 @@ export function createDesktopUpdateManager(
         return snapshot();
       }
 
-      pendingDownload = runDownload(adapter).finally(() => {
+      // The re-validation check runs inside pendingDownload, so a check or
+      // download requested meanwhile joins it instead of racing it.
+      pendingDownload = runFreshDownload(adapter).finally(() => {
         pendingDownload = null;
       });
       return pendingDownload;
