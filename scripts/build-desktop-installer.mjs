@@ -878,6 +878,7 @@ async function main() {
     'node',
     [
       'scripts/package-desktop.mjs',
+      '--content-profile', parsed.previewMode ? 'preview' : 'release',
       '--platform',
       resolvedTarget,
       '--sidecar-layout',

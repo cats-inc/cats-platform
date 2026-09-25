@@ -5,8 +5,11 @@
 Proposed overall, 2026-09-24. After the drafting pass, the owner authorized the
 initial Code-entry knowledge-consumption work package. That explain/guide slice
 is implemented; live-provider and installed-Desktop acceptance remain pending.
-The broader self-development/practice architecture remains proposed. This work
-does not authorize publication or a change to an installed Desktop.
+On 2026-09-25 the owner authorized implementation of preview development skills,
+release exclusion, practice and knowledge distillation on feature branches.
+The concrete contract and recovery checkpoints are in PLAN-109. Broader managed
+development/native acceptance remains pending. This work does not authorize
+publication or a change to an installed Desktop.
 
 Owner clarification, 2026-09-24: preview/debug carries the extra Cats-development
 and practice skills and produces knowledge; end-user release omits those skills
@@ -193,7 +196,7 @@ cats-one's managed workspace synchronization. Runtime-delivered product skills
 stay in `cats-runtime/runtime-skills/`. Product procedures are Platform-owned
 knowledge inputs, not another product-side skill catalog.
 
-The proposed `cats-inc-development` developer skill teaches repository routing,
+The `cats-inc-development` managed product skill teaches repository routing,
 isolation, verification, and handoff. Runtime-delivered
 `cats-platform-operation` and `cats-practice-and-distill` skills teach how to use
 supplied capabilities and evidence during development practice. All three are
@@ -203,7 +206,15 @@ Catlas dependencies. Canonical authoring location does not decide which build
 ships a package: explicit profile selection must govern staging, catalog
 resolution, session hydration and inherited/resumed state. The current broad
 Runtime-library packaging needs to change before these entries can be added
-without leaking into release. These packages and filtering are not implemented.
+without leaking into release. These packages and filtering are not implemented
+at the contract checkpoint. The 2026-09-25 refinement authors all three managed
+packages in Runtime's reserved `runtime-skills/preview/` subtree. cats-one retains
+developer workspace composition/instruction ownership; managed sessions must
+not depend on its developer-discovery mirror. A package-local content manifest
+governs selection, and default distributable/npm artifacts exclude the subtree.
+Retained native context needs verifiable release-compatible provenance; clearing
+skills cannot remove preview exposure. See PLAN-109 for the compatibility
+boundary and fresh-context recovery policy before releasing this stricter path.
 
 [ADR-119](119-share-product-knowledge-and-role-procedures-with-supervised-agents.md)
 and [SPEC-118](../specs/SPEC-118-orchestrator-knowledge-and-collaboration-operations.md)

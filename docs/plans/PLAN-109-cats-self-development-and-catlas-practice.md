@@ -25,7 +25,287 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Overview
+## Resume Checkpoint — preview supplement and practice (2026-09-25)
+
+The owner resumed this work after PLAN-110 acceptance and authorized preview
+development skills, release exclusion, practice and knowledge distillation.
+The initial delivery used independently validated feature-branch checkpoints.
+The owner subsequently authorized pushing both branches, opening auto-merge PRs,
+merging through the full CI gates and cleaning up merged branches/worktrees.
+Direct main pushes remain outside this integration workflow.
+The owner is handling publication separately. This work does not bump versions,
+publish, alter an installed Desktop, or reuse consumed live-model approvals.
+
+- Platform worktree: `../cats-platform-preview-skills`, branch
+  `feat/preview-development-skills`, baseline `cf2f5169`.
+- Runtime worktree: `../cats-runtime-preview-skills`, branch
+  `feat/preview-content-policy`, baseline `a694104`.
+- Original checkouts remain available for the owner's release work.
+- Recovery order: workspace/member instructions, ADR-118, SPEC-117, this
+  checkpoint, then the current branch diff. PLAN-110 retains the completed K2,
+  K3 and native projection evidence; those separate runs must not be repeated
+  or described as one end-to-end acceptance.
+- Current slice: P0–P4 implementation and scoped validation are complete. Both
+  branches were rebased without conflicts onto current main: Platform `a267b6b0`
+  (Desktop 0.4.7 records) and Runtime `b712da2` (catalog refreshes). Rebased
+  implementation heads are Platform `1056c412` and Runtime `758ee63`; the earlier
+  slice hashes below are historical. Integration now uses paired PRs and full CI
+  before auto-merge. GitHub PR checks/merge state are the authoritative delivery
+  record. Preserve private evidence before removing worktrees, then synchronize
+  the original main checkouts and remove only verified merged branches.
+  Do not replay P1–P4 implementation or previously consumed native acceptance.
+- P0 contract review passed after adding artifact-root authority, durable
+  exposure-before-delivery and local revocation invalidation. Documentation
+  whitespace/link checks passed. No supplement or promotion is implemented
+  merely by this checkpoint. P1 independently reviewed and passed Runtime build,
+  137 targeted cases, three native-create fixture cases and 197 local doc links.
+  Runtime requires the next minor before strict retained-context admission ships;
+  no version bump or release was performed. Details and recovery are in Runtime
+  PLAN-041. P2/P3/P4 implementation and local evidence are complete below. Native,
+  managed source-fix and installed acceptance remain separate open gates.
+
+### P2 implementation and evidence
+
+- Runtime adds `cats-inc-development`, `cats-platform-operation` and
+  `cats-practice-and-distill`, with optional reference resources. Core procedures
+  remain usable via inline/file instructions; resources are not hidden required
+  dependencies. All 36 source packages pass Runtime metadata verification.
+- Desktop direct staging and unsigned installers default to release. Explicit
+  installer `--preview` derives preview content, independently of signing.
+  Direct staging accepts `--content-profile release|preview`. A captured closed
+  resource inventory is written with its own profile manifest; the source
+  manifest is never copied as authority. The owned stage is recreated, so
+  restaging preview as release removes stale supplement resources.
+- Runtime four actual-library delivery/inventory tests and 23 catalog tests
+  passed. Platform host/server builds and 28 staging tests passed, including
+  original knowledge loading in both profiles, omitted preview resources and
+  junction rejection. These checks use private fixtures only.
+- Actual npm dry-run inventory: 1,255 paths, 33 ordinary skills, zero preview
+  assets or source profile manifest. The reproducible developer checker
+  `node tools/check-skill-distribution.mjs --runtime-root ../cats-runtime-preview-skills`
+  passed against compiled Runtime modules in isolated package layouts: preview
+  36 skills/41 content files; release 33 skills/35 content files. Release rejects
+  a source-preview catalog override and explicit supplement resolution.
+- Independent code review found no blocker. Skill text was independently
+  exercised against four written scenarios; follow-ups clarified reuse of
+  existing source evidence and handling unknown mutation results. This is not
+  a real model run, procedural promotion or managed source-fix acceptance.
+- Final checker review fixed cold env-override loading, per-skill rejection
+  assertions and success-after-cleanup ordering. Its recheck passed. Documentation
+  whitespace checks and 59 Platform/7 Runtime local links passed. This Platform
+  slice pairs with Runtime `ce98afc`; future PR integration must preserve the pair.
+
+### P3/P4 concrete developer workflow
+
+P2 Platform checkpoint is `5d9bd502`. P3 adds a developer-only
+`tools/knowledge-practice/` workflow. This directory is
+outside npm/Desktop assets and adds no production endpoint or scheduler.
+
+- `candidate` turns an explicitly supplied sanitized bilingual draft into an
+  unverified content-addressed proposal. Existing development evidence is enough
+  for drafting; no model call or new exercise is required.
+- `admit` freezes an operator-supplied baseline bundle, scenario/check set,
+  evaluator module, metric, budget and evaluator identity in a new private run
+  root. It verifies an explicit preview Runtime artifact. The admitted author
+  workspace must be physically disjoint from evaluator inputs and run state.
+- An evaluator module is **trusted operator code**, not candidate code or a
+  model-provided executable. Its single attempt entry receives a bounded case
+  fixture and production-assembled knowledge context, with cancellation. It
+  returns bounded observed data, evidence IDs and measured usage/interventions;
+  it cannot supply pass/fail flags. The frozen engine computes assertions and
+  comparison. An operator may bind this seam to an independently owned product
+  harness; the shipped deterministic fixture tests plumbing only and does not
+  prove live-provider or UI competence.
+- `evaluate` captures the exact candidate and executes baseline/candidate over
+  ten or more frozen scenarios (at least four held out), each with three or more
+  new reset identities. Record intent before each attempt and terminal receipts
+  afterward. Unknown usage, timeout, interruption or budget exhaustion stops
+  continuation and remains visible; unresolved submitted attempts are never
+  silently replayed. Reopening a run can inspect it but cannot resume inference
+  or reset consumed budgets implicitly.
+- Evidence records bind content/input digests and are authenticated with a
+  private run-local key; candidate JSON or a claimed `success` field cannot mint
+  evaluation success. The operator must enforce the declared actor/grant
+  separation with actual Runtime/filesystem permissions. IDs, digests and local
+  signatures do not sandbox an actor that can rewrite this trusted tool/key.
+- P4 `review` records an explicit independent decision over the exact candidate
+  and evaluation digests, including sanitization/applicability/evidence checks.
+  Promotion requires complete repeated results, all critical checks, no
+  correctness/policy regression and improvement in the frozen metric.
+- P4 `export` emits only reviewed, compatible knowledge through the existing
+  production bundle loader. It writes a new reviewable artifact, never overwrites
+  an installed bundle or publishes. Local active reads check revocation on every
+  selection; `revoke` preserves history and removes future local selection/export.
+  Previously exported/published copies change only via a new reviewed release.
+
+Checks must cover forged/stale evidence, self-review, changed evaluator, failed
+critical checks despite an improved average, interrupted/budget-limited attempts,
+private content rejection, revocation and source-free consumer loading. Passing
+fixture evaluation must carry a fixture evidence label; it cannot promote a
+production claim or close SPEC-117's real practice acceptance.
+
+### P3 validation checkpoint (2026-09-25)
+
+- Candidate/admit/evaluate/inspect and a zero-provider fixture demo were implemented
+  at `0dc8bf2d`; see [the operator guide](../knowledge-practice.md). P4 commands were
+  not part of that checkpoint. Candidate/evaluation artifacts cannot activate
+  knowledge by themselves.
+- Eleven distinct focused tests passed. The final boundary rerun proves a complete
+  128 KiB candidate (including newline) can be read back and an extra byte rejects;
+  it also covers non-JSON observations. Reused passing tests cover 60 clean resets,
+  changed evaluator, overlapping/junction grants, release denial, self-evaluation,
+  interruption/no-replay, incompatible capture, budgets, forged receipts and
+  private/developer-content rejection.
+- Independent review fixed usage lost on invalid/cleanup/cancelled responses,
+  monotonic deadline accounting, capture intent ordering, scope admission and
+  strict JSON/size boundaries. Known token usage survives failures; unknown usage
+  is explicitly incomplete. Final review found no remaining P1/P2 finding.
+- A real CLI fixture run against Runtime `ce98afc` completed all 60 attempts under
+  `build/validation/p3-practice-20260925-01/private-run`, with fixture gates passed,
+  zero provider calls and `productionEligible: false`. This private evidence is
+  ignored, not exported knowledge. The fixed engine digest means P4 tool changes
+  require a new admission; preserve this run as historical P3 evidence.
+- Whitespace checks and 239 affected local documentation links passed. No model,
+  real protected holdout, full installer, installed Desktop or other-OS acceptance
+  is claimed. Source code and ordinary knowledge bundles remain on feature branches.
+
+### P4 final checkpoint (2026-09-25)
+
+- Implemented `review`, `export`, `revoke` and `ReviewedKnowledgeStore`. Every
+  reviewed read/export verifies the authenticated evaluation against frozen
+  inputs, planned attempt order/intents, unique resets, delivered context and
+  recomputed gates. Review binds the exact candidate and evaluation and requires
+  independent evidence/privacy/applicability/holdout attestations. IDs do not
+  replace actual actor/filesystem separation.
+- Export preserves baseline IDs/revisions, rejects changed entries without a
+  revision increase, and uses actual Catlas/Orchestrator capabilities and both
+  locales. Provenance must not change direct selection or assembled delivery for
+  any frozen scenario. It creates a new knowledge-only artifact plus receipt;
+  fixture evidence requires an explicit fixture audience and stays ineligible for
+  publication. No installed config or release knowledge is overwritten.
+- Local reviewed reads revalidate without retaining a cache. Revocation before
+  export's last check prevents a receipt; revocation after that snapshot boundary
+  applies to subsequent operations, even if this receipt is still flushing.
+  Historical exports require a new reviewed release to change. Inspection reports
+  historical gates, review, engine match and revocation separately; old-engine
+  evidence cannot export but remains inspectable/revocable.
+- Sixteen distinct focused P3/P4 cases passed. The combined run passed 15; one
+  boundary fixture initially overflowed even before promotion, was corrected,
+  and its focused rerun passed. No tool code changed between those runs. Tests
+  cover 180 fixture resets, self-review, fixture-to-product denial, stale/forged
+  receipts, incomplete/rejected results, baseline revision preservation, actual
+  consumer compatibility, both sides of concurrent revocation, and delivery after
+  author/evaluator/run directories are removed. Catlas uses its real inference
+  path with a fake Runtime client; Orchestrator uses its actual role/operation
+  consumer. Zero provider calls and no user product state.
+- Final independent read-only review passed with no remaining P1/P2 finding.
+  It confirmed the provenance-size fix, documented revocation snapshot boundary,
+  separate consumer capabilities and evidence/authority limits. Whitespace and
+  JavaScript syntax checks passed; 46 local links and balanced fences in the three
+  affected documents also passed.
+- The actual CLI against paired Runtime `ce98afc` completed a new Catlas fixture:
+  60 attempts, fixture acceptance/export, and revocation. `inspect` shows the
+  unchanged historical passing result, current engine, fixture review and revoked
+  state. Evidence remains ignored under
+  `build/validation/p4-catlas-20260925-01/`; its fixture export has
+  `publicationEligible: false`. This is zero-provider protocol acceptance with
+  simulated reviewer roles, not a production review or learning claim.
+- Actual Platform npm dry-run inventory has 3,482 paths, both ordinary knowledge
+  bundles, zero developer tools and zero private practice output. Runtime npm and
+  Desktop profile inventory evidence from P2 remains valid. No shipping asset or
+  version changed in P3/P4.
+- Next entry point: prepare paired Platform/Runtime PRs only when integration is
+  requested, retain full CI as the merge gate, and account for Runtime's next-minor
+  requirement before release. Then separately admit managed preview source-fix,
+  protected-holdout/model practice and installed release consumption acceptance.
+  G1/G2/G4 and combined native acceptance are not closed by these fixtures. No
+  paid/native replay, main mutation, version bump, or publication is authorized by
+  this checkpoint alone.
+
+### Continuous slices
+
+1. **P0 contract/checkpoint:** record ownership, artifact authority, retained
+   context policy, compatibility and independent review. Commit documentation.
+2. **P1 Runtime content boundary:** filter catalog/resolution/materialization
+   and instruction rebuilds; persist monotonic content provenance; reject
+   unverified retained contexts at release execution boundaries. Verify catalog
+   cache transitions and fresh/resumed/discovered/cleared skill cases without
+   a model. Commit code, validation and checkpoint.
+3. **P2 supplement/distribution:** add the three complete skill packages and
+   Desktop profile selection. Verify actual release/preview and npm inventories,
+   provider delivery input, and stale staged resources. Commit independently.
+4. **P3 practice/candidate artifacts:** add bounded, on-demand isolated practice
+   inputs, evaluator-owned receipts and knowledge candidates. Reuse existing
+   operation and knowledge contracts; no new scheduler or automatic private
+   transcript capture. Verify failures and interruption in private fixtures.
+5. **P4 review/promotion:** validate immutable evaluation and review digests,
+   export only accepted sanitized knowledge through the existing bundle loader,
+   test revocation and source-free Catlas/Orchestrator consumption. Record live,
+   native, installed and other-OS acceptance still outstanding.
+
+At each commit update this checkpoint with the exact completed behavior, tests,
+remaining work and next entry point. Keep failed or incomplete evidence explicit.
+
+### Concrete implementation contract
+
+- All three **managed product** packages (`cats-inc-development`,
+  `cats-platform-operation`, `cats-practice-and-distill`) are authored together
+  in Runtime's reserved `runtime-skills/preview/` subtree. This refines the
+  proposed cats-one authoring assignment: cats-one continues to own workspace
+  composition and its developer instructions, while the shipped supplement
+  stays self-contained in the existing Runtime library. No second product
+  catalog and no copying of the entire workspace developer skill inventory.
+- The ordinary 33 packages and both Platform knowledge bundles remain available
+  in release and preview. Classification is explicit, never inferred from
+  family names such as `code` or `work`.
+- The executing artifact's package-local content manifest selects `release` or
+  `preview`; a caller-selected catalog/package root cannot elevate it. Missing
+  manifests select release; invalid or unsupported manifests fail explicitly.
+  Source
+  development and preview staging carry preview eligibility; official/default
+  distributable staging and the normal Runtime npm artifact are release.
+  Signing/update identity remains separate. Runtime requests, model text and
+  a user's nearby source checkout cannot elevate a packaged release profile.
+- Release staging physically omits the reserved subtree and all its resources.
+  Runtime also filters catalog/resolution and checks delivery/rebuilds; hiding
+  a catalog row alone is insufficient. Cache identity includes content policy.
+  Staging must replace its owned output so an earlier preview cannot leave files.
+- Record the effective content profile and whether preview content has ever
+  entered a context. Clearing/changing the requested skill list cannot clear
+  that history. Release execution/resume/fork rejects retained preview or
+  unverified native context before provider work; the remedy is a fresh context,
+  with no silent transplant of excluded instructions. Discovered aliases of a
+  native thread do not establish clean provenance. Existing files stay intact.
+  Persist exposure intent before materialization/provider handoff; interrupted
+  or failed delivery remains conservative. No crash window may leave preview
+  instructions in a context recorded as release-compatible.
+- Provenance is additive metadata; no destructive migration or new required
+  stored-data field. Requiring verifiable provenance for previously resumable
+  contexts tightens execution compatibility: before shipping that strict path,
+  record/apply the required Runtime minor boundary under the release SOP. Do
+  not bump versions in these implementation branches. Unknown old state is
+  retained and receives a fresh-context recovery instruction.
+- Eligibility is content delivery only. Skills consume the existing task's
+  repository, operation, permission and budget grants. They never authorize
+  source writes, publication, other-machine access, or model usage themselves.
+- Practice is initially an operator-invoked developer workflow with explicit
+  private fixture/output roots and bounded attempts. Candidate authors may
+  propose knowledge but cannot mark it verified or edit the active evaluator.
+  Freeze the scenario set, critical checks, target metric and budget before
+  candidate evaluation; protect held-out inputs from the authoring context.
+- Candidate, evaluation and review artifacts bind exact input/content digests
+  and sanitized evidence references. Promotion requires an independent review,
+  complete required results and compatibility validation through the production
+  knowledge loader. An ordinary model claim of success is never evaluator
+  evidence. Raw transcripts and developer instructions are not release knowledge.
+- Export is build-coupled and reviewable on a branch. It does not overwrite the
+  installed bundle or publish. Revocation removes the candidate from subsequent
+  exports and invalidates any local active retrieval/cache; already published
+  bundle changes require the normal release process. Receipt validation alone
+  does not satisfy SPEC-117's ten scenarios, four held-out cases, three clean
+  resets, baseline comparison and critical-check acceptance gates.
+
+## Overview (delivery gates)
 
 Deliver an observable local workflow before autonomous practice or broad
 cross-repository automation. Reuse the existing Core/Work/Runtime contracts,
@@ -56,7 +336,7 @@ retrieval tools can provide another delivery path without changing ownership.
 | Task/change-set integration, Catlas and procedure evaluation | cats-platform | Extend existing Core/Work records and product-owned delegates; coordinate frozen-contract changes |
 | Desktop build profiles and candidate process control | cats-platform | Supplement inventory, release exclusion, isolated startup, state/profile identity, listeners, bounded host actions and packaged/native evidence |
 | Workspace/session and provider delivery | cats-runtime | Generic primitives, access enforcement, retention hooks, profile-scoped skills/resources, normal Catlas context delivery and operation-result transport |
-| Cats source composition and development guidance | cats-one | Four-member profile, developer skill, managed instruction synchronization and Cats-specific build composition |
+| Cats source composition and developer workspace guidance | cats-one | Four-member profile, managed developer instruction synchronization and Cats-specific build composition; Runtime authors the managed product supplement |
 | Utility changes and procedures | cats-apps | App source/tests and built artifacts through the SDK/package boundary, only when a scenario needs them |
 
 Assign an integration owner and a reviewer for each executable slice before
@@ -71,7 +351,8 @@ AC-12 gate in G4 does not defer those earlier data-owner obligations.
 
 ### G0 content-profile inventory checkpoint (2026-09-25)
 
-This read-only inventory prepares the next contract slice; it does not mark G0
+This historical pre-P1 inventory prepared the next contract slice; the current
+P1–P4 implementation is recorded in the Resume Checkpoint above. It does not mark G0
 or G1 complete or add a new development grant. The inspected Platform baseline
 is `c5f73f7e`, Runtime is `a694104`. PLAN-110's isolated K3 execution and native
 candidate evidence can be reused at their documented scope; they do not prove
@@ -212,8 +493,8 @@ not a reason to silently widen its permissions.
 
 ### Phase 2: Deliver one managed development task
 
-- [ ] Author `cats-inc-development` in cats-one's canonical developer skill
-  root. Reuse existing project-memory/handoff and development/review roles.
+- [ ] Author `cats-inc-development` in Runtime's reserved product preview
+  subtree. Reuse existing project-memory/handoff and development/review roles.
   Include it only in the preview/debug supplement. Synchronize complete
   resources through the current workspace tool; if a
   candidate parent is used, satisfy its four-member inventory contract.
@@ -345,7 +626,7 @@ Phase 0 chooses exact new files and fields after integration review.
 | Platform `src/shared/guideCatAssist*`, existing Catlas renderer components | Knowledge production/selection, bounded observations, model-context assembly and explain/guide presentation |
 | Platform `desktop/host/`, packaging scripts | Profile-specific supplement/knowledge inventories, candidate identity and owned process lifecycle |
 | Runtime `src/core/workspace/`, `src/core/hydration/`, `src/core/skills/`, provider adapters | Generic workspaces, effective skill delivery and enforced execution |
-| cats-one workspace tooling and canonical `skills/` | Cats member composition and the development procedure |
+| cats-one workspace tooling and canonical `skills/` | Cats member composition and developer workspace procedures, separate from shipped managed product skills |
 | Runtime canonical `runtime-skills/` | Preview/debug-only operation/practice packages with explicit distribution selection and validator metadata |
 | Apps `apps/`, package builder and tests | Utility-owned scenarios only when selected |
 | Platform control/tool registries, API docs, member guides and release SOPs | Publish the actual implemented contracts and evidence boundaries with each slice |
@@ -398,6 +679,7 @@ skill. Check both real artifact contents and effective session/model inputs.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | P1/P2 enforce artifact content policy and add three preview-only Runtime skills with release/npm exclusion. P3/P4 implement on-demand candidate/evaluation/review/export/revocation through existing knowledge consumers. The Resume Checkpoint records each branch slice, validation and remaining native/managed-practice gates; the earlier inventory below is historical. No versions, release artifacts, installed state or main branch changed. |
 | 2026-09-25 | Read-only G0 inventory distinguishes 33 ordinary Runtime role/procedure packages and two normal knowledge bundles from the still-absent Cats-specific development/practice supplement. Recorded broad artifact staging, catalog cache identity, resumed-skill hydration and existing private candidate isolation. This documentation slice prepares ownership/profile contracts; no content filter, skill delivery, persisted schema, model inference, version or publication changed. G0/G1 and practice/promotion remain open. |
 | 2026-09-24 | PLAN-110 K1 now shares the Platform knowledge reader with Catlas and delivers normal Orchestrator procedures inline, with source-free asset fixtures. Catlas's 13 regressions pass within the 239-test scoped batch. This does not close this plan's preview development, practice/promotion, live-provider or installed-Desktop gates. |
 | 2026-09-24 | Drafted ADR-118, SPEC-117 and this plan at the owner's request. Recorded static source baselines, pending gaps, ownership, staged gates and acceptance criteria. No implementation, live-provider/native acceptance, version bump or publication is claimed. |
