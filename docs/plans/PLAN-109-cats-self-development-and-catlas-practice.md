@@ -7,7 +7,7 @@
 | Status | In progress; initial Code knowledge assistance implemented, live/native acceptance pending |
 | Owner | Platform integration; member responsibilities listed below |
 | Reviewer | Product owner; independent implementation reviewers unassigned |
-| Last updated | 2026-09-25 |
+| Last updated | 2026-09-26 |
 
 ## Related Spec
 
@@ -25,7 +25,78 @@ This plan was requested together with the ADR and SPEC. The owner subsequently
 authorized the initial Code knowledge-assistance work package below. Broader
 architecture review and release authorization remain separate gates.
 
-## Resume Checkpoint — preview supplement and practice (2026-09-25)
+## Resume Checkpoint — managed knowledge authoring (2026-09-26)
+
+The owner authorized continuing the next bounded slice, maintaining checkpoints
+and doing isolated validation without requiring owner-operated testing. The
+target is a preview Desktop-managed agent producing an inspectable **unverified**
+knowledge candidate, correlated with its existing task/run/session and evidence.
+Independent product evaluation/promotion and release-consumer acceptance follow
+separately. No version bump, publication or installed-profile mutation is included.
+
+- Checkout: `cats-platform`, branch `feat/desktop-knowledge-candidate`, baseline
+  `524e3406`; paired Runtime main is `e464619` (0.3.0 preparation). The earlier
+  P1–P4 branches are merged (`b36571d2` / `d2d12db`); do not repeat their work or
+  the consumed PLAN-110 live runs. Both original working trees were clean.
+- Completed: repository/spec/ADR recovery and initial seam inventory. Existing
+  candidate/evaluation/review/export tools remain developer-only. Ordinary Code
+  task execution has no requested-skill input; Chat exposes only none/companion
+  profiles; K3 workers deliberately request no skills. Merely packaging the
+  preview supplement does not establish its delivery to a Desktop agent.
+- Contract review: independently reviewed developer-only authoring host, selected
+  through `CATS_DESKTOP_APP_ENTRY` in an isolated candidate Desktop. It reuses the
+  normal `startApp` lifecycle and the **same** FileChatStore as the product server.
+  Existing verified evidence is supplied to one fresh read-only Runtime sandbox;
+  no source mutation or new K3/Chat skill profile is introduced. This implements
+  a narrower managed-authoring seam; G2 source-fix and G4 learning/promotion remain
+  separate gates, and native authoring acceptance is still pending.
+- Implemented, validation in progress: `managedAuthoring.mjs` records admission and
+  session identity before dispatch, requires actual preview skill receipts, keeps
+  measured usage on rejected output, fences cancellation/late creation, and
+  materializes an unverified draft through existing Code artifact declarations.
+  `authoring-host.mjs` checks private paths/endpoints before startup. `src/index.ts`
+  exports optional trusted in-process lifecycle hooks; normal startup has none.
+- Independent review found and drove corrections for real nested Runtime
+  observations, canonical Run-stop session bridging, Task cancellation, startup
+  reconciliation without inference replay, exact target/artifact/provenance
+  binding, and failure-safe startup/shutdown hooks. Re-review found no blockers.
+  Cleanup acknowledgements are labelled `requested`, never process-exit proof.
+- Validation: server/host builds and the final 17-case isolated authoring suite
+  passed; all 21 lifecycle cases passed, including failing hooks
+  and shutdown during startup. Earlier
+  practice/promotion regression run passed 27/28; the Catlas promotion case saw
+  the tool-engine digest change while an authoring file was being edited, so
+  its isolated rerun passed with tool files stable. Lifecycle
+  tests required outside-sandbox execution because sandbox spawn returned EPERM. Runtime's
+  generated build was refreshed; its source checkout remains unchanged.
+- Native zero-provider preflight: Windows UIA observes the private Cats window.
+  Desktop PID 8924 owned Runtime 3700 and Platform 13608; their lifecycle events
+  and loopback listeners (57820/57819) matched the expected roots/entries.
+  Private evidence and resumable scripts: `build/validation/knowledge-authoring-native/`.
+  The first private-wrapper import and readiness-wait failures were corrected
+  before sidecars/inference; their logs are retained. All testing used the isolated
+  profile; no installed Desktop or user product records were changed.
+- External inference is **not run**. Automatic approval review rejected
+  `start-author.mjs`: it requires explicit owner authorization to send the admitted
+  candidate knowledge/evidence to the external Codex provider. Do not bypass or
+  silently retry this rejection. The prepared request is one `gpt-6-astra` draft,
+  read-only, maximum 180 seconds / 24,000 measured tokens (post-response threshold,
+  not a provider hard cap). No provider authentication was copied and the start
+  gate was never opened. The candidate Desktop shut down normally (exit 0);
+  independent process/listener observation confirms all three PIDs and both
+  listeners are gone. No live authored candidate/UI projection is claimed.
+- Next entry: obtain only the missing
+  external-call authorization. On authorization, perform a fresh ownership
+  preflight, then the single bounded request; preserve failure evidence and do not
+  automatically spend another request. Candidate/UI attribution and model-skill
+  delivery acceptance remain pending; no live authored candidate or promotion is
+  claimed. Earlier P1–P4 work and consumed PLAN-110 live runs need no replay.
+- Compatibility: existing Core records gain optional namespaced metadata;
+  no persisted format or execution API is replaced. Trusted app composition and
+  the additive `startup_failed` lifecycle reason preserve this minor line.
+  No version bump, release, push or publication is performed.
+
+## Previous checkpoint — preview supplement and practice (2026-09-25)
 
 ### Desktop 0.5.0 release repair
 

@@ -73,6 +73,7 @@ export const APP_SHUTDOWN_REASONS = [
   'keyboard',
   'parent_requested',
   'parent_disconnected',
+  'startup_failed',
 ] as const;
 
 export type AppStartupMode = typeof APP_STARTUP_MODES[number];

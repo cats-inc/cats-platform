@@ -1,7 +1,9 @@
 # Documentation Index
 
 [Preview knowledge practice](knowledge-practice.md) documents the developer-only
-candidate, frozen evaluator and interruption/checkpoint workflow for PLAN-109.
+Desktop-managed candidate authoring, frozen evaluator and interruption/checkpoint
+workflow for PLAN-109. Native authoring inference awaits explicit external-call
+authorization; isolated authoring and lifecycle tests pass.
 
 > This directory contains all project documentation.
 

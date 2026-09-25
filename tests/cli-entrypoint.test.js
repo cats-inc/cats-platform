@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, symlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { launchCli } from './fixtures/cliProcessHarness.mjs';
 
@@ -82,3 +83,32 @@ test('JSON Platform startup preserves machine output and accepts private parent 
     await cli.close();
   }
 });
+
+for (const failure of ['ready', 'shutdown', 'shutdown-during-ready']) {
+  test(`trusted host ${failure} preserves lifecycle and closes its listener`, { timeout: 60_000 }, async () => {
+    const cli = await launchCli({ args: ['--ready-output=json'], entry: async root => {
+      const entry = join(root, 'host.mjs');
+      await writeFile(entry, `import { startApp } from ${JSON.stringify(pathToFileURL(resolve('build/server/index.js')).href)};
+        await startApp({
+          async ready() {
+            process.stdout.write('HOST_READY_HOOK\\n');
+            ${failure === 'ready' ? "throw new Error('ready hook failed');" : ''}
+            ${failure === 'shutdown-during-ready' ? 'await new Promise(resolve => setTimeout(resolve, 30000));' : ''}
+          },
+          async shutdown() { process.stdout.write('HOST_SHUTDOWN_HOOK\\n');
+            ${failure === 'shutdown' ? "throw new Error('shutdown hook failed');" : ''}
+          }
+        });`);
+      return entry;
+    } });
+    try {
+      await cli.waitFor(({ stdout }) => stdout.includes('HOST_READY_HOOK'));
+      if (failure === 'shutdown') await cli.waitFor(({ stdout }) => stdout.includes('app.ready'));
+      if (failure !== 'ready') cli.child.send({ type: 'cats.shutdown' });
+      assert.equal((await cli.done).code, failure === 'shutdown-during-ready' ? 0 : 1, cli.stderr);
+      assert.match(cli.stdout, /HOST_SHUTDOWN_HOOK/); assert.match(cli.stdout, /app.stopped/);
+      if (failure !== 'shutdown') assert.doesNotMatch(cli.stdout, /app.ready/);
+      await assert.rejects(fetch(`http://127.0.0.1:${cli.port}/health`, { signal: AbortSignal.timeout(1000) }));
+    } finally { await cli.close(); }
+  });
+}

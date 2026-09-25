@@ -9,7 +9,7 @@
 | Reviewer | Product owner; implementation reviewers not yet assigned |
 | Decision | [ADR-118](../decisions/118-use-isolated-development-and-verified-practice-for-cats-improvement.md) |
 | Plan | [PLAN-109](../plans/PLAN-109-cats-self-development-and-catlas-practice.md) |
-| Last updated | 2026-09-25 |
+| Last updated | 2026-09-26 |
 
 ## Summary
 
@@ -214,6 +214,21 @@ selects relevant entries and sends their actual content in the model request.
 A capable local agent may instead read a bounded read-only knowledge root or
 use a retrieval tool, after that path is verified. A remote/API model cannot
 read the desktop's files just because its prompt contains their paths.
+
+## Managed authoring refinement (2026-09-26)
+
+The owner authorized the next managed-authoring slice and isolated validation.
+A developer-only app entry composes the normal candidate Desktop lifecycle with
+one admitted authoring session and the product's existing FileChatStore/Core
+identities. It distills already verified development evidence, as permitted by
+the preview practice skill, into an attributed unverified Code candidate artifact.
+The host fixes evidence references and applicability, checks actual Runtime
+preview skill delivery, persists operation intent before dispatch and retains
+interrupted attempts without automatic replay. See the [operator guide](../knowledge-practice.md)
+and [current checkpoint](../plans/PLAN-109-cats-self-development-and-catlas-practice.md).
+This incremental path does not close the source-fix G2, product practice/promotion
+G4 or source-free release acceptance gates. Native results are recorded separately
+from deterministic provider fixtures.
 
 ## First Acceptance Slice
 
@@ -554,4 +569,4 @@ remain later work, each requiring evidence and an explicit rollout decision.
 ---
 
 *Created: 2026-09-24*
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-26*
