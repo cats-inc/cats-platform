@@ -24,7 +24,9 @@ validation and full CI pass. K4 adds relocated npm/Desktop knowledge acceptance,
 native Windows candidate startup/lock/close proof and a completed bounded Codex
 collaboration at 61,033 measured tokens, including actual implementation, review
 and final feedback. Successful saved-state native Chat/Work projections and K2
-context-reuse CI also pass. Model-driven K2 preparation and release/preview
+context-reuse CI also pass. K2 captures usage before decision parsing and stops
+failed preparation without an unreported ordinary Chat retry; focused tests and
+full CI pass. Model-driven K2 preparation and release/preview
 profile exclusion remain open. The existing provider-agent decision setting
 stays off by default; PLAN-110's resume checkpoint records the next bounded slice.
 

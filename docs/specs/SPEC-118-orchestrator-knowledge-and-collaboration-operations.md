@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | In progress; bounded live K3/native projections and K2 context reuse CI pass; model-driven K2/profile gates open |
+| Status | In progress; bounded live K3/native projections and K2 context/accounting CI pass; model-driven K2/profile gates open |
 | Owner | Platform integration; Chat owns conversation operations |
 | Reviewer | Product owner; independent Codex implementation review |
 | Decision | [ADR-119](../decisions/119-share-product-knowledge-and-role-procedures-with-supervised-agents.md) |
@@ -541,7 +541,8 @@ The later K2 delivery-reuse slice passes 92 focused cases, its zero-inference
 production wire capture and
 [full CI on `14c080fc`](https://github.com/cats-inc/cats-platform/actions/runs/36084948721).
 The subsequent K2 failure-accounting correction passes server compilation, test
-typechecking, 74 focused cases and independent review; its full CI is pending.
+typechecking, 74 focused cases, independent review and
+[full CI on `24205589`](https://github.com/cats-inc/cats-platform/actions/runs/36086668719).
 The fixture constructs K2 preparation; model-driven discovery/preparation and
 PLAN-109 profile exclusion are separate open gates. See PLAN-110's dated evidence
 before interpreting AC-09/AC-10 as complete.
