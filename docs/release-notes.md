@@ -19,7 +19,7 @@ Migration steps:
 Deprecations:
 ```
 
-## 2026-09-25 (0.4.7 preview, standard profile — preparation)
+## 2026-09-25 (0.4.7 preview, standard profile — publication)
 
 Behavior change:
 
@@ -30,8 +30,8 @@ macOS self-update after the 0.4.6 unsigned override. Product content matches
 tip at dispatch; since 0.4.6 that adds only documentation and the reworded
 `unsigned` workflow input description.
 
-Expected platform trust: macOS signed + notarized, Windows unsigned (no
-certificate), Linux n/a.
+Platform trust: macOS signed + notarized, Windows unsigned (no certificate),
+Linux n/a.
 
 Self-update into 0.4.7:
 
@@ -43,15 +43,42 @@ Self-update into 0.4.7:
 Migration steps:
 
 No data migration or dependency change. Existing setup remains valid.
-Platform and Desktop share version 0.4.7; the authorized standard-profile
-preview publication is pending. It will bundle Runtime 0.2.1 from immutable
-commit `b712da2faf233c2ec9e4ecb831566a29f6effaa7` and the existing Usage 0.3.0
-artifact with SHA-256 `61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509`.
+Platform and Desktop share version 0.4.7; the standard-profile preview is
+published. Every OS bundles Runtime 0.2.1 from immutable commit
+`b712da2faf233c2ec9e4ecb831566a29f6effaa7` and the existing Usage 0.3.0 artifact
+with SHA-256 `61395c43fc8257ffa6955c156aabe9a582fa72c903749f7684e3ed7621f5f509`.
 No npm or new App publication is part of this release.
 
 Deprecations:
 
 None.
+
+Release verification:
+
+The [0.4.7 preview](https://github.com/cats-inc/cats-platform/releases/tag/v0.4.7)
+was published from Platform `47f7f4eb212e5b17fe9b754634fea0f357adf3a8` (main tip at
+dispatch). [Release-source CI](https://github.com/cats-inc/cats-platform/actions/runs/36098065565)
+and the [Desktop workflow](https://github.com/cats-inc/cats-platform/actions/runs/36098664846)
+passed (7/7 jobs, `unsigned=false`, standard profile). The workflow created the
+tag; it was never pushed first. All ten expected release assets are present as a
+prerelease (not latest), the releases feed lists 0.4.7 first, and all three
+public update metadata files name 0.4.7 with matching asset names and sizes.
+Every OS build packaged Runtime `b712da2`.
+
+Platform trust was checked on the published assets, not only in the workflow:
+
+- macOS: the workflow reported `source=Notarized Developer ID`. In the published
+  updater ZIP, both `Cats.app/Contents/MacOS/Cats` and `cats-stt-macos` carry a
+  Developer ID Application signature for Team `97JBZ3MFX5` with the hardened
+  runtime, and the stapled ticket is present.
+- Windows: the downloaded x64 installer (144,666,125 bytes) is `NotSigned`, as
+  expected without a certificate. Its SHA-512 equals the `latest.yml` value and
+  its SHA-256 `b1440a25372d12123c3253b58b42241db78604290a1c9522c38dbf56e15baf2b`
+  equals the GitHub asset digest.
+- Linux: the arm64 `.deb` is unsigned by design.
+
+No installed upgrade acceptance was performed in this check; that remains
+pending on every OS, including the macOS 0.4.5 to 0.4.7 self-update.
 
 ## 2026-09-25 (Desktop signing profiles — correction for 0.4.5 and 0.4.6)
 
