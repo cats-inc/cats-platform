@@ -19,6 +19,65 @@ Migration steps:
 Deprecations:
 ```
 
+## 2026-09-26 (0.5.1 preview, standard profile — preparation)
+
+Behavior change:
+
+Desktop 0.5.1 is a preview with the
+[standard signing profile](deployment.md#desktop-signing-profiles). It is a
+compatible patch that bundles Runtime 0.3.1
+([cats-runtime #93](https://github.com/cats-inc/cats-runtime/pull/93)):
+
+- **Upgraded installations get current model menus again**
+  ([cats-runtime #91](https://github.com/cats-inc/cats-runtime/pull/91)). Desktop
+  builds from 2026-04-14 until the catalog cutover copied the factory catalog into
+  the Runtime config directory. On upgrade, Runtime kept that copy as a personal
+  override, so menus stayed old (for example Claude without Opus 5.5) or showed
+  "Model catalog settings need attention". Runtime now backs up and removes an
+  unmodified copy, or an untouched conversion of one, and uses the current factory.
+  An edited file is kept as an operator override.
+- **Muse effort starts at its first option** ([#143](https://github.com/cats-inc/cats-platform/pull/143)).
+  The menu no longer offers a synthetic Default; it starts at `minimal` and submits
+  it, matching the Muse picker policy and Playground.
+- **Catalog refreshes.** Claude lists the ten explicit models from its current
+  picker (including Opus 5, Fable 5, Opus 4.8, Opus 4.7, Opus 4.6 and Sonnet 4.6);
+  Opus 5.5 now runs the picker's standard-context `opus`. Muse uses its CLI 1.4.0
+  list.
+- **Runtime fixes.** Claude sessions group by their recorded working directory, and
+  native Windows Codex provider and Code Mode host launches no longer open windows.
+
+Expected platform trust: macOS signed + notarized, Windows unsigned (no
+certificate), Linux n/a.
+
+Self-update into 0.5.1:
+
+- Windows and Linux: installs of 0.4.3 through 0.5.0 self-update. 0.5.0 queries the
+  feed on each check; an older install still uses its old update logic, so restart
+  a Cats that has been open since before 0.5.1 shipped, then check.
+- macOS: standard-profile installs such as 0.4.7 and 0.5.0 self-update, with the
+  same restart advice for 0.4.x. A 0.4.6 install (unsigned override) cannot
+  self-update; install the 0.5.1 DMG manually, once.
+
+Migration steps:
+
+The first Runtime start after the update retires an app-seeded catalog copy
+automatically and keeps a byte-for-byte `.bak` beside it. A user-edited
+`curated-model-catalogs.yaml` is not changed. No other data migration applies.
+
+Platform and Desktop share version 0.5.1; the authorized standard-profile preview
+publication is pending. It will bundle Runtime 0.3.1 from immutable commit
+`e202eaf4037c648c73caa52c9a9d441793b2df71` and the existing
+[Usage 0.4.0](https://github.com/cats-inc/cats-apps/releases/tag/usage-v0.4.0)
+artifact with SHA-256 `7ec944b264093dbeda9009986d5558336467851868f014258be17f60db88bcba`.
+The operator also authorized npm publication of `@cats-inc/cats-platform@0.5.1`
+and `@cats-inc/cats-runtime@0.3.1` on `latest`. cats-one 0.1.24 still depends on
+Runtime `^0.1.27` and Platform `^0.3.6`, so `npx cats-one` does not pick these
+versions until a separate launcher release.
+
+Deprecations:
+
+None.
+
 ## 2026-09-25 (0.5.0 preview, standard profile — preparation)
 
 Behavior change:
