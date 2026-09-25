@@ -1,4 +1,5 @@
 // A deterministic transport/selection fixture. Public cases are not a production holdout.
+import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { writeNew } from './artifacts.mjs';
@@ -18,7 +19,8 @@ export const FIXTURE_EVALUATOR = `export async function attempt({ fixture, conte
 }
 `;
 
-export async function createFixtureInputs(root) {
+export async function createFixtureInputs(root, { consumer } = {}) {
+  assert.ok(consumer === undefined || ['catlas', 'orchestrator'].includes(consumer), 'Select catlas or orchestrator.');
   const owner = join(root, 'evaluator-inputs'), author = join(root, 'author');
   await mkdir(owner, { recursive: true }); await mkdir(author, { recursive: true });
   const guide = { id: 'practice.guide', revision: 1, roles: ['catlas'], kind: 'concept',
@@ -30,11 +32,36 @@ export async function createFixtureInputs(root) {
     requiredOperations: [{ id: 'chat.collaboration.inspect_context', version: '1.0' }],
     content: { en: 'Fixture: inspect the current conversation before proposing collaborators. Report observed results separately from proposed work.',
       'zh-TW': '測試用知識：先檢查目前對話，再提議合作成員。分別陳述觀察結果與工作提案。' } };
-  const knowledge = { revision: 'fixture.practice.v1', platformRange: '0.4.x', requiredCapabilities: ['code-entry-v1', 'orchestrator-context-v1'], entries: [guide, procedure] };
+  if (consumer === 'catlas') {
+    Object.assign(procedure, { roles: ['catlas'], kind: 'concept', surfaces: ['code-help'], requiredOperations: [],
+      content: { en: 'Fixture: explain the next collaboration step from current observations and identify missing information.',
+        'zh-TW': '測試用知識：根據目前觀察解釋下一個合作步驟，並指出尚缺的資訊。' } });
+  } else if (consumer === 'orchestrator') {
+    Object.assign(guide, { roles: ['orchestrator'], surfaces: ['chat-visible', 'chat-decision'], topics: ['collaboration'],
+      content: { en: 'Fixture: state the current conversation goal and distinguish observations from proposals.',
+        'zh-TW': '測試用知識：陳述目前對話目標，區分觀察結果與提案。' } });
+  }
+  const requiredCapabilities = consumer === 'catlas' ? ['code-entry-v1']
+    : consumer === 'orchestrator' ? ['orchestrator-context-v1'] : ['code-entry-v1', 'orchestrator-context-v1'];
+  const knowledge = { revision: 'fixture.practice.v1', platformRange: '0.4.x', requiredCapabilities, entries: [guide, procedure] };
   const baseline = { schemaVersion: 2, ...knowledge, entries: [{ ...guide, verifiedAt: '2026-09-25', sources: ['fixture:baseline'] }] };
   const draft = { schemaVersion: 1, id: 'fixture-lesson', authorId: 'fixture-author',
-    evidenceRefs: ['fixture:selection-observation'], counterexamples: ['Unavailable operations must not select an operation-dependent procedure.'], knowledge };
-  const definitions = [
+    evidenceRefs: ['fixture:selection-observation'], counterexamples: ['Knowledge must match the current role, surface, topic and available operations.'], knowledge };
+  const surface = consumer === 'catlas' ? 'code-help' : 'chat-decision';
+  const otherRole = consumer === 'catlas' ? 'orchestrator' : 'catlas';
+  const wrongSurface = consumer === 'catlas' ? 'chat-visible' : 'code-help';
+  const definitions = consumer ? [
+    ['new-goal', consumer, surface, guide.topics[0], [], guide.id, true],
+    ['offline', consumer, surface, guide.topics[0], [], guide.id, true],
+    ['unknown-workspace', consumer, surface, guide.topics[0], [], guide.id, true],
+    ['collaboration', consumer, surface, 'collaboration', procedure.requiredOperations, procedure.id, true],
+    ['unavailable-context', consumer, surface, consumer === 'catlas' ? 'unrelated' : 'collaboration', [], procedure.id, false],
+    ['wrong-surface', consumer, wrongSurface, 'collaboration', procedure.requiredOperations, procedure.id, false],
+    ['held-collaboration', consumer, consumer === 'catlas' ? surface : 'chat-visible', 'collaboration', procedure.requiredOperations, procedure.id, true],
+    ['held-role-boundary', otherRole, surface, 'collaboration', procedure.requiredOperations, procedure.id, false],
+    ['held-unrelated-topic', consumer, surface, 'unrelated', procedure.requiredOperations, procedure.id, false],
+    ['held-goal-truncation', consumer, surface, guide.topics[0], [], guide.id, true],
+  ] : [
     ['catlas-new-code', 'catlas', 'code-help', 'code', [], 'practice.guide', true],
     ['catlas-offline', 'catlas', 'code-help', 'code', [], 'practice.guide', true],
     ['catlas-unknown-workspace', 'catlas', 'code-help', 'code', [], 'practice.guide', true],

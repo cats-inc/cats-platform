@@ -5,6 +5,8 @@ import { pathToFileURL } from 'node:url';
 import { createCandidate } from './candidate.mjs';
 import { admitPractice, evaluatePractice, inspectPractice } from './practice.mjs';
 import { createFixtureInputs } from './example.mjs';
+import { exportKnowledge, reviewCandidate, revokeKnowledge } from './promotion.mjs';
+import { readJson } from './artifacts.mjs';
 
 export async function main(argv) {
   const [command, ...rest] = argv;
@@ -41,15 +43,29 @@ export async function main(argv) {
     options(['--run']); return inspectPractice(flags['--run']);
   }
   if (command === 'fixture-demo') {
-    options(['--out', '--runtime-root']);
+    options(['--out', '--runtime-root'], ['--consumer']);
     const root = resolve(flags['--out']); await mkdir(root, { recursive: false });
-    const input = await createFixtureInputs(root);
+    const input = await createFixtureInputs(root, { consumer: flags['--consumer'] });
     await createCandidate({ draftFile: input.draftFile, outputFile: input.candidateFile });
     await admitPractice({ ...input, runtimeRoot: flags['--runtime-root'] });
     const feedback = await evaluatePractice({ runRoot: input.runRoot, candidateFile: input.candidateFile });
     return { evidenceMode: 'fixture', providerCalls: 0, runRoot: input.runRoot, feedback };
   }
-  throw new Error('Commands: candidate, admit, evaluate, inspect, fixture-demo. See the practice guide before admission.');
+  if (command === 'review') {
+    options(['--run', '--candidate', '--reviewer', '--decision', '--attestations'], ['--audience']);
+    return reviewCandidate({ runRoot: flags['--run'], candidateFile: flags['--candidate'], reviewerId: flags['--reviewer'],
+      decision: flags['--decision'], attestations: await readJson(flags['--attestations']), audience: flags['--audience'] });
+  }
+  if (command === 'export') {
+    options(['--run', '--out', '--consumer'], ['--audience', '--platform-version']);
+    return exportKnowledge({ runRoot: flags['--run'], outputRoot: flags['--out'], consumer: flags['--consumer'],
+      audience: flags['--audience'], platformVersion: flags['--platform-version'] });
+  }
+  if (command === 'revoke') {
+    options(['--run', '--actor', '--reason']);
+    return revokeKnowledge({ runRoot: flags['--run'], actorId: flags['--actor'], reason: flags['--reason'] });
+  }
+  throw new Error('Commands: candidate, admit, evaluate, inspect, fixture-demo, review, export, revoke. See the practice guide before admission.');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

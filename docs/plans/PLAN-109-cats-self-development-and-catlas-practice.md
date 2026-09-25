@@ -43,7 +43,11 @@ publish, alter an installed Desktop, or reuse consumed live-model approvals.
   checkpoint, then the current branch diff. PLAN-110 retains the completed K2,
   K3 and native projection evidence; those separate runs must not be repeated
   or described as one end-to-end acceptance.
-- Current slice: P3 complete; next P4 independent review, export and revocation.
+- Current slice: P0–P4 implementation and scoped validation are complete on the
+  two feature branches. P4 is the commit containing this final checkpoint; use
+  the branch log for its SHA. No push, PR, main integration or release is performed
+  in this slice. Next integration uses paired PRs and full CI before merge.
+  P3 is committed as `0dc8bf2d`; preserve its historical evidence below.
   Runtime P1 committed as `2c05544`, P2 skills as `ce98afc` on its feature branch;
   do not replay P1/P2 work.
 - P0 contract review passed after adding artifact-root authority, durable
@@ -53,8 +57,8 @@ publish, alter an installed Desktop, or reuse consumed live-model approvals.
   137 targeted cases, three native-create fixture cases and 197 local doc links.
   Runtime requires the next minor before strict retained-context admission ships;
   no version bump or release was performed. Details and recovery are in Runtime
-  PLAN-041. P2/P3 implementation and local evidence are complete below; P4 remains
-  pending. No native or installed acceptance was run for these new slices.
+  PLAN-041. P2/P3/P4 implementation and local evidence are complete below. Native,
+  managed source-fix and installed acceptance remain separate open gates.
 
 ### P2 implementation and evidence
 
@@ -138,9 +142,10 @@ production claim or close SPEC-117's real practice acceptance.
 
 ### P3 validation checkpoint (2026-09-25)
 
-- Candidate/admit/evaluate/inspect and a zero-provider fixture demo are implemented;
-  see [the operator guide](../knowledge-practice.md). P4 commands are not present
-  yet. Candidate/evaluation artifacts cannot activate knowledge by themselves.
+- Candidate/admit/evaluate/inspect and a zero-provider fixture demo were implemented
+  at `0dc8bf2d`; see [the operator guide](../knowledge-practice.md). P4 commands were
+  not part of that checkpoint. Candidate/evaluation artifacts cannot activate
+  knowledge by themselves.
 - Eleven distinct focused tests passed. The final boundary rerun proves a complete
   128 KiB candidate (including newline) can be read back and an extra byte rejects;
   it also covers non-JSON observations. Reused passing tests cover 60 clean resets,
@@ -159,6 +164,59 @@ production claim or close SPEC-117's real practice acceptance.
 - Whitespace checks and 239 affected local documentation links passed. No model,
   real protected holdout, full installer, installed Desktop or other-OS acceptance
   is claimed. Source code and ordinary knowledge bundles remain on feature branches.
+
+### P4 final checkpoint (2026-09-25)
+
+- Implemented `review`, `export`, `revoke` and `ReviewedKnowledgeStore`. Every
+  reviewed read/export verifies the authenticated evaluation against frozen
+  inputs, planned attempt order/intents, unique resets, delivered context and
+  recomputed gates. Review binds the exact candidate and evaluation and requires
+  independent evidence/privacy/applicability/holdout attestations. IDs do not
+  replace actual actor/filesystem separation.
+- Export preserves baseline IDs/revisions, rejects changed entries without a
+  revision increase, and uses actual Catlas/Orchestrator capabilities and both
+  locales. Provenance must not change direct selection or assembled delivery for
+  any frozen scenario. It creates a new knowledge-only artifact plus receipt;
+  fixture evidence requires an explicit fixture audience and stays ineligible for
+  publication. No installed config or release knowledge is overwritten.
+- Local reviewed reads revalidate without retaining a cache. Revocation before
+  export's last check prevents a receipt; revocation after that snapshot boundary
+  applies to subsequent operations, even if this receipt is still flushing.
+  Historical exports require a new reviewed release to change. Inspection reports
+  historical gates, review, engine match and revocation separately; old-engine
+  evidence cannot export but remains inspectable/revocable.
+- Sixteen distinct focused P3/P4 cases passed. The combined run passed 15; one
+  boundary fixture initially overflowed even before promotion, was corrected,
+  and its focused rerun passed. No tool code changed between those runs. Tests
+  cover 180 fixture resets, self-review, fixture-to-product denial, stale/forged
+  receipts, incomplete/rejected results, baseline revision preservation, actual
+  consumer compatibility, both sides of concurrent revocation, and delivery after
+  author/evaluator/run directories are removed. Catlas uses its real inference
+  path with a fake Runtime client; Orchestrator uses its actual role/operation
+  consumer. Zero provider calls and no user product state.
+- Final independent read-only review passed with no remaining P1/P2 finding.
+  It confirmed the provenance-size fix, documented revocation snapshot boundary,
+  separate consumer capabilities and evidence/authority limits. Whitespace and
+  JavaScript syntax checks passed; 46 local links and balanced fences in the three
+  affected documents also passed.
+- The actual CLI against paired Runtime `ce98afc` completed a new Catlas fixture:
+  60 attempts, fixture acceptance/export, and revocation. `inspect` shows the
+  unchanged historical passing result, current engine, fixture review and revoked
+  state. Evidence remains ignored under
+  `build/validation/p4-catlas-20260925-01/`; its fixture export has
+  `publicationEligible: false`. This is zero-provider protocol acceptance with
+  simulated reviewer roles, not a production review or learning claim.
+- Actual Platform npm dry-run inventory has 3,482 paths, both ordinary knowledge
+  bundles, zero developer tools and zero private practice output. Runtime npm and
+  Desktop profile inventory evidence from P2 remains valid. No shipping asset or
+  version changed in P3/P4.
+- Next entry point: prepare paired Platform/Runtime PRs only when integration is
+  requested, retain full CI as the merge gate, and account for Runtime's next-minor
+  requirement before release. Then separately admit managed preview source-fix,
+  protected-holdout/model practice and installed release consumption acceptance.
+  G1/G2/G4 and combined native acceptance are not closed by these fixtures. No
+  paid/native replay, main mutation, version bump, or publication is authorized by
+  this checkpoint alone.
 
 ### Continuous slices
 
@@ -289,7 +347,8 @@ AC-12 gate in G4 does not defer those earlier data-owner obligations.
 
 ### G0 content-profile inventory checkpoint (2026-09-25)
 
-This read-only inventory prepares the next contract slice; it does not mark G0
+This historical pre-P1 inventory prepared the next contract slice; the current
+P1–P4 implementation is recorded in the Resume Checkpoint above. It does not mark G0
 or G1 complete or add a new development grant. The inspected Platform baseline
 is `c5f73f7e`, Runtime is `a694104`. PLAN-110's isolated K3 execution and native
 candidate evidence can be reused at their documented scope; they do not prove
@@ -616,6 +675,7 @@ skill. Check both real artifact contents and effective session/model inputs.
 
 | Date | Update |
 |------|--------|
+| 2026-09-25 | P1/P2 enforce artifact content policy and add three preview-only Runtime skills with release/npm exclusion. P3/P4 implement on-demand candidate/evaluation/review/export/revocation through existing knowledge consumers. The Resume Checkpoint records each branch slice, validation and remaining native/managed-practice gates; the earlier inventory below is historical. No versions, release artifacts, installed state or main branch changed. |
 | 2026-09-25 | Read-only G0 inventory distinguishes 33 ordinary Runtime role/procedure packages and two normal knowledge bundles from the still-absent Cats-specific development/practice supplement. Recorded broad artifact staging, catalog cache identity, resumed-skill hydration and existing private candidate isolation. This documentation slice prepares ownership/profile contracts; no content filter, skill delivery, persisted schema, model inference, version or publication changed. G0/G1 and practice/promotion remain open. |
 | 2026-09-24 | PLAN-110 K1 now shares the Platform knowledge reader with Catlas and delivers normal Orchestrator procedures inline, with source-free asset fixtures. Catlas's 13 regressions pass within the 239-test scoped batch. This does not close this plan's preview development, practice/promotion, live-provider or installed-Desktop gates. |
 | 2026-09-24 | Drafted ADR-118, SPEC-117 and this plan at the owner's request. Recorded static source baselines, pending gaps, ownership, staged gates and acceptance criteria. No implementation, live-provider/native acceptance, version bump or publication is claimed. |

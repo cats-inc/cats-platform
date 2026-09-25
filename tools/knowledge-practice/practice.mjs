@@ -266,9 +266,16 @@ export async function evaluatePractice({ runRoot, candidateFile, signal }) {
 export async function inspectPractice(runRoot) {
   const admission = await readRecord(runRoot, 'admission.json');
   const evaluation = await hasRecord(runRoot, 'evaluation.json') ? await readRecord(runRoot, 'evaluation.json') : null;
+  const review = await hasRecord(runRoot, 'review.json') ? await readRecord(runRoot, 'review.json') : null;
+  const revoked = await hasRecord(runRoot, 'revocation.json');
   return { runId: admission.runId, evidenceMode: admission.evidenceMode,
     status: evaluation ? 'evaluated' : await hasRecord(runRoot, 'evaluation-started.json') ? 'incomplete-no-replay' : 'admitted',
     attempts: evaluation?.attempts.length ?? (await readdir(runRoot)).filter((name) => /^attempt-\d+\.json$/u.test(name)).length,
     stopReason: evaluation?.stopReason ?? null, gatesPassed: evaluation?.comparison.gatesPassed ?? false,
-    productionEligible: evaluation?.productionEligible ?? false };
+    productionEligible: evaluation?.productionEligible ?? false,
+    // Historical evidence and current eligibility are separate; inspection never
+    // authenticates all attempt inputs or silently re-executes an old engine.
+    engineCurrent: admission.engineDigest === await engineDigest(),
+    review: review ? { decision: review.decision, audience: review.audience, reviewerId: review.reviewerId } : null,
+    revoked };
 }

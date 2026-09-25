@@ -15,7 +15,7 @@ Build Platform server/host and the paired Runtime first. From Platform, select a
 new private output directory whose parent already exists:
 
 ```text
-node tools/knowledge-practice/cli.mjs fixture-demo --runtime-root <preview Runtime checkout> --out <new private directory>
+node tools/knowledge-practice/cli.mjs fixture-demo --runtime-root <preview Runtime checkout> --out <new private directory> --consumer catlas
 node tools/knowledge-practice/cli.mjs inspect --run <private directory>/private-run
 ```
 
@@ -25,6 +25,12 @@ pair (60 attempts). Four public sample cases exercise the held-out plumbing;
 because the sample is public, it is **not a protected production holdout**.
 Successful fixture evidence is explicitly ineligible for production promotion.
 No observed improvement here establishes live model or UI competence.
+
+Use `--consumer orchestrator` in a separate new directory for its actual
+capability set, roles and operation scopes. Omitting `--consumer` retains the
+cross-role selection fixture; its combined required capabilities deliberately
+cannot export to either single production consumer. Do not weaken a consumer's
+capability list to make a fixture load.
 
 The source/preview Runtime manifest must permit practice. Missing/release
 eligibility rejects admission. This developer command explicitly selects its
@@ -129,6 +135,86 @@ waive a critical failure.
 
 ## Review and export
 
-Independent digest-bound review, active selection, export and revocation are the
-next P4 slice. A P3 passing evaluation alone never activates or publishes a lesson.
-Do not manually move candidate/private receipt files into shipped config assets.
+The evaluator/operator revalidates every authenticated attempt against its frozen
+intent, planned order, unique reset, delivered knowledge and summary. An
+independent reviewer then records a decision over that exact candidate and
+evaluation. A different reviewer ID is required, but is not proof of independent
+identity or access: the operator remains responsible for real separation.
+
+```text
+node tools/knowledge-practice/cli.mjs review --run <run directory> --candidate <candidate.json> --reviewer <independent ID> --decision accept --attestations <review.json>
+node tools/knowledge-practice/cli.mjs export --run <run directory> --out <new artifact directory> --consumer catlas
+```
+
+`--decision reject` records a terminal rejection. Review input has this shape;
+each check must be individually established rather than copied as a claim:
+
+```json
+{
+  "checks": {
+    "evidence": true,
+    "privacy": true,
+    "applicability": true,
+    "independence": true,
+    "heldOutIsolation": true
+  },
+  "notes": "Sanitized findings explaining this decision.",
+  "evidenceRefs": ["review:independent-evidence-id"]
+}
+```
+
+The default audience is `product`. Public fixture evidence cannot receive a
+product acceptance or export, regardless of the flags in the review. To exercise
+the workflow on a fixture, both commands must explicitly use `--audience fixture`;
+the resulting receipt has `publicationEligible: false`. Fixture attestations
+describe only the synthetic isolation/validation under test and never establish
+a real protected holdout. The fixture author candidate is under `author/` and its
+run is under `private-run/` inside the demo directory.
+
+A proposal represents a **complete replacement bundle for one consumer**. Preserve
+baseline entry IDs and increase an entry's revision when changing content or
+scope. Implicit deletion and revision regression are rejected. Use separate
+candidate/admission/review sets for Catlas and Orchestrator; their actual consumer
+capabilities differ. Export validates both supported locales and the target
+Platform version (defaults to this checkout, overridable by `--platform-version`).
+No tool capability is gained from a knowledge entry.
+
+Adding evaluation/review provenance must not change selected or delivered entries
+in any frozen scenario. Both direct Catlas selection and assembled Orchestrator
+context are checked, including the serialized size budget. If provenance crowds
+out content, shorten the candidate and admit a new evaluation; an earlier passing
+result cannot justify the altered delivery.
+
+Export writes only `knowledge.json` and `export-receipt.json`, containing compatible
+reviewed knowledge plus sanitized candidate/evaluation/review digests. It creates
+a new directory and never replaces an installed or existing artifact. A failed
+write leaves partial output for inspection; **only a successful command with a
+complete matching receipt represents an export**. Do not consume partial output.
+Accepted product exports are proposed changes to the owning config bundle through
+the normal PR/release process. Do not ship candidates, evaluator keys, private
+ledgers or raw practice state. Nothing is published or installed by this command.
+
+## Inspect and revoke
+
+```text
+node tools/knowledge-practice/cli.mjs inspect --run <run directory>
+node tools/knowledge-practice/cli.mjs revoke --run <run directory> --actor <operator ID> --reason <sanitized reason>
+```
+
+Inspection separates historical results from the current review, engine match
+and revocation state. It is not a new evaluation or a complete export-eligibility
+check. Any tool/evaluator change requires a new admission; old attempts cannot be
+replayed, but can still be inspected and revoked after an engine upgrade.
+
+The developer `ReviewedKnowledgeStore` is a local selection adapter. It checks
+approval/evidence on every read, retains no cache, and checks revocation before
+and after loading. This adapter is not an installed release override. Revocation
+is idempotent, preserves prior evidence and denies future local reads/exports.
+
+Export checks revocation immediately before starting its receipt write. This is
+the export's **snapshot boundary**: a revocation observed there denies export and
+leaves unapproved partial output. A concurrent revocation after that check applies
+to subsequent operations; the already admitted export may finish flushing its
+receipt. Consumers must not treat an old export receipt as proof of current local
+approval. Previously exported or published copies are historical artifacts and
+change through a new reviewed release, not by editing private run state.

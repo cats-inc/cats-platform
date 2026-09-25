@@ -64,8 +64,17 @@ P3 adds the [developer practice workflow](../knowledge-practice.md): explicit
 preview admission, frozen baseline/evaluator/curriculum, bounded isolated attempts,
 authenticated evidence and unverified candidate drafts. Its public deterministic
 fixture exercises the ten-case/four-held-out-slot/three-reset mechanics, not a
-real protected holdout or live model improvement. P4 review/export/revocation is
-still pending; a passing P3 receipt alone cannot promote knowledge.
+real protected holdout or live model improvement. P4 adds digest-bound independent
+review, complete-bundle/revision and actual consumer compatibility checks,
+knowledge-only export, and uncached local selection with revocation. The promoted
+projection must preserve the evaluated entries under the prompt-size budget.
+Fixture evidence is limited to explicit fixture exports and never authorizes
+product publication. Export creates a new reviewable artifact for the normal
+PR/release process; it does not replace an installed bundle. Prior exports are
+historical snapshots, while revocation prevents future local reads/exports.
+The operator guide defines the concurrent export/revocation snapshot boundary.
+A passing P3 receipt alone cannot promote knowledge. These developer tools do
+not add a shipped endpoint, automatic practice loop, or installed overlay.
 
 ## Implemented Code-Entry Assistance
 
